@@ -15615,43 +15615,35 @@ function _ocultarGraficoComissoes() {
               try { alert('Selecione um cliente válido.'); } catch (_) {}
               return;
             }
-            var r2 = await fetch('/api/ofs/' + encodeURIComponent(ofId), {
-              method: 'PUT',
-              headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
-              body: JSON.stringify(payload)
+            await _salvarEdicaoOF(ofId, payload);
+            var vendSelect = body.querySelector('#com-of-vend-select');
+            var vendNomeNovo = '';
+            try {
+              vendNomeNovo = vendSelect && vendSelect.options && vendSelect.selectedIndex >= 0
+                ? String(vendSelect.options[vendSelect.selectedIndex].text || '').trim()
+                : '';
+            } catch (_) { vendNomeNovo = ''; }
+            var novoSnapshot = _snapshotOfParaResumo({
+              numero: (body.querySelector('#com-of-numero') || {}).value,
+              cliente: (body.querySelector('#com-of-cli-busca') || {}).value,
+              vendedor: vendNomeNovo,
+              quantidade: qtd,
+              valor_total: valorTotalCalc,
+              comissao_pct: comPct,
+              status: st,
+              created_at: created,
+              data_conclusao: conc,
+              observacoes: obs
             });
-            var j2 = await r2.json().catch(function() { return null; });
-            try { console.log('[TROCAR] resultado:', r2 && r2.status, JSON.stringify(j2)); } catch (_) {}
-            if (r2.ok && j2 && j2.ok) {
-              var vendSelect = body.querySelector('#com-of-vend-select');
-              var vendNomeNovo = '';
-              try {
-                vendNomeNovo = vendSelect && vendSelect.options && vendSelect.selectedIndex >= 0
-                  ? String(vendSelect.options[vendSelect.selectedIndex].text || '').trim()
-                  : '';
-              } catch (_) { vendNomeNovo = ''; }
-              var novoSnapshot = _snapshotOfParaResumo({
-                numero: (body.querySelector('#com-of-numero') || {}).value,
-                cliente: (body.querySelector('#com-of-cli-busca') || {}).value,
-                vendedor: vendNomeNovo,
-                quantidade: qtd,
-                valor_total: valorTotalCalc,
-                comissao_pct: comPct,
-                status: st,
-                created_at: created,
-                data_conclusao: conc,
-                observacoes: obs
-              });
-              _mostrarResumoAlteracoes(originalSnapshot, novoSnapshot, function() {
-                try { modal.style.display = 'none'; } catch (_) {}
-              });
-              try { if (typeof window.calcularComissoes === 'function') window.calcularComissoes(); } catch (_) {}
-            } else {
-              try { alert('Erro ao salvar: ' + String(j2 && (j2.error || j2.message) || r2.status || 'Falha')); } catch (_) {}
-            }
+            try {
+              if (window._mostrarResumoAlteracoes) window._mostrarResumoAlteracoes(originalSnapshot, novoSnapshot, function() {});
+            } catch (_) {}
+            try { modal.remove(); } catch (_) { try { modal.style.display = 'none'; } catch (_) {} }
+            setTimeout(function() {
+              try { if (window.calcularComissoes) window.calcularComissoes(); } catch (_) {}
+            }, 500);
           } catch (err) {
-            try { console.error('[TROCAR] erro fetch:', err); } catch (_) {}
-            try { alert('Erro de conexão ao salvar OF.'); } catch (_) {}
+            try { alert('Erro ao salvar OF: ' + String(err && err.message || err)); } catch (_) {}
           }
         });
       }
@@ -15661,6 +15653,23 @@ function _ocultarGraficoComissoes() {
   }
 
   try { window.__comAbrirModalOF = _abrirModalOF; } catch (_) {}
+  async function _salvarEdicaoOF(ofId, body) {
+    try { console.log('[SALVAR OF] id:', ofId); } catch (_) {}
+    var tokenSave = '';
+    try { tokenSave = _getToken ? _getToken() : ''; } catch (_) { tokenSave = ''; }
+    var r = await fetch('/api/ofs/' + encodeURIComponent(String(ofId || '')), {
+      method: 'PUT',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, tokenSave ? { Authorization: 'Bearer ' + tokenSave } : {}),
+      body: JSON.stringify(body || {})
+    });
+    var resultado = await r.json().catch(function() { return { ok: false, error: 'Resposta inválida do servidor' }; });
+    try { console.log('[SALVAR OF] resposta:', r.status, JSON.stringify(resultado)); } catch (_) {}
+    if (!r.ok || resultado.ok === false) {
+      throw new Error(String(resultado && (resultado.error || resultado.message) || ('Erro ' + r.status)));
+    }
+    return resultado;
+  }
+  try { window._salvarEdicaoOF = _salvarEdicaoOF; } catch (_) {}
 
   function _bindTrocarClick() {
     try {
@@ -15762,11 +15771,10 @@ function _ocultarGraficoComissoes() {
 
   function _renderComissoesCompleto(dados, dadosAnt, grupos, todasOFs, ordemVend, mesRef, anoRef) {
     var paginaCom = document.querySelector('#page-comissoes')
-      || document.querySelector('[data-page="comissoes"]')
-      || document.querySelector('.page-comissoes');
+      || document.querySelector('[data-page="comissoes"]');
 
     if (!paginaCom) {
-      try { console.error('[COM RENDER] página de comissões não encontrada'); } catch (_) {}
+      try { console.error('[COM] página não encontrada'); } catch (_) {}
       return;
     }
 
@@ -15854,7 +15862,48 @@ function _ocultarGraficoComissoes() {
       htmlOFs += '<tr data-of-idx="' + idx + '" data-cli-id="' + String(of && (of.cli_id || of.cliId || '') || '').replace(/"/g, '&quot;') + '" style="background:' + cbg + ';border-bottom:1px solid #1e2d40" onmouseenter="this.style.filter=\'brightness(1.15)\'" onmouseleave="this.style.filter=\'\'"><td style="padding:9px 12px;text-align:center;font-size:13px;color:#94a3b8">#' + String(of && (of.numero || of.of_numero) || '—').replace(/</g, '&lt;') + '</td><td style="padding:9px 12px;text-align:left;font-size:13px" class="td-cli">' + String(cli || '...').replace(/</g, '&lt;') + '</td><td style="padding:9px 12px;text-align:center;font-size:13px">' + String(nv || '—').replace(/</g, '&lt;') + '</td><td style="padding:9px 12px;text-align:center;font-size:13px">' + (qtd || '—') + '</td><td style="padding:9px 12px;text-align:center;font-size:13px">' + _fmtBRCom(valorTotal) + '</td><td style="padding:9px 12px;text-align:center;font-size:13px">' + (vu > 0 ? _fmtBRCom(vu) : '—') + '</td><td style="padding:9px 12px;text-align:center;font-size:13px">' + Number(of && (of.comissao_pct || 1) || 1).toFixed(2).replace('.', ',') + '%</td><td style="padding:9px 12px;text-align:center;font-size:13px;color:#10b981;font-weight:600">' + _fmtBRCom(comRS) + '</td><td style="padding:9px 12px;text-align:center;font-size:13px">' + String(data).replace(/</g, '&lt;') + '</td><td style="padding:9px 12px;text-align:center"><span style="background:#064e3b;color:#10b981;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600">Concluído</span></td><td style="padding:9px 12px;text-align:center"><button onclick="window._abrirModalEdicaoOF&&window._comissaoOFs&&window._abrirModalEdicaoOF(window._comissaoOFs[' + idx + '])" style="background:transparent;border:1px solid #3a4a6b;color:#94a3b8;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer">✏️ Trocar</button></td></tr>';
     });
 
-    paginaCom.innerHTML = '<div style="padding:0 16px">' + htmlCards + htmlRanking + '<div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:16px"><div style="font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">🏆 Comissão por Vendedor</div>' + htmlResumo + '</div><div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:16px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">📋 Detalhamento das OFs</div><div style="display:flex;gap:8px"><input id="com-busca-of" type="text" placeholder="🔍 Buscar OF ou cliente..." style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px 12px;color:#f1f5f9;font-size:13px;outline:none;width:280px" oninput="window._filtrarComissaoOFs&&window._filtrarComissaoOFs(this.value)"></div></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse" id="tabela-com-ofs"><thead><tr style="background:#0f172a"><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap"># OF</th><th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">CLIENTE</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">VENDEDOR</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">QTD</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">VALOR TOTAL</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">PREÇO UNIT.</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">% COMISSÃO</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">COMISSÃO (R$)</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">DATA</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">STATUS</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">AÇÕES</th></tr></thead><tbody id="tbody-com-ofs">' + htmlOFs + '</tbody></table></div></div></div>';
+    var htmlResumoWrap = '<div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:16px"><div style="font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">🏆 Comissão por Vendedor</div>' + htmlResumo + '</div>';
+    var divTopo = document.getElementById('_com_patch_topo');
+    if (!divTopo) {
+      divTopo = document.createElement('div');
+      divTopo.id = '_com_patch_topo';
+      paginaCom.insertBefore(divTopo, paginaCom.firstChild);
+    }
+    var divDetalhe = document.getElementById('_com_patch_detalhe');
+    if (!divDetalhe) {
+      divDetalhe = document.createElement('div');
+      divDetalhe.id = '_com_patch_detalhe';
+      paginaCom.appendChild(divDetalhe);
+    }
+
+    Array.prototype.slice.call(paginaCom.children).forEach(function(child) {
+      if (!child || (child.id === '_com_patch_topo') || (child.id === '_com_patch_detalhe')) return;
+      try { child.style.display = 'none'; } catch (_) {}
+    });
+
+    divTopo.innerHTML = '<div style="padding:0 16px">' + htmlCards + htmlRanking + htmlResumoWrap + '</div>';
+    divDetalhe.innerHTML = ''
+      + '<div style="padding:0 16px 16px">'
+      + '<div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-top:16px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+      + '<span style="font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase">📋 Detalhamento das OFs</span>'
+      + '<input id="com-busca-of" type="text" placeholder="🔍 Buscar OF ou cliente..." style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px 12px;color:#f1f5f9;font-size:13px;outline:none;width:280px" oninput="window._filtrarComissaoOFs&&window._filtrarComissaoOFs(this.value)">'
+      + '</div>'
+      + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#0f172a"><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap"># OF</th><th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">CLIENTE</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">VENDEDOR</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">QTD</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">VALOR TOTAL</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">PREÇO UNIT.</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">% COMISSÃO</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">COMISSÃO (R$)</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">DATA</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">STATUS</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">AÇÕES</th></tr></thead><tbody id="tbody-com-ofs">' + htmlOFs + '</tbody></table></div>'
+      + '</div>'
+      + '</div>';
+
+    if (!window._comProtectorAtivo) {
+      window._comProtectorAtivo = true;
+      window._comProtectorObs = new MutationObserver(function() {
+        if (window._pausarObservers) return;
+        ['_com_patch_topo', '_com_patch_detalhe'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el && el.style.display === 'none') el.style.display = '';
+        });
+      });
+      try { window._comProtectorObs.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['style'] }); } catch (_) {}
+    }
 
     var semNome = (todasOFs || []).filter(function(of) {
       return of && !(of.cliente_nome || of._cliente_nome) && (of.cli_id || of.cliId);
@@ -15877,7 +15926,7 @@ function _ocultarGraficoComissoes() {
     };
 
     setTimeout(function() { window._pausarObservers = false; }, 1000);
-    try { console.log('[COM RENDER] concluído:', (todasOFs || []).length, 'OFs renderizadas'); } catch (_) {}
+    try { console.log('[COM RENDER] concluído:', (todasOFs || []).length, 'OFs'); } catch (_) {}
   }
 
   function _initRewriteComissoes() {

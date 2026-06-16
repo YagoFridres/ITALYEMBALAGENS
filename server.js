@@ -4275,334 +4275,44 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
+    try { console.log('[PUT OF]', req.params.id, JSON.stringify(req.body || {}).substring(0, 200)); } catch (_) {}
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    try { console.log('[PUT /api/ofs/:id]', id, JSON.stringify(req.body || {}).slice(0, 2000)); } catch (_) {}
-    const body = _filterOfsPayloadKnownCols(req.body || {}, true);
-    const cleanBody = { ...body };
-    delete body.id; delete body.empresa_id;
-    delete cleanBody.id; delete cleanBody.empresa_id;
-    console.debug('[OF SAVE]', req.method, id, JSON.stringify(Object.keys(body || {})));
 
-    const { data: ofAtual } = await supabase
+    const body = { ...(req.body || {}) };
+    delete body.id;
+    delete body.numero;
+    delete body.created_at;
+    delete body.empresa_id;
+    delete body.seq;
+    delete body._allow_partial;
+    delete body.allow_partial;
+    delete body._force_status;
+    delete body.force_status;
+
+    if (body.quantidade !== undefined) body.quantidade = Number(body.quantidade);
+    if (body.valor_total !== undefined) body.valor_total = Number(body.valor_total);
+    if (body.valor_unitario !== undefined) body.valor_unitario = Number(body.valor_unitario);
+    if (body.comissao_pct !== undefined) body.comissao_pct = Number(body.comissao_pct);
+
+    const { data, error } = await supabase
       .from('ofs')
-      .select('*')
+      .update(body)
       .eq('id', id)
-      .maybeSingle();
-    if (!ofAtual) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+      .select()
+      .single();
 
-    {
-      const keys = Object.keys(req.body || {});
-      const shouldValidate = keys.some((k) => [
-        'cli_id','cliId','cliente_id','clienteId',
-        'vendedor_id','vendId','vend_id','vendedorId',
-        'qtd','quantidade','qtd_pedida','qtdPedida',
-        'valor_total','valor_venda','valorTotal','valorVenda',
-        'prodDesc','descricao','produto',
-        'ent','data_entrega','dataEntrega',
-        'itens',
-      ].includes(k));
-      const allowPartial = String(req.body?._allow_partial || req.body?.allow_partial || '').trim() === '1';
-      if (shouldValidate && !allowPartial) {
-        const parseItens = (v) => {
-          if (Array.isArray(v)) return v;
-          if (typeof v === 'string') { try { const p = JSON.parse(v || '[]'); return Array.isArray(p) ? p : []; } catch (_) { return []; } }
-          return [];
-        };
-        const merged = { ...(ofAtual || {}), ...(cleanBody || {}) };
-        const cliId = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
-        const vendId = String(merged.vendedor_id ?? merged.vendId ?? merged.vend_id ?? '').trim();
-        const qtd = Number(merged.qtd ?? merged.quantidade ?? merged.qtd_pedida ?? 0) || 0;
-        const ent = String(merged.ent ?? merged.data_entrega ?? '').slice(0, 10);
-        const itens = parseItens(merged.itens ?? ofAtual?.itens);
-        const item0 = (Array.isArray(itens) ? itens : [])[0] || {};
-        const prod = String(merged.prodDesc ?? merged.descricao ?? merged.produto ?? item0.desc ?? item0.descricao ?? '').trim();
-        const total = Number(merged.valor_total ?? merged.valor_venda ?? 0) || 0;
-        const vunitItens = Math.max(0, ...(Array.isArray(itens) ? itens : []).map((it) => Number(it?.valor_unitario ?? it?.vunit ?? 0) || 0));
-        const vunit = (vunitItens > 0) ? vunitItens : ((qtd > 0) ? (total / qtd) : 0);
-        const missing = [];
-        if (!cliId) missing.push('cliente');
-        if (!vendId) missing.push('vendedor');
-        if (!(qtd > 0)) missing.push('quantidade');
-        if (!prod) missing.push('produto/modelo');
-        if (!ent) missing.push('data de entrega');
-        if (!(vunit > 0)) missing.push('valor unitário');
-        if (missing.length) {
-          return res.status(400).json({ ok: false, error: 'Campos obrigatórios: ' + missing.join(', '), missing });
-        }
-      }
+    if (error) {
+      try { console.error('[PUT OF] erro:', error.message); } catch (_) {}
+      return res.status(400).json({ ok: false, error: error.message });
     }
 
-    try {
-      const stAtual = String(ofAtual?.status || '').trim().toLowerCase();
-      const stNovo = Object.prototype.hasOwnProperty.call(cleanBody, 'status') ? String(cleanBody.status || '').trim().toLowerCase() : '';
-      const isConcluida = stAtual.includes('conclu') || stAtual === 'pedido pronto';
-      const vaiReabrir = stNovo && !(stNovo.includes('conclu') || stNovo === 'pedido pronto') && !stNovo.includes('cancel');
-      const force = String(req.body?._force_status || req.body?.force_status || req.body?.forcar_status || '').trim() === '1';
-      if (isConcluida && vaiReabrir && !force) {
-        try { console.debug('[OF STATUS GUARD] ignorando reabertura via PUT', { id, stAtual, stNovo }); } catch (_) {}
-        delete cleanBody.status;
-        delete body.status;
-      }
-    } catch (_) {}
-
-    try {
-      const hasEntrega = Object.prototype.hasOwnProperty.call(body, 'ent') || Object.prototype.hasOwnProperty.call(body, 'data_entrega');
-      const hasMaq = Object.prototype.hasOwnProperty.call(body, 'fluxo_maquinas') || Object.prototype.hasOwnProperty.call(body, 'maq');
-      if (hasEntrega || hasMaq) {
-        const oldEntrega = String(ofAtual?.ent || ofAtual?.data_entrega || '').slice(0, 10);
-        const newEntrega = String((body.ent ?? body.data_entrega ?? '') || '').slice(0, 10);
-        const oldMaqRaw = ofAtual?.fluxo_maquinas ?? ofAtual?.maq ?? null;
-        const newMaqRaw = (Object.prototype.hasOwnProperty.call(body, 'fluxo_maquinas') ? body.fluxo_maquinas : (Object.prototype.hasOwnProperty.call(body, 'maq') ? body.maq : undefined));
-        const normMaq = (v) => {
-          if (v == null) return '';
-          if (Array.isArray(v)) return v.map(x => String(x || '').trim()).filter(Boolean).join(' | ');
-          if (typeof v === 'string') {
-            const s = v.trim();
-            if (!s) return '';
-            try {
-              const p = JSON.parse(s);
-              if (Array.isArray(p)) return p.map(x => String(x || '').trim()).filter(Boolean).join(' | ');
-            } catch (_) {}
-            return s;
-          }
-          if (typeof v === 'object') {
-            try {
-              const p = Array.isArray(v) ? v : Object.values(v);
-              return (Array.isArray(p) ? p : []).map(x => String(x || '').trim()).filter(Boolean).join(' | ');
-            } catch (_) { return ''; }
-          }
-          return String(v || '').trim();
-        };
-        const oldMaq = normMaq(oldMaqRaw);
-        const newMaq = newMaqRaw === undefined ? oldMaq : normMaq(newMaqRaw);
-        const motivo = String(req.body?.motivo || req.body?.motivo_reprogramacao || req.body?.obs_motivo || '').trim();
-        const changedEntrega = hasEntrega && (newEntrega !== oldEntrega);
-        const changedMaq = hasMaq && (newMaq !== oldMaq);
-        if (changedEntrega || changedMaq) {
-          await logAuditoria('ofs', 'REPROGRAMACAO', id, {
-            entrega: oldEntrega || null,
-            maquinas: oldMaq || null,
-          }, {
-            entrega: (hasEntrega ? (newEntrega || null) : oldEntrega || null),
-            maquinas: (hasMaq ? (newMaq || null) : oldMaq || null),
-            motivo: motivo || null,
-          }, req);
-        }
-      }
-    } catch (_) {}
-
-    try {
-      const vn = String(cleanBody?.vendedor_nome || '').trim();
-      const v2 = String(cleanBody?.vendNome || '').trim();
-      if (vn) cleanBody.vendedor = vn;
-      else if (v2) cleanBody.vendedor = v2;
-    } catch (_) {}
-    try {
-      const qtdBody = cleanBody?.quantidade ?? cleanBody?.qtd;
-      const qtdNum = Number(qtdBody);
-      if (Number.isFinite(qtdNum) && qtdNum >= 0) {
-        const qtdInt = Math.trunc(qtdNum);
-        cleanBody.quantidade = qtdInt;
-        cleanBody.qtd = qtdInt;
-        cleanBody.qtd_produzida = qtdInt;
-      }
-    } catch (_) {}
-    try {
-      const vuBody = cleanBody?.valor_unitario ?? cleanBody?.vl_unit;
-      const vuNum = Number(vuBody);
-      if (Number.isFinite(vuNum) && vuNum >= 0) {
-        cleanBody.valor_unitario = vuNum;
-        cleanBody.vl_unit = vuNum;
-      }
-    } catch (_) {}
-    try {
-      const qtdNum = Number(cleanBody?.quantidade ?? cleanBody?.qtd ?? NaN);
-      const vuNum = Number(cleanBody?.valor_unitario ?? cleanBody?.vl_unit ?? NaN);
-      if (Number.isFinite(qtdNum) && qtdNum >= 0 && Number.isFinite(vuNum) && vuNum >= 0) {
-        const totalCalc = Math.round((qtdNum * vuNum) * 100) / 100;
-        cleanBody.valor_total = totalCalc;
-        cleanBody.valor_venda = totalCalc;
-      }
-    } catch (_) {}
-    try {
-      const valBody = cleanBody?.valor_total ?? cleanBody?.valor_venda;
-      const valNum = Number(valBody);
-      if (Number.isFinite(valNum) && valNum >= 0) {
-        cleanBody.valor_total = valNum;
-        cleanBody.valor_venda = valNum;
-      }
-    } catch (_) {}
-    try {
-      const ofNum = cleanBody?.of != null ? String(cleanBody.of || '').trim() : '';
-      const num = cleanBody?.numero != null ? String(cleanBody.numero || '').trim() : '';
-      const val = ofNum || num || '';
-      if (val) {
-        if (!ofNum) cleanBody.of = val;
-        if (!num) cleanBody.numero = val;
-      }
-    } catch (_) {}
-
-    const expectedUpdatedAt = String(
-      body?._expected_updated_at ?? body?.expected_updated_at ?? body?.if_match_updated_at
-      ?? req.headers['if-match'] ?? req.headers['x-of-updated-at'] ?? ''
-    ).trim();
-    const currentUpdatedAt = String(ofAtual?.updated_at || '').trim();
-    if (expectedUpdatedAt && currentUpdatedAt && expectedUpdatedAt !== currentUpdatedAt) {
-      return res.status(409).json({ ok: false, error: 'concurrency_conflict', current: ofAtual, rid: req._rid || null });
-    }
-
-    ['seq', 'id', 'created_at'].forEach((k) => delete cleanBody[k]);
-    if (!Object.prototype.hasOwnProperty.call(body, 'itens')) delete cleanBody.itens;
-
-    const valorAtual = Number(ofAtual?.valor_total ?? ofAtual?.valor_venda ?? 0);
-    const zerarValor = body?._zerar_valor === true || body?._zerar_valor === 'true' || body?._zerar_valor === 1 || body?._zerar_valor === '1';
-    const hasValor = Object.prototype.hasOwnProperty.call(body, 'valor_total') || Object.prototype.hasOwnProperty.call(body, 'valor_venda');
-    if (hasValor && !zerarValor) {
-      const valBody = Number(cleanBody.valor_total ?? cleanBody.valor_venda ?? NaN);
-      if (Number.isFinite(valBody) && valBody === 0 && valorAtual > 0) {
-        delete cleanBody.valor_total;
-        delete cleanBody.valor_venda;
-      }
-    }
-
-    const filtered = ofPayloadFiltrado(cleanBody);
-    delete filtered.id;
-    delete filtered.of_num;
-    delete filtered.seq;
-    delete filtered.created_at;
-    filtered.updated_at = new Date().toISOString();
-
-    const updRes = await ofsUpdateWithRetry(id, ofIn(filtered));
-    if (updRes.error) throw updRes.error;
-    const updated = updRes.data;
-    try { console.log('[PUT /api/ofs/:id] resultado:', updRes?.error?.message || null, updated ? 1 : 0); } catch (_) {}
-    await _maybeRegistrarComissaoOF(req, body, updated);
-    await logAuditoria('ofs', 'UPDATE', id, ofAtual, updated, req);
-    try {
-      const cliId = String(body?.cli_id || body?.cliId || ofAtual?.cli_id || ofAtual?.cliId || ofAtual?.cliente_id || '').trim();
-      const vendId = String(
-        filtered?.vendedor_id || body?.vendedor_id || body?.vendId ||
-        body?.vend_id || ofAtual?.vendedor_id || ofAtual?.vendId || ''
-      ).trim();
-      if (cliId && vendId) {
-        await supabase
-          .from('clientes')
-          .update({ vendedor_id: vendId })
-          .eq('id', cliId)
-          .is('vendedor_id', null);
-        cacheClearPrefix('clientes_');
-      }
-    } catch (_) {}
-
-    try {
-      const hasQtd = Object.prototype.hasOwnProperty.call(body, 'qtd') || Object.prototype.hasOwnProperty.call(body, 'quantidade');
-      const qtdNovaRaw = hasQtd ? (body.qtd ?? body.quantidade) : undefined;
-      const qtdNova = Number(qtdNovaRaw ?? NaN);
-      const qtdAntiga = Number(ofAtual?.qtd ?? NaN);
-      const statusAtual = String(ofAtual?.status || '').trim().toLowerCase();
-      const foiConcluida = statusAtual === 'pedido pronto' || statusAtual === 'concluida' || statusAtual === 'concluído';
-
-      if (foiConcluida && Number.isFinite(qtdNova) && qtdNova > 0 && Number.isFinite(qtdAntiga) && qtdAntiga > 0 && qtdNova < qtdAntiga) {
-        const qtdPerdida = Math.trunc(qtdAntiga - qtdNova);
-        const valorOriginal = Number(ofAtual?.valor_total ?? ofAtual?.valor_venda ?? 0);
-        const valorUnit = qtdAntiga > 0 ? (valorOriginal / qtdAntiga) : 0;
-        const cliId = String(
-          ofAtual?.cli_id ?? ofAtual?.cliId ?? ofAtual?.cliente_id ?? ofAtual?.clienteId
-          ?? updated?.cli_id ?? updated?.cliId ?? updated?.cliente_id ?? updated?.clienteId
-          ?? body?.cli_id ?? body?.cliId ?? body?.cliente_id ?? body?.clienteId
-          ?? ''
-        ).trim();
-
-        let cliNome = '';
-        if (cliId) {
-          try {
-            const { data: cliData } = await supabase.from('clientes').select('nome').eq('id', cliId).maybeSingle();
-            cliNome = String(cliData?.nome || '').trim();
-          } catch (_) {}
-        }
-
-        const hoje = new Date().toISOString().slice(0, 10);
-        const mes = new Date().toISOString().slice(0, 7);
-        const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-
-        let maquinaPerda = String(
-          body?.maquina_perda ?? body?.maquinaPerda ?? body?.maquina ?? updated?.maquina_perda ?? updated?.maquina ?? updated?.maquina_nome ?? ''
-        ).trim();
-        let maquinaPerdaId = String(
-          body?.maquina_perda_id ?? body?.maquinaPerdaId ?? body?.maquina_id ?? body?.maquinaId ?? ''
-        ).trim();
-        try {
-          if (!maquinaPerda || !maquinaPerdaId) {
-            const fluxo = parseFluxo(updated?.fluxo_maquinas ?? updated?.maq ?? ofAtual?.fluxo_maquinas ?? ofAtual?.maq);
-            const idx = Number(updated?.maquina_atual_index ?? ofAtual?.maquina_atual_index ?? 0) || 0;
-            const pick = fluxo[idx] ?? fluxo[0] ?? null;
-            const raw = (pick && typeof pick === 'object')
-              ? String(pick.nome || pick.name || pick.maquina || pick.col || pick.id || '').trim()
-              : String(pick || '').trim();
-            if (raw) {
-              if (isUuid(raw)) { if (!maquinaPerdaId) maquinaPerdaId = raw; }
-              else if (!maquinaPerda) maquinaPerda = raw;
-            }
-          }
-        } catch (_) {}
-
-        const payload = {
-          of_id: id,
-          produto: String(updated?.prodDesc ?? updated?.descricao ?? body?.prodDesc ?? body?.descricao ?? ''),
-          cliente: String(cliNome || ''),
-          maquina_perda: maquinaPerda || null,
-          maquina_perda_id: maquinaPerdaId || null,
-          valor_unitario: Number.isFinite(valorUnit) ? valorUnit : 0,
-          qtd_perdida: qtdPerdida,
-          valor_perdido: qtdPerdida * (Number.isFinite(valorUnit) ? valorUnit : 0),
-          data: hoje,
-          mes_referencia: mes,
-          emp_id: String(updated?.emp_id ?? updated?.empId ?? body?.emp_id ?? body?.empId ?? ''),
-          usuario: req.usuario?.nome || 'sistema',
-          obs: 'Ajuste pós-conclusão de OF',
-        };
-
-        try {
-          const { error } = await supabase.from('caixas_perdidas').insert([payload]);
-          if (error) {
-            const msg = String(error.message || error).toLowerCase();
-            if (!(msg.includes('does not exist') || msg.includes('not exist') || msg.includes('not find') || msg.includes('not found'))) {
-              throw error;
-            }
-          }
-        } catch (_) {}
-
-        try {
-          await supabase.from('historico_acoes').insert([{
-            tipo_acao: 'caixas_perdidas_ajuste',
-            descricao: `OF #${String(updated?.of ?? updated?.numero ?? '')}: ajuste de qtd ${qtdAntiga}→${qtdNova}, ${qtdPerdida} cx perdidas`,
-            usuario: req.usuario?.nome || 'sistema',
-            data_hora: new Date().toISOString(),
-          }]);
-        } catch (_) {}
-      }
-
-      const valorOriginal = Number(ofAtual?.valor_total ?? ofAtual?.valor_venda ?? 0);
-      const semValorNoBody = !Object.prototype.hasOwnProperty.call(body, 'valor_total') && !Object.prototype.hasOwnProperty.call(body, 'valor_venda');
-      if (semValorNoBody && Number.isFinite(qtdNova) && qtdNova > 0 && Number.isFinite(qtdAntiga) && qtdAntiga > 0 && qtdNova !== qtdAntiga && valorOriginal > 0) {
-        const novoValor = Math.round(((qtdNova / qtdAntiga) * valorOriginal) * 100) / 100;
-        try {
-          const rV = await supabase.from('ofs').update({ valor_total: novoValor, valor_venda: novoValor }).eq('id', id).select('valor_total,valor_venda').maybeSingle();
-          if (!rV?.error && updated) { updated.valor_total = rV?.data?.valor_total ?? novoValor; updated.valor_venda = rV?.data?.valor_venda ?? novoValor; }
-        } catch (_) {}
-      }
-    } catch (errCaixas) {
-      console.error('[OF PUT] erro ao registrar caixas perdidas:', errCaixas?.message);
-    }
-    const warnings = (updRes && Array.isArray(updRes.ignoredColumns) && updRes.ignoredColumns.length)
-      ? { ignored_columns: updRes.ignoredColumns.slice() }
-      : null;
+    try { console.log('[PUT OF] sucesso:', data && data.numero); } catch (_) {}
     try { cacheClearPrefix('ofs_v4'); } catch (_) {}
-    return res.json({ ok: true, data: updated, ...(warnings ? { warnings } : {}) });
+    return res.json({ ok: true, data });
   } catch (e) {
-    _logApiError('OFS PUT', req, e, { id: req.params?.id, bodyKeys: Object.keys(req.body || {}), bodySize: _safeJson(req.body || {}).length });
-    return res.status(500).json({ ok: false, error: String(e?.message || e), rid: req._rid || null });
+    try { console.error('[PUT OF] exceção:', e.message || e); } catch (_) {}
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
   }
 });
 app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
