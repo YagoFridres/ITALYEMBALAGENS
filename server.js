@@ -5441,7 +5441,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       const lote = ofIds.slice(i, i + 200);
       const { data } = await supabase
         .from('ofs')
-        .select('id,numero,cli_id,cliente,maq,maquina,maquina_atual,maquina_agendada')
+        .select('id,numero,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada')
         .in('id', lote);
       (Array.isArray(data) ? data : []).forEach((of) => {
         const id = String(of?.id || '').trim();
@@ -5458,7 +5458,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       const lote = numerosSemOf.slice(i, i + 200);
       const { data } = await supabase
         .from('ofs')
-        .select('id,numero,cli_id,cliente,maq,maquina,maquina_atual,maquina_agendada')
+        .select('id,numero,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada')
         .in('numero', lote);
       (Array.isArray(data) ? data : []).forEach((of) => {
         const numero = String(of?.numero || '').trim();
@@ -5517,6 +5517,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       of_numero: String(row?.of_numero || ofData?.numero || '').trim() || '—',
       cliente_nome: clienteNome,
       cliente: clienteNome,
+      produto: String(row?.produto || ofData?.produto || ofData?.descricao || ofData?.prodDesc || '').trim() || '—',
       maquina: maquinaNome,
       maquina_nome: maquinaNome,
       quantidade,
@@ -5526,6 +5527,16 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       data: String(row?.data || row?.created_at || '').slice(0, 10),
       usuario: String(row?.usuario || '').trim() || (operadores[0] || '—'),
       turno: String(row?.turno || '').trim(),
+      data_conclusao: String(row?.data_conclusao || ofData?.data_conclusao || '').slice(0, 10),
+      concluido_por: String(row?.concluido_por || ofData?.concluido_por || row?.usuario || '').trim(),
+      valor_unitario: Number(
+        row?.valor_unitario ??
+        (
+          (Number(ofData?.quantidade ?? ofData?.qtd ?? 0) || 0) > 0
+            ? ((Number(ofData?.valor_total ?? ofData?.valor_venda ?? 0) || 0) / (Number(ofData?.quantidade ?? ofData?.qtd ?? 0) || 1))
+            : 0
+        )
+      ) || 0,
     };
   });
 }
@@ -5540,6 +5551,220 @@ app.get('/api/caixas-perdidas', authMiddleware, async (req, res) => {
   try {
     return ok(res, await _listarCaixasPerdidasEnriquecidas(req));
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const now = new Date();
+    const mesNum = Math.max(1, Math.min(12, parseInt(String(req.query?.mes || (now.getMonth() + 1)), 10) || (now.getMonth() + 1)));
+    const anoNum = parseInt(String(req.query?.ano || now.getFullYear()), 10) || now.getFullYear();
+    const periodoRaw = String(req.query?.periodo || '').trim().toLowerCase();
+    const maqFiltro = String(req.query?.maquina || '').trim().toLowerCase();
+    const empresaFiltro = String(req.query?.empresa_id || '').trim();
+    const todasEmpresas = String(req.query?.todas_empresas || '').trim().toLowerCase() === 'true';
+
+    const mesesPt = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    const fmtDate = (d) => {
+      if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yy = d.getFullYear();
+      return `${dd}/${mm}/${yy}`;
+    };
+    const parseDate = (v) => {
+      const s = String(v || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+      const d = new Date(s + 'T00:00:00');
+      return isNaN(d.getTime()) ? null : d;
+    };
+    const norm = (s) => {
+      try { return String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) { return String(s || '').trim().toLowerCase(); }
+    };
+    const toArray = (v) => {
+      if (Array.isArray(v)) return v.map((x) => String(x || '').trim()).filter(Boolean);
+      if (typeof v === 'string') {
+        const s = String(v || '').trim();
+        if (!s) return [];
+        if ((s.startsWith('[') && s.endsWith(']')) || (s.startsWith('{') && s.endsWith('}'))) {
+          try {
+            const p = JSON.parse(s);
+            if (Array.isArray(p)) return p.map((x) => String(x || '').trim()).filter(Boolean);
+          } catch (_) {}
+        }
+        return s.split(/[,;|/]+/g).map((x) => String(x || '').trim()).filter(Boolean);
+      }
+      return [];
+    };
+    const inRange = (d, start, end) => !!(d && start && end && d >= start && d <= end);
+
+    const reqAll = { ...req, query: { ...(req.query || {}) } };
+    delete reqAll.query.of_id;
+    const rows = await _listarCaixasPerdidasEnriquecidas(reqAll);
+    const listaBase = Array.isArray(rows) ? rows.slice() : [];
+
+    const startMes = new Date(anoNum, mesNum - 1, 1);
+    const endMes = new Date(anoNum, mesNum, 0, 23, 59, 59, 999);
+    const prevMesNum = mesNum === 1 ? 12 : (mesNum - 1);
+    const prevAnoNum = mesNum === 1 ? (anoNum - 1) : anoNum;
+    const startPrev = new Date(prevAnoNum, prevMesNum - 1, 1);
+    const endPrev = new Date(prevAnoNum, prevMesNum, 0, 23, 59, 59, 999);
+
+    const startHoje = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endHoje = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const weekDay = now.getDay() || 7;
+    const startSemana = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (weekDay - 1));
+    startSemana.setHours(0, 0, 0, 0);
+    const endSemana = new Date(startSemana.getTime());
+    endSemana.setDate(endSemana.getDate() + 6);
+    endSemana.setHours(23, 59, 59, 999);
+
+    const pickDate = (r) => parseDate(r?.data_conclusao || r?.data || r?.created_at);
+    const pickQtd = (r) => Number(r?.qtd_perdida ?? r?.quantidade ?? r?.caixas_perdidas ?? 0) || 0;
+    const pickValUnit = (r) => Number(r?.valor_unitario ?? 0) || 0;
+    const pickVal = (r) => {
+      const direto = Number(r?.valor_perdido ?? r?.vl_total ?? 0) || 0;
+      return direto || (pickQtd(r) * pickValUnit(r));
+    };
+
+    let lista = listaBase.filter((r) => {
+      if (!r) return false;
+      if (!todasEmpresas && empresaFiltro) {
+        const emp = String(r?.empresa_id || r?.emp_id || '').trim();
+        if (emp !== empresaFiltro) return false;
+      }
+      if (maqFiltro) {
+        const maqs = Array.from(new Set(
+          toArray(r?.maquinas).concat(toArray(r?.maquina)).concat(toArray(r?.maquina_nome)).concat([String(r?.maquina || '').trim()])
+        )).filter(Boolean);
+        if (!maqs.some((m) => norm(m) === norm(maqFiltro))) return false;
+      }
+      const dt = pickDate(r);
+      if (periodoRaw === 'hoje') return inRange(dt, startHoje, endHoje);
+      if (periodoRaw === 'semana') return inRange(dt, startSemana, endSemana);
+      if (periodoRaw === 'todos') return true;
+      return inRange(dt, startMes, endMes);
+    });
+
+    const listaPrev = listaBase.filter((r) => {
+      if (!r) return false;
+      if (!todasEmpresas && empresaFiltro) {
+        const emp = String(r?.empresa_id || r?.emp_id || '').trim();
+        if (emp !== empresaFiltro) return false;
+      }
+      if (maqFiltro) {
+        const maqs = Array.from(new Set(
+          toArray(r?.maquinas).concat(toArray(r?.maquina)).concat(toArray(r?.maquina_nome)).concat([String(r?.maquina || '').trim()])
+        )).filter(Boolean);
+        if (!maqs.some((m) => norm(m) === norm(maqFiltro))) return false;
+      }
+      const dt = pickDate(r);
+      return inRange(dt, startPrev, endPrev);
+    });
+
+    const sumInfo = (arr) => ({
+      total_caixas: arr.reduce((s, r) => s + pickQtd(r), 0),
+      valor_total: arr.reduce((s, r) => s + pickVal(r), 0),
+      total_ocorrencias: arr.length,
+    });
+    const atual = sumInfo(lista);
+    const anterior = sumInfo(listaPrev);
+    const pctVar = (atualNum, prevNum) => {
+      if (!prevNum && !atualNum) return 0;
+      if (!prevNum) return 100;
+      return Math.round((((atualNum - prevNum) / prevNum) * 100) * 10) / 10;
+    };
+
+    const rankMaqsMap = new Map();
+    lista.forEach((r) => {
+      const maqs = Array.from(new Set(
+        toArray(r?.maquinas).concat(toArray(r?.maquina)).concat(toArray(r?.maquina_nome)).concat([String(r?.maquina || '').trim()])
+      )).filter(Boolean);
+      if (!maqs.length) maqs.push('—');
+      maqs.forEach((maq) => {
+        const key = String(maq || '—').trim() || '—';
+        const prev = rankMaqsMap.get(key) || { maquina: key, total_caixas: 0, valor_perdido: 0, ocorrencias: 0 };
+        prev.total_caixas += pickQtd(r);
+        prev.valor_perdido += pickVal(r);
+        prev.ocorrencias += 1;
+        rankMaqsMap.set(key, prev);
+      });
+    });
+    const ranking_maquinas = Array.from(rankMaqsMap.values()).sort((a, b) => (b.total_caixas - a.total_caixas) || (b.valor_perdido - a.valor_perdido)).slice(0, 10);
+
+    const rankOpsMap = new Map();
+    lista.forEach((r) => {
+      const ops = Array.from(new Set(toArray(r?.operadores).concat([String(r?.operador || '').trim()]).concat([String(r?.usuario || '').trim()]))).filter(Boolean);
+      if (!ops.length) return;
+      ops.forEach((op) => {
+        const key = String(op || '—').trim() || '—';
+        const prev = rankOpsMap.get(key) || { operador: key, total_caixas: 0, valor_perdido: 0, ocorrencias: 0 };
+        prev.total_caixas += pickQtd(r);
+        prev.valor_perdido += pickVal(r);
+        prev.ocorrencias += 1;
+        rankOpsMap.set(key, prev);
+      });
+    });
+    const ranking_operadores = Array.from(rankOpsMap.values()).sort((a, b) => (b.total_caixas - a.total_caixas) || (b.valor_perdido - a.valor_perdido)).slice(0, 10);
+
+    const detMap = new Map();
+    lista.forEach((r) => {
+      const key = String(r?.of_id || '') + '::' + String(r?.of_numero || '') + '::' + String(r?.data_conclusao || r?.data || '');
+      const atualDet = detMap.get(key) || {
+        of_numero: String(r?.of_numero || '—').trim() || '—',
+        cliente_nome: String(r?.cliente_nome || r?.cliente || '—').trim() || '—',
+        produto: String(r?.produto || '—').trim() || '—',
+        quantidade_perdida: 0,
+        valor_perdido: 0,
+        data_conclusao: fmtDate(pickDate(r)),
+        concluido_por: String(r?.concluido_por || r?.usuario || '—').trim() || '—',
+        maquinas: [],
+        operadores: [],
+        empresa_id: String(r?.empresa_id || r?.emp_id || '').trim() || null,
+        detalhes: []
+      };
+      atualDet.quantidade_perdida += pickQtd(r);
+      atualDet.valor_perdido += pickVal(r);
+      const maqs = Array.from(new Set(
+        toArray(r?.maquinas).concat(toArray(r?.maquina)).concat(toArray(r?.maquina_nome)).concat([String(r?.maquina || '').trim()])
+      )).filter(Boolean);
+      const ops = Array.from(new Set(toArray(r?.operadores).concat([String(r?.operador || '').trim()]).concat([String(r?.usuario || '').trim()]))).filter(Boolean);
+      atualDet.maquinas = Array.from(new Set(atualDet.maquinas.concat(maqs)));
+      atualDet.operadores = Array.from(new Set(atualDet.operadores.concat(ops)));
+      atualDet.detalhes.push({
+        maquina: maqs[0] || '—',
+        qtd_perdida: pickQtd(r),
+        operadores: ops
+      });
+      detMap.set(key, atualDet);
+    });
+    const detalhamento = Array.from(detMap.values()).sort((a, b) => {
+      const da = parseDate((a?.data_conclusao || '').split('/').reverse().join('-'));
+      const db = parseDate((b?.data_conclusao || '').split('/').reverse().join('-'));
+      return (db?.getTime() || 0) - (da?.getTime() || 0);
+    });
+
+    return res.json({
+      ok: true,
+      resumo_mes_atual: {
+        total_caixas: atual.total_caixas,
+        valor_total: atual.valor_total,
+        total_ocorrencias: atual.total_ocorrencias,
+        mes_referencia: `${mesesPt[mesNum - 1]} ${anoNum}`
+      },
+      comparacao_mes_anterior: {
+        total_caixas: anterior.total_caixas,
+        valor_total: anterior.valor_total,
+        variacao_caixas_pct: pctVar(atual.total_caixas, anterior.total_caixas),
+        variacao_valor_pct: pctVar(atual.valor_total, anterior.valor_total)
+      },
+      ranking_maquinas,
+      ranking_operadores,
+      detalhamento
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.get('/api/admin/corrigir_ofs_concluidas_sem_qtd', requireAdmin, async (req, res) => {
