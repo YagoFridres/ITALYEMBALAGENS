@@ -12562,7 +12562,7 @@ function _ocultarGraficoComissoes() {
       var host = document.createElement('div');
       host.id = 'comissoes-busca';
       host.innerHTML = ''
-        + '<input type="text" id="comissao-busca-of" placeholder="🔍 Buscar por nº da OF..." />'
+        + '<input type="text" id="comissao-busca-of" placeholder="🔍 Buscar por nº da OF ou nome do cliente..." />'
         + '<button id="comissao-busca-btn">Buscar</button>'
         + '<div id="comissoes-busca-info" style="display:none;margin-top:8px;color:var(--text2,#94a3b8);font-size:12px"></div>'
         + '<div id="comissoes-busca-nav" style="display:none;margin-top:8px;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"></div>'
@@ -12635,6 +12635,63 @@ function _ocultarGraficoComissoes() {
         } catch (_) {}
       }
 
+      function escHtml(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+      function hasLetters(v) { return /[A-Za-zÀ-ÿ]/.test(String(v || '')); }
+      function fmtDateBrLocal(v) {
+        try {
+          var s = String(v || '').trim();
+          if (!s) return '—';
+          if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s.split('-').reverse().join('/');
+          var d = new Date(s);
+          if (!isNaN(d.getTime())) return d.toLocaleDateString('pt-BR');
+        } catch (_) {}
+        return '—';
+      }
+      function pickQtd(of) {
+        var q = of && (of.quantidade ?? of.qtd ?? of.qtd_pedida);
+        return q != null && q !== '' ? String(q) : '—';
+      }
+      function pickCliente(of) {
+        return String(of && (of.cliente_nome || of.cliNome || of.cliente || of.clinome) || '—').trim() || '—';
+      }
+      function pickEntrega(of) {
+        return String(of && (of.data_entrega || of.ent || of.entrega) || '').trim();
+      }
+      function renderBuscaCards(ofs, emptyText) {
+        if (!res) return;
+        try { res._ofsData = Array.isArray(ofs) ? ofs.slice() : []; } catch (_) {}
+        if (!Array.isArray(ofs) || !ofs.length) {
+          res.style.display = 'block';
+          res.innerHTML = '<div style="margin-top:10px;padding:12px 14px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:rgba(255,255,255,0.03);color:var(--text2,#94a3b8)">' + escHtml(emptyText || 'Nenhum resultado.') + '</div>';
+          return;
+        }
+        res.style.display = 'block';
+        res.innerHTML = ofs.map(function(of) {
+          var entrega = pickEntrega(of);
+          return ''
+            + '<div class="com-busca-card" data-of-id="' + escHtml(String(of && of.id || '')) + '" style="margin-top:10px;border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:12px 14px;background:linear-gradient(145deg,rgba(15,23,42,0.96),rgba(30,41,59,0.92));box-shadow:0 12px 30px rgba(0,0,0,0.15)">'
+            + '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">'
+            + '<div>'
+            + '<div style="font-size:14px;font-weight:800;color:#f8fafc">OF #' + escHtml(String(of && (of.numero || of.of_num || of.of_numero || '') || '—')) + '</div>'
+            + '<div style="margin-top:3px;font-size:13px;color:#cbd5e1">' + escHtml(pickCliente(of)) + '</div>'
+            + '</div>'
+            + '<div>' + badge(of && of.status) + '</div>'
+            + '</div>'
+            + '<div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px 14px;font-size:12px;color:#94a3b8">'
+            + '<div><span style="color:#64748b">Valor:</span> <b style="color:#e2e8f0">' + _fmtMoney(of && (of.valor_total ?? of.valor_venda ?? 0)) + '</b></div>'
+            + '<div><span style="color:#64748b">Quantidade:</span> <b style="color:#e2e8f0">' + escHtml(pickQtd(of)) + '</b></div>'
+            + '<div><span style="color:#64748b">Entrega:</span> <b style="color:#e2e8f0">' + escHtml(entrega ? fmtDateBrLocal(entrega) : '—') + '</b></div>'
+            + '<div><span style="color:#64748b">Vendedor:</span> <b style="color:#e2e8f0">' + escHtml(String(of && (of.vendNome || of.vendedor_nome || of.vendedor) || '—')) + '</b></div>'
+            + '</div>'
+            + '<div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">'
+            + '<button type="button" data-acao="concluir">✅ Concluir</button>'
+            + '<button type="button" data-acao="editar">✏️ Editar</button>'
+            + '<button type="button" data-acao="clonar">📋 Clonar</button>'
+            + '</div>'
+            + '</div>';
+        }).join('');
+      }
+
       async function buscar() {
         var raw = String(inp && inp.value || '').trim();
         if (!raw) return;
@@ -12643,6 +12700,25 @@ function _ocultarGraficoComissoes() {
         if (info) { info.style.display = 'none'; info.textContent = ''; }
         if (nav) { nav.style.display = 'none'; nav.innerHTML = ''; }
         clearHighlights();
+
+        if (hasLetters(raw)) {
+          var tokenCli = _getToken();
+          var respCli = await fetch('/api/ofs/buscar?cliente=' + encodeURIComponent(raw) + '&status=' + encodeURIComponent('Em aberto'), { headers: tokenCli ? { Authorization: 'Bearer ' + tokenCli } : {} });
+          var jsonCli = await respCli.json().catch(function() { return null; });
+          var ofsCli = Array.isArray(jsonCli && jsonCli.data) ? jsonCli.data : [];
+          ofsCli = ofsCli.filter(function(of) {
+            var st = String(of && of.status || '').trim().toLowerCase();
+            return !(st.indexOf('conclu') >= 0 || st.indexOf('cancel') >= 0 || st === 'pedido pronto');
+          });
+          if (info) {
+            info.style.display = 'block';
+            info.textContent = ofsCli.length
+              ? (String(ofsCli.length) + " OFs em aberto encontradas para '" + raw + "'")
+              : ("Nenhuma OF em aberto encontrada para '" + raw + "'");
+          }
+          renderBuscaCards(ofsCli, "Nenhuma OF em aberto encontrada para '" + raw + "'");
+          return;
+        }
 
         var numeros = raw.split(/[\s,;]+/).map(function(n) { return String(n || '').trim(); }).filter(Boolean);
         numeros = numeros.map(normNum).filter(Boolean);
@@ -12693,47 +12769,40 @@ function _ocultarGraficoComissoes() {
         });
         var ofs = (await Promise.all(jobs)).filter(Boolean);
         if (!ofs.length) {
-          if (res) { res.style.display = 'block'; res.textContent = 'OF não encontrada no sistema.'; }
+          renderBuscaCards([], 'OF não encontrada no sistema.');
           return;
         }
 
-        if (res) {
-          res.style.display = 'block';
-          res.innerHTML = ofs.map(function(of) {
-            var st = of && of.status;
-            return ''
-              + '<div class="com-busca-card" data-of-id="' + String(of && of.id || '').replace(/"/g, '&quot;') + '" style="margin-top:10px;border:1px solid rgba(255,255,255,0.10);border-radius:10px;padding:10px 12px;background:rgba(255,255,255,0.03)">'
-              + '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">'
-              + '<div><b>OF #' + String(of && (of.numero || of.of_num || '') || '—').replace(/</g, '&lt;') + '</b> · ' + String(of && (of.cliNome || of.cliente_nome || of.cliente) || '—').replace(/</g, '&lt;') + '</div>'
-              + '<div>' + badge(st) + '</div>'
-              + '</div>'
-              + '<div style="margin-top:6px;opacity:0.9">Vendedor: ' + String(of && (of.vendNome || of.vendedor_nome || of.vendedor) || '—').replace(/</g, '&lt;') + ' · Valor: ' + _fmtMoney(of && (of.valor_total ?? of.valor_venda ?? 0)) + '</div>'
-              + '<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">'
-              + '<button type="button" data-acao="concluir">✅ Concluir</button>'
-              + '<button type="button" data-acao="editar">✏️ Editar</button>'
-              + '</div>'
-              + '</div>';
-          }).join('');
-
-          res.onclick = function(ev) {
-            try {
-              var btnA = ev && ev.target && (ev.target.closest ? ev.target.closest('button[data-acao]') : null);
-              if (!btnA) return;
-              var card = btnA.closest('.com-busca-card');
-              if (!card) return;
-              var ofId = String(card.getAttribute('data-of-id') || '').trim();
-              if (!ofId) return;
-              var of = ofs.find(function(x) { return String(x && x.id || '') === ofId; }) || null;
-              var acao = String(btnA.getAttribute('data-acao') || '');
-              if (acao === 'editar') { _abrirModalOF(ofId); return; }
-              if (acao === 'concluir') { _abrirFluxoConclusaoOF(ofId, of || null); return; }
-            } catch (_) {}
-          };
-        }
+        if (res) renderBuscaCards(ofs, 'OF não encontrada no sistema.');
       }
 
       btn.addEventListener('click', function(e) { try { e.preventDefault(); } catch (_) {} buscar(); });
       inp.addEventListener('keydown', function(e) { if (e && e.key === 'Enter') { try { e.preventDefault(); } catch (_) {} buscar(); } });
+      if (res) {
+        res.onclick = function(ev) {
+          try {
+            var btnA = ev && ev.target && (ev.target.closest ? ev.target.closest('button[data-acao]') : null);
+            if (!btnA) return;
+            var card = btnA.closest('.com-busca-card');
+            if (!card) return;
+            var ofId = String(card.getAttribute('data-of-id') || '').trim();
+            if (!ofId) return;
+            var lista = Array.isArray(res._ofsData) ? res._ofsData : [];
+            var of = lista.find(function(x) { return String(x && x.id || '') === ofId; }) || null;
+            var acao = String(btnA.getAttribute('data-acao') || '');
+            if (acao === 'editar') {
+              if (typeof window._abrirModalEdicaoOF === 'function') window._abrirModalEdicaoOF(of || ofId);
+              else _abrirModalOF(ofId);
+              return;
+            }
+            if (acao === 'concluir') { _abrirFluxoConclusaoOF(ofId, of || null); return; }
+            if (acao === 'clonar') {
+              if (typeof window.__patchCloneOF === 'function') window.__patchCloneOF(ofId);
+              return;
+            }
+          } catch (_) {}
+        };
+      }
     } catch (_) {}
   }
 
@@ -12949,142 +13018,323 @@ function _ocultarGraficoComissoes() {
 
   try { window._mostrarResumoAlteracoes = _mostrarResumoAlteracoes; } catch (_) {}
 
-  function _resumoConclusaoHtml(of, perdas, dataFat, qtdProd) {
+  function _ensureConclusaoModalStyle() {
+    try {
+      if (document.getElementById('com-conclusao-modal-style')) return;
+      var st = document.createElement('style');
+      st.id = 'com-conclusao-modal-style';
+      st.textContent = ''
+        + '@keyframes modalEntrada{from{opacity:0;transform:scale(.92) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}'
+        + '.com-conc-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99998;display:flex;align-items:center;justify-content:center;padding:24px}'
+        + '.com-conc-shell{position:relative;background:linear-gradient(145deg,#0f1729 0%,#111827 100%);border:1px solid #1e3a5f;border-radius:16px;box-shadow:0 30px 100px rgba(0,0,0,.8),0 0 0 1px rgba(59,130,246,.1);width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:0;animation:modalEntrada .25s ease-out;color:#f1f5f9}'
+        + '.com-conc-head{background:linear-gradient(135deg,#0d1f3c,#1a2f52);border-bottom:1px solid #1e3a5f;border-radius:16px 16px 0 0;padding:24px 28px;display:flex;justify-content:space-between;align-items:center;gap:16px}'
+        + '.com-conc-x{background:transparent;border:1px solid #334155;color:#94a3b8;border-radius:8px;width:32px;height:32px;cursor:pointer}'
+        + '.com-conc-x:hover{border-color:#ef4444;color:#ef4444}'
+        + '.com-conc-body{padding:28px}'
+        + '.com-conc-foot{border-top:1px solid #1e293b;padding:20px 28px;display:flex;justify-content:flex-end;gap:12px}'
+        + '.com-conc-field{margin-bottom:18px}'
+        + '.com-conc-label{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;color:#94a3b8;font-weight:700}'
+        + '.com-conc-input,.com-conc-select,.com-conc-text{width:100%;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px 16px;color:#f1f5f9;box-sizing:border-box}'
+        + '.com-conc-input[readonly]{background:#0f172a;border-color:#1e293b;color:#94a3b8}'
+        + '.com-conc-qtd{background:#0d2218;border:2px solid #10b981;border-radius:10px;padding:14px 16px;font-size:22px;font-weight:700;color:#10b981;text-align:center;width:100%;box-sizing:border-box}'
+        + '.com-conc-loss-row{background:rgba(15,23,42,.82);border:1px solid #1e293b;border-radius:10px;padding:12px;margin-top:10px}'
+        + '.com-conc-loss-grid{display:grid;grid-template-columns:minmax(0,1fr) 140px 38px;gap:10px;align-items:center}'
+        + '.com-conc-operator-row{display:flex;gap:8px;align-items:center;margin-top:8px}'
+        + '.com-conc-mini-btn{background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:6px 14px;cursor:pointer}'
+        + '.com-conc-remove{background:transparent;border:1px solid rgba(239,68,68,.45);color:#ef4444;border-radius:8px;width:36px;height:36px;cursor:pointer}'
+        + '.com-conc-add-op{margin-top:8px;background:transparent;border:none;color:#60a5fa;cursor:pointer;padding:0}'
+        + '.com-conc-summary{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px;margin-top:16px}'
+        + '.com-conc-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px;font-size:13px;color:#cbd5e1}'
+        + '.com-conc-cancel{background:transparent;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:10px 20px;cursor:pointer}'
+        + '.com-conc-cancel:hover{border-color:#94a3b8}'
+        + '.com-conc-save{background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-weight:700;border:none;border-radius:8px;padding:10px 24px;box-shadow:0 4px 15px rgba(16,185,129,.3);cursor:pointer}'
+        + '.com-conc-save:hover{filter:brightness(1.1);transform:translateY(-1px)}'
+        + '.com-conc-save:disabled{opacity:.5;cursor:not-allowed;transform:none;filter:none}'
+        + '@media (max-width:640px){.com-conc-head,.com-conc-body,.com-conc-foot{padding-left:18px;padding-right:18px}.com-conc-loss-grid{grid-template-columns:1fr}.com-conc-summary-grid{grid-template-columns:1fr}}';
+      document.head.appendChild(st);
+    } catch (_) {}
+  }
+
+  function _parseFluxoConclusao(raw) {
+    try {
+      if (Array.isArray(raw)) return raw;
+      if (!raw) return [];
+      if (typeof raw === 'string') {
+        var txt = String(raw || '').trim();
+        if (!txt) return [];
+        if (txt.charAt(0) === '[' || txt.charAt(0) === '{') {
+          var parsed = JSON.parse(txt);
+          if (Array.isArray(parsed)) return parsed;
+          if (parsed && typeof parsed === 'object') {
+            var maybe = parsed.etapas || parsed.maquinas || parsed.fluxo || parsed.sequencia || parsed.maq || [];
+            return Array.isArray(maybe) ? maybe : [];
+          }
+        }
+        return txt.split(/[,\n;\t|]+/g).map(function(s) { return String(s || '').trim(); }).filter(Boolean);
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  async function _carregarOperadoresConclusao() {
+    try {
+      var token = _getToken();
+      var r1 = await fetch('/api/operadores?t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var j1 = await r1.json().catch(function() { return null; });
+      var lista1 = (j1 && j1.ok && Array.isArray(j1.data)) ? j1.data : [];
+      var nomes1 = lista1.map(function(o) { return String(o && (o.nome || o.name || o.operador_nome) || '').trim(); }).filter(Boolean);
+      if (nomes1.length) return nomes1.filter(function(v, i, a) { return a.indexOf(v) === i; });
+    } catch (_) {}
+    try {
+      var atual = String((window.CURRENT_USER && (window.CURRENT_USER.nome || window.CURRENT_USER.name)) || localStorage.getItem('nome') || '').trim();
+      return atual ? [atual] : [];
+    } catch (_) { return []; }
+  }
+
+  function _getResumoConclusao(of, qtdProd, perdas) {
     var qtdPedido = Math.trunc(Number(of && (of.qtd_pedida ?? of.quantidade ?? of.qtd ?? 0) || 0) || 0);
     var produzidas = Math.trunc(Number(qtdProd || 0) || 0);
-    var excedente = Math.max(0, produzidas - qtdPedido);
     var perdasQtd = (Array.isArray(perdas) ? perdas : []).reduce(function(s, p) { return s + (Math.trunc(Number(p && p.qtd || 0)) || 0); }, 0);
+    var excedente = produzidas - qtdPedido;
     var vunit = Number(of && (of.valor_unitario ?? of.vl_unit ?? 0) || 0) || 0;
     if (!(vunit > 0) && qtdPedido > 0) {
       var vt = Number(of && (of.valor_total ?? of.valor_venda ?? 0) || 0) || 0;
       if (vt > 0) vunit = vt / qtdPedido;
     }
-    var novoTotal = vunit * produzidas;
-    var perdasValor = vunit * perdasQtd;
-    return ''
-      + '<div style="margin-top:12px;padding:12px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:#0b1220;color:#cbd5e1">'
-      + '<div>Pedido: <b>' + String(qtdPedido) + '</b> · Produzidas: <b>' + String(produzidas) + '</b> · Excedente: <b>' + String(excedente) + '</b></div>'
-      + '<div style="margin-top:6px">Valor unitário: <b>' + _fmtMoney(vunit) + '</b> · Novo total: <b>' + _fmtMoney(novoTotal) + '</b> · Perdas: <b>' + _fmtMoney(perdasValor) + '</b></div>'
-      + '</div>';
+    var novoTotal = Math.round((vunit * produzidas) * 100) / 100;
+    var perdasValor = Math.round((vunit * perdasQtd) * 100) / 100;
+    return { qtdPedido: qtdPedido, produzidas: produzidas, perdasQtd: perdasQtd, excedente: excedente, valorUnitario: vunit, novoTotal: novoTotal, perdasValor: perdasValor };
   }
+
+  try { window._abrirModalEdicaoOF = function(of) { return _abrirModalOF(typeof of === 'string' ? of : (of && of.id)); }; } catch (_) {}
 
   async function _abrirModalConclusaoFallback(ofId, ofDados) {
     try {
-      _ensureComissoesStyle();
+      _ensureConclusaoModalStyle();
       var of = ofDados || null;
       if (!of) {
-        var token = _getToken();
-        var resp = await fetch('/api/ofs/' + encodeURIComponent(String(ofId || '').trim()), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
-        var j = await resp.json().catch(function() { return null; });
-        of = (j && (j.data || j)) || null;
+        var tokenFetch = _getToken();
+        var respFetch = await fetch('/api/ofs/' + encodeURIComponent(String(ofId || '').trim()), { headers: tokenFetch ? { Authorization: 'Bearer ' + tokenFetch } : {} });
+        var jsonFetch = await respFetch.json().catch(function() { return null; });
+        of = (jsonFetch && (jsonFetch.data || jsonFetch)) || null;
       }
       if (!of) return;
-      var modal = document.getElementById('comissoes-modal');
-      var title = document.getElementById('comissoes-modal-title');
-      var body = document.getElementById('comissoes-modal-body');
-      if (!modal || !body) {
-        _ensureModal();
-        modal = document.getElementById('comissoes-modal');
-        title = document.getElementById('comissoes-modal-title');
-        body = document.getElementById('comissoes-modal-body');
-      }
-      var hoje = new Date().toISOString().slice(0, 10);
+
+      var numero = String(of && (of.numero || of.of_num || of.of_numero || '') || '—').trim();
+      var cliente = String(of && (of.cliNome || of.cliente_nome || of.cliente || '') || 'Cliente não identificado').trim();
       var usuario = '';
       try { usuario = String((window.CURRENT_USER && (window.CURRENT_USER.nome || window.CURRENT_USER.name)) || localStorage.getItem('nome') || 'Usuário').trim(); } catch (_) { usuario = 'Usuário'; }
-      var maqs = [];
-      try {
-        maqs = Array.isArray(parseFluxo ? parseFluxo(of.fluxo_maquinas || of.maq) : []) ? parseFluxo(of.fluxo_maquinas || of.maq) : [];
-      } catch (_) { maqs = []; }
-      maqs = (Array.isArray(maqs) ? maqs : []).map(function(x) { return String((x && x.nome) || x || '').trim(); }).filter(Boolean);
-      maqs = maqs.filter(function(v, i, a) { return a.indexOf(v) === i; });
-      if (title) title.textContent = 'Concluindo OF #' + String(of.numero || of.of_num || '—') + ' — ' + String(of.cliNome || of.cliente_nome || of.cliente || 'CLIENTE');
-      body.innerHTML = ''
-        + '<div class="m-grid">'
-        + '<div><label>Concluído por</label><input id="com-conc-user" readonly value="' + String(usuario).replace(/"/g, '&quot;') + '" /></div>'
-        + '<div><label>📅 Data de Faturamento *</label><input id="com-conc-data" type="date" value="' + hoje + '" /></div>'
-        + '<div><label>🏭 Caixas Produzidas *</label><input id="com-conc-qtd" type="number" min="0" step="1" value="' + String(Math.trunc(Number(of.qtd_pedida || of.quantidade || of.qtd || 0) || 0)) + '" /></div>'
-        + '<div></div>'
-        + '<div class="m-full"><label>💥 Caixas Perdidas por Máquina</label><div id="com-conc-perdas"></div><button id="com-conc-add" type="button" class="m-cancel">+ Adicionar</button></div>'
-        + '</div>'
-        + '<div id="com-conc-resumo"></div>'
-        + '<div class="m-actions">'
-        + '<button class="m-cancel" id="com-conc-cancelar">Cancelar</button>'
-        + '<button class="m-save" id="com-conc-confirmar" style="background:#2563eb">✔ Confirmar Conclusão</button>'
+      var hoje = new Date().toISOString().slice(0, 10);
+      var qtdInicial = Math.trunc(Number(of && (of.quantidade ?? of.qtd ?? of.qtd_pedida ?? 0) || 0) || 0);
+      var maquinas = _parseFluxoConclusao(of && (of.fluxo_maquinas || of.maq));
+      maquinas = (Array.isArray(maquinas) ? maquinas : []).map(function(x) {
+        if (x && typeof x === 'object') return String(x.nome || x.name || x.maquina || x.col || x.id || '').trim();
+        return String(x || '').trim();
+      }).filter(Boolean).filter(function(v, i, a) { return a.indexOf(v) === i; });
+      if (!maquinas.length) {
+        var maqAtual = String(of && (of.maquina || of.maq || of.maquina_atual || of.maquina_agendada) || '').trim();
+        if (maqAtual) maquinas = [maqAtual];
+      }
+      var operadores = await _carregarOperadoresConclusao();
+
+      var backdrop = document.createElement('div');
+      backdrop.className = 'com-conc-backdrop';
+      backdrop.innerHTML = ''
+        + '<div class="com-conc-shell" role="dialog" aria-modal="true">'
+        + '  <div class="com-conc-head">'
+        + '    <div>'
+        + '      <div style="font-size:18px;font-weight:700;color:#f1f5f9">✔ Concluindo OF #' + String(numero).replace(/</g, '&lt;') + '</div>'
+        + '      <div style="margin-top:4px;font-size:13px;color:#60a5fa">' + String(cliente).replace(/</g, '&lt;') + '</div>'
+        + '    </div>'
+        + '    <button type="button" class="com-conc-x" data-close="1">×</button>'
+        + '  </div>'
+        + '  <div class="com-conc-body">'
+        + '    <div class="com-conc-field">'
+        + '      <label class="com-conc-label">Concluído por</label>'
+        + '      <input id="conclusao-usuario" class="com-conc-input" readonly value="' + String(usuario).replace(/"/g, '&quot;') + '"/>'
+        + '    </div>'
+        + '    <div class="com-conc-field">'
+        + '      <label class="com-conc-label" style="color:#10b981">🏭 Caixas Produzidas *</label>'
+        + '      <input id="conclusao-caixas-produzidas" class="com-conc-qtd" type="number" min="0" step="1" value="' + String(qtdInicial) + '"/>'
+        + '    </div>'
+        + '    <div class="com-conc-field">'
+        + '      <label class="com-conc-label">📅 Data de Faturamento *</label>'
+        + '      <input id="conclusao-data-faturamento" class="com-conc-input" type="date" value="' + hoje + '"/>'
+        + '    </div>'
+        + '    <div class="com-conc-field">'
+        + '      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">'
+        + '        <label class="com-conc-label" style="margin-bottom:0">💥 Caixas Perdidas por Máquina</label>'
+        + '        <button type="button" class="com-conc-mini-btn" id="conclusao-add-perda">+ Adicionar</button>'
+        + '      </div>'
+        + '      <div id="conclusao-perdas-lista"></div>'
+        + '      <div id="conclusao-total-perdido" style="margin-top:10px;font-size:13px;font-weight:700;color:#ef4444">Total perdido: 0 caixas</div>'
+        + '    </div>'
+        + '    <div class="com-conc-summary">'
+        + '      <div class="com-conc-summary-grid">'
+        + '        <div>Pedido: <b id="conc-res-pedido">0</b></div>'
+        + '        <div>Produzidas: <b id="conc-res-produzidas">0</b></div>'
+        + '        <div>Excedente: <b id="conc-res-excedente">0</b></div>'
+        + '        <div>Perdas: <b id="conc-res-perdas">0</b></div>'
+        + '      </div>'
+        + '      <div style="height:1px;background:#1e293b;margin:14px 0"></div>'
+        + '      <div id="conc-res-financeiro" style="font-size:13px;font-weight:700;color:#10b981">Valor unitário: R$ 0,00  ·  Novo total: R$ 0,00  ·  Perdas: R$ 0,00</div>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div class="com-conc-foot">'
+        + '    <button type="button" class="com-conc-cancel" data-close="1">Cancelar</button>'
+        + '    <button type="button" class="com-conc-save" id="conclusao-confirmar">✔ Confirmar Conclusão</button>'
+        + '  </div>'
         + '</div>';
-      modal.style.display = 'flex';
+      document.body.appendChild(backdrop);
 
-      var perdasWrap = document.getElementById('com-conc-perdas');
-      var addBtn = document.getElementById('com-conc-add');
-      var qtdEl = document.getElementById('com-conc-qtd');
-      var resumoEl = document.getElementById('com-conc-resumo');
-      var renderResumo = function() {
-        var perdas = Array.prototype.slice.call((perdasWrap && perdasWrap.querySelectorAll('.com-conc-row')) || []).map(function(row) {
-          var maq = row.querySelector('.com-conc-maq');
-          var qtd = row.querySelector('.com-conc-qtdm');
-          return { maquina: String(maq && maq.value || '').trim(), qtd: Math.trunc(Number(qtd && qtd.value || 0) || 0) };
-        }).filter(function(p) { return p.maquina && p.qtd > 0; });
-        resumoEl.innerHTML = _resumoConclusaoHtml(of, perdas, document.getElementById('com-conc-data').value, qtdEl && qtdEl.value);
-      };
-      var addRow = function(maq, qtd) {
+      var shell = backdrop.querySelector('.com-conc-shell');
+      var qtdEl = backdrop.querySelector('#conclusao-caixas-produzidas');
+      var dataEl = backdrop.querySelector('#conclusao-data-faturamento');
+      var perdasLista = backdrop.querySelector('#conclusao-perdas-lista');
+      var totalPerdidoEl = backdrop.querySelector('#conclusao-total-perdido');
+      var btnSalvar = backdrop.querySelector('#conclusao-confirmar');
+
+      function closeModal() {
+        try { if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop); } catch (_) {}
+      }
+      backdrop.addEventListener('click', function(e) { if (e.target === backdrop) closeModal(); });
+      if (shell) shell.addEventListener('click', function(e) { try { e.stopPropagation(); } catch (_) {} });
+      Array.prototype.slice.call(backdrop.querySelectorAll('[data-close="1"]')).forEach(function(btn) {
+        btn.onclick = function(e) { try { e.preventDefault(); } catch (_) {} closeModal(); };
+      });
+
+      function optionHtml(lista, selected) {
+        var cur = String(selected || '').trim();
+        var opts = ['<option value="">Selecionar...</option>'].concat((lista || []).map(function(nome) {
+          var v = String(nome || '').trim();
+          return '<option value="' + v.replace(/"/g, '&quot;') + '"' + (v === cur ? ' selected' : '') + '>' + v.replace(/</g, '&lt;') + '</option>';
+        }));
+        return opts.join('');
+      }
+      function collectPerdas() {
+        return Array.prototype.slice.call(perdasLista.querySelectorAll('.com-conc-loss-row')).map(function(row) {
+          var maq = String((row.querySelector('.conc-loss-maq') || {}).value || '').trim();
+          var qtd = Math.trunc(Number((row.querySelector('.conc-loss-qtd') || {}).value || 0) || 0);
+          var ops = Array.prototype.slice.call(row.querySelectorAll('.conc-loss-op')).map(function(sel) {
+            return String(sel && sel.value || '').trim();
+          }).filter(Boolean);
+          return { maquina: maq, qtd: qtd, operadores: ops };
+        }).filter(function(item) { return item.maquina && item.qtd > 0; });
+      }
+      function updateResumo() {
+        var resumo = _getResumoConclusao(of, qtdEl && qtdEl.value, collectPerdas());
+        try { backdrop.querySelector('#conc-res-pedido').textContent = String(resumo.qtdPedido); } catch (_) {}
+        try { backdrop.querySelector('#conc-res-produzidas').textContent = String(resumo.produzidas); } catch (_) {}
+        try { backdrop.querySelector('#conc-res-excedente').textContent = String(resumo.excedente); } catch (_) {}
+        try { backdrop.querySelector('#conc-res-perdas').textContent = String(resumo.perdasQtd); } catch (_) {}
+        try { totalPerdidoEl.textContent = 'Total perdido: ' + String(resumo.perdasQtd) + ' caixas'; } catch (_) {}
+        try {
+          var financeiro = backdrop.querySelector('#conc-res-financeiro');
+          if (financeiro) {
+            financeiro.style.color = resumo.perdasQtd > 0 ? '#fca5a5' : '#10b981';
+            financeiro.textContent = 'Valor unitário: ' + _fmtMoney(resumo.valorUnitario) + '  ·  Novo total: ' + _fmtMoney(resumo.novoTotal) + '  ·  Perdas: ' + _fmtMoney(resumo.perdasValor);
+          }
+        } catch (_) {}
+        if (btnSalvar) btnSalvar.disabled = !(resumo.produzidas > 0);
+        return resumo;
+      }
+      function addOperadorRow(host, selected) {
         var row = document.createElement('div');
-        row.className = 'com-conc-row';
-        row.style.display = 'grid';
-        row.style.gridTemplateColumns = '1fr 140px 36px';
-        row.style.gap = '8px';
-        row.style.marginBottom = '8px';
-        row.innerHTML = '<select class="com-conc-maq">' + maqs.map(function(m) { return '<option value="' + String(m).replace(/"/g, '&quot;') + '">' + String(m).replace(/</g, '&lt;') + '</option>'; }).join('') + '</select><input class="com-conc-qtdm" type="number" min="0" step="1" value="' + String(qtd || '') + '"/><button type="button" class="m-close">×</button>';
-        perdasWrap.appendChild(row);
-        if (maq) {
-          try { row.querySelector('.com-conc-maq').value = maq; } catch (_) {}
-        }
-        row.querySelector('.m-close').onclick = function() { row.remove(); renderResumo(); };
-        row.querySelector('.com-conc-maq').onchange = renderResumo;
-        row.querySelector('.com-conc-qtdm').oninput = renderResumo;
-        renderResumo();
-      };
-      if (addBtn) addBtn.onclick = function() { addRow(maqs[0] || '', ''); };
-      if (qtdEl) qtdEl.oninput = renderResumo;
-      try { document.getElementById('com-conc-data').onchange = renderResumo; } catch (_) {}
-      renderResumo();
+        row.className = 'com-conc-operator-row';
+        row.innerHTML = ''
+          + '<select class="com-conc-select conc-loss-op" style="flex:1">' + optionHtml(operadores, selected) + '</select>'
+          + '<button type="button" class="com-conc-remove">×</button>';
+        host.appendChild(row);
+        row.querySelector('.com-conc-remove').onclick = function() { row.remove(); updateResumo(); };
+        row.querySelector('.conc-loss-op').onchange = updateResumo;
+      }
+      function addPerdaRow(data) {
+        var payload = data || {};
+        var row = document.createElement('div');
+        row.className = 'com-conc-loss-row';
+        row.innerHTML = ''
+          + '<div class="com-conc-loss-grid">'
+          + '  <select class="com-conc-select conc-loss-maq">' + optionHtml(maquinas, payload.maquina || maquinas[0] || '') + '</select>'
+          + '  <input class="com-conc-input conc-loss-qtd" type="number" min="0" step="1" value="' + String(payload.qtd || '') + '"/>'
+          + '  <button type="button" class="com-conc-remove">×</button>'
+          + '</div>'
+          + '<button type="button" class="com-conc-add-op">+ Operador nesta perda</button>'
+          + '<div class="conc-loss-ops"></div>';
+        perdasLista.appendChild(row);
+        row.querySelector('.com-conc-remove').onclick = function() { row.remove(); updateResumo(); };
+        row.querySelector('.conc-loss-maq').onchange = updateResumo;
+        row.querySelector('.conc-loss-qtd').oninput = updateResumo;
+        var opsHost = row.querySelector('.conc-loss-ops');
+        row.querySelector('.com-conc-add-op').onclick = function() { addOperadorRow(opsHost, ''); updateResumo(); };
+        var opsInit = Array.isArray(payload.operadores) ? payload.operadores : [];
+        if (opsInit.length) opsInit.forEach(function(op) { addOperadorRow(opsHost, op); });
+        updateResumo();
+      }
 
-      var cancelBtn = document.getElementById('com-conc-cancelar');
-      if (cancelBtn) cancelBtn.onclick = function(e) { try { e.preventDefault(); } catch (_) {} modal.style.display = 'none'; };
-      var confBtn = document.getElementById('com-conc-confirmar');
-      if (confBtn) confBtn.onclick = async function(e) {
+      var addPerdaBtn = backdrop.querySelector('#conclusao-add-perda');
+      if (addPerdaBtn) addPerdaBtn.onclick = function() { addPerdaRow({}); };
+      if (qtdEl) qtdEl.oninput = updateResumo;
+      if (dataEl) dataEl.onchange = updateResumo;
+      updateResumo();
+
+      if (btnSalvar) btnSalvar.onclick = async function(e) {
         try { e.preventDefault(); } catch (_) {}
-        var qtdProd = Math.trunc(Number(qtdEl && qtdEl.value || 0) || 0);
-        var dataFat = String(document.getElementById('com-conc-data').value || '').trim();
-        if (!(qtdProd > 0)) { try { alert('Informe as caixas produzidas.'); } catch (_) {} return; }
-        if (!dataFat) { try { alert('Informe a data de faturamento.'); } catch (_) {} return; }
-        var perdas = Array.prototype.slice.call((perdasWrap && perdasWrap.querySelectorAll('.com-conc-row')) || []).map(function(row) {
-          return {
-            maquina: String(row.querySelector('.com-conc-maq') && row.querySelector('.com-conc-maq').value || '').trim(),
-            qtd: Math.trunc(Number(row.querySelector('.com-conc-qtdm') && row.querySelector('.com-conc-qtdm').value || 0) || 0)
-          };
-        }).filter(function(p) { return p.maquina && p.qtd > 0; });
+        var resumo = updateResumo();
+        var caixasProduzidas = parseInt((qtdEl && qtdEl.value) || '0', 10);
+        var dataFaturamento = String((dataEl && dataEl.value) || '').trim();
+        if (!(caixasProduzidas > 0)) { try { alert('Informe as caixas produzidas.'); } catch (_) {} return; }
+        if (!dataFaturamento) { try { alert('Informe a data de faturamento.'); } catch (_) {} return; }
+        var perdas = collectPerdas();
+        var body = {
+          status: 'Concluído',
+          data_conclusao: dataFaturamento,
+          quantidade: caixasProduzidas,
+          valor_total: resumo.novoTotal,
+          _allow_partial: '1'
+        };
+        btnSalvar.disabled = true;
         var token = _getToken();
-        var r1 = await fetch('/api/ofs/' + encodeURIComponent(String(of.id || ofId)), {
-          method: 'PUT',
-          headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
-          body: JSON.stringify({ status: 'Concluído', data_conclusao: dataFat, quantidade_produzida: qtdProd, qtd_produzida: qtdProd, _allow_partial: '1' })
-        });
-        var j1 = await r1.json().catch(function() { return null; });
-        if (!j1 || !j1.ok) {
-          try { alert('Erro ao concluir OF: ' + String(j1 && (j1.error || j1.message) || 'Falha')); } catch (_) {}
-          return;
-        }
-        for (var i = 0; i < perdas.length; i++) {
-          var p = perdas[i];
-          try {
+        try {
+          var r1 = await fetch('/api/ofs/' + encodeURIComponent(String(of.id || ofId)), {
+            method: 'PUT',
+            headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
+            body: JSON.stringify(body)
+          });
+          var j1 = await r1.json().catch(function() { return null; });
+          if (!j1 || !j1.ok) throw new Error(String(j1 && (j1.error || j1.message) || 'Falha ao concluir OF'));
+
+          for (var i = 0; i < perdas.length; i += 1) {
+            var perda = perdas[i];
             await fetch('/api/caixas-perdidas', {
               method: 'POST',
               headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
-              body: JSON.stringify({ of_id: of.id || ofId, of_numero: of.numero || null, produto: of.produto || of.descricao || '', cliente: of.cliNome || of.cliente_nome || of.cliente || '', maquina: p.maquina, qtd_perdida: p.qtd, valor_unitario: Number(of.valor_unitario || of.vl_unit || 0) || 0, data: dataFat })
-            });
-          } catch (_) {}
+              body: JSON.stringify({
+                of_id: of.id || ofId,
+                of_numero: of.numero || null,
+                produto: of.produto || of.descricao || of.prodDesc || '',
+                cliente: cliente,
+                maquina: perda.maquina,
+                quantidade: perda.qtd,
+                qtd_perdida: perda.qtd,
+                valor_unitario: resumo.valorUnitario,
+                valor_perdido: Math.round((resumo.valorUnitario * perda.qtd) * 100) / 100,
+                operadores: perda.operadores,
+                usuario: usuario,
+                data: dataFaturamento,
+                obs: 'Perda registrada na conclusão da OF'
+              })
+            }).catch(function() { return null; });
+          }
+
+          closeModal();
+          try { if (typeof window.toast === 'function') window.toast('✅ OF concluída com sucesso', 'var(--green)'); } catch (_) {}
+          try { if (typeof window.calcularComissoes === 'function') window.calcularComissoes(); } catch (_) {}
+        } catch (errConc) {
+          try { alert('Erro ao concluir OF: ' + String(errConc && errConc.message || errConc)); } catch (_) {}
+        } finally {
+          btnSalvar.disabled = false;
+          updateResumo();
         }
-        modal.style.display = 'none';
-        try { window.calcularComissoes(); } catch (_) {}
       };
     } catch (_) {}
   }
@@ -13093,16 +13343,6 @@ function _ocultarGraficoComissoes() {
     try {
       ofId = String(ofId || '').trim();
       if (!ofId) return;
-      var fns = ['abrirModalConclusao', 'concluirOFComBaixa', 'concluirOF', 'finalizarOF'];
-      for (var i = 0; i < fns.length; i++) {
-        var fn = window[fns[i]];
-        if (typeof fn === 'function') {
-          try {
-            await fn.call(window, ofId, ofObj || null);
-            return;
-          } catch (_) {}
-        }
-      }
       await _abrirModalConclusaoFallback(ofId, ofObj || null);
     } catch (_) {}
   }

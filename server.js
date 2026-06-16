@@ -4082,6 +4082,66 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
     const numeroRaw = String(req.query?.numero || '').trim();
+    const clienteRaw = String(req.query?.cliente || req.query?.search || '').trim();
+    const statusRaw = String(req.query?.status || '').trim().toLowerCase();
+    const includeSomenteAbertas = !statusRaw || statusRaw.includes('aberto');
+    if (clienteRaw) {
+      const { data: clientes, error: cliErr } = await supabase
+        .from('clientes')
+        .select('id,nome,rs,vendedor_id')
+        .or('nome.ilike.%' + clienteRaw + '%,rs.ilike.%' + clienteRaw + '%')
+        .limit(100);
+      if (cliErr) return res.status(400).json({ ok: false, error: String(cliErr.message || cliErr) });
+
+      const clientesArr = Array.isArray(clientes) ? clientes : [];
+      const clienteIds = clientesArr.map((c) => String(c?.id || '').trim()).filter(Boolean);
+      if (!clienteIds.length) return ok(res, []);
+
+      let query = supabase
+        .from('ofs')
+        .select('*')
+        .in('cli_id', clienteIds)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (includeSomenteAbertas) {
+        query = query.not('status', 'in', '("Concluído","Concluída","Concluido","Concluida","Cancelada","Cancelado","Pedido Pronto")');
+      }
+      const { data: ofsRows, error: ofsErr } = await query;
+      if (ofsErr) return res.status(400).json({ ok: false, error: String(ofsErr.message || ofsErr) });
+
+      const clienteMap = new Map(clientesArr.map((c) => [String(c?.id || '').trim(), c]));
+      const vendedorIds = Array.from(new Set((ofsRows || []).map((of) => {
+        const cli = clienteMap.get(String(of?.cli_id || '').trim());
+        return String(of?.vendedor_id || of?.vendId || cli?.vendedor_id || '').trim();
+      }).filter(Boolean)));
+      const vendMap = new Map();
+      if (vendedorIds.length) {
+        const { data: vendRows } = await supabase.from('vendedores').select('id,nome').in('id', vendedorIds);
+        (Array.isArray(vendRows) ? vendRows : []).forEach((v) => {
+          const id = String(v?.id || '').trim();
+          if (id) vendMap.set(id, String(v?.nome || '').trim());
+        });
+      }
+
+      const lista = (Array.isArray(ofsRows) ? ofsRows : []).map((of) => {
+        const cli = clienteMap.get(String(of?.cli_id || '').trim()) || null;
+        const vendedorId = String(of?.vendedor_id || of?.vendId || cli?.vendedor_id || '').trim() || null;
+        const clienteNome = String(cli?.nome || cli?.rs || of?.cliente_nome || of?.cliente || of?.cliNome || '').trim();
+        const qtd = of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? null;
+        return {
+          ...of,
+          cliente_nome: clienteNome,
+          cliNome: clienteNome,
+          vendedor_id: vendedorId,
+          vendedor_nome: vendMap.get(String(vendedorId || '')) || String(of?.vendedor_nome || of?.vendNome || of?.vendedor || '').trim(),
+          vendNome: vendMap.get(String(vendedorId || '')) || String(of?.vendedor_nome || of?.vendNome || of?.vendedor || '').trim(),
+          quantidade: qtd,
+          valor_total: Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0,
+        };
+      });
+      return ok(res, lista);
+    }
+
     if (!numeroRaw) return res.status(400).json({ ok: false, error: 'numero obrigatório' });
 
     const joinKeys = ['cli_id', 'cliente_id', 'cliId'];
@@ -4336,6 +4396,24 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       const v2 = String(cleanBody?.vendNome || '').trim();
       if (vn) cleanBody.vendedor = vn;
       else if (v2) cleanBody.vendedor = v2;
+    } catch (_) {}
+    try {
+      const qtdBody = cleanBody?.quantidade ?? cleanBody?.qtd;
+      const qtdNum = Number(qtdBody);
+      if (Number.isFinite(qtdNum) && qtdNum >= 0) {
+        const qtdInt = Math.trunc(qtdNum);
+        cleanBody.quantidade = qtdInt;
+        cleanBody.qtd = qtdInt;
+        cleanBody.qtd_produzida = qtdInt;
+      }
+    } catch (_) {}
+    try {
+      const valBody = cleanBody?.valor_total ?? cleanBody?.valor_venda;
+      const valNum = Number(valBody);
+      if (Number.isFinite(valNum) && valNum >= 0) {
+        cleanBody.valor_total = valNum;
+        cleanBody.valor_venda = valNum;
+      }
     } catch (_) {}
     try {
       const ofNum = cleanBody?.of != null ? String(cleanBody.of || '').trim() : '';
@@ -5479,6 +5557,11 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
     const b = req.body || {};
     const hoje = new Date().toISOString().slice(0, 10);
     const mes = new Date().toISOString().slice(0, 7);
+    const qtdPerdida = Math.trunc(Number(b.qtd_perdida ?? b.quantidade ?? b.caixas_perdidas ?? 0) || 0);
+    const rawOperadores = Array.isArray(b.operadores)
+      ? b.operadores
+      : (typeof b.operadores === 'string' ? b.operadores.split(/[,;|]+/g) : []);
+    const operadores = Array.from(new Set(rawOperadores.map((op) => String(op || '').trim()).filter(Boolean)));
     const payload = {
       of_id: b.of_id || null,
       produto: String(b.produto || ''),
@@ -5486,16 +5569,23 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
       maquina: b.maquina != null ? String(b.maquina || '') : undefined,
       maquina_id: b.maquina_id != null ? String(b.maquina_id || '') : undefined,
       valor_unitario: Number(b.valor_unitario || 0),
-      qtd_perdida: Math.trunc(Number(b.qtd_perdida || 0)),
+      qtd_perdida: qtdPerdida,
+      quantidade: qtdPerdida,
       valor_perdido: Number(b.valor_perdido || 0),
       data: b.data || hoje,
       mes_referencia: b.mes_referencia || mes,
       emp_id: b.emp_id || '',
       usuario: b.usuario || req.usuario?.nome || 'sistema',
-      obs: b.obs || ''
+      obs: b.obs || '',
+      operadores: operadores,
+      operador: operadores[0] || undefined,
+      turno: b.turno != null ? String(b.turno || '') : undefined,
     };
     if (!payload.maquina) delete payload.maquina;
     if (!payload.maquina_id) delete payload.maquina_id;
+    if (!payload.operadores || !payload.operadores.length) delete payload.operadores;
+    if (!payload.operador) delete payload.operador;
+    if (!payload.turno) delete payload.turno;
     let { data, error } = await supabase.from('caixas_perdidas').insert([payload]).select().single();
     if (error) {
       const msg = String(error.message || error);
@@ -5503,10 +5593,14 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
       if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
         return ok(res, { skipped: true, reason: 'table_missing' });
       }
-      if (m.includes('column') && (m.includes('maquina') || m.includes('maquina_id'))) {
+      if (m.includes('column') && (m.includes('maquina') || m.includes('maquina_id') || m.includes('operador') || m.includes('turno') || m.includes('quantidade'))) {
         const payload2 = { ...payload };
         delete payload2.maquina;
         delete payload2.maquina_id;
+        delete payload2.operadores;
+        delete payload2.operador;
+        delete payload2.turno;
+        delete payload2.quantidade;
         const r2 = await supabase.from('caixas_perdidas').insert([payload2]).select().single();
         if (r2.error) {
           const msg2 = String(r2.error.message || r2.error);
@@ -5529,6 +5623,11 @@ app.post('/api/caixas-perdidas', authMiddleware, async (req, res) => {
     const b = req.body || {};
     const hoje = new Date().toISOString().slice(0, 10);
     const mes = new Date().toISOString().slice(0, 7);
+    const qtdPerdida = Math.trunc(Number(b.qtd_perdida ?? b.quantidade ?? b.caixas_perdidas ?? 0) || 0);
+    const rawOperadores = Array.isArray(b.operadores)
+      ? b.operadores
+      : (typeof b.operadores === 'string' ? b.operadores.split(/[,;|]+/g) : []);
+    const operadores = Array.from(new Set(rawOperadores.map((op) => String(op || '').trim()).filter(Boolean)));
     const payload = {
       of_id: b.of_id || null,
       produto: String(b.produto || ''),
@@ -5536,16 +5635,23 @@ app.post('/api/caixas-perdidas', authMiddleware, async (req, res) => {
       maquina: b.maquina != null ? String(b.maquina || '') : undefined,
       maquina_id: b.maquina_id != null ? String(b.maquina_id || '') : undefined,
       valor_unitario: Number(b.valor_unitario || 0),
-      qtd_perdida: Math.trunc(Number(b.qtd_perdida || 0)),
+      qtd_perdida: qtdPerdida,
+      quantidade: qtdPerdida,
       valor_perdido: Number(b.valor_perdido || 0),
       data: b.data || hoje,
       mes_referencia: b.mes_referencia || mes,
       emp_id: b.emp_id || '',
       usuario: b.usuario || req.usuario?.nome || 'sistema',
-      obs: b.obs || ''
+      obs: b.obs || '',
+      operadores: operadores,
+      operador: operadores[0] || undefined,
+      turno: b.turno != null ? String(b.turno || '') : undefined,
     };
     if (!payload.maquina) delete payload.maquina;
     if (!payload.maquina_id) delete payload.maquina_id;
+    if (!payload.operadores || !payload.operadores.length) delete payload.operadores;
+    if (!payload.operador) delete payload.operador;
+    if (!payload.turno) delete payload.turno;
     let { data, error } = await supabase.from('caixas_perdidas').insert([payload]).select().single();
     if (error) {
       const msg = String(error.message || error);
@@ -5553,10 +5659,14 @@ app.post('/api/caixas-perdidas', authMiddleware, async (req, res) => {
       if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
         return ok(res, { skipped: true, reason: 'table_missing' });
       }
-      if (m.includes('column') && (m.includes('maquina') || m.includes('maquina_id'))) {
+      if (m.includes('column') && (m.includes('maquina') || m.includes('maquina_id') || m.includes('operador') || m.includes('turno') || m.includes('quantidade'))) {
         const payload2 = { ...payload };
         delete payload2.maquina;
         delete payload2.maquina_id;
+        delete payload2.operadores;
+        delete payload2.operador;
+        delete payload2.turno;
+        delete payload2.quantidade;
         const r2 = await supabase.from('caixas_perdidas').insert([payload2]).select().single();
         if (r2.error) {
           const msg2 = String(r2.error.message || r2.error);
