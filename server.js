@@ -4408,6 +4408,23 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       }
     } catch (_) {}
     try {
+      const vuBody = cleanBody?.valor_unitario ?? cleanBody?.vl_unit;
+      const vuNum = Number(vuBody);
+      if (Number.isFinite(vuNum) && vuNum >= 0) {
+        cleanBody.valor_unitario = vuNum;
+        cleanBody.vl_unit = vuNum;
+      }
+    } catch (_) {}
+    try {
+      const qtdNum = Number(cleanBody?.quantidade ?? cleanBody?.qtd ?? NaN);
+      const vuNum = Number(cleanBody?.valor_unitario ?? cleanBody?.vl_unit ?? NaN);
+      if (Number.isFinite(qtdNum) && qtdNum >= 0 && Number.isFinite(vuNum) && vuNum >= 0) {
+        const totalCalc = Math.round((qtdNum * vuNum) * 100) / 100;
+        cleanBody.valor_total = totalCalc;
+        cleanBody.valor_venda = totalCalc;
+      }
+    } catch (_) {}
+    try {
       const valBody = cleanBody?.valor_total ?? cleanBody?.valor_venda;
       const valNum = Number(valBody);
       if (Number.isFinite(valNum) && valNum >= 0) {

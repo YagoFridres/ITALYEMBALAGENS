@@ -13990,6 +13990,7 @@ function _ocultarGraficoComissoes() {
         + '.com-conc-save{background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-weight:700;border:none;border-radius:8px;padding:10px 24px;box-shadow:0 4px 15px rgba(16,185,129,.3);cursor:pointer}'
         + '.com-conc-save:hover{filter:brightness(1.1);transform:translateY(-1px)}'
         + '.com-conc-save:disabled{opacity:.5;cursor:not-allowed;transform:none;filter:none}'
+        + '@keyframes popupEntrada{from{opacity:0;transform:scale(.8) translateY(-20px)}to{opacity:1;transform:scale(1) translateY(0)}}'
         + '@media (max-width:640px){.com-conc-head,.com-conc-body,.com-conc-foot{padding-left:18px;padding-right:18px}.com-conc-loss-grid{grid-template-columns:1fr}.com-conc-summary-grid{grid-template-columns:1fr}}';
       document.head.appendChild(st);
     } catch (_) {}
@@ -14031,6 +14032,74 @@ function _ocultarGraficoComissoes() {
     } catch (_) { return []; }
   }
 
+  async function _carregarMaquinasParaConclusao() {
+    if (Array.isArray(window._maquinasConclusaoCache)) return window._maquinasConclusaoCache;
+    if (window.__maquinasConclusaoPromise) return window.__maquinasConclusaoPromise;
+    window.__maquinasConclusaoPromise = (async function() {
+      try {
+        var token = _getToken();
+        var r = await fetch('/api/maquinas', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+        var data = await r.json().catch(function() { return null; });
+        var lista = Array.isArray(data) ? data : ((data && (data.maquinas || data.data)) || []);
+        window._maquinasConclusaoCache = Array.isArray(lista) ? lista : [];
+        return window._maquinasConclusaoCache;
+      } catch (_) {
+        return [];
+      } finally {
+        window.__maquinasConclusaoPromise = null;
+      }
+    })();
+    return window.__maquinasConclusaoPromise;
+  }
+
+  async function _carregarUsuariosConclusao() {
+    if (Array.isArray(window._usuariosConclusaoCache)) return window._usuariosConclusaoCache;
+    if (window.__usuariosConclusaoPromise) return window.__usuariosConclusaoPromise;
+    window.__usuariosConclusaoPromise = (async function() {
+      try {
+        var token = _getToken();
+        var r = await fetch('/api/usuarios', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+        var usuarios = await r.json().catch(function() { return null; });
+        var lista = Array.isArray(usuarios) ? usuarios : ((usuarios && (usuarios.usuarios || usuarios.data)) || []);
+        window._usuariosConclusaoCache = Array.isArray(lista) ? lista : [];
+        return window._usuariosConclusaoCache;
+      } catch (_) {
+        return [];
+      } finally {
+        window.__usuariosConclusaoPromise = null;
+      }
+    })();
+    return window.__usuariosConclusaoPromise;
+  }
+
+  function _mostrarPopupConclusaoOF(of) {
+    try {
+      var prev = document.getElementById('popup-conclusao-of');
+      if (prev) prev.remove();
+      var popup = document.createElement('div');
+      var numero = String(of && (of.numero || of.of_num || '') || '').trim();
+      var cliente = String(of && (of.cliente_nome || of.cliente || of.cliNome || '') || '').trim();
+      var qtd = Math.trunc(Number(of && (of.quantidade_produzida || of.quantidade || of.qtd || 0) || 0) || 0);
+      popup.id = 'popup-conclusao-of';
+      popup.style.cssText = 'position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);';
+      popup.innerHTML = ''
+        + '<div style="background:linear-gradient(135deg,#0a2018,#0d2d1a);border:1px solid #10b981;border-radius:16px;padding:40px 48px;text-align:center;box-shadow:0 0 60px rgba(16,185,129,0.3);animation:popupEntrada 0.3s ease-out;max-width:420px;width:90vw;">'
+        + '<div style="font-size:56px;margin-bottom:16px;">✅</div>'
+        + '<div style="font-size:22px;font-weight:700;color:#10b981;margin-bottom:8px;">OF #' + String(numero).replace(/</g, '&lt;') + ' Concluída!</div>'
+        + '<div style="font-size:14px;color:#94a3b8;margin-bottom:4px;">' + String(cliente).replace(/</g, '&lt;') + '</div>'
+        + '<div style="font-size:13px;color:#64748b;margin-bottom:24px;">' + String(qtd || 0) + ' caixas produzidas</div>'
+        + '<button type="button" id="popup-conclusao-of-ok" style="background:linear-gradient(135deg,#059669,#10b981);color:white;border:none;border-radius:8px;padding:12px 32px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 15px rgba(16,185,129,0.3);">OK</button>'
+        + '</div>';
+      popup.addEventListener('click', function(e) {
+        if (e.target === popup) popup.remove();
+      });
+      document.body.appendChild(popup);
+      var ok = document.getElementById('popup-conclusao-of-ok');
+      if (ok) ok.onclick = function() { try { popup.remove(); } catch (_) {} };
+      setTimeout(function() { try { popup.remove(); } catch (_) {} }, 4000);
+    } catch (_) {}
+  }
+
   function _getResumoConclusao(of, qtdProd, perdas) {
     var qtdPedido = Math.trunc(Number(of && (of.qtd_pedida ?? of.quantidade ?? of.qtd ?? 0) || 0) || 0);
     var produzidas = Math.trunc(Number(qtdProd || 0) || 0);
@@ -14066,15 +14135,17 @@ function _ocultarGraficoComissoes() {
       try { usuario = String((window.CURRENT_USER && (window.CURRENT_USER.nome || window.CURRENT_USER.name)) || localStorage.getItem('nome') || 'Usuário').trim(); } catch (_) { usuario = 'Usuário'; }
       var hoje = new Date().toISOString().slice(0, 10);
       var qtdInicial = Math.trunc(Number(of && (of.quantidade ?? of.qtd ?? of.qtd_pedida ?? 0) || 0) || 0);
-      var maquinas = _parseFluxoConclusao(of && (of.fluxo_maquinas || of.maq));
-      maquinas = (Array.isArray(maquinas) ? maquinas : []).map(function(x) {
+      var maquinasFluxo = _parseFluxoConclusao(of && (of.fluxo_maquinas || of.maq));
+      maquinasFluxo = (Array.isArray(maquinasFluxo) ? maquinasFluxo : []).map(function(x) {
         if (x && typeof x === 'object') return String(x.nome || x.name || x.maquina || x.col || x.id || '').trim();
         return String(x || '').trim();
       }).filter(Boolean).filter(function(v, i, a) { return a.indexOf(v) === i; });
-      if (!maquinas.length) {
+      if (!maquinasFluxo.length) {
         var maqAtual = String(of && (of.maquina || of.maq || of.maquina_atual || of.maquina_agendada) || '').trim();
-        if (maqAtual) maquinas = [maqAtual];
+        if (maqAtual) maquinasFluxo = [maqAtual];
       }
+      var preloadMaquinas = _carregarMaquinasParaConclusao().catch(function() { return []; });
+      var preloadUsuarios = _carregarUsuariosConclusao().catch(function() { return []; });
       var operadores = await _carregarOperadoresConclusao();
 
       var backdrop = document.createElement('div');
@@ -14150,11 +14221,19 @@ function _ocultarGraficoComissoes() {
         btn.onclick = function(e) { try { e.preventDefault(); } catch (_) {} closeModal(); };
       });
 
-      function optionHtml(lista, selected) {
+      function optionHtml(lista, selected, placeholder) {
         var cur = String(selected || '').trim();
-        var opts = ['<option value="">Selecionar...</option>'].concat((lista || []).map(function(nome) {
-          var v = String(nome || '').trim();
-          return '<option value="' + v.replace(/"/g, '&quot;') + '"' + (v === cur ? ' selected' : '') + '>' + v.replace(/</g, '&lt;') + '</option>';
+        var opts = ['<option value="">' + String(placeholder || 'Selecionar...').replace(/</g, '&lt;') + '</option>'].concat((lista || []).map(function(nome) {
+          var v = '';
+          var label = '';
+          if (nome && typeof nome === 'object') {
+            v = String(nome.id || nome.nome || nome.descricao || nome.email || '').trim();
+            label = String(nome.nome || nome.descricao || nome.email || nome.id || '').trim();
+          } else {
+            v = String(nome || '').trim();
+            label = v;
+          }
+          return '<option value="' + v.replace(/"/g, '&quot;') + '"' + (v === cur ? ' selected' : '') + '>' + label.replace(/</g, '&lt;') + '</option>';
         }));
         return opts.join('');
       }
@@ -14189,19 +14268,29 @@ function _ocultarGraficoComissoes() {
         var row = document.createElement('div');
         row.className = 'com-conc-operator-row';
         row.innerHTML = ''
-          + '<select class="com-conc-select conc-loss-op" style="flex:1">' + optionHtml(operadores, selected) + '</select>'
+          + '<select class="com-conc-select conc-loss-op" style="flex:1">' + optionHtml(operadores, selected, 'Selecionar operador...') + '</select>'
           + '<button type="button" class="com-conc-remove">×</button>';
         host.appendChild(row);
         row.querySelector('.com-conc-remove').onclick = function() { row.remove(); updateResumo(); };
         row.querySelector('.conc-loss-op').onchange = updateResumo;
       }
-      function addPerdaRow(data) {
+      async function addPerdaRow(data) {
         var payload = data || {};
+        var maquinasApi = await preloadMaquinas.catch(function() { return []; });
+        var maquinas = (Array.isArray(maquinasApi) ? maquinasApi.slice() : []).filter(Boolean);
+        if (!maquinas.length && maquinasFluxo.length) {
+          maquinas = maquinasFluxo.map(function(nome) { return { id: nome, nome: nome }; });
+        }
+        var usuariosApi = await preloadUsuarios.catch(function() { return []; });
+        var operadoresLista = (Array.isArray(usuariosApi) ? usuariosApi.slice() : []).filter(Boolean);
+        if (!operadoresLista.length) {
+          operadoresLista = (Array.isArray(operadores) ? operadores : []).map(function(nome) { return { id: nome, nome: nome }; });
+        }
         var row = document.createElement('div');
         row.className = 'com-conc-loss-row';
         row.innerHTML = ''
           + '<div class="com-conc-loss-grid">'
-          + '  <select class="com-conc-select conc-loss-maq">' + optionHtml(maquinas, payload.maquina || maquinas[0] || '') + '</select>'
+          + '  <select class="com-conc-select conc-loss-maq">' + optionHtml(maquinas, payload.maquina || ((maquinas[0] && (maquinas[0].id || maquinas[0].nome || maquinas[0].descricao)) || ''), 'Selecionar máquina...') + '</select>'
           + '  <input class="com-conc-input conc-loss-qtd" type="number" min="0" step="1" value="' + String(payload.qtd || '') + '"/>'
           + '  <button type="button" class="com-conc-remove">×</button>'
           + '</div>'
@@ -14212,14 +14301,25 @@ function _ocultarGraficoComissoes() {
         row.querySelector('.conc-loss-maq').onchange = updateResumo;
         row.querySelector('.conc-loss-qtd').oninput = updateResumo;
         var opsHost = row.querySelector('.conc-loss-ops');
-        row.querySelector('.com-conc-add-op').onclick = function() { addOperadorRow(opsHost, ''); updateResumo(); };
+        row.querySelector('.com-conc-add-op').onclick = function() {
+          var prevOps = operadores;
+          operadores = operadoresLista;
+          addOperadorRow(opsHost, '');
+          operadores = prevOps;
+          updateResumo();
+        };
         var opsInit = Array.isArray(payload.operadores) ? payload.operadores : [];
-        if (opsInit.length) opsInit.forEach(function(op) { addOperadorRow(opsHost, op); });
+        if (opsInit.length) opsInit.forEach(function(op) {
+          var prevOps = operadores;
+          operadores = operadoresLista;
+          addOperadorRow(opsHost, op);
+          operadores = prevOps;
+        });
         updateResumo();
       }
 
       var addPerdaBtn = backdrop.querySelector('#conclusao-add-perda');
-      if (addPerdaBtn) addPerdaBtn.onclick = function() { addPerdaRow({}); };
+      if (addPerdaBtn) addPerdaBtn.onclick = function() { addPerdaRow({}).catch(function() {}); };
       if (qtdEl) qtdEl.oninput = updateResumo;
       if (dataEl) dataEl.onchange = updateResumo;
       updateResumo();
@@ -14274,6 +14374,12 @@ function _ocultarGraficoComissoes() {
           }
 
           closeModal();
+          _mostrarPopupConclusaoOF({
+            numero: numero,
+            cliente_nome: cliente,
+            quantidade_produzida: caixasProduzidas,
+            quantidade: caixasProduzidas
+          });
           try { if (typeof window.toast === 'function') window.toast('✅ OF concluída com sucesso', 'var(--green)'); } catch (_) {}
           try { if (typeof window.calcularComissoes === 'function') window.calcularComissoes(); } catch (_) {}
         } catch (errConc) {
@@ -14301,6 +14407,20 @@ function _ocultarGraficoComissoes() {
     var vendId = String(of && (of.vendedor_id || of.vendId || of.vend_id || '') || '').trim();
     var qtd = (of && (of.quantidade ?? of.qtd ?? of.qtd_pedida)) != null ? String(of.quantidade ?? of.qtd ?? of.qtd_pedida) : '';
     var valTot = (of && (of.valor_total ?? of.valor_venda ?? of.valorTotal)) != null ? String(of.valor_total ?? of.valor_venda ?? of.valorTotal) : '';
+    var valUnit = Number(of && (of.valor_unitario ?? of.vl_unit ?? null));
+    if (!(valUnit > 0)) {
+      var qtdNumBase = Number(of && (of.quantidade ?? of.qtd ?? of.qtd_pedida ?? 0) || 0) || 0;
+      var totalNumBase = Number(of && (of.valor_total ?? of.valor_venda ?? of.valorTotal ?? 0) || 0) || 0;
+      if (qtdNumBase > 0 && totalNumBase > 0) valUnit = totalNumBase / qtdNumBase;
+    }
+    if (!(valUnit > 0)) {
+      var itens0 = of && of.itens;
+      if (typeof itens0 === 'string') { try { itens0 = JSON.parse(itens0); } catch (_) { itens0 = null; } }
+      if (Array.isArray(itens0) && itens0[0]) {
+        var vuItem = Number(itens0[0].vunit ?? itens0[0].valor_unitario ?? 0) || 0;
+        if (vuItem > 0) valUnit = vuItem;
+      }
+    }
     var comPct = (of && (of.comissao_pct ?? of.comissao ?? '')) != null ? String(of.comissao_pct ?? of.comissao ?? '') : '';
     var createdAt = String(of && (of.created_at || of.createdAt || '') || '').slice(0, 10);
     var dataConc = String(of && (of.data_conclusao || of.dataConclusao || '') || '').slice(0, 10);
@@ -14320,8 +14440,10 @@ function _ocultarGraficoComissoes() {
       + '<div class="m-full m-autocomplete"><label>Cliente</label><input id="com-of-cli-busca" placeholder="Buscar cliente..." autocomplete="off" /><div id="com-of-cli-suggest" class="m-suggest" style="display:none"></div><input id="com-of-cli-id" value="' + String(cliId).replace(/"/g, '&quot;') + '" style="display:none" /></div>'
       + '<div class="m-full"><label>Vendedor</label><select id="com-of-vend-select"></select><input id="com-of-vend-id" value="' + String(vendId).replace(/"/g, '&quot;') + '" style="display:none" /></div>'
       + '<div><label>Quantidade</label><input type="number" step="1" id="com-of-qtd" value="' + String(qtd).replace(/"/g, '&quot;') + '" /></div>'
-      + '<div><label>Valor Total</label><input type="number" step="0.01" id="com-of-valor" value="' + String(valTot).replace(/"/g, '&quot;') + '" /></div>'
+      + '<div><label>Valor Unitário</label><input type="number" step="0.01" id="edit-of-valor-unitario" value="' + (valUnit > 0 ? String(valUnit.toFixed(2)) : '') + '" /></div>'
+      + '<div><label>Valor Total</label><input type="number" step="0.01" id="com-of-valor" readonly value="' + String(valTot).replace(/"/g, '&quot;') + '" /></div>'
       + '<div><label>% Comissão</label><input type="number" step="0.01" id="com-of-comissao" value="' + String(comPct).replace(/"/g, '&quot;') + '" /></div>'
+      + '<div class="m-full" id="com-of-comissao-resumo" style="font-size:13px;color:#10b981;font-weight:700">Comissão: R$ 0,00</div>'
       + '<div><label>Data de Criação</label><input type="date" id="com-of-created" value="' + String(createdAt).replace(/"/g, '&quot;') + '" /></div>'
       + '<div><label>Data de Conclusão</label><input type="date" id="com-of-conclusao" value="' + String(dataConc).replace(/"/g, '&quot;') + '" /></div>'
       + '<div></div>'
@@ -14456,6 +14578,25 @@ function _ocultarGraficoComissoes() {
 
       var btnCancel = document.getElementById('com-of-cancelar');
       var btnSave = document.getElementById('com-of-salvar');
+      var qtdInput = document.getElementById('com-of-qtd');
+      var valorUnitInput = document.getElementById('edit-of-valor-unitario');
+      var valorTotalInput = document.getElementById('com-of-valor');
+      var comPctInput = document.getElementById('com-of-comissao');
+      var comResumoEl = document.getElementById('com-of-comissao-resumo');
+      var _atualizarTotaisEdicao = function() {
+        try {
+          var qtdCalc = Number(String((qtdInput && qtdInput.value) || '').replace(',', '.')) || 0;
+          var vuCalc = Number(String((valorUnitInput && valorUnitInput.value) || '').replace(',', '.')) || 0;
+          var pctCalc = Number(String((comPctInput && comPctInput.value) || '').replace(',', '.')) || 0;
+          var totalCalc = Math.round((qtdCalc * vuCalc) * 100) / 100;
+          if (valorTotalInput) valorTotalInput.value = (qtdCalc > 0 && vuCalc >= 0) ? totalCalc.toFixed(2) : '';
+          if (comResumoEl) comResumoEl.textContent = 'Comissão: ' + _fmtMoney(Math.round((totalCalc * (pctCalc / 100)) * 100) / 100);
+        } catch (_) {}
+      };
+      if (qtdInput) qtdInput.oninput = _atualizarTotaisEdicao;
+      if (valorUnitInput) valorUnitInput.oninput = _atualizarTotaisEdicao;
+      if (comPctInput) comPctInput.oninput = _atualizarTotaisEdicao;
+      _atualizarTotaisEdicao();
       if (btnCancel) btnCancel.onclick = function(e) { try { e.preventDefault(); } catch (_) {} modal.style.display = 'none'; };
 
       if (btnSave) btnSave.onclick = async function(e) {
@@ -14465,7 +14606,11 @@ function _ocultarGraficoComissoes() {
         var cliId = String(document.getElementById('com-of-cli-id').value || '').trim();
         var vendId = String(document.getElementById('com-of-vend-id').value || '').trim();
         var qtd = String(document.getElementById('com-of-qtd').value || '').trim();
-        var valor = String(document.getElementById('com-of-valor').value || '').trim();
+        var valorUnit = String((document.getElementById('edit-of-valor-unitario') || {}).value || '').trim();
+        var qtdNum = Number(String(qtd).replace(',', '.')) || 0;
+        var valorUnitNum = Number(String(valorUnit).replace(',', '.')) || 0;
+        var valorTotalCalc = Math.round((qtdNum * valorUnitNum) * 100) / 100;
+        var valor = String(valorTotalCalc || '');
         var st = String(document.getElementById('com-of-status').value || '').trim();
         var created = String(document.getElementById('com-of-created').value || '').trim();
         var conc = String(document.getElementById('com-of-conclusao').value || '').trim();
@@ -14474,8 +14619,9 @@ function _ocultarGraficoComissoes() {
 
         if (cliId) payload.cli_id = cliId;
         if (vendId) payload.vendedor_id = vendId;
-        if (qtd) payload.quantidade = Number(String(qtd).replace(',', '.'));
-        if (valor) payload.valor_total = Number(String(valor).replace(',', '.'));
+        if (qtd) payload.quantidade = qtdNum;
+        if (valorUnit) payload.valor_unitario = valorUnitNum;
+        payload.valor_total = valorTotalCalc;
         if (st) payload.status = st;
         if (created) payload.created_at = created;
         if (conc) payload.data_conclusao = conc;
@@ -14507,7 +14653,7 @@ function _ocultarGraficoComissoes() {
               cliente: document.getElementById('com-of-cli-busca').value,
               vendedor: vendNomeNovo,
               quantidade: qtd,
-              valor_total: valor,
+              valor_total: valorTotalCalc,
               comissao_pct: comPct,
               status: st,
               created_at: created,
