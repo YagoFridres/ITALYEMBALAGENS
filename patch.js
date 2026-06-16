@@ -224,9 +224,68 @@
     });
   }
 
-  async function fetchPins() {
-    var json = await apiJson('/api/pins');
-    return Array.isArray(json && json.data) ? json.data : [];
+  function _pinKey(tipo, referenciaId) {
+    return String(tipo || '').trim().toLowerCase() + '::' + String(referenciaId || '').trim();
+  }
+  async function fetchPins(force) {
+    var ttl = 60000;
+    var now = Date.now();
+    var cache = window.__patchPinsCache || null;
+    if (!force && cache && cache.ts && (now - cache.ts) < ttl && Array.isArray(cache.data)) return cache.data.slice();
+    if (!force && window.__patchPinsPromise) return window.__patchPinsPromise;
+    window.__patchPinsPromise = apiJson('/api/pins')
+      .then(function(json) {
+        var pins = Array.isArray(json && json.data) ? json.data : [];
+        var map = Object.create(null);
+        pins.forEach(function(pin) {
+          var key = _pinKey(pin && pin.tipo, pin && pin.referencia_id);
+          if (key) map[key] = pin;
+        });
+        window.__patchPinsCache = { ts: Date.now(), data: pins.slice(), map: map };
+        window.__patchPinsPromise = null;
+        return pins.slice();
+      })
+      .catch(function(err) {
+        window.__patchPinsPromise = null;
+        throw err;
+      });
+    return window.__patchPinsPromise;
+  }
+  function _getPinsMap() {
+    var cache = window.__patchPinsCache || null;
+    return cache && cache.map ? cache.map : Object.create(null);
+  }
+  function _isPinned(tipo, referenciaId) {
+    var key = _pinKey(tipo, referenciaId);
+    return !!_getPinsMap()[key];
+  }
+  function _pinBtnColors(tipo, referenciaId) {
+    return _isPinned(tipo, referenciaId)
+      ? { color: '#f59e0b', border: 'rgba(245,158,11,.45)', background: 'rgba(245,158,11,.14)' }
+      : { color: '#94a3b8', border: 'rgba(148,163,184,.28)', background: 'rgba(148,163,184,.08)' };
+  }
+  function _pinBtnStyleAttr(tipo, referenciaId) {
+    var c = _pinBtnColors(tipo, referenciaId);
+    return 'color:' + c.color + ';border-color:' + c.border + ';background:' + c.background + ';';
+  }
+  function _applyPinStateToButton(btn) {
+    if (!btn) return;
+    var tipo = String(btn.getAttribute('data-pin-type') || '').trim().toLowerCase();
+    var ref = String(btn.getAttribute('data-pin-id') || '').trim();
+    if (!tipo || !ref) return;
+    var c = _pinBtnColors(tipo, ref);
+    try { btn.style.color = c.color; } catch (_) {}
+    try { btn.style.borderColor = c.border; } catch (_) {}
+    try { btn.style.background = c.background; } catch (_) {}
+    try { btn.setAttribute('title', (_isPinned(tipo, ref) ? 'Pin ativo no Hub' : 'Fixar no Hub')); } catch (_) {}
+  }
+  function _applyPinStates(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    Array.prototype.slice.call(scope.querySelectorAll('[data-pin-type][data-pin-id]')).forEach(_applyPinStateToButton);
+  }
+  async function _refreshPinStates(force) {
+    try { await fetchPins(!!force); } catch (_) {}
+    _applyPinStates(document);
   }
   async function renderHubPins() {
     ensurePinUi();
@@ -253,6 +312,7 @@
           apiJson('/api/pins/' + encodeURIComponent(String(delBtn.getAttribute('data-pin-id') || '')), { method: 'DELETE' })
             .then(function() {
               notify('🗑️ Pin removido', 'var(--green)');
+              _refreshPinStates(true).catch(function() {});
               renderHubPins();
             })
             .catch(function(err) { notify('Erro ao remover pin: ' + String(err && err.message || err), 'var(--red)'); });
@@ -332,6 +392,14 @@
   window.__patchRefreshPinsHub = function() {
     renderHubPins().catch(function() {});
   };
+  window.__patchRefreshPinStates = function(force) {
+    return _refreshPinStates(!!force);
+  };
+  window.__patchPinBtnStyleAttr = _pinBtnStyleAttr;
+  window.__patchApplyPinStates = _applyPinStates;
+  setTimeout(function() {
+    _refreshPinStates(false).catch(function() {});
+  }, 350);
 
   window.__patchOpenPinModal = async function(tipo, referenciaId, label) {
     try {
@@ -345,6 +413,7 @@
         body: { tipo: t, referencia_id: ref, observacao: String(observacao || '').trim() }
       });
       notify('📌 Item fixado no Hub com sucesso!', 'var(--green)');
+      _refreshPinStates(true).catch(function() {});
       renderHubPins().catch(function() {});
       return true;
     } catch (e) {
@@ -396,12 +465,21 @@
     });
     obs.observe(document.body, { childList: true, subtree: true });
   } catch (_) {}
-  setTimeout(function() { renderHubPins().catch(function() {}); }, 1200);
+  setTimeout(function() {
+    renderHubPins().catch(function() {});
+    _refreshPinStates(true).catch(function() {});
+  }, 1200);
 })();
 
 (function() {
   if (window.__patchHubTotalGeralInstalled) return;
   window.__patchHubTotalGeralInstalled = true;
+  try {
+    if (window._dashTotalInterval) {
+      clearInterval(window._dashTotalInterval);
+      window._dashTotalInterval = null;
+    }
+  } catch (_) {}
 
   function _hubToken() {
     try { return String(window._token || localStorage.getItem('token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { return ''; }
@@ -416,15 +494,22 @@
   }
   async function _hubFetchTotalGeral() {
     try {
+      if (window.__hubTotalFetchErro) return null;
       var cache = window._hubTotalGeralCache || null;
-      if (cache && (Date.now() - Number(cache.ts || 0) < 60000) && cache.data) return cache.data;
+      if (cache && cache.done && cache.data) return cache.data;
       var token = _hubToken();
       var resp = await fetch('/api/dashboard/total-geral', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
       var json = await resp.json().catch(function() { return null; });
-      if (!json || json.ok === false) return null;
-      window._hubTotalGeralCache = { ts: Date.now(), data: json };
+      if (!resp.ok || !json || json.ok === false) {
+        window.__hubTotalFetchErro = true;
+        return null;
+      }
+      window._hubTotalGeralCache = { ts: Date.now(), data: json, done: true };
       return json;
-    } catch (_) { return null; }
+    } catch (_) {
+      window.__hubTotalFetchErro = true;
+      return null;
+    }
   }
   function _hubFindCardByLabel(kpis, labelText) {
     var cards = Array.prototype.slice.call((kpis && kpis.querySelectorAll('.hub-kpi')) || []);
@@ -460,7 +545,11 @@
       var kpis = document.getElementById('hub-kpis');
       if (!page || !kpis) return;
       var data = await _hubFetchTotalGeral();
-      if (!data) return;
+      if (!data) {
+        _hubUpsertCard(kpis, 'FATURAMENTO DO MÊS', '—', 'Sem dados no momento', '#94a3b8');
+        _hubUpsertCard(kpis, 'TOTAL EM OFs (HISTÓRICO)', '—', 'Sem dados no momento', '#94a3b8');
+        return;
+      }
 
       var mesNome = _hubMesAtualNome();
       var fatCard = _hubFindCardByLabel(kpis, 'Faturamento do mês');
@@ -505,12 +594,27 @@
       var deb = null;
       window.__patchHubTotalObs = new MutationObserver(function() {
         clearTimeout(deb);
-        deb = setTimeout(function() { _patchHubTotalCards(); }, 180);
+        deb = setTimeout(function() {
+          try {
+            var page = document.getElementById('page-hub');
+            if (!page || page.style.display === 'none') return;
+            if (window.__patchHubTotalLoaded || window.__hubTotalFetchErro) return;
+            window.__patchHubTotalLoaded = true;
+            _patchHubTotalCards();
+          } catch (_) {}
+        }, 180);
       });
       window.__patchHubTotalObs.observe(document.body, { childList: true, subtree: true });
     }
-    setTimeout(_patchHubTotalCards, 800);
-    setTimeout(_patchHubTotalCards, 1800);
+    setTimeout(function() {
+      try {
+        var page = document.getElementById('page-hub');
+        if (!page || page.style.display === 'none') return;
+        if (window.__patchHubTotalLoaded || window.__hubTotalFetchErro) return;
+        window.__patchHubTotalLoaded = true;
+        _patchHubTotalCards();
+      } catch (_) {}
+    }, 800);
   } catch (_) {}
 })();
 
@@ -6822,7 +6926,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           '<td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem">' + esc(cliNomes || '—') + '</td>' +
           '<td style="padding:8px 10px;border:1px solid var(--border);text-align:right;color:var(--green)">' + esc(valorTxt) + '</td>' +
           '<td style="padding:8px 10px;border:1px solid var(--border);text-align:center">' +
-            '<button class="btn btn-ghost btn-sm" onclick="window.__patchOpenPinModal && window.__patchOpenPinModal(\'faca\',\'' + esc(f.id) + '\',\'Faca\')" style="font-size:.68rem;margin-right:4px;color:#fbbf24">📌</button>' +
+            '<button class="btn btn-ghost btn-sm" data-pin-type="faca" data-pin-id="' + esc(f.id) + '" onclick="window.__patchOpenPinModal && window.__patchOpenPinModal(\'faca\',\'' + esc(f.id) + '\',\'Faca\')" style="font-size:.68rem;margin-right:4px;' + (window.__patchPinBtnStyleAttr ? window.__patchPinBtnStyleAttr('faca', String(f.id || '')) : '') + '">📌</button>' +
             '<button class="btn btn-ghost btn-sm" onclick="abrirModalFaca1(\'' + esc(f.id) + '\')" style="font-size:.68rem;margin-right:4px">✏</button>' +
             '<button class="btn btn-ghost btn-sm" onclick="abrirModalQRCodeEstoque(\'faca\',\'' + esc(f.id) + '\',\'' + esc(f.nome || '') + '\')" style="font-size:.68rem;margin-right:4px">🔳</button>' +
             '<button class="btn btn-ghost btn-sm" onclick="excluirFaca1(\'' + esc(f.id) + '\')" style="font-size:.68rem;color:var(--red)">🗑</button>' +
@@ -8794,7 +8898,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                 '<td style="text-align:center" class="muted">' + esc(validade ? _fmtDateISO(validade).split('-').reverse().join('/') : '-') + '</td>' +
                 '<td style="text-align:right">' +
                   '<div class="pcp-actions">' +
-                    '<button class="pcp-btn" type="button" onclick="window.__patchOpenPinModal && window.__patchOpenPinModal(\'tinta\',\'' + safeAttr(id) + '\',\'Tinta\')">📌</button>' +
+                    '<button class="pcp-btn" type="button" data-pin-type="tinta" data-pin-id="' + safeAttr(id) + '" style="' + (window.__patchPinBtnStyleAttr ? window.__patchPinBtnStyleAttr('tinta', id) : '') + '" onclick="window.__patchOpenPinModal && window.__patchOpenPinModal(\'tinta\',\'' + safeAttr(id) + '\',\'Tinta\')">📌</button>' +
                     '<button class="pcp-btn" type="button" onclick="window._abrirModalMovTinta(window.__ESTOQUE_TINTAS_BYID[\'' + safeAttr(id) + '\'])">Movimentar ↕</button>' +
                     '<button class="pcp-btn" type="button" onclick="window._abrirModalNovaTinta(window.__ESTOQUE_TINTAS_BYID[\'' + safeAttr(id) + '\'])">Editar ✏</button>' +
                     '<button class="pcp-btn danger" type="button" onclick="window._excluirTinta(\'' + safeAttr(id) + '\')">Excluir 🗑</button>' +
@@ -8942,7 +9046,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                       '<td style="text-align:center">' + _statusBadgeHtml(x.st, x.venc) + '</td>' +
                       '<td style="text-align:right">' +
                         '<div class="pcp-actions">' +
-                          '<button class="pcp-btn" type="button" onclick="window.__patchOpenPinModal && window.__patchOpenPinModal(\'material\',\'' + safeAttr(id) + '\',\'Material\')">📌</button>' +
+                          '<button class="pcp-btn" type="button" data-pin-type="material" data-pin-id="' + safeAttr(id) + '" style="' + (window.__patchPinBtnStyleAttr ? window.__patchPinBtnStyleAttr('material', id) : '') + '" onclick="window.__patchOpenPinModal && window.__patchOpenPinModal(\'material\',\'' + safeAttr(id) + '\',\'Material\')">📌</button>' +
                           '<button class="pcp-btn" type="button" onclick="window._abrirModalMovMaterial(window.__ESTOQUE_MATERIAIS_BYID[\'' + safeAttr(id) + '\'])">Movimentar ↕</button>' +
                           '<button class="pcp-btn" type="button" onclick="window._abrirModalNovoMaterial(window.__ESTOQUE_MATERIAIS_BYID[\'' + safeAttr(id) + '\'])">Editar ✏</button>' +
                           '<button class="pcp-btn danger" type="button" onclick="window._excluirMaterial(\'' + safeAttr(id) + '\')">Excluir 🗑</button>' +
@@ -9470,6 +9574,9 @@ window._mbnActive = function(id) {
       : '';
     var btnA = d.id ? 'onclick="_mobAlterar(\'' + d.id + '\')"' : '';
     var btnC = d.id ? 'onclick="_mobCancelar(\'' + d.id + '\')"' : '';
+    var pinStyle = '';
+    try { pinStyle = window.__patchPinBtnStyleAttr ? window.__patchPinBtnStyleAttr('of', d.id || '') : 'color:#94a3b8;border-color:rgba(148,163,184,.28);background:rgba(148,163,184,.08);'; } catch (_) {}
+    var btnP = d.id ? 'onclick="window.__patchOpenPinModal && window.__patchOpenPinModal(\'of\',\'' + d.id + '\',\'OF\')"' : '';
     return (
       '<div class="mob-of-card' + borda + '" data-of-id="' + d.id + '">' +
         '<div class="mob-of-card-top">' +
@@ -9492,6 +9599,7 @@ window._mbnActive = function(id) {
         '<div class="mob-of-bottom">' +
           imgHTML +
           '<div class="mob-of-actions">' +
+            '<button class="mob-of-btn" data-pin-type="of" data-pin-id="' + (d.id || '') + '" style="' + pinStyle + '" ' + btnP + '>📌</button>' +
             '<button class="mob-of-btn alterar"  ' + btnA + '>Alterar</button>' +
             '<button class="mob-of-btn cancelar" ' + btnC + '>Cancelar</button>' +
             '<button class="mob-of-btn rapida" ' +
@@ -10042,10 +10150,14 @@ window._mbnActive = function(id) {
       var pinBtn = document.createElement('button');
       pinBtn.className = 'patch-ofmaq-calendar-btn';
       pinBtn.type = 'button';
+      pinBtn.setAttribute('data-pin-type', 'of');
+      pinBtn.setAttribute('data-pin-id', id);
       pinBtn.title = 'Fixar OF no Hub';
       pinBtn.textContent = '📌';
-      pinBtn.style.borderColor = 'rgba(245,158,11,.35)';
-      pinBtn.style.color = '#fbbf24';
+      try {
+        var pinStyle = window.__patchPinBtnStyleAttr ? window.__patchPinBtnStyleAttr('of', id) : '';
+        if (pinStyle) pinBtn.style.cssText += pinStyle;
+      } catch (_) {}
       pinBtn.onclick = function(ev) {
         try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
         try {
@@ -11945,6 +12057,64 @@ window._mbnActive = function(id) {
     setInterval(_tickChapas, 1500);
   })();
 
+  (function _hubPinsChapas() {
+    function _injectHubPinIntoChapasRows() {
+      try {
+        Array.prototype.slice.call(document.querySelectorAll('#tabelaChapasEstoque #est-table-body tr')).forEach(function(tr) {
+          if (!tr) return;
+          var actionsWrap = tr.querySelector('td[data-label="Ações"] > div') || tr.querySelector('td:last-child > div');
+          if (!actionsWrap) return;
+          var refBtn = actionsWrap.querySelector('[data-acao-chapa][data-id]') || actionsWrap.querySelector('.btn-pin-chapa');
+          var chapaId = String(refBtn && refBtn.getAttribute('data-id') || '').trim();
+          if (!chapaId) {
+            var onclickRaw = String(refBtn && refBtn.getAttribute('onclick') || '').trim();
+            var match = onclickRaw.match(/togglePinChapa\('([^']+)'/);
+            chapaId = String(match && match[1] || '').trim();
+          }
+          if (!chapaId) return;
+
+          var btn = actionsWrap.querySelector('.patch-hub-pin-chapa');
+          if (!btn) {
+            btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-icon btn-sm patch-hub-pin-chapa';
+            btn.textContent = '📌';
+            btn.setAttribute('data-pin-type', 'chapa');
+            btn.setAttribute('data-pin-id', chapaId);
+            btn.setAttribute('title', 'Fixar chapa no Hub');
+            btn.style.cssText = 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:5px;padding:4px 6px;cursor:pointer;font-size:0.78rem;line-height:1;';
+            btn.onclick = function(ev) {
+              try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+              try {
+                if (typeof window.__patchOpenPinModal === 'function') window.__patchOpenPinModal('chapa', chapaId, 'Chapa');
+              } catch (_) {}
+            };
+            var nextRef = actionsWrap.querySelector('.btn-pin-chapa');
+            if (nextRef && nextRef.nextSibling) actionsWrap.insertBefore(btn, nextRef.nextSibling);
+            else actionsWrap.appendChild(btn);
+          }
+
+          btn.setAttribute('data-pin-id', chapaId);
+          try { _applyPinStateToButton(btn); } catch (_) {}
+        });
+      } catch (_) {}
+    }
+
+    function _tickHubPinChapas() {
+      try {
+        if (!document.getElementById('tabelaChapasEstoque')) return;
+        _injectHubPinIntoChapasRows();
+      } catch (_) {}
+    }
+
+    try {
+      var obs = new MutationObserver(function() { setTimeout(_tickHubPinChapas, 80); });
+      obs.observe(document.body, { childList: true, subtree: true });
+    } catch (_) {}
+    setTimeout(_tickHubPinChapas, 700);
+    setInterval(_tickHubPinChapas, 1500);
+  })();
+
   try {
     var obsBackup = new MutationObserver(function() {
       _adicionarBotoesBackup();
@@ -12060,6 +12230,7 @@ function _renderTabelaOFs(json) {
           + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Vendedor</th>'
           + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">Qtd</th>'
           + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">Valor Total</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:center">Preço Unit.</th>'
           + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">% Comissão</th>'
           + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">Comissão (R$)</th>'
           + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Data</th>'
@@ -12130,7 +12301,7 @@ function _renderTabelaOFs(json) {
 
       html += ''
         + '<tr style="background:#6366f1;color:#fff;font-weight:700">'
-        + '<td colspan="10" style="padding:10px 14px;font-size:13px">👤 ' + String(vendedor) + ' &nbsp;·&nbsp; ' + String(ofs.length) + ' OFs &nbsp;·&nbsp; Total: ' + fmt(totalV) + ' &nbsp;·&nbsp; Comissão (' + String(pctG) + '%): <span style="color:#4ade80">' + fmt(comV) + '</span></td>'
+        + '<td colspan="11" style="padding:10px 14px;font-size:13px">👤 ' + String(vendedor) + ' &nbsp;·&nbsp; ' + String(ofs.length) + ' OFs &nbsp;·&nbsp; Total: ' + fmt(totalV) + ' &nbsp;·&nbsp; Comissão (' + String(pctG) + '%): <span style="color:#4ade80">' + fmt(comV) + '</span></td>'
         + '</tr>';
 
       ofs.forEach(function(of) {
@@ -12153,6 +12324,8 @@ function _renderTabelaOFs(json) {
         var qtd = qtdBruta != null ? Number(qtdBruta) : null;
         var qtdStr = (qtd != null && !isNaN(qtd)) ? String(qtd) : '—';
         var valTot = Number(of && (of.valor_total ?? of.valor_venda ?? of.valorTotal ?? 0) || 0) || 0;
+        var precoUnit = (valTot && qtd && Number(qtd) > 0) ? (valTot / Number(qtd)) : null;
+        var tdPreco = precoUnit != null ? ('R$ ' + Number(precoUnit).toFixed(2).replace('.', ',')) : '—';
         var pctO = Number(of && (of.comissao_pct ?? pctG ?? 0) || 0) || 0;
         var comRs = (of && of.comissao_rs != null) ? Number(of.comissao_rs || 0) : (valTot * (pctO / 100));
         var dt = of && (of.data_conclusao || of.created_at || of.dataConclusao || of.createdAt);
@@ -12164,11 +12337,12 @@ function _renderTabelaOFs(json) {
           + '<td style="padding:7px 12px">' + String(vend || '—').replace(/</g, '&lt;') + '</td>'
           + '<td style="padding:7px 12px;text-align:right">' + qtdStr + '</td>'
           + '<td style="padding:7px 12px;text-align:right">' + fmt(valTot) + '</td>'
+          + '<td style="padding:7px 12px;text-align:center">' + tdPreco + '</td>'
           + '<td style="padding:7px 12px;text-align:right">' + Number(pctO || 0).toFixed(2) + '%</td>'
           + '<td style="padding:7px 12px;text-align:right;color:#4ade80">' + fmt(comRs) + '</td>'
           + '<td style="padding:7px 12px">' + fmtD(dt) + '</td>'
           + '<td style="padding:7px 12px">' + badge(st) + '</td>'
-          + '<td style="padding:7px 12px;text-align:center;white-space:nowrap"><button data-com-pin="1" data-of-id="' + String(id).replace(/"/g, '&quot;') + '" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.12);color:#fbbf24;cursor:pointer;font-size:12px;margin-right:6px">📌</button><button data-com-trocar="1" data-of-id="' + String(id).replace(/"/g, '&quot;') + '" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:#0b1220;color:#fff;cursor:pointer;font-size:12px">✏️ Trocar</button></td>'
+          + '<td style="padding:7px 12px;text-align:center;white-space:nowrap"><button data-com-trocar="1" data-of-id="' + String(id).replace(/"/g, '&quot;') + '" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:#0b1220;color:#fff;cursor:pointer;font-size:12px">✏️ Trocar</button></td>'
           + '</tr>';
       });
 
@@ -12176,6 +12350,7 @@ function _renderTabelaOFs(json) {
         + '<tr style="background:var(--bg3,#111);font-weight:600;border-bottom:3px solid var(--border,#333)">'
         + '<td colspan="4" style="padding:8px 12px">Subtotal ' + String(vendedor) + '</td>'
         + '<td style="padding:8px 12px;text-align:right">' + fmt(totalV) + '</td>'
+        + '<td></td>'
         + '<td style="padding:8px 12px;text-align:right">' + String(pctG) + '%</td>'
         + '<td style="padding:8px 12px;text-align:right;color:#4ade80">' + fmt(comV) + '</td>'
         + '<td colspan="3"></td>'
@@ -13598,16 +13773,6 @@ function _ocultarGraficoComissoes() {
       window.__comTrocarBound = true;
       document.addEventListener('click', function(e) {
         try {
-          var pinBtn = e && e.target && (e.target.closest ? e.target.closest('button[data-com-pin]') : null);
-          if (pinBtn) {
-            var pinId = String(pinBtn.getAttribute('data-of-id') || '').trim();
-            if (!pinId) return;
-            try { e.preventDefault(); e.stopImmediatePropagation(); } catch (_) {}
-            try {
-              if (typeof window.__patchOpenPinModal === 'function') window.__patchOpenPinModal('of', pinId, 'OF');
-            } catch (_) {}
-            return;
-          }
           var btn = e && e.target && (e.target.closest ? e.target.closest('button[data-com-trocar]') : null);
           if (!btn) return;
           var id = String(btn.getAttribute('data-of-id') || '').trim();
@@ -14000,8 +14165,6 @@ function _ocultarGraficoComissoes() {
       + '#pcp-busca-universal .bu-ico{font-size:18px;line-height:1;min-width:26px;text-align:center}'
       + '#pcp-busca-universal .bu-main{font-size:13px;font-weight:700;color:#f8fafc}'
       + '#pcp-busca-universal .bu-sub{font-size:12px;color:#94a3b8;margin-top:2px}'
-      + '#pcp-busca-universal .bu-pin-btn{position:absolute;top:10px;right:10px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);color:#fbbf24;border-radius:8px;padding:4px 7px;cursor:pointer;font-size:12px}'
-      + '#pcp-busca-universal .bu-pin-btn:hover{filter:brightness(1.12)}'
       + '#pcp-busca-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100001}'
       + '#pcp-busca-modal .m-box{width:min(980px,94vw);max-height:88vh;overflow:auto;background:#0b1220;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:16px;color:#fff}'
       + '#pcp-busca-modal .m-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}'
@@ -14170,14 +14333,6 @@ function _ocultarGraficoComissoes() {
         }
       };
       actions.appendChild(btnCloneOf);
-      var btnPinOf = document.createElement('button');
-      btnPinOf.textContent = '📌 Fixar no Hub';
-      btnPinOf.onclick = function() {
-        try {
-          if (typeof window.__patchOpenPinModal === 'function') window.__patchOpenPinModal('of', String(obj && obj.id || item && item.id || ''), 'OF');
-        } catch (_) {}
-      };
-      actions.appendChild(btnPinOf);
       var btnCloseOf = document.createElement('button');
       btnCloseOf.textContent = 'Fechar';
       btnCloseOf.onclick = function() { modal.style.display = 'none'; };
@@ -14203,17 +14358,6 @@ function _ocultarGraficoComissoes() {
       actions.appendChild(btnCloseCli);
     }
     if (actions && kind !== 'clientes' && kind !== 'ofs') {
-      var pinType = pinTypeFromKind(kind, obj || item);
-      if (pinType) {
-        var btnPin = document.createElement('button');
-        btnPin.textContent = '📌 Fixar no Hub';
-        btnPin.onclick = function() {
-          try {
-            if (typeof window.__patchOpenPinModal === 'function') window.__patchOpenPinModal(pinType, String(obj && obj.id || item && item.id || ''), ttl);
-          } catch (_) {}
-        };
-        actions.appendChild(btnPin);
-      }
       var btnClose = document.createElement('button');
       btnClose.textContent = 'Fechar';
       btnClose.onclick = function() { modal.style.display = 'none'; };
@@ -14325,15 +14469,15 @@ function _ocultarGraficoComissoes() {
           return '<div class="bu-card" data-kind="' + cat + '" data-id="' + esc(item.id) + '"><div class="bu-ico">🏢</div><div><div class="bu-main">' + esc(item.nome) + '</div><div class="bu-sub">' + esc([item.cidade, item.uf].filter(Boolean).join('/')) + '</div></div></div>';
         }
         if (cat === 'ofs') {
-          return '<div class="bu-card" data-kind="' + cat + '" data-id="' + esc(item.id) + '"><button class="bu-pin-btn" type="button" data-pin-kind="of" data-pin-id="' + esc(item.id) + '" title="Fixar OF no Hub">📌</button><div class="bu-ico">📋</div><div><div class="bu-main">#' + esc(item.numero) + ' · ' + esc(item.cliente) + '</div><div class="bu-sub">' + fmtMoney(item.valor_total) + ' · ' + statusBadge(item.status) + '</div></div></div>';
+          return '<div class="bu-card" data-kind="' + cat + '" data-id="' + esc(item.id) + '"><div class="bu-ico">📋</div><div><div class="bu-main">#' + esc(item.numero) + ' · ' + esc(item.cliente) + '</div><div class="bu-sub">' + fmtMoney(item.valor_total) + ' · ' + statusBadge(item.status) + '</div></div></div>';
         }
         if (cat === 'facas') {
-          return '<div class="bu-card" data-kind="' + cat + '" data-id="' + esc(item.id) + '"><button class="bu-pin-btn" type="button" data-pin-kind="faca" data-pin-id="' + esc(item.id) + '" title="Fixar Faca no Hub">📌</button><div class="bu-ico">🔧</div><div><div class="bu-main">' + esc(item.codigo) + '</div><div class="bu-sub">' + esc(item.descricao) + ' · ' + esc(item.status) + '</div></div></div>';
+          return '<div class="bu-card" data-kind="' + cat + '" data-id="' + esc(item.id) + '"><div class="bu-ico">🔧</div><div><div class="bu-main">' + esc(item.codigo) + '</div><div class="bu-sub">' + esc(item.descricao) + ' · ' + esc(item.status) + '</div></div></div>';
         }
         if (cat === 'cliches') {
-          return '<div class="bu-card" data-kind="' + cat + '" data-id="' + esc(item.id) + '"><button class="bu-pin-btn" type="button" data-pin-kind="cliche" data-pin-id="' + esc(item.id) + '" title="Fixar Clichê no Hub">📌</button><div class="bu-ico">🖨️</div><div><div class="bu-main">' + esc(item.codigo) + ' · ' + esc(item.cliente) + '</div><div class="bu-sub">' + esc(item.cores) + '</div></div></div>';
+          return '<div class="bu-card" data-kind="' + cat + '" data-id="' + esc(item.id) + '"><div class="bu-ico">🖨️</div><div><div class="bu-main">' + esc(item.codigo) + ' · ' + esc(item.cliente) + '</div><div class="bu-sub">' + esc(item.cores) + '</div></div></div>';
         }
-        return '<div class="bu-card" data-kind="' + cat + '" data-id="' + esc(item.id) + '"><button class="bu-pin-btn" type="button" data-pin-kind="' + esc(item.tipo_pin || 'material') + '" data-pin-id="' + esc(item.id) + '" title="Fixar item no Hub">📌</button><div class="bu-ico">📦</div><div><div class="bu-main">' + esc(item.nome) + '</div><div class="bu-sub">' + esc(item.fornecedor) + ' · Qtd: ' + esc(item.quantidade) + '</div></div></div>';
+        return '<div class="bu-card" data-kind="' + cat + '" data-id="' + esc(item.id) + '"><div class="bu-ico">📦</div><div><div class="bu-main">' + esc(item.nome) + '</div><div class="bu-sub">' + esc(item.fornecedor) + ' · Qtd: ' + esc(item.quantidade) + '</div></div></div>';
       }).join('');
       html += '</div></div>';
     });
@@ -14369,16 +14513,6 @@ function _ocultarGraficoComissoes() {
       });
     });
     root.addEventListener('click', function(e) {
-      var pinBtn = e && e.target && (e.target.closest ? e.target.closest('.bu-pin-btn') : null);
-      if (pinBtn) {
-        try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
-        try {
-          if (typeof window.__patchOpenPinModal === 'function') {
-            window.__patchOpenPinModal(String(pinBtn.getAttribute('data-pin-kind') || ''), String(pinBtn.getAttribute('data-pin-id') || ''), 'Busca');
-          }
-        } catch (_) {}
-        return;
-      }
       var card = e && e.target && (e.target.closest ? e.target.closest('.bu-card') : null);
       if (!card) return;
       var kind = String(card.getAttribute('data-kind') || '');

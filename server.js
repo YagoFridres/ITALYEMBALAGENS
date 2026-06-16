@@ -21159,56 +21159,58 @@ app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) =>
 
 app.get('/api/dashboard/total-geral', authMiddleware, async (req, res) => {
   try {
-    const batch = 1000;
-    let from = 0;
-    let totalHistorico = 0;
-    let totalMesAtual = 0;
-    let countHistorico = 0;
-    let countMesAtual = 0;
-    const now = new Date();
-    const mesAtual = now.getMonth();
-    const anoAtual = now.getFullYear();
+    setNoCache(res);
 
-    while (true) {
-      const { data, error } = await supabase
+    const buscarValoresPaginados = async (builder) => {
+      let from = 0;
+      const pageSize = 1000;
+      let rows = [];
+      while (true) {
+        let q = builder();
+        const { data, error } = await q.range(from, from + pageSize - 1);
+        if (error) throw error;
+        const lote = Array.isArray(data) ? data : [];
+        if (!lote.length) break;
+        rows = rows.concat(lote);
+        if (lote.length < pageSize) break;
+        from += pageSize;
+      }
+      return rows;
+    };
+
+    const agora = new Date();
+    const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
+
+    const totHist = await buscarValoresPaginados(() =>
+      supabase
         .from('ofs')
-        .select('created_at,valor_total,valor_venda,total,vl_total,quantidade,qtd,qtd_pedida,vl_unit,vl_unitario,valor_unitario')
-        .range(from, from + batch - 1);
-      if (error) throw error;
-      const rows = Array.isArray(data) ? data : [];
-      if (!rows.length) break;
+        .select('valor_total')
+        .not('valor_total', 'is', null)
+    );
+    const total_historico = (totHist || []).reduce((s, r) => s + (Number(r?.valor_total || 0) || 0), 0) || 0;
+    const count_historico = (totHist || []).length || 0;
 
-      rows.forEach((of) => {
-        const valor =
-          Number(of?.valor_total || 0) ||
-          Number(of?.valor_venda || 0) ||
-          Number(of?.total || 0) ||
-          Number(of?.vl_total || 0) ||
-          ((Number(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0) *
-            (Number(of?.vl_unit ?? of?.vl_unitario ?? of?.valor_unitario ?? 0) || 0)) ||
-          0;
-        totalHistorico += valor;
-        countHistorico += 1;
-        const dt = new Date(of?.created_at || '');
-        if (!isNaN(dt.getTime()) && dt.getMonth() === mesAtual && dt.getFullYear() === anoAtual) {
-          totalMesAtual += valor;
-          countMesAtual += 1;
-        }
-      });
+    const totMes = await buscarValoresPaginados(() =>
+      supabase
+        .from('ofs')
+        .select('valor_total')
+        .gte('created_at', inicioMes)
+        .not('valor_total', 'is', null)
+    );
+    const total_mes_atual = (totMes || []).reduce((s, r) => s + (Number(r?.valor_total || 0) || 0), 0) || 0;
+    const count_mes_atual = (totMes || []).length || 0;
 
-      if (rows.length < batch) break;
-      from += batch;
-    }
-
-    return res.json({
-      ok: true,
-      total_historico: totalHistorico,
-      total_mes_atual: totalMesAtual,
-      count_mes_atual: countMesAtual,
-      count_historico: countHistorico
-    });
+    return res.json({ ok: true, total_historico, count_historico, total_mes_atual, count_mes_atual });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: e.message || String(e) });
+    try { console.error('[dashboard/total-geral]', e && (e.stack || e.message) || e); } catch (_) {}
+    return res.status(500).json({
+      ok: false,
+      error: String(e && e.message || e || 'erro_inesperado'),
+      total_historico: 0,
+      count_historico: 0,
+      total_mes_atual: 0,
+      count_mes_atual: 0
+    });
   }
 });
 
