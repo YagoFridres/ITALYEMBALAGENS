@@ -13784,33 +13784,6 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
       });
     } catch (_) {}
   }, 200);
-  secaoDetalhamento.querySelectorAll('tr[data-cli-id]').forEach(function(tr) {
-    try {
-      var cliId = String(tr.dataset.cliId || '').trim();
-      var tdCli = tr.querySelector('.td-cli');
-      if (!cliId || !tdCli || String(tdCli.textContent || '').trim() !== '...') return;
-      var norm = cliNorm(cliId);
-      var mapa = ensureMapaClientes();
-      if (mapa && mapa[norm]) {
-        tdCli.textContent = mapa[norm];
-        return;
-      }
-      var token = '';
-      try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
-      fetch('/api/clientes/' + encodeURIComponent(cliId), { headers: token ? { Authorization: 'Bearer ' + token } : {} })
-        .then(function(r) { return r.json(); })
-        .then(function(c) {
-          var base = c && (c.data || c);
-          var nome = String((base && (base.nome || base.rs || base.razao_social)) || (Array.isArray(base) && base[0] && (base[0].nome || base[0].rs || base[0].razao_social)) || '(removido)').trim();
-          tdCli.textContent = nome || '—';
-          if (nome) {
-            if (!window._mapaClientesComissao) window._mapaClientesComissao = Object.create(null);
-            window._mapaClientesComissao[norm] = nome;
-          }
-        })
-        .catch(function() { tdCli.textContent = '—'; });
-    } catch (_) {}
-  });
   window._filtrarTabelaComissoes = function(termo) {
     var t = String(termo || '').toLowerCase();
     Array.prototype.slice.call(document.querySelectorAll('#tbody-ofs-comissao tr')).forEach(function(tr) {
@@ -13818,6 +13791,124 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
       tr.style.display = (!t || txt.indexOf(t) >= 0) ? '' : 'none';
     });
   };
+}
+
+async function _resolverClientesEmLote(cliIds, callback) {
+  try {
+    var idsUnicos = Array.from(new Set((Array.isArray(cliIds) ? cliIds : []).filter(Boolean).map(function(id) {
+      return String(id || '').trim();
+    }).filter(Boolean)));
+    if (!idsUnicos.length) return;
+    var LOTE = 10;
+    var token = '';
+    try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
+    for (var i = 0; i < idsUnicos.length; i += LOTE) {
+      var lote = idsUnicos.slice(i, i + LOTE);
+      await Promise.all(lote.map(async function(cliId) {
+        var norm = String(cliId || '').toLowerCase().trim();
+        try {
+          if (window._mapaClientesComissao && window._mapaClientesComissao[norm]) {
+            if (typeof callback === 'function') callback(cliId, window._mapaClientesComissao[norm]);
+            return;
+          }
+        } catch (_) {}
+        try {
+          var r = await fetch('/api/clientes/' + encodeURIComponent(cliId) + '?lite=1', {
+            headers: token ? { Authorization: 'Bearer ' + token } : {}
+          });
+          if (!r.ok) return;
+          var c = await r.json();
+          var base = c && (c.data || c);
+          var nome = String((base && (base.nome || base.rs || base.razao_social)) || (Array.isArray(base) && base[0] && (base[0].nome || base[0].rs || base[0].razao_social)) || '').trim();
+          if (nome) {
+            if (!window._mapaClientesComissao) window._mapaClientesComissao = Object.create(null);
+            window._mapaClientesComissao[norm] = nome;
+            if (typeof callback === 'function') callback(cliId, nome);
+          }
+        } catch (_) {}
+      }));
+      if (i + LOTE < idsUnicos.length) {
+        await new Promise(function(resolve) { setTimeout(resolve, 200); });
+      }
+    }
+  } catch (_) {}
+}
+
+function _injetarDetalhamentoComissoes(todasOFs, grupos, helpers) {
+  var secao = null;
+  try {
+    var paginaComissoes = document.querySelector('#page-comissoes, [data-page="comissoes"], .page-comissoes');
+    if (paginaComissoes) {
+      var filhos = Array.prototype.slice.call(paginaComissoes.children || []).filter(function(el) {
+        try { return (el.offsetHeight || 0) > 50; } catch (_) { return false; }
+      });
+      if (filhos.length >= 2) secao = filhos[1];
+    }
+  } catch (_) {}
+
+  if (!secao) {
+    try {
+      var todos = document.querySelectorAll('div, section, article');
+      for (var i = 0; i < todos.length; i += 1) {
+        var el = todos[i];
+        var textoFilhos = Array.prototype.slice.call(el.childNodes || []).filter(function(n) {
+          return n && (n.nodeType === Node.TEXT_NODE || (n.nodeType === Node.ELEMENT_NODE && n.children && n.children.length === 0));
+        }).map(function(n) {
+          return String(n.textContent || '').trim();
+        }).join(' ');
+        if (textoFilhos.indexOf('Detalhamento') >= 0 && (el.offsetHeight || 0) > 50) {
+          secao = el.parentElement;
+          if (secao && (secao.offsetHeight || 0) < 100) secao = secao.parentElement;
+          break;
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (!secao) {
+    try {
+      var allButtons = Array.prototype.slice.call(document.querySelectorAll('button, a'));
+      var excelButtons = allButtons.filter(function(btn) {
+        return String(btn.textContent || '').indexOf('Excel') >= 0;
+      });
+      if (excelButtons.length >= 2) {
+        var btnExcel = excelButtons[1];
+        secao = (btnExcel.closest && btnExcel.closest('div[class], section')) || (btnExcel.parentElement && btnExcel.parentElement.parentElement) || null;
+      }
+    } catch (_) {}
+  }
+
+  try {
+    console.log('[INJECT] secao encontrada:', !!secao, secao && secao.tagName, secao && secao.offsetHeight);
+  } catch (_) {}
+
+  if (!secao) {
+    try { console.error('[INJECT] impossível encontrar seção — abortando'); } catch (_) {}
+    return;
+  }
+
+  var _prevPause = window._pausarObservers;
+  window._pausarObservers = true;
+  try {
+    _injetarTabelaOFs(secao, todasOFs, grupos, helpers);
+  } finally {
+    setTimeout(function() { window._pausarObservers = _prevPause || false; }, 500);
+  }
+
+  try {
+    var cliIds = (Array.isArray(todasOFs) ? todasOFs : []).filter(function(of) {
+      return of && (of.cli_id || of.cliId) && !(of.cliente_nome || of._cliente_nome || of.cliente);
+    }).map(function(of) {
+      return String(of.cli_id || of.cliId || '').trim();
+    }).filter(Boolean);
+    _resolverClientesEmLote(cliIds, function(cliId, nome) {
+      try {
+        document.querySelectorAll('tr[data-cli-id="' + String(cliId).replace(/"/g, '&quot;') + '"] .td-cli').forEach(function(td) {
+          td.textContent = nome;
+        });
+      } catch (_) {}
+    });
+  } catch (_) {}
 }
 
 function _aguardarSecaoERenderizar(todasOFs, grupos, helpers, tentativas) {
@@ -13918,11 +14009,13 @@ function _renderTabelaOFs(json) {
       });
     } catch (_) {}
     try { console.log('[FIX OFs] total OFs para renderizar:', todasOFs.length); } catch (_) {}
-    _aguardarSecaoERenderizar(todasOFs, grupos, {
-      escHtml: escHtml,
-      cliNorm: cliNorm,
-      ensureMapaClientes: ensureMapaClientes
-    }, 0);
+    setTimeout(function() {
+      _injetarDetalhamentoComissoes(todasOFs, grupos, {
+        escHtml: escHtml,
+        cliNorm: cliNorm,
+        ensureMapaClientes: ensureMapaClientes
+      });
+    }, 800);
     try { console.log('[COM] detalhamento por vendedor OK'); } catch (_) {}
   } catch (_) {}
   finally {

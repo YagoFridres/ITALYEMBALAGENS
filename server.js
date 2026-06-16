@@ -8778,10 +8778,22 @@ app.patch('/api/clientes/:id', authMiddleware, async (req, res) => {
 app.get('/api/clientes/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
+    const lite = String(req.query.lite || '').trim() === '1';
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const { data, error } = await supabase.from('clientes').select('*').eq('id', id).maybeSingle();
     if (error) throw error;
     if (!data) return res.status(404).json({ ok: false, error: 'Cliente não encontrado' });
+    if (lite) {
+      return res.json({
+        ok: true,
+        data: {
+          ...data,
+          ofs: [],
+          total_ofs: 0,
+          total_valor: 0,
+        }
+      });
+    }
     const { data: ofs, error: errOfs } = await supabase
       .from('ofs')
       .select('id,numero,valor_total,total,status,created_at,data_conclusao,cli_id')
