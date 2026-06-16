@@ -1,6 +1,8 @@
 // LIMPEZA DE OVERLAYS ÓRFÃOS — executar imediatamente
 if (typeof NOTIFICACOES === 'undefined') window.NOTIFICACOES = [];
 window.NOTIFICACOES = window.NOTIFICACOES || [];
+// Reset de emergência da flag de comissões
+window._comRodando = false;
 (function limparOverlaysOrfaos() {
   var _OVERLAY_GRACE = 500;
   try { if (!window.__overlayTimestamps) window.__overlayTimestamps = {}; } catch (_) {}
@@ -106,16 +108,18 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
   if (window.__patchCalcBtnRestoreInstalled) return;
   window.__patchCalcBtnRestoreInstalled = true;
 
-  var _comEntrou = false;
+  window._comEntrou = window._comEntrou || false;
 
   function _bindCalcBtn() {
     try {
       var btn = Array.prototype.slice.call(document.querySelectorAll('button')).find(function(b) {
-        return String(b && b.textContent || '').trim() === 'Calcular';
+        return String(b && b.textContent || '').trim() === 'Calcular' && !b._patchCalc;
       });
-      if (!btn || btn._patchBound) return;
-      btn._patchBound = true;
+      if (!btn) return;
+      btn._patchCalc = true;
       btn.addEventListener('click', function() {
+        window._comRodando = false;
+        window._comEntrou = false;
         try { window.calcularComissoes && window.calcularComissoes(); } catch (_) {}
       });
     } catch (_) {}
@@ -133,14 +137,14 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
               && e.offsetParent !== null;
           } catch (_) { return false; }
         });
-        if (el && !_comEntrou && !window._comRodando) {
-          _comEntrou = true;
+        if (el && !window._comEntrou && !window._comRodando) {
+          window._comEntrou = true;
           try { console.log('[COM] seção visível, calculando...'); } catch (_) {}
           setTimeout(function() {
             try { window.calcularComissoes && window.calcularComissoes(); } catch (_) {}
           }, 300);
         }
-        if (!el) _comEntrou = false;
+        if (!el) window._comEntrou = false;
       } catch (_) {}
     }, 1000);
   } catch (_) {}
@@ -15840,6 +15844,9 @@ function _ocultarGraficoComissoes() {
 
   function _injetarTopoComissoes(dados, dadosAnt, grupos) {
     try {
+      if (!dados) return;
+      dadosAnt = dadosAnt || {};
+      grupos = grupos || [];
       _instalarCssComissoesLayout();
       var totalVendas = Number(dados && (dados.total_geral_vendas || dados.total_vendido || 0) || 0) || 0;
       var totalComissao = Number(dados && (dados.total_geral_comissao || dados.total_comissao || 0) || 0) || 0;
@@ -16192,23 +16199,27 @@ function _ocultarGraficoComissoes() {
 
   function _instalarAntiReentradaComRodando() {
     try {
-      var _calcFnOriginal = window.calcularComissoes;
-      if (typeof _calcFnOriginal !== 'function') return;
-      if (_calcFnOriginal.__patchComRodando) return;
+      var __calcComOriginal = window.calcularComissoes;
+      if (typeof __calcComOriginal !== 'function') return;
+      if (__calcComOriginal.__patchComRodando) return;
       var wrapped = async function() {
         if (window._comRodando) {
-          try { console.log('[COM] bloqueado reentrada'); } catch (_) {}
-          return;
+          try { console.log('[COM] já em execução, aguardando...'); } catch (_) {}
+          await new Promise(function(r) { setTimeout(r, 500); });
+          if (window._comRodando) return;
         }
         window._comRodando = true;
+        try { console.log('[COM PATCH] chamando API'); } catch (_) {}
         try {
-          return await _calcFnOriginal.apply(this, arguments);
+          return await __calcComOriginal.apply(this, arguments);
+        } catch (e) {
+          try { console.error('[COM] erro:', e); } catch (_) {}
         } finally {
-          setTimeout(function() { window._comRodando = false; }, 3000);
+          window._comRodando = false;
         }
       };
       wrapped.__patchComRodando = true;
-      wrapped.__patchComRodandoOrig = _calcFnOriginal;
+      wrapped.__patchComRodandoOrig = __calcComOriginal;
       window.calcularComissoes = wrapped;
     } catch (_) {}
   }
