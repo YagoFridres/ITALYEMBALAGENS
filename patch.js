@@ -116,7 +116,6 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       if (!btn || btn._patchBound) return;
       btn._patchBound = true;
       btn.addEventListener('click', function() {
-        window._comRodando = false;
         try { window.calcularComissoes && window.calcularComissoes(); } catch (_) {}
       });
     } catch (_) {}
@@ -13704,6 +13703,7 @@ function _acharSecaoDetalhamentoOFs() {
 
 function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
   helpers = helpers || {};
+  try { if (typeof _instalarCssComissoesLayout === 'function') _instalarCssComissoesLayout(); } catch (_) {}
   var escHtml = helpers.escHtml || function(v) { return String(v == null ? '' : v); };
   var cliNorm = helpers.cliNorm || function(v) { return String(v == null ? '' : v).trim().toLowerCase(); };
   var ensureMapaClientes = helpers.ensureMapaClientes || function() { return window._mapaClientesComissao || {}; };
@@ -13810,8 +13810,8 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
     + '    <button onclick="window._filtrarTabelaComissoes&&window._filtrarTabelaComissoes(document.getElementById(\'comissao-busca-of-input\').value)" style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:10px 16px;font-size:13px;cursor:pointer">Buscar</button>'
     + '  </div>'
     + '</div>'
-    + '<div style="overflow-x:auto">'
-    + '  <table id="tabela-ofs-comissao" style="width:100%;border-collapse:collapse">'
+    + '<div style="width:100%;max-width:100%;padding:0;margin:0;overflow-x:auto;box-sizing:border-box">'
+    + '  <table id="tabela-ofs-comissao" style="width:100%;border-collapse:collapse;table-layout:auto">'
     + '    <thead><tr style="background:#0f172a">'
     + '      <th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600"># OF</th>'
     + '      <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600">CLIENTE</th>'
@@ -13854,6 +13854,7 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
       tr.style.display = (!t || txt.indexOf(t) >= 0) ? '' : 'none';
     });
   };
+  try { if (typeof _expandirLarguraTabelaComissoes === 'function') _expandirLarguraTabelaComissoes(); } catch (_) {}
 }
 
 async function _resolverClientesEmLote(cliIds, callback) {
@@ -15751,8 +15752,95 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
   }
 
+  function _instalarCssComissoesLayout() {
+    try {
+      if (document.getElementById('_com_style_fix')) return;
+      var style = document.createElement('style');
+      style.id = '_com_style_fix';
+      style.textContent = ''
+        + '#_com_topo_v2, #_com_patch_detalhe, #tabela-com-ofs, #tbody-com-ofs, #_com_topo_v2 > div, #tabela-ofs-comissao, #tbody-ofs-comissao {'
+        + ' width:100% !important; max-width:100% !important; box-sizing:border-box !important; }'
+        + '#page-comissoes, [data-page="comissoes"], .page-comissoes, #_com_topo_v2, #_com_patch_detalhe, #_com_patch_topo {'
+        + ' overflow:visible !important; height:auto !important; max-height:none !important; }';
+      document.head.appendChild(style);
+    } catch (_) {}
+  }
+
+  function _liberarScrollComissoes() {
+    setTimeout(function() {
+      try {
+        ['#page-comissoes', '[data-page="comissoes"]', '.page-comissoes', '#_com_topo_v2', '#_com_patch_detalhe', '#_com_patch_topo'].forEach(function(sel) {
+          try {
+            var el = document.querySelector(sel);
+            if (!el) return;
+            el.style.overflow = 'visible';
+            el.style.overflowY = 'visible';
+            el.style.overflowX = 'visible';
+            el.style.height = 'auto';
+            el.style.maxHeight = 'none';
+            el.style.position = 'relative';
+          } catch (_) {}
+        });
+        var tbody = document.getElementById('tbody-com-ofs') || document.getElementById('tbody-ofs-comissao');
+        if (tbody) {
+          var elPai = tbody.parentElement;
+          for (var i = 0; i < 10 && elPai && elPai !== document.body; i += 1) {
+            try {
+              var style = getComputedStyle(elPai);
+              if ((style.overflow === 'hidden' || style.overflowY === 'hidden' || style.overflowY === 'scroll' || style.overflowY === 'auto')
+                  && elPai !== document.documentElement && String(elPai.id || '') !== 'main-scroll') {
+                elPai.style.overflow = 'visible';
+                elPai.style.overflowY = 'visible';
+                elPai.style.height = 'auto';
+                elPai.style.maxHeight = 'none';
+              }
+            } catch (_) {}
+            elPai = elPai.parentElement;
+          }
+        }
+        try { document.body.style.overflowY = 'auto'; } catch (_) {}
+        try { document.documentElement.style.overflowY = 'auto'; } catch (_) {}
+      } catch (_) {}
+    }, 500);
+
+    try {
+      if (!document.getElementById('_com_scroll_fix')) {
+        var styleScroll = document.createElement('style');
+        styleScroll.id = '_com_scroll_fix';
+        styleScroll.textContent = ''
+          + '#page-comissoes, [data-page="comissoes"], #_com_topo_v2, #_com_patch_detalhe, #_com_patch_topo {'
+          + ' overflow:visible !important; height:auto !important; max-height:none !important; }';
+        document.head.appendChild(styleScroll);
+      }
+    } catch (_) {}
+  }
+
+  function _expandirLarguraTabelaComissoes() {
+    setTimeout(function() {
+      try {
+        var tabelaCom = document.getElementById('tabela-com-ofs')
+          || document.getElementById('tabela-ofs-comissao')
+          || ((document.getElementById('tbody-com-ofs') || document.getElementById('tbody-ofs-comissao')) || {}).closest && (document.getElementById('tbody-com-ofs') || document.getElementById('tbody-ofs-comissao')).closest('table');
+        if (tabelaCom) {
+          tabelaCom.style.width = '100%';
+          tabelaCom.style.maxWidth = '100%';
+          tabelaCom.style.tableLayout = 'auto';
+          var el = tabelaCom.parentElement;
+          for (var i = 0; i < 8 && el && el !== document.body; i += 1) {
+            el.style.width = '100%';
+            el.style.maxWidth = '100%';
+            el.style.boxSizing = 'border-box';
+            el = el.parentElement;
+          }
+        }
+      } catch (_) {}
+      _liberarScrollComissoes();
+    }, 200);
+  }
+
   function _injetarTopoComissoes(dados, dadosAnt, grupos) {
     try {
+      _instalarCssComissoesLayout();
       var totalVendas = Number(dados && (dados.total_geral_vendas || dados.total_vendido || 0) || 0) || 0;
       var totalComissao = Number(dados && (dados.total_geral_comissao || dados.total_comissao || 0) || 0) || 0;
       var totalOFs = Number(dados && (dados.total_ofs || 0) || 0) || 0;
@@ -15856,7 +15944,9 @@ function _ocultarGraficoComissoes() {
           });
         }
       }
+      divTopo.style.cssText = 'width:100%;box-sizing:border-box';
       divTopo.innerHTML = htmlCards + htmlRanking + htmlResumo;
+      _expandirLarguraTabelaComissoes();
     } catch (_) {}
   }
 
@@ -16100,6 +16190,29 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
   }
 
+  function _instalarAntiReentradaComRodando() {
+    try {
+      var _calcFnOriginal = window.calcularComissoes;
+      if (typeof _calcFnOriginal !== 'function') return;
+      if (_calcFnOriginal.__patchComRodando) return;
+      var wrapped = async function() {
+        if (window._comRodando) {
+          try { console.log('[COM] bloqueado reentrada'); } catch (_) {}
+          return;
+        }
+        window._comRodando = true;
+        try {
+          return await _calcFnOriginal.apply(this, arguments);
+        } finally {
+          setTimeout(function() { window._comRodando = false; }, 3000);
+        }
+      };
+      wrapped.__patchComRodando = true;
+      wrapped.__patchComRodandoOrig = _calcFnOriginal;
+      window.calcularComissoes = wrapped;
+    } catch (_) {}
+  }
+
   try {
     if (!window.__comissoesObsInstalled) {
       window.__comissoesObsInstalled = true;
@@ -16112,56 +16225,16 @@ function _ocultarGraficoComissoes() {
   } catch (_) {}
 
   function _instalarDetectorNavComissoes() {
-    try {
-      if (window.__comissoesNavDetectorInstalled) return;
-      window.__comissoesNavDetectorInstalled = true;
-      window._comissoesJaCalculadas = false;
-
-      document.addEventListener('click', function(e) {
-        try {
-          var link = e && e.target && (e.target.closest ? e.target.closest('a, li, button, span, div') : null);
-          if (!link) return;
-          var txt = String(link.textContent || '').trim().toLowerCase();
-          if (!(txt === 'comissões' || txt === 'comissoes')) return;
-          window._comissoesJaCalculadas = false;
-          setTimeout(function() {
-            try {
-              if (!window._comissoesEmExecucao && !window._comissoesJaCalculadas && typeof window._executarCalculoComissoes === 'function') {
-                window._comissoesJaCalculadas = true;
-                window._executarCalculoComissoes();
-              }
-            } catch (_) {}
-          }, 400);
-        } catch (_) {}
-      }, true);
-
-      if (!window.__observerEntradaComissoes) {
-        window.__observerEntradaComissoes = new MutationObserver(function() {
-          if (window._pausarObservers) return;
-          try {
-            var el = document.querySelector('#page-comissoes, [data-page="comissoes"]');
-            if (!el) return;
-            var visivel = getComputedStyle(el).display !== 'none' && el.offsetParent !== null;
-            if (visivel && !window._comissoesJaCalculadas && !window._comissoesEmExecucao) {
-              window._comissoesJaCalculadas = true;
-              try { window.__observerEntradaComissoes.disconnect(); } catch (_) {}
-              setTimeout(function() {
-                try { if (typeof window._executarCalculoComissoes === 'function') window._executarCalculoComissoes(); } catch (_) {}
-              }, 300);
-            }
-          } catch (_) {}
-        });
-        try { window.__observerEntradaComissoes.observe(document.body, { childList: true, subtree: false }); } catch (_) {}
-      }
-    } catch (_) {}
+    return;
   }
 
   try { _instalarOverrideComissoes(); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 300); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 1200); } catch (_) {}
   try { setTimeout(_instalarExecGuardComissoes, 1400); } catch (_) {}
-  try { _instalarDetectorNavComissoes(); } catch (_) {}
-  try { setTimeout(_instalarDetectorNavComissoes, 1200); } catch (_) {}
+  try { _instalarAntiReentradaComRodando(); } catch (_) {}
+  try { setTimeout(_instalarAntiReentradaComRodando, 300); } catch (_) {}
+  try { setTimeout(_instalarAntiReentradaComRodando, 1200); } catch (_) {}
   try { setTimeout(_rebindBtnCalcular, 1000); } catch (_) {}
 })();
 
