@@ -9378,38 +9378,56 @@ async function _operadoresUpdateCompat(id, payload) {
 
 app.get('/api/operadores', authMiddleware, async (req, res) => {
   try {
-    const empId = req.query.empId ? String(req.query.empId) : '';
-    const cacheKey = 'operadores_' + (empId || 'all');
+    setNoCache(res);
+    const cacheKey = 'operadores_reais_v2';
     const cached = cacheGet(cacheKey);
-    if (cached) return ok(res, cached);
-    const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
-    let lastErr = null;
-    for (const col of cols) {
-      const filtrosAtivo = ['ativo', 'status', null];
-      for (const fAtivo of filtrosAtivo) {
-        let q = supabase.from('operadores').select('*').order('nome');
-        if (fAtivo === 'ativo') q = q.eq('ativo', true);
-        if (fAtivo === 'status') q = q.eq('status', 'Ativo');
-        if (col) q = q.eq(col, empId);
-        const { data, error } = await q;
-        if (!error) {
-          const rows = data || [];
-          cacheSet(cacheKey, rows);
-          return res.json({ ok: true, data: rows, operadores: rows });
+    if (cached != null) return res.json({ ok: true, data: cached, operadores: cached });
+
+    const pickNome = (r) => String(r?.nome ?? r?.name ?? r?.descricao ?? r?.operador_nome ?? r?.funcionario_nome ?? r?.colaborador_nome ?? r?.pessoa_nome ?? '').trim();
+    const normRow = (r) => ({ ...r, nome: pickNome(r) || String(r?.id || '').trim() || '—' });
+
+    const fetchAll = async (table) => {
+      const pageSize = 1000;
+      let from = 0;
+      let rows = [];
+      let ordered = true;
+      while (true) {
+        let q = supabase.from(table).select('*');
+        if (ordered) q = q.order('nome', { ascending: true });
+        const { data, error } = await q.range(from, from + pageSize - 1);
+        if (error) {
+          const msg = String(error?.message || error || '');
+          const low = msg.toLowerCase();
+          if (low.includes('does not exist') || low.includes('not exist') || low.includes('schema cache')) return null;
+          if (ordered && low.includes('column') && msg.includes('nome')) { ordered = false; from = 0; rows = []; continue; }
+          throw error;
         }
-        lastErr = error;
-        const msg = String(error.message || error);
-        const m = msg.toLowerCase();
-        if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found') || m.includes('schema cache')) {
-          cacheSet(cacheKey, []);
-          return res.json({ ok: true, data: [], operadores: [] });
-        }
-        if ((fAtivo === 'ativo' || fAtivo === 'status') && (msg.includes('column') || msg.includes('Could not find'))) continue;
-        if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
-        throw error;
+        const lote = Array.isArray(data) ? data : [];
+        if (!lote.length) break;
+        rows = rows.concat(lote);
+        if (lote.length < pageSize) break;
+        from += pageSize;
       }
+      return rows;
+    };
+
+    const tables = ['operadores', 'funcionarios', 'colaboradores', 'pessoas'];
+    let out = [];
+    for (const t of tables) {
+      const data = await fetchAll(t);
+      if (data == null) continue;
+      const rows = (Array.isArray(data) ? data : []).map(normRow).filter((r) => r && pickNome(r));
+      if (rows.length) { out = rows; break; }
     }
-    throw lastErr;
+
+    if (!out.length) {
+      cacheSet(cacheKey, [], 30 * 1000);
+      return res.json({ ok: true, data: [], operadores: [] });
+    }
+
+    out.sort((a, b) => String(a?.nome || '').localeCompare(String(b?.nome || '')));
+    cacheSet(cacheKey, out, 30 * 1000);
+    return res.json({ ok: true, data: out, operadores: out });
   } catch (e) { err(res, e); }
 });
 
@@ -9708,58 +9726,60 @@ app.delete('/api/cores-impressao/:id', authMiddleware, async (req, res) => {
 
 app.get('/api/maquinas', authMiddleware, async (req, res) => {
   try {
+    setNoCache(res);
     const ativasRaw = String(req.query?.ativas ?? req.query?.ativa ?? req.query?.ativo ?? '').trim().toLowerCase();
-    const apenasAtivas = (ativasRaw === '1' || ativasRaw === 'true' || ativasRaw === 'sim' || ativasRaw === 's');
-    const cacheKey = apenasAtivas ? 'maquinas_fluxo_ativas' : 'maquinas_fluxo';
-    const cached = cacheGet(cacheKey);
-    if (cached != null) return res.json({ ok: true, data: cached, maquinas: cached });
-    const selectBase =
-      'id,nome,codigo,setor,ativa,' +
-      'caixas_hora,' +
-      'tempo_setup_padrao_min,passagem_media,' +
-      'horario_inicio,horario_fim,horas_dia,tempo_disponivel,' +
-      'almoco_inicio,almoco_min,intervalo_manha_min,intervalo_tarde_min,setup_manha_min,setup_tarde_min,' +
-      'meta_perda_pct,descricao,icone,ordem,' +
-      'puxada_min,puxada_max,boca_max,altura_max';
+    let apenasAtivas = (ativasRaw === '1' || ativasRaw === 'true' || ativasRaw === 'sim' || ativasRaw === 's');
+    const todas = String(req.query?.todas ?? req.query?.todas_maquinas ?? '').trim().toLowerCase();
+    const ignoreEmpresa = (todas === '1' || todas === 'true' || todas === 'sim' || todas === 's');
 
-    let data = null;
-    let error = null;
-    let q = supabase.from('maquinas').select(selectBase).order('nome', { ascending: true });
-    q = q.eq('ativa', true);
-    let r0 = await q;
-    data = r0?.data;
-    error = r0?.error;
-    if (error) {
-      const msg = String(error?.message || error || '');
-      const low = msg.toLowerCase();
-      if (low.includes('does not exist') || low.includes('column')) {
-        let q2 = supabase.from('maquinas').select('*').order('nome', { ascending: true });
-        q2 = q2.eq('ativa', true);
-        const r2 = await q2;
-        data = r2?.data;
-        error = r2?.error;
+    let empresa_id = '';
+    if (!ignoreEmpresa) {
+      try { empresa_id = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { empresa_id = ''; }
+      if (!empresa_id) {
+        try { empresa_id = String(await getEmpresaId(req) || '').trim(); } catch (_) { empresa_id = ''; }
       }
     }
-    if (error) throw error;
-    const lista = Array.isArray(data) ? data : [];
-    const pick = {};
-    const score = (m) => {
-      let s = 0;
-      const prod = Number(m?.caixas_hora ?? m?.producao ?? m?.phora ?? 0) || 0;
-      s += Math.min(999999, Math.max(0, prod));
-      const t = Date.parse(String(m?.updated_at || m?.created_at || ''));
-      if (Number.isFinite(t)) s += Math.trunc(t / 1000);
-      return s;
-    };
-    for (const m of lista) {
-      const canon = _canonMaqNome(m?.nome || m?.col || m?.codigo || '');
-      if (!canon || !_MAQUINAS_ATIVAS.includes(canon)) continue;
-      if (apenasAtivas && m?.ativa === false) continue;
-      if (!pick[canon] || score(m) > score(pick[canon])) pick[canon] = m;
+
+    const cacheKey = ['maquinas_all', apenasAtivas ? 'ativas1' : 'ativas0', ignoreEmpresa ? 'todas1' : 'todas0', empresa_id || 'noemp'].join('|');
+    const cached = cacheGet(cacheKey);
+    if (cached != null) return res.json({ ok: true, data: cached, maquinas: cached });
+
+    const pageSize = 1000;
+    let from = 0;
+    let all = [];
+    let empCol = (!ignoreEmpresa && empresa_id) ? 'empresa_id' : '';
+
+    while (true) {
+      let q = supabase.from('maquinas').select('*').order('nome', { ascending: true });
+      if (empCol && empresa_id) q = q.eq(empCol, empresa_id);
+      if (apenasAtivas) {
+        try { q = q.eq('ativa', true); } catch (_) {}
+      }
+      const { data, error } = await q.range(from, from + pageSize - 1);
+      if (error) {
+        const msg = String(error?.message || error || '');
+        const low = msg.toLowerCase();
+        if (low.includes('column') && (msg.includes('empresa_id') || msg.includes('emp_id'))) {
+          if (empCol === 'empresa_id') { empCol = 'emp_id'; from = 0; all = []; continue; }
+          if (empCol === 'emp_id') { empCol = ''; from = 0; all = []; continue; }
+        }
+        if (low.includes('column') && msg.includes('ativa')) {
+          from = 0;
+          all = [];
+          apenasAtivas = false;
+          continue;
+        }
+        throw error;
+      }
+      const lote = Array.isArray(data) ? data : [];
+      if (!lote.length) break;
+      all = all.concat(lote);
+      if (lote.length < pageSize) break;
+      from += pageSize;
     }
-    const out = _MAQUINAS_ATIVAS.map((n) => pick[n]).filter(Boolean);
-    cacheSet(cacheKey, out, 60 * 1000);
-    return res.json({ ok: true, data: out, maquinas: out });
+
+    cacheSet(cacheKey, all, 30 * 1000);
+    return res.json({ ok: true, data: all, maquinas: all });
   } catch (e) { err(res, e); }
 });
 

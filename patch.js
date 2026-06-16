@@ -14017,59 +14017,90 @@ function _ocultarGraficoComissoes() {
     return [];
   }
 
-  async function _carregarOperadoresConclusao() {
+  async function _carregarOperadoresParaConclusao() {
+    try { window._operadoresConclusaoCache = null; } catch (_) {}
+    try { delete window._operadoresConclusaoCache; } catch (_) {}
+
     try {
-      var token = _getToken();
-      var r1 = await fetch('/api/operadores?t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
-      var j1 = await r1.json().catch(function() { return null; });
-      var lista1 = (j1 && j1.ok && Array.isArray(j1.data)) ? j1.data : [];
-      var nomes1 = lista1.map(function(o) { return String(o && (o.nome || o.name || o.operador_nome) || '').trim(); }).filter(Boolean);
-      if (nomes1.length) return nomes1.filter(function(v, i, a) { return a.indexOf(v) === i; });
+      var opNativos = window.OPERADORES || window._operadores || window.operadores || window.listaOperadores;
+      if (Array.isArray(opNativos) && opNativos.length > 0) {
+        window._operadoresConclusaoCache = opNativos;
+        return opNativos;
+      }
     } catch (_) {}
-    try {
-      var atual = String((window.CURRENT_USER && (window.CURRENT_USER.nome || window.CURRENT_USER.name)) || localStorage.getItem('nome') || '').trim();
-      return atual ? [atual] : [];
-    } catch (_) { return []; }
+
+    var token = _getToken();
+    var rotas = ['/api/operadores', '/api/operadores?todos=true', '/api/operadores?limit=100'];
+    for (var i = 0; i < rotas.length; i += 1) {
+      try {
+        var r = await fetch(rotas[i], { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+        if (!r.ok) continue;
+        var d = await r.json().catch(function() { return null; });
+        var lista = Array.isArray(d) ? d : ((d && (d.operadores || d.data)) || []);
+        lista = Array.isArray(lista) ? lista : [];
+        if (lista.length > 0) {
+          window._operadoresConclusaoCache = lista;
+          return lista;
+        }
+      } catch (_) {}
+    }
+    window._operadoresConclusaoCache = [];
+    return [];
+  }
+
+  async function _carregarOperadoresConclusao() {
+    return _carregarOperadoresParaConclusao();
   }
 
   async function _carregarMaquinasParaConclusao() {
-    if (Array.isArray(window._maquinasConclusaoCache)) return window._maquinasConclusaoCache;
-    if (window.__maquinasConclusaoPromise) return window.__maquinasConclusaoPromise;
-    window.__maquinasConclusaoPromise = (async function() {
-      try {
-        var token = _getToken();
-        var r = await fetch('/api/maquinas', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
-        var data = await r.json().catch(function() { return null; });
-        var lista = Array.isArray(data) ? data : ((data && (data.maquinas || data.data)) || []);
-        window._maquinasConclusaoCache = Array.isArray(lista) ? lista : [];
-        return window._maquinasConclusaoCache;
-      } catch (_) {
-        return [];
-      } finally {
-        window.__maquinasConclusaoPromise = null;
-      }
-    })();
-    return window.__maquinasConclusaoPromise;
-  }
+    try { window._maquinasConclusaoCache = null; } catch (_) {}
+    try { delete window._maquinasConclusaoCache; } catch (_) {}
 
-  async function _carregarUsuariosConclusao() {
-    if (Array.isArray(window._usuariosConclusaoCache)) return window._usuariosConclusaoCache;
-    if (window.__usuariosConclusaoPromise) return window.__usuariosConclusaoPromise;
-    window.__usuariosConclusaoPromise = (async function() {
-      try {
-        var token = _getToken();
-        var r = await fetch('/api/usuarios', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
-        var usuarios = await r.json().catch(function() { return null; });
-        var lista = Array.isArray(usuarios) ? usuarios : ((usuarios && (usuarios.usuarios || usuarios.data)) || []);
-        window._usuariosConclusaoCache = Array.isArray(lista) ? lista : [];
-        return window._usuariosConclusaoCache;
-      } catch (_) {
-        return [];
-      } finally {
-        window.__usuariosConclusaoPromise = null;
+    try {
+      var maqNativas = window.MAQUINAS || window._maquinas || window.maquinas || window.listaMaquinas;
+      if (Array.isArray(maqNativas) && maqNativas.length > 6) {
+        window._maquinasConclusaoCache = maqNativas;
+        return maqNativas;
       }
-    })();
-    return window.__usuariosConclusaoPromise;
+    } catch (_) {}
+
+    try {
+      var sels = Array.prototype.slice.call(document.querySelectorAll('select'));
+      for (var s = 0; s < Math.min(200, sels.length); s += 1) {
+        var sel = sels[s];
+        if (!sel || !sel.options || sel.options.length <= 8) continue;
+        var opts = Array.prototype.slice.call(sel.options).filter(function(o) {
+          var txt = String(o && o.textContent || '').trim();
+          return o && o.value && (txt.indexOf('IMP') >= 0 || txt.indexOf('Risc') >= 0 || txt.indexOf('Colad') >= 0 || txt.indexOf('Acab') >= 0 || txt.indexOf('Corte') >= 0);
+        });
+        if (opts.length > 6) {
+          var listaDom = opts.map(function(o) { return { id: String(o.value || '').trim(), nome: String(o.textContent || '').trim() }; }).filter(function(m) { return m.id && m.nome; });
+          if (listaDom.length > 6) {
+            window._maquinasConclusaoCache = listaDom;
+            return listaDom;
+          }
+        }
+      }
+    } catch (_) {}
+
+    var token = _getToken();
+    var rotasApi = ['/api/maquinas?todas=true', '/api/maquinas?limit=100&todas=true', '/api/maquinas?limit=100', '/api/maquinas', '/api/machines', '/api/equipamentos'];
+    for (var j = 0; j < rotasApi.length; j += 1) {
+      try {
+        var r2 = await fetch(rotasApi[j], { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+        if (!r2.ok) continue;
+        var d2 = await r2.json().catch(function() { return null; });
+        var lista2 = Array.isArray(d2) ? d2 : ((d2 && (d2.maquinas || d2.data)) || []);
+        lista2 = Array.isArray(lista2) ? lista2 : [];
+        if (lista2.length > 6) {
+          window._maquinasConclusaoCache = lista2;
+          try { console.log('[maquinas]', lista2.map(function(m) { return String((m && (m.nome || m.descricao || m.codigo || m.col)) || '').trim(); }).filter(Boolean)); } catch (_) {}
+          return lista2;
+        }
+      } catch (_) {}
+    }
+    window._maquinasConclusaoCache = [];
+    return [];
   }
 
   function _mostrarPopupConclusaoOF(of) {
@@ -14129,6 +14160,9 @@ function _ocultarGraficoComissoes() {
       }
       if (!of) return;
 
+      try { window._maquinasConclusaoCache = null; } catch (_) {}
+      try { window._operadoresConclusaoCache = null; } catch (_) {}
+
       var numero = String(of && (of.numero || of.of_num || of.of_numero || '') || '—').trim();
       var cliente = String(of && (of.cliNome || of.cliente_nome || of.cliente || '') || 'Cliente não identificado').trim();
       var usuario = '';
@@ -14145,8 +14179,11 @@ function _ocultarGraficoComissoes() {
         if (maqAtual) maquinasFluxo = [maqAtual];
       }
       var preloadMaquinas = _carregarMaquinasParaConclusao().catch(function() { return []; });
-      var preloadUsuarios = _carregarUsuariosConclusao().catch(function() { return []; });
-      var operadores = await _carregarOperadoresConclusao();
+      var preloadOperadores = _carregarOperadoresParaConclusao().catch(function() { return []; });
+      Promise.all([preloadMaquinas, preloadOperadores]).then(function(pair) {
+        try { console.log('[conclusao] máquinas:', (pair[0] && pair[0].length) || 0, 'operadores:', (pair[1] && pair[1].length) || 0); } catch (_) {}
+      }).catch(function() {});
+      var operadores = [];
 
       var backdrop = document.createElement('div');
       backdrop.className = 'com-conc-backdrop';
@@ -14281,11 +14318,8 @@ function _ocultarGraficoComissoes() {
         if (!maquinas.length && maquinasFluxo.length) {
           maquinas = maquinasFluxo.map(function(nome) { return { id: nome, nome: nome }; });
         }
-        var usuariosApi = await preloadUsuarios.catch(function() { return []; });
-        var operadoresLista = (Array.isArray(usuariosApi) ? usuariosApi.slice() : []).filter(Boolean);
-        if (!operadoresLista.length) {
-          operadoresLista = (Array.isArray(operadores) ? operadores : []).map(function(nome) { return { id: nome, nome: nome }; });
-        }
+        var opsApi = await preloadOperadores.catch(function() { return []; });
+        var operadoresLista = (Array.isArray(opsApi) ? opsApi.slice() : []).filter(Boolean);
         var row = document.createElement('div');
         row.className = 'com-conc-loss-row';
         row.innerHTML = ''
