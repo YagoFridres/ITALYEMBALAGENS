@@ -13662,77 +13662,95 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
   var escHtml = helpers.escHtml || function(v) { return String(v == null ? '' : v); };
   var cliNorm = helpers.cliNorm || function(v) { return String(v == null ? '' : v).trim().toLowerCase(); };
   var ensureMapaClientes = helpers.ensureMapaClientes || function() { return window._mapaClientesComissao || {}; };
-  var cores = ['#1a2744', '#1a3a2a', '#2d1f3a', '#2d2a1a'];
-  var mapaCorVendedor = Object.create(null);
-  (grupos || []).forEach(function(g, i) {
-    var nome = String(g && (g.vendedor || g.nome || g.vendedor_nome || g.vendedor_id) || '').trim();
-    if (nome) mapaCorVendedor[nome] = i;
+  var ordemVendedores = (grupos || []).map(function(g) {
+    return String(g && (g.vendedor || g.nome || g.vendedor_nome || '') || '').trim();
   });
-  var coresHeader = {
-    0: { bg: '#0d1f3c', border: '#1d4ed8', text: '#60a5fa' },
-    1: { bg: '#0d2d1a', border: '#059669', text: '#10b981' },
-    2: { bg: '#1f0d3c', border: '#7c3aed', text: '#a78bfa' },
-    3: { bg: '#2d1f0e', border: '#d97706', text: '#f59e0b' }
+  var getNomeVend = function(of) {
+    var vid = String(of && (of.vendedor_id || of.vendId || of.vend_id || '') || '').trim().toLowerCase();
+    var vendMap = window._vendedoresMap || {};
+    return String(
+      of && (of._vendedor_resolvido || of._vendedor_nome || of.vendedor)
+      || vendMap[vid]
+      || '—'
+    ).trim() || '—';
   };
+  var listaOFs = Array.isArray(todasOFs) ? todasOFs.slice() : [];
+  listaOFs.sort(function(a, b) {
+    var nA = getNomeVend(a);
+    var nB = getNomeVend(b);
+    var iA = ordemVendedores.indexOf(nA);
+    var iB = ordemVendedores.indexOf(nB);
+    return (iA === -1 ? 999 : iA) - (iB === -1 ? 999 : iB);
+  });
+  try {
+    console.log('[INJECT] ordem após sort:', listaOFs.slice(0, 5).map(function(o) { return getNomeVend(o); }));
+  } catch (_) {}
+
+  var totaisPorVendedor = Object.create(null);
+  listaOFs.forEach(function(of) {
+    var nome = getNomeVend(of);
+    if (!totaisPorVendedor[nome]) {
+      totaisPorVendedor[nome] = { count: 0, vendas: 0, comissao: 0 };
+    }
+    totaisPorVendedor[nome].count += 1;
+    totaisPorVendedor[nome].vendas += Number(of && (of.valor_total || of.valor_venda || 0) || 0) || 0;
+    totaisPorVendedor[nome].comissao += (Number(of && (of.valor_total || of.valor_venda || 0) || 0) || 0)
+      * ((Number(of && (of.comissao_pct || 1) || 1) || 1) / 100);
+  });
+
+  var cores = ['#1a2744', '#1a3a2a', '#2d1f3a', '#2d2a1a'];
+  var coresHeader = [
+    { bg: '#0d1f3c', border: '#1d4ed8', text: '#60a5fa' },
+    { bg: '#0d2d1a', border: '#059669', text: '#10b981' },
+    { bg: '#1f0d3c', border: '#7c3aed', text: '#a78bfa' },
+    { bg: '#2d1f0e', border: '#d97706', text: '#f59e0b' }
+  ];
   ensureMapaClientes();
-  window._comissaoOFs = Array.isArray(todasOFs) ? todasOFs.slice() : [];
+  window._comissaoOFs = listaOFs.slice();
   var htmlFinal = '';
   var vendedorAtual = null;
-  (todasOFs || []).forEach(function(of, idx) {
+  listaOFs.forEach(function(of, idx) {
     var quantidade = Number(of && (of.quantidade ?? of.qtd ?? 0) || 0) || 0;
     var valorTotal = Number(of && (of.valor_total ?? of.valor_venda ?? 0) || 0) || 0;
     var vu = Number(of && of.valor_unitario || 0) || 0;
     if (!vu && valorTotal && quantidade > 0) vu = valorTotal / quantidade;
     var comPct = Number(of && (of.comissao_pct || 1) || 1) || 1;
     var comissaoRS = valorTotal * (comPct / 100);
-    var nomeVend = String(of && (of._vendedor_resolvido || of._vendedor_nome || of.vendedor) || '—').trim() || '—';
-    var idxCor = Object.prototype.hasOwnProperty.call(mapaCorVendedor, String(of && of._vendedor_nome || '').trim())
-      ? mapaCorVendedor[String(of && of._vendedor_nome || '').trim()]
-      : (Object.prototype.hasOwnProperty.call(mapaCorVendedor, nomeVend) ? mapaCorVendedor[nomeVend] : -1);
-    var corBg = idxCor >= 0 ? cores[idxCor % cores.length] : '#111827';
+    var nomeVend = getNomeVend(of);
+    var idxVend = ordemVendedores.indexOf(nomeVend);
+    var corBg = cores[(idxVend >= 0 ? idxVend : 0) % cores.length];
+    var cHead = coresHeader[(idxVend >= 0 ? idxVend : 0) % coresHeader.length];
     var data = '—';
     try { data = of && of.data_conclusao ? new Date(of.data_conclusao).toLocaleDateString('pt-BR') : '—'; } catch (_) {}
     var nomeCliente = String(of && (of.cliente_nome || of._cliente_nome || of.cliente) || '...') || '...';
     if (nomeVend !== vendedorAtual) {
       vendedorAtual = nomeVend;
-      var idxHead = idxCor >= 0 ? idxCor : 0;
-      var cHead = coresHeader[idxHead % 4];
-      var ofsDesseVendedor = (todasOFs || []).filter(function(o) {
-        return String(o && (o._vendedor_resolvido || o._vendedor_nome || o.vendedor) || '—').trim() === nomeVend;
-      });
-      var totalVend = ofsDesseVendedor.reduce(function(s, o) {
-        return s + (Number(o && (o.valor_total || o.valor_venda || 0) || 0) || 0);
-      }, 0);
-      var comissaoVend = ofsDesseVendedor.reduce(function(s, o) {
-        var val = Number(o && (o.valor_total || o.valor_venda || 0) || 0) || 0;
-        var pct = Number(o && (o.comissao_pct || 1) || 1) || 1;
-        return s + (val * (pct / 100));
-      }, 0);
+      var t = totaisPorVendedor[nomeVend] || {};
       htmlFinal += ''
-        + '<tr style="background:' + cHead.bg + ';border-left:4px solid ' + cHead.border + ';border-bottom:2px solid ' + cHead.border + '">'
+        + '<tr style="background:' + cHead.bg + ';border-left:4px solid ' + cHead.border + ';border-top:2px solid ' + cHead.border + ';border-bottom:1px solid ' + cHead.border + '">'
         + '<td colspan="11" style="padding:8px 16px;font-weight:700;color:' + cHead.text + ';font-size:13px">'
         + '👤 ' + escHtml(nomeVend)
-        + ' &nbsp;·&nbsp; <span style="font-weight:400;color:#94a3b8">'
-        + ofsDesseVendedor.length + ' OFs &nbsp;·&nbsp; Total: R$ ' + totalVend.toFixed(2).replace('.', ',')
-        + ' &nbsp;·&nbsp; Comissão: R$ ' + comissaoVend.toFixed(2).replace('.', ',')
+        + ' &nbsp;·&nbsp; <span style="font-weight:400;color:#94a3b8;font-size:12px">'
+        + (t.count || 0) + ' OFs &nbsp;·&nbsp; Total: R$ ' + Number(t.vendas || 0).toFixed(2).replace('.', ',')
+        + ' &nbsp;·&nbsp; Comissão: R$ ' + Number(t.comissao || 0).toFixed(2).replace('.', ',')
         + '</span></td></tr>';
     }
     htmlFinal += ''
       + '<tr data-of-idx="' + idx + '" data-cli-id="' + escHtml(of && (of.cli_id || of.cliId || '') || '') + '"'
-      + ' style="background:' + corBg + ';border-bottom:1px solid #1e293b;cursor:default"'
-      + ' onmouseenter="this.style.filter=\'brightness(1.2)\'"'
+      + ' style="background:' + corBg + ';border-bottom:1px solid #1e2d40;cursor:default"'
+      + ' onmouseenter="this.style.filter=\'brightness(1.15)\'"'
       + ' onmouseleave="this.style.filter=\'\'">'
-      + '<td style="padding:10px 12px;text-align:center;font-size:13px;color:#94a3b8">#' + escHtml(of && (of.numero || of.of_numero) || '—') + '</td>'
-      + '<td style="padding:10px 12px;text-align:left;font-size:13px" class="td-cli">' + escHtml(nomeCliente) + '</td>'
-      + '<td style="padding:10px 12px;text-align:center;font-size:13px">' + escHtml(nomeVend) + '</td>'
-      + '<td style="padding:10px 12px;text-align:center;font-size:13px">' + escHtml(quantidade || '—') + '</td>'
-      + '<td style="padding:10px 12px;text-align:center;font-size:13px">R$ ' + Number(valorTotal || 0).toFixed(2).replace('.', ',') + '</td>'
-      + '<td style="padding:10px 12px;text-align:center;font-size:13px">' + (vu > 0 ? ('R$ ' + vu.toFixed(2).replace('.', ',')) : '—') + '</td>'
-      + '<td style="padding:10px 12px;text-align:center;font-size:13px">' + Number(comPct || 1).toFixed(2).replace('.', ',') + '%</td>'
-      + '<td style="padding:10px 12px;text-align:center;font-size:13px;color:#10b981;font-weight:600">R$ ' + comissaoRS.toFixed(2).replace('.', ',') + '</td>'
-      + '<td style="padding:10px 12px;text-align:center;font-size:13px">' + escHtml(data) + '</td>'
-      + '<td style="padding:10px 12px;text-align:center"><span style="background:#064e3b;color:#10b981;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600">Concluído</span></td>'
-      + '<td style="padding:10px 12px;text-align:center"><button onclick="window._abrirModalEdicaoOF&&window._abrirModalEdicaoOF(window._comissaoOFs[' + idx + '])" style="background:transparent;border:1px solid #3a4a6b;color:#94a3b8;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer">✏️ Trocar</button></td>'
+      + '<td style="padding:9px 12px;text-align:center;font-size:13px;color:#94a3b8">#' + escHtml(of && (of.numero || of.of_numero) || '—') + '</td>'
+      + '<td style="padding:9px 12px;text-align:left;font-size:13px" class="td-cli">' + escHtml(nomeCliente) + '</td>'
+      + '<td style="padding:9px 12px;text-align:center;font-size:13px">' + escHtml(nomeVend) + '</td>'
+      + '<td style="padding:9px 12px;text-align:center;font-size:13px">' + escHtml(quantidade || '—') + '</td>'
+      + '<td style="padding:9px 12px;text-align:center;font-size:13px">R$ ' + Number(valorTotal || 0).toFixed(2).replace('.', ',') + '</td>'
+      + '<td style="padding:9px 12px;text-align:center;font-size:13px">' + (vu > 0 ? ('R$ ' + vu.toFixed(2).replace('.', ',')) : '—') + '</td>'
+      + '<td style="padding:9px 12px;text-align:center;font-size:13px">' + Number(comPct || 1).toFixed(2).replace('.', ',') + '%</td>'
+      + '<td style="padding:9px 12px;text-align:center;font-size:13px;color:#10b981;font-weight:600">R$ ' + comissaoRS.toFixed(2).replace('.', ',') + '</td>'
+      + '<td style="padding:9px 12px;text-align:center;font-size:13px">' + escHtml(data) + '</td>'
+      + '<td style="padding:9px 12px;text-align:center"><span style="background:#064e3b;color:#10b981;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600">Concluído</span></td>'
+      + '<td style="padding:9px 12px;text-align:center"><button onclick="window._abrirModalEdicaoOF&&window._comissaoOFs&&window._abrirModalEdicaoOF(window._comissaoOFs[' + idx + '])" style="background:transparent;border:1px solid #3a4a6b;color:#94a3b8;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer">✏️ Trocar</button></td>'
       + '</tr>';
   });
   secaoDetalhamento.innerHTML = ''
