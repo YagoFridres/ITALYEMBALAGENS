@@ -13193,10 +13193,17 @@ function _ocultarGraficoComissoes() {
       var perdasLista = backdrop.querySelector('#conclusao-perdas-lista');
       var totalPerdidoEl = backdrop.querySelector('#conclusao-total-perdido');
       var btnSalvar = backdrop.querySelector('#conclusao-confirmar');
+      var onEsc = function(e) {
+        try {
+          if (e && e.key === 'Escape') closeModal();
+        } catch (_) {}
+      };
 
       function closeModal() {
+        try { document.removeEventListener('keydown', onEsc, true); } catch (_) {}
         try { if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop); } catch (_) {}
       }
+      try { document.addEventListener('keydown', onEsc, true); } catch (_) {}
       backdrop.addEventListener('click', function(e) { if (e.target === backdrop) closeModal(); });
       if (shell) shell.addEventListener('click', function(e) { try { e.stopPropagation(); } catch (_) {} });
       Array.prototype.slice.call(backdrop.querySelectorAll('[data-close="1"]')).forEach(function(btn) {
