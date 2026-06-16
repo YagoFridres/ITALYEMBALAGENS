@@ -2204,7 +2204,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { _ocultarRelatorioMensal(); } catch (_) {}
       try { _removerRelatorioMensalAgressivo(); } catch (_) {}
       try { _ensureMenuClone('Clientes', '📐 Gramaturas', 'gramaturas', 'gramaturas'); } catch (_) {}
-      try { _ensureMenuClone('Caixas Perdidas', '⚖️ Toneladas Vendidas', 'toneladas', 'toneladas-vendidas'); } catch (_) {}
     }
     try { tickMenus(); } catch (_) {}
     try { _ocultarRelatorioMensal(); } catch (_) {}
@@ -4941,6 +4940,28 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     try { window._renderGramaturas = renderGramaturasPage; } catch (_) {}
     try { [0, 500, 1500, 3000].forEach(function(t) { setTimeout(_addMenuGramaturas, t); }); } catch (_) {}
+
+    function _addMenuToneladas() {
+      try {
+        if (document.querySelector('[data-patch-toneladas]')) return;
+        Array.prototype.slice.call(document.querySelectorAll('a, li')).forEach(function(el) {
+          try {
+            if (document.querySelector('[data-patch-toneladas]')) return;
+            if (String(el.textContent || '').trim() !== 'Dashboard') return;
+            var item = el.cloneNode(true);
+            item.setAttribute('data-patch-toneladas', '1');
+            var span = item.querySelector('span') || item;
+            span.textContent = '⚖️ Toneladas Vendidas';
+            item.addEventListener('click', function(e) {
+              try { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); } catch (_) {}
+              try { window._renderToneladas && window._renderToneladas(); } catch (_) {}
+            }, true);
+            if (el.parentElement) el.parentElement.insertAdjacentElement('afterend', item);
+          } catch (_) {}
+        });
+      } catch (_) {}
+    }
+    try { [0, 500, 1500, 3000].forEach(function(t) { setTimeout(_addMenuToneladas, t); }); } catch (_) {}
   })();
 
   function tick() {
@@ -14174,9 +14195,8 @@ function _ocultarGraficoComissoes() {
         selAno.appendChild(oy);
       }
 
-      var ref = _getPeriodoSelecionado();
-      try { selMes.value = String(parseInt(ref.mesNum, 10) || mesAtual); } catch (_) { selMes.value = String(mesAtual); }
-      try { selAno.value = String(parseInt(ref.anoNum, 10) || anoAtual); } catch (_) { selAno.value = String(anoAtual); }
+      try { selMes.value = String(mesAtual); } catch (_) { selMes.value = String(mesAtual); }
+      try { selAno.value = String(anoAtual); } catch (_) { selAno.value = String(anoAtual); }
 
       var sync = function() {
         try {
@@ -15657,7 +15677,7 @@ function _ocultarGraficoComissoes() {
               try { if (window.calcularComissoes) window.calcularComissoes(); } catch (_) {}
             }, 500);
           } catch (err) {
-            try { alert('Erro ao salvar OF: ' + String(err && err.message || err)); } catch (_) {}
+            try { alert('Erro ao salvar: ' + String(err && err.message || err)); } catch (_) {}
           }
         });
       }
@@ -16062,6 +16082,185 @@ function _ocultarGraficoComissoes() {
   try { _instalar(); } catch (_) {}
   try { setTimeout(_instalar, 800); } catch (_) {}
   try { setInterval(_instalar, 2500); } catch (_) {}
+})();
+
+(function() {
+  if (window.__patchToneladasInlineInstalled) return;
+  window.__patchToneladasInlineInstalled = true;
+
+  function _escTon(v) {
+    return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function _fmtBR(v) {
+    var n = Number(v || 0) || 0;
+    var s = n.toFixed(2);
+    var p = s.split('.');
+    p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return 'R$ ' + p[0] + ',' + p[1];
+  }
+  function _numBR(v, d) {
+    var n = Number(v || 0) || 0;
+    return n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function _mainTon() {
+    return document.querySelector('#main-content,.main-content,main,#content');
+  }
+  function _getTokenTon() {
+    try { return String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { return ''; }
+  }
+
+  async function _fetchJsonTon(url) {
+    var token = _getTokenTon();
+    var r = await fetch(url, { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+    var j = await r.json().catch(function() { return null; });
+    if (!r.ok) throw new Error(String((j && (j.error || j.message)) || ('Erro ' + r.status)));
+    return j;
+  }
+
+  async function _renderToneladas(mes, ano) {
+    var main = _mainTon();
+    if (!main) return;
+    mes = mes || (new Date().getMonth() + 1);
+    ano = ano || new Date().getFullYear();
+
+    var grams = [];
+    try {
+      var gResp = await _fetchJsonTon('/api/gramaturas');
+      if (Array.isArray(gResp)) grams = gResp;
+      else if (Array.isArray(gResp && gResp.data)) grams = gResp.data;
+      else if (Array.isArray(gResp && gResp.gramaturas)) grams = gResp.gramaturas;
+    } catch (_) { grams = []; }
+
+    var j = await _fetchJsonTon('/api/analises/toneladas?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano));
+    var resumo = (j && j.resumo) || {};
+    var detalhamento = Array.isArray(j && j.detalhamento) ? j.detalhamento : [];
+
+    var meses = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    var anos = [2024, 2025, 2026];
+    if (anos.indexOf(new Date().getFullYear()) < 0) anos.push(new Date().getFullYear());
+    anos = anos.filter(function(v, i, a) { return a.indexOf(v) === i; }).sort(function(a, b) { return a - b; });
+
+    main.innerHTML = ''
+      + '<div style="padding:24px">'
+      + '  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;gap:12px;flex-wrap:wrap">'
+      + '    <div>'
+      + '      <h2 style="font-size:20px;font-weight:700;color:#f1f5f9;margin:0">⚖️ Toneladas Vendidas</h2>'
+      + '      <p style="color:#64748b;font-size:13px;margin:4px 0 0">M² produzidos · custo por metro quadrado · toneladas</p>'
+      + '    </div>'
+      + '    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+      + '      <select id="ton-mes" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px 12px;color:#f1f5f9">'
+      +         meses.slice(1).map(function(m, i) { var v = i + 1; return '<option value="' + v + '"' + (v === Number(mes) ? ' selected' : '') + '>' + _escTon(m) + '</option>'; }).join('')
+      + '      </select>'
+      + '      <select id="ton-ano" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px 12px;color:#f1f5f9">'
+      +         anos.map(function(y) { return '<option value="' + y + '"' + (y === Number(ano) ? ' selected' : '') + '>' + y + '</option>'; }).join('')
+      + '      </select>'
+      + '      <select id="ton-gram" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px 12px;color:#f1f5f9;min-width:240px">'
+      + '        <option value="">Gramatura para toneladas...</option>'
+      +         (grams || []).map(function(g) {
+              var gg = Number(g && g.gramatura || 0) || 0;
+              var nome = String(g && g.nome || '—');
+              return '<option value="' + _escTon(gg) + '" data-nome="' + _escTon(nome) + '">' + _escTon(nome) + ' — ' + _escTon(String(gg).replace('.', ',')) + ' g/m²</option>';
+            }).join('')
+      + '      </select>'
+      + '      <button id="btn-ton-calc" style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:9px 20px;font-weight:600;cursor:pointer">Calcular</button>'
+      + '    </div>'
+      + '  </div>'
+      + '  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px">'
+      +     [
+              { l: 'M² Produzidos', v: _numBR(resumo.total_m2 || 0, 2) + ' m²', c: '#60a5fa' },
+              { l: 'OFs Concluídas', v: String(Number(resumo.total_ofs || detalhamento.length || 0) || 0) + ' OFs', c: '#f1f5f9' },
+              { l: 'Receita Total', v: _fmtBR(resumo.receita_total || 0), c: '#10b981' },
+              { l: 'Custo Médio/m²', v: 'R$ ' + _numBR(resumo.custo_medio_m2 || 0, 4).replace('.', ','), c: '#f59e0b' }
+            ].map(function(c) {
+              return '<div style="background:linear-gradient(135deg,#1e2d40,#1a2535);border:1px solid #2a3f5f;border-radius:12px;padding:20px 24px">'
+                + '<div style="font-size:11px;text-transform:uppercase;color:#64748b;margin-bottom:8px">' + _escTon(c.l) + '</div>'
+                + '<div style="font-size:22px;font-weight:700;color:' + c.c + '">' + _escTon(c.v) + '</div>'
+                + '</div>';
+            }).join('')
+      + '  </div>'
+      + '  <div id="ton-card-ton" style="display:none;margin-bottom:16px">'
+      + '    <div style="background:linear-gradient(135deg,#1a2d1a,#0d2218);border:1px solid #10b981;border-radius:12px;padding:20px 24px">'
+      + '      <div style="font-size:11px;text-transform:uppercase;color:#64748b;margin-bottom:8px">⚖️ TONELADAS PRODUZIDAS</div>'
+      + '      <div id="ton-valor" style="font-size:32px;font-weight:700;color:#10b981">—</div>'
+      + '      <div id="ton-sub" style="font-size:12px;color:#94a3b8;margin-top:4px"></div>'
+      + '    </div>'
+      + '  </div>'
+      + '  <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;overflow:hidden">'
+      + '    <div style="padding:14px 20px;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between">'
+      + '      <span style="font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase">📊 Detalhamento por OF</span>'
+      + '      <span style="font-size:12px;color:#64748b">' + _escTon(String(detalhamento.length)) + ' OFs</span>'
+      + '    </div>'
+      + '    <div style="overflow-x:auto">'
+      + '      <table style="width:100%;border-collapse:collapse">'
+      + '        <thead><tr style="background:#0f172a">'
+      +           ['Nº OF','PRODUTO','COMP×LARG','ÁREA/CX m²','QTD','TOTAL m²','VL UNIT','CUSTO/m²','RECEITA','DATA'].map(function(h) {
+                    return '<th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;white-space:nowrap">' + _escTon(h) + '</th>';
+                  }).join('')
+      + '        </tr></thead>'
+      + '        <tbody>'
+      +          (detalhamento || []).map(function(r) {
+                  var compOk = Number(r && r.comp_cm || 0) > 0 && Number(r && r.larg_cm || 0) > 0;
+                  var compTxt = compOk ? (String(r.comp_cm).replace('.', ',') + '×' + String(r.larg_cm).replace('.', ',') + ' cm') : '—';
+                  var dataTxt = r && r.data_conclusao ? new Date(r.data_conclusao).toLocaleDateString('pt-BR') : '—';
+                  return '<tr style="border-bottom:1px solid #1e293b" onmouseenter="this.style.background=\'#1e293b\'" onmouseleave="this.style.background=\'\'">'
+                    + '<td style="padding:9px 12px;text-align:center;color:#94a3b8;font-size:13px">#' + _escTon(r && r.of_numero || '—') + '</td>'
+                    + '<td style="padding:9px 12px;text-align:left;font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + _escTon(r && r.produto || '') + '">' + _escTon(r && r.produto || '—') + '</td>'
+                    + '<td style="padding:9px 12px;text-align:center;font-size:13px;color:' + (compOk ? '#f1f5f9' : '#475569') + '">' + _escTon(compTxt) + '</td>'
+                    + '<td style="padding:9px 12px;text-align:center;font-size:13px">' + (Number(r && r.area_m2 || 0) > 0 ? _escTon(_numBR(r.area_m2, 4)) : '—') + '</td>'
+                    + '<td style="padding:9px 12px;text-align:center;font-size:13px">' + _escTon(String(Number(r && r.quantidade || 0) || 0)) + '</td>'
+                    + '<td style="padding:9px 12px;text-align:center;font-size:13px;color:#60a5fa;font-weight:600">' + (Number(r && r.m2_total || 0) > 0 ? _escTon(_numBR(r.m2_total, 2) + ' m²') : '—') + '</td>'
+                    + '<td style="padding:9px 12px;text-align:center;font-size:13px">' + (Number(r && r.valor_unitario || 0) > 0 ? _escTon(_fmtBR(r.valor_unitario)) : '—') + '</td>'
+                    + '<td style="padding:9px 12px;text-align:center;font-size:13px;color:#f59e0b">' + (Number(r && r.custo_m2 || 0) > 0 ? _escTon('R$ ' + _numBR(r.custo_m2, 4).replace('.', ',')) : '—') + '</td>'
+                    + '<td style="padding:9px 12px;text-align:center;font-size:13px;color:#10b981">' + _escTon(_fmtBR(r && r.receita || 0)) + '</td>'
+                    + '<td style="padding:9px 12px;text-align:center;font-size:12px;color:#64748b">' + _escTon(dataTxt) + '</td>'
+                    + '</tr>';
+                }).join('')
+      + '          <tr style="background:#0f172a;font-weight:700;border-top:2px solid #334155">'
+      + '            <td colspan="5" style="padding:12px 16px;color:#94a3b8">TOTAL</td>'
+      + '            <td style="padding:12px 16px;text-align:center;color:#60a5fa">' + _escTon(_numBR(resumo.total_m2 || 0, 2) + ' m²') + '</td>'
+      + '            <td colspan="2"></td>'
+      + '            <td style="padding:12px 16px;text-align:center;color:#10b981">' + _escTon(_fmtBR(resumo.receita_total || 0)) + '</td>'
+      + '            <td></td>'
+      + '          </tr>'
+      + '        </tbody>'
+      + '      </table>'
+      + '    </div>'
+      + '  </div>'
+      + '</div>';
+
+    var selGram = document.getElementById('ton-gram');
+    var tonCard = document.getElementById('ton-card-ton');
+    var tonVal = document.getElementById('ton-valor');
+    var tonSub = document.getElementById('ton-sub');
+    if (selGram) {
+      selGram.addEventListener('change', function() {
+        try {
+          var g = parseFloat(String(this.value || '').replace(',', '.'));
+          var totm2 = Number(resumo.total_m2 || 0) || 0;
+          if (!(g > 0) || !(totm2 > 0)) {
+            if (tonCard) tonCard.style.display = 'none';
+            return;
+          }
+          var ton = (totm2 * g) / 1000000;
+          var nome = '';
+          try { nome = this.options && this.selectedIndex >= 0 ? String(this.options[this.selectedIndex].dataset.nome || '') : ''; } catch (_) { nome = ''; }
+          if (tonCard) tonCard.style.display = '';
+          if (tonVal) tonVal.textContent = String(ton.toFixed(3)).replace('.', ',') + '  t';
+          if (tonSub) tonSub.textContent = 'Usando ' + (nome || 'gramatura') + ' (' + String(g).replace('.', ',') + ' g/m²) × ' + String(Number(totm2).toFixed(2)).replace('.', ',') + ' m²';
+        } catch (_) {}
+      });
+    }
+    var btn = document.getElementById('btn-ton-calc');
+    if (btn) {
+      btn.addEventListener('click', function() {
+        var m = parseInt(String((document.getElementById('ton-mes') || {}).value || ''), 10);
+        var a = parseInt(String((document.getElementById('ton-ano') || {}).value || ''), 10);
+        _renderToneladas(m, a);
+      });
+    }
+  }
+
+  try { window._renderToneladas = _renderToneladas; } catch (_) {}
 })();
 
 (function() {

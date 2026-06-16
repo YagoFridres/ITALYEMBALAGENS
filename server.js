@@ -14039,22 +14039,21 @@ app.get('/api/analises/toneladas', authMiddleware, async (req, res) => {
     setNoCache(res);
     const mes = parseInt(req.query.mes, 10) || (new Date().getMonth() + 1);
     const ano = parseInt(req.query.ano, 10) || new Date().getFullYear();
-    const inicio = `${ano}-${String(mes).padStart(2, '0')}-01`;
-    const fim = mes === 12
-      ? `${ano + 1}-01-01`
-      : `${ano}-${String(mes + 1).padStart(2, '0')}-01`;
+    const inicio = ano + '-' + String(mes).padStart(2, '0') + '-01';
+    const fimMes = mes === 12 ? 1 : (mes + 1);
+    const fimAno = mes === 12 ? (ano + 1) : ano;
+    const fim = fimAno + '-' + String(fimMes).padStart(2, '0') + '-01';
 
     let ofs = [];
     let from = 0;
     while (true) {
       const { data, error } = await supabase.from('ofs')
-        .select('numero,descricao,itens,quantidade,valor_total,valor_unitario,data_conclusao,cli_id,cliente_nome,status')
+        .select('numero,descricao,itens,quantidade,valor_total,valor_unitario,data_conclusao,cli_id')
         .eq('status', 'Concluído')
         .gte('data_conclusao', inicio)
         .lt('data_conclusao', fim)
         .range(from, from + 999);
-      if (error) throw error;
-      if (!data || data.length === 0) break;
+      if (error || !data || data.length === 0) break;
       ofs = ofs.concat(data);
       if (data.length < 1000) break;
       from += 1000;
@@ -14062,30 +14061,27 @@ app.get('/api/analises/toneladas', authMiddleware, async (req, res) => {
 
     const detalhamento = ofs.map((of) => {
       const desc = of?.descricao || of?.itens?.[0]?.desc || '';
-      const match = String(desc || '').match(/(\d+)[×xX](\d+)/);
-      const comp_cm = match ? parseFloat(match[1]) : 0;
-      const larg_cm = match ? parseFloat(match[2]) : 0;
-      const area_m2 = comp_cm > 0 && larg_cm > 0
-        ? (comp_cm / 100) * (larg_cm / 100)
-        : 0;
-      const quantidade = Number(of?.quantidade || 0) || 0;
+      const match = String(desc || '').match(/(\d+(?:[.,]\d+)?)\s*[×xX]\s*(\d+(?:[.,]\d+)?)/);
+      const comp_cm = match ? parseFloat(String(match[1] || '').replace(',', '.')) : 0;
+      const larg_cm = match ? parseFloat(String(match[2] || '').replace(',', '.')) : 0;
+      const area_m2 = comp_cm > 0 && larg_cm > 0 ? ((comp_cm / 100) * (larg_cm / 100)) : 0;
+      const qtd = Number(of?.quantidade || 0) || 0;
       const receita = Number(of?.valor_total || 0) || 0;
-      const vu = Number(of?.valor_unitario || 0) || (receita && quantidade > 0 ? (receita / quantidade) : 0);
-      const m2_total = area_m2 * quantidade;
-      const custo_m2 = area_m2 > 0 && vu > 0 ? (vu / area_m2) : 0;
+      const vu = Number(of?.valor_unitario || 0) || (receita && qtd > 0 ? (receita / qtd) : 0);
+      const m2_total = parseFloat((area_m2 * qtd).toFixed(2));
+      const custo_m2 = area_m2 > 0 ? parseFloat((vu / area_m2).toFixed(4)) : 0;
 
       return {
         of_numero: of?.numero,
-        cliente_nome: of?.cliente_nome || '',
         cli_id: of?.cli_id,
         produto: desc,
         comp_cm,
         larg_cm,
         area_m2: parseFloat(area_m2.toFixed(4)),
-        quantidade,
+        quantidade: qtd,
         m2_total: parseFloat(m2_total.toFixed(2)),
         valor_unitario: vu,
-        custo_m2: parseFloat(custo_m2.toFixed(4)),
+        custo_m2,
         receita,
         data_conclusao: of?.data_conclusao,
       };
@@ -14096,10 +14092,18 @@ app.get('/api/analises/toneladas', authMiddleware, async (req, res) => {
     const custo_medio_m2 = total_m2 > 0 ? (receita_total / total_m2) : 0;
 
     return res.json({
-      resumo: { total_m2, total_ofs: ofs.length, receita_total, custo_medio_m2 },
+      resumo: {
+        total_m2: parseFloat(total_m2.toFixed(2)),
+        total_ofs: ofs.length,
+        receita_total,
+        custo_medio_m2: parseFloat(custo_medio_m2.toFixed(4)),
+        mes,
+        ano
+      },
       detalhamento,
     });
   } catch (e) {
+    try { console.error('[TONELADAS]', e.message); } catch (_) {}
     return res.status(500).json({ error: String(e?.message || e) });
   }
 });
