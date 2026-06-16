@@ -457,6 +457,7 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
   try {
     var hubDeb = null;
     var obs = new MutationObserver(function() {
+      if (window._pausarObservers) return;
       clearTimeout(hubDeb);
       hubDeb = setTimeout(function() {
         try {
@@ -595,6 +596,7 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
     if (!window.__patchHubTotalObs) {
       var deb = null;
       window.__patchHubTotalObs = new MutationObserver(function() {
+        if (window._pausarObservers) return;
         clearTimeout(deb);
         deb = setTimeout(function() {
           try {
@@ -2147,6 +2149,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       } catch (_) {}
     }
     function _ocultarRelatorioMensal() {
+      if (window._pausarObservers) return;
       try {
         Array.prototype.slice.call(document.querySelectorAll('a, li, span, div')).forEach(function(el) {
           try {
@@ -2200,7 +2203,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
     } catch (_) {}
     if (!window.__patchMenusExtrasObs) {
-      window.__patchMenusExtrasObs = new MutationObserver(function() { tickMenus(); });
+      window.__patchMenusExtrasObs = new MutationObserver(function() {
+        if (window._pausarObservers) return;
+        tickMenus();
+      });
       try { window.__patchMenusExtrasObs.observe(document.body, { childList: true, subtree: true }); } catch (_) {}
     }
   })();
@@ -3021,6 +3027,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (window._patchAccordionObs && typeof window._patchAccordionObs.disconnect === 'function') window._patchAccordionObs.disconnect();
   } catch (_) {}
   window._patchAccordionObs = new MutationObserver(function(muts, observer) {
+    if (window._pausarObservers) return;
     var encontrou = muts.some(function(m) {
       return Array.from(m.addedNodes).some(function(n) {
         return n.nodeType === 1 && (
@@ -5811,6 +5818,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return;
     }
 
+    var _prevPause = window._pausarObservers;
+    window._pausarObservers = true;
+    try {
     var tableOFs = tbodyOFs.closest ? tbodyOFs.closest('table') : null;
     try {
       var theadOFs = tableOFs && tableOFs.querySelector('thead');
@@ -5872,6 +5882,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
     tbodyOFs.innerHTML = html;
     try { console.log('[COM] detalhamento por vendedor OK:', (json.ofs || []).length, 'OFs'); } catch (_) {}
+    } finally {
+      setTimeout(function() { window._pausarObservers = _prevPause || false; }, 100);
+    }
   }
 
   function _renderDetalheOFs(ofs) {
@@ -6364,6 +6377,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   var t = null;
   try {
     var obs = new MutationObserver(function() {
+      if (window._pausarObservers) return;
       if (t) return;
       t = setTimeout(function() {
         t = null;
@@ -8868,6 +8882,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     setTimeout(_adicionarMenuEstoques, 1500);
     try {
       var obs = new MutationObserver(function(_, observer) {
+        if (window._pausarObservers) return;
         try {
           var temEstoque = document.querySelector('#ng-estoques .nav-item[onclick*="estoque"]');
           var temNovos = document.querySelector('#ng-estoques .nav-item[onclick*="estoque-tintas"]');
@@ -10160,6 +10175,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   var obs = new MutationObserver(function(_, observer) {
+    if (window._pausarObservers) return;
     try { patchRenderDashboard(); } catch (_) {}
     try { tryRender(); } catch (_) {}
     try {
@@ -10310,6 +10326,7 @@ window._mbnActive = function(id) {
     var page = document.getElementById('page-pcp');
     if (!page) return;
     var obs = new MutationObserver(function(mutations, observer) {
+      if (window._pausarObservers) return;
       mutations.forEach(function(m) {
         if (m.type !== 'attributes') return;
         var vis = page.style.display !== 'none' &&
@@ -12515,6 +12532,7 @@ window._mbnActive = function(id) {
   } catch (_) {}
   try {
     window._obsInconf = new MutationObserver(function(_, observer) {
+      if (window._pausarObservers) return;
       fixarBotaoNovaInconformidade();
       var temBotao = document.querySelector('#page-caixas-perdidas button[data-inconf-fixed="1"], #page-inconformidades button[data-inconf-fixed="1"]');
       if (temBotao) {
@@ -12878,6 +12896,7 @@ window._mbnActive = function(id) {
   } catch (_) {}
   try {
     window._obsRankHotfix = new MutationObserver(function() {
+      if (window._pausarObservers) return;
       ensurePainelClienteScroll();
       hideProjecaoVendas();
       fixarBotoesRankingClientes();
@@ -12985,6 +13004,7 @@ window._mbnActive = function(id) {
 
   try {
     var _obsImg = new MutationObserver(function(muts) {
+      if (window._pausarObservers) return;
       try {
         muts.forEach(function(m) {
           Array.prototype.slice.call(m.addedNodes || []).forEach(function(n) {
@@ -13367,6 +13387,7 @@ window._mbnActive = function(id) {
     }
 
     var obsChapas = new MutationObserver(function() {
+      if (window._pausarObservers) return;
       try {
         var pg = document.querySelector('#page-sel-chapas');
         if (pg && pg.style.display !== 'none') {
@@ -13431,7 +13452,10 @@ window._mbnActive = function(id) {
     }
 
     try {
-      var obs = new MutationObserver(function() { setTimeout(_tickHubPinChapas, 80); });
+      var obs = new MutationObserver(function() {
+        if (window._pausarObservers) return;
+        setTimeout(_tickHubPinChapas, 80);
+      });
       obs.observe(document.body, { childList: true, subtree: true });
     } catch (_) {}
     setTimeout(_tickHubPinChapas, 700);
@@ -13440,6 +13464,7 @@ window._mbnActive = function(id) {
 
   try {
     var obsBackup = new MutationObserver(function() {
+      if (window._pausarObservers) return;
       _adicionarBotoesBackup();
       _patchNotificacoesOF();
     });
@@ -13528,6 +13553,8 @@ function _aplicarCoresResumoVendedores() {
 }
 
 function _renderTabelaOFs(json) {
+  var _prevPause = window._pausarObservers;
+  window._pausarObservers = true;
   try {
     try { _ensureVendedoresMap(); } catch (_) {}
     var escHtml = function(v) {
@@ -13839,6 +13866,9 @@ function _renderTabelaOFs(json) {
 
     try { console.log('[COM] detalhamento por vendedor OK'); } catch (_) {}
   } catch (_) {}
+  finally {
+    setTimeout(function() { window._pausarObservers = _prevPause || false; }, 100);
+  }
 }
 
 function _ocultarGraficoComissoes() {
@@ -15621,9 +15651,6 @@ function _ocultarGraficoComissoes() {
       } catch (_) { window.__comissoesPrevData = null; }
 
       try { _instalarRenderComissoesFix(); } catch (_) {}
-      try {
-        if (window.__comissoesObs && typeof window.__comissoesObs.disconnect === 'function') window.__comissoesObs.disconnect();
-      } catch (_) {}
       try { if (typeof window['renderComissoes'] === 'function') window['renderComissoes'](window._comissoesData); } catch (_) {}
       setTimeout(function() {
         try { _ensureVendedoresMap(); } catch (_) {}
@@ -15631,11 +15658,6 @@ function _ocultarGraficoComissoes() {
         _renderTabelaOFs(window._comissoesSqlData);
         _ocultarGraficoComissoes();
         _ensureExtras(window._comissoesSqlData, mesNum, anoNum);
-        try {
-          if (window.__comissoesObs && typeof window.__comissoesObs.observe === 'function' && !window.__comissoesObsDisabled) {
-            window.__comissoesObs.observe(document.body, { childList: true, subtree: true });
-          }
-        } catch (_) {}
       }, 600);
       setTimeout(_ocultarGraficoComissoes, 800);
     } catch (e) {
@@ -15726,7 +15748,7 @@ function _ocultarGraficoComissoes() {
         try {
           return await calcularComissoesOriginal.apply(this, arguments);
         } finally {
-          setTimeout(function() { window._comissoesEmExecucao = false; }, 1000);
+          setTimeout(function() { window._comissoesEmExecucao = false; }, 2000);
         }
       };
       wrapped.__comissoesExecWrapped = true;
@@ -15738,56 +15760,62 @@ function _ocultarGraficoComissoes() {
   try {
     if (!window.__comissoesObsInstalled) {
       window.__comissoesObsInstalled = true;
-      var _comissoesRenderizando = false;
-      var observerComissoes = new MutationObserver(function() {
-        if (_comissoesRenderizando) return;
-        try {
-          if (window._comissoesCarregando || window._comRenderInterno) return;
-          if (window.__comissoesObsTick) return;
-          window.__comissoesObsTick = true;
-          setTimeout(function() { window.__comissoesObsTick = false; }, 250);
-
-          var secao = document.querySelector('[class*="comiss"], #page-comissoes');
-          if (!secao) return;
-          if (!window._comissoesSqlData) return;
-
-          _comissoesRenderizando = true;
-          observerComissoes.disconnect();
-          try {
-            _ensureComissoesStyle();
-            _ensurePeriodoSelects();
-            _ensureBuscaUI();
-            _bindTrocarClick();
-            _forcarRenderComissoesPatch();
-          } finally {
-            _comissoesRenderizando = false;
-            setTimeout(function() {
-              try {
-                if (!window.__comissoesObsDisabled) observerComissoes.observe(document.body, { childList: true, subtree: true });
-              } catch (_) {}
-            }, 500);
-          }
-        } catch (_) {
-          try {
-            _comissoesRenderizando = false;
-            setTimeout(function() {
-              try {
-                if (!window.__comissoesObsDisabled) observerComissoes.observe(document.body, { childList: true, subtree: true });
-              } catch (_) {}
-            }, 500);
-          } catch (_) {}
-        }
-      });
-      window.__comissoesObs = observerComissoes;
-      window.__comissoesObsDisabled = false;
-      try { observerComissoes.observe(document.body, { childList: true, subtree: true }); } catch (_) {}
+      try {
+        if (window.__comissoesObs && typeof window.__comissoesObs.disconnect === 'function') window.__comissoesObs.disconnect();
+      } catch (_) {}
+      try { window.__comissoesObs = null; } catch (_) {}
+      try { window.__comissoesObsDisabled = true; } catch (_) {}
     }
   } catch (_) {}
+
+  function _instalarDetectorNavComissoes() {
+    try {
+      if (window.__comissoesNavDetectorInstalled) return;
+      window.__comissoesNavDetectorInstalled = true;
+      window.__comissoesUltimaSecaoAtiva = '';
+
+      var _verificarSecaoAtiva = function() {
+        try {
+          var secaoComissoes = document.querySelector('#page-comissoes, [data-page="comissoes"], .page-comissoes');
+          var estaVisivel = !!(secaoComissoes && getComputedStyle(secaoComissoes).display !== 'none' && secaoComissoes.offsetParent !== null);
+          var secaoId = estaVisivel ? 'comissoes' : '';
+          if (secaoId === 'comissoes' && window.__comissoesUltimaSecaoAtiva !== 'comissoes') {
+            window.__comissoesUltimaSecaoAtiva = 'comissoes';
+            if (!window._comissoesEmExecucao) {
+              try { console.log('[COM] navegou para comissões — calculando uma vez'); } catch (_) {}
+              try { if (typeof window.calcularComissoes === 'function') window.calcularComissoes(); } catch (_) {}
+            }
+          } else if (secaoId !== 'comissoes') {
+            window.__comissoesUltimaSecaoAtiva = secaoId;
+          }
+        } catch (_) {}
+      };
+
+      setInterval(_verificarSecaoAtiva, 800);
+      setTimeout(_verificarSecaoAtiva, 600);
+
+      document.addEventListener('click', function(e) {
+        try {
+          var link = e && e.target && (e.target.closest ? e.target.closest('a, li, button, [onclick]') : null);
+          if (!link) return;
+          var txt = String(link.textContent || '').trim().toLowerCase();
+          if (txt.indexOf('comiss') < 0) return;
+          setTimeout(function() {
+            try {
+              if (!window._comissoesEmExecucao && typeof window.calcularComissoes === 'function') window.calcularComissoes();
+            } catch (_) {}
+          }, 300);
+        } catch (_) {}
+      }, true);
+    } catch (_) {}
+  }
 
   try { _instalarOverrideComissoes(); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 300); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 1200); } catch (_) {}
   try { setTimeout(_instalarExecGuardComissoes, 1400); } catch (_) {}
+  try { _instalarDetectorNavComissoes(); } catch (_) {}
+  try { setTimeout(_instalarDetectorNavComissoes, 1200); } catch (_) {}
   try { setTimeout(_rebindBtnCalcular, 1000); } catch (_) {}
 })();
 
@@ -16410,7 +16438,10 @@ function _ocultarGraficoComissoes() {
     renomearAba();
 
     if (!window.__buscaUniversalRenameObs) {
-      window.__buscaUniversalRenameObs = new MutationObserver(function() { renomearAba(); });
+      window.__buscaUniversalRenameObs = new MutationObserver(function() {
+        if (window._pausarObservers) return;
+        renomearAba();
+      });
       window.__buscaUniversalRenameObs.observe(document.body, { childList: true, subtree: true });
     }
 
