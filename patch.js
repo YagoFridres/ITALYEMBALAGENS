@@ -1,4 +1,6 @@
 // LIMPEZA DE OVERLAYS ÓRFÃOS — executar imediatamente
+if (typeof NOTIFICACOES === 'undefined') window.NOTIFICACOES = [];
+window.NOTIFICACOES = window.NOTIFICACOES || [];
 (function limparOverlaysOrfaos() {
   var _OVERLAY_GRACE = 500;
   try { if (!window.__overlayTimestamps) window.__overlayTimestamps = {}; } catch (_) {}
@@ -2043,6 +2045,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     { id: 'clientes',            label: 'Clientes',            icone: '👥', grupo: 'Cadastros' },
     { id: 'mapa-clientes',       label: 'Mapa Clientes',       icone: '🗺', grupo: 'Cadastros' },
     { id: 'fornecedores',        label: 'Fornecedores',        icone: '🏭', grupo: 'Cadastros' },
+    { id: 'gramaturas',          label: 'Gramaturas',          icone: '📐', grupo: 'Cadastros' },
     { id: 'vendedores',          label: 'Vendedores',          icone: '🤝', grupo: 'Cadastros' },
     { id: 'usuarios',            label: 'Usuários',            icone: '👤', grupo: 'Cadastros' },
 
@@ -2070,7 +2073,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     { id: 'dashboard',           label: 'Dashboard',           icone: '📊', grupo: 'Análises' },
     { id: 'relatorios',          label: 'Relatórios',          icone: '🖨', grupo: 'Análises' },
     { id: 'caixas-perdidas',     label: 'Caixas Perdidas',     icone: '📦', grupo: 'Análises' },
-    { id: 'relmensal',           label: 'Relatório Mensal',    icone: '📅', grupo: 'Análises' },
+    { id: 'toneladas-vendidas',  label: 'Toneladas Vendidas',  icone: '⚖️', grupo: 'Análises' },
     { id: 'configuracoes',       label: 'Configurações',       icone: '⚙',  grupo: 'Análises' },
   ];
 
@@ -2104,6 +2107,335 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   try{ window._todasPaginas = PAGINAS_REAIS_DESKTOP; }catch(e){}
+
+  (function patchMenusExtras() {
+    function _allMenuTexts() {
+      try { return Array.prototype.slice.call(document.querySelectorAll('a, li, div, span, button')); } catch (_) { return []; }
+    }
+    function _findByText(txt) {
+      txt = String(txt || '').trim();
+      if (!txt) return null;
+      var els = _allMenuTexts();
+      for (var i = 0; i < els.length; i += 1) {
+        var el = els[i];
+        try {
+          if (String(el.textContent || '').trim() === txt) return el;
+        } catch (_) {}
+      }
+      return null;
+    }
+    function _findItemEl(base) {
+      try { return base && (base.closest ? base.closest('a,button,li,.menu-item,[class*="item"]') : null); } catch (_) { return null; }
+    }
+    function _sanitizeCloneIds(node) {
+      try {
+        if (!node || !node.querySelectorAll) return;
+        if (node.id) node.id = '';
+        Array.prototype.slice.call(node.querySelectorAll('[id]')).forEach(function(el) { try { el.id = ''; } catch (_) {} });
+      } catch (_) {}
+    }
+    function _replaceExactText(root, oldText, newText) {
+      try {
+        Array.prototype.slice.call(root.querySelectorAll('*')).forEach(function(el) {
+          try {
+            var kids = Array.prototype.slice.call(el.childNodes || []);
+            kids.forEach(function(nd) {
+              if (nd && nd.nodeType === 3 && String(nd.nodeValue || '').trim() === oldText) nd.nodeValue = newText;
+            });
+          } catch (_) {}
+        });
+      } catch (_) {}
+    }
+    function _hideRelatorioMensal() {
+      _allMenuTexts().forEach(function(el) {
+        try {
+          if (String(el.textContent || '').trim() === 'Relatório Mensal') {
+            el.style.display = 'none';
+            var pai = el.closest ? el.closest('li, .menu-item, [class*="item"], a, button, div') : null;
+            if (pai) pai.style.display = 'none';
+          }
+        } catch (_) {}
+      });
+    }
+    function _ensureMenuClone(refText, newText, menuKey, pageId) {
+      try {
+        if (document.querySelector('[data-patch-menu="' + menuKey + '"]')) return true;
+        var refEl = _findByText(refText);
+        var item = _findItemEl(refEl) || refEl;
+        if (!item || !item.parentNode) return false;
+        var clone = item.cloneNode(true);
+        _sanitizeCloneIds(clone);
+        clone.setAttribute('data-patch-menu', menuKey);
+        _replaceExactText(clone, refText, newText);
+        clone.addEventListener('click', function(e) {
+          try { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); } catch (_) {}
+          try { if (typeof window.go === 'function') window.go(pageId); } catch (_) {}
+          return false;
+        }, true);
+        item.parentNode.insertBefore(clone, item.nextSibling);
+        return true;
+      } catch (_) { return false; }
+    }
+    function tickMenus() {
+      try { _hideRelatorioMensal(); } catch (_) {}
+      try { _ensureMenuClone('Fornecedores', '📐 Gramaturas', 'gramaturas', 'gramaturas'); } catch (_) {}
+      try { _ensureMenuClone('Caixas Perdidas', '⚖️ Toneladas Vendidas', 'toneladas', 'toneladas-vendidas'); } catch (_) {}
+    }
+    try { tickMenus(); } catch (_) {}
+    if (!window.__patchMenusExtrasObs) {
+      window.__patchMenusExtrasObs = new MutationObserver(function() { tickMenus(); });
+      try { window.__patchMenusExtrasObs.observe(document.body, { childList: true, subtree: true }); } catch (_) {}
+    }
+  })();
+
+  (function patchPaginasExtrasCustom() {
+    if (window.__patchPaginasExtrasCustom) return;
+    window.__patchPaginasExtrasCustom = true;
+
+    function apiJson(url, opts) {
+      opts = opts || {};
+      var token = '';
+      try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
+      var headers = Object.assign({}, opts.headers || {}, token ? { Authorization: 'Bearer ' + token } : {});
+      return fetch(url, Object.assign({}, opts, { headers: headers })).then(function(r) {
+        return r.json().catch(function() { return null; }).then(function(j) {
+          if (!r.ok) throw new Error(String(j && (j.error || j.message) || ('Falha em ' + url)));
+          return j;
+        });
+      });
+    }
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"]/g, function(ch) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[ch] || ch; }); }
+    function money(v) { try { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return 'R$ 0,00'; } }
+    function num(v, dec) { try { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 }); } catch (_) { return String(v || 0); } }
+    function ensureStyles() {
+      if (document.getElementById('patch-extra-pages-style')) return;
+      var st = document.createElement('style');
+      st.id = 'patch-extra-pages-style';
+      st.textContent = ''
+        + '.pep-wrap{padding:20px;color:#e5e7eb}'
+        + '.pep-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}'
+        + '.pep-title{font-size:24px;font-weight:900;color:#f8fafc}'
+        + '.pep-sub{font-size:12px;color:#94a3b8;margin-top:4px}'
+        + '.pep-btn,.pep-input,.pep-select{background:#0f172a;border:1px solid #1e293b;color:#e5e7eb;border-radius:10px;padding:10px 12px;font-size:13px}'
+        + '.pep-btn{cursor:pointer;font-weight:700}'
+        + '.pep-btn.primary{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#2563eb}'
+        + '.pep-btn.danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3);color:#fecaca}'
+        + '.pep-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px}'
+        + '.pep-card,.pep-panel{background:linear-gradient(135deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:18px}'
+        + '.pep-card-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;font-weight:800}'
+        + '.pep-card-val{font-size:26px;font-weight:900;color:#f8fafc;margin-top:10px}'
+        + '.pep-card-sub{font-size:12px;color:#94a3b8;margin-top:8px}'
+        + '.pep-table{width:100%;border-collapse:collapse}'
+        + '.pep-table th{background:#0f172a;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:10px 8px;text-align:left;border-bottom:1px solid #1e293b}'
+        + '.pep-table td{padding:10px 8px;border-bottom:1px solid #1e293b;font-size:12px;color:#e5e7eb;vertical-align:top}'
+        + '.pep-table tbody tr:hover{background:#1e293b}'
+        + '.pep-rank-item{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-bottom:12px}'
+        + '.pep-track{height:8px;border-radius:4px;background:#1e293b;overflow:hidden;margin-top:6px}'
+        + '.pep-bar{height:8px;border-radius:4px;background:linear-gradient(90deg,#6366f1,#22c55e)}'
+        + '.pep-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100200}'
+        + '.pep-modal-box{width:min(620px,92vw);background:#0b1220;border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:18px}'
+        + '.pep-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}'
+        + '.pep-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}'
+        + '@media (max-width:960px){.pep-cards{grid-template-columns:1fr 1fr}.pep-grid{grid-template-columns:1fr}}'
+        + '@media (max-width:640px){.pep-cards{grid-template-columns:1fr}}';
+      document.head.appendChild(st);
+    }
+    function pagesParent() {
+      var first = document.querySelector('[id^="page-"], [data-page]');
+      return first && first.parentNode ? first.parentNode : document.body;
+    }
+    function ensurePage(pageId) {
+      var page = document.getElementById('page-' + pageId) || document.querySelector('[data-page="' + pageId + '"]');
+      if (page) return page;
+      var base = document.querySelector('[id^="page-"], [data-page]');
+      page = document.createElement('div');
+      page.id = 'page-' + pageId;
+      page.setAttribute('data-page', pageId);
+      page.className = base && base.className ? base.className : 'page';
+      page.style.display = 'none';
+      pagesParent().appendChild(page);
+      return page;
+    }
+    function showOnlyPage(pageId) {
+      Array.prototype.slice.call(document.querySelectorAll('[id^="page-"], [data-page]')).forEach(function(pg) {
+        try {
+          var id = String(pg.getAttribute('data-page') || pg.id || '').replace(/^page-/, '');
+          if (id === pageId) pg.style.display = '';
+          else pg.style.display = 'none';
+        } catch (_) {}
+      });
+    }
+
+    async function loadFornecedores() {
+      try {
+        var j = await apiJson('/api/fornecedores');
+        return Array.isArray(j) ? j : ((j && (j.data || j.fornecedores)) || []);
+      } catch (_) { return []; }
+    }
+    async function loadGramaturas() {
+      try {
+        await apiJson('/api/gramaturas/init', { method: 'POST' }).catch(function() { return null; });
+        var j = await apiJson('/api/gramaturas');
+        return Array.isArray(j) ? j : ((j && (j.data || j.gramaturas)) || []);
+      } catch (_) { return []; }
+    }
+    async function openGramaturaModal(item, done) {
+      ensureStyles();
+      var fornecedores = await loadFornecedores();
+      var old = document.getElementById('pep-gram-modal');
+      if (old) old.remove();
+      var it = item || {};
+      var wrap = document.createElement('div');
+      wrap.id = 'pep-gram-modal';
+      wrap.className = 'pep-modal';
+      wrap.innerHTML = ''
+        + '<div class="pep-modal-box">'
+        + '  <div class="pep-head" style="margin-bottom:12px"><div><div class="pep-title" style="font-size:20px">' + (it.id ? 'Editar Gramatura' : 'Nova Gramatura') + '</div></div></div>'
+        + '  <div class="pep-grid">'
+        + '    <div><div class="pep-sub">Nome</div><input class="pep-input" id="pg-nome" value="' + esc(it.nome || '') + '" placeholder="Kraft 150"></div>'
+        + '    <div><div class="pep-sub">Gramatura (g/m²)</div><input class="pep-input" id="pg-gram" type="number" step="0.01" value="' + esc(it.gramatura || '') + '"></div>'
+        + '    <div><div class="pep-sub">Valor Unitário (R$/m²)</div><input class="pep-input" id="pg-vunit" type="number" step="0.01" value="' + esc(it.valor_unitario || '') + '"></div>'
+        + '    <div><div class="pep-sub">Fornecedor</div>'
+        + (fornecedores.length
+            ? '<select class="pep-select" id="pg-forn"><option value="">Selecionar fornecedor...</option>' + fornecedores.map(function(f) { var id = String(f && f.id || ''); var nm = String(f && f.nome || ''); return '<option value="' + esc(id) + '"' + (String(it.fornecedor_id || '') === id ? ' selected' : '') + '>' + esc(nm) + '</option>'; }).join('') + '</select>'
+            : '<input class="pep-input" id="pg-forn-livre" value="' + esc(it.fornecedor_nome || '') + '" placeholder="Fornecedor">')
+        + '    </div>'
+        + '  </div>'
+        + '  <div class="pep-actions"><button class="pep-btn" id="pg-cancel">Cancelar</button><button class="pep-btn primary" id="pg-save">Salvar</button></div>'
+        + '</div>';
+      wrap.addEventListener('click', function(e) { if (e.target === wrap) wrap.remove(); });
+      document.body.appendChild(wrap);
+      document.getElementById('pg-cancel').onclick = function() { wrap.remove(); };
+      document.getElementById('pg-save').onclick = async function() {
+        try {
+          var body = {
+            nome: String(document.getElementById('pg-nome').value || '').trim(),
+            gramatura: Number(document.getElementById('pg-gram').value || 0) || 0,
+            valor_unitario: Number(document.getElementById('pg-vunit').value || 0) || 0
+          };
+          var sel = document.getElementById('pg-forn');
+          var livre = document.getElementById('pg-forn-livre');
+          if (sel && sel.value) {
+            body.fornecedor_id = String(sel.value || '').trim();
+            body.fornecedor_nome = String(sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].text || '').trim();
+          } else if (livre) {
+            body.fornecedor_nome = String(livre.value || '').trim();
+          }
+          await apiJson(it.id ? ('/api/gramaturas/' + encodeURIComponent(it.id)) : '/api/gramaturas', {
+            method: it.id ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          wrap.remove();
+          if (typeof done === 'function') done();
+        } catch (e) {
+          alert(String(e && e.message || e || 'Falha ao salvar gramatura'));
+        }
+      };
+    }
+    async function renderGramaturasPage() {
+      ensureStyles();
+      var page = ensurePage('gramaturas');
+      showOnlyPage('gramaturas');
+      var lista = await loadGramaturas();
+      page.innerHTML = ''
+        + '<div class="pep-wrap">'
+        + '  <div class="pep-head"><div><div class="pep-title">📐 Gramaturas</div><div class="pep-sub">Cadastro de gramaturas e custo por m²</div></div><button class="pep-btn primary" id="gram-nova">+ Nova Gramatura</button></div>'
+        + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Nome</th><th>Gramatura (g/m²)</th><th>Valor Unitário (R$/m²)</th><th>Fornecedor</th><th>Ações</th></tr></thead><tbody>'
+        + (lista.length ? lista.map(function(g) {
+          return '<tr data-gid="' + esc(g.id || '') + '"><td>' + esc(g.nome || '—') + '</td><td>' + num(g.gramatura || 0, 2) + '</td><td>' + money(g.valor_unitario || 0) + '</td><td>' + esc(g.fornecedor_nome || '—') + '</td><td><button class="pep-btn" data-gedit="' + esc(g.id || '') + '">Editar</button> <button class="pep-btn danger" data-gdel="' + esc(g.id || '') + '">Desativar</button></td></tr>';
+        }).join('') : '<tr><td colspan="5" style="text-align:center;color:#94a3b8">Nenhuma gramatura cadastrada.</td></tr>')
+        + '  </tbody></table></div></div>'
+        + '</div>';
+      document.getElementById('gram-nova').onclick = function() { openGramaturaModal(null, renderGramaturasPage); };
+      Array.prototype.slice.call(page.querySelectorAll('[data-gedit]')).forEach(function(btn) {
+        btn.onclick = function() {
+          var id = String(btn.getAttribute('data-gedit') || '');
+          var item = (lista || []).find(function(g) { return String(g && g.id || '') === id; }) || null;
+          openGramaturaModal(item, renderGramaturasPage);
+        };
+      });
+      Array.prototype.slice.call(page.querySelectorAll('[data-gdel]')).forEach(function(btn) {
+        btn.onclick = async function() {
+          if (!confirm('Desativar esta gramatura?')) return;
+          try {
+            await apiJson('/api/gramaturas/' + encodeURIComponent(String(btn.getAttribute('data-gdel') || '')), { method: 'DELETE' });
+            renderGramaturasPage();
+          } catch (e) { alert(String(e && e.message || e || 'Falha ao desativar')); }
+        };
+      });
+    }
+
+    function currentMesAno() {
+      var d = new Date();
+      return { mes: d.getMonth() + 1, ano: d.getFullYear() };
+    }
+    function tonesState() {
+      if (!window.__tonesState) window.__tonesState = currentMesAno();
+      return window.__tonesState;
+    }
+    async function renderToneladasPage() {
+      ensureStyles();
+      var page = ensurePage('toneladas-vendidas');
+      showOnlyPage('toneladas-vendidas');
+      var st = tonesState();
+      var j = await apiJson('/api/analises/toneladas?mes=' + encodeURIComponent(st.mes) + '&ano=' + encodeURIComponent(st.ano)).catch(function() { return null; });
+      var resumo = (j && j.resumo) || {};
+      var comp = (j && j.comparacao_mes_anterior) || {};
+      var det = Array.isArray(j && j.detalhamento) ? j.detalhamento : [];
+      var ranking = Array.isArray(j && j.por_cliente) ? j.por_cliente : [];
+      var maxRank = Math.max(1, ...ranking.map(function(r) { return Number(r && r.toneladas || 0) || 0; }));
+      var totalOfs = det.length;
+      page.innerHTML = ''
+        + '<div class="pep-wrap">'
+        + '  <div class="pep-head"><div><div class="pep-title">⚖️ Toneladas Vendidas</div><div class="pep-sub">' + esc(resumo.mes_referencia || '') + '</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><select class="pep-select" id="tones-mes">' + Array.from({ length: 12 }).map(function(_, i) { var m = i + 1; return '<option value="' + m + '"' + (Number(st.mes) === m ? ' selected' : '') + '>' + String(m).padStart(2, '0') + '</option>'; }).join('') + '</select><select class="pep-select" id="tones-ano">' + Array.from({ length: 5 }).map(function(_, i) { var a = new Date().getFullYear() - 2 + i; return '<option value="' + a + '"' + (Number(st.ano) === a ? ' selected' : '') + '>' + a + '</option>'; }).join('') + '</select><button class="pep-btn primary" id="tones-refresh">Atualizar</button></div></div>'
+        + '  <div class="pep-cards">'
+        + '    <div class="pep-card"><div class="pep-card-label">Toneladas Vendidas</div><div class="pep-card-val">' + num(resumo.total_toneladas || 0, 3) + '</div><div class="pep-card-sub">Peso total vendido</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">M² Produzidos</div><div class="pep-card-val">' + num(resumo.total_m2 || 0, 2) + '</div><div class="pep-card-sub">Área total</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Receita Total</div><div class="pep-card-val">' + money(resumo.receita_total || 0) + '</div><div class="pep-card-sub">OFs concluídas</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Custo Médio/M²</div><div class="pep-card-val">' + money(resumo.custo_medio_m2 || 0) + '</div><div class="pep-card-sub">Média do período</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">VS Mês Anterior</div><div class="pep-card-val" style="color:' + ((Number(comp.variacao_toneladas_pct || 0) || 0) >= 0 ? '#22c55e' : '#ef4444') + '">' + (((Number(comp.variacao_toneladas_pct || 0) || 0) >= 0 ? '↑ ' : '↓ ') + num(Math.abs(Number(comp.variacao_toneladas_pct || 0) || 0), 1) + '%') + '</div><div class="pep-card-sub">Receita: ' + num(Number(comp.variacao_receita_pct || 0) || 0, 1) + '%</div></div>'
+        + '  </div>'
+        + '  <div style="display:grid;grid-template-columns:1.2fr .8fr;gap:12px">'
+        + '    <div class="pep-panel"><div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Detalhamento</div><div class="pep-sub">Total: ' + totalOfs + ' OFs · ' + num(resumo.total_toneladas || 0, 3) + ' t · ' + num(resumo.total_m2 || 0, 2) + ' m² · ' + money(resumo.receita_total || 0) + '</div></div><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Nº OF</th><th>Cliente</th><th>Produto</th><th>Comp×Larg</th><th>Área/Cx</th><th>Qtd</th><th>Total M²</th><th>Peso (kg)</th><th>Toneladas</th><th>Vl Unit</th><th>Custo/M²</th><th>Receita</th></tr></thead><tbody>'
+        + (det.length ? det.map(function(r) {
+          var dim = (Number(r.comp || 0) > 0 && Number(r.larg || 0) > 0) ? (num(r.comp || 0, 0) + '×' + num(r.larg || 0, 0)) : '—';
+          return '<tr><td>#' + esc(r.of_numero || '—') + '</td><td>' + esc(r.cliente || '—') + '</td><td>' + esc(r.produto || '—') + '</td><td>' + dim + '</td><td>' + (Number(r.area_m2 || 0) > 0 ? num(r.area_m2 || 0, 4) : '—') + '</td><td>' + num(r.quantidade || 0, 0) + '</td><td>' + num(r.m2_total || 0, 2) + '</td><td>' + num(r.peso_kg || 0, 2) + '</td><td>' + num(r.toneladas || 0, 4) + '</td><td>' + money(r.valor_unitario || 0) + '</td><td>' + money(r.custo_m2 || 0) + '</td><td>' + money(r.receita || 0) + '</td></tr>';
+        }).join('') : '<tr><td colspan="12" style="text-align:center;color:#94a3b8">Nenhuma OF concluída no período.</td></tr>')
+        + '    </tbody></table></div></div>'
+        + '    <div class="pep-panel"><div class="pep-title" style="font-size:18px;margin-bottom:12px">Ranking por Cliente</div>'
+        + ranking.map(function(r, idx) { var pct = Math.max(4, Math.round(((Number(r && r.toneladas || 0) || 0) / maxRank) * 100)); return '<div class="pep-rank-item"><div><div style="font-weight:800;color:#f8fafc">' + (idx + 1) + '. ' + esc(r && r.cliente || '—') + '</div><div class="pep-track"><div class="pep-bar" style="width:' + pct + '%"></div></div><div class="pep-sub">' + num(r && r.toneladas || 0, 3) + ' t · ' + num(r && r.m2 || 0, 2) + ' m² · ' + money(r && r.receita || 0) + '</div></div><div style="font-weight:800;color:#94a3b8">' + num(r && r.ofs || 0, 0) + '</div></div>'; }).join('')
+        + '    </div>'
+        + '  </div>'
+        + '</div>';
+      document.getElementById('tones-refresh').onclick = function() {
+        st.mes = Number(document.getElementById('tones-mes').value || 1);
+        st.ano = Number(document.getElementById('tones-ano').value || new Date().getFullYear());
+        renderToneladasPage();
+      };
+    }
+
+    function openCustomPage(pageId) {
+      if (pageId === 'gramaturas') { renderGramaturasPage(); return true; }
+      if (pageId === 'toneladas-vendidas') { renderToneladasPage(); return true; }
+      return false;
+    }
+    try {
+      var origGo = window.go;
+      if (typeof origGo === 'function' && !origGo._patchExtrasCustom) {
+        window.go = function(id) {
+          var pid = String(id || '').trim();
+          if (openCustomPage(pid)) return;
+          return origGo.apply(this, arguments);
+        };
+        window.go._patchExtrasCustom = true;
+      }
+    } catch (_) {}
+    try { window.renderGramaturas = renderGramaturasPage; } catch (_) {}
+    try { window.carregarGramaturas = renderGramaturasPage; } catch (_) {}
+    try { window.renderToneladasVendidas = renderToneladasPage; } catch (_) {}
+    try { _ensureVendedoresMap(); } catch (_) {}
+  })();
 
   window.mobileGoPage = function(page) {
     var menu = document.getElementById('mob-menu-mais');
@@ -4416,7 +4748,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '        <button class="cpv2-btn' + (state.periodo === 'hoje' ? ' is-active' : '') + '" data-cp-periodo="hoje">Hoje</button>'
         + '        <button class="cpv2-btn' + (state.periodo === 'semana' ? ' is-active' : '') + '" data-cp-periodo="semana">Esta Semana</button>'
         + '        <button class="cpv2-btn' + (state.periodo === 'mes' ? ' is-active' : '') + '" data-cp-periodo="mes">Este Mês</button>'
-        + '        <button class="cpv2-btn' + (state.periodo === 'todos' ? ' is-active' : '') + '" data-cp-periodo="todos">Todos os Meses</button>'
+        + '        <button class="cpv2-btn' + (state.periodo === 'todos' ? ' is-active' : '') + '" data-cp-periodo="todos">Todos os períodos</button>'
         + '      </div>'
         + '      <div class="cpv2-filters">'
         + '        <select class="cpv2-select" id="cpv2-maquina"><option value="">Todas as Máquinas</option>' + maquinasOpts.map(function(m) { return '<option value="' + _cpEsc(m) + '"' + (state.maquina === m ? ' selected' : '') + '>' + _cpEsc(m) + '</option>'; }).join('') + '</select>'
@@ -13145,6 +13477,7 @@ function _aplicarCoresResumoVendedores() {
 
 function _renderTabelaOFs(json) {
   try {
+    try { _ensureVendedoresMap(); } catch (_) {}
     var pg = document.querySelector('#page-comissoes, [data-page="comissoes"]');
     if (!pg) return;
     var tbody = document.querySelector('#tabela-comissoes-ofs tbody');
@@ -13308,7 +13641,8 @@ function _renderTabelaOFs(json) {
     var grupos = {};
     var ordem = [];
     (json.ofs || []).forEach(function(of) {
-      var vendedor = String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || 'Sem Vendedor').trim() || 'Sem Vendedor';
+      var vendedor = _resolverVendedor(of) || 'Sem Vendedor';
+      try { if (of && !of.vendedor) of.vendedor = vendedor; } catch (_) {}
       if (!grupos[vendedor]) {
         grupos[vendedor] = [];
         ordem.push(vendedor);
@@ -13339,7 +13673,7 @@ function _renderTabelaOFs(json) {
         var cliIdBruto = String(of && (of.cli_id || of.cliId || of.cliente_id || of.clienteId || '') || '').trim();
         var cliIdNorm = _cliNorm(cliIdBruto);
         var cli = _getClienteNomeSync(of);
-        var vend = String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || vendedor || '—').trim() || '—';
+        var vend = _resolverVendedor(of) || vendedor || '—';
         var qtdBruta = null;
         try {
           if (of) qtdBruta = (of.quantidade ?? of.qtd ?? of.qtd_pedida ?? of.qtdPedida);
@@ -14088,8 +14422,39 @@ function _ocultarGraficoComissoes() {
       var lista = (j && (j.data || j.vendedores)) || [];
       if (!Array.isArray(lista)) lista = [];
       window.__VENDEDORES_LISTA = lista;
+      window._vendedoresMap = window._vendedoresMap || {};
+      lista.forEach(function(v) {
+        try {
+          var id = String(v && v.id || '').trim().toLowerCase();
+          var nome = String(v && (v.nome || v.name) || '').trim();
+          if (id && nome) window._vendedoresMap[id] = nome;
+          if (nome) window._vendedoresMap[nome.toLowerCase()] = nome;
+        } catch (_) {}
+      });
       return lista;
     } catch (_) { return []; }
+  }
+
+  async function _ensureVendedoresMap() {
+    try {
+      if (window._vendedoresMap && Object.keys(window._vendedoresMap).length > 0) return window._vendedoresMap;
+      await _loadVendedoresLista();
+      return window._vendedoresMap || {};
+    } catch (_) { return {}; }
+  }
+
+  function _resolverVendedor(of) {
+    try {
+      if (!window._vendedoresMap) return String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || '—').trim() || '—';
+      var vid = String(of && (of.vendedor_id || of.vendId || of.vend_id || '') || '').trim().toLowerCase();
+      var vnome = String(of && (of.vendedor || of.vendedor_nome || of.vendNome || '') || '').trim().toLowerCase();
+      return window._vendedoresMap[vid]
+        || window._vendedoresMap[vnome]
+        || String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || '—').trim()
+        || '—';
+    } catch (_) {
+      return String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || '—').trim() || '—';
+    }
   }
 
   async function _buscarClientesApi(search) {
@@ -15037,6 +15402,7 @@ function _ocultarGraficoComissoes() {
     try {
       if (window._comissoesSqlData) {
         var ref = _getPeriodoSelecionado();
+        try { _ensureVendedoresMap(); } catch (_) {}
         _renderTabelaVendedores(window._comissoesSqlData);
         _renderTabelaOFs(window._comissoesSqlData);
         _ocultarGraficoComissoes();
@@ -15151,6 +15517,7 @@ function _ocultarGraficoComissoes() {
       } catch (_) {}
       try { if (typeof window['renderComissoes'] === 'function') window['renderComissoes'](window._comissoesData); } catch (_) {}
       setTimeout(function() {
+        try { _ensureVendedoresMap(); } catch (_) {}
         _renderTabelaVendedores(window._comissoesSqlData);
         _renderTabelaOFs(window._comissoesSqlData);
         _ocultarGraficoComissoes();

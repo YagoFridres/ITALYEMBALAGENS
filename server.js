@@ -5412,6 +5412,27 @@ function _normalizarOperadoresCaixa(row) {
   return Array.from(new Set(lista));
 }
 
+function _caixasPerdidasDashboardVazio(mesRef = '') {
+  return {
+    ok: true,
+    resumo_mes_atual: {
+      total_caixas: 0,
+      valor_total: 0,
+      total_ocorrencias: 0,
+      mes_referencia: mesRef || '',
+    },
+    comparacao_mes_anterior: {
+      total_caixas: 0,
+      valor_total: 0,
+      variacao_caixas_pct: 0,
+      variacao_valor_pct: 0,
+    },
+    ranking_maquinas: [],
+    ranking_operadores: [],
+    detalhamento: [],
+  };
+}
+
 async function _listarCaixasPerdidasEnriquecidas(req) {
   const baseCols = [
     'id', 'of_id', 'of_numero', 'produto', 'cliente', 'valor_unitario', 'qtd_perdida', 'valor_perdido',
@@ -5420,15 +5441,23 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
     'operadores', 'operador', 'operador_nome', 'operador_principal', 'turno'
   ].join(',');
   const ofId = String(req.query.of_id || req.query.ofId || '').trim();
-  const cpRows = await _selectCompatRows('caixas_perdidas', baseCols, (q) => {
+  let cpRows = await _selectCompatRows('caixas_perdidas', baseCols, (q) => {
     let out = q.order('created_at', { ascending: false });
     if (ofId) out = out.eq('of_id', ofId);
     return out;
   });
   if (cpRows.error) {
     const msg = String(cpRows.error.message || cpRows.error).toLowerCase();
-    if (msg.includes('does not exist') || msg.includes('not exist')) return [];
-    throw cpRows.error;
+    if (msg.includes('does not exist') || msg.includes('not exist')) {
+      cpRows = await _selectCompatRows('caixas_perdas', baseCols, (q) => {
+        let out = q.order('created_at', { ascending: false });
+        if (ofId) out = out.eq('of_id', ofId);
+        return out;
+      });
+      if (cpRows.error) return [];
+    } else {
+      throw cpRows.error;
+    }
   }
 
   const rows = Array.isArray(cpRows.data) ? cpRows.data : [];
@@ -5602,6 +5631,8 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     delete reqAll.query.of_id;
     const rows = await _listarCaixasPerdidasEnriquecidas(reqAll);
     const listaBase = Array.isArray(rows) ? rows.slice() : [];
+    const vazioBase = _caixasPerdidasDashboardVazio(`${mesesPt[mesNum - 1]} ${anoNum}`);
+    if (!listaBase.length) return res.json(vazioBase);
 
     const startMes = new Date(anoNum, mesNum - 1, 1);
     const endMes = new Date(anoNum, mesNum, 0, 23, 59, 59, 999);
@@ -5763,7 +5794,10 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       detalhamento
     });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    try { console.error('[caixas-perdidas/dashboard]', e && (e.stack || e.message) || e); } catch (_) {}
+    const now = new Date();
+    const mesesPt = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    return res.json(_caixasPerdidasDashboardVazio(`${mesesPt[now.getMonth()]} ${now.getFullYear()}`));
   }
 });
 
@@ -9879,19 +9913,69 @@ async function _empresaUuidByUserId(userId) {
   }
 }
 
+function _gramaturasCreateSql() {
+  return (
+    "CREATE TABLE IF NOT EXISTS gramaturas (" +
+    "id uuid PRIMARY KEY DEFAULT gen_random_uuid()," +
+    "nome text NOT NULL," +
+    "gramatura numeric NOT NULL," +
+    "valor_unitario numeric NOT NULL," +
+    "fornecedor_id uuid," +
+    "fornecedor_nome text," +
+    "empresa_id uuid," +
+    "ativo boolean DEFAULT true," +
+    "created_at timestamptz DEFAULT now()" +
+    ");" +
+    "CREATE INDEX IF NOT EXISTS idx_gramaturas_empresa ON gramaturas(empresa_id);" +
+    "CREATE INDEX IF NOT EXISTS idx_gramaturas_nome ON gramaturas(nome);"
+  );
+}
+
+let _gramaturasReady = null;
+async function _ensureGramaturasTable() {
+  if (_gramaturasReady === true) return true;
+  try {
+    const probe = await supabase.from('gramaturas').select('id', { head: true, count: 'exact' }).limit(1);
+    if (!probe.error) {
+      _gramaturasReady = true;
+      return true;
+    }
+    const msg = String(probe.error?.message || probe.error || '').toLowerCase();
+    if (!(msg.includes('does not exist') || msg.includes('not exist') || msg.includes('could not find'))) {
+      return false;
+    }
+    try {
+      const rpc = await supabase.rpc('exec_sql', { sql: _gramaturasCreateSql() });
+      if (!rpc.error) {
+        _gramaturasReady = true;
+        return true;
+      }
+    } catch (_) {}
+  } catch (_) {}
+  return false;
+}
+
+async function _empresaUuidSafe(req) {
+  try {
+    const emp = String(await _resolveEmpresaUuid(req) || '').trim();
+    if (emp) return emp;
+  } catch (_) {}
+  try {
+    const emp2 = String(await getEmpresaId(req) || '').trim();
+    if (emp2) return emp2;
+  } catch (_) {}
+  return '';
+}
+
 app.get('/api/cores-impressao', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = await _resolveEmpresaUuid(req);
-    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
-    const { data, error } = await supabase
-      .from('cores_impressao')
-      .select('id,nome,hex,ativo')
-      .eq('empresa_id', empresa_id)
-      .eq('ativo', true)
-      .order('nome', { ascending: true });
-    if (error) throw error;
-    return res.json({ ok: true, data: data || [] });
-  } catch (e) { err(res, e); }
+    let empresa_id = '';
+    try { empresa_id = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) {}
+    let q = supabase.from('cores_impressao').select('*').order('nome', { ascending: true });
+    if (empresa_id) q = q.eq('empresa_id', empresa_id);
+    const { data } = await q;
+    return res.json(Array.isArray(data) ? data : []);
+  } catch (e) { return res.json([]); }
 });
 
 app.post('/api/cores-impressao', authMiddleware, async (req, res) => {
@@ -10784,6 +10868,94 @@ app.delete('/api/fornecedores/:id', authMiddleware, async (req, res) => {
     if (error) throw error;
     res.json({ ok: true });
   } catch (e) { err(res, e); }
+});
+
+app.post('/api/gramaturas/init', authMiddleware, async (req, res) => {
+  try {
+    const okTable = await _ensureGramaturasTable();
+    return res.json({ ok: !!okTable });
+  } catch (e) {
+    return res.json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/gramaturas', authMiddleware, async (req, res) => {
+  try {
+    const ready = await _ensureGramaturasTable();
+    if (!ready) return res.json({ ok: true, data: [], gramaturas: [] });
+    const empresa_id = await _empresaUuidSafe(req);
+    const incluirInativas = String(req.query?.incluir_inativas || '').trim().toLowerCase() === 'true';
+    let q = supabase.from('gramaturas').select('*').order('nome');
+    if (empresa_id) q = q.eq('empresa_id', empresa_id);
+    if (!incluirInativas) q = q.eq('ativo', true);
+    const { data, error } = await q;
+    if (error) throw error;
+    return res.json({ ok: true, data: data || [], gramaturas: data || [] });
+  } catch (e) {
+    return res.json({ ok: true, data: [], gramaturas: [] });
+  }
+});
+
+app.post('/api/gramaturas', authMiddleware, async (req, res) => {
+  try {
+    const ready = await _ensureGramaturasTable();
+    if (!ready) return res.status(500).json({ ok: false, error: 'tabela_gramaturas_indisponivel' });
+    const empresa_id = await _empresaUuidSafe(req);
+    const b = req.body || {};
+    const nome = String(b.nome || '').trim();
+    const gramatura = Number(b.gramatura || 0) || 0;
+    const valor_unitario = Number(b.valor_unitario || 0) || 0;
+    if (!nome || !(gramatura > 0) || !(valor_unitario >= 0)) return res.status(400).json({ ok: false, error: 'dados_invalidos' });
+    const payload = {
+      nome,
+      gramatura,
+      valor_unitario,
+      fornecedor_id: b.fornecedor_id ? String(b.fornecedor_id || '').trim() : null,
+      fornecedor_nome: b.fornecedor_nome != null ? String(b.fornecedor_nome || '').trim() : null,
+      empresa_id: empresa_id || null,
+      ativo: b.ativo !== false,
+    };
+    const { data, error } = await supabase.from('gramaturas').insert([payload]).select('*').single();
+    if (error) throw error;
+    return res.json({ ok: true, data });
+  } catch (e) { return err(res, e); }
+});
+
+app.put('/api/gramaturas/:id', authMiddleware, async (req, res) => {
+  try {
+    const ready = await _ensureGramaturasTable();
+    if (!ready) return res.status(500).json({ ok: false, error: 'tabela_gramaturas_indisponivel' });
+    const empresa_id = await _empresaUuidSafe(req);
+    const id = String(req.params.id || '').trim();
+    const b = req.body || {};
+    const payload = {};
+    if (Object.prototype.hasOwnProperty.call(b, 'nome')) payload.nome = String(b.nome || '').trim();
+    if (Object.prototype.hasOwnProperty.call(b, 'gramatura')) payload.gramatura = Number(b.gramatura || 0) || 0;
+    if (Object.prototype.hasOwnProperty.call(b, 'valor_unitario')) payload.valor_unitario = Number(b.valor_unitario || 0) || 0;
+    if (Object.prototype.hasOwnProperty.call(b, 'fornecedor_id')) payload.fornecedor_id = b.fornecedor_id ? String(b.fornecedor_id || '').trim() : null;
+    if (Object.prototype.hasOwnProperty.call(b, 'fornecedor_nome')) payload.fornecedor_nome = b.fornecedor_nome != null ? String(b.fornecedor_nome || '').trim() : null;
+    if (Object.prototype.hasOwnProperty.call(b, 'ativo')) payload.ativo = !!b.ativo;
+    if (!Object.keys(payload).length) return res.status(400).json({ ok: false, error: 'nenhum_campo' });
+    let q = supabase.from('gramaturas').update(payload).eq('id', id).select('*').single();
+    if (empresa_id) q = q.eq('empresa_id', empresa_id);
+    const { data, error } = await q;
+    if (error) throw error;
+    return res.json({ ok: true, data });
+  } catch (e) { return err(res, e); }
+});
+
+app.delete('/api/gramaturas/:id', authMiddleware, async (req, res) => {
+  try {
+    const ready = await _ensureGramaturasTable();
+    if (!ready) return res.json({ ok: true });
+    const empresa_id = await _empresaUuidSafe(req);
+    const id = String(req.params.id || '').trim();
+    let q = supabase.from('gramaturas').update({ ativo: false }).eq('id', id);
+    if (empresa_id) q = q.eq('empresa_id', empresa_id);
+    const { error } = await q;
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (e) { return err(res, e); }
 });
 
 // ══════════════════════════════════════════════════════════════
@@ -12371,31 +12543,13 @@ app.delete('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
 
 app.get('/api/facas_categorias', authMiddleware, async (req, res) => {
   try {
-    const email = String(req.usuario?.email || '').toLowerCase().trim();
-    const MAPA = {
-      'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'gabi': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'dani': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'daisy': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'mano': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'matheus': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'sidao': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'edi': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'estoque': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'admin': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-    };
-    const empresa_id = MAPA[email] || 'df5f7672-0a6b-402d-ae65-296554236c31';
-    const { data, error } = await supabase
-      .from('facas_categorias')
-      .select('*')
-      .eq('empresa_id', empresa_id)
-      .order('nome');
-    if (error) throw error;
-    return res.json({ ok: true, data: data || [] });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: e.message });
-  }
+    let empresa_id = '';
+    try { empresa_id = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) {}
+    let q = supabase.from('facas_categorias').select('*').order('nome');
+    if (empresa_id) q = q.eq('empresa_id', empresa_id);
+    const { data } = await q;
+    return res.json(Array.isArray(data) ? data : []);
+  } catch (e) { return res.json([]); }
 });
 
 app.post('/api/facas_categorias', authMiddleware, async (req, res) => {
@@ -14212,6 +14366,157 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
   } catch (e) {
     _logApiError('TONELADAS', req, e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/analises/toneladas', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const now = new Date();
+    const mes = Math.max(1, Math.min(12, parseInt(String(req.query?.mes || (now.getMonth() + 1)), 10) || (now.getMonth() + 1)));
+    const ano = parseInt(String(req.query?.ano || now.getFullYear()), 10) || now.getFullYear();
+    const empresaReq = String(req.query?.empresa_id || '').trim();
+    const empresa_id = empresaReq || await _empresaUuidSafe(req);
+    const mesesPt = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    const start = new Date(ano, mes - 1, 1).toISOString();
+    const end = new Date(ano, mes, 0, 23, 59, 59, 999).toISOString();
+    const prevMes = mes === 1 ? 12 : (mes - 1);
+    const prevAno = mes === 1 ? (ano - 1) : ano;
+    const prevStart = new Date(prevAno, prevMes - 1, 1).toISOString();
+    const prevEnd = new Date(prevAno, prevMes, 0, 23, 59, 59, 999).toISOString();
+    const dimRe = /(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)/i;
+    const toNum = (v) => {
+      const n = Number(String(v == null ? '' : v).replace(',', '.'));
+      return Number.isFinite(n) ? n : 0;
+    };
+    const pctVar = (cur, prev) => {
+      if (!prev && !cur) return 0;
+      if (!prev) return 100;
+      return Math.round((((cur - prev) / prev) * 100) * 10) / 10;
+    };
+    const vazio = (mesRef) => ({
+      ok: true,
+      resumo: { total_toneladas: 0, total_m2: 0, total_ofs: 0, receita_total: 0, custo_medio_m2: 0, mes_referencia: mesRef },
+      comparacao_mes_anterior: { total_toneladas: 0, total_m2: 0, receita_total: 0, variacao_toneladas_pct: 0, variacao_m2_pct: 0, variacao_receita_pct: 0 },
+      por_cliente: [],
+      detalhamento: [],
+    });
+    const carregarOfs = async (ini, fim) => {
+      let q = supabase.from('ofs')
+        .select('id,numero,descricao,produto,prodDesc,itens,quantidade,qtd,valor_total,valor_venda,valor_unitario,data_conclusao,cli_id,cliente,status,empresa_id,emp_id,created_at')
+        .gte('data_conclusao', ini)
+        .lte('data_conclusao', fim)
+        .order('data_conclusao', { ascending: false });
+      if (empresa_id) q = q.or('empresa_id.eq.' + empresa_id + ',emp_id.eq.' + empresa_id);
+      const { data, error } = await q.limit(5000);
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    };
+    const [ofsAtual, ofsAnterior] = await Promise.all([carregarOfs(start, end), carregarOfs(prevStart, prevEnd)]);
+    const allCliIds = Array.from(new Set(ofsAtual.concat(ofsAnterior).map((o) => String(o?.cli_id || '').trim()).filter(Boolean)));
+    const clientesMap = new Map();
+    for (let i = 0; i < allCliIds.length; i += 200) {
+      const lote = allCliIds.slice(i, i + 200);
+      const { data } = await supabase.from('clientes').select('id,nome,rs').in('id', lote);
+      (Array.isArray(data) ? data : []).forEach((c) => clientesMap.set(String(c?.id || '').trim(), String(c?.nome || c?.rs || '').trim()));
+    }
+    let gramaturas = [];
+    try {
+      if (await _ensureGramaturasTable()) {
+        let qg = supabase.from('gramaturas').select('*').eq('ativo', true).order('nome');
+        if (empresa_id) qg = qg.eq('empresa_id', empresa_id);
+        const { data } = await qg;
+        gramaturas = Array.isArray(data) ? data : [];
+      }
+    } catch (_) { gramaturas = []; }
+    const pickGram = (texto) => {
+      const t = String(texto || '').toLowerCase();
+      const hit = gramaturas.find((g) => t.includes(String(g?.nome || '').trim().toLowerCase()));
+      return hit || { nome: 'Padrão', gramatura: 150, valor_unitario: 0 };
+    };
+    const normOf = (of) => {
+      const produto = String(of?.produto || of?.descricao || of?.prodDesc || '').trim();
+      const m = produto.match(dimRe);
+      const comp = m ? toNum(m[1]) : 0;
+      const larg = m ? toNum(m[2]) : 0;
+      const area_m2 = (comp > 0 && larg > 0) ? ((comp / 100) * (larg / 100)) : 0;
+      const quantidade = toNum(of?.quantidade ?? of?.qtd ?? 0);
+      const receita = toNum(of?.valor_total ?? of?.valor_venda ?? 0);
+      const valor_unit = toNum(of?.valor_unitario) || ((quantidade > 0) ? (receita / quantidade) : 0);
+      const gram = pickGram(produto);
+      const gramatura = toNum(gram?.gramatura || 150) || 150;
+      const m2_total = area_m2 * quantidade;
+      const peso_kg = (m2_total * gramatura) / 1000;
+      const toneladas = peso_kg / 1000;
+      const custo_m2 = area_m2 > 0 ? valor_unit / area_m2 : 0;
+      const cliente = clientesMap.get(String(of?.cli_id || '').trim()) || String(of?.cliente || '').trim() || '—';
+      return {
+        of_numero: String(of?.numero || '—').trim() || '—',
+        cliente,
+        produto: produto || '—',
+        comp,
+        larg,
+        area_m2,
+        gramatura,
+        peso_kg,
+        toneladas,
+        quantidade,
+        m2_total,
+        valor_unitario: valor_unit,
+        custo_m2,
+        receita: receita,
+      };
+    };
+    const detAtual = ofsAtual.map(normOf);
+    const detPrev = ofsAnterior.map(normOf);
+    const sumDet = (list) => {
+      const receita_total = list.reduce((s, r) => s + (Number(r?.receita || 0) || 0), 0);
+      const total_m2 = list.reduce((s, r) => s + (Number(r?.m2_total || 0) || 0), 0);
+      const total_toneladas = list.reduce((s, r) => s + (Number(r?.toneladas || 0) || 0), 0);
+      return {
+        total_toneladas,
+        total_m2,
+        total_ofs: list.length,
+        receita_total,
+        custo_medio_m2: total_m2 > 0 ? (receita_total / total_m2) : 0,
+      };
+    };
+    const resumo = sumDet(detAtual);
+    const resumoPrev = sumDet(detPrev);
+    const porClienteMap = new Map();
+    detAtual.forEach((r) => {
+      const key = String(r?.cliente || '—').trim() || '—';
+      const prev = porClienteMap.get(key) || { cliente: key, toneladas: 0, m2: 0, receita: 0, ofs: 0 };
+      prev.toneladas += Number(r?.toneladas || 0) || 0;
+      prev.m2 += Number(r?.m2_total || 0) || 0;
+      prev.receita += Number(r?.receita || 0) || 0;
+      prev.ofs += 1;
+      porClienteMap.set(key, prev);
+    });
+    const por_cliente = Array.from(porClienteMap.values()).sort((a, b) => (b.toneladas - a.toneladas) || (b.receita - a.receita)).slice(0, 10);
+    return res.json({
+      ok: true,
+      resumo: { ...resumo, mes_referencia: `${mesesPt[mes - 1]} ${ano}` },
+      comparacao_mes_anterior: {
+        ...resumoPrev,
+        variacao_toneladas_pct: pctVar(resumo.total_toneladas, resumoPrev.total_toneladas),
+        variacao_m2_pct: pctVar(resumo.total_m2, resumoPrev.total_m2),
+        variacao_receita_pct: pctVar(resumo.receita_total, resumoPrev.receita_total),
+      },
+      por_cliente,
+      detalhamento: detAtual,
+    });
+  } catch (e) {
+    try { console.error('[analises/toneladas]', e && (e.stack || e.message) || e); } catch (_) {}
+    const now = new Date();
+    const mesesPt = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    return res.json({
+      ok: true,
+      resumo: { total_toneladas: 0, total_m2: 0, total_ofs: 0, receita_total: 0, custo_medio_m2: 0, mes_referencia: `${mesesPt[now.getMonth()]} ${now.getFullYear()}` },
+      comparacao_mes_anterior: { total_toneladas: 0, total_m2: 0, receita_total: 0, variacao_toneladas_pct: 0, variacao_m2_pct: 0, variacao_receita_pct: 0 },
+      por_cliente: [],
+      detalhamento: [],
+    });
   }
 });
 
