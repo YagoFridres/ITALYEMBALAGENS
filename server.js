@@ -5443,24 +5443,25 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
     'operadores', 'operador', 'operador_nome', 'operador_principal', 'turno'
   ].join(',');
   const ofId = String(req.query.of_id || req.query.ofId || '').trim();
-  let cpRows = await _selectCompatRows('caixas_perdidas', baseCols, (q) => {
-    let out = q.order('created_at', { ascending: false });
-    if (ofId) out = out.eq('of_id', ofId);
-    return out;
-  });
-  if (cpRows.error) {
-    const msg = String(cpRows.error.message || cpRows.error).toLowerCase();
-    if (msg.includes('does not exist') || msg.includes('not exist')) {
-      cpRows = await _selectCompatRows('caixas_perdas', baseCols, (q) => {
-        let out = q.order('created_at', { ascending: false });
-        if (ofId) out = out.eq('of_id', ofId);
-        return out;
-      });
-      if (cpRows.error) return [];
-    } else {
-      throw cpRows.error;
+  const tabelas = ['caixas_perdidas', 'caixas_perdas', 'perdas_producao'];
+  let cpRows = { data: [], error: null };
+  let achouTabela = false;
+  for (const t of tabelas) {
+    const r = await _selectCompatRows(t, baseCols, (q) => {
+      let out = q.order('created_at', { ascending: false });
+      if (ofId) out = out.eq('of_id', ofId);
+      return out;
+    });
+    if (r?.error) {
+      const msg = String(r.error?.message || r.error || '').toLowerCase();
+      if (msg.includes('does not exist') || msg.includes('not exist') || msg.includes('could not find')) continue;
+      throw r.error;
     }
+    achouTabela = true;
+    cpRows = r;
+    if (Array.isArray(r?.data) && r.data.length) break;
   }
+  if (!achouTabela) return [];
 
   const rows = Array.isArray(cpRows.data) ? cpRows.data : [];
   const ofIds = Array.from(new Set(rows.map((r) => String(r?.of_id || '').trim()).filter(Boolean)));
@@ -5587,6 +5588,31 @@ app.get('/api/caixas-perdidas', authMiddleware, async (req, res) => {
 app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
+    const tabelas = ['caixas_perdidas', 'caixas_perdas', 'perdas_producao'];
+    let tabelaAtiva = null;
+    for (const t of tabelas) {
+      const { data, error } = await supabase.from(t).select('id').limit(1);
+      if (!error && Array.isArray(data)) {
+        tabelaAtiva = t;
+        if (data.length) break;
+      }
+    }
+    let todos = [];
+    if (tabelaAtiva) {
+      const r = await supabase.from(tabelaAtiva).select('*').limit(5);
+      todos = Array.isArray(r?.data) ? r.data : [];
+      try { console.log('[CP] tabela ativa:', tabelaAtiva); } catch (_) {}
+      try { console.log('[CP] primeiros registros:', JSON.stringify(todos)); } catch (_) {}
+      try { console.log('[CP] campos disponíveis:', todos?.[0] ? Object.keys(todos[0]) : 'vazio'); } catch (_) {}
+    } else {
+      try { console.log('[CP] tabela ativa: não encontrada'); } catch (_) {}
+    }
+    const _debug = {
+      tabelaAtiva,
+      totalRegistros: todos?.length || 0,
+      campos: Object.keys((todos && todos[0]) || {}),
+    };
+
     const now = new Date();
     const mesNum = Math.max(1, Math.min(12, parseInt(String(req.query?.mes || (now.getMonth() + 1)), 10) || (now.getMonth() + 1)));
     const anoNum = parseInt(String(req.query?.ano || now.getFullYear()), 10) || now.getFullYear();
@@ -5634,7 +5660,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     const rows = await _listarCaixasPerdidasEnriquecidas(reqAll);
     const listaBase = Array.isArray(rows) ? rows.slice() : [];
     const vazioBase = _caixasPerdidasDashboardVazio(`${mesesPt[mesNum - 1]} ${anoNum}`);
-    if (!listaBase.length) return res.json(vazioBase);
+    if (!listaBase.length) return res.json({ ...vazioBase, _debug });
 
     const startMes = new Date(anoNum, mesNum - 1, 1);
     const endMes = new Date(anoNum, mesNum, 0, 23, 59, 59, 999);
@@ -5779,6 +5805,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
 
     return res.json({
       ok: true,
+      _debug,
       resumo_mes_atual: {
         total_caixas: atual.total_caixas,
         valor_total: atual.valor_total,
@@ -5799,7 +5826,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     try { console.error('[caixas-perdidas/dashboard]', e && (e.stack || e.message) || e); } catch (_) {}
     const now = new Date();
     const mesesPt = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-    return res.json(_caixasPerdidasDashboardVazio(`${mesesPt[now.getMonth()]} ${now.getFullYear()}`));
+    return res.json({ ..._caixasPerdidasDashboardVazio(`${mesesPt[now.getMonth()]} ${now.getFullYear()}`), _debug: { tabelaAtiva: null, totalRegistros: 0, campos: [] } });
   }
 });
 
@@ -14383,151 +14410,70 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
 app.get('/api/analises/toneladas', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const now = new Date();
-    const mes = Math.max(1, Math.min(12, parseInt(String(req.query?.mes || (now.getMonth() + 1)), 10) || (now.getMonth() + 1)));
-    const ano = parseInt(String(req.query?.ano || now.getFullYear()), 10) || now.getFullYear();
-    const empresaReq = String(req.query?.empresa_id || '').trim();
-    const empresa_id = empresaReq || await _empresaUuidSafe(req);
-    const mesesPt = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-    const start = new Date(ano, mes - 1, 1).toISOString();
-    const end = new Date(ano, mes, 0, 23, 59, 59, 999).toISOString();
-    const prevMes = mes === 1 ? 12 : (mes - 1);
-    const prevAno = mes === 1 ? (ano - 1) : ano;
-    const prevStart = new Date(prevAno, prevMes - 1, 1).toISOString();
-    const prevEnd = new Date(prevAno, prevMes, 0, 23, 59, 59, 999).toISOString();
-    const dimRe = /(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)/i;
-    const toNum = (v) => {
-      const n = Number(String(v == null ? '' : v).replace(',', '.'));
-      return Number.isFinite(n) ? n : 0;
-    };
-    const pctVar = (cur, prev) => {
-      if (!prev && !cur) return 0;
-      if (!prev) return 100;
-      return Math.round((((cur - prev) / prev) * 100) * 10) / 10;
-    };
-    const vazio = (mesRef) => ({
-      ok: true,
-      resumo: { total_toneladas: 0, total_m2: 0, total_ofs: 0, receita_total: 0, custo_medio_m2: 0, mes_referencia: mesRef },
-      comparacao_mes_anterior: { total_toneladas: 0, total_m2: 0, receita_total: 0, variacao_toneladas_pct: 0, variacao_m2_pct: 0, variacao_receita_pct: 0 },
-      por_cliente: [],
-      detalhamento: [],
-    });
-    const carregarOfs = async (ini, fim) => {
-      let q = supabase.from('ofs')
-        .select('id,numero,descricao,produto,prodDesc,itens,quantidade,qtd,valor_total,valor_venda,valor_unitario,data_conclusao,cli_id,cliente,status,empresa_id,emp_id,created_at')
-        .gte('data_conclusao', ini)
-        .lte('data_conclusao', fim)
-        .order('data_conclusao', { ascending: false });
-      if (empresa_id) q = q.or('empresa_id.eq.' + empresa_id + ',emp_id.eq.' + empresa_id);
-      const { data, error } = await q.limit(5000);
+    const mes = parseInt(req.query.mes, 10) || (new Date().getMonth() + 1);
+    const ano = parseInt(req.query.ano, 10) || new Date().getFullYear();
+    const inicio = `${ano}-${String(mes).padStart(2, '0')}-01`;
+    const fim = mes === 12
+      ? `${ano + 1}-01-01`
+      : `${ano}-${String(mes + 1).padStart(2, '0')}-01`;
+
+    let ofs = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabase.from('ofs')
+        .select('numero,descricao,itens,quantidade,valor_total,valor_unitario,data_conclusao,cli_id,cliente_nome,status')
+        .eq('status', 'Concluído')
+        .gte('data_conclusao', inicio)
+        .lt('data_conclusao', fim)
+        .range(from, from + 999);
       if (error) throw error;
-      return Array.isArray(data) ? data : [];
-    };
-    const [ofsAtual, ofsAnterior] = await Promise.all([carregarOfs(start, end), carregarOfs(prevStart, prevEnd)]);
-    const allCliIds = Array.from(new Set(ofsAtual.concat(ofsAnterior).map((o) => String(o?.cli_id || '').trim()).filter(Boolean)));
-    const clientesMap = new Map();
-    for (let i = 0; i < allCliIds.length; i += 200) {
-      const lote = allCliIds.slice(i, i + 200);
-      const { data } = await supabase.from('clientes').select('id,nome,rs').in('id', lote);
-      (Array.isArray(data) ? data : []).forEach((c) => clientesMap.set(String(c?.id || '').trim(), String(c?.nome || c?.rs || '').trim()));
+      if (!data || data.length === 0) break;
+      ofs = ofs.concat(data);
+      if (data.length < 1000) break;
+      from += 1000;
     }
-    let gramaturas = [];
-    try {
-      if (await _ensureGramaturasTable()) {
-        let qg = supabase.from('gramaturas').select('*').eq('ativo', true).order('nome');
-        if (empresa_id) qg = qg.eq('empresa_id', empresa_id);
-        const { data } = await qg;
-        gramaturas = Array.isArray(data) ? data : [];
-      }
-    } catch (_) { gramaturas = []; }
-    const pickGram = (texto) => {
-      const t = String(texto || '').toLowerCase();
-      const hit = gramaturas.find((g) => t.includes(String(g?.nome || '').trim().toLowerCase()));
-      return hit || { nome: 'Padrão', gramatura: 150, valor_unitario: 0 };
-    };
-    const normOf = (of) => {
-      const produto = String(of?.produto || of?.descricao || of?.prodDesc || '').trim();
-      const m = produto.match(dimRe);
-      const comp = m ? toNum(m[1]) : 0;
-      const larg = m ? toNum(m[2]) : 0;
-      const area_m2 = (comp > 0 && larg > 0) ? ((comp / 100) * (larg / 100)) : 0;
-      const quantidade = toNum(of?.quantidade ?? of?.qtd ?? 0);
-      const receita = toNum(of?.valor_total ?? of?.valor_venda ?? 0);
-      const valor_unit = toNum(of?.valor_unitario) || ((quantidade > 0) ? (receita / quantidade) : 0);
-      const gram = pickGram(produto);
-      const gramatura = toNum(gram?.gramatura || 150) || 150;
+
+    const detalhamento = ofs.map((of) => {
+      const desc = of?.descricao || of?.itens?.[0]?.desc || '';
+      const match = String(desc || '').match(/(\d+)[×xX](\d+)/);
+      const comp_cm = match ? parseFloat(match[1]) : 0;
+      const larg_cm = match ? parseFloat(match[2]) : 0;
+      const area_m2 = comp_cm > 0 && larg_cm > 0
+        ? (comp_cm / 100) * (larg_cm / 100)
+        : 0;
+      const quantidade = Number(of?.quantidade || 0) || 0;
+      const receita = Number(of?.valor_total || 0) || 0;
+      const vu = Number(of?.valor_unitario || 0) || (receita && quantidade > 0 ? (receita / quantidade) : 0);
       const m2_total = area_m2 * quantidade;
-      const peso_kg = (m2_total * gramatura) / 1000;
-      const toneladas = peso_kg / 1000;
-      const custo_m2 = area_m2 > 0 ? valor_unit / area_m2 : 0;
-      const cliente = clientesMap.get(String(of?.cli_id || '').trim()) || String(of?.cliente || '').trim() || '—';
+      const custo_m2 = area_m2 > 0 && vu > 0 ? (vu / area_m2) : 0;
+
       return {
-        of_numero: String(of?.numero || '—').trim() || '—',
-        cliente,
-        produto: produto || '—',
-        comp,
-        larg,
-        area_m2,
-        gramatura,
-        peso_kg,
-        toneladas,
+        of_numero: of?.numero,
+        cliente_nome: of?.cliente_nome || '',
+        cli_id: of?.cli_id,
+        produto: desc,
+        comp_cm,
+        larg_cm,
+        area_m2: parseFloat(area_m2.toFixed(4)),
         quantidade,
-        m2_total,
-        valor_unitario: valor_unit,
-        custo_m2,
-        receita: receita,
+        m2_total: parseFloat(m2_total.toFixed(2)),
+        valor_unitario: vu,
+        custo_m2: parseFloat(custo_m2.toFixed(4)),
+        receita,
+        data_conclusao: of?.data_conclusao,
       };
-    };
-    const detAtual = ofsAtual.map(normOf);
-    const detPrev = ofsAnterior.map(normOf);
-    const sumDet = (list) => {
-      const receita_total = list.reduce((s, r) => s + (Number(r?.receita || 0) || 0), 0);
-      const total_m2 = list.reduce((s, r) => s + (Number(r?.m2_total || 0) || 0), 0);
-      const total_toneladas = list.reduce((s, r) => s + (Number(r?.toneladas || 0) || 0), 0);
-      return {
-        total_toneladas,
-        total_m2,
-        total_ofs: list.length,
-        receita_total,
-        custo_medio_m2: total_m2 > 0 ? (receita_total / total_m2) : 0,
-      };
-    };
-    const resumo = sumDet(detAtual);
-    const resumoPrev = sumDet(detPrev);
-    const porClienteMap = new Map();
-    detAtual.forEach((r) => {
-      const key = String(r?.cliente || '—').trim() || '—';
-      const prev = porClienteMap.get(key) || { cliente: key, toneladas: 0, m2: 0, receita: 0, ofs: 0 };
-      prev.toneladas += Number(r?.toneladas || 0) || 0;
-      prev.m2 += Number(r?.m2_total || 0) || 0;
-      prev.receita += Number(r?.receita || 0) || 0;
-      prev.ofs += 1;
-      porClienteMap.set(key, prev);
     });
-    const por_cliente = Array.from(porClienteMap.values()).sort((a, b) => (b.toneladas - a.toneladas) || (b.receita - a.receita)).slice(0, 10);
+
+    const total_m2 = detalhamento.reduce((s, r) => s + (Number(r?.m2_total || 0) || 0), 0);
+    const receita_total = detalhamento.reduce((s, r) => s + (Number(r?.receita || 0) || 0), 0);
+    const custo_medio_m2 = total_m2 > 0 ? (receita_total / total_m2) : 0;
+
     return res.json({
-      ok: true,
-      resumo: { ...resumo, mes_referencia: `${mesesPt[mes - 1]} ${ano}` },
-      comparacao_mes_anterior: {
-        ...resumoPrev,
-        variacao_toneladas_pct: pctVar(resumo.total_toneladas, resumoPrev.total_toneladas),
-        variacao_m2_pct: pctVar(resumo.total_m2, resumoPrev.total_m2),
-        variacao_receita_pct: pctVar(resumo.receita_total, resumoPrev.receita_total),
-      },
-      por_cliente,
-      detalhamento: detAtual,
+      resumo: { total_m2, total_ofs: ofs.length, receita_total, custo_medio_m2 },
+      detalhamento,
     });
   } catch (e) {
-    try { console.error('[analises/toneladas]', e && (e.stack || e.message) || e); } catch (_) {}
-    const now = new Date();
-    const mesesPt = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-    return res.json({
-      ok: true,
-      resumo: { total_toneladas: 0, total_m2: 0, total_ofs: 0, receita_total: 0, custo_medio_m2: 0, mes_referencia: `${mesesPt[now.getMonth()]} ${now.getFullYear()}` },
-      comparacao_mes_anterior: { total_toneladas: 0, total_m2: 0, receita_total: 0, variacao_toneladas_pct: 0, variacao_m2_pct: 0, variacao_receita_pct: 0 },
-      por_cliente: [],
-      detalhamento: [],
-    });
+    return res.status(500).json({ error: String(e?.message || e) });
   }
 });
 

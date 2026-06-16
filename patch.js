@@ -2146,16 +2146,25 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         });
       } catch (_) {}
     }
-    function _hideRelatorioMensal() {
-      _allMenuTexts().forEach(function(el) {
-        try {
-          if (String(el.textContent || '').trim() === 'Relatório Mensal') {
-            el.style.display = 'none';
-            var pai = el.closest ? el.closest('li, .menu-item, [class*="item"], a, button, div') : null;
-            if (pai) pai.style.display = 'none';
-          }
-        } catch (_) {}
-      });
+    function _ocultarRelatorioMensal() {
+      try {
+        Array.prototype.slice.call(document.querySelectorAll('a, li, span, div')).forEach(function(el) {
+          try {
+            if (!el || el.children == null) return;
+            if (el.children.length !== 0) return;
+            if (String(el.textContent || '').trim() !== 'Relatório Mensal') return;
+            var alvo = el;
+            for (var i = 0; i < 3; i++) {
+              if (!alvo) break;
+              try { alvo.style.display = 'none'; } catch (_) {}
+              try { alvo.style.visibility = 'hidden'; } catch (_) {}
+              try { alvo.style.height = '0'; } catch (_) {}
+              try { alvo.style.overflow = 'hidden'; } catch (_) {}
+              alvo = alvo.parentElement;
+            }
+          } catch (_) {}
+        });
+      } catch (_) {}
     }
     function _ensureMenuClone(refText, newText, menuKey, pageId) {
       try {
@@ -2177,11 +2186,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       } catch (_) { return false; }
     }
     function tickMenus() {
-      try { _hideRelatorioMensal(); } catch (_) {}
+      try { _ocultarRelatorioMensal(); } catch (_) {}
       try { _ensureMenuClone('Fornecedores', '📐 Gramaturas', 'gramaturas', 'gramaturas'); } catch (_) {}
       try { _ensureMenuClone('Caixas Perdidas', '⚖️ Toneladas Vendidas', 'toneladas', 'toneladas-vendidas'); } catch (_) {}
     }
     try { tickMenus(); } catch (_) {}
+    try { _ocultarRelatorioMensal(); } catch (_) {}
+    try { [100, 500, 1000, 2000, 5000].forEach(function(t) { setTimeout(_ocultarRelatorioMensal, t); }); } catch (_) {}
+    try {
+      if (!window.__patchRelMensalObs) {
+        window.__patchRelMensalObs = new MutationObserver(_ocultarRelatorioMensal);
+        window.__patchRelMensalObs.observe(document.body, { childList: true, subtree: true });
+      }
+    } catch (_) {}
     if (!window.__patchMenusExtrasObs) {
       window.__patchMenusExtrasObs = new MutationObserver(function() { tickMenus(); });
       try { window.__patchMenusExtrasObs.observe(document.body, { childList: true, subtree: true }); } catch (_) {}
@@ -2368,7 +2385,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
     function currentMesAno() {
       var d = new Date();
-      return { mes: d.getMonth() + 1, ano: d.getFullYear() };
+      return { mes: d.getMonth() + 1, ano: d.getFullYear(), gramatura_id: '' };
     }
     function tonesState() {
       if (!window.__tonesState) window.__tonesState = currentMesAno();
@@ -2379,38 +2396,59 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var page = ensurePage('toneladas-vendidas');
       showOnlyPage('toneladas-vendidas');
       var st = tonesState();
+      var grams = await loadGramaturas();
       var j = await apiJson('/api/analises/toneladas?mes=' + encodeURIComponent(st.mes) + '&ano=' + encodeURIComponent(st.ano)).catch(function() { return null; });
       var resumo = (j && j.resumo) || {};
-      var comp = (j && j.comparacao_mes_anterior) || {};
       var det = Array.isArray(j && j.detalhamento) ? j.detalhamento : [];
-      var ranking = Array.isArray(j && j.por_cliente) ? j.por_cliente : [];
-      var maxRank = Math.max(1, ...ranking.map(function(r) { return Number(r && r.toneladas || 0) || 0; }));
       var totalOfs = det.length;
+      var gramSel = (grams || []).find(function(g) { return String(g && g.id || '') === String(st.gramatura_id || ''); }) || null;
+      var gramG = gramSel ? (Number(gramSel.gramatura || 0) || 0) : 0;
+      var tonTotal = gramG > 0
+        ? det.reduce(function(s, r) { return s + (((Number(r && r.m2_total || 0) || 0) * gramG) / 1000000); }, 0)
+        : 0;
+      var cardsTon = gramG > 0
+        ? ('<div class="pep-card"><div class="pep-card-label">Toneladas Produzidas</div><div class="pep-card-val">' + num(tonTotal || 0, 3) + '</div><div class="pep-card-sub">' + esc(String(gramG).replace('.', ',') + ' g/m²') + '</div></div>')
+        : '';
+      var totalM2 = Number(resumo.total_m2 || 0) || 0;
+      var receitaTotal = Number(resumo.receita_total || 0) || 0;
+      var custoMedio = Number(resumo.custo_medio_m2 || 0) || 0;
+      var totalizador = 'Total: ' + totalOfs + ' OFs · ' + num(totalM2 || 0, 3) + ' m² · ' + money(receitaTotal || 0);
       page.innerHTML = ''
         + '<div class="pep-wrap">'
-        + '  <div class="pep-head"><div><div class="pep-title">⚖️ Toneladas Vendidas</div><div class="pep-sub">' + esc(resumo.mes_referencia || '') + '</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><select class="pep-select" id="tones-mes">' + Array.from({ length: 12 }).map(function(_, i) { var m = i + 1; return '<option value="' + m + '"' + (Number(st.mes) === m ? ' selected' : '') + '>' + String(m).padStart(2, '0') + '</option>'; }).join('') + '</select><select class="pep-select" id="tones-ano">' + Array.from({ length: 5 }).map(function(_, i) { var a = new Date().getFullYear() - 2 + i; return '<option value="' + a + '"' + (Number(st.ano) === a ? ' selected' : '') + '>' + a + '</option>'; }).join('') + '</select><button class="pep-btn primary" id="tones-refresh">Atualizar</button></div></div>'
-        + '  <div class="pep-cards">'
-        + '    <div class="pep-card"><div class="pep-card-label">Toneladas Vendidas</div><div class="pep-card-val">' + num(resumo.total_toneladas || 0, 3) + '</div><div class="pep-card-sub">Peso total vendido</div></div>'
-        + '    <div class="pep-card"><div class="pep-card-label">M² Produzidos</div><div class="pep-card-val">' + num(resumo.total_m2 || 0, 2) + '</div><div class="pep-card-sub">Área total</div></div>'
-        + '    <div class="pep-card"><div class="pep-card-label">Receita Total</div><div class="pep-card-val">' + money(resumo.receita_total || 0) + '</div><div class="pep-card-sub">OFs concluídas</div></div>'
-        + '    <div class="pep-card"><div class="pep-card-label">Custo Médio/M²</div><div class="pep-card-val">' + money(resumo.custo_medio_m2 || 0) + '</div><div class="pep-card-sub">Média do período</div></div>'
-        + '    <div class="pep-card"><div class="pep-card-label">VS Mês Anterior</div><div class="pep-card-val" style="color:' + ((Number(comp.variacao_toneladas_pct || 0) || 0) >= 0 ? '#22c55e' : '#ef4444') + '">' + (((Number(comp.variacao_toneladas_pct || 0) || 0) >= 0 ? '↑ ' : '↓ ') + num(Math.abs(Number(comp.variacao_toneladas_pct || 0) || 0), 1) + '%') + '</div><div class="pep-card-sub">Receita: ' + num(Number(comp.variacao_receita_pct || 0) || 0, 1) + '%</div></div>'
-        + '  </div>'
-        + '  <div style="display:grid;grid-template-columns:1.2fr .8fr;gap:12px">'
-        + '    <div class="pep-panel"><div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Detalhamento</div><div class="pep-sub">Total: ' + totalOfs + ' OFs · ' + num(resumo.total_toneladas || 0, 3) + ' t · ' + num(resumo.total_m2 || 0, 2) + ' m² · ' + money(resumo.receita_total || 0) + '</div></div><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Nº OF</th><th>Cliente</th><th>Produto</th><th>Comp×Larg</th><th>Área/Cx</th><th>Qtd</th><th>Total M²</th><th>Peso (kg)</th><th>Toneladas</th><th>Vl Unit</th><th>Custo/M²</th><th>Receita</th></tr></thead><tbody>'
-        + (det.length ? det.map(function(r) {
-          var dim = (Number(r.comp || 0) > 0 && Number(r.larg || 0) > 0) ? (num(r.comp || 0, 0) + '×' + num(r.larg || 0, 0)) : '—';
-          return '<tr><td>#' + esc(r.of_numero || '—') + '</td><td>' + esc(r.cliente || '—') + '</td><td>' + esc(r.produto || '—') + '</td><td>' + dim + '</td><td>' + (Number(r.area_m2 || 0) > 0 ? num(r.area_m2 || 0, 4) : '—') + '</td><td>' + num(r.quantidade || 0, 0) + '</td><td>' + num(r.m2_total || 0, 2) + '</td><td>' + num(r.peso_kg || 0, 2) + '</td><td>' + num(r.toneladas || 0, 4) + '</td><td>' + money(r.valor_unitario || 0) + '</td><td>' + money(r.custo_m2 || 0) + '</td><td>' + money(r.receita || 0) + '</td></tr>';
-        }).join('') : '<tr><td colspan="12" style="text-align:center;color:#94a3b8">Nenhuma OF concluída no período.</td></tr>')
-        + '    </tbody></table></div></div>'
-        + '    <div class="pep-panel"><div class="pep-title" style="font-size:18px;margin-bottom:12px">Ranking por Cliente</div>'
-        + ranking.map(function(r, idx) { var pct = Math.max(4, Math.round(((Number(r && r.toneladas || 0) || 0) / maxRank) * 100)); return '<div class="pep-rank-item"><div><div style="font-weight:800;color:#f8fafc">' + (idx + 1) + '. ' + esc(r && r.cliente || '—') + '</div><div class="pep-track"><div class="pep-bar" style="width:' + pct + '%"></div></div><div class="pep-sub">' + num(r && r.toneladas || 0, 3) + ' t · ' + num(r && r.m2 || 0, 2) + ' m² · ' + money(r && r.receita || 0) + '</div></div><div style="font-weight:800;color:#94a3b8">' + num(r && r.ofs || 0, 0) + '</div></div>'; }).join('')
+        + '  <div class="pep-head">'
+        + '    <div><div class="pep-title">⚖️ Toneladas Vendidas</div><div class="pep-sub">M² produzidos e estimativa de toneladas por gramatura</div></div>'
+        + '    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+        + '      <select class="pep-select" id="tones-mes">' + Array.from({ length: 12 }).map(function(_, i) { var m = i + 1; return '<option value="' + m + '"' + (Number(st.mes) === m ? ' selected' : '') + '>' + String(m).padStart(2, '0') + '</option>'; }).join('') + '</select>'
+        + '      <select class="pep-select" id="tones-ano">' + Array.from({ length: 5 }).map(function(_, i) { var a = new Date().getFullYear() - 2 + i; return '<option value="' + a + '"' + (Number(st.ano) === a ? ' selected' : '') + '>' + a + '</option>'; }).join('') + '</select>'
+        + '      <select class="pep-select" id="tones-gram"><option value="">Gramatura padrão (g/m²)</option>' + (grams || []).map(function(g) { var id = String(g && g.id || ''); var label = String(g && g.nome || '—') + ' · ' + num(g && g.gramatura || 0, 0) + ' g/m²'; return '<option value="' + esc(id) + '"' + (String(st.gramatura_id || '') === id ? ' selected' : '') + '>' + esc(label) + '</option>'; }).join('') + '</select>'
+        + '      <button class="pep-btn primary" id="tones-refresh">Calcular</button>'
         + '    </div>'
+        + '  </div>'
+        + '  <div class="pep-cards">'
+        + '    <div class="pep-card"><div class="pep-card-label">M² Produzidos</div><div class="pep-card-val">' + num(totalM2 || 0, 2) + '</div><div class="pep-card-sub">Área total do período</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">OFs Concluídas</div><div class="pep-card-val">' + num(totalOfs || 0, 0) + '</div><div class="pep-card-sub">Quantidade de OFs</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Receita Total</div><div class="pep-card-val">' + money(receitaTotal || 0) + '</div><div class="pep-card-sub">Somatório do período</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Custo Médio/m²</div><div class="pep-card-val">' + money(custoMedio || 0) + '</div><div class="pep-card-sub">Receita ÷ m²</div></div>'
+        + cardsTon
+        + '  </div>'
+        + '  <div class="pep-panel">'
+        + '    <div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Detalhamento</div><div class="pep-sub">' + esc(totalizador) + '</div></div>'
+        + '    <div style="overflow:auto"><table class="pep-table"><thead><tr><th>Nº OF</th><th>Cliente</th><th>Produto</th><th>Comp×Larg (cm)</th><th>Área/Cx (m²)</th><th>Qtd</th><th>Total m²</th><th>Vl Unit</th><th>Custo/m²</th><th>Receita</th></tr></thead><tbody>'
+        + (det.length ? det.map(function(r) {
+          var compCm = Number(r && r.comp_cm || 0) || 0;
+          var largCm = Number(r && r.larg_cm || 0) || 0;
+          var semDim = !(compCm > 0 && largCm > 0);
+          var dim = semDim ? 'sem dimensão' : (num(compCm, 0) + '×' + num(largCm, 0));
+          var trStyle = semDim ? ' style="opacity:0.7;color:#94a3b8"' : '';
+          return '<tr' + trStyle + '><td>#' + esc(r && r.of_numero || '—') + '</td><td>' + esc(r && (r.cliente_nome || r.cliente) || '—') + '</td><td>' + esc(r && r.produto || '—') + '</td><td>' + esc(dim) + '</td><td>' + (Number(r && r.area_m2 || 0) > 0 ? num(r.area_m2 || 0, 4) : '—') + '</td><td>' + num(r && r.quantidade || 0, 0) + '</td><td>' + num(r && r.m2_total || 0, 2) + '</td><td>' + money(r && r.valor_unitario || 0) + '</td><td>' + money(r && r.custo_m2 || 0) + '</td><td>' + money(r && r.receita || 0) + '</td></tr>';
+        }).join('') : '<tr><td colspan="10" style="text-align:center;color:#94a3b8">Nenhuma OF concluída no período.</td></tr>')
+        + '    </tbody><tfoot><tr><td colspan="10" style="font-weight:800;color:#e5e7eb">' + esc(totalizador) + '</td></tr></tfoot></table></div>'
         + '  </div>'
         + '</div>';
       document.getElementById('tones-refresh').onclick = function() {
         st.mes = Number(document.getElementById('tones-mes').value || 1);
         st.ano = Number(document.getElementById('tones-ano').value || new Date().getFullYear());
+        st.gramatura_id = String((document.getElementById('tones-gram') || {}).value || '').trim();
         renderToneladasPage();
       };
     }
@@ -4717,6 +4755,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (!host) return;
       _cpEnsureStyleV2();
       try {
+        if (data && data._debug) console.log('[CP FRONTEND] debug:', JSON.stringify(data._debug));
+      } catch (_) {}
+      try {
         host.dataset.secaoAtiva = 'caixas-perdidas';
         host.setAttribute('data-secao-ativa', 'caixas-perdidas');
       } catch (_) {}
@@ -4734,9 +4775,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var varCls = varCx > 0 ? 'cpv2-compare-up' : 'cpv2-compare-down';
       var varArrow = varCx > 0 ? '↑' : '↓';
       if (!(Array.isArray(data && data.detalhamento) && data.detalhamento.length)) {
+        var dbgTab = (data && data._debug && data._debug.tabelaAtiva) ? String(data._debug.tabelaAtiva) : 'não encontrada';
+        var dbgTot = (data && data._debug && data._debug.totalRegistros != null) ? String(data._debug.totalRegistros) : '0';
         host.innerHTML = ''
           + '<div class="cpv2"><div class="cpv2-head"><div><div class="cpv2-title">💥 Caixas Perdidas</div><div class="cpv2-sub">Dashboard consolidado de perdas</div></div></div>'
-          + '<div class="cpv2-panel cpv2-empty"><span class="cpv2-empty-ico">📦</span><div style="font-size:18px;font-weight:800;color:#e5e7eb">Nenhuma perda registrada no período</div><div style="margin-top:6px">Ajuste os filtros ou aguarde novos lançamentos.</div></div></div>';
+          + '<div class="cpv2-panel cpv2-empty">'
+          + '  <span class="cpv2-empty-ico">📦</span>'
+          + '  <div style="font-size:18px;font-weight:800;color:#e5e7eb">Nenhuma perda no período selecionado</div>'
+          + '  <div style="margin-top:6px">Ajuste os filtros ou verifique outros períodos.</div>'
+          + '  <div style="margin-top:12px;color:#64748b;font-size:13px">Tabela: ' + _cpEsc(dbgTab) + ' · Registros históricos: ' + _cpEsc(dbgTot) + '</div>'
+          + '  <div style="margin-top:18px">'
+          + '    <button onclick="window._carregarCPTodosPeriodos && window._carregarCPTodosPeriodos()" style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:10px 20px;cursor:pointer;font-size:14px">📊 Ver todos os períodos</button>'
+          + '  </div>'
+          + '</div></div>';
         return;
       }
       host.innerHTML = ''
@@ -4840,6 +4891,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       window.carregarCaixasPerdidas._patchDashboardV2 = true;
     } catch (_) {}
     try { window._renderCaixasPerdidasV2 = _cpRenderPage; } catch (_) {}
+    try { window._carregarCPTodosPeriodos = function() { _cpState().periodo = 'todos'; _cpRenderPage(true); }; } catch (_) {}
   })();
 
   function tick() {
@@ -15654,37 +15706,88 @@ function _ocultarGraficoComissoes() {
         window.renderRelatorioComissoes = window.__comissoesPatchCalcular;
       }
     } catch (_) {}
+    try { _instalarExecGuardComissoes(); } catch (_) {}
     try { _instalarRenderComissoesFix(); } catch (_) {}
     try { _rebindBtnCalcular(); } catch (_) {}
+  }
+
+  function _instalarExecGuardComissoes() {
+    try {
+      window._comissoesEmExecucao = window._comissoesEmExecucao || false;
+      var calcularComissoesOriginal = window.calcularComissoes;
+      if (typeof calcularComissoesOriginal !== 'function') return;
+      if (calcularComissoesOriginal.__comissoesExecWrapped) return;
+      var wrapped = async function() {
+        if (window._comissoesEmExecucao) {
+          try { console.log('[COM] bloqueado: já em execução'); } catch (_) {}
+          return;
+        }
+        window._comissoesEmExecucao = true;
+        try {
+          return await calcularComissoesOriginal.apply(this, arguments);
+        } finally {
+          setTimeout(function() { window._comissoesEmExecucao = false; }, 1000);
+        }
+      };
+      wrapped.__comissoesExecWrapped = true;
+      wrapped.__comissoesExecOriginal = calcularComissoesOriginal;
+      window.calcularComissoes = wrapped;
+    } catch (_) {}
   }
 
   try {
     if (!window.__comissoesObsInstalled) {
       window.__comissoesObsInstalled = true;
-      var _obs = new MutationObserver(function() {
+      var _comissoesRenderizando = false;
+      var observerComissoes = new MutationObserver(function() {
+        if (_comissoesRenderizando) return;
         try {
           if (window._comissoesCarregando || window._comRenderInterno) return;
           if (window.__comissoesObsTick) return;
           window.__comissoesObsTick = true;
           setTimeout(function() { window.__comissoesObsTick = false; }, 250);
-          var pg = document.querySelector('#page-comissoes');
-          if (!pg) return;
+
+          var secao = document.querySelector('[class*="comiss"], #page-comissoes');
+          if (!secao) return;
           if (!window._comissoesSqlData) return;
-          _ensureComissoesStyle();
-          _ensurePeriodoSelects();
-          _ensureBuscaUI();
-          _bindTrocarClick();
-          if (!pg.querySelector('#comissoes-dashboard') && !window.__comissoesObsDisabled) _forcarRenderComissoesPatch();
-        } catch (_) {}
+
+          _comissoesRenderizando = true;
+          observerComissoes.disconnect();
+          try {
+            _ensureComissoesStyle();
+            _ensurePeriodoSelects();
+            _ensureBuscaUI();
+            _bindTrocarClick();
+            _forcarRenderComissoesPatch();
+          } finally {
+            _comissoesRenderizando = false;
+            setTimeout(function() {
+              try {
+                if (!window.__comissoesObsDisabled) observerComissoes.observe(document.body, { childList: true, subtree: true });
+              } catch (_) {}
+            }, 500);
+          }
+        } catch (_) {
+          try {
+            _comissoesRenderizando = false;
+            setTimeout(function() {
+              try {
+                if (!window.__comissoesObsDisabled) observerComissoes.observe(document.body, { childList: true, subtree: true });
+              } catch (_) {}
+            }, 500);
+          } catch (_) {}
+        }
       });
-      window.__comissoesObs = _obs;
-      window.__comissoesObsDisabled = true;
+      window.__comissoesObs = observerComissoes;
+      window.__comissoesObsDisabled = false;
+      try { observerComissoes.observe(document.body, { childList: true, subtree: true }); } catch (_) {}
     }
   } catch (_) {}
 
   try { _instalarOverrideComissoes(); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 300); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 1200); } catch (_) {}
+  try { setTimeout(_instalarExecGuardComissoes, 1400); } catch (_) {}
   try { setTimeout(_rebindBtnCalcular, 1000); } catch (_) {}
 })();
 
