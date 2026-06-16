@@ -6052,21 +6052,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   };
 
   function _vincularBtnCalcular() {
-    try {
-      Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(btn) {
-        try {
-          if (!btn || btn.dataset.patchCom === '1') return;
-          var txt = String(btn.textContent || '').trim();
-          if (!(txt === 'Calcular' || txt.indexOf('Calcular') >= 0)) return;
-          btn.dataset.patchCom = '1';
-          btn.addEventListener('click', function(e) {
-            try { e.preventDefault(); } catch (_) {}
-            try { e.stopPropagation(); } catch (_) {}
-            window.calcularComissoes();
-          }, true);
-        } catch (_) {}
-      });
-    } catch (_) {}
+    return;
   }
 
   try { _patchGoTelaCom(); } catch (_) {}
@@ -6257,7 +6243,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
   }
 
-  try { _vincularBtnCalcular(); } catch (_) {}
   try { _vincularBtnImprimir(); } catch (_) {}
 })();
 
@@ -15694,304 +15679,256 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
   }
 
-  function _ensureExtras(json, mesNum, anoNum) {
-    try {
-      _ensureComissoesStyle();
-      _ensurePeriodoSelects();
-      _ensureBuscaUI();
-      _bindTrocarClick();
-      var label = _nomeMes(mesNum) + ' ' + String(anoNum);
-      _renderDashboard(json, window.__comissoesPrevData || null, label);
-      _renderRanking(json);
-    } catch (_) {}
+  function _desligarLegadoComissoes() {
+    try { if (window.__comissoesObs && typeof window.__comissoesObs.disconnect === 'function') window.__comissoesObs.disconnect(); } catch (_) {}
+    try { if (window.__observerEntradaComissoes && typeof window.__observerEntradaComissoes.disconnect === 'function') window.__observerEntradaComissoes.disconnect(); } catch (_) {}
+    try { window.__comissoesObs = null; } catch (_) {}
+    try { window.__observerEntradaComissoes = null; } catch (_) {}
+    try { window.__comissoesObsDisabled = true; } catch (_) {}
+    try { if (window.__ensureComissoesBuscaInterval) { clearInterval(window.__ensureComissoesBuscaInterval); window.__ensureComissoesBuscaInterval = null; } } catch (_) {}
+    try { if (window._comissoesIntervalId) { clearInterval(window._comissoesIntervalId); window._comissoesIntervalId = null; } } catch (_) {}
+    try { window.renderComissoes = function() {}; } catch (_) {}
+    try { window.renderRelatorioComissoes = function() {}; } catch (_) {}
   }
 
-  function _forcarRenderComissoesPatch() {
-    try {
-      if (window._comissoesSqlData) {
-        var ref = _getPeriodoSelecionado();
-        try { _ensureVendedoresMap(); } catch (_) {}
-        _renderTabelaVendedores(window._comissoesSqlData);
-        _renderTabelaOFs(window._comissoesSqlData);
-        _ocultarGraficoComissoes();
-        _ensureExtras(window._comissoesSqlData, ref.mesNum, ref.anoNum);
-      }
-    } catch (_) {}
+  function _mesNomeCom(n) {
+    return ['Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][Math.max(0, Math.min(11, Number(n || 1) - 1))] || '';
   }
 
-  try {
-    if (!window._patchComissoesDataSetterInstalled) {
-      window._patchComissoesDataSetterInstalled = true;
-      window.__comissoesDataInternal = _normalizarComissoesData(window._comissoesData);
-      Object.defineProperty(window, '_comissoesData', {
-        get: function() { return window.__comissoesDataInternal; },
-        set: function(val) {
-          window.__comissoesDataInternal = _normalizarComissoesData(val);
-        },
-        configurable: true
-      });
-    }
-  } catch (_) {}
-
-  function _instalarRenderComissoesFix() {
-    try {
-      if (window._patchRenderComFixed && window.renderComissoes && window.renderComissoes.__comPatchOnlyRender) return;
-      window._patchRenderComFixed = true;
-      window.renderComissoes = async function() {
-        if (window._comRenderInterno) return;
-        try { console.log('[COM] renderComissoes patch executando'); } catch (_) {}
-        try {
-          window._comRenderInterno = true;
-          try { window._comissoesData = _normalizarComissoesData(window._comissoesData); } catch (_) {}
-          _forcarRenderComissoesPatch();
-        } finally {
-          window._comRenderInterno = false;
-        }
-      };
-      window.renderComissoes.__comPatchOnlyRender = true;
-    } catch (_) {}
+  function _fmtBRCom(v) {
+    return 'R$ ' + (Number(v || 0) || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   }
 
-  window.__comissoesPatchCalcular = async function() {
-    if (_comCalcEmAndamento || window._comissoesCarregando) return;
-    _comCalcEmAndamento = true;
-    window._comissoesCarregando = true;
-    try {
-      _ensurePeriodoSelects();
-      var ref = _getPeriodoSelecionado();
-      var anoNum = String(ref.anoNum || '').trim();
-      var mesNum = String(ref.mesNum || '').trim();
-      try {
-        var inp = document.querySelector('input[type="month"]');
-        if (inp) {
-          inp.value = anoNum + '-' + mesNum;
-          inp.style.display = 'none';
-        }
-      } catch (_) {}
-
-      try { console.log('[COM PATCH] chamando API mes=' + mesNum + ' ano=' + anoNum); } catch (_) {}
-
-      var token = '';
-      try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
-
-      var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mesNum) + '&ano=' + encodeURIComponent(anoNum), { headers: { Authorization: 'Bearer ' + token } });
-      var json = await resp.json().catch(function() { return null; });
-      try { console.log('[COM PATCH] resposta:', json && json.ok, json && json.total_ofs, json && json.total_vendido); } catch (_) {}
-      if (!json || !json.ok) {
-        try { console.error('[COM PATCH] erro:', json && json.error); } catch (_) {}
-        return;
-      }
-      try { console.log('[FIX OFs] resposta completa:', JSON.stringify(json).substring(0, 500)); } catch (_) {}
-      window._comissoesSqlData = json;
-      window._comissoesData = {
-        totalGeral: json.total_vendido,
-        totalComissao: json.total_comissao,
-        totalPedidos: json.total_ofs,
-        vendedores: (json.vendedores || []).map(function(v) {
-          return {
-            vendNome: v.nome,
-            nome: v.nome,
-            vendId: v.id,
-            id: v.id,
-            total: v.total,
-            peds: v.ofs,
-            quantidade: v.ofs,
-            comissaoRs: v.comissao_rs,
-            comissao: v.comissao_pct,
-            comissao_pct: v.comissao_pct,
-            ofs: [],
-            ofsList: []
-          };
-        })
-      };
-      try {
-        var fmt = function(v) { return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); };
-        var setEl = function(sel, v) { var el = document.querySelector(sel); if (el) el.textContent = v; };
-        setEl('#com-total-vendido, [data-com=\"total_vendido\"]', fmt(json.total_vendido));
-        setEl('#com-total-comissao, [data-com=\"total_comissao\"]', fmt(json.total_comissao));
-        setEl('#com-total-ofs, [data-com=\"total_ofs\"]', String(json.total_ofs || 0));
-      } catch (_) {}
-
-      try {
-        var prev = _prevPeriodo(mesNum, anoNum);
-        window.__comissoesPrevData = null;
-        if (prev) {
-          window.__comissoesPrevData = await _fetchComissoes(prev.mesNum, prev.anoNum);
-        }
-      } catch (_) { window.__comissoesPrevData = null; }
-
-      try { _instalarRenderComissoesFix(); } catch (_) {}
-      try { if (typeof window['renderComissoes'] === 'function') window['renderComissoes'](window._comissoesData); } catch (_) {}
-      setTimeout(function() {
-        try { _ensureVendedoresMap(); } catch (_) {}
-        _renderTabelaVendedores(window._comissoesSqlData);
-        _renderTabelaOFs(window._comissoesSqlData);
-        _ocultarGraficoComissoes();
-        _ensureExtras(window._comissoesSqlData, mesNum, anoNum);
-      }, 600);
-      setTimeout(_ocultarGraficoComissoes, 800);
-    } catch (e) {
-      try { console.error('[COM PATCH] fetch erro:', e && e.message); } catch (_) {}
-    } finally {
-      window._comissoesCarregando = false;
-      setTimeout(function() { _comCalcEmAndamento = false; }, 300);
-    }
-  };
-  try { window._executarCalculoComissoes = window.__comissoesPatchCalcular; } catch (_) {}
-
-  function _rebindBtnCalcular() {
-    try {
-      var pg = document.querySelector('#page-comissoes');
-      if (!pg) return;
-      Array.prototype.slice.call(pg.querySelectorAll('button')).forEach(function(btn) {
-        try {
-          if (!btn) return;
-          var txt = String(btn.textContent || '').trim();
-          if (txt !== 'Calcular') return;
-          if (btn.dataset && btn.dataset.comV3 === '1') return;
-          try { btn.onclick = null; } catch (_) {}
-          try { btn.removeAttribute('onclick'); } catch (_) {}
-          var novo = btn.cloneNode(true);
-          if (!btn.parentNode) return;
-          btn.parentNode.replaceChild(novo, btn);
-          novo.dataset.comV3 = '1';
-          novo.addEventListener('click', function(e) {
-            try { e.preventDefault(); } catch (_) {}
-            try { e.stopImmediatePropagation(); } catch (_) {}
-            try { console.log('[COM] botão Calcular vinculado v3'); } catch (_) {}
-            window.calcularComissoes();
-          }, true);
-        } catch (_) {}
-      });
-    } catch (_) {}
+  function _nomeGrupoCom(g) {
+    return String(g && (g.vendedor || g.nome || g.vendedor_nome || g.vendNome || '') || '').trim() || '—';
   }
 
-  try {
-    var _goOrigComFix = window.go;
-    if (_goOrigComFix && !window._patchGoComFixed) {
-      window._patchGoComFixed = true;
-      window.go = function(tela) {
-        var args = Array.prototype.slice.call(arguments, 1);
-        var r = _goOrigComFix.apply(this, [tela].concat(args));
-        if (String(tela || '').indexOf('comiss') >= 0) {
-          setTimeout(_rebindBtnCalcular, 500);
-          setTimeout(function() {
-            try { _instalarRenderComissoesFix(); } catch (_) {}
-            try {
-              var inp = document.querySelector('input[type="month"]');
-              if (inp && !inp.value) {
-                var h = new Date();
-                inp.value = String(h.getFullYear()) + '-' + String(h.getMonth() + 1).padStart(2, '0');
-              }
-            } catch (_) {}
-          }, 300);
-        }
-        return r;
-      };
-    }
-  } catch (_) {}
-
-  function _instalarOverrideComissoes() {
-    try {
-      if (typeof window.__comissoesPatchCalcular === 'function') {
-        window._executarCalculoComissoes = window.__comissoesPatchCalcular;
-        window.calcularComissoes = window.__comissoesPatchCalcular;
-        window.gerarRelatorioComissoes = window.__comissoesPatchCalcular;
-        window.renderRelatorioComissoes = window.__comissoesPatchCalcular;
-      }
-    } catch (_) {}
-    try { _instalarExecGuardComissoes(); } catch (_) {}
-    try { _instalarRenderComissoesFix(); } catch (_) {}
-    try { _rebindBtnCalcular(); } catch (_) {}
+  function _valorGrupoCom(g) {
+    return Number(g && (g.total_vendas || g.total || g.valor_total || 0) || 0) || 0;
   }
 
-  function _instalarExecGuardComissoes() {
-    try {
-      window._comissoesEmExecucao = window._comissoesEmExecucao || false;
-      var calcularComissoesOriginal = window.calcularComissoes;
-      if (typeof calcularComissoesOriginal !== 'function') return;
-      if (calcularComissoesOriginal.__comissoesExecWrapped) return;
-      var wrapped = async function() {
-        if (window._comissoesEmExecucao) {
-          try { console.log('[COM] bloqueado: já em execução'); } catch (_) {}
-          return;
-        }
-        window._comissoesEmExecucao = true;
-        try {
-          return await calcularComissoesOriginal.apply(this, arguments);
-        } finally {
-          setTimeout(function() { window._comissoesEmExecucao = false; }, 2000);
-        }
-      };
-      wrapped.__comissoesExecWrapped = true;
-      wrapped.__comissoesExecOriginal = calcularComissoesOriginal;
-      window.calcularComissoes = wrapped;
-    } catch (_) {}
+  function _pctGrupoCom(g) {
+    return Number(g && (g.comissao_pct || g.comissao || 1) || 1) || 1;
   }
 
-  try {
-    if (!window.__comissoesObsInstalled) {
-      window.__comissoesObsInstalled = true;
-      try {
-        if (window.__comissoesObs && typeof window.__comissoesObs.disconnect === 'function') window.__comissoesObs.disconnect();
-      } catch (_) {}
-      try { window.__comissoesObs = null; } catch (_) {}
-      try { window.__comissoesObsDisabled = true; } catch (_) {}
-    }
-  } catch (_) {}
+  function _getNomeVendCom(of, mapaVend) {
+    mapaVend = mapaVend || {};
+    var vendId = String(of && (of.vendedor_id || of.vendId || of.vend_id || '') || '').trim().toLowerCase();
+    var nome = String(of && (of._vend || of._vendedor_resolvido || of._vendedor_nome || of.vendedor || of.vendedor_nome || of.vendNome || '') || '').trim();
+    return nome || mapaVend[vendId] || '—';
+  }
 
-  function _instalarDetectorNavComissoes() {
-    try {
-      if (window.__comissoesNavDetectorInstalled) return;
-      window.__comissoesNavDetectorInstalled = true;
-      window._comissoesJaCalculadas = false;
+  function _montarGruposEOfsCom(dados) {
+    var grupos = Array.isArray(dados && dados.grupos) ? dados.grupos.slice()
+      : (Array.isArray(dados && dados.vendedores) ? dados.vendedores.slice() : []);
+    var ofsFlat = Array.isArray(dados && dados.ofs) ? dados.ofs
+      : (Array.isArray(dados && dados.detalhamento) ? dados.detalhamento : []);
+    var ordemVend = grupos.map(_nomeGrupoCom);
+    var mapaVend = window._vendedoresMap || {};
+    var todasOFs = [];
 
-      document.addEventListener('click', function(e) {
-        try {
-          var link = e && e.target && (e.target.closest ? e.target.closest('a, li, button, span, div') : null);
-          if (!link) return;
-          var txt = String(link.textContent || '').trim().toLowerCase();
-          if (!(txt === 'comissões' || txt === 'comissoes')) return;
-          window._comissoesJaCalculadas = false;
-          setTimeout(function() {
-            try {
-              if (!window._comissoesEmExecucao && !window._comissoesJaCalculadas && typeof window._executarCalculoComissoes === 'function') {
-                window._comissoesJaCalculadas = true;
-                window._executarCalculoComissoes();
-              }
-            } catch (_) {}
-          }, 400);
-        } catch (_) {}
-      }, true);
-
-      if (!window.__observerEntradaComissoes) {
-        window.__observerEntradaComissoes = new MutationObserver(function() {
-          if (window._pausarObservers) return;
-          try {
-            var el = document.querySelector('#page-comissoes, [data-page="comissoes"]');
-            if (!el) return;
-            var visivel = getComputedStyle(el).display !== 'none' && el.offsetParent !== null;
-            if (visivel && !window._comissoesJaCalculadas && !window._comissoesEmExecucao) {
-              window._comissoesJaCalculadas = true;
-              try { window.__observerEntradaComissoes.disconnect(); } catch (_) {}
-              setTimeout(function() {
-                try { if (typeof window._executarCalculoComissoes === 'function') window._executarCalculoComissoes(); } catch (_) {}
-              }, 300);
-            }
-          } catch (_) {}
+    grupos.forEach(function(g) {
+      var nomeVend = _nomeGrupoCom(g);
+      var ofsGrupo = Array.isArray(g && g.ofs) ? g.ofs
+        : (Array.isArray(g && g.orders) ? g.orders
+        : (Array.isArray(g && g.ordens) ? g.ordens : []));
+      if (!ofsGrupo.length && ofsFlat.length) {
+        ofsGrupo = ofsFlat.filter(function(of) {
+          return _getNomeVendCom(of, mapaVend) === nomeVend;
         });
-        try { window.__observerEntradaComissoes.observe(document.body, { childList: true, subtree: false }); } catch (_) {}
       }
-    } catch (_) {}
+      ofsGrupo.forEach(function(of) {
+        todasOFs.push(Object.assign({}, of || {}, { _vend: nomeVend }));
+      });
+    });
+
+    if (!todasOFs.length && ofsFlat.length) {
+      todasOFs = ofsFlat.map(function(of) {
+        return Object.assign({}, of || {}, { _vend: _getNomeVendCom(of, mapaVend) });
+      });
+      if (!ordemVend.length) {
+        ordemVend = Array.from(new Set(todasOFs.map(function(of) { return String(of && of._vend || '—').trim() || '—'; })));
+      }
+    }
+
+    todasOFs.sort(function(a, b) {
+      var iA = ordemVend.indexOf(String(a && a._vend || '—').trim());
+      var iB = ordemVend.indexOf(String(b && b._vend || '—').trim());
+      return (iA < 0 ? 999 : iA) - (iB < 0 ? 999 : iB);
+    });
+
+    return { grupos: grupos, todasOFs: todasOFs, ordemVend: ordemVend };
   }
 
-  try { _instalarOverrideComissoes(); } catch (_) {}
-  try { setTimeout(_instalarOverrideComissoes, 300); } catch (_) {}
-  try { setTimeout(_instalarOverrideComissoes, 1200); } catch (_) {}
-  try { setTimeout(_instalarExecGuardComissoes, 1400); } catch (_) {}
-  try { _instalarDetectorNavComissoes(); } catch (_) {}
-  try { setTimeout(_instalarDetectorNavComissoes, 1200); } catch (_) {}
-  try { setTimeout(_rebindBtnCalcular, 1000); } catch (_) {}
+  function _renderComissoesCompleto(dados, dadosAnt, grupos, todasOFs, ordemVend, mesRef, anoRef) {
+    var paginaCom = document.querySelector('#page-comissoes')
+      || document.querySelector('[data-page="comissoes"]')
+      || document.querySelector('.page-comissoes');
+
+    if (!paginaCom) {
+      try { console.error('[COM RENDER] página de comissões não encontrada'); } catch (_) {}
+      return;
+    }
+
+    window._pausarObservers = true;
+
+    var totalVendas = Number(dados && (dados.total_geral_vendas || dados.total_vendido || dados.total_vendas || 0) || 0) || 0;
+    var totalComissao = Number(dados && (dados.total_geral_comissao || dados.total_comissao || 0) || 0) || 0;
+    var totalOFs = Number(dados && (dados.total_ofs || 0) || 0) || (Array.isArray(todasOFs) ? todasOFs.length : 0);
+    var totalVendasAnt = Number(dadosAnt && (dadosAnt.total_geral_vendas || dadosAnt.total_vendido || dadosAnt.total_vendas || 0) || 0) || 0;
+    var varPct = totalVendasAnt > 0 ? (((totalVendas - totalVendasAnt) / totalVendasAnt) * 100) : null;
+    var ranking = (Array.isArray(grupos) ? grupos.slice() : []).sort(function(a, b) { return _valorGrupoCom(b) - _valorGrupoCom(a); });
+    var melhorVend = _nomeGrupoCom(ranking[0]);
+    var melhorTotal = _valorGrupoCom(ranking[0]);
+    var melhorPct = totalVendas > 0 ? ((melhorTotal / totalVendas) * 100) : 0;
+    var labelPeriodo = _mesNomeCom(mesRef) + ' ' + String(anoRef || new Date().getFullYear());
+
+    var htmlCards = ''
+      + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;padding:16px 0 8px">'
+      + '<div style="background:linear-gradient(135deg,#1e2d40,#1a2535);border:1px solid #2a3f5f;border-radius:12px;padding:20px 24px"><div style="font-size:11px;text-transform:uppercase;color:#64748b;letter-spacing:.5px;margin-bottom:8px">Total Vendido</div><div style="font-size:26px;font-weight:700;color:#f1f5f9">' + _fmtBRCom(totalVendas) + '</div><div style="font-size:12px;color:#94a3b8;margin-top:4px">' + labelPeriodo + '</div></div>'
+      + '<div style="background:linear-gradient(135deg,#1e2d40,#1a2535);border:1px solid #2a3f5f;border-radius:12px;padding:20px 24px"><div style="font-size:11px;text-transform:uppercase;color:#64748b;letter-spacing:.5px;margin-bottom:8px">OFs do Período</div><div style="font-size:26px;font-weight:700;color:#f1f5f9">' + totalOFs + ' OFs</div></div>'
+      + '<div style="background:linear-gradient(135deg,#1e2d40,#1a2535);border:1px solid #2a3f5f;border-radius:12px;padding:20px 24px"><div style="font-size:11px;text-transform:uppercase;color:#64748b;letter-spacing:.5px;margin-bottom:8px">Total Comissões</div><div style="font-size:26px;font-weight:700;color:#10b981">' + _fmtBRCom(totalComissao) + '</div></div>'
+      + '<div style="background:linear-gradient(135deg,#1e2d40,#1a2535);border:1px solid #2a3f5f;border-radius:12px;padding:20px 24px"><div style="font-size:11px;text-transform:uppercase;color:#64748b;letter-spacing:.5px;margin-bottom:8px">vs Mês Anterior</div><div style="font-size:26px;font-weight:700;color:' + (varPct == null || varPct >= 0 ? '#10b981' : '#ef4444') + '">' + (varPct == null ? '—' : ((varPct >= 0 ? '↑' : '↓') + Math.abs(varPct).toFixed(1) + '%')) + '</div><div style="font-size:12px;color:#94a3b8;margin-top:4px">Anterior: ' + _fmtBRCom(totalVendasAnt) + '</div></div>'
+      + '<div style="background:linear-gradient(135deg,#1e2d40,#1a2535);border:1px solid #2a3f5f;border-radius:12px;padding:20px 24px"><div style="font-size:11px;text-transform:uppercase;color:#64748b;letter-spacing:.5px;margin-bottom:8px">Melhor Vendedor</div><div style="font-size:22px;font-weight:700;color:#60a5fa">' + String(melhorVend || '—').replace(/</g, '&lt;') + '</div><div style="font-size:12px;color:#94a3b8;margin-top:4px">' + _fmtBRCom(melhorTotal) + ' · ' + Number(melhorPct || 0).toFixed(1) + '% do total</div></div>'
+      + '</div>';
+
+    var cores3 = ['#f59e0b', '#94a3b8', '#cd7c2f'];
+    var medal3 = ['🥇', '🥈', '🥉'];
+    var htmlRanking = '<div style="display:flex;gap:16px;padding:0 0 16px;justify-content:center">'
+      + ranking.slice(0, 3).map(function(g, i) {
+          var nome = _nomeGrupoCom(g);
+          var total = _valorGrupoCom(g);
+          var ofs = Array.isArray(g && g.ofs) ? g.ofs.length : (Number(g && (g.count || g.ofs || 0) || 0) || 0);
+          var pct = totalVendas > 0 ? ((total / totalVendas) * 100) : 0;
+          return '<div style="flex:1;max-width:360px;background:#1a2032;border:1px solid #2a3350;border-radius:10px;padding:14px 18px"><div style="font-size:13px;font-weight:700;color:' + cores3[i] + '">' + medal3[i] + ' ' + String(nome || '—').replace(/</g, '&lt;') + '</div><div style="font-size:12px;color:#94a3b8;margin:4px 0">' + _fmtBRCom(total) + ' · ' + ofs + ' OFs</div><div style="background:#1e293b;border-radius:4px;height:6px;margin-top:8px"><div style="background:' + cores3[i] + ';height:6px;border-radius:4px;width:' + Math.max(0, Math.min(100, pct)) + '%"></div></div></div>';
+        }).join('')
+      + '</div>';
+
+    var coresBg = ['#1a2744', '#1a3a2a', '#2d1f3a', '#2d2a1a'];
+    var htmlResumo = '<table style="width:100%;border-collapse:collapse;margin-bottom:16px"><tbody>'
+      + grupos.map(function(g, i) {
+          var nome = _nomeGrupoCom(g);
+          var ofs = Array.isArray(g && g.ofs) ? g.ofs.length : (Number(g && (g.count || g.ofs || 0) || 0) || 0);
+          var total = _valorGrupoCom(g);
+          var pctC = _pctGrupoCom(g);
+          var comissao = Number(g && (g.total_comissao || g.comissao_rs || (total * (pctC / 100))) || 0) || 0;
+          return '<tr style="background:' + coresBg[i % 4] + ';border-bottom:1px solid #1e293b"><td style="padding:12px 16px;font-weight:600">' + String(nome || '—').replace(/</g, '&lt;') + '</td><td style="padding:12px 16px;text-align:center">' + ofs + '</td><td style="padding:12px 16px;text-align:center"></td><td style="padding:12px 16px;text-align:center">' + _fmtBRCom(total) + '</td><td style="padding:12px 16px;text-align:center">' + Number(pctC || 0).toFixed(2).replace('.', ',') + '%</td><td style="padding:12px 16px;text-align:right;color:#10b981;font-weight:600">' + _fmtBRCom(comissao) + '</td><td style="padding:12px 16px;text-align:center;color:#64748b">—</td></tr>';
+        }).join('')
+      + '<tr style="background:#0f172a;font-weight:700;border-top:2px solid #334155"><td style="padding:12px 16px">TOTAL</td><td style="padding:12px 16px;text-align:center">' + totalOFs + '</td><td></td><td style="padding:12px 16px;text-align:center">' + _fmtBRCom(totalVendas) + '</td><td></td><td style="padding:12px 16px;text-align:right;color:#10b981">' + _fmtBRCom(totalComissao) + '</td><td></td></tr>'
+      + '</tbody></table>';
+
+    var totPorVend = Object.create(null);
+    (todasOFs || []).forEach(function(of) {
+      var n = String(of && of._vend || '—').trim() || '—';
+      if (!totPorVend[n]) totPorVend[n] = { count: 0, vendas: 0, comissao: 0 };
+      totPorVend[n].count += 1;
+      totPorVend[n].vendas += Number(of && (of.valor_total || of.valor_venda || 0) || 0) || 0;
+      totPorVend[n].comissao += (Number(of && (of.valor_total || of.valor_venda || 0) || 0) || 0) * ((Number(of && (of.comissao_pct || 1) || 1) || 1) / 100);
+    });
+
+    var chCores = [
+      { bg: '#0d1f3c', border: '#1d4ed8', text: '#60a5fa' },
+      { bg: '#0d2d1a', border: '#059669', text: '#10b981' },
+      { bg: '#1f0d3c', border: '#7c3aed', text: '#a78bfa' },
+      { bg: '#2d1f0e', border: '#d97706', text: '#f59e0b' }
+    ];
+
+    var htmlOFs = '';
+    var vendAtual = null;
+    (todasOFs || []).forEach(function(of, idx) {
+      var nv = String(of && of._vend || '—').trim() || '—';
+      var iV = ordemVend.indexOf(nv);
+      var ch = chCores[iV >= 0 ? (iV % 4) : 0];
+      var cbg = coresBg[iV >= 0 ? (iV % 4) : 0];
+      if (nv !== vendAtual) {
+        vendAtual = nv;
+        var t = totPorVend[nv] || {};
+        htmlOFs += '<tr style="background:' + ch.bg + ';border-left:4px solid ' + ch.border + ';border-top:2px solid ' + ch.border + '"><td colspan="11" style="padding:8px 16px;font-weight:700;color:' + ch.text + ';font-size:13px">👤 ' + String(nv || '—').replace(/</g, '&lt;') + ' &nbsp;·&nbsp; <span style="font-weight:400;color:#94a3b8;font-size:12px">' + (t.count || 0) + ' OFs &nbsp;·&nbsp; Total: ' + _fmtBRCom(t.vendas || 0) + ' &nbsp;·&nbsp; Comissão: ' + _fmtBRCom(t.comissao || 0) + '</span></td></tr>';
+      }
+      var qtd = Number(of && (of.quantidade || of.qtd || 0) || 0) || 0;
+      var valorTotal = Number(of && (of.valor_total || of.valor_venda || 0) || 0) || 0;
+      var vu = Number(of && of.valor_unitario || 0) || ((valorTotal && qtd > 0) ? (valorTotal / qtd) : 0);
+      var comRS = valorTotal * ((Number(of && (of.comissao_pct || 1) || 1) || 1) / 100);
+      var data = of && of.data_conclusao ? new Date(of.data_conclusao).toLocaleDateString('pt-BR') : '—';
+      var cli = String(of && (of.cliente_nome || of._cliente_nome || of.cliente) || '').trim();
+      htmlOFs += '<tr data-of-idx="' + idx + '" data-cli-id="' + String(of && (of.cli_id || of.cliId || '') || '').replace(/"/g, '&quot;') + '" style="background:' + cbg + ';border-bottom:1px solid #1e2d40" onmouseenter="this.style.filter=\'brightness(1.15)\'" onmouseleave="this.style.filter=\'\'"><td style="padding:9px 12px;text-align:center;font-size:13px;color:#94a3b8">#' + String(of && (of.numero || of.of_numero) || '—').replace(/</g, '&lt;') + '</td><td style="padding:9px 12px;text-align:left;font-size:13px" class="td-cli">' + String(cli || '...').replace(/</g, '&lt;') + '</td><td style="padding:9px 12px;text-align:center;font-size:13px">' + String(nv || '—').replace(/</g, '&lt;') + '</td><td style="padding:9px 12px;text-align:center;font-size:13px">' + (qtd || '—') + '</td><td style="padding:9px 12px;text-align:center;font-size:13px">' + _fmtBRCom(valorTotal) + '</td><td style="padding:9px 12px;text-align:center;font-size:13px">' + (vu > 0 ? _fmtBRCom(vu) : '—') + '</td><td style="padding:9px 12px;text-align:center;font-size:13px">' + Number(of && (of.comissao_pct || 1) || 1).toFixed(2).replace('.', ',') + '%</td><td style="padding:9px 12px;text-align:center;font-size:13px;color:#10b981;font-weight:600">' + _fmtBRCom(comRS) + '</td><td style="padding:9px 12px;text-align:center;font-size:13px">' + String(data).replace(/</g, '&lt;') + '</td><td style="padding:9px 12px;text-align:center"><span style="background:#064e3b;color:#10b981;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600">Concluído</span></td><td style="padding:9px 12px;text-align:center"><button onclick="window._abrirModalEdicaoOF&&window._comissaoOFs&&window._abrirModalEdicaoOF(window._comissaoOFs[' + idx + '])" style="background:transparent;border:1px solid #3a4a6b;color:#94a3b8;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer">✏️ Trocar</button></td></tr>';
+    });
+
+    paginaCom.innerHTML = '<div style="padding:0 16px">' + htmlCards + htmlRanking + '<div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:16px"><div style="font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">🏆 Comissão por Vendedor</div>' + htmlResumo + '</div><div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:16px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">📋 Detalhamento das OFs</div><div style="display:flex;gap:8px"><input id="com-busca-of" type="text" placeholder="🔍 Buscar OF ou cliente..." style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px 12px;color:#f1f5f9;font-size:13px;outline:none;width:280px" oninput="window._filtrarComissaoOFs&&window._filtrarComissaoOFs(this.value)"></div></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse" id="tabela-com-ofs"><thead><tr style="background:#0f172a"><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap"># OF</th><th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">CLIENTE</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">VENDEDOR</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">QTD</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">VALOR TOTAL</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">PREÇO UNIT.</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">% COMISSÃO</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">COMISSÃO (R$)</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">DATA</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">STATUS</th><th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;white-space:nowrap">AÇÕES</th></tr></thead><tbody id="tbody-com-ofs">' + htmlOFs + '</tbody></table></div></div></div>';
+
+    var semNome = (todasOFs || []).filter(function(of) {
+      return of && !(of.cliente_nome || of._cliente_nome) && (of.cli_id || of.cliId);
+    });
+    if (semNome.length > 0 && typeof _resolverClientesEmLote === 'function') {
+      _resolverClientesEmLote(semNome.map(function(o) { return o.cli_id || o.cliId; }), function(cliId, nome) {
+        try {
+          document.querySelectorAll('tr[data-cli-id="' + String(cliId).replace(/"/g, '&quot;') + '"] .td-cli').forEach(function(td) {
+            td.textContent = nome;
+          });
+        } catch (_) {}
+      });
+    }
+
+    window._filtrarComissaoOFs = function(termo) {
+      var t = String(termo || '').toLowerCase();
+      document.querySelectorAll('#tbody-com-ofs tr').forEach(function(tr) {
+        tr.style.display = (!t || String(tr.textContent || '').toLowerCase().indexOf(t) >= 0) ? '' : 'none';
+      });
+    };
+
+    setTimeout(function() { window._pausarObservers = false; }, 1000);
+    try { console.log('[COM RENDER] concluído:', (todasOFs || []).length, 'OFs renderizadas'); } catch (_) {}
+  }
+
+  function _initRewriteComissoes() {
+    _desligarLegadoComissoes();
+    try { if (typeof _ensureVendedoresMap === 'function') _ensureVendedoresMap(); } catch (_) {}
+
+    window.calcularComissoes = async function() {
+      if (window._comissoesRodando) return;
+      window._comissoesRodando = true;
+
+      try {
+        var mesEl = document.getElementById('comissao-mes-select') || document.querySelector('select[id*="mes"]');
+        var anoEl = document.getElementById('comissao-ano-select') || document.querySelector('select[id*="ano"]');
+        var mes = Number((mesEl && mesEl.value) || (new Date().getMonth() + 1)) || (new Date().getMonth() + 1);
+        var ano = Number((anoEl && anoEl.value) || new Date().getFullYear()) || new Date().getFullYear();
+        var mesAnt = mes === 1 ? 12 : (mes - 1);
+        var anoAnt = mes === 1 ? (ano - 1) : ano;
+        var token = '';
+        try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
+        var headers = token ? { Authorization: 'Bearer ' + token } : {};
+
+        try { console.log('[COM] calculando mes=' + mes + ' ano=' + ano); } catch (_) {}
+
+        var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano), { headers: headers });
+        if (!resp.ok) throw new Error('Falha ao buscar comissões: ' + resp.status);
+        var dados = await resp.json();
+
+        var dadosAnt = null;
+        try {
+          var respAnt = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mesAnt) + '&ano=' + encodeURIComponent(anoAnt), { headers: headers });
+          if (respAnt.ok) dadosAnt = await respAnt.json();
+        } catch (_) {}
+
+        var norm = _montarGruposEOfsCom(dados || {});
+        window._comissaoOFs = norm.todasOFs.slice();
+        window._comissoesSqlData = dados;
+        window._comissoesData = dados;
+        _renderComissoesCompleto(dados || {}, dadosAnt || {}, norm.grupos, norm.todasOFs, norm.ordemVend, mes, ano);
+      } catch (e) {
+        try { console.error('[COM] erro:', e); } catch (_) {}
+      } finally {
+        setTimeout(function() { window._comissoesRodando = false; }, 3000);
+      }
+    };
+
+    try { window._executarCalculoComissoes = window.calcularComissoes; } catch (_) {}
+    try { window.gerarRelatorioComissoes = window.calcularComissoes; } catch (_) {}
+    try { window.renderRelatorioComissoes = function() {}; } catch (_) {}
+  }
+
+  try { _initRewriteComissoes(); } catch (_) {}
 })();
 
 (function() {
