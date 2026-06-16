@@ -4277,6 +4277,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     setNoCache(res);
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    try { console.log('[PUT /api/ofs/:id]', id, JSON.stringify(req.body || {}).slice(0, 2000)); } catch (_) {}
     const body = _filterOfsPayloadKnownCols(req.body || {}, true);
     const cleanBody = { ...body };
     delete body.id; delete body.empresa_id;
@@ -4475,6 +4476,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     const updRes = await ofsUpdateWithRetry(id, ofIn(filtered));
     if (updRes.error) throw updRes.error;
     const updated = updRes.data;
+    try { console.log('[PUT /api/ofs/:id] resultado:', updRes?.error?.message || null, updated ? 1 : 0); } catch (_) {}
     await _maybeRegistrarComissaoOF(req, body, updated);
     await logAuditoria('ofs', 'UPDATE', id, ofAtual, updated, req);
     try {
@@ -10871,6 +10873,15 @@ app.delete('/api/fornecedores/:id', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/gramaturas/init', authMiddleware, async (req, res) => {
+  try {
+    const okTable = await _ensureGramaturasTable();
+    return res.json({ ok: !!okTable });
+  } catch (e) {
+    return res.json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post('/api/admin/init-gramaturas', authMiddleware, async (req, res) => {
   try {
     const okTable = await _ensureGramaturasTable();
     return res.json({ ok: !!okTable });

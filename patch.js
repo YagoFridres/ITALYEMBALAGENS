@@ -13480,12 +13480,33 @@ function _renderTabelaOFs(json) {
     try { _ensureVendedoresMap(); } catch (_) {}
     var pg = document.querySelector('#page-comissoes, [data-page="comissoes"]');
     if (!pg) return;
-    var tbody = document.querySelector('#tabela-comissoes-ofs tbody');
+    var tbody =
+      document.querySelector('#detalhamento-ofs tbody')
+      || document.querySelector('.detalhamento-ofs tbody')
+      || document.querySelector('[data-section="detalhamento"] tbody')
+      || document.querySelector('#tabela-comissoes-ofs tbody');
     if (!tbody) {
-      var tbodies = pg.querySelectorAll('tbody');
-      tbody = (tbodies && tbodies[1]) ? tbodies[1] : (tbodies && tbodies[0] ? tbodies[0] : null);
+      try {
+        var nodes = document.querySelectorAll('h2, h3, h4, span, div');
+        for (var ni = 0; ni < nodes.length; ni += 1) {
+          var el = nodes[ni];
+          if (!el) continue;
+          var t = String(el.textContent || '');
+          if (t.indexOf('Detalhamento das OFs') >= 0) {
+            var sec = (el.closest ? el.closest('section, .card, .box, div[class*="card"], .container') : null)
+              || (el.parentElement && el.parentElement.parentElement && el.parentElement.parentElement.parentElement)
+              || el.parentElement
+              || null;
+            if (sec) {
+              tbody = sec.querySelector('tbody');
+              if (tbody) break;
+            }
+          }
+        }
+      } catch (_) {}
     }
     if (!tbody) return;
+    try { console.log('[FIX OFs] tbody encontrado:', !!tbody); } catch (_) {}
 
     try {
       console.log('[DEBUG OFs] dados recebidos:', JSON.stringify(Object.keys(json || {})));
@@ -13521,37 +13542,35 @@ function _renderTabelaOFs(json) {
       }
     } catch (_) {}
 
-    var baseOFS = (json && json.ofs) ? json.ofs : null;
+    var dadosComissoes = json && json.data && (json.data.grupos || json.data.vendedores || json.data.ofs) ? json.data : json;
+    var gruposIn = [];
+    if (Array.isArray(dadosComissoes)) gruposIn = dadosComissoes;
+    else if (dadosComissoes && Array.isArray(dadosComissoes.grupos)) gruposIn = dadosComissoes.grupos;
+    else if (dadosComissoes && Array.isArray(dadosComissoes.vendedores)) gruposIn = dadosComissoes.vendedores;
+    else if (dadosComissoes && typeof dadosComissoes === 'object') {
+      try {
+        var ks0 = Object.keys(dadosComissoes || {});
+        var found0 = ks0.find(function(k) { return Array.isArray(dadosComissoes[k]) && dadosComissoes[k].length > 0; });
+        if (found0) gruposIn = dadosComissoes[found0];
+      } catch (_) {}
+    }
+    var baseOFS = (dadosComissoes && Array.isArray(dadosComissoes.ofs)) ? dadosComissoes.ofs : null;
     if (!Array.isArray(baseOFS) || !baseOFS.length) {
       try {
-        var gruposIn = (json && Array.isArray(json.grupos)) ? json.grupos : [];
-        var guessKey = function(g) {
-          if (!g) return null;
-          if (Array.isArray(g.ofs)) return 'ofs';
-          if (Array.isArray(g.orders)) return 'orders';
-          if (Array.isArray(g.ordens)) return 'ordens';
-          if (Array.isArray(g.items)) return 'items';
-          var ks = Object.keys(g || {});
-          for (var i = 0; i < ks.length; i += 1) {
-            var k = ks[i];
-            if (Array.isArray(g[k]) && g[k].length && typeof g[k][0] === 'object') return k;
-          }
-          return null;
-        };
-        var k0 = gruposIn[0] ? guessKey(gruposIn[0]) : null;
-        baseOFS = gruposIn.reduce(function(acc, g) {
-          var key = k0 || guessKey(g);
-          var arr = (key && Array.isArray(g && g[key])) ? g[key] : [];
-          var vendG = String((g && (g.vendedor || g.vendNome || g.nome)) || '').trim();
-          (arr || []).forEach(function(of) {
+        baseOFS = (gruposIn || []).reduce(function(acc, g) {
+          var nomeVend = String((g && (g.vendedor || g.nome || g.vendedor_nome || g.vendNome)) || '').trim();
+          var listaOFs = (g && (g.ofs || g.orders || g.ordens || g.items || g.of)) || [];
+          if (!Array.isArray(listaOFs)) listaOFs = [];
+          try { console.log('[FIX OFs] grupo', nomeVend, '→', listaOFs.length, 'OFs'); } catch (_) {}
+          listaOFs.forEach(function(of) {
             if (!of || typeof of !== 'object') return;
-            try { if (!of._vendedor_nome && vendG) of._vendedor_nome = vendG; } catch (_) {}
-            try { if (!of.vendedor && vendG) of.vendedor = vendG; } catch (_) {}
-            acc.push(of);
+            var merged = Object.assign({}, of, { _vendedor_nome: nomeVend });
+            if (!merged.vendedor && nomeVend) merged.vendedor = nomeVend;
+            acc.push(merged);
           });
           return acc;
         }, []);
-        try { console.log('[DEBUG OFs] total após flatMap:', (baseOFS && baseOFS.length) || 0); } catch (_) {}
+        try { console.log('[FIX OFs] total OFs para renderizar:', (baseOFS && baseOFS.length) || 0); } catch (_) {}
       } catch (_) { baseOFS = []; }
     }
 
@@ -13559,7 +13578,7 @@ function _renderTabelaOFs(json) {
       tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:20px;color:#64748b">Nenhuma OF encontrada no período</td></tr>';
       return;
     }
-    json = Object.assign({}, json, { ofs: baseOFS });
+    json = Object.assign({}, dadosComissoes || {}, { ofs: baseOFS });
 
     var fmt = function(v) {
       return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -15311,13 +15330,13 @@ function _ocultarGraficoComissoes() {
         }
       } catch (_) {}
 
-      var btnCancel = document.getElementById('com-of-cancelar');
-      var btnSave = document.getElementById('com-of-salvar');
-      var qtdInput = document.getElementById('com-of-qtd');
-      var valorUnitInput = document.getElementById('edit-of-valor-unitario');
-      var valorTotalInput = document.getElementById('com-of-valor');
-      var comPctInput = document.getElementById('com-of-comissao');
-      var comResumoEl = document.getElementById('com-of-comissao-resumo');
+      var btnCancel = body.querySelector('#com-of-cancelar');
+      var btnSave = body.querySelector('#com-of-salvar');
+      var qtdInput = body.querySelector('#com-of-qtd');
+      var valorUnitInput = body.querySelector('#edit-of-valor-unitario');
+      var valorTotalInput = body.querySelector('#com-of-valor');
+      var comPctInput = body.querySelector('#com-of-comissao');
+      var comResumoEl = body.querySelector('#com-of-comissao-resumo');
       var _atualizarTotaisEdicao = function() {
         try {
           var qtdCalc = Number(String((qtdInput && qtdInput.value) || '').replace(',', '.')) || 0;
@@ -15332,80 +15351,100 @@ function _ocultarGraficoComissoes() {
       if (valorUnitInput) valorUnitInput.oninput = _atualizarTotaisEdicao;
       if (comPctInput) comPctInput.oninput = _atualizarTotaisEdicao;
       _atualizarTotaisEdicao();
-      if (btnCancel) btnCancel.onclick = function(e) { try { e.preventDefault(); } catch (_) {} modal.style.display = 'none'; };
+      if (btnCancel && !btnCancel.dataset.boundCancel) {
+        btnCancel.dataset.boundCancel = '1';
+        btnCancel.addEventListener('click', function(e) {
+          try { e.preventDefault(); } catch (_) {}
+          try { modal.style.display = 'none'; } catch (_) {}
+        });
+      }
 
-      if (btnSave) btnSave.onclick = async function(e) {
-        try { e.preventDefault(); } catch (_) {}
-        var payload = {};
-        var ofId = String(document.getElementById('com-of-id').value || '').trim();
-        var cliId = String(document.getElementById('com-of-cli-id').value || '').trim();
-        var vendId = String(document.getElementById('com-of-vend-id').value || '').trim();
-        var qtd = String(document.getElementById('com-of-qtd').value || '').trim();
-        var valorUnit = String((document.getElementById('edit-of-valor-unitario') || {}).value || '').trim();
-        var qtdNum = Number(String(qtd).replace(',', '.')) || 0;
-        var valorUnitNum = Number(String(valorUnit).replace(',', '.')) || 0;
-        var valorTotalCalc = Math.round((qtdNum * valorUnitNum) * 100) / 100;
-        var valor = String(valorTotalCalc || '');
-        var st = String(document.getElementById('com-of-status').value || '').trim();
-        var created = String(document.getElementById('com-of-created').value || '').trim();
-        var conc = String(document.getElementById('com-of-conclusao').value || '').trim();
-        var obs = String(document.getElementById('com-of-obs').value || '').trim();
-        var comPct = String(document.getElementById('com-of-comissao').value || '').trim();
+      if (btnSave && !btnSave.dataset.boundSave) {
+        btnSave.dataset.boundSave = '1';
+        btnSave.addEventListener('click', async function(e) {
+          try { e.preventDefault(); } catch (_) {}
+          var payload = {};
+          var ofId = String((body.querySelector('#com-of-id') || {}).value || (of && of.id) || id || '').trim();
+          var cliInput = body.querySelector('#com-of-cli-busca');
+          var cliHidden = body.querySelector('#com-of-cli-id');
+          var cliId = String((cliHidden && cliHidden.value) || (cliInput && cliInput.dataset && (cliInput.dataset.cliId || cliInput.dataset.cliid)) || (of && of.cli_id) || '').trim();
+          var vendId = String((body.querySelector('#com-of-vend-id') || {}).value || (of && (of.vendedor_id || of.vendId || of.vend_id)) || '').trim();
+          var qtd = String((body.querySelector('#com-of-qtd') || {}).value || '').trim();
+          var valorUnit = String((body.querySelector('#edit-of-valor-unitario') || {}).value || '').trim();
+          var qtdNum = Number(String(qtd).replace(',', '.')) || 0;
+          var valorUnitNum = Number(String(valorUnit).replace(',', '.')) || 0;
+          var valorTotalCalc = Math.round((qtdNum * valorUnitNum) * 100) / 100;
+          var st = String((body.querySelector('#com-of-status') || {}).value || (of && of.status) || '').trim();
+          var created = String((body.querySelector('#com-of-created') || {}).value || '').trim();
+          var conc = String((body.querySelector('#com-of-conclusao') || {}).value || '').trim();
+          var obs = String((body.querySelector('#com-of-obs') || {}).value || '').trim();
+          var comPct = String((body.querySelector('#com-of-comissao') || {}).value || '').trim();
 
-        if (cliId) payload.cli_id = cliId;
-        if (vendId) payload.vendedor_id = vendId;
-        if (qtd) payload.quantidade = qtdNum;
-        if (valorUnit) payload.valor_unitario = valorUnitNum;
-        payload.valor_total = valorTotalCalc;
-        if (st) payload.status = st;
-        if (created) payload.created_at = created;
-        if (conc) payload.data_conclusao = conc;
-        if (obs) payload.observacoes = obs;
-        if (comPct) payload.comissao_pct = Number(String(comPct).replace(',', '.'));
-        payload._allow_partial = '1';
+          try { console.log('[TROCAR] salvando OF id:', ofId); } catch (_) {}
 
-        try {
-          if (!cliId) {
-            try { alert('Selecione um cliente válido.'); } catch (_) {}
-            return;
-          }
-          var r2 = await fetch('/api/ofs/' + encodeURIComponent(ofId), {
-            method: 'PUT',
-            headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
-            body: JSON.stringify(payload)
-          });
-          var j2 = await r2.json().catch(function() { return null; });
-          if (j2 && j2.ok) {
-            var vendSelect = document.getElementById('com-of-vend-select');
-            var vendNomeNovo = '';
-            try {
-              vendNomeNovo = vendSelect && vendSelect.options && vendSelect.selectedIndex >= 0
-                ? String(vendSelect.options[vendSelect.selectedIndex].text || '').trim()
-                : '';
-            } catch (_) { vendNomeNovo = ''; }
-            var novoSnapshot = _snapshotOfParaResumo({
-              numero: document.getElementById('com-of-numero').value,
-              cliente: document.getElementById('com-of-cli-busca').value,
-              vendedor: vendNomeNovo,
-              quantidade: qtd,
-              valor_total: valorTotalCalc,
-              comissao_pct: comPct,
-              status: st,
-              created_at: created,
-              data_conclusao: conc,
-              observacoes: obs
+          if (cliId) payload.cli_id = cliId;
+          if (vendId) payload.vendedor_id = vendId;
+          if (qtd) payload.quantidade = qtdNum;
+          if (valorUnit) payload.valor_unitario = valorUnitNum;
+          payload.valor_total = valorTotalCalc;
+          if (st) payload.status = st;
+          if (created) payload.created_at = created;
+          if (conc) payload.data_conclusao = conc;
+          if (obs) payload.observacoes = obs;
+          if (comPct) payload.comissao_pct = Number(String(comPct).replace(',', '.'));
+          payload._allow_partial = '1';
+
+          try { console.log('[TROCAR] body:', JSON.stringify(payload)); } catch (_) {}
+
+          try {
+            if (!ofId) {
+              try { alert('OF inválida (sem id).'); } catch (_) {}
+              return;
+            }
+            if (!cliId) {
+              try { alert('Selecione um cliente válido.'); } catch (_) {}
+              return;
+            }
+            var r2 = await fetch('/api/ofs/' + encodeURIComponent(ofId), {
+              method: 'PUT',
+              headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
+              body: JSON.stringify(payload)
             });
-            _mostrarResumoAlteracoes(originalSnapshot, novoSnapshot, function() {
-              try { modal.style.display = 'none'; } catch (_) {}
-            });
-            try { window.calcularComissoes(); } catch (_) {}
-          } else {
-            try { alert('Erro ao salvar alterações da OF: ' + String(j2 && (j2.error || j2.message) || 'Falha')); } catch (_) {}
+            var j2 = await r2.json().catch(function() { return null; });
+            try { console.log('[TROCAR] resultado:', r2 && r2.status, JSON.stringify(j2)); } catch (_) {}
+            if (r2.ok && j2 && j2.ok) {
+              var vendSelect = body.querySelector('#com-of-vend-select');
+              var vendNomeNovo = '';
+              try {
+                vendNomeNovo = vendSelect && vendSelect.options && vendSelect.selectedIndex >= 0
+                  ? String(vendSelect.options[vendSelect.selectedIndex].text || '').trim()
+                  : '';
+              } catch (_) { vendNomeNovo = ''; }
+              var novoSnapshot = _snapshotOfParaResumo({
+                numero: (body.querySelector('#com-of-numero') || {}).value,
+                cliente: (body.querySelector('#com-of-cli-busca') || {}).value,
+                vendedor: vendNomeNovo,
+                quantidade: qtd,
+                valor_total: valorTotalCalc,
+                comissao_pct: comPct,
+                status: st,
+                created_at: created,
+                data_conclusao: conc,
+                observacoes: obs
+              });
+              _mostrarResumoAlteracoes(originalSnapshot, novoSnapshot, function() {
+                try { modal.style.display = 'none'; } catch (_) {}
+              });
+              try { if (typeof window.calcularComissoes === 'function') window.calcularComissoes(); } catch (_) {}
+            } else {
+              try { alert('Erro ao salvar: ' + String(j2 && (j2.error || j2.message) || r2.status || 'Falha')); } catch (_) {}
+            }
+          } catch (err) {
+            try { console.error('[TROCAR] erro fetch:', err); } catch (_) {}
+            try { alert('Erro de conexão ao salvar OF.'); } catch (_) {}
           }
-        } catch (err) {
-          try { alert('Erro ao salvar alterações da OF: ' + String(err && err.message || err)); } catch (_) {}
-        }
-      };
+        });
+      }
 
       modal.style.display = 'flex';
     } catch (_) {}
@@ -15517,6 +15556,7 @@ function _ocultarGraficoComissoes() {
         try { console.error('[COM PATCH] erro:', json && json.error); } catch (_) {}
         return;
       }
+      try { console.log('[FIX OFs] resposta completa:', JSON.stringify(json).substring(0, 500)); } catch (_) {}
       window._comissoesSqlData = json;
       window._comissoesData = {
         totalGeral: json.total_vendido,
