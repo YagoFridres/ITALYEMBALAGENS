@@ -13538,12 +13538,37 @@ function _renderTabelaOFs(json) {
     }
     try { console.log('[FIX OFs] total OFs para renderizar:', todasOFs.length); } catch (_) {}
 
-    var secaoDetalhamento = null;
+    var secaoDetalhamento =
+      document.querySelector('#section-detalhamento, .section-detalhamento, [data-section="detalhamento-ofs"]');
+    if (!secaoDetalhamento) {
+      try {
+        var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+        var node = null;
+        while ((node = walker.nextNode())) {
+          if (String(node.textContent || '').trim() === 'Detalhamento das OFs') {
+            var elw = node.parentElement;
+            for (var wi = 0; wi < 8 && elw; wi += 1) {
+              if ((elw.offsetHeight || 0) > 150 && (elw.offsetWidth || 0) > 400) {
+                secaoDetalhamento = elw;
+                break;
+              }
+              elw = elw.parentElement;
+            }
+            if (secaoDetalhamento) break;
+          }
+        }
+      } catch (_) {}
+    }
     try {
-      document.querySelectorAll('*').forEach(function(el) {
+      console.log('[FIX FINAL] secao via TreeWalker:', !!secaoDetalhamento, secaoDetalhamento && secaoDetalhamento.tagName, secaoDetalhamento && secaoDetalhamento.className, secaoDetalhamento && secaoDetalhamento.offsetHeight);
+    } catch (_) {}
+    try {
+      if (!secaoDetalhamento) document.querySelectorAll('*').forEach(function(el) {
         if (secaoDetalhamento) return;
         try {
-          if (el.childElementCount === 0 && String(el.textContent || '').trim() === 'Detalhamento das OFs') {
+          if (String(el.textContent || '').trim().includes('Detalhamento das OFs')
+            && !el.querySelector('table')
+            && /^(H[1-6]|SPAN|DIV|P|B|STRONG|LABEL)$/i.test(String(el.tagName || ''))) {
             var pai = el.parentElement;
             for (var i = 0; i < 6 && pai; i += 1) {
               if ((pai.offsetHeight || 0) > 100) {
