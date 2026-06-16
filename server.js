@@ -23,6 +23,109 @@ process.on('unhandledRejection', (e) => {
   try { console.error('[REJECTION STACK]', String(e?.stack || '').split('\n').slice(0, 15).join(' | ')); } catch (_) {}
 });
 
+const PINS_STORE_FILE = path.join(__dirname, 'pins_store.json');
+let _pinsStorageMode = null;
+
+function _pinsCreateSql() {
+  return (
+    "CREATE TABLE IF NOT EXISTS pins (" +
+    "id uuid PRIMARY KEY DEFAULT gen_random_uuid()," +
+    "tipo text NOT NULL," +
+    "referencia_id text NOT NULL," +
+    "observacao text DEFAULT ''," +
+    "criado_por text," +
+    "criado_em timestamptz DEFAULT now()," +
+    "empresa_id uuid" +
+    ");" +
+    "CREATE INDEX IF NOT EXISTS idx_pins_empresa_id ON pins(empresa_id);" +
+    "CREATE INDEX IF NOT EXISTS idx_pins_tipo_ref ON pins(tipo, referencia_id);"
+  );
+}
+
+function _pinsReadFallback() {
+  try {
+    if (!fs.existsSync(PINS_STORE_FILE)) return [];
+    const raw = fs.readFileSync(PINS_STORE_FILE, 'utf8');
+    const parsed = JSON.parse(raw || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) { return []; }
+}
+
+function _pinsWriteFallback(list) {
+  try {
+    fs.writeFileSync(PINS_STORE_FILE, JSON.stringify(Array.isArray(list) ? list : [], null, 2), 'utf8');
+  } catch (_) {}
+}
+
+async function _ensurePinsStorage() {
+  if (_pinsStorageMode) return _pinsStorageMode;
+  try {
+    const probe = await supabase.from('pins').select('id', { head: true, count: 'exact' }).limit(1);
+    if (!probe.error) {
+      _pinsStorageMode = 'table';
+      return _pinsStorageMode;
+    }
+    const msg = String(probe.error?.message || probe.error || '').toLowerCase();
+    if (!(msg.includes('does not exist') || msg.includes('not exist') || msg.includes('could not find'))) {
+      _pinsStorageMode = 'file';
+      return _pinsStorageMode;
+    }
+    try {
+      const rpc = await supabase.rpc('exec_sql', { sql: _pinsCreateSql() });
+      if (!rpc.error) {
+        _pinsStorageMode = 'table';
+        return _pinsStorageMode;
+      }
+    } catch (_) {}
+  } catch (_) {}
+  _pinsStorageMode = 'file';
+  return _pinsStorageMode;
+}
+
+async function _pinsList(empresaId) {
+  const mode = await _ensurePinsStorage();
+  if (mode === 'table') {
+    const { data, error } = await supabase.from('pins').select('*').eq('empresa_id', empresaId).order('criado_em', { ascending: false });
+    if (!error) return Array.isArray(data) ? data : [];
+  }
+  return _pinsReadFallback()
+    .filter((p) => String(p?.empresa_id || '') === String(empresaId || ''))
+    .sort((a, b) => String(b?.criado_em || '').localeCompare(String(a?.criado_em || '')));
+}
+
+async function _pinsInsert(payload) {
+  const mode = await _ensurePinsStorage();
+  if (mode === 'table') {
+    const { data, error } = await supabase.from('pins').insert([payload]).select('*').single();
+    if (!error) return data;
+  }
+  const list = _pinsReadFallback();
+  const item = {
+    id: crypto.randomUUID(),
+    tipo: String(payload?.tipo || ''),
+    referencia_id: String(payload?.referencia_id || ''),
+    observacao: String(payload?.observacao || ''),
+    criado_por: String(payload?.criado_por || ''),
+    criado_em: payload?.criado_em || new Date().toISOString(),
+    empresa_id: payload?.empresa_id || null,
+  };
+  list.push(item);
+  _pinsWriteFallback(list);
+  return item;
+}
+
+async function _pinsDelete(id, empresaId) {
+  const mode = await _ensurePinsStorage();
+  if (mode === 'table') {
+    const { error } = await supabase.from('pins').delete().eq('id', id).eq('empresa_id', empresaId);
+    return !error;
+  }
+  const list = _pinsReadFallback();
+  const next = list.filter((p) => !(String(p?.id || '') === String(id || '') && String(p?.empresa_id || '') === String(empresaId || '')));
+  _pinsWriteFallback(next);
+  return next.length !== list.length;
+}
+
 function parseFluxo(v) {
   if (Array.isArray(v)) return v;
   if (typeof v === 'string') {
@@ -3176,6 +3279,25 @@ async function comprasUpdateCompat(id, payload) {
   return { data: null, error: lastErr };
 }
 
+async function buscarTodasOFsPaginadas(montarQuery) {
+  let todas = [];
+  let from = 0;
+  const pageSize = 1000;
+  let countExact = 0;
+  while (true) {
+    let query = montarQuery();
+    const { data, error, count } = await query.range(from, from + pageSize - 1);
+    if (error) throw error;
+    const lote = Array.isArray(data) ? data : [];
+    if (from === 0 && Number.isFinite(Number(count))) countExact = Number(count);
+    if (!lote.length) break;
+    todas = todas.concat(lote);
+    if (lote.length < pageSize) break;
+    from += pageSize;
+  }
+  return { data: todas, count: countExact || todas.length };
+}
+
 app.get('/api/ofs', authMiddleware, async (req, res) => {
   try {
     if (!supabase) {
@@ -3187,7 +3309,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     const after = String(req.query.after || '').trim();
     const afterIso = (after && after !== 'undefined' && after !== 'null' && after !== '[object Object]') ? after : '';
-    const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 500, 1000);
+    const limitRaw = String(req.query.limit || '').trim();
+    const limit = Math.min(parseInt(limitRaw, 10) || 500, 1000);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const status = req.query.status;
     const busca = String(req.query.busca || req.query.search || '').trim();
@@ -3202,35 +3325,46 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       setNoCache(res);
     }
 
-    let query = supabase
-      .from('ofs')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    const buildQuery = () => {
+      let query = supabase
+        .from('ofs')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false });
 
-    if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') {
-      query = query.eq('empresa_id', empresaFiltro);
-    } else {
-      query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
-    }
+      if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') {
+        query = query.eq('empresa_id', empresaFiltro);
+      } else {
+        query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
+      }
 
-    if (status) {
-      if (status.includes(',')) query = query.in('status', status.split(',').map((s) => String(s || '').trim()).filter(Boolean));
-      else query = query.eq('status', status);
-    }
+      if (status) {
+        if (status.includes(',')) query = query.in('status', status.split(',').map((s) => String(s || '').trim()).filter(Boolean));
+        else query = query.eq('status', status);
+      }
 
-    if (clienteFiltro && clienteFiltro !== 'undefined' && clienteFiltro !== 'null' && clienteFiltro !== '[object Object]') {
-      query = query.eq('cli_id', clienteFiltro);
-    }
-    if (busca) {
-      query = query.or('numero.ilike.%' + busca + '%,descricao.ilike.%' + busca + '%');
-    }
-    if (afterIso) {
-      query = query.gte('created_at', afterIso);
-    }
+      if (clienteFiltro && clienteFiltro !== 'undefined' && clienteFiltro !== 'null' && clienteFiltro !== '[object Object]') {
+        query = query.eq('cli_id', clienteFiltro);
+      }
+      if (busca) {
+        query = query.or('numero.ilike.%' + busca + '%,descricao.ilike.%' + busca + '%');
+      }
+      if (afterIso) {
+        query = query.gte('created_at', afterIso);
+      }
+      return query;
+    };
 
-    const { data, error, count } = await query;
-    if (error) throw error;
+    const shouldFetchAll = !afterIso && !offset && (!limitRaw || limitRaw === 'all' || limitRaw === '0');
+    const fetched = shouldFetchAll
+      ? await buscarTodasOFsPaginadas(buildQuery)
+      : await (async () => {
+          const { data, error, count } = await buildQuery().range(offset, offset + limit - 1);
+          if (error) throw error;
+          return { data: data || [], count: count || 0 };
+        })();
+
+    const data = fetched.data || [];
+    const count = fetched.count || 0;
 
     const ofsRaw = data || [];
     const clienteIds = [...new Set(ofsRaw.map(o => o.cli_id).filter(Boolean))];
@@ -5132,72 +5266,184 @@ app.get('/api/relatorio/resultado-empresas', authMiddleware, async (req, res) =>
   }
 });
 
+async function _selectCompatRows(table, columns, applyQuery) {
+  let cur = String(columns || '*');
+  for (let tentativa = 0; tentativa < 16; tentativa += 1) {
+    let q = supabase.from(table).select(cur);
+    if (typeof applyQuery === 'function') q = applyQuery(q) || q;
+    const { data, error } = await q;
+    if (!error) return { data: Array.isArray(data) ? data : [], error: null, columns: cur };
+    const msg = String(error.message || error || '');
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+    if (!col) return { data: null, error, columns: cur };
+    const parts = cur.split(',').map((s) => String(s || '').trim()).filter(Boolean);
+    const next = parts.filter((c) => c !== col);
+    if (!next.length || next.length === parts.length) return { data: null, error, columns: cur };
+    cur = next.join(',');
+  }
+  return { data: null, error: { message: 'Falha ao selecionar colunas compatíveis de ' + table }, columns: cur };
+}
+
+function _normalizarOperadoresCaixa(row) {
+  const bruto = row?.operadores;
+  let lista = [];
+  try {
+    if (Array.isArray(bruto)) lista = bruto;
+    else if (typeof bruto === 'string') {
+      const txt = String(bruto || '').trim();
+      if (txt) {
+        if (txt[0] === '[') {
+          const parsed = JSON.parse(txt);
+          if (Array.isArray(parsed)) lista = parsed;
+        } else {
+          lista = txt.split(/[,;|]+/g);
+        }
+      }
+    }
+  } catch (_) {}
+  lista = (Array.isArray(lista) ? lista : []).map((op) => String(op || '').trim()).filter(Boolean);
+  if (!lista.length) {
+    const candidatos = [
+      row?.operador_display,
+      row?.operador_principal,
+      row?.operador_nome,
+      row?.operador,
+      row?.usuario,
+    ].map((v) => String(v || '').trim()).filter(Boolean);
+    lista = candidatos.length ? candidatos : [];
+  }
+  return Array.from(new Set(lista));
+}
+
+async function _listarCaixasPerdidasEnriquecidas(req) {
+  const baseCols = [
+    'id', 'of_id', 'of_numero', 'produto', 'cliente', 'valor_unitario', 'qtd_perdida', 'valor_perdido',
+    'data', 'mes_referencia', 'emp_id', 'empresa_id', 'usuario', 'obs', 'created_at',
+    'maquina', 'maquina_id', 'maquina_perda', 'quantidade', 'caixas_perdidas',
+    'operadores', 'operador', 'operador_nome', 'operador_principal', 'turno'
+  ].join(',');
+  const ofId = String(req.query.of_id || req.query.ofId || '').trim();
+  const cpRows = await _selectCompatRows('caixas_perdidas', baseCols, (q) => {
+    let out = q.order('created_at', { ascending: false });
+    if (ofId) out = out.eq('of_id', ofId);
+    return out;
+  });
+  if (cpRows.error) {
+    const msg = String(cpRows.error.message || cpRows.error).toLowerCase();
+    if (msg.includes('does not exist') || msg.includes('not exist')) return [];
+    throw cpRows.error;
+  }
+
+  const rows = Array.isArray(cpRows.data) ? cpRows.data : [];
+  const ofIds = Array.from(new Set(rows.map((r) => String(r?.of_id || '').trim()).filter(Boolean)));
+  const ofNumeros = Array.from(new Set(rows.map((r) => String(r?.of_numero || '').trim()).filter(Boolean)));
+  const ofsMap = new Map();
+
+  if (ofIds.length) {
+    for (let i = 0; i < ofIds.length; i += 200) {
+      const lote = ofIds.slice(i, i + 200);
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,numero,cli_id,cliente,maq,maquina,maquina_atual,maquina_agendada')
+        .in('id', lote);
+      (Array.isArray(data) ? data : []).forEach((of) => {
+        const id = String(of?.id || '').trim();
+        if (id) ofsMap.set(id, of);
+      });
+    }
+  }
+
+  const numerosSemOf = ofNumeros.filter((numero) => {
+    return !rows.some((r) => String(r?.of_id || '').trim() && String(r?.of_numero || '').trim() === numero);
+  });
+  if (numerosSemOf.length) {
+    for (let i = 0; i < numerosSemOf.length; i += 200) {
+      const lote = numerosSemOf.slice(i, i + 200);
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,numero,cli_id,cliente,maq,maquina,maquina_atual,maquina_agendada')
+        .in('numero', lote);
+      (Array.isArray(data) ? data : []).forEach((of) => {
+        const numero = String(of?.numero || '').trim();
+        if (numero) ofsMap.set('numero:' + numero, of);
+      });
+    }
+  }
+
+  const clienteIds = Array.from(new Set(rows.map((r) => {
+    const ofData =
+      ofsMap.get(String(r?.of_id || '').trim()) ||
+      ofsMap.get('numero:' + String(r?.of_numero || '').trim()) ||
+      null;
+    return String(ofData?.cli_id || '').trim();
+  }).filter(Boolean)));
+  const clientesMap = new Map();
+  if (clienteIds.length) {
+    for (let i = 0; i < clienteIds.length; i += 200) {
+      const lote = clienteIds.slice(i, i + 200);
+      const { data } = await supabase.from('clientes').select('id,nome,rs').in('id', lote);
+      (Array.isArray(data) ? data : []).forEach((cli) => {
+        const id = String(cli?.id || '').trim();
+        if (id) clientesMap.set(id, String(cli?.nome || cli?.rs || '').trim());
+      });
+    }
+  }
+
+  const maquinaIds = Array.from(new Set(rows.map((r) => String(r?.maquina_id || '').trim()).filter(Boolean)));
+  const maquinasMap = new Map();
+  if (maquinaIds.length) {
+    const { data: maqs } = await supabase.from('maquinas').select('id,nome').in('id', maquinaIds);
+    (Array.isArray(maqs) ? maqs : []).forEach((maq) => {
+      const id = String(maq?.id || '').trim();
+      if (id) maquinasMap.set(id, String(maq?.nome || '').trim());
+    });
+  }
+
+  return rows.map((row) => {
+    const ofData =
+      ofsMap.get(String(row?.of_id || '').trim()) ||
+      ofsMap.get('numero:' + String(row?.of_numero || '').trim()) ||
+      null;
+    const clienteNome =
+      String(row?.cliente_nome || '').trim() ||
+      clientesMap.get(String(ofData?.cli_id || '').trim()) ||
+      String(row?.cliente || ofData?.cliente || '').trim() ||
+      '—';
+    const maquinaNome =
+      maquinasMap.get(String(row?.maquina_id || '').trim()) ||
+      String(row?.maquina || row?.maquina_perda || ofData?.maq || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || '').trim() ||
+      '—';
+    const quantidade = Number(row?.quantidade ?? row?.caixas_perdidas ?? row?.qtd_perdida ?? 0) || 0;
+    const operadores = _normalizarOperadoresCaixa(row);
+    return {
+      ...row,
+      of_numero: String(row?.of_numero || ofData?.numero || '').trim() || '—',
+      cliente_nome: clienteNome,
+      cliente: clienteNome,
+      maquina: maquinaNome,
+      maquina_nome: maquinaNome,
+      quantidade,
+      qtd_perdida: quantidade,
+      operadores,
+      operador_display: operadores.join(', '),
+      data: String(row?.data || row?.created_at || '').slice(0, 10),
+      usuario: String(row?.usuario || '').trim() || (operadores[0] || '—'),
+      turno: String(row?.turno || '').trim(),
+    };
+  });
+}
+
 app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
   try {
-    const enrichMaquinas = async (rows) => {
-      const list = Array.isArray(rows) ? rows : [];
-      const ids = [...new Set(list.map(r => String(r?.maquina_id || r?.maquinaId || '').trim()).filter(Boolean))];
-      if (!ids.length) return list;
-      const { data: maqs, error: em } = await supabase.from('maquinas').select('id,nome');
-      if (em) return list;
-      const map = new Map((Array.isArray(maqs) ? maqs : []).map(m => [String(m.id), String(m.nome || '').trim()]));
-      return list.map((r) => {
-        const mid = String(r?.maquina_id || r?.maquinaId || '').trim();
-        const nome = mid ? (map.get(mid) || '') : '';
-        const fallback = String(r?.maquina || '').trim();
-        const fallbackNome = (fallback && map.has(fallback)) ? (map.get(fallback) || '') : '';
-        const finalNome = nome || fallbackNome || fallback;
-        return { ...r, maquina: finalNome, maquina_nome: finalNome };
-      });
-    };
-
-    let q = supabase
-      .from('caixas_perdidas')
-      .select('id,of_id,of_numero,produto,cliente,valor_unitario,qtd_perdida,valor_perdido,data,mes_referencia,emp_id,usuario,obs,created_at,maquina,maquina_id,maquina_perda')
-      .order('created_at', { ascending: false });
-    const ofId = String(req.query.of_id || req.query.ofId || '').trim();
-    if (ofId) q = q.eq('of_id', ofId);
-    const { data, error } = await q;
-    if (error) {
-      const msg = String(error.message || error).toLowerCase();
-      if (msg.includes('does not exist') || msg.includes('not exist')) return ok(res, []);
-      throw error;
-    }
-    return ok(res, await enrichMaquinas(data || []));
+    return ok(res, await _listarCaixasPerdidasEnriquecidas(req));
   } catch (e) { err(res, e); }
 });
 
 app.get('/api/caixas-perdidas', authMiddleware, async (req, res) => {
   try {
-    const enrichMaquinas = async (rows) => {
-      const list = Array.isArray(rows) ? rows : [];
-      const ids = [...new Set(list.map(r => String(r?.maquina_id || r?.maquinaId || '').trim()).filter(Boolean))];
-      if (!ids.length) return list;
-      const { data: maqs, error: em } = await supabase.from('maquinas').select('id,nome');
-      if (em) return list;
-      const map = new Map((Array.isArray(maqs) ? maqs : []).map(m => [String(m.id), String(m.nome || '').trim()]));
-      return list.map((r) => {
-        const mid = String(r?.maquina_id || r?.maquinaId || '').trim();
-        const nome = mid ? (map.get(mid) || '') : '';
-        const fallback = String(r?.maquina || '').trim();
-        const fallbackNome = (fallback && map.has(fallback)) ? (map.get(fallback) || '') : '';
-        const finalNome = nome || fallbackNome || fallback;
-        return { ...r, maquina: finalNome, maquina_nome: finalNome };
-      });
-    };
-    let q = supabase
-      .from('caixas_perdidas')
-      .select('id,of_id,of_numero,produto,cliente,valor_unitario,qtd_perdida,valor_perdido,data,mes_referencia,emp_id,usuario,obs,created_at,maquina,maquina_id,maquina_perda')
-      .order('created_at', { ascending: false });
-    const ofId = String(req.query.of_id || req.query.ofId || '').trim();
-    if (ofId) q = q.eq('of_id', ofId);
-    const { data, error } = await q;
-    if (error) {
-      const msg = String(error.message || error).toLowerCase();
-      if (msg.includes('does not exist') || msg.includes('not exist')) return ok(res, []);
-      throw error;
-    }
-    return ok(res, await enrichMaquinas(data || []));
+    return ok(res, await _listarCaixasPerdidasEnriquecidas(req));
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
@@ -7908,17 +8154,36 @@ app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
 
     let mesclados = 0;
     let ofsMigradas = 0;
+    let clientesProcessados = 0;
+    let clientesApagados = 0;
     for (const cliente_duplicado_id of duplicados) {
       if (!cliente_duplicado_id) continue;
       if (cliente_duplicado_id === principalId) continue;
+      clientesProcessados += 1;
 
+      const migradosIds = new Set();
       const { data: updOfs, error: updOfsErr } = await supabase
         .from('ofs')
         .update({ cli_id: String(principalId), cliente_id: String(principalId) })
         .eq('cli_id', String(cliente_duplicado_id))
         .select('id');
       if (updOfsErr) throw updOfsErr;
-      ofsMigradas += Array.isArray(updOfs) ? updOfs.length : 0;
+      (Array.isArray(updOfs) ? updOfs : []).forEach((row) => {
+        const id = String(row?.id || '').trim();
+        if (id) migradosIds.add(id);
+      });
+
+      const { data: updOfsClienteId, error: updOfsClienteIdErr } = await supabase
+        .from('ofs')
+        .update({ cli_id: String(principalId), cliente_id: String(principalId) })
+        .eq('cliente_id', String(cliente_duplicado_id))
+        .select('id');
+      if (updOfsClienteIdErr) throw updOfsClienteIdErr;
+      (Array.isArray(updOfsClienteId) ? updOfsClienteId : []).forEach((row) => {
+        const id = String(row?.id || '').trim();
+        if (id) migradosIds.add(id);
+      });
+      ofsMigradas += migradosIds.size;
 
       if (principalNome) {
         try {
@@ -7955,17 +8220,40 @@ app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
         }
       }
 
-      let { error: e2 } = await supabase
-        .from('clientes')
-        .update({ ativo: false })
-        .eq('id', cliente_duplicado_id);
-      if (e2) {
-        const msg = String(e2.message || e2 || '');
-        if (msg.includes('ativo')) {
-          ({ error: e2 } = await supabase.from('clientes').update({ inativo: true }).eq('id', cliente_duplicado_id));
+      let clienteFoiApagado = false;
+      try {
+        const { error: delErr } = await supabase
+          .from('clientes')
+          .delete()
+          .eq('id', cliente_duplicado_id);
+        if (!delErr) {
+          clienteFoiApagado = true;
+          clientesApagados += 1;
+        } else {
+          let e2 = delErr;
+          const msgDel = String(delErr.message || delErr || '').toLowerCase();
+          if (
+            msgDel.includes('foreign key') ||
+            msgDel.includes('constraint') ||
+            msgDel.includes('violates') ||
+            msgDel.includes('referenced')
+          ) {
+            ({ error: e2 } = await supabase
+              .from('clientes')
+              .update({ ativo: false })
+              .eq('id', cliente_duplicado_id));
+            if (e2) {
+              const msg = String(e2.message || e2 || '');
+              if (msg.includes('ativo')) {
+                ({ error: e2 } = await supabase.from('clientes').update({ inativo: true }).eq('id', cliente_duplicado_id));
+              }
+            }
+          }
+          if (e2) throw e2;
         }
+      } catch (e) {
+        throw e;
       }
-      if (e2) throw e2;
       mesclados += 1;
     }
 
@@ -7979,7 +8267,12 @@ app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
       if (Number.isFinite(Number(count))) ofsMigradas = Number(count);
     } catch (_) {}
     console.log('[MESCLAR] ofs migradas:', ofsMigradas);
-    return res.json({ ok: true, clientes_mesclados: mesclados, ofs_migradas: ofsMigradas });
+    return res.json({
+      ok: true,
+      clientes_mesclados: mesclados,
+      ofs_migradas: ofsMigradas,
+      cliente_apagado: !!(clientesProcessados > 0 && clientesApagados === clientesProcessados),
+    });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message || String(e) });
   }
@@ -11316,6 +11609,110 @@ app.get('/api/estoque_dashboard', authMiddleware, async (req, res) => {
     return res.json(resultado);
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+async function _resolverPinDetalhe(pin) {
+  try {
+    const tipo = String(pin?.tipo || '').trim().toLowerCase();
+    const ref = String(pin?.referencia_id || '').trim();
+    if (!tipo || !ref) return null;
+    if (tipo === 'of') {
+      const { data } = await supabase.from('ofs').select('id,numero,descricao,valor_total,status,cli_id').eq('id', ref).maybeSingle();
+      if (!data) return null;
+      let cliente_nome = '';
+      try {
+        if (data.cli_id) {
+          const { data: cli } = await supabase.from('clientes').select('nome,rs').eq('id', String(data.cli_id)).maybeSingle();
+          cliente_nome = String(cli?.nome || cli?.rs || '').trim();
+        }
+      } catch (_) {}
+      return {
+        titulo: 'OF #' + String(data.numero || '—'),
+        subtitulo: [cliente_nome, data.status].filter(Boolean).join(' · '),
+        detalhe: data,
+      };
+    }
+    if (tipo === 'tinta') {
+      const { data } = await supabase.from('estoque_tintas').select('*').eq('id', ref).maybeSingle();
+      if (!data) return null;
+      return { titulo: String(data.nome || data.codigo || 'Tinta'), subtitulo: String(data.fornecedor || data.fabricante || ''), detalhe: data };
+    }
+    if (tipo === 'material') {
+      const { data } = await supabase.from('estoque_materiais').select('*').eq('id', ref).maybeSingle();
+      if (!data) return null;
+      return { titulo: String(data.nome || data.codigo || 'Material'), subtitulo: String(data.marca || data.categoria || ''), detalhe: data };
+    }
+    if (tipo === 'faca') {
+      const { data } = await supabase.from('facas_estoque').select('*').eq('id', ref).maybeSingle();
+      if (!data) return null;
+      return { titulo: String(data.nome || data.numero || data.codigo || 'Faca'), subtitulo: String(data.categoria || data.condicao || ''), detalhe: data };
+    }
+    if (tipo === 'cliche') {
+      const { data } = await supabase.from('cliches').select('*').eq('id', ref).maybeSingle();
+      if (!data) return null;
+      return { titulo: String(data.codigo || data.nome || 'Clichê'), subtitulo: String(data.cliente || data.nome_cliente || data.descricao || ''), detalhe: data };
+    }
+    if (tipo === 'chapa') {
+      const tabelas = ['estoque_chapas', 'chapas_estoque_v2', 'chapas_estoque', 'estoque'];
+      for (const tabela of tabelas) {
+        try {
+          const { data } = await supabase.from(tabela).select('*').eq('id', ref).maybeSingle();
+          if (data) return { titulo: String(data.nomenclatura || data.nome || data.codigo || 'Chapa'), subtitulo: String(data.fornecedor || data.tamanho || ''), detalhe: data };
+        } catch (_) {}
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
+app.get('/api/pins', authMiddleware, async (req, res) => {
+  try {
+    const empresa_id = await resolverEmpresaId(req);
+    if (!empresa_id) return res.json({ ok: true, data: [] });
+    const pins = await _pinsList(empresa_id);
+    const detalhados = [];
+    for (const pin of pins) {
+      const meta = await _resolverPinDetalhe(pin);
+      detalhados.push({
+        ...pin,
+        titulo: meta?.titulo || (String(pin?.tipo || '').toUpperCase() + ' · ' + String(pin?.referencia_id || '')),
+        subtitulo: meta?.subtitulo || '',
+        detalhe: meta?.detalhe || null,
+      });
+    }
+    return res.json({ ok: true, data: detalhados });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post('/api/pins', authMiddleware, async (req, res) => {
+  try {
+    const empresa_id = await resolverEmpresaId(req);
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'Empresa não identificada' });
+    const tipo = String(req.body?.tipo || '').trim().toLowerCase();
+    const referencia_id = String(req.body?.referencia_id || '').trim();
+    const observacao = String(req.body?.observacao || '').trim();
+    if (!tipo || !referencia_id) return res.status(400).json({ ok: false, error: 'tipo e referencia_id obrigatórios' });
+    const criado_por = String(req.usuario?.email || req.user?.email || req.usuario?.nome || 'sistema').trim();
+    const created = await _pinsInsert({ tipo, referencia_id, observacao, criado_por, criado_em: new Date().toISOString(), empresa_id });
+    return res.json({ ok: true, data: created });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.delete('/api/pins/:id', authMiddleware, async (req, res) => {
+  try {
+    const empresa_id = await resolverEmpresaId(req);
+    if (!empresa_id) return res.json({ ok: true });
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.json({ ok: true });
+    const okDelete = await _pinsDelete(id, empresa_id);
+    return res.json({ ok: !!okDelete });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
