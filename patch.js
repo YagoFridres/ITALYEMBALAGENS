@@ -13549,6 +13549,18 @@ function _renderTabelaOFs(json) {
     if ((!todasOFs || !todasOFs.length) && dadosComissoes && Array.isArray(dadosComissoes.ofs)) {
       todasOFs = dadosComissoes.ofs.slice();
     }
+    try {
+      var ordemVendedores = (grupos || []).map(function(g) {
+        return String(g && (g.vendedor || g.nome || g.vendedor_nome || '') || '').trim();
+      });
+      todasOFs.sort(function(a, b) {
+        var nomeA = String(a && (a._vendedor_resolvido || a._vendedor_nome || '') || '').trim();
+        var nomeB = String(b && (b._vendedor_resolvido || b._vendedor_nome || '') || '').trim();
+        var idxA = ordemVendedores.indexOf(nomeA);
+        var idxB = ordemVendedores.indexOf(nomeB);
+        return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
+      });
+    } catch (_) {}
     try { console.log('[FIX OFs] total OFs para renderizar:', todasOFs.length); } catch (_) {}
 
     var secaoDetalhamento =
@@ -13716,19 +13728,26 @@ function _renderTabelaOFs(json) {
 
     setTimeout(function() {
       try {
-        var buscas = document.querySelectorAll('input[placeholder*="nº da OF"]');
-        if (buscas.length > 1) {
-          buscas.forEach(function(b) {
-            try {
-              if (!b.closest('#tabela-ofs-comissao') && b.id !== 'comissao-busca-of-input') {
-                var wrap = b.closest('div, p');
-                if (wrap && !secaoDetalhamento.contains(wrap)) wrap.remove();
-              }
-            } catch (_) {}
-          });
-        }
+        var nossaSecao = (document.getElementById('tabela-ofs-comissao') || {}).closest ? document.getElementById('tabela-ofs-comissao').closest('div') : null;
+        document.querySelectorAll('input[placeholder*="OF"], input[placeholder*="cliente"]').forEach(function(input) {
+          try {
+            if (input.id === 'comissao-busca-of-input') return;
+            var container = input.closest('div[style], .busca-container, p') || input.parentElement;
+            if (container && !container.contains(document.getElementById('comissao-busca-of-input'))) {
+              container.style.display = 'none';
+            }
+          } catch (_) {}
+        });
+        document.querySelectorAll('button').forEach(function(btn) {
+          try {
+            if (String(btn.textContent || '').trim() === 'Buscar' && btn.id !== 'btn-busca-comissao') {
+              var isNosso = !!(btn.closest && btn.closest('#tabela-ofs-comissao, [id*="comissao-busca"]'));
+              if (!isNosso && btn.parentElement && btn.parentElement.style) btn.parentElement.style.display = 'none';
+            }
+          } catch (_) {}
+        });
       } catch (_) {}
-    }, 100);
+    }, 200);
 
     secaoDetalhamento.querySelectorAll('tr[data-cli-id]').forEach(function(tr) {
       try {
