@@ -2101,6 +2101,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
     { id: 'orcamentos',          label: 'Orçamentos',          icone: '💰', grupo: 'Financeiro', senha: true },
     { id: 'comissoes',           label: 'Comissões',           icone: '💵', grupo: 'Financeiro', senha: true },
+    { id: 'caixas-perdidas',     label: 'Caixas Perdidas',     icone: '📦', grupo: 'Financeiro', senha: true },
+    { id: 'toneladas-vendidas',  label: 'Toneladas Vendidas',  icone: '⚖️', grupo: 'Financeiro', senha: true },
 
     { id: 'estoque',             label: 'Estoque Chapas',      icone: '📦', grupo: 'Estoques' },
     { id: 'facas1',              label: 'Estoque Facas',       icone: '🔧', grupo: 'Estoques' },
@@ -2122,8 +2124,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
     { id: 'dashboard',           label: 'Dashboard',           icone: '📊', grupo: 'Análises' },
     { id: 'relatorios',          label: 'Relatórios',          icone: '🖨', grupo: 'Análises' },
-    { id: 'caixas-perdidas',     label: 'Caixas Perdidas',     icone: '📦', grupo: 'Análises' },
-    { id: 'toneladas-vendidas',  label: 'Toneladas Vendidas',  icone: '⚖️', grupo: 'Análises' },
     { id: 'configuracoes',       label: 'Configurações',       icone: '⚙',  grupo: 'Análises' },
   ];
 
@@ -2252,7 +2252,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { _ocultarRelatorioMensal(); } catch (_) {}
       try { _removerRelatorioMensalAgressivo(); } catch (_) {}
       try { _ensureMenuClone('Fornecedores', '📐 Gramaturas', 'gramaturas', 'gramaturas'); } catch (_) {}
-      try { _ensureMenuClone('Caixas Perdidas', '⚖️ Toneladas Vendidas', 'toneladas', 'toneladas-vendidas'); } catch (_) {}
+      try { _ensureMenuClone('Comissões', '📦 Caixas Perdidas', 'caixas-perdidas-fin', 'caixas-perdidas'); } catch (_) {}
+      try { _ensureMenuClone('📦 Caixas Perdidas', '⚖️ Toneladas Vendidas', 'toneladas-fin', 'toneladas-vendidas'); } catch (_) {}
     }
     try { tickMenus(); } catch (_) {}
     try { _ocultarRelatorioMensal(); } catch (_) {}
@@ -2393,7 +2394,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  <div class="pep-grid">'
         + '    <div><div class="pep-sub">Nome</div><input class="pep-input" id="pg-nome" value="' + esc(it.nome || '') + '" placeholder="Kraft 150"></div>'
         + '    <div><div class="pep-sub">Gramatura (g/m²)</div><input class="pep-input" id="pg-gram" type="number" step="0.01" value="' + esc(it.gramatura || '') + '"></div>'
-        + '    <div><div class="pep-sub">Valor Unitário (R$/m²)</div><input class="pep-input" id="pg-vunit" type="number" step="0.01" value="' + esc(it.valor_unitario || '') + '"></div>'
+        + '    <div><div class="pep-sub">Valor Unitário (R$/kg)</div><input class="pep-input" id="pg-vunit" type="number" step="0.01" value="' + esc(it.valor_unitario || '') + '"></div>'
         + '    <div><div class="pep-sub">Fornecedor</div>'
         + (fornecedores.length
             ? '<select class="pep-select" id="pg-forn"><option value="">Selecionar fornecedor...</option>' + fornecedores.map(function(f) { var id = String(f && f.id || ''); var nm = String(f && f.nome || ''); return '<option value="' + esc(id) + '"' + (String(it.fornecedor_id || '') === id ? ' selected' : '') + '>' + esc(nm) + '</option>'; }).join('') + '</select>'
@@ -2439,8 +2440,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var lista = await loadGramaturas();
       page.innerHTML = ''
         + '<div class="pep-wrap">'
-        + '  <div class="pep-head"><div><div class="pep-title">📐 Gramaturas</div><div class="pep-sub">Cadastro de gramaturas e custo por m²</div></div><button class="pep-btn primary" id="gram-nova">+ Nova Gramatura</button></div>'
-        + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Nome</th><th>Gramatura (g/m²)</th><th>Valor Unitário (R$/m²)</th><th>Fornecedor</th><th>Ações</th></tr></thead><tbody>'
+        + '  <div class="pep-head"><div><div class="pep-title">📐 Gramaturas</div><div class="pep-sub">Cadastro de gramaturas (g/m²) e custo do papel (R$/kg)</div></div><button class="pep-btn primary" id="gram-nova">+ Nova Gramatura</button></div>'
+        + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Nome</th><th>Gramatura (g/m²)</th><th>Valor Unit. (R$/kg)</th><th>Fornecedor</th><th>Ações</th></tr></thead><tbody>'
         + (lista.length ? lista.map(function(g) {
           return '<tr data-gid="' + esc(g.id || '') + '"><td>' + esc(g.nome || '—') + '</td><td>' + num(g.gramatura || 0, 2) + '</td><td>' + money(g.valor_unitario || 0) + '</td><td>' + esc(g.fornecedor_nome || '—') + '</td><td><button class="pep-btn" data-gedit="' + esc(g.id || '') + '">Editar</button> <button class="pep-btn danger" data-gdel="' + esc(g.id || '') + '">Desativar</button></td></tr>';
         }).join('') : '<tr><td colspan="5" style="text-align:center;color:#94a3b8">Nenhuma gramatura cadastrada.</td></tr>')
@@ -2467,7 +2468,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
     function currentMesAno() {
       var d = new Date();
-      return { mes: d.getMonth() + 1, ano: d.getFullYear(), gramatura_id: '' };
+      return { mes: d.getMonth() + 1, ano: d.getFullYear() };
     }
     function tonesState() {
       if (!window.__tonesState) window.__tonesState = currentMesAno();
@@ -2478,51 +2479,83 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var page = ensurePage('toneladas-vendidas');
       showOnlyPage('toneladas-vendidas');
       var st = tonesState();
-      var grams = await loadGramaturas();
       var j = await apiJson('/api/analises/toneladas?mes=' + encodeURIComponent(st.mes) + '&ano=' + encodeURIComponent(st.ano)).catch(function() { return null; });
-      var resumo = (j && j.resumo) || {};
-      var det = Array.isArray(j && j.detalhamento) ? j.detalhamento : [];
-      var totalOfs = det.length;
-      var gramSel = (grams || []).find(function(g) { return String(g && g.id || '') === String(st.gramatura_id || ''); }) || null;
-      var gramG = gramSel ? (Number(gramSel.gramatura || 0) || 0) : 0;
-      var tonTotal = gramG > 0
-        ? det.reduce(function(s, r) { return s + (((Number(r && r.m2_total || 0) || 0) * gramG) / 1000000); }, 0)
-        : 0;
-      var cardsTon = gramG > 0
-        ? ('<div class="pep-card"><div class="pep-card-label">Toneladas Produzidas</div><div class="pep-card-val">' + num(tonTotal || 0, 3) + '</div><div class="pep-card-sub">' + esc(String(gramG).replace('.', ',') + ' g/m²') + '</div></div>')
-        : '';
-      var totalM2 = Number(resumo.total_m2 || 0) || 0;
-      var receitaTotal = Number(resumo.receita_total || 0) || 0;
-      var custoMedio = Number(resumo.custo_medio_m2 || 0) || 0;
-      var totalizador = 'Total: ' + totalOfs + ' OFs · ' + num(totalM2 || 0, 3) + ' m² · ' + money(receitaTotal || 0);
+      var totalTon = Number(j && j.total_toneladas || 0) || 0;
+      var totalM2 = Number(j && j.total_m2 || 0) || 0;
+      var custoTotal = Number(j && j.custo_total || 0) || 0;
+      var porGram = Array.isArray(j && j.por_gramatura) ? j.por_gramatura : [];
+      var porForn = Array.isArray(j && j.por_fornecedor) ? j.por_fornecedor : [];
+      var porCli = Array.isArray(j && j.por_cliente) ? j.por_cliente : [];
+      var ofs = Array.isArray(j && j.ofs) ? j.ofs : [];
+      var totalOfs = ofs.length;
+      var totalizador = 'Total: ' + totalOfs + ' OFs · ' + num(totalM2 || 0, 3) + ' m² · ' + num(totalTon || 0, 3) + ' t · ' + money(custoTotal || 0);
       page.innerHTML = ''
         + '<div class="pep-wrap">'
         + '  <div class="pep-head">'
-        + '    <div><div class="pep-title">⚖️ Toneladas Vendidas</div><div class="pep-sub">M² produzidos e estimativa de toneladas por gramatura</div></div>'
+        + '    <div><div class="pep-title">⚖️ Toneladas Vendidas</div><div class="pep-sub">M² produzidos, toneladas e custo estimado por gramatura</div></div>'
         + '    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
         + '      <select class="pep-select" id="tones-mes">' + Array.from({ length: 12 }).map(function(_, i) { var m = i + 1; return '<option value="' + m + '"' + (Number(st.mes) === m ? ' selected' : '') + '>' + String(m).padStart(2, '0') + '</option>'; }).join('') + '</select>'
         + '      <select class="pep-select" id="tones-ano">' + Array.from({ length: 5 }).map(function(_, i) { var a = new Date().getFullYear() - 2 + i; return '<option value="' + a + '"' + (Number(st.ano) === a ? ' selected' : '') + '>' + a + '</option>'; }).join('') + '</select>'
-        + '      <select class="pep-select" id="tones-gram"><option value="">Gramatura padrão (g/m²)</option>' + (grams || []).map(function(g) { var id = String(g && g.id || ''); var label = String(g && g.nome || '—') + ' · ' + num(g && g.gramatura || 0, 0) + ' g/m²'; return '<option value="' + esc(id) + '"' + (String(st.gramatura_id || '') === id ? ' selected' : '') + '>' + esc(label) + '</option>'; }).join('') + '</select>'
         + '      <button class="pep-btn primary" id="tones-refresh">Calcular</button>'
+        + '      <button class="pep-btn" id="tones-export">📄 Exportar Excel</button>'
         + '    </div>'
         + '  </div>'
         + '  <div class="pep-cards">'
-        + '    <div class="pep-card"><div class="pep-card-label">M² Produzidos</div><div class="pep-card-val">' + num(totalM2 || 0, 2) + '</div><div class="pep-card-sub">Área total do período</div></div>'
-        + '    <div class="pep-card"><div class="pep-card-label">OFs Concluídas</div><div class="pep-card-val">' + num(totalOfs || 0, 0) + '</div><div class="pep-card-sub">Quantidade de OFs</div></div>'
-        + '    <div class="pep-card"><div class="pep-card-label">Receita Total</div><div class="pep-card-val">' + money(receitaTotal || 0) + '</div><div class="pep-card-sub">Somatório do período</div></div>'
-        + '    <div class="pep-card"><div class="pep-card-label">Custo Médio/m²</div><div class="pep-card-val">' + money(custoMedio || 0) + '</div><div class="pep-card-sub">Receita ÷ m²</div></div>'
-        + cardsTon
+        + '    <div class="pep-card"><div class="pep-card-label">Total Toneladas</div><div class="pep-card-val">' + num(totalTon || 0, 3) + '</div><div class="pep-card-sub">No período</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Total m²</div><div class="pep-card-val">' + num(totalM2 || 0, 2) + '</div><div class="pep-card-sub">Área total</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Custo Total</div><div class="pep-card-val">' + money(custoTotal || 0) + '</div><div class="pep-card-sub">Estimado (papel)</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">OFs Concluídas</div><div class="pep-card-val">' + num(totalOfs || 0, 0) + '</div><div class="pep-card-sub">No período</div></div>'
         + '  </div>'
+
+        + '  <div class="pep-panel" style="margin-bottom:14px">'
+        + '    <div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Por Gramatura</div><div class="pep-sub">Qual sai mais</div></div>'
+        + '    <div style="overflow:auto"><table class="pep-table"><thead><tr><th>Gramatura</th><th>Fornecedor</th><th style="text-align:right">Toneladas</th><th style="text-align:right">m²</th><th style="text-align:right">Custo</th></tr></thead><tbody>'
+        + (porGram.length ? porGram.map(function(r) {
+          return '<tr><td>' + esc(r && r.gramatura_nome || '—') + '</td><td>' + esc(r && (r.fornecedor || r.fornecedor_nome) || '—') + '</td>'
+            + '<td style="text-align:right">' + num(r && r.toneladas || 0, 3) + '</td>'
+            + '<td style="text-align:right">' + num(r && r.m2 || 0, 2) + '</td>'
+            + '<td style="text-align:right">' + money(r && r.custo || 0) + '</td></tr>';
+        }).join('') : '<tr><td colspan="5" style="text-align:center;color:#94a3b8">Sem dados.</td></tr>')
+        + '    </tbody></table></div>'
+        + '  </div>'
+
+        + '  <div class="pep-panel" style="margin-bottom:14px">'
+        + '    <div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Por Fornecedor</div><div class="pep-sub">Toneladas por fornecedor</div></div>'
+        + '    <div style="overflow:auto"><table class="pep-table"><thead><tr><th>Fornecedor</th><th style="text-align:right">Toneladas</th><th style="text-align:right">m²</th><th style="text-align:right">Custo</th></tr></thead><tbody>'
+        + (porForn.length ? porForn.map(function(r) {
+          return '<tr><td>' + esc(r && (r.fornecedor_nome || r.fornecedor) || '—') + '</td>'
+            + '<td style="text-align:right">' + num(r && r.toneladas || 0, 3) + '</td>'
+            + '<td style="text-align:right">' + num(r && r.m2 || 0, 2) + '</td>'
+            + '<td style="text-align:right">' + money(r && r.custo || 0) + '</td></tr>';
+        }).join('') : '<tr><td colspan="4" style="text-align:center;color:#94a3b8">Sem dados.</td></tr>')
+        + '    </tbody></table></div>'
+        + '  </div>'
+
+        + '  <div class="pep-panel" style="margin-bottom:14px">'
+        + '    <div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Top Clientes</div><div class="pep-sub">Quem mais comprou em toneladas</div></div>'
+        + '    <div style="overflow:auto"><table class="pep-table"><thead><tr><th>Cliente</th><th style="text-align:right">Toneladas</th><th style="text-align:right">m²</th><th style="text-align:right">Custo</th></tr></thead><tbody>'
+        + (porCli.length ? porCli.slice(0, 20).map(function(r) {
+          return '<tr><td>' + esc(r && r.cliente_nome || '—') + '</td>'
+            + '<td style="text-align:right">' + num(r && r.toneladas || 0, 3) + '</td>'
+            + '<td style="text-align:right">' + num(r && r.m2 || 0, 2) + '</td>'
+            + '<td style="text-align:right">' + money(r && r.custo || 0) + '</td></tr>';
+        }).join('') : '<tr><td colspan="4" style="text-align:center;color:#94a3b8">Sem dados.</td></tr>')
+        + '    </tbody></table></div>'
+        + '  </div>'
+
         + '  <div class="pep-panel">'
         + '    <div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Detalhamento</div><div class="pep-sub">' + esc(totalizador) + '</div></div>'
-        + '    <div style="overflow:auto"><table class="pep-table"><thead><tr><th>Nº OF</th><th>Cliente</th><th>Produto</th><th>Comp×Larg (cm)</th><th>Área/Cx (m²)</th><th>Qtd</th><th>Total m²</th><th>Vl Unit</th><th>Custo/m²</th><th>Receita</th></tr></thead><tbody>'
-        + (det.length ? det.map(function(r) {
-          var compCm = Number(r && r.comp_cm || 0) || 0;
-          var largCm = Number(r && r.larg_cm || 0) || 0;
-          var semDim = !(compCm > 0 && largCm > 0);
-          var dim = semDim ? 'sem dimensão' : (num(compCm, 0) + '×' + num(largCm, 0));
-          var trStyle = semDim ? ' style="opacity:0.7;color:#94a3b8"' : '';
-          return '<tr' + trStyle + '><td>#' + esc(r && r.of_numero || '—') + '</td><td>' + esc(r && (r.cliente_nome || r.cliente) || '—') + '</td><td>' + esc(r && r.produto || '—') + '</td><td>' + esc(dim) + '</td><td>' + (Number(r && r.area_m2 || 0) > 0 ? num(r.area_m2 || 0, 4) : '—') + '</td><td>' + num(r && r.quantidade || 0, 0) + '</td><td>' + num(r && r.m2_total || 0, 2) + '</td><td>' + money(r && r.valor_unitario || 0) + '</td><td>' + money(r && r.custo_m2 || 0) + '</td><td>' + money(r && r.receita || 0) + '</td></tr>';
+        + '    <div style="overflow:auto"><table class="pep-table"><thead><tr><th># OF</th><th>Cliente</th><th style="text-align:right">Comp (mm)</th><th style="text-align:right">Larg (mm)</th><th style="text-align:right">Gramatura</th><th style="text-align:right">Qtd</th><th style="text-align:right">m² Total</th><th style="text-align:right">Toneladas</th><th style="text-align:right">Custo/m²</th><th style="text-align:right">Custo Total</th></tr></thead><tbody>'
+        + (ofs.length ? ofs.map(function(r) {
+          return '<tr><td>#' + esc(r && r.numero || '—') + '</td><td>' + esc(r && r.cliente || '—') + '</td>'
+            + '<td style="text-align:right">' + num(r && r.comp || 0, 0) + '</td>'
+            + '<td style="text-align:right">' + num(r && r.larg || 0, 0) + '</td>'
+            + '<td style="text-align:right">' + num(r && r.gramatura || 0, 0) + ' g/m²</td>'
+            + '<td style="text-align:right">' + num(r && r.quantidade || 0, 0) + '</td>'
+            + '<td style="text-align:right">' + num(r && r.m2 || 0, 2) + '</td>'
+            + '<td style="text-align:right">' + num(r && r.toneladas || 0, 3) + '</td>'
+            + '<td style="text-align:right">' + money(r && r.custo_m2 || 0) + '</td>'
+            + '<td style="text-align:right">' + money(r && r.custo_total || 0) + '</td></tr>';
         }).join('') : '<tr><td colspan="10" style="text-align:center;color:#94a3b8">Nenhuma OF concluída no período.</td></tr>')
         + '    </tbody><tfoot><tr><td colspan="10" style="font-weight:800;color:#e5e7eb">' + esc(totalizador) + '</td></tr></tfoot></table></div>'
         + '  </div>'
@@ -2530,8 +2563,58 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       document.getElementById('tones-refresh').onclick = function() {
         st.mes = Number(document.getElementById('tones-mes').value || 1);
         st.ano = Number(document.getElementById('tones-ano').value || new Date().getFullYear());
-        st.gramatura_id = String((document.getElementById('tones-gram') || {}).value || '').trim();
         renderToneladasPage();
+      };
+      document.getElementById('tones-export').onclick = function() {
+        try {
+          var rows = Array.isArray(ofs) ? ofs : [];
+          if (!rows.length) { alert('Sem dados para exportar'); return; }
+          if (window.XLSX && window.XLSX.utils && window.XLSX.writeFile) {
+            var wb = window.XLSX.utils.book_new();
+            var aoa = [['OF', 'Cliente', 'Comp (mm)', 'Larg (mm)', 'Gramatura (g/m²)', 'Qtd', 'm² Total', 'Toneladas', 'Custo/m²', 'Custo Total']];
+            rows.forEach(function(r) {
+              aoa.push([
+                r.numero || '',
+                r.cliente || '',
+                Number(r.comp || 0) || 0,
+                Number(r.larg || 0) || 0,
+                Number(r.gramatura || 0) || 0,
+                Number(r.quantidade || 0) || 0,
+                Number(r.m2 || 0) || 0,
+                Number(r.toneladas || 0) || 0,
+                Number(r.custo_m2 || 0) || 0,
+                Number(r.custo_total || 0) || 0,
+              ]);
+            });
+            var ws = window.XLSX.utils.aoa_to_sheet(aoa);
+            window.XLSX.utils.book_append_sheet(wb, ws, 'Toneladas');
+            window.XLSX.writeFile(wb, 'toneladas_' + String(st.ano) + '-' + String(st.mes).padStart(2, '0') + '.xlsx');
+            return;
+          }
+          var header = ['OF', 'Cliente', 'Comp_mm', 'Larg_mm', 'Gramatura_gm2', 'Qtd', 'M2_Total', 'Toneladas', 'Custo_m2', 'Custo_Total'];
+          var lines = [header.join(';')].concat(rows.map(function(r) {
+            var cols = [
+              r.numero || '',
+              (r.cliente || '').replace(/;/g, ','),
+              String(r.comp || 0),
+              String(r.larg || 0),
+              String(r.gramatura || 0),
+              String(r.quantidade || 0),
+              String(r.m2 || 0),
+              String(r.toneladas || 0),
+              String(r.custo_m2 || 0),
+              String(r.custo_total || 0),
+            ];
+            return cols.join(';');
+          }));
+          var blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'toneladas_' + String(st.ano) + '-' + String(st.mes).padStart(2, '0') + '.csv';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function() { try { a.remove(); } catch (_) {} }, 0);
+        } catch (e) { alert(String(e && e.message || e)); }
       };
     }
 
@@ -2562,7 +2645,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (menu) menu.remove();
     var pid = String(page || '').trim();
     if(!pid) return;
-    var paginasFinanceiro = ['orcamentos', 'comissoes'];
+    var paginasFinanceiro = ['orcamentos', 'comissoes', 'caixas-perdidas', 'toneladas-vendidas'];
     if (paginasFinanceiro.indexOf(pid) !== -1) {
       try{
         if (sessionStorage.getItem('fin_ok') !== '1') {
@@ -2599,7 +2682,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   (function patchPermissoesLiberadasExcetoFinanceiro() {
     function isFinanceiroPage(pid) {
       var page = String(pid || '').trim().toLowerCase();
-      return page === 'orcamentos' || page === 'comissoes';
+      return page === 'orcamentos' || page === 'comissoes' || page === 'caixas-perdidas' || page === 'toneladas-vendidas';
     }
 
     function liberarElementosNaoFinanceiro() {
@@ -5036,6 +5119,72 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { token = String(localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || ''); } catch (_) {}
     return token ? { Authorization: 'Bearer ' + token } : {};
   }
+
+  var __ofRapidaGramaturasCache = { ts: 0, data: [] };
+  async function loadGramaturasOFRapida() {
+    try {
+      var now = Date.now();
+      if (__ofRapidaGramaturasCache.data && __ofRapidaGramaturasCache.data.length && (now - (__ofRapidaGramaturasCache.ts || 0) < 60000)) {
+        return __ofRapidaGramaturasCache.data;
+      }
+      var r = await fetch('/api/gramaturas?t=' + now, { headers: getAuthHeader() });
+      var j = await r.json().catch(function() { return null; });
+      var arr = j && (j.data || j.gramaturas);
+      var list = Array.isArray(arr) ? arr : (Array.isArray(j) ? j : []);
+      __ofRapidaGramaturasCache = { ts: now, data: list || [] };
+      return list || [];
+    } catch (_) {
+      return __ofRapidaGramaturasCache.data || [];
+    }
+  }
+
+  async function ensureCampoGramaturaOFRapida() {
+    try {
+      var modal = document.getElementById('modal-of-rapida');
+      if (!modal) return;
+      if (document.getElementById('of-r-gramatura')) return;
+      var anchor = document.getElementById('of-r-comp') || document.getElementById('of-r-larg');
+      var bloco = null;
+      try { bloco = anchor && anchor.closest ? anchor.closest('div[style*="grid-template-columns"]') : null; } catch (_) { bloco = null; }
+      bloco = bloco || (anchor ? anchor.parentElement : null);
+      if (!bloco || !bloco.parentElement) return;
+
+      var wrap = document.createElement('div');
+      wrap.id = 'of-r-gramatura-wrap';
+      wrap.innerHTML =
+        '<label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Gramatura</label>' +
+        '<select id="of-r-gramatura" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 13px;color:#e8f0fe;font-size:13px;outline:none;cursor:pointer;appearance:none;font-family:inherit">' +
+        '<option value="">Selecionar gramatura...</option>' +
+        '</select>';
+
+      bloco.parentElement.insertBefore(wrap, bloco.nextSibling);
+      var sel = document.getElementById('of-r-gramatura');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Selecionar gramatura...</option>';
+      var grams = await loadGramaturasOFRapida();
+      (Array.isArray(grams) ? grams : []).forEach(function(g) {
+        try {
+          var id = String(g && g.id || '').trim();
+          if (!id) return;
+          var nm = String(g && g.nome || '—').trim();
+          var gm2 = Number(g && g.gramatura || 0) || 0;
+          var forn = String(g && g.fornecedor_nome || '').trim();
+          var label = nm + ' — ' + String(gm2).replace('.', ',') + 'g/m²' + (forn ? (' — ' + forn) : '');
+          var opt = document.createElement('option');
+          opt.value = id;
+          opt.textContent = label;
+          sel.appendChild(opt);
+        } catch (_) {}
+      });
+      try {
+        var last = String(window._ofRapidaGramaturaId || '').trim();
+        if (last) sel.value = last;
+      } catch (_) {}
+      sel.addEventListener('change', function() {
+        try { window._ofRapidaGramaturaId = String(sel.value || '').trim(); } catch (_) {}
+      }, true);
+    } catch (_) {}
+  }
   async function apiGet(url) {
     if (typeof window.apiFetch === 'function') return await window.apiFetch(url, { method: 'GET' });
     return await fetch(url, { method: 'GET', headers: getAuthHeader() });
@@ -6700,8 +6849,40 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     window[fnName] = wrapped;
   }
 
+  function patchApiFetchGramatura() {
+    try {
+      if (typeof window.apiFetch !== 'function') return;
+      if (window.apiFetch._patchGramaturaId) return;
+      var orig = window.apiFetch;
+      var wrapped = function(url, opts) {
+        try {
+          var u = String(url || '');
+          var m = String((opts && opts.method) || 'GET').toUpperCase();
+          var isOfs = (u === '/api/ofs') || (u.indexOf('/api/ofs?') === 0) || (u.indexOf('/api/ofs/') === 0);
+          if (isOfs && (m === 'POST' || m === 'PATCH' || m === 'PUT')) {
+            var body = opts && opts.body;
+            var isObj = body && typeof body === 'object' && !Array.isArray(body);
+            var isForm = (typeof FormData !== 'undefined' && body instanceof FormData);
+            if (isObj && !isForm) {
+              if (!Object.prototype.hasOwnProperty.call(body, 'gramatura_id') && !Object.prototype.hasOwnProperty.call(body, 'gramaturaId')) {
+                var gid = '';
+                try { gid = String((document.getElementById('of-r-gramatura') || {}).value || window._ofRapidaGramaturaId || '').trim(); } catch (_) { gid = ''; }
+                if (gid) body.gramatura_id = gid;
+              }
+            }
+          }
+        } catch (_) {}
+        return orig.apply(this, arguments);
+      };
+      wrapped._patchGramaturaId = true;
+      window.apiFetch = wrapped;
+    } catch (_) {}
+  }
+
   function tick() {
     try { bindClienteInput(); } catch (_) {}
+    try { ensureCampoGramaturaOFRapida(); } catch (_) {}
+    try { patchApiFetchGramatura(); } catch (_) {}
     try { patchAberturaPorClique(); } catch (_) {}
     try { patchSalvar('salvarOfRapida'); } catch (_) {}
     try { patchSalvar('salvarNovaOfRapida'); } catch (_) {}
@@ -6839,6 +7020,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           caixa_largura: larg,
           dim_comprimento: comp,
           dim_largura: larg,
+          gramatura_id: (function() {
+            try { return String((document.getElementById('of-r-gramatura') || {}).value || window._ofRapidaGramaturaId || '').trim() || undefined; } catch (_) { return undefined; }
+          })(),
           cores_impressao: coresPayload,
           itens: [{
             desc: produto,
@@ -6906,6 +7090,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var produto = String(of.produto || of.prodDesc || of.descricao || '').trim();
       var empId = String(of.emp_id || of.empId || 'E1').trim() || 'E1';
       var vendId = String(of.vendedor_id || of.vendId || of.vend_id || '').trim();
+      var gramId = String(of.gramatura_id || of.gramaturaId || '').trim();
       var qtd = of.quantidade ?? of.qtd ?? of.qtd_pedida ?? '';
       var vlunit = of.vl_unit ?? of.valor_unitario ?? of.vunit ?? '';
       var total = of.total ?? of.valor_total ?? of.valor_venda ?? '';
@@ -6932,6 +7117,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { setVal('of-r-larg', larg); } catch (_) {}
       try { setVal('of-r-maquina', maquina); } catch (_) {}
       try { setChecked('of-r-urgente', !!(of.urgente === true || of.urg === true || of.urgente === 1 || of.urg === 1)); } catch (_) {}
+      try { if (gramId) window._ofRapidaGramaturaId = gramId; } catch (_) {}
+      setTimeout(function() {
+        try {
+          var sel = document.getElementById('of-r-gramatura');
+          if (sel && gramId) sel.value = gramId;
+        } catch (_) {}
+      }, 300);
 
       try {
         var numSpan = document.getElementById('of-r-numero');
