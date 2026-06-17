@@ -8,15 +8,16 @@ window._patchCustomPages['toneladas-vendidas'] = function() {
 };
 
 function _aplicarTemaClaro() {
-  const bg = getComputedStyle(document.body).backgroundColor;
-  const isClaro = bg.includes('255, 255') || bg.includes('248, 250') ||
-                  bg.includes('241, 245') || bg.includes('226, 232') ||
-                  (!bg.includes('15, 23') && !bg.includes('30, 41') && !bg.includes('0, 0'));
-  if (isClaro) {
-    document.body.classList.add('_patch_modo_claro');
-  } else {
-    document.body.classList.remove('_patch_modo_claro');
-  }
+  try {
+    var bg = window.getComputedStyle(document.body).backgroundColor;
+    var match = bg.match(/rgb\((\d+)/);
+    var r = match ? parseInt(match[1]) : 0;
+    if (r > 150) {
+      document.body.classList.add('_patch_modo_claro');
+    } else {
+      document.body.classList.remove('_patch_modo_claro');
+    }
+  } catch(e) {}
 }
 _aplicarTemaClaro();
 setInterval(_aplicarTemaClaro, 1000);
@@ -2322,23 +2323,33 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       } catch (_) {}
     }
     function _ensureMenuClone(refText, newText, menuKey, pageId) {
-      try {
-        if (document.querySelector('[data-patch-menu="' + menuKey + '"]')) return true;
-        var refEl = _findByText(refText);
-        var item = _findItemEl(refEl) || refEl;
-        if (!item || !item.parentNode) return false;
-        var clone = item.cloneNode(true);
-        _sanitizeCloneIds(clone);
-        clone.setAttribute('data-patch-menu', menuKey);
-        _replaceExactText(clone, refText, newText);
-        clone.addEventListener('click', function(e) {
-          try { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); } catch (_) {}
-          try { if (typeof window.go === 'function') window.go(pageId); } catch (_) {}
-          return false;
-        }, true);
-        item.parentNode.insertBefore(clone, item.nextSibling);
-        return true;
-      } catch (_) { return false; }
+      if (document.getElementById(menuKey)) return;
+      var ancora = Array.from(document.querySelectorAll('li, a')).find(function(el) {
+        var t = String(el && el.textContent || '').trim();
+        return t.indexOf(refText) >= 0 && t.length < refText.length + 5;
+      });
+      if (!ancora) return;
+      var liAncora = ancora.tagName === 'LI' ? ancora : (ancora.closest ? ancora.closest('li') : null);
+      if (!liAncora || !liAncora.parentElement) return;
+      var novoLi = liAncora.cloneNode(true);
+      novoLi.id = menuKey;
+      novoLi.removeAttribute('class');
+      var a = novoLi.querySelector('a') || novoLi;
+      a.innerHTML = '';
+      a.textContent = newText;
+      a.href = '#';
+      a.onclick = null;
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window._patchCustomPages && window._patchCustomPages[pageId]) {
+          window._patchCustomPages[pageId]();
+        } else if (typeof window.go === 'function') {
+          window.go(pageId);
+        }
+      });
+      liAncora.parentElement.appendChild(novoLi);
+      console.log('[PATCH] menu injetado:', newText, 'âœ"');
     }
     function tickMenus() {
       try { _ocultarRelatorioMensal(); } catch (_) {}
@@ -2535,7 +2546,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  <div class="pep-head"><div><div class="pep-title">📐 Gramaturas</div><div class="pep-sub">Cadastro de gramaturas (g/m²) e custo do papel (R$/kg)</div></div><button class="pep-btn primary" id="gram-nova">+ Nova Gramatura</button></div>'
         + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Nome</th><th>Gramatura (g/m²)</th><th>Valor Unit. (R$/kg)</th><th>Fornecedor</th><th>Ações</th></tr></thead><tbody>'
         + (lista.length ? lista.map(function(g) {
-          return '<tr data-gid="' + esc(g.id || '') + '"><td>' + esc(g.nome || '—') + '</td><td>' + num(g.gramatura || 0, 2) + '</td><td>' + money(g.valor_unitario || 0) + '</td><td>' + esc(g.fornecedor_nome || (g.fornecedores && g.fornecedores.nome) || '—') + '</td><td><button class="pep-btn" data-gedit="' + esc(g.id || '') + '">Editar</button> <button class="pep-btn danger" data-gdel="' + esc(g.id || '') + '">Desativar</button></td></tr>';
+          return '<tr data-gid="' + esc(g.id || '') + '"><td>' + esc(g.nome || '—') + '</td><td>' + num(g.gramatura || 0, 2) + '</td><td>' + money(g.valor_unitario || 0) + '</td><td>' + esc(g.fornecedor_nome || '—') + '</td><td><button class="pep-btn" data-gedit="' + esc(g.id || '') + '">Editar</button> <button class="pep-btn danger" data-gdel="' + esc(g.id || '') + '">Desativar</button></td></tr>';
         }).join('') : '<tr><td colspan="5" style="text-align:center;color:#94a3b8">Nenhuma gramatura cadastrada.</td></tr>')
         + '  </tbody></table></div></div>'
         + '</div>';
@@ -2761,93 +2772,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function _setupMenusCustom() {
     function _injetar() {
-      const todosLi = Array.from(document.querySelectorAll('li'));
-      console.log('[MENU] total de LIs:', todosLi.length);
-      console.log('[MENU] textos dos LIs:', todosLi.map(function(li) { return li.textContent.trim(); }).filter(function(t) { return t.length < 30 && t.length > 1; }));
-      const liUsuariosLog = todosLi.find(function(li) {
-        return li.textContent.trim() === 'Usuários' || li.textContent.trim() === 'Usuarios';
-      });
-      console.log('[MENU] li Usuários encontrado:', !!liUsuariosLog, liUsuariosLog?.parentElement?.tagName);
-      const liComissoesLog = todosLi.find(function(li) {
-        return li.textContent.trim() === 'Comissões' || li.textContent.trim() === 'Comissoes';
-      });
-      console.log('[MENU] li Comissões encontrado:', !!liComissoesLog, liComissoesLog?.parentElement?.tagName);
-      try {
-        if (!document.getElementById('_menu_gramaturas')) {
-          var liUsuarios = Array.from(document.querySelectorAll('li')).find(function(li) {
-            var t = String(li && li.textContent || '').trim();
-            return t === 'Usuários' || t === 'Usuarios';
-          });
-          if (liUsuarios && liUsuarios.parentElement) {
-            var novoLi = liUsuarios.cloneNode(true);
-            novoLi.id = '_menu_gramaturas';
-            var a = novoLi.querySelector('a') || novoLi;
-            a.textContent = '📐 Gramaturas';
-            a.href = '#';
-            a.onclick = function(e) {
-              try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
-              _abrirGramaturas();
-              return false;
-            };
-            liUsuarios.parentElement.appendChild(novoLi);
-            console.log('[PATCH] Gramaturas injetado após Usuários');
-          }
-        }
-      } catch (_) {}
+      try { _ensureMenuClone('Fornecedor', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas'); } catch(e) {}
+      try { _ensureMenuClone('Usu', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas'); } catch(e) {}
+      try { _ensureMenuClone('Comiss', '⚖️ Toneladas Vendidas', '_menu_toneladas', 'toneladas-vendidas'); } catch(e) {}
+      try { _ensureMenuClone('Orçament', '⚖️ Toneladas Vendidas', '_menu_toneladas', 'toneladas-vendidas'); } catch(e) {}
+      try { _ensureMenuClone('Comiss', '📦 Caixas Perdidas', '_menu_caixas_fin', 'caixas-perdidas'); } catch(e) {}
 
-      try {
-        if (!document.getElementById('_menu_toneladas')) {
-          var liComissoes = Array.from(document.querySelectorAll('li')).find(function(li) {
-            var t = String(li && li.textContent || '').trim();
-            return t === 'Comissões' || t === 'Comissoes';
-          });
-          if (liComissoes && liComissoes.parentElement) {
-            var novoLi2 = liComissoes.cloneNode(true);
-            novoLi2.id = '_menu_toneladas';
-            var a2 = novoLi2.querySelector('a') || novoLi2;
-            a2.textContent = '⚖️ Toneladas Vendidas';
-            a2.href = '#';
-            a2.onclick = function(e) {
-              try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
-              _abrirToneladas();
-              return false;
-            };
-            liComissoes.parentElement.appendChild(novoLi2);
-            console.log('[PATCH] Toneladas injetado após Comissões');
-          }
-        }
-      } catch (_) {}
-
-      try {
-        if (!document.getElementById('_menu_caixas_fin')) {
-          var liCaixasAntigo = Array.from(document.querySelectorAll('li')).find(function(li) {
-            return String(li && li.textContent || '').trim() === 'Caixas Perdidas';
-          });
-          var liCom2 = Array.from(document.querySelectorAll('li')).find(function(li) {
-            var t = String(li && li.textContent || '').trim();
-            return t === 'Comissões' || t === 'Comissoes';
-          });
-          if (liCom2 && liCom2.parentElement) {
-            var novoLi3 = liCom2.cloneNode(true);
-            novoLi3.id = '_menu_caixas_fin';
-            var a3 = novoLi3.querySelector('a') || novoLi3;
-            a3.textContent = '📦 Caixas Perdidas';
-            a3.href = '#';
-            a3.onclick = function(e) {
-              try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
-              try {
-                var fn = window.abrirCaixasPerdidas || window._abrirCaixasPerdidas;
-                if (typeof fn === 'function') fn();
-                else if (typeof window.go === 'function') window.go('caixas-perdidas');
-              } catch (_) {}
-              return false;
-            };
-            liCom2.parentElement.appendChild(novoLi3);
-            if (liCaixasAntigo) liCaixasAntigo.style.display = 'none';
-            console.log('[PATCH] Caixas Perdidas injetado em Financeiro');
-          }
-        }
-      } catch (_) {}
+      var lis = Array.from(document.querySelectorAll('li'));
+      var textos = lis.map(function(l) { return l.textContent.trim(); }).filter(function(t) { return t.length > 1 && t.length < 25; });
+      console.log('[MENU] LIs no DOM:', textos.join(' | '));
+      console.log('[MENU] gramaturas ok:', !!document.getElementById('_menu_gramaturas'));
+      console.log('[MENU] toneladas ok:', !!document.getElementById('_menu_toneladas'));
     }
     [500, 1500, 3000, 5000, 8000].forEach(function(t) { setTimeout(_injetar, t); });
   }

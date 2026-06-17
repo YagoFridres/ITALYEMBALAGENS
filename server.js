@@ -10589,7 +10589,7 @@ app.post('/api/admin/init-gramaturas', authMiddleware, async (req, res) => {
 
 app.get('/api/gramaturas', authMiddleware, async (req, res) => {
   try {
-    const empresaId = String(req.query.empresa_id || 'df5f7672-0a6b-402d-ae65-296554236c31').trim();
+    const empresaId = 'df5f7672-0a6b-402d-ae65-296554236c31';
     const { data, error } = await supabase
       .from('gramaturas')
       .select('*')
@@ -10597,25 +10597,16 @@ app.get('/api/gramaturas', authMiddleware, async (req, res) => {
       .order('nome');
     if (error) throw error;
 
-    const fornIds = [...new Set((data || []).map((g) => g?.fornecedor_id).filter(Boolean))];
-    const fornMap = {};
-    if (fornIds.length > 0) {
-      const { data: forns, error: e2 } = await supabase
-        .from('fornecedores')
-        .select('id, nome')
-        .in('id', fornIds);
-      if (e2) throw e2;
-      (forns || []).forEach((f) => { fornMap[f.id] = f.nome; });
+    console.log('[GRAMATURAS GET] total:', (data || []).length);
+    const ids = [...new Set((data || []).map(g => g.fornecedor_id).filter(Boolean))];
+    let fMap = {};
+    if (ids.length) {
+      const { data: fs } = await supabase.from('fornecedores').select('id,nome').in('id', ids);
+      (fs || []).forEach(f => { fMap[f.id] = f.nome; });
     }
-
-    const result = (data || []).map((g) => ({
-      ...g,
-      fornecedor_nome: fornMap[g.fornecedor_id] || g.fornecedor_nome || null,
-    }));
-    console.log('[GRAMATURAS] retornando:', result.length, 'registros');
-    return res.json(result);
+    res.json((data || []).map(g => ({ ...g, fornecedor_nome: fMap[g.fornecedor_id] || null })));
   } catch (e) {
-    console.error('[GRAMATURAS] erro:', e.message);
+    console.error('[GRAMATURAS GET] erro:', e.message);
     return res.status(500).json({ error: e.message });
   }
 });
