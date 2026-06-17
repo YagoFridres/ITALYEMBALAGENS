@@ -2640,6 +2640,117 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { _ensureVendedoresMap(); } catch (_) {}
   })();
 
+  window._abrirGramaturas = function() {
+    try { if (typeof window.go === 'function') window.go('gramaturas'); } catch (_) {}
+  };
+  window._abrirToneladas = function() {
+    try {
+      if (typeof window.goFinanceiro === 'function') { window.goFinanceiro('toneladas-vendidas'); return; }
+    } catch (_) {}
+    try { if (typeof window.go === 'function') window.go('toneladas-vendidas'); } catch (_) {}
+  };
+
+  function _adicionarMenuGramaturas() {
+    if (document.getElementById('_menu_gramaturas')) return;
+    const todosLinks = Array.from(document.querySelectorAll('a, li'));
+    const linkUsuarios = todosLinks.find(el =>
+      el.textContent.trim() === 'Usuários' || el.textContent.trim() === 'Usuarios'
+    );
+
+    let submenuCadastros = null;
+    if (linkUsuarios) submenuCadastros = linkUsuarios.closest('ul');
+
+    if (!submenuCadastros) {
+      todosLinks.forEach(el => {
+        const txt = el.textContent.trim().toUpperCase();
+        if (txt === 'CADASTROS' || txt === 'CADASTROS') {
+          const ul = el.parentElement?.querySelector('ul')
+            || el.nextElementSibling
+            || el.parentElement?.nextElementSibling?.querySelector('ul');
+          if (ul && ul.tagName === 'UL') submenuCadastros = ul;
+        }
+      });
+    }
+
+    if (!submenuCadastros) {
+      console.warn('[PATCH] submenu Cadastros não encontrado');
+      return;
+    }
+
+    const li = document.createElement('li');
+    li.id = '_menu_gramaturas';
+    li.innerHTML = '<a href="#" onclick="event.preventDefault();_abrirGramaturas()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;color:#94a3b8;text-decoration:none;cursor:pointer;font-size:14px">📐 Gramaturas</a>';
+    submenuCadastros.appendChild(li);
+    console.log('[PATCH] menu Gramaturas adicionado em Cadastros');
+  }
+
+  function _adicionarItensFinanceiro() {
+    const todosLinks = Array.from(document.querySelectorAll('a, li'));
+    const linkComissoes = todosLinks.find(el =>
+      el.textContent.trim() === 'Comissões' || el.textContent.trim() === 'Comissoes'
+    );
+
+    let submenuFinanceiro = null;
+    if (linkComissoes) submenuFinanceiro = linkComissoes.closest('ul');
+
+    if (!submenuFinanceiro) {
+      todosLinks.forEach(el => {
+        const txt = el.textContent.trim().toUpperCase();
+        if (txt === 'FINANCEIRO' || txt === 'FINANCEIRO') {
+          const ul = el.parentElement?.querySelector('ul')
+            || el.nextElementSibling
+            || el.parentElement?.nextElementSibling?.querySelector('ul');
+          if (ul && ul.tagName === 'UL') submenuFinanceiro = ul;
+        }
+      });
+    }
+
+    if (!submenuFinanceiro) {
+      console.warn('[PATCH] submenu Financeiro não encontrado');
+      return;
+    }
+
+    if (!document.getElementById('_menu_toneladas')) {
+      const li = document.createElement('li');
+      li.id = '_menu_toneladas';
+      li.innerHTML = '<a href="#" onclick="event.preventDefault();_abrirToneladas()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;color:#94a3b8;text-decoration:none;cursor:pointer;font-size:14px">⚖️ Toneladas Vendidas</a>';
+      submenuFinanceiro.appendChild(li);
+      console.log('[PATCH] menu Toneladas Vendidas adicionado');
+    }
+
+    if (!document.getElementById('_menu_caixas_fin')) {
+      const li2 = document.createElement('li');
+      li2.id = '_menu_caixas_fin';
+      li2.innerHTML = '<a href="#" class="_menu_caixas_fin_link" style="display:flex;align-items:center;gap:8px;padding:8px 16px;color:#94a3b8;text-decoration:none;cursor:pointer;font-size:14px">📦 Caixas Perdidas</a>';
+      submenuFinanceiro.appendChild(li2);
+      try {
+        const a = li2.querySelector('a._menu_caixas_fin_link');
+        if (a && a.dataset.bound !== '1') {
+          a.dataset.bound = '1';
+          a.addEventListener('click', function(ev) {
+            try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
+            try { if (typeof window.goFinanceiro === 'function') { window.goFinanceiro('caixas-perdidas'); return; } } catch (_) {}
+            try { if (typeof window.go === 'function') { window.go('caixas-perdidas'); return; } } catch (_) {}
+            try {
+              const fn = window.abrirCaixasPerdidas || window._abrirCaixasPerdidas;
+              if (typeof fn === 'function') { fn(); return; }
+            } catch (_) {}
+            alert('Caixas Perdidas: função não encontrada');
+          }, true);
+        }
+      } catch (_) {}
+      console.log('[PATCH] menu Caixas Perdidas adicionado');
+    }
+  }
+
+  setTimeout(_adicionarMenuGramaturas, 800);
+  setTimeout(_adicionarMenuGramaturas, 2000);
+  setTimeout(_adicionarMenuGramaturas, 4000);
+
+  setTimeout(_adicionarItensFinanceiro, 800);
+  setTimeout(_adicionarItensFinanceiro, 2000);
+  setTimeout(_adicionarItensFinanceiro, 4000);
+
   window.mobileGoPage = function(page) {
     var menu = document.getElementById('mob-menu-mais');
     if (menu) menu.remove();
@@ -5142,8 +5253,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try {
       var modal = document.getElementById('modal-of-rapida');
       if (!modal) return;
-      if (document.getElementById('of-r-gramatura')) return;
-      var anchor = document.getElementById('of-r-comp') || document.getElementById('of-r-larg');
+      if (document.getElementById('_of_rapida_gramatura_id')) return;
+      var anchor = document.getElementById('of-r-maquina') || document.getElementById('of-r-comp') || document.getElementById('of-r-larg');
       var bloco = null;
       try { bloco = anchor && anchor.closest ? anchor.closest('div[style*="grid-template-columns"]') : null; } catch (_) { bloco = null; }
       bloco = bloco || (anchor ? anchor.parentElement : null);
@@ -5151,16 +5262,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
       var wrap = document.createElement('div');
       wrap.id = 'of-r-gramatura-wrap';
-      wrap.innerHTML =
-        '<label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Gramatura</label>' +
-        '<select id="of-r-gramatura" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 13px;color:#e8f0fe;font-size:13px;outline:none;cursor:pointer;appearance:none;font-family:inherit">' +
-        '<option value="">Selecionar gramatura...</option>' +
-        '</select>';
+      wrap.innerHTML = ''
+        + '<div style="margin-bottom:14px">'
+        + '  <label style="display:block;font-size:12px;color:#94a3b8;text-transform:uppercase;font-weight:600;margin-bottom:6px">GRAMATURA <span style="color:#64748b;font-size:11px">(opcional)</span></label>'
+        + '  <select id="_of_rapida_gramatura_id" style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px 14px;color:#f1f5f9;font-size:14px;cursor:pointer">'
+        + '    <option value="">— Sem gramatura —</option>'
+        + '  </select>'
+        + '</div>';
 
       bloco.parentElement.insertBefore(wrap, bloco.nextSibling);
-      var sel = document.getElementById('of-r-gramatura');
+      var sel = document.getElementById('_of_rapida_gramatura_id');
       if (!sel) return;
-      sel.innerHTML = '<option value="">Selecionar gramatura...</option>';
+      sel.innerHTML = '<option value="">— Sem gramatura —</option>';
       var grams = await loadGramaturasOFRapida();
       (Array.isArray(grams) ? grams : []).forEach(function(g) {
         try {
@@ -6866,7 +6979,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             if (isObj && !isForm) {
               if (!Object.prototype.hasOwnProperty.call(body, 'gramatura_id') && !Object.prototype.hasOwnProperty.call(body, 'gramaturaId')) {
                 var gid = '';
-                try { gid = String((document.getElementById('of-r-gramatura') || {}).value || window._ofRapidaGramaturaId || '').trim(); } catch (_) { gid = ''; }
+                try { gid = String((document.getElementById('_of_rapida_gramatura_id') || document.getElementById('of-r-gramatura') || {}).value || window._ofRapidaGramaturaId || '').trim(); } catch (_) { gid = ''; }
                 if (gid) body.gramatura_id = gid;
               }
             }
@@ -7021,7 +7134,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           dim_comprimento: comp,
           dim_largura: larg,
           gramatura_id: (function() {
-            try { return String((document.getElementById('of-r-gramatura') || {}).value || window._ofRapidaGramaturaId || '').trim() || undefined; } catch (_) { return undefined; }
+            try { return String((document.getElementById('_of_rapida_gramatura_id') || document.getElementById('of-r-gramatura') || {}).value || window._ofRapidaGramaturaId || '').trim() || undefined; } catch (_) { return undefined; }
           })(),
           cores_impressao: coresPayload,
           itens: [{
@@ -7120,7 +7233,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { if (gramId) window._ofRapidaGramaturaId = gramId; } catch (_) {}
       setTimeout(function() {
         try {
-          var sel = document.getElementById('of-r-gramatura');
+          var sel = document.getElementById('_of_rapida_gramatura_id') || document.getElementById('of-r-gramatura');
           if (sel && gramId) sel.value = gramId;
         } catch (_) {}
       }, 300);
@@ -16329,6 +16442,10 @@ function _ocultarGraficoComissoes() {
         } catch (_) { dataStr = '—'; }
         var precoUnit = qtd > 0 ? valorTotal / qtd : 0;
         var id = String(of && of.id || '');
+        var btnHtml = !concluida
+          ? '<button class="_btn_concluir_of" data-of-id="' + _escHtmlCom(id) + '" data-of-num="' + _escHtmlCom(numero) + '" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px">✅ Concluir</button>'
+          : '';
+        var btnEditar = '<button class="_btn_editar_of" data-of-num="' + _escHtmlCom(numero) + '" style="background:#1d4ed8;color:#fff;border:none;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:13px">✏️ Editar</button>';
 
         return ''
           + '<div style="background:#1e293b;border:2px solid ' + (concluida ? '#166534' : '#b45309') + ';border-radius:10px;padding:16px 20px;margin-bottom:12px">'
@@ -16347,8 +16464,8 @@ function _ocultarGraficoComissoes() {
           + '    </div>'
           + '    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
           + '      <span style="background:' + (concluida ? '#166534' : '#92400e') + ';color:' + (concluida ? '#4ade80' : '#fbbf24') + ';padding:5px 12px;border-radius:5px;font-size:12px;font-weight:600">' + _escHtmlCom(status) + '</span>'
-          + (!concluida ? '<button onclick="(function(){ const id = ' + JSON.stringify(id) + '; const num = ' + JSON.stringify(numero) + '; const fns = [\'abrirModalConclusao\',\'abrirConclusaoOf\',\'concluirOf\',\'modalConcluirOf\',\'abrirConcluir\',\'finalizarOf\',\'openModalConclusao\',\'showModalConclusao\']; const disponivel = fns.find(f => typeof window[f] === \'function\'); console.log(\'[COM PATCH] funções de conclusão disponíveis:\', fns.filter(f => typeof window[f] === \'function\')); console.log(\'[COM PATCH] tentando concluir OF id:\', id, \'num:\', num); if (disponivel) { window[disponivel](id); return; } const botoesDOM = document.querySelectorAll(\'button, [role=button], a\'); for (const btn of botoesDOM) { const txt = (btn.textContent||\'\').trim().toLowerCase(); if ((txt.includes(\'conclu\') || txt.includes(\'finaliz\')) && btn.closest(\'[data-of-id="\' + id + \'"], [data-id="\' + id + \'"]\')) { btn.click(); console.log(\'[COM PATCH] clicou botão DOM de conclusão\'); return; } } alert(\'Para concluir a OF #\'+num+\', acesse PCP > OFs por Máquina ou o Hub Inicial e clique em Concluir.\'); })()" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px">✅ Concluir</button>' : '')
-          + '      <button onclick="(function(){ const num = ' + JSON.stringify(numero) + '; const links = document.querySelectorAll(\'a, [data-of], [data-id]\'); for(const l of links) { if(l.textContent.trim()===num || (l.dataset&&l.dataset.of===num)) { l.click(); return; } } window.location.hash = \'of-\'+num; })()" style="background:#1d4ed8;color:#fff;border:none;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:13px">✏️ Editar</button>'
+          + '      ' + btnHtml
+          + '      ' + btnEditar
           + '    </div>'
           + '  </div>'
           + '</div>';
@@ -16359,6 +16476,36 @@ function _ocultarGraficoComissoes() {
           String(todasEncontradas.length) + ' resultado(s) para "<b style="color:#f1f5f9">' + _escHtmlCom(termo) + '</b>":' +
         '</div>' +
         html;
+
+      try {
+        Array.prototype.slice.call(resultDiv.querySelectorAll('._btn_concluir_of')).forEach(function(btn) {
+          if (!btn || btn.dataset.bound === '1') return;
+          btn.dataset.bound = '1';
+          btn.addEventListener('click', function() {
+            var id = '';
+            var num = '';
+            try { id = String(this.getAttribute('data-of-id') || this.dataset.ofId || '').trim(); } catch (_) { id = ''; }
+            try { num = String(this.getAttribute('data-of-num') || this.dataset.ofNum || '').trim(); } catch (_) { num = ''; }
+            const fns = ['abrirModalConclusao','abrirConclusaoOf','concluirOf','modalConcluirOf','abrirConcluir','finalizarOf','openModalConclusao','showModalConclusao'];
+            const fn = fns.find(function(f) { return typeof window[f] === 'function'; });
+            try { console.log('[COM PATCH] funções de conclusão disponíveis:', fns.filter(function(f) { return typeof window[f] === 'function'; })); } catch (_) {}
+            if (fn) { try { window[fn](id); } catch (_) {} return; }
+            alert('Para concluir a OF #' + num + ', acesse PCP > OFs por Máquina.');
+          }, true);
+        });
+      } catch (_) {}
+
+      try {
+        Array.prototype.slice.call(resultDiv.querySelectorAll('._btn_editar_of')).forEach(function(btn) {
+          if (!btn || btn.dataset.bound === '1') return;
+          btn.dataset.bound = '1';
+          btn.addEventListener('click', function() {
+            var num = '';
+            try { num = String(this.getAttribute('data-of-num') || this.dataset.ofNum || '').trim(); } catch (_) { num = ''; }
+            alert('OF #' + num + ': acesse PCP para editar.');
+          }, true);
+        });
+      } catch (_) {}
     } catch (e) {
       resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Erro: ' + _escHtmlCom(e && e.message || e) + '</p>';
     }
