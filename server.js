@@ -704,16 +704,27 @@ app.get('/index.html', (req, res) => {
 
 app.get('/patch.js', (req, res) => {
   try {
-    const fp = path.join(__dirname, 'patch.js');
-    const stat = fs.statSync(fp);
-    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    const filePath = path.join(__dirname, 'patch.js');
+    const stat = fs.statSync(filePath);
+    const version = String(Math.trunc(stat.mtimeMs || Date.now()));
+    const reqVersion = String(req.query.v || '').trim();
+
+    if (reqVersion !== version) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Surrogate-Control', 'no-store');
+      return res.redirect(302, '/patch.js?v=' + encodeURIComponent(version));
+    }
+
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('Surrogate-Control', 'no-store');
+    res.setHeader('X-Patch-Version', version);
     res.setHeader('Last-Modified', stat.mtime.toUTCString());
-    res.setHeader('X-Patch-Version', String(Math.trunc(stat.mtimeMs || Date.now())));
-    return res.sendFile(fp, { etag: false, lastModified: false });
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    return res.sendFile(filePath, { etag: false, lastModified: false });
   } catch (e) {
     return res.status(404).end();
   }
