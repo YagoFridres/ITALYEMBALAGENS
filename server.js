@@ -705,26 +705,11 @@ app.get('/index.html', (req, res) => {
 app.get('/patch.js', (req, res) => {
   try {
     const filePath = path.join(__dirname, 'patch.js');
-    const stat = fs.statSync(filePath);
-    const version = String(Math.trunc(stat.mtimeMs || Date.now()));
-    const reqVersion = String(req.query.v || '').trim();
-
-    if (reqVersion !== version) {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-      res.setHeader('Surrogate-Control', 'no-store');
-      return res.redirect(302, '/patch.js?v=' + encodeURIComponent(version));
-    }
-
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
-    res.setHeader('Surrogate-Control', 'no-store');
-    res.setHeader('X-Patch-Version', version);
-    res.setHeader('Last-Modified', stat.mtime.toUTCString());
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    return res.sendFile(filePath, { etag: false, lastModified: false });
+    return res.sendFile(filePath, { root: __dirname, etag: false, lastModified: false });
   } catch (e) {
     return res.status(404).end();
   }
@@ -4144,13 +4129,17 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
     const clienteRaw = String(req.query?.cliente || req.query?.search || '').trim();
     const statusRaw = String(req.query?.status || '').trim().toLowerCase();
     const includeSomenteAbertas = !statusRaw || statusRaw.includes('aberto');
+    if (!numeroRaw && !clienteRaw) return ok(res, []);
     if (clienteRaw) {
       const { data: clientes, error: cliErr } = await supabase
         .from('clientes')
         .select('id,nome,rs,vendedor_id')
         .or('nome.ilike.%' + clienteRaw + '%,rs.ilike.%' + clienteRaw + '%')
         .limit(100);
-      if (cliErr) return res.status(400).json({ ok: false, error: String(cliErr.message || cliErr) });
+      if (cliErr) {
+        try { console.error('[ofs buscar error]', cliErr.message || cliErr); } catch (_) {}
+        return ok(res, []);
+      }
 
       const clientesArr = Array.isArray(clientes) ? clientes : [];
       const clienteIds = clientesArr.map((c) => String(c?.id || '').trim()).filter(Boolean);
@@ -4166,7 +4155,10 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
         query = query.not('status', 'in', '("Concluído","Concluída","Concluido","Concluida","Cancelada","Cancelado","Pedido Pronto")');
       }
       const { data: ofsRows, error: ofsErr } = await query;
-      if (ofsErr) return res.status(400).json({ ok: false, error: String(ofsErr.message || ofsErr) });
+      if (ofsErr) {
+        try { console.error('[ofs buscar error]', ofsErr.message || ofsErr); } catch (_) {}
+        return ok(res, []);
+      }
 
       const clienteMap = new Map(clientesArr.map((c) => [String(c?.id || '').trim(), c]));
       const vendedorIds = Array.from(new Set((ofsRows || []).map((of) => {
@@ -4201,7 +4193,7 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
       return ok(res, lista);
     }
 
-    if (!numeroRaw) return res.status(400).json({ ok: false, error: 'numero obrigatório' });
+    if (!numeroRaw) return ok(res, []);
 
     const joinKeys = ['cli_id', 'cliente_id', 'cliId'];
     let data = null;
@@ -4228,15 +4220,18 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
         .ilike('numero', `%${numeroRaw}%`)
         .order('created_at', { ascending: false })
         .limit(10);
-      if (e2) return res.status(400).json({ ok: false, error: String(e2.message || e2) });
+      if (e2) {
+        try { console.error('[ofs buscar error]', e2.message || e2); } catch (_) {}
+        return ok(res, []);
+      }
       data = data2 || [];
     }
 
     const lista = Array.isArray(data) ? data : (data ? [data] : []);
-    if (!lista.length) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+    if (!lista.length) return ok(res, []);
 
     const of = lista[0] || null;
-    if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+    if (!of) return ok(res, []);
 
     let cliNome = '';
     let vendNome = '';
@@ -4266,7 +4261,10 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
     out.vendedor_nome = out.vendNome;
     out.vendedor_id = vendedorId || out.vendedor_id || out.vendId || null;
     return ok(res, out);
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+  } catch (e) {
+    try { console.error('[ofs buscar error]', e.message || e); } catch (_) {}
+    return ok(res, []);
+  }
 });
 
 app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
@@ -12325,28 +12323,62 @@ app.get('/api/facas', authMiddleware, async (req, res) => {
   try {
     const search = String(req.query.search || req.query.q || '').trim();
     const limit = Math.max(1, Math.min(50, parseInt(String(req.query.limit || ''), 10) || 10));
-    let q = supabase.from('facas_estoque').select('*').order('nome').limit(limit);
+    const baseLimit = search ? Math.max(limit, 100) : limit;
+    let rows = [];
+    let q = supabase.from('facas_estoque').select('*').limit(baseLimit);
+    try { q = q.order('nome', { ascending: true }); } catch (_) {}
     if (search) {
-      q = q.or('nome.ilike.%' + search + '%,codigo.ilike.%' + search + '%,descricao.ilike.%' + search + '%,numero.ilike.%' + search + '%');
+      try { q = q.or('nome.ilike.%' + search + '%,codigo.ilike.%' + search + '%,descricao.ilike.%' + search + '%,numero.ilike.%' + search + '%'); } catch (_) {}
     }
-    const { data, error } = await q;
+    let { data, error } = await q;
+    if (error && search) {
+      try { console.error('[facas search error]', error.message || error); } catch (_) {}
+      const fallback = await supabase.from('facas_estoque').select('*').limit(baseLimit);
+      data = fallback.data || [];
+      error = fallback.error || null;
+    }
     if (error) throw error;
-    return res.json({ ok: true, data: data || [] });
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+    rows = Array.isArray(data) ? data : [];
+    if (search) {
+      const s = search.toLowerCase();
+      rows = rows.filter((r) => [r?.nome, r?.codigo, r?.descricao, r?.numero, r?.cliente, r?.nomenclatura].join(' ').toLowerCase().includes(s));
+    }
+    return res.json({ ok: true, data: rows.slice(0, limit) });
+  } catch (e) {
+    try { console.error('[facas search error]', e.message || e); } catch (_) {}
+    return res.json({ ok: true, data: [] });
+  }
 });
 
 app.get('/api/cliches', authMiddleware, async (req, res) => {
   try {
     const search = String(req.query.search || req.query.q || '').trim();
     const limit = Math.max(1, Math.min(50, parseInt(String(req.query.limit || ''), 10) || 10));
-    let q = supabase.from('cliches_estoque').select('*').order('nome').limit(limit);
+    const baseLimit = search ? Math.max(limit, 100) : limit;
+    let rows = [];
+    let q = supabase.from('cliches_estoque').select('*').limit(baseLimit);
+    try { q = q.order('nome', { ascending: true }); } catch (_) {}
     if (search) {
-      q = q.or('nome.ilike.%' + search + '%,codigo.ilike.%' + search + '%,descricao.ilike.%' + search + '%,cliente.ilike.%' + search + '%');
+      try { q = q.or('nome.ilike.%' + search + '%,codigo.ilike.%' + search + '%,descricao.ilike.%' + search + '%,cliente.ilike.%' + search + '%,cliente_nome.ilike.%' + search + '%'); } catch (_) {}
     }
-    const { data, error } = await q;
+    let { data, error } = await q;
+    if (error && search) {
+      try { console.error('[cliches search error]', error.message || error); } catch (_) {}
+      const fallback = await supabase.from('cliches_estoque').select('*').limit(baseLimit);
+      data = fallback.data || [];
+      error = fallback.error || null;
+    }
     if (error) throw error;
-    return res.json({ ok: true, data: data || [] });
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+    rows = Array.isArray(data) ? data : [];
+    if (search) {
+      const s = search.toLowerCase();
+      rows = rows.filter((r) => [r?.nome, r?.codigo, r?.descricao, r?.cliente, r?.cliente_nome, r?.nomenclatura].join(' ').toLowerCase().includes(s));
+    }
+    return res.json({ ok: true, data: rows.slice(0, limit) });
+  } catch (e) {
+    try { console.error('[cliches search error]', e.message || e); } catch (_) {}
+    return res.json({ ok: true, data: [] });
+  }
 });
 app.post('/api/cliches_estoque', authMiddleware, async (req, res) => {
   try {
@@ -13104,13 +13136,32 @@ app.get('/api/materiais', authMiddleware, async (req, res) => {
     if (!empresa_id) empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31';
     const search = String(req.query.search || req.query.q || '').trim();
     const limit = Math.max(1, Math.min(50, parseInt(String(req.query.limit || ''), 10) || 10));
-    let q = supabase.from('estoque_materiais').select('*').eq('empresa_id', empresa_id).limit(limit).order('nome', { ascending: true });
+    const baseLimit = search ? Math.max(limit, 100) : limit;
+    let q = supabase.from('estoque_materiais').select('*').eq('empresa_id', empresa_id).limit(baseLimit).order('nome', { ascending: true });
     try { q = q.eq('ativo', true); } catch (_) {}
-    if (search) q = q.or('nome.ilike.%' + search + '%,nomenclatura.ilike.%' + search + '%,fornecedor.ilike.%' + search + '%');
-    const { data, error } = await q;
+    if (search) {
+      try { q = q.or('nome.ilike.%' + search + '%,nomenclatura.ilike.%' + search + '%,fornecedor.ilike.%' + search + '%,cliente_nome.ilike.%' + search + '%,observacao.ilike.%' + search + '%'); } catch (_) {}
+    }
+    let { data, error } = await q;
+    if (error && search) {
+      try { console.error('[materiais search error]', error.message || error); } catch (_) {}
+      let fallback = supabase.from('estoque_materiais').select('*').eq('empresa_id', empresa_id).limit(baseLimit);
+      try { fallback = fallback.eq('ativo', true); } catch (_) {}
+      const r2 = await fallback;
+      data = r2.data || [];
+      error = r2.error || null;
+    }
     if (error) throw error;
-    return res.json({ ok: true, data: data || [] });
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+    let rows = Array.isArray(data) ? data : [];
+    if (search) {
+      const s = search.toLowerCase();
+      rows = rows.filter((r) => [r?.nome, r?.nomenclatura, r?.fornecedor, r?.cliente_nome, r?.observacao].join(' ').toLowerCase().includes(s));
+    }
+    return res.json({ ok: true, data: rows.slice(0, limit) });
+  } catch (e) {
+    try { console.error('[materiais search error]', e.message || e); } catch (_) {}
+    return res.json({ ok: true, data: [] });
+  }
 });
 
 app.post('/api/admin/limpar_cache_chapas', authMiddleware, requireAdmin, async (req, res) => {
