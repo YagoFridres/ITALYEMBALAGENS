@@ -16271,68 +16271,90 @@ function _ocultarGraficoComissoes() {
       resultDiv.innerHTML = '';
       return;
     }
-    resultDiv.innerHTML = '<p style="color:#94a3b8;padding:12px">Buscando...</p>';
+
+    resultDiv.innerHTML = '<p style="color:#94a3b8;padding:12px">🔍 Buscando...</p>';
+
     try {
-      var termoLower = termo.toLowerCase();
-      var ofs = Array.isArray(window._comOfsData) ? window._comOfsData : [];
-      var encontradas = ofs.filter(function(of) {
-        var n = String(of && of.numero || '').toLowerCase();
-        var c = String(of && of.cliente || '').toLowerCase();
-        return (n && n.indexOf(termoLower) >= 0) || (c && c.indexOf(termoLower) >= 0);
+      var t = termo.toLowerCase();
+      var ofsDoMes = (window._comOfsData || []).filter(function(of) {
+        return String(of && of.numero || '').toLowerCase().indexOf(t) >= 0
+          || String(of && of.cliente || '').toLowerCase().indexOf(t) >= 0;
       });
-      if (!encontradas.length) {
+
+      var ofsGeral = [];
+      try {
         var token = '';
         try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
-        var resp = await fetch('/api/ofs?incluir_excluidas=1&limit=200&offset=0&busca=' + encodeURIComponent(termo), {
+        var r = await fetch('/api/ofs?busca=' + encodeURIComponent(termo) + '&limit=20', {
           headers: token ? { Authorization: 'Bearer ' + token } : {}
         });
-        if (!resp.ok) {
-          resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">OF não encontrada nos dados do mês atual. Tente calcular outro mês ou busque no PCP.</p>';
-          return;
+        if (r.ok) {
+          var d = await r.json();
+          ofsGeral = Array.isArray(d) ? d : (d.ofs || d.data || d.rows || []);
         }
+      } catch (e) {
+        try { console.warn('[COM PATCH] busca geral falhou:', e && e.message || e); } catch (_) {}
       }
-      if (!encontradas.length) {
-        resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Nenhuma OF encontrada para "' + _escHtmlCom(termo) + '" no mês atual.</p>';
+
+      var idsVistos = new Set(ofsDoMes.map(function(o) { return o && (o.id || o.numero); }));
+      var todasEncontradas = ofsDoMes.concat(ofsGeral.filter(function(o) {
+        return !idsVistos.has(o && (o.id || o.numero));
+      }));
+
+      if (!todasEncontradas.length) {
+        resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Nenhuma OF encontrada para "<b>' + _escHtmlCom(termo) + '</b>".</p>';
         return;
       }
-      var html = encontradas.map(function(of) {
+
+      var html = todasEncontradas.map(function(of) {
+        var numero = String(of && (of.numero || of.num_of || of.numero_of) || '—');
+        var cliente = String(of && (of.cliente || of.cli_nome || of.nome_cliente) || '—');
+        var vendedor = String(of && (of.vendedor || of.vendedor_nome) || '—');
+        var qtd = Number(of && (of.quantidade || of.qtd) || 0) || 0;
+        var valorTotal = Number(of && (of.valor_total || of.total) || 0) || 0;
+        var comissaoRs = Number(of && (of.comissao_rs || of.comissao_valor) || 0) || 0;
         var status = String(of && of.status || 'Pendente');
         var concluida = status.toLowerCase().indexOf('conclu') >= 0;
         var dataStr = '—';
-        try { dataStr = of && of.data_conclusao ? new Date(of.data_conclusao).toLocaleDateString('pt-BR') : '—'; } catch (_) { dataStr = '—'; }
-        var qtd = Number(of && of.quantidade || 0) || 0;
-        var valorTotal = Number(of && of.valor_total || 0) || 0;
-        var precoUnit = qtd > 0 ? (valorTotal / qtd) : 0;
-        var comissao = Number(of && of.comissao_rs || 0) || 0;
-        var vendedor = String(of && of.vendedor || '—');
-        var cliente = String(of && of.cliente || '—');
-        var numero = String(of && of.numero || '—');
+        try {
+          dataStr = of && of.data_conclusao
+            ? new Date(of.data_conclusao).toLocaleDateString('pt-BR')
+            : (of && of.created_at ? new Date(of.created_at).toLocaleDateString('pt-BR') : '—');
+        } catch (_) { dataStr = '—'; }
+        var precoUnit = qtd > 0 ? valorTotal / qtd : 0;
         var id = String(of && of.id || '');
+
         return ''
-          + '<div style="background:#1e293b;border:1px solid ' + (concluida ? '#166534' : '#92400e') + ';border-radius:8px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">'
-          + '<div style="flex:1;min-width:200px">'
-          + '<div style="color:#60a5fa;font-size:16px;font-weight:700">#' + _escHtmlCom(numero) + '</div>'
-          + '<div style="color:#f1f5f9;font-size:14px;margin-top:4px">' + _escHtmlCom(cliente) + '</div>'
-          + '<div style="color:#94a3b8;font-size:12px;margin-top:2px">Vendedor: ' + _escHtmlCom(vendedor) + '</div>'
-          + '</div>'
-          + '<div style="display:flex;gap:20px;flex-wrap:wrap">'
-          + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Qtd</div><div style="color:#f1f5f9;font-weight:600">' + String(qtd) + '</div></div>'
-          + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Valor Total</div><div style="color:#f1f5f9;font-weight:600">R$ ' + valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</div></div>'
-          + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Preço Unit.</div><div style="color:#94a3b8">' + precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</div></div>'
-          + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Comissão</div><div style="color:#22c55e;font-weight:600">R$ ' + comissao.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</div></div>'
-          + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Data</div><div style="color:#94a3b8">' + _escHtmlCom(dataStr) + '</div></div>'
-          + '</div>'
-          + '<div style="display:flex;gap:8px;align-items:center">'
-          + '<span style="background:' + (concluida ? '#166534' : '#92400e') + ';color:' + (concluida ? '#4ade80' : '#fbbf24') + ';padding:4px 10px;border-radius:4px;font-size:12px;white-space:nowrap">' + _escHtmlCom(status) + '</span>'
-          + (concluida ? '' : '<button type="button" style="background:#16a34a;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:12px;white-space:nowrap" onclick="if(window.abrirModalConclusao) window.abrirModalConclusao(' + JSON.stringify(id) + '); else if(window.abrirConclusaoOf) window.abrirConclusaoOf(' + JSON.stringify(id) + '); else alert(\'OF #' + _escHtmlCom(numero).replace(/'/g, '\\\\\'') + ' — abra pelo PCP para concluir.\')">✅ Concluir</button>')
-          + '</div>'
+          + '<div style="background:#1e293b;border:2px solid ' + (concluida ? '#166534' : '#b45309') + ';border-radius:10px;padding:16px 20px;margin-bottom:12px">'
+          + '  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">'
+          + '    <div style="min-width:160px">'
+          + '      <div style="color:#60a5fa;font-size:18px;font-weight:700">#' + _escHtmlCom(numero) + '</div>'
+          + '      <div style="color:#f1f5f9;font-size:14px;font-weight:600;margin-top:4px">' + _escHtmlCom(cliente) + '</div>'
+          + '      <div style="color:#94a3b8;font-size:12px">Vendedor: ' + _escHtmlCom(vendedor) + '</div>'
+          + '    </div>'
+          + '    <div style="display:flex;gap:20px;flex-wrap:wrap">'
+          + '      <div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase;margin-bottom:2px">Qtd</div><div style="color:#f1f5f9;font-weight:600">' + qtd.toLocaleString('pt-BR') + '</div></div>'
+          + '      <div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase;margin-bottom:2px">Valor Total</div><div style="color:#f1f5f9;font-weight:600">R$ ' + valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '</div></div>'
+          + '      <div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase;margin-bottom:2px">Preço Unit.</div><div style="color:#94a3b8">R$ ' + precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '</div></div>'
+          + (comissaoRs > 0 ? '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase;margin-bottom:2px">Comissão</div><div style="color:#22c55e;font-weight:600">R$ ' + comissaoRs.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '</div></div>' : '')
+          + '      <div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase;margin-bottom:2px">Data</div><div style="color:#94a3b8">' + _escHtmlCom(dataStr) + '</div></div>'
+          + '    </div>'
+          + '    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+          + '      <span style="background:' + (concluida ? '#166534' : '#92400e') + ';color:' + (concluida ? '#4ade80' : '#fbbf24') + ';padding:5px 12px;border-radius:5px;font-size:12px;font-weight:600">' + _escHtmlCom(status) + '</span>'
+          + (!concluida ? '<button onclick="(function(){ const id = ' + JSON.stringify(id) + '; const num = ' + JSON.stringify(numero) + '; if(window.abrirModalConclusao) { window.abrirModalConclusao(id); return; } if(window.abrirConclusaoOf) { window.abrirConclusaoOf(id); return; } const links = document.querySelectorAll(\'a, [data-of], [data-id]\'); for(const l of links) { if(l.textContent.includes(num) || (l.dataset && (l.dataset.of===num||l.dataset.id===id))) { l.click(); return; } } alert(\'OF #\'+num+\': acesse pelo PCP para concluir.\'); })()" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px">✅ Concluir</button>' : '')
+          + '      <button onclick="(function(){ const num = ' + JSON.stringify(numero) + '; const links = document.querySelectorAll(\'a, [data-of], [data-id]\'); for(const l of links) { if(l.textContent.trim()===num || (l.dataset&&l.dataset.of===num)) { l.click(); return; } } window.location.hash = \'of-\'+num; })()" style="background:#1d4ed8;color:#fff;border:none;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:13px">✏️ Editar</button>'
+          + '    </div>'
+          + '  </div>'
           + '</div>';
       }).join('');
+
       resultDiv.innerHTML =
-        '<div style="color:#94a3b8;font-size:12px;margin-bottom:8px">' + String(encontradas.length) + ' resultado(s) para "' + _escHtmlCom(termo) + '":</div>'
-        + html;
+        '<div style="color:#94a3b8;font-size:12px;margin-bottom:10px">' +
+          String(todasEncontradas.length) + ' resultado(s) para "<b style="color:#f1f5f9">' + _escHtmlCom(termo) + '</b>":' +
+        '</div>' +
+        html;
     } catch (e) {
-      resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Erro na busca: ' + _escHtmlCom(e && e.message || e) + '</p>';
+      resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Erro: ' + _escHtmlCom(e && e.message || e) + '</p>';
     }
   };
 
@@ -16673,24 +16695,43 @@ function _ocultarGraficoComissoes() {
         try { v0 = String((document.getElementById('_com_busca') || {}).value || '').trim(); } catch (_) { v0 = ''; }
         if (v0) window._buscarOFsComissao && window._buscarOFsComissao(v0);
       } catch (_) {}
-      try {
-        var paginaCom2 = document.querySelector('#page-comissoes, [data-page="comissoes"], .page-comissoes');
-        if (paginaCom2) {
-          paginaCom2.style.overflow = 'visible';
-          paginaCom2.style.height = 'auto';
-          paginaCom2.style.maxHeight = 'none';
+      setTimeout(() => {
+        const paginaCom = document.getElementById('_com_topo')?.parentElement
+          || document.querySelector('#page-comissoes, [data-page="comissoes"], .page-comissoes');
+
+        if (paginaCom) {
+          let el = paginaCom;
+          while (el && el !== document.body) {
+            const style = window.getComputedStyle(el);
+            if (style.overflow === 'hidden' || style.overflowY === 'hidden') {
+              el.style.overflow = 'visible';
+              el.style.overflowY = 'visible';
+            }
+            if (style.height && style.height !== 'auto' && parseInt(style.height) > 0 && parseInt(style.height) < 500) {
+              el.style.height = 'auto';
+              el.style.minHeight = 'unset';
+              el.style.maxHeight = 'none';
+            }
+            el = el.parentElement;
+          }
+          paginaCom.style.overflow = 'visible';
+          paginaCom.style.height = 'auto';
+          paginaCom.style.maxHeight = 'none';
         }
-        try { document.body.style.overflowY = 'auto'; } catch (_) {}
-        ['_com_topo', '_com_detalhe'].forEach(function(id) {
-          try {
-            var el = document.getElementById(id);
-            if (!el) return;
+
+        ['main', '.main-content', '.content', '.page-content', '#content', '#main'].forEach(sel => {
+          const el = document.querySelector(sel);
+          if (el) {
             el.style.overflow = 'visible';
+            el.style.overflowY = 'auto';
             el.style.height = 'auto';
             el.style.maxHeight = 'none';
-          } catch (_) {}
+          }
         });
-      } catch (_) {}
+
+        document.documentElement.style.overflowY = 'auto';
+        document.body.style.overflowY = 'auto';
+      }, 300);
     } catch (e) {
       try { console.error('[COM PATCH] erro:', e); } catch (_) {}
       var topoErro = document.getElementById('_com_topo');
