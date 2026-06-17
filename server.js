@@ -689,10 +689,19 @@ app.get('/sw.js', (req, res) => {
 
 // Forçar no-cache para o index.html
 app.get('/', (req, res) => {
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  res.sendFile(path.join(__dirname, 'index.html'));
+  try {
+    const htmlPath = path.join(__dirname, 'index.html');
+    const patchPath = path.join(__dirname, 'patch.js');
+    let html = fs.readFileSync(htmlPath, 'utf8');
+    const patchVersion = Math.floor(fs.statSync(patchPath).mtimeMs);
+    html = html.replace(/patch\.js\?v=\d+/g, 'patch.js?v=' + patchVersion);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (e) {
+    console.error('[GET /] erro:', e.message);
+    res.sendFile(path.join(__dirname, 'index.html'));
+  }
 });
 
 app.get('/index.html', (req, res) => {
