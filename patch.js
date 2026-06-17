@@ -16048,38 +16048,83 @@ function _ocultarGraficoComissoes() {
 
   function _renderizarBuscaOFs() {
     try {
-      var detalhe = document.getElementById('_com_detalhe');
-      if (!detalhe) return;
+      var topo = document.getElementById('_com_topo');
+      if (!topo) return;
+      var filtros = topo.querySelector('#_com_filtros');
+      if (!filtros) return;
       if (document.getElementById('com-busca-of')) return;
-      var host = detalhe.querySelector('[data-com-search-host]') || detalhe.firstElementChild;
-      if (!host) return;
-      var buscaDiv = document.createElement('div');
-      buscaDiv.style.cssText = 'padding:12px 0 8px;display:flex;gap:8px';
-      buscaDiv.innerHTML =
+      var wrap = document.createElement('div');
+      wrap.id = 'com-busca-wrap';
+      wrap.style.cssText = 'display:flex;gap:8px;align-items:center;flex:1 1 360px;min-width:280px';
+      wrap.innerHTML =
         '<input id="com-busca-of" type="text" placeholder="🔍 Buscar por nº da OF ou nome do cliente..." ' +
-        'style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 14px;color:#f1f5f9;font-size:13px;outline:none" ' +
-        'oninput="window._filtrarComissaoOFs&&window._filtrarComissaoOFs(this.value)">' +
-        '<button type="button" onclick="window._filtrarComissaoOFs&&window._filtrarComissaoOFs((document.getElementById(\'com-busca-of\')||{}).value||\'\')" ' +
-        'style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;font-size:13px">Buscar</button>';
-      host.insertBefore(buscaDiv, host.firstChild || null);
+        'style="flex:1;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 14px;color:#f1f5f9;font-size:13px;outline:none" />' +
+        '<button type="button" id="com-busca-btn" ' +
+        'style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;font-size:13px;white-space:nowrap">Buscar</button>';
+      filtros.appendChild(wrap);
     } catch (_) {}
   }
 
-  window._filtrarComissaoOFs = function(termo) {
+  window._buscarOFsComissao = function(termo) {
+    var termoLower = String(termo || '').toLowerCase().trim();
+    var linhas = document.querySelectorAll('#_com_detalhe tr[data-of-numero]');
+    linhas.forEach(function(tr) {
+      try {
+        var numero = String((tr.dataset && (tr.dataset.ofNumero || tr.dataset.ofnumero)) || '').toLowerCase();
+        var cliente = String((tr.dataset && (tr.dataset.ofCliente || tr.dataset.ofcliente)) || '').toLowerCase();
+        var status = String((tr.dataset && (tr.dataset.ofStatus || tr.dataset.ofstatus)) || '').toLowerCase();
+        var match = !termoLower || numero.indexOf(termoLower) >= 0 || cliente.indexOf(termoLower) >= 0;
+        tr.style.display = match ? '' : 'none';
+
+        if (match && termoLower) {
+          tr.style.background = '#fbbf24';
+          tr.style.color = '#000';
+          try {
+            tr.querySelectorAll('td').forEach(function(td) { td.style.color = '#000'; });
+          } catch (_) {}
+
+          var jaTemBotao = tr.querySelector('.btn-concluir-of');
+          if (!jaTemBotao && status.indexOf('conclu') < 0) {
+            var tdAcoes = tr.querySelector('td:last-child');
+            if (tdAcoes) {
+              var btn = document.createElement('button');
+              btn.className = 'btn-concluir-of';
+              btn.textContent = '✅ Concluir';
+              btn.style.cssText = 'background:#16a34a;color:#fff;border:none;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:11px;margin-left:6px';
+              btn.onclick = function() {
+                var ofId = tr.dataset ? tr.dataset.ofId : '';
+                var ofNumero = tr.dataset ? tr.dataset.ofNumero : '';
+                if (window.abrirModalConclusao) {
+                  window.abrirModalConclusao(ofId);
+                } else if (window.abrirConclusaoOf) {
+                  window.abrirConclusaoOf(ofId);
+                } else {
+                  try { window.location.hash = '#of-' + String(ofNumero || '').trim(); } catch (_) {}
+                  try { window.open('/of/' + String(ofNumero || '').trim(), '_blank'); } catch (_) {}
+                }
+              };
+              tdAcoes.appendChild(btn);
+            }
+          }
+        } else {
+          tr.style.background = '';
+          tr.style.color = '';
+          try { tr.querySelectorAll('td').forEach(function(td) { td.style.color = ''; }); } catch (_) {}
+          var btnExtra = tr.querySelector('.btn-concluir-of');
+          if (btnExtra) btnExtra.remove();
+        }
+      } catch (_) {}
+    });
+
     try {
-      var t = String(termo || '').toLowerCase();
-      Array.prototype.slice.call(document.querySelectorAll('#_com_detalhe tr[data-of-row="1"]')).forEach(function(tr) {
-        var txt = String(tr.getAttribute('data-search') || tr.textContent || '').toLowerCase();
-        tr.style.display = (!t || txt.indexOf(t) >= 0) ? '' : 'none';
-      });
-      Array.prototype.slice.call(document.querySelectorAll('#_com_detalhe details[data-vendedor]')).forEach(function(box) {
-        var visiveis = Array.prototype.slice.call(box.querySelectorAll('tr[data-of-row="1"]')).some(function(tr) {
-          return tr.style.display !== 'none';
-        });
-        box.style.display = visiveis || !t ? '' : 'none';
+      document.querySelectorAll('#_com_detalhe details[data-vendedor]').forEach(function(box) {
+        var temVisivel = Array.from(box.querySelectorAll('tr[data-of-numero]')).some(function(tr) { return tr.style.display !== 'none'; });
+        box.style.display = (temVisivel || !termoLower) ? '' : 'none';
       });
     } catch (_) {}
   };
+
+  window._filtrarComissaoOFs = window._buscarOFsComissao;
 
   async function _renderComissoesPatch() {
     if (window._comRodando) {
@@ -16102,6 +16147,24 @@ function _ocultarGraficoComissoes() {
         window._comRodando = false;
         return;
       }
+      try {
+        var barra = null;
+        var candidatos = Array.prototype.slice.call(paginaCom.querySelectorAll('div, section, header, form'));
+        barra = candidatos.find(function(el) {
+          try {
+            if (!el || el.id === '_com_topo' || el.id === '_com_detalhe') return false;
+            var txt = String(el.textContent || '').toLowerCase();
+            if (txt.indexOf('calcular') < 0 && txt.indexOf('imprimir') < 0) return false;
+            var temSelect = !!el.querySelector('select, input[type="month"], input[type="date"]');
+            var temBtn = Array.prototype.slice.call(el.querySelectorAll('button')).some(function(b) {
+              var t = String(b && b.textContent || '').toLowerCase();
+              return t.indexOf('calcular') >= 0 || t.indexOf('imprimir') >= 0;
+            });
+            return temSelect && temBtn && (el.offsetHeight || 0) < 260;
+          } catch (_) { return false; }
+        }) || null;
+        if (barra && !barra._comMovedToTop) barra._comMovedToTop = true;
+      } catch (_) {}
       Array.prototype.slice.call(paginaCom.children || []).forEach(function(child) {
         try {
           if (!child || child.id === '_com_topo' || child.id === '_com_detalhe') return;
@@ -16122,6 +16185,21 @@ function _ocultarGraficoComissoes() {
         divTopo.style.cssText = 'padding:12px 16px 0;box-sizing:border-box;';
         paginaCom.insertBefore(divTopo, paginaCom.firstChild || null);
       }
+      var filtrosWrap = null;
+      try { filtrosWrap = divTopo.querySelector('#_com_filtros'); } catch (_) { filtrosWrap = null; }
+      if (!filtrosWrap) {
+        filtrosWrap = document.createElement('div');
+        filtrosWrap.id = '_com_filtros';
+        filtrosWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:4px 0 14px';
+        divTopo.appendChild(filtrosWrap);
+      }
+      var conteudoWrap = null;
+      try { conteudoWrap = divTopo.querySelector('#_com_topo_conteudo'); } catch (_) { conteudoWrap = null; }
+      if (!conteudoWrap) {
+        conteudoWrap = document.createElement('div');
+        conteudoWrap.id = '_com_topo_conteudo';
+        divTopo.appendChild(conteudoWrap);
+      }
 
       var divDetalhe = document.getElementById('_com_detalhe');
       if (!divDetalhe) {
@@ -16131,7 +16209,34 @@ function _ocultarGraficoComissoes() {
         paginaCom.appendChild(divDetalhe);
       }
 
-      divTopo.innerHTML = '<p style="color:#94a3b8;padding:20px 4px">[COM] Carregando comissões...</p>';
+      try {
+        var barra2 = null;
+        try { barra2 = barra; } catch (_) { barra2 = null; }
+        if (barra2 && barra2.parentElement && barra2.parentElement !== filtrosWrap) {
+          filtrosWrap.insertBefore(barra2, filtrosWrap.firstChild || null);
+          try { barra2.style.margin = '0'; } catch (_) {}
+        }
+      } catch (_) {}
+
+      _renderizarBuscaOFs();
+      try {
+        var inpBusca = document.getElementById('com-busca-of');
+        var btnBusca = document.getElementById('com-busca-btn');
+        if (inpBusca && !inpBusca._comBound) {
+          inpBusca._comBound = true;
+          inpBusca.addEventListener('input', function(e) { window._buscarOFsComissao && window._buscarOFsComissao(e.target.value); });
+        }
+        if (btnBusca && !btnBusca._comBound) {
+          btnBusca._comBound = true;
+          btnBusca.addEventListener('click', function() {
+            var v = '';
+            try { v = String((document.getElementById('com-busca-of') || {}).value || ''); } catch (_) { v = ''; }
+            window._buscarOFsComissao && window._buscarOFsComissao(v);
+          });
+        }
+      } catch (_) {}
+
+      conteudoWrap.innerHTML = '<p style="color:#94a3b8;padding:20px 4px">[COM] Carregando comissões...</p>';
       divDetalhe.innerHTML = '';
 
       var ref = _getPeriodoSelecionado();
@@ -16253,7 +16358,7 @@ function _ocultarGraficoComissoes() {
         }).join('')
         + '</tbody></table></div>';
 
-      divTopo.innerHTML = htmlCards + htmlRanking + htmlResumo;
+      conteudoWrap.innerHTML = htmlCards + htmlRanking + htmlResumo;
 
       var htmlDetalhe = '<div data-com-search-host="1"><h3 style="color:#f1f5f9;padding:12px 0 4px;margin-top:8px">📋 Detalhamento das OFs</h3></div>';
       htmlDetalhe += grupos.map(function(g, gi) {
@@ -16262,7 +16367,7 @@ function _ocultarGraficoComissoes() {
           + '<summary style="list-style:none;cursor:pointer;background:' + coresVendedor[gi % coresVendedor.length] + ';padding:10px 14px;color:#f8fafc;font-weight:700">'
           + '🔽 ' + _escHtmlCom(g.vendedor) + ' — ' + String(g.ofs.length) + ' OFs — Total: ' + _escHtmlCom(_fmtRs(g.total_vendas)) + ' — Comissão: ' + _escHtmlCom(_fmtRs(g.comissao_total))
           + '</summary>'
-          + '<div style="overflow-x:auto">'
+          + '<div style="overflow:auto;max-height:400px;display:block">'
           + '<table style="width:100%;border-collapse:collapse;background:#0f172a">'
           + '<thead><tr style="background:#1e293b;color:#64748b;font-size:11px;text-transform:uppercase">'
           + '<th style="padding:8px 10px;text-align:left;white-space:nowrap"># OF</th>'
@@ -16282,7 +16387,7 @@ function _ocultarGraficoComissoes() {
             var dataStr = '—';
             try { dataStr = of.data ? new Date(of.data).toLocaleDateString('pt-BR') : '—'; } catch (_) { dataStr = '—'; }
             return ''
-              + '<tr data-of-row="1" data-search="' + _escHtmlCom(searchTxt) + '" style="border-bottom:1px solid #1e293b">'
+              + '<tr data-of-row="1" data-search="' + _escHtmlCom(searchTxt) + '" data-of-numero="' + _escHtmlCom(of.numero) + '" data-of-cliente="' + _escHtmlCom(of.cliente) + '" data-of-status="' + _escHtmlCom(of.status) + '" data-of-id="' + _escHtmlCom(of.id) + '" style="border-bottom:1px solid #1e293b">'
               + '<td style="padding:7px 10px;color:#60a5fa">#' + _escHtmlCom(of.numero) + '</td>'
               + '<td style="padding:7px 10px;color:#f1f5f9">' + _escHtmlCom(of.cliente) + '</td>'
               + '<td style="padding:7px 10px;color:#94a3b8">' + _escHtmlCom(of.vendedor) + '</td>'
@@ -16299,7 +16404,11 @@ function _ocultarGraficoComissoes() {
           + '</tbody></table></div></details>';
       }).join('');
       divDetalhe.innerHTML = htmlDetalhe;
-      _renderizarBuscaOFs();
+      try {
+        var v0 = '';
+        try { v0 = String((document.getElementById('com-busca-of') || {}).value || '').trim(); } catch (_) { v0 = ''; }
+        if (v0) window._buscarOFsComissao && window._buscarOFsComissao(v0);
+      } catch (_) {}
     } catch (e) {
       try { console.error('[COM PATCH] erro:', e); } catch (_) {}
       var topoErro = document.getElementById('_com_topo');
