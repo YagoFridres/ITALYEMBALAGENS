@@ -87,6 +87,37 @@ if (!document.getElementById('_patch_light_css')) {
       background: #fff !important;
       border-color: #cbd5e1 !important;
     }
+    /* Modal Nova OF Rapida */
+    body._patch_modo_claro .modal-of-rapida input,
+    body._patch_modo_claro .modal-of-rapida select,
+    body._patch_modo_claro .modal-of-rapida textarea,
+    body._patch_modo_claro [class*="of-rapida"] input,
+    body._patch_modo_claro [class*="of-rapida"] select,
+    body._patch_modo_claro .modal input,
+    body._patch_modo_claro .modal select,
+    body._patch_modo_claro .modal textarea,
+    body._patch_modo_claro dialog input,
+    body._patch_modo_claro dialog select,
+    body._patch_modo_claro dialog textarea {
+      color: #1e293b !important;
+      background: #ffffff !important;
+      border: 1px solid #cbd5e1 !important;
+    }
+    body._patch_modo_claro .modal label,
+    body._patch_modo_claro dialog label,
+    body._patch_modo_claro [class*="of-rapida"] label {
+      color: #374151 !important;
+    }
+    body._patch_modo_claro .modal,
+    body._patch_modo_claro dialog {
+      color: #1e293b !important;
+    }
+    /* Seletor de cores e outros componentes customizados */
+    body._patch_modo_claro [class*="select"],
+    body._patch_modo_claro [class*="dropdown"] {
+      color: #1e293b !important;
+      background: #ffffff !important;
+    }
   `;
   document.head.appendChild(s);
 }
