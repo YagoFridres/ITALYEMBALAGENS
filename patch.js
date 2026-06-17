@@ -1,6 +1,17 @@
 window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
+if (!window.__comRodandoWatchdogInstalled) {
+  window.__comRodandoWatchdogInstalled = true;
+  setInterval(function() {
+    try {
+      if (window._comRodando) {
+        window._comRodando = false;
+        console.log('[COM PATCH] watchdog: _comRodando resetado');
+      }
+    } catch (_) {}
+  }, 5000);
+}
 if (!window._urlValida) {
   window._urlValida = function(url) {
     if (!url) return false;
@@ -15916,290 +15927,6 @@ function _ocultarGraficoComissoes() {
     }
   } catch (_) {}
 
-  function _instalarRenderComissoesFix() {
-    try {
-      if (window._patchRenderComFixed && window.renderComissoes && window.renderComissoes.__comPatchOnlyRender) return;
-      window._patchRenderComFixed = true;
-      window.renderComissoes = async function() {
-        if (window._comRenderInterno) return;
-        try { console.log('[COM] renderComissoes patch executando'); } catch (_) {}
-        try {
-          window._comRenderInterno = true;
-          try { window._comissoesData = _normalizarComissoesData(window._comissoesData); } catch (_) {}
-          _forcarRenderComissoesPatch();
-        } finally {
-          window._comRenderInterno = false;
-        }
-      };
-      window.renderComissoes.__comPatchOnlyRender = true;
-    } catch (_) {}
-  }
-
-  window.__comissoesPatchCalcular = async function() {
-    if (_comCalcEmAndamento || window._comissoesCarregando) return;
-    _comCalcEmAndamento = true;
-    window._comissoesCarregando = true;
-    try {
-      _ensurePeriodoSelects();
-      var ref = _getPeriodoSelecionado();
-      var anoNum = String(ref.anoNum || '').trim();
-      var mesNum = String(ref.mesNum || '').trim();
-      try {
-        var inp = document.querySelector('input[type="month"]');
-        if (inp) {
-          inp.value = anoNum + '-' + mesNum;
-          inp.style.display = 'none';
-        }
-      } catch (_) {}
-
-      try { console.log('[COM PATCH] chamando API mes=' + mesNum + ' ano=' + anoNum); } catch (_) {}
-
-      var token = '';
-      try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
-
-      var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mesNum) + '&ano=' + encodeURIComponent(anoNum), { headers: { Authorization: 'Bearer ' + token } });
-      var json = await resp.json().catch(function() { return null; });
-      try { console.log('[COM PATCH] resposta:', json && json.ok, json && json.total_ofs, json && json.total_vendido); } catch (_) {}
-      if (!json || !json.ok) {
-        try { console.error('[COM PATCH] erro:', json && json.error); } catch (_) {}
-        return;
-      }
-      try { console.log('[FIX OFs] resposta completa:', JSON.stringify(json).substring(0, 500)); } catch (_) {}
-      window._comissoesSqlData = json;
-      window._comissoesData = {
-        totalGeral: json.total_vendido,
-        totalComissao: json.total_comissao,
-        totalPedidos: json.total_ofs,
-        vendedores: (json.vendedores || []).map(function(v) {
-          return {
-            vendNome: v.nome,
-            nome: v.nome,
-            vendId: v.id,
-            id: v.id,
-            total: v.total,
-            peds: v.ofs,
-            quantidade: v.ofs,
-            comissaoRs: v.comissao_rs,
-            comissao: v.comissao_pct,
-            comissao_pct: v.comissao_pct,
-            ofs: [],
-            ofsList: []
-          };
-        })
-      };
-      try {
-        var fmt = function(v) { return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); };
-        var setEl = function(sel, v) { var el = document.querySelector(sel); if (el) el.textContent = v; };
-        setEl('#com-total-vendido, [data-com=\"total_vendido\"]', fmt(json.total_vendido));
-        setEl('#com-total-comissao, [data-com=\"total_comissao\"]', fmt(json.total_comissao));
-        setEl('#com-total-ofs, [data-com=\"total_ofs\"]', String(json.total_ofs || 0));
-      } catch (_) {}
-
-      try {
-        var prev = _prevPeriodo(mesNum, anoNum);
-        window.__comissoesPrevData = null;
-        if (prev) {
-          window.__comissoesPrevData = await _fetchComissoes(prev.mesNum, prev.anoNum);
-        }
-      } catch (_) { window.__comissoesPrevData = null; }
-
-      try { _instalarRenderComissoesFix(); } catch (_) {}
-      try { if (typeof window['renderComissoes'] === 'function') window['renderComissoes'](window._comissoesData); } catch (_) {}
-      setTimeout(function() {
-        try { _ensureVendedoresMap(); } catch (_) {}
-        _renderTabelaVendedores(window._comissoesSqlData);
-        _renderTabelaOFs(window._comissoesSqlData);
-        _ocultarGraficoComissoes();
-        _ensureExtras(window._comissoesSqlData, mesNum, anoNum);
-      }, 600);
-      setTimeout(_ocultarGraficoComissoes, 800);
-    } catch (e) {
-      try { console.error('[COM PATCH] fetch erro:', e && e.message); } catch (_) {}
-    } finally {
-      window._comissoesCarregando = false;
-      setTimeout(function() { _comCalcEmAndamento = false; }, 300);
-    }
-  };
-  try { window._executarCalculoComissoes = window.__comissoesPatchCalcular; } catch (_) {}
-
-  function _rebindBtnCalcular() {
-    try {
-      var btn = Array.from(document.querySelectorAll('button'))
-        .find(function(b) { return String(b && b.textContent || '').trim() === 'Calcular' && !b._patchBound; });
-      if (!btn) return;
-      btn._patchBound = true;
-      btn.addEventListener('click', function() {
-        window.__comUltimaExecucao = 0;
-        window.__comEntradaTs = 0;
-        try {
-          var topoExistente = document.getElementById('_com_topo_v3');
-          if (topoExistente) topoExistente.innerHTML = '<div style="color:#64748b;padding:16px">Calculando...</div>';
-        } catch (_) {}
-        try { window._comEnriquecido = false; } catch (_) {}
-        try {
-          if (window.__comObsEnriquecerRef && typeof window.__comObsEnriquecerRef.observe === 'function') {
-            window.__comObsEnriquecerRef.observe(document.body, { childList: true, subtree: true });
-          }
-        } catch (_) {}
-        if (typeof window.calcularComissoes === 'function') window.calcularComissoes();
-      });
-    } catch (_) {}
-  }
-
-  try {
-    var _goOrigComFix = window.go;
-    if (_goOrigComFix && !window._patchGoComFixed) {
-      window._patchGoComFixed = true;
-      window.go = function(tela) {
-        var args = Array.prototype.slice.call(arguments, 1);
-        var r = _goOrigComFix.apply(this, [tela].concat(args));
-        if (String(tela || '').indexOf('comiss') >= 0) {
-          setTimeout(_rebindBtnCalcular, 500);
-          setTimeout(function() {
-            try { _instalarRenderComissoesFix(); } catch (_) {}
-            try {
-              var inp = document.querySelector('input[type="month"]');
-              if (inp && !inp.value) {
-                var h = new Date();
-                inp.value = String(h.getFullYear()) + '-' + String(h.getMonth() + 1).padStart(2, '0');
-              }
-            } catch (_) {}
-          }, 300);
-        }
-        return r;
-      };
-    }
-  } catch (_) {}
-
-  function _instalarOverrideComissoes() {
-    try {
-      if (typeof window.__comissoesPatchCalcular === 'function') {
-        window._executarCalculoComissoes = window.__comissoesPatchCalcular;
-        window.calcularComissoes = window.__comissoesPatchCalcular;
-        window.gerarRelatorioComissoes = window.__comissoesPatchCalcular;
-        window.renderRelatorioComissoes = window.__comissoesPatchCalcular;
-      }
-    } catch (_) {}
-    try { _instalarExecGuardComissoes(); } catch (_) {}
-    try { _instalarRenderComissoesFix(); } catch (_) {}
-    try { _rebindBtnCalcular(); } catch (_) {}
-  }
-
-  function _instalarExecGuardComissoes() {
-    try {
-      var calcularComissoesOriginal = window.calcularComissoes;
-      if (typeof calcularComissoesOriginal !== 'function') return;
-      if (calcularComissoesOriginal.__comissoesExecWrappedTs) return;
-      var wrapped = async function() {
-        var agora = Date.now();
-        if (agora - (window.__comUltimaExecucao || 0) < 2000) {
-          try { console.log('[COM] debounce ignorado'); } catch (_) {}
-          return;
-        }
-        window.__comUltimaExecucao = agora;
-        try {
-          return await calcularComissoesOriginal.apply(this, arguments);
-        } catch (e) {
-          try { console.error('[COM]', e); } catch (_) {}
-          return;
-        } finally {
-        }
-      };
-      wrapped.__comissoesExecWrappedTs = true;
-      wrapped.__comissoesExecOriginal = calcularComissoesOriginal;
-      window.calcularComissoes = wrapped;
-    } catch (_) {}
-  }
-
-  try {
-    if (!window.__comissoesObsInstalled) {
-      window.__comissoesObsInstalled = true;
-      try {
-        if (window.__comissoesObs && typeof window.__comissoesObs.disconnect === 'function') window.__comissoesObs.disconnect();
-      } catch (_) {}
-      try { window.__comissoesObs = null; } catch (_) {}
-      try { window.__comissoesObsDisabled = true; } catch (_) {}
-    }
-  } catch (_) {}
-
-  function _instalarDetectorNavComissoes() {
-    try {
-      if (window.__comissoesNavDetectorInstalled) return;
-      window.__comissoesNavDetectorInstalled = true;
-      setInterval(function() {
-        var agora = Date.now();
-        if (agora - (window.__comEntradaTs || 0) < 5000) return;
-        var el = Array.from(document.querySelectorAll('*'))
-          .find(function(e) {
-            return e.children.length === 0 &&
-              String(e.textContent || '').trim() === 'Comissão por Vendedor' &&
-              e.offsetParent !== null;
-          });
-        if (el) {
-          window.__comEntradaTs = agora;
-          window.__comUltimaExecucao = 0;
-          if (typeof window.calcularComissoes === 'function') window.calcularComissoes();
-        }
-      }, 1500);
-    } catch (_) {}
-  }
-
-  function _enriquecerComissoes() {
-    try {
-      var data = window._comissoesSqlData;
-      if (!data) return;
-      var ref = _getPeriodoSelecionado();
-      var label = _nomeMes(ref.mesNum) + ' ' + String(ref.anoNum);
-      _adicionarTopoComissoes(data, window.__comissoesPrevData || null, label);
-      _ensureBuscaUI();
-      setTimeout(function() {
-        try {
-          var buscaExiste = document.getElementById('com-busca-of') || document.getElementById('comissao-busca-of');
-          if (!buscaExiste) {
-            try { console.log('[COM] campo de busca não encontrado, re-renderizando...'); } catch (_) {}
-            if (typeof _renderizarBuscaOFs === 'function') _renderizarBuscaOFs();
-            else _ensureBuscaUI();
-          }
-        } catch (_) {}
-      }, 500);
-    } catch (_) {}
-  }
-
-  function _renderizarBuscaOFs() {
-    try {
-      if (document.getElementById('com-busca-of') || document.getElementById('comissao-busca-of-input')) return;
-      if (typeof window._filtrarComissaoOFs !== 'function' && typeof window._filtrarTabelaComissoes === 'function') {
-        window._filtrarComissaoOFs = window._filtrarTabelaComissoes;
-      }
-      var secaoDetalhe = Array.from(document.querySelectorAll('*')).find(function(el) {
-        return el &&
-          String(el.textContent || '').indexOf('Detalhamento das OFs') >= 0 &&
-          (el.offsetHeight || 0) > 50 &&
-          (el.offsetHeight || 0) < 200;
-      });
-      if (!secaoDetalhe) {
-        _ensureBuscaUI();
-        return;
-      }
-      var buscaDiv = document.createElement('div');
-      buscaDiv.id = 'com-busca-of-wrap';
-      buscaDiv.style.cssText = 'padding:12px 16px 8px;display:flex;gap:8px';
-      buscaDiv.innerHTML =
-        '<input id="com-busca-of" type="text" ' +
-        'placeholder="🔍 Buscar por nº da OF ou nome do cliente..." ' +
-        'style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 14px;color:#f1f5f9;font-size:13px;outline:none" ' +
-        'oninput="window._filtrarComissaoOFs&&window._filtrarComissaoOFs(this.value)">' +
-        '<button onclick="window._filtrarComissaoOFs&&window._filtrarComissaoOFs((document.getElementById(\'com-busca-of\')||{}).value||\'\')" ' +
-        'style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;font-size:13px">' +
-        'Buscar</button>';
-      var primeiroFilho = secaoDetalhe.querySelector('table, tbody, .tabela');
-      if (primeiroFilho) secaoDetalhe.insertBefore(buscaDiv, primeiroFilho);
-      else secaoDetalhe.appendChild(buscaDiv);
-    } catch (_) {
-      try { _ensureBuscaUI(); } catch (_) {}
-    }
-  }
-
   function _naComissoesAgora() {
     try {
       var urlAtual = String(window.location.hash || '') + ' ' + String(document.title || '');
@@ -16212,137 +15939,457 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
     try {
       var el = Array.from(document.querySelectorAll('*')).find(function(e) {
-        return e && e.children && e.children.length === 0 &&
-          String(e.textContent || '').trim() === 'Comissão por Vendedor' &&
-          e.offsetParent !== null;
+        return e && String(e.textContent || '').indexOf('Comissão por Vendedor') >= 0 && e.offsetParent !== null;
       });
       if (el) return true;
     } catch (_) {}
     return false;
   }
 
-  function _removerTopoComissoes(motivo) {
+  function _acharPaginaComissoesPatch() {
+    var pg = null;
+    try { pg = _getPgComissoes(); } catch (_) { pg = null; }
+    if (pg) return pg;
     try {
-      var topo = document.getElementById('_com_topo_v3');
-      if (topo) {
-        topo.remove();
-        try { console.log('[COM] topo removido' + (motivo ? ': ' + motivo : '')); } catch (_) {}
+      var el = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, div, span, p, label, strong, b')).find(function(node) {
+        return node && String(node.textContent || '').indexOf('Comissão por Vendedor') >= 0 && node.offsetParent !== null;
+      });
+      var pai = el ? el.parentElement : null;
+      for (var i = 0; i < 8 && pai && pai !== document.body; i += 1) {
+        if ((pai.offsetHeight || 0) > 200 && (pai.offsetWidth || 0) > 400) return pai;
+        pai = pai.parentElement;
       }
     } catch (_) {}
-    try { window._comEnriquecido = false; } catch (_) {}
+    return null;
   }
+
+  function _escHtmlCom(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function _pctCom(v) {
+    var n = Number(v || 0) || 0;
+    return n > 0 && n <= 1 ? (n * 100) : n;
+  }
+
+  function _normalizarOFComissao(of, vendedorFallback) {
+    var qtd = Number(of && (of.qtd != null ? of.qtd : of.quantidade) || 0) || 0;
+    var valorTotal = Number(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : of.valor_venda)) || 0) || 0;
+    var pctRaw = _pctCom(of && (of.comissao_pct != null ? of.comissao_pct : of.comissao));
+    var fator = pctRaw > 1 ? (pctRaw / 100) : pctRaw;
+    var comissaoValor = Number(of && (of.comissao_valor != null ? of.comissao_valor : of.comissao_rs) || (valorTotal * fator) || 0) || 0;
+    return {
+      raw: of || {},
+      id: String(of && of.id || '').trim(),
+      numero: String(of && (of.numero_of || of.numero || of.of_num || of.of || of.id) || '—').trim() || '—',
+      cliente: String(of && (of.cliente || of.cliente_nome || of.clinome || of.cliNome) || '—').trim() || '—',
+      vendedor: String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || vendedorFallback || 'Sem vendedor').trim() || 'Sem vendedor',
+      qtd: qtd,
+      valor_total: valorTotal,
+      preco_unit: qtd > 0 ? (valorTotal / qtd) : 0,
+      comissao_pct: pctRaw,
+      comissao_valor: comissaoValor,
+      data: String(of && (of.data_conclusao || of.created_at || of.data) || '').trim(),
+      status: String(of && of.status || 'Concluída').trim() || 'Concluída'
+    };
+  }
+
+  function _normalizarGruposComissoes(json) {
+    var ofsBase = Array.isArray(json && json.ofs) ? json.ofs.slice() : [];
+    var grupos = Array.isArray(json && json.grupos) ? json.grupos.slice() : [];
+    if (!grupos.length && Array.isArray(json && json.vendedores)) {
+      grupos = json.vendedores.map(function(v) {
+        return {
+          vendedor: v && (v.nome || v.vendedor || v.vendNome),
+          total_vendas: Number(v && (v.total_vendas != null ? v.total_vendas : v.total) || 0) || 0,
+          comissao_pct: v && v.comissao_pct,
+          ofs: []
+        };
+      });
+    }
+    if (!grupos.length && ofsBase.length) {
+      var mapa = Object.create(null);
+      ofsBase.forEach(function(of) {
+        var nome = String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || 'Sem vendedor').trim() || 'Sem vendedor';
+        if (!mapa[nome]) mapa[nome] = { vendedor: nome, total_vendas: 0, ofs: [] };
+        mapa[nome].ofs.push(of);
+        mapa[nome].total_vendas += Number(of && (of.valor_total != null ? of.valor_total : of.total) || 0) || 0;
+      });
+      grupos = Object.keys(mapa).map(function(nome) { return mapa[nome]; });
+    }
+    return grupos.map(function(g) {
+      var nome = String(g && (g.vendedor || g.nome || g.vendedor_nome) || 'Sem vendedor').trim() || 'Sem vendedor';
+      var ofsGrupo = Array.isArray(g && g.ofs) ? g.ofs.slice() : ofsBase.filter(function(of) {
+        return String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || 'Sem vendedor').trim() === nome;
+      });
+      var ofsNorm = ofsGrupo.map(function(of) { return _normalizarOFComissao(of, nome); });
+      var totalVendas = Number(g && (g.total_vendas != null ? g.total_vendas : g.total) || 0) || ofsNorm.reduce(function(s, of) {
+        return s + (Number(of.valor_total || 0) || 0);
+      }, 0);
+      return {
+        vendedor: nome,
+        total_vendas: totalVendas,
+        ofs: ofsNorm,
+        comissao_total: ofsNorm.reduce(function(s, of) { return s + (Number(of.comissao_valor || 0) || 0); }, 0)
+      };
+    });
+  }
+
+  function _renderizarBuscaOFs() {
+    try {
+      var detalhe = document.getElementById('_com_detalhe');
+      if (!detalhe) return;
+      if (document.getElementById('com-busca-of')) return;
+      var host = detalhe.querySelector('[data-com-search-host]') || detalhe.firstElementChild;
+      if (!host) return;
+      var buscaDiv = document.createElement('div');
+      buscaDiv.style.cssText = 'padding:12px 0 8px;display:flex;gap:8px';
+      buscaDiv.innerHTML =
+        '<input id="com-busca-of" type="text" placeholder="🔍 Buscar por nº da OF ou nome do cliente..." ' +
+        'style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 14px;color:#f1f5f9;font-size:13px;outline:none" ' +
+        'oninput="window._filtrarComissaoOFs&&window._filtrarComissaoOFs(this.value)">' +
+        '<button type="button" onclick="window._filtrarComissaoOFs&&window._filtrarComissaoOFs((document.getElementById(\'com-busca-of\')||{}).value||\'\')" ' +
+        'style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;font-size:13px">Buscar</button>';
+      host.insertBefore(buscaDiv, host.firstChild || null);
+    } catch (_) {}
+  }
+
+  window._filtrarComissaoOFs = function(termo) {
+    try {
+      var t = String(termo || '').toLowerCase();
+      Array.prototype.slice.call(document.querySelectorAll('#_com_detalhe tr[data-of-row="1"]')).forEach(function(tr) {
+        var txt = String(tr.getAttribute('data-search') || tr.textContent || '').toLowerCase();
+        tr.style.display = (!t || txt.indexOf(t) >= 0) ? '' : 'none';
+      });
+      Array.prototype.slice.call(document.querySelectorAll('#_com_detalhe details[data-vendedor]')).forEach(function(box) {
+        var visiveis = Array.prototype.slice.call(box.querySelectorAll('tr[data-of-row="1"]')).some(function(tr) {
+          return tr.style.display !== 'none';
+        });
+        box.style.display = visiveis || !t ? '' : 'none';
+      });
+    } catch (_) {}
+  };
+
+  async function _renderComissoesPatch() {
+    if (window._comRodando) {
+      try { console.log('[COM PATCH] já rodando, ignorando'); } catch (_) {}
+      return;
+    }
+    window._comRodando = true;
+    var _comTimeout = setTimeout(function() {
+      window._comRodando = false;
+      try { console.log('[COM PATCH] timeout de segurança: _comRodando liberado'); } catch (_) {}
+    }, 10000);
+    try {
+      _ensureComissoesStyle();
+      _ensurePeriodoSelects();
+      _bindTrocarClick();
+      var paginaCom = _acharPaginaComissoesPatch();
+      if (!paginaCom) {
+        try { console.warn('[COM PATCH] container de comissões não encontrado'); } catch (_) {}
+        clearTimeout(_comTimeout);
+        window._comRodando = false;
+        return;
+      }
+      Array.prototype.slice.call(paginaCom.children || []).forEach(function(child) {
+        try {
+          if (!child || child.id === '_com_topo' || child.id === '_com_detalhe') return;
+          var manterToolbar = !!(child.querySelector && child.querySelector('#com-mes, #com-ano, [name="mes-comissao"], [name="ano-comissao"], input[type="month"], button'));
+          if (manterToolbar) return;
+          child.style.display = 'none';
+        } catch (_) {}
+      });
+      try {
+        var legadoTopo = document.getElementById('_com_topo_v3');
+        if (legadoTopo) legadoTopo.remove();
+      } catch (_) {}
+
+      var divTopo = document.getElementById('_com_topo');
+      if (!divTopo) {
+        divTopo = document.createElement('div');
+        divTopo.id = '_com_topo';
+        divTopo.style.cssText = 'padding:12px 16px 0;box-sizing:border-box;';
+        paginaCom.insertBefore(divTopo, paginaCom.firstChild || null);
+      }
+
+      var divDetalhe = document.getElementById('_com_detalhe');
+      if (!divDetalhe) {
+        divDetalhe = document.createElement('div');
+        divDetalhe.id = '_com_detalhe';
+        divDetalhe.style.cssText = 'padding:0 16px 24px;box-sizing:border-box;';
+        paginaCom.appendChild(divDetalhe);
+      }
+
+      divTopo.innerHTML = '<p style="color:#94a3b8;padding:20px 4px">[COM] Carregando comissões...</p>';
+      divDetalhe.innerHTML = '';
+
+      var ref = _getPeriodoSelecionado();
+      var mes = String(ref.mesNum || '').trim() || String(new Date().getMonth() + 1);
+      var ano = String(ref.anoNum || '').trim() || String(new Date().getFullYear());
+      var token = '';
+      try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
+      var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano), {
+        headers: token ? { Authorization: 'Bearer ' + token } : {}
+      });
+      var data = await resp.json().catch(function() { return null; });
+      if (!resp.ok || !data || data.ok === false) throw new Error((data && data.error) || ('HTTP ' + resp.status));
+      try { console.log('[COM PATCH] dados recebidos:', data); } catch (_) {}
+
+      var grupos = _normalizarGruposComissoes(data);
+      var todasOFs = grupos.reduce(function(acc, g) { return acc.concat(g.ofs || []); }, []);
+      window._comissaoOFs = todasOFs.map(function(of) { return of.raw || of; });
+      window._comissoesSqlData = data;
+      window._comissoesData = _normalizarComissoesData({
+        totalGeral: Number(data.total_geral_vendas != null ? data.total_geral_vendas : data.total_vendido || 0) || 0,
+        totalComissao: Number(data.total_comissao || 0) || 0,
+        totalPedidos: Number(data.total_ofs || todasOFs.length || 0) || 0,
+        vendedores: grupos.map(function(g) {
+          return {
+            nome: g.vendedor,
+            total: g.total_vendas,
+            ofs: g.ofs.length,
+            comissao_rs: g.comissao_total,
+            comissao_pct: g.ofs[0] ? g.ofs[0].comissao_pct : 0
+          };
+        })
+      });
+      try {
+        var prev = _prevPeriodo(mes, ano);
+        window.__comissoesPrevData = prev ? await _fetchComissoes(prev.mesNum, prev.anoNum) : null;
+      } catch (_) { window.__comissoesPrevData = null; }
+
+      var totalGeral = Number(data.total_geral_vendas != null ? data.total_geral_vendas : data.total_vendido || 0) || 0;
+      var totalOFs = Number(data.total_ofs || todasOFs.length || 0) || 0;
+      var totalComissoes = grupos.reduce(function(s, g) { return s + (Number(g.comissao_total || 0) || 0); }, 0);
+      var prevTotal = Number(window.__comissoesPrevData && (window.__comissoesPrevData.total_geral_vendas != null ? window.__comissoesPrevData.total_geral_vendas : window.__comissoesPrevData.total_vendido) || 0) || 0;
+      var deltaTxt = '—';
+      if (prevTotal > 0) {
+        var deltaPct = ((totalGeral - prevTotal) / prevTotal) * 100;
+        deltaTxt = (deltaPct >= 0 ? '↑ ' : '↓ ') + Math.abs(deltaPct).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+      }
+      var ranking = grupos.slice().sort(function(a, b) { return Number(b.total_vendas || 0) - Number(a.total_vendas || 0); }).slice(0, 3);
+      var rankingMax = Number(ranking[0] && ranking[0].total_vendas || 0) || 1;
+      var coresVendedor = ['#1a3a5c', '#1a3a2c', '#3a1a3a', '#3a2a1a'];
+
+      var htmlCards = ''
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;padding:4px 0 16px">'
+        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Total Vendido</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + _escHtmlCom(_fmtMoney(totalGeral)) + '</div></div>'
+        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">OFs Concluídas</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + String(totalOFs) + '</div></div>'
+        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Total Comissões</div><div style="color:#22c55e;font-size:22px;font-weight:700">' + _escHtmlCom(_fmtMoney(totalComissoes)) + '</div></div>'
+        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Vendedores</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + String(grupos.length) + '</div><div style="color:#94a3b8;font-size:12px;margin-top:6px">vs mês anterior: ' + _escHtmlCom(deltaTxt) + '</div></div>'
+        + '</div>';
+
+      var medals = ['🥇', '🥈', '🥉'];
+      var htmlRanking = ranking.length ? ''
+        + '<div style="display:flex;gap:16px;flex-wrap:wrap;padding:0 0 16px">'
+        + ranking.map(function(g, idx) {
+          var pctBar = Math.max(4, Math.min(100, (Number(g.total_vendas || 0) / rankingMax) * 100));
+          return ''
+            + '<div style="flex:1 1 240px;min-width:240px;background:#111827;border:1px solid #2a3f5f;border-radius:12px;padding:14px 16px;color:#fff">'
+            + '<div style="display:flex;justify-content:space-between;gap:12px;font-weight:700;font-size:14px;align-items:center"><div><span style="font-size:1.4em;margin-right:6px">' + medals[idx] + '</span><span style="font-size:16px;font-weight:800">' + _escHtmlCom(g.vendedor) + '</span></div><div>' + _escHtmlCom(_fmtMoney(g.total_vendas)) + '</div></div>'
+            + '<div style="height:8px;border-radius:999px;background:rgba(255,255,255,0.10);overflow:hidden;margin-top:10px"><div style="height:100%;width:' + pctBar.toFixed(0) + '%;background:#6366f1;border-radius:999px"></div></div>'
+            + '<div style="margin-top:8px;color:#94a3b8;font-size:12px">' + String(g.ofs.length) + ' OFs · Comissão ' + _escHtmlCom(_fmtMoney(g.comissao_total)) + '</div>'
+            + '</div>';
+        }).join('')
+        + '</div>' : '';
+
+      var htmlResumo = ''
+        + '<div style="overflow:auto;border:1px solid #1e293b;border-radius:12px;background:#0f172a">'
+        + '<table style="width:100%;border-collapse:collapse">'
+        + '<thead><tr style="background:#111827;color:#64748b;font-size:12px;text-transform:uppercase">'
+        + '<th style="padding:10px 12px;text-align:left">Vendedor</th>'
+        + '<th style="padding:10px 12px;text-align:right">OFs</th>'
+        + '<th style="padding:10px 12px;text-align:right">Valor Total</th>'
+        + '<th style="padding:10px 12px;text-align:right">% Comissão</th>'
+        + '<th style="padding:10px 12px;text-align:right">Comissão (R$)</th>'
+        + '</tr></thead><tbody>'
+        + grupos.map(function(g, i) {
+          var pct = g.ofs[0] ? g.ofs[0].comissao_pct : 0;
+          return ''
+            + '<tr style="background:' + coresVendedor[i % coresVendedor.length] + '">'
+            + '<td style="padding:10px 12px;color:#f1f5f9;font-weight:600">' + _escHtmlCom(g.vendedor) + '</td>'
+            + '<td style="padding:10px 12px;text-align:right;color:#cbd5e1">' + String(g.ofs.length) + '</td>'
+            + '<td style="padding:10px 12px;text-align:right;color:#f1f5f9">' + _escHtmlCom(_fmtMoney(g.total_vendas)) + '</td>'
+            + '<td style="padding:10px 12px;text-align:right;color:#cbd5e1">' + _escHtmlCom(pct.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + '%</td>'
+            + '<td style="padding:10px 12px;text-align:right;color:#22c55e;font-weight:700">' + _escHtmlCom(_fmtMoney(g.comissao_total)) + '</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table></div>';
+
+      divTopo.innerHTML = htmlCards + htmlRanking + htmlResumo;
+
+      var htmlDetalhe = '<div data-com-search-host="1"><h3 style="color:#f1f5f9;padding:12px 0 4px;margin-top:8px">📋 Detalhamento das OFs</h3></div>';
+      htmlDetalhe += grupos.map(function(g, gi) {
+        return ''
+          + '<details data-vendedor="' + _escHtmlCom(g.vendedor) + '" open style="margin-top:16px;border:1px solid #1e293b;border-radius:10px;overflow:hidden;background:#0f172a">'
+          + '<summary style="list-style:none;cursor:pointer;background:' + coresVendedor[gi % coresVendedor.length] + ';padding:10px 14px;color:#f8fafc;font-weight:700">'
+          + '🔽 ' + _escHtmlCom(g.vendedor) + ' — ' + String(g.ofs.length) + ' OFs — Total: ' + _escHtmlCom(_fmtMoney(g.total_vendas)) + ' — Comissão: ' + _escHtmlCom(_fmtMoney(g.comissao_total))
+          + '</summary>'
+          + '<div style="overflow-x:auto">'
+          + '<table style="width:100%;border-collapse:collapse;background:#0f172a">'
+          + '<thead><tr style="background:#1e293b;color:#64748b;font-size:11px;text-transform:uppercase">'
+          + '<th style="padding:8px 10px;text-align:left;white-space:nowrap"># OF</th>'
+          + '<th style="padding:8px 10px;text-align:left;white-space:nowrap">Cliente</th>'
+          + '<th style="padding:8px 10px;text-align:left;white-space:nowrap">Vendedor</th>'
+          + '<th style="padding:8px 10px;text-align:right;white-space:nowrap">Qtd</th>'
+          + '<th style="padding:8px 10px;text-align:right;white-space:nowrap">Valor Total</th>'
+          + '<th style="padding:8px 10px;text-align:right;white-space:nowrap">Preço Unit.</th>'
+          + '<th style="padding:8px 10px;text-align:right;white-space:nowrap">% Comissão</th>'
+          + '<th style="padding:8px 10px;text-align:right;white-space:nowrap">Comissão (R$)</th>'
+          + '<th style="padding:8px 10px;text-align:left;white-space:nowrap">Data</th>'
+          + '<th style="padding:8px 10px;text-align:left;white-space:nowrap">Status</th>'
+          + '<th style="padding:8px 10px;text-align:center;white-space:nowrap">Ações</th>'
+          + '</tr></thead><tbody>'
+          + g.ofs.map(function(of) {
+            var searchTxt = [of.numero, of.cliente, of.vendedor].join(' ').toLowerCase();
+            var dataStr = '—';
+            try { dataStr = of.data ? new Date(of.data).toLocaleDateString('pt-BR') : '—'; } catch (_) { dataStr = '—'; }
+            return ''
+              + '<tr data-of-row="1" data-search="' + _escHtmlCom(searchTxt) + '" style="border-bottom:1px solid #1e293b">'
+              + '<td style="padding:7px 10px;color:#60a5fa">#' + _escHtmlCom(of.numero) + '</td>'
+              + '<td style="padding:7px 10px;color:#f1f5f9">' + _escHtmlCom(of.cliente) + '</td>'
+              + '<td style="padding:7px 10px;color:#94a3b8">' + _escHtmlCom(of.vendedor) + '</td>'
+              + '<td style="padding:7px 10px;text-align:right;color:#94a3b8">' + String(of.qtd || 0) + '</td>'
+              + '<td style="padding:7px 10px;text-align:right;color:#f1f5f9">' + _escHtmlCom(_fmtMoney(of.valor_total)) + '</td>'
+              + '<td style="padding:7px 10px;text-align:right;color:#94a3b8">' + _escHtmlCom(_fmtMoney(of.preco_unit)) + '</td>'
+              + '<td style="padding:7px 10px;text-align:right;color:#94a3b8">' + _escHtmlCom(of.comissao_pct.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + '%</td>'
+              + '<td style="padding:7px 10px;text-align:right;color:#22c55e;font-weight:600">' + _escHtmlCom(_fmtMoney(of.comissao_valor)) + '</td>'
+              + '<td style="padding:7px 10px;color:#94a3b8">' + _escHtmlCom(dataStr) + '</td>'
+              + '<td style="padding:7px 10px"><span style="background:#166534;color:#4ade80;padding:2px 8px;border-radius:4px;font-size:11px">' + _escHtmlCom(of.status) + '</span></td>'
+              + '<td style="padding:7px 10px;text-align:center"><button type="button" data-com-trocar="1" data-of-id="' + _escHtmlCom(of.id) + '" style="background:#1d4ed8;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px">✏️ Trocar</button></td>'
+              + '</tr>';
+          }).join('')
+          + '</tbody></table></div></details>';
+      }).join('');
+      divDetalhe.innerHTML = htmlDetalhe;
+      _renderizarBuscaOFs();
+    } catch (e) {
+      try { console.error('[COM PATCH] erro:', e); } catch (_) {}
+      var topoErro = document.getElementById('_com_topo');
+      if (topoErro) topoErro.innerHTML = '<p style="color:#f87171;padding:20px">Erro ao carregar comissões: ' + _escHtmlCom(e && e.message || e) + '</p>';
+    } finally {
+      clearTimeout(_comTimeout);
+      window._comRodando = false;
+      try { console.log('[COM PATCH] render finalizado, _comRodando liberado'); } catch (_) {}
+    }
+  }
+
+  try { window._renderComissoesPatch = _renderComissoesPatch; } catch (_) {}
+  try { window.__comissoesPatchCalcular = _renderComissoesPatch; } catch (_) {}
+  try { window._executarCalculoComissoes = _renderComissoesPatch; } catch (_) {}
+
+  function _agendarRenderComissoesPatch(delay) {
+    try { clearTimeout(window.__comRenderAgendaTimer); } catch (_) {}
+    window.__comRenderAgendaTimer = setTimeout(function() {
+      try { if (!window._comRodando) _renderComissoesPatch(); } catch (_) {}
+    }, Number(delay || 0) || 0);
+  }
+
+  function _bloquearRenderNativoComissoes() {
+    var nomesParaBlocar = ['renderComissoes', 'calcularComissoes', 'renderizarComissoes', 'carregarComissoes'];
+    nomesParaBlocar.forEach(function(nome) {
+      try {
+        if (typeof window[nome] === 'function' && !window[nome]._bloqueado) {
+          var original = window[nome];
+          var wrapped = function() {
+            try { console.log('[COM PATCH] função nativa ' + nome + ' bloqueada - usando patch'); } catch (_) {}
+            if (_naComissoesAgora()) _agendarRenderComissoesPatch(60);
+          };
+          wrapped._bloqueado = true;
+          wrapped.__comOriginal = original;
+          window['__comOriginal_' + nome] = original;
+          window[nome] = wrapped;
+          try { console.log('[COM PATCH] função ' + nome + ' bloqueada com sucesso'); } catch (_) {}
+        }
+      } catch (_) {}
+    });
+    try {
+      window.gerarRelatorioComissoes = function() { if (_naComissoesAgora()) _agendarRenderComissoesPatch(60); };
+      window.renderRelatorioComissoes = function() { if (_naComissoesAgora()) _agendarRenderComissoesPatch(60); };
+    } catch (_) {}
+  }
+
+  function _rebindBtnCalcular() {
+    try {
+      Array.from(document.querySelectorAll('button')).forEach(function(btn) {
+        if (!btn || btn._patchBoundComDef) return;
+        var txt = String(btn.textContent || '').trim().toLowerCase();
+        if (txt !== 'calcular' && txt.indexOf('calcular') < 0) return;
+        btn._patchBoundComDef = true;
+        btn.addEventListener('click', function(e) {
+          try { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); } catch (_) {}
+          window.__comUltimaExecucao = 0;
+          window.__comEntradaTs = 0;
+          window._comRodando = false;
+          _agendarRenderComissoesPatch(120);
+        }, true);
+      });
+    } catch (_) {}
+  }
+
+  function _instalarDetectorNavComissoes() {}
 
   function _instalarObsEnriquecerComissoes() {
     try {
-      if (window.__comObsEnriquecerInstalled) return;
-      window.__comObsEnriquecerInstalled = true;
-      var _obsEnriquecer = new MutationObserver(function() {
-        try {
-          if (!_naComissoesAgora()) return;
-          if (window._comEnriquecido) return;
-          var secaoComissoes = document.querySelector('#page-comissoes,[data-page=\"comissoes\"],.page-comissoes');
-          if (!secaoComissoes) return;
-          var linhas = Array.from(secaoComissoes.querySelectorAll('table tbody tr')).filter(function(tr) {
-            try {
-              var txt = String(tr && tr.textContent || '');
-              return (txt.indexOf('ELEOMAR') >= 0 || txt.indexOf('RONI VENDA') >= 0) && txt.indexOf('R$') >= 0 && !!(tr.closest && tr.closest('#page-comissoes,[data-page=\"comissoes\"],.page-comissoes'));
-            } catch (_) { return false; }
-          });
-          var temTabela = false;
-          try { temTabela = !!(secaoComissoes.querySelector('#tabela-comissoes-vendedor tbody tr') || secaoComissoes.querySelector('#tabela-comissoes-ofs tbody tr')); } catch (_) { temTabela = false; }
-          if (linhas.length >= 1 || temTabela) {
-            window._comEnriquecido = true;
-            try { console.log('tabela detectada, enriquecendo...'); } catch (_) {}
-            try { _obsEnriquecer.disconnect(); } catch (_) {}
-            setTimeout(function() { try { _enriquecerComissoes(); } catch (_) {} }, 400);
-          }
-        } catch (_) {}
-      });
-      try { window.__comObsEnriquecerRef = _obsEnriquecer; } catch (_) {}
-      try { _obsEnriquecer.observe(document.body, { childList: true, subtree: true }); } catch (_) {}
+      if (window.__comObsEnriquecerRef && typeof window.__comObsEnriquecerRef.disconnect === 'function') {
+        window.__comObsEnriquecerRef.disconnect();
+      }
     } catch (_) {}
+    try { window.__comObsEnriquecerRef = null; } catch (_) {}
   }
 
   try {
-    if (!window.__comResetEnriquecidoInstalled) {
-      window.__comResetEnriquecidoInstalled = true;
+    if (!window.__comPatchNavInstalled) {
+      window.__comPatchNavInstalled = true;
       document.addEventListener('click', function(e) {
         try {
-          var link = e && e.target && (e.target.closest ? e.target.closest('a, li, button, [onclick], [data-page]') : null);
-          if (!link) return;
-          var txt = String(link.textContent || '').toLowerCase();
-          var href = String((link.getAttribute && link.getAttribute('href')) || '').toLowerCase();
-          var dataPage = String((link.getAttribute && link.getAttribute('data-page')) || '').toLowerCase();
-          var eComissoes =
-            txt.indexOf('comiss') >= 0 ||
-            href.indexOf('comiss') >= 0 ||
-            dataPage.indexOf('comiss') >= 0 ||
-            txt.indexOf('calcular') >= 0 ||
-            txt.indexOf('imprimir') >= 0;
-          if (eComissoes) return;
-          _removerTopoComissoes('ao navegar para: ' + txt);
+          var el = e && e.target && (e.target.closest ? e.target.closest('a, li, [data-page], button') : null);
+          if (!el) return;
+          var txt = String(el.textContent || '').trim().toLowerCase();
+          var dataPage = String((el.getAttribute && el.getAttribute('data-page')) || '').toLowerCase();
+          var href = String((el.getAttribute && el.getAttribute('href')) || '').toLowerCase();
+          if (txt.indexOf('comiss') >= 0 || dataPage.indexOf('comiss') >= 0 || href.indexOf('comiss') >= 0) {
+            try { console.log('[COM PATCH] clique em comissões detectado'); } catch (_) {}
+            setTimeout(function() { if (!window._comRodando) _renderComissoesPatch(); }, 600);
+          }
         } catch (_) {}
       }, true);
-      try {
-        var sidebar = document.querySelector('.sidebar, nav, #sidebar, [class*=\"sidebar\"]');
-        if (sidebar && !sidebar._patchComRemoverV2) {
-          sidebar._patchComRemoverV2 = true;
-          sidebar.addEventListener('click', function(e) {
-            try {
-              var item = e && e.target && (e.target.closest ? e.target.closest('a, li') : null);
-              if (!item) return;
-              var txt = String(item.textContent || '').toLowerCase().trim();
-              if (txt.indexOf('comiss') >= 0) return;
-              setTimeout(function() {
-                try {
-                  var secaoVis = Array.from(document.querySelectorAll('*')).find(function(el) {
-                    return el &&
-                      el.children &&
-                      el.children.length === 0 &&
-                      String(el.textContent || '').trim() === 'Comissão por Vendedor' &&
-                      el.offsetParent !== null;
-                  });
-                  if (!secaoVis) _removerTopoComissoes('sidebar: ' + txt);
-                } catch (_) {}
-              }, 500);
-            } catch (_) {}
-          });
-        }
-      } catch (_) {}
-      setInterval(function() {
-        try {
-          var topo = document.getElementById('_com_topo_v3');
-          if (!topo) return;
-          var secaoComissoes = Array.from(document.querySelectorAll('*')).find(function(el) {
-            return el &&
-              el.children &&
-              el.children.length === 0 &&
-              String(el.textContent || '').trim() === 'Comissão por Vendedor' &&
-              el.offsetParent !== null &&
-              el.offsetHeight > 0;
-          });
-          var outraSecaoAtiva = null;
-          try {
-            outraSecaoAtiva = document.querySelector(
-              '#page-pcp:not([style*=\"none\"]), ' +
-              '#page-hub:not([style*=\"none\"]), ' +
-              '.page-active:not([class*=\"comiss\"])'
-            );
-          } catch (_) { outraSecaoAtiva = null; }
-          if (!secaoComissoes && outraSecaoAtiva) _removerTopoComissoes('outra seção ativa');
-        } catch (_) {}
-      }, 3000);
+      window.addEventListener('hashchange', function() {
+        try { if (_naComissoesAgora()) _agendarRenderComissoesPatch(400); } catch (_) {}
+      });
+      window.addEventListener('popstate', function() {
+        try { if (_naComissoesAgora()) _agendarRenderComissoesPatch(400); } catch (_) {}
+      });
     }
   } catch (_) {}
 
-  try { _instalarOverrideComissoes(); } catch (_) {}
-  try { setTimeout(_instalarOverrideComissoes, 300); } catch (_) {}
-  try { setTimeout(_instalarOverrideComissoes, 1200); } catch (_) {}
-  try { setTimeout(_instalarExecGuardComissoes, 1400); } catch (_) {}
-  try { _instalarDetectorNavComissoes(); } catch (_) {}
-  try { setTimeout(_instalarDetectorNavComissoes, 1200); } catch (_) {}
+  try {
+    var _goOrigComFix = window.go;
+    if (_goOrigComFix && !window._patchGoComFixed) {
+      window._patchGoComFixed = true;
+      window.go = function(tela) {
+        var args = Array.prototype.slice.call(arguments, 1);
+        var r = _goOrigComFix.apply(this, [tela].concat(args));
+        if (String(tela || '').toLowerCase().indexOf('comiss') >= 0) {
+          setTimeout(_rebindBtnCalcular, 500);
+          setTimeout(function() { _agendarRenderComissoesPatch(200); }, 600);
+        }
+        return r;
+      };
+    }
+  } catch (_) {}
+
   try { _instalarObsEnriquecerComissoes(); } catch (_) {}
+  try { _bloquearRenderNativoComissoes(); } catch (_) {}
+  try { setTimeout(_bloquearRenderNativoComissoes, 500); } catch (_) {}
+  try { setTimeout(_bloquearRenderNativoComissoes, 1500); } catch (_) {}
+  try { setTimeout(_bloquearRenderNativoComissoes, 3000); } catch (_) {}
   try { [100, 500, 1000, 2000].forEach(function(t) { setTimeout(_rebindBtnCalcular, t); }); } catch (_) {}
+  try { if (_naComissoesAgora()) _agendarRenderComissoesPatch(800); } catch (_) {}
 })();
 
 (function() {
