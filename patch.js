@@ -16137,7 +16137,11 @@ function _ocultarGraficoComissoes() {
       });
       var data = await resp.json().catch(function() { return null; });
       if (!resp.ok || !data || data.ok === false) throw new Error((data && data.error) || ('HTTP ' + resp.status));
-      try { console.log('[COM PATCH] dados recebidos:', data); } catch (_) {}
+      try { console.log('[COM PATCH] data completo:', JSON.stringify(data).substring(0, 2000)); } catch (_) {}
+      try { console.log('[COM PATCH] keys:', Object.keys(data || {})); } catch (_) {}
+      try { console.log('[COM PATCH] grupos?', data && data.grupos); } catch (_) {}
+      try { console.log('[COM PATCH] vendedores?', data && data.vendedores); } catch (_) {}
+      try { console.log('[COM PATCH] data[0]?', Array.isArray(data) ? data[0] : 'não é array'); } catch (_) {}
 
       var grupos = _normalizarGruposComissoes(data);
       var todasOFs = grupos.reduce(function(acc, g) { return acc.concat(g.ofs || []); }, []);
