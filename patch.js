@@ -16277,8 +16277,9 @@ function _ocultarGraficoComissoes() {
     try {
       var t = termo.toLowerCase();
       var ofsDoMes = (window._comOfsData || []).filter(function(of) {
-        return String(of && of.numero || '').toLowerCase().indexOf(t) >= 0
-          || String(of && of.cliente || '').toLowerCase().indexOf(t) >= 0;
+        var numero = String(of && of.numero || '').toLowerCase();
+        var cliente = String(of && of.cliente || '').toLowerCase();
+        return numero === t || numero.indexOf(t) >= 0 || cliente.indexOf(t) >= 0;
       });
 
       var ofsGeral = [];
@@ -16291,6 +16292,11 @@ function _ocultarGraficoComissoes() {
         if (r.ok) {
           var d = await r.json();
           ofsGeral = Array.isArray(d) ? d : (d.ofs || d.data || d.rows || []);
+          ofsGeral = (ofsGeral || []).filter(function(of) {
+            var numero = String(of && (of.numero || of.num_of) || '').toLowerCase();
+            var cliente = String(of && (of.cliente || of.cli_nome) || '').toLowerCase();
+            return numero.indexOf(t) >= 0 || cliente.indexOf(t) >= 0;
+          });
         }
       } catch (e) {
         try { console.warn('[COM PATCH] busca geral falhou:', e && e.message || e); } catch (_) {}
@@ -16341,7 +16347,7 @@ function _ocultarGraficoComissoes() {
           + '    </div>'
           + '    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
           + '      <span style="background:' + (concluida ? '#166534' : '#92400e') + ';color:' + (concluida ? '#4ade80' : '#fbbf24') + ';padding:5px 12px;border-radius:5px;font-size:12px;font-weight:600">' + _escHtmlCom(status) + '</span>'
-          + (!concluida ? '<button onclick="(function(){ const id = ' + JSON.stringify(id) + '; const num = ' + JSON.stringify(numero) + '; if(window.abrirModalConclusao) { window.abrirModalConclusao(id); return; } if(window.abrirConclusaoOf) { window.abrirConclusaoOf(id); return; } const links = document.querySelectorAll(\'a, [data-of], [data-id]\'); for(const l of links) { if(l.textContent.includes(num) || (l.dataset && (l.dataset.of===num||l.dataset.id===id))) { l.click(); return; } } alert(\'OF #\'+num+\': acesse pelo PCP para concluir.\'); })()" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px">✅ Concluir</button>' : '')
+          + (!concluida ? '<button onclick="(function(){ const id = ' + JSON.stringify(id) + '; const num = ' + JSON.stringify(numero) + '; const fns = [\'abrirModalConclusao\',\'abrirConclusaoOf\',\'concluirOf\',\'modalConcluirOf\',\'abrirConcluir\',\'finalizarOf\',\'openModalConclusao\',\'showModalConclusao\']; const disponivel = fns.find(f => typeof window[f] === \'function\'); console.log(\'[COM PATCH] funções de conclusão disponíveis:\', fns.filter(f => typeof window[f] === \'function\')); console.log(\'[COM PATCH] tentando concluir OF id:\', id, \'num:\', num); if (disponivel) { window[disponivel](id); return; } const botoesDOM = document.querySelectorAll(\'button, [role=button], a\'); for (const btn of botoesDOM) { const txt = (btn.textContent||\'\').trim().toLowerCase(); if ((txt.includes(\'conclu\') || txt.includes(\'finaliz\')) && btn.closest(\'[data-of-id="\' + id + \'"], [data-id="\' + id + \'"]\')) { btn.click(); console.log(\'[COM PATCH] clicou botão DOM de conclusão\'); return; } } alert(\'Para concluir a OF #\'+num+\', acesse PCP > OFs por Máquina ou o Hub Inicial e clique em Concluir.\'); })()" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px">✅ Concluir</button>' : '')
           + '      <button onclick="(function(){ const num = ' + JSON.stringify(numero) + '; const links = document.querySelectorAll(\'a, [data-of], [data-id]\'); for(const l of links) { if(l.textContent.trim()===num || (l.dataset&&l.dataset.of===num)) { l.click(); return; } } window.location.hash = \'of-\'+num; })()" style="background:#1d4ed8;color:#fff;border:none;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:13px">✏️ Editar</button>'
           + '    </div>'
           + '  </div>'
