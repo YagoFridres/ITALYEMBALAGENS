@@ -2640,15 +2640,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { _ensureVendedoresMap(); } catch (_) {}
   })();
 
-  window._abrirGramaturas = function() {
+  function _abrirGramaturas() {
     try { if (typeof window.go === 'function') window.go('gramaturas'); } catch (_) {}
-  };
-  window._abrirToneladas = function() {
+  }
+  window._abrirGramaturas = _abrirGramaturas;
+
+  function _abrirToneladas() {
     try {
       if (typeof window.goFinanceiro === 'function') { window.goFinanceiro('toneladas-vendidas'); return; }
     } catch (_) {}
     try { if (typeof window.go === 'function') window.go('toneladas-vendidas'); } catch (_) {}
-  };
+  }
+  window._abrirToneladas = _abrirToneladas;
 
   function _adicionarMenuGramaturas() {
     if (document.getElementById('_menu_gramaturas')) return;
@@ -2683,6 +2686,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     submenuCadastros.appendChild(li);
     console.log('[PATCH] menu Gramaturas adicionado em Cadastros');
   }
+  window._adicionarMenuGramaturas = _adicionarMenuGramaturas;
 
   function _adicionarItensFinanceiro() {
     const todosLinks = Array.from(document.querySelectorAll('a, li'));
@@ -2742,6 +2746,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       console.log('[PATCH] menu Caixas Perdidas adicionado');
     }
   }
+  window._adicionarItensFinanceiro = _adicionarItensFinanceiro;
 
   setTimeout(_adicionarMenuGramaturas, 800);
   setTimeout(_adicionarMenuGramaturas, 2000);
@@ -2750,6 +2755,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   setTimeout(_adicionarItensFinanceiro, 800);
   setTimeout(_adicionarItensFinanceiro, 2000);
   setTimeout(_adicionarItensFinanceiro, 4000);
+
+  setTimeout(function() {
+    if (typeof _adicionarMenuGramaturas === 'function') _adicionarMenuGramaturas();
+    if (typeof _adicionarItensFinanceiro === 'function') _adicionarItensFinanceiro();
+  }, 1000);
+  setTimeout(function() {
+    if (typeof _adicionarMenuGramaturas === 'function') _adicionarMenuGramaturas();
+    if (typeof _adicionarItensFinanceiro === 'function') _adicionarItensFinanceiro();
+  }, 3000);
 
   window.mobileGoPage = function(page) {
     var menu = document.getElementById('mob-menu-mais');
