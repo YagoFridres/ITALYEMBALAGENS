@@ -3471,7 +3471,10 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       } catch (_) {
         imgsArr = [];
       }
-      const primeiraImagem = Array.isArray(imgsArr) ? String(imgsArr[0] || '').trim() : '';
+      imgsArr = Array.isArray(imgsArr) ? imgsArr.map((v) => String(v || '').trim()).filter(Boolean).filter(_urlValidaImagem) : [];
+      const primeiraImagem = imgsArr[0] ? String(imgsArr[0] || '').trim() : '';
+      const iuRaw = String(of?.imagem_url || '').trim();
+      const imagemUrl = _urlValidaImagem(iuRaw) ? iuRaw : (_urlValidaImagem(primeiraImagem) ? primeiraImagem : null);
 
       return {
         ...of,
@@ -3480,7 +3483,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         maquina: maquinaNome,
         maquina_atual: maquinaNome,
         produto: produtoNome,
-        imagem_url: primeiraImagem || String(of?.imgs || '').trim(),
+        imagem_url: imagemUrl,
         total: total || of.total || 0,
         itens_parsed: itensArr,
         urgente: of.urgente || of.urg || false,
@@ -16740,12 +16743,26 @@ function _jarvisPickMaqAtualOf(o) {
   } catch (_) { return '—'; }
 }
 
+function _urlValidaImagem(url) {
+  if (!url) return false;
+  if (typeof url !== 'string') return false;
+  const u = url.trim();
+  if (!u) return false;
+  if (u.includes('[') || u.includes(']')) return false;
+  if (u.includes('undefined') || u.includes('null')) return false;
+  if (!(u.startsWith('http') || u.startsWith('/'))) return false;
+  return true;
+}
+
 function _jarvisPickAllImgs(o) {
-  const iu = String(o.imagem_url || '').trim();
+  const iuRaw = String(o.imagem_url || '').trim();
+  const iu = _urlValidaImagem(iuRaw) ? iuRaw : '';
   try {
     const raw = o.imgs;
     const arr = typeof raw === 'string' ? JSON.parse(raw || '[]') : (Array.isArray(raw) ? raw : []);
-    const lista = [...(iu ? [iu] : []), ...arr.map(x => String(x || '').trim())].filter(Boolean);
+    const lista = [...(iu ? [iu] : []), ...arr.map(x => String(x || '').trim())]
+      .filter(Boolean)
+      .filter(_urlValidaImagem);
     return [...new Set(lista)].slice(0, 5);
   } catch (_) { return iu ? [iu] : []; }
 }

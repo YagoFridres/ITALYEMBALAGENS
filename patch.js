@@ -1,6 +1,40 @@
 window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
+if (!window._urlValida) {
+  window._urlValida = function(url) {
+    if (!url) return false;
+    if (typeof url !== 'string') return false;
+    if (url.indexOf('[') >= 0 || url.indexOf(']') >= 0) return false;
+    if (url.indexOf('undefined') >= 0 || url.indexOf('null') >= 0) return false;
+    if (!(url.indexOf('http') === 0 || url.indexOf('/') === 0)) return false;
+    return true;
+  };
+}
+(function() {
+  if (window.__patchImgFixInstalled) return;
+  window.__patchImgFixInstalled = true;
+  function install() {
+    try {
+      if (!document.head || document.getElementById('patch-img-fix')) return;
+      var styleImgFix = document.createElement('style');
+      styleImgFix.id = 'patch-img-fix';
+      styleImgFix.textContent = 'img[src=\"\"], img:not([src]) { display: none !important; }';
+      document.head.appendChild(styleImgFix);
+    } catch (_) {}
+    try {
+      if (window.__patchImgErrorInstalled) return;
+      window.__patchImgErrorInstalled = true;
+      document.addEventListener('error', function(e) {
+        try {
+          if (e && e.target && e.target.tagName === 'IMG') e.target.style.display = 'none';
+        } catch (_) {}
+      }, true);
+    } catch (_) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
 // LIMPEZA DE OVERLAYS ÓRFÃOS — executar imediatamente
 if (typeof NOTIFICACOES === 'undefined') window.NOTIFICACOES = [];
 window.NOTIFICACOES = window.NOTIFICACOES || [];
@@ -10290,9 +10324,11 @@ window._mbnActive = function(id) {
     var badgeClass = se === 'atrasada' ? 'atrasado' : se === 'urgente' ? 'urgente' : 'ok';
     var badgeLabel = se === 'atrasada' ? 'Atrasado' : se === 'urgente' ? 'Urgente' : 'OK';
     var borda = se === 'atrasada' ? ' atrasado-card' : se === 'urgente' ? ' urgente-card' : '';
-    var imgHTML = d.img
-      ? '<img class="mob-of-img-thumb" src="' + d.img +
-        '" onclick="_mobVerImagem(\'' + d.img + '\')" onerror="this.style.display=\'none\'">'
+    var imgSafe = '';
+    try { imgSafe = (window._urlValida && window._urlValida(String(d.img || '').trim())) ? String(d.img || '').trim() : ''; } catch (_) { imgSafe = ''; }
+    var imgHTML = imgSafe
+      ? '<img class="mob-of-img-thumb" src="' + imgSafe +
+        '" onclick="_mobVerImagem(\'' + imgSafe + '\')" onerror="this.style.display=\'none\'">'
       : '';
     var btnA = d.id ? 'onclick="_mobAlterar(\'' + d.id + '\')"' : '';
     var btnC = d.id ? 'onclick="_mobCancelar(\'' + d.id + '\')"' : '';
@@ -10395,6 +10431,7 @@ window._mbnActive = function(id) {
     var s = '';
     try { s = String(src == null ? '' : src).trim(); } catch (_) { s = ''; }
     if (!s || s === '[]' || s === 'null' || s === 'undefined' || s === '[object Object]') s = '';
+    try { if (!(window._urlValida && window._urlValida(s))) s = ''; } catch (_) { s = ''; }
     img.src = s;
     img.onerror = function() { try { this.style.display = 'none'; } catch (_) {} };
     img.style.cssText = 'max-width:95vw;max-height:90vh;border-radius:10px;';
@@ -12169,6 +12206,7 @@ window._mbnActive = function(id) {
     var maquina = String(item && (item.maquina || item.maquina_perda) || '').trim() || String(ofData && (ofData.maquina || ofData.maq || ofData.maquina_atual) || '').trim() || '—';
     var ofNumero = String(item && (item.of_numero || item.of_num || item.numero || item.of) || '').trim() || String(ofData && (ofData.numero || ofData.of) || '').trim() || '—';
     var imgUrl = String(item && (item.imagem_url || item.foto_url || item.imgUrl) || '').trim() || String(ofData && (ofData.imagem_url || ofData.imgUrl || (Array.isArray(ofData.imgs) ? ofData.imgs[0] : '')) || '').trim();
+    try { if (!(window._urlValida && window._urlValida(imgUrl))) imgUrl = ''; } catch (_) { imgUrl = ''; }
     return {
       id: String(item && item.id || '').trim(),
       of_id: String(item && item.of_id || '').trim(),
@@ -14264,15 +14302,15 @@ function _ocultarGraficoComissoes() {
         + '#comissoes-modal .m-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:12px}'
         + '#comissoes-modal .m-save{background:#16a34a;border:1px solid rgba(255,255,255,0.12)}'
         + '#comissoes-modal .m-cancel{background:#1f2937;border:1px solid rgba(255,255,255,0.12)}'
-        + '#page-comissoes table tbody tr:hover{background:#1e2d40!important}'
-        + '#page-comissoes table thead th{background:#0f172a!important;color:#94a3b8!important;font-size:11px!important;text-transform:uppercase!important;letter-spacing:.5px!important;padding:10px 12px!important}'
-        + '#page-comissoes table tbody td{padding:10px 12px!important;border-bottom:1px solid #1e293b!important}'
-        + '#page-comissoes table tbody td:nth-child(1),#page-comissoes table tbody td:nth-child(3),#page-comissoes table tbody td:nth-child(4),#page-comissoes table tbody td:nth-child(5),#page-comissoes table tbody td:nth-child(6),#page-comissoes table tbody td:nth-child(7),#page-comissoes table tbody td:nth-child(8),#page-comissoes table tbody td:nth-child(9),#page-comissoes table tbody td:nth-child(10){text-align:center!important}'
-        + '#page-comissoes table tbody td:nth-child(2){text-align:left!important}'
-        + '#page-comissoes #tabela-comissoes-vendedor tbody td{padding:12px 14px!important;border-bottom:1px solid rgba(148,163,184,0.12)!important}'
-        + '#page-comissoes #tabela-comissoes-vendedor tbody tr:hover{background:#1e2d40!important}'
-        + '#page-comissoes button[data-com-trocar]{background:transparent!important;border:1px solid #3a4a6b!important;color:#94a3b8!important;border-radius:6px!important;padding:4px 10px!important;font-size:12px!important}'
-        + '#page-comissoes button[data-com-trocar]:hover{border-color:#60a5fa!important;color:#60a5fa!important}'
+        + '#page-comissoes table tbody tr:hover,[data-page=\"comissoes\"] table tbody tr:hover,.page-comissoes table tbody tr:hover{background:#1e2d40!important}'
+        + '#page-comissoes table thead th,[data-page=\"comissoes\"] table thead th,.page-comissoes table thead th{background:#0f172a!important;color:#94a3b8!important;font-size:11px!important;text-transform:uppercase!important;letter-spacing:.5px!important;padding:10px 12px!important}'
+        + '#page-comissoes table tbody td,[data-page=\"comissoes\"] table tbody td,.page-comissoes table tbody td{padding:10px 12px!important;border-bottom:1px solid #1e293b!important}'
+        + '#page-comissoes table tbody td:nth-child(1),#page-comissoes table tbody td:nth-child(3),#page-comissoes table tbody td:nth-child(4),#page-comissoes table tbody td:nth-child(5),#page-comissoes table tbody td:nth-child(6),#page-comissoes table tbody td:nth-child(7),#page-comissoes table tbody td:nth-child(8),#page-comissoes table tbody td:nth-child(9),#page-comissoes table tbody td:nth-child(10),[data-page=\"comissoes\"] table tbody td:nth-child(1),[data-page=\"comissoes\"] table tbody td:nth-child(3),[data-page=\"comissoes\"] table tbody td:nth-child(4),[data-page=\"comissoes\"] table tbody td:nth-child(5),[data-page=\"comissoes\"] table tbody td:nth-child(6),[data-page=\"comissoes\"] table tbody td:nth-child(7),[data-page=\"comissoes\"] table tbody td:nth-child(8),[data-page=\"comissoes\"] table tbody td:nth-child(9),[data-page=\"comissoes\"] table tbody td:nth-child(10),.page-comissoes table tbody td:nth-child(1),.page-comissoes table tbody td:nth-child(3),.page-comissoes table tbody td:nth-child(4),.page-comissoes table tbody td:nth-child(5),.page-comissoes table tbody td:nth-child(6),.page-comissoes table tbody td:nth-child(7),.page-comissoes table tbody td:nth-child(8),.page-comissoes table tbody td:nth-child(9),.page-comissoes table tbody td:nth-child(10){text-align:center!important}'
+        + '#page-comissoes table tbody td:nth-child(2),[data-page=\"comissoes\"] table tbody td:nth-child(2),.page-comissoes table tbody td:nth-child(2){text-align:left!important}'
+        + '#page-comissoes #tabela-comissoes-vendedor tbody td,[data-page=\"comissoes\"] #tabela-comissoes-vendedor tbody td,.page-comissoes #tabela-comissoes-vendedor tbody td{padding:12px 14px!important;border-bottom:1px solid rgba(148,163,184,0.12)!important}'
+        + '#page-comissoes #tabela-comissoes-vendedor tbody tr:hover,[data-page=\"comissoes\"] #tabela-comissoes-vendedor tbody tr:hover,.page-comissoes #tabela-comissoes-vendedor tbody tr:hover{background:#1e2d40!important}'
+        + '#page-comissoes button[data-com-trocar],[data-page=\"comissoes\"] button[data-com-trocar],.page-comissoes button[data-com-trocar]{background:transparent!important;border:1px solid #3a4a6b!important;color:#94a3b8!important;border-radius:6px!important;padding:4px 10px!important;font-size:12px!important}'
+        + '#page-comissoes button[data-com-trocar]:hover,[data-page=\"comissoes\"] button[data-com-trocar]:hover,.page-comissoes button[data-com-trocar]:hover{border-color:#60a5fa!important;color:#60a5fa!important}'
         + '@media (max-width:980px){#comissoes-dashboard{grid-template-columns:repeat(2,minmax(220px,1fr))}}'
         + '@media (max-width:700px){#comissoes-modal .m-grid{grid-template-columns:1fr}#comissoes-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))}}';
       document.head.appendChild(s);
@@ -14288,24 +14326,85 @@ function _ocultarGraficoComissoes() {
       var st = document.createElement('style');
       st.id = 'patch-comissoes-style-v2';
       st.textContent = ''
-        + '#page-comissoes #tabela-comissoes-vendedor tbody td:first-child{padding-left:16px!important;text-align:left!important;}'
-        + '#page-comissoes #tabela-comissoes-vendedor tbody td:not(:first-child){text-align:center!important;vertical-align:middle!important;}'
-        + '#page-comissoes #tabela-comissoes-vendedor tbody tr[data-com-total=\"1\"]{font-weight:700!important;border-top:2px solid #334155!important;background:#0f172a!important;}'
-        + '#page-comissoes #tabela-comissoes-ofs thead th{padding:10px 12px!important;font-size:11px!important;text-transform:uppercase!important;color:#64748b!important;letter-spacing:.5px!important;text-align:center!important;}'
-        + '#page-comissoes #tabela-comissoes-ofs thead th:nth-child(2){text-align:left!important;}'
-        + '#page-comissoes #tabela-comissoes-ofs tbody td{padding:10px 12px!important;text-align:center!important;vertical-align:middle!important;}'
-        + '#page-comissoes #tabela-comissoes-ofs tbody td:nth-child(2){text-align:left!important;}';
+        + '#page-comissoes #tabela-comissoes-vendedor tbody td:first-child,[data-page=\"comissoes\"] #tabela-comissoes-vendedor tbody td:first-child,.page-comissoes #tabela-comissoes-vendedor tbody td:first-child{padding-left:16px!important;text-align:left!important;}'
+        + '#page-comissoes #tabela-comissoes-vendedor tbody td:not(:first-child),[data-page=\"comissoes\"] #tabela-comissoes-vendedor tbody td:not(:first-child),.page-comissoes #tabela-comissoes-vendedor tbody td:not(:first-child){text-align:center!important;vertical-align:middle!important;}'
+        + '#page-comissoes #tabela-comissoes-vendedor tbody tr[data-com-total=\"1\"],[data-page=\"comissoes\"] #tabela-comissoes-vendedor tbody tr[data-com-total=\"1\"],.page-comissoes #tabela-comissoes-vendedor tbody tr[data-com-total=\"1\"]{font-weight:700!important;border-top:2px solid #334155!important;background:#0f172a!important;}'
+        + '#page-comissoes #tabela-comissoes-ofs thead th,[data-page=\"comissoes\"] #tabela-comissoes-ofs thead th,.page-comissoes #tabela-comissoes-ofs thead th{padding:10px 12px!important;font-size:11px!important;text-transform:uppercase!important;color:#64748b!important;letter-spacing:.5px!important;text-align:center!important;}'
+        + '#page-comissoes #tabela-comissoes-ofs thead th:nth-child(2),[data-page=\"comissoes\"] #tabela-comissoes-ofs thead th:nth-child(2),.page-comissoes #tabela-comissoes-ofs thead th:nth-child(2){text-align:left!important;}'
+        + '#page-comissoes #tabela-comissoes-ofs tbody td,[data-page=\"comissoes\"] #tabela-comissoes-ofs tbody td,.page-comissoes #tabela-comissoes-ofs tbody td{padding:10px 12px!important;text-align:center!important;vertical-align:middle!important;}'
+        + '#page-comissoes #tabela-comissoes-ofs tbody td:nth-child(2),[data-page=\"comissoes\"] #tabela-comissoes-ofs tbody td:nth-child(2),.page-comissoes #tabela-comissoes-ofs tbody td:nth-child(2){text-align:left!important;}';
       document.head.appendChild(st);
     } catch (_) {}
   }
 
+  function _adicionarTopoComissoes(json, prevJson, periodoLabel) {
+    try {
+      _renderDashboard(json, prevJson, periodoLabel);
+      _renderRanking(json);
+    } catch (_) {}
+  }
+
+  function _acharPontoInsercaoTopoComissoes() {
+    var pontoInsercao = null;
+    var containerPai = null;
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('*')).forEach(function(el) {
+        if (pontoInsercao) return;
+        if (
+          el &&
+          el.children &&
+          el.children.length <= 2 &&
+          String(el.textContent || '').trim().indexOf('Comissão por Vendedor') >= 0
+        ) {
+          var container = el;
+          for (var i = 0; i < 5 && container; i++) {
+            if (container.offsetHeight > 100 && container.offsetWidth > 500) {
+              pontoInsercao = container;
+              containerPai = container.parentElement;
+              break;
+            }
+            container = container.parentElement;
+          }
+        }
+      });
+    } catch (_) {}
+    if (!pontoInsercao) {
+      try {
+        Array.prototype.slice.call(document.querySelectorAll('*')).forEach(function(el) {
+          if (pontoInsercao) return;
+          if (
+            el &&
+            String(el.textContent || '').indexOf('Total Vendido') >= 0 &&
+            String(el.textContent || '').indexOf('Total Comissão') >= 0 &&
+            el.offsetHeight > 50 &&
+            el.offsetHeight < 300
+          ) {
+            pontoInsercao = el;
+            containerPai = el.parentElement;
+          }
+        });
+      } catch (_) {}
+    }
+    return { pontoInsercao: pontoInsercao, containerPai: containerPai };
+  }
+
+  function _getPgComissoes() {
+    try {
+      return (
+        document.querySelector('#page-comissoes') ||
+        document.querySelector('[data-page=\"comissoes\"]') ||
+        document.querySelector('.page-comissoes')
+      );
+    } catch (_) { return null; }
+  }
+
   function _renderDashboard(json, prevJson, periodoLabel) {
     try {
-      var pg = document.querySelector('#page-comissoes');
-      if (!pg) return;
+      var pg = _getPgComissoes();
+      if (!pg) pg = document.body;
       var tbody = document.querySelector('#tabela-comissoes-vendedor tbody');
       if (!tbody) {
-        var tbodies = pg.querySelectorAll('tbody');
+        var tbodies = pg ? pg.querySelectorAll('tbody') : null;
         tbody = tbodies && tbodies[0] ? tbodies[0] : null;
       }
       if (!tbody) return;
@@ -14335,8 +14434,15 @@ function _ocultarGraficoComissoes() {
       if (!topo) {
         topo = document.createElement('div');
         topo.id = 'comissoes-topo';
-        if (section && section.parentNode) section.parentNode.insertBefore(topo, section);
-        else pg.insertBefore(topo, pg.firstChild);
+        var p = _acharPontoInsercaoTopoComissoes();
+        try { console.log('[COM PATCH] ponto inserção:', !!p.pontoInsercao, p.pontoInsercao && p.pontoInsercao.tagName, p.pontoInsercao && p.pontoInsercao.offsetHeight); } catch (_) {}
+        if (p.pontoInsercao && p.containerPai) p.containerPai.insertBefore(topo, p.pontoInsercao);
+        else if (section && section.parentNode) section.parentNode.insertBefore(topo, section);
+        else if (pg) pg.insertBefore(topo, pg.firstChild);
+        else {
+          var main = document.querySelector('main, #content, .content, #main');
+          if (main) main.insertBefore(topo, main.firstChild);
+        }
       }
       var dash = topo.querySelector('#comissoes-dashboard');
       if (!dash) {
@@ -14366,9 +14472,8 @@ function _ocultarGraficoComissoes() {
 
   function _renderRanking(json) {
     try {
-      var pg = document.querySelector('#page-comissoes');
-      if (!pg) return;
-      var topo = pg.querySelector('#comissoes-topo');
+      var pg = _getPgComissoes();
+      var topo = pg ? pg.querySelector('#comissoes-topo') : document.getElementById('comissoes-topo');
       if (!topo) return;
       var vend = Array.isArray(json && json.vendedores) ? json.vendedores.slice() : [];
       vend.sort(function(a, b) { return Number(b && b.total || 0) - Number(a && a.total || 0); });
@@ -14404,8 +14509,8 @@ function _ocultarGraficoComissoes() {
 
   function _ensureBuscaUI() {
     try {
-      var pg = document.querySelector('#page-comissoes');
-      if (!pg) return;
+      var pg = _getPgComissoes();
+      if (!pg) pg = document.body;
       var tbody = document.querySelector('#tabela-comissoes-ofs tbody');
       if (!tbody) {
         var tbodies = pg.querySelectorAll('tbody');
@@ -15954,12 +16059,70 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
   }
 
+  function _enriquecerComissoes() {
+    try {
+      var data = window._comissoesSqlData;
+      if (!data) return;
+      var ref = _getPeriodoSelecionado();
+      var label = _nomeMes(ref.mesNum) + ' ' + String(ref.anoNum);
+      _adicionarTopoComissoes(data, window.__comissoesPrevData || null, label);
+      _ensureBuscaUI();
+    } catch (_) {}
+  }
+
+  function _instalarObsEnriquecerComissoes() {
+    try {
+      if (window.__comObsEnriquecerInstalled) return;
+      window.__comObsEnriquecerInstalled = true;
+      var _obsEnriquecer = new MutationObserver(function() {
+        try {
+          if (window._comEnriquecido) return;
+          var secaoComissoes = document.querySelector('#page-comissoes,[data-page=\"comissoes\"],.page-comissoes');
+          if (!secaoComissoes) return;
+          var linhas = Array.from(secaoComissoes.querySelectorAll('table tbody tr')).filter(function(tr) {
+            try {
+              var txt = String(tr && tr.textContent || '');
+              return (txt.indexOf('ELEOMAR') >= 0 || txt.indexOf('RONI VENDA') >= 0) && txt.indexOf('R$') >= 0 && !!(tr.closest && tr.closest('#page-comissoes,[data-page=\"comissoes\"],.page-comissoes'));
+            } catch (_) { return false; }
+          });
+          var temTabela = false;
+          try { temTabela = !!(secaoComissoes.querySelector('#tabela-comissoes-vendedor tbody tr') || secaoComissoes.querySelector('#tabela-comissoes-ofs tbody tr')); } catch (_) { temTabela = false; }
+          if (linhas.length >= 1 || temTabela) {
+            window._comEnriquecido = true;
+            try { console.log('tabela detectada, enriquecendo...'); } catch (_) {}
+            try { _obsEnriquecer.disconnect(); } catch (_) {}
+            setTimeout(_enriquecerComissoes, 400);
+          }
+        } catch (_) {}
+      });
+      try { _obsEnriquecer.observe(document.body, { childList: true, subtree: true }); } catch (_) {}
+    } catch (_) {}
+  }
+
+  try {
+    if (!window.__comResetEnriquecidoInstalled) {
+      window.__comResetEnriquecidoInstalled = true;
+      document.addEventListener('click', function(e) {
+        try {
+          var link = e && e.target && (e.target.closest ? e.target.closest('a,li,button') : null);
+          if (!link) return;
+          var txt = String(link.textContent || '').toLowerCase();
+          if (txt.indexOf('comiss') >= 0 || txt.indexOf('calcular') >= 0 || txt.indexOf('imprimir') >= 0) return;
+          window._comEnriquecido = false;
+          try { var el = document.getElementById('_com_topo_v3'); if (el) el.remove(); } catch (_) {}
+          try { var el2 = document.getElementById('comissoes-topo'); if (el2) el2.remove(); } catch (_) {}
+        } catch (_) {}
+      }, true);
+    }
+  } catch (_) {}
+
   try { _instalarOverrideComissoes(); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 300); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 1200); } catch (_) {}
   try { setTimeout(_instalarExecGuardComissoes, 1400); } catch (_) {}
   try { _instalarDetectorNavComissoes(); } catch (_) {}
   try { setTimeout(_instalarDetectorNavComissoes, 1200); } catch (_) {}
+  try { _instalarObsEnriquecerComissoes(); } catch (_) {}
   try { [100, 500, 1000, 2000].forEach(function(t) { setTimeout(_rebindBtnCalcular, t); }); } catch (_) {}
 })();
 
