@@ -693,7 +693,7 @@ app.get('/', (req, res) => {
     const htmlPath = path.join(__dirname, 'index.html');
     const patchPath = path.join(__dirname, 'patch.js');
     let html = fs.readFileSync(htmlPath, 'utf8');
-    const patchVersion = Math.floor(fs.statSync(patchPath).mtimeMs);
+    const patchVersion = Math.floor(fs.statSync(patchPath).mtimeMs / 1000);
     html = html.replace(/patch\.js\?v=\d+/g, 'patch.js?v=' + patchVersion);
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -713,12 +713,11 @@ app.get('/index.html', (req, res) => {
 
 app.get('/patch.js', (req, res) => {
   try {
-    const filePath = path.join(__dirname, 'patch.js');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    return res.sendFile(filePath, { root: __dirname, etag: false, lastModified: false });
+    return res.sendFile(path.join(__dirname, 'patch.js'));
   } catch (e) {
     return res.status(404).end();
   }
