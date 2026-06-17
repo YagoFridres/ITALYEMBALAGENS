@@ -16062,66 +16062,86 @@ function _ocultarGraficoComissoes() {
         '<button type="button" id="_com_btn_buscar" ' +
         'style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">Buscar</button>';
       host.appendChild(wrap);
+      if (!document.getElementById('_com_busca_resultado')) {
+        var res = document.createElement('div');
+        res.id = '_com_busca_resultado';
+        res.style.cssText = 'margin-bottom:16px';
+        host.appendChild(res);
+      }
     } catch (_) {}
   }
 
-  window._buscarOFsComissao = function(termo) {
-    var termoLower = String(termo || '').toLowerCase().trim();
-    var linhas = document.querySelectorAll('#_com_detalhe tr[data-of-numero]');
-    linhas.forEach(function(tr) {
-      try {
-        var numero = String((tr.dataset && (tr.dataset.ofNumero || tr.dataset.ofnumero)) || '').toLowerCase();
-        var cliente = String((tr.dataset && (tr.dataset.ofCliente || tr.dataset.ofcliente)) || '').toLowerCase();
-        var status = String((tr.dataset && (tr.dataset.ofStatus || tr.dataset.ofstatus)) || '').toLowerCase();
-        var match = !termoLower || numero.indexOf(termoLower) >= 0 || cliente.indexOf(termoLower) >= 0;
-        tr.style.display = match ? '' : 'none';
-
-        if (match && termoLower) {
-          tr.style.background = '#fbbf24';
-          tr.style.color = '#000';
-          try {
-            tr.querySelectorAll('td').forEach(function(td) { td.style.color = '#000'; });
-          } catch (_) {}
-
-          var jaTemBotao = tr.querySelector('.btn-concluir-of');
-          if (!jaTemBotao && status.indexOf('conclu') < 0) {
-            var tdAcoes = tr.querySelector('td:last-child');
-            if (tdAcoes) {
-              var btn = document.createElement('button');
-              btn.className = 'btn-concluir-of';
-              btn.textContent = '✅ Concluir';
-              btn.style.cssText = 'background:#16a34a;color:#fff;border:none;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:11px;margin-left:6px';
-              btn.onclick = function() {
-                var ofId = tr.dataset ? tr.dataset.ofId : '';
-                var ofNumero = tr.dataset ? tr.dataset.ofNumero : '';
-                if (window.abrirModalConclusao) {
-                  window.abrirModalConclusao(ofId);
-                } else if (window.abrirConclusaoOf) {
-                  window.abrirConclusaoOf(ofId);
-                } else {
-                  try { window.location.hash = '#of-' + String(ofNumero || '').trim(); } catch (_) {}
-                  try { window.open('/of/' + String(ofNumero || '').trim(), '_blank'); } catch (_) {}
-                }
-              };
-              tdAcoes.appendChild(btn);
-            }
-          }
-        } else {
-          tr.style.background = '';
-          tr.style.color = '';
-          try { tr.querySelectorAll('td').forEach(function(td) { td.style.color = ''; }); } catch (_) {}
-          var btnExtra = tr.querySelector('.btn-concluir-of');
-          if (btnExtra) btnExtra.remove();
-        }
-      } catch (_) {}
-    });
-
+  window._buscarOFsComissao = async function(termo) {
+    termo = String(termo || '').trim();
+    var resultDiv = document.getElementById('_com_busca_resultado');
+    if (!resultDiv) return;
+    if (!termo) {
+      resultDiv.innerHTML = '';
+      return;
+    }
+    resultDiv.innerHTML = '<p style="color:#94a3b8;padding:12px">Buscando...</p>';
     try {
-      document.querySelectorAll('#_com_detalhe details[data-vendedor]').forEach(function(box) {
-        var temVisivel = Array.from(box.querySelectorAll('tr[data-of-numero]')).some(function(tr) { return tr.style.display !== 'none'; });
-        box.style.display = (temVisivel || !termoLower) ? '' : 'none';
+      var termoLower = termo.toLowerCase();
+      var ofs = Array.isArray(window._comOfsData) ? window._comOfsData : [];
+      var encontradas = ofs.filter(function(of) {
+        var n = String(of && of.numero || '').toLowerCase();
+        var c = String(of && of.cliente || '').toLowerCase();
+        return (n && n.indexOf(termoLower) >= 0) || (c && c.indexOf(termoLower) >= 0);
       });
-    } catch (_) {}
+      if (!encontradas.length) {
+        var token = '';
+        try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
+        var resp = await fetch('/api/ofs?incluir_excluidas=1&limit=200&offset=0&busca=' + encodeURIComponent(termo), {
+          headers: token ? { Authorization: 'Bearer ' + token } : {}
+        });
+        if (!resp.ok) {
+          resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">OF não encontrada nos dados do mês atual. Tente calcular outro mês ou busque no PCP.</p>';
+          return;
+        }
+      }
+      if (!encontradas.length) {
+        resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Nenhuma OF encontrada para "' + _escHtmlCom(termo) + '" no mês atual.</p>';
+        return;
+      }
+      var html = encontradas.map(function(of) {
+        var status = String(of && of.status || 'Pendente');
+        var concluida = status.toLowerCase().indexOf('conclu') >= 0;
+        var dataStr = '—';
+        try { dataStr = of && of.data_conclusao ? new Date(of.data_conclusao).toLocaleDateString('pt-BR') : '—'; } catch (_) { dataStr = '—'; }
+        var qtd = Number(of && of.quantidade || 0) || 0;
+        var valorTotal = Number(of && of.valor_total || 0) || 0;
+        var precoUnit = qtd > 0 ? (valorTotal / qtd) : 0;
+        var comissao = Number(of && of.comissao_rs || 0) || 0;
+        var vendedor = String(of && of.vendedor || '—');
+        var cliente = String(of && of.cliente || '—');
+        var numero = String(of && of.numero || '—');
+        var id = String(of && of.id || '');
+        return ''
+          + '<div style="background:#1e293b;border:1px solid ' + (concluida ? '#166534' : '#92400e') + ';border-radius:8px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">'
+          + '<div style="flex:1;min-width:200px">'
+          + '<div style="color:#60a5fa;font-size:16px;font-weight:700">#' + _escHtmlCom(numero) + '</div>'
+          + '<div style="color:#f1f5f9;font-size:14px;margin-top:4px">' + _escHtmlCom(cliente) + '</div>'
+          + '<div style="color:#94a3b8;font-size:12px;margin-top:2px">Vendedor: ' + _escHtmlCom(vendedor) + '</div>'
+          + '</div>'
+          + '<div style="display:flex;gap:20px;flex-wrap:wrap">'
+          + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Qtd</div><div style="color:#f1f5f9;font-weight:600">' + String(qtd) + '</div></div>'
+          + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Valor Total</div><div style="color:#f1f5f9;font-weight:600">R$ ' + valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</div></div>'
+          + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Preço Unit.</div><div style="color:#94a3b8">' + precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</div></div>'
+          + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Comissão</div><div style="color:#22c55e;font-weight:600">R$ ' + comissao.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</div></div>'
+          + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Data</div><div style="color:#94a3b8">' + _escHtmlCom(dataStr) + '</div></div>'
+          + '</div>'
+          + '<div style="display:flex;gap:8px;align-items:center">'
+          + '<span style="background:' + (concluida ? '#166534' : '#92400e') + ';color:' + (concluida ? '#4ade80' : '#fbbf24') + ';padding:4px 10px;border-radius:4px;font-size:12px;white-space:nowrap">' + _escHtmlCom(status) + '</span>'
+          + (concluida ? '' : '<button type="button" style="background:#16a34a;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:12px;white-space:nowrap" onclick="if(window.abrirModalConclusao) window.abrirModalConclusao(' + JSON.stringify(id) + '); else if(window.abrirConclusaoOf) window.abrirConclusaoOf(' + JSON.stringify(id) + '); else alert(\'OF #' + _escHtmlCom(numero).replace(/'/g, '\\\\\'') + ' — abra pelo PCP para concluir.\')">✅ Concluir</button>')
+          + '</div>'
+          + '</div>';
+      }).join('');
+      resultDiv.innerHTML =
+        '<div style="color:#94a3b8;font-size:12px;margin-bottom:8px">' + String(encontradas.length) + ' resultado(s) para "' + _escHtmlCom(termo) + '":</div>'
+        + html;
+    } catch (e) {
+      resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Erro na busca: ' + _escHtmlCom(e && e.message || e) + '</p>';
+    }
   };
 
   window._filtrarComissaoOFs = window._buscarOFsComissao;
@@ -16232,7 +16252,20 @@ function _ocultarGraficoComissoes() {
         var btnBusca = document.getElementById('_com_btn_buscar');
         if (inpBusca && !inpBusca._comBound) {
           inpBusca._comBound = true;
-          inpBusca.addEventListener('input', function(e) { window._buscarOFsComissao && window._buscarOFsComissao(e.target.value); });
+          inpBusca.addEventListener('input', function(e) {
+            try {
+              var v = String(e && e.target && e.target.value || '');
+              if (!v.trim()) window._buscarOFsComissao && window._buscarOFsComissao('');
+            } catch (_) {}
+          });
+          inpBusca.addEventListener('keydown', function(e) {
+            try {
+              if (e && e.key === 'Enter') {
+                e.preventDefault();
+                window._buscarOFsComissao && window._buscarOFsComissao(String((e.target || {}).value || ''));
+              }
+            } catch (_) {}
+          });
         }
         if (btnBusca && !btnBusca._comBound) {
           btnBusca._comBound = true;
@@ -16260,6 +16293,7 @@ function _ocultarGraficoComissoes() {
 
       var vendedores = Array.isArray(data && data.vendedores) ? data.vendedores : [];
       var todasOfsRaw = Array.isArray(data && data.ofs) ? data.ofs : [];
+      window._comOfsData = todasOfsRaw;
       var totalGeral = Number(data && data.total_vendido || 0) || 0;
       var totalOFs = Number(data && data.total_ofs || 0) || 0;
       var totalComissoes = Number(data && data.total_comissao || 0) || 0;
@@ -16418,7 +16452,20 @@ function _ocultarGraficoComissoes() {
         var btnBusca2 = document.getElementById('_com_btn_buscar');
         if (inpBusca2 && !inpBusca2._comBound) {
           inpBusca2._comBound = true;
-          inpBusca2.addEventListener('input', function(e) { window._buscarOFsComissao && window._buscarOFsComissao(e.target.value); });
+          inpBusca2.addEventListener('input', function(e) {
+            try {
+              var v = String(e && e.target && e.target.value || '');
+              if (!v.trim()) window._buscarOFsComissao && window._buscarOFsComissao('');
+            } catch (_) {}
+          });
+          inpBusca2.addEventListener('keydown', function(e) {
+            try {
+              if (e && e.key === 'Enter') {
+                e.preventDefault();
+                window._buscarOFsComissao && window._buscarOFsComissao(String((e.target || {}).value || ''));
+              }
+            } catch (_) {}
+          });
         }
         if (btnBusca2 && !btnBusca2._comBound) {
           btnBusca2._comBound = true;
@@ -16433,6 +16480,24 @@ function _ocultarGraficoComissoes() {
         var v0 = '';
         try { v0 = String((document.getElementById('_com_busca') || {}).value || '').trim(); } catch (_) { v0 = ''; }
         if (v0) window._buscarOFsComissao && window._buscarOFsComissao(v0);
+      } catch (_) {}
+      try {
+        var paginaCom2 = document.querySelector('#page-comissoes, [data-page="comissoes"], .page-comissoes');
+        if (paginaCom2) {
+          paginaCom2.style.overflow = 'visible';
+          paginaCom2.style.height = 'auto';
+          paginaCom2.style.maxHeight = 'none';
+        }
+        try { document.body.style.overflowY = 'auto'; } catch (_) {}
+        ['_com_topo', '_com_detalhe'].forEach(function(id) {
+          try {
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.style.overflow = 'visible';
+            el.style.height = 'auto';
+            el.style.maxHeight = 'none';
+          } catch (_) {}
+        });
       } catch (_) {}
     } catch (e) {
       try { console.error('[COM PATCH] erro:', e); } catch (_) {}
