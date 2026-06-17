@@ -2353,34 +2353,73 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         });
       } catch (_) {}
     }
-    function _ensureMenuClone(refText, newText, menuKey, pageId) {
-      if (document.getElementById(menuKey)) return;
-      var ancora = Array.from(document.querySelectorAll('li, a')).find(function(el) {
-        var t = String(el && el.textContent || '').trim();
-        return t.indexOf(refText) >= 0 && t.length < refText.length + 5;
-      });
-      if (!ancora) return;
+    function _ensureMenuClone(textoAncora, label, elId, pageId) {
+      if (document.getElementById(elId)) return false;
+
+      var ancora = null;
+      ancora = document.querySelector('[data-page="' + textoAncora + '"]');
+
+      if (!ancora) {
+        ancora = Array.from(document.querySelectorAll('a[href]')).find(function(a) {
+          var href = String(a.getAttribute('href') || '');
+          return href.indexOf(textoAncora) >= 0 || href === textoAncora;
+        });
+      }
+
+      if (!ancora) {
+        ancora = Array.from(document.querySelectorAll('[onclick]')).find(function(el) {
+          var oc = String(el.getAttribute('onclick') || '');
+          return oc.indexOf("'" + textoAncora + "'") >= 0 || oc.indexOf('"' + textoAncora + '"') >= 0;
+        });
+      }
+
+      if (!ancora) {
+        ancora = Array.from(document.querySelectorAll('a, li, [role="menuitem"]')).find(function(el) {
+          var t = String(el && el.textContent || '').trim();
+          return t.indexOf(textoAncora) >= 0 && t.length < 40;
+        });
+      }
+
+      if (!ancora) {
+        console.warn('[MENU] âncora não encontrada para:', textoAncora);
+        return false;
+      }
+
       var liAncora = ancora.tagName === 'LI' ? ancora : (ancora.closest ? ancora.closest('li') : null);
-      if (!liAncora || !liAncora.parentElement) return;
-      var novoLi = liAncora.cloneNode(true);
-      novoLi.id = menuKey;
-      novoLi.removeAttribute('class');
-      var a = novoLi.querySelector('a') || novoLi;
-      a.innerHTML = '';
-      a.textContent = newText;
+      if (!liAncora || !liAncora.parentElement) {
+        console.warn('[MENU] LI pai não encontrado para:', textoAncora);
+        return false;
+      }
+
+      var novoLiLimpo = document.createElement('li');
+      novoLiLimpo.id = elId;
+      novoLiLimpo.className = liAncora.className;
+      novoLiLimpo.innerHTML = liAncora.innerHTML;
+
+      var a = novoLiLimpo.querySelector('a') || novoLiLimpo;
+      var span = a.querySelector('span:last-child') || a.querySelector('span');
+      if (span && String(span.textContent || '').trim().length > 0) {
+        span.textContent = label;
+      } else {
+        a.textContent = label;
+      }
+
+      a.removeAttribute('onclick');
       a.href = '#';
-      a.onclick = null;
       a.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
+        console.log('[MENU] clique em:', pageId);
         if (window._patchCustomPages && window._patchCustomPages[pageId]) {
           window._patchCustomPages[pageId]();
         } else if (typeof window.go === 'function') {
           window.go(pageId);
         }
       });
-      liAncora.parentElement.appendChild(novoLi);
-      console.log('[PATCH] menu injetado:', newText, 'âœ"');
+
+      liAncora.parentElement.appendChild(novoLiLimpo);
+      console.log('[MENU] injetado com sucesso:', label, 'após:', textoAncora);
+      return true;
     }
     function tickMenus() {
       try { _ocultarRelatorioMensal(); } catch (_) {}
@@ -2803,17 +2842,26 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function _setupMenusCustom() {
     function _injetar() {
-      try { _ensureMenuClone('Fornecedor', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas'); } catch(e) {}
-      try { _ensureMenuClone('Usu', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas'); } catch(e) {}
-      try { _ensureMenuClone('Comiss', '⚖️ Toneladas Vendidas', '_menu_toneladas', 'toneladas-vendidas'); } catch(e) {}
-      try { _ensureMenuClone('Orçament', '⚖️ Toneladas Vendidas', '_menu_toneladas', 'toneladas-vendidas'); } catch(e) {}
-      try { _ensureMenuClone('Comiss', '📦 Caixas Perdidas', '_menu_caixas_fin', 'caixas-perdidas'); } catch(e) {}
+      var comGo = Array.from(document.querySelectorAll('[onclick]')).filter(function(el) {
+        return String(el.getAttribute('onclick') || '').indexOf('go(') >= 0;
+      });
+      console.log('[MENU] elementos com go():', comGo.length);
+      if (comGo[0]) console.log('[MENU] exemplo onclick:', comGo[0].getAttribute('onclick'));
 
-      var lis = Array.from(document.querySelectorAll('li'));
-      var textos = lis.map(function(l) { return l.textContent.trim(); }).filter(function(t) { return t.length > 1 && t.length < 25; });
-      console.log('[MENU] LIs no DOM:', textos.join(' | '));
-      console.log('[MENU] gramaturas ok:', !!document.getElementById('_menu_gramaturas'));
-      console.log('[MENU] toneladas ok:', !!document.getElementById('_menu_toneladas'));
+      var ok1 = false, ok2 = false, ok3 = false;
+
+      ok1 = _ensureMenuClone('usuarios', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
+      if (!ok1) ok1 = _ensureMenuClone('fornecedores', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
+      if (!ok1) ok1 = _ensureMenuClone('Usuários', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
+      if (!ok1) ok1 = _ensureMenuClone('Fornecedores', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
+
+      ok2 = _ensureMenuClone('comissoes', '⚖️ Toneladas Vendidas', '_menu_toneladas', 'toneladas-vendidas');
+      if (!ok2) ok2 = _ensureMenuClone('Comissões', '⚖️ Toneladas Vendidas', '_menu_toneladas', 'toneladas-vendidas');
+
+      ok3 = _ensureMenuClone('comissoes', '📦 Caixas Perdidas', '_menu_caixas_fin', 'caixas-perdidas');
+      if (!ok3) ok3 = _ensureMenuClone('Comissões', '📦 Caixas Perdidas', '_menu_caixas_fin', 'caixas-perdidas');
+
+      console.log('[MENU] resultado — gramaturas:', ok1, 'toneladas:', ok2, 'caixas:', ok3);
     }
     [500, 1500, 3000, 5000, 8000].forEach(function(t) { setTimeout(_injetar, t); });
   }
@@ -16551,63 +16599,16 @@ function _ocultarGraficoComissoes() {
           if (!btn || btn.dataset.bound === '1') return;
           btn.dataset.bound = '1';
           btn.addEventListener('click', function() {
-            var id = '';
-            var num = '';
-            try { id = String(this.dataset && this.dataset.ofId || this.getAttribute('data-of-id') || '').trim(); } catch (_) { id = ''; }
-            try { num = String(this.dataset && this.dataset.ofNum || this.getAttribute('data-of-num') || '').trim(); } catch (_) { num = ''; }
-
-            try {
-              var fns = ['abrirModalConclusao','abrirConclusaoOf','concluirOf','modalConcluirOf','finalizarOf','openConclusao','showConclusao','concludeOf'];
-              var fn = fns.find(function(f) { return typeof window[f] === 'function'; });
-              if (fn) { window[fn](id); return; }
-            } catch (_) {}
-
-            try {
-              var botoesDOM = document.querySelectorAll('[data-id="' + id + '"] button, [data-of-id="' + id + '"] button');
-              for (var i = 0; i < botoesDOM.length; i++) {
-                var b = botoesDOM[i];
-                var tx = String(b && b.textContent || '').toLowerCase();
-                if (tx.indexOf('conclu') >= 0) { b.click(); return; }
-              }
-            } catch (_) {}
-
-            try {
-              var linhasOF = document.querySelectorAll('tr, .of-row, [data-of]');
-              for (var j = 0; j < linhasOF.length; j++) {
-                var linha = linhasOF[j];
-                var lt = String(linha && linha.textContent || '');
-                if (lt.indexOf('#' + num) >= 0 || lt.indexOf(num) >= 0) {
-                  var btns = linha.querySelectorAll('button, a');
-                  for (var k = 0; k < btns.length; k++) {
-                    var bb = btns[k];
-                    var bbt = String(bb && bb.textContent || '').toLowerCase();
-                    if (bbt.indexOf('conclu') >= 0) { bb.click(); return; }
-                  }
-                }
-              }
-            } catch (_) {}
-
-            try {
-              if (typeof window.go === 'function') {
-                window.go('pcp');
-                setTimeout(function() {
-                  try {
-                    var inputBusca = document.querySelector('input[placeholder*="OF"], input[placeholder*="of"], input[placeholder*="busca"], input[placeholder*="Busca"]');
-                    if (inputBusca) {
-                      inputBusca.value = num;
-                      inputBusca.dispatchEvent(new Event('input', { bubbles: true }));
-                    }
-                  } catch (_) {}
-                }, 800);
-                try {
-                  var toast = document.createElement('div');
-                  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1e293b;color:#f1f5f9;padding:14px 20px;border-radius:10px;z-index:9999;border:1px solid #334155;font-size:14px;max-width:320px';
-                  toast.innerHTML = '🔍 OF <b>#' + _escHtmlCom(num) + '</b> destacada no PCP. Clique em <b>Concluir</b> na linha dela.';
-                  document.body.appendChild(toast);
-                  setTimeout(function() { try { toast.remove(); } catch (_) {} }, 5000);
-                } catch (_) {}
-              }
-            } catch (_) {}
+            var id = this.dataset.ofId;
+            var num = this.dataset.ofNum;
+            if (typeof window.concluirOfPainel === 'function') {
+              window.concluirOfPainel(id, num, this);
+              return;
+            }
+            var fns = ['abrirModalConclusao','abrirConclusaoOf','concluirOf','finalizarOf'];
+            var fn = fns.find(function(f) { return typeof window[f] === 'function'; });
+            if (fn) { window[fn](id); return; }
+            alert('Função de conclusão não encontrada. Recarregue a página.');
           }, true);
         });
       } catch (_) {}
