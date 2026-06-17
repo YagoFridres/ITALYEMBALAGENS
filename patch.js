@@ -1,6 +1,6 @@
 window._comRodando = false;
-window._comEntrou = false;
-window._comissaoOFs = [];
+window.__comUltimaExecucao = 0;
+window.__comEntradaTs = 0;
 // LIMPEZA DE OVERLAYS ÓRFÃOS — executar imediatamente
 if (typeof NOTIFICACOES === 'undefined') window.NOTIFICACOES = [];
 window.NOTIFICACOES = window.NOTIFICACOES || [];
@@ -103,14 +103,6 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       } catch (_) {}
     }, true);
   }
-})();
-
-(function() {
-  if (window.__patchCalcBtnRestoreInstalled) return;
-  window.__patchCalcBtnRestoreInstalled = true;
-
-  window.__comUltimaExecucao = window.__comUltimaExecucao || 0;
-  window.__comEntradaTs = window.__comEntradaTs || 0;
 })();
 
 (function() {
@@ -6063,7 +6055,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   };
 
   function _vincularBtnCalcular() {
-    return;
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(btn) {
+        try {
+          if (!btn || btn.dataset.patchCom === '1') return;
+          var txt = String(btn.textContent || '').trim();
+          if (!(txt === 'Calcular' || txt.indexOf('Calcular') >= 0)) return;
+          btn.dataset.patchCom = '1';
+          btn.addEventListener('click', function(e) {
+            try { e.preventDefault(); } catch (_) {}
+            try { e.stopPropagation(); } catch (_) {}
+            window.calcularComissoes();
+          }, true);
+        } catch (_) {}
+      });
+    } catch (_) {}
   }
 
   try { _patchGoTelaCom(); } catch (_) {}
@@ -13656,7 +13662,6 @@ function _acharSecaoDetalhamentoOFs() {
 
 function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
   helpers = helpers || {};
-  try { if (typeof _instalarCssComissoesLayout === 'function') _instalarCssComissoesLayout(); } catch (_) {}
   var escHtml = helpers.escHtml || function(v) { return String(v == null ? '' : v); };
   var cliNorm = helpers.cliNorm || function(v) { return String(v == null ? '' : v).trim().toLowerCase(); };
   var ensureMapaClientes = helpers.ensureMapaClientes || function() { return window._mapaClientesComissao || {}; };
@@ -13763,8 +13768,8 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
     + '    <button onclick="window._filtrarTabelaComissoes&&window._filtrarTabelaComissoes(document.getElementById(\'comissao-busca-of-input\').value)" style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:10px 16px;font-size:13px;cursor:pointer">Buscar</button>'
     + '  </div>'
     + '</div>'
-    + '<div style="width:100%;max-width:100%;padding:0;margin:0;overflow-x:auto;box-sizing:border-box">'
-    + '  <table id="tabela-ofs-comissao" style="width:100%;border-collapse:collapse;table-layout:auto">'
+    + '<div style="overflow-x:auto">'
+    + '  <table id="tabela-ofs-comissao" style="width:100%;border-collapse:collapse">'
     + '    <thead><tr style="background:#0f172a">'
     + '      <th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600"># OF</th>'
     + '      <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600">CLIENTE</th>'
@@ -13807,7 +13812,6 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
       tr.style.display = (!t || txt.indexOf(t) >= 0) ? '' : 'none';
     });
   };
-  try { if (typeof _expandirLarguraTabelaComissoes === 'function') _expandirLarguraTabelaComissoes(); } catch (_) {}
 }
 
 async function _resolverClientesEmLote(cliIds, callback) {
@@ -15705,318 +15709,18 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
   }
 
-  function _instalarCssComissoesLayout() {
+  function _forcarRenderComissoesPatch() {
     try {
-      if (document.getElementById('_com_style_fix')) return;
-      var style = document.createElement('style');
-      style.id = '_com_style_fix';
-      style.textContent = ''
-        + '#_com_topo_v2, #_com_topo_v3, #_com_patch_detalhe, #tabela-com-ofs, #tbody-com-ofs, #_com_topo_v2 > div, #_com_topo_v3 > div, #tabela-ofs-comissao, #tbody-ofs-comissao {'
-        + ' width:100% !important; max-width:100% !important; box-sizing:border-box !important; }'
-        + '#page-comissoes, [data-page="comissoes"], .page-comissoes, #_com_topo_v2, #_com_topo_v3, #_com_patch_detalhe, #_com_patch_topo {'
-        + ' overflow:visible !important; height:auto !important; max-height:none !important; }';
-      document.head.appendChild(style);
-    } catch (_) {}
-  }
-
-  function _liberarScrollComissoes() {
-    setTimeout(function() {
-      try {
-        ['#page-comissoes', '[data-page="comissoes"]', '.page-comissoes', '#_com_topo_v2', '#_com_patch_detalhe', '#_com_patch_topo'].forEach(function(sel) {
-          try {
-            var el = document.querySelector(sel);
-            if (!el) return;
-            el.style.overflow = 'visible';
-            el.style.overflowY = 'visible';
-            el.style.overflowX = 'visible';
-            el.style.height = 'auto';
-            el.style.maxHeight = 'none';
-            el.style.position = 'relative';
-          } catch (_) {}
-        });
-        var tbody = document.getElementById('tbody-com-ofs') || document.getElementById('tbody-ofs-comissao');
-        if (tbody) {
-          var elPai = tbody.parentElement;
-          for (var i = 0; i < 10 && elPai && elPai !== document.body; i += 1) {
-            try {
-              var style = getComputedStyle(elPai);
-              if ((style.overflow === 'hidden' || style.overflowY === 'hidden' || style.overflowY === 'scroll' || style.overflowY === 'auto')
-                  && elPai !== document.documentElement && String(elPai.id || '') !== 'main-scroll') {
-                elPai.style.overflow = 'visible';
-                elPai.style.overflowY = 'visible';
-                elPai.style.height = 'auto';
-                elPai.style.maxHeight = 'none';
-              }
-            } catch (_) {}
-            elPai = elPai.parentElement;
-          }
-        }
-        try { document.body.style.overflowY = 'auto'; } catch (_) {}
-        try { document.documentElement.style.overflowY = 'auto'; } catch (_) {}
-      } catch (_) {}
-    }, 500);
-
-    try {
-      if (!document.getElementById('_com_scroll_fix')) {
-        var styleScroll = document.createElement('style');
-        styleScroll.id = '_com_scroll_fix';
-        styleScroll.textContent = ''
-          + '#page-comissoes, [data-page="comissoes"], #_com_topo_v2, #_com_patch_detalhe, #_com_patch_topo {'
-          + ' overflow:visible !important; height:auto !important; max-height:none !important; }';
-        document.head.appendChild(styleScroll);
+      if (window._comissoesSqlData) {
+        var ref = _getPeriodoSelecionado();
+        try { _ensureVendedoresMap(); } catch (_) {}
+        _renderTabelaVendedores(window._comissoesSqlData);
+        _renderTabelaOFs(window._comissoesSqlData);
+        _ocultarGraficoComissoes();
+        _ensureExtras(window._comissoesSqlData, ref.mesNum, ref.anoNum);
       }
     } catch (_) {}
   }
-
-  function _expandirLarguraTabelaComissoes() {
-    setTimeout(function() {
-      try {
-        var tabelaCom = document.getElementById('tabela-com-ofs')
-          || document.getElementById('tabela-ofs-comissao')
-          || ((document.getElementById('tbody-com-ofs') || document.getElementById('tbody-ofs-comissao')) || {}).closest && (document.getElementById('tbody-com-ofs') || document.getElementById('tbody-ofs-comissao')).closest('table');
-        if (tabelaCom) {
-          tabelaCom.style.width = '100%';
-          tabelaCom.style.maxWidth = '100%';
-          tabelaCom.style.tableLayout = 'auto';
-          var el = tabelaCom.parentElement;
-          for (var i = 0; i < 8 && el && el !== document.body; i += 1) {
-            el.style.width = '100%';
-            el.style.maxWidth = '100%';
-            el.style.boxSizing = 'border-box';
-            el = el.parentElement;
-          }
-        }
-      } catch (_) {}
-      _liberarScrollComissoes();
-    }, 200);
-  }
-
-  function _adicionarTopoComissoes(dados, dadosAnt, grupos) {
-    try {
-      if (!dados) return;
-      dadosAnt = dadosAnt || {};
-      grupos = Array.isArray(grupos) ? grupos : [];
-      _instalarCssComissoesLayout();
-      try {
-        var antigo = document.getElementById('_com_topo_v3');
-        if (antigo) antigo.remove();
-      } catch (_) {}
-      var totalVendas = Number(dados.total_geral_vendas || dados.total_vendido || 0) || 0;
-      var totalComissao = Number(dados.total_geral_comissao || dados.total_comissao || 0) || 0;
-      var totalOFs = Number(dados.total_ofs || 0) || 0;
-      var totalAnt = Number((dadosAnt && (dadosAnt.total_geral_vendas || dadosAnt.total_vendido)) || 0) || 0;
-      var varPct = totalAnt > 0 ? (((totalVendas - totalAnt) / totalAnt) * 100).toFixed(1) : null;
-      var melhor = grupos[0] || null;
-      var melhorNome = String((melhor && (melhor.vendedor || melhor.nome)) || '—');
-      var melhorTotal = Number((melhor && (melhor.total_vendas || melhor.total)) || 0) || 0;
-      var melhorPct = totalVendas > 0 ? ((melhorTotal / totalVendas) * 100).toFixed(1) : 0;
-      var fmtBR = function(v) {
-        return 'R$ ' + (Number(v || 0) || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-      };
-      var mes = parseInt(String(((document.querySelector('select') || {}).value) || ''), 10) || (new Date().getMonth() + 1);
-      var mesNomes = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-      var coresTop3 = ['#f59e0b', '#94a3b8', '#cd7c2f'];
-      var medalhas = ['🥇', '🥈', '🥉'];
-
-      var div = document.createElement('div');
-      div.id = '_com_topo_v3';
-      div.style.cssText = 'width:100%;box-sizing:border-box;padding:8px 16px 0';
-      div.innerHTML = ''
-        + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:12px">'
-        + [
-            { l: 'Total Vendido', v: fmtBR(totalVendas), s: (mesNomes[mes] || '') + ' ' + new Date().getFullYear(), c: '#f1f5f9' },
-            { l: 'OFs do Período', v: totalOFs + ' OFs', s: '', c: '#f1f5f9' },
-            { l: 'Total Comissões', v: fmtBR(totalComissao), s: '', c: '#10b981' },
-            { l: 'vs Mês Anterior', v: (varPct !== null ? ((parseFloat(varPct) < 0 ? '↓' : '↑') + Math.abs(parseFloat(varPct)).toString().replace('.', ',') + '%') : '—'), s: 'Anterior: ' + fmtBR(totalAnt), c: (varPct !== null && parseFloat(varPct) < 0 ? '#ef4444' : '#10b981') },
-            { l: 'Melhor Vendedor', v: melhorNome, s: fmtBR(melhorTotal) + ' · ' + String(melhorPct).replace('.', ',') + '%', c: '#60a5fa' }
-          ].map(function(c) {
-            return ''
-              + '<div style="background:linear-gradient(135deg,#1e2d40,#1a2535);border:1px solid #2a3f5f;border-radius:12px;padding:16px 20px">'
-              + '<div style="font-size:11px;text-transform:uppercase;color:#64748b;margin-bottom:6px">' + String(c.l || '').replace(/</g, '&lt;') + '</div>'
-              + '<div style="font-size:' + (c.l === 'Melhor Vendedor' ? '16' : '20') + 'px;font-weight:700;color:' + c.c + '">' + String(c.v || '').replace(/</g, '&lt;') + '</div>'
-              + (c.s ? '<div style="font-size:11px;color:#94a3b8;margin-top:3px">' + String(c.s || '').replace(/</g, '&lt;') + '</div>' : '')
-              + '</div>';
-          }).join('')
-        + '</div>'
-        + '<div style="display:flex;gap:12px;margin-bottom:12px;justify-content:center">'
-        + grupos.slice(0, 3).map(function(g, i) {
-            var nome = String((g && (g.vendedor || g.nome)) || '');
-            var total = Number((g && (g.total_vendas || g.total)) || 0) || 0;
-            var ofs = Array.isArray(g && g.ofs) ? g.ofs.length : (Number(g && g.ofs || 0) || 0);
-            var pct = totalVendas > 0 ? Math.min((total / totalVendas) * 100, 100) : 0;
-            return ''
-              + '<div style="flex:1;max-width:380px;background:#1a2032;border:1px solid #2a3350;border-radius:10px;padding:12px 16px">'
-              + '<div style="font-size:13px;font-weight:700;color:' + coresTop3[i] + '">' + medalhas[i] + ' ' + nome.replace(/</g, '&lt;') + '</div>'
-              + '<div style="font-size:12px;color:#94a3b8;margin:3px 0">' + fmtBR(total) + ' · ' + ofs + ' OFs</div>'
-              + '<div style="background:#1e293b;border-radius:4px;height:5px;margin-top:6px"><div style="background:' + coresTop3[i] + ';height:5px;border-radius:4px;width:' + pct + '%"></div></div>'
-              + '</div>';
-          }).join('')
-        + '</div>';
-
-      var pag = document.querySelector('#page-comissoes,[data-page="comissoes"],.page-comissoes');
-      if (pag) {
-        pag.insertBefore(div, pag.firstChild);
-      } else {
-        var alvo = null;
-        Array.prototype.slice.call(document.querySelectorAll('*')).forEach(function(el) {
-          try {
-            if (alvo) return;
-            if (el.children && el.children.length === 0 && String(el.textContent || '').trim() === 'Comissão por Vendedor') {
-              alvo = (el.closest && el.closest('section, .card, .box, [class*="section"]')) || (el.parentElement && el.parentElement.parentElement) || null;
-            }
-          } catch (_) {}
-        });
-        if (alvo && alvo.parentElement) {
-          alvo.parentElement.insertBefore(div, alvo);
-        }
-      }
-      try { console.log('[COM PATCH] topo injetado, grupos:', grupos.length); } catch (_) {}
-      _expandirLarguraTabelaComissoes();
-    } catch (_) {}
-  }
-
-  function _ocultarCardsOriginais() {
-    try {
-      Array.prototype.slice.call(document.querySelectorAll('[class*="card"], [class*="resumo"], [class*="total"]')).forEach(function(el) {
-        try {
-          var txt = String(el.textContent || '').trim();
-          var h = Number(el.offsetHeight || 0) || 0;
-          if ((txt.indexOf('Total Vendido') >= 0 || txt.indexOf('Total Comissão') >= 0 || txt.indexOf('Total OFs') >= 0)
-              && h < 200 && h > 30) {
-            el.style.display = 'none';
-          }
-        } catch (_) {}
-      });
-    } catch (_) {}
-  }
-
-  function _parseMoneyBr(txt) {
-    try {
-      return parseFloat(String(txt || '').replace(/R\$\s*/g, '').replace(/\./g, '').replace(',', '.')) || 0;
-    } catch (_) {
-      return 0;
-    }
-  }
-
-  function _lerValoresDoDOM() {
-    var totalVendas = 0;
-    var totalComissao = 0;
-    var totalOFs = 0;
-    try {
-      Array.prototype.slice.call(document.querySelectorAll('*')).forEach(function(el) {
-        try {
-          if (!el || !el.children || el.children.length !== 0) return;
-          var txt = String(el.textContent || '').trim();
-          var parent = el.parentElement && el.parentElement.parentElement;
-          var parentTxt = String(parent && parent.textContent || '');
-          if (!totalVendas && parentTxt.indexOf('Total Vendido') >= 0 && txt.indexOf('R$') === 0) {
-            totalVendas = _parseMoneyBr(txt);
-          }
-          if (!totalComissao && parentTxt.indexOf('Total Comissão') >= 0 && txt.indexOf('R$') === 0) {
-            totalComissao = _parseMoneyBr(txt);
-          }
-          if (!totalOFs && parentTxt.indexOf('Total OFs') >= 0 && /^\d+$/.test(txt)) {
-            totalOFs = parseInt(txt, 10) || 0;
-          }
-        } catch (_) {}
-      });
-    } catch (_) {}
-    return { totalVendas: totalVendas, totalComissao: totalComissao, totalOFs: totalOFs };
-  }
-
-  function _lerGruposDoDOM() {
-    var grupos = [];
-    try {
-      Array.prototype.slice.call(document.querySelectorAll('table tbody tr')).forEach(function(tr) {
-        try {
-          var cells = tr.querySelectorAll('td');
-          if (!cells || cells.length < 3) return;
-          var nome = String(cells[0] && cells[0].textContent || '').trim();
-          if (!nome || nome === 'TOTAL') return;
-          var vendedoresConhecidos = ['ELEOMAR', 'RONI VENDA CHEIA', 'RONI MEIA VENDA', 'Sem Vendedor'];
-          if (!vendedoresConhecidos.some(function(v) { return nome.indexOf(v) >= 0 || v.indexOf(nome) >= 0; })) return;
-          var ofs = parseInt(String(cells[1] && cells[1].textContent || '').trim(), 10) || 0;
-          var total = _parseMoneyBr(String(cells[2] && cells[2].textContent || '').trim() || '0');
-          var com = _parseMoneyBr(String(cells[4] && cells[4].textContent || '').trim() || '0');
-          grupos.push({
-            vendedor: nome,
-            nome: nome,
-            total_vendas: total,
-            total_comissao: com,
-            count: ofs,
-            ofs: Array(Math.max(0, ofs))
-          });
-        } catch (_) {}
-      });
-    } catch (_) {}
-    return grupos;
-  }
-
-  function _colorirLinhasVendedores(grupos) {
-    try {
-      var cores = ['#1a2744', '#1a3a2a', '#2d1f3a', '#2d2a1a'];
-      var nomesVend = (Array.isArray(grupos) ? grupos : []).map(function(g) {
-        return String((g && (g.vendedor || g.nome)) || '').trim();
-      }).filter(Boolean);
-      Array.prototype.slice.call(document.querySelectorAll('#page-comissoes table tbody tr, [data-page="comissoes"] table tbody tr, .page-comissoes table tbody tr')).forEach(function(tr) {
-        try {
-          if (tr.dataset.comColorido) return;
-          var cell0 = tr.cells && tr.cells[0] ? String(tr.cells[0].textContent || '').trim() : '';
-          var idx = nomesVend.findIndex(function(n) { return n && cell0 === n; });
-          if (idx >= 0) {
-            tr.dataset.comColorido = '1';
-            tr.style.background = cores[idx % cores.length];
-            tr.style.transition = 'filter 0.15s';
-            tr.onmouseenter = function() { tr.style.filter = 'brightness(1.15)'; };
-            tr.onmouseleave = function() { tr.style.filter = ''; };
-          }
-        } catch (_) {}
-      });
-    } catch (_) {}
-  }
-
-  function _preencherColunasOFsExistentes(dados, grupos) {
-    try {
-      var ofs = [];
-      if (dados && Array.isArray(dados.ofs)) ofs = dados.ofs.slice();
-      if (!ofs.length && Array.isArray(grupos)) {
-        ofs = grupos.flatMap(function(g) {
-          return Array.isArray(g && g.ofs) ? g.ofs : [];
-        });
-      }
-      if (!ofs.length) return;
-      var mapaPorNumero = Object.create(null);
-      ofs.forEach(function(of) {
-        var numero = String((of && of.numero) || '').replace(/\D/g, '');
-        if (!numero) return;
-        mapaPorNumero[numero] = of;
-      });
-      Array.prototype.slice.call(document.querySelectorAll('#page-comissoes tr, [data-page="comissoes"] tr, .page-comissoes tr')).forEach(function(tr) {
-        try {
-          var tds = tr.querySelectorAll('td');
-          if (!tds || tds.length < 5) return;
-          var numTxt = String((tds[0] && tds[0].textContent) || '').replace(/\D/g, '');
-          if (!numTxt || !mapaPorNumero[numTxt]) return;
-          var of = mapaPorNumero[numTxt];
-          var nomeCli = String((of && (of.cliente_nome || of.cliente || of._cliente_nome)) || '').trim();
-          var qtd = (of && (of.quantidade != null ? of.quantidade : of.qtd));
-          if (tds[1] && (!String(tds[1].textContent || '').trim() || String(tds[1].textContent || '').trim() === '—') && nomeCli) {
-            tds[1].textContent = nomeCli;
-          }
-          Array.prototype.slice.call(tds).forEach(function(td) {
-            try {
-              var txt = String(td.textContent || '').trim();
-              if ((!txt || txt === '—') && qtd != null && (td.style.textAlign === 'right' || td.style.textAlign === 'center')) {
-                if (String(td.cellIndex) === '3' || /qtd/i.test(String((td.getAttribute('data-col') || '')))) td.textContent = String(qtd);
-              }
-            } catch (_) {}
-          });
-        } catch (_) {}
-      });
-    } catch (_) {}
-  }
-
-  function _forcarRenderComissoesPatch() { return; }
 
   try {
     if (!window._patchComissoesDataSetterInstalled) {
@@ -16033,16 +15737,123 @@ function _ocultarGraficoComissoes() {
   } catch (_) {}
 
   function _instalarRenderComissoesFix() {
-    return;
+    try {
+      if (window._patchRenderComFixed && window.renderComissoes && window.renderComissoes.__comPatchOnlyRender) return;
+      window._patchRenderComFixed = true;
+      window.renderComissoes = async function() {
+        if (window._comRenderInterno) return;
+        try { console.log('[COM] renderComissoes patch executando'); } catch (_) {}
+        try {
+          window._comRenderInterno = true;
+          try { window._comissoesData = _normalizarComissoesData(window._comissoesData); } catch (_) {}
+          _forcarRenderComissoesPatch();
+        } finally {
+          window._comRenderInterno = false;
+        }
+      };
+      window.renderComissoes.__comPatchOnlyRender = true;
+    } catch (_) {}
   }
 
   window.__comissoesPatchCalcular = async function() {
-    return null;
+    if (_comCalcEmAndamento || window._comissoesCarregando) return;
+    _comCalcEmAndamento = true;
+    window._comissoesCarregando = true;
+    try {
+      _ensurePeriodoSelects();
+      var ref = _getPeriodoSelecionado();
+      var anoNum = String(ref.anoNum || '').trim();
+      var mesNum = String(ref.mesNum || '').trim();
+      try {
+        var inp = document.querySelector('input[type="month"]');
+        if (inp) {
+          inp.value = anoNum + '-' + mesNum;
+          inp.style.display = 'none';
+        }
+      } catch (_) {}
+
+      try { console.log('[COM PATCH] chamando API mes=' + mesNum + ' ano=' + anoNum); } catch (_) {}
+
+      var token = '';
+      try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+
+      var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mesNum) + '&ano=' + encodeURIComponent(anoNum), { headers: { Authorization: 'Bearer ' + token } });
+      var json = await resp.json().catch(function() { return null; });
+      try { console.log('[COM PATCH] resposta:', json && json.ok, json && json.total_ofs, json && json.total_vendido); } catch (_) {}
+      if (!json || !json.ok) {
+        try { console.error('[COM PATCH] erro:', json && json.error); } catch (_) {}
+        return;
+      }
+      try { console.log('[FIX OFs] resposta completa:', JSON.stringify(json).substring(0, 500)); } catch (_) {}
+      window._comissoesSqlData = json;
+      window._comissoesData = {
+        totalGeral: json.total_vendido,
+        totalComissao: json.total_comissao,
+        totalPedidos: json.total_ofs,
+        vendedores: (json.vendedores || []).map(function(v) {
+          return {
+            vendNome: v.nome,
+            nome: v.nome,
+            vendId: v.id,
+            id: v.id,
+            total: v.total,
+            peds: v.ofs,
+            quantidade: v.ofs,
+            comissaoRs: v.comissao_rs,
+            comissao: v.comissao_pct,
+            comissao_pct: v.comissao_pct,
+            ofs: [],
+            ofsList: []
+          };
+        })
+      };
+      try {
+        var fmt = function(v) { return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); };
+        var setEl = function(sel, v) { var el = document.querySelector(sel); if (el) el.textContent = v; };
+        setEl('#com-total-vendido, [data-com=\"total_vendido\"]', fmt(json.total_vendido));
+        setEl('#com-total-comissao, [data-com=\"total_comissao\"]', fmt(json.total_comissao));
+        setEl('#com-total-ofs, [data-com=\"total_ofs\"]', String(json.total_ofs || 0));
+      } catch (_) {}
+
+      try {
+        var prev = _prevPeriodo(mesNum, anoNum);
+        window.__comissoesPrevData = null;
+        if (prev) {
+          window.__comissoesPrevData = await _fetchComissoes(prev.mesNum, prev.anoNum);
+        }
+      } catch (_) { window.__comissoesPrevData = null; }
+
+      try { _instalarRenderComissoesFix(); } catch (_) {}
+      try { if (typeof window['renderComissoes'] === 'function') window['renderComissoes'](window._comissoesData); } catch (_) {}
+      setTimeout(function() {
+        try { _ensureVendedoresMap(); } catch (_) {}
+        _renderTabelaVendedores(window._comissoesSqlData);
+        _renderTabelaOFs(window._comissoesSqlData);
+        _ocultarGraficoComissoes();
+        _ensureExtras(window._comissoesSqlData, mesNum, anoNum);
+      }, 600);
+      setTimeout(_ocultarGraficoComissoes, 800);
+    } catch (e) {
+      try { console.error('[COM PATCH] fetch erro:', e && e.message); } catch (_) {}
+    } finally {
+      window._comissoesCarregando = false;
+      setTimeout(function() { _comCalcEmAndamento = false; }, 300);
+    }
   };
-  try { window._executarCalculoComissoes = null; } catch (_) {}
+  try { window._executarCalculoComissoes = window.__comissoesPatchCalcular; } catch (_) {}
 
   function _rebindBtnCalcular() {
-    return;
+    try {
+      var btn = Array.from(document.querySelectorAll('button'))
+        .find(function(b) { return String(b && b.textContent || '').trim() === 'Calcular' && !b._patchBound; });
+      if (!btn) return;
+      btn._patchBound = true;
+      btn.addEventListener('click', function() {
+        window.__comUltimaExecucao = 0;
+        window.__comEntradaTs = 0;
+        if (typeof window.calcularComissoes === 'function') window.calcularComissoes();
+      });
+    } catch (_) {}
   }
 
   try {
@@ -16071,15 +15882,43 @@ function _ocultarGraficoComissoes() {
   } catch (_) {}
 
   function _instalarOverrideComissoes() {
-    return;
+    try {
+      if (typeof window.__comissoesPatchCalcular === 'function') {
+        window._executarCalculoComissoes = window.__comissoesPatchCalcular;
+        window.calcularComissoes = window.__comissoesPatchCalcular;
+        window.gerarRelatorioComissoes = window.__comissoesPatchCalcular;
+        window.renderRelatorioComissoes = window.__comissoesPatchCalcular;
+      }
+    } catch (_) {}
+    try { _instalarExecGuardComissoes(); } catch (_) {}
+    try { _instalarRenderComissoesFix(); } catch (_) {}
+    try { _rebindBtnCalcular(); } catch (_) {}
   }
 
   function _instalarExecGuardComissoes() {
-    return;
-  }
-
-  function _instalarAntiReentradaComRodando() {
-    return;
+    try {
+      var calcularComissoesOriginal = window.calcularComissoes;
+      if (typeof calcularComissoesOriginal !== 'function') return;
+      if (calcularComissoesOriginal.__comissoesExecWrappedTs) return;
+      var wrapped = async function() {
+        var agora = Date.now();
+        if (agora - (window.__comUltimaExecucao || 0) < 2000) {
+          try { console.log('[COM] debounce ignorado'); } catch (_) {}
+          return;
+        }
+        window.__comUltimaExecucao = agora;
+        try {
+          return await calcularComissoesOriginal.apply(this, arguments);
+        } catch (e) {
+          try { console.error('[COM]', e); } catch (_) {}
+          return;
+        } finally {
+        }
+      };
+      wrapped.__comissoesExecWrappedTs = true;
+      wrapped.__comissoesExecOriginal = calcularComissoesOriginal;
+      window.calcularComissoes = wrapped;
+    } catch (_) {}
   }
 
   try {
@@ -16094,131 +15933,34 @@ function _ocultarGraficoComissoes() {
   } catch (_) {}
 
   function _instalarDetectorNavComissoes() {
-    return;
+    try {
+      if (window.__comissoesNavDetectorInstalled) return;
+      window.__comissoesNavDetectorInstalled = true;
+      setInterval(function() {
+        var agora = Date.now();
+        if (agora - (window.__comEntradaTs || 0) < 5000) return;
+        var el = Array.from(document.querySelectorAll('*'))
+          .find(function(e) {
+            return e.children.length === 0 &&
+              String(e.textContent || '').trim() === 'Comissão por Vendedor' &&
+              e.offsetParent !== null;
+          });
+        if (el) {
+          window.__comEntradaTs = agora;
+          window.__comUltimaExecucao = 0;
+          if (typeof window.calcularComissoes === 'function') window.calcularComissoes();
+        }
+      }, 1500);
+    } catch (_) {}
   }
 
   try { _instalarOverrideComissoes(); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 300); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 1200); } catch (_) {}
-
-  (function _instalarObserverEnriquecimentoComissoes() {
-    try {
-      if (window.__patchComissoesEnriquecimentoInstalled) return;
-      window.__patchComissoesEnriquecimentoInstalled = true;
-      window._comEnriquecido = false;
-      window.__comEnriquecendo = false;
-
-      function _getComToken() {
-        try {
-          return String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim();
-        } catch (_) {
-          return '';
-        }
-      }
-
-      function _acharLinhasVendedor() {
-        return Array.prototype.slice.call(document.querySelectorAll('tr')).filter(function(tr) {
-          var txt = String(tr && tr.textContent || '');
-          return txt.indexOf('ELEOMAR') >= 0 || txt.indexOf('RONI VENDA') >= 0 || txt.indexOf('RONI MEIA') >= 0;
-        });
-      }
-
-      function _obterDadosComissoesDoIndex() {
-        var cands = [
-          window._ultimosDadosComissoes,
-          window.comissoesData,
-          window._comissaoData,
-          window._comissoesSqlData,
-          (window._comissoesData && window._comissoesData.data) ? window._comissoesData.data : null
-        ];
-        for (var i = 0; i < cands.length; i += 1) {
-          var d = cands[i];
-          if (!d || typeof d !== 'object') continue;
-          var grupos = Array.isArray(d.grupos) ? d.grupos : (Array.isArray(d.vendedores) ? d.vendedores : null);
-          if (grupos && grupos.length) return d;
-        }
-        return null;
-      }
-
-      function _enriquecerComissoes() {
-        if (window.__comEnriquecendo) return;
-        window.__comEnriquecendo = true;
-        _ocultarCardsOriginais();
-        var mesEl = document.querySelector('select') || document.getElementById('comissao-mes-select');
-        var anoEl = document.querySelectorAll('select')[1] || document.getElementById('comissao-ano-select');
-        var mes = parseInt(String((mesEl && mesEl.value) || ''), 10) || (new Date().getMonth() + 1);
-        var ano = parseInt(String((anoEl && anoEl.value) || ''), 10) || new Date().getFullYear();
-        var token = _getComToken();
-        var headers = token ? { Authorization: 'Bearer ' + token } : {};
-        var totais = _lerValoresDoDOM();
-        var grupos = _lerGruposDoDOM();
-        if (!grupos.length) {
-          try { console.log('[COM] grupos não encontrados no DOM, aguardando...'); } catch (_) {}
-          window._comEnriquecido = false;
-          window.__comEnriquecendo = false;
-          setTimeout(_enriquecerComissoes, 500);
-          return;
-        }
-        var dadosFake = {
-          total_geral_vendas: totais.totalVendas,
-          total_geral_comissao: totais.totalComissao,
-          total_ofs: totais.totalOFs
-        };
-        _colorirLinhasVendedores(grupos);
-        var dadosAtual = _obterDadosComissoesDoIndex();
-        if (dadosAtual) _preencherColunasOFsExistentes(dadosAtual, grupos);
-        var mesAnt = mes === 1 ? 12 : (mes - 1);
-        var anoAnt = mes === 1 ? (ano - 1) : ano;
-        fetch('/api/comissoes/relatorio?mes=' + mesAnt + '&ano=' + anoAnt + '&_antRef=1', { headers: headers })
-          .then(function(r) { return r.json(); })
-          .then(function(dadosAnt) {
-            _adicionarTopoComissoes(dadosFake, dadosAnt || null, grupos);
-          })
-          .catch(function() {
-            _adicionarTopoComissoes(dadosFake, null, grupos);
-          })
-          .finally(function() {
-            window.__comEnriquecendo = false;
-          });
-      }
-
-      var observer = new MutationObserver(function() {
-        try {
-          if (window._comEnriquecido) return;
-          var linhasVendedor = Array.prototype.slice.call(document.querySelectorAll('table tbody tr')).filter(function(tr) {
-            var txt = String(tr && tr.textContent || '');
-            return (txt.indexOf('ELEOMAR') >= 0 || txt.indexOf('RONI') >= 0) && txt.indexOf('R$') >= 0;
-          });
-          if (linhasVendedor.length >= 1) {
-            window._comEnriquecido = true;
-            try { console.log('[COM PATCH] tabela detectada, enriquecendo...'); } catch (_) {}
-            setTimeout(_enriquecerComissoes, 400);
-          }
-        } catch (_) {}
-      });
-      observer.observe(document.body, { childList: true, subtree: true });
-
-      document.addEventListener('click', function(e) {
-        try {
-          var link = e && e.target && (e.target.closest ? e.target.closest('a, li, [onclick]') : null);
-          if (link && String(link.textContent || '').indexOf('omiss') < 0) {
-            window._comEnriquecido = false;
-            var topo = document.getElementById('_com_topo_v3');
-            if (topo) topo.remove();
-          }
-        } catch (_) {}
-      }, true);
-
-      setTimeout(function() {
-        try {
-          if (_acharLinhasVendedor().length > 0 && !window._comEnriquecido) {
-            window._comEnriquecido = true;
-            _enriquecerComissoes();
-          }
-        } catch (_) {}
-      }, 1200);
-    } catch (_) {}
-  })();
+  try { setTimeout(_instalarExecGuardComissoes, 1400); } catch (_) {}
+  try { _instalarDetectorNavComissoes(); } catch (_) {}
+  try { setTimeout(_instalarDetectorNavComissoes, 1200); } catch (_) {}
+  try { [100, 500, 1000, 2000].forEach(function(t) { setTimeout(_rebindBtnCalcular, t); }); } catch (_) {}
 })();
 
 (function() {
