@@ -10591,7 +10591,9 @@ app.get('/api/gramaturas', authMiddleware, async (req, res) => {
   try {
     const ready = await _ensureGramaturasTable();
     if (!ready) return res.json({ ok: true, data: [], gramaturas: [] });
-    const empresa_id = await _empresaUuidSafe(req);
+    let empresa_id = await _empresaUuidSafe(req);
+    if (!empresa_id) empresa_id = String(req.query.empresa_id || 'df5f7672-0a6b-402d-ae65-296554236c31').trim();
+    console.log('[GRAMATURAS] buscando empresa_id:', empresa_id);
     const incluirInativas = String(req.query?.incluir_inativas || '').trim().toLowerCase() === 'true';
     const selectComJoin = 'id,nome,gramatura,valor_unitario,fornecedor_id,fornecedor_nome,empresa_id,ativo,created_at,fornecedor:fornecedores(nome)';
     let q = supabase.from('gramaturas').select(selectComJoin).order('nome');
@@ -10606,6 +10608,7 @@ app.get('/api/gramaturas', authMiddleware, async (req, res) => {
       data = r2?.data || [];
       error = r2?.error || null;
     }
+    console.log('[GRAMATURAS] resultado:', Array.isArray(data) ? data.length : 0, error?.message);
     if (error) throw error;
     const out = (Array.isArray(data) ? data : []).map((g) => {
       const fornNome = String(g?.fornecedor?.nome || g?.fornecedor_nome || '').trim();
@@ -10614,6 +10617,7 @@ app.get('/api/gramaturas', authMiddleware, async (req, res) => {
     });
     return res.json({ ok: true, data: out, gramaturas: out });
   } catch (e) {
+    console.error('[GRAMATURAS] erro:', e.message);
     return res.json({ ok: true, data: [], gramaturas: [] });
   }
 });

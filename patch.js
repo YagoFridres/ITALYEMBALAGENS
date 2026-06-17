@@ -2676,117 +2676,107 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
   window._abrirToneladas = _abrirToneladas;
 
-  function _adicionarMenuGramaturas() {
-    if (document.getElementById('_menu_gramaturas')) return;
-    const todosLinks = Array.from(document.querySelectorAll('a, li'));
-    const linkUsuarios = todosLinks.find(el =>
-      el.textContent.trim() === 'Usuários' || el.textContent.trim() === 'Usuarios'
-    );
-
-    let submenuCadastros = null;
-    if (linkUsuarios) submenuCadastros = linkUsuarios.closest('ul');
-
-    if (!submenuCadastros) {
-      todosLinks.forEach(el => {
-        const txt = el.textContent.trim().toUpperCase();
-        if (txt === 'CADASTROS' || txt === 'CADASTROS') {
-          const ul = el.parentElement?.querySelector('ul')
-            || el.nextElementSibling
-            || el.parentElement?.nextElementSibling?.querySelector('ul');
-          if (ul && ul.tagName === 'UL') submenuCadastros = ul;
-        }
-      });
-    }
-
-    if (!submenuCadastros) {
-      console.warn('[PATCH] submenu Cadastros não encontrado');
-      return;
-    }
-
-    const li = document.createElement('li');
-    li.id = '_menu_gramaturas';
-    li.innerHTML = '<a href="#" onclick="event.preventDefault();_abrirGramaturas()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;color:#94a3b8;text-decoration:none;cursor:pointer;font-size:14px">📐 Gramaturas</a>';
-    submenuCadastros.appendChild(li);
-    console.log('[PATCH] menu Gramaturas adicionado em Cadastros');
-  }
-  window._adicionarMenuGramaturas = _adicionarMenuGramaturas;
-
-  function _adicionarItensFinanceiro() {
-    const todosLinks = Array.from(document.querySelectorAll('a, li'));
-    const linkComissoes = todosLinks.find(el =>
-      el.textContent.trim() === 'Comissões' || el.textContent.trim() === 'Comissoes'
-    );
-
-    let submenuFinanceiro = null;
-    if (linkComissoes) submenuFinanceiro = linkComissoes.closest('ul');
-
-    if (!submenuFinanceiro) {
-      todosLinks.forEach(el => {
-        const txt = el.textContent.trim().toUpperCase();
-        if (txt === 'FINANCEIRO' || txt === 'FINANCEIRO') {
-          const ul = el.parentElement?.querySelector('ul')
-            || el.nextElementSibling
-            || el.parentElement?.nextElementSibling?.querySelector('ul');
-          if (ul && ul.tagName === 'UL') submenuFinanceiro = ul;
-        }
-      });
-    }
-
-    if (!submenuFinanceiro) {
-      console.warn('[PATCH] submenu Financeiro não encontrado');
-      return;
-    }
-
-    if (!document.getElementById('_menu_toneladas')) {
-      const li = document.createElement('li');
-      li.id = '_menu_toneladas';
-      li.innerHTML = '<a href="#" onclick="event.preventDefault();_abrirToneladas()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;color:#94a3b8;text-decoration:none;cursor:pointer;font-size:14px">⚖️ Toneladas Vendidas</a>';
-      submenuFinanceiro.appendChild(li);
-      console.log('[PATCH] menu Toneladas Vendidas adicionado');
-    }
-
-    if (!document.getElementById('_menu_caixas_fin')) {
-      const li2 = document.createElement('li');
-      li2.id = '_menu_caixas_fin';
-      li2.innerHTML = '<a href="#" class="_menu_caixas_fin_link" style="display:flex;align-items:center;gap:8px;padding:8px 16px;color:#94a3b8;text-decoration:none;cursor:pointer;font-size:14px">📦 Caixas Perdidas</a>';
-      submenuFinanceiro.appendChild(li2);
+  function _setupMenusCustom() {
+    function _tentarAdicionarMenus() {
       try {
-        const a = li2.querySelector('a._menu_caixas_fin_link');
-        if (a && a.dataset.bound !== '1') {
-          a.dataset.bound = '1';
-          a.addEventListener('click', function(ev) {
-            try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
-            try { if (typeof window.goFinanceiro === 'function') { window.goFinanceiro('caixas-perdidas'); return; } } catch (_) {}
-            try { if (typeof window.go === 'function') { window.go('caixas-perdidas'); return; } } catch (_) {}
-            try {
-              const fn = window.abrirCaixasPerdidas || window._abrirCaixasPerdidas;
-              if (typeof fn === 'function') { fn(); return; }
-            } catch (_) {}
-            alert('Caixas Perdidas: função não encontrada');
-          }, true);
+        if (!document.getElementById('_menu_gramaturas')) {
+          const linkCadastro = document.querySelector('a[href*="clientes"], a[href*="fornecedores"], a[href*="vendedores"]')
+            || Array.from(document.querySelectorAll('a')).find(function(a) {
+              return ['Clientes', 'Fornecedores', 'Vendedores', 'Usuários'].includes(String(a.textContent || '').trim());
+            });
+          if (linkCadastro) {
+            const ul = linkCadastro.closest('ul');
+            if (ul) {
+              const li = document.createElement('li');
+              li.id = '_menu_gramaturas';
+              li.className = (linkCadastro.closest('li') && linkCadastro.closest('li').className) || '';
+              const a = document.createElement('a');
+              a.href = '#';
+              a.textContent = '📐 Gramaturas';
+              a.style.cssText = linkCadastro.style.cssText || 'display:flex;align-items:center;gap:8px;padding:8px 16px;color:#94a3b8;text-decoration:none;cursor:pointer';
+              a.addEventListener('click', function(e) {
+                try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+                _abrirGramaturas();
+              }, true);
+              li.appendChild(a);
+              ul.appendChild(li);
+              console.log('[PATCH] Gramaturas adicionado ao menu Cadastros');
+            }
+          }
         }
       } catch (_) {}
-      console.log('[PATCH] menu Caixas Perdidas adicionado');
+
+      try {
+        if (!document.getElementById('_menu_toneladas')) {
+          const linkFin = Array.from(document.querySelectorAll('a')).find(function(a) {
+            return ['Comissões', 'Orçamentos', 'Comissoes', 'Orcamentos'].includes(String(a.textContent || '').trim());
+          });
+          if (linkFin) {
+            const ul = linkFin.closest('ul');
+            if (ul) {
+              const li1 = document.createElement('li');
+              li1.id = '_menu_toneladas';
+              li1.className = (linkFin.closest('li') && linkFin.closest('li').className) || '';
+              const a1 = document.createElement('a');
+              a1.href = '#';
+              a1.textContent = '⚖️ Toneladas Vendidas';
+              a1.style.cssText = linkFin.style.cssText || 'display:flex;align-items:center;gap:8px;padding:8px 16px;color:#94a3b8;text-decoration:none;cursor:pointer';
+              a1.addEventListener('click', function(e) {
+                try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+                _abrirToneladas();
+              }, true);
+              li1.appendChild(a1);
+              ul.appendChild(li1);
+
+              const li2 = document.createElement('li');
+              li2.id = '_menu_caixas_fin';
+              li2.className = (linkFin.closest('li') && linkFin.closest('li').className) || '';
+              const a2 = document.createElement('a');
+              a2.href = '#';
+              a2.textContent = '📦 Caixas Perdidas';
+              a2.style.cssText = linkFin.style.cssText || 'display:flex;align-items:center;gap:8px;padding:8px 16px;color:#94a3b8;text-decoration:none;cursor:pointer';
+              a2.addEventListener('click', function(e) {
+                try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+                const fn = window.abrirCaixasPerdidas || window._abrirCaixasPerdidas;
+                if (typeof fn === 'function') fn();
+                else if (typeof window.go === 'function') window.go('caixas-perdidas');
+              }, true);
+              li2.appendChild(a2);
+              ul.appendChild(li2);
+
+              console.log('[PATCH] Toneladas e Caixas Perdidas adicionados ao menu Financeiro');
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    window._adicionarMenuGramaturas = _tentarAdicionarMenus;
+    window._adicionarItensFinanceiro = _tentarAdicionarMenus;
+
+    setTimeout(_tentarAdicionarMenus, 500);
+    setTimeout(_tentarAdicionarMenus, 1500);
+    setTimeout(_tentarAdicionarMenus, 3000);
+    setTimeout(_tentarAdicionarMenus, 6000);
+
+    if (!window.__patchMenusCustomObs) {
+      try {
+        const obs = new MutationObserver(function() {
+          if (!document.getElementById('_menu_gramaturas') || !document.getElementById('_menu_toneladas')) {
+            _tentarAdicionarMenus();
+          }
+        });
+        obs.observe(document.body, { childList: true, subtree: true });
+        window.__patchMenusCustomObs = obs;
+      } catch (_) {}
     }
   }
-  window._adicionarItensFinanceiro = _adicionarItensFinanceiro;
 
-  setTimeout(_adicionarMenuGramaturas, 800);
-  setTimeout(_adicionarMenuGramaturas, 2000);
-  setTimeout(_adicionarMenuGramaturas, 4000);
-
-  setTimeout(_adicionarItensFinanceiro, 800);
-  setTimeout(_adicionarItensFinanceiro, 2000);
-  setTimeout(_adicionarItensFinanceiro, 4000);
-
-  setTimeout(function() {
-    if (typeof _adicionarMenuGramaturas === 'function') _adicionarMenuGramaturas();
-    if (typeof _adicionarItensFinanceiro === 'function') _adicionarItensFinanceiro();
-  }, 1000);
-  setTimeout(function() {
-    if (typeof _adicionarMenuGramaturas === 'function') _adicionarMenuGramaturas();
-    if (typeof _adicionarItensFinanceiro === 'function') _adicionarItensFinanceiro();
-  }, 3000);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _setupMenusCustom);
+  } else {
+    _setupMenusCustom();
+  }
 
   window.mobileGoPage = function(page) {
     var menu = document.getElementById('mob-menu-mais');
