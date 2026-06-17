@@ -7,6 +7,89 @@ window._patchCustomPages['toneladas-vendidas'] = function() {
   if (typeof window.renderToneladasPage === 'function') window.renderToneladasPage();
 };
 
+function _aplicarTemaClaro() {
+  const bg = getComputedStyle(document.body).backgroundColor;
+  const isClaro = bg.includes('255, 255') || bg.includes('248, 250') ||
+                  bg.includes('241, 245') || bg.includes('226, 232') ||
+                  (!bg.includes('15, 23') && !bg.includes('30, 41') && !bg.includes('0, 0'));
+  if (isClaro) {
+    document.body.classList.add('_patch_modo_claro');
+  } else {
+    document.body.classList.remove('_patch_modo_claro');
+  }
+}
+_aplicarTemaClaro();
+setInterval(_aplicarTemaClaro, 1000);
+
+if (!document.getElementById('_patch_light_css')) {
+  const s = document.createElement('style');
+  s.id = '_patch_light_css';
+  s.textContent = `
+    body._patch_modo_claro input:not([type=checkbox]):not([type=radio]),
+    body._patch_modo_claro select,
+    body._patch_modo_claro textarea {
+      color: #1e293b !important;
+      background: #fff !important;
+      border-color: #cbd5e1 !important;
+    }
+    body._patch_modo_claro input::placeholder,
+    body._patch_modo_claro textarea::placeholder {
+      color: #94a3b8 !important;
+    }
+    body._patch_modo_claro [style*="color:#f1f5f9"],
+    body._patch_modo_claro [style*="color: #f1f5f9"] { color: #1e293b !important; }
+    body._patch_modo_claro [style*="color:#94a3b8"],
+    body._patch_modo_claro [style*="color: #94a3b8"] { color: #475569 !important; }
+    body._patch_modo_claro [style*="color:#64748b"],
+    body._patch_modo_claro [style*="color: #64748b"] { color: #475569 !important; }
+    body._patch_modo_claro [style*="color:#22c55e"],
+    body._patch_modo_claro [style*="color: #22c55e"] { color: #15803d !important; }
+    body._patch_modo_claro [style*="color:#60a5fa"],
+    body._patch_modo_claro [style*="color: #60a5fa"] { color: #1d4ed8 !important; }
+    body._patch_modo_claro [style*="color:#4ade80"] { color: #15803d !important; }
+    body._patch_modo_claro [style*="color:#fbbf24"] { color: #92400e !important; }
+    body._patch_modo_claro [style*="background:#0f172a"],
+    body._patch_modo_claro [style*="background: #0f172a"],
+    body._patch_modo_claro [style*="background-color:#0f172a"] {
+      background: #f8fafc !important; color: #1e293b !important;
+    }
+    body._patch_modo_claro [style*="background:#1e293b"],
+    body._patch_modo_claro [style*="background: #1e293b"],
+    body._patch_modo_claro [style*="background-color:#1e293b"] {
+      background: #f1f5f9 !important; color: #1e293b !important;
+    }
+    body._patch_modo_claro [style*="background:#334155"],
+    body._patch_modo_claro [style*="background: #334155"] {
+      background: #e2e8f0 !important; color: #1e293b !important;
+    }
+    body._patch_modo_claro [style*="background:#166534"] {
+      background: #dcfce7 !important; color: #15803d !important;
+    }
+    body._patch_modo_claro [style*="background:#92400e"] {
+      background: #fef3c7 !important; color: #92400e !important;
+    }
+    body._patch_modo_claro [style*="border:1px solid #334155"],
+    body._patch_modo_claro [style*="border: 1px solid #334155"] {
+      border-color: #cbd5e1 !important;
+    }
+    body._patch_modo_claro #_com_topo *,
+    body._patch_modo_claro #_com_detalhe *,
+    body._patch_modo_claro #_pag_gramaturas *,
+    body._patch_modo_claro #_pag_toneladas * { color: #1e293b !important; }
+    body._patch_modo_claro #_com_topo [style*="color:#22c55e"],
+    body._patch_modo_claro #_com_detalhe [style*="color:#22c55e"],
+    body._patch_modo_claro #_pag_gramaturas [style*="color:#22c55e"],
+    body._patch_modo_claro #_pag_toneladas [style*="color:#22c55e"] { color: #15803d !important; }
+    body._patch_modo_claro #_com_topo [style*="color:#60a5fa"],
+    body._patch_modo_claro #_com_detalhe [style*="color:#60a5fa"] { color: #1d4ed8 !important; }
+    body._patch_modo_claro #_com_busca_resultado > div {
+      background: #fff !important;
+      border-color: #cbd5e1 !important;
+    }
+  `;
+  document.head.appendChild(s);
+}
+
 window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
@@ -2678,6 +2761,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function _setupMenusCustom() {
     function _injetar() {
+      const todosLi = Array.from(document.querySelectorAll('li'));
+      console.log('[MENU] total de LIs:', todosLi.length);
+      console.log('[MENU] textos dos LIs:', todosLi.map(function(li) { return li.textContent.trim(); }).filter(function(t) { return t.length < 30 && t.length > 1; }));
+      const liUsuariosLog = todosLi.find(function(li) {
+        return li.textContent.trim() === 'Usuários' || li.textContent.trim() === 'Usuarios';
+      });
+      console.log('[MENU] li Usuários encontrado:', !!liUsuariosLog, liUsuariosLog?.parentElement?.tagName);
+      const liComissoesLog = todosLi.find(function(li) {
+        return li.textContent.trim() === 'Comissões' || li.textContent.trim() === 'Comissoes';
+      });
+      console.log('[MENU] li Comissões encontrado:', !!liComissoesLog, liComissoesLog?.parentElement?.tagName);
       try {
         if (!document.getElementById('_menu_gramaturas')) {
           var liUsuarios = Array.from(document.querySelectorAll('li')).find(function(li) {
