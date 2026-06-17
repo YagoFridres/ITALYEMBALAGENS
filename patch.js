@@ -15875,6 +15875,83 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
   }
 
+  function _ocultarCardsOriginais() {
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('[class*="card"], [class*="resumo"], [class*="total"]')).forEach(function(el) {
+        try {
+          var txt = String(el.textContent || '').trim();
+          var h = Number(el.offsetHeight || 0) || 0;
+          if ((txt.indexOf('Total Vendido') >= 0 || txt.indexOf('Total Comissão') >= 0 || txt.indexOf('Total OFs') >= 0)
+              && h < 200 && h > 30) {
+            el.style.display = 'none';
+          }
+        } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  function _parseMoneyBr(txt) {
+    try {
+      return parseFloat(String(txt || '').replace(/R\$\s*/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  function _lerValoresDoDOM() {
+    var totalVendas = 0;
+    var totalComissao = 0;
+    var totalOFs = 0;
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('*')).forEach(function(el) {
+        try {
+          if (!el || !el.children || el.children.length !== 0) return;
+          var txt = String(el.textContent || '').trim();
+          var parent = el.parentElement && el.parentElement.parentElement;
+          var parentTxt = String(parent && parent.textContent || '');
+          if (!totalVendas && parentTxt.indexOf('Total Vendido') >= 0 && txt.indexOf('R$') === 0) {
+            totalVendas = _parseMoneyBr(txt);
+          }
+          if (!totalComissao && parentTxt.indexOf('Total Comissão') >= 0 && txt.indexOf('R$') === 0) {
+            totalComissao = _parseMoneyBr(txt);
+          }
+          if (!totalOFs && parentTxt.indexOf('Total OFs') >= 0 && /^\d+$/.test(txt)) {
+            totalOFs = parseInt(txt, 10) || 0;
+          }
+        } catch (_) {}
+      });
+    } catch (_) {}
+    return { totalVendas: totalVendas, totalComissao: totalComissao, totalOFs: totalOFs };
+  }
+
+  function _lerGruposDoDOM() {
+    var grupos = [];
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('table tbody tr')).forEach(function(tr) {
+        try {
+          var cells = tr.querySelectorAll('td');
+          if (!cells || cells.length < 3) return;
+          var nome = String(cells[0] && cells[0].textContent || '').trim();
+          if (!nome || nome === 'TOTAL') return;
+          var vendedoresConhecidos = ['ELEOMAR', 'RONI VENDA CHEIA', 'RONI MEIA VENDA', 'Sem Vendedor'];
+          if (!vendedoresConhecidos.some(function(v) { return nome.indexOf(v) >= 0 || v.indexOf(nome) >= 0; })) return;
+          var ofs = parseInt(String(cells[1] && cells[1].textContent || '').trim(), 10) || 0;
+          var total = _parseMoneyBr(String(cells[2] && cells[2].textContent || '').trim() || '0');
+          var com = _parseMoneyBr(String(cells[4] && cells[4].textContent || '').trim() || '0');
+          grupos.push({
+            vendedor: nome,
+            nome: nome,
+            total_vendas: total,
+            total_comissao: com,
+            count: ofs,
+            ofs: Array(Math.max(0, ofs))
+          });
+        } catch (_) {}
+      });
+    } catch (_) {}
+    return grupos;
+  }
+
   function _colorirLinhasVendedores(grupos) {
     try {
       var cores = ['#1a2744', '#1a3a2a', '#2d1f3a', '#2d2a1a'];
@@ -16066,54 +16143,56 @@ function _ocultarGraficoComissoes() {
       function _enriquecerComissoes() {
         if (window.__comEnriquecendo) return;
         window.__comEnriquecendo = true;
+        _ocultarCardsOriginais();
         var mesEl = document.querySelector('select') || document.getElementById('comissao-mes-select');
         var anoEl = document.querySelectorAll('select')[1] || document.getElementById('comissao-ano-select');
         var mes = parseInt(String((mesEl && mesEl.value) || ''), 10) || (new Date().getMonth() + 1);
         var ano = parseInt(String((anoEl && anoEl.value) || ''), 10) || new Date().getFullYear();
         var token = _getComToken();
         var headers = token ? { Authorization: 'Bearer ' + token } : {};
-
-        var dadosAtual = _obterDadosComissoesDoIndex();
-        var pDadosAtual = dadosAtual
-          ? Promise.resolve(dadosAtual)
-          : fetch('/api/comissoes/relatorio?mes=' + mes + '&ano=' + ano, { headers: headers }).then(function(r) { return r.json(); });
-
-        pDadosAtual.then(function(dados) {
-          var grupos = Array.isArray(dados && (dados.grupos || dados.vendedores)) ? (dados.grupos || dados.vendedores) : [];
-          try { window._ultimosDadosComissoes = dados; } catch (_) {}
-          try { window._comissaoData = dados; } catch (_) {}
-          _colorirLinhasVendedores(grupos);
-          _preencherColunasOFsExistentes(dados, grupos);
-
-          var prevGlobal = window.__comissoesPrevData;
-          var pPrev = (prevGlobal && typeof prevGlobal === 'object')
-            ? Promise.resolve(prevGlobal)
-            : (function() {
-                var mesAnt = mes === 1 ? 12 : (mes - 1);
-                var anoAnt = mes === 1 ? (ano - 1) : ano;
-                return fetch('/api/comissoes/relatorio?mes=' + mesAnt + '&ano=' + anoAnt, { headers: headers }).then(function(r) { return r.json(); });
-              })();
-
-          pPrev.then(function(dadosAnt) {
-            try { window.__comissoesPrevData = dadosAnt || null; } catch (_) {}
-            _adicionarTopoComissoes(dados, dadosAnt || null, grupos);
-          }).catch(function() {
-            _adicionarTopoComissoes(dados, null, grupos);
-          });
-        }).catch(function() {
+        var totais = _lerValoresDoDOM();
+        var grupos = _lerGruposDoDOM();
+        if (!grupos.length) {
+          try { console.log('[COM] grupos não encontrados no DOM, aguardando...'); } catch (_) {}
           window._comEnriquecido = false;
-        }).finally(function() {
           window.__comEnriquecendo = false;
-        });
+          setTimeout(_enriquecerComissoes, 500);
+          return;
+        }
+        var dadosFake = {
+          total_geral_vendas: totais.totalVendas,
+          total_geral_comissao: totais.totalComissao,
+          total_ofs: totais.totalOFs
+        };
+        _colorirLinhasVendedores(grupos);
+        var dadosAtual = _obterDadosComissoesDoIndex();
+        if (dadosAtual) _preencherColunasOFsExistentes(dadosAtual, grupos);
+        var mesAnt = mes === 1 ? 12 : (mes - 1);
+        var anoAnt = mes === 1 ? (ano - 1) : ano;
+        fetch('/api/comissoes/relatorio?mes=' + mesAnt + '&ano=' + anoAnt + '&_antRef=1', { headers: headers })
+          .then(function(r) { return r.json(); })
+          .then(function(dadosAnt) {
+            _adicionarTopoComissoes(dadosFake, dadosAnt || null, grupos);
+          })
+          .catch(function() {
+            _adicionarTopoComissoes(dadosFake, null, grupos);
+          })
+          .finally(function() {
+            window.__comEnriquecendo = false;
+          });
       }
 
       var observer = new MutationObserver(function() {
         try {
-          var linhasVendedor = _acharLinhasVendedor();
-          if (linhasVendedor.length >= 2 && !window._comEnriquecido) {
+          if (window._comEnriquecido) return;
+          var linhasVendedor = Array.prototype.slice.call(document.querySelectorAll('table tbody tr')).filter(function(tr) {
+            var txt = String(tr && tr.textContent || '');
+            return (txt.indexOf('ELEOMAR') >= 0 || txt.indexOf('RONI') >= 0) && txt.indexOf('R$') >= 0;
+          });
+          if (linhasVendedor.length >= 1) {
             window._comEnriquecido = true;
             try { console.log('[COM PATCH] tabela detectada, enriquecendo...'); } catch (_) {}
-            setTimeout(_enriquecerComissoes, 100);
+            setTimeout(_enriquecerComissoes, 400);
           }
         } catch (_) {}
       });
