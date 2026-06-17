@@ -14403,6 +14403,15 @@ function _ocultarGraficoComissoes() {
     } catch (_) { return null; }
   }
 
+  function _getScrollContainer() {
+    try {
+      return document.querySelector('.app-content, .main-wrapper, #app-main, .content-scroll')
+        || document.querySelector('[class*=\"content\"][class*=\"main\"]')
+        || document.querySelector('main')
+        || document.body;
+    } catch (_) { return document.body; }
+  }
+
   function _ensureTopoV3Wrapper(sectionFallback) {
     var wrap = null;
     try { wrap = document.getElementById('_com_topo_v3'); } catch (_) { wrap = null; }
@@ -14414,9 +14423,7 @@ function _ocultarGraficoComissoes() {
         'position:sticky;top:0;left:0;right:0;' +
         'width:100%;background:var(--bg, #0f1117);z-index:100;' +
         'padding:8px 16px;box-sizing:border-box';
-      var scrollContainer =
-        document.querySelector('.main-content, #main, main, .content-area') ||
-        document.querySelector('[class*="content"]');
+      var scrollContainer = _getScrollContainer();
       if (scrollContainer) scrollContainer.insertBefore(wrap, scrollContainer.firstChild);
       else if (document.body) document.body.insertBefore(wrap, document.body.firstChild);
       else if (sectionFallback && sectionFallback.parentNode) sectionFallback.parentNode.insertBefore(wrap, sectionFallback);
@@ -16182,6 +16189,21 @@ function _ocultarGraficoComissoes() {
           _removerTopoComissoes('ao navegar para: ' + txt);
         } catch (_) {}
       }, true);
+      try {
+        var sidebar = document.querySelector('.sidebar, nav, #sidebar, [class*=\"sidebar\"]');
+        if (sidebar && !sidebar._patchComRemover) {
+          sidebar._patchComRemover = true;
+          sidebar.addEventListener('click', function(e) {
+            try {
+              var item = e && e.target && (e.target.closest ? e.target.closest('a, li, button') : null);
+              if (!item) return;
+              var txt = String(item.textContent || '').toLowerCase();
+              if (txt.indexOf('comiss') >= 0) return;
+              _removerTopoComissoes('sidebar: ' + txt);
+            } catch (_) {}
+          });
+        }
+      } catch (_) {}
       setInterval(function() {
         try {
           var topo = document.getElementById('_com_topo_v3');
@@ -16191,11 +16213,20 @@ function _ocultarGraficoComissoes() {
               el.children &&
               el.children.length === 0 &&
               String(el.textContent || '').trim() === 'Comissão por Vendedor' &&
-              el.offsetParent !== null;
+              el.offsetParent !== null &&
+              el.offsetHeight > 0;
           });
-          if (!secaoComissoes) _removerTopoComissoes('seção não visível');
+          var outraSecaoAtiva = null;
+          try {
+            outraSecaoAtiva = document.querySelector(
+              '#page-pcp:not([style*=\"none\"]), ' +
+              '#page-hub:not([style*=\"none\"]), ' +
+              '.page-active:not([class*=\"comiss\"])'
+            );
+          } catch (_) { outraSecaoAtiva = null; }
+          if (!secaoComissoes && outraSecaoAtiva) _removerTopoComissoes('outra seção ativa');
         } catch (_) {}
-      }, 800);
+      }, 3000);
     }
   } catch (_) {}
 
