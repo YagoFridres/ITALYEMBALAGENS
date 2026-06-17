@@ -1,3 +1,12 @@
+// Registro global de páginas customizadas do patch
+window._patchCustomPages = window._patchCustomPages || {};
+window._patchCustomPages['gramaturas'] = function() {
+  if (typeof window.renderGramaturasPage === 'function') window.renderGramaturasPage();
+};
+window._patchCustomPages['toneladas-vendidas'] = function() {
+  if (typeof window.renderToneladasPage === 'function') window.renderToneladasPage();
+};
+
 window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
@@ -2465,6 +2474,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         };
       });
     }
+    try { window.renderGramaturasPage = renderGramaturasPage; } catch (_) {}
 
     function currentMesAno() {
       var d = new Date();
@@ -2617,10 +2627,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         } catch (e) { alert(String(e && e.message || e)); }
       };
     }
+    try { window.renderToneladasPage = renderToneladasPage; } catch (_) {}
 
     function openCustomPage(pageId) {
-      if (pageId === 'gramaturas') { renderGramaturasPage(); return true; }
-      if (pageId === 'toneladas-vendidas') { renderToneladasPage(); return true; }
+      var pid = String(pageId || '').trim();
+      if (window._patchCustomPages && typeof window._patchCustomPages[pid] === 'function') {
+        window._patchCustomPages[pid]();
+        return true;
+      }
       return false;
     }
     try {
@@ -2641,15 +2655,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   })();
 
   function _abrirGramaturas() {
-    try { if (typeof window.go === 'function') window.go('gramaturas'); } catch (_) {}
+    if (window._patchCustomPages && window._patchCustomPages['gramaturas']) {
+      window._patchCustomPages['gramaturas']();
+    } else if (typeof window.renderGramaturasPage === 'function') {
+      window.renderGramaturasPage();
+    } else {
+      alert('Função de gramaturas não encontrada');
+    }
   }
   window._abrirGramaturas = _abrirGramaturas;
 
   function _abrirToneladas() {
-    try {
-      if (typeof window.goFinanceiro === 'function') { window.goFinanceiro('toneladas-vendidas'); return; }
-    } catch (_) {}
-    try { if (typeof window.go === 'function') window.go('toneladas-vendidas'); } catch (_) {}
+    if (window._patchCustomPages && window._patchCustomPages['toneladas-vendidas']) {
+      window._patchCustomPages['toneladas-vendidas']();
+    } else if (typeof window.renderToneladasPage === 'function') {
+      window.renderToneladasPage();
+    } else {
+      alert('Função de toneladas não encontrada');
+    }
   }
   window._abrirToneladas = _abrirToneladas;
 
@@ -17022,6 +17045,22 @@ function _ocultarGraficoComissoes() {
   try { setTimeout(_bloquearRenderNativoComissoes, 3000); } catch (_) {}
   try { [100, 500, 1000, 2000].forEach(function(t) { setTimeout(_rebindBtnCalcular, t); }); } catch (_) {}
   try { if (_naComissoesAgora()) _agendarRenderComissoesPatch(800); } catch (_) {}
+})();
+
+// Wrapper final e permanente do window.go — executar após todos os patches
+(function() {
+  var _goFinal = window.go;
+  if (typeof _goFinal === 'function' && !_goFinal._patchFinal) {
+    window.go = function(id) {
+      var pid = String(id || '').trim();
+      if (window._patchCustomPages && typeof window._patchCustomPages[pid] === 'function') {
+        try { window._patchCustomPages[pid](); } catch (e) { try { console.error(e); } catch (_) {} }
+        return;
+      }
+      return _goFinal.apply(this, arguments);
+    };
+    window.go._patchFinal = true;
+  }
 })();
 
 (function() {
