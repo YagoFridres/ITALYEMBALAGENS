@@ -3355,13 +3355,36 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     };
 
     const shouldFetchAll = !afterIso && !offset && (!limitRaw || limitRaw === 'all' || limitRaw === '0');
-    const fetched = shouldFetchAll
-      ? await buscarTodasOFsPaginadas(buildQuery)
-      : await (async () => {
-          const { data, error, count } = await buildQuery().range(offset, offset + limit - 1);
-          if (error) throw error;
-          return { data: data || [], count: count || 0 };
-        })();
+    let fetched = null;
+    try {
+      fetched = shouldFetchAll
+        ? await buscarTodasOFsPaginadas(buildQuery)
+        : await (async () => {
+            const { data, error, count } = await buildQuery().range(offset, offset + limit - 1);
+            if (error) throw error;
+            return { data: data || [], count: count || 0 };
+          })();
+    } catch (queryErr) {
+      try { console.error('[GET /api/ofs] erro query principal:', queryErr?.message || queryErr); } catch (_) {}
+      try { console.error('[GET /api/ofs] stack query principal:', queryErr?.stack || ''); } catch (_) {}
+      const fallbackQueryBase = () => {
+        let query = supabase
+          .from('ofs')
+          .select('*', { count: 'exact' })
+          .order('created_at', { ascending: false });
+        if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') query = query.eq('empresa_id', empresaFiltro);
+        else query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
+        if (afterIso) query = query.gte('created_at', afterIso);
+        return query;
+      };
+      fetched = shouldFetchAll
+        ? await buscarTodasOFsPaginadas(fallbackQueryBase)
+        : await (async () => {
+            const { data, error, count } = await fallbackQueryBase().range(offset, offset + limit - 1);
+            if (error) throw error;
+            return { data: data || [], count: count || 0 };
+          })();
+    }
 
     const data = fetched.data || [];
     const count = fetched.count || 0;
@@ -3507,8 +3530,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     if (useCache) cacheSet(cacheKey, resultado, 30000);
     return res.json(resultado);
   } catch (e) {
-    try { console.error('[GET /api/ofs]', e.message); } catch (_) {}
-    return res.status(500).json({ error: e.message });
+    try { console.error('[GET /api/ofs] erro:', e.message); } catch (_) {}
+    try { console.error('[GET /api/ofs] stack:', e.stack); } catch (_) {}
+    return res.status(500).json({ ok: false, error: e.message, ofs: [], data: [], total: 0, offset: 0, limit: 0, hasMore: false });
   }
 });
 

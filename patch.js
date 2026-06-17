@@ -14345,12 +14345,71 @@ function _ocultarGraficoComissoes() {
         var criado = document.getElementById('_com_topo_v3');
         if (criado && criado.dataset) criado.dataset.hash = hashAtual;
       } catch (_) {}
+      try {
+        var container = _acharContainerComissoes();
+        console.log('[COM PATCH] container encontrado:', !!container, container && container.tagName, container && container.offsetHeight);
+        if (!container) {
+          console.error('[COM PATCH] container não encontrado - topo não inserido');
+          setTimeout(function() {
+            try {
+              var c2 = _acharContainerComissoes();
+              var topo = document.getElementById('_com_topo_v3');
+              if (c2 && topo && !topo.parentElement) {
+                c2.insertBefore(topo, c2.firstChild || null);
+                console.log('[COM PATCH] topo inserido na 2a tentativa');
+              }
+            } catch (_) {}
+          }, 1000);
+        }
+      } catch (_) {}
     } catch (_) {}
+  }
+
+  function _acharContainerComissoes() {
+    try {
+      var todos = Array.from(document.querySelectorAll('h2, h3, h4, h5, span, div, p, label, b, strong'));
+      for (var t = 0; t < todos.length; t += 1) {
+        var el = todos[t];
+        try {
+          var temTexto = String(el && el.textContent || '').indexOf('Comissão por Vendedor') >= 0 && el.offsetParent !== null;
+          if (!temTexto) continue;
+          var pai = el.parentElement;
+          for (var i = 0; i < 8 && pai && pai !== document.body; i += 1) {
+            if ((pai.offsetHeight || 0) > 150 && (pai.offsetWidth || 0) > 400) return pai;
+            pai = pai.parentElement;
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+    try {
+      var trs = Array.from(document.querySelectorAll('table tbody tr'));
+      var trVendedor = trs.find(function(tr) {
+        var txt = String(tr && tr.textContent || '');
+        return txt.indexOf('ELEOMAR') >= 0 && txt.indexOf('R$') >= 0;
+      });
+      if (trVendedor) {
+        var paiTab = trVendedor.closest ? trVendedor.closest('table') : null;
+        paiTab = paiTab ? paiTab.parentElement : null;
+        for (var j = 0; j < 5 && paiTab; j += 1) {
+          if ((paiTab.offsetHeight || 0) > 200) return paiTab;
+          paiTab = paiTab.parentElement;
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   function _acharPontoInsercaoTopoComissoes() {
     var pontoInsercao = null;
     var containerPai = null;
+    try {
+      var container = _acharContainerComissoes();
+      if (container) {
+        pontoInsercao = container;
+        containerPai = container.parentElement;
+        return { pontoInsercao: pontoInsercao, containerPai: containerPai };
+      }
+    } catch (_) {}
     try {
       Array.prototype.slice.call(document.querySelectorAll('*')).forEach(function(el) {
         if (pontoInsercao) return;
@@ -16107,7 +16166,38 @@ function _ocultarGraficoComissoes() {
   }
 
   function _renderizarBuscaOFs() {
-    try { _ensureBuscaUI(); } catch (_) {}
+    try {
+      if (document.getElementById('com-busca-of') || document.getElementById('comissao-busca-of-input')) return;
+      if (typeof window._filtrarComissaoOFs !== 'function' && typeof window._filtrarTabelaComissoes === 'function') {
+        window._filtrarComissaoOFs = window._filtrarTabelaComissoes;
+      }
+      var secaoDetalhe = Array.from(document.querySelectorAll('*')).find(function(el) {
+        return el &&
+          String(el.textContent || '').indexOf('Detalhamento das OFs') >= 0 &&
+          (el.offsetHeight || 0) > 50 &&
+          (el.offsetHeight || 0) < 200;
+      });
+      if (!secaoDetalhe) {
+        _ensureBuscaUI();
+        return;
+      }
+      var buscaDiv = document.createElement('div');
+      buscaDiv.id = 'com-busca-of-wrap';
+      buscaDiv.style.cssText = 'padding:12px 16px 8px;display:flex;gap:8px';
+      buscaDiv.innerHTML =
+        '<input id="com-busca-of" type="text" ' +
+        'placeholder="🔍 Buscar por nº da OF ou nome do cliente..." ' +
+        'style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 14px;color:#f1f5f9;font-size:13px;outline:none" ' +
+        'oninput="window._filtrarComissaoOFs&&window._filtrarComissaoOFs(this.value)">' +
+        '<button onclick="window._filtrarComissaoOFs&&window._filtrarComissaoOFs((document.getElementById(\'com-busca-of\')||{}).value||\'\')" ' +
+        'style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;font-size:13px">' +
+        'Buscar</button>';
+      var primeiroFilho = secaoDetalhe.querySelector('table, tbody, .tabela');
+      if (primeiroFilho) secaoDetalhe.insertBefore(buscaDiv, primeiroFilho);
+      else secaoDetalhe.appendChild(buscaDiv);
+    } catch (_) {
+      try { _ensureBuscaUI(); } catch (_) {}
+    }
   }
 
   function _naComissoesAgora() {
