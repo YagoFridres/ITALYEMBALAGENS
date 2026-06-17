@@ -14359,16 +14359,16 @@ function _ocultarGraficoComissoes() {
           el &&
           el.children &&
           el.children.length <= 2 &&
-          String(el.textContent || '').trim().indexOf('Comissão por Vendedor') >= 0
+          String(el.textContent || '').trim() === 'Comissão por Vendedor'
         ) {
-          var container = el;
-          for (var i = 0; i < 5 && container; i++) {
-            if (container.offsetHeight > 100 && container.offsetWidth > 500) {
-              pontoInsercao = container;
-              containerPai = container.parentElement;
+          var pai = el.parentElement;
+          for (var i = 0; i < 6 && pai; i++) {
+            if ((pai.offsetHeight || 0) > 200) {
+              pontoInsercao = pai;
+              containerPai = pai.parentElement;
               break;
             }
-            container = container.parentElement;
+            pai = pai.parentElement;
           }
         }
       });
@@ -14403,15 +14403,6 @@ function _ocultarGraficoComissoes() {
     } catch (_) { return null; }
   }
 
-  function _getScrollContainer() {
-    try {
-      return document.querySelector('.app-content, .main-wrapper, #app-main, .content-scroll')
-        || document.querySelector('[class*=\"content\"][class*=\"main\"]')
-        || document.querySelector('main')
-        || document.body;
-    } catch (_) { return document.body; }
-  }
-
   function _ensureTopoV3Wrapper(sectionFallback) {
     var wrap = null;
     try { wrap = document.getElementById('_com_topo_v3'); } catch (_) { wrap = null; }
@@ -14423,10 +14414,9 @@ function _ocultarGraficoComissoes() {
         'position:sticky;top:0;left:0;right:0;' +
         'width:100%;background:var(--bg, #0f1117);z-index:100;' +
         'padding:8px 16px;box-sizing:border-box';
-      var scrollContainer = _getScrollContainer();
-      if (scrollContainer) scrollContainer.insertBefore(wrap, scrollContainer.firstChild);
-      else if (document.body) document.body.insertBefore(wrap, document.body.firstChild);
-      else if (sectionFallback && sectionFallback.parentNode) sectionFallback.parentNode.insertBefore(wrap, sectionFallback);
+      var p = _acharPontoInsercaoTopoComissoes();
+      if (p.pontoInsercao && !document.getElementById('_com_topo_v3')) p.pontoInsercao.insertBefore(wrap, p.pontoInsercao.firstChild);
+      else if (sectionFallback) sectionFallback.insertBefore(wrap, sectionFallback.firstChild || null);
     } catch (_) {}
     return wrap;
   }
@@ -16103,7 +16093,21 @@ function _ocultarGraficoComissoes() {
       var label = _nomeMes(ref.mesNum) + ' ' + String(ref.anoNum);
       _adicionarTopoComissoes(data, window.__comissoesPrevData || null, label);
       _ensureBuscaUI();
+      setTimeout(function() {
+        try {
+          var buscaExiste = document.getElementById('com-busca-of') || document.getElementById('comissao-busca-of');
+          if (!buscaExiste) {
+            try { console.log('[COM] campo de busca não encontrado, re-renderizando...'); } catch (_) {}
+            if (typeof _renderizarBuscaOFs === 'function') _renderizarBuscaOFs();
+            else _ensureBuscaUI();
+          }
+        } catch (_) {}
+      }, 500);
     } catch (_) {}
+  }
+
+  function _renderizarBuscaOFs() {
+    try { _ensureBuscaUI(); } catch (_) {}
   }
 
   function _naComissoesAgora() {
@@ -16191,15 +16195,26 @@ function _ocultarGraficoComissoes() {
       }, true);
       try {
         var sidebar = document.querySelector('.sidebar, nav, #sidebar, [class*=\"sidebar\"]');
-        if (sidebar && !sidebar._patchComRemover) {
-          sidebar._patchComRemover = true;
+        if (sidebar && !sidebar._patchComRemoverV2) {
+          sidebar._patchComRemoverV2 = true;
           sidebar.addEventListener('click', function(e) {
             try {
-              var item = e && e.target && (e.target.closest ? e.target.closest('a, li, button') : null);
+              var item = e && e.target && (e.target.closest ? e.target.closest('a, li') : null);
               if (!item) return;
-              var txt = String(item.textContent || '').toLowerCase();
+              var txt = String(item.textContent || '').toLowerCase().trim();
               if (txt.indexOf('comiss') >= 0) return;
-              _removerTopoComissoes('sidebar: ' + txt);
+              setTimeout(function() {
+                try {
+                  var secaoVis = Array.from(document.querySelectorAll('*')).find(function(el) {
+                    return el &&
+                      el.children &&
+                      el.children.length === 0 &&
+                      String(el.textContent || '').trim() === 'Comissão por Vendedor' &&
+                      el.offsetParent !== null;
+                  });
+                  if (!secaoVis) _removerTopoComissoes('sidebar: ' + txt);
+                } catch (_) {}
+              }, 500);
             } catch (_) {}
           });
         }
