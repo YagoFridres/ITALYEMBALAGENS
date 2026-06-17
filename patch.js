@@ -14339,6 +14339,13 @@ function _ocultarGraficoComissoes() {
 
   function _adicionarTopoComissoes(json, prevJson, periodoLabel) {
     try {
+      var existente = document.getElementById('_com_topo_v3');
+      if (existente && String(existente.innerHTML || '').trim()) {
+        _renderDashboard(json, prevJson, periodoLabel);
+        _renderRanking(json);
+        try { console.log('[COM PATCH] topo atualizado (já existia)'); } catch (_) {}
+        return;
+      }
       _renderDashboard(json, prevJson, periodoLabel);
       _renderRanking(json);
     } catch (_) {}
@@ -14350,6 +14357,7 @@ function _ocultarGraficoComissoes() {
     try {
       Array.prototype.slice.call(document.querySelectorAll('*')).forEach(function(el) {
         if (pontoInsercao) return;
+        try { if (el && el.closest && el.closest('#_com_topo_v3')) return; } catch (_) {}
         if (
           el &&
           el.children &&
@@ -14398,6 +14406,27 @@ function _ocultarGraficoComissoes() {
     } catch (_) { return null; }
   }
 
+  function _ensureTopoV3Wrapper(sectionFallback) {
+    var wrap = null;
+    try { wrap = document.getElementById('_com_topo_v3'); } catch (_) { wrap = null; }
+    if (wrap) return wrap;
+    try {
+      wrap = document.createElement('div');
+      wrap.id = '_com_topo_v3';
+      wrap.style.cssText = 'width:100%;box-sizing:border-box;padding:8px 16px 0';
+      var p = _acharPontoInsercaoTopoComissoes();
+      try { console.log('[COM PATCH] ponto inserção:', !!p.pontoInsercao, p.pontoInsercao && p.pontoInsercao.tagName, p.pontoInsercao && p.pontoInsercao.offsetHeight); } catch (_) {}
+      if (p.pontoInsercao && p.containerPai) p.containerPai.insertBefore(wrap, p.pontoInsercao);
+      else if (sectionFallback && sectionFallback.parentNode) sectionFallback.parentNode.insertBefore(wrap, sectionFallback);
+      else {
+        var main = document.querySelector('main, #content, .content, #main');
+        if (main) main.insertBefore(wrap, main.firstChild);
+        else if (document.body) document.body.insertBefore(wrap, document.body.firstChild);
+      }
+    } catch (_) {}
+    return wrap;
+  }
+
   function _renderDashboard(json, prevJson, periodoLabel) {
     try {
       var pg = _getPgComissoes();
@@ -14430,19 +14459,13 @@ function _ocultarGraficoComissoes() {
       var topShare = totalV > 0 ? (topTot / totalV) * 100 : 0;
 
       var section = table.closest ? (table.closest('.card, .section') || table.parentNode) : table.parentNode;
-      var topo = pg.querySelector('#comissoes-topo');
+      var wrap = _ensureTopoV3Wrapper(section);
+      var topo = wrap ? wrap.querySelector('#comissoes-topo') : null;
       if (!topo) {
         topo = document.createElement('div');
         topo.id = 'comissoes-topo';
-        var p = _acharPontoInsercaoTopoComissoes();
-        try { console.log('[COM PATCH] ponto inserção:', !!p.pontoInsercao, p.pontoInsercao && p.pontoInsercao.tagName, p.pontoInsercao && p.pontoInsercao.offsetHeight); } catch (_) {}
-        if (p.pontoInsercao && p.containerPai) p.containerPai.insertBefore(topo, p.pontoInsercao);
+        if (wrap) wrap.appendChild(topo);
         else if (section && section.parentNode) section.parentNode.insertBefore(topo, section);
-        else if (pg) pg.insertBefore(topo, pg.firstChild);
-        else {
-          var main = document.querySelector('main, #content, .content, #main');
-          if (main) main.insertBefore(topo, main.firstChild);
-        }
       }
       var dash = topo.querySelector('#comissoes-dashboard');
       if (!dash) {
@@ -14473,7 +14496,9 @@ function _ocultarGraficoComissoes() {
   function _renderRanking(json) {
     try {
       var pg = _getPgComissoes();
-      var topo = pg ? pg.querySelector('#comissoes-topo') : document.getElementById('comissoes-topo');
+      var wrap = null;
+      try { wrap = document.getElementById('_com_topo_v3'); } catch (_) { wrap = null; }
+      var topo = wrap ? wrap.querySelector('#comissoes-topo') : (pg ? pg.querySelector('#comissoes-topo') : document.getElementById('comissoes-topo'));
       if (!topo) return;
       var vend = Array.isArray(json && json.vendedores) ? json.vendedores.slice() : [];
       vend.sort(function(a, b) { return Number(b && b.total || 0) - Number(a && a.total || 0); });
@@ -15808,9 +15833,6 @@ function _ocultarGraficoComissoes() {
       _ensurePeriodoSelects();
       _ensureBuscaUI();
       _bindTrocarClick();
-      var label = _nomeMes(mesNum) + ' ' + String(anoNum);
-      _renderDashboard(json, window.__comissoesPrevData || null, label);
-      _renderRanking(json);
     } catch (_) {}
   }
 
@@ -15956,6 +15978,7 @@ function _ocultarGraficoComissoes() {
       btn.addEventListener('click', function() {
         window.__comUltimaExecucao = 0;
         window.__comEntradaTs = 0;
+        try { window._comEnriquecido = false; } catch (_) {}
         if (typeof window.calcularComissoes === 'function') window.calcularComissoes();
       });
     } catch (_) {}
@@ -16091,7 +16114,12 @@ function _ocultarGraficoComissoes() {
             window._comEnriquecido = true;
             try { console.log('tabela detectada, enriquecendo...'); } catch (_) {}
             try { _obsEnriquecer.disconnect(); } catch (_) {}
-            setTimeout(_enriquecerComissoes, 400);
+            setTimeout(function() {
+              try { _enriquecerComissoes(); } catch (_) {}
+              setTimeout(function() {
+                try { _obsEnriquecer.observe(document.body, { childList: true, subtree: true }); } catch (_) {}
+              }, 2000);
+            }, 400);
           }
         } catch (_) {}
       });
