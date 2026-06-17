@@ -16048,20 +16048,20 @@ function _ocultarGraficoComissoes() {
 
   function _renderizarBuscaOFs() {
     try {
-      var topo = document.getElementById('_com_topo');
-      if (!topo) return;
-      var filtros = topo.querySelector('#_com_filtros');
-      if (!filtros) return;
-      if (document.getElementById('com-busca-of')) return;
+      var detalhe = document.getElementById('_com_detalhe');
+      if (!detalhe) return;
+      var host = detalhe.querySelector('[data-com-search-host]');
+      if (!host) return;
+      if (document.getElementById('_com_busca')) return;
       var wrap = document.createElement('div');
-      wrap.id = 'com-busca-wrap';
-      wrap.style.cssText = 'display:flex;gap:8px;align-items:center;flex:1 1 360px;min-width:280px';
+      wrap.id = '_com_busca_wrap';
+      wrap.style.cssText = 'display:flex;gap:8px;margin:12px 0';
       wrap.innerHTML =
-        '<input id="com-busca-of" type="text" placeholder="🔍 Buscar por nº da OF ou nome do cliente..." ' +
-        'style="flex:1;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 14px;color:#f1f5f9;font-size:13px;outline:none" />' +
-        '<button type="button" id="com-busca-btn" ' +
-        'style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;font-size:13px;white-space:nowrap">Buscar</button>';
-      filtros.appendChild(wrap);
+        '<input id="_com_busca" type="text" placeholder="🔍 Buscar por nº da OF ou nome do cliente..." ' +
+        'style="flex:1;padding:10px 14px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#f1f5f9;font-size:14px;outline:none" />' +
+        '<button type="button" id="_com_btn_buscar" ' +
+        'style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">Buscar</button>';
+      host.appendChild(wrap);
     } catch (_) {}
   }
 
@@ -16218,10 +16218,18 @@ function _ocultarGraficoComissoes() {
         }
       } catch (_) {}
 
-      _renderizarBuscaOFs();
       try {
-        var inpBusca = document.getElementById('com-busca-of');
-        var btnBusca = document.getElementById('com-busca-btn');
+        var topoBuscaAntigo = document.getElementById('com-busca-wrap') || document.getElementById('com-busca-of') || document.getElementById('com-busca-btn');
+        if (topoBuscaAntigo) {
+          var wrapAntigo = topoBuscaAntigo.closest ? topoBuscaAntigo.closest('#com-busca-wrap, #_com_busca_wrap') : null;
+          if (wrapAntigo) wrapAntigo.remove();
+          else if (topoBuscaAntigo.remove) topoBuscaAntigo.remove();
+        }
+      } catch (_) {}
+
+      try {
+        var inpBusca = document.getElementById('_com_busca');
+        var btnBusca = document.getElementById('_com_btn_buscar');
         if (inpBusca && !inpBusca._comBound) {
           inpBusca._comBound = true;
           inpBusca.addEventListener('input', function(e) { window._buscarOFsComissao && window._buscarOFsComissao(e.target.value); });
@@ -16230,7 +16238,7 @@ function _ocultarGraficoComissoes() {
           btnBusca._comBound = true;
           btnBusca.addEventListener('click', function() {
             var v = '';
-            try { v = String((document.getElementById('com-busca-of') || {}).value || ''); } catch (_) { v = ''; }
+            try { v = String((document.getElementById('_com_busca') || {}).value || ''); } catch (_) { v = ''; }
             window._buscarOFsComissao && window._buscarOFsComissao(v);
           });
         }
@@ -16367,7 +16375,7 @@ function _ocultarGraficoComissoes() {
           + '<summary style="list-style:none;cursor:pointer;background:' + coresVendedor[gi % coresVendedor.length] + ';padding:10px 14px;color:#f8fafc;font-weight:700">'
           + '🔽 ' + _escHtmlCom(g.vendedor) + ' — ' + String(g.ofs.length) + ' OFs — Total: ' + _escHtmlCom(_fmtRs(g.total_vendas)) + ' — Comissão: ' + _escHtmlCom(_fmtRs(g.comissao_total))
           + '</summary>'
-          + '<div style="overflow:auto;max-height:400px;display:block">'
+          + '<div style="overflow-x:auto">'
           + '<table style="width:100%;border-collapse:collapse;background:#0f172a">'
           + '<thead><tr style="background:#1e293b;color:#64748b;font-size:11px;text-transform:uppercase">'
           + '<th style="padding:8px 10px;text-align:left;white-space:nowrap"># OF</th>'
@@ -16404,9 +16412,26 @@ function _ocultarGraficoComissoes() {
           + '</tbody></table></div></details>';
       }).join('');
       divDetalhe.innerHTML = htmlDetalhe;
+      _renderizarBuscaOFs();
+      try {
+        var inpBusca2 = document.getElementById('_com_busca');
+        var btnBusca2 = document.getElementById('_com_btn_buscar');
+        if (inpBusca2 && !inpBusca2._comBound) {
+          inpBusca2._comBound = true;
+          inpBusca2.addEventListener('input', function(e) { window._buscarOFsComissao && window._buscarOFsComissao(e.target.value); });
+        }
+        if (btnBusca2 && !btnBusca2._comBound) {
+          btnBusca2._comBound = true;
+          btnBusca2.addEventListener('click', function() {
+            var v = '';
+            try { v = String((document.getElementById('_com_busca') || {}).value || ''); } catch (_) { v = ''; }
+            window._buscarOFsComissao && window._buscarOFsComissao(v);
+          });
+        }
+      } catch (_) {}
       try {
         var v0 = '';
-        try { v0 = String((document.getElementById('com-busca-of') || {}).value || '').trim(); } catch (_) { v0 = ''; }
+        try { v0 = String((document.getElementById('_com_busca') || {}).value || '').trim(); } catch (_) { v0 = ''; }
         if (v0) window._buscarOFsComissao && window._buscarOFsComissao(v0);
       } catch (_) {}
     } catch (e) {
