@@ -15973,19 +15973,26 @@ function _ocultarGraficoComissoes() {
 
   function _pctCom(v) {
     var n = Number(v || 0) || 0;
-    return n > 0 && n <= 1 ? (n * 100) : n;
+    return n;
   }
 
   function _normalizarOFComissao(of, vendedorFallback) {
-    var qtd = Number(of && (of.qtd != null ? of.qtd : of.quantidade) || 0) || 0;
-    var valorTotal = Number(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : of.valor_venda)) || 0) || 0;
-    var pctRaw = _pctCom(of && (of.comissao_pct != null ? of.comissao_pct : of.comissao));
-    var fator = pctRaw > 1 ? (pctRaw / 100) : pctRaw;
-    var comissaoValor = Number(of && (of.comissao_valor != null ? of.comissao_valor : of.comissao_rs) || (valorTotal * fator) || 0) || 0;
+    var qtd = Number(of && (of.quantidade != null ? of.quantidade : (of.qtd != null ? of.qtd : of.quant)) || 0) || 0;
+    var valorTotal = Number(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : (of.valor != null ? of.valor : of.valor_venda))) || 0) || 0;
+    var pctRaw = _pctCom(of && (of.comissao_pct != null ? of.comissao_pct : (of.pct_comissao != null ? of.pct_comissao : of.comissao_pct)));
+    var fator = (Number(pctRaw || 0) || 0) / 100;
+    var comissaoValor = Number(
+      of && (
+        of.comissao_rs != null ? of.comissao_rs :
+        (of.comissao_valor != null ? of.comissao_valor :
+         (of.valor_comissao != null ? of.valor_comissao : null))
+      )
+    );
+    if (!Number.isFinite(comissaoValor)) comissaoValor = Number((valorTotal * fator) || 0) || 0;
     return {
       raw: of || {},
       id: String(of && of.id || '').trim(),
-      numero: String(of && (of.numero_of || of.numero || of.of_num || of.of || of.id) || '—').trim() || '—',
+      numero: String(of && (of.numero != null ? of.numero : (of.numero_of || of.num_of || of.of_num || of.of || of.id)) || '—').trim() || '—',
       cliente: String(of && (of.cliente || of.cliente_nome || of.clinome || of.cliNome) || '—').trim() || '—',
       vendedor: String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || vendedorFallback || 'Sem vendedor').trim() || 'Sem vendedor',
       qtd: qtd,
@@ -16137,27 +16144,50 @@ function _ocultarGraficoComissoes() {
       });
       var data = await resp.json().catch(function() { return null; });
       if (!resp.ok || !data || data.ok === false) throw new Error((data && data.error) || ('HTTP ' + resp.status));
-      try { console.log('[COM PATCH] data completo:', JSON.stringify(data).substring(0, 2000)); } catch (_) {}
-      try { console.log('[COM PATCH] keys:', Object.keys(data || {})); } catch (_) {}
-      try { console.log('[COM PATCH] grupos?', data && data.grupos); } catch (_) {}
-      try { console.log('[COM PATCH] vendedores?', data && data.vendedores); } catch (_) {}
-      try { console.log('[COM PATCH] data[0]?', Array.isArray(data) ? data[0] : 'não é array'); } catch (_) {}
 
-      var grupos = _normalizarGruposComissoes(data);
-      var todasOFs = grupos.reduce(function(acc, g) { return acc.concat(g.ofs || []); }, []);
-      window._comissaoOFs = todasOFs.map(function(of) { return of.raw || of; });
+      var vendedores = Array.isArray(data && data.vendedores) ? data.vendedores : [];
+      var todasOfsRaw = Array.isArray(data && data.ofs) ? data.ofs : [];
+      var totalGeral = Number(data && data.total_vendido || 0) || 0;
+      var totalOFs = Number(data && data.total_ofs || 0) || 0;
+      var totalComissoes = Number(data && data.total_comissao || 0) || 0;
+
+      var grupos = (vendedores || []).map(function(v) {
+        var id = String(v && v.id || '').trim();
+        var idNorm = id.toLowerCase();
+        var vendNome = String(v && v.nome || v && v.vendedor || '').trim() || 'Sem vendedor';
+        var vendNomeNorm = vendNome.toLowerCase();
+        var ofsVendedor = (todasOfsRaw || []).filter(function(of) {
+          var vid = String(of && of.vendedor_id || '').trim().toLowerCase();
+          if (idNorm && vid) return vid === idNorm;
+          var vn = String(of && of.vendedor || '').trim().toLowerCase();
+          return !!vendNomeNorm && vn === vendNomeNorm;
+        });
+        var ofsNorm = ofsVendedor.map(function(of) { return _normalizarOFComissao(of, vendNome); });
+        return {
+          id: id,
+          vendedor: vendNome,
+          comissao_pct: Number(v && v.comissao_pct || 0) || 0,
+          total_vendas: Number(v && v.total || 0) || 0,
+          comissao_rs: Number(v && v.comissao_rs || 0) || 0,
+          comissao_total: Number(v && v.comissao_rs || 0) || 0,
+          ofs_count: Number(v && v.ofs || 0) || 0,
+          ofs: ofsNorm
+        };
+      });
+
+      window._comissaoOFs = (todasOfsRaw || []).slice();
       window._comissoesSqlData = data;
       window._comissoesData = _normalizarComissoesData({
-        totalGeral: Number(data.total_geral_vendas != null ? data.total_geral_vendas : data.total_vendido || 0) || 0,
-        totalComissao: Number(data.total_comissao || 0) || 0,
-        totalPedidos: Number(data.total_ofs || todasOFs.length || 0) || 0,
-        vendedores: grupos.map(function(g) {
+        totalGeral: totalGeral,
+        totalComissao: totalComissoes,
+        totalPedidos: totalOFs,
+        vendedores: (vendedores || []).map(function(v) {
           return {
-            nome: g.vendedor,
-            total: g.total_vendas,
-            ofs: g.ofs.length,
-            comissao_rs: g.comissao_total,
-            comissao_pct: g.ofs[0] ? g.ofs[0].comissao_pct : 0
+            nome: String(v && v.nome || '—'),
+            total: Number(v && v.total || 0) || 0,
+            ofs: Number(v && v.ofs || 0) || 0,
+            comissao_rs: Number(v && v.comissao_rs || 0) || 0,
+            comissao_pct: Number(v && v.comissao_pct || 0) || 0
           };
         })
       });
@@ -16166,9 +16196,6 @@ function _ocultarGraficoComissoes() {
         window.__comissoesPrevData = prev ? await _fetchComissoes(prev.mesNum, prev.anoNum) : null;
       } catch (_) { window.__comissoesPrevData = null; }
 
-      var totalGeral = Number(data.total_geral_vendas != null ? data.total_geral_vendas : data.total_vendido || 0) || 0;
-      var totalOFs = Number(data.total_ofs || todasOFs.length || 0) || 0;
-      var totalComissoes = grupos.reduce(function(s, g) { return s + (Number(g.comissao_total || 0) || 0); }, 0);
       var prevTotal = Number(window.__comissoesPrevData && (window.__comissoesPrevData.total_geral_vendas != null ? window.__comissoesPrevData.total_geral_vendas : window.__comissoesPrevData.total_vendido) || 0) || 0;
       var deltaTxt = '—';
       if (prevTotal > 0) {
@@ -16178,13 +16205,15 @@ function _ocultarGraficoComissoes() {
       var ranking = grupos.slice().sort(function(a, b) { return Number(b.total_vendas || 0) - Number(a.total_vendas || 0); }).slice(0, 3);
       var rankingMax = Number(ranking[0] && ranking[0].total_vendas || 0) || 1;
       var coresVendedor = ['#1a3a5c', '#1a3a2c', '#3a1a3a', '#3a2a1a'];
+      var _fmtBr = function(v) { return (Number(v || 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+      var _fmtRs = function(v) { return 'R$ ' + _fmtBr(v); };
 
       var htmlCards = ''
         + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;padding:4px 0 16px">'
-        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Total Vendido</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + _escHtmlCom(_fmtMoney(totalGeral)) + '</div></div>'
+        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Total Vendido</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + _escHtmlCom(_fmtRs(totalGeral)) + '</div></div>'
         + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">OFs Concluídas</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + String(totalOFs) + '</div></div>'
-        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Total Comissões</div><div style="color:#22c55e;font-size:22px;font-weight:700">' + _escHtmlCom(_fmtMoney(totalComissoes)) + '</div></div>'
-        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Vendedores</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + String(grupos.length) + '</div><div style="color:#94a3b8;font-size:12px;margin-top:6px">vs mês anterior: ' + _escHtmlCom(deltaTxt) + '</div></div>'
+        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Total Comissões</div><div style="color:#22c55e;font-size:22px;font-weight:700">' + _escHtmlCom(_fmtRs(totalComissoes)) + '</div></div>'
+        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Vendedores</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + String((vendedores || []).length) + '</div><div style="color:#94a3b8;font-size:12px;margin-top:6px">vs mês anterior: ' + _escHtmlCom(deltaTxt) + '</div></div>'
         + '</div>';
 
       var medals = ['🥇', '🥈', '🥉'];
@@ -16194,9 +16223,9 @@ function _ocultarGraficoComissoes() {
           var pctBar = Math.max(4, Math.min(100, (Number(g.total_vendas || 0) / rankingMax) * 100));
           return ''
             + '<div style="flex:1 1 240px;min-width:240px;background:#111827;border:1px solid #2a3f5f;border-radius:12px;padding:14px 16px;color:#fff">'
-            + '<div style="display:flex;justify-content:space-between;gap:12px;font-weight:700;font-size:14px;align-items:center"><div><span style="font-size:1.4em;margin-right:6px">' + medals[idx] + '</span><span style="font-size:16px;font-weight:800">' + _escHtmlCom(g.vendedor) + '</span></div><div>' + _escHtmlCom(_fmtMoney(g.total_vendas)) + '</div></div>'
+            + '<div style="display:flex;justify-content:space-between;gap:12px;font-weight:700;font-size:14px;align-items:center"><div><span style="font-size:1.4em;margin-right:6px">' + medals[idx] + '</span><span style="font-size:16px;font-weight:800">' + _escHtmlCom(g.vendedor) + '</span></div><div>' + _escHtmlCom(_fmtRs(g.total_vendas)) + '</div></div>'
             + '<div style="height:8px;border-radius:999px;background:rgba(255,255,255,0.10);overflow:hidden;margin-top:10px"><div style="height:100%;width:' + pctBar.toFixed(0) + '%;background:#6366f1;border-radius:999px"></div></div>'
-            + '<div style="margin-top:8px;color:#94a3b8;font-size:12px">' + String(g.ofs.length) + ' OFs · Comissão ' + _escHtmlCom(_fmtMoney(g.comissao_total)) + '</div>'
+            + '<div style="margin-top:8px;color:#94a3b8;font-size:12px">' + String(g.ofs.length) + ' OFs · Comissão ' + _escHtmlCom(_fmtRs(g.comissao_total)) + '</div>'
             + '</div>';
         }).join('')
         + '</div>' : '';
@@ -16211,15 +16240,15 @@ function _ocultarGraficoComissoes() {
         + '<th style="padding:10px 12px;text-align:right">% Comissão</th>'
         + '<th style="padding:10px 12px;text-align:right">Comissão (R$)</th>'
         + '</tr></thead><tbody>'
-        + grupos.map(function(g, i) {
-          var pct = g.ofs[0] ? g.ofs[0].comissao_pct : 0;
+        + (vendedores || []).map(function(v, i) {
+          var pct = Number(v && v.comissao_pct || 0) || 0;
           return ''
             + '<tr style="background:' + coresVendedor[i % coresVendedor.length] + '">'
-            + '<td style="padding:10px 12px;color:#f1f5f9;font-weight:600">' + _escHtmlCom(g.vendedor) + '</td>'
-            + '<td style="padding:10px 12px;text-align:right;color:#cbd5e1">' + String(g.ofs.length) + '</td>'
-            + '<td style="padding:10px 12px;text-align:right;color:#f1f5f9">' + _escHtmlCom(_fmtMoney(g.total_vendas)) + '</td>'
+            + '<td style="padding:10px 12px;color:#f1f5f9;font-weight:600">' + _escHtmlCom(String(v && v.nome || '—')) + '</td>'
+            + '<td style="padding:10px 12px;text-align:right;color:#cbd5e1">' + String(Number(v && v.ofs || 0) || 0) + '</td>'
+            + '<td style="padding:10px 12px;text-align:right;color:#f1f5f9">' + _escHtmlCom(_fmtRs(Number(v && v.total || 0) || 0)) + '</td>'
             + '<td style="padding:10px 12px;text-align:right;color:#cbd5e1">' + _escHtmlCom(pct.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + '%</td>'
-            + '<td style="padding:10px 12px;text-align:right;color:#22c55e;font-weight:700">' + _escHtmlCom(_fmtMoney(g.comissao_total)) + '</td>'
+            + '<td style="padding:10px 12px;text-align:right;color:#22c55e;font-weight:700">' + _escHtmlCom(_fmtRs(Number(v && v.comissao_rs || 0) || 0)) + '</td>'
             + '</tr>';
         }).join('')
         + '</tbody></table></div>';
@@ -16231,7 +16260,7 @@ function _ocultarGraficoComissoes() {
         return ''
           + '<details data-vendedor="' + _escHtmlCom(g.vendedor) + '" open style="margin-top:16px;border:1px solid #1e293b;border-radius:10px;overflow:hidden;background:#0f172a">'
           + '<summary style="list-style:none;cursor:pointer;background:' + coresVendedor[gi % coresVendedor.length] + ';padding:10px 14px;color:#f8fafc;font-weight:700">'
-          + '🔽 ' + _escHtmlCom(g.vendedor) + ' — ' + String(g.ofs.length) + ' OFs — Total: ' + _escHtmlCom(_fmtMoney(g.total_vendas)) + ' — Comissão: ' + _escHtmlCom(_fmtMoney(g.comissao_total))
+          + '🔽 ' + _escHtmlCom(g.vendedor) + ' — ' + String(g.ofs.length) + ' OFs — Total: ' + _escHtmlCom(_fmtRs(g.total_vendas)) + ' — Comissão: ' + _escHtmlCom(_fmtRs(g.comissao_total))
           + '</summary>'
           + '<div style="overflow-x:auto">'
           + '<table style="width:100%;border-collapse:collapse;background:#0f172a">'
@@ -16258,10 +16287,10 @@ function _ocultarGraficoComissoes() {
               + '<td style="padding:7px 10px;color:#f1f5f9">' + _escHtmlCom(of.cliente) + '</td>'
               + '<td style="padding:7px 10px;color:#94a3b8">' + _escHtmlCom(of.vendedor) + '</td>'
               + '<td style="padding:7px 10px;text-align:right;color:#94a3b8">' + String(of.qtd || 0) + '</td>'
-              + '<td style="padding:7px 10px;text-align:right;color:#f1f5f9">' + _escHtmlCom(_fmtMoney(of.valor_total)) + '</td>'
-              + '<td style="padding:7px 10px;text-align:right;color:#94a3b8">' + _escHtmlCom(_fmtMoney(of.preco_unit)) + '</td>'
+              + '<td style="padding:7px 10px;text-align:right;color:#f1f5f9">' + _escHtmlCom(_fmtRs(of.valor_total)) + '</td>'
+              + '<td style="padding:7px 10px;text-align:right;color:#94a3b8">' + _escHtmlCom(_fmtRs(of.preco_unit)) + '</td>'
               + '<td style="padding:7px 10px;text-align:right;color:#94a3b8">' + _escHtmlCom(of.comissao_pct.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + '%</td>'
-              + '<td style="padding:7px 10px;text-align:right;color:#22c55e;font-weight:600">' + _escHtmlCom(_fmtMoney(of.comissao_valor)) + '</td>'
+              + '<td style="padding:7px 10px;text-align:right;color:#22c55e;font-weight:600">' + _escHtmlCom(_fmtRs(of.comissao_valor)) + '</td>'
               + '<td style="padding:7px 10px;color:#94a3b8">' + _escHtmlCom(dataStr) + '</td>'
               + '<td style="padding:7px 10px"><span style="background:#166534;color:#4ade80;padding:2px 8px;border-radius:4px;font-size:11px">' + _escHtmlCom(of.status) + '</span></td>'
               + '<td style="padding:7px 10px;text-align:center"><button type="button" data-com-trocar="1" data-of-id="' + _escHtmlCom(of.id) + '" style="background:#1d4ed8;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px">✏️ Trocar</button></td>'
