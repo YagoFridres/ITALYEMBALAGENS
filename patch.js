@@ -15820,7 +15820,7 @@ function _ocultarGraficoComissoes() {
 
       var div = document.createElement('div');
       div.id = '_com_topo_v3';
-      div.style.cssText = 'width:100%;box-sizing:border-box;padding:8px 16px';
+      div.style.cssText = 'width:100%;box-sizing:border-box;padding:8px 16px 0';
       div.innerHTML = ''
         + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:12px">'
         + [
@@ -15853,17 +15853,22 @@ function _ocultarGraficoComissoes() {
           }).join('')
         + '</div>';
 
-      var alvo = null;
-      Array.prototype.slice.call(document.querySelectorAll('*')).forEach(function(el) {
-        try {
-          if (alvo) return;
-          if (el.children && el.children.length === 0 && String(el.textContent || '').trim() === 'Comissão por Vendedor') {
-            alvo = (el.closest && el.closest('section, .card, .box, [class*="section"]')) || (el.parentElement && el.parentElement.parentElement) || null;
-          }
-        } catch (_) {}
-      });
-      if (alvo && alvo.parentElement) {
-        alvo.parentElement.insertBefore(div, alvo);
+      var pag = document.querySelector('#page-comissoes,[data-page="comissoes"],.page-comissoes');
+      if (pag) {
+        pag.insertBefore(div, pag.firstChild);
+      } else {
+        var alvo = null;
+        Array.prototype.slice.call(document.querySelectorAll('*')).forEach(function(el) {
+          try {
+            if (alvo) return;
+            if (el.children && el.children.length === 0 && String(el.textContent || '').trim() === 'Comissão por Vendedor') {
+              alvo = (el.closest && el.closest('section, .card, .box, [class*="section"]')) || (el.parentElement && el.parentElement.parentElement) || null;
+            }
+          } catch (_) {}
+        });
+        if (alvo && alvo.parentElement) {
+          alvo.parentElement.insertBefore(div, alvo);
+        }
       }
       try { console.log('[COM PATCH] topo injetado, grupos:', grupos.length); } catch (_) {}
       _expandirLarguraTabelaComissoes();
@@ -15876,12 +15881,13 @@ function _ocultarGraficoComissoes() {
       var nomesVend = (Array.isArray(grupos) ? grupos : []).map(function(g) {
         return String((g && (g.vendedor || g.nome)) || '').trim();
       }).filter(Boolean);
-      Array.prototype.slice.call(document.querySelectorAll('#page-comissoes tr, [data-page="comissoes"] tr, .page-comissoes tr')).forEach(function(tr) {
+      Array.prototype.slice.call(document.querySelectorAll('#page-comissoes table tbody tr, [data-page="comissoes"] table tbody tr, .page-comissoes table tbody tr')).forEach(function(tr) {
         try {
-          var txt = String(tr.textContent || '').trim();
-          var idx = nomesVend.findIndex(function(n) { return n && txt.indexOf(n) === 0; });
-          if (idx >= 0 && !tr.dataset.comColorized) {
-            tr.dataset.comColorized = '1';
+          if (tr.dataset.comColorido) return;
+          var cell0 = tr.cells && tr.cells[0] ? String(tr.cells[0].textContent || '').trim() : '';
+          var idx = nomesVend.findIndex(function(n) { return n && cell0 === n; });
+          if (idx >= 0) {
+            tr.dataset.comColorido = '1';
             tr.style.background = cores[idx % cores.length];
             tr.style.transition = 'filter 0.15s';
             tr.onmouseenter = function() { tr.style.filter = 'brightness(1.15)'; };
@@ -16040,6 +16046,23 @@ function _ocultarGraficoComissoes() {
         });
       }
 
+      function _obterDadosComissoesDoIndex() {
+        var cands = [
+          window._ultimosDadosComissoes,
+          window.comissoesData,
+          window._comissaoData,
+          window._comissoesSqlData,
+          (window._comissoesData && window._comissoesData.data) ? window._comissoesData.data : null
+        ];
+        for (var i = 0; i < cands.length; i += 1) {
+          var d = cands[i];
+          if (!d || typeof d !== 'object') continue;
+          var grupos = Array.isArray(d.grupos) ? d.grupos : (Array.isArray(d.vendedores) ? d.vendedores : null);
+          if (grupos && grupos.length) return d;
+        }
+        return null;
+      }
+
       function _enriquecerComissoes() {
         if (window.__comEnriquecendo) return;
         window.__comEnriquecendo = true;
@@ -16050,37 +16073,44 @@ function _ocultarGraficoComissoes() {
         var token = _getComToken();
         var headers = token ? { Authorization: 'Bearer ' + token } : {};
 
-        fetch('/api/comissoes/relatorio?mes=' + mes + '&ano=' + ano, { headers: headers })
-          .then(function(r) { return r.json(); })
-          .then(function(dados) {
-            var grupos = Array.isArray(dados && (dados.grupos || dados.vendedores)) ? (dados.grupos || dados.vendedores) : [];
-            try { window._ultimosDadosComissoes = dados; } catch (_) {}
-            try { window._comissaoData = dados; } catch (_) {}
-            _colorirLinhasVendedores(grupos);
-            _preencherColunasOFsExistentes(dados, grupos);
-            var mesAnt = mes === 1 ? 12 : (mes - 1);
-            var anoAnt = mes === 1 ? (ano - 1) : ano;
-            return fetch('/api/comissoes/relatorio?mes=' + mesAnt + '&ano=' + anoAnt, { headers: headers })
-              .then(function(r) { return r.json(); })
-              .then(function(dadosAnt) {
-                _adicionarTopoComissoes(dados, dadosAnt, grupos);
-              })
-              .catch(function() {
-                _adicionarTopoComissoes(dados, null, grupos);
-              });
-          })
-          .catch(function() {
-            window._comEnriquecido = false;
-          })
-          .finally(function() {
-            window.__comEnriquecendo = false;
+        var dadosAtual = _obterDadosComissoesDoIndex();
+        var pDadosAtual = dadosAtual
+          ? Promise.resolve(dadosAtual)
+          : fetch('/api/comissoes/relatorio?mes=' + mes + '&ano=' + ano, { headers: headers }).then(function(r) { return r.json(); });
+
+        pDadosAtual.then(function(dados) {
+          var grupos = Array.isArray(dados && (dados.grupos || dados.vendedores)) ? (dados.grupos || dados.vendedores) : [];
+          try { window._ultimosDadosComissoes = dados; } catch (_) {}
+          try { window._comissaoData = dados; } catch (_) {}
+          _colorirLinhasVendedores(grupos);
+          _preencherColunasOFsExistentes(dados, grupos);
+
+          var prevGlobal = window.__comissoesPrevData;
+          var pPrev = (prevGlobal && typeof prevGlobal === 'object')
+            ? Promise.resolve(prevGlobal)
+            : (function() {
+                var mesAnt = mes === 1 ? 12 : (mes - 1);
+                var anoAnt = mes === 1 ? (ano - 1) : ano;
+                return fetch('/api/comissoes/relatorio?mes=' + mesAnt + '&ano=' + anoAnt, { headers: headers }).then(function(r) { return r.json(); });
+              })();
+
+          pPrev.then(function(dadosAnt) {
+            try { window.__comissoesPrevData = dadosAnt || null; } catch (_) {}
+            _adicionarTopoComissoes(dados, dadosAnt || null, grupos);
+          }).catch(function() {
+            _adicionarTopoComissoes(dados, null, grupos);
           });
+        }).catch(function() {
+          window._comEnriquecido = false;
+        }).finally(function() {
+          window.__comEnriquecendo = false;
+        });
       }
 
       var observer = new MutationObserver(function() {
         try {
           var linhasVendedor = _acharLinhasVendedor();
-          if (linhasVendedor.length > 0 && !window._comEnriquecido) {
+          if (linhasVendedor.length >= 2 && !window._comEnriquecido) {
             window._comEnriquecido = true;
             try { console.log('[COM PATCH] tabela detectada, enriquecendo...'); } catch (_) {}
             setTimeout(_enriquecerComissoes, 100);
