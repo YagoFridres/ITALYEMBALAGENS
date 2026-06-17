@@ -10589,36 +10589,34 @@ app.post('/api/admin/init-gramaturas', authMiddleware, async (req, res) => {
 
 app.get('/api/gramaturas', authMiddleware, async (req, res) => {
   try {
-    const ready = await _ensureGramaturasTable();
-    if (!ready) return res.json({ ok: true, data: [], gramaturas: [] });
-    let empresa_id = await _empresaUuidSafe(req);
-    if (!empresa_id) empresa_id = String(req.query.empresa_id || 'df5f7672-0a6b-402d-ae65-296554236c31').trim();
-    console.log('[GRAMATURAS] buscando empresa_id:', empresa_id);
-    const incluirInativas = String(req.query?.incluir_inativas || '').trim().toLowerCase() === 'true';
-    const selectComJoin = 'id,nome,gramatura,valor_unitario,fornecedor_id,fornecedor_nome,empresa_id,ativo,created_at,fornecedor:fornecedores(nome)';
-    let q = supabase.from('gramaturas').select(selectComJoin).order('nome');
-    if (empresa_id) q = q.eq('empresa_id', empresa_id);
-    if (!incluirInativas) q = q.eq('ativo', true);
-    let { data, error } = await q;
-    if (error) {
-      let q2 = supabase.from('gramaturas').select('*').order('nome');
-      if (empresa_id) q2 = q2.eq('empresa_id', empresa_id);
-      if (!incluirInativas) q2 = q2.eq('ativo', true);
-      const r2 = await q2;
-      data = r2?.data || [];
-      error = r2?.error || null;
-    }
-    console.log('[GRAMATURAS] resultado:', Array.isArray(data) ? data.length : 0, error?.message);
+    const empresaId = String(req.query.empresa_id || 'df5f7672-0a6b-402d-ae65-296554236c31').trim();
+    const { data, error } = await supabase
+      .from('gramaturas')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('nome');
     if (error) throw error;
-    const out = (Array.isArray(data) ? data : []).map((g) => {
-      const fornNome = String(g?.fornecedor?.nome || g?.fornecedor_nome || '').trim();
-      const { fornecedor, ...rest } = g || {};
-      return { ...rest, fornecedor_nome: fornNome || null };
-    });
-    return res.json({ ok: true, data: out, gramaturas: out });
+
+    const fornIds = [...new Set((data || []).map((g) => g?.fornecedor_id).filter(Boolean))];
+    const fornMap = {};
+    if (fornIds.length > 0) {
+      const { data: forns, error: e2 } = await supabase
+        .from('fornecedores')
+        .select('id, nome')
+        .in('id', fornIds);
+      if (e2) throw e2;
+      (forns || []).forEach((f) => { fornMap[f.id] = f.nome; });
+    }
+
+    const result = (data || []).map((g) => ({
+      ...g,
+      fornecedor_nome: fornMap[g.fornecedor_id] || g.fornecedor_nome || null,
+    }));
+    console.log('[GRAMATURAS] retornando:', result.length, 'registros');
+    return res.json(result);
   } catch (e) {
     console.error('[GRAMATURAS] erro:', e.message);
-    return res.json({ ok: true, data: [], gramaturas: [] });
+    return res.status(500).json({ error: e.message });
   }
 });
 

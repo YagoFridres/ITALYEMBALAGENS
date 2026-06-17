@@ -2452,7 +2452,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  <div class="pep-head"><div><div class="pep-title">📐 Gramaturas</div><div class="pep-sub">Cadastro de gramaturas (g/m²) e custo do papel (R$/kg)</div></div><button class="pep-btn primary" id="gram-nova">+ Nova Gramatura</button></div>'
         + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Nome</th><th>Gramatura (g/m²)</th><th>Valor Unit. (R$/kg)</th><th>Fornecedor</th><th>Ações</th></tr></thead><tbody>'
         + (lista.length ? lista.map(function(g) {
-          return '<tr data-gid="' + esc(g.id || '') + '"><td>' + esc(g.nome || '—') + '</td><td>' + num(g.gramatura || 0, 2) + '</td><td>' + money(g.valor_unitario || 0) + '</td><td>' + esc(g.fornecedor_nome || '—') + '</td><td><button class="pep-btn" data-gedit="' + esc(g.id || '') + '">Editar</button> <button class="pep-btn danger" data-gdel="' + esc(g.id || '') + '">Desativar</button></td></tr>';
+          return '<tr data-gid="' + esc(g.id || '') + '"><td>' + esc(g.nome || '—') + '</td><td>' + num(g.gramatura || 0, 2) + '</td><td>' + money(g.valor_unitario || 0) + '</td><td>' + esc(g.fornecedor_nome || (g.fornecedores && g.fornecedores.nome) || '—') + '</td><td><button class="pep-btn" data-gedit="' + esc(g.id || '') + '">Editar</button> <button class="pep-btn danger" data-gdel="' + esc(g.id || '') + '">Desativar</button></td></tr>';
         }).join('') : '<tr><td colspan="5" style="text-align:center;color:#94a3b8">Nenhuma gramatura cadastrada.</td></tr>')
         + '  </tbody></table></div></div>'
         + '</div>';
@@ -2677,106 +2677,88 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   window._abrirToneladas = _abrirToneladas;
 
   function _setupMenusCustom() {
-    function _tentarAdicionarMenus() {
+    function _injetar() {
       try {
         if (!document.getElementById('_menu_gramaturas')) {
-          const linkCadastro = document.querySelector('a[href*="clientes"], a[href*="fornecedores"], a[href*="vendedores"]')
-            || Array.from(document.querySelectorAll('a')).find(function(a) {
-              return ['Clientes', 'Fornecedores', 'Vendedores', 'Usuários'].includes(String(a.textContent || '').trim());
-            });
-          if (linkCadastro) {
-            const ul = linkCadastro.closest('ul');
-            if (ul) {
-              const li = document.createElement('li');
-              li.id = '_menu_gramaturas';
-              li.className = (linkCadastro.closest('li') && linkCadastro.closest('li').className) || '';
-              const a = document.createElement('a');
-              a.href = '#';
-              a.textContent = '📐 Gramaturas';
-              a.style.cssText = linkCadastro.style.cssText || 'display:flex;align-items:center;gap:8px;padding:8px 16px;color:#94a3b8;text-decoration:none;cursor:pointer';
-              a.addEventListener('click', function(e) {
-                try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
-                _abrirGramaturas();
-              }, true);
-              li.appendChild(a);
-              ul.appendChild(li);
-              console.log('[PATCH] Gramaturas adicionado ao menu Cadastros');
-            }
+          var liUsuarios = Array.from(document.querySelectorAll('li')).find(function(li) {
+            var t = String(li && li.textContent || '').trim();
+            return t === 'Usuários' || t === 'Usuarios';
+          });
+          if (liUsuarios && liUsuarios.parentElement) {
+            var novoLi = liUsuarios.cloneNode(true);
+            novoLi.id = '_menu_gramaturas';
+            var a = novoLi.querySelector('a') || novoLi;
+            a.textContent = '📐 Gramaturas';
+            a.href = '#';
+            a.onclick = function(e) {
+              try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+              _abrirGramaturas();
+              return false;
+            };
+            liUsuarios.parentElement.appendChild(novoLi);
+            console.log('[PATCH] Gramaturas injetado após Usuários');
           }
         }
       } catch (_) {}
 
       try {
         if (!document.getElementById('_menu_toneladas')) {
-          const linkFin = Array.from(document.querySelectorAll('a')).find(function(a) {
-            return ['Comissões', 'Orçamentos', 'Comissoes', 'Orcamentos'].includes(String(a.textContent || '').trim());
+          var liComissoes = Array.from(document.querySelectorAll('li')).find(function(li) {
+            var t = String(li && li.textContent || '').trim();
+            return t === 'Comissões' || t === 'Comissoes';
           });
-          if (linkFin) {
-            const ul = linkFin.closest('ul');
-            if (ul) {
-              const li1 = document.createElement('li');
-              li1.id = '_menu_toneladas';
-              li1.className = (linkFin.closest('li') && linkFin.closest('li').className) || '';
-              const a1 = document.createElement('a');
-              a1.href = '#';
-              a1.textContent = '⚖️ Toneladas Vendidas';
-              a1.style.cssText = linkFin.style.cssText || 'display:flex;align-items:center;gap:8px;padding:8px 16px;color:#94a3b8;text-decoration:none;cursor:pointer';
-              a1.addEventListener('click', function(e) {
-                try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
-                _abrirToneladas();
-              }, true);
-              li1.appendChild(a1);
-              ul.appendChild(li1);
+          if (liComissoes && liComissoes.parentElement) {
+            var novoLi2 = liComissoes.cloneNode(true);
+            novoLi2.id = '_menu_toneladas';
+            var a2 = novoLi2.querySelector('a') || novoLi2;
+            a2.textContent = '⚖️ Toneladas Vendidas';
+            a2.href = '#';
+            a2.onclick = function(e) {
+              try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+              _abrirToneladas();
+              return false;
+            };
+            liComissoes.parentElement.appendChild(novoLi2);
+            console.log('[PATCH] Toneladas injetado após Comissões');
+          }
+        }
+      } catch (_) {}
 
-              const li2 = document.createElement('li');
-              li2.id = '_menu_caixas_fin';
-              li2.className = (linkFin.closest('li') && linkFin.closest('li').className) || '';
-              const a2 = document.createElement('a');
-              a2.href = '#';
-              a2.textContent = '📦 Caixas Perdidas';
-              a2.style.cssText = linkFin.style.cssText || 'display:flex;align-items:center;gap:8px;padding:8px 16px;color:#94a3b8;text-decoration:none;cursor:pointer';
-              a2.addEventListener('click', function(e) {
-                try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
-                const fn = window.abrirCaixasPerdidas || window._abrirCaixasPerdidas;
+      try {
+        if (!document.getElementById('_menu_caixas_fin')) {
+          var liCaixasAntigo = Array.from(document.querySelectorAll('li')).find(function(li) {
+            return String(li && li.textContent || '').trim() === 'Caixas Perdidas';
+          });
+          var liCom2 = Array.from(document.querySelectorAll('li')).find(function(li) {
+            var t = String(li && li.textContent || '').trim();
+            return t === 'Comissões' || t === 'Comissoes';
+          });
+          if (liCom2 && liCom2.parentElement) {
+            var novoLi3 = liCom2.cloneNode(true);
+            novoLi3.id = '_menu_caixas_fin';
+            var a3 = novoLi3.querySelector('a') || novoLi3;
+            a3.textContent = '📦 Caixas Perdidas';
+            a3.href = '#';
+            a3.onclick = function(e) {
+              try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+              try {
+                var fn = window.abrirCaixasPerdidas || window._abrirCaixasPerdidas;
                 if (typeof fn === 'function') fn();
                 else if (typeof window.go === 'function') window.go('caixas-perdidas');
-              }, true);
-              li2.appendChild(a2);
-              ul.appendChild(li2);
-
-              console.log('[PATCH] Toneladas e Caixas Perdidas adicionados ao menu Financeiro');
-            }
+              } catch (_) {}
+              return false;
+            };
+            liCom2.parentElement.appendChild(novoLi3);
+            if (liCaixasAntigo) liCaixasAntigo.style.display = 'none';
+            console.log('[PATCH] Caixas Perdidas injetado em Financeiro');
           }
         }
       } catch (_) {}
     }
-
-    window._adicionarMenuGramaturas = _tentarAdicionarMenus;
-    window._adicionarItensFinanceiro = _tentarAdicionarMenus;
-
-    setTimeout(_tentarAdicionarMenus, 500);
-    setTimeout(_tentarAdicionarMenus, 1500);
-    setTimeout(_tentarAdicionarMenus, 3000);
-    setTimeout(_tentarAdicionarMenus, 6000);
-
-    if (!window.__patchMenusCustomObs) {
-      try {
-        const obs = new MutationObserver(function() {
-          if (!document.getElementById('_menu_gramaturas') || !document.getElementById('_menu_toneladas')) {
-            _tentarAdicionarMenus();
-          }
-        });
-        obs.observe(document.body, { childList: true, subtree: true });
-        window.__patchMenusCustomObs = obs;
-      } catch (_) {}
-    }
+    [500, 1500, 3000, 5000, 8000].forEach(function(t) { setTimeout(_injetar, t); });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', _setupMenusCustom);
-  } else {
-    _setupMenusCustom();
-  }
+  _setupMenusCustom();
 
   window.mobileGoPage = function(page) {
     var menu = document.getElementById('mob-menu-mais');
@@ -16511,13 +16493,61 @@ function _ocultarGraficoComissoes() {
           btn.addEventListener('click', function() {
             var id = '';
             var num = '';
-            try { id = String(this.getAttribute('data-of-id') || this.dataset.ofId || '').trim(); } catch (_) { id = ''; }
-            try { num = String(this.getAttribute('data-of-num') || this.dataset.ofNum || '').trim(); } catch (_) { num = ''; }
-            const fns = ['abrirModalConclusao','abrirConclusaoOf','concluirOf','modalConcluirOf','abrirConcluir','finalizarOf','openModalConclusao','showModalConclusao'];
-            const fn = fns.find(function(f) { return typeof window[f] === 'function'; });
-            try { console.log('[COM PATCH] funções de conclusão disponíveis:', fns.filter(function(f) { return typeof window[f] === 'function'; })); } catch (_) {}
-            if (fn) { try { window[fn](id); } catch (_) {} return; }
-            alert('Para concluir a OF #' + num + ', acesse PCP > OFs por Máquina.');
+            try { id = String(this.dataset && this.dataset.ofId || this.getAttribute('data-of-id') || '').trim(); } catch (_) { id = ''; }
+            try { num = String(this.dataset && this.dataset.ofNum || this.getAttribute('data-of-num') || '').trim(); } catch (_) { num = ''; }
+
+            try {
+              var fns = ['abrirModalConclusao','abrirConclusaoOf','concluirOf','modalConcluirOf','finalizarOf','openConclusao','showConclusao','concludeOf'];
+              var fn = fns.find(function(f) { return typeof window[f] === 'function'; });
+              if (fn) { window[fn](id); return; }
+            } catch (_) {}
+
+            try {
+              var botoesDOM = document.querySelectorAll('[data-id="' + id + '"] button, [data-of-id="' + id + '"] button');
+              for (var i = 0; i < botoesDOM.length; i++) {
+                var b = botoesDOM[i];
+                var tx = String(b && b.textContent || '').toLowerCase();
+                if (tx.indexOf('conclu') >= 0) { b.click(); return; }
+              }
+            } catch (_) {}
+
+            try {
+              var linhasOF = document.querySelectorAll('tr, .of-row, [data-of]');
+              for (var j = 0; j < linhasOF.length; j++) {
+                var linha = linhasOF[j];
+                var lt = String(linha && linha.textContent || '');
+                if (lt.indexOf('#' + num) >= 0 || lt.indexOf(num) >= 0) {
+                  var btns = linha.querySelectorAll('button, a');
+                  for (var k = 0; k < btns.length; k++) {
+                    var bb = btns[k];
+                    var bbt = String(bb && bb.textContent || '').toLowerCase();
+                    if (bbt.indexOf('conclu') >= 0) { bb.click(); return; }
+                  }
+                }
+              }
+            } catch (_) {}
+
+            try {
+              if (typeof window.go === 'function') {
+                window.go('pcp');
+                setTimeout(function() {
+                  try {
+                    var inputBusca = document.querySelector('input[placeholder*="OF"], input[placeholder*="of"], input[placeholder*="busca"], input[placeholder*="Busca"]');
+                    if (inputBusca) {
+                      inputBusca.value = num;
+                      inputBusca.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                  } catch (_) {}
+                }, 800);
+                try {
+                  var toast = document.createElement('div');
+                  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1e293b;color:#f1f5f9;padding:14px 20px;border-radius:10px;z-index:9999;border:1px solid #334155;font-size:14px;max-width:320px';
+                  toast.innerHTML = '🔍 OF <b>#' + _escHtmlCom(num) + '</b> destacada no PCP. Clique em <b>Concluir</b> na linha dela.';
+                  document.body.appendChild(toast);
+                  setTimeout(function() { try { toast.remove(); } catch (_) {} }, 5000);
+                } catch (_) {}
+              }
+            } catch (_) {}
           }, true);
         });
       } catch (_) {}
