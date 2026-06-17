@@ -1,8 +1,9 @@
+window._comRodando = false;
+window._comEntrou = false;
+window._comissaoOFs = [];
 // LIMPEZA DE OVERLAYS ÓRFÃOS — executar imediatamente
 if (typeof NOTIFICACOES === 'undefined') window.NOTIFICACOES = [];
 window.NOTIFICACOES = window.NOTIFICACOES || [];
-// Reset de emergência da flag de comissões
-window._comRodando = false;
 (function limparOverlaysOrfaos() {
   var _OVERLAY_GRACE = 500;
   try { if (!window.__overlayTimestamps) window.__overlayTimestamps = {}; } catch (_) {}
@@ -108,9 +109,10 @@ window._comRodando = false;
   if (window.__patchCalcBtnRestoreInstalled) return;
   window.__patchCalcBtnRestoreInstalled = true;
 
-  window._comEntrou = window._comEntrou || false;
+  window.__comUltimaExecucao = window.__comUltimaExecucao || 0;
+  window.__comEntradaTs = window.__comEntradaTs || 0;
 
-  function _bindCalcBtn() {
+  function _bindCalc() {
     try {
       var btn = Array.prototype.slice.call(document.querySelectorAll('button')).find(function(b) {
         return String(b && b.textContent || '').trim() === 'Calcular' && !b._patchCalc;
@@ -118,18 +120,19 @@ window._comRodando = false;
       if (!btn) return;
       btn._patchCalc = true;
       btn.addEventListener('click', function() {
-        window._comRodando = false;
-        window._comEntrou = false;
+        window.__comUltimaExecucao = 0;
+        window.__comEntradaTs = 0;
         try { window.calcularComissoes && window.calcularComissoes(); } catch (_) {}
       });
     } catch (_) {}
   }
 
-  try { [100, 500, 1000, 2000].forEach(function(t) { setTimeout(_bindCalcBtn, t); }); } catch (_) {}
+  try { [100, 500, 1000, 2000].forEach(function(t) { setTimeout(_bindCalc, t); }); } catch (_) {}
 
   try {
     setInterval(function() {
       try {
+        var agora = Date.now();
         var el = Array.prototype.slice.call(document.querySelectorAll('*')).find(function(e) {
           try {
             return e && e.children && e.children.length === 0
@@ -137,16 +140,15 @@ window._comRodando = false;
               && e.offsetParent !== null;
           } catch (_) { return false; }
         });
-        if (el && !window._comEntrou && !window._comRodando) {
-          window._comEntrou = true;
-          try { console.log('[COM] seção visível, calculando...'); } catch (_) {}
-          setTimeout(function() {
-            try { window.calcularComissoes && window.calcularComissoes(); } catch (_) {}
-          }, 300);
+        if (el && (agora - window.__comEntradaTs > 5000)) {
+          window.__comEntradaTs = agora;
+          window.__comUltimaExecucao = 0;
+          try { console.log('[COM] detectou seção, calculando...'); } catch (_) {}
+          try { window.calcularComissoes && window.calcularComissoes(); } catch (_) {}
         }
-        if (!el) window._comEntrou = false;
+        if (!el) window.__comEntradaTs = 0;
       } catch (_) {}
-    }, 1000);
+    }, 1500);
   } catch (_) {}
 })();
 
@@ -16127,6 +16129,8 @@ function _ocultarGraficoComissoes() {
             try { e.preventDefault(); } catch (_) {}
             try { e.stopImmediatePropagation(); } catch (_) {}
             try { console.log('[COM] botão Calcular vinculado v3'); } catch (_) {}
+            window.__comUltimaExecucao = 0;
+            window.__comEntradaTs = 0;
             window.calcularComissoes();
           }, true);
         } catch (_) {}
@@ -16199,27 +16203,25 @@ function _ocultarGraficoComissoes() {
 
   function _instalarAntiReentradaComRodando() {
     try {
-      var __calcComOriginal = window.calcularComissoes;
-      if (typeof __calcComOriginal !== 'function') return;
-      if (__calcComOriginal.__patchComRodando) return;
+      var _calcComissaoOriginal = window.calcularComissoes;
+      if (typeof _calcComissaoOriginal !== 'function') return;
+      if (_calcComissaoOriginal.__patchComTimestamp) return;
       var wrapped = async function() {
-        if (window._comRodando) {
-          try { console.log('[COM] já em execução, aguardando...'); } catch (_) {}
-          await new Promise(function(r) { setTimeout(r, 500); });
-          if (window._comRodando) return;
+        var agora = Date.now();
+        if ((agora - (window.__comUltimaExecucao || 0)) < 2000) {
+          try { console.log('[COM] debounce: ignorando chamada duplicada'); } catch (_) {}
+          return;
         }
-        window._comRodando = true;
-        try { console.log('[COM PATCH] chamando API'); } catch (_) {}
+        window.__comUltimaExecucao = agora;
+        try { console.log('[COM PATCH] executando calcularComissoes'); } catch (_) {}
         try {
-          return await __calcComOriginal.apply(this, arguments);
+          return await _calcComissaoOriginal.apply(this, arguments);
         } catch (e) {
           try { console.error('[COM] erro:', e); } catch (_) {}
-        } finally {
-          window._comRodando = false;
         }
       };
-      wrapped.__patchComRodando = true;
-      wrapped.__patchComRodandoOrig = __calcComOriginal;
+      wrapped.__patchComTimestamp = true;
+      wrapped.__patchComTimestampOrig = _calcComissaoOriginal;
       window.calcularComissoes = wrapped;
     } catch (_) {}
   }
