@@ -702,6 +702,23 @@ app.get('/index.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+app.get('/patch.js', (req, res) => {
+  try {
+    const fp = path.join(__dirname, 'patch.js');
+    const stat = fs.statSync(fp);
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+    res.setHeader('Last-Modified', stat.mtime.toUTCString());
+    res.setHeader('X-Patch-Version', String(Math.trunc(stat.mtimeMs || Date.now())));
+    return res.sendFile(fp, { etag: false, lastModified: false });
+  } catch (e) {
+    return res.status(404).end();
+  }
+});
+
 app.use(express.static(path.join(__dirname, 'public'), { etag: false, lastModified: false, setHeaders: setNoCache }));
 app.use(express.static(__dirname, { etag: false, lastModified: false, setHeaders: setNoCache }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { etag: false, lastModified: false, setHeaders: setNoCache }));
