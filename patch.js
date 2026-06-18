@@ -12890,30 +12890,12 @@ window._mbnActive = function(id) {
 
   function normalizeInconfRow(item) {
     var ofData = getOfCacheById(item && item.of_id);
-    var operadores = [];
-    try {
-      var rawOps = item && item.operadores;
-      if (Array.isArray(rawOps)) operadores = rawOps;
-      else if (typeof rawOps === 'string') {
-        var txtOps = String(rawOps || '').trim();
-        if (txtOps) {
-          if (txtOps.charAt(0) === '[') {
-            var parsedOps = JSON.parse(txtOps);
-            if (Array.isArray(parsedOps)) operadores = parsedOps;
-          } else {
-            operadores = txtOps.split(/[,;|]+/g);
-          }
-        }
-      }
-    } catch (_) { operadores = []; }
-    operadores = (Array.isArray(operadores) ? operadores : []).map(function(op) { return String(op || '').trim(); }).filter(Boolean);
-    var operadorDisplay = String(item && (item.operador_display || item.operador_principal || item.operador_nome || item.operador || item.usuario) || '').trim() || (operadores[0] || '—');
     var qtdPerdida = Number(item && (item.quantidade != null ? item.quantidade : (item.qtd_perdida != null ? item.qtd_perdida : item.caixas_perdidas)) || 0) || 0;
     var vlUnit = Number(item && (item.vl_unit != null ? item.vl_unit : item.valor_unitario) || (ofData && (ofData.vl_unit || ofData.valor_unitario)) || 0) || 0;
     var vlTotal = Number(item && (item.vl_total != null ? item.vl_total : item.valor_perdido) || 0) || ((qtdPerdida || 0) * (vlUnit || 0));
     var produto = String(item && item.produto || '').trim() || String(ofData && (ofData.produto || ofData.descricao || ofData.prodDesc) || '').trim() || '—';
     var cliente = String(item && (item.cliente_nome || item.cliente) || '').trim() || String(ofData && (ofData.cli_nome || ofData.cliente || ofData.cliente_nome || ofData.cliNome) || '').trim() || '—';
-    var maquina = String(item && (item.maquina || item.maquina_perda) || '').trim() || String(ofData && (ofData.maquina || ofData.maq || ofData.maquina_atual) || '').trim() || '—';
+    var maquina = String(item && item.maquina || '').trim() || String(ofData && (ofData.maquina || ofData.maq || ofData.maquina_atual) || '').trim() || '—';
     var ofNumero = String(item && (item.of_numero || item.of_num || item.numero || item.of) || '').trim() || String(ofData && (ofData.numero || ofData.of) || '').trim() || '—';
     var imgUrl = String(item && (item.imagem_url || item.foto_url || item.imgUrl) || '').trim() || String(ofData && (ofData.imagem_url || ofData.imgUrl || (Array.isArray(ofData.imgs) ? ofData.imgs[0] : '')) || '').trim();
     try { if (!(window._urlValida && window._urlValida(imgUrl))) imgUrl = ''; } catch (_) { imgUrl = ''; }
@@ -12931,10 +12913,6 @@ window._mbnActive = function(id) {
       valor_unitario: vlUnit,
       valor_perdido: vlTotal,
       usuario: String(item && item.usuario || '').trim() || '—',
-      operador_display: operadorDisplay,
-      operador_principal: String(item && item.operador_principal || '').trim(),
-      operadores: operadores,
-      turno: String(item && item.turno || '').trim(),
       imgUrl: imgUrl,
       imagem_url: imgUrl,
       motivo: String(item && item.motivo || '').trim(),
@@ -12950,7 +12928,10 @@ window._mbnActive = function(id) {
     var json = await resp.json().catch(function() { return null; });
     if (!resp.ok) throw new Error(String(json && json.error || resp.status));
     var arr = Array.isArray(json) ? json : (Array.isArray(json && json.data) ? json.data : (Array.isArray(json && json.inconformidades) ? json.inconformidades : []));
-    return arr.map(normalizeInconfRow);
+    var normalizados = arr.map(normalizeInconfRow);
+    try { window._cpDataCache = normalizados.slice(); } catch (_) {}
+    try { console.log('[CP] dados recebidos:', JSON.stringify((window._cpDataCache || []).slice(0, 2))); } catch (_) {}
+    return normalizados;
   }
 
   function filterCpRows(rows) {
@@ -14485,7 +14466,7 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
         + '</span></td></tr>';
     }
     htmlFinal += ''
-      + '<tr data-of-idx="' + idx + '" data-cli-id="' + escHtml(of && (of.cli_id || of.cliId || '') || '') + '"'
+      + '<tr data-of-idx="' + idx + '" data-of-id="' + escHtml(of && (of.id || '') || '') + '" data-of-numero="' + escHtml(of && (of.numero || of.of_numero || '') || '') + '" data-cli-id="' + escHtml(of && (of.cli_id || of.cliId || '') || '') + '"'
       + ' style="background:' + corBg + ';border-bottom:1px solid #1e2d40;cursor:default"'
       + ' onmouseenter="this.style.filter=\'brightness(1.15)\'"'
       + ' onmouseleave="this.style.filter=\'\'">'
@@ -14499,7 +14480,7 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
       + '<td style="padding:9px 12px;text-align:center;font-size:13px;color:#10b981;font-weight:600">R$ ' + comissaoRS.toFixed(2).replace('.', ',') + '</td>'
       + '<td style="padding:9px 12px;text-align:center;font-size:13px">' + escHtml(data) + '</td>'
       + '<td style="padding:9px 12px;text-align:center"><span style="background:#064e3b;color:#10b981;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600">Concluído</span></td>'
-      + '<td style="padding:9px 12px;text-align:center"><button onclick="window._abrirModalEdicaoOF&&window._comissaoOFs&&window._abrirModalEdicaoOF(window._comissaoOFs[' + idx + '])" style="background:transparent;border:1px solid #3a4a6b;color:#94a3b8;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer">✏️ Trocar</button></td>'
+      + '<td style="padding:9px 12px;text-align:center;white-space:nowrap"><button onclick="window._abrirModalEdicaoOF&&window._comissaoOFs&&window._abrirModalEdicaoOF(window._comissaoOFs[' + idx + '])" style="background:transparent;border:1px solid #3a4a6b;color:#94a3b8;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;margin-right:6px">✏️ Trocar</button><button onclick="window._destacarOfNaTabela&&window._destacarOfNaTabela(' + JSON.stringify(String(of && (of.numero || of.of_numero || '') || '')) + ')" style="background:rgba(234,179,8,.18);border:1px solid rgba(234,179,8,.45);color:#fde68a;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer">📍 Localizar</button></td>'
       + '</tr>';
   });
   secaoDetalhamento.innerHTML = ''
@@ -14556,11 +14537,54 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
       });
     } catch (_) {}
   }, 200);
+  window._buscarOfsDetalhamento = function(termo) {
+    var termos = String(termo || '').split(/[,\s]+/).filter(Boolean);
+    if (!termos.length) return [];
+    var base = Array.isArray(window._comissaoOFs) ? window._comissaoOFs
+      : ((window._comissoesSqlData && Array.isArray(window._comissoesSqlData.ofs)) ? window._comissoesSqlData.ofs
+      : (Array.isArray(window._comissoesSqlData) ? window._comissoesSqlData : []));
+    return (Array.isArray(base) ? base : []).filter(function(of) {
+      var num = String(of && (of.numero || of.of || of.of_numero) || '').trim();
+      var cli = String(of && (of.cliente || of.cliente_nome || of._cliente_nome) || '').toLowerCase();
+      return termos.some(function(t) {
+        var termoNorm = String(t || '').toLowerCase();
+        return num.indexOf(t) >= 0 || cli.indexOf(termoNorm) >= 0;
+      });
+    });
+  };
+  window._destacarOfNaTabela = function(numeroOf) {
+    document.querySelectorAll('.of-destacada-amarelo').forEach(function(el) {
+      el.classList.remove('of-destacada-amarelo');
+      el.style.backgroundColor = '';
+    });
+    document.querySelectorAll('#page-comissoes tr, [id*="comissoes"] tr').forEach(function(tr) {
+      var txt = tr.textContent || '';
+      if (txt.indexOf('#' + numeroOf) >= 0 || txt.indexOf(numeroOf) >= 0) {
+        tr.classList.add('of-destacada-amarelo');
+        tr.style.backgroundColor = 'rgba(234, 179, 8, 0.25)';
+        try { tr.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+      }
+    });
+  };
   window._filtrarTabelaComissoes = function(termo) {
-    var t = String(termo || '').toLowerCase();
+    var termos = String(termo || '').split(/[,\s]+/).filter(Boolean);
+    var encontrados = termos.length ? (window._buscarOfsDetalhamento ? window._buscarOfsDetalhamento(termo) : []) : [];
+    var ids = {};
+    var nums = {};
+    (Array.isArray(encontrados) ? encontrados : []).forEach(function(of) {
+      ids[String(of && of.id || '').trim()] = true;
+      nums[String(of && (of.numero || of.of || of.of_numero) || '').trim()] = true;
+    });
     Array.prototype.slice.call(document.querySelectorAll('#tbody-ofs-comissao tr')).forEach(function(tr) {
+      if (!termos.length) {
+        tr.style.display = '';
+        return;
+      }
+      var rowId = String(tr.getAttribute('data-of-id') || '').trim();
+      var rowNum = String(tr.getAttribute('data-of-numero') || '').trim();
       var txt = String(tr.textContent || '').toLowerCase();
-      tr.style.display = (!t || txt.indexOf(t) >= 0) ? '' : 'none';
+      var visivel = !!(ids[rowId] || nums[rowNum] || termos.some(function(t) { return txt.indexOf(String(t).toLowerCase()) >= 0; }));
+      tr.style.display = visivel ? '' : 'none';
     });
   };
 }
@@ -16660,6 +16684,10 @@ function _ocultarGraficoComissoes() {
           if (obs) payload.observacoes = obs;
           if (comPct) payload.comissao_pct = Number(String(comPct).replace(',', '.'));
           payload.gramatura_id = gramaturaId || null;
+          if (payload.valor_unitario !== undefined) {
+            payload.vl_unit = payload.valor_unitario;
+            delete payload.valor_unitario;
+          }
           try { console.log('[TROCAR] body:', JSON.stringify(payload)); } catch (_) {}
 
           try {
@@ -17601,6 +17629,74 @@ function _ocultarGraficoComissoes() {
   try { setTimeout(_bloquearRenderNativoComissoes, 3000); } catch (_) {}
   try { [100, 500, 1000, 2000].forEach(function(t) { setTimeout(_rebindBtnCalcular, t); }); } catch (_) {}
   try { if (_naComissoesAgora()) _agendarRenderComissoesPatch(800); } catch (_) {}
+})();
+(function _removerDuplicatasMenu() {
+  function processar() {
+    var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
+    if (!sidebar) return;
+
+    var itensCP = [];
+    sidebar.querySelectorAll('*').forEach(function(el) {
+      if (el.children.length > 0) return;
+      var txt = String(el.textContent || '').trim();
+      if (txt === 'Caixas Perdidas' || txt === 'Inconformidades') {
+        var cur = el;
+        for (var i = 0; i < 10; i++) {
+          if (!cur || cur === sidebar) break;
+          cur = cur.parentElement;
+          if (!cur || cur === sidebar) break;
+          if (cur.offsetHeight > 10 && cur.offsetHeight < 80 && cur.offsetWidth > 60) {
+            itensCP.push(cur);
+            break;
+          }
+        }
+      }
+    });
+
+    if (itensCP.length > 1) {
+      var manter = null;
+      itensCP.forEach(function(item) {
+        var parentTexto = '';
+        var p = item.parentElement;
+        for (var j = 0; j < 5 && p; j++) {
+          parentTexto += String(p.textContent || '');
+          p = p.parentElement;
+        }
+        if (parentTexto.indexOf('Comissões') >= 0 || parentTexto.indexOf('Toneladas') >= 0) {
+          manter = item;
+        }
+      });
+      itensCP.forEach(function(item) {
+        if (item !== manter) {
+          item.style.setProperty('display', 'none', 'important');
+        }
+      });
+    }
+
+    sidebar.querySelectorAll('*').forEach(function(el) {
+      if (el.children.length > 0) return;
+      if (String(el.textContent || '').trim() !== 'Relatório Mensal') return;
+      var cur = el;
+      for (var k = 0; k < 10; k++) {
+        if (!cur || cur === sidebar) break;
+        cur = cur.parentElement;
+        if (!cur || cur === sidebar) break;
+        if (cur.offsetHeight > 10 && cur.offsetHeight < 80 && cur.offsetWidth > 60) {
+          cur.style.setProperty('display', 'none', 'important');
+          break;
+        }
+      }
+    });
+  }
+
+  processar();
+  var obs = new MutationObserver(function() {
+    clearTimeout(window.__tmrMenuDup);
+    window.__tmrMenuDup = setTimeout(processar, 250);
+  });
+  obs.observe(document.body, { childList: true, subtree: true });
+
+  setInterval(processar, 2000);
 })();
 
 window._renderGramaturas = async function() {

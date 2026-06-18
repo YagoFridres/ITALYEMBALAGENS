@@ -1614,12 +1614,60 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
         });
       }
     } catch (_) {}
+    try {
+      const missingValorIds = todasOFs
+        .filter(of => {
+          if (!of || !of.id) return false;
+          const valorAtual = Number(of.valor_total ?? of.vl_total ?? of.total ?? of.valor_venda ?? 0) || 0;
+          return !(valorAtual > 0);
+        })
+        .map(of => String(of.id).trim())
+        .filter(Boolean);
+      if (missingValorIds.length) {
+        const mapaValor = {};
+        const chunkSize = 100;
+        for (let i = 0; i < missingValorIds.length; i += chunkSize) {
+          const chunk = missingValorIds.slice(i, i + chunkSize);
+          const { data: ofsValor, error: errValor } = await supabase
+            .from('ofs')
+            .select('id,numero,valor_total,valor_venda,total,vl_total,valor_unitario,vl_unit,quantidade,qtd')
+            .in('id', chunk);
+          if (errValor) continue;
+          (ofsValor || []).forEach(row => {
+            mapaValor[String(row.id)] = row;
+          });
+        }
+        todasOFs.forEach(of => {
+          const row = mapaValor[String(of && of.id || '')];
+          if (!row) return;
+          if (!(Number(of.valor_total ?? of.vl_total ?? of.total ?? of.valor_venda ?? 0) > 0)) {
+            if (row.valor_total != null) of.valor_total = row.valor_total;
+            if (of.valor_venda == null && row.valor_venda != null) of.valor_venda = row.valor_venda;
+            if (of.total == null && row.total != null) of.total = row.total;
+            if (of.vl_total == null && row.vl_total != null) of.vl_total = row.vl_total;
+            if (of.valor_unitario == null && row.valor_unitario != null) of.valor_unitario = row.valor_unitario;
+            if (of.vl_unit == null && row.vl_unit != null) of.vl_unit = row.vl_unit;
+            if (of.quantidade == null && row.quantidade != null) of.quantidade = row.quantidade;
+            if (of.qtd == null && row.qtd != null) of.qtd = row.qtd;
+          }
+        });
+      }
+    } catch (_) {}
+
+    const pickValorComissao = (of) => {
+      const direto = Number(of?.valor_total ?? of?.vl_total ?? of?.total ?? of?.valor_venda ?? 0) || 0;
+      if (direto > 0) return direto;
+      const qtd = Number(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0;
+      const vu = Number(of?.valor_unitario ?? of?.vl_unit ?? 0) || 0;
+      return (qtd > 0 && vu > 0) ? (qtd * vu) : 0;
+    };
 
     // Agrupar por vendedor 
     const porVend = {}; 
     let totalGeral = 0; 
     todasOFs.forEach(of => { 
-      const val = Number(of.valor_total || 0); 
+      const val = pickValorComissao(of); 
+      console.log('[COMISSOES] OF', of.numero, 'valor:', of.valor_total || of.vl_total || of.total || of.valor_venda || 0); 
       if (!val) return; 
       totalGeral += val; 
       const vid = of.vendedor_id || '__sem__'; 
@@ -1637,7 +1685,7 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
       .map(v => ({ ...v, comissao_rs: v.total * (v.comissao_pct/100) })); 
 
     const ofsDetalhadas = todasOFs.map(of => { 
-      const valor_total = Number(of.valor_total || 0); 
+      const valor_total = pickValorComissao(of); 
       const comissao_pct = Number(of.comissao_pct || 1); 
       const comissao_rs = (of.comissao_rs != null) ? Number(of.comissao_rs || 0) : (valor_total * (comissao_pct/100)); 
       return { 
@@ -4355,6 +4403,11 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     delete body.empresa_id;
     delete body._allow_partial;
     delete body['_allow_partial'];
+    if (body.valor_unitario !== undefined) {
+      body.vl_unit = body.valor_unitario;
+      delete body.valor_unitario;
+    }
+    console.log('[PUT OFS] campos do body:', Object.keys(body));
     const { data, error } = await supabase
       .from('ofs').update(body).eq('id', req.params.id).select().single();
     if (error) return res.status(400).json({ ok: false, error: error.message });
