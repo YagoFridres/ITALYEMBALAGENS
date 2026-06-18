@@ -15949,7 +15949,20 @@ function _ocultarGraficoComissoes() {
       try { window._operadoresConclusaoCache = null; } catch (_) {}
 
       var numero = String(of && (of.numero || of.of_num || of.of_numero || '') || '—').trim();
-      var cliente = String(of && (of.cliNome || of.cliente_nome || of.cliente || '') || 'Cliente não identificado').trim();
+      var cliente = String(of && (
+        of.cliNome || of.cliente_nome || of.cliente ||
+        of.cli_nome || of.clinome
+      ) || '').trim();
+      if (!cliente && of && of.cli_id) {
+        try {
+          var cliArr = Array.isArray(window.CLIENTES) ? window.CLIENTES : [];
+          var cliObj = cliArr.find(function(c) {
+            return String(c && c.id || '').trim() === String(of.cli_id || '').trim();
+          });
+          if (cliObj) cliente = String(cliObj.nome || cliObj.rs || '').trim();
+        } catch(_) {}
+      }
+      if (!cliente) cliente = 'Cliente não identificado';
       var usuario = '';
       try { usuario = String((window.CURRENT_USER && (window.CURRENT_USER.nome || window.CURRENT_USER.name)) || localStorage.getItem('nome') || 'Usuário').trim(); } catch (_) { usuario = 'Usuário'; }
       var hoje = new Date().toISOString().slice(0, 10);
@@ -16244,6 +16257,7 @@ function _ocultarGraficoComissoes() {
         };
         var gramaturaId = String((document.getElementById('conclusao-gramatura') || {}).value || '').trim();
         if (gramaturaId) body.gramatura_id = gramaturaId;
+        console.log('[CONCLUIR] of.id:', of && of.id, 'ofId:', ofId, 'body:', JSON.stringify(body));
         btnSalvar.disabled = true;
         var token = _getToken();
         try {

@@ -4341,15 +4341,20 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const body = { ...(req.body || {}) };
+    const bodyRaw = { ...(req.body || {}) };
+    if (bodyRaw.gramatura_id == null && bodyRaw.gramaturaId != null) bodyRaw.gramatura_id = bodyRaw.gramaturaId;
+    if (bodyRaw.cli_id == null && bodyRaw.cliente_id != null) bodyRaw.cli_id = bodyRaw.cliente_id;
+    if (bodyRaw.vendedor_id == null && bodyRaw.vendId != null) bodyRaw.vendedor_id = bodyRaw.vendId;
+    if (bodyRaw.vendedor_id == null && bodyRaw.vend_id != null) bodyRaw.vendedor_id = bodyRaw.vend_id;
+    if (bodyRaw.valor_unitario == null && bodyRaw.vl_unit != null) bodyRaw.valor_unitario = bodyRaw.vl_unit;
+    if (bodyRaw.maq == null && bodyRaw.maquina != null) bodyRaw.maq = bodyRaw.maquina;
+    const body = ofPayloadFiltrado(ofIn(bodyRaw || {}));
     delete body.id;
     delete body.numero;
     delete body.created_at;
     delete body.empresa_id;
-    if (body.quantidade !== undefined) body.quantidade = Number(body.quantidade);
-    if (body.valor_total !== undefined) body.valor_total = Number(body.valor_total);
-    if (body.valor_unitario !== undefined) body.valor_unitario = Number(body.valor_unitario);
-    if (body.comissao_pct !== undefined) body.comissao_pct = Number(body.comissao_pct);
+    delete body._allow_partial;
+    delete body['_allow_partial'];
     const { data, error } = await supabase
       .from('ofs').update(body).eq('id', req.params.id).select().single();
     if (error) return res.status(400).json({ ok: false, error: error.message });
@@ -5976,6 +5981,12 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       'gramaturaId','cores_payload'];
 
     if (body && typeof body === 'object') {
+      if (body.gramatura_id == null && body.gramaturaId != null) body.gramatura_id = body.gramaturaId;
+      if (body.cli_id == null && body.cliente_id != null) body.cli_id = body.cliente_id;
+      if (body.vendedor_id == null && body.vendId != null) body.vendedor_id = body.vendId;
+      if (body.vendedor_id == null && body.vend_id != null) body.vendedor_id = body.vend_id;
+      if (body.valor_unitario == null && body.vl_unit != null) body.valor_unitario = body.vl_unit;
+      if (body.maq == null && body.maquina != null) body.maq = body.maquina;
       camposInvalidos.forEach(c => delete body[c]);
     }
     let stAtualBefore = '';
@@ -6037,6 +6048,15 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       (bodyIn && typeof bodyIn === 'object' && !Array.isArray(bodyIn))
         ? {
           ...bodyIn,
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'status')
+            ? { status: bodyIn.status }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'data_conclusao')
+            ? { data_conclusao: bodyIn.data_conclusao }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'gramatura_id')
+            ? { gramatura_id: bodyIn.gramatura_id }
+            : {}),
           ...(Object.prototype.hasOwnProperty.call(bodyIn, 'vl_unit') && !Object.prototype.hasOwnProperty.call(bodyIn, 'valor_unitario')
             ? { valor_unitario: Number(bodyIn.vl_unit) || bodyIn.vl_unit }
             : {}),
