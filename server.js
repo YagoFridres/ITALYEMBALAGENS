@@ -6024,7 +6024,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       }
     } catch (_) {}
     const bodyIn = req.body || {};
-    const mapped =
+    let body =
       (bodyIn && typeof bodyIn === 'object' && !Array.isArray(bodyIn))
         ? {
           ...bodyIn,
@@ -6070,7 +6070,16 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
             : {}),
         }
         : bodyIn;
-    const payload = { ...ofIn(mapped || {}), updated_at: new Date().toISOString() };
+    if (!body || typeof body !== 'object' || Array.isArray(body)) body = {};
+    delete body._allow_partial;
+    delete body['_allow_partial'];
+    const camposProibidos = ['_allow_partial', 'cliId', 'cliente_id',
+      'vendId', 'vend_id', 'empId', 'prodDesc', 'produto',
+      'agendamento_auto', 'maquina_agendada', 'fluxo_maquinas',
+      'maquinas_fluxo', 'maquinas_fluxo_ids', 'cores_payload',
+      'gramatura', 'gramaturaId'];
+    camposProibidos.forEach(campo => delete body[campo]);
+    const payload = { ...ofIn(body || {}), updated_at: new Date().toISOString() };
     try {
       const { data: ofAtual2 } = await supabase.from('ofs').select('status').eq('id', id).maybeSingle();
       const norm = (s) => {
@@ -6090,6 +6099,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         delete payload.status;
       }
     } catch (_) {}
+    delete payload._allow_partial; delete payload['_allow_partial'];
     delete payload.id; delete payload.empresa_id;
     delete payload.numero; delete payload.of; delete payload.of_num; delete payload.seq;
     const upd = await ofsUpdateWithRetry(id, payload);

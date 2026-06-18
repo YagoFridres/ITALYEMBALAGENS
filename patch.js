@@ -17737,6 +17737,15 @@ window._recarregarToneladas = async function() {
       return;
     }
 
+    console.log('[TON] resposta:', JSON.stringify({
+      ok: json.ok,
+      total_ofs: json.total_ofs,
+      tem_por_gram: !!json.por_gramatura,
+      tam_por_gram: json.por_gramatura && json.por_gramatura.length,
+      tem_por_cli: !!json.por_cliente,
+      tam_por_cli: json.por_cliente && json.por_cliente.length
+    }));
+
     var porFornecedor = Array.isArray(json.por_fornecedor) ? json.por_fornecedor : [];
     var porGramatura = Array.isArray(json.por_gramatura) ? json.por_gramatura : [];
     var porCliente = Array.isArray(json.por_cliente) ? json.por_cliente : [];
@@ -18530,71 +18539,90 @@ window._recarregarToneladas = async function() {
   } catch (_) {}
 })();
 (function _injetarMenusCustom() {
-  function _ocultarItem(texto) {
-    var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
-    if (!sidebar) return false;
-    var found = false;
-    Array.from(sidebar.querySelectorAll('*')).forEach(function(el) {
-      if (el.children.length > 0) return;
-      if (String(el.textContent || '').trim() !== texto) return;
-      var cur = el;
-      for (var i = 0; i < 10; i++) {
-        if (!cur || cur === sidebar) break;
-        cur = cur.parentElement;
-        if (!cur || cur === sidebar) break;
-        var w = cur.offsetWidth;
-        var h = cur.offsetHeight;
-        if (w > 60 && h > 10 && h < 80 && cur !== sidebar) {
-          cur.style.cssText += ';display:none!important;visibility:hidden!important';
-          found = true;
-          break;
-        }
-      }
-    });
-    return found;
+  function _injetarCssOcultarMenus() {
+    if (document.getElementById('_css_ocultar_menus')) return;
+    var style = document.createElement('style');
+    style.id = '_css_ocultar_menus';
+    style.textContent = '';
+    document.head.appendChild(style);
+    window._cssOcultarMenusEl = style;
   }
 
   function _ocultarMenusIndesejados() {
-    _ocultarItem('Relatório Mensal');
-
+    _injetarCssOcultarMenus();
     var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
     if (!sidebar) return;
 
-    var refFin = null;
-    Array.from(sidebar.querySelectorAll('*')).forEach(function(el) {
-      if (el.children.length > 0) return;
-      var txt = String(el.textContent || '').trim();
-      if (txt === 'Comissões' || txt === 'Toneladas Vendidas') refFin = el;
+    var textos = ['Relatório Mensal'];
+
+    textos.forEach(function(texto) {
+      Array.from(sidebar.querySelectorAll('*')).forEach(function(el) {
+        if (el.children.length > 0) return;
+        if (String(el.textContent || '').trim() !== texto) return;
+
+        if (!el.id) {
+          el.id = '_menu_hide_' + Math.random().toString(36).slice(2, 8);
+        }
+
+        var cur = el;
+        for (var i = 0; i < 10; i++) {
+          if (!cur || cur === sidebar) break;
+          cur = cur.parentElement;
+          if (!cur || cur === sidebar) break;
+          if (cur.offsetWidth > 60 && cur.offsetHeight > 10 && cur.offsetHeight < 80) {
+            if (!cur.id) {
+              cur.id = '_menu_item_hide_' + Math.random().toString(36).slice(2, 8);
+            }
+            cur.style.cssText = 'display:none!important;visibility:hidden!important;height:0!important;overflow:hidden!important;pointer-events:none!important';
+            cur.setAttribute('data-hidden-menu', '1');
+            break;
+          }
+        }
+      });
     });
 
-    if (!refFin) return;
+    var cpTextos = ['Caixas Perdidas', 'Inconformidades'];
 
-    var grupoFin = refFin;
-    for (var j = 0; j < 8; j++) {
-      if (!grupoFin || grupoFin === sidebar) break;
-      grupoFin = grupoFin.parentElement;
-      if (grupoFin && grupoFin.children.length > 3) break;
-    }
-
+    var elFin = null;
     Array.from(sidebar.querySelectorAll('*')).forEach(function(el) {
       if (el.children.length > 0) return;
       var txt = String(el.textContent || '').trim();
-      if (txt !== 'Caixas Perdidas' && txt !== 'Inconformidades') return;
-      var cur = el;
-      var itemEl = null;
-      for (var k = 0; k < 10; k++) {
-        if (!cur || cur === sidebar) break;
-        cur = cur.parentElement;
-        if (!cur || cur === sidebar) break;
-        if (cur.offsetWidth > 60 && cur.offsetHeight > 10 && cur.offsetHeight < 80) {
-          itemEl = cur;
-          break;
+      if (txt === 'FINANCEIRO' || txt === 'Financeiro') elFin = el;
+    });
+
+    var grupoFin = elFin;
+    if (elFin) {
+      for (var j = 0; j < 6; j++) {
+        if (!grupoFin || grupoFin === sidebar) break;
+        grupoFin = grupoFin.parentElement;
+        if (grupoFin && grupoFin.children.length >= 3) break;
+      }
+    }
+
+    cpTextos.forEach(function(texto) {
+      Array.from(sidebar.querySelectorAll('*')).forEach(function(el) {
+        if (el.children.length > 0) return;
+        if (String(el.textContent || '').trim() !== texto) return;
+
+        var cur = el;
+        var itemEl = null;
+        for (var k = 0; k < 10; k++) {
+          if (!cur || cur === sidebar) break;
+          cur = cur.parentElement;
+          if (!cur || cur === sidebar) break;
+          if (cur.offsetWidth > 60 && cur.offsetHeight > 10 && cur.offsetHeight < 80) {
+            itemEl = cur;
+            break;
+          }
         }
-      }
-      if (!itemEl) return;
-      if (!(grupoFin && grupoFin.contains(itemEl))) {
-        itemEl.style.cssText += ';display:none!important;visibility:hidden!important';
-      }
+        if (!itemEl) return;
+
+        var noFin = grupoFin && grupoFin.contains(itemEl);
+        if (!noFin) {
+          itemEl.style.cssText = 'display:none!important;visibility:hidden!important;height:0!important;overflow:hidden!important;pointer-events:none!important';
+          itemEl.setAttribute('data-hidden-menu', '1');
+        }
+      });
     });
   }
 
@@ -18669,18 +18697,21 @@ window._recarregarToneladas = async function() {
     try { _ocultarMenusIndesejados(); } catch (_) {}
     if ((ok.gram && ok.ton) || tentativas > 40) clearInterval(timer);
   }, 800);
-  if (!window.__obsMenusIndesejados) {
-    window.__obsMenusIndesejados = new MutationObserver(function() {
-      clearTimeout(window.__obsMenusTimer);
-      window.__obsMenusTimer = setTimeout(_ocultarMenusIndesejados, 300);
-    });
-    window.__obsMenusIndesejados.observe(document.body, {
-      childList: true, subtree: true
-    });
+  [0,300,600,1000,1500,2000,3000,5000,8000,12000,20000].forEach(function(t) {
+    setTimeout(_ocultarMenusIndesejados, t);
+  });
+
+  if (window.__obsMenusIndesejados) {
+    try { window.__obsMenusIndesejados.disconnect(); } catch(_) {}
   }
-  setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 0);
-  setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 500);
-  setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 1000);
+  window.__obsMenusIndesejados = new MutationObserver(function() {
+    clearTimeout(window.__obsMenusTimer);
+    window.__obsMenusTimer = setTimeout(_ocultarMenusIndesejados, 200);
+  });
+  window.__obsMenusIndesejados.observe(document.body, {
+    childList: true, subtree: true, attributes: false
+  });
+
   setTimeout(function() {
     try { _ocultarMenusIndesejados(); } catch (_) {}
     var itensFinanceiro = document.querySelectorAll('[onclick*="inconformidades"], [onclick*="caixas-perdidas"]');
