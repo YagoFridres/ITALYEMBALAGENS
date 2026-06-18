@@ -9,60 +9,110 @@ window._patchCustomPages['toneladas-vendidas'] = function() {
 
 if (!window._menuPatchFinal) {
   window._menuPatchFinal = true;
-  setTimeout(function() {
-    var onclicks = Array.from(document.querySelectorAll('[onclick]'))
-      .map(function(el) { return el.getAttribute('onclick'); })
-      .filter(function(s) { return s && s.includes("go('"); })
-      .slice(0, 15);
-    console.log('[MENU FINAL] onclicks com go():', onclicks);
 
-    var ancora_cad = null;
-    Array.from(document.querySelectorAll('li')).forEach(function(li) {
-      if (ancora_cad) return;
-      var t = li.textContent.trim();
-      if (t.includes('Usuári') || t.includes('Usuari') || t.includes('Fornecedor') || t.includes('Vendedor')) {
-        if (li.offsetParent !== null) ancora_cad = li;
+  function _injetarMenusCustom() {
+    var todosLi = Array.from(document.querySelectorAll('li'));
+
+    if (!document.getElementById('_menu_gramaturas')) {
+      var ancCad = todosLi.find(function(li) {
+        var t = li.textContent.trim();
+        return li.offsetParent !== null && (
+          t.includes('Usuári') || t.includes('Usuari') ||
+          t.includes('Fornecedor') || t.includes('Vendedor')
+        ) && t.length < 30;
+      });
+      if (ancCad && ancCad.parentElement) {
+        var li1 = document.createElement('li');
+        li1.id = '_menu_gramaturas';
+        li1.className = ancCad.className;
+        var a1 = document.createElement('a');
+        a1.textContent = '📐 Gramaturas';
+        a1.href = '#';
+        a1.className = (ancCad.querySelector('a') || {}).className || '';
+        a1.addEventListener('click', function(e) {
+          e.preventDefault(); e.stopPropagation();
+          if (window._patchCustomPages && window._patchCustomPages.gramaturas) {
+            window._patchCustomPages.gramaturas();
+          } else if (typeof window.renderGramaturasPage === 'function') {
+            window.renderGramaturasPage();
+          }
+        });
+        li1.appendChild(a1);
+        ancCad.parentElement.appendChild(li1);
+        console.log('[MENU] Gramaturas injetado');
       }
-    });
-    var ancora_fin = null;
-    Array.from(document.querySelectorAll('li')).forEach(function(li) {
-      if (ancora_fin) return;
-      var t = li.textContent.trim();
-      if (t.includes('Comiss') || t.includes('Orçament') || t.includes('Orcament')) {
-        if (li.offsetParent !== null) ancora_fin = li;
-      }
-    });
-
-    console.log('[MENU FINAL] âncora cadastros:', ancora_cad ? ancora_cad.textContent.trim() + ' | ' + ancora_cad.getAttribute('onclick') : 'NÃO ENCONTRADA');
-    console.log('[MENU FINAL] âncora financeiro:', ancora_fin ? ancora_fin.tagName + ':' + ancora_fin.textContent.trim().substring(0,20) : 'NÃO ENCONTRADA');
-
-    function _injetarItemMenu(ancora, label, id, pageId) {
-      if (document.getElementById(id)) return;
-      if (!ancora) return;
-      var liRef = ancora.closest('li') || ancora.parentElement;
-      if (!liRef || !liRef.parentElement) return;
-
-      var novoLi = document.createElement('li');
-      novoLi.id = id;
-      novoLi.className = liRef.className;
-
-      var aRef = liRef.querySelector('a') || liRef;
-      var novoA = document.createElement('a');
-      novoA.href = '#';
-      novoA.className = aRef.className || '';
-      novoA.style.cssText = aRef.style ? aRef.style.cssText : '';
-      novoA.textContent = label;
-      novoA.setAttribute('onclick', 'event.preventDefault();event.stopPropagation();(window._patchCustomPages&&window._patchCustomPages["' + pageId + '"]?window._patchCustomPages["' + pageId + '"]():(window.go&&window.go("' + pageId + '")))');
-
-      novoLi.appendChild(novoA);
-      liRef.parentElement.appendChild(novoLi);
-      console.log('[MENU FINAL] injetado OK:', label);
     }
 
-    _injetarItemMenu(ancora_cad, '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
-    _injetarItemMenu(ancora_fin, '⚖️ Toneladas Vendidas', '_menu_toneladas', 'toneladas-vendidas');
-    _injetarItemMenu(ancora_fin, '📦 Caixas Perdidas', '_menu_caixas_fin', 'caixas-perdidas');
-  }, 4000);
+    if (!document.getElementById('_menu_toneladas')) {
+      var ancFin = todosLi.find(function(li) {
+        var t = li.textContent.trim();
+        return li.offsetParent !== null && (
+          t.includes('Comiss') || t.includes('Orçament') || t.includes('Orcament')
+        ) && t.length < 30;
+      });
+      if (ancFin && ancFin.parentElement) {
+        var li2 = document.createElement('li');
+        li2.id = '_menu_toneladas';
+        li2.className = ancFin.className;
+        var a2 = document.createElement('a');
+        a2.textContent = '⚖️ Toneladas Vendidas';
+        a2.href = '#';
+        a2.className = (ancFin.querySelector('a') || {}).className || '';
+        a2.addEventListener('click', function(e) {
+          e.preventDefault(); e.stopPropagation();
+          if (window._patchCustomPages && window._patchCustomPages['toneladas-vendidas']) {
+            window._patchCustomPages['toneladas-vendidas']();
+          } else if (typeof window.renderToneladasPage === 'function') {
+            window.renderToneladasPage();
+          }
+        });
+        li2.appendChild(a2);
+        ancFin.parentElement.appendChild(li2);
+        console.log('[MENU] Toneladas injetado');
+      }
+    }
+
+    if (!document.getElementById('_menu_caixas_fin')) {
+      var ancFin2 = todosLi.find(function(li) {
+        var t = li.textContent.trim();
+        return li.offsetParent !== null && (
+          t.includes('Comiss') || t.includes('Orçament')
+        ) && t.length < 30;
+      });
+      if (ancFin2 && ancFin2.parentElement) {
+        var li3 = document.createElement('li');
+        li3.id = '_menu_caixas_fin';
+        li3.className = ancFin2.className;
+        var a3 = document.createElement('a');
+        a3.textContent = '📦 Caixas Perdidas';
+        a3.href = '#';
+        a3.className = (ancFin2.querySelector('a') || {}).className || '';
+        a3.addEventListener('click', function(e) {
+          e.preventDefault(); e.stopPropagation();
+          var fn = window.abrirCaixasPerdidas || window._abrirCaixasPerdidas;
+          if (typeof fn === 'function') fn();
+          else if (typeof window.go === 'function') window.go('caixas-perdidas');
+        });
+        li3.appendChild(a3);
+        ancFin2.parentElement.appendChild(li3);
+        console.log('[MENU] Caixas Perdidas injetado');
+      }
+    }
+
+    var ok = document.getElementById('_menu_gramaturas') &&
+             document.getElementById('_menu_toneladas') &&
+             document.getElementById('_menu_caixas_fin');
+    if (ok) {
+      console.log('[MENU] todos os itens injetados com sucesso');
+      if (window._menuInjetarInterval) clearInterval(window._menuInjetarInterval);
+    }
+  }
+
+  _injetarMenusCustom();
+  window._menuInjetarInterval = setInterval(_injetarMenusCustom, 2000);
+  setTimeout(function() {
+    if (window._menuInjetarInterval) clearInterval(window._menuInjetarInterval);
+  }, 60000);
 }
 
 function _aplicarTemaClaro() {
@@ -83,19 +133,15 @@ _aplicarTemaClaro();
 setInterval(_aplicarTemaClaro, 1000);
 
 function _injetarGramaturaNoModal() {
-  if (window.__gramaturaModalObs) return;
-  var patchConclusaoFetch = function() {
-    if (window.__patchConclusaoGramaturaFetch) return;
-    if (typeof window.fetch !== 'function') return;
+  if (window.__patchConclusaoGramaturaFetch !== true && typeof window.fetch === 'function') {
     window.__patchConclusaoGramaturaFetch = true;
-    var origFetch = window.fetch;
+    var origFetchConclusaoGram = window.fetch;
     window.fetch = function(resource, init) {
       try {
         var url = typeof resource === 'string' ? resource : (resource && resource.url) || '';
         if (/\/api\/ofs\/[^/]+\/(concluir|baixa)(\?|$)/i.test(String(url || ''))) {
           var opts = init ? Object.assign({}, init) : {};
-          var sel = document.getElementById('_gram_select_modal');
-          var gramId = (sel && sel.value) || window._ofGramaturaId || '';
+          var gramId = String(window._ofGramaturaIdPendente || '').trim();
           if (gramId && opts.body && typeof opts.body === 'string') {
             try {
               var parsed = JSON.parse(opts.body);
@@ -108,59 +154,66 @@ function _injetarGramaturaNoModal() {
           }
         }
       } catch (_) {}
-      return origFetch.call(this, resource, init);
+      return origFetchConclusaoGram.call(this, resource, init);
     };
-  };
-  patchConclusaoFetch();
-  window.__gramaturaModalObs = new MutationObserver(function() {
+  }
+  if (window.__gramaturaModalObs) return;
+  var obs = new MutationObserver(function() {
     var modal = document.getElementById('modal-concluir-of');
-    if (!modal) return;
-    if (modal.querySelector('#_gram_select_modal')) return;
+    if (!modal || modal.querySelector('#_gram_select_modal')) return;
+    if (modal.style.display === 'none' || modal.hidden) return;
 
-    var labels = Array.from(modal.querySelectorAll('label, div[class*="label"], .m-label'));
-    var labelCaixas = labels.find(function(l) {
-      var txt = String(l.textContent || '').toLowerCase();
-      return txt.includes('caixa') && txt.includes('produz');
-    });
-    var pontoInsercao = labelCaixas ? labelCaixas.closest('div, p, label') : null;
-    if (!pontoInsercao) {
-      var numInput = modal.querySelector('input[type="number"]');
-      pontoInsercao = numInput && numInput.closest ? numInput.closest('div') : null;
-    }
-    if (!pontoInsercao || !pontoInsercao.parentElement) return;
+    var inputs = modal.querySelectorAll('input[type="number"], input:not([type="checkbox"])');
+    var pontoInsercao = inputs[0] ? (inputs[0].closest ? inputs[0].closest('div, p, label, .m-field, .field') : null) : null;
+    if (!pontoInsercao) pontoInsercao = modal.firstElementChild;
 
     var divGram = document.createElement('div');
-    divGram.style.cssText = 'margin-top:12px';
-    divGram.innerHTML = '<label style="display:block;font-size:12px;font-weight:600;text-transform:uppercase;color:#94a3b8;margin-bottom:6px">Gramatura (papel utilizado)</label>'
-      + '<select id="_gram_select_modal" style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;color:#f1f5f9;font-size:14px">'
+    divGram.style.cssText = 'margin:12px 0';
+    divGram.innerHTML =
+      '<label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;'
+      + 'letter-spacing:.5px;color:var(--text2,#94a3b8);margin-bottom:6px">Gramatura (papel utilizado)</label>'
+      + '<select id="_gram_select_modal" style="width:100%;background:var(--bg2,#1e293b);'
+      + 'border:1px solid var(--border,#334155);border-radius:8px;padding:12px;'
+      + 'color:var(--text1,#f1f5f9);font-size:14px">'
       + '<option value="">— Sem gramatura —</option>'
       + '</select>';
-    pontoInsercao.parentElement.insertBefore(divGram, pontoInsercao.nextSibling);
 
-    fetch('/api/gramaturas').then(function(r) { return r.json(); }).then(function(lista) {
-      var sel = document.getElementById('_gram_select_modal');
-      if (!sel) return;
-      (Array.isArray(lista) ? lista : []).forEach(function(g) {
-        var opt = document.createElement('option');
-        opt.value = g.id;
-        opt.dataset.gramatura = g.gramatura;
-        opt.dataset.valorUnitario = g.valor_unitario;
-        opt.textContent = g.nome + ' (' + g.gramatura + 'g/m²)';
-        sel.appendChild(opt);
-      });
-    }).catch(function() {});
+    if (pontoInsercao && pontoInsercao.parentNode) {
+      pontoInsercao.parentNode.insertBefore(divGram, pontoInsercao.nextSibling);
+    } else {
+      modal.appendChild(divGram);
+    }
 
-    var btnConfirmar = modal.querySelector('#btn-conf-conc, [onclick*="confirmar"], button[class*="accent"]');
-    if (btnConfirmar && !btnConfirmar._gramPatched) {
-      btnConfirmar._gramPatched = true;
-      var originalOnclick = btnConfirmar.getAttribute('onclick');
-      btnConfirmar.setAttribute('onclick', '(function(){'
-        + 'var sel=document.getElementById("_gram_select_modal");'
-        + 'if(sel&&sel.value) window._ofGramaturaId=sel.value;'
-        + '})();' + (originalOnclick || ''));
+    fetch('/api/gramaturas')
+      .then(function(r) { return r.json(); })
+      .then(function(lista) {
+        var sel = document.getElementById('_gram_select_modal');
+        if (!sel || !Array.isArray(lista)) return;
+        lista.forEach(function(g) {
+          var opt = document.createElement('option');
+          opt.value = g.id;
+          opt.textContent = g.nome + ' (' + g.gramatura + 'g/m²)';
+          sel.appendChild(opt);
+        });
+        console.log('[GRAM MODAL] ' + lista.length + ' gramaturas carregadas');
+      }).catch(function(e) { console.warn('[GRAM MODAL] erro:', e.message); });
+
+    var btnConf = modal.querySelector('#btn-conf-conc, button[onclick*="confirmar"], .btn-accent');
+    if (btnConf && !btnConf._gramPatch) {
+      btnConf._gramPatch = true;
+      btnConf.addEventListener('click', function() {
+        var sel = document.getElementById('_gram_select_modal');
+        if (sel && sel.value) {
+          window._ofGramaturaIdPendente = sel.value;
+          console.log('[GRAM MODAL] gramatura_id salvo:', sel.value);
+        } else {
+          window._ofGramaturaIdPendente = '';
+        }
+      }, true);
     }
   });
-  window.__gramaturaModalObs.observe(document.body, { childList: true, subtree: true });
+  window.__gramaturaModalObs = obs;
+  obs.observe(document.body, { childList: true, subtree: true });
 }
 _injetarGramaturaNoModal();
 
@@ -2424,195 +2477,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   try{ window._todasPaginas = PAGINAS_REAIS_DESKTOP; }catch(e){}
 
-  (function patchMenusExtras() {
-    function _allMenuTexts() {
-      try { return Array.prototype.slice.call(document.querySelectorAll('a, li, div, span, button')); } catch (_) { return []; }
-    }
-    function _findByText(txt) {
-      txt = String(txt || '').trim();
-      if (!txt) return null;
-      var els = _allMenuTexts();
-      for (var i = 0; i < els.length; i += 1) {
-        var el = els[i];
-        try {
-          if (String(el.textContent || '').trim() === txt) return el;
-        } catch (_) {}
-      }
-      return null;
-    }
-    function _findItemEl(base) {
-      try { return base && (base.closest ? base.closest('a,button,li,.menu-item,[class*="item"]') : null); } catch (_) { return null; }
-    }
-    function _sanitizeCloneIds(node) {
-      try {
-        if (!node || !node.querySelectorAll) return;
-        if (node.id) node.id = '';
-        Array.prototype.slice.call(node.querySelectorAll('[id]')).forEach(function(el) { try { el.id = ''; } catch (_) {} });
-      } catch (_) {}
-    }
-    function _replaceExactText(root, oldText, newText) {
-      try {
-        Array.prototype.slice.call(root.querySelectorAll('*')).forEach(function(el) {
-          try {
-            var kids = Array.prototype.slice.call(el.childNodes || []);
-            kids.forEach(function(nd) {
-              if (nd && nd.nodeType === 3 && String(nd.nodeValue || '').trim() === oldText) nd.nodeValue = newText;
-            });
-          } catch (_) {}
-        });
-      } catch (_) {}
-    }
-    function _ocultarRelatorioMensal() {
-      if (window._pausarObservers) return;
-      try {
-        Array.prototype.slice.call(document.querySelectorAll('a, li, span, div')).forEach(function(el) {
-          try {
-            if (!el || el.children == null) return;
-            if (el.children.length !== 0) return;
-            if (String(el.textContent || '').trim() !== 'Relatório Mensal') return;
-            var alvo = el;
-            for (var i = 0; i < 3; i++) {
-              if (!alvo) break;
-              try { alvo.style.display = 'none'; } catch (_) {}
-              try { alvo.style.visibility = 'hidden'; } catch (_) {}
-              try { alvo.style.height = '0'; } catch (_) {}
-              try { alvo.style.overflow = 'hidden'; } catch (_) {}
-              alvo = alvo.parentElement;
-            }
-          } catch (_) {}
-        });
-      } catch (_) {}
-    }
-    function _removerRelatorioMensalAgressivo() {
-      try {
-        Array.prototype.slice.call(document.querySelectorAll('*')).forEach(function(el) {
-          try {
-            if (!el || el.childElementCount !== 0) return;
-            if (String(el.textContent || '').trim() !== 'Relatório Mensal') return;
-            var alvo = el.closest ? el.closest('li, .nav-item, .menu-item, a') : null;
-            if (alvo && alvo.parentNode) alvo.parentNode.removeChild(alvo);
-          } catch (_) {}
-        });
-      } catch (_) {}
-    }
-    function _ensureMenuClone(textoAncora, label, elId, pageId) {
-      if (document.getElementById(elId)) return false;
-
-      var ancora = null;
-      ancora = document.querySelector('[data-page="' + textoAncora + '"]');
-
-      if (!ancora) {
-        ancora = Array.from(document.querySelectorAll('a[href]')).find(function(a) {
-          var href = String(a.getAttribute('href') || '');
-          return href.indexOf(textoAncora) >= 0 || href === textoAncora;
-        });
-      }
-
-      if (!ancora) {
-        ancora = Array.from(document.querySelectorAll('[onclick]')).find(function(el) {
-          var oc = String(el.getAttribute('onclick') || '');
-          return oc.indexOf("'" + textoAncora + "'") >= 0 || oc.indexOf('"' + textoAncora + '"') >= 0;
-        });
-      }
-
-      if (!ancora) {
-        ancora = Array.from(document.querySelectorAll('a, li, [role="menuitem"]')).find(function(el) {
-          var t = String(el && el.textContent || '').trim();
-          return t.indexOf(textoAncora) >= 0 && t.length < 40;
-        });
-      }
-
-      if (!ancora) {
-        console.warn('[MENU] âncora não encontrada para:', textoAncora);
-        return false;
-      }
-
-      var liAncora = ancora.tagName === 'LI' ? ancora : (ancora.closest ? ancora.closest('li') : null);
-      if (!liAncora || !liAncora.parentElement) {
-        console.warn('[MENU] LI pai não encontrado para:', textoAncora);
-        return false;
-      }
-
-      var novoLiLimpo = document.createElement('li');
-      novoLiLimpo.id = elId;
-      novoLiLimpo.className = liAncora.className;
-      novoLiLimpo.innerHTML = liAncora.innerHTML;
-
-      var a = novoLiLimpo.querySelector('a') || novoLiLimpo;
-      var span = a.querySelector('span:last-child') || a.querySelector('span');
-      if (span && String(span.textContent || '').trim().length > 0) {
-        span.textContent = label;
-      } else {
-        a.textContent = label;
-      }
-
-      a.removeAttribute('onclick');
-      a.href = '#';
-      a.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('[MENU] clique em:', pageId);
-        if (window._patchCustomPages && window._patchCustomPages[pageId]) {
-          window._patchCustomPages[pageId]();
-        } else if (typeof window.go === 'function') {
-          window.go(pageId);
-        }
-      });
-
-      liAncora.parentElement.appendChild(novoLiLimpo);
-      console.log('[MENU] injetado com sucesso:', label, 'após:', textoAncora);
-      return true;
-    }
-    var _tickMenusUltimo = 0;
-    function tickMenus() {
-      var agora = Date.now();
-      if (agora - _tickMenusUltimo < 2000) return;
-      _tickMenusUltimo = agora;
-      try { _ocultarRelatorioMensal(); } catch (_) {}
-      try { _removerRelatorioMensalAgressivo(); } catch (_) {}
-      try { _ensureMenuClone('Fornecedores', '📐 Gramaturas', 'gramaturas', 'gramaturas'); } catch (_) {}
-      try { _ensureMenuClone('Comissões', '📦 Caixas Perdidas', 'caixas-perdidas-fin', 'caixas-perdidas'); } catch (_) {}
-      try { _ensureMenuClone('📦 Caixas Perdidas', '⚖️ Toneladas Vendidas', 'toneladas-fin', 'toneladas-vendidas'); } catch (_) {}
-      if (document.getElementById('_menu_gramaturas') &&
-          document.getElementById('_menu_toneladas') &&
-          document.getElementById('_menu_caixas_fin')) {
-        console.log('[MENU] todos os itens injetados — observer desconectado');
-        if (window._menuObserver) window._menuObserver.disconnect();
-      }
-    }
-    try { tickMenus(); } catch (_) {}
-    try { _ocultarRelatorioMensal(); } catch (_) {}
-    try {
-      if (!document.getElementById('patch-rm-style')) {
-        var styleRM = document.createElement('style');
-        styleRM.id = 'patch-rm-style';
-        styleRM.textContent = ''
-          + 'a[href*="relatorio-mensal"],'
-          + 'a[href*="relmensal"],'
-          + '[onclick*="relmensal"],'
-          + '[data-page="relmensal"],'
-          + '[data-section="relmensal"]{display:none!important;}';
-        document.head.appendChild(styleRM);
-      }
-    } catch (_) {}
-    try { _removerRelatorioMensalAgressivo(); } catch (_) {}
-    try { [100, 500, 1000, 2000, 5000].forEach(function(t) { setTimeout(_ocultarRelatorioMensal, t); }); } catch (_) {}
-    try { [500, 1500, 3000].forEach(function(t) { setTimeout(_removerRelatorioMensalAgressivo, t); }); } catch (_) {}
-    try {
-      if (!window.__patchRelMensalObs) {
-        window.__patchRelMensalObs = new MutationObserver(_ocultarRelatorioMensal);
-        window.__patchRelMensalObs.observe(document.body, { childList: true, subtree: true });
-      }
-    } catch (_) {}
-    if (!window.__patchMenusExtrasObs) {
-      window.__patchMenusExtrasObs = new MutationObserver(function() {
-        if (window._pausarObservers) return;
-        tickMenus();
-      });
-      window._menuObserver = window.__patchMenusExtrasObs;
-      try { window.__patchMenusExtrasObs.observe(document.body, { childList: true, subtree: true }); } catch (_) {}
-    }
-  })();
 
   (function patchPaginasExtrasCustom() {
     if (window.__patchPaginasExtrasCustom) return;
@@ -6660,12 +6524,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + '</label>';
       }).join('');
 
+    var mesesImp = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    var mesNumAtual = parseInt(String(mesAtual || '').replace(/\D/g, ''), 10) || (new Date().getMonth() + 1);
     overlay.innerHTML = ''
       + '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:28px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto">'
       + '<h3 style="color:var(--text1,#fff);margin-bottom:20px;font-size:16px">🖨️ Imprimir Relatório de Comissões</h3>'
       + '<div style="margin-bottom:16px">'
       + '<label style="color:var(--text2,#aaa);font-size:11px;text-transform:uppercase;display:block;margin-bottom:6px">Mês de Referência</label>'
-      + '<div style="color:var(--text1,#fff);font-size:14px;padding:10px;background:var(--bg3,#0d0d1a);border-radius:6px" id="imp-mes-label">' + String(mesAtual || (anoAtual + '-??')) + '</div>'
+      + '<div style="display:flex;gap:8px">'
+      + '<select id="_imp_mes" style="flex:1;color:var(--text1,#fff);font-size:14px;padding:10px;background:var(--bg3,#0d0d1a);border-radius:6px;border:1px solid var(--border,#333)">' + mesesImp.map(function(nome, idx) {
+          var mesNum = idx + 1;
+          return '<option value="' + mesNum + '"' + (mesNum === mesNumAtual ? ' selected' : '') + '>' + nome + '</option>';
+        }).join('') + '</select>'
+      + '<select id="_imp_ano" style="width:120px;color:var(--text1,#fff);font-size:14px;padding:10px;background:var(--bg3,#0d0d1a);border-radius:6px;border:1px solid var(--border,#333)">' + [2024, 2025, 2026].map(function(ano) {
+          return '<option value="' + ano + '"' + (String(anoAtual) === String(ano) ? ' selected' : '') + '>' + ano + '</option>';
+        }).join('') + '</select>'
+      + '</div>'
       + '</div>'
       + '<div style="margin-bottom:20px">'
       + '<label style="color:var(--text2,#aaa);font-size:11px;text-transform:uppercase;display:block;margin-bottom:8px">Selecionar Vendedores</label>'
@@ -6709,89 +6583,106 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   window._gerarImpressaoComissoes = function() {
-    var data = window._comissoesSqlData;
-    try { console.log('[IMPRIMIR] data existe:', !!data, 'total_ofs:', data && data.total_ofs, 'ofs length:', data && data.ofs && data.ofs.length); } catch (_) {}
+    (async function() {
+      var data = window._comissoesSqlData;
+      var mesSel = document.getElementById('_imp_mes');
+      var anoSel = document.getElementById('_imp_ano');
+      var mesImp = parseInt((mesSel && mesSel.value) || 0, 10) || null;
+      var anoImp = String((anoSel && anoSel.value) || '').trim() || null;
 
-    if (!data || !data.total_ofs) {
-      try { alert('Calcule o relatório primeiro'); } catch (_) {}
-      return;
-    }
+      if (mesImp && anoImp) {
+        try {
+          var tokenFetch = '';
+          try { tokenFetch = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
+          var respImp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(String(mesImp)) + '&ano=' + encodeURIComponent(String(anoImp)), {
+            headers: tokenFetch ? { Authorization: 'Bearer ' + tokenFetch } : {}
+          });
+          var jsonImp = await respImp.json().catch(function() { return null; });
+          if (respImp.ok && jsonImp && jsonImp.ok) data = jsonImp;
+        } catch (_) {}
+      }
 
-    var checkboxes = [];
-    try { checkboxes = Array.prototype.slice.call(document.querySelectorAll('#modal-impressao-com input[type="checkbox"][data-vendedor]')) || []; } catch (_) { checkboxes = []; }
-    var selecionados = new Set();
-    checkboxes.forEach(function(cb) {
-      if (cb && cb.checked && cb.dataset && cb.dataset.vendedor) selecionados.add(cb.dataset.vendedor);
-    });
+      try { console.log('[IMPRIMIR] data existe:', !!data, 'total_ofs:', data && data.total_ofs, 'ofs length:', data && data.ofs && data.ofs.length); } catch (_) {}
+      if (!data || !data.total_ofs) {
+        try { alert('Calcule o relatório primeiro'); } catch (_) {}
+        return;
+      }
 
-    var fmtLocal = function(v) {
-      return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    };
-    var fmtD = function(d) {
-      if (!d) return '—';
-      try { return new Date(d).toLocaleDateString('pt-BR'); } catch (_) { return '—'; }
-    };
+      var checkboxes = [];
+      try { checkboxes = Array.prototype.slice.call(document.querySelectorAll('#modal-impressao-com input[type="checkbox"][data-vendedor]')) || []; } catch (_) { checkboxes = []; }
+      var selecionados = new Set();
+      checkboxes.forEach(function(cb) {
+        if (cb && cb.checked && cb.dataset && cb.dataset.vendedor) selecionados.add(cb.dataset.vendedor);
+      });
 
-    var vends = (selecionados.size > 0)
-      ? (data.vendedores || []).filter(function(v) { return selecionados.has(String(v && (v.vendedor || v.nome) || '')); })
-      : (data.vendedores || []);
+      var fmtLocal = function(v) {
+        return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      };
+      var fmtD = function(d) {
+        if (!d) return '—';
+        try { return new Date(d).toLocaleDateString('pt-BR'); } catch (_) { return '—'; }
+      };
 
-    var ofs = (selecionados.size > 0)
-      ? (data.ofs || []).filter(function(of) { return selecionados.has(String(of && of.vendedor || '')); })
-      : (data.ofs || []);
+      var vends = (selecionados.size > 0)
+        ? (data.vendedores || []).filter(function(v) { return selecionados.has(String(v && (v.vendedor || v.nome) || '')); })
+        : (data.vendedores || []);
+      var ofs = (selecionados.size > 0)
+        ? (data.ofs || []).filter(function(of) { return selecionados.has(String(of && of.vendedor || '')); })
+        : (data.ofs || []);
 
-    var parts = String(data.mes || '').split('-');
-    var ano = parts[0] || '';
-    var mes = parts[1] || '';
-    var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-    var nomeMes = meses[Math.max(0, (parseInt(mes, 10) || 1) - 1)] || mes;
+      var parts = String(data.mes || (anoImp + '-' + String(mesImp || '').padStart(2, '0'))).split('-');
+      var ano = parts[0] || '';
+      var mes = parts[1] || '';
+      var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      var nomeMes = meses[Math.max(0, (parseInt(mes, 10) || 1) - 1)] || mes;
 
-    var agora = new Date();
-    var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Comissões ' + nomeMes + '/' + ano + '</title>'
-      + '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px}h1{font-size:20px;margin-bottom:4px}h2{font-size:13px;color:#666;font-weight:normal;margin-bottom:20px}.cards{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}.card{border:1px solid #ddd;border-radius:6px;padding:12px 18px;min-width:140px}.lbl{font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px}.val{font-size:16px;font-weight:700}.green{color:#16a34a}table{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:11px}th{background:#f0f0f0;padding:7px 8px;text-align:left;border-bottom:2px solid #ccc;font-size:10px;text-transform:uppercase}td{padding:6px 8px;border-bottom:1px solid #eee}.vh{background:#1a1a2e;color:#fff;padding:8px 12px;border-radius:4px;margin:16px 0 8px;font-weight:700;font-size:12px}.tf{font-weight:700;background:#f5f5f5}@media print{body{padding:0}}</style>'
-      + '</head><body>'
-      + '<h1>Relatório de Comissões — ' + nomeMes + '/' + ano + '</h1>'
-      + '<h2>Italy Embalagens · Gerado em ' + agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR') + '</h2>'
-      + '<div class="cards">'
-      + '<div class="card"><div class="lbl">Total Vendido</div><div class="val">' + fmtLocal(data.total_vendido) + '</div></div>'
-      + '<div class="card"><div class="lbl">Total Comissão</div><div class="val green">' + fmtLocal(data.total_comissao) + '</div></div>'
-      + '<div class="card"><div class="lbl">Total OFs</div><div class="val">' + String(data.total_ofs || 0) + '</div></div>'
-      + '</div>'
-      + '<h3 style="margin-bottom:8px;font-size:13px">Resumo por Vendedor</h3>'
-      + '<table><thead><tr><th>Vendedor</th><th>OFs</th><th style="text-align:right">Total Vendido</th><th style="text-align:center">%</th><th style="text-align:right">Comissão R$</th></tr></thead><tbody>'
-      + vends.map(function(v) {
-        return '<tr><td>' + String(v && v.nome || '—') + '</td><td>' + String(v && v.ofs || 0) + '</td><td style="text-align:right">' + fmtLocal(v && v.total) + '</td><td style="text-align:center">' + (Number(v && v.comissao_pct || 1) || 1).toFixed(2) + '%</td><td style="text-align:right" class="green">' + fmtLocal(v && v.comissao_rs) + '</td></tr>';
-      }).join('')
-      + '<tr class="tf"><td>TOTAL</td><td>' + String(vends.reduce(function(s, v) { return s + (Number(v && v.ofs || 0) || 0); }, 0)) + '</td><td style="text-align:right">' + fmtLocal(vends.reduce(function(s, v) { return s + (Number(v && v.total || 0) || 0); }, 0)) + '</td><td></td><td style="text-align:right" class="green">' + fmtLocal(vends.reduce(function(s, v) { return s + (Number(v && v.comissao_rs || 0) || 0); }, 0)) + '</td></tr>'
-      + '</tbody></table>'
-      + vends.map(function(v) {
-        var vOfs = ofs.filter(function(o) { return String(o && o.vendedor || '') === String(v && v.nome || ''); });
-        if (!vOfs.length) return '';
-        return '<div class="vh">📋 ' + String(v && v.nome || '—') + ' — ' + String(vOfs.length) + ' OFs — ' + fmtLocal(v && v.total) + '</div>'
-          + '<table><thead><tr><th>Nº OF</th><th>Cliente</th><th style="text-align:right">Valor</th><th style="text-align:center">%</th><th style="text-align:right">Comissão</th><th>Data Conclusão</th><th>Status</th></tr></thead><tbody>'
-          + vOfs.map(function(o) {
-            return '<tr><td>#' + String(o && o.numero || '—') + '</td><td>' + String(o && o.cliente || '—') + '</td><td style="text-align:right">' + fmtLocal(o && o.valor_total) + '</td><td style="text-align:center">' + (Number(o && o.comissao_pct || 1) || 1).toFixed(2) + '%</td><td style="text-align:right" class="green">' + fmtLocal(o && o.comissao_rs) + '</td><td>' + fmtD((o && (o.data_conclusao || o.created_at)) || null) + '</td><td>' + String(o && o.status || '—') + '</td></tr>';
-          }).join('')
-          + '<tr class="tf"><td colspan="2">Total ' + String(v && v.nome || '—') + '</td><td style="text-align:right">' + fmtLocal(v && v.total) + '</td><td></td><td style="text-align:right" class="green">' + fmtLocal(v && v.comissao_rs) + '</td><td colspan="2"></td></tr>'
-          + '</tbody></table>';
-      }).join('')
-      + '</body></html>';
+      var agora = new Date();
+      var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Comissões ' + nomeMes + '/' + ano + '</title>'
+        + '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px}h1{font-size:20px;margin-bottom:4px}h2{font-size:13px;color:#666;font-weight:normal;margin-bottom:20px}.cards{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}.card{border:1px solid #ddd;border-radius:6px;padding:12px 18px;min-width:140px}.lbl{font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px}.val{font-size:16px;font-weight:700}.green{color:#16a34a}table{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:11px}th{background:#f0f0f0;padding:7px 8px;text-align:left;border-bottom:2px solid #ccc;font-size:10px;text-transform:uppercase}td{padding:6px 8px;border-bottom:1px solid #eee}.vh{background:#1a1a2e;color:#fff;padding:8px 12px;border-radius:4px;margin:16px 0 8px;font-weight:700;font-size:12px}.tf{font-weight:700;background:#f5f5f5}@media print{body{padding:0}}</style>'
+        + '</head><body>'
+        + '<h1>Relatório de Comissões — ' + nomeMes + '/' + ano + '</h1>'
+        + '<h2>Italy Embalagens · Gerado em ' + agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR') + '</h2>'
+        + '<div class="cards">'
+        + '<div class="card"><div class="lbl">Total Vendido</div><div class="val">' + fmtLocal(data.total_vendido) + '</div></div>'
+        + '<div class="card"><div class="lbl">Total Comissão</div><div class="val green">' + fmtLocal(data.total_comissao) + '</div></div>'
+        + '<div class="card"><div class="lbl">Total OFs</div><div class="val">' + String(data.total_ofs || 0) + '</div></div>'
+        + '</div>'
+        + '<h3 style="margin-bottom:8px;font-size:13px">Resumo por Vendedor</h3>'
+        + '<table><thead><tr><th>Vendedor</th><th>OFs</th><th style="text-align:right">Total Vendido</th><th style="text-align:center">%</th><th style="text-align:right">Comissão R$</th></tr></thead><tbody>'
+        + vends.map(function(v) {
+          return '<tr><td>' + String(v && v.nome || '—') + '</td><td>' + String(v && v.ofs || 0) + '</td><td style="text-align:right">' + fmtLocal(v && v.total) + '</td><td style="text-align:center">' + (Number(v && v.comissao_pct || 1) || 1).toFixed(2) + '%</td><td style="text-align:right" class="green">' + fmtLocal(v && v.comissao_rs) + '</td></tr>';
+        }).join('')
+        + '<tr class="tf"><td>TOTAL</td><td>' + String(vends.reduce(function(s, v) { return s + (Number(v && v.ofs || 0) || 0); }, 0)) + '</td><td style="text-align:right">' + fmtLocal(vends.reduce(function(s, v) { return s + (Number(v && v.total || 0) || 0); }, 0)) + '</td><td></td><td style="text-align:right" class="green">' + fmtLocal(vends.reduce(function(s, v) { return s + (Number(v && v.comissao_rs || 0) || 0); }, 0)) + '</td></tr>'
+        + '</tbody></table>'
+        + vends.map(function(v) {
+          var vOfs = ofs.filter(function(o) { return String(o && o.vendedor || '') === String(v && v.nome || ''); });
+          if (!vOfs.length) return '';
+          return '<div class="vh">📋 ' + String(v && v.nome || '—') + ' — ' + String(vOfs.length) + ' OFs — ' + fmtLocal(v && v.total) + '</div>'
+            + '<table><thead><tr><th>Nº OF</th><th>Cliente</th><th style="text-align:right">Valor</th><th style="text-align:center">%</th><th style="text-align:right">Comissão</th><th>Data Conclusão</th><th>Status</th></tr></thead><tbody>'
+            + vOfs.map(function(o) {
+              return '<tr><td>#' + String(o && o.numero || '—') + '</td><td>' + String(o && o.cliente || '—') + '</td><td style="text-align:right">' + fmtLocal(o && o.valor_total) + '</td><td style="text-align:center">' + (Number(o && o.comissao_pct || 1) || 1).toFixed(2) + '%</td><td style="text-align:right" class="green">' + fmtLocal(o && o.comissao_rs) + '</td><td>' + fmtD((o && (o.data_conclusao || o.created_at)) || null) + '</td><td>' + String(o && o.status || '—') + '</td></tr>';
+            }).join('')
+            + '<tr class="tf"><td colspan="2">Total ' + String(v && v.nome || '—') + '</td><td style="text-align:right">' + fmtLocal(v && v.total) + '</td><td></td><td style="text-align:right" class="green">' + fmtLocal(v && v.comissao_rs) + '</td><td colspan="2"></td></tr>'
+            + '</tbody></table>';
+        }).join('')
+        + '</body></html>';
 
-    try { var m = document.getElementById('modal-impressao-com'); if (m) m.remove(); } catch (_) {}
-    var win = null;
-    try { win = window.open('', '_blank', 'width=900,height=700'); } catch (_) { win = null; }
-    if (!win) {
-      try { alert('Popup bloqueado! Permita popups para este site e tente novamente.'); } catch (_) {}
-      return;
-    }
-    try {
-      win.document.write(html);
-      win.document.close();
-    } catch (e) {
-      try { alert('Erro ao abrir impressão: ' + String(e && e.message || e)); } catch (_) {}
-      return;
-    }
-    setTimeout(function() { try { win.print(); } catch (_) {} }, 1000);
+      try { var m = document.getElementById('modal-impressao-com'); if (m) m.remove(); } catch (_) {}
+      var win = null;
+      try { win = window.open('', '_blank', 'width=900,height=700'); } catch (_) { win = null; }
+      if (!win) {
+        try { alert('Popup bloqueado! Permita popups para este site e tente novamente.'); } catch (_) {}
+        return;
+      }
+      try {
+        win.document.write(html);
+        win.document.close();
+      } catch (e) {
+        try { alert('Erro ao abrir impressão: ' + String(e && e.message || e)); } catch (_) {}
+        return;
+      }
+      setTimeout(function() { try { win.print(); } catch (_) {} }, 1000);
+    })();
   };
 
   window._abrirModalImpressaoComissoes = _abrirModalImpressao;
@@ -16650,11 +16541,14 @@ function _ocultarGraficoComissoes() {
     resultDiv.innerHTML = '<p style="color:#94a3b8;padding:12px">🔍 Buscando...</p>';
 
     try {
-      var t = termo.toLowerCase();
+      var termos = termo.split(',').map(function(t) { return String(t || '').trim().toLowerCase(); }).filter(Boolean);
+      if (!termos.length) termos = [termo.toLowerCase()];
       var ofsDoMes = (window._comOfsData || []).filter(function(of) {
-        var numero = String(of && of.numero || '').toLowerCase();
-        var cliente = String(of && of.cliente || '').toLowerCase();
-        return numero === t || numero.indexOf(t) >= 0 || cliente.indexOf(t) >= 0;
+        return termos.some(function(t) {
+          var numero = String(of && of.numero || '').toLowerCase();
+          var cliente = String(of && of.cliente || '').toLowerCase();
+          return numero.indexOf(t) >= 0 || cliente.indexOf(t) >= 0;
+        });
       });
 
       var ofsGeral = [];
@@ -16668,9 +16562,11 @@ function _ocultarGraficoComissoes() {
           var d = await r.json();
           ofsGeral = Array.isArray(d) ? d : (d.ofs || d.data || d.rows || []);
           ofsGeral = (ofsGeral || []).filter(function(of) {
-            var numero = String(of && (of.numero || of.num_of) || '').toLowerCase();
-            var cliente = String(of && (of.cliente || of.cli_nome) || '').toLowerCase();
-            return numero.indexOf(t) >= 0 || cliente.indexOf(t) >= 0;
+            return termos.some(function(t) {
+              var numero = String(of && (of.numero || of.num_of) || '').toLowerCase();
+              var cliente = String(of && (of.cliente || of.cli_nome) || '').toLowerCase();
+              return numero.indexOf(t) >= 0 || cliente.indexOf(t) >= 0;
+            });
           });
         }
       } catch (e) {
@@ -16982,7 +16878,8 @@ function _ocultarGraficoComissoes() {
         var diff = ((totalGeral - prevTotal) / prevTotal * 100);
         var seta = diff >= 0 ? '↑' : '↓';
         var cor = diff >= 0 ? '#22c55e' : '#f87171';
-        varPct = '<div style="color:' + cor + ';font-size:12px;margin-top:4px">' + seta + ' ' + Math.abs(diff).toFixed(1) + '% vs mês anterior</div>';
+        varPct = '<div style="color:' + cor + ';font-size:12px;margin-top:4px">' + seta + ' ' + Math.abs(diff).toFixed(1) + '% vs mês anterior</div>'
+          + '<div style="color:#94a3b8;font-size:11px;margin-top:4px">' + _escHtmlCom(_fmtRs(prevTotal)) + ' → ' + _escHtmlCom(_fmtRs(totalGeral)) + '</div>';
       }
       var ranking = grupos.slice().sort(function(a, b) { return Number(b.total_vendas || 0) - Number(a.total_vendas || 0); }).slice(0, 3);
       var rankingMax = Number(ranking[0] && ranking[0].total_vendas || 0) || 1;
@@ -16995,7 +16892,7 @@ function _ocultarGraficoComissoes() {
         + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Total Vendido</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + _escHtmlCom(_fmtRs(totalGeral)) + '</div></div>'
         + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">OFs Concluídas</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + String(totalOFs) + '</div></div>'
         + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Total Comissões</div><div style="color:#22c55e;font-size:22px;font-weight:700">' + _escHtmlCom(_fmtRs(totalComissoes)) + '</div></div>'
-        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Vendedores</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + String((vendedores || []).length) + '</div>' + (varPct || '<div style="color:#94a3b8;font-size:12px;margin-top:6px">—</div>') + '</div>'
+        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Comparação de Vendas</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + String((vendedores || []).length) + '</div>' + (varPct || '<div style="color:#94a3b8;font-size:12px;margin-top:6px">—</div>') + '</div>'
         + '</div>';
 
       var medals = ['🥇', '🥈', '🥉'];
