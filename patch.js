@@ -158,6 +158,76 @@ if (!window._menuPatchFinal) {
   }, 1000);
   setTimeout(ocultarAgora, 3500);
 })();
+setTimeout(function() {
+  function _hideByText(texto) {
+    var all = document.querySelectorAll('*');
+    for (var i = 0; i < all.length; i++) {
+      var el = all[i];
+      if (el.children.length > 0) continue;
+      if (String(el.textContent || '').trim() !== texto) continue;
+      var cur = el.parentElement;
+      while (cur && cur !== document.body) {
+        var h = cur.offsetHeight;
+        var w = cur.offsetWidth;
+        if (h > 10 && h < 80 && w > 60) {
+          cur.style.cssText = 'display:none!important';
+          return true;
+        }
+        cur = cur.parentElement;
+      }
+    }
+    return false;
+  }
+
+  var rm = setInterval(function() {
+    _hideByText('Relatório Mensal');
+  }, 1000);
+
+  setTimeout(function() { clearInterval(rm); }, 30000);
+}, 3000);
+
+setTimeout(function() {
+  function _hideCP() {
+    var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
+    if (!sidebar) return;
+
+    var finGroup = null;
+    var allEls = sidebar.querySelectorAll('*');
+    for (var i = 0; i < allEls.length; i++) {
+      var el = allEls[i];
+      if (el.children.length > 0) continue;
+      var txt = String(el.textContent || '').trim();
+      if (txt === 'Toneladas Vendidas' || txt === 'Comissões') {
+        var p = el.parentElement;
+        while (p && p !== sidebar) {
+          if (p.children.length >= 3) { finGroup = p; break; }
+          p = p.parentElement;
+        }
+        break;
+      }
+    }
+
+    for (var j = 0; j < allEls.length; j++) {
+      var el2 = allEls[j];
+      if (el2.children.length > 0) continue;
+      var txt2 = String(el2.textContent || '').trim();
+      if (txt2 !== 'Caixas Perdidas' && txt2 !== 'Inconformidades') continue;
+      var item = el2.parentElement;
+      while (item && item !== sidebar) {
+        var h2 = item.offsetHeight;
+        var w2 = item.offsetWidth;
+        if (h2 > 10 && h2 < 80 && w2 > 60) break;
+        item = item.parentElement;
+      }
+      if (!item || item === sidebar) continue;
+      if (finGroup && finGroup.contains(item)) continue;
+      item.style.cssText = 'display:none!important';
+    }
+  }
+
+  var cp = setInterval(_hideCP, 1000);
+  setTimeout(function() { clearInterval(cp); }, 30000);
+}, 3000);
 
 function _aplicarTemaClaro() {
   try {
@@ -12944,54 +13014,44 @@ window._mbnActive = function(id) {
     try {
       var thead = document.querySelector('#cp-table thead');
       var ths = thead ? thead.querySelectorAll('th') : null;
-      if (ths && ths[0]) ths[0].textContent = 'Data';
-      if (ths && ths[1]) ths[1].textContent = 'OF';
-      if (ths && ths[2]) ths[2].textContent = 'Máquina';
-      if (ths && ths[3]) ths[3].textContent = 'Cliente';
+      if (ths && ths[0]) ths[0].textContent = 'Data Conclusão';
+      if (ths && ths[1]) ths[1].textContent = 'Nº OF';
+      if (ths && ths[2]) ths[2].textContent = 'Cliente';
+      if (ths && ths[3]) ths[3].textContent = 'Produto';
       if (ths && ths[4]) ths[4].textContent = 'Qtd Perdida';
-      if (ths && ths[5]) ths[5].textContent = 'Operadores';
-      if (ths && ths[6]) ths[6].textContent = 'Turno';
-      if (ths && ths[7]) ths[7].textContent = 'Usuário';
-      if (ths && ths[8]) ths[8].textContent = 'Produto';
-      if (ths && ths[9]) ths[9].textContent = 'Valor';
+      if (ths && ths[5]) ths[5].textContent = 'Valor Perdido';
+      if (ths && ths[6]) ths[6].textContent = 'Máquina';
+      if (ths && ths[7]) ths[7].textContent = 'Máquina Perda';
+      if (ths && ths[8]) ths[8].textContent = 'Concluído Por';
+      if (ths && ths.length > 9) {
+        for (var h = 9; h < ths.length; h++) ths[h].style.display = 'none';
+      }
     } catch (_) {}
     tbody.innerHTML = lista.map(function(item) {
       var id = String(item && item.id || '').trim();
-      var maquinaDisplay = (item && (item.maquina || item.maquina_perda)) || '—';
-      var operadoresLista = Array.isArray(item && item.operadores) ? item.operadores : [];
-      var operadorDisplay = String(item && (item.operador_display || item.usuario) || '—').trim() || '—';
       var qtdPerdida = Number(item && item.qtd_perdida || 0) || 0;
       var vlUnit = Number(item && (item.vl_unit != null ? item.vl_unit : item.valor_unitario) || 0) || 0;
       var vlTotal = Number(item && (item.vl_total != null ? item.vl_total : item.valor_perdido) || 0) || ((qtdPerdida || 0) * (vlUnit || 0));
-      var turno = String(item && item.turno || '').trim() || '—';
-      var operadores = operadoresLista.length
-        ? operadoresLista.map(function(op) {
-            return '<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:rgba(96,165,250,.16);border:1px solid rgba(96,165,250,.35);color:#dbeafe;font-size:11px;font-weight:700;margin:2px 4px 2px 0">' + escHLocal2(op) + '</span>';
-          }).join('')
-        : escHLocal2(operadorDisplay || '—');
-      var imgCell = '';
       return ''
         + '<tr data-cp-id="' + escAttrLocal2(id) + '">'
         + '<td style="padding:7px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--text2)">' + escHLocal2(fmtDataLocal(item && (item.data || item.created_at))) + '</td>'
         + '<td style="padding:7px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.74rem;color:var(--accent)">' + escHLocal2(item && item.of_numero || '—') + '</td>'
-        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem;white-space:nowrap">' + escHLocal2(maquinaDisplay) + '</td>'
         + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(item && (item.cliente_nome || item.cliente) || '—') + '</td>'
-        + '<td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800;color:var(--red)">' + fmtNumLocal(qtdPerdida) + '</td>'
-        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + operadores + '</td>'
-        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem;text-align:center">' + escHLocal2(turno) + '</td>'
-        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(item && item.usuario || '—') + '</td>'
         + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(item && item.produto || '—') + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800;color:var(--red)">' + fmtNumLocal(qtdPerdida) + '</td>'
         + '<td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800">' + (vlTotal > 0 ? fmtMoneyLocal(vlTotal) : (vlUnit > 0 ? fmtMoneyLocal(vlUnit) : '—')) + '</td>'
-        + '<td style="padding:7px 10px;border:1px solid var(--border);text-align:center">' + imgCell + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem;white-space:nowrap">' + escHLocal2(item && item.maquina || '—') + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem;white-space:nowrap">' + escHLocal2(item && item.maquina_perda || '—') + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(item && item.usuario || '—') + '</td>'
         + '</tr>';
-    }).join('') || '<tr><td colspan="11" style="padding:10px;border:1px solid var(--border);color:var(--text2);text-align:center">Sem lançamentos no período</td></tr>';
+    }).join('') || '<tr><td colspan="9" style="padding:10px;border:1px solid var(--border);color:var(--text2);text-align:center">Sem lançamentos no período</td></tr>';
     try {
-      if (!document.getElementById('patch-style-cp-hide-foto')) {
-        var st = document.createElement('style');
-        st.id = 'patch-style-cp-hide-foto';
-        st.textContent = '#cp-table th:nth-child(11), #cp-table td:nth-child(11){display:none !important;}';
-        document.head.appendChild(st);
-      }
+      Array.prototype.slice.call(tbody.querySelectorAll('tr')).forEach(function(tr) {
+        var tds = tr.querySelectorAll('td');
+        if (tds && tds.length > 9) {
+          for (var d = 9; d < tds.length; d++) tds[d].style.display = 'none';
+        }
+      });
     } catch (_) {}
   }
 

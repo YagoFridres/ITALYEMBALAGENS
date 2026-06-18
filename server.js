@@ -5332,104 +5332,50 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
   });
 }
 
-app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
+app.get('/api/caixas_perdidas', autenticar, async (req, res) => {
   try {
     const empresaId = await getEmpresaId(req);
-    const ofId = String(req.query.of_id || req.query.ofId || '').trim();
-
-    let query = supabase
+    const { data, error } = await supabase
       .from('caixas_perdidas')
-      .select(`
-        *,
-        ofs!of_id (
-          numero,
-          cli_id,
-          valor_total,
-          valor_unitario
-        )
-      `)
+      .select('*')
+      .eq('emp_id', empresaId)
       .order('created_at', { ascending: false })
       .limit(500);
-
-    if (empresaId) query = query.eq('empresa_id', empresaId);
-    if (ofId) query = query.eq('of_id', ofId);
-
-    const { data, error } = await query;
     if (error) throw error;
 
-    const cliIds = [...new Set((data || []).map(r => r.ofs?.cli_id).filter(Boolean))];
+    const ofIds = [...new Set((data || []).map(r => r.of_id).filter(Boolean))];
     let mapaClientes = {};
-    if (cliIds.length) {
-      const { data: clis, error: errClientes } = await supabase
-        .from('clientes')
-        .select('id, nome')
-        .in('id', cliIds);
-      if (errClientes) throw errClientes;
-      (clis || []).forEach(c => { mapaClientes[c.id] = c.nome; });
+    if (ofIds.length) {
+      const { data: ofs } = await supabase
+        .from('ofs').select('id, cli_id, numero').in('id', ofIds);
+      const cliIds = [...new Set((ofs || []).map(o => o.cli_id).filter(Boolean))];
+      if (cliIds.length) {
+        const { data: clis } = await supabase
+          .from('clientes').select('id, nome').in('id', cliIds);
+        const mapaOf = {};
+        (ofs || []).forEach(o => { mapaOf[o.id] = o; });
+        const mapaCli = {};
+        (clis || []).forEach(c => { mapaCli[c.id] = c.nome; });
+        (data || []).forEach(r => {
+          const of = mapaOf[r.of_id];
+          if (of) {
+            r.cliente_nome = r.cliente || mapaCli[of.cli_id] || '—';
+            r.of_numero = r.of_numero || of.numero || '—';
+          }
+        });
+      }
     }
 
-    const resultado = (data || []).map(r => {
-      const clienteNome = r.cliente || mapaClientes[r.ofs?.cli_id] || '—';
-      return {
-        ...r,
-        cliente_nome: clienteNome,
-        cliente: clienteNome,
-        of_numero: r.of_numero || r.ofs?.numero || '—',
-      };
-    });
-
-    return res.json({ ok: true, data: resultado });
-  } catch (e) { err(res, e); }
+    res.json({ ok: true, data: data || [] });
+  } catch(e) {
+    console.error('[caixas_perdidas]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
-app.get('/api/caixas-perdidas', authMiddleware, async (req, res) => {
-  try {
-    const empresaId = await getEmpresaId(req);
-    const ofId = String(req.query.of_id || req.query.ofId || '').trim();
-
-    let query = supabase
-      .from('caixas_perdidas')
-      .select(`
-        *,
-        ofs!of_id (
-          numero,
-          cli_id,
-          valor_total,
-          valor_unitario
-        )
-      `)
-      .order('created_at', { ascending: false })
-      .limit(500);
-
-    if (empresaId) query = query.eq('empresa_id', empresaId);
-    if (ofId) query = query.eq('of_id', ofId);
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    const cliIds = [...new Set((data || []).map(r => r.ofs?.cli_id).filter(Boolean))];
-    let mapaClientes = {};
-    if (cliIds.length) {
-      const { data: clis, error: errClientes } = await supabase
-        .from('clientes')
-        .select('id, nome')
-        .in('id', cliIds);
-      if (errClientes) throw errClientes;
-      (clis || []).forEach(c => { mapaClientes[c.id] = c.nome; });
-    }
-
-    const resultado = (data || []).map(r => {
-      const clienteNome = r.cliente || mapaClientes[r.ofs?.cli_id] || '—';
-      return {
-        ...r,
-        cliente_nome: clienteNome,
-        cliente: clienteNome,
-        of_numero: r.of_numero || r.ofs?.numero || '—',
-      };
-    });
-
-    return res.json({ ok: true, data: resultado });
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+app.get('/api/caixas-perdidas', autenticar, async (req, res) => {
+  req.url = '/api/caixas_perdidas';
+  return app._router.handle(req, res, () => {});
 });
 
 app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
