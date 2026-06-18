@@ -16044,6 +16044,12 @@ function _ocultarGraficoComissoes() {
       };
     } catch (_) {}
   }
+  try { window._abrirModalConclusaoFallback = _abrirModalConclusaoFallback; } catch (_) {}
+  try {
+    window.concluirOFComBaixa = async function(ofId, ofDados) {
+      return _abrirModalConclusaoFallback(ofId, ofDados || null);
+    };
+  } catch (_) {}
 
   async function _abrirFluxoConclusaoOF(ofId, ofObj) {
     try {
@@ -17228,35 +17234,36 @@ function _ocultarGraficoComissoes() {
 window._renderGramaturas = async function() {
   var token = '';
   try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
-  document.querySelectorAll('[id^="page-"]').forEach(function(p) { p.style.display = 'none'; });
-  var host = document.getElementById('_page_gramaturas');
-  if (!host) {
-    host = document.createElement('div');
-    host.id = '_page_gramaturas';
-    host.style.cssText = 'position:fixed;inset:0;z-index:500;overflow-y:auto;background:var(--bg,#0f1117);padding:20px;box-sizing:border-box;display:none';
-    document.body.appendChild(host);
-  }
-  host.style.display = 'block';
+  var hostAntigo = document.getElementById('_page_gramaturas');
+  if (hostAntigo) hostAntigo.remove();
+  var host = document.createElement('div');
+  host.id = '_page_gramaturas';
+  host.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;overflow-y:auto;background:#0f1117;padding:20px;box-sizing:border-box';
+  document.body.appendChild(host);
   document.querySelectorAll('.sidebar [onclick], [class*="sidebar"] [onclick]').forEach(function(el) {
     if (!el._patchHideCustomPage) {
       el._patchHideCustomPage = true;
       el.addEventListener('click', function() {
         var h1 = document.getElementById('_page_gramaturas');
         var h2 = document.getElementById('_page_toneladas');
-        if (h1) h1.style.display = 'none';
-        if (h2) h2.style.display = 'none';
+        if (h1) h1.remove();
+        if (h2) h2.remove();
       }, true);
     }
   });
-  host.innerHTML = '<h2 style="color:var(--text,#fff);margin-bottom:20px">📄 Gramaturas</h2><div style="color:#aaa">Carregando...</div>';
+  host.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
+    + '<h2 style="color:#fff;margin:0">📄 Gramaturas</h2>'
+    + '<button onclick="document.getElementById(\'_page_gramaturas\').remove()" style="background:#333;border:none;color:#fff;border-radius:6px;padding:8px 16px;cursor:pointer">✕ Fechar</button>'
+    + '</div>'
+    + '<div style="color:#aaa">Carregando...</div>';
   var resp = await fetch('/api/gramaturas', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
   var json = await resp.json().catch(function() { return []; });
   var lista = Array.isArray(json) ? json : (json.data || []);
   host.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
-    + '<h2 style="color:var(--text,#fff);margin:0">📄 Gramaturas</h2>'
+    + '<h2 style="color:#fff;margin:0">📄 Gramaturas</h2>'
     + '<div style="display:flex;gap:10px;align-items:center">'
     + '<button onclick="window._abrirModalNovaGramatura()" style="background:#6366f1;color:#fff;border:none;border-radius:8px;padding:10px 20px;cursor:pointer;font-weight:600">+ Nova Gramatura</button>'
-    + '<button onclick="document.getElementById(\\\'_page_gramaturas\\\').style.display=\\\'none\\\'" style="background:transparent;border:1px solid #333;color:#aaa;border-radius:6px;padding:6px 12px;cursor:pointer">✕ Fechar</button>'
+    + '<button onclick="document.getElementById(\'_page_gramaturas\').remove()" style="background:#333;border:none;color:#fff;border-radius:6px;padding:8px 16px;cursor:pointer">✕ Fechar</button>'
     + '</div>'
     + '</div>'
     + '<div style="overflow:auto;border-radius:12px;border:1px solid var(--border,#333)">'
@@ -17327,27 +17334,28 @@ window._excluirGramatura = async function(id) {
 window._renderToneladasVendidas = async function() {
   var token = '';
   try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
-  document.querySelectorAll('[id^="page-"]').forEach(function(p) { p.style.display = 'none'; });
-  var host = document.getElementById('_page_toneladas');
-  if (!host) {
-    host = document.createElement('div');
-    host.id = '_page_toneladas';
-    host.style.cssText = 'position:fixed;inset:0;z-index:500;overflow-y:auto;background:var(--bg,#0f1117);padding:20px;box-sizing:border-box;display:none';
-    document.body.appendChild(host);
-  }
-  host.style.display = 'block';
+  var hostAntigo = document.getElementById('_page_toneladas');
+  if (hostAntigo) hostAntigo.remove();
+  var host = document.createElement('div');
+  host.id = '_page_toneladas';
+  host.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;overflow-y:auto;background:#0f1117;padding:20px;box-sizing:border-box';
+  document.body.appendChild(host);
   document.querySelectorAll('.sidebar [onclick], [class*="sidebar"] [onclick]').forEach(function(el) {
     if (!el._patchHideCustomPage) {
       el._patchHideCustomPage = true;
       el.addEventListener('click', function() {
         var h1 = document.getElementById('_page_gramaturas');
         var h2 = document.getElementById('_page_toneladas');
-        if (h1) h1.style.display = 'none';
-        if (h2) h2.style.display = 'none';
+        if (h1) h1.remove();
+        if (h2) h2.remove();
       }, true);
     }
   });
-  host.innerHTML = '<h2 style="color:var(--text,#fff);margin-bottom:20px">⚖️ Toneladas Vendidas</h2><div style="color:#aaa">Carregando...</div>';
+  host.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
+    + '<h2 style="color:#fff;margin:0">⚖️ Toneladas Vendidas</h2>'
+    + '<button onclick="document.getElementById(\'_page_toneladas\').remove()" style="background:#333;border:none;color:#fff;border-radius:6px;padding:8px 16px;cursor:pointer">✕ Fechar</button>'
+    + '</div>'
+    + '<div style="color:#aaa">Carregando...</div>';
 
   var hoje = new Date();
   var mes = hoje.getMonth() + 1;
@@ -17359,7 +17367,10 @@ window._renderToneladasVendidas = async function() {
   var json = await resp.json().catch(function() { return null; });
 
   if (!json || !json.ok) {
-    host.innerHTML = '<h2 style="color:var(--text,#fff);margin-bottom:20px">⚖️ Toneladas Vendidas</h2>'
+    host.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
+      + '<h2 style="color:#fff;margin:0">⚖️ Toneladas Vendidas</h2>'
+      + '<button onclick="document.getElementById(\'_page_toneladas\').remove()" style="background:#333;border:none;color:#fff;border-radius:6px;padding:8px 16px;cursor:pointer">✕ Fechar</button>'
+      + '</div>'
       + '<div style="color:#f87171;padding:20px">Erro ao carregar dados. Verifique se há OFs concluídas com gramatura registrada.</div>';
     return;
   }
@@ -17369,8 +17380,8 @@ window._renderToneladasVendidas = async function() {
   var fT = function(v) { return Number(v || 0).toFixed(3) + ' t'; };
 
   host.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
-    + '<h2 style="color:var(--text,#fff);margin:0">⚖️ Toneladas Vendidas</h2>'
-    + '<button onclick="document.getElementById(\\\'_page_toneladas\\\').style.display=\\\'none\\\'" style="background:transparent;border:1px solid #333;color:#aaa;border-radius:6px;padding:6px 12px;cursor:pointer">✕ Fechar</button>'
+    + '<h2 style="color:#fff;margin:0">⚖️ Toneladas Vendidas</h2>'
+    + '<button onclick="document.getElementById(\'_page_toneladas\').remove()" style="background:#333;border:none;color:#fff;border-radius:6px;padding:8px 16px;cursor:pointer">✕ Fechar</button>'
     + '</div>'
     + '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:24px;margin-bottom:20px;border:1px solid var(--border,#333)">'
     + '<div style="font-size:12px;color:#aaa;margin-bottom:8px">TOTAL — ' + (json.mes || String(mes) + '/' + ano) + '</div>'
