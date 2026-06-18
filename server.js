@@ -14142,208 +14142,72 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/analises/toneladas', authMiddleware, async (req, res) => {
+app.get('/api/analises/toneladas', autenticar, async (req, res) => {
   try {
-    setNoCache(res);
-    const mes = parseInt(req.query.mes, 10) || (new Date().getMonth() + 1);
-    const ano = parseInt(req.query.ano, 10) || new Date().getFullYear();
-    const inicio = ano + '-' + String(mes).padStart(2, '0') + '-01';
-    const fimMes = mes === 12 ? 1 : (mes + 1);
-    const fimAno = mes === 12 ? (ano + 1) : ano;
-    const fim = fimAno + '-' + String(fimMes).padStart(2, '0') + '-01';
+    const { mes, ano } = req.query;
+    const empresaId = await getEmpresaId(req);
 
-    let empresa_id = '';
-    try { empresa_id = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { empresa_id = ''; }
-    if (!empresa_id) empresa_id = String(req.query.empresa_id || req.query.empresaId || '').trim();
-    if (!empresa_id) empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31';
+    const { data: gramaturas } = await supabase
+      .from('gramaturas')
+      .select('id, gramatura, valor, gramas')
+      .eq('empresa_id', empresaId);
 
-    const statusConcl = ['Concluído', 'Concluída', 'Concluido', 'Concluida'];
-    const selectCols = 'id,numero,cli_id,vendedor,vendedor_id,quantidade,valor_total,caixa_comprimento,caixa_largura,dim_comprimento,dim_largura,comprimento,largura,gramatura_id,data_conclusao,status';
+    const mapaGram = {};
+    (gramaturas || []).forEach(g => {
+      const val = Number(g.gramatura || g.valor || g.gramas || 0) || 0;
+      if (g.id && val > 0) mapaGram[String(g.id)] = val;
+    });
 
-    let ofs = [];
-    let from = 0;
-    while (true) {
-      let q = supabase
-        .from('ofs')
-        .select(selectCols)
-        .in('status', statusConcl)
-        .gte('data_conclusao', inicio)
-        .lt('data_conclusao', fim)
-        .range(from, from + 999);
-      if (empresa_id) q = q.eq('empresa_id', empresa_id);
-      let r = await q;
-      if (r?.error) {
-        const msg = String(r.error?.message || r.error || '');
-        if (msg.toLowerCase().includes('gramatura_id') || msg.toLowerCase().includes('could not find')) {
-          return res.json({
-            ok: true,
-            mes: ano + '-' + String(mes).padStart(2, '0'),
-            total_toneladas: 0,
-            total_m2: 0,
-            custo_total: 0,
-            por_gramatura: [],
-            por_fornecedor: [],
-            por_cliente: [],
-            ofs: [],
-          });
-        }
-        throw r.error;
-      }
-      const data = Array.isArray(r?.data) ? r.data : [];
-      if (!data.length) break;
-      ofs = ofs.concat(data);
-      if (data.length < 1000) break;
-      from += 1000;
+    let query = supabase
+      .from('ofs')
+      .select('id, numero, of, quantidade, qtd, caixa_comprimento, caixa_largura, dim_comprimento, dim_largura, comprimento, largura, gramatura_id, cli_id, valor_total, data_conclusao')
+      .ilike('status', '%conclu%')
+      .not('gramatura_id', 'is', null);
+
+    if (empresaId) query = query.eq('empresa_id', empresaId);
+    if (mes && ano) {
+      const dataInicio = `${ano}-${String(mes).padStart(2, '0')}-01`;
+      const dataFim = new Date(Number(ano), Number(mes), 0).toISOString().slice(0, 10);
+      query = query.gte('data_conclusao', dataInicio).lte('data_conclusao', dataFim);
     }
 
-    const gramIds = Array.from(new Set(ofs.map((o) => String(o?.gramatura_id || '').trim()).filter(Boolean)));
-    const cliIds = Array.from(new Set(ofs.map((o) => String(o?.cli_id || '').trim()).filter(Boolean)));
+    const { data: ofs, error } = await query.limit(2000);
+    if (error) throw error;
 
-    const gramaturasMap = new Map();
-    if (gramIds.length) {
-      for (let i = 0; i < gramIds.length; i += 200) {
-        let gq = supabase.from('gramaturas').select('id,nome,gramatura,valor_unitario,fornecedor_id,fornecedor_nome').in('id', gramIds.slice(i, i + 200));
-        if (empresa_id) gq = gq.eq('empresa_id', empresa_id);
-        const { data, error } = await gq;
-        if (!error && Array.isArray(data)) {
-          data.forEach((g) => gramaturasMap.set(String(g?.id || '').trim(), g));
-        }
-      }
-    }
+    let totalTon = 0;
+    const detalhes = [];
 
-    const fornIds = Array.from(new Set(Array.from(gramaturasMap.values()).map((g) => String(g?.fornecedor_id || '').trim()).filter(Boolean)));
-    const fornecedoresMap = new Map();
-    if (fornIds.length) {
-      for (let i = 0; i < fornIds.length; i += 200) {
-        const { data, error } = await supabase.from('fornecedores').select('id,nome').in('id', fornIds.slice(i, i + 200));
-        if (!error && Array.isArray(data)) data.forEach((f) => fornecedoresMap.set(String(f?.id || '').trim(), f));
-      }
-    }
+    (ofs || []).forEach(of => {
+      const comp = Number(of.caixa_comprimento || of.dim_comprimento || of.comprimento || 0) || 0;
+      const larg = Number(of.caixa_largura || of.dim_largura || of.largura || 0) || 0;
+      const qtd = Number(of.quantidade || of.qtd || 0) || 0;
+      const gramId = String(of.gramatura_id || '').trim();
+      const gram = gramId ? (mapaGram[gramId] || 0) : 0;
 
-    const clientesMap = new Map();
-    if (cliIds.length) {
-      for (let i = 0; i < cliIds.length; i += 200) {
-        const { data, error } = await supabase.from('clientes').select('id,nome,rs').in('id', cliIds.slice(i, i + 200));
-        if (!error && Array.isArray(data)) data.forEach((c) => clientesMap.set(String(c?.id || '').trim(), c));
-      }
-    }
+      if (!(comp > 0 && larg > 0 && gram > 0 && qtd > 0)) return;
 
-    const toNum = (v) => {
-      const n = Number(String(v ?? '').replace(',', '.'));
-      return Number.isFinite(n) ? n : 0;
-    };
-    const pickMm = (o, keys) => {
-      for (const k of keys) {
-        const n = toNum(o?.[k]);
-        if (n > 0) return n;
-      }
-      return 0;
-    };
-    const round = (v, dec) => {
-      const n = Number(v || 0) || 0;
-      const m = 10 ** (dec || 0);
-      return Math.round(n * m) / m;
-    };
+      const ton = ((comp / 1000) * (larg / 1000) * gram * qtd / 1000) / 1000;
+      totalTon += ton;
+      detalhes.push({
+        of: of.numero || of.of || of.id,
+        cli_id: of.cli_id,
+        qtd, comp, larg, gram,
+        toneladas: ton,
+        valor_total: of.valor_total,
+        data: of.data_conclusao
+      });
+    });
 
-    const porGramatura = new Map();
-    const porFornecedor = new Map();
-    const porCliente = new Map();
-
-    let total_m2 = 0;
-    let total_toneladas = 0;
-    let custo_total = 0;
-
-    const ofsOut = ofs.map((o) => {
-      const gramId = String(o?.gramatura_id || '').trim();
-      const gram = gramaturasMap.get(gramId) || null;
-      const gramGm2 = toNum(gram?.gramatura);
-      const valorUnitKg = toNum(gram?.valor_unitario);
-      const fornNome =
-        String((fornecedoresMap.get(String(gram?.fornecedor_id || '').trim())?.nome || gram?.fornecedor_nome || '')).trim() || '—';
-      const gramNome = String(gram?.nome || '').trim() || '—';
-
-      const compMm = pickMm(o, ['comp', 'caixa_comprimento', 'dim_comprimento', 'comprimento']);
-      const largMm = pickMm(o, ['larg', 'caixa_largura', 'dim_largura', 'largura']);
-      const m2_por_caixa = (compMm > 0 && largMm > 0) ? ((compMm / 1000) * (largMm / 1000)) : 0;
-      const qtd = Math.trunc(toNum(o?.quantidade));
-      const m2_total_of = m2_por_caixa * (qtd > 0 ? qtd : 0);
-      const toneladas = (m2_total_of > 0 && gramGm2 > 0) ? ((m2_total_of * gramGm2) / 1000000) : 0;
-      const custo_m2 = (valorUnitKg > 0 && gramGm2 > 0) ? ((valorUnitKg * gramGm2) / 1000) : 0;
-      const custo_total_of = custo_m2 * m2_total_of;
-
-      total_m2 += m2_total_of;
-      total_toneladas += toneladas;
-      custo_total += custo_total_of;
-
-      const cliId = String(o?.cli_id || '').trim();
-      const cli = clientesMap.get(cliId) || null;
-      const clienteNome = String(cli?.nome || cli?.rs || '').trim() || '—';
-      const vendedor = String(o?.vendedor || '').trim() || '—';
-
-      const keyGram = gramId || gramNome;
-      if (!porGramatura.has(keyGram)) porGramatura.set(keyGram, { gramatura_nome: gramNome, fornecedor: fornNome, toneladas: 0, m2: 0, custo: 0 });
-      const pg = porGramatura.get(keyGram);
-      pg.toneladas += toneladas;
-      pg.m2 += m2_total_of;
-      pg.custo += custo_total_of;
-
-      if (!porFornecedor.has(fornNome)) porFornecedor.set(fornNome, { fornecedor_nome: fornNome, toneladas: 0, m2: 0, custo: 0 });
-      const pf = porFornecedor.get(fornNome);
-      pf.toneladas += toneladas;
-      pf.m2 += m2_total_of;
-      pf.custo += custo_total_of;
-
-      if (!porCliente.has(clienteNome)) porCliente.set(clienteNome, { cliente_nome: clienteNome, toneladas: 0, m2: 0, custo: 0 });
-      const pc = porCliente.get(clienteNome);
-      pc.toneladas += toneladas;
-      pc.m2 += m2_total_of;
-      pc.custo += custo_total_of;
-
-      return {
-        numero: String(o?.numero || '').trim(),
-        cliente: clienteNome,
-        vendedor,
-        comp: compMm,
-        larg: largMm,
-        gramatura: gramGm2,
-        gramatura_nome: gramNome,
-        fornecedor: fornNome,
-        quantidade: qtd,
-        toneladas: round(toneladas, 6),
-        m2: round(m2_total_of, 4),
-        custo_m2: round(custo_m2, 6),
-        custo_total: round(custo_total_of, 2),
-        data_conclusao: o?.data_conclusao || null,
-        status: String(o?.status || '').trim() || 'Concluído',
-      };
-    }).filter((r) => r.numero);
-
-    const por_gramatura = Array.from(porGramatura.values())
-      .map((r) => ({ ...r, toneladas: round(r.toneladas, 6), m2: round(r.m2, 4), custo: round(r.custo, 2) }))
-      .sort((a, b) => (Number(b.toneladas || 0) || 0) - (Number(a.toneladas || 0) || 0));
-
-    const por_fornecedor = Array.from(porFornecedor.values())
-      .map((r) => ({ ...r, toneladas: round(r.toneladas, 6), m2: round(r.m2, 4), custo: round(r.custo, 2) }))
-      .sort((a, b) => (Number(b.toneladas || 0) || 0) - (Number(a.toneladas || 0) || 0));
-
-    const por_cliente = Array.from(porCliente.values())
-      .map((r) => ({ ...r, toneladas: round(r.toneladas, 6), m2: round(r.m2, 4), custo: round(r.custo, 2) }))
-      .sort((a, b) => (Number(b.toneladas || 0) || 0) - (Number(a.toneladas || 0) || 0));
-
-    return res.json({
+    res.json({
       ok: true,
-      mes: ano + '-' + String(mes).padStart(2, '0'),
-      total_toneladas: round(total_toneladas, 6),
-      total_m2: round(total_m2, 4),
-      custo_total: round(custo_total, 2),
-      por_gramatura,
-      por_fornecedor,
-      por_cliente,
-      ofs: ofsOut,
+      total_toneladas: totalTon,
+      total_ofs: detalhes.length,
+      mes: mes ? `${ano}-${String(mes).padStart(2, '0')}` : null,
+      detalhes: detalhes.sort((a, b) => b.toneladas - a.toneladas)
     });
   } catch (e) {
-    try { console.error('[TONELADAS]', e.message); } catch (_) {}
-    return res.status(500).json({ error: String(e?.message || e) });
+    console.error('[toneladas]', e);
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 

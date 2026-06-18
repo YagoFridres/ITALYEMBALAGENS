@@ -15764,6 +15764,22 @@ function _ocultarGraficoComissoes() {
         if (x && typeof x === 'object') return String(x.nome || x.name || x.maquina || x.col || x.id || '').trim();
         return String(x || '').trim();
       }).filter(Boolean).filter(function(v, i, a) { return a.indexOf(v) === i; });
+      var gramaturas = [];
+      try {
+        var tokenGram = _getToken();
+        fetch('/api/gramaturas', {
+          headers: tokenGram ? { Authorization: 'Bearer ' + tokenGram } : {}
+        }).then(function(r) { return r.json(); }).then(function(j) {
+          gramaturas = Array.isArray(j) ? j : (j && j.data || []);
+          var selGram = document.getElementById('conclusao-gramatura');
+          if (selGram && gramaturas.length) {
+            selGram.innerHTML = '<option value="">— Sem gramatura —</option>'
+              + gramaturas.map(function(g) {
+                return '<option value="' + g.id + '">' + String(g.nome || '—') + ' (' + String(g.gramatura || g.valor || g.gramas || 0) + ' g/m²)</option>';
+              }).join('');
+          }
+        }).catch(function() {});
+      } catch (_) {}
       if (!maquinasFluxo.length) {
         var maqAtual = String(of && (of.maquina || of.maq || of.maquina_atual || of.maquina_agendada) || '').trim();
         if (maqAtual) maquinasFluxo = [maqAtual];
@@ -15798,6 +15814,12 @@ function _ocultarGraficoComissoes() {
         + '    <div class="com-conc-field">'
         + '      <label class="com-conc-label">📅 Data de Faturamento *</label>'
         + '      <input id="conclusao-data-faturamento" class="com-conc-input" type="date" value="' + hoje + '"/>'
+        + '    </div>'
+        + '    <div class="com-conc-field">'
+        + '      <label class="com-conc-label">📄 Gramatura do Papel</label>'
+        + '      <select id="conclusao-gramatura" class="com-conc-select">'
+        + '        <option value="">Carregando gramaturas...</option>'
+        + '      </select>'
         + '    </div>'
         + '    <div class="com-conc-field">'
         + '      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">'
@@ -15963,6 +15985,8 @@ function _ocultarGraficoComissoes() {
           valor_total: resumo.novoTotal,
           _allow_partial: '1'
         };
+        var gramaturaId = (document.getElementById('conclusao-gramatura') || {}).value || null;
+        if (gramaturaId) body.gramatura_id = gramaturaId;
         btnSalvar.disabled = true;
         var token = _getToken();
         try {
@@ -17283,66 +17307,66 @@ window._renderToneladasVendidas = async function() {
   try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
   var container = document.querySelector('.content,#content,.main-area,#main-content,.content-wrapper');
   if (!container) return;
+
   document.querySelectorAll('[id^="page-"]').forEach(function(p) { p.style.display = 'none'; });
+
   var host = document.getElementById('_page_toneladas');
-  if (!host) { host = document.createElement('div'); host.id = '_page_toneladas'; container.appendChild(host); }
-  host.style.cssText = 'display:block;padding:20px';
+  if (!host) {
+    host = document.createElement('div');
+    host.id = '_page_toneladas';
+    container.appendChild(host);
+  }
+  host.style.cssText = 'display:block;padding:20px;overflow-y:auto';
   host.innerHTML = '<h2 style="color:var(--text,#fff);margin-bottom:20px">⚖️ Toneladas Vendidas</h2><div style="color:#aaa">Carregando...</div>';
-  var respG = await fetch('/api/gramaturas', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
-  var jsonG = await respG.json().catch(function() { return []; });
-  var grams = Array.isArray(jsonG) ? jsonG : (jsonG.data || []);
-  var mapaG = {};
-  grams.forEach(function(g) { if (g && g.id) mapaG[String(g.id)] = Number(g.gramatura || g.valor || g.gramas || 0) || 0; });
+
   var hoje = new Date();
-  var mes = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
-  var respO = await fetch('/api/ofs?status=Conclu%C3%ADdo&limit=2000', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
-  var jsonO = await respO.json().catch(function() { return null; });
-  var ofs = Array.isArray(jsonO) ? jsonO : (jsonO && (jsonO.data || jsonO.ofs) || []);
-  var total = 0;
-  var det = [];
-  ofs.forEach(function(of) {
-    if (!of) return;
-    var comp = Number(of.caixa_comprimento || of.dim_comprimento || of.comprimento || 0) || 0;
-    var larg = Number(of.caixa_largura || of.dim_largura || of.largura || 0) || 0;
-    var qtd = Number(of.quantidade || of.qtd || 0) || 0;
-    var gid = String(of.gramatura_id || of.gramaturaId || '').trim();
-    var gram = gid ? (mapaG[gid] || 0) : 0;
-    if (!(comp > 0 && larg > 0 && gram > 0 && qtd > 0)) return;
-    var ton = ((comp / 1000) * (larg / 1000) * gram * qtd / 1000) / 1000;
-    total += ton;
-    det.push({ of: String(of.numero || of.of || '—'), cliente: String(of.cliNome || of.cliente || of.cliente_nome || '—'), qtd: qtd, comp: comp, larg: larg, gram: gram, ton: ton });
+  var mes = hoje.getMonth() + 1;
+  var ano = hoje.getFullYear();
+
+  var resp = await fetch('/api/analises/toneladas?mes=' + mes + '&ano=' + ano, {
+    headers: token ? { Authorization: 'Bearer ' + token } : {}
   });
+  var json = await resp.json().catch(function() { return null; });
+
+  if (!json || !json.ok) {
+    host.innerHTML = '<h2 style="color:var(--text,#fff);margin-bottom:20px">⚖️ Toneladas Vendidas</h2>'
+      + '<div style="color:#f87171;padding:20px">Erro ao carregar dados. Verifique se há OFs concluídas com gramatura registrada.</div>';
+    return;
+  }
+
+  var det = json.detalhes || [];
+  var total = json.total_toneladas || 0;
   var fT = function(v) { return Number(v || 0).toFixed(3) + ' t'; };
+
   host.innerHTML = '<h2 style="color:var(--text,#fff);margin-bottom:20px">⚖️ Toneladas Vendidas</h2>'
     + '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:24px;margin-bottom:20px;border:1px solid var(--border,#333)">'
-    + '<div style="font-size:12px;color:#aaa;margin-bottom:8px">TOTAL GERAL</div>'
+    + '<div style="font-size:12px;color:#aaa;margin-bottom:8px">TOTAL — ' + (json.mes || String(mes) + '/' + ano) + '</div>'
     + '<div style="font-size:36px;font-weight:700;color:#10b981">' + fT(total) + '</div>'
     + '<div style="font-size:13px;color:#aaa;margin-top:8px">' + det.length + ' OFs com gramatura</div>'
     + '</div>'
-    + (det.length === 0 ? '<div style="color:#aaa;padding:20px;text-align:center">Nenhuma OF com gramatura registrada.<br>Registre a gramatura ao concluir as OFs.</div>'
-    : '<div style="overflow:auto;border-radius:12px;border:1px solid var(--border,#333)">'
-    + '<table style="width:100%;border-collapse:collapse">'
-    + '<thead><tr style="background:var(--bg2,#1a1a2e)">'
-    + '<th style="padding:10px 12px;text-align:left;color:#aaa;font-size:11px">OF</th>'
-    + '<th style="padding:10px 12px;text-align:left;color:#aaa;font-size:11px">CLIENTE</th>'
-    + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">QTD</th>'
-    + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">COMP</th>'
-    + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">LARG</th>'
-    + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">g/m²</th>'
-    + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">TONELADAS</th>'
-    + '</tr></thead><tbody>'
-    + det.sort(function(a, b) { return b.ton - a.ton; }).map(function(d, i) {
-      return '<tr style="border-top:1px solid var(--border,#333);background:' + (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)') + '">'
-        + '<td style="padding:9px 12px;color:#6366f1">#' + d.of + '</td>'
-        + '<td style="padding:9px 12px;color:var(--text,#fff)">' + d.cliente + '</td>'
-        + '<td style="padding:9px 12px;text-align:right;color:#aaa">' + d.qtd.toLocaleString('pt-BR') + '</td>'
-        + '<td style="padding:9px 12px;text-align:right;color:#aaa">' + d.comp + '</td>'
-        + '<td style="padding:9px 12px;text-align:right;color:#aaa">' + d.larg + '</td>'
-        + '<td style="padding:9px 12px;text-align:right;color:#aaa">' + d.gram + '</td>'
-        + '<td style="padding:9px 12px;text-align:right;font-weight:700;color:#10b981">' + fT(d.ton) + '</td>'
-        + '</tr>';
-    }).join('')
-    + '</tbody></table></div>');
+    + (det.length === 0
+      ? '<div style="color:#aaa;padding:20px;text-align:center">Nenhuma OF com gramatura registrada no período.</div>'
+      : '<div style="overflow:auto;border-radius:12px;border:1px solid var(--border,#333)">'
+        + '<table style="width:100%;border-collapse:collapse">'
+        + '<thead><tr style="background:var(--bg2,#1a1a2e)">'
+        + '<th style="padding:10px 12px;text-align:left;color:#aaa;font-size:11px">OF</th>'
+        + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">QTD</th>'
+        + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">COMP</th>'
+        + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">LARG</th>'
+        + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">g/m²</th>'
+        + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">TONELADAS</th>'
+        + '</tr></thead><tbody>'
+        + det.map(function(d, i) {
+          return '<tr style="border-top:1px solid var(--border,#333);background:' + (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)') + '">'
+            + '<td style="padding:9px 12px;color:#6366f1">#' + String(d.of || '—') + '</td>'
+            + '<td style="padding:9px 12px;text-align:right;color:#aaa">' + Number(d.qtd || 0).toLocaleString('pt-BR') + '</td>'
+            + '<td style="padding:9px 12px;text-align:right;color:#aaa">' + (d.comp || '—') + '</td>'
+            + '<td style="padding:9px 12px;text-align:right;color:#aaa">' + (d.larg || '—') + '</td>'
+            + '<td style="padding:9px 12px;text-align:right;color:#aaa">' + (d.gram || '—') + '</td>'
+            + '<td style="padding:9px 12px;text-align:right;font-weight:700;color:#10b981">' + fT(d.toneladas) + '</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table></div>');
 };
 
 // Wrapper final e permanente do window.go — executar após todos os patches
@@ -18083,13 +18107,27 @@ window._renderToneladasVendidas = async function() {
     return true;
   }
 
-  var ok = { cp: false, gram: false, ton: false };
+  var ok = { gram: false, ton: false };
   var tentativas = 0;
   var timer = setInterval(function() {
     tentativas++;
-    if (!ok.cp) ok.cp = _clonarItemMenu('lancamento', 'caixas-perdidas', 'Caixas Perdidas', 'menu-patch-caixas-perdidas');
+
     if (!ok.gram) ok.gram = _clonarItemMenu('clientes', 'gramaturas', 'Gramaturas', 'menu-patch-gramaturas');
-    if (!ok.ton) ok.ton = _clonarItemMenu('lancamento', 'toneladas-vendidas', 'Toneladas Vendidas', 'menu-patch-toneladas');
-    if ((ok.cp && ok.gram && ok.ton) || tentativas > 40) clearInterval(timer);
+
+    if (!ok.ton) ok.ton = _clonarItemMenu('comissoes', 'toneladas-vendidas', 'Toneladas Vendidas', 'menu-patch-toneladas');
+
+    var cpNativo = document.querySelector('[onclick*="caixas-perdidas"], [onclick*="inconformidades"]');
+    if (cpNativo && !document.getElementById('menu-patch-caixas-perdidas-fin')) {
+      var cpClone = cpNativo.cloneNode(true);
+      cpClone.id = 'menu-patch-caixas-perdidas-fin';
+      cpClone.setAttribute('onclick', "go('caixas-perdidas')");
+      var refFin = document.querySelector('[onclick*="comissoes"]');
+      if (refFin) {
+        refFin.parentElement.appendChild(cpClone);
+        console.log('[PATCH] Caixas Perdidas espelhado no Financeiro');
+      }
+    }
+
+    if ((ok.gram && ok.ton) || tentativas > 40) clearInterval(timer);
   }, 800);
 })();
