@@ -31,30 +31,24 @@ if (!window._menuPatchFinal) {
     function _injetarItemMenu(ancora, label, id, pageId) {
       if (document.getElementById(id)) return;
       if (!ancora) return;
-      var li = ancora.closest('li') || ancora.parentElement;
-      if (!li || !li.parentElement) return;
-      var novoLi = li.cloneNode(true);
+      var liRef = ancora.closest('li') || ancora.parentElement;
+      if (!liRef || !liRef.parentElement) return;
+
+      var novoLi = document.createElement('li');
       novoLi.id = id;
-      var a = novoLi.querySelector('[onclick]') || novoLi.querySelector('a') || novoLi;
-      a.setAttribute('onclick', 'event.preventDefault();event.stopPropagation();(window._patchCustomPages&&window._patchCustomPages["' + pageId + '"]?window._patchCustomPages["' + pageId + '"]():window.go&&window.go("' + pageId + '"))');
-      var spans = novoLi.querySelectorAll('span, div');
-      var textoAtualizado = false;
-      spans.forEach(function(s) {
-        if (s.children.length === 0 && s.textContent.trim().length > 1 && s.textContent.trim().length < 30) {
-          s.textContent = label;
-          textoAtualizado = true;
-        }
-      });
-      if (!textoAtualizado) {
-        var textNodes = [];
-        (function findText(node) {
-          if (node.nodeType === 3 && node.textContent.trim().length > 1) textNodes.push(node);
-          Array.from(node.childNodes || []).forEach(findText);
-        })(novoLi);
-        if (textNodes.length) textNodes[0].textContent = label;
-      }
-      li.parentElement.appendChild(novoLi);
-      console.log('[MENU FINAL] injetado:', label);
+      novoLi.className = liRef.className;
+
+      var aRef = liRef.querySelector('a') || liRef;
+      var novoA = document.createElement('a');
+      novoA.href = '#';
+      novoA.className = aRef.className || '';
+      novoA.style.cssText = aRef.style ? aRef.style.cssText : '';
+      novoA.textContent = label;
+      novoA.setAttribute('onclick', 'event.preventDefault();event.stopPropagation();(window._patchCustomPages&&window._patchCustomPages["' + pageId + '"]?window._patchCustomPages["' + pageId + '"]():(window.go&&window.go("' + pageId + '")))');
+
+      novoLi.appendChild(novoA);
+      liRef.parentElement.appendChild(novoLi);
+      console.log('[MENU FINAL] injetado OK:', label);
     }
 
     _injetarItemMenu(ancora_cad, '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
@@ -2901,34 +2895,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
   }
   window._abrirToneladas = _abrirToneladas;
-
-  function _setupMenusCustom() {
-    function _injetar() {
-      var comGo = Array.from(document.querySelectorAll('[onclick]')).filter(function(el) {
-        return String(el.getAttribute('onclick') || '').indexOf('go(') >= 0;
-      });
-      console.log('[MENU] elementos com go():', comGo.length);
-      if (comGo[0]) console.log('[MENU] exemplo onclick:', comGo[0].getAttribute('onclick'));
-
-      var ok1 = false, ok2 = false, ok3 = false;
-
-      ok1 = _ensureMenuClone('usuarios', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
-      if (!ok1) ok1 = _ensureMenuClone('fornecedores', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
-      if (!ok1) ok1 = _ensureMenuClone('Usuários', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
-      if (!ok1) ok1 = _ensureMenuClone('Fornecedores', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
-
-      ok2 = _ensureMenuClone('comissoes', '⚖️ Toneladas Vendidas', '_menu_toneladas', 'toneladas-vendidas');
-      if (!ok2) ok2 = _ensureMenuClone('Comissões', '⚖️ Toneladas Vendidas', '_menu_toneladas', 'toneladas-vendidas');
-
-      ok3 = _ensureMenuClone('comissoes', '📦 Caixas Perdidas', '_menu_caixas_fin', 'caixas-perdidas');
-      if (!ok3) ok3 = _ensureMenuClone('Comissões', '📦 Caixas Perdidas', '_menu_caixas_fin', 'caixas-perdidas');
-
-      console.log('[MENU] resultado — gramaturas:', ok1, 'toneladas:', ok2, 'caixas:', ok3);
-    }
-    [500, 1500, 3000, 5000, 8000].forEach(function(t) { setTimeout(_injetar, t); });
-  }
-
-  _setupMenusCustom();
 
   window.mobileGoPage = function(page) {
     var menu = document.getElementById('mob-menu-mais');
