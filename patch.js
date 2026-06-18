@@ -2797,6 +2797,29 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (typeof origGo === 'function' && !origGo._patchExtrasCustom) {
         window.go = function(id) {
           var pid = String(id || '').trim();
+          if (pid === 'gramaturas') {
+            setTimeout(function() {
+              try { window._renderGramaturas(); } catch (e) { console.error('[gram]', e); }
+            }, 50);
+            return;
+          }
+          if (pid === 'toneladas-vendidas') {
+            setTimeout(function() {
+              try { window._renderToneladasVendidas(); } catch (e) { console.error('[ton]', e); }
+            }, 50);
+            return;
+          }
+          if (pid === 'caixas-perdidas' || pid === 'inconformidades') {
+            setTimeout(function() {
+              try {
+                if (typeof window.carregarCaixasPerdidas === 'function') {
+                  window.carregarCaixasPerdidas();
+                } else if (typeof window.renderCaixasPerdidas === 'function') {
+                  window.renderCaixasPerdidas();
+                }
+              } catch (e) { console.error('[CP]', e); }
+            }, 100);
+          }
           if (openCustomPage(pid)) return;
           return origGo.apply(this, arguments);
         };
@@ -10483,6 +10506,29 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (typeof orig !== 'function' || orig._patchClientesEstoquesCustom) return;
     var wrapped = async function(tela) {
       var page = String(tela || '');
+      if (page === 'gramaturas') {
+        setTimeout(function() {
+          try { window._renderGramaturas(); } catch (e) { console.error('[gram]', e); }
+        }, 50);
+        return;
+      }
+      if (page === 'toneladas-vendidas') {
+        setTimeout(function() {
+          try { window._renderToneladasVendidas(); } catch (e) { console.error('[ton]', e); }
+        }, 50);
+        return;
+      }
+      if (page === 'caixas-perdidas' || page === 'inconformidades') {
+        setTimeout(function() {
+          try {
+            if (typeof window.carregarCaixasPerdidas === 'function') {
+              window.carregarCaixasPerdidas();
+            } else if (typeof window.renderCaixasPerdidas === 'function') {
+              window.renderCaixasPerdidas();
+            }
+          } catch (e) { console.error('[CP]', e); }
+        }, 100);
+      }
       if (page === 'estoque-tintas') {
         var hostTintas = getMainPatchHost('estoque-tintas', '🎨 Estoque de Tintas');
         _renderEstoqueTintas(hostTintas);
@@ -12233,33 +12279,53 @@ window._mbnActive = function(id) {
   }
 
   window._ordenarPorPrioridade = async function() {
-    var groups = getVisibleGroups();
-    var maquinas = Object.keys(groups || {});
-    if (!maquinas.length) return false;
-    try {
-      for (var i = 0; i < maquinas.length; i += 1) {
-        var maq = maquinas[i];
-        var ofs = Array.isArray(groups[maq]) ? groups[maq].slice() : [];
-        if (!ofs.length) continue;
-        var urg = [];
-        var rest = [];
-        ofs.forEach(function(of) { (isUrgente(of) ? urg : rest).push(of); });
-        urg = _sortByAreaDesc(urg);
-        rest = _sortByAreaDesc(rest);
-        var sorted = urg.concat(rest);
-        var ids = sorted.map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
-        if (!ids.length) continue;
-        if (!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
-        window._ordemMaquinas[maq] = ids.slice();
-        await savePriorityOrder(maq, ids);
-      }
-      try { if (typeof window.renderOFsPorMaquina === 'function') await window.renderOFsPorMaquina(); } catch (_) {}
-      try { window.toast('✅ OFs ordenadas por tamanho (maior → menor)', 'var(--green)'); } catch (_) {}
-      return true;
-    } catch (e) {
-      try { window.toast('Erro ao ordenar OFs: ' + (e && e.message ? e.message : e), 'var(--red)'); } catch (_) {}
-      return false;
+    var groups = window._ofmaqLastGroupOfs || {};
+    var maquinas = Object.keys(groups);
+    if (!maquinas.length) {
+      try { window.toast('Nenhuma OF carregada', 'var(--red)'); } catch (_) {}
+      return;
     }
+
+    for (var i = 0; i < maquinas.length; i++) {
+      var maq = maquinas[i];
+      var ofs = Array.isArray(groups[maq]) ? groups[maq].slice() : [];
+      if (!ofs.length) continue;
+
+      var urgentes = ofs.filter(function(of) {
+        return !!(of && (of.urgente === true || of.urgente === 1 || of.urg === true || of.urg === 1));
+      });
+      var normais = ofs.filter(function(of) {
+        return !(of && (of.urgente === true || of.urgente === 1 || of.urg === true || of.urg === 1));
+      });
+
+      function getArea(of) {
+        var comp = Number(of.caixa_comprimento || of.dim_comprimento || of.comprimento || 0) || 0;
+        var larg = Number(of.caixa_largura || of.dim_largura || of.largura || 0) || 0;
+        return comp * larg;
+      }
+      urgentes.sort(function(a, b) { return getArea(b) - getArea(a); });
+      normais.sort(function(a, b) { return getArea(b) - getArea(a); });
+
+      var ordenadas = urgentes.concat(normais);
+      var ids = ordenadas.map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
+      if (!ids.length) continue;
+
+      if (!window._ordemMaquinas) window._ordemMaquinas = {};
+      window._ordemMaquinas[maq] = ids;
+
+      try {
+        var token = '';
+        try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+        await fetch('/api/ofs/reordenar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': token ? 'Bearer ' + token : '' },
+          body: JSON.stringify({ maquina_id: maq, ids: ids, ordem: ids })
+        });
+      } catch (_) {}
+    }
+
+    try { if (typeof window.renderOFsPorMaquina === 'function') await window.renderOFsPorMaquina(); } catch (_) {}
+    try { window.toast('✅ OFs ordenadas por tamanho (urgentes primeiro)', 'var(--green)'); } catch (_) {}
   };
 
   window.ordenarOFsPorPrioridade = async function(arg) {
@@ -12318,14 +12384,78 @@ window._mbnActive = function(id) {
     }
   };
 
-  window.toggleAgrupamentoSetup = function() {
+  window.toggleAgrupamentoSetup = async function() {
     window._agrupamentoSetupAtivo = !window._agrupamentoSetupAtivo;
     updateAgrupamentoButton();
-    if (window._agrupamentoSetupAtivo) {
-      window._agruparPorSetup().catch(function() {});
+
+    if (!window._agrupamentoSetupAtivo) {
+      try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
       return;
     }
-    try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
+
+    var groups = window._ofmaqLastGroupOfs || {};
+    var maquinas = Object.keys(groups);
+    if (!maquinas.length) return;
+
+    for (var i = 0; i < maquinas.length; i++) {
+      var maq = maquinas[i];
+      var ofs = Array.isArray(groups[maq]) ? groups[maq].slice() : [];
+      if (!ofs.length) continue;
+
+      function getCores(of) {
+        try {
+          var raw = of.cores_impressao;
+          if (!raw) return 'sem-impressao';
+          if (typeof raw === 'string') raw = JSON.parse(raw);
+          if (Array.isArray(raw)) return raw.map(function(c) {
+            return String(c && (c.nome || c.id || c) || '').trim().toLowerCase();
+          }).sort().join('+');
+        } catch (_) {}
+        return 'sem-impressao';
+      }
+
+      var grupos = {};
+      ofs.forEach(function(of) {
+        var cor = getCores(of);
+        if (!grupos[cor]) grupos[cor] = [];
+        grupos[cor].push(of);
+      });
+
+      var chaves = Object.keys(grupos).sort(function(a, b) {
+        return grupos[b].length - grupos[a].length;
+      });
+
+      var ordenadas = [];
+      chaves.forEach(function(cor) {
+        var urgentes = grupos[cor].filter(function(of) {
+          return !!(of && (of.urgente === true || of.urgente === 1));
+        });
+        var normais = grupos[cor].filter(function(of) {
+          return !(of && (of.urgente === true || of.urgente === 1));
+        });
+        urgentes.forEach(function(of) { ordenadas.push(of); });
+        normais.forEach(function(of) { ordenadas.push(of); });
+      });
+
+      var ids = ordenadas.map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
+      if (!ids.length) continue;
+
+      if (!window._ordemMaquinas) window._ordemMaquinas = {};
+      window._ordemMaquinas[maq] = ids;
+
+      try {
+        var token = '';
+        try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+        await fetch('/api/ofs/reordenar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': token ? 'Bearer ' + token : '' },
+          body: JSON.stringify({ maquina_id: maq, ids: ids, ordem: ids })
+        });
+      } catch (_) {}
+    }
+
+    try { if (typeof window.renderOFsPorMaquina === 'function') await window.renderOFsPorMaquina(); } catch (_) {}
+    try { window.toast('✅ OFs agrupadas por cor/setup', 'var(--green)'); } catch (_) {}
   };
 
   function afterRenderOfmaq() {
@@ -17238,6 +17368,30 @@ function _ocultarGraficoComissoes() {
     if (_goOrigComFix && !window._patchGoComFixed) {
       window._patchGoComFixed = true;
       window.go = function(tela) {
+        var pid = String(tela || '').trim();
+        if (pid === 'gramaturas') {
+          setTimeout(function() {
+            try { window._renderGramaturas(); } catch (e) { console.error('[gram]', e); }
+          }, 50);
+          return;
+        }
+        if (pid === 'toneladas-vendidas') {
+          setTimeout(function() {
+            try { window._renderToneladasVendidas(); } catch (e) { console.error('[ton]', e); }
+          }, 50);
+          return;
+        }
+        if (pid === 'caixas-perdidas' || pid === 'inconformidades') {
+          setTimeout(function() {
+            try {
+              if (typeof window.carregarCaixasPerdidas === 'function') {
+                window.carregarCaixasPerdidas();
+              } else if (typeof window.renderCaixasPerdidas === 'function') {
+                window.renderCaixasPerdidas();
+              }
+            } catch (e) { console.error('[CP]', e); }
+          }, 100);
+        }
         var args = Array.prototype.slice.call(arguments, 1);
         var r = _goOrigComFix.apply(this, [tela].concat(args));
         if (String(tela || '').toLowerCase().indexOf('comiss') >= 0) {
@@ -17482,16 +17636,31 @@ window._renderToneladasVendidas = async function() {
   if (typeof _goFinal === 'function' && !_goFinal._patchFinal) {
     window.go = function(id) {
       var pid = String(id || '').trim();
-      if (window._patchCustomPages && typeof window._patchCustomPages[pid] === 'function') {
-        try { window._patchCustomPages[pid](); } catch (e) { try { console.error(e); } catch (_) {} }
-        return;
-      }
       if (pid === 'gramaturas') {
-        try { window._renderGramaturas(); } catch (e) { console.error(e); }
+        setTimeout(function() {
+          try { window._renderGramaturas(); } catch (e) { console.error('[gram]', e); }
+        }, 50);
         return;
       }
       if (pid === 'toneladas-vendidas') {
-        try { window._renderToneladasVendidas(); } catch (e) { console.error(e); }
+        setTimeout(function() {
+          try { window._renderToneladasVendidas(); } catch (e) { console.error('[ton]', e); }
+        }, 50);
+        return;
+      }
+      if (pid === 'caixas-perdidas' || pid === 'inconformidades') {
+        setTimeout(function() {
+          try {
+            if (typeof window.carregarCaixasPerdidas === 'function') {
+              window.carregarCaixasPerdidas();
+            } else if (typeof window.renderCaixasPerdidas === 'function') {
+              window.renderCaixasPerdidas();
+            }
+          } catch (e) { console.error('[CP]', e); }
+        }, 100);
+      }
+      if (window._patchCustomPages && typeof window._patchCustomPages[pid] === 'function') {
+        try { window._patchCustomPages[pid](); } catch (e) { try { console.error(e); } catch (_) {} }
         return;
       }
       if (pid === 'caixas-perdidas') {
@@ -17502,7 +17671,6 @@ window._renderToneladasVendidas = async function() {
           var pgCP = document.getElementById('page-caixas-perdidas') || document.getElementById('page-inconformidades');
           if (pgCP) pgCP.style.display = 'block';
         } catch (e) { console.error('[go caixas-perdidas]', e); }
-        return;
       }
       return _goFinal.apply(this, arguments);
     };
@@ -18167,18 +18335,26 @@ window._renderToneladasVendidas = async function() {
 })();
 (function _injetarMenusCustom() {
   function _ocultarMenusIndesejados() {
-    Array.from(document.querySelectorAll('[onclick*="relatorio-mensal"], [onclick*="relatorioMensal"]')).forEach(function(el) {
-      el.style.display = 'none';
+    Array.from(document.querySelectorAll('.sidebar *, [class*="sidebar"] *')).forEach(function(el) {
+      if (el.children.length > 0) return;
+      var txt = String(el.textContent || '').trim();
+      if (txt === 'Relatório Mensal' || txt === 'Configurações') {
+        var item = el.closest('[onclick], li, div[class*="nav-item"], div[class*="item"]') || el.parentElement;
+        if (item) item.style.display = 'none';
+      }
     });
-    var cpItems = Array.from(document.querySelectorAll('[onclick*="caixas-perdidas"], [onclick*="inconformidades"]'));
-    if (cpItems.length > 1) {
-      var financeiroEl = document.querySelector('[onclick*="comissoes"]');
-      var financeiroGroup = financeiroEl ? financeiroEl.parentElement : null;
-      cpItems.forEach(function(el) {
-        var noGrupoFinanceiro = financeiroGroup && financeiroGroup.contains(el);
-        if (!noGrupoFinanceiro) el.style.display = 'none';
-      });
-    }
+
+    var todosCP = Array.from(document.querySelectorAll('[onclick*="caixas-perdidas"], [onclick*="inconformidades"]'));
+    if (todosCP.length <= 1) return;
+
+    var refComissoes = document.querySelector('[onclick*="comissoes"]');
+    if (!refComissoes) return;
+    var grupoFin = refComissoes.parentElement;
+
+    todosCP.forEach(function(el) {
+      var noFin = grupoFin && grupoFin.contains(el);
+      if (!noFin) el.style.display = 'none';
+    });
   }
 
   function _clonarItemMenu(pageIdRef, novoPageId, novoTexto, novoId) {
@@ -18253,7 +18429,8 @@ window._renderToneladasVendidas = async function() {
 
     if ((ok.gram && ok.ton) || tentativas > 40) clearInterval(timer);
   }, 800);
-  setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 1000);
+  setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 500);
+  setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 1500);
   setTimeout(function() {
     try { _ocultarMenusIndesejados(); } catch (_) {}
     var itensFinanceiro = document.querySelectorAll('[onclick*="inconformidades"], [onclick*="caixas-perdidas"]');
@@ -18275,4 +18452,5 @@ window._renderToneladasVendidas = async function() {
     });
   }, 2000);
   setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 3000);
+  setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 5000);
 })();
