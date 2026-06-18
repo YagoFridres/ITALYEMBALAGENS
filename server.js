@@ -14147,56 +14147,60 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
     const { mes, ano } = req.query;
     const empresaId = await getEmpresaId(req);
 
-    const { data: testGram, error: errGram } = await supabase.from('gramaturas').select('id').limit(1);
-    console.log('[toneladas] teste gramaturas:', testGram, errGram);
-
-    const { data: gramaturas } = await supabase
+    const { data: gramaturas, error: errGram } = await supabase
       .from('gramaturas')
-      .select('id, gramatura, valor, gramas')
+      .select('id, gramatura')
       .eq('empresa_id', empresaId);
+
+    if (errGram) throw errGram;
 
     const mapaGram = {};
     (gramaturas || []).forEach(g => {
-      const val = Number(g.gramatura || g.valor || g.gramas || 0) || 0;
-      if (g.id && val > 0) mapaGram[String(g.id)] = val;
+      if (g.id && g.gramatura) mapaGram[String(g.id)] = Number(g.gramatura) || 0;
     });
 
     let query = supabase
       .from('ofs')
-      .select('id, numero, of, quantidade, qtd, caixa_comprimento, caixa_largura, dim_comprimento, dim_largura, comprimento, largura, gramatura_id, cli_id, valor_total, data_conclusao')
+      .select('id, numero, of, quantidade, qtd, caixa_comprimento, caixa_largura, dim_comprimento, dim_largura, gramatura_id, cli_id, valor_total, data_conclusao')
       .ilike('status', '%conclu%')
       .not('gramatura_id', 'is', null);
 
     if (empresaId) query = query.eq('empresa_id', empresaId);
+
     if (mes && ano) {
       const dataInicio = `${ano}-${String(mes).padStart(2, '0')}-01`;
       const dataFim = new Date(Number(ano), Number(mes), 0).toISOString().slice(0, 10);
       query = query.gte('data_conclusao', dataInicio).lte('data_conclusao', dataFim);
     }
 
-    const { data: ofs, error } = await query.limit(2000);
-    if (error) throw error;
+    const { data: ofs, error: errOfs } = await query.limit(2000);
+    if (errOfs) throw errOfs;
 
     let totalTon = 0;
+    let totalM2 = 0;
     const detalhes = [];
 
     (ofs || []).forEach(of => {
-      const comp = Number(of.caixa_comprimento || of.dim_comprimento || of.comprimento || 0) || 0;
-      const larg = Number(of.caixa_largura || of.dim_largura || of.largura || 0) || 0;
+      const comp = Number(of.caixa_comprimento || of.dim_comprimento || 0) || 0;
+      const larg = Number(of.caixa_largura || of.dim_largura || 0) || 0;
       const qtd = Number(of.quantidade || of.qtd || 0) || 0;
       const gramId = String(of.gramatura_id || '').trim();
       const gram = gramId ? (mapaGram[gramId] || 0) : 0;
 
       if (!(comp > 0 && larg > 0 && gram > 0 && qtd > 0)) return;
 
-      const ton = ((comp / 1000) * (larg / 1000) * gram * qtd / 1000) / 1000;
+      const areaM2 = (comp / 1000) * (larg / 1000) * qtd;
+      const ton = (areaM2 * gram) / 1000000;
       totalTon += ton;
+      totalM2 += areaM2;
+
       detalhes.push({
         of: of.numero || of.of || of.id,
         cli_id: of.cli_id,
         qtd, comp, larg, gram,
+        area_m2: areaM2,
         toneladas: ton,
-        valor_total: of.valor_total,
+        valor_total: of.valor_total || 0,
         data: of.data_conclusao
       });
     });
@@ -14204,13 +14208,14 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
     res.json({
       ok: true,
       total_toneladas: totalTon,
+      total_m2: totalM2,
       total_ofs: detalhes.length,
       mes: mes ? `${ano}-${String(mes).padStart(2, '0')}` : null,
       detalhes: detalhes.sort((a, b) => b.toneladas - a.toneladas)
     });
   } catch (e) {
-    console.error('[toneladas ERRO COMPLETO]', e.message, e.stack);
-    res.status(500).json({ ok: false, error: e.message, stack: e.stack });
+    console.error('[toneladas]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
