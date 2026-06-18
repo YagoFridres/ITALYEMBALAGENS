@@ -7615,7 +7615,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return null;
     };
 
-    var body = { _allow_partial: '1' };
+    var body = {};
     var maquina = getV('#of-r-maquina', '#ofr-maquina', 'select[name="maquina"]', '[data-campo="maquina"]');
     var tipo = getV('#ofr-tipo', '#of-r-tipo', 'select[name="tipo_caixa"]', 'select[name="tipo"]');
     var produto = getV('#of-r-produto', '#ofr-produto', 'input[name="produto"]', '[data-campo="produto"]');
@@ -16240,8 +16240,7 @@ function _ocultarGraficoComissoes() {
           status: 'Concluído',
           data_conclusao: dataFaturamento,
           quantidade: caixasProduzidas,
-          valor_total: resumo.novoTotal,
-          _allow_partial: '1'
+          valor_total: resumo.novoTotal
         };
         var gramaturaId = String((document.getElementById('conclusao-gramatura') || {}).value || '').trim();
         if (gramaturaId) body.gramatura_id = gramaturaId;
@@ -16563,8 +16562,6 @@ function _ocultarGraficoComissoes() {
           if (obs) payload.observacoes = obs;
           if (comPct) payload.comissao_pct = Number(String(comPct).replace(',', '.'));
           payload.gramatura_id = gramaturaId || null;
-          payload._allow_partial = '1';
-
           try { console.log('[TROCAR] body:', JSON.stringify(payload)); } catch (_) {}
 
           try {

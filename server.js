@@ -5968,6 +5968,16 @@ app.delete('/api/tempos_reais/:id', authMiddleware, async (req, res) => {
 app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
+    const body = req.body || {};
+    const camposInvalidos = ['_allow_partial','ativo','produto','cliId',
+      'cliente_id','vendId','vend_id','empId','prodDesc',
+      'agendamento_auto','maquina_agendada','fluxo_maquinas',
+      'maquinas_fluxo','maquinas_fluxo_ids','gramatura',
+      'gramaturaId','cores_payload'];
+
+    if (body && typeof body === 'object') {
+      camposInvalidos.forEach(c => delete body[c]);
+    }
     let stAtualBefore = '';
     let stNovoWanted = '';
     try {
@@ -5977,7 +5987,6 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         .eq('id', id)
         .maybeSingle();
       if (ofAtual) {
-        const body = req.body || {};
         const hasEntrega = Object.prototype.hasOwnProperty.call(body, 'ent') || Object.prototype.hasOwnProperty.call(body, 'data_entrega');
         const hasMaq = Object.prototype.hasOwnProperty.call(body, 'fluxo_maquinas') || Object.prototype.hasOwnProperty.call(body, 'maq');
         if (hasEntrega || hasMaq) {
@@ -6023,8 +6032,8 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         }
       }
     } catch (_) {}
-    const bodyIn = req.body || {};
-    let body =
+    const bodyIn = body;
+    let payloadBody =
       (bodyIn && typeof bodyIn === 'object' && !Array.isArray(bodyIn))
         ? {
           ...bodyIn,
@@ -6070,16 +6079,16 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
             : {}),
         }
         : bodyIn;
-    if (!body || typeof body !== 'object' || Array.isArray(body)) body = {};
-    delete body._allow_partial;
-    delete body['_allow_partial'];
+    if (!payloadBody || typeof payloadBody !== 'object' || Array.isArray(payloadBody)) payloadBody = {};
+    delete payloadBody._allow_partial;
+    delete payloadBody['_allow_partial'];
     const camposProibidos = ['_allow_partial', 'cliId', 'cliente_id',
       'vendId', 'vend_id', 'empId', 'prodDesc', 'produto',
       'agendamento_auto', 'maquina_agendada', 'fluxo_maquinas',
       'maquinas_fluxo', 'maquinas_fluxo_ids', 'cores_payload',
       'gramatura', 'gramaturaId'];
-    camposProibidos.forEach(campo => delete body[campo]);
-    const payload = { ...ofIn(body || {}), updated_at: new Date().toISOString() };
+    camposProibidos.forEach(campo => delete payloadBody[campo]);
+    const payload = { ...ofIn(payloadBody || {}), updated_at: new Date().toISOString() };
     try {
       const { data: ofAtual2 } = await supabase.from('ofs').select('status').eq('id', id).maybeSingle();
       const norm = (s) => {
