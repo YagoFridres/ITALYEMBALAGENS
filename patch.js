@@ -16353,6 +16353,30 @@ function _ocultarGraficoComissoes() {
           }
 
           closeModal();
+          try { backdrop.remove(); } catch(_) {}
+          try { modal.remove(); } catch(_) {}
+          setTimeout(function() {
+            try {
+              if (typeof window.renderOFs === 'function') window.renderOFs();
+            } catch(_) {}
+            try {
+              if (typeof window.carregarOFs === 'function') window.carregarOFs();
+            } catch(_) {}
+            try {
+              if (typeof window.atualizarListaOFs === 'function') window.atualizarListaOFs();
+            } catch(_) {}
+            try {
+              if (typeof window._recarregarPCP === 'function') window._recarregarPCP();
+            } catch(_) {}
+            try {
+              var ativo = document.querySelector('.sidebar [class*="active"], .sidebar [class*="ativo"]');
+              if (ativo) ativo.click();
+            } catch(_) {}
+            try {
+              var paginaAtual = window._paginaAtual || window._currentPage || 'pcp';
+              if (typeof window.go === 'function') window.go(paginaAtual);
+            } catch(_) {}
+          }, 500);
           _mostrarPopupConclusaoOF({
             numero: numero,
             cliente_nome: cliente,
