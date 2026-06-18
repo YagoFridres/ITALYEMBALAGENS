@@ -17455,18 +17455,20 @@ window._renderGramaturas = async function() {
       + '<thead><tr style="background:var(--bg2,#1a1a2e)">'
       + '<th style="padding:10px 12px;text-align:left;color:#aaa;font-size:11px">NOME</th>'
       + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">g/m²</th>'
+      + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">R$/kg</th>'
       + '<th style="padding:10px 12px;text-align:left;color:#aaa;font-size:11px">FORNECEDOR</th>'
       + '<th style="padding:10px 12px;text-align:center;color:#aaa;font-size:11px">AÇÕES</th>'
       + '</tr></thead><tbody>'
       + (lista.length === 0
-        ? '<tr><td colspan="4" style="padding:20px;text-align:center;color:#aaa">Nenhuma gramatura cadastrada</td></tr>'
+        ? '<tr><td colspan="5" style="padding:20px;text-align:center;color:#aaa">Nenhuma gramatura cadastrada</td></tr>'
         : lista.map(function(g, i) {
           return '<tr style="border-top:1px solid var(--border,#333);background:'
             + (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)') + '">'
             + '<td style="padding:9px 12px;color:var(--text,#fff)">' + String(g.nome || '—') + '</td>'
             + '<td style="padding:9px 12px;text-align:right;color:#6366f1;font-weight:700">'
             + String(g.gramatura || '—') + '</td>'
-            + '<td style="padding:9px 12px;color:#aaa">' + String(g.fornecedor_id || '—') + '</td>'
+            + '<td style="padding:9px 12px;text-align:right;color:#10b981">' + (g.valor_unitario ? 'R$ ' + Number(g.valor_unitario).toFixed(2) : '—') + '</td>'
+            + '<td style="padding:9px 12px;color:#aaa">' + (g.fornecedor_nome || g.fornecedor || (g.fornecedor_id ? String(g.fornecedor_id).slice(0, 8) + '...' : '—')) + '</td>'
             + '<td style="padding:9px 12px;text-align:center">'
             + '<button onclick="window._excluirGramatura(\'' + g.id + '\')" '
             + 'style="background:transparent;border:1px solid rgba(239,68,68,0.4);'
@@ -17492,6 +17494,7 @@ window._abrirModalNovaGramatura = function() {
     + '<input id="gram-nome" placeholder="Nome" style="padding:10px;border-radius:6px;border:1px solid #333;background:#0d0d1a;color:#fff;width:100%;box-sizing:border-box">'
     + '<input id="gram-val" type="number" placeholder="Gramatura g/m²" style="padding:10px;border-radius:6px;border:1px solid #333;background:#0d0d1a;color:#fff;width:100%;box-sizing:border-box">'
     + '<input id="gram-forn" placeholder="Fornecedor" style="padding:10px;border-radius:6px;border:1px solid #333;background:#0d0d1a;color:#fff;width:100%;box-sizing:border-box">'
+    + '<input id="gram-vlunit" type="number" step="0.01" placeholder="Valor unitário R$/kg (opcional)" style="padding:10px;border-radius:6px;border:1px solid #333;background:#0d0d1a;color:#fff;width:100%;box-sizing:border-box">'
     + '</div>'
     + '<div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">'
     + '<button onclick="document.getElementById(\'modal-gram\').remove()" style="padding:10px 20px;border-radius:6px;border:1px solid #333;background:transparent;color:#fff;cursor:pointer">Cancelar</button>'
@@ -17505,10 +17508,11 @@ window._salvarGramatura = async function() {
   var nome = String((document.getElementById('gram-nome') || {}).value || '').trim();
   var val = Number((document.getElementById('gram-val') || {}).value || 0);
   var forn = String((document.getElementById('gram-forn') || {}).value || '').trim();
+  var vlunit = Number((document.getElementById('gram-vlunit') || {}).value || 0) || null;
   if (!nome || !(val > 0)) { alert('Nome e gramatura obrigatórios'); return; }
   var token = '';
   try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
-  var resp = await fetch('/api/gramaturas', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': token ? 'Bearer ' + token : '' }, body: JSON.stringify({ nome: nome, gramatura: val, fornecedor: forn }) });
+  var resp = await fetch('/api/gramaturas', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': token ? 'Bearer ' + token : '' }, body: JSON.stringify({ nome: nome, gramatura: val, fornecedor: forn, valor_unitario: vlunit }) });
   var json = await resp.json().catch(function() { return null; });
   if (resp.ok && json && (json.ok || json.id)) {
     document.getElementById('modal-gram') && document.getElementById('modal-gram').remove();
@@ -17546,48 +17550,75 @@ window._renderToneladasVendidas = async function() {
     content.appendChild(host);
   }
   host.style.cssText = 'display:block;padding:20px;overflow-y:auto;height:100%;box-sizing:border-box';
-  host.innerHTML = '<h2 style="color:var(--text,#fff);margin-bottom:20px">⚖️ Toneladas Vendidas</h2>'
-    + '<div style="color:#aaa">Carregando...</div>';
-  
   var hoje = new Date();
   var mes = hoje.getMonth() + 1;
   var ano = hoje.getFullYear();
+  var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  host.innerHTML =
+    '<div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap">'
+    + '<h2 style="color:var(--text,#fff);margin:0">⚖️ Toneladas Vendidas</h2>'
+    + '<select id="ton-mes" style="background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:8px;padding:8px 12px">'
+    + meses.map(function(m, i) { return '<option value="' + (i + 1) + '"' + ((i + 1) === mes ? ' selected' : '') + '>' + m + '</option>'; }).join('')
+    + '</select>'
+    + '<select id="ton-ano" style="background:#1a1a2e;color:#fff;border:1px solid #333;border-radius:8px;padding:8px 12px">'
+    + [2024,2025,2026].map(function(a) { return '<option value="' + a + '"' + (a === ano ? ' selected' : '') + '>' + a + '</option>'; }).join('')
+    + '</select>'
+    + '<button onclick="window._recarregarToneladas()" style="background:#6366f1;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer">🔄 Calcular</button>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px">'
+    + '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:20px;border:1px solid var(--border,#333)">'
+    + '<div style="font-size:12px;color:#aaa;margin-bottom:8px">TOTAL TONELADAS</div>'
+    + '<div id="ton-card-total" style="font-size:32px;font-weight:700;color:#10b981">0.000 t</div>'
+    + '</div>'
+    + '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:20px;border:1px solid var(--border,#333)">'
+    + '<div style="font-size:12px;color:#aaa;margin-bottom:8px">TOTAL M²</div>'
+    + '<div id="ton-card-m2" style="font-size:32px;font-weight:700;color:#6366f1">0.00 m²</div>'
+    + '</div>'
+    + '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:20px;border:1px solid var(--border,#333)">'
+    + '<div style="font-size:12px;color:#aaa;margin-bottom:8px">OFs COM GRAMATURA</div>'
+    + '<div id="ton-card-ofs" style="font-size:32px;font-weight:700;color:#f59e0b">0</div>'
+    + '</div>'
+    + '</div>'
+    + '<div id="ton-corpo">Clique em Calcular para carregar os dados.</div>';
+  setTimeout(function() {
+    try { window._recarregarToneladas(); } catch (_) {}
+  }, 100);
+};
+
+window._recarregarToneladas = async function() {
+  var mes = Number((document.getElementById('ton-mes') || {}).value || (new Date().getMonth() + 1));
+  var ano = Number((document.getElementById('ton-ano') || {}).value || (new Date().getFullYear()));
+  var token = '';
+  try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+
+  var corpo = document.getElementById('ton-corpo');
+  if (corpo) corpo.innerHTML = '<div style="color:#aaa;padding:20px">Carregando...</div>';
 
   try {
     var resp = await fetch('/api/analises/toneladas?mes=' + mes + '&ano=' + ano, {
       headers: token ? { Authorization: 'Bearer ' + token } : {}
     });
     var json = await resp.json().catch(function() { return null; });
-    
+
     if (!json || !json.ok) {
-      host.innerHTML = '<h2 style="color:#fff;margin-bottom:20px">⚖️ Toneladas Vendidas</h2>'
-        + '<div style="color:#f87171;padding:20px">Erro ao carregar dados.'
-        + (json && json.error ? '<br>' + json.error : '') + '</div>';
+      if (corpo) corpo.innerHTML = '<div style="color:#f87171;padding:20px">Erro: ' + (json && json.error || 'falha') + '</div>';
       return;
     }
-    
+
     var det = json.detalhes || [];
     var fT = function(v) { return Number(v || 0).toFixed(3) + ' t'; };
     var fM = function(v) { return Number(v || 0).toFixed(2) + ' m²'; };
-    
-    host.innerHTML = '<h2 style="color:var(--text,#fff);margin-bottom:20px">⚖️ Toneladas Vendidas</h2>'
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px">'
-      + '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:20px;border:1px solid var(--border,#333)">'
-      + '<div style="font-size:12px;color:#aaa;margin-bottom:8px">TOTAL TONELADAS</div>'
-      + '<div style="font-size:32px;font-weight:700;color:#10b981">' + fT(json.total_toneladas) + '</div>'
-      + '</div>'
-      + '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:20px;border:1px solid var(--border,#333)">'
-      + '<div style="font-size:12px;color:#aaa;margin-bottom:8px">TOTAL M²</div>'
-      + '<div style="font-size:32px;font-weight:700;color:#6366f1">' + fM(json.total_m2) + '</div>'
-      + '</div>'
-      + '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:20px;border:1px solid var(--border,#333)">'
-      + '<div style="font-size:12px;color:#aaa;margin-bottom:8px">OFs COM GRAMATURA</div>'
-      + '<div style="font-size:32px;font-weight:700;color:#f59e0b">' + String(json.total_ofs || 0) + '</div>'
-      + '</div>'
-      + '</div>'
-      + (det.length === 0
-        ? '<div style="color:#aaa;padding:20px;text-align:center">Nenhuma OF com gramatura no período.</div>'
-        : '<div style="overflow:auto;border-radius:12px;border:1px solid var(--border,#333)">'
+
+    var cardTon = document.getElementById('ton-card-total');
+    var cardM2 = document.getElementById('ton-card-m2');
+    var cardOfs = document.getElementById('ton-card-ofs');
+    if (cardTon) cardTon.textContent = fT(json.total_toneladas);
+    if (cardM2) cardM2.textContent = fM(json.total_m2);
+    if (cardOfs) cardOfs.textContent = String(json.total_ofs || 0);
+
+    if (corpo) corpo.innerHTML = det.length === 0
+      ? '<div style="color:#aaa;padding:20px;text-align:center">Nenhuma OF com gramatura no período.</div>'
+      : '<div style="overflow:auto;border-radius:12px;border:1px solid var(--border,#333)">'
         + '<table style="width:100%;border-collapse:collapse">'
         + '<thead><tr style="background:var(--bg2,#1a1a2e)">'
         + '<th style="padding:10px;text-align:left;color:#aaa;font-size:11px">OF</th>'
@@ -17610,10 +17641,9 @@ window._renderToneladasVendidas = async function() {
             + '<td style="padding:8px 10px;text-align:right;font-weight:700;color:#10b981">' + fT(d.toneladas) + '</td>'
             + '</tr>';
         }).join('')
-        + '</tbody></table></div>');
+        + '</tbody></table></div>';
   } catch (e) {
-    host.innerHTML = '<h2 style="color:#fff;margin-bottom:20px">⚖️ Toneladas Vendidas</h2>'
-      + '<div style="color:#f87171;padding:20px">Erro: ' + String(e.message) + '</div>';
+    if (corpo) corpo.innerHTML = '<div style="color:#f87171;padding:20px">Erro: ' + String(e.message) + '</div>';
   }
 };
 
@@ -18322,35 +18352,51 @@ window._renderToneladasVendidas = async function() {
 })();
 (function _injetarMenusCustom() {
   function _ocultarMenusIndesejados() {
-    var textoOcultar = ['Relatório Mensal', 'Configurações'];
-    document.querySelectorAll('*').forEach(function(el) {
-      if (el.children.length > 0) return;
+    [
+      '[onclick*="relatorio-mensal"]',
+      '[onclick*="relatorioMensal"]',
+      '[onclick*="configuracoes"]',
+      '[onclick*="configurações"]',
+      '[onclick*="settings"]'
+    ].forEach(function(sel) {
+      try {
+        document.querySelectorAll(sel).forEach(function(el) {
+          el.style.display = 'none';
+        });
+      } catch (_) {}
+    });
+
+    var textos = ['Relatório Mensal', 'Configurações', 'Configuracoes'];
+    document.querySelectorAll('.sidebar *, [class*="sidebar"] *').forEach(function(el) {
       var txt = String(el.textContent || '').trim();
-      if (textoOcultar.indexOf(txt) >= 0) {
-        var item = el;
-        for (var i = 0; i < 5; i++) {
-          if (!item.parentElement) break;
-          item = item.parentElement;
-          var oc = item.getAttribute('onclick') || '';
-          if (oc || item.tagName === 'LI' ||
-              (item.className && String(item.className).indexOf('nav') >= 0)) {
-            item.style.display = 'none';
-            break;
-          }
+      if (textos.indexOf(txt) < 0) return;
+      var cur = el;
+      for (var i = 0; i < 6; i++) {
+        if (!cur || !cur.parentElement) break;
+        cur = cur.parentElement;
+        var style = window.getComputedStyle(cur);
+        var isBlock = style.display === 'block' || style.display === 'flex';
+        var hasClick = !!cur.getAttribute('onclick');
+        var isNavItem = String(cur.className || '').indexOf('nav') >= 0 ||
+                        String(cur.className || '').indexOf('item') >= 0 ||
+                        String(cur.className || '').indexOf('menu') >= 0;
+        if (isBlock && (hasClick || isNavItem)) {
+          cur.style.display = 'none';
+          break;
         }
       }
     });
-    
+
     var refComissoes = document.querySelector('[onclick*="comissoes"]');
     if (!refComissoes) return;
     var grupoFin = refComissoes.parentElement;
-    
     var todosCP = Array.from(document.querySelectorAll(
       '[onclick*="caixas-perdidas"], [onclick*="inconformidades"]'
     ));
     todosCP.forEach(function(el) {
-      var noFin = grupoFin && grupoFin.contains(el);
-      if (!noFin) el.style.display = 'none';
+      if (!(grupoFin && grupoFin.contains(el))) {
+        el.style.display = 'none';
+      }
     });
   }
 
@@ -18427,7 +18473,7 @@ window._renderToneladasVendidas = async function() {
     if ((ok.gram && ok.ton) || tentativas > 40) clearInterval(timer);
   }, 800);
   setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 500);
-  setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 1500);
+  setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 1000);
   setTimeout(function() {
     try { _ocultarMenusIndesejados(); } catch (_) {}
     var itensFinanceiro = document.querySelectorAll('[onclick*="inconformidades"], [onclick*="caixas-perdidas"]');
