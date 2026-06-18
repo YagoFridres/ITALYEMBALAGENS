@@ -14174,7 +14174,7 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
 
     const { data: gramaturas, error: errGram } = await supabase
       .from('gramaturas')
-      .select('id, nome, gramatura, valor_unitario, fornecedor_nome, fornecedor_id')
+      .select('id, nome, gramatura, valor_unitario')
       .eq('empresa_id', empresaId);
 
     if (errGram) throw errGram;
@@ -14185,8 +14185,7 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       mapaGram[String(g.id)] = {
         gram: Number(g.gramatura) || 0,
         nome: String(g.nome || '').trim(),
-        valor_unitario: Number(g.valor_unitario || 0) || 0,
-        fornecedor: String(g.fornecedor_nome || g.fornecedor_id || 'Sem fornecedor').trim()
+        valor_unitario: Number(g.valor_unitario || 0) || 0
       };
     });
 
@@ -14237,7 +14236,6 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
         toneladas: ton,
         custo_estimado: custoEstimado,
         gramatura_nome: gramMeta ? gramMeta.nome : '',
-        fornecedor: gramMeta ? gramMeta.fornecedor : 'Sem fornecedor',
         valor_total: of.valor_total || 0,
         data: of.data_conclusao
       });
@@ -14275,16 +14273,6 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       porCliente[k].custo_estimado += d.custo_estimado || 0;
     });
 
-    const porFornecedor = {};
-    detalhes.forEach(d => {
-      const k = String(d.fornecedor || 'Sem fornecedor').trim() || 'Sem fornecedor';
-      if (!porFornecedor[k]) porFornecedor[k] = { fornecedor: k, toneladas: 0, area_m2: 0, ofs: 0, custo_estimado: 0 };
-      porFornecedor[k].toneladas += d.toneladas;
-      porFornecedor[k].area_m2 += d.area_m2;
-      porFornecedor[k].ofs++;
-      porFornecedor[k].custo_estimado += d.custo_estimado || 0;
-    });
-
     res.json({
       ok: true,
       total_toneladas: totalTon,
@@ -14292,7 +14280,6 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       total_custo_estimado: totalCustoEstimado,
       total_ofs: detalhes.length,
       mes: mes ? `${ano}-${String(mes).padStart(2, '0')}` : null,
-      por_fornecedor: Object.values(porFornecedor).sort((a, b) => b.toneladas - a.toneladas),
       por_gramatura: Object.values(porGramatura).sort((a, b) => b.toneladas - a.toneladas),
       por_cliente: Object.values(porCliente).sort((a, b) => b.toneladas - a.toneladas).slice(0, 10),
       detalhes: detalhes.sort((a, b) => b.toneladas - a.toneladas)
