@@ -265,98 +265,38 @@ if (!document.getElementById('_patch_light_css')) {
   const s = document.createElement('style');
   s.id = '_patch_light_css';
   s.textContent = `
-    body._patch_modo_claro input:not([type=checkbox]):not([type=radio]),
+    body._patch_modo_claro { background:#f0f0f0 !important; }
+    body._patch_modo_claro,
+    body._patch_modo_claro div,
+    body._patch_modo_claro span,
+    body._patch_modo_claro p,
+    body._patch_modo_claro td,
+    body._patch_modo_claro th,
+    body._patch_modo_claro li,
+    body._patch_modo_claro a,
+    body._patch_modo_claro label,
+    body._patch_modo_claro button,
+    body._patch_modo_claro input,
     body._patch_modo_claro select,
-    body._patch_modo_claro textarea {
-      color: #1e293b !important;
-      background: #fff !important;
-      border-color: #cbd5e1 !important;
-    }
-    body._patch_modo_claro input::placeholder,
-    body._patch_modo_claro textarea::placeholder {
-      color: #94a3b8 !important;
-    }
-    body._patch_modo_claro [style*="color:#f1f5f9"],
-    body._patch_modo_claro [style*="color: #f1f5f9"] { color: #1e293b !important; }
-    body._patch_modo_claro [style*="color:#94a3b8"],
-    body._patch_modo_claro [style*="color: #94a3b8"] { color: #475569 !important; }
-    body._patch_modo_claro [style*="color:#64748b"],
-    body._patch_modo_claro [style*="color: #64748b"] { color: #475569 !important; }
-    body._patch_modo_claro [style*="color:#22c55e"],
-    body._patch_modo_claro [style*="color: #22c55e"] { color: #15803d !important; }
-    body._patch_modo_claro [style*="color:#60a5fa"],
-    body._patch_modo_claro [style*="color: #60a5fa"] { color: #1d4ed8 !important; }
-    body._patch_modo_claro [style*="color:#4ade80"] { color: #15803d !important; }
-    body._patch_modo_claro [style*="color:#fbbf24"] { color: #92400e !important; }
-    body._patch_modo_claro [style*="background:#0f172a"],
-    body._patch_modo_claro [style*="background: #0f172a"],
-    body._patch_modo_claro [style*="background-color:#0f172a"] {
-      background: #f8fafc !important; color: #1e293b !important;
-    }
-    body._patch_modo_claro [style*="background:#1e293b"],
-    body._patch_modo_claro [style*="background: #1e293b"],
-    body._patch_modo_claro [style*="background-color:#1e293b"] {
-      background: #f1f5f9 !important; color: #1e293b !important;
-    }
-    body._patch_modo_claro [style*="background:#334155"],
-    body._patch_modo_claro [style*="background: #334155"] {
-      background: #e2e8f0 !important; color: #1e293b !important;
-    }
-    body._patch_modo_claro [style*="background:#166534"] {
-      background: #dcfce7 !important; color: #15803d !important;
-    }
-    body._patch_modo_claro [style*="background:#92400e"] {
-      background: #fef3c7 !important; color: #92400e !important;
-    }
-    body._patch_modo_claro [style*="border:1px solid #334155"],
-    body._patch_modo_claro [style*="border: 1px solid #334155"] {
-      border-color: #cbd5e1 !important;
-    }
-    body._patch_modo_claro #_com_topo *,
-    body._patch_modo_claro #_com_detalhe *,
-    body._patch_modo_claro #_pag_gramaturas *,
-    body._patch_modo_claro #_pag_toneladas * { color: #1e293b !important; }
-    body._patch_modo_claro #_com_topo [style*="color:#22c55e"],
-    body._patch_modo_claro #_com_detalhe [style*="color:#22c55e"],
-    body._patch_modo_claro #_pag_gramaturas [style*="color:#22c55e"],
-    body._patch_modo_claro #_pag_toneladas [style*="color:#22c55e"] { color: #15803d !important; }
-    body._patch_modo_claro #_com_topo [style*="color:#60a5fa"],
-    body._patch_modo_claro #_com_detalhe [style*="color:#60a5fa"] { color: #1d4ed8 !important; }
-    body._patch_modo_claro #_com_busca_resultado > div {
-      background: #fff !important;
-      border-color: #cbd5e1 !important;
-    }
-    /* Modal Nova OF Rapida */
-    body._patch_modo_claro .modal-of-rapida input,
-    body._patch_modo_claro .modal-of-rapida select,
-    body._patch_modo_claro .modal-of-rapida textarea,
-    body._patch_modo_claro [class*="of-rapida"] input,
-    body._patch_modo_claro [class*="of-rapida"] select,
-    body._patch_modo_claro .modal input,
-    body._patch_modo_claro .modal select,
-    body._patch_modo_claro .modal textarea,
-    body._patch_modo_claro dialog input,
-    body._patch_modo_claro dialog select,
-    body._patch_modo_claro dialog textarea {
-      color: #1e293b !important;
-      background: #ffffff !important;
-      border: 1px solid #cbd5e1 !important;
-    }
-    body._patch_modo_claro .modal label,
-    body._patch_modo_claro dialog label,
-    body._patch_modo_claro [class*="of-rapida"] label {
-      color: #374151 !important;
-    }
-    body._patch_modo_claro .modal,
-    body._patch_modo_claro dialog {
-      color: #1e293b !important;
-    }
-    /* Seletor de cores e outros componentes customizados */
-    body._patch_modo_claro [class*="select"],
-    body._patch_modo_claro [class*="dropdown"] {
-      color: #1e293b !important;
-      background: #ffffff !important;
-    }
+    body._patch_modo_claro textarea,
+    body._patch_modo_claro h1,
+    body._patch_modo_claro h2,
+    body._patch_modo_claro h3,
+    body._patch_modo_claro h4 { color:#111 !important; }
+    body._patch_modo_claro input,
+    body._patch_modo_claro select,
+    body._patch_modo_claro textarea { background:#fff !important; border-color:#ccc !important; }
+    body._patch_modo_claro #sidebar,
+    body._patch_modo_claro .sidebar,
+    body._patch_modo_claro nav { background:#dde !important; }
+    body._patch_modo_claro table { background:#fff !important; }
+    body._patch_modo_claro td,
+    body._patch_modo_claro th { border-color:#ccc !important; background:#fff !important; }
+    body._patch_modo_claro [style*="background:#0"],
+    body._patch_modo_claro [style*="background:#1"],
+    body._patch_modo_claro [style*="background:rgba(0"],
+    body._patch_modo_claro [style*="background:rgba(15"],
+    body._patch_modo_claro [style*="background:rgba(11"] { background:#fff !important; }
   `;
   document.head.appendChild(s);
 }
@@ -1032,7 +972,6 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
     }, 800);
   } catch (_) {}
 })();
-
 (function() {
   try {
     if (typeof window.toastHotfix !== 'function') {
@@ -17263,6 +17202,155 @@ function _ocultarGraficoComissoes() {
   try { if (_naComissoesAgora()) _agendarRenderComissoesPatch(800); } catch (_) {}
 })();
 
+window._renderGramaturas = async function() {
+  var token = '';
+  try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+  var container = document.querySelector('.content,#content,.main-area,#main-content,.content-wrapper');
+  if (!container) return;
+  document.querySelectorAll('[id^="page-"]').forEach(function(p) { p.style.display = 'none'; });
+  var host = document.getElementById('_page_gramaturas');
+  if (!host) { host = document.createElement('div'); host.id = '_page_gramaturas'; container.appendChild(host); }
+  host.style.cssText = 'display:block;padding:20px';
+  host.innerHTML = '<h2 style="color:var(--text,#fff);margin-bottom:20px">📄 Gramaturas</h2><div style="color:#aaa">Carregando...</div>';
+  var resp = await fetch('/api/gramaturas', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+  var json = await resp.json().catch(function() { return []; });
+  var lista = Array.isArray(json) ? json : (json.data || []);
+  host.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
+    + '<h2 style="color:var(--text,#fff);margin:0">📄 Gramaturas</h2>'
+    + '<button onclick="window._abrirModalNovaGramatura()" style="background:#6366f1;color:#fff;border:none;border-radius:8px;padding:10px 20px;cursor:pointer;font-weight:600">+ Nova Gramatura</button>'
+    + '</div>'
+    + '<div style="overflow:auto;border-radius:12px;border:1px solid var(--border,#333)">'
+    + '<table style="width:100%;border-collapse:collapse">'
+    + '<thead><tr style="background:var(--bg2,#1a1a2e)">'
+    + '<th style="padding:10px 12px;text-align:left;color:#aaa;font-size:11px">NOME</th>'
+    + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">g/m²</th>'
+    + '<th style="padding:10px 12px;text-align:left;color:#aaa;font-size:11px">FORNECEDOR</th>'
+    + '<th style="padding:10px 12px;text-align:center;color:#aaa;font-size:11px">AÇÕES</th>'
+    + '</tr></thead><tbody>'
+    + (lista.length === 0 ? '<tr><td colspan="4" style="padding:20px;text-align:center;color:#aaa">Nenhuma gramatura cadastrada</td></tr>'
+    : lista.map(function(g, i) {
+      return '<tr style="border-top:1px solid var(--border,#333);background:' + (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)') + '">'
+        + '<td style="padding:9px 12px;color:var(--text,#fff)">' + String(g.nome || '—') + '</td>'
+        + '<td style="padding:9px 12px;text-align:right;color:#6366f1;font-weight:700">' + String(g.gramatura || g.valor || g.gramas || '—') + '</td>'
+        + '<td style="padding:9px 12px;color:#aaa">' + String(g.fornecedor || '—') + '</td>'
+        + '<td style="padding:9px 12px;text-align:center">'
+        + '<button onclick="window._excluirGramatura(\'' + g.id + '\')" style="background:transparent;border:1px solid rgba(239,68,68,0.4);color:#ef4444;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Excluir</button>'
+        + '</td></tr>';
+    }).join(''))
+    + '</tbody></table></div>';
+};
+
+window._abrirModalNovaGramatura = function() {
+  var old = document.getElementById('modal-gram');
+  if (old) old.remove();
+  var ov = document.createElement('div');
+  ov.id = 'modal-gram';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99999;display:flex;align-items:center;justify-content:center';
+  ov.innerHTML = '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:28px;width:400px;max-width:95vw">'
+    + '<h3 style="color:var(--text,#fff);margin-bottom:20px">Nova Gramatura</h3>'
+    + '<div style="display:grid;gap:12px">'
+    + '<input id="gram-nome" placeholder="Nome" style="padding:10px;border-radius:6px;border:1px solid #333;background:#0d0d1a;color:#fff;width:100%;box-sizing:border-box">'
+    + '<input id="gram-val" type="number" placeholder="Gramatura g/m²" style="padding:10px;border-radius:6px;border:1px solid #333;background:#0d0d1a;color:#fff;width:100%;box-sizing:border-box">'
+    + '<input id="gram-forn" placeholder="Fornecedor" style="padding:10px;border-radius:6px;border:1px solid #333;background:#0d0d1a;color:#fff;width:100%;box-sizing:border-box">'
+    + '</div>'
+    + '<div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">'
+    + '<button onclick="document.getElementById(\'modal-gram\').remove()" style="padding:10px 20px;border-radius:6px;border:1px solid #333;background:transparent;color:#fff;cursor:pointer">Cancelar</button>'
+    + '<button onclick="window._salvarGramatura()" style="padding:10px 20px;border-radius:6px;border:none;background:#6366f1;color:#fff;cursor:pointer;font-weight:600">Salvar</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', function(e) { if (e.target === ov) ov.remove(); });
+};
+
+window._salvarGramatura = async function() {
+  var nome = String((document.getElementById('gram-nome') || {}).value || '').trim();
+  var val = Number((document.getElementById('gram-val') || {}).value || 0);
+  var forn = String((document.getElementById('gram-forn') || {}).value || '').trim();
+  if (!nome || !(val > 0)) { alert('Nome e gramatura obrigatórios'); return; }
+  var token = '';
+  try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+  var resp = await fetch('/api/gramaturas', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': token ? 'Bearer ' + token : '' }, body: JSON.stringify({ nome: nome, gramatura: val, fornecedor: forn }) });
+  var json = await resp.json().catch(function() { return null; });
+  if (resp.ok && json && (json.ok || json.id)) {
+    document.getElementById('modal-gram') && document.getElementById('modal-gram').remove();
+    window._renderGramaturas();
+  } else alert('Erro: ' + String(json && json.error || 'falha'));
+};
+
+window._excluirGramatura = async function(id) {
+  if (!confirm('Excluir?')) return;
+  var token = '';
+  try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+  await fetch('/api/gramaturas/' + encodeURIComponent(id), { method: 'DELETE', headers: { Authorization: token ? 'Bearer ' + token : '' } });
+  window._renderGramaturas();
+};
+
+window._renderToneladasVendidas = async function() {
+  var token = '';
+  try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+  var container = document.querySelector('.content,#content,.main-area,#main-content,.content-wrapper');
+  if (!container) return;
+  document.querySelectorAll('[id^="page-"]').forEach(function(p) { p.style.display = 'none'; });
+  var host = document.getElementById('_page_toneladas');
+  if (!host) { host = document.createElement('div'); host.id = '_page_toneladas'; container.appendChild(host); }
+  host.style.cssText = 'display:block;padding:20px';
+  host.innerHTML = '<h2 style="color:var(--text,#fff);margin-bottom:20px">⚖️ Toneladas Vendidas</h2><div style="color:#aaa">Carregando...</div>';
+  var respG = await fetch('/api/gramaturas', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+  var jsonG = await respG.json().catch(function() { return []; });
+  var grams = Array.isArray(jsonG) ? jsonG : (jsonG.data || []);
+  var mapaG = {};
+  grams.forEach(function(g) { if (g && g.id) mapaG[String(g.id)] = Number(g.gramatura || g.valor || g.gramas || 0) || 0; });
+  var hoje = new Date();
+  var mes = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+  var respO = await fetch('/api/ofs?status=Conclu%C3%ADdo&limit=2000', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+  var jsonO = await respO.json().catch(function() { return null; });
+  var ofs = Array.isArray(jsonO) ? jsonO : (jsonO && (jsonO.data || jsonO.ofs) || []);
+  var total = 0;
+  var det = [];
+  ofs.forEach(function(of) {
+    if (!of) return;
+    var comp = Number(of.caixa_comprimento || of.dim_comprimento || of.comprimento || 0) || 0;
+    var larg = Number(of.caixa_largura || of.dim_largura || of.largura || 0) || 0;
+    var qtd = Number(of.quantidade || of.qtd || 0) || 0;
+    var gid = String(of.gramatura_id || of.gramaturaId || '').trim();
+    var gram = gid ? (mapaG[gid] || 0) : 0;
+    if (!(comp > 0 && larg > 0 && gram > 0 && qtd > 0)) return;
+    var ton = ((comp / 1000) * (larg / 1000) * gram * qtd / 1000) / 1000;
+    total += ton;
+    det.push({ of: String(of.numero || of.of || '—'), cliente: String(of.cliNome || of.cliente || of.cliente_nome || '—'), qtd: qtd, comp: comp, larg: larg, gram: gram, ton: ton });
+  });
+  var fT = function(v) { return Number(v || 0).toFixed(3) + ' t'; };
+  host.innerHTML = '<h2 style="color:var(--text,#fff);margin-bottom:20px">⚖️ Toneladas Vendidas</h2>'
+    + '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:24px;margin-bottom:20px;border:1px solid var(--border,#333)">'
+    + '<div style="font-size:12px;color:#aaa;margin-bottom:8px">TOTAL GERAL</div>'
+    + '<div style="font-size:36px;font-weight:700;color:#10b981">' + fT(total) + '</div>'
+    + '<div style="font-size:13px;color:#aaa;margin-top:8px">' + det.length + ' OFs com gramatura</div>'
+    + '</div>'
+    + (det.length === 0 ? '<div style="color:#aaa;padding:20px;text-align:center">Nenhuma OF com gramatura registrada.<br>Registre a gramatura ao concluir as OFs.</div>'
+    : '<div style="overflow:auto;border-radius:12px;border:1px solid var(--border,#333)">'
+    + '<table style="width:100%;border-collapse:collapse">'
+    + '<thead><tr style="background:var(--bg2,#1a1a2e)">'
+    + '<th style="padding:10px 12px;text-align:left;color:#aaa;font-size:11px">OF</th>'
+    + '<th style="padding:10px 12px;text-align:left;color:#aaa;font-size:11px">CLIENTE</th>'
+    + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">QTD</th>'
+    + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">COMP</th>'
+    + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">LARG</th>'
+    + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">g/m²</th>'
+    + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">TONELADAS</th>'
+    + '</tr></thead><tbody>'
+    + det.sort(function(a, b) { return b.ton - a.ton; }).map(function(d, i) {
+      return '<tr style="border-top:1px solid var(--border,#333);background:' + (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)') + '">'
+        + '<td style="padding:9px 12px;color:#6366f1">#' + d.of + '</td>'
+        + '<td style="padding:9px 12px;color:var(--text,#fff)">' + d.cliente + '</td>'
+        + '<td style="padding:9px 12px;text-align:right;color:#aaa">' + d.qtd.toLocaleString('pt-BR') + '</td>'
+        + '<td style="padding:9px 12px;text-align:right;color:#aaa">' + d.comp + '</td>'
+        + '<td style="padding:9px 12px;text-align:right;color:#aaa">' + d.larg + '</td>'
+        + '<td style="padding:9px 12px;text-align:right;color:#aaa">' + d.gram + '</td>'
+        + '<td style="padding:9px 12px;text-align:right;font-weight:700;color:#10b981">' + fT(d.ton) + '</td>'
+        + '</tr>';
+    }).join('')
+    + '</tbody></table></div>');
+};
+
 // Wrapper final e permanente do window.go — executar após todos os patches
 (function() {
   var _goFinal = window.go;
@@ -17273,6 +17361,8 @@ function _ocultarGraficoComissoes() {
         try { window._patchCustomPages[pid](); } catch (e) { try { console.error(e); } catch (_) {} }
         return;
       }
+      if (pid === 'gramaturas') { window._renderGramaturas && window._renderGramaturas(); return; }
+      if (pid === 'toneladas-vendidas') { window._renderToneladasVendidas && window._renderToneladasVendidas(); return; }
       return _goFinal.apply(this, arguments);
     };
     window.go._patchFinal = true;
@@ -17933,4 +18023,41 @@ function _ocultarGraficoComissoes() {
     setTimeout(renomearAba, 600);
     setTimeout(renderPaginaRecorrentesMensagem, 800);
   } catch (_) {}
+})();
+(function _injetarMenusCustom() {
+  function _clonarItemMenu(pageIdRef, novoPageId, novoTexto, novoIcone, novoId) {
+    if (document.getElementById(novoId)) return true;
+    var ref = document.querySelector('.sidebar div[onclick*="go(\'' + pageIdRef + '\')"]')
+           || document.querySelector('.sidebar [onclick*="go(\'' + pageIdRef + '\')"]')
+           || document.querySelector('[class*="sidebar"] [onclick*="go(\'' + pageIdRef + '\')"]');
+    if (!ref) return false;
+    var novo = ref.cloneNode(true);
+    novo.id = novoId;
+    novo.setAttribute('onclick', "go('" + novoPageId + "')");
+    var spans = novo.querySelectorAll('span, i, em');
+    if (spans.length > 0) spans[0].textContent = novoIcone;
+    var textoNos = novo.childNodes;
+    for (var i = 0; i < textoNos.length; i++) {
+      if (textoNos[i].nodeType === 3 && textoNos[i].textContent.trim().length > 1) {
+        textoNos[i].textContent = ' ' + novoTexto;
+        break;
+      }
+    }
+    if (!novo.textContent.includes(novoTexto)) {
+      novo.innerHTML = novo.innerHTML + novoTexto;
+    }
+    ref.parentElement.insertBefore(novo, ref.nextSibling);
+    console.log('[PATCH] Menu injetado:', novoId);
+    return true;
+  }
+
+  var ok = { cp: false, gram: false, ton: false };
+  var tentativas = 0;
+  var timer = setInterval(function() {
+    tentativas++;
+    if (!ok.cp) ok.cp = _clonarItemMenu('lancamento', 'caixas-perdidas', 'Caixas Perdidas', '📦', 'menu-patch-caixas-perdidas');
+    if (!ok.gram) ok.gram = _clonarItemMenu('clientes', 'gramaturas', 'Gramaturas', '📄', 'menu-patch-gramaturas');
+    if (!ok.ton) ok.ton = _clonarItemMenu('lancamento', 'toneladas-vendidas', 'Toneladas Vendidas', '⚖️', 'menu-patch-toneladas');
+    if ((ok.cp && ok.gram && ok.ton) || tentativas > 40) clearInterval(timer);
+  }, 800);
 })();
