@@ -11,91 +11,101 @@ if (!window._menuPatchFinal) {
   window._menuPatchFinal = true;
 
   function _injetarMenusCustom() {
-    var todosLi = Array.from(document.querySelectorAll('li'));
+    if (!window._menuDiagFeito) {
+      window._menuDiagFeito = true;
+      var textos = Array.from(document.querySelectorAll('li'))
+        .filter(function(li) { return li.offsetParent !== null; })
+        .map(function(li) { return li.textContent.trim().substring(0, 25); })
+        .filter(function(t) { return t.length > 1; });
+      console.log('[MENU DIAG] LIs visíveis:', textos);
+    }
+
+    var todosLiVisiveis = Array.from(document.querySelectorAll('li'))
+      .filter(function(li) { return li.offsetParent !== null; });
 
     if (!document.getElementById('_menu_gramaturas')) {
-      var ancCad = todosLi.find(function(li) {
+      var ancCad = todosLiVisiveis.find(function(li) {
         var t = li.textContent.trim();
-        return li.offsetParent !== null && (
-          t.includes('Usuári') || t.includes('Usuari') ||
-          t.includes('Fornecedor') || t.includes('Vendedor')
-        ) && t.length < 30;
+        return t === 'Clientes' || t === 'Fornecedores' ||
+               t === 'Vendedores' || t === 'Usuários' || t === 'Usuarios' ||
+               t === 'Mapa de Clientes';
       });
       if (ancCad && ancCad.parentElement) {
-        var li1 = document.createElement('li');
-        li1.id = '_menu_gramaturas';
-        li1.className = ancCad.className;
-        var a1 = document.createElement('a');
-        a1.textContent = '📐 Gramaturas';
-        a1.href = '#';
-        a1.className = (ancCad.querySelector('a') || {}).className || '';
-        a1.addEventListener('click', function(e) {
+        var novoLi = document.createElement('li');
+        novoLi.id = '_menu_gramaturas';
+        novoLi.className = ancCad.className;
+        var novoA = document.createElement('a');
+        novoA.href = '#';
+        novoA.textContent = '📐 Gramaturas';
+        novoA.className = (ancCad.querySelector('a') || {}).className || '';
+        novoA.addEventListener('click', function(e) {
           e.preventDefault(); e.stopPropagation();
-          if (window._patchCustomPages && window._patchCustomPages.gramaturas) {
-            window._patchCustomPages.gramaturas();
-          } else if (typeof window.renderGramaturasPage === 'function') {
-            window.renderGramaturasPage();
-          }
+          if (typeof window.renderGramaturasPage === 'function') window.renderGramaturasPage();
+          else if (window._patchCustomPages && window._patchCustomPages['gramaturas']) window._patchCustomPages['gramaturas']();
         });
-        li1.appendChild(a1);
-        ancCad.parentElement.appendChild(li1);
-        console.log('[MENU] Gramaturas injetado');
+        novoLi.appendChild(novoA);
+        ancCad.parentElement.appendChild(novoLi);
+        console.log('[MENU] ✓ Gramaturas injetado');
       }
     }
 
     if (!document.getElementById('_menu_toneladas')) {
-      var ancFin = todosLi.find(function(li) {
+      var ancFin = todosLiVisiveis.find(function(li) {
         var t = li.textContent.trim();
-        return li.offsetParent !== null && (
-          t.includes('Comiss') || t.includes('Orçament') || t.includes('Orcament')
-        ) && t.length < 30;
+        return t === 'Comissões' || t === 'Comissoes' ||
+               t === 'Orçamentos' || t === 'Orcamentos';
       });
       if (ancFin && ancFin.parentElement) {
-        var li2 = document.createElement('li');
-        li2.id = '_menu_toneladas';
-        li2.className = ancFin.className;
-        var a2 = document.createElement('a');
-        a2.textContent = '⚖️ Toneladas Vendidas';
-        a2.href = '#';
-        a2.className = (ancFin.querySelector('a') || {}).className || '';
-        a2.addEventListener('click', function(e) {
+        var novoLi2 = document.createElement('li');
+        novoLi2.id = '_menu_toneladas';
+        novoLi2.className = ancFin.className;
+        var novoA2 = document.createElement('a');
+        novoA2.href = '#';
+        novoA2.textContent = '⚖️ Toneladas Vendidas';
+        novoA2.className = (ancFin.querySelector('a') || {}).className || '';
+        novoA2.addEventListener('click', function(e) {
           e.preventDefault(); e.stopPropagation();
-          if (window._patchCustomPages && window._patchCustomPages['toneladas-vendidas']) {
-            window._patchCustomPages['toneladas-vendidas']();
-          } else if (typeof window.renderToneladasPage === 'function') {
-            window.renderToneladasPage();
-          }
+          if (typeof window.renderToneladasPage === 'function') window.renderToneladasPage();
+          else if (window._patchCustomPages && window._patchCustomPages['toneladas-vendidas']) window._patchCustomPages['toneladas-vendidas']();
         });
-        li2.appendChild(a2);
-        ancFin.parentElement.appendChild(li2);
-        console.log('[MENU] Toneladas injetado');
+        novoLi2.appendChild(novoA2);
+        ancFin.parentElement.appendChild(novoLi2);
+        console.log('[MENU] ✓ Toneladas injetado');
       }
     }
 
     if (!document.getElementById('_menu_caixas_fin')) {
-      var ancFin2 = todosLi.find(function(li) {
+      Array.from(document.querySelectorAll('li')).forEach(function(li) {
+        if (li.id === '_menu_caixas_fin') return;
         var t = li.textContent.trim();
-        return li.offsetParent !== null && (
-          t.includes('Comiss') || t.includes('Orçament')
-        ) && t.length < 30;
+        if (t === 'Caixas Perdidas' && String(li.id || '').indexOf('_menu_caixas_fin') === -1) {
+          li.style.display = 'none';
+          li.dataset.removidoPatch = '1';
+        }
       });
-      if (ancFin2 && ancFin2.parentElement) {
-        var li3 = document.createElement('li');
-        li3.id = '_menu_caixas_fin';
-        li3.className = ancFin2.className;
-        var a3 = document.createElement('a');
-        a3.textContent = '📦 Caixas Perdidas';
-        a3.href = '#';
-        a3.className = (ancFin2.querySelector('a') || {}).className || '';
-        a3.addEventListener('click', function(e) {
+
+      var ancFin3 = todosLiVisiveis.find(function(li) {
+        var t = li.textContent.trim();
+        return t === 'Comissões' || t === 'Comissoes' ||
+               t === 'Orçamentos' || t === 'Orcamentos';
+      });
+      if (ancFin3 && ancFin3.parentElement) {
+        var novoLi3 = document.createElement('li');
+        novoLi3.id = '_menu_caixas_fin';
+        novoLi3.className = ancFin3.className;
+        var novoA3 = document.createElement('a');
+        novoA3.href = '#';
+        novoA3.textContent = '📦 Caixas Perdidas';
+        novoA3.className = (ancFin3.querySelector('a') || {}).className || '';
+        novoA3.addEventListener('click', function(e) {
           e.preventDefault(); e.stopPropagation();
           var fn = window.abrirCaixasPerdidas || window._abrirCaixasPerdidas;
           if (typeof fn === 'function') fn();
           else if (typeof window.go === 'function') window.go('caixas-perdidas');
         });
-        li3.appendChild(a3);
-        ancFin2.parentElement.appendChild(li3);
-        console.log('[MENU] Caixas Perdidas injetado');
+        novoLi3.appendChild(novoA3);
+        ancFin3.parentElement.appendChild(novoLi3);
+        console.log('[MENU] ✓ Caixas Perdidas injetado em Financeiro');
       }
     }
 
@@ -103,8 +113,11 @@ if (!window._menuPatchFinal) {
              document.getElementById('_menu_toneladas') &&
              document.getElementById('_menu_caixas_fin');
     if (ok) {
-      console.log('[MENU] todos os itens injetados com sucesso');
-      if (window._menuInjetarInterval) clearInterval(window._menuInjetarInterval);
+      console.log('[MENU] ✓ todos os itens injetados');
+      if (window._menuInjetarInterval) {
+        clearInterval(window._menuInjetarInterval);
+        window._menuInjetarInterval = null;
+      }
     }
   }
 
@@ -114,6 +127,37 @@ if (!window._menuPatchFinal) {
     if (window._menuInjetarInterval) clearInterval(window._menuInjetarInterval);
   }, 60000);
 }
+
+(function _ocultarRelatorioMensal() {
+  if (!document.getElementById('_hide_relatorio_mensal')) {
+    var s = document.createElement('style');
+    s.id = '_hide_relatorio_mensal';
+    s.textContent = 'li:has(a[onclick*="relatorio-mensal"]), li:has(a[href*="relatorio-mensal"]) { display: none !important; }';
+    document.head.appendChild(s);
+  }
+  function ocultarAgora() {
+    Array.from(document.querySelectorAll('li, a')).forEach(function(el) {
+      if (el.textContent.trim() === 'Relatório Mensal' ||
+          el.textContent.trim() === 'Relatorio Mensal' ||
+          el.textContent.trim() === 'Rel. Mensal') {
+        var li = el.tagName === 'LI' ? el : el.closest('li');
+        if (li) li.style.display = 'none';
+      }
+    });
+  }
+  ocultarAgora();
+  setTimeout(function() {
+    Array.from(document.querySelectorAll('li, a')).forEach(function(el) {
+      if (el.textContent.trim() === 'Relatório Mensal' ||
+          el.textContent.trim() === 'Relatorio Mensal' ||
+          el.textContent.trim() === 'Rel. Mensal') {
+        var li = el.tagName === 'LI' ? el : el.closest('li');
+        if (li) li.style.display = 'none';
+      }
+    });
+  }, 1000);
+  setTimeout(ocultarAgora, 3500);
+})();
 
 function _aplicarTemaClaro() {
   try {
@@ -4327,7 +4371,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     {label:'Clichês',         page:'cliches'},
     {label:'Pedidos Rec.',    page:'pedidos-recorrentes'},
     {label:'Relatórios',      page:'relatorios'},
-    {label:'Rel. Mensal',     page:'relmensal'},
     {label:'Dashboard',       page:'dashboard'},
     {label:'Comissões',       page:'comissoes'},
     {label:'Vendedores',      page:'vendedores'},
@@ -5238,7 +5281,26 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var selE = document.getElementById('cpv2-empresa');
       if (selE) selE.onchange = function() { _cpState().empresa_id = String(selE.value || ''); _cpState().todas_empresas = _cpState().empresa_id ? 'false' : 'true'; _cpRenderPage(false); };
       var inpB = document.getElementById('cpv2-busca');
-      if (inpB) inpB.oninput = function() { _cpState().busca = String(inpB.value || ''); _cpRender(data); };
+      if (inpB) {
+        if (!window.__cpv2BuscaDebounced) {
+          window.__cpv2BuscaDebounced = window._debounce(function(valor, start, end) {
+            _cpState().busca = String(valor || '');
+            _cpRender(data);
+            setTimeout(function() {
+              var novoInp = document.getElementById('cpv2-busca');
+              if (!novoInp) return;
+              try { novoInp.focus(); } catch (_) {}
+              try { novoInp.setSelectionRange(start, end); } catch (_) {}
+            }, 0);
+          }, 250);
+        }
+        inpB.oninput = function() {
+          var valor = String(inpB.value || '');
+          var start = inpB.selectionStart;
+          var end = inpB.selectionEnd;
+          window.__cpv2BuscaDebounced(valor, start, end);
+        };
+      }
       var btnR = document.getElementById('cpv2-refresh');
       if (btnR) btnR.onclick = function() { _cpRenderPage(true); };
       var btnX = document.getElementById('cpv2-excel');
@@ -13792,6 +13854,14 @@ window._mbnActive = function(id) {
           setTimeout(function() {
             try { window._notificacaoOF(mensagem, tipo); } catch (_) {}
           }, 500);
+          if (String(mensagem || '').indexOf('Concluída') !== -1 || String(fnName || '').toLowerCase().indexOf('concluir') !== -1) {
+            setTimeout(function() {
+              if (typeof window.carregarOFSArquivo === 'function') window.carregarOFSArquivo();
+              else if (typeof window.renderPCP === 'function') window.renderPCP();
+              else if (typeof window.atualizarOFs === 'function') window.atualizarOFs();
+              else if (typeof window.carregarOFs === 'function') window.carregarOFs(true);
+            }, 1500);
+          }
         }
         return result;
       };
@@ -16529,61 +16599,16 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
   }
 
-  window._buscarOFsComissao = async function(termo) {
-    termo = String(termo || '').trim();
+  function _renderResultadosBusca(ofs, termo) {
     var resultDiv = document.getElementById('_com_busca_resultado');
     if (!resultDiv) return;
-    if (!termo) {
-      resultDiv.innerHTML = '';
+    var todasEncontradas = Array.isArray(ofs) ? ofs : [];
+    if (!todasEncontradas.length) {
+      resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Nenhuma OF encontrada para "<b>' + _escHtmlCom(termo) + '</b>".</p>';
       return;
     }
 
-    resultDiv.innerHTML = '<p style="color:#94a3b8;padding:12px">🔍 Buscando...</p>';
-
-    try {
-      var termos = termo.split(',').map(function(t) { return String(t || '').trim().toLowerCase(); }).filter(Boolean);
-      if (!termos.length) termos = [termo.toLowerCase()];
-      var ofsDoMes = (window._comOfsData || []).filter(function(of) {
-        return termos.some(function(t) {
-          var numero = String(of && of.numero || '').toLowerCase();
-          var cliente = String(of && of.cliente || '').toLowerCase();
-          return numero.indexOf(t) >= 0 || cliente.indexOf(t) >= 0;
-        });
-      });
-
-      var ofsGeral = [];
-      try {
-        var token = '';
-        try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
-        var r = await fetch('/api/ofs?busca=' + encodeURIComponent(termo) + '&limit=20', {
-          headers: token ? { Authorization: 'Bearer ' + token } : {}
-        });
-        if (r.ok) {
-          var d = await r.json();
-          ofsGeral = Array.isArray(d) ? d : (d.ofs || d.data || d.rows || []);
-          ofsGeral = (ofsGeral || []).filter(function(of) {
-            return termos.some(function(t) {
-              var numero = String(of && (of.numero || of.num_of) || '').toLowerCase();
-              var cliente = String(of && (of.cliente || of.cli_nome) || '').toLowerCase();
-              return numero.indexOf(t) >= 0 || cliente.indexOf(t) >= 0;
-            });
-          });
-        }
-      } catch (e) {
-        try { console.warn('[COM PATCH] busca geral falhou:', e && e.message || e); } catch (_) {}
-      }
-
-      var idsVistos = new Set(ofsDoMes.map(function(o) { return o && (o.id || o.numero); }));
-      var todasEncontradas = ofsDoMes.concat(ofsGeral.filter(function(o) {
-        return !idsVistos.has(o && (o.id || o.numero));
-      }));
-
-      if (!todasEncontradas.length) {
-        resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Nenhuma OF encontrada para "<b>' + _escHtmlCom(termo) + '</b>".</p>';
-        return;
-      }
-
-      var html = todasEncontradas.map(function(of) {
+    var html = todasEncontradas.map(function(of) {
         var numero = String(of && (of.numero || of.num_of || of.numero_of) || '—');
         var cliente = String(of && (of.cliente || of.cli_nome || of.nome_cliente) || '—');
         var vendedor = String(of && (of.vendedor || of.vendedor_nome) || '—');
@@ -16629,45 +16654,107 @@ function _ocultarGraficoComissoes() {
           + '</div>';
       }).join('');
 
-      resultDiv.innerHTML =
-        '<div style="color:#94a3b8;font-size:12px;margin-bottom:10px">' +
-          String(todasEncontradas.length) + ' resultado(s) para "<b style="color:#f1f5f9">' + _escHtmlCom(termo) + '</b>":' +
-        '</div>' +
-        html;
+    resultDiv.innerHTML =
+      '<div style="color:#94a3b8;font-size:12px;margin-bottom:10px">' +
+        String(todasEncontradas.length) + ' resultado(s) para "<b style="color:#f1f5f9">' + _escHtmlCom(termo) + '</b>":' +
+      '</div>' +
+      html;
 
-      try {
-        Array.prototype.slice.call(resultDiv.querySelectorAll('._btn_concluir_of')).forEach(function(btn) {
-          if (!btn || btn.dataset.bound === '1') return;
-          btn.dataset.bound = '1';
-          btn.addEventListener('click', function() {
-            var id = this.dataset.ofId;
-            var num = this.dataset.ofNum;
-            if (typeof window.concluirOFComBaixa === 'function') {
-              window.concluirOFComBaixa(String(id)); return;
-            }
-            if (typeof window.concluirOfModal === 'function') {
-              window.concluirOfModal(String(id)); return;
-            }
-            if (typeof window.concluirOfPainel === 'function') {
-              window.concluirOfPainel(id, num, this);
-              return;
-            }
-            alert('Recarregue a página e tente novamente.');
-          }, true);
-        });
-      } catch (_) {}
+    try {
+      Array.prototype.slice.call(resultDiv.querySelectorAll('._btn_concluir_of')).forEach(function(btn) {
+        if (!btn || btn.dataset.bound === '1') return;
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', function() {
+          var id = this.dataset.ofId;
+          var num = this.dataset.ofNum;
+          if (typeof window.concluirOFComBaixa === 'function') {
+            window.concluirOFComBaixa(String(id)); return;
+          }
+          if (typeof window.concluirOfModal === 'function') {
+            window.concluirOfModal(String(id)); return;
+          }
+          if (typeof window.concluirOfPainel === 'function') {
+            window.concluirOfPainel(id, num, this);
+            return;
+          }
+          alert('Recarregue a página e tente novamente.');
+        }, true);
+      });
+    } catch (_) {}
 
-      try {
-        Array.prototype.slice.call(resultDiv.querySelectorAll('._btn_editar_of')).forEach(function(btn) {
-          if (!btn || btn.dataset.bound === '1') return;
-          btn.dataset.bound = '1';
-          btn.addEventListener('click', function() {
-            var num = '';
-            try { num = String(this.getAttribute('data-of-num') || this.dataset.ofNum || '').trim(); } catch (_) { num = ''; }
-            alert('OF #' + num + ': acesse PCP para editar.');
-          }, true);
+    try {
+      Array.prototype.slice.call(resultDiv.querySelectorAll('._btn_editar_of')).forEach(function(btn) {
+        if (!btn || btn.dataset.bound === '1') return;
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', function() {
+          var num = '';
+          try { num = String(this.getAttribute('data-of-num') || this.dataset.ofNum || '').trim(); } catch (_) { num = ''; }
+          alert('OF #' + num + ': acesse PCP para editar.');
+        }, true);
+      });
+    } catch (_) {}
+  }
+
+  window._buscarOFsComissao = async function(termo) {
+    termo = String(termo || '').trim();
+    var resultDiv = document.getElementById('_com_busca_resultado');
+    if (!resultDiv) return;
+    if (!termo) {
+      resultDiv.innerHTML = '';
+      return;
+    }
+
+    resultDiv.innerHTML = '<p style="color:#94a3b8;padding:12px">🔍 Buscando...</p>';
+
+    try {
+      var termos = String(termo).split(',')
+        .map(function(t) { return t.trim().toLowerCase(); })
+        .filter(function(t) { return t.length > 0; });
+      if (!termos.length) termos = [String(termo || '').toLowerCase()];
+
+      var ofsDoMes = (window._comOfsData || []).filter(function(of) {
+        return termos.some(function(t) {
+          return String(of && of.numero || '').toLowerCase().includes(t) ||
+                 String(of && of.cliente || '').toLowerCase().includes(t);
         });
-      } catch (_) {}
+      });
+
+      var token = '';
+      try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
+      var headersBusca = token ? { Authorization: 'Bearer ' + token } : {};
+      var promessas = termos.map(function(t) {
+        return fetch('/api/ofs?busca=' + encodeURIComponent(t) + '&limit=10', {
+          headers: headersBusca
+        })
+          .then(function(r) { return r.ok ? r.json() : []; })
+          .then(function(d) { return Array.isArray(d) ? d : (d.ofs || d.data || []); })
+          .catch(function() { return []; });
+      });
+
+      Promise.all(promessas).then(function(resultados) {
+        var idsVistos = new Set(ofsDoMes.map(function(o) { return o && (o.id || o.numero); }));
+        var ofsGeral = [];
+        resultados.forEach(function(lista) {
+          (lista || []).forEach(function(of) {
+            var key = of && (of.id || of.numero);
+            if (!idsVistos.has(key)) {
+              var bate = termos.some(function(t) {
+                return String(of && (of.numero || of.num_of) || '').toLowerCase().includes(t) ||
+                       String(of && (of.cliente || of.cli_nome) || '').toLowerCase().includes(t);
+              });
+              if (bate) {
+                idsVistos.add(key);
+                ofsGeral.push(of);
+              }
+            }
+          });
+        });
+        var todasEncontradas = ofsDoMes.concat(ofsGeral);
+        _renderResultadosBusca(todasEncontradas, termo);
+      }).catch(function(e) {
+        resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Erro: ' + _escHtmlCom(e && e.message || e) + '</p>';
+      });
+      return;
     } catch (e) {
       resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Erro: ' + _escHtmlCom(e && e.message || e) + '</p>';
     }
@@ -16893,7 +16980,7 @@ function _ocultarGraficoComissoes() {
         + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Total Vendido</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + _escHtmlCom(_fmtRs(totalGeral)) + '</div></div>'
         + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">OFs Concluídas</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + String(totalOFs) + '</div></div>'
         + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Total Comissões</div><div style="color:#22c55e;font-size:22px;font-weight:700">' + _escHtmlCom(_fmtRs(totalComissoes)) + '</div></div>'
-        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Comparação de Vendas</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + String((vendedores || []).length) + '</div>' + (varPct || '<div style="color:#94a3b8;font-size:12px;margin-top:6px">—</div>') + '</div>'
+        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">COMPARAÇÃO DE VENDAS</div>' + (varPct || '<div style="color:#94a3b8;font-size:12px;margin-top:6px">—</div>') + '</div>'
         + '</div>';
 
       var medals = ['🥇', '🥈', '🥉'];
