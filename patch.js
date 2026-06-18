@@ -18530,56 +18530,71 @@ window._recarregarToneladas = async function() {
   } catch (_) {}
 })();
 (function _injetarMenusCustom() {
-  function _ocultarMenusIndesejados() {
+  function _ocultarItem(texto) {
     var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
-    if (!sidebar) return;
-
-    sidebar.querySelectorAll('*').forEach(function(el) {
+    if (!sidebar) return false;
+    var found = false;
+    Array.from(sidebar.querySelectorAll('*')).forEach(function(el) {
       if (el.children.length > 0) return;
-      var txt = String(el.textContent || '').trim();
-      if (txt !== 'Relatório Mensal') return;
+      if (String(el.textContent || '').trim() !== texto) return;
       var cur = el;
-      for (var i = 0; i < 8; i++) {
+      for (var i = 0; i < 10; i++) {
         if (!cur || cur === sidebar) break;
         cur = cur.parentElement;
         if (!cur || cur === sidebar) break;
-        if (cur.offsetWidth > 80 && cur.offsetHeight > 15 && cur.offsetHeight < 70) {
-          cur.style.setProperty('display', 'none', 'important');
+        var w = cur.offsetWidth;
+        var h = cur.offsetHeight;
+        if (w > 60 && h > 10 && h < 80 && cur !== sidebar) {
+          cur.style.cssText += ';display:none!important;visibility:hidden!important';
+          found = true;
           break;
         }
       }
     });
+    return found;
+  }
 
-    var refFin = document.querySelector('[onclick*="comissoes"]') ||
-                 document.querySelector('[onclick*="orcamentos"]');
-    if (!refFin) return;
-    var grupoFin = refFin.parentElement;
-    for (var j = 0; j < 6; j++) {
-      if (!grupoFin || grupoFin === sidebar) break;
-      if (grupoFin.querySelectorAll('[onclick]').length > 2) break;
-      grupoFin = grupoFin.parentElement;
-    }
+  function _ocultarMenusIndesejados() {
+    _ocultarItem('Relatório Mensal');
 
-    var todosTextos = Array.from(sidebar.querySelectorAll('*')).filter(function(el) {
-      if (el.children.length > 0) return false;
-      var t = String(el.textContent || '').trim();
-      return t === 'Caixas Perdidas' || t === 'Inconformidades';
+    var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
+    if (!sidebar) return;
+
+    var refFin = null;
+    Array.from(sidebar.querySelectorAll('*')).forEach(function(el) {
+      if (el.children.length > 0) return;
+      var txt = String(el.textContent || '').trim();
+      if (txt === 'Comissões' || txt === 'Toneladas Vendidas') refFin = el;
     });
 
-    todosTextos.forEach(function(el) {
+    if (!refFin) return;
+
+    var grupoFin = refFin;
+    for (var j = 0; j < 8; j++) {
+      if (!grupoFin || grupoFin === sidebar) break;
+      grupoFin = grupoFin.parentElement;
+      if (grupoFin && grupoFin.children.length > 3) break;
+    }
+
+    Array.from(sidebar.querySelectorAll('*')).forEach(function(el) {
+      if (el.children.length > 0) return;
+      var txt = String(el.textContent || '').trim();
+      if (txt !== 'Caixas Perdidas' && txt !== 'Inconformidades') return;
       var cur = el;
       var itemEl = null;
-      for (var k = 0; k < 8; k++) {
+      for (var k = 0; k < 10; k++) {
         if (!cur || cur === sidebar) break;
         cur = cur.parentElement;
         if (!cur || cur === sidebar) break;
-        if (cur.offsetWidth > 80 && cur.offsetHeight > 15 && cur.offsetHeight < 70) {
-          itemEl = cur; break;
+        if (cur.offsetWidth > 60 && cur.offsetHeight > 10 && cur.offsetHeight < 80) {
+          itemEl = cur;
+          break;
         }
       }
       if (!itemEl) return;
-      var noFin = grupoFin && grupoFin.contains(itemEl);
-      if (!noFin) itemEl.style.setProperty('display', 'none', 'important');
+      if (!(grupoFin && grupoFin.contains(itemEl))) {
+        itemEl.style.cssText += ';display:none!important;visibility:hidden!important';
+      }
     });
   }
 
@@ -18635,8 +18650,6 @@ window._recarregarToneladas = async function() {
   var tentativas = 0;
   var timer = setInterval(function() {
     tentativas++;
-    try { _ocultarMenusIndesejados(); } catch (_) {}
-
     if (!ok.gram) ok.gram = _clonarItemMenu('clientes', 'gramaturas', 'Gramaturas', 'menu-patch-gramaturas');
 
     if (!ok.ton) ok.ton = _clonarItemMenu('comissoes', 'toneladas-vendidas', 'Toneladas Vendidas', 'menu-patch-toneladas');
@@ -18653,8 +18666,19 @@ window._recarregarToneladas = async function() {
       }
     }
 
+    try { _ocultarMenusIndesejados(); } catch (_) {}
     if ((ok.gram && ok.ton) || tentativas > 40) clearInterval(timer);
   }, 800);
+  if (!window.__obsMenusIndesejados) {
+    window.__obsMenusIndesejados = new MutationObserver(function() {
+      clearTimeout(window.__obsMenusTimer);
+      window.__obsMenusTimer = setTimeout(_ocultarMenusIndesejados, 300);
+    });
+    window.__obsMenusIndesejados.observe(document.body, {
+      childList: true, subtree: true
+    });
+  }
+  setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 0);
   setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 500);
   setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 1000);
   setTimeout(function() {
@@ -18680,4 +18704,5 @@ window._recarregarToneladas = async function() {
   setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 3000);
   setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 5000);
   setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 8000);
+  setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 12000);
 })();

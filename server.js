@@ -5329,13 +5329,101 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
 
 app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
   try {
-    return ok(res, await _listarCaixasPerdidasEnriquecidas(req));
+    const empresaId = await getEmpresaId(req);
+    const ofId = String(req.query.of_id || req.query.ofId || '').trim();
+
+    let query = supabase
+      .from('caixas_perdidas')
+      .select(`
+        *,
+        ofs!of_id (
+          numero,
+          cli_id,
+          valor_total,
+          valor_unitario
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    if (empresaId) query = query.eq('empresa_id', empresaId);
+    if (ofId) query = query.eq('of_id', ofId);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const cliIds = [...new Set((data || []).map(r => r.ofs?.cli_id).filter(Boolean))];
+    let mapaClientes = {};
+    if (cliIds.length) {
+      const { data: clis, error: errClientes } = await supabase
+        .from('clientes')
+        .select('id, nome')
+        .in('id', cliIds);
+      if (errClientes) throw errClientes;
+      (clis || []).forEach(c => { mapaClientes[c.id] = c.nome; });
+    }
+
+    const resultado = (data || []).map(r => {
+      const clienteNome = r.cliente || mapaClientes[r.ofs?.cli_id] || '—';
+      return {
+        ...r,
+        cliente_nome: clienteNome,
+        cliente: clienteNome,
+        of_numero: r.of_numero || r.ofs?.numero || '—',
+      };
+    });
+
+    return res.json({ ok: true, data: resultado });
   } catch (e) { err(res, e); }
 });
 
 app.get('/api/caixas-perdidas', authMiddleware, async (req, res) => {
   try {
-    return ok(res, await _listarCaixasPerdidasEnriquecidas(req));
+    const empresaId = await getEmpresaId(req);
+    const ofId = String(req.query.of_id || req.query.ofId || '').trim();
+
+    let query = supabase
+      .from('caixas_perdidas')
+      .select(`
+        *,
+        ofs!of_id (
+          numero,
+          cli_id,
+          valor_total,
+          valor_unitario
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    if (empresaId) query = query.eq('empresa_id', empresaId);
+    if (ofId) query = query.eq('of_id', ofId);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const cliIds = [...new Set((data || []).map(r => r.ofs?.cli_id).filter(Boolean))];
+    let mapaClientes = {};
+    if (cliIds.length) {
+      const { data: clis, error: errClientes } = await supabase
+        .from('clientes')
+        .select('id, nome')
+        .in('id', cliIds);
+      if (errClientes) throw errClientes;
+      (clis || []).forEach(c => { mapaClientes[c.id] = c.nome; });
+    }
+
+    const resultado = (data || []).map(r => {
+      const clienteNome = r.cliente || mapaClientes[r.ofs?.cli_id] || '—';
+      return {
+        ...r,
+        cliente_nome: clienteNome,
+        cliente: clienteNome,
+        of_numero: r.of_numero || r.ofs?.numero || '—',
+      };
+    });
+
+    return res.json({ ok: true, data: resultado });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
@@ -10631,11 +10719,7 @@ app.post('/api/gramaturas', authMiddleware, async (req, res) => {
       gramatura,
       valor_unitario,
       fornecedor_id: b.fornecedor_id ? String(b.fornecedor_id || '').trim() : null,
-      fornecedor_nome: b.fornecedor_nome != null
-        ? String(b.fornecedor_nome || '').trim()
-        : (b.fornecedor != null ? String(b.fornecedor || '').trim() : null),
       empresa_id: empresa_id || null,
-      ativo: b.ativo !== false,
     };
     const { data, error } = await supabase.from('gramaturas').insert([payload]).select('*').single();
     if (error) throw error;
@@ -14208,7 +14292,6 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
 
     let totalTon = 0;
     let totalM2 = 0;
-    let totalCustoEstimado = 0;
     const detalhes = [];
 
     (ofs || []).forEach(of => {
@@ -14218,15 +14301,14 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       const gramId = String(of.gramatura_id || '').trim();
       const gramMeta = gramId ? mapaGram[gramId] : null;
       const gram = gramMeta ? gramMeta.gram : 0;
+      const gramValUnit = Number(gramMeta?.valor_unitario || 0) || 0;
 
       if (!(comp > 0 && larg > 0 && gram > 0 && qtd > 0)) return;
 
       const areaM2 = (comp / 1000) * (larg / 1000) * qtd;
       const ton = (areaM2 * gram) / 1000000;
-      const custoEstimado = (ton * 1000) * (gramMeta ? gramMeta.valor_unitario : 0);
       totalTon += ton;
       totalM2 += areaM2;
-      totalCustoEstimado += custoEstimado;
 
       detalhes.push({
         of: of.numero || of.of || of.id,
@@ -14234,7 +14316,7 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
         qtd, comp, larg, gram,
         area_m2: areaM2,
         toneladas: ton,
-        custo_estimado: custoEstimado,
+        custo_estimado: gramValUnit * ton * 1000,
         gramatura_nome: gramMeta ? gramMeta.nome : '',
         valor_total: of.valor_total || 0,
         data: of.data_conclusao
@@ -14255,30 +14337,30 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
 
     const porGramatura = {};
     detalhes.forEach(d => {
-      const k = String(d.gram) + ' g/m²';
-      if (!porGramatura[k]) porGramatura[k] = { gram: d.gram, gramatura: k, toneladas: 0, area_m2: 0, ofs: 0, custo_estimado: 0 };
+      const k = String(d.gram) + 'g';
+      if (!porGramatura[k]) porGramatura[k] = { gram: d.gram, toneladas: 0, area_m2: 0, ofs: 0 };
       porGramatura[k].toneladas += d.toneladas;
       porGramatura[k].area_m2 += d.area_m2;
       porGramatura[k].ofs++;
-      porGramatura[k].custo_estimado += d.custo_estimado || 0;
     });
 
     const porCliente = {};
     detalhes.forEach(d => {
-      const k = d.cli_id || 'desconhecido';
-      if (!porCliente[k]) porCliente[k] = { cliente: d.cliente, toneladas: 0, area_m2: 0, ofs: 0, custo_estimado: 0 };
+      const k = d.cli_id || 'sem-cliente';
+      if (!porCliente[k]) porCliente[k] = { cliente: d.cliente || '—', toneladas: 0, area_m2: 0, ofs: 0 };
       porCliente[k].toneladas += d.toneladas;
       porCliente[k].area_m2 += d.area_m2;
       porCliente[k].ofs++;
-      porCliente[k].custo_estimado += d.custo_estimado || 0;
     });
+
+    const totalCusto = detalhes.reduce((s, d) => s + (Number(d.custo_estimado || 0) || 0), 0);
 
     res.json({
       ok: true,
       total_toneladas: totalTon,
       total_m2: totalM2,
-      total_custo_estimado: totalCustoEstimado,
       total_ofs: detalhes.length,
+      total_custo_estimado: totalCusto,
       mes: mes ? `${ano}-${String(mes).padStart(2, '0')}` : null,
       por_gramatura: Object.values(porGramatura).sort((a, b) => b.toneladas - a.toneladas),
       por_cliente: Object.values(porCliente).sort((a, b) => b.toneladas - a.toneladas).slice(0, 10),
