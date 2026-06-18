@@ -7,6 +7,62 @@ window._patchCustomPages['toneladas-vendidas'] = function() {
   if (typeof window.renderToneladasPage === 'function') window.renderToneladasPage();
 };
 
+if (!window._menuPatchFinal) {
+  window._menuPatchFinal = true;
+  setTimeout(function() {
+    var onclicks = Array.from(document.querySelectorAll('[onclick]'))
+      .map(function(el) { return el.getAttribute('onclick'); })
+      .filter(function(s) { return s && s.includes("go('"); })
+      .slice(0, 15);
+    console.log('[MENU FINAL] onclicks com go():', onclicks);
+
+    var ancora_cad = Array.from(document.querySelectorAll('[onclick]')).find(function(el) {
+      var oc = el.getAttribute('onclick') || '';
+      return oc.includes("go('fornecedores')") || oc.includes("go('usuarios')") || oc.includes("go('vendedores')");
+    });
+    var ancora_fin = Array.from(document.querySelectorAll('[onclick]')).find(function(el) {
+      var oc = el.getAttribute('onclick') || '';
+      return oc.includes("go('comissoes')") || oc.includes("go('orcamentos')");
+    });
+
+    console.log('[MENU FINAL] âncora cadastros:', ancora_cad ? ancora_cad.textContent.trim() + ' | ' + ancora_cad.getAttribute('onclick') : 'NÃO ENCONTRADA');
+    console.log('[MENU FINAL] âncora financeiro:', ancora_fin ? ancora_fin.textContent.trim() + ' | ' + ancora_fin.getAttribute('onclick') : 'NÃO ENCONTRADA');
+
+    function _injetarItemMenu(ancora, label, id, pageId) {
+      if (document.getElementById(id)) return;
+      if (!ancora) return;
+      var li = ancora.closest('li') || ancora.parentElement;
+      if (!li || !li.parentElement) return;
+      var novoLi = li.cloneNode(true);
+      novoLi.id = id;
+      var a = novoLi.querySelector('[onclick]') || novoLi.querySelector('a') || novoLi;
+      a.setAttribute('onclick', 'event.preventDefault();event.stopPropagation();(window._patchCustomPages&&window._patchCustomPages["' + pageId + '"]?window._patchCustomPages["' + pageId + '"]():window.go&&window.go("' + pageId + '"))');
+      var spans = novoLi.querySelectorAll('span, div');
+      var textoAtualizado = false;
+      spans.forEach(function(s) {
+        if (s.children.length === 0 && s.textContent.trim().length > 1 && s.textContent.trim().length < 30) {
+          s.textContent = label;
+          textoAtualizado = true;
+        }
+      });
+      if (!textoAtualizado) {
+        var textNodes = [];
+        (function findText(node) {
+          if (node.nodeType === 3 && node.textContent.trim().length > 1) textNodes.push(node);
+          Array.from(node.childNodes || []).forEach(findText);
+        })(novoLi);
+        if (textNodes.length) textNodes[0].textContent = label;
+      }
+      li.parentElement.appendChild(novoLi);
+      console.log('[MENU FINAL] injetado:', label);
+    }
+
+    _injetarItemMenu(ancora_cad, '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
+    _injetarItemMenu(ancora_fin, '⚖️ Toneladas Vendidas', '_menu_toneladas', 'toneladas-vendidas');
+    _injetarItemMenu(ancora_fin, '📦 Caixas Perdidas', '_menu_caixas_fin', 'caixas-perdidas');
+  }, 4000);
+}
+
 function _aplicarTemaClaro() {
   try {
     var bg = window.getComputedStyle(document.body).backgroundColor;
@@ -2548,8 +2604,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     async function loadGramaturas() {
       try {
         await apiJson('/api/gramaturas/init', { method: 'POST' }).catch(function() { return null; });
-        var j = await apiJson('/api/gramaturas');
-        return Array.isArray(j) ? j : ((j && (j.data || j.gramaturas)) || []);
+        var token = '';
+        try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
+        var resp = await fetch('/api/gramaturas', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+        console.log('[GRAM] resposta status:', resp.status);
+        var data = await resp.json().catch(function() { return null; });
+        console.log('[GRAM] dados recebidos:', data && data.length, data && data[0]);
+        if (!resp.ok) throw new Error(String(data && (data.error || data.message) || 'Falha ao carregar gramaturas'));
+        return Array.isArray(data) ? data : ((data && (data.data || data.gramaturas)) || []);
       } catch (_) { return []; }
     }
     async function openGramaturaModal(item, done) {
@@ -16601,14 +16663,17 @@ function _ocultarGraficoComissoes() {
           btn.addEventListener('click', function() {
             var id = this.dataset.ofId;
             var num = this.dataset.ofNum;
+            if (typeof window.concluirOFComBaixa === 'function') {
+              window.concluirOFComBaixa(String(id)); return;
+            }
+            if (typeof window.concluirOfModal === 'function') {
+              window.concluirOfModal(String(id)); return;
+            }
             if (typeof window.concluirOfPainel === 'function') {
               window.concluirOfPainel(id, num, this);
               return;
             }
-            var fns = ['abrirModalConclusao','abrirConclusaoOf','concluirOf','finalizarOf'];
-            var fn = fns.find(function(f) { return typeof window[f] === 'function'; });
-            if (fn) { window[fn](id); return; }
-            alert('Função de conclusão não encontrada. Recarregue a página.');
+            alert('Recarregue a página e tente novamente.');
           }, true);
         });
       } catch (_) {}
