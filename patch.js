@@ -264,40 +264,15 @@ _injetarGramaturaNoModal();
 if (!document.getElementById('_patch_light_css')) {
   const s = document.createElement('style');
   s.id = '_patch_light_css';
-  s.textContent = `
-    body._patch_modo_claro { background:#f0f0f0 !important; }
-    body._patch_modo_claro,
-    body._patch_modo_claro div,
-    body._patch_modo_claro span,
-    body._patch_modo_claro p,
-    body._patch_modo_claro td,
-    body._patch_modo_claro th,
-    body._patch_modo_claro li,
-    body._patch_modo_claro a,
-    body._patch_modo_claro label,
-    body._patch_modo_claro button,
-    body._patch_modo_claro input,
-    body._patch_modo_claro select,
-    body._patch_modo_claro textarea,
-    body._patch_modo_claro h1,
-    body._patch_modo_claro h2,
-    body._patch_modo_claro h3,
-    body._patch_modo_claro h4 { color:#111 !important; }
-    body._patch_modo_claro input,
-    body._patch_modo_claro select,
-    body._patch_modo_claro textarea { background:#fff !important; border-color:#ccc !important; }
-    body._patch_modo_claro #sidebar,
-    body._patch_modo_claro .sidebar,
-    body._patch_modo_claro nav { background:#dde !important; }
-    body._patch_modo_claro table { background:#fff !important; }
-    body._patch_modo_claro td,
-    body._patch_modo_claro th { border-color:#ccc !important; background:#fff !important; }
-    body._patch_modo_claro [style*="background:#0"],
-    body._patch_modo_claro [style*="background:#1"],
-    body._patch_modo_claro [style*="background:rgba(0"],
-    body._patch_modo_claro [style*="background:rgba(15"],
-    body._patch_modo_claro [style*="background:rgba(11"] { background:#fff !important; }
-  `;
+  s.textContent = 'body._patch_modo_claro{background:#f0f0f0!important}' +
+    'body._patch_modo_claro *{color:#111!important}' +
+    'body._patch_modo_claro input,body._patch_modo_claro select,body._patch_modo_claro textarea{background:#fff!important;border-color:#ccc!important;color:#111!important}' +
+    'body._patch_modo_claro td,body._patch_modo_claro th{background:#fff!important;border-color:#ccc!important;color:#111!important}' +
+    'body._patch_modo_claro .sidebar,body._patch_modo_claro [class*="sidebar"],body._patch_modo_claro nav,body._patch_modo_claro [class*="nav"]{background:#dde!important}' +
+    'body._patch_modo_claro button{color:#111!important}' +
+    'body._patch_modo_claro [style*="color:#"]{color:#111!important}' +
+    'body._patch_modo_claro [style*="color:var"]{color:#111!important}' +
+    'body._patch_modo_claro [style*="background:#0"],body._patch_modo_claro [style*="background:#1"],body._patch_modo_claro [style*="background:#2"],body._patch_modo_claro [style*="background:rgba(0"],body._patch_modo_claro [style*="background:rgba(1"]{background:#fff!important}';
   document.head.appendChild(s);
 }
 
@@ -787,7 +762,17 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
         'id', 'created_at', 'updated_at', 'data_conclusao', 'numero', 'of', 'status',
         'seq', 'concluido_em', 'concluido_por'
       ].forEach(function(k) { try { delete payload[k]; } catch (_) {} });
-      payload.status = 'Em aberto';
+      delete payload.numero;
+      delete payload.of;
+      delete payload.of_numero;
+      delete payload.num_of;
+      delete payload.numero_of;
+      delete payload.id;
+      delete payload.created_at;
+      delete payload.updated_at;
+      delete payload.data_conclusao;
+      delete payload.data_producao;
+      payload.status = 'Aberta';
       var created = await apiJson('/api/ofs', { method: 'POST', body: payload });
       var nova = created && (created.data || created) || {};
       notify('✅ OF #' + String(of.numero || '—') + ' clonada como #' + String(nova.numero || nova.of || '—') + ' com sucesso!', 'var(--green)');
@@ -7166,18 +7151,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   async function fetchOf(id) {
     var sid = String(id || '').trim();
     if (!sid) return null;
-    try {
-      if (typeof window.apiFetch === 'function') {
-        var r1 = await window.apiFetch('/api/ofs/' + encodeURIComponent(sid), { method: 'GET' });
-        var j1 = await r1.json().catch(function() { return null; });
-        if (j1 && j1.ok && j1.data) return j1.data;
-        return j1 && j1.ok ? j1 : j1;
-      }
-    } catch (_) {}
-    var r = await fetch('/api/ofs/' + encodeURIComponent(sid), { headers: tokenHeaders() });
-    var j = await r.json().catch(function() { return null; });
-    if (j && j.ok && j.data) return j.data;
-    return j && j.ok ? j : j;
+    var token = '';
+    try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || '').trim(); } catch (_) {}
+    var resp = await fetch('/api/ofs/' + encodeURIComponent(sid), {
+      headers: token ? { Authorization: 'Bearer ' + token } : {}
+    });
+    var j = await resp.json().catch(function() { return null; });
+    var of = (j && j.data) ? j.data : (j && j.ok ? j : j);
+    console.log('[EDITAR OF] dados:', JSON.stringify(of).slice(0, 400));
+    return of;
   }
 
   function setVal(id, val) {
@@ -7340,59 +7322,71 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var of = await fetchOf(sid);
       if (!of || of.error) return;
 
-      var cliNome = String(of.cliente || of.cliNome || of.cliente_nome || '').trim();
+      var cliNome = String(of.cliente || of.cliNome || of.cliente_nome || of.clinome || '').trim();
       var produto = String(of.produto || of.prodDesc || of.descricao || '').trim();
-      var empId = String(of.emp_id || of.empId || 'E1').trim() || 'E1';
+      var empId = String(of.emp_id || of.empId || 'E1').trim();
       var vendId = String(of.vendedor_id || of.vendId || of.vend_id || '').trim();
       var gramId = String(of.gramatura_id || of.gramaturaId || '').trim();
-      var qtd = of.quantidade ?? of.qtd ?? of.qtd_pedida ?? '';
-      var vlunit = of.vl_unit ?? of.valor_unitario ?? of.vunit ?? '';
-      var total = of.total ?? of.valor_total ?? of.valor_venda ?? '';
+      var qtd = of.quantidade != null ? of.quantidade : (of.qtd != null ? of.qtd : '');
+      var vlunit = of.vl_unit != null ? of.vl_unit : (of.valor_unitario != null ? of.valor_unitario : '');
+      var total = of.valor_total != null ? of.valor_total : (of.valor_venda != null ? of.valor_venda : '');
       var entrega = String(of.data_entrega || of.ent || '').slice(0, 10);
-      var pedido = String(of.data_pedido || of.dia || of.created_at || '').slice(0, 10);
-      var comp = of.caixa_comprimento ?? of.dim_comprimento ?? of.comprimento ?? '';
-      var larg = of.caixa_largura ?? of.dim_largura ?? of.largura ?? '';
+      var comp = of.caixa_comprimento != null ? of.caixa_comprimento : (of.dim_comprimento != null ? of.dim_comprimento : (of.comprimento != null ? of.comprimento : ''));
+      var larg = of.caixa_largura != null ? of.caixa_largura : (of.dim_largura != null ? of.dim_largura : (of.largura != null ? of.largura : ''));
       var maquina = '';
       try {
         if (Array.isArray(of.maq) && of.maq.length) maquina = String(of.maq[0] || '').trim();
       } catch (_) {}
-      maquina = maquina || String(of.maquina_agendada || of.maquina || of.maquina_atual || '').trim();
+      maquina = maquina || String(of.maquina_agendada || of.maquina || '').trim();
+      var urgente = !!(of.urgente === true || of.urg === true || of.urgente === 1 || of.urg === 1);
 
-      try { setVal('of-r-cliente', cliNome); } catch (_) {}
-      try { setVal('of-r-produto', produto); } catch (_) {}
-      try { setVal('of-r-empresa', empId); } catch (_) {}
-      try { setVal('of-r-vendedor', vendId); } catch (_) {}
-      try { setVal('of-r-qtd', qtd); } catch (_) {}
-      try { setVal('of-r-vlunit', vlunit); } catch (_) {}
-      try { setVal('of-r-total', total); } catch (_) {}
-      try { setVal('of-r-entrega', entrega); } catch (_) {}
-      try { if (pedido) setVal('of-r-pedido', pedido); } catch (_) {}
-      try { setVal('of-r-comp', comp); } catch (_) {}
-      try { setVal('of-r-larg', larg); } catch (_) {}
-      try { setVal('of-r-maquina', maquina); } catch (_) {}
-      try { setChecked('of-r-urgente', !!(of.urgente === true || of.urg === true || of.urgente === 1 || of.urg === 1)); } catch (_) {}
-      try { if (gramId) window._ofRapidaGramaturaId = gramId; } catch (_) {}
+      function setV(id, val) {
+        var el = document.getElementById(id);
+        if (el && val != null && val !== '') { el.value = String(val); }
+      }
+      function setC(id, v) {
+        var el = document.getElementById(id);
+        if (el) el.checked = !!v;
+      }
+
+      setV('of-r-cliente', cliNome);
+      setV('of-r-produto', produto);
+      setV('of-r-empresa', empId);
+      setV('of-r-vendedor', vendId);
+      setV('of-r-qtd', qtd);
+      setV('of-r-vlunit', vlunit);
+      setV('of-r-total', total);
+      setV('of-r-entrega', entrega);
+      setV('of-r-comp', comp);
+      setV('of-r-larg', larg);
+      setV('of-r-maquina', maquina);
+      setC('of-r-urgente', urgente);
+
+      if (gramId) {
+        window._ofRapidaGramaturaId = gramId;
+        setTimeout(function() {
+          var sel = document.getElementById('_of_rapida_gramatura_id') || document.getElementById('of-r-gramatura');
+          if (sel) sel.value = gramId;
+        }, 400);
+      }
+
+      if (cliNome) {
+        var elCli = document.getElementById('of-r-cliente');
+        if (elCli) {
+          elCli.value = cliNome;
+          elCli.dispatchEvent(new Event('input', { bubbles: true }));
+          elCli.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+
       setTimeout(function() {
         try {
-          var sel = document.getElementById('_of_rapida_gramatura_id') || document.getElementById('of-r-gramatura');
-          if (sel && gramId) sel.value = gramId;
+          var header = document.querySelector('#modal-of-rapida div[style*="font-weight:800"]');
+          if (header) header.textContent = '✏️ Editar OF #' + String(of.numero || of.of || '');
+          var btn = document.getElementById('btn-salvar-of-rapida');
+          if (btn) btn.textContent = '💾 Salvar Alterações';
         } catch (_) {}
-      }, 300);
-
-      try {
-        var numSpan = document.getElementById('of-r-numero');
-        if (numSpan) numSpan.textContent = String(of.numero || of.of || sid.slice(0, 8));
-      } catch (_) {}
-      try { window._ofRapidaNumero = String(of.numero || of.of || '').trim(); } catch (_) {}
-
-      try {
-        var header = document.querySelector('#modal-of-rapida div[style*="font-weight:800"]');
-        if (header) header.textContent = '✏️ Editar OF Rápida';
-      } catch (_) {}
-      try {
-        var btn = document.getElementById('btn-salvar-of-rapida');
-        if (btn) btn.textContent = '💾 Salvar Alterações';
-      } catch (_) {}
+      }, 200);
 
       patchSalvarOfRapida();
     };
@@ -17361,8 +17355,24 @@ window._renderToneladasVendidas = async function() {
         try { window._patchCustomPages[pid](); } catch (e) { try { console.error(e); } catch (_) {} }
         return;
       }
-      if (pid === 'gramaturas') { window._renderGramaturas && window._renderGramaturas(); return; }
-      if (pid === 'toneladas-vendidas') { window._renderToneladasVendidas && window._renderToneladasVendidas(); return; }
+      if (pid === 'gramaturas') {
+        try { window._renderGramaturas && window._renderGramaturas(); } catch (e) { console.error('[go gramaturas]', e); }
+        return;
+      }
+      if (pid === 'toneladas-vendidas') {
+        try { window._renderToneladasVendidas && window._renderToneladasVendidas(); } catch (e) { console.error('[go toneladas]', e); }
+        return;
+      }
+      if (pid === 'caixas-perdidas') {
+        try {
+          document.querySelectorAll('[id^="page-"]').forEach(function(p) { p.style.display = 'none'; });
+          if (typeof window.carregarCaixasPerdidas === 'function') window.carregarCaixasPerdidas();
+          else if (typeof window.renderCaixasPerdidas === 'function') window.renderCaixasPerdidas();
+          var pgCP = document.getElementById('page-caixas-perdidas') || document.getElementById('page-inconformidades');
+          if (pgCP) pgCP.style.display = 'block';
+        } catch (e) { console.error('[go caixas-perdidas]', e); }
+        return;
+      }
       return _goFinal.apply(this, arguments);
     };
     window.go._patchFinal = true;
@@ -18025,29 +18035,51 @@ window._renderToneladasVendidas = async function() {
   } catch (_) {}
 })();
 (function _injetarMenusCustom() {
-  function _clonarItemMenu(pageIdRef, novoPageId, novoTexto, novoIcone, novoId) {
+  function _clonarItemMenu(pageIdRef, novoPageId, novoTexto, novoId) {
     if (document.getElementById(novoId)) return true;
-    var ref = document.querySelector('.sidebar div[onclick*="go(\'' + pageIdRef + '\')"]')
-           || document.querySelector('.sidebar [onclick*="go(\'' + pageIdRef + '\')"]')
-           || document.querySelector('[class*="sidebar"] [onclick*="go(\'' + pageIdRef + '\')"]');
+
+    var seletores = [
+      '.sidebar [onclick*="' + pageIdRef + '"]',
+      '[class*="sidebar"] [onclick*="' + pageIdRef + '"]',
+      '.nav [onclick*="' + pageIdRef + '"]',
+      '[class*="nav-group"] [onclick*="' + pageIdRef + '"]',
+      '[onclick*="' + pageIdRef + '"]'
+    ];
+
+    var ref = null;
+    for (var i = 0; i < seletores.length; i++) {
+      try { ref = document.querySelector(seletores[i]); } catch (_) {}
+      if (ref) break;
+    }
+
     if (!ref) return false;
+
     var novo = ref.cloneNode(true);
     novo.id = novoId;
     novo.setAttribute('onclick', "go('" + novoPageId + "')");
-    var spans = novo.querySelectorAll('span, i, em');
-    if (spans.length > 0) spans[0].textContent = novoIcone;
-    var textoNos = novo.childNodes;
-    for (var i = 0; i < textoNos.length; i++) {
-      if (textoNos[i].nodeType === 3 && textoNos[i].textContent.trim().length > 1) {
-        textoNos[i].textContent = ' ' + novoTexto;
-        break;
+    novo.style.cursor = 'pointer';
+
+    novo.querySelectorAll('[id]').forEach(function(el) { el.removeAttribute('id'); });
+
+    var spanTxt = novo.querySelector('span:not([class*="ico"]):not([class*="icon"])');
+    if (spanTxt) {
+      spanTxt.textContent = novoTexto;
+    } else {
+      var textoAtualizado = false;
+      novo.childNodes.forEach(function(n) {
+        if (n.nodeType === 3 && n.textContent.trim().length > 1 && !textoAtualizado) {
+          n.textContent = ' ' + novoTexto;
+          textoAtualizado = true;
+        }
+      });
+      if (!textoAtualizado) {
+        var ultimoSpan = novo.querySelector('span');
+        if (ultimoSpan) ultimoSpan.textContent = novoTexto;
       }
     }
-    if (!novo.textContent.includes(novoTexto)) {
-      novo.innerHTML = novo.innerHTML + novoTexto;
-    }
-    ref.parentElement.insertBefore(novo, ref.nextSibling);
-    console.log('[PATCH] Menu injetado:', novoId);
+
+    ref.parentElement.appendChild(novo);
+    console.log('[PATCH] Menu injetado:', novoId, '- texto:', novo.textContent.trim().slice(0, 30));
     return true;
   }
 
@@ -18055,9 +18087,9 @@ window._renderToneladasVendidas = async function() {
   var tentativas = 0;
   var timer = setInterval(function() {
     tentativas++;
-    if (!ok.cp) ok.cp = _clonarItemMenu('lancamento', 'caixas-perdidas', 'Caixas Perdidas', '📦', 'menu-patch-caixas-perdidas');
-    if (!ok.gram) ok.gram = _clonarItemMenu('clientes', 'gramaturas', 'Gramaturas', '📄', 'menu-patch-gramaturas');
-    if (!ok.ton) ok.ton = _clonarItemMenu('lancamento', 'toneladas-vendidas', 'Toneladas Vendidas', '⚖️', 'menu-patch-toneladas');
+    if (!ok.cp) ok.cp = _clonarItemMenu('lancamento', 'caixas-perdidas', 'Caixas Perdidas', 'menu-patch-caixas-perdidas');
+    if (!ok.gram) ok.gram = _clonarItemMenu('clientes', 'gramaturas', 'Gramaturas', 'menu-patch-gramaturas');
+    if (!ok.ton) ok.ton = _clonarItemMenu('lancamento', 'toneladas-vendidas', 'Toneladas Vendidas', 'menu-patch-toneladas');
     if ((ok.cp && ok.gram && ok.ton) || tentativas > 40) clearInterval(timer);
   }, 800);
 })();
