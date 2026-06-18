@@ -6703,14 +6703,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(btn) {
         try {
           var txt = String(btn.textContent || '').trim();
-          if ((txt.indexOf('Imprimir') >= 0 || txt.indexOf('imprimir') >= 0) && !btn.dataset.patchPrint) {
-            btn.dataset.patchPrint = '1';
-            btn.addEventListener('click', function(e) {
-              try { e.preventDefault(); } catch (_) {}
-              try { e.stopPropagation(); } catch (_) {}
-              _abrirModalImpressao();
-            }, true);
-          }
+          if (!(txt.indexOf('Imprimir') >= 0 || txt.indexOf('imprimir') >= 0)) return;
+          if (btn.dataset.patchPrint) return;
+          var paginaCom = btn.closest ? btn.closest('#page-comissoes, [data-page="comissoes"]') : null;
+          if (!paginaCom) return;
+          btn.dataset.patchPrint = '1';
+          btn.addEventListener('click', function(e) {
+            try { e.preventDefault(); } catch (_) {}
+            try { e.stopPropagation(); } catch (_) {}
+            _abrirModalImpressao();
+          }, true);
         } catch (_) {}
       });
     } catch (_) {}
@@ -12280,12 +12282,38 @@ window._mbnActive = function(id) {
 
   window._ordenarPorPrioridade = async function() {
     var groups = window._ofmaqLastGroupOfs || {};
-    var maquinas = Object.keys(groups);
-    if (!maquinas.length) {
-      try { window.toast('Nenhuma OF carregada', 'var(--red)'); } catch (_) {}
+    
+    if (!Object.keys(groups).length) {
+      try {
+        var tokenFetch = String(localStorage.getItem('token') || '').trim();
+        var resp = await fetch('/api/ofs?status=Em+Produ%C3%A7%C3%A3o&limit=500', {
+          headers: tokenFetch ? { Authorization: 'Bearer ' + tokenFetch } : {}
+        });
+        var json = await resp.json().catch(function() { return null; });
+        var ofs = Array.isArray(json) ? json : (json && (json.data || json.ofs) || []);
+
+        ofs.forEach(function(of) {
+          var maq = '';
+          try {
+            var maqArr = Array.isArray(of.maq) ? of.maq : JSON.parse(String(of.maq || '[]'));
+            maq = String(maqArr[0] || of.maquina_agendada || 'Sem Máquina').trim();
+          } catch (_) {
+            maq = String(of.maquina_agendada || of.maquina || 'Sem Máquina').trim();
+          }
+          if (!groups[maq]) groups[maq] = [];
+          groups[maq].push(of);
+        });
+      } catch (e) {
+        console.error('[ordenar] erro ao buscar OFs:', e.message);
+      }
+    }
+
+    if (!Object.keys(groups).length) {
+      try { window.toast('Nenhuma OF carregada. Vá para OFs por Máquina primeiro.', 'var(--red)'); } catch (_) {}
       return;
     }
 
+    var maquinas = Object.keys(groups);
     for (var i = 0; i < maquinas.length; i++) {
       var maq = maquinas[i];
       var ofs = Array.isArray(groups[maq]) ? groups[maq].slice() : [];
@@ -12325,7 +12353,7 @@ window._mbnActive = function(id) {
     }
 
     try { if (typeof window.renderOFsPorMaquina === 'function') await window.renderOFsPorMaquina(); } catch (_) {}
-    try { window.toast('✅ OFs ordenadas por tamanho (urgentes primeiro)', 'var(--green)'); } catch (_) {}
+    try { window.toast('✅ OFs ordenadas por tamanho (maiores primeiro, urgentes no topo)', 'var(--green)'); } catch (_) {}
   };
 
   window.ordenarOFsPorPrioridade = async function(arg) {
@@ -12390,12 +12418,19 @@ window._mbnActive = function(id) {
 
     if (!window._agrupamentoSetupAtivo) {
       try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
+      try { window.toast('Agrupamento por setup desativado', 'var(--accent)'); } catch (_) {}
       return;
     }
 
     var groups = window._ofmaqLastGroupOfs || {};
+    if (!Object.keys(groups).length) {
+      try { window.toast('Vá para OFs por Máquina primeiro', 'var(--red)'); } catch (_) {}
+      window._agrupamentoSetupAtivo = false;
+      updateAgrupamentoButton();
+      return;
+    }
+
     var maquinas = Object.keys(groups);
-    if (!maquinas.length) return;
 
     for (var i = 0; i < maquinas.length; i++) {
       var maq = maquinas[i];
@@ -12405,13 +12440,15 @@ window._mbnActive = function(id) {
       function getCores(of) {
         try {
           var raw = of.cores_impressao;
-          if (!raw) return 'sem-impressao';
+          if (!raw) return 'SEM COR';
           if (typeof raw === 'string') raw = JSON.parse(raw);
-          if (Array.isArray(raw)) return raw.map(function(c) {
-            return String(c && (c.nome || c.id || c) || '').trim().toLowerCase();
-          }).sort().join('+');
+          if (Array.isArray(raw) && raw.length) {
+            return raw.map(function(c) {
+              return String(c && (c.nome || c.id || c) || '').trim().toUpperCase();
+            }).sort().join('+');
+          }
         } catch (_) {}
-        return 'sem-impressao';
+        return 'SEM COR';
       }
 
       var grupos = {};
@@ -12427,10 +12464,11 @@ window._mbnActive = function(id) {
 
       var ordenadas = [];
       chaves.forEach(function(cor) {
-        var urgentes = grupos[cor].filter(function(of) {
+        var grupo = grupos[cor] || [];
+        var urgentes = grupo.filter(function(of) {
           return !!(of && (of.urgente === true || of.urgente === 1));
         });
-        var normais = grupos[cor].filter(function(of) {
+        var normais = grupo.filter(function(of) {
           return !(of && (of.urgente === true || of.urgente === 1));
         });
         urgentes.forEach(function(of) { ordenadas.push(of); });
@@ -17699,66 +17737,90 @@ window._recarregarToneladas = async function() {
       return;
     }
 
+    var porFornecedor = Array.isArray(json.por_fornecedor) ? json.por_fornecedor : [];
     var porGramatura = Array.isArray(json.por_gramatura) ? json.por_gramatura : [];
     var porCliente = Array.isArray(json.por_cliente) ? json.por_cliente : [];
-    var det = Array.isArray(json.detalhes) ? json.detalhes : [];
+    var detalhes = Array.isArray(json.detalhes) ? json.detalhes : [];
+
+    var htmlCorpo = '';
 
     var cardTon = document.getElementById('ton-card-total');
     var cardM2 = document.getElementById('ton-card-m2');
-    var cardCusto = document.getElementById('ton-card-custo');
     var cardOfs = document.getElementById('ton-card-ofs');
     if (cardTon) cardTon.textContent = fT(json.total_toneladas);
     if (cardM2) cardM2.textContent = fM(json.total_m2);
-    if (cardCusto) cardCusto.textContent = fR(json.total_custo_estimado);
     if (cardOfs) cardOfs.textContent = String(json.total_ofs || 0);
+    var cardCusto = document.getElementById('ton-card-custo');
+    if (cardCusto) cardCusto.textContent = 'R$ ' + Number(json.total_custo_estimado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    var htmlDetalhe = '<div style="margin-top:20px">'
-      + '<h3 style="color:var(--text,#fff);margin-bottom:12px">📋 Detalhamento das OFs</h3>'
-      + '<div style="overflow:auto;border-radius:12px;border:1px solid var(--border,#333)">'
-      + '<table style="width:100%;border-collapse:collapse">'
-      + '<thead><tr style="background:var(--bg2,#1a1a2e)">'
-      + '<th style="padding:10px;text-align:left;color:#aaa;font-size:11px">Nº OF</th>'
-      + '<th style="padding:10px;text-align:left;color:#aaa;font-size:11px">CLIENTE</th>'
-      + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">QTD CAIXAS</th>'
-      + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">GRAMATURA</th>'
-      + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">M²</th>'
-      + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">TONELADAS</th>'
-      + '</tr></thead><tbody>'
-      + (json.detalhes || []).map(function(d, i) {
-        return '<tr style="border-top:1px solid var(--border,#333);background:'
-          + (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)') + '">'
-          + '<td style="padding:8px 10px;color:#6366f1;font-weight:700">#' + escHtml(d.of || '—') + '</td>'
-          + '<td style="padding:8px 10px;color:var(--text,#fff)">' + escHtml(d.cliente || '—') + '</td>'
-          + '<td style="padding:8px 10px;text-align:right;color:#aaa">' + Number(d.qtd || 0).toLocaleString('pt-BR') + '</td>'
-          + '<td style="padding:8px 10px;text-align:right;color:#6366f1">' + escHtml(d.gram || '—') + ' g/m²</td>'
-          + '<td style="padding:8px 10px;text-align:right;color:#aaa">' + Number(d.area_m2 || 0).toFixed(2) + ' m²</td>'
-          + '<td style="padding:8px 10px;text-align:right;font-weight:700;color:#10b981">' + Number(d.toneladas || 0).toFixed(3) + ' t</td>'
-          + '</tr>';
-      }).join('')
-      + '</tbody></table></div></div>';
+    if (porGramatura.length) {
+      htmlCorpo += '<h3 style="color:var(--text,#fff);margin:20px 0 10px">📊 Por Gramatura</h3>'
+        + '<div style="overflow:auto;border-radius:12px;border:1px solid var(--border,#333);margin-bottom:20px">'
+        + '<table style="width:100%;border-collapse:collapse">'
+        + '<thead><tr style="background:var(--bg2,#1a1a2e)">'
+        + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">GRAMATURA</th>'
+        + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">OFs</th>'
+        + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">M²</th>'
+        + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">TONELADAS</th>'
+        + '</tr></thead><tbody>'
+        + porGramatura.map(function(g, i) {
+          return '<tr style="border-top:1px solid var(--border,#333);background:' + (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)') + '">'
+            + '<td style="padding:8px 10px;text-align:right;color:#6366f1;font-weight:700">' + String(g.gram || '—') + ' g/m²</td>'
+            + '<td style="padding:8px 10px;text-align:right;color:#aaa">' + String(g.ofs || 0) + '</td>'
+            + '<td style="padding:8px 10px;text-align:right;color:#aaa">' + fM(g.area_m2) + '</td>'
+            + '<td style="padding:8px 10px;text-align:right;font-weight:700;color:#10b981">' + fT(g.toneladas) + '</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table></div>';
+    }
 
-    if (corpo) corpo.innerHTML =
-      renderSecao('Por Fornecedor', porFornecedor, [
-        { label: 'Fornecedor', key: 'fornecedor' },
-        { label: 'OFs', key: 'ofs', align: 'right', color: '#94a3b8' },
-        { label: 'M²', align: 'right', color: '#94a3b8', render: function(i) { return fM(i.area_m2); } },
-        { label: 'Toneladas', align: 'right', color: '#10b981', bold: true, render: function(i) { return fT(i.toneladas); } },
-        { label: 'Custo Est.', align: 'right', color: '#22c55e', render: function(i) { return fR(i.custo_estimado); } }
-      ])
-      + renderSecao('Ranking por Gramatura', porGramatura, [
-        { label: 'Gramatura', render: function(i) { return escHtml(i.gramatura || (String(i.gram || '') + ' g/m²')); } },
-        { label: 'OFs', key: 'ofs', align: 'right', color: '#94a3b8' },
-        { label: 'M²', align: 'right', color: '#94a3b8', render: function(i) { return fM(i.area_m2); } },
-        { label: 'Toneladas', align: 'right', color: '#10b981', bold: true, render: function(i) { return fT(i.toneladas); } },
-        { label: 'Custo Est.', align: 'right', color: '#22c55e', render: function(i) { return fR(i.custo_estimado); } }
-      ])
-      + renderSecao('Top 10 Clientes', porCliente, [
-        { label: 'Cliente', render: function(i) { return escHtml(i.cliente || '—'); } },
-        { label: 'OFs', key: 'ofs', align: 'right', color: '#94a3b8' },
-        { label: 'M²', align: 'right', color: '#94a3b8', render: function(i) { return fM(i.area_m2); } },
-        { label: 'Toneladas', align: 'right', color: '#10b981', bold: true, render: function(i) { return fT(i.toneladas); } }
-      ])
-      + htmlDetalhe;
+    if (porCliente.length) {
+      htmlCorpo += '<h3 style="color:var(--text,#fff);margin:20px 0 10px">🏆 Top Clientes por Toneladas</h3>'
+        + '<div style="overflow:auto;border-radius:12px;border:1px solid var(--border,#333);margin-bottom:20px">'
+        + '<table style="width:100%;border-collapse:collapse">'
+        + '<thead><tr style="background:var(--bg2,#1a1a2e)">'
+        + '<th style="padding:10px;text-align:left;color:#aaa;font-size:11px">CLIENTE</th>'
+        + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">OFs</th>'
+        + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">M²</th>'
+        + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">TONELADAS</th>'
+        + '</tr></thead><tbody>'
+        + porCliente.map(function(c, i) {
+          return '<tr style="border-top:1px solid var(--border,#333);background:' + (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)') + '">'
+            + '<td style="padding:8px 10px;color:var(--text,#fff)">' + escHtml(c.cliente || '—') + '</td>'
+            + '<td style="padding:8px 10px;text-align:right;color:#aaa">' + String(c.ofs || 0) + '</td>'
+            + '<td style="padding:8px 10px;text-align:right;color:#aaa">' + fM(c.area_m2) + '</td>'
+            + '<td style="padding:8px 10px;text-align:right;font-weight:700;color:#10b981">' + fT(c.toneladas) + '</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table></div>';
+    }
+
+    htmlCorpo += '<h3 style="color:var(--text,#fff);margin:20px 0 10px">📋 Detalhamento das OFs</h3>'
+      + (detalhes.length === 0
+        ? '<div style="color:#aaa;padding:20px;text-align:center">Nenhuma OF com gramatura no período.</div>'
+        : '<div style="overflow:auto;border-radius:12px;border:1px solid var(--border,#333)">'
+        + '<table style="width:100%;border-collapse:collapse">'
+        + '<thead><tr style="background:var(--bg2,#1a1a2e)">'
+        + '<th style="padding:10px;text-align:left;color:#aaa;font-size:11px">Nº OF</th>'
+        + '<th style="padding:10px;text-align:left;color:#aaa;font-size:11px">CLIENTE</th>'
+        + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">QTD CAIXAS</th>'
+        + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">GRAMATURA</th>'
+        + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">M²</th>'
+        + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">TONELADAS</th>'
+        + '</tr></thead><tbody>'
+        + detalhes.map(function(d, i) {
+          return '<tr style="border-top:1px solid var(--border,#333);background:' + (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)') + '">'
+            + '<td style="padding:8px 10px;color:#6366f1;font-weight:700">#' + escHtml(d.of || '—') + '</td>'
+            + '<td style="padding:8px 10px;color:var(--text,#fff)">' + escHtml(d.cliente || '—') + '</td>'
+            + '<td style="padding:8px 10px;text-align:right;color:#aaa">' + Number(d.qtd || 0).toLocaleString('pt-BR') + '</td>'
+            + '<td style="padding:8px 10px;text-align:right;color:#6366f1">' + String(d.gram || '—') + ' g/m²</td>'
+            + '<td style="padding:8px 10px;text-align:right;color:#aaa">' + fM(d.area_m2) + '</td>'
+            + '<td style="padding:8px 10px;text-align:right;font-weight:700;color:#10b981">' + fT(d.toneladas) + '</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table></div>');
+
+    if (corpo) corpo.innerHTML = htmlCorpo;
   } catch (e) {
     if (corpo) corpo.innerHTML = '<div style="color:#f87171;padding:20px">Erro: ' + escHtml(e.message) + '</div>';
   }
@@ -18472,36 +18534,39 @@ window._recarregarToneladas = async function() {
     var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
     if (!sidebar) return;
 
-    ['Relatório Mensal','Configurações'].forEach(function(texto) {
-      sidebar.querySelectorAll('*').forEach(function(el) {
-        if (el.children.length > 0) return;
-        if (String(el.textContent || '').trim() !== texto) return;
-        var cur = el;
-        for (var i = 0; i < 8; i++) {
-          if (!cur || cur === sidebar) break;
-          cur = cur.parentElement;
-          if (!cur || cur === sidebar) break;
-          if (cur.offsetWidth > 80 && cur.offsetHeight > 15 && cur.offsetHeight < 70) {
-            cur.style.setProperty('display', 'none', 'important');
-            break;
-          }
+    sidebar.querySelectorAll('*').forEach(function(el) {
+      if (el.children.length > 0) return;
+      var txt = String(el.textContent || '').trim();
+      if (txt !== 'Relatório Mensal') return;
+      var cur = el;
+      for (var i = 0; i < 8; i++) {
+        if (!cur || cur === sidebar) break;
+        cur = cur.parentElement;
+        if (!cur || cur === sidebar) break;
+        if (cur.offsetWidth > 80 && cur.offsetHeight > 15 && cur.offsetHeight < 70) {
+          cur.style.setProperty('display', 'none', 'important');
+          break;
         }
-      });
+      }
     });
 
-    var refFin = document.querySelector('[onclick*="comissoes"],[onclick*="orcamentos"],[onclick*="toneladas"]');
+    var refFin = document.querySelector('[onclick*="comissoes"]') ||
+                 document.querySelector('[onclick*="orcamentos"]');
     if (!refFin) return;
     var grupoFin = refFin.parentElement;
-    for (var j = 0; j < 5; j++) {
+    for (var j = 0; j < 6; j++) {
       if (!grupoFin || grupoFin === sidebar) break;
       if (grupoFin.querySelectorAll('[onclick]').length > 2) break;
       grupoFin = grupoFin.parentElement;
     }
 
-    sidebar.querySelectorAll('*').forEach(function(el) {
-      if (el.children.length > 0) return;
-      var txt = String(el.textContent || '').trim();
-      if (txt !== 'Caixas Perdidas' && txt !== 'Inconformidades') return;
+    var todosTextos = Array.from(sidebar.querySelectorAll('*')).filter(function(el) {
+      if (el.children.length > 0) return false;
+      var t = String(el.textContent || '').trim();
+      return t === 'Caixas Perdidas' || t === 'Inconformidades';
+    });
+
+    todosTextos.forEach(function(el) {
       var cur = el;
       var itemEl = null;
       for (var k = 0; k < 8; k++) {
@@ -18513,9 +18578,8 @@ window._recarregarToneladas = async function() {
         }
       }
       if (!itemEl) return;
-      if (!(grupoFin && grupoFin.contains(itemEl))) {
-        itemEl.style.setProperty('display', 'none', 'important');
-      }
+      var noFin = grupoFin && grupoFin.contains(itemEl);
+      if (!noFin) itemEl.style.setProperty('display', 'none', 'important');
     });
   }
 
