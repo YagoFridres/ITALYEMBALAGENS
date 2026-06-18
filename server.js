@@ -10631,7 +10631,9 @@ app.post('/api/gramaturas', authMiddleware, async (req, res) => {
       gramatura,
       valor_unitario,
       fornecedor_id: b.fornecedor_id ? String(b.fornecedor_id || '').trim() : null,
-      fornecedor_nome: b.fornecedor_nome != null ? String(b.fornecedor_nome || '').trim() : null,
+      fornecedor_nome: b.fornecedor_nome != null
+        ? String(b.fornecedor_nome || '').trim()
+        : (b.fornecedor != null ? String(b.fornecedor || '').trim() : null),
       empresa_id: empresa_id || null,
       ativo: b.ativo !== false,
     };
@@ -10639,6 +10641,29 @@ app.post('/api/gramaturas', authMiddleware, async (req, res) => {
     if (error) throw error;
     return res.json({ ok: true, data });
   } catch (e) { return err(res, e); }
+});
+
+app.post('/api/gramaturas/limpar-nomes', autenticar, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('gramaturas')
+      .select('id, nome');
+    if (error) throw error;
+
+    let atualizados = 0;
+    for (const g of (data || [])) {
+      let nome = String(g && g.nome || '');
+      if (nome.startsWith('Papel: ')) {
+        nome = nome.replace(/^Papel:\s*/i, '');
+        const { error: upErr } = await supabase.from('gramaturas').update({ nome }).eq('id', g.id);
+        if (upErr) throw upErr;
+        atualizados++;
+      }
+    }
+    res.json({ ok: true, atualizados });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 app.put('/api/gramaturas/:id', authMiddleware, async (req, res) => {
@@ -14149,14 +14174,20 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
 
     const { data: gramaturas, error: errGram } = await supabase
       .from('gramaturas')
-      .select('id, gramatura')
+      .select('id, nome, gramatura, valor_unitario, fornecedor_nome, fornecedor_id')
       .eq('empresa_id', empresaId);
 
     if (errGram) throw errGram;
 
     const mapaGram = {};
     (gramaturas || []).forEach(g => {
-      if (g.id && g.gramatura) mapaGram[String(g.id)] = Number(g.gramatura) || 0;
+      if (!g || !g.id || !g.gramatura) return;
+      mapaGram[String(g.id)] = {
+        gram: Number(g.gramatura) || 0,
+        nome: String(g.nome || '').trim(),
+        valor_unitario: Number(g.valor_unitario || 0) || 0,
+        fornecedor: String(g.fornecedor_nome || g.fornecedor_id || 'Sem fornecedor').trim()
+      };
     });
 
     let query = supabase
@@ -14178,6 +14209,7 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
 
     let totalTon = 0;
     let totalM2 = 0;
+    let totalCustoEstimado = 0;
     const detalhes = [];
 
     (ofs || []).forEach(of => {
@@ -14185,14 +14217,17 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       const larg = Number(of.caixa_largura || of.dim_largura || 0) || 0;
       const qtd = Number(of.quantidade || of.qtd || 0) || 0;
       const gramId = String(of.gramatura_id || '').trim();
-      const gram = gramId ? (mapaGram[gramId] || 0) : 0;
+      const gramMeta = gramId ? mapaGram[gramId] : null;
+      const gram = gramMeta ? gramMeta.gram : 0;
 
       if (!(comp > 0 && larg > 0 && gram > 0 && qtd > 0)) return;
 
       const areaM2 = (comp / 1000) * (larg / 1000) * qtd;
       const ton = (areaM2 * gram) / 1000000;
+      const custoEstimado = (ton * 1000) * (gramMeta ? gramMeta.valor_unitario : 0);
       totalTon += ton;
       totalM2 += areaM2;
+      totalCustoEstimado += custoEstimado;
 
       detalhes.push({
         of: of.numero || of.of || of.id,
@@ -14200,17 +14235,66 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
         qtd, comp, larg, gram,
         area_m2: areaM2,
         toneladas: ton,
+        custo_estimado: custoEstimado,
+        gramatura_nome: gramMeta ? gramMeta.nome : '',
+        fornecedor: gramMeta ? gramMeta.fornecedor : 'Sem fornecedor',
         valor_total: of.valor_total || 0,
         data: of.data_conclusao
       });
+    });
+
+    const cliIds = [...new Set(detalhes.map(d => d.cli_id).filter(Boolean))];
+    let mapaClientes = {};
+    if (cliIds.length) {
+      const { data: clientes, error: errClientes } = await supabase
+        .from('clientes')
+        .select('id, nome')
+        .in('id', cliIds);
+      if (errClientes) throw errClientes;
+      (clientes || []).forEach(c => { mapaClientes[c.id] = c.nome; });
+    }
+    detalhes.forEach(d => { d.cliente = mapaClientes[d.cli_id] || '—'; });
+
+    const porGramatura = {};
+    detalhes.forEach(d => {
+      const k = String(d.gram) + ' g/m²';
+      if (!porGramatura[k]) porGramatura[k] = { gram: d.gram, gramatura: k, toneladas: 0, area_m2: 0, ofs: 0, custo_estimado: 0 };
+      porGramatura[k].toneladas += d.toneladas;
+      porGramatura[k].area_m2 += d.area_m2;
+      porGramatura[k].ofs++;
+      porGramatura[k].custo_estimado += d.custo_estimado || 0;
+    });
+
+    const porCliente = {};
+    detalhes.forEach(d => {
+      const k = d.cli_id || 'desconhecido';
+      if (!porCliente[k]) porCliente[k] = { cliente: d.cliente, toneladas: 0, area_m2: 0, ofs: 0, custo_estimado: 0 };
+      porCliente[k].toneladas += d.toneladas;
+      porCliente[k].area_m2 += d.area_m2;
+      porCliente[k].ofs++;
+      porCliente[k].custo_estimado += d.custo_estimado || 0;
+    });
+
+    const porFornecedor = {};
+    detalhes.forEach(d => {
+      const k = String(d.fornecedor || 'Sem fornecedor').trim() || 'Sem fornecedor';
+      if (!porFornecedor[k]) porFornecedor[k] = { fornecedor: k, toneladas: 0, area_m2: 0, ofs: 0, custo_estimado: 0 };
+      porFornecedor[k].toneladas += d.toneladas;
+      porFornecedor[k].area_m2 += d.area_m2;
+      porFornecedor[k].ofs++;
+      porFornecedor[k].custo_estimado += d.custo_estimado || 0;
     });
 
     res.json({
       ok: true,
       total_toneladas: totalTon,
       total_m2: totalM2,
+      total_custo_estimado: totalCustoEstimado,
       total_ofs: detalhes.length,
       mes: mes ? `${ano}-${String(mes).padStart(2, '0')}` : null,
+      por_fornecedor: Object.values(porFornecedor).sort((a, b) => b.toneladas - a.toneladas),
+      por_gramatura: Object.values(porGramatura).sort((a, b) => b.toneladas - a.toneladas),
+      por_cliente: Object.values(porCliente).sort((a, b) => b.toneladas - a.toneladas).slice(0, 10),
       detalhes: detalhes.sort((a, b) => b.toneladas - a.toneladas)
     });
   } catch (e) {
