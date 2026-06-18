@@ -16884,8 +16884,9 @@ function _ocultarGraficoComissoes() {
       var ranking = grupos.slice().sort(function(a, b) { return Number(b.total_vendas || 0) - Number(a.total_vendas || 0); }).slice(0, 3);
       var rankingMax = Number(ranking[0] && ranking[0].total_vendas || 0) || 1;
       var coresVendedor = ['#1a3a5c', '#1a3a2c', '#3a1a3a', '#3a2a1a'];
-      var _fmtBr = function(v) { return (Number(v || 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-      var _fmtRs = function(v) { return 'R$ ' + _fmtBr(v); };
+      function _fmtBr(v) { return (Number(v || 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+      function _fmtRs(v) { return 'R$ ' + _fmtBr(v); }
+      window._fmtRs = _fmtRs;
 
       var htmlCards = ''
         + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;padding:4px 0 16px">'
