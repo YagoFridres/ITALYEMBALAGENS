@@ -17415,50 +17415,44 @@ function _ocultarGraficoComissoes() {
 window._renderGramaturas = async function() {
   var token = '';
   try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
-
-  var antigo = document.getElementById('_overlay_gramaturas');
-  if (antigo) antigo.remove();
-  var antigoHost = document.getElementById('_page_gramaturas');
-  if (antigoHost) antigoHost.remove();
-
-  var overlay = document.createElement('div');
-  overlay.id = '_overlay_gramaturas';
-  overlay.setAttribute('style',
-    'position:fixed!important;top:0!important;left:0!important;'
-    + 'right:0!important;bottom:0!important;z-index:99999!important;'
-    + 'background:#0f1117;overflow-y:auto;padding:20px;box-sizing:border-box'
-  );
-  overlay.innerHTML = '<div style="max-width:1200px;margin:0 auto">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
-    + '<h2 style="color:#fff;margin:0;font-size:22px">📄 Gramaturas</h2>'
-    + '<button id="btn-fechar-gram" style="background:#333;border:none;color:#fff;'
-    + 'border-radius:6px;padding:8px 16px;cursor:pointer;font-size:14px">✕ Fechar</button>'
-    + '</div>'
-    + '<div id="gram-corpo">Carregando...</div>'
-    + '</div>';
-  document.body.appendChild(overlay);
-  document.getElementById('btn-fechar-gram').onclick = function() { overlay.remove(); };
-  overlay.addEventListener('click', function(e) { e.stopPropagation(); }, true);
-
+  
+  document.querySelectorAll('[id^="page-"]').forEach(function(p) {
+    p.style.display = 'none';
+  });
+  
+  var ovAntigo = document.getElementById('_overlay_gramaturas');
+  if (ovAntigo) ovAntigo.remove();
+  
+  var content = document.getElementById('content');
+  if (!content) content = document.querySelector('.content, .main-area, #main-content');
+  if (!content) return;
+  
+  var host = document.getElementById('page-gramaturas');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'page-gramaturas';
+    content.appendChild(host);
+  }
+  host.style.cssText = 'display:block;padding:20px;overflow-y:auto;height:100%;box-sizing:border-box';
+  host.innerHTML = '<h2 style="color:var(--text,#fff);margin-bottom:20px">📄 Gramaturas</h2>'
+    + '<div style="color:#aaa">Carregando...</div>';
+  
   try {
     var resp = await fetch('/api/gramaturas', {
       headers: token ? { Authorization: 'Bearer ' + token } : {}
     });
     var json = await resp.json().catch(function() { return null; });
     var lista = Array.isArray(json) ? json : (json && json.data || []);
-
-    var corpo = document.getElementById('gram-corpo');
-    if (!corpo) return;
-
-    corpo.innerHTML = '<div style="margin-bottom:16px">'
+    
+    host.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
+      + '<h2 style="color:var(--text,#fff);margin:0">📄 Gramaturas</h2>'
       + '<button onclick="window._abrirModalNovaGramatura()" '
-      + 'style="background:#6366f1;color:#fff;border:none;border-radius:8px;'
-      + 'padding:10px 20px;cursor:pointer;font-weight:600;font-size:14px">'
+      + 'style="background:#6366f1;color:#fff;border:none;border-radius:8px;padding:10px 20px;cursor:pointer;font-weight:600">'
       + '+ Nova Gramatura</button>'
       + '</div>'
-      + '<div style="overflow:auto;border-radius:12px;border:1px solid #333">'
+      + '<div style="overflow:auto;border-radius:12px;border:1px solid var(--border,#333)">'
       + '<table style="width:100%;border-collapse:collapse">'
-      + '<thead><tr style="background:#1a1a2e">'
+      + '<thead><tr style="background:var(--bg2,#1a1a2e)">'
       + '<th style="padding:10px 12px;text-align:left;color:#aaa;font-size:11px">NOME</th>'
       + '<th style="padding:10px 12px;text-align:right;color:#aaa;font-size:11px">g/m²</th>'
       + '<th style="padding:10px 12px;text-align:left;color:#aaa;font-size:11px">FORNECEDOR</th>'
@@ -17467,12 +17461,12 @@ window._renderGramaturas = async function() {
       + (lista.length === 0
         ? '<tr><td colspan="4" style="padding:20px;text-align:center;color:#aaa">Nenhuma gramatura cadastrada</td></tr>'
         : lista.map(function(g, i) {
-          return '<tr style="border-top:1px solid #333;background:'
+          return '<tr style="border-top:1px solid var(--border,#333);background:'
             + (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)') + '">'
-            + '<td style="padding:9px 12px;color:#fff">' + String(g.nome || '—') + '</td>'
+            + '<td style="padding:9px 12px;color:var(--text,#fff)">' + String(g.nome || '—') + '</td>'
             + '<td style="padding:9px 12px;text-align:right;color:#6366f1;font-weight:700">'
             + String(g.gramatura || '—') + '</td>'
-            + '<td style="padding:9px 12px;color:#aaa">' + String(g.fornecedor_id || g.fornecedor || '—') + '</td>'
+            + '<td style="padding:9px 12px;color:#aaa">' + String(g.fornecedor_id || '—') + '</td>'
             + '<td style="padding:9px 12px;text-align:center">'
             + '<button onclick="window._excluirGramatura(\'' + g.id + '\')" '
             + 'style="background:transparent;border:1px solid rgba(239,68,68,0.4);'
@@ -17481,8 +17475,8 @@ window._renderGramaturas = async function() {
         }).join(''))
       + '</tbody></table></div>';
   } catch (e) {
-    var c = document.getElementById('gram-corpo');
-    if (c) c.innerHTML = '<div style="color:#f87171;padding:20px">Erro: ' + String(e.message) + '</div>';
+    host.innerHTML = '<h2 style="color:#fff;margin-bottom:20px">📄 Gramaturas</h2>'
+      + '<div style="color:#f87171;padding:20px">Erro: ' + String(e.message) + '</div>';
   }
 };
 
@@ -17533,76 +17527,69 @@ window._excluirGramatura = async function(id) {
 window._renderToneladasVendidas = async function() {
   var token = '';
   try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
-
-  var antigo = document.getElementById('_overlay_toneladas');
-  if (antigo) antigo.remove();
-  var antigoHost = document.getElementById('_page_toneladas');
-  if (antigoHost) antigoHost.remove();
-
-  var overlay = document.createElement('div');
-  overlay.id = '_overlay_toneladas';
-  overlay.setAttribute('style',
-    'position:fixed!important;top:0!important;left:0!important;'
-    + 'right:0!important;bottom:0!important;z-index:99999!important;'
-    + 'background:#0f1117;overflow-y:auto;padding:20px;box-sizing:border-box'
-  );
-
+  
+  document.querySelectorAll('[id^="page-"]').forEach(function(p) {
+    p.style.display = 'none';
+  });
+  
+  var ovAntigo = document.getElementById('_overlay_toneladas');
+  if (ovAntigo) ovAntigo.remove();
+  
+  var content = document.getElementById('content');
+  if (!content) content = document.querySelector('.content, .main-area, #main-content');
+  if (!content) return;
+  
+  var host = document.getElementById('page-toneladas-vendidas');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'page-toneladas-vendidas';
+    content.appendChild(host);
+  }
+  host.style.cssText = 'display:block;padding:20px;overflow-y:auto;height:100%;box-sizing:border-box';
+  host.innerHTML = '<h2 style="color:var(--text,#fff);margin-bottom:20px">⚖️ Toneladas Vendidas</h2>'
+    + '<div style="color:#aaa">Carregando...</div>';
+  
   var hoje = new Date();
   var mes = hoje.getMonth() + 1;
   var ano = hoje.getFullYear();
-
-  overlay.innerHTML = '<div style="max-width:1200px;margin:0 auto">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
-    + '<h2 style="color:#fff;margin:0;font-size:22px">⚖️ Toneladas Vendidas</h2>'
-    + '<button id="btn-fechar-ton" style="background:#333;border:none;color:#fff;'
-    + 'border-radius:6px;padding:8px 16px;cursor:pointer;font-size:14px">✕ Fechar</button>'
-    + '</div>'
-    + '<div id="ton-corpo" style="color:#aaa">Carregando...</div>'
-    + '</div>';
-  document.body.appendChild(overlay);
-  document.getElementById('btn-fechar-ton').onclick = function() { overlay.remove(); };
 
   try {
     var resp = await fetch('/api/analises/toneladas?mes=' + mes + '&ano=' + ano, {
       headers: token ? { Authorization: 'Bearer ' + token } : {}
     });
     var json = await resp.json().catch(function() { return null; });
-
-    var corpo = document.getElementById('ton-corpo');
-    if (!corpo) return;
-
+    
     if (!json || !json.ok) {
-      corpo.innerHTML = '<div style="color:#f87171;padding:20px">'
-        + 'Erro ao carregar. Verifique se há OFs concluídas com gramatura.'
+      host.innerHTML = '<h2 style="color:#fff;margin-bottom:20px">⚖️ Toneladas Vendidas</h2>'
+        + '<div style="color:#f87171;padding:20px">Erro ao carregar dados.'
         + (json && json.error ? '<br>' + json.error : '') + '</div>';
       return;
     }
-
+    
     var det = json.detalhes || [];
-    var total = Number(json.total_toneladas || 0);
-    var totalM2 = Number(json.total_m2 || 0);
     var fT = function(v) { return Number(v || 0).toFixed(3) + ' t'; };
     var fM = function(v) { return Number(v || 0).toFixed(2) + ' m²'; };
-
-    corpo.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px">'
-      + '<div style="background:#1a1a2e;border-radius:12px;padding:20px;border:1px solid #333">'
+    
+    host.innerHTML = '<h2 style="color:var(--text,#fff);margin-bottom:20px">⚖️ Toneladas Vendidas</h2>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px">'
+      + '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:20px;border:1px solid var(--border,#333)">'
       + '<div style="font-size:12px;color:#aaa;margin-bottom:8px">TOTAL TONELADAS</div>'
-      + '<div style="font-size:32px;font-weight:700;color:#10b981">' + fT(total) + '</div>'
+      + '<div style="font-size:32px;font-weight:700;color:#10b981">' + fT(json.total_toneladas) + '</div>'
       + '</div>'
-      + '<div style="background:#1a1a2e;border-radius:12px;padding:20px;border:1px solid #333">'
+      + '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:20px;border:1px solid var(--border,#333)">'
       + '<div style="font-size:12px;color:#aaa;margin-bottom:8px">TOTAL M²</div>'
-      + '<div style="font-size:32px;font-weight:700;color:#6366f1">' + fM(totalM2) + '</div>'
+      + '<div style="font-size:32px;font-weight:700;color:#6366f1">' + fM(json.total_m2) + '</div>'
       + '</div>'
-      + '<div style="background:#1a1a2e;border-radius:12px;padding:20px;border:1px solid #333">'
+      + '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:20px;border:1px solid var(--border,#333)">'
       + '<div style="font-size:12px;color:#aaa;margin-bottom:8px">OFs COM GRAMATURA</div>'
       + '<div style="font-size:32px;font-weight:700;color:#f59e0b">' + String(json.total_ofs || 0) + '</div>'
       + '</div>'
       + '</div>'
       + (det.length === 0
         ? '<div style="color:#aaa;padding:20px;text-align:center">Nenhuma OF com gramatura no período.</div>'
-        : '<div style="overflow:auto;border-radius:12px;border:1px solid #333">'
+        : '<div style="overflow:auto;border-radius:12px;border:1px solid var(--border,#333)">'
         + '<table style="width:100%;border-collapse:collapse">'
-        + '<thead><tr style="background:#1a1a2e">'
+        + '<thead><tr style="background:var(--bg2,#1a1a2e)">'
         + '<th style="padding:10px;text-align:left;color:#aaa;font-size:11px">OF</th>'
         + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">QTD</th>'
         + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">COMP(mm)</th>'
@@ -17612,7 +17599,7 @@ window._renderToneladasVendidas = async function() {
         + '<th style="padding:10px;text-align:right;color:#aaa;font-size:11px">TONELADAS</th>'
         + '</tr></thead><tbody>'
         + det.map(function(d, i) {
-          return '<tr style="border-top:1px solid #333;background:'
+          return '<tr style="border-top:1px solid var(--border,#333);background:'
             + (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)') + '">'
             + '<td style="padding:8px 10px;color:#6366f1">#' + String(d.of || '—') + '</td>'
             + '<td style="padding:8px 10px;text-align:right;color:#aaa">' + Number(d.qtd || 0).toLocaleString('pt-BR') + '</td>'
@@ -17625,8 +17612,8 @@ window._renderToneladasVendidas = async function() {
         }).join('')
         + '</tbody></table></div>');
   } catch (e) {
-    var c2 = document.getElementById('ton-corpo');
-    if (c2) c2.innerHTML = '<div style="color:#f87171;padding:20px">Erro: ' + String(e.message) + '</div>';
+    host.innerHTML = '<h2 style="color:#fff;margin-bottom:20px">⚖️ Toneladas Vendidas</h2>'
+      + '<div style="color:#f87171;padding:20px">Erro: ' + String(e.message) + '</div>';
   }
 };
 
@@ -18335,22 +18322,32 @@ window._renderToneladasVendidas = async function() {
 })();
 (function _injetarMenusCustom() {
   function _ocultarMenusIndesejados() {
-    Array.from(document.querySelectorAll('.sidebar *, [class*="sidebar"] *')).forEach(function(el) {
+    var textoOcultar = ['Relatório Mensal', 'Configurações'];
+    document.querySelectorAll('*').forEach(function(el) {
       if (el.children.length > 0) return;
       var txt = String(el.textContent || '').trim();
-      if (txt === 'Relatório Mensal' || txt === 'Configurações') {
-        var item = el.closest('[onclick], li, div[class*="nav-item"], div[class*="item"]') || el.parentElement;
-        if (item) item.style.display = 'none';
+      if (textoOcultar.indexOf(txt) >= 0) {
+        var item = el;
+        for (var i = 0; i < 5; i++) {
+          if (!item.parentElement) break;
+          item = item.parentElement;
+          var oc = item.getAttribute('onclick') || '';
+          if (oc || item.tagName === 'LI' ||
+              (item.className && String(item.className).indexOf('nav') >= 0)) {
+            item.style.display = 'none';
+            break;
+          }
+        }
       }
     });
-
-    var todosCP = Array.from(document.querySelectorAll('[onclick*="caixas-perdidas"], [onclick*="inconformidades"]'));
-    if (todosCP.length <= 1) return;
-
+    
     var refComissoes = document.querySelector('[onclick*="comissoes"]');
     if (!refComissoes) return;
     var grupoFin = refComissoes.parentElement;
-
+    
+    var todosCP = Array.from(document.querySelectorAll(
+      '[onclick*="caixas-perdidas"], [onclick*="inconformidades"]'
+    ));
     todosCP.forEach(function(el) {
       var noFin = grupoFin && grupoFin.contains(el);
       if (!noFin) el.style.display = 'none';
