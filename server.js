@@ -14147,6 +14147,9 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
     const { mes, ano } = req.query;
     const empresaId = await getEmpresaId(req);
 
+    const { data: testGram, error: errGram } = await supabase.from('gramaturas').select('id').limit(1);
+    console.log('[toneladas] teste gramaturas:', testGram, errGram);
+
     const { data: gramaturas } = await supabase
       .from('gramaturas')
       .select('id, gramatura, valor, gramas')
@@ -14206,8 +14209,8 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       detalhes: detalhes.sort((a, b) => b.toneladas - a.toneladas)
     });
   } catch (e) {
-    console.error('[toneladas]', e);
-    res.status(500).json({ ok: false, error: e.message });
+    console.error('[toneladas ERRO COMPLETO]', e.message, e.stack);
+    res.status(500).json({ ok: false, error: e.message, stack: e.stack });
   }
 });
 
