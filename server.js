@@ -4056,6 +4056,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         return [];
       };
       const merged = { ...(body || {}), ...(filtered || {}) };
+      console.log('[OF SAVE] cli_id recebido:', body.cli_id || body.cliId || body.cliente_id, 'cliente:', body.cliente);
       const cliId = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
       const vendId = String(merged.vendedor_id ?? merged.vendedorId ?? merged.vendId ?? merged.vend_id ?? '').trim();
       const qtd = Number(merged.qtd ?? merged.quantidade ?? merged.qtd_pedida ?? 0) || 0;
