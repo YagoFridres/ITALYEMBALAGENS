@@ -6166,6 +6166,8 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
       status: concluida ? 'Concluído' : 'Em Produção',
       data_conclusao: concluida ? nowIso : undefined,
     };
+    const gramaturaIdBaixa = req.body?.gramatura_id != null ? String(req.body.gramatura_id || '').trim() : (req.body?.gramaturaId != null ? String(req.body.gramaturaId || '').trim() : '');
+    if (gramaturaIdBaixa) payload.gramatura_id = gramaturaIdBaixa;
 
     const qtdReal = req.body?.qtd_real != null ? Number(req.body.qtd_real) : null;
     if (qtdReal != null && Number.isFinite(qtdReal) && qtdReal > 0) {
@@ -6368,6 +6370,8 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       updated_at: nowIso,
       maquina_atual_index: Math.max(fluxo.length, Number(of.maquina_atual_index || 0) || 0),
     };
+    const gramaturaIdConclusao = body.gramatura_id != null ? String(body.gramatura_id || '').trim() : (body.gramaturaId != null ? String(body.gramaturaId || '').trim() : '');
+    if (gramaturaIdConclusao) updateData.gramatura_id = gramaturaIdConclusao;
     if (operadoresConclusao.length) {
       updateData.operadores_conclusao = operadoresConclusao;
       if (!updateData.operador_conclusao) updateData.operador_conclusao = operadoresConclusao[0];

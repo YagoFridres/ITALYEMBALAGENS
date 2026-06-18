@@ -20,13 +20,23 @@ if (!window._menuPatchFinal) {
       var oc = el.getAttribute('onclick') || '';
       return oc.includes("go('fornecedores')") || oc.includes("go('usuarios')") || oc.includes("go('vendedores')");
     });
-    var ancora_fin = Array.from(document.querySelectorAll('[onclick]')).find(function(el) {
-      var oc = el.getAttribute('onclick') || '';
-      return oc.includes("go('comissoes')") || oc.includes("go('orcamentos')");
+    var ancora_fin = null;
+    var todosElementos = Array.from(document.querySelectorAll('li, a, span, div'));
+    ancora_fin = todosElementos.find(function(el) {
+      var t = el.textContent.trim();
+      return (t === 'Comissões' || t === 'Comissoes') && el.offsetParent !== null;
     });
+    if (ancora_fin && ancora_fin.tagName !== 'LI') ancora_fin = ancora_fin.closest('li') || ancora_fin;
+    if (!ancora_fin) {
+      ancora_fin = todosElementos.find(function(el) {
+        var t = el.textContent.trim();
+        return (t === 'Orçamentos' || t === 'Orcamentos') && el.offsetParent !== null;
+      });
+      if (ancora_fin && ancora_fin.tagName !== 'LI') ancora_fin = ancora_fin.closest('li') || ancora_fin;
+    }
 
     console.log('[MENU FINAL] âncora cadastros:', ancora_cad ? ancora_cad.textContent.trim() + ' | ' + ancora_cad.getAttribute('onclick') : 'NÃO ENCONTRADA');
-    console.log('[MENU FINAL] âncora financeiro:', ancora_fin ? ancora_fin.textContent.trim() + ' | ' + ancora_fin.getAttribute('onclick') : 'NÃO ENCONTRADA');
+    console.log('[MENU FINAL] âncora financeiro:', ancora_fin ? ancora_fin.tagName + ':' + ancora_fin.textContent.trim().substring(0,20) : 'NÃO ENCONTRADA');
 
     function _injetarItemMenu(ancora, label, id, pageId) {
       if (document.getElementById(id)) return;
@@ -62,7 +72,9 @@ function _aplicarTemaClaro() {
     var bg = window.getComputedStyle(document.body).backgroundColor;
     var match = bg.match(/rgb\((\d+)/);
     var r = match ? parseInt(match[1]) : 0;
-    if (r > 150) {
+    var isClaro = r > 150;
+    console.log('[TEMA] bg:', bg, 'r:', r, 'claro:', isClaro);
+    if (isClaro) {
       document.body.classList.add('_patch_modo_claro');
     } else {
       document.body.classList.remove('_patch_modo_claro');
@@ -71,6 +83,88 @@ function _aplicarTemaClaro() {
 }
 _aplicarTemaClaro();
 setInterval(_aplicarTemaClaro, 1000);
+
+function _injetarGramaturaNoModal() {
+  if (window.__gramaturaModalObs) return;
+  var patchConclusaoFetch = function() {
+    if (window.__patchConclusaoGramaturaFetch) return;
+    if (typeof window.fetch !== 'function') return;
+    window.__patchConclusaoGramaturaFetch = true;
+    var origFetch = window.fetch;
+    window.fetch = function(resource, init) {
+      try {
+        var url = typeof resource === 'string' ? resource : (resource && resource.url) || '';
+        if (/\/api\/ofs\/[^/]+\/(concluir|baixa)(\?|$)/i.test(String(url || ''))) {
+          var opts = init ? Object.assign({}, init) : {};
+          var sel = document.getElementById('_gram_select_modal');
+          var gramId = (sel && sel.value) || window._ofGramaturaId || '';
+          if (gramId && opts.body && typeof opts.body === 'string') {
+            try {
+              var parsed = JSON.parse(opts.body);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && !parsed.gramatura_id) {
+                parsed.gramatura_id = gramId;
+                opts.body = JSON.stringify(parsed);
+                init = opts;
+              }
+            } catch (_) {}
+          }
+        }
+      } catch (_) {}
+      return origFetch.call(this, resource, init);
+    };
+  };
+  patchConclusaoFetch();
+  window.__gramaturaModalObs = new MutationObserver(function() {
+    var modal = document.getElementById('modal-concluir-of');
+    if (!modal) return;
+    if (modal.querySelector('#_gram_select_modal')) return;
+
+    var labels = Array.from(modal.querySelectorAll('label, div[class*="label"], .m-label'));
+    var labelCaixas = labels.find(function(l) {
+      var txt = String(l.textContent || '').toLowerCase();
+      return txt.includes('caixa') && txt.includes('produz');
+    });
+    var pontoInsercao = labelCaixas ? labelCaixas.closest('div, p, label') : null;
+    if (!pontoInsercao) {
+      var numInput = modal.querySelector('input[type="number"]');
+      pontoInsercao = numInput && numInput.closest ? numInput.closest('div') : null;
+    }
+    if (!pontoInsercao || !pontoInsercao.parentElement) return;
+
+    var divGram = document.createElement('div');
+    divGram.style.cssText = 'margin-top:12px';
+    divGram.innerHTML = '<label style="display:block;font-size:12px;font-weight:600;text-transform:uppercase;color:#94a3b8;margin-bottom:6px">Gramatura (papel utilizado)</label>'
+      + '<select id="_gram_select_modal" style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;color:#f1f5f9;font-size:14px">'
+      + '<option value="">— Sem gramatura —</option>'
+      + '</select>';
+    pontoInsercao.parentElement.insertBefore(divGram, pontoInsercao.nextSibling);
+
+    fetch('/api/gramaturas').then(function(r) { return r.json(); }).then(function(lista) {
+      var sel = document.getElementById('_gram_select_modal');
+      if (!sel) return;
+      (Array.isArray(lista) ? lista : []).forEach(function(g) {
+        var opt = document.createElement('option');
+        opt.value = g.id;
+        opt.dataset.gramatura = g.gramatura;
+        opt.dataset.valorUnitario = g.valor_unitario;
+        opt.textContent = g.nome + ' (' + g.gramatura + 'g/m²)';
+        sel.appendChild(opt);
+      });
+    }).catch(function() {});
+
+    var btnConfirmar = modal.querySelector('#btn-conf-conc, [onclick*="confirmar"], button[class*="accent"]');
+    if (btnConfirmar && !btnConfirmar._gramPatched) {
+      btnConfirmar._gramPatched = true;
+      var originalOnclick = btnConfirmar.getAttribute('onclick');
+      btnConfirmar.setAttribute('onclick', '(function(){'
+        + 'var sel=document.getElementById("_gram_select_modal");'
+        + 'if(sel&&sel.value) window._ofGramaturaId=sel.value;'
+        + '})();' + (originalOnclick || ''));
+    }
+  });
+  window.__gramaturaModalObs.observe(document.body, { childList: true, subtree: true });
+}
+_injetarGramaturaNoModal();
 
 if (!document.getElementById('_patch_light_css')) {
   const s = document.createElement('style');
@@ -16860,10 +16954,12 @@ function _ocultarGraficoComissoes() {
       } catch (_) { window.__comissoesPrevData = null; }
 
       var prevTotal = Number(window.__comissoesPrevData && (window.__comissoesPrevData.total_geral_vendas != null ? window.__comissoesPrevData.total_geral_vendas : window.__comissoesPrevData.total_vendido) || 0) || 0;
-      var deltaTxt = '—';
-      if (prevTotal > 0) {
-        var deltaPct = ((totalGeral - prevTotal) / prevTotal) * 100;
-        deltaTxt = (deltaPct >= 0 ? '↑ ' : '↓ ') + Math.abs(deltaPct).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+      var varPct = '';
+      if (window.__comissoesPrevData && prevTotal > 0) {
+        var diff = ((totalGeral - prevTotal) / prevTotal * 100);
+        var seta = diff >= 0 ? '↑' : '↓';
+        var cor = diff >= 0 ? '#22c55e' : '#f87171';
+        varPct = '<div style="color:' + cor + ';font-size:12px;margin-top:4px">' + seta + ' ' + Math.abs(diff).toFixed(1) + '% vs mês anterior</div>';
       }
       var ranking = grupos.slice().sort(function(a, b) { return Number(b.total_vendas || 0) - Number(a.total_vendas || 0); }).slice(0, 3);
       var rankingMax = Number(ranking[0] && ranking[0].total_vendas || 0) || 1;
@@ -16876,7 +16972,7 @@ function _ocultarGraficoComissoes() {
         + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Total Vendido</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + _escHtmlCom(_fmtRs(totalGeral)) + '</div></div>'
         + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">OFs Concluídas</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + String(totalOFs) + '</div></div>'
         + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Total Comissões</div><div style="color:#22c55e;font-size:22px;font-weight:700">' + _escHtmlCom(_fmtRs(totalComissoes)) + '</div></div>'
-        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Vendedores</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + String((vendedores || []).length) + '</div><div style="color:#94a3b8;font-size:12px;margin-top:6px">vs mês anterior: ' + _escHtmlCom(deltaTxt) + '</div></div>'
+        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Vendedores</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + String((vendedores || []).length) + '</div>' + (varPct || '<div style="color:#94a3b8;font-size:12px;margin-top:6px">—</div>') + '</div>'
         + '</div>';
 
       var medals = ['🥇', '🥈', '🥉'];
