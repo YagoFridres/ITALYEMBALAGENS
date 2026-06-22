@@ -699,125 +699,84 @@ if (!window._menuPatchFinal) {
     return el;
   }
 
-  function hasVisibleMenuChildren(el) {
-    try {
-      var children = Array.prototype.slice.call((el && el.children) || []);
-      return children.some(function(child) {
-        if (!child || child.style.display === 'none') return false;
-        var txt = normText(child.textContent);
-        if (!txt) return false;
-        return /^(li|div|a|button|span)$/i.test(child.tagName || '');
-      });
-    } catch (_) {}
-    return false;
-  }
+  function _fixMenus() {
+    var sidebar = document.querySelector('.sidebar, [class*="sidebar"]');
+    if (!sidebar) return;
 
-  function removeRelatorioMensal() {
-    try {
-      var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
-      if (!sidebar) return;
-      Array.prototype.slice.call(sidebar.querySelectorAll('*')).forEach(function(el) {
-        var txt = normText(el && el.textContent);
-        if (!txt) return;
-        if (txt !== 'relatorio mensal') return;
-        var item = /^(li|div)$/i.test(el.tagName || '') ? el : el.parentElement;
-        if (item) item.style.display = 'none';
-      });
-    } catch (_) {}
-  }
-
-  function restoreAnalises() {
-    try {
-      var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
-      if (!sidebar) return;
-      var grupos = Array.prototype.slice.call(sidebar.querySelectorAll('li,div'));
-      var grupo = null;
-      grupos.some(function(el) {
-        var txt = normText(el && el.textContent);
-        if (txt !== 'analises') return false;
-        if (Array.prototype.slice.call((el && el.children) || []).some(function(child) { return /^(li|div)$/i.test(child && child.tagName || ''); })) {
-          grupo = el;
-          return true;
-        }
-        var prox = el && el.nextElementSibling;
-        if (prox && Array.prototype.slice.call(prox.children || []).some(function(child) { return /^(li|div)$/i.test(child && child.tagName || ''); })) {
-          grupo = prox;
-          return true;
-        }
-        var pai = el && el.parentElement;
-        if (pai && pai !== sidebar && Array.prototype.slice.call(pai.children || []).some(function(child) { return /^(li|div)$/i.test(child && child.tagName || ''); })) {
-          grupo = pai;
-          return true;
-        }
-        return false;
-      });
-      if (!grupo) return;
-      Array.prototype.slice.call(grupo.children || []).forEach(function(child) {
-        if (!child || !/^(li|div)$/i.test(child.tagName || '')) return;
-        child.style.display = '';
-      });
-    } catch (_) {}
-  }
-
-  function menuBelongsFinanceiro(item, sidebar) {
-    try {
-      var cur = item;
-      for (var i = 0; i < 10 && cur && cur !== sidebar; i += 1) {
-        if (normText(cur.textContent).indexOf('financeiro') >= 0) return true;
-        cur = cur.parentElement;
-      }
-      var prev = item;
-      for (var j = 0; j < 6 && prev; j += 1) {
-        prev = prev.previousElementSibling;
-        if (!prev) break;
-        var txt = normText(prev.textContent);
-        if (txt.indexOf('financeiro') >= 0) return true;
-      }
-    } catch (_) {}
-    return false;
-  }
-
-  function removeCaixasPerdidasDuplicada() {
-    try {
-      var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
-      if (!sidebar) return;
-      var matches = [];
-      Array.prototype.slice.call(sidebar.querySelectorAll('*')).forEach(function(el) {
-        var txt = normText(el && el.textContent);
-        if (txt.indexOf('caixas perdidas') < 0) return;
-        var item = menuItemContainer(el, sidebar);
-        if (!item) return;
-        matches.push({ el: el, item: item, financeiro: menuBelongsFinanceiro(item, sidebar) });
-      });
-      if (!matches.length) return;
-      var keep = matches.find(function(m) { return m.financeiro; }) || matches[0];
-      matches.forEach(function(m) {
-        if (m.item === keep.item) return;
-        m.item.style.display = 'none';
-        m.el.style.display = 'none';
-      });
-    } catch (_) {}
-  }
-
-  function bindSidebarCleanup() {
-    function run() {
-      try { restoreAnalises(); } catch (_) {}
-      try { removeRelatorioMensal(); } catch (_) {}
-      try { removeCaixasPerdidasDuplicada(); } catch (_) {}
+    function norm(t) {
+      return String(t || '').trim().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
     }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run, { once: true });
-    else run();
-    function ensureObs() {
-      var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
-      if (!sidebar || sidebar._menuCleanupObs) return;
-      var obs = new MutationObserver(function() { run(); });
-      obs.observe(sidebar, { childList: true, subtree: true });
-      sidebar._menuCleanupObs = obs;
-    }
-    ensureObs();
-    setTimeout(ensureObs, 1200);
-    setTimeout(run, 1800);
+
+    var folhas = Array.from(sidebar.querySelectorAll('*')).filter(function(el) {
+      return el.children.length === 0 && String(el.textContent || '').trim().length > 0;
+    });
+
+    folhas.forEach(function(el) {
+      if (norm(el.textContent) !== 'relatorio mensal') return;
+      var alvo = el;
+      for (var i = 0; i < 2; i++) {
+        var p = alvo.parentElement;
+        if (!p || p === sidebar) break;
+        var outrosFilhos = Array.from(p.children).filter(function(c) {
+          return c !== alvo && c.textContent.trim().length > 2;
+        });
+        if (outrosFilhos.length > 0) break;
+        alvo = p;
+      }
+      if (alvo !== sidebar) alvo.style.display = 'none';
+    });
+
+    var grupoFinanceiro = null;
+    folhas.forEach(function(el) {
+      if (norm(el.textContent) === 'financeiro' && !grupoFinanceiro) {
+        var p = el.parentElement;
+        while (p && p !== sidebar) {
+          if (p.querySelectorAll('*').length > 3) { grupoFinanceiro = p; break; }
+          p = p.parentElement;
+        }
+      }
+    });
+
+    folhas.forEach(function(el) {
+      var t = norm(el.textContent);
+      if (t !== 'caixas perdidas') return;
+      if (grupoFinanceiro && grupoFinanceiro.contains(el)) return;
+      var alvo = el;
+      for (var i = 0; i < 2; i++) {
+        var p = alvo.parentElement;
+        if (!p || p === sidebar) break;
+        var outrosFilhos = Array.from(p.children).filter(function(c) {
+          return c !== alvo && c.textContent.trim().length > 2;
+        });
+        if (outrosFilhos.length > 0) break;
+        alvo = p;
+      }
+      if (alvo !== sidebar) alvo.style.display = 'none';
+    });
   }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(_fixMenus, 500);
+    setTimeout(_fixMenus, 1500);
+    setTimeout(_fixMenus, 3000);
+  });
+
+  var _sidebarObserver = new MutationObserver(function() {
+    clearTimeout(window._fixMenusTimer);
+    window._fixMenusTimer = setTimeout(_fixMenus, 300);
+  });
+  var _sidebarEl = document.querySelector('.sidebar, [class*="sidebar"]');
+  if (_sidebarEl) {
+    _sidebarObserver.observe(_sidebarEl, { childList: true, subtree: true });
+  } else {
+    document.addEventListener('DOMContentLoaded', function() {
+      var el = document.querySelector('.sidebar, [class*="sidebar"]');
+      if (el) _sidebarObserver.observe(el, { childList: true, subtree: true });
+    });
+  }
+  try { window._fixMenus = _fixMenus; } catch (_) {}
 
   async function recalcToneladasPatch() {
     var mes = Number((document.getElementById('ton-mes') || {}).value || (new Date().getMonth() + 1));
@@ -829,18 +788,20 @@ if (!window._menuPatchFinal) {
       if (!out.response.ok || !out.json || out.json.ok === false) throw new Error((out.json && out.json.error) || ('HTTP ' + out.response.status));
       var gramOut = await fetchJsonPatch('/api/gramaturas', { headers: tokenHeaders() });
       var gramList = (gramOut.json && (gramOut.json.data || gramOut.json)) || [];
+      window._gramaturasCached = Array.isArray(gramList) ? gramList.slice() : [];
       var gramMap = Object.create(null);
       (Array.isArray(gramList) ? gramList : []).forEach(function(g) {
         var id = String(g && g.id || '').trim();
         if (id) gramMap[id] = toNum(g && (g.gramatura || g.valor || g.nome));
       });
       var detalhes = (Array.isArray(out.json.detalhes) ? out.json.detalhes : []).map(function(d) {
-        var comp = parseFloat(String(d && (d.caixa_comprimento != null ? d.caixa_comprimento : (d.comp != null ? d.comp : d.comprimento)) || 0).replace(',', '.')) || 0;
-        var larg = parseFloat(String(d && (d.caixa_largura != null ? d.caixa_largura : (d.larg != null ? d.larg : d.largura)) || 0).replace(',', '.')) || 0;
+        try { console.log('[TON DEBUG]', d && (d.of || d.numero), 'comp:', d && d.caixa_comprimento, 'larg:', d && d.caixa_largura, 'gram_id:', d && d.gramatura_id); } catch (_) {}
+        var comp = parseFloat(String(d && (d.caixa_comprimento || 0)).replace(',', '.')) || 0;
+        var larg = parseFloat(String(d && (d.caixa_largura || 0)).replace(',', '.')) || 0;
         var gramId = String(d && (d.gramatura_id || d.gramaturaId) || '').trim();
-        var gram = toNum(gramMap[gramId]);
-        var qtd = parseInt(String(d && (d.qtd != null ? d.qtd : d.quantidade) || 0).replace(',', '.'), 10) || 0;
-        try { console.log('[TON] OF', d && (d.of || d.numero), 'comp:', d && d.comp, 'larg:', d && d.larg, 'gram:', d && d.gramatura_id, 'qtd:', d && d.qtd); } catch (_) {}
+        var gramObj = (window._gramaturasCached || []).find(function(g) { return String(g && g.id || '') === gramId; });
+        var gram = parseFloat(String(gramObj ? (gramObj.gramatura || gramObj.valor || 0) : (gramMap[gramId] || 0)).replace(',', '.')) || 0;
+        var qtd = parseInt(String(d && (d.qtd || 0)).replace(',', '.'), 10) || 0;
         var area = (comp > 0 && larg > 0 && qtd > 0) ? ((comp / 1000) * (larg / 1000) * qtd) : 0;
         var toneladas = (area > 0 && gram > 0) ? (area * (gram / 1000000)) : 0;
         return Object.assign({}, d, {
@@ -996,15 +957,17 @@ if (!window._menuPatchFinal) {
   }
 
   function pcpStatusMeta(of) {
-    var canceled = !!(of && (of.deleted_at || isCanceladaStatus(of.status)));
-    var concluida = isConcluidaStatus(of && of.status);
-    var urgente = isUrgenteOf(of);
-    var dataEntrega = of && (of.ent || of.data_entrega);
-    var atrasada = !!(dataEntrega && isLateDate(dataEntrega) && !concluida && !canceled);
+    var status = String(of && of.status || '').toLowerCase();
+    var canceled = !!(of && (of.deleted_at || of.deletado || isCanceladaStatus(of.status)));
+    var concluida = status.indexOf('conclu') >= 0;
+    var urgente = !!(of && (of.urgente === true || of.urg === true || of.urgente === 1 || of.urg === 1));
+    var hoje = new Date().toISOString().split('T')[0];
+    var entrega = String(of && (of.ent || of.data_entrega) || '');
+    var atrasada = !!(entrega && entrega < hoje && !concluida && !canceled && !urgente);
     if (canceled) return { label: 'Excluída', color: '#6B7280', opacity: 0.6 };
+    if (concluida) return { label: 'Concluída', color: '#22C55E', opacity: 1 };
     if (urgente) return { label: 'Urgente', color: '#F97316', opacity: 1 };
     if (atrasada) return { label: 'Atrasada', color: '#EF4444', opacity: 1 };
-    if (concluida) return { label: 'Concluída', color: '#22C55E', opacity: 0.7 };
     return { label: 'Em Aberto', color: '#3B82F6', opacity: 1 };
   }
 
@@ -1030,7 +993,7 @@ if (!window._menuPatchFinal) {
     if (!page) return;
     Array.prototype.slice.call(page.querySelectorAll('button')).forEach(function(btn) {
       var txt = normText(btn && btn.textContent);
-      if (txt === 'cancelar of' || txt === 'alterar of' || txt === 'nova of' || txt === 'of rapida') {
+      if (txt === 'cancelar of' || txt === 'alterar of') {
         btn.style.display = 'none';
       }
     });
@@ -1132,16 +1095,10 @@ if (!window._menuPatchFinal) {
       return true;
     });
     list.sort(function(a, b) {
-      var ma = pcpStatusMeta(a);
-      var mb = pcpStatusMeta(b);
-      if (ma.label !== mb.label) {
-        var rank = { 'Urgente': 0, 'Atrasada': 1, 'Em Aberto': 2, 'Concluída': 3, 'Excluída': 4 };
-        return (rank[ma.label] || 9) - (rank[mb.label] || 9);
-      }
-      var da = String(a.ent || a.data_entrega || a.dia || a.created_at || '');
-      var db = String(b.ent || b.data_entrega || b.dia || b.created_at || '');
-      if (da !== db) return da.localeCompare(db);
-      return String(a.of || a.numero || '').localeCompare(String(b.of || b.numero || ''));
+      var da = String(a.dia || a.created_at || a.ent || a.data_entrega || '');
+      var db = String(b.dia || b.created_at || b.ent || b.data_entrega || '');
+      if (da !== db) return db.localeCompare(da);
+      return String(b.of || b.numero || '').localeCompare(String(a.of || a.numero || ''));
     });
     return list;
   }
@@ -1185,10 +1142,11 @@ if (!window._menuPatchFinal) {
       var mCells = colsMaq.map(function(col) {
         return setMaq[col] ? '<td class="tc"><span class="badge-maquina-alocada">' + esc(col === 'CORTE VINCO ROTATIVA' ? 'CVR' : col.replace('IMP ', 'I')) + '</span></td>' : '<td class="tc"></td>';
       }).join('');
-      var qtd = parseInt(window.ofCampo(o, 'quantidade') || o.quantidade || 0, 10) || 0;
-      var unitVal = parseFloat(window.ofCampo(o, 'preco') || 0) || 0;
-      var totalVal = parseFloat(window.ofCampo(o, 'total'));
-      if (!Number.isFinite(totalVal)) totalVal = parseFloat((unitVal * qtd) || 0) || 0;
+      var preco = parseFloat(o.preco || o.vl_unit || o.valor_unitario || window.ofCampo(o, 'preco') || 0) || 0;
+      var qtd = parseInt(o.qtd || o.quantidade || window.ofCampo(o, 'quantidade') || 0, 10) || 0;
+      var totalVal = parseFloat(o.total || o.valor_total || window.ofCampo(o, 'total') || (preco * qtd) || 0) || 0;
+      var vlUnitHtml = preco > 0 ? ('R$ ' + preco.toFixed(2).replace('.', ',')) : '—';
+      var totalHtml = totalVal > 0 ? ('R$ ' + totalVal.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')) : '—';
       var tamanho = (o.caixa_comprimento && o.caixa_largura) ? (String(o.caixa_comprimento) + 'x' + String(o.caixa_largura) + ' mm') : '—';
       var cores = _fmtCoresPcp(o);
       var imgPrintUrl = typeof ofGetImagemUrl === 'function' ? ofGetImagemUrl(o) : '';
@@ -1203,8 +1161,8 @@ if (!window._menuPatchFinal) {
         + '<td>' + window._clienteLinkHtml(cliIdTxt, cliTxt) + (typeof empBadge === 'function' ? ' ' + empBadge(o.empId || o.emp_id || o.empresa_id) : '') + '</td>'
         + '<td style="color:var(--text2)">' + esc(vendTxt) + '</td>'
         + '<td class="tc">' + esc(String(qtd.toLocaleString('pt-BR'))) + '</td>'
-        + '<td class="tc" style="font-family:var(--mono);font-weight:900">' + esc(formatOfMoneyDisplay(o, 'preco', unitVal)) + '</td>'
-        + '<td class="tc" style="font-family:var(--mono);font-weight:900;color:var(--green)">' + esc((hasOfValue(o, 'total') || unitVal || qtd) ? money(totalVal) : '—') + '</td>'
+        + '<td class="tc" style="font-family:var(--mono);font-weight:900">' + esc(vlUnitHtml) + '</td>'
+        + '<td class="tc" style="font-family:var(--mono);font-weight:900;color:var(--green)">' + esc(totalHtml) + '</td>'
         + '<td class="tc">' + esc(tamanho) + '</td>'
         + '<td class="tc">' + esc(cores) + '</td>'
         + mCells
@@ -1295,7 +1253,6 @@ if (!window._menuPatchFinal) {
   }
 
   bindTrocarDelegationPatch();
-  bindSidebarCleanup();
   wrapToneladasPatch();
   wrapSalvarClonePatch();
   wrapConclusaoImagemPatch();
@@ -1310,82 +1267,8 @@ if (!window._menuPatchFinal) {
     try { wrapRenderComissoesPatch(); } catch (_) {}
     try { patchPcpRowsAndStatus(); } catch (_) {}
   }, 1500);
-
-  try { window.removeRelatorioMensal = removeRelatorioMensal; } catch (_) {}
-  try { window.removeCaixasPerdidasDuplicada = removeCaixasPerdidasDuplicada; } catch (_) {}
+  try { if (typeof window._fixMenus === 'function') window._fixMenus(); } catch (_) {}
 })();
-setTimeout(function() {
-  function _hideByText(texto) {
-    var all = document.querySelectorAll('*');
-    for (var i = 0; i < all.length; i++) {
-      var el = all[i];
-      if (el.children.length > 0) continue;
-      if (String(el.textContent || '').trim() !== texto) continue;
-      var cur = el.parentElement;
-      while (cur && cur !== document.body) {
-        var h = cur.offsetHeight;
-        var w = cur.offsetWidth;
-        if (h > 10 && h < 80 && w > 60) {
-          cur.style.cssText = 'display:none!important';
-          return true;
-        }
-        cur = cur.parentElement;
-      }
-    }
-    return false;
-  }
-
-  var rm = setInterval(function() {
-    try {
-      if (typeof window.removeRelatorioMensal === 'function') window.removeRelatorioMensal();
-    } catch (_) {}
-  }, 1000);
-
-  setTimeout(function() { clearInterval(rm); }, 30000);
-}, 3000);
-
-setTimeout(function() {
-  function _hideCP() {
-    var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
-    if (!sidebar) return;
-
-    var finGroup = null;
-    var allEls = sidebar.querySelectorAll('*');
-    for (var i = 0; i < allEls.length; i++) {
-      var el = allEls[i];
-      if (el.children.length > 0) continue;
-      var txt = String(el.textContent || '').trim();
-      if (txt === 'Toneladas Vendidas' || txt === 'Comissões') {
-        var p = el.parentElement;
-        while (p && p !== sidebar) {
-          if (p.children.length >= 3) { finGroup = p; break; }
-          p = p.parentElement;
-        }
-        break;
-      }
-    }
-
-    for (var j = 0; j < allEls.length; j++) {
-      var el2 = allEls[j];
-      if (el2.children.length > 0) continue;
-      var txt2 = String(el2.textContent || '').trim();
-      if (txt2 !== 'Caixas Perdidas' && txt2 !== 'Inconformidades') continue;
-      var item = el2.parentElement;
-      while (item && item !== sidebar) {
-        var h2 = item.offsetHeight;
-        var w2 = item.offsetWidth;
-        if (h2 > 10 && h2 < 80 && w2 > 60) break;
-        item = item.parentElement;
-      }
-      if (!item || item === sidebar) continue;
-      if (finGroup && finGroup.contains(item)) continue;
-      item.style.cssText = 'display:none!important';
-    }
-  }
-
-  var cp = setInterval(_hideCP, 1000);
-  setTimeout(function() { clearInterval(cp); }, 30000);
-}, 3000);
 
 function _aplicarTemaClaro() {
   try {
@@ -8317,6 +8200,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       } catch (_) {
         try { openFn.apply(window, []); } catch (_) {}
       } finally {
+        setTimeout(function() { try { bindNovaOfModalCleanup(); } catch (_) {} }, 250);
         setTimeout(function() {
           try { delete btn.dataset.patchOfOpening; } catch (_) {}
         }, 1200);
@@ -8694,6 +8578,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         } catch (_) {}
       }, 200);
 
+      setTimeout(function() { try { bindNovaOfModalCleanup(); } catch (_) {} }, 250);
       patchSalvarOfRapida();
     };
     window.abrirModalOF._patchToOfRapidaEdit = true;
@@ -8742,6 +8627,64 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function getToken() {
     try { return String(window._token || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || ''); } catch (_) { return ''; }
+  }
+
+  function cleanupNovaOfModal() {
+    try {
+      var cleanupFns = Array.isArray(window._novaOfCleanupFns) ? window._novaOfCleanupFns.slice() : [];
+      cleanupFns.forEach(function(fn) { try { fn(); } catch (_) {} });
+    } catch (_) {}
+    try { window._novaOfCleanupFns = []; } catch (_) {}
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('#modal-of-rapida, #modal-nova-of-rapida, #modal-of-rapida-ov, #modal-of, #modal-nova-of')).forEach(function(el) {
+        try { el.remove(); } catch (_) {}
+      });
+    } catch (_) {}
+    try {
+      Array.prototype.slice.call(document.body ? document.body.children : []).forEach(function(el) {
+        var sig = String((el && el.id) || '') + ' ' + String((el && el.className) || '');
+        sig = sig.toLowerCase();
+        if (sig.indexOf('of-rapida') >= 0 || sig.indexOf('nova-of') >= 0 || sig.indexOf('modal-of') >= 0) {
+          try { el.remove(); } catch (_) {}
+        }
+      });
+    } catch (_) {}
+    try { document.body.style.overflow = ''; } catch (_) {}
+    try { window._novaOfAberta = false; } catch (_) {}
+  }
+
+  function bindNovaOfModalCleanup() {
+    try {
+      var modal = document.getElementById('modal-of-rapida') || document.getElementById('modal-nova-of-rapida') || document.getElementById('modal-of') || document.getElementById('modal-nova-of');
+      if (!modal || modal.dataset.patchNovaOfCleanup === '1') return;
+      modal.dataset.patchNovaOfCleanup = '1';
+      window._novaOfAberta = true;
+      if (!Array.isArray(window._novaOfCleanupFns)) window._novaOfCleanupFns = [];
+      var fecharTudo = function() {
+        try { cleanupNovaOfModal(); } catch (_) {}
+      };
+      var onBackdrop = function(ev) {
+        try {
+          if (ev && ev.target === modal) fecharTudo();
+        } catch (_) {}
+      };
+      modal.addEventListener('click', onBackdrop, true);
+      window._novaOfCleanupFns.push(function() {
+        try { modal.removeEventListener('click', onBackdrop, true); } catch (_) {}
+      });
+      Array.prototype.slice.call(modal.querySelectorAll('button, [role="button"], .modal-close, .close')).forEach(function(btn) {
+        var txt = String(btn && btn.textContent || '').trim().toLowerCase();
+        var isClose = txt === 'x' || txt === 'fechar' || txt === 'cancelar' || txt === '×';
+        if (!isClose && !(btn.classList && (btn.classList.contains('modal-close') || btn.classList.contains('close')))) return;
+        var handler = function() {
+          try { setTimeout(fecharTudo, 0); } catch (_) {}
+        };
+        btn.addEventListener('click', handler, true);
+        window._novaOfCleanupFns.push(function() {
+          try { btn.removeEventListener('click', handler, true); } catch (_) {}
+        });
+      });
+    } catch (_) {}
   }
 
   function getColorsSource() {
@@ -12644,6 +12587,8 @@ window._mbnActive = function(id) {
       var groups = Object.create(null);
       var all = [];
       var originalOrder = Object.create(null);
+      window._ofmaqAllOfs = [];
+      window._ofmaqAllOfsOriginal = null;
       var roots = Array.prototype.slice.call(document.querySelectorAll('.maq-body[data-maquina-id], .maq-ofs[data-maquina-id], [data-maquina-lista="1"][data-maquina-id]'));
       roots.forEach(function(listEl) {
         var maq = String(listEl && (listEl.getAttribute('data-maquina-id') || listEl.getAttribute('data-maquina') || '') || '').trim() || 'Sem Máquina';
@@ -12658,6 +12603,7 @@ window._mbnActive = function(id) {
           var clone = Object.assign({}, of, { __maquinaRender: maq });
           if (!groups[maq]) groups[maq] = [];
           groups[maq].push(clone);
+          window._ofmaqAllOfs.push(clone);
           all.push(clone);
         });
         originalOrder[maq] = (groups[maq] || []).map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
@@ -12669,6 +12615,7 @@ window._mbnActive = function(id) {
           var clone = Object.assign({}, of, { __maquinaRender: maq });
           if (!groups[maq]) groups[maq] = [];
           groups[maq].push(clone);
+          window._ofmaqAllOfs.push(clone);
           all.push(clone);
         });
         Object.keys(groups).forEach(function(maq) {
@@ -12678,16 +12625,14 @@ window._mbnActive = function(id) {
 
       window._ofmaqVisibleGroups = groups;
       window._ofmaqLastGroupOfs = groups;
-      window._ofmaqAllOfs = all.slice();
+      window._ofmaqAllOfs = (window._ofmaqAllOfs || []).slice();
       if (!window._ofmaqAllById || typeof window._ofmaqAllById !== 'object') window._ofmaqAllById = Object.create(null);
       all.forEach(function(of) {
         var sid = String(of && of.id || '').trim();
         if (sid) window._ofmaqAllById[sid] = of;
       });
-      if (!window._ofmaqOrderMode || window._ofmaqOrderMode === 'original' || !window._ofmaqOriginalOrderByMachine) {
-        window._ofmaqOriginalOrderByMachine = originalOrder;
-        window._ofmaqAllOfsOriginal = all.slice();
-      }
+      window._ofmaqOriginalOrderByMachine = originalOrder;
+      window._ofmaqAllOfsOriginal = window._ofmaqAllOfs.slice();
     } catch (_) {}
   }
 
@@ -13127,7 +13072,8 @@ window._mbnActive = function(id) {
 
   function buildGroupsFromAllOfs() {
     var groups = Object.create(null);
-    getOfmaqRawList().forEach(function(of) {
+    var source = Array.isArray(window._ofmaqAllOfs) && window._ofmaqAllOfs.length ? window._ofmaqAllOfs : getOfmaqRawList();
+    source.forEach(function(of) {
       var maq = getMachineFromOf(of);
       if (!groups[maq]) groups[maq] = [];
       groups[maq].push(of);
@@ -13763,6 +13709,10 @@ window._mbnActive = function(id) {
   }
 
   window._ordenarPorPrioridade = async function() {
+    if (!window._ofmaqAllOfs || !window._ofmaqAllOfs.length) {
+      alert('Nenhuma OF carregada ainda.');
+      return;
+    }
     if (String(window._ofmaqOrderMode || 'original') === 'medidas') {
       return window._resetarOrdemOfmaq();
     }
@@ -13796,6 +13746,10 @@ window._mbnActive = function(id) {
   };
 
   window._agruparPorSetup = async function() {
+    if (!window._ofmaqAllOfs || !window._ofmaqAllOfs.length) {
+      alert('Nenhuma OF carregada ainda.');
+      return;
+    }
     capturarEstadoOfmaqVisivel();
     var groups = buildGroupsFromAllOfs();
     var maquinas = Object.keys(groups || {});
@@ -18928,9 +18882,7 @@ function _ocultarGraficoComissoes() {
 })();
 (function _removerDuplicatasMenu() {
   function processar() {
-    try { if (typeof window.restoreAnalises === 'function') window.restoreAnalises(); } catch (_) {}
-    try { if (typeof window.removeRelatorioMensal === 'function') window.removeRelatorioMensal(); } catch (_) {}
-    try { if (typeof window.removeCaixasPerdidasDuplicada === 'function') window.removeCaixasPerdidasDuplicada(); } catch (_) {}
+    try { if (typeof window._fixMenus === 'function') window._fixMenus(); } catch (_) {}
   }
 
   processar();
@@ -18963,6 +18915,7 @@ window._renderGramaturas = async function() {
     var json = await resp.json().catch(function() { return null; });
     var lista = Array.isArray(json) ? json : (json && json.data || []);
     window._gramaturasList = Array.isArray(lista) ? lista.slice() : [];
+    window._gramaturasCached = window._gramaturasList.slice();
     var fornResp = await fetch('/api/fornecedores', { headers: headers });
     var fornJson = await fornResp.json().catch(function() { return null; });
     window._gramaturasFornecedores = Array.isArray(fornJson) ? fornJson.slice() : (fornJson && fornJson.data || []);
@@ -19152,6 +19105,7 @@ window._recarregarToneladas = async function() {
     });
     var gramJson = await gramResp.json().catch(function() { return null; });
     var gramaturas = Array.isArray(gramJson) ? gramJson : (gramJson && gramJson.data || []);
+    window._gramaturasCached = Array.isArray(gramaturas) ? gramaturas.slice() : [];
 
     if (!json || !json.ok) {
       if (corpo) corpo.innerHTML = '<div style="color:#f87171;padding:20px">Erro: ' + escHtml(json && json.error || 'falha') + '</div>';
@@ -19168,10 +19122,11 @@ window._recarregarToneladas = async function() {
     }));
 
     var detalhes = (Array.isArray(json.detalhes) ? json.detalhes : []).map(function(d) {
-      var comp = parseFloat(String(d && (d.caixa_comprimento || d.comp || 0)).replace(',', '.')) || 0;
-      var larg = parseFloat(String(d && (d.caixa_largura || d.larg || 0)).replace(',', '.')) || 0;
+      try { console.log('[TON DEBUG]', d && (d.of || d.numero), 'comp:', d && d.caixa_comprimento, 'larg:', d && d.caixa_largura, 'gram_id:', d && d.gramatura_id); } catch (_) {}
+      var comp = parseFloat(String(d && (d.caixa_comprimento || 0)).replace(',', '.')) || 0;
+      var larg = parseFloat(String(d && (d.caixa_largura || 0)).replace(',', '.')) || 0;
       var qtd = parseInt(String(d && (d.qtd || 0)).replace(',', '.'), 10) || 0;
-      var gram = (gramaturas || []).find(function(g) {
+      var gram = (window._gramaturasCached || []).find(function(g) {
         return String(g && g.id || '') === String(d && d.gramatura_id || '');
       });
       var gramValor = parseFloat(String(gram && (gram.gramatura != null ? gram.gramatura : gram.valor) || 0).replace(',', '.')) || 0;
@@ -19322,10 +19277,10 @@ window._initComissoes = function() {
   }
 
   function fmtMoneyRaw(raw, fallback) {
-    if (raw == null) return '—';
     var n = Number(raw);
     if (!Number.isFinite(n)) n = Number(fallback || 0) || 0;
-    return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (!(n > 0)) return '—';
+    return 'R$ ' + n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   }
 
   function allOfsStorage() {
@@ -19378,14 +19333,12 @@ window._initComissoes = function() {
         }
         var of = findOfStorage(ref);
         if (!of) return;
-        var qtd = parseInt(window.ofCampo(of, 'quantidade') || of && of.quantidade || 0, 10) || 0;
-        var precoRaw = window.ofCampo(of, 'preco');
-        var totalRaw = window.ofCampo(of, 'total');
-        var preco = parseFloat(precoRaw || 0) || 0;
-        var total = parseFloat(totalRaw != null ? totalRaw : (preco * qtd)) || 0;
+        var preco = parseFloat(of && (of.preco || of.vl_unit || of.valor_unitario || window.ofCampo(of, 'preco')) || 0) || 0;
+        var qtd = parseInt(of && (of.qtd || of.quantidade || window.ofCampo(of, 'quantidade')) || 0, 10) || 0;
+        var total = parseFloat(of && (of.total || of.valor_total || window.ofCampo(of, 'total') || (preco * qtd)) || 0) || 0;
         var tds = tr.querySelectorAll('td');
-        if (unitIdx >= 0 && tds[unitIdx]) tds[unitIdx].textContent = fmtMoneyRaw(precoRaw, preco);
-        if (totalIdx >= 0 && tds[totalIdx]) tds[totalIdx].textContent = fmtMoneyRaw(totalRaw, total);
+        if (unitIdx >= 0 && tds[unitIdx]) tds[unitIdx].textContent = fmtMoneyRaw(preco, preco);
+        if (totalIdx >= 0 && tds[totalIdx]) tds[totalIdx].textContent = fmtMoneyRaw(total, total);
       });
     });
   }
@@ -20640,9 +20593,7 @@ window._initComissoes = function() {
   }
 
   function _ocultarMenusIndesejados() {
-    try { if (typeof window.restoreAnalises === 'function') window.restoreAnalises(); } catch (_) {}
-    try { if (typeof window.removeRelatorioMensal === 'function') window.removeRelatorioMensal(); } catch (_) {}
-    try { if (typeof window.removeCaixasPerdidasDuplicada === 'function') window.removeCaixasPerdidasDuplicada(); } catch (_) {}
+    try { if (typeof window._fixMenus === 'function') window._fixMenus(); } catch (_) {}
   }
 
   function _clonarItemMenu(pageIdRef, novoPageId, novoTexto, novoId) {

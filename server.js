@@ -14350,7 +14350,7 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
     const dataFim = (mes && ano) ? new Date(Number(ano), Number(mes), 0).toISOString().slice(0, 10) : '';
     let ofsQuery = supabase
       .from('ofs')
-      .select('of,status,preco,total,qtd,clinome,cli_id,gramatura_id,data_conclusao,caixa_comprimento,caixa_largura,caixa_altura,empresa_id,emp_id,deleted_at,ent')
+      .select('id, of, numero, status, preco, total, qtd, clinome, cli_id, gramatura_id, data_conclusao, caixa_comprimento, caixa_largura, caixa_altura, empresa_id, emp_id, deleted_at')
       .ilike('status', '%conclu%')
       .is('deleted_at', null);
     if (empresaId) ofsQuery = ofsQuery.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId}`);
@@ -14378,8 +14378,9 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       totalM2 += areaM2;
 
       detalhes.push({
-        of: of.of || of.id,
-        numero: of.of || of.id,
+        ...of,
+        of: of.of || of.numero || of.id,
+        numero: of.numero || of.of || of.id,
         cli_id: of.cli_id,
         cliente: String(of.clinome || '').trim() || '—',
         clinome: String(of.clinome || '').trim() || '—',
@@ -14388,8 +14389,8 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
         preco: Number(of.preco || 0) || 0,
         total: Number(of.total || 0) || 0,
         status: String(of.status || '').trim(),
-        caixa_comprimento: comp,
-        caixa_largura: larg,
+        caixa_comprimento: of.caixa_comprimento,
+        caixa_largura: of.caixa_largura,
         caixa_altura: Number(of.caixa_altura || 0) || 0,
         empresa_id: of.empresa_id || null,
         emp_id: of.emp_id || null,
