@@ -1002,8 +1002,55 @@ if (!window._menuPatchFinal) {
   function _fmtCoresPcp(of) {
     var raw = of && of.cores_impressao;
     if (!raw) return '—';
-    if (Array.isArray(raw)) return raw.join(', ') || '—';
-    try { return JSON.stringify(raw) || '—'; } catch (_) { return String(raw || '—'); }
+    try {
+      var c = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (Array.isArray(c)) return c.map(function(v) { return String(v == null ? '' : v).trim(); }).filter(Boolean).join(', ') || '—';
+      if (c && typeof c === 'object') {
+        return Object.keys(c).map(function(k) {
+          var v = c[k];
+          if (v == null || v === false) return '';
+          if (typeof v === 'object') return '';
+          return String(v).trim();
+        }).filter(Boolean).join(', ') || '—';
+      }
+      return String(c || '—');
+    } catch (_) {
+      return String(raw || '—');
+    }
+  }
+
+  function _listarMaquinasPcp(maq) {
+    if (!maq) return [];
+    try {
+      var m = typeof maq === 'string' ? JSON.parse(maq) : maq;
+      if (Array.isArray(m)) {
+        return m.map(function(item) {
+          if (item == null) return '';
+          if (typeof item === 'string' || typeof item === 'number') return String(item).trim();
+          if (typeof item === 'object') {
+            return String(item.nome || item.maquina || item.label || item.value || item.id || '').trim();
+          }
+          return '';
+        }).filter(Boolean);
+      }
+      if (m && typeof m === 'object') {
+        return Object.keys(m).map(function(k) {
+          var v = m[k];
+          if (v == null || v === false) return '';
+          if (typeof v === 'string' || typeof v === 'number') return String(v).trim();
+          if (typeof v === 'object') return String(v.nome || v.maquina || v.label || v.value || v.id || '').trim();
+          return '';
+        }).filter(Boolean);
+      }
+      return String(m || '').trim() ? [String(m).trim()] : [];
+    } catch (_) {
+      return String(maq || '').trim() ? String(maq).split(/[,;|/]+/g).map(function(v) { return String(v || '').trim(); }).filter(Boolean) : [];
+    }
+  }
+
+  function _exibirMaquinas(maq) {
+    var lista = _listarMaquinasPcp(maq);
+    return lista.length ? lista.join(', ') : '—';
   }
 
   function ensurePcpExtraHeaders() {
@@ -1137,10 +1184,13 @@ if (!window._menuPatchFinal) {
       var fluxoNames = typeof ofFluxoGetNames === 'function' ? (ofFluxoGetNames(o) || []) : [];
       var setMaq = Object.create(null);
       (fluxoNames || []).forEach(function(n) { if (n) setMaq[String(n)] = 1; });
-      if (Array.isArray(o.maq)) (o.maq || []).forEach(function(n) { if (n) setMaq[String(n)] = 1; });
-      else parseListaTextoOuJson(o.maq).forEach(function(n) { if (n) setMaq[String(n)] = 1; });
+      _listarMaquinasPcp(o.maq).forEach(function(n) { if (n) setMaq[String(n)] = 1; });
       var mCells = colsMaq.map(function(col) {
-        return setMaq[col] ? '<td class="tc"><span class="badge-maquina-alocada">' + esc(col === 'CORTE VINCO ROTATIVA' ? 'CVR' : col.replace('IMP ', 'I')) + '</span></td>' : '<td class="tc"></td>';
+        var badgeTxt = setMaq[col] ? (col === 'CORTE VINCO ROTATIVA' ? 'CVR' : col.replace('IMP ', 'I')) : '';
+        var titleTxt = setMaq[col] ? _exibirMaquinas(o.maq) : '';
+        return setMaq[col]
+          ? '<td class="tc" title="' + esc(titleTxt) + '"><span class="badge-maquina-alocada">' + esc(badgeTxt) + '</span></td>'
+          : '<td class="tc"></td>';
       }).join('');
       var preco = parseFloat(o.preco || o.vl_unit || o.valor_unitario || window.ofCampo(o, 'preco') || 0) || 0;
       var qtd = parseInt(o.qtd || o.quantidade || window.ofCampo(o, 'quantidade') || 0, 10) || 0;
@@ -8497,6 +8547,87 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     window.salvarOfRapida._patchEditToPatch = true;
   }
 
+  function patchSalvarOfRapidaSemVendedor() {
+    function wrapSalvarFn(nome) {
+      if (typeof window[nome] !== 'function') return;
+      if (window[nome]._patchSemVendedorOpcional) return;
+      var orig = window[nome];
+      window[nome] = async function() {
+        if (String(window._ofRapidaEditandoId || '').trim()) {
+          return orig.apply(this, arguments);
+        }
+        var clienteNome = String((document.getElementById('of-r-cliente') || {}).value || '').trim();
+        var produto = String((document.getElementById('of-r-produto') || {}).value || '').trim();
+        var entrega = String((document.getElementById('of-r-entrega') || {}).value || '').slice(0, 10);
+        var vendSel = document.getElementById('of-r-vendedor') || document.getElementById('ofr-vendedor') || document.querySelector('select[name="vendid"]') || document.querySelector('select[name="vendedor_id"]');
+        var vendId = String(vendSel && vendSel.value || '').trim();
+        if (vendId) return orig.apply(this, arguments);
+
+        if (!clienteNome || !produto || !entrega) {
+          alert('Preencha: Cliente, Produto, Data de Entrega');
+          return;
+        }
+        try {
+          if (window.apiFetch && typeof window.apiFetch === 'function') {
+            var cliId = '';
+            var cliNome = '';
+            var el = document.getElementById('f-cli-search') || document.getElementById('of-r-cliente');
+            if (el && el.dataset) {
+              cliId = String(el.dataset.clienteId || '').trim();
+              cliNome = String(el.dataset.clienteNome || '').trim();
+            }
+            if (!cliNome) cliNome = clienteNome;
+            var qtd = Math.trunc(Number((document.getElementById('of-r-qtd') || {}).value || 0) || 0);
+            var preco = parseFloat(String((document.getElementById('of-r-vlunit') || {}).value || '0').replace(',', '.')) || 0;
+            var total = parseFloat(String((document.getElementById('of-r-total') || {}).value || '0').replace(',', '.')) || ((qtd > 0 && preco > 0) ? (qtd * preco) : 0);
+            var comp = parseFloat(String((document.getElementById('of-r-comp') || {}).value || '0').replace(',', '.')) || 0;
+            var larg = parseFloat(String((document.getElementById('of-r-larg') || {}).value || '0').replace(',', '.')) || 0;
+            var maq = String((document.getElementById('of-r-maquina') || {}).value || '').trim();
+            var body = {
+              cli_id: cliId || undefined,
+              cliId: cliId || undefined,
+              cliente_id: cliId || undefined,
+              clinome: cliNome || clienteNome,
+              cliente_nome: cliNome || clienteNome,
+              produto: produto,
+              descricao: produto,
+              ent: entrega,
+              data_entrega: entrega,
+              qtd: qtd || 0,
+              quantidade: qtd || 0,
+              preco: preco || 0,
+              valor_unitario: preco || 0,
+              total: total || 0,
+              valor_total: total || 0,
+              caixa_comprimento: comp || 0,
+              caixa_largura: larg || 0,
+              vendedor_id: null,
+              vendid: null,
+              vendedor: '',
+              maq: maq ? [maq] : undefined
+            };
+            var resp = await window.apiFetch('/api/ofs', { method: 'POST', body: body });
+            var json = resp && typeof resp.json === 'function' ? await resp.json().catch(function() { return null; }) : null;
+            if (!(resp && resp.ok) || (json && json.ok === false)) throw new Error(json && (json.error || json.message) || 'Erro ao salvar OF');
+            try { if (typeof window.fecharNovaOfRapida === 'function') window.fecharNovaOfRapida(); } catch (_) {}
+            try { cleanupNovaOfModal(); } catch (_) {}
+            try { if (typeof window.carregarOFs === 'function') window.carregarOFs(); } catch (_) {}
+            try { if (typeof window.renderPCP === 'function') window.renderPCP(); } catch (_) {}
+            try { window.toast('OF salva com sucesso! ✅', 'var(--green)'); } catch (_) {}
+            return json;
+          }
+        } catch (e) {
+          try { window.toast('Erro ao salvar OF: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+          return;
+        }
+        return orig.apply(this, arguments);
+      };
+      window[nome]._patchSemVendedorOpcional = true;
+    }
+    wrapSalvarFn('salvarOfRapida');
+    wrapSalvarFn('salvarNovaOfRapida');
+  }
+
   function patchAbrirModalOF() {
     if (typeof window.abrirModalOF !== 'function') return;
     if (window.abrirModalOF._patchToOfRapidaEdit) return;
@@ -9186,6 +9317,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { patchResolveCliId(); } catch (_) {}
     try { patchOfCliChange(); } catch (_) {}
     try { patchApiFetchForCliId(); } catch (_) {}
+    try { patchSalvarOfRapidaSemVendedor(); } catch (_) {}
   }
 
   if (document.readyState === 'loading') {

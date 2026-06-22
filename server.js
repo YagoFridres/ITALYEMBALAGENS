@@ -3430,21 +3430,33 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
 
     const empId = await resolverEmpresaId(req);
-    if (!empId) return res.json({ ok: true, data: [], total: 0, offset: 0, limit: 0, hasMore: false });
-
     const after = String(req.query.after || '').trim();
-    const afterIso = (after && after !== 'undefined' && after !== 'null' && after !== '[object Object]') ? after : '';
+    let afterIso = '';
+    if (after && after !== 'undefined' && after !== 'null' && after !== '[object Object]') {
+      try {
+        const afterDate = new Date(decodeURIComponent(after));
+        if (!isNaN(afterDate.getTime())) afterIso = afterDate.toISOString();
+      } catch (e) {
+        try { console.error('[API OFS] Erro ao parsear after:', after, e?.message || e); } catch (_) {}
+        afterIso = '';
+      }
+    }
     const limitRaw = String(req.query.limit || '').trim();
-    const limit = Math.min(parseInt(limitRaw, 10) || 500, 1000);
-    const offset = parseInt(String(req.query.offset || ''), 10) || 0;
+    const limitNum = parseInt(limitRaw, 10);
+    const limit = Math.max(1, Math.min(Number.isFinite(limitNum) ? limitNum : 500, 1000));
+    const offsetNum = parseInt(String(req.query.offset || ''), 10);
+    const offset = Number.isFinite(offsetNum) ? Math.max(0, offsetNum) : 0;
     const status = req.query.status;
     const busca = String(req.query.busca || req.query.search || '').trim();
     const clienteFiltro = String((req.query.cli_id || req.query.cliente_id || '') || '').trim();
-    const empresaFiltro = req.query.empresa;
+    const empresaFiltro = String(req.query.empresa_id || req.query.empresa || '').trim();
+    const todasEmpresasRaw = String(req.query.todas_empresas ?? req.query.todasEmpresas ?? '').trim().toLowerCase();
+    const todasEmpresas = ['1', 'true', 'sim', 'yes'].includes(todasEmpresasRaw) || empresaFiltro === 'todas' || empresaFiltro === 'all';
     const incluirExcluidasRaw = String(req.query.incluir_excluidas ?? req.query.incluirExcluidas ?? '').trim().toLowerCase();
     const incluirExcluidas = ['1', 'true', 'sim', 'yes'].includes(incluirExcluidasRaw);
     const useCache = !afterIso;
-    const cacheKey = useCache ? ('ofs_v13_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '') + '_' + (incluirExcluidas ? 'all' : 'active')) : '';
+    if (!empId && !todasEmpresas) return res.json({ ok: true, data: [], total: 0, offset: 0, limit: 0, hasMore: false });
+    const cacheKey = useCache ? ('ofs_v14_' + (todasEmpresas ? 'all' : empId) + '_' + (empresaFiltro || '') + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '') + '_' + (incluirExcluidas ? 'all' : 'active')) : '';
     if (useCache) {
       const cached = cacheGet(cacheKey);
       if (cached) return res.json(cached);
@@ -3460,10 +3472,12 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         .select(ofsColsBase, { count: 'exact' })
         .order('created_at', { ascending: false });
 
-      if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') {
-        query = query.eq('empresa_id', empresaFiltro);
-      } else {
-        query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
+      if (!todasEmpresas) {
+        if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') {
+          query = query.or('empresa_id.eq.' + empresaFiltro + ',emp_id.eq.' + empresaFiltro);
+        } else if (empId) {
+          query = query.or('empresa_id.eq.' + empId + ',emp_id.eq.' + empId + ',empresa_id.is.null,emp_id.is.null');
+        }
       }
 
       if (status) {
@@ -3478,7 +3492,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         query = query.is('deleted_at', null);
       }
       if (afterIso) {
-        query = query.gte('created_at', afterIso);
+        try {
+          query = query.gt('created_at', afterIso);
+        } catch (e) {
+          try { console.error('[API OFS] Erro ao aplicar filtro after:', afterIso, e?.message || e); } catch (_) {}
+        }
       }
       return query;
     };
@@ -3500,11 +3518,15 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           .from('ofs')
           .select(ofsColsBase, { count: 'exact' })
           .order('created_at', { ascending: false });
-        if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') query = query.eq('empresa_id', empresaFiltro);
-        else query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
+        if (!todasEmpresas) {
+          if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') query = query.or('empresa_id.eq.' + empresaFiltro + ',emp_id.eq.' + empresaFiltro);
+          else if (empId) query = query.or('empresa_id.eq.' + empId + ',emp_id.eq.' + empId + ',empresa_id.is.null,emp_id.is.null');
+        }
         if (clienteFiltro && clienteFiltro !== 'undefined' && clienteFiltro !== 'null' && clienteFiltro !== '[object Object]') query = query.filter('cli_id', 'eq', String(clienteFiltro));
         if (!incluirExcluidas) query = query.is('deleted_at', null);
-        if (afterIso) query = query.gte('created_at', afterIso);
+        if (afterIso) {
+          try { query = query.gt('created_at', afterIso); } catch (e) { try { console.error('[API OFS] Erro ao aplicar filtro after fallback:', afterIso, e?.message || e); } catch (_) {} }
+        }
         return query;
       };
       fetched = shouldFetchAll
@@ -4167,7 +4189,6 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       const merged = { ...(body || {}), ...(filtered || {}) };
       console.log('[OF SAVE] cli_id recebido:', body.cli_id, 'clinome:', body.clinome);
       const cliId = String(merged.cli_id ?? '').trim();
-      const vendId = String(merged.vendid ?? '').trim();
       const qtd = Number(merged.qtd ?? merged.qtd_pedida ?? 0) || 0;
       const ent = String(merged.ent ?? '').slice(0, 10);
       const itens = parseItens(merged.itens ?? body.itens);
@@ -4178,11 +4199,8 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       const vunit = (vunitItens > 0) ? vunitItens : (Number(merged.preco ?? 0) || ((qtd > 0) ? (total / qtd) : 0));
       const missing = [];
       if (!cliId) missing.push('cliente');
-      if (!vendId) missing.push('vendedor');
-      if (!(qtd > 0)) missing.push('quantidade');
       if (!prod) missing.push('produto/modelo');
       if (!ent) missing.push('data de entrega');
-      if (!(vunit > 0)) missing.push('valor unitário');
       if (missing.length) {
         return res.status(400).json({ ok: false, error: 'Campos obrigatórios: ' + missing.join(', '), missing });
       }
