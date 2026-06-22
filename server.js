@@ -3472,7 +3472,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       }
 
       if (clienteFiltro && clienteFiltro !== 'undefined' && clienteFiltro !== 'null' && clienteFiltro !== '[object Object]') {
-        query = query.eq('cli_id', clienteFiltro);
+        query = query.filter('cli_id', 'eq', String(clienteFiltro));
       }
       if (!incluirExcluidas) {
         query = query.is('deleted_at', null);
@@ -3502,6 +3502,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           .order('created_at', { ascending: false });
         if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') query = query.eq('empresa_id', empresaFiltro);
         else query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
+        if (clienteFiltro && clienteFiltro !== 'undefined' && clienteFiltro !== 'null' && clienteFiltro !== '[object Object]') query = query.filter('cli_id', 'eq', String(clienteFiltro));
         if (!incluirExcluidas) query = query.is('deleted_at', null);
         if (afterIso) query = query.gte('created_at', afterIso);
         return query;
@@ -5343,13 +5344,14 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
   const ofIds = Array.from(new Set(rows.map((r) => String(r?.of_id || '').trim()).filter(Boolean)));
   const ofNumeros = Array.from(new Set(rows.map((r) => String(r?.of_numero || '').trim()).filter(Boolean)));
   const ofsMap = new Map();
+  const ofsSelect = 'id,of,clinome,cli_id,maq,usuario_conclusao,data_conclusao,status,qtd,total,preco,descricao,produto';
 
   if (ofIds.length) {
     for (let i = 0; i < ofIds.length; i += 200) {
       const lote = ofIds.slice(i, i + 200);
       const { data } = await supabase
         .from('ofs')
-        .select('id,of,cli_id,clinome,descricao,produto,data_conclusao,usuario_conclusao,qtd,total,preco,maq,status')
+        .select(ofsSelect)
         .in('id', lote);
       (Array.isArray(data) ? data : []).forEach((of) => {
         const id = String(of?.id || '').trim();
@@ -5366,7 +5368,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       const lote = numerosSemOf.slice(i, i + 200);
       const { data } = await supabase
         .from('ofs')
-        .select('id,of,cli_id,clinome,descricao,produto,data_conclusao,usuario_conclusao,qtd,total,preco,maq,status')
+        .select(ofsSelect)
         .in('of', lote);
       (Array.isArray(data) ? data : []).forEach((of) => {
         const numero = String(of?.of || '').trim();
@@ -5442,6 +5444,14 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       concluido_por: String(row?.usuario_conclusao || row?.concluido_por || ofData?.usuario_conclusao || row?.usuario || '').trim(),
       of_concluido_por: String(ofData?.usuario_conclusao || '').trim(),
       of_status: String(ofData?.status || '').trim(),
+      ofs: ofData ? {
+        clinome: String(ofData?.clinome || '').trim(),
+        cli_id: String(ofData?.cli_id || '').trim(),
+        maq: ofData?.maq ?? null,
+        usuario_conclusao: String(ofData?.usuario_conclusao || '').trim(),
+        data_conclusao: String(ofData?.data_conclusao || '').slice(0, 10),
+        status: String(ofData?.status || '').trim(),
+      } : null,
       valor_unitario: Number(
         row?.valor_unitario ??
         ((Number(ofData?.qtd ?? 0) || 0) > 0
@@ -10762,6 +10772,18 @@ app.post('/api/gramaturas', authMiddleware, async (req, res) => {
     const gramatura = Number(b.gramatura || 0) || 0;
     const valor_unitario = Number(b.valor_unitario || 0) || 0;
     if (!nome || !(gramatura > 0) || !(valor_unitario >= 0)) return res.status(400).json({ ok: false, error: 'dados_invalidos' });
+    let existenteQuery = supabase
+      .from('gramaturas')
+      .select('id')
+      .eq('gramatura', gramatura)
+      .eq('empresa_id', empresa_id || null);
+    if (b.fornecedor_id) existenteQuery = existenteQuery.eq('fornecedor_id', String(b.fornecedor_id || '').trim());
+    else existenteQuery = existenteQuery.is('fornecedor_id', null);
+    const { data: existente, error: existenteError } = await existenteQuery.maybeSingle();
+    if (existenteError) throw existenteError;
+    if (existente) {
+      return res.status(409).json({ ok: false, error: 'Gramatura já cadastrada para este fornecedor.' });
+    }
     const payload = {
       nome,
       gramatura,
@@ -14324,27 +14346,18 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       };
     });
 
-    const colsOfs = [
-      'id', 'of', 'qtd', 'preco', 'total',
-      'caixa_comprimento', 'caixa_largura',
-      'gramatura_id', 'cli_id', 'clinome',
-      'status', 'data_conclusao', 'ent'
-    ].join(',');
-
     const dataInicio = (mes && ano) ? `${ano}-${String(mes).padStart(2, '0')}-01` : '';
     const dataFim = (mes && ano) ? new Date(Number(ano), Number(mes), 0).toISOString().slice(0, 10) : '';
-    const ofsSel = await _selectCompatRows('ofs', colsOfs, (q) => {
-      let out = q
-        .ilike('status', '%conclu%')
-        .not('gramatura_id', 'is', null)
-        .is('deleted_at', null);
-      if (empresaId) out = out.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId}`);
-      if (dataInicio) out = out.gte('data_conclusao', dataInicio);
-      if (dataFim) out = out.lte('data_conclusao', dataFim);
-      return out.limit(2000);
-    });
-    if (ofsSel.error) throw ofsSel.error;
-    const ofs = Array.isArray(ofsSel.data) ? ofsSel.data : [];
+    let ofsQuery = supabase
+      .from('ofs')
+      .select('of,status,preco,total,qtd,clinome,cli_id,gramatura_id,data_conclusao,caixa_comprimento,caixa_largura,caixa_altura,empresa_id,emp_id,deleted_at,ent')
+      .ilike('status', '%conclu%')
+      .is('deleted_at', null);
+    if (empresaId) ofsQuery = ofsQuery.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId}`);
+    if (dataInicio) ofsQuery = ofsQuery.gte('data_conclusao', dataInicio);
+    if (dataFim) ofsQuery = ofsQuery.lte('data_conclusao', dataFim);
+    const { data: ofs, error: ofsError } = await ofsQuery.limit(2000);
+    if (ofsError) throw ofsError;
 
     let totalTon = 0;
     let totalM2 = 0;
@@ -14366,18 +14379,26 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
 
       detalhes.push({
         of: of.of || of.id,
+        numero: of.of || of.id,
         cli_id: of.cli_id,
         cliente: String(of.clinome || '').trim() || '—',
+        clinome: String(of.clinome || '').trim() || '—',
         qtd, comp, larg, gram,
         gramatura_id: gramId,
         preco: Number(of.preco || 0) || 0,
+        total: Number(of.total || 0) || 0,
+        status: String(of.status || '').trim(),
+        caixa_comprimento: comp,
+        caixa_largura: larg,
+        caixa_altura: Number(of.caixa_altura || 0) || 0,
+        empresa_id: of.empresa_id || null,
+        emp_id: of.emp_id || null,
+        deleted_at: of.deleted_at || null,
         area_m2: areaM2,
         toneladas: ton,
         custo_estimado: gramValUnit * ton * 1000,
         gramatura_nome: gramMeta ? gramMeta.nome : '',
-        total: of.total || 0,
         data: of.data_conclusao,
-        status: String(of.status || '').trim(),
         sem_dimensoes: !(comp > 0 && larg > 0)
       });
     });
