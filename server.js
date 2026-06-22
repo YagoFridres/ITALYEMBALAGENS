@@ -6091,7 +6091,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
           ...(Object.prototype.hasOwnProperty.call(bodyIn, 'maquina') && !Object.prototype.hasOwnProperty.call(bodyIn, 'maq')
             ? { maq: [bodyIn.maquina], fluxo_maquinas: [bodyIn.maquina], maquina_agendada: bodyIn.maquina }
             : {}),
-          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'imagem_url') && !Object.prototype.hasOwnProperty.call(bodyIn, 'imgs')
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'imagem_url') && bodyIn.imagem_url != null && !Object.prototype.hasOwnProperty.call(bodyIn, 'imgs')
             ? { imgs: [bodyIn.imagem_url] }
             : {}),
           ...(Object.prototype.hasOwnProperty.call(bodyIn, 'comprimento') && !Object.prototype.hasOwnProperty.call(bodyIn, 'caixa_comprimento')
@@ -6125,6 +6125,15 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       'gramatura', 'gramaturaId'];
     camposProibidos.forEach(campo => delete payloadBody[campo]);
     const payload = { ...ofIn(payloadBody || {}), updated_at: new Date().toISOString() };
+    if (Object.prototype.hasOwnProperty.call(bodyIn || {}, 'imagem')) {
+      payload.imagem = bodyIn.imagem;
+    }
+    if (Object.prototype.hasOwnProperty.call(bodyIn || {}, 'imagem_url')) {
+      payload.imagem_url = bodyIn.imagem_url;
+      if (bodyIn.imagem_url == null && !Object.prototype.hasOwnProperty.call(bodyIn || {}, 'imgs')) {
+        payload.imgs = [];
+      }
+    }
     try {
       const { data: ofAtual2 } = await supabase.from('ofs').select('status').eq('id', id).maybeSingle();
       const norm = (s) => {
