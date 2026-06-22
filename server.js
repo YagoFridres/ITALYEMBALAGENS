@@ -5265,6 +5265,7 @@ function _caixasPerdidasDashboardVazio(mesRef = '') {
 }
 
 async function _listarCaixasPerdidasEnriquecidas(req) {
+  const empresaId = await getEmpresaId(req);
   const baseCols = [
     'id', 'of_id', 'of_numero', 'produto', 'cliente', 'valor_unitario', 'qtd_perdida', 'valor_perdido',
     'data', 'mes_referencia', 'emp_id', 'empresa_id', 'usuario', 'obs', 'created_at',
@@ -5279,6 +5280,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
     const r = await _selectCompatRows(t, baseCols, (q) => {
       let out = q.order('created_at', { ascending: false });
       if (ofId) out = out.eq('of_id', ofId);
+      if (empresaId) out = out.or(`emp_id.eq.${empresaId},empresa_id.eq.${empresaId}`);
       return out;
     });
     if (r?.error) {
@@ -5302,7 +5304,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       const lote = ofIds.slice(i, i + 200);
       const { data } = await supabase
         .from('ofs')
-        .select('id,numero,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada')
+        .select('id,numero,cli_id,cliente,cli_nome,descricao,produto,prodDesc,data_conclusao,concluido_por,quantidade,qtd,valor_total,valor_venda,vl_unit,valor_unitario,maq,maquina,maquina_atual,maquina_agendada,status')
         .in('id', lote);
       (Array.isArray(data) ? data : []).forEach((of) => {
         const id = String(of?.id || '').trim();
@@ -5319,7 +5321,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       const lote = numerosSemOf.slice(i, i + 200);
       const { data } = await supabase
         .from('ofs')
-        .select('id,numero,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada')
+        .select('id,numero,cli_id,cliente,cli_nome,descricao,produto,prodDesc,data_conclusao,concluido_por,quantidade,qtd,valor_total,valor_venda,vl_unit,valor_unitario,maq,maquina,maquina_atual,maquina_agendada,status')
         .in('numero', lote);
       (Array.isArray(data) ? data : []).forEach((of) => {
         const numero = String(of?.numero || '').trim();
@@ -5378,9 +5380,12 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       of_numero: String(row?.of_numero || ofData?.numero || '').trim() || '—',
       cliente_nome: clienteNome,
       cliente: clienteNome,
+      of_cliente: String(ofData?.cliente || '').trim(),
+      of_cli_nome: String(ofData?.cli_nome || '').trim(),
       produto: String(row?.produto || ofData?.produto || ofData?.descricao || ofData?.prodDesc || '').trim() || '—',
       maquina: maquinaNome,
       maquina_nome: maquinaNome,
+      of_maq: ofData?.maq ?? null,
       quantidade,
       qtd_perdida: quantidade,
       operadores,
@@ -5390,6 +5395,8 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       turno: String(row?.turno || '').trim(),
       data_conclusao: String(row?.data_conclusao || ofData?.data_conclusao || '').slice(0, 10),
       concluido_por: String(row?.concluido_por || ofData?.concluido_por || row?.usuario || '').trim(),
+      of_concluido_por: String(ofData?.concluido_por || '').trim(),
+      of_status: String(ofData?.status || '').trim(),
       valor_unitario: Number(
         row?.valor_unitario ??
         (
@@ -5404,38 +5411,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
 
 app.get('/api/caixas_perdidas', autenticar, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req);
-    const { data, error } = await supabase
-      .from('caixas_perdidas')
-      .select('*')
-      .eq('emp_id', empresaId)
-      .order('created_at', { ascending: false })
-      .limit(500);
-    if (error) throw error;
-
-    const ofIds = [...new Set((data || []).map(r => r.of_id).filter(Boolean))];
-    let mapaClientes = {};
-    if (ofIds.length) {
-      const { data: ofs } = await supabase
-        .from('ofs').select('id, cli_id, numero').in('id', ofIds);
-      const cliIds = [...new Set((ofs || []).map(o => o.cli_id).filter(Boolean))];
-      if (cliIds.length) {
-        const { data: clis } = await supabase
-          .from('clientes').select('id, nome').in('id', cliIds);
-        const mapaOf = {};
-        (ofs || []).forEach(o => { mapaOf[o.id] = o; });
-        const mapaCli = {};
-        (clis || []).forEach(c => { mapaCli[c.id] = c.nome; });
-        (data || []).forEach(r => {
-          const of = mapaOf[r.of_id];
-          if (of) {
-            r.cliente_nome = r.cliente || mapaCli[of.cli_id] || '—';
-            r.of_numero = r.of_numero || of.numero || '—';
-          }
-        });
-      }
-    }
-
+    const data = await _listarCaixasPerdidasEnriquecidas(req);
     res.json({ ok: true, data: data || [] });
   } catch(e) {
     console.error('[caixas_perdidas]', e.message);
@@ -14338,53 +14314,60 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       };
     });
 
-    let query = supabase
-      .from('ofs')
-      .select('id, numero, of, quantidade, qtd, caixa_comprimento, caixa_largura, dim_comprimento, dim_largura, gramatura_id, cli_id, valor_total, data_conclusao')
-      .ilike('status', '%conclu%')
-      .not('gramatura_id', 'is', null);
+    const colsOfs = [
+      'id', 'numero', 'of', 'quantidade', 'qtd',
+      'comp', 'larg', 'comprimento', 'largura', 'largura_caixa', 'altura_caixa',
+      'caixa_comprimento', 'caixa_largura', 'dim_comprimento', 'dim_largura',
+      'gramatura_id', 'cli_id', 'cliente', 'cli_nome',
+      'vl_unit', 'valor_total', 'status', 'data_conclusao'
+    ].join(',');
 
-    if (empresaId) query = query.eq('empresa_id', empresaId);
-
-    if (mes && ano) {
-      const dataInicio = `${ano}-${String(mes).padStart(2, '0')}-01`;
-      const dataFim = new Date(Number(ano), Number(mes), 0).toISOString().slice(0, 10);
-      query = query.gte('data_conclusao', dataInicio).lte('data_conclusao', dataFim);
-    }
-
-    const { data: ofs, error: errOfs } = await query.limit(2000);
-    if (errOfs) throw errOfs;
+    const dataInicio = (mes && ano) ? `${ano}-${String(mes).padStart(2, '0')}-01` : '';
+    const dataFim = (mes && ano) ? new Date(Number(ano), Number(mes), 0).toISOString().slice(0, 10) : '';
+    const ofsSel = await _selectCompatRows('ofs', colsOfs, (q) => {
+      let out = q.ilike('status', '%conclu%').not('gramatura_id', 'is', null);
+      if (empresaId) out = out.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId}`);
+      if (dataInicio) out = out.gte('data_conclusao', dataInicio);
+      if (dataFim) out = out.lte('data_conclusao', dataFim);
+      return out.limit(2000);
+    });
+    if (ofsSel.error) throw ofsSel.error;
+    const ofs = Array.isArray(ofsSel.data) ? ofsSel.data : [];
 
     let totalTon = 0;
     let totalM2 = 0;
     const detalhes = [];
 
     (ofs || []).forEach(of => {
-      const comp = Number(of.caixa_comprimento || of.dim_comprimento || 0) || 0;
-      const larg = Number(of.caixa_largura || of.dim_largura || 0) || 0;
+      const comp = Number(of.comp || of.comprimento || of.largura_caixa || of.caixa_comprimento || of.dim_comprimento || 0) || 0;
+      const larg = Number(of.larg || of.largura || of.altura_caixa || of.caixa_largura || of.dim_largura || 0) || 0;
       const qtd = Number(of.quantidade || of.qtd || 0) || 0;
       const gramId = String(of.gramatura_id || '').trim();
       const gramMeta = gramId ? mapaGram[gramId] : null;
       const gram = gramMeta ? gramMeta.gram : 0;
       const gramValUnit = Number(gramMeta?.valor_unitario || 0) || 0;
 
-      if (!(comp > 0 && larg > 0 && gram > 0 && qtd > 0)) return;
-
-      const areaM2 = (comp / 1000) * (larg / 1000) * qtd;
-      const ton = (areaM2 * gram) / 1000000;
+      const areaM2 = (comp > 0 && larg > 0 && qtd > 0) ? ((comp / 1000) * (larg / 1000) * qtd) : 0;
+      const ton = (areaM2 > 0 && gram > 0) ? ((areaM2 * gram) / 1000000) : 0;
       totalTon += ton;
       totalM2 += areaM2;
 
       detalhes.push({
         of: of.numero || of.of || of.id,
         cli_id: of.cli_id,
+        cliente: String(of.cliente || of.cli_nome || '').trim() || '—',
+        cli_nome: String(of.cli_nome || '').trim() || '',
         qtd, comp, larg, gram,
+        gramatura_id: gramId,
+        vl_unit: Number(of.vl_unit || 0) || 0,
         area_m2: areaM2,
         toneladas: ton,
         custo_estimado: gramValUnit * ton * 1000,
         gramatura_nome: gramMeta ? gramMeta.nome : '',
         valor_total: of.valor_total || 0,
-        data: of.data_conclusao
+        data: of.data_conclusao,
+        status: String(of.status || '').trim(),
+        sem_dimensoes: !(comp > 0 && larg > 0)
       });
     });
 
@@ -14398,7 +14381,7 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       if (errClientes) throw errClientes;
       (clientes || []).forEach(c => { mapaClientes[c.id] = c.nome; });
     }
-    detalhes.forEach(d => { d.cliente = mapaClientes[d.cli_id] || '—'; });
+    detalhes.forEach(d => { d.cliente = d.cliente || mapaClientes[d.cli_id] || '—'; });
 
     const porGramatura = {};
     detalhes.forEach(d => {

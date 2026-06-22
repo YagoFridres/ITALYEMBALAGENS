@@ -204,6 +204,36 @@ if (!window._menuPatchFinal) {
     return Number.isFinite(n) ? n : 0;
   }
 
+  function getOfVlUnit(of) {
+    return parseFloat(
+      (of && (of.vl_unit || of.valor_unitario || of.preco_unit || of.preco || 0)) || 0
+    ) || 0;
+  }
+
+  function getOfValorTotal(of, vlUnit) {
+    var qtd = parseInt((of && (of.qtd || of.quantidade || 0)) || 0, 10) || 0;
+    var vu = vlUnit != null ? parseFloat(vlUnit || 0) || 0 : getOfVlUnit(of);
+    return parseFloat(
+      (of && (of.valor_total || of.total || (vu * qtd))) || 0
+    ) || 0;
+  }
+
+  function parseListaTextoOuJson(raw) {
+    try {
+      if (Array.isArray(raw)) return raw.map(function(v) { return String(v || '').trim(); }).filter(Boolean);
+      if (typeof raw === 'string') {
+        var s = String(raw || '').trim();
+        if (!s) return [];
+        if (s.charAt(0) === '[') {
+          var arr = JSON.parse(s || '[]');
+          if (Array.isArray(arr)) return arr.map(function(v) { return String(v || '').trim(); }).filter(Boolean);
+        }
+        return s.split(/[,;|/]+/g).map(function(v) { return String(v || '').trim(); }).filter(Boolean);
+      }
+    } catch (_) {}
+    return [];
+  }
+
   function money(v) {
     var n = Number(v || 0) || 0;
     return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -245,22 +275,16 @@ if (!window._menuPatchFinal) {
   function isLateDate(val) {
     var s = String(val || '').slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-    var today = new Date();
-    today.setHours(0, 0, 0, 0);
-    try {
-      var d = new Date(s + 'T00:00:00');
-      d.setHours(0, 0, 0, 0);
-      return d.getTime() < today.getTime();
-    } catch (_) {
-      return false;
-    }
+    var hoje = '';
+    try { hoje = new Date().toISOString().split('T')[0]; } catch (_) { hoje = ''; }
+    return !!(hoje && s < hoje);
   }
 
   function normalizeComissaoRow(of, vendPctMap) {
     of = of || {};
     var qtd = toInt(of.qtd != null ? of.qtd : (of.quantidade != null ? of.quantidade : 0));
-    var vlUnit = toNum(of.vl_unit != null ? of.vl_unit : (of.valor_unitario != null ? of.valor_unitario : 0));
-    var valorTotal = toNum(of.valor_total != null ? of.valor_total : ((vlUnit * qtd) || 0));
+    var vlUnit = getOfVlUnit(of);
+    var valorTotal = getOfValorTotal(of, vlUnit);
     if (!(valorTotal > 0) && qtd > 0 && vlUnit > 0) valorTotal = vlUnit * qtd;
     var vendId = String(of.vendedor_id || of.vendId || of.vend_id || '').trim();
     var pctFallback = vendPctMap && vendPctMap[vendId] != null ? vendPctMap[vendId] : null;
@@ -361,8 +385,8 @@ if (!window._menuPatchFinal) {
       var vendedores = await loadVendedoresPatch();
       var gramaturas = await loadGramaturasPatch();
       var qtd = toInt(of.qtd != null ? of.qtd : (of.quantidade != null ? of.quantidade : 0));
-      var vlUnit = toNum(of.vl_unit != null ? of.vl_unit : (of.valor_unitario != null ? of.valor_unitario : 0));
-      var valorTotal = toNum(of.valor_total != null ? of.valor_total : ((qtd * vlUnit) || 0));
+      var vlUnit = getOfVlUnit(of);
+      var valorTotal = getOfValorTotal(of, vlUnit);
       var pct = toNum(of.comissao_pct != null ? of.comissao_pct : 1) || 1;
       title.textContent = 'Editar OF #' + String(of.numero || of.of || '—');
       body.innerHTML = ''
@@ -535,6 +559,19 @@ if (!window._menuPatchFinal) {
     return el;
   }
 
+  function hasVisibleMenuChildren(el) {
+    try {
+      var children = Array.prototype.slice.call((el && el.children) || []);
+      return children.some(function(child) {
+        if (!child || child.style.display === 'none') return false;
+        var txt = normText(child.textContent);
+        if (!txt) return false;
+        return /^(li|div|a|button|span)$/i.test(child.tagName || '');
+      });
+    } catch (_) {}
+    return false;
+  }
+
   function removeRelatorioMensal() {
     try {
       var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
@@ -542,10 +579,14 @@ if (!window._menuPatchFinal) {
       Array.prototype.slice.call(sidebar.querySelectorAll('*')).forEach(function(el) {
         var txt = normText(el && el.textContent);
         if (!txt) return;
-        if (txt.indexOf('relatorio mensal') < 0) return;
-        var item = menuItemContainer(el, sidebar);
-        if (item) item.style.display = 'none';
+        if (txt !== 'relatorio mensal') return;
+        var childTxt = Array.prototype.slice.call(el.children || []).map(function(child) { return normText(child && child.textContent); }).filter(Boolean);
+        if (childTxt.length && childTxt.some(function(t) { return t !== txt; })) return;
         el.style.display = 'none';
+        var parent = el.parentElement;
+        if (parent && parent !== sidebar && /^(li|div)$/i.test(parent.tagName || '') && !hasVisibleMenuChildren(parent)) {
+          parent.style.display = 'none';
+        }
       });
     } catch (_) {}
   }
@@ -625,11 +666,12 @@ if (!window._menuPatchFinal) {
         if (id) gramMap[id] = toNum(g && (g.gramatura || g.valor || g.nome));
       });
       var detalhes = (Array.isArray(out.json.detalhes) ? out.json.detalhes : []).map(function(d) {
-        var comp = toNum(d && (d.comp != null ? d.comp : (d.comprimento != null ? d.comprimento : (d.caixa_comprimento != null ? d.caixa_comprimento : d.dim_comprimento))));
-        var larg = toNum(d && (d.larg != null ? d.larg : (d.largura != null ? d.largura : (d.caixa_largura != null ? d.caixa_largura : d.dim_largura))));
+        var comp = toNum(d && (d.comp != null ? d.comp : (d.comprimento != null ? d.comprimento : (d.largura_caixa != null ? d.largura_caixa : (d.caixa_comprimento != null ? d.caixa_comprimento : d.dim_comprimento)))));
+        var larg = toNum(d && (d.larg != null ? d.larg : (d.largura != null ? d.largura : (d.altura_caixa != null ? d.altura_caixa : (d.caixa_largura != null ? d.caixa_largura : d.dim_largura)))));
         var gramId = String(d && (d.gramatura_id || d.gramaturaId) || '').trim();
         var gram = toNum(d && (d.gramatura != null ? d.gramatura : (d.gramatura_valor != null ? d.gramatura_valor : (gramMap[gramId] != null ? gramMap[gramId] : d.gram))));
-        var qtd = toNum(d && (d.qtd != null ? d.qtd : d.quantidade));
+        var qtd = toInt(d && (d.qtd != null ? d.qtd : d.quantidade));
+        try { console.log('[TON] OF', d && (d.of || d.numero), 'comp:', d && d.comp, 'larg:', d && d.larg, 'gram:', d && d.gramatura_id, 'qtd:', d && d.qtd); } catch (_) {}
         var area = (comp > 0 && larg > 0 && qtd > 0) ? ((comp / 1000) * (larg / 1000) * qtd) : 0;
         var toneladas = (area > 0 && gram > 0) ? (area * (gram / 1000000)) : 0;
         return Object.assign({}, d, {
@@ -638,7 +680,8 @@ if (!window._menuPatchFinal) {
           gram: gram,
           qtd: qtd,
           area_m2: area,
-          toneladas: toneladas
+          toneladas: toneladas,
+          sem_dimensoes: !(comp > 0 && larg > 0)
         });
       });
       var porGram = Object.create(null);
@@ -681,7 +724,7 @@ if (!window._menuPatchFinal) {
         + '<h3 style="color:var(--text,#fff);margin:20px 0 10px">Detalhamento das OFs</h3>'
         + '<div style="overflow:auto;border-radius:12px;border:1px solid var(--border,#333)"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg2,#1a1a2e)"><th style="padding:10px;text-align:left;color:#aaa;font-size:11px">Nº OF</th><th style="padding:10px;text-align:left;color:#aaa;font-size:11px">CLIENTE</th><th style="padding:10px;text-align:right;color:#aaa;font-size:11px">QTD CAIXAS</th><th style="padding:10px;text-align:right;color:#aaa;font-size:11px">GRAMATURA</th><th style="padding:10px;text-align:right;color:#aaa;font-size:11px">M²</th><th style="padding:10px;text-align:right;color:#aaa;font-size:11px">TONELADAS</th></tr></thead><tbody>'
         + (detalhes.length ? detalhes.map(function(d, i) {
-          return '<tr style="border-top:1px solid var(--border,#333);background:' + (i % 2 ? 'rgba(255,255,255,0.02)' : 'transparent') + '"><td style="padding:8px 10px;color:#6366f1;font-weight:700">#' + esc(String(d.of || d.numero || '—')) + '</td><td style="padding:8px 10px;color:var(--text,#fff)">' + esc(String(d.cliente || d.cli_nome || d.cliente_nome || '—')) + '</td><td style="padding:8px 10px;text-align:right;color:#aaa">' + esc(String((Number(d.qtd || 0) || 0).toLocaleString('pt-BR'))) + '</td><td style="padding:8px 10px;text-align:right;color:#6366f1">' + esc(String(d.gram || 0)) + ' g/m²</td><td style="padding:8px 10px;text-align:right;color:#aaa">' + esc(d.area_m2.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + ' m²</td><td style="padding:8px 10px;text-align:right;color:#10b981;font-weight:700">' + esc(d.toneladas.toFixed(4)) + ' t</td></tr>';
+          return '<tr style="border-top:1px solid var(--border,#333);background:' + (i % 2 ? 'rgba(255,255,255,0.02)' : 'transparent') + '"><td style="padding:8px 10px;color:#6366f1;font-weight:700">#' + esc(String(d.of || d.numero || '—')) + '</td><td style="padding:8px 10px;color:var(--text,#fff)">' + esc(String(d.cliente || d.cli_nome || d.cliente_nome || '—')) + (d.sem_dimensoes ? ' <span style="color:#f59e0b;font-size:11px">(sem dimensões)</span>' : '') + '</td><td style="padding:8px 10px;text-align:right;color:#aaa">' + esc(String((Number(d.qtd || 0) || 0).toLocaleString('pt-BR'))) + '</td><td style="padding:8px 10px;text-align:right;color:#6366f1">' + esc(String(d.gram || 0)) + ' g/m²</td><td style="padding:8px 10px;text-align:right;color:#aaa">' + esc(d.area_m2.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + ' m²</td><td style="padding:8px 10px;text-align:right;color:#10b981;font-weight:700">' + esc(d.toneladas.toFixed(4)) + ' t</td></tr>';
         }).join('') : '<tr><td colspan="6" style="padding:16px;text-align:center;color:#94a3b8">Nenhuma OF encontrada.</td></tr>')
         + '</tbody></table></div>';
       if (corpo) corpo.innerHTML = html;
@@ -782,31 +825,6 @@ if (!window._menuPatchFinal) {
   function wrapConclusaoImagemPatch() {
     if (window.__patchConclusaoImagemWrapped) return;
     window.__patchConclusaoImagemWrapped = true;
-    var origFetch = window.fetch;
-    if (typeof origFetch !== 'function') return;
-    window.fetch = function(input, init) {
-      var url = '';
-      try { url = typeof input === 'string' ? input : String(input && input.url || ''); } catch (_) {}
-      var method = String(init && init.method || 'GET').toUpperCase();
-      return origFetch.apply(this, arguments).then(function(resp) {
-        try {
-          var m = url.match(/\/api\/ofs\/([^\/]+)\/concluir(?:\?|$)/);
-          if (resp && resp.ok && method === 'POST' && m && m[1]) {
-            var ofId = decodeURIComponent(m[1]);
-            setTimeout(function() {
-              try {
-                origFetch('/api/ofs/' + encodeURIComponent(ofId), {
-                  method: 'PATCH',
-                  headers: tokenHeaders({ 'Content-Type': 'application/json' }),
-                  body: JSON.stringify({ imagem: null, imagem_url: null })
-                }).catch(function() { return null; });
-              } catch (_) {}
-            }, 50);
-          }
-        } catch (_) {}
-        return resp;
-      });
-    };
   }
 
   function pcpStatusMeta(of) {
@@ -932,16 +950,17 @@ if (!window._menuPatchFinal) {
       var setMaq = Object.create(null);
       (fluxoNames || []).forEach(function(n) { if (n) setMaq[String(n)] = 1; });
       if (Array.isArray(o.maq)) (o.maq || []).forEach(function(n) { if (n) setMaq[String(n)] = 1; });
+      else parseListaTextoOuJson(o.maq).forEach(function(n) { if (n) setMaq[String(n)] = 1; });
       var mCells = colsMaq.map(function(col) {
         return setMaq[col] ? '<td class="tc"><span class="badge-maquina-alocada">' + esc(col === 'CORTE VINCO ROTATIVA' ? 'CVR' : col.replace('IMP ', 'I')) + '</span></td>' : '<td class="tc"></td>';
       }).join('');
       var qtd = Number(o.qtd || o.quantidade || 0) || 0;
-      var unitVal = toNum(o.preco != null ? o.preco : (o.valor_unitario != null ? o.valor_unitario : o.vl_unit));
-      var totalVal = toNum(o.valor_total != null ? o.valor_total : (unitVal * qtd));
+      var unitVal = getOfVlUnit(o);
+      var totalVal = getOfValorTotal(o, unitVal);
       var imgPrintUrl = typeof ofGetImagemUrl === 'function' ? ofGetImagemUrl(o) : '';
-      var rowBg = 'box-shadow:inset 4px 0 0 ' + meta.color + ';opacity:' + meta.opacity + ';';
-      return '<tr style="' + rowBg + '" onclick="selecionarOF && selecionarOF(\'' + esc(String(o.of || o.numero || '')) + '\')">'
-        + '<td class="tc" style="width:32px;padding:4px 8px"><input type="checkbox" class="of-seletor" data-of-num="' + esc(String(o.of || o.numero || '')) + '" data-of-id="' + esc(String(o.id || '')) + '" onclick="event.stopPropagation()" onchange="pcpToggleSelecao && pcpToggleSelecao(this)"></td>'
+      var rowBg = 'opacity:' + meta.opacity + ';';
+      return '<tr data-of-id="' + esc(String(o.id || '')) + '" data-status-visual="' + esc(meta.label) + '" style="' + rowBg + '" onclick="selecionarOF && selecionarOF(\'' + esc(String(o.of || o.numero || '')) + '\')">'
+        + '<td class="tc" style="width:32px;padding:4px 8px;border-left:4px solid ' + meta.color + '"><input type="checkbox" class="of-seletor" data-of-num="' + esc(String(o.of || o.numero || '')) + '" data-of-id="' + esc(String(o.id || '')) + '" onclick="event.stopPropagation()" onchange="pcpToggleSelecao && pcpToggleSelecao(this)"></td>'
         + '<td class="tc"><input class="seq-inp" type="number" value="' + esc(String(o.seq || 0)) + '" min="1" onclick="event.stopPropagation()" onchange="moverPos && moverPos(\'' + esc(String(o.of || o.numero || '')) + '\',parseInt(this.value,10))"></td>'
         + '<td class="tc">' + esc(typeof fmtDataBR === 'function' ? fmtDataBR(o.dia || '') : String(o.dia || '')) + '</td>'
         + '<td class="tc">' + esc(typeof fmtDataBR === 'function' ? fmtDataBR(o.ent || o.data_entrega || '') : String(o.ent || o.data_entrega || '')) + '</td>'
@@ -5975,6 +5994,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return [];
     }
 
+  try { window._getOfVlUnitHotfix = getOfVlUnit; } catch (_) {}
+  try { window._getOfValorTotalHotfix = getOfValorTotal; } catch (_) {}
+  try { window._parseListaTextoOuJsonHotfix = parseListaTextoOuJson; } catch (_) {}
+
     function _cpEnsureStyleV2() {
       if (window._caixasPerdidaStyleV2) return;
       window._caixasPerdidaStyleV2 = true;
@@ -8367,8 +8390,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var vendId = String(of.vendedor_id || of.vendId || of.vend_id || '').trim();
       var gramId = String(of.gramatura_id || of.gramaturaId || '').trim();
       var qtd = of.qtd != null ? of.qtd : (of.quantidade != null ? of.quantidade : '');
-      var vlunit = of.vl_unit != null ? of.vl_unit : (of.valor_unitario != null ? of.valor_unitario : '');
-      var total = of.valor_total != null ? of.valor_total : (of.valor_venda != null ? of.valor_venda : (((Number(qtd) || 0) * (Number(vlunit) || 0)) || ''));
+      var vlunit = window._getOfVlUnitHotfix ? window._getOfVlUnitHotfix(of) : (of.vl_unit != null ? of.vl_unit : (of.valor_unitario != null ? of.valor_unitario : (of.preco_unit != null ? of.preco_unit : (of.preco != null ? of.preco : 0))));
+      var total = window._getOfValorTotalHotfix ? window._getOfValorTotalHotfix(of, vlunit) : (parseFloat(of.valor_total || of.total || ((parseFloat(vlunit || 0) || 0) * parseInt(of.qtd || of.quantidade || 0, 10))) || 0);
       var entrega = toInputDate(of.data_entrega || of.ent);
       var dia = toInputDate(of.dia || of.data_producao || of.data_programada);
       var comp = of.comp != null ? of.comp : (of.caixa_comprimento != null ? of.caixa_comprimento : (of.dim_comprimento != null ? of.dim_comprimento : (of.comprimento != null ? of.comprimento : '')));
@@ -8384,7 +8407,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       setAnyVal(['#of-r-empresa'], empId);
       setAnyVal(['#of-r-vendedor', '#ofr-vendedor', 'select[name="vendedor_id"]'], vendId);
       setAnyVal(['#of-r-qtd', '#ofr-quantidade', 'input[name="quantidade"]'], qtd);
-      setAnyVal(['#of-r-vlunit', '#ofr-vl-unit', 'input[name="vl_unit"]'], vlunit);
+      setAnyVal(['#of-r-vlunit', '#ofr-vl-unit', 'input[name="vl_unit"]', 'input[name="valor_unitario"]'], vlunit);
       setAnyVal(['#of-r-total', 'input[name="valor_total"]'], total);
       setAnyVal(['#of-r-entrega', '#ofr-entrega', 'input[name="data_entrega"]'], entrega);
       setAnyVal(['#of-r-dia', '#ofr-dia', 'input[name="dia"]', 'input[name="data_producao"]'], dia);
@@ -13921,11 +13944,14 @@ window._mbnActive = function(id) {
     var vlUnit = Number(item && (item.vl_unit != null ? item.vl_unit : item.valor_unitario) || (ofData && (ofData.vl_unit || ofData.valor_unitario)) || 0) || 0;
     var vlTotal = Number(item && (item.vl_total != null ? item.vl_total : item.valor_perdido) || 0) || ((qtdPerdida || 0) * (vlUnit || 0));
     var produto = String(item && item.produto || '').trim() || String(ofData && (ofData.produto || ofData.descricao || ofData.prodDesc) || '').trim() || '—';
-    var cliente = String(item && (item.cliente_nome || item.cliente) || '').trim() || String(ofData && (ofData.cli_nome || ofData.cliente || ofData.cliente_nome || ofData.cliNome) || '').trim() || '—';
-    var maquina = String(item && item.maquina || '').trim() || String(ofData && (ofData.maquina || ofData.maq || ofData.maquina_atual) || '').trim() || '—';
+    var cliente = String(item && (item.cliente || item.of_cliente || item.of_cli_nome || item.cliente_nome) || '').trim() || String(ofData && (ofData.cli_nome || ofData.cliente || ofData.cliente_nome || ofData.cliNome) || '').trim() || '—';
+    var maqLista = window._parseListaTextoOuJsonHotfix ? window._parseListaTextoOuJsonHotfix(item && (item.of_maq != null ? item.of_maq : null)) : [];
+    var maquina = String(item && item.maquina || '').trim() || (maqLista.length ? maqLista.join(', ') : '') || String(ofData && (ofData.maquina || ofData.maquina_atual) || '').trim() || '—';
     var ofNumero = String(item && (item.of_numero || item.of_num || item.numero || item.of) || '').trim() || String(ofData && (ofData.numero || ofData.of) || '').trim() || '—';
     var imgUrl = String(item && (item.imagem_url || item.foto_url || item.imgUrl) || '').trim() || String(ofData && (ofData.imagem_url || ofData.imgUrl || (Array.isArray(ofData.imgs) ? ofData.imgs[0] : '')) || '').trim();
     try { if (!(window._urlValida && window._urlValida(imgUrl))) imgUrl = ''; } catch (_) { imgUrl = ''; }
+    var operadores = String(item && (item.usuario || item.operador || item.operador_display) || '').trim() || '—';
+    var concluidoPor = String(item && (item.of_concluido_por || item.concluido_por || item.usuario) || '').trim() || '—';
     return {
       id: String(item && item.id || '').trim(),
       of_id: String(item && item.of_id || '').trim(),
@@ -13939,14 +13965,21 @@ window._mbnActive = function(id) {
       vl_total: vlTotal,
       valor_unitario: vlUnit,
       valor_perdido: vlTotal,
-      usuario: String(item && item.usuario || '').trim() || '—',
+      usuario: operadores,
+      operador: String(item && item.operador || '').trim(),
+      concluido_por: concluidoPor,
       imgUrl: imgUrl,
       imagem_url: imgUrl,
       motivo: String(item && item.motivo || '').trim(),
       data: String(item && (item.data || item.created_at || item.updated_at || '') || '').slice(0, 10),
       created_at: String(item && (item.created_at || item.updated_at || '') || ''),
       mes_referencia: String(item && item.mes_referencia || '').trim() || String(item && (item.data || item.created_at || '') || '').slice(0, 7),
-      empresa_id: String(item && (item.empresa_id || item.emp_id) || '').trim()
+      empresa_id: String(item && (item.empresa_id || item.emp_id) || '').trim(),
+      of_cliente: String(item && item.of_cliente || '').trim(),
+      of_cli_nome: String(item && item.of_cli_nome || '').trim(),
+      of_maq: item && item.of_maq,
+      of_concluido_por: String(item && item.of_concluido_por || '').trim(),
+      of_status: String(item && item.of_status || '').trim()
     };
   }
 
@@ -14029,7 +14062,7 @@ window._mbnActive = function(id) {
       if (ths && ths[4]) ths[4].textContent = 'Qtd Perdida';
       if (ths && ths[5]) ths[5].textContent = 'Valor Perdido';
       if (ths && ths[6]) ths[6].textContent = 'Máquina';
-      if (ths && ths[7]) ths[7].textContent = 'Máquina Perda';
+      if (ths && ths[7]) ths[7].textContent = 'Operadores';
       if (ths && ths[8]) ths[8].textContent = 'Concluído Por';
       if (ths && ths.length > 9) {
         for (var h = 9; h < ths.length; h++) ths[h].style.display = 'none';
@@ -14044,13 +14077,13 @@ window._mbnActive = function(id) {
         + '<tr data-cp-id="' + escAttrLocal2(id) + '">'
         + '<td style="padding:7px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--text2)">' + escHLocal2(fmtDataLocal(item && (item.data || item.created_at))) + '</td>'
         + '<td style="padding:7px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.74rem;color:var(--accent)">' + escHLocal2(item && item.of_numero || '—') + '</td>'
-        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(item && (item.cliente_nome || item.cliente) || '—') + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(item && (item.cliente || item.of_cliente || item.of_cli_nome || item.cliente_nome) || '—') + '</td>'
         + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(item && item.produto || '—') + '</td>'
         + '<td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800;color:var(--red)">' + fmtNumLocal(qtdPerdida) + '</td>'
         + '<td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800">' + (vlTotal > 0 ? fmtMoneyLocal(vlTotal) : (vlUnit > 0 ? fmtMoneyLocal(vlUnit) : '—')) + '</td>'
         + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem;white-space:nowrap">' + escHLocal2(item && item.maquina || '—') + '</td>'
-        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem;white-space:nowrap">' + escHLocal2(item && item.maquina_perda || '—') + '</td>'
-        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(item && item.usuario || '—') + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem;white-space:nowrap">' + escHLocal2(item && (item.usuario || item.operador || item.operador_display) || '—') + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(item && (item.of_concluido_por || item.concluido_por || item.usuario || item.operador) || '—') + '</td>'
         + '</tr>';
     }).join('') || '<tr><td colspan="9" style="padding:10px;border:1px solid var(--border);color:var(--text2);text-align:center">Sem lançamentos no período</td></tr>';
     try {
@@ -17380,6 +17413,13 @@ function _ocultarGraficoComissoes() {
           });
           var j1 = await r1.json().catch(function() { return null; });
           if (!j1 || !j1.ok) throw new Error(String(j1 && (j1.error || j1.message) || 'Falha ao concluir OF'));
+          try {
+            await fetch('/api/ofs/' + encodeURIComponent(String(of.id || ofId)), {
+              method: 'PATCH',
+              headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
+              body: JSON.stringify({ imagem: null, imagem_url: null })
+            }).catch(function() { return null; });
+          } catch (_) {}
 
           for (var i = 0; i < perdas.length; i += 1) {
             var perda = perdas[i];
@@ -17467,8 +17507,8 @@ function _ocultarGraficoComissoes() {
     var cliId = String(of && (of.cli_id || of.cliId || of.cliente_id || of.clienteId || '') || '').trim();
     var vendId = String(of && (of.vendedor_id || of.vendId || of.vend_id || '') || '').trim();
     var qtd = (of && (of.quantidade ?? of.qtd ?? of.qtd_pedida)) != null ? String(of.quantidade ?? of.qtd ?? of.qtd_pedida) : '';
-    var valTot = (of && (of.valor_total ?? of.valor_venda ?? of.valorTotal)) != null ? String(of.valor_total ?? of.valor_venda ?? of.valorTotal) : '';
-    var valUnit = Number(of && (of.valor_unitario ?? of.vl_unit ?? null));
+    var valUnit = window._getOfVlUnitHotfix ? window._getOfVlUnitHotfix(of) : (parseFloat(of && (of.vl_unit || of.valor_unitario || of.preco_unit || of.preco || 0)) || 0);
+    var valTot = String(window._getOfValorTotalHotfix ? window._getOfValorTotalHotfix(of, valUnit) : (parseFloat(of && (of.valor_total || of.total || ((valUnit || 0) * parseInt(of && (of.qtd || of.quantidade || 0), 10))) || 0) || 0));
     if (!(valUnit > 0)) {
       var qtdNumBase = Number(of && (of.quantidade ?? of.qtd ?? of.qtd_pedida ?? 0) || 0) || 0;
       var totalNumBase = Number(of && (of.valor_total ?? of.valor_venda ?? of.valorTotal ?? 0) || 0) || 0;
@@ -17852,8 +17892,8 @@ function _ocultarGraficoComissoes() {
 
   function _normalizarOFComissao(of, vendedorFallback, pctFallback) {
     var qtd = Number(of && (of.quantidade != null ? of.quantidade : (of.qtd != null ? of.qtd : of.quant)) || 0) || 0;
-    var vlUnit = Number(of && (of.vl_unit != null ? of.vl_unit : (of.valor_unitario != null ? of.valor_unitario : of.vunit)) || 0) || 0;
-    var valorTotal = Number(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : (of.valor != null ? of.valor : of.valor_venda))) || 0) || 0;
+    var vlUnit = parseFloat(of && (of.vl_unit || of.valor_unitario || of.preco_unit || of.preco || 0)) || 0;
+    var valorTotal = parseFloat(of && (of.valor_total || of.total || (vlUnit * parseInt(of && (of.qtd || of.quantidade || 0), 10))) || 0) || 0;
     if (!(valorTotal > 0) && qtd > 0 && vlUnit > 0) valorTotal = qtd * vlUnit;
     var pctRaw = _pctCom(of && (of.comissao_pct != null ? of.comissao_pct : (of.pct_comissao != null ? of.pct_comissao : of.comissao)));
     if (!(pctRaw > 0)) pctRaw = Number(pctFallback || 0) || 1;
@@ -17901,7 +17941,8 @@ function _ocultarGraficoComissoes() {
         var nome = String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || 'Sem vendedor').trim() || 'Sem vendedor';
         if (!mapa[nome]) mapa[nome] = { vendedor: nome, total_vendas: 0, ofs: [] };
         mapa[nome].ofs.push(of);
-        mapa[nome].total_vendas += Number(of && (of.valor_total != null ? of.valor_total : of.total) || 0) || 0;
+        var vlUnitAgg = parseFloat(of && (of.vl_unit || of.valor_unitario || of.preco_unit || of.preco || 0)) || 0;
+        mapa[nome].total_vendas += (parseFloat(of && (of.valor_total || of.total || (vlUnitAgg * parseInt(of && (of.qtd || of.quantidade || 0), 10))) || 0) || 0);
       });
       grupos = Object.keys(mapa).map(function(nome) { return mapa[nome]; });
     }
@@ -17977,7 +18018,8 @@ function _ocultarGraficoComissoes() {
         var cliente = String(of && (of.cli_nome || of.cliente_nome || of.cliente || of.cliNome || of.nome_cliente) || '—');
         var vendedor = String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || '—');
         var qtd = Number(of && (of.quantidade || of.qtd) || 0) || 0;
-        var valorTotal = Number(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : ((Number(of && of.vl_unit || 0) || 0) * qtd))) || 0) || 0;
+        var vlUnitBusca = parseFloat(of && (of.vl_unit || of.valor_unitario || of.preco_unit || of.preco || 0)) || 0;
+        var valorTotal = parseFloat(of && (of.valor_total || of.total || (vlUnitBusca * parseInt(of && (of.qtd || of.quantidade || 0), 10))) || 0) || 0;
         var status = String(of && of.status || 'Indefinido');
         var concluida = status.toLowerCase().indexOf('conclu') >= 0;
         var dataStr = '—';
@@ -18947,10 +18989,11 @@ window._recarregarToneladas = async function() {
     }));
 
     var detalhes = (Array.isArray(json.detalhes) ? json.detalhes : []).map(function(d) {
-      var comp = parseFloat(String(d && (d.comp != null ? d.comp : d.comprimento) || 0).replace(',', '.')) || 0;
-      var larg = parseFloat(String(d && (d.larg != null ? d.larg : d.largura) || 0).replace(',', '.')) || 0;
+      console.log('[TON] OF', d && (d.of || d.numero), 'comp:', d && d.comp, 'larg:', d && d.larg, 'gram:', d && d.gramatura_id, 'qtd:', d && d.qtd);
+      var comp = parseFloat(String(d && (d.comp || d.comprimento || d.largura_caixa || 0)).replace(',', '.')) || 0;
+      var larg = parseFloat(String(d && (d.larg || d.largura || d.altura_caixa || 0)).replace(',', '.')) || 0;
       var gram = parseFloat(String(d && (d.gram != null ? d.gram : d.gramatura) || 0).replace(',', '.')) || 0;
-      var qtd = parseFloat(String(d && (d.qtd != null ? d.qtd : d.quantidade) || 0).replace(',', '.')) || 0;
+      var qtd = parseInt(String(d && (d.qtd || d.quantidade || 0)).replace(',', '.'), 10) || 0;
       var areaCalc = (comp > 0 && larg > 0 && qtd > 0) ? ((comp / 1000) * (larg / 1000) * qtd) : 0;
       var tonCalc = (areaCalc > 0 && gram > 0) ? (areaCalc * (gram / 1000000)) : 0;
       var custoEstimado = Number(d && d.custo_estimado || 0) || 0;
@@ -18965,7 +19008,8 @@ window._recarregarToneladas = async function() {
         quantidade: qtd,
         area_m2: areaCalc || 0,
         toneladas: tonCalc || 0,
-        custo_estimado: custoEstimado || 0
+        custo_estimado: custoEstimado || 0,
+        sem_dimensoes: !(comp > 0 && larg > 0)
       });
     });
     var porGramaturaMap = Object.create(null);
@@ -19059,7 +19103,7 @@ window._recarregarToneladas = async function() {
         + detalhes.map(function(d, i) {
           return '<tr style="border-top:1px solid var(--border,#333);background:' + (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)') + '">'
             + '<td style="padding:8px 10px;color:#6366f1;font-weight:700">#' + escHtml(d.of || '—') + '</td>'
-            + '<td style="padding:8px 10px;color:var(--text,#fff)">' + escHtml(d.cliente || '—') + '</td>'
+            + '<td style="padding:8px 10px;color:var(--text,#fff)">' + escHtml(d.cliente || '—') + ((d.sem_dimensoes ? ' <span style="color:#f59e0b;font-size:11px">(sem dimensões)</span>' : '')) + '</td>'
             + '<td style="padding:8px 10px;text-align:right;color:#aaa">' + Number(d.qtd || 0).toLocaleString('pt-BR') + '</td>'
             + '<td style="padding:8px 10px;text-align:right;color:#6366f1">' + String(d.gram || '—') + ' g/m²</td>'
             + '<td style="padding:8px 10px;text-align:right;color:#aaa">' + fM(d.area_m2) + '</td>'
