@@ -2538,10 +2538,28 @@ function ofIn(p) {
       if (out.dim_comprimento === undefined) out.dim_comprimento = v;
     }
   }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'comp')) {
+    const v = toNum(p.comp, NaN);
+    if (Number.isFinite(v)) {
+      out.comp = v;
+      if (out.comprimento === undefined) out.comprimento = v;
+      if (out.caixa_comprimento === undefined) out.caixa_comprimento = v;
+      if (out.dim_comprimento === undefined) out.dim_comprimento = v;
+    }
+  }
   if (Object.prototype.hasOwnProperty.call(p || {}, 'largura')) {
     const v = toNum(p.largura, NaN);
     if (Number.isFinite(v)) {
       out.largura = v;
+      if (out.caixa_largura === undefined) out.caixa_largura = v;
+      if (out.dim_largura === undefined) out.dim_largura = v;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'larg')) {
+    const v = toNum(p.larg, NaN);
+    if (Number.isFinite(v)) {
+      out.larg = v;
+      if (out.largura === undefined) out.largura = v;
       if (out.caixa_largura === undefined) out.caixa_largura = v;
       if (out.dim_largura === undefined) out.dim_largura = v;
     }
@@ -3398,6 +3416,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       setNoCache(res);
     }
 
+    const shouldFetchAll = !!busca || (!afterIso && !offset && (!limitRaw || limitRaw === 'all' || limitRaw === '0'));
     const buildQuery = () => {
       let query = supabase
         .from('ofs')
@@ -3418,16 +3437,12 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       if (clienteFiltro && clienteFiltro !== 'undefined' && clienteFiltro !== 'null' && clienteFiltro !== '[object Object]') {
         query = query.eq('cli_id', clienteFiltro);
       }
-      if (busca) {
-        query = query.or('numero.ilike.%' + busca + '%,descricao.ilike.%' + busca + '%');
-      }
       if (afterIso) {
         query = query.gte('created_at', afterIso);
       }
       return query;
     };
 
-    const shouldFetchAll = !afterIso && !offset && (!limitRaw || limitRaw === 'all' || limitRaw === '0');
     let fetched = null;
     try {
       fetched = shouldFetchAll
@@ -3591,15 +3606,17 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const buscaNorm = String(busca).toLowerCase();
       rows = rows.filter((of) => {
         const hay = [
-          of?.numero, of?.descricao, of?.produto, of?.cliente, of?.clinome, of?.cliente_nome
+          of?.numero, of?.of, of?.descricao, of?.produto,
+          of?.cliente, of?.clinome, of?.cliente_nome, of?.cli_nome, of?.cliNome
         ].map((v) => String(v || '').toLowerCase()).join(' ');
         return hay.includes(buscaNorm);
       });
     }
 
-    const totalCount = count || rows.length;
-    const hasMore = (offset + rows.length) < totalCount;
-    const resultado = { ok: true, data: rows, total: totalCount, offset, limit, hasMore };
+    const totalCount = busca ? rows.length : (count || rows.length);
+    const dataFinal = (busca || shouldFetchAll) ? rows.slice(offset, offset + limit) : rows;
+    const hasMore = (offset + dataFinal.length) < totalCount;
+    const resultado = { ok: true, data: dataFinal, total: totalCount, offset, limit, hasMore };
     if (useCache) cacheSet(cacheKey, resultado, 30000);
     return res.json(resultado);
   } catch (e) {
@@ -6493,6 +6510,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       valor_total: novoValor,
       valor_venda: novoValor,
       data_conclusao: nowIso,
+      concluido_por: body.concluido_por || req.usuario?.nome || req.usuario?.email || req.usuario?.id || 'sistema',
       usuario_conclusao: req.usuario?.nome || 'sistema',
       updated_at: nowIso,
       maquina_atual_index: Math.max(fluxo.length, Number(of.maquina_atual_index || 0) || 0),

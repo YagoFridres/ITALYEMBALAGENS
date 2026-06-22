@@ -7270,6 +7270,49 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { el.checked = !!v; } catch (_) {}
   }
 
+  function toInputDate(val) {
+    var s = String(val || '').trim();
+    if (!s) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s.slice(0, 10))) return s.slice(0, 10);
+    try {
+      var d = new Date(s);
+      if (!isNaN(d.getTime())) return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
+    } catch (_) {}
+    return '';
+  }
+
+  function parseMaqValue(of) {
+    try {
+      var raw = of && (of.maq != null ? of.maq : (of.fluxo_maquinas != null ? of.fluxo_maquinas : null));
+      if (Array.isArray(raw) && raw[0]) return String(raw[0] && (raw[0].nome || raw[0].maquina || raw[0]) || '').trim();
+      if (typeof raw === 'string') {
+        var s = raw.trim();
+        if (s.charAt(0) === '[') {
+          var parsed = JSON.parse(s || '[]');
+          if (Array.isArray(parsed) && parsed[0]) return String(parsed[0] && (parsed[0].nome || parsed[0].maquina || parsed[0]) || '').trim();
+        }
+        if (s) return s;
+      }
+    } catch (_) {}
+    return String(of && (of.maquina_agendada || of.maquina || of.maquina_atual) || '').trim();
+  }
+
+  function setAnyVal(selectors, val) {
+    if (val == null) return;
+    var list = Array.isArray(selectors) ? selectors : [selectors];
+    list.forEach(function(sel) {
+      if (!sel) return;
+      var el = null;
+      try { el = sel.charAt && sel.charAt(0) === '#' ? document.getElementById(sel.slice(1)) : document.querySelector(sel); } catch (_) { el = null; }
+      if (!el) return;
+      try {
+        el.value = String(val);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch (_) {}
+    });
+  }
+
   function patchSalvarOfRapida() {
     if (typeof window.salvarOfRapida !== 'function') return;
     if (window.salvarOfRapida._patchEditToPatch) return;
@@ -7277,6 +7320,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     window.salvarOfRapida = async function() {
       var editId = String(window._ofRapidaEditandoId || '').trim();
       if (!editId) return orig.apply(this, arguments);
+      if (typeof window.salvarEdicaoOf === 'function') return window.salvarEdicaoOf();
 
       var btn = document.getElementById('btn-salvar-of-rapida');
       try { if (btn) { btn.textContent = 'Salvando...'; btn.disabled = true; } } catch (_) {}
@@ -7416,46 +7460,42 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       await new Promise(function(r) { setTimeout(r, 450); });
       var of = await fetchOf(sid);
       if (!of || of.error) return;
+      try { window._ofRapidaOriginalOF = of; } catch (_) {}
 
-      var cliNome = String(of.cliente || of.cliNome || of.cliente_nome || of.clinome || '').trim();
+      var cliNome = String(of.cliente || of.cli_nome || of.cliente_nome || of.cliNome || of.clinome || '').trim();
+      var cliId = String(of.cli_id || of.cliente_id || of.cliId || '').trim();
       var produto = String(of.produto || of.prodDesc || of.descricao || '').trim();
       var empId = String(of.emp_id || of.empId || 'E1').trim();
       var vendId = String(of.vendedor_id || of.vendId || of.vend_id || '').trim();
       var gramId = String(of.gramatura_id || of.gramaturaId || '').trim();
-      var qtd = of.quantidade != null ? of.quantidade : (of.qtd != null ? of.qtd : '');
+      var qtd = of.qtd != null ? of.qtd : (of.quantidade != null ? of.quantidade : '');
       var vlunit = of.vl_unit != null ? of.vl_unit : (of.valor_unitario != null ? of.valor_unitario : '');
-      var total = of.valor_total != null ? of.valor_total : (of.valor_venda != null ? of.valor_venda : '');
-      var entrega = String(of.data_entrega || of.ent || '').slice(0, 10);
-      var comp = of.caixa_comprimento != null ? of.caixa_comprimento : (of.dim_comprimento != null ? of.dim_comprimento : (of.comprimento != null ? of.comprimento : ''));
-      var larg = of.caixa_largura != null ? of.caixa_largura : (of.dim_largura != null ? of.dim_largura : (of.largura != null ? of.largura : ''));
-      var maquina = '';
-      try {
-        if (Array.isArray(of.maq) && of.maq.length) maquina = String(of.maq[0] || '').trim();
-      } catch (_) {}
-      maquina = maquina || String(of.maquina_agendada || of.maquina || '').trim();
+      var total = of.valor_total != null ? of.valor_total : (of.valor_venda != null ? of.valor_venda : (((Number(qtd) || 0) * (Number(vlunit) || 0)) || ''));
+      var entrega = toInputDate(of.data_entrega || of.ent);
+      var dia = toInputDate(of.dia || of.data_producao || of.data_programada);
+      var comp = of.comp != null ? of.comp : (of.caixa_comprimento != null ? of.caixa_comprimento : (of.dim_comprimento != null ? of.dim_comprimento : (of.comprimento != null ? of.comprimento : '')));
+      var larg = of.larg != null ? of.larg : (of.caixa_largura != null ? of.caixa_largura : (of.dim_largura != null ? of.dim_largura : (of.largura != null ? of.largura : '')));
+      var maquina = parseMaqValue(of);
+      var status = String(of.status || '').trim();
+      var obs = String(of.obs || of.observacoes || of.observacao || '').trim();
       var urgente = !!(of.urgente === true || of.urg === true || of.urgente === 1 || of.urg === 1);
 
-      function setV(id, val) {
-        var el = document.getElementById(id);
-        if (el && val != null && val !== '') { el.value = String(val); }
-      }
-      function setC(id, v) {
-        var el = document.getElementById(id);
-        if (el) el.checked = !!v;
-      }
-
-      setV('of-r-cliente', cliNome);
-      setV('of-r-produto', produto);
-      setV('of-r-empresa', empId);
-      setV('of-r-vendedor', vendId);
-      setV('of-r-qtd', qtd);
-      setV('of-r-vlunit', vlunit);
-      setV('of-r-total', total);
-      setV('of-r-entrega', entrega);
-      setV('of-r-comp', comp);
-      setV('of-r-larg', larg);
-      setV('of-r-maquina', maquina);
-      setC('of-r-urgente', urgente);
+      setAnyVal(['#of-r-cliente', 'input[name="cliente"]'], cliNome);
+      setAnyVal(['#of-r-cliente-id', '#ofr-cliente-id', 'input[name="cli_id"]'], cliId);
+      setAnyVal(['#of-r-produto', 'input[name="produto"]', 'input[name="descricao"]'], produto);
+      setAnyVal(['#of-r-empresa'], empId);
+      setAnyVal(['#of-r-vendedor', '#ofr-vendedor', 'select[name="vendedor_id"]'], vendId);
+      setAnyVal(['#of-r-qtd', '#ofr-quantidade', 'input[name="quantidade"]'], qtd);
+      setAnyVal(['#of-r-vlunit', '#ofr-vl-unit', 'input[name="vl_unit"]'], vlunit);
+      setAnyVal(['#of-r-total', 'input[name="valor_total"]'], total);
+      setAnyVal(['#of-r-entrega', '#ofr-entrega', 'input[name="data_entrega"]'], entrega);
+      setAnyVal(['#of-r-dia', '#ofr-dia', 'input[name="dia"]', 'input[name="data_producao"]'], dia);
+      setAnyVal(['#of-r-comp', '#ofr-comp', 'input[name="comp"]', 'input[name="comprimento"]'], comp);
+      setAnyVal(['#of-r-larg', '#ofr-larg', 'input[name="larg"]', 'input[name="largura"]'], larg);
+      setAnyVal(['#of-r-maquina', '#ofr-maquina', 'select[name="maquina"]'], maquina);
+      setAnyVal(['#of-r-status', '#ofr-status', 'select[name="status"]'], status);
+      setAnyVal(['#of-r-obs', '#ofr-obs', 'textarea[name="obs"]', 'textarea[name="observacoes"]'], obs);
+      setChecked('of-r-urgente', urgente);
 
       if (gramId) {
         window._ofRapidaGramaturaId = gramId;
@@ -7476,6 +7516,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
       setTimeout(function() {
         try {
+          setAnyVal(['#of-r-maquina', '#ofr-maquina', 'select[name="maquina"]'], maquina);
+          setAnyVal(['#of-r-status', '#ofr-status', 'select[name="status"]'], status);
+          setAnyVal(['#of-r-obs', '#ofr-obs', 'textarea[name="obs"]', 'textarea[name="observacoes"]'], obs);
           var header = document.querySelector('#modal-of-rapida div[style*="font-weight:800"]');
           if (header) header.textContent = '✏️ Editar OF #' + String(of.numero || of.of || '');
           var btn = document.getElementById('btn-salvar-of-rapida');
@@ -7669,6 +7712,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   window.salvarEdicaoOf = async function() {
     var id = String(window._ofRapidaEditandoId || '').trim();
     var toast = getToastFn();
+    var ofOrig = window._ofRapidaOriginalOF || {};
     if (!id) {
       try { console.warn('[salvarEdicaoOf] sem id de edição'); } catch (_) {}
       return;
@@ -7687,17 +7731,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
     var body = {};
     var maquina = getV('#of-r-maquina', '#ofr-maquina', 'select[name="maquina"]', '[data-campo="maquina"]');
+    var status = getV('#of-r-status', '#ofr-status', 'select[name="status"]');
     var tipo = getV('#ofr-tipo', '#of-r-tipo', 'select[name="tipo_caixa"]', 'select[name="tipo"]');
     var produto = getV('#of-r-produto', '#ofr-produto', 'input[name="produto"]', '[data-campo="produto"]');
     var quantidade = getV('#of-r-qtd', '#ofr-quantidade', 'input[name="quantidade"]');
-    var comprimento = getV('#of-r-comp', '#ofr-comp', 'input[name="comprimento"]');
-    var largura = getV('#of-r-larg', '#ofr-larg', 'input[name="largura"]');
+    var comprimento = getV('#of-r-comp', '#ofr-comp', 'input[name="comp"]', 'input[name="comprimento"]');
+    var largura = getV('#of-r-larg', '#ofr-larg', 'input[name="larg"]', 'input[name="largura"]');
     var altura = getV('#ofr-alt', '#of-r-alt', 'input[name="altura"]');
-    var entrega = getV('#of-r-entrega', '#ofr-entrega', 'input[name="data_entrega"]', 'input[type="date"]');
+    var entrega = getV('#of-r-entrega', '#ofr-entrega', 'input[name="data_entrega"]');
+    var dia = getV('#of-r-dia', '#ofr-dia', 'input[name="dia"]', 'input[name="data_producao"]');
     var vlUnit = getV('#of-r-vlunit', '#ofr-vl-unit', 'input[name="vl_unit"]', 'input[name="valor_unitario"]');
+    var valorTotal = getV('#of-r-total', 'input[name="valor_total"]');
     var obs = getV('#ofr-obs', '#of-r-obs', 'textarea[name="observacoes"]', 'textarea[name="obs"]');
+    var cliente = getV('#of-r-cliente', 'input[name="cliente"]');
     var cliId = getV('#ofr-cliente-id', '#of-r-cliente-id', 'input[name="cli_id"]');
     var vendId = getV('#of-r-vendedor', '#ofr-vendedor', 'select[name="vendedor_id"]');
+    var gramId = getV('#_of_rapida_gramatura_id', '#of-r-gramatura', 'select[name="gramatura_id"]');
+
+    if (status) body.status = status;
 
     if (maquina) {
       body.maquina = maquina;
@@ -7712,18 +7763,20 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       body.prodDesc = produto;
     }
     if (quantidade != null && quantidade !== '') {
-      body.quantidade = Number(quantidade);
-      body.qtd = Number(quantidade);
+      body.quantidade = parseInt(String(quantidade).replace(',', '.'), 10) || 0;
+      body.qtd = body.quantidade;
     }
     if (comprimento != null && comprimento !== '') {
-      body.comprimento = Number(comprimento);
-      body.caixa_comprimento = Number(comprimento);
-      body.dim_comprimento = Number(comprimento);
+      body.comp = parseFloat(String(comprimento).replace(',', '.')) || 0;
+      body.comprimento = body.comp;
+      body.caixa_comprimento = body.comp;
+      body.dim_comprimento = body.comp;
     }
     if (largura != null && largura !== '') {
-      body.largura = Number(largura);
-      body.caixa_largura = Number(largura);
-      body.dim_largura = Number(largura);
+      body.larg = parseFloat(String(largura).replace(',', '.')) || 0;
+      body.largura = body.larg;
+      body.caixa_largura = body.larg;
+      body.dim_largura = body.larg;
     }
     if (altura != null && altura !== '') {
       body.altura = Number(altura);
@@ -7731,17 +7784,26 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       body.dim_altura = Number(altura);
     }
     if (entrega) {
-      body.data_entrega = entrega;
-      body.ent = entrega;
+      body.data_entrega = String(entrega).slice(0, 10);
+      body.ent = body.data_entrega;
+    }
+    if (dia) {
+      body.dia = String(dia).slice(0, 10);
+      body.data_producao = body.dia;
     }
     if (vlUnit != null && vlUnit !== '') {
-      body.vl_unit = Number(vlUnit);
-      body.valor_unitario = Number(vlUnit);
+      body.vl_unit = parseFloat(String(vlUnit).replace(',', '.')) || 0;
+      body.valor_unitario = body.vl_unit;
+    }
+    if (valorTotal != null && valorTotal !== '') {
+      body.valor_total = parseFloat(String(valorTotal).replace(',', '.')) || 0;
+      body.valor_venda = body.valor_total;
     }
     if (obs) {
       body.observacoes = obs;
       body.obs = obs;
     }
+    if (cliente) body.cliente = cliente;
     if (cliId) {
       body.cli_id = cliId;
       body.cliente_id = cliId;
@@ -7752,7 +7814,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       body.vendId = vendId;
       body.vend_id = vendId;
     }
-    if ((body.vl_unit || body.valor_unitario) && (body.quantidade || body.qtd)) {
+    if (gramId) {
+      body.gramatura_id = gramId;
+      body.gramaturaId = gramId;
+    }
+    if (body.valor_total == null && (body.vl_unit || body.valor_unitario) && (body.quantidade || body.qtd)) {
       var qty = Number(body.quantidade || body.qtd || 0) || 0;
       var unit = Number(body.vl_unit || body.valor_unitario || 0) || 0;
       if (qty > 0 && unit > 0) {
@@ -7766,10 +7832,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
     } catch (_) {}
 
-    if (Object.keys(body).length === 1) {
-      toast('⚠️ Nenhum campo preenchido para salvar');
-      return;
+    if (!body.status && ofOrig && ofOrig.status) body.status = String(ofOrig.status);
+    if (!body.cli_id && ofOrig && (ofOrig.cli_id || ofOrig.cliente_id)) body.cli_id = String(ofOrig.cli_id || ofOrig.cliente_id);
+    if (!body.vendedor_id && ofOrig && (ofOrig.vendedor_id || ofOrig.vendId || ofOrig.vend_id)) body.vendedor_id = String(ofOrig.vendedor_id || ofOrig.vendId || ofOrig.vend_id);
+    if (!body.maq && ofOrig) {
+      var maqOrig = parseMaqValue(ofOrig);
+      if (maqOrig) {
+        body.maq = [maqOrig];
+        body.maquina = maqOrig;
+      }
     }
+    if (body.valor_total == null && ofOrig && ofOrig.valor_total != null) body.valor_total = parseFloat(String(ofOrig.valor_total).replace(',', '.')) || 0;
 
     try { console.log('[salvarEdicaoOf] enviando PATCH para OF', id, body); } catch (_) {}
     var btn = document.getElementById('btn-salvar-of-rapida');
@@ -7783,12 +7856,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var result = await resp.json().catch(function() { return {}; });
       try { console.log('[salvarEdicaoOf] resposta:', resp.status, result); } catch (_) {}
       if (!resp.ok || (result && result.ok === false)) {
-        toast('❌ Erro ao salvar: ' + String(result && result.error || resp.status));
+        toast('❌ Erro ao salvar: ' + String(result && (result.error || result.message) || resp.status));
         return;
       }
-      toast('✅ OF #' + String(window._ofRapidaEditandoNumero || id.substring(0, 8)) + ' salva!');
+      toast('OF atualizada com sucesso');
       window._ofRapidaEditandoId = null;
       window._ofRapidaEditandoNumero = null;
+      window._ofRapidaOriginalOF = null;
       try { document.getElementById('btn-salvar-edicao-of') && document.getElementById('btn-salvar-edicao-of').remove(); } catch (_) {}
       try {
         var btnOrig = document.querySelector('#modal-of-rapida button[type="submit"], .btn-salvar-of');
@@ -11396,8 +11470,84 @@ window._mbnActive = function(id) {
   }
 
   function getVisibleGroups() {
-    var groups = window._ofmaqLastGroupOfs;
+    var groups = window._ofmaqVisibleGroups || window._ofmaqLastGroupOfs;
     return (groups && typeof groups === 'object') ? groups : {};
+  }
+
+  function getOfmaqRawList() {
+    var raw = Array.isArray(window._ofmaqAllOfs) ? window._ofmaqAllOfs : null;
+    if (raw && raw.length) return raw.slice();
+    raw = Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window._ofmaqBaseList) ? window._ofmaqBaseList : []);
+    return Array.isArray(raw) ? raw.slice() : [];
+  }
+
+  function getMachineFromOf(of) {
+    var maq = '';
+    try {
+      if (of && of.__maquinaRender) maq = String(of.__maquinaRender || '').trim();
+      if (!maq) maq = String(of && (of.maquina_agendada || of.maquina_atual || of.maquina || of.maquina_nome) || '').trim();
+      if (!maq && Array.isArray(of && of.maq) && of.maq[0]) maq = String(of.maq[0] || '').trim();
+      if (!maq && typeof (of && of.maq) === 'string') {
+        try {
+          var maqParsed = JSON.parse(String(of.maq || '[]'));
+          if (Array.isArray(maqParsed) && maqParsed[0]) maq = String(maqParsed[0] || '').trim();
+        } catch (_) {
+          maq = String(of && of.maq || '').trim();
+        }
+      }
+    } catch (_) {}
+    return maq || 'Sem Máquina';
+  }
+
+  function capturarEstadoOfmaqVisivel() {
+    try {
+      var groups = Object.create(null);
+      var all = [];
+      var originalOrder = Object.create(null);
+      var roots = Array.prototype.slice.call(document.querySelectorAll('.maq-body[data-maquina-id], .maq-ofs[data-maquina-id], [data-maquina-lista="1"][data-maquina-id]'));
+      roots.forEach(function(listEl) {
+        var maq = String(listEl && (listEl.getAttribute('data-maquina-id') || listEl.getAttribute('data-maquina') || '') || '').trim() || 'Sem Máquina';
+        var seen = Object.create(null);
+        var cards = Array.prototype.slice.call(listEl.querySelectorAll('[data-of-id]'));
+        cards.forEach(function(card) {
+          var id = String(card && card.getAttribute('data-of-id') || '').trim();
+          if (!id || seen[id]) return;
+          seen[id] = true;
+          var of = getCurrentOfById(id);
+          if (!of) return;
+          var clone = Object.assign({}, of, { __maquinaRender: maq });
+          if (!groups[maq]) groups[maq] = [];
+          groups[maq].push(clone);
+          all.push(clone);
+        });
+        originalOrder[maq] = (groups[maq] || []).map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
+      });
+
+      if (!Object.keys(groups).length) {
+        getOfmaqRawList().forEach(function(of) {
+          var maq = getMachineFromOf(of);
+          var clone = Object.assign({}, of, { __maquinaRender: maq });
+          if (!groups[maq]) groups[maq] = [];
+          groups[maq].push(clone);
+          all.push(clone);
+        });
+        Object.keys(groups).forEach(function(maq) {
+          originalOrder[maq] = (groups[maq] || []).map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
+        });
+      }
+
+      window._ofmaqVisibleGroups = groups;
+      window._ofmaqLastGroupOfs = groups;
+      window._ofmaqAllOfs = all.slice();
+      if (!window._ofmaqAllById || typeof window._ofmaqAllById !== 'object') window._ofmaqAllById = Object.create(null);
+      all.forEach(function(of) {
+        var sid = String(of && of.id || '').trim();
+        if (sid) window._ofmaqAllById[sid] = of;
+      });
+      if (!window._ofmaqOrderMode || window._ofmaqOrderMode === 'original' || !window._ofmaqOriginalOrderByMachine) {
+        window._ofmaqOriginalOrderByMachine = originalOrder;
+      }
+    } catch (_) {}
   }
 
   function getCurrentOfById(id) {
@@ -11575,6 +11725,15 @@ window._mbnActive = function(id) {
       btnAgr.onclick = function() { try { if (typeof window.toggleAgrupamentoSetup === 'function') window.toggleAgrupamentoSetup(); } catch (_) {} };
       wrap.appendChild(btnAgr);
     }
+    if (!document.getElementById('btn-resetar-ordem-ofmaq')) {
+      var btnReset = document.createElement('button');
+      btnReset.id = 'btn-resetar-ordem-ofmaq';
+      btnReset.style.cssText = 'padding:7px 14px;border-radius:6px;background:transparent;color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:13px';
+      btnReset.textContent = '↺ Resetar';
+      btnReset.onclick = function() { try { if (typeof window._resetarOrdemOfmaq === 'function') window._resetarOrdemOfmaq(); } catch (_) {} };
+      wrap.appendChild(btnReset);
+    }
+    updatePrioridadeButton();
     updateAgrupamentoButton();
 
     try {
@@ -11616,6 +11775,14 @@ window._mbnActive = function(id) {
     btn.style.background = ativo ? 'var(--accent)' : 'var(--bg2)';
     btn.style.color = ativo ? '#fff' : 'var(--text1)';
     btn.textContent = ativo ? '🎨 Agrupado por Setup ✓' : '🎨 Agrupar Setup';
+  }
+
+  function updatePrioridadeButton() {
+    var btn = document.getElementById('patch-btn-prioridade');
+    if (!btn) return;
+    var ativo = String(window._ofmaqOrderMode || 'original') === 'medidas';
+    btn.style.background = ativo ? 'var(--green)' : 'var(--accent)';
+    btn.textContent = ativo ? '🎯 Ordenado por Medidas ✓' : '🎯 Ordenar por Prioridade';
   }
 
   function getBadgeForDays(diff) {
@@ -11740,7 +11907,7 @@ window._mbnActive = function(id) {
   }
 
   function parseColors(of) {
-    var raw = of && (of.cores_impressao != null ? of.cores_impressao : of.impressao_cor);
+    var raw = of && (of.cores_impressao != null ? of.cores_impressao : (of.impressao_cor != null ? of.impressao_cor : (of.cores != null ? of.cores : (of.cor_tinta != null ? of.cor_tinta : (of.cor != null ? of.cor : of.especificacoes)))));
     var arr = [];
     try {
       if (Array.isArray(raw)) {
@@ -11762,6 +11929,97 @@ window._mbnActive = function(id) {
     arr = arr.filter(Boolean);
     return arr.length ? arr : ['Sem cor'];
   }
+
+  function sortByEntregaAsc(a, b) {
+    var da = getOfDelivery(a) || '9999-99-99';
+    var db = getOfDelivery(b) || '9999-99-99';
+    if (da !== db) return da.localeCompare(db);
+    return String(a && (a.numero || a.of || '') || '').localeCompare(String(b && (b.numero || b.of || '') || ''));
+  }
+
+  function getDimensoesOfmaq(of) {
+    var dim = parseDimensions(of);
+    return {
+      comp: parseFloat(String((of && (of.comp != null ? of.comp : (of.comprimento != null ? of.comprimento : (of.caixa_comprimento != null ? of.caixa_comprimento : dim.comprimento)))) || 0).replace(',', '.')) || 0,
+      larg: parseFloat(String((of && (of.larg != null ? of.larg : (of.largura != null ? of.largura : (of.caixa_largura != null ? of.caixa_largura : dim.largura)))) || 0).replace(',', '.')) || 0
+    };
+  }
+
+  function agruparPorMedidasSemelhantes(list) {
+    var items = (Array.isArray(list) ? list.slice() : []).sort(sortByEntregaAsc);
+    var grupos = [];
+    items.forEach(function(of) {
+      var dim = getDimensoesOfmaq(of);
+      var target = null;
+      for (var i = 0; i < grupos.length; i += 1) {
+        var ref = grupos[i].ref;
+        if (Math.abs((ref.comp || 0) - (dim.comp || 0)) <= 20 && Math.abs((ref.larg || 0) - (dim.larg || 0)) <= 20) {
+          target = grupos[i];
+          break;
+        }
+      }
+      if (!target) {
+        target = { ref: dim, items: [] };
+        grupos.push(target);
+      }
+      target.items.push(of);
+    });
+    return grupos.reduce(function(acc, grupo) {
+      return acc.concat(grupo.items.sort(sortByEntregaAsc));
+    }, []);
+  }
+
+  function getOfmaqColorGroup(of) {
+    var cores = parseColors(of).map(function(c) { return String(c || '').trim().toUpperCase(); }).filter(Boolean);
+    return cores.length ? cores.sort().join(' + ') : 'SEM COR';
+  }
+
+  function buildGroupsFromAllOfs() {
+    var groups = Object.create(null);
+    getOfmaqRawList().forEach(function(of) {
+      var maq = getMachineFromOf(of);
+      if (!groups[maq]) groups[maq] = [];
+      groups[maq].push(of);
+    });
+    return groups;
+  }
+
+  function aplicarOrdemOfmaq(groups) {
+    var g = (groups && typeof groups === 'object' && Object.keys(groups).length) ? groups : buildGroupsFromAllOfs();
+    if (!Object.keys(g).length) return false;
+    if (!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
+    Object.keys(g).forEach(function(maq) {
+      var ids = (Array.isArray(g[maq]) ? g[maq] : []).map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
+      if (ids.length) window._ordemMaquinas[maq] = ids.slice();
+    });
+    window._ofmaqVisibleGroups = g;
+    window._ofmaqLastGroupOfs = g;
+    window._ofmaqAllOfs = Object.keys(g).reduce(function(acc, maq) {
+      return acc.concat((g[maq] || []).map(function(of) { return Object.assign({}, of, { __maquinaRender: maq }); }));
+    }, []);
+    return true;
+  }
+
+  window._resetarOrdemOfmaq = async function() {
+    try {
+      window._ofmaqOrderMode = 'original';
+      window._agrupamentoSetupAtivo = false;
+      if (window._ordemMaquinas && typeof window._ordemMaquinas === 'object') {
+        Object.keys(window._ordemMaquinas).forEach(function(k) { delete window._ordemMaquinas[k]; });
+      }
+      var original = window._ofmaqOriginalOrderByMachine || {};
+      Object.keys(original).forEach(function(maq) {
+        var ids = Array.isArray(original[maq]) ? original[maq].slice() : [];
+        if (ids.length) window._ordemMaquinas[maq] = ids;
+      });
+      updatePrioridadeButton();
+      updateAgrupamentoButton();
+      try { if (typeof window.renderOFsPorMaquina === 'function') await window.renderOFsPorMaquina(); } catch (_) {}
+      try { window.toast('Ordem original restaurada', 'var(--green)'); } catch (_) {}
+    } catch (e) {
+      try { window.toast('Erro ao resetar ordem: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+    }
+  };
 
   function _hashColor(s) {
     var str = String(s || '');
@@ -12351,79 +12609,26 @@ window._mbnActive = function(id) {
   }
 
   window._ordenarPorPrioridade = async function() {
-    var groups = window._ofmaqLastGroupOfs || {};
-    
-    if (!Object.keys(groups).length) {
-      try {
-        var tokenFetch = String(localStorage.getItem('token') || '').trim();
-        var resp = await fetch('/api/ofs?status=Em+Produ%C3%A7%C3%A3o&limit=500', {
-          headers: tokenFetch ? { Authorization: 'Bearer ' + tokenFetch } : {}
-        });
-        var json = await resp.json().catch(function() { return null; });
-        var ofs = Array.isArray(json) ? json : (json && (json.data || json.ofs) || []);
-
-        ofs.forEach(function(of) {
-          var maq = '';
-          try {
-            var maqArr = Array.isArray(of.maq) ? of.maq : JSON.parse(String(of.maq || '[]'));
-            maq = String(maqArr[0] || of.maquina_agendada || 'Sem Máquina').trim();
-          } catch (_) {
-            maq = String(of.maquina_agendada || of.maquina || 'Sem Máquina').trim();
-          }
-          if (!groups[maq]) groups[maq] = [];
-          groups[maq].push(of);
-        });
-      } catch (e) {
-        console.error('[ordenar] erro ao buscar OFs:', e.message);
-      }
+    if (String(window._ofmaqOrderMode || 'original') === 'medidas') {
+      return window._resetarOrdemOfmaq();
     }
-
+    capturarEstadoOfmaqVisivel();
+    var groups = buildGroupsFromAllOfs();
     if (!Object.keys(groups).length) {
       try { window.toast('Nenhuma OF carregada. Vá para OFs por Máquina primeiro.', 'var(--red)'); } catch (_) {}
       return;
     }
-
-    var maquinas = Object.keys(groups);
-    for (var i = 0; i < maquinas.length; i++) {
-      var maq = maquinas[i];
-      var ofs = Array.isArray(groups[maq]) ? groups[maq].slice() : [];
-      if (!ofs.length) continue;
-
-      var urgentes = ofs.filter(function(of) {
-        return !!(of && (of.urgente === true || of.urgente === 1 || of.urg === true || of.urg === 1));
-      });
-      var normais = ofs.filter(function(of) {
-        return !(of && (of.urgente === true || of.urgente === 1 || of.urg === true || of.urg === 1));
-      });
-
-      function getArea(of) {
-        var comp = Number(of.caixa_comprimento || of.dim_comprimento || of.comprimento || 0) || 0;
-        var larg = Number(of.caixa_largura || of.dim_largura || of.largura || 0) || 0;
-        return comp * larg;
-      }
-      urgentes.sort(function(a, b) { return getArea(b) - getArea(a); });
-      normais.sort(function(a, b) { return getArea(b) - getArea(a); });
-
-      var ordenadas = urgentes.concat(normais);
-      var ids = ordenadas.map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
-      if (!ids.length) continue;
-
-      if (!window._ordemMaquinas) window._ordemMaquinas = {};
-      window._ordemMaquinas[maq] = ids;
-
-      try {
-        var token = '';
-        try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
-        await fetch('/api/ofs/reordenar', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': token ? 'Bearer ' + token : '' },
-          body: JSON.stringify({ maquina_id: maq, ids: ids, ordem: ids })
-        });
-      } catch (_) {}
-    }
-
+    var orderedGroups = Object.create(null);
+    Object.keys(groups).forEach(function(maq) {
+      orderedGroups[maq] = agruparPorMedidasSemelhantes(groups[maq] || []);
+    });
+    aplicarOrdemOfmaq(orderedGroups);
+    window._ofmaqOrderMode = 'medidas';
+    window._agrupamentoSetupAtivo = false;
+    updatePrioridadeButton();
+    updateAgrupamentoButton();
     try { if (typeof window.renderOFsPorMaquina === 'function') await window.renderOFsPorMaquina(); } catch (_) {}
-    try { window.toast('✅ OFs ordenadas por tamanho (maiores primeiro, urgentes no topo)', 'var(--green)'); } catch (_) {}
+    try { window.toast('✅ OFs ordenadas por medidas similares', 'var(--green)'); } catch (_) {}
   };
 
   window.ordenarOFsPorPrioridade = async function(arg) {
@@ -12437,7 +12642,8 @@ window._mbnActive = function(id) {
   };
 
   window._agruparPorSetup = async function() {
-    var groups = getVisibleGroups();
+    capturarEstadoOfmaqVisivel();
+    var groups = buildGroupsFromAllOfs();
     var maquinas = Object.keys(groups || {});
     if (!maquinas.length) return false;
     try {
@@ -12448,30 +12654,29 @@ window._mbnActive = function(id) {
         if (!ofs.length) continue;
         var buckets = {};
         ofs.forEach(function(of) {
-          var k = (typeof window._ofmaqCorKey === 'function') ? window._ofmaqCorKey(of) : 'SEM COR';
+          var k = getOfmaqColorGroup(of);
           k = String(k || 'SEM COR').toUpperCase().trim() || 'SEM COR';
           if (!buckets[k]) buckets[k] = [];
           buckets[k].push(of);
         });
         var keys = Object.keys(buckets);
         totalGrupos += keys.length;
-        keys.sort(function(a, b) { return (buckets[b].length || 0) - (buckets[a].length || 0); });
+        keys.sort(function(a, b) {
+          if (a === 'SEM COR' && b !== 'SEM COR') return 1;
+          if (b === 'SEM COR' && a !== 'SEM COR') return -1;
+          return a.localeCompare(b);
+        });
         var ordered = [];
         keys.forEach(function(k) {
-          var list = buckets[k] || [];
-          var ug = [];
-          var nn = [];
-          list.forEach(function(of) { (isUrgente(of) ? ug : nn).push(of); });
-          ug.forEach(function(of) { ordered.push(of); });
-          nn.forEach(function(of) { ordered.push(of); });
+          var list = (buckets[k] || []).slice().sort(sortByEntregaAsc);
+          list.forEach(function(of) { ordered.push(of); });
         });
-        var ids = ordered.map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
-        if (!ids.length) continue;
-        if (!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
-        window._ordemMaquinas[maq] = ids.slice();
-        await savePriorityOrder(maq, ids);
+        groups[maq] = ordered;
       }
+      aplicarOrdemOfmaq(groups);
+      window._ofmaqOrderMode = 'setup';
       window._agrupamentoSetupAtivo = true;
+      updatePrioridadeButton();
       updateAgrupamentoButton();
       try { if (typeof window.renderOFsPorMaquina === 'function') await window.renderOFsPorMaquina(); } catch (_) {}
       try { window.toast('✅ OFs agrupadas por setup/cor (' + totalGrupos + ' grupos)', 'var(--green)'); } catch (_) {}
@@ -12483,93 +12688,17 @@ window._mbnActive = function(id) {
   };
 
   window.toggleAgrupamentoSetup = async function() {
-    window._agrupamentoSetupAtivo = !window._agrupamentoSetupAtivo;
-    updateAgrupamentoButton();
-
-    if (!window._agrupamentoSetupAtivo) {
-      try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
-      try { window.toast('Agrupamento por setup desativado', 'var(--accent)'); } catch (_) {}
-      return;
+    if (String(window._ofmaqOrderMode || 'original') === 'setup') {
+      return window._resetarOrdemOfmaq();
     }
-
-    var groups = window._ofmaqLastGroupOfs || {};
-    if (!Object.keys(groups).length) {
-      try { window.toast('Vá para OFs por Máquina primeiro', 'var(--red)'); } catch (_) {}
-      window._agrupamentoSetupAtivo = false;
-      updateAgrupamentoButton();
-      return;
-    }
-
-    var maquinas = Object.keys(groups);
-
-    for (var i = 0; i < maquinas.length; i++) {
-      var maq = maquinas[i];
-      var ofs = Array.isArray(groups[maq]) ? groups[maq].slice() : [];
-      if (!ofs.length) continue;
-
-      function getCores(of) {
-        try {
-          var raw = of.cores_impressao;
-          if (!raw) return 'SEM COR';
-          if (typeof raw === 'string') raw = JSON.parse(raw);
-          if (Array.isArray(raw) && raw.length) {
-            return raw.map(function(c) {
-              return String(c && (c.nome || c.id || c) || '').trim().toUpperCase();
-            }).sort().join('+');
-          }
-        } catch (_) {}
-        return 'SEM COR';
-      }
-
-      var grupos = {};
-      ofs.forEach(function(of) {
-        var cor = getCores(of);
-        if (!grupos[cor]) grupos[cor] = [];
-        grupos[cor].push(of);
-      });
-
-      var chaves = Object.keys(grupos).sort(function(a, b) {
-        return grupos[b].length - grupos[a].length;
-      });
-
-      var ordenadas = [];
-      chaves.forEach(function(cor) {
-        var grupo = grupos[cor] || [];
-        var urgentes = grupo.filter(function(of) {
-          return !!(of && (of.urgente === true || of.urgente === 1));
-        });
-        var normais = grupo.filter(function(of) {
-          return !(of && (of.urgente === true || of.urgente === 1));
-        });
-        urgentes.forEach(function(of) { ordenadas.push(of); });
-        normais.forEach(function(of) { ordenadas.push(of); });
-      });
-
-      var ids = ordenadas.map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
-      if (!ids.length) continue;
-
-      if (!window._ordemMaquinas) window._ordemMaquinas = {};
-      window._ordemMaquinas[maq] = ids;
-
-      try {
-        var token = '';
-        try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
-        await fetch('/api/ofs/reordenar', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': token ? 'Bearer ' + token : '' },
-          body: JSON.stringify({ maquina_id: maq, ids: ids, ordem: ids })
-        });
-      } catch (_) {}
-    }
-
-    try { if (typeof window.renderOFsPorMaquina === 'function') await window.renderOFsPorMaquina(); } catch (_) {}
-    try { window.toast('✅ OFs agrupadas por cor/setup', 'var(--green)'); } catch (_) {}
+    return window._agruparPorSetup();
   };
 
   function afterRenderOfmaq() {
     ensureStyles();
     ensureOfmaqToolbarButtons();
     try { _removerBtnNovaOfMaq(); } catch (_) {}
+    try { capturarEstadoOfmaqVisivel(); } catch (_) {}
     decorateOfmaqCards();
     applySetupGroupingVisual();
     try { _atualizarCapacidadePorMaquina(); } catch (_) {}
@@ -16337,7 +16466,8 @@ function _ocultarGraficoComissoes() {
           status: 'Concluído',
           data_conclusao: dataFaturamento,
           quantidade: caixasProduzidas,
-          valor_total: resumo.novoTotal
+          valor_total: resumo.novoTotal,
+          concluido_por: ((window._usuarioLogado && (window._usuarioLogado.nome || window._usuarioLogado.email)) || 'Sistema')
         };
         var gramaturaId = String((document.getElementById('conclusao-gramatura') || {}).value || '').trim();
         if (gramaturaId) body.gramatura_id = gramaturaId;
@@ -16658,6 +16788,7 @@ function _ocultarGraficoComissoes() {
           var cliInput = body.querySelector('#com-of-cli-busca');
           var cliHidden = body.querySelector('#com-of-cli-id');
           var cliId = String((cliHidden && cliHidden.value) || (cliInput && cliInput.dataset && (cliInput.dataset.cliId || cliInput.dataset.cliid)) || (of && of.cli_id) || '').trim();
+          var cliNome = String((cliInput && cliInput.value) || (of && (of.cli_nome || of.cliente_nome || of.cliente || of.cliNome)) || '').trim();
           var vendId = String((body.querySelector('#com-of-vend-id') || {}).value || (of && (of.vendedor_id || of.vendId || of.vend_id)) || '').trim();
           var qtd = String((body.querySelector('#com-of-qtd') || {}).value || '').trim();
           var valorUnit = String((body.querySelector('#edit-of-valor-unitario') || {}).value || '').trim();
@@ -16673,21 +16804,18 @@ function _ocultarGraficoComissoes() {
 
           try { console.log('[TROCAR] salvando OF id:', ofId); } catch (_) {}
 
+          payload.status = st || String(of && of.status || 'Indefinido');
+          payload.cliente = cliNome || '—';
           if (cliId) payload.cli_id = cliId;
-          if (vendId) payload.vendedor_id = vendId;
-          if (qtd) payload.quantidade = qtdNum;
-          if (valorUnit) payload.valor_unitario = valorUnitNum;
+          payload.vendedor_id = vendId || null;
+          payload.quantidade = qtdNum;
+          payload.qtd = qtdNum;
+          payload.vl_unit = valorUnitNum;
           payload.valor_total = valorTotalCalc;
-          if (st) payload.status = st;
-          if (created) payload.created_at = created;
-          if (conc) payload.data_conclusao = conc;
-          if (obs) payload.observacoes = obs;
-          if (comPct) payload.comissao_pct = Number(String(comPct).replace(',', '.'));
+          payload.data_conclusao = conc || null;
+          payload.obs = obs;
+          payload.comissao_pct = Number(String(comPct).replace(',', '.')) || Number(of && of.comissao_pct || 0) || 1;
           payload.gramatura_id = gramaturaId || null;
-          if (payload.valor_unitario !== undefined) {
-            payload.vl_unit = payload.valor_unitario;
-            delete payload.valor_unitario;
-          }
           try { console.log('[TROCAR] body:', JSON.stringify(payload)); } catch (_) {}
 
           try {
@@ -16695,41 +16823,17 @@ function _ocultarGraficoComissoes() {
               try { alert('OF inválida (sem id).'); } catch (_) {}
               return;
             }
-            if (!cliId) {
-              try { alert('Selecione um cliente válido.'); } catch (_) {}
-              return;
-            }
             var r2 = await fetch('/api/ofs/' + encodeURIComponent(ofId), {
-              method: 'PUT',
+              method: 'PATCH',
               headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
               body: JSON.stringify(payload)
             });
             var j2 = await r2.json().catch(function() { return null; });
             try { console.log('[TROCAR] resultado:', r2 && r2.status, JSON.stringify(j2)); } catch (_) {}
             if (r2.ok && j2 && j2.ok) {
-              var vendSelect = body.querySelector('#com-of-vend-select');
-              var vendNomeNovo = '';
-              try {
-                vendNomeNovo = vendSelect && vendSelect.options && vendSelect.selectedIndex >= 0
-                  ? String(vendSelect.options[vendSelect.selectedIndex].text || '').trim()
-                  : '';
-              } catch (_) { vendNomeNovo = ''; }
-              var novoSnapshot = _snapshotOfParaResumo({
-                numero: (body.querySelector('#com-of-numero') || {}).value,
-                cliente: (body.querySelector('#com-of-cli-busca') || {}).value,
-                vendedor: vendNomeNovo,
-                quantidade: qtd,
-                valor_total: valorTotalCalc,
-                comissao_pct: comPct,
-                status: st,
-                created_at: created,
-                data_conclusao: conc,
-                observacoes: obs
-              });
-              _mostrarResumoAlteracoes(originalSnapshot, novoSnapshot, function() {
-                try { modal.style.display = 'none'; } catch (_) {}
-              });
-              try { if (typeof window.calcularComissoes === 'function') window.calcularComissoes(); } catch (_) {}
+              try { modal.style.display = 'none'; } catch (_) {}
+              try { if (typeof window.toast === 'function') window.toast('OF salva com sucesso! ✅', 'var(--green)'); } catch (_) {}
+              try { if (typeof window._renderComissoesPatch === 'function') window._renderComissoesPatch(); } catch (_) {}
             } else {
               try { alert('Erro ao salvar: ' + String(j2 && (j2.error || j2.message) || r2.status || 'Falha')); } catch (_) {}
             }
@@ -16848,10 +16952,13 @@ function _ocultarGraficoComissoes() {
     return n;
   }
 
-  function _normalizarOFComissao(of, vendedorFallback) {
+  function _normalizarOFComissao(of, vendedorFallback, pctFallback) {
     var qtd = Number(of && (of.quantidade != null ? of.quantidade : (of.qtd != null ? of.qtd : of.quant)) || 0) || 0;
+    var vlUnit = Number(of && (of.vl_unit != null ? of.vl_unit : (of.valor_unitario != null ? of.valor_unitario : of.vunit)) || 0) || 0;
     var valorTotal = Number(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : (of.valor != null ? of.valor : of.valor_venda))) || 0) || 0;
-    var pctRaw = _pctCom(of && (of.comissao_pct != null ? of.comissao_pct : (of.pct_comissao != null ? of.pct_comissao : of.comissao_pct)));
+    if (!(valorTotal > 0) && qtd > 0 && vlUnit > 0) valorTotal = qtd * vlUnit;
+    var pctRaw = _pctCom(of && (of.comissao_pct != null ? of.comissao_pct : (of.pct_comissao != null ? of.pct_comissao : of.comissao)));
+    if (!(pctRaw > 0)) pctRaw = Number(pctFallback || 0) || 1;
     var fator = (Number(pctRaw || 0) || 0) / 100;
     var comissaoValor = Number(
       of && (
@@ -16865,15 +16972,15 @@ function _ocultarGraficoComissoes() {
       raw: of || {},
       id: String(of && of.id || '').trim(),
       numero: String(of && (of.numero != null ? of.numero : (of.numero_of || of.num_of || of.of_num || of.of || of.id)) || '—').trim() || '—',
-      cliente: String(of && (of.cliente || of.cliente_nome || of.clinome || of.cliNome) || '—').trim() || '—',
+      cliente: String(of && (of.cli_nome || of.cliente_nome || of.cliente || of.cliNome) || '—').trim() || '—',
       vendedor: String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || vendedorFallback || 'Sem vendedor').trim() || 'Sem vendedor',
       qtd: qtd,
       valor_total: valorTotal,
-      preco_unit: qtd > 0 ? (valorTotal / qtd) : 0,
+      preco_unit: qtd > 0 ? (valorTotal / qtd) : vlUnit,
       comissao_pct: pctRaw,
       comissao_valor: comissaoValor,
       data: String(of && (of.data_conclusao || of.created_at || of.data) || '').trim(),
-      status: String(of && of.status || 'Concluída').trim() || 'Concluída'
+      status: String(of && of.status || 'Indefinido').trim() || 'Indefinido'
     };
   }
 
@@ -16905,7 +17012,8 @@ function _ocultarGraficoComissoes() {
       var ofsGrupo = Array.isArray(g && g.ofs) ? g.ofs.slice() : ofsBase.filter(function(of) {
         return String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || 'Sem vendedor').trim() === nome;
       });
-      var ofsNorm = ofsGrupo.map(function(of) { return _normalizarOFComissao(of, nome); });
+      var pctGrupo = Number(g && g.comissao_pct || 0) || 1;
+      var ofsNorm = ofsGrupo.map(function(of) { return _normalizarOFComissao(of, nome, pctGrupo); });
       var totalVendas = Number(g && (g.total_vendas != null ? g.total_vendas : g.total) || 0) || ofsNorm.reduce(function(s, of) {
         return s + (Number(of.valor_total || 0) || 0);
       }, 0);
@@ -16952,57 +17060,49 @@ function _ocultarGraficoComissoes() {
       return;
     }
 
-    var html = todasEncontradas.map(function(of) {
-        var numero = String(of && (of.numero || of.num_of || of.numero_of) || '—');
-        var cliente = String(of && (of.cliente || of.cli_nome || of.nome_cliente) || '—');
-        var vendedor = String(of && (of.vendedor || of.vendedor_nome) || '—');
+    var html = '<div style="margin-top:12px">'
+      + '<div style="color:#f1f5f9;font-size:15px;font-weight:700;margin-bottom:10px">Resultado da Busca</div>'
+      + '<div style="color:#94a3b8;font-size:12px;margin-bottom:10px">' + String(todasEncontradas.length) + ' resultado(s) para "<b style="color:#f1f5f9">' + _escHtmlCom(termo) + '</b>"</div>'
+      + '<div style="overflow:auto;border:1px solid #334155;border-radius:10px">'
+      + '<table style="width:100%;border-collapse:collapse;background:#0f172a"><thead><tr style="background:#1e293b">'
+      + '<th style="padding:9px 10px;text-align:left;color:#94a3b8;font-size:11px">Nº OF</th>'
+      + '<th style="padding:9px 10px;text-align:left;color:#94a3b8;font-size:11px">Cliente</th>'
+      + '<th style="padding:9px 10px;text-align:left;color:#94a3b8;font-size:11px">Vendedor</th>'
+      + '<th style="padding:9px 10px;text-align:right;color:#94a3b8;font-size:11px">Qtd</th>'
+      + '<th style="padding:9px 10px;text-align:right;color:#94a3b8;font-size:11px">Valor Total</th>'
+      + '<th style="padding:9px 10px;text-align:left;color:#94a3b8;font-size:11px">Status</th>'
+      + '<th style="padding:9px 10px;text-align:left;color:#94a3b8;font-size:11px">Data Conclusão</th>'
+      + '<th style="padding:9px 10px;text-align:center;color:#94a3b8;font-size:11px">Ações</th>'
+      + '</tr></thead><tbody>'
+      + todasEncontradas.map(function(of, idx) {
+        var numero = String(of && (of.numero || of.num_of || of.numero_of || of.of) || '—');
+        var cliente = String(of && (of.cli_nome || of.cliente_nome || of.cliente || of.cliNome || of.nome_cliente) || '—');
+        var vendedor = String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || '—');
         var qtd = Number(of && (of.quantidade || of.qtd) || 0) || 0;
-        var valorTotal = Number(of && (of.valor_total || of.total) || 0) || 0;
-        var comissaoRs = Number(of && (of.comissao_rs || of.comissao_valor) || 0) || 0;
-        var status = String(of && of.status || 'Pendente');
+        var valorTotal = Number(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : ((Number(of && of.vl_unit || 0) || 0) * qtd))) || 0) || 0;
+        var status = String(of && of.status || 'Indefinido');
         var concluida = status.toLowerCase().indexOf('conclu') >= 0;
         var dataStr = '—';
-        try {
-          dataStr = of && of.data_conclusao
-            ? new Date(of.data_conclusao).toLocaleDateString('pt-BR')
-            : (of && of.created_at ? new Date(of.created_at).toLocaleDateString('pt-BR') : '—');
-        } catch (_) { dataStr = '—'; }
-        var precoUnit = qtd > 0 ? valorTotal / qtd : 0;
+        try { dataStr = of && of.data_conclusao ? new Date(of.data_conclusao).toLocaleDateString('pt-BR') : '—'; } catch (_) {}
         var id = String(of && of.id || '');
-        var btnHtml = !concluida
-          ? '<button class="_btn_concluir_of" data-of-id="' + _escHtmlCom(id) + '" data-of-num="' + _escHtmlCom(numero) + '" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px">✅ Concluir</button>'
+        var btnConcluir = !concluida
+          ? '<button class="_btn_concluir_of" data-of-id="' + _escHtmlCom(id) + '" data-of-num="' + _escHtmlCom(numero) + '" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px">Concluir</button>'
           : '';
-        var btnEditar = '<button class="_btn_editar_of" data-of-num="' + _escHtmlCom(numero) + '" style="background:#1d4ed8;color:#fff;border:none;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:13px">✏️ Editar</button>';
+        var btnEditar = '<button class="_btn_editar_of" data-of-id="' + _escHtmlCom(id) + '" style="background:#1d4ed8;color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px">Trocar</button>';
+        return '<tr style="border-top:1px solid #1e293b;background:' + (idx % 2 ? 'rgba(255,255,255,0.02)' : 'transparent') + '">'
+          + '<td style="padding:8px 10px;color:#60a5fa">#' + _escHtmlCom(numero) + '</td>'
+          + '<td style="padding:8px 10px;color:#e2e8f0">' + _escHtmlCom(cliente) + '</td>'
+          + '<td style="padding:8px 10px;color:#cbd5e1">' + _escHtmlCom(vendedor) + '</td>'
+          + '<td style="padding:8px 10px;text-align:right;color:#cbd5e1">' + qtd.toLocaleString('pt-BR') + '</td>'
+          + '<td style="padding:8px 10px;text-align:right;color:#e2e8f0">' + _escHtmlCom(_fmtMoney(valorTotal)) + '</td>'
+          + '<td style="padding:8px 10px;color:#cbd5e1">' + _escHtmlCom(status) + '</td>'
+          + '<td style="padding:8px 10px;color:#cbd5e1">' + _escHtmlCom(dataStr) + '</td>'
+          + '<td style="padding:8px 10px;text-align:center;white-space:nowrap">' + btnConcluir + (btnConcluir ? ' ' : '') + btnEditar + '</td>'
+          + '</tr>';
+      }).join('')
+      + '</tbody></table></div></div>';
 
-        return ''
-          + '<div style="background:#1e293b;border:2px solid ' + (concluida ? '#166534' : '#b45309') + ';border-radius:10px;padding:16px 20px;margin-bottom:12px">'
-          + '  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">'
-          + '    <div style="min-width:160px">'
-          + '      <div style="color:#60a5fa;font-size:18px;font-weight:700">#' + _escHtmlCom(numero) + '</div>'
-          + '      <div style="color:#f1f5f9;font-size:14px;font-weight:600;margin-top:4px">' + _escHtmlCom(cliente) + '</div>'
-          + '      <div style="color:#94a3b8;font-size:12px">Vendedor: ' + _escHtmlCom(vendedor) + '</div>'
-          + '    </div>'
-          + '    <div style="display:flex;gap:20px;flex-wrap:wrap">'
-          + '      <div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase;margin-bottom:2px">Qtd</div><div style="color:#f1f5f9;font-weight:600">' + qtd.toLocaleString('pt-BR') + '</div></div>'
-          + '      <div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase;margin-bottom:2px">Valor Total</div><div style="color:#f1f5f9;font-weight:600">R$ ' + valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '</div></div>'
-          + '      <div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase;margin-bottom:2px">Preço Unit.</div><div style="color:#94a3b8">R$ ' + precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '</div></div>'
-          + (comissaoRs > 0 ? '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase;margin-bottom:2px">Comissão</div><div style="color:#22c55e;font-weight:600">R$ ' + comissaoRs.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '</div></div>' : '')
-          + '      <div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase;margin-bottom:2px">Data</div><div style="color:#94a3b8">' + _escHtmlCom(dataStr) + '</div></div>'
-          + '    </div>'
-          + '    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-          + '      <span style="background:' + (concluida ? '#166534' : '#92400e') + ';color:' + (concluida ? '#4ade80' : '#fbbf24') + ';padding:5px 12px;border-radius:5px;font-size:12px;font-weight:600">' + _escHtmlCom(status) + '</span>'
-          + '      ' + btnHtml
-          + '      ' + btnEditar
-          + '    </div>'
-          + '  </div>'
-          + '</div>';
-      }).join('');
-
-    resultDiv.innerHTML =
-      '<div style="color:#94a3b8;font-size:12px;margin-bottom:10px">' +
-        String(todasEncontradas.length) + ' resultado(s) para "<b style="color:#f1f5f9">' + _escHtmlCom(termo) + '</b>":' +
-      '</div>' +
-      html;
+    resultDiv.innerHTML = html;
 
     try {
       Array.prototype.slice.call(resultDiv.querySelectorAll('._btn_concluir_of')).forEach(function(btn) {
@@ -17031,11 +17131,20 @@ function _ocultarGraficoComissoes() {
         if (!btn || btn.dataset.bound === '1') return;
         btn.dataset.bound = '1';
         btn.addEventListener('click', function() {
-          var num = '';
-          try { num = String(this.getAttribute('data-of-num') || this.dataset.ofNum || '').trim(); } catch (_) { num = ''; }
-          alert('OF #' + num + ': acesse PCP para editar.');
+          var ofId = '';
+          try { ofId = String(this.getAttribute('data-of-id') || this.dataset.ofId || '').trim(); } catch (_) { ofId = ''; }
+          if (ofId && typeof window._abrirModalEdicaoOF === 'function') window._abrirModalEdicaoOF(ofId);
         }, true);
       });
+    } catch (_) {}
+    try {
+      window.__comBuscaDestacados = Object.create(null);
+      todasEncontradas.forEach(function(of) {
+        var num = String(of && (of.numero || of.of || of.of_numero) || '').trim();
+        var status = String(of && of.status || '').toLowerCase();
+        if (num && status.indexOf('conclu') >= 0) window.__comBuscaDestacados[num] = true;
+      });
+      if (typeof window._aplicarDestaqueBuscaComissoes === 'function') window._aplicarDestaqueBuscaComissoes();
     } catch (_) {}
   }
 
@@ -17051,23 +17160,16 @@ function _ocultarGraficoComissoes() {
     resultDiv.innerHTML = '<p style="color:#94a3b8;padding:12px">🔍 Buscando...</p>';
 
     try {
-      var termos = String(termo).split(',')
+      var termos = String(termo).split(/[,\s]+/)
         .map(function(t) { return t.trim().toLowerCase(); })
         .filter(function(t) { return t.length > 0; });
       if (!termos.length) termos = [String(termo || '').toLowerCase()];
-
-      var ofsDoMes = (window._comOfsData || []).filter(function(of) {
-        return termos.some(function(t) {
-          return String(of && of.numero || '').toLowerCase().includes(t) ||
-                 String(of && of.cliente || '').toLowerCase().includes(t);
-        });
-      });
 
       var token = '';
       try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
       var headersBusca = token ? { Authorization: 'Bearer ' + token } : {};
       var promessas = termos.map(function(t) {
-        return fetch('/api/ofs?busca=' + encodeURIComponent(t) + '&limit=10', {
+        return fetch('/api/ofs?search=' + encodeURIComponent(t) + '&limit=50', {
           headers: headersBusca
         })
           .then(function(r) { return r.ok ? r.json() : []; })
@@ -17076,24 +17178,23 @@ function _ocultarGraficoComissoes() {
       });
 
       Promise.all(promessas).then(function(resultados) {
-        var idsVistos = new Set(ofsDoMes.map(function(o) { return o && (o.id || o.numero); }));
-        var ofsGeral = [];
+        var idsVistos = new Set();
+        var todasEncontradas = [];
         resultados.forEach(function(lista) {
           (lista || []).forEach(function(of) {
             var key = of && (of.id || of.numero);
             if (!idsVistos.has(key)) {
               var bate = termos.some(function(t) {
-                return String(of && (of.numero || of.num_of) || '').toLowerCase().includes(t) ||
-                       String(of && (of.cliente || of.cli_nome) || '').toLowerCase().includes(t);
+                return String(of && (of.numero || of.num_of || of.of) || '').toLowerCase().includes(t) ||
+                       String(of && (of.cli_nome || of.cliente_nome || of.cliente || of.cliNome) || '').toLowerCase().includes(t);
               });
               if (bate) {
                 idsVistos.add(key);
-                ofsGeral.push(of);
+                todasEncontradas.push(of);
               }
             }
           });
         });
-        var todasEncontradas = ofsDoMes.concat(ofsGeral);
         _renderResultadosBusca(todasEncontradas, termo);
       }).catch(function(e) {
         resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Erro: ' + _escHtmlCom(e && e.message || e) + '</p>';
@@ -17269,7 +17370,8 @@ function _ocultarGraficoComissoes() {
           var vn = String(of && of.vendedor || '').trim().toLowerCase();
           return !!vendNomeNorm && vn === vendNomeNorm;
         });
-        var ofsNorm = ofsVendedor.map(function(of) { return _normalizarOFComissao(of, vendNome); });
+        var pctGrupo = Number(v && v.comissao_pct || 0) || 1;
+        var ofsNorm = ofsVendedor.map(function(of) { return _normalizarOFComissao(of, vendNome, pctGrupo); });
         return {
           id: id,
           vendedor: vendNome,
@@ -17392,8 +17494,9 @@ function _ocultarGraficoComissoes() {
             var searchTxt = [of.numero, of.cliente, of.vendedor].join(' ').toLowerCase();
             var dataStr = '—';
             try { dataStr = of.data ? new Date(of.data).toLocaleDateString('pt-BR') : '—'; } catch (_) { dataStr = '—'; }
+            var destaqueBusca = !!(window.__comBuscaDestacados && window.__comBuscaDestacados[String(of.numero || '').trim()]);
             return ''
-              + '<tr data-of-row="1" data-search="' + _escHtmlCom(searchTxt) + '" data-of-numero="' + _escHtmlCom(of.numero) + '" data-of-cliente="' + _escHtmlCom(of.cliente) + '" data-of-status="' + _escHtmlCom(of.status) + '" data-of-id="' + _escHtmlCom(of.id) + '" style="border-bottom:1px solid #1e293b">'
+              + '<tr data-of-row="1" data-search="' + _escHtmlCom(searchTxt) + '" data-of-numero="' + _escHtmlCom(of.numero) + '" data-of-cliente="' + _escHtmlCom(of.cliente) + '" data-of-status="' + _escHtmlCom(of.status) + '" data-of-id="' + _escHtmlCom(of.id) + '" style="border-bottom:1px solid #1e293b;' + (destaqueBusca ? 'background:rgba(234,179,8,.22);' : '') + '">'
               + '<td style="padding:7px 10px;color:#60a5fa">#' + _escHtmlCom(of.numero) + '</td>'
               + '<td style="padding:7px 10px;color:#f1f5f9">' + _escHtmlCom(of.cliente) + '</td>'
               + '<td style="padding:7px 10px;color:#94a3b8">' + _escHtmlCom(of.vendedor) + '</td>'
@@ -17411,6 +17514,14 @@ function _ocultarGraficoComissoes() {
       }).join('');
       divDetalhe.innerHTML = htmlDetalhe;
       _renderizarBuscaOFs();
+      window._aplicarDestaqueBuscaComissoes = function() {
+        try {
+          Array.prototype.slice.call(document.querySelectorAll('tr[data-of-row="1"]')).forEach(function(tr) {
+            var num = String(tr.getAttribute('data-of-numero') || '').trim();
+            tr.style.background = (window.__comBuscaDestacados && window.__comBuscaDestacados[num]) ? 'rgba(234,179,8,.22)' : '';
+          });
+        } catch (_) {}
+      };
       try {
         var inpBusca2 = document.getElementById('_com_busca');
         var btnBusca2 = document.getElementById('_com_btn_buscar');
@@ -17937,21 +18048,60 @@ window._recarregarToneladas = async function() {
       tam_por_cli: json.por_cliente && json.por_cliente.length
     }));
 
-    var porFornecedor = Array.isArray(json.por_fornecedor) ? json.por_fornecedor : [];
-    var porGramatura = Array.isArray(json.por_gramatura) ? json.por_gramatura : [];
-    var porCliente = Array.isArray(json.por_cliente) ? json.por_cliente : [];
-    var detalhes = Array.isArray(json.detalhes) ? json.detalhes : [];
+    var detalhes = (Array.isArray(json.detalhes) ? json.detalhes : []).map(function(d) {
+      var comp = parseFloat(String(d && (d.comp != null ? d.comp : d.comprimento) || 0).replace(',', '.')) || 0;
+      var larg = parseFloat(String(d && (d.larg != null ? d.larg : d.largura) || 0).replace(',', '.')) || 0;
+      var gram = parseFloat(String(d && (d.gram != null ? d.gram : d.gramatura) || 0).replace(',', '.')) || 0;
+      var qtd = parseFloat(String(d && (d.qtd != null ? d.qtd : d.quantidade) || 0).replace(',', '.')) || 0;
+      var areaCalc = (comp > 0 && larg > 0 && qtd > 0) ? ((comp / 1000) * (larg / 1000) * qtd) : 0;
+      var tonCalc = (areaCalc > 0 && gram > 0) ? (areaCalc * (gram / 1000000)) : 0;
+      var custoEstimado = Number(d && d.custo_estimado || 0) || 0;
+      if (!(custoEstimado > 0) && tonCalc > 0) {
+        custoEstimado = ((Number(d && d.valor_unitario || 0) || 0) * tonCalc * 1000);
+      }
+      return Object.assign({}, d, {
+        comp: comp,
+        larg: larg,
+        gram: gram,
+        qtd: qtd,
+        quantidade: qtd,
+        area_m2: areaCalc || 0,
+        toneladas: tonCalc || 0,
+        custo_estimado: custoEstimado || 0
+      });
+    });
+    var porGramaturaMap = Object.create(null);
+    detalhes.forEach(function(d) {
+      var gramKey = String(Number(d && d.gram || 0) || 0) + 'g';
+      if (!porGramaturaMap[gramKey]) porGramaturaMap[gramKey] = { gram: Number(d && d.gram || 0) || 0, area_m2: 0, toneladas: 0, ofs: 0 };
+      porGramaturaMap[gramKey].area_m2 += Number(d && d.area_m2 || 0) || 0;
+      porGramaturaMap[gramKey].toneladas += Number(d && d.toneladas || 0) || 0;
+      porGramaturaMap[gramKey].ofs += 1;
+    });
+    var porClienteMap = Object.create(null);
+    detalhes.forEach(function(d) {
+      var cliKey = String(d && (d.cli_id || d.cliente || 'sem-cliente') || 'sem-cliente');
+      if (!porClienteMap[cliKey]) porClienteMap[cliKey] = { cliente: String(d && d.cliente || '—'), area_m2: 0, toneladas: 0, ofs: 0 };
+      porClienteMap[cliKey].area_m2 += Number(d && d.area_m2 || 0) || 0;
+      porClienteMap[cliKey].toneladas += Number(d && d.toneladas || 0) || 0;
+      porClienteMap[cliKey].ofs += 1;
+    });
+    var porGramatura = Object.values(porGramaturaMap).sort(function(a, b) { return Number(b.toneladas || 0) - Number(a.toneladas || 0); });
+    var porCliente = Object.values(porClienteMap).sort(function(a, b) { return Number(b.toneladas || 0) - Number(a.toneladas || 0); });
+    var totalTonCalc = detalhes.reduce(function(s, d) { return s + (Number(d && d.toneladas || 0) || 0); }, 0);
+    var totalM2Calc = detalhes.reduce(function(s, d) { return s + (Number(d && d.area_m2 || 0) || 0); }, 0);
+    var totalCustoCalc = detalhes.reduce(function(s, d) { return s + (Number(d && d.custo_estimado || 0) || 0); }, 0);
 
     var htmlCorpo = '';
 
     var cardTon = document.getElementById('ton-card-total');
     var cardM2 = document.getElementById('ton-card-m2');
     var cardOfs = document.getElementById('ton-card-ofs');
-    if (cardTon) cardTon.textContent = fT(json.total_toneladas);
-    if (cardM2) cardM2.textContent = fM(json.total_m2);
-    if (cardOfs) cardOfs.textContent = String(json.total_ofs || 0);
+    if (cardTon) cardTon.textContent = fT(totalTonCalc);
+    if (cardM2) cardM2.textContent = fM(totalM2Calc);
+    if (cardOfs) cardOfs.textContent = String(detalhes.length || 0);
     var cardCusto = document.getElementById('ton-card-custo');
-    if (cardCusto) cardCusto.textContent = 'R$ ' + Number(json.total_custo_estimado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (cardCusto) cardCusto.textContent = 'R$ ' + Number(totalCustoCalc || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     if (porGramatura.length) {
       htmlCorpo += '<h3 style="color:var(--text,#fff);margin:20px 0 10px">📊 Por Gramatura</h3>'
