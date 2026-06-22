@@ -205,17 +205,13 @@ if (!window._menuPatchFinal) {
   }
 
   function getOfVlUnit(of) {
-    return parseFloat(
-      (of && (of.vl_unit || of.valor_unitario || of.preco_unit || of.preco || 0)) || 0
-    ) || 0;
+    return parseFloat((of && of.preco) || 0) || 0;
   }
 
   function getOfValorTotal(of, vlUnit) {
-    var qtd = parseInt((of && (of.qtd || of.quantidade || 0)) || 0, 10) || 0;
+    var qtd = parseInt((of && of.qtd) || 0, 10) || 0;
     var vu = vlUnit != null ? parseFloat(vlUnit || 0) || 0 : getOfVlUnit(of);
-    return parseFloat(
-      (of && (of.valor_total || of.total || (vu * qtd))) || 0
-    ) || 0;
+    return parseFloat((of && (of.total || (vu * qtd))) || 0) || 0;
   }
 
   function parseListaTextoOuJson(raw) {
@@ -282,24 +278,23 @@ if (!window._menuPatchFinal) {
 
   function normalizeComissaoRow(of, vendPctMap) {
     of = of || {};
-    var qtd = toInt(of.qtd != null ? of.qtd : (of.quantidade != null ? of.quantidade : 0));
+    var qtd = toInt(of.qtd != null ? of.qtd : 0);
     var vlUnit = getOfVlUnit(of);
     var valorTotal = getOfValorTotal(of, vlUnit);
     if (!(valorTotal > 0) && qtd > 0 && vlUnit > 0) valorTotal = vlUnit * qtd;
-    var vendId = String(of.vendedor_id || of.vendId || of.vend_id || '').trim();
+    var vendId = String(of.vendid || of.vendedor_id || '').trim();
     var pctFallback = vendPctMap && vendPctMap[vendId] != null ? vendPctMap[vendId] : null;
     var pct = toNum(of.comissao_pct != null ? of.comissao_pct : (pctFallback != null ? pctFallback : 1));
     if (!(pct > 0)) pct = 1;
     var precoUnit = vlUnit || (qtd > 0 ? (valorTotal / qtd) : 0);
     return {
       id: String(of.id || '').trim(),
-      numero: String(of.numero || of.of || of.of_num || of.of_numero || '—').trim() || '—',
-      cliente: String(of.cli_nome || of.cliente_nome || of.cliente || of.cliNome || '—').trim() || '—',
-      vendedor: String(of.vendedor || of.vendedor_nome || of.vendNome || '—').trim() || '—',
+      of: String(of.of || of.numero || of.of_num || '—').trim() || '—',
+      clinome: String(of.clinome || of.cliNome || of.cliente || '—').trim() || '—',
+      vendedor: String(of.vendNome || of.vendedor_nome || of.vendedor || '—').trim() || '—',
       qtd: qtd,
-      vl_unit: vlUnit,
-      preco_unit: precoUnit,
-      valor_total: valorTotal,
+      preco: vlUnit,
+      total: valorTotal,
       comissao_pct: pct,
       comissao_rs: (valorTotal * pct / 100),
       status: String(of.status || 'Indefinido').trim() || 'Indefinido',
@@ -384,21 +379,21 @@ if (!window._menuPatchFinal) {
       if (!ofResp.response.ok || !of || (ofResp.json && ofResp.json.ok === false)) throw new Error((ofResp.json && (ofResp.json.error || ofResp.json.message)) || 'Erro ao carregar OF');
       var vendedores = await loadVendedoresPatch();
       var gramaturas = await loadGramaturasPatch();
-      var qtd = toInt(of.qtd != null ? of.qtd : (of.quantidade != null ? of.quantidade : 0));
+      var qtd = toInt(of.qtd != null ? of.qtd : 0);
       var vlUnit = getOfVlUnit(of);
       var valorTotal = getOfValorTotal(of, vlUnit);
       var pct = toNum(of.comissao_pct != null ? of.comissao_pct : 1) || 1;
-      title.textContent = 'Editar OF #' + String(of.numero || of.of || '—');
+      title.textContent = 'Editar OF #' + String(of.of || of.numero || '—');
       body.innerHTML = ''
         + '<div class="com2-grid">'
-        + '  <div><label>Nº OF</label><input id="com2-numero" readonly value="' + esc(of.numero || of.of || '') + '"></div>'
+        + '  <div><label>Nº OF</label><input id="com2-numero" readonly value="' + esc(of.of || of.numero || '') + '"></div>'
         + '  <div><label>Status</label><select id="com2-status">'
         + '    <option value="Em Aberto">Em Aberto</option>'
         + '    <option value="Em Produção">Em Produção</option>'
         + '    <option value="Concluído">Concluído</option>'
         + '    <option value="Excluído/Cancelado">Excluído/Cancelado</option>'
         + '  </select></div>'
-        + '  <div><label>Cliente</label><input id="com2-cliente" value="' + esc(of.cliente || of.cli_nome || of.cliente_nome || of.cliNome || '') + '"></div>'
+        + '  <div><label>Cliente</label><input id="com2-cliente" value="' + esc(of.clinome || of.cliNome || of.cliente || '') + '"></div>'
         + '  <div><label>Vendedor</label><select id="com2-vendedor"><option value="">Selecione</option>' + (vendedores || []).map(function(v) {
           var id = String(v && v.id || '');
           var nome = String(v && (v.nome || v.name) || '—');
@@ -413,6 +408,7 @@ if (!window._menuPatchFinal) {
         }).join('') + '</select></div>'
         + '  <div><label>Data Criação</label><input type="date" id="com2-created-at" value="' + esc(toInputDate(of.created_at || of.createdAt || of.data_criacao)) + '"></div>'
         + '  <div><label>Data Conclusão</label><input type="date" id="com2-data-conclusao" value="' + esc(toInputDate(of.data_conclusao || of.dataConclusao || of.dia)) + '"></div>'
+        + '  <div class="com2-full"><label>Concluído Por</label><input id="com2-usuario-conclusao" value="' + esc(of.usuario_conclusao || '') + '"></div>'
         + '  <div class="com2-full"><label>Observações</label><textarea id="com2-obs">' + esc(of.observacoes || of.obs || of.observacao || '') + '</textarea></div>'
         + '</div>'
         + '<div class="com2-actions">'
@@ -420,7 +416,7 @@ if (!window._menuPatchFinal) {
         + '  <button type="button" class="com2-save" id="com2-save">Salvar Alterações</button>'
         + '</div>';
       try { document.getElementById('com2-status').value = String(of.status || 'Em Aberto'); } catch (_) {}
-      try { document.getElementById('com2-vendedor').value = String(of.vendedor_id || of.vendId || of.vend_id || ''); } catch (_) {}
+      try { document.getElementById('com2-vendedor').value = String(of.vendid || of.vendedor_id || ''); } catch (_) {}
       try { document.getElementById('com2-gramatura').value = String(of.gramatura_id || of.gramaturaId || ''); } catch (_) {}
       var qtdEl = document.getElementById('com2-qtd');
       var vuEl = document.getElementById('com2-vl-unit');
@@ -436,16 +432,16 @@ if (!window._menuPatchFinal) {
           try {
             var payload = {
               status: String((document.getElementById('com2-status') || {}).value || 'Em Aberto'),
-              cliente: String((document.getElementById('com2-cliente') || {}).value || '').trim(),
-              vendedor_id: String((document.getElementById('com2-vendedor') || {}).value || '').trim() || null,
+              clinome: String((document.getElementById('com2-cliente') || {}).value || '').trim(),
+              vendid: String((document.getElementById('com2-vendedor') || {}).value || '').trim() || null,
               qtd: toInt((document.getElementById('com2-qtd') || {}).value),
-              quantidade: toInt((document.getElementById('com2-qtd') || {}).value),
-              vl_unit: toNum((document.getElementById('com2-vl-unit') || {}).value),
-              valor_total: toNum((document.getElementById('com2-valor-total') || {}).value),
+              preco: toNum((document.getElementById('com2-vl-unit') || {}).value),
+              total: toNum((document.getElementById('com2-valor-total') || {}).value),
               comissao_pct: toNum((document.getElementById('com2-comissao-pct') || {}).value) || 1,
               gramatura_id: String((document.getElementById('com2-gramatura') || {}).value || '').trim() || null,
               created_at: String((document.getElementById('com2-created-at') || {}).value || '').trim() || null,
               data_conclusao: String((document.getElementById('com2-data-conclusao') || {}).value || '').trim() || null,
+              usuario_conclusao: String((document.getElementById('com2-usuario-conclusao') || {}).value || '').trim() || null,
               obs: String((document.getElementById('com2-obs') || {}).value || '').trim()
             };
             var saveResp = await fetchJsonPatch('/api/ofs/' + encodeURIComponent(ofId), {
@@ -500,7 +496,7 @@ if (!window._menuPatchFinal) {
         if (id) vendPctMap[id] = toNum(v && v.comissao_pct);
       });
       var norm = ofs.map(function(of) { return normalizeComissaoRow(of, vendPctMap); });
-      var totalVend = norm.reduce(function(s, of) { return s + toNum(of.valor_total); }, 0);
+      var totalVend = norm.reduce(function(s, of) { return s + toNum(of.total); }, 0);
       var totalCom = norm.reduce(function(s, of) { return s + toNum(of.comissao_rs); }, 0);
       Array.prototype.slice.call(document.querySelectorAll('#_com_topo div')).forEach(function(el) {
         var txt = normText(el && el.textContent);
@@ -516,7 +512,7 @@ if (!window._menuPatchFinal) {
       var map = Object.create(null);
       norm.forEach(function(of) {
         if (of.id) map[of.id] = of;
-        if (of.numero && !map[of.numero]) map[of.numero] = of;
+        if (of.of && !map[of.of]) map[of.of] = of;
       });
       Array.prototype.slice.call(document.querySelectorAll('tr[data-of-row="1"]')).forEach(function(tr) {
         var id = String(tr.getAttribute('data-of-id') || '').trim();
@@ -525,10 +521,10 @@ if (!window._menuPatchFinal) {
         if (!of) return;
         var tds = tr.querySelectorAll('td');
         if (!tds || tds.length < 10) return;
-        tds[1].textContent = of.cliente;
+        tds[1].textContent = of.clinome;
         tds[3].textContent = String(of.qtd || 0);
-        tds[4].textContent = money(of.valor_total);
-        tds[5].textContent = money(of.preco_unit);
+        tds[4].textContent = money(of.total);
+        tds[5].textContent = money(of.preco);
         tds[6].textContent = (toNum(of.comissao_pct) || 1).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
         tds[7].textContent = money(of.comissao_rs);
         tds[8].textContent = of.data && of.data !== '—' ? String(of.data).slice(0, 10).split('-').reverse().join('/') : '—';
@@ -746,12 +742,12 @@ if (!window._menuPatchFinal) {
     var of = (out.json && (out.json.data || out.json)) || null;
     if (!out.response.ok || !of) throw new Error((out.json && (out.json.error || out.json.message)) || 'Falha ao carregar OF original');
     var clienteId = '';
-    try { clienteId = String((document.getElementById('f-cli-id') || {}).value || (document.getElementById('f-cli') || {}).value || of.cli_id || of.cliente_id || '').trim(); } catch (_) {}
+    try { clienteId = String((document.getElementById('f-cli-id') || {}).value || (document.getElementById('f-cli') || {}).value || of.cli_id || '').trim(); } catch (_) {}
     var vendedorId = '';
-    try { vendedorId = String((document.getElementById('f-vend') || {}).value || of.vendedor_id || of.vendId || of.vend_id || '').trim(); } catch (_) {}
-    var qtd = toInt((document.getElementById('of-qtd-total') || {}).value || of.qtd || of.quantidade);
-    var valorTotal = toNum((document.getElementById('f-val') || {}).value || of.valor_total || of.valor_venda);
-    var vlUnit = qtd > 0 ? (valorTotal / qtd) : toNum(of.vl_unit || of.valor_unitario);
+    try { vendedorId = String((document.getElementById('f-vend') || {}).value || of.vendid || of.vendedor_id || '').trim(); } catch (_) {}
+    var qtd = toInt((document.getElementById('of-qtd-total') || {}).value || of.qtd);
+    var valorTotal = toNum((document.getElementById('f-val') || {}).value || of.total);
+    var vlUnit = qtd > 0 ? (valorTotal / qtd) : toNum(of.preco);
     var maq = null;
     try {
       var checked = Array.prototype.slice.call(document.querySelectorAll('#maq-chks input[type="checkbox"]:checked')).map(function(cb) {
@@ -766,19 +762,18 @@ if (!window._menuPatchFinal) {
       } else maq = [];
     }
     var body = {
-      cliente: String((document.getElementById('f-cli-search') || {}).value || of.cliente || of.cli_nome || of.cliente_nome || '').trim(),
+      clinome: String((document.getElementById('f-cli-search') || {}).value || of.clinome || '').trim(),
       cli_id: clienteId || null,
       qtd: qtd,
-      quantidade: qtd,
-      vl_unit: toNum(vlUnit),
-      valor_total: valorTotal,
-      produto: String((document.getElementById('f-prod-desc') || {}).value || of.produto || of.prodDesc || of.descricao || '').trim(),
+      preco: toNum(vlUnit),
+      total: valorTotal,
+      produto: String((document.getElementById('f-prod-desc') || {}).value || of.produto || of.descricao || '').trim(),
       obs: String((document.getElementById('f-obs') || {}).value || of.obs || of.observacoes || '').trim(),
-      data_entrega: String((document.getElementById('f-ent') || {}).value || of.data_entrega || of.ent || '').trim() || null,
-      vendedor_id: vendedorId || null,
+      ent: String((document.getElementById('f-ent') || {}).value || of.ent || of.data_entrega || '').trim() || null,
+      vendid: vendedorId || null,
       maq: maq,
-      comp: toNum((document.getElementById('of-caixa-comp') || {}).value || of.comp || of.caixa_comprimento || of.dim_comprimento || of.comprimento),
-      larg: toNum((document.getElementById('of-caixa-larg') || {}).value || of.larg || of.caixa_largura || of.dim_largura || of.largura),
+      caixa_comprimento: toNum((document.getElementById('of-caixa-comp') || {}).value || of.caixa_comprimento),
+      caixa_largura: toNum((document.getElementById('of-caixa-larg') || {}).value || of.caixa_largura),
       gramatura_id: String((document.querySelector('#of-gramatura, #f-gramatura, select[name="gramatura_id"]') || {}).value || of.gramatura_id || of.gramaturaId || '').trim() || null,
       empresa_id: String(window._empresaId || 'df5f7672-0a6b-402d-ae65-296554236c31'),
       status: 'Em Aberto'
@@ -831,7 +826,8 @@ if (!window._menuPatchFinal) {
     var canceled = !!(of && (of.deleted_at || isCanceladaStatus(of.status)));
     var concluida = isConcluidaStatus(of && of.status);
     var urgente = isUrgenteOf(of);
-    var atrasada = !concluida && !canceled && isLateDate(of && (of.ent || of.data_entrega));
+    var dataEntrega = of && (of.ent || of.data_entrega);
+    var atrasada = !!(dataEntrega && isLateDate(dataEntrega) && !concluida && !canceled);
     if (canceled) return { label: 'Excluída', color: '#F97316', opacity: 0.7 };
     if (urgente) return { label: 'Urgente', color: '#EF4444', opacity: 1 };
     if (atrasada) return { label: 'Atrasada', color: '#EF4444', opacity: 1 };
@@ -6091,7 +6087,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             Number(r.valor_perdido || 0).toFixed(2).replace('.', ','),
             (r.maquinas || []).join(' | '),
             (r.operadores || []).join(' | '),
-            r.concluido_por || ''
+            r.usuario_conclusao || r.concluido_por || ''
           ]);
         });
         var csv = lines.map(function(cols) {
@@ -6202,7 +6198,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             + '<td style="font-weight:800">' + _cpFmtMoney(r.valor_perdido || 0) + '</td>'
             + '<td>' + (r.maquinas || []).map(function(m) { return '<span class="cpv2-mach-badge">' + _cpEsc(m) + '</span>'; }).join('') + '</td>'
             + '<td>' + (r.operadores || []).map(function(op) { return '<span class="cpv2-op-chip">' + _cpEsc(op) + '</span>'; }).join('') + '</td>'
-            + '<td>' + _cpEsc(r.concluido_por || '—') + '</td>'
+            + '<td>' + _cpEsc(r.usuario_conclusao || r.concluido_por || '—') + '</td>'
             + '</tr>';
           if (!exp) return line;
           return line + '<tr class="expandida" data-cp-detail="' + idx + '"><td colspan="9"><div class="cpv2-detail"><table class="cpv2-inner"><thead><tr><th>Máquina</th><th>Qtd Perdida</th><th>Operadores Responsáveis</th></tr></thead><tbody>' + (r.detalhes || []).map(function(d) { return '<tr><td>' + _cpEsc(d.maquina || '—') + '</td><td>' + _cpFmtNum(d.qtd_perdida || 0) + '</td><td>' + (d.operadores || []).map(function(op) { return '<span class="cpv2-op-chip">' + _cpEsc(op) + '</span>'; }).join('') + '</td></tr>'; }).join('') + '</tbody></table></div></td></tr>';
@@ -8383,19 +8379,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (!of || of.error) return;
       try { window._ofRapidaOriginalOF = of; } catch (_) {}
 
-      var cliNome = String(of.cliente || of.cli_nome || of.cliente_nome || of.cliNome || of.clinome || '').trim();
-      var cliId = String(of.cli_id || of.cliente_id || of.cliId || '').trim();
-      var produto = String(of.produto || of.prodDesc || of.descricao || '').trim();
-      var empId = String(of.emp_id || of.empId || 'E1').trim();
-      var vendId = String(of.vendedor_id || of.vendId || of.vend_id || '').trim();
+      var cliNome = String(of.clinome || of.cliNome || of.cliente || '').trim();
+      var cliId = String(of.cli_id || '').trim();
+      var produto = String(of.produto || of.descricao || '').trim();
+      var empId = String(of.emp_id || 'E1').trim();
+      var vendId = String(of.vendid || of.vendedor_id || '').trim();
       var gramId = String(of.gramatura_id || of.gramaturaId || '').trim();
-      var qtd = of.qtd != null ? of.qtd : (of.quantidade != null ? of.quantidade : '');
-      var vlunit = window._getOfVlUnitHotfix ? window._getOfVlUnitHotfix(of) : (of.vl_unit != null ? of.vl_unit : (of.valor_unitario != null ? of.valor_unitario : (of.preco_unit != null ? of.preco_unit : (of.preco != null ? of.preco : 0))));
-      var total = window._getOfValorTotalHotfix ? window._getOfValorTotalHotfix(of, vlunit) : (parseFloat(of.valor_total || of.total || ((parseFloat(vlunit || 0) || 0) * parseInt(of.qtd || of.quantidade || 0, 10))) || 0);
-      var entrega = toInputDate(of.data_entrega || of.ent);
+      var qtd = of.qtd != null ? of.qtd : '';
+      var vlunit = window._getOfVlUnitHotfix ? window._getOfVlUnitHotfix(of) : (of.preco != null ? of.preco : 0);
+      var total = window._getOfValorTotalHotfix ? window._getOfValorTotalHotfix(of, vlunit) : (parseFloat(of.total || ((parseFloat(vlunit || 0) || 0) * parseInt(of.qtd || 0, 10))) || 0);
+      var entrega = toInputDate(of.ent || of.data_entrega);
       var dia = toInputDate(of.dia || of.data_producao || of.data_programada);
-      var comp = of.comp != null ? of.comp : (of.caixa_comprimento != null ? of.caixa_comprimento : (of.dim_comprimento != null ? of.dim_comprimento : (of.comprimento != null ? of.comprimento : '')));
-      var larg = of.larg != null ? of.larg : (of.caixa_largura != null ? of.caixa_largura : (of.dim_largura != null ? of.dim_largura : (of.largura != null ? of.largura : '')));
+      var comp = of.caixa_comprimento != null ? of.caixa_comprimento : '';
+      var larg = of.caixa_largura != null ? of.caixa_largura : '';
       var maquina = parseMaqValue(of);
       var status = String(of.status || '').trim();
       var obs = String(of.obs || of.observacoes || of.observacao || '').trim();
@@ -8405,14 +8401,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       setAnyVal(['#of-r-cliente-id', '#ofr-cliente-id', 'input[name="cli_id"]'], cliId);
       setAnyVal(['#of-r-produto', 'input[name="produto"]', 'input[name="descricao"]'], produto);
       setAnyVal(['#of-r-empresa'], empId);
-      setAnyVal(['#of-r-vendedor', '#ofr-vendedor', 'select[name="vendedor_id"]'], vendId);
-      setAnyVal(['#of-r-qtd', '#ofr-quantidade', 'input[name="quantidade"]'], qtd);
-      setAnyVal(['#of-r-vlunit', '#ofr-vl-unit', 'input[name="vl_unit"]', 'input[name="valor_unitario"]'], vlunit);
-      setAnyVal(['#of-r-total', 'input[name="valor_total"]'], total);
-      setAnyVal(['#of-r-entrega', '#ofr-entrega', 'input[name="data_entrega"]'], entrega);
+      setAnyVal(['#of-r-vendedor', '#ofr-vendedor', 'select[name="vendid"]', 'select[name="vendedor_id"]'], vendId);
+      setAnyVal(['#of-r-qtd', '#ofr-quantidade', 'input[name="qtd"]', 'input[name="quantidade"]'], qtd);
+      setAnyVal(['#of-r-vlunit', '#ofr-vl-unit', 'input[name="preco"]', 'input[name="vl_unit"]'], vlunit);
+      setAnyVal(['#of-r-total', 'input[name="total"]', 'input[name="valor_total"]'], total);
+      setAnyVal(['#of-r-entrega', '#ofr-entrega', 'input[name="ent"]', 'input[name="data_entrega"]'], entrega);
       setAnyVal(['#of-r-dia', '#ofr-dia', 'input[name="dia"]', 'input[name="data_producao"]'], dia);
-      setAnyVal(['#of-r-comp', '#ofr-comp', 'input[name="comp"]', 'input[name="comprimento"]'], comp);
-      setAnyVal(['#of-r-larg', '#ofr-larg', 'input[name="larg"]', 'input[name="largura"]'], larg);
+      setAnyVal(['#of-r-comp', '#ofr-comp', 'input[name="caixa_comprimento"]', 'input[name="comp"]'], comp);
+      setAnyVal(['#of-r-larg', '#ofr-larg', 'input[name="caixa_largura"]', 'input[name="larg"]'], larg);
       setAnyVal(['#of-r-maquina', '#ofr-maquina', 'select[name="maquina"]'], maquina);
       setAnyVal(['#of-r-status', '#ofr-status', 'select[name="status"]'], status);
       setAnyVal(['#of-r-obs', '#ofr-obs', 'textarea[name="obs"]', 'textarea[name="observacoes"]'], obs);
@@ -8441,7 +8437,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           setAnyVal(['#of-r-status', '#ofr-status', 'select[name="status"]'], status);
           setAnyVal(['#of-r-obs', '#ofr-obs', 'textarea[name="obs"]', 'textarea[name="observacoes"]'], obs);
           var header = document.querySelector('#modal-of-rapida div[style*="font-weight:800"]');
-          if (header) header.textContent = '✏️ Editar OF #' + String(of.numero || of.of || '');
+          if (header) header.textContent = '✏️ Editar OF #' + String(of.of || of.numero || '');
           var btn = document.getElementById('btn-salvar-of-rapida');
           if (btn) btn.textContent = '💾 Salvar Alterações';
         } catch (_) {}
@@ -8655,96 +8651,69 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var status = getV('#of-r-status', '#ofr-status', 'select[name="status"]');
     var tipo = getV('#ofr-tipo', '#of-r-tipo', 'select[name="tipo_caixa"]', 'select[name="tipo"]');
     var produto = getV('#of-r-produto', '#ofr-produto', 'input[name="produto"]', '[data-campo="produto"]');
-    var quantidade = getV('#of-r-qtd', '#ofr-quantidade', 'input[name="quantidade"]');
-    var comprimento = getV('#of-r-comp', '#ofr-comp', 'input[name="comp"]', 'input[name="comprimento"]');
-    var largura = getV('#of-r-larg', '#ofr-larg', 'input[name="larg"]', 'input[name="largura"]');
+    var quantidade = getV('#of-r-qtd', '#ofr-quantidade', 'input[name="qtd"]', 'input[name="quantidade"]');
+    var comprimento = getV('#of-r-comp', '#ofr-comp', 'input[name="caixa_comprimento"]', 'input[name="comp"]');
+    var largura = getV('#of-r-larg', '#ofr-larg', 'input[name="caixa_largura"]', 'input[name="larg"]');
     var altura = getV('#ofr-alt', '#of-r-alt', 'input[name="altura"]');
-    var entrega = getV('#of-r-entrega', '#ofr-entrega', 'input[name="data_entrega"]');
+    var entrega = getV('#of-r-entrega', '#ofr-entrega', 'input[name="ent"]', 'input[name="data_entrega"]');
     var dia = getV('#of-r-dia', '#ofr-dia', 'input[name="dia"]', 'input[name="data_producao"]');
-    var vlUnit = getV('#of-r-vlunit', '#ofr-vl-unit', 'input[name="vl_unit"]', 'input[name="valor_unitario"]');
-    var valorTotal = getV('#of-r-total', 'input[name="valor_total"]');
+    var vlUnit = getV('#of-r-vlunit', '#ofr-vl-unit', 'input[name="preco"]', 'input[name="vl_unit"]');
+    var valorTotal = getV('#of-r-total', 'input[name="total"]', 'input[name="valor_total"]');
     var obs = getV('#ofr-obs', '#of-r-obs', 'textarea[name="observacoes"]', 'textarea[name="obs"]');
-    var cliente = getV('#of-r-cliente', 'input[name="cliente"]');
+    var cliente = getV('#of-r-cliente', 'input[name="clinome"]', 'input[name="cliente"]');
     var cliId = getV('#ofr-cliente-id', '#of-r-cliente-id', 'input[name="cli_id"]');
-    var vendId = getV('#of-r-vendedor', '#ofr-vendedor', 'select[name="vendedor_id"]');
+    var vendId = getV('#of-r-vendedor', '#ofr-vendedor', 'select[name="vendid"]', 'select[name="vendedor_id"]');
     var gramId = getV('#_of_rapida_gramatura_id', '#of-r-gramatura', 'select[name="gramatura_id"]');
 
     if (status) body.status = status;
 
     if (maquina) {
-      body.maquina = maquina;
-      body.maquina_agendada = maquina;
       body.maq = [maquina];
-      body.fluxo_maquinas = [maquina];
     }
     if (tipo) body.tipo_caixa = tipo;
     if (produto) {
       body.produto = produto;
       body.descricao = produto;
-      body.prodDesc = produto;
     }
     if (quantidade != null && quantidade !== '') {
-      body.quantidade = parseInt(String(quantidade).replace(',', '.'), 10) || 0;
-      body.qtd = body.quantidade;
+      body.qtd = parseInt(String(quantidade).replace(',', '.'), 10) || 0;
     }
     if (comprimento != null && comprimento !== '') {
-      body.comp = parseFloat(String(comprimento).replace(',', '.')) || 0;
-      body.comprimento = body.comp;
-      body.caixa_comprimento = body.comp;
-      body.dim_comprimento = body.comp;
+      body.caixa_comprimento = parseFloat(String(comprimento).replace(',', '.')) || 0;
     }
     if (largura != null && largura !== '') {
-      body.larg = parseFloat(String(largura).replace(',', '.')) || 0;
-      body.largura = body.larg;
-      body.caixa_largura = body.larg;
-      body.dim_largura = body.larg;
+      body.caixa_largura = parseFloat(String(largura).replace(',', '.')) || 0;
     }
     if (altura != null && altura !== '') {
-      body.altura = Number(altura);
       body.caixa_altura = Number(altura);
-      body.dim_altura = Number(altura);
     }
     if (entrega) {
-      body.data_entrega = String(entrega).slice(0, 10);
-      body.ent = body.data_entrega;
+      body.ent = String(entrega).slice(0, 10);
     }
     if (dia) {
       body.dia = String(dia).slice(0, 10);
       body.data_producao = body.dia;
     }
     if (vlUnit != null && vlUnit !== '') {
-      body.vl_unit = parseFloat(String(vlUnit).replace(',', '.')) || 0;
-      body.valor_unitario = body.vl_unit;
+      body.preco = parseFloat(String(vlUnit).replace(',', '.')) || 0;
     }
     if (valorTotal != null && valorTotal !== '') {
-      body.valor_total = parseFloat(String(valorTotal).replace(',', '.')) || 0;
-      body.valor_venda = body.valor_total;
+      body.total = parseFloat(String(valorTotal).replace(',', '.')) || 0;
     }
     if (obs) {
-      body.observacoes = obs;
       body.obs = obs;
     }
-    if (cliente) body.cliente = cliente;
-    if (cliId) {
-      body.cli_id = cliId;
-      body.cliente_id = cliId;
-      body.cliId = cliId;
-    }
-    if (vendId) {
-      body.vendedor_id = vendId;
-      body.vendId = vendId;
-      body.vend_id = vendId;
-    }
+    if (cliente) body.clinome = cliente;
+    if (cliId) body.cli_id = cliId;
+    if (vendId) body.vendid = vendId;
     if (gramId) {
       body.gramatura_id = gramId;
-      body.gramaturaId = gramId;
     }
-    if (body.valor_total == null && (body.vl_unit || body.valor_unitario) && (body.quantidade || body.qtd)) {
-      var qty = Number(body.quantidade || body.qtd || 0) || 0;
-      var unit = Number(body.vl_unit || body.valor_unitario || 0) || 0;
+    if (body.total == null && body.preco != null && body.qtd != null) {
+      var qty = Number(body.qtd || 0) || 0;
+      var unit = Number(body.preco || 0) || 0;
       if (qty > 0 && unit > 0) {
-        body.valor_total = qty * unit;
-        body.valor_venda = qty * unit;
+        body.total = qty * unit;
       }
     }
     try {
@@ -8754,16 +8723,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
 
     if (!body.status && ofOrig && ofOrig.status) body.status = String(ofOrig.status);
-    if (!body.cli_id && ofOrig && (ofOrig.cli_id || ofOrig.cliente_id)) body.cli_id = String(ofOrig.cli_id || ofOrig.cliente_id);
-    if (!body.vendedor_id && ofOrig && (ofOrig.vendedor_id || ofOrig.vendId || ofOrig.vend_id)) body.vendedor_id = String(ofOrig.vendedor_id || ofOrig.vendId || ofOrig.vend_id);
+    if (!body.cli_id && ofOrig && ofOrig.cli_id) body.cli_id = String(ofOrig.cli_id);
+    if (!body.vendid && ofOrig && (ofOrig.vendid || ofOrig.vendedor_id)) body.vendid = String(ofOrig.vendid || ofOrig.vendedor_id);
     if (!body.maq && ofOrig) {
       var maqOrig = parseMaqValue(ofOrig);
       if (maqOrig) {
         body.maq = [maqOrig];
-        body.maquina = maqOrig;
       }
     }
-    if (body.valor_total == null && ofOrig && ofOrig.valor_total != null) body.valor_total = parseFloat(String(ofOrig.valor_total).replace(',', '.')) || 0;
+    if (body.total == null && ofOrig && ofOrig.total != null) body.total = parseFloat(String(ofOrig.total).replace(',', '.')) || 0;
 
     try { console.log('[salvarEdicaoOf] enviando PATCH para OF', id, body); } catch (_) {}
     var btn = document.getElementById('btn-salvar-of-rapida');
@@ -13943,15 +13911,15 @@ window._mbnActive = function(id) {
     var qtdPerdida = Number(item && (item.quantidade != null ? item.quantidade : (item.qtd_perdida != null ? item.qtd_perdida : item.caixas_perdidas)) || 0) || 0;
     var vlUnit = Number(item && (item.vl_unit != null ? item.vl_unit : item.valor_unitario) || (ofData && (ofData.vl_unit || ofData.valor_unitario)) || 0) || 0;
     var vlTotal = Number(item && (item.vl_total != null ? item.vl_total : item.valor_perdido) || 0) || ((qtdPerdida || 0) * (vlUnit || 0));
-    var produto = String(item && item.produto || '').trim() || String(ofData && (ofData.produto || ofData.descricao || ofData.prodDesc) || '').trim() || '—';
-    var cliente = String(item && (item.cliente || item.of_cliente || item.of_cli_nome || item.cliente_nome) || '').trim() || String(ofData && (ofData.cli_nome || ofData.cliente || ofData.cliente_nome || ofData.cliNome) || '').trim() || '—';
+    var produto = String(item && item.produto || '').trim() || String(ofData && (ofData.produto || ofData.descricao) || '').trim() || '—';
+    var cliente = String(item && (item.cliente || item.of_cliente || item.of_cli_nome || item.cliente_nome) || '').trim() || String(ofData && ofData.clinome || '').trim() || '—';
     var maqLista = window._parseListaTextoOuJsonHotfix ? window._parseListaTextoOuJsonHotfix(item && (item.of_maq != null ? item.of_maq : null)) : [];
-    var maquina = String(item && item.maquina || '').trim() || (maqLista.length ? maqLista.join(', ') : '') || String(ofData && (ofData.maquina || ofData.maquina_atual) || '').trim() || '—';
-    var ofNumero = String(item && (item.of_numero || item.of_num || item.numero || item.of) || '').trim() || String(ofData && (ofData.numero || ofData.of) || '').trim() || '—';
+    var maquina = String(item && item.maquina || '').trim() || (maqLista.length ? maqLista.join(', ') : '') || String(ofData && ofData.maq || '').trim() || '—';
+    var ofNumero = String(item && (item.of_numero || item.of_num || item.of) || '').trim() || String(ofData && ofData.of || '').trim() || '—';
     var imgUrl = String(item && (item.imagem_url || item.foto_url || item.imgUrl) || '').trim() || String(ofData && (ofData.imagem_url || ofData.imgUrl || (Array.isArray(ofData.imgs) ? ofData.imgs[0] : '')) || '').trim();
     try { if (!(window._urlValida && window._urlValida(imgUrl))) imgUrl = ''; } catch (_) { imgUrl = ''; }
     var operadores = String(item && (item.usuario || item.operador || item.operador_display) || '').trim() || '—';
-    var concluidoPor = String(item && (item.of_concluido_por || item.concluido_por || item.usuario) || '').trim() || '—';
+    var concluidoPor = String(item && (item.usuario_conclusao || item.of_concluido_por || item.concluido_por || item.usuario) || '').trim() || String(ofData && ofData.usuario_conclusao || '').trim() || '—';
     return {
       id: String(item && item.id || '').trim(),
       of_id: String(item && item.of_id || '').trim(),
@@ -13961,13 +13929,13 @@ window._mbnActive = function(id) {
       maquina_perda: String(item && item.maquina_perda || '').trim(),
       cliente: cliente,
       qtd_perdida: qtdPerdida,
-      vl_unit: vlUnit,
-      vl_total: vlTotal,
+      preco: vlUnit,
+      total: vlTotal,
       valor_unitario: vlUnit,
       valor_perdido: vlTotal,
       usuario: operadores,
       operador: String(item && item.operador || '').trim(),
-      concluido_por: concluidoPor,
+      usuario_conclusao: concluidoPor,
       imgUrl: imgUrl,
       imagem_url: imgUrl,
       motivo: String(item && item.motivo || '').trim(),
@@ -17396,9 +17364,9 @@ function _ocultarGraficoComissoes() {
         var body = {
           status: 'Concluído',
           data_conclusao: dataFaturamento,
-          quantidade: caixasProduzidas,
-          valor_total: resumo.novoTotal,
-          concluido_por: ((window._usuarioLogado && (window._usuarioLogado.nome || window._usuarioLogado.email)) || 'Sistema')
+          qtd: caixasProduzidas,
+          total: resumo.novoTotal,
+          usuario_conclusao: ((window._usuarioLogado && (window._usuarioLogado.nome || window._usuarioLogado.email)) || 'Sistema')
         };
         var gramaturaId = String((document.getElementById('conclusao-gramatura') || {}).value || '').trim();
         if (gramaturaId) body.gramatura_id = gramaturaId;
@@ -17417,7 +17385,7 @@ function _ocultarGraficoComissoes() {
             await fetch('/api/ofs/' + encodeURIComponent(String(of.id || ofId)), {
               method: 'PATCH',
               headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
-              body: JSON.stringify({ imagem: null, imagem_url: null })
+              body: JSON.stringify({ imagem_url: null })
             }).catch(function() { return null; });
           } catch (_) {}
 
@@ -17428,8 +17396,8 @@ function _ocultarGraficoComissoes() {
               headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
               body: JSON.stringify({
                 of_id: of.id || ofId,
-                of_numero: of.numero || null,
-                produto: of.produto || of.descricao || of.prodDesc || '',
+                of_numero: of.of || of.numero || null,
+                produto: of.produto || of.descricao || '',
                 cliente: cliente,
                 maquina: perda.maquina,
                 quantidade: perda.qtd,
@@ -18989,23 +18957,22 @@ window._recarregarToneladas = async function() {
     }));
 
     var detalhes = (Array.isArray(json.detalhes) ? json.detalhes : []).map(function(d) {
-      console.log('[TON] OF', d && (d.of || d.numero), 'comp:', d && d.comp, 'larg:', d && d.larg, 'gram:', d && d.gramatura_id, 'qtd:', d && d.qtd);
-      var comp = parseFloat(String(d && (d.comp || d.comprimento || d.largura_caixa || 0)).replace(',', '.')) || 0;
-      var larg = parseFloat(String(d && (d.larg || d.largura || d.altura_caixa || 0)).replace(',', '.')) || 0;
-      var gram = parseFloat(String(d && (d.gram != null ? d.gram : d.gramatura) || 0).replace(',', '.')) || 0;
-      var qtd = parseInt(String(d && (d.qtd || d.quantidade || 0)).replace(',', '.'), 10) || 0;
+      console.log('[TON] OF', d && (d.of || d.numero), 'comp:', d && d.caixa_comprimento, 'larg:', d && d.caixa_largura, 'gram:', d && d.gramatura_id, 'qtd:', d && d.qtd);
+      var comp = parseFloat(String(d && (d.caixa_comprimento || 0)).replace(',', '.')) || 0;
+      var larg = parseFloat(String(d && (d.caixa_largura || 0)).replace(',', '.')) || 0;
+      var qtd = parseInt(String(d && (d.qtd || 0)).replace(',', '.'), 10) || 0;
+      var gram = parseFloat(String(d && (d.gramatura_valor != null ? d.gramatura_valor : (d.gram != null ? d.gram : d.gramatura)) || 0).replace(',', '.')) || 0;
+      var tonCalc = ((comp / 1000) * (larg / 1000) * (gram / 1000000) * qtd) || 0;
       var areaCalc = (comp > 0 && larg > 0 && qtd > 0) ? ((comp / 1000) * (larg / 1000) * qtd) : 0;
-      var tonCalc = (areaCalc > 0 && gram > 0) ? (areaCalc * (gram / 1000000)) : 0;
       var custoEstimado = Number(d && d.custo_estimado || 0) || 0;
       if (!(custoEstimado > 0) && tonCalc > 0) {
-        custoEstimado = ((Number(d && d.valor_unitario || 0) || 0) * tonCalc * 1000);
+        custoEstimado = ((Number(d && d.preco || 0) || 0) * tonCalc * 1000);
       }
       return Object.assign({}, d, {
-        comp: comp,
-        larg: larg,
+        caixa_comprimento: comp,
+        caixa_largura: larg,
         gram: gram,
         qtd: qtd,
-        quantidade: qtd,
         area_m2: areaCalc || 0,
         toneladas: tonCalc || 0,
         custo_estimado: custoEstimado || 0,

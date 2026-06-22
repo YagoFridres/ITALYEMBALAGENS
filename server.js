@@ -2510,78 +2510,120 @@ function ofIn(p) {
   };
   if (Object.prototype.hasOwnProperty.call(p || {}, 'vl_total')) {
     const v = toNum(p.vl_total, NaN);
-    if (Number.isFinite(v)) {
-      if (out.valor_total === undefined) out.valor_total = v;
-      if (out.valor_venda === undefined) out.valor_venda = v;
-    }
+    if (Number.isFinite(v) && out.total === undefined) out.total = v;
     delete out.vl_total;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'valor_total')) {
+    const v = toNum(p.valor_total, NaN);
+    if (Number.isFinite(v) && out.total === undefined) out.total = v;
+    delete out.valor_total;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'valor_venda')) {
+    const v = toNum(p.valor_venda, NaN);
+    if (Number.isFinite(v) && out.total === undefined) out.total = v;
+    delete out.valor_venda;
   }
   if (Object.prototype.hasOwnProperty.call(p || {}, 'vl_unit')) {
     const v = toNum(p.vl_unit, NaN);
-    if (Number.isFinite(v)) {
-      out.vl_unit = v;
-      if (out.valor_unitario === undefined) out.valor_unitario = v;
-    }
+    if (Number.isFinite(v) && out.preco === undefined) out.preco = v;
+    delete out.vl_unit;
   }
   if (Object.prototype.hasOwnProperty.call(p || {}, 'valor_unitario')) {
     const v = toNum(p.valor_unitario, NaN);
-    if (Number.isFinite(v)) {
-      out.valor_unitario = v;
-      if (out.vl_unit === undefined) out.vl_unit = v;
-    }
+    if (Number.isFinite(v) && out.preco === undefined) out.preco = v;
+    delete out.valor_unitario;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'preco_unit')) {
+    const v = toNum(p.preco_unit, NaN);
+    if (Number.isFinite(v) && out.preco === undefined) out.preco = v;
+    delete out.preco_unit;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'quantidade')) {
+    const v = Math.trunc(toNum(p.quantidade, NaN));
+    if (Number.isFinite(v) && out.qtd === undefined) out.qtd = v;
+    delete out.quantidade;
   }
   if (Object.prototype.hasOwnProperty.call(p || {}, 'comprimento')) {
     const v = toNum(p.comprimento, NaN);
-    if (Number.isFinite(v)) {
-      out.comprimento = v;
-      if (out.caixa_comprimento === undefined) out.caixa_comprimento = v;
-      if (out.dim_comprimento === undefined) out.dim_comprimento = v;
-    }
+    if (Number.isFinite(v) && out.caixa_comprimento === undefined) out.caixa_comprimento = v;
+    delete out.comprimento;
   }
   if (Object.prototype.hasOwnProperty.call(p || {}, 'comp')) {
     const v = toNum(p.comp, NaN);
-    if (Number.isFinite(v)) {
-      out.comp = v;
-      if (out.comprimento === undefined) out.comprimento = v;
-      if (out.caixa_comprimento === undefined) out.caixa_comprimento = v;
-      if (out.dim_comprimento === undefined) out.dim_comprimento = v;
-    }
+    if (Number.isFinite(v) && out.caixa_comprimento === undefined) out.caixa_comprimento = v;
+    delete out.comp;
   }
   if (Object.prototype.hasOwnProperty.call(p || {}, 'largura')) {
     const v = toNum(p.largura, NaN);
-    if (Number.isFinite(v)) {
-      out.largura = v;
-      if (out.caixa_largura === undefined) out.caixa_largura = v;
-      if (out.dim_largura === undefined) out.dim_largura = v;
-    }
+    if (Number.isFinite(v) && out.caixa_largura === undefined) out.caixa_largura = v;
+    delete out.largura;
   }
   if (Object.prototype.hasOwnProperty.call(p || {}, 'larg')) {
     const v = toNum(p.larg, NaN);
-    if (Number.isFinite(v)) {
-      out.larg = v;
-      if (out.largura === undefined) out.largura = v;
-      if (out.caixa_largura === undefined) out.caixa_largura = v;
-      if (out.dim_largura === undefined) out.dim_largura = v;
-    }
+    if (Number.isFinite(v) && out.caixa_largura === undefined) out.caixa_largura = v;
+    delete out.larg;
   }
   if (Object.prototype.hasOwnProperty.call(p || {}, 'altura')) {
     const v = toNum(p.altura, NaN);
-    if (Number.isFinite(v)) {
-      out.altura = v;
-      if (out.caixa_altura === undefined) out.caixa_altura = v;
-      if (out.dim_altura === undefined) out.dim_altura = v;
-    }
+    if (Number.isFinite(v) && out.caixa_altura === undefined) out.caixa_altura = v;
+    delete out.altura;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'cli_nome')) {
+    if (out.clinome == null) out.clinome = p.cli_nome;
+    delete out.cli_nome;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'cliente_nome')) {
+    if (out.clinome == null) out.clinome = p.cliente_nome;
+    delete out.cliente_nome;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'cliNome')) {
+    if (out.clinome == null) out.clinome = p.cliNome;
+    delete out.cliNome;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'cliente')) {
+    if (out.clinome == null) out.clinome = p.cliente;
+    delete out.cliente;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'vendId')) {
+    if (out.vendid == null) out.vendid = p.vendId;
+    delete out.vendId;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'vendedor_id')) {
+    if (out.vendid == null) out.vendid = p.vendedor_id;
+    delete out.vendedor_id;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'vend_id')) {
+    if (out.vendid == null) out.vendid = p.vend_id;
+    delete out.vend_id;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'vendedor')) {
+    if (out.vendid == null && (typeof p.vendedor === 'number' || /^[0-9a-f-]{4,}$/i.test(String(p.vendedor || '').trim()))) out.vendid = p.vendedor;
+    delete out.vendedor;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'cliId')) {
+    if (out.cli_id == null) out.cli_id = p.cliId;
+    delete out.cliId;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'data_entrega')) {
+    if (out.ent == null) out.ent = sanitizeDate(p.data_entrega);
+    delete out.data_entrega;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'concluido_por')) {
+    if (out.usuario_conclusao == null) out.usuario_conclusao = p.concluido_por;
+    delete out.concluido_por;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'numero')) {
+    if (out.of == null) out.of = p.numero;
+    delete out.numero;
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'imagem')) {
+    if (out.imagem_url === undefined) out.imagem_url = p.imagem;
+    delete out.imagem;
   }
   delete out.val;
   delete out.valor;
   delete out.vtot;
   delete out.vunit;
-  if (out.valor_total === undefined && out.valor_venda !== undefined) {
-    out.valor_total = out.valor_venda;
-  }
-  if (out.valor_venda === undefined && out.valor_total !== undefined) {
-    out.valor_venda = out.valor_total;
-  }
   const has = (k) => Object.prototype.hasOwnProperty.call(p || {}, k);
   if (has('prioridade')) {
     const n = Math.trunc(Number(p.prioridade));
@@ -2679,7 +2721,6 @@ function ofIn(p) {
   if (has('dia')) out.dia = sanitizeDate(p.dia);
   if (has('ent')) out.ent = sanitizeDate(p.ent);
   if (has('data_producao')) out.data_producao = sanitizeDate(p.data_producao);
-  if (has('data_entrega')) out.data_entrega = sanitizeDate(p.data_entrega);
   if (has('data_agendamento')) out.data_agendamento = sanitizeDate(p.data_agendamento);
   if (has('maquina_agendada')) {
     const s = p.maquina_agendada == null ? '' : String(p.maquina_agendada).trim();
@@ -2711,35 +2752,32 @@ function ofIn(p) {
     if ((out.descricao == null || String(out.descricao).trim() === '') && primeiroDesc) out.descricao = primeiroDesc;
     if ((out.prodDesc == null || String(out.prodDesc).trim() === '') && primeiroDesc) out.prodDesc = primeiroDesc;
   }
-  if (out.valor_total === undefined && out.valor_venda === undefined && Array.isArray(out.itens) && out.itens.length) {
+  if (out.total === undefined && Array.isArray(out.itens) && out.itens.length) {
     const sum = out.itens.reduce((s, it) => {
       if (!it || typeof it !== 'object') return s;
       return s + toNum(it.valor_total ?? it.total ?? 0, 0);
     }, 0);
-    out.valor_total = sum;
-    out.valor_venda = sum;
+    out.total = sum;
   }
 
   return out;
 }
 
 const OFS_TABLE_COLS = [
-  'id', 'numero', 'of', 'of_num', 'of_seq', 'seq',
-  'status', 'cliente_id', 'cli_id', 'cliId', 'cliid',
-  'cliNome', 'clinome', 'cliente_nome',
-  'vendedor_id', 'vendId', 'vendid', 'vendedor', 'vendNome',
+  'id', 'of', 'of_num', 'of_seq', 'seq',
+  'status', 'cli_id', 'clinome',
+  'vendid',
   'gramatura_id',
-  'emp_id', 'empId', 'empresa_id', 'empNome',
-  'data_entrega', 'ent', 'dia', 'data_producao',
+  'emp_id', 'empresa_id',
+  'ent', 'dia', 'data_producao',
   'data_agendamento', 'maquina_agendada', 'agendamento_auto',
   'data_conclusao', 'data_faturamento', 'dia_programacao',
   'urgente', 'urg',
-  'quantidade', 'qtd', 'qtd_pedida', 'qtd_produzida', 'qtd_perdida',
+  'qtd', 'qtd_pedida', 'qtd_produzida', 'qtd_perdida',
   'caixas_boas', 'operadores_conclusao',
   'caixas_excedentes', 'qtd_chapas',
-  'valor_total', 'valor_venda', 'preco', 'total',
-  'vl_total', 'vl_unit', 'valor_unitario',
-  'descricao', 'obs', 'obs2', 'observacoes',
+  'preco', 'total',
+  'descricao', 'obs', 'obs2',
   'itens', 'imgs', 'imagem_url',
   'maq', 'fluxo', 'fluxo_maquinas', 'maquina_atual_index',
   'chp', 'chapa_id', 'maquina_perda',
@@ -2748,8 +2786,6 @@ const OFS_TABLE_COLS = [
   'cidade_entrega', 'modo_programacao',
   'usuario_conclusao',
   'tipo_caixa', 'caixa_comprimento', 'caixa_largura', 'caixa_altura',
-  'dim_comprimento', 'dim_largura', 'dim_altura',
-  'comprimento', 'largura', 'altura',
   'cores_impressao',
   'cond_pagamento', 'pagto', 'ramo', 'smp_id',
   'created_at', 'updated_at',
@@ -2787,12 +2823,12 @@ function ofPayloadFiltrado(body) {
 async function ofsInsertWithRetry(row) {
   function sanitizarPayloadOF(payload) {
     const inteiros = [
-      'qtd', 'quantidade', 'qtd_pedida',
+      'qtd', 'qtd_pedida',
       'qtd_produzida', 'qtd_perdida', 'caixas_excedentes',
       'maquina_atual_index', 'prioridade', 'prioridade_producao'
     ];
     const decimais = [
-      'valor_total', 'valor_venda', 'valor_unitario',
+      'preco', 'total',
       'caixa_comprimento', 'caixa_largura', 'caixa_altura'
     ];
     const out = { ...(payload || {}) };
@@ -2867,12 +2903,12 @@ async function ofsInsertWithRetry(row) {
 async function ofsUpdateWithRetry(id, row) {
   function sanitizarPayloadOF(payload) {
     const inteiros = [
-      'qtd', 'quantidade', 'qtd_pedida',
+      'qtd', 'qtd_pedida',
       'qtd_produzida', 'qtd_perdida', 'caixas_excedentes',
       'maquina_atual_index', 'prioridade', 'prioridade_producao'
     ];
     const decimais = [
-      'valor_total', 'valor_venda', 'valor_unitario',
+      'preco', 'total',
       'caixa_comprimento', 'caixa_largura', 'caixa_altura'
     ];
     const out = { ...(payload || {}) };
@@ -2925,8 +2961,6 @@ async function ofsUpdateWithRetry(id, row) {
 
   let p = sanitizarPayloadOF({ ...(row || {}) });
   delete p.id;
-  delete p.numero;
-  delete p.of;
   delete p.of_num;
   delete p.seq;
   const ignoredColumns = [];
@@ -3417,10 +3451,17 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
 
     const shouldFetchAll = !!busca || (!afterIso && !offset && (!limitRaw || limitRaw === 'all' || limitRaw === '0'));
+    const ofsColsBase = [
+      'id', 'of', 'status', 'preco', 'total', 'qtd', 'clinome', 'cli_id',
+      'vendid', 'ent', 'dia', 'data_conclusao',
+      'urgente', 'urg', 'caixa_comprimento', 'caixa_largura', 'caixa_altura',
+      'maq', 'empresa_id', 'emp_id', 'imagem_url', 'usuario_conclusao', 'obs',
+      'descricao', 'produto', 'of_num', 'prioridade', 'created_at', 'itens', 'imgs'
+    ].join(',');
     const buildQuery = () => {
       let query = supabase
         .from('ofs')
-        .select('*', { count: 'exact' })
+        .select(ofsColsBase, { count: 'exact' })
         .order('created_at', { ascending: false });
 
       if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') {
@@ -3458,7 +3499,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const fallbackQueryBase = () => {
         let query = supabase
           .from('ofs')
-          .select('*', { count: 'exact' })
+          .select(ofsColsBase, { count: 'exact' })
           .order('created_at', { ascending: false });
         if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') query = query.eq('empresa_id', empresaFiltro);
         else query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
@@ -3589,8 +3630,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
       return {
         ...of,
-        cliente: clienteNome,
         clinome: clienteNome,
+        vendid: of.vendid || null,
+        vendedor_id: of.vendid || null,
         maquina: maquinaNome,
         maquina_atual: maquinaNome,
         produto: produtoNome,
@@ -3598,7 +3640,10 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         total: total || of.total || 0,
         itens_parsed: itensArr,
         urgente: of.urgente || of.urg || false,
-        numero: of.numero || of.of_num || of.of || ''
+        ent: of.ent || null,
+        data_entrega: of.ent || null,
+        of: of.of || of.of_num || '',
+        numero: of.of || of.of_num || ''
       };
     });
 
@@ -3606,8 +3651,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const buscaNorm = String(busca).toLowerCase();
       rows = rows.filter((of) => {
         const hay = [
-          of?.numero, of?.of, of?.descricao, of?.produto,
-          of?.cliente, of?.clinome, of?.cliente_nome, of?.cli_nome, of?.cliNome
+          of?.of, of?.numero, of?.descricao, of?.produto,
+          of?.clinome
         ].map((v) => String(v || '').toLowerCase()).join(' ');
         return hay.includes(buscaNorm);
       });
@@ -3631,7 +3676,7 @@ app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('ofs')
-      .select('numero, of_num, of, id, created_at')
+      .select('of, of_num, id, created_at')
       .order('created_at', { ascending: false })
       .limit(200);
 
@@ -3639,7 +3684,7 @@ app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
 
     let maior = 0;
     (data || []).forEach((of) => {
-      ['numero', 'of_num', 'numero_of', 'of'].forEach((campo) => {
+      ['of', 'of_num', 'numero_of'].forEach((campo) => {
         const v = of?.[campo];
         if (v === null || v === undefined || v === '') return;
         const n = parseInt(String(v).replace(/\D/g, ''), 10);
@@ -3664,8 +3709,8 @@ app.get('/api/ofs/recorrentes', authMiddleware, async (req, res) => {
 });
 async function _maybeRegistrarComissaoOF(req, body, ofRow) {
   try {
-    const vendedorId = String(body?.vendedor_id ?? body?.vend_id ?? body?.vendId ?? ofRow?.vendedor_id ?? ofRow?.vend_id ?? ofRow?.vendId ?? '').trim();
-    const valorOf = Number(body?.valor_total ?? body?.valor_venda ?? ofRow?.valor_total ?? ofRow?.valor_venda ?? 0);
+    const vendedorId = String(body?.vendid ?? ofRow?.vendid ?? ofRow?.vendedor_id ?? '').trim();
+    const valorOf = Number(body?.total ?? ofRow?.total ?? 0);
     console.log('[COMISSAO] vendedorId:', vendedorId, 'valorOf:', valorOf);
     if (!vendedorId || !(valorOf > 0)) return;
     const { data: vend } = await supabase.from('vendedores').select('*').eq('id', vendedorId).maybeSingle();
@@ -3674,7 +3719,7 @@ async function _maybeRegistrarComissaoOF(req, body, ofRow) {
     if (!(perc > 0)) return;
     const valorComissao = valorOf * (perc / 100);
     const vendNome = String(vend?.nome || '').trim();
-    const numero = body?.of ?? body?.numero ?? ofRow?.of ?? ofRow?.numero ?? '';
+    const numero = body?.of ?? ofRow?.of ?? ofRow?.of_num ?? '';
     await supabase.from('historico_acoes').insert([{
       tipo_acao: 'comissao_of',
       descricao: `Comissão OF #${numero || ''}: ${vendNome || ''} — R$ ${valorComissao.toFixed(2)} (${perc}% de R$ ${valorOf.toFixed(2)})`,
@@ -3697,9 +3742,9 @@ async function _maybeBaixaAutomaticaChapasOF(req, body, ofRow) {
     if (e1 || !chapa) return;
     const canonChapa = _chapasCanonicalFromAny(chapa, table);
 
-    const ofNumero = body?.of ?? body?.numero ?? ofRow?.of ?? ofRow?.numero ?? null;
-    const cliRef = body?.cliId ?? body?.cli_id ?? body?.cliente_id ?? ofRow?.cliId ?? ofRow?.cli_id ?? ofRow?.cliente_id ?? '';
-    const empId = body?.emp_id ?? body?.empId ?? ofRow?.emp_id ?? ofRow?.empId ?? 'E1';
+    const ofNumero = body?.of ?? ofRow?.of ?? ofRow?.of_num ?? null;
+    const cliRef = body?.cli_id ?? ofRow?.cli_id ?? '';
+    const empId = body?.emp_id ?? ofRow?.emp_id ?? 'E1';
     const usuario = req?.usuario?.nome || 'sistema';
 
     if (table === 'chapas_estoque_v2') {
@@ -4070,19 +4115,19 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     const filtered = ofPayloadFiltrado(body);
     filtered.empresa_id = empId;
     delete filtered.id;
-    if ((filtered.of == null || String(filtered.of || '').trim() === '') && (filtered.numero == null || String(filtered.numero || '').trim() === '')) {
+    if (filtered.of == null || String(filtered.of || '').trim() === '') {
       try {
         const proximoNumeroOF = async (empresa_id) => {
           const { data, error } = await supabase
             .from('ofs')
-            .select('numero')
+            .select('of')
             .eq('empresa_id', empresa_id)
             .order('created_at', { ascending: false })
             .limit(200);
           if (error) throw error;
           let maior = 0;
           (data || []).forEach((o) => {
-            const n = parseInt(String(o?.numero || '').replace(/\D/g, ''), 10) || 0;
+            const n = parseInt(String(o?.of || '').replace(/\D/g, ''), 10) || 0;
             if (n > maior) maior = n;
           });
           return maior + 1;
@@ -4090,7 +4135,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
 
         const { data: last } = await supabase
           .from('ofs')
-          .select('seq,of,numero')
+          .select('seq,of')
           .order('seq', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -4105,11 +4150,10 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
             .from('ofs')
             .select('id')
             .eq('empresa_id', empId)
-            .eq('numero', cand)
+            .eq('of', cand)
             .limit(1);
           if (Array.isArray(exists) && exists.length) continue;
           filtered.of = cand;
-          filtered.numero = cand;
           break;
         }
       } catch (_) {}
@@ -4121,17 +4165,17 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         return [];
       };
       const merged = { ...(body || {}), ...(filtered || {}) };
-      console.log('[OF SAVE] cli_id recebido:', body.cli_id || body.cliId || body.cliente_id, 'cliente:', body.cliente);
-      const cliId = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
-      const vendId = String(merged.vendedor_id ?? merged.vendedorId ?? merged.vendId ?? merged.vend_id ?? '').trim();
-      const qtd = Number(merged.qtd ?? merged.quantidade ?? merged.qtd_pedida ?? 0) || 0;
-      const ent = String(merged.ent ?? merged.data_entrega ?? '').slice(0, 10);
+      console.log('[OF SAVE] cli_id recebido:', body.cli_id, 'clinome:', body.clinome);
+      const cliId = String(merged.cli_id ?? '').trim();
+      const vendId = String(merged.vendid ?? '').trim();
+      const qtd = Number(merged.qtd ?? merged.qtd_pedida ?? 0) || 0;
+      const ent = String(merged.ent ?? '').slice(0, 10);
       const itens = parseItens(merged.itens ?? body.itens);
       const item0 = (Array.isArray(itens) ? itens : [])[0] || {};
-      const prod = String(merged.prodDesc ?? merged.descricao ?? merged.produto ?? item0.desc ?? item0.descricao ?? '').trim();
-      const total = Number(merged.valor_total ?? merged.valor_venda ?? 0) || 0;
-      const vunitItens = Math.max(0, ...(Array.isArray(itens) ? itens : []).map((it) => Number(it?.valor_unitario ?? it?.vunit ?? 0) || 0));
-      const vunit = (vunitItens > 0) ? vunitItens : ((qtd > 0) ? (total / qtd) : 0);
+      const prod = String(merged.descricao ?? merged.produto ?? item0.desc ?? item0.descricao ?? '').trim();
+      const total = Number(merged.total ?? 0) || 0;
+      const vunitItens = Math.max(0, ...(Array.isArray(itens) ? itens : []).map((it) => Number(it?.preco ?? it?.vunit ?? it?.valor_unitario ?? 0) || 0));
+      const vunit = (vunitItens > 0) ? vunitItens : (Number(merged.preco ?? 0) || ((qtd > 0) ? (total / qtd) : 0));
       const missing = [];
       if (!cliId) missing.push('cliente');
       if (!vendId) missing.push('vendedor');
@@ -4151,11 +4195,8 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     await _maybeRegistrarComissaoOF(req, body, created);
     await _maybeBaixaAutomaticaChapasOF(req, body, created);
     try {
-      const cliId = String(body?.cli_id || body?.cliId || created?.cli_id || created?.cliId || created?.cliente_id || '').trim();
-      const vendId = String(
-        body?.vendedor_id || body?.vendId || body?.vend_id ||
-        created?.vendedor_id || created?.vendId || created?.vend_id || ''
-      ).trim();
+      const cliId = String(body?.cli_id || created?.cli_id || '').trim();
+      const vendId = String(body?.vendid || created?.vendid || '').trim();
       if (cliId && vendId) {
         await supabase
           .from('clientes')
@@ -4175,8 +4216,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
           chapa_id: itemChapaId,
           qtd_chapas: itemQtdChapas,
           of: created?.of ?? body?.of ?? '',
-          numero: created?.numero ?? body?.numero ?? '',
-          emp_id: body?.emp_id ?? body?.empId ?? created?.emp_id ?? created?.empId ?? 'E1',
+          emp_id: body?.emp_id ?? created?.emp_id ?? 'E1',
           _estoqueJaBaixadoCriacao: false,
         }, created);
       }
@@ -4221,7 +4261,7 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
 
       let query = supabase
         .from('ofs')
-        .select('*')
+        .select('id,of,status,preco,total,qtd,clinome,cli_id,vendid,ent,dia,data_conclusao,urgente,urg,caixa_comprimento,caixa_largura,caixa_altura,maq,empresa_id,emp_id,imagem_url,usuario_conclusao,obs,descricao,produto,of_num,prioridade,created_at')
         .in('cli_id', clienteIds)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -4237,7 +4277,7 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
       const clienteMap = new Map(clientesArr.map((c) => [String(c?.id || '').trim(), c]));
       const vendedorIds = Array.from(new Set((ofsRows || []).map((of) => {
         const cli = clienteMap.get(String(of?.cli_id || '').trim());
-        return String(of?.vendedor_id || of?.vendId || cli?.vendedor_id || '').trim();
+        return String(of?.vendid || cli?.vendedor_id || '').trim();
       }).filter(Boolean)));
       const vendMap = new Map();
       if (vendedorIds.length) {
@@ -4250,18 +4290,23 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
 
       const lista = (Array.isArray(ofsRows) ? ofsRows : []).map((of) => {
         const cli = clienteMap.get(String(of?.cli_id || '').trim()) || null;
-        const vendedorId = String(of?.vendedor_id || of?.vendId || cli?.vendedor_id || '').trim() || null;
-        const clienteNome = String(cli?.nome || cli?.rs || of?.cliente_nome || of?.cliente || of?.cliNome || '').trim();
-        const qtd = of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? null;
+        const vendedorId = String(of?.vendid || cli?.vendedor_id || '').trim() || null;
+        const clienteNome = String(of?.clinome || cli?.nome || cli?.rs || '').trim();
+        const qtd = of?.qtd ?? null;
         return {
           ...of,
+          clinome: clienteNome,
           cliente_nome: clienteNome,
           cliNome: clienteNome,
+          vendid: vendedorId,
           vendedor_id: vendedorId,
           vendedor_nome: vendMap.get(String(vendedorId || '')) || String(of?.vendedor_nome || of?.vendNome || of?.vendedor || '').trim(),
           vendNome: vendMap.get(String(vendedorId || '')) || String(of?.vendedor_nome || of?.vendNome || of?.vendedor || '').trim(),
           quantidade: qtd,
-          valor_total: Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0,
+          total: Number(of?.total ?? 0) || 0,
+          valor_total: Number(of?.total ?? 0) || 0,
+          data_entrega: of?.ent || null,
+          numero: of?.of || of?.of_num || '',
         };
       });
       return ok(res, lista);
@@ -4269,15 +4314,15 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
 
     if (!numeroRaw) return ok(res, []);
 
-    const joinKeys = ['cli_id', 'cliente_id', 'cliId'];
+    const joinKeys = ['cli_id'];
     let data = null;
     let lastError = null;
 
     for (const key of joinKeys) {
       const r = await supabase
         .from('ofs')
-        .select(`*,cliente:clientes!${key}(nome,vendedor_id,vendedor:vendedores!vendedor_id(nome))`)
-        .ilike('numero', `%${numeroRaw}%`)
+        .select(`id,of,status,preco,total,qtd,clinome,cli_id,vendid,ent,dia,data_conclusao,urgente,urg,caixa_comprimento,caixa_largura,caixa_altura,maq,empresa_id,emp_id,imagem_url,usuario_conclusao,obs,descricao,produto,of_num,prioridade,created_at,cliente:clientes!${key}(nome,vendedor_id,vendedor:vendedores!vendedor_id(nome))`)
+        .ilike('of', `%${numeroRaw}%`)
         .order('created_at', { ascending: false })
         .limit(10);
       if (!r.error) { data = r.data; break; }
@@ -4290,8 +4335,8 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
     if (!data) {
       const { data: data2, error: e2 } = await supabase
         .from('ofs')
-        .select('*')
-        .ilike('numero', `%${numeroRaw}%`)
+        .select('id,of,status,preco,total,qtd,clinome,cli_id,vendid,ent,dia,data_conclusao,urgente,urg,caixa_comprimento,caixa_largura,caixa_altura,maq,empresa_id,emp_id,imagem_url,usuario_conclusao,obs,descricao,produto,of_num,prioridade,created_at')
+        .ilike('of', `%${numeroRaw}%`)
         .order('created_at', { ascending: false })
         .limit(10);
       if (e2) {
@@ -4313,9 +4358,9 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
     try {
       const clienteJoin = of.cliente && typeof of.cliente === 'object' ? of.cliente : null;
       const vendNested = clienteJoin?.vendedor && typeof clienteJoin.vendedor === 'object' ? clienteJoin.vendedor : null;
-      cliNome = String(clienteJoin?.nome || of.cliNome || of.clinome || of.cliente_nome || of.cliente || '').trim();
-      vendNome = String(vendNested?.nome || of.vendNome || of.vendedor_nome || of.vendedor || '').trim();
-      vendedorId = clienteJoin?.vendedor_id || of.vendedor_id || of.vendId || null;
+      cliNome = String(clienteJoin?.nome || of.clinome || '').trim();
+      vendNome = String(vendNested?.nome || '').trim();
+      vendedorId = clienteJoin?.vendedor_id || of.vendid || null;
     } catch (_) {}
 
     const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
@@ -4329,11 +4374,12 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
 
     const out = { ...of };
     try { delete out.cliente; } catch (_) {}
-    out.cliNome = cliNome || out.cliNome || out.cliente_nome || out.cliente || '';
-    out.cliente_nome = out.cliNome;
-    out.vendNome = vendNome || out.vendNome || out.vendedor_nome || out.vendedor || '';
-    out.vendedor_nome = out.vendNome;
-    out.vendedor_id = vendedorId || out.vendedor_id || out.vendId || null;
+    out.clinome = cliNome || out.clinome || '';
+    out.vendNome = vendNome || out.vendNome || '';
+    out.vendid = vendedorId || out.vendid || null;
+    out.vendedor_id = out.vendid;
+    out.numero = out.of || out.of_num || '';
+    out.data_entrega = out.ent || null;
     return ok(res, out);
   } catch (e) {
     try { console.error('[ofs buscar error]', e.message || e); } catch (_) {}
@@ -4345,12 +4391,12 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    const joinKeys = ['cli_id', 'cliente_id', 'cliId'];
+    const joinKeys = ['cli_id'];
     let data = null;
     for (const key of joinKeys) {
       const r = await supabase
         .from('ofs')
-        .select(`*,cliente:clientes!${key}(nome,vendedor_id,vendedor:vendedores!vendedor_id(nome))`)
+        .select(`id,of,status,preco,total,qtd,clinome,cli_id,vendid,ent,dia,data_conclusao,urgente,urg,caixa_comprimento,caixa_largura,caixa_altura,maq,empresa_id,emp_id,imagem_url,usuario_conclusao,obs,descricao,produto,of_num,prioridade,created_at,itens,imgs,gramatura_id,cliente:clientes!${key}(nome,vendedor_id,vendedor:vendedores!vendedor_id(nome))`)
         .eq('id', id)
         .maybeSingle();
       if (!r.error) { data = r.data; break; }
@@ -4359,7 +4405,7 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
       break;
     }
     if (!data) {
-      const r = await supabase.from('ofs').select('*').eq('id', id).maybeSingle();
+      const r = await supabase.from('ofs').select('id,of,status,preco,total,qtd,clinome,cli_id,vendid,ent,dia,data_conclusao,urgente,urg,caixa_comprimento,caixa_largura,caixa_altura,maq,empresa_id,emp_id,imagem_url,usuario_conclusao,obs,descricao,produto,of_num,prioridade,created_at,itens,imgs,gramatura_id').eq('id', id).maybeSingle();
       if (r.error) return res.status(500).json({ ok: false, error: r.error.message });
       data = r.data;
     }
@@ -4369,15 +4415,15 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
     const vendNested = clienteJoin?.vendedor && typeof clienteJoin.vendedor === 'object' ? clienteJoin.vendedor : null;
     const { cliente, ...rest } = data;
 
-    let cliNome = clienteJoin?.nome || data.cliNome || data.clinome || '';
-    let vendNome = vendNested?.nome || data.vendNome || data.vendedor_nome || data.vendedor || '';
-    let vendedorId = clienteJoin?.vendedor_id || data.vendedor_id || data.vendId || null;
+    let cliNome = clienteJoin?.nome || data.clinome || '';
+    let vendNome = vendNested?.nome || '';
+    let vendedorId = clienteJoin?.vendedor_id || data.vendid || null;
     const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
     if (vendNome && isUuid(String(vendNome).trim())) vendNome = '';
     if (!vendedorId && vendNome && isUuid(String(vendNome).trim())) vendedorId = String(vendNome).trim();
 
     if (!cliNome || !vendNome) {
-      const cliId = String(data.cli_id || data.cliId || data.cliente_id || '').trim();
+      const cliId = String(data.cli_id || '').trim();
       if (cliId) {
         const { data: cli } = await supabase
           .from('clientes')
@@ -4399,7 +4445,15 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
       } catch (_) {}
     }
     if (vendNome && isUuid(String(vendNome).trim())) vendNome = '';
-    return ok(res, { ...rest, cliNome, vendNome, vendedor_id: vendedorId, vendedor_nome: vendNome });
+    return ok(res, {
+      ...rest,
+      clinome: cliNome,
+      vendNome,
+      vendid: vendedorId,
+      vendedor_id: vendedorId,
+      numero: rest.of || rest.of_num || '',
+      data_entrega: rest.ent || null,
+    });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
@@ -4408,10 +4462,6 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     setNoCache(res);
     const bodyRaw = { ...(req.body || {}) };
     if (bodyRaw.gramatura_id == null && bodyRaw.gramaturaId != null) bodyRaw.gramatura_id = bodyRaw.gramaturaId;
-    if (bodyRaw.cli_id == null && bodyRaw.cliente_id != null) bodyRaw.cli_id = bodyRaw.cliente_id;
-    if (bodyRaw.vendedor_id == null && bodyRaw.vendId != null) bodyRaw.vendedor_id = bodyRaw.vendId;
-    if (bodyRaw.vendedor_id == null && bodyRaw.vend_id != null) bodyRaw.vendedor_id = bodyRaw.vend_id;
-    if (bodyRaw.valor_unitario == null && bodyRaw.vl_unit != null) bodyRaw.valor_unitario = bodyRaw.vl_unit;
     if (bodyRaw.maq == null && bodyRaw.maquina != null) bodyRaw.maq = bodyRaw.maquina;
     const body = ofPayloadFiltrado(ofIn(bodyRaw || {}));
     delete body.id;
@@ -4420,10 +4470,6 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     delete body.empresa_id;
     delete body._allow_partial;
     delete body['_allow_partial'];
-    if (body.valor_unitario !== undefined) {
-      body.vl_unit = body.valor_unitario;
-      delete body.valor_unitario;
-    }
     console.log('[PUT OFS] campos do body:', Object.keys(body));
     const { data, error } = await supabase
       .from('ofs').update(body).eq('id', req.params.id).select().single();
@@ -5304,7 +5350,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       const lote = ofIds.slice(i, i + 200);
       const { data } = await supabase
         .from('ofs')
-        .select('id,numero,cli_id,cliente,cli_nome,descricao,produto,prodDesc,data_conclusao,concluido_por,quantidade,qtd,valor_total,valor_venda,vl_unit,valor_unitario,maq,maquina,maquina_atual,maquina_agendada,status')
+        .select('id,of,cli_id,clinome,descricao,produto,data_conclusao,usuario_conclusao,qtd,total,preco,maq,status')
         .in('id', lote);
       (Array.isArray(data) ? data : []).forEach((of) => {
         const id = String(of?.id || '').trim();
@@ -5321,10 +5367,10 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       const lote = numerosSemOf.slice(i, i + 200);
       const { data } = await supabase
         .from('ofs')
-        .select('id,numero,cli_id,cliente,cli_nome,descricao,produto,prodDesc,data_conclusao,concluido_por,quantidade,qtd,valor_total,valor_venda,vl_unit,valor_unitario,maq,maquina,maquina_atual,maquina_agendada,status')
-        .in('numero', lote);
+        .select('id,of,cli_id,clinome,descricao,produto,data_conclusao,usuario_conclusao,qtd,total,preco,maq,status')
+        .in('of', lote);
       (Array.isArray(data) ? data : []).forEach((of) => {
-        const numero = String(of?.numero || '').trim();
+        const numero = String(of?.of || '').trim();
         if (numero) ofsMap.set('numero:' + numero, of);
       });
     }
@@ -5367,22 +5413,22 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
     const clienteNome =
       String(row?.cliente_nome || '').trim() ||
       clientesMap.get(String(ofData?.cli_id || '').trim()) ||
-      String(row?.cliente || ofData?.cliente || '').trim() ||
+      String(row?.cliente || ofData?.clinome || '').trim() ||
       '—';
     const maquinaNome =
       maquinasMap.get(String(row?.maquina_id || '').trim()) ||
-      String(row?.maquina || row?.maquina_perda || ofData?.maq || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || '').trim() ||
+      String(row?.maquina || row?.maquina_perda || ofData?.maq || '').trim() ||
       '—';
     const quantidade = Number(row?.quantidade ?? row?.caixas_perdidas ?? row?.qtd_perdida ?? 0) || 0;
     const operadores = _normalizarOperadoresCaixa(row);
     return {
       ...row,
-      of_numero: String(row?.of_numero || ofData?.numero || '').trim() || '—',
+      of_numero: String(row?.of_numero || ofData?.of || '').trim() || '—',
       cliente_nome: clienteNome,
       cliente: clienteNome,
-      of_cliente: String(ofData?.cliente || '').trim(),
-      of_cli_nome: String(ofData?.cli_nome || '').trim(),
-      produto: String(row?.produto || ofData?.produto || ofData?.descricao || ofData?.prodDesc || '').trim() || '—',
+      of_cliente: String(ofData?.clinome || '').trim(),
+      of_cli_nome: String(ofData?.clinome || '').trim(),
+      produto: String(row?.produto || ofData?.produto || ofData?.descricao || '').trim() || '—',
       maquina: maquinaNome,
       maquina_nome: maquinaNome,
       of_maq: ofData?.maq ?? null,
@@ -5394,16 +5440,14 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       usuario: String(row?.usuario || '').trim() || (operadores[0] || '—'),
       turno: String(row?.turno || '').trim(),
       data_conclusao: String(row?.data_conclusao || ofData?.data_conclusao || '').slice(0, 10),
-      concluido_por: String(row?.concluido_por || ofData?.concluido_por || row?.usuario || '').trim(),
-      of_concluido_por: String(ofData?.concluido_por || '').trim(),
+      concluido_por: String(row?.usuario_conclusao || row?.concluido_por || ofData?.usuario_conclusao || row?.usuario || '').trim(),
+      of_concluido_por: String(ofData?.usuario_conclusao || '').trim(),
       of_status: String(ofData?.status || '').trim(),
       valor_unitario: Number(
         row?.valor_unitario ??
-        (
-          (Number(ofData?.quantidade ?? ofData?.qtd ?? 0) || 0) > 0
-            ? ((Number(ofData?.valor_total ?? ofData?.valor_venda ?? 0) || 0) / (Number(ofData?.quantidade ?? ofData?.qtd ?? 0) || 1))
-            : 0
-        )
+        ((Number(ofData?.qtd ?? 0) || 0) > 0
+          ? ((Number(ofData?.total ?? 0) || 0) / (Number(ofData?.qtd ?? 0) || 1))
+          : (Number(ofData?.preco ?? 0) || 0))
       ) || 0,
     };
   });
@@ -5966,18 +6010,10 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     const body = req.body || {};
-    const camposInvalidos = ['_allow_partial','ativo','produto','cliId',
-      'cliente_id','vendId','vend_id','empId','prodDesc',
-      'agendamento_auto','maquina_agendada','fluxo_maquinas',
-      'maquinas_fluxo','maquinas_fluxo_ids','gramatura',
-      'gramaturaId','cores_payload'];
+    const camposInvalidos = ['_allow_partial', 'ativo', 'cores_payload'];
 
     if (body && typeof body === 'object') {
       if (body.gramatura_id == null && body.gramaturaId != null) body.gramatura_id = body.gramaturaId;
-      if (body.cli_id == null && body.cliente_id != null) body.cli_id = body.cliente_id;
-      if (body.vendedor_id == null && body.vendId != null) body.vendedor_id = body.vendId;
-      if (body.vendedor_id == null && body.vend_id != null) body.vendedor_id = body.vend_id;
-      if (body.valor_unitario == null && body.vl_unit != null) body.valor_unitario = body.vl_unit;
       if (body.maq == null && body.maquina != null) body.maq = body.maquina;
       camposInvalidos.forEach(c => delete body[c]);
     }
@@ -5986,15 +6022,15 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
     try {
       const { data: ofAtual } = await supabase
         .from('ofs')
-        .select('*')
+        .select('id,status,ent,maq,fluxo_maquinas')
         .eq('id', id)
         .maybeSingle();
       if (ofAtual) {
-        const hasEntrega = Object.prototype.hasOwnProperty.call(body, 'ent') || Object.prototype.hasOwnProperty.call(body, 'data_entrega');
+        const hasEntrega = Object.prototype.hasOwnProperty.call(body, 'ent');
         const hasMaq = Object.prototype.hasOwnProperty.call(body, 'fluxo_maquinas') || Object.prototype.hasOwnProperty.call(body, 'maq');
         if (hasEntrega || hasMaq) {
-          const oldEntrega = String(ofAtual?.ent || ofAtual?.data_entrega || '').slice(0, 10);
-          const newEntrega = String((body.ent ?? body.data_entrega ?? '') || '').slice(0, 10);
+          const oldEntrega = String(ofAtual?.ent || '').slice(0, 10);
+          const newEntrega = String((body.ent ?? '') || '').slice(0, 10);
           const oldMaqRaw = ofAtual?.fluxo_maquinas ?? ofAtual?.maq ?? null;
           const newMaqRaw = (Object.prototype.hasOwnProperty.call(body, 'fluxo_maquinas') ? body.fluxo_maquinas : (Object.prototype.hasOwnProperty.call(body, 'maq') ? body.maq : undefined));
           const normMaq = (v) => {
@@ -6049,20 +6085,8 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
           ...(Object.prototype.hasOwnProperty.call(bodyIn, 'gramatura_id')
             ? { gramatura_id: bodyIn.gramatura_id }
             : {}),
-          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'vl_unit') && !Object.prototype.hasOwnProperty.call(bodyIn, 'valor_unitario')
-            ? { valor_unitario: Number(bodyIn.vl_unit) || bodyIn.vl_unit }
-            : {}),
           ...(Object.prototype.hasOwnProperty.call(bodyIn, 'observacoes') && !Object.prototype.hasOwnProperty.call(bodyIn, 'obs')
             ? { obs: bodyIn.observacoes }
-            : {}),
-          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'produto') && !Object.prototype.hasOwnProperty.call(bodyIn, 'descricao')
-            ? { descricao: bodyIn.produto }
-            : {}),
-          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'cliente_id') && !Object.prototype.hasOwnProperty.call(bodyIn, 'cli_id')
-            ? { cli_id: bodyIn.cliente_id }
-            : {}),
-          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'clienteId') && !Object.prototype.hasOwnProperty.call(bodyIn, 'cli_id')
-            ? { cli_id: bodyIn.clienteId }
             : {}),
           ...(Object.prototype.hasOwnProperty.call(bodyIn, 'maquina') && !Object.prototype.hasOwnProperty.call(bodyIn, 'maq')
             ? { maq: [bodyIn.maquina], fluxo_maquinas: [bodyIn.maquina], maquina_agendada: bodyIn.maquina }
@@ -6070,20 +6094,11 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
           ...(Object.prototype.hasOwnProperty.call(bodyIn, 'imagem_url') && bodyIn.imagem_url != null && !Object.prototype.hasOwnProperty.call(bodyIn, 'imgs')
             ? { imgs: [bodyIn.imagem_url] }
             : {}),
-          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'comprimento') && !Object.prototype.hasOwnProperty.call(bodyIn, 'caixa_comprimento')
-            ? { caixa_comprimento: Number(bodyIn.comprimento) || bodyIn.comprimento, dim_comprimento: Number(bodyIn.comprimento) || bodyIn.comprimento }
-            : {}),
-          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'largura') && !Object.prototype.hasOwnProperty.call(bodyIn, 'caixa_largura')
-            ? { caixa_largura: Number(bodyIn.largura) || bodyIn.largura, dim_largura: Number(bodyIn.largura) || bodyIn.largura }
-            : {}),
-          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'altura') && !Object.prototype.hasOwnProperty.call(bodyIn, 'caixa_altura')
-            ? { caixa_altura: Number(bodyIn.altura) || bodyIn.altura, dim_altura: Number(bodyIn.altura) || bodyIn.altura }
-            : {}),
-          ...(((bodyIn.vl_unit != null || bodyIn.valor_unitario != null) && (bodyIn.quantidade != null || bodyIn.qtd != null) && bodyIn.valor_total == null && bodyIn.valor_venda == null)
+          ...((bodyIn.preco != null && bodyIn.qtd != null && bodyIn.total == null)
             ? (function() {
-                const qtd = Number(bodyIn.quantidade ?? bodyIn.qtd ?? 0) || 0;
-                const vu = Number(bodyIn.vl_unit ?? bodyIn.valor_unitario ?? 0) || 0;
-                return (qtd > 0 && vu > 0) ? { valor_total: qtd * vu, valor_venda: qtd * vu } : {};
+                const qtd = Number(bodyIn.qtd ?? 0) || 0;
+                const vu = Number(bodyIn.preco ?? 0) || 0;
+                return (qtd > 0 && vu > 0) ? { total: qtd * vu } : {};
               })()
             : {}),
           ...(Object.prototype.hasOwnProperty.call(bodyIn, 'maquina_atual') && !Object.prototype.hasOwnProperty.call(bodyIn, 'maq')
@@ -6094,16 +6109,9 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
     if (!payloadBody || typeof payloadBody !== 'object' || Array.isArray(payloadBody)) payloadBody = {};
     delete payloadBody._allow_partial;
     delete payloadBody['_allow_partial'];
-    const camposProibidos = ['_allow_partial', 'cliId', 'cliente_id',
-      'vendId', 'vend_id', 'empId', 'prodDesc', 'produto',
-      'agendamento_auto', 'maquina_agendada', 'fluxo_maquinas',
-      'maquinas_fluxo', 'maquinas_fluxo_ids', 'cores_payload',
-      'gramatura', 'gramaturaId'];
+    const camposProibidos = ['_allow_partial', 'cores_payload'];
     camposProibidos.forEach(campo => delete payloadBody[campo]);
     const payload = { ...ofIn(payloadBody || {}), updated_at: new Date().toISOString() };
-    if (Object.prototype.hasOwnProperty.call(bodyIn || {}, 'imagem')) {
-      payload.imagem = bodyIn.imagem;
-    }
     if (Object.prototype.hasOwnProperty.call(bodyIn || {}, 'imagem_url')) {
       payload.imagem_url = bodyIn.imagem_url;
       if (bodyIn.imagem_url == null && !Object.prototype.hasOwnProperty.call(bodyIn || {}, 'imgs')) {
@@ -6131,7 +6139,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
     } catch (_) {}
     delete payload._allow_partial; delete payload['_allow_partial'];
     delete payload.id; delete payload.empresa_id;
-    delete payload.numero; delete payload.of; delete payload.of_num; delete payload.seq;
+    delete payload.numero; delete payload.of_num; delete payload.seq;
     const upd = await ofsUpdateWithRetry(id, payload);
     if (upd.error) throw upd.error;
     const data = upd.data;
@@ -6153,19 +6161,19 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
           ja = Array.isArray(rj?.data) && rj.data[0] ? rj.data[0] : null;
         } catch (_) {}
         if (!ja || String(ja.data_passagem || '').slice(0, 10) !== hoje) {
-          const ofNumero = String(data?.numero || data?.of_num || data?.of || '').trim() || null;
-          const maquina = String(data?.maquina || '').trim() || null;
+          const ofNumero = String(data?.of || data?.of_num || '').trim() || null;
+          const maquina = String(data?.maq || '').trim() || null;
           const operador = String(req.usuario?.nome || 'Sistema').trim();
           const insertBase = {
             of_id: id,
             of_numero: ofNumero,
-            cliente: String(data?.cliente || data?.cliente_nome || '').trim() || null,
-            produto: String(data?.produto || data?.descricao || data?.produto_desc || data?.prodDesc || '').trim() || null,
+            cliente: String(data?.clinome || '').trim() || null,
+            produto: String(data?.produto || data?.descricao || '').trim() || null,
             referencia: String(data?.referencia || data?.ref || '').trim() || null,
-            imagem_url: data?.imagem_url || data?.imagem || data?.img || null,
+            imagem_url: data?.imagem_url || null,
             maquina,
             operador,
-            quantidade: Number(data?.quantidade ?? data?.qtd ?? 0) || 0,
+            quantidade: Number(data?.qtd ?? 0) || 0,
             data_passagem: hoje,
             hora_passagem: new Date().toISOString(),
             status: 'DESPACHADA',
@@ -6189,8 +6197,8 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       }
     } catch (_) {}
     try {
-      const cliId = String(req.body?.cli_id || req.body?.cliId || '').trim();
-      const vendId = String(req.body?.vendedor_id || req.body?.vendId || req.body?.vend_id || '').trim();
+      const cliId = String(req.body?.cli_id || '').trim();
+      const vendId = String(req.body?.vendid || '').trim();
       if (cliId && vendId) {
         await supabase.from('clientes').update({ vendedor_id: vendId }).eq('id', cliId).is('vendedor_id', null);
         cacheClearPrefix('clientes_');
@@ -6199,9 +6207,9 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
     try {
       const st = String(payload?.status || '').trim().toLowerCase();
       if (st === 'cancelada' || st === 'cancelado') {
-        const vendId = String(data?.vendedor_id || '').trim();
-        const val = Number(data?.valor_total || data?.valor_venda || 0);
-        const numero = data?.of ?? data?.numero ?? '';
+        const vendId = String(data?.vendid || data?.vendedor_id || '').trim();
+        const val = Number(data?.total || 0);
+        const numero = data?.of ?? data?.of_num ?? '';
         if (vendId && val > 0) {
           await supabase.from('historico_acoes').insert([{
             tipo_acao: 'comissao_cancelada',
@@ -14315,11 +14323,10 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
     });
 
     const colsOfs = [
-      'id', 'numero', 'of', 'quantidade', 'qtd',
-      'comp', 'larg', 'comprimento', 'largura', 'largura_caixa', 'altura_caixa',
-      'caixa_comprimento', 'caixa_largura', 'dim_comprimento', 'dim_largura',
-      'gramatura_id', 'cli_id', 'cliente', 'cli_nome',
-      'vl_unit', 'valor_total', 'status', 'data_conclusao'
+      'id', 'of', 'qtd', 'preco', 'total',
+      'caixa_comprimento', 'caixa_largura',
+      'gramatura_id', 'cli_id', 'clinome',
+      'status', 'data_conclusao', 'ent'
     ].join(',');
 
     const dataInicio = (mes && ano) ? `${ano}-${String(mes).padStart(2, '0')}-01` : '';
@@ -14339,9 +14346,9 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
     const detalhes = [];
 
     (ofs || []).forEach(of => {
-      const comp = Number(of.comp || of.comprimento || of.largura_caixa || of.caixa_comprimento || of.dim_comprimento || 0) || 0;
-      const larg = Number(of.larg || of.largura || of.altura_caixa || of.caixa_largura || of.dim_largura || 0) || 0;
-      const qtd = Number(of.quantidade || of.qtd || 0) || 0;
+      const comp = Number(of.caixa_comprimento || 0) || 0;
+      const larg = Number(of.caixa_largura || 0) || 0;
+      const qtd = Number(of.qtd || 0) || 0;
       const gramId = String(of.gramatura_id || '').trim();
       const gramMeta = gramId ? mapaGram[gramId] : null;
       const gram = gramMeta ? gramMeta.gram : 0;
@@ -14353,18 +14360,17 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       totalM2 += areaM2;
 
       detalhes.push({
-        of: of.numero || of.of || of.id,
+        of: of.of || of.id,
         cli_id: of.cli_id,
-        cliente: String(of.cliente || of.cli_nome || '').trim() || '—',
-        cli_nome: String(of.cli_nome || '').trim() || '',
+        cliente: String(of.clinome || '').trim() || '—',
         qtd, comp, larg, gram,
         gramatura_id: gramId,
-        vl_unit: Number(of.vl_unit || 0) || 0,
+        preco: Number(of.preco || 0) || 0,
         area_m2: areaM2,
         toneladas: ton,
         custo_estimado: gramValUnit * ton * 1000,
         gramatura_nome: gramMeta ? gramMeta.nome : '',
-        valor_total: of.valor_total || 0,
+        total: of.total || 0,
         data: of.data_conclusao,
         status: String(of.status || '').trim(),
         sem_dimensoes: !(comp > 0 && larg > 0)
