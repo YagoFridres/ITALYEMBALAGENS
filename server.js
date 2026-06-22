@@ -3441,8 +3441,10 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const busca = String(req.query.busca || req.query.search || '').trim();
     const clienteFiltro = String((req.query.cli_id || req.query.cliente_id || '') || '').trim();
     const empresaFiltro = req.query.empresa;
+    const incluirExcluidasRaw = String(req.query.incluir_excluidas ?? req.query.incluirExcluidas ?? '').trim().toLowerCase();
+    const incluirExcluidas = ['1', 'true', 'sim', 'yes'].includes(incluirExcluidasRaw);
     const useCache = !afterIso;
-    const cacheKey = useCache ? ('ofs_v12_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '')) : '';
+    const cacheKey = useCache ? ('ofs_v13_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '') + '_' + (incluirExcluidas ? 'all' : 'active')) : '';
     if (useCache) {
       const cached = cacheGet(cacheKey);
       if (cached) return res.json(cached);
@@ -3451,13 +3453,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
 
     const shouldFetchAll = !!busca || (!afterIso && !offset && (!limitRaw || limitRaw === 'all' || limitRaw === '0'));
-    const ofsColsBase = [
-      'id', 'of', 'status', 'preco', 'total', 'qtd', 'clinome', 'cli_id',
-      'vendid', 'ent', 'dia', 'data_conclusao',
-      'urgente', 'urg', 'caixa_comprimento', 'caixa_largura', 'caixa_altura',
-      'maq', 'empresa_id', 'emp_id', 'imagem_url', 'usuario_conclusao', 'obs',
-      'descricao', 'produto', 'of_num', 'prioridade', 'created_at', 'itens', 'imgs'
-    ].join(',');
+    const ofsColsBase = '*';
     const buildQuery = () => {
       let query = supabase
         .from('ofs')
@@ -3477,6 +3473,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
       if (clienteFiltro && clienteFiltro !== 'undefined' && clienteFiltro !== 'null' && clienteFiltro !== '[object Object]') {
         query = query.eq('cli_id', clienteFiltro);
+      }
+      if (!incluirExcluidas) {
+        query = query.is('deleted_at', null);
       }
       if (afterIso) {
         query = query.gte('created_at', afterIso);
@@ -3503,6 +3502,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           .order('created_at', { ascending: false });
         if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') query = query.eq('empresa_id', empresaFiltro);
         else query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
+        if (!incluirExcluidas) query = query.is('deleted_at', null);
         if (afterIso) query = query.gte('created_at', afterIso);
         return query;
       };
@@ -3664,10 +3664,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const resultado = { ok: true, data: dataFinal, total: totalCount, offset, limit, hasMore };
     if (useCache) cacheSet(cacheKey, resultado, 30000);
     return res.json(resultado);
-  } catch (e) {
-    try { console.error('[GET /api/ofs] erro:', e.message); } catch (_) {}
-    try { console.error('[GET /api/ofs] stack:', e.stack); } catch (_) {}
-    return res.status(500).json({ ok: false, error: e.message, ofs: [], data: [], total: 0, offset: 0, limit: 0, hasMore: false });
+  } catch (err) {
+    console.error('[API OFS ERROR]', err?.message, err?.stack);
+    return res.status(500).json({ error: err?.message || 'Erro interno' });
   }
 });
 
@@ -4261,7 +4260,7 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
 
       let query = supabase
         .from('ofs')
-        .select('id,of,status,preco,total,qtd,clinome,cli_id,vendid,ent,dia,data_conclusao,urgente,urg,caixa_comprimento,caixa_largura,caixa_altura,maq,empresa_id,emp_id,imagem_url,usuario_conclusao,obs,descricao,produto,of_num,prioridade,created_at')
+        .select('*')
         .in('cli_id', clienteIds)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -4321,7 +4320,7 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
     for (const key of joinKeys) {
       const r = await supabase
         .from('ofs')
-        .select(`id,of,status,preco,total,qtd,clinome,cli_id,vendid,ent,dia,data_conclusao,urgente,urg,caixa_comprimento,caixa_largura,caixa_altura,maq,empresa_id,emp_id,imagem_url,usuario_conclusao,obs,descricao,produto,of_num,prioridade,created_at,cliente:clientes!${key}(nome,vendedor_id,vendedor:vendedores!vendedor_id(nome))`)
+        .select(`*,cliente:clientes!${key}(nome,vendedor_id,vendedor:vendedores!vendedor_id(nome))`)
         .ilike('of', `%${numeroRaw}%`)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -4335,7 +4334,7 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
     if (!data) {
       const { data: data2, error: e2 } = await supabase
         .from('ofs')
-        .select('id,of,status,preco,total,qtd,clinome,cli_id,vendid,ent,dia,data_conclusao,urgente,urg,caixa_comprimento,caixa_largura,caixa_altura,maq,empresa_id,emp_id,imagem_url,usuario_conclusao,obs,descricao,produto,of_num,prioridade,created_at')
+        .select('*')
         .ilike('of', `%${numeroRaw}%`)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -4396,7 +4395,7 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
     for (const key of joinKeys) {
       const r = await supabase
         .from('ofs')
-        .select(`id,of,status,preco,total,qtd,clinome,cli_id,vendid,ent,dia,data_conclusao,urgente,urg,caixa_comprimento,caixa_largura,caixa_altura,maq,empresa_id,emp_id,imagem_url,usuario_conclusao,obs,descricao,produto,of_num,prioridade,created_at,itens,imgs,gramatura_id,cliente:clientes!${key}(nome,vendedor_id,vendedor:vendedores!vendedor_id(nome))`)
+        .select(`*,cliente:clientes!${key}(nome,vendedor_id,vendedor:vendedores!vendedor_id(nome))`)
         .eq('id', id)
         .maybeSingle();
       if (!r.error) { data = r.data; break; }
@@ -4405,7 +4404,7 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
       break;
     }
     if (!data) {
-      const r = await supabase.from('ofs').select('id,of,status,preco,total,qtd,clinome,cli_id,vendid,ent,dia,data_conclusao,urgente,urg,caixa_comprimento,caixa_largura,caixa_altura,maq,empresa_id,emp_id,imagem_url,usuario_conclusao,obs,descricao,produto,of_num,prioridade,created_at,itens,imgs,gramatura_id').eq('id', id).maybeSingle();
+      const r = await supabase.from('ofs').select('*').eq('id', id).maybeSingle();
       if (r.error) return res.status(500).json({ ok: false, error: r.error.message });
       data = r.data;
     }
@@ -14302,6 +14301,9 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
 
 app.get('/api/analises/toneladas', autenticar, async (req, res) => {
   try {
+    if (!supabase) {
+      return res.status(503).json({ ok: false, error: 'supabase_not_configured' });
+    }
     const { mes, ano } = req.query;
     const empresaId = await getEmpresaId(req);
 
@@ -14332,7 +14334,10 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
     const dataInicio = (mes && ano) ? `${ano}-${String(mes).padStart(2, '0')}-01` : '';
     const dataFim = (mes && ano) ? new Date(Number(ano), Number(mes), 0).toISOString().slice(0, 10) : '';
     const ofsSel = await _selectCompatRows('ofs', colsOfs, (q) => {
-      let out = q.ilike('status', '%conclu%').not('gramatura_id', 'is', null);
+      let out = q
+        .ilike('status', '%conclu%')
+        .not('gramatura_id', 'is', null)
+        .is('deleted_at', null);
       if (empresaId) out = out.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId}`);
       if (dataInicio) out = out.gte('data_conclusao', dataInicio);
       if (dataFim) out = out.lte('data_conclusao', dataFim);
