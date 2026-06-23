@@ -1662,7 +1662,7 @@ app.get('/api/usuarios/lista', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/comissoes/relatorio', autenticar, cacheMiddleware(30000), async (req, res) => { 
+const handleComissoesRelatorio = async (req, res) => { 
   try { 
     const { mes, ano } = req.query; 
     if (!mes || !ano) return res.json({ ok: false, error: 'mes e ano obrigatorios' }); 
@@ -1741,7 +1741,9 @@ app.get('/api/comissoes/relatorio', autenticar, cacheMiddleware(30000), async (r
     console.error('[COM] erro:', e.message); 
     return res.json({ ok: false, error: e.message }); 
   } 
-}); 
+}; 
+app.get('/api/comissoes', autenticar, cacheMiddleware(30000), handleComissoesRelatorio);
+app.get('/api/comissoes/relatorio', autenticar, cacheMiddleware(30000), handleComissoesRelatorio);
 
 app.get('/api/backup/exportar', authMiddleware, async (req, res) => {
   try {
