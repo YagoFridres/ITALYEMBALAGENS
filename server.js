@@ -902,6 +902,10 @@ function resolverEmpresaUUID(val) {
     || null;
 }
 
+function resolverUUID(val) {
+  return resolverEmpresaUUID(val) || EMPRESA_UUID_MAP.italy;
+}
+
 async function requireAdmin(req, res, next) {
   const fullUrl = String(req.originalUrl || req.url || '');
   const fullPath = fullUrl.split('?')[0].replace(/\/+$/, '');
@@ -1662,27 +1666,38 @@ app.get('/api/usuarios/lista', authMiddleware, async (req, res) => {
   }
 });
 
+async function _buscarComissoesOFs(req) {
+  const agora = new Date();
+  const mes = Number(req.query.mes || (agora.getMonth() + 1));
+  const ano = Number(req.query.ano || agora.getFullYear());
+  const empresaId = resolverUUID(req.query.empresa_id || req.query.empresa || 'italy') || await _resolveEmpresaUuid(req).catch(() => null);
+  const inicio = `${ano}-${String(mes).padStart(2, '0')}-01`;
+  const fim = new Date(ano, mes, 0).toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from('ofs')
+    .select('id, of, status, total, data_conclusao, clinome, cliNome, vendedor, vendNome, empresa_id, cli_id, qtd, caixa_comprimento, caixa_largura, vendedor_id')
+    .eq('status', 'Concluído')
+    .eq('empresa_id', empresaId)
+    .gte('data_conclusao', inicio)
+    .lte('data_conclusao', `${fim}T23:59:59Z`)
+    .order('data_conclusao', { ascending: false });
+  if (error) throw error;
+  return { data: Array.isArray(data) ? data : [], empresaId, mes, ano };
+}
+
+app.get('/api/comissoes', autenticar, cacheMiddleware(30000), async (req, res) => {
+  try {
+    const { data } = await _buscarComissoesOFs(req);
+    res.json(data || []);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 const handleComissoesRelatorio = async (req, res) => { 
   try { 
-    const { mes, ano } = req.query; 
-    if (!mes || !ano) return res.json({ ok: false, error: 'mes e ano obrigatorios' }); 
-    const empresaId = resolverEmpresaUUID(req.query.empresa_id || req.query.empresa) || await _resolveEmpresaUuid(req).catch(() => null);
-
-    const mesStr = String(mes).padStart(2, '0'); 
-    const inicio = `${ano}-${mesStr}-01`; 
-    const fimAno = parseInt(mes) === 12 ? parseInt(ano)+1 : parseInt(ano); 
-    const fimMes = parseInt(mes) === 12 ? '01' : String(parseInt(mes)+1).padStart(2,'0'); 
-    const fim = `${fimAno}-${fimMes}-01`; 
-    let query = supabase
-      .from('ofs')
-      .select('id, of, status, total, data_conclusao, clinome, cliNome, vendedor, vendNome, empresa_id, emp_id, cli_id, qtd, vendedor_id')
-      .eq('status', 'Concluído')
-      .gte('data_conclusao', inicio)
-      .lt('data_conclusao', fim);
-    if (empresaId) query = query.eq('empresa_id', empresaId);
-    const { data: ofs, error } = await query;
-    if (error) return res.json({ ok: false, error: error.message });
-
+    const { data: ofs, mes, ano } = await _buscarComissoesOFs(req);
+    const mesStr = String(mes).padStart(2, '0');
     const todasOFs = Array.isArray(ofs) ? ofs.slice() : [];
     const porVend = {};
     let totalGeral = 0;
@@ -1720,7 +1735,7 @@ const handleComissoesRelatorio = async (req, res) => {
         vendedor_id: of.vendedor_id || null,
         quantidade: of.qtd ?? null,
         qtd: of.qtd ?? null,
-        empresa_id: of.empresa_id || of.emp_id || null,
+        empresa_id: of.empresa_id || null,
         comissao_pct,
         comissao_rs: valor_total * (comissao_pct / 100)
       };
@@ -1741,8 +1756,7 @@ const handleComissoesRelatorio = async (req, res) => {
     console.error('[COM] erro:', e.message); 
     return res.json({ ok: false, error: e.message }); 
   } 
-}; 
-app.get('/api/comissoes', autenticar, cacheMiddleware(30000), handleComissoesRelatorio);
+};
 app.get('/api/comissoes/relatorio', autenticar, cacheMiddleware(30000), handleComissoesRelatorio);
 
 app.get('/api/backup/exportar', authMiddleware, async (req, res) => {
@@ -5475,8 +5489,18 @@ app.get('/api/caixas_perdidas', autenticar, async (req, res) => {
 });
 
 app.get('/api/caixas-perdidas', autenticar, async (req, res) => {
-  req.url = '/api/caixas_perdidas';
-  return app._router.handle(req, res, () => {});
+  try {
+    const empresaId = resolverUUID(req.query.empresa_id || req.query.emp_id || 'italy') || await _resolveEmpresaUuid(req).catch(() => null);
+    const { data, error } = await supabase
+      .from('caixas_perdidas')
+      .select('*')
+      .or(`emp_id.eq.${empresaId},empresa_id.eq.${empresaId}`)
+      .order('created_at', { ascending: false });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.get('/api/caixas-perdidas/:id', authMiddleware, async (req, res) => {
@@ -14372,11 +14396,14 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
     if (!supabase) {
       return res.status(503).json({ ok: false, error: 'supabase_not_configured' });
     }
-    const empresaId = resolverEmpresaUUID(req.query.empresa_id || req.body?.empresa_id || req.query.empId || req.query.emp_id) || await _resolveEmpresaUuid(req).catch(() => null);
+    const GRAMATURA_PADRAO = 390;
+    const agora = new Date();
+    const mes = Number(req.query.mes || (agora.getMonth() + 1));
+    const ano = Number(req.query.ano || agora.getFullYear());
+    const empresaId = resolverUUID(req.query.empresa_id || req.body?.empresa_id || req.query.empId || req.query.emp_id || 'italy') || await _resolveEmpresaUuid(req).catch(() => null);
     if (!empresaId) {
       return res.status(400).json({ ok: false, error: 'empresa_id_invalido' });
     }
-    const { mes, ano } = req.query;
     const inicioMes = `${ano}-${String(mes).padStart(2, '0')}-01`;
     const fimMes = new Date(Number(ano), Number(mes), 0).toISOString().slice(0, 10);
 
@@ -14400,44 +14427,50 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
 
     let totalM2 = 0;
     let totalValor = 0;
-    const ofsComGramatura = [];
-    const toneladas = (ofs || []).reduce((acc, of) => {
-      const g = gramaturaMap[of.gramatura_id];
-      if (!g || !of.caixa_comprimento || !of.caixa_largura) return acc;
+    let totalToneladas = 0;
+    let ofsComGramatura = 0;
+    const detalhes = [];
+    (ofs || []).forEach((of) => {
       const comp = Number(of.caixa_comprimento) / 1000;
       const larg = Number(of.caixa_largura) / 1000;
       const qtd = Number(of.qtd) || 0;
+      if (!comp || !larg || !qtd) return;
       const m2 = comp * larg * qtd;
-      const ton = (comp * larg * Number(g) * qtd) / 1000000;
+      const gramaturaValor = Number(gramaturaMap[of.gramatura_id] || GRAMATURA_PADRAO) || GRAMATURA_PADRAO;
+      const ton = (m2 * gramaturaValor) / 1000000;
       totalM2 += m2;
+      totalToneladas += ton;
       totalValor += Number(of.total || 0) || 0;
-      ofsComGramatura.push({
+      if (of.gramatura_id && gramaturaMap[of.gramatura_id]) ofsComGramatura += 1;
+      detalhes.push({
         of: of.of,
         qtd,
         caixa_comprimento: of.caixa_comprimento,
         caixa_largura: of.caixa_largura,
         gramatura_id: of.gramatura_id,
-        gramatura: Number(g) || 0,
+        gramatura: gramaturaValor,
         total: Number(of.total || 0) || 0,
         data_conclusao: of.data_conclusao,
         clinome: of.clinome || of.cliNome || '—',
         cliNome: of.cliNome || of.clinome || '—',
         total_m2: m2,
-        toneladas: ton
+        toneladas: ton,
+        usa_gramatura_padrao: !(of.gramatura_id && gramaturaMap[of.gramatura_id])
       });
-      return acc + ton;
-    }, 0);
+    });
+    const totalOfsConsideradas = detalhes.length;
 
     res.json({
       ok: true,
-      toneladas,
+      toneladas: totalToneladas,
       totalM2,
       totalValor,
-      ofsComGramatura: ofsComGramatura.length,
-      total_toneladas: toneladas,
+      ofsComGramatura,
+      ofsComGramaturapadrao: Math.max(0, totalOfsConsideradas - ofsComGramatura),
+      total_toneladas: totalToneladas,
       total_m2: totalM2,
-      total_ofs: ofsComGramatura.length,
-      detalhes: ofsComGramatura
+      total_ofs: totalOfsConsideradas,
+      detalhes: detalhes
     });
   } catch (e) {
     console.error('[toneladas]', e.message);
