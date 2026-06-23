@@ -14312,7 +14312,19 @@ app.get('/api/chapas_estoque/metricas', authMiddleware, async (req, res) => {
 
 app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
   try {
-    const empId = String(req.query.empId || req.query.emp_id || '').trim();
+    const EMPRESA_MAP = {
+      'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+      'oestepack': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
+    };
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    function resolverUUID(val) {
+      if (!val) return 'df5f7672-0a6b-402d-ae65-296554236c31';
+      const s = String(val).trim();
+      if (UUID_REGEX.test(s)) return s;
+      return EMPRESA_MAP[s.toLowerCase()] || 'df5f7672-0a6b-402d-ae65-296554236c31';
+    }
+    const empresaId = resolverUUID(req.query.empresa_id || req.body?.empresa_id || req.query.empId || req.query.emp_id);
     const periodo = String(req.query.periodo || 'mes').trim().toLowerCase();
 
     const table = await _chapasPreferV2Table();
@@ -14322,7 +14334,7 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
     try {
       const qtdCol = table === 'chapas_estoque_v2' ? 'quantidade_atual' : 'quantidade';
       let q = supabase.from(table).select('*').gt(qtdCol, 0);
-      if (empId) q = q.eq('emp_id', empId);
+      if (empresaId) q = q.eq('emp_id', empresaId);
       const r = await q.limit(1000);
       chapas = r?.data || [];
       error = r?.error || null;
@@ -14448,27 +14460,25 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
     if (!supabase) {
       return res.status(503).json({ ok: false, error: 'supabase_not_configured' });
     }
-    const { mes, ano } = req.query;
     const EMPRESA_MAP = {
       'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
       'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
       'oestepack': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
     };
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    function resolverEmpresaUUIDTon(val) {
+    function resolverUUID(val) {
       if (!val) return 'df5f7672-0a6b-402d-ae65-296554236c31';
-      if (UUID_REGEX.test(val)) return val;
-      const lower = String(val).toLowerCase().replace(/^c/, '');
-      if (EMPRESA_MAP[String(val).toLowerCase()]) return EMPRESA_MAP[String(val).toLowerCase()];
-      if (EMPRESA_MAP[lower]) return EMPRESA_MAP[lower];
-      return 'df5f7672-0a6b-402d-ae65-296554236c31';
+      const s = String(val).trim();
+      if (UUID_REGEX.test(s)) return s;
+      return EMPRESA_MAP[s.toLowerCase()] || 'df5f7672-0a6b-402d-ae65-296554236c31';
     }
-    const empId = resolverEmpresaUUIDTon(req.query.empresa_id || req.body?.empresa_id);
+    const empresaId = resolverUUID(req.query.empresa_id || req.body?.empresa_id);
+    const { mes, ano } = req.query;
 
     const { data: gramaturas, error: errGram } = await supabase
       .from('gramaturas')
       .select('id, nome, gramatura, valor_unitario')
-      .eq('empresa_id', empId);
+      .eq('empresa_id', empresaId);
 
     if (errGram) throw errGram;
 
@@ -14489,7 +14499,7 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       .select('id, of, numero, status, preco, total, qtd, clinome, cli_id, gramatura_id, data_conclusao, caixa_comprimento, caixa_largura, caixa_altura, empresa_id, emp_id, deleted_at')
       .ilike('status', '%conclu%')
       .is('deleted_at', null);
-    if (empId) ofsQuery = ofsQuery.or(`empresa_id.eq.${empId},emp_id.eq.${empId}`);
+    if (empresaId) ofsQuery = ofsQuery.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId}`);
     if (dataInicio) ofsQuery = ofsQuery.gte('data_conclusao', dataInicio);
     if (dataFim) ofsQuery = ofsQuery.lte('data_conclusao', dataFim);
     const { data: ofs, error: ofsError } = await ofsQuery.limit(2000);

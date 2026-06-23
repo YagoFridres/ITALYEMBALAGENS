@@ -42,16 +42,34 @@ window.fmtData = window.fmtData || function(v) {
   return isNaN(d) ? String(v) : d.toLocaleDateString('pt-BR');
 };
 
-window._textoSeguro = window._textoSeguro || function(val) {
+function _textoSeguro(val) {
   if (val === null || val === undefined) return '—';
   if (typeof val === 'string') return val || '—';
   if (typeof val === 'number') return String(val);
-  if (Array.isArray(val)) return val.map(function(v) { return window._textoSeguro(v); }).join(', ');
-  if (typeof val === 'object') {
-    return val.nome || val.name || val.codigo || val.code || val.numero || val.descricao || JSON.stringify(val);
+  if (Array.isArray(val)) {
+    return val.map(function(v) {
+      if (typeof v === 'string') return v;
+      if (typeof v === 'object' && v !== null) return v.nome || v.name || v.cor || v.codigo || '';
+      return String(v);
+    }).filter(Boolean).join(', ') || '—';
   }
-  return String(val);
-};
+  if (typeof val === 'object') {
+    return val.nome || val.name || val.codigo || val.descricao || '—';
+  }
+  return String(val) || '—';
+}
+window._textoSeguro = _textoSeguro;
+
+function _corrigirUrlImagem(url) {
+  if (!url) return null;
+  var u = String(url).trim();
+  u = u.replace(/^\[?"?/, '').replace(/"?\]?$/, '');
+  try { u = decodeURIComponent(u); } catch (e) {}
+  u = u.replace(/^.*\[?%22(https?:\/\/)/, '$1');
+  u = u.replace(/^.*\["?(https?:\/\/)/, '$1');
+  if (u.startsWith('http')) return u;
+  return null;
+}
 
 (function patchMuteNoisyLogs() {
   try {
@@ -1253,7 +1271,7 @@ if (!window._menuPatchFinal) {
       var qtd = window._textoSeguro(of.qtd || of.quantidade);
       var entrega = String(of.ent || of.data_entrega || '—').slice(0, 10) || '—';
       var tamanho = (of.caixa_comprimento && of.caixa_largura) ? (of.caixa_comprimento + '×' + of.caixa_largura + ' mm') : '—';
-      var img = String(of.imgs || of.imagem_url || '').trim();
+      var img = _corrigirUrlImagem(of.imgs || of.imagem_url);
       return '<div style="background:#1e293b;border-radius:10px;padding:16px;margin-bottom:12px;border-left:4px solid ' + esc(statusColor) + '">'
         + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
         + '  <div><span style="font-size:18px;font-weight:700;color:#60a5fa">OF ' + esc(numero) + '</span>'
@@ -1327,7 +1345,7 @@ if (!window._menuPatchFinal) {
     } catch (_) {}
     try { tr.setAttribute('data-status-visual', meta.label); } catch (_) {}
 
-    var imageUrl = String(ofData && ofData.imagem_url || '').trim();
+    var imageUrl = _corrigirUrlImagem(ofData && (ofData.imgs || ofData.imagem_url));
     var preco = parseFloat(ofData.preco || ofData.vl_unit || 0) || 0;
     var qtd = parseInt(ofData.qtd || 0, 10) || 0;
     var total = parseFloat(ofData.total || ofData.valor_total || (preco * qtd) || 0) || 0;
@@ -1342,7 +1360,7 @@ if (!window._menuPatchFinal) {
       if (imageUrl) {
         cells[idx.img].innerHTML = '<img src="' + esc(imageUrl) + '" data-full-img="' + esc(imageUrl) + '" style="width:38px;height:38px;object-fit:cover;border-radius:4px;cursor:pointer" onclick="window.open(this.getAttribute(\'data-full-img\'),\'_blank\')">';
       } else {
-        cells[idx.img].innerHTML = '<span style="font-size:20px">📦</span>';
+        cells[idx.img].textContent = '—';
       }
     }
     if (idx.vlunit >= 0 && cells[idx.vlunit]) cells[idx.vlunit].textContent = preco > 0 ? ('R$ ' + preco.toFixed(2).replace('.', ',')) : '—';
@@ -1448,7 +1466,7 @@ if (!window._menuPatchFinal) {
       var totalHtml = totalVal > 0 ? ('R$ ' + totalVal.toFixed(2).replace('.', ',')) : '—';
       var tamanho = (o.caixa_comprimento && o.caixa_largura) ? (String(o.caixa_comprimento) + '×' + String(o.caixa_largura) + ' mm') : window._textoSeguro(o.tamanho);
       var cores = window._textoSeguro(o.cores_impressao || _fmtCoresPcp(o));
-      var imageUrl = String(o.imagem_url || '').trim();
+      var imageUrl = _corrigirUrlImagem(o.imgs || o.imagem_url);
       var rowStyle = 'background-color:' + (idxLinha % 2 ? '#1e293b' : '#0f172a') + ';border-left:4px solid ' + corStatus(o) + ';border-bottom:1px solid #1e293b;';
       return '<tr data-of-id="' + esc(String(o.id || '')) + '" data-of-num="' + esc(String(o.of || o.numero || '')) + '" data-of="' + esc(JSON.stringify(o)) + '" data-status-visual="' + esc(meta.label) + '" style="' + rowStyle + '" onclick="selecionarOF && selecionarOF(\'' + esc(String(o.of || o.numero || '')) + '\')">'
         + '<td class="tc" style="width:32px;padding:4px 8px"><input type="checkbox" class="of-seletor" data-of-num="' + esc(String(o.of || o.numero || '')) + '" data-of-id="' + esc(String(o.id || '')) + '" onclick="event.stopPropagation()" onchange="pcpToggleSelecao && pcpToggleSelecao(this)"></td>'
@@ -1456,7 +1474,7 @@ if (!window._menuPatchFinal) {
         + '<td class="tc">' + esc(typeof fmtDataBR === 'function' ? fmtDataBR(o.dia || '') : String(o.dia || '')) + '</td>'
         + '<td class="tc pcp-entrega-col">' + esc(typeof fmtDataBR === 'function' ? fmtDataBR(o.ent || o.data_entrega || '') : String(o.ent || o.data_entrega || '')) + '</td>'
         + '<td class="tc pcp-of-col"><span class="of-num">' + esc(window._textoSeguro(o.of || o.numero)) + '</span>' + (isUrgenteOf(o) ? '<br><span class="tag t-ug">URG</span>' : '') + '</td>'
-        + '<td class="tc">' + (imageUrl ? '<img src="' + esc(imageUrl) + '" data-full-img="' + esc(imageUrl) + '" style="width:40px;height:40px;object-fit:cover;border-radius:4px;cursor:pointer" onclick="event.stopPropagation();window.open(this.getAttribute(\'data-full-img\'),\'_blank\')">' : '<span style="font-size:20px">📦</span>') + '</td>'
+        + '<td class="tc">' + (imageUrl ? '<img src="' + esc(imageUrl) + '" data-full-img="' + esc(imageUrl) + '" style="width:40px;height:40px;object-fit:cover;border-radius:4px;cursor:pointer" onclick="event.stopPropagation();window.open(this.getAttribute(\'data-full-img\'),\'_blank\')">' : '—') + '</td>'
         + '<td class="pcp-cliente-col">' + window._clienteLinkHtml(cliIdTxt, cliTxt) + (typeof empBadge === 'function' ? ' ' + empBadge(o.empId || o.emp_id || o.empresa_id) : '') + '</td>'
         + '<td style="color:var(--text2)">' + esc(vendTxt) + '</td>'
         + '<td class="tc pcp-qtd-col">' + esc(String(qtd.toLocaleString('pt-BR'))) + '</td>'
@@ -1700,14 +1718,6 @@ window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
 if (!window.__comRodandoWatchdogInstalled) {
   window.__comRodandoWatchdogInstalled = true;
-  setInterval(function() {
-    try {
-      if (window._comRodando) {
-        window._comRodando = false;
-        console.log('[COM PATCH] watchdog: _comRodando resetado');
-      }
-    } catch (_) {}
-  }, 5000);
 }
 if (!window._urlValida) {
   window._urlValida = function(url) {
@@ -14527,7 +14537,7 @@ window._mbnActive = function(id) {
     } catch (_) { maqLista = []; }
     var maquina = String(item && item.maquina || '').trim() || (maqLista.length ? maqLista.join(', ') : '') || String(ofData && ofData.maq || '').trim() || '—';
     var ofNumero = String(item && (item.of_numero || item.of_num || item.of) || '').trim() || String(ofData && ofData.of || '').trim() || '—';
-    var imgUrl = String(item && (item.imagem_url || item.foto_url || item.imgUrl) || '').trim() || String(ofData && (ofData.imagem_url || ofData.imgUrl || (Array.isArray(ofData.imgs) ? ofData.imgs[0] : '')) || '').trim();
+    var imgUrl = _corrigirUrlImagem(item && (item.imagem_url || item.foto_url || item.imgUrl) || '') || _corrigirUrlImagem(ofData && (ofData.imagem_url || ofData.imgUrl || (Array.isArray(ofData.imgs) ? ofData.imgs[0] : '')) || '') || '';
     try { if (!(window._urlValida && window._urlValida(imgUrl))) imgUrl = ''; } catch (_) { imgUrl = ''; }
     var operadores = String(item && (item.usuario || item.operador || item.operador_display) || '').trim() || String(ofData && ofData.usuario_conclusao || '').trim() || '—';
     var concluidoPor = String(ofData && ofData.usuario_conclusao || item && (item.concluido_por || item.usuario_conclusao || item.usuario) || '').trim() || '—';
@@ -18752,6 +18762,7 @@ function _ocultarGraficoComissoes() {
       try { console.log('[COM PATCH] timeout de segurança: _comRodando liberado'); } catch (_) {}
     }, 10000);
     try {
+      await new Promise(function(resolve) { setTimeout(resolve, 500); });
       _ensureComissoesStyle();
       _ensurePeriodoSelects();
       _bindTrocarClick();
@@ -21121,22 +21132,27 @@ window._initComissoes = function() {
     return headers;
   }
 
-  function removerCaixasPerdidasDeAnalises() {
-    var achouFinanceiro = false;
-    document.querySelectorAll('li').forEach(function(li) {
-      var txt = String(li.textContent || '').trim();
-      if (txt === 'FINANCEIRO' || txt === 'Financeiro') achouFinanceiro = true;
-      if (txt === 'ANÁLISES' || txt === 'Analises' || txt === 'ANALISES') achouFinanceiro = false;
-      if (!achouFinanceiro && txt === 'Caixas Perdidas') li.remove();
-    });
-  }
+  (function limparMenuAnalises() {
+    var REMOVER = ['Relatório Mensal', 'Relatorio Mensal', 'Caixas Perdidas'];
+
+    function remover() {
+      var passouAnalises = false;
+      var passouProximoMenu = false;
+      document.querySelectorAll('.sidebar li, .sidebar a, nav li, nav a').forEach(function(el) {
+        if (!el.closest('.sidebar, nav, [class*="sidebar"], [class*="menu"]')) return;
+        var t = String(el.textContent || '').trim();
+        if (t === 'ANÁLISES') { passouAnalises = true; passouProximoMenu = false; return; }
+        if (passouAnalises && /^[A-ZÁÉÍÓÚ\s]{4,}$/.test(t) && t !== 'ANÁLISES') passouProximoMenu = true;
+        if (passouAnalises && !passouProximoMenu && REMOVER.indexOf(t) >= 0) el.remove();
+      });
+    }
+
+    remover();
+    var obs = new MutationObserver(remover);
+    obs.observe(document.body, { childList: true, subtree: true });
+  })();
 
   function tentarRemoverMenus() {
-    document.querySelectorAll('li, a, div[onclick]').forEach(function(el) {
-      var txt = String(el.textContent || '').trim();
-      if (txt === 'Relatório Mensal' || txt === 'Relatorio Mensal') el.remove();
-    });
-    removerCaixasPerdidasDeAnalises();
     document.querySelectorAll('button').forEach(function(btn) {
       var t = String(btn.textContent || '').trim();
       if (['Todas', 'Em Aberto', 'Concluídas', 'Atrasadas', 'Excluídas'].indexOf(t) >= 0) btn.style.display = 'none';
