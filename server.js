@@ -4134,6 +4134,17 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     const filtered = ofPayloadFiltrado(body);
     filtered.empresa_id = empId;
     delete filtered.id;
+    try {
+      const { data: ultimaOf } = await supabase
+        .from('ofs')
+        .select('of')
+        .not('of', 'is', null)
+        .order('of', { ascending: false })
+        .limit(1);
+      const proximoNumero = ultimaOf?.[0]?.of ? String(Number(ultimaOf[0].of) + 1) : '1';
+      body.numero = body.numero || proximoNumero;
+      body.of = body.of || proximoNumero;
+    } catch (_) {}
     if (filtered.of == null || String(filtered.of || '').trim() === '') {
       try {
         const proximoNumeroOF = async (empresa_id) => {
@@ -4177,6 +4188,8 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         }
       } catch (_) {}
     }
+    filtered.numero = filtered.numero || body.numero || filtered.of;
+    filtered.of = filtered.of || body.of || filtered.numero;
     {
       const parseItens = (v) => {
         if (Array.isArray(v)) return v;
