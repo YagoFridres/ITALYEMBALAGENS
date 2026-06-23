@@ -42,6 +42,32 @@ window.fmtData = window.fmtData || function(v) {
   return isNaN(d) ? String(v) : d.toLocaleDateString('pt-BR');
 };
 
+window.EMPRESA_UUIDS = window.EMPRESA_UUIDS || {
+  'df5f7672-0a6b-402d-ae65-296554236c31': 'df5f7672-0a6b-402d-ae65-296554236c31',
+  'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
+  'E1': 'df5f7672-0a6b-402d-ae65-296554236c31',
+  'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+  'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+  'E2': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+  'a6e5f5d8-4743-4ebe-885e-c2f0f741a667': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+  'oestepack': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+  'E3': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
+};
+
+window.resolverEmpresaIdFrontend = window.resolverEmpresaIdFrontend || function(raw) {
+  var origem = raw;
+  if (origem == null || origem === '') {
+    try {
+      origem = window._empresaAtual || window._empresaId || (typeof window.getEmpresaId === 'function' ? window.getEmpresaId() : '') || localStorage.getItem('empresa_id') || '';
+    } catch (_) {
+      origem = '';
+    }
+  }
+  var mapa = window.EMPRESA_UUIDS || {};
+  var key = String(origem || '').trim();
+  return mapa[key] || mapa[key.toUpperCase()] || 'df5f7672-0a6b-402d-ae65-296554236c31';
+};
+
 (function patchMuteNoisyLogs() {
   try {
     if (window.__patchMuteNoisyLogsInstalled) return;
@@ -739,81 +765,72 @@ if (!window._menuPatchFinal) {
   }
 
   function _fixMenus() {
-    if (window._fixMenusRodando) return;
-    window._fixMenusRodando = true;
     try {
-    function norm(t) {
-      return String(t || '').trim().toLowerCase()
-        .replace(/[áàãâä]/g, 'a').replace(/[éèêë]/g, 'e')
-        .replace(/[íìîï]/g, 'i').replace(/[óòõôö]/g, 'o')
-        .replace(/[úùûü]/g, 'u').replace(/[ç]/g, 'c')
-        .replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
-    }
-
-    var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
-    if (!sidebar) return;
-
-    var folhas = Array.from(sidebar.querySelectorAll('*')).filter(function(el) {
-      return el.children.length === 0 && String(el.textContent || '').trim().length > 1;
-    });
-
-    folhas.forEach(function(el) {
-      if (norm(el.textContent) !== 'relatorio mensal') return;
-      var alvo = el.parentElement && el.parentElement !== sidebar ? el.parentElement : el;
-      alvo.style.setProperty('display', 'none', 'important');
-    });
-
-    var grupoFinanceiro = null;
-    folhas.forEach(function(el) {
-      if (norm(el.textContent) === 'financeiro' && !grupoFinanceiro) {
-        var p = el.parentElement;
-        while (p && p !== sidebar) {
-          if (p.children.length >= 2) { grupoFinanceiro = p; break; }
-          p = p.parentElement;
+      document.querySelectorAll('a, li, div, span').forEach(function(el) {
+        var txt = String(el.textContent || '').trim().replace(/\s+/g, ' ');
+        if (el.children.length > 0) return;
+        if (/relat.rio\s*mensal/i.test(txt)) {
+          var p = el.closest('li') || el.parentElement;
+          if (p) p.style.cssText = 'display:none!important;visibility:hidden!important;height:0!important;overflow:hidden!important';
+          el.style.cssText = 'display:none!important';
         }
-      }
-    });
+      });
 
-    folhas.forEach(function(el) {
-      if (norm(el.textContent) !== 'caixas perdidas') return;
-      if (grupoFinanceiro && grupoFinanceiro.contains(el)) return;
-      var alvo = el.parentElement && el.parentElement !== sidebar ? el.parentElement : el;
-      alvo.style.setProperty('display', 'none', 'important');
-    });
-    } finally {
-      window._fixMenusRodando = false;
-    }
+      var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
+      if (!sidebar) return;
+
+      var grupoFin = null;
+      sidebar.querySelectorAll('*').forEach(function(el) {
+        if (el.children.length > 0) return;
+        if (/^financeiro$/i.test(String(el.textContent || '').trim())) {
+          var p = el.parentElement;
+          for (var i = 0; i < 5; i++) {
+            if (!p || p === sidebar) break;
+            if (p.querySelectorAll('a,li').length >= 3) { grupoFin = p; break; }
+            p = p.parentElement;
+          }
+        }
+      });
+
+      sidebar.querySelectorAll('*').forEach(function(el) {
+        if (el.children.length > 0) return;
+        if (!/^caixas\s+perdidas$/i.test(String(el.textContent || '').trim())) return;
+        if (grupoFin && grupoFin.contains(el)) return;
+        var p = el.closest('li') || el.parentElement;
+        if (p) p.style.cssText = 'display:none!important';
+      });
+    } catch(e) {}
   }
 
-  ['DOMContentLoaded', 'load'].forEach(function(ev) {
-    document.addEventListener(ev, function() {
-      [500, 1500, 3000, 5000].forEach(function(ms) { setTimeout(_fixMenus, ms); });
-    });
-  });
-
-  var _sbObsRodando = false;
-  var _sbObs = new MutationObserver(function() {
-    if (_sbObsRodando || window._fixMenusRodando) return;
-    _sbObsRodando = true;
-    clearTimeout(window._fixMenusT);
-    window._fixMenusT = setTimeout(function() {
+  window._fixMenusCount = 0;
+  window._fixMenusInterval = null;
+  function _startFixMenusInterval() {
+    try { _fixMenus(); } catch (_) {}
+    if (window._fixMenusInterval) return;
+    window._fixMenusInterval = setInterval(function() {
+      window._fixMenusCount += 1;
+      if (window._fixMenusCount > 15) {
+        clearInterval(window._fixMenusInterval);
+        window._fixMenusInterval = null;
+        return;
+      }
       try { _fixMenus(); } catch (_) {}
-      _sbObsRodando = false;
-    }, 500);
+    }, 2000);
+  }
+  ['DOMContentLoaded', 'load'].forEach(function(ev) {
+    window.addEventListener(ev, _startFixMenusInterval);
   });
-  document.addEventListener('DOMContentLoaded', function() {
-    var sb = document.querySelector('.sidebar,[class*="sidebar"]');
-    if (sb) _sbObs.observe(sb, { childList: true, subtree: true });
-  });
+  if (document.readyState !== 'loading') setTimeout(_startFixMenusInterval, 0);
   try { window._fixMenus = _fixMenus; } catch (_) {}
 
   async function recalcToneladasPatch() {
     var mes = Number((document.getElementById('ton-mes') || {}).value || (new Date().getMonth() + 1));
     var ano = Number((document.getElementById('ton-ano') || {}).value || (new Date().getFullYear()));
+    var empresaId = window.resolverEmpresaIdFrontend ? window.resolverEmpresaIdFrontend() : 'df5f7672-0a6b-402d-ae65-296554236c31';
     var corpo = document.getElementById('ton-corpo');
     if (corpo) corpo.innerHTML = '<div style="color:#94a3b8;padding:20px">Carregando...</div>';
     try {
-      var out = await fetchJsonPatch('/api/analises/toneladas?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano), { headers: tokenHeaders() });
+      var out = await fetchJsonPatch('/api/analises/toneladas?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano) + '&empresa_id=' + encodeURIComponent(empresaId), { headers: tokenHeaders() });
       if (!out.response.ok || !out.json || out.json.ok === false) throw new Error((out.json && out.json.error) || ('HTTP ' + out.response.status));
       var gramOut = await fetchJsonPatch('/api/gramaturas', { headers: tokenHeaders() });
       var gramList = (gramOut.json && (gramOut.json.data || gramOut.json)) || [];
@@ -4075,7 +4092,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var page = ensurePage('toneladas-vendidas');
       showOnlyPage('toneladas-vendidas');
       var st = tonesState();
-      var j = await apiJson('/api/analises/toneladas?mes=' + encodeURIComponent(st.mes) + '&ano=' + encodeURIComponent(st.ano)).catch(function() { return null; });
+      var empresaId = window.resolverEmpresaIdFrontend ? window.resolverEmpresaIdFrontend() : 'df5f7672-0a6b-402d-ae65-296554236c31';
+      var j = await apiJson('/api/analises/toneladas?mes=' + encodeURIComponent(st.mes) + '&ano=' + encodeURIComponent(st.ano) + '&empresa_id=' + encodeURIComponent(empresaId)).catch(function() { return null; });
       var totalTon = Number(j && j.total_toneladas || 0) || 0;
       var totalM2 = Number(j && j.total_m2 || 0) || 0;
       var custoTotal = Number(j && j.custo_total || 0) || 0;
@@ -6509,8 +6527,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     async function _cpFetchDashboard(force) {
       var state = _cpState();
       state.todas_empresas = state.empresa_id ? 'false' : 'true';
+      var empresaId = state.empresa_id ? (window.resolverEmpresaIdFrontend ? window.resolverEmpresaIdFrontend(state.empresa_id) : String(state.empresa_id || '').trim()) : '';
       var now = Date.now();
-      var key = JSON.stringify({ periodo: state.periodo, maquina: state.maquina, empresa_id: state.empresa_id, todas_empresas: state.todas_empresas });
+      var key = JSON.stringify({ periodo: state.periodo, maquina: state.maquina, empresa_id: empresaId, todas_empresas: state.todas_empresas });
       if (!window._cpDashCache) window._cpDashCache = {};
       if (!force && window._cpDashCache[key] && (now - window._cpDashCache[key].ts) < 60000) return window._cpDashCache[key].data;
       var token = '';
@@ -6518,7 +6537,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var qs = new URLSearchParams();
       if (state.periodo && state.periodo !== 'mes') qs.set('periodo', state.periodo);
       if (state.maquina) qs.set('maquina', state.maquina);
-      if (state.empresa_id) qs.set('empresa_id', state.empresa_id);
+      if (empresaId) qs.set('empresa_id', empresaId);
       if (state.todas_empresas) qs.set('todas_empresas', state.todas_empresas);
       var resp = await fetch('/api/caixas-perdidas/dashboard?' + qs.toString(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
       var json = await resp.json().catch(function() { return null; });
@@ -19495,6 +19514,7 @@ window._renderToneladasVendidas = async function() {
 window._recarregarToneladas = async function() {
   var mes = Number((document.getElementById('ton-mes') || {}).value || (new Date().getMonth() + 1));
   var ano = Number((document.getElementById('ton-ano') || {}).value || (new Date().getFullYear()));
+  var empresaId = window.resolverEmpresaIdFrontend ? window.resolverEmpresaIdFrontend() : 'df5f7672-0a6b-402d-ae65-296554236c31';
   var token = '';
   try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
 
@@ -19509,7 +19529,7 @@ window._recarregarToneladas = async function() {
   function fR(v) { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
   try {
-    var resp = await fetch('/api/analises/toneladas?mes=' + mes + '&ano=' + ano, {
+    var resp = await fetch('/api/analises/toneladas?mes=' + mes + '&ano=' + ano + '&empresa_id=' + encodeURIComponent(empresaId), {
       headers: token ? { Authorization: 'Bearer ' + token } : {}
     });
     var json = await resp.json().catch(function() { return null; });
