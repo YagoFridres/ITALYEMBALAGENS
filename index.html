@@ -2411,8 +2411,6 @@ const MODULOS_SISTEMA = [
   { key:'dashboard',      label:'Dashboard',           grupo:'Análises',  menuId:'menu-dashboard',       paginaId:'dashboard' },
   { key:'relatorios',     label:'Relatórios',          grupo:'Análises',  menuId:'menu-relatorio',       paginaId:'relatorio' },
   { key:'comissoes',      label:'Comissões',           grupo:'Análises',  menuId:'menu-comissoes',       paginaId:'comissoes' },
-  { key:'caixas_perdidas',label:'Caixas Perdidas',     grupo:'Análises',  menuId:'menu-caixas-perdidas', paginaId:'caixas-perdidas' },
-  { key:'relatorio_mensal',label:'Relatório Mensal',   grupo:'Análises',  menuId:'menu-relatorio-mensal',paginaId:'relatorio-mensal' },
   { key:'configuracoes',  label:'Configurações',       grupo:'Análises',  menuId:'menu-config',         paginaId:'configuracoes' },
   { key:'notificacoes',   label:'Notificações',        grupo:'Análises',  menuId:'menu-notificacoes',    paginaId:'notificacoes' },
 ];
@@ -44389,8 +44387,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="nav-group-items">
       <div id="menu-dashboard" class="nav-item" onclick="go('dashboard');closeNavGroupsExcept('ng-analises')"><span class="ico">📊</span>Dashboard</div>
       <div id="menu-relatorio" class="nav-item" onclick="go('relatorios');closeNavGroupsExcept('ng-analises')"><span class="ico">🖨</span>Relatórios</div>
-      <div id="menu-caixas-perdidas" class="nav-item" onclick="go('caixas-perdidas');closeNavGroupsExcept('ng-analises')"><span class="ico">📦</span>Caixas Perdidas</div>
-      <div id="menu-relatorio-mensal" class="nav-item" onclick="go('relmensal');closeNavGroupsExcept('ng-analises')"><span class="ico">📅</span>Relatório Mensal</div>
       <div id="menu-config" class="nav-item" onclick="go('configuracoes');closeNavGroupsExcept('ng-analises')"><span class="ico">⚙️</span>Configurações</div>
     </div>
   </div>
@@ -44711,12 +44707,11 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 
 <!-- ========== 1. PCP ========== -->
 <div id="page-pcp" class="page active">
-  <div class="ptoolbar" style="gap:6px;flex-wrap:wrap;">
+  <div class="ptoolbar" style="display:none;gap:6px;flex-wrap:wrap;">
     <!-- Day navigation -->
     <button class="btn btn-ghost btn-sm" onclick="pcpNavDia(-1)" title="Dia anterior">‹ Anterior</button>
     <button class="btn btn-ghost btn-sm" onclick="pcpNavDia(0)" title="Hoje" id="pcp-hoje-btn">📅 Hoje</button>
     <button class="btn btn-ghost btn-sm" onclick="pcpSetSemanaAtual()" title="Semana atual (segunda a domingo)">📅 Esta Semana</button>
-    <button class="btn btn-ghost btn-sm" onclick="PCP_DIA_ATUAL='__todas__';renderPCP()" title="Mostrar todas as OFs">📋 Todas</button>
     <button class="btn btn-ghost btn-sm" onclick="pcpNavDia(1)" title="Próximo dia">Próximo ›</button>
     <div id="pcp-dia-label" style="font-family:var(--mono);font-weight:700;font-size:.88rem;color:var(--accent);padding:4px 12px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:8px;white-space:nowrap;"></div>
     <span id="live-badge-pcp" class="live-badge">● ao vivo</span>

@@ -16897,7 +16897,56 @@ function _ocultarGraficoComissoes() {
   } catch (_) {}
 }
 
+// ============ COMISSOES PATCH DEFINITIVO ============
 (function() {
+  if (window._comissoesPatchV2) return;
+  window._comissoesPatchV2 = true;
+
+  async function _forcaRenderComissoes() {
+    if (window.__forcaRenderComissoesRodando) return;
+    window.__forcaRenderComissoesRodando = true;
+    try {
+      if ((!window.OFs || !window.OFs.length) && typeof window.carregarOFs === 'function') {
+        await window.carregarOFs();
+      }
+      if (typeof window.calcularComissoes === 'function') {
+        await window.calcularComissoes();
+      }
+      await new Promise(function(r) { setTimeout(r, 300); });
+      if (typeof window.renderComissoes === 'function') {
+        window.renderComissoes();
+      }
+    } catch (e) {
+      try { console.warn('[COM PATCH V2]', e); } catch (_) {}
+    } finally {
+      window.__forcaRenderComissoesRodando = false;
+    }
+  }
+
+  window._forcaRenderComissoes = _forcaRenderComissoes;
+  window._renderComissoesPatch = _forcaRenderComissoes;
+  window.__comissoesPatchCalcular = _forcaRenderComissoes;
+  window._executarCalculoComissoes = _forcaRenderComissoes;
+
+  var _goAntes = window.go;
+  window.go = function(pagina) {
+    var r = typeof _goAntes === 'function' ? _goAntes.apply(this, arguments) : undefined;
+    if (pagina && String(pagina).toLowerCase().indexOf('comiss') >= 0) {
+      setTimeout(_forcaRenderComissoes, 600);
+    }
+    return r;
+  };
+
+  document.addEventListener('click', function(e) {
+    var el = e && e.target && e.target.closest ? e.target.closest('li, a, div[onclick]') : null;
+    if (el && String(el.textContent || '').trim() === 'Comissões') {
+      setTimeout(_forcaRenderComissoes, 600);
+    }
+  }, true);
+})();
+
+(function() {
+  if (window._comissoesPatchV2) return;
   if (window.__patchComissoesUnicaDefinicao) return;
   window.__patchComissoesUnicaDefinicao = true;
   if (window._comissoesPatchInstalado) {
@@ -21466,39 +21515,6 @@ window._initComissoes = function() {
   } catch (_) {}
 })();
 (function _injetarMenusCustom() {
-  (function injetarCSSMenuFix() {
-    if (document.getElementById('css-menu-fix')) return;
-    var style = document.createElement('style');
-    style.id = 'css-menu-fix';
-    style.textContent = ''
-      + 'li[data-page="page-relatorio-mensal"],'
-      + 'a[onclick*="relatorio-mensal"],'
-      + 'a[href*="relatorio-mensal"]{display:none !important;}';
-    document.head.appendChild(style);
-  })();
-
-  (function removerItensAnalises() {
-    function remover() {
-      document.querySelectorAll('.sidebar li, .sidebar a, nav li, nav a, [class*="menu"] li, [class*="menu"] a').forEach(function(el) {
-        if (!el || el.getAttribute('data-removido-patch') === '1') return;
-        var texto = String(el.textContent || '').trim();
-        var secaoPai = el.closest('ul, ol, div[class*="submenu"], div[class*="sub"]');
-        var temAnalisesPai = !!((secaoPai && secaoPai.previousElementSibling && String(secaoPai.previousElementSibling.textContent || '').indexOf('ANÁLISES') >= 0)
-          || (secaoPai && secaoPai.closest && secaoPai.closest('[class*="analise"], [id*="analise"]')));
-        if (temAnalisesPai && (texto === 'Relatório Mensal' || texto === 'Relatorio Mensal' || texto === 'Caixas Perdidas')) {
-          el.style.cssText = 'display:none!important';
-          el.setAttribute('data-removido-patch', '1');
-        }
-        if (texto === 'Relatório Mensal' || texto === 'Relatorio Mensal') {
-          el.style.cssText = 'display:none!important';
-          el.setAttribute('data-removido-patch', '1');
-        }
-      });
-    }
-    remover();
-    setInterval(remover, 2000);
-  })();
-
   function _injetarCssOcultarMenus() {
     if (document.getElementById('_css_ocultar_menus')) return;
     var style = document.createElement('style');
@@ -21648,33 +21664,6 @@ window._initComissoes = function() {
     return headers;
   }
 
-  (function limparMenuAnalises() {
-    var REMOVER_DE_ANALISES = ['Relatório Mensal', 'Relatorio Mensal', 'Caixas Perdidas'];
-
-    function remover() {
-      var sidebar = document.querySelector('.sidebar, nav, #sidebar, [class*="sidebar"]');
-      if (!sidebar) return;
-      var allItems = Array.from(sidebar.querySelectorAll('li, a[onclick], div[onclick]'));
-      var dentroAnalises = false;
-      allItems.forEach(function(el) {
-        var t = String(el && el.textContent || '').trim();
-        if (t === 'ANÁLISES' || t === 'Análises') { dentroAnalises = true; return; }
-        if (dentroAnalises && /^[A-ZÁÉÍÓÚÃÕ\s]{3,}$/.test(t) && t !== 'ANÁLISES' && t.length > 3) {
-          dentroAnalises = false;
-          return;
-        }
-        if (dentroAnalises && REMOVER_DE_ANALISES.indexOf(t) >= 0) {
-          el.style.display = 'none';
-          el.setAttribute('data-removido-patch', '1');
-        }
-      });
-    }
-
-    remover();
-    var obs = new MutationObserver(function() { setTimeout(remover, 100); });
-    obs.observe(document.body, { childList: true, subtree: true });
-  })();
-
   function tentarRemoverMenus() {
     document.querySelectorAll('button').forEach(function(btn) {
       var t = String(btn.textContent || '').trim();
@@ -21692,84 +21681,118 @@ window._initComissoes = function() {
   async function _carregarCaixasPerdidas() {
     var lista = document.getElementById('cp-lista');
     if (!lista) return;
-    lista.innerHTML = 'Carregando...';
+    lista.innerHTML = '<p style="color:#64748b">Carregando...</p>';
     try {
-      var empId = (typeof window.getEmpresaId === 'function' ? window.getEmpresaId() : '') || 'df5f7672-0a6b-402d-ae65-296554236c31';
-      var r = await fetch('/api/caixas-perdidas?emp_id=' + encodeURIComponent(empId), { headers: authHeaders() });
+      var empresaId = (typeof window.getEmpresaId === 'function' ? window.getEmpresaId() : '') || 'df5f7672-0a6b-402d-ae65-296554236c31';
+      var r = await fetch('/api/caixas-perdidas?empresa_id=' + encodeURIComponent(empresaId), { headers: authHeaders() });
       var dados = await r.json().catch(function() { return []; });
       var listaDados = Array.isArray(dados) ? dados : (Array.isArray(dados && dados.data) ? dados.data : []);
-      if (!listaDados.length) {
-        lista.innerHTML = '<p style="color:#64748b">Nenhum registro encontrado.</p>';
+      if (!Array.isArray(listaDados) || !listaDados.length) {
+        lista.innerHTML = '<p style="color:#64748b;padding:20px">Nenhum registro encontrado.</p>';
         return;
       }
-      lista.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
-        + '<thead><tr style="background:#0f172a;color:#94a3b8">'
-        + '<th style="padding:10px;text-align:left">Data</th>'
-        + '<th style="padding:10px;text-align:left">Cliente</th>'
-        + '<th style="padding:10px;text-align:left">OF</th>'
-        + '<th style="padding:10px;text-align:right">Qtd</th>'
-        + '<th style="padding:10px;text-align:left">Motivo</th>'
-        + '<th style="padding:10px;text-align:left">Responsável</th>'
-        + '<th style="padding:10px;text-align:right">Valor</th>'
-        + '<th style="padding:10px;text-align:left">Obs</th>'
-        + '<th style="padding:10px">Ações</th>'
-        + '</tr></thead><tbody>'
-        + listaDados.map(function(d) {
-          return '<tr style="border-bottom:1px solid #1e293b">'
-            + '<td style="padding:10px;color:#e2e8f0">' + cpEsc(String(d.data || '').slice(0, 10)) + '</td>'
-            + '<td style="padding:10px;color:#e2e8f0">' + cpEsc(d.cliente || d.cliente_nome || '—') + '</td>'
-            + '<td style="padding:10px;color:#94a3b8">' + cpEsc(d.of_numero || '—') + '</td>'
-            + '<td style="padding:10px;color:#e2e8f0;text-align:right">' + cpEsc(d.qtd_perdida || d.quantidade || 0) + '</td>'
-            + '<td style="padding:10px;color:#e2e8f0">' + cpEsc(d.maquina_perda || d.maquina || '—') + '</td>'
-            + '<td style="padding:10px;color:#e2e8f0">' + cpEsc(d.usuario || '—') + '</td>'
-            + '<td style="padding:10px;color:#f59e0b;text-align:right">R$ ' + Number(d.valor_perdido || 0).toFixed(2) + '</td>'
-            + '<td style="padding:10px;color:#64748b;max-width:150px;overflow:hidden;text-overflow:ellipsis">' + cpEsc(d.obs || '') + '</td>'
-            + '<td style="padding:10px;white-space:nowrap">'
-            + '<button onclick="_editarCaixaPerdida(\'' + cpEsc(d.id) + '\')" style="background:#1d4ed8;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;margin-right:4px">✏️</button>'
-            + '<button onclick="_excluirCaixaPerdida(\'' + cpEsc(d.id) + '\')" style="background:#dc2626;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer">🗑️</button>'
-            + '</td></tr>';
+      lista.innerHTML = ''
+        + '<div style="overflow-x:auto">'
+        + '  <table style="width:100%;border-collapse:collapse;font-size:13px">'
+        + '    <thead>'
+        + '      <tr style="background:#0f172a;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.05em">'
+        + '        <th style="padding:10px 12px;text-align:left">Data</th>'
+        + '        <th style="padding:10px 12px;text-align:left">Cliente</th>'
+        + '        <th style="padding:10px 12px;text-align:left">OF</th>'
+        + '        <th style="padding:10px 12px;text-align:right">Qtd</th>'
+        + '        <th style="padding:10px 12px;text-align:left">Motivo</th>'
+        + '        <th style="padding:10px 12px;text-align:left">Responsável</th>'
+        + '        <th style="padding:10px 12px;text-align:right">Valor</th>'
+        + '        <th style="padding:10px 12px;text-align:left">Obs</th>'
+        + '        <th style="padding:10px 12px;text-align:center">Ações</th>'
+        + '      </tr>'
+        + '    </thead>'
+        + '    <tbody>'
+        + listaDados.map(function(d, i) {
+          return ''
+            + '<tr style="border-bottom:1px solid #1e293b;background:' + (i % 2 ? '#0f172a' : '#1e293b') + '">'
+            + '  <td style="padding:10px 12px;color:#e2e8f0">' + cpEsc((String(d.data || '').slice(0, 10)) || '—') + '</td>'
+            + '  <td style="padding:10px 12px;color:#e2e8f0;font-weight:500">' + cpEsc(d.cliente || '—') + '</td>'
+            + '  <td style="padding:10px 12px;color:#60a5fa">' + cpEsc(d.of_numero || '—') + '</td>'
+            + '  <td style="padding:10px 12px;color:#34d399;text-align:right">' + cpEsc(d.qtd_perdida || 0) + '</td>'
+            + '  <td style="padding:10px 12px;color:#e2e8f0">' + cpEsc(d.maquina_perda || '—') + '</td>'
+            + '  <td style="padding:10px 12px;color:#e2e8f0">' + cpEsc(d.usuario || '—') + '</td>'
+            + '  <td style="padding:10px 12px;color:#f59e0b;text-align:right">R$ ' + Number(d.valor_perdido || 0).toFixed(2) + '</td>'
+            + '  <td style="padding:10px 12px;color:#64748b;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + cpEsc(d.obs || '') + '</td>'
+            + '  <td style="padding:10px 12px;text-align:center;white-space:nowrap">'
+            + '    <button onclick="window._editarCaixaPerdida(\'' + cpEsc(d.id) + '\')" style="background:#1d4ed8;color:#fff;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;margin-right:4px;font-size:12px">✏️</button>'
+            + '    <button onclick="window._excluirCaixaPerdida(\'' + cpEsc(d.id) + '\')" style="background:#dc2626;color:#fff;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:12px">🗑️</button>'
+            + '  </td>'
+            + '</tr>';
         }).join('')
-        + '</tbody></table>';
+        + '    </tbody>'
+        + '  </table>'
+        + '</div>';
     } catch (e) {
       lista.innerHTML = '<p style="color:#ef4444">Erro ao carregar: ' + cpEsc(e && e.message || e) + '</p>';
     }
   }
 
   window._renderCaixasPerdidasPage = async function() {
-    document.querySelectorAll('[id^="page-"]').forEach(function(p) { p.style.display = 'none'; });
-    var content = document.getElementById('content');
-    if (!content) return;
+    document.querySelectorAll('[id^="page-"]').forEach(function(p) {
+      if (p.id !== 'page-caixas-perdidas') p.style.display = 'none';
+    });
+
     var pg = document.getElementById('page-caixas-perdidas');
     if (!pg) {
       pg = document.createElement('div');
       pg.id = 'page-caixas-perdidas';
-      content.appendChild(pg);
+      var content = document.getElementById('content') || document.querySelector('.content, main, #main');
+      if (content) content.appendChild(pg);
+      else document.body.appendChild(pg);
     }
     pg.style.display = 'block';
+
     pg.innerHTML = ''
-      + '<div style="padding:24px">'
-      + '<h2 style="color:#fff;margin-bottom:16px">📦 Caixas Perdidas</h2>'
-      + '<button onclick="_novaCaixaPerdida()" style="background:#3b82f6;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-bottom:16px">+ Nova Perda</button>'
-      + '<div id="cp-lista">Carregando...</div>'
+      + '<div style="padding:24px;max-width:1400px">'
+      + '  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
+      + '    <h2 style="color:#fff;margin:0">📦 Caixas Perdidas</h2>'
+      + '    <button onclick="window._novaCaixaPerdida()" style="background:#3b82f6;color:#fff;border:none;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:14px">+ Nova Perda</button>'
+      + '  </div>'
+      + '  <div id="cp-lista" style="color:#94a3b8">Carregando...</div>'
       + '</div>'
-      + '<div id="cp-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center">'
-      + '<div style="background:#1e293b;border-radius:12px;padding:24px;width:90%;max-width:600px;max-height:90vh;overflow-y:auto">'
-      + '<h3 id="cp-modal-titulo" style="color:#fff;margin-bottom:16px">Nova Perda</h3>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-      + '<label style="color:#94a3b8;font-size:12px">Data<input id="cp-data" type="date" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px"></label>'
-      + '<label style="color:#94a3b8;font-size:12px">Cliente<input id="cp-cliente" type="text" placeholder="Nome do cliente" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px"></label>'
-      + '<label style="color:#94a3b8;font-size:12px">Nº OF<input id="cp-of" type="text" placeholder="Opcional" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px"></label>'
-      + '<label style="color:#94a3b8;font-size:12px">Qtd Perdida<input id="cp-qtd" type="number" min="0" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px"></label>'
-      + '<label style="color:#94a3b8;font-size:12px">Motivo<input id="cp-motivo" type="text" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px"></label>'
-      + '<label style="color:#94a3b8;font-size:12px">Responsável<input id="cp-responsavel" type="text" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px"></label>'
-      + '<label style="color:#94a3b8;font-size:12px">Valor Estimado (R$)<input id="cp-valor" type="number" min="0" step="0.01" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px"></label>'
-      + '<label style="color:#94a3b8;font-size:12px;grid-column:1/-1">Observação<textarea id="cp-obs" rows="3" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px;resize:vertical"></textarea></label>'
-      + '</div>'
-      + '<input type="hidden" id="cp-editing-id">'
-      + '<div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">'
-      + '<button onclick="document.getElementById(\'cp-modal\').style.display=\'none\'" style="background:#334155;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer">Cancelar</button>'
-      + '<button onclick="_salvarCaixaPerdida()" style="background:#3b82f6;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer">Salvar</button>'
-      + '</div></div></div>';
+      + '<div id="cp-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center">'
+      + '  <div style="background:#1e293b;border-radius:12px;padding:28px;width:95%;max-width:580px;max-height:90vh;overflow-y:auto">'
+      + '    <h3 id="cp-modal-titulo" style="color:#fff;margin:0 0 20px">Nova Perda</h3>'
+      + '    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+      + '      <label style="color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:.05em">Data'
+      + '        <input id="cp-data" type="date" style="display:block;width:100%;margin-top:6px;background:#0f172a;border:1px solid #334155;color:#fff;padding:9px;border-radius:7px;font-size:14px">'
+      + '      </label>'
+      + '      <label style="color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:.05em">Cliente'
+      + '        <input id="cp-cliente" type="text" placeholder="Nome do cliente" style="display:block;width:100%;margin-top:6px;background:#0f172a;border:1px solid #334155;color:#fff;padding:9px;border-radius:7px;font-size:14px">'
+      + '      </label>'
+      + '      <label style="color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:.05em">Nº OF'
+      + '        <input id="cp-of" type="text" placeholder="Opcional" style="display:block;width:100%;margin-top:6px;background:#0f172a;border:1px solid #334155;color:#fff;padding:9px;border-radius:7px;font-size:14px">'
+      + '      </label>'
+      + '      <label style="color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:.05em">Qtd Perdida'
+      + '        <input id="cp-qtd" type="number" min="0" style="display:block;width:100%;margin-top:6px;background:#0f172a;border:1px solid #334155;color:#fff;padding:9px;border-radius:7px;font-size:14px">'
+      + '      </label>'
+      + '      <label style="color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:.05em">Motivo'
+      + '        <input id="cp-motivo" type="text" style="display:block;width:100%;margin-top:6px;background:#0f172a;border:1px solid #334155;color:#fff;padding:9px;border-radius:7px;font-size:14px">'
+      + '      </label>'
+      + '      <label style="color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:.05em">Responsável'
+      + '        <input id="cp-responsavel" type="text" style="display:block;width:100%;margin-top:6px;background:#0f172a;border:1px solid #334155;color:#fff;padding:9px;border-radius:7px;font-size:14px">'
+      + '      </label>'
+      + '      <label style="color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:.05em">Valor Estimado (R$)'
+      + '        <input id="cp-valor" type="number" min="0" step="0.01" style="display:block;width:100%;margin-top:6px;background:#0f172a;border:1px solid #334155;color:#fff;padding:9px;border-radius:7px;font-size:14px">'
+      + '      </label>'
+      + '      <label style="color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:.05em;grid-column:1/-1">Observação'
+      + '        <textarea id="cp-obs" rows="3" style="display:block;width:100%;margin-top:6px;background:#0f172a;border:1px solid #334155;color:#fff;padding:9px;border-radius:7px;font-size:14px;resize:vertical"></textarea>'
+      + '      </label>'
+      + '    </div>'
+      + '    <input type="hidden" id="cp-editing-id">'
+      + '    <div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end">'
+      + '      <button onclick="document.getElementById(\'cp-modal\').style.display=\'none\'" style="background:#334155;color:#fff;border:none;padding:9px 18px;border-radius:7px;cursor:pointer">Cancelar</button>'
+      + '      <button onclick="window._salvarCaixaPerdida()" style="background:#3b82f6;color:#fff;border:none;padding:9px 18px;border-radius:7px;cursor:pointer;font-weight:600">Salvar</button>'
+      + '    </div>'
+      + '  </div>'
+      + '</div>';
+
     await _carregarCaixasPerdidas();
   };
 
@@ -21784,22 +21807,24 @@ window._initComissoes = function() {
     document.getElementById('cp-modal').style.display = 'flex';
   };
 
-  window._editarCaixaPerdida = function(id) {
-    fetch('/api/caixas-perdidas/' + encodeURIComponent(id), { headers: authHeaders() })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        document.getElementById('cp-editing-id').value = d.id || '';
-        document.getElementById('cp-modal-titulo').textContent = 'Editar Perda';
-        document.getElementById('cp-data').value = String(d.data || '').slice(0, 10);
-        document.getElementById('cp-cliente').value = d.cliente || d.cliente_nome || '';
-        document.getElementById('cp-of').value = d.of_numero || '';
-        document.getElementById('cp-qtd').value = d.qtd_perdida || d.quantidade || '';
-        document.getElementById('cp-motivo').value = d.maquina_perda || d.maquina || '';
-        document.getElementById('cp-responsavel').value = d.usuario || '';
-        document.getElementById('cp-valor').value = d.valor_perdido || '';
-        document.getElementById('cp-obs').value = d.obs || '';
-        document.getElementById('cp-modal').style.display = 'flex';
-      });
+  window._editarCaixaPerdida = async function(id) {
+    try {
+      var r = await fetch('/api/caixas-perdidas/' + encodeURIComponent(id), { headers: authHeaders() });
+      var d = await r.json();
+      document.getElementById('cp-editing-id').value = d.id || '';
+      document.getElementById('cp-modal-titulo').textContent = 'Editar Perda';
+      document.getElementById('cp-data').value = String(d.data || '').slice(0, 10);
+      document.getElementById('cp-cliente').value = d.cliente || '';
+      document.getElementById('cp-of').value = d.of_numero || '';
+      document.getElementById('cp-qtd').value = d.qtd_perdida || '';
+      document.getElementById('cp-motivo').value = d.maquina_perda || '';
+      document.getElementById('cp-responsavel').value = d.usuario || '';
+      document.getElementById('cp-valor').value = d.valor_perdido || '';
+      document.getElementById('cp-obs').value = d.obs || '';
+      document.getElementById('cp-modal').style.display = 'flex';
+    } catch (e) {
+      alert('Erro ao carregar registro: ' + e.message);
+    }
   };
 
   window._salvarCaixaPerdida = async function() {
@@ -21813,13 +21838,18 @@ window._initComissoes = function() {
       usuario: document.getElementById('cp-responsavel').value,
       valor_perdido: Number(document.getElementById('cp-valor').value) || 0,
       obs: document.getElementById('cp-obs').value,
-      emp_id: window.getEmpresaId ? window.getEmpresaId() : 'df5f7672-0a6b-402d-ae65-296554236c31'
+      emp_id: typeof window.getEmpresaId === 'function' ? window.getEmpresaId() : 'df5f7672-0a6b-402d-ae65-296554236c31'
     };
-    var url = id ? '/api/caixas-perdidas/' + encodeURIComponent(id) : '/api/caixas-perdidas';
-    var method = id ? 'PUT' : 'POST';
-    await fetch(url, { method: method, headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(body) });
-    document.getElementById('cp-modal').style.display = 'none';
-    await _carregarCaixasPerdidas();
+    try {
+      var url = id ? '/api/caixas-perdidas/' + encodeURIComponent(id) : '/api/caixas-perdidas';
+      var method = id ? 'PUT' : 'POST';
+      var r = await fetch(url, { method: method, headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(body) });
+      if (!r.ok) throw new Error('Erro ' + r.status);
+      document.getElementById('cp-modal').style.display = 'none';
+      await _carregarCaixasPerdidas();
+    } catch (e) {
+      alert('Erro ao salvar: ' + e.message);
+    }
   };
 
   window._excluirCaixaPerdida = async function(id) {
@@ -21831,4 +21861,13 @@ window._initComissoes = function() {
   window._carregarCaixasPerdidas = _carregarCaixasPerdidas;
   window.renderCaixasPerdidas = window._renderCaixasPerdidasPage;
   window.carregarCaixasPerdidas = _carregarCaixasPerdidas;
+
+  var _goWrapCP = window.go;
+  window.go = function(pagina) {
+    if (typeof pagina === 'string' && pagina.toLowerCase().indexOf('caixas-perdidas') >= 0) {
+      window._renderCaixasPerdidasPage();
+      return;
+    }
+    return typeof _goWrapCP === 'function' ? _goWrapCP.apply(this, arguments) : undefined;
+  };
 })();

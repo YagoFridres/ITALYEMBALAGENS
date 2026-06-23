@@ -14407,14 +14407,13 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
     const inicioMes = `${ano}-${String(mes).padStart(2, '0')}-01`;
     const fimMes = new Date(Number(ano), Number(mes), 0).toISOString().slice(0, 10);
 
-    let ofsQuery = supabase
+    const { data: ofs, error } = await supabase
       .from('ofs')
-      .select('of, qtd, caixa_comprimento, caixa_largura, gramatura_id, total, data_conclusao, clinome, cliNome')
+      .select('id, of, qtd, caixa_comprimento, caixa_largura, dim_comprimento, dim_largura, gramatura_id, total, data_conclusao, clinome, cliNome, cliente_nome, cli_id')
       .eq('status', 'Concluído')
       .eq('empresa_id', empresaId)
       .gte('data_conclusao', inicioMes)
-      .lte('data_conclusao', fimMes);
-    const { data: ofs, error } = await ofsQuery;
+      .lte('data_conclusao', fimMes + 'T23:59:59Z');
     if (error) throw error;
 
     const { data: gramaturas } = await supabase
@@ -14429,11 +14428,13 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
     let totalValor = 0;
     let totalToneladas = 0;
     let ofsComGramatura = 0;
+    const porCliente = Object.create(null);
     const detalhes = [];
     (ofs || []).forEach((of) => {
-      const comp = Number(of.caixa_comprimento) / 1000;
-      const larg = Number(of.caixa_largura) / 1000;
+      const comp = Number(of.caixa_comprimento || of.dim_comprimento || 0) / 1000;
+      const larg = Number(of.caixa_largura || of.dim_largura || 0) / 1000;
       const qtd = Number(of.qtd) || 0;
+      const cliente = of.clinome || of.cliNome || of.cliente_nome || '—';
       if (!comp || !larg || !qtd) return;
       const m2 = comp * larg * qtd;
       const gramaturaValor = Number(gramaturaMap[of.gramatura_id] || GRAMATURA_PADRAO) || GRAMATURA_PADRAO;
@@ -14442,23 +14443,34 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       totalToneladas += ton;
       totalValor += Number(of.total || 0) || 0;
       if (of.gramatura_id && gramaturaMap[of.gramatura_id]) ofsComGramatura += 1;
+      if (!porCliente[cliente]) porCliente[cliente] = { ofs: 0, m2: 0, ton: 0 };
+      porCliente[cliente].ofs += 1;
+      porCliente[cliente].m2 += m2;
+      porCliente[cliente].ton += ton;
       detalhes.push({
+        id: of.id,
         of: of.of,
         qtd,
-        caixa_comprimento: of.caixa_comprimento,
-        caixa_largura: of.caixa_largura,
+        caixa_comprimento: of.caixa_comprimento || of.dim_comprimento || 0,
+        caixa_largura: of.caixa_largura || of.dim_largura || 0,
         gramatura_id: of.gramatura_id,
         gramatura: gramaturaValor,
         total: Number(of.total || 0) || 0,
         data_conclusao: of.data_conclusao,
-        clinome: of.clinome || of.cliNome || '—',
-        cliNome: of.cliNome || of.clinome || '—',
+        clinome: cliente,
+        cliNome: cliente,
+        cliente_nome: cliente,
+        cli_id: of.cli_id || null,
         total_m2: m2,
         toneladas: ton,
         usa_gramatura_padrao: !(of.gramatura_id && gramaturaMap[of.gramatura_id])
       });
     });
     const totalOfsConsideradas = detalhes.length;
+    const topClientes = Object.entries(porCliente)
+      .map(([nome, v]) => ({ nome, ...v }))
+      .sort((a, b) => Number(b.ton || 0) - Number(a.ton || 0))
+      .slice(0, 20);
 
     res.json({
       ok: true,
@@ -14466,6 +14478,7 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       totalM2,
       totalValor,
       ofsComGramatura,
+      topClientes,
       ofsComGramaturapadrao: Math.max(0, totalOfsConsideradas - ofsComGramatura),
       total_toneladas: totalToneladas,
       total_m2: totalM2,
