@@ -279,13 +279,13 @@ if (!_supabaseEnvOk) {
   const _sbFetch = async (url, options = {}) => {
     const method = String(options?.method || 'GET').toUpperCase();
     const canRetry = method === 'GET' || method === 'HEAD';
-    const maxAttempts = canRetry ? 3 : 1;
+    const maxAttempts = canRetry ? 2 : 1;
     let attempt = 0;
     let lastErr = null;
     while (attempt < maxAttempts) {
       attempt++;
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000);
+      const timeout = setTimeout(() => controller.abort(), 60000);
       try {
         const resp = await fetch(url, { ...options, signal: controller.signal });
         clearTimeout(timeout);
@@ -294,12 +294,9 @@ if (!_supabaseEnvOk) {
         clearTimeout(timeout);
         lastErr = e;
         const isAbort = e?.name === 'AbortError' || String(e?.message || '').toLowerCase().includes('abort');
+        if (isAbort) throw e;
         if (!canRetry || attempt >= maxAttempts) throw e;
-        if (!isAbort && String(e?.message || '').toLowerCase().includes('fetch')) {
-          await new Promise((r) => setTimeout(r, attempt === 1 ? 250 : 750));
-          continue;
-        }
-        await new Promise((r) => setTimeout(r, attempt === 1 ? 250 : 750));
+        await new Promise((r) => setTimeout(r, attempt === 1 ? 500 : 1000));
       }
     }
     throw lastErr;
