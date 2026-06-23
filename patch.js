@@ -51,13 +51,13 @@ function _textoSeguro(val) {
     return val.map(function(v) {
       if (typeof v === 'string') return v;
       if (typeof v === 'object' && v !== null) {
-        return v.nome || v.name || v.cor || v.color || v.codigo || v.label || Object.values(v)[0] || '';
+        return v.nome || v.name || v.cor || v.color || v.codigo || v.label || '';
       }
       return String(v);
     }).filter(Boolean).join(', ') || '—';
   }
   if (typeof val === 'object') {
-    return val.nome || val.name || val.cor || val.codigo || val.descricao || Object.values(val)[0] || '—';
+    return val.nome || val.name || val.cor || val.codigo || val.descricao || '—';
   }
   return String(val) || '—';
 }
@@ -1271,7 +1271,6 @@ if (!window._menuPatchFinal) {
       + '#page-pcp .pcp-search-shell{background:#111827;border:1px solid #1e293b;border-radius:12px;padding:14px;margin:0 0 14px}'
       + '#page-pcp .pcp-search-shell h3{margin:0 0 10px;font-size:18px;color:#f8fafc}'
       + '#page-pcp #pcp-busca-input{width:100%;max-width:460px;padding:10px 12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#fff;font-size:13px}'
-      + '#page-pcp .pcp-amostras-title{margin:18px 0 10px;font-size:18px;font-weight:800;color:#f8fafc}'
       + '#page-pcp .pcp-table-shell{background:#0f172a;border:1px solid #1e293b;border-radius:12px;overflow:auto}'
       + '#page-pcp thead th{background:#0f172a!important;color:#64748b!important;font-size:11px!important;text-transform:uppercase!important;letter-spacing:.05em!important}'
       + '#page-pcp tbody tr:nth-child(odd){background:#1e293b!important}'
@@ -1517,7 +1516,6 @@ if (!window._menuPatchFinal) {
       + '</div>'
       + '<div class="pcp-action-row">'
       + '<button class="pcp-head-action" style="background:#7c3aed" onclick="window._pcpTopoOFRapida()">⚡ OF Rápida</button>'
-      + '<button class="pcp-head-action" style="background:#2563eb" onclick="window._pcpTopoNovaOF()">+ Nova OF</button>'
       + '<button class="pcp-head-action" style="background:#1d4ed8" onclick="window._pcpTopoAlterarOF()">✏️ Alterar OF</button>'
       + '<button class="pcp-head-action" style="background:#059669" onclick="window._pcpTopoClonarOF()">📋 Clonar OF</button>'
       + '<button class="pcp-head-action" style="background:#dc2626" onclick="window._pcpTopoCancelarOF()">🗑️ Cancelar OF</button>'
@@ -1558,12 +1556,26 @@ if (!window._menuPatchFinal) {
     var legacyBusca = document.getElementById('pcp-busca');
     if (legacyBusca) legacyBusca.value = String((document.getElementById('pcp-busca-input') || {}).value || legacyBusca.value || '');
     var amTitle = document.getElementById('pcp-amostras-title');
-    if (!amTitle && table.parentNode) {
-      amTitle = document.createElement('div');
-      amTitle.id = 'pcp-amostras-title';
-      amTitle.className = 'pcp-amostras-title';
-      amTitle.textContent = '🔬 Amostras';
-      table.parentNode.appendChild(amTitle);
+    if (amTitle && amTitle.parentNode) {
+      amTitle.parentNode.removeChild(amTitle);
+    }
+    if (!window.__pcpVerMaisChromeBound) {
+      window.__pcpVerMaisChromeBound = true;
+      document.addEventListener('click', function(e) {
+        var btn = e && e.target && e.target.closest ? e.target.closest('button, a') : null;
+        if (!btn) return;
+        var txt = String(btn.textContent || '');
+        if (txt.indexOf('Ver mais') >= 0 || txt.indexOf('ver mais') >= 0) {
+          setTimeout(function() {
+            var chrome = document.getElementById('pcp-dashboard-chrome');
+            if (!chrome || !chrome.isConnected) {
+              try { patchPcpRowsAndStatus(); } catch (_) { ensurePcpDashboardChrome(); }
+            } else {
+              ocultarToolbarNativaPCP();
+            }
+          }, 800);
+        }
+      }, true);
     }
   }
 
@@ -1691,36 +1703,8 @@ if (!window._menuPatchFinal) {
     });
   }
 
-  function _pcpMarcarLinhaSelecionada(tr) {
-    if (!tr) return;
-    try {
-      Array.prototype.slice.call(tr.parentNode.querySelectorAll('tr')).forEach(function(row) {
-        row.classList.remove('pcp-row-selected');
-      });
-      tr.classList.add('pcp-row-selected');
-      var raw = tr.getAttribute('data-of');
-      if (raw) window._pcpSelectedOfData = JSON.parse(raw);
-    } catch (_) {}
-  }
-
   function _pcpBindRowClicks(tbody) {
-    if (!tbody) return;
-    Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of]')).forEach(function(tr) {
-      if (tr._pcpLinhaBound) return;
-      tr._pcpLinhaBound = true;
-      tr.addEventListener('click', function(e) {
-        var target = e && e.target;
-        if (target && (target.tagName === 'BUTTON' || target.tagName === 'A' || target.tagName === 'INPUT')) return;
-        var cb = this.querySelector('input[type=checkbox]');
-        if (cb) {
-          cb.checked = !cb.checked;
-          if (typeof window.pcpToggleSelecao === 'function') {
-            try { window.pcpToggleSelecao(cb); } catch (_) {}
-          }
-        }
-        _pcpMarcarLinhaSelecionada(this);
-      });
-    });
+    return tbody;
   }
 
   function ensurePcpMutationObserver() {
@@ -1810,7 +1794,7 @@ if (!window._menuPatchFinal) {
       var entregaOk = !entregaIso || entregaIso >= new Date().toISOString().slice(0, 10);
       var entregaClass = entregaOk ? 'is-ok' : 'is-late';
       var rowStyle = 'background-color:' + (idxLinha % 2 ? '#1e293b' : '#0f172a') + ';border-left:3px solid ' + statusColor + ';border-bottom:1px solid #1e293b;';
-      return '<tr data-id="' + esc(String(o.id || '')) + '" data-of-id="' + esc(String(o.id || '')) + '" data-of-num="' + esc(String(o.of || '')) + '" data-of="' + esc(JSON.stringify(o)) + '" style="' + rowStyle + '">'
+      return '<tr data-id="' + esc(String(o.id || '')) + '" data-of="' + esc(JSON.stringify(o)) + '" style="' + rowStyle + '">'
         + '<td class="tc"><div style="display:flex;align-items:center;gap:6px;justify-content:center"><input type="checkbox" class="of-seletor" data-of-num="' + esc(String(o.of || '')) + '" data-of-id="' + esc(String(o.id || '')) + '" onclick="event.stopPropagation()" onchange="pcpToggleSelecao && pcpToggleSelecao(this)"><input class="seq-inp" type="number" value="' + esc(String(o.prioridade || o.seq || 0)) + '" min="1" onclick="event.stopPropagation()" onchange="moverPos && moverPos(\'' + esc(String(o.of || '')) + '\',parseInt(this.value,10))"></div></td>'
         + '<td class="tc">' + (imageUrl ? '<img src="' + esc(imageUrl) + '" data-full-img="' + esc(imageUrl) + '" style="width:40px;height:40px;object-fit:cover;border-radius:4px;cursor:pointer" onclick="event.stopPropagation();window.open(this.getAttribute(\'data-full-img\'),\'_blank\')">' : '—') + '</td>'
         + '<td class="tc pcp-of-col"><span class="of-num">' + esc(window._textoSeguro(o.of)) + '</span>' + ((o.urg || o.urgente) ? '<br><span class="tag t-ug">URG</span>' : '') + '</td>'
@@ -16906,18 +16890,26 @@ function _ocultarGraficoComissoes() {
     if (window.__forcaRenderComissoesRodando) return;
     window.__forcaRenderComissoesRodando = true;
     try {
-      if ((!window.OFs || !window.OFs.length) && typeof window.carregarOFs === 'function') {
+      if ((!window.OFs || window.OFs.length === 0) && typeof window.carregarOFs === 'function') {
         await window.carregarOFs();
+        await new Promise(function(r) { setTimeout(r, 800); });
       }
+
+      window._comissoesData = null;
+      window._comissoesAutoInit = false;
+      if (window._comRodando) window._comRodando = false;
+
       if (typeof window.calcularComissoes === 'function') {
         await window.calcularComissoes();
+        await new Promise(function(r) { setTimeout(r, 600); });
       }
-      await new Promise(function(r) { setTimeout(r, 300); });
-      if (typeof window.renderComissoes === 'function') {
+      if (window._comissoesData && typeof window.renderComissoes === 'function') {
+        window.renderComissoes();
+      } else if (typeof window.renderComissoes === 'function') {
         window.renderComissoes();
       }
     } catch (e) {
-      try { console.warn('[COM PATCH V2]', e); } catch (_) {}
+      console.error('[Comissões Patch] Erro:', e);
     } finally {
       window.__forcaRenderComissoesRodando = false;
     }
