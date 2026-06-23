@@ -387,6 +387,13 @@ app.use(compression());
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
+app.post('/api/admin/clear-cache', (req, res) => {
+  _mapaClientesTs = 0;
+  _mapaClientesGlobal = {};
+  Object.keys(_endpointCache).forEach((k) => delete _endpointCache[k]);
+  return res.json({ ok: true });
+});
+
 function _newRid() {
   try { return crypto.randomBytes(8).toString('hex'); } catch (_) {}
   return String(Date.now()) + '-' + Math.random().toString(16).slice(2);
@@ -428,6 +435,9 @@ const _clientesCache = {};
 const _clientesCacheTs = {};
 const CACHE_TTL = 5 * 60 * 1000;
 const _endpointCache = {};
+let _mapaClientesGlobal = {};
+let _mapaClientesTs = 0;
+const MAPA_CLIENTES_TTL = 10 * 60 * 1000;
 // Limpar cache ao iniciar
 Object.keys(_serverCache).forEach(k => delete _serverCache[k]);
 Object.keys(_serverCacheTTL).forEach(k => delete _serverCacheTTL[k]);
@@ -487,6 +497,33 @@ function _clienteCacheSet(id, nome) {
   if (!key) return;
   _clientesCache[key] = String(nome || '');
   _clientesCacheTs[key] = Date.now();
+}
+async function getMapaClientes(supabaseClient) {
+  if (Date.now() - _mapaClientesTs < MAPA_CLIENTES_TTL && Object.keys(_mapaClientesGlobal).length > 0) {
+    return _mapaClientesGlobal;
+  }
+  const mapa = {};
+  let offset = 0;
+  while (true) {
+    const { data, error } = await supabaseClient
+      .from('clientes')
+      .select('id, nome')
+      .range(offset, offset + 999);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    data.forEach((c) => {
+      const id = String(c && c.id || '').trim();
+      const nome = String(c && c.nome || '').trim();
+      if (!id) return;
+      mapa[id] = nome;
+      mapa[id.toLowerCase()] = nome;
+    });
+    if (data.length < 1000) break;
+    offset += 1000;
+  }
+  _mapaClientesGlobal = mapa;
+  _mapaClientesTs = Date.now();
+  return mapa;
 }
 async function resolverEmpresaId(req) {
   const emailRaw = String(
@@ -3615,73 +3652,7 @@ app.get('/api/ofs', authMiddleware, cacheMiddleware(30000), async (req, res) => 
     const count = fetched.count || 0;
 
     const ofsRaw = data || [];
-    const clienteIds = [...new Set(ofsRaw.map(o => o.cli_id).filter(Boolean))];
-    const mapaClientes = {};
-    if (clienteIds.length > 0) {
-      try {
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        const idsValidos = clienteIds
-          .map(id => String(id).trim())
-          .filter(id => uuidRegex.test(id));
-        const idsValidosPendentes = idsValidos.filter((id) => {
-          const cached = _clienteCacheGet(id);
-          if (cached != null) {
-            mapaClientes[id] = cached;
-            mapaClientes[String(id).toLowerCase()] = cached;
-            mapaClientes[String(id).toUpperCase()] = cached;
-            return false;
-          }
-          return true;
-        });
-
-        if (idsValidosPendentes.length > 0) {
-          for (let i = 0; i < idsValidosPendentes.length; i += 50) {
-            const lote = idsValidosPendentes.slice(i, i + 50);
-            const { data: clientes, error: errCli } = await supabase
-              .from('clientes')
-              .select('id, nome, rs')
-              .in('id', lote);
-            if (errCli) continue;
-
-            (clientes || []).forEach(c => {
-              const nomeCliente = c.nome || c.rs || '';
-              mapaClientes[c.id] = nomeCliente;
-              mapaClientes[String(c.id).toLowerCase()] = nomeCliente;
-              mapaClientes[String(c.id).toUpperCase()] = nomeCliente;
-              _clienteCacheSet(c.id, nomeCliente);
-            });
-          }
-        }
-
-        const idsCodigo = clienteIds
-          .map(id => String(id).trim())
-          .filter(id => !uuidRegex.test(id) && id.length > 0);
-        const idsCodigoPendentes = idsCodigo.filter((id) => {
-          const cached = _clienteCacheGet(id);
-          if (cached != null) {
-            mapaClientes[id] = cached;
-            return false;
-          }
-          return true;
-        });
-
-        if (idsCodigoPendentes.length > 0) {
-          const { data: clientesCod } = await supabase
-            .from('clientes')
-            .select('id, nome, rs, codigo')
-            .in('codigo', idsCodigoPendentes);
-          (clientesCod || []).forEach(c => {
-            const nome = c.nome || c.rs || '';
-            if (c.codigo) mapaClientes[c.codigo] = nome;
-            mapaClientes[c.id] = nome;
-            if (c.codigo) _clienteCacheSet(c.codigo, nome);
-            _clienteCacheSet(c.id, nome);
-          });
-        }
-      } catch (e) {
-        console.error('[CLIENTES] erro:', e.message);
-      }
-    }
+    const mapaClientes = await getMapaClientes(supabase);
 
     let rows = ofsRaw.map((of) => {
       const cliIdNorm = String(of.cli_id || '').trim();
