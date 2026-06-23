@@ -20383,37 +20383,38 @@ window._initComissoes = function() {
       + '.pcp-topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }'
       + '.pcp-topbar h2 { font-size:18px; font-weight:500; }'
       + '.pcp-top-actions { display:flex; gap:8px; }'
-      + '.pcp-top-actions button { padding:7px 14px; border-radius:8px; border:0.5px solid #334155; background:transparent; color:inherit; font-size:13px; cursor:pointer; }'
-      + '.pcp-top-actions button:first-child { background:#185FA5; color:#E6F1FB; border-color:#185FA5; }'
+      + '.pcp-top-actions button { padding:7px 14px; border-radius:8px; border:0.5px solid var(--color-border-secondary); background:transparent; color:var(--color-text-primary); font-size:13px; cursor:pointer; }'
+      + '.pcp-top-actions button:first-child { background:var(--color-background-tertiary); color:var(--color-text-primary); border-color:var(--color-border-secondary); }'
       + '.pcp-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:1rem; }'
-      + '.pcp-card { background:#1E293B; border-radius:8px; padding:12px 16px; }'
-      + '.pcp-card .lbl { font-size:11px; color:#94A3B8; text-transform:uppercase; letter-spacing:.05em; }'
-      + '.pcp-card .val { font-size:22px; font-weight:500; margin-top:4px; }'
+      + '.pcp-card { background:var(--color-background-secondary); border-radius:8px; padding:12px 16px; }'
+      + '.pcp-card .lbl { font-size:11px; color:var(--color-text-secondary); text-transform:uppercase; letter-spacing:.05em; }'
+      + '.pcp-card .val { font-size:22px; font-weight:500; margin-top:4px; color:var(--color-text-primary); }'
       + '.pcp-filtros { display:flex; gap:8px; margin-bottom:1rem; flex-wrap:wrap; }'
-      + '.pcp-filtros input, .pcp-filtros select { padding:7px 12px; border-radius:8px; border:0.5px solid #334155; background:#1E293B; color:inherit; font-size:13px; }'
+      + '.pcp-filtros input { padding:7px 12px; border-radius:8px; border:0.5px solid var(--color-border-secondary); background:var(--color-background-secondary); color:var(--color-text-primary); font-size:13px; }'
       + '.pcp-filtros input { flex:1; min-width:200px; }'
-      + '.pcp-filtros button { padding:7px 14px; border-radius:8px; border:0.5px solid #334155; background:transparent; color:inherit; font-size:13px; cursor:pointer; }'
-      + '.pcp-table-container { border:0.5px solid #1E293B; border-radius:10px; overflow:hidden; }'
+      + '.pcp-filtros button { padding:7px 14px; border-radius:8px; border:0.5px solid var(--color-border-secondary); background:transparent; color:var(--color-text-primary); font-size:13px; cursor:pointer; }'
+      + '.pcp-table-title { font-size:13px; color:var(--color-text-secondary); margin-bottom:8px; }'
+      + '.pcp-table-container { border:0.5px solid var(--color-border-secondary); border-radius:10px; overflow:hidden; }'
       + '#pcp-table { width:100%; border-collapse:collapse; font-size:12px; }'
-      + '#pcp-table thead tr { background:#0F172A; }'
-      + '#pcp-table thead th { padding:9px 8px; text-align:left; font-size:10px; font-weight:500; color:#64748B; text-transform:uppercase; letter-spacing:.06em; white-space:nowrap; }'
-      + '#pcp-table tbody tr { border-bottom:0.5px solid #1E293B; transition:filter .1s; }'
+      + '#pcp-table thead tr { background:var(--color-background-tertiary); }'
+      + '#pcp-table thead th { padding:9px 8px; text-align:left; font-size:10px; font-weight:500; color:var(--color-text-tertiary); text-transform:uppercase; letter-spacing:.06em; white-space:nowrap; }'
+      + '#pcp-table tbody tr { border-bottom:0.5px solid var(--color-border-secondary); transition:filter .1s; }'
       + '#pcp-table tbody tr:hover { filter:brightness(1.2); }'
-      + '#pcp-table tbody td { padding:8px 8px; vertical-align:middle; }'
-      + '.of-num-lnk { font-weight:500; font-size:13px; color:#60A5FA; text-decoration:none; }'
-      + '.of-img-thumb { width:36px; height:36px; border-radius:6px; object-fit:cover; border:0.5px solid #334155; }'
-      + '.of-img-placeholder { width:36px; height:36px; border-radius:6px; background:#1E293B; border:0.5px solid #334155; display:flex; align-items:center; justify-content:center; font-size:16px; }'
+      + '#pcp-table tbody td { padding:8px 8px; vertical-align:middle; color:var(--color-text-primary); }'
+      + '.of-num-lnk { font-weight:500; font-size:13px; color:var(--color-text-primary); text-decoration:none; }'
+      + '.of-img-thumb { width:36px; height:36px; border-radius:6px; object-fit:cover; border:0.5px solid var(--color-border-secondary); }'
+      + '.of-img-placeholder { width:36px; height:36px; border-radius:6px; background:var(--color-background-secondary); border:0.5px solid var(--color-border-secondary); display:flex; align-items:center; justify-content:center; font-size:16px; color:var(--color-text-secondary); }'
       + '.pcp-badge { display:inline-block; padding:2px 8px; border-radius:99px; font-size:10px; font-weight:500; }'
       + '.badge-azul { background:rgba(56,130,246,.15); color:#60A5FA; }'
       + '.badge-verde { background:rgba(34,197,94,.15); color:#4ADE80; }'
       + '.badge-vermelho { background:rgba(239,68,68,.15); color:#F87171; }'
       + '.badge-laranja { background:rgba(249,115,22,.15); color:#FB923C; }'
-      + '.badge-cinza { background:rgba(100,116,139,.15); color:#94A3B8; }'
-      + '.pcp-act-btn { width:30px; height:30px; border-radius:6px; border:0.5px solid #334155; background:transparent; color:#94A3B8; cursor:pointer; font-size:15px; display:inline-flex; align-items:center; justify-content:center; }'
-      + '.pcp-act-btn:hover { background:#1E293B; color:#fff; }'
+      + '.badge-cinza { background:rgba(100,116,139,.15); color:var(--color-text-secondary); }'
+      + '.pcp-act-btn { width:30px; height:30px; border-radius:6px; border:0.5px solid var(--color-border-secondary); background:transparent; color:var(--color-text-secondary); cursor:pointer; font-size:15px; display:inline-flex; align-items:center; justify-content:center; }'
+      + '.pcp-act-btn:hover { background:var(--color-background-secondary); color:var(--color-text-primary); }'
       + '.pcp-act-btn.excluir:hover { color:#F87171; border-color:#F87171; }'
-      + '.pcp-ver-mais { text-align:center; padding:14px; font-size:13px; color:#60A5FA; cursor:pointer; border-top:0.5px solid #1E293B; }'
-      + '.pcp-ver-mais:hover { background:#0F172A; }'
+      + '.pcp-ver-mais { text-align:center; padding:14px; font-size:13px; color:var(--color-text-primary); cursor:pointer; border-top:0.5px solid var(--color-border-secondary); }'
+      + '.pcp-ver-mais:hover { background:var(--color-background-tertiary); }'
       + '@media(max-width:768px){'
       + '#pcp-table thead th:nth-child(n+9):nth-child(-n+12){display:none;}'
       + '#pcp-table tbody td:nth-child(n+9):nth-child(-n+12){display:none;}'
@@ -20423,21 +20424,32 @@ window._initComissoes = function() {
   }
 
   function _ensurePcpState() {
-    if (!window._pcpCustomState) window._pcpCustomState = { page: 1, query: '', empresa: '', vendedor: '' };
+    if (!window._pcpCustomState) window._pcpCustomState = { page: 1, query: '' };
     return window._pcpCustomState;
   }
 
-  async function _pcpFetchOfs(force) {
+  async function _pcpFetchTodos(force) {
     if (!force && Array.isArray(window._pcpOfsAll) && window._pcpOfsAll.length) return window._pcpOfsAll;
-    var resp = await fetch('/api/ofs?limit=500&incluir_excluidas=1', { headers: _pcpTokHeaders() });
-    var json = await resp.json().catch(function() { return null; });
-    var arr = (json && (json.data || json.ofs)) || [];
-    if (!Array.isArray(arr)) arr = [];
-    window._pcpOfsAll = arr;
-    window._pcpOfsOrdenadas = arr.slice().sort(function(a, b) {
-      var na = parseInt(_pcpNum(a) || '0', 10) || 0;
-      var nb = parseInt(_pcpNum(b) || '0', 10) || 0;
-      return nb - na;
+    window._pcpOfsAll = [];
+    var offset = 0;
+    var limite = 100;
+    while (true) {
+      try {
+        var r = await fetch('/api/ofs?limit=' + limite + '&offset=' + offset + '&incluir_excluidas=1', { headers: _pcpTokHeaders() });
+        if (!r.ok) break;
+        var d = await r.json().catch(function() { return null; });
+        var rows = (d && (d.data || d.ofs || d)) || [];
+        if (!Array.isArray(rows) || rows.length === 0) break;
+        window._pcpOfsAll = window._pcpOfsAll.concat(rows);
+        if (rows.length < limite) break;
+        offset += limite;
+        if (offset > 2000) break;
+      } catch (e) {
+        break;
+      }
+    }
+    window._pcpOfsOrdenadas = window._pcpOfsAll.slice().sort(function(a, b) {
+      return (parseInt(b.of || b.numero || 0, 10) || 0) - (parseInt(a.of || a.numero || 0, 10) || 0);
     });
     return window._pcpOfsAll;
   }
@@ -20474,42 +20486,12 @@ window._initComissoes = function() {
     if (elC) elC.innerHTML = '<div class="lbl">Concluídas</div><div class="val">' + _pcpEsc(r.concluido) + '</div>';
   }
 
-  function _pcpBuildFilters() {
-    var selEmp = document.getElementById('pcp-filtro-empresa');
-    var selVend = document.getElementById('pcp-filtro-vendedor');
-    if (!selEmp || !selVend) return;
-    var st = _ensurePcpState();
-    var ofs = Array.isArray(window._pcpOfsOrdenadas) ? window._pcpOfsOrdenadas : [];
-    var empSet = Object.create(null);
-    var vendSet = Object.create(null);
-    ofs.forEach(function(of) {
-      var e = _pcpEmpresaId(of);
-      if (e) empSet[e] = 1;
-      var v = _pcpVendNome(of);
-      if (v) vendSet[v] = 1;
-    });
-    var emps = Object.keys(empSet).sort(function(a, b) { return a.localeCompare(b); });
-    var vends = Object.keys(vendSet).sort(function(a, b) { return a.localeCompare(b); });
-    selEmp.innerHTML = '<option value="">Todas as empresas</option>' + emps.map(function(e) {
-      var sel = st.empresa === e ? ' selected' : '';
-      return '<option value="' + _pcpEsc(e) + '"' + sel + '>' + _pcpEsc(e) + '</option>';
-    }).join('');
-    selVend.innerHTML = '<option value="">Todos os vendedores</option>' + vends.map(function(v) {
-      var sel = st.vendedor === v ? ' selected' : '';
-      return '<option value="' + _pcpEsc(v) + '"' + sel + '>' + _pcpEsc(v) + '</option>';
-    }).join('');
-  }
-
   function _pcpGetFiltradas() {
     var st = _ensurePcpState();
     var q = String(st.query || '').trim().toLowerCase();
-    var emp = String(st.empresa || '').trim();
-    var vend = String(st.vendedor || '').trim();
     var src = Array.isArray(window._pcpOfsOrdenadas) ? window._pcpOfsOrdenadas : [];
     return src.filter(function(of) {
       if (!of) return false;
-      if (emp && _pcpEmpresaId(of) !== emp) return false;
-      if (vend && _pcpVendNome(of) !== vend) return false;
       if (!q) return true;
       var blob = [
         _pcpNum(of),
@@ -20524,8 +20506,9 @@ window._initComissoes = function() {
     var st = _ensurePcpState();
     var tbody = document.getElementById('pcp-tbody-custom');
     if (!tbody) return;
+    window._pcpPaginaAtual = Math.max(1, parseInt(st.page || 1, 10) || 1);
     var all = _pcpGetFiltradas();
-    var shown = Math.max(1, parseInt(st.page || 1, 10) || 1) * 10;
+    var shown = window._pcpPaginaAtual * 10;
     var pageList = all.slice(0, shown);
     tbody.innerHTML = pageList.length ? pageList.map(function(of) {
       var id = String(of && of.id || '').trim();
@@ -20561,12 +20544,14 @@ window._initComissoes = function() {
         + '<td>' + _pcpEsc(entrega) + '</td>'
         + '<td><span class="pcp-badge ' + _pcpEsc(cor.cls || 'badge-cinza') + '">' + _pcpEsc(cor.badge || '—') + '</span></td>'
         + '<td>'
+        + '<button class="pcp-act-btn" title="Alterar OF" onclick="window._abrirModalEdicaoOf && window._abrirModalEdicaoOf(\'' + _pcpEsc(id) + '\')">✏️</button>'
+        + ' '
         + '<button class="pcp-act-btn" title="Clonar OF" onclick="window._clonarOf && window._clonarOf(\'' + _pcpEsc(id) + '\')">📋</button>'
         + ' '
         + '<button class="pcp-act-btn excluir" title="Excluir OF" onclick="window._excluirOf && window._excluirOf(\'' + _pcpEsc(id) + '\')">🗑️</button>'
         + '</td>'
         + '</tr>';
-    }).join('') : '<tr><td colspan="14" style="padding:26px;color:#94A3B8;text-align:center">Nenhuma OF encontrada.</td></tr>';
+    }).join('') : '<tr><td colspan="14" style="padding:26px;color:var(--color-text-secondary);text-align:center">Nenhuma OF encontrada.</td></tr>';
 
     var verMaisHost = document.getElementById('pcp-ver-mais-btn');
     if (verMaisHost) {
@@ -20575,7 +20560,7 @@ window._initComissoes = function() {
         var add = Math.min(10, rest);
         verMaisHost.innerHTML = '<div class="pcp-ver-mais" id="pcp-ver-mais">Ver mais ' + String(add) + ' OFs (' + String(rest) + ' restantes)</div>';
         var btn = document.getElementById('pcp-ver-mais');
-        if (btn) btn.onclick = function() { st.page += 1; _pcpRenderTabela(); };
+        if (btn) btn.onclick = function() { st.page += 1; window._pcpPaginaAtual = st.page; _pcpRenderTabela(); };
       } else {
         verMaisHost.innerHTML = '';
       }
@@ -20585,8 +20570,6 @@ window._initComissoes = function() {
   function _pcpBindUi() {
     var st = _ensurePcpState();
     var inp = document.getElementById('pcp-busca');
-    var selEmp = document.getElementById('pcp-filtro-empresa');
-    var selVend = document.getElementById('pcp-filtro-vendedor');
     var btnAtt = document.getElementById('pcp-btn-atualizar');
     if (inp && !inp._pcpBound) {
       inp._pcpBound = true;
@@ -20596,24 +20579,9 @@ window._initComissoes = function() {
         t = setTimeout(function() {
           st.query = String(inp.value || '');
           st.page = 1;
+          window._pcpPaginaAtual = 1;
           _pcpRenderTabela();
         }, 80);
-      };
-    }
-    if (selEmp && !selEmp._pcpBound) {
-      selEmp._pcpBound = true;
-      selEmp.onchange = function() {
-        st.empresa = String(selEmp.value || '');
-        st.page = 1;
-        _pcpRenderTabela();
-      };
-    }
-    if (selVend && !selVend._pcpBound) {
-      selVend._pcpBound = true;
-      selVend.onchange = function() {
-        st.vendedor = String(selVend.value || '');
-        st.page = 1;
-        _pcpRenderTabela();
       };
     }
     if (btnAtt && !btnAtt._pcpBound) {
@@ -20696,26 +20664,27 @@ window._initComissoes = function() {
       + '  <div class="pcp-card" id="pcp-card-concluido"></div>'
       + '</div>'
       + '<div class="pcp-filtros">'
-      + '  <input id="pcp-busca" type="text" placeholder="Buscar por Nº OF, cliente, produto..." />'
-      + '  <select id="pcp-filtro-empresa"><option value="">Todas as empresas</option></select>'
-      + '  <select id="pcp-filtro-vendedor"><option value="">Todos os vendedores</option></select>'
+      + '  <input id="pcp-busca" type="text" placeholder="Buscar OF, cliente ou produto..." />'
       + '  <button id="pcp-btn-atualizar">↻ Atualizar</button>'
       + '</div>'
+      + '<p class="pcp-table-title">Detalhamento de Ordens de Fabricação</p>'
       + '<div class="pcp-table-container">'
       + '  <table id="pcp-table">'
       + '    <thead><tr>'
       + '      <th>Nº OF</th><th>IMG</th><th>Cliente</th><th>Produto</th><th>Qtd</th><th>Vl. Unit.</th><th>Total</th><th>Tamanho</th><th>Cores</th><th>Máquina</th><th>Pedido</th><th>Entrega</th><th>Status</th><th>Ações</th>'
       + '    </tr></thead>'
-      + '    <tbody id="pcp-tbody-custom"><tr><td colspan="14" style="padding:26px;color:#94A3B8;text-align:center">Carregando...</td></tr></tbody>'
+      + '    <tbody id="pcp-tbody-custom"><tr><td colspan="14" style="padding:26px;color:var(--color-text-secondary);text-align:center">Carregando...</td></tr></tbody>'
       + '  </table>'
       + '  <div id="pcp-ver-mais-btn"></div>'
       + '</div>';
 
     var st = _ensurePcpState();
     if (force) st.page = 1;
-    await _pcpFetchOfs(!!force);
+    window._pcpPaginaAtual = st.page || 1;
+    await _pcpFetchTodos(!!force);
+    var inp = document.getElementById('pcp-busca');
+    if (inp) inp.value = String(st.query || '');
     _pcpRenderCards();
-    _pcpBuildFilters();
     _pcpBindUi();
     _pcpRenderTabela();
   };
@@ -20727,6 +20696,12 @@ window._initComissoes = function() {
   if (typeof _goFinal === 'function' && !_goFinal._patchFinal) {
     window.go = function(id) {
       var pid = String(id || '').trim();
+      var pcpEl = document.getElementById('pcp-custom');
+      if (pid !== 'pcp') {
+        if (pcpEl) pcpEl.remove();
+        window._pcpPaginaAtual = 0;
+        if (window._pcpCustomState) window._pcpCustomState.page = 1;
+      }
       if (pid === 'pcp') {
         var rP = _goFinal.apply(this, arguments);
         setTimeout(function() { try { window._renderPcpCustomPage(false); } catch (e) { console.error('[pcp]', e); } }, 80);
