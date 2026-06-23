@@ -1666,157 +1666,67 @@ app.get('/api/comissoes/relatorio', autenticar, cacheMiddleware(30000), async (r
   try { 
     const { mes, ano } = req.query; 
     if (!mes || !ano) return res.json({ ok: false, error: 'mes e ano obrigatorios' }); 
-    const empresaQueryId = resolverEmpresaUUID(req.query.empresa_id || req.query.empresa);
+    const empresaId = resolverEmpresaUUID(req.query.empresa_id || req.query.empresa) || await _resolveEmpresaUuid(req).catch(() => null);
 
     const mesStr = String(mes).padStart(2, '0'); 
     const inicio = `${ano}-${mesStr}-01`; 
     const fimAno = parseInt(mes) === 12 ? parseInt(ano)+1 : parseInt(ano); 
     const fimMes = parseInt(mes) === 12 ? '01' : String(parseInt(mes)+1).padStart(2,'0'); 
     const fim = `${fimAno}-${fimMes}-01`; 
+    let query = supabase
+      .from('ofs')
+      .select('id, of, status, total, data_conclusao, clinome, cliNome, vendedor, vendNome, empresa_id, emp_id, cli_id, qtd, vendedor_id')
+      .eq('status', 'Concluído')
+      .gte('data_conclusao', inicio)
+      .lt('data_conclusao', fim);
+    if (empresaId) query = query.eq('empresa_id', empresaId);
+    const { data: ofs, error } = await query;
+    if (error) return res.json({ ok: false, error: error.message });
 
-    console.log('[COM] buscando', inicio, 'ate', fim); 
+    const todasOFs = Array.isArray(ofs) ? ofs.slice() : [];
+    const porVend = {};
+    let totalGeral = 0;
+    todasOFs.forEach((of) => {
+      const valor = Number(of?.total || 0) || 0;
+      totalGeral += valor;
+      const vid = String(of?.vendedor_id || of?.vendId || of?.vendedor || of?.vendNome || '__sem__').trim() || '__sem__';
+      const nome = String(of?.vendedor || of?.vendNome || 'Sem Vendedor').trim() || 'Sem Vendedor';
+      if (!porVend[vid]) porVend[vid] = { id: vid, nome, comissao_pct: 1, ofs: 0, total: 0 };
+      porVend[vid].ofs += 1;
+      porVend[vid].total += valor;
+    });
 
-    const { data: ofs, error } = await supabase 
-      .from('vw_comissoes') 
-      .select('*') 
-      .gte('data_conclusao', inicio) 
-      .lt('data_conclusao', fim) 
-      .ilike('status', '%conclu%'); 
+    const vendedoresResult = Object.values(porVend)
+      .sort((a, b) => b.total - a.total)
+      .map((v) => ({ ...v, comissao_rs: v.total * (v.comissao_pct / 100) }));
 
-    if (error) { 
-      console.error('[COM] erro view:', error.message); 
-      return res.json({ ok: false, error: error.message }); 
-    } 
+    const ofsDetalhadas = todasOFs.map((of) => {
+      const valor_total = Number(of?.total || 0) || 0;
+      const comissao_pct = 1;
+      return {
+        id: of.id,
+        of: of.of,
+        numero: of.of,
+        status: of.status,
+        total: valor_total,
+        valor_total,
+        data_conclusao: of.data_conclusao,
+        clinome: of.clinome || '—',
+        cliNome: of.cliNome || of.clinome || '—',
+        cliente: of.clinome || of.cliNome || '—',
+        cli_id: of.cli_id || null,
+        vendedor: of.vendedor || of.vendNome || 'Sem Vendedor',
+        vendNome: of.vendNome || of.vendedor || 'Sem Vendedor',
+        vendedor_id: of.vendedor_id || null,
+        quantidade: of.qtd ?? null,
+        qtd: of.qtd ?? null,
+        empresa_id: of.empresa_id || of.emp_id || null,
+        comissao_pct,
+        comissao_rs: valor_total * (comissao_pct / 100)
+      };
+    });
 
-    console.log('[COM] OFs da view:', ofs?.length); 
-
-    let todasOFs = Array.isArray(ofs) ? ofs.slice() : []; 
-    if (empresaQueryId) {
-      todasOFs = todasOFs.filter((of) => {
-        return String(of?.empresa_id || of?.emp_id || '').trim() === String(empresaQueryId).trim();
-      });
-    }
-    try {
-      const missingQtdIds = todasOFs
-        .filter(of => of && of.id && (of.quantidade == null && of.qtd == null && of.qtd_pedida == null))
-        .map(of => String(of.id).trim())
-        .filter(Boolean);
-      if (missingQtdIds.length) {
-        const mapaQtd = {};
-        const chunkSize = 100;
-        for (let i = 0; i < missingQtdIds.length; i += chunkSize) {
-          const chunk = missingQtdIds.slice(i, i + chunkSize);
-          const { data: ofsQtd, error: errQtd } = await supabase
-            .from('ofs')
-            .select('id,quantidade,qtd,qtd_pedida')
-            .in('id', chunk);
-          if (errQtd) continue;
-          (ofsQtd || []).forEach(row => {
-            mapaQtd[String(row.id)] = row;
-          });
-        }
-        todasOFs.forEach(of => {
-          const row = mapaQtd[String(of && of.id || '')];
-          if (!row) return;
-          if (of.quantidade == null && row.quantidade != null) of.quantidade = row.quantidade;
-          if (of.qtd == null && row.qtd != null) of.qtd = row.qtd;
-          if (of.qtd_pedida == null && row.qtd_pedida != null) of.qtd_pedida = row.qtd_pedida;
-        });
-      }
-    } catch (_) {}
-    try {
-      const missingValorIds = todasOFs
-        .filter(of => {
-          if (!of || !of.id) return false;
-          const valorAtual = Number(of.valor_total ?? of.vl_total ?? of.total ?? of.valor_venda ?? 0) || 0;
-          return !(valorAtual > 0);
-        })
-        .map(of => String(of.id).trim())
-        .filter(Boolean);
-      if (missingValorIds.length) {
-        const mapaValor = {};
-        const chunkSize = 100;
-        for (let i = 0; i < missingValorIds.length; i += chunkSize) {
-          const chunk = missingValorIds.slice(i, i + chunkSize);
-          const { data: ofsValor, error: errValor } = await supabase
-            .from('ofs')
-            .select('id,numero,valor_total,valor_venda,total,vl_total,valor_unitario,vl_unit,quantidade,qtd')
-            .in('id', chunk);
-          if (errValor) continue;
-          (ofsValor || []).forEach(row => {
-            mapaValor[String(row.id)] = row;
-          });
-        }
-        todasOFs.forEach(of => {
-          const row = mapaValor[String(of && of.id || '')];
-          if (!row) return;
-          if (!(Number(of.valor_total ?? of.vl_total ?? of.total ?? of.valor_venda ?? 0) > 0)) {
-            if (row.valor_total != null) of.valor_total = row.valor_total;
-            if (of.valor_venda == null && row.valor_venda != null) of.valor_venda = row.valor_venda;
-            if (of.total == null && row.total != null) of.total = row.total;
-            if (of.vl_total == null && row.vl_total != null) of.vl_total = row.vl_total;
-            if (of.valor_unitario == null && row.valor_unitario != null) of.valor_unitario = row.valor_unitario;
-            if (of.vl_unit == null && row.vl_unit != null) of.vl_unit = row.vl_unit;
-            if (of.quantidade == null && row.quantidade != null) of.quantidade = row.quantidade;
-            if (of.qtd == null && row.qtd != null) of.qtd = row.qtd;
-          }
-        });
-      }
-    } catch (_) {}
-
-    const pickValorComissao = (of) => {
-      const direto = Number(of?.valor_total ?? of?.vl_total ?? of?.total ?? of?.valor_venda ?? 0) || 0;
-      if (direto > 0) return direto;
-      const qtd = Number(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0;
-      const vu = Number(of?.valor_unitario ?? of?.vl_unit ?? 0) || 0;
-      return (qtd > 0 && vu > 0) ? (qtd * vu) : 0;
-    };
-
-    // Agrupar por vendedor 
-    const porVend = {}; 
-    let totalGeral = 0; 
-    todasOFs.forEach(of => { 
-      const val = pickValorComissao(of); 
-      console.log('[COMISSOES] OF', of.numero, 'valor:', of.valor_total || of.vl_total || of.total || of.valor_venda || 0); 
-      if (!val) return; 
-      totalGeral += val; 
-      const vid = of.vendedor_id || '__sem__'; 
-      const nome = of.vendedor_nome || 'Sem Vendedor'; 
-      const pct = Number(of.comissao_pct || 1); 
-      if (!porVend[vid]) { 
-        porVend[vid] = { id: vid, nome, comissao_pct: pct, ofs: 0, total: 0 }; 
-      } 
-      porVend[vid].ofs++; 
-      porVend[vid].total += val; 
-    }); 
-
-    const vendedoresResult = Object.values(porVend) 
-      .sort((a,b) => b.total - a.total) 
-      .map(v => ({ ...v, comissao_rs: v.total * (v.comissao_pct/100) })); 
-
-    const ofsDetalhadas = todasOFs.map(of => { 
-      const valor_total = pickValorComissao(of); 
-      const comissao_pct = Number(of.comissao_pct || 1); 
-      const comissao_rs = (of.comissao_rs != null) ? Number(of.comissao_rs || 0) : (valor_total * (comissao_pct/100)); 
-      return { 
-        id: of.id, 
-        numero: of.numero, 
-        cli_id: of.cli_id || of.cliId || of.cliente_id || of.clienteId || null, 
-        vendedor_id: of.vendedor_id || of.vendId || of.vend_id || null, 
-        cliente: of.cliente_nome || of.cliente || '—', 
-        vendedor: of.vendedor_nome || of.vendedor || 'Sem Vendedor', 
-        quantidade: of.quantidade ?? of.qtd ?? of.qtd_pedida ?? null, 
-        valor_total, 
-        comissao_pct, 
-        comissao_rs, 
-        created_at: of.created_at || null, 
-        data_conclusao: of.data_conclusao, 
-        status: of.status || '—' 
-      }; 
-    }); 
-
-    const totalComissao = vendedoresResult.reduce((s,v) => s+v.comissao_rs, 0); 
-    console.log('[COM] FINAL ofs:', todasOFs.length, 'total:', totalGeral); 
+    const totalComissao = vendedoresResult.reduce((s, v) => s + v.comissao_rs, 0);
 
     return res.json({ 
       ok: true, 
@@ -14460,138 +14370,72 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
     if (!supabase) {
       return res.status(503).json({ ok: false, error: 'supabase_not_configured' });
     }
-    const EMPRESA_MAP = {
-      'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-      'oestepack': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
-    };
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    function resolverUUID(val) {
-      if (!val) return 'df5f7672-0a6b-402d-ae65-296554236c31';
-      const s = String(val).trim();
-      if (UUID_REGEX.test(s)) return s;
-      return EMPRESA_MAP[s.toLowerCase()] || 'df5f7672-0a6b-402d-ae65-296554236c31';
+    const empresaId = resolverEmpresaUUID(req.query.empresa_id || req.body?.empresa_id || req.query.empId || req.query.emp_id) || await _resolveEmpresaUuid(req).catch(() => null);
+    if (!empresaId) {
+      return res.status(400).json({ ok: false, error: 'empresa_id_invalido' });
     }
-    const empresaId = resolverUUID(req.query.empresa_id || req.body?.empresa_id);
     const { mes, ano } = req.query;
+    const inicioMes = `${ano}-${String(mes).padStart(2, '0')}-01`;
+    const fimMes = new Date(Number(ano), Number(mes), 0).toISOString().slice(0, 10);
 
-    const { data: gramaturas, error: errGram } = await supabase
-      .from('gramaturas')
-      .select('id, nome, gramatura, valor_unitario')
-      .eq('empresa_id', empresaId);
-
-    if (errGram) throw errGram;
-
-    const mapaGram = {};
-    (gramaturas || []).forEach(g => {
-      if (!g || !g.id || !g.gramatura) return;
-      mapaGram[String(g.id)] = {
-        gram: Number(g.gramatura) || 0,
-        nome: String(g.nome || '').trim(),
-        valor_unitario: Number(g.valor_unitario || 0) || 0
-      };
-    });
-
-    const dataInicio = (mes && ano) ? `${ano}-${String(mes).padStart(2, '0')}-01` : '';
-    const dataFim = (mes && ano) ? new Date(Number(ano), Number(mes), 0).toISOString().slice(0, 10) : '';
     let ofsQuery = supabase
       .from('ofs')
-      .select('id, of, numero, status, preco, total, qtd, clinome, cli_id, gramatura_id, data_conclusao, caixa_comprimento, caixa_largura, caixa_altura, empresa_id, emp_id, deleted_at')
-      .ilike('status', '%conclu%')
-      .is('deleted_at', null);
-    if (empresaId) ofsQuery = ofsQuery.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId}`);
-    if (dataInicio) ofsQuery = ofsQuery.gte('data_conclusao', dataInicio);
-    if (dataFim) ofsQuery = ofsQuery.lte('data_conclusao', dataFim);
-    const { data: ofs, error: ofsError } = await ofsQuery.limit(2000);
-    if (ofsError) throw ofsError;
+      .select('of, qtd, caixa_comprimento, caixa_largura, gramatura_id, total, data_conclusao, clinome, cliNome')
+      .eq('status', 'Concluído')
+      .eq('empresa_id', empresaId)
+      .gte('data_conclusao', inicioMes)
+      .lte('data_conclusao', fimMes);
+    const { data: ofs, error } = await ofsQuery;
+    if (error) throw error;
 
-    let totalTon = 0;
+    const { data: gramaturas } = await supabase
+      .from('gramaturas')
+      .select('id, gramatura, nome')
+      .eq('empresa_id', empresaId);
+
+    const gramaturaMap = {};
+    (gramaturas || []).forEach(g => { gramaturaMap[g.id] = g.gramatura; });
+
     let totalM2 = 0;
-    const detalhes = [];
-
-    (ofs || []).forEach(of => {
-      const comp = Number(of.caixa_comprimento || 0) || 0;
-      const larg = Number(of.caixa_largura || 0) || 0;
-      const qtd = Number(of.qtd || 0) || 0;
-      const gramId = String(of.gramatura_id || '').trim();
-      const gramMeta = gramId ? mapaGram[gramId] : null;
-      const gram = gramMeta ? gramMeta.gram : 0;
-      const gramValUnit = Number(gramMeta?.valor_unitario || 0) || 0;
-
-      const areaM2 = (comp > 0 && larg > 0 && qtd > 0) ? ((comp / 1000) * (larg / 1000) * qtd) : 0;
-      const ton = (areaM2 > 0 && gram > 0) ? ((areaM2 * gram) / 1000000) : 0;
-      totalTon += ton;
-      totalM2 += areaM2;
-
-      detalhes.push({
-        ...of,
-        of: of.of || of.numero || of.id,
-        numero: of.numero || of.of || of.id,
-        cli_id: of.cli_id,
-        cliente: String(of.clinome || '').trim() || '—',
-        clinome: String(of.clinome || '').trim() || '—',
-        qtd, comp, larg, gram,
-        gramatura_id: gramId,
-        preco: Number(of.preco || 0) || 0,
-        total: Number(of.total || 0) || 0,
-        status: String(of.status || '').trim(),
+    let totalValor = 0;
+    const ofsComGramatura = [];
+    const toneladas = (ofs || []).reduce((acc, of) => {
+      const g = gramaturaMap[of.gramatura_id];
+      if (!g || !of.caixa_comprimento || !of.caixa_largura) return acc;
+      const comp = Number(of.caixa_comprimento) / 1000;
+      const larg = Number(of.caixa_largura) / 1000;
+      const qtd = Number(of.qtd) || 0;
+      const m2 = comp * larg * qtd;
+      const ton = (comp * larg * Number(g) * qtd) / 1000000;
+      totalM2 += m2;
+      totalValor += Number(of.total || 0) || 0;
+      ofsComGramatura.push({
+        of: of.of,
+        qtd,
         caixa_comprimento: of.caixa_comprimento,
         caixa_largura: of.caixa_largura,
-        caixa_altura: Number(of.caixa_altura || 0) || 0,
-        empresa_id: of.empresa_id || null,
-        emp_id: of.emp_id || null,
-        deleted_at: of.deleted_at || null,
-        area_m2: areaM2,
-        toneladas: ton,
-        custo_estimado: gramValUnit * ton * 1000,
-        gramatura_nome: gramMeta ? gramMeta.nome : '',
-        data: of.data_conclusao,
-        sem_dimensoes: !(comp > 0 && larg > 0)
+        gramatura_id: of.gramatura_id,
+        gramatura: Number(g) || 0,
+        total: Number(of.total || 0) || 0,
+        data_conclusao: of.data_conclusao,
+        clinome: of.clinome || of.cliNome || '—',
+        cliNome: of.cliNome || of.clinome || '—',
+        total_m2: m2,
+        toneladas: ton
       });
-    });
-
-    const cliIds = [...new Set(detalhes.map(d => d.cli_id).filter(Boolean))];
-    let mapaClientes = {};
-    if (cliIds.length) {
-      const { data: clientes, error: errClientes } = await supabase
-        .from('clientes')
-        .select('id, nome')
-        .in('id', cliIds);
-      if (errClientes) throw errClientes;
-      (clientes || []).forEach(c => { mapaClientes[c.id] = c.nome; });
-    }
-    detalhes.forEach(d => { d.cliente = d.cliente || mapaClientes[d.cli_id] || '—'; });
-
-    const porGramatura = {};
-    detalhes.forEach(d => {
-      const k = String(d.gram) + 'g';
-      if (!porGramatura[k]) porGramatura[k] = { gram: d.gram, toneladas: 0, area_m2: 0, ofs: 0 };
-      porGramatura[k].toneladas += d.toneladas;
-      porGramatura[k].area_m2 += d.area_m2;
-      porGramatura[k].ofs++;
-    });
-
-    const porCliente = {};
-    detalhes.forEach(d => {
-      const k = d.cli_id || 'sem-cliente';
-      if (!porCliente[k]) porCliente[k] = { cliente: d.cliente || '—', toneladas: 0, area_m2: 0, ofs: 0 };
-      porCliente[k].toneladas += d.toneladas;
-      porCliente[k].area_m2 += d.area_m2;
-      porCliente[k].ofs++;
-    });
-
-    const totalCusto = detalhes.reduce((s, d) => s + (Number(d.custo_estimado || 0) || 0), 0);
+      return acc + ton;
+    }, 0);
 
     res.json({
       ok: true,
-      total_toneladas: totalTon,
+      toneladas,
+      totalM2,
+      totalValor,
+      ofsComGramatura: ofsComGramatura.length,
+      total_toneladas: toneladas,
       total_m2: totalM2,
-      total_ofs: detalhes.length,
-      total_custo_estimado: totalCusto,
-      mes: mes ? `${ano}-${String(mes).padStart(2, '0')}` : null,
-      por_gramatura: Object.values(porGramatura).sort((a, b) => b.toneladas - a.toneladas),
-      por_cliente: Object.values(porCliente).sort((a, b) => b.toneladas - a.toneladas).slice(0, 10),
-      detalhes: detalhes.sort((a, b) => b.toneladas - a.toneladas)
+      total_ofs: ofsComGramatura.length,
+      detalhes: ofsComGramatura
     });
   } catch (e) {
     console.error('[toneladas]', e.message);
