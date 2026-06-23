@@ -807,6 +807,10 @@ app.get('/patch.js', (req, res) => {
   }
 });
 
+app.get('/patch2.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'patch2.js'));
+});
+
 app.use(express.static(path.join(__dirname, 'public'), { etag: false, lastModified: false, setHeaders: setNoCache }));
 app.use(express.static(__dirname, { etag: false, lastModified: false, setHeaders: setNoCache }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { etag: false, lastModified: false, setHeaders: setNoCache }));
