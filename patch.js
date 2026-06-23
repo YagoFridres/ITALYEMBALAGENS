@@ -42,6 +42,17 @@ window.fmtData = window.fmtData || function(v) {
   return isNaN(d) ? String(v) : d.toLocaleDateString('pt-BR');
 };
 
+window._textoSeguro = window._textoSeguro || function(val) {
+  if (val === null || val === undefined) return '—';
+  if (typeof val === 'string') return val || '—';
+  if (typeof val === 'number') return String(val);
+  if (Array.isArray(val)) return val.map(function(v) { return window._textoSeguro(v); }).join(', ');
+  if (typeof val === 'object') {
+    return val.nome || val.name || val.codigo || val.code || val.numero || val.descricao || JSON.stringify(val);
+  }
+  return String(val);
+};
+
 (function patchMuteNoisyLogs() {
   try {
     if (window.__patchMuteNoisyLogsInstalled) return;
@@ -1139,22 +1150,12 @@ if (!window._menuPatchFinal) {
     var page = document.getElementById('page-pcp');
     if (!page) return;
     removePcpActionButtons();
-    var anchor = document.getElementById('pcp-dia-resumo') || page.querySelector('.ptoolbar') || page.querySelector('.toolbar') || page.firstElementChild;
-    if (!anchor || document.getElementById('pcp-status-visual-filter')) return;
-    var wrap = document.createElement('div');
-    wrap.id = 'pcp-status-visual-filter';
-    wrap.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin:10px 0';
-    var filters = ['Todas', 'Em Aberto', 'Concluídas', 'Atrasadas', 'Excluídas'];
-    wrap.innerHTML = filters.map(function(f) {
-      return '<button type="button" data-pcp-hotfix-filter="' + esc(f) + '" style="min-height:44px;padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:' + (String(window._pcpStatusVisualFilter || 'Todas') === f ? '#2563eb' : 'rgba(255,255,255,.05)') + ';color:#fff;cursor:pointer">' + esc(f) + '</button>';
-    }).join('');
-    wrap.addEventListener('click', function(e) {
-      var btn = e && e.target && (e.target.closest ? e.target.closest('button[data-pcp-hotfix-filter]') : null);
-      if (!btn) return;
-      window._pcpStatusVisualFilter = String(btn.getAttribute('data-pcp-hotfix-filter') || 'Todas');
-      try { if (typeof window.renderPCP === 'function') window.renderPCP(); } catch (_) {}
-    });
-    anchor.parentElement.insertBefore(wrap, anchor.nextSibling);
+    window._pcpStatusVisualFilter = 'Todas';
+    try { if (typeof window._statusFiltroAtual !== 'undefined') window._statusFiltroAtual = 'todas'; } catch (_) {}
+    try { if (typeof window.filtroStatus !== 'undefined') window.filtroStatus = 'todas'; } catch (_) {}
+    try { if (typeof window.statusAtual !== 'undefined') window.statusAtual = 'todas'; } catch (_) {}
+    var wrap = document.getElementById('pcp-status-visual-filter');
+    if (wrap) wrap.remove();
   }
 
   function getPcpRowsAll() {
@@ -1192,26 +1193,87 @@ if (!window._menuPatchFinal) {
     }
     if (vend) list = list.filter(function(o) { return String(window.ofCampo(o, 'vendedor') || o.vendedor_id || '').trim() === vend; });
     if (emp) list = list.filter(function(o) { return String(o.emp_id || o.empresa_id || o.empId || '').trim() === emp; });
-    var visualFilter = String(window._pcpStatusVisualFilter || 'Todas');
-    list = list.filter(function(o) {
-      var meta = pcpStatusMeta(o);
-      if (visualFilter === 'Em Aberto') return meta.label === 'Em Aberto' || meta.label === 'Urgente';
-      if (visualFilter === 'Concluídas') return meta.label === 'Concluída';
-      if (visualFilter === 'Atrasadas') return meta.label === 'Atrasada' || meta.label === 'Urgente';
-      if (visualFilter === 'Excluídas') return meta.label === 'Excluída';
-      return true;
-    });
+    window._pcpStatusVisualFilter = 'Todas';
     list.sort(function(a, b) {
-      var da = String(a.dia || a.created_at || a.ent || a.data_entrega || '');
-      var db = String(b.dia || b.created_at || b.ent || b.data_entrega || '');
-      if (da !== db) return db.localeCompare(da);
-      return String(b.of || b.numero || '').localeCompare(String(a.of || a.numero || ''));
+      return Number(b.of || b.numero || 0) - Number(a.of || a.numero || 0);
     });
     return list;
   }
 
   function buildPcpStatusTag(meta) {
     return '<span style="display:inline-block;padding:4px 10px;border-radius:999px;background:' + meta.bg + ';color:' + meta.borda + ';border:1px solid ' + meta.borda + ';font-size:11px;font-weight:700">' + esc(meta.label) + '</span>';
+  }
+
+  function corStatus(of) {
+    var meta = pcpStatusMeta(of || {});
+    if (meta.label === 'Atrasada' || meta.label === 'Urgente') return '#ef4444';
+    if (meta.label === 'Em Aberto') return '#3b82f6';
+    if (meta.label === 'Concluída') return '#10b981';
+    return '#6b7280';
+  }
+
+  function ensurePcpRedesignStyle() {
+    if (document.getElementById('patch-pcp-redesign-style')) return;
+    var style = document.createElement('style');
+    style.id = 'patch-pcp-redesign-style';
+    style.textContent = ''
+      + '#page-pcp thead th{background:#0f172a!important;color:#64748b!important;font-size:11px!important;text-transform:uppercase!important;letter-spacing:.05em!important}'
+      + '#page-pcp tbody tr:nth-child(odd){background:#1e293b!important}'
+      + '#page-pcp tbody tr:nth-child(even){background:#0f172a!important}'
+      + '#page-pcp tbody td{border-bottom:1px solid #1e293b!important}'
+      + '#page-pcp .pcp-of-col{font-weight:700!important;color:#60a5fa!important;font-size:15px!important}'
+      + '#page-pcp .pcp-cliente-col{font-weight:600!important;color:#e2e8f0!important}'
+      + '#page-pcp .pcp-entrega-col{color:#f59e0b!important}'
+      + '#page-pcp .pcp-qtd-col{text-align:right!important;color:#34d399!important}'
+      + '#page-pcp .pcp-action-btn{padding:4px 8px!important;font-size:11px!important;border-radius:4px!important;border:none!important;cursor:pointer!important;color:#fff!important}'
+      + '#page-pcp .pcp-action-btn.edit{background:#1d4ed8!important}'
+      + '#page-pcp .pcp-action-btn.clone{background:#059669!important}'
+      + '#page-pcp .pcp-action-btn.urg{background:#d97706!important}'
+      + '#pcp-cards-mobile{display:none;padding:10px 0}'
+      + '@media (max-width: 767px) { #content table { display: none !important; } #pcp-cards-mobile { display: block !important; } }'
+      + '@media (min-width: 768px) { #pcp-cards-mobile { display: none !important; } }';
+    document.head.appendChild(style);
+  }
+
+  function renderPcpCardsMobile(renderList, tbody) {
+    var table = tbody && tbody.closest ? tbody.closest('table') : null;
+    var parent = table && table.parentNode ? table.parentNode : (tbody && tbody.parentNode ? tbody.parentNode : null);
+    if (!parent) return;
+    var host = document.getElementById('pcp-cards-mobile');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'pcp-cards-mobile';
+      parent.appendChild(host);
+    }
+    host.innerHTML = (renderList || []).map(function(of) {
+      var statusColor = corStatus(of);
+      var cliente = window._textoSeguro(of.clinome || of.cliente || of.cliNome);
+      var vendedor = window._textoSeguro(of.vendedor || of.vendedor_nome || of.vendNome);
+      var numero = window._textoSeguro(of.of || of.numero);
+      var qtd = window._textoSeguro(of.qtd || of.quantidade);
+      var entrega = String(of.ent || of.data_entrega || '—').slice(0, 10) || '—';
+      var tamanho = (of.caixa_comprimento && of.caixa_largura) ? (of.caixa_comprimento + '×' + of.caixa_largura + ' mm') : '—';
+      var img = String(of.imgs || of.imagem_url || '').trim();
+      return '<div style="background:#1e293b;border-radius:10px;padding:16px;margin-bottom:12px;border-left:4px solid ' + esc(statusColor) + '">'
+        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+        + '  <div><span style="font-size:18px;font-weight:700;color:#60a5fa">OF ' + esc(numero) + '</span>'
+        + '  <span style="margin-left:8px;background:' + esc(statusColor) + ';color:#fff;font-size:10px;padding:2px 8px;border-radius:20px">' + esc(window._textoSeguro(of.status)) + '</span></div>'
+        + (img ? ('<img src="' + esc(img) + '" style="width:48px;height:48px;object-fit:cover;border-radius:6px">') : '')
+        + '</div>'
+        + '<div style="font-size:14px;color:#e2e8f0;font-weight:600;margin-bottom:4px">' + esc(cliente) + '</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#94a3b8;margin-bottom:12px">'
+        + '<div>📅 Entrega: <span style="color:#e2e8f0">' + esc(entrega) + '</span></div>'
+        + '<div>📦 Qtd: <span style="color:#e2e8f0">' + esc(qtd) + '</span></div>'
+        + '<div>📐 Tamanho: <span style="color:#e2e8f0">' + esc(tamanho) + '</span></div>'
+        + '<div>👤 Vendedor: <span style="color:#e2e8f0">' + esc(vendedor) + '</span></div>'
+        + '</div>'
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+        + '<button onclick="event.stopPropagation();(window.alterarOf||window._abrirModalEdicaoOf) && (window.alterarOf||window._abrirModalEdicaoOf)(\'' + esc(String(of.id || '')) + '\')" style="flex:1;min-width:70px;background:#1d4ed8;color:#fff;border:none;padding:8px;border-radius:6px;cursor:pointer;font-size:13px">✏️ Editar</button>'
+        + '<button onclick="event.stopPropagation();(window.clonarOF||window.pcpAbrirModalClonarOF) && (window.clonarOF ? window.clonarOF(\'' + esc(String(of.id || '')) + '\') : window.pcpAbrirModalClonarOF(\'' + esc(String(of.id || '')) + '\',\'' + esc(String(of.of || of.numero || '')) + '\'))" style="flex:1;min-width:70px;background:#059669;color:#fff;border:none;padding:8px;border-radius:6px;cursor:pointer;font-size:13px">📋 Clonar</button>'
+        + '<button onclick="event.stopPropagation();window.toggleUrgente && window.toggleUrgente(\'' + esc(String(of.id || '')) + '\',' + (isUrgenteOf(of) ? 'false' : 'true') + ',this)" style="flex:1;min-width:70px;background:#d97706;color:#fff;border:none;padding:8px;border-radius:6px;cursor:pointer;font-size:13px">🚨 Urgência</button>'
+        + '</div>'
+        + '</div>';
+    }).join('');
   }
 
   function _pcpHeaderIndexes() {
@@ -1350,6 +1412,7 @@ if (!window._menuPatchFinal) {
     var renderList = list.slice(0, shown);
     var colsMaq = ['CORTE VINCO ROTATIVA', 'IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05'];
     var resumoEl = document.getElementById('pcp-dia-resumo');
+    ensurePcpRedesignStyle();
     if (resumoEl) {
       var concl = list.filter(function(o) { return pcpStatusMeta(o).label === 'Concluída'; }).length;
       var excl = list.filter(function(o) { return pcpStatusMeta(o).label === 'Excluída'; }).length;
@@ -1360,13 +1423,13 @@ if (!window._menuPatchFinal) {
       var numeroOf = String(ofObj && (ofObj.of || ofObj.numero || '') || '').trim();
       if (numeroOf) window._pcpOfsCache[numeroOf] = ofObj;
     });
-    tbody.innerHTML = renderList.length ? renderList.map(function(o) {
+    tbody.innerHTML = renderList.length ? renderList.map(function(o, idxLinha) {
       var meta = pcpStatusMeta(o);
       var cli = (typeof getCli === 'function' ? (getCli(o.cli_id || o.cliId || o.cliente_id) || {}) : {});
       var vend = (typeof getV === 'function' ? (getV(window.ofCampo(o, 'vendedor') || o.vendedor_id || o.vendId) || {}) : {});
-      var cliTxt = String(window.ofCampo(o, 'cliente') || cli.nome || o.cliNome || o.cliente || o.cliente_nome || '—');
+      var cliTxt = window._textoSeguro(window.ofCampo(o, 'cliente') || cli.nome || o.cliNome || o.cliente || o.cliente_nome);
       var cliIdTxt = String(o.cli_id || o.cliId || o.cliente_id || '').trim();
-      var vendTxt = String(o.vendNome || o.vendedor_nome || vend.nome || '—');
+      var vendTxt = window._textoSeguro(o.vendNome || o.vendedor_nome || vend.nome || o.vendedor);
       var fluxoNames = typeof ofFluxoGetNames === 'function' ? (ofFluxoGetNames(o) || []) : [];
       var setMaq = Object.create(null);
       (fluxoNames || []).forEach(function(n) { if (n) setMaq[String(n)] = 1; });
@@ -1383,20 +1446,20 @@ if (!window._menuPatchFinal) {
       var totalVal = parseFloat(o.total || o.valor_total || window.ofCampo(o, 'total') || (preco * qtd) || 0) || 0;
       var vlUnitHtml = preco > 0 ? ('R$ ' + preco.toFixed(2).replace('.', ',')) : '—';
       var totalHtml = totalVal > 0 ? ('R$ ' + totalVal.toFixed(2).replace('.', ',')) : '—';
-      var tamanho = (o.caixa_comprimento && o.caixa_largura) ? (String(o.caixa_comprimento) + '×' + String(o.caixa_largura) + ' mm') : '—';
-      var cores = _fmtCoresPcp(o);
+      var tamanho = (o.caixa_comprimento && o.caixa_largura) ? (String(o.caixa_comprimento) + '×' + String(o.caixa_largura) + ' mm') : window._textoSeguro(o.tamanho);
+      var cores = window._textoSeguro(o.cores_impressao || _fmtCoresPcp(o));
       var imageUrl = String(o.imagem_url || '').trim();
-      var rowStyle = 'background-color:' + meta.bg + ';border-left:4px solid ' + meta.borda + ';border-bottom:1px solid rgba(255,255,255,0.05);';
+      var rowStyle = 'background-color:' + (idxLinha % 2 ? '#1e293b' : '#0f172a') + ';border-left:4px solid ' + corStatus(o) + ';border-bottom:1px solid #1e293b;';
       return '<tr data-of-id="' + esc(String(o.id || '')) + '" data-of-num="' + esc(String(o.of || o.numero || '')) + '" data-of="' + esc(JSON.stringify(o)) + '" data-status-visual="' + esc(meta.label) + '" style="' + rowStyle + '" onclick="selecionarOF && selecionarOF(\'' + esc(String(o.of || o.numero || '')) + '\')">'
         + '<td class="tc" style="width:32px;padding:4px 8px"><input type="checkbox" class="of-seletor" data-of-num="' + esc(String(o.of || o.numero || '')) + '" data-of-id="' + esc(String(o.id || '')) + '" onclick="event.stopPropagation()" onchange="pcpToggleSelecao && pcpToggleSelecao(this)"></td>'
         + '<td class="tc"><input class="seq-inp" type="number" value="' + esc(String(o.seq || 0)) + '" min="1" onclick="event.stopPropagation()" onchange="moverPos && moverPos(\'' + esc(String(o.of || o.numero || '')) + '\',parseInt(this.value,10))"></td>'
         + '<td class="tc">' + esc(typeof fmtDataBR === 'function' ? fmtDataBR(o.dia || '') : String(o.dia || '')) + '</td>'
-        + '<td class="tc">' + esc(typeof fmtDataBR === 'function' ? fmtDataBR(o.ent || o.data_entrega || '') : String(o.ent || o.data_entrega || '')) + '</td>'
-        + '<td class="tc"><span class="of-num">' + esc(String(o.of || o.numero || '—')) + '</span>' + (isUrgenteOf(o) ? '<br><span class="tag t-ug">URG</span>' : '') + '</td>'
+        + '<td class="tc pcp-entrega-col">' + esc(typeof fmtDataBR === 'function' ? fmtDataBR(o.ent || o.data_entrega || '') : String(o.ent || o.data_entrega || '')) + '</td>'
+        + '<td class="tc pcp-of-col"><span class="of-num">' + esc(window._textoSeguro(o.of || o.numero)) + '</span>' + (isUrgenteOf(o) ? '<br><span class="tag t-ug">URG</span>' : '') + '</td>'
         + '<td class="tc">' + (imageUrl ? '<img src="' + esc(imageUrl) + '" data-full-img="' + esc(imageUrl) + '" style="width:40px;height:40px;object-fit:cover;border-radius:4px;cursor:pointer" onclick="event.stopPropagation();window.open(this.getAttribute(\'data-full-img\'),\'_blank\')">' : '<span style="font-size:20px">📦</span>') + '</td>'
-        + '<td>' + window._clienteLinkHtml(cliIdTxt, cliTxt) + (typeof empBadge === 'function' ? ' ' + empBadge(o.empId || o.emp_id || o.empresa_id) : '') + '</td>'
+        + '<td class="pcp-cliente-col">' + window._clienteLinkHtml(cliIdTxt, cliTxt) + (typeof empBadge === 'function' ? ' ' + empBadge(o.empId || o.emp_id || o.empresa_id) : '') + '</td>'
         + '<td style="color:var(--text2)">' + esc(vendTxt) + '</td>'
-        + '<td class="tc">' + esc(String(qtd.toLocaleString('pt-BR'))) + '</td>'
+        + '<td class="tc pcp-qtd-col">' + esc(String(qtd.toLocaleString('pt-BR'))) + '</td>'
         + '<td class="tc" style="font-family:var(--mono);font-weight:900">' + esc(vlUnitHtml) + '</td>'
         + '<td class="tc" style="font-family:var(--mono);font-weight:900;color:var(--green)">' + esc(totalHtml) + '</td>'
         + '<td class="tc">' + esc(tamanho) + '</td>'
@@ -1404,15 +1467,13 @@ if (!window._menuPatchFinal) {
         + mCells
         + '<td class="tc">' + buildPcpStatusTag(meta) + '</td>'
         + '<td><div style="display:flex;gap:3px;flex-wrap:wrap">'
-        + '<button class="btn-icon" onclick="event.stopPropagation();moverOF && moverOF(\'' + esc(String(o.of || o.numero || '')) + '\',-1)" title="Subir">↑</button>'
-        + '<button class="btn-icon" onclick="event.stopPropagation();moverOF && moverOF(\'' + esc(String(o.of || o.numero || '')) + '\',1)" title="Descer">↓</button>'
-        + '<button class="btn-icon" onclick="event.stopPropagation();nextStatus && nextStatus(\'' + esc(String(o.of || o.numero || '')) + '\')" title="Próx. status">▶</button>'
-        + '<button onclick="event.stopPropagation();toggleUrgente && toggleUrgente(\'' + esc(String(o.id || '')) + '\',' + (isUrgenteOf(o) ? 'false' : 'true') + ',this)" style="background:' + (isUrgenteOf(o) ? '#dc2626' : 'rgba(220,38,38,0.15)') + ';color:' + (isUrgenteOf(o) ? '#fff' : '#f43f5e') + ';border:1px solid rgba(220,38,38,0.4);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:600">' + (isUrgenteOf(o) ? '🔴 URGENTE' : 'Urgente') + '</button>'
-        + ((!o.deleted_at && !isCanceladaStatus(o.status)) ? '<button class="btn-icon" onclick="event.stopPropagation();pcpAbrirModalClonarOF && pcpAbrirModalClonarOF(\'' + esc(String(o.id || '')) + '\',\'' + esc(String(o.of || o.numero || '')) + '\')" title="Clonar">Clonar</button>' : '')
-        + (isConcluidaStatus(o.status) ? '<button class="btn-icon" onclick="event.stopPropagation();abrirModalReconcluirOF && abrirModalReconcluirOF(\'' + esc(String(o.id || '')) + '\')" title="Reconcluir">🔄</button>' : '')
+        + '<button class="pcp-action-btn edit" onclick="event.stopPropagation();(window.alterarOf||window._abrirModalEdicaoOf) && (window.alterarOf||window._abrirModalEdicaoOf)(\'' + esc(String(o.id || '')) + '\')">✏️ Editar</button>'
+        + ((!o.deleted_at && !isCanceladaStatus(o.status)) ? '<button class="pcp-action-btn clone" onclick="event.stopPropagation();(window.clonarOF ? window.clonarOF(\'' + esc(String(o.id || '')) + '\') : (window.pcpAbrirModalClonarOF && window.pcpAbrirModalClonarOF(\'' + esc(String(o.id || '')) + '\',\'' + esc(String(o.of || o.numero || '')) + '\')) )">📋 Clonar</button>' : '')
+        + '<button class="pcp-action-btn urg" onclick="event.stopPropagation();toggleUrgente && toggleUrgente(\'' + esc(String(o.id || '')) + '\',' + (isUrgenteOf(o) ? 'false' : 'true') + ',this)">🚨 Urgência</button>'
         + '</div></td>'
         + '</tr>';
     }).join('') : '<tr><td colspan="21" style="text-align:center;padding:32px;color:var(--text3)">Nenhuma OF encontrada nos filtros selecionados.</td></tr>';
+    renderPcpCardsMobile(renderList, tbody);
     ensurePcpMutationObserver();
     _pcpAplicarTbodyDom(tbody);
     try { if (typeof window._pcpSyncPaginacaoUI === 'function') window._pcpSyncPaginacaoUI(); } catch (_) {}
@@ -4176,13 +4237,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           if (pid === 'caixas-perdidas' || pid === 'inconformidades') {
             setTimeout(function() {
               try {
-                if (typeof window.carregarCaixasPerdidas === 'function') {
-                  window.carregarCaixasPerdidas();
-                } else if (typeof window.renderCaixasPerdidas === 'function') {
-                  window.renderCaixasPerdidas();
-                }
+                if (typeof window._renderCaixasPerdidasPage === 'function') window._renderCaixasPerdidasPage();
               } catch (e) { console.error('[CP]', e); }
             }, 100);
+            return;
           }
           if (openCustomPage(pid)) return;
           return origGo.apply(this, arguments);
@@ -12079,13 +12137,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (page === 'caixas-perdidas' || page === 'inconformidades') {
         setTimeout(function() {
           try {
-            if (typeof window.carregarCaixasPerdidas === 'function') {
-              window.carregarCaixasPerdidas();
-            } else if (typeof window.renderCaixasPerdidas === 'function') {
-              window.renderCaixasPerdidas();
-            }
+            if (typeof window._renderCaixasPerdidasPage === 'function') window._renderCaixasPerdidasPage();
           } catch (e) { console.error('[CP]', e); }
         }, 100);
+        return;
       }
       if (page === 'estoque-tintas') {
         var hostTintas = getMainPatchHost('estoque-tintas', '🎨 Estoque de Tintas');
@@ -19193,13 +19248,10 @@ function _ocultarGraficoComissoes() {
         if (pid === 'caixas-perdidas' || pid === 'inconformidades') {
           setTimeout(function() {
             try {
-              if (typeof window.carregarCaixasPerdidas === 'function') {
-                window.carregarCaixasPerdidas();
-              } else if (typeof window.renderCaixasPerdidas === 'function') {
-                window.renderCaixasPerdidas();
-              }
+              if (typeof window._renderCaixasPerdidasPage === 'function') window._renderCaixasPerdidasPage();
             } catch (e) { console.error('[CP]', e); }
           }, 100);
+          return;
         }
         var args = Array.prototype.slice.call(arguments, 1);
         var r = _goOrigComFix.apply(this, [tela].concat(args));
@@ -20240,13 +20292,10 @@ window._initComissoes = function() {
       if (pid === 'caixas-perdidas' || pid === 'inconformidades') {
         setTimeout(function() {
           try {
-            if (typeof window.carregarCaixasPerdidas === 'function') {
-              window.carregarCaixasPerdidas();
-            } else if (typeof window.renderCaixasPerdidas === 'function') {
-              window.renderCaixasPerdidas();
-            }
+            if (typeof window._renderCaixasPerdidasPage === 'function') window._renderCaixasPerdidasPage();
           } catch (e) { console.error('[CP]', e); }
         }, 100);
+        return;
       }
       if (window._patchCustomPages && typeof window._patchCustomPages[pid] === 'function') {
         try { window._patchCustomPages[pid](); } catch (e) { try { console.error(e); } catch (_) {} }
@@ -20255,11 +20304,11 @@ window._initComissoes = function() {
       if (pid === 'caixas-perdidas') {
         try {
           document.querySelectorAll('[id^="page-"]').forEach(function(p) { p.style.display = 'none'; });
-          if (typeof window.carregarCaixasPerdidas === 'function') window.carregarCaixasPerdidas();
-          else if (typeof window.renderCaixasPerdidas === 'function') window.renderCaixasPerdidas();
+          if (typeof window._renderCaixasPerdidasPage === 'function') window._renderCaixasPerdidasPage();
           var pgCP = document.getElementById('page-caixas-perdidas') || document.getElementById('page-inconformidades');
           if (pgCP) pgCP.style.display = 'block';
         } catch (e) { console.error('[go caixas-perdidas]', e); }
+        return;
       }
       return _goFinal.apply(this, arguments);
     };
@@ -21052,4 +21101,195 @@ window._initComissoes = function() {
   setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 5000);
   setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 8000);
   setTimeout(function() { try { _ocultarMenusIndesejados(); } catch (_) {} }, 12000);
+})();
+
+(function patchMenusCaixasPcpOverrides() {
+  function cpEsc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function authHeaders(extra) {
+    var token = '';
+    try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+    var headers = Object.assign({}, extra || {});
+    if (token) headers.Authorization = 'Bearer ' + token;
+    return headers;
+  }
+
+  function removerCaixasPerdidasDeAnalises() {
+    var achouFinanceiro = false;
+    document.querySelectorAll('li').forEach(function(li) {
+      var txt = String(li.textContent || '').trim();
+      if (txt === 'FINANCEIRO' || txt === 'Financeiro') achouFinanceiro = true;
+      if (txt === 'ANÁLISES' || txt === 'Analises' || txt === 'ANALISES') achouFinanceiro = false;
+      if (!achouFinanceiro && txt === 'Caixas Perdidas') li.remove();
+    });
+  }
+
+  function tentarRemoverMenus() {
+    document.querySelectorAll('li, a, div[onclick]').forEach(function(el) {
+      var txt = String(el.textContent || '').trim();
+      if (txt === 'Relatório Mensal' || txt === 'Relatorio Mensal') el.remove();
+    });
+    removerCaixasPerdidasDeAnalises();
+    document.querySelectorAll('button').forEach(function(btn) {
+      var t = String(btn.textContent || '').trim();
+      if (['Todas', 'Em Aberto', 'Concluídas', 'Atrasadas', 'Excluídas'].indexOf(t) >= 0) btn.style.display = 'none';
+    });
+    try { if (typeof window._statusFiltroAtual !== 'undefined') window._statusFiltroAtual = 'todas'; } catch (_) {}
+    try { if (typeof window.filtroStatus !== 'undefined') window.filtroStatus = 'todas'; } catch (_) {}
+    try { if (typeof window.statusAtual !== 'undefined') window.statusAtual = 'todas'; } catch (_) {}
+  }
+
+  tentarRemoverMenus();
+  var obsMenusPatch = new MutationObserver(tentarRemoverMenus);
+  obsMenusPatch.observe(document.body, { childList: true, subtree: true });
+
+  async function _carregarCaixasPerdidas() {
+    var lista = document.getElementById('cp-lista');
+    if (!lista) return;
+    lista.innerHTML = 'Carregando...';
+    try {
+      var empId = (typeof window.getEmpresaId === 'function' ? window.getEmpresaId() : '') || 'df5f7672-0a6b-402d-ae65-296554236c31';
+      var r = await fetch('/api/caixas-perdidas?emp_id=' + encodeURIComponent(empId), { headers: authHeaders() });
+      var dados = await r.json().catch(function() { return []; });
+      var listaDados = Array.isArray(dados) ? dados : (Array.isArray(dados && dados.data) ? dados.data : []);
+      if (!listaDados.length) {
+        lista.innerHTML = '<p style="color:#64748b">Nenhum registro encontrado.</p>';
+        return;
+      }
+      lista.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+        + '<thead><tr style="background:#0f172a;color:#94a3b8">'
+        + '<th style="padding:10px;text-align:left">Data</th>'
+        + '<th style="padding:10px;text-align:left">Cliente</th>'
+        + '<th style="padding:10px;text-align:left">OF</th>'
+        + '<th style="padding:10px;text-align:right">Qtd</th>'
+        + '<th style="padding:10px;text-align:left">Motivo</th>'
+        + '<th style="padding:10px;text-align:left">Responsável</th>'
+        + '<th style="padding:10px;text-align:right">Valor</th>'
+        + '<th style="padding:10px;text-align:left">Obs</th>'
+        + '<th style="padding:10px">Ações</th>'
+        + '</tr></thead><tbody>'
+        + listaDados.map(function(d) {
+          return '<tr style="border-bottom:1px solid #1e293b">'
+            + '<td style="padding:10px;color:#e2e8f0">' + cpEsc(String(d.data || '').slice(0, 10)) + '</td>'
+            + '<td style="padding:10px;color:#e2e8f0">' + cpEsc(d.cliente || d.cliente_nome || '—') + '</td>'
+            + '<td style="padding:10px;color:#94a3b8">' + cpEsc(d.of_numero || '—') + '</td>'
+            + '<td style="padding:10px;color:#e2e8f0;text-align:right">' + cpEsc(d.qtd_perdida || d.quantidade || 0) + '</td>'
+            + '<td style="padding:10px;color:#e2e8f0">' + cpEsc(d.maquina_perda || d.maquina || '—') + '</td>'
+            + '<td style="padding:10px;color:#e2e8f0">' + cpEsc(d.usuario || '—') + '</td>'
+            + '<td style="padding:10px;color:#f59e0b;text-align:right">R$ ' + Number(d.valor_perdido || 0).toFixed(2) + '</td>'
+            + '<td style="padding:10px;color:#64748b;max-width:150px;overflow:hidden;text-overflow:ellipsis">' + cpEsc(d.obs || '') + '</td>'
+            + '<td style="padding:10px;white-space:nowrap">'
+            + '<button onclick="_editarCaixaPerdida(\'' + cpEsc(d.id) + '\')" style="background:#1d4ed8;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;margin-right:4px">✏️</button>'
+            + '<button onclick="_excluirCaixaPerdida(\'' + cpEsc(d.id) + '\')" style="background:#dc2626;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer">🗑️</button>'
+            + '</td></tr>';
+        }).join('')
+        + '</tbody></table>';
+    } catch (e) {
+      lista.innerHTML = '<p style="color:#ef4444">Erro ao carregar: ' + cpEsc(e && e.message || e) + '</p>';
+    }
+  }
+
+  window._renderCaixasPerdidasPage = async function() {
+    document.querySelectorAll('[id^="page-"]').forEach(function(p) { p.style.display = 'none'; });
+    var content = document.getElementById('content');
+    if (!content) return;
+    var pg = document.getElementById('page-caixas-perdidas');
+    if (!pg) {
+      pg = document.createElement('div');
+      pg.id = 'page-caixas-perdidas';
+      content.appendChild(pg);
+    }
+    pg.style.display = 'block';
+    pg.innerHTML = ''
+      + '<div style="padding:24px">'
+      + '<h2 style="color:#fff;margin-bottom:16px">📦 Caixas Perdidas</h2>'
+      + '<button onclick="_novaCaixaPerdida()" style="background:#3b82f6;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-bottom:16px">+ Nova Perda</button>'
+      + '<div id="cp-lista">Carregando...</div>'
+      + '</div>'
+      + '<div id="cp-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center">'
+      + '<div style="background:#1e293b;border-radius:12px;padding:24px;width:90%;max-width:600px;max-height:90vh;overflow-y:auto">'
+      + '<h3 id="cp-modal-titulo" style="color:#fff;margin-bottom:16px">Nova Perda</h3>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+      + '<label style="color:#94a3b8;font-size:12px">Data<input id="cp-data" type="date" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px"></label>'
+      + '<label style="color:#94a3b8;font-size:12px">Cliente<input id="cp-cliente" type="text" placeholder="Nome do cliente" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px"></label>'
+      + '<label style="color:#94a3b8;font-size:12px">Nº OF<input id="cp-of" type="text" placeholder="Opcional" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px"></label>'
+      + '<label style="color:#94a3b8;font-size:12px">Qtd Perdida<input id="cp-qtd" type="number" min="0" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px"></label>'
+      + '<label style="color:#94a3b8;font-size:12px">Motivo<input id="cp-motivo" type="text" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px"></label>'
+      + '<label style="color:#94a3b8;font-size:12px">Responsável<input id="cp-responsavel" type="text" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px"></label>'
+      + '<label style="color:#94a3b8;font-size:12px">Valor Estimado (R$)<input id="cp-valor" type="number" min="0" step="0.01" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px"></label>'
+      + '<label style="color:#94a3b8;font-size:12px;grid-column:1/-1">Observação<textarea id="cp-obs" rows="3" style="display:block;width:100%;margin-top:4px;background:#0f172a;border:1px solid #334155;color:#fff;padding:8px;border-radius:6px;resize:vertical"></textarea></label>'
+      + '</div>'
+      + '<input type="hidden" id="cp-editing-id">'
+      + '<div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">'
+      + '<button onclick="document.getElementById(\'cp-modal\').style.display=\'none\'" style="background:#334155;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer">Cancelar</button>'
+      + '<button onclick="_salvarCaixaPerdida()" style="background:#3b82f6;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer">Salvar</button>'
+      + '</div></div></div>';
+    await _carregarCaixasPerdidas();
+  };
+
+  window._novaCaixaPerdida = function() {
+    document.getElementById('cp-editing-id').value = '';
+    document.getElementById('cp-modal-titulo').textContent = 'Nova Perda';
+    document.getElementById('cp-data').value = new Date().toISOString().slice(0, 10);
+    ['cp-cliente', 'cp-of', 'cp-qtd', 'cp-motivo', 'cp-responsavel', 'cp-valor', 'cp-obs'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    document.getElementById('cp-modal').style.display = 'flex';
+  };
+
+  window._editarCaixaPerdida = function(id) {
+    fetch('/api/caixas-perdidas/' + encodeURIComponent(id), { headers: authHeaders() })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        document.getElementById('cp-editing-id').value = d.id || '';
+        document.getElementById('cp-modal-titulo').textContent = 'Editar Perda';
+        document.getElementById('cp-data').value = String(d.data || '').slice(0, 10);
+        document.getElementById('cp-cliente').value = d.cliente || d.cliente_nome || '';
+        document.getElementById('cp-of').value = d.of_numero || '';
+        document.getElementById('cp-qtd').value = d.qtd_perdida || d.quantidade || '';
+        document.getElementById('cp-motivo').value = d.maquina_perda || d.maquina || '';
+        document.getElementById('cp-responsavel').value = d.usuario || '';
+        document.getElementById('cp-valor').value = d.valor_perdido || '';
+        document.getElementById('cp-obs').value = d.obs || '';
+        document.getElementById('cp-modal').style.display = 'flex';
+      });
+  };
+
+  window._salvarCaixaPerdida = async function() {
+    var id = document.getElementById('cp-editing-id').value;
+    var body = {
+      data: document.getElementById('cp-data').value,
+      cliente: document.getElementById('cp-cliente').value,
+      of_numero: document.getElementById('cp-of').value,
+      qtd_perdida: Number(document.getElementById('cp-qtd').value) || 0,
+      maquina_perda: document.getElementById('cp-motivo').value,
+      usuario: document.getElementById('cp-responsavel').value,
+      valor_perdido: Number(document.getElementById('cp-valor').value) || 0,
+      obs: document.getElementById('cp-obs').value,
+      emp_id: window.getEmpresaId ? window.getEmpresaId() : 'df5f7672-0a6b-402d-ae65-296554236c31'
+    };
+    var url = id ? '/api/caixas-perdidas/' + encodeURIComponent(id) : '/api/caixas-perdidas';
+    var method = id ? 'PUT' : 'POST';
+    await fetch(url, { method: method, headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(body) });
+    document.getElementById('cp-modal').style.display = 'none';
+    await _carregarCaixasPerdidas();
+  };
+
+  window._excluirCaixaPerdida = async function(id) {
+    if (!confirm('Excluir este registro?')) return;
+    await fetch('/api/caixas-perdidas/' + encodeURIComponent(id), { method: 'DELETE', headers: authHeaders() });
+    await _carregarCaixasPerdidas();
+  };
+
+  window._carregarCaixasPerdidas = _carregarCaixasPerdidas;
+  window.renderCaixasPerdidas = window._renderCaixasPerdidasPage;
+  window.carregarCaixasPerdidas = _carregarCaixasPerdidas;
 })();

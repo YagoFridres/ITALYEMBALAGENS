@@ -5567,6 +5567,22 @@ app.get('/api/caixas-perdidas', autenticar, async (req, res) => {
   return app._router.handle(req, res, () => {});
 });
 
+app.get('/api/caixas-perdidas/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    let query = supabase.from('caixas_perdidas').select('*').eq('id', id).limit(1);
+    const empId = resolverEmpresaUUID(req.query?.emp_id || req.query?.empresa_id || req.body?.emp_id || req.body?.empresa_id) || await getEmpresaId(req);
+    if (empId) query = query.or(`emp_id.eq.${empId},empresa_id.eq.${empId}`);
+    const { data, error } = await query.maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ ok: false, error: 'registro não encontrado' });
+    return res.json(data);
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
@@ -5919,6 +5935,35 @@ app.delete('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
     }
     return ok(res, true);
   } catch (e) { err(res, e); }
+});
+
+app.put('/api/caixas-perdidas/:id', authMiddleware, async (req, res) => {
+  try {
+    const payload = { ...req.body };
+    delete payload.id;
+    const empId = resolverEmpresaUUID(payload.emp_id || payload.empresa_id) || await getEmpresaId(req);
+    if (empId && !payload.emp_id) payload.emp_id = empId;
+    let query = supabase.from('caixas_perdidas').update(payload).eq('id', req.params.id).select().single();
+    if (empId) query = query.or(`emp_id.eq.${empId},empresa_id.eq.${empId}`);
+    const { data, error } = await query;
+    if (error) throw error;
+    return res.json(data);
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.delete('/api/caixas-perdidas/:id', authMiddleware, async (req, res) => {
+  try {
+    const empId = resolverEmpresaUUID(req.query?.emp_id || req.query?.empresa_id || req.body?.emp_id || req.body?.empresa_id) || await getEmpresaId(req);
+    let query = supabase.from('caixas_perdidas').delete().eq('id', req.params.id);
+    if (empId) query = query.or(`emp_id.eq.${empId},empresa_id.eq.${empId}`);
+    const { error } = await query;
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.get('/api/amostras', authMiddleware, async (req, res) => {
@@ -14405,26 +14450,25 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
     }
     const { mes, ano } = req.query;
     const EMPRESA_MAP = {
-      'C104': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'E1': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'E2': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-      'E3': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
       'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
       'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-      'oestepack': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+      'oestepack': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
     };
-    function isUUID(v) {
-      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ''));
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    function resolverEmpresaUUIDTon(val) {
+      if (!val) return 'df5f7672-0a6b-402d-ae65-296554236c31';
+      if (UUID_REGEX.test(val)) return val;
+      const lower = String(val).toLowerCase().replace(/^c/, '');
+      if (EMPRESA_MAP[String(val).toLowerCase()]) return EMPRESA_MAP[String(val).toLowerCase()];
+      if (EMPRESA_MAP[lower]) return EMPRESA_MAP[lower];
+      return 'df5f7672-0a6b-402d-ae65-296554236c31';
     }
-    let empId = req.query.empresa_id || req.query.empresa || '';
-    if (empId && !isUUID(empId)) {
-      empId = EMPRESA_MAP[empId] || EMPRESA_MAP[String(empId).toUpperCase()] || EMPRESA_MAP[String(empId).toLowerCase()] || '';
-    }
+    const empId = resolverEmpresaUUIDTon(req.query.empresa_id || req.body?.empresa_id);
 
     const { data: gramaturas, error: errGram } = await supabase
       .from('gramaturas')
       .select('id, nome, gramatura, valor_unitario')
-      .eq('empresa_id', empId || await getEmpresaId(req));
+      .eq('empresa_id', empId);
 
     if (errGram) throw errGram;
 
