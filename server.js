@@ -3563,8 +3563,14 @@ app.get('/api/ofs', authMiddleware, cacheMiddleware(30000), async (req, res) => 
     const empresaFiltro = resolverEmpresaUUID(empresaFiltroRaw);
     const todasEmpresasRaw = String(req.query.todas_empresas ?? req.query.todasEmpresas ?? '').trim().toLowerCase();
     const todasEmpresas = ['1', 'true', 'sim', 'yes'].includes(todasEmpresasRaw) || empresaFiltroRaw === 'todas' || empresaFiltroRaw === 'all';
-    const incluirExcluidasRaw = String(req.query.incluir_excluidas ?? req.query.incluirExcluidas ?? '').trim().toLowerCase();
-    const incluirExcluidas = ['1', 'true', 'sim', 'yes'].includes(incluirExcluidasRaw);
+    let incluirExcluidas = false;
+    try {
+      const incluirExcluidasRaw = String(req.query.incluir_excluidas ?? req.query.incluirExcluidas ?? '').trim().toLowerCase();
+      incluirExcluidas = ['1', 'true', 'sim', 'yes'].includes(incluirExcluidasRaw);
+    } catch (e) {
+      try { console.error('[GET /api/ofs] erro ao tratar incluir_excluidas:', e?.message || e); } catch (_) {}
+      incluirExcluidas = false;
+    }
     const useCache = !afterIso;
     if (!empId && !todasEmpresas) return res.json({ ok: true, data: [], total: 0, offset: 0, limit: 0, hasMore: false });
     const cacheKey = useCache ? ('ofs_v15_' + (todasEmpresas ? 'all' : empId) + '_' + (empresaFiltro || empresaFiltroRaw || '') + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '') + '_' + (incluirExcluidas ? 'all' : 'active')) : '';
@@ -3599,8 +3605,12 @@ app.get('/api/ofs', authMiddleware, cacheMiddleware(30000), async (req, res) => 
       if (clienteFiltro && clienteFiltro !== 'undefined' && clienteFiltro !== 'null' && clienteFiltro !== '[object Object]') {
         query = query.filter('cli_id', 'eq', String(clienteFiltro));
       }
-      if (!incluirExcluidas) {
-        query = query.is('deleted_at', null);
+      try {
+        if (!incluirExcluidas) {
+          query = query.is('deleted_at', null);
+        }
+      } catch (e) {
+        try { console.error('[GET /api/ofs] erro ao aplicar incluir_excluidas:', e?.message || e); } catch (_) {}
       }
       if (afterIso) {
         try {
@@ -3634,7 +3644,11 @@ app.get('/api/ofs', authMiddleware, cacheMiddleware(30000), async (req, res) => 
           else if (empId) query = query.or('empresa_id.eq.' + empId + ',emp_id.eq.' + empId + ',empresa_id.is.null,emp_id.is.null');
         }
         if (clienteFiltro && clienteFiltro !== 'undefined' && clienteFiltro !== 'null' && clienteFiltro !== '[object Object]') query = query.filter('cli_id', 'eq', String(clienteFiltro));
-        if (!incluirExcluidas) query = query.is('deleted_at', null);
+        try {
+          if (!incluirExcluidas) query = query.is('deleted_at', null);
+        } catch (e) {
+          try { console.error('[GET /api/ofs] erro ao aplicar incluir_excluidas fallback:', e?.message || e); } catch (_) {}
+        }
         if (afterIso) {
           try { query = query.gt('created_at', afterIso); } catch (e) { try { console.error('[API OFS] Erro ao aplicar filtro after fallback:', afterIso, e?.message || e); } catch (_) {} }
         }
@@ -14390,12 +14404,27 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       return res.status(503).json({ ok: false, error: 'supabase_not_configured' });
     }
     const { mes, ano } = req.query;
-    const empresaId = resolverEmpresaUUID(req.query.empresa_id || req.query.empresa) || await getEmpresaId(req);
+    const EMPRESA_MAP = {
+      'C104': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'E1': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'E2': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+      'E3': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+      'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+      'oestepack': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+    };
+    function isUUID(v) {
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ''));
+    }
+    let empId = req.query.empresa_id || req.query.empresa || '';
+    if (empId && !isUUID(empId)) {
+      empId = EMPRESA_MAP[empId] || EMPRESA_MAP[String(empId).toUpperCase()] || EMPRESA_MAP[String(empId).toLowerCase()] || '';
+    }
 
     const { data: gramaturas, error: errGram } = await supabase
       .from('gramaturas')
       .select('id, nome, gramatura, valor_unitario')
-      .eq('empresa_id', empresaId);
+      .eq('empresa_id', empId || await getEmpresaId(req));
 
     if (errGram) throw errGram;
 
@@ -14416,7 +14445,7 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       .select('id, of, numero, status, preco, total, qtd, clinome, cli_id, gramatura_id, data_conclusao, caixa_comprimento, caixa_largura, caixa_altura, empresa_id, emp_id, deleted_at')
       .ilike('status', '%conclu%')
       .is('deleted_at', null);
-    if (empresaId) ofsQuery = ofsQuery.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId}`);
+    if (empId) ofsQuery = ofsQuery.or(`empresa_id.eq.${empId},emp_id.eq.${empId}`);
     if (dataInicio) ofsQuery = ofsQuery.gte('data_conclusao', dataInicio);
     if (dataFim) ofsQuery = ofsQuery.lte('data_conclusao', dataFim);
     const { data: ofs, error: ofsError } = await ofsQuery.limit(2000);

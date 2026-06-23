@@ -13,54 +13,73 @@ function norm(t) {
 }
 
 function fixMenus() {
-  var sb = document.querySelector('.sidebar,[class*="sidebar"]');
-  if (!sb) return;
-  var all = Array.from(sb.querySelectorAll('*'));
-  var folhas = all.filter(function(el) {
-    return el.children.length === 0 && (el.textContent||'').trim().length > 1;
-  });
-
-  // Remover Relatório Mensal
-  folhas.forEach(function(el) {
-    if (norm(el.textContent) !== 'relatorio mensal') return;
-    var p = el.parentElement;
-    if (p && p !== sb) p.style.cssText = 'display:none!important';
-    else el.style.cssText = 'display:none!important';
-  });
-
-  // Encontrar grupo Financeiro
-  var grpFin = null;
-  folhas.forEach(function(el) {
-    if (grpFin || norm(el.textContent) !== 'financeiro') return;
-    var p = el.parentElement;
-    for (var i = 0; i < 8; i++) {
-      if (!p || p === sb) break;
-      if (p.querySelectorAll('a,li').length >= 3) { grpFin = p; break; }
-      p = p.parentElement;
+  document.querySelectorAll('a, li, span, div').forEach(function(el) {
+    if (el.children.length > 0) return;
+    var txt = (el.textContent || '').trim();
+    if (/^relat[oó]rio\s*mensal$/i.test(txt)) {
+      var p = el.closest('li') || el.closest('a') || el.parentElement;
+      if (p) p.style.cssText = 'display:none!important';
     }
   });
-
-  // Remover Caixas Perdidas fora do Financeiro
-  folhas.forEach(function(el) {
-    if (norm(el.textContent) !== 'caixas perdidas') return;
-    if (grpFin && grpFin.contains(el)) return;
-    var p = el.parentElement;
-    if (p && p !== sb) p.style.cssText = 'display:none!important';
-    else el.style.cssText = 'display:none!important';
+  var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
+  if (!sidebar) return;
+  var finGroup = null;
+  sidebar.querySelectorAll('*').forEach(function(el) {
+    if (el.children.length > 0 || finGroup) return;
+    if (/^financeiro$/i.test((el.textContent || '').trim())) {
+      var p = el.parentElement;
+      for (var i = 0; i < 8; i++) {
+        if (!p || p === sidebar) break;
+        if (p.children.length >= 3) { finGroup = p; break; }
+        p = p.parentElement;
+      }
+    }
+  });
+  sidebar.querySelectorAll('*').forEach(function(el) {
+    if (el.children.length > 0) return;
+    if (!/^caixas\s*perdidas$/i.test((el.textContent || '').trim())) return;
+    if (finGroup && finGroup.contains(el)) return;
+    var p = el.closest('li') || el.parentElement;
+    if (p) p.style.cssText = 'display:none!important';
   });
 }
 
-// Rodar fixMenus 15x a cada 2s
-var _fmCount = 0;
-var _fmInt = setInterval(function() {
-  _fmCount++;
-  try { fixMenus(); } catch(e) {}
-  if (_fmCount >= 15) clearInterval(_fmInt);
-}, 2000);
-document.addEventListener('DOMContentLoaded', function() {
-  setTimeout(fixMenus, 300);
-  setTimeout(fixMenus, 1000);
-});
+var _fmCount2 = 0;
+var _fmInt2 = setInterval(function() {
+  _fmCount2++;
+  try {
+    document.querySelectorAll('a, li, span, div').forEach(function(el) {
+      if (el.children.length > 0) return;
+      var txt = (el.textContent||'').trim();
+      if (/^relat[oó]rio\s*mensal$/i.test(txt)) {
+        var p = el.closest('li') || el.closest('a') || el.parentElement;
+        if (p) p.style.cssText = 'display:none!important';
+      }
+    });
+    var sidebar = document.querySelector('.sidebar,[class*="sidebar"]');
+    if (!sidebar) return;
+    var finGroup = null;
+    sidebar.querySelectorAll('*').forEach(function(el) {
+      if (el.children.length > 0 || finGroup) return;
+      if (/^financeiro$/i.test((el.textContent||'').trim())) {
+        var p = el.parentElement;
+        for (var i=0;i<8;i++) {
+          if (!p||p===sidebar) break;
+          if (p.children.length>=3){finGroup=p;break;}
+          p=p.parentElement;
+        }
+      }
+    });
+    sidebar.querySelectorAll('*').forEach(function(el) {
+      if (el.children.length > 0) return;
+      if (!/^caixas\s*perdidas$/i.test((el.textContent||'').trim())) return;
+      if (finGroup && finGroup.contains(el)) return;
+      var p = el.closest('li') || el.parentElement;
+      if (p) p.style.cssText = 'display:none!important';
+    });
+  } catch(e) {}
+  if (_fmCount2 >= 60) clearInterval(_fmInt2);
+}, 1000);
 
 // ═══════════════════════════════════════
 // 2. TONELADAS VENDIDAS — fix empresa_id
