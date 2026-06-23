@@ -909,6 +909,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .emp-sel-btn.active-carto{background:var(--emp-carto-soft);border-color:var(--emp-carto);color:var(--emp-carto);}
 .emp-sel-btn.active-oeste{background:var(--emp-oeste-soft);border-color:var(--emp-oeste);color:var(--emp-oeste);}
 .emp-sel-btn.active-todas{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);}
+.btn-todas,[data-empresa="todas"],[data-emp-btn="todas"]{display:none!important;}
 /* ===== PRINT ===== */
 @media print{
   nav,.sidebar,.ptoolbar,.btn,.btn-icon,.modal-overlay,.toast,#tablet-view,.topbar,
@@ -2652,7 +2653,7 @@ function empFilterList(lista, campo){
 function renderEmpBar(){
   const b=document.getElementById('emp-bar');if(!b)return;
   b.innerHTML=`<span style="color:var(--text3);font-family:var(--mono);font-size:.65rem;text-transform:uppercase;letter-spacing:.5px;margin-right:4px">EMPRESA:</span>`
-    +`<button class="emp-sel-btn ${!EMP_FILTRO?'active-todas':''}" data-emp-btn="todas" onclick="setEmpresa(null)">Todas</button>`
+    +`<button class="emp-sel-btn btn-todas ${!EMP_FILTRO?'active-todas':''}" data-emp-btn="todas" data-empresa="todas" onclick="setEmpresa(null)" style="display:none">Todas</button>`
     +EMPRESAS.map(e=>`<button class="emp-sel-btn ${EMP_FILTRO===e.id?'active-'+e.cor:''}" data-emp-btn="${e.id}" onclick="setEmpresa('${e.id}')">${e.nome}</button>`).join('');
 }
 

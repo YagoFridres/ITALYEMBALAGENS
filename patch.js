@@ -1352,21 +1352,13 @@ if (!window._menuPatchFinal) {
     alert('Função Nova OF não encontrada. Recarregue a página.');
   };
   window._pcpTopoAlterarOF = function() {
-    var fns = ['abrirEdicaoOF', '_abrirModalEdicaoOF', 'editarOF', 'alterarOf', 'abrirModalEdicao'];
-    var cb = document.querySelector('#page-pcp input[type=checkbox]:checked');
+    var cb = document.querySelector('#page-pcp tbody input[type=checkbox]:checked, #pcp-tbody input[type=checkbox]:checked');
+    if (!cb) { alert('Selecione uma OF primeiro'); return; }
     var tr = cb && cb.closest ? cb.closest('tr') : null;
-    var ofId = tr && (tr.dataset && (tr.dataset.id || tr.dataset.ofId) || tr.getAttribute('data-id') || tr.getAttribute('data-of-id'));
-    var ofNum = '';
-    try {
-      if (tr) {
-        ofNum = (tr.dataset && tr.dataset.ofNum) || '';
-        if (!ofNum) {
-          var raw = tr.getAttribute('data-of');
-          var ofData = raw ? JSON.parse(raw) : null;
-          ofNum = ofData && ofData.of ? ofData.of : '';
-        }
-      }
-    } catch (_) {}
+    var ofId = tr && tr.dataset ? tr.dataset.id : '';
+    var ofNum = tr && tr.dataset ? tr.dataset.of : '';
+    console.log('[PCP] Alterar OF id:', ofId, 'num:', ofNum);
+    var fns = ['abrirEdicaoOF', '_abrirModalEdicaoOF', 'editarOF', 'alterarOf', 'abrirModalOF'];
     for (var i = 0; i < fns.length; i += 1) {
       var fn = fns[i];
       if (typeof window[fn] === 'function') {
@@ -1376,24 +1368,41 @@ if (!window._menuPatchFinal) {
         } catch (_) {}
       }
     }
-    var btnNativo = document.querySelector('#page-pcp button[onclick*="alterar"], #page-pcp button[onclick*="edicao"]');
-    if (btnNativo) {
-      btnNativo.click();
-      return;
-    }
-    alert('Selecione uma OF e tente novamente');
+    alert('Função de edição não encontrada');
   };
   window._pcpTopoClonarOF = function() {
-    var of = _pcpGetPrimeiraSelecionada() || _pcpGetSelectedOf();
-    if (!of) { alert('Selecione uma OF primeiro'); return; }
-    var ofId = String(of.id || '').trim();
-    if (ofId && typeof window.clonarOF === 'function') window.clonarOF(ofId);
-    else if (typeof window.pcpAbrirModalClonarOF === 'function') window.pcpAbrirModalClonarOF(ofId, of.of);
-    else alert('Selecione uma OF e tente novamente');
+    var cb = document.querySelector('#page-pcp tbody input[type=checkbox]:checked, #pcp-tbody input[type=checkbox]:checked');
+    if (!cb) { alert('Selecione uma OF primeiro'); return; }
+    var tr = cb && cb.closest ? cb.closest('tr') : null;
+    var ofId = tr && tr.dataset ? tr.dataset.id : '';
+    var fns = ['clonarOF', 'pcpClonarOF', 'clonarOf'];
+    for (var i = 0; i < fns.length; i += 1) {
+      var fn = fns[i];
+      if (typeof window[fn] === 'function') {
+        try {
+          window[fn](ofId);
+          return;
+        } catch (_) {}
+      }
+    }
+    alert('Função de clonar não encontrada');
   };
   window._pcpTopoCancelarOF = function() {
-    if (typeof window.cancelarOf === 'function') window.cancelarOf();
-    else alert('Função Cancelar OF não encontrada');
+    var cb = document.querySelector('#page-pcp tbody input[type=checkbox]:checked, #pcp-tbody input[type=checkbox]:checked');
+    if (!cb) { alert('Selecione uma OF primeiro'); return; }
+    var tr = cb && cb.closest ? cb.closest('tr') : null;
+    var ofId = tr && tr.dataset ? tr.dataset.id : '';
+    var fns = ['cancelarOf', 'cancelarOF', 'pcpCancelarOF'];
+    for (var i = 0; i < fns.length; i += 1) {
+      var fn = fns[i];
+      if (typeof window[fn] === 'function') {
+        try {
+          window[fn](ofId);
+          return;
+        } catch (_) {}
+      }
+    }
+    alert('Função de cancelar não encontrada');
   };
   window._pcpTopoSelecionarMaquina = function() {
     var selecionadas = Array.prototype.slice.call(document.querySelectorAll('#page-pcp input[type=checkbox]:checked')).map(function(cb) {
@@ -1639,9 +1648,14 @@ if (!window._menuPatchFinal) {
     var dataStr = '';
     try { dataStr = String(tr.getAttribute('data-of') || '').trim(); } catch (_) {}
     if (dataStr) {
-      try { return JSON.parse(dataStr); } catch (_) {}
+      try {
+        var parsed = JSON.parse(dataStr);
+        if (parsed && typeof parsed === 'object') return parsed;
+        if (parsed != null) dataStr = String(parsed);
+      } catch (_) {}
     }
     var numero = '';
+    if (dataStr) numero = dataStr;
     try { numero = String(tr.getAttribute('data-of-num') || '').trim(); } catch (_) {}
     if (!numero) {
       try { numero = String(((tr.querySelector('.of-num') || {}).textContent) || '').trim(); } catch (_) {}
@@ -1705,6 +1719,19 @@ if (!window._menuPatchFinal) {
 
   function _pcpBindRowClicks(tbody) {
     return tbody;
+  }
+
+  if (!window.__pcpCheckboxVisualBound) {
+    window.__pcpCheckboxVisualBound = true;
+    document.addEventListener('change', function(e) {
+      var target = e && e.target;
+      if (!target || target.type !== 'checkbox' || !(target.closest && target.closest('#page-pcp'))) return;
+      var tr = target.closest('tr');
+      if (tr) {
+        tr.style.outline = target.checked ? '2px solid #3b82f6' : '';
+        tr.style.background = target.checked ? '#1e3a5f' : '';
+      }
+    });
   }
 
   function ensurePcpMutationObserver() {
@@ -1784,17 +1811,19 @@ if (!window._menuPatchFinal) {
       var qtd = Number(o.qtd || 0) || 0;
       var totalVal = Number(o.total || 0) || 0;
       var totalHtml = totalVal > 0 ? ('R$ ' + totalVal.toFixed(2).replace('.', ',')) : '—';
-      var precoVal = Number(o.preco || o.vl_unit || o.valor_unitario || 0) || 0;
-      var precoHtml = precoVal > 0 ? ('R$ ' + precoVal.toFixed(2).replace('.', ',')) : '—';
+      var precoVal = Number(o.preco || 0) || 0;
+      var vlUnit = precoVal > 0
+        ? ('R$ ' + Number(o.preco).toFixed(2).replace('.', ','))
+        : ((Number(o.total || 0) > 0 && Number(o.qtd || 0) > 0) ? ('R$ ' + (Number(o.total || 0) / Number(o.qtd || 0)).toFixed(2).replace('.', ',')) : '—');
       var maqTxt = window._textoSeguro(o.maq);
       var tamanho = (o.caixa_comprimento && o.caixa_largura) ? (String(o.caixa_comprimento) + '×' + String(o.caixa_largura) + ' mm') : '—';
-      var cores = window._textoSeguro(o.cores_impressao);
+      var coresTexto = window._textoSeguro(o.cores_impressao);
       var imageUrl = _corrigirUrlImagem(o.imgs);
       var entregaIso = String(o.ent || '').slice(0, 10);
       var entregaOk = !entregaIso || entregaIso >= new Date().toISOString().slice(0, 10);
       var entregaClass = entregaOk ? 'is-ok' : 'is-late';
       var rowStyle = 'background-color:' + (idxLinha % 2 ? '#1e293b' : '#0f172a') + ';border-left:3px solid ' + statusColor + ';border-bottom:1px solid #1e293b;';
-      return '<tr data-id="' + esc(String(o.id || '')) + '" data-of="' + esc(JSON.stringify(o)) + '" style="' + rowStyle + '">'
+      return '<tr data-id="' + esc(String(o.id || '')) + '" data-of="' + esc(String(o.of || '')) + '" data-seq="' + esc(String(o.seq || '')) + '" data-of-num="' + esc(String(o.of || '')) + '" style="' + rowStyle + '">'
         + '<td class="tc"><div style="display:flex;align-items:center;gap:6px;justify-content:center"><input type="checkbox" class="of-seletor" data-of-num="' + esc(String(o.of || '')) + '" data-of-id="' + esc(String(o.id || '')) + '" onclick="event.stopPropagation()" onchange="pcpToggleSelecao && pcpToggleSelecao(this)"><input class="seq-inp" type="number" value="' + esc(String(o.prioridade || o.seq || 0)) + '" min="1" onclick="event.stopPropagation()" onchange="moverPos && moverPos(\'' + esc(String(o.of || '')) + '\',parseInt(this.value,10))"></div></td>'
         + '<td class="tc">' + (imageUrl ? '<img src="' + esc(imageUrl) + '" data-full-img="' + esc(imageUrl) + '" style="width:40px;height:40px;object-fit:cover;border-radius:4px;cursor:pointer" onclick="event.stopPropagation();window.open(this.getAttribute(\'data-full-img\'),\'_blank\')">' : '—') + '</td>'
         + '<td class="tc pcp-of-col"><span class="of-num">' + esc(window._textoSeguro(o.of)) + '</span>' + ((o.urg || o.urgente) ? '<br><span class="tag t-ug">URG</span>' : '') + '</td>'
@@ -1804,10 +1833,10 @@ if (!window._menuPatchFinal) {
         + '<td style="color:var(--text2)">' + esc(vendTxt) + '</td>'
         + '<td class="tc pcp-qtd-col">' + esc(String(qtd.toLocaleString('pt-BR'))) + '</td>'
         + '<td class="tc" style="font-family:var(--mono);font-weight:900;color:var(--green)">' + esc(totalHtml) + '</td>'
-        + '<td class="tc" style="font-family:var(--mono);color:#94a3b8">' + esc(precoHtml) + '</td>'
+        + '<td class="tc" style="font-family:var(--mono);color:#94a3b8">' + esc(vlUnit) + '</td>'
         + '<td style="color:#94a3b8;font-size:12px">' + esc(maqTxt) + '</td>'
         + '<td class="tc">' + esc(tamanho) + '</td>'
-        + '<td class="tc">' + esc(cores) + '</td>'
+        + '<td class="tc">' + esc(coresTexto) + '</td>'
         + '<td class="tc">' + buildPcpStatusTag({ label: statusTxt, bg: 'transparent', borda: statusColor }) + '</td>'
         + '<td><div style="display:flex;gap:3px;flex-wrap:wrap">'
         + '<button class="pcp-action-btn edit" onclick="event.stopPropagation();(window.alterarOf||window._abrirModalEdicaoOf) && (window.alterarOf||window._abrirModalEdicaoOf)(\'' + esc(String(o.id || '')) + '\')">✏️ Editar</button>'
@@ -16890,26 +16919,39 @@ function _ocultarGraficoComissoes() {
     if (window.__forcaRenderComissoesRodando) return;
     window.__forcaRenderComissoesRodando = true;
     try {
-      if ((!window.OFs || window.OFs.length === 0) && typeof window.carregarOFs === 'function') {
-        await window.carregarOFs();
-        await new Promise(function(r) { setTimeout(r, 800); });
+      if (!window.VENDEDORES || !window.VENDEDORES.length) {
+        if (typeof window.carregarVendedores === 'function') {
+          await window.carregarVendedores();
+          await new Promise(function(r) { setTimeout(r, 400); });
+        }
       }
+
+      if (!window.OFs || window.OFs.length === 0) {
+        if (typeof window.carregarOFs === 'function') {
+          await window.carregarOFs();
+          await new Promise(function(r) { setTimeout(r, 600); });
+        }
+      }
+
+      var hoje = new Date();
+      var mesStr = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+      var inputMes = document.getElementById('com-mes');
+      if (inputMes && !inputMes.value) inputMes.value = mesStr;
 
       window._comissoesData = null;
       window._comissoesAutoInit = false;
-      if (window._comRodando) window._comRodando = false;
+      if (typeof window._comRodando !== 'undefined') window._comRodando = false;
 
       if (typeof window.calcularComissoes === 'function') {
         await window.calcularComissoes();
-        await new Promise(function(r) { setTimeout(r, 600); });
+        await new Promise(function(r) { setTimeout(r, 800); });
       }
-      if (window._comissoesData && typeof window.renderComissoes === 'function') {
-        window.renderComissoes();
-      } else if (typeof window.renderComissoes === 'function') {
+
+      if (typeof window.renderComissoes === 'function') {
         window.renderComissoes();
       }
     } catch (e) {
-      console.error('[Comissões Patch] Erro:', e);
+      console.error('[COM PATCH] Erro em _forcaRenderComissoes:', e);
     } finally {
       window.__forcaRenderComissoesRodando = false;
     }

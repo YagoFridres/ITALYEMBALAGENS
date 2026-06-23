@@ -5490,15 +5490,18 @@ app.get('/api/caixas_perdidas', autenticar, async (req, res) => {
 
 app.get('/api/caixas-perdidas', autenticar, async (req, res) => {
   try {
-    const empresaId = resolverUUID(req.query.empresa_id || req.query.emp_id || 'italy') || await _resolveEmpresaUuid(req).catch(() => null);
+    const empresaId = resolverUUID(req.query.empresa_id || 'italy');
+    console.log('[CAIXAS] empresaId resolvido:', empresaId);
     const { data, error } = await supabase
       .from('caixas_perdidas')
       .select('*')
-      .or(`emp_id.eq.${empresaId},empresa_id.eq.${empresaId}`)
+      .eq('emp_id', empresaId)
       .order('created_at', { ascending: false });
+    console.log('[CAIXAS] error:', error, 'rows:', data?.length);
     if (error) return res.status(500).json({ error: error.message });
     res.json(data || []);
   } catch (e) {
+    console.error('[CAIXAS] exceção:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
