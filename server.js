@@ -5338,9 +5338,41 @@ function _caixasPerdidasDashboardVazio(mesRef = '') {
   };
 }
 
+const CAIXAS_PERDIDAS_UUID_TO_EMP = {
+  'df5f7672-0a6b-402d-ae65-296554236c31': 'E1',
+  'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'E2',
+  'a6e5f5d8-4743-4ebe-885e-c2f0f741a667': 'E3'
+};
+const CAIXAS_PERDIDAS_EMP_TO_UUID = {
+  E1: 'df5f7672-0a6b-402d-ae65-296554236c31',
+  E2: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+  E3: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
+};
+
+function resolverEmpIdCaixasPerdidas(val) {
+  const raw = String(val || '').trim();
+  if (!raw) return 'E1';
+  const upper = raw.toUpperCase();
+  if (CAIXAS_PERDIDAS_EMP_TO_UUID[upper]) return upper;
+  if (CAIXAS_PERDIDAS_UUID_TO_EMP[raw]) return CAIXAS_PERDIDAS_UUID_TO_EMP[raw];
+  const uuid = resolverEmpresaUUID(raw);
+  if (uuid && CAIXAS_PERDIDAS_UUID_TO_EMP[uuid]) return CAIXAS_PERDIDAS_UUID_TO_EMP[uuid];
+  const lower = raw.toLowerCase();
+  if (lower === 'italy' || lower === 'italy embalagens') return 'E1';
+  if (lower === 'cartoeste') return 'E2';
+  if (lower === 'oestepack') return 'E3';
+  return 'E1';
+}
+
+function resolverEmpresaUuidCaixasPerdidas(val) {
+  const empId = resolverEmpIdCaixasPerdidas(val);
+  return CAIXAS_PERDIDAS_EMP_TO_UUID[empId] || null;
+}
+
 async function _listarCaixasPerdidasEnriquecidas(req) {
-  const empresaQuery = resolverEmpresaUUID(req.query?.empresa_id || req.query?.empresa);
-  const empresaId = empresaQuery || await getEmpresaId(req);
+  const empresaRaw = req.query?.empresa_id || req.query?.emp_id || req.query?.empresa || await getEmpresaId(req);
+  const empresaId = resolverEmpIdCaixasPerdidas(empresaRaw);
+  const empresaUuid = resolverEmpresaUuidCaixasPerdidas(empresaRaw);
   const baseCols = [
     'id', 'of_id', 'of_numero', 'produto', 'cliente', 'valor_unitario', 'qtd_perdida', 'valor_perdido',
     'data', 'mes_referencia', 'emp_id', 'empresa_id', 'usuario', 'obs', 'created_at',
@@ -5355,7 +5387,12 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
     const r = await _selectCompatRows(t, baseCols, (q) => {
       let out = q.order('created_at', { ascending: false });
       if (ofId) out = out.eq('of_id', ofId);
-      if (empresaId) out = out.or(`emp_id.eq.${empresaId},empresa_id.eq.${empresaId}`);
+      if (empresaId || empresaUuid) {
+        const filtros = [];
+        if (empresaId) filtros.push(`emp_id.eq.${empresaId}`);
+        if (empresaUuid) filtros.push(`empresa_id.eq.${empresaUuid}`);
+        if (filtros.length) out = out.or(filtros.join(','));
+      }
       return out;
     });
     if (r?.error) {
@@ -5503,8 +5540,9 @@ app.get('/api/caixas_perdidas', autenticar, async (req, res) => {
 
 app.get('/api/caixas-perdidas', autenticar, async (req, res) => {
   try {
-    const empresaId = resolverUUID(req.query.empresa_id || 'italy');
-    console.log('[CAIXAS] empresaId resolvido:', empresaId);
+    const empParam = req.query.empresa_id || req.query.emp_id || 'E1';
+    const empresaId = resolverEmpIdCaixasPerdidas(empParam);
+    console.log('[CAIXAS] emp_id usado:', empresaId);
     const { data, error } = await supabase
       .from('caixas_perdidas')
       .select('*')
@@ -5524,8 +5562,13 @@ app.get('/api/caixas-perdidas/:id', authMiddleware, async (req, res) => {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     let query = supabase.from('caixas_perdidas').select('*').eq('id', id).limit(1);
-    const empId = resolverEmpresaUUID(req.query?.emp_id || req.query?.empresa_id || req.body?.emp_id || req.body?.empresa_id) || await getEmpresaId(req);
-    if (empId) query = query.or(`emp_id.eq.${empId},empresa_id.eq.${empId}`);
+    const empRaw = req.query?.emp_id || req.query?.empresa_id || req.body?.emp_id || req.body?.empresa_id || await getEmpresaId(req);
+    const empId = resolverEmpIdCaixasPerdidas(empRaw);
+    const empUuid = resolverEmpresaUuidCaixasPerdidas(empRaw);
+    const filtros = [];
+    if (empId) filtros.push(`emp_id.eq.${empId}`);
+    if (empUuid) filtros.push(`empresa_id.eq.${empUuid}`);
+    if (filtros.length) query = query.or(filtros.join(','));
     const { data, error } = await query.maybeSingle();
     if (error) throw error;
     if (!data) return res.status(404).json({ ok: false, error: 'registro não encontrado' });
@@ -5718,6 +5761,7 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
     const hoje = new Date().toISOString().slice(0, 10);
     const mes = new Date().toISOString().slice(0, 7);
     const qtdPerdida = Math.trunc(Number(b.qtd_perdida ?? b.quantidade ?? b.caixas_perdidas ?? 0) || 0);
+    const empId = resolverEmpIdCaixasPerdidas(b.emp_id || b.empresa_id || req.query?.emp_id || req.query?.empresa_id || req.usuario?.empresa_id || 'E1');
     const rawOperadores = Array.isArray(b.operadores)
       ? b.operadores
       : (typeof b.operadores === 'string' ? b.operadores.split(/[,;|]+/g) : []);
@@ -5734,7 +5778,7 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
       valor_perdido: Number(b.valor_perdido || 0),
       data: b.data || hoje,
       mes_referencia: b.mes_referencia || mes,
-      emp_id: b.emp_id || '',
+      emp_id: empId,
       usuario: b.usuario || req.usuario?.nome || 'sistema',
       obs: b.obs || '',
       operadores: operadores,
@@ -5784,6 +5828,7 @@ app.post('/api/caixas-perdidas', authMiddleware, async (req, res) => {
     const hoje = new Date().toISOString().slice(0, 10);
     const mes = new Date().toISOString().slice(0, 7);
     const qtdPerdida = Math.trunc(Number(b.qtd_perdida ?? b.quantidade ?? b.caixas_perdidas ?? 0) || 0);
+    const empId = resolverEmpIdCaixasPerdidas(b.emp_id || b.empresa_id || req.query?.emp_id || req.query?.empresa_id || req.usuario?.empresa_id || 'E1');
     const rawOperadores = Array.isArray(b.operadores)
       ? b.operadores
       : (typeof b.operadores === 'string' ? b.operadores.split(/[,;|]+/g) : []);
@@ -5800,7 +5845,7 @@ app.post('/api/caixas-perdidas', authMiddleware, async (req, res) => {
       valor_perdido: Number(b.valor_perdido || 0),
       data: b.data || hoje,
       mes_referencia: b.mes_referencia || mes,
-      emp_id: b.emp_id || '',
+      emp_id: empId,
       usuario: b.usuario || req.usuario?.nome || 'sistema',
       obs: b.obs || '',
       operadores: operadores,
@@ -5848,12 +5893,16 @@ app.put('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
   try {
     const payload = { ...req.body };
     delete payload.id;
-    const { data, error } = await supabase
-      .from('caixas_perdidas')
-      .update(payload)
-      .eq('id', req.params.id)
-      .select()
-      .single();
+    const empRaw = payload.emp_id || payload.empresa_id || req.query?.emp_id || req.query?.empresa_id || await getEmpresaId(req);
+    const empId = resolverEmpIdCaixasPerdidas(empRaw);
+    const empUuid = resolverEmpresaUuidCaixasPerdidas(empRaw);
+    if (empId) payload.emp_id = empId;
+    let query = supabase.from('caixas_perdidas').update(payload).eq('id', req.params.id).select().single();
+    const filtros = [];
+    if (empId) filtros.push(`emp_id.eq.${empId}`);
+    if (empUuid) filtros.push(`empresa_id.eq.${empUuid}`);
+    if (filtros.length) query = query.or(filtros.join(','));
+    const { data, error } = await query;
     if (error) throw error;
     return ok(res, data);
   } catch (e) { return err(res, e); }
@@ -5863,12 +5912,16 @@ app.patch('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
   try {
     const payload = { ...req.body };
     delete payload.id;
-    const { data, error } = await supabase
-      .from('caixas_perdidas')
-      .update(payload)
-      .eq('id', req.params.id)
-      .select()
-      .single();
+    const empRaw = payload.emp_id || payload.empresa_id || req.query?.emp_id || req.query?.empresa_id || await getEmpresaId(req);
+    const empId = resolverEmpIdCaixasPerdidas(empRaw);
+    const empUuid = resolverEmpresaUuidCaixasPerdidas(empRaw);
+    if (empId) payload.emp_id = empId;
+    let query = supabase.from('caixas_perdidas').update(payload).eq('id', req.params.id).select().single();
+    const filtros = [];
+    if (empId) filtros.push(`emp_id.eq.${empId}`);
+    if (empUuid) filtros.push(`empresa_id.eq.${empUuid}`);
+    if (filtros.length) query = query.or(filtros.join(','));
+    const { data, error } = await query;
     if (error) throw error;
     return ok(res, data);
   } catch (e) { return err(res, e); }
@@ -5876,7 +5929,15 @@ app.patch('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
   try {
-    const { error } = await supabase.from('caixas_perdidas').delete().eq('id', req.params.id);
+    const empRaw = req.query?.emp_id || req.query?.empresa_id || req.body?.emp_id || req.body?.empresa_id || await getEmpresaId(req);
+    const empId = resolverEmpIdCaixasPerdidas(empRaw);
+    const empUuid = resolverEmpresaUuidCaixasPerdidas(empRaw);
+    let query = supabase.from('caixas_perdidas').delete().eq('id', req.params.id);
+    const filtros = [];
+    if (empId) filtros.push(`emp_id.eq.${empId}`);
+    if (empUuid) filtros.push(`empresa_id.eq.${empUuid}`);
+    if (filtros.length) query = query.or(filtros.join(','));
+    const { error } = await query;
     if (error) {
       const msg = String(error.message || error);
       const m = msg.toLowerCase();
@@ -5893,10 +5954,15 @@ app.put('/api/caixas-perdidas/:id', authMiddleware, async (req, res) => {
   try {
     const payload = { ...req.body };
     delete payload.id;
-    const empId = resolverEmpresaUUID(payload.emp_id || payload.empresa_id) || await getEmpresaId(req);
-    if (empId && !payload.emp_id) payload.emp_id = empId;
+    const empRaw = payload.emp_id || payload.empresa_id || req.query?.emp_id || req.query?.empresa_id || await getEmpresaId(req);
+    const empId = resolverEmpIdCaixasPerdidas(empRaw);
+    const empUuid = resolverEmpresaUuidCaixasPerdidas(empRaw);
+    if (empId) payload.emp_id = empId;
     let query = supabase.from('caixas_perdidas').update(payload).eq('id', req.params.id).select().single();
-    if (empId) query = query.or(`emp_id.eq.${empId},empresa_id.eq.${empId}`);
+    const filtros = [];
+    if (empId) filtros.push(`emp_id.eq.${empId}`);
+    if (empUuid) filtros.push(`empresa_id.eq.${empUuid}`);
+    if (filtros.length) query = query.or(filtros.join(','));
     const { data, error } = await query;
     if (error) throw error;
     return res.json(data);
@@ -5907,9 +5973,14 @@ app.put('/api/caixas-perdidas/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/caixas-perdidas/:id', authMiddleware, async (req, res) => {
   try {
-    const empId = resolverEmpresaUUID(req.query?.emp_id || req.query?.empresa_id || req.body?.emp_id || req.body?.empresa_id) || await getEmpresaId(req);
+    const empRaw = req.query?.emp_id || req.query?.empresa_id || req.body?.emp_id || req.body?.empresa_id || await getEmpresaId(req);
+    const empId = resolverEmpIdCaixasPerdidas(empRaw);
+    const empUuid = resolverEmpresaUuidCaixasPerdidas(empRaw);
     let query = supabase.from('caixas_perdidas').delete().eq('id', req.params.id);
-    if (empId) query = query.or(`emp_id.eq.${empId},empresa_id.eq.${empId}`);
+    const filtros = [];
+    if (empId) filtros.push(`emp_id.eq.${empId}`);
+    if (empUuid) filtros.push(`empresa_id.eq.${empUuid}`);
+    if (filtros.length) query = query.or(filtros.join(','));
     const { error } = await query;
     if (error) throw error;
     return res.json({ ok: true });
