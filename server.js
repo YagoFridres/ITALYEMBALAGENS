@@ -14,6 +14,14 @@ const { XMLParser } = require('fast-xml-parser');
 let cron = null;
 try { cron = require('node-cron'); } catch (_) { cron = null; }
 
+try {
+  if (!console.__italyPatchedNoProdLog) {
+    console.__italyPatchedNoProdLog = true;
+    console.log = function() {};
+    console.debug = function() {};
+  }
+} catch (_) {}
+
 process.on('uncaughtException', (e) => {
   try { console.error('[CRASH] uncaughtException:', e?.message || e); } catch (_) {}
   try { console.error('[CRASH STACK]', String(e?.stack || '').split('\n').slice(0, 15).join(' | ')); } catch (_) {}
@@ -416,9 +424,16 @@ function _logApiError(tag, req, err, extra) {
 const _serverCache = {};
 const _serverCacheTTL = {};
 const SERVER_CACHE_TTL = 10 * 60 * 1000;
+const _clientesCache = {};
+const _clientesCacheTs = {};
+const CACHE_TTL = 5 * 60 * 1000;
+const _endpointCache = {};
 // Limpar cache ao iniciar
 Object.keys(_serverCache).forEach(k => delete _serverCache[k]);
 Object.keys(_serverCacheTTL).forEach(k => delete _serverCacheTTL[k]);
+Object.keys(_clientesCache).forEach(k => delete _clientesCache[k]);
+Object.keys(_clientesCacheTs).forEach(k => delete _clientesCacheTs[k]);
+Object.keys(_endpointCache).forEach(k => delete _endpointCache[k]);
 
 function cacheGet(key) {
   if (_serverCacheTTL[key] && Date.now() < _serverCacheTTL[key]) return _serverCache[key];
@@ -440,6 +455,38 @@ function cacheClearPrefix(prefix) {
   Object.keys(_serverCacheTTL).forEach((k) => {
     if (k.startsWith(prefix)) cacheClear(k);
   });
+}
+function cacheMiddleware(ttlMs) {
+  return function(req, res, next) {
+    try {
+      const key = String(req.originalUrl || req.url || '');
+      const cached = _endpointCache[key];
+      if (cached && Date.now() - cached.ts < ttlMs) {
+        return res.json(cached.data);
+      }
+      const originalJson = res.json.bind(res);
+      res.json = function(data) {
+        try {
+          if (res.statusCode < 400) _endpointCache[key] = { data, ts: Date.now() };
+        } catch (_) {}
+        return originalJson(data);
+      };
+    } catch (_) {}
+    next();
+  };
+}
+function _clienteCacheGet(id) {
+  const key = String(id || '').trim();
+  if (!key) return null;
+  const ts = Number(_clientesCacheTs[key] || 0);
+  if (!ts || (Date.now() - ts) > CACHE_TTL) return null;
+  return _clientesCache[key] || null;
+}
+function _clienteCacheSet(id, nome) {
+  const key = String(id || '').trim();
+  if (!key) return;
+  _clientesCache[key] = String(nome || '');
+  _clientesCacheTs[key] = Date.now();
 }
 async function resolverEmpresaId(req) {
   const emailRaw = String(
@@ -1577,7 +1624,7 @@ app.get('/api/usuarios/lista', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/comissoes/relatorio', autenticar, async (req, res) => { 
+app.get('/api/comissoes/relatorio', autenticar, cacheMiddleware(30000), async (req, res) => { 
   try { 
     const { mes, ano } = req.query; 
     if (!mes || !ano) return res.json({ ok: false, error: 'mes e ano obrigatorios' }); 
@@ -3448,7 +3495,7 @@ async function buscarTodasOFsPaginadas(montarQuery) {
   return { data: todas, count: countExact || todas.length };
 }
 
-app.get('/api/ofs', authMiddleware, async (req, res) => {
+app.get('/api/ofs', authMiddleware, cacheMiddleware(30000), async (req, res) => {
   try {
     if (!supabase) {
       return res.status(503).json({ ok: false, data: [], total: 0, offset: 0, limit: 0, hasMore: false, error: 'Supabase não configurado.' });
@@ -3576,28 +3623,32 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         const idsValidos = clienteIds
           .map(id => String(id).trim())
           .filter(id => uuidRegex.test(id));
+        const idsValidosPendentes = idsValidos.filter((id) => {
+          const cached = _clienteCacheGet(id);
+          if (cached != null) {
+            mapaClientes[id] = cached;
+            mapaClientes[String(id).toLowerCase()] = cached;
+            mapaClientes[String(id).toUpperCase()] = cached;
+            return false;
+          }
+          return true;
+        });
 
-        console.debug('[CLIENTES] ids para resolver:', idsValidos.length);
-
-        if (idsValidos.length > 0) {
-          for (let i = 0; i < idsValidos.length; i += 50) {
-            const lote = idsValidos.slice(i, i + 50);
+        if (idsValidosPendentes.length > 0) {
+          for (let i = 0; i < idsValidosPendentes.length; i += 50) {
+            const lote = idsValidosPendentes.slice(i, i + 50);
             const { data: clientes, error: errCli } = await supabase
               .from('clientes')
               .select('id, nome, rs')
               .in('id', lote);
-
-            if (errCli) {
-              console.debug('[CLIENTES] erro .in():', errCli.message);
-            }
-
-            console.debug('[CLIENTES] lote', i, 'resultado:', clientes?.length);
+            if (errCli) continue;
 
             (clientes || []).forEach(c => {
               const nomeCliente = c.nome || c.rs || '';
               mapaClientes[c.id] = nomeCliente;
               mapaClientes[String(c.id).toLowerCase()] = nomeCliente;
               mapaClientes[String(c.id).toUpperCase()] = nomeCliente;
+              _clienteCacheSet(c.id, nomeCliente);
             });
           }
         }
@@ -3605,20 +3656,28 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         const idsCodigo = clienteIds
           .map(id => String(id).trim())
           .filter(id => !uuidRegex.test(id) && id.length > 0);
+        const idsCodigoPendentes = idsCodigo.filter((id) => {
+          const cached = _clienteCacheGet(id);
+          if (cached != null) {
+            mapaClientes[id] = cached;
+            return false;
+          }
+          return true;
+        });
 
-        if (idsCodigo.length > 0) {
+        if (idsCodigoPendentes.length > 0) {
           const { data: clientesCod } = await supabase
             .from('clientes')
             .select('id, nome, rs, codigo')
-            .in('codigo', idsCodigo);
+            .in('codigo', idsCodigoPendentes);
           (clientesCod || []).forEach(c => {
             const nome = c.nome || c.rs || '';
             if (c.codigo) mapaClientes[c.codigo] = nome;
             mapaClientes[c.id] = nome;
+            if (c.codigo) _clienteCacheSet(c.codigo, nome);
+            _clienteCacheSet(c.id, nome);
           });
         }
-
-        console.debug('[CLIENTES] mapa size:', Object.keys(mapaClientes).length);
       } catch (e) {
         console.error('[CLIENTES] erro:', e.message);
       }
@@ -7669,7 +7728,7 @@ app.get('/api/cnpj/:cnpj', authMiddleware, async (req, res) => {
   try { return await _cnpjLookupHandler(req, res); } catch (e) { return err(res, e); }
 });
 
-app.get('/api/clientes', authMiddleware, async (req, res) => {
+app.get('/api/clientes', authMiddleware, cacheMiddleware(30000), async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
     const qBusca = String(req.query.search || req.query.q || '').trim();
@@ -7693,15 +7752,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
     let selectSlim = 'id,nome,cnpj,tel,email,cidade,vendedor_id,emp_id,ativo,rs,ie,uf,end,endereco,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId,empresa_id,created_at';
-    const logClientes = (rows) => {
-      try {
-        console.debug('[GET CLIENTES]', {
-          empresa_id: empId || null,
-          total: rows?.length || 0,
-          primeiros: (rows || []).slice(0, 3).map((c) => c?.nome)
-        });
-      } catch (_) {}
-    };
+    const logClientes = () => {};
     const applyClientSlice = (rows) => {
       const list = Array.isArray(rows) ? rows : [];
       return hasPaging ? list.slice(offset, offset + limit) : list;
@@ -7731,7 +7782,6 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
           });
         } catch (_) {}
       }
-      console.debug('[CLIENTES] total:', base.length, 'clientes com OFs:', Object.keys(mapaOfs).length);
       const withCounts = base.map((c) => ({
         ...c,
         total_ofs: mapaOfs[normId(c?.id)] || 0
@@ -7741,9 +7791,6 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         if (diff) return diff;
         return String(a?.nome || '').localeCompare(String(b?.nome || ''));
       });
-      try {
-        console.debug('[CLIENTES TOP 5]', withCounts.slice(0, 5).map((c) => `${String(c?.nome || '')}(${Number(c?.total_ofs || 0)})`));
-      } catch (_) {}
       return withCounts;
     };
     const fetchClientesPages = async (selectCols, col, orderCol, orderAsc) => {
@@ -7767,7 +7814,6 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         if (pageRows.length < pageSize) break;
         from += pageSize;
       }
-      console.debug('[CLIENTES] total buscado:', allRows.length);
       return { data: allRows, error: null };
     };
     for (const col of cols) {
@@ -10783,7 +10829,7 @@ app.post('/api/admin/init-gramaturas', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/gramaturas', authMiddleware, async (req, res) => {
+app.get('/api/gramaturas', authMiddleware, cacheMiddleware(60000), async (req, res) => {
   try {
     const empresaId = 'df5f7672-0a6b-402d-ae65-296554236c31';
     const { data, error } = await supabase

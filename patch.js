@@ -42,6 +42,45 @@ window.fmtData = window.fmtData || function(v) {
   return isNaN(d) ? String(v) : d.toLocaleDateString('pt-BR');
 };
 
+(function patchMuteNoisyLogs() {
+  try {
+    if (window.__patchMuteNoisyLogsInstalled) return;
+    window.__patchMuteNoisyLogsInstalled = true;
+    var blocked = [
+      '[TON DEBUG]',
+      '[COM PATCH]',
+      '[MENU DIAG]',
+      '[TEMA]',
+      '[CLI AC]',
+      '[CLIENTES]',
+      '[COM]',
+      '[PATCH]',
+      '[POLL]'
+    ];
+    function shouldBlock(args) {
+      try {
+        var msg = Array.prototype.map.call(args || [], function(v) { return String(v == null ? '' : v); }).join(' ');
+        return blocked.some(function(tag) { return msg.indexOf(tag) >= 0; });
+      } catch (_) {}
+      return false;
+    }
+    var origLog = console.log && console.log.bind ? console.log.bind(console) : console.log;
+    var origDebug = console.debug && console.debug.bind ? console.debug.bind(console) : console.debug;
+    if (typeof origLog === 'function') {
+      console.log = function() {
+        if (shouldBlock(arguments)) return;
+        return origLog.apply(console, arguments);
+      };
+    }
+    if (typeof origDebug === 'function') {
+      console.debug = function() {
+        if (shouldBlock(arguments)) return;
+        return origDebug.apply(console, arguments);
+      };
+    }
+  } catch (_) {}
+})();
+
 window._initModulo = window._initModulo || function(nome, fn) {
   try {
     var out = fn();
@@ -15325,7 +15364,7 @@ window._mbnActive = function(id) {
     }
   }
 
-  setInterval(_verificarOFsNovas, 30000);
+  setInterval(_verificarOFsNovas, 60000);
 })();
 
 (function patchBackupNotifEChapas() {
