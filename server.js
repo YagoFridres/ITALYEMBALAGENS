@@ -798,6 +798,25 @@ async function getEmpresaId(req) {
   return await resolverEmpresaId(req);
 }
 
+const EMPRESA_UUID_MAP = {
+  E1: 'df5f7672-0a6b-402d-ae65-296554236c31',
+  E2: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+  E3: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+  italy: 'df5f7672-0a6b-402d-ae65-296554236c31',
+  cartoeste: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+  oestepack: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+};
+
+function resolverEmpresaUUID(val) {
+  if (!val || val === 'todas' || val === 'all') return null;
+  const raw = String(val).trim();
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
+  if (isUUID) return raw;
+  return EMPRESA_UUID_MAP[String(raw).toUpperCase()]
+    || EMPRESA_UUID_MAP[String(raw).toLowerCase()]
+    || null;
+}
+
 async function requireAdmin(req, res, next) {
   const fullUrl = String(req.originalUrl || req.url || '');
   const fullPath = fullUrl.split('?')[0].replace(/\/+$/, '');
@@ -1562,6 +1581,7 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
   try { 
     const { mes, ano } = req.query; 
     if (!mes || !ano) return res.json({ ok: false, error: 'mes e ano obrigatorios' }); 
+    const empresaQueryId = resolverEmpresaUUID(req.query.empresa_id || req.query.empresa);
 
     const mesStr = String(mes).padStart(2, '0'); 
     const inicio = `${ano}-${mesStr}-01`; 
@@ -1585,7 +1605,12 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
 
     console.log('[COM] OFs da view:', ofs?.length); 
 
-    const todasOFs = Array.isArray(ofs) ? ofs.slice() : []; 
+    let todasOFs = Array.isArray(ofs) ? ofs.slice() : []; 
+    if (empresaQueryId) {
+      todasOFs = todasOFs.filter((of) => {
+        return String(of?.empresa_id || of?.emp_id || '').trim() === String(empresaQueryId).trim();
+      });
+    }
     try {
       const missingQtdIds = todasOFs
         .filter(of => of && of.id && (of.quantidade == null && of.qtd == null && of.qtd_pedida == null))
@@ -3449,14 +3474,15 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const status = req.query.status;
     const busca = String(req.query.busca || req.query.search || '').trim();
     const clienteFiltro = String((req.query.cli_id || req.query.cliente_id || '') || '').trim();
-    const empresaFiltro = String(req.query.empresa_id || req.query.empresa || '').trim();
+    const empresaFiltroRaw = String(req.query.empresa_id || req.query.empresa || '').trim();
+    const empresaFiltro = resolverEmpresaUUID(empresaFiltroRaw);
     const todasEmpresasRaw = String(req.query.todas_empresas ?? req.query.todasEmpresas ?? '').trim().toLowerCase();
-    const todasEmpresas = ['1', 'true', 'sim', 'yes'].includes(todasEmpresasRaw) || empresaFiltro === 'todas' || empresaFiltro === 'all';
+    const todasEmpresas = ['1', 'true', 'sim', 'yes'].includes(todasEmpresasRaw) || empresaFiltroRaw === 'todas' || empresaFiltroRaw === 'all';
     const incluirExcluidasRaw = String(req.query.incluir_excluidas ?? req.query.incluirExcluidas ?? '').trim().toLowerCase();
     const incluirExcluidas = ['1', 'true', 'sim', 'yes'].includes(incluirExcluidasRaw);
     const useCache = !afterIso;
     if (!empId && !todasEmpresas) return res.json({ ok: true, data: [], total: 0, offset: 0, limit: 0, hasMore: false });
-    const cacheKey = useCache ? ('ofs_v14_' + (todasEmpresas ? 'all' : empId) + '_' + (empresaFiltro || '') + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '') + '_' + (incluirExcluidas ? 'all' : 'active')) : '';
+    const cacheKey = useCache ? ('ofs_v15_' + (todasEmpresas ? 'all' : empId) + '_' + (empresaFiltro || empresaFiltroRaw || '') + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '') + '_' + (incluirExcluidas ? 'all' : 'active')) : '';
     if (useCache) {
       const cached = cacheGet(cacheKey);
       if (cached) return res.json(cached);
@@ -3473,7 +3499,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         .order('created_at', { ascending: false });
 
       if (!todasEmpresas) {
-        if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') {
+        if (empresaFiltro) {
           query = query.or('empresa_id.eq.' + empresaFiltro + ',emp_id.eq.' + empresaFiltro);
         } else if (empId) {
           query = query.or('empresa_id.eq.' + empId + ',emp_id.eq.' + empId + ',empresa_id.is.null,emp_id.is.null');
@@ -3519,7 +3545,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           .select(ofsColsBase, { count: 'exact' })
           .order('created_at', { ascending: false });
         if (!todasEmpresas) {
-          if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') query = query.or('empresa_id.eq.' + empresaFiltro + ',emp_id.eq.' + empresaFiltro);
+          if (empresaFiltro) query = query.or('empresa_id.eq.' + empresaFiltro + ',emp_id.eq.' + empresaFiltro);
           else if (empId) query = query.or('empresa_id.eq.' + empId + ',emp_id.eq.' + empId + ',empresa_id.is.null,emp_id.is.null');
         }
         if (clienteFiltro && clienteFiltro !== 'undefined' && clienteFiltro !== 'null' && clienteFiltro !== '[object Object]') query = query.filter('cli_id', 'eq', String(clienteFiltro));
@@ -5329,7 +5355,8 @@ function _caixasPerdidasDashboardVazio(mesRef = '') {
 }
 
 async function _listarCaixasPerdidasEnriquecidas(req) {
-  const empresaId = await getEmpresaId(req);
+  const empresaQuery = resolverEmpresaUUID(req.query?.empresa_id || req.query?.empresa);
+  const empresaId = empresaQuery || await getEmpresaId(req);
   const baseCols = [
     'id', 'of_id', 'of_numero', 'produto', 'cliente', 'valor_unitario', 'qtd_perdida', 'valor_perdido',
     'data', 'mes_referencia', 'emp_id', 'empresa_id', 'usuario', 'obs', 'created_at',
@@ -14345,7 +14372,7 @@ app.get('/api/analises/toneladas', autenticar, async (req, res) => {
       return res.status(503).json({ ok: false, error: 'supabase_not_configured' });
     }
     const { mes, ano } = req.query;
-    const empresaId = await getEmpresaId(req);
+    const empresaId = resolverEmpresaUUID(req.query.empresa_id || req.query.empresa) || await getEmpresaId(req);
 
     const { data: gramaturas, error: errGram } = await supabase
       .from('gramaturas')
