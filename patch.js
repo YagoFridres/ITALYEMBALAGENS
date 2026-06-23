@@ -1031,6 +1031,12 @@ if (!window._menuPatchFinal) {
         var btn = ev.target && ev.target.closest ? ev.target.closest('button,[role="button"],a') : null;
         if (!btn) return;
         var txt = normText(btn.textContent);
+        if (txt.indexOf('ver mais') >= 0) {
+          try { if (ev && typeof ev.preventDefault === 'function') ev.preventDefault(); } catch (_) {}
+          try { if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation(); } catch (_) {}
+          try { if (typeof window._pcpVerMais === 'function') window._pcpVerMais(); } catch (_) {}
+          return;
+        }
         if (txt === 'atualizar') {
           try {
             ensurePcpRowsCache(true).then(function() {
@@ -1048,6 +1054,76 @@ if (!window._menuPatchFinal) {
     }, true);
   }
 
+  window._pcpVerMais = function() {
+    try {
+      var pag = parseInt(window._pcpPaginaAtual || 1, 10) || 1;
+      pag += 1;
+      window._pcpPaginaAtual = pag;
+      var need = pag * 10;
+      var have = Array.isArray(window._pcpAllRowsCache) ? window._pcpAllRowsCache.length : 0;
+      if (have >= need) {
+        try { patchPcpRowsAndStatus(); } catch (_) {}
+        return;
+      }
+      var offset = have;
+      fetchJsonPatch('/api/ofs?limit=200&offset=' + encodeURIComponent(String(offset)) + '&incluir_excluidas=1', { headers: tokenHeaders() })
+        .then(function(out) {
+          var arr = (out && out.json && (out.json.data || out.json.ofs)) || [];
+          if (!Array.isArray(arr) || !arr.length) return null;
+          window._pcpAllRowsCache = Array.isArray(window._pcpAllRowsCache) ? window._pcpAllRowsCache : [];
+          arr.forEach(function(of) { window._pcpAllRowsCache.push(of); });
+          window._pcpAllRowsCacheTs = Date.now();
+          window._pcpOfsCache = window._pcpOfsCache || {};
+          arr.forEach(function(of) {
+            var numero = String(of && (of.of || of.numero || '') || '').trim();
+            if (numero) window._pcpOfsCache[numero] = of;
+          });
+          return true;
+        })
+        .finally(function() {
+          try { patchPcpRowsAndStatus(); } catch (_) {}
+        });
+    } catch (_) {
+      try { patchPcpRowsAndStatus(); } catch (__) {}
+    }
+  };
+
+  window._pcpAbrirOFRapida = function(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return;
+    if (typeof window.abrirModalOF === 'function') return window.abrirModalOF(sid);
+    if (typeof window.abrirNovaOfRapida === 'function') {
+      try { window._ofRapidaEditandoId = sid; } catch (_) {}
+      return window.abrirNovaOfRapida();
+    }
+  };
+
+  window._pcpClonarOf = function(id, numero) {
+    var sid = String(id || '').trim();
+    if (!sid) return;
+    if (typeof window.pcpAbrirModalClonarOF === 'function') return window.pcpAbrirModalClonarOF(sid, String(numero || ''));
+    if (typeof window.__patchCloneOF === 'function') return window.__patchCloneOF(sid);
+    if (typeof window._clonarOf === 'function') return window._clonarOf(sid);
+  };
+
+  window._pcpAlterarOf = function(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return;
+    if (typeof window.alterarOf === 'function') return window.alterarOf(sid);
+    if (typeof window.editarOf === 'function') return window.editarOf(sid);
+  };
+
+  window._pcpExcluirOf = function(id, numero) {
+    var sid = String(id || '').trim();
+    if (!sid) return;
+    var num = String(numero || '').trim();
+    var ok = false;
+    try { ok = window.confirm('Excluir/Cancelar OF ' + (num ? ('#' + num) : '') + '?'); } catch (_) { ok = true; }
+    if (!ok) return;
+    if (typeof window.cancelarOf === 'function') return window.cancelarOf(sid);
+    if (typeof window.excluirOf === 'function') return window.excluirOf(sid);
+  };
+
   function removePcpActionButtons() {
     var page = document.getElementById('page-pcp');
     if (!page) return;
@@ -1060,23 +1136,17 @@ if (!window._menuPatchFinal) {
   }
 
   function _fmtCoresPcp(of) {
-    var raw = of && of.cores_impressao;
-    if (!raw) return '—';
+    return _fmtJson(of && of.cores_impressao);
+  }
+
+  function _fmtJson(v) {
+    if (!v) return '—';
     try {
-      var c = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      if (Array.isArray(c)) return c.map(function(v) { return String(v == null ? '' : v).trim(); }).filter(Boolean).join(', ') || '—';
-      if (c && typeof c === 'object') {
-        return Object.keys(c).map(function(k) {
-          var v = c[k];
-          if (v == null || v === false) return '';
-          if (typeof v === 'object') return '';
-          return String(v).trim();
-        }).filter(Boolean).join(', ') || '—';
-      }
-      return String(c || '—');
-    } catch (_) {
-      return String(raw || '—');
-    }
+      var a = typeof v === 'string' ? JSON.parse(v) : v;
+      if (Array.isArray(a)) return a.filter(Boolean).join(', ');
+      if (typeof a === 'object') return Object.values(a).filter(Boolean).join(', ');
+      return String(a);
+    } catch(e) { return String(v); }
   }
 
   function _listarMaquinasPcp(maq) {
@@ -1109,8 +1179,7 @@ if (!window._menuPatchFinal) {
   }
 
   function _exibirMaquinas(maq) {
-    var lista = _listarMaquinasPcp(maq);
-    return lista.length ? lista.join(', ') : '—';
+    return _fmtJson(maq);
   }
 
   function ensurePcpExtraHeaders() {
@@ -1136,25 +1205,10 @@ if (!window._menuPatchFinal) {
   }
 
   function ensurePcpStatusFilterUi() {
-    var page = document.getElementById('page-pcp');
-    if (!page) return;
-    removePcpActionButtons();
-    var anchor = document.getElementById('pcp-dia-resumo') || page.querySelector('.ptoolbar') || page.querySelector('.toolbar') || page.firstElementChild;
-    if (!anchor || document.getElementById('pcp-status-visual-filter')) return;
-    var wrap = document.createElement('div');
-    wrap.id = 'pcp-status-visual-filter';
-    wrap.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin:10px 0';
-    var filters = ['Todas', 'Em Aberto', 'Concluídas', 'Atrasadas', 'Excluídas'];
-    wrap.innerHTML = filters.map(function(f) {
-      return '<button type="button" data-pcp-hotfix-filter="' + esc(f) + '" style="min-height:44px;padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:' + (String(window._pcpStatusVisualFilter || 'Todas') === f ? '#2563eb' : 'rgba(255,255,255,.05)') + ';color:#fff;cursor:pointer">' + esc(f) + '</button>';
-    }).join('');
-    wrap.addEventListener('click', function(e) {
-      var btn = e && e.target && (e.target.closest ? e.target.closest('button[data-pcp-hotfix-filter]') : null);
-      if (!btn) return;
-      window._pcpStatusVisualFilter = String(btn.getAttribute('data-pcp-hotfix-filter') || 'Todas');
-      try { if (typeof window.renderPCP === 'function') window.renderPCP(); } catch (_) {}
-    });
-    anchor.parentElement.insertBefore(wrap, anchor.nextSibling);
+    try { removePcpActionButtons(); } catch (_) {}
+    var old = document.getElementById('pcp-status-visual-filter');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    try { window._pcpStatusVisualFilter = 'Todas'; } catch (_) {}
   }
 
   function getPcpRowsAll() {
@@ -1192,15 +1246,6 @@ if (!window._menuPatchFinal) {
     }
     if (vend) list = list.filter(function(o) { return String(window.ofCampo(o, 'vendedor') || o.vendedor_id || '').trim() === vend; });
     if (emp) list = list.filter(function(o) { return String(o.emp_id || o.empresa_id || o.empId || '').trim() === emp; });
-    var visualFilter = String(window._pcpStatusVisualFilter || 'Todas');
-    list = list.filter(function(o) {
-      var meta = pcpStatusMeta(o);
-      if (visualFilter === 'Em Aberto') return meta.label === 'Em Aberto' || meta.label === 'Urgente';
-      if (visualFilter === 'Concluídas') return meta.label === 'Concluída';
-      if (visualFilter === 'Atrasadas') return meta.label === 'Atrasada' || meta.label === 'Urgente';
-      if (visualFilter === 'Excluídas') return meta.label === 'Excluída';
-      return true;
-    });
     list.sort(function(a, b) {
       var da = String(a.dia || a.created_at || a.ent || a.data_entrega || '');
       var db = String(b.dia || b.created_at || b.ent || b.data_entrega || '');
@@ -1211,7 +1256,22 @@ if (!window._menuPatchFinal) {
   }
 
   function buildPcpStatusTag(meta) {
-    return '<span style="display:inline-block;padding:4px 10px;border-radius:999px;background:' + meta.bg + ';color:' + meta.borda + ';border:1px solid ' + meta.borda + ';font-size:11px;font-weight:700">' + esc(meta.label) + '</span>';
+    return '<span class="pcp-status-badge" style="display:inline-block;background:' + meta.bg + ';color:' + meta.borda + ';border:1px solid ' + meta.borda + '">' + esc(meta.label) + '</span>';
+  }
+
+  function ensurePcpModernTableStyle() {
+    if (document.getElementById('pcp-modern-table-style')) return;
+    var st = document.createElement('style');
+    st.id = 'pcp-modern-table-style';
+    st.textContent = ''
+      + '#pcp-tbody thead tr, .pcp-table thead tr { background: #0F172A !important; border-bottom: 2px solid #1E293B !important; }'
+      + '#pcp-tbody thead th, .pcp-table thead th { color: #94A3B8 !important; font-size: 11px !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; padding: 10px 8px !important; }'
+      + '#pcp-tbody tr[data-patched], .pcp-table tbody tr { transition: filter 0.15s !important; border-bottom: 1px solid rgba(255,255,255,0.04) !important; }'
+      + '#pcp-tbody tr[data-patched]:hover, .pcp-table tbody tr:hover { filter: brightness(1.15) !important; }'
+      + '#pcp-tbody td, .pcp-table tbody td { padding: 8px 8px !important; font-size: 12px !important; vertical-align: middle !important; }'
+      + '.pcp-status-badge { padding: 2px 8px !important; border-radius: 99px !important; font-size: 10px !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; }'
+      + '.pcp-of-num { font-weight: 700 !important; font-size: 13px !important; color: #60A5FA !important; }';
+    document.head.appendChild(st);
   }
 
   function _pcpHeaderIndexes() {
@@ -1308,19 +1368,7 @@ if (!window._menuPatchFinal) {
       tbody._patchPcpObserverTimer = setTimeout(function() {
         try {
           window._patchPcpRodando = true;
-          mutations.forEach(function(m) {
-            Array.prototype.slice.call(m.addedNodes || []).forEach(function(node) {
-              if (!node || !node.tagName) return;
-              if (String(node.tagName).toUpperCase() === 'TR') {
-                try { _pcpAplicarLinhaDom(node); } catch (_) {}
-              } else if (node.querySelectorAll) {
-                Array.prototype.slice.call(node.querySelectorAll('tr')).forEach(function(tr) {
-                  try { _pcpAplicarLinhaDom(tr); } catch (_) {}
-                });
-              }
-            });
-          });
-          try { patchPcpRowsAndStatus(); } catch (_) {}
+          try { patchPcpRowsAndStatus({ patchOnly: true }); } catch (_) {}
         } finally {
           window._patchPcpRodando = false;
           _patchPcpObserverRodando = false;
@@ -1332,7 +1380,7 @@ if (!window._menuPatchFinal) {
     tbody._patchPcpObserver = obs;
   }
 
-  function patchPcpRowsAndStatus() {
+  function patchPcpRowsAndStatus(opts) {
     if (window._patchPcpExecutando) return;
     window._patchPcpExecutando = true;
     try {
@@ -1340,13 +1388,33 @@ if (!window._menuPatchFinal) {
     if (!tbody) return;
     ensurePcpStatusFilterUi();
     ensurePcpExtraHeaders();
+    ensurePcpModernTableStyle();
+    try {
+      var table = document.querySelector('#page-pcp table');
+      if (table && table.classList) table.classList.add('pcp-table');
+    } catch (_) {}
+
+    var linhas = document.querySelectorAll('#pcp-tbody tr:not([data-patched])');
+    Array.prototype.slice.call(linhas).forEach(function(tr) {
+      try { tr.setAttribute('data-patched', '1'); } catch (_) {}
+      try { _pcpAplicarLinhaDom(tr); } catch (_) {}
+    });
+    if (opts && opts.patchOnly) return;
+
     var all = getPcpRowsAll();
     if (!all.length) return;
     var list = getPcpScopeRows(all);
-    var pcpPag = typeof window._pcpAtualizarPaginacao === 'function'
-      ? window._pcpAtualizarPaginacao(list.length, ['hotfix-status', window.PCP_DIA_ATUAL || '', document.getElementById('pcp-busca') && document.getElementById('pcp-busca').value || '', window._pcpStatusVisualFilter || 'Todas'].join('|'))
-      : { shown: 10, limit: 10 };
-    var shown = pcpPag && (pcpPag.shown || pcpPag.limit) ? (pcpPag.shown || pcpPag.limit) : 10;
+    var diaAtual = String(window.PCP_DIA_ATUAL || '').trim();
+    var buscaKey = String((document.getElementById('pcp-busca') || {}).value || '').trim();
+    var vendKey = String((document.getElementById('pcp-vend') || {}).value || '').trim();
+    var empKey = String((document.getElementById('pcp-emp') || {}).value || '').trim();
+    var key = ['pcp', diaAtual, buscaKey, vendKey, empKey].join('|');
+    if (window._pcpLastRenderKey !== key) {
+      window._pcpLastRenderKey = key;
+      window._pcpPaginaAtual = 1;
+    }
+    if (!window._pcpPaginaAtual || window._pcpPaginaAtual < 1) window._pcpPaginaAtual = 1;
+    var shown = window._pcpPaginaAtual * 10;
     var renderList = list.slice(0, shown);
     var colsMaq = ['CORTE VINCO ROTATIVA', 'IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05'];
     var resumoEl = document.getElementById('pcp-dia-resumo');
@@ -1360,7 +1428,11 @@ if (!window._menuPatchFinal) {
       var numeroOf = String(ofObj && (ofObj.of || ofObj.numero || '') || '').trim();
       if (numeroOf) window._pcpOfsCache[numeroOf] = ofObj;
     });
-    tbody.innerHTML = renderList.length ? renderList.map(function(o) {
+    var shouldRender = (tbody._pcpRenderedKey !== key) || (tbody._pcpRenderedShown !== shown);
+    if (shouldRender) {
+      tbody._pcpRenderedKey = key;
+      tbody._pcpRenderedShown = shown;
+      tbody.innerHTML = renderList.length ? renderList.map(function(o) {
       var meta = pcpStatusMeta(o);
       var cli = (typeof getCli === 'function' ? (getCli(o.cli_id || o.cliId || o.cliente_id) || {}) : {});
       var vend = (typeof getV === 'function' ? (getV(window.ofCampo(o, 'vendedor') || o.vendedor_id || o.vendId) || {}) : {});
@@ -1373,7 +1445,7 @@ if (!window._menuPatchFinal) {
       _listarMaquinasPcp(o.maq).forEach(function(n) { if (n) setMaq[String(n)] = 1; });
       var mCells = colsMaq.map(function(col) {
         var badgeTxt = setMaq[col] ? (col === 'CORTE VINCO ROTATIVA' ? 'CVR' : col.replace('IMP ', 'I')) : '';
-        var titleTxt = setMaq[col] ? _exibirMaquinas(o.maq) : '';
+        var titleTxt = setMaq[col] ? _fmtJson(o.maq) : '';
         return setMaq[col]
           ? '<td class="tc" title="' + esc(titleTxt) + '"><span class="badge-maquina-alocada">' + esc(badgeTxt) + '</span></td>'
           : '<td class="tc"></td>';
@@ -1384,7 +1456,7 @@ if (!window._menuPatchFinal) {
       var vlUnitHtml = preco > 0 ? ('R$ ' + preco.toFixed(2).replace('.', ',')) : '—';
       var totalHtml = totalVal > 0 ? ('R$ ' + totalVal.toFixed(2).replace('.', ',')) : '—';
       var tamanho = (o.caixa_comprimento && o.caixa_largura) ? (String(o.caixa_comprimento) + '×' + String(o.caixa_largura) + ' mm') : '—';
-      var cores = _fmtCoresPcp(o);
+      var cores = _fmtJson(o.cores_impressao);
       var imageUrl = String(o.imagem_url || '').trim();
       var rowStyle = 'background-color:' + meta.bg + ';border-left:4px solid ' + meta.borda + ';border-bottom:1px solid rgba(255,255,255,0.05);';
       return '<tr data-of-id="' + esc(String(o.id || '')) + '" data-of-num="' + esc(String(o.of || o.numero || '')) + '" data-of="' + esc(JSON.stringify(o)) + '" data-status-visual="' + esc(meta.label) + '" style="' + rowStyle + '" onclick="selecionarOF && selecionarOF(\'' + esc(String(o.of || o.numero || '')) + '\')">'
@@ -1392,7 +1464,7 @@ if (!window._menuPatchFinal) {
         + '<td class="tc"><input class="seq-inp" type="number" value="' + esc(String(o.seq || 0)) + '" min="1" onclick="event.stopPropagation()" onchange="moverPos && moverPos(\'' + esc(String(o.of || o.numero || '')) + '\',parseInt(this.value,10))"></td>'
         + '<td class="tc">' + esc(typeof fmtDataBR === 'function' ? fmtDataBR(o.dia || '') : String(o.dia || '')) + '</td>'
         + '<td class="tc">' + esc(typeof fmtDataBR === 'function' ? fmtDataBR(o.ent || o.data_entrega || '') : String(o.ent || o.data_entrega || '')) + '</td>'
-        + '<td class="tc"><span class="of-num">' + esc(String(o.of || o.numero || '—')) + '</span>' + (isUrgenteOf(o) ? '<br><span class="tag t-ug">URG</span>' : '') + '</td>'
+        + '<td class="tc"><span class="of-num pcp-of-num">' + esc(String(o.of || o.numero || '—')) + '</span>' + (isUrgenteOf(o) ? '<br><span class="tag t-ug">URG</span>' : '') + '</td>'
         + '<td class="tc">' + (imageUrl ? '<img src="' + esc(imageUrl) + '" data-full-img="' + esc(imageUrl) + '" style="width:40px;height:40px;object-fit:cover;border-radius:4px;cursor:pointer" onclick="event.stopPropagation();window.open(this.getAttribute(\'data-full-img\'),\'_blank\')">' : '<span style="font-size:20px">📦</span>') + '</td>'
         + '<td>' + window._clienteLinkHtml(cliIdTxt, cliTxt) + (typeof empBadge === 'function' ? ' ' + empBadge(o.empId || o.emp_id || o.empresa_id) : '') + '</td>'
         + '<td style="color:var(--text2)">' + esc(vendTxt) + '</td>'
@@ -1403,19 +1475,21 @@ if (!window._menuPatchFinal) {
         + '<td class="tc">' + esc(cores) + '</td>'
         + mCells
         + '<td class="tc">' + buildPcpStatusTag(meta) + '</td>'
-        + '<td><div style="display:flex;gap:3px;flex-wrap:wrap">'
-        + '<button class="btn-icon" onclick="event.stopPropagation();moverOF && moverOF(\'' + esc(String(o.of || o.numero || '')) + '\',-1)" title="Subir">↑</button>'
-        + '<button class="btn-icon" onclick="event.stopPropagation();moverOF && moverOF(\'' + esc(String(o.of || o.numero || '')) + '\',1)" title="Descer">↓</button>'
-        + '<button class="btn-icon" onclick="event.stopPropagation();nextStatus && nextStatus(\'' + esc(String(o.of || o.numero || '')) + '\')" title="Próx. status">▶</button>'
-        + '<button onclick="event.stopPropagation();toggleUrgente && toggleUrgente(\'' + esc(String(o.id || '')) + '\',' + (isUrgenteOf(o) ? 'false' : 'true') + ',this)" style="background:' + (isUrgenteOf(o) ? '#dc2626' : 'rgba(220,38,38,0.15)') + ';color:' + (isUrgenteOf(o) ? '#fff' : '#f43f5e') + ';border:1px solid rgba(220,38,38,0.4);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:600">' + (isUrgenteOf(o) ? '🔴 URGENTE' : 'Urgente') + '</button>'
-        + ((!o.deleted_at && !isCanceladaStatus(o.status)) ? '<button class="btn-icon" onclick="event.stopPropagation();pcpAbrirModalClonarOF && pcpAbrirModalClonarOF(\'' + esc(String(o.id || '')) + '\',\'' + esc(String(o.of || o.numero || '')) + '\')" title="Clonar">Clonar</button>' : '')
-        + (isConcluidaStatus(o.status) ? '<button class="btn-icon" onclick="event.stopPropagation();abrirModalReconcluirOF && abrirModalReconcluirOF(\'' + esc(String(o.id || '')) + '\')" title="Reconcluir">🔄</button>' : '')
+        + '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'
+        + '<button title="OF Rápida" style="background:rgba(234,179,8,0.20);border:1px solid #EAB308;color:#EAB308;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:13px" onclick="event.stopPropagation();window._pcpAbrirOFRapida && window._pcpAbrirOFRapida(\'' + esc(String(o.id || '')) + '\')">⚡</button>'
+        + '<button title="Clonar OF" style="background:rgba(59,130,246,0.2);border:1px solid #3B82F6;color:#3B82F6;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:13px" onclick="event.stopPropagation();window._pcpClonarOf && window._pcpClonarOf(\'' + esc(String(o.id || '')) + '\',\'' + esc(String(o.of || o.numero || '')) + '\')">📋</button>'
+        + '<button title="Alterar OF" style="background:rgba(168,85,247,0.18);border:1px solid #A855F7;color:#A855F7;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:13px" onclick="event.stopPropagation();window._pcpAlterarOf && window._pcpAlterarOf(\'' + esc(String(o.id || '')) + '\')">✏️</button>'
+        + '<button title="Excluir OF" style="background:rgba(239,68,68,0.18);border:1px solid #EF4444;color:#EF4444;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:13px" onclick="event.stopPropagation();window._pcpExcluirOf && window._pcpExcluirOf(\'' + esc(String(o.id || '')) + '\',\'' + esc(String(o.of || o.numero || '')) + '\')">🗑️</button>'
         + '</div></td>'
         + '</tr>';
-    }).join('') : '<tr><td colspan="21" style="text-align:center;padding:32px;color:var(--text3)">Nenhuma OF encontrada nos filtros selecionados.</td></tr>';
+      }).join('') : '<tr><td colspan="21" style="text-align:center;padding:32px;color:var(--text3)">Nenhuma OF encontrada nos filtros selecionados.</td></tr>';
+    }
     ensurePcpMutationObserver();
-    _pcpAplicarTbodyDom(tbody);
-    try { if (typeof window._pcpSyncPaginacaoUI === 'function') window._pcpSyncPaginacaoUI(); } catch (_) {}
+    linhas = document.querySelectorAll('#pcp-tbody tr:not([data-patched])');
+    Array.prototype.slice.call(linhas).forEach(function(tr2) {
+      try { tr2.setAttribute('data-patched', '1'); } catch (_) {}
+      try { _pcpAplicarLinhaDom(tr2); } catch (_) {}
+    });
     } finally {
       setTimeout(function() { window._patchPcpExecutando = false; }, 0);
     }
@@ -1434,7 +1508,6 @@ if (!window._menuPatchFinal) {
             try { patchPcpRowsAndStatus(); } catch (_) {}
           });
         }
-        try { patchPcpRowsAndStatus(); } catch (_) {}
         try { ensurePcpMutationObserver(); } catch (_) {}
         try { bindPcpRefreshTriggers(); } catch (_) {}
       }, 0);
