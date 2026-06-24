@@ -9268,9 +9268,9 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
     if (payload.caixas_perdidas != null && payload.qtd_perdida == null) payload.qtd_perdida = payload.caixas_perdidas;
     if (payload.quantidade != null && payload.qtd_perdida == null) payload.qtd_perdida = payload.quantidade;
     if (payload.qtd_perdida != null) payload.qtd_perdida = Math.trunc(Number(payload.qtd_perdida) || 0);
-    if (payload.foto_url && !payload.imagem_url) payload.imagem_url = payload.foto_url;
-    if (payload.imagem_problema_url && !payload.imagem_url) payload.imagem_url = payload.imagem_problema_url;
+    if (payload.imagem_problema_url && !payload.foto_url) payload.foto_url = payload.imagem_problema_url;
     if (payload.cliente_nome && !payload.cliente) payload.cliente = payload.cliente_nome;
+    if (payload.imagem_url && !payload.foto_url) payload.foto_url = payload.imagem_url;
 
     try {
       const cache = {};
@@ -9303,7 +9303,9 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
     } catch (_) {}
 
     // manter payload.operador / payload.responsavel para compatibilidade com esquemas antigos
-    delete payload.foto_url;
+    delete payload.imagem_problema_url;
+    delete payload.cliente_nome;
+    delete payload.imagem_url;
 
     let toInsert = { ...payload };
     const table = 'inconformidades';
