@@ -689,19 +689,10 @@ app.get('/sw.js', (req, res) => {
 
 // Forçar no-cache para o index.html
 app.get('/', (req, res) => {
-  try {
-    const htmlPath = path.join(__dirname, 'index.html');
-    const patchPath = path.join(__dirname, 'patch.js');
-    let html = fs.readFileSync(htmlPath, 'utf8');
-    const patchVersion = Math.floor(fs.statSync(patchPath).mtimeMs / 1000);
-    html = html.replace(/patch\.js\?v=\d+/g, 'patch.js?v=' + patchVersion);
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.send(html);
-  } catch (e) {
-    console.error('[GET /] erro:', e.message);
-    res.sendFile(path.join(__dirname, 'index.html'));
-  }
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.get('/index.html', (req, res) => {
@@ -709,18 +700,6 @@ app.get('/index.html', (req, res) => {
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.get('/patch.js', (req, res) => {
-  try {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    return res.sendFile(path.join(__dirname, 'patch.js'));
-  } catch (e) {
-    return res.status(404).end();
-  }
 });
 
 app.use(express.static(path.join(__dirname, 'public'), { etag: false, lastModified: false, setHeaders: setNoCache }));
@@ -1587,34 +1566,30 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
 
     const todasOFs = Array.isArray(ofs) ? ofs.slice() : []; 
     try {
-      const missingIds = todasOFs
-        .filter(of => of && of.id && (
-          (of.quantidade == null && of.qtd == null && of.qtd_pedida == null) ||
-          of.preco == null
-        ))
+      const missingQtdIds = todasOFs
+        .filter(of => of && of.id && (of.quantidade == null && of.qtd == null && of.qtd_pedida == null))
         .map(of => String(of.id).trim())
         .filter(Boolean);
-      if (missingIds.length) {
-        const mapaOf = {};
+      if (missingQtdIds.length) {
+        const mapaQtd = {};
         const chunkSize = 100;
-        for (let i = 0; i < missingIds.length; i += chunkSize) {
-          const chunk = missingIds.slice(i, i + chunkSize);
-          const { data: ofsBase, error: errBase } = await supabase
+        for (let i = 0; i < missingQtdIds.length; i += chunkSize) {
+          const chunk = missingQtdIds.slice(i, i + chunkSize);
+          const { data: ofsQtd, error: errQtd } = await supabase
             .from('ofs')
-            .select('id,quantidade,qtd,qtd_pedida,preco')
+            .select('id,quantidade,qtd,qtd_pedida')
             .in('id', chunk);
-          if (errBase) continue;
-          (ofsBase || []).forEach(row => {
-            mapaOf[String(row.id)] = row;
+          if (errQtd) continue;
+          (ofsQtd || []).forEach(row => {
+            mapaQtd[String(row.id)] = row;
           });
         }
         todasOFs.forEach(of => {
-          const row = mapaOf[String(of && of.id || '')];
+          const row = mapaQtd[String(of && of.id || '')];
           if (!row) return;
           if (of.quantidade == null && row.quantidade != null) of.quantidade = row.quantidade;
           if (of.qtd == null && row.qtd != null) of.qtd = row.qtd;
           if (of.qtd_pedida == null && row.qtd_pedida != null) of.qtd_pedida = row.qtd_pedida;
-          if (of.preco == null && row.preco != null) of.preco = row.preco;
         });
       }
     } catch (_) {}
@@ -1651,9 +1626,7 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
         vendedor_id: of.vendedor_id || of.vendId || of.vend_id || null, 
         cliente: of.cliente_nome || of.cliente || '—', 
         vendedor: of.vendedor_nome || of.vendedor || 'Sem Vendedor', 
-        qtd: of.qtd ?? null,
         quantidade: of.quantidade ?? of.qtd ?? of.qtd_pedida ?? null, 
-        preco: of.preco ?? null,
         valor_total, 
         comissao_pct, 
         comissao_rs, 
@@ -4143,17 +4116,13 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
     const clienteRaw = String(req.query?.cliente || req.query?.search || '').trim();
     const statusRaw = String(req.query?.status || '').trim().toLowerCase();
     const includeSomenteAbertas = !statusRaw || statusRaw.includes('aberto');
-    if (!numeroRaw && !clienteRaw) return ok(res, []);
     if (clienteRaw) {
       const { data: clientes, error: cliErr } = await supabase
         .from('clientes')
         .select('id,nome,rs,vendedor_id')
         .or('nome.ilike.%' + clienteRaw + '%,rs.ilike.%' + clienteRaw + '%')
         .limit(100);
-      if (cliErr) {
-        try { console.error('[ofs buscar error]', cliErr.message || cliErr); } catch (_) {}
-        return ok(res, []);
-      }
+      if (cliErr) return res.status(400).json({ ok: false, error: String(cliErr.message || cliErr) });
 
       const clientesArr = Array.isArray(clientes) ? clientes : [];
       const clienteIds = clientesArr.map((c) => String(c?.id || '').trim()).filter(Boolean);
@@ -4169,10 +4138,7 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
         query = query.not('status', 'in', '("Concluído","Concluída","Concluido","Concluida","Cancelada","Cancelado","Pedido Pronto")');
       }
       const { data: ofsRows, error: ofsErr } = await query;
-      if (ofsErr) {
-        try { console.error('[ofs buscar error]', ofsErr.message || ofsErr); } catch (_) {}
-        return ok(res, []);
-      }
+      if (ofsErr) return res.status(400).json({ ok: false, error: String(ofsErr.message || ofsErr) });
 
       const clienteMap = new Map(clientesArr.map((c) => [String(c?.id || '').trim(), c]));
       const vendedorIds = Array.from(new Set((ofsRows || []).map((of) => {
@@ -4207,7 +4173,7 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
       return ok(res, lista);
     }
 
-    if (!numeroRaw) return ok(res, []);
+    if (!numeroRaw) return res.status(400).json({ ok: false, error: 'numero obrigatório' });
 
     const joinKeys = ['cli_id', 'cliente_id', 'cliId'];
     let data = null;
@@ -4234,18 +4200,15 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
         .ilike('numero', `%${numeroRaw}%`)
         .order('created_at', { ascending: false })
         .limit(10);
-      if (e2) {
-        try { console.error('[ofs buscar error]', e2.message || e2); } catch (_) {}
-        return ok(res, []);
-      }
+      if (e2) return res.status(400).json({ ok: false, error: String(e2.message || e2) });
       data = data2 || [];
     }
 
     const lista = Array.isArray(data) ? data : (data ? [data] : []);
-    if (!lista.length) return ok(res, []);
+    if (!lista.length) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
 
     const of = lista[0] || null;
-    if (!of) return ok(res, []);
+    if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
 
     let cliNome = '';
     let vendNome = '';
@@ -4275,10 +4238,7 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
     out.vendedor_nome = out.vendNome;
     out.vendedor_id = vendedorId || out.vendedor_id || out.vendId || null;
     return ok(res, out);
-  } catch (e) {
-    try { console.error('[ofs buscar error]', e.message || e); } catch (_) {}
-    return ok(res, []);
-  }
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
 app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
@@ -10595,25 +10555,32 @@ app.post('/api/admin/init-gramaturas', authMiddleware, async (req, res) => {
 
 app.get('/api/gramaturas', authMiddleware, async (req, res) => {
   try {
-    const empresaId = 'df5f7672-0a6b-402d-ae65-296554236c31';
-    const { data, error } = await supabase
-      .from('gramaturas')
-      .select('*')
-      .eq('empresa_id', empresaId)
-      .order('nome');
-    if (error) throw error;
-
-    console.log('[GRAMATURAS GET] total:', (data || []).length);
-    const ids = [...new Set((data || []).map(g => g.fornecedor_id).filter(Boolean))];
-    let fMap = {};
-    if (ids.length) {
-      const { data: fs } = await supabase.from('fornecedores').select('id,nome').in('id', ids);
-      (fs || []).forEach(f => { fMap[f.id] = f.nome; });
+    const ready = await _ensureGramaturasTable();
+    if (!ready) return res.json({ ok: true, data: [], gramaturas: [] });
+    const empresa_id = await _empresaUuidSafe(req);
+    const incluirInativas = String(req.query?.incluir_inativas || '').trim().toLowerCase() === 'true';
+    const selectComJoin = 'id,nome,gramatura,valor_unitario,fornecedor_id,fornecedor_nome,empresa_id,ativo,created_at,fornecedor:fornecedores(nome)';
+    let q = supabase.from('gramaturas').select(selectComJoin).order('nome');
+    if (empresa_id) q = q.eq('empresa_id', empresa_id);
+    if (!incluirInativas) q = q.eq('ativo', true);
+    let { data, error } = await q;
+    if (error) {
+      let q2 = supabase.from('gramaturas').select('*').order('nome');
+      if (empresa_id) q2 = q2.eq('empresa_id', empresa_id);
+      if (!incluirInativas) q2 = q2.eq('ativo', true);
+      const r2 = await q2;
+      data = r2?.data || [];
+      error = r2?.error || null;
     }
-    res.json((data || []).map(g => ({ ...g, fornecedor_nome: fMap[g.fornecedor_id] || null })));
+    if (error) throw error;
+    const out = (Array.isArray(data) ? data : []).map((g) => {
+      const fornNome = String(g?.fornecedor?.nome || g?.fornecedor_nome || '').trim();
+      const { fornecedor, ...rest } = g || {};
+      return { ...rest, fornecedor_nome: fornNome || null };
+    });
+    return res.json({ ok: true, data: out, gramaturas: out });
   } catch (e) {
-    console.error('[GRAMATURAS GET] erro:', e.message);
-    return res.status(500).json({ error: e.message });
+    return res.json({ ok: true, data: [], gramaturas: [] });
   }
 });
 
@@ -12330,62 +12297,28 @@ app.get('/api/facas', authMiddleware, async (req, res) => {
   try {
     const search = String(req.query.search || req.query.q || '').trim();
     const limit = Math.max(1, Math.min(50, parseInt(String(req.query.limit || ''), 10) || 10));
-    const baseLimit = search ? Math.max(limit, 100) : limit;
-    let rows = [];
-    let q = supabase.from('facas_estoque').select('*').limit(baseLimit);
-    try { q = q.order('nome', { ascending: true }); } catch (_) {}
+    let q = supabase.from('facas_estoque').select('*').order('nome').limit(limit);
     if (search) {
-      try { q = q.or('nome.ilike.%' + search + '%,codigo.ilike.%' + search + '%,descricao.ilike.%' + search + '%,numero.ilike.%' + search + '%'); } catch (_) {}
+      q = q.or('nome.ilike.%' + search + '%,codigo.ilike.%' + search + '%,descricao.ilike.%' + search + '%,numero.ilike.%' + search + '%');
     }
-    let { data, error } = await q;
-    if (error && search) {
-      try { console.error('[facas search error]', error.message || error); } catch (_) {}
-      const fallback = await supabase.from('facas_estoque').select('*').limit(baseLimit);
-      data = fallback.data || [];
-      error = fallback.error || null;
-    }
+    const { data, error } = await q;
     if (error) throw error;
-    rows = Array.isArray(data) ? data : [];
-    if (search) {
-      const s = search.toLowerCase();
-      rows = rows.filter((r) => [r?.nome, r?.codigo, r?.descricao, r?.numero, r?.cliente, r?.nomenclatura].join(' ').toLowerCase().includes(s));
-    }
-    return res.json({ ok: true, data: rows.slice(0, limit) });
-  } catch (e) {
-    try { console.error('[facas search error]', e.message || e); } catch (_) {}
-    return res.json({ ok: true, data: [] });
-  }
+    return res.json({ ok: true, data: data || [] });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
 app.get('/api/cliches', authMiddleware, async (req, res) => {
   try {
     const search = String(req.query.search || req.query.q || '').trim();
     const limit = Math.max(1, Math.min(50, parseInt(String(req.query.limit || ''), 10) || 10));
-    const baseLimit = search ? Math.max(limit, 100) : limit;
-    let rows = [];
-    let q = supabase.from('cliches_estoque').select('*').limit(baseLimit);
-    try { q = q.order('nome', { ascending: true }); } catch (_) {}
+    let q = supabase.from('cliches_estoque').select('*').order('nome').limit(limit);
     if (search) {
-      try { q = q.or('nome.ilike.%' + search + '%,codigo.ilike.%' + search + '%,descricao.ilike.%' + search + '%,cliente.ilike.%' + search + '%,cliente_nome.ilike.%' + search + '%'); } catch (_) {}
+      q = q.or('nome.ilike.%' + search + '%,codigo.ilike.%' + search + '%,descricao.ilike.%' + search + '%,cliente.ilike.%' + search + '%');
     }
-    let { data, error } = await q;
-    if (error && search) {
-      try { console.error('[cliches search error]', error.message || error); } catch (_) {}
-      const fallback = await supabase.from('cliches_estoque').select('*').limit(baseLimit);
-      data = fallback.data || [];
-      error = fallback.error || null;
-    }
+    const { data, error } = await q;
     if (error) throw error;
-    rows = Array.isArray(data) ? data : [];
-    if (search) {
-      const s = search.toLowerCase();
-      rows = rows.filter((r) => [r?.nome, r?.codigo, r?.descricao, r?.cliente, r?.cliente_nome, r?.nomenclatura].join(' ').toLowerCase().includes(s));
-    }
-    return res.json({ ok: true, data: rows.slice(0, limit) });
-  } catch (e) {
-    try { console.error('[cliches search error]', e.message || e); } catch (_) {}
-    return res.json({ ok: true, data: [] });
-  }
+    return res.json({ ok: true, data: data || [] });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 app.post('/api/cliches_estoque', authMiddleware, async (req, res) => {
   try {
@@ -13143,32 +13076,13 @@ app.get('/api/materiais', authMiddleware, async (req, res) => {
     if (!empresa_id) empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31';
     const search = String(req.query.search || req.query.q || '').trim();
     const limit = Math.max(1, Math.min(50, parseInt(String(req.query.limit || ''), 10) || 10));
-    const baseLimit = search ? Math.max(limit, 100) : limit;
-    let q = supabase.from('estoque_materiais').select('*').eq('empresa_id', empresa_id).limit(baseLimit).order('nome', { ascending: true });
+    let q = supabase.from('estoque_materiais').select('*').eq('empresa_id', empresa_id).limit(limit).order('nome', { ascending: true });
     try { q = q.eq('ativo', true); } catch (_) {}
-    if (search) {
-      try { q = q.or('nome.ilike.%' + search + '%,nomenclatura.ilike.%' + search + '%,fornecedor.ilike.%' + search + '%,cliente_nome.ilike.%' + search + '%,observacao.ilike.%' + search + '%'); } catch (_) {}
-    }
-    let { data, error } = await q;
-    if (error && search) {
-      try { console.error('[materiais search error]', error.message || error); } catch (_) {}
-      let fallback = supabase.from('estoque_materiais').select('*').eq('empresa_id', empresa_id).limit(baseLimit);
-      try { fallback = fallback.eq('ativo', true); } catch (_) {}
-      const r2 = await fallback;
-      data = r2.data || [];
-      error = r2.error || null;
-    }
+    if (search) q = q.or('nome.ilike.%' + search + '%,nomenclatura.ilike.%' + search + '%,fornecedor.ilike.%' + search + '%');
+    const { data, error } = await q;
     if (error) throw error;
-    let rows = Array.isArray(data) ? data : [];
-    if (search) {
-      const s = search.toLowerCase();
-      rows = rows.filter((r) => [r?.nome, r?.nomenclatura, r?.fornecedor, r?.cliente_nome, r?.observacao].join(' ').toLowerCase().includes(s));
-    }
-    return res.json({ ok: true, data: rows.slice(0, limit) });
-  } catch (e) {
-    try { console.error('[materiais search error]', e.message || e); } catch (_) {}
-    return res.json({ ok: true, data: [] });
-  }
+    return res.json({ ok: true, data: data || [] });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
 app.post('/api/admin/limpar_cache_chapas', authMiddleware, requireAdmin, async (req, res) => {

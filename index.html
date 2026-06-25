@@ -3970,16 +3970,6 @@ async function proximoNumeroOf() {
 function abrirNovaOfRapida(){
   try{ document.getElementById('modal-of-rapida')?.remove(); }catch(e){}
   try{ document.getElementById('modal-of-rapida-ov')?.remove(); }catch(e){}
-  let editando = '';
-  try{
-    editando = String(window._ofRapidaEditandoId || '').trim();
-    if(!editando){
-      window._ofRapidaNumero = '';
-      window._ofRapidaEditandoNumero = null;
-      window._ofRapidaDataAgendamento = null;
-      window._ofRapidaGramaturaId = '';
-    }
-  }catch(e){}
 
   try{
     const needsApi = _apiConectado && CURRENT_USER;
@@ -4239,17 +4229,15 @@ function abrirNovaOfRapida(){
   setTimeout(()=>{ try{ document.getElementById('of-r-cliente')?.focus(); }catch(e){} }, 100);
   const numDisplay = document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
   if (numDisplay) numDisplay.textContent = '...';
-  if(!editando){
-    try{
-      proximoNumeroOf().then((num)=>{
-        const el = document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
-        const v = String(num || '').trim();
-        try { window._ofRapidaNumero = v; } catch (e) {}
-        if (el) el.textContent = v ? v : '';
-        try { console.log('[OF RÁPIDA] Próximo número calculado:', v); } catch (e) {}
-      }).catch(()=>{});
-    }catch(e){}
-  }
+  try{
+    proximoNumeroOf().then((num)=>{
+      const el = document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
+      const v = String(num || '').trim();
+      try { window._ofRapidaNumero = v; } catch (e) {}
+      if (el) el.textContent = v ? v : '';
+      try { console.log('[OF RÁPIDA] Próximo número calculado:', v); } catch (e) {}
+    }).catch(()=>{});
+  }catch(e){}
   try{
     const chk = document.getElementById('of-r-urgente');
     const track = document.getElementById('of-r-urg-track');
@@ -4504,11 +4492,6 @@ window.fecharNovaOfRapida = function(){
   try{ document.getElementById('modal-of-rapida')?.remove(); }catch(e){}
   try{ document.getElementById('modal-of-rapida-ov')?.remove(); }catch(e){}
   try{ coresSelecionadasOFRapidaItens = {}; }catch(e){}
-  try{ window._ofRapidaEditandoId = null; }catch(e){}
-  try{ window._ofRapidaEditandoNumero = null; }catch(e){}
-  try{ window._ofRapidaNumero = ''; }catch(e){}
-  try{ window._ofRapidaDataAgendamento = null; }catch(e){}
-  try{ window._ofRapidaGramaturaId = ''; }catch(e){}
 };
 
 window.carregarMaquinasOfRapida = async function(){
@@ -19224,35 +19207,9 @@ function comFmtDate(v){
   const s = String(v || '').slice(0,10);
   return s ? fmtD(s) : '—';
 }
-function comPickQtd(of){
-  return Number(of?.qtd || 0) || 0;
-}
-function comPickPrecoUnit(of){
-  const qtd = comPickQtd(of);
-  const preco = Number(of?.preco ?? 0) || 0;
-  if(preco > 0) return preco;
-  const valorTotal = Number(of?.valor_total ?? of?.valor ?? of?.total ?? of?.valor_venda ?? 0) || 0;
-  return qtd > 0 ? (valorTotal / qtd) : 0;
-}
-function comPickDataConclusao(of){
-  return String(of?.data_conclusao || of?.dataConclusao || of?.conclusao || '').slice(0,10);
-}
-function comPickDataRef(of){
-  return String(
-    comPickDataConclusao(of) ||
-    of?.data ||
-    of?.data_faturamento ||
-    of?.dia ||
-    of?.data_pedido ||
-    of?.dataPedido ||
-    of?.created_at ||
-    of?.createdAt ||
-    ''
-  ).slice(0,10);
-}
 function comFmtDataConclusao(of){
   try{
-    const dc = comPickDataConclusao(of);
+    const dc = String(of?.data_conclusao || '').slice(0,10);
     if(dc) return new Date(dc + 'T12:00:00').toLocaleDateString('pt-BR');
     const up = String(of?.updated_at || '').trim();
     if(up) return new Date(up).toLocaleDateString('pt-BR');
@@ -19524,7 +19481,7 @@ async function renderComissoes(){
         const st = String(of.status || '').trim();
         if(st === 'Cancelada' || st === 'Cancelado') return;
         const prod = of.descricao || of.prodDesc || of.produto || '—';
-        const qtd = comPickQtd(of);
+        const qtd = Number(of.qtd || of.quantidade || 0) || 0;
         const ofId = String(of.id || of.of_id || of.ofId || '').trim();
         const ofNum = String(of.numero || of.of || of.of_num || '').trim();
         rows.push(`<tr>
@@ -19536,7 +19493,7 @@ async function renderComissoes(){
           <td style="padding:8px;border:1px solid var(--s3);text-align:right">${comFmtMoney(of.valor)}</td>
           <td style="padding:8px;border:1px solid var(--s3);text-align:right">${Number(of.comissaoPct||0).toFixed(2)}%</td>
           <td style="padding:8px;border:1px solid var(--s3);text-align:right">${comFmtMoney(of.comissaoValor)}</td>
-          <td style="padding:8px;border:1px solid var(--s3)">${comFmtDate(comPickDataRef(of))}</td>
+          <td style="padding:8px;border:1px solid var(--s3)">${comFmtDate(of.data)}</td>
           <td style="padding:8px;border:1px solid var(--s3)">${escH(comFmtDataConclusao(of))}</td>
           <td style="padding:8px;border:1px solid var(--s3)">${escH(st||'—')}</td>
           <td style="padding:8px;border:1px solid var(--s3);text-align:center">
@@ -19687,7 +19644,17 @@ async function calcularComissoes(){
     return vendedoresRef.find(v => normNome(v.nome) === key) || null;
   };
   const normDate = (o) => {
-    return comPickDataRef(o);
+    const s = String(
+      o?.data_faturamento ||
+      (typeof o?.data_conclusao === 'string' ? o.data_conclusao.slice(0,10) : o?.data_conclusao) ||
+      o?.dia ||
+      o?.data_pedido ||
+      o?.dataPedido ||
+      o?.created_at ||
+      o?.createdAt ||
+      ''
+    ).slice(0,10);
+    return s;
   };
   const inRange = (s) => {
     if(!s) return !(dFrom || dTo);
