@@ -2421,6 +2421,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       console.log('[MENU] injetado com sucesso:', label, 'após:', textoAncora);
       return true;
     }
+    try { window._ensureMenuClone = _ensureMenuClone; } catch (_) {}
     function tickMenus() {
       try { _ocultarRelatorioMensal(); } catch (_) {}
       try { _removerRelatorioMensalAgressivo(); } catch (_) {}
@@ -2841,7 +2842,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   window._abrirToneladas = _abrirToneladas;
 
   function _setupMenusCustom() {
+    var ensureMenuClone = null;
     function _injetar() {
+      if (typeof ensureMenuClone !== 'function') {
+        try { ensureMenuClone = (typeof window._ensureMenuClone === 'function') ? window._ensureMenuClone : null; } catch (_) { ensureMenuClone = null; }
+      }
+      if (typeof ensureMenuClone !== 'function') return;
       var comGo = Array.from(document.querySelectorAll('[onclick]')).filter(function(el) {
         return String(el.getAttribute('onclick') || '').indexOf('go(') >= 0;
       });
@@ -2850,16 +2856,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
       var ok1 = false, ok2 = false, ok3 = false;
 
-      ok1 = _ensureMenuClone('usuarios', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
-      if (!ok1) ok1 = _ensureMenuClone('fornecedores', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
-      if (!ok1) ok1 = _ensureMenuClone('Usuários', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
-      if (!ok1) ok1 = _ensureMenuClone('Fornecedores', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
+      ok1 = ensureMenuClone('usuarios', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
+      if (!ok1) ok1 = ensureMenuClone('fornecedores', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
+      if (!ok1) ok1 = ensureMenuClone('Usuários', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
+      if (!ok1) ok1 = ensureMenuClone('Fornecedores', '📐 Gramaturas', '_menu_gramaturas', 'gramaturas');
 
-      ok2 = _ensureMenuClone('comissoes', '⚖️ Toneladas Vendidas', '_menu_toneladas', 'toneladas-vendidas');
-      if (!ok2) ok2 = _ensureMenuClone('Comissões', '⚖️ Toneladas Vendidas', '_menu_toneladas', 'toneladas-vendidas');
+      ok2 = ensureMenuClone('comissoes', '⚖️ Toneladas Vendidas', '_menu_toneladas', 'toneladas-vendidas');
+      if (!ok2) ok2 = ensureMenuClone('Comissões', '⚖️ Toneladas Vendidas', '_menu_toneladas', 'toneladas-vendidas');
 
-      ok3 = _ensureMenuClone('comissoes', '📦 Caixas Perdidas', '_menu_caixas_fin', 'caixas-perdidas');
-      if (!ok3) ok3 = _ensureMenuClone('Comissões', '📦 Caixas Perdidas', '_menu_caixas_fin', 'caixas-perdidas');
+      ok3 = ensureMenuClone('comissoes', '📦 Caixas Perdidas', '_menu_caixas_fin', 'caixas-perdidas');
+      if (!ok3) ok3 = ensureMenuClone('Comissões', '📦 Caixas Perdidas', '_menu_caixas_fin', 'caixas-perdidas');
 
       console.log('[MENU] resultado — gramaturas:', ok1, 'toneladas:', ok2, 'caixas:', ok3);
     }
@@ -7002,6 +7008,49 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return null;
   }
 
+  function resolverCliIdOF(of) {
+    var cliId = String(of && (of.cli_id || of.cliId || of.cliente_id || of.clienteId) || '').trim();
+    if (cliId) return cliId;
+    var cliNome = String(of && (of.cliente || of.cliNome || of.cliente_nome || of.clinome) || '').trim();
+    if (!cliNome) return '';
+    var cli = acharClienteRobusto(cliNome);
+    return String(cli && cli.id || '').trim();
+  }
+
+  function normalizarClienteOF(of) {
+    var base = (of && typeof of === 'object') ? Object.assign({}, of) : {};
+    var cliId = resolverCliIdOF(base);
+    if (!Object.prototype.hasOwnProperty.call(base, 'cli_id') || base.cli_id == null) base.cli_id = cliId || '';
+    if (!Object.prototype.hasOwnProperty.call(base, 'cliId') || base.cliId == null) base.cliId = cliId || '';
+    if (!Object.prototype.hasOwnProperty.call(base, 'cliente_id') || base.cliente_id == null) base.cliente_id = cliId || '';
+    if (!Object.prototype.hasOwnProperty.call(base, 'clienteId') || base.clienteId == null) base.clienteId = cliId || '';
+    return base;
+  }
+
+  function aplicarClienteNoModalOF(of) {
+    var ofNorm = normalizarClienteOF(of);
+    var cliNome = String(ofNorm && (ofNorm.cliente || ofNorm.cliNome || ofNorm.cliente_nome || ofNorm.clinome) || '').trim();
+    var cliId = String(ofNorm && (ofNorm.cli_id || ofNorm.cliId || ofNorm.cliente_id || ofNorm.clienteId) || '').trim();
+    var input = document.getElementById('of-r-cliente');
+    if (input) {
+      if (cliNome) input.value = cliNome;
+      try { input.dataset.clienteId = cliId || ''; } catch (_) {}
+      try { input.dataset.clienteNome = cliNome || ''; } catch (_) {}
+      if (!cliId && cliNome) {
+        try { syncClienteOfRapida(input); } catch (_) {}
+        try { cliId = String(input.dataset && input.dataset.clienteId || '').trim(); } catch (_) { cliId = ''; }
+      }
+    }
+    Array.prototype.slice.call(document.querySelectorAll('#f-cli-id, #ofr-cliente-id, #of-r-cliente-id, input[name="cli_id"], input[name="cliId"]')).forEach(function(el) {
+      try { el.value = cliId || ''; } catch (_) {}
+    });
+    try {
+      var sel = document.getElementById('f-cli');
+      if (sel && cliId) sel.value = cliId;
+    } catch (_) {}
+    return { of: ofNorm, cliId: cliId, cliNome: cliNome };
+  }
+
   function bindClienteInput() {
     var el = document.getElementById('of-r-cliente');
     if (!el || el.dataset.patchClienteEspecial === '1') return;
@@ -7146,13 +7195,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (typeof window.apiFetch === 'function') {
         var r1 = await window.apiFetch('/api/ofs/' + encodeURIComponent(sid), { method: 'GET' });
         var j1 = await r1.json().catch(function() { return null; });
-        if (j1 && j1.ok && j1.data) return j1.data;
+        if (j1 && j1.ok && j1.data) return normalizarClienteOF(j1.data);
         return j1 && j1.ok ? j1 : j1;
       }
     } catch (_) {}
     var r = await fetch('/api/ofs/' + encodeURIComponent(sid), { headers: tokenHeaders() });
     var j = await r.json().catch(function() { return null; });
-    if (j && j.ok && j.data) return j.data;
+    if (j && j.ok && j.data) return normalizarClienteOF(j.data);
     return j && j.ok ? j : j;
   }
 
@@ -7315,6 +7364,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       await new Promise(function(r) { setTimeout(r, 450); });
       var of = await fetchOf(sid);
       if (!of || of.error) return;
+      try {
+        var cliMeta = aplicarClienteNoModalOF(of);
+        if (cliMeta && cliMeta.of) of = cliMeta.of;
+      } catch (_) {}
 
       var cliNome = String(of.cliente || of.cliNome || of.cliente_nome || '').trim();
       var produto = String(of.produto || of.prodDesc || of.descricao || '').trim();
@@ -7335,6 +7388,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       maquina = maquina || String(of.maquina_agendada || of.maquina || of.maquina_atual || '').trim();
 
       try { setVal('of-r-cliente', cliNome); } catch (_) {}
+      try { aplicarClienteNoModalOF(of); } catch (_) {}
       try { setVal('of-r-produto', produto); } catch (_) {}
       try { setVal('of-r-empresa', empId); } catch (_) {}
       try { setVal('of-r-vendedor', vendId); } catch (_) {}
@@ -16399,19 +16453,7 @@ function _ocultarGraficoComissoes() {
   }
 
   function _qtdOFComissao(of) {
-    var direto = Number(of && (of.qtd != null ? of.qtd : (of.quantidade != null ? of.quantidade : (of.qtd_pedida != null ? of.qtd_pedida : of.total_caixas))) || 0) || 0;
-    if (direto > 0) return direto;
-    var itens = of && of.itens;
-    if (typeof itens === 'string') {
-      try { itens = JSON.parse(itens || '[]'); } catch (_) { itens = []; }
-    }
-    if (Array.isArray(itens)) {
-      var soma = itens.reduce(function(s, it) {
-        return s + (Number(it && (it.qtd != null ? it.qtd : it.quantidade) || 0) || 0);
-      }, 0);
-      if (soma > 0) return soma;
-    }
-    return direto;
+    return Number(of && of.qtd || 0) || 0;
   }
 
   function _dataConclusaoOFComissao(of) {
@@ -16434,6 +16476,7 @@ function _ocultarGraficoComissoes() {
   function _normalizarOFComissao(of, vendedorFallback) {
     var qtd = _qtdOFComissao(of);
     var valorTotal = Number(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : (of.valor != null ? of.valor : of.valor_venda))) || 0) || 0;
+    var preco = Number(of && of.preco || 0) || 0;
     var pctRaw = _pctCom(of && (of.comissao_pct != null ? of.comissao_pct : (of.pct_comissao != null ? of.pct_comissao : of.comissao_pct)));
     var fator = (Number(pctRaw || 0) || 0) / 100;
     var comissaoValor = Number(
@@ -16452,7 +16495,7 @@ function _ocultarGraficoComissoes() {
       vendedor: String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || vendedorFallback || 'Sem vendedor').trim() || 'Sem vendedor',
       qtd: qtd,
       valor_total: valorTotal,
-      preco_unit: qtd > 0 ? (valorTotal / qtd) : 0,
+      preco_unit: preco,
       comissao_pct: pctRaw,
       comissao_valor: comissaoValor,
       data: _dataReferenciaOFComissao(of),
@@ -16589,7 +16632,7 @@ function _ocultarGraficoComissoes() {
           var dataRef = _dataReferenciaOFComissao(of);
           dataStr = dataRef ? new Date(dataRef).toLocaleDateString('pt-BR') : '—';
         } catch (_) { dataStr = '—'; }
-        var precoUnit = qtd > 0 ? valorTotal / qtd : 0;
+        var precoUnit = Number(of && of.preco || 0) || 0;
         var id = String(of && of.id || '');
         var btnHtml = !concluida
           ? '<button class="_btn_concluir_of" data-of-id="' + _escHtmlCom(id) + '" data-of-num="' + _escHtmlCom(numero) + '" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px">✅ Concluir</button>'
