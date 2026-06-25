@@ -3970,6 +3970,16 @@ async function proximoNumeroOf() {
 function abrirNovaOfRapida(){
   try{ document.getElementById('modal-of-rapida')?.remove(); }catch(e){}
   try{ document.getElementById('modal-of-rapida-ov')?.remove(); }catch(e){}
+  let editando = '';
+  try{
+    editando = String(window._ofRapidaEditandoId || '').trim();
+    if(!editando){
+      window._ofRapidaNumero = '';
+      window._ofRapidaEditandoNumero = null;
+      window._ofRapidaDataAgendamento = null;
+      window._ofRapidaGramaturaId = '';
+    }
+  }catch(e){}
 
   try{
     const needsApi = _apiConectado && CURRENT_USER;
@@ -4229,15 +4239,17 @@ function abrirNovaOfRapida(){
   setTimeout(()=>{ try{ document.getElementById('of-r-cliente')?.focus(); }catch(e){} }, 100);
   const numDisplay = document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
   if (numDisplay) numDisplay.textContent = '...';
-  try{
-    proximoNumeroOf().then((num)=>{
-      const el = document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
-      const v = String(num || '').trim();
-      try { window._ofRapidaNumero = v; } catch (e) {}
-      if (el) el.textContent = v ? v : '';
-      try { console.log('[OF RÁPIDA] Próximo número calculado:', v); } catch (e) {}
-    }).catch(()=>{});
-  }catch(e){}
+  if(!editando){
+    try{
+      proximoNumeroOf().then((num)=>{
+        const el = document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
+        const v = String(num || '').trim();
+        try { window._ofRapidaNumero = v; } catch (e) {}
+        if (el) el.textContent = v ? v : '';
+        try { console.log('[OF RÁPIDA] Próximo número calculado:', v); } catch (e) {}
+      }).catch(()=>{});
+    }catch(e){}
+  }
   try{
     const chk = document.getElementById('of-r-urgente');
     const track = document.getElementById('of-r-urg-track');
@@ -4492,6 +4504,11 @@ window.fecharNovaOfRapida = function(){
   try{ document.getElementById('modal-of-rapida')?.remove(); }catch(e){}
   try{ document.getElementById('modal-of-rapida-ov')?.remove(); }catch(e){}
   try{ coresSelecionadasOFRapidaItens = {}; }catch(e){}
+  try{ window._ofRapidaEditandoId = null; }catch(e){}
+  try{ window._ofRapidaEditandoNumero = null; }catch(e){}
+  try{ window._ofRapidaNumero = ''; }catch(e){}
+  try{ window._ofRapidaDataAgendamento = null; }catch(e){}
+  try{ window._ofRapidaGramaturaId = ''; }catch(e){}
 };
 
 window.carregarMaquinasOfRapida = async function(){
