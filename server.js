@@ -1587,30 +1587,34 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
 
     const todasOFs = Array.isArray(ofs) ? ofs.slice() : []; 
     try {
-      const missingQtdIds = todasOFs
-        .filter(of => of && of.id && (of.quantidade == null && of.qtd == null && of.qtd_pedida == null))
+      const missingIds = todasOFs
+        .filter(of => of && of.id && (
+          (of.quantidade == null && of.qtd == null && of.qtd_pedida == null) ||
+          of.preco == null
+        ))
         .map(of => String(of.id).trim())
         .filter(Boolean);
-      if (missingQtdIds.length) {
-        const mapaQtd = {};
+      if (missingIds.length) {
+        const mapaOf = {};
         const chunkSize = 100;
-        for (let i = 0; i < missingQtdIds.length; i += chunkSize) {
-          const chunk = missingQtdIds.slice(i, i + chunkSize);
-          const { data: ofsQtd, error: errQtd } = await supabase
+        for (let i = 0; i < missingIds.length; i += chunkSize) {
+          const chunk = missingIds.slice(i, i + chunkSize);
+          const { data: ofsBase, error: errBase } = await supabase
             .from('ofs')
-            .select('id,quantidade,qtd,qtd_pedida')
+            .select('id,quantidade,qtd,qtd_pedida,preco')
             .in('id', chunk);
-          if (errQtd) continue;
-          (ofsQtd || []).forEach(row => {
-            mapaQtd[String(row.id)] = row;
+          if (errBase) continue;
+          (ofsBase || []).forEach(row => {
+            mapaOf[String(row.id)] = row;
           });
         }
         todasOFs.forEach(of => {
-          const row = mapaQtd[String(of && of.id || '')];
+          const row = mapaOf[String(of && of.id || '')];
           if (!row) return;
           if (of.quantidade == null && row.quantidade != null) of.quantidade = row.quantidade;
           if (of.qtd == null && row.qtd != null) of.qtd = row.qtd;
           if (of.qtd_pedida == null && row.qtd_pedida != null) of.qtd_pedida = row.qtd_pedida;
+          if (of.preco == null && row.preco != null) of.preco = row.preco;
         });
       }
     } catch (_) {}
@@ -1647,7 +1651,9 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
         vendedor_id: of.vendedor_id || of.vendId || of.vend_id || null, 
         cliente: of.cliente_nome || of.cliente || '—', 
         vendedor: of.vendedor_nome || of.vendedor || 'Sem Vendedor', 
+        qtd: of.qtd ?? null,
         quantidade: of.quantidade ?? of.qtd ?? of.qtd_pedida ?? null, 
+        preco: of.preco ?? null,
         valor_total, 
         comissao_pct, 
         comissao_rs, 

@@ -6394,6 +6394,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
 
     window._comissoesSqlData = json;
+    var dadosComissoes = Array.isArray(json && json.ofs) ? json.ofs : [];
+    try { console.log('OF comissão sample:', JSON.stringify(dadosComissoes[0] || null)); } catch (_) {}
     window._comissoesData = {
       totalGeral: Number(json.total_vendido || 0) || 0,
       totalComissao: Number(json.total_comissao || 0) || 0,
