@@ -208,6 +208,54 @@ if (!window._urlValida) {
     return [];
   }
 
+  function parseMoneyText(text) {
+    var raw = String(text || '').replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.');
+    var n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function readSummaryFromNative() {
+    var box = qs('#est-summary');
+    if (!box) return null;
+    var out = {
+      totalItens: null,
+      valorEstoque: null,
+      abaixo: null
+    };
+    qsa('.card', box).forEach(function(card) {
+      var lbl = String((qs('.card-lbl', card) && qs('.card-lbl', card).textContent) || '').trim().toLowerCase();
+      var valTxt = String((qs('.card-val', card) && qs('.card-val', card).textContent) || '').trim();
+      if (!lbl || !valTxt) return;
+      if (lbl.indexOf('total de itens') >= 0) out.totalItens = num(valTxt.replace(/\D+/g, ''));
+      else if (lbl.indexOf('valor em estoque') >= 0) out.valorEstoque = parseMoneyText(valTxt);
+      else if (lbl.indexOf('baixo estoque') >= 0 || lbl.indexOf('abaixo') >= 0) out.abaixo = num(valTxt.replace(/\D+/g, ''));
+    });
+    return out;
+  }
+
+  function readSummaryFromTable() {
+    var rows = qsa('#page-estoque #est-table-body tr[data-chapa-id]');
+    if (!rows.length) return null;
+    var totalItens = rows.length;
+    var valorEstoque = 0;
+    var abaixo = 0;
+    rows.forEach(function(row) {
+      var qtd = num(row.getAttribute('data-qtd') || row.dataset.qtd);
+      var min = num(row.getAttribute('data-min') || row.dataset.min) || 200;
+      var total = num(row.getAttribute('data-total') || row.dataset.total);
+      if (!total) {
+        var cells = row.children || [];
+        for (var i = 0; i < cells.length; i++) {
+          var txt = String((cells[i] && cells[i].textContent) || '').trim();
+          if (txt.indexOf('R$') >= 0) total = parseMoneyText(txt);
+        }
+      }
+      valorEstoque += total;
+      if (qtd > 0 && qtd < min) abaixo += 1;
+    });
+    return { totalItens: totalItens, valorEstoque: valorEstoque, abaixo: abaixo };
+  }
+
   function lowCount(lista) {
     return (Array.isArray(lista) ? lista : []).filter(function(item) {
       var qtd = num(item && (item.qtd != null ? item.qtd : item.quantidade));
@@ -280,6 +328,8 @@ if (!window._urlValida) {
     var el = qs('#est-summary');
     if (!el) return;
     var lista = getLista();
+    var nativeResumo = readSummaryFromNative();
+    var tableResumo = readSummaryFromTable();
     var totalItens = lista.length;
     var valorEstoque = lista.reduce(function(sum, item) {
       var qtd = num(item && (item.qtd != null ? item.qtd : item.quantidade));
@@ -288,6 +338,16 @@ if (!window._urlValida) {
       return sum + (total || (qtd * unit));
     }, 0);
     var abaixo = lowCount(lista);
+    if (nativeResumo) {
+      if (nativeResumo.totalItens != null) totalItens = nativeResumo.totalItens;
+      if (nativeResumo.valorEstoque != null) valorEstoque = nativeResumo.valorEstoque;
+      if (nativeResumo.abaixo != null) abaixo = nativeResumo.abaixo;
+    }
+    if ((!totalItens && tableResumo && tableResumo.totalItens) || (!valorEstoque && tableResumo && tableResumo.valorEstoque) || (!abaixo && tableResumo && tableResumo.abaixo)) {
+      if (!totalItens && tableResumo.totalItens != null) totalItens = tableResumo.totalItens;
+      if (!valorEstoque && tableResumo.valorEstoque != null) valorEstoque = tableResumo.valorEstoque;
+      if (!abaixo && tableResumo.abaixo != null) abaixo = tableResumo.abaixo;
+    }
     el.innerHTML = ''
       + '<div class="estx-stat" style="--estx-accent:var(--cyan,#00d4ff)"><div class="estx-k">Total de itens</div><div class="estx-v">' + totalItens.toLocaleString('pt-BR') + '</div></div>'
       + '<div class="estx-stat" style="--estx-accent:var(--green,#10b981)"><div class="estx-k">Valor em estoque</div><div class="estx-v">' + money(valorEstoque) + '</div></div>'
@@ -478,6 +538,58 @@ if (!window._urlValida) {
     });
     obs.observe(document.body, { childList: true, subtree: true });
   } catch (_) {}
+})();
+
+(function patchClientesAntiLoop() {
+  function clientesCount() {
+    try {
+      if (Array.isArray(window.CLIENTES)) return window.CLIENTES.length;
+    } catch (_) {}
+    try {
+      if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) return CLIENTES.length;
+    } catch (_) {}
+    return 0;
+  }
+
+  function currentPage() {
+    try { return String(window._PAGE_ATUAL || '').trim(); } catch (_) { return ''; }
+  }
+
+  function hook() {
+    var orig = window.carregarClientes;
+    if (typeof orig !== 'function' || orig._patchAntiLoopClientes) return;
+    var inflight = null;
+    var lastAnyTs = 0;
+    var lastForceTs = 0;
+    var wrapped = function(forcar) {
+      var force = !!forcar;
+      var now = Date.now();
+      var page = currentPage();
+      var total = clientesCount();
+      if (inflight) return inflight;
+      if (!force && total > 0 && (now - lastAnyTs) < 5000) {
+        return Promise.resolve({ ok: true, cached: true, data: (window.CLIENTES || window._CLIENTES || []) });
+      }
+      if (force && total > 0 && page !== 'clientes' && (now - lastForceTs) < 15000) {
+        return Promise.resolve({ ok: true, cached: true, data: (window.CLIENTES || window._CLIENTES || []) });
+      }
+      inflight = Promise.resolve(orig.apply(this, arguments))
+        .then(function(res) {
+          lastAnyTs = Date.now();
+          if (force) lastForceTs = lastAnyTs;
+          return res;
+        })
+        .finally(function() {
+          inflight = null;
+        });
+      return inflight;
+    };
+    wrapped._patchAntiLoopClientes = true;
+    window.carregarClientes = wrapped;
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(hook, 100); });
+  else setTimeout(hook, 100);
 })();
 // LIMPEZA DE OVERLAYS ÓRFÃOS — executar imediatamente
 if (typeof NOTIFICACOES === 'undefined') window.NOTIFICACOES = [];
