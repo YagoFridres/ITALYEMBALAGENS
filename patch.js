@@ -6570,6 +6570,62 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 })();
 
 (function patchBuscaComissoesPorOf() {
+  function _comNorm(v) {
+    return String(v || '').toLowerCase().trim();
+  }
+  async function _abrirEdicaoCompletaOF(ofId) {
+    var sid = String(ofId || '').trim();
+    if (!sid) return;
+    try {
+      window.__forceNativeAbrirModalOF = true;
+      if (typeof window.abrirModalOF === 'function') return await window.abrirModalOF(sid);
+      if (typeof window._abrirModalEdicaoOF === 'function') return await window._abrirModalEdicaoOF(sid);
+      if (typeof window.__comAbrirModalOF === 'function') return await window.__comAbrirModalOF(sid);
+    } finally {
+      setTimeout(function() {
+        try { window.__forceNativeAbrirModalOF = false; } catch (_) {}
+      }, 0);
+    }
+  }
+  function _comTokens(termo) {
+    var raw = String(termo || '').trim();
+    if (!raw) return [];
+    return raw.split(',').map(function(t) { return _comNorm(t).replace(/^#/, ''); }).filter(Boolean);
+  }
+  function _decorateComissoesRows() {
+    var tbody = document.querySelector('#tabela-comissoes-ofs tbody');
+    if (!tbody) return;
+    var group = '';
+    Array.prototype.slice.call(tbody.querySelectorAll('tr')).forEach(function(tr, idx) {
+      var cells = tr.children || [];
+      var firstCell = cells[0];
+      var isHeader = !!(firstCell && Number(firstCell.colSpan || 0) >= 10);
+      if (isHeader) {
+        group = 'vend-' + idx;
+        tr.classList.add('com-vendor-row');
+        tr.setAttribute('data-com-group', group);
+        return;
+      }
+      var ofTxt = String((cells[0] && cells[0].textContent) || '').replace(/[^\d]/g, '');
+      var clienteTxt = String((cells[1] && cells[1].textContent) || '').trim();
+      tr.classList.add('com-of-row');
+      tr.setAttribute('data-com-group', group);
+      tr.setAttribute('data-of', ofTxt);
+      tr.setAttribute('data-cliente', clienteTxt);
+      var actionTd = cells[cells.length - 1];
+      if (actionTd && actionTd.dataset.patchEditCom !== '1') {
+        var btn = actionTd.querySelector('button');
+        var onclick = String((btn && btn.getAttribute('onclick')) || '');
+        var m = onclick.match(/['"]([a-f0-9-]{8,}|[A-Za-z0-9_-]{6,})['"]/i);
+        var ofId = m ? String(m[1] || '').trim() : '';
+        if (ofId) {
+          actionTd.innerHTML = '<button style="padding:3px 8px;border-radius:4px;border:1px solid var(--border,#333);background:transparent;color:var(--text1,#fff);cursor:pointer;font-size:10px" onclick="try{ if(typeof window.__abrirEdicaoCompletaOFComissoes===\'function\') window.__abrirEdicaoCompletaOFComissoes(' + JSON.stringify(ofId) + '); }catch(e){}">Editar</button>';
+          actionTd.dataset.patchEditCom = '1';
+        }
+      }
+    });
+  }
+  try { window.__abrirEdicaoCompletaOFComissoes = _abrirEdicaoCompletaOF; } catch (_) {}
   window.__ensureComissoesBusca = function() {
     try {
       var bar = document.querySelector('#page-comissoes .filtros-comissao');
@@ -6578,31 +6634,61 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var input = document.createElement('input');
       input.id = 'comissoes-busca-of';
       input.type = 'text';
-      input.placeholder = '🔍 Buscar por nº OF, cliente...';
-      input.style.cssText = 'padding:7px 12px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);color:var(--text1);width:220px';
+      input.placeholder = '🔍 Buscar OF(s) ou cliente. Ex: 1140,1141';
+      input.style.cssText = 'padding:7px 12px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);color:var(--text1);width:280px';
       input.oninput = function() { try { if (typeof window.filtrarComissoesPorBusca === 'function') window.filtrarComissoesPorBusca(input.value); } catch (_) {} };
       bar.appendChild(input);
     } catch (_) {}
   };
   window.filtrarComissoesPorBusca = function(termo) {
-    var t = String(termo || '').toLowerCase().trim();
+    var t = String(termo || '');
+    var tokens = _comTokens(t);
     try { window.__comissoesBuscaTerm = termo; } catch (_) {}
-    var linhas = document.querySelectorAll('#tabela-comissoes-ofs tbody tr');
-    linhas.forEach(function(tr) {
-      var txt = String(tr && tr.textContent || '').toLowerCase();
-      tr.style.display = (!t || txt.indexOf(t) !== -1) ? '' : 'none';
+    _decorateComissoesRows();
+    var tbody = document.querySelector('#tabela-comissoes-ofs tbody');
+    if (!tbody) return;
+    var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+    var visiveisPorGrupo = {};
+    rows.forEach(function(tr) {
+      if (tr.classList.contains('com-vendor-row')) return;
+      var hay = _comNorm((tr.getAttribute('data-of') || '') + ' ' + (tr.getAttribute('data-cliente') || '') + ' ' + (tr.textContent || ''));
+      var ofTxt = _comNorm(tr.getAttribute('data-of') || '');
+      var ok = !tokens.length || tokens.some(function(token) {
+        if (/^\d+$/.test(token)) return ofTxt.indexOf(token) >= 0;
+        return hay.indexOf(token) >= 0;
+      });
+      tr.style.display = ok ? '' : 'none';
+      if (ok) visiveisPorGrupo[String(tr.getAttribute('data-com-group') || '')] = true;
+    });
+    rows.forEach(function(tr) {
+      if (!tr.classList.contains('com-vendor-row')) return;
+      var grp = String(tr.getAttribute('data-com-group') || '');
+      tr.style.display = (!tokens.length || visiveisPorGrupo[grp]) ? '' : 'none';
     });
   };
   function startEnsureBuscaComissoes() {
     try { window.__ensureComissoesBusca(); } catch (_) {}
+    try { _decorateComissoesRows(); } catch (_) {}
     [400, 1200, 2400].forEach(function(t) {
       setTimeout(function() {
         try {
           if (!document.getElementById('comissoes-busca-of')) window.__ensureComissoesBusca();
+          _decorateComissoesRows();
         } catch (_) {}
       }, t);
     });
   }
+  try {
+    window.addEventListener('comissoes-calculadas', function() {
+      setTimeout(function() {
+        try { _decorateComissoesRows(); } catch (_) {}
+        try {
+          var term = String(window.__comissoesBuscaTerm || '').trim();
+          if (term) window.filtrarComissoesPorBusca(term);
+        } catch (_) {}
+      }, 60);
+    });
+  } catch (_) {}
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(startEnsureBuscaComissoes, 600); });
   else { setTimeout(startEnsureBuscaComissoes, 600); }
 })();
@@ -7925,6 +8011,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (window.abrirModalOF._patchToOfRapidaEdit) return;
     var orig = window.abrirModalOF;
     window.abrirModalOF = async function(ofId) {
+      try {
+        if (window.__forceNativeAbrirModalOF) {
+          return await orig.apply(this, arguments);
+        }
+      } catch (_) {}
       var sid = String(ofId || '').trim();
       if (!sid) return orig.apply(this, arguments);
       if (typeof window.abrirNovaOfRapida !== 'function') return orig.apply(this, arguments);
