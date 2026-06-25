@@ -170,6 +170,315 @@ if (!window._urlValida) {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
   else install();
 })();
+
+(function estoqueChapasRedesignPatch() {
+  var STATE = {
+    visible: 10,
+    lastSig: '',
+    stylesReady: false,
+    controlsBound: false
+  };
+
+  function qs(sel, root) {
+    try { return (root || document).querySelector(sel); } catch (_) { return null; }
+  }
+
+  function qsa(sel, root) {
+    try { return Array.prototype.slice.call((root || document).querySelectorAll(sel) || []); } catch (_) { return []; }
+  }
+
+  function num(v) {
+    var n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function money(v) {
+    return 'R$ ' + num(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function activePage() {
+    var page = qs('#page-estoque');
+    if (!page) return false;
+    return page.classList.contains('active') || page.style.display === 'flex' || page.style.display === 'block';
+  }
+
+  function getLista() {
+    if (Array.isArray(window.ESTOQUE) && window.ESTOQUE.length) return window.ESTOQUE;
+    if (Array.isArray(window._estoqueBase) && window._estoqueBase.length) return window._estoqueBase;
+    return [];
+  }
+
+  function lowCount(lista) {
+    return (Array.isArray(lista) ? lista : []).filter(function(item) {
+      var qtd = num(item && (item.qtd != null ? item.qtd : item.quantidade));
+      var min = num(item && (item.estoque_minimo != null ? item.estoque_minimo : item.min)) || 200;
+      return qtd > 0 && qtd < min;
+    }).length;
+  }
+
+  function ensureStyles() {
+    if (STATE.stylesReady || qs('#patch-estoque-clean-style')) return;
+    var st = document.createElement('style');
+    st.id = 'patch-estoque-clean-style';
+    st.textContent = ''
+      + '#page-estoque .ptoolbar{padding:12px 14px;gap:8px;background:var(--bg2,#0d1526);border-bottom:1px solid var(--border,#1e2d4a)}'
+      + '#page-estoque .ptoolbar>#est-busca,#page-estoque .ptoolbar>#est-fil-forn,#page-estoque .ptoolbar>#est-fil-emp{display:none!important}'
+      + '#page-estoque #est-alertas{display:none!important}'
+      + '#page-estoque #estoque-filtros-bar,#page-estoque #est-filtros-ativos{display:none!important}'
+      + '#page-estoque #est-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 14px}'
+      + '#page-estoque #est-summary .estx-stat{position:relative;background:var(--card,#111827);border:1px solid var(--border,#1e2d4a);border-radius:11px;padding:14px 15px;box-shadow:0 10px 30px rgba(2,6,23,.18)}'
+      + '#page-estoque #est-summary .estx-stat:after{content:"";position:absolute;left:0;right:0;top:0;height:2px;border-radius:11px 11px 0 0;background:var(--estx-accent,var(--cyan,#00d4ff))}'
+      + '#page-estoque #est-summary .estx-k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3,#64748b);font-weight:700}'
+      + '#page-estoque #est-summary .estx-v{margin-top:8px;font-size:24px;font-weight:800;color:var(--text,#e2e8f0)}'
+      + '#page-estoque #estx-topbar{display:grid;gap:12px;margin:0 0 14px}'
+      + '#page-estoque .estx-controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 14px;background:var(--card,#111827);border:1px solid var(--border,#1e2d4a);border-radius:11px}'
+      + '#page-estoque .estx-search{display:flex;align-items:center;gap:8px;flex:1 1 320px;min-width:220px;padding:0 12px;background:var(--bg2,#0d1526);border:1px solid var(--border,#1e2d4a);border-radius:9px;min-height:42px}'
+      + '#page-estoque .estx-search input{flex:1;background:transparent;border:none;outline:none;color:var(--text,#e2e8f0);font-size:13px;min-height:40px;padding:0}'
+      + '#page-estoque .estx-search span{color:var(--text3,#64748b);font-size:14px}'
+      + '#page-estoque .estx-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:8px 14px;border-radius:999px;border:1px solid var(--border,#1e2d4a);background:var(--bg3,#121e35);color:var(--text,#e2e8f0);cursor:pointer;font-size:13px;font-weight:700}'
+      + '#page-estoque .estx-btn.is-active{background:rgba(245,158,11,.15);color:var(--yellow,#f59e0b);border-color:rgba(245,158,11,.35)}'
+      + '#page-estoque .estx-btn.estx-clear{background:transparent;color:var(--text2,#94a3b8)}'
+      + '#page-estoque #est-cat-tabs{display:flex;gap:8px;flex-wrap:wrap;padding:0;margin:0}'
+      + '#page-estoque #est-cat-tabs button{padding:7px 12px!important;border-radius:999px!important;min-height:38px!important;border:1px solid var(--border,#1e2d4a)!important;background:var(--bg3,#121e35)!important;color:var(--text2,#94a3b8)!important;flex:0 0 auto!important}'
+      + '#page-estoque #est-cat-tabs button[style*="var(--accent)"]{background:rgba(0,212,255,.15)!important;color:var(--cyan,#00d4ff)!important;border-color:rgba(0,212,255,.3)!important}'
+      + '#page-estoque #est-table-wrap{border-radius:11px;border:1px solid var(--border,#1e2d4a);background:var(--card,#111827);overflow:auto;-webkit-overflow-scrolling:touch}'
+      + '#page-estoque #tabelaChapasEstoque thead tr{background:var(--bg2,#0d1526)!important}'
+      + '#page-estoque #tabelaChapasEstoque th{font-size:10px!important;text-transform:uppercase!important;letter-spacing:.06em!important;color:var(--text3,#64748b)!important;padding:9px 13px!important}'
+      + '#page-estoque #tabelaChapasEstoque td{padding:9px 13px!important;color:var(--text2,#94a3b8)!important;border-top:1px solid var(--border,#1e2d4a)!important}'
+      + '#page-estoque #tabelaChapasEstoque tbody tr:hover{background:rgba(0,212,255,.02)!important}'
+      + '#page-estoque .patch-hub-pin-chapa{display:none!important}'
+      + '#page-estoque #estx-load-more-wrap{display:flex;justify-content:center;padding:12px 0 4px}'
+      + '#page-estoque #estx-load-more{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 16px;border-radius:9px;border:1px solid var(--border,#1e2d4a);background:var(--bg3,#121e35);color:var(--text,#e2e8f0);font-size:13px;font-weight:700;cursor:pointer}'
+      + '#page-estoque #estx-load-more:hover{border-color:rgba(0,212,255,.35);color:var(--cyan,#00d4ff)}'
+      + '@media (max-width: 768px){'
+      + '  #page-estoque #est-summary{grid-template-columns:1fr}'
+      + '  #page-estoque .estx-controls{padding:12px}'
+      + '  #page-estoque .estx-search{flex:1 1 100%;width:100%}'
+      + '  #page-estoque .estx-btn{width:100%;min-height:44px}'
+      + '  #page-estoque #est-cat-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}'
+      + '  #page-estoque #est-cat-tabs button{width:100%!important;min-height:44px!important}'
+      + '  #page-estoque .ptoolbar button{min-height:44px!important}'
+      + '  #page-estoque #est-table-wrap{overflow-x:auto}'
+      + '}'
+      + '@media (max-width: 400px){#page-estoque #est-cat-tabs{grid-template-columns:1fr}}';
+    document.head.appendChild(st);
+    STATE.stylesReady = true;
+  }
+
+  function filterSignature() {
+    var efBusca = qs('#ef-busca');
+    var efCat = qs('#ef-categoria');
+    var efBaixo = qs('#ef-baixo');
+    return [
+      String((efBusca && efBusca.value) || ''),
+      String((efCat && efCat.value) || ''),
+      String(!!(efBaixo && efBaixo.checked))
+    ].join('|');
+  }
+
+  function renderSummary() {
+    var el = qs('#est-summary');
+    if (!el) return;
+    var lista = getLista();
+    var totalItens = lista.length;
+    var valorEstoque = lista.reduce(function(sum, item) {
+      var qtd = num(item && (item.qtd != null ? item.qtd : item.quantidade));
+      var unit = num(item && (item.valor_unitario != null ? item.valor_unitario : item.val));
+      var total = num(item && item.valor_total);
+      return sum + (total || (qtd * unit));
+    }, 0);
+    var abaixo = lowCount(lista);
+    el.innerHTML = ''
+      + '<div class="estx-stat" style="--estx-accent:var(--cyan,#00d4ff)"><div class="estx-k">Total de itens</div><div class="estx-v">' + totalItens.toLocaleString('pt-BR') + '</div></div>'
+      + '<div class="estx-stat" style="--estx-accent:var(--green,#10b981)"><div class="estx-k">Valor em estoque</div><div class="estx-v">' + money(valorEstoque) + '</div></div>'
+      + '<div class="estx-stat" style="--estx-accent:var(--yellow,#f59e0b)"><div class="estx-k">Itens abaixo do mínimo</div><div class="estx-v">' + abaixo.toLocaleString('pt-BR') + '</div></div>';
+  }
+
+  function ensureControls() {
+    var pageBody = qs('#page-estoque .page-body');
+    var summary = qs('#est-summary');
+    if (!pageBody || !summary) return null;
+    var top = qs('#estx-topbar');
+    if (!top) {
+      top = document.createElement('div');
+      top.id = 'estx-topbar';
+      top.innerHTML = ''
+        + '<div class="estx-controls">'
+        + '  <div class="estx-search"><span>🔍</span><input id="estx-unified-search" type="text" placeholder="Buscar por nome, nomenclatura, fornecedor, tamanho ou NF"></div>'
+        + '  <button type="button" class="estx-btn" id="estx-low-stock-btn">⚠ Estoque Baixo (0)</button>'
+        + '  <button type="button" class="estx-btn estx-clear" id="estx-clear-filters">Limpar filtros</button>'
+        + '</div>'
+        + '<div id="estx-category-host"></div>';
+      pageBody.insertBefore(top, summary);
+    }
+    var catTabs = qs('#est-cat-tabs');
+    var host = qs('#estx-category-host');
+    if (catTabs && host && catTabs.parentElement !== host) host.appendChild(catTabs);
+    return top;
+  }
+
+  function callNativeRender() {
+    if (typeof window._renderEstoqueBase === 'function') window._renderEstoqueBase();
+    else if (typeof window.renderEstoque === 'function') window.renderEstoque();
+  }
+
+  function syncUnifiedSearch() {
+    var src = qs('#estx-unified-search');
+    if (!src) return;
+    var nativeBusca = qs('#ef-busca');
+    var legacyBusca = qs('#est-busca');
+    var val = String(src.value || '');
+    if (nativeBusca && nativeBusca.value !== val) nativeBusca.value = val;
+    if (legacyBusca && legacyBusca.value !== val) legacyBusca.value = val;
+  }
+
+  function clearHiddenFilters() {
+    ['#ef-fornecedor', '#ef-cliente', '#ef-nf', '#ef-nomenclatura', '#ef-tamanho'].forEach(function(sel) {
+      var el = qs(sel);
+      if (el) el.value = '';
+    });
+    ['#ef-riscadas', '#ef-com-vincos', '#ef-sem'].forEach(function(sel) {
+      var el = qs(sel);
+      if (el) el.checked = false;
+    });
+  }
+
+  function bindControls() {
+    if (STATE.controlsBound) return;
+    var input = qs('#estx-unified-search');
+    var lowBtn = qs('#estx-low-stock-btn');
+    var clearBtn = qs('#estx-clear-filters');
+    if (input) {
+      input.addEventListener('input', function() {
+        STATE.visible = 10;
+        syncUnifiedSearch();
+        callNativeRender();
+      });
+    }
+    if (lowBtn) {
+      lowBtn.addEventListener('click', function() {
+        var chk = qs('#ef-baixo');
+        if (chk) chk.checked = !chk.checked;
+        STATE.visible = 10;
+        callNativeRender();
+      });
+    }
+    if (clearBtn) {
+      clearBtn.addEventListener('click', function() {
+        var inputEl = qs('#estx-unified-search');
+        if (inputEl) inputEl.value = '';
+        syncUnifiedSearch();
+        clearHiddenFilters();
+        var chk = qs('#ef-baixo');
+        if (chk) chk.checked = false;
+        var cat = qs('#ef-categoria');
+        if (cat) cat.value = '';
+        if (typeof window.estSelecionarCategoriaTab === 'function') window.estSelecionarCategoriaTab('');
+        else callNativeRender();
+        STATE.visible = 10;
+      });
+    }
+    STATE.controlsBound = true;
+  }
+
+  function updateControls() {
+    var input = qs('#estx-unified-search');
+    var nativeBusca = qs('#ef-busca');
+    if (input && nativeBusca && input.value !== nativeBusca.value) input.value = nativeBusca.value || '';
+    var lowBtn = qs('#estx-low-stock-btn');
+    var chk = qs('#ef-baixo');
+    if (lowBtn) {
+      var totalLow = lowCount(getLista());
+      lowBtn.textContent = '⚠ Estoque Baixo (' + totalLow.toLocaleString('pt-BR') + ')';
+      if (chk && chk.checked) lowBtn.classList.add('is-active');
+      else lowBtn.classList.remove('is-active');
+    }
+  }
+
+  function applyLoadMore() {
+    var body = qs('#page-estoque #est-table-body');
+    if (!body) return;
+    var rows = qsa('tr[data-chapa-id]', body);
+    var sig = filterSignature();
+    if (sig !== STATE.lastSig) {
+      STATE.lastSig = sig;
+      STATE.visible = 10;
+    }
+    var wrap = qs('#estx-load-more-wrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'estx-load-more-wrap';
+      var host = qs('#page-estoque #est-table-wrap');
+      if (host && host.parentElement) host.parentElement.appendChild(wrap);
+    }
+    rows.forEach(function(row, index) {
+      row.style.display = index < STATE.visible ? '' : 'none';
+    });
+    if (!rows.length || rows.length <= STATE.visible) {
+      wrap.innerHTML = '';
+      return;
+    }
+    var restantes = rows.length - STATE.visible;
+    wrap.innerHTML = '<button type="button" id="estx-load-more">Carregar mais (' + restantes.toLocaleString('pt-BR') + ' restantes)</button>';
+    var btn = qs('#estx-load-more', wrap);
+    if (btn) {
+      btn.onclick = function() {
+        STATE.visible += 10;
+        applyLoadMore();
+      };
+    }
+  }
+
+  function cleanupDuplicatePins() {
+    qsa('#page-estoque .patch-hub-pin-chapa').forEach(function(btn) {
+      try { btn.remove(); } catch (_) {}
+    });
+  }
+
+  function applyRedesign() {
+    ensureStyles();
+    ensureControls();
+    bindControls();
+    renderSummary();
+    updateControls();
+    cleanupDuplicatePins();
+    applyLoadMore();
+  }
+
+  function wrapFunction(name) {
+    try {
+      var orig = window[name];
+      if (typeof orig !== 'function' || orig._estoqueCleanWrapped) return;
+      window[name] = function() {
+        var out = orig.apply(this, arguments);
+        setTimeout(applyRedesign, 30);
+        setTimeout(applyRedesign, 180);
+        return out;
+      };
+      window[name]._estoqueCleanWrapped = true;
+    } catch (_) {}
+  }
+
+  function install() {
+    wrapFunction('renderEstoque');
+    wrapFunction('_renderEstoqueBase');
+    wrapFunction('renderEstoqueCategoriaTabs');
+    wrapFunction('estSelecionarCategoriaTab');
+    if (activePage()) applyRedesign();
+  }
+
+  try {
+    install();
+    setTimeout(install, 600);
+    setTimeout(applyRedesign, 900);
+    var obs = new MutationObserver(function() {
+      if (window._pausarObservers) return;
+      if (!activePage() && !qs('#page-estoque #est-table-body')) return;
+      setTimeout(applyRedesign, 80);
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+  } catch (_) {}
+})();
 // LIMPEZA DE OVERLAYS ÓRFÃOS — executar imediatamente
 if (typeof NOTIFICACOES === 'undefined') window.NOTIFICACOES = [];
 window.NOTIFICACOES = window.NOTIFICACOES || [];
