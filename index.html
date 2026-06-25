@@ -19208,18 +19208,14 @@ function comFmtDate(v){
   return s ? fmtD(s) : '—';
 }
 function comPickQtd(of){
-  const direto = Number(of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? of?.total_caixas ?? NaN);
-  if(Number.isFinite(direto) && direto > 0) return direto;
-  let itens = of?.itens;
-  if(typeof itens === 'string'){
-    try{ itens = JSON.parse(itens || '[]'); }catch(e){ itens = []; }
-  }
-  if(Array.isArray(itens)){
-    const soma = itens.reduce((s,it)=>s + (Number(it?.qtd ?? it?.quantidade ?? 0) || 0), 0);
-    if(soma > 0) return soma;
-  }
-  const fallback = Number(of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? of?.total_caixas ?? 0) || 0;
-  return fallback;
+  return Number(of?.qtd || 0) || 0;
+}
+function comPickPrecoUnit(of){
+  const qtd = comPickQtd(of);
+  const preco = Number(of?.preco ?? 0) || 0;
+  if(preco > 0) return preco;
+  const valorTotal = Number(of?.valor_total ?? of?.valor ?? of?.total ?? of?.valor_venda ?? 0) || 0;
+  return qtd > 0 ? (valorTotal / qtd) : 0;
 }
 function comPickDataConclusao(of){
   return String(of?.data_conclusao || of?.dataConclusao || of?.conclusao || '').slice(0,10);

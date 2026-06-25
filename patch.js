@@ -14234,7 +14234,7 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
   listaOFs.forEach(function(of, idx) {
     var quantidade = Number(of && of.qtd || 0) || 0;
     var valorTotal = Number(of && (of.valor_total ?? of.valor_venda ?? 0) || 0) || 0;
-    var vu = Number(of && of.preco || 0) || 0;
+    var vu = _precoOFComissao(of, quantidade, valorTotal);
     var comPct = Number(of && (of.comissao_pct || 1) || 1) || 1;
     var comissaoRS = valorTotal * (comPct / 100);
     var nomeVend = getNomeVend(of);
@@ -16455,6 +16455,14 @@ function _ocultarGraficoComissoes() {
     return Number(of && of.qtd || 0) || 0;
   }
 
+  function _precoOFComissao(of, qtd, valorTotal) {
+    var preco = Number(of && of.preco || 0) || 0;
+    if (preco > 0) return preco;
+    var qtdBase = Number(qtd || 0) || 0;
+    var totalBase = Number(valorTotal || 0) || 0;
+    return qtdBase > 0 ? (totalBase / qtdBase) : 0;
+  }
+
   function _dataConclusaoOFComissao(of) {
     return String(of && (of.data_conclusao || of.dataConclusao || of.conclusao) || '').trim();
   }
@@ -16475,7 +16483,7 @@ function _ocultarGraficoComissoes() {
   function _normalizarOFComissao(of, vendedorFallback) {
     var qtd = _qtdOFComissao(of);
     var valorTotal = Number(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : (of.valor != null ? of.valor : of.valor_venda))) || 0) || 0;
-    var preco = Number(of && of.preco || 0) || 0;
+    var preco = _precoOFComissao(of, qtd, valorTotal);
     var pctRaw = _pctCom(of && (of.comissao_pct != null ? of.comissao_pct : (of.pct_comissao != null ? of.pct_comissao : of.comissao_pct)));
     var fator = (Number(pctRaw || 0) || 0) / 100;
     var comissaoValor = Number(
@@ -16631,7 +16639,7 @@ function _ocultarGraficoComissoes() {
           var dataRef = _dataReferenciaOFComissao(of);
           dataStr = dataRef ? new Date(dataRef).toLocaleDateString('pt-BR') : '—';
         } catch (_) { dataStr = '—'; }
-        var precoUnit = Number(of && of.preco || 0) || 0;
+        var precoUnit = _precoOFComissao(of, qtd, valorTotal);
         var id = String(of && of.id || '');
         var btnHtml = !concluida
           ? '<button class="_btn_concluir_of" data-of-id="' + _escHtmlCom(id) + '" data-of-num="' + _escHtmlCom(numero) + '" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px">✅ Concluir</button>'
