@@ -5445,7 +5445,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         listEl.innerHTML = abertas.map(function(o) {
           var num = String(o && o.numero || '—').trim() || '—';
           var prod = String(o && o.produto || '').trim();
-          var qtd = (o && o.quantidade != null) ? (Number(o.quantidade) || 0) : 0;
+          var qtd = Number(o && o.qtd || 0) || 0;
           var ent = String(o && o.data_entrega || '').slice(0, 10);
           var stt = String(o && o.status || '—').trim() || '—';
           var maq = String(o && o.maquina || '').trim();
@@ -14232,10 +14232,9 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
   var htmlFinal = '';
   var vendedorAtual = null;
   listaOFs.forEach(function(of, idx) {
-    var quantidade = Number(of && (of.quantidade ?? of.qtd ?? 0) || 0) || 0;
+    var quantidade = Number(of && of.qtd || 0) || 0;
     var valorTotal = Number(of && (of.valor_total ?? of.valor_venda ?? 0) || 0) || 0;
-    var vu = Number(of && of.valor_unitario || 0) || 0;
-    if (!vu && valorTotal && quantidade > 0) vu = valorTotal / quantidade;
+    var vu = Number(of && of.preco || 0) || 0;
     var comPct = Number(of && (of.comissao_pct || 1) || 1) || 1;
     var comissaoRS = valorTotal * (comPct / 100);
     var nomeVend = getNomeVend(of);
