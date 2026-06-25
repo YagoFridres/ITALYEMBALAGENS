@@ -591,6 +591,154 @@ if (!window._urlValida) {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(hook, 100); });
   else setTimeout(hook, 100);
 })();
+
+(function patchSerializarCarregamentosBoot() {
+  var MIN_DELAY_MS = 2000;
+
+  function cap(name) {
+    return String(name || '').replace(/^[a-z]/, function(s) { return s.toUpperCase(); });
+  }
+
+  function getStore() {
+    if (!window.__patchLoadStore || typeof window.__patchLoadStore !== 'object') window.__patchLoadStore = {};
+    return window.__patchLoadStore;
+  }
+
+  function getPage() {
+    try { return String(window._PAGE_ATUAL || '').trim().toLowerCase(); } catch (_) { return ''; }
+  }
+
+  function getClientesCache() {
+    try { if (Array.isArray(window.CLIENTES)) return window.CLIENTES; } catch (_) {}
+    try { if (Array.isArray(window._CLIENTES)) return window._CLIENTES; } catch (_) {}
+    return [];
+  }
+
+  function getGenericCache(name) {
+    if (name === 'carregarClientes') return getClientesCache();
+    try {
+      var key = String(name || '').replace(/^carregar/, '').toUpperCase();
+      if (Array.isArray(window[key])) return window[key];
+    } catch (_) {}
+    return [];
+  }
+
+  function setFlag(name, value) {
+    try { window['_loading' + cap(name).replace(/^Carregar/, '')] = !!value; } catch (_) {}
+  }
+
+  function wrapLoader(name, opts) {
+    var orig = window[name];
+    if (typeof orig !== 'function' || orig._patchSerializedBoot) return;
+    var store = getStore();
+    var wrapped = function() {
+      var args = Array.prototype.slice.call(arguments);
+      var state = store[name] || (store[name] = { inflight: null, lastDone: 0, lastResult: null });
+      var now = Date.now();
+      var page = getPage();
+      var force = !!(opts && typeof opts.detectForce === 'function' ? opts.detectForce(args) : args[0]);
+      var cache = getGenericCache(name);
+      if (state.inflight) return state.inflight;
+      if (name === 'carregarClientes' && force && page !== 'clientes' && cache.length && (now - state.lastDone) < MIN_DELAY_MS) {
+        return Promise.resolve(state.lastResult || { ok: true, cached: true, data: cache });
+      }
+      if ((now - state.lastDone) < MIN_DELAY_MS && cache.length) {
+        return Promise.resolve(state.lastResult || { ok: true, cached: true, data: cache });
+      }
+      setFlag(name, true);
+      state.inflight = Promise.resolve(orig.apply(this, args))
+        .then(function(res) {
+          state.lastDone = Date.now();
+          state.lastResult = res;
+          return res;
+        })
+        .finally(function() {
+          state.inflight = null;
+          setFlag(name, false);
+        });
+      return state.inflight;
+    };
+    wrapped._patchSerializedBoot = true;
+    window[name] = wrapped;
+  }
+
+  function safeCall(name, args) {
+    try {
+      if (typeof window[name] === 'function') return Promise.resolve(window[name].apply(window, Array.isArray(args) ? args : []));
+    } catch (_) {}
+    return Promise.resolve();
+  }
+
+  function syncJarvisContext() {
+    try {
+      if (typeof window.__jarvisContextUpdate === 'function') {
+        window.__jarvisContextUpdate({
+          ofs: Array.isArray(window.OFS) ? window.OFS : [],
+          clientes: Array.isArray(window.CLIENTES) ? window.CLIENTES : [],
+          vendedores: Array.isArray(window.VENDEDORES) ? window.VENDEDORES : [],
+          maquinas: Array.isArray(window.MAQUINAS) ? window.MAQUINAS : [],
+          estoque: Array.isArray(window.ESTOQUE) ? window.ESTOQUE : [],
+          fornecedores: Array.isArray(window.FORNECEDORES) ? window.FORNECEDORES : []
+        });
+      }
+    } catch (_) {}
+  }
+
+  function wrapLoadCoreData() {
+    var orig = window.loadCoreData;
+    if (typeof orig !== 'function' || orig._patchSerializedBoot) return;
+    var inflight = null;
+    window.loadCoreData = async function() {
+      if (inflight) return inflight;
+      inflight = (async function() {
+        var hoje = '';
+        try { hoje = typeof window.today === 'function' ? window.today() : ''; } catch (_) { hoje = ''; }
+        await safeCall('carregarEmpresas');
+        await safeCall('carregarCfgSistema');
+        await safeCall('carregarOFs', [{ from: hoje, to: hoje, forcar: true }]);
+        await safeCall('carregarVendedores', [false]);
+        syncJarvisContext();
+        try { if (typeof window.updateBadges === 'function') window.updateBadges(); } catch (_) {}
+        try { if (typeof window.renderPCP === 'function') window.renderPCP(); } catch (_) {}
+      })().finally(function() {
+        setTimeout(function() { inflight = null; }, MIN_DELAY_MS);
+      });
+      return inflight;
+    };
+    window.loadCoreData._patchSerializedBoot = true;
+  }
+
+  function wrapBootAuthAndData() {
+    var orig = window.bootAuthAndData;
+    if (typeof orig !== 'function' || orig._patchSerializedBoot) return;
+    var inflight = null;
+    window.bootAuthAndData = function() {
+      if (inflight) return inflight;
+      inflight = Promise.resolve(orig.apply(this, arguments)).finally(function() {
+        setTimeout(function() { inflight = null; }, MIN_DELAY_MS);
+      });
+      return inflight;
+    };
+    window.bootAuthAndData._patchSerializedBoot = true;
+  }
+
+  function hook() {
+    wrapLoader('carregarClientes', { detectForce: function(args) { return !!args[0]; } });
+    wrapLoader('carregarOFs', { detectForce: function(args) {
+      var first = args[0];
+      return !!(first === true || (first && typeof first === 'object' && first.forcar));
+    } });
+    wrapLoader('carregarVendedores', { detectForce: function(args) { return !!args[0]; } });
+    wrapLoader('carregarChapas', { detectForce: function(args) { return !!args[0]; } });
+    wrapLoader('carregarMaquinas', { detectForce: function(args) { return !!args[0]; } });
+    wrapLoadCoreData();
+    wrapBootAuthAndData();
+  }
+
+  [0, 200, 600, 1200, 2200].forEach(function(delay) {
+    setTimeout(hook, delay);
+  });
+})();
 // LIMPEZA DE OVERLAYS ÓRFÃOS — executar imediatamente
 if (typeof NOTIFICACOES === 'undefined') window.NOTIFICACOES = [];
 window.NOTIFICACOES = window.NOTIFICACOES || [];
