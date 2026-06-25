@@ -6693,6 +6693,345 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   else { setTimeout(startEnsureBuscaComissoes, 600); }
 })();
 
+(function patchComparadorConcorrentesOrcamento() {
+  var STYLE_ID = 'calc-concorrentes-style';
+  var HOST_ID = 'calc-concorrentes-wrap';
+
+  function state() {
+    if (!window.__orcConcorrentesState || typeof window.__orcConcorrentesState !== 'object') {
+      window.__orcConcorrentesState = {
+        items: [],
+        draftOpen: false,
+        draftNome: '',
+        draftPreco: ''
+      };
+    }
+    return window.__orcConcorrentesState;
+  }
+
+  function n(v) {
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    var s = String(v == null ? '' : v).trim();
+    if (!s) return 0;
+    s = s.replace(/\s+/g, '');
+    if (s.indexOf(',') >= 0 && s.indexOf('.') >= 0) {
+      if (s.lastIndexOf(',') > s.lastIndexOf('.')) s = s.replace(/\./g, '').replace(',', '.');
+      else s = s.replace(/,/g, '');
+    } else if (s.indexOf(',') >= 0) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    }
+    var x = parseFloat(s);
+    return isFinite(x) ? x : 0;
+  }
+
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function fmtMoney(v) {
+    try {
+      if (typeof window.fmtR === 'function') return window.fmtR(Number(v || 0) || 0);
+    } catch (_) {}
+    try {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v || 0) || 0);
+    } catch (_) {
+      return 'R$ ' + (Number(v || 0) || 0).toFixed(2);
+    }
+  }
+
+  function fmtPct(v) {
+    var val = Number(v || 0) || 0;
+    var sign = val > 0 ? '+' : '';
+    return sign + val.toFixed(2) + '%';
+  }
+
+  function ensureStyle() {
+    try {
+      if (document.getElementById(STYLE_ID)) return;
+      var style = document.createElement('style');
+      style.id = STYLE_ID;
+      style.textContent = ''
+        + '#' + HOST_ID + '{margin-top:14px;padding:14px;border:1px solid rgba(255,255,255,.10);border-radius:12px;background:rgba(15,23,42,.55)}'
+        + '#' + HOST_ID + ' .cc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px}'
+        + '#' + HOST_ID + ' .cc-title{font-size:15px;font-weight:800;color:var(--text1,#fff)}'
+        + '#' + HOST_ID + ' .cc-sub{margin-top:4px;font-size:12px;color:var(--text2,#94a3b8)}'
+        + '#' + HOST_ID + ' .cc-actions{display:flex;gap:8px;flex-wrap:wrap}'
+        + '#' + HOST_ID + ' .cc-btn{padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--text1,#fff);cursor:pointer;font-size:12px;font-weight:700}'
+        + '#' + HOST_ID + ' .cc-btn:hover{background:rgba(255,255,255,.08)}'
+        + '#' + HOST_ID + ' .cc-btn.primary{background:rgba(0,212,255,.16);border-color:rgba(0,212,255,.32);color:#7dd3fc}'
+        + '#' + HOST_ID + ' .cc-grid{display:grid;grid-template-columns:1.3fr .9fr .9fr;gap:10px;margin-bottom:12px}'
+        + '#' + HOST_ID + ' .cc-field label{display:block;margin-bottom:6px;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text3,#94a3b8);text-transform:uppercase}'
+        + '#' + HOST_ID + ' .cc-field input{width:100%;padding:10px 12px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.14);color:var(--text1,#fff);font-size:13px}'
+        + '#' + HOST_ID + ' .cc-table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:10px}'
+        + '#' + HOST_ID + ' table{width:100%;min-width:780px;border-collapse:collapse}'
+        + '#' + HOST_ID + ' th{padding:10px 12px;background:rgba(255,255,255,.04);text-align:left;font-size:11px;font-weight:800;letter-spacing:.05em;color:var(--text3,#94a3b8);text-transform:uppercase}'
+        + '#' + HOST_ID + ' td{padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);font-size:13px;color:var(--text2,#cbd5e1)}'
+        + '#' + HOST_ID + ' tr.cc-italy td{background:rgba(0,212,255,.08);color:var(--text1,#fff);font-weight:700}'
+        + '#' + HOST_ID + ' .cc-status{font-weight:800}'
+        + '#' + HOST_ID + ' .cc-status.ok{color:#34d399}'
+        + '#' + HOST_ID + ' .cc-status.bad{color:#f87171}'
+        + '#' + HOST_ID + ' .cc-status.eq{color:#fbbf24}'
+        + '#' + HOST_ID + ' .cc-remove{padding:5px 9px;border-radius:7px;border:1px solid rgba(248,113,113,.35);background:rgba(248,113,113,.12);color:#fca5a5;cursor:pointer;font-size:11px;font-weight:700}'
+        + '#' + HOST_ID + ' .cc-empty{padding:12px 4px 2px;color:var(--text3,#94a3b8);font-size:12px}'
+        + '@media (max-width: 768px){'
+        + '#' + HOST_ID + ' .cc-grid{grid-template-columns:1fr}'
+        + '#' + HOST_ID + ' .cc-btn{min-height:44px}'
+        + '#' + HOST_ID + ' .cc-field input{font-size:16px}'
+        + '}';
+      document.head.appendChild(style);
+    } catch (_) {}
+  }
+
+  function getItalyBase() {
+    var calc = window.calcLastResult;
+    var list = Array.isArray(calc && calc.allResults) ? calc.allResults.slice() : [];
+    if (!list.length) return null;
+    list.sort(function(a, b) {
+      return n(a && (a.comFrete != null ? a.comFrete : a.liquida)) - n(b && (b.comFrete != null ? b.comFrete : b.liquida));
+    });
+    var best = list[0] || null;
+    if (!best) return null;
+    var qtd = n(calc && calc.qtd);
+    qtd = qtd > 0 ? qtd : 1;
+    var total = n(best && (best.comFrete != null ? best.comFrete : best.liquida));
+    var unit = n(best && (best.vunit != null ? best.vunit : (qtd ? (total / qtd) : 0)));
+    return {
+      qtd: qtd,
+      total: total,
+      unit: unit,
+      ref: String(best && (best.compTitle || best.compLabel || '') || '').trim(),
+      onda: String(best && best.onda || '').trim()
+    };
+  }
+
+  function ensureHost() {
+    try {
+      var modal = document.getElementById('modal-calculadora');
+      if (!modal) return null;
+      var col = modal.querySelector('.calc-col-esq') || modal.querySelector('.modal-body') || modal;
+      if (!col) return null;
+      var host = document.getElementById(HOST_ID);
+      if (!host) {
+        host = document.createElement('div');
+        host.id = HOST_ID;
+        col.appendChild(host);
+      }
+      return host;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function competitorRows(italy) {
+    var st = state();
+    return st.items.map(function(item, idx) {
+      var unit = n(item && item.precoUnit);
+      var total = unit * italy.qtd;
+      var diff = total - italy.total;
+      var diffPct = italy.total ? ((diff / italy.total) * 100) : 0;
+      var status = 'Igual';
+      var cls = 'eq';
+      if (diff > 0.0001) {
+        status = 'Mais barato';
+        cls = 'ok';
+      } else if (diff < -0.0001) {
+        status = 'Mais caro';
+        cls = 'bad';
+      }
+      return {
+        idx: idx,
+        fornecedor: String(item && item.nome || '').trim(),
+        unit: unit,
+        total: total,
+        diff: diff,
+        diffPct: diffPct,
+        status: status,
+        cls: cls
+      };
+    });
+  }
+
+  function bindHost(host) {
+    if (!host) return;
+    var st = state();
+    var btnAdd = host.querySelector('[data-cc-add]');
+    if (btnAdd) {
+      btnAdd.onclick = function() {
+        st.draftOpen = true;
+        render();
+      };
+    }
+    var btnClear = host.querySelector('[data-cc-clear]');
+    if (btnClear) {
+      btnClear.onclick = function() {
+        st.items = [];
+        st.draftOpen = false;
+        st.draftNome = '';
+        st.draftPreco = '';
+        render();
+      };
+    }
+    var inpNome = host.querySelector('#cc-nome');
+    if (inpNome) {
+      inpNome.oninput = function() { st.draftNome = inpNome.value || ''; };
+    }
+    var inpPreco = host.querySelector('#cc-preco');
+    if (inpPreco) {
+      inpPreco.oninput = function() { st.draftPreco = inpPreco.value || ''; };
+    }
+    var btnSave = host.querySelector('[data-cc-save]');
+    if (btnSave) {
+      btnSave.onclick = function() {
+        var nome = String(st.draftNome || '').trim();
+        var preco = n(st.draftPreco);
+        if (!nome || !(preco > 0)) {
+          try { if (typeof window.toast === 'function') window.toast('Informe nome e preço do concorrente', 'var(--yellow)'); } catch (_) {}
+          return;
+        }
+        st.items.push({ nome: nome, precoUnit: preco });
+        st.draftOpen = false;
+        st.draftNome = '';
+        st.draftPreco = '';
+        render();
+      };
+    }
+    var btnCancel = host.querySelector('[data-cc-cancel]');
+    if (btnCancel) {
+      btnCancel.onclick = function() {
+        st.draftOpen = false;
+        st.draftNome = '';
+        st.draftPreco = '';
+        render();
+      };
+    }
+    Array.prototype.slice.call(host.querySelectorAll('[data-cc-remove]')).forEach(function(btn) {
+      btn.onclick = function() {
+        var idx = parseInt(btn.getAttribute('data-cc-remove'), 10);
+        if (isNaN(idx)) return;
+        st.items.splice(idx, 1);
+        render();
+      };
+    });
+  }
+
+  function render() {
+    ensureStyle();
+    var host = ensureHost();
+    if (!host) return;
+    var italy = getItalyBase();
+    if (!italy) {
+      host.innerHTML = '';
+      return;
+    }
+    var st = state();
+    var rows = competitorRows(italy);
+    var html = ''
+      + '<div class="cc-head">'
+      + '  <div>'
+      + '    <div class="cc-title">Comparador com Concorrentes</div>'
+      + '    <div class="cc-sub">Base Italy Embalagens: ' + fmtMoney(italy.unit) + '/un | Total ' + fmtMoney(italy.total) + ' para ' + String(Math.round(italy.qtd)) + ' un'
+      + (italy.ref ? ' | ' + esc(italy.ref + (italy.onda ? ' - Onda ' + italy.onda : '')) : '')
+      + '</div>'
+      + '  </div>'
+      + '  <div class="cc-actions">'
+      + '    <button type="button" class="cc-btn primary" data-cc-add>+ Adicionar Concorrente</button>'
+      + '    <button type="button" class="cc-btn" data-cc-clear>Limpar concorrentes</button>'
+      + '  </div>'
+      + '</div>';
+
+    if (st.draftOpen) {
+      html += ''
+        + '<div class="cc-grid">'
+        + '  <div class="cc-field"><label>Fornecedor</label><input id="cc-nome" type="text" value="' + esc(st.draftNome) + '" placeholder="Nome do concorrente"></div>'
+        + '  <div class="cc-field"><label>Preço ofertado</label><input id="cc-preco" type="number" step="0.0001" value="' + esc(st.draftPreco) + '" placeholder="0,00"></div>'
+        + '  <div class="cc-actions" style="align-items:end">'
+        + '    <button type="button" class="cc-btn primary" data-cc-save>Salvar concorrente</button>'
+        + '    <button type="button" class="cc-btn" data-cc-cancel>Cancelar</button>'
+        + '  </div>'
+        + '</div>';
+    }
+
+    html += ''
+      + '<div class="cc-table-wrap">'
+      + '  <table>'
+      + '    <thead>'
+      + '      <tr><th>Fornecedor</th><th>Preço Unit.</th><th>Total</th><th>Diferença (R$)</th><th>Diferença (%)</th><th>Status</th><th></th></tr>'
+      + '    </thead>'
+      + '    <tbody>'
+      + '      <tr class="cc-italy"><td>Italy Embalagens</td><td>' + fmtMoney(italy.unit) + '</td><td>' + fmtMoney(italy.total) + '</td><td>' + fmtMoney(0) + '</td><td>' + fmtPct(0) + '</td><td><span class="cc-status eq">Base</span></td><td></td></tr>';
+
+    rows.forEach(function(row) {
+      html += ''
+        + '<tr>'
+        + '  <td>' + esc(row.fornecedor) + '</td>'
+        + '  <td>' + fmtMoney(row.unit) + '</td>'
+        + '  <td>' + fmtMoney(row.total) + '</td>'
+        + '  <td>' + fmtMoney(row.diff) + '</td>'
+        + '  <td>' + fmtPct(row.diffPct) + '</td>'
+        + '  <td><span class="cc-status ' + row.cls + '">' + row.status + '</span></td>'
+        + '  <td><button type="button" class="cc-remove" data-cc-remove="' + String(row.idx) + '">Remover</button></td>'
+        + '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    if (!rows.length && !st.draftOpen) {
+      html += '<div class="cc-empty">Adicione preços de concorrentes para comparar o orçamento calculado em tempo real.</div>';
+    }
+    host.innerHTML = html;
+    bindHost(host);
+  }
+
+  function patchCalcRecalc() {
+    if (typeof window.calcRecalc !== 'function') return;
+    if (window.calcRecalc._patchConcorrentesRender) return;
+    var orig = window.calcRecalc;
+    var wrapped = function() {
+      var out = orig.apply(this, arguments);
+      try { render(); } catch (_) {}
+      return out;
+    };
+    try {
+      Object.keys(orig).forEach(function(k) { wrapped[k] = orig[k]; });
+    } catch (_) {}
+    wrapped._patchConcorrentesRender = true;
+    window.calcRecalc = wrapped;
+  }
+
+  function patchAbrirCalculadora() {
+    if (typeof window.abrirCalculadora !== 'function') return;
+    if (window.abrirCalculadora._patchConcorrentesOpen) return;
+    var orig = window.abrirCalculadora;
+    var wrapped = function() {
+      var out = orig.apply(this, arguments);
+      [60, 220, 700].forEach(function(ms) {
+        setTimeout(function() {
+          try { render(); } catch (_) {}
+        }, ms);
+      });
+      return out;
+    };
+    try {
+      Object.keys(orig).forEach(function(k) { wrapped[k] = orig[k]; });
+    } catch (_) {}
+    wrapped._patchConcorrentesOpen = true;
+    window.abrirCalculadora = wrapped;
+  }
+
+  function hook() {
+    patchCalcRecalc();
+    patchAbrirCalculadora();
+    try { render(); } catch (_) {}
+  }
+
+  [0, 250, 900, 1800].forEach(function(ms) {
+    setTimeout(hook, ms);
+  });
+})();
+
 (function patchCalcularComissoesSqlBackend() {
   if (window.__patchCalcularComissoesSqlBackendInstalled) return;
   window.__patchCalcularComissoesSqlBackendInstalled = true;
