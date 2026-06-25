@@ -19207,9 +19207,39 @@ function comFmtDate(v){
   const s = String(v || '').slice(0,10);
   return s ? fmtD(s) : '—';
 }
+function comPickQtd(of){
+  const direto = Number(of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? of?.total_caixas ?? NaN);
+  if(Number.isFinite(direto) && direto > 0) return direto;
+  let itens = of?.itens;
+  if(typeof itens === 'string'){
+    try{ itens = JSON.parse(itens || '[]'); }catch(e){ itens = []; }
+  }
+  if(Array.isArray(itens)){
+    const soma = itens.reduce((s,it)=>s + (Number(it?.qtd ?? it?.quantidade ?? 0) || 0), 0);
+    if(soma > 0) return soma;
+  }
+  const fallback = Number(of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? of?.total_caixas ?? 0) || 0;
+  return fallback;
+}
+function comPickDataConclusao(of){
+  return String(of?.data_conclusao || of?.dataConclusao || of?.conclusao || '').slice(0,10);
+}
+function comPickDataRef(of){
+  return String(
+    comPickDataConclusao(of) ||
+    of?.data ||
+    of?.data_faturamento ||
+    of?.dia ||
+    of?.data_pedido ||
+    of?.dataPedido ||
+    of?.created_at ||
+    of?.createdAt ||
+    ''
+  ).slice(0,10);
+}
 function comFmtDataConclusao(of){
   try{
-    const dc = String(of?.data_conclusao || '').slice(0,10);
+    const dc = comPickDataConclusao(of);
     if(dc) return new Date(dc + 'T12:00:00').toLocaleDateString('pt-BR');
     const up = String(of?.updated_at || '').trim();
     if(up) return new Date(up).toLocaleDateString('pt-BR');
@@ -19481,7 +19511,7 @@ async function renderComissoes(){
         const st = String(of.status || '').trim();
         if(st === 'Cancelada' || st === 'Cancelado') return;
         const prod = of.descricao || of.prodDesc || of.produto || '—';
-        const qtd = Number(of.qtd || of.quantidade || 0) || 0;
+        const qtd = comPickQtd(of);
         const ofId = String(of.id || of.of_id || of.ofId || '').trim();
         const ofNum = String(of.numero || of.of || of.of_num || '').trim();
         rows.push(`<tr>
@@ -19493,7 +19523,7 @@ async function renderComissoes(){
           <td style="padding:8px;border:1px solid var(--s3);text-align:right">${comFmtMoney(of.valor)}</td>
           <td style="padding:8px;border:1px solid var(--s3);text-align:right">${Number(of.comissaoPct||0).toFixed(2)}%</td>
           <td style="padding:8px;border:1px solid var(--s3);text-align:right">${comFmtMoney(of.comissaoValor)}</td>
-          <td style="padding:8px;border:1px solid var(--s3)">${comFmtDate(of.data)}</td>
+          <td style="padding:8px;border:1px solid var(--s3)">${comFmtDate(comPickDataRef(of))}</td>
           <td style="padding:8px;border:1px solid var(--s3)">${escH(comFmtDataConclusao(of))}</td>
           <td style="padding:8px;border:1px solid var(--s3)">${escH(st||'—')}</td>
           <td style="padding:8px;border:1px solid var(--s3);text-align:center">
@@ -19644,17 +19674,7 @@ async function calcularComissoes(){
     return vendedoresRef.find(v => normNome(v.nome) === key) || null;
   };
   const normDate = (o) => {
-    const s = String(
-      o?.data_faturamento ||
-      (typeof o?.data_conclusao === 'string' ? o.data_conclusao.slice(0,10) : o?.data_conclusao) ||
-      o?.dia ||
-      o?.data_pedido ||
-      o?.dataPedido ||
-      o?.created_at ||
-      o?.createdAt ||
-      ''
-    ).slice(0,10);
-    return s;
+    return comPickDataRef(o);
   };
   const inRange = (s) => {
     if(!s) return !(dFrom || dTo);

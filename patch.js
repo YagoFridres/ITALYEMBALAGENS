@@ -16398,8 +16398,41 @@ function _ocultarGraficoComissoes() {
     return n;
   }
 
+  function _qtdOFComissao(of) {
+    var direto = Number(of && (of.qtd != null ? of.qtd : (of.quantidade != null ? of.quantidade : (of.qtd_pedida != null ? of.qtd_pedida : of.total_caixas))) || 0) || 0;
+    if (direto > 0) return direto;
+    var itens = of && of.itens;
+    if (typeof itens === 'string') {
+      try { itens = JSON.parse(itens || '[]'); } catch (_) { itens = []; }
+    }
+    if (Array.isArray(itens)) {
+      var soma = itens.reduce(function(s, it) {
+        return s + (Number(it && (it.qtd != null ? it.qtd : it.quantidade) || 0) || 0);
+      }, 0);
+      if (soma > 0) return soma;
+    }
+    return direto;
+  }
+
+  function _dataConclusaoOFComissao(of) {
+    return String(of && (of.data_conclusao || of.dataConclusao || of.conclusao) || '').trim();
+  }
+
+  function _dataReferenciaOFComissao(of) {
+    return String(of && (
+      _dataConclusaoOFComissao(of)
+      || of.data
+      || of.data_faturamento
+      || of.dia
+      || of.data_pedido
+      || of.dataPedido
+      || of.created_at
+      || of.createdAt
+    ) || '').trim();
+  }
+
   function _normalizarOFComissao(of, vendedorFallback) {
-    var qtd = Number(of && (of.quantidade != null ? of.quantidade : (of.qtd != null ? of.qtd : of.quant)) || 0) || 0;
+    var qtd = _qtdOFComissao(of);
     var valorTotal = Number(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : (of.valor != null ? of.valor : of.valor_venda))) || 0) || 0;
     var pctRaw = _pctCom(of && (of.comissao_pct != null ? of.comissao_pct : (of.pct_comissao != null ? of.pct_comissao : of.comissao_pct)));
     var fator = (Number(pctRaw || 0) || 0) / 100;
@@ -16422,7 +16455,7 @@ function _ocultarGraficoComissoes() {
       preco_unit: qtd > 0 ? (valorTotal / qtd) : 0,
       comissao_pct: pctRaw,
       comissao_valor: comissaoValor,
-      data: String(of && (of.data_conclusao || of.created_at || of.data) || '').trim(),
+      data: _dataReferenciaOFComissao(of),
       status: String(of && of.status || 'Concluída').trim() || 'Concluída'
     };
   }
@@ -16546,16 +16579,15 @@ function _ocultarGraficoComissoes() {
         var numero = String(of && (of.numero || of.num_of || of.numero_of) || '—');
         var cliente = String(of && (of.cliente || of.cli_nome || of.nome_cliente) || '—');
         var vendedor = String(of && (of.vendedor || of.vendedor_nome) || '—');
-        var qtd = Number(of && (of.quantidade || of.qtd) || 0) || 0;
+        var qtd = _qtdOFComissao(of);
         var valorTotal = Number(of && (of.valor_total || of.total) || 0) || 0;
         var comissaoRs = Number(of && (of.comissao_rs || of.comissao_valor) || 0) || 0;
         var status = String(of && of.status || 'Pendente');
         var concluida = status.toLowerCase().indexOf('conclu') >= 0;
         var dataStr = '—';
         try {
-          dataStr = of && of.data_conclusao
-            ? new Date(of.data_conclusao).toLocaleDateString('pt-BR')
-            : (of && of.created_at ? new Date(of.created_at).toLocaleDateString('pt-BR') : '—');
+          var dataRef = _dataReferenciaOFComissao(of);
+          dataStr = dataRef ? new Date(dataRef).toLocaleDateString('pt-BR') : '—';
         } catch (_) { dataStr = '—'; }
         var precoUnit = qtd > 0 ? valorTotal / qtd : 0;
         var id = String(of && of.id || '');
