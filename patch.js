@@ -16785,6 +16785,7 @@ function _ocultarGraficoComissoes() {
       + '<div style="display:flex;gap:8px;align-items:center">'
       + '<span style="background:' + (concluida ? '#166534' : '#92400e') + ';color:' + (concluida ? '#4ade80' : '#fbbf24') + ';padding:4px 10px;border-radius:4px;font-size:12px;white-space:nowrap">' + _escHtmlCom(status) + '</span>'
       + (concluida ? '' : '<button type="button" data-acao="concluir-of-comissao" data-of-id="' + _escHtmlCom(ofNorm.id) + '" style="background:#16a34a;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:12px;white-space:nowrap">✅ Concluir</button>')
+      + '<button type="button" data-acao="editar-of-comissao" data-com-trocar="1" data-of-id="' + _escHtmlCom(ofNorm.id) + '" style="background:#2a5298;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:12px;white-space:nowrap">✏️ Editar</button>'
       + '</div>'
       + '</div>';
   }
@@ -16910,6 +16911,30 @@ function _ocultarGraficoComissoes() {
       }
     } catch (_) {}
   }
+  async function _comAbrirEdicao(ofId) {
+    var sid = String(ofId || '').trim();
+    if (!sid) return;
+    try {
+      if (typeof window.abrirEdicaoOF === 'function') return await window.abrirEdicaoOF(sid);
+    } catch (_) {}
+    try {
+      if (typeof window._abrirEdicao === 'function') return await window._abrirEdicao(sid);
+    } catch (_) {}
+    try {
+      if (typeof window.abrirModalEdicaoOF === 'function') return await window.abrirModalEdicaoOF(sid);
+    } catch (_) {}
+    try {
+      if (typeof window._abrirModalEdicaoOF === 'function') return await window._abrirModalEdicaoOF(sid);
+    } catch (_) {}
+    try {
+      if (typeof window.__comAbrirModalOF === 'function') return await window.__comAbrirModalOF(sid);
+    } catch (_) {}
+    try {
+      if (typeof document !== 'undefined' && typeof window.CustomEvent === 'function') {
+        document.dispatchEvent(new CustomEvent('editarOF', { detail: { id: sid } }));
+      }
+    } catch (_) {}
+  }
   function _comBuscaMatch(of, termo) {
     var numeroRaw = _comBuscaNumero(of);
     var numeroNorm = _comBuscaNumeroNorm(numeroRaw);
@@ -17014,6 +17039,13 @@ function _ocultarGraficoComissoes() {
             try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
             var ofIdConc = String(btnConcluir.getAttribute('data-of-id') || btnConcluir.dataset.ofId || '').trim();
             _comAbrirConclusao(ofIdConc);
+            return;
+          }
+          var btnEditar = e && e.target && (e.target.closest ? e.target.closest('[data-acao="editar-of-comissao"]') : null);
+          if (btnEditar) {
+            try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+            var ofIdEdit = String(btnEditar.getAttribute('data-of-id') || btnEditar.dataset.ofId || '').trim();
+            _comAbrirEdicao(ofIdEdit);
             return;
           }
         } catch (_) {}
@@ -17360,7 +17392,7 @@ function _ocultarGraficoComissoes() {
               + '<td style="padding:7px 10px"><span style="background:' + badgeBg + ';color:' + badgeFg + ';padding:2px 8px;border-radius:4px;font-size:11px">' + _escHtmlCom(of.status) + '</span></td>'
               + '<td style="padding:7px 10px;text-align:center">'
               + (concluida ? '' : '<button type="button" data-acao="concluir-of-comissao" data-of-id="' + _escHtmlCom(of.id) + '" style="background:#16a34a;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px;margin-right:6px">✔ Concluir</button>')
-              + '<button type="button" data-com-trocar="1" data-of-id="' + _escHtmlCom(of.id) + '" style="background:#1d4ed8;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px">✏️ Trocar</button>'
+              + '<button type="button" data-acao="editar-of-comissao" data-com-trocar="1" data-of-id="' + _escHtmlCom(of.id) + '" style="background:#2a5298;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px">✏️ Editar</button>'
               + '</td>'
               + '</tr>';
           }).join('')
