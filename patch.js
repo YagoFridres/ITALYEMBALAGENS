@@ -15734,6 +15734,83 @@ function _ocultarGraficoComissoes() {
 
   try { window._mostrarResumoAlteracoes = _mostrarResumoAlteracoes; } catch (_) {}
 
+  function _mesclarOFComissaoLista(lista, ofAtualizada) {
+    if (!Array.isArray(lista) || !ofAtualizada || !ofAtualizada.id) return lista;
+    var idRef = String(ofAtualizada.id || '').trim();
+    var mudou = false;
+    var out = lista.map(function(item) {
+      if (String(item && item.id || '').trim() !== idRef) return item;
+      mudou = true;
+      return Object.assign({}, item || {}, ofAtualizada);
+    });
+    return mudou ? out : lista;
+  }
+
+  function _sincronizarCachesOFComissao(ofAtualizada) {
+    try {
+      if (!ofAtualizada || !ofAtualizada.id) return;
+      if (Array.isArray(window._comOfsData)) window._comOfsData = _mesclarOFComissaoLista(window._comOfsData, ofAtualizada);
+      if (Array.isArray(window._comissaoOFs)) window._comissaoOFs = _mesclarOFComissaoLista(window._comissaoOFs, ofAtualizada);
+      if (window._comissoesSqlData && Array.isArray(window._comissoesSqlData.ofs)) {
+        window._comissoesSqlData.ofs = _mesclarOFComissaoLista(window._comissoesSqlData.ofs, ofAtualizada);
+      }
+    } catch (_) {}
+  }
+
+  function _atualizarLinhaDetalhamentoComissao(ofAtualizada) {
+    try {
+      if (!ofAtualizada || !ofAtualizada.id) return false;
+      var idRef = String(ofAtualizada.id || '').trim();
+      var linhaEl = document.querySelector('tr[data-of-id="' + idRef.replace(/"/g, '\\"') + '"], tr[data-id="' + idRef.replace(/"/g, '\\"') + '"]');
+      if (!linhaEl) return false;
+      var qtdVal = Number(ofAtualizada && (ofAtualizada.qtd ?? ofAtualizada.quantidade ?? ofAtualizada.qtd_pedida) || 0) || 0;
+      var totalVal = Number(ofAtualizada && (ofAtualizada.valor_total ?? ofAtualizada.total ?? ofAtualizada.valor_venda) || 0) || 0;
+      var precoVal = Number(ofAtualizada && (ofAtualizada.preco ?? ofAtualizada.valor_unitario ?? ofAtualizada.vl_unit) || 0) || 0;
+      var vendRef = String(ofAtualizada && (ofAtualizada.vendid || ofAtualizada.vendedor || ofAtualizada.vendedor_nome || ofAtualizada.vendNome) || '').trim();
+      var pctVal = Number(ofAtualizada && (ofAtualizada.comissao_pct ?? ofAtualizada.comissao) || 0) || Number(window._obterPercComissao(vendRef) || 0) || 0;
+      var comissaoVal = totalVal * pctVal / 100;
+      var dataVal = '—';
+      try { dataVal = _fmtDataComDetalhamento(_comDataDetalhamento(ofAtualizada)); } catch (_) {}
+      var statusVal = String(ofAtualizada && ofAtualizada.status || '—').trim() || '—';
+      var concluida = _comStatusConcluida(ofAtualizada);
+
+      try {
+        linhaEl.setAttribute('data-of-numero', String(ofAtualizada && (ofAtualizada.of || ofAtualizada.numero || ofAtualizada.of_num || '') || '').trim());
+        linhaEl.setAttribute('data-of-cliente', String(ofAtualizada && (ofAtualizada.clinome || ofAtualizada.cliente || ofAtualizada.cliente_nome || '') || '').trim());
+        linhaEl.setAttribute('data-of-status', statusVal);
+      } catch (_) {}
+
+      var tdQtd = linhaEl.querySelector('[data-campo="qtd"], .col-qtd');
+      var tdTotal = linhaEl.querySelector('[data-campo="total"], .col-total');
+      var tdPreco = linhaEl.querySelector('[data-campo="preco"], .col-preco');
+      var tdPct = linhaEl.querySelector('[data-campo="comissao-pct"], .col-comissao-pct');
+      var tdComissao = linhaEl.querySelector('[data-campo="comissao"], .col-comissao');
+      var tdData = linhaEl.querySelector('[data-campo="data"], .col-data');
+      var tdStatus = linhaEl.querySelector('[data-campo="status"], .col-status');
+
+      if (tdQtd) tdQtd.textContent = String(qtdVal || 0);
+      if (tdTotal) tdTotal.textContent = _fmtRs(totalVal);
+      if (tdPreco) tdPreco.textContent = _fmtRs(precoVal);
+      if (tdPct) tdPct.textContent = (Number(pctVal || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+      if (tdComissao) tdComissao.textContent = _fmtRs(comissaoVal);
+      if (tdData) tdData.textContent = dataVal;
+      if (tdStatus) {
+        tdStatus.innerHTML = '<span style="background:' + (concluida ? '#166534' : '#92400e') + ';color:' + (concluida ? '#4ade80' : '#fbbf24') + ';padding:2px 8px;border-radius:4px;font-size:11px">' + _escHtmlCom(statusVal) + '</span>';
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function _reexecutarBuscaComissaoAtual() {
+    try {
+      var inpBusca = document.getElementById('_com_busca') || document.getElementById('comissao-busca-of');
+      var termo = String(inpBusca && inpBusca.value || '').trim();
+      if (termo && typeof window._buscarOFsComissao === 'function') window._buscarOFsComissao(termo);
+    } catch (_) {}
+  }
+
   function _ensureConclusaoModalStyle() {
     try {
       if (document.getElementById('com-conclusao-modal-style')) return;
@@ -16488,6 +16565,7 @@ function _ocultarGraficoComissoes() {
             var j2 = await r2.json().catch(function() { return null; });
             try { console.log('[TROCAR] resultado:', r2 && r2.status, JSON.stringify(j2)); } catch (_) {}
             if (r2.ok && j2 && j2.ok) {
+              var ofAtualizada = (j2 && (j2.data || j2.of || j2)) || {};
               var vendSelect = body.querySelector('#com-of-vend-select');
               var vendNomeNovo = '';
               try {
@@ -16495,6 +16573,22 @@ function _ocultarGraficoComissoes() {
                   ? String(vendSelect.options[vendSelect.selectedIndex].text || '').trim()
                   : '';
               } catch (_) { vendNomeNovo = ''; }
+              ofAtualizada = Object.assign({}, of || {}, ofAtualizada || {}, {
+                id: String((ofAtualizada && ofAtualizada.id) || ofId || '').trim(),
+                qtd: qtdNum,
+                quantidade: qtdNum,
+                preco: (ofAtualizada && ofAtualizada.preco != null) ? ofAtualizada.preco : valorUnitNum,
+                valor_unitario: (ofAtualizada && ofAtualizada.valor_unitario != null) ? ofAtualizada.valor_unitario : valorUnitNum,
+                valor_total: (ofAtualizada && ofAtualizada.valor_total != null) ? ofAtualizada.valor_total : valorTotalCalc,
+                total: (ofAtualizada && ofAtualizada.total != null) ? ofAtualizada.total : valorTotalCalc,
+                vendedor: vendNomeNovo || (ofAtualizada && (ofAtualizada.vendedor || ofAtualizada.vendedor_nome || ofAtualizada.vendNome)) || '',
+                vendedor_nome: vendNomeNovo || (ofAtualizada && (ofAtualizada.vendedor_nome || ofAtualizada.vendedor || ofAtualizada.vendNome)) || '',
+                vendNome: vendNomeNovo || (ofAtualizada && (ofAtualizada.vendNome || ofAtualizada.vendedor || ofAtualizada.vendedor_nome)) || ''
+              });
+              try { Object.assign(of, ofAtualizada); } catch (_) {}
+              _sincronizarCachesOFComissao(ofAtualizada);
+              _atualizarLinhaDetalhamentoComissao(ofAtualizada);
+              _reexecutarBuscaComissaoAtual();
               var novoSnapshot = _snapshotOfParaResumo({
                 numero: (body.querySelector('#com-of-numero') || {}).value,
                 cliente: (body.querySelector('#com-of-cli-busca') || {}).value,
@@ -16510,7 +16604,6 @@ function _ocultarGraficoComissoes() {
               _mostrarResumoAlteracoes(originalSnapshot, novoSnapshot, function() {
                 try { modal.style.display = 'none'; } catch (_) {}
               });
-              try { if (typeof window.calcularComissoes === 'function') window.calcularComissoes(); } catch (_) {}
             } else {
               try { alert('Erro ao salvar: ' + String(j2 && (j2.error || j2.message) || r2.status || 'Falha')); } catch (_) {}
             }
@@ -17425,13 +17518,13 @@ function _ocultarGraficoComissoes() {
               + '<td style="padding:7px 10px;color:#60a5fa">#' + _escHtmlCom(of.numero) + '</td>'
               + '<td style="padding:7px 10px;color:#f1f5f9">' + _escHtmlCom(of.cliente) + '</td>'
               + '<td style="padding:7px 10px;color:#94a3b8">' + _escHtmlCom(of.vendedor) + '</td>'
-              + '<td style="padding:7px 10px;text-align:right;color:#94a3b8">' + String(of.qtd || 0) + '</td>'
-              + '<td style="padding:7px 10px;text-align:right;color:#f1f5f9">' + _escHtmlCom(_fmtRs(of.valor_total)) + '</td>'
-              + '<td style="padding:7px 10px;text-align:right;color:#94a3b8">' + _escHtmlCom(_fmtRs(of.preco_unit)) + '</td>'
-              + '<td style="padding:7px 10px;text-align:right;color:#94a3b8">' + _escHtmlCom(of.comissao_pct.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + '%</td>'
-              + '<td style="padding:7px 10px;text-align:right;color:#22c55e;font-weight:600">' + _escHtmlCom(_fmtRs(of.comissao_valor)) + '</td>'
-              + '<td style="padding:7px 10px;color:#94a3b8">' + _escHtmlCom(dataStr) + '</td>'
-              + '<td style="padding:7px 10px"><span style="background:' + badgeBg + ';color:' + badgeFg + ';padding:2px 8px;border-radius:4px;font-size:11px">' + _escHtmlCom(of.status) + '</span></td>'
+              + '<td data-campo="qtd" class="col-qtd" style="padding:7px 10px;text-align:right;color:#94a3b8">' + String(of.qtd || 0) + '</td>'
+              + '<td data-campo="total" class="col-total" style="padding:7px 10px;text-align:right;color:#f1f5f9">' + _escHtmlCom(_fmtRs(of.valor_total)) + '</td>'
+              + '<td data-campo="preco" class="col-preco" style="padding:7px 10px;text-align:right;color:#94a3b8">' + _escHtmlCom(_fmtRs(of.preco_unit)) + '</td>'
+              + '<td data-campo="comissao-pct" class="col-comissao-pct" style="padding:7px 10px;text-align:right;color:#94a3b8">' + _escHtmlCom(of.comissao_pct.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + '%</td>'
+              + '<td data-campo="comissao" class="col-comissao" style="padding:7px 10px;text-align:right;color:#22c55e;font-weight:600">' + _escHtmlCom(_fmtRs(of.comissao_valor)) + '</td>'
+              + '<td data-campo="data" class="col-data" style="padding:7px 10px;color:#94a3b8">' + _escHtmlCom(dataStr) + '</td>'
+              + '<td data-campo="status" class="col-status" style="padding:7px 10px"><span style="background:' + badgeBg + ';color:' + badgeFg + ';padding:2px 8px;border-radius:4px;font-size:11px">' + _escHtmlCom(of.status) + '</span></td>'
               + '<td style="padding:7px 10px;text-align:center">'
               + (concluida ? '' : '<button type="button" data-acao="concluir-of-comissao" data-of-id="' + _escHtmlCom(of.id) + '" style="background:#16a34a;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px;margin-right:6px">✔ Concluir</button>')
               + '<button type="button" data-acao="editar-of-comissao" data-com-trocar="1" data-of-id="' + _escHtmlCom(of.id) + '" style="background:#2a5298;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px">✏️ Editar</button>'
