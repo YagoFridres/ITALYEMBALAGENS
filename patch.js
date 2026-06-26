@@ -17086,14 +17086,18 @@ function _ocultarGraficoComissoes() {
             .is('deleted_at', null)
             .limit(50);
           if (empresaSel) query = query.eq('empresa_id', empresaSel);
+          var queryOr = '';
           if (termoNum) {
-            query = query.or('of.eq.' + termoNum + ',of.ilike.%' + termoNum + '%');
+            queryOr = 'of.eq.' + termoNum + ',of.ilike.' + termoNum + ',of.ilike.%' + termoNum + '%';
+            try { console.log('[BUSCA 806 DEBUG] query enviada:', queryOr); } catch (_) {}
           } else {
             var termoSafe = termoTxt.replace(/[%(),]/g, ' ').trim();
-            query = query.or('clinome.ilike.%' + termoSafe + '%,of.ilike.%' + termoSafe + '%');
+            queryOr = 'clinome.ilike.%' + termoSafe + '%,of.ilike.%' + termoSafe + '%';
           }
+          query = query.or(queryOr);
           var sbRes = await query;
           try { console.log('[BUSCA DEBUG] termos:', termos, 'resultado supabase:', sbRes && sbRes.data, 'erro:', sbRes && sbRes.error); } catch (_) {}
+          try { if (termoNum) console.log('[BUSCA 806 DEBUG] data:', sbRes && sbRes.data, 'error:', sbRes && sbRes.error); } catch (_) {}
           if (!sbRes.error && Array.isArray(sbRes.data) && sbRes.data.length) return sbRes.data;
         }
       } catch (_) {}
@@ -17107,7 +17111,7 @@ function _ocultarGraficoComissoes() {
         if (data.length) return data;
       } catch (_) {}
       try {
-        var resp2 = await fetch('/api/ofs?incluir_excluidas=1&limit=300&offset=0&busca=' + encodeURIComponent(termoTxt), { headers: headers });
+        var resp2 = await fetch('/api/ofs?incluir_excluidas=1&limit=300&offset=0&busca=' + encodeURIComponent(termoTxt) + '&sem_filtro_data=true', { headers: headers });
         var json2 = await resp2.json().catch(function() { return null; });
         return Array.isArray(json2 && json2.data) ? json2.data : (Array.isArray(json2) ? json2 : []);
       } catch (_) {
