@@ -16465,7 +16465,9 @@ function _ocultarGraficoComissoes() {
           if (conc) payload.data_conclusao = conc;
           if (obs) payload.observacoes = obs;
           if (comPct) payload.comissao_pct = Number(String(comPct).replace(',', '.'));
-          payload._allow_partial = '1';
+          Object.keys(payload).forEach(function(chave) {
+            if (String(chave || '').charAt(0) === '_') delete payload[chave];
+          });
 
           try { console.log('[TROCAR] body:', JSON.stringify(payload)); } catch (_) {}
 

@@ -2646,6 +2646,14 @@ function ofIn(p) {
   return out;
 }
 
+function sanitizeOfUpdatePayload(input) {
+  const out = { ...(input || {}) };
+  Object.keys(out).forEach((key) => {
+    if (String(key || '').startsWith('_')) delete out[key];
+  });
+  return out;
+}
+
 const OFS_TABLE_COLS = [
   'id', 'numero', 'of', 'of_num', 'of_seq', 'seq',
   'status', 'cliente_id', 'cli_id', 'cliId', 'cliid',
@@ -4332,7 +4340,7 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const body = { ...(req.body || {}) };
+    const body = sanitizeOfUpdatePayload(req.body || {});
     delete body.id;
     delete body.numero;
     delete body.created_at;
@@ -6076,7 +6084,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
             : {}),
         }
         : bodyIn;
-    const payload = { ...ofIn(mapped || {}), updated_at: new Date().toISOString() };
+    const payload = sanitizeOfUpdatePayload({ ...ofIn(mapped || {}), updated_at: new Date().toISOString() });
     try {
       const { data: ofAtual2 } = await supabase.from('ofs').select('status').eq('id', id).maybeSingle();
       const norm = (s) => {
