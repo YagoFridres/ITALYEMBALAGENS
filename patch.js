@@ -16449,7 +16449,42 @@ function _ocultarGraficoComissoes() {
     return String(of && (of.clinome || of.cliNome || of.cliente_nome || of.cliente || '') || '').trim();
   }
   function _comBuscaVendedor(of) {
+    try {
+      var nome = String(of && (of._vendedor_resolvido || of.vendedor_nome || of.vendNome || of.vendedor || '') || '').trim();
+      if (nome && nome !== '—') return nome;
+      if (typeof _resolverVendedor === 'function') {
+        nome = String(_resolverVendedor(of) || '').trim();
+        if (nome) return nome;
+      }
+    } catch (_) {}
     return String(of && (of.vendedor_nome || of.vendNome || of.vendedor || '') || '').trim();
+  }
+  function _comStatusConcluida(of) {
+    return String(of && of.status || '').toLowerCase().indexOf('conclu') >= 0;
+  }
+  async function _comAbrirConclusao(ofId) {
+    var sid = String(ofId || '').trim();
+    if (!sid) return;
+    try {
+      if (typeof window.concluirOFComBaixa === 'function') return await window.concluirOFComBaixa(sid);
+    } catch (_) {}
+    try {
+      if (typeof window.abrirModalConclusao === 'function') return await window.abrirModalConclusao(sid);
+    } catch (_) {}
+    try {
+      if (typeof window._abrirConclusao === 'function') return await window._abrirConclusao(sid);
+    } catch (_) {}
+    try {
+      if (typeof window.abrirConclusaoOf === 'function') return await window.abrirConclusaoOf(sid);
+    } catch (_) {}
+    try {
+      if (typeof window._abrirFluxoConclusaoOF === 'function') return await window._abrirFluxoConclusaoOF(sid);
+    } catch (_) {}
+    try {
+      if (typeof document !== 'undefined' && typeof window.CustomEvent === 'function') {
+        document.dispatchEvent(new CustomEvent('concluirOF', { detail: { id: sid } }));
+      }
+    } catch (_) {}
   }
   function _comBuscaMatch(of, termo) {
     var numeroRaw = _comBuscaNumero(of);
@@ -16544,6 +16579,23 @@ function _ocultarGraficoComissoes() {
       }
     } catch (_) {}
   }
+  function _comBindActionDelegation() {
+    try {
+      if (window.__comActionDelegationBound) return;
+      window.__comActionDelegationBound = true;
+      document.addEventListener('click', function(e) {
+        try {
+          var btnConcluir = e && e.target && (e.target.closest ? e.target.closest('[data-acao="concluir-of-comissao"]') : null);
+          if (btnConcluir) {
+            try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+            var ofIdConc = String(btnConcluir.getAttribute('data-of-id') || btnConcluir.dataset.ofId || '').trim();
+            _comAbrirConclusao(ofIdConc);
+            return;
+          }
+        } catch (_) {}
+      }, true);
+    } catch (_) {}
+  }
 
   function _disconnectComissoesObserver() {
     try {
@@ -16585,6 +16637,7 @@ function _ocultarGraficoComissoes() {
     }
     resultDiv.innerHTML = '<p style="color:#94a3b8;padding:12px">Buscando...</p>';
     try {
+      try { await _ensureVendedoresMap(); } catch (_) {}
       var termos = _comBuscaTokens(termo);
       var ofs = Array.isArray(window._comOfsData) ? window._comOfsData : [];
       var locais = ofs.filter(function(of) {
@@ -16598,7 +16651,7 @@ function _ocultarGraficoComissoes() {
       }
       var html = encontradas.map(function(of) {
         var status = String(of && of.status || 'Pendente');
-        var concluida = status.toLowerCase().indexOf('conclu') >= 0;
+        var concluida = _comStatusConcluida(of);
         var dataStr = '—';
         try { dataStr = of && of.data_conclusao ? new Date(of.data_conclusao).toLocaleDateString('pt-BR') : '—'; } catch (_) { dataStr = '—'; }
         var qtd = Number(of && (of.quantidade ?? of.qtd ?? of.qtd_pedida ?? of.qtd_produzida ?? 0) || 0) || 0;
@@ -16625,7 +16678,7 @@ function _ocultarGraficoComissoes() {
           + '</div>'
           + '<div style="display:flex;gap:8px;align-items:center">'
           + '<span style="background:' + (concluida ? '#166534' : '#92400e') + ';color:' + (concluida ? '#4ade80' : '#fbbf24') + ';padding:4px 10px;border-radius:4px;font-size:12px;white-space:nowrap">' + _escHtmlCom(status) + '</span>'
-          + (concluida ? '' : '<button type="button" style="background:#16a34a;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:12px;white-space:nowrap" onclick="if(window.abrirModalConclusao) window.abrirModalConclusao(' + JSON.stringify(id) + '); else if(window.abrirConclusaoOf) window.abrirConclusaoOf(' + JSON.stringify(id) + '); else alert(\'OF #' + _escHtmlCom(numero).replace(/'/g, '\\\\\'') + ' — abra pelo PCP para concluir.\')">✅ Concluir</button>')
+          + (concluida ? '' : '<button type="button" data-acao="concluir-of-comissao" data-of-id="' + _escHtmlCom(id) + '" style="background:#16a34a;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:12px;white-space:nowrap">✅ Concluir</button>')
           + '</div>'
           + '</div>';
       }).join('');
@@ -16651,6 +16704,8 @@ function _ocultarGraficoComissoes() {
     }, 10000);
     try {
       _ensureComissoesStyle();
+      try { await _ensureVendedoresMap(); } catch (_) {}
+      _comBindActionDelegation();
       _disconnectComissoesObserver();
       window.__comSuspenderObserverAte = Date.now() + 1500;
       window.__comEntradaTs = Date.now();
@@ -16896,6 +16951,9 @@ function _ocultarGraficoComissoes() {
             var searchTxt = [of.numero, of.cliente, of.vendedor].join(' ').toLowerCase();
             var dataStr = '—';
             try { dataStr = of.data ? new Date(of.data).toLocaleDateString('pt-BR') : '—'; } catch (_) { dataStr = '—'; }
+            var concluida = _comStatusConcluida(of);
+            var badgeBg = concluida ? '#166534' : '#92400e';
+            var badgeFg = concluida ? '#4ade80' : '#fbbf24';
             return ''
               + '<tr data-of-row="1" data-search="' + _escHtmlCom(searchTxt) + '" data-of-numero="' + _escHtmlCom(of.numero) + '" data-of-cliente="' + _escHtmlCom(of.cliente) + '" data-of-status="' + _escHtmlCom(of.status) + '" data-of-id="' + _escHtmlCom(of.id) + '" style="border-bottom:1px solid #1e293b">'
               + '<td style="padding:7px 10px;color:#60a5fa">#' + _escHtmlCom(of.numero) + '</td>'
@@ -16907,8 +16965,11 @@ function _ocultarGraficoComissoes() {
               + '<td style="padding:7px 10px;text-align:right;color:#94a3b8">' + _escHtmlCom(of.comissao_pct.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + '%</td>'
               + '<td style="padding:7px 10px;text-align:right;color:#22c55e;font-weight:600">' + _escHtmlCom(_fmtRs(of.comissao_valor)) + '</td>'
               + '<td style="padding:7px 10px;color:#94a3b8">' + _escHtmlCom(dataStr) + '</td>'
-              + '<td style="padding:7px 10px"><span style="background:#166534;color:#4ade80;padding:2px 8px;border-radius:4px;font-size:11px">' + _escHtmlCom(of.status) + '</span></td>'
-              + '<td style="padding:7px 10px;text-align:center"><button type="button" data-com-trocar="1" data-of-id="' + _escHtmlCom(of.id) + '" style="background:#1d4ed8;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px">✏️ Trocar</button></td>'
+              + '<td style="padding:7px 10px"><span style="background:' + badgeBg + ';color:' + badgeFg + ';padding:2px 8px;border-radius:4px;font-size:11px">' + _escHtmlCom(of.status) + '</span></td>'
+              + '<td style="padding:7px 10px;text-align:center">'
+              + (concluida ? '' : '<button type="button" data-acao="concluir-of-comissao" data-of-id="' + _escHtmlCom(of.id) + '" style="background:#16a34a;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px;margin-right:6px">✔ Concluir</button>')
+              + '<button type="button" data-com-trocar="1" data-of-id="' + _escHtmlCom(of.id) + '" style="background:#1d4ed8;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px">✏️ Trocar</button>'
+              + '</td>'
               + '</tr>';
           }).join('')
           + '</tbody></table></div></details>';

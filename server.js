@@ -4162,16 +4162,27 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
 
       const lista = (Array.isArray(ofsRows) ? ofsRows : []).map((of) => {
         const cli = clienteMap.get(String(of?.cli_id || '').trim()) || null;
-        const vendedorId = String(of?.vendedor_id || of?.vendId || cli?.vendedor_id || '').trim() || null;
+        const vendedorId = String(of?.vendedor_id || of?.vendid || of?.vendId || cli?.vendedor_id || '').trim() || null;
+        const vendedorNome = vendMap.get(String(vendedorId || '')) || String(of?.vendedor_nome || of?.vendNome || of?.vendedor || '').trim();
         const clienteNome = String(cli?.nome || cli?.rs || of?.cliente_nome || of?.cliente || of?.cliNome || '').trim();
         const qtd = of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? null;
         return {
           ...of,
+          clinome: clienteNome,
           cliente_nome: clienteNome,
           cliNome: clienteNome,
+          vendid: vendedorId,
+          vendId: vendedorId,
           vendedor_id: vendedorId,
-          vendedor_nome: vendMap.get(String(vendedorId || '')) || String(of?.vendedor_nome || of?.vendNome || of?.vendedor || '').trim(),
-          vendNome: vendMap.get(String(vendedorId || '')) || String(of?.vendedor_nome || of?.vendNome || of?.vendedor || '').trim(),
+          vendedor_nome: vendedorNome,
+          vendNome: vendedorNome,
+          vendedor: vendedorNome,
+          preco: Number(of?.preco ?? of?.valor_unitario ?? of?.vl_unit ?? 0) || 0,
+          total: Number(of?.total ?? of?.valor_total ?? of?.valor_venda ?? 0) || 0,
+          qtd: qtd,
+          ent: of?.ent ?? of?.data_entrega ?? null,
+          dia: of?.dia ?? null,
+          status: of?.status ?? null,
           quantidade: qtd,
           valor_total: Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0,
         };
@@ -4224,7 +4235,7 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
       const vendNested = clienteJoin?.vendedor && typeof clienteJoin.vendedor === 'object' ? clienteJoin.vendedor : null;
       cliNome = String(clienteJoin?.nome || of.cliNome || of.clinome || of.cliente_nome || of.cliente || '').trim();
       vendNome = String(vendNested?.nome || of.vendNome || of.vendedor_nome || of.vendedor || '').trim();
-      vendedorId = clienteJoin?.vendedor_id || of.vendedor_id || of.vendId || null;
+      vendedorId = clienteJoin?.vendedor_id || of.vendedor_id || of.vendid || of.vendId || null;
     } catch (_) {}
 
     const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
@@ -4240,9 +4251,18 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
     try { delete out.cliente; } catch (_) {}
     out.cliNome = cliNome || out.cliNome || out.cliente_nome || out.cliente || '';
     out.cliente_nome = out.cliNome;
+    out.clinome = out.cliNome;
     out.vendNome = vendNome || out.vendNome || out.vendedor_nome || out.vendedor || '';
     out.vendedor_nome = out.vendNome;
-    out.vendedor_id = vendedorId || out.vendedor_id || out.vendId || null;
+    out.vendedor = out.vendNome;
+    out.vendedor_id = vendedorId || out.vendedor_id || out.vendid || out.vendId || null;
+    out.vendid = out.vendedor_id || out.vendid || out.vendId || null;
+    out.vendId = out.vendedor_id || out.vendId || out.vendid || null;
+    out.preco = Number(out.preco ?? out.valor_unitario ?? out.vl_unit ?? 0) || 0;
+    out.total = Number(out.total ?? out.valor_total ?? out.valor_venda ?? 0) || 0;
+    out.qtd = out.qtd ?? out.quantidade ?? out.qtd_pedida ?? null;
+    out.ent = out.ent ?? out.data_entrega ?? null;
+    out.dia = out.dia ?? null;
     return ok(res, out);
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
