@@ -16989,17 +16989,18 @@ function _ocultarGraficoComissoes() {
         if (sbClient && typeof sbClient.from === 'function') {
           var query = sbClient
             .from('ofs')
-            .select('id, of, numero, of_num, clinome, cliente, cliente_nome, vendedor, vendedor_nome, vendNome, vendid, vendedor_id, vend_id, preco, valor_unitario, total, valor_total, valor_venda, qtd, quantidade, qtd_produzida, ent, dia, status, empresa_id, emp_id, cores_impressao, itens')
+            .select('of, clinome, vendedor, vendid, preco, total, qtd, qtd_produzida, ent, dia, status, empresa_id, id, cores_impressao, itens')
             .is('deleted_at', null)
             .limit(50);
           if (empresaSel) query = query.eq('empresa_id', empresaSel);
           if (termoNum) {
-            query = query.or('of.eq.' + termoNum + ',numero.eq.' + termoNum + ',of_num.eq.' + termoNum);
+            query = query.or('of.eq.' + termoNum + ',of.ilike.%' + termoNum + '%');
           } else {
             var termoSafe = termoTxt.replace(/[%(),]/g, ' ').trim();
-            query = query.or('clinome.ilike.%' + termoSafe + '%,cliente.ilike.%' + termoSafe + '%,cliente_nome.ilike.%' + termoSafe + '%');
+            query = query.or('clinome.ilike.%' + termoSafe + '%,of.ilike.%' + termoSafe + '%');
           }
           var sbRes = await query;
+          try { console.log('[BUSCA DEBUG] termos:', termos, 'resultado supabase:', sbRes && sbRes.data, 'erro:', sbRes && sbRes.error); } catch (_) {}
           if (!sbRes.error && Array.isArray(sbRes.data) && sbRes.data.length) return sbRes.data;
         }
       } catch (_) {}
