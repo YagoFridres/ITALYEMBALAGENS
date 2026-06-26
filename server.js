@@ -5167,6 +5167,43 @@ function _normalizarOperadoresCaixa(row) {
   return Array.from(new Set(lista));
 }
 
+function _isUuidText(v) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v || '').trim());
+}
+
+async function _carregarMapaPessoasCaixa(ids) {
+  const lista = Array.from(new Set((Array.isArray(ids) ? ids : []).map((id) => String(id || '').trim()).filter(Boolean)));
+  const map = new Map();
+  if (!lista.length) return map;
+  for (let i = 0; i < lista.length; i += 200) {
+    const lote = lista.slice(i, i + 200);
+    try {
+      const { data: ops } = await supabase.from('operadores').select('id,nome').in('id', lote);
+      (Array.isArray(ops) ? ops : []).forEach((op) => {
+        const id = String(op?.id || '').trim();
+        const nome = String(op?.nome || '').trim();
+        if (id && nome) map.set(id, nome);
+      });
+    } catch (_) {}
+    try {
+      const { data: users } = await supabase.from('usuarios').select('id,nome,email').in('id', lote);
+      (Array.isArray(users) ? users : []).forEach((usr) => {
+        const id = String(usr?.id || '').trim();
+        const nome = String(usr?.nome || usr?.email || '').trim();
+        if (id && nome && !map.has(id)) map.set(id, nome);
+      });
+    } catch (_) {}
+  }
+  return map;
+}
+
+function _resolverPessoaCaixa(v, pessoasMap) {
+  const raw = String(v || '').trim();
+  if (!raw) return '';
+  if (!(_isUuidText(raw)) && !pessoasMap?.has(raw)) return raw;
+  return String((pessoasMap && pessoasMap.get(raw)) || raw).trim();
+}
+
 function _caixasPerdidasDashboardVazio(mesRef = '') {
   return {
     ok: true,
@@ -5191,8 +5228,8 @@ function _caixasPerdidasDashboardVazio(mesRef = '') {
 async function _listarCaixasPerdidasEnriquecidas(req) {
   const baseCols = [
     'id', 'of_id', 'of_numero', 'produto', 'cliente', 'valor_unitario', 'qtd_perdida', 'valor_perdido',
-    'data', 'mes_referencia', 'emp_id', 'empresa_id', 'usuario', 'obs', 'created_at',
-    'maquina', 'maquina_id', 'maquina_perda', 'quantidade', 'caixas_perdidas',
+    'data', 'mes_referencia', 'emp_id', 'empresa_id', 'usuario', 'usuario_conclusao', 'concluido_por', 'obs', 'created_at',
+    'maquina', 'maquina_nome', 'maquina_id', 'maquina_perda', 'quantidade', 'caixas_perdidas',
     'operadores', 'operador', 'operador_nome', 'operador_principal', 'turno'
   ].join(',');
   const ofId = String(req.query.of_id || req.query.ofId || '').trim();
@@ -5281,6 +5318,20 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
     });
   }
 
+  const pessoaIds = Array.from(new Set(rows.flatMap((row) => {
+    const opIds = _normalizarOperadoresCaixa(row).filter(_isUuidText);
+    const outros = [
+      row?.usuario_conclusao,
+      row?.concluido_por,
+      row?.usuario,
+      row?.operador,
+      row?.operador_nome,
+      row?.operador_principal,
+    ].map((v) => String(v || '').trim()).filter(_isUuidText);
+    return opIds.concat(outros);
+  })));
+  const pessoasMap = await _carregarMapaPessoasCaixa(pessoaIds);
+
   return rows.map((row) => {
     const ofData =
       ofsMap.get(String(row?.of_id || '').trim()) ||
@@ -5296,7 +5347,8 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       String(row?.maquina || row?.maquina_perda || ofData?.maq || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || '').trim() ||
       '—';
     const quantidade = Number(row?.quantidade ?? row?.caixas_perdidas ?? row?.qtd_perdida ?? 0) || 0;
-    const operadores = _normalizarOperadoresCaixa(row);
+    const operadores = _normalizarOperadoresCaixa(row).map((op) => _resolverPessoaCaixa(op, pessoasMap)).filter(Boolean);
+    const concluidoPor = _resolverPessoaCaixa(row?.concluido_por || row?.usuario_conclusao || ofData?.concluido_por || row?.usuario, pessoasMap) || '—';
     return {
       ...row,
       of_numero: String(row?.of_numero || ofData?.numero || '').trim() || '—',
@@ -5310,10 +5362,11 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       operadores,
       operador_display: operadores.join(', '),
       data: String(row?.data || row?.created_at || '').slice(0, 10),
-      usuario: String(row?.usuario || '').trim() || (operadores[0] || '—'),
+      usuario: concluidoPor,
+      usuario_conclusao: concluidoPor,
       turno: String(row?.turno || '').trim(),
       data_conclusao: String(row?.data_conclusao || ofData?.data_conclusao || '').slice(0, 10),
-      concluido_por: String(row?.concluido_por || ofData?.concluido_por || row?.usuario || '').trim(),
+      concluido_por: concluidoPor,
       valor_unitario: Number(
         row?.valor_unitario ??
         (
@@ -5408,6 +5461,24 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     const clientesMap = Object.create(null);
     (clientesRows || []).forEach((cli) => { clientesMap[String(cli.id || '').trim()] = String(cli.nome || '').trim(); });
 
+    const maquinaIds = Array.from(new Set((dadosFiltrados || []).map((r) => String(r?.maquina_id || '').trim()).filter(Boolean)));
+    const maquinasMap = new Map();
+    if (maquinaIds.length) {
+      const { data: maqs } = await supabase.from('maquinas').select('id,nome').in('id', maquinaIds);
+      (Array.isArray(maqs) ? maqs : []).forEach((maq) => {
+        const id = String(maq?.id || '').trim();
+        const nome = String(maq?.nome || '').trim();
+        if (id && nome) maquinasMap.set(id, nome);
+      });
+    }
+
+    const pessoaIds = Array.from(new Set((dadosFiltrados || []).flatMap((r) => {
+      const ops = Array.isArray(r?.operadores) ? r.operadores : toArray(r?.operadores).concat(toArray(r?.operador));
+      const extras = [r?.usuario, r?.usuario_conclusao, r?.concluido_por];
+      return ops.concat(extras).map((v) => String(v || '').trim()).filter(_isUuidText);
+    })));
+    const pessoasMap = await _carregarMapaPessoasCaixa(pessoaIds);
+
     const enriquecidos = (dadosFiltrados || []).map((r) => {
       const ofId = String(r?.of_id || r?.of_uuid || '').trim();
       const ofData = ofId ? ofsMap[ofId] : null;
@@ -5417,8 +5488,11 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
         : 0;
       const valorPerdido = vu * qtdPerdida;
       const clienteNome = ofData?.cli_id ? (clientesMap[String(ofData.cli_id || '').trim()] || '') : '';
-      const operadores = Array.isArray(r?.operadores) ? r.operadores
-        : (toArray(r?.operadores).length ? toArray(r?.operadores) : toArray(r?.operador));
+      const operadores = (Array.isArray(r?.operadores) ? r.operadores
+        : (toArray(r?.operadores).length ? toArray(r?.operadores) : toArray(r?.operador)))
+        .map((op) => _resolverPessoaCaixa(op, pessoasMap))
+        .filter(Boolean);
+      const concluidoPor = _resolverPessoaCaixa(r?.concluido_por || r?.usuario_conclusao || r?.usuario, pessoasMap) || '—';
       const dataRef = r?.created_at || r?.data || r?.data_perda || r?.data_conclusao || null;
 
       return {
@@ -5428,9 +5502,11 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
         produto: ofData?.descricao || r?.produto || '—',
         quantidade_perdida: qtdPerdida,
         valor_perdido: valorPerdido,
-        maquina: r?.maquina || r?.maquina_perda || r?.maquina_nome || '—',
+        maquina: maquinasMap.get(String(r?.maquina_id || '').trim()) || r?.maquina || r?.maquina_perda || r?.maquina_nome || '—',
         operadores,
-        usuario: r?.usuario || r?.concluido_por || '—',
+        usuario: concluidoPor,
+        usuario_conclusao: concluidoPor,
+        concluido_por: concluidoPor,
         data_ref: dataRef
       };
     });

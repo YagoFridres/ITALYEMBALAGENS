@@ -54,6 +54,10 @@ if (!window._urlValida) {
   if (window.__patchEstoqueChapasUiFixesInstalled) return;
   window.__patchEstoqueChapasUiFixesInstalled = true;
 
+  function _normTxt(v) {
+    return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  }
+
   function _patchEstoqueAlertasBaixo() {
     try {
       var host = document.getElementById('est-alertas');
@@ -114,12 +118,42 @@ if (!window._urlValida) {
           } catch (_) {}
         });
       });
+      setTimeout(function() {
+        try {
+          var pins = document.querySelectorAll('button[title*="pin"], button[title*="Pin"], .btn-pin, [data-acao="pin"], .btn-pin-chapa, .patch-hub-pin-chapa');
+          if (pins.length > 1) {
+            for (var i = 1; i < pins.length; i += 1) {
+              try { pins[i].remove(); } catch (_) {}
+            }
+          }
+        } catch (_) {}
+      }, 500);
+    } catch (_) {}
+  }
+
+  function _patchEstoqueOcultarColunasInuteis() {
+    try {
+      var tabela = document.getElementById('tabelaChapasEstoque');
+      if (!tabela) return;
+      var headers = Array.prototype.slice.call(tabela.querySelectorAll('thead th'));
+      headers.forEach(function(th) {
+        try {
+          var txt = _normTxt(th.textContent || '');
+          if (['ultimo preco', 'consumo/mes', 'dias'].indexOf(txt) === -1) return;
+          var idx = Number(th.cellIndex) + 1;
+          if (!(idx > 0)) return;
+          Array.prototype.slice.call(tabela.querySelectorAll('tr th:nth-child(' + idx + '), tr td:nth-child(' + idx + ')')).forEach(function(cell) {
+            try { cell.style.display = 'none'; } catch (_) {}
+          });
+        } catch (_) {}
+      });
     } catch (_) {}
   }
 
   function _tickEstoqueUiFixes() {
     _patchEstoqueAlertasBaixo();
     _patchEstoqueAcoesTabela();
+    _patchEstoqueOcultarColunasInuteis();
   }
 
   try {
@@ -12603,7 +12637,8 @@ window._mbnActive = function(id) {
       vl_total: vlTotal,
       valor_unitario: vlUnit,
       valor_perdido: vlTotal,
-      usuario: String(item && item.usuario || '').trim() || '—',
+      usuario: String(item && (item.concluido_por || item.usuario_conclusao || item.usuario) || '').trim() || '—',
+      concluido_por: String(item && (item.concluido_por || item.usuario_conclusao || item.usuario) || '').trim() || '—',
       operador_display: operadorDisplay,
       operador_principal: String(item && item.operador_principal || '').trim(),
       operadores: operadores,
@@ -12694,7 +12729,7 @@ window._mbnActive = function(id) {
       if (ths && ths[4]) ths[4].textContent = 'Qtd Perdida';
       if (ths && ths[5]) ths[5].textContent = 'Operadores';
       if (ths && ths[6]) ths[6].textContent = 'Turno';
-      if (ths && ths[7]) ths[7].textContent = 'Usuário';
+      if (ths && ths[7]) ths[7].textContent = 'Concluído por';
       if (ths && ths[8]) ths[8].textContent = 'Produto';
       if (ths && ths[9]) ths[9].textContent = 'Valor';
     } catch (_) {}
@@ -12722,7 +12757,7 @@ window._mbnActive = function(id) {
         + '<td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800;color:var(--red)">' + fmtNumLocal(qtdPerdida) + '</td>'
         + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + operadores + '</td>'
         + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem;text-align:center">' + escHLocal2(turno) + '</td>'
-        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(item && item.usuario || '—') + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(item && (item.concluido_por || item.usuario_conclusao || item.usuario) || '—') + '</td>'
         + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(item && item.produto || '—') + '</td>'
         + '<td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800">' + (vlTotal > 0 ? fmtMoneyLocal(vlTotal) : (vlUnit > 0 ? fmtMoneyLocal(vlUnit) : '—')) + '</td>'
         + '<td style="padding:7px 10px;border:1px solid var(--border);text-align:center">' + imgCell + '</td>'
@@ -15916,6 +15951,7 @@ function _ocultarGraficoComissoes() {
                 of_numero: of.numero || null,
                 produto: of.produto || of.descricao || of.prodDesc || '',
                 cliente: cliente,
+                emp_id: of.emp_id || of.empId || of.empresa_id || 'E1',
                 maquina: perda.maquina,
                 quantidade: perda.qtd,
                 qtd_perdida: perda.qtd,
@@ -15923,6 +15959,7 @@ function _ocultarGraficoComissoes() {
                 valor_perdido: Math.round((resumo.valorUnitario * perda.qtd) * 100) / 100,
                 operadores: perda.operadores,
                 usuario: usuario,
+                usuario_conclusao: usuario,
                 data: dataFaturamento,
                 obs: 'Perda registrada na conclusão da OF'
               })
