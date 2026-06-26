@@ -16829,7 +16829,7 @@ function _ocultarGraficoComissoes() {
       vendid: vendidVal,
       qtd: qtd,
       valor_total: valorTotal,
-      preco_unit: Number(of && (of.preco ?? of.valor_unitario ?? of.vl_unit) || 0) || (qtd > 0 ? (valorTotal / qtd) : 0),
+      preco_unit: Number(of && (of.preco ?? of.valor_unitario ?? of.vl_unit) || 0) || 0,
       comissao_pct: pctRaw,
       comissao_valor: comissaoValor,
       data: _comDataDetalhamento(of),
