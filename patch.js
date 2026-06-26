@@ -6493,9 +6493,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var vendsOpts = vends
       .filter(function(v) { return String(v && v.nome || '') !== 'Sem Vendedor'; })
       .map(function(v) {
+        var vendId = String(v && (v.id || v.vendid || v.vendedor_id || '') || '').trim();
+        var vendNome = String(v && (v.nome || v.vendedor || v.vendedor_nome || '') || '—').trim();
         return '<label style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;cursor:pointer;background:var(--bg3,#0d0d1a);margin-bottom:6px">'
-          + '<input type="checkbox" value="' + String(v && v.id || '') + '" checked style="width:16px;height:16px">'
-          + '<span style="color:var(--text1,#fff)">' + String(v && v.nome || '—') + '</span>'
+          + '<input type="checkbox" value="' + vendId + '" data-vendedor="' + vendNome.replace(/"/g, '&quot;') + '" data-vendid="' + vendId.replace(/"/g, '&quot;') + '" checked style="width:16px;height:16px">'
+          + '<span style="color:var(--text1,#fff)">' + vendNome + '</span>'
           + '<span style="color:#4ade80;margin-left:auto">' + fmt(v && v.total) + '</span>'
           + '</label>';
       }).join('');
@@ -6558,8 +6560,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
 
     var checked = [];
-    try { checked = Array.prototype.slice.call(document.querySelectorAll('#imp-vends-list input:checked')) || []; } catch (_) { checked = []; }
-    var selecionados = new Set(checked.map(function(cb) { return cb && cb.value; }));
+    try { checked = Array.prototype.slice.call(document.querySelectorAll('#imp-vends-list input[type=checkbox]:checked')) || []; } catch (_) { checked = []; }
+    var selecionados = new Set();
+    checked.forEach(function(cb) {
+      try {
+        var id = String(cb && (cb.getAttribute('data-vendid') || cb.value) || '').trim().toLowerCase();
+        var nome = String(cb && cb.getAttribute('data-vendedor') || '').trim().toLowerCase();
+        if (id) selecionados.add('id:' + id);
+        if (nome) selecionados.add('nome:' + nome);
+      } catch (_) {}
+    });
     var impTodos = document.getElementById('imp-todos');
     var todosSel = (impTodos ? impTodos.checked : true) !== false;
 
@@ -6571,12 +6581,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { return new Date(d).toLocaleDateString('pt-BR'); } catch (_) { return '—'; }
     };
 
+    var vendedorSelecionado = function(of) {
+      if (todosSel) return true;
+      var vendId = String(of && (of.vendid || of.vendedor_id || of.vendId || of.vend_id || '') || '').trim().toLowerCase();
+      var vendNome = String(of && (of._vendedor_resolvido || of._vendedor_nome || of.vendedor || of.vendedor_nome || of.vendNome || '') || '').trim().toLowerCase();
+      return (vendId && selecionados.has('id:' + vendId)) || (vendNome && selecionados.has('nome:' + vendNome));
+    };
+
     var vends = (data.vendedores || []).filter(function(v) {
-      return todosSel || selecionados.has(String(v && v.id || ''));
+      if (todosSel) return true;
+      var vendId = String(v && (v.id || v.vendid || v.vendedor_id || '') || '').trim().toLowerCase();
+      var vendNome = String(v && (v.nome || v.vendedor || v.vendedor_nome || '') || '').trim().toLowerCase();
+      return (vendId && selecionados.has('id:' + vendId)) || (vendNome && selecionados.has('nome:' + vendNome));
     });
 
     var ofs = (data.ofs || []).filter(function(of) {
-      return todosSel || vends.some(function(v) { return String(v && v.nome || '') === String(of && of.vendedor || ''); });
+      return vendedorSelecionado(of);
     });
 
     var parts = String(data.mes || '').split('-');
