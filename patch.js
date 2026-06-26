@@ -5,10 +5,13 @@ if (!window.__comRodandoWatchdogInstalled) {
   window.__comRodandoWatchdogInstalled = true;
   setInterval(function() {
     try {
-      if (window._comRodando) {
-        window._comRodando = false;
-        console.log('[COM PATCH] watchdog: _comRodando resetado');
-      }
+      if (!window._comRodando) return;
+      var startedAt = Number(window.__comEntradaTs || 0) || 0;
+      if (!startedAt) return;
+      if ((Date.now() - startedAt) < 15000) return;
+      window._comRodando = false;
+      window.__comEntradaTs = 0;
+      console.warn('[COM PATCH] watchdog: _comRodando resetado por timeout real');
     } catch (_) {}
   }, 5000);
 }
@@ -45,6 +48,309 @@ if (!window._urlValida) {
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
   else install();
+})();
+
+(function() {
+  if (window.__patchEstoqueChapasUiFixesInstalled) return;
+  window.__patchEstoqueChapasUiFixesInstalled = true;
+
+  function _patchEstoqueAlertasBaixo() {
+    try {
+      var host = document.getElementById('est-alertas');
+      if (!host) return;
+      var wrapper = document.getElementById('patch-est-alertas-wrap');
+      var extras = Array.prototype.slice.call(host.children || []).filter(function(node) {
+        return node && node.id !== 'patch-est-alertas-wrap';
+      });
+      if (!wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.id = 'patch-est-alertas-wrap';
+        wrapper.innerHTML =
+          '<button type="button" id="patch-est-alertas-toggle" style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.08);color:#f59e0b;font-weight:800;cursor:pointer"></button>' +
+          '<div id="patch-est-alertas-body" style="display:none;margin-top:8px"></div>';
+        host.appendChild(wrapper);
+        wrapper.querySelector('#patch-est-alertas-toggle').addEventListener('click', function() {
+          try {
+            window.__patchEstAlertasOpen = !window.__patchEstAlertasOpen;
+            _patchEstoqueAlertasBaixo();
+          } catch (_) {}
+        });
+      }
+      var body = wrapper.querySelector('#patch-est-alertas-body');
+      extras.forEach(function(node) { body.appendChild(node); });
+      var itens = Array.prototype.slice.call(body.children || []).filter(function(el) {
+        return el && String((el.textContent || '')).trim();
+      });
+      var toggle = wrapper.querySelector('#patch-est-alertas-toggle');
+      if (!itens.length) {
+        wrapper.style.display = 'none';
+        return;
+      }
+      wrapper.style.display = '';
+      if (toggle) {
+        toggle.textContent = '⚠️ Estoque Baixo (' + String(itens.length) + ' itens)' + (window.__patchEstAlertasOpen ? '  ▲' : '  ▼');
+      }
+      body.style.display = window.__patchEstAlertasOpen ? 'block' : 'none';
+    } catch (_) {}
+  }
+
+  function _patchEstoqueAcoesTabela() {
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('#tabelaChapasEstoque #est-table-body tr')).forEach(function(tr) {
+        var buttons = Array.prototype.slice.call(tr.querySelectorAll('button'));
+        var pinBtns = buttons.filter(function(btn) {
+          var txt = String(btn.textContent || '').trim();
+          return txt.indexOf('📌') >= 0 || btn.classList.contains('btn-pin-chapa') || btn.classList.contains('patch-hub-pin-chapa');
+        });
+        pinBtns.slice(1).forEach(function(btn) { try { btn.remove(); } catch (_) {} });
+        buttons.forEach(function(btn) {
+          try {
+            var txt = String(btn.textContent || '').trim().toLowerCase();
+            var title = String(btn.getAttribute('title') || '').trim().toLowerCase();
+            var onclick = String(btn.getAttribute('onclick') || '').trim();
+            if (txt.indexOf('🔳') >= 0 || txt.indexOf('qr') >= 0 || title.indexOf('qr code') >= 0 || onclick.indexOf('abrirModalQRCodeEstoque') >= 0) {
+              btn.remove();
+            }
+          } catch (_) {}
+        });
+      });
+    } catch (_) {}
+  }
+
+  function _tickEstoqueUiFixes() {
+    _patchEstoqueAlertasBaixo();
+    _patchEstoqueAcoesTabela();
+  }
+
+  try {
+    if (!window.__patchEstoqueUiObs) {
+      window.__patchEstoqueUiObs = new MutationObserver(function() {
+        if (window._pausarObservers) return;
+        try { clearTimeout(window.__patchEstoqueUiTimer); } catch (_) {}
+        window.__patchEstoqueUiTimer = setTimeout(_tickEstoqueUiFixes, 120);
+      });
+      window.__patchEstoqueUiObs.observe(document.body, { childList: true, subtree: true });
+    }
+  } catch (_) {}
+
+  setTimeout(_tickEstoqueUiFixes, 500);
+  setTimeout(_tickEstoqueUiFixes, 1500);
+})();
+
+(function() {
+  if (window.__patchSimuladorDesperdicioInstalled) return;
+  window.__patchSimuladorDesperdicioInstalled = true;
+
+  function _simdToNum(v) {
+    var n = Number(String(v == null ? '' : v).replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function _simdParseDimensoes(chapa) {
+    var src = String(chapa && (chapa.tamanho || chapa.tam || chapa.nome || chapa.nomenclatura || '') || '').trim();
+    var m = src.match(/(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)/);
+    if (!m) return null;
+    var d1 = _simdToNum(m[1]);
+    var d2 = _simdToNum(m[2]);
+    if (!(d1 > 0 && d2 > 0)) return null;
+    return { largura: d1, comprimento: d2 };
+  }
+
+  async function _simdCarregarChapasPatched() {
+    if (Array.isArray(window._simdChapasCache) && window._simdChapasCache.length) return window._simdChapasCache;
+    try {
+      if (window.supabase && typeof window.supabase.from === 'function') {
+        var sbRes = await window.supabase
+          .from('chapas_estoque_v2')
+          .select('id,nome,nomenclatura,fornecedor,tamanho,quantidade,valor_unitario,valor_total')
+          .limit(1000);
+        if (!sbRes.error && Array.isArray(sbRes.data) && sbRes.data.length) {
+          window._simdChapasCache = sbRes.data;
+          return sbRes.data;
+        }
+      }
+    } catch (_) {}
+    try {
+      var token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || '').trim();
+      var headers = token ? { Authorization: 'Bearer ' + token } : {};
+      var resp = await fetch('/api/chapas_estoque?limit=1000', { headers: headers });
+      var data = await resp.json().catch(function() { return null; });
+      var arr = Array.isArray(data) ? data : (Array.isArray(data && data.data) ? data.data : (Array.isArray(data && data.chapas) ? data.chapas : []));
+      window._simdChapasCache = arr;
+      return arr;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function _simdCalcularLinha(chapa, largNec, compNec, qtdPedido) {
+    var dims = _simdParseDimensoes(chapa);
+    if (!dims) return null;
+    var variantes = [
+      { cols: Math.floor(dims.largura / largNec), rows: Math.floor(dims.comprimento / compNec), largura: dims.largura, comprimento: dims.comprimento },
+      { cols: Math.floor(dims.largura / compNec), rows: Math.floor(dims.comprimento / largNec), largura: dims.largura, comprimento: dims.comprimento }
+    ];
+    variantes = variantes.filter(function(v) { return v.cols > 0 && v.rows > 0; });
+    if (!variantes.length) return null;
+    variantes.sort(function(a, b) { return (b.cols * b.rows) - (a.cols * a.rows); });
+    var best = variantes[0];
+    var planPorChapa = best.cols * best.rows;
+    var areaChapa = dims.largura * dims.comprimento;
+    var areaPlan = largNec * compNec;
+    var desperdicioArea = Math.max(0, areaChapa - (planPorChapa * areaPlan));
+    var desperdicioPct = areaChapa > 0 ? Math.round((desperdicioArea / areaChapa) * 10000) / 100 : 100;
+    var estoque = Math.trunc(_simdToNum(chapa && (chapa.quantidade ?? chapa.qtd ?? chapa.quantidade_atual)));
+    var valorUnit = _simdToNum(chapa && (chapa.valor_unitario ?? chapa.val));
+    var chapasNec = (qtdPedido > 0 && planPorChapa > 0) ? Math.ceil(qtdPedido / planPorChapa) : null;
+    return {
+      id: chapa && chapa.id,
+      nome: chapa && (chapa.nome || chapa.nomenclatura || chapa.nom || 'Chapa'),
+      fornecedor: chapa && (chapa.fornecedor || chapa.forn || '—'),
+      tamanho: chapa && (chapa.tamanho || chapa.tam || '—'),
+      quantidade: estoque,
+      valor_unitario: valorUnit,
+      planificacoes_por_chapa: planPorChapa,
+      desperdicio_real_pct: desperdicioPct,
+      desperdicio_area: desperdicioArea,
+      chapas_necessarias: chapasNec
+    };
+  }
+
+  function _simdRenderResultadosPatched(rows) {
+    var wrap = document.getElementById('simd-tabela-wrap');
+    var linhas = document.getElementById('simd-linhas');
+    var aviso = document.getElementById('simd-aviso');
+    if (!wrap || !linhas) return;
+    var head = wrap.querySelector('.simd-grid');
+    if (head) {
+      head.innerHTML =
+        '<div>Desperd.</div>' +
+        '<div>Chapa</div>' +
+        '<div>Dimensões</div>' +
+        '<div>Fornecedor</div>' +
+        '<div style="text-align:center">Plan./chapa</div>' +
+        '<div style="text-align:center">Chapas nec.</div>' +
+        '<div style="text-align:right">Estoque</div>' +
+        '<div style="text-align:right">R$/un</div>';
+    }
+    if (!Array.isArray(rows) || !rows.length) {
+      if (aviso) {
+        aviso.style.display = 'block';
+        aviso.textContent = 'Nenhuma chapa em estoque é compatível com estas medidas. Verifique se há chapas cadastradas ou ajuste as medidas.';
+      }
+      linhas.innerHTML = '';
+      return;
+    }
+    if (aviso) aviso.style.display = 'none';
+    linhas.innerHTML = rows.map(function(r, idx) {
+      var bg = idx === 0 ? 'rgba(34,197,94,.10)' : 'transparent';
+      return ''
+        + '<div class="simd-grid" style="display:grid;grid-template-columns:60px 1fr 160px 120px 100px 100px 90px 100px;padding:11px 16px;gap:8px;align-items:center;background:' + bg + ';border-bottom:0.5px solid rgba(255,255,255,0.05)">'
+        + '<div style="font-size:16px;font-weight:800;color:' + (idx === 0 ? '#22c55e' : '#f59e0b') + ';text-align:center">' + String(Number(r.desperdicio_real_pct || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + '%</div>'
+        + '<div><div style="font-size:13px;font-weight:700;color:#f8fafc">' + String(r.nome || 'Chapa').replace(/</g, '&lt;') + '</div></div>'
+        + '<div style="font-size:12px;color:#cbd5e1">' + String(r.tamanho || '—').replace(/</g, '&lt;') + '</div>'
+        + '<div style="font-size:12px;color:#94a3b8">' + String(r.fornecedor || '—').replace(/</g, '&lt;') + '</div>'
+        + '<div style="font-size:13px;color:#e2e8f0;text-align:center">' + String(r.planificacoes_por_chapa || 0) + '</div>'
+        + '<div style="font-size:13px;color:#e2e8f0;text-align:center">' + String(r.chapas_necessarias == null ? '—' : r.chapas_necessarias) + '</div>'
+        + '<div style="font-size:13px;color:#e2e8f0;text-align:right">' + String(r.quantidade || 0) + '</div>'
+        + '<div style="font-size:13px;color:#e2e8f0;text-align:right">' + ((Number(r.valor_unitario || 0) > 0) ? ('R$ ' + Number(r.valor_unitario || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : '—') + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  async function _simdCalcularPatched() {
+    var larg = _simdToNum((document.getElementById('simd-larg') || {}).value);
+    var comp = _simdToNum((document.getElementById('simd-comp') || {}).value);
+    var qtdPedido = Math.trunc(_simdToNum((document.getElementById('simd-qtd') || {}).value));
+    var loading = document.getElementById('simd-loading');
+    var resultado = document.getElementById('simd-resultado');
+    var info = document.getElementById('simd-info-planif');
+    if (!(larg > 0 && comp > 0)) {
+      try { alert('Preencha largura e comprimento necessários.'); } catch (_) {}
+      return;
+    }
+    if (loading) loading.style.display = 'block';
+    if (resultado) resultado.style.display = 'none';
+    if (info) {
+      info.innerHTML = 'Planificação: <strong style="color:rgba(255,255,255,0.8)">' + String(comp) + ' × ' + String(larg) + ' mm</strong> — Área: <strong style="color:rgba(255,255,255,0.8)">' + ((larg * comp) / 1000000).toFixed(4) + ' m²</strong>';
+    }
+    try {
+      var baseRows = [];
+      if (window._simdChapaSelecionada) baseRows = [window._simdChapaSelecionada];
+      else baseRows = await _simdCarregarChapasPatched();
+      var rows = (Array.isArray(baseRows) ? baseRows : []).map(function(chapa) {
+        return _simdCalcularLinha(chapa, larg, comp, qtdPedido);
+      }).filter(Boolean);
+      rows.sort(function(a, b) {
+        var da = Number(a && a.desperdicio_real_pct || 0);
+        var db = Number(b && b.desperdicio_real_pct || 0);
+        if (da !== db) return da - db;
+        return Number(a && a.desperdicio_area || 0) - Number(b && b.desperdicio_area || 0);
+      });
+      if (loading) loading.style.display = 'none';
+      if (resultado) resultado.style.display = 'block';
+      _simdRenderResultadosPatched(rows);
+    } catch (e) {
+      if (loading) loading.style.display = 'none';
+      if (resultado) resultado.style.display = 'block';
+      _simdRenderResultadosPatched([]);
+      try { console.error('[SIMD PATCH]', e); } catch (_) {}
+    }
+  }
+
+  function _bindSimdPatch() {
+    try {
+      var btn = document.getElementById('simd-btn');
+      if (btn && btn.dataset.patchSimdBound !== '1') {
+        btn.dataset.patchSimdBound = '1';
+        try { btn.removeAttribute('onclick'); } catch (_) {}
+        btn.addEventListener('click', function(e) {
+          try { e.preventDefault(); } catch (_) {}
+          _simdCalcularPatched();
+        });
+      }
+      ['simd-larg', 'simd-comp', 'simd-qtd'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el && el.dataset.patchSimdInput !== '1') {
+          el.dataset.patchSimdInput = '1';
+          el.addEventListener('input', function() {
+            try { if (typeof window._simdVerificarCampos === 'function') window._simdVerificarCampos(); } catch (_) {}
+          });
+        }
+      });
+      var busca = document.getElementById('simd-busca-chapa');
+      if (busca && busca.dataset.patchSimdBusca !== '1') {
+        busca.dataset.patchSimdBusca = '1';
+        busca.addEventListener('input', function(e) {
+          try { if (typeof window._simdBuscarChapa === 'function') window._simdBuscarChapa(String((e.target || {}).value || '')); } catch (_) {}
+        });
+      }
+      var limpar = document.getElementById('simd-btn-limpar-chapa');
+      if (limpar && limpar.dataset.patchSimdClear !== '1') {
+        limpar.dataset.patchSimdClear = '1';
+        limpar.addEventListener('click', function(e) {
+          try { e.preventDefault(); } catch (_) {}
+          try { if (typeof window._simdLimparChapaSelecionada === 'function') window._simdLimparChapaSelecionada(); } catch (_) {}
+        });
+      }
+    } catch (_) {}
+  }
+
+  try { window._simdCarregarChapas = _simdCarregarChapasPatched; } catch (_) {}
+  try { window._simdCalcular = _simdCalcularPatched; } catch (_) {}
+
+  try {
+    if (!window.__patchSimdObs) {
+      window.__patchSimdObs = new MutationObserver(function() {
+        if (window._pausarObservers) return;
+        try { clearTimeout(window.__patchSimdObsTimer); } catch (_) {}
+        window.__patchSimdObsTimer = setTimeout(_bindSimdPatch, 100);
+      });
+      window.__patchSimdObs.observe(document.body, { childList: true, subtree: true });
+    }
+  } catch (_) {}
+
+  setTimeout(_bindSimdPatch, 600);
 })();
 // LIMPEZA DE OVERLAYS ÓRFÃOS — executar imediatamente
 if (typeof NOTIFICACOES === 'undefined') window.NOTIFICACOES = [];
@@ -7035,6 +7341,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return { id: cor.id || cor.nome, nome: cor.nome || cor.id, hex: cor.hex || cor.cor || '#64748b' };
     }).filter(Boolean);
   }
+  try { window.getItemColorPayloadOFRapida = getItemColorPayload; } catch (_) {}
 
   window.renderSeletorCoresItemOFRapida = function(index) {
     var idx = String(index == null ? '' : index).trim();
@@ -7049,7 +7356,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var hex = String(cor && (cor.hex || cor.cor) || '#64748b').trim() || '#64748b';
       var on = selectedIds.indexOf(id) >= 0;
       var styleExtra = on ? ('border-color:' + escTxt(hex) + ';color:' + escTxt(hex) + ';background:' + escTxt(hex) + '18;') : '';
-      return '<button type="button" class="btn-cor ' + (on ? 'selecionado' : '') + '" style="' + styleExtra + '" onclick="toggleCorItemOFRapida(\'' + escTxt(idx) + '\',\'' + escTxt(id) + '\')" title="' + escTxt(nome) + '">' +
+      return '<button type="button" class="btn-cor ' + (on ? 'selecionado' : '') + '" data-cor-id="' + escTxt(id) + '" style="' + styleExtra + '" onclick="toggleCorItemOFRapida(\'' + escTxt(idx) + '\',\'' + escTxt(id) + '\')" title="' + escTxt(nome) + '">' +
         '<span class="circulo-cor" style="background:' + escTxt(hex) + '"></span>' +
         '<span>' + escTxt(nome) + '</span>' +
       '</button>';
@@ -7060,6 +7367,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       } else {
         var lbl = document.getElementById('btnCoresLabelItemOFRapida_' + idx);
         if (lbl) lbl.textContent = selectedIds.length ? ('🎨 ' + selectedIds.length + ' cores selecionadas') : '🎨 Selecionar Cores';
+      }
+      var card = el.closest ? el.closest('.ofr-item-card, [data-item-idx], .item-adicional, .of-item') : null;
+      if (card) {
+        try { card.dataset.coresSel = JSON.stringify(selectedIds); } catch (_) {}
+        try {
+          var hidden = card.querySelector('input[type="hidden"][name*="cor"], input[type="hidden"][name*="cores"]');
+          if (hidden) hidden.value = JSON.stringify(getItemColorPayload(idx));
+        } catch (_) {}
       }
     } catch (_) {}
   };
@@ -7128,6 +7443,35 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       Array.prototype.slice.call(document.querySelectorAll('[id^="dropdownCoresItemOFRapida_"]')).forEach(function(el) {
         if (el) el.style.display = 'none';
       });
+    }, true);
+  }
+  if (!window.__patchColorItemDelegationBound) {
+    window.__patchColorItemDelegationBound = true;
+    document.addEventListener('click', function(ev) {
+      try {
+        var btn = ev && ev.target && (ev.target.closest ? ev.target.closest('[id^="seletorCoresItemOFRapida_"] .btn-cor') : null);
+        if (!btn) return;
+        var grid = btn.closest ? btn.closest('[id^="seletorCoresItemOFRapida_"]') : null;
+        var idx = String(grid && grid.id || '').replace('seletorCoresItemOFRapida_', '').trim();
+        var corId = String(btn.getAttribute('data-cor-id') || '').trim();
+        if (!idx || !corId) return;
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        if (typeof window.toggleCorItemOFRapida === 'function') window.toggleCorItemOFRapida(idx, corId);
+      } catch (_) {}
+    }, true);
+    document.addEventListener('change', function(ev) {
+      try {
+        var sel = ev && ev.target && (ev.target.matches ? (ev.target.matches('.cores-select, select[multiple]') ? ev.target : null) : null);
+        if (!sel) return;
+        var card = sel.closest ? sel.closest('.ofr-item-card, [data-item-idx], .item-adicional, .of-item') : null;
+        if (!card) return;
+        var idx = String(card.getAttribute('data-item-idx') || card.dataset.itemIdx || '').trim();
+        if (!idx) return;
+        var values = Array.prototype.slice.call(sel.selectedOptions || []).map(function(opt) { return String(opt && opt.value || '').trim(); }).filter(Boolean);
+        window.coresSelecionadasOFRapidaItens = window.coresSelecionadasOFRapidaItens || {};
+        window.coresSelecionadasOFRapidaItens[idx] = values;
+        if (typeof window.renderSeletorCoresItemOFRapida === 'function') window.renderSeletorCoresItemOFRapida(idx);
+      } catch (_) {}
     }, true);
   }
 
@@ -7451,7 +7795,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try {
         var u = String(url || '');
         var m = String((opts && opts.method) || 'GET').toUpperCase();
-        if (m === 'POST' && u.indexOf('/api/ofs') !== -1 && opts) {
+        if ((m === 'POST' || m === 'PATCH') && u.indexOf('/api/ofs') !== -1 && opts) {
           var el = document.getElementById('f-cli-search') || document.getElementById('of-r-cliente');
           var cliId = el && el.dataset ? String(el.dataset.clienteId || '').trim() : '';
           var cliNome = el && el.dataset ? String(el.dataset.clienteNome || '').trim() : '';
@@ -7468,6 +7812,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                     if (!o.cliente_nome) o.cliente_nome = cliNome;
                     if (!o.cliNome) o.cliNome = cliNome;
                   }
+                  if (Array.isArray(o.itens) && typeof window.getItemColorPayloadOFRapida === 'function') {
+                    o.itens = o.itens.map(function(item, idx) {
+                      var payloadCores = window.getItemColorPayloadOFRapida(String(idx));
+                      if (!payloadCores.length) return item;
+                      return Object.assign({}, item || {}, { cores_impressao: payloadCores });
+                    });
+                  }
                   opts.body = JSON.stringify(o);
                 }
               } catch (_) {}
@@ -7478,6 +7829,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               if (cliNome) {
                 if (!opts.body.cliente_nome) opts.body.cliente_nome = cliNome;
                 if (!opts.body.cliNome) opts.body.cliNome = cliNome;
+              }
+              if (Array.isArray(opts.body.itens) && typeof window.getItemColorPayloadOFRapida === 'function') {
+                opts.body.itens = opts.body.itens.map(function(item, idx) {
+                  var payloadCores = window.getItemColorPayloadOFRapida(String(idx));
+                  if (!payloadCores.length) return item;
+                  return Object.assign({}, item || {}, { cores_impressao: payloadCores });
+                });
               }
             }
           }
@@ -14333,7 +14691,9 @@ function _ocultarGraficoComissoes() {
         + '#page-comissoes #tabela-comissoes-ofs thead th,[data-page=\"comissoes\"] #tabela-comissoes-ofs thead th,.page-comissoes #tabela-comissoes-ofs thead th{padding:10px 12px!important;font-size:11px!important;text-transform:uppercase!important;color:#64748b!important;letter-spacing:.5px!important;text-align:center!important;}'
         + '#page-comissoes #tabela-comissoes-ofs thead th:nth-child(2),[data-page=\"comissoes\"] #tabela-comissoes-ofs thead th:nth-child(2),.page-comissoes #tabela-comissoes-ofs thead th:nth-child(2){text-align:left!important;}'
         + '#page-comissoes #tabela-comissoes-ofs tbody td,[data-page=\"comissoes\"] #tabela-comissoes-ofs tbody td,.page-comissoes #tabela-comissoes-ofs tbody td{padding:10px 12px!important;text-align:center!important;vertical-align:middle!important;}'
-        + '#page-comissoes #tabela-comissoes-ofs tbody td:nth-child(2),[data-page=\"comissoes\"] #tabela-comissoes-ofs tbody td:nth-child(2),.page-comissoes #tabela-comissoes-ofs tbody td:nth-child(2){text-align:left!important;}';
+        + '#page-comissoes #tabela-comissoes-ofs tbody td:nth-child(2),[data-page=\"comissoes\"] #tabela-comissoes-ofs tbody td:nth-child(2),.page-comissoes #tabela-comissoes-ofs tbody td:nth-child(2){text-align:left!important;}'
+        + '#_com_detalhe,.detalhamento-ofs,[data-section=\"detalhamento-ofs\"]{overflow-y:auto!important;max-height:72vh!important;pointer-events:auto!important;min-height:120px!important;}'
+        + '#_com_detalhe details>div,.detalhamento-ofs table,.detalhamento-ofs .table-wrap{overflow:auto!important;}';
       document.head.appendChild(st);
     } catch (_) {}
   }
@@ -16071,6 +16431,150 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
   }
 
+  function _comBuscaTokens(termo) {
+    return Array.from(new Set(
+      String(termo || '')
+        .split(/[,\n;]+/)
+        .map(function(t) { return String(t || '').trim(); })
+        .filter(Boolean)
+    ));
+  }
+  function _comBuscaNumero(of) {
+    return String(of && (of.of || of.numero || of.of_num || of.of_numero || '') || '').trim();
+  }
+  function _comBuscaNumeroNorm(v) {
+    return String(v || '').replace(/[^\d]/g, '');
+  }
+  function _comBuscaCliente(of) {
+    return String(of && (of.clinome || of.cliNome || of.cliente_nome || of.cliente || '') || '').trim();
+  }
+  function _comBuscaVendedor(of) {
+    return String(of && (of.vendedor_nome || of.vendNome || of.vendedor || '') || '').trim();
+  }
+  function _comBuscaMatch(of, termo) {
+    var numeroRaw = _comBuscaNumero(of);
+    var numeroNorm = _comBuscaNumeroNorm(numeroRaw);
+    var cliente = _comBuscaCliente(of).toLowerCase();
+    var vendedor = _comBuscaVendedor(of).toLowerCase();
+    var termoTxt = String(termo || '').trim();
+    var termoNorm = _comBuscaNumeroNorm(termoTxt);
+    if (termoNorm) return numeroRaw.indexOf(termoTxt) >= 0 || numeroNorm.indexOf(termoNorm) >= 0;
+    var low = termoTxt.toLowerCase();
+    return cliente.indexOf(low) >= 0 || vendedor.indexOf(low) >= 0;
+  }
+  function _comBuscaDedup(lista) {
+    var map = Object.create(null);
+    return (Array.isArray(lista) ? lista : []).filter(function(of) {
+      var key = String(of && of.id || '').trim() || (_comBuscaNumero(of) + '|' + _comBuscaCliente(of)).toLowerCase();
+      if (!key || map[key]) return false;
+      map[key] = true;
+      return true;
+    });
+  }
+  async function _comBuscarOFsRemotas(termos) {
+    var token = '';
+    try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
+    var headers = token ? { Authorization: 'Bearer ' + token } : {};
+    var jobs = (Array.isArray(termos) ? termos : []).map(async function(termo) {
+      var termoTxt = String(termo || '').trim();
+      if (!termoTxt) return [];
+      try {
+        var url = _comBuscaNumeroNorm(termoTxt)
+          ? '/api/ofs/buscar?numero=' + encodeURIComponent(_comBuscaNumeroNorm(termoTxt))
+          : '/api/ofs/buscar?cliente=' + encodeURIComponent(termoTxt) + '&status=todos';
+        var resp = await fetch(url, { headers: headers });
+        var json = await resp.json().catch(function() { return null; });
+        var data = Array.isArray(json && json.data) ? json.data : (Array.isArray(json) ? json : (json && json.id ? [json] : []));
+        if (data.length) return data;
+      } catch (_) {}
+      try {
+        var resp2 = await fetch('/api/ofs?incluir_excluidas=1&limit=300&offset=0&busca=' + encodeURIComponent(termoTxt), { headers: headers });
+        var json2 = await resp2.json().catch(function() { return null; });
+        return Array.isArray(json2 && json2.data) ? json2.data : (Array.isArray(json2) ? json2 : []);
+      } catch (_) {
+        return [];
+      }
+    });
+    var packs = await Promise.all(jobs);
+    return _comBuscaDedup([].concat.apply([], packs));
+  }
+
+  function _comBindSearchListeners() {
+    try {
+      if (!window._comListenersRegistrados) {
+        window._comListenersRegistrados = true;
+        window.__comBuscaInputHandler = function(e) {
+          try {
+            var v = String(e && e.target && e.target.value || '');
+            if (!v.trim() && typeof window._buscarOFsComissao === 'function') window._buscarOFsComissao('');
+          } catch (_) {}
+        };
+        window.__comBuscaKeyHandler = function(e) {
+          try {
+            if (e && e.key === 'Enter') {
+              e.preventDefault();
+              if (typeof window._buscarOFsComissao === 'function') window._buscarOFsComissao(String((e.target || {}).value || ''));
+            }
+          } catch (_) {}
+        };
+        window.__comBuscaClickHandler = function() {
+          try {
+            var v = String((document.getElementById('_com_busca') || {}).value || '');
+            if (typeof window._buscarOFsComissao === 'function') window._buscarOFsComissao(v);
+          } catch (_) {}
+        };
+      }
+      var inp = document.getElementById('_com_busca');
+      var btn = document.getElementById('_com_btn_buscar');
+      if (window.__comBuscaInputRef && window.__comBuscaInputRef !== inp) {
+        try { window.__comBuscaInputRef.removeEventListener('input', window.__comBuscaInputHandler); } catch (_) {}
+        try { window.__comBuscaInputRef.removeEventListener('keydown', window.__comBuscaKeyHandler); } catch (_) {}
+      }
+      if (window.__comBuscaBtnRef && window.__comBuscaBtnRef !== btn) {
+        try { window.__comBuscaBtnRef.removeEventListener('click', window.__comBuscaClickHandler); } catch (_) {}
+      }
+      if (inp && window.__comBuscaInputRef !== inp) {
+        inp.addEventListener('input', window.__comBuscaInputHandler);
+        inp.addEventListener('keydown', window.__comBuscaKeyHandler);
+        window.__comBuscaInputRef = inp;
+      }
+      if (btn && window.__comBuscaBtnRef !== btn) {
+        btn.addEventListener('click', window.__comBuscaClickHandler);
+        window.__comBuscaBtnRef = btn;
+      }
+    } catch (_) {}
+  }
+
+  function _disconnectComissoesObserver() {
+    try {
+      if (window.__comMutationObserver && typeof window.__comMutationObserver.disconnect === 'function') {
+        window.__comMutationObserver.disconnect();
+      }
+    } catch (_) {}
+  }
+
+  function _connectComissoesObserver() {
+    try {
+      if (window.__comMutationObserverConnected) return;
+      var alvo = document.querySelector('#page-comissoes, [data-page="comissoes"], .page-comissoes');
+      if (!alvo) return;
+      if (!window.__comMutationObserver) {
+        window.__comMutationObserver = new MutationObserver(function(mutations) {
+          try {
+            if (window._pausarObservers || window._comRodando || !_naComissoesAgora()) return;
+            if (window.__comSuspenderObserverAte && Date.now() < window.__comSuspenderObserverAte) return;
+            var mudou = (mutations || []).some(function(m) {
+              return (m.addedNodes && m.addedNodes.length) || (m.removedNodes && m.removedNodes.length);
+            });
+            if (mudou) _agendarRenderComissoesPatch(180);
+          } catch (_) {}
+        });
+      }
+      window.__comMutationObserver.observe(alvo, { childList: true, subtree: true });
+      window.__comMutationObserverConnected = true;
+    } catch (_) {}
+  }
+
   window._buscarOFsComissao = async function(termo) {
     termo = String(termo || '').trim();
     var resultDiv = document.getElementById('_com_busca_resultado');
@@ -16081,26 +16585,15 @@ function _ocultarGraficoComissoes() {
     }
     resultDiv.innerHTML = '<p style="color:#94a3b8;padding:12px">Buscando...</p>';
     try {
-      var termoLower = termo.toLowerCase();
+      var termos = _comBuscaTokens(termo);
       var ofs = Array.isArray(window._comOfsData) ? window._comOfsData : [];
-      var encontradas = ofs.filter(function(of) {
-        var n = String(of && of.numero || '').toLowerCase();
-        var c = String(of && of.cliente || '').toLowerCase();
-        return (n && n.indexOf(termoLower) >= 0) || (c && c.indexOf(termoLower) >= 0);
+      var locais = ofs.filter(function(of) {
+        return !termos.length || termos.some(function(t) { return _comBuscaMatch(of, t); });
       });
+      var remotas = await _comBuscarOFsRemotas(termos);
+      var encontradas = _comBuscaDedup(locais.concat(remotas));
       if (!encontradas.length) {
-        var token = '';
-        try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
-        var resp = await fetch('/api/ofs?incluir_excluidas=1&limit=200&offset=0&busca=' + encodeURIComponent(termo), {
-          headers: token ? { Authorization: 'Bearer ' + token } : {}
-        });
-        if (!resp.ok) {
-          resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">OF não encontrada nos dados do mês atual. Tente calcular outro mês ou busque no PCP.</p>';
-          return;
-        }
-      }
-      if (!encontradas.length) {
-        resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Nenhuma OF encontrada para "' + _escHtmlCom(termo) + '" no mês atual.</p>';
+        resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Nenhuma OF encontrada para "' + _escHtmlCom(termo) + '".</p>';
         return;
       }
       var html = encontradas.map(function(of) {
@@ -16108,13 +16601,13 @@ function _ocultarGraficoComissoes() {
         var concluida = status.toLowerCase().indexOf('conclu') >= 0;
         var dataStr = '—';
         try { dataStr = of && of.data_conclusao ? new Date(of.data_conclusao).toLocaleDateString('pt-BR') : '—'; } catch (_) { dataStr = '—'; }
-        var qtd = Number(of && of.quantidade || 0) || 0;
-        var valorTotal = Number(of && of.valor_total || 0) || 0;
-        var precoUnit = qtd > 0 ? (valorTotal / qtd) : 0;
+        var qtd = Number(of && (of.quantidade ?? of.qtd ?? of.qtd_pedida ?? of.qtd_produzida ?? 0) || 0) || 0;
+        var valorTotal = Number(of && (of.valor_total ?? of.valor_venda ?? of.total ?? 0) || 0) || 0;
+        var precoUnit = Number(of && (of.preco ?? of.valor_unitario ?? of.vl_unit ?? 0) || 0) || (qtd > 0 ? (valorTotal / qtd) : 0);
         var comissao = Number(of && of.comissao_rs || 0) || 0;
-        var vendedor = String(of && of.vendedor || '—');
-        var cliente = String(of && of.cliente || '—');
-        var numero = String(of && of.numero || '—');
+        var vendedor = _comBuscaVendedor(of) || '—';
+        var cliente = _comBuscaCliente(of) || '—';
+        var numero = _comBuscaNumero(of) || '—';
         var id = String(of && of.id || '');
         return ''
           + '<div style="background:#1e293b;border:1px solid ' + (concluida ? '#166534' : '#92400e') + ';border-radius:8px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">'
@@ -16158,6 +16651,9 @@ function _ocultarGraficoComissoes() {
     }, 10000);
     try {
       _ensureComissoesStyle();
+      _disconnectComissoesObserver();
+      window.__comSuspenderObserverAte = Date.now() + 1500;
+      window.__comEntradaTs = Date.now();
       _ensurePeriodoSelects();
       _bindTrocarClick();
       var paginaCom = _acharPaginaComissoesPatch();
@@ -16225,7 +16721,7 @@ function _ocultarGraficoComissoes() {
       if (!divDetalhe) {
         divDetalhe = document.createElement('div');
         divDetalhe.id = '_com_detalhe';
-        divDetalhe.style.cssText = 'padding:0 16px 24px;box-sizing:border-box;';
+        divDetalhe.style.cssText = 'padding:0 16px 24px;box-sizing:border-box;overflow-y:auto;max-height:72vh;pointer-events:auto;min-height:140px;';
         paginaCom.appendChild(divDetalhe);
       }
 
@@ -16247,35 +16743,7 @@ function _ocultarGraficoComissoes() {
         }
       } catch (_) {}
 
-      try {
-        var inpBusca = document.getElementById('_com_busca');
-        var btnBusca = document.getElementById('_com_btn_buscar');
-        if (inpBusca && !inpBusca._comBound) {
-          inpBusca._comBound = true;
-          inpBusca.addEventListener('input', function(e) {
-            try {
-              var v = String(e && e.target && e.target.value || '');
-              if (!v.trim()) window._buscarOFsComissao && window._buscarOFsComissao('');
-            } catch (_) {}
-          });
-          inpBusca.addEventListener('keydown', function(e) {
-            try {
-              if (e && e.key === 'Enter') {
-                e.preventDefault();
-                window._buscarOFsComissao && window._buscarOFsComissao(String((e.target || {}).value || ''));
-              }
-            } catch (_) {}
-          });
-        }
-        if (btnBusca && !btnBusca._comBound) {
-          btnBusca._comBound = true;
-          btnBusca.addEventListener('click', function() {
-            var v = '';
-            try { v = String((document.getElementById('_com_busca') || {}).value || ''); } catch (_) { v = ''; }
-            window._buscarOFsComissao && window._buscarOFsComissao(v);
-          });
-        }
-      } catch (_) {}
+      try { _comBindSearchListeners(); } catch (_) {}
 
       conteudoWrap.innerHTML = '<p style="color:#94a3b8;padding:20px 4px">[COM] Carregando comissões...</p>';
       divDetalhe.innerHTML = '';
@@ -16447,35 +16915,7 @@ function _ocultarGraficoComissoes() {
       }).join('');
       divDetalhe.innerHTML = htmlDetalhe;
       _renderizarBuscaOFs();
-      try {
-        var inpBusca2 = document.getElementById('_com_busca');
-        var btnBusca2 = document.getElementById('_com_btn_buscar');
-        if (inpBusca2 && !inpBusca2._comBound) {
-          inpBusca2._comBound = true;
-          inpBusca2.addEventListener('input', function(e) {
-            try {
-              var v = String(e && e.target && e.target.value || '');
-              if (!v.trim()) window._buscarOFsComissao && window._buscarOFsComissao('');
-            } catch (_) {}
-          });
-          inpBusca2.addEventListener('keydown', function(e) {
-            try {
-              if (e && e.key === 'Enter') {
-                e.preventDefault();
-                window._buscarOFsComissao && window._buscarOFsComissao(String((e.target || {}).value || ''));
-              }
-            } catch (_) {}
-          });
-        }
-        if (btnBusca2 && !btnBusca2._comBound) {
-          btnBusca2._comBound = true;
-          btnBusca2.addEventListener('click', function() {
-            var v = '';
-            try { v = String((document.getElementById('_com_busca') || {}).value || ''); } catch (_) { v = ''; }
-            window._buscarOFsComissao && window._buscarOFsComissao(v);
-          });
-        }
-      } catch (_) {}
+      try { _comBindSearchListeners(); } catch (_) {}
       try {
         var v0 = '';
         try { v0 = String((document.getElementById('_com_busca') || {}).value || '').trim(); } catch (_) { v0 = ''; }
@@ -16493,9 +16933,17 @@ function _ocultarGraficoComissoes() {
           try {
             var el = document.getElementById(id);
             if (!el) return;
-            el.style.overflow = 'visible';
-            el.style.height = 'auto';
-            el.style.maxHeight = 'none';
+            if (id === '_com_detalhe') {
+              el.style.overflowY = 'auto';
+              el.style.overflowX = 'hidden';
+              el.style.height = 'auto';
+              el.style.maxHeight = '72vh';
+              el.style.pointerEvents = 'auto';
+            } else {
+              el.style.overflow = 'visible';
+              el.style.height = 'auto';
+              el.style.maxHeight = 'none';
+            }
           } catch (_) {}
         });
       } catch (_) {}
@@ -16506,6 +16954,10 @@ function _ocultarGraficoComissoes() {
     } finally {
       clearTimeout(_comTimeout);
       window._comRodando = false;
+      window.__comEntradaTs = 0;
+      setTimeout(function() {
+        try { _connectComissoesObserver(); } catch (_) {}
+      }, 120);
       try { console.log('[COM PATCH] render finalizado, _comRodando liberado'); } catch (_) {}
     }
   }

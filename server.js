@@ -2452,12 +2452,22 @@ function ofIn(p) {
     if (Number.isFinite(v)) {
       out.vl_unit = v;
       if (out.valor_unitario === undefined) out.valor_unitario = v;
+      if (out.preco === undefined) out.preco = v;
     }
   }
   if (Object.prototype.hasOwnProperty.call(p || {}, 'valor_unitario')) {
     const v = toNum(p.valor_unitario, NaN);
     if (Number.isFinite(v)) {
       out.valor_unitario = v;
+      if (out.vl_unit === undefined) out.vl_unit = v;
+      if (out.preco === undefined) out.preco = v;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'preco')) {
+    const v = toNum(p.preco, NaN);
+    if (Number.isFinite(v)) {
+      out.preco = v;
+      if (out.valor_unitario === undefined) out.valor_unitario = v;
       if (out.vl_unit === undefined) out.vl_unit = v;
     }
   }
@@ -2701,7 +2711,7 @@ async function ofsInsertWithRetry(row) {
       'maquina_atual_index', 'prioridade', 'prioridade_producao'
     ];
     const decimais = [
-      'valor_total', 'valor_venda', 'valor_unitario',
+      'valor_total', 'valor_venda', 'valor_unitario', 'preco',
       'caixa_comprimento', 'caixa_largura', 'caixa_altura'
     ];
     const out = { ...(payload || {}) };
@@ -4308,8 +4318,16 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     delete body.created_at;
     delete body.empresa_id;
     if (body.quantidade !== undefined) body.quantidade = Number(body.quantidade);
+    if (body.qtd_produzida !== undefined) body.qtd_produzida = Number(body.qtd_produzida);
     if (body.valor_total !== undefined) body.valor_total = Number(body.valor_total);
-    if (body.valor_unitario !== undefined) body.valor_unitario = Number(body.valor_unitario);
+    if (body.valor_unitario !== undefined) {
+      body.valor_unitario = Number(body.valor_unitario);
+      if (body.preco === undefined) body.preco = body.valor_unitario;
+    }
+    if (body.preco !== undefined) {
+      body.preco = Number(body.preco);
+      if (body.valor_unitario === undefined) body.valor_unitario = body.preco;
+    }
     if (body.comissao_pct !== undefined) body.comissao_pct = Number(body.comissao_pct);
     const { data, error } = await supabase
       .from('ofs').update(body).eq('id', req.params.id).select().single();
@@ -5904,6 +5922,12 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
           ...(Object.prototype.hasOwnProperty.call(bodyIn, 'vl_unit') && !Object.prototype.hasOwnProperty.call(bodyIn, 'valor_unitario')
             ? { valor_unitario: Number(bodyIn.vl_unit) || bodyIn.vl_unit }
             : {}),
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'valor_unitario') && !Object.prototype.hasOwnProperty.call(bodyIn, 'preco')
+            ? { preco: Number(bodyIn.valor_unitario) || bodyIn.valor_unitario }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'preco') && !Object.prototype.hasOwnProperty.call(bodyIn, 'valor_unitario')
+            ? { valor_unitario: Number(bodyIn.preco) || bodyIn.preco }
+            : {}),
           ...(Object.prototype.hasOwnProperty.call(bodyIn, 'observacoes') && !Object.prototype.hasOwnProperty.call(bodyIn, 'obs')
             ? { obs: bodyIn.observacoes }
             : {}),
@@ -6235,9 +6259,15 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
       }]);
     } catch (e) {}
 
-    const dataOut = upd?.data ? { ...upd.data, ...payload } : { id, ...payload };
+    let dataOut = data || null;
+    if (!dataOut) {
+      try {
+        const refetch = await supabase.from('ofs').select('*').eq('id', id).maybeSingle();
+        dataOut = refetch?.data || null;
+      } catch (_) { dataOut = null; }
+    }
     try { cacheClearPrefix('ofs_v4'); } catch (_) {}
-    return res.json({ ok: true, data: dataOut, concluida, proxima: proxima || null, status: payload.status });
+    return res.json({ ok: true, data: dataOut || { id }, concluida, proxima: proxima || null, status: (dataOut && dataOut.status) || payload.status });
   } catch (e) {
     const msg = String(e?.message || e);
     return res.status(500).json({ ok: false, error: msg });
@@ -6273,9 +6303,15 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     const qtdProduzida = (Number(qtdProduzidaRaw) || 0) || (Number(qtdPedida) || 0);
     const qtdFinal = (qtdProduzida > 0) ? Math.trunc(qtdProduzida) : Math.trunc(qtdPedida || 0);
     const valorTotalOriginal = Number(of.valor_total || of.valor_venda || 0);
+    let valorUnitFinal = Number(body.preco ?? body.valor_unitario ?? body.vl_unit ?? of.preco ?? of.valor_unitario ?? of.vl_unit ?? 0);
+    if (!(valorUnitFinal > 0) && qtdPedida > 0 && valorTotalOriginal > 0) valorUnitFinal = valorTotalOriginal / qtdPedida;
+    valorUnitFinal = Math.round((Number(valorUnitFinal || 0) || 0) * 100) / 100;
     const excedente = Math.max(0, Math.trunc(qtdFinal) - Math.trunc(qtdPedida || 0));
     let novoValor = valorTotalOriginal;
-    if (qtdPedida > 0 && qtdFinal > 0) {
+    if (valorUnitFinal > 0 && qtdFinal > 0) {
+      novoValor = valorUnitFinal * qtdFinal;
+      novoValor = Math.round(novoValor * 100) / 100;
+    } else if (qtdPedida > 0 && qtdFinal > 0) {
       novoValor = (valorTotalOriginal / qtdPedida) * qtdFinal;
       novoValor = Math.round(novoValor * 100) / 100;
     }
@@ -6323,6 +6359,8 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       qtd: qtdFinal,
       qtd_perdida: qtdPerdida,
       caixas_excedentes: excedente,
+      preco: valorUnitFinal > 0 ? valorUnitFinal : (of.preco ?? null),
+      valor_unitario: valorUnitFinal > 0 ? valorUnitFinal : (of.valor_unitario ?? null),
       valor_total: novoValor,
       valor_venda: novoValor,
       data_conclusao: nowIso,
