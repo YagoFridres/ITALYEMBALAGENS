@@ -16731,6 +16731,28 @@ function _ocultarGraficoComissoes() {
     var ofNorm = _normalizarOFComissao(of, _comBuscaVendedor(of) || '—');
     var concluida = _comStatusConcluida(of);
     var status = String(ofNorm && ofNorm.status || 'Pendente');
+    var vendidVal = String(
+      of && (
+        of.vendid ||
+        of.vendedor ||
+        of.vendNome ||
+        of.vendedor_nome ||
+        ofNorm.vendid ||
+        ofNorm.vendedor
+      ) || ''
+    ).trim();
+    var percComissao = Number(window._obterPercComissao(vendidVal) || 0) || 0;
+    var totalVal = parseFloat(of && (of.total != null ? of.total : (of.valor_total != null ? of.valor_total : ofNorm.valor_total)) || 0) || 0;
+    var comissaoVal = totalVal * percComissao / 100;
+    try {
+      console.log('[DEBUG COMISSAO]', {
+        vendid: of && of.vendid,
+        vendedor: of && of.vendedor,
+        total: of && of.total,
+        perc: window._obterPercComissao((of && (of.vendid || of.vendedor)) || ''),
+        comissao_calculada: (parseFloat(of && of.total) || 0) * window._obterPercComissao((of && (of.vendid || of.vendedor)) || '') / 100
+      });
+    } catch (_) {}
     return ''
       + '<div style="background:#1e293b;border:1px solid ' + (concluida ? '#166534' : '#92400e') + ';border-radius:8px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">'
       + '<div style="flex:1;min-width:200px">'
@@ -16742,7 +16764,7 @@ function _ocultarGraficoComissoes() {
       + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Qtd</div><div style="color:#f1f5f9;font-weight:600">' + String(ofNorm.qtd) + '</div></div>'
       + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Valor Total</div><div style="color:#f1f5f9;font-weight:600">' + _escHtmlCom(window._fmtRs(ofNorm.valor_total)) + '</div></div>'
       + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Preço Unit.</div><div style="color:#94a3b8">' + _escHtmlCom(window._fmtRs(ofNorm.preco_unit)) + '</div></div>'
-      + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Comissão</div><div style="color:#22c55e;font-weight:600">' + _escHtmlCom(window._fmtRs(ofNorm.comissao_valor)) + '</div></div>'
+      + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Comissão</div><div style="color:#22c55e;font-weight:600">' + _escHtmlCom(window._fmtRs(comissaoVal)) + '</div></div>'
       + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Data</div><div style="color:#94a3b8">' + _escHtmlCom(_fmtDataComDetalhamento(ofNorm.data)) + '</div></div>'
       + '</div>'
       + '<div style="display:flex;gap:8px;align-items:center">'
