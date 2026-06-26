@@ -16957,16 +16957,55 @@ function _ocultarGraficoComissoes() {
       return true;
     });
   }
+  function _comEmpresaBuscaSelecionada() {
+    try {
+      var sels = [
+        '#com-empresa', '#comissao-empresa', '#empresa-com', '#filtro-empresa', '#empresa-filtro',
+        'select[name="empresa"]', 'select[name="empresa_id"]', '[data-com-empresa]'
+      ];
+      for (var i = 0; i < sels.length; i++) {
+        var el = document.querySelector(sels[i]);
+        if (!el) continue;
+        var v = String(el.value || el.getAttribute('data-com-empresa') || '').trim();
+        var low = v.toLowerCase();
+        if (!v || low === 'todas' || low === 'todos' || low === 'all') return '';
+        return v;
+      }
+    } catch (_) {}
+    return '';
+  }
   async function _comBuscarOFsRemotas(termos) {
     var token = '';
     try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
     var headers = token ? { Authorization: 'Bearer ' + token } : {};
+    var sbClient = null;
+    try { sbClient = window._supabase || window.supabase || null; } catch (_) { sbClient = null; }
+    var empresaSel = _comEmpresaBuscaSelecionada();
     var jobs = (Array.isArray(termos) ? termos : []).map(async function(termo) {
       var termoTxt = String(termo || '').trim();
       if (!termoTxt) return [];
+      var termoNum = _comBuscaNumeroNorm(termoTxt);
       try {
-        var url = _comBuscaNumeroNorm(termoTxt)
-          ? '/api/ofs/buscar?numero=' + encodeURIComponent(_comBuscaNumeroNorm(termoTxt))
+        if (sbClient && typeof sbClient.from === 'function') {
+          var query = sbClient
+            .from('ofs')
+            .select('id, of, numero, of_num, clinome, cliente, cliente_nome, vendedor, vendedor_nome, vendNome, vendid, vendedor_id, vend_id, preco, valor_unitario, total, valor_total, valor_venda, qtd, quantidade, qtd_produzida, ent, dia, status, empresa_id, emp_id, cores_impressao, itens')
+            .is('deleted_at', null)
+            .limit(50);
+          if (empresaSel) query = query.eq('empresa_id', empresaSel);
+          if (termoNum) {
+            query = query.or('of.eq.' + termoNum + ',numero.eq.' + termoNum + ',of_num.eq.' + termoNum);
+          } else {
+            var termoSafe = termoTxt.replace(/[%(),]/g, ' ').trim();
+            query = query.or('clinome.ilike.%' + termoSafe + '%,cliente.ilike.%' + termoSafe + '%,cliente_nome.ilike.%' + termoSafe + '%');
+          }
+          var sbRes = await query;
+          if (!sbRes.error && Array.isArray(sbRes.data) && sbRes.data.length) return sbRes.data;
+        }
+      } catch (_) {}
+      try {
+        var url = termoNum
+          ? '/api/ofs/buscar?numero=' + encodeURIComponent(termoNum)
           : '/api/ofs/buscar?cliente=' + encodeURIComponent(termoTxt) + '&status=todos';
         var resp = await fetch(url, { headers: headers });
         var json = await resp.json().catch(function() { return null; });
