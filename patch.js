@@ -16588,7 +16588,6 @@ function _ocultarGraficoComissoes() {
               try { Object.assign(of, ofAtualizada); } catch (_) {}
               _sincronizarCachesOFComissao(ofAtualizada);
               _atualizarLinhaDetalhamentoComissao(ofAtualizada);
-              _reexecutarBuscaComissaoAtual();
               var novoSnapshot = _snapshotOfParaResumo({
                 numero: (body.querySelector('#com-of-numero') || {}).value,
                 cliente: (body.querySelector('#com-of-cli-busca') || {}).value,
@@ -17067,59 +17066,48 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
     return '';
   }
-  async function _comBuscarOFsRemotas(termos) {
+  async function _buscarOFsDetalhamento(termosStr) {
+    var termos = _comBuscaTokens(termosStr);
+    if (!termos.length) return [];
     var token = '';
     try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
     var headers = token ? { Authorization: 'Bearer ' + token } : {};
     var sbClient = null;
     try { sbClient = window._supabase || window.supabase || null; } catch (_) { sbClient = null; }
     var empresaSel = _comEmpresaBuscaSelecionada();
-    var jobs = (Array.isArray(termos) ? termos : []).map(async function(termo) {
-      var termoTxt = String(termo || '').trim();
-      if (!termoTxt) return [];
-      var termoNum = _comBuscaNumeroNorm(termoTxt);
-      try {
-        if (sbClient && typeof sbClient.from === 'function') {
-          var query = sbClient
-            .from('ofs')
-            .select('of, clinome, vendedor, vendid, preco, total, qtd, qtd_produzida, ent, dia, status, empresa_id, id, cores_impressao, itens')
-            .is('deleted_at', null)
-            .limit(50);
-          if (empresaSel) query = query.eq('empresa_id', empresaSel);
-          var queryOr = '';
-          if (termoNum) {
-            queryOr = 'of.eq.' + termoNum + ',of.ilike.' + termoNum + ',of.ilike.%' + termoNum + '%';
-            try { console.log('[BUSCA 806 DEBUG] query enviada:', queryOr); } catch (_) {}
-          } else {
-            var termoSafe = termoTxt.replace(/[%(),]/g, ' ').trim();
-            queryOr = 'clinome.ilike.%' + termoSafe + '%,of.ilike.%' + termoSafe + '%';
-          }
-          query = query.or(queryOr);
-          var sbRes = await query;
-          try { console.log('[BUSCA DEBUG] termos:', termos, 'resultado supabase:', sbRes && sbRes.data, 'erro:', sbRes && sbRes.error); } catch (_) {}
-          try { if (termoNum) console.log('[BUSCA 806 DEBUG] data:', sbRes && sbRes.data, 'error:', sbRes && sbRes.error); } catch (_) {}
-          if (!sbRes.error && Array.isArray(sbRes.data) && sbRes.data.length) return sbRes.data;
-        }
-      } catch (_) {}
-      try {
-        var url = termoNum
-          ? '/api/ofs/buscar?numero=' + encodeURIComponent(termoNum)
-          : '/api/ofs/buscar?cliente=' + encodeURIComponent(termoTxt) + '&status=todos';
-        var resp = await fetch(url, { headers: headers });
-        var json = await resp.json().catch(function() { return null; });
-        var data = Array.isArray(json && json.data) ? json.data : (Array.isArray(json) ? json : (json && json.id ? [json] : []));
-        if (data.length) return data;
-      } catch (_) {}
-      try {
-        var resp2 = await fetch('/api/ofs?incluir_excluidas=1&limit=300&offset=0&busca=' + encodeURIComponent(termoTxt) + '&sem_filtro_data=true', { headers: headers });
-        var json2 = await resp2.json().catch(function() { return null; });
-        return Array.isArray(json2 && json2.data) ? json2.data : (Array.isArray(json2) ? json2 : []);
-      } catch (_) {
-        return [];
+    try {
+      if (sbClient && typeof sbClient.from === 'function') {
+        var filtros = termos.flatMap(function(t) {
+          var txt = String(t || '').trim();
+          if (!txt) return [];
+          return [
+            'of.eq.' + txt,
+            'of.ilike.%' + txt + '%',
+            'clinome.ilike.%' + txt + '%'
+          ];
+        }).join(',');
+        var query = sbClient
+          .from('ofs')
+          .select('id, of, clinome, vendedor, vendid, preco, total, qtd, qtd_produzida, ent, dia, status, empresa_id, itens, cores_impressao')
+          .or(filtros)
+          .is('deleted_at', null)
+          .limit(50);
+        if (empresaSel) query = query.eq('empresa_id', empresaSel);
+        var sbRes = await query;
+        try { console.log('[BUSCA DETALHAMENTO] termos:', termos, 'filtros:', filtros, 'resultado:', sbRes && sbRes.data && sbRes.data.length, 'erro:', sbRes && sbRes.error); } catch (_) {}
+        if (!sbRes.error) return _comBuscaDedup(Array.isArray(sbRes.data) ? sbRes.data : []);
       }
-    });
-    var packs = await Promise.all(jobs);
-    return _comBuscaDedup([].concat.apply([], packs));
+    } catch (e) {
+      try { console.error('[BUSCA DETALHAMENTO] exceção:', e); } catch (_) {}
+    }
+    try {
+      var resp = await fetch('/api/ofs/busca?q=' + encodeURIComponent(String(termosStr || '').trim()), { headers: headers });
+      var json = await resp.json().catch(function() { return null; });
+      if (resp.ok) return _comBuscaDedup((json && (json.ofs || json.data || json)) || []);
+    } catch (e2) {
+      try { console.error('[BUSCA DETALHAMENTO] fallback erro:', e2); } catch (_) {}
+    }
+    return [];
   }
 
   function _comBindSearchListeners() {
@@ -17233,13 +17221,7 @@ function _ocultarGraficoComissoes() {
     resultDiv.innerHTML = '<p style="color:#94a3b8;padding:12px">Buscando...</p>';
     try {
       try { await _ensureVendedoresMap(); } catch (_) {}
-      var termos = _comBuscaTokens(termo);
-      var ofs = Array.isArray(window._comOfsData) ? window._comOfsData : [];
-      var locais = ofs.filter(function(of) {
-        return !termos.length || termos.some(function(t) { return _comBuscaMatch(of, t); });
-      });
-      var remotas = await _comBuscarOFsRemotas(termos);
-      var encontradas = _comBuscaDedup(locais.concat(remotas));
+      var encontradas = await _buscarOFsDetalhamento(termo);
       if (!encontradas.length) {
         resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Nenhuma OF encontrada para "' + _escHtmlCom(termo) + '".</p>';
         return;

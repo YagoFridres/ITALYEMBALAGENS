@@ -4313,6 +4313,34 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
+app.get('/api/ofs/busca', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const q = String(req.query?.q || '').trim();
+    const termos = q.split(',').map((t) => String(t || '').trim()).filter(Boolean);
+    if (!termos.length) return res.json([]);
+
+    let query = supabase
+      .from('ofs')
+      .select('id, of, clinome, vendedor, vendid, preco, total, qtd, qtd_produzida, ent, dia, status, empresa_id')
+      .is('deleted_at', null)
+      .limit(50);
+
+    const filtros = termos.flatMap((t) => {
+      const txt = String(t || '').trim();
+      if (!txt) return [];
+      return [`of.eq.${txt}`, `clinome.ilike.%${txt}%`];
+    }).join(',');
+
+    query = query.or(filtros);
+    const { data, error } = await query;
+    if (error) return res.status(500).json({ error: String(error.message || error) });
+    return res.json(Array.isArray(data) ? data : []);
+  } catch (e) {
+    return res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
 app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
