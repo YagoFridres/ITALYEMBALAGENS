@@ -16393,10 +16393,58 @@ function _ocultarGraficoComissoes() {
     return n;
   }
 
+  function _comDataDetalhamento(of) {
+    return String(
+      of && (
+        of.ent ||
+        of.data_entrega ||
+        of.dia ||
+        of.data_pedido ||
+        of.data ||
+        of.data_conclusao ||
+        of.created_at
+      ) || ''
+    ).trim();
+  }
+
+  function _obterPctComissaoSync(of, vendedorFallback) {
+    var pct = _pctCom(of && (of.comissao_pct != null ? of.comissao_pct : (of.pct_comissao != null ? of.pct_comissao : of.comissao)));
+    if (pct > 0) return pct;
+    try {
+      var dataCom = window._comissoesSqlData;
+      var lista = Array.isArray(dataCom && dataCom.vendedores) ? dataCom.vendedores : [];
+      var vendId = String(of && (of.vendid || of.vendedor_id || of.vendId || of.vend_id || '') || '').trim().toLowerCase();
+      var vendNome = String(
+        of && (of._vendedor_resolvido || of._vendedor_nome || of.vendedor || of.vendedor_nome || of.vendNome)
+        || vendedorFallback
+        || ''
+      ).trim().toLowerCase();
+      var hit = null;
+      if (vendId) {
+        hit = lista.find(function(v) {
+          return String(v && (v.id || v.vendid || v.vendedor_id || '') || '').trim().toLowerCase() === vendId;
+        }) || null;
+      }
+      if (!hit && vendNome) {
+        hit = lista.find(function(v) {
+          return String(v && (v.nome || v.vendedor || v.vendedor_nome || '') || '').trim().toLowerCase() === vendNome;
+        }) || null;
+      }
+      var pctLista = Number(hit && (hit.comissao_pct ?? hit.comissao ?? hit.comissaoPct) || 0) || 0;
+      if (pctLista > 0) return pctLista;
+    } catch (_) {}
+    return 0;
+  }
+
+  function _fmtDataComDetalhamento(v) {
+    if (!v) return '—';
+    try { return new Date(v).toLocaleDateString('pt-BR'); } catch (_) { return '—'; }
+  }
+
   function _normalizarOFComissao(of, vendedorFallback) {
     var qtd = Number(of && (of.quantidade != null ? of.quantidade : (of.qtd != null ? of.qtd : of.quant)) || 0) || 0;
     var valorTotal = Number(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : (of.valor != null ? of.valor : of.valor_venda))) || 0) || 0;
-    var pctRaw = _pctCom(of && (of.comissao_pct != null ? of.comissao_pct : (of.pct_comissao != null ? of.pct_comissao : of.comissao_pct)));
+    var pctRaw = _obterPctComissaoSync(of, vendedorFallback);
     var fator = (Number(pctRaw || 0) || 0) / 100;
     var comissaoValor = Number(
       of && (
@@ -16414,12 +16462,37 @@ function _ocultarGraficoComissoes() {
       vendedor: String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || vendedorFallback || 'Sem vendedor').trim() || 'Sem vendedor',
       qtd: qtd,
       valor_total: valorTotal,
-      preco_unit: qtd > 0 ? (valorTotal / qtd) : 0,
+      preco_unit: Number(of && (of.preco ?? of.valor_unitario ?? of.vl_unit) || 0) || (qtd > 0 ? (valorTotal / qtd) : 0),
       comissao_pct: pctRaw,
       comissao_valor: comissaoValor,
-      data: String(of && (of.data_conclusao || of.created_at || of.data) || '').trim(),
+      data: _comDataDetalhamento(of),
       status: String(of && of.status || 'Concluída').trim() || 'Concluída'
     };
+  }
+
+  function _renderBuscaOFComissaoCard(of) {
+    var ofNorm = _normalizarOFComissao(of, _comBuscaVendedor(of) || '—');
+    var concluida = _comStatusConcluida(of);
+    var status = String(ofNorm && ofNorm.status || 'Pendente');
+    return ''
+      + '<div style="background:#1e293b;border:1px solid ' + (concluida ? '#166534' : '#92400e') + ';border-radius:8px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">'
+      + '<div style="flex:1;min-width:200px">'
+      + '<div style="color:#60a5fa;font-size:16px;font-weight:700">#' + _escHtmlCom(ofNorm.numero) + '</div>'
+      + '<div style="color:#f1f5f9;font-size:14px;margin-top:4px">' + _escHtmlCom(ofNorm.cliente) + '</div>'
+      + '<div style="color:#94a3b8;font-size:12px;margin-top:2px">Vendedor: ' + _escHtmlCom(ofNorm.vendedor) + '</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:20px;flex-wrap:wrap">'
+      + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Qtd</div><div style="color:#f1f5f9;font-weight:600">' + String(ofNorm.qtd) + '</div></div>'
+      + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Valor Total</div><div style="color:#f1f5f9;font-weight:600">' + _escHtmlCom(_fmtRs(ofNorm.valor_total)) + '</div></div>'
+      + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Preço Unit.</div><div style="color:#94a3b8">' + _escHtmlCom(_fmtRs(ofNorm.preco_unit)) + '</div></div>'
+      + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Comissão</div><div style="color:#22c55e;font-weight:600">' + _escHtmlCom(_fmtRs(ofNorm.comissao_valor)) + '</div></div>'
+      + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Data</div><div style="color:#94a3b8">' + _escHtmlCom(_fmtDataComDetalhamento(ofNorm.data)) + '</div></div>'
+      + '</div>'
+      + '<div style="display:flex;gap:8px;align-items:center">'
+      + '<span style="background:' + (concluida ? '#166534' : '#92400e') + ';color:' + (concluida ? '#4ade80' : '#fbbf24') + ';padding:4px 10px;border-radius:4px;font-size:12px;white-space:nowrap">' + _escHtmlCom(status) + '</span>'
+      + (concluida ? '' : '<button type="button" data-acao="concluir-of-comissao" data-of-id="' + _escHtmlCom(ofNorm.id) + '" style="background:#16a34a;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:12px;white-space:nowrap">✅ Concluir</button>')
+      + '</div>'
+      + '</div>';
   }
 
   function _normalizarGruposComissoes(json) {
@@ -16706,39 +16779,7 @@ function _ocultarGraficoComissoes() {
         resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Nenhuma OF encontrada para "' + _escHtmlCom(termo) + '".</p>';
         return;
       }
-      var html = encontradas.map(function(of) {
-        var status = String(of && of.status || 'Pendente');
-        var concluida = _comStatusConcluida(of);
-        var dataStr = '—';
-        try { dataStr = of && of.data_conclusao ? new Date(of.data_conclusao).toLocaleDateString('pt-BR') : '—'; } catch (_) { dataStr = '—'; }
-        var qtd = Number(of && (of.quantidade ?? of.qtd ?? of.qtd_pedida ?? of.qtd_produzida ?? 0) || 0) || 0;
-        var valorTotal = Number(of && (of.valor_total ?? of.valor_venda ?? of.total ?? 0) || 0) || 0;
-        var precoUnit = Number(of && (of.preco ?? of.valor_unitario ?? of.vl_unit ?? 0) || 0) || (qtd > 0 ? (valorTotal / qtd) : 0);
-        var comissao = Number(of && of.comissao_rs || 0) || 0;
-        var vendedor = _comBuscaVendedor(of) || '—';
-        var cliente = _comBuscaCliente(of) || '—';
-        var numero = _comBuscaNumero(of) || '—';
-        var id = String(of && of.id || '');
-        return ''
-          + '<div style="background:#1e293b;border:1px solid ' + (concluida ? '#166534' : '#92400e') + ';border-radius:8px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">'
-          + '<div style="flex:1;min-width:200px">'
-          + '<div style="color:#60a5fa;font-size:16px;font-weight:700">#' + _escHtmlCom(numero) + '</div>'
-          + '<div style="color:#f1f5f9;font-size:14px;margin-top:4px">' + _escHtmlCom(cliente) + '</div>'
-          + '<div style="color:#94a3b8;font-size:12px;margin-top:2px">Vendedor: ' + _escHtmlCom(vendedor) + '</div>'
-          + '</div>'
-          + '<div style="display:flex;gap:20px;flex-wrap:wrap">'
-          + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Qtd</div><div style="color:#f1f5f9;font-weight:600">' + String(qtd) + '</div></div>'
-          + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Valor Total</div><div style="color:#f1f5f9;font-weight:600">R$ ' + valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</div></div>'
-          + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Preço Unit.</div><div style="color:#94a3b8">' + precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</div></div>'
-          + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Comissão</div><div style="color:#22c55e;font-weight:600">R$ ' + comissao.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</div></div>'
-          + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Data</div><div style="color:#94a3b8">' + _escHtmlCom(dataStr) + '</div></div>'
-          + '</div>'
-          + '<div style="display:flex;gap:8px;align-items:center">'
-          + '<span style="background:' + (concluida ? '#166534' : '#92400e') + ';color:' + (concluida ? '#4ade80' : '#fbbf24') + ';padding:4px 10px;border-radius:4px;font-size:12px;white-space:nowrap">' + _escHtmlCom(status) + '</span>'
-          + (concluida ? '' : '<button type="button" data-acao="concluir-of-comissao" data-of-id="' + _escHtmlCom(id) + '" style="background:#16a34a;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:12px;white-space:nowrap">✅ Concluir</button>')
-          + '</div>'
-          + '</div>';
-      }).join('');
+      var html = encontradas.map(function(of) { return _renderBuscaOFComissaoCard(of); }).join('');
       resultDiv.innerHTML =
         '<div style="color:#94a3b8;font-size:12px;margin-bottom:8px">' + String(encontradas.length) + ' resultado(s) para "' + _escHtmlCom(termo) + '":</div>'
         + html;
