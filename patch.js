@@ -367,7 +367,49 @@ if (typeof window._fmtRs === 'undefined') {
     var wrap = document.getElementById('simd-tabela-wrap');
     var linhas = document.getElementById('simd-linhas');
     var aviso = document.getElementById('simd-aviso');
-    if (!wrap || !linhas) return;
+    if (!wrap || !linhas) {
+      var host = document.getElementById('sim-resultado');
+      if (!host) {
+        var parent = document.querySelector('.simulador-container, #simulador-desperdicio, .simulador-wrapper, #simd-resultado')
+          || (document.getElementById('simd-btn') ? document.getElementById('simd-btn').closest('div, form, section') : null)
+          || document.body;
+        if (!parent) return;
+        host = document.createElement('div');
+        host.id = 'sim-resultado';
+        host.style.cssText = 'margin-top:16px';
+        parent.appendChild(host);
+      }
+      if (!Array.isArray(rows) || !rows.length) {
+        host.innerHTML = '<p style="color:#f59e0b;margin-top:16px">Nenhuma chapa do estoque comporta essa planificação.</p>';
+        return;
+      }
+      host.innerHTML = ''
+        + '<table style="width:100%;margin-top:16px;border-collapse:collapse;font-size:13px">'
+        + '<thead><tr style="border-bottom:1px solid #333">'
+        + '<th style="text-align:left;padding:6px">Nome/Uso</th>'
+        + '<th style="text-align:left;padding:6px">Fornecedor</th>'
+        + '<th style="text-align:center;padding:6px">Tamanho</th>'
+        + '<th style="text-align:center;padding:6px">Planif./Chapa</th>'
+        + '<th style="text-align:center;padding:6px">Desperdício</th>'
+        + '<th style="text-align:center;padding:6px">Estoque</th>'
+        + '<th style="text-align:right;padding:6px">R$/un</th>'
+        + '</tr></thead><tbody>'
+        + rows.map(function(r) {
+          var cor = Number(r && r.desperdicio_real_pct || 0) < 10 ? '#4caf50' : (Number(r && r.desperdicio_real_pct || 0) < 25 ? '#f59e0b' : '#ef4444');
+          return ''
+            + '<tr style="border-bottom:1px solid #222">'
+            + '<td style="padding:6px">' + String(r && r.nome || '—').replace(/</g, '&lt;') + '</td>'
+            + '<td style="padding:6px">' + String(r && r.fornecedor || '—').replace(/</g, '&lt;') + '</td>'
+            + '<td style="text-align:center;padding:6px">' + String(r && r.tamanho || '—').replace(/</g, '&lt;') + '</td>'
+            + '<td style="text-align:center;padding:6px">' + String(r && r.planificacoes_por_chapa || 0) + '</td>'
+            + '<td style="text-align:center;padding:6px;color:' + cor + '">' + String(Number(r && r.desperdicio_real_pct || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })) + '%</td>'
+            + '<td style="text-align:center;padding:6px">' + String(r && r.quantidade || 0) + '</td>'
+            + '<td style="text-align:right;padding:6px">' + ((Number(r && r.valor_unitario || 0) > 0) ? window._fmtRs(r.valor_unitario) : '—') + '</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table>';
+      return;
+    }
     var head = wrap.querySelector('.simd-grid');
     if (head) {
       head.innerHTML =
@@ -422,9 +464,14 @@ if (typeof window._fmtRs === 'undefined') {
       info.innerHTML = 'Planificação: <strong style="color:rgba(255,255,255,0.8)">' + String(comp) + ' × ' + String(larg) + ' mm</strong> — Área: <strong style="color:rgba(255,255,255,0.8)">' + ((larg * comp) / 1000000).toFixed(4) + ' m²</strong>';
     }
     try {
+      try { console.log('[SIMD PATCH] calcular click', { largura: larg, comprimento: comp, quantidade: qtdPedido }); } catch (_) {}
       var baseRows = [];
       if (window._simdChapaSelecionada) baseRows = [window._simdChapaSelecionada];
       else baseRows = await _simdCarregarChapasPatched();
+      try {
+        console.log('[SIMD PATCH] chapas carregadas:', Array.isArray(baseRows) ? baseRows.length : 0);
+        if (Array.isArray(baseRows) && baseRows[0]) console.log('[SIMD PATCH] primeira chapa:', baseRows[0]);
+      } catch (_) {}
       var rows = (Array.isArray(baseRows) ? baseRows : []).map(function(chapa) {
         return _simdCalcularLinha(chapa, larg, comp, qtdPedido);
       }).filter(Boolean);
@@ -453,6 +500,7 @@ if (typeof window._fmtRs === 'undefined') {
         try { btn.removeAttribute('onclick'); } catch (_) {}
         btn.addEventListener('click', function(e) {
           try { e.preventDefault(); } catch (_) {}
+          try { console.log('[SIMD PATCH] botao calcular acionado'); } catch (_) {}
           _simdCalcularPatched();
         });
       }
@@ -12768,7 +12816,7 @@ window._mbnActive = function(id) {
     var ofData = getOfCacheById(item && item.of_id);
     var operadores = [];
     try {
-      var rawOps = item && item.operadores;
+      var rawOps = item && (item.operadores_nomes || item.operador_display || item.operadores);
       if (Array.isArray(rawOps)) operadores = rawOps;
       else if (typeof rawOps === 'string') {
         var txtOps = String(rawOps || '').trim();
@@ -12783,13 +12831,13 @@ window._mbnActive = function(id) {
       }
     } catch (_) { operadores = []; }
     operadores = (Array.isArray(operadores) ? operadores : []).map(function(op) { return String(op || '').trim(); }).filter(Boolean);
-    var operadorDisplay = String(item && (item.operador_display || item.operador_principal || item.operador_nome || item.operador || item.usuario) || '').trim() || (operadores[0] || '—');
+    var operadorDisplay = String(item && (item.operadores_nomes || item.operador_display || item.operador_principal || item.operador_nome || item.operador || item.usuario_conclusao || item.usuario) || '').trim() || (operadores[0] || '—');
     var qtdPerdida = Number(item && (item.quantidade != null ? item.quantidade : (item.qtd_perdida != null ? item.qtd_perdida : item.caixas_perdidas)) || 0) || 0;
     var vlUnit = Number(item && (item.vl_unit != null ? item.vl_unit : item.valor_unitario) || (ofData && (ofData.vl_unit || ofData.valor_unitario)) || 0) || 0;
     var vlTotal = Number(item && (item.vl_total != null ? item.vl_total : item.valor_perdido) || 0) || ((qtdPerdida || 0) * (vlUnit || 0));
     var produto = String(item && item.produto || '').trim() || String(ofData && (ofData.produto || ofData.descricao || ofData.prodDesc) || '').trim() || '—';
     var cliente = String(item && (item.cliente_nome || item.cliente) || '').trim() || String(ofData && (ofData.cli_nome || ofData.cliente || ofData.cliente_nome || ofData.cliNome) || '').trim() || '—';
-    var maquina = String(item && (item.maquina || item.maquina_perda) || '').trim() || String(ofData && (ofData.maquina || ofData.maq || ofData.maquina_atual) || '').trim() || '—';
+    var maquina = String(item && (item.maquina || item.maquina_nome || item.maquina_perda) || '').trim() || String(ofData && (ofData.maquina || ofData.maq || ofData.maquina_atual || ofData.maquina_nome) || '').trim() || '—';
     var ofNumero = String(item && (item.of_numero || item.of_num || item.numero || item.of) || '').trim() || String(ofData && (ofData.numero || ofData.of) || '').trim() || '—';
     var imgUrl = String(item && (item.imagem_url || item.foto_url || item.imgUrl) || '').trim() || String(ofData && (ofData.imagem_url || ofData.imgUrl || (Array.isArray(ofData.imgs) ? ofData.imgs[0] : '')) || '').trim();
     try { if (!(window._urlValida && window._urlValida(imgUrl))) imgUrl = ''; } catch (_) { imgUrl = ''; }
@@ -12806,10 +12854,12 @@ window._mbnActive = function(id) {
       vl_total: vlTotal,
       valor_unitario: vlUnit,
       valor_perdido: vlTotal,
-      usuario: String(item && (item.concluido_por || item.usuario_conclusao || item.usuario) || '').trim() || '—',
-      concluido_por: String(item && (item.concluido_por || item.usuario_conclusao || item.usuario) || '').trim() || '—',
+      usuario: String(item && (item.usuario_conclusao || item.concluido_por || item.usuario) || '').trim() || '—',
+      usuario_conclusao: String(item && (item.usuario_conclusao || item.concluido_por || item.usuario) || '').trim() || '—',
+      concluido_por: String(item && (item.usuario_conclusao || item.concluido_por || item.usuario) || '').trim() || '—',
       operador_display: operadorDisplay,
       operador_principal: String(item && item.operador_principal || '').trim(),
+      operadores_nomes: operadores.join(', '),
       operadores: operadores,
       turno: String(item && item.turno || '').trim(),
       imgUrl: imgUrl,

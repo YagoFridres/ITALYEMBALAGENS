@@ -5434,6 +5434,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
 
     try { console.log('[CP] tabela:', tabelaAtiva, 'total:', todos?.length); } catch (_) {}
     try { if (todos?.[0]) console.log('[CP] campos:', Object.keys(todos[0])); } catch (_) {}
+    try { if (todos?.[0]) console.log('[CP] primeiro_registro:', JSON.stringify(todos[0])); } catch (_) {}
 
     const mes = parseInt(String(req.query.mes || ''), 10) || (new Date().getMonth() + 1);
     const ano = parseInt(String(req.query.ano || ''), 10) || new Date().getFullYear();
@@ -5503,7 +5504,9 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
         quantidade_perdida: qtdPerdida,
         valor_perdido: valorPerdido,
         maquina: maquinasMap.get(String(r?.maquina_id || '').trim()) || r?.maquina || r?.maquina_perda || r?.maquina_nome || '—',
+        maquina_nome: maquinasMap.get(String(r?.maquina_id || '').trim()) || r?.maquina_nome || r?.maquina || r?.maquina_perda || '—',
         operadores,
+        operadores_nomes: operadores.join(', '),
         usuario: concluidoPor,
         usuario_conclusao: concluidoPor,
         concluido_por: concluidoPor,
@@ -5606,6 +5609,7 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
       produto: String(b.produto || ''),
       cliente: String(b.cliente || ''),
       maquina: b.maquina != null ? String(b.maquina || '') : undefined,
+      maquina_nome: b.maquina_nome != null ? String(b.maquina_nome || b.maquina || '') : undefined,
       maquina_id: b.maquina_id != null ? String(b.maquina_id || '') : undefined,
       valor_unitario: Number(b.valor_unitario || 0),
       qtd_perdida: qtdPerdida,
@@ -5615,12 +5619,15 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
       mes_referencia: b.mes_referencia || mes,
       emp_id: b.emp_id || '',
       usuario: b.usuario || req.usuario?.nome || 'sistema',
+      usuario_conclusao: b.usuario_conclusao || req.usuario?.nome || 'sistema',
       obs: b.obs || '',
       operadores: operadores,
       operador: operadores[0] || undefined,
       turno: b.turno != null ? String(b.turno || '') : undefined,
     };
+    try { console.log('[CP POST] payload:', JSON.stringify(payload)); } catch (_) {}
     if (!payload.maquina) delete payload.maquina;
+    if (!payload.maquina_nome) delete payload.maquina_nome;
     if (!payload.maquina_id) delete payload.maquina_id;
     if (!payload.operadores || !payload.operadores.length) delete payload.operadores;
     if (!payload.operador) delete payload.operador;
@@ -5635,6 +5642,7 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
       if (m.includes('column') && (m.includes('maquina') || m.includes('maquina_id') || m.includes('operador') || m.includes('turno') || m.includes('quantidade'))) {
         const payload2 = { ...payload };
         delete payload2.maquina;
+        delete payload2.maquina_nome;
         delete payload2.maquina_id;
         delete payload2.operadores;
         delete payload2.operador;
@@ -5672,6 +5680,7 @@ app.post('/api/caixas-perdidas', authMiddleware, async (req, res) => {
       produto: String(b.produto || ''),
       cliente: String(b.cliente || ''),
       maquina: b.maquina != null ? String(b.maquina || '') : undefined,
+      maquina_nome: b.maquina_nome != null ? String(b.maquina_nome || b.maquina || '') : undefined,
       maquina_id: b.maquina_id != null ? String(b.maquina_id || '') : undefined,
       valor_unitario: Number(b.valor_unitario || 0),
       qtd_perdida: qtdPerdida,
@@ -5681,12 +5690,15 @@ app.post('/api/caixas-perdidas', authMiddleware, async (req, res) => {
       mes_referencia: b.mes_referencia || mes,
       emp_id: b.emp_id || '',
       usuario: b.usuario || req.usuario?.nome || 'sistema',
+      usuario_conclusao: b.usuario_conclusao || req.usuario?.nome || 'sistema',
       obs: b.obs || '',
       operadores: operadores,
       operador: operadores[0] || undefined,
       turno: b.turno != null ? String(b.turno || '') : undefined,
     };
+    try { console.log('[CP POST ALT] payload:', JSON.stringify(payload)); } catch (_) {}
     if (!payload.maquina) delete payload.maquina;
+    if (!payload.maquina_nome) delete payload.maquina_nome;
     if (!payload.maquina_id) delete payload.maquina_id;
     if (!payload.operadores || !payload.operadores.length) delete payload.operadores;
     if (!payload.operador) delete payload.operador;
@@ -5701,6 +5713,7 @@ app.post('/api/caixas-perdidas', authMiddleware, async (req, res) => {
       if (m.includes('column') && (m.includes('maquina') || m.includes('maquina_id') || m.includes('operador') || m.includes('turno') || m.includes('quantidade'))) {
         const payload2 = { ...payload };
         delete payload2.maquina;
+        delete payload2.maquina_nome;
         delete payload2.maquina_id;
         delete payload2.operadores;
         delete payload2.operador;
