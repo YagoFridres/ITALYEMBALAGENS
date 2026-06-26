@@ -147,6 +147,11 @@ if (!window._urlValida) {
   }
 
   function _simdParseDimensoes(chapa) {
+    var larguraAvulsa = _simdToNum(chapa && (chapa.largura ?? chapa.largura_mm ?? chapa.dim_largura ?? chapa.caixa_largura));
+    var comprimentoAvulso = _simdToNum(chapa && (chapa.comprimento ?? chapa.comprimento_mm ?? chapa.dim_comprimento ?? chapa.caixa_comprimento));
+    if (larguraAvulsa > 0 && comprimentoAvulso > 0) {
+      return { largura: larguraAvulsa, comprimento: comprimentoAvulso };
+    }
     var src = String(chapa && (chapa.tamanho || chapa.tam || chapa.nome || chapa.nomenclatura || '') || '').trim();
     var m = src.match(/(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)/);
     if (!m) return null;
@@ -159,10 +164,12 @@ if (!window._urlValida) {
   async function _simdCarregarChapasPatched() {
     if (Array.isArray(window._simdChapasCache) && window._simdChapasCache.length) return window._simdChapasCache;
     try {
-      if (window.supabase && typeof window.supabase.from === 'function') {
-        var sbRes = await window.supabase
+      var sbClient = window._supabase || window.supabase || null;
+      if (sbClient && typeof sbClient.from === 'function') {
+        var sbRes = await sbClient
           .from('chapas_estoque_v2')
-          .select('id,nome,nomenclatura,fornecedor,tamanho,quantidade,valor_unitario,valor_total')
+          .select('*')
+          .gt('quantidade', 0)
           .limit(1000);
         if (!sbRes.error && Array.isArray(sbRes.data) && sbRes.data.length) {
           window._simdChapasCache = sbRes.data;
@@ -176,6 +183,9 @@ if (!window._urlValida) {
       var resp = await fetch('/api/chapas_estoque?limit=1000', { headers: headers });
       var data = await resp.json().catch(function() { return null; });
       var arr = Array.isArray(data) ? data : (Array.isArray(data && data.data) ? data.data : (Array.isArray(data && data.chapas) ? data.chapas : []));
+      arr = arr.filter(function(ch) {
+        return (Number(ch && (ch.quantidade ?? ch.qtd ?? ch.quantidade_atual) || 0) || 0) > 0;
+      });
       window._simdChapasCache = arr;
       return arr;
     } catch (_) {
@@ -225,7 +235,7 @@ if (!window._urlValida) {
     if (head) {
       head.innerHTML =
         '<div>Desperd.</div>' +
-        '<div>Chapa</div>' +
+        '<div>Nome/Uso</div>' +
         '<div>Dimensões</div>' +
         '<div>Fornecedor</div>' +
         '<div style="text-align:center">Plan./chapa</div>' +
@@ -7366,11 +7376,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         window.atualizarBotaoCores(selectedIds, 'btnCoresLabelItemOFRapida_' + idx, 'resumoCoresItemOFRapida_' + idx);
       } else {
         var lbl = document.getElementById('btnCoresLabelItemOFRapida_' + idx);
-        if (lbl) lbl.textContent = selectedIds.length ? ('🎨 ' + selectedIds.length + ' cores selecionadas') : '🎨 Selecionar Cores';
+      if (lbl) lbl.textContent = '🎨 ' + selectedIds.length + ' cores selecionadas';
       }
       var card = el.closest ? el.closest('.ofr-item-card, [data-item-idx], .item-adicional, .of-item') : null;
       if (card) {
         try { card.dataset.coresSel = JSON.stringify(selectedIds); } catch (_) {}
+        try { card.dataset.coresSelecionadas = JSON.stringify(selectedIds); } catch (_) {}
         try {
           var hidden = card.querySelector('input[type="hidden"][name*="cor"], input[type="hidden"][name*="cores"]');
           if (hidden) hidden.value = JSON.stringify(getItemColorPayload(idx));
@@ -7461,7 +7472,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }, true);
     document.addEventListener('change', function(ev) {
       try {
-        var sel = ev && ev.target && (ev.target.matches ? (ev.target.matches('.cores-select, select[multiple]') ? ev.target : null) : null);
+        var sel = ev && ev.target && (ev.target.matches ? (ev.target.matches('.cores-select, select[multiple], select[data-tipo="cores"], .cores-impressao-select, select[name*="cores"]') ? ev.target : null) : null);
         if (!sel) return;
         var card = sel.closest ? sel.closest('.ofr-item-card, [data-item-idx], .item-adicional, .of-item') : null;
         if (!card) return;
@@ -7470,6 +7481,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var values = Array.prototype.slice.call(sel.selectedOptions || []).map(function(opt) { return String(opt && opt.value || '').trim(); }).filter(Boolean);
         window.coresSelecionadasOFRapidaItens = window.coresSelecionadasOFRapidaItens || {};
         window.coresSelecionadasOFRapidaItens[idx] = values;
+        try { sel.dataset.coresSelecionadas = JSON.stringify(values); } catch (_) {}
+        try { card.dataset.coresSel = JSON.stringify(values); } catch (_) {}
+        try { card.dataset.coresSelecionadas = JSON.stringify(values); } catch (_) {}
+        try {
+          var hidden = card.querySelector('input[type="hidden"][name*="cor"], input[type="hidden"][name*="cores"]');
+          if (hidden) hidden.value = JSON.stringify((typeof window.getItemColorPayloadOFRapida === 'function') ? window.getItemColorPayloadOFRapida(idx) : []);
+        } catch (_) {}
+        try {
+          var label = card.querySelector('.label-cores-count, .cores-label, [data-cores-label], [class*="cores-sel"], [data-cores-count], [id^="btnCoresLabelItemOFRapida_"]');
+          if (label) label.textContent = values.length + ' cores selecionadas';
+        } catch (_) {}
         if (typeof window.renderSeletorCoresItemOFRapida === 'function') window.renderSeletorCoresItemOFRapida(idx);
       } catch (_) {}
     }, true);
@@ -7815,7 +7837,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                   if (Array.isArray(o.itens) && typeof window.getItemColorPayloadOFRapida === 'function') {
                     o.itens = o.itens.map(function(item, idx) {
                       var payloadCores = window.getItemColorPayloadOFRapida(String(idx));
-                      if (!payloadCores.length) return item;
                       return Object.assign({}, item || {}, { cores_impressao: payloadCores });
                     });
                   }
@@ -7833,7 +7854,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               if (Array.isArray(opts.body.itens) && typeof window.getItemColorPayloadOFRapida === 'function') {
                 opts.body.itens = opts.body.itens.map(function(item, idx) {
                   var payloadCores = window.getItemColorPayloadOFRapida(String(idx));
-                  if (!payloadCores.length) return item;
                   return Object.assign({}, item || {}, { cores_impressao: payloadCores });
                 });
               }
@@ -17142,12 +17162,17 @@ function _ocultarGraficoComissoes() {
   window.__patchCoresItensOF = true;
   document.addEventListener('click', function(e) {
     try {
-      var corBtn = e && e.target && (e.target.closest ? e.target.closest('[data-cor], .cor-btn, .color-tag') : null);
+      var corBtn = e && e.target && (e.target.closest ? e.target.closest('[data-cor], .cor-btn, .color-tag, .btn-cor') : null);
       if (!corBtn) return;
+      try {
+        var gridItem = corBtn.closest ? corBtn.closest('[id^="seletorCoresItemOFRapida_"]') : null;
+        if (gridItem && corBtn.classList && corBtn.classList.contains('btn-cor')) return;
+      } catch (_) {}
       var itemContainer = corBtn.closest ? corBtn.closest('[data-item-idx], .item-adicional, .of-item') : null;
       if (!itemContainer) return;
       corBtn.classList.toggle('selected');
       corBtn.classList.toggle('active');
+      corBtn.classList.toggle('selecionado');
       var isSelected = corBtn.classList.contains('selected') || corBtn.classList.contains('active');
       try { corBtn.style.opacity = isSelected ? '1' : '0.4'; } catch (_) {}
       try { corBtn.style.outline = isSelected ? '2px solid #fff' : 'none'; } catch (_) {}
@@ -17163,16 +17188,17 @@ function _ocultarGraficoComissoes() {
         if (isSelected && !exists) arr.push(corVal);
         if (!isSelected && exists) arr = arr.filter(function(x) { return x !== corVal; });
         itemContainer.dataset.coresSel = JSON.stringify(arr);
+        itemContainer.dataset.coresSelecionadas = JSON.stringify(arr);
         try {
           var hidden = itemContainer.querySelector('input[type=hidden][name*=\"cor\"], input[type=hidden][name*=\"cores\"]');
           if (hidden) hidden.value = itemContainer.dataset.coresSel;
         } catch (_) {}
       }
 
-      var counter = itemContainer.querySelector ? itemContainer.querySelector('[class*=\"cores-sel\"], [data-cores-count]') : null;
+      var counter = itemContainer.querySelector ? itemContainer.querySelector('.label-cores-count, .cores-label, [data-cores-label], [class*=\"cores-sel\"], [data-cores-count], [id^=\"btnCoresLabelItemOFRapida_\"]') : null;
       var selecionadas = 0;
       try {
-        selecionadas = itemContainer.querySelectorAll('[data-cor].selected, [data-cor].active, .cor-btn.selected, .cor-btn.active, .color-tag.selected, .color-tag.active').length;
+        selecionadas = itemContainer.querySelectorAll('[data-cor].selected, [data-cor].active, .cor-btn.selected, .cor-btn.active, .color-tag.selected, .color-tag.active, .btn-cor.selecionado, .btn-cor.selected, .btn-cor.active').length;
       } catch (_) { selecionadas = 0; }
       if (counter) {
         try { counter.textContent = String(selecionadas) + ' cores selecionadas'; } catch (_) {}
