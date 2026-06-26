@@ -15733,6 +15733,16 @@ function _ocultarGraficoComissoes() {
   }
 
   try { window._mostrarResumoAlteracoes = _mostrarResumoAlteracoes; } catch (_) {}
+  try {
+    if (!window.__comOfSalvaListenerBound) {
+      window.__comOfSalvaListenerBound = true;
+      document.addEventListener('ofSalva', function() {
+        try {
+          setTimeout(function() { _reexecutarBuscaComissaoAtual(); }, 400);
+        } catch (_) {}
+      });
+    }
+  } catch (_) {}
 
   function _mesclarOFComissaoLista(lista, ofAtualizada) {
     if (!Array.isArray(lista) || !ofAtualizada || !ofAtualizada.id) return lista;
@@ -15808,6 +15818,14 @@ function _ocultarGraficoComissoes() {
       var inpBusca = document.getElementById('_com_busca') || document.getElementById('comissao-busca-of');
       var termo = String(inpBusca && inpBusca.value || '').trim();
       if (termo && typeof window._buscarOFsComissao === 'function') window._buscarOFsComissao(termo);
+    } catch (_) {}
+  }
+
+  function _dispararOFSalvaComissao(detail) {
+    try {
+      if (typeof document !== 'undefined' && typeof window.CustomEvent === 'function') {
+        document.dispatchEvent(new CustomEvent('ofSalva', { detail: detail || {} }));
+      }
     } catch (_) {}
   }
 
@@ -16602,6 +16620,7 @@ function _ocultarGraficoComissoes() {
               });
               _mostrarResumoAlteracoes(originalSnapshot, novoSnapshot, function() {
                 try { modal.style.display = 'none'; } catch (_) {}
+                _dispararOFSalvaComissao({ ofId: ofId });
               });
             } else {
               try { alert('Erro ao salvar: ' + String(j2 && (j2.error || j2.message) || r2.status || 'Falha')); } catch (_) {}
