@@ -2654,6 +2654,44 @@ function sanitizeOfUpdatePayload(input) {
   return out;
 }
 
+const CAMPOS_OFS_UPDATE = new Set([
+  'of', 'clinome', 'cli_id', 'cliid', 'vendid', 'vendedor', 'vendedor_id',
+  'preco', 'total', 'qtd', 'qtd_produzida', 'qtd_perdida', 'qtd_pedida',
+  'status', 'ent', 'dia', 'maq', 'obs', 'obs2', 'urgente', 'urg',
+  'cores_impressao', 'empresa_id', 'emp_id', 'deleted_at',
+  'usuario_conclusao', 'data_faturamento', 'data_conclusao',
+  'caixa_comprimento', 'caixa_largura', 'caixa_altura', 'tipo_caixa',
+  'imagem_url', 'imgs', 'itens', 'perdas_por_maquina', 'operadores_conclusao',
+  'sem_papel', 'passou_maquina', 'passou_em', 'passou_maquina_nome',
+  'ordem_maquina', 'prioridade', 'prioridade_ordem', 'maquina_agendada',
+  'data_agendamento', 'agendamento_auto', 'setor_finalizacao',
+  'caixas_boas', 'caixas_perdidas', 'motivo_perda', 'operador_conclusao',
+  'dim_comprimento', 'dim_largura', 'dim_altura', 'gramatura_id',
+  'chapa_id', 'modo_programacao', 'dia_programacao', 'cidade_entrega',
+  'valor_venda', 'valor_total', 'fluxo_maquinas', 'maquina_atual_index',
+  'updated_at',
+]);
+
+function normalizeOfUpdateBody(input) {
+  const out = sanitizeOfUpdatePayload(input || {});
+  if (out.quantidade !== undefined && out.qtd === undefined) out.qtd = out.quantidade;
+  if (out.valor_unitario !== undefined && out.preco === undefined) out.preco = out.valor_unitario;
+  if (out.vl_unit !== undefined && out.preco === undefined) out.preco = out.vl_unit;
+  if (out.observacoes !== undefined && out.obs === undefined) out.obs = out.observacoes;
+  if (out.cliente_id !== undefined && out.cli_id === undefined) out.cli_id = out.cliente_id;
+  if (out.clienteId !== undefined && out.cli_id === undefined) out.cli_id = out.clienteId;
+  return out;
+}
+
+function filterOfsUpdateWhitelist(input) {
+  const src = input && typeof input === 'object' ? input : {};
+  const out = {};
+  Object.entries(src).forEach(([key, value]) => {
+    if (CAMPOS_OFS_UPDATE.has(key)) out[key] = value;
+  });
+  return out;
+}
+
 const OFS_TABLE_COLS = [
   'id', 'numero', 'of', 'of_num', 'of_seq', 'seq',
   'status', 'cliente_id', 'cli_id', 'cliId', 'cliid',
@@ -4340,23 +4378,17 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const body = sanitizeOfUpdatePayload(req.body || {});
-    delete body.id;
-    delete body.numero;
-    delete body.created_at;
-    delete body.empresa_id;
-    if (body.quantidade !== undefined) body.quantidade = Number(body.quantidade);
+    const body = filterOfsUpdateWhitelist(normalizeOfUpdateBody(req.body || {}));
+    if (body.qtd !== undefined) body.qtd = Number(body.qtd);
     if (body.qtd_produzida !== undefined) body.qtd_produzida = Number(body.qtd_produzida);
+    if (body.qtd_perdida !== undefined) body.qtd_perdida = Number(body.qtd_perdida);
+    if (body.qtd_pedida !== undefined) body.qtd_pedida = Number(body.qtd_pedida);
+    if (body.total !== undefined) body.total = Number(body.total);
     if (body.valor_total !== undefined) body.valor_total = Number(body.valor_total);
-    if (body.valor_unitario !== undefined) {
-      body.valor_unitario = Number(body.valor_unitario);
-      if (body.preco === undefined) body.preco = body.valor_unitario;
-    }
+    if (body.valor_venda !== undefined) body.valor_venda = Number(body.valor_venda);
     if (body.preco !== undefined) {
       body.preco = Number(body.preco);
-      if (body.valor_unitario === undefined) body.valor_unitario = body.preco;
     }
-    if (body.comissao_pct !== undefined) body.comissao_pct = Number(body.comissao_pct);
     const { data, error } = await supabase
       .from('ofs').update(body).eq('id', req.params.id).select().single();
     if (error) return res.status(400).json({ ok: false, error: error.message });
@@ -6031,7 +6063,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         }
       }
     } catch (_) {}
-    const bodyIn = req.body || {};
+    const bodyIn = normalizeOfUpdateBody(req.body || {});
     const mapped =
       (bodyIn && typeof bodyIn === 'object' && !Array.isArray(bodyIn))
         ? {
@@ -6084,7 +6116,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
             : {}),
         }
         : bodyIn;
-    const payload = sanitizeOfUpdatePayload({ ...ofIn(mapped || {}), updated_at: new Date().toISOString() });
+    const payload = filterOfsUpdateWhitelist(sanitizeOfUpdatePayload({ ...ofIn(mapped || {}), updated_at: new Date().toISOString() }));
     try {
       const { data: ofAtual2 } = await supabase.from('ofs').select('status').eq('id', id).maybeSingle();
       const norm = (s) => {
