@@ -6412,7 +6412,17 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     const qtdProduzida = (Number(qtdProduzidaRaw) || 0) || (Number(qtdPedida) || 0);
     const qtdFinal = (qtdProduzida > 0) ? Math.trunc(qtdProduzida) : Math.trunc(qtdPedida || 0);
     const valorTotalOriginal = Number(of.valor_total || of.valor_venda || 0);
-    let valorUnitFinal = Number(body.preco ?? body.valor_unitario ?? body.vl_unit ?? of.preco ?? of.valor_unitario ?? of.vl_unit ?? 0);
+    const hasPrecoInformado =
+      Object.prototype.hasOwnProperty.call(body, 'preco') ||
+      Object.prototype.hasOwnProperty.call(body, 'valor_unitario') ||
+      Object.prototype.hasOwnProperty.call(body, 'vl_unit') ||
+      Object.prototype.hasOwnProperty.call(body, 'valor_unitario');
+    let valorUnitFinal = hasPrecoInformado
+      ? Number(body.preco ?? body.valor_unitario ?? body.vl_unit)
+      : Number(of.preco ?? of.valor_unitario ?? of.vl_unit ?? 0);
+    if (!Number.isFinite(valorUnitFinal) || valorUnitFinal < 0) {
+      valorUnitFinal = Number(of.preco ?? of.valor_unitario ?? of.vl_unit ?? 0);
+    }
     if (!(valorUnitFinal > 0) && qtdPedida > 0 && valorTotalOriginal > 0) valorUnitFinal = valorTotalOriginal / qtdPedida;
     valorUnitFinal = Math.round((Number(valorUnitFinal || 0) || 0) * 100) / 100;
     const excedente = Math.max(0, Math.trunc(qtdFinal) - Math.trunc(qtdPedida || 0));
@@ -6460,12 +6470,11 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     const updateData = {
       status: 'Concluído',
       setor_finalizacao: body.setor_finalizacao || null,
-      caixas_boas: body.caixas_boas != null ? parseInt(body.caixas_boas, 10) : null,
+      caixas_boas: body.caixas_boas != null ? parseInt(body.caixas_boas, 10) : qtdFinal,
       caixas_perdidas: body.caixas_perdidas != null ? parseInt(body.caixas_perdidas, 10) : null,
       motivo_perda: body.motivo_perda || null,
-      operador_conclusao: body.operador_conclusao || (req.usuario?.nome || null),
+      operador_conclusao: body.operador_conclusao || body.usuario_conclusao || body.concluido_por || (req.usuario?.nome || null),
       qtd_produzida: qtdFinal,
-      qtd: qtdFinal,
       qtd_perdida: qtdPerdida,
       caixas_excedentes: excedente,
       preco: valorUnitFinal > 0 ? valorUnitFinal : (of.preco ?? null),
@@ -6473,7 +6482,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       valor_total: novoValor,
       valor_venda: novoValor,
       data_conclusao: nowIso,
-      usuario_conclusao: req.usuario?.nome || 'sistema',
+      usuario_conclusao: body.usuario_conclusao || body.concluido_por || req.usuario?.nome || 'sistema',
       updated_at: nowIso,
       maquina_atual_index: Math.max(fluxo.length, Number(of.maquina_atual_index || 0) || 0),
     };

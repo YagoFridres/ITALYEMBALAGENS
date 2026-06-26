@@ -15912,7 +15912,7 @@ function _ocultarGraficoComissoes() {
     var produzidas = Math.trunc(Number(qtdProd || 0) || 0);
     var perdasQtd = (Array.isArray(perdas) ? perdas : []).reduce(function(s, p) { return s + (Math.trunc(Number(p && p.qtd || 0)) || 0); }, 0);
     var excedente = produzidas - qtdPedido;
-    var vunit = Number(of && (of.valor_unitario ?? of.vl_unit ?? 0) || 0) || 0;
+    var vunit = Number(of && (of.preco ?? of.valor_unitario ?? of.vl_unit ?? 0) || 0) || 0;
     if (!(vunit > 0) && qtdPedido > 0) {
       var vt = Number(of && (of.valor_total ?? of.valor_venda ?? 0) || 0) || 0;
       if (vt > 0) vunit = vt / qtdPedido;
@@ -16142,23 +16142,38 @@ function _ocultarGraficoComissoes() {
         if (!(caixasProduzidas > 0)) { try { alert('Informe as caixas produzidas.'); } catch (_) {} return; }
         if (!dataFaturamento) { try { alert('Informe a data de faturamento.'); } catch (_) {} return; }
         var perdas = collectPerdas();
+        var precoUnitario = Number(resumo.valorUnitario || 0) || 0;
         var body = {
           status: 'Concluído',
-          data_conclusao: dataFaturamento,
-          quantidade: caixasProduzidas,
+          data_faturamento: dataFaturamento,
+          qtd_produzida: caixasProduzidas,
+          caixas_produzidas: caixasProduzidas,
+          caixas_boas: caixasProduzidas,
+          preco: precoUnitario,
+          valor_unitario: precoUnitario,
           valor_total: resumo.novoTotal,
+          valor_venda: resumo.novoTotal,
+          usuario_conclusao: usuario,
           _allow_partial: '1'
         };
         btnSalvar.disabled = true;
         var token = _getToken();
         try {
-          var r1 = await fetch('/api/ofs/' + encodeURIComponent(String(of.id || ofId)), {
-            method: 'PUT',
+          var r1 = await fetch('/api/ofs/' + encodeURIComponent(String(of.id || ofId)) + '/concluir', {
+            method: 'POST',
             headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
             body: JSON.stringify(body)
           });
           var j1 = await r1.json().catch(function() { return null; });
           if (!j1 || !j1.ok) throw new Error(String(j1 && (j1.error || j1.message) || 'Falha ao concluir OF'));
+          try {
+            var ofAtualizada = j1.data || j1.of || null;
+            if (ofAtualizada && of && typeof of === 'object') Object.assign(of, ofAtualizada);
+            if (ofAtualizada && Array.isArray(window.OFs)) {
+              var idxAtual = window.OFs.findIndex(function(item) { return String(item && item.id || '').trim() === String(ofAtualizada && ofAtualizada.id || of.id || ofId).trim(); });
+              if (idxAtual >= 0) window.OFs[idxAtual] = Object.assign({}, window.OFs[idxAtual], ofAtualizada);
+            }
+          } catch (_) {}
 
           for (var i = 0; i < perdas.length; i += 1) {
             var perda = perdas[i];
