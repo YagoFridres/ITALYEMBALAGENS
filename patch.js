@@ -16612,6 +16612,17 @@ function _ocultarGraficoComissoes() {
     return n;
   }
 
+  if (typeof window._obterPercComissao !== 'function') {
+    window._obterPercComissao = function(vendid) {
+      if (!vendid) return 0;
+      var v = String(vendid || '').toUpperCase().trim();
+      if (!v) return 0;
+      if (v.indexOf('MEIA') >= 0) return 0.5;
+      if (v.indexOf('ELEOMAR') >= 0 || v.indexOf('CHEIA') >= 0 || v.indexOf('RONI') >= 0) return 1.0;
+      return 1.0;
+    };
+  }
+
   function _comDataDetalhamento(of) {
     return String(
       of && (
@@ -16629,6 +16640,21 @@ function _ocultarGraficoComissoes() {
   function _obterPctComissaoSync(of, vendedorFallback) {
     var pct = _pctCom(of && (of.comissao_pct != null ? of.comissao_pct : (of.pct_comissao != null ? of.pct_comissao : of.comissao)));
     if (pct > 0) return pct;
+    try {
+      var vendidVal = String(
+        of && (
+          of.vendid ||
+          of.vendedor_id ||
+          of.vendId ||
+          of.vend_id ||
+          of.vendedor ||
+          of.vendNome ||
+          of.vendedor_nome
+        ) || vendedorFallback || ''
+      ).trim();
+      var pctVendid = Number(window._obterPercComissao(vendidVal) || 0) || 0;
+      if (pctVendid > 0) return pctVendid;
+    } catch (_) {}
     try {
       var dataCom = window._comissoesSqlData;
       var lista = Array.isArray(dataCom && dataCom.vendedores) ? dataCom.vendedores : [];
@@ -16663,6 +16689,17 @@ function _ocultarGraficoComissoes() {
   function _normalizarOFComissao(of, vendedorFallback) {
     var qtd = Number(of && (of.quantidade != null ? of.quantidade : (of.qtd != null ? of.qtd : of.quant)) || 0) || 0;
     var valorTotal = Number(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : (of.valor != null ? of.valor : of.valor_venda))) || 0) || 0;
+    var vendidVal = String(
+      of && (
+        of.vendid ||
+        of.vendedor_id ||
+        of.vendId ||
+        of.vend_id ||
+        of.vendedor ||
+        of.vendNome ||
+        of.vendedor_nome
+      ) || vendedorFallback || ''
+    ).trim();
     var pctRaw = _obterPctComissaoSync(of, vendedorFallback);
     var fator = (Number(pctRaw || 0) || 0) / 100;
     var comissaoValor = Number(
@@ -16679,6 +16716,7 @@ function _ocultarGraficoComissoes() {
       numero: String(of && (of.numero != null ? of.numero : (of.numero_of || of.num_of || of.of_num || of.of || of.id)) || '—').trim() || '—',
       cliente: String(of && (of.cliente || of.cliente_nome || of.clinome || of.cliNome) || '—').trim() || '—',
       vendedor: String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || vendedorFallback || 'Sem vendedor').trim() || 'Sem vendedor',
+      vendid: vendidVal,
       qtd: qtd,
       valor_total: valorTotal,
       preco_unit: Number(of && (of.preco ?? of.valor_unitario ?? of.vl_unit) || 0) || (qtd > 0 ? (valorTotal / qtd) : 0),
