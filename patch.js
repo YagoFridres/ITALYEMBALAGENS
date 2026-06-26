@@ -25,6 +25,13 @@ if (!window._urlValida) {
     return true;
   };
 }
+if (typeof window._fmtRs === 'undefined') {
+  window._fmtRs = function(val) {
+    var n = parseFloat(val);
+    if (!Number.isFinite(n)) n = 0;
+    return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+}
 (function() {
   if (window.__patchImgFixInstalled) return;
   window.__patchImgFixInstalled = true;
@@ -53,6 +60,54 @@ if (!window._urlValida) {
 (function() {
   if (window.__patchEstoqueChapasUiFixesInstalled) return;
   window.__patchEstoqueChapasUiFixesInstalled = true;
+
+  function _isEstoqueChapasAtivo() {
+    try {
+      var pg = document.querySelector('#page-sel-chapas');
+      if (!pg) return !!document.getElementById('tabelaChapasEstoque');
+      if (pg.style && pg.style.display === 'none') return false;
+      if (pg.hidden) return false;
+      return pg.offsetParent !== null || !!document.getElementById('tabelaChapasEstoque');
+    } catch (_) {
+      return !!document.getElementById('tabelaChapasEstoque');
+    }
+  }
+
+  function _getEstoqueUiHost() {
+    try {
+      return document.querySelector('#page-sel-chapas #tabelaChapasEstoque tbody')
+        || document.querySelector('#page-sel-chapas #tabelaChapasEstoque')
+        || document.querySelector('#page-sel-chapas')
+        || document.getElementById('tabelaChapasEstoque')
+        || document.getElementById('est-alertas')
+        || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function _disconnectEstoqueUiObserver() {
+    try {
+      if (window.__patchEstoqueUiObs && typeof window.__patchEstoqueUiObs.disconnect === 'function') {
+        window.__patchEstoqueUiObs.disconnect();
+      }
+    } catch (_) {}
+  }
+
+  function _observeEstoqueUiHost() {
+    try {
+      var host = _getEstoqueUiHost();
+      if (!host) return;
+      var key = host.id || host.className || host.tagName || 'host';
+      if (window.__patchEstoqueUiObsHostKey === key && window.__patchEstoqueUiObsConnected) return;
+      _disconnectEstoqueUiObserver();
+      window.__patchEstoqueUiObs.observe(host, { childList: true, subtree: false });
+      window.__patchEstoqueUiObsHostKey = key;
+      window.__patchEstoqueUiObsConnected = true;
+    } catch (_) {
+      window.__patchEstoqueUiObsConnected = false;
+    }
+  }
 
   function _normTxt(v) {
     return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
@@ -151,19 +206,67 @@ if (!window._urlValida) {
   }
 
   function _tickEstoqueUiFixes() {
-    _patchEstoqueAlertasBaixo();
-    _patchEstoqueAcoesTabela();
-    _patchEstoqueOcultarColunasInuteis();
+    if (!_isEstoqueChapasAtivo()) {
+      try {
+        if (window._estoqueInterval) {
+          clearInterval(window._estoqueInterval);
+          window._estoqueInterval = null;
+        }
+      } catch (_) {}
+      return;
+    }
+    if (window._estoqueRenderizando) return;
+    window._estoqueRenderizando = true;
+    _disconnectEstoqueUiObserver();
+    try {
+      _patchEstoqueAlertasBaixo();
+      _patchEstoqueAcoesTabela();
+      _patchEstoqueOcultarColunasInuteis();
+    } finally {
+      window._estoqueRenderizando = false;
+      _observeEstoqueUiHost();
+    }
   }
 
   try {
     if (!window.__patchEstoqueUiObs) {
       window.__patchEstoqueUiObs = new MutationObserver(function() {
         if (window._pausarObservers) return;
+        if (window._estoqueRenderizando) return;
+        if (!_isEstoqueChapasAtivo()) {
+          try { clearTimeout(window.__patchEstoqueUiTimer); } catch (_) {}
+          try {
+            if (window._estoqueInterval) {
+              clearInterval(window._estoqueInterval);
+              window._estoqueInterval = null;
+            }
+          } catch (_) {}
+          return;
+        }
         try { clearTimeout(window.__patchEstoqueUiTimer); } catch (_) {}
         window.__patchEstoqueUiTimer = setTimeout(_tickEstoqueUiFixes, 120);
       });
-      window.__patchEstoqueUiObs.observe(document.body, { childList: true, subtree: true });
+      _observeEstoqueUiHost();
+    }
+    if (!window.__patchEstoqueUiRootObs) {
+      window.__patchEstoqueUiRootObs = new MutationObserver(function() {
+        if (window._pausarObservers) return;
+        try { clearTimeout(window.__patchEstoqueUiRootTimer); } catch (_) {}
+        window.__patchEstoqueUiRootTimer = setTimeout(function() {
+          if (!_isEstoqueChapasAtivo()) {
+            try {
+              if (window._estoqueInterval) {
+                clearInterval(window._estoqueInterval);
+                window._estoqueInterval = null;
+              }
+            } catch (_) {}
+            return;
+          }
+          _observeEstoqueUiHost();
+          _tickEstoqueUiFixes();
+        }, 160);
+      });
+      window.__patchEstoqueUiRootObs.observe(document.body, { childList: true, subtree: false });
     }
   } catch (_) {}
 
@@ -7395,6 +7498,49 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return window.coresSelecionadasOFRapidaItens[idx];
   }
 
+  function getItemIdxFromContainer(card, fallback) {
+    return String(
+      card && (
+        card.getAttribute('data-item-idx')
+        || card.getAttribute('data-item-index')
+        || (card.dataset ? (card.dataset.itemIdx || card.dataset.itemIndex) : '')
+        || fallback
+      ) || fallback || ''
+    ).trim();
+  }
+
+  function syncItemColorState(card, idx, rawValues) {
+    if (!card) return [];
+    idx = String(idx == null ? '' : idx).trim();
+    if (!idx) idx = getItemIdxFromContainer(card, '');
+    if (!idx) return [];
+    var values = Array.isArray(rawValues) ? rawValues.slice() : [];
+    if (!values.length) {
+      try {
+        values = Array.prototype.slice.call(
+          card.querySelectorAll('input[type="checkbox"][data-cor]:checked, .cor-opcao input:checked, .cores-item input:checked')
+        ).map(function(el) {
+          return String(el && (el.value || (el.dataset && el.dataset.cor) || el.getAttribute('data-cor') || '') || '').trim();
+        }).filter(Boolean);
+      } catch (_) { values = []; }
+    }
+    window.coresSelecionadasOFRapidaItens = window.coresSelecionadasOFRapidaItens || {};
+    window.coresSelecionadasOFRapidaItens[idx] = values;
+    try { card.setAttribute('data-item-idx', idx); } catch (_) {}
+    try { card.setAttribute('data-item-index', idx); } catch (_) {}
+    try { card.dataset.coresSel = JSON.stringify(values); } catch (_) {}
+    try { card.dataset.coresSelecionadas = JSON.stringify(values); } catch (_) {}
+    try {
+      var hidden = card.querySelector('input[type="hidden"][name*="cor"], input[type="hidden"][name*="cores"]');
+      if (hidden) hidden.value = JSON.stringify((typeof window.getItemColorPayloadOFRapida === 'function') ? window.getItemColorPayloadOFRapida(idx) : []);
+    } catch (_) {}
+    try {
+      var label = card.querySelector('.label-cores-count, .cores-label, [data-cores-label], .cores-selecionadas-label, [class*="cores-sel"], [data-cores-count], [id^="btnCoresLabelItemOFRapida_"]');
+      if (label) label.textContent = values.length + ' cores selecionadas';
+    } catch (_) {}
+    return values;
+  }
+
   function getItemColorPayload(idx) {
     var ids = getItemColorIds(idx).slice();
     var cores = getColorsSource();
@@ -7434,12 +7580,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
       var card = el.closest ? el.closest('.ofr-item-card, [data-item-idx], .item-adicional, .of-item') : null;
       if (card) {
-        try { card.dataset.coresSel = JSON.stringify(selectedIds); } catch (_) {}
-        try { card.dataset.coresSelecionadas = JSON.stringify(selectedIds); } catch (_) {}
-        try {
-          var hidden = card.querySelector('input[type="hidden"][name*="cor"], input[type="hidden"][name*="cores"]');
-          if (hidden) hidden.value = JSON.stringify(getItemColorPayload(idx));
-        } catch (_) {}
+        syncItemColorState(card, idx, selectedIds);
       }
     } catch (_) {}
   };
@@ -7453,6 +7594,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (pos >= 0) list.splice(pos, 1);
     else list.push(id);
     window.renderSeletorCoresItemOFRapida(idx);
+    try {
+      var card = document.querySelector('.ofr-item-card[data-item-idx="' + idx + '"], [data-item-idx="' + idx + '"], [data-item-index="' + idx + '"]');
+      if (card) syncItemColorState(card, idx, list);
+    } catch (_) {}
   };
 
   if (typeof window.toggleDropdownCores === 'function' && !window.toggleDropdownCores._patchMultiItem) {
@@ -7475,10 +7620,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function ensureMultiItemColors() {
-    Array.prototype.slice.call(document.querySelectorAll('.ofr-item-card, [data-item-idx]')).forEach(function(card, order) {
-      var idx = String(card && (card.getAttribute('data-item-idx') || card.dataset.itemIdx || order) || order).trim();
+    Array.prototype.slice.call(document.querySelectorAll('.ofr-item-card, [data-item-idx], [data-item-index], .item-adicional, .item-of')).forEach(function(card, order) {
+      var idx = getItemIdxFromContainer(card, order);
       if (!card) return;
       try { card.setAttribute('data-item-idx', idx); } catch (_) {}
+      try { card.setAttribute('data-item-index', idx); } catch (_) {}
       var btn = card.querySelector('#btnAbrirCoresItemOFRapida_' + idx) || card.querySelector('[id^="btnAbrirCoresItemOFRapida_"]');
       var dd = card.querySelector('#dropdownCoresItemOFRapida_' + idx) || card.querySelector('[id^="dropdownCoresItemOFRapida_"]');
       var grid = card.querySelector('#seletorCoresItemOFRapida_' + idx) || card.querySelector('[id^="seletorCoresItemOFRapida_"]');
@@ -7496,6 +7642,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           window.toggleDropdownCores('dropdownCoresItemOFRapida_' + idx, 'btnAbrirCoresItemOFRapida_' + idx);
         };
       }
+      try { syncItemColorState(card, idx); } catch (_) {}
       try { window.renderSeletorCoresItemOFRapida(idx); } catch (_) {}
     });
   }
@@ -7524,28 +7671,30 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (typeof window.toggleCorItemOFRapida === 'function') window.toggleCorItemOFRapida(idx, corId);
       } catch (_) {}
     }, true);
+    document.addEventListener('click', function(ev) {
+      try {
+        var cb = ev && ev.target && (ev.target.closest ? ev.target.closest('input[type="checkbox"][data-cor], .cor-opcao input, .cores-item input') : null);
+        if (!cb) return;
+        var card = cb.closest ? cb.closest('.ofr-item-card, [data-item-idx], [data-item-index], .item-adicional, .item-of') : null;
+        if (!card) return;
+        var idx = getItemIdxFromContainer(card, '');
+        if (!idx) return;
+        setTimeout(function() {
+          try { syncItemColorState(card, idx); } catch (_) {}
+        }, 0);
+      } catch (_) {}
+    }, true);
     document.addEventListener('change', function(ev) {
       try {
         var sel = ev && ev.target && (ev.target.matches ? (ev.target.matches('.cores-select, select[multiple], select[data-tipo="cores"], .cores-impressao-select, select[name*="cores"]') ? ev.target : null) : null);
         if (!sel) return;
-        var card = sel.closest ? sel.closest('.ofr-item-card, [data-item-idx], .item-adicional, .of-item') : null;
+        var card = sel.closest ? sel.closest('.ofr-item-card, [data-item-idx], [data-item-index], .item-adicional, .of-item') : null;
         if (!card) return;
-        var idx = String(card.getAttribute('data-item-idx') || card.dataset.itemIdx || '').trim();
+        var idx = getItemIdxFromContainer(card, '');
         if (!idx) return;
         var values = Array.prototype.slice.call(sel.selectedOptions || []).map(function(opt) { return String(opt && opt.value || '').trim(); }).filter(Boolean);
-        window.coresSelecionadasOFRapidaItens = window.coresSelecionadasOFRapidaItens || {};
-        window.coresSelecionadasOFRapidaItens[idx] = values;
         try { sel.dataset.coresSelecionadas = JSON.stringify(values); } catch (_) {}
-        try { card.dataset.coresSel = JSON.stringify(values); } catch (_) {}
-        try { card.dataset.coresSelecionadas = JSON.stringify(values); } catch (_) {}
-        try {
-          var hidden = card.querySelector('input[type="hidden"][name*="cor"], input[type="hidden"][name*="cores"]');
-          if (hidden) hidden.value = JSON.stringify((typeof window.getItemColorPayloadOFRapida === 'function') ? window.getItemColorPayloadOFRapida(idx) : []);
-        } catch (_) {}
-        try {
-          var label = card.querySelector('.label-cores-count, .cores-label, [data-cores-label], [class*="cores-sel"], [data-cores-count], [id^="btnCoresLabelItemOFRapida_"]');
-          if (label) label.textContent = values.length + ' cores selecionadas';
-        } catch (_) {}
+        syncItemColorState(card, idx, values);
         if (typeof window.renderSeletorCoresItemOFRapida === 'function') window.renderSeletorCoresItemOFRapida(idx);
       } catch (_) {}
     }, true);
@@ -16503,9 +16652,9 @@ function _ocultarGraficoComissoes() {
       + '</div>'
       + '<div style="display:flex;gap:20px;flex-wrap:wrap">'
       + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Qtd</div><div style="color:#f1f5f9;font-weight:600">' + String(ofNorm.qtd) + '</div></div>'
-      + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Valor Total</div><div style="color:#f1f5f9;font-weight:600">' + _escHtmlCom(_fmtRs(ofNorm.valor_total)) + '</div></div>'
-      + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Preço Unit.</div><div style="color:#94a3b8">' + _escHtmlCom(_fmtRs(ofNorm.preco_unit)) + '</div></div>'
-      + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Comissão</div><div style="color:#22c55e;font-weight:600">' + _escHtmlCom(_fmtRs(ofNorm.comissao_valor)) + '</div></div>'
+      + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Valor Total</div><div style="color:#f1f5f9;font-weight:600">' + _escHtmlCom(window._fmtRs(ofNorm.valor_total)) + '</div></div>'
+      + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Preço Unit.</div><div style="color:#94a3b8">' + _escHtmlCom(window._fmtRs(ofNorm.preco_unit)) + '</div></div>'
+      + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Comissão</div><div style="color:#22c55e;font-weight:600">' + _escHtmlCom(window._fmtRs(ofNorm.comissao_valor)) + '</div></div>'
       + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Data</div><div style="color:#94a3b8">' + _escHtmlCom(_fmtDataComDetalhamento(ofNorm.data)) + '</div></div>'
       + '</div>'
       + '<div style="display:flex;gap:8px;align-items:center">'
