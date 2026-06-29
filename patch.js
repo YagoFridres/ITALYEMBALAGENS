@@ -17151,15 +17151,16 @@ function _ocultarGraficoComissoes() {
       ) || ''
     ).trim();
     var percComissao = Number(window._obterPercComissao(vendidVal) || 0) || 0;
-    var totalVal = parseFloat(of && (of.total != null ? of.total : (of.valor_total != null ? of.valor_total : ofNorm.valor_total)) || 0) || 0;
+    var totalVal = parseFloat(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : ofNorm.valor_total)) || 0) || 0;
     var comissaoVal = totalVal * percComissao / 100;
     try {
       console.log('[DEBUG COMISSAO]', {
         vendid: of && of.vendid,
         vendedor: of && of.vendedor,
-        total: of && of.total,
+        valor_total: of && of.valor_total,
+        total_legado: of && of.total,
         perc: window._obterPercComissao((of && (of.vendid || of.vendedor)) || ''),
-        comissao_calculada: (parseFloat(of && of.total) || 0) * window._obterPercComissao((of && (of.vendid || of.vendedor)) || '') / 100
+        comissao_calculada: totalVal * window._obterPercComissao((of && (of.vendid || of.vendedor)) || '') / 100
       });
     } catch (_) {}
     return ''

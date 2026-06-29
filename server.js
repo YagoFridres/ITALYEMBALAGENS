@@ -1594,6 +1594,33 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
       }
     } catch (_) {}
     try {
+      const idsValor = todasOFs
+        .map(of => String(of && of.id || '').trim())
+        .filter(Boolean);
+      if (idsValor.length) {
+        const mapaValor = {};
+        const chunkSizeValor = 100;
+        for (let i = 0; i < idsValor.length; i += chunkSizeValor) {
+          const chunk = idsValor.slice(i, i + chunkSizeValor);
+          const { data: ofsValor, error: errValor } = await supabase
+            .from('ofs')
+            .select('id,valor_total,valor_venda,preco,total')
+            .in('id', chunk);
+          if (errValor) continue;
+          (ofsValor || []).forEach(row => {
+            mapaValor[String(row.id)] = row;
+          });
+        }
+        todasOFs.forEach(of => {
+          const row = mapaValor[String(of && of.id || '')];
+          if (!row) return;
+          if (row.valor_total != null) of.valor_total = row.valor_total;
+          if (row.valor_venda != null) of.valor_venda = row.valor_venda;
+          if (row.preco != null) of.preco = row.preco;
+        });
+      }
+    } catch (_) {}
+    try {
       todasOFs = await _enriquecerRespostaOFs(todasOFs);
     } catch (_) {}
 
@@ -1631,6 +1658,7 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
         vendedor: of.vendedor || of.vendedor_nome || of.vendNome || 'Sem Vendedor', 
         quantidade: of.quantidade ?? of.qtd ?? of.qtd_pedida ?? null, 
         valor_total, 
+        total: valor_total,
         comissao_pct, 
         comissao_rs, 
         created_at: of.created_at || null, 
