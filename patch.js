@@ -15848,6 +15848,10 @@ function _ocultarGraficoComissoes() {
           var termoAtual = String(inputBusca.value || '').trim();
           if (!termoAtual) return;
           await new Promise(function(resolve) { setTimeout(resolve, 500); });
+          if (inputBusca && inputBusca.id === '_com_filtro_local') {
+            await _buscarDetalhamentoComissaoAtualizado(termoAtual);
+            return;
+          }
           var resultados = await _buscarOFsDetalhamento(termoAtual);
           if (resultados && resultados.length > 0) {
             _renderizarResultadosBuscaComissao(resultados, termoAtual);
@@ -15934,7 +15938,9 @@ function _ocultarGraficoComissoes() {
       if (tdStatus) {
         tdStatus.innerHTML = '<span style="background:' + (concluida ? '#166534' : '#92400e') + ';color:' + (concluida ? '#4ade80' : '#fbbf24') + ';padding:2px 8px;border-radius:4px;font-size:11px">' + _escHtmlCom(statusVal) + '</span>';
       }
-      _aplicarFiltroLocalDetalhamentoComissao(String((document.getElementById('_com_filtro_local') || {}).value || ''));
+      if (!window.__comAplicandoFiltroDetalhe) {
+        _aplicarFiltroLocalDetalhamentoComissao(String((document.getElementById('_com_filtro_local') || {}).value || ''));
+      }
       return true;
     } catch (_) {
       return false;
@@ -15952,6 +15958,7 @@ function _ocultarGraficoComissoes() {
   function _obterInputBuscaComissaoAtual() {
     try {
       return document.querySelector('#busca-of-detalhamento')
+        || document.getElementById('_com_filtro_local')
         || document.getElementById('_com_busca')
         || document.getElementById('comissao-busca-of')
         || document.querySelector('[data-busca-comissoes]')
@@ -16987,13 +16994,29 @@ function _ocultarGraficoComissoes() {
       contador.textContent = 'Exibindo ' + String(visiveis || 0) + ' de ' + String(total || 0) + ' OFs';
     } catch (_) {}
   }
-  function _aplicarFiltroLocalDetalhamentoComissao(termo) {
+  function _aplicarFiltroLocalDetalhamentoComissao(termo, resultados) {
     try {
       var detalhe = document.getElementById('_com_detalhe');
       if (!detalhe) return;
+      window.__comAplicandoFiltroDetalhe = true;
       var termoNorm = _normalizarBuscaLocalDetalhamento(termo);
-      var termoNum = _comBuscaNumeroNorm(termoNorm);
+      if (Array.isArray(resultados)) {
+        window.__comUltimosResultadosDetalhe = {
+          termo: termoNorm,
+          lista: resultados.slice()
+        };
+      }
       var grupos = Array.prototype.slice.call(detalhe.querySelectorAll('details[data-vendedor]'));
+      var resultadosAtuais = window.__comUltimosResultadosDetalhe && window.__comUltimosResultadosDetalhe.termo === termoNorm
+        ? (window.__comUltimosResultadosDetalhe.lista || [])
+        : [];
+      var mapaResultados = Object.create(null);
+      (Array.isArray(resultadosAtuais) ? resultadosAtuais : []).forEach(function(of) {
+        var keyId = String(of && of.id || '').trim();
+        var keyNum = String(of && (of.of || of.numero || of.of_num || '') || '').trim();
+        if (keyId) mapaResultados['id:' + keyId] = of;
+        if (keyNum) mapaResultados['num:' + keyNum] = of;
+      });
       var totalLinhas = 0;
       var visiveis = 0;
       grupos.forEach(function(grupo) {
@@ -17002,15 +17025,12 @@ function _ocultarGraficoComissoes() {
         linhas.forEach(function(linha) {
           totalLinhas += 1;
           var numero = String(linha.getAttribute('data-of-numero') || '').trim();
-          var cliente = String(linha.getAttribute('data-of-cliente') || '').trim();
-          var search = _normalizarBuscaLocalDetalhamento(String(linha.getAttribute('data-search') || ''));
+          var idLinha = String(linha.getAttribute('data-of-id') || linha.getAttribute('data-id') || '').trim();
           var bate = true;
           if (termoNorm) {
-            var numeroNorm = _comBuscaNumeroNorm(numero);
-            var clienteNorm = _normalizarBuscaLocalDetalhamento(cliente);
-            bate = (!!termoNum && numeroNorm.indexOf(termoNum) >= 0)
-              || (!!termoNorm && clienteNorm.indexOf(termoNorm) >= 0)
-              || (!!termoNorm && search.indexOf(termoNorm) >= 0);
+            var ofAtual = (idLinha && mapaResultados['id:' + idLinha]) || (numero && mapaResultados['num:' + numero]) || null;
+            bate = !!ofAtual;
+            if (ofAtual) _atualizarLinhaDetalhamentoComissao(ofAtual);
           }
           linha.style.display = bate ? '' : 'none';
           if (bate) {
@@ -17022,6 +17042,28 @@ function _ocultarGraficoComissoes() {
       });
       _atualizarContadorDetalhamentoComissao(visiveis, totalLinhas);
     } catch (_) {}
+    finally { try { window.__comAplicandoFiltroDetalhe = false; } catch (_) {} }
+  }
+  async function _buscarDetalhamentoComissaoAtualizado(termo) {
+    var termoTxt = String(termo || '').trim();
+    var resultDiv = document.getElementById('_com_busca_resultado');
+    if (!termoTxt) {
+      try { delete window.__comUltimosResultadosDetalhe; } catch (_) {}
+      if (resultDiv) resultDiv.innerHTML = '';
+      _aplicarFiltroLocalDetalhamentoComissao('', []);
+      return;
+    }
+    _atualizarContadorDetalhamentoComissao('...', '...');
+    if (resultDiv) resultDiv.innerHTML = '<p style="color:#94a3b8;padding:12px">Buscando...</p>';
+    try {
+      try { await _ensureVendedoresMap(); } catch (_) {}
+      var resultados = await _buscarOFsDetalhamento(termoTxt);
+      _renderizarResultadosBuscaComissao(resultados, termoTxt);
+      _aplicarFiltroLocalDetalhamentoComissao(termoTxt, resultados);
+    } catch (e) {
+      if (resultDiv) resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Erro na busca: ' + _escHtmlCom(e && e.message || e) + '</p>';
+      _aplicarFiltroLocalDetalhamentoComissao(termoTxt, []);
+    }
   }
   function _renderizarFiltroLocalDetalhamentoComissao() {
     try {
@@ -17042,10 +17084,14 @@ function _ocultarGraficoComissoes() {
       if (input && !input.dataset.boundFiltroLocal) {
         input.dataset.boundFiltroLocal = '1';
         input.addEventListener('input', function(e) {
-          _aplicarFiltroLocalDetalhamentoComissao(String(e && e.target && e.target.value || ''));
+          try { clearTimeout(window.__comBuscaDetalheDebounce); } catch (_) {}
+          var termo = String(e && e.target && e.target.value || '');
+          window.__comBuscaDetalheDebounce = setTimeout(function() {
+            _buscarDetalhamentoComissaoAtualizado(termo);
+          }, 280);
         });
       }
-      _aplicarFiltroLocalDetalhamentoComissao(input && input.value || '');
+      _aplicarFiltroLocalDetalhamentoComissao('', []);
     } catch (_) {}
   }
 
