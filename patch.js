@@ -15736,9 +15736,20 @@ function _ocultarGraficoComissoes() {
   try {
     if (!window.__comOfSalvaListenerBound) {
       window.__comOfSalvaListenerBound = true;
-      document.addEventListener('ofSalva', function() {
+      document.addEventListener('ofSalva', async function() {
         try {
-          setTimeout(function() { _reexecutarBuscaComissaoAtual(); }, 400);
+          var inputBusca = _obterInputBuscaComissaoAtual();
+          try { console.log('[OF SALVA] re-executando busca, input:', inputBusca && inputBusca.value); } catch (_) {}
+          if (!inputBusca) return;
+          var termoAtual = String(inputBusca.value || '').trim();
+          if (!termoAtual) return;
+          await new Promise(function(resolve) { setTimeout(resolve, 500); });
+          var resultados = await _buscarOFsDetalhamento(termoAtual);
+          if (resultados && resultados.length > 0) {
+            _renderizarResultadosBuscaComissao(resultados, termoAtual);
+            return;
+          }
+          if (typeof window._buscarOFsComissao === 'function') window._buscarOFsComissao(termoAtual);
         } catch (_) {}
       });
     }
@@ -15776,6 +15787,7 @@ function _ocultarGraficoComissoes() {
       var qtdVal = Number(ofAtualizada && (ofAtualizada.qtd ?? ofAtualizada.quantidade ?? ofAtualizada.qtd_pedida) || 0) || 0;
       var totalVal = Number(ofAtualizada && (ofAtualizada.valor_total ?? ofAtualizada.total ?? ofAtualizada.valor_venda) || 0) || 0;
       var precoVal = Number(ofAtualizada && (ofAtualizada.preco ?? ofAtualizada.valor_unitario ?? ofAtualizada.vl_unit) || 0) || 0;
+      var vendedorNome = String(ofAtualizada && (ofAtualizada.vendedor || ofAtualizada.vendid || ofAtualizada.vendNome || ofAtualizada.vendedor_nome) || '—').trim() || '—';
       var vendRef = String(ofAtualizada && (ofAtualizada.vendid || ofAtualizada.vendedor || ofAtualizada.vendedor_nome || ofAtualizada.vendNome) || '').trim();
       var pctVal = Number(ofAtualizada && (ofAtualizada.comissao_pct ?? ofAtualizada.comissao) || 0) || Number(window._obterPercComissao(vendRef) || 0) || 0;
       var comissaoVal = totalVal * pctVal / 100;
@@ -15787,9 +15799,11 @@ function _ocultarGraficoComissoes() {
       try {
         linhaEl.setAttribute('data-of-numero', String(ofAtualizada && (ofAtualizada.of || ofAtualizada.numero || ofAtualizada.of_num || '') || '').trim());
         linhaEl.setAttribute('data-of-cliente', String(ofAtualizada && (ofAtualizada.clinome || ofAtualizada.cliente || ofAtualizada.cliente_nome || '') || '').trim());
+        linhaEl.setAttribute('data-of-vendedor', vendedorNome);
         linhaEl.setAttribute('data-of-status', statusVal);
       } catch (_) {}
 
+      var tdVendedor = linhaEl.querySelector('[data-campo="vendedor"], .col-vendedor');
       var tdQtd = linhaEl.querySelector('[data-campo="qtd"], .col-qtd');
       var tdTotal = linhaEl.querySelector('[data-campo="total"], .col-total');
       var tdPreco = linhaEl.querySelector('[data-campo="preco"], .col-preco');
@@ -15798,6 +15812,7 @@ function _ocultarGraficoComissoes() {
       var tdData = linhaEl.querySelector('[data-campo="data"], .col-data');
       var tdStatus = linhaEl.querySelector('[data-campo="status"], .col-status');
 
+      if (tdVendedor) tdVendedor.textContent = vendedorNome;
       if (tdQtd) tdQtd.textContent = String(qtdVal || 0);
       if (tdTotal) tdTotal.textContent = _fmtRs(totalVal);
       if (tdPreco) tdPreco.textContent = _fmtRs(precoVal);
@@ -15815,10 +15830,25 @@ function _ocultarGraficoComissoes() {
 
   function _reexecutarBuscaComissaoAtual() {
     try {
-      var inpBusca = document.getElementById('_com_busca') || document.getElementById('comissao-busca-of');
+      var inpBusca = _obterInputBuscaComissaoAtual();
       var termo = String(inpBusca && inpBusca.value || '').trim();
       if (termo && typeof window._buscarOFsComissao === 'function') window._buscarOFsComissao(termo);
     } catch (_) {}
+  }
+
+  function _obterInputBuscaComissaoAtual() {
+    try {
+      return document.querySelector('#busca-of-detalhamento')
+        || document.getElementById('_com_busca')
+        || document.getElementById('comissao-busca-of')
+        || document.querySelector('[data-busca-comissoes]')
+        || document.querySelector('.detalhamento-ofs input[type="text"]')
+        || document.querySelector('input[placeholder*="busca"]')
+        || document.querySelector('input[placeholder*="OF"]')
+        || document.querySelector('input[placeholder*="nº"]');
+    } catch (_) {
+      return null;
+    }
   }
 
   function _dispararOFSalvaComissao(detail) {
@@ -16855,7 +16885,7 @@ function _ocultarGraficoComissoes() {
       id: String(of && of.id || '').trim(),
       numero: String(of && (of.numero != null ? of.numero : (of.numero_of || of.num_of || of.of_num || of.of || of.id)) || '—').trim() || '—',
       cliente: String(of && (of.cliente || of.cliente_nome || of.clinome || of.cliNome) || '—').trim() || '—',
-      vendedor: String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || vendedorFallback || 'Sem vendedor').trim() || 'Sem vendedor',
+      vendedor: String(of && (of.vendedor || of.vendid || of.vendedor_nome || of.vendNome) || vendedorFallback || 'Sem vendedor').trim() || 'Sem vendedor',
       vendid: vendidVal,
       qtd: qtd,
       valor_total: valorTotal,
@@ -16979,6 +17009,20 @@ function _ocultarGraficoComissoes() {
         host.appendChild(res);
       }
     } catch (_) {}
+  }
+
+  function _renderizarResultadosBuscaComissao(encontradas, termo) {
+    var resultDiv = document.getElementById('_com_busca_resultado');
+    if (!resultDiv) return;
+    var lista = Array.isArray(encontradas) ? encontradas : [];
+    if (!lista.length) {
+      resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Nenhuma OF encontrada para "' + _escHtmlCom(termo) + '".</p>';
+      return;
+    }
+    var html = lista.map(function(of) { return _renderBuscaOFComissaoCard(of); }).join('');
+    resultDiv.innerHTML =
+      '<div style="color:#94a3b8;font-size:12px;margin-bottom:8px">' + String(lista.length) + ' resultado(s) para "' + _escHtmlCom(termo) + '":</div>'
+      + html;
   }
 
   function _comBuscaTokens(termo) {
@@ -17253,14 +17297,7 @@ function _ocultarGraficoComissoes() {
     try {
       try { await _ensureVendedoresMap(); } catch (_) {}
       var encontradas = await _buscarOFsDetalhamento(termo);
-      if (!encontradas.length) {
-        resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Nenhuma OF encontrada para "' + _escHtmlCom(termo) + '".</p>';
-        return;
-      }
-      var html = encontradas.map(function(of) { return _renderBuscaOFComissaoCard(of); }).join('');
-      resultDiv.innerHTML =
-        '<div style="color:#94a3b8;font-size:12px;margin-bottom:8px">' + String(encontradas.length) + ' resultado(s) para "' + _escHtmlCom(termo) + '":</div>'
-        + html;
+      _renderizarResultadosBuscaComissao(encontradas, termo);
     } catch (e) {
       resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Erro na busca: ' + _escHtmlCom(e && e.message || e) + '</p>';
     }
@@ -17524,7 +17561,8 @@ function _ocultarGraficoComissoes() {
           + '<th style="padding:8px 10px;text-align:center;white-space:nowrap">Ações</th>'
           + '</tr></thead><tbody>'
           + g.ofs.map(function(of) {
-            var searchTxt = [of.numero, of.cliente, of.vendedor].join(' ').toLowerCase();
+            var vendedorNome = String(of && (of.vendedor || of.vendid || of.vendNome) || '—').trim() || '—';
+            var searchTxt = [of.numero, of.cliente, vendedorNome].join(' ').toLowerCase();
             var dataStr = '—';
             try { dataStr = of.data ? new Date(of.data).toLocaleDateString('pt-BR') : '—'; } catch (_) { dataStr = '—'; }
             var concluida = _comStatusConcluida(of);
@@ -17534,7 +17572,7 @@ function _ocultarGraficoComissoes() {
               + '<tr data-of-row="1" data-search="' + _escHtmlCom(searchTxt) + '" data-of-numero="' + _escHtmlCom(of.numero) + '" data-of-cliente="' + _escHtmlCom(of.cliente) + '" data-of-status="' + _escHtmlCom(of.status) + '" data-of-id="' + _escHtmlCom(of.id) + '" style="border-bottom:1px solid #1e293b">'
               + '<td style="padding:7px 10px;color:#60a5fa">#' + _escHtmlCom(of.numero) + '</td>'
               + '<td style="padding:7px 10px;color:#f1f5f9">' + _escHtmlCom(of.cliente) + '</td>'
-              + '<td style="padding:7px 10px;color:#94a3b8">' + _escHtmlCom(of.vendedor) + '</td>'
+              + '<td data-campo="vendedor" class="col-vendedor" style="padding:7px 10px;color:#94a3b8">' + _escHtmlCom(vendedorNome) + '</td>'
               + '<td data-campo="qtd" class="col-qtd" style="padding:7px 10px;text-align:right;color:#94a3b8">' + String(of.qtd || 0) + '</td>'
               + '<td data-campo="total" class="col-total" style="padding:7px 10px;text-align:right;color:#f1f5f9">' + _escHtmlCom(_fmtRs(of.valor_total)) + '</td>'
               + '<td data-campo="preco" class="col-preco" style="padding:7px 10px;text-align:right;color:#94a3b8">' + _escHtmlCom(_fmtRs(of.preco_unit)) + '</td>'
