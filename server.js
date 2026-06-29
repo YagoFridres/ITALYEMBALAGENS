@@ -4523,6 +4523,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
     let body = filterOfsUpdateWhitelist(normalizeOfUpdateBody(req.body || {}));
+    body = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(body, { onlyClinome: true }));
     try { console.log('[OF PATCH] payload recebido:', JSON.stringify(req.body || {}).substring(0, 300)); } catch (_) {}
     try { console.log('[OF PATCH] campos após whitelist:', Object.keys(body || {})); } catch (_) {}
     if (body.qtd !== undefined) body.qtd = Number(body.qtd);
@@ -6263,6 +6264,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         }
         : bodyIn;
     let payload = filterOfsUpdateWhitelist(sanitizeOfUpdatePayload({ ...ofIn(mapped || {}), updated_at: new Date().toISOString() }));
+    payload = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(payload, { onlyClinome: true }));
     try { console.log('[OF PATCH] payload recebido:', JSON.stringify(req.body || {}).substring(0, 300)); } catch (_) {}
     try { console.log('[OF PATCH] campos após whitelist:', Object.keys(payload || {})); } catch (_) {}
     try {
