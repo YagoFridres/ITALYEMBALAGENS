@@ -15890,7 +15890,7 @@ function _ocultarGraficoComissoes() {
       if (!linhaEl) return false;
       var qtdVal = Number(ofAtualizada && (ofAtualizada.qtd ?? ofAtualizada.quantidade ?? ofAtualizada.qtd_pedida) || 0) || 0;
       var totalVal = Number(ofAtualizada && (ofAtualizada.valor_total ?? ofAtualizada.total ?? ofAtualizada.valor_venda) || 0) || 0;
-      var precoVal = Number(ofAtualizada && (ofAtualizada.preco ?? ofAtualizada.valor_unitario ?? ofAtualizada.vl_unit) || 0) || 0;
+      var precoVal = _obterPrecoUnitarioComissao(ofAtualizada);
       var vendedorNome = String(ofAtualizada && (ofAtualizada.vendedor || ofAtualizada.vendid || ofAtualizada.vendNome || ofAtualizada.vendedor_nome) || '—').trim() || '—';
       var vendRef = String(ofAtualizada && (ofAtualizada.vendid || ofAtualizada.vendedor || ofAtualizada.vendedor_nome || ofAtualizada.vendNome) || '').trim();
       var pctVal = Number(ofAtualizada && (ofAtualizada.comissao_pct ?? ofAtualizada.comissao) || 0) || Number(window._obterPercComissao(vendRef) || 0) || 0;
@@ -16960,6 +16960,14 @@ function _ocultarGraficoComissoes() {
     try { return new Date(v).toLocaleDateString('pt-BR'); } catch (_) { return '—'; }
   }
 
+  function _obterPrecoUnitarioComissao(of) {
+    var totalVal = parseFloat(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : of.valor_venda)) || 0) || 0;
+    var qtdVal = parseInt(of && (of.qtd != null ? of.qtd : (of.quantidade != null ? of.quantidade : of.qtd_pedida)) || 0, 10) || 0;
+    var precoUnit = parseFloat(of && (of.preco != null ? of.preco : (of.valor_unitario != null ? of.valor_unitario : of.vl_unit)) || 0) || 0;
+    if (!(precoUnit > 0) && qtdVal > 0 && totalVal > 0) precoUnit = totalVal / qtdVal;
+    return Number(precoUnit || 0) || 0;
+  }
+
   function _normalizarOFComissao(of, vendedorFallback) {
     var qtd = Number(of && (of.quantidade != null ? of.quantidade : (of.qtd != null ? of.qtd : of.quant)) || 0) || 0;
     var valorTotal = Number(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : (of.valor != null ? of.valor : of.valor_venda))) || 0) || 0;
@@ -16993,7 +17001,7 @@ function _ocultarGraficoComissoes() {
       vendid: vendidVal,
       qtd: qtd,
       valor_total: valorTotal,
-      preco_unit: Number(of && (of.preco ?? of.valor_unitario ?? of.vl_unit) || 0) || 0,
+      preco_unit: _obterPrecoUnitarioComissao(of),
       comissao_pct: pctRaw,
       comissao_valor: comissaoValor,
       data: _comDataDetalhamento(of),
