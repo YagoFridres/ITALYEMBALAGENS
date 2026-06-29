@@ -8064,16 +8064,132 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function patchApiFetchForCliId() {
     var orig = window.apiFetch;
     if (typeof orig !== 'function' || orig._patchClienteValidoNovaOf) return;
+    function numVal(v) {
+      var n = Number(String(v == null ? '' : v).replace(',', '.'));
+      return isFinite(n) ? n : 0;
+    }
+    function getCreateOfContext() {
+      var clienteInput = document.getElementById('f-cli-search')
+        || document.getElementById('of-r-cliente')
+        || document.querySelector('input[name="cliente"]');
+      var clienteIdEl = document.getElementById('of-r-cliente-id')
+        || document.getElementById('ofr-cliente-id')
+        || document.querySelector('input[name="cli_id"]');
+      var vendedorSel = document.getElementById('of-r-vendedor')
+        || document.getElementById('ofr-vendedor')
+        || document.querySelector('select[name="vendedor_id"], select[name="vendedor"]');
+      var precoEl = document.getElementById('of-r-vlunit')
+        || document.getElementById('ofr-vl-unit')
+        || document.querySelector('input[name="vl_unit"], input[name="valor_unitario"]');
+      var qtdEl = document.getElementById('of-r-qtd')
+        || document.getElementById('ofr-quantidade')
+        || document.querySelector('input[name="quantidade"], input[name="qtd"]');
+      var totalEl = document.getElementById('of-r-total')
+        || document.getElementById('ofr-total')
+        || document.querySelector('input[name="valor_total"], input[name="total"]');
+      var empresaEl = document.getElementById('of-r-empresa')
+        || document.getElementById('ofr-empresa')
+        || document.querySelector('select[name="empresa_id"], select[name="emp_id"]');
+      var cliId = String(
+        (clienteIdEl && clienteIdEl.value)
+        || (clienteInput && clienteInput.dataset && (clienteInput.dataset.clienteId || clienteInput.dataset.cliId))
+        || ''
+      ).trim();
+      var cliNome = String(
+        (clienteInput && clienteInput.dataset && (clienteInput.dataset.clienteNome || clienteInput.dataset.cliNome))
+        || (clienteInput && clienteInput.value)
+        || ''
+      ).trim();
+      var vendedorId = String((vendedorSel && vendedorSel.value) || '').trim();
+      var vendedorNome = '';
+      try {
+        vendedorNome = vendedorSel && vendedorSel.options && vendedorSel.selectedIndex >= 0
+          ? String(vendedorSel.options[vendedorSel.selectedIndex].text || '').trim()
+          : '';
+      } catch (_) { vendedorNome = ''; }
+      return {
+        cliId: cliId,
+        cliNome: cliNome,
+        vendedorId: vendedorId,
+        vendedorNome: vendedorNome,
+        preco: numVal(precoEl && precoEl.value),
+        qtd: Math.trunc(numVal(qtdEl && qtdEl.value)),
+        total: numVal(totalEl && totalEl.value),
+        empId: String((empresaEl && empresaEl.value) || (window._empresaAtual && (window._empresaAtual.id || window._empresaAtual.emp_id)) || '').trim()
+      };
+    }
+    function enrichCreateOfPayload(payload) {
+      var body = payload && typeof payload === 'object' ? Object.assign({}, payload) : {};
+      var ctx = getCreateOfContext();
+      var item0 = Array.isArray(body.itens) && body.itens.length ? (body.itens[0] || {}) : {};
+      var preco = numVal(body.preco || body.valor_unitario || body.vl_unit || body.vunit || item0.valor_unitario || item0.vunit || ctx.preco);
+      var qtd = Math.trunc(numVal(body.qtd || body.quantidade || body.qtd_pedida || item0.qtd || item0.quantidade || ctx.qtd));
+      var total = numVal(body.total || body.valor_total || body.valor_venda || item0.valor_total || item0.total || ctx.total);
+      if (!(total > 0) && preco > 0 && qtd > 0) total = Math.round(preco * qtd * 100) / 100;
+
+      if (!body.cli_id && ctx.cliId) body.cli_id = ctx.cliId;
+      if (!body.cliId && ctx.cliId) body.cliId = ctx.cliId;
+      if (!body.cliente_id && ctx.cliId) body.cliente_id = ctx.cliId;
+      if (!body.clinome && ctx.cliNome) body.clinome = ctx.cliNome;
+      if (!body.cliNome && ctx.cliNome) body.cliNome = ctx.cliNome;
+      if (!body.cliente_nome && ctx.cliNome) body.cliente_nome = ctx.cliNome;
+
+      if (!body.vendedor_id && ctx.vendedorId) body.vendedor_id = ctx.vendedorId;
+      if (!body.vendId && ctx.vendedorId) body.vendId = ctx.vendedorId;
+      if (!body.vend_id && ctx.vendedorId) body.vend_id = ctx.vendedorId;
+      if (!body.vendedor && ctx.vendedorNome) body.vendedor = ctx.vendedorNome;
+      if (!body.vendNome && ctx.vendedorNome) body.vendNome = ctx.vendedorNome;
+      if (!body.vendid) body.vendid = ctx.vendedorNome || ctx.vendedorId || '';
+
+      if (!(Number(body.preco || 0) > 0) && preco > 0) body.preco = preco;
+      if (!(Number(body.valor_unitario || 0) > 0) && preco > 0) body.valor_unitario = preco;
+      if (!(Number(body.vl_unit || 0) > 0) && preco > 0) body.vl_unit = preco;
+      if (!(Number(body.qtd || 0) > 0) && qtd > 0) body.qtd = qtd;
+      if (!(Number(body.quantidade || 0) > 0) && qtd > 0) body.quantidade = qtd;
+      if (!(Number(body.total || 0) > 0) && total > 0) body.total = total;
+      if (!(Number(body.valor_total || 0) > 0) && total > 0) body.valor_total = total;
+      if (!(Number(body.valor_venda || 0) > 0) && total > 0) body.valor_venda = total;
+
+      if (!body.emp_id && ctx.empId) body.emp_id = ctx.empId;
+      if (!body.empresa_id && ctx.empId) body.empresa_id = ctx.empId;
+
+      if (Array.isArray(body.itens) && typeof window.getItemColorPayloadOFRapida === 'function') {
+        body.itens = body.itens.map(function(item, idx) {
+          var payloadCores = window.getItemColorPayloadOFRapida(String(idx));
+          var out = Object.assign({}, item || {}, { cores_impressao: payloadCores });
+          if (!(Number(out.valor_unitario || out.vunit || 0) > 0) && preco > 0) {
+            out.valor_unitario = preco;
+            out.vunit = preco;
+          }
+          if (!(Number(out.qtd || out.quantidade || 0) > 0) && qtd > 0) {
+            out.qtd = qtd;
+            out.quantidade = qtd;
+          }
+          if (!(Number(out.valor_total || out.total || 0) > 0) && total > 0) {
+            out.valor_total = total;
+            out.total = total;
+          }
+          return out;
+        });
+      }
+      return body;
+    }
     var wrapped = function(url, opts) {
       try {
         var u = String(url || '');
         var m = String((opts && opts.method) || 'GET').toUpperCase();
-        if ((m === 'POST' || m === 'PATCH') && u.indexOf('/api/ofs') !== -1 && opts) {
+        if (m === 'POST' && /\/api\/ofs(?:\?|$)/.test(u) && opts && opts.body) {
+          if (typeof opts.body === 'string') {
+            try { opts.body = JSON.stringify(enrichCreateOfPayload(JSON.parse(opts.body))); } catch (_) {}
+          } else if (typeof opts.body === 'object') {
+            opts.body = enrichCreateOfPayload(opts.body);
+          }
+        } else if ((m === 'PATCH' || m === 'PUT') && u.indexOf('/api/ofs') !== -1 && opts && opts.body) {
           var el = document.getElementById('f-cli-search') || document.getElementById('of-r-cliente');
           var cliId = el && el.dataset ? String(el.dataset.clienteId || '').trim() : '';
           var cliNome = el && el.dataset ? String(el.dataset.clienteNome || '').trim() : '';
           if (!cliNome && el) cliNome = String(el.value || '').trim();
-          if (cliId && opts.body) {
+          if (cliId) {
             if (typeof opts.body === 'string') {
               try {
                 var o = JSON.parse(opts.body);
@@ -8085,12 +8201,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                     if (!o.cliente_nome) o.cliente_nome = cliNome;
                     if (!o.cliNome) o.cliNome = cliNome;
                   }
-                  if (Array.isArray(o.itens) && typeof window.getItemColorPayloadOFRapida === 'function') {
-                    o.itens = o.itens.map(function(item, idx) {
-                      var payloadCores = window.getItemColorPayloadOFRapida(String(idx));
-                      return Object.assign({}, item || {}, { cores_impressao: payloadCores });
-                    });
-                  }
                   opts.body = JSON.stringify(o);
                 }
               } catch (_) {}
@@ -8101,12 +8211,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               if (cliNome) {
                 if (!opts.body.cliente_nome) opts.body.cliente_nome = cliNome;
                 if (!opts.body.cliNome) opts.body.cliNome = cliNome;
-              }
-              if (Array.isArray(opts.body.itens) && typeof window.getItemColorPayloadOFRapida === 'function') {
-                opts.body.itens = opts.body.itens.map(function(item, idx) {
-                  var payloadCores = window.getItemColorPayloadOFRapida(String(idx));
-                  return Object.assign({}, item || {}, { cores_impressao: payloadCores });
-                });
               }
             }
           }

@@ -2751,6 +2751,109 @@ function ofPayloadFiltrado(body) {
   return p;
 }
 
+async function _buscarClienteNomeOF(cliId) {
+  const id = String(cliId || '').trim();
+  if (!id) return '';
+  try {
+    const { data } = await supabase
+      .from('clientes')
+      .select('nome,rs,razao_social')
+      .eq('id', id)
+      .maybeSingle();
+    return String(data?.nome || data?.rs || data?.razao_social || '').trim();
+  } catch (_) {
+    return '';
+  }
+}
+
+async function _buscarVendedorNomeOF(vendedorId) {
+  const id = String(vendedorId || '').trim();
+  if (!id) return '';
+  try {
+    const { data } = await supabase
+      .from('vendedores')
+      .select('nome')
+      .eq('id', id)
+      .maybeSingle();
+    return String(data?.nome || '').trim();
+  } catch (_) {
+    return '';
+  }
+}
+
+async function _preencherCamposCriticosOF(input, opts = {}) {
+  const out = { ...(input || {}) };
+  const onlyClinome = !!opts.onlyClinome;
+  const parseItens = (v) => {
+    if (Array.isArray(v)) return v;
+    if (typeof v === 'string') {
+      try {
+        const parsed = JSON.parse(v || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (_) {
+        return [];
+      }
+    }
+    return [];
+  };
+  const toNum = (v) => {
+    if (v === undefined || v === null || v === '') return 0;
+    const n = Number(String(v).replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const cliId = String(out.cli_id ?? out.cliId ?? out.cliente_id ?? out.cliid ?? '').trim();
+  let clinome = String(out.clinome ?? out.cliNome ?? out.cliente_nome ?? out.cliente ?? '').trim();
+  if (!clinome && cliId) clinome = await _buscarClienteNomeOF(cliId);
+  if (clinome) {
+    out.clinome = clinome;
+    if (out.cliNome === undefined || out.cliNome === '') out.cliNome = clinome;
+    if (out.cliente_nome === undefined || out.cliente_nome === '') out.cliente_nome = clinome;
+  }
+  if (onlyClinome) return out;
+
+  const vendedorId = String(out.vendedor_id ?? out.vendId ?? out.vend_id ?? '').trim();
+  let vendedor = String(out.vendedor ?? out.vendNome ?? out.vendedor_nome ?? '').trim();
+  if (!vendedor && vendedorId) vendedor = await _buscarVendedorNomeOF(vendedorId);
+  let vendid = String(out.vendid ?? '').trim();
+  if (!vendid) vendid = String(out.vendId ?? out.vend_id ?? out.vendedor_id ?? '').trim();
+  if (!vendid) vendid = vendedor;
+  if (!vendedor && vendid) vendedor = vendid;
+  if (vendedor) {
+    out.vendedor = vendedor;
+    if (out.vendNome === undefined || out.vendNome === '') out.vendNome = vendedor;
+    if (out.vendedor_nome === undefined || out.vendedor_nome === '') out.vendedor_nome = vendedor;
+  }
+  if (vendid) out.vendid = vendid;
+
+  const itens = parseItens(out.itens);
+  const qtd = Math.trunc(toNum(out.qtd ?? out.quantidade ?? out.qtd_pedida));
+  const itemPreco = Math.max(0, ...itens.map((it) => toNum(it?.valor_unitario ?? it?.vunit ?? it?.preco)));
+  const itemTotal = itens.reduce((sum, it) => sum + toNum(it?.valor_total ?? it?.total), 0);
+  const preco = toNum(out.preco ?? out.valor_unitario ?? out.vl_unit ?? out.vunit) || itemPreco;
+  let total = toNum(out.total ?? out.valor_total ?? out.valor_venda);
+  if (!(total > 0) && itemTotal > 0) total = itemTotal;
+  if (!(total > 0) && qtd > 0 && preco > 0) total = Math.round((preco * qtd) * 100) / 100;
+
+  if (qtd > 0) {
+    out.qtd = qtd;
+    if (out.quantidade === undefined || !(Number(out.quantidade) > 0)) out.quantidade = qtd;
+    if (out.qtd_pedida === undefined || !(Number(out.qtd_pedida) > 0)) out.qtd_pedida = qtd;
+  }
+  if (preco > 0) {
+    out.preco = preco;
+    if (out.valor_unitario === undefined || !(toNum(out.valor_unitario) > 0)) out.valor_unitario = preco;
+    if (out.vl_unit === undefined || !(toNum(out.vl_unit) > 0)) out.vl_unit = preco;
+  }
+  if (total > 0) {
+    out.total = total;
+    if (out.valor_total === undefined || !(toNum(out.valor_total) > 0)) out.valor_total = total;
+    if (out.valor_venda === undefined || !(toNum(out.valor_venda) > 0)) out.valor_venda = total;
+  }
+
+  return out;
+}
+
 async function ofsInsertWithRetry(row) {
   function sanitizarPayloadOF(payload) {
     const inteiros = [
@@ -4035,8 +4138,13 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     const empId = await resolverEmpresaId(req);
     if (!empId) return res.status(400).json({ ok: false, error: 'Empresa não identificada' });
     const body = req.body || {};
-    const filtered = ofPayloadFiltrado(body);
+    let filtered = ofPayloadFiltrado(body);
     filtered.empresa_id = empId;
+    if (filtered.emp_id === undefined || filtered.emp_id === '') filtered.emp_id = empId;
+    filtered = await _preencherCamposCriticosOF({ ...(body || {}), ...(filtered || {}) });
+    filtered = ofPayloadFiltrado(filtered);
+    filtered.empresa_id = empId;
+    if (filtered.emp_id === undefined || filtered.emp_id === '') filtered.emp_id = empId;
     delete filtered.id;
     if ((filtered.of == null || String(filtered.of || '').trim() === '') && (filtered.numero == null || String(filtered.numero || '').trim() === '')) {
       try {
@@ -4090,15 +4198,21 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       };
       const merged = { ...(body || {}), ...(filtered || {}) };
       const cliId = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
-      const vendId = String(merged.vendedor_id ?? merged.vendedorId ?? merged.vendId ?? merged.vend_id ?? '').trim();
+      const vendId = String(merged.vendid ?? merged.vendedor ?? merged.vendedor_id ?? merged.vendedorId ?? merged.vendId ?? merged.vend_id ?? '').trim();
       const qtd = Number(merged.qtd ?? merged.quantidade ?? merged.qtd_pedida ?? 0) || 0;
       const ent = String(merged.ent ?? merged.data_entrega ?? '').slice(0, 10);
       const itens = parseItens(merged.itens ?? body.itens);
       const item0 = (Array.isArray(itens) ? itens : [])[0] || {};
       const prod = String(merged.prodDesc ?? merged.descricao ?? merged.produto ?? item0.desc ?? item0.descricao ?? '').trim();
-      const total = Number(merged.valor_total ?? merged.valor_venda ?? 0) || 0;
+      const total = Number(merged.total ?? merged.valor_total ?? merged.valor_venda ?? 0) || 0;
       const vunitItens = Math.max(0, ...(Array.isArray(itens) ? itens : []).map((it) => Number(it?.valor_unitario ?? it?.vunit ?? 0) || 0));
-      const vunit = (vunitItens > 0) ? vunitItens : ((qtd > 0) ? (total / qtd) : 0);
+      const vunit = Number(merged.preco ?? merged.valor_unitario ?? merged.vl_unit ?? 0) || ((vunitItens > 0) ? vunitItens : ((qtd > 0) ? (total / qtd) : 0));
+      const clinome = String(merged.clinome ?? merged.cliNome ?? merged.cliente_nome ?? '').trim();
+      const vendedor = String(merged.vendedor ?? merged.vendNome ?? '').trim();
+      console.log('[OF CREATE] campos críticos:', { clinome, vendedor, vendid: vendId, preco: vunit, qtd, total });
+      if (!clinome) console.warn('[OF CREATE] AVISO: clinome vazio!');
+      if (!vendedor) console.warn('[OF CREATE] AVISO: vendedor vazio!');
+      if (!(vunit > 0)) console.warn('[OF CREATE] AVISO: preco zero!');
       const missing = [];
       if (!cliId) missing.push('cliente');
       if (!vendId) missing.push('vendedor');
@@ -4408,7 +4522,7 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const body = filterOfsUpdateWhitelist(normalizeOfUpdateBody(req.body || {}));
+    let body = filterOfsUpdateWhitelist(normalizeOfUpdateBody(req.body || {}));
     try { console.log('[OF PATCH] payload recebido:', JSON.stringify(req.body || {}).substring(0, 300)); } catch (_) {}
     try { console.log('[OF PATCH] campos após whitelist:', Object.keys(body || {})); } catch (_) {}
     if (body.qtd !== undefined) body.qtd = Number(body.qtd);
@@ -6148,7 +6262,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
             : {}),
         }
         : bodyIn;
-    const payload = filterOfsUpdateWhitelist(sanitizeOfUpdatePayload({ ...ofIn(mapped || {}), updated_at: new Date().toISOString() }));
+    let payload = filterOfsUpdateWhitelist(sanitizeOfUpdatePayload({ ...ofIn(mapped || {}), updated_at: new Date().toISOString() }));
     try { console.log('[OF PATCH] payload recebido:', JSON.stringify(req.body || {}).substring(0, 300)); } catch (_) {}
     try { console.log('[OF PATCH] campos após whitelist:', Object.keys(payload || {})); } catch (_) {}
     try {
