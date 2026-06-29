@@ -16536,7 +16536,14 @@ function _ocultarGraficoComissoes() {
           var cliInput = body.querySelector('#com-of-cli-busca');
           var cliHidden = body.querySelector('#com-of-cli-id');
           var cliId = String((cliHidden && cliHidden.value) || (cliInput && cliInput.dataset && (cliInput.dataset.cliId || cliInput.dataset.cliid)) || (of && of.cli_id) || '').trim();
-          var vendId = String((body.querySelector('#com-of-vend-id') || {}).value || (of && (of.vendedor_id || of.vendId || of.vend_id)) || '').trim();
+          var vendSelect = body.querySelector('select[data-campo="vendedor"], #com-of-vend-select, #select-vendedor-edicao, select[name="vendedor"]');
+          var vendId = String((body.querySelector('#com-of-vend-id') || {}).value || (vendSelect && vendSelect.value) || (of && (of.vendedor_id || of.vendId || of.vend_id)) || '').trim();
+          var vendNomeSelecionado = '';
+          try {
+            vendNomeSelecionado = vendSelect && vendSelect.options && vendSelect.selectedIndex >= 0
+              ? String(vendSelect.options[vendSelect.selectedIndex].text || '').trim()
+              : '';
+          } catch (_) { vendNomeSelecionado = ''; }
           var qtd = String((body.querySelector('#com-of-qtd') || {}).value || '').trim();
           var valorUnit = String((body.querySelector('#edit-of-valor-unitario') || {}).value || '').trim();
           var qtdNum = Number(String(qtd).replace(',', '.')) || 0;
@@ -16552,6 +16559,11 @@ function _ocultarGraficoComissoes() {
 
           if (cliId) payload.cli_id = cliId;
           if (vendId) payload.vendedor_id = vendId;
+          if (vendNomeSelecionado) {
+            payload.vendedor = vendNomeSelecionado;
+            payload.vendid = vendNomeSelecionado;
+            payload.vendNome = vendNomeSelecionado;
+          }
           if (qtd) payload.quantidade = qtdNum;
           if (valorUnit) payload.valor_unitario = valorUnitNum;
           payload.valor_total = valorTotalCalc;
@@ -16584,7 +16596,6 @@ function _ocultarGraficoComissoes() {
             try { console.log('[TROCAR] resultado:', r2 && r2.status, JSON.stringify(j2)); } catch (_) {}
             if (r2.ok && j2 && j2.ok) {
               var ofAtualizada = (j2 && (j2.data || j2.of || j2)) || {};
-              var vendSelect = body.querySelector('#com-of-vend-select');
               var vendNomeNovo = '';
               try {
                 vendNomeNovo = vendSelect && vendSelect.options && vendSelect.selectedIndex >= 0
@@ -16599,6 +16610,7 @@ function _ocultarGraficoComissoes() {
                 valor_unitario: (ofAtualizada && ofAtualizada.valor_unitario != null) ? ofAtualizada.valor_unitario : valorUnitNum,
                 valor_total: (ofAtualizada && ofAtualizada.valor_total != null) ? ofAtualizada.valor_total : valorTotalCalc,
                 total: (ofAtualizada && ofAtualizada.total != null) ? ofAtualizada.total : valorTotalCalc,
+                vendid: vendNomeNovo || (ofAtualizada && (ofAtualizada.vendid || ofAtualizada.vendedor || ofAtualizada.vendedor_nome || ofAtualizada.vendNome)) || '',
                 vendedor: vendNomeNovo || (ofAtualizada && (ofAtualizada.vendedor || ofAtualizada.vendedor_nome || ofAtualizada.vendNome)) || '',
                 vendedor_nome: vendNomeNovo || (ofAtualizada && (ofAtualizada.vendedor_nome || ofAtualizada.vendedor || ofAtualizada.vendNome)) || '',
                 vendNome: vendNomeNovo || (ofAtualizada && (ofAtualizada.vendNome || ofAtualizada.vendedor || ofAtualizada.vendedor_nome)) || ''

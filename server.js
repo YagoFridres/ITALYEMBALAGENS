@@ -2677,6 +2677,8 @@ function normalizeOfUpdateBody(input) {
   if (out.quantidade !== undefined && out.qtd === undefined) out.qtd = out.quantidade;
   if (out.valor_unitario !== undefined && out.preco === undefined) out.preco = out.valor_unitario;
   if (out.vl_unit !== undefined && out.preco === undefined) out.preco = out.vl_unit;
+  if (out.vendedor !== undefined && out.vendid === undefined) out.vendid = out.vendedor;
+  if (out.vendid !== undefined && out.vendedor === undefined) out.vendedor = out.vendid;
   if (out.observacoes !== undefined && out.obs === undefined) out.obs = out.observacoes;
   if (out.cliente_id !== undefined && out.cli_id === undefined) out.cli_id = out.cliente_id;
   if (out.clienteId !== undefined && out.cli_id === undefined) out.cli_id = out.clienteId;
@@ -4407,6 +4409,8 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
     const body = filterOfsUpdateWhitelist(normalizeOfUpdateBody(req.body || {}));
+    try { console.log('[OF PATCH] payload recebido:', JSON.stringify(req.body || {}).substring(0, 300)); } catch (_) {}
+    try { console.log('[OF PATCH] campos após whitelist:', Object.keys(body || {})); } catch (_) {}
     if (body.qtd !== undefined) body.qtd = Number(body.qtd);
     if (body.qtd_produzida !== undefined) body.qtd_produzida = Number(body.qtd_produzida);
     if (body.qtd_perdida !== undefined) body.qtd_perdida = Number(body.qtd_perdida);
@@ -6145,6 +6149,8 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         }
         : bodyIn;
     const payload = filterOfsUpdateWhitelist(sanitizeOfUpdatePayload({ ...ofIn(mapped || {}), updated_at: new Date().toISOString() }));
+    try { console.log('[OF PATCH] payload recebido:', JSON.stringify(req.body || {}).substring(0, 300)); } catch (_) {}
+    try { console.log('[OF PATCH] campos após whitelist:', Object.keys(payload || {})); } catch (_) {}
     try {
       const { data: ofAtual2 } = await supabase.from('ofs').select('status').eq('id', id).maybeSingle();
       const norm = (s) => {
