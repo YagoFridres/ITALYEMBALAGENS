@@ -6285,6 +6285,9 @@ app.delete('/api/tempos_reais/:id', authMiddleware, async (req, res) => {
 app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    try { console.log('[PATCH OF] id recebido:', id); } catch (_) {}
+    try { console.log('[PATCH OF] body:', JSON.stringify(req.body || {}).substring(0, 200)); } catch (_) {}
     let stAtualBefore = '';
     let stNovoWanted = '';
     try {
@@ -6395,8 +6398,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         : bodyIn;
     let payload = filterOfsUpdateWhitelist(sanitizeOfUpdatePayload({ ...ofIn(mapped || {}), updated_at: new Date().toISOString() }));
     payload = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(payload, { onlyClinome: true }));
-    try { console.log('[OF PATCH] payload recebido:', JSON.stringify(req.body || {}).substring(0, 300)); } catch (_) {}
-    try { console.log('[OF PATCH] campos após whitelist:', Object.keys(payload || {})); } catch (_) {}
+    try { console.log('[PATCH OF] campos após whitelist:', Object.keys(payload || {})); } catch (_) {}
     try {
       const { data: ofAtual2 } = await supabase.from('ofs').select('status').eq('id', id).maybeSingle();
       const norm = (s) => {
@@ -6419,8 +6421,12 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
     delete payload.id; delete payload.empresa_id;
     delete payload.numero; delete payload.of; delete payload.of_num; delete payload.seq;
     const upd = await ofsUpdateWithRetry(id, payload);
-    if (upd.error) throw upd.error;
+    if (upd.error) {
+      try { console.error('[PATCH OF] erro:', upd.error); } catch (_) {}
+      throw upd.error;
+    }
     const data = upd.data;
+    try { console.log('[PATCH OF] sucesso, campos atualizados:', Object.keys(payload || {})); } catch (_) {}
     try {
       const concluidoValues = new Set(['concluida', 'concluido', 'concluido', 'entregue', 'despachada', 'finalizada', 'pedido pronto']);
       const antesConcluida = stAtualBefore && (stAtualBefore.includes('conclu') || stAtualBefore === 'pedido pronto' || stAtualBefore === 'entregue' || stAtualBefore === 'despachada' || stAtualBefore === 'finalizada');

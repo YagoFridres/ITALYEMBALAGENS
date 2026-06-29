@@ -16463,7 +16463,7 @@ function _ocultarGraficoComissoes() {
     var vendId = String(of && (of.vendedor_id || of.vendId || of.vend_id || '') || '').trim();
     var qtd = (of && (of.quantidade ?? of.qtd ?? of.qtd_pedida)) != null ? String(of.quantidade ?? of.qtd ?? of.qtd_pedida) : '';
     var valTot = (of && (of.valor_total ?? of.valor_venda ?? of.valorTotal)) != null ? String(of.valor_total ?? of.valor_venda ?? of.valorTotal) : '';
-    var valUnit = Number(of && (of.valor_unitario ?? of.vl_unit ?? null));
+    var valUnit = Number(of && (of.preco ?? of.valor_unitario ?? of.vl_unit ?? null));
     if (!(valUnit > 0)) {
       var qtdNumBase = Number(of && (of.quantidade ?? of.qtd ?? of.qtd_pedida ?? 0) || 0) || 0;
       var totalNumBase = Number(of && (of.valor_total ?? of.valor_venda ?? of.valorTotal ?? 0) || 0) || 0;
@@ -16689,7 +16689,7 @@ function _ocultarGraficoComissoes() {
           var obs = String((body.querySelector('#com-of-obs') || {}).value || '').trim();
           var comPct = String((body.querySelector('#com-of-comissao') || {}).value || '').trim();
 
-          try { console.log('[TROCAR] salvando OF id:', ofId); } catch (_) {}
+          try { console.log('[MODAL EDIT] enviando PATCH para OF:', ofId, 'numero:', String(of && (of.numero || of.of || '') || '').trim()); } catch (_) {}
 
           if (cliId) payload.cli_id = cliId;
           if (vendId) payload.vendedor_id = vendId;
@@ -16710,7 +16710,7 @@ function _ocultarGraficoComissoes() {
             if (String(chave || '').charAt(0) === '_') delete payload[chave];
           });
 
-          try { console.log('[TROCAR] body:', JSON.stringify(payload)); } catch (_) {}
+          try { console.log('[MODAL EDIT] payload:', JSON.stringify(payload)); } catch (_) {}
 
           try {
             if (!ofId) {
@@ -16722,12 +16722,12 @@ function _ocultarGraficoComissoes() {
               return;
             }
             var r2 = await fetch('/api/ofs/' + encodeURIComponent(ofId), {
-              method: 'PUT',
+              method: 'PATCH',
               headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
               body: JSON.stringify(payload)
             });
             var j2 = await r2.json().catch(function() { return null; });
-            try { console.log('[TROCAR] resultado:', r2 && r2.status, JSON.stringify(j2)); } catch (_) {}
+            try { console.log('[MODAL EDIT] resultado:', r2 && r2.status, JSON.stringify(j2)); } catch (_) {}
             if (r2.ok && j2 && j2.ok) {
               var ofAtualizada = (j2 && (j2.data || j2.of || j2)) || {};
               var vendNomeNovo = '';
