@@ -1564,7 +1564,7 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
 
     console.log('[COM] OFs da view:', ofs?.length); 
 
-    const todasOFs = Array.isArray(ofs) ? ofs.slice() : []; 
+    let todasOFs = Array.isArray(ofs) ? ofs.slice() : []; 
     try {
       const missingQtdIds = todasOFs
         .filter(of => of && of.id && (of.quantidade == null && of.qtd == null && of.qtd_pedida == null))
@@ -1593,16 +1593,19 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
         });
       }
     } catch (_) {}
+    try {
+      todasOFs = await _enriquecerRespostaOFs(todasOFs);
+    } catch (_) {}
 
     // Agrupar por vendedor 
     const porVend = {}; 
     let totalGeral = 0; 
     todasOFs.forEach(of => { 
-      const val = Number(of.valor_total || 0); 
+      const val = Number(of.valor_total ?? of.total ?? of.valor_venda ?? 0) || 0; 
       if (!val) return; 
       totalGeral += val; 
-      const vid = of.vendedor_id || '__sem__'; 
-      const nome = of.vendedor_nome || 'Sem Vendedor'; 
+      const vid = of.vendedor_id || of.vendId || of.vend_id || of.vendid || '__sem__'; 
+      const nome = of.vendedor_nome || of.vendedor || of.vendNome || 'Sem Vendedor'; 
       const pct = Number(of.comissao_pct || 1); 
       if (!porVend[vid]) { 
         porVend[vid] = { id: vid, nome, comissao_pct: pct, ofs: 0, total: 0 }; 
@@ -1616,16 +1619,16 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
       .map(v => ({ ...v, comissao_rs: v.total * (v.comissao_pct/100) })); 
 
     const ofsDetalhadas = todasOFs.map(of => { 
-      const valor_total = Number(of.valor_total || 0); 
+      const valor_total = Number(of.valor_total ?? of.total ?? of.valor_venda ?? 0) || 0; 
       const comissao_pct = Number(of.comissao_pct || 1); 
       const comissao_rs = (of.comissao_rs != null) ? Number(of.comissao_rs || 0) : (valor_total * (comissao_pct/100)); 
       return { 
         id: of.id, 
-        numero: of.numero, 
+        numero: of.numero || of.of, 
         cli_id: of.cli_id || of.cliId || of.cliente_id || of.clienteId || null, 
         vendedor_id: of.vendedor_id || of.vendId || of.vend_id || null, 
-        cliente: of.cliente_nome || of.cliente || '—', 
-        vendedor: of.vendedor_nome || of.vendedor || 'Sem Vendedor', 
+        cliente: of.clinome || of.cliente_nome || of.cliNome || of.cliente || '—', 
+        vendedor: of.vendedor || of.vendedor_nome || of.vendNome || 'Sem Vendedor', 
         quantidade: of.quantidade ?? of.qtd ?? of.qtd_pedida ?? null, 
         valor_total, 
         comissao_pct, 
@@ -2852,6 +2855,176 @@ async function _preencherCamposCriticosOF(input, opts = {}) {
   }
 
   return out;
+}
+
+async function _enriquecerRespostaOFs(listaInput) {
+  const lista = (Array.isArray(listaInput) ? listaInput : [])
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => ({ ...item }));
+  if (!lista.length) return [];
+
+  const parseItens = (v) => {
+    if (Array.isArray(v)) return v;
+    if (typeof v === 'string') {
+      try {
+        const parsed = JSON.parse(v || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (_) {
+        return [];
+      }
+    }
+    return [];
+  };
+  const toNum = (v) => {
+    if (v === undefined || v === null || v === '') return 0;
+    const n = Number(String(v).replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  };
+  const pickText = (...values) => {
+    for (const value of values) {
+      const text = String(value == null ? '' : value).trim();
+      if (text) return text;
+    }
+    return '';
+  };
+  const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v).trim());
+
+  const ids = Array.from(new Set(lista.map((item) => String(item?.id || '').trim()).filter(Boolean)));
+  const baseMap = new Map();
+  const chunkSize = 200;
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    if (!chunk.length) continue;
+    try {
+      const { data, error } = await supabase
+        .from('ofs')
+        .select('id,of,numero,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,cliente,vendedor,vendid,vendId,vend_id,vendedor_id,vendedor_nome,vendNome,preco,valor_unitario,vl_unit,total,valor_total,valor_venda,qtd,quantidade,qtd_pedida,itens')
+        .in('id', chunk);
+      if (error) continue;
+      (Array.isArray(data) ? data : []).forEach((row) => {
+        const rowId = String(row?.id || '').trim();
+        if (rowId) baseMap.set(rowId, row);
+      });
+    } catch (_) {}
+  }
+
+  const cliIds = Array.from(new Set(lista.map((item) => {
+    const base = baseMap.get(String(item?.id || '').trim()) || {};
+    return pickText(item?.cli_id, item?.cliId, item?.cliente_id, base?.cli_id, base?.cliId, base?.cliente_id);
+  }).filter(Boolean)));
+  const clienteMap = new Map();
+  for (let i = 0; i < cliIds.length; i += chunkSize) {
+    const chunk = cliIds.slice(i, i + chunkSize);
+    if (!chunk.length) continue;
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('id,nome,rs,vendedor_id')
+        .in('id', chunk);
+      if (error) continue;
+      (Array.isArray(data) ? data : []).forEach((cli) => {
+        const cliId = String(cli?.id || '').trim();
+        if (cliId) clienteMap.set(cliId, cli);
+      });
+    } catch (_) {}
+  }
+
+  const vendedorIds = Array.from(new Set(lista.map((item) => {
+    const base = baseMap.get(String(item?.id || '').trim()) || {};
+    const cliId = pickText(item?.cli_id, item?.cliId, item?.cliente_id, base?.cli_id, base?.cliId, base?.cliente_id);
+    const cli = clienteMap.get(cliId) || {};
+    return pickText(item?.vendedor_id, item?.vendId, item?.vend_id, base?.vendedor_id, base?.vendId, base?.vend_id, cli?.vendedor_id);
+  }).filter(Boolean).filter((id) => isUuid(id))));
+  const vendedorMap = new Map();
+  for (let i = 0; i < vendedorIds.length; i += chunkSize) {
+    const chunk = vendedorIds.slice(i, i + chunkSize);
+    if (!chunk.length) continue;
+    try {
+      const { data, error } = await supabase
+        .from('vendedores')
+        .select('id,nome')
+        .in('id', chunk);
+      if (error) continue;
+      (Array.isArray(data) ? data : []).forEach((vend) => {
+        const vendId = String(vend?.id || '').trim();
+        if (vendId) vendedorMap.set(vendId, String(vend?.nome || '').trim());
+      });
+    } catch (_) {}
+  }
+
+  return lista.map((item) => {
+    const rowId = String(item?.id || '').trim();
+    const base = baseMap.get(rowId) || {};
+    const cliId = pickText(item?.cli_id, item?.cliId, item?.cliente_id, base?.cli_id, base?.cliId, base?.cliente_id);
+    const cliente = clienteMap.get(cliId) || {};
+    const vendedorId = pickText(item?.vendedor_id, item?.vendId, item?.vend_id, base?.vendedor_id, base?.vendId, base?.vend_id, cliente?.vendedor_id);
+    const vendedorNome = pickText(
+      item?.vendedor,
+      item?.vendedor_nome,
+      item?.vendNome,
+      isUuid(String(item?.vendid || '').trim()) ? '' : item?.vendid,
+      base?.vendedor,
+      base?.vendedor_nome,
+      base?.vendNome,
+      isUuid(String(base?.vendid || '').trim()) ? '' : base?.vendid,
+      vendedorMap.get(String(vendedorId || '').trim())
+    );
+    const vendid = pickText(
+      !isUuid(String(item?.vendid || '').trim()) ? item?.vendid : '',
+      !isUuid(String(base?.vendid || '').trim()) ? base?.vendid : '',
+      vendedorNome,
+      vendedorId
+    );
+    const clinome = pickText(
+      item?.clinome,
+      item?.cliNome,
+      item?.cliente_nome,
+      item?.cliente,
+      base?.clinome,
+      base?.cliNome,
+      base?.cliente_nome,
+      base?.cliente,
+      cliente?.nome,
+      cliente?.rs
+    );
+    const itens = parseItens(item?.itens ?? base?.itens);
+    const qtd = Math.trunc(toNum(item?.qtd ?? item?.quantidade ?? item?.qtd_pedida ?? base?.qtd ?? base?.quantidade ?? base?.qtd_pedida ?? itens?.[0]?.qtd ?? itens?.[0]?.quantidade));
+    let preco = toNum(item?.preco ?? item?.valor_unitario ?? item?.vl_unit ?? base?.preco ?? base?.valor_unitario ?? base?.vl_unit ?? itens?.[0]?.valor_unitario ?? itens?.[0]?.vunit ?? itens?.[0]?.preco);
+    let total = toNum(item?.total ?? item?.valor_total ?? item?.valor_venda ?? base?.total ?? base?.valor_total ?? base?.valor_venda ?? itens?.[0]?.valor_total ?? itens?.[0]?.total);
+    if (!(preco > 0) && qtd > 0 && total > 0) preco = Math.round((total / qtd) * 100) / 100;
+    if (!(total > 0) && preco > 0 && qtd > 0) total = Math.round((preco * qtd) * 100) / 100;
+
+    return {
+      ...base,
+      ...item,
+      id: rowId || base?.id || item?.id || null,
+      cli_id: cliId || null,
+      cliId: cliId || null,
+      cliente_id: cliId || null,
+      clinome: clinome || '—',
+      cliNome: clinome || '—',
+      cliente_nome: clinome || '—',
+      cliente: clinome || '—',
+      vendedor_id: vendedorId || null,
+      vendId: vendedorId || null,
+      vend_id: vendedorId || null,
+      vendedor: vendedorNome || '—',
+      vendedor_nome: vendedorNome || '—',
+      vendNome: vendedorNome || '—',
+      vendid: vendid || '—',
+      preco: preco > 0 ? preco : 0,
+      valor_unitario: preco > 0 ? preco : toNum(item?.valor_unitario ?? base?.valor_unitario ?? item?.vl_unit ?? base?.vl_unit),
+      vl_unit: preco > 0 ? preco : toNum(item?.vl_unit ?? base?.vl_unit ?? item?.valor_unitario ?? base?.valor_unitario),
+      total: total > 0 ? total : 0,
+      valor_total: total > 0 ? total : toNum(item?.valor_total ?? base?.valor_total ?? item?.valor_venda ?? base?.valor_venda),
+      valor_venda: total > 0 ? total : toNum(item?.valor_venda ?? base?.valor_venda ?? item?.valor_total ?? base?.valor_total),
+      qtd: qtd > 0 ? qtd : (item?.qtd ?? item?.quantidade ?? item?.qtd_pedida ?? base?.qtd ?? base?.quantidade ?? base?.qtd_pedida ?? null),
+      quantidade: qtd > 0 ? qtd : (item?.quantidade ?? item?.qtd ?? base?.quantidade ?? base?.qtd ?? null),
+      qtd_pedida: qtd > 0 ? qtd : (item?.qtd_pedida ?? base?.qtd_pedida ?? null),
+      numero: pickText(item?.numero, item?.of, base?.numero, base?.of),
+      of: pickText(item?.of, item?.numero, base?.of, base?.numero),
+    };
+  });
 }
 
 async function ofsInsertWithRetry(row) {
@@ -4308,47 +4481,7 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
       const { data: ofsRows, error: ofsErr } = await query;
       if (ofsErr) return res.status(400).json({ ok: false, error: String(ofsErr.message || ofsErr) });
 
-      const clienteMap = new Map(clientesArr.map((c) => [String(c?.id || '').trim(), c]));
-      const vendedorIds = Array.from(new Set((ofsRows || []).map((of) => {
-        const cli = clienteMap.get(String(of?.cli_id || '').trim());
-        return String(of?.vendedor_id || of?.vendId || cli?.vendedor_id || '').trim();
-      }).filter(Boolean)));
-      const vendMap = new Map();
-      if (vendedorIds.length) {
-        const { data: vendRows } = await supabase.from('vendedores').select('id,nome').in('id', vendedorIds);
-        (Array.isArray(vendRows) ? vendRows : []).forEach((v) => {
-          const id = String(v?.id || '').trim();
-          if (id) vendMap.set(id, String(v?.nome || '').trim());
-        });
-      }
-
-      const lista = (Array.isArray(ofsRows) ? ofsRows : []).map((of) => {
-        const cli = clienteMap.get(String(of?.cli_id || '').trim()) || null;
-        const vendedorId = String(of?.vendedor_id || of?.vendid || of?.vendId || cli?.vendedor_id || '').trim() || null;
-        const vendedorNome = vendMap.get(String(vendedorId || '')) || String(of?.vendedor_nome || of?.vendNome || of?.vendedor || '').trim();
-        const clienteNome = String(cli?.nome || cli?.rs || of?.cliente_nome || of?.cliente || of?.cliNome || '').trim();
-        const qtd = of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? null;
-        return {
-          ...of,
-          clinome: clienteNome,
-          cliente_nome: clienteNome,
-          cliNome: clienteNome,
-          vendid: vendedorId,
-          vendId: vendedorId,
-          vendedor_id: vendedorId,
-          vendedor_nome: vendedorNome,
-          vendNome: vendedorNome,
-          vendedor: vendedorNome,
-          preco: Number(of?.preco ?? of?.valor_unitario ?? of?.vl_unit ?? 0) || 0,
-          total: Number(of?.total ?? of?.valor_total ?? of?.valor_venda ?? 0) || 0,
-          qtd: qtd,
-          ent: of?.ent ?? of?.data_entrega ?? null,
-          dia: of?.dia ?? null,
-          status: of?.status ?? null,
-          quantidade: qtd,
-          valor_total: Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0,
-        };
-      });
+      const lista = await _enriquecerRespostaOFs(Array.isArray(ofsRows) ? ofsRows : []);
       return ok(res, lista);
     }
 
@@ -4409,23 +4542,19 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
       } catch (_) {}
     }
 
-    const out = { ...of };
-    try { delete out.cliente; } catch (_) {}
-    out.cliNome = cliNome || out.cliNome || out.cliente_nome || out.cliente || '';
-    out.cliente_nome = out.cliNome;
-    out.clinome = out.cliNome;
-    out.vendNome = vendNome || out.vendNome || out.vendedor_nome || out.vendedor || '';
-    out.vendedor_nome = out.vendNome;
-    out.vendedor = out.vendNome;
-    out.vendedor_id = vendedorId || out.vendedor_id || out.vendid || out.vendId || null;
-    out.vendid = out.vendedor_id || out.vendid || out.vendId || null;
-    out.vendId = out.vendedor_id || out.vendId || out.vendid || null;
-    out.preco = Number(out.preco ?? out.valor_unitario ?? out.vl_unit ?? 0) || 0;
-    out.total = Number(out.total ?? out.valor_total ?? out.valor_venda ?? 0) || 0;
-    out.qtd = out.qtd ?? out.quantidade ?? out.qtd_pedida ?? null;
-    out.ent = out.ent ?? out.data_entrega ?? null;
-    out.dia = out.dia ?? null;
-    return ok(res, out);
+    const [out] = await _enriquecerRespostaOFs([{
+      ...of,
+      cliNome: cliNome || of?.cliNome || of?.cliente_nome || of?.cliente || '',
+      cliente_nome: cliNome || of?.cliNome || of?.cliente_nome || of?.cliente || '',
+      clinome: cliNome || of?.cliNome || of?.cliente_nome || of?.cliente || '',
+      vendNome: vendNome || of?.vendNome || of?.vendedor_nome || of?.vendedor || '',
+      vendedor_nome: vendNome || of?.vendNome || of?.vendedor_nome || of?.vendedor || '',
+      vendedor: vendNome || of?.vendNome || of?.vendedor_nome || of?.vendedor || '',
+      vendedor_id: vendedorId || of?.vendedor_id || of?.vendid || of?.vendId || null,
+      ent: of?.ent ?? of?.data_entrega ?? null,
+      dia: of?.dia ?? null,
+    }]);
+    return ok(res, out || of);
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
@@ -4451,7 +4580,8 @@ app.get('/api/ofs/busca', authMiddleware, async (req, res) => {
     query = query.or(filtros);
     const { data, error } = await query;
     if (error) return res.status(500).json({ error: String(error.message || error) });
-    return res.json(Array.isArray(data) ? data : []);
+    const enriquecidas = await _enriquecerRespostaOFs(Array.isArray(data) ? data : []);
+    return res.json(enriquecidas);
   } catch (e) {
     return res.status(500).json({ error: String(e.message || e) });
   }
