@@ -15884,13 +15884,18 @@ function _ocultarGraficoComissoes() {
 
   function _atualizarLinhaDetalhamentoComissao(ofAtualizada) {
     try {
-      if (!ofAtualizada || !ofAtualizada.id) return false;
+      if (!ofAtualizada) return false;
       var idRef = String(ofAtualizada.id || '').trim();
-      var linhaEl = document.querySelector('tr[data-of-id="' + idRef.replace(/"/g, '\\"') + '"], tr[data-id="' + idRef.replace(/"/g, '\\"') + '"]');
+      var numeroRef = String(ofAtualizada && (ofAtualizada.of || ofAtualizada.numero || ofAtualizada.of_num || '') || '').trim();
+      var linhaEl = null;
+      if (idRef) linhaEl = document.querySelector('tr[data-of-id="' + idRef.replace(/"/g, '\\"') + '"], tr[data-id="' + idRef.replace(/"/g, '\\"') + '"]');
+      if (!linhaEl && numeroRef) linhaEl = document.querySelector('tr[data-of-row="1"][data-of-numero="' + numeroRef.replace(/"/g, '\\"') + '"]');
       if (!linhaEl) return false;
       var qtdVal = Number(ofAtualizada && (ofAtualizada.qtd ?? ofAtualizada.quantidade ?? ofAtualizada.qtd_pedida) || 0) || 0;
-      var totalVal = Number(ofAtualizada && (ofAtualizada.valor_total ?? ofAtualizada.total ?? ofAtualizada.valor_venda) || 0) || 0;
       var precoVal = _obterPrecoUnitarioComissao(ofAtualizada);
+      var totalVal = (qtdVal > 0 && precoVal > 0)
+        ? Math.round((qtdVal * precoVal) * 100) / 100
+        : (Number(ofAtualizada && (ofAtualizada.valor_total ?? ofAtualizada.total ?? ofAtualizada.valor_venda) || 0) || 0);
       var vendedorNome = String(ofAtualizada && (ofAtualizada.vendedor || ofAtualizada.vendid || ofAtualizada.vendNome || ofAtualizada.vendedor_nome) || '—').trim() || '—';
       var vendRef = String(ofAtualizada && (ofAtualizada.vendid || ofAtualizada.vendedor || ofAtualizada.vendedor_nome || ofAtualizada.vendNome) || '').trim();
       var pctVal = Number(ofAtualizada && (ofAtualizada.comissao_pct ?? ofAtualizada.comissao) || 0) || Number(window._obterPercComissao(vendRef) || 0) || 0;
@@ -15901,10 +15906,13 @@ function _ocultarGraficoComissoes() {
       var concluida = _comStatusConcluida(ofAtualizada);
 
       try {
-        linhaEl.setAttribute('data-of-numero', String(ofAtualizada && (ofAtualizada.of || ofAtualizada.numero || ofAtualizada.of_num || '') || '').trim());
-        linhaEl.setAttribute('data-of-cliente', String(ofAtualizada && (ofAtualizada.clinome || ofAtualizada.cliente || ofAtualizada.cliente_nome || '') || '').trim());
+        var numeroLinha = String(ofAtualizada && (ofAtualizada.of || ofAtualizada.numero || ofAtualizada.of_num || '') || '').trim();
+        var clienteLinha = String(ofAtualizada && (ofAtualizada.clinome || ofAtualizada.cliente || ofAtualizada.cliente_nome || '') || '').trim();
+        linhaEl.setAttribute('data-of-numero', numeroLinha);
+        linhaEl.setAttribute('data-of-cliente', clienteLinha);
         linhaEl.setAttribute('data-of-vendedor', vendedorNome);
         linhaEl.setAttribute('data-of-status', statusVal);
+        linhaEl.setAttribute('data-search', _normalizarBuscaLocalDetalhamento([numeroLinha, clienteLinha, vendedorNome].join(' ')));
       } catch (_) {}
 
       var tdVendedor = linhaEl.querySelector('[data-campo="vendedor"], .col-vendedor');
@@ -15926,6 +15934,7 @@ function _ocultarGraficoComissoes() {
       if (tdStatus) {
         tdStatus.innerHTML = '<span style="background:' + (concluida ? '#166534' : '#92400e') + ';color:' + (concluida ? '#4ade80' : '#fbbf24') + ';padding:2px 8px;border-radius:4px;font-size:11px">' + _escHtmlCom(statusVal) + '</span>';
       }
+      _aplicarFiltroLocalDetalhamentoComissao(String((document.getElementById('_com_filtro_local') || {}).value || ''));
       return true;
     } catch (_) {
       return false;
@@ -16766,6 +16775,7 @@ function _ocultarGraficoComissoes() {
               });
               _mostrarResumoAlteracoes(originalSnapshot, novoSnapshot, function() {
                 try { modal.style.display = 'none'; } catch (_) {}
+                _atualizarLinhaDetalhamentoComissao(ofAtualizada);
                 _dispararOFSalvaComissao({ ofId: ofId });
               });
             } else {
@@ -16966,6 +16976,77 @@ function _ocultarGraficoComissoes() {
     var precoUnit = parseFloat(of && (of.preco != null ? of.preco : (of.valor_unitario != null ? of.valor_unitario : of.vl_unit)) || 0) || 0;
     if (!(precoUnit > 0) && qtdVal > 0 && totalVal > 0) precoUnit = totalVal / qtdVal;
     return Number(precoUnit || 0) || 0;
+  }
+  function _normalizarBuscaLocalDetalhamento(v) {
+    return String(v || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+  function _atualizarContadorDetalhamentoComissao(visiveis, total) {
+    try {
+      var contador = document.getElementById('_com_filtro_local_contador');
+      if (!contador) return;
+      contador.textContent = 'Exibindo ' + String(visiveis || 0) + ' de ' + String(total || 0) + ' OFs';
+    } catch (_) {}
+  }
+  function _aplicarFiltroLocalDetalhamentoComissao(termo) {
+    try {
+      var detalhe = document.getElementById('_com_detalhe');
+      if (!detalhe) return;
+      var termoNorm = _normalizarBuscaLocalDetalhamento(termo);
+      var termoNum = _comBuscaNumeroNorm(termoNorm);
+      var grupos = Array.prototype.slice.call(detalhe.querySelectorAll('details[data-vendedor]'));
+      var totalLinhas = 0;
+      var visiveis = 0;
+      grupos.forEach(function(grupo) {
+        var linhas = Array.prototype.slice.call(grupo.querySelectorAll('tr[data-of-row="1"]'));
+        var visiveisGrupo = 0;
+        linhas.forEach(function(linha) {
+          totalLinhas += 1;
+          var numero = String(linha.getAttribute('data-of-numero') || '').trim();
+          var cliente = String(linha.getAttribute('data-of-cliente') || '').trim();
+          var search = _normalizarBuscaLocalDetalhamento(String(linha.getAttribute('data-search') || ''));
+          var bate = true;
+          if (termoNorm) {
+            var numeroNorm = _comBuscaNumeroNorm(numero);
+            var clienteNorm = _normalizarBuscaLocalDetalhamento(cliente);
+            bate = (!!termoNum && numeroNorm.indexOf(termoNum) >= 0)
+              || (!!termoNorm && clienteNorm.indexOf(termoNorm) >= 0)
+              || (!!termoNorm && search.indexOf(termoNorm) >= 0);
+          }
+          linha.style.display = bate ? '' : 'none';
+          if (bate) {
+            visiveis += 1;
+            visiveisGrupo += 1;
+          }
+        });
+        grupo.style.display = (visiveisGrupo > 0 || !termoNorm) ? '' : 'none';
+      });
+      _atualizarContadorDetalhamentoComissao(visiveis, totalLinhas);
+    } catch (_) {}
+  }
+  function _renderizarFiltroLocalDetalhamentoComissao() {
+    try {
+      var detalhe = document.getElementById('_com_detalhe');
+      if (!detalhe) return;
+      var host = detalhe.querySelector('[data-com-search-host]');
+      if (!host) return;
+      if (document.getElementById('_com_filtro_local_wrap')) return;
+      var wrap = document.createElement('div');
+      wrap.id = '_com_filtro_local_wrap';
+      wrap.style.cssText = 'display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:8px 0 14px';
+      wrap.innerHTML = ''
+        + '<input id="_com_filtro_local" type="text" placeholder="Buscar por OF ou cliente..." '
+        + 'style="flex:1;min-width:260px;padding:10px 14px;background:#111827;border:1px solid #334155;border-radius:6px;color:#f1f5f9;font-size:14px;outline:none" />'
+        + '<div id="_com_filtro_local_contador" style="color:#94a3b8;font-size:12px;white-space:nowrap">Exibindo 0 de 0 OFs</div>';
+      host.appendChild(wrap);
+      var input = document.getElementById('_com_filtro_local');
+      if (input && !input.dataset.boundFiltroLocal) {
+        input.dataset.boundFiltroLocal = '1';
+        input.addEventListener('input', function(e) {
+          _aplicarFiltroLocalDetalhamentoComissao(String(e && e.target && e.target.value || ''));
+        });
+      }
+      _aplicarFiltroLocalDetalhamentoComissao(input && input.value || '');
+    } catch (_) {}
   }
 
   function _normalizarOFComissao(of, vendedorFallback) {
@@ -17702,6 +17783,7 @@ function _ocultarGraficoComissoes() {
       }).join('');
       divDetalhe.innerHTML = htmlDetalhe;
       _renderizarBuscaOFs();
+      _renderizarFiltroLocalDetalhamentoComissao();
       try { _comBindSearchListeners(); } catch (_) {}
       try {
         var v0 = '';
