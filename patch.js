@@ -10156,24 +10156,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var base = document.getElementById('menu-estoque') || document.getElementById('menu-facas') || document.getElementById('menu-cliches') || grupo.querySelector('.nav-item, .menu-item, a, li');
       if (!base) return;
       _ocultarMenuLegado();
-      var legacy = await _fetchLegacyInfo().catch(function() { return {}; });
-      try { window.__estoqueLegacyResumo = legacy; } catch (_) {}
       var pageChapas = _pageFromOnclick(document.getElementById('menu-estoque'), 'estoque');
       var novos = [
         { icon: '🟦', label: 'Estoque de Chapas', tela: pageChapas || 'estoque' },
-        { icon: '🔪', label: 'Estoque de Facas', tela: 'facas1' },
-        { icon: '⚖️', label: 'Toneladas Vendidas', tela: 'toneladas-vendidas' },
-        { icon: '📉', label: 'Consumo de Chapas', tela: 'consumo-chapas' },
-        { icon: '📐', label: 'Gramaturas', tela: 'gramaturas' },
         { icon: '📥', label: 'Entradas', tela: 'entradas-estoque' },
         { icon: '📤', label: 'Saídas', tela: 'saidas-estoque' },
-        { icon: '🏷️', label: 'Lotes', tela: 'lotes-estoque' },
-        { icon: '🧠', label: 'Inteligência do Estoque', tela: 'inteligencia-estoque' },
-        { icon: '📊', label: 'Dashboard do Estoque', tela: 'dashboard-estoque' }
+        { icon: '📋', label: 'Checklist de Recebimento', tela: 'checklist-recebimento' },
+        { icon: '📐', label: 'Gramaturas', tela: 'gramaturas' },
+        { icon: '🔪', label: 'Estoque de Facas', tela: 'facas1' }
       ];
-      if (_temHistoricoLegado(legacy)) {
-        novos.push({ icon: '🗃️', label: 'Estoque Legado', tela: 'estoque-legado' });
-      }
       var last = null;
       novos.forEach(function(item) {
         try {
@@ -10215,9 +10206,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (window.__estoqueMenuBuildDone || window.__estoqueMenuBuildPromise) return;
         try {
           var temEstoque = document.querySelector('#ng-estoques .nav-item[onclick*="estoque"]');
-          var temNovos = document.querySelector('#ng-estoques [data-estoque-v2="dashboard-estoque"]');
+          var temNovos = document.querySelector('#ng-estoques [data-estoque-v2="checklist-recebimento"]');
           if (temEstoque && !temNovos) _adicionarMenuEstoques();
-          temNovos = document.querySelector('#ng-estoques [data-estoque-v2="dashboard-estoque"]');
+          temNovos = document.querySelector('#ng-estoques [data-estoque-v2="checklist-recebimento"]');
           if (temNovos || window.__estoqueMenuBuildDone) {
             try { observer.disconnect(); } catch (_) {}
             try { window._patchMenuEstoquesObs = null; } catch (_) {}
@@ -11379,6 +11370,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (typeof orig !== 'function' || orig._patchClientesEstoquesCustom) return;
     var wrapped = async function(tela) {
       var page = String(tela || '');
+      if (page === 'checklist-recebimento') {
+        hidePatchHost();
+        try { window.__estoqueTelaSimplificada = 'checklist'; } catch (_) {}
+        var rr = orig.call(this, 'estoque');
+        setTimeout(function() {
+          try { if (typeof chpSetTab === 'function') chpSetTab('receb'); } catch (_) {}
+        }, 60);
+        setTimeout(function() {
+          try { if (typeof buscarRecebimentosInsumos === 'function') buscarRecebimentosInsumos(); } catch (_) {}
+        }, 220);
+        runAfterGoEffects('estoque');
+        return rr;
+      }
       if (page === 'estoque-tintas') {
         var hostTintas = getMainPatchHost('estoque-tintas', '🎨 Estoque de Tintas');
         _renderEstoqueTintas(hostTintas);
@@ -11446,6 +11450,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
       hidePatchHost();
       var r = orig.apply(this, arguments);
+      if (page === 'estoque') {
+        try { window.__estoqueTelaSimplificada = 'estoque'; } catch (_) {}
+        setTimeout(function() {
+          try { if (typeof chpSetTab === 'function') chpSetTab('estoque'); } catch (_) {}
+        }, 60);
+      }
       if (page === 'clientes') {
         setTimeout(function() {
           try { _resetFiltrosClientes(); } catch (_) {}
@@ -11479,6 +11489,366 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function init() {
     patchGo();
     setTimeout(patchGo, 1200);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+
+(function patchEstoqueChapasSimplificado() {
+  if (window.__patchEstoqueChapasSimplificadoInstalled) return;
+  window.__patchEstoqueChapasSimplificadoInstalled = true;
+
+  function _normTxtEstoqueSimple(v) {
+    return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  }
+
+  function _getEstoquePageSimple() {
+    return document.getElementById('page-estoque');
+  }
+
+  function _isEstoquePageAtivaSimple() {
+    try {
+      var page = _getEstoquePageSimple();
+      if (!page) return false;
+      if (page.hidden) return false;
+      if (page.style && page.style.display === 'none') return false;
+      return page.offsetParent !== null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function _getModoEstoqueSimple() {
+    return String(window.__estoqueTelaSimplificada || 'estoque') === 'checklist' ? 'checklist' : 'estoque';
+  }
+
+  function _getListaEstoqueSimple() {
+    try {
+      if (Array.isArray(window._estoqueBase) && window._estoqueBase.length) return window._estoqueBase;
+      if (Array.isArray(window.ESTOQUE) && window.ESTOQUE.length) return window.ESTOQUE;
+    } catch (_) {}
+    return [];
+  }
+
+  function _uniqueSorted(values) {
+    var seen = {};
+    var out = [];
+    (values || []).forEach(function(v) {
+      var raw = String(v || '').trim();
+      if (!raw) return;
+      var key = _normTxtEstoqueSimple(raw);
+      if (!key || seen[key]) return;
+      seen[key] = true;
+      out.push(raw);
+    });
+    return out.sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); });
+  }
+
+  function _labelEmpresaSimple(chapa) {
+    var raw = String(chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || chapa.empresa) || '').trim();
+    if (raw) return raw;
+    try {
+      return String(window.estEmpresaFromEmpId && window.estEmpresaFromEmpId(chapa && (chapa.emp_id || chapa.empId || '')) || '').trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function _setInputValue(id, value) {
+    try {
+      var el = document.getElementById(id);
+      if (el) el.value = value;
+    } catch (_) {}
+  }
+
+  function _setInputChecked(id, checked) {
+    try {
+      var el = document.getElementById(id);
+      if (el) el.checked = !!checked;
+    } catch (_) {}
+  }
+
+  function _syncFiltrosOriginaisSimple() {
+    var st = window.__estoqueSimpleState || {};
+    _setInputValue('est-busca', String(st.busca || ''));
+    _setInputValue('est-fil-forn', String(st.fornecedor || ''));
+    _setInputValue('est-fil-emp', String(st.cnpj || ''));
+    _setInputValue('ef-fornecedor', String(st.fornecedor || ''));
+    _setInputValue('ef-empresa', String(st.cnpj || ''));
+    _setInputValue('ef-busca', String(st.busca || ''));
+    _setInputValue('ef-categoria', '');
+    _setInputValue('ef-cliente', '');
+    _setInputValue('ef-nf', '');
+    _setInputValue('ef-nomenclatura', '');
+    _setInputValue('ef-tamanho', '');
+    _setInputChecked('ef-riscadas', false);
+    _setInputChecked('ef-com-vincos', false);
+    _setInputChecked('ef-baixo', false);
+    _setInputChecked('ef-sem', false);
+  }
+
+  function _renderEstoqueSimple() {
+    _syncFiltrosOriginaisSimple();
+    try {
+      if (typeof window.renderEstoque === 'function') window.renderEstoque();
+    } catch (_) {}
+  }
+
+  function _ensureToolbarSimple() {
+    var toolbar = document.querySelector('#page-estoque > .ptoolbar');
+    if (!toolbar) return;
+    Array.prototype.slice.call(toolbar.children || []).forEach(function(child) {
+      if (child && child.id !== 'patch-estoque-simple-toolbar') child.style.display = 'none';
+    });
+    var wrap = document.getElementById('patch-estoque-simple-toolbar');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'patch-estoque-simple-toolbar';
+      wrap.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%';
+      toolbar.appendChild(wrap);
+    }
+    var lista = _getListaEstoqueSimple();
+    var fornecedores = _uniqueSorted(lista.map(function(c) { return c && (c.fornecedor || c.forn || ''); }));
+    var gramaturas = _uniqueSorted(lista.map(function(c) { return c && (c.gramatura || c.espessura_mm || c.grammage || ''); }));
+    var cnpjs = _uniqueSorted(lista.map(_labelEmpresaSimple));
+    var st = window.__estoqueSimpleState || { busca: '', fornecedor: '', gramatura: '', cnpj: '' };
+    wrap.innerHTML = ''
+      + '<input id="est-simple-busca" type="text" placeholder="Buscar..." value="' + String(st.busca || '').replace(/"/g, '&quot;') + '" style="flex:1;min-width:220px;padding:8px 12px;border-radius:8px;background:var(--s2);color:var(--text);border:1px solid var(--border)">'
+      + '<select id="est-simple-fornecedor" style="min-width:180px;padding:8px 12px;border-radius:8px;background:var(--s2);color:var(--text);border:1px solid var(--border)"><option value="">Fornecedor</option>'
+      + fornecedores.map(function(v) { return '<option value="' + String(v).replace(/"/g, '&quot;') + '"' + (String(st.fornecedor || '') === String(v) ? ' selected' : '') + '>' + String(v) + '</option>'; }).join('')
+      + '</select>'
+      + '<select id="est-simple-gramatura" style="min-width:150px;padding:8px 12px;border-radius:8px;background:var(--s2);color:var(--text);border:1px solid var(--border)"><option value="">Gramatura</option>'
+      + gramaturas.map(function(v) { return '<option value="' + String(v).replace(/"/g, '&quot;') + '"' + (String(st.gramatura || '') === String(v) ? ' selected' : '') + '>' + String(v) + '</option>'; }).join('')
+      + '</select>'
+      + '<select id="est-simple-cnpj" style="min-width:170px;padding:8px 12px;border-radius:8px;background:var(--s2);color:var(--text);border:1px solid var(--border)"><option value="">Qual CNPJ</option>'
+      + cnpjs.map(function(v) { return '<option value="' + String(v).replace(/"/g, '&quot;') + '"' + (String(st.cnpj || '') === String(v) ? ' selected' : '') + '>' + String(v) + '</option>'; }).join('')
+      + '</select>'
+      + '<button id="est-simple-importar" class="btn btn-ghost btn-sm" type="button">Importar Excel</button>'
+      + '<button id="est-simple-nova" class="btn btn-accent btn-sm" type="button">Nova Chapa</button>'
+      + '<button id="est-simple-limpar" class="btn btn-ghost btn-sm" type="button">Limpar</button>';
+
+    function syncAndRender() {
+      var next = {
+        busca: String(document.getElementById('est-simple-busca') && document.getElementById('est-simple-busca').value || ''),
+        fornecedor: String(document.getElementById('est-simple-fornecedor') && document.getElementById('est-simple-fornecedor').value || ''),
+        gramatura: String(document.getElementById('est-simple-gramatura') && document.getElementById('est-simple-gramatura').value || ''),
+        cnpj: String(document.getElementById('est-simple-cnpj') && document.getElementById('est-simple-cnpj').value || '')
+      };
+      window.__estoqueSimpleState = next;
+      _renderEstoqueSimple();
+      setTimeout(_aplicarSimplificacaoTabelaSimple, 20);
+    }
+
+    var buscaEl = document.getElementById('est-simple-busca');
+    var fornEl = document.getElementById('est-simple-fornecedor');
+    var gramEl = document.getElementById('est-simple-gramatura');
+    var cnpjEl = document.getElementById('est-simple-cnpj');
+    if (buscaEl) buscaEl.oninput = syncAndRender;
+    if (fornEl) fornEl.onchange = syncAndRender;
+    if (gramEl) gramEl.onchange = syncAndRender;
+    if (cnpjEl) cnpjEl.onchange = syncAndRender;
+    var importEl = document.getElementById('est-simple-importar');
+    if (importEl) importEl.onclick = function() { try { if (typeof window.triggerImportAtualizarEstoqueChapas === 'function') window.triggerImportAtualizarEstoqueChapas(); } catch (_) {} };
+    var novaEl = document.getElementById('est-simple-nova');
+    if (novaEl) novaEl.onclick = function() { try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {} };
+    var limparEl = document.getElementById('est-simple-limpar');
+    if (limparEl) limparEl.onclick = function() {
+      window.__estoqueSimpleState = { busca: '', fornecedor: '', gramatura: '', cnpj: '' };
+      _renderEstoqueSimple();
+      setTimeout(_aplicarSimplificacaoTabelaSimple, 20);
+    };
+  }
+
+  function _marcarBotaoAcaoSimple(btn, label, danger) {
+    if (!btn) return;
+    btn.textContent = label;
+    btn.style.display = '';
+    btn.style.padding = '4px 10px';
+    btn.style.borderRadius = '6px';
+    btn.style.border = '1px solid var(--border)';
+    btn.style.background = 'var(--s2)';
+    btn.style.cursor = 'pointer';
+    btn.style.fontSize = '.72rem';
+    btn.style.color = danger ? 'var(--red)' : 'var(--text)';
+    if (!btn.getAttribute('data-stop-row')) {
+      btn.setAttribute('data-stop-row', '1');
+      btn.addEventListener('click', function(ev) {
+        try { ev.stopPropagation(); } catch (_) {}
+      });
+    }
+  }
+
+  function _reordenarTabelaSimple() {
+    var tabela = document.getElementById('tabelaChapasEstoque');
+    if (!tabela) return;
+    Array.prototype.slice.call(tabela.querySelectorAll('th[data-patch-est-col], td[data-patch-est-cell]')).forEach(function(el) {
+      try { el.remove(); } catch (_) {}
+    });
+    var ordem = [
+      { header: 'FORNECEDOR', label: 'Fornecedor', keys: ['fornecedor'] },
+      { header: 'GRAMATURA', label: 'Gramatura', keys: ['gramatura'] },
+      { header: 'NOMENCLATURA', label: 'Nomenclatura', keys: ['nomenclatura'] },
+      { header: 'TAMANHO', label: 'Tamanho', keys: ['tamanho'] },
+      { header: 'NOME', label: 'Nome/Uso', keys: ['nome/uso', 'nome uso'] },
+      { header: 'QUAL CNPJ', label: 'Empresa/CNPJ', keys: ['empresa/cnpj', 'empresa cnpj'] },
+      { header: 'NF', label: 'NF', keys: ['nf'] },
+      { header: 'QUANTIDADE', label: 'Qtd', keys: ['qtd'] },
+      { header: 'R$', label: 'R$/un', keys: ['r$/un', 'r$/unidade'] },
+      { header: 'TOTAL', label: 'Total R$', keys: ['total', 'total r$'] },
+      { header: 'AÇÕES', label: 'Ações', keys: ['acoes', 'ações'] }
+    ];
+    var headRow = tabela.querySelector('thead tr');
+    if (headRow) {
+      var ths = Array.prototype.slice.call(headRow.children || []);
+      var map = {};
+      ths.forEach(function(th) {
+        map[_normTxtEstoqueSimple(th.textContent || '')] = th;
+      });
+      headRow.innerHTML = '';
+      ordem.forEach(function(item) {
+        var th = null;
+        item.keys.some(function(key) {
+          th = map[_normTxtEstoqueSimple(key)];
+          return !!th;
+        });
+        if (!th) return;
+        th.textContent = item.header;
+        th.style.display = '';
+        if (item.header === 'QUANTIDADE' || item.header === 'R$' || item.header === 'TOTAL') th.style.textAlign = 'right';
+        if (item.header === 'GRAMATURA') th.style.textAlign = 'center';
+        headRow.appendChild(th);
+      });
+    }
+    Array.prototype.slice.call(document.querySelectorAll('#est-table-body tr[data-chapa-id]')).forEach(function(tr) {
+      var tds = Array.prototype.slice.call(tr.children || []);
+      var map = {};
+      tds.forEach(function(td) {
+        map[_normTxtEstoqueSimple(td.getAttribute('data-label') || '')] = td;
+      });
+      tr.innerHTML = '';
+      ordem.forEach(function(item) {
+        var td = null;
+        item.keys.some(function(key) {
+          td = map[_normTxtEstoqueSimple(key)];
+          return !!td;
+        });
+        if (!td) return;
+        if (_normTxtEstoqueSimple(item.label) === 'acoes') {
+          var editBtn = td.querySelector('[data-acao-chapa="editar"]');
+          var delBtn = td.querySelector('[data-acao-chapa="excluir"]');
+          Array.prototype.slice.call(td.querySelectorAll('button')).forEach(function(btn) {
+            var acao = String(btn.getAttribute('data-acao-chapa') || '').trim();
+            if (acao !== 'editar' && acao !== 'excluir') btn.style.display = 'none';
+          });
+          _marcarBotaoAcaoSimple(editBtn, 'Editar', false);
+          _marcarBotaoAcaoSimple(delBtn, 'Excluir', true);
+          var wrap = td.querySelector('div');
+          if (wrap) {
+            wrap.style.display = 'flex';
+            wrap.style.gap = '6px';
+            wrap.style.justifyContent = 'center';
+            wrap.style.flexWrap = 'wrap';
+          }
+        }
+        tr.appendChild(td);
+      });
+    });
+    var foot = document.getElementById('est-table-foot');
+    if (foot) foot.innerHTML = '';
+  }
+
+  function _aplicarFiltroGramaturaSimple() {
+    var state = window.__estoqueSimpleState || {};
+    var gramatura = _normTxtEstoqueSimple(state.gramatura || '');
+    Array.prototype.slice.call(document.querySelectorAll('#est-table-body tr[data-chapa-id]')).forEach(function(tr) {
+      var show = true;
+      if (gramatura) {
+        var cell = tr.querySelector('td[data-label="Gramatura"]');
+        var txt = _normTxtEstoqueSimple(cell && cell.textContent || '');
+        show = txt.indexOf(gramatura) >= 0;
+      }
+      tr.style.display = show ? '' : 'none';
+    });
+  }
+
+  function _ocultarExtrasEstoqueSimple() {
+    try {
+      var alertas = document.getElementById('est-alertas');
+      if (alertas) {
+        alertas.innerHTML = '';
+        alertas.style.display = 'none';
+      }
+    } catch (_) {}
+    try {
+      var resumo = document.getElementById('est-summary');
+      if (resumo) resumo.style.display = 'none';
+    } catch (_) {}
+    try {
+      var painel = document.getElementById('patch-estoque-main-panel');
+      if (painel) painel.remove();
+    } catch (_) {}
+    try {
+      var tabs = document.getElementById('est-cat-tabs');
+      if (tabs) tabs.style.display = 'none';
+    } catch (_) {}
+    try {
+      var barra = document.getElementById('estoque-filtros-bar');
+      if (barra) barra.style.display = 'none';
+    } catch (_) {}
+    try {
+      var ativos = document.getElementById('est-filtros-ativos');
+      if (ativos) ativos.style.display = 'none';
+    } catch (_) {}
+    try {
+      var btnEst = document.getElementById('chp-tab-btn-estoque');
+      if (btnEst) btnEst.style.display = 'none';
+      var btnRec = document.getElementById('chp-tab-btn-receb');
+      if (btnRec) btnRec.style.display = 'none';
+    } catch (_) {}
+    try {
+      var hist = document.getElementById('est-hist');
+      if (hist && hist.closest('.sbox')) hist.closest('.sbox').style.display = 'none';
+    } catch (_) {}
+    try {
+      var desp = document.getElementById('desp-lista');
+      if (desp && desp.closest('.sbox')) desp.closest('.sbox').style.display = 'none';
+    } catch (_) {}
+  }
+
+  function _aplicarModoEstoqueSimple() {
+    var toolbar = document.querySelector('#page-estoque > .ptoolbar');
+    var modo = _getModoEstoqueSimple();
+    if (modo === 'checklist') {
+      try { if (typeof window.chpSetTab === 'function') window.chpSetTab('receb'); } catch (_) {}
+      if (toolbar) toolbar.style.display = 'none';
+      return;
+    }
+    try { if (typeof window.chpSetTab === 'function') window.chpSetTab('estoque'); } catch (_) {}
+    if (toolbar) toolbar.style.display = '';
+    _ensureToolbarSimple();
+  }
+
+  function _aplicarSimplificacaoTabelaSimple() {
+    if (_getModoEstoqueSimple() !== 'estoque') return;
+    _reordenarTabelaSimple();
+    _aplicarFiltroGramaturaSimple();
+  }
+
+  function _tickEstoqueSimple() {
+    if (!_isEstoquePageAtivaSimple()) return;
+    _ocultarExtrasEstoqueSimple();
+    _aplicarModoEstoqueSimple();
+    _aplicarSimplificacaoTabelaSimple();
+  }
+
+  function init() {
+    try {
+      if (!window.__estoqueSimpleState) window.__estoqueSimpleState = { busca: '', fornecedor: '', gramatura: '', cnpj: '' };
+    } catch (_) {}
+    setTimeout(_tickEstoqueSimple, 300);
+    setTimeout(_tickEstoqueSimple, 1200);
+    setInterval(_tickEstoqueSimple, 900);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
