@@ -9715,42 +9715,132 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 })();
 
 (function patchMenuEstoques() {
-  function _adicionarMenuEstoques() {
+  function _authHeaders() {
+    var token = '';
+    try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
+    return token ? { Authorization: 'Bearer ' + token } : {};
+  }
+
+  function _pageFromOnclick(el, fallback) {
+    try {
+      var raw = String(el && el.getAttribute && el.getAttribute('onclick') || '').trim();
+      var m = raw.match(/go\(['"]([^'"]+)['"]\)/);
+      if (m && m[1]) return String(m[1]).trim();
+    } catch (_) {}
+    return String(fallback || '').trim();
+  }
+
+  function _setMenuVisual(el, icon, label, pageId) {
+    try {
+      el.id = 'menu-' + String(pageId || '').replace(/[^\w-]/g, '-');
+      el.setAttribute('data-estoque-v2', '1');
+      el.setAttribute('onclick', "go('" + String(pageId || '').replace(/'/g, "\\'") + "');closeNavGroupsExcept('ng-estoques')");
+      var ico = el.querySelector('span.ico') || el.querySelector('.ico') || el.querySelector('span');
+      if (ico) ico.textContent = icon;
+      var txt = el.childNodes;
+      if (txt && txt.length) {
+        for (var i = 0; i < txt.length; i += 1) {
+          var n = txt[i];
+          if (n && n.nodeType === 3) { n.textContent = label; break; }
+        }
+      }
+      if (!el.textContent || el.textContent.trim().length < 3) el.textContent = label;
+      el.style.display = '';
+    } catch (_) {}
+  }
+
+  function _ocultarMenuLegado() {
+    ['menu-estoque', 'menu-cliches', 'menu-facas', 'menu-estoque-tintas', 'menu-estoque-materiais', 'menu-estoque-dashboard'].forEach(function(id) {
+      try {
+        var el = document.getElementById(id);
+        if (el && !el.getAttribute('data-estoque-v2')) el.style.display = 'none';
+      } catch (_) {}
+    });
+    ['gramaturas', 'toneladas'].forEach(function(key) {
+      try {
+        document.querySelectorAll('[data-patch-menu="' + key + '"]').forEach(function(el) { el.style.display = 'none'; });
+      } catch (_) {}
+    });
+  }
+
+  async function _fetchLegacyInfo() {
+    var headers = _authHeaders();
+    var jobs = [
+      { key: 'tintas', label: 'Estoque de Tintas', page: 'estoque-tintas', icon: '🎨', url: '/api/estoque_tintas?limit=1' },
+      { key: 'materiais', label: 'Estoque de Materiais', page: 'estoque-materiais', icon: '🔧', url: '/api/estoque_materiais?limit=1' },
+      { key: 'cliches', label: 'Estoque de Clichês', page: 'cliches', icon: '🖼️', url: '/api/cliches?limit=1' }
+    ];
+    var out = {};
+    for (var i = 0; i < jobs.length; i += 1) {
+      var job = jobs[i];
+      try {
+        var resp = await fetch(job.url, { headers: headers });
+        var json = await resp.json().catch(function() { return null; });
+        var lista = Array.isArray(json) ? json : ((json && (json.data || json.itens || json.cliches || json.tintas || json.materiais)) || []);
+        var hasData = Array.isArray(lista) && lista.length > 0;
+        out[job.key] = Object.assign({}, job, { hasData: hasData, available: true, checked: true });
+      } catch (_) {
+        out[job.key] = Object.assign({}, job, { hasData: true, available: false, checked: false });
+      }
+    }
+    return out;
+  }
+
+  function _temHistoricoLegado(resumo) {
+    resumo = resumo || {};
+    return ['tintas', 'materiais', 'cliches'].some(function(k) {
+      return !!(resumo[k] && resumo[k].hasData);
+    });
+  }
+
+  async function _adicionarMenuEstoques() {
     try {
       var grupo = document.querySelector('#ng-estoques .nav-group-items');
       if (!grupo) return;
-
-      var ultimoEstoque = document.getElementById('menu-cliches') || document.getElementById('menu-facas') || document.getElementById('menu-estoque');
-      if (!ultimoEstoque) return;
-
+      var base = document.getElementById('menu-estoque') || document.getElementById('menu-facas') || document.getElementById('menu-cliches') || grupo.querySelector('.nav-item, .menu-item, a, li');
+      if (!base) return;
+      _ocultarMenuLegado();
+      var legacy = await _fetchLegacyInfo().catch(function() { return {}; });
+      try { window.__estoqueLegacyResumo = legacy; } catch (_) {}
+      var pageChapas = _pageFromOnclick(document.getElementById('menu-estoque'), 'estoque');
       var novos = [
-        { icon: '🎨', label: 'Estoque de Tintas', tela: 'estoque-tintas' },
-        { icon: '🔧', label: 'Estoque de Materiais', tela: 'estoque-materiais' },
-        { icon: '📊', label: 'Dashboard Estoques', tela: 'estoque-dashboard' },
+        { icon: '🟦', label: 'Estoque de Chapas', tela: pageChapas || 'estoque' },
+        { icon: '🔪', label: 'Estoque de Facas', tela: 'facas1' },
+        { icon: '⚖️', label: 'Toneladas Vendidas', tela: 'toneladas-vendidas' },
+        { icon: '📉', label: 'Consumo de Chapas', tela: 'consumo-chapas' },
+        { icon: '📐', label: 'Gramaturas', tela: 'gramaturas' },
+        { icon: '📥', label: 'Entradas', tela: 'entradas-estoque' },
+        { icon: '📤', label: 'Saídas', tela: 'saidas-estoque' },
+        { icon: '🏷️', label: 'Lotes', tela: 'lotes-estoque' },
+        { icon: '🧠', label: 'Inteligência do Estoque', tela: 'inteligencia-estoque' },
+        { icon: '📊', label: 'Dashboard do Estoque', tela: 'dashboard-estoque' }
       ];
-
+      if (_temHistoricoLegado(legacy)) {
+        novos.push({ icon: '🗃️', label: 'Estoque Legado', tela: 'estoque-legado' });
+      }
+      var last = null;
       novos.forEach(function(item) {
         try {
-          if (document.querySelector('#ng-estoques .nav-item[onclick*="' + item.tela + '"]')) return;
-          var el = ultimoEstoque.cloneNode(true);
-          el.id = 'menu-' + item.tela;
-          el.setAttribute('onclick', "go('" + item.tela + "');closeNavGroupsExcept('ng-estoques')");
-          var ico = el.querySelector('span.ico') || el.querySelector('.ico') || el.querySelector('span');
-          if (ico) ico.textContent = item.icon;
-          var txt = el.childNodes;
-          if (txt && txt.length) {
-            for (var i = 0; i < txt.length; i++) {
-              var n = txt[i];
-              if (n && n.nodeType === 3) { n.textContent = item.label; break; }
-            }
+          var el = document.querySelector('#ng-estoques [data-estoque-v2="' + item.tela + '"]');
+          if (!el) {
+            el = base.cloneNode(true);
+            grupo.appendChild(el);
           }
-          if (!el.textContent || el.textContent.trim().length < 3) el.textContent = item.label;
-          grupo.insertBefore(el, ultimoEstoque.nextSibling);
-          ultimoEstoque = el;
+          el.setAttribute('data-estoque-v2', item.tela);
+          _setMenuVisual(el, item.icon, item.label, item.tela);
+          if (last && last.nextSibling !== el) grupo.insertBefore(el, last.nextSibling);
+          else if (!last) grupo.insertBefore(el, grupo.firstChild);
+          last = el;
         } catch (_) {}
       });
-
-      console.log('[PATCH] itens de estoque adicionados ao menu');
+      try {
+        grupo.querySelectorAll('[data-estoque-v2]').forEach(function(el) {
+          var pageId = String(el.getAttribute('data-estoque-v2') || '');
+          var keep = novos.some(function(item) { return item.tela === pageId; });
+          if (!keep) el.remove();
+        });
+      } catch (_) {}
+      console.log('[PATCH] menu de estoque reorganizado');
     } catch (_) {}
   }
 
@@ -9761,9 +9851,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (window._pausarObservers) return;
         try {
           var temEstoque = document.querySelector('#ng-estoques .nav-item[onclick*="estoque"]');
-          var temNovos = document.querySelector('#ng-estoques .nav-item[onclick*="estoque-tintas"]');
+          var temNovos = document.querySelector('#ng-estoques [data-estoque-v2="dashboard-estoque"]');
           if (temEstoque && !temNovos) _adicionarMenuEstoques();
-          temNovos = document.querySelector('#ng-estoques .nav-item[onclick*="estoque-tintas"]');
+          temNovos = document.querySelector('#ng-estoques [data-estoque-v2="dashboard-estoque"]');
           if (temNovos) {
             try { observer.disconnect(); } catch (_) {}
             try { window._patchMenuEstoquesObs = null; } catch (_) {}
@@ -9885,6 +9975,92 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var token = '';
     try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
     return token;
+  }
+
+  async function _apiJsonAuth(url) {
+    var resp = await fetch(url, { headers: authHeaders() });
+    var json = await resp.json().catch(function() { return null; });
+    if (!resp.ok) throw new Error(String(json && (json.error || json.message) || ('Falha em ' + url)));
+    return json;
+  }
+
+  async function _carregarResumoLegadoEstoque() {
+    if (window.__estoqueLegacyResumo && typeof window.__estoqueLegacyResumo === 'object') return window.__estoqueLegacyResumo;
+    var defs = [
+      { key: 'tintas', label: 'Estoque de Tintas', page: 'estoque-tintas', icon: '🎨', url: '/api/estoque_tintas?limit=5' },
+      { key: 'materiais', label: 'Estoque de Materiais', page: 'estoque-materiais', icon: '🔧', url: '/api/estoque_materiais?limit=5' },
+      { key: 'cliches', label: 'Estoque de Clichês', page: 'cliches', icon: '🖼️', url: '/api/cliches?limit=5' }
+    ];
+    var out = {};
+    for (var i = 0; i < defs.length; i += 1) {
+      var def = defs[i];
+      try {
+        var json = await _apiJsonAuth(def.url);
+        var lista = Array.isArray(json) ? json : ((json && (json.data || json.itens || json.cliches || json.tintas || json.materiais)) || []);
+        lista = Array.isArray(lista) ? lista : [];
+        out[def.key] = Object.assign({}, def, { hasData: lista.length > 0, total: lista.length, checked: true, available: true });
+      } catch (_) {
+        out[def.key] = Object.assign({}, def, { hasData: true, total: null, checked: false, available: false });
+      }
+    }
+    try { window.__estoqueLegacyResumo = out; } catch (_) {}
+    return out;
+  }
+
+  function _renderPaginaEstoquePlaceholder(host, cfg) {
+    cfg = cfg || {};
+    if (!host) return;
+    host.innerHTML =
+      '<div style="display:grid;gap:16px">' +
+        '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px">' +
+          '<div style="font-size:22px;font-weight:900;color:var(--text)">' + esc(cfg.titulo || 'Estoque') + '</div>' +
+          '<div style="margin-top:8px;color:var(--text2);font-size:13px;line-height:1.6">' + esc(cfg.descricao || 'Tela preparada para a próxima etapa incremental.') + '</div>' +
+        '</div>' +
+        '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px">' +
+          '<div style="font-size:14px;font-weight:900;color:var(--text);margin-bottom:8px">Próxima etapa</div>' +
+          '<div style="color:var(--text2);font-size:13px;line-height:1.6">' + esc(cfg.proximo || 'A estrutura do menu já está pronta; a funcionalidade completa entra nas próximas fases do módulo.') + '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  async function _renderEstoqueLegado(host) {
+    if (!host) return;
+    host.innerHTML = '<div style="padding:18px;color:var(--text2)">Carregando histórico legado...</div>';
+    try {
+      var resumo = await _carregarResumoLegadoEstoque();
+      var itens = ['tintas', 'materiais', 'cliches'].map(function(k) { return resumo && resumo[k]; }).filter(Boolean);
+      var historicos = itens.filter(function(item) { return item.hasData; });
+      if (!historicos.length) {
+        host.innerHTML = '<div style="padding:18px;background:var(--card);border:1px solid var(--border);border-radius:14px;color:var(--text2)">Nenhum histórico legado detectado no momento.</div>';
+        return;
+      }
+      host.innerHTML =
+        '<div style="display:grid;gap:16px">' +
+          '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px">' +
+            '<div style="font-size:22px;font-weight:900;color:var(--text)">🗃️ Estoque Legado</div>' +
+            '<div style="margin-top:8px;color:var(--text2);font-size:13px;line-height:1.6">Os módulos antigos foram ocultados do menu principal, mas o histórico continua acessível aqui para evitar perda de dados.</div>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">' +
+            historicos.map(function(item) {
+              var status = item.checked ? ('Histórico detectado' + (item.total != null ? (' · ' + String(item.total) + '+ registros amostrados') : '')) : 'Checagem indisponível · acesso preservado';
+              return '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px">' +
+                '<div style="font-size:18px;font-weight:900;color:var(--text)">' + esc(item.icon + ' ' + item.label) + '</div>' +
+                '<div style="margin-top:8px;color:var(--text2);font-size:13px;line-height:1.5">' + esc(status) + '</div>' +
+                '<div style="margin-top:14px"><button class="pcp-btn" type="button" data-open-legado="' + esc(item.page) + '">Abrir</button></div>' +
+              '</div>';
+            }).join('') +
+          '</div>' +
+        '</div>';
+      try {
+        host.querySelectorAll('[data-open-legado]').forEach(function(btn) {
+          btn.onclick = function() {
+            try { go(String(btn.getAttribute('data-open-legado') || '')); } catch (_) {}
+          };
+        });
+      } catch (_) {}
+    } catch (e) {
+      host.innerHTML = '<div style="padding:18px;background:var(--card);border:1px solid var(--border);border-radius:14px;color:#fca5a5">Falha ao carregar histórico legado: ' + esc(e && e.message || e) + '</div>';
+    }
   }
 
   function _fmtDateISO(v) {
@@ -10850,6 +11026,56 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (page === 'estoque-dashboard') {
         var hostDash = getMainPatchHost('estoque-dashboard', '📊 Dashboard Estoques');
         _renderDashboardEstoques(hostDash);
+        return;
+      }
+      if (page === 'dashboard-estoque') {
+        var hostDash2 = getMainPatchHost('dashboard-estoque', '📊 Dashboard do Estoque');
+        _renderDashboardEstoques(hostDash2);
+        return;
+      }
+      if (page === 'estoque-legado') {
+        var hostLegado = getMainPatchHost('estoque-legado', '🗃️ Estoque Legado');
+        _renderEstoqueLegado(hostLegado);
+        return;
+      }
+      if (page === 'consumo-chapas') {
+        _renderPaginaEstoquePlaceholder(getMainPatchHost('consumo-chapas', '📉 Consumo de Chapas'), {
+          titulo: '📉 Consumo de Chapas',
+          descricao: 'A entrada do menu já está organizada para receber os gráficos segmentados por cliente, produto, máquina, gramatura e fornecedor.',
+          proximo: 'Na próxima etapa entram os filtros por período, os gráficos e a leitura consolidada das OFs concluídas com gramatura.'
+        });
+        return;
+      }
+      if (page === 'entradas-estoque') {
+        _renderPaginaEstoquePlaceholder(getMainPatchHost('entradas-estoque', '📥 Entradas'), {
+          titulo: '📥 Entradas',
+          descricao: 'A seção de Entradas foi reservada no menu sem alterar o estoque atual de chapas.',
+          proximo: 'A próxima fase adiciona o histórico por fornecedor, NF, usuário, toneladas, valor, empresa e vínculo com lotes.'
+        });
+        return;
+      }
+      if (page === 'saidas-estoque') {
+        _renderPaginaEstoquePlaceholder(getMainPatchHost('saidas-estoque', '📤 Saídas'), {
+          titulo: '📤 Saídas',
+          descricao: 'A seção de Saídas já está no agrupamento novo do estoque.',
+          proximo: 'A próxima fase conecta a listagem pesquisável por OF, cliente, produto, máquina, peso e toneladas.'
+        });
+        return;
+      }
+      if (page === 'lotes-estoque') {
+        _renderPaginaEstoquePlaceholder(getMainPatchHost('lotes-estoque', '🏷️ Lotes'), {
+          titulo: '🏷️ Lotes',
+          descricao: 'O submenu de Lotes já foi preparado no menu para a expansão do módulo.',
+          proximo: 'A próxima fase adiciona quantidade inicial/restante, encerramento automático, localização e histórico permanente.'
+        });
+        return;
+      }
+      if (page === 'inteligencia-estoque') {
+        _renderPaginaEstoquePlaceholder(getMainPatchHost('inteligencia-estoque', '🧠 Inteligência do Estoque'), {
+          titulo: '🧠 Inteligência do Estoque',
+          descricao: 'O atalho já existe para a futura camada analítica e preditiva do estoque.',
+          proximo: 'A próxima fase calcula risco de ruptura, dias restantes, necessidade de compra, fornecedor mais barato e alertas automáticos.'
+        });
         return;
       }
       hidePatchHost();
