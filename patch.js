@@ -2872,11 +2872,46 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         return Array.isArray(j) ? j : ((j && (j.data || j.fornecedores)) || []);
       } catch (_) { return []; }
     }
-    async function loadGramaturas() {
+    function gramTxt(v) {
+      var s = String(v == null ? '' : v).trim();
+      return s || '';
+    }
+    function gramAtiva(item) {
+      return !(item && (item.ativo === false || String(item.status || '').toLowerCase() === 'inativo'));
+    }
+    function normalizeGramatura(item) {
+      var src = item || {};
+      var codigo = gramTxt(src.codigo);
+      var descricao = gramTxt(src.descricao || src.nome);
+      var gramaturaNum = Number(src.gramatura || 0) || 0;
+      var nome = gramTxt(src.nome || descricao || codigo || (gramaturaNum > 0 ? (String(gramaturaNum).replace('.', ',') + ' g/m²') : 'Gramatura'));
+      return Object.assign({}, src, {
+        codigo: codigo,
+        descricao: descricao || nome,
+        nome: nome,
+        gramatura: gramaturaNum,
+        tipo_papel: gramTxt(src.tipo_papel),
+        faixa_utilizacao: gramTxt(src.faixa_utilizacao),
+        observacoes: gramTxt(src.observacoes),
+        fornecedor_nome: gramTxt(src.fornecedor_nome),
+        ativo: gramAtiva(src)
+      });
+    }
+    function gramaturaLabel(item, curto) {
+      var g = normalizeGramatura(item);
+      var base = g.descricao || g.nome || g.codigo || 'Gramatura';
+      if (!curto && g.codigo && base.toLowerCase().indexOf(g.codigo.toLowerCase()) !== 0) base = g.codigo + ' · ' + base;
+      if (g.gramatura > 0) base += ' · ' + num(g.gramatura || 0, 0) + ' g/m²';
+      return base;
+    }
+    async function loadGramaturas(opts) {
+      opts = opts || {};
       try {
         await apiJson('/api/gramaturas/init', { method: 'POST' }).catch(function() { return null; });
-        var j = await apiJson('/api/gramaturas');
-        return Array.isArray(j) ? j : ((j && (j.data || j.gramaturas)) || []);
+        var url = '/api/gramaturas' + (opts.incluirInativas ? '?incluir_inativas=true' : '');
+        var j = await apiJson(url);
+        var lista = Array.isArray(j) ? j : ((j && (j.data || j.gramaturas)) || []);
+        return (Array.isArray(lista) ? lista : []).map(normalizeGramatura);
       } catch (_) { return []; }
     }
     async function openGramaturaModal(item, done) {
@@ -2889,17 +2924,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       wrap.id = 'pep-gram-modal';
       wrap.className = 'pep-modal';
       wrap.innerHTML = ''
-        + '<div class="pep-modal-box">'
+        + '<div class="pep-modal-box" style="width:min(860px,96vw)">'
         + '  <div class="pep-head" style="margin-bottom:12px"><div><div class="pep-title" style="font-size:20px">' + (it.id ? 'Editar Gramatura' : 'Nova Gramatura') + '</div></div></div>'
         + '  <div class="pep-grid">'
-        + '    <div><div class="pep-sub">Nome</div><input class="pep-input" id="pg-nome" value="' + esc(it.nome || '') + '" placeholder="Kraft 150"></div>'
+        + '    <div><div class="pep-sub">Código</div><input class="pep-input" id="pg-codigo" value="' + esc(it.codigo || '') + '" placeholder="GRA-250"></div>'
+        + '    <div><div class="pep-sub">Descrição</div><input class="pep-input" id="pg-descricao" value="' + esc(it.descricao || it.nome || '') + '" placeholder="Kraft 250"></div>'
         + '    <div><div class="pep-sub">Gramatura (g/m²)</div><input class="pep-input" id="pg-gram" type="number" step="0.01" value="' + esc(it.gramatura || '') + '"></div>'
         + '    <div><div class="pep-sub">Valor Unitário (R$/m²)</div><input class="pep-input" id="pg-vunit" type="number" step="0.01" value="' + esc(it.valor_unitario || '') + '"></div>'
+        + '    <div><div class="pep-sub">Tipo de Papel</div><input class="pep-input" id="pg-tipo" value="' + esc(it.tipo_papel || '') + '" placeholder="Duplex, Kraft, Triplex..."></div>'
+        + '    <div><div class="pep-sub">Faixa de Utilização</div><input class="pep-input" id="pg-faixa" value="' + esc(it.faixa_utilizacao || '') + '" placeholder="Micro, linha premium, exportação..."></div>'
         + '    <div><div class="pep-sub">Fornecedor</div>'
         + (fornecedores.length
             ? '<select class="pep-select" id="pg-forn"><option value="">Selecionar fornecedor...</option>' + fornecedores.map(function(f) { var id = String(f && f.id || ''); var nm = String(f && f.nome || ''); return '<option value="' + esc(id) + '"' + (String(it.fornecedor_id || '') === id ? ' selected' : '') + '>' + esc(nm) + '</option>'; }).join('') + '</select>'
             : '<input class="pep-input" id="pg-forn-livre" value="' + esc(it.fornecedor_nome || '') + '" placeholder="Fornecedor">')
         + '    </div>'
+        + '    <div><div class="pep-sub">Status</div><select class="pep-select" id="pg-status"><option value="ativo"' + (gramAtiva(it) ? ' selected' : '') + '>Ativo</option><option value="inativo"' + (gramAtiva(it) ? '' : ' selected') + '>Inativo</option></select></div>'
+        + '    <div style="grid-column:1/-1"><div class="pep-sub">Observações</div><textarea class="pep-input" id="pg-obs" style="width:100%;min-height:92px;resize:vertical" placeholder="Observações de uso, restrições, acabamento, etc.">' + esc(it.observacoes || '') + '</textarea></div>'
         + '  </div>'
         + '  <div class="pep-actions"><button class="pep-btn" id="pg-cancel">Cancelar</button><button class="pep-btn primary" id="pg-save">Salvar</button></div>'
         + '</div>';
@@ -2908,10 +2948,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       document.getElementById('pg-cancel').onclick = function() { wrap.remove(); };
       document.getElementById('pg-save').onclick = async function() {
         try {
+          var descricao = String(document.getElementById('pg-descricao').value || '').trim();
+          var codigo = String(document.getElementById('pg-codigo').value || '').trim();
+          var gramaturaNum = Number(document.getElementById('pg-gram').value || 0) || 0;
+          if (!descricao) throw new Error('Informe a descrição da gramatura.');
+          if (!(gramaturaNum > 0)) throw new Error('Informe a gramatura em g/m².');
           var body = {
-            nome: String(document.getElementById('pg-nome').value || '').trim(),
-            gramatura: Number(document.getElementById('pg-gram').value || 0) || 0,
-            valor_unitario: Number(document.getElementById('pg-vunit').value || 0) || 0
+            nome: descricao || codigo || ('Gramatura ' + String(gramaturaNum || 0)),
+            codigo: codigo || null,
+            descricao: descricao,
+            gramatura: gramaturaNum,
+            valor_unitario: Number(document.getElementById('pg-vunit').value || 0) || 0,
+            tipo_papel: String(document.getElementById('pg-tipo').value || '').trim() || null,
+            faixa_utilizacao: String(document.getElementById('pg-faixa').value || '').trim() || null,
+            observacoes: String(document.getElementById('pg-obs').value || '').trim() || null,
+            ativo: String(document.getElementById('pg-status').value || 'ativo') !== 'inativo'
           };
           var sel = document.getElementById('pg-forn');
           var livre = document.getElementById('pg-forn-livre');
@@ -2937,14 +2988,23 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       ensureStyles();
       var page = ensurePage('gramaturas');
       showOnlyPage('gramaturas');
-      var lista = await loadGramaturas();
+      var lista = await loadGramaturas({ incluirInativas: true });
+      var totalAtivas = lista.filter(function(g) { return gramAtiva(g); }).length;
+      var totalInativas = Math.max(0, lista.length - totalAtivas);
       page.innerHTML = ''
         + '<div class="pep-wrap">'
-        + '  <div class="pep-head"><div><div class="pep-title">📐 Gramaturas</div><div class="pep-sub">Cadastro de gramaturas e custo por m²</div></div><button class="pep-btn primary" id="gram-nova">+ Nova Gramatura</button></div>'
-        + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Nome</th><th>Gramatura (g/m²)</th><th>Valor Unitário (R$/m²)</th><th>Fornecedor</th><th>Ações</th></tr></thead><tbody>'
+        + '  <div class="pep-head"><div><div class="pep-title">📐 Gramaturas</div><div class="pep-sub">Cadastro mestre de gramaturas usado na conclusão de OF e nas análises de estoque.</div></div><button class="pep-btn primary" id="gram-nova">+ Nova Gramatura</button></div>'
+        + '  <div class="pep-cards">'
+        + '    <div class="pep-card"><div class="pep-card-label">Total Cadastrado</div><div class="pep-card-val">' + num(lista.length || 0, 0) + '</div><div class="pep-card-sub">Base completa da empresa</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Ativas</div><div class="pep-card-val">' + num(totalAtivas || 0, 0) + '</div><div class="pep-card-sub">Disponíveis para uso em OF</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Inativas</div><div class="pep-card-val">' + num(totalInativas || 0, 0) + '</div><div class="pep-card-sub">Histórico preservado sem exclusão</div></div>'
+        + '  </div>'
+        + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Código</th><th>Descrição</th><th>Gramatura</th><th>Fornecedor</th><th>Tipo</th><th>Faixa</th><th>Status</th><th>Ações</th></tr></thead><tbody>'
         + (lista.length ? lista.map(function(g) {
-          return '<tr data-gid="' + esc(g.id || '') + '"><td>' + esc(g.nome || '—') + '</td><td>' + num(g.gramatura || 0, 2) + '</td><td>' + money(g.valor_unitario || 0) + '</td><td>' + esc(g.fornecedor_nome || '—') + '</td><td><button class="pep-btn" data-gedit="' + esc(g.id || '') + '">Editar</button> <button class="pep-btn danger" data-gdel="' + esc(g.id || '') + '">Desativar</button></td></tr>';
-        }).join('') : '<tr><td colspan="5" style="text-align:center;color:#94a3b8">Nenhuma gramatura cadastrada.</td></tr>')
+          var statusTxt = gramAtiva(g) ? 'Ativo' : 'Inativo';
+          var statusColor = gramAtiva(g) ? '#22c55e' : '#f59e0b';
+          return '<tr data-gid="' + esc(g.id || '') + '"><td>' + esc(g.codigo || '—') + '</td><td><div style="font-weight:700">' + esc(g.descricao || g.nome || '—') + '</div><div style="margin-top:4px;color:#94a3b8">' + money(g.valor_unitario || 0) + '</div></td><td>' + num(g.gramatura || 0, 2) + ' g/m²</td><td>' + esc(g.fornecedor_nome || '—') + '</td><td>' + esc(g.tipo_papel || '—') + '</td><td>' + esc(g.faixa_utilizacao || '—') + '</td><td><span style="display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(15,23,42,.9);border:1px solid ' + statusColor + ';color:' + statusColor + ';font-weight:700">' + statusTxt + '</span></td><td><button class="pep-btn" data-gedit="' + esc(g.id || '') + '">Editar</button> <button class="pep-btn' + (gramAtiva(g) ? ' danger' : '') + '" data-gtoggle="' + esc(g.id || '') + '">' + (gramAtiva(g) ? 'Inativar' : 'Reativar') + '</button></td></tr>';
+        }).join('') : '<tr><td colspan="8" style="text-align:center;color:#94a3b8">Nenhuma gramatura cadastrada.</td></tr>')
         + '  </tbody></table></div></div>'
         + '</div>';
       document.getElementById('gram-nova').onclick = function() { openGramaturaModal(null, renderGramaturasPage); };
@@ -2955,13 +3015,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           openGramaturaModal(item, renderGramaturasPage);
         };
       });
-      Array.prototype.slice.call(page.querySelectorAll('[data-gdel]')).forEach(function(btn) {
+      Array.prototype.slice.call(page.querySelectorAll('[data-gtoggle]')).forEach(function(btn) {
         btn.onclick = async function() {
-          if (!confirm('Desativar esta gramatura?')) return;
+          var id = String(btn.getAttribute('data-gtoggle') || '');
+          var item = (lista || []).find(function(g) { return String(g && g.id || '') === id; }) || null;
+          if (!item) return;
+          var ativa = gramAtiva(item);
+          if (!confirm(ativa ? 'Inativar esta gramatura?' : 'Reativar esta gramatura?')) return;
           try {
-            await apiJson('/api/gramaturas/' + encodeURIComponent(String(btn.getAttribute('data-gdel') || '')), { method: 'DELETE' });
+            await apiJson('/api/gramaturas/' + encodeURIComponent(id), {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ativo: !ativa })
+            });
             renderGramaturasPage();
-          } catch (e) { alert(String(e && e.message || e || 'Falha ao desativar')); }
+          } catch (e) { alert(String(e && e.message || e || 'Falha ao atualizar status')); }
         };
       });
     }
@@ -3003,7 +3071,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
         + '      <select class="pep-select" id="tones-mes">' + Array.from({ length: 12 }).map(function(_, i) { var m = i + 1; return '<option value="' + m + '"' + (Number(st.mes) === m ? ' selected' : '') + '>' + String(m).padStart(2, '0') + '</option>'; }).join('') + '</select>'
         + '      <select class="pep-select" id="tones-ano">' + Array.from({ length: 5 }).map(function(_, i) { var a = new Date().getFullYear() - 2 + i; return '<option value="' + a + '"' + (Number(st.ano) === a ? ' selected' : '') + '>' + a + '</option>'; }).join('') + '</select>'
-        + '      <select class="pep-select" id="tones-gram"><option value="">Gramatura padrão (g/m²)</option>' + (grams || []).map(function(g) { var id = String(g && g.id || ''); var label = String(g && g.nome || '—') + ' · ' + num(g && g.gramatura || 0, 0) + ' g/m²'; return '<option value="' + esc(id) + '"' + (String(st.gramatura_id || '') === id ? ' selected' : '') + '>' + esc(label) + '</option>'; }).join('') + '</select>'
+        + '      <select class="pep-select" id="tones-gram"><option value="">Gramatura padrão (g/m²)</option>' + (grams || []).map(function(g) { var id = String(g && g.id || ''); var label = gramaturaLabel(g, false); return '<option value="' + esc(id) + '"' + (String(st.gramatura_id || '') === id ? ' selected' : '') + '>' + esc(label) + '</option>'; }).join('') + '</select>'
         + '      <button class="pep-btn primary" id="tones-refresh">Calcular</button>'
         + '    </div>'
         + '  </div>'
@@ -16167,6 +16235,98 @@ function _ocultarGraficoComissoes() {
     return { qtdPedido: qtdPedido, produzidas: produzidas, perdasQtd: perdasQtd, excedente: excedente, valorUnitario: vunit, novoTotal: novoTotal, perdasValor: perdasValor };
   }
 
+  function _fmtNum4(v) {
+    try { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }); } catch (_) { return '0,0000'; }
+  }
+
+  function _fmtKg(v) {
+    try { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' kg'; } catch (_) { return '0,000 kg'; }
+  }
+
+  function _fmtTon(v) {
+    try { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' t'; } catch (_) { return '0,0000 t'; }
+  }
+
+  function _gramaturaFallbackConclusao() {
+    return { id: '__nao_informada__', nome: 'Não informada', descricao: 'Não informada', gramatura: 0, ativo: true, fallback: true };
+  }
+
+  function _normalizarGramaturaConclusao(item) {
+    var src = item || {};
+    return {
+      id: String(src.id || '').trim(),
+      codigo: String(src.codigo || '').trim(),
+      nome: String(src.nome || src.descricao || '').trim(),
+      descricao: String(src.descricao || src.nome || '').trim(),
+      gramatura: Number(src.gramatura || 0) || 0,
+      fornecedor_nome: String(src.fornecedor_nome || '').trim(),
+      ativo: !(src.ativo === false || String(src.status || '').toLowerCase() === 'inativo'),
+      fallback: !!src.fallback
+    };
+  }
+
+  function _labelGramaturaConclusao(item) {
+    var g = _normalizarGramaturaConclusao(item);
+    var base = g.descricao || g.nome || g.codigo || 'Gramatura';
+    if (!g.fallback && g.codigo && base.toLowerCase().indexOf(g.codigo.toLowerCase()) !== 0) base = g.codigo + ' · ' + base;
+    if (g.gramatura > 0) base += ' · ' + String(Number(g.gramatura || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })) + ' g/m²';
+    return base;
+  }
+
+  async function _carregarGramaturasParaConclusao() {
+    var token = _getToken();
+    try {
+      await fetch('/api/gramaturas/init', { method: 'POST', headers: token ? { Authorization: 'Bearer ' + token } : {} }).catch(function() { return null; });
+    } catch (_) {}
+    try {
+      var resp = await fetch('/api/gramaturas', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var json = await resp.json().catch(function() { return null; });
+      var lista = Array.isArray(json) ? json : ((json && (json.data || json.gramaturas)) || []);
+      lista = (Array.isArray(lista) ? lista : []).map(_normalizarGramaturaConclusao).filter(function(g) { return g && g.ativo; });
+      return [_gramaturaFallbackConclusao()].concat(lista);
+    } catch (_) {
+      return [_gramaturaFallbackConclusao()];
+    }
+  }
+
+  function _extrairAreaTotalConclusao(of, qtdProduzidas) {
+    var qtd = Math.max(0, Number(qtdProduzidas || 0) || 0);
+    var comp = Number(of && (of.caixa_comprimento ?? of.dim_comprimento ?? of.comprimento ?? 0) || 0) || 0;
+    var larg = Number(of && (of.caixa_largura ?? of.dim_largura ?? of.largura ?? 0) || 0) || 0;
+    if (!(comp > 0 && larg > 0)) {
+      var desc = String(of && (of.descricao || of.prodDesc || of.produto || '') || '');
+      var match = desc.match(/(\d+(?:[.,]\d+)?)\s*[×xX]\s*(\d+(?:[.,]\d+)?)/);
+      if (match) {
+        comp = parseFloat(String(match[1] || '').replace(',', '.')) || 0;
+        larg = parseFloat(String(match[2] || '').replace(',', '.')) || 0;
+      }
+    }
+    var areaUnit = (comp > 0 && larg > 0) ? ((comp / 100) * (larg / 100)) : 0;
+    return Math.round((areaUnit * qtd) * 10000) / 10000;
+  }
+
+  function _calcularResumoMateriaPrimaConclusao(of, qtdProduzidas, gramaturaSel) {
+    var gramSel = _normalizarGramaturaConclusao(gramaturaSel || _gramaturaFallbackConclusao());
+    var areaTotalM2 = _extrairAreaTotalConclusao(of, qtdProduzidas);
+    var pesoKg = (gramSel.gramatura > 0 && areaTotalM2 > 0) ? ((areaTotalM2 * gramSel.gramatura) / 1000) : 0;
+    var toneladas = pesoKg > 0 ? (pesoKg / 1000) : 0;
+    var qtdPedido = Number(of && (of.qtd_pedida ?? of.quantidade ?? of.qtd ?? 0) || 0) || 0;
+    var qtdChapasBase = Number(of && (of.qtd_chapas || 0) || 0) || 0;
+    if (!(qtdChapasBase > 0) && Array.isArray(of && of.itens)) {
+      qtdChapasBase = (of.itens || []).reduce(function(s, item) { return s + (Number(item && item.qtd_chapas || 0) || 0); }, 0);
+    }
+    var consumoChapas = (qtdChapasBase > 0 && qtdPedido > 0 && qtdProduzidas > 0)
+      ? Math.round((qtdChapasBase * (Number(qtdProduzidas || 0) / qtdPedido)) * 1000) / 1000
+      : 0;
+    return {
+      gramatura: gramSel,
+      areaTotalM2: areaTotalM2,
+      pesoKg: Math.round(pesoKg * 1000) / 1000,
+      toneladas: Math.round(toneladas * 1000000) / 1000000,
+      consumoChapas: consumoChapas
+    };
+  }
+
   try { window._abrirModalEdicaoOF = function(of) { return _abrirModalOF(typeof of === 'string' ? of : (of && of.id)); }; } catch (_) {}
 
   async function _abrirModalConclusaoFallback(ofId, ofDados) {
@@ -16201,10 +16361,12 @@ function _ocultarGraficoComissoes() {
       }
       var preloadMaquinas = _carregarMaquinasParaConclusao().catch(function() { return []; });
       var preloadOperadores = _carregarOperadoresParaConclusao().catch(function() { return []; });
-      Promise.all([preloadMaquinas, preloadOperadores]).then(function(pair) {
-        try { console.log('[conclusao] máquinas:', (pair[0] && pair[0].length) || 0, 'operadores:', (pair[1] && pair[1].length) || 0); } catch (_) {}
+      var preloadGramaturas = _carregarGramaturasParaConclusao().catch(function() { return [_gramaturaFallbackConclusao()]; });
+      Promise.all([preloadMaquinas, preloadOperadores, preloadGramaturas]).then(function(pair) {
+        try { console.log('[conclusao] máquinas:', (pair[0] && pair[0].length) || 0, 'operadores:', (pair[1] && pair[1].length) || 0, 'gramaturas:', (pair[2] && pair[2].length) || 0); } catch (_) {}
       }).catch(function() {});
       var operadores = [];
+      var gramaturasLista = [_gramaturaFallbackConclusao()];
 
       var backdrop = document.createElement('div');
       backdrop.className = 'com-conc-backdrop';
@@ -16231,6 +16393,11 @@ function _ocultarGraficoComissoes() {
         + '      <input id="conclusao-data-faturamento" class="com-conc-input" type="date" value="' + hoje + '"/>'
         + '    </div>'
         + '    <div class="com-conc-field">'
+        + '      <label class="com-conc-label">📐 Gramatura Utilizada *</label>'
+        + '      <select id="conclusao-gramatura" class="com-conc-select"><option value="__nao_informada__">Carregando gramaturas...</option></select>'
+        + '      <div id="conclusao-gramatura-ajuda" style="margin-top:8px;font-size:12px;color:#94a3b8">Seleção obrigatória. Durante a transição, o fallback seguro é "Não informada".</div>'
+        + '    </div>'
+        + '    <div class="com-conc-field">'
         + '      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">'
         + '        <label class="com-conc-label" style="margin-bottom:0">💥 Caixas Perdidas por Máquina</label>'
         + '        <button type="button" class="com-conc-mini-btn" id="conclusao-add-perda">+ Adicionar</button>'
@@ -16245,6 +16412,7 @@ function _ocultarGraficoComissoes() {
         + '        <div>Excedente: <b id="conc-res-excedente">0</b></div>'
         + '        <div>Perdas: <b id="conc-res-perdas">0</b></div>'
         + '      </div>'
+        + '      <div id="conc-res-materia" style="margin-top:10px;font-size:13px;font-weight:700;color:#cbd5e1">Gramatura: Não informada  ·  Área: 0,0000 m²  ·  Peso: 0,000 kg  ·  Toneladas: 0,0000 t  ·  Consumo chapa: 0</div>'
         + '      <div style="height:1px;background:#1e293b;margin:14px 0"></div>'
         + '      <div id="conc-res-financeiro" style="font-size:13px;font-weight:700;color:#10b981">Valor unitário: R$ 0,00  ·  Novo total: R$ 0,00  ·  Perdas: R$ 0,00</div>'
         + '    </div>'
@@ -16259,6 +16427,7 @@ function _ocultarGraficoComissoes() {
       var shell = backdrop.querySelector('.com-conc-shell');
       var qtdEl = backdrop.querySelector('#conclusao-caixas-produzidas');
       var dataEl = backdrop.querySelector('#conclusao-data-faturamento');
+      var gramEl = backdrop.querySelector('#conclusao-gramatura');
       var perdasLista = backdrop.querySelector('#conclusao-perdas-lista');
       var totalPerdidoEl = backdrop.querySelector('#conclusao-total-perdido');
       var btnSalvar = backdrop.querySelector('#conclusao-confirmar');
@@ -16305,13 +16474,35 @@ function _ocultarGraficoComissoes() {
           return { maquina: maq, qtd: qtd, operadores: ops };
         }).filter(function(item) { return item.maquina && item.qtd > 0; });
       }
+      function currentGramatura() {
+        var selectedId = String(gramEl && gramEl.value || '__nao_informada__').trim() || '__nao_informada__';
+        var found = (gramaturasLista || []).find(function(g) { return String(g && g.id || '') === selectedId; }) || null;
+        return found || _gramaturaFallbackConclusao();
+      }
+      function renderGramaturasSelect(lista) {
+        gramaturasLista = (Array.isArray(lista) && lista.length ? lista : [_gramaturaFallbackConclusao()]).map(_normalizarGramaturaConclusao);
+        if (!gramaturasLista.length) gramaturasLista = [_gramaturaFallbackConclusao()];
+        var atual = String(of && (of.gramatura_id || of.gramaturaId || '') || '').trim();
+        if (!atual || !(gramaturasLista || []).some(function(g) { return String(g && g.id || '') === atual; })) atual = '__nao_informada__';
+        if (gramEl) {
+          gramEl.innerHTML = gramaturasLista.map(function(g) {
+            var id = String(g && g.id || '__nao_informada__');
+            return '<option value="' + id.replace(/"/g, '&quot;') + '"' + (id === atual ? ' selected' : '') + '>' + _labelGramaturaConclusao(g).replace(/</g, '&lt;') + '</option>';
+          }).join('');
+        }
+      }
       function updateResumo() {
         var resumo = _getResumoConclusao(of, qtdEl && qtdEl.value, collectPerdas());
+        var materia = _calcularResumoMateriaPrimaConclusao(of, resumo.produzidas, currentGramatura());
         try { backdrop.querySelector('#conc-res-pedido').textContent = String(resumo.qtdPedido); } catch (_) {}
         try { backdrop.querySelector('#conc-res-produzidas').textContent = String(resumo.produzidas); } catch (_) {}
         try { backdrop.querySelector('#conc-res-excedente').textContent = String(resumo.excedente); } catch (_) {}
         try { backdrop.querySelector('#conc-res-perdas').textContent = String(resumo.perdasQtd); } catch (_) {}
         try { totalPerdidoEl.textContent = 'Total perdido: ' + String(resumo.perdasQtd) + ' caixas'; } catch (_) {}
+        try {
+          var matEl = backdrop.querySelector('#conc-res-materia');
+          if (matEl) matEl.textContent = 'Gramatura: ' + _labelGramaturaConclusao(materia.gramatura) + '  ·  Área: ' + _fmtNum4(materia.areaTotalM2) + ' m²  ·  Peso: ' + _fmtKg(materia.pesoKg) + '  ·  Toneladas: ' + _fmtTon(materia.toneladas) + '  ·  Consumo chapa: ' + String(Number(materia.consumoChapas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 3 }));
+        } catch (_) {}
         try {
           var financeiro = backdrop.querySelector('#conc-res-financeiro');
           if (financeiro) {
@@ -16320,6 +16511,8 @@ function _ocultarGraficoComissoes() {
           }
         } catch (_) {}
         if (btnSalvar) btnSalvar.disabled = !(resumo.produzidas > 0);
+        resumo.materiaPrima = materia;
+        resumo.gramatura = materia.gramatura;
         return resumo;
       }
       function addOperadorRow(host, selected) {
@@ -16377,6 +16570,14 @@ function _ocultarGraficoComissoes() {
       if (addPerdaBtn) addPerdaBtn.onclick = function() { addPerdaRow({}).catch(function() {}); };
       if (qtdEl) qtdEl.oninput = updateResumo;
       if (dataEl) dataEl.onchange = updateResumo;
+      if (gramEl) gramEl.onchange = updateResumo;
+      preloadGramaturas.then(function(lista) {
+        renderGramaturasSelect(lista);
+        updateResumo();
+      }).catch(function() {
+        renderGramaturasSelect([_gramaturaFallbackConclusao()]);
+        updateResumo();
+      });
       updateResumo();
 
       if (btnSalvar) btnSalvar.onclick = async function(e) {
@@ -16388,6 +16589,8 @@ function _ocultarGraficoComissoes() {
         if (!dataFaturamento) { try { alert('Informe a data de faturamento.'); } catch (_) {} return; }
         var perdas = collectPerdas();
         var precoUnitario = Number(resumo.valorUnitario || 0) || 0;
+        var gramaturaSel = resumo.gramatura || _gramaturaFallbackConclusao();
+        var materiaPrima = resumo.materiaPrima || _calcularResumoMateriaPrimaConclusao(of, caixasProduzidas, gramaturaSel);
         var body = {
           status: 'Concluído',
           data_faturamento: dataFaturamento,
@@ -16399,6 +16602,13 @@ function _ocultarGraficoComissoes() {
           valor_total: resumo.novoTotal,
           valor_venda: resumo.novoTotal,
           usuario_conclusao: usuario,
+          gramatura_id: gramaturaSel && !gramaturaSel.fallback ? String(gramaturaSel.id || '').trim() : null,
+          gramatura_nome: _labelGramaturaConclusao(gramaturaSel),
+          gramatura: Number(gramaturaSel && gramaturaSel.gramatura || 0) || 0,
+          area_total_m2: Number(materiaPrima.areaTotalM2 || 0) || 0,
+          peso_utilizado_kg: Number(materiaPrima.pesoKg || 0) || 0,
+          toneladas_utilizadas: Number(materiaPrima.toneladas || 0) || 0,
+          consumo_chapas_estimado: Number(materiaPrima.consumoChapas || 0) || 0,
           _allow_partial: '1'
         };
         btnSalvar.disabled = true;

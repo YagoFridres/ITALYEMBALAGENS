@@ -6840,6 +6840,20 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       updated_at: nowIso,
       maquina_atual_index: Math.max(fluxo.length, Number(of.maquina_atual_index || 0) || 0),
     };
+    const gramaturaConclusaoId = body.gramatura_id != null ? String(body.gramatura_id || '').trim() : '';
+    const gramaturaConclusaoNome = body.gramatura_nome != null ? String(body.gramatura_nome || '').trim() : '';
+    const gramaturaConclusaoValor = Number(body.gramatura || body.gramatura_gm2 || 0) || 0;
+    const pesoUtilizadoKg = Number(body.peso_utilizado_kg || body.peso_utilizado || 0) || 0;
+    const toneladasUtilizadas = Number(body.toneladas_utilizadas || 0) || 0;
+    const areaTotalM2 = Number(body.area_total_m2 || 0) || 0;
+    const consumoChapasEstimado = Number(body.consumo_chapas_estimado || 0) || 0;
+    if (Object.prototype.hasOwnProperty.call(body, 'gramatura_id')) updateData.gramatura_id = gramaturaConclusaoId || null;
+    if (gramaturaConclusaoNome) updateData.gramatura_nome = gramaturaConclusaoNome;
+    if (gramaturaConclusaoValor > 0) updateData.gramatura = gramaturaConclusaoValor;
+    if (pesoUtilizadoKg > 0) updateData.peso_utilizado_kg = Math.round(pesoUtilizadoKg * 1000) / 1000;
+    if (toneladasUtilizadas > 0) updateData.toneladas_utilizadas = Math.round(toneladasUtilizadas * 1000000) / 1000000;
+    if (areaTotalM2 > 0) updateData.area_total_m2 = Math.round(areaTotalM2 * 10000) / 10000;
+    if (consumoChapasEstimado > 0) updateData.consumo_chapas_estimado = Math.round(consumoChapasEstimado * 1000) / 1000;
     if (operadoresConclusao.length) {
       updateData.operadores_conclusao = operadoresConclusao;
       if (!updateData.operador_conclusao) updateData.operador_conclusao = operadoresConclusao[0];
@@ -10089,16 +10103,34 @@ function _gramaturasCreateSql() {
     "CREATE TABLE IF NOT EXISTS gramaturas (" +
     "id uuid PRIMARY KEY DEFAULT gen_random_uuid()," +
     "nome text NOT NULL," +
+    "codigo text," +
+    "descricao text," +
     "gramatura numeric NOT NULL," +
-    "valor_unitario numeric NOT NULL," +
+    "valor_unitario numeric NOT NULL DEFAULT 0," +
     "fornecedor_id uuid," +
     "fornecedor_nome text," +
+    "tipo_papel text," +
+    "faixa_utilizacao text," +
+    "observacoes text," +
     "empresa_id uuid," +
     "ativo boolean DEFAULT true," +
-    "created_at timestamptz DEFAULT now()" +
+    "created_at timestamptz DEFAULT now()," +
+    "updated_at timestamptz DEFAULT now()" +
     ");" +
+    "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS codigo text;" +
+    "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS descricao text;" +
+    "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS valor_unitario numeric DEFAULT 0;" +
+    "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS fornecedor_id uuid;" +
+    "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS fornecedor_nome text;" +
+    "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS tipo_papel text;" +
+    "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS faixa_utilizacao text;" +
+    "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS observacoes text;" +
+    "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS empresa_id uuid;" +
+    "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS ativo boolean DEFAULT true;" +
+    "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();" +
     "CREATE INDEX IF NOT EXISTS idx_gramaturas_empresa ON gramaturas(empresa_id);" +
-    "CREATE INDEX IF NOT EXISTS idx_gramaturas_nome ON gramaturas(nome);"
+    "CREATE INDEX IF NOT EXISTS idx_gramaturas_nome ON gramaturas(nome);" +
+    "CREATE INDEX IF NOT EXISTS idx_gramaturas_codigo ON gramaturas(codigo);"
   );
 }
 
@@ -10136,6 +10168,33 @@ async function _empresaUuidSafe(req) {
     if (emp2) return emp2;
   } catch (_) {}
   return '';
+}
+
+function _gramaturaTexto(v) {
+  if (v === undefined || v === null) return null;
+  const s = String(v || '').trim();
+  return s ? s : null;
+}
+
+function _gramaturaAtivaFromBody(body, fallback = true) {
+  if (Object.prototype.hasOwnProperty.call(body || {}, 'ativo')) return !!body.ativo;
+  const statusTxt = String(body?.status || '').trim().toLowerCase();
+  if (!statusTxt) return !!fallback;
+  if (['inativo', 'inactive', '0', 'false', 'nao', 'não'].includes(statusTxt)) return false;
+  return true;
+}
+
+function _gramaturaNomeExibicao(src) {
+  const descricao = _gramaturaTexto(src?.descricao);
+  const nome = _gramaturaTexto(src?.nome);
+  const codigo = _gramaturaTexto(src?.codigo);
+  const gramaturaNum = Number(src?.gramatura || 0) || 0;
+  if (descricao) return descricao;
+  if (nome) return nome;
+  if (codigo && gramaturaNum > 0) return `${codigo} · ${gramaturaNum} g/m²`;
+  if (codigo) return codigo;
+  if (gramaturaNum > 0) return `${gramaturaNum} g/m²`;
+  return 'Gramatura';
 }
 
 app.get('/api/cores-impressao', authMiddleware, async (req, res) => {
@@ -11082,18 +11141,26 @@ app.post('/api/gramaturas', authMiddleware, async (req, res) => {
     if (!ready) return res.status(500).json({ ok: false, error: 'tabela_gramaturas_indisponivel' });
     const empresa_id = await _empresaUuidSafe(req);
     const b = req.body || {};
-    const nome = String(b.nome || '').trim();
+    const descricao = _gramaturaTexto(b.descricao ?? b.nome);
+    const codigo = _gramaturaTexto(b.codigo);
     const gramatura = Number(b.gramatura || 0) || 0;
     const valor_unitario = Number(b.valor_unitario || 0) || 0;
-    if (!nome || !(gramatura > 0) || !(valor_unitario >= 0)) return res.status(400).json({ ok: false, error: 'dados_invalidos' });
+    if (!descricao || !(gramatura > 0) || !(valor_unitario >= 0)) return res.status(400).json({ ok: false, error: 'dados_invalidos' });
+    const nowIso = new Date().toISOString();
     const payload = {
-      nome,
+      nome: _gramaturaNomeExibicao({ codigo, descricao, gramatura, nome: b.nome }),
+      codigo,
+      descricao,
       gramatura,
       valor_unitario,
       fornecedor_id: b.fornecedor_id ? String(b.fornecedor_id || '').trim() : null,
       fornecedor_nome: b.fornecedor_nome != null ? String(b.fornecedor_nome || '').trim() : null,
+      tipo_papel: _gramaturaTexto(b.tipo_papel),
+      faixa_utilizacao: _gramaturaTexto(b.faixa_utilizacao),
+      observacoes: _gramaturaTexto(b.observacoes),
       empresa_id: empresa_id || null,
-      ativo: b.ativo !== false,
+      ativo: _gramaturaAtivaFromBody(b, true),
+      updated_at: nowIso,
     };
     const { data, error } = await supabase.from('gramaturas').insert([payload]).select('*').single();
     if (error) throw error;
@@ -11108,14 +11175,29 @@ app.put('/api/gramaturas/:id', authMiddleware, async (req, res) => {
     const empresa_id = await _empresaUuidSafe(req);
     const id = String(req.params.id || '').trim();
     const b = req.body || {};
+    let atual = null;
+    {
+      let qAtual = supabase.from('gramaturas').select('*').eq('id', id).maybeSingle();
+      if (empresa_id) qAtual = qAtual.eq('empresa_id', empresa_id);
+      const { data: atualData } = await qAtual;
+      atual = atualData || null;
+    }
     const payload = {};
     if (Object.prototype.hasOwnProperty.call(b, 'nome')) payload.nome = String(b.nome || '').trim();
+    if (Object.prototype.hasOwnProperty.call(b, 'codigo')) payload.codigo = _gramaturaTexto(b.codigo);
+    if (Object.prototype.hasOwnProperty.call(b, 'descricao')) payload.descricao = _gramaturaTexto(b.descricao);
     if (Object.prototype.hasOwnProperty.call(b, 'gramatura')) payload.gramatura = Number(b.gramatura || 0) || 0;
     if (Object.prototype.hasOwnProperty.call(b, 'valor_unitario')) payload.valor_unitario = Number(b.valor_unitario || 0) || 0;
     if (Object.prototype.hasOwnProperty.call(b, 'fornecedor_id')) payload.fornecedor_id = b.fornecedor_id ? String(b.fornecedor_id || '').trim() : null;
     if (Object.prototype.hasOwnProperty.call(b, 'fornecedor_nome')) payload.fornecedor_nome = b.fornecedor_nome != null ? String(b.fornecedor_nome || '').trim() : null;
-    if (Object.prototype.hasOwnProperty.call(b, 'ativo')) payload.ativo = !!b.ativo;
+    if (Object.prototype.hasOwnProperty.call(b, 'tipo_papel')) payload.tipo_papel = _gramaturaTexto(b.tipo_papel);
+    if (Object.prototype.hasOwnProperty.call(b, 'faixa_utilizacao')) payload.faixa_utilizacao = _gramaturaTexto(b.faixa_utilizacao);
+    if (Object.prototype.hasOwnProperty.call(b, 'observacoes')) payload.observacoes = _gramaturaTexto(b.observacoes);
+    if (Object.prototype.hasOwnProperty.call(b, 'ativo') || Object.prototype.hasOwnProperty.call(b, 'status')) payload.ativo = _gramaturaAtivaFromBody(b, atual?.ativo !== false);
     if (!Object.keys(payload).length) return res.status(400).json({ ok: false, error: 'nenhum_campo' });
+    const merged = { ...(atual || {}), ...payload };
+    payload.nome = _gramaturaNomeExibicao(merged);
+    payload.updated_at = new Date().toISOString();
     let q = supabase.from('gramaturas').update(payload).eq('id', id).select('*').single();
     if (empresa_id) q = q.eq('empresa_id', empresa_id);
     const { data, error } = await q;
