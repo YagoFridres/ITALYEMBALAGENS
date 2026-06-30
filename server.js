@@ -11981,6 +11981,83 @@ async function _queryByEmpresa(table, selectCols, empresa_id, orderCol, q) {
   throw lastErr || new Error(`tabela ${table} indisponivel`);
 }
 
+async function _legacyListCompat(table, opts) {
+  const empresaId = String(opts?.empresa_id || '').trim();
+  const search = String(opts?.search || '').trim().toLowerCase();
+  const limit = Math.max(1, Math.min(500, parseInt(String(opts?.limit || ''), 10) || 50));
+  const searchCols = Array.isArray(opts?.searchCols) ? opts.searchCols : ['nome'];
+  const sortCols = Array.isArray(opts?.sortCols) ? opts.sortCols : ['nome'];
+  const variants = [
+    { empresa: 'empresa_id', ativo: true },
+    { empresa: 'empresa_id', ativo: false },
+    { empresa: 'emp_id', ativo: true },
+    { empresa: 'emp_id', ativo: false },
+    { empresa: 'empId', ativo: false },
+    { empresa: 'empresa', ativo: false },
+    { empresa: null, ativo: false },
+  ];
+  let lastErr = null;
+  for (const variant of variants) {
+    try {
+      let query = supabase.from(table).select('*').limit(Math.max(limit, 200));
+      if (empresaId && variant.empresa) query = query.eq(variant.empresa, empresaId);
+      if (variant.ativo) query = query.eq('ativo', true);
+      const { data, error } = await query;
+      if (error) {
+        lastErr = error;
+        const msg = String(error?.message || error || '').toLowerCase();
+        if (
+          msg.includes('does not exist') ||
+          msg.includes('could not find the') ||
+          msg.includes('column') ||
+          msg.includes('relation')
+        ) {
+          continue;
+        }
+        throw error;
+      }
+      let rows = Array.isArray(data) ? data.slice() : [];
+      if (search) {
+        rows = rows.filter((row) => searchCols.some((col) => String(row?.[col] || '').toLowerCase().includes(search)));
+      }
+      rows.sort((a, b) => {
+        for (const col of sortCols) {
+          const av = String(a?.[col] || '').trim().toLowerCase();
+          const bv = String(b?.[col] || '').trim().toLowerCase();
+          const cmp = av.localeCompare(bv);
+          if (cmp !== 0) return cmp;
+        }
+        return String(a?.id || '').localeCompare(String(b?.id || ''));
+      });
+      return rows.slice(0, limit);
+    } catch (e) {
+      lastErr = e;
+      const msg = String(e?.message || e || '').toLowerCase();
+      if (
+        msg.includes('does not exist') ||
+        msg.includes('could not find the') ||
+        msg.includes('column') ||
+        msg.includes('relation')
+      ) {
+        continue;
+      }
+      throw e;
+    }
+  }
+  if (lastErr) {
+    const msg = String(lastErr?.message || lastErr || '').toLowerCase();
+    if (
+      msg.includes('does not exist') ||
+      msg.includes('could not find the') ||
+      msg.includes('column') ||
+      msg.includes('relation')
+    ) {
+      return [];
+    }
+  }
+  return [];
+}
+
 async function _insertCompatTable(table, payload) {
   let cur = { ...(payload || {}) };
   let lastErr = null;
@@ -12031,29 +12108,14 @@ app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
     }
     if (!empresa_id) empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31';
     const q = String(req.query?.search || req.query?.q || '').trim();
-    let data = null;
-    let error = null;
-    try {
-      let query = supabase
-        .from('estoque_tintas')
-        .select('*')
-        .eq('empresa_id', empresa_id)
-        .order('nome', { ascending: true });
-      try { query = query.eq('ativo', true); } catch (_) {}
-      if (q) query = query.ilike('nome', `%${q}%`);
-      ({ data, error } = await query);
-    } catch (e) {
-      error = e;
-    }
-    if (error) {
-      console.error('[ESTOQUE_TINTAS] fallback query:', error.message || error);
-      let query2 = supabase.from('estoque_tintas').select('*').order('nome', { ascending: true });
-      try { query2 = query2.eq('empresa_id', empresa_id); } catch (_) {}
-      if (q) query2 = query2.ilike('nome', `%${q}%`);
-      const r2 = await query2;
-      if (r2.error) throw r2.error;
-      data = r2.data;
-    }
+    const limit = Math.max(1, Math.min(200, parseInt(String(req.query?.limit || ''), 10) || 200));
+    const data = await _legacyListCompat('estoque_tintas', {
+      empresa_id,
+      search: q,
+      limit,
+      searchCols: ['nome', 'fornecedor', 'marca', 'cor'],
+      sortCols: ['nome', 'fornecedor']
+    });
     return res.json({ ok: true, data: data || [] });
   } catch (e) {
     console.error('[ESTOQUE_TINTAS]', e.message || e);
@@ -12145,35 +12207,15 @@ app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
       try { empresa_id = await getEmpresaId(req); } catch (_) { empresa_id = null; }
     }
     if (!empresa_id) empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31';
-    const q = String(req.query?.q || '').trim();
-    let data = null;
-    let error = null;
-    try {
-      let query = supabase
-        .from('estoque_materiais')
-        .select('*')
-        .eq('empresa_id', empresa_id)
-        .order('categoria', { ascending: true })
-        .order('nome', { ascending: true });
-      try { query = query.eq('ativo', true); } catch (_) {}
-      if (q) query = query.ilike('nome', `%${q}%`);
-      ({ data, error } = await query);
-    } catch (e) {
-      error = e;
-    }
-    if (error) {
-      console.error('[ESTOQUE_MATERIAIS] erro:', error.message || error);
-      let query2 = supabase
-        .from('estoque_materiais')
-        .select('*')
-        .eq('empresa_id', empresa_id)
-        .order('nome', { ascending: true });
-      try { query2 = query2.eq('ativo', true); } catch (_) {}
-      if (q) query2 = query2.ilike('nome', `%${q}%`);
-      const r2 = await query2;
-      if (r2.error) throw r2.error;
-      data = r2.data;
-    }
+    const q = String(req.query?.search || req.query?.q || '').trim();
+    const limit = Math.max(1, Math.min(200, parseInt(String(req.query?.limit || ''), 10) || 200));
+    const data = await _legacyListCompat('estoque_materiais', {
+      empresa_id,
+      search: q,
+      limit,
+      searchCols: ['nome', 'nomenclatura', 'fornecedor', 'categoria'],
+      sortCols: ['categoria', 'nome', 'nomenclatura']
+    });
     return res.json({ ok: true, data: data || [] });
   } catch (e) {
     console.error('[ESTOQUE_MATERIAIS]', e.message || e);
@@ -13689,11 +13731,13 @@ app.get('/api/materiais', authMiddleware, async (req, res) => {
     if (!empresa_id) empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31';
     const search = String(req.query.search || req.query.q || '').trim();
     const limit = Math.max(1, Math.min(50, parseInt(String(req.query.limit || ''), 10) || 10));
-    let q = supabase.from('estoque_materiais').select('*').eq('empresa_id', empresa_id).limit(limit).order('nome', { ascending: true });
-    try { q = q.eq('ativo', true); } catch (_) {}
-    if (search) q = q.or('nome.ilike.%' + search + '%,nomenclatura.ilike.%' + search + '%,fornecedor.ilike.%' + search + '%');
-    const { data, error } = await q;
-    if (error) throw error;
+    const data = await _legacyListCompat('estoque_materiais', {
+      empresa_id,
+      search,
+      limit,
+      searchCols: ['nome', 'nomenclatura', 'fornecedor', 'categoria'],
+      sortCols: ['categoria', 'nome', 'nomenclatura']
+    });
     return res.json({ ok: true, data: data || [] });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });

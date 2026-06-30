@@ -1,4 +1,4 @@
-window._comRodando = false;
+﻿window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
 if (!window.__comRodandoWatchdogInstalled) {
@@ -10067,7 +10067,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function _setMenuVisual(el, icon, label, pageId) {
     try {
       el.id = 'menu-' + String(pageId || '').replace(/[^\w-]/g, '-');
-      el.setAttribute('data-estoque-v2', '1');
+      el.setAttribute('data-estoque-v2', String(pageId || '').trim());
       el.setAttribute('onclick', "go('" + String(pageId || '').replace(/'/g, "\\'") + "');closeNavGroupsExcept('ng-estoques')");
       var ico = el.querySelector('span.ico') || el.querySelector('.ico') || el.querySelector('span');
       if (ico) ico.textContent = icon;
@@ -10098,26 +10098,44 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   async function _fetchLegacyInfo() {
+    if (window.__estoqueLegacyFetchDone && window.__estoqueLegacyFetchCache) return window.__estoqueLegacyFetchCache;
+    if (window.__estoqueLegacyFetchPromise) return window.__estoqueLegacyFetchPromise;
     var headers = _authHeaders();
     var jobs = [
       { key: 'tintas', label: 'Estoque de Tintas', page: 'estoque-tintas', icon: '🎨', url: '/api/estoque_tintas?limit=1' },
       { key: 'materiais', label: 'Estoque de Materiais', page: 'estoque-materiais', icon: '🔧', url: '/api/estoque_materiais?limit=1' },
       { key: 'cliches', label: 'Estoque de Clichês', page: 'cliches', icon: '🖼️', url: '/api/cliches?limit=1' }
     ];
-    var out = {};
-    for (var i = 0; i < jobs.length; i += 1) {
-      var job = jobs[i];
-      try {
-        var resp = await fetch(job.url, { headers: headers });
-        var json = await resp.json().catch(function() { return null; });
-        var lista = Array.isArray(json) ? json : ((json && (json.data || json.itens || json.cliches || json.tintas || json.materiais)) || []);
-        var hasData = Array.isArray(lista) && lista.length > 0;
-        out[job.key] = Object.assign({}, job, { hasData: hasData, available: true, checked: true });
-      } catch (_) {
-        out[job.key] = Object.assign({}, job, { hasData: true, available: false, checked: false });
+    window.__estoqueLegacyFetchPromise = (async function() {
+      var out = {};
+      for (var i = 0; i < jobs.length; i += 1) {
+        var job = jobs[i];
+        try {
+          var resp = await fetch(job.url, { headers: headers });
+          var json = await resp.json().catch(function() { return null; });
+          if (!resp.ok) throw new Error(String(json && (json.error || json.message) || ('Falha em ' + job.url)));
+          var lista = Array.isArray(json) ? json : ((json && (json.data || json.itens || json.cliches || json.tintas || json.materiais)) || []);
+          var hasData = Array.isArray(lista) && lista.length > 0;
+          out[job.key] = Object.assign({}, job, { hasData: hasData, available: true, checked: true, failed: false });
+        } catch (e) {
+          out[job.key] = Object.assign({}, job, {
+            hasData: true,
+            available: false,
+            checked: false,
+            failed: true,
+            error: String(e && e.message || e || 'falha')
+          });
+        }
       }
-    }
-    return out;
+      try {
+        window.__estoqueLegacyFetchCache = out;
+        window.__estoqueLegacyFetchDone = true;
+      } catch (_) {}
+      return out;
+    })().finally(function() {
+      try { window.__estoqueLegacyFetchPromise = null; } catch (_) {}
+    });
+    return window.__estoqueLegacyFetchPromise;
   }
 
   function _temHistoricoLegado(resumo) {
@@ -10128,6 +10146,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   async function _adicionarMenuEstoques() {
+    if (window.__estoqueMenuBuildDone) return;
+    if (window.__estoqueMenuBuildPromise) return window.__estoqueMenuBuildPromise;
+    window.__estoqueMenuBuildPromise = (async function() {
+    var built = false;
     try {
       var grupo = document.querySelector('#ng-estoques .nav-group-items');
       if (!grupo) return;
@@ -10174,8 +10196,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           if (!keep) el.remove();
         });
       } catch (_) {}
+      built = true;
       console.log('[PATCH] menu de estoque reorganizado');
     } catch (_) {}
+    finally {
+      try { window.__estoqueMenuBuildDone = !!built; } catch (_) {}
+      try { window.__estoqueMenuBuildPromise = null; } catch (_) {}
+    }
+    })();
+    return window.__estoqueMenuBuildPromise;
   }
 
   function init() {
@@ -10183,12 +10212,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try {
       var obs = new MutationObserver(function(_, observer) {
         if (window._pausarObservers) return;
+        if (window.__estoqueMenuBuildDone || window.__estoqueMenuBuildPromise) return;
         try {
           var temEstoque = document.querySelector('#ng-estoques .nav-item[onclick*="estoque"]');
           var temNovos = document.querySelector('#ng-estoques [data-estoque-v2="dashboard-estoque"]');
           if (temEstoque && !temNovos) _adicionarMenuEstoques();
           temNovos = document.querySelector('#ng-estoques [data-estoque-v2="dashboard-estoque"]');
-          if (temNovos) {
+          if (temNovos || window.__estoqueMenuBuildDone) {
             try { observer.disconnect(); } catch (_) {}
             try { window._patchMenuEstoquesObs = null; } catch (_) {}
           }
@@ -10319,6 +10349,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   async function _carregarResumoLegadoEstoque() {
+    if (window.__estoqueLegacyFetchDone && window.__estoqueLegacyFetchCache) return window.__estoqueLegacyFetchCache;
+    if (window.__estoqueLegacyFetchPromise) return window.__estoqueLegacyFetchPromise;
     if (window.__estoqueLegacyResumo && typeof window.__estoqueLegacyResumo === 'object') return window.__estoqueLegacyResumo;
     var defs = [
       { key: 'tintas', label: 'Estoque de Tintas', page: 'estoque-tintas', icon: '🎨', url: '/api/estoque_tintas?limit=5' },
