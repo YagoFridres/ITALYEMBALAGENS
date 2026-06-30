@@ -13344,6 +13344,14 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
   setText('observacao', observacao, (b.observacao !== undefined || b.observacoes !== undefined));
   if (estoqueMin !== undefined) set('estoque_minimo', estoqueMin);
   if (empId !== '') set('emp_id', empId);
+  if (b.gramatura !== undefined || b.espessura_mm !== undefined || b.espessura !== undefined) {
+    const gramatura = _chapasToNum((b.gramatura ?? b.espessura_mm ?? b.espessura), NaN);
+    if (Number.isFinite(gramatura) && gramatura >= 0) set('gramatura', gramatura);
+  }
+  if (b.data_entrada !== undefined || b.dataEntrada !== undefined) {
+    const dataEntradaTxt = String(b.data_entrada ?? b.dataEntrada ?? '').trim();
+    set('data_entrada', dataEntradaTxt || (isUpdate ? null : undefined));
+  }
 
   const qtd = b.quantidade != null ? Math.trunc(_chapasToNum(b.quantidade, 0)) : (b.qtd != null ? Math.trunc(_chapasToNum(b.qtd, 0)) : undefined);
   if (qtd !== undefined) {
@@ -13377,7 +13385,7 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
 
 async function _chapasUpdateCompatV2(id, payload) {
   const p = { ...(payload || {}) };
-  const proibidos = ['observacao', 'obs', 'data_entrada', 'obs_chapa', 'retalho', 'retalho_tam', 'retalho_papel'];
+  const proibidos = ['observacao', 'obs', 'obs_chapa', 'retalho', 'retalho_tam', 'retalho_papel'];
   proibidos.forEach((k) => { delete p[k]; });
 
   let data = null;
@@ -13398,6 +13406,102 @@ async function _chapasUpdateCompatV2(id, payload) {
     break;
   }
   return { data, error };
+}
+
+function _chapasEntradaNormKeyPart(v) {
+  return String(v || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function _chapasEntradaNormTamanho(v) {
+  return String(v || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '')
+    .replace(/×/g, 'X');
+}
+
+async function _chapasFindEntradaExistenteV2(criteria) {
+  const fornecedor = String(criteria?.fornecedor || '').trim();
+  const nomenclatura = String(criteria?.nomenclatura || '').trim();
+  const tamanho = _chapasEntradaNormTamanho(criteria?.tamanho || '');
+  const empId = String(criteria?.emp_id || '').trim();
+  if (!fornecedor || !nomenclatura || !tamanho) return null;
+
+  const pick = (rows) => {
+    const lista = Array.isArray(rows) ? rows : [];
+    const alvoForn = _chapasEntradaNormKeyPart(fornecedor);
+    const alvoNom = _chapasEntradaNormKeyPart(nomenclatura);
+    const filtro = lista.filter((row) => {
+      return (
+        _chapasEntradaNormKeyPart(row?.fornecedor) === alvoForn &&
+        _chapasEntradaNormKeyPart(row?.nomenclatura) === alvoNom &&
+        _chapasEntradaNormTamanho(row?.tamanho) === tamanho
+      );
+    });
+    if (!filtro.length) return null;
+    if (empId) {
+      const mesmaEmpresa = filtro.find((row) => String(row?.emp_id || '').trim() === empId);
+      if (mesmaEmpresa) return mesmaEmpresa;
+    }
+    return filtro[0] || null;
+  };
+
+  const runQuery = async (sameEmpOnly) => {
+    let q = supabase
+      .from('chapas_estoque_v2')
+      .select('*')
+      .eq('tamanho', tamanho)
+      .limit(200);
+    if (sameEmpOnly && empId) q = q.eq('emp_id', empId);
+    const r = await q;
+    if (r?.error) throw r.error;
+    return pick(r?.data || []);
+  };
+
+  const byEmp = await runQuery(true);
+  if (byEmp) return byEmp;
+  if (empId) return runQuery(false);
+  return null;
+}
+
+async function _chapasInsertCompatV2(payload) {
+  let data = null;
+  let error = null;
+  let p = { ...(payload || {}) };
+  for (let tentativa = 0; tentativa < 8; tentativa++) {
+    const r = await supabase.from('chapas_estoque_v2').insert([p]).select().single();
+    data = r?.data || null;
+    error = r?.error || null;
+    if (!error) break;
+    const msg = String(error.message || error);
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+    if (col && Object.prototype.hasOwnProperty.call(p, col)) {
+      delete p[col];
+      continue;
+    }
+    break;
+  }
+  return { data, error, payload: p };
+}
+
+function _chapasEntradaObs(cabecalho, item) {
+  const partes = ['Entrada em lote'];
+  const dataEntrada = String(cabecalho?.data_entrada || '').trim();
+  const responsavel = String(cabecalho?.responsavel || '').trim();
+  const observacoes = String(cabecalho?.observacoes || '').trim();
+  const obsItem = String(item?.observacoes || '').trim();
+  if (dataEntrada) partes.push(dataEntrada);
+  if (responsavel) partes.push('Responsavel: ' + responsavel);
+  if (observacoes) partes.push(observacoes);
+  if (obsItem) partes.push(obsItem);
+  return partes.filter(Boolean).join(' · ').trim();
 }
 
 async function _chapasLogAcao(req, tipo, descricao) {
@@ -14471,6 +14575,206 @@ app.post('/api/chapas/saida-lote', authMiddleware, async (req, res) => {
     return res.json({ ok: true, atualizados: resultados.length, resultados });
   } catch (e) {
     console.error('[chapas/saida-lote]', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post('/api/chapas/entrada-lote', authMiddleware, async (req, res) => {
+  try {
+    const preferred = await _chapasPreferV2Table();
+    if (preferred !== 'chapas_estoque_v2') {
+      return res.status(400).json({ ok: false, error: 'Tabela chapas_estoque_v2 não encontrada no banco' });
+    }
+
+    const b = req.body || {};
+    const dataEntrada = String(b.data_entrada ?? b.dataEntrada ?? '').trim();
+    const fornecedorCab = String(b.fornecedor || '').trim();
+    const qualCnpjCab = String((b.qual_cnpj ?? b.qualCnpj ?? b.qual) || '').trim();
+    const nfCab = String(b.nf || '').trim();
+    const responsavel = String(b.responsavel || '').trim();
+    const observacoesCab = String(b.observacoes ?? b.obs ?? '').trim();
+    const empIdCab = String(b.emp_id ?? b.empId ?? req.query.empId ?? 'E1').trim() || 'E1';
+    const empresaVinculadaCab = String((b.empresa_vinculada ?? b.empresaVinculada ?? qualCnpjCab) || '').trim();
+    const itensIn = Array.isArray(b.itens) ? b.itens : [];
+
+    if (!dataEntrada) return res.status(400).json({ ok: false, error: 'Data da entrada obrigatória' });
+    if (!fornecedorCab) return res.status(400).json({ ok: false, error: 'Fornecedor obrigatório' });
+    if (!itensIn.length) return res.status(400).json({ ok: false, error: 'Itens obrigatórios' });
+
+    const itens = itensIn.map((raw, idx) => {
+      const item = raw && typeof raw === 'object' ? raw : {};
+      const chapaId = String(item.chapa_id ?? item.chapaId ?? item.id ?? '').trim();
+      const modo = String(item.modo || (chapaId ? 'existente' : 'nova')).trim().toLowerCase();
+      const fornecedor = String(item.fornecedor || fornecedorCab).trim();
+      const nomenclatura = String(item.nomenclatura ?? item.nom ?? '').trim();
+      const tamanho = _chapasEntradaNormTamanho(item.tamanho ?? item.tam ?? '');
+      const nomeUso = String(item.nome_uso ?? item.nomeUso ?? item.nome ?? nomenclatura ?? '').trim();
+      const gramaturaRaw = (item.gramatura ?? item.espessura_mm ?? item.espessura);
+      const gramatura = gramaturaRaw === undefined || gramaturaRaw === null || gramaturaRaw === ''
+        ? null
+        : _chapasToNum(gramaturaRaw, NaN);
+      const quantidade = Math.trunc(_chapasToNum(item.quantidade ?? item.qtd ?? item.delta ?? 0, 0));
+      const valorUnitario = _chapasToNum(item.valor_unitario ?? item.val ?? 0, 0);
+      const qualCnpj = String(item.qual_cnpj ?? item.qualCnpj ?? item.qual ?? qualCnpjCab).trim();
+      const empId = String(item.emp_id ?? item.empId ?? empIdCab).trim() || empIdCab;
+      const observacoes = String(item.observacoes ?? item.obs ?? '').trim();
+      return {
+        idx,
+        modo,
+        chapa_id: chapaId,
+        fornecedor,
+        nomenclatura,
+        tamanho,
+        nome_uso: nomeUso,
+        gramatura: Number.isFinite(gramatura) && gramatura >= 0 ? gramatura : null,
+        quantidade,
+        valor_unitario: Math.max(0, Number.isFinite(valorUnitario) ? valorUnitario : 0),
+        qual_cnpj: qualCnpj,
+        emp_id: empId,
+        empresa_vinculada: String((item.empresa_vinculada ?? item.empresaVinculada ?? empresaVinculadaCab) || '').trim(),
+        observacoes,
+      };
+    });
+
+    const invalidos = [];
+    itens.forEach((item) => {
+      if (!(item.quantidade > 0)) invalidos.push({ item: item.idx + 1, error: 'Quantidade deve ser maior que zero' });
+      if (!(item.valor_unitario >= 0)) invalidos.push({ item: item.idx + 1, error: 'Valor unitário inválido' });
+      if (!item.chapa_id) {
+        if (!item.fornecedor) invalidos.push({ item: item.idx + 1, error: 'Fornecedor obrigatório' });
+        if (!item.nomenclatura) invalidos.push({ item: item.idx + 1, error: 'Nomenclatura obrigatória' });
+        if (!item.tamanho) invalidos.push({ item: item.idx + 1, error: 'Tamanho obrigatório' });
+        if (!item.nome_uso) invalidos.push({ item: item.idx + 1, error: 'Nome/Uso obrigatório' });
+      }
+    });
+    if (invalidos.length) return res.status(400).json({ ok: false, error: 'Itens inválidos', detalhes: invalidos });
+
+    const resultados = [];
+    let criadas = 0;
+    let reaproveitadas = 0;
+    const updatedAt = new Date().toISOString();
+    const cabecalho = {
+      data_entrada: dataEntrada,
+      fornecedor: fornecedorCab,
+      qual_cnpj: qualCnpjCab,
+      nf: nfCab,
+      responsavel,
+      observacoes: observacoesCab,
+    };
+
+    for (const item of itens) {
+      let row = null;
+      if (item.chapa_id) {
+        const r = await supabase.from('chapas_estoque_v2').select('*').eq('id', item.chapa_id).maybeSingle();
+        if (r?.error) return res.status(500).json({ ok: false, error: r.error.message || String(r.error) });
+        row = r?.data || null;
+      } else {
+        row = await _chapasFindEntradaExistenteV2(item);
+      }
+
+      let criadaAgora = false;
+      if (!row) {
+        const insertPayload = _chapasPayloadV2FromBody({
+          fornecedor: item.fornecedor,
+          nomenclatura: item.nomenclatura,
+          tamanho: item.tamanho,
+          nome_uso: item.nome_uso,
+          nome: item.nome_uso,
+          gramatura: item.gramatura,
+          qual_cnpj: item.qual_cnpj,
+          empresa_vinculada: item.empresa_vinculada || item.qual_cnpj || null,
+          nf: nfCab || null,
+          data_entrada: dataEntrada,
+          emp_id: item.emp_id,
+          valor_unitario: item.valor_unitario,
+          quantidade: 0,
+          categoria: 'Estoque Simples',
+        }, req, false);
+        insertPayload.quantidade = 0;
+        const ins = await _chapasInsertCompatV2(insertPayload);
+        if (ins?.error) return res.status(500).json({ ok: false, error: ins.error.message || String(ins.error), item: item.idx + 1 });
+        row = ins.data;
+        criadaAgora = true;
+        criadas += 1;
+      } else {
+        reaproveitadas += 1;
+      }
+
+      const canonCur = _chapasCanonicalFromAny(row, 'chapas_estoque_v2');
+      const oldQtd = Math.trunc(Number(canonCur.quantidade || 0) || 0);
+      const newQtd = oldQtd + item.quantidade;
+
+      const patchMeta = _chapasPayloadV2FromBody({
+        fornecedor: item.fornecedor || canonCur.fornecedor,
+        nomenclatura: item.nomenclatura || canonCur.nomenclatura,
+        tamanho: item.tamanho || canonCur.tamanho,
+        nome_uso: item.nome_uso || canonCur.nome_uso || canonCur.nome,
+        nome: item.nome_uso || canonCur.nome_uso || canonCur.nome,
+        gramatura: item.gramatura != null ? item.gramatura : canonCur.gramatura,
+        qual_cnpj: item.qual_cnpj || canonCur.qual_cnpj,
+        empresa_vinculada: item.empresa_vinculada || canonCur.empresa_vinculada,
+        nf: nfCab || canonCur.nf,
+        data_entrada: dataEntrada || canonCur.data_entrada,
+        emp_id: item.emp_id || canonCur.emp_id || empIdCab,
+        valor_unitario: item.valor_unitario,
+      }, req, true);
+      delete patchMeta.quantidade;
+      if (Object.keys(patchMeta).length) {
+        const updMeta = await _chapasUpdateCompatV2(String(row.id || '').trim(), patchMeta);
+        if (updMeta?.error) return res.status(500).json({ ok: false, error: updMeta.error.message || String(updMeta.error), item: item.idx + 1 });
+        if (updMeta?.data) row = updMeta.data;
+      }
+
+      const movRes = await _chapasMovimentarV2Rpc({
+        chapa_id: row.id,
+        tipo: 'entrada',
+        quantidade: item.quantidade,
+        nf: nfCab || null,
+        obs: _chapasEntradaObs(cabecalho, item),
+        origem: 'entrada_lote',
+        origem_id: null,
+        usuario: req?.usuario?.nome || 'sistema',
+        emp_id: item.emp_id || canonCur.emp_id || empIdCab,
+      });
+      if (movRes?.error) {
+        if (_chapasMovRpcIsValidacao(movRes.error)) return res.status(400).json({ ok: false, error: movRes.error.message || String(movRes.error), item: item.idx + 1 });
+        return res.status(500).json({ ok: false, error: movRes.error.message || String(movRes.error), item: item.idx + 1 });
+      }
+
+      const updCompat = await _chapasAtualizarQtdEstoqueChapa(row.id, newQtd, req, updatedAt);
+      if (updCompat?.error) return res.status(500).json({ ok: false, error: String(updCompat.error.message || updCompat.error), item: item.idx + 1 });
+
+      const finalRow = updCompat?.data || row;
+      const canonUpd = _chapasCanonicalFromAny(finalRow, 'chapas_estoque_v2');
+      resultados.push({
+        item: item.idx + 1,
+        criado: criadaAgora,
+        chapa_id: row.id,
+        fornecedor: canonUpd.fornecedor,
+        nomenclatura: canonUpd.nomenclatura,
+        tamanho: canonUpd.tamanho,
+        nome: canonUpd.nome || canonUpd.nome_uso || '',
+        quantidade_entrada: item.quantidade,
+        qtd_anterior: oldQtd,
+        qtd_nova: Math.trunc(Number(canonUpd.quantidade || newQtd) || 0),
+        valor_unitario: item.valor_unitario,
+      });
+
+      try {
+        await logAuditoria('chapas_estoque_v2', 'ENTRADA_LOTE', row.id, { qtd_anterior: oldQtd }, {
+          qtd_nova: Math.trunc(Number(canonUpd.quantidade || newQtd) || 0),
+          nf: nfCab || null,
+          responsavel,
+          observacoes: observacoesCab,
+        }, req);
+      } catch (_) {}
+    }
+
+    try { cacheClearPrefix('chapas_estoque:'); } catch (_) {}
+    await _chapasLogAcao(req, 'estoque_entrada_lote', `Entrada em lote registrada com ${itens.length} item(ns) · criadas=${criadas} · reaproveitadas=${reaproveitadas} · fornecedor=${fornecedorCab} · nf=${nfCab || '—'}`);
+    return res.json({ ok: true, criadas, reaproveitadas, itens_processados: resultados.length, resultados });
+  } catch (e) {
+    console.error('[chapas/entrada-lote]', e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
