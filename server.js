@@ -14505,18 +14505,27 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
 
 app.post('/api/chapas/saida-lote', authMiddleware, async (req, res) => {
   try {
+    const preferred = await _chapasPreferV2Table();
+    if (preferred !== 'chapas_estoque_v2') {
+      return res.status(400).json({ ok: false, error: 'Tabela chapas_estoque_v2 não encontrada no banco' });
+    }
+
     const b = req.body || {};
     const itensIn = Array.isArray(b.itens) ? b.itens : [];
     const motivo = String(b.motivo || '').trim();
-    const obsRaw = (b.obs != null) ? String(b.obs).trim() : '';
+    const obsRaw = (b.obs != null) ? String(b.obs).trim() : String(b.observacoes ?? '').trim();
+    const dataSaida = String(b.data_saida ?? b.dataSaida ?? '').trim();
+    const responsavel = String(b.responsavel || '').trim();
+    const ofNumero = String(b.of_numero ?? b.ofNumero ?? b.of ?? '').trim();
+    const empIdBody = String(b.emp_id ?? b.empId ?? '').trim();
 
     if (!itensIn.length) return res.status(400).json({ ok: false, error: 'Itens obrigatórios' });
     if (!motivo) return res.status(400).json({ ok: false, error: 'Motivo obrigatório' });
 
-    const itens = itensIn.map((it) => {
+    const itens = itensIn.map((it, idx) => {
       const id = String(it?.chapa_id ?? it?.chapaId ?? it?.id ?? '').trim();
       const qtd = Math.trunc(Number(it?.quantidade ?? it?.qtd_saida ?? it?.qtd ?? 0) || 0);
-      return { id, qtd };
+      return { id, qtd, idx };
     }).filter((it) => it.id && it.qtd > 0);
 
     if (!itens.length) return res.status(400).json({ ok: false, error: 'Itens inválidos' });
@@ -14525,7 +14534,7 @@ app.post('/api/chapas/saida-lote', authMiddleware, async (req, res) => {
     for (const it of itens) {
       const r = await supabase
         .from('chapas_estoque_v2')
-        .select('id,quantidade_atual,quantidade,emp_id,nomenclatura,tamanho,fornecedor')
+        .select('*')
         .eq('id', it.id)
         .maybeSingle();
       if (r.error) return res.status(500).json({ ok: false, error: r.error.message || String(r.error) });
@@ -14535,16 +14544,24 @@ app.post('/api/chapas/saida-lote', authMiddleware, async (req, res) => {
       if (it.qtd > qtdAtual) {
         return res.status(409).json({ ok: false, error: 'Saldo insuficiente', chapa_id: it.id, saldo: qtdAtual, solicitado: it.qtd });
       }
-      checks.push({ ...it, qtdAtual, row: r.data });
+      const canon = _chapasCanonicalFromAny(r.data, 'chapas_estoque_v2');
+      if (empIdBody && String(canon.emp_id || '').trim() && String(canon.emp_id || '').trim() !== empIdBody) {
+        return res.status(409).json({ ok: false, error: 'Chapa pertence a outra empresa', chapa_id: it.id });
+      }
+      checks.push({ ...it, qtdAtual, row: r.data, canon });
     }
 
     const resultados = [];
     const updatedAt = new Date().toISOString();
-    const obsFinal = obsRaw ? obsRaw : motivo;
-    const obsTxt = String('Saída em lote' + (obsFinal ? (' · ' + obsFinal) : '')).trim();
 
     for (const it of checks) {
       const newQtd = Math.trunc(it.qtdAtual - it.qtd);
+      const partesObs = ['Saída em lote', 'Motivo: ' + motivo];
+      if (dataSaida) partesObs.push(dataSaida);
+      if (responsavel) partesObs.push('Responsavel: ' + responsavel);
+      if (ofNumero) partesObs.push('OF: ' + ofNumero);
+      if (obsRaw) partesObs.push(obsRaw);
+      const obsTxt = partesObs.filter(Boolean).join(' · ').trim();
 
       const movRes = await _chapasMovimentarV2Rpc({
         chapa_id: it.id,
@@ -14559,7 +14576,9 @@ app.post('/api/chapas/saida-lote', authMiddleware, async (req, res) => {
       });
 
       if (movRes?.error) {
-        if (_chapasMovRpcIsSaldoInsuficiente(movRes.error)) return res.status(409).json({ ok: false, error: 'Saldo insuficiente' });
+        if (_chapasMovRpcIsSaldoInsuficiente(movRes.error)) {
+          return res.status(409).json({ ok: false, error: 'Saldo insuficiente', chapa_id: it.id, saldo: it.qtdAtual, solicitado: it.qtd });
+        }
         if (_chapasMovRpcIsValidacao(movRes.error)) return res.status(400).json({ ok: false, error: movRes.error.message || String(movRes.error) });
         return res.status(500).json({ ok: false, error: movRes.error.message || String(movRes.error) });
       }
@@ -14567,12 +14586,35 @@ app.post('/api/chapas/saida-lote', authMiddleware, async (req, res) => {
       const updCompat = await _chapasAtualizarQtdEstoqueChapa(it.id, newQtd, req, updatedAt);
       if (updCompat?.error) return res.status(500).json({ ok: false, error: String(updCompat.error.message || updCompat.error) });
 
-      resultados.push({ id: it.id, qtd_anterior: it.qtdAtual, qtd_nova: newQtd });
-      try { await logAuditoria('chapas_estoque_v2', 'SAIDA_LOTE', it.id, { qtd_anterior: it.qtdAtual }, { qtd_nova: newQtd, motivo, obs: obsRaw }, req); } catch (_) {}
+      const finalRow = updCompat?.data || it.row;
+      const canonUpd = _chapasCanonicalFromAny(finalRow, 'chapas_estoque_v2');
+      resultados.push({
+        item: it.idx + 1,
+        chapa_id: it.id,
+        fornecedor: canonUpd.fornecedor,
+        nomenclatura: canonUpd.nomenclatura,
+        tamanho: canonUpd.tamanho,
+        nome: canonUpd.nome || canonUpd.nome_uso || '',
+        quantidade_saida: it.qtd,
+        qtd_anterior: it.qtdAtual,
+        qtd_nova: Math.trunc(Number(canonUpd.quantidade || newQtd) || 0),
+        motivo,
+      });
+      try {
+        await logAuditoria('chapas_estoque_v2', 'SAIDA_LOTE', it.id, { qtd_anterior: it.qtdAtual }, {
+          qtd_nova: Math.trunc(Number(canonUpd.quantidade || newQtd) || 0),
+          motivo,
+          responsavel,
+          of_numero: ofNumero,
+          data_saida: dataSaida,
+          obs: obsRaw,
+        }, req);
+      } catch (_) {}
     }
 
     try { cacheClearPrefix('chapas_estoque:'); } catch (_) {}
-    return res.json({ ok: true, atualizados: resultados.length, resultados });
+    await _chapasLogAcao(req, 'estoque_saida_lote', `Saída em lote registrada com ${itens.length} item(ns) · motivo=${motivo} · OF=${ofNumero || '—'}`);
+    return res.json({ ok: true, atualizados: resultados.length, motivo, of_numero: ofNumero || null, resultados });
   } catch (e) {
     console.error('[chapas/saida-lote]', e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });

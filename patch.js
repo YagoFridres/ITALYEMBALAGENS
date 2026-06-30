@@ -10049,12 +10049,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 })();
 
 (function patchMenuEstoques() {
-  function _authHeaders() {
-    var token = '';
-    try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
-    return token ? { Authorization: 'Bearer ' + token } : {};
-  }
-
   function _pageFromOnclick(el, fallback) {
     try {
       var raw = String(el && el.getAttribute && el.getAttribute('onclick') || '').trim();
@@ -10064,160 +10058,132 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return String(fallback || '').trim();
   }
 
-  function _setMenuVisual(el, icon, label, pageId) {
-    try {
-      el.id = 'menu-' + String(pageId || '').replace(/[^\w-]/g, '-');
-      el.setAttribute('data-estoque-v2', String(pageId || '').trim());
-      el.setAttribute('onclick', "go('" + String(pageId || '').replace(/'/g, "\\'") + "');closeNavGroupsExcept('ng-estoques')");
-      var ico = el.querySelector('span.ico') || el.querySelector('.ico') || el.querySelector('span');
-      if (ico) ico.textContent = icon;
-      var txt = el.childNodes;
-      if (txt && txt.length) {
-        for (var i = 0; i < txt.length; i += 1) {
-          var n = txt[i];
-          if (n && n.nodeType === 3) { n.textContent = label; break; }
-        }
-      }
-      if (!el.textContent || el.textContent.trim().length < 3) el.textContent = label;
-      el.style.display = '';
-    } catch (_) {}
+  function _getGrupoEstoques() {
+    return document.querySelector('#ng-estoques .nav-group-items');
   }
 
-  function _ocultarMenuLegado() {
-    ['menu-estoque', 'menu-cliches', 'menu-facas', 'menu-estoque-tintas', 'menu-estoque-materiais', 'menu-estoque-dashboard'].forEach(function(id) {
-      try {
-        var el = document.getElementById(id);
-        if (el && !el.getAttribute('data-estoque-v2')) el.style.display = 'none';
-      } catch (_) {}
-    });
-    ['gramaturas', 'toneladas'].forEach(function(key) {
-      try {
-        document.querySelectorAll('[data-patch-menu="' + key + '"]').forEach(function(el) { el.style.display = 'none'; });
-      } catch (_) {}
-    });
+  function _getMenuTemplate() {
+    var grupo = _getGrupoEstoques();
+    if (!grupo) return null;
+    return grupo.querySelector('.nav-item, .menu-item, a, li');
   }
 
-  async function _fetchLegacyInfo() {
-    if (window.__estoqueLegacyFetchDone && window.__estoqueLegacyFetchCache) return window.__estoqueLegacyFetchCache;
-    if (window.__estoqueLegacyFetchPromise) return window.__estoqueLegacyFetchPromise;
-    var headers = _authHeaders();
-    var jobs = [
-      { key: 'tintas', label: 'Estoque de Tintas', page: 'estoque-tintas', icon: '🎨', url: '/api/estoque_tintas?limit=1' },
-      { key: 'materiais', label: 'Estoque de Materiais', page: 'estoque-materiais', icon: '🔧', url: '/api/estoque_materiais?limit=1' },
-      { key: 'cliches', label: 'Estoque de Clichês', page: 'cliches', icon: '🖼️', url: '/api/cliches?limit=1' }
+  function _menuEstoquesDefs() {
+    var pageChapas = _pageFromOnclick(document.getElementById('menu-estoque'), 'estoque') || 'estoque';
+    return [
+      { icon: '🟦', label: 'Estoque de Chapas', tela: pageChapas },
+      { icon: '📥', label: 'Entradas', tela: 'entradas-estoque' },
+      { icon: '📤', label: 'Saídas', tela: 'saidas-estoque' },
+      { icon: '📋', label: 'Checklist de Recebimento', tela: 'checklist-recebimento' },
+      { icon: '📐', label: 'Gramaturas', tela: 'gramaturas' },
+      { icon: '⚖️', label: 'Toneladas Vendidas', tela: 'toneladas-vendidas' },
+      { icon: '🔪', label: 'Estoque de Facas', tela: 'facas1' }
     ];
-    window.__estoqueLegacyFetchPromise = (async function() {
-      var out = {};
-      for (var i = 0; i < jobs.length; i += 1) {
-        var job = jobs[i];
-        try {
-          var resp = await fetch(job.url, { headers: headers });
-          var json = await resp.json().catch(function() { return null; });
-          if (!resp.ok) throw new Error(String(json && (json.error || json.message) || ('Falha em ' + job.url)));
-          var lista = Array.isArray(json) ? json : ((json && (json.data || json.itens || json.cliches || json.tintas || json.materiais)) || []);
-          var hasData = Array.isArray(lista) && lista.length > 0;
-          out[job.key] = Object.assign({}, job, { hasData: hasData, available: true, checked: true, failed: false });
-        } catch (e) {
-          out[job.key] = Object.assign({}, job, {
-            hasData: true,
-            available: false,
-            checked: false,
-            failed: true,
-            error: String(e && e.message || e || 'falha')
-          });
-        }
-      }
-      try {
-        window.__estoqueLegacyFetchCache = out;
-        window.__estoqueLegacyFetchDone = true;
-      } catch (_) {}
-      return out;
-    })().finally(function() {
-      try { window.__estoqueLegacyFetchPromise = null; } catch (_) {}
-    });
-    return window.__estoqueLegacyFetchPromise;
   }
 
-  function _temHistoricoLegado(resumo) {
-    resumo = resumo || {};
-    return ['tintas', 'materiais', 'cliches'].some(function(k) {
-      return !!(resumo[k] && resumo[k].hasData);
-    });
+  function _menuEstoquesSignature(defs) {
+    return (defs || []).map(function(item) {
+      return [item.tela, item.label, item.icon].join(':');
+    }).join('|');
   }
 
-  async function _adicionarMenuEstoques() {
-    if (window.__estoqueMenuBuildDone) return;
-    if (window.__estoqueMenuBuildPromise) return window.__estoqueMenuBuildPromise;
-    window.__estoqueMenuBuildPromise = (async function() {
-    var built = false;
+  function _menuEstoquesCreateNode(item, template) {
+    var el = template ? template.cloneNode(false) : document.createElement('div');
     try {
-      var grupo = document.querySelector('#ng-estoques .nav-group-items');
-      if (!grupo) return;
-      var base = document.getElementById('menu-estoque') || document.getElementById('menu-facas') || document.getElementById('menu-cliches') || grupo.querySelector('.nav-item, .menu-item, a, li');
-      if (!base) return;
-      _ocultarMenuLegado();
-      var pageChapas = _pageFromOnclick(document.getElementById('menu-estoque'), 'estoque');
-      var novos = [
-        { icon: '🟦', label: 'Estoque de Chapas', tela: pageChapas || 'estoque' },
-        { icon: '📥', label: 'Entradas', tela: 'entradas-estoque' },
-        { icon: '📤', label: 'Saídas', tela: 'saidas-estoque' },
-        { icon: '📋', label: 'Checklist de Recebimento', tela: 'checklist-recebimento' },
-        { icon: '📐', label: 'Gramaturas', tela: 'gramaturas' },
-        { icon: '🔪', label: 'Estoque de Facas', tela: 'facas1' }
-      ];
-      var last = null;
-      novos.forEach(function(item) {
-        try {
-          var el = document.querySelector('#ng-estoques [data-estoque-v2="' + item.tela + '"]');
-          if (!el) {
-            el = base.cloneNode(true);
-            grupo.appendChild(el);
-          }
-          el.setAttribute('data-estoque-v2', item.tela);
-          _setMenuVisual(el, item.icon, item.label, item.tela);
-          if (last && last.nextSibling !== el) grupo.insertBefore(el, last.nextSibling);
-          else if (!last) grupo.insertBefore(el, grupo.firstChild);
-          last = el;
-        } catch (_) {}
-      });
-      try {
-        grupo.querySelectorAll('[data-estoque-v2]').forEach(function(el) {
-          var pageId = String(el.getAttribute('data-estoque-v2') || '');
-          var keep = novos.some(function(item) { return item.tela === pageId; });
-          if (!keep) el.remove();
-        });
-      } catch (_) {}
-      built = true;
-      console.log('[PATCH] menu de estoque reorganizado');
+      el.removeAttribute('id');
+      el.removeAttribute('href');
+      el.removeAttribute('style');
+      el.removeAttribute('data-patch-menu');
+      el.removeAttribute('data-legacy-menu');
     } catch (_) {}
-    finally {
-      try { window.__estoqueMenuBuildDone = !!built; } catch (_) {}
-      try { window.__estoqueMenuBuildPromise = null; } catch (_) {}
+    while (el.firstChild) el.removeChild(el.firstChild);
+    var ico = document.createElement('span');
+    ico.className = 'ico';
+    ico.textContent = item.icon;
+    el.appendChild(ico);
+    el.appendChild(document.createTextNode(item.label));
+    el.id = 'menu-estoque-v2-' + String(item.tela || '').replace(/[^\w-]/g, '-');
+    el.setAttribute('data-estoque-v2', String(item.tela || '').trim());
+    el.setAttribute('data-estoque-managed', '1');
+    el.setAttribute('onclick', "go('" + String(item.tela || '').replace(/'/g, "\\'") + "');closeNavGroupsExcept('ng-estoques')");
+    el.style.display = '';
+    return el;
+  }
+
+  function _menuEstoquesPrecisaReconstruir(grupo, defs) {
+    if (!grupo) return false;
+    var signature = _menuEstoquesSignature(defs);
+    if (String(grupo.getAttribute('data-estoque-signature') || '') !== signature) return true;
+    var managed = Array.from(grupo.querySelectorAll('[data-estoque-managed="1"]'));
+    if (managed.length !== defs.length) return true;
+    for (var i = 0; i < defs.length; i += 1) {
+      var item = defs[i];
+      var el = managed[i];
+      if (!el) return true;
+      if (String(el.getAttribute('data-estoque-v2') || '') !== item.tela) return true;
+      if (String(el.textContent || '').indexOf(item.label) < 0) return true;
     }
-    })();
-    return window.__estoqueMenuBuildPromise;
+    var legado = grupo.querySelector('#menu-cliches,[data-legacy-menu],.nav-item[onclick*="cliches"],.nav-item[onclick*="estoque-dashboard"],.nav-item[onclick*="estoque-legado"],.nav-item[onclick*="consumo-chapas"],.nav-item[onclick*="lotes-estoque"],.nav-item[onclick*="inteligencia-estoque"]');
+    return !!legado;
+  }
+
+  function _renderMenuEstoquesFinal() {
+    if (window.__estoqueMenuRenderLock) return false;
+    window.__estoqueMenuRenderLock = true;
+    try {
+      var grupo = _getGrupoEstoques();
+      if (!grupo) return false;
+      var defs = _menuEstoquesDefs();
+      if (!_menuEstoquesPrecisaReconstruir(grupo, defs)) {
+        try { window.__estoqueMenuBuildDone = true; } catch (_) {}
+        return true;
+      }
+      var template = _getMenuTemplate();
+      Array.from(grupo.querySelectorAll('.nav-item, .menu-item, a, li')).forEach(function(el) {
+        try { el.remove(); } catch (_) {}
+      });
+      defs.forEach(function(item) {
+        grupo.appendChild(_menuEstoquesCreateNode(item, template));
+      });
+      grupo.setAttribute('data-estoque-signature', _menuEstoquesSignature(defs));
+      try { window.__estoqueMenuBuildDone = true; } catch (_) {}
+      try { console.log('[PATCH] menu de estoques estabilizado'); } catch (_) {}
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      window.__estoqueMenuRenderLock = false;
+    }
+  }
+
+  function _bindMenuEstoquesObserver() {
+    try {
+      if (window.__estoqueMenuObserverBound) return;
+      var waitObs = new MutationObserver(function() {
+        var grupo = _getGrupoEstoques();
+        if (!grupo) return;
+        try { waitObs.disconnect(); } catch (_) {}
+        _renderMenuEstoquesFinal();
+        var obs = new MutationObserver(function() {
+          if (window.__estoqueMenuRepairTimer) clearTimeout(window.__estoqueMenuRepairTimer);
+          window.__estoqueMenuRepairTimer = setTimeout(function() {
+            _renderMenuEstoquesFinal();
+          }, 60);
+        });
+        window._patchMenuEstoquesObs = obs;
+        obs.observe(grupo, { childList: true });
+        window.__estoqueMenuObserverBound = true;
+      });
+      waitObs.observe(document.body, { childList: true, subtree: true });
+      window.__estoqueMenuWaitObs = waitObs;
+    } catch (_) {}
   }
 
   function init() {
-    setTimeout(_adicionarMenuEstoques, 1500);
-    try {
-      var obs = new MutationObserver(function(_, observer) {
-        if (window._pausarObservers) return;
-        if (window.__estoqueMenuBuildDone || window.__estoqueMenuBuildPromise) return;
-        try {
-          var temEstoque = document.querySelector('#ng-estoques .nav-item[onclick*="estoque"]');
-          var temNovos = document.querySelector('#ng-estoques [data-estoque-v2="checklist-recebimento"]');
-          if (temEstoque && !temNovos) _adicionarMenuEstoques();
-          temNovos = document.querySelector('#ng-estoques [data-estoque-v2="checklist-recebimento"]');
-          if (temNovos || window.__estoqueMenuBuildDone) {
-            try { observer.disconnect(); } catch (_) {}
-            try { window._patchMenuEstoquesObs = null; } catch (_) {}
-          }
-        } catch (_) {}
-      });
-      window._patchMenuEstoquesObs = obs;
-      obs.observe(document.body, { childList: true, subtree: true });
-    } catch (_) {}
+    [80, 400, 1200, 2400].forEach(function(delay) {
+      setTimeout(_renderMenuEstoquesFinal, delay);
+    });
+    _bindMenuEstoquesObserver();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
@@ -10647,6 +10613,64 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return rows;
   }
 
+  function _extrairCampoObsEstoque(obs, label) {
+    var txt = String(obs || '').trim();
+    if (!txt) return '';
+    var rx = new RegExp(String(label || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*:\\s*([^·]+)', 'i');
+    var m = txt.match(rx);
+    return m && m[1] ? String(m[1]).trim() : '';
+  }
+
+  function _historicoEntradaEhRecebimento(row) {
+    var obs = String(row && row.observacoes || '').toLowerCase();
+    return obs.indexOf('entrada em lote') >= 0 || obs.indexOf('entrada inicial') >= 0;
+  }
+
+  function _historicoSaidaEhManual(row) {
+    var obs = String(row && row.observacoes || '').toLowerCase();
+    return obs.indexOf('saída em lote') >= 0 || obs.indexOf('saida em lote') >= 0 || obs.indexOf('motivo:') >= 0;
+  }
+
+  function _agruparHistoricoOperacoesEstoque(rows, tipo) {
+    var mapa = {};
+    (Array.isArray(rows) ? rows : []).forEach(function(row) {
+      var obs = String(row && row.observacoes || '').trim();
+      var dataMin = String(row && row.data || '').slice(0, 16);
+      var usuario = String(row && row.usuario || '').trim();
+      var nf = String(row && row.nf || '').trim();
+      var empresa = String(row && row.empresa || '').trim();
+      var key = [tipo, dataMin, usuario, nf, empresa, obs].join('|');
+      if (!mapa[key]) {
+        mapa[key] = {
+          key: key,
+          data: row && row.data || '',
+          fornecedor: String(row && row.fornecedor || '').trim(),
+          nf: nf || '—',
+          responsavel: _extrairCampoObsEstoque(obs, 'Responsavel') || usuario || '—',
+          empresa: empresa || '—',
+          motivo: _extrairCampoObsEstoque(obs, 'Motivo') || '—',
+          of_numero: _extrairCampoObsEstoque(obs, 'OF') || '—',
+          observacoes: obs || '—',
+          quantidade_total: 0,
+          valor_total: 0,
+          itens: 0
+        };
+      }
+      mapa[key].quantidade_total += Number(row && row.quantidade || 0) || 0;
+      mapa[key].valor_total += Number(row && row.valor_total || 0) || 0;
+      mapa[key].itens += 1;
+      var forn = String(row && row.fornecedor || '').trim();
+      if (forn && mapa[key].fornecedor && mapa[key].fornecedor !== forn) mapa[key].fornecedor = 'Diversos';
+      if (!mapa[key].fornecedor && forn) mapa[key].fornecedor = forn;
+      var emp = String(row && row.empresa || '').trim();
+      if (emp && mapa[key].empresa && mapa[key].empresa !== emp) mapa[key].empresa = 'Múltiplas';
+      if (!mapa[key].empresa && emp) mapa[key].empresa = emp;
+    });
+    return Object.keys(mapa).map(function(key) { return mapa[key]; }).sort(function(a, b) {
+      return String(b.data || '').localeCompare(String(a.data || ''));
+    });
+  }
+
   function _entradaEstoqueHojeIso() {
     try { return new Date().toISOString().slice(0, 10); } catch (_) { return ''; }
   }
@@ -10977,7 +11001,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var target = getMainPatchHost('entradas-estoque', '📥 Entradas');
         await _renderEntradasEstoque(target);
       };
-      var base = await _carregarDadosMovimentacaoEstoque('entrada');
+      var raw = await _carregarDadosMovimentacaoEstoque('entrada');
+      var base = _agruparHistoricoOperacoesEstoque((raw || []).filter(_historicoEntradaEhRecebimento), 'entrada');
       var state = { q: '', de: '', ate: '' };
       var render = function() {
         var q = String(state.q || '').trim().toLowerCase();
@@ -10986,40 +11011,37 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           if (state.de && dataIso && dataIso < state.de) return false;
           if (state.ate && dataIso && dataIso > state.ate) return false;
           if (!q) return true;
-          var txt = [row.fornecedor, row.nf, row.empresa, row.usuario, row.chapa_label, row.observacoes, row.lote].join(' ').toLowerCase();
+          var txt = [row.fornecedor, row.nf, row.empresa, row.responsavel, row.observacoes].join(' ').toLowerCase();
           return txt.indexOf(q) >= 0;
         });
-        var totalQtd = filtrada.reduce(function(s, r) { return s + (Number(r.quantidade || 0) || 0); }, 0);
-        var totalTon = filtrada.reduce(function(s, r) { return s + (Number(r.toneladas || 0) || 0); }, 0);
+        var totalQtd = filtrada.reduce(function(s, r) { return s + (Number(r.quantidade_total || 0) || 0); }, 0);
         var totalValor = filtrada.reduce(function(s, r) { return s + (Number(r.valor_total || 0) || 0); }, 0);
         host.innerHTML = ''
           + '<div style="display:grid;gap:16px">'
           + '  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
-          + '    <div><div style="font-size:26px;font-weight:900;color:var(--text)">📥 Entradas</div><div style="margin-top:6px;color:var(--text2);font-size:13px">Lancamentos reais do estoque de chapas, com varias linhas na mesma entrada e historico alimentado pelo backend.</div></div>'
+          + '    <div><div style="font-size:26px;font-weight:900;color:var(--text)">📥 Entradas</div><div style="margin-top:6px;color:var(--text2);font-size:13px">Recebimentos de chapas no estoque, agrupados por lançamento de entrada e sem misturar baixas automáticas de OF.</div></div>'
           + '    <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="estoque-entrada-lote-btn" class="pcp-btn">+ Nova Entrada</button></div>'
           + '  </div>'
           + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">' 
-          +      [_makeCardEstoque({ label: 'Registros', value: _fmtNumEstoque(filtrada.length), sub: 'Entradas filtradas' }),
-                  _makeCardEstoque({ label: 'Quantidade', value: _fmtNumEstoque(totalQtd), sub: 'Unidades lançadas' }),
-                  _makeCardEstoque({ label: 'Toneladas', value: _fmtTonEstoque(totalTon), sub: 'Peso estimado das entradas' }),
-                  _makeCardEstoque({ label: 'Valor', value: _fmtRsEstoque(totalValor), sub: 'Valor calculado pelas entradas' })].join('')
+          +      [_makeCardEstoque({ label: 'Lançamentos', value: _fmtNumEstoque(filtrada.length), sub: 'Entradas filtradas' }),
+                  _makeCardEstoque({ label: 'Quantidade', value: _fmtNumEstoque(totalQtd), sub: 'Unidades recebidas' }),
+                  _makeCardEstoque({ label: 'Fornecedor', value: filtrada.length === 1 ? (filtrada[0].fornecedor || '—') : '—', sub: 'Visão rápida do filtro' }),
+                  _makeCardEstoque({ label: 'Valor', value: _fmtRsEstoque(totalValor), sub: 'Valor total das entradas' })].join('')
           + '  </div>'
           + '  <div style="display:flex;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px">'
-          + '    <input id="estoque-ent-q" type="text" value="' + _escapeHtmlLite(state.q) + '" placeholder="Buscar por fornecedor, NF, chapa, usuário..." style="flex:1;min-width:260px;padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
+          + '    <input id="estoque-ent-q" type="text" value="' + _escapeHtmlLite(state.q) + '" placeholder="Buscar por fornecedor, NF, responsável ou observações..." style="flex:1;min-width:260px;padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
           + '    <input id="estoque-ent-de" type="date" value="' + _escapeHtmlLite(state.de) + '" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
           + '    <input id="estoque-ent-ate" type="date" value="' + _escapeHtmlLite(state.ate) + '" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
           + '  </div>'
           +    _renderTabelaMovEstoque(filtrada, [
-                 { label: 'Fornecedor', key: 'fornecedor' },
-                 { label: 'NF', key: 'nf' },
-                 { label: 'Usuário', key: 'usuario' },
                  { label: 'Data', key: 'data', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(_fmtDateEstoque(r.data)) + '</span>'; } },
-                 { label: 'Quantidade', key: 'quantidade', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900;color:var(--green)">' + _escapeHtmlLite(_fmtNumEstoque(r.quantidade)) + '</span>'; } },
-                 { label: 'Toneladas', key: 'toneladas', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900">' + _escapeHtmlLite(_fmtTonEstoque(r.toneladas)) + '</span>'; } },
-                 { label: 'Valor', key: 'valor_total', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900">' + _escapeHtmlLite(_fmtRsEstoque(r.valor_total)) + '</span>'; } },
+                 { label: 'Fornecedor', key: 'fornecedor', render: function(r) { return _escapeHtmlLite(r.fornecedor || '—'); } },
+                 { label: 'NF', key: 'nf', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(r.nf || '—') + '</span>'; } },
+                 { label: 'Responsável', key: 'responsavel' },
+                 { label: 'Quantidade Total', key: 'quantidade_total', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900;color:var(--green)">' + _escapeHtmlLite(_fmtNumEstoque(r.quantidade_total)) + '</span>'; } },
+                 { label: 'Valor Total', key: 'valor_total', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900">' + _escapeHtmlLite(_fmtRsEstoque(r.valor_total)) + '</span>'; } },
                  { label: 'Empresa', key: 'empresa' },
-                 { label: 'Observações', key: 'observacoes', render: function(r) { return _escapeHtmlLite(r.observacoes || '—'); } },
-                 { label: 'Lote', key: 'lote', render: function(r) { return '<span style="font-family:var(--mono);font-weight:800">' + _escapeHtmlLite(r.lote) + '</span>'; } }
+                 { label: 'Observações', key: 'observacoes', render: function(r) { return _escapeHtmlLite(r.observacoes || '—'); } }
                ])
           + '</div>';
         var btnEntrada = document.getElementById('estoque-entrada-lote-btn');
@@ -11037,11 +11059,291 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
   }
 
+  function _saidaEstoqueHojeIso() {
+    try { return new Date().toISOString().slice(0, 10); } catch (_) { return ''; }
+  }
+
+  function _saidaEstoqueOptions(chapas) {
+    var lista = Array.isArray(chapas) ? chapas : [];
+    return ['<option value="">Selecione...</option>'].concat(lista.map(function(chapa) {
+      var id = String(chapa && chapa.id || '').trim();
+      var saldo = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
+      var label = [
+        String(chapa && (chapa.nomenclatura || chapa.nom) || '').trim(),
+        String(chapa && (chapa.tamanho || chapa.tam) || '').trim(),
+        String(chapa && (chapa.nome_uso || chapa.nome) || '').trim(),
+        String(chapa && (chapa.fornecedor || chapa.forn) || '').trim(),
+        'saldo ' + _fmtNumEstoque(saldo)
+      ].filter(Boolean).join(' · ');
+      return '<option value="' + _escapeHtmlLite(id) + '">' + _escapeHtmlLite(label) + '</option>';
+    })).join('');
+  }
+
+  function _saidaEstoqueFindChapa(chapas, id) {
+    var sid = String(id || '').trim();
+    if (!sid) return null;
+    var lista = Array.isArray(chapas) ? chapas : [];
+    for (var i = 0; i < lista.length; i += 1) {
+      if (String(lista[i] && lista[i].id || '').trim() === sid) return lista[i];
+    }
+    return null;
+  }
+
+  function _saidaEstoqueAtualizarLinha(tr, chapas) {
+    if (!tr) return;
+    var chapaEl = tr.querySelector('.est-sai-chapa');
+    var qtdEl = tr.querySelector('.est-sai-qtd');
+    var saldoEl = tr.querySelector('.est-sai-saldo');
+    var totalEl = tr.querySelector('.est-sai-total');
+    var chapa = _saidaEstoqueFindChapa(chapas, chapaEl && chapaEl.value);
+    var saldo = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
+    var qtd = Math.max(0, Math.trunc(Number(qtdEl && qtdEl.value || 0) || 0));
+    var vu = Number(chapa && (chapa.valor_unitario || chapa.val) || 0) || 0;
+    if (qtdEl) {
+      if (saldo > 0) qtdEl.max = String(saldo);
+      else qtdEl.removeAttribute('max');
+      if (saldo > 0 && qtd > saldo) {
+        qtd = saldo;
+        qtdEl.value = String(saldo);
+      }
+    }
+    if (saldoEl) {
+      saldoEl.textContent = saldo > 0 ? _fmtNumEstoque(saldo) : '0';
+      saldoEl.style.color = saldo > 0 ? '#e2e8f0' : '#fca5a5';
+    }
+    if (totalEl) totalEl.textContent = _fmtRsEstoque(qtd * vu);
+    tr.dataset.chapaId = String(chapa && chapa.id || '').trim();
+    tr.dataset.saldo = String(saldo);
+  }
+
+  function _saidaEstoqueAtualizarResumoModal() {
+    var tb = document.getElementById('estoque-saida-real-tbody');
+    var resumo = document.getElementById('estoque-saida-real-resumo');
+    if (!tb || !resumo) return;
+    var rows = Array.from(tb.querySelectorAll('tr'));
+    var itens = rows.map(function(tr) {
+      return {
+        chapaId: String(tr.dataset.chapaId || '').trim(),
+        saldo: Math.max(0, Math.trunc(Number(tr.dataset.saldo || 0) || 0)),
+        qtd: Math.max(0, Math.trunc(Number(tr.querySelector('.est-sai-qtd') && tr.querySelector('.est-sai-qtd').value || 0) || 0))
+      };
+    }).filter(function(item) { return item.chapaId && item.qtd > 0; });
+    var totalQtd = itens.reduce(function(s, item) { return s + item.qtd; }, 0);
+    resumo.textContent = itens.length ? (itens.length + ' tipo(s) · ' + _fmtNumEstoque(totalQtd) + ' unidade(s)') : '';
+  }
+
+  function _saidaEstoqueAdicionarLinha(tbody, chapas) {
+    if (!tbody) return;
+    var tr = document.createElement('tr');
+    tr.style.background = (tbody.children.length % 2 === 0) ? 'var(--surface)' : 'var(--s2)';
+    tr.innerHTML = ''
+      + '<td style="padding:8px;border-bottom:1px solid var(--border);min-width:320px">'
+      + '  <select class="est-sai-chapa" style="width:100%;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">' + _saidaEstoqueOptions(chapas) + '</select>'
+      + '</td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:900"><span class="est-sai-saldo">0</span></td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-sai-qtd" type="number" min="1" value="1" style="width:100px;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800;text-align:right"></td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:900;white-space:nowrap"><span class="est-sai-total">R$ 0,00</span></td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--border);text-align:center"><button type="button" class="pcp-btn est-sai-remover" style="background:#7f1d1d">Remover</button></td>';
+    tbody.appendChild(tr);
+
+    var sync = function() {
+      _saidaEstoqueAtualizarLinha(tr, chapas);
+      _saidaEstoqueAtualizarResumoModal();
+    };
+    var chapaEl = tr.querySelector('.est-sai-chapa');
+    var qtdEl = tr.querySelector('.est-sai-qtd');
+    var btnRem = tr.querySelector('.est-sai-remover');
+    if (chapaEl) {
+      chapaEl.addEventListener('change', sync);
+      chapaEl.addEventListener('input', sync);
+    }
+    if (qtdEl) {
+      qtdEl.addEventListener('change', sync);
+      qtdEl.addEventListener('input', sync);
+    }
+    if (btnRem) btnRem.onclick = function() {
+      try { tr.remove(); } catch (_) {}
+      if (!tbody.children.length) _saidaEstoqueAdicionarLinha(tbody, chapas);
+      _saidaEstoqueAtualizarResumoModal();
+    };
+    _saidaEstoqueAtualizarLinha(tr, chapas);
+    _saidaEstoqueAtualizarResumoModal();
+  }
+
+  function _saidaEstoqueFecharModal() {
+    var modal = document.getElementById('estoque-saida-real-modal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  async function _saidaEstoqueSalvar() {
+    var btn = document.getElementById('estoque-saida-real-save');
+    if (btn && btn.disabled) return;
+    var dataEl = document.getElementById('estoque-saida-real-data');
+    var motivoEl = document.getElementById('estoque-saida-real-motivo');
+    var respEl = document.getElementById('estoque-saida-real-responsavel');
+    var ofEl = document.getElementById('estoque-saida-real-of');
+    var obsEl = document.getElementById('estoque-saida-real-obs');
+    var tb = document.getElementById('estoque-saida-real-tbody');
+
+    var payload = {
+      data_saida: String(dataEl && dataEl.value || '').trim(),
+      motivo: String(motivoEl && motivoEl.value || '').trim(),
+      responsavel: String(respEl && respEl.value || '').trim(),
+      of_numero: String(ofEl && ofEl.value || '').trim(),
+      observacoes: String(obsEl && obsEl.value || '').trim(),
+      emp_id: _estoqueAtualEmpId() || '',
+      itens: []
+    };
+
+    if (!payload.motivo) {
+      try { window.toast('Selecione o motivo da saída', 'var(--red)'); } catch (_) {}
+      return;
+    }
+
+    Array.from(tb ? tb.querySelectorAll('tr') : []).forEach(function(tr) {
+      var chapaId = String(tr.dataset.chapaId || '').trim();
+      var saldo = Math.max(0, Math.trunc(Number(tr.dataset.saldo || 0) || 0));
+      var qtd = Math.max(0, Math.trunc(Number(tr.querySelector('.est-sai-qtd') && tr.querySelector('.est-sai-qtd').value || 0) || 0));
+      payload.itens.push({ chapa_id: chapaId, quantidade: qtd, saldo: saldo });
+    });
+
+    var itensValidos = payload.itens.filter(function(item) { return item.chapa_id && item.quantidade > 0; });
+    if (!itensValidos.length) {
+      try { window.toast('Adicione pelo menos uma chapa válida', 'var(--red)'); } catch (_) {}
+      return;
+    }
+
+    var saldoInvalido = itensValidos.find(function(item) { return item.quantidade > item.saldo; });
+    if (saldoInvalido) {
+      try { window.toast('Há item com quantidade maior que o saldo disponível', 'var(--red)'); } catch (_) {}
+      return;
+    }
+
+    payload.itens = itensValidos.map(function(item) {
+      return { chapa_id: item.chapa_id, quantidade: item.quantidade };
+    });
+
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Salvando...';
+      }
+      var out = await apiJson('/api/chapas/saida-lote', { method: 'POST', body: payload });
+      if (!out.resp || !out.resp.ok || (out.data && out.data.ok === false)) {
+        throw new Error(String(out.data && out.data.error || 'Falha ao registrar saída'));
+      }
+      try { window.toast('Saídas registradas com sucesso', 'var(--green)'); } catch (_) {}
+      _saidaEstoqueFecharModal();
+      try { if (typeof chapasForcarReload === 'function') await chapasForcarReload(); } catch (_) {}
+      try {
+        if (typeof window.__estoqueSaidasRefresh === 'function') {
+          await window.__estoqueSaidasRefresh();
+        } else if (typeof window.go === 'function') {
+          window.go('saidas-estoque');
+        }
+      } catch (_) {}
+    } catch (e) {
+      try { window.toast('Erro ao registrar saída: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Salvar saída';
+      }
+    }
+  }
+
+  async function _abrirModalSaidaEstoqueReal() {
+    var modal = document.getElementById('estoque-saida-real-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'estoque-saida-real-modal';
+      modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(2,6,23,.82);z-index:99999;align-items:center;justify-content:center;padding:18px';
+      modal.innerHTML = ''
+        + '<div style="width:min(1320px,97vw);max-height:92vh;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.55)">'
+        + '  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid var(--border)">'
+        + '    <div><div style="font-size:26px;font-weight:900;color:var(--text)">Nova Saída</div><div style="margin-top:6px;color:var(--text2);font-size:13px">Selecione várias chapas na mesma operação, valide o saldo antes de salvar e exija um motivo para cada saída.</div></div>'
+        + '    <button type="button" id="estoque-saida-real-close" class="pcp-btn" style="background:#334155">Fechar</button>'
+        + '  </div>'
+        + '  <div style="padding:18px;display:grid;gap:16px">'
+        + '    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px">'
+        + '      <label style="display:grid;gap:6px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Data da Saída</span><input id="estoque-saida-real-data" type="date" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></label>'
+        + '      <label style="display:grid;gap:6px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Motivo</span><select id="estoque-saida-real-motivo" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"><option value="">Selecionar...</option><option value="producao">Produção</option><option value="ajuste">Ajuste de Estoque</option><option value="devolucao">Devolução ao Fornecedor</option><option value="perda">Perda / Avaria</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></label>'
+        + '      <label style="display:grid;gap:6px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Responsável</span><input id="estoque-saida-real-responsavel" type="text" placeholder="Quem lançou" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></label>'
+        + '      <label style="display:grid;gap:6px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">OF</span><input id="estoque-saida-real-of" type="text" placeholder="Opcional" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono)"></label>'
+        + '      <label style="display:grid;gap:6px;grid-column:1/-1"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Observações</span><input id="estoque-saida-real-obs" type="text" placeholder="Detalhes adicionais da saída" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></label>'
+        + '    </div>'
+        + '    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
+        + '      <div id="estoque-saida-real-resumo" style="color:var(--text2);font-size:13px"></div>'
+        + '      <button type="button" id="estoque-saida-real-add" class="pcp-btn" style="background:#7f1d1d">+ Adicionar Item</button>'
+        + '    </div>'
+        + '    <div style="overflow:auto;border:1px solid var(--border);border-radius:16px;background:var(--card)">'
+        + '      <table style="width:100%;border-collapse:collapse;min-width:980px">'
+        + '        <thead><tr style="background:var(--s2)">'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Chapa</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);text-align:right">Saldo</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Qtd Saída</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);text-align:right">Valor Estimado</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);text-align:center">Ação</th>'
+        + '        </tr></thead>'
+        + '        <tbody id="estoque-saida-real-tbody"></tbody>'
+        + '      </table>'
+        + '    </div>'
+        + '    <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">'
+        + '      <button type="button" id="estoque-saida-real-cancel" class="pcp-btn" style="background:#334155">Cancelar</button>'
+        + '      <button type="button" id="estoque-saida-real-save" class="pcp-btn" style="background:#7f1d1d">Salvar saída</button>'
+        + '    </div>'
+        + '  </div>'
+        + '</div>';
+      document.body.appendChild(modal);
+      modal.addEventListener('click', function(ev) {
+        if (ev.target === modal) _saidaEstoqueFecharModal();
+      });
+      var closeBtn = document.getElementById('estoque-saida-real-close');
+      var cancelBtn = document.getElementById('estoque-saida-real-cancel');
+      var saveBtn = document.getElementById('estoque-saida-real-save');
+      if (closeBtn) closeBtn.onclick = _saidaEstoqueFecharModal;
+      if (cancelBtn) cancelBtn.onclick = _saidaEstoqueFecharModal;
+      if (saveBtn) saveBtn.onclick = _saidaEstoqueSalvar;
+    }
+
+    var tbody = document.getElementById('estoque-saida-real-tbody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="padding:18px;color:var(--text2)">Carregando chapas...</td></tr>';
+    modal.style.display = 'flex';
+
+    try {
+      var chapas = await _estoqueFetchChapasList(2000);
+      chapas = (Array.isArray(chapas) ? chapas : []).filter(function(chapa) {
+        return Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0)) > 0;
+      });
+      chapas.sort(function(a, b) {
+        var la = [a && (a.fornecedor || a.forn), a && (a.nomenclatura || a.nom), a && (a.tamanho || a.tam)].join(' ').toLowerCase();
+        var lb = [b && (b.fornecedor || b.forn), b && (b.nomenclatura || b.nom), b && (b.tamanho || b.tam)].join(' ').toLowerCase();
+        return la.localeCompare(lb, 'pt-BR');
+      });
+      window.__saidaEstoqueChapasCache = chapas;
+      var dataEl = document.getElementById('estoque-saida-real-data');
+      if (dataEl && !dataEl.value) dataEl.value = _saidaEstoqueHojeIso();
+      if (tbody) {
+        tbody.innerHTML = '';
+        _saidaEstoqueAdicionarLinha(tbody, chapas);
+      }
+      var btnAdd = document.getElementById('estoque-saida-real-add');
+      if (btnAdd) btnAdd.onclick = function() { _saidaEstoqueAdicionarLinha(tbody, chapas); };
+    } catch (e) {
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="padding:18px;color:#fca5a5">Falha ao carregar chapas: ' + _escapeHtmlLite(e && e.message || e) + '</td></tr>';
+    }
+  }
+
   async function _renderSaidasEstoque(host) {
     if (!host) return;
     host.innerHTML = '<div style="padding:18px;color:var(--text2)">Carregando saídas...</div>';
     try {
-      var base = await _carregarDadosMovimentacaoEstoque('saida');
+      window.__estoqueSaidasRefresh = async function() {
+        var target = getMainPatchHost('saidas-estoque', '📤 Saídas');
+        await _renderSaidasEstoque(target);
+      };
+      var raw = await _carregarDadosMovimentacaoEstoque('saida');
+      var base = _agruparHistoricoOperacoesEstoque((raw || []).filter(_historicoSaidaEhManual), 'saida');
       var state = { q: '', de: '', ate: '' };
       var render = function() {
         var q = String(state.q || '').trim().toLowerCase();
@@ -11050,43 +11352,40 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           if (state.de && dataIso && dataIso < state.de) return false;
           if (state.ate && dataIso && dataIso > state.ate) return false;
           if (!q) return true;
-          var txt = [row.of_numero, row.cliente, row.produto, row.maquina, row.usuario, row.chapa_label, row.observacoes].join(' ').toLowerCase();
+          var txt = [row.motivo, row.responsavel, row.of_numero, row.observacoes].join(' ').toLowerCase();
           return txt.indexOf(q) >= 0;
         });
-        var totalQtd = filtrada.reduce(function(s, r) { return s + (Number(r.quantidade || 0) || 0); }, 0);
-        var totalKg = filtrada.reduce(function(s, r) { return s + (Number(r.kg || 0) || 0); }, 0);
-        var totalTon = filtrada.reduce(function(s, r) { return s + (Number(r.toneladas || 0) || 0); }, 0);
+        var totalQtd = filtrada.reduce(function(s, r) { return s + (Number(r.quantidade_total || 0) || 0); }, 0);
+        var totalValor = filtrada.reduce(function(s, r) { return s + (Number(r.valor_total || 0) || 0); }, 0);
         host.innerHTML = ''
           + '<div style="display:grid;gap:16px">'
           + '  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
-          + '    <div><div style="font-size:26px;font-weight:900;color:var(--text)">📤 Saídas</div><div style="margin-top:6px;color:var(--text2);font-size:13px">Histórico pesquisável das saídas registradas no estoque de chapas, com enriquecimento por OF quando disponível.</div></div>'
-          + '    <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="estoque-saida-lote-btn" class="pcp-btn" style="background:#7f1d1d">+ Saída em Lote</button></div>'
+          + '    <div><div style="font-size:26px;font-weight:900;color:var(--text)">📤 Saídas</div><div style="margin-top:6px;color:var(--text2);font-size:13px">Histórico das saídas lançadas manualmente no estoque, agrupado por operação e com motivo obrigatório.</div></div>'
+          + '    <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="estoque-saida-lote-btn" class="pcp-btn" style="background:#7f1d1d">+ Nova Saída</button></div>'
           + '  </div>'
           + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">' 
-          +      [_makeCardEstoque({ label: 'Registros', value: _fmtNumEstoque(filtrada.length), sub: 'Saídas filtradas' }),
-                  _makeCardEstoque({ label: 'Quantidade', value: _fmtNumEstoque(totalQtd), sub: 'Unidades movimentadas' }),
-                  _makeCardEstoque({ label: 'Peso', value: _fmtKgEstoque(totalKg), sub: 'Peso estimado das saídas' }),
-                  _makeCardEstoque({ label: 'Toneladas', value: _fmtTonEstoque(totalTon), sub: 'Consumo total estimado' })].join('')
+          +      [_makeCardEstoque({ label: 'Lançamentos', value: _fmtNumEstoque(filtrada.length), sub: 'Saídas filtradas' }),
+                  _makeCardEstoque({ label: 'Quantidade', value: _fmtNumEstoque(totalQtd), sub: 'Unidades retiradas' }),
+                  _makeCardEstoque({ label: 'Motivo', value: filtrada.length === 1 ? (filtrada[0].motivo || '—') : '—', sub: 'Visão rápida do filtro' }),
+                  _makeCardEstoque({ label: 'Valor', value: _fmtRsEstoque(totalValor), sub: 'Valor total das saídas' })].join('')
           + '  </div>'
           + '  <div style="display:flex;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px">'
-          + '    <input id="estoque-sai-q" type="text" value="' + _escapeHtmlLite(state.q) + '" placeholder="Buscar por OF, cliente, produto, máquina..." style="flex:1;min-width:260px;padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
+          + '    <input id="estoque-sai-q" type="text" value="' + _escapeHtmlLite(state.q) + '" placeholder="Buscar por motivo, responsável, OF ou observações..." style="flex:1;min-width:260px;padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
           + '    <input id="estoque-sai-de" type="date" value="' + _escapeHtmlLite(state.de) + '" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
           + '    <input id="estoque-sai-ate" type="date" value="' + _escapeHtmlLite(state.ate) + '" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
           + '  </div>'
           +    _renderTabelaMovEstoque(filtrada, [
-                 { label: 'OF', key: 'of_numero', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900;color:var(--accent)">' + _escapeHtmlLite(r.of_numero) + '</span>'; } },
-                 { label: 'Cliente', key: 'cliente' },
-                 { label: 'Produto', key: 'produto', render: function(r) { return _escapeHtmlLite(r.produto || '—'); } },
-                 { label: 'Máquina', key: 'maquina', render: function(r) { return _escapeHtmlLite(r.maquina || '—'); } },
                  { label: 'Data', key: 'data', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(_fmtDateEstoque(r.data)) + '</span>'; } },
-                 { label: 'Quantidade', key: 'quantidade', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900;color:#fca5a5">' + _escapeHtmlLite(_fmtNumEstoque(r.quantidade)) + '</span>'; } },
-                 { label: 'Peso', key: 'kg', align: 'right', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(_fmtKgEstoque(r.kg)) + '</span>'; } },
-                 { label: 'Toneladas', key: 'toneladas', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900">' + _escapeHtmlLite(_fmtTonEstoque(r.toneladas)) + '</span>'; } },
-                 { label: 'Usuário', key: 'usuario' }
+                 { label: 'Motivo', key: 'motivo' },
+                 { label: 'Responsável', key: 'responsavel' },
+                 { label: 'OF', key: 'of_numero', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900;color:var(--accent)">' + _escapeHtmlLite(r.of_numero || '—') + '</span>'; } },
+                 { label: 'Quantidade Total', key: 'quantidade_total', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900;color:#fca5a5">' + _escapeHtmlLite(_fmtNumEstoque(r.quantidade_total)) + '</span>'; } },
+                 { label: 'Valor Total', key: 'valor_total', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900">' + _escapeHtmlLite(_fmtRsEstoque(r.valor_total)) + '</span>'; } },
+                 { label: 'Observações', key: 'observacoes', render: function(r) { return _escapeHtmlLite(r.observacoes || '—'); } }
                ])
           + '</div>';
         var btnSaida = document.getElementById('estoque-saida-lote-btn');
-        if (btnSaida) btnSaida.onclick = function() { try { if (typeof window.abrirModalSaidaLoteChapas === 'function') window.abrirModalSaidaLoteChapas(); } catch (_) {} };
+        if (btnSaida) btnSaida.onclick = function() { _abrirModalSaidaEstoqueReal(); };
         var qEl = document.getElementById('estoque-sai-q');
         var deEl = document.getElementById('estoque-sai-de');
         var ateEl = document.getElementById('estoque-sai-ate');
