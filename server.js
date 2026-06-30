@@ -13034,6 +13034,35 @@ function _chapasNum(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function _chapasParseTamanhoMm(v) {
+  const s = String(v || '').trim().toLowerCase();
+  if (!s) return { larg: 0, comp: 0 };
+  const nums = s.replace(/,/g, '.').match(/(\d+(?:\.\d+)?)/g) || [];
+  if (nums.length < 2) return { larg: 0, comp: 0 };
+  const a = _chapasNum(nums[0]);
+  const b = _chapasNum(nums[1]);
+  if (!(a > 0 && b > 0)) return { larg: 0, comp: 0 };
+  return { larg: a, comp: b };
+}
+
+function _chapasPesoKgUnidadeFromAny(row) {
+  const km = _chapasKeyMap(row || {});
+  const pesoDireto = _chapasNum(_chapasGet(row || {}, km, ['peso_kg_unidade', 'peso kg unidade', 'peso_kg', 'peso kg']));
+  if (pesoDireto > 0) return pesoDireto;
+  const gram = _chapasNum(_chapasGet(row || {}, km, ['gramatura', 'espessura_mm', 'espessura']));
+  let larg = _chapasNum(_chapasGet(row || {}, km, ['largura_mm', 'largura', 'larg']));
+  let comp = _chapasNum(_chapasGet(row || {}, km, ['comprimento_mm', 'comprimento', 'comp']));
+  if (!(larg > 0 && comp > 0)) {
+    const tamanho = _chapasGet(row || {}, km, ['tamanho', 'tam']);
+    const dims = _chapasParseTamanhoMm(tamanho);
+    larg = dims.larg;
+    comp = dims.comp;
+  }
+  if (!(larg > 0 && comp > 0 && gram > 0)) return 0;
+  const areaM2 = (larg / 1000) * (comp / 1000);
+  return areaM2 * (gram / 1000);
+}
+
 function _chapasEmpresaFromEmpId(empId) {
   const e = String(empId || '').trim().toUpperCase();
   if (e === 'E2' || e.includes('CARTO')) return 'CARTOESTE';
@@ -13085,6 +13114,10 @@ function _chapasCanonicalFromAny(row, table) {
       atualizado_por: row.atualizado_por || '',
       criado_em: row.created_at || row.criado_em || null,
       atualizado_em: row.updated_at || row.atualizado_em || null,
+      lote: row.lote || row.numero_lote || row.codigo_lote || row.lote_codigo || '',
+      peso_kg_unidade: _chapasNum(row.peso_kg_unidade ?? row.peso_kg ?? 0) || _chapasPesoKgUnidadeFromAny(row),
+      largura_mm: _chapasNum(row.largura_mm ?? row.largura ?? row.larg ?? 0) || 0,
+      comprimento_mm: _chapasNum(row.comprimento_mm ?? row.comprimento ?? row.comp ?? 0) || 0,
     };
     canon.qtd = canon.quantidade;
     canon.val = canon.valor_unitario;
@@ -13120,6 +13153,8 @@ function _chapasCanonicalFromAny(row, table) {
   const id = _chapasGet(row, km, ['id']);
   const criadoPor = _chapasGet(row, km, ['criado_por', 'criado por', 'usuario', 'usuário']);
   const atualizadoPor = _chapasGet(row, km, ['atualizado_por', 'atualizado por', 'editado_por', 'editado por']);
+  const larguraMm = _chapasNum(_chapasGet(row, km, ['largura_mm', 'largura', 'larg']));
+  const comprimentoMm = _chapasNum(_chapasGet(row, km, ['comprimento_mm', 'comprimento', 'comp']));
 
   const canon = {
     id,
@@ -13149,6 +13184,10 @@ function _chapasCanonicalFromAny(row, table) {
     atualizado_por: atualizadoPor,
     criado_em: row.criado_em || row.created_at || null,
     atualizado_em: row.atualizado_em || row.updated_at || null,
+    lote: _chapasGet(row, km, ['lote', 'numero_lote', 'codigo_lote', 'lote_codigo']),
+    peso_kg_unidade: _chapasPesoKgUnidadeFromAny(row),
+    largura_mm: larguraMm || 0,
+    comprimento_mm: comprimentoMm || 0,
   };
   canon.qtd = canon.quantidade;
   canon.val = canon.valor_unitario;
@@ -14400,97 +14439,217 @@ app.get('/api/chapas_estoque/metricas', authMiddleware, async (req, res) => {
     const start = new Date(now);
     start.setMonth(start.getMonth() - months);
     const startIso = start.toISOString();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayIso = todayStart.toISOString();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthIso = monthStart.toISOString();
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    const yearIso = yearStart.toISOString();
+    const periodDays = Math.max(1, Math.ceil((now.getTime() - start.getTime()) / 86400000));
 
-    const sumSaidas = new Map();
-    const ultimoPreco = new Map();
-    const ultimoPrecoData = new Map();
+    const out = {};
+    const estoqueById = new Map();
+    let saldoTotalQuantidade = 0;
+    let valorTotalEstoque = 0;
+    let itensDistintos = 0;
+    let toneladasEstoque = 0;
+    let entradasHoje = 0;
+    let saidasHoje = 0;
+    let toneladasVendidasMes = 0;
+    let consumoPeriodoTotal = 0;
 
-    const fetchPaged = async (table, builderFn) => {
-      const pageSize = 1000;
-      for (let page = 0; page < 30; page++) {
-        let q = builderFn(supabase.from(table).select('*'));
-        q = q.range(page * pageSize, page * pageSize + pageSize - 1);
-        const { data, error } = await q;
-        if (error) return { ok: false, error };
-        const rows = Array.isArray(data) ? data : [];
-        if (!rows.length) return { ok: true, done: true };
-        const done = rows.length < pageSize;
-        return { ok: true, rows, done, nextPage: page + 1, pageSize };
-      }
-      return { ok: true, done: true };
+    const ensureItem = (id) => {
+      const sid = String(id || '').trim();
+      if (!sid) return null;
+      if (!out[sid]) out[sid] = {};
+      return out[sid];
     };
-
-    const loadSaidas = async (table) => {
-      const pageSize = 1000;
-      for (let page = 0; page < 30; page++) {
-        let q = supabase.from(table).select('chapa_id,delta,tipo,created_at,emp_id').order('created_at', { ascending: false });
-        q = q.eq('tipo', 'saida').gte('created_at', startIso);
-        if (empId) q = q.eq('emp_id', empId);
-        q = q.range(page * pageSize, page * pageSize + pageSize - 1);
-        const { data, error } = await q;
-        if (error) return { ok: false, error };
-        const rows = Array.isArray(data) ? data : [];
-        for (const r of rows) {
-          const id = String(r?.chapa_id || '').trim();
-          if (!id) continue;
-          const d = Math.abs(Math.trunc(Number(r?.delta || 0) || 0));
-          if (!(d > 0)) continue;
-          sumSaidas.set(id, (sumSaidas.get(id) || 0) + d);
-        }
-        if (rows.length < pageSize) return { ok: true };
-      }
-      return { ok: true };
+    const toIsoSafe = (v) => {
+      const s = String(v || '').trim();
+      if (!s) return '';
+      const d = new Date(s);
+      return Number.isFinite(d.getTime()) ? d.toISOString() : '';
     };
-
-    const loadUltimosPrecos = async (table) => {
-      const pageSize = 1000;
-      for (let page = 0; page < 20; page++) {
-        let q = supabase.from(table).select('*').order('created_at', { ascending: false }).eq('tipo', 'entrada');
-        if (empId) q = q.eq('emp_id', empId);
-        q = q.range(page * pageSize, page * pageSize + pageSize - 1);
-        const { data, error } = await q;
-        if (error) return { ok: false, error };
-        const rows = Array.isArray(data) ? data : [];
-        for (const r of rows) {
-          const id = String(r?.chapa_id || '').trim();
-          if (!id || ultimoPreco.has(id)) continue;
-          const vu = Number(r?.valor_unitario ?? r?.valor ?? r?.vunit ?? r?.val ?? NaN);
-          if (Number.isFinite(vu) && vu >= 0) {
-            ultimoPreco.set(id, vu);
-            if (r?.created_at) ultimoPrecoData.set(id, String(r.created_at));
-          }
-        }
-        if (rows.length < pageSize) return { ok: true };
+    const calcPesoKgUnidade = (chapa) => {
+      const pesoDireto = Number(chapa?.peso_kg_unidade || 0) || 0;
+      if (pesoDireto > 0) return pesoDireto;
+      const gram = Number(chapa?.gramatura || 0) || 0;
+      let larg = Number(chapa?.largura_mm || 0) || 0;
+      let comp = Number(chapa?.comprimento_mm || 0) || 0;
+      if (!(larg > 0 && comp > 0)) {
+        const dims = _chapasParseTamanhoMm(chapa?.tamanho || chapa?.tam || '');
+        larg = dims.larg;
+        comp = dims.comp;
       }
-      return { ok: true };
+      if (!(larg > 0 && comp > 0 && gram > 0)) return 0;
+      return (larg / 1000) * (comp / 1000) * (gram / 1000);
     };
+    const stockTable = await _chapasPreferV2Table();
+    const stockPageSize = 1000;
+    for (let page = 0; page < 20; page++) {
+      let q = supabase.from(stockTable).select('*').range(page * stockPageSize, page * stockPageSize + stockPageSize - 1);
+      const { data, error } = await q;
+      if (error) break;
+      const lote = Array.isArray(data) ? data : [];
+      if (!lote.length) break;
+      for (const row of lote) {
+        const canon = _chapasCanonicalFromAny(row, stockTable);
+        if (empId && String(canon?.emp_id || '').trim() !== empId) continue;
+        const id = String(canon?.id || '').trim();
+        if (!id) continue;
+        estoqueById.set(id, canon);
+        const qtdAtual = Math.max(0, Math.trunc(Number(canon?.quantidade ?? canon?.qtd ?? 0) || 0));
+        const valorUnit = Number(canon?.valor_unitario ?? canon?.val ?? 0) || 0;
+        const pesoKgUn = calcPesoKgUnidade(canon);
+        saldoTotalQuantidade += qtdAtual;
+        valorTotalEstoque += qtdAtual * valorUnit;
+        if (qtdAtual > 0) itensDistintos += 1;
+        if (pesoKgUn > 0 && qtdAtual > 0) toneladasEstoque += (qtdAtual * pesoKgUn) / 1000;
+        out[id] = {
+          lote: String(canon?.lote || canon?.nf || '').trim() || null,
+          valor_estoque: Math.round((qtdAtual * valorUnit) * 100) / 100,
+          dias_em_estoque: (() => {
+            const ref = toIsoSafe(canon?.data_entrada || canon?.criado_em || canon?.atualizado_em);
+            if (!ref) return null;
+            return Math.max(0, Math.floor((now.getTime() - new Date(ref).getTime()) / 86400000));
+          })(),
+          ultima_movimentacao_em: toIsoSafe(canon?.atualizado_em || canon?.data_entrada || canon?.criado_em) || null,
+          peso_kg_unidade: pesoKgUn > 0 ? pesoKgUn : 0,
+          consumo_ultimos_meses: 0,
+          consumo_medio_mes: 0,
+          consumo_medio_dia: 0,
+          consumo_mes_atual: 0,
+          consumo_ano_atual: 0,
+          toneladas_utilizadas: 0,
+          valor_consumido: 0,
+          ultimo_preco: null,
+          ultimo_preco_data: null,
+        };
+      }
+      if (lote.length < stockPageSize) break;
+    }
 
-    const tryTables = ['chapas_estoque_movimentos_v2', 'chapas_estoque_movimentos'];
-    let loadedAny = false;
-    for (const t of tryTables) {
+    const movementTables = ['chapas_estoque_movimentos_v2', 'chapas_estoque_movimentos'];
+    let movementLoaded = false;
+    for (const table of movementTables) {
       try {
-        const s = await loadSaidas(t);
-        if (!s.ok) continue;
-        const p = await loadUltimosPrecos(t);
-        if (!p.ok) continue;
-        loadedAny = true;
-        break;
+        const pageSize = 1000;
+        let anyRows = false;
+        for (let page = 0; page < 30; page++) {
+          let q = supabase.from(table).select('*').order('created_at', { ascending: false });
+          if (empId) q = q.eq('emp_id', empId);
+          q = q.range(page * pageSize, page * pageSize + pageSize - 1);
+          const { data, error } = await q;
+          if (error) throw error;
+          const rows = Array.isArray(data) ? data : [];
+          if (!rows.length) break;
+          anyRows = true;
+          for (const r of rows) {
+            const id = String(r?.chapa_id || '').trim();
+            if (!id) continue;
+            const item = ensureItem(id);
+            if (!item) continue;
+            const dtIso = toIsoSafe(r?.created_at);
+            const deltaNum = Number(r?.delta || 0) || 0;
+            const tipoRaw = String(r?.tipo || '').trim().toLowerCase();
+            const isEntrada = tipoRaw === 'entrada' || deltaNum > 0;
+            const isSaida = tipoRaw === 'saida' || deltaNum < 0;
+            const absDelta = Math.abs(Math.trunc(deltaNum || 0));
+            const chapaAtual = estoqueById.get(id) || null;
+            const pesoKgUn = Number(item.peso_kg_unidade || calcPesoKgUnidade(chapaAtual || {})) || 0;
+            const valorRef = Number(r?.valor_unitario ?? r?.valor ?? r?.vunit ?? r?.val ?? chapaAtual?.valor_unitario ?? chapaAtual?.val ?? item.ultimo_preco ?? 0) || 0;
+
+            if (dtIso && (!item.ultima_movimentacao_em || dtIso > String(item.ultima_movimentacao_em))) {
+              item.ultima_movimentacao_em = dtIso;
+            }
+            if ((!item.lote || item.lote === '—') && r?.nf) item.lote = String(r.nf).trim();
+
+            if (isEntrada && Number.isFinite(valorRef) && valorRef >= 0) {
+              if (!item.ultimo_preco_data || (dtIso && dtIso > String(item.ultimo_preco_data || ''))) {
+                item.ultimo_preco = valorRef;
+                item.ultimo_preco_data = dtIso || null;
+              }
+            }
+
+            if (dtIso && dtIso >= todayIso) {
+              if (isEntrada) entradasHoje += absDelta;
+              if (isSaida) saidasHoje += absDelta;
+            }
+
+            if (dtIso && dtIso >= startIso && isSaida) {
+              item.consumo_ultimos_meses = (Number(item.consumo_ultimos_meses || 0) || 0) + absDelta;
+              consumoPeriodoTotal += absDelta;
+            }
+            if (dtIso && dtIso >= monthIso && isSaida) {
+              item.consumo_mes_atual = (Number(item.consumo_mes_atual || 0) || 0) + absDelta;
+              item.valor_consumido = (Number(item.valor_consumido || 0) || 0) + (absDelta * valorRef);
+              if (pesoKgUn > 0) {
+                const tonMov = (absDelta * pesoKgUn) / 1000;
+                item.toneladas_utilizadas = (Number(item.toneladas_utilizadas || 0) || 0) + tonMov;
+                toneladasVendidasMes += tonMov;
+              }
+            }
+            if (dtIso && dtIso >= yearIso && isSaida) {
+              item.consumo_ano_atual = (Number(item.consumo_ano_atual || 0) || 0) + absDelta;
+            }
+          }
+          if (rows.length < pageSize) break;
+        }
+        if (anyRows) {
+          movementLoaded = true;
+          break;
+        }
       } catch (_) {}
     }
 
-    if (!loadedAny) return ok(res, {});
+    const buildStatus = (chapa, item) => {
+      const qtd = Math.max(0, Math.trunc(Number(chapa?.quantidade ?? chapa?.qtd ?? 0) || 0));
+      const min = Math.max(0, Math.trunc(Number(chapa?.estoque_minimo ?? chapa?.min ?? 0) || 0));
+      const consumoDia = Number(item?.consumo_medio_dia || 0) || 0;
+      const diasRest = consumoDia > 0 ? (qtd / consumoDia) : null;
+      if (!(qtd > 0)) return { nivel: 'critico', label: 'Crítico', cor: '#ef4444', indicador: '🔴', dias_restantes: diasRest };
+      if ((min > 0 && qtd <= Math.max(1, Math.round(min * 0.5))) || (diasRest != null && diasRest <= 7)) return { nivel: 'critico', label: 'Crítico', cor: '#ef4444', indicador: '🔴', dias_restantes: diasRest };
+      if ((min > 0 && qtd <= min) || (diasRest != null && diasRest <= 15)) return { nivel: 'baixo', label: 'Baixo', cor: '#fb923c', indicador: '🟠', dias_restantes: diasRest };
+      if ((min > 0 && qtd <= Math.round(min * 1.5)) || (diasRest != null && diasRest <= 30)) return { nivel: 'atencao', label: 'Atenção', cor: '#facc15', indicador: '🟡', dias_restantes: diasRest };
+      return { nivel: 'normal', label: 'Normal', cor: '#22c55e', indicador: '🟢', dias_restantes: diasRest };
+    };
 
-    const out = {};
-    const keys = new Set([...sumSaidas.keys(), ...ultimoPreco.keys()]);
-    keys.forEach((id) => {
-      const totalSaidas = Math.trunc(Number(sumSaidas.get(id) || 0) || 0);
-      out[id] = {
-        consumo_ultimos_meses: totalSaidas,
-        consumo_medio_mes: totalSaidas / months,
-        ultimo_preco: ultimoPreco.has(id) ? Number(ultimoPreco.get(id)) : null,
-        ultimo_preco_data: ultimoPrecoData.get(id) || null,
-      };
+    Object.keys(out).forEach((id) => {
+      const item = out[id] || {};
+      const chapa = estoqueById.get(id) || null;
+      const totalSaidas = Math.trunc(Number(item.consumo_ultimos_meses || 0) || 0);
+      item.consumo_medio_mes = totalSaidas > 0 ? (totalSaidas / months) : 0;
+      item.consumo_medio_dia = totalSaidas > 0 ? (totalSaidas / periodDays) : 0;
+      item.valor_consumido = Math.round((Number(item.valor_consumido || 0) || 0) * 100) / 100;
+      item.toneladas_utilizadas = Math.round((Number(item.toneladas_utilizadas || 0) || 0) * 1000) / 1000;
+      if (item.valor_estoque == null && chapa) {
+        const qtd = Math.max(0, Math.trunc(Number(chapa?.quantidade ?? chapa?.qtd ?? 0) || 0));
+        const vu = Number(chapa?.valor_unitario ?? chapa?.val ?? 0) || 0;
+        item.valor_estoque = Math.round((qtd * vu) * 100) / 100;
+      }
+      const status = buildStatus(chapa || {}, item);
+      item.status_estoque = status.label;
+      item.status_nivel = status.nivel;
+      item.status_cor = status.cor;
+      item.status_indicador = status.indicador;
+      item.dias_estoque_restante = status.dias_restantes != null ? Math.round(status.dias_restantes * 10) / 10 : null;
     });
+
+    const consumoMedioDiario = consumoPeriodoTotal > 0 ? (consumoPeriodoTotal / periodDays) : 0;
+    const diasEstoqueRestante = consumoMedioDiario > 0 ? (saldoTotalQuantidade / consumoMedioDiario) : null;
+    out.__resumo = {
+      saldo_total_quantidade: Math.trunc(saldoTotalQuantidade || 0),
+      entradas_hoje: Math.trunc(entradasHoje || 0),
+      saidas_hoje: Math.trunc(saidasHoje || 0),
+      toneladas_vendidas_mes: Math.round((toneladasVendidasMes || 0) * 1000) / 1000,
+      valor_total_estoque: Math.round((valorTotalEstoque || 0) * 100) / 100,
+      quantidade_itens_distintos: Math.trunc(itensDistintos || 0),
+      consumo_medio_diario: Math.round((consumoMedioDiario || 0) * 100) / 100,
+      dias_estoque_restante: diasEstoqueRestante != null ? Math.round(diasEstoqueRestante * 10) / 10 : null,
+      toneladas_em_estoque: Math.round((toneladasEstoque || 0) * 1000) / 1000,
+      periodo_meses_metricas: months,
+      movimentos_carregados: movementLoaded,
+    };
     return ok(res, out);
   } catch (e) {
     _logApiError('CHAPAS_METRICAS', req, e);

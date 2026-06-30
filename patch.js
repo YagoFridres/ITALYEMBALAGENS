@@ -113,6 +113,328 @@ if (typeof window._fmtRs === 'undefined') {
     return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
   }
 
+  function _estoqueAuthHeaders() {
+    try {
+      var token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || '').trim();
+      return token ? { Authorization: 'Bearer ' + token } : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function _toNumEst(v) {
+    var n = Number(String(v == null ? '' : v).replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function _fmtIntEst(v) {
+    try { return Math.trunc(Number(v || 0) || 0).toLocaleString('pt-BR'); } catch (_) { return '0'; }
+  }
+
+  function _fmtRsEst(v) {
+    try { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return 'R$ 0,00'; }
+  }
+
+  function _fmtTonEst(v) {
+    var n = Number(v || 0) || 0;
+    return n > 0 ? (n.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' t') : '—';
+  }
+
+  function _fmtDataHoraEst(v) {
+    var s = String(v || '').trim();
+    if (!s) return '—';
+    try {
+      var d = new Date(s);
+      if (!Number.isFinite(d.getTime())) return '—';
+      return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    } catch (_) {
+      return '—';
+    }
+  }
+
+  function _diasDesdeEst(v) {
+    var s = String(v || '').trim();
+    if (!s) return null;
+    try {
+      var d = new Date(s);
+      if (!Number.isFinite(d.getTime())) return null;
+      return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function _calcTonAtualEst(chapa) {
+    var qtd = Math.trunc(_toNumEst(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0));
+    if (!(qtd > 0)) return 0;
+    var pesoKgUn = _toNumEst(chapa && chapa.peso_kg_unidade || 0);
+    var gram = _toNumEst(chapa && (chapa.gramatura != null ? chapa.gramatura : chapa.espessura_mm) || 0);
+    var larg = _toNumEst(chapa && (chapa.largura_mm != null ? chapa.largura_mm : chapa.largura) || 0);
+    var comp = _toNumEst(chapa && (chapa.comprimento_mm != null ? chapa.comprimento_mm : chapa.comprimento) || 0);
+    if (!(pesoKgUn > 0) && !(larg > 0 && comp > 0)) {
+      var tam = String(chapa && (chapa.tamanho || chapa.tam) || '');
+      var nums = tam.replace(/,/g, '.').match(/(\d+(?:\.\d+)?)/g) || [];
+      if (nums.length >= 2) {
+        larg = _toNumEst(nums[0]);
+        comp = _toNumEst(nums[1]);
+      }
+    }
+    if (!(pesoKgUn > 0) && larg > 0 && comp > 0 && gram > 0) {
+      pesoKgUn = (larg / 1000) * (comp / 1000) * (gram / 1000);
+    }
+    return pesoKgUn > 0 ? ((qtd * pesoKgUn) / 1000) : 0;
+  }
+
+  function _getEstoqueListaAtual() {
+    try {
+      if (Array.isArray(window._estoqueBase) && window._estoqueBase.length) return window._estoqueBase;
+      if (Array.isArray(window.ESTOQUE) && window.ESTOQUE.length) return window.ESTOQUE;
+    } catch (_) {}
+    return [];
+  }
+
+  function _findChapaEstoqueById(id) {
+    var sid = String(id || '').trim();
+    return _getEstoqueListaAtual().find(function(c) { return String(c && c.id || '').trim() === sid; }) || null;
+  }
+
+  function _getMetricaChapa(id) {
+    try {
+      return (window.CHAPAS_METRICAS && window.CHAPAS_METRICAS[String(id || '').trim()]) || {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function _resumoMetricoEstoque() {
+    try {
+      return (window.CHAPAS_METRICAS && window.CHAPAS_METRICAS.__resumo) || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function _ensureEstoqueMetricasPatch(force) {
+    if (!_isEstoqueChapasAtivo()) return;
+    if (window.__patchEstoqueMetricasBusy) return;
+    var emp = '';
+    try { emp = String(window.EMP_FILTRO || '').trim(); } catch (_) {}
+    var ttl = 60000;
+    if (!force && window.__patchEstoqueMetricasEmp === emp && window.__patchEstoqueMetricasTs && (Date.now() - window.__patchEstoqueMetricasTs) < ttl && _resumoMetricoEstoque()) return;
+    try {
+      window.__patchEstoqueMetricasBusy = true;
+      var qs = new URLSearchParams();
+      qs.set('months', '12');
+      if (emp) qs.set('empId', emp);
+      var resp = await fetch('/api/chapas_estoque/metricas?' + qs.toString(), { headers: _estoqueAuthHeaders() });
+      var json = await resp.json().catch(function() { return null; });
+      var data = json && json.data ? json.data : (json && typeof json === 'object' ? json : null);
+      if (!resp.ok || !data || typeof data !== 'object') return;
+      try { window.CHAPAS_METRICAS = data; } catch (_) {}
+      window.__patchEstoqueMetricasTs = Date.now();
+      window.__patchEstoqueMetricasEmp = emp;
+    } catch (_) {
+    } finally {
+      window.__patchEstoqueMetricasBusy = false;
+    }
+  }
+
+  function _upsertAfter(refNode, node) {
+    if (!refNode || !node || !refNode.parentNode) return;
+    if (refNode.nextSibling) refNode.parentNode.insertBefore(node, refNode.nextSibling);
+    else refNode.parentNode.appendChild(node);
+  }
+
+  function _ensureHeaderAfter(refTh, key, label, opts) {
+    if (!refTh || !refTh.parentNode) return null;
+    var row = refTh.parentNode;
+    var th = row.querySelector('th[data-patch-est-col="' + key + '"]');
+    if (!th) {
+      th = document.createElement('th');
+      th.setAttribute('data-patch-est-col', key);
+      _upsertAfter(refTh, th);
+    }
+    th.textContent = label;
+    th.style.cssText = (opts && opts.style) || refTh.style.cssText || '';
+    if (opts && opts.align) th.style.textAlign = opts.align;
+    th.style.whiteSpace = 'nowrap';
+    return th;
+  }
+
+  function _ensureCellAfter(tr, refTd, key, html, opts) {
+    if (!tr || !refTd || !refTd.parentNode) return null;
+    var td = tr.querySelector('td[data-patch-est-cell="' + key + '"]');
+    if (!td) {
+      td = document.createElement('td');
+      td.setAttribute('data-patch-est-cell', key);
+      _upsertAfter(refTd, td);
+    }
+    td.innerHTML = html;
+    td.style.cssText = (opts && opts.style) || refTd.style.cssText || '';
+    if (opts && opts.align) td.style.textAlign = opts.align;
+    if (opts && opts.minWidth) td.style.minWidth = opts.minWidth;
+    return td;
+  }
+
+  function _patchEstoquePainelPrincipal() {
+    try {
+      var tableWrap = document.getElementById('est-table-wrap');
+      if (!tableWrap) return;
+      var resumo = _resumoMetricoEstoque();
+      var lista = _getEstoqueListaAtual();
+      if (!resumo) {
+        var qtdTotal = 0;
+        var valTotal = 0;
+        var tonTotal = 0;
+        (lista || []).forEach(function(c) {
+          var qtd = Math.max(0, Math.trunc(_toNumEst(c && (c.quantidade != null ? c.quantidade : c.qtd) || 0)));
+          var vunit = _toNumEst(c && (c.valor_unitario != null ? c.valor_unitario : c.val) || 0);
+          qtdTotal += qtd;
+          valTotal += (qtd * vunit);
+          tonTotal += _calcTonAtualEst(c);
+        });
+        resumo = {
+          saldo_total_quantidade: qtdTotal,
+          entradas_hoje: 0,
+          saidas_hoje: 0,
+          toneladas_vendidas_mes: 0,
+          valor_total_estoque: valTotal,
+          quantidade_itens_distintos: (lista || []).filter(function(c) { return Math.trunc(_toNumEst(c && (c.quantidade != null ? c.quantidade : c.qtd) || 0)) > 0; }).length,
+          consumo_medio_diario: 0,
+          dias_estoque_restante: null,
+          toneladas_em_estoque: tonTotal
+        };
+      }
+      var wrap = document.getElementById('patch-estoque-main-panel');
+      if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.id = 'patch-estoque-main-panel';
+        wrap.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:8px 10px 12px';
+        tableWrap.parentNode.insertBefore(wrap, tableWrap);
+      }
+      var cards = [
+        { label: 'Saldo Total', value: _fmtIntEst(resumo.saldo_total_quantidade), sub: 'Quantidade em estoque' },
+        { label: 'Entradas Hoje', value: _fmtIntEst(resumo.entradas_hoje), sub: 'Movimentações de entrada' },
+        { label: 'Saídas Hoje', value: _fmtIntEst(resumo.saidas_hoje), sub: 'Movimentações de saída' },
+        { label: 'Toneladas no Mês', value: _fmtTonEst(resumo.toneladas_vendidas_mes), sub: 'Consumo/venda do mês' },
+        { label: 'Valor em Estoque', value: _fmtRsEst(resumo.valor_total_estoque), sub: 'Base atual do estoque' },
+        { label: 'Itens Distintos', value: _fmtIntEst(resumo.quantidade_itens_distintos), sub: 'Chapas com saldo' },
+        { label: 'Consumo Médio Diário', value: (Number(resumo.consumo_medio_diario || 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }), sub: 'Média dos últimos 12 meses' },
+        { label: 'Dias de Estoque', value: resumo.dias_estoque_restante != null ? String(Number(resumo.dias_estoque_restante || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 })) : '—', sub: 'Saldo atual ÷ consumo médio diário' }
+      ];
+      wrap.innerHTML = cards.map(function(card) {
+        return ''
+          + '<div style="background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:14px;padding:14px 16px;box-shadow:0 10px 28px rgba(2,6,23,.18)">'
+          + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">' + card.label + '</div>'
+          + '  <div style="margin-top:8px;font-size:23px;font-weight:900;color:#e2e8f0;line-height:1.1">' + card.value + '</div>'
+          + '  <div style="margin-top:6px;font-size:12px;color:#94a3b8">' + card.sub + '</div>'
+          + '</div>';
+      }).join('');
+    } catch (_) {}
+  }
+
+  function _patchEstoqueHeadersAvancados() {
+    try {
+      var tabela = document.getElementById('tabelaChapasEstoque');
+      if (!tabela) return;
+      var headers = Array.prototype.slice.call(tabela.querySelectorAll('thead th'));
+      var map = {};
+      headers.forEach(function(th) { map[_normTxt(th.textContent || '')] = th; });
+      if (map['total']) map['total'].textContent = 'VALOR ESTOQUE';
+      if (map['ultimo preco']) map['ultimo preco'].textContent = 'ÚLTIMA MOV.';
+      if (map['consumo/mes']) map['consumo/mes'].textContent = 'CONSUMO MENSAL';
+      if (map['dias']) map['dias'].textContent = 'DIAS EM ESTOQUE';
+      var thNf = map['nf'];
+      var thConsumo = map['consumo mensal'] || map['consumo/mes'];
+      var thValor = map['valor estoque'] || map['total'];
+      var thCategoria = map['categoria'];
+      if (thNf) _ensureHeaderAfter(thNf, 'lote', 'LOTE', { style: thNf.style.cssText });
+      if (thConsumo) {
+        var thAno = _ensureHeaderAfter(thConsumo, 'consumo-anual', 'CONSUMO ANUAL', { style: thConsumo.style.cssText, align: 'right' });
+        if (thAno) _ensureHeaderAfter(thAno, 'ton-utilizadas', 'TON. UTILIZADAS', { style: thConsumo.style.cssText, align: 'right' });
+      }
+      if (thValor) _ensureHeaderAfter(thValor, 'valor-consumido', 'VALOR CONSUMIDO', { style: thValor.style.cssText, align: 'right' });
+      if (thCategoria) _ensureHeaderAfter(thCategoria, 'status-estoque', 'STATUS', { style: thCategoria.style.cssText, align: 'center' });
+    } catch (_) {}
+  }
+
+  function _patchEstoqueRowsAvancadas() {
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('#tabelaChapasEstoque #est-table-body tr[data-chapa-id]')).forEach(function(tr) {
+        var chapaId = String(tr.getAttribute('data-chapa-id') || '').trim();
+        if (!chapaId) return;
+        var chapa = _findChapaEstoqueById(chapaId) || {};
+        var met = _getMetricaChapa(chapaId) || {};
+        var tdNf = tr.querySelector('td[data-label="NF"]');
+        var tdTotal = tr.querySelector('td[data-label="Total R$"]');
+        var tdUltimo = tr.querySelector('td[data-label="Último"]');
+        var tdConsMes = tr.querySelector('td[data-label="Cons./mês"]');
+        var tdDias = tr.querySelector('td[data-label="Dias"]');
+        var tdCategoria = tr.querySelector('td[data-label="Categoria"]');
+        var qtd = Math.max(0, Math.trunc(_toNumEst(chapa && (chapa.quantidade != null ? chapa.quantidade : chapa.qtd) || 0)));
+        var valorEstoque = _toNumEst(met.valor_estoque != null ? met.valor_estoque : (chapa && (chapa.valor_total != null ? chapa.valor_total : (qtd * _toNumEst(chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val)))));
+        var loteTxt = String(met.lote || chapa.lote || chapa.numero_lote || chapa.codigo_lote || chapa.nf || '—').trim() || '—';
+        var diasEstoque = met.dias_em_estoque != null ? Math.max(0, Math.trunc(_toNumEst(met.dias_em_estoque))) : _diasDesdeEst(chapa && (chapa.data_entrada || chapa.criado_em));
+        var ultimaMov = met.ultima_movimentacao_em || chapa.atualizado_em || chapa.criado_em || null;
+        var consumoMensal = _toNumEst(met.consumo_mes_atual != null ? met.consumo_mes_atual : met.consumo_medio_mes);
+        var consumoAnual = _toNumEst(met.consumo_ano_atual);
+        var tonUtil = _toNumEst(met.toneladas_utilizadas);
+        var valorConsumido = _toNumEst(met.valor_consumido);
+        var statusTxt = String(met.status_estoque || 'Normal');
+        var statusIcon = String(met.status_indicador || '🟢');
+        var statusCor = String(met.status_cor || '#22c55e');
+        if (tdTotal) tdTotal.innerHTML = '<span style="font-family:var(--mono);font-weight:900;color:var(--green)">' + _fmtRsEst(valorEstoque) + '</span>';
+        if (tdUltimo) tdUltimo.innerHTML = '<span style="font-family:var(--mono);font-weight:800">' + _fmtDataHoraEst(ultimaMov) + '</span>';
+        if (tdConsMes) tdConsMes.innerHTML = consumoMensal > 0 ? ('<span style="font-family:var(--mono);font-weight:900">' + _fmtIntEst(consumoMensal) + '</span>') : '<span style="color:var(--text3);font-family:var(--mono)">—</span>';
+        if (tdDias) tdDias.innerHTML = diasEstoque != null ? ('<span style="font-family:var(--mono);font-weight:900">' + _fmtIntEst(diasEstoque) + '</span>') : '<span style="color:var(--text3);font-family:var(--mono)">—</span>';
+        if (tdNf) _ensureCellAfter(tr, tdNf, 'lote', '<span style="font-family:var(--mono);font-weight:800">' + loteTxt.replace(/</g, '&lt;') + '</span>', { style: tdNf.style.cssText, minWidth: '110px' });
+        if (tdConsMes) {
+          var tdAno = _ensureCellAfter(tr, tdConsMes, 'consumo-anual', consumoAnual > 0 ? ('<span style="font-family:var(--mono);font-weight:900">' + _fmtIntEst(consumoAnual) + '</span>') : '<span style="color:var(--text3);font-family:var(--mono)">—</span>', { style: tdConsMes.style.cssText, align: 'right', minWidth: '120px' });
+          if (tdAno) _ensureCellAfter(tr, tdAno, 'ton-utilizadas', tonUtil > 0 ? ('<span style="font-family:var(--mono);font-weight:900">' + _fmtTonEst(tonUtil) + '</span>') : '<span style="color:var(--text3);font-family:var(--mono)">—</span>', { style: tdConsMes.style.cssText, align: 'right', minWidth: '120px' });
+        }
+        if (tdTotal) _ensureCellAfter(tr, tdTotal, 'valor-consumido', valorConsumido > 0 ? ('<span style="font-family:var(--mono);font-weight:900;color:#fca5a5">' + _fmtRsEst(valorConsumido) + '</span>') : '<span style="color:var(--text3);font-family:var(--mono)">—</span>', { style: tdTotal.style.cssText, align: 'right', minWidth: '120px' });
+        if (tdCategoria) _ensureCellAfter(tr, tdCategoria, 'status-estoque', '<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(15,23,42,.95);border:1px solid ' + statusCor + ';color:' + statusCor + ';font-weight:900;font-size:11px;white-space:nowrap">' + statusIcon + ' ' + statusTxt + '</span>', { style: tdCategoria.style.cssText, align: 'center', minWidth: '120px' });
+      });
+    } catch (_) {}
+  }
+
+  function _patchEstoqueFooterAvancado() {
+    try {
+      var tabela = document.getElementById('tabelaChapasEstoque');
+      var foot = document.getElementById('est-table-foot');
+      if (!tabela || !foot) return;
+      var headers = Array.prototype.slice.call(tabela.querySelectorAll('thead th'));
+      if (!headers.length) return;
+      var headerIndex = {};
+      headers.forEach(function(th, idx) { headerIndex[_normTxt(th.textContent || '')] = idx; });
+      var rows = Array.prototype.slice.call(document.querySelectorAll('#tabelaChapasEstoque #est-table-body tr[data-chapa-id]'));
+      if (!rows.length) return;
+      var totalQtd = 0;
+      var totalTon = 0;
+      var totalValorEstoque = 0;
+      var totalValorConsumido = 0;
+      rows.forEach(function(tr) {
+        var id = String(tr.getAttribute('data-chapa-id') || '').trim();
+        var chapa = _findChapaEstoqueById(id) || {};
+        var met = _getMetricaChapa(id) || {};
+        var qtd = Math.max(0, Math.trunc(_toNumEst(chapa && (chapa.quantidade != null ? chapa.quantidade : chapa.qtd) || 0)));
+        totalQtd += qtd;
+        totalTon += _calcTonAtualEst(chapa);
+        totalValorEstoque += _toNumEst(met.valor_estoque != null ? met.valor_estoque : (chapa && (chapa.valor_total != null ? chapa.valor_total : (qtd * _toNumEst(chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val)))));
+        totalValorConsumido += _toNumEst(met.valor_consumido);
+      });
+      var cells = headers.map(function() {
+        return '<td style="padding:10px;border:1px solid var(--border)"></td>';
+      });
+      cells[0] = '<td style="padding:10px;border:1px solid var(--border);font-weight:900;color:var(--text2);font-family:var(--mono)">TOTAIS (' + rows.length + ' itens)</td>';
+      if (headerIndex['qtd'] != null) cells[headerIndex['qtd']] = '<td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;font-weight:900">' + _fmtIntEst(totalQtd) + '</td>';
+      if (headerIndex['ton. estoque'] != null) cells[headerIndex['ton. estoque']] = '<td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;font-weight:900">' + _fmtTonEst(totalTon) + '</td>';
+      if (headerIndex['valor estoque'] != null) cells[headerIndex['valor estoque']] = '<td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:var(--green);font-weight:900">' + _fmtRsEst(totalValorEstoque) + '</td>';
+      if (headerIndex['valor consumido'] != null) cells[headerIndex['valor consumido']] = '<td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:#fca5a5;font-weight:900">' + _fmtRsEst(totalValorConsumido) + '</td>';
+      foot.innerHTML = '<tr style="background:var(--s3)">' + cells.join('') + '</tr>';
+    } catch (_) {}
+  }
+
   function _patchEstoqueAlertasBaixo() {
     try {
       var host = document.getElementById('est-alertas');
@@ -194,7 +516,7 @@ if (typeof window._fmtRs === 'undefined') {
       headers.forEach(function(th) {
         try {
           var txt = _normTxt(th.textContent || '');
-          if (['ultimo preco', 'consumo/mes', 'dias'].indexOf(txt) === -1) return;
+          if (['ultimo preco legado'].indexOf(txt) === -1) return;
           var idx = Number(th.cellIndex) + 1;
           if (!(idx > 0)) return;
           Array.prototype.slice.call(tabela.querySelectorAll('tr th:nth-child(' + idx + '), tr td:nth-child(' + idx + ')')).forEach(function(cell) {
@@ -219,9 +541,21 @@ if (typeof window._fmtRs === 'undefined') {
     window._estoqueRenderizando = true;
     _disconnectEstoqueUiObserver();
     try {
+      _ensureEstoqueMetricasPatch(false).then(function() {
+        try {
+          _patchEstoquePainelPrincipal();
+          _patchEstoqueHeadersAvancados();
+          _patchEstoqueRowsAvancadas();
+          _patchEstoqueFooterAvancado();
+        } catch (_) {}
+      }).catch(function() {});
       _patchEstoqueAlertasBaixo();
       _patchEstoqueAcoesTabela();
       _patchEstoqueOcultarColunasInuteis();
+      _patchEstoquePainelPrincipal();
+      _patchEstoqueHeadersAvancados();
+      _patchEstoqueRowsAvancadas();
+      _patchEstoqueFooterAvancado();
     } finally {
       window._estoqueRenderizando = false;
       _observeEstoqueUiHost();
