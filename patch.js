@@ -19126,6 +19126,10 @@ function _ocultarGraficoComissoes() {
         + '.com-conc-remove{background:transparent;border:1px solid rgba(239,68,68,.45);color:#ef4444;border-radius:8px;width:36px;height:36px;cursor:pointer}'
         + '.com-conc-add-op{margin-top:8px;background:transparent;border:none;color:#60a5fa;cursor:pointer;padding:0}'
         + '.com-conc-summary{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px;margin-top:16px}'
+        + '.com-conc-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px}'
+        + '.com-conc-metric-card{background:linear-gradient(135deg,#111c30,#162337);border:1px solid #243246;border-radius:12px;padding:14px 16px;display:grid;gap:6px}'
+        + '.com-conc-metric-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;font-weight:700}'
+        + '.com-conc-metric-value{font-size:22px;font-weight:800;color:#f8fafc}'
         + '.com-conc-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px;font-size:13px;color:#cbd5e1}'
         + '.com-conc-cancel{background:transparent;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:10px 20px;cursor:pointer}'
         + '.com-conc-cancel:hover{border-color:#94a3b8}'
@@ -19133,7 +19137,7 @@ function _ocultarGraficoComissoes() {
         + '.com-conc-save:hover{filter:brightness(1.1);transform:translateY(-1px)}'
         + '.com-conc-save:disabled{opacity:.5;cursor:not-allowed;transform:none;filter:none}'
         + '@keyframes popupEntrada{from{opacity:0;transform:scale(.8) translateY(-20px)}to{opacity:1;transform:scale(1) translateY(0)}}'
-        + '@media (max-width:640px){.com-conc-head,.com-conc-body,.com-conc-foot{padding-left:18px;padding-right:18px}.com-conc-loss-grid{grid-template-columns:1fr}.com-conc-summary-grid{grid-template-columns:1fr}}';
+        + '@media (max-width:640px){.com-conc-head,.com-conc-body,.com-conc-foot{padding-left:18px;padding-right:18px}.com-conc-loss-grid,.com-conc-summary-grid,.com-conc-metrics{grid-template-columns:1fr}}';
       document.head.appendChild(st);
     } catch (_) {}
   }
@@ -19300,8 +19304,12 @@ function _ocultarGraficoComissoes() {
     try { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' t'; } catch (_) { return '0,0000 t'; }
   }
 
+  function _fmtMoney4(v) {
+    try { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }); } catch (_) { return 'R$ 0,0000'; }
+  }
+
   function _gramaturaFallbackConclusao() {
-    return { id: '__nao_informada__', nome: 'Não informada', descricao: 'Não informada', gramatura: 0, ativo: true, fallback: true };
+    return { id: '', nome: 'Selecione uma gramatura', descricao: 'Selecione uma gramatura', gramatura: 0, valor_unitario: 0, ativo: true, fallback: true };
   }
 
   function _normalizarGramaturaConclusao(item) {
@@ -19312,6 +19320,7 @@ function _ocultarGraficoComissoes() {
       nome: String(src.nome || src.descricao || '').trim(),
       descricao: String(src.descricao || src.nome || '').trim(),
       gramatura: Number(src.gramatura || 0) || 0,
+      valor_unitario: Number(src.valor_unitario || 0) || 0,
       fornecedor_nome: String(src.fornecedor_nome || '').trim(),
       ativo: !(src.ativo === false || String(src.status || '').toLowerCase() === 'inativo'),
       fallback: !!src.fallback
@@ -19323,6 +19332,7 @@ function _ocultarGraficoComissoes() {
     var base = g.descricao || g.nome || g.codigo || 'Gramatura';
     if (!g.fallback && g.codigo && base.toLowerCase().indexOf(g.codigo.toLowerCase()) !== 0) base = g.codigo + ' · ' + base;
     if (g.gramatura > 0) base += ' · ' + String(Number(g.gramatura || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })) + ' g/m²';
+    if (!g.fallback) base += ' · ' + _fmtMoney4(g.valor_unitario).replace('R$ ', '') + '/m²';
     return base;
   }
 
@@ -19336,33 +19346,47 @@ function _ocultarGraficoComissoes() {
       var json = await resp.json().catch(function() { return null; });
       var lista = Array.isArray(json) ? json : ((json && (json.data || json.gramaturas)) || []);
       lista = (Array.isArray(lista) ? lista : []).map(_normalizarGramaturaConclusao).filter(function(g) { return g && g.ativo; });
-      return [_gramaturaFallbackConclusao()].concat(lista);
+      return lista;
     } catch (_) {
       return [_gramaturaFallbackConclusao()];
     }
   }
 
-  function _extrairAreaTotalConclusao(of, qtdProduzidas) {
-    var qtd = Math.max(0, Number(qtdProduzidas || 0) || 0);
-    var comp = Number(of && (of.caixa_comprimento ?? of.dim_comprimento ?? of.comprimento ?? 0) || 0) || 0;
-    var larg = Number(of && (of.caixa_largura ?? of.dim_largura ?? of.largura ?? 0) || 0) || 0;
+  function _extrairDimensoesConclusao(of) {
+    var comp = Number(of && (of.comprimento_mm ?? of.caixa_comprimento ?? of.dim_comprimento ?? of.comprimento ?? 0) || 0) || 0;
+    var larg = Number(of && (of.largura_mm ?? of.caixa_largura ?? of.dim_largura ?? of.largura ?? 0) || 0) || 0;
     if (!(comp > 0 && larg > 0)) {
       var desc = String(of && (of.descricao || of.prodDesc || of.produto || '') || '');
       var match = desc.match(/(\d+(?:[.,]\d+)?)\s*[×xX]\s*(\d+(?:[.,]\d+)?)/);
       if (match) {
         comp = parseFloat(String(match[1] || '').replace(',', '.')) || 0;
         larg = parseFloat(String(match[2] || '').replace(',', '.')) || 0;
+        if (comp > 0 && larg > 0 && comp <= 300 && larg <= 300) {
+          comp *= 10;
+          larg *= 10;
+        }
       }
     }
-    var areaUnit = (comp > 0 && larg > 0) ? ((comp / 100) * (larg / 100)) : 0;
-    return Math.round((areaUnit * qtd) * 10000) / 10000;
+    var areaUnitM2 = (comp > 0 && larg > 0) ? ((comp / 1000) * (larg / 1000)) : (Number(of && of.tamanho_m2 || 0) || 0);
+    return { comprimentoMm: comp, larguraMm: larg, areaUnitM2: areaUnitM2 };
+  }
+
+  function _extrairAreaTotalConclusao(of, qtdProduzidas) {
+    var qtd = Math.max(0, Number(qtdProduzidas || 0) || 0);
+    var dims = _extrairDimensoesConclusao(of);
+    return Math.round(((dims.areaUnitM2 || 0) * qtd) * 10000) / 10000;
   }
 
   function _calcularResumoMateriaPrimaConclusao(of, qtdProduzidas, gramaturaSel) {
     var gramSel = _normalizarGramaturaConclusao(gramaturaSel || _gramaturaFallbackConclusao());
-    var areaTotalM2 = _extrairAreaTotalConclusao(of, qtdProduzidas);
+    var dims = _extrairDimensoesConclusao(of);
+    var areaUnitM2 = Number(dims.areaUnitM2 || 0) || 0;
+    var areaTotalM2 = Math.round((areaUnitM2 * (Math.max(0, Number(qtdProduzidas || 0) || 0))) * 10000) / 10000;
     var pesoKg = (gramSel.gramatura > 0 && areaTotalM2 > 0) ? ((areaTotalM2 * gramSel.gramatura) / 1000) : 0;
-    var toneladas = pesoKg > 0 ? (pesoKg / 1000) : 0;
+    var toneladaVendida = (gramSel.gramatura > 0 && areaUnitM2 > 0 && Number(qtdProduzidas || 0) > 0)
+      ? ((areaUnitM2 * gramSel.gramatura * Number(qtdProduzidas || 0)) / 1000000)
+      : 0;
+    var custoM2Venda = areaUnitM2 > 0 ? (areaUnitM2 * (Number(gramSel.valor_unitario || 0) || 0)) : 0;
     var qtdPedido = Number(of && (of.qtd_pedida ?? of.quantidade ?? of.qtd ?? 0) || 0) || 0;
     var qtdChapasBase = Number(of && (of.qtd_chapas || 0) || 0) || 0;
     if (!(qtdChapasBase > 0) && Array.isArray(of && of.itens)) {
@@ -19373,9 +19397,15 @@ function _ocultarGraficoComissoes() {
       : 0;
     return {
       gramatura: gramSel,
+      comprimentoMm: Number(dims.comprimentoMm || 0) || 0,
+      larguraMm: Number(dims.larguraMm || 0) || 0,
+      areaUnitM2: areaUnitM2,
       areaTotalM2: areaTotalM2,
       pesoKg: Math.round(pesoKg * 1000) / 1000,
-      toneladas: Math.round(toneladas * 1000000) / 1000000,
+      toneladas: Math.round(toneladaVendida * 1000000) / 1000000,
+      toneladaVendida: Math.round(toneladaVendida * 1000000) / 1000000,
+      valorUnitarioGramatura: Number(gramSel.valor_unitario || 0) || 0,
+      custoM2Venda: Math.round(custoM2Venda * 1000000) / 1000000,
       consumoChapas: consumoChapas
     };
   }
@@ -19419,7 +19449,7 @@ function _ocultarGraficoComissoes() {
         try { console.log('[conclusao] máquinas:', (pair[0] && pair[0].length) || 0, 'operadores:', (pair[1] && pair[1].length) || 0, 'gramaturas:', (pair[2] && pair[2].length) || 0); } catch (_) {}
       }).catch(function() {});
       var operadores = [];
-      var gramaturasLista = [_gramaturaFallbackConclusao()];
+      var gramaturasLista = [];
 
       var backdrop = document.createElement('div');
       backdrop.className = 'com-conc-backdrop';
@@ -19447,8 +19477,8 @@ function _ocultarGraficoComissoes() {
         + '    </div>'
         + '    <div class="com-conc-field">'
         + '      <label class="com-conc-label">📐 Gramatura Utilizada *</label>'
-        + '      <select id="conclusao-gramatura" class="com-conc-select"><option value="__nao_informada__">Carregando gramaturas...</option></select>'
-        + '      <div id="conclusao-gramatura-ajuda" style="margin-top:8px;font-size:12px;color:#94a3b8">Seleção obrigatória. Durante a transição, o fallback seguro é "Não informada".</div>'
+        + '      <select id="conclusao-gramatura" class="com-conc-select"><option value="">Carregando gramaturas...</option></select>'
+        + '      <div id="conclusao-gramatura-ajuda" style="margin-top:8px;font-size:12px;color:#94a3b8">Selecione a gramatura cadastrada. O valor unitário (R$/m²) será usado para calcular o custo da venda em tempo real.</div>'
         + '    </div>'
         + '    <div class="com-conc-field">'
         + '      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">'
@@ -19459,15 +19489,19 @@ function _ocultarGraficoComissoes() {
         + '      <div id="conclusao-total-perdido" style="margin-top:10px;font-size:13px;font-weight:700;color:#ef4444">Total perdido: 0 caixas</div>'
         + '    </div>'
         + '    <div class="com-conc-summary">'
+        + '      <div class="com-conc-metrics">'
+        + '        <div class="com-conc-metric-card"><span class="com-conc-metric-label">Tonelada Vendida</span><strong id="conc-res-ton-venda" class="com-conc-metric-value">0,0000 t</strong></div>'
+        + '        <div class="com-conc-metric-card"><span class="com-conc-metric-label">Custo/M² da Venda</span><strong id="conc-res-custo-m2-venda" class="com-conc-metric-value">R$ 0,0000</strong></div>'
+        + '      </div>'
         + '      <div class="com-conc-summary-grid">'
         + '        <div>Pedido: <b id="conc-res-pedido">0</b></div>'
         + '        <div>Produzidas: <b id="conc-res-produzidas">0</b></div>'
         + '        <div>Excedente: <b id="conc-res-excedente">0</b></div>'
         + '        <div>Perdas: <b id="conc-res-perdas">0</b></div>'
         + '      </div>'
-        + '      <div id="conc-res-materia" style="margin-top:10px;font-size:13px;font-weight:700;color:#cbd5e1">Gramatura: Não informada  ·  Área: 0,0000 m²  ·  Peso: 0,000 kg  ·  Toneladas: 0,0000 t  ·  Consumo chapa: 0</div>'
+        + '      <div id="conc-res-materia" style="margin-top:10px;font-size:13px;font-weight:700;color:#cbd5e1">Gramatura: Selecione uma gramatura  ·  Dimensões: 0 x 0 mm  ·  Área unitária: 0,0000 m²  ·  Área total: 0,0000 m²</div>'
         + '      <div style="height:1px;background:#1e293b;margin:14px 0"></div>'
-        + '      <div id="conc-res-financeiro" style="font-size:13px;font-weight:700;color:#10b981">Valor unitário: R$ 0,00  ·  Novo total: R$ 0,00  ·  Perdas: R$ 0,00</div>'
+        + '      <div id="conc-res-financeiro" style="font-size:13px;font-weight:700;color:#10b981">Valor da gramatura: R$ 0,0000/m²  ·  Novo total: R$ 0,00  ·  Perdas: R$ 0,00</div>'
         + '    </div>'
         + '  </div>'
         + '  <div class="com-conc-foot">'
@@ -19528,44 +19562,66 @@ function _ocultarGraficoComissoes() {
         }).filter(function(item) { return item.maquina && item.qtd > 0; });
       }
       function currentGramatura() {
-        var selectedId = String(gramEl && gramEl.value || '__nao_informada__').trim() || '__nao_informada__';
+        var selectedId = String(gramEl && gramEl.value || '').trim();
         var found = (gramaturasLista || []).find(function(g) { return String(g && g.id || '') === selectedId; }) || null;
         return found || _gramaturaFallbackConclusao();
       }
       function renderGramaturasSelect(lista) {
-        gramaturasLista = (Array.isArray(lista) && lista.length ? lista : [_gramaturaFallbackConclusao()]).map(_normalizarGramaturaConclusao);
-        if (!gramaturasLista.length) gramaturasLista = [_gramaturaFallbackConclusao()];
+        gramaturasLista = (Array.isArray(lista) ? lista : []).map(_normalizarGramaturaConclusao).filter(function(g) {
+          return g && g.ativo && !g.fallback && String(g.id || '').trim();
+        });
         var atual = String(of && (of.gramatura_id || of.gramaturaId || '') || '').trim();
-        if (!atual || !(gramaturasLista || []).some(function(g) { return String(g && g.id || '') === atual; })) atual = '__nao_informada__';
+        if (!atual || !(gramaturasLista || []).some(function(g) { return String(g && g.id || '') === atual; })) atual = '';
         if (gramEl) {
-          gramEl.innerHTML = gramaturasLista.map(function(g) {
-            var id = String(g && g.id || '__nao_informada__');
+          var opts = ['<option value="">' + (gramaturasLista.length ? 'Selecionar gramatura...' : 'Nenhuma gramatura cadastrada') + '</option>'].concat(gramaturasLista.map(function(g) {
+            var id = String(g && g.id || '');
             return '<option value="' + id.replace(/"/g, '&quot;') + '"' + (id === atual ? ' selected' : '') + '>' + _labelGramaturaConclusao(g).replace(/</g, '&lt;') + '</option>';
-          }).join('');
+          }));
+          gramEl.innerHTML = opts.join('');
         }
       }
       function updateResumo() {
         var resumo = _getResumoConclusao(of, qtdEl && qtdEl.value, collectPerdas());
         var materia = _calcularResumoMateriaPrimaConclusao(of, resumo.produzidas, currentGramatura());
+        var gramaturaSelecionada = materia.gramatura || _gramaturaFallbackConclusao();
+        var gramOk = !!(gramaturaSelecionada && !gramaturaSelecionada.fallback && String(gramaturaSelecionada.id || '').trim());
         try { backdrop.querySelector('#conc-res-pedido').textContent = String(resumo.qtdPedido); } catch (_) {}
         try { backdrop.querySelector('#conc-res-produzidas').textContent = String(resumo.produzidas); } catch (_) {}
         try { backdrop.querySelector('#conc-res-excedente').textContent = String(resumo.excedente); } catch (_) {}
         try { backdrop.querySelector('#conc-res-perdas').textContent = String(resumo.perdasQtd); } catch (_) {}
         try { totalPerdidoEl.textContent = 'Total perdido: ' + String(resumo.perdasQtd) + ' caixas'; } catch (_) {}
         try {
+          var tonVendaEl = backdrop.querySelector('#conc-res-ton-venda');
+          if (tonVendaEl) tonVendaEl.textContent = _fmtTon(materia.toneladaVendida);
+        } catch (_) {}
+        try {
+          var custoEl = backdrop.querySelector('#conc-res-custo-m2-venda');
+          if (custoEl) custoEl.textContent = _fmtMoney4(materia.custoM2Venda);
+        } catch (_) {}
+        try {
           var matEl = backdrop.querySelector('#conc-res-materia');
-          if (matEl) matEl.textContent = 'Gramatura: ' + _labelGramaturaConclusao(materia.gramatura) + '  ·  Área: ' + _fmtNum4(materia.areaTotalM2) + ' m²  ·  Peso: ' + _fmtKg(materia.pesoKg) + '  ·  Toneladas: ' + _fmtTon(materia.toneladas) + '  ·  Consumo chapa: ' + String(Number(materia.consumoChapas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 3 }));
+          if (matEl) matEl.textContent = 'Gramatura: ' + (gramOk ? _labelGramaturaConclusao(materia.gramatura) : 'Selecione uma gramatura') + '  ·  Dimensões: ' + String(Math.round(Number(materia.comprimentoMm || 0))) + ' x ' + String(Math.round(Number(materia.larguraMm || 0))) + ' mm  ·  Área unitária: ' + _fmtNum4(materia.areaUnitM2) + ' m²  ·  Área total: ' + _fmtNum4(materia.areaTotalM2) + ' m²';
         } catch (_) {}
         try {
           var financeiro = backdrop.querySelector('#conc-res-financeiro');
           if (financeiro) {
             financeiro.style.color = resumo.perdasQtd > 0 ? '#fca5a5' : '#10b981';
-            financeiro.textContent = 'Valor unitário: ' + _fmtMoney(resumo.valorUnitario) + '  ·  Novo total: ' + _fmtMoney(resumo.novoTotal) + '  ·  Perdas: ' + _fmtMoney(resumo.perdasValor);
+            financeiro.textContent = 'Valor da gramatura: ' + _fmtMoney4(materia.valorUnitarioGramatura) + '/m²  ·  Novo total: ' + _fmtMoney(resumo.novoTotal) + '  ·  Perdas: ' + _fmtMoney(resumo.perdasValor);
           }
         } catch (_) {}
-        if (btnSalvar) btnSalvar.disabled = !(resumo.produzidas > 0);
+        try {
+          var ajudaEl = backdrop.querySelector('#conclusao-gramatura-ajuda');
+          if (ajudaEl) {
+            ajudaEl.style.color = gramOk ? '#94a3b8' : '#fca5a5';
+            ajudaEl.textContent = gramOk
+              ? ('Valor unitário da gramatura: ' + _fmtMoney4(gramaturaSelecionada.valor_unitario) + '/m²')
+              : 'Selecione uma gramatura válida para calcular e salvar a conclusão.';
+          }
+        } catch (_) {}
+        if (btnSalvar) btnSalvar.disabled = !(resumo.produzidas > 0 && gramOk);
         resumo.materiaPrima = materia;
         resumo.gramatura = materia.gramatura;
+        resumo.gramaturaValida = gramOk;
         return resumo;
       }
       function addOperadorRow(host, selected) {
@@ -19628,7 +19684,7 @@ function _ocultarGraficoComissoes() {
         renderGramaturasSelect(lista);
         updateResumo();
       }).catch(function() {
-        renderGramaturasSelect([_gramaturaFallbackConclusao()]);
+        renderGramaturasSelect([]);
         updateResumo();
       });
       updateResumo();
@@ -19640,6 +19696,7 @@ function _ocultarGraficoComissoes() {
         var dataFaturamento = String((dataEl && dataEl.value) || '').trim();
         if (!(caixasProduzidas > 0)) { try { alert('Informe as caixas produzidas.'); } catch (_) {} return; }
         if (!dataFaturamento) { try { alert('Informe a data de faturamento.'); } catch (_) {} return; }
+        if (!resumo.gramaturaValida) { try { alert('Selecione uma gramatura válida antes de concluir a OF.'); } catch (_) {} return; }
         var perdas = collectPerdas();
         var precoUnitario = Number(resumo.valorUnitario || 0) || 0;
         var gramaturaSel = resumo.gramatura || _gramaturaFallbackConclusao();
@@ -19656,11 +19713,14 @@ function _ocultarGraficoComissoes() {
           valor_venda: resumo.novoTotal,
           usuario_conclusao: usuario,
           gramatura_id: gramaturaSel && !gramaturaSel.fallback ? String(gramaturaSel.id || '').trim() : null,
-          gramatura_nome: _labelGramaturaConclusao(gramaturaSel),
+          gramatura_nome: String(gramaturaSel.nome || gramaturaSel.descricao || '').trim(),
           gramatura: Number(gramaturaSel && gramaturaSel.gramatura || 0) || 0,
+          valor_unitario_gramatura: Number(gramaturaSel && gramaturaSel.valor_unitario || 0) || 0,
           area_total_m2: Number(materiaPrima.areaTotalM2 || 0) || 0,
           peso_utilizado_kg: Number(materiaPrima.pesoKg || 0) || 0,
-          toneladas_utilizadas: Number(materiaPrima.toneladas || 0) || 0,
+          toneladas_utilizadas: Number(materiaPrima.toneladaVendida || 0) || 0,
+          tonelada_vendida: Number(materiaPrima.toneladaVendida || 0) || 0,
+          custo_m2_venda: Number(materiaPrima.custoM2Venda || 0) || 0,
           consumo_chapas_estimado: Number(materiaPrima.consumoChapas || 0) || 0,
           _allow_partial: '1'
         };

@@ -2701,6 +2701,8 @@ const CAMPOS_OFS_UPDATE = new Set([
   'dim_comprimento', 'dim_largura', 'dim_altura', 'gramatura_id',
   'chapa_id', 'modo_programacao', 'dia_programacao', 'cidade_entrega',
   'valor_venda', 'valor_total', 'fluxo_maquinas', 'maquina_atual_index',
+  'gramatura_nome', 'gramatura', 'peso_utilizado_kg', 'toneladas_utilizadas',
+  'area_total_m2', 'consumo_chapas_estimado', 'tonelada_vendida', 'custo_m2_venda',
   'updated_at',
 ]);
 
@@ -2748,7 +2750,9 @@ const OFS_TABLE_COLS = [
   'deleted_at',
   'prioridade', 'sem_papel',
   'cidade_entrega', 'modo_programacao',
-  'usuario_conclusao',
+  'usuario_conclusao', 'gramatura_id', 'gramatura_nome', 'gramatura',
+  'peso_utilizado_kg', 'toneladas_utilizadas', 'area_total_m2',
+  'consumo_chapas_estimado', 'tonelada_vendida', 'custo_m2_venda',
   'tipo_caixa', 'caixa_comprimento', 'caixa_largura', 'caixa_altura',
   'dim_comprimento', 'dim_largura', 'dim_altura',
   'comprimento', 'largura', 'altura',
@@ -6743,6 +6747,10 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const sid = String(id || '').trim();
     if (!sid) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const metricColsReady = await _ensureOfsConclusaoMetricasCols();
+    if (!metricColsReady) {
+      return res.status(500).json({ ok: false, error: 'Não foi possível preparar as colunas de tonelada e custo da OF.' });
+    }
 
     const body = req.body || {};
     console.debug('[CONCLUIR OF] body:', JSON.stringify(body));
@@ -6806,6 +6814,64 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     }
 
     const nowIso = new Date().toISOString();
+    const parseDimMm = (src, keys) => {
+      const arr = Array.isArray(keys) ? keys : [];
+      for (const key of arr) {
+        if (!src || !Object.prototype.hasOwnProperty.call(src, key)) continue;
+        const v = Number(src[key] || 0) || 0;
+        if (v > 0) return v;
+      }
+      return 0;
+    };
+    let comprimentoMm = parseDimMm(of, ['comprimento_mm', 'caixa_comprimento', 'dim_comprimento', 'comprimento']);
+    let larguraMm = parseDimMm(of, ['largura_mm', 'caixa_largura', 'dim_largura', 'largura']);
+    if (!(comprimentoMm > 0 && larguraMm > 0)) {
+      const desc = String(of?.descricao || of?.produto || of?.prodDesc || '').trim();
+      const match = desc.match(/(\d+(?:[.,]\d+)?)\s*[×xX]\s*(\d+(?:[.,]\d+)?)/);
+      if (match) {
+        comprimentoMm = parseFloat(String(match[1] || '').replace(',', '.')) || 0;
+        larguraMm = parseFloat(String(match[2] || '').replace(',', '.')) || 0;
+        if (comprimentoMm > 0 && larguraMm > 0 && comprimentoMm <= 300 && larguraMm <= 300) {
+          comprimentoMm *= 10;
+          larguraMm *= 10;
+        }
+      }
+    }
+    const areaUnitM2Calc = (comprimentoMm > 0 && larguraMm > 0)
+      ? ((comprimentoMm / 1000) * (larguraMm / 1000))
+      : (Number(of.tamanho_m2 || 0) || 0);
+
+    await _ensureGramaturasTable().catch(() => false);
+    const gramaturaConclusaoId = body.gramatura_id != null ? String(body.gramatura_id || '').trim() : '';
+    let gramaturaConclusao = null;
+    if (gramaturaConclusaoId) {
+      try {
+        const { data } = await supabase
+          .from('gramaturas')
+          .select('id,nome,descricao,gramatura,valor_unitario,ativo')
+          .eq('id', gramaturaConclusaoId)
+          .maybeSingle();
+        gramaturaConclusao = data || null;
+      } catch (_) {
+        gramaturaConclusao = null;
+      }
+    }
+    const gramaturaConclusaoNome =
+      String(body.gramatura_nome || gramaturaConclusao?.nome || gramaturaConclusao?.descricao || '').trim();
+    const gramaturaConclusaoValor =
+      Number(body.gramatura ?? body.gramatura_gm2 ?? gramaturaConclusao?.gramatura ?? 0) || 0;
+    const gramaturaValorUnitario =
+      Number(body.valor_unitario_gramatura ?? gramaturaConclusao?.valor_unitario ?? 0) || 0;
+    if (!(gramaturaConclusaoValor > 0)) {
+      return res.status(400).json({ ok: false, error: 'Selecione uma gramatura válida para concluir a OF.' });
+    }
+    if (!(areaUnitM2Calc > 0)) {
+      return res.status(400).json({ ok: false, error: 'A OF precisa ter comprimento e largura válidos para calcular a tonelada vendida.' });
+    }
+    const areaTotalM2Calc = areaUnitM2Calc * qtdFinal;
+    const pesoUtilizadoKgCalc = (areaTotalM2Calc * gramaturaConclusaoValor) / 1000;
+    const toneladaVendidaCalc = (areaUnitM2Calc * gramaturaConclusaoValor * qtdFinal) / 1000000;
+    const custoM2VendaCalc = areaUnitM2Calc * gramaturaValorUnitario;
     let operadoresConclusao = [];
     try {
       if (Object.prototype.hasOwnProperty.call(body, 'operadores_conclusao')) {
@@ -6840,13 +6906,12 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       usuario_conclusao: body.usuario_conclusao || body.concluido_por || req.usuario?.nome || 'sistema',
       updated_at: nowIso,
       maquina_atual_index: Math.max(fluxo.length, Number(of.maquina_atual_index || 0) || 0),
+      tonelada_vendida: Math.round(toneladaVendidaCalc * 1000000) / 1000000,
+      custo_m2_venda: Math.round(custoM2VendaCalc * 1000000) / 1000000,
     };
-    const gramaturaConclusaoId = body.gramatura_id != null ? String(body.gramatura_id || '').trim() : '';
-    const gramaturaConclusaoNome = body.gramatura_nome != null ? String(body.gramatura_nome || '').trim() : '';
-    const gramaturaConclusaoValor = Number(body.gramatura || body.gramatura_gm2 || 0) || 0;
-    const pesoUtilizadoKg = Number(body.peso_utilizado_kg || body.peso_utilizado || 0) || 0;
-    const toneladasUtilizadas = Number(body.toneladas_utilizadas || 0) || 0;
-    const areaTotalM2 = Number(body.area_total_m2 || 0) || 0;
+    const pesoUtilizadoKg = Number(body.peso_utilizado_kg || body.peso_utilizado || pesoUtilizadoKgCalc || 0) || 0;
+    const toneladasUtilizadas = Number(body.toneladas_utilizadas || body.tonelada_vendida || toneladaVendidaCalc || 0) || 0;
+    const areaTotalM2 = Number(body.area_total_m2 || areaTotalM2Calc || 0) || 0;
     const consumoChapasEstimado = Number(body.consumo_chapas_estimado || 0) || 0;
     if (Object.prototype.hasOwnProperty.call(body, 'gramatura_id')) updateData.gramatura_id = gramaturaConclusaoId || null;
     if (gramaturaConclusaoNome) updateData.gramatura_nome = gramaturaConclusaoNome;
@@ -10152,6 +10217,37 @@ async function _ensureGramaturasTable() {
       const rpc = await supabase.rpc('exec_sql', { sql: _gramaturasCreateSql() });
       if (!rpc.error) {
         _gramaturasReady = true;
+        return true;
+      }
+    } catch (_) {}
+  } catch (_) {}
+  return false;
+}
+
+function _ofsConclusaoMetricasSql() {
+  return (
+    "ALTER TABLE ofs ADD COLUMN IF NOT EXISTS tonelada_vendida numeric DEFAULT 0;" +
+    "ALTER TABLE ofs ADD COLUMN IF NOT EXISTS custo_m2_venda numeric DEFAULT 0;"
+  );
+}
+
+let _ofsConclusaoMetricasReady = null;
+async function _ensureOfsConclusaoMetricasCols() {
+  if (_ofsConclusaoMetricasReady === true) return true;
+  try {
+    const probe = await supabase.from('ofs').select('id,tonelada_vendida,custo_m2_venda').limit(1);
+    if (!probe.error) {
+      _ofsConclusaoMetricasReady = true;
+      return true;
+    }
+    const msg = String(probe.error?.message || probe.error || '').toLowerCase();
+    if (!(msg.includes('column') || msg.includes('does not exist') || msg.includes('could not find') || msg.includes('schema cache'))) {
+      return false;
+    }
+    try {
+      const rpc = await supabase.rpc('exec_sql', { sql: _ofsConclusaoMetricasSql() });
+      if (!rpc.error) {
+        _ofsConclusaoMetricasReady = true;
         return true;
       }
     } catch (_) {}
@@ -15258,6 +15354,7 @@ app.get('/api/analises/toneladas', authMiddleware, async (req, res) => {
 app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
+    const metricColsReady = await _ensureOfsConclusaoMetricasCols().catch(() => false);
     const selectCols = [
       'id', 'numero', 'of', 'status', 'data_conclusao', 'gramatura',
       'qtd_produzida', 'quantidade', 'qtd',
@@ -15270,6 +15367,11 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
     ['gramatura_nome', 'tamanho_m2', 'comprimento_mm', 'largura_mm'].forEach((col) => {
       if (_ofsSelectableHas(col)) selectCols.push(col);
     });
+    if (metricColsReady) {
+      ['tonelada_vendida', 'custo_m2_venda'].forEach((col) => {
+        if (_ofsSelectableHas(col)) selectCols.push(col);
+      });
+    }
     const selectExpr = Array.from(new Set(selectCols)).join(',');
     let ofs = [];
     let from = 0;
@@ -15289,10 +15391,13 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
     const rows = (Array.isArray(ofs) ? ofs : []).filter((of) => {
       const status = String(of?.status || '').toLowerCase();
       const gramatura = Number(of?.gramatura || 0) || 0;
-      return status.includes('conclu') && gramatura > 0;
+      const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
+      return status.includes('conclu') && (tonPersistida > 0 || gramatura > 0);
     }).map((of) => {
       const qtd = Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.quantidade ?? of?.qtd ?? 0) || 0));
       const gramatura = Number(of?.gramatura || 0) || 0;
+      const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
+      const custoM2Venda = Number(of?.custo_m2_venda || 0) || 0;
       let areaUnitM2 = Number(of?.tamanho_m2 || 0) || 0;
       if (!(areaUnitM2 > 0)) {
         const compMm = Number(of?.comprimento_mm ?? of?.comprimento ?? of?.caixa_comprimento ?? 0) || 0;
@@ -15307,7 +15412,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
         if (compCm > 0 && largCm > 0) areaUnitM2 = (compCm / 100) * (largCm / 100);
       }
       const areaTotalM2 = areaUnitM2 > 0 ? (areaUnitM2 * qtd) : 0;
-      const toneladas = areaTotalM2 > 0 ? ((areaTotalM2 * gramatura) / 1000000) : 0;
+      const toneladas = tonPersistida > 0 ? tonPersistida : (areaTotalM2 > 0 ? ((areaTotalM2 * gramatura) / 1000000) : 0);
       return {
         id: of?.id || null,
         of_numero: of?.numero || of?.of || null,
@@ -15320,6 +15425,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
         area_unit_m2: Number(areaUnitM2.toFixed(4)),
         area_total_m2: Number(areaTotalM2.toFixed(4)),
         toneladas: Number(toneladas.toFixed(6)),
+        custo_m2_venda: Number(custoM2Venda.toFixed(6)),
       };
     }).sort((a, b) => String(b?.data_conclusao || '').localeCompare(String(a?.data_conclusao || '')));
 
