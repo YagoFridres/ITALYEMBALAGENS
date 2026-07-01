@@ -3236,6 +3236,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '.pep-card-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;font-weight:800}'
         + '.pep-card-val{font-size:26px;font-weight:900;color:#f8fafc;margin-top:10px}'
         + '.pep-card-sub{font-size:12px;color:#94a3b8;margin-top:8px}'
+        + '.pep-table-wrap{overflow:auto;max-height:min(60vh,520px);overscroll-behavior:contain}'
         + '.pep-table{width:100%;border-collapse:collapse}'
         + '.pep-table th{background:#0f172a;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:10px 8px;text-align:left;border-bottom:1px solid #1e293b}'
         + '.pep-table td{padding:10px 8px;border-bottom:1px solid #1e293b;font-size:12px;color:#e5e7eb;vertical-align:top}'
@@ -3268,7 +3269,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return page;
     }
     function showOnlyPage(pageId) {
-      Array.prototype.slice.call(document.querySelectorAll('[id^="page-"], [data-page]')).forEach(function(pg) {
+      Array.prototype.slice.call(document.querySelectorAll('#patch-page-host, [id^="page-"], [data-page]')).forEach(function(pg) {
         try {
           var id = String(pg.getAttribute('data-page') || pg.id || '').replace(/^page-/, '');
           var ativo = id === pageId;
@@ -3429,7 +3430,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <input class="pep-input" id="gram-busca" placeholder="Buscador de gramaturas" value="' + esc(window.__gramaturasBusca || '') + '" style="min-width:320px;flex:1">'
         + '    <button class="pep-btn" id="gram-buscar">Buscar</button>'
         + '  </div></div>'
-        + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Nome da Gramatura</th><th>Gramatura</th><th>Fornecedor</th><th>Valor Unitário</th><th>Status</th><th>Ações</th></tr></thead><tbody>'
+        + '  <div class="pep-panel"><div class="pep-table-wrap" style="overflow-y:auto;overflow-x:auto;max-height:min(60vh,520px);overscroll-behavior:contain"><table class="pep-table"><thead><tr><th>Nome da Gramatura</th><th>Gramatura</th><th>Fornecedor</th><th>Valor Unitário</th><th>Status</th><th>Ações</th></tr></thead><tbody>'
         + (filtrada.length ? filtrada.map(function(g) {
           var statusTxt = gramAtiva(g) ? 'Ativo' : 'Inativo';
           var statusColor = gramAtiva(g) ? '#22c55e' : '#f59e0b';
@@ -3720,7 +3721,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF ou CNPJ" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
         + '    <button class="pep-btn primary" id="estoque-wire-buscar">Buscar</button>'
         + '  </div></div>'
-        + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>FORNECEDOR</th><th>GRAMATURA</th><th>NOMENCLATURA</th><th>TAMANHO</th><th>NOME</th><th>QUAL CNPJ</th><th>NF</th><th>QUANTIDADE</th><th>R$</th><th>TOTAL</th><th>Ações</th></tr></thead><tbody>'
+        + '  <div class="pep-panel"><div class="pep-table-wrap" style="overflow-y:auto;overflow-x:auto;max-height:min(60vh,520px);overscroll-behavior:contain"><table class="pep-table"><thead><tr><th>FORNECEDOR</th><th>GRAMATURA</th><th>NOMENCLATURA</th><th>TAMANHO</th><th>NOME</th><th>QUAL CNPJ</th><th>NF</th><th>QUANTIDADE</th><th>R$</th><th>TOTAL</th><th>Ações</th></tr></thead><tbody>'
         + (filtrada.length ? filtrada.map(function(chapa) {
             var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
             var vunit = Number(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0) || 0;
@@ -11291,7 +11292,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function _botaoEditarChapas(onDone) {
-    return '<button id="estoque-btn-alterar-chapas" class="pcp-btn pcp-btn-lg" type="button" style="background:#334155">Alterar Chapas</button>';
+    return '<button id="estoque-btn-alterar-chapas" class="btn btn-primary estoque-main-btn" type="button" style="min-height:48px;padding:12px 18px;border-radius:12px;font-size:.9rem;font-weight:800;box-shadow:0 10px 22px -12px rgba(0,0,0,.65)">Alterar Chapas</button>';
   }
 
   function _bindBotaoEditarChapas(onDone) {
@@ -11680,10 +11681,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                   _makeCardEstoque({ label: 'Chapa com Mais Entrada', value: topChapa, sub: 'Maior volume de entrada no mês' }),
                   _cardBreakdownEstoque('Quanto Entrou por Fornecedor', breakdown, _fmtRsEstoque)].join('')
           + '  </div>'
-          + '  <div style="display:flex;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px">'
-          + '    <button id="estoque-entrada-lote-btn" class="pcp-btn pcp-btn-lg primary" type="button">Dar Entrada</button>'
+          + '  <div class="estoque-main-actions">'
+          + '    <button id="estoque-entrada-lote-btn" class="btn btn-accent estoque-main-btn" type="button" style="min-height:48px;padding:12px 18px;border-radius:12px;font-size:.9rem;font-weight:800;box-shadow:0 10px 22px -12px rgba(0,0,0,.65)">Dar Entrada</button>'
           +      _botaoEditarChapas()
-          + '    <button id="estoque-btn-criar-chapas" class="pcp-btn pcp-btn-lg" type="button">Criar Chapas</button>'
+          + '    <button id="estoque-btn-criar-chapas" class="btn btn-primary estoque-main-btn" type="button" style="min-height:48px;padding:12px 18px;border-radius:12px;font-size:.9rem;font-weight:800;box-shadow:0 10px 22px -12px rgba(0,0,0,.65)">Criar Chapas</button>'
           + '  </div>'
           +    _renderTabelaMovEstoque(filtrada, [
                  { label: 'Data', key: 'data', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(_fmtDateEstoque(r.data)) + '</span>'; } },
@@ -12015,10 +12016,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                   _makeCardEstoque({ label: 'Chapa com Mais Saída', value: topChapa, sub: 'Maior volume de saída no mês' }),
                   _cardBreakdownEstoque('Quanto Saiu de Cada Fornecedor', breakdown, _fmtRsEstoque)].join('')
           + '  </div>'
-          + '  <div style="display:flex;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px">'
-          + '    <button id="estoque-saida-lote-btn" class="pcp-btn pcp-btn-lg primary" type="button" style="background:#7f1d1d">Dar Saída</button>'
+          + '  <div class="estoque-main-actions">'
+          + '    <button id="estoque-saida-lote-btn" class="btn btn-accent estoque-main-btn" type="button" style="min-height:48px;padding:12px 18px;border-radius:12px;font-size:.9rem;font-weight:800;box-shadow:0 10px 22px -12px rgba(0,0,0,.65)">Dar Saída</button>'
           +      _botaoEditarChapas()
-          + '    <button id="estoque-btn-criar-chapas" class="pcp-btn pcp-btn-lg" type="button">Criar Chapas</button>'
+          + '    <button id="estoque-btn-criar-chapas" class="btn btn-primary estoque-main-btn" type="button" style="min-height:48px;padding:12px 18px;border-radius:12px;font-size:.9rem;font-weight:800;box-shadow:0 10px 22px -12px rgba(0,0,0,.65)">Criar Chapas</button>'
           + '  </div>'
           +    _renderTabelaMovEstoque(filtrada, [
                  { label: 'Data', key: 'data', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(_fmtDateEstoque(r.data)) + '</span>'; } },
@@ -12203,6 +12204,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '.pcp-btn.pcp-btn-lg{padding:10px 16px;font-size:14px;font-weight:800;border-radius:10px;min-height:40px}' +
       '.pcp-btn.primary{background:var(--accent);border-color:transparent;color:#fff;font-weight:700}' +
       '.pcp-btn.danger{background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.35);color:#ef4444;font-weight:800}' +
+      '.estoque-main-actions{display:flex;gap:12px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}' +
+      '.estoque-main-btn{min-height:48px;padding:12px 18px !important;border-radius:12px;font-size:.9rem !important;font-weight:800;box-shadow:0 10px 22px -12px rgba(0,0,0,.65)}' +
+      '.pep-table-wrap{overflow:auto;max-height:min(60vh,520px);overscroll-behavior:contain}' +
       '.pcp-input{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}' +
       '.pcp-select{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}';
     document.head.appendChild(st);
