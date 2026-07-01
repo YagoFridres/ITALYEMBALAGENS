@@ -3290,17 +3290,32 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       ensureStyles();
       var page = ensurePage('gramaturas');
       showOnlyPage('gramaturas');
-      var lista = await loadGramaturas({ incluirInativas: true });
+      var pair = await Promise.all([
+        loadGramaturas({ incluirInativas: true }),
+        apiJson('/api/analises/toneladas-vendidas').catch(function() { return null; })
+      ]);
+      var lista = pair[0];
+      var ofRows = Array.isArray(pair[1] && (pair[1].rows || pair[1].detalhamento)) ? (pair[1].rows || pair[1].detalhamento) : [];
       var busca = String(window.__gramaturasBusca || '').trim().toLowerCase();
       var filtrada = busca ? lista.filter(function(g) {
         var txt = [g.nome, g.descricao, g.fornecedor_nome, g.gramatura].join(' ').toLowerCase();
         return txt.indexOf(busca) >= 0;
       }) : lista;
+      var uso = _resumoTopPorValor(ofRows, function(r) { return String(r.gramatura || 0) + ' g/m²'; }, function(r) { return Number(r.quantidade || 0) || 0; }).filter(function(x) { return String(x.nome || '').indexOf('0 g/m²') !== 0; });
+      var menosUso = uso.slice().filter(function(x) { return Number(x.valor || 0) > 0; }).sort(function(a, b) { return a.valor - b.valor; });
+      var caixasBreakdown = uso.slice(0, 4);
+      var fornBreakdown = _resumoTopPorValor(lista, function(g) { return g.fornecedor_nome || 'Sem fornecedor'; }, function() { return 1; }).slice(0, 4);
       page.innerHTML = ''
         + '<div class="pep-wrap">'
-        + '  <div class="pep-head"><div><div class="pep-title">📐 Gramaturas</div><div class="pep-sub">CRUD da base usada na conclusão de OF e no estoque de chapas.</div></div><button class="pep-btn primary" id="gram-nova">+ Nova Gramatura</button></div>'
+        + '  <div class="pep-cards">'
+        +      _makeCardEstoque({ label: 'Gramaturas Mais Usadas', value: (uso[0] && uso[0].nome) ? uso[0].nome : '0', sub: (uso[0] ? (_fmtNumEstoque(uso[0].valor) + ' caixas') : 'Sem dados') })
+        +      _makeCardEstoque({ label: 'Gramaturas Menos Usadas', value: (menosUso[0] && menosUso[0].nome) ? menosUso[0].nome : '0', sub: (menosUso[0] ? (_fmtNumEstoque(menosUso[0].valor) + ' caixas') : 'Sem dados') })
+        +      _cardBreakdownEstoque('Caixas por Gramatura', caixasBreakdown, _fmtNumEstoque)
+        +      _cardBreakdownEstoque('Gramaturas por Fornecedor', fornBreakdown, _fmtNumEstoque)
+        + '  </div>'
+        + '  <div class="pep-head" style="margin-top:16px"><div><div class="pep-title">📐 Gramaturas</div><div class="pep-sub">CRUD da base usada na conclusão de OF e no estoque de chapas.</div></div><button class="pep-btn primary" id="gram-nova">Criar Gramaturas</button></div>'
         + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
-        + '    <input class="pep-input" id="gram-busca" placeholder="Buscar por nome, fornecedor ou gramatura..." value="' + esc(window.__gramaturasBusca || '') + '" style="max-width:360px">'
+        + '    <input class="pep-input" id="gram-busca" placeholder="Buscador de gramaturas" value="' + esc(window.__gramaturasBusca || '') + '" style="min-width:320px;flex:1">'
         + '    <button class="pep-btn" id="gram-buscar">Buscar</button>'
         + '  </div></div>'
         + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Nome da Gramatura</th><th>Gramatura</th><th>Fornecedor</th><th>Valor Unitário</th><th>Status</th><th>Ações</th></tr></thead><tbody>'
@@ -3543,6 +3558,108 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
     }
 
+    function facaUsoScore(f) {
+      var cli = Array.isArray(f && f.clientes) ? f.clientes.length : 0;
+      var maq = Array.isArray(f && f.maquinas) ? f.maquinas.length : 0;
+      return cli + maq;
+    }
+    function openFacaSelector(onSelect) {
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.82);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px';
+      wrap.innerHTML = ''
+        + '<div style="width:min(860px,96vw);max-height:88vh;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:18px">'
+        + '  <div class="pep-head"><div><div class="pep-title" style="font-size:22px">🔪 Alterar Faca</div><div class="pep-sub">Selecione a faca que deseja editar.</div></div><button class="pep-btn" id="faca-sel-close">Fechar</button></div>'
+        + '  <div><input class="pep-input" id="faca-sel-q" placeholder="Buscar por nome, medidas ou cliente..." style="width:100%"></div>'
+        + '  <div id="faca-sel-lista" style="margin-top:14px;display:grid;gap:8px"></div>'
+        + '</div>';
+      document.body.appendChild(wrap);
+      var fechar = function() { try { wrap.remove(); } catch (_) {} };
+      wrap.addEventListener('click', function(ev) { if (ev.target === wrap) fechar(); });
+      document.getElementById('faca-sel-close').onclick = fechar;
+      var render = function(q) {
+        var lista = Array.isArray(window.FACAS) ? window.FACAS.slice() : [];
+        var busca = String(q || '').trim().toLowerCase();
+        if (busca) {
+          lista = lista.filter(function(f) {
+            var txt = [f.nome, f.medidas, f.obs, (f.maquinas || []).join(' '), (f.clientes || []).join(' ')].join(' ').toLowerCase();
+            return txt.indexOf(busca) >= 0;
+          });
+        }
+        var host = document.getElementById('faca-sel-lista');
+        if (!host) return;
+        host.innerHTML = lista.length ? lista.slice(0, 120).map(function(f) {
+          return '<button type="button" data-faca-select="' + esc(f.id || '') + '" style="text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer"><div style="font-weight:800">' + esc(f.nome || '—') + '</div><div style="margin-top:4px;font-size:12px;color:#94a3b8">' + esc((f.medidas || '—') + ' · ' + ((f.clientes || []).length || 0) + ' cliente(s) · ' + ((f.maquinas || []).length || 0) + ' máquina(s)') + '</div></button>';
+        }).join('') : '<div style="padding:18px;text-align:center;color:#94a3b8;border:1px solid var(--border);border-radius:12px;background:var(--card)">Nenhuma faca encontrada.</div>';
+        Array.prototype.slice.call((host || {}).querySelectorAll ? host.querySelectorAll('[data-faca-select]') : []).forEach(function(btn) {
+          btn.onclick = function() {
+            var id = String(btn.getAttribute('data-faca-select') || '');
+            fechar();
+            if (typeof onSelect === 'function') onSelect(id);
+          };
+        });
+      };
+      document.getElementById('faca-sel-q').oninput = function() { render(this.value || ''); };
+      render('');
+    }
+    async function renderFacasWireframePage() {
+      ensureStyles();
+      if (typeof window.carregarFacas === 'function' && !(Array.isArray(window.FACAS) && window.FACAS.length)) {
+        try { await window.carregarFacas(); } catch (_) {}
+      }
+      var page = ensurePage('facas1');
+      showOnlyPage('facas1');
+      var lista = Array.isArray(window.FACAS) ? window.FACAS.slice() : [];
+      var busca = String(window.__facasWireBusca || '').trim().toLowerCase();
+      if (busca) {
+        lista = lista.filter(function(f) {
+          var txt = [f.nome, f.medidas, f.obs, (f.maquinas || []).join(' '), (f.clientes || []).join(' ')].join(' ').toLowerCase();
+          return txt.indexOf(busca) >= 0;
+        });
+      }
+      var totalValor = lista.reduce(function(s, f) { return s + (Number(f && f.valor || 0) || 0); }, 0);
+      var maisUsada = lista.slice().sort(function(a, b) { return facaUsoScore(b) - facaUsoScore(a); })[0] || null;
+      var menosUsada = lista.slice().sort(function(a, b) { return facaUsoScore(a) - facaUsoScore(b); })[0] || null;
+      page.innerHTML = ''
+        + '<div class="pep-wrap">'
+        + '  <div class="pep-cards">'
+        +      _makeCardEstoque({ label: 'Quantas Facas Tem', value: num(lista.length || 0, 0), sub: 'Facas cadastradas' })
+        +      _makeCardEstoque({ label: 'Valor de Faca', value: money(totalValor || 0), sub: 'Soma das facas filtradas' })
+        +      _makeCardEstoque({ label: 'Faca Mais Usada', value: (maisUsada && maisUsada.nome) ? maisUsada.nome : '—', sub: (maisUsada ? (facaUsoScore(maisUsada) + ' vínculo(s)') : 'Sem uso') })
+        +      _makeCardEstoque({ label: 'Faca Menos Usada', value: (menosUsada && menosUsada.nome) ? menosUsada.nome : '—', sub: (menosUsada ? (facaUsoScore(menosUsada) + ' vínculo(s)') : 'Sem uso') })
+        + '  </div>'
+        + '  <div class="pep-panel" style="margin-top:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
+        + '    <input class="pep-input" id="facas-wire-busca" placeholder="Buscador" value="' + esc(window.__facasWireBusca || '') + '" style="flex:1;min-width:280px">'
+        + '    <button class="pep-btn" id="facas-wire-alterar">Alterar</button>'
+        + '    <button class="pep-btn primary" id="facas-wire-criar">Criar Facas</button>'
+        + '  </div></div>'
+        + '  <div class="pep-panel"><div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Tabela de Facas</div></div><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Numero</th><th>Categoria</th><th>Nome</th><th>Medidas</th><th>Maquinas</th><th>Clientes</th><th>Valor</th><th>Ações</th></tr></thead><tbody>'
+        + (lista.length ? lista.map(function(f) {
+          var clientes = (Array.isArray(f.clientes) ? f.clientes : []).map(function(id) {
+            var cli = (Array.isArray(window.CLIENTES) ? window.CLIENTES : []).find(function(c) { return String(c && c.id || '') === String(id || ''); });
+            return cli ? cli.nome : id;
+          }).join(', ');
+          return '<tr><td>' + esc(f.numero || '—') + '</td><td>' + esc(f.categoria || '—') + '</td><td>' + esc(f.nome || '—') + '</td><td>' + esc(f.medidas || '—') + '</td><td>' + esc((f.maquinas || []).join(', ') || '—') + '</td><td>' + esc(clientes || '—') + '</td><td>' + money(f.valor || 0) + '</td><td><button class="pep-btn" data-faca-edit="' + esc(f.id || '') + '">Alterar</button> <button class="pep-btn danger" data-faca-del="' + esc(f.id || '') + '">Excluir</button></td></tr>';
+        }).join('') : '<tr><td colspan="8" style="text-align:center;color:#94a3b8">Nenhuma faca cadastrada.</td></tr>')
+        + '  </tbody></table></div></div>'
+        + '</div>';
+      document.getElementById('facas-wire-busca').oninput = function() {
+        window.__facasWireBusca = String(this.value || '');
+        renderFacasWireframePage();
+      };
+      document.getElementById('facas-wire-alterar').onclick = function() {
+        openFacaSelector(function(id) { try { if (typeof window.abrirModalFaca1 === 'function') window.abrirModalFaca1(id); } catch (_) {} });
+      };
+      document.getElementById('facas-wire-criar').onclick = function() {
+        try { if (typeof window.abrirModalFaca1 === 'function') window.abrirModalFaca1(); } catch (_) {}
+      };
+      Array.prototype.slice.call(page.querySelectorAll('[data-faca-edit]')).forEach(function(btn) {
+        btn.onclick = function() { try { if (typeof window.abrirModalFaca1 === 'function') window.abrirModalFaca1(String(btn.getAttribute('data-faca-edit') || '')); } catch (_) {} };
+      });
+      Array.prototype.slice.call(page.querySelectorAll('[data-faca-del]')).forEach(function(btn) {
+        btn.onclick = function() { try { if (typeof window.excluirFaca1 === 'function') window.excluirFaca1(String(btn.getAttribute('data-faca-del') || '')); } catch (_) {} };
+      });
+    }
+
     function currentMesAno() {
       return { periodo: 'mes' };
     }
@@ -3578,48 +3695,55 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var page = ensurePage('toneladas-vendidas');
       showOnlyPage('toneladas-vendidas');
       var st = tonesState();
-      var j = await apiJson('/api/analises/toneladas-vendidas').catch(function() { return null; });
-      var det = Array.isArray(j && (j.rows || j.detalhamento)) ? (j.rows || j.detalhamento) : [];
-      var totals = {
-        hoje: det.filter(function(r) { return toneInPeriodo(r.data_conclusao, 'hoje'); }).reduce(function(s, r) { return s + (Number(r.toneladas || 0) || 0); }, 0),
-        semana: det.filter(function(r) { return toneInPeriodo(r.data_conclusao, 'semana'); }).reduce(function(s, r) { return s + (Number(r.toneladas || 0) || 0); }, 0),
-        mes: det.filter(function(r) { return toneInPeriodo(r.data_conclusao, 'mes'); }).reduce(function(s, r) { return s + (Number(r.toneladas || 0) || 0); }, 0),
-        ano: det.filter(function(r) { return toneInPeriodo(r.data_conclusao, 'ano'); }).reduce(function(s, r) { return s + (Number(r.toneladas || 0) || 0); }, 0)
-      };
-      var detPeriodo = det.filter(function(r) { return toneInPeriodo(r.data_conclusao, st.periodo || 'mes'); });
+      var pair = await Promise.all([
+        apiJson('/api/analises/toneladas-vendidas').catch(function() { return null; }),
+        _carregarDadosMovimentacaoEstoque('').catch(function() { return []; }),
+        _estoqueFetchChapasList(1200).catch(function() { return []; })
+      ]);
+      var ofRows = Array.isArray(pair[0] && (pair[0].rows || pair[0].detalhamento)) ? (pair[0].rows || pair[0].detalhamento) : [];
+      var movRows = Array.isArray(pair[1]) ? pair[1] : [];
+      var chapas = Array.isArray(pair[2]) ? pair[2] : [];
+      var mesAtual = _mesAtualRefEstoque();
+      var tonMes = ofRows.filter(function(r) { return String(r.data_conclusao || '').slice(0, 7) === mesAtual; }).reduce(function(s, r) { return s + (Number(r.toneladas || 0) || 0); }, 0);
+      var saidasMes = movRows.filter(function(r) { return String(r.tipo || '') === 'saida' && String(r.data || '').slice(0, 7) === mesAtual; });
+      var entradasMes = movRows.filter(function(r) { return String(r.tipo || '') === 'entrada' && String(r.data || '').slice(0, 7) === mesAtual; });
+      var saidaFornecedor = _resumoTopPorValor(saidasMes, function(r) { return r.fornecedor || 'Sem fornecedor'; }, function(r) { return Number(r.toneladas || 0) || 0; });
+      var entradaFornecedor = _resumoTopPorValor(entradasMes, function(r) { return r.fornecedor || 'Sem fornecedor'; }, function(r) { return Number(r.toneladas || 0) || 0; });
+      var tonEstoque = (chapas || []).reduce(function(s, chapa) { return s + (Number((typeof _calcTonAtualEst === 'function') ? _calcTonAtualEst(chapa) : 0) || 0); }, 0);
+      var tabela = []
+        .concat(entradasMes.map(function(r) {
+          return { data: r.data, tipo: 'Entrada', fornecedor: r.fornecedor, chapa: r.chapa_label, toneladas: r.toneladas, of_numero: '—' };
+        }))
+        .concat(saidasMes.map(function(r) {
+          return { data: r.data, tipo: 'Saída', fornecedor: r.fornecedor, chapa: r.chapa_label, toneladas: r.toneladas, of_numero: r.of_numero || '—' };
+        }))
+        .concat(ofRows.filter(function(r) { return String(r.data_conclusao || '').slice(0, 7) === mesAtual; }).map(function(r) {
+          return { data: r.data_conclusao, tipo: 'OF', fornecedor: '—', chapa: r.produto || '—', toneladas: r.toneladas, of_numero: r.of_numero || '—' };
+        }))
+        .sort(function(a, b) { return String(b.data || '').localeCompare(String(a.data || '')); });
       page.innerHTML = ''
         + '<div class="pep-wrap">'
-        + '  <div class="pep-head">'
-        + '    <div><div class="pep-title">⚖️ Toneladas Vendidas</div><div class="pep-sub">Toneladas calculadas a partir das OFs concluídas com gramatura registrada.</div></div>'
-        + '    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-        + '      <select class="pep-select" id="tones-periodo"><option value="hoje"' + (st.periodo === 'hoje' ? ' selected' : '') + '>Hoje</option><option value="semana"' + (st.periodo === 'semana' ? ' selected' : '') + '>Esta Semana</option><option value="mes"' + (st.periodo === 'mes' ? ' selected' : '') + '>Este Mês</option><option value="ano"' + (st.periodo === 'ano' ? ' selected' : '') + '>Este Ano</option></select>'
-        + '      <button class="pep-btn primary" id="tones-refresh">Atualizar</button>'
-        + '    </div>'
-        + '  </div>'
         + '  <div class="pep-cards">'
-        + '    <div class="pep-card"><div class="pep-card-label">Hoje</div><div class="pep-card-val">' + num(totals.hoje || 0, 3) + '</div><div class="pep-card-sub">toneladas</div></div>'
-        + '    <div class="pep-card"><div class="pep-card-label">Esta Semana</div><div class="pep-card-val">' + num(totals.semana || 0, 3) + '</div><div class="pep-card-sub">toneladas</div></div>'
-        + '    <div class="pep-card"><div class="pep-card-label">Este Mês</div><div class="pep-card-val">' + num(totals.mes || 0, 3) + '</div><div class="pep-card-sub">toneladas</div></div>'
-        + '    <div class="pep-card"><div class="pep-card-label">Este Ano</div><div class="pep-card-val">' + num(totals.ano || 0, 3) + '</div><div class="pep-card-sub">toneladas</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Toneladas Vendidas no Mês</div><div class="pep-card-val">' + num(tonMes || 0, 3) + '</div><div class="pep-card-sub">OFs concluídas em ' + esc(mesAtual) + '</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Toneladas Saíram por Fornecedor</div><div class="pep-card-val">' + num((saidaFornecedor[0] && saidaFornecedor[0].valor) || 0, 3) + '</div><div class="pep-card-sub">' + esc((saidaFornecedor[0] && saidaFornecedor[0].nome) || 'Sem fornecedor') + '</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Toneladas Entraram por Fornecedor</div><div class="pep-card-val">' + num((entradaFornecedor[0] && entradaFornecedor[0].valor) || 0, 3) + '</div><div class="pep-card-sub">' + esc((entradaFornecedor[0] && entradaFornecedor[0].nome) || 'Sem fornecedor') + '</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Toneladas em Estoque</div><div class="pep-card-val">' + num(tonEstoque || 0, 3) + '</div><div class="pep-card-sub">Saldo atual do estoque</div></div>'
         + '  </div>'
         + '  <div class="pep-panel">'
-        + '    <div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Detalhamento</div><div class="pep-sub">Período atual: ' + esc(String(st.periodo || 'mes').replace('semana', 'esta semana').replace('mes', 'este mês').replace('ano', 'este ano')) + '</div></div>'
-        + '    <div style="overflow:auto"><table class="pep-table"><thead><tr><th>Data</th><th>OF</th><th>Cliente</th><th>Gramatura</th><th>Qtd produzida</th><th>Toneladas calculadas</th></tr></thead><tbody>'
-        + (detPeriodo.length ? detPeriodo.map(function(r) {
-          return '<tr><td>' + esc(checklistFmtDate(r && r.data_conclusao || '')) + '</td><td>#' + esc(r && r.of_numero || '—') + '</td><td>' + esc(r && (r.cliente_nome || r.cliente) || '—') + '</td><td>' + num(r && r.gramatura || 0, 0) + ' g/m²</td><td>' + num(r && r.quantidade || 0, 0) + '</td><td>' + num(r && r.toneladas || 0, 3) + '</td></tr>';
-        }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8">Nenhuma OF concluída com gramatura registrada neste período.</td></tr>')
+        + '    <div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Tabela de Toneladas</div><div class="pep-sub">Movimentações do mês atual</div></div>'
+        + '    <div style="overflow:auto"><table class="pep-table"><thead><tr><th>Data</th><th>Tipo</th><th>Fornecedor</th><th>Chapa</th><th>Toneladas</th><th>OF vinculada</th></tr></thead><tbody>'
+        + (tabela.length ? tabela.map(function(r) {
+          return '<tr><td>' + esc(checklistFmtDate(r.data || '')) + '</td><td>' + esc(r.tipo || '—') + '</td><td>' + esc(r.fornecedor || '—') + '</td><td>' + esc(r.chapa || '—') + '</td><td>' + num(r.toneladas || 0, 3) + '</td><td>' + esc(r.of_numero || '—') + '</td></tr>';
+        }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8">Nenhum registro encontrado.</td></tr>')
         + '    </tbody></table></div>'
         + '  </div>'
         + '</div>';
-      document.getElementById('tones-refresh').onclick = function() {
-        st.periodo = String((document.getElementById('tones-periodo') || {}).value || 'mes').trim() || 'mes';
-        renderToneladasPage();
-      };
     }
 
     function openCustomPage(pageId) {
       if (pageId === 'checklist-recebimento') { renderChecklistPage(); return true; }
       if (pageId === 'gramaturas') { renderGramaturasPage(); return true; }
+      if (pageId === 'facas1') { renderFacasWireframePage(); return true; }
       if (pageId === 'toneladas-vendidas') { renderToneladasPage(); return true; }
       return false;
     }
@@ -3635,6 +3759,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
     } catch (_) {}
     try { window.renderChecklistRecebimento = renderChecklistPage; } catch (_) {}
+    try { window.renderFacasWireframePage = renderFacasWireframePage; } catch (_) {}
     try { window.renderGramaturas = renderGramaturasPage; } catch (_) {}
     try { window.carregarGramaturas = renderGramaturasPage; } catch (_) {}
     try { window.renderToneladasVendidas = renderToneladasPage; } catch (_) {}
@@ -10867,6 +10992,124 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '</div>';
   }
 
+  function _resumoTopPorValor(rows, getName, getValue) {
+    var mapa = {};
+    (rows || []).forEach(function(row) {
+      var nome = String(typeof getName === 'function' ? getName(row) : '').trim() || 'Sem dados';
+      var valor = Number(typeof getValue === 'function' ? getValue(row) : 0) || 0;
+      if (!mapa[nome]) mapa[nome] = 0;
+      mapa[nome] += valor;
+    });
+    return Object.keys(mapa).map(function(nome) {
+      return { nome: nome, valor: mapa[nome] };
+    }).sort(function(a, b) { return b.valor - a.valor; });
+  }
+
+  function _topItemTexto(rows, getName, getValue, fallback) {
+    var top = _resumoTopPorValor(rows, getName, getValue)[0] || null;
+    if (!top || !(Number(top.valor || 0) > 0)) return fallback || '—';
+    return String(top.nome || fallback || '—');
+  }
+
+  function _abrirSeletorChapaEstoque(opts) {
+    opts = opts || {};
+    var onSelect = typeof opts.onSelect === 'function' ? opts.onSelect : function() {};
+    var titulo = String(opts.titulo || 'Selecionar Chapa');
+    var subtitulo = String(opts.subtitulo || 'Escolha uma chapa existente para editar.');
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.82);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px';
+    wrap.innerHTML = ''
+      + '<div style="width:min(920px,96vw);max-height:88vh;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:18px">'
+      + '  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">'
+      + '    <div><div style="font-size:24px;font-weight:900;color:var(--text)">' + _escapeHtmlLite(titulo) + '</div><div style="margin-top:6px;color:var(--text2);font-size:13px">' + _escapeHtmlLite(subtitulo) + '</div></div>'
+      + '    <button type="button" id="est-sel-close" class="pcp-btn" style="background:#334155">Fechar</button>'
+      + '  </div>'
+      + '  <div style="margin-top:14px"><input id="est-sel-q" type="text" placeholder="Buscar por fornecedor, nomenclatura, tamanho ou nome..." style="width:100%;padding:11px 14px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>'
+      + '  <div id="est-sel-lista" style="margin-top:14px;display:grid;gap:8px"></div>'
+      + '</div>';
+    document.body.appendChild(wrap);
+    var fechar = function() { try { wrap.remove(); } catch (_) {} };
+    wrap.addEventListener('click', function(ev) { if (ev.target === wrap) fechar(); });
+    var btnClose = document.getElementById('est-sel-close');
+    if (btnClose) btnClose.onclick = fechar;
+    var render = function(q) {
+      var host = document.getElementById('est-sel-lista');
+      if (!host) return;
+      var lista = _getListaEstoqueSimple();
+      var filtro = _normTxtEstoqueSimple(q || '');
+      var filtrada = (lista || []).filter(function(chapa) {
+        if (!filtro) return true;
+        var txt = [
+          chapa && (chapa.fornecedor || chapa.forn || ''),
+          chapa && (chapa.nomenclatura || chapa.nom || ''),
+          chapa && (chapa.tamanho || chapa.tam || ''),
+          chapa && (chapa.nome_uso || chapa.nome || ''),
+          chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || '')
+        ].map(_normTxtEstoqueSimple).join(' ');
+        return txt.indexOf(filtro) >= 0;
+      }).slice(0, 120);
+      if (!filtrada.length) {
+        host.innerHTML = '<div style="padding:18px;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text2);text-align:center">Nenhuma chapa encontrada.</div>';
+        return;
+      }
+      host.innerHTML = filtrada.map(function(chapa) {
+        var id = String(chapa && chapa.id || '').trim();
+        var tituloLinha = _chapaLabelEstoque(chapa);
+        var meta = [
+          _empresaNomeEstoque(chapa),
+          'Qtd ' + _fmtNumEstoque(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : chapa.quantidade)),
+          _fmtRsEstoque(chapa && (chapa.valor_total != null ? chapa.valor_total : _valorLinhaEstoqueSimple(chapa)))
+        ].join(' · ');
+        return '<button type="button" data-chapa-select="' + _escapeHtmlLite(id) + '" style="text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer"><div style="font-weight:800">' + _escapeHtmlLite(tituloLinha) + '</div><div style="margin-top:4px;font-size:12px;color:var(--text2)">' + _escapeHtmlLite(meta) + '</div></button>';
+      }).join('');
+      Array.prototype.slice.call(host.querySelectorAll('[data-chapa-select]')).forEach(function(btn) {
+        btn.onclick = function() {
+          var id = String(btn.getAttribute('data-chapa-select') || '').trim();
+          fechar();
+          onSelect(id);
+        };
+      });
+    };
+    var qEl = document.getElementById('est-sel-q');
+    if (qEl) qEl.oninput = function() { render(qEl.value || ''); };
+    render('');
+  }
+
+  function _botaoEditarChapas(onDone) {
+    return '<button id="estoque-btn-alterar-chapas" class="pcp-btn" type="button" style="background:#334155">Alterar Chapas</button>';
+  }
+
+  function _bindBotaoEditarChapas(onDone) {
+    var btn = document.getElementById('estoque-btn-alterar-chapas');
+    if (!btn) return;
+    btn.onclick = function() {
+      _abrirSeletorChapaEstoque({
+        titulo: 'Alterar Chapa',
+        subtitulo: 'Selecione a chapa que deseja editar.',
+        onSelect: function(id) {
+          try {
+            if (typeof window.editarChapa === 'function') window.editarChapa(id);
+            else if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(id);
+          } catch (_) {}
+          if (typeof onDone === 'function') {
+            setTimeout(function() { try { onDone(); } catch (_) {} }, 600);
+          }
+        }
+      });
+    };
+  }
+
+  function _bindBotaoCriarChapas(onDone) {
+    var btn = document.getElementById('estoque-btn-criar-chapas');
+    if (!btn) return;
+    btn.onclick = function() {
+      try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {}
+      if (typeof onDone === 'function') {
+        setTimeout(function() { try { onDone(); } catch (_) {} }, 600);
+      }
+    };
+  }
+
   function _entradaEstoqueHojeIso() {
     try { return new Date().toISOString().slice(0, 10); } catch (_) { return ''; }
   }
@@ -11096,7 +11339,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Salvar entrada';
+        btn.textContent = 'Salvar Entrada';
       }
     }
   }
@@ -11110,7 +11353,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       modal.innerHTML = ''
         + '<div style="width:min(1480px,98vw);max-height:92vh;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.55)">'
         + '  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid var(--border)">'
-        + '    <div><div style="font-size:26px;font-weight:900;color:var(--text)">Nova Entrada</div><div style="margin-top:6px;color:var(--text2);font-size:13px">Lance varias chapas na mesma entrada e reutilize a chapa existente quando ela ja estiver cadastrada.</div></div>'
+        + '    <div><div style="font-size:26px;font-weight:900;color:var(--text)">Dar Entrada</div><div style="margin-top:6px;color:var(--text2);font-size:13px">Lance varias chapas na mesma entrada e reutilize a chapa existente quando ela ja estiver cadastrada.</div></div>'
         + '    <button type="button" id="estoque-entrada-real-close" class="pcp-btn" style="background:#334155">Fechar</button>'
         + '  </div>'
         + '  <div style="padding:18px;display:grid;gap:16px">'
@@ -11145,7 +11388,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    </div>'
         + '    <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">'
         + '      <button type="button" id="estoque-entrada-real-cancel" class="pcp-btn" style="background:#334155">Cancelar</button>'
-        + '      <button type="button" id="estoque-entrada-real-save" class="pcp-btn">Salvar entrada</button>'
+        + '      <button type="button" id="estoque-entrada-real-save" class="pcp-btn">Salvar Entrada</button>'
         + '    </div>'
         + '  </div>'
         + '</div>';
@@ -11198,59 +11441,50 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         await _renderEntradasEstoque(target);
       };
       var raw = await _carregarDadosMovimentacaoEstoque('entrada');
-      var base = _agruparHistoricoOperacoesEstoque((raw || []).filter(_historicoEntradaEhRecebimento), 'entrada');
+      var detalhado = (raw || []).filter(_historicoEntradaEhRecebimento);
+      var base = _agruparHistoricoOperacoesEstoque(detalhado, 'entrada');
       var mesAtual = _mesAtualRefEstoque();
       var state = { q: '' };
       var render = function() {
         var q = String(state.q || '').trim().toLowerCase();
-        var filtrada = base.filter(function(row) {
+        var filtrada = detalhado.filter(function(row) {
           if (!q) return true;
-          var txt = [row.fornecedor, row.nf, row.empresa, row.responsavel, row.observacoes].join(' ').toLowerCase();
+          var txt = [row.fornecedor, row.nf, row.empresa, row.usuario, row.observacoes, row.chapa_label].join(' ').toLowerCase();
           return txt.indexOf(q) >= 0;
         });
-        var mesRows = base.filter(function(row) { return String(row.data || '').slice(0, 7) === mesAtual; });
-        var entradasMes = mesRows.length;
-        var qtdMes = mesRows.reduce(function(s, r) { return s + (Number(r.quantidade_total || 0) || 0); }, 0);
-        var mapaFornecedores = {};
-        mesRows.forEach(function(row) {
-          var nome = String(row.fornecedor || 'Sem fornecedor').trim() || 'Sem fornecedor';
-          if (!mapaFornecedores[nome]) mapaFornecedores[nome] = 0;
-          mapaFornecedores[nome] += Number(row.quantidade_total || 0) || 0;
-        });
-        var breakdown = Object.keys(mapaFornecedores).map(function(nome) {
-          return { nome: nome, valor: mapaFornecedores[nome] };
-        }).sort(function(a, b) { return b.valor - a.valor; });
-        var totalQtd = filtrada.reduce(function(s, r) { return s + (Number(r.quantidade_total || 0) || 0); }, 0);
-        var totalValor = filtrada.reduce(function(s, r) { return s + (Number(r.valor_total || 0) || 0); }, 0);
+        var mesLanc = base.filter(function(row) { return String(row.data || '').slice(0, 7) === mesAtual; });
+        var mesRows = detalhado.filter(function(row) { return String(row.data || '').slice(0, 7) === mesAtual; });
+        var totalValorMes = mesRows.reduce(function(s, r) { return s + (Number(r.valor_total || 0) || 0); }, 0);
+        var breakdown = _resumoTopPorValor(mesRows, function(r) { return r.fornecedor || 'Sem fornecedor'; }, function(r) { return Number(r.valor_total || 0) || 0; });
+        var topChapa = _topItemTexto(mesRows, function(r) { return r.chapa_label || '—'; }, function(r) { return Number(r.quantidade || 0) || 0; }, '—');
         host.innerHTML = ''
           + '<div style="display:grid;gap:16px">'
-          + '  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
-          + '    <div><div style="font-size:26px;font-weight:900;color:var(--text)">📥 Entradas</div><div style="margin-top:6px;color:var(--text2);font-size:13px">Recebimentos de chapas no estoque, agrupados por lançamento de entrada e sem misturar baixas automáticas de OF.</div></div>'
-          + '    <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="estoque-entrada-lote-btn" class="pcp-btn">+ Nova Entrada</button></div>'
-          + '  </div>'
           + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' 
-          +      [_makeCardEstoque({ label: 'Entradas no Mês', value: _fmtNumEstoque(entradasMes), sub: 'Lançamentos manuais em ' + mesAtual }),
-                  _makeCardEstoque({ label: 'Quantidade no Mês', value: _fmtNumEstoque(qtdMes), sub: 'Unidades recebidas no período' }),
-                  _cardBreakdownEstoque('Por Fornecedor', breakdown, _fmtNumEstoque)].join('')
+          +      [_makeCardEstoque({ label: 'Valor Total no Mês', value: _fmtRsEstoque(totalValorMes), sub: 'Recebido em ' + mesAtual }),
+                  _makeCardEstoque({ label: 'Quantas Entradas Foram Dadas', value: _fmtNumEstoque(mesLanc.length), sub: 'Lançamentos manuais no mês' }),
+                  _makeCardEstoque({ label: 'Chapa com Mais Entrada', value: topChapa, sub: 'Maior volume de entrada no mês' }),
+                  _cardBreakdownEstoque('Quanto Entrou por Fornecedor', breakdown, _fmtRsEstoque)].join('')
           + '  </div>'
           + '  <div style="display:flex;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px">'
-          + '    <input id="estoque-ent-q" type="text" value="' + _escapeHtmlLite(state.q) + '" placeholder="Buscar por fornecedor, NF, responsável, empresa ou observações..." style="flex:1;min-width:260px;padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
+          + '    <button id="estoque-entrada-lote-btn" class="pcp-btn" type="button">Dar Entrada</button>'
+          +      _botaoEditarChapas()
+          + '    <button id="estoque-btn-criar-chapas" class="pcp-btn" type="button">Criar Chapas</button>'
           + '  </div>'
           +    _renderTabelaMovEstoque(filtrada, [
                  { label: 'Data', key: 'data', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(_fmtDateEstoque(r.data)) + '</span>'; } },
                  { label: 'Fornecedor', key: 'fornecedor', render: function(r) { return _escapeHtmlLite(r.fornecedor || '—'); } },
                  { label: 'NF', key: 'nf', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(r.nf || '—') + '</span>'; } },
-                 { label: 'Responsável', key: 'responsavel' },
-                 { label: 'Quantidade Total', key: 'quantidade_total', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900;color:var(--green)">' + _escapeHtmlLite(_fmtNumEstoque(r.quantidade_total)) + '</span>'; } },
-                 { label: 'Valor Total', key: 'valor_total', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900">' + _escapeHtmlLite(_fmtRsEstoque(r.valor_total)) + '</span>'; } },
+                 { label: 'Responsável', key: 'usuario', render: function(r) { return _escapeHtmlLite(r.usuario || '—'); } },
+                 { label: 'Chapa', key: 'chapa_label', render: function(r) { return _escapeHtmlLite(r.chapa_label || '—'); } },
+                 { label: 'Quantidade', key: 'quantidade', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900;color:var(--green)">' + _escapeHtmlLite(_fmtNumEstoque(r.quantidade)) + '</span>'; } },
+                 { label: 'Valor', key: 'valor_total', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900">' + _escapeHtmlLite(_fmtRsEstoque(r.valor_total)) + '</span>'; } },
                  { label: 'Empresa', key: 'empresa' },
-                 { label: 'Observações', key: 'observacoes', render: function(r) { return _escapeHtmlLite(r.observacoes || '—'); } }
                ])
           + '</div>';
         var btnEntrada = document.getElementById('estoque-entrada-lote-btn');
         if (btnEntrada) btnEntrada.onclick = function() { _abrirModalEntradaEstoqueReal(); };
-        var qEl = document.getElementById('estoque-ent-q');
-        if (qEl) qEl.oninput = function() { state.q = String(qEl.value || ''); render(); };
+        _bindBotaoEditarChapas(window.__estoqueEntradasRefresh);
+        _bindBotaoCriarChapas(window.__estoqueEntradasRefresh);
       };
       render();
     } catch (e) {
@@ -11446,7 +11680,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Salvar saída';
+        btn.textContent = 'Salvar Saída';
       }
     }
   }
@@ -11460,7 +11694,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       modal.innerHTML = ''
         + '<div style="width:min(1320px,97vw);max-height:92vh;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.55)">'
         + '  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid var(--border)">'
-        + '    <div><div style="font-size:26px;font-weight:900;color:var(--text)">Nova Saída</div><div style="margin-top:6px;color:var(--text2);font-size:13px">Selecione várias chapas na mesma operação, valide o saldo antes de salvar e exija um motivo para cada saída.</div></div>'
+        + '    <div><div style="font-size:26px;font-weight:900;color:var(--text)">Dar Saída</div><div style="margin-top:6px;color:var(--text2);font-size:13px">Selecione várias chapas na mesma operação, valide o saldo antes de salvar e exija um motivo para cada saída.</div></div>'
         + '    <button type="button" id="estoque-saida-real-close" class="pcp-btn" style="background:#334155">Fechar</button>'
         + '  </div>'
         + '  <div style="padding:18px;display:grid;gap:16px">'
@@ -11489,7 +11723,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    </div>'
         + '    <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">'
         + '      <button type="button" id="estoque-saida-real-cancel" class="pcp-btn" style="background:#334155">Cancelar</button>'
-        + '      <button type="button" id="estoque-saida-real-save" class="pcp-btn" style="background:#7f1d1d">Salvar saída</button>'
+        + '      <button type="button" id="estoque-saida-real-save" class="pcp-btn" style="background:#7f1d1d">Salvar Saída</button>'
         + '    </div>'
         + '  </div>'
         + '</div>';
@@ -11542,57 +11776,49 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         await _renderSaidasEstoque(target);
       };
       var raw = await _carregarDadosMovimentacaoEstoque('saida');
-      var base = _agruparHistoricoOperacoesEstoque((raw || []).filter(_historicoSaidaEhManual), 'saida');
+      var detalhado = (raw || []).filter(_historicoSaidaEhManual);
+      var base = _agruparHistoricoOperacoesEstoque(detalhado, 'saida');
       var mesAtual = _mesAtualRefEstoque();
       var state = { q: '' };
       var render = function() {
         var q = String(state.q || '').trim().toLowerCase();
-        var filtrada = base.filter(function(row) {
+        var filtrada = detalhado.filter(function(row) {
           if (!q) return true;
-          var txt = [row.motivo, row.responsavel, row.of_numero, row.observacoes].join(' ').toLowerCase();
+          var txt = [row.motivo, row.usuario, row.of_numero, row.observacoes, row.chapa_label, row.fornecedor].join(' ').toLowerCase();
           return txt.indexOf(q) >= 0;
         });
-        var mesRows = base.filter(function(row) { return String(row.data || '').slice(0, 7) === mesAtual; });
-        var saidasMes = mesRows.length;
-        var qtdMes = mesRows.reduce(function(s, r) { return s + (Number(r.quantidade_total || 0) || 0); }, 0);
-        var mapaMotivos = {};
-        mesRows.forEach(function(row) {
-          var nome = String(row.motivo || 'Sem motivo').trim() || 'Sem motivo';
-          if (!mapaMotivos[nome]) mapaMotivos[nome] = 0;
-          mapaMotivos[nome] += Number(row.quantidade_total || 0) || 0;
-        });
-        var breakdown = Object.keys(mapaMotivos).map(function(nome) {
-          return { nome: nome, valor: mapaMotivos[nome] };
-        }).sort(function(a, b) { return b.valor - a.valor; });
-        var totalQtd = filtrada.reduce(function(s, r) { return s + (Number(r.quantidade_total || 0) || 0); }, 0);
-        var totalValor = filtrada.reduce(function(s, r) { return s + (Number(r.valor_total || 0) || 0); }, 0);
+        var mesLanc = base.filter(function(row) { return String(row.data || '').slice(0, 7) === mesAtual; });
+        var mesRows = detalhado.filter(function(row) { return String(row.data || '').slice(0, 7) === mesAtual; });
+        var totalValorMes = mesRows.reduce(function(s, r) { return s + (Number(r.valor_total || 0) || 0); }, 0);
+        var breakdown = _resumoTopPorValor(mesRows, function(r) { return r.fornecedor || 'Sem fornecedor'; }, function(r) { return Number(r.valor_total || 0) || 0; });
+        var topChapa = _topItemTexto(mesRows, function(r) { return r.chapa_label || '—'; }, function(r) { return Number(r.quantidade || 0) || 0; }, '—');
         host.innerHTML = ''
           + '<div style="display:grid;gap:16px">'
-          + '  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
-          + '    <div><div style="font-size:26px;font-weight:900;color:var(--text)">📤 Saídas</div><div style="margin-top:6px;color:var(--text2);font-size:13px">Histórico das saídas lançadas manualmente no estoque, agrupado por operação e com motivo obrigatório.</div></div>'
-          + '    <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="estoque-saida-lote-btn" class="pcp-btn" style="background:#7f1d1d">+ Nova Saída</button></div>'
-          + '  </div>'
           + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' 
-          +      [_makeCardEstoque({ label: 'Saídas no Mês', value: _fmtNumEstoque(saidasMes), sub: 'Lançamentos manuais em ' + mesAtual }),
-                  _makeCardEstoque({ label: 'Quantidade no Mês', value: _fmtNumEstoque(qtdMes), sub: 'Unidades retiradas no período' }),
-                  _cardBreakdownEstoque('Por Motivo', breakdown, _fmtNumEstoque)].join('')
+          +      [_makeCardEstoque({ label: 'Valor Total que Saiu no Mês', value: _fmtRsEstoque(totalValorMes), sub: 'Saídas em ' + mesAtual }),
+                  _makeCardEstoque({ label: 'Quantas Saídas Foram Dadas', value: _fmtNumEstoque(mesLanc.length), sub: 'Lançamentos manuais no mês' }),
+                  _makeCardEstoque({ label: 'Chapa com Mais Saída', value: topChapa, sub: 'Maior volume de saída no mês' }),
+                  _cardBreakdownEstoque('Quanto Saiu de Cada Fornecedor', breakdown, _fmtRsEstoque)].join('')
           + '  </div>'
           + '  <div style="display:flex;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px">'
-          + '    <input id="estoque-sai-q" type="text" value="' + _escapeHtmlLite(state.q) + '" placeholder="Buscar por motivo, responsável ou observações..." style="flex:1;min-width:260px;padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
+          + '    <button id="estoque-saida-lote-btn" class="pcp-btn" type="button" style="background:#7f1d1d">Dar Saída</button>'
+          +      _botaoEditarChapas()
+          + '    <button id="estoque-btn-criar-chapas" class="pcp-btn" type="button">Criar Chapas</button>'
           + '  </div>'
           +    _renderTabelaMovEstoque(filtrada, [
                  { label: 'Data', key: 'data', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(_fmtDateEstoque(r.data)) + '</span>'; } },
                  { label: 'Motivo', key: 'motivo' },
-                 { label: 'Responsável', key: 'responsavel' },
-                 { label: 'Quantidade Total', key: 'quantidade_total', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900;color:#fca5a5">' + _escapeHtmlLite(_fmtNumEstoque(r.quantidade_total)) + '</span>'; } },
-                 { label: 'Valor Total', key: 'valor_total', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900">' + _escapeHtmlLite(_fmtRsEstoque(r.valor_total)) + '</span>'; } },
-                 { label: 'Observações', key: 'observacoes', render: function(r) { return _escapeHtmlLite(r.observacoes || '—'); } }
+                 { label: 'Responsável', key: 'usuario', render: function(r) { return _escapeHtmlLite(r.usuario || '—'); } },
+                 { label: 'Chapa', key: 'chapa_label', render: function(r) { return _escapeHtmlLite(r.chapa_label || '—'); } },
+                 { label: 'Quantidade', key: 'quantidade', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900;color:#fca5a5">' + _escapeHtmlLite(_fmtNumEstoque(r.quantidade)) + '</span>'; } },
+                 { label: 'Valor', key: 'valor_total', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900">' + _escapeHtmlLite(_fmtRsEstoque(r.valor_total)) + '</span>'; } },
+                 { label: 'Empresa', key: 'empresa' }
                ])
           + '</div>';
         var btnSaida = document.getElementById('estoque-saida-lote-btn');
         if (btnSaida) btnSaida.onclick = function() { _abrirModalSaidaEstoqueReal(); };
-        var qEl = document.getElementById('estoque-sai-q');
-        if (qEl) qEl.oninput = function() { state.q = String(qEl.value || ''); render(); };
+        _bindBotaoEditarChapas(window.__estoqueSaidasRefresh);
+        _bindBotaoCriarChapas(window.__estoqueSaidasRefresh);
       };
       render();
     } catch (e) {
@@ -12939,15 +13165,23 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     var st = window.__estoqueSimpleState || { busca: '' };
     host.innerHTML = ''
-      + '<div style="display:grid;gap:8px">'
-      + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Buscador Universal</div>'
-      + '  <input id="est-simple-busca" type="text" placeholder="Buscar por nome, fornecedor, nomenclatura, tamanho, gramatura ou NF..." value="' + String(st.busca || '').replace(/"/g, '&quot;') + '" style="width:100%;padding:11px 14px;border-radius:10px;background:var(--s2);color:var(--text);border:1px solid var(--border)">'
+      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+      + '  <input id="est-simple-busca" type="text" placeholder="Buscar por nome, fornecedor, gramatura, tamanho, NF ou CNPJ..." value="' + String(st.busca || '').replace(/"/g, '&quot;') + '" style="flex:1;min-width:320px;padding:11px 14px;border-radius:10px;background:var(--s2);color:var(--text);border:1px solid var(--border)">'
+      + '  <button id="est-simple-buscar" type="button" class="btn btn-accent btn-sm" style="padding:10px 16px">Buscar</button>'
       + '</div>';
     var buscaEl = document.getElementById('est-simple-busca');
-    if (buscaEl) buscaEl.oninput = function() {
-      window.__estoqueSimpleState = { busca: String(buscaEl.value || '') };
+    var buscarBtn = document.getElementById('est-simple-buscar');
+    var aplicarBusca = function() {
+      window.__estoqueSimpleState = { busca: String(buscaEl && buscaEl.value || '') };
       _renderEstoqueSimple();
       setTimeout(_aplicarSimplificacaoTabelaSimple, 20);
+    };
+    if (buscarBtn) buscarBtn.onclick = aplicarBusca;
+    if (buscaEl) buscaEl.onkeydown = function(ev) {
+      if (String(ev && ev.key || '') === 'Enter') {
+        try { ev.preventDefault(); } catch (_) {}
+        aplicarBusca();
+      }
     };
   }
 
@@ -12964,13 +13198,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       wrap.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%';
       toolbar.appendChild(wrap);
     }
-    wrap.innerHTML = ''
-      + '<button id="est-simple-importar" class="btn btn-ghost btn-sm" type="button">Importar Excel</button>'
-      + '<button id="est-simple-nova" class="btn btn-accent btn-sm" type="button">Nova Chapa</button>';
-    var importEl = document.getElementById('est-simple-importar');
-    if (importEl) importEl.onclick = function() { try { if (typeof window.triggerImportAtualizarEstoqueChapas === 'function') window.triggerImportAtualizarEstoqueChapas(); } catch (_) {} };
-    var novaEl = document.getElementById('est-simple-nova');
-    if (novaEl) novaEl.onclick = function() { try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {} };
+    wrap.innerHTML = '';
+    wrap.style.display = 'none';
   }
 
   function _marcarBotaoAcaoSimple(btn, label, danger) {
@@ -13054,7 +13283,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             var acao = String(btn.getAttribute('data-acao-chapa') || '').trim();
             if (acao !== 'editar' && acao !== 'excluir') btn.style.display = 'none';
           });
-          _marcarBotaoAcaoSimple(editBtn, 'Editar', false);
+          _marcarBotaoAcaoSimple(editBtn, 'Alterar', false);
           _marcarBotaoAcaoSimple(delBtn, 'Excluir', true);
           var wrap = td.querySelector('div');
           if (wrap) {
@@ -13062,6 +13291,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             wrap.style.gap = '6px';
             wrap.style.justifyContent = 'center';
             wrap.style.flexWrap = 'wrap';
+            if (delBtn) wrap.appendChild(delBtn);
+            if (editBtn) wrap.appendChild(editBtn);
           }
         }
         tr.appendChild(td);
