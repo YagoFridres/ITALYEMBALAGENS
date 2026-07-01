@@ -12619,41 +12619,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return total > 0 ? total : (qtd * vunit);
   }
 
-  function _listaFiltradaEstoqueSimple() {
-    var lista = _getListaEstoqueSimple();
-    var st = window.__estoqueSimpleState || { busca: '', fornecedor: '', gramatura: '', cnpj: '' };
-    var busca = _normTxtEstoqueSimple(st.busca || '');
-    var fornecedor = _normTxtEstoqueSimple(st.fornecedor || '');
-    var gramatura = _normTxtEstoqueSimple(st.gramatura || '');
-    var cnpj = _normTxtEstoqueSimple(st.cnpj || '');
-    return (lista || []).filter(function(chapa) {
-      if (fornecedor) {
-        var fornTxt = _normTxtEstoqueSimple(chapa && (chapa.fornecedor || chapa.forn || ''));
-        if (fornTxt !== fornecedor) return false;
-      }
-      if (gramatura) {
-        var gramTxt = _normTxtEstoqueSimple(chapa && (chapa.gramatura || chapa.espessura_mm || chapa.grammage || ''));
-        if (gramTxt.indexOf(gramatura) < 0) return false;
-      }
-      if (cnpj) {
-        var empTxt = _normTxtEstoqueSimple(_labelEmpresaSimple(chapa));
-        if (empTxt !== cnpj) return false;
-      }
-      if (busca) {
-        var txt = [
-          chapa && (chapa.nome || chapa.nome_uso || ''),
-          chapa && (chapa.nomenclatura || chapa.nom || chapa.categoria || ''),
-          chapa && (chapa.fornecedor || chapa.forn || ''),
-          chapa && (chapa.tamanho || chapa.tam || ''),
-          chapa && (chapa.nf || ''),
-          _labelEmpresaSimple(chapa)
-        ].map(_normTxtEstoqueSimple).join(' ');
-        if (txt.indexOf(busca) < 0) return false;
-      }
-      return true;
-    });
-  }
-
   function _renderPainelEstoqueSimple() {
     var page = _getEstoquePageSimple();
     var toolbar = document.querySelector('#page-estoque > .ptoolbar');
@@ -12665,41 +12630,41 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       host.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:8px 10px 12px';
       page.insertBefore(host, toolbar);
     }
-    var lista = _listaFiltradaEstoqueSimple();
+    var lista = _getListaEstoqueSimple();
     var valorTotal = 0;
     var toneladas = 0;
-    var empresas = {
-      'Italy Embalagens': 0,
-      'Cartoeste': 0,
-      'Oestepack': 0
-    };
+    var fornecedores = {};
     (lista || []).forEach(function(chapa) {
       valorTotal += _valorLinhaEstoqueSimple(chapa);
       toneladas += (typeof _calcTonAtualEst === 'function') ? _calcTonAtualEst(chapa) : 0;
-      var emp = String(_labelEmpresaSimple(chapa) || '').trim();
-      if (!emp) emp = 'Italy Embalagens';
-      if (!Object.prototype.hasOwnProperty.call(empresas, emp)) empresas[emp] = 0;
-      empresas[emp] += _valorLinhaEstoqueSimple(chapa);
+      var forn = String(chapa && (chapa.fornecedor || chapa.forn) || '').trim() || 'Sem fornecedor';
+      if (!Object.prototype.hasOwnProperty.call(fornecedores, forn)) fornecedores[forn] = { valor: 0, qtd: 0 };
+      fornecedores[forn].valor += _valorLinhaEstoqueSimple(chapa);
+      fornecedores[forn].qtd += 1;
     });
-    var breakdown = ['Italy Embalagens', 'Cartoeste', 'Oestepack'].map(function(nome) {
-      return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#cbd5e1"><span>' + nome + '</span><span style="font-family:var(--mono);font-weight:800;color:#e2e8f0">' + _fmtRsEst(Number(empresas[nome] || 0) || 0) + '</span></div>';
-    }).join('');
+    var breakdown = Object.keys(fornecedores).map(function(nome) {
+      return { nome: nome, valor: Number(fornecedores[nome].valor || 0) || 0, qtd: Math.trunc(Number(fornecedores[nome].qtd || 0) || 0) };
+    }).sort(function(a, b) {
+      return b.valor - a.valor;
+    }).slice(0, 4).map(function(item) {
+      return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#cbd5e1"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + item.nome + '</span><span style="font-family:var(--mono);font-weight:800;color:#e2e8f0">' + _fmtRsEst(item.valor) + '</span></div>';
+        }).join('') || '<div style="font-size:12px;color:#94a3b8">Nenhum fornecedor encontrado.</div>';
     host.innerHTML = ''
       + '<div style="background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:14px;padding:14px 16px">'
       + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Valor Total do Estoque</div>'
       + '  <div style="margin-top:8px;font-size:24px;font-weight:900;color:#e2e8f0;line-height:1.1">' + _fmtRsEst(valorTotal) + '</div>'
       + '</div>'
       + '<div style="background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:14px;padding:14px 16px">'
-      + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Valor por Empresa</div>'
-      + '  <div style="margin-top:10px;display:grid;gap:8px">' + breakdown + '</div>'
+      + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Toneladas em Estoque</div>'
+      + '  <div style="margin-top:8px;font-size:24px;font-weight:900;color:#e2e8f0;line-height:1.1">' + _fmtTonEst(toneladas) + '</div>'
       + '</div>'
       + '<div style="background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:14px;padding:14px 16px">'
       + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Quantidade de Chapas</div>'
       + '  <div style="margin-top:8px;font-size:24px;font-weight:900;color:#e2e8f0;line-height:1.1">' + _fmtIntEst(lista.length) + '</div>'
       + '</div>'
       + '<div style="background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:14px;padding:14px 16px">'
-      + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Toneladas em Estoque</div>'
-      + '  <div style="margin-top:8px;font-size:24px;font-weight:900;color:#e2e8f0;line-height:1.1">' + _fmtTonEst(toneladas) + '</div>'
+      + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Por Fornecedor</div>'
+      + '  <div style="margin-top:10px;display:grid;gap:8px">' + breakdown + '</div>'
       + '</div>';
   }
 
@@ -12720,10 +12685,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function _syncFiltrosOriginaisSimple() {
     var st = window.__estoqueSimpleState || {};
     _setInputValue('est-busca', String(st.busca || ''));
-    _setInputValue('est-fil-forn', String(st.fornecedor || ''));
-    _setInputValue('est-fil-emp', String(st.cnpj || ''));
-    _setInputValue('ef-fornecedor', String(st.fornecedor || ''));
-    _setInputValue('ef-empresa', String(st.cnpj || ''));
+    _setInputValue('est-fil-forn', '');
+    _setInputValue('est-fil-emp', '');
+    _setInputValue('ef-fornecedor', '');
+    _setInputValue('ef-empresa', '');
     _setInputValue('ef-busca', String(st.busca || ''));
     _setInputValue('ef-categoria', '');
     _setInputValue('ef-cliente', '');
@@ -12743,6 +12708,31 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
   }
 
+  function _ensureBuscaUniversalSimple() {
+    var page = _getEstoquePageSimple();
+    var toolbar = document.querySelector('#page-estoque > .ptoolbar');
+    if (!page || !toolbar) return;
+    var host = document.getElementById('patch-estoque-simple-busca');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'patch-estoque-simple-busca';
+      host.style.cssText = 'margin:0 10px 12px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px';
+      page.insertBefore(host, toolbar);
+    }
+    var st = window.__estoqueSimpleState || { busca: '' };
+    host.innerHTML = ''
+      + '<div style="display:grid;gap:8px">'
+      + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Buscador Universal</div>'
+      + '  <input id="est-simple-busca" type="text" placeholder="Buscar por nome, fornecedor, nomenclatura, tamanho, gramatura ou NF..." value="' + String(st.busca || '').replace(/"/g, '&quot;') + '" style="width:100%;padding:11px 14px;border-radius:10px;background:var(--s2);color:var(--text);border:1px solid var(--border)">'
+      + '</div>';
+    var buscaEl = document.getElementById('est-simple-busca');
+    if (buscaEl) buscaEl.oninput = function() {
+      window.__estoqueSimpleState = { busca: String(buscaEl.value || '') };
+      _renderEstoqueSimple();
+      setTimeout(_aplicarSimplificacaoTabelaSimple, 20);
+    };
+  }
+
   function _ensureToolbarSimple() {
     var toolbar = document.querySelector('#page-estoque > .ptoolbar');
     if (!toolbar) return;
@@ -12756,62 +12746,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       wrap.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%';
       toolbar.appendChild(wrap);
     }
-    var lista = _getListaEstoqueSimple();
-    var fornecedores = _uniqueSorted(lista.map(function(c) { return c && (c.fornecedor || c.forn || ''); }));
-    var gramaturas = _uniqueSorted(lista.map(function(c) { return c && (c.gramatura || c.espessura_mm || c.grammage || ''); }));
-    var cnpjs = _uniqueSorted(lista.map(_labelEmpresaSimple));
-    var st = window.__estoqueSimpleState || { busca: '', fornecedor: '', gramatura: '', cnpj: '' };
     wrap.innerHTML = ''
-      + '<input id="est-simple-busca" type="text" placeholder="Buscar por nome, fornecedor, nomenclatura..." value="' + String(st.busca || '').replace(/"/g, '&quot;') + '" style="flex:1;min-width:280px;padding:8px 12px;border-radius:8px;background:var(--s2);color:var(--text);border:1px solid var(--border)">'
-      + '<select id="est-simple-fornecedor" style="min-width:180px;padding:8px 12px;border-radius:8px;background:var(--s2);color:var(--text);border:1px solid var(--border)"><option value="">Fornecedor</option>'
-      + fornecedores.map(function(v) { return '<option value="' + String(v).replace(/"/g, '&quot;') + '"' + (String(st.fornecedor || '') === String(v) ? ' selected' : '') + '>' + String(v) + '</option>'; }).join('')
-      + '</select>'
-      + '<select id="est-simple-gramatura" style="min-width:150px;padding:8px 12px;border-radius:8px;background:var(--s2);color:var(--text);border:1px solid var(--border)"><option value="">Gramatura</option>'
-      + gramaturas.map(function(v) { return '<option value="' + String(v).replace(/"/g, '&quot;') + '"' + (String(st.gramatura || '') === String(v) ? ' selected' : '') + '>' + String(v) + '</option>'; }).join('')
-      + '</select>'
-      + '<select id="est-simple-cnpj" style="min-width:170px;padding:8px 12px;border-radius:8px;background:var(--s2);color:var(--text);border:1px solid var(--border)"><option value="">Qual CNPJ</option>'
-      + cnpjs.map(function(v) { return '<option value="' + String(v).replace(/"/g, '&quot;') + '"' + (String(st.cnpj || '') === String(v) ? ' selected' : '') + '>' + String(v) + '</option>'; }).join('')
-      + '</select>'
       + '<button id="est-simple-importar" class="btn btn-ghost btn-sm" type="button">Importar Excel</button>'
-      + '<button id="est-simple-nova" class="btn btn-accent btn-sm" type="button">Nova Chapa</button>'
-      + '<button id="est-simple-limpar" class="btn btn-ghost btn-sm" type="button">Limpar</button>';
-
-    function syncAndRender() {
-      var next = {
-        busca: String(document.getElementById('est-simple-busca') && document.getElementById('est-simple-busca').value || ''),
-        fornecedor: String(document.getElementById('est-simple-fornecedor') && document.getElementById('est-simple-fornecedor').value || ''),
-        gramatura: String(document.getElementById('est-simple-gramatura') && document.getElementById('est-simple-gramatura').value || ''),
-        cnpj: String(document.getElementById('est-simple-cnpj') && document.getElementById('est-simple-cnpj').value || '')
-      };
-      window.__estoqueSimpleState = next;
-      _renderEstoqueSimple();
-      setTimeout(function() {
-        _renderPainelEstoqueSimple();
-        _aplicarSimplificacaoTabelaSimple();
-      }, 20);
-    }
-
-    var buscaEl = document.getElementById('est-simple-busca');
-    var fornEl = document.getElementById('est-simple-fornecedor');
-    var gramEl = document.getElementById('est-simple-gramatura');
-    var cnpjEl = document.getElementById('est-simple-cnpj');
-    if (buscaEl) buscaEl.oninput = syncAndRender;
-    if (fornEl) fornEl.onchange = syncAndRender;
-    if (gramEl) gramEl.onchange = syncAndRender;
-    if (cnpjEl) cnpjEl.onchange = syncAndRender;
+      + '<button id="est-simple-nova" class="btn btn-accent btn-sm" type="button">Nova Chapa</button>';
     var importEl = document.getElementById('est-simple-importar');
     if (importEl) importEl.onclick = function() { try { if (typeof window.triggerImportAtualizarEstoqueChapas === 'function') window.triggerImportAtualizarEstoqueChapas(); } catch (_) {} };
     var novaEl = document.getElementById('est-simple-nova');
     if (novaEl) novaEl.onclick = function() { try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {} };
-    var limparEl = document.getElementById('est-simple-limpar');
-    if (limparEl) limparEl.onclick = function() {
-      window.__estoqueSimpleState = { busca: '', fornecedor: '', gramatura: '', cnpj: '' };
-      _renderEstoqueSimple();
-      setTimeout(function() {
-        _renderPainelEstoqueSimple();
-        _aplicarSimplificacaoTabelaSimple();
-      }, 20);
-    };
   }
 
   function _marcarBotaoAcaoSimple(btn, label, danger) {
@@ -12912,15 +12853,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (foot) foot.innerHTML = '';
   }
 
-  function _aplicarFiltroGramaturaSimple() {
+  function _aplicarBuscaUniversalNaTabelaSimple() {
     var state = window.__estoqueSimpleState || {};
-    var gramatura = _normTxtEstoqueSimple(state.gramatura || '');
+    var busca = _normTxtEstoqueSimple(state.busca || '');
     Array.prototype.slice.call(document.querySelectorAll('#est-table-body tr[data-chapa-id]')).forEach(function(tr) {
       var show = true;
-      if (gramatura) {
-        var cell = tr.querySelector('td[data-label="Gramatura"]');
-        var txt = _normTxtEstoqueSimple(cell && cell.textContent || '');
-        show = txt.indexOf(gramatura) >= 0;
+      if (busca) {
+        var txt = _normTxtEstoqueSimple(tr.textContent || '');
+        show = txt.indexOf(busca) >= 0;
       }
       tr.style.display = show ? '' : 'none';
     });
@@ -12945,6 +12885,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try {
       var antigo = document.getElementById('patch-estoque-simple-cards');
       if (antigo && _getModoEstoqueSimple() !== 'estoque') antigo.remove();
+    } catch (_) {}
+    try {
+      var buscaHost = document.getElementById('patch-estoque-simple-busca');
+      if (buscaHost && _getModoEstoqueSimple() !== 'estoque') buscaHost.remove();
     } catch (_) {}
     try {
       var tabs = document.getElementById('est-cat-tabs');
@@ -12985,13 +12929,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { if (typeof window.chpSetTab === 'function') window.chpSetTab('estoque'); } catch (_) {}
     if (toolbar) toolbar.style.display = '';
     _renderPainelEstoqueSimple();
+    _ensureBuscaUniversalSimple();
     _ensureToolbarSimple();
   }
 
   function _aplicarSimplificacaoTabelaSimple() {
     if (_getModoEstoqueSimple() !== 'estoque') return;
     _reordenarTabelaSimple();
-    _aplicarFiltroGramaturaSimple();
+    _aplicarBuscaUniversalNaTabelaSimple();
   }
 
   function _tickEstoqueSimple() {
@@ -13003,7 +12948,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function init() {
     try {
-      if (!window.__estoqueSimpleState) window.__estoqueSimpleState = { busca: '', fornecedor: '', gramatura: '', cnpj: '' };
+      if (!window.__estoqueSimpleState) window.__estoqueSimpleState = { busca: '' };
     } catch (_) {}
     setTimeout(_tickEstoqueSimple, 300);
     setTimeout(_tickEstoqueSimple, 1200);
