@@ -2930,20 +2930,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     { id: 'clientes',            label: 'Clientes',            icone: '👥', grupo: 'Cadastros' },
     { id: 'mapa-clientes',       label: 'Mapa Clientes',       icone: '🗺', grupo: 'Cadastros' },
     { id: 'fornecedores',        label: 'Fornecedores',        icone: '🏭', grupo: 'Cadastros' },
-    { id: 'gramaturas',          label: 'Gramaturas',          icone: '📐', grupo: 'Cadastros' },
     { id: 'vendedores',          label: 'Vendedores',          icone: '🤝', grupo: 'Cadastros' },
     { id: 'usuarios',            label: 'Usuários',            icone: '👤', grupo: 'Cadastros' },
 
     { id: 'orcamentos',          label: 'Orçamentos',          icone: '💰', grupo: 'Financeiro', senha: true },
     { id: 'comissoes',           label: 'Comissões',           icone: '💵', grupo: 'Financeiro', senha: true },
 
-    { id: 'estoque',             label: 'Estoque Chapas',      icone: '📦', grupo: 'Estoques' },
-    { id: 'facas1',              label: 'Estoque Facas',       icone: '🔧', grupo: 'Estoques' },
-    { id: 'cliches',             label: 'Estoque Clichês',     icone: '🖼', grupo: 'Estoques' },
-    { id: 'compras',             label: 'Compras',             icone: '🛒', grupo: 'Estoques' },
-    { id: 'sel-chapas',          label: 'Seleção de Chapas',   icone: '🧾', grupo: 'Estoques' },
-    { id: 'papelao-ia',          label: 'Papelão IA',          icone: '🧠', grupo: 'Estoques' },
-    { id: 'simd',                label: 'Simulador (SIMD)',    icone: '♻',  grupo: 'Estoques' },
+    { id: 'estoque',             label: 'Estoque de Chapas',   icone: '🟦', grupo: 'Estoques' },
+    { id: 'entradas-estoque',    label: 'Entradas',            icone: '📥', grupo: 'Estoques' },
+    { id: 'saidas-estoque',      label: 'Saídas',              icone: '📤', grupo: 'Estoques' },
+    { id: 'checklist-recebimento', label: 'Checklist de Recebimento', icone: '📋', grupo: 'Estoques' },
+    { id: 'gramaturas',          label: 'Gramaturas',          icone: '📐', grupo: 'Estoques' },
+    { id: 'toneladas-vendidas',  label: 'Toneladas Vendidas',  icone: '⚖️', grupo: 'Estoques' },
+    { id: 'facas1',              label: 'Estoque de Facas',    icone: '🔪', grupo: 'Estoques' },
 
     { id: 'fluxos',              label: 'Fluxos',              icone: '🔀', grupo: 'Máquinas' },
     { id: 'maquinas',            label: 'Cadastro Máquinas',   icone: '🖨', grupo: 'Máquinas' },
@@ -2958,7 +2957,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     { id: 'dashboard',           label: 'Dashboard',           icone: '📊', grupo: 'Análises' },
     { id: 'relatorios',          label: 'Relatórios',          icone: '🖨', grupo: 'Análises' },
     { id: 'caixas-perdidas',     label: 'Caixas Perdidas',     icone: '📦', grupo: 'Análises' },
-    { id: 'toneladas-vendidas',  label: 'Toneladas Vendidas',  icone: '⚖️', grupo: 'Análises' },
     { id: 'configuracoes',       label: 'Configurações',       icone: '⚙',  grupo: 'Análises' },
   ];
 
@@ -3064,30 +3062,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         });
       } catch (_) {}
     }
-    function _ensureMenuClone(refText, newText, menuKey, pageId) {
-      try {
-        if (document.querySelector('[data-patch-menu="' + menuKey + '"]')) return true;
-        var refEl = _findByText(refText);
-        var item = _findItemEl(refEl) || refEl;
-        if (!item || !item.parentNode) return false;
-        var clone = item.cloneNode(true);
-        _sanitizeCloneIds(clone);
-        clone.setAttribute('data-patch-menu', menuKey);
-        _replaceExactText(clone, refText, newText);
-        clone.addEventListener('click', function(e) {
-          try { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); } catch (_) {}
-          try { if (typeof window.go === 'function') window.go(pageId); } catch (_) {}
-          return false;
-        }, true);
-        item.parentNode.insertBefore(clone, item.nextSibling);
-        return true;
-      } catch (_) { return false; }
-    }
     function tickMenus() {
       try { _ocultarRelatorioMensal(); } catch (_) {}
       try { _removerRelatorioMensalAgressivo(); } catch (_) {}
-      try { _ensureMenuClone('Fornecedores', '📐 Gramaturas', 'gramaturas', 'gramaturas'); } catch (_) {}
-      try { _ensureMenuClone('Caixas Perdidas', '⚖️ Toneladas Vendidas', 'toneladas', 'toneladas-vendidas'); } catch (_) {}
     }
     try { tickMenus(); } catch (_) {}
     try { _ocultarRelatorioMensal(); } catch (_) {}
@@ -3258,22 +3235,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       wrap.id = 'pep-gram-modal';
       wrap.className = 'pep-modal';
       wrap.innerHTML = ''
-        + '<div class="pep-modal-box" style="width:min(860px,96vw)">'
+        + '<div class="pep-modal-box" style="width:min(720px,96vw)">'
         + '  <div class="pep-head" style="margin-bottom:12px"><div><div class="pep-title" style="font-size:20px">' + (it.id ? 'Editar Gramatura' : 'Nova Gramatura') + '</div></div></div>'
         + '  <div class="pep-grid">'
-        + '    <div><div class="pep-sub">Código</div><input class="pep-input" id="pg-codigo" value="' + esc(it.codigo || '') + '" placeholder="GRA-250"></div>'
-        + '    <div><div class="pep-sub">Descrição</div><input class="pep-input" id="pg-descricao" value="' + esc(it.descricao || it.nome || '') + '" placeholder="Kraft 250"></div>'
+        + '    <div><div class="pep-sub">Nome da Gramatura</div><input class="pep-input" id="pg-nome" value="' + esc(it.nome || it.descricao || '') + '" placeholder="Ex.: Kraft 250"></div>'
         + '    <div><div class="pep-sub">Gramatura (g/m²)</div><input class="pep-input" id="pg-gram" type="number" step="0.01" value="' + esc(it.gramatura || '') + '"></div>'
-        + '    <div><div class="pep-sub">Valor Unitário (R$/m²)</div><input class="pep-input" id="pg-vunit" type="number" step="0.01" value="' + esc(it.valor_unitario || '') + '"></div>'
-        + '    <div><div class="pep-sub">Tipo de Papel</div><input class="pep-input" id="pg-tipo" value="' + esc(it.tipo_papel || '') + '" placeholder="Duplex, Kraft, Triplex..."></div>'
-        + '    <div><div class="pep-sub">Faixa de Utilização</div><input class="pep-input" id="pg-faixa" value="' + esc(it.faixa_utilizacao || '') + '" placeholder="Micro, linha premium, exportação..."></div>'
+        + '    <div><div class="pep-sub">Valor Unitário</div><input class="pep-input" id="pg-vunit" type="number" step="0.01" value="' + esc(it.valor_unitario || '') + '"></div>'
         + '    <div><div class="pep-sub">Fornecedor</div>'
         + (fornecedores.length
             ? '<select class="pep-select" id="pg-forn"><option value="">Selecionar fornecedor...</option>' + fornecedores.map(function(f) { var id = String(f && f.id || ''); var nm = String(f && f.nome || ''); return '<option value="' + esc(id) + '"' + (String(it.fornecedor_id || '') === id ? ' selected' : '') + '>' + esc(nm) + '</option>'; }).join('') + '</select>'
             : '<input class="pep-input" id="pg-forn-livre" value="' + esc(it.fornecedor_nome || '') + '" placeholder="Fornecedor">')
         + '    </div>'
         + '    <div><div class="pep-sub">Status</div><select class="pep-select" id="pg-status"><option value="ativo"' + (gramAtiva(it) ? ' selected' : '') + '>Ativo</option><option value="inativo"' + (gramAtiva(it) ? '' : ' selected') + '>Inativo</option></select></div>'
-        + '    <div style="grid-column:1/-1"><div class="pep-sub">Observações</div><textarea class="pep-input" id="pg-obs" style="width:100%;min-height:92px;resize:vertical" placeholder="Observações de uso, restrições, acabamento, etc.">' + esc(it.observacoes || '') + '</textarea></div>'
         + '  </div>'
         + '  <div class="pep-actions"><button class="pep-btn" id="pg-cancel">Cancelar</button><button class="pep-btn primary" id="pg-save">Salvar</button></div>'
         + '</div>';
@@ -3282,20 +3255,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       document.getElementById('pg-cancel').onclick = function() { wrap.remove(); };
       document.getElementById('pg-save').onclick = async function() {
         try {
-          var descricao = String(document.getElementById('pg-descricao').value || '').trim();
-          var codigo = String(document.getElementById('pg-codigo').value || '').trim();
+          var nome = String(document.getElementById('pg-nome').value || '').trim();
           var gramaturaNum = Number(document.getElementById('pg-gram').value || 0) || 0;
-          if (!descricao) throw new Error('Informe a descrição da gramatura.');
+          if (!nome) throw new Error('Informe o nome da gramatura.');
           if (!(gramaturaNum > 0)) throw new Error('Informe a gramatura em g/m².');
           var body = {
-            nome: descricao || codigo || ('Gramatura ' + String(gramaturaNum || 0)),
-            codigo: codigo || null,
-            descricao: descricao,
+            nome: nome,
+            descricao: nome,
             gramatura: gramaturaNum,
             valor_unitario: Number(document.getElementById('pg-vunit').value || 0) || 0,
-            tipo_papel: String(document.getElementById('pg-tipo').value || '').trim() || null,
-            faixa_utilizacao: String(document.getElementById('pg-faixa').value || '').trim() || null,
-            observacoes: String(document.getElementById('pg-obs').value || '').trim() || null,
             ativo: String(document.getElementById('pg-status').value || 'ativo') !== 'inativo'
           };
           var sel = document.getElementById('pg-forn');
@@ -3323,25 +3291,40 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var page = ensurePage('gramaturas');
       showOnlyPage('gramaturas');
       var lista = await loadGramaturas({ incluirInativas: true });
-      var totalAtivas = lista.filter(function(g) { return gramAtiva(g); }).length;
-      var totalInativas = Math.max(0, lista.length - totalAtivas);
+      var busca = String(window.__gramaturasBusca || '').trim().toLowerCase();
+      var filtrada = busca ? lista.filter(function(g) {
+        var txt = [g.nome, g.descricao, g.fornecedor_nome, g.gramatura].join(' ').toLowerCase();
+        return txt.indexOf(busca) >= 0;
+      }) : lista;
       page.innerHTML = ''
         + '<div class="pep-wrap">'
-        + '  <div class="pep-head"><div><div class="pep-title">📐 Gramaturas</div><div class="pep-sub">Cadastro mestre de gramaturas usado na conclusão de OF e nas análises de estoque.</div></div><button class="pep-btn primary" id="gram-nova">+ Nova Gramatura</button></div>'
-        + '  <div class="pep-cards">'
-        + '    <div class="pep-card"><div class="pep-card-label">Total Cadastrado</div><div class="pep-card-val">' + num(lista.length || 0, 0) + '</div><div class="pep-card-sub">Base completa da empresa</div></div>'
-        + '    <div class="pep-card"><div class="pep-card-label">Ativas</div><div class="pep-card-val">' + num(totalAtivas || 0, 0) + '</div><div class="pep-card-sub">Disponíveis para uso em OF</div></div>'
-        + '    <div class="pep-card"><div class="pep-card-label">Inativas</div><div class="pep-card-val">' + num(totalInativas || 0, 0) + '</div><div class="pep-card-sub">Histórico preservado sem exclusão</div></div>'
-        + '  </div>'
-        + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Código</th><th>Descrição</th><th>Gramatura</th><th>Fornecedor</th><th>Tipo</th><th>Faixa</th><th>Status</th><th>Ações</th></tr></thead><tbody>'
-        + (lista.length ? lista.map(function(g) {
+        + '  <div class="pep-head"><div><div class="pep-title">📐 Gramaturas</div><div class="pep-sub">CRUD da base usada na conclusão de OF e no estoque de chapas.</div></div><button class="pep-btn primary" id="gram-nova">+ Nova Gramatura</button></div>'
+        + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
+        + '    <input class="pep-input" id="gram-busca" placeholder="Buscar por nome, fornecedor ou gramatura..." value="' + esc(window.__gramaturasBusca || '') + '" style="max-width:360px">'
+        + '    <button class="pep-btn" id="gram-buscar">Buscar</button>'
+        + '  </div></div>'
+        + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Nome da Gramatura</th><th>Gramatura</th><th>Fornecedor</th><th>Valor Unitário</th><th>Status</th><th>Ações</th></tr></thead><tbody>'
+        + (filtrada.length ? filtrada.map(function(g) {
           var statusTxt = gramAtiva(g) ? 'Ativo' : 'Inativo';
           var statusColor = gramAtiva(g) ? '#22c55e' : '#f59e0b';
-          return '<tr data-gid="' + esc(g.id || '') + '"><td>' + esc(g.codigo || '—') + '</td><td><div style="font-weight:700">' + esc(g.descricao || g.nome || '—') + '</div><div style="margin-top:4px;color:#94a3b8">' + money(g.valor_unitario || 0) + '</div></td><td>' + num(g.gramatura || 0, 2) + ' g/m²</td><td>' + esc(g.fornecedor_nome || '—') + '</td><td>' + esc(g.tipo_papel || '—') + '</td><td>' + esc(g.faixa_utilizacao || '—') + '</td><td><span style="display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(15,23,42,.9);border:1px solid ' + statusColor + ';color:' + statusColor + ';font-weight:700">' + statusTxt + '</span></td><td><button class="pep-btn" data-gedit="' + esc(g.id || '') + '">Editar</button> <button class="pep-btn' + (gramAtiva(g) ? ' danger' : '') + '" data-gtoggle="' + esc(g.id || '') + '">' + (gramAtiva(g) ? 'Inativar' : 'Reativar') + '</button></td></tr>';
-        }).join('') : '<tr><td colspan="8" style="text-align:center;color:#94a3b8">Nenhuma gramatura cadastrada.</td></tr>')
+          return '<tr data-gid="' + esc(g.id || '') + '"><td><div style="font-weight:800">' + esc(g.nome || g.descricao || '—') + '</div></td><td>' + num(g.gramatura || 0, 2) + ' g/m²</td><td>' + esc(g.fornecedor_nome || '—') + '</td><td>' + money(g.valor_unitario || 0) + '</td><td><span style="display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(15,23,42,.9);border:1px solid ' + statusColor + ';color:' + statusColor + ';font-weight:700">' + statusTxt + '</span></td><td><button class="pep-btn" data-gedit="' + esc(g.id || '') + '">Editar</button> <button class="pep-btn' + (gramAtiva(g) ? ' danger' : '') + '" data-gdelete="' + esc(g.id || '') + '">' + (gramAtiva(g) ? 'Excluir' : 'Ativar') + '</button></td></tr>';
+        }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8">Nenhuma gramatura encontrada.</td></tr>')
         + '  </tbody></table></div></div>'
         + '</div>';
       document.getElementById('gram-nova').onclick = function() { openGramaturaModal(null, renderGramaturasPage); };
+      var buscaEl = document.getElementById('gram-busca');
+      var btnBusca = document.getElementById('gram-buscar');
+      if (btnBusca) btnBusca.onclick = function() {
+        window.__gramaturasBusca = String((buscaEl && buscaEl.value) || '').trim();
+        renderGramaturasPage();
+      };
+      if (buscaEl) buscaEl.onkeydown = function(ev) {
+        if (String(ev && ev.key || '') === 'Enter') {
+          ev.preventDefault();
+          window.__gramaturasBusca = String(buscaEl.value || '').trim();
+          renderGramaturasPage();
+        }
+      };
       Array.prototype.slice.call(page.querySelectorAll('[data-gedit]')).forEach(function(btn) {
         btn.onclick = function() {
           var id = String(btn.getAttribute('data-gedit') || '');
@@ -3349,19 +3332,23 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           openGramaturaModal(item, renderGramaturasPage);
         };
       });
-      Array.prototype.slice.call(page.querySelectorAll('[data-gtoggle]')).forEach(function(btn) {
+      Array.prototype.slice.call(page.querySelectorAll('[data-gdelete]')).forEach(function(btn) {
         btn.onclick = async function() {
-          var id = String(btn.getAttribute('data-gtoggle') || '');
+          var id = String(btn.getAttribute('data-gdelete') || '');
           var item = (lista || []).find(function(g) { return String(g && g.id || '') === id; }) || null;
           if (!item) return;
           var ativa = gramAtiva(item);
-          if (!confirm(ativa ? 'Inativar esta gramatura?' : 'Reativar esta gramatura?')) return;
+          if (!confirm(ativa ? 'Excluir esta gramatura da lista ativa?' : 'Reativar esta gramatura?')) return;
           try {
-            await apiJson('/api/gramaturas/' + encodeURIComponent(id), {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ativo: !ativa })
-            });
+            if (ativa) {
+              await apiJson('/api/gramaturas/' + encodeURIComponent(id), { method: 'DELETE' });
+            } else {
+              await apiJson('/api/gramaturas/' + encodeURIComponent(id), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ativo: true })
+              });
+            }
             renderGramaturasPage();
           } catch (e) { alert(String(e && e.message || e || 'Falha ao atualizar status')); }
         };
@@ -3671,7 +3658,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       hub: ['hub','home'],
       pcp: ['pcp'],
       ofmaq: ['ofmaq','maquinas','fluxos','tipos-caixa','tempos-reais','ofs-maquina'],
-      estoque: ['estoque','facas1','cliches','lancamento','estoques'],
+      estoque: ['estoque','entradas-estoque','saidas-estoque','checklist-recebimento','gramaturas','toneladas-vendidas','facas1','estoques'],
       dashboard: ['dashboard','relatorios','relmensal','comissoes','caixas-perdidas','caixas_perdidas'],
     };
     for (var k in m) {
@@ -12625,6 +12612,97 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
   }
 
+  function _valorLinhaEstoqueSimple(chapa) {
+    var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
+    var vunit = Number(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0) || 0;
+    var total = Number(chapa && (chapa.valor_total != null ? chapa.valor_total : 0) || 0) || 0;
+    return total > 0 ? total : (qtd * vunit);
+  }
+
+  function _listaFiltradaEstoqueSimple() {
+    var lista = _getListaEstoqueSimple();
+    var st = window.__estoqueSimpleState || { busca: '', fornecedor: '', gramatura: '', cnpj: '' };
+    var busca = _normTxtEstoqueSimple(st.busca || '');
+    var fornecedor = _normTxtEstoqueSimple(st.fornecedor || '');
+    var gramatura = _normTxtEstoqueSimple(st.gramatura || '');
+    var cnpj = _normTxtEstoqueSimple(st.cnpj || '');
+    return (lista || []).filter(function(chapa) {
+      if (fornecedor) {
+        var fornTxt = _normTxtEstoqueSimple(chapa && (chapa.fornecedor || chapa.forn || ''));
+        if (fornTxt !== fornecedor) return false;
+      }
+      if (gramatura) {
+        var gramTxt = _normTxtEstoqueSimple(chapa && (chapa.gramatura || chapa.espessura_mm || chapa.grammage || ''));
+        if (gramTxt.indexOf(gramatura) < 0) return false;
+      }
+      if (cnpj) {
+        var empTxt = _normTxtEstoqueSimple(_labelEmpresaSimple(chapa));
+        if (empTxt !== cnpj) return false;
+      }
+      if (busca) {
+        var txt = [
+          chapa && (chapa.nome || chapa.nome_uso || ''),
+          chapa && (chapa.nomenclatura || chapa.nom || chapa.categoria || ''),
+          chapa && (chapa.fornecedor || chapa.forn || ''),
+          chapa && (chapa.tamanho || chapa.tam || ''),
+          chapa && (chapa.nf || ''),
+          _labelEmpresaSimple(chapa)
+        ].map(_normTxtEstoqueSimple).join(' ');
+        if (txt.indexOf(busca) < 0) return false;
+      }
+      return true;
+    });
+  }
+
+  function _renderPainelEstoqueSimple() {
+    var page = _getEstoquePageSimple();
+    var toolbar = document.querySelector('#page-estoque > .ptoolbar');
+    if (!page || !toolbar) return;
+    var host = document.getElementById('patch-estoque-simple-cards');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'patch-estoque-simple-cards';
+      host.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:8px 10px 12px';
+      page.insertBefore(host, toolbar);
+    }
+    var lista = _listaFiltradaEstoqueSimple();
+    var valorTotal = 0;
+    var toneladas = 0;
+    var empresas = {
+      'Italy Embalagens': 0,
+      'Cartoeste': 0,
+      'Oestepack': 0
+    };
+    (lista || []).forEach(function(chapa) {
+      valorTotal += _valorLinhaEstoqueSimple(chapa);
+      toneladas += (typeof _calcTonAtualEst === 'function') ? _calcTonAtualEst(chapa) : 0;
+      var emp = String(_labelEmpresaSimple(chapa) || '').trim();
+      if (!emp) emp = 'Italy Embalagens';
+      if (!Object.prototype.hasOwnProperty.call(empresas, emp)) empresas[emp] = 0;
+      empresas[emp] += _valorLinhaEstoqueSimple(chapa);
+    });
+    var breakdown = ['Italy Embalagens', 'Cartoeste', 'Oestepack'].map(function(nome) {
+      return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#cbd5e1"><span>' + nome + '</span><span style="font-family:var(--mono);font-weight:800;color:#e2e8f0">' + _fmtRsEst(Number(empresas[nome] || 0) || 0) + '</span></div>';
+    }).join('');
+    host.innerHTML = ''
+      + '<div style="background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:14px;padding:14px 16px">'
+      + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Valor Total do Estoque</div>'
+      + '  <div style="margin-top:8px;font-size:24px;font-weight:900;color:#e2e8f0;line-height:1.1">' + _fmtRsEst(valorTotal) + '</div>'
+      + '</div>'
+      + '<div style="background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:14px;padding:14px 16px">'
+      + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Valor por Empresa</div>'
+      + '  <div style="margin-top:10px;display:grid;gap:8px">' + breakdown + '</div>'
+      + '</div>'
+      + '<div style="background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:14px;padding:14px 16px">'
+      + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Quantidade de Chapas</div>'
+      + '  <div style="margin-top:8px;font-size:24px;font-weight:900;color:#e2e8f0;line-height:1.1">' + _fmtIntEst(lista.length) + '</div>'
+      + '</div>'
+      + '<div style="background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:14px;padding:14px 16px">'
+      + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Toneladas em Estoque</div>'
+      + '  <div style="margin-top:8px;font-size:24px;font-weight:900;color:#e2e8f0;line-height:1.1">' + _fmtTonEst(toneladas) + '</div>'
+      + '</div>';
+  }
+
   function _setInputValue(id, value) {
     try {
       var el = document.getElementById(id);
@@ -12684,7 +12762,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var cnpjs = _uniqueSorted(lista.map(_labelEmpresaSimple));
     var st = window.__estoqueSimpleState || { busca: '', fornecedor: '', gramatura: '', cnpj: '' };
     wrap.innerHTML = ''
-      + '<input id="est-simple-busca" type="text" placeholder="Buscar..." value="' + String(st.busca || '').replace(/"/g, '&quot;') + '" style="flex:1;min-width:220px;padding:8px 12px;border-radius:8px;background:var(--s2);color:var(--text);border:1px solid var(--border)">'
+      + '<input id="est-simple-busca" type="text" placeholder="Buscar por nome, fornecedor, nomenclatura..." value="' + String(st.busca || '').replace(/"/g, '&quot;') + '" style="flex:1;min-width:280px;padding:8px 12px;border-radius:8px;background:var(--s2);color:var(--text);border:1px solid var(--border)">'
       + '<select id="est-simple-fornecedor" style="min-width:180px;padding:8px 12px;border-radius:8px;background:var(--s2);color:var(--text);border:1px solid var(--border)"><option value="">Fornecedor</option>'
       + fornecedores.map(function(v) { return '<option value="' + String(v).replace(/"/g, '&quot;') + '"' + (String(st.fornecedor || '') === String(v) ? ' selected' : '') + '>' + String(v) + '</option>'; }).join('')
       + '</select>'
@@ -12707,7 +12785,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       };
       window.__estoqueSimpleState = next;
       _renderEstoqueSimple();
-      setTimeout(_aplicarSimplificacaoTabelaSimple, 20);
+      setTimeout(function() {
+        _renderPainelEstoqueSimple();
+        _aplicarSimplificacaoTabelaSimple();
+      }, 20);
     }
 
     var buscaEl = document.getElementById('est-simple-busca');
@@ -12726,7 +12807,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (limparEl) limparEl.onclick = function() {
       window.__estoqueSimpleState = { busca: '', fornecedor: '', gramatura: '', cnpj: '' };
       _renderEstoqueSimple();
-      setTimeout(_aplicarSimplificacaoTabelaSimple, 20);
+      setTimeout(function() {
+        _renderPainelEstoqueSimple();
+        _aplicarSimplificacaoTabelaSimple();
+      }, 20);
     };
   }
 
@@ -12859,6 +12943,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (painel) painel.remove();
     } catch (_) {}
     try {
+      var antigo = document.getElementById('patch-estoque-simple-cards');
+      if (antigo && _getModoEstoqueSimple() !== 'estoque') antigo.remove();
+    } catch (_) {}
+    try {
       var tabs = document.getElementById('est-cat-tabs');
       if (tabs) tabs.style.display = 'none';
     } catch (_) {}
@@ -12896,6 +12984,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     try { if (typeof window.chpSetTab === 'function') window.chpSetTab('estoque'); } catch (_) {}
     if (toolbar) toolbar.style.display = '';
+    _renderPainelEstoqueSimple();
     _ensureToolbarSimple();
   }
 

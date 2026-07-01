@@ -23242,38 +23242,23 @@ function recSetBusy(v){
 }
 
 function initRecebimentosInsumosUI(){
-  const mesEl = document.getElementById('rec-mes');
-  if(mesEl && !mesEl.value){
+  const dataEl = document.getElementById('rec-data');
+  if(dataEl && !dataEl.value){
     const now = new Date();
-    mesEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  }
-  const empSel = document.getElementById('rec-empresa');
-  if(empSel){
-    const empId = String(EMP_FILTRO||'').trim();
-    if(empId){
-      empSel.value = estEmpresaFromEmpId(empId);
-      empSel.disabled = true;
-      empSel.style.opacity = '0.85';
-    } else {
-      empSel.disabled = false;
-      empSel.style.opacity = '';
-    }
+    dataEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   }
 }
 
 async function buscarRecebimentosInsumos(){
-  const mes = String(document.getElementById('rec-mes')?.value || '').trim();
-  if(!mes){ toast('Selecione o mês','var(--red)'); return; }
+  const dataRef = String(document.getElementById('rec-data')?.value || '').trim();
   if(_recBusy) return;
-  const empresa = String(document.getElementById('rec-empresa')?.value || '').trim();
   const fornecedor = String(document.getElementById('rec-fornecedor')?.value || '').trim();
   const cliente = String(document.getElementById('rec-cliente')?.value || '').trim();
   const notaFiscal = String(document.getElementById('rec-nf')?.value || '').trim();
   const empId = String(EMP_FILTRO||'').trim();
 
   const qs = new URLSearchParams();
-  qs.set('mes', mes);
-  if(empresa) qs.set('empresa', empresa);
+  if(dataRef) qs.set('data', dataRef);
   if(fornecedor) qs.set('fornecedor', fornecedor);
   if(cliente) qs.set('cliente', cliente);
   if(notaFiscal) qs.set('nota_fiscal', notaFiscal);
@@ -23297,13 +23282,10 @@ function renderRecebimentosInsumos(){
   const status = document.getElementById('rec-insumos-status');
   if(!body) return;
   const rowsBase = Array.isArray(RECEB_INSUMOS) ? RECEB_INSUMOS : [];
-  const buscaPlaca = String(document.getElementById('rec-placa-busca')?.value || '').trim().toUpperCase();
-  const rows = buscaPlaca
-    ? rowsBase.filter(r=>String(r?.placa_veiculo||'').trim().toUpperCase().includes(buscaPlaca))
-    : rowsBase;
+  const rows = rowsBase;
   if(status) status.textContent = `Exibindo ${rows.length.toLocaleString()} registro(s)`;
   if(!rows.length){
-    body.innerHTML = `<tr><td colspan="15" style="padding:24px;text-align:center;color:var(--text3);border:1px solid var(--border)">Nenhum recebimento encontrado.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="13" style="padding:24px;text-align:center;color:var(--text3);border:1px solid var(--border)">Nenhum checklist encontrado.</td></tr>`;
     return;
   }
   body.innerHTML = rows.map((r,i)=>{
@@ -23315,7 +23297,6 @@ function renderRecebimentosInsumos(){
       <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono)">${escH(r.placa_veiculo||'—')}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);color:var(--accent);font-weight:900">${escH(r.nota_fiscal||'—')}</td>
       <td style="padding:8px 10px;border:1px solid var(--border)">${escH(r.produto||'—')}</td>
-      <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono)">${escH(r.tamanho_chapa||'—')}</td>
       <td style="padding:8px 10px;border:1px solid var(--border)">${escH(r.fornecedor||'—')}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:900">${Number(r.quantidade||0).toLocaleString()}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono)">${escH(r.ordem_compra||'—')}</td>
@@ -23323,7 +23304,6 @@ function renderRecebimentosInsumos(){
       <td style="padding:8px 10px;border:1px solid var(--border)">${escH(r.responsavel||'—')}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:900;color:${devolCor}">${devol}</td>
       <td style="padding:8px 10px;border:1px solid var(--border)">${escH(r.cliente||'—')}</td>
-      <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);font-weight:900;color:var(--purple)">${escH(r.empresa||'—')}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);text-align:center"><button class="btn btn-ghost btn-sm" onclick="abrirModalRecebimentoInsumos('${escAttr(r.id)}')">Editar</button></td>
       <td style="padding:8px 10px;border:1px solid var(--border);text-align:center"><button class="btn btn-red btn-sm" onclick="excluirRecebimentoInsumos('${escAttr(r.id)}')">Excluir</button></td>
     </tr>`;
@@ -23339,8 +23319,6 @@ function abrirModalRecebimentoInsumos(id){
   document.getElementById('rec-placa').value = r?.placa_veiculo || '';
   document.getElementById('ri-nf').value = r?.nota_fiscal || '';
   document.getElementById('ri-produto').value = r?.produto || '';
-  const tc = document.getElementById('rec-tamanho-chapa');
-  if(tc) tc.value = r?.tamanho_chapa || '';
   document.getElementById('ri-fornecedor').value = r?.fornecedor || '';
   document.getElementById('ri-quantidade').value = (r?.quantidade ?? '') === null ? '' : String(r?.quantidade ?? '');
   document.getElementById('ri-oc').value = r?.ordem_compra || '';
@@ -23349,22 +23327,8 @@ function abrirModalRecebimentoInsumos(id){
   document.getElementById('ri-devolucao').checked = !!r?.devolucao;
   document.getElementById('ri-cliente').value = r?.cliente || '';
 
-  const empSel = document.getElementById('ri-empresa');
-  if(empSel){
-    const empId = String(EMP_FILTRO||'').trim();
-    if(empId){
-      empSel.value = estEmpresaFromEmpId(empId);
-      empSel.disabled = true;
-      empSel.style.opacity = '0.85';
-    } else {
-      empSel.value = String(r?.empresa || '').trim() || 'Italy Embalagens';
-      empSel.disabled = false;
-      empSel.style.opacity = '';
-    }
-  }
-
   const title = document.getElementById('ri-title');
-  if(title) title.textContent = id ? 'Editar Recebimento' : 'Novo Recebimento';
+  if(title) title.textContent = id ? 'Editar Checklist' : 'Novo Checklist';
   m.style.display = 'flex';
 }
 
@@ -23379,7 +23343,6 @@ async function salvarRecebimentoInsumos(){
   const placa = String(document.getElementById('rec-placa')?.value || '').trim() || null;
   const nf = String(document.getElementById('ri-nf')?.value || '').trim() || null;
   const produto = String(document.getElementById('ri-produto')?.value || '').trim() || null;
-  const tamanho_chapa = String(document.getElementById('rec-tamanho-chapa')?.value || '').trim() || null;
   const fornecedor = String(document.getElementById('ri-fornecedor')?.value || '').trim() || null;
   const qtdStr = String(document.getElementById('ri-quantidade')?.value || '').trim();
   const quantidade = qtdStr === '' ? null : Math.trunc(Number(qtdStr));
@@ -23390,8 +23353,7 @@ async function salvarRecebimentoInsumos(){
   const cliente = String(document.getElementById('ri-cliente')?.value || '').trim() || null;
 
   const empIdLock = String(EMP_FILTRO||'').trim();
-  const empSel = String(document.getElementById('ri-empresa')?.value || '').trim();
-  const empresa = empIdLock ? estEmpresaFromEmpId(empIdLock) : (empSel || null);
+  const empresa = empIdLock ? estEmpresaFromEmpId(empIdLock) : null;
   const emp_id = empIdLock ? empIdLock : (empresa ? estEmpIdFromEmpresa(empresa) : null);
 
   if(!dataReceb){ toast('Informe a Data de Recebimento','var(--red)'); return; }
@@ -23403,7 +23365,6 @@ async function salvarRecebimentoInsumos(){
     placa_veiculo: placa,
     nota_fiscal: nf,
     produto,
-    tamanho_chapa,
     fornecedor,
     quantidade,
     ordem_compra: oc,
@@ -23426,10 +23387,10 @@ async function salvarRecebimentoInsumos(){
     console.log('[RECEBIMENTO SAVE]', j);
     if(!j || j.ok !== true) throw new Error((j && j.error) ? j.error : 'Erro ao salvar');
     fecharModalRecebimentoInsumos();
-    toast(id?'Recebimento atualizado ✓':'Recebimento criado ✓','var(--green)');
+    toast(id?'Checklist atualizado ✓':'Checklist criado ✓','var(--green)');
     await buscarRecebimentosInsumos();
   } catch(e){
-    toast('Erro ao salvar recebimento: '+(e.message||e),'var(--red)');
+    toast('Erro ao salvar checklist: '+(e.message||e),'var(--red)');
     console.error('[RECEBIMENTO SAVE]', e);
   } finally {
     recSetBusy(false);
@@ -23784,13 +23745,12 @@ function exportarRecebimentosInsumosXlsx(){
   if(typeof XLSX === 'undefined' || !XLSX?.utils){ toast('SheetJS (XLSX) não carregado','var(--red)'); return; }
   const rows = Array.isArray(RECEB_INSUMOS) ? RECEB_INSUMOS : [];
   const aoa = [
-    ['Data Rec.', 'Placa', 'NF', 'Produto', 'Tamanho da Chapa', 'Fornecedor', 'Qtd', 'Ordem Compra', 'Validade', 'Responsável', 'Devolução', 'Cliente', 'Empresa'],
+    ['Data de Rec.', 'Placa do Veículo', 'N° Nota Fiscal', 'Produto', 'Fornecedor', 'Quantidade Recebida', 'Ordem de Compra', 'Data de Validade', 'Resp. pelo Recebimento', 'Devolução', 'Cliente'],
     ...rows.map(r=>[
       fmtDataBR(String(r.data_recebimento||''))||'',
       r.placa_veiculo||'',
       r.nota_fiscal||'',
       r.produto||'',
-      r.tamanho_chapa||'',
       r.fornecedor||'',
       r.quantidade ?? '',
       r.ordem_compra||'',
@@ -23798,20 +23758,19 @@ function exportarRecebimentosInsumosXlsx(){
       r.responsavel||'',
       r.devolucao ? 'Sim' : 'Não',
       r.cliente||'',
-      r.empresa||'',
     ])
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Recebimentos');
-  const mes = String(document.getElementById('rec-mes')?.value||'').trim() || 'mes';
-  XLSX.writeFile(wb, `recebimento_insumos_${mes}.xlsx`);
+  XLSX.utils.book_append_sheet(wb, ws, 'Checklist');
+  const dataRef = String(document.getElementById('rec-data')?.value||'').trim() || 'data';
+  XLSX.writeFile(wb, `checklist_recebimento_${dataRef}.xlsx`);
 }
 
 function imprimirRecebimentosInsumos(){
   const rows = Array.isArray(RECEB_INSUMOS) ? RECEB_INSUMOS : [];
-  const mes = String(document.getElementById('rec-mes')?.value||'').trim();
-  const title = `Checklist de Recebimento de Insumos${mes?(' · '+mes):''}`;
+  const dataRef = String(document.getElementById('rec-data')?.value||'').trim();
+  const title = `Checklist de Recebimento${dataRef?(' · '+dataRef):''}`;
   const html = `
   <html><head><meta charset="utf-8"><title>${title}</title>
   <style>
@@ -23824,7 +23783,7 @@ function imprimirRecebimentosInsumos(){
     <h2>${title}</h2>
     <table>
       <thead><tr>
-        <th>Data Rec.</th><th>Placa</th><th>NF</th><th>Produto</th><th>Tamanho da Chapa</th><th>Fornecedor</th><th>Qtd</th><th>Ordem Compra</th><th>Validade</th><th>Responsável</th><th>Devolução</th><th>Cliente</th><th>Empresa</th>
+        <th>Data de Rec.</th><th>Placa do Veículo</th><th>N° Nota Fiscal</th><th>Produto</th><th>Fornecedor</th><th>Quantidade Recebida</th><th>Ordem de Compra</th><th>Data de Validade</th><th>Resp. pelo Recebimento</th><th>Devolução</th><th>Cliente</th>
       </tr></thead>
       <tbody>
         ${rows.map(r=>`<tr>
@@ -23832,7 +23791,6 @@ function imprimirRecebimentosInsumos(){
           <td>${escH(r.placa_veiculo||'')}</td>
           <td>${escH(r.nota_fiscal||'')}</td>
           <td>${escH(r.produto||'')}</td>
-          <td>${escH(r.tamanho_chapa||'')}</td>
           <td>${escH(r.fornecedor||'')}</td>
           <td style="text-align:right">${escH(String(r.quantidade??''))}</td>
           <td>${escH(r.ordem_compra||'')}</td>
@@ -23840,7 +23798,6 @@ function imprimirRecebimentosInsumos(){
           <td>${escH(r.responsavel||'')}</td>
           <td style="text-align:center">${r.devolucao?'Sim':'Não'}</td>
           <td>${escH(r.cliente||'')}</td>
-          <td>${escH(r.empresa||'')}</td>
         </tr>`).join('')}
       </tbody>
     </table>
@@ -45467,17 +45424,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div id="chp-tab-receb" style="display:none">
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:flex-end;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px">
           <div style="display:flex;flex-direction:column;gap:4px">
-            <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Mês *</label>
-            <input id="rec-mes" type="month" style="padding:6px 10px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);min-width:150px">
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Empresa</label>
-            <select id="rec-empresa" style="padding:6px 10px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);min-width:180px">
-              <option value="">Todos</option>
-              <option value="Italy Embalagens">Italy Embalagens</option>
-              <option value="Cartoeste">Cartoeste</option>
-              <option value="Oestepack">Oestepack</option>
-            </select>
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Data</label>
+            <input id="rec-data" type="date" style="padding:6px 10px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);min-width:150px">
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
             <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Fornecedor</label>
@@ -45491,13 +45439,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
             <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Nota Fiscal</label>
             <input id="rec-nf" type="text" placeholder="NF..." style="padding:6px 12px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);min-width:120px">
           </div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Placa</label>
-            <input id="rec-placa-busca" type="text" placeholder="Buscar por placa..." oninput="renderRecebimentosInsumos()" style="padding:6px 12px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);min-width:180px">
-          </div>
           <button class="btn btn-accent btn-sm" onclick="buscarRecebimentosInsumos()">Buscar</button>
           <div style="flex:1"></div>
-          <button class="btn btn-accent btn-sm" onclick="abrirModalRecebimentoInsumos()">＋ Novo Recebimento</button>
+          <button class="btn btn-accent btn-sm" onclick="abrirModalRecebimentoInsumos()">＋ Novo Checklist</button>
           <button class="btn btn-ghost btn-sm" onclick="exportarRecebimentosInsumosXlsx()">Exportar Excel</button>
           <button class="btn btn-ghost btn-sm" onclick="imprimirRecebimentosInsumos()">Imprimir</button>
         </div>
@@ -45507,18 +45451,16 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
             <thead>
               <tr style="background:var(--s2)">
                 <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Data Rec.</th>
-                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Placa</th>
-                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NF</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Placa do Veículo</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">N° Nota Fiscal</th>
                 <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Produto</th>
-                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Tamanho da Chapa</th>
                 <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Fornecedor</th>
-                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">Qtd</th>
-                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Ordem Compra</th>
-                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Validade</th>
-                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Responsável</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">Quantidade Recebida</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Ordem de Compra</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Data de Validade</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Resp. pelo Recebimento</th>
                 <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:center">Devolução</th>
                 <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Cliente</th>
-                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Empresa</th>
                 <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:center">Editar</th>
                 <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:center">Excluir</th>
               </tr>
@@ -47865,12 +47807,12 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <div id="modal-receb-insumos" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:0 10px">
   <div style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:14px 14px 12px;width:min(720px,95vw);max-height:90vh;overflow-y:auto;box-shadow:0 18px 80px rgba(0,0,0,0.65);margin:5vh auto">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">
-      <h3 id="ri-title" style="margin:0">Novo Recebimento</h3>
+      <h3 id="ri-title" style="margin:0">Novo Checklist</h3>
       <button class="btn btn-ghost btn-sm" onclick="fecharModalRecebimentoInsumos()">✕</button>
     </div>
     <input type="hidden" id="ri-id">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Data de Recebimento *</label>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Data de Rec. *</label>
         <input id="ri-data" type="date" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Placa do Veículo</label>
         <input id="rec-placa" type="text" placeholder="AAA-0000 ou ABC1D23" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
@@ -47878,17 +47820,15 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         <input id="ri-nf" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Produto</label>
         <input id="ri-produto" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
-      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Tamanho da Chapa</label>
-        <input id="rec-tamanho-chapa" type="text" placeholder="Ex: 1200x1000mm" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Fornecedor</label>
         <input id="ri-fornecedor" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
-      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Quantidade</label>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Quantidade Recebida</label>
         <input id="ri-quantidade" type="number" min="0" step="1" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Ordem de Compra</label>
         <input id="ri-oc" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Data de Validade</label>
         <input id="ri-validade" type="date" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
-      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Responsável</label>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Resp. pelo Recebimento</label>
         <input id="ri-responsavel" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:22px">
         <input id="ri-devolucao" type="checkbox">
@@ -47896,12 +47836,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       </div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Cliente</label>
         <input id="ri-cliente" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
-      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Empresa</label>
-        <select id="ri-empresa" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
-          <option value="Italy Embalagens">Italy Embalagens</option>
-          <option value="Cartoeste">Cartoeste</option>
-          <option value="Oestepack">Oestepack</option>
-        </select></div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
       <button class="btn btn-ghost btn-sm" onclick="fecharModalRecebimentoInsumos()">Cancelar</button>
@@ -59408,6 +59342,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=2"></script>
+<script src="/patch.js?v=3"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
