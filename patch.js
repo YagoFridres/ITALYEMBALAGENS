@@ -3236,10 +3236,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '.pep-card-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;font-weight:800}'
         + '.pep-card-val{font-size:26px;font-weight:900;color:#f8fafc;margin-top:10px}'
         + '.pep-card-sub{font-size:12px;color:#94a3b8;margin-top:8px}'
-        + '.pep-table-wrap{overflow:auto;max-height:min(60vh,520px);overscroll-behavior:contain}'
-        + '.pep-table{width:100%;border-collapse:collapse}'
-        + '.pep-table th{background:#0f172a;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:10px 8px;text-align:left;border-bottom:1px solid #1e293b}'
+        + '.pep-table-wrap{overflow:auto;max-height:calc(100vh - 320px);overscroll-behavior:contain;border-radius:14px;scrollbar-width:thin;scrollbar-color:rgba(100,116,139,.58) rgba(15,23,42,.7)}'
+        + '.pep-table-wrap-gramaturas{max-height:calc(100vh - 320px)}'
+        + '.pep-table-wrap-estoque{max-height:calc(100vh - 330px)}'
+        + '.pep-table-wrap::-webkit-scrollbar{width:10px;height:10px}'
+        + '.pep-table-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72)}'
+        + '.pep-table-wrap::-webkit-scrollbar-thumb{background:rgba(100,116,139,.58);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
+        + '.pep-table{width:100%;border-collapse:separate;border-spacing:0}'
+        + '.pep-table th{position:sticky;top:0;z-index:2;background:#0f172a;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:10px 8px;text-align:left;border-bottom:1px solid #1e293b}'
         + '.pep-table td{padding:10px 8px;border-bottom:1px solid #1e293b;font-size:12px;color:#e5e7eb;vertical-align:top}'
+        + '.pep-table tbody tr:nth-child(even){background:rgba(15,23,42,.28)}'
         + '.pep-table tbody tr:hover{background:#1e293b}'
         + '.pep-rank-item{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-bottom:12px}'
         + '.pep-track{height:8px;border-radius:4px;background:#1e293b;overflow:hidden;margin-top:6px}'
@@ -3430,7 +3436,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <input class="pep-input" id="gram-busca" placeholder="Buscador de gramaturas" value="' + esc(window.__gramaturasBusca || '') + '" style="min-width:320px;flex:1">'
         + '    <button class="pep-btn" id="gram-buscar">Buscar</button>'
         + '  </div></div>'
-        + '  <div class="pep-panel"><div class="pep-table-wrap" style="overflow-y:auto;overflow-x:auto;max-height:min(60vh,520px);overscroll-behavior:contain"><table class="pep-table"><thead><tr><th>Nome da Gramatura</th><th>Gramatura</th><th>Fornecedor</th><th>Valor Unitário</th><th>Status</th><th>Ações</th></tr></thead><tbody>'
+        + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-gramaturas"><table class="pep-table"><thead><tr><th>Nome da Gramatura</th><th>Gramatura</th><th>Fornecedor</th><th>Valor Unitário</th><th>Status</th><th>Ações</th></tr></thead><tbody>'
         + (filtrada.length ? filtrada.map(function(g) {
           var statusTxt = gramAtiva(g) ? 'Ativo' : 'Inativo';
           var statusColor = gramAtiva(g) ? '#22c55e' : '#f59e0b';
@@ -3691,7 +3697,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       ensureStyles();
       var page = ensurePage('estoque');
       showOnlyPage('estoque');
-      var lista = await _estoqueFetchChapasList(1200).catch(function() { return []; });
+      var lista = await _estoqueFetchChapasList(10000).catch(function() { return []; });
       lista = Array.isArray(lista) ? lista : [];
       var busca = String(window.__estoqueWireBusca || '').trim().toLowerCase();
       var filtrada = busca ? lista.filter(function(chapa) {
@@ -3727,7 +3733,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         +      _botaoEditarChapas('estoque-wire-alterar-btn')
         +      _botaoAcaoEstoque({ id: 'estoque-wire-criar-btn', label: 'Criar Chapas', icon: '+', variant: 'teal', title: 'Cadastrar nova chapa no estoque' })
         + '  </div>'
-        + '  <div class="pep-panel"><div class="pep-table-wrap" style="overflow-y:auto;overflow-x:auto;max-height:min(60vh,520px);overscroll-behavior:contain"><table class="pep-table"><thead><tr><th>FORNECEDOR</th><th>GRAMATURA</th><th>NOMENCLATURA</th><th>TAMANHO</th><th>NOME</th><th>QUAL CNPJ</th><th>NF</th><th>QUANTIDADE</th><th>R$</th><th>TOTAL</th><th>Ações</th></tr></thead><tbody>'
+        + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-estoque"><table class="pep-table"><thead><tr><th>FORNECEDOR</th><th>GRAMATURA</th><th>NOMENCLATURA</th><th>TAMANHO</th><th>NOME</th><th>QUAL CNPJ</th><th>NF</th><th>QUANTIDADE</th><th>R$</th><th>TOTAL</th><th>Ações</th></tr></thead><tbody>'
         + (filtrada.length ? filtrada.map(function(chapa) {
             var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
             var vunit = Number(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0) || 0;
@@ -3917,7 +3923,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var pair = await Promise.all([
         apiJson('/api/analises/toneladas-vendidas').catch(function() { return null; }),
         _carregarDadosMovimentacaoEstoque('').catch(function() { return []; }),
-        _estoqueFetchChapasList(1200).catch(function() { return []; })
+        _estoqueFetchChapasList(10000).catch(function() { return []; })
       ]);
       var ofRows = Array.isArray(pair[0] && (pair[0].rows || pair[0].detalhamento)) ? (pair[0].rows || pair[0].detalhamento) : [];
       var movRows = Array.isArray(pair[1]) ? pair[1] : [];
@@ -10929,7 +10935,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   async function _estoqueFetchChapasList(limit) {
     var qs = new URLSearchParams();
-    qs.set('limit', String(limit || 1000));
+    var requested = Math.max(1, Math.trunc(Number(limit || 0) || 10000));
+    qs.set('limit', String(requested));
     var empId = _estoqueAtualEmpId();
     if (empId) qs.set('empId', empId);
     var json = await _apiJsonAuth('/api/chapas_estoque?' + qs.toString());
@@ -17264,35 +17271,11 @@ window._mbnActive = function(id) {
       if (!todasLinhas.length) return;
 
       var filtradas = _linhasFiltradas();
-      var total = filtradas.length;
-      var totalPags = Math.max(1, Math.ceil(total / POR_PAGINA));
-      if (paginaAtual >= totalPags) paginaAtual = totalPags - 1;
-      if (paginaAtual < 0) paginaAtual = 0;
-
       todasLinhas.forEach(function(el) { el.style.display = 'none'; });
-      filtradas.forEach(function(el, i) {
-        el.style.display = (i >= paginaAtual * POR_PAGINA && i < (paginaAtual + 1) * POR_PAGINA) ? '' : 'none';
-      });
+      filtradas.forEach(function(el) { el.style.display = ''; });
 
       var paginador = document.getElementById('chapas-paginador');
-      if (total <= POR_PAGINA) {
-        if (paginador) paginador.remove();
-        return;
-      }
-
-      if (!paginador) {
-        paginador = document.createElement('div');
-        paginador.id = 'chapas-paginador';
-        paginador.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px;justify-content:center;margin-top:8px';
-        var host = container.closest('table');
-        host = host && host.parentElement ? host.parentElement : (container.parentElement || container);
-        host.appendChild(paginador);
-      }
-
-      paginador.innerHTML = ''
-        + '<button type="button" onclick="window._chapasAnterior()" ' + (paginaAtual === 0 ? 'disabled' : '') + ' style="padding:8px 16px;border-radius:6px;border:1px solid var(--border,#333);background:var(--bg2,#1a1a2e);color:var(--text1,#fff);cursor:pointer;' + (paginaAtual === 0 ? 'opacity:.4;' : '') + '">&larr; Anterior</button>'
-        + '<span style="color:var(--text2,#aaa);font-size:13px">Pagina ' + (paginaAtual + 1) + ' de ' + totalPags + ' <span style="font-size:11px">(' + total + ' OFs)</span></span>'
-        + '<button type="button" onclick="window._chapasProximo()" ' + (paginaAtual >= totalPags - 1 ? 'disabled' : '') + ' style="padding:8px 16px;border-radius:6px;border:1px solid var(--border,#333);background:var(--bg2,#1a1a2e);color:var(--text1,#fff);cursor:pointer;' + (paginaAtual >= totalPags - 1 ? 'opacity:.4;' : '') + '">Proximo &rarr;</button>';
+      if (paginador) paginador.remove();
     }
 
     window._chapasAnterior = function() {
