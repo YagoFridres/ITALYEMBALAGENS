@@ -3721,6 +3721,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF ou CNPJ" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
         + '    <button class="pep-btn primary" id="estoque-wire-buscar">Buscar</button>'
         + '  </div></div>'
+        + '  <div class="estoque-main-actions" style="margin-bottom:12px">'
+        +      _botaoAcaoEstoque({ id: 'estoque-wire-entrada-btn', label: 'Dar Entrada', icon: '↓', variant: 'green', title: 'Abrir modal de entrada de chapas' })
+        +      _botaoAcaoEstoque({ id: 'estoque-wire-saida-btn', label: 'Dar Saída', icon: '↑', variant: 'danger', title: 'Abrir modal de saída de chapas' })
+        +      _botaoEditarChapas('estoque-wire-alterar-btn')
+        +      _botaoAcaoEstoque({ id: 'estoque-wire-criar-btn', label: 'Criar Chapas', icon: '+', variant: 'teal', title: 'Cadastrar nova chapa no estoque' })
+        + '  </div>'
         + '  <div class="pep-panel"><div class="pep-table-wrap" style="overflow-y:auto;overflow-x:auto;max-height:min(60vh,520px);overscroll-behavior:contain"><table class="pep-table"><thead><tr><th>FORNECEDOR</th><th>GRAMATURA</th><th>NOMENCLATURA</th><th>TAMANHO</th><th>NOME</th><th>QUAL CNPJ</th><th>NF</th><th>QUANTIDADE</th><th>R$</th><th>TOTAL</th><th>Ações</th></tr></thead><tbody>'
         + (filtrada.length ? filtrada.map(function(chapa) {
             var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
@@ -3763,6 +3769,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           try { if (typeof window.excluirChapa === 'function') window.excluirChapa(String(btn.getAttribute('data-est-del') || '')); } catch (_) {}
         };
       });
+      var btnEntrada = document.getElementById('estoque-wire-entrada-btn');
+      if (btnEntrada) btnEntrada.onclick = function() { _abrirModalEntradaEstoqueReal(); };
+      var btnSaida = document.getElementById('estoque-wire-saida-btn');
+      if (btnSaida) btnSaida.onclick = function() { _abrirModalSaidaEstoqueReal(); };
+      _bindBotaoEditarChapas(renderEstoqueWireframePage, 'estoque-wire-alterar-btn');
+      _bindBotaoCriarChapas(renderEstoqueWireframePage, 'estoque-wire-criar-btn');
     }
 
     function facaUsoScore(f) {
@@ -11291,12 +11303,37 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     render('');
   }
 
-  function _botaoEditarChapas(onDone) {
-    return '<button id="estoque-btn-alterar-chapas" class="btn btn-primary estoque-main-btn" type="button" style="min-height:48px;padding:12px 18px;border-radius:12px;font-size:.9rem;font-weight:800;box-shadow:0 10px 22px -12px rgba(0,0,0,.65)">Alterar Chapas</button>';
+  function _botaoAcaoEstoque(opts) {
+    opts = opts || {};
+    var id = String(opts.id || '').trim();
+    var label = String(opts.label || '').trim();
+    var icon = String(opts.icon || '').trim();
+    var variant = String(opts.variant || 'accent').trim();
+    var title = String(opts.title || label).trim();
+    return ''
+      + '<button'
+      +   (id ? (' id="' + _escapeHtmlLite(id) + '"') : '')
+      +   ' class="estoque-action-btn estoque-action-' + _escapeHtmlLite(variant) + '"'
+      +   ' type="button"'
+      +   (title ? (' title="' + _escapeHtmlLite(title) + '"') : '')
+      + '>'
+      +   '<span class="estoque-action-icon" aria-hidden="true">' + _escapeHtmlLite(icon || '•') + '</span>'
+      +   '<span class="estoque-action-label">' + _escapeHtmlLite(label || 'Ação') + '</span>'
+      + '</button>';
   }
 
-  function _bindBotaoEditarChapas(onDone) {
-    var btn = document.getElementById('estoque-btn-alterar-chapas');
+  function _botaoEditarChapas(id) {
+    return _botaoAcaoEstoque({
+      id: id || 'estoque-btn-alterar-chapas',
+      label: 'Alterar Chapas',
+      icon: '✎',
+      variant: 'accent',
+      title: 'Selecionar chapa para alterar'
+    });
+  }
+
+  function _bindBotaoEditarChapas(onDone, buttonId) {
+    var btn = document.getElementById(buttonId || 'estoque-btn-alterar-chapas');
     if (!btn) return;
     btn.onclick = function() {
       _abrirSeletorChapaEstoque({
@@ -11315,8 +11352,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     };
   }
 
-  function _bindBotaoCriarChapas(onDone) {
-    var btn = document.getElementById('estoque-btn-criar-chapas');
+  function _bindBotaoCriarChapas(onDone, buttonId) {
+    var btn = document.getElementById(buttonId || 'estoque-btn-criar-chapas');
     if (!btn) return;
     btn.onclick = function() {
       try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {}
@@ -11682,9 +11719,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                   _cardBreakdownEstoque('Quanto Entrou por Fornecedor', breakdown, _fmtRsEstoque)].join('')
           + '  </div>'
           + '  <div class="estoque-main-actions">'
-          + '    <button id="estoque-entrada-lote-btn" class="btn btn-accent estoque-main-btn" type="button" style="min-height:48px;padding:12px 18px;border-radius:12px;font-size:.9rem;font-weight:800;box-shadow:0 10px 22px -12px rgba(0,0,0,.65)">Dar Entrada</button>'
-          +      _botaoEditarChapas()
-          + '    <button id="estoque-btn-criar-chapas" class="btn btn-primary estoque-main-btn" type="button" style="min-height:48px;padding:12px 18px;border-radius:12px;font-size:.9rem;font-weight:800;box-shadow:0 10px 22px -12px rgba(0,0,0,.65)">Criar Chapas</button>'
+          +      _botaoAcaoEstoque({ id: 'estoque-entrada-lote-btn', label: 'Dar Entrada', icon: '↓', variant: 'green', title: 'Lançar entrada manual no estoque' })
+          +      _botaoEditarChapas('estoque-entrada-alterar-btn')
+          +      _botaoAcaoEstoque({ id: 'estoque-entrada-criar-btn', label: 'Criar Chapas', icon: '+', variant: 'teal', title: 'Cadastrar nova chapa no estoque' })
           + '  </div>'
           +    _renderTabelaMovEstoque(filtrada, [
                  { label: 'Data', key: 'data', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(_fmtDateEstoque(r.data)) + '</span>'; } },
@@ -11699,8 +11736,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + '</div>';
         var btnEntrada = document.getElementById('estoque-entrada-lote-btn');
         if (btnEntrada) btnEntrada.onclick = function() { _abrirModalEntradaEstoqueReal(); };
-        _bindBotaoEditarChapas(window.__estoqueEntradasRefresh);
-        _bindBotaoCriarChapas(window.__estoqueEntradasRefresh);
+        _bindBotaoEditarChapas(window.__estoqueEntradasRefresh, 'estoque-entrada-alterar-btn');
+        _bindBotaoCriarChapas(window.__estoqueEntradasRefresh, 'estoque-entrada-criar-btn');
       };
       render();
     } catch (e) {
@@ -12017,9 +12054,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                   _cardBreakdownEstoque('Quanto Saiu de Cada Fornecedor', breakdown, _fmtRsEstoque)].join('')
           + '  </div>'
           + '  <div class="estoque-main-actions">'
-          + '    <button id="estoque-saida-lote-btn" class="btn btn-accent estoque-main-btn" type="button" style="min-height:48px;padding:12px 18px;border-radius:12px;font-size:.9rem;font-weight:800;box-shadow:0 10px 22px -12px rgba(0,0,0,.65)">Dar Saída</button>'
-          +      _botaoEditarChapas()
-          + '    <button id="estoque-btn-criar-chapas" class="btn btn-primary estoque-main-btn" type="button" style="min-height:48px;padding:12px 18px;border-radius:12px;font-size:.9rem;font-weight:800;box-shadow:0 10px 22px -12px rgba(0,0,0,.65)">Criar Chapas</button>'
+          +      _botaoAcaoEstoque({ id: 'estoque-saida-lote-btn', label: 'Dar Saída', icon: '↑', variant: 'danger', title: 'Lançar saída manual do estoque' })
+          +      _botaoEditarChapas('estoque-saida-alterar-btn')
+          +      _botaoAcaoEstoque({ id: 'estoque-saida-criar-btn', label: 'Criar Chapas', icon: '+', variant: 'teal', title: 'Cadastrar nova chapa no estoque' })
           + '  </div>'
           +    _renderTabelaMovEstoque(filtrada, [
                  { label: 'Data', key: 'data', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(_fmtDateEstoque(r.data)) + '</span>'; } },
@@ -12033,8 +12070,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + '</div>';
         var btnSaida = document.getElementById('estoque-saida-lote-btn');
         if (btnSaida) btnSaida.onclick = function() { _abrirModalSaidaEstoqueReal(); };
-        _bindBotaoEditarChapas(window.__estoqueSaidasRefresh);
-        _bindBotaoCriarChapas(window.__estoqueSaidasRefresh);
+        _bindBotaoEditarChapas(window.__estoqueSaidasRefresh, 'estoque-saida-alterar-btn');
+        _bindBotaoCriarChapas(window.__estoqueSaidasRefresh, 'estoque-saida-criar-btn');
       };
       render();
     } catch (e) {
@@ -12204,8 +12241,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '.pcp-btn.pcp-btn-lg{padding:10px 16px;font-size:14px;font-weight:800;border-radius:10px;min-height:40px}' +
       '.pcp-btn.primary{background:var(--accent);border-color:transparent;color:#fff;font-weight:700}' +
       '.pcp-btn.danger{background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.35);color:#ef4444;font-weight:800}' +
-      '.estoque-main-actions{display:flex;gap:12px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}' +
-      '.estoque-main-btn{min-height:48px;padding:12px 18px !important;border-radius:12px;font-size:.9rem !important;font-weight:800;box-shadow:0 10px 22px -12px rgba(0,0,0,.65)}' +
+      '.estoque-main-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(17,24,39,.92));border:1px solid rgba(148,163,184,.16);border-radius:16px;padding:16px}' +
+      '.estoque-action-btn{display:flex;align-items:center;justify-content:flex-start;gap:12px;min-height:58px;padding:14px 24px;border-radius:12px;border:1px solid transparent;color:#fff;cursor:pointer;font-size:14px;font-weight:800;letter-spacing:.01em;box-shadow:0 14px 28px -18px rgba(0,0,0,.75);transition:transform .15s ease,filter .15s ease,box-shadow .15s ease,border-color .15s ease}' +
+      '.estoque-action-btn:hover{transform:scale(1.02);filter:brightness(1.06);box-shadow:0 18px 34px -18px rgba(0,0,0,.82)}' +
+      '.estoque-action-btn:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(255,255,255,.08),0 0 0 4px rgba(37,99,235,.35)}' +
+      '.estoque-action-icon{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;background:rgba(255,255,255,.14);font-size:16px;font-weight:900;flex:0 0 28px}' +
+      '.estoque-action-label{display:inline-block;line-height:1.2}' +
+      '.estoque-action-green{background:linear-gradient(135deg,rgba(34,197,94,.24),rgba(22,163,74,.88));border-color:rgba(34,197,94,.45)}' +
+      '.estoque-action-danger{background:linear-gradient(135deg,rgba(249,115,22,.24),rgba(220,38,38,.88));border-color:rgba(249,115,22,.45)}' +
+      '.estoque-action-accent{background:linear-gradient(135deg,rgba(59,130,246,.24),rgba(37,99,235,.88));border-color:rgba(59,130,246,.45)}' +
+      '.estoque-action-teal{background:linear-gradient(135deg,rgba(20,184,166,.24),rgba(109,40,217,.88));border-color:rgba(45,212,191,.40)}' +
       '.pep-table-wrap{overflow:auto;max-height:min(60vh,520px);overscroll-behavior:contain}' +
       '.pcp-input{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}' +
       '.pcp-select{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}';
