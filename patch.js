@@ -3355,77 +3355,270 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
     }
 
+    function checklistState() {
+      if (!window.__checklistRecebState) {
+        window.__checklistRecebState = { q: '', fornecedor: '', nf: '', data: '', cliente: '' };
+      }
+      return window.__checklistRecebState;
+    }
+    function checklistNorm(row) {
+      var src = row || {};
+      return {
+        id: String(src.id || '').trim(),
+        data_recebimento: String(src.data_recebimento || '').trim(),
+        placa_veiculo: String(src.placa_veiculo || '').trim(),
+        nota_fiscal: String(src.nota_fiscal || '').trim(),
+        produto: String(src.produto || '').trim(),
+        fornecedor: String(src.fornecedor || '').trim(),
+        quantidade: Math.trunc(Number(src.quantidade || 0) || 0),
+        ordem_compra: String(src.ordem_compra || '').trim(),
+        data_validade: String(src.data_validade || '').trim(),
+        responsavel: String(src.responsavel || '').trim(),
+        devolucao: !!src.devolucao,
+        cliente: String(src.cliente || '').trim()
+      };
+    }
+    async function loadChecklistRecebimento(filters) {
+      var qs = new URLSearchParams();
+      var f = filters || {};
+      if (f.fornecedor) qs.set('fornecedor', String(f.fornecedor || '').trim());
+      if (f.nf) qs.set('nota_fiscal', String(f.nf || '').trim());
+      if (f.data) qs.set('data', String(f.data || '').trim());
+      if (f.cliente) qs.set('cliente', String(f.cliente || '').trim());
+      try {
+        var empId = String(window.EMP_FILTRO || '').trim();
+        if (empId) qs.set('empId', empId);
+      } catch (_) {}
+      var j = await apiJson('/api/recebimento_insumos' + (qs.toString() ? ('?' + qs.toString()) : ''));
+      var arr = Array.isArray(j) ? j : ((j && (j.data || j.rows)) || []);
+      return arr.map(checklistNorm);
+    }
+    function checklistFmtDate(v) {
+      var s = String(v || '').slice(0, 10);
+      if (!s) return '—';
+      var p = s.split('-');
+      return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : s;
+    }
+    function checklistCsv(rows) {
+      var cols = ['Data de Rec.','Placa do Veiculo','N Nota Fiscal','Produto','Fornecedor','Quantidade Recebida','Ordem de Compra','Data de Validade','Resp. pelo Recebimento','Devolucao','Cliente'];
+      var linhas = [cols.join(';')].concat((rows || []).map(function(r) {
+        return [
+          checklistFmtDate(r.data_recebimento),
+          r.placa_veiculo || '',
+          r.nota_fiscal || '',
+          r.produto || '',
+          r.fornecedor || '',
+          num(r.quantidade || 0, 0),
+          r.ordem_compra || '',
+          checklistFmtDate(r.data_validade),
+          r.responsavel || '',
+          r.devolucao ? 'Sim' : 'Nao',
+          r.cliente || ''
+        ].map(function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }).join(';');
+      }));
+      var blob = new Blob(["\uFEFF" + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'checklist-recebimento.csv';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() {
+        try { URL.revokeObjectURL(a.href); } catch (_) {}
+        try { a.remove(); } catch (_) {}
+      }, 0);
+    }
+    function openChecklistModal(item, done) {
+      var it = checklistNorm(item || {});
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.82);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px';
+      wrap.innerHTML = ''
+        + '<div style="width:min(1100px,96vw);max-height:92vh;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:18px">'
+        + '  <div class="pep-head"><div><div class="pep-title" style="font-size:22px">📋 ' + (it.id ? 'Editar Checklist' : 'Novo Checklist') + '</div><div class="pep-sub">Cadastro manual de recebimento, sem movimentar estoque automaticamente.</div></div></div>'
+        + '  <div class="pep-grid">'
+        + '    <div><div class="pep-sub">Data de Rec.</div><input class="pep-input" id="ck-data" type="date" value="' + esc(it.data_recebimento || '') + '"></div>'
+        + '    <div><div class="pep-sub">Placa do Veiculo</div><input class="pep-input" id="ck-placa" value="' + esc(it.placa_veiculo || '') + '"></div>'
+        + '    <div><div class="pep-sub">N Nota Fiscal</div><input class="pep-input" id="ck-nf" value="' + esc(it.nota_fiscal || '') + '"></div>'
+        + '    <div><div class="pep-sub">Produto</div><input class="pep-input" id="ck-produto" value="' + esc(it.produto || '') + '"></div>'
+        + '    <div><div class="pep-sub">Fornecedor</div><input class="pep-input" id="ck-fornecedor" value="' + esc(it.fornecedor || '') + '"></div>'
+        + '    <div><div class="pep-sub">Quantidade Recebida</div><input class="pep-input" id="ck-quantidade" type="number" min="0" step="1" value="' + esc(it.quantidade || '') + '"></div>'
+        + '    <div><div class="pep-sub">Ordem de Compra</div><input class="pep-input" id="ck-oc" value="' + esc(it.ordem_compra || '') + '"></div>'
+        + '    <div><div class="pep-sub">Data de Validade</div><input class="pep-input" id="ck-validade" type="date" value="' + esc(it.data_validade || '') + '"></div>'
+        + '    <div><div class="pep-sub">Resp. pelo Recebimento</div><input class="pep-input" id="ck-resp" value="' + esc(it.responsavel || '') + '"></div>'
+        + '    <div><div class="pep-sub">Cliente</div><input class="pep-input" id="ck-cliente" value="' + esc(it.cliente || '') + '"></div>'
+        + '    <div style="grid-column:1/-1"><label style="display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--s2)"><input id="ck-devolucao" type="checkbox"' + (it.devolucao ? ' checked' : '') + '><span style="font-weight:700;color:#e5e7eb">Devolucao</span></label></div>'
+        + '  </div>'
+        + '  <div class="pep-actions"><button class="pep-btn" id="ck-cancel">Cancelar</button><button class="pep-btn primary" id="ck-save">Salvar</button></div>'
+        + '</div>';
+      wrap.addEventListener('click', function(e) { if (e.target === wrap) wrap.remove(); });
+      document.body.appendChild(wrap);
+      document.getElementById('ck-cancel').onclick = function() { wrap.remove(); };
+      document.getElementById('ck-save').onclick = async function() {
+        try {
+          var payload = {
+            data_recebimento: String(document.getElementById('ck-data').value || '').trim(),
+            placa_veiculo: String(document.getElementById('ck-placa').value || '').trim(),
+            nota_fiscal: String(document.getElementById('ck-nf').value || '').trim(),
+            produto: String(document.getElementById('ck-produto').value || '').trim(),
+            fornecedor: String(document.getElementById('ck-fornecedor').value || '').trim(),
+            quantidade: Math.trunc(Number(document.getElementById('ck-quantidade').value || 0) || 0),
+            ordem_compra: String(document.getElementById('ck-oc').value || '').trim(),
+            data_validade: String(document.getElementById('ck-validade').value || '').trim(),
+            responsavel: String(document.getElementById('ck-resp').value || '').trim(),
+            devolucao: !!document.getElementById('ck-devolucao').checked,
+            cliente: String(document.getElementById('ck-cliente').value || '').trim()
+          };
+          if (!payload.data_recebimento) throw new Error('Informe a Data de Recebimento.');
+          if (payload.quantidade < 0) throw new Error('Quantidade Recebida invalida.');
+          var empId = String(window.EMP_FILTRO || '').trim();
+          if (empId) payload.emp_id = empId;
+          await apiJson(it.id ? ('/api/recebimento_insumos/' + encodeURIComponent(it.id)) : '/api/recebimento_insumos', {
+            method: it.id ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          wrap.remove();
+          if (typeof done === 'function') done();
+        } catch (e) {
+          alert(String(e && e.message || e || 'Falha ao salvar checklist'));
+        }
+      };
+    }
+    async function renderChecklistPage() {
+      ensureStyles();
+      var page = ensurePage('checklist-recebimento');
+      showOnlyPage('checklist-recebimento');
+      var st = checklistState();
+      var lista = await loadChecklistRecebimento(st);
+      var busca = String(st.q || '').trim().toLowerCase();
+      var filtrada = busca ? lista.filter(function(r) {
+        var txt = [r.placa_veiculo, r.nota_fiscal, r.produto, r.fornecedor, r.cliente, r.responsavel].join(' ').toLowerCase();
+        return txt.indexOf(busca) >= 0;
+      }) : lista;
+      page.innerHTML = ''
+        + '<div class="pep-wrap">'
+        + '  <div class="pep-head"><div><div class="pep-title">📋 Checklist de Recebimento</div><div class="pep-sub">Registro manual do recebimento com os campos finais definidos para o estoque.</div></div><button class="pep-btn primary" id="ck-novo">Novo Checklist</button></div>'
+        + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
+        + '    <input class="pep-input" id="ck-busca" placeholder="Buscar por produto, fornecedor, NF, cliente ou responsavel..." value="' + esc(st.q || '') + '" style="min-width:260px;flex:1">'
+        + '    <input class="pep-input" id="ck-fil-forn" placeholder="Fornecedor" value="' + esc(st.fornecedor || '') + '" style="max-width:220px">'
+        + '    <input class="pep-input" id="ck-fil-nf" placeholder="NF" value="' + esc(st.nf || '') + '" style="max-width:160px">'
+        + '    <input class="pep-input" id="ck-fil-data" type="date" value="' + esc(st.data || '') + '" style="max-width:180px">'
+        + '    <input class="pep-input" id="ck-fil-cliente" placeholder="Cliente" value="' + esc(st.cliente || '') + '" style="max-width:220px">'
+        + '    <button class="pep-btn" id="ck-aplicar">Filtrar</button>'
+        + '    <button class="pep-btn" id="ck-exportar">Exportar Excel</button>'
+        + '  </div></div>'
+        + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Data de Rec.</th><th>Placa do Veiculo</th><th>N Nota Fiscal</th><th>Produto</th><th>Fornecedor</th><th>Quantidade Recebida</th><th>Ordem de Compra</th><th>Data de Validade</th><th>Resp. pelo Recebimento</th><th>Devolucao</th><th>Cliente</th><th>Acoes</th></tr></thead><tbody>'
+        + (filtrada.length ? filtrada.map(function(r) {
+          return '<tr data-cid="' + esc(r.id || '') + '"><td>' + esc(checklistFmtDate(r.data_recebimento)) + '</td><td>' + esc(r.placa_veiculo || '—') + '</td><td>' + esc(r.nota_fiscal || '—') + '</td><td>' + esc(r.produto || '—') + '</td><td>' + esc(r.fornecedor || '—') + '</td><td style="text-align:right">' + num(r.quantidade || 0, 0) + '</td><td>' + esc(r.ordem_compra || '—') + '</td><td>' + esc(checklistFmtDate(r.data_validade)) + '</td><td>' + esc(r.responsavel || '—') + '</td><td>' + esc(r.devolucao ? 'Sim' : 'Nao') + '</td><td>' + esc(r.cliente || '—') + '</td><td><button class="pep-btn" data-ck-edit="' + esc(r.id || '') + '">Editar</button> <button class="pep-btn danger" data-ck-del="' + esc(r.id || '') + '">Excluir</button></td></tr>';
+        }).join('') : '<tr><td colspan="12" style="text-align:center;color:#94a3b8">Nenhum checklist encontrado.</td></tr>')
+        + '  </tbody></table></div></div>'
+        + '</div>';
+      document.getElementById('ck-novo').onclick = function() { openChecklistModal(null, renderChecklistPage); };
+      document.getElementById('ck-exportar').onclick = function() { checklistCsv(filtrada); };
+      document.getElementById('ck-aplicar').onclick = function() {
+        st.q = String((document.getElementById('ck-busca') || {}).value || '').trim();
+        st.fornecedor = String((document.getElementById('ck-fil-forn') || {}).value || '').trim();
+        st.nf = String((document.getElementById('ck-fil-nf') || {}).value || '').trim();
+        st.data = String((document.getElementById('ck-fil-data') || {}).value || '').trim();
+        st.cliente = String((document.getElementById('ck-fil-cliente') || {}).value || '').trim();
+        renderChecklistPage();
+      };
+      Array.prototype.slice.call(page.querySelectorAll('[data-ck-edit]')).forEach(function(btn) {
+        btn.onclick = function() {
+          var id = String(btn.getAttribute('data-ck-edit') || '');
+          var item = (lista || []).find(function(r) { return String(r && r.id || '') === id; }) || null;
+          openChecklistModal(item, renderChecklistPage);
+        };
+      });
+      Array.prototype.slice.call(page.querySelectorAll('[data-ck-del]')).forEach(function(btn) {
+        btn.onclick = async function() {
+          var id = String(btn.getAttribute('data-ck-del') || '');
+          if (!id || !confirm('Excluir este checklist?')) return;
+          try {
+            await apiJson('/api/recebimento_insumos/' + encodeURIComponent(id), { method: 'DELETE' });
+            renderChecklistPage();
+          } catch (e) {
+            alert(String(e && e.message || e || 'Falha ao excluir checklist'));
+          }
+        };
+      });
+    }
+
     function currentMesAno() {
-      var d = new Date();
-      return { mes: d.getMonth() + 1, ano: d.getFullYear(), gramatura_id: '' };
+      return { periodo: 'mes' };
     }
     function tonesState() {
       if (!window.__tonesState) window.__tonesState = currentMesAno();
       return window.__tonesState;
+    }
+    function toneDateRange(periodo) {
+      var now = new Date();
+      var ini = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      var fim = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      if (periodo === 'semana') {
+        var day = ini.getDay();
+        var diff = day === 0 ? 6 : (day - 1);
+        ini.setDate(ini.getDate() - diff);
+      } else if (periodo === 'mes') {
+        ini = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else if (periodo === 'ano') {
+        ini = new Date(now.getFullYear(), 0, 1);
+      }
+      fim.setHours(23, 59, 59, 999);
+      return { ini: ini, fim: fim };
+    }
+    function toneInPeriodo(dataTxt, periodo) {
+      var s = String(dataTxt || '');
+      var d = s ? new Date(s) : null;
+      if (!d || !Number.isFinite(d.getTime())) return false;
+      var r = toneDateRange(periodo);
+      return d >= r.ini && d <= r.fim;
     }
     async function renderToneladasPage() {
       ensureStyles();
       var page = ensurePage('toneladas-vendidas');
       showOnlyPage('toneladas-vendidas');
       var st = tonesState();
-      var grams = await loadGramaturas();
-      var j = await apiJson('/api/analises/toneladas?mes=' + encodeURIComponent(st.mes) + '&ano=' + encodeURIComponent(st.ano)).catch(function() { return null; });
-      var resumo = (j && j.resumo) || {};
-      var det = Array.isArray(j && j.detalhamento) ? j.detalhamento : [];
-      var totalOfs = det.length;
-      var gramSel = (grams || []).find(function(g) { return String(g && g.id || '') === String(st.gramatura_id || ''); }) || null;
-      var gramG = gramSel ? (Number(gramSel.gramatura || 0) || 0) : 0;
-      var tonTotal = gramG > 0
-        ? det.reduce(function(s, r) { return s + (((Number(r && r.m2_total || 0) || 0) * gramG) / 1000000); }, 0)
-        : 0;
-      var cardsTon = gramG > 0
-        ? ('<div class="pep-card"><div class="pep-card-label">Toneladas Produzidas</div><div class="pep-card-val">' + num(tonTotal || 0, 3) + '</div><div class="pep-card-sub">' + esc(String(gramG).replace('.', ',') + ' g/m²') + '</div></div>')
-        : '';
-      var totalM2 = Number(resumo.total_m2 || 0) || 0;
-      var receitaTotal = Number(resumo.receita_total || 0) || 0;
-      var custoMedio = Number(resumo.custo_medio_m2 || 0) || 0;
-      var totalizador = 'Total: ' + totalOfs + ' OFs · ' + num(totalM2 || 0, 3) + ' m² · ' + money(receitaTotal || 0);
+      var j = await apiJson('/api/analises/toneladas-vendidas').catch(function() { return null; });
+      var det = Array.isArray(j && (j.rows || j.detalhamento)) ? (j.rows || j.detalhamento) : [];
+      var totals = {
+        hoje: det.filter(function(r) { return toneInPeriodo(r.data_conclusao, 'hoje'); }).reduce(function(s, r) { return s + (Number(r.toneladas || 0) || 0); }, 0),
+        semana: det.filter(function(r) { return toneInPeriodo(r.data_conclusao, 'semana'); }).reduce(function(s, r) { return s + (Number(r.toneladas || 0) || 0); }, 0),
+        mes: det.filter(function(r) { return toneInPeriodo(r.data_conclusao, 'mes'); }).reduce(function(s, r) { return s + (Number(r.toneladas || 0) || 0); }, 0),
+        ano: det.filter(function(r) { return toneInPeriodo(r.data_conclusao, 'ano'); }).reduce(function(s, r) { return s + (Number(r.toneladas || 0) || 0); }, 0)
+      };
+      var detPeriodo = det.filter(function(r) { return toneInPeriodo(r.data_conclusao, st.periodo || 'mes'); });
       page.innerHTML = ''
         + '<div class="pep-wrap">'
         + '  <div class="pep-head">'
-        + '    <div><div class="pep-title">⚖️ Toneladas Vendidas</div><div class="pep-sub">M² produzidos e estimativa de toneladas por gramatura</div></div>'
+        + '    <div><div class="pep-title">⚖️ Toneladas Vendidas</div><div class="pep-sub">Toneladas calculadas a partir das OFs concluídas com gramatura registrada.</div></div>'
         + '    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-        + '      <select class="pep-select" id="tones-mes">' + Array.from({ length: 12 }).map(function(_, i) { var m = i + 1; return '<option value="' + m + '"' + (Number(st.mes) === m ? ' selected' : '') + '>' + String(m).padStart(2, '0') + '</option>'; }).join('') + '</select>'
-        + '      <select class="pep-select" id="tones-ano">' + Array.from({ length: 5 }).map(function(_, i) { var a = new Date().getFullYear() - 2 + i; return '<option value="' + a + '"' + (Number(st.ano) === a ? ' selected' : '') + '>' + a + '</option>'; }).join('') + '</select>'
-        + '      <select class="pep-select" id="tones-gram"><option value="">Gramatura padrão (g/m²)</option>' + (grams || []).map(function(g) { var id = String(g && g.id || ''); var label = gramaturaLabel(g, false); return '<option value="' + esc(id) + '"' + (String(st.gramatura_id || '') === id ? ' selected' : '') + '>' + esc(label) + '</option>'; }).join('') + '</select>'
-        + '      <button class="pep-btn primary" id="tones-refresh">Calcular</button>'
+        + '      <select class="pep-select" id="tones-periodo"><option value="hoje"' + (st.periodo === 'hoje' ? ' selected' : '') + '>Hoje</option><option value="semana"' + (st.periodo === 'semana' ? ' selected' : '') + '>Esta Semana</option><option value="mes"' + (st.periodo === 'mes' ? ' selected' : '') + '>Este Mês</option><option value="ano"' + (st.periodo === 'ano' ? ' selected' : '') + '>Este Ano</option></select>'
+        + '      <button class="pep-btn primary" id="tones-refresh">Atualizar</button>'
         + '    </div>'
         + '  </div>'
         + '  <div class="pep-cards">'
-        + '    <div class="pep-card"><div class="pep-card-label">M² Produzidos</div><div class="pep-card-val">' + num(totalM2 || 0, 2) + '</div><div class="pep-card-sub">Área total do período</div></div>'
-        + '    <div class="pep-card"><div class="pep-card-label">OFs Concluídas</div><div class="pep-card-val">' + num(totalOfs || 0, 0) + '</div><div class="pep-card-sub">Quantidade de OFs</div></div>'
-        + '    <div class="pep-card"><div class="pep-card-label">Receita Total</div><div class="pep-card-val">' + money(receitaTotal || 0) + '</div><div class="pep-card-sub">Somatório do período</div></div>'
-        + '    <div class="pep-card"><div class="pep-card-label">Custo Médio/m²</div><div class="pep-card-val">' + money(custoMedio || 0) + '</div><div class="pep-card-sub">Receita ÷ m²</div></div>'
-        + cardsTon
+        + '    <div class="pep-card"><div class="pep-card-label">Hoje</div><div class="pep-card-val">' + num(totals.hoje || 0, 3) + '</div><div class="pep-card-sub">toneladas</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Esta Semana</div><div class="pep-card-val">' + num(totals.semana || 0, 3) + '</div><div class="pep-card-sub">toneladas</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Este Mês</div><div class="pep-card-val">' + num(totals.mes || 0, 3) + '</div><div class="pep-card-sub">toneladas</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Este Ano</div><div class="pep-card-val">' + num(totals.ano || 0, 3) + '</div><div class="pep-card-sub">toneladas</div></div>'
         + '  </div>'
         + '  <div class="pep-panel">'
-        + '    <div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Detalhamento</div><div class="pep-sub">' + esc(totalizador) + '</div></div>'
-        + '    <div style="overflow:auto"><table class="pep-table"><thead><tr><th>Nº OF</th><th>Cliente</th><th>Produto</th><th>Comp×Larg (cm)</th><th>Área/Cx (m²)</th><th>Qtd</th><th>Total m²</th><th>Vl Unit</th><th>Custo/m²</th><th>Receita</th></tr></thead><tbody>'
-        + (det.length ? det.map(function(r) {
-          var compCm = Number(r && r.comp_cm || 0) || 0;
-          var largCm = Number(r && r.larg_cm || 0) || 0;
-          var semDim = !(compCm > 0 && largCm > 0);
-          var dim = semDim ? 'sem dimensão' : (num(compCm, 0) + '×' + num(largCm, 0));
-          var trStyle = semDim ? ' style="opacity:0.7;color:#94a3b8"' : '';
-          return '<tr' + trStyle + '><td>#' + esc(r && r.of_numero || '—') + '</td><td>' + esc(r && (r.cliente_nome || r.cliente) || '—') + '</td><td>' + esc(r && r.produto || '—') + '</td><td>' + esc(dim) + '</td><td>' + (Number(r && r.area_m2 || 0) > 0 ? num(r.area_m2 || 0, 4) : '—') + '</td><td>' + num(r && r.quantidade || 0, 0) + '</td><td>' + num(r && r.m2_total || 0, 2) + '</td><td>' + money(r && r.valor_unitario || 0) + '</td><td>' + money(r && r.custo_m2 || 0) + '</td><td>' + money(r && r.receita || 0) + '</td></tr>';
-        }).join('') : '<tr><td colspan="10" style="text-align:center;color:#94a3b8">Nenhuma OF concluída no período.</td></tr>')
-        + '    </tbody><tfoot><tr><td colspan="10" style="font-weight:800;color:#e5e7eb">' + esc(totalizador) + '</td></tr></tfoot></table></div>'
+        + '    <div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Detalhamento</div><div class="pep-sub">Período atual: ' + esc(String(st.periodo || 'mes').replace('semana', 'esta semana').replace('mes', 'este mês').replace('ano', 'este ano')) + '</div></div>'
+        + '    <div style="overflow:auto"><table class="pep-table"><thead><tr><th>Data</th><th>OF</th><th>Cliente</th><th>Gramatura</th><th>Qtd produzida</th><th>Toneladas calculadas</th></tr></thead><tbody>'
+        + (detPeriodo.length ? detPeriodo.map(function(r) {
+          return '<tr><td>' + esc(checklistFmtDate(r && r.data_conclusao || '')) + '</td><td>#' + esc(r && r.of_numero || '—') + '</td><td>' + esc(r && (r.cliente_nome || r.cliente) || '—') + '</td><td>' + num(r && r.gramatura || 0, 0) + ' g/m²</td><td>' + num(r && r.quantidade || 0, 0) + '</td><td>' + num(r && r.toneladas || 0, 3) + '</td></tr>';
+        }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8">Nenhuma OF concluída com gramatura registrada neste período.</td></tr>')
+        + '    </tbody></table></div>'
         + '  </div>'
         + '</div>';
       document.getElementById('tones-refresh').onclick = function() {
-        st.mes = Number(document.getElementById('tones-mes').value || 1);
-        st.ano = Number(document.getElementById('tones-ano').value || new Date().getFullYear());
-        st.gramatura_id = String((document.getElementById('tones-gram') || {}).value || '').trim();
+        st.periodo = String((document.getElementById('tones-periodo') || {}).value || 'mes').trim() || 'mes';
         renderToneladasPage();
       };
     }
 
     function openCustomPage(pageId) {
+      if (pageId === 'checklist-recebimento') { renderChecklistPage(); return true; }
       if (pageId === 'gramaturas') { renderGramaturasPage(); return true; }
       if (pageId === 'toneladas-vendidas') { renderToneladasPage(); return true; }
       return false;
@@ -3441,6 +3634,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         window.go._patchExtrasCustom = true;
       }
     } catch (_) {}
+    try { window.renderChecklistRecebimento = renderChecklistPage; } catch (_) {}
     try { window.renderGramaturas = renderGramaturasPage; } catch (_) {}
     try { window.carregarGramaturas = renderGramaturasPage; } catch (_) {}
     try { window.renderToneladasVendidas = renderToneladasPage; } catch (_) {}
@@ -10658,6 +10852,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     });
   }
 
+  function _mesAtualRefEstoque() {
+    try { return new Date().toISOString().slice(0, 7); } catch (_) { return ''; }
+  }
+
+  function _cardBreakdownEstoque(label, itens, formatter) {
+    var linhas = (Array.isArray(itens) ? itens : []).slice(0, 4).map(function(item) {
+      return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#cbd5e1"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _escapeHtmlLite(item.nome || '—') + '</span><span style="font-family:var(--mono);font-weight:800;color:#e2e8f0">' + _escapeHtmlLite(formatter(item.valor || 0)) + '</span></div>';
+    }).join('') || '<div style="font-size:12px;color:#94a3b8">Sem dados no período.</div>';
+    return ''
+      + '<div style="background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:14px;padding:14px 16px">'
+      + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">' + _escapeHtmlLite(label) + '</div>'
+      + '  <div style="margin-top:10px;display:grid;gap:8px">' + linhas + '</div>'
+      + '</div>';
+  }
+
   function _entradaEstoqueHojeIso() {
     try { return new Date().toISOString().slice(0, 10); } catch (_) { return ''; }
   }
@@ -10990,17 +11199,27 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       };
       var raw = await _carregarDadosMovimentacaoEstoque('entrada');
       var base = _agruparHistoricoOperacoesEstoque((raw || []).filter(_historicoEntradaEhRecebimento), 'entrada');
-      var state = { q: '', de: '', ate: '' };
+      var mesAtual = _mesAtualRefEstoque();
+      var state = { q: '' };
       var render = function() {
         var q = String(state.q || '').trim().toLowerCase();
         var filtrada = base.filter(function(row) {
-          var dataIso = String(row.data || '').slice(0, 10);
-          if (state.de && dataIso && dataIso < state.de) return false;
-          if (state.ate && dataIso && dataIso > state.ate) return false;
           if (!q) return true;
           var txt = [row.fornecedor, row.nf, row.empresa, row.responsavel, row.observacoes].join(' ').toLowerCase();
           return txt.indexOf(q) >= 0;
         });
+        var mesRows = base.filter(function(row) { return String(row.data || '').slice(0, 7) === mesAtual; });
+        var entradasMes = mesRows.length;
+        var qtdMes = mesRows.reduce(function(s, r) { return s + (Number(r.quantidade_total || 0) || 0); }, 0);
+        var mapaFornecedores = {};
+        mesRows.forEach(function(row) {
+          var nome = String(row.fornecedor || 'Sem fornecedor').trim() || 'Sem fornecedor';
+          if (!mapaFornecedores[nome]) mapaFornecedores[nome] = 0;
+          mapaFornecedores[nome] += Number(row.quantidade_total || 0) || 0;
+        });
+        var breakdown = Object.keys(mapaFornecedores).map(function(nome) {
+          return { nome: nome, valor: mapaFornecedores[nome] };
+        }).sort(function(a, b) { return b.valor - a.valor; });
         var totalQtd = filtrada.reduce(function(s, r) { return s + (Number(r.quantidade_total || 0) || 0); }, 0);
         var totalValor = filtrada.reduce(function(s, r) { return s + (Number(r.valor_total || 0) || 0); }, 0);
         host.innerHTML = ''
@@ -11009,16 +11228,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + '    <div><div style="font-size:26px;font-weight:900;color:var(--text)">📥 Entradas</div><div style="margin-top:6px;color:var(--text2);font-size:13px">Recebimentos de chapas no estoque, agrupados por lançamento de entrada e sem misturar baixas automáticas de OF.</div></div>'
           + '    <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="estoque-entrada-lote-btn" class="pcp-btn">+ Nova Entrada</button></div>'
           + '  </div>'
-          + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">' 
-          +      [_makeCardEstoque({ label: 'Lançamentos', value: _fmtNumEstoque(filtrada.length), sub: 'Entradas filtradas' }),
-                  _makeCardEstoque({ label: 'Quantidade', value: _fmtNumEstoque(totalQtd), sub: 'Unidades recebidas' }),
-                  _makeCardEstoque({ label: 'Fornecedor', value: filtrada.length === 1 ? (filtrada[0].fornecedor || '—') : '—', sub: 'Visão rápida do filtro' }),
-                  _makeCardEstoque({ label: 'Valor', value: _fmtRsEstoque(totalValor), sub: 'Valor total das entradas' })].join('')
+          + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' 
+          +      [_makeCardEstoque({ label: 'Entradas no Mês', value: _fmtNumEstoque(entradasMes), sub: 'Lançamentos manuais em ' + mesAtual }),
+                  _makeCardEstoque({ label: 'Quantidade no Mês', value: _fmtNumEstoque(qtdMes), sub: 'Unidades recebidas no período' }),
+                  _cardBreakdownEstoque('Por Fornecedor', breakdown, _fmtNumEstoque)].join('')
           + '  </div>'
           + '  <div style="display:flex;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px">'
-          + '    <input id="estoque-ent-q" type="text" value="' + _escapeHtmlLite(state.q) + '" placeholder="Buscar por fornecedor, NF, responsável ou observações..." style="flex:1;min-width:260px;padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
-          + '    <input id="estoque-ent-de" type="date" value="' + _escapeHtmlLite(state.de) + '" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
-          + '    <input id="estoque-ent-ate" type="date" value="' + _escapeHtmlLite(state.ate) + '" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
+          + '    <input id="estoque-ent-q" type="text" value="' + _escapeHtmlLite(state.q) + '" placeholder="Buscar por fornecedor, NF, responsável, empresa ou observações..." style="flex:1;min-width:260px;padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
           + '  </div>'
           +    _renderTabelaMovEstoque(filtrada, [
                  { label: 'Data', key: 'data', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(_fmtDateEstoque(r.data)) + '</span>'; } },
@@ -11034,11 +11250,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var btnEntrada = document.getElementById('estoque-entrada-lote-btn');
         if (btnEntrada) btnEntrada.onclick = function() { _abrirModalEntradaEstoqueReal(); };
         var qEl = document.getElementById('estoque-ent-q');
-        var deEl = document.getElementById('estoque-ent-de');
-        var ateEl = document.getElementById('estoque-ent-ate');
         if (qEl) qEl.oninput = function() { state.q = String(qEl.value || ''); render(); };
-        if (deEl) deEl.onchange = function() { state.de = String(deEl.value || ''); render(); };
-        if (ateEl) ateEl.onchange = function() { state.ate = String(ateEl.value || ''); render(); };
       };
       render();
     } catch (e) {
@@ -11331,17 +11543,27 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       };
       var raw = await _carregarDadosMovimentacaoEstoque('saida');
       var base = _agruparHistoricoOperacoesEstoque((raw || []).filter(_historicoSaidaEhManual), 'saida');
-      var state = { q: '', de: '', ate: '' };
+      var mesAtual = _mesAtualRefEstoque();
+      var state = { q: '' };
       var render = function() {
         var q = String(state.q || '').trim().toLowerCase();
         var filtrada = base.filter(function(row) {
-          var dataIso = String(row.data || '').slice(0, 10);
-          if (state.de && dataIso && dataIso < state.de) return false;
-          if (state.ate && dataIso && dataIso > state.ate) return false;
           if (!q) return true;
           var txt = [row.motivo, row.responsavel, row.of_numero, row.observacoes].join(' ').toLowerCase();
           return txt.indexOf(q) >= 0;
         });
+        var mesRows = base.filter(function(row) { return String(row.data || '').slice(0, 7) === mesAtual; });
+        var saidasMes = mesRows.length;
+        var qtdMes = mesRows.reduce(function(s, r) { return s + (Number(r.quantidade_total || 0) || 0); }, 0);
+        var mapaMotivos = {};
+        mesRows.forEach(function(row) {
+          var nome = String(row.motivo || 'Sem motivo').trim() || 'Sem motivo';
+          if (!mapaMotivos[nome]) mapaMotivos[nome] = 0;
+          mapaMotivos[nome] += Number(row.quantidade_total || 0) || 0;
+        });
+        var breakdown = Object.keys(mapaMotivos).map(function(nome) {
+          return { nome: nome, valor: mapaMotivos[nome] };
+        }).sort(function(a, b) { return b.valor - a.valor; });
         var totalQtd = filtrada.reduce(function(s, r) { return s + (Number(r.quantidade_total || 0) || 0); }, 0);
         var totalValor = filtrada.reduce(function(s, r) { return s + (Number(r.valor_total || 0) || 0); }, 0);
         host.innerHTML = ''
@@ -11350,22 +11572,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + '    <div><div style="font-size:26px;font-weight:900;color:var(--text)">📤 Saídas</div><div style="margin-top:6px;color:var(--text2);font-size:13px">Histórico das saídas lançadas manualmente no estoque, agrupado por operação e com motivo obrigatório.</div></div>'
           + '    <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="estoque-saida-lote-btn" class="pcp-btn" style="background:#7f1d1d">+ Nova Saída</button></div>'
           + '  </div>'
-          + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">' 
-          +      [_makeCardEstoque({ label: 'Lançamentos', value: _fmtNumEstoque(filtrada.length), sub: 'Saídas filtradas' }),
-                  _makeCardEstoque({ label: 'Quantidade', value: _fmtNumEstoque(totalQtd), sub: 'Unidades retiradas' }),
-                  _makeCardEstoque({ label: 'Motivo', value: filtrada.length === 1 ? (filtrada[0].motivo || '—') : '—', sub: 'Visão rápida do filtro' }),
-                  _makeCardEstoque({ label: 'Valor', value: _fmtRsEstoque(totalValor), sub: 'Valor total das saídas' })].join('')
+          + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' 
+          +      [_makeCardEstoque({ label: 'Saídas no Mês', value: _fmtNumEstoque(saidasMes), sub: 'Lançamentos manuais em ' + mesAtual }),
+                  _makeCardEstoque({ label: 'Quantidade no Mês', value: _fmtNumEstoque(qtdMes), sub: 'Unidades retiradas no período' }),
+                  _cardBreakdownEstoque('Por Motivo', breakdown, _fmtNumEstoque)].join('')
           + '  </div>'
           + '  <div style="display:flex;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px">'
-          + '    <input id="estoque-sai-q" type="text" value="' + _escapeHtmlLite(state.q) + '" placeholder="Buscar por motivo, responsável, OF ou observações..." style="flex:1;min-width:260px;padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
-          + '    <input id="estoque-sai-de" type="date" value="' + _escapeHtmlLite(state.de) + '" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
-          + '    <input id="estoque-sai-ate" type="date" value="' + _escapeHtmlLite(state.ate) + '" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
+          + '    <input id="estoque-sai-q" type="text" value="' + _escapeHtmlLite(state.q) + '" placeholder="Buscar por motivo, responsável ou observações..." style="flex:1;min-width:260px;padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
           + '  </div>'
           +    _renderTabelaMovEstoque(filtrada, [
                  { label: 'Data', key: 'data', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(_fmtDateEstoque(r.data)) + '</span>'; } },
                  { label: 'Motivo', key: 'motivo' },
                  { label: 'Responsável', key: 'responsavel' },
-                 { label: 'OF', key: 'of_numero', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900;color:var(--accent)">' + _escapeHtmlLite(r.of_numero || '—') + '</span>'; } },
                  { label: 'Quantidade Total', key: 'quantidade_total', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900;color:#fca5a5">' + _escapeHtmlLite(_fmtNumEstoque(r.quantidade_total)) + '</span>'; } },
                  { label: 'Valor Total', key: 'valor_total', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900">' + _escapeHtmlLite(_fmtRsEstoque(r.valor_total)) + '</span>'; } },
                  { label: 'Observações', key: 'observacoes', render: function(r) { return _escapeHtmlLite(r.observacoes || '—'); } }
@@ -11374,11 +11592,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var btnSaida = document.getElementById('estoque-saida-lote-btn');
         if (btnSaida) btnSaida.onclick = function() { _abrirModalSaidaEstoqueReal(); };
         var qEl = document.getElementById('estoque-sai-q');
-        var deEl = document.getElementById('estoque-sai-de');
-        var ateEl = document.getElementById('estoque-sai-ate');
         if (qEl) qEl.oninput = function() { state.q = String(qEl.value || ''); render(); };
-        if (deEl) deEl.onchange = function() { state.de = String(deEl.value || ''); render(); };
-        if (ateEl) ateEl.onchange = function() { state.ate = String(ateEl.value || ''); render(); };
       };
       render();
     } catch (e) {
@@ -12440,17 +12654,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var wrapped = async function(tela) {
       var page = String(tela || '');
       if (page === 'checklist-recebimento') {
-        hidePatchHost();
-        try { window.__estoqueTelaSimplificada = 'checklist'; } catch (_) {}
-        var rr = orig.call(this, 'estoque');
-        setTimeout(function() {
-          try { if (typeof chpSetTab === 'function') chpSetTab('receb'); } catch (_) {}
-        }, 60);
-        setTimeout(function() {
-          try { if (typeof buscarRecebimentosInsumos === 'function') buscarRecebimentosInsumos(); } catch (_) {}
-        }, 220);
-        runAfterGoEffects('estoque');
-        return rr;
+          if (typeof window.renderChecklistRecebimento === 'function') {
+            window.renderChecklistRecebimento();
+            return;
+          }
+          hidePatchHost();
+          try { window.__estoqueTelaSimplificada = 'checklist'; } catch (_) {}
+          var rr = orig.call(this, 'estoque');
+          setTimeout(function() {
+            try { if (typeof chpSetTab === 'function') chpSetTab('receb'); } catch (_) {}
+          }, 60);
+          setTimeout(function() {
+            try { if (typeof buscarRecebimentosInsumos === 'function') buscarRecebimentosInsumos(); } catch (_) {}
+          }, 220);
+          runAfterGoEffects('estoque');
+          return rr;
       }
       if (page === 'estoque-tintas') {
         var hostTintas = getMainPatchHost('estoque-tintas', '🎨 Estoque de Tintas');

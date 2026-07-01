@@ -15254,6 +15254,68 @@ app.get('/api/analises/toneladas', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    let ofs = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabase.from('ofs')
+        .select('id,numero,of,status,data_conclusao,gramatura,gramatura_nome,qtd_produzida,quantidade,qtd,cliNome,cliente_nome,cliente,descricao,produto,prodDesc,tamanho_m2,comprimento_mm,largura_mm,deleted_at')
+        .is('deleted_at', null)
+        .not('data_conclusao', 'is', null)
+        .range(from, from + 999);
+      if (error) throw error;
+      if (!data || !data.length) break;
+      ofs = ofs.concat(data);
+      if (data.length < 1000) break;
+      from += 1000;
+    }
+
+    const rows = (Array.isArray(ofs) ? ofs : []).filter((of) => {
+      const status = String(of?.status || '').toLowerCase();
+      const gramatura = Number(of?.gramatura || 0) || 0;
+      return status.includes('conclu') && gramatura > 0;
+    }).map((of) => {
+      const qtd = Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.quantidade ?? of?.qtd ?? 0) || 0));
+      const gramatura = Number(of?.gramatura || 0) || 0;
+      let areaUnitM2 = Number(of?.tamanho_m2 || 0) || 0;
+      if (!(areaUnitM2 > 0)) {
+        const compMm = Number(of?.comprimento_mm || 0) || 0;
+        const largMm = Number(of?.largura_mm || 0) || 0;
+        if (compMm > 0 && largMm > 0) areaUnitM2 = (compMm / 1000) * (largMm / 1000);
+      }
+      if (!(areaUnitM2 > 0)) {
+        const desc = String(of?.descricao || of?.produto || of?.prodDesc || '').trim();
+        const match = desc.match(/(\d+(?:[.,]\d+)?)\s*[×xX]\s*(\d+(?:[.,]\d+)?)/);
+        const compCm = match ? parseFloat(String(match[1] || '').replace(',', '.')) : 0;
+        const largCm = match ? parseFloat(String(match[2] || '').replace(',', '.')) : 0;
+        if (compCm > 0 && largCm > 0) areaUnitM2 = (compCm / 100) * (largCm / 100);
+      }
+      const areaTotalM2 = areaUnitM2 > 0 ? (areaUnitM2 * qtd) : 0;
+      const toneladas = areaTotalM2 > 0 ? ((areaTotalM2 * gramatura) / 1000000) : 0;
+      return {
+        id: of?.id || null,
+        of_numero: of?.numero || of?.of || null,
+        cliente_nome: String(of?.cliNome || of?.cliente_nome || of?.cliente || '').trim() || '—',
+        produto: String(of?.descricao || of?.produto || of?.prodDesc || '').trim() || '—',
+        data_conclusao: of?.data_conclusao || null,
+        gramatura,
+        gramatura_nome: String(of?.gramatura_nome || '').trim() || null,
+        quantidade: qtd,
+        area_unit_m2: Number(areaUnitM2.toFixed(4)),
+        area_total_m2: Number(areaTotalM2.toFixed(4)),
+        toneladas: Number(toneladas.toFixed(6)),
+      };
+    }).sort((a, b) => String(b?.data_conclusao || '').localeCompare(String(a?.data_conclusao || '')));
+
+    return res.json({ ok: true, rows });
+  } catch (e) {
+    try { console.error('[TONELADAS_VENDIDAS]', e.message); } catch (_) {}
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/chapas/historico/:id', authMiddleware, async (req, res) => {
   try {
     const chapaId = String(req.params.id || '').trim();
@@ -16784,6 +16846,12 @@ app.post('/api/log', async (req, res) => {
 app.get('/api/recebimento_insumos', authMiddleware, async (req, res) => {
   try {
     let q = supabase.from('recebimento_insumos').select('*').order('data_recebimento', { ascending: false });
+    if (req.query.data) {
+      const dataRef = String(req.query.data || '').slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dataRef)) {
+        q = q.eq('data_recebimento', dataRef);
+      }
+    }
     if (req.query.mes) {
       const m = String(req.query.mes || '').slice(0, 7);
       const [yy, mm] = m.split('-').map((x) => Number(x));
