@@ -87,9 +87,8 @@ if (typeof window._fmtRs === 'undefined') {
     [60, 240, 700, 1400].forEach(function(t) {
       setTimeout(function() {
         try {
-          if (typeof window.__forcarWireframeEstoque === 'function') {
-            window.__forcarWireframeEstoque();
-          }
+          if (typeof window.renderEstoqueWireframePage === 'function') window.renderEstoqueWireframePage();
+          else if (typeof window.__forcarWireframeEstoque === 'function') window.__forcarWireframeEstoque();
         } catch (_) {}
       }, t);
     });
@@ -3695,6 +3694,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     async function renderEstoqueWireframePage() {
       ensureStyles();
+      _ensureEstoqueStyle();
       var page = ensurePage('estoque');
       showOnlyPage('estoque');
       var lista = await _estoqueFetchChapasList(10000).catch(function() { return []; });
@@ -11246,6 +11246,41 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   try { window.__estoqueFetchChapasList = _estoqueFetchChapasList; } catch (_) {}
   try { window.__estoqueMesAtualRef = _mesAtualRefEstoque; } catch (_) {}
 
+  function _normTxtEstoqueSelector(v) {
+    return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  }
+
+  function _valorLinhaChapaEstoque(chapa) {
+    var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
+    var vunit = Number(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0) || 0;
+    var total = Number(chapa && (chapa.valor_total != null ? chapa.valor_total : 0) || 0) || 0;
+    return total > 0 ? total : (qtd * vunit);
+  }
+
+  function _getListaChapasEstoqueCache() {
+    var candidatos = [
+      window.__estoqueChapasCacheGlobal,
+      window.__estoqueWireChapasCache,
+      window.__entradaEstoqueChapasCache,
+      window.__saidaEstoqueChapasCache,
+      window._estoqueBase,
+      window.ESTOQUE
+    ];
+    for (var i = 0; i < candidatos.length; i += 1) {
+      if (Array.isArray(candidatos[i]) && candidatos[i].length) return candidatos[i];
+    }
+    return [];
+  }
+
+  async function _carregarListaSeletorChapas() {
+    var lista = _getListaChapasEstoqueCache();
+    if (lista.length) return lista;
+    lista = await _estoqueFetchChapasList(10000).catch(function() { return []; });
+    lista = Array.isArray(lista) ? lista : [];
+    if (lista.length) window.__estoqueChapasCacheGlobal = lista.slice();
+    return lista;
+  }
+
   function _abrirSeletorChapaEstoque(opts) {
     opts = opts || {};
     var onSelect = typeof opts.onSelect === 'function' ? opts.onSelect : function() {};
@@ -11270,8 +11305,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var render = function(q) {
       var host = document.getElementById('est-sel-lista');
       if (!host) return;
-      var lista = _getListaEstoqueSimple();
-      var filtro = _normTxtEstoqueSimple(q || '');
+      var lista = _getListaChapasEstoqueCache();
+      var filtro = _normTxtEstoqueSelector(q || '');
       var filtrada = (lista || []).filter(function(chapa) {
         if (!filtro) return true;
         var txt = [
@@ -11280,7 +11315,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           chapa && (chapa.tamanho || chapa.tam || ''),
           chapa && (chapa.nome_uso || chapa.nome || ''),
           chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || '')
-        ].map(_normTxtEstoqueSimple).join(' ');
+        ].map(_normTxtEstoqueSelector).join(' ');
         return txt.indexOf(filtro) >= 0;
       }).slice(0, 120);
       if (!filtrada.length) {
@@ -11293,7 +11328,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var meta = [
           _empresaNomeEstoque(chapa),
           'Qtd ' + _fmtNumEstoque(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : chapa.quantidade)),
-          _fmtRsEstoque(chapa && (chapa.valor_total != null ? chapa.valor_total : _valorLinhaEstoqueSimple(chapa)))
+          _fmtRsEstoque(chapa && (chapa.valor_total != null ? chapa.valor_total : _valorLinhaChapaEstoque(chapa)))
         ].join(' · ');
         return '<button type="button" data-chapa-select="' + _escapeHtmlLite(id) + '" style="text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer"><div style="font-weight:800">' + _escapeHtmlLite(tituloLinha) + '</div><div style="margin-top:4px;font-size:12px;color:var(--text2)">' + _escapeHtmlLite(meta) + '</div></button>';
       }).join('');
@@ -11308,6 +11343,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var qEl = document.getElementById('est-sel-q');
     if (qEl) qEl.oninput = function() { render(qEl.value || ''); };
     render('');
+    _carregarListaSeletorChapas().then(function(lista) {
+      window.__estoqueChapasCacheGlobal = Array.isArray(lista) ? lista.slice() : [];
+      render((qEl && qEl.value) || '');
+    }).catch(function() {
+      render((qEl && qEl.value) || '');
+    });
   }
 
   function _botaoAcaoEstoque(opts) {
@@ -11545,9 +11586,85 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
   }
 
+  function _normalizarModalEstoque(node) {
+    var modal = node && node.nodeType === 1 ? node : null;
+    if (!modal) return;
+    if (modal.id === 'modal-nova-chapa') {
+      _enhanceModalNovaChapa();
+      return;
+    }
+    if (modal.id !== 'estoque-entrada-real-modal' && modal.id !== 'estoque-saida-real-modal') return;
+    modal.classList.add('estoque-modal-overlay');
+    var shell = modal.firstElementChild;
+    if (!shell) return;
+    shell.classList.add('estoque-modal-shell');
+    if (modal.id === 'estoque-saida-real-modal') shell.classList.add('estoque-modal-shell-lg');
+  }
+
+  function _reaplicarUiEstoque(root) {
+    try { _ensureEstoqueStyle(); } catch (_) {}
+    try { _instalarEnhancerModalNovaChapa(); } catch (_) {}
+    var scope = root && root.querySelectorAll ? root : document;
+    var nodes = [];
+    function pushNode(node) {
+      if (!node || node.nodeType !== 1) return;
+      nodes.push(node);
+    }
+    pushNode(root && root.nodeType === 1 ? root : null);
+    ['#modal-nova-chapa', '#estoque-entrada-real-modal', '#estoque-saida-real-modal', '.estoque-main-actions', '.estoque-action-btn'].forEach(function(sel) {
+      try {
+        Array.prototype.push.apply(nodes, Array.prototype.slice.call(scope.querySelectorAll(sel)));
+      } catch (_) {}
+    });
+    nodes.forEach(function(node) {
+      try {
+        if (node.matches && (node.matches('.estoque-main-actions') || node.matches('.estoque-action-btn'))) _ensureEstoqueStyle();
+      } catch (_) {}
+      try { _normalizarModalEstoque(node); } catch (_) {}
+    });
+  }
+
+  function _agendarReaplicacaoUiEstoque(root) {
+    try {
+      if (window.__estoqueUiEnhancerTimer) clearTimeout(window.__estoqueUiEnhancerTimer);
+    } catch (_) {}
+    window.__estoqueUiEnhancerTimer = setTimeout(function() {
+      try { _reaplicarUiEstoque(root || document); } catch (_) {}
+    }, 0);
+  }
+
+  function _ensureEstoqueUiObserver() {
+    if (window.__patchEstoqueUiObserverInstalled) {
+      _agendarReaplicacaoUiEstoque(document);
+      return;
+    }
+    window.__patchEstoqueUiObserverInstalled = true;
+    _agendarReaplicacaoUiEstoque(document);
+    var start = function() {
+      try {
+        if (window.__patchEstoqueUiObserver) window.__patchEstoqueUiObserver.disconnect();
+      } catch (_) {}
+      try {
+        window.__patchEstoqueUiObserver = new MutationObserver(function(mutations) {
+          var root = document;
+          for (var i = 0; i < mutations.length; i += 1) {
+            var mt = mutations[i];
+            if (mt && mt.target && mt.target.nodeType === 1) { root = mt.target; break; }
+          }
+          _agendarReaplicacaoUiEstoque(root);
+        });
+        window.__patchEstoqueUiObserver.observe(document.body || document.documentElement, { childList: true, subtree: true });
+      } catch (_) {}
+      _agendarReaplicacaoUiEstoque(document);
+    };
+    if (document.body) start();
+    else document.addEventListener('DOMContentLoaded', start, { once: true });
+  }
+
   [0, 300, 1200].forEach(function(delay) {
     setTimeout(function() {
       try { _instalarEnhancerModalNovaChapa(); } catch (_) {}
+      try { _ensureEstoqueUiObserver(); } catch (_) {}
     }, delay);
   });
 
@@ -11894,6 +12011,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   async function _renderEntradasEstoque(host) {
     if (!host) return;
+    _ensureEstoqueStyle();
     host.innerHTML = '<div style="padding:18px;color:var(--text2)">Carregando entradas...</div>';
     try {
       window.__estoqueEntradasRefresh = async function() {
@@ -12258,6 +12376,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   async function _renderSaidasEstoque(host) {
     if (!host) return;
+    _ensureEstoqueStyle();
     host.innerHTML = '<div style="padding:18px;color:var(--text2)">Carregando saídas...</div>';
     try {
       window.__estoqueSaidasRefresh = async function() {
@@ -13551,419 +13670,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function init() {
     patchGo();
     setTimeout(patchGo, 1200);
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
-})();
-
-(function patchEstoqueChapasSimplificado() {
-  if (window.__patchEstoqueChapasSimplificadoInstalled) return;
-  window.__patchEstoqueChapasSimplificadoInstalled = true;
-
-  function _normTxtEstoqueSimple(v) {
-    return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-  }
-
-  function _getEstoquePageSimple() {
-    return document.getElementById('page-estoque');
-  }
-
-  function _isEstoquePageAtivaSimple() {
-    try {
-      var page = _getEstoquePageSimple();
-      if (!page) return false;
-      if (page.hidden) return false;
-      if (page.style && page.style.display === 'none') return false;
-      return page.offsetParent !== null;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function _getModoEstoqueSimple() {
-    return String(window.__estoqueTelaSimplificada || 'estoque') === 'checklist' ? 'checklist' : 'estoque';
-  }
-
-  function _getListaEstoqueSimple() {
-    try {
-      if (Array.isArray(window._estoqueBase) && window._estoqueBase.length) return window._estoqueBase;
-      if (Array.isArray(window.ESTOQUE) && window.ESTOQUE.length) return window.ESTOQUE;
-    } catch (_) {}
-    return [];
-  }
-
-  function _uniqueSorted(values) {
-    var seen = {};
-    var out = [];
-    (values || []).forEach(function(v) {
-      var raw = String(v || '').trim();
-      if (!raw) return;
-      var key = _normTxtEstoqueSimple(raw);
-      if (!key || seen[key]) return;
-      seen[key] = true;
-      out.push(raw);
-    });
-    return out.sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); });
-  }
-
-  function _labelEmpresaSimple(chapa) {
-    var raw = String(chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || chapa.empresa) || '').trim();
-    if (raw) return raw;
-    try {
-      return String(window.estEmpresaFromEmpId && window.estEmpresaFromEmpId(chapa && (chapa.emp_id || chapa.empId || '')) || '').trim();
-    } catch (_) {
-      return '';
-    }
-  }
-
-  function _valorLinhaEstoqueSimple(chapa) {
-    var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
-    var vunit = Number(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0) || 0;
-    var total = Number(chapa && (chapa.valor_total != null ? chapa.valor_total : 0) || 0) || 0;
-    return total > 0 ? total : (qtd * vunit);
-  }
-
-  function _renderPainelEstoqueSimple() {
-    var page = _getEstoquePageSimple();
-    var toolbar = document.querySelector('#page-estoque > .ptoolbar');
-    if (!page || !toolbar) return;
-    var host = document.getElementById('patch-estoque-simple-cards');
-    if (!host) {
-      host = document.createElement('div');
-      host.id = 'patch-estoque-simple-cards';
-      host.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:8px 10px 12px';
-      page.insertBefore(host, toolbar);
-    }
-    var lista = _getListaEstoqueSimple();
-    var valorTotal = 0;
-    var toneladas = 0;
-    var fornecedores = {};
-    (lista || []).forEach(function(chapa) {
-      valorTotal += _valorLinhaEstoqueSimple(chapa);
-      toneladas += (typeof _calcTonAtualEst === 'function') ? _calcTonAtualEst(chapa) : 0;
-      var forn = String(chapa && (chapa.fornecedor || chapa.forn) || '').trim() || 'Sem fornecedor';
-      if (!Object.prototype.hasOwnProperty.call(fornecedores, forn)) fornecedores[forn] = { valor: 0, qtd: 0 };
-      fornecedores[forn].valor += _valorLinhaEstoqueSimple(chapa);
-      fornecedores[forn].qtd += 1;
-    });
-    var breakdown = Object.keys(fornecedores).map(function(nome) {
-      return { nome: nome, valor: Number(fornecedores[nome].valor || 0) || 0, qtd: Math.trunc(Number(fornecedores[nome].qtd || 0) || 0) };
-    }).sort(function(a, b) {
-      return b.valor - a.valor;
-    }).slice(0, 4).map(function(item) {
-      return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#cbd5e1"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + item.nome + '</span><span style="font-family:var(--mono);font-weight:800;color:#e2e8f0">' + _fmtRsEst(item.valor) + '</span></div>';
-        }).join('') || '<div style="font-size:12px;color:#94a3b8">Nenhum fornecedor encontrado.</div>';
-    host.innerHTML = ''
-      + '<div style="background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:14px;padding:14px 16px">'
-      + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Valor Total do Estoque</div>'
-      + '  <div style="margin-top:8px;font-size:24px;font-weight:900;color:#e2e8f0;line-height:1.1">' + _fmtRsEst(valorTotal) + '</div>'
-      + '</div>'
-      + '<div style="background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:14px;padding:14px 16px">'
-      + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Toneladas em Estoque</div>'
-      + '  <div style="margin-top:8px;font-size:24px;font-weight:900;color:#e2e8f0;line-height:1.1">' + _fmtTonEst(toneladas) + '</div>'
-      + '</div>'
-      + '<div style="background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:14px;padding:14px 16px">'
-      + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Quantidade de Chapas</div>'
-      + '  <div style="margin-top:8px;font-size:24px;font-weight:900;color:#e2e8f0;line-height:1.1">' + _fmtIntEst(lista.length) + '</div>'
-      + '</div>'
-      + '<div style="background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:14px;padding:14px 16px">'
-      + '  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8">Por Fornecedor</div>'
-      + '  <div style="margin-top:10px;display:grid;gap:8px">' + breakdown + '</div>'
-      + '</div>';
-  }
-
-  function _setInputValue(id, value) {
-    try {
-      var el = document.getElementById(id);
-      if (el) el.value = value;
-    } catch (_) {}
-  }
-
-  function _setInputChecked(id, checked) {
-    try {
-      var el = document.getElementById(id);
-      if (el) el.checked = !!checked;
-    } catch (_) {}
-  }
-
-  function _syncFiltrosOriginaisSimple() {
-    var st = window.__estoqueSimpleState || {};
-    _setInputValue('est-busca', String(st.busca || ''));
-    _setInputValue('est-fil-forn', '');
-    _setInputValue('est-fil-emp', '');
-    _setInputValue('ef-fornecedor', '');
-    _setInputValue('ef-empresa', '');
-    _setInputValue('ef-busca', String(st.busca || ''));
-    _setInputValue('ef-categoria', '');
-    _setInputValue('ef-cliente', '');
-    _setInputValue('ef-nf', '');
-    _setInputValue('ef-nomenclatura', '');
-    _setInputValue('ef-tamanho', '');
-    _setInputChecked('ef-riscadas', false);
-    _setInputChecked('ef-com-vincos', false);
-    _setInputChecked('ef-baixo', false);
-    _setInputChecked('ef-sem', false);
-  }
-
-  function _renderEstoqueSimple() {
-    _syncFiltrosOriginaisSimple();
-    try {
-      if (typeof window.renderEstoque === 'function') window.renderEstoque();
-    } catch (_) {}
-  }
-
-  function _ensureBuscaUniversalSimple() {
-    var page = _getEstoquePageSimple();
-    var toolbar = document.querySelector('#page-estoque > .ptoolbar');
-    if (!page || !toolbar) return;
-    var host = document.getElementById('patch-estoque-simple-busca');
-    if (!host) {
-      host = document.createElement('div');
-      host.id = 'patch-estoque-simple-busca';
-      host.style.cssText = 'margin:0 10px 12px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px';
-      page.insertBefore(host, toolbar);
-    }
-    var st = window.__estoqueSimpleState || { busca: '' };
-    host.innerHTML = ''
-      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
-      + '  <input id="est-simple-busca" type="text" placeholder="Buscar por nome, fornecedor, gramatura, tamanho, NF ou CNPJ..." value="' + String(st.busca || '').replace(/"/g, '&quot;') + '" style="flex:1;min-width:320px;padding:11px 14px;border-radius:10px;background:var(--s2);color:var(--text);border:1px solid var(--border)">'
-      + '  <button id="est-simple-buscar" type="button" class="btn btn-accent btn-sm" style="padding:10px 16px">Buscar</button>'
-      + '</div>';
-    var buscaEl = document.getElementById('est-simple-busca');
-    var buscarBtn = document.getElementById('est-simple-buscar');
-    var aplicarBusca = function() {
-      window.__estoqueSimpleState = { busca: String(buscaEl && buscaEl.value || '') };
-      _renderEstoqueSimple();
-      setTimeout(_aplicarSimplificacaoTabelaSimple, 20);
-    };
-    if (buscarBtn) buscarBtn.onclick = aplicarBusca;
-    if (buscaEl) buscaEl.onkeydown = function(ev) {
-      if (String(ev && ev.key || '') === 'Enter') {
-        try { ev.preventDefault(); } catch (_) {}
-        aplicarBusca();
-      }
-    };
-  }
-
-  function _ensureToolbarSimple() {
-    var toolbar = document.querySelector('#page-estoque > .ptoolbar');
-    if (!toolbar) return;
-    Array.prototype.slice.call(toolbar.children || []).forEach(function(child) {
-      if (child && child.id !== 'patch-estoque-simple-toolbar') child.style.display = 'none';
-    });
-    var wrap = document.getElementById('patch-estoque-simple-toolbar');
-    if (!wrap) {
-      wrap = document.createElement('div');
-      wrap.id = 'patch-estoque-simple-toolbar';
-      wrap.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%';
-      toolbar.appendChild(wrap);
-    }
-    wrap.innerHTML = '';
-    wrap.style.display = 'none';
-  }
-
-  function _marcarBotaoAcaoSimple(btn, label, danger) {
-    if (!btn) return;
-    btn.textContent = label;
-    btn.style.display = '';
-    btn.style.padding = '4px 10px';
-    btn.style.borderRadius = '6px';
-    btn.style.border = '1px solid var(--border)';
-    btn.style.background = 'var(--s2)';
-    btn.style.cursor = 'pointer';
-    btn.style.fontSize = '.72rem';
-    btn.style.color = danger ? 'var(--red)' : 'var(--text)';
-    if (!btn.getAttribute('data-stop-row')) {
-      btn.setAttribute('data-stop-row', '1');
-      btn.addEventListener('click', function(ev) {
-        try { ev.stopPropagation(); } catch (_) {}
-      });
-    }
-  }
-
-  function _reordenarTabelaSimple() {
-    var tabela = document.getElementById('tabelaChapasEstoque');
-    if (!tabela) return;
-    Array.prototype.slice.call(tabela.querySelectorAll('th[data-patch-est-col], td[data-patch-est-cell]')).forEach(function(el) {
-      try { el.remove(); } catch (_) {}
-    });
-    var ordem = [
-      { header: 'FORNECEDOR', label: 'Fornecedor', keys: ['fornecedor'] },
-      { header: 'GRAMATURA', label: 'Gramatura', keys: ['gramatura'] },
-      { header: 'NOMENCLATURA', label: 'Nomenclatura', keys: ['nomenclatura'] },
-      { header: 'TAMANHO', label: 'Tamanho', keys: ['tamanho'] },
-      { header: 'NOME', label: 'Nome/Uso', keys: ['nome/uso', 'nome uso'] },
-      { header: 'QUAL CNPJ', label: 'Empresa/CNPJ', keys: ['empresa/cnpj', 'empresa cnpj'] },
-      { header: 'NF', label: 'NF', keys: ['nf'] },
-      { header: 'QUANTIDADE', label: 'Qtd', keys: ['qtd'] },
-      { header: 'R$', label: 'R$/un', keys: ['r$/un', 'r$/unidade'] },
-      { header: 'TOTAL', label: 'Total R$', keys: ['total', 'total r$'] },
-      { header: 'AÇÕES', label: 'Ações', keys: ['acoes', 'ações'] }
-    ];
-    var headRow = tabela.querySelector('thead tr');
-    if (headRow) {
-      var ths = Array.prototype.slice.call(headRow.children || []);
-      var map = {};
-      ths.forEach(function(th) {
-        map[_normTxtEstoqueSimple(th.textContent || '')] = th;
-      });
-      headRow.innerHTML = '';
-      ordem.forEach(function(item) {
-        var th = null;
-        item.keys.some(function(key) {
-          th = map[_normTxtEstoqueSimple(key)];
-          return !!th;
-        });
-        if (!th) return;
-        th.textContent = item.header;
-        th.style.display = '';
-        if (item.header === 'QUANTIDADE' || item.header === 'R$' || item.header === 'TOTAL') th.style.textAlign = 'right';
-        if (item.header === 'GRAMATURA') th.style.textAlign = 'center';
-        headRow.appendChild(th);
-      });
-    }
-    Array.prototype.slice.call(document.querySelectorAll('#est-table-body tr[data-chapa-id]')).forEach(function(tr) {
-      var tds = Array.prototype.slice.call(tr.children || []);
-      var map = {};
-      tds.forEach(function(td) {
-        map[_normTxtEstoqueSimple(td.getAttribute('data-label') || '')] = td;
-      });
-      tr.innerHTML = '';
-      ordem.forEach(function(item) {
-        var td = null;
-        item.keys.some(function(key) {
-          td = map[_normTxtEstoqueSimple(key)];
-          return !!td;
-        });
-        if (!td) return;
-        if (_normTxtEstoqueSimple(item.label) === 'acoes') {
-          var editBtn = td.querySelector('[data-acao-chapa="editar"]');
-          var delBtn = td.querySelector('[data-acao-chapa="excluir"]');
-          Array.prototype.slice.call(td.querySelectorAll('button')).forEach(function(btn) {
-            var acao = String(btn.getAttribute('data-acao-chapa') || '').trim();
-            if (acao !== 'editar' && acao !== 'excluir') btn.style.display = 'none';
-          });
-          _marcarBotaoAcaoSimple(editBtn, 'Alterar', false);
-          _marcarBotaoAcaoSimple(delBtn, 'Excluir', true);
-          var wrap = td.querySelector('div');
-          if (wrap) {
-            wrap.style.display = 'flex';
-            wrap.style.gap = '6px';
-            wrap.style.justifyContent = 'center';
-            wrap.style.flexWrap = 'wrap';
-            if (delBtn) wrap.appendChild(delBtn);
-            if (editBtn) wrap.appendChild(editBtn);
-          }
-        }
-        tr.appendChild(td);
-      });
-    });
-    var foot = document.getElementById('est-table-foot');
-    if (foot) foot.innerHTML = '';
-  }
-
-  function _aplicarBuscaUniversalNaTabelaSimple() {
-    var state = window.__estoqueSimpleState || {};
-    var busca = _normTxtEstoqueSimple(state.busca || '');
-    Array.prototype.slice.call(document.querySelectorAll('#est-table-body tr[data-chapa-id]')).forEach(function(tr) {
-      var show = true;
-      if (busca) {
-        var txt = _normTxtEstoqueSimple(tr.textContent || '');
-        show = txt.indexOf(busca) >= 0;
-      }
-      tr.style.display = show ? '' : 'none';
-    });
-  }
-
-  function _ocultarExtrasEstoqueSimple() {
-    try {
-      var alertas = document.getElementById('est-alertas');
-      if (alertas) {
-        alertas.innerHTML = '';
-        alertas.style.display = 'none';
-      }
-    } catch (_) {}
-    try {
-      var resumo = document.getElementById('est-summary');
-      if (resumo) resumo.style.display = 'none';
-    } catch (_) {}
-    try {
-      var painel = document.getElementById('patch-estoque-main-panel');
-      if (painel) painel.remove();
-    } catch (_) {}
-    try {
-      var antigo = document.getElementById('patch-estoque-simple-cards');
-      if (antigo && _getModoEstoqueSimple() !== 'estoque') antigo.remove();
-    } catch (_) {}
-    try {
-      var buscaHost = document.getElementById('patch-estoque-simple-busca');
-      if (buscaHost && _getModoEstoqueSimple() !== 'estoque') buscaHost.remove();
-    } catch (_) {}
-    try {
-      var tabs = document.getElementById('est-cat-tabs');
-      if (tabs) tabs.style.display = 'none';
-    } catch (_) {}
-    try {
-      var barra = document.getElementById('estoque-filtros-bar');
-      if (barra) barra.style.display = 'none';
-    } catch (_) {}
-    try {
-      var ativos = document.getElementById('est-filtros-ativos');
-      if (ativos) ativos.style.display = 'none';
-    } catch (_) {}
-    try {
-      var btnEst = document.getElementById('chp-tab-btn-estoque');
-      if (btnEst) btnEst.style.display = 'none';
-      var btnRec = document.getElementById('chp-tab-btn-receb');
-      if (btnRec) btnRec.style.display = 'none';
-    } catch (_) {}
-    try {
-      var hist = document.getElementById('est-hist');
-      if (hist && hist.closest('.sbox')) hist.closest('.sbox').style.display = 'none';
-    } catch (_) {}
-    try {
-      var desp = document.getElementById('desp-lista');
-      if (desp && desp.closest('.sbox')) desp.closest('.sbox').style.display = 'none';
-    } catch (_) {}
-  }
-
-  function _aplicarModoEstoqueSimple() {
-    var toolbar = document.querySelector('#page-estoque > .ptoolbar');
-    var modo = _getModoEstoqueSimple();
-    if (modo === 'checklist') {
-      try { if (typeof window.chpSetTab === 'function') window.chpSetTab('receb'); } catch (_) {}
-      if (toolbar) toolbar.style.display = 'none';
-      return;
-    }
-    try { if (typeof window.chpSetTab === 'function') window.chpSetTab('estoque'); } catch (_) {}
-    if (toolbar) toolbar.style.display = '';
-    _renderPainelEstoqueSimple();
-    _ensureBuscaUniversalSimple();
-    _ensureToolbarSimple();
-  }
-
-  function _aplicarSimplificacaoTabelaSimple() {
-    if (_getModoEstoqueSimple() !== 'estoque') return;
-    _reordenarTabelaSimple();
-    _aplicarBuscaUniversalNaTabelaSimple();
-  }
-
-  function _tickEstoqueSimple() {
-    if (!_isEstoquePageAtivaSimple()) return;
-    _ocultarExtrasEstoqueSimple();
-    _aplicarModoEstoqueSimple();
-    _aplicarSimplificacaoTabelaSimple();
-  }
-
-  function init() {
-    try {
-      if (!window.__estoqueSimpleState) window.__estoqueSimpleState = { busca: '' };
-    } catch (_) {}
-    try { window.__forcarWireframeEstoque = _tickEstoqueSimple; } catch (_) {}
-    setTimeout(_tickEstoqueSimple, 300);
-    setTimeout(_tickEstoqueSimple, 1200);
-    setInterval(_tickEstoqueSimple, 900);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
@@ -19794,6 +19500,33 @@ function _ocultarGraficoComissoes() {
       await _abrirModalConclusaoFallback(ofId, ofObj || null);
     } catch (_) {}
   }
+
+  function _instalarAberturaConclusaoOF() {
+    function opener(ofId, ofObj) {
+      return _abrirFluxoConclusaoOF(ofId, ofObj || null);
+    }
+    opener.__patchConclusaoOF = true;
+    ['concluirOFComBaixa', 'abrirModalConclusao', 'abrirConclusaoOf', '_abrirFluxoConclusaoOF'].forEach(function(fnName) {
+      try { window[fnName] = opener; } catch (_) {}
+    });
+    try {
+      if (!window.__patchConclusaoOFEventBound) {
+        window.__patchConclusaoOFEventBound = true;
+        document.addEventListener('concluirOF', function(ev) {
+          try {
+            var sid = String(ev && ev.detail && ev.detail.id || '').trim();
+            if (sid) opener(sid);
+          } catch (_) {}
+        });
+      }
+    } catch (_) {}
+  }
+
+  [0, 300, 1200, 3000].forEach(function(delay) {
+    setTimeout(function() {
+      try { _instalarAberturaConclusaoOF(); } catch (_) {}
+    }, delay);
+  });
 
   function _renderModalForm(of) {
     var id = String(of && of.id || '').trim();
