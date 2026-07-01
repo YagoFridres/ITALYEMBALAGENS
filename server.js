@@ -379,53 +379,6 @@ app.use(compression());
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-const DEBUG_STOCK_SESSION = 'stock-routing-cache';
-const DEBUG_STOCK_DIR = path.join(__dirname, '.dbg');
-const DEBUG_STOCK_FILE = path.join(DEBUG_STOCK_DIR, `trae-debug-log-${DEBUG_STOCK_SESSION}.ndjson`);
-
-function debugStockAppend(event) {
-  try {
-    if (!fs.existsSync(DEBUG_STOCK_DIR)) fs.mkdirSync(DEBUG_STOCK_DIR, { recursive: true });
-    const row = JSON.stringify({
-      sessionId: DEBUG_STOCK_SESSION,
-      ts: Date.now(),
-      ...((event && typeof event === 'object') ? event : {})
-    });
-    fs.appendFileSync(DEBUG_STOCK_FILE, row + '\n', 'utf8');
-  } catch (_) {}
-}
-
-app.post('/api/__debug-stock-log', (req, res) => {
-  try {
-    debugStockAppend(req.body || {});
-    return res.json({ ok: true });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
-  }
-});
-
-app.get('/api/__debug-stock-log', (req, res) => {
-  try {
-    if (!fs.existsSync(DEBUG_STOCK_FILE)) return res.json({ ok: true, rows: [] });
-    const raw = fs.readFileSync(DEBUG_STOCK_FILE, 'utf8');
-    const rows = String(raw || '').split(/\r?\n/).filter(Boolean).map((line) => {
-      try { return JSON.parse(line); } catch (_) { return null; }
-    }).filter(Boolean);
-    return res.json({ ok: true, rows });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
-  }
-});
-
-app.delete('/api/__debug-stock-log', (req, res) => {
-  try {
-    if (fs.existsSync(DEBUG_STOCK_FILE)) fs.unlinkSync(DEBUG_STOCK_FILE);
-    return res.json({ ok: true });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
-  }
-});
-
 function _newRid() {
   try { return crypto.randomBytes(8).toString('hex'); } catch (_) {}
   return String(Date.now()) + '-' + Math.random().toString(16).slice(2);
@@ -15304,11 +15257,24 @@ app.get('/api/analises/toneladas', authMiddleware, async (req, res) => {
 app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
+    const selectCols = [
+      'id', 'numero', 'of', 'status', 'data_conclusao', 'gramatura',
+      'qtd_produzida', 'quantidade', 'qtd',
+      'cliNome', 'cliente_nome', 'cliente',
+      'descricao', 'produto',
+      'comprimento', 'largura',
+      'caixa_comprimento', 'caixa_largura',
+      'created_at', 'deleted_at'
+    ].filter((col) => _ofsSelectableHas(col));
+    ['gramatura_nome', 'tamanho_m2', 'comprimento_mm', 'largura_mm'].forEach((col) => {
+      if (_ofsSelectableHas(col)) selectCols.push(col);
+    });
+    const selectExpr = Array.from(new Set(selectCols)).join(',');
     let ofs = [];
     let from = 0;
     while (true) {
       const { data, error } = await supabase.from('ofs')
-        .select('id,numero,of,status,data_conclusao,gramatura,gramatura_nome,qtd_produzida,quantidade,qtd,cliNome,cliente_nome,cliente,descricao,produto,prodDesc,tamanho_m2,comprimento_mm,largura_mm,deleted_at')
+        .select(selectExpr)
         .is('deleted_at', null)
         .not('data_conclusao', 'is', null)
         .range(from, from + 999);
@@ -15328,12 +15294,12 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       const gramatura = Number(of?.gramatura || 0) || 0;
       let areaUnitM2 = Number(of?.tamanho_m2 || 0) || 0;
       if (!(areaUnitM2 > 0)) {
-        const compMm = Number(of?.comprimento_mm || 0) || 0;
-        const largMm = Number(of?.largura_mm || 0) || 0;
+        const compMm = Number(of?.comprimento_mm ?? of?.comprimento ?? of?.caixa_comprimento ?? 0) || 0;
+        const largMm = Number(of?.largura_mm ?? of?.largura ?? of?.caixa_largura ?? 0) || 0;
         if (compMm > 0 && largMm > 0) areaUnitM2 = (compMm / 1000) * (largMm / 1000);
       }
       if (!(areaUnitM2 > 0)) {
-        const desc = String(of?.descricao || of?.produto || of?.prodDesc || '').trim();
+        const desc = String(of?.descricao || of?.produto || '').trim();
         const match = desc.match(/(\d+(?:[.,]\d+)?)\s*[×xX]\s*(\d+(?:[.,]\d+)?)/);
         const compCm = match ? parseFloat(String(match[1] || '').replace(',', '.')) : 0;
         const largCm = match ? parseFloat(String(match[2] || '').replace(',', '.')) : 0;
@@ -15345,7 +15311,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
         id: of?.id || null,
         of_numero: of?.numero || of?.of || null,
         cliente_nome: String(of?.cliNome || of?.cliente_nome || of?.cliente || '').trim() || '—',
-        produto: String(of?.descricao || of?.produto || of?.prodDesc || '').trim() || '—',
+        produto: String(of?.descricao || of?.produto || '').trim() || '—',
         data_conclusao: of?.data_conclusao || null,
         gramatura,
         gramatura_nome: String(of?.gramatura_nome || '').trim() || null,

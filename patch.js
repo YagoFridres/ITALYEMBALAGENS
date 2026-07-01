@@ -61,42 +61,22 @@ if (typeof window._fmtRs === 'undefined') {
   if (window.__patchEstoqueRotasFinal) return;
   window.__patchEstoqueRotasFinal = true;
 
-  function debugPostFix(msg, data) {
-    try {
-      fetch('/api/__debug-stock-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          runId: 'post-fix',
-          hypothesisId: 'FIX',
-          location: 'patch.js:patchEstoqueRotasFinal',
-          msg: '[DEBUG] ' + String(msg || ''),
-          data: data || {}
-        })
-      }).catch(function() {});
-    } catch (_) {}
-  }
-
   function renderCustom(pid) {
     try {
       if (pid === 'estoque' && typeof window.renderEstoqueWireframePage === 'function') {
-        debugPostFix('render custom estoque', { pageId: pid });
-        Promise.resolve(window.renderEstoqueWireframePage()).catch(function(e) { debugPostFix('render estoque error', { message: String(e && e.message || e) }); });
+        Promise.resolve(window.renderEstoqueWireframePage()).catch(function() {});
         return true;
       }
       if (pid === 'checklist-recebimento' && typeof window.renderChecklistRecebimento === 'function') {
-        debugPostFix('render custom checklist', { pageId: pid });
-        Promise.resolve(window.renderChecklistRecebimento()).catch(function(e) { debugPostFix('render checklist error', { message: String(e && e.message || e) }); });
+        Promise.resolve(window.renderChecklistRecebimento()).catch(function() {});
         return true;
       }
       if (pid === 'gramaturas' && typeof window.renderGramaturas === 'function') {
-        debugPostFix('render custom gramaturas', { pageId: pid });
-        Promise.resolve(window.renderGramaturas()).catch(function(e) { debugPostFix('render gramaturas error', { message: String(e && e.message || e) }); });
+        Promise.resolve(window.renderGramaturas()).catch(function() {});
         return true;
       }
       if (pid === 'toneladas-vendidas' && typeof window.renderToneladasVendidas === 'function') {
-        debugPostFix('render custom toneladas', { pageId: pid });
-        Promise.resolve(window.renderToneladasVendidas()).catch(function(e) { debugPostFix('render toneladas error', { message: String(e && e.message || e) }); });
+        Promise.resolve(window.renderToneladasVendidas()).catch(function() {});
         return true;
       }
     } catch (_) {}
@@ -108,7 +88,6 @@ if (typeof window._fmtRs === 'undefined') {
       setTimeout(function() {
         try {
           if (typeof window.__forcarWireframeEstoque === 'function') {
-            debugPostFix('reforcar estoque wireframe', { delay: t });
             window.__forcarWireframeEstoque();
           }
         } catch (_) {}
@@ -120,7 +99,6 @@ if (typeof window._fmtRs === 'undefined') {
   if (typeof origGo === 'function' && !origGo._patchEstoqueRotasFinal) {
     var wrappedGo = function(id) {
       var pid = String(id || '').trim();
-      debugPostFix('window.go final', { pageId: pid });
       if (renderCustom(pid)) return;
       var out = origGo.apply(this, arguments);
       if (pid === 'estoque') reforcarEstoqueWireframe();
@@ -3277,28 +3255,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var first = document.querySelector('[id^="page-"], [data-page]');
       return first && first.parentNode ? first.parentNode : document.body;
     }
-    // #region debug-point A:stock-route-helper
-    function _debugStockRoute(msg, data) {
-      try {
-        fetch('/api/__debug-stock-log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            runId: 'pre-fix',
-            hypothesisId: 'A',
-            location: 'patch.js',
-            msg: '[DEBUG] ' + String(msg || ''),
-            data: data || {}
-          })
-        }).catch(function() {});
-      } catch (_) {}
-    }
-    // #endregion
     function ensurePage(pageId) {
       var page = document.getElementById('page-' + pageId) || document.querySelector('[data-page="' + pageId + '"]');
-      // #region debug-point B:ensure-page
-      _debugStockRoute('ensurePage', { pageId: pageId, found: !!page });
-      // #endregion
       if (page) return page;
       var base = document.querySelector('[id^="page-"], [data-page]');
       page = document.createElement('div');
@@ -3310,16 +3268,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return page;
     }
     function showOnlyPage(pageId) {
-      // #region debug-point C:show-only-page
-      _debugStockRoute('showOnlyPage', { pageId: pageId });
-      // #endregion
       Array.prototype.slice.call(document.querySelectorAll('[id^="page-"], [data-page]')).forEach(function(pg) {
         try {
           var id = String(pg.getAttribute('data-page') || pg.id || '').replace(/^page-/, '');
-          if (id === pageId) pg.style.display = '';
-          else pg.style.display = 'none';
+          var ativo = id === pageId;
+          pg.style.display = ativo ? '' : 'none';
+          if (pg.classList && typeof pg.classList.toggle === 'function') pg.classList.toggle('active', ativo);
+          if (ativo) pg.removeAttribute('hidden');
+          else pg.setAttribute('hidden', 'hidden');
         } catch (_) {}
       });
+      try {
+        Array.prototype.slice.call(document.querySelectorAll('.nav-item')).forEach(function(nav) {
+          var onClick = String((nav.getAttribute && nav.getAttribute('onclick')) || '');
+          var dataPage = String((nav.getAttribute && nav.getAttribute('data-page')) || '');
+          var ativo = onClick.indexOf("go('" + pageId + "')") >= 0 || dataPage === pageId;
+          if (nav.classList && typeof nav.classList.toggle === 'function') nav.classList.toggle('active', ativo);
+        });
+      } catch (_) {}
     }
 
     async function loadFornecedores() {
@@ -3432,9 +3398,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       };
     }
     async function renderGramaturasPage() {
-      // #region debug-point D:render-gramaturas-enter
-      _debugStockRoute('renderGramaturasPage:enter', {});
-      // #endregion
       ensureStyles();
       var page = ensurePage('gramaturas');
       showOnlyPage('gramaturas');
@@ -3651,9 +3614,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       };
     }
     async function renderChecklistPage() {
-      // #region debug-point E:render-checklist-enter
-      _debugStockRoute('renderChecklistPage:enter', {});
-      // #endregion
       ensureStyles();
       var page = ensurePage('checklist-recebimento');
       showOnlyPage('checklist-recebimento');
@@ -3937,9 +3897,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return d >= r.ini && d <= r.fim;
     }
     async function renderToneladasPage() {
-      // #region debug-point F:render-toneladas-enter
-      _debugStockRoute('renderToneladasPage:enter', {});
-      // #endregion
       ensureStyles();
       var page = ensurePage('toneladas-vendidas');
       showOnlyPage('toneladas-vendidas');
@@ -3990,13 +3947,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
 
     function openCustomPage(pageId) {
-      // #region debug-point G:open-custom-page
-      _debugStockRoute('openCustomPage', { pageId: pageId });
-      // #endregion
-      if (pageId === 'checklist-recebimento') { renderChecklistPage().catch(function(e) { _debugStockRoute('renderChecklistPage:error', { message: String(e && e.message || e) }); }); return true; }
-      if (pageId === 'gramaturas') { renderGramaturasPage().catch(function(e) { _debugStockRoute('renderGramaturasPage:error', { message: String(e && e.message || e) }); }); return true; }
-      if (pageId === 'facas1') { renderFacasWireframePage(); return true; }
-      if (pageId === 'toneladas-vendidas') { renderToneladasPage().catch(function(e) { _debugStockRoute('renderToneladasPage:error', { message: String(e && e.message || e) }); }); return true; }
+      if (pageId === 'checklist-recebimento') { renderChecklistPage().catch(function() {}); return true; }
+      if (pageId === 'gramaturas') { renderGramaturasPage().catch(function() {}); return true; }
+      if (pageId === 'facas1') { Promise.resolve(renderFacasWireframePage()).catch(function() {}); return true; }
+      if (pageId === 'toneladas-vendidas') { renderToneladasPage().catch(function() {}); return true; }
       return false;
     }
     try {
@@ -4004,9 +3958,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (typeof origGo === 'function' && !origGo._patchExtrasCustom) {
         window.go = function(id) {
           var pid = String(id || '').trim();
-          // #region debug-point H:go-wrapper
-          _debugStockRoute('window.go', { pageId: pid });
-          // #endregion
           if (openCustomPage(pid)) return;
           return origGo.apply(this, arguments);
         };
@@ -11340,7 +11291,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function _botaoEditarChapas(onDone) {
-    return '<button id="estoque-btn-alterar-chapas" class="pcp-btn" type="button" style="background:#334155">Alterar Chapas</button>';
+    return '<button id="estoque-btn-alterar-chapas" class="pcp-btn pcp-btn-lg" type="button" style="background:#334155">Alterar Chapas</button>';
   }
 
   function _bindBotaoEditarChapas(onDone) {
@@ -11730,9 +11681,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                   _cardBreakdownEstoque('Quanto Entrou por Fornecedor', breakdown, _fmtRsEstoque)].join('')
           + '  </div>'
           + '  <div style="display:flex;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px">'
-          + '    <button id="estoque-entrada-lote-btn" class="pcp-btn" type="button">Dar Entrada</button>'
+          + '    <button id="estoque-entrada-lote-btn" class="pcp-btn pcp-btn-lg primary" type="button">Dar Entrada</button>'
           +      _botaoEditarChapas()
-          + '    <button id="estoque-btn-criar-chapas" class="pcp-btn" type="button">Criar Chapas</button>'
+          + '    <button id="estoque-btn-criar-chapas" class="pcp-btn pcp-btn-lg" type="button">Criar Chapas</button>'
           + '  </div>'
           +    _renderTabelaMovEstoque(filtrada, [
                  { label: 'Data', key: 'data', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(_fmtDateEstoque(r.data)) + '</span>'; } },
@@ -12065,9 +12016,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                   _cardBreakdownEstoque('Quanto Saiu de Cada Fornecedor', breakdown, _fmtRsEstoque)].join('')
           + '  </div>'
           + '  <div style="display:flex;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px">'
-          + '    <button id="estoque-saida-lote-btn" class="pcp-btn" type="button" style="background:#7f1d1d">Dar Saída</button>'
+          + '    <button id="estoque-saida-lote-btn" class="pcp-btn pcp-btn-lg primary" type="button" style="background:#7f1d1d">Dar Saída</button>'
           +      _botaoEditarChapas()
-          + '    <button id="estoque-btn-criar-chapas" class="pcp-btn" type="button">Criar Chapas</button>'
+          + '    <button id="estoque-btn-criar-chapas" class="pcp-btn pcp-btn-lg" type="button">Criar Chapas</button>'
           + '  </div>'
           +    _renderTabelaMovEstoque(filtrada, [
                  { label: 'Data', key: 'data', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(_fmtDateEstoque(r.data)) + '</span>'; } },
@@ -12249,6 +12200,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '.pcp-table td.muted{color:var(--text2)}' +
       '.pcp-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}' +
       '.pcp-btn{display:inline-flex;align-items:center;gap:6px;border-radius:8px;padding:6px 10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);cursor:pointer;font-size:12px}' +
+      '.pcp-btn.pcp-btn-lg{padding:10px 16px;font-size:14px;font-weight:800;border-radius:10px;min-height:40px}' +
       '.pcp-btn.primary{background:var(--accent);border-color:transparent;color:#fff;font-weight:700}' +
       '.pcp-btn.danger{background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.35);color:#ef4444;font-weight:800}' +
       '.pcp-input{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}' +
@@ -13330,26 +13282,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function _renderPainelEstoqueSimple() {
     var page = _getEstoquePageSimple();
     var toolbar = document.querySelector('#page-estoque > .ptoolbar');
-    // #region debug-point I:estoque-cards-render
-    try {
-      fetch('/api/__debug-stock-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          runId: 'pre-fix',
-          hypothesisId: 'B',
-          location: 'patch.js:_renderPainelEstoqueSimple',
-          msg: '[DEBUG] estoque cards render',
-          data: {
-            hasPage: !!page,
-            hasToolbar: !!toolbar,
-            pageDisplay: page && page.style ? page.style.display : '',
-            pageHidden: !!(page && page.hidden)
-          }
-        })
-      }).catch(function() {});
-    } catch (_) {}
-    // #endregion
     if (!page || !toolbar) return;
     var host = document.getElementById('patch-estoque-simple-cards');
     if (!host) {
@@ -13674,21 +13606,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function _tickEstoqueSimple() {
     if (!_isEstoquePageAtivaSimple()) return;
-    // #region debug-point J:estoque-tick
-    try {
-      fetch('/api/__debug-stock-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          runId: 'pre-fix',
-          hypothesisId: 'B',
-          location: 'patch.js:_tickEstoqueSimple',
-          msg: '[DEBUG] estoque tick ativo',
-          data: { modo: _getModoEstoqueSimple() }
-        })
-      }).catch(function() {});
-    } catch (_) {}
-    // #endregion
     _ocultarExtrasEstoqueSimple();
     _aplicarModoEstoqueSimple();
     _aplicarSimplificacaoTabelaSimple();
