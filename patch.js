@@ -11344,6 +11344,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             if (typeof window.editarChapa === 'function') window.editarChapa(id);
             else if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(id);
           } catch (_) {}
+          _scheduleEnhanceModalNovaChapa();
           if (typeof onDone === 'function') {
             setTimeout(function() { try { onDone(); } catch (_) {} }, 600);
           }
@@ -11357,11 +11358,191 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!btn) return;
     btn.onclick = function() {
       try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {}
+      _scheduleEnhanceModalNovaChapa();
       if (typeof onDone === 'function') {
         setTimeout(function() { try { onDone(); } catch (_) {} }, 600);
       }
     };
   }
+
+  function _fecharModalChapaPatch() {
+    try {
+      var modal = document.getElementById('modal-nova-chapa');
+      if (modal) modal.style.display = 'none';
+    } catch (_) {}
+  }
+
+  function _chapaFieldEhDetalhe(node) {
+    var ids = Array.prototype.slice.call((node && node.querySelectorAll) ? node.querySelectorAll('[id]') : []).map(function(el) { return String(el.id || ''); });
+    return ids.some(function(id) {
+      return [
+        'chapa-quantidade', 'chapa-valor-unitario', 'chapa-total', 'chapa-estoque-minimo',
+        'chapa-data-entrada', 'chapa-vincos', 'chapa-riscada', 'chapa-riscada-nao',
+        'chapa-riscada-sim', 'chapa-risca-desc', 'chapa-obs'
+      ].indexOf(id) >= 0;
+    });
+  }
+
+  function _refreshChapaRiscadaPill() {
+    var noBtn = document.getElementById('chapa-riscada-nao');
+    var yesBtn = document.getElementById('chapa-riscada-sim');
+    var hidden = document.getElementById('chapa-riscada');
+    var sim = !!(hidden && String(hidden.value || '') === '1');
+    [noBtn, yesBtn].forEach(function(btn) {
+      if (!btn) return;
+      btn.classList.add('estoque-toggle-btn');
+      btn.style.cssText = '';
+    });
+    if (noBtn) noBtn.classList.toggle('active-no', !sim);
+    if (yesBtn) yesBtn.classList.toggle('active-yes', sim);
+  }
+
+  function _scheduleEnhanceModalNovaChapa() {
+    [0, 60, 220, 520].forEach(function(delay) {
+      setTimeout(function() {
+        try { _enhanceModalNovaChapa(); } catch (_) {}
+      }, delay);
+    });
+  }
+
+  function _instalarEnhancerModalNovaChapa() {
+    ['abrirModalNovaChapa', 'editarChapa'].forEach(function(fnName) {
+      try {
+        var orig = window[fnName];
+        if (typeof orig !== 'function' || orig.__patchEstoqueEnhanced) return;
+        var wrapped = function() {
+          var out = orig.apply(this, arguments);
+          _scheduleEnhanceModalNovaChapa();
+          return out;
+        };
+        wrapped.__patchEstoqueEnhanced = true;
+        wrapped.__patchEstoqueOrig = orig;
+        window[fnName] = wrapped;
+      } catch (_) {}
+    });
+    try {
+      var origSet = window.setChapaRiscada;
+      if (typeof origSet === 'function' && !origSet.__patchEstoqueEnhanced) {
+        var wrappedSet = function(v) {
+          var out = origSet.apply(this, arguments);
+          try { _refreshChapaRiscadaPill(); } catch (_) {}
+          return out;
+        };
+        wrappedSet.__patchEstoqueEnhanced = true;
+        wrappedSet.__patchEstoqueOrig = origSet;
+        window.setChapaRiscada = wrappedSet;
+      }
+    } catch (_) {}
+  }
+
+  function _enhanceModalNovaChapa() {
+    _ensureEstoqueStyle();
+    var modal = document.getElementById('modal-nova-chapa');
+    if (!modal) return;
+    var shell = modal.firstElementChild;
+    if (!shell) return;
+    modal.classList.add('estoque-modal-overlay');
+    shell.classList.add('estoque-modal-shell', 'estoque-modal-shell-md', 'estoque-modal-shell-chapa');
+    shell.style.cssText = '';
+    var title = document.getElementById('chapa-modal-titulo');
+    if (!title) return;
+    var isEdit = /editar/i.test(String(title.textContent || ''));
+
+    var header = shell.querySelector('.estoque-modal-header');
+    if (!header) {
+      header = document.createElement('div');
+      header.className = 'estoque-modal-header';
+      var headMain = document.createElement('div');
+      headMain.className = 'estoque-modal-head-main';
+      var badge = document.createElement('span');
+      badge.id = 'chapa-modal-hero';
+      badge.className = 'estoque-modal-head-icon estoque-modal-head-icon-blue';
+      headMain.appendChild(badge);
+      var titleWrap = document.createElement('div');
+      titleWrap.className = 'estoque-modal-title-wrap';
+      title.parentNode.insertBefore(header, title);
+      header.appendChild(headMain);
+      headMain.appendChild(titleWrap);
+      titleWrap.appendChild(title);
+      var sub = document.createElement('div');
+      sub.id = 'chapa-modal-subtitulo';
+      sub.className = 'estoque-modal-sub';
+      titleWrap.appendChild(sub);
+      var closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.id = 'chapa-modal-close';
+      closeBtn.className = 'estoque-modal-close';
+      closeBtn.innerHTML = '×';
+      closeBtn.onclick = _fecharModalChapaPatch;
+      header.appendChild(closeBtn);
+    }
+    title.className = 'estoque-modal-title';
+    var subtitle = document.getElementById('chapa-modal-subtitulo');
+    if (subtitle) subtitle.textContent = isEdit ? 'Atualize os dados da chapa mantendo o cadastro, o saldo e o histórico vinculados.' : 'Cadastre uma nova chapa com dados gerais, estoque inicial e detalhes de acabamento.';
+    var hero = document.getElementById('chapa-modal-hero');
+    if (hero) {
+      hero.textContent = isEdit ? '✎' : '+';
+      hero.className = 'estoque-modal-head-icon ' + (isEdit ? 'estoque-modal-head-icon-blue' : 'estoque-modal-head-icon-teal');
+    }
+
+    var grid = shell.querySelector('div[style*="grid-template-columns:1fr 1fr"]');
+    if (grid && !grid.dataset.patchChapaEnhanced) {
+      grid.dataset.patchChapaEnhanced = '1';
+      var fields = Array.prototype.slice.call(grid.children || []);
+      var general = document.createElement('section');
+      general.className = 'estoque-modal-card';
+      general.innerHTML = '<div class="estoque-modal-card-head"><div class="estoque-modal-card-title">Dados Gerais</div><div class="estoque-modal-card-sub">Identificação, fornecedor e vínculo da chapa.</div></div><div class="estoque-modal-grid estoque-modal-grid-chapa"></div>';
+      var detail = document.createElement('section');
+      detail.className = 'estoque-modal-card';
+      detail.innerHTML = '<div class="estoque-modal-card-head"><div class="estoque-modal-card-title">Estoque e Detalhes</div><div class="estoque-modal-card-sub">Quantidades, valores e acabamento desta chapa.</div></div><div class="estoque-modal-grid estoque-modal-grid-chapa"></div>';
+      var generalGrid = general.querySelector('.estoque-modal-grid');
+      var detailGrid = detail.querySelector('.estoque-modal-grid');
+      fields.forEach(function(node) {
+        node.classList.add('estoque-modal-field');
+        if (String(node.style.gridColumn || '').indexOf('span 2') >= 0) node.classList.add('full');
+        if (_chapaFieldEhDetalhe(node)) detailGrid.appendChild(node);
+        else generalGrid.appendChild(node);
+      });
+      grid.replaceWith(general, detail);
+    }
+
+    Array.prototype.slice.call(shell.querySelectorAll('label')).forEach(function(label) {
+      label.classList.add('estoque-modal-label');
+    });
+    Array.prototype.slice.call(shell.querySelectorAll('input,select,textarea')).forEach(function(el) {
+      if (el.id === 'chapa-riscada') return;
+      if (el.tagName === 'SELECT') el.classList.add('estoque-modal-select');
+      else if (el.tagName === 'TEXTAREA') el.classList.add('estoque-modal-textarea');
+      else el.classList.add('estoque-modal-input');
+    });
+
+    var riscaWrap = document.getElementById('chapa-risca-wrap');
+    if (riscaWrap) riscaWrap.classList.add('full');
+    var toggleWrap = (document.getElementById('chapa-riscada-nao') || {}).parentNode || null;
+    if (toggleWrap) toggleWrap.classList.add('estoque-toggle-pill');
+    _refreshChapaRiscadaPill();
+
+    var footer = title.closest('div') ? shell.querySelector('div[style*="justify-content:flex-end"]') : null;
+    if (footer) {
+      footer.className = 'estoque-modal-footer';
+      var footerButtons = footer.querySelectorAll('button');
+      if (footerButtons[0]) {
+        footerButtons[0].className = 'estoque-modal-btn estoque-modal-btn-ghost';
+        footerButtons[0].innerHTML = 'Cancelar';
+        footerButtons[0].onclick = _fecharModalChapaPatch;
+      }
+      if (footerButtons[1]) {
+        footerButtons[1].className = 'estoque-modal-btn estoque-modal-btn-blue';
+        footerButtons[1].innerHTML = '✓ Salvar';
+      }
+    }
+  }
+
+  [0, 300, 1200].forEach(function(delay) {
+    setTimeout(function() {
+      try { _instalarEnhancerModalNovaChapa(); } catch (_) {}
+    }, delay);
+  });
 
   function _entradaEstoqueHojeIso() {
     try { return new Date().toISOString().slice(0, 10); } catch (_) { return ''; }
@@ -11454,25 +11635,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function _entradaEstoqueAdicionarLinha(tbody, chapas) {
     if (!tbody) return;
     var tr = document.createElement('tr');
-    tr.style.background = (tbody.children.length % 2 === 0) ? 'var(--surface)' : 'var(--s2)';
     tr.innerHTML = ''
       + '<td style="padding:8px;border-bottom:1px solid var(--border)">'
-      + '  <select class="est-ent-modo" style="width:120px;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">'
+      + '  <select class="est-ent-modo estoque-modal-select" style="width:120px">'
       + '    <option value="existente">Existente</option>'
       + '    <option value="nova">Nova</option>'
       + '  </select>'
       + '</td>'
       + '<td style="padding:8px;border-bottom:1px solid var(--border);min-width:240px">'
-      + '  <select class="est-ent-chapa" style="width:100%;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">' + _entradaEstoqueOptions(chapas) + '</select>'
+      + '  <select class="est-ent-chapa estoque-modal-select" style="width:100%">' + _entradaEstoqueOptions(chapas) + '</select>'
       + '</td>'
-      + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-gramatura" type="number" min="0" step="0.001" placeholder="g/m2" style="width:95px;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);text-align:right"></td>'
-      + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-nomenclatura" type="text" placeholder="Nomenclatura" style="width:180px;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></td>'
-      + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-tamanho" type="text" placeholder="Tamanho" style="width:120px;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></td>'
-      + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-nome" type="text" placeholder="Nome/Uso" style="width:180px;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></td>'
-      + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-qtd" type="number" min="1" value="1" style="width:90px;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800;text-align:right"></td>'
-      + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-vu" type="number" min="0" step="0.00001" value="0" style="width:110px;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800;text-align:right"></td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-gramatura estoque-modal-input" type="number" min="0" step="0.001" placeholder="g/m2" style="width:95px;text-align:right"></td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-nomenclatura estoque-modal-input" type="text" placeholder="Nomenclatura" style="width:180px"></td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-tamanho estoque-modal-input" type="text" placeholder="Tamanho" style="width:120px"></td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-nome estoque-modal-input" type="text" placeholder="Nome/Uso" style="width:180px"></td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-qtd estoque-modal-input" type="number" min="1" value="1" style="width:90px;font-family:var(--mono);font-weight:800;text-align:right"></td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-vu estoque-modal-input" type="number" min="0" step="0.00001" value="0" style="width:110px;font-family:var(--mono);font-weight:800;text-align:right"></td>'
       + '<td style="padding:8px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:900;white-space:nowrap"><span class="est-ent-total">R$ 0,00</span></td>'
-      + '<td style="padding:8px;border-bottom:1px solid var(--border);text-align:center"><button type="button" class="pcp-btn est-ent-remover" style="background:#7f1d1d">Remover</button></td>';
+      + '<td style="padding:8px;border-bottom:1px solid var(--border);text-align:center"><button type="button" class="estoque-modal-icon-btn est-ent-remover" title="Remover item">🗑</button></td>';
     tbody.appendChild(tr);
 
     var sync = function() { _entradaEstoqueAtualizarLinha(tr, chapas); };
@@ -11592,7 +11772,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Salvar Entrada';
+        btn.textContent = '✓ Salvar Entrada';
       }
     }
   }
@@ -11602,29 +11782,48 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!modal) {
       modal = document.createElement('div');
       modal.id = 'estoque-entrada-real-modal';
-      modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(2,6,23,.82);z-index:99999;align-items:center;justify-content:center;padding:18px';
+      modal.className = 'estoque-modal-overlay';
+      modal.style.display = 'none';
       modal.innerHTML = ''
-        + '<div style="width:min(1480px,98vw);max-height:92vh;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.55)">'
-        + '  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid var(--border)">'
-        + '    <div><div style="font-size:26px;font-weight:900;color:var(--text)">Dar Entrada</div><div style="margin-top:6px;color:var(--text2);font-size:13px">Lance varias chapas na mesma entrada e reutilize a chapa existente quando ela ja estiver cadastrada.</div></div>'
-        + '    <button type="button" id="estoque-entrada-real-close" class="pcp-btn" style="background:#334155">Fechar</button>'
+        + '<div class="estoque-modal-shell">'
+        + '  <div class="estoque-modal-header">'
+        + '    <div class="estoque-modal-head-main">'
+        + '      <span class="estoque-modal-head-icon estoque-modal-head-icon-green" aria-hidden="true">↓</span>'
+        + '      <div class="estoque-modal-title-wrap">'
+        + '        <div class="estoque-modal-title">Dar Entrada</div>'
+        + '        <div class="estoque-modal-sub">Lance varias chapas na mesma entrada e reaproveite a chapa existente quando ela ja estiver cadastrada.</div>'
+        + '      </div>'
+        + '    </div>'
+        + '    <button type="button" id="estoque-entrada-real-close" class="estoque-modal-close" aria-label="Fechar">×</button>'
         + '  </div>'
-        + '  <div style="padding:18px;display:grid;gap:16px">'
-        + '    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px">'
-        + '      <label style="display:grid;gap:6px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Data da Entrada</span><input id="estoque-entrada-real-data" type="date" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></label>'
-        + '      <label style="display:grid;gap:6px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Fornecedor</span><input id="estoque-entrada-real-fornecedor" type="text" placeholder="Fornecedor do recebimento" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></label>'
-        + '      <label style="display:grid;gap:6px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Qual CNPJ</span><input id="estoque-entrada-real-cnpj" type="text" placeholder="Empresa/CNPJ" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></label>'
-        + '      <label style="display:grid;gap:6px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">NF</span><input id="estoque-entrada-real-nf" type="text" placeholder="Numero da nota fiscal" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono)"></label>'
-        + '      <label style="display:grid;gap:6px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Responsavel</span><input id="estoque-entrada-real-responsavel" type="text" placeholder="Quem recebeu/lancou" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></label>'
-        + '      <label style="display:grid;gap:6px;grid-column:1/-1"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Observacoes</span><input id="estoque-entrada-real-obs" type="text" placeholder="Observacoes gerais da entrada" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></label>'
-        + '    </div>'
-        + '    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
-        + '      <div style="color:var(--text2);font-size:13px">Use "Existente" para somar saldo numa chapa ja cadastrada ou "Nova" para criar e dar entrada na mesma operacao.</div>'
-        + '      <button type="button" id="estoque-entrada-real-add" class="pcp-btn">+ Adicionar Item</button>'
-        + '    </div>'
-        + '    <div style="overflow:auto;border:1px solid var(--border);border-radius:16px;background:var(--card)">'
-        + '      <table style="width:100%;border-collapse:collapse;min-width:1280px">'
-        + '        <thead><tr style="background:var(--s2)">'
+        + '  <div class="estoque-modal-content">'
+        + '    <section class="estoque-modal-card">'
+        + '      <div class="estoque-modal-card-head">'
+        + '        <div>'
+        + '          <div class="estoque-modal-card-title">Dados Gerais</div>'
+        + '          <div class="estoque-modal-card-sub">Identifique o recebimento, vincule fornecedor e registre a nota antes de listar os itens.</div>'
+        + '        </div>'
+        + '      </div>'
+        + '      <div class="estoque-modal-grid estoque-modal-grid-entrada">'
+        + '        <label class="estoque-modal-label"><span>Data da Entrada</span><input id="estoque-entrada-real-data" class="estoque-modal-input" type="date"></label>'
+        + '        <label class="estoque-modal-label"><span>Fornecedor</span><input id="estoque-entrada-real-fornecedor" class="estoque-modal-input" type="text" placeholder="Fornecedor do recebimento"></label>'
+        + '        <label class="estoque-modal-label"><span>Qual CNPJ</span><input id="estoque-entrada-real-cnpj" class="estoque-modal-input" type="text" placeholder="Empresa/CNPJ"></label>'
+        + '        <label class="estoque-modal-label"><span>NF</span><input id="estoque-entrada-real-nf" class="estoque-modal-input estoque-modal-mono" type="text" placeholder="Numero da nota fiscal"></label>'
+        + '        <label class="estoque-modal-label"><span>Responsavel</span><input id="estoque-entrada-real-responsavel" class="estoque-modal-input" type="text" placeholder="Quem recebeu/lancou"></label>'
+        + '        <label class="estoque-modal-label estoque-modal-field-full"><span>Observacoes</span><input id="estoque-entrada-real-obs" class="estoque-modal-input" type="text" placeholder="Observacoes gerais da entrada"></label>'
+        + '      </div>'
+        + '    </section>'
+        + '    <section class="estoque-modal-card">'
+        + '      <div class="estoque-modal-card-head">'
+        + '        <div>'
+        + '          <div class="estoque-modal-card-title">Itens da Entrada</div>'
+        + '          <div class="estoque-modal-card-sub">Use "Existente" para somar saldo numa chapa ja cadastrada ou "Nova" para criar e dar entrada na mesma operacao.</div>'
+        + '        </div>'
+        + '        <button type="button" id="estoque-entrada-real-add" class="estoque-modal-outline">+ Adicionar Item</button>'
+        + '      </div>'
+        + '      <div class="estoque-modal-table-wrap">'
+        + '        <table class="estoque-modal-table" style="min-width:1280px">'
+        + '        <thead><tr>'
         + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Modo</th>'
         + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Chapa Existente</th>'
         + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Gramatura</th>'
@@ -11638,11 +11837,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '        </tr></thead>'
         + '        <tbody id="estoque-entrada-real-tbody"></tbody>'
         + '      </table>'
-        + '    </div>'
-        + '    <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">'
-        + '      <button type="button" id="estoque-entrada-real-cancel" class="pcp-btn" style="background:#334155">Cancelar</button>'
-        + '      <button type="button" id="estoque-entrada-real-save" class="pcp-btn">Salvar Entrada</button>'
-        + '    </div>'
+        + '      </div>'
+        + '    </section>'
+        + '  </div>'
+        + '  <div class="estoque-modal-footer">'
+        + '    <button type="button" id="estoque-entrada-real-cancel" class="estoque-modal-btn estoque-modal-btn-ghost">Cancelar</button>'
+        + '    <button type="button" id="estoque-entrada-real-save" class="estoque-modal-btn estoque-modal-btn-green">✓ Salvar Entrada</button>'
         + '  </div>'
         + '</div>';
       document.body.appendChild(modal);
@@ -11821,15 +12021,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function _saidaEstoqueAdicionarLinha(tbody, chapas) {
     if (!tbody) return;
     var tr = document.createElement('tr');
-    tr.style.background = (tbody.children.length % 2 === 0) ? 'var(--surface)' : 'var(--s2)';
     tr.innerHTML = ''
       + '<td style="padding:8px;border-bottom:1px solid var(--border);min-width:320px">'
-      + '  <select class="est-sai-chapa" style="width:100%;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">' + _saidaEstoqueOptions(chapas) + '</select>'
+      + '  <select class="est-sai-chapa estoque-modal-select" style="width:100%">' + _saidaEstoqueOptions(chapas) + '</select>'
       + '</td>'
       + '<td style="padding:8px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:900"><span class="est-sai-saldo">0</span></td>'
-      + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-sai-qtd" type="number" min="1" value="1" style="width:100px;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800;text-align:right"></td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-sai-qtd estoque-modal-input" type="number" min="1" value="1" style="width:100px;font-family:var(--mono);font-weight:800;text-align:right"></td>'
       + '<td style="padding:8px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:900;white-space:nowrap"><span class="est-sai-total">R$ 0,00</span></td>'
-      + '<td style="padding:8px;border-bottom:1px solid var(--border);text-align:center"><button type="button" class="pcp-btn est-sai-remover" style="background:#7f1d1d">Remover</button></td>';
+      + '<td style="padding:8px;border-bottom:1px solid var(--border);text-align:center"><button type="button" class="estoque-modal-icon-btn est-sai-remover" title="Remover item">🗑</button></td>';
     tbody.appendChild(tr);
 
     var sync = function() {
@@ -11933,7 +12132,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Salvar Saída';
+        btn.textContent = '✓ Salvar Saída';
       }
     }
   }
@@ -11943,28 +12142,57 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!modal) {
       modal = document.createElement('div');
       modal.id = 'estoque-saida-real-modal';
-      modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(2,6,23,.82);z-index:99999;align-items:center;justify-content:center;padding:18px';
+      modal.className = 'estoque-modal-overlay';
+      modal.style.display = 'none';
       modal.innerHTML = ''
-        + '<div style="width:min(1320px,97vw);max-height:92vh;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.55)">'
-        + '  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid var(--border)">'
-        + '    <div><div style="font-size:26px;font-weight:900;color:var(--text)">Dar Saída</div><div style="margin-top:6px;color:var(--text2);font-size:13px">Selecione várias chapas na mesma operação, valide o saldo antes de salvar e exija um motivo para cada saída.</div></div>'
-        + '    <button type="button" id="estoque-saida-real-close" class="pcp-btn" style="background:#334155">Fechar</button>'
+        + '<div class="estoque-modal-shell estoque-modal-shell-lg">'
+        + '  <div class="estoque-modal-header">'
+        + '    <div class="estoque-modal-head-main">'
+        + '      <span class="estoque-modal-head-icon estoque-modal-head-icon-red" aria-hidden="true">↑</span>'
+        + '      <div class="estoque-modal-title-wrap">'
+        + '        <div class="estoque-modal-title">Dar Saída</div>'
+        + '        <div class="estoque-modal-sub">Selecione varias chapas na mesma operacao, valide o saldo antes de salvar e informe o motivo da saida.</div>'
+        + '      </div>'
+        + '    </div>'
+        + '    <button type="button" id="estoque-saida-real-close" class="estoque-modal-close" aria-label="Fechar">×</button>'
         + '  </div>'
-        + '  <div style="padding:18px;display:grid;gap:16px">'
-        + '    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px">'
-        + '      <label style="display:grid;gap:6px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Data da Saída</span><input id="estoque-saida-real-data" type="date" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></label>'
-        + '      <label style="display:grid;gap:6px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Motivo</span><select id="estoque-saida-real-motivo" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"><option value="">Selecionar...</option><option value="producao">Produção</option><option value="ajuste">Ajuste de Estoque</option><option value="devolucao">Devolução ao Fornecedor</option><option value="perda">Perda / Avaria</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></label>'
-        + '      <label style="display:grid;gap:6px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Responsável</span><input id="estoque-saida-real-responsavel" type="text" placeholder="Quem lançou" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></label>'
-        + '      <label style="display:grid;gap:6px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">OF</span><input id="estoque-saida-real-of" type="text" placeholder="Opcional" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono)"></label>'
-        + '      <label style="display:grid;gap:6px;grid-column:1/-1"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Observações</span><input id="estoque-saida-real-obs" type="text" placeholder="Detalhes adicionais da saída" style="padding:10px 12px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></label>'
-        + '    </div>'
-        + '    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
-        + '      <div id="estoque-saida-real-resumo" style="color:var(--text2);font-size:13px"></div>'
-        + '      <button type="button" id="estoque-saida-real-add" class="pcp-btn" style="background:#7f1d1d">+ Adicionar Item</button>'
-        + '    </div>'
-        + '    <div style="overflow:auto;border:1px solid var(--border);border-radius:16px;background:var(--card)">'
-        + '      <table style="width:100%;border-collapse:collapse;min-width:980px">'
-        + '        <thead><tr style="background:var(--s2)">'
+        + '  <div class="estoque-modal-content">'
+        + '    <section class="estoque-modal-card">'
+        + '      <div class="estoque-modal-card-head">'
+        + '        <div>'
+        + '          <div class="estoque-modal-card-title">Dados Gerais</div>'
+        + '          <div class="estoque-modal-card-sub">Informe contexto da movimentacao, of vinculada e motivo da baixa antes de escolher os itens.</div>'
+        + '        </div>'
+        + '      </div>'
+        + '      <div class="estoque-modal-grid estoque-modal-grid-saida">'
+        + '        <label class="estoque-modal-label"><span>Data da Saida</span><input id="estoque-saida-real-data" class="estoque-modal-input" type="date"></label>'
+        + '        <label class="estoque-modal-label"><span>Motivo</span><select id="estoque-saida-real-motivo" class="estoque-modal-select"><option value="">Selecionar...</option><option value="producao">Produção</option><option value="ajuste">Ajuste de Estoque</option><option value="devolucao">Devolução ao Fornecedor</option><option value="perda">Perda / Avaria</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></label>'
+        + '        <label class="estoque-modal-label"><span>Responsavel</span><input id="estoque-saida-real-responsavel" class="estoque-modal-input" type="text" placeholder="Quem lancou"></label>'
+        + '        <label class="estoque-modal-label"><span>OF</span><input id="estoque-saida-real-of" class="estoque-modal-input estoque-modal-mono" type="text" placeholder="Opcional"></label>'
+        + '        <label class="estoque-modal-label estoque-modal-field-full"><span>Observacoes</span><input id="estoque-saida-real-obs" class="estoque-modal-input" type="text" placeholder="Detalhes adicionais da saida"></label>'
+        + '      </div>'
+        + '    </section>'
+        + '    <section class="estoque-modal-card">'
+        + '      <div class="estoque-modal-card-head">'
+        + '        <div>'
+        + '          <div class="estoque-modal-card-title">Itens da Saída</div>'
+        + '          <div class="estoque-modal-card-sub">A validacao de saldo continua obrigatoria e bloqueia qualquer item acima do disponivel.</div>'
+        + '        </div>'
+        + '        <button type="button" id="estoque-saida-real-add" class="estoque-modal-outline">+ Adicionar Item</button>'
+        + '      </div>'
+        + '      <div class="estoque-modal-summary-grid">'
+        + '        <div class="estoque-modal-summary-card">'
+        + '          <span class="estoque-modal-summary-label">Resumo da saida</span>'
+        + '          <strong id="estoque-saida-real-resumo" class="estoque-modal-summary-value">Selecione as chapas e quantidades.</strong>'
+        + '        </div>'
+        + '        <div class="estoque-modal-summary-card">'
+        + '          <span class="estoque-modal-summary-label">Validacao</span>'
+        + '          <strong class="estoque-modal-summary-value">Bloqueia saldo insuficiente ao salvar.</strong>'
+        + '        </div>'
+        + '      </div>'
+        + '      <div class="estoque-modal-table-wrap">'
+        + '        <table class="estoque-modal-table" style="min-width:980px">'
+        + '        <thead><tr>'
         + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Chapa</th>'
         + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);text-align:right">Saldo</th>'
         + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Qtd Saída</th>'
@@ -11973,11 +12201,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '        </tr></thead>'
         + '        <tbody id="estoque-saida-real-tbody"></tbody>'
         + '      </table>'
-        + '    </div>'
-        + '    <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">'
-        + '      <button type="button" id="estoque-saida-real-cancel" class="pcp-btn" style="background:#334155">Cancelar</button>'
-        + '      <button type="button" id="estoque-saida-real-save" class="pcp-btn" style="background:#7f1d1d">Salvar Saída</button>'
-        + '    </div>'
+        + '      </div>'
+        + '    </section>'
+        + '  </div>'
+        + '  <div class="estoque-modal-footer">'
+        + '    <button type="button" id="estoque-saida-real-cancel" class="estoque-modal-btn estoque-modal-btn-ghost">Cancelar</button>'
+        + '    <button type="button" id="estoque-saida-real-save" class="estoque-modal-btn estoque-modal-btn-red">✓ Salvar Saída</button>'
         + '  </div>'
         + '</div>';
       document.body.appendChild(modal);
@@ -12251,6 +12480,66 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '.estoque-action-danger{background:linear-gradient(135deg,rgba(249,115,22,.24),rgba(220,38,38,.88));border-color:rgba(249,115,22,.45)}' +
       '.estoque-action-accent{background:linear-gradient(135deg,rgba(59,130,246,.24),rgba(37,99,235,.88));border-color:rgba(59,130,246,.45)}' +
       '.estoque-action-teal{background:linear-gradient(135deg,rgba(20,184,166,.24),rgba(109,40,217,.88));border-color:rgba(45,212,191,.40)}' +
+      '.estoque-modal-overlay{position:fixed;inset:0;background:rgba(2,6,23,.84);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(6px)}' +
+      '.estoque-modal-shell{width:min(1480px,98vw);max-height:92vh;overflow:auto;background:linear-gradient(180deg,#09111f,#0f172a);border:1px solid rgba(148,163,184,.18);border-radius:22px;box-shadow:0 30px 90px rgba(0,0,0,.58)}' +
+      '.estoque-modal-shell-md{width:min(980px,96vw)}' +
+      '.estoque-modal-header{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:20px 22px;border-bottom:1px solid rgba(148,163,184,.16)}' +
+      '.estoque-modal-head-main{display:flex;align-items:flex-start;gap:14px;min-width:0}' +
+      '.estoque-modal-head-icon{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:16px;color:#fff;font-size:22px;font-weight:900;box-shadow:0 18px 30px -20px rgba(0,0,0,.85);flex:0 0 48px}' +
+      '.estoque-modal-head-icon-green{background:linear-gradient(135deg,rgba(34,197,94,.24),rgba(22,163,74,.94));border:1px solid rgba(34,197,94,.35)}' +
+      '.estoque-modal-head-icon-red{background:linear-gradient(135deg,rgba(249,115,22,.24),rgba(220,38,38,.94));border:1px solid rgba(249,115,22,.38)}' +
+      '.estoque-modal-head-icon-blue{background:linear-gradient(135deg,rgba(59,130,246,.24),rgba(37,99,235,.94));border:1px solid rgba(59,130,246,.38)}' +
+      '.estoque-modal-head-icon-teal{background:linear-gradient(135deg,rgba(20,184,166,.24),rgba(109,40,217,.94));border:1px solid rgba(45,212,191,.38)}' +
+      '.estoque-modal-title-wrap{display:grid;gap:6px}' +
+      '.estoque-modal-title{margin:0;font-size:26px;font-weight:900;color:#f8fafc}' +
+      '.estoque-modal-sub{font-size:13px;line-height:1.45;color:#94a3b8}' +
+      '.estoque-modal-close{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:none;border-radius:999px;background:rgba(148,163,184,.14);color:#e2e8f0;font-size:22px;cursor:pointer;transition:transform .15s ease,filter .15s ease,background .15s ease}' +
+      '.estoque-modal-close:hover{transform:scale(1.04);filter:brightness(1.08);background:rgba(148,163,184,.22)}' +
+      '.estoque-modal-content{padding:20px;display:grid;gap:16px}' +
+      '.estoque-modal-card{display:grid;gap:14px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.12);border-radius:18px;padding:16px}' +
+      '.estoque-modal-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}' +
+      '.estoque-modal-card-title{font-size:15px;font-weight:900;color:#f8fafc}' +
+      '.estoque-modal-card-sub{font-size:12px;color:#94a3b8;line-height:1.45}' +
+      '.estoque-modal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}' +
+      '.estoque-modal-grid-entrada,.estoque-modal-grid-saida{grid-template-columns:repeat(2,minmax(0,1fr))}' +
+      '.estoque-modal-grid-chapa{grid-template-columns:repeat(2,minmax(0,1fr))}' +
+      '.estoque-modal-field{display:grid;gap:6px;min-width:0}' +
+      '.estoque-modal-field.full{grid-column:1/-1}' +
+      '.estoque-modal-field-full{grid-column:1/-1}' +
+      '.estoque-modal-label{display:grid;gap:6px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8}' +
+      '.estoque-modal-input,.estoque-modal-select,.estoque-modal-textarea{width:100%;padding:11px 12px;border-radius:10px;background:#081120;color:#e2e8f0;border:1px solid rgba(148,163,184,.18);box-sizing:border-box;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}' +
+      '.estoque-modal-mono{font-family:var(--mono)}' +
+      '.estoque-modal-textarea{min-height:92px;resize:vertical}' +
+      '.estoque-modal-input:focus,.estoque-modal-select:focus,.estoque-modal-textarea:focus{outline:none;border-color:rgba(59,130,246,.78);box-shadow:0 0 0 4px rgba(37,99,235,.16);background:#0b1629}' +
+      '.estoque-modal-inline-note{font-size:13px;color:#94a3b8;line-height:1.45}' +
+      '.estoque-modal-outline{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;background:transparent;color:#cbd5e1;border:1px solid rgba(148,163,184,.3);cursor:pointer;font-weight:700;transition:transform .15s ease,filter .15s ease,border-color .15s ease}' +
+      '.estoque-modal-outline:hover{transform:scale(1.02);filter:brightness(1.08);border-color:rgba(59,130,246,.45)}' +
+      '.estoque-modal-table-wrap{overflow:auto;border:1px solid rgba(148,163,184,.16);border-radius:18px;background:rgba(8,17,32,.9);max-height:min(46vh,420px)}' +
+      '.estoque-modal-table-wrap::-webkit-scrollbar{width:10px;height:10px}' +
+      '.estoque-modal-table-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.68)}' +
+      '.estoque-modal-table-wrap::-webkit-scrollbar-thumb{background:rgba(100,116,139,.55);border-radius:999px;border:2px solid rgba(15,23,42,.68)}' +
+      '.estoque-modal-table{width:100%;border-collapse:separate;border-spacing:0;min-width:980px}' +
+      '.estoque-modal-table thead th{position:sticky;top:0;z-index:2;background:#0f172a;padding:12px 10px;border-bottom:1px solid rgba(148,163,184,.18);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8}' +
+      '.estoque-modal-table tbody td{padding:10px;border-bottom:1px solid rgba(148,163,184,.08);vertical-align:middle}' +
+      '.estoque-modal-table tbody tr:nth-child(even){background:rgba(15,23,42,.35)}' +
+      '.estoque-modal-table tbody tr:hover{background:rgba(30,41,59,.55)}' +
+      '.estoque-modal-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}' +
+      '.estoque-modal-summary-card{display:grid;gap:6px;padding:14px 16px;border-radius:16px;background:rgba(8,17,32,.72);border:1px solid rgba(148,163,184,.14)}' +
+      '.estoque-modal-summary-label{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8}' +
+      '.estoque-modal-summary-value{font-size:14px;line-height:1.35;color:#f8fafc}' +
+      '.estoque-modal-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid rgba(239,68,68,.28);background:rgba(239,68,68,.08);color:#fca5a5;cursor:pointer;transition:transform .15s ease,filter .15s ease,background .15s ease}' +
+      '.estoque-modal-icon-btn:hover{transform:scale(1.04);filter:brightness(1.08);background:rgba(239,68,68,.14)}' +
+      '.estoque-modal-footer{position:sticky;bottom:0;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;padding:16px 20px;border-top:1px solid rgba(148,163,184,.12);background:linear-gradient(180deg,rgba(9,17,31,.18),rgba(9,17,31,.96))}' +
+      '.estoque-modal-btn{display:inline-flex;align-items:center;gap:8px;min-height:46px;padding:11px 18px;border-radius:12px;border:1px solid transparent;cursor:pointer;font-weight:800;transition:transform .15s ease,filter .15s ease}' +
+      '.estoque-modal-btn:hover{transform:scale(1.02);filter:brightness(1.05)}' +
+      '.estoque-modal-btn-ghost{background:transparent;color:#e2e8f0;border-color:rgba(148,163,184,.24)}' +
+      '.estoque-modal-btn-green{background:linear-gradient(135deg,rgba(34,197,94,.22),rgba(22,163,74,.94));color:#fff;border-color:rgba(34,197,94,.38)}' +
+      '.estoque-modal-btn-red{background:linear-gradient(135deg,rgba(249,115,22,.22),rgba(220,38,38,.94));color:#fff;border-color:rgba(249,115,22,.38)}' +
+      '.estoque-modal-btn-blue{background:linear-gradient(135deg,rgba(59,130,246,.22),rgba(37,99,235,.94));color:#fff;border-color:rgba(59,130,246,.38)}' +
+      '.estoque-toggle-pill{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:4px;background:rgba(8,17,32,.72);border:1px solid rgba(148,163,184,.18);border-radius:999px}' +
+      '.estoque-toggle-btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 14px;border:none;border-radius:999px;background:transparent;color:#94a3b8;cursor:pointer;font-weight:700;transition:all .15s ease}' +
+      '.estoque-toggle-btn.active-no{background:rgba(59,130,246,.18);color:#bfdbfe;box-shadow:inset 0 0 0 1px rgba(59,130,246,.28)}' +
+      '.estoque-toggle-btn.active-yes{background:rgba(34,197,94,.18);color:#bbf7d0;box-shadow:inset 0 0 0 1px rgba(34,197,94,.28)}' +
       '.pep-table-wrap{overflow:auto;max-height:min(60vh,520px);overscroll-behavior:contain}' +
       '.pcp-input{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}' +
       '.pcp-select{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}';
