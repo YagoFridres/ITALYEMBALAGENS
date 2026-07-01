@@ -57,6 +57,80 @@ if (typeof window._fmtRs === 'undefined') {
   else install();
 })();
 
+(function patchEstoqueRotasFinal() {
+  if (window.__patchEstoqueRotasFinal) return;
+  window.__patchEstoqueRotasFinal = true;
+
+  function debugPostFix(msg, data) {
+    try {
+      fetch('/api/__debug-stock-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          runId: 'post-fix',
+          hypothesisId: 'FIX',
+          location: 'patch.js:patchEstoqueRotasFinal',
+          msg: '[DEBUG] ' + String(msg || ''),
+          data: data || {}
+        })
+      }).catch(function() {});
+    } catch (_) {}
+  }
+
+  function renderCustom(pid) {
+    try {
+      if (pid === 'estoque' && typeof window.renderEstoqueWireframePage === 'function') {
+        debugPostFix('render custom estoque', { pageId: pid });
+        Promise.resolve(window.renderEstoqueWireframePage()).catch(function(e) { debugPostFix('render estoque error', { message: String(e && e.message || e) }); });
+        return true;
+      }
+      if (pid === 'checklist-recebimento' && typeof window.renderChecklistRecebimento === 'function') {
+        debugPostFix('render custom checklist', { pageId: pid });
+        Promise.resolve(window.renderChecklistRecebimento()).catch(function(e) { debugPostFix('render checklist error', { message: String(e && e.message || e) }); });
+        return true;
+      }
+      if (pid === 'gramaturas' && typeof window.renderGramaturas === 'function') {
+        debugPostFix('render custom gramaturas', { pageId: pid });
+        Promise.resolve(window.renderGramaturas()).catch(function(e) { debugPostFix('render gramaturas error', { message: String(e && e.message || e) }); });
+        return true;
+      }
+      if (pid === 'toneladas-vendidas' && typeof window.renderToneladasVendidas === 'function') {
+        debugPostFix('render custom toneladas', { pageId: pid });
+        Promise.resolve(window.renderToneladasVendidas()).catch(function(e) { debugPostFix('render toneladas error', { message: String(e && e.message || e) }); });
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  function reforcarEstoqueWireframe() {
+    [60, 240, 700, 1400].forEach(function(t) {
+      setTimeout(function() {
+        try {
+          if (typeof window.__forcarWireframeEstoque === 'function') {
+            debugPostFix('reforcar estoque wireframe', { delay: t });
+            window.__forcarWireframeEstoque();
+          }
+        } catch (_) {}
+      }, t);
+    });
+  }
+
+  var origGo = window.go;
+  if (typeof origGo === 'function' && !origGo._patchEstoqueRotasFinal) {
+    var wrappedGo = function(id) {
+      var pid = String(id || '').trim();
+      debugPostFix('window.go final', { pageId: pid });
+      if (renderCustom(pid)) return;
+      var out = origGo.apply(this, arguments);
+      if (pid === 'estoque') reforcarEstoqueWireframe();
+      return out;
+    };
+    wrappedGo._patchEstoqueRotasFinal = true;
+    window.go = wrappedGo;
+  }
+})();
+
 (function() {
   if (window.__patchEstoqueChapasUiFixesInstalled) return;
   window.__patchEstoqueChapasUiFixesInstalled = true;
@@ -3118,6 +3192,54 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     function esc(v) { return String(v == null ? '' : v).replace(/[&<>"]/g, function(ch) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[ch] || ch; }); }
     function money(v) { try { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return 'R$ 0,00'; } }
     function num(v, dec) { try { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 }); } catch (_) { return String(v || 0); } }
+    function _estoqueSharedFn(name, fallback) {
+      try {
+        if (typeof window[name] === 'function') return window[name];
+      } catch (_) {}
+      return fallback;
+    }
+    function _makeCardEstoque(item) {
+      var fn = _estoqueSharedFn('__estoqueMakeCard', function(card) {
+        return '<div class="pep-card"><div class="pep-card-label">' + esc(card && card.label || '') + '</div><div class="pep-card-val">' + esc(card && card.value || '0') + '</div><div class="pep-card-sub">' + esc(card && card.sub || '') + '</div></div>';
+      });
+      return fn(item || {});
+    }
+    function _cardBreakdownEstoque(label, itens, formatter) {
+      var fn = _estoqueSharedFn('__estoqueCardBreakdown', null);
+      if (fn) return fn(label, itens, formatter);
+      var linhas = (Array.isArray(itens) ? itens : []).slice(0, 4).map(function(item) {
+        return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#cbd5e1"><span>' + esc(item && item.nome || '—') + '</span><span>' + esc((formatter || num)(item && item.valor || 0)) + '</span></div>';
+      }).join('') || '<div style="font-size:12px;color:#94a3b8">Sem dados no período.</div>';
+      return '<div class="pep-card"><div class="pep-card-label">' + esc(label || '') + '</div><div class="pep-card-sub" style="margin-top:10px">' + linhas + '</div></div>';
+    }
+    function _fmtNumEstoque(v) {
+      var fn = _estoqueSharedFn('__estoqueFmtNum', null);
+      return fn ? fn(v) : num(v, 0);
+    }
+    function _resumoTopPorValor(rows, getName, getValue) {
+      var fn = _estoqueSharedFn('__estoqueResumoTopPorValor', null);
+      if (fn) return fn(rows, getName, getValue);
+      var mapa = {};
+      (rows || []).forEach(function(row) {
+        var nome = String(typeof getName === 'function' ? getName(row) : '').trim() || 'Sem dados';
+        var valor = Number(typeof getValue === 'function' ? getValue(row) : 0) || 0;
+        if (!mapa[nome]) mapa[nome] = 0;
+        mapa[nome] += valor;
+      });
+      return Object.keys(mapa).map(function(nome) { return { nome: nome, valor: mapa[nome] }; }).sort(function(a, b) { return b.valor - a.valor; });
+    }
+    function _carregarDadosMovimentacaoEstoque(tipo) {
+      var fn = _estoqueSharedFn('__estoqueCarregarMovimentacao', null);
+      return fn ? fn(tipo) : Promise.resolve([]);
+    }
+    function _estoqueFetchChapasList(limit) {
+      var fn = _estoqueSharedFn('__estoqueFetchChapasList', null);
+      return fn ? fn(limit) : Promise.resolve([]);
+    }
+    function _mesAtualRefEstoque() {
+      var fn = _estoqueSharedFn('__estoqueMesAtualRef', null);
+      return fn ? fn() : new Date().toISOString().slice(0, 7);
+    }
     function ensureStyles() {
       if (document.getElementById('patch-extra-pages-style')) return;
       var st = document.createElement('style');
@@ -3155,8 +3277,28 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var first = document.querySelector('[id^="page-"], [data-page]');
       return first && first.parentNode ? first.parentNode : document.body;
     }
+    // #region debug-point A:stock-route-helper
+    function _debugStockRoute(msg, data) {
+      try {
+        fetch('/api/__debug-stock-log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            runId: 'pre-fix',
+            hypothesisId: 'A',
+            location: 'patch.js',
+            msg: '[DEBUG] ' + String(msg || ''),
+            data: data || {}
+          })
+        }).catch(function() {});
+      } catch (_) {}
+    }
+    // #endregion
     function ensurePage(pageId) {
       var page = document.getElementById('page-' + pageId) || document.querySelector('[data-page="' + pageId + '"]');
+      // #region debug-point B:ensure-page
+      _debugStockRoute('ensurePage', { pageId: pageId, found: !!page });
+      // #endregion
       if (page) return page;
       var base = document.querySelector('[id^="page-"], [data-page]');
       page = document.createElement('div');
@@ -3168,6 +3310,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return page;
     }
     function showOnlyPage(pageId) {
+      // #region debug-point C:show-only-page
+      _debugStockRoute('showOnlyPage', { pageId: pageId });
+      // #endregion
       Array.prototype.slice.call(document.querySelectorAll('[id^="page-"], [data-page]')).forEach(function(pg) {
         try {
           var id = String(pg.getAttribute('data-page') || pg.id || '').replace(/^page-/, '');
@@ -3287,6 +3432,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       };
     }
     async function renderGramaturasPage() {
+      // #region debug-point D:render-gramaturas-enter
+      _debugStockRoute('renderGramaturasPage:enter', {});
+      // #endregion
       ensureStyles();
       var page = ensurePage('gramaturas');
       showOnlyPage('gramaturas');
@@ -3404,9 +3552,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var empId = String(window.EMP_FILTRO || '').trim();
         if (empId) qs.set('empId', empId);
       } catch (_) {}
-      var j = await apiJson('/api/recebimento_insumos' + (qs.toString() ? ('?' + qs.toString()) : ''));
-      var arr = Array.isArray(j) ? j : ((j && (j.data || j.rows)) || []);
-      return arr.map(checklistNorm);
+      try {
+        var j = await apiJson('/api/recebimento_insumos' + (qs.toString() ? ('?' + qs.toString()) : ''));
+        var arr = Array.isArray(j) ? j : ((j && (j.data || j.rows)) || []);
+        return arr.map(checklistNorm);
+      } catch (_) {
+        return [];
+      }
     }
     function checklistFmtDate(v) {
       var s = String(v || '').slice(0, 10);
@@ -3499,6 +3651,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       };
     }
     async function renderChecklistPage() {
+      // #region debug-point E:render-checklist-enter
+      _debugStockRoute('renderChecklistPage:enter', {});
+      // #endregion
       ensureStyles();
       var page = ensurePage('checklist-recebimento');
       showOnlyPage('checklist-recebimento');
@@ -3554,6 +3709,97 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           } catch (e) {
             alert(String(e && e.message || e || 'Falha ao excluir checklist'));
           }
+        };
+      });
+    }
+
+    function estoqueWireValor(chapa) {
+      var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
+      var vunit = Number(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0) || 0;
+      var total = Number(chapa && chapa.valor_total || 0) || 0;
+      return total > 0 ? total : (qtd * vunit);
+    }
+    function estoqueWireTon(chapa) {
+      var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
+      var ton = Number(chapa && (chapa.toneladas_atual != null ? chapa.toneladas_atual : chapa.toneladas) || 0) || 0;
+      if (ton > 0) return ton;
+      var kgUn = Number(chapa && chapa.peso_kg_unidade || 0) || 0;
+      return kgUn > 0 ? ((qtd * kgUn) / 1000) : 0;
+    }
+    async function renderEstoqueWireframePage() {
+      ensureStyles();
+      var page = ensurePage('estoque');
+      showOnlyPage('estoque');
+      var lista = await _estoqueFetchChapasList(1200).catch(function() { return []; });
+      lista = Array.isArray(lista) ? lista : [];
+      var busca = String(window.__estoqueWireBusca || '').trim().toLowerCase();
+      var filtrada = busca ? lista.filter(function(chapa) {
+        var txt = [
+          chapa && chapa.fornecedor,
+          chapa && chapa.gramatura,
+          chapa && chapa.nomenclatura,
+          chapa && chapa.tamanho,
+          chapa && (chapa.nome_uso || chapa.nome),
+          chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || chapa.empresa),
+          chapa && chapa.nf
+        ].join(' ').toLowerCase();
+        return txt.indexOf(busca) >= 0;
+      }) : lista;
+      var valorTotal = lista.reduce(function(s, chapa) { return s + estoqueWireValor(chapa); }, 0);
+      var tonTotal = lista.reduce(function(s, chapa) { return s + estoqueWireTon(chapa); }, 0);
+      var breakdown = _resumoTopPorValor(lista, function(chapa) { return chapa && chapa.fornecedor || 'Sem fornecedor'; }, function(chapa) { return estoqueWireValor(chapa); }).slice(0, 4);
+      page.innerHTML = ''
+        + '<div class="pep-wrap">'
+        + '  <div class="pep-cards">'
+        +      _makeCardEstoque({ label: 'Valor Total do Estoque', value: money(valorTotal), sub: 'Base atual do estoque' })
+        +      _makeCardEstoque({ label: 'Toneladas em Estoque', value: num(tonTotal, 3) + ' t', sub: 'Saldo atual em toneladas' })
+        +      _makeCardEstoque({ label: 'Quantidade de Chapas', value: num(lista.length, 0), sub: 'Itens cadastrados no estoque' })
+        +      _cardBreakdownEstoque('Por Fornecedor', breakdown, money)
+        + '  </div>'
+        + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
+        + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF ou CNPJ" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
+        + '    <button class="pep-btn primary" id="estoque-wire-buscar">Buscar</button>'
+        + '  </div></div>'
+        + '  <div class="pep-panel"><div style="overflow:auto"><table class="pep-table"><thead><tr><th>FORNECEDOR</th><th>GRAMATURA</th><th>NOMENCLATURA</th><th>TAMANHO</th><th>NOME</th><th>QUAL CNPJ</th><th>NF</th><th>QUANTIDADE</th><th>R$</th><th>TOTAL</th><th>Ações</th></tr></thead><tbody>'
+        + (filtrada.length ? filtrada.map(function(chapa) {
+            var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
+            var vunit = Number(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0) || 0;
+            return '<tr data-chapa-id="' + esc(chapa && chapa.id || '') + '">'
+              + '<td>' + esc(chapa && chapa.fornecedor || '—') + '</td>'
+              + '<td>' + esc(chapa && chapa.gramatura || '—') + '</td>'
+              + '<td>' + esc(chapa && chapa.nomenclatura || '—') + '</td>'
+              + '<td>' + esc(chapa && chapa.tamanho || '—') + '</td>'
+              + '<td>' + esc(chapa && (chapa.nome_uso || chapa.nome) || '—') + '</td>'
+              + '<td>' + esc(chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || chapa.empresa) || '—') + '</td>'
+              + '<td>' + esc(chapa && chapa.nf || '—') + '</td>'
+              + '<td style="text-align:right">' + num(qtd, 0) + '</td>'
+              + '<td style="text-align:right">' + money(vunit) + '</td>'
+              + '<td style="text-align:right">' + money(estoqueWireValor(chapa)) + '</td>'
+              + '<td><button class="pep-btn" data-est-edit="' + esc(chapa && chapa.id || '') + '">Alterar</button> <button class="pep-btn danger" data-est-del="' + esc(chapa && chapa.id || '') + '">Excluir</button></td>'
+              + '</tr>';
+          }).join('') : '<tr><td colspan="11" style="text-align:center;color:#94a3b8">Nenhum registro encontrado.</td></tr>')
+        + '  </tbody></table></div></div>'
+        + '</div>';
+      document.getElementById('estoque-wire-buscar').onclick = function() {
+        window.__estoqueWireBusca = String((document.getElementById('estoque-wire-busca') || {}).value || '').trim();
+        renderEstoqueWireframePage();
+      };
+      var buscaEl = document.getElementById('estoque-wire-busca');
+      if (buscaEl) buscaEl.onkeydown = function(ev) {
+        if (String(ev && ev.key || '') === 'Enter') {
+          ev.preventDefault();
+          window.__estoqueWireBusca = String(buscaEl.value || '').trim();
+          renderEstoqueWireframePage();
+        }
+      };
+      Array.prototype.slice.call(page.querySelectorAll('[data-est-edit]')).forEach(function(btn) {
+        btn.onclick = function() {
+          try { if (typeof window.editarChapa === 'function') window.editarChapa(String(btn.getAttribute('data-est-edit') || '')); } catch (_) {}
+        };
+      });
+      Array.prototype.slice.call(page.querySelectorAll('[data-est-del]')).forEach(function(btn) {
+        btn.onclick = function() {
+          try { if (typeof window.excluirChapa === 'function') window.excluirChapa(String(btn.getAttribute('data-est-del') || '')); } catch (_) {}
         };
       });
     }
@@ -3691,6 +3937,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return d >= r.ini && d <= r.fim;
     }
     async function renderToneladasPage() {
+      // #region debug-point F:render-toneladas-enter
+      _debugStockRoute('renderToneladasPage:enter', {});
+      // #endregion
       ensureStyles();
       var page = ensurePage('toneladas-vendidas');
       showOnlyPage('toneladas-vendidas');
@@ -3741,10 +3990,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
 
     function openCustomPage(pageId) {
-      if (pageId === 'checklist-recebimento') { renderChecklistPage(); return true; }
-      if (pageId === 'gramaturas') { renderGramaturasPage(); return true; }
+      // #region debug-point G:open-custom-page
+      _debugStockRoute('openCustomPage', { pageId: pageId });
+      // #endregion
+      if (pageId === 'checklist-recebimento') { renderChecklistPage().catch(function(e) { _debugStockRoute('renderChecklistPage:error', { message: String(e && e.message || e) }); }); return true; }
+      if (pageId === 'gramaturas') { renderGramaturasPage().catch(function(e) { _debugStockRoute('renderGramaturasPage:error', { message: String(e && e.message || e) }); }); return true; }
       if (pageId === 'facas1') { renderFacasWireframePage(); return true; }
-      if (pageId === 'toneladas-vendidas') { renderToneladasPage(); return true; }
+      if (pageId === 'toneladas-vendidas') { renderToneladasPage().catch(function(e) { _debugStockRoute('renderToneladasPage:error', { message: String(e && e.message || e) }); }); return true; }
       return false;
     }
     try {
@@ -3752,12 +4004,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (typeof origGo === 'function' && !origGo._patchExtrasCustom) {
         window.go = function(id) {
           var pid = String(id || '').trim();
+          // #region debug-point H:go-wrapper
+          _debugStockRoute('window.go', { pageId: pid });
+          // #endregion
           if (openCustomPage(pid)) return;
           return origGo.apply(this, arguments);
         };
         window.go._patchExtrasCustom = true;
       }
     } catch (_) {}
+    try { window.renderEstoqueWireframePage = renderEstoqueWireframePage; } catch (_) {}
     try { window.renderChecklistRecebimento = renderChecklistPage; } catch (_) {}
     try { window.renderFacasWireframePage = renderFacasWireframePage; } catch (_) {}
     try { window.renderGramaturas = renderGramaturasPage; } catch (_) {}
@@ -11011,6 +11267,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return String(top.nome || fallback || '—');
   }
 
+  try { window.__estoqueMakeCard = _makeCardEstoque; } catch (_) {}
+  try { window.__estoqueCardBreakdown = _cardBreakdownEstoque; } catch (_) {}
+  try { window.__estoqueFmtNum = _fmtNumEstoque; } catch (_) {}
+  try { window.__estoqueResumoTopPorValor = _resumoTopPorValor; } catch (_) {}
+  try { window.__estoqueCarregarMovimentacao = _carregarDadosMovimentacaoEstoque; } catch (_) {}
+  try { window.__estoqueFetchChapasList = _estoqueFetchChapasList; } catch (_) {}
+  try { window.__estoqueMesAtualRef = _mesAtualRefEstoque; } catch (_) {}
+
   function _abrirSeletorChapaEstoque(opts) {
     opts = opts || {};
     var onSelect = typeof opts.onSelect === 'function' ? opts.onSelect : function() {};
@@ -13066,6 +13330,26 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function _renderPainelEstoqueSimple() {
     var page = _getEstoquePageSimple();
     var toolbar = document.querySelector('#page-estoque > .ptoolbar');
+    // #region debug-point I:estoque-cards-render
+    try {
+      fetch('/api/__debug-stock-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          runId: 'pre-fix',
+          hypothesisId: 'B',
+          location: 'patch.js:_renderPainelEstoqueSimple',
+          msg: '[DEBUG] estoque cards render',
+          data: {
+            hasPage: !!page,
+            hasToolbar: !!toolbar,
+            pageDisplay: page && page.style ? page.style.display : '',
+            pageHidden: !!(page && page.hidden)
+          }
+        })
+      }).catch(function() {});
+    } catch (_) {}
+    // #endregion
     if (!page || !toolbar) return;
     var host = document.getElementById('patch-estoque-simple-cards');
     if (!host) {
@@ -13390,6 +13674,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function _tickEstoqueSimple() {
     if (!_isEstoquePageAtivaSimple()) return;
+    // #region debug-point J:estoque-tick
+    try {
+      fetch('/api/__debug-stock-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          runId: 'pre-fix',
+          hypothesisId: 'B',
+          location: 'patch.js:_tickEstoqueSimple',
+          msg: '[DEBUG] estoque tick ativo',
+          data: { modo: _getModoEstoqueSimple() }
+        })
+      }).catch(function() {});
+    } catch (_) {}
+    // #endregion
     _ocultarExtrasEstoqueSimple();
     _aplicarModoEstoqueSimple();
     _aplicarSimplificacaoTabelaSimple();
@@ -13399,6 +13698,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try {
       if (!window.__estoqueSimpleState) window.__estoqueSimpleState = { busca: '' };
     } catch (_) {}
+    try { window.__forcarWireframeEstoque = _tickEstoqueSimple; } catch (_) {}
     setTimeout(_tickEstoqueSimple, 300);
     setTimeout(_tickEstoqueSimple, 1200);
     setInterval(_tickEstoqueSimple, 900);

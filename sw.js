@@ -1,7 +1,7 @@
 /* sw.js — Italy Embalagens ERP
    Service Worker atualizado: API sempre vai para a rede, nunca para cache */
 
-var CACHE_NAME = 'italy-erp-v7';
+var CACHE_NAME = 'italy-erp-v8';
 
 var ARQUIVOS_CACHE = [
   '/',

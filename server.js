@@ -379,6 +379,53 @@ app.use(compression());
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
+const DEBUG_STOCK_SESSION = 'stock-routing-cache';
+const DEBUG_STOCK_DIR = path.join(__dirname, '.dbg');
+const DEBUG_STOCK_FILE = path.join(DEBUG_STOCK_DIR, `trae-debug-log-${DEBUG_STOCK_SESSION}.ndjson`);
+
+function debugStockAppend(event) {
+  try {
+    if (!fs.existsSync(DEBUG_STOCK_DIR)) fs.mkdirSync(DEBUG_STOCK_DIR, { recursive: true });
+    const row = JSON.stringify({
+      sessionId: DEBUG_STOCK_SESSION,
+      ts: Date.now(),
+      ...((event && typeof event === 'object') ? event : {})
+    });
+    fs.appendFileSync(DEBUG_STOCK_FILE, row + '\n', 'utf8');
+  } catch (_) {}
+}
+
+app.post('/api/__debug-stock-log', (req, res) => {
+  try {
+    debugStockAppend(req.body || {});
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+  }
+});
+
+app.get('/api/__debug-stock-log', (req, res) => {
+  try {
+    if (!fs.existsSync(DEBUG_STOCK_FILE)) return res.json({ ok: true, rows: [] });
+    const raw = fs.readFileSync(DEBUG_STOCK_FILE, 'utf8');
+    const rows = String(raw || '').split(/\r?\n/).filter(Boolean).map((line) => {
+      try { return JSON.parse(line); } catch (_) { return null; }
+    }).filter(Boolean);
+    return res.json({ ok: true, rows });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+  }
+});
+
+app.delete('/api/__debug-stock-log', (req, res) => {
+  try {
+    if (fs.existsSync(DEBUG_STOCK_FILE)) fs.unlinkSync(DEBUG_STOCK_FILE);
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+  }
+});
+
 function _newRid() {
   try { return crypto.randomBytes(8).toString('hex'); } catch (_) {}
   return String(Date.now()) + '-' + Math.random().toString(16).slice(2);
