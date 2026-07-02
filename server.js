@@ -379,6 +379,89 @@ app.use(compression());
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
+const DEBUG_RUNTIME_SESSION_ID = 'erp-runtime-regressions';
+const DEBUG_RUNTIME_DIR = path.join(__dirname, '.dbg');
+const DEBUG_RUNTIME_LOG_FILE = path.join(DEBUG_RUNTIME_DIR, 'trae-debug-log-' + DEBUG_RUNTIME_SESSION_ID + '.ndjson');
+
+function _debugRuntimeNormalizePayload(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  return {
+    sessionId: String(src.sessionId || DEBUG_RUNTIME_SESSION_ID),
+    runId: String(src.runId || 'pre-fix'),
+    hypothesisId: String(src.hypothesisId || ''),
+    location: String(src.location || ''),
+    msg: String(src.msg || ''),
+    data: src.data && typeof src.data === 'object' ? src.data : {},
+    ts: Number(src.ts || Date.now()) || Date.now(),
+  };
+}
+
+function _debugRuntimeWrite(raw) {
+  try {
+    const payload = _debugRuntimeNormalizePayload(raw);
+    fs.mkdirSync(DEBUG_RUNTIME_DIR, { recursive: true });
+    fs.appendFileSync(DEBUG_RUNTIME_LOG_FILE, JSON.stringify(payload) + '\n', 'utf8');
+    return payload;
+  } catch (_) {
+    return null;
+  }
+}
+
+app.post('/api/_debug/runtime', (req, res) => {
+  try {
+    let payload = req.body;
+    if (typeof payload === 'string') {
+      try { payload = JSON.parse(payload || '{}'); } catch (_) { payload = { msg: String(req.body || '') }; }
+    }
+    const saved = _debugRuntimeWrite(payload || {});
+    return res.json({ ok: true, saved: !!saved });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/_debug/runtime', (req, res) => {
+  try {
+    const content = fs.existsSync(DEBUG_RUNTIME_LOG_FILE) ? fs.readFileSync(DEBUG_RUNTIME_LOG_FILE, 'utf8') : '';
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    return res.status(200).send(content);
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.delete('/api/_debug/runtime', (req, res) => {
+  try {
+    if (fs.existsSync(DEBUG_RUNTIME_LOG_FILE)) fs.unlinkSync(DEBUG_RUNTIME_LOG_FILE);
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/_debug/caixas-perdidas/recentes', async (req, res) => {
+  try {
+    let tabelaAtiva = null;
+    for (const t of ['caixas_perdidas', 'caixas_perdas', 'perdas_producao']) {
+      const { error } = await supabase.from(t).select('*').limit(1);
+      if (!error) { tabelaAtiva = t; break; }
+    }
+    if (!tabelaAtiva) return res.json({ ok: true, tabela: null, rows: [] });
+    const { data, error } = await supabase.from(tabelaAtiva).select('*').order('created_at', { ascending: false }).limit(5);
+    if (error) throw error;
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'C',
+      location: 'server.js:/api/_debug/caixas-perdidas/recentes',
+      msg: '[DEBUG] leitura debug caixas perdidas recentes',
+      data: { tabelaAtiva, total: Array.isArray(data) ? data.length : 0 },
+    });
+    return res.json({ ok: true, tabela: tabelaAtiva, rows: Array.isArray(data) ? data : [] });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 
 function _newRid() {
   try { return crypto.randomBytes(8).toString('hex'); } catch (_) {}
@@ -5663,6 +5746,13 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
   if (!achouTabela) return [];
 
   const rows = Array.isArray(cpRows.data) ? cpRows.data : [];
+  _debugRuntimeWrite({
+    runId: 'pre-fix',
+    hypothesisId: 'C',
+    location: 'server.js:_listarCaixasPerdidasEnriquecidas',
+    msg: '[DEBUG] caixas perdidas base carregada',
+    data: { tabelaEncontrada: achouTabela, totalRows: rows.length, ofId },
+  });
   const ofIds = Array.from(new Set(rows.map((r) => String(r?.of_id || '').trim()).filter(Boolean)));
   const ofNumeros = Array.from(new Set(rows.map((r) => String(r?.of_numero || '').trim()).filter(Boolean)));
   const ofsMap = new Map();
@@ -5858,16 +5948,58 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     try { if (todos?.[0]) console.log('[CP] campos:', Object.keys(todos[0])); } catch (_) {}
     try { if (todos?.[0]) console.log('[CP] primeiro_registro:', JSON.stringify(todos[0])); } catch (_) {}
 
-    const mes = parseInt(String(req.query.mes || ''), 10) || (new Date().getMonth() + 1);
-    const ano = parseInt(String(req.query.ano || ''), 10) || new Date().getFullYear();
-    const semFiltro = String(req.query.todos || '').trim().toLowerCase() === 'true'
-      || String(req.query.periodo || '').trim().toLowerCase() === 'todos';
+    const parseRowDate = (row) => {
+      const raw = row?.created_at || row?.data || row?.data_perda || row?.data_conclusao || null;
+      if (!raw) return null;
+      const dt = new Date(raw);
+      return Number.isNaN(dt.getTime()) ? null : dt;
+    };
+    const matchMonthYear = (dt, month, year) => !!(dt && (dt.getMonth() + 1 === month) && dt.getFullYear() === year);
+    const requestedPeriodo = String(req.query.periodo || '').trim().toLowerCase() || 'mes';
+    let mes = parseInt(String(req.query.mes || ''), 10) || (new Date().getMonth() + 1);
+    let ano = parseInt(String(req.query.ano || ''), 10) || new Date().getFullYear();
+    const semFiltro = String(req.query.todos || '').trim().toLowerCase() === 'true' || requestedPeriodo === 'todos';
+    const hojeRef = new Date();
+    hojeRef.setHours(0, 0, 0, 0);
+    const semanaIni = new Date(hojeRef);
+    semanaIni.setDate(hojeRef.getDate() - ((hojeRef.getDay() + 6) % 7));
+    const semanaFim = new Date(semanaIni);
+    semanaFim.setDate(semanaIni.getDate() + 7);
+    const filtrarPeriodo = (rows, periodo, month, year) => (rows || []).filter((r) => {
+      const d = parseRowDate(r);
+      if (!d) return true;
+      if (periodo === 'hoje') return d >= hojeRef;
+      if (periodo === 'semana') return d >= semanaIni && d < semanaFim;
+      if (periodo === 'todos') return true;
+      return matchMonthYear(d, month, year);
+    });
 
-    const dadosFiltrados = semFiltro ? (todos || []) : (todos || []).filter((r) => {
-      const campoData = r?.created_at || r?.data || r?.data_perda || r?.data_conclusao;
-      if (!campoData) return true;
-      const d = new Date(campoData);
-      return !isNaN(d.getTime()) && (d.getMonth() + 1 === mes) && (d.getFullYear() === ano);
+    let dadosFiltrados = semFiltro ? (todos || []) : filtrarPeriodo(todos || [], requestedPeriodo, mes, ano);
+    let fallbackMesRecente = false;
+    if (!dadosFiltrados.length && !semFiltro && requestedPeriodo === 'mes') {
+      const maisRecente = (todos || []).map((r) => ({ row: r, dt: parseRowDate(r) })).filter((item) => !!item.dt).sort((a, b) => b.dt - a.dt)[0] || null;
+      if (maisRecente && maisRecente.dt) {
+        mes = maisRecente.dt.getMonth() + 1;
+        ano = maisRecente.dt.getFullYear();
+        dadosFiltrados = filtrarPeriodo(todos || [], 'mes', mes, ano);
+        fallbackMesRecente = true;
+      }
+    }
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'C',
+      location: 'server.js:/api/caixas-perdidas/dashboard',
+      msg: '[DEBUG] dashboard caixas perdidas filtrado',
+      data: {
+        tabelaAtiva,
+        periodo: requestedPeriodo,
+        semFiltro,
+        totalHistorico: Array.isArray(todos) ? todos.length : 0,
+        totalFiltrado: Array.isArray(dadosFiltrados) ? dadosFiltrados.length : 0,
+        mes,
+        ano,
+        fallbackMesRecente,
+      },
     });
 
     const ofIds = Array.from(new Set((dadosFiltrados || []).map((r) => String(r?.of_id || r?.of_uuid || '').trim()).filter(Boolean)));
@@ -5922,30 +6054,49 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
         .filter(Boolean);
       const concluidoPor = _resolverPessoaCaixa(r?.concluido_por || r?.usuario_conclusao || r?.usuario, pessoasMap) || '—';
       const dataRef = r?.created_at || r?.data || r?.data_perda || r?.data_conclusao || null;
+      const maquinaNome = maquinasMap.get(String(r?.maquina_id || '').trim()) || r?.maquina || r?.maquina_perda || r?.maquina_nome || '—';
 
       return {
         ...r,
         of_numero: ofData?.numero || r?.of_numero || '—',
-        cliente_nome: clienteNome || r?.cliente_nome || '',
+        cliente_nome: clienteNome || r?.cliente_nome || r?.cliente || '—',
+        cliente: clienteNome || r?.cliente_nome || r?.cliente || '—',
         produto: ofData?.descricao || r?.produto || '—',
         quantidade_perdida: qtdPerdida,
         valor_perdido: valorPerdido,
-        maquina: maquinasMap.get(String(r?.maquina_id || '').trim()) || r?.maquina || r?.maquina_perda || r?.maquina_nome || '—',
-        maquina_nome: maquinasMap.get(String(r?.maquina_id || '').trim()) || r?.maquina_nome || r?.maquina || r?.maquina_perda || '—',
+        maquina: maquinaNome,
+        maquina_nome: maquinaNome,
+        maquinas: maquinaNome && maquinaNome !== '—' ? [maquinaNome] : [],
         operadores,
         operadores_nomes: operadores.join(', '),
         usuario: concluidoPor,
         usuario_conclusao: concluidoPor,
         concluido_por: concluidoPor,
-        data_ref: dataRef
+        data_ref: dataRef,
+        data_conclusao: String(r?.data_conclusao || r?.data || dataRef || '').slice(0, 10),
+        detalhes: [{
+          maquina: maquinaNome,
+          qtd_perdida: qtdPerdida,
+          operadores,
+        }],
       };
     });
 
-    const totalCaixas = enriquecidos.reduce((s, r) => s + (Number(r?.quantidade_perdida || 0) || 0), 0);
-    const valorTotal = enriquecidos.reduce((s, r) => s + (Number(r?.valor_perdido || 0) || 0), 0);
+    const empresaIdFiltro = String(req.query.empresa_id || '').trim();
+    const maquinaFiltro = String(req.query.maquina || '').trim().toLowerCase();
+    let enriquecidosFiltrados = enriquecidos.slice();
+    if (empresaIdFiltro) {
+      enriquecidosFiltrados = enriquecidosFiltrados.filter((r) => String(r?.empresa_id || r?.emp_id || '').trim() === empresaIdFiltro);
+    }
+    if (maquinaFiltro) {
+      enriquecidosFiltrados = enriquecidosFiltrados.filter((r) => String(r?.maquina || '').trim().toLowerCase() === maquinaFiltro);
+    }
+
+    const totalCaixas = enriquecidosFiltrados.reduce((s, r) => s + (Number(r?.quantidade_perdida || 0) || 0), 0);
+    const valorTotal = enriquecidosFiltrados.reduce((s, r) => s + (Number(r?.valor_perdido || 0) || 0), 0);
 
     const maqMap = Object.create(null);
-    enriquecidos.forEach((r) => {
+    enriquecidosFiltrados.forEach((r) => {
       const m = String(r?.maquina || '—').trim() || '—';
       if (!maqMap[m]) maqMap[m] = { maquina: m, total_caixas: 0, valor_perdido: 0, ocorrencias: 0 };
       maqMap[m].total_caixas += Number(r?.quantidade_perdida || 0) || 0;
@@ -5955,8 +6106,10 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     const rankingMaquinas = Object.values(maqMap).sort((a, b) => b.total_caixas - a.total_caixas);
 
     const opMap = Object.create(null);
-    enriquecidos.forEach((r) => {
-      const ops = Array.isArray(r?.operadores) ? r.operadores : [r?.operadores].filter(Boolean);
+    enriquecidosFiltrados.forEach((r) => {
+      const ops = Array.isArray(r?.operadores) && r.operadores.length
+        ? r.operadores
+        : toArray(r?.operador).concat(toArray(r?.operador_conclusao)).concat(toArray(r?.usuario_conclusao));
       ops.forEach((op) => {
         const nome = String(op || '').trim();
         if (!nome) return;
@@ -5970,25 +6123,34 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
 
     const mesAnt = mes === 1 ? 12 : mes - 1;
     const anoAnt = mes === 1 ? ano - 1 : ano;
-    const dadosAnt = (todos || []).filter((r) => {
-      const raw = r?.created_at || r?.data || r?.data_perda || r?.data_conclusao;
-      const d = new Date(raw);
-      return !isNaN(d.getTime()) && (d.getMonth() + 1 === mesAnt) && (d.getFullYear() === anoAnt);
-    });
+    const dadosAnt = filtrarPeriodo(todos || [], 'mes', mesAnt, anoAnt);
     const totalCaixasAnt = dadosAnt.reduce((s, r) => s + (Number(r?.quantidade ?? r?.caixas_perdidas ?? r?.qtd_perdida ?? 0) || 0), 0);
+    const valorTotalAnt = dadosAnt.reduce((s, r) => {
+      const qtd = Number(r?.quantidade ?? r?.caixas_perdidas ?? r?.qtd_perdida ?? 0) || 0;
+      const valor = Number(r?.valor_perdido ?? ((Number(r?.valor_unitario ?? 0) || 0) * qtd) ?? 0) || 0;
+      return s + valor;
+    }, 0);
 
     return res.json({
-      _debug: { tabelaAtiva, totalHistorico: todos?.length || 0, totalFiltrado: enriquecidos.length },
-      resumo_mes_atual: { total_caixas: totalCaixas, valor_total: valorTotal, total_ocorrencias: enriquecidos.length },
+      _debug: { tabelaAtiva, totalHistorico: todos?.length || 0, totalFiltrado: enriquecidosFiltrados.length, periodoSolicitado: requestedPeriodo, mesAplicado: mes, anoAplicado: ano, fallbackMesRecente },
+      resumo_mes_atual: { total_caixas: totalCaixas, valor_total: valorTotal, total_ocorrencias: enriquecidosFiltrados.length, mes_referencia: String(ano) + '-' + String(mes).padStart(2, '0') },
       comparacao_mes_anterior: {
         total_caixas: totalCaixasAnt,
+        valor_total: valorTotalAnt,
         variacao_caixas_pct: totalCaixasAnt > 0 ? parseFloat((((totalCaixas - totalCaixasAnt) / totalCaixasAnt) * 100).toFixed(1)) : null
       },
       ranking_maquinas: rankingMaquinas,
       ranking_operadores: rankingOperadores,
-      detalhamento: enriquecidos
+      detalhamento: enriquecidosFiltrados
     });
   } catch (e) {
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'C',
+      location: 'server.js:/api/caixas-perdidas/dashboard',
+      msg: '[DEBUG] dashboard caixas perdidas erro',
+      data: { error: String(e?.message || e) },
+    });
     try { console.error('[CP DASHBOARD]', e.message); } catch (_) {}
     return res.status(500).json({ error: e.message, detalhamento: [] });
   }
@@ -6061,11 +6223,44 @@ async function _insertCaixaPerdidaCompat(input, req) {
     if (payload[key] == null || payload[key] === '') delete payload[key];
   });
   let currentPayload = { ...payload };
+  _debugRuntimeWrite({
+    runId: 'pre-fix',
+    hypothesisId: 'C',
+    location: 'server.js:_insertCaixaPerdidaCompat',
+    msg: '[DEBUG] tentativa insert caixa perdida',
+    data: {
+      of_id: currentPayload.of_id || null,
+      of_numero: currentPayload.of_numero || null,
+      cliente: currentPayload.cliente || null,
+      maquina: currentPayload.maquina || null,
+      maquina_id: currentPayload.maquina_id || null,
+      operadores: currentPayload.operadores || [],
+      qtd_perdida: currentPayload.qtd_perdida || 0,
+      valor_perdido: currentPayload.valor_perdido || 0,
+      data: currentPayload.data || null,
+    },
+  });
   for (let i = 0; i < 12; i += 1) {
     const { data, error } = await supabase.from('caixas_perdidas').insert([currentPayload]).select().single();
-    if (!error) return { skipped: false, data };
+    if (!error) {
+      _debugRuntimeWrite({
+        runId: 'pre-fix',
+        hypothesisId: 'C',
+        location: 'server.js:_insertCaixaPerdidaCompat',
+        msg: '[DEBUG] insert caixa perdida sucesso',
+        data: { id: data && data.id ? String(data.id) : null, of_numero: currentPayload.of_numero || null },
+      });
+      return { skipped: false, data };
+    }
     const msg = String(error.message || error);
     const msgLower = msg.toLowerCase();
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'C',
+      location: 'server.js:_insertCaixaPerdidaCompat',
+      msg: '[DEBUG] insert caixa perdida falhou',
+      data: { error: msg, tentativa: i + 1, payloadKeys: Object.keys(currentPayload || {}) },
+    });
     if (msgLower.includes('does not exist') || msgLower.includes('not exist') || msgLower.includes('not find') || msgLower.includes('not found')) {
       return { skipped: true, reason: 'table_missing' };
     }
@@ -6768,6 +6963,19 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     }
 
     const body = req.body || {};
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'B',
+      location: 'server.js:/api/ofs/:id/concluir',
+      msg: '[DEBUG] concluir OF requisicao recebida',
+      data: {
+        ofId: sid,
+        bodyKeys: Object.keys(body || {}),
+        gramatura_id: body.gramatura_id || null,
+        caixas_perdidas: body.caixas_perdidas || 0,
+        perdas_por_maquina_len: Array.isArray(body.perdas_por_maquina) ? body.perdas_por_maquina.length : -1,
+      },
+    });
     console.debug('[CONCLUIR OF] body:', JSON.stringify(body));
     const qtdProduzidaRaw = Number(body.qtd_produzida || body.qtd_real || body.qtdProduzida || body.caixas_produzidas || 0);
     const qtdPerdida = Math.trunc(Number(body.qtd_perdida || body.qtdPerdida || body.caixas_perdidas || 0) || 0);
@@ -6871,6 +7079,18 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         gramaturaConclusao = null;
       }
     }
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'B',
+      location: 'server.js:/api/ofs/:id/concluir',
+      msg: '[DEBUG] concluir OF gramatura resolvida',
+      data: {
+        ofId: sid,
+        gramaturaConclusaoId,
+        gramaturaEncontrada: !!gramaturaConclusao,
+        gramaturaNome: gramaturaConclusao ? String(gramaturaConclusao.nome || gramaturaConclusao.descricao || '') : '',
+      },
+    });
     const gramaturaConclusaoNome =
       String(body.gramatura_nome || gramaturaConclusao?.nome || gramaturaConclusao?.descricao || '').trim();
     const gramaturaConclusaoValor =
@@ -6983,6 +7203,19 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       } catch (_) { parsed = []; }
       updateData.perdas_por_maquina = Array.isArray(parsed) ? parsed : [];
     }
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'C',
+      location: 'server.js:/api/ofs/:id/concluir',
+      msg: '[DEBUG] concluir OF payload perdas normalizado',
+      data: {
+        ofId: sid,
+        operadoresConclusao,
+        perdasPorMaquinaLen: Array.isArray(updateData.perdas_por_maquina) ? updateData.perdas_por_maquina.length : 0,
+        maquina_perda: updateData.maquina_perda || null,
+        maquina_perda_id: updateData.maquina_perda_id || null,
+      },
+    });
 
     const mprodRaw =
       body.maquina_producao != null ? String(body.maquina_producao).trim()
@@ -11246,7 +11479,16 @@ app.post('/api/admin/init-gramaturas', authMiddleware, async (req, res) => {
 app.get('/api/gramaturas', authMiddleware, async (req, res) => {
   try {
     const ready = await _ensureGramaturasTable();
-    if (!ready) return res.json({ ok: true, data: [], gramaturas: [] });
+    if (!ready) {
+      _debugRuntimeWrite({
+        runId: 'pre-fix',
+        hypothesisId: 'B',
+        location: 'server.js:/api/gramaturas',
+        msg: '[DEBUG] gramaturas indisponivel',
+        data: { incluir_inativas: String(req.query?.incluir_inativas || '') },
+      });
+      return res.json({ ok: true, data: [], gramaturas: [] });
+    }
     const empresa_id = await _empresaUuidSafe(req);
     const incluirInativas = String(req.query?.incluir_inativas || '').trim().toLowerCase() === 'true';
     let q = supabase.from('gramaturas').select('*').order('nome');
@@ -11254,8 +11496,31 @@ app.get('/api/gramaturas', authMiddleware, async (req, res) => {
     if (!incluirInativas) q = q.eq('ativo', true);
     const { data, error } = await q;
     if (error) throw error;
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'B',
+      location: 'server.js:/api/gramaturas',
+      msg: '[DEBUG] gramaturas retornadas',
+      data: {
+        incluir_inativas: String(req.query?.incluir_inativas || ''),
+        total: Array.isArray(data) ? data.length : 0,
+        preview: Array.isArray(data) ? data.slice(0, 2).map((g) => ({
+          id: g && g.id ? String(g.id) : '',
+          nome: String(g && (g.nome || g.descricao) || ''),
+          gramatura: Number(g && g.gramatura || 0) || 0,
+          ativo: !(g && g.ativo === false),
+        })) : [],
+      },
+    });
     return res.json({ ok: true, data: data || [], gramaturas: data || [] });
   } catch (e) {
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'B',
+      location: 'server.js:/api/gramaturas',
+      msg: '[DEBUG] gramaturas erro',
+      data: { error: String(e?.message || e) },
+    });
     return res.json({ ok: true, data: [], gramaturas: [] });
   }
 });

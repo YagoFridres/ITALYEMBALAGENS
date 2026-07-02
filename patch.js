@@ -268,6 +268,52 @@ if (typeof window._fmtRs === 'undefined') {
   else install();
 })();
 
+(function patchRuntimeDebugBridge() {
+  if (window.__patchRuntimeDebugBridgeInstalled) return;
+  window.__patchRuntimeDebugBridgeInstalled = true;
+  function send(hypothesisId, msg, data) {
+    try {
+      fetch('/api/_debug/runtime', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify({
+          sessionId: 'erp-runtime-regressions',
+          runId: 'pre-fix',
+          hypothesisId: String(hypothesisId || ''),
+          location: 'patch.js',
+          msg: '[DEBUG] ' + String(msg || ''),
+          data: data && typeof data === 'object' ? data : {},
+          ts: Date.now()
+        })
+      }).catch(function() {});
+    } catch (_) {}
+  }
+  try { window.__erpRuntimeDebug = send; } catch (_) {}
+  try {
+    window.addEventListener('error', function(ev) {
+      send('A', 'window.error capturado', {
+        message: String(ev && ev.message || ''),
+        filename: String(ev && ev.filename || ''),
+        lineno: Number(ev && ev.lineno || 0) || 0,
+        colno: Number(ev && ev.colno || 0) || 0,
+        stack: String(ev && ev.error && ev.error.stack || ''),
+        lastAction: String(window.__erpRuntimeLastAction || '')
+      });
+    }, true);
+  } catch (_) {}
+  try {
+    window.addEventListener('unhandledrejection', function(ev) {
+      var reason = ev && ev.reason;
+      send('A', 'window.unhandledrejection capturado', {
+        message: String(reason && reason.message || reason || ''),
+        stack: String(reason && reason.stack || ''),
+        lastAction: String(window.__erpRuntimeLastAction || '')
+      });
+    });
+  } catch (_) {}
+})();
+
 (function patchEstoqueRotasFinal() {
   if (window.__patchEstoqueRotasFinal) return;
   window.__patchEstoqueRotasFinal = true;
@@ -275,6 +321,10 @@ if (typeof window._fmtRs === 'undefined') {
   function renderCustom(pid) {
     try {
       if (pid === 'estoque' && typeof window.renderEstoqueWireframePage === 'function') {
+        try { window.__erpRuntimeLastAction = 'go:estoque:renderCustom'; } catch (_) {}
+        // #region debug-point A:go-estoque-rendercustom
+        try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'renderCustom interceptou estoque', { pid: pid, hasWireframe: true }); } catch (_) {}
+        // #endregion
         Promise.resolve(window.renderEstoqueWireframePage()).catch(function() {});
         return true;
       }
@@ -309,6 +359,23 @@ if (typeof window._fmtRs === 'undefined') {
   if (typeof origGo === 'function' && !origGo._patchEstoqueRotasFinal) {
     var wrappedGo = function(id) {
       var pid = String(id || '').trim();
+      try { window.__erpRuntimeLastAction = 'go:' + pid; } catch (_) {}
+      // #region debug-point A:go-wrapper-entry
+      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'window.go chamado', { pid: pid, hasOrigGo: true }); } catch (_) {}
+      // #endregion
+      if (pid === 'estoque') {
+        var outEstoque;
+        try {
+          outEstoque = origGo.apply(this, arguments);
+        } catch (errGoEstoque) {
+          try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'origGo estoque falhou', { message: String(errGoEstoque && errGoEstoque.message || errGoEstoque || ''), stack: String(errGoEstoque && errGoEstoque.stack || '') }); } catch (_) {}
+        }
+        try { renderCustom(pid); } catch (errCustomEstoque) {
+          try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'renderCustom estoque falhou', { message: String(errCustomEstoque && errCustomEstoque.message || errCustomEstoque || ''), stack: String(errCustomEstoque && errCustomEstoque.stack || '') }); } catch (_) {}
+        }
+        try { reforcarEstoqueWireframe(); } catch (_) {}
+        return outEstoque;
+      }
       if (renderCustom(pid)) return;
       var out = origGo.apply(this, arguments);
       if (pid === 'estoque') reforcarEstoqueWireframe();
@@ -3960,6 +4027,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       _ensureEstoqueStyle();
       var page = ensurePage('estoque');
       showOnlyPage('estoque');
+      // #region debug-point A:estoque-wireframe-entry
+      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'renderEstoqueWireframePage inicio', { hasPage: !!page, pageId: page && page.id ? String(page.id) : '', activePage: String(window._PAGE_ATUAL || '') }); } catch (_) {}
+      // #endregion
       _renderEstoqueWireframeState(page, 'Estoque de Chapas', 'Carregando indicadores, botões e tabela do estoque...');
       try { console.log('[PATCH][ESTOQUE] renderEstoqueWireframePage:start'); } catch (_) {}
       try {
@@ -4047,7 +4117,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (btnSaida) btnSaida.onclick = function() { _abrirModalSaidaEstoqueReal(); };
       _bindBotaoEditarChapas(renderEstoqueWireframePage, 'estoque-wire-alterar-btn');
       _bindBotaoCriarChapas(renderEstoqueWireframePage, 'estoque-wire-criar-btn');
+      // #region debug-point A:estoque-wireframe-success
+      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'renderEstoqueWireframePage sucesso', { totalLista: lista.length, totalFiltrada: filtrada.length, hasBusca: !!busca }); } catch (_) {}
+      // #endregion
       } catch (errEstoque) {
+        // #region debug-point A:estoque-wireframe-error
+        try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'renderEstoqueWireframePage erro', { message: String(errEstoque && errEstoque.message || errEstoque || ''), stack: String(errEstoque && errEstoque.stack || '') }); } catch (_) {}
+        // #endregion
         try { console.error('[PATCH][ESTOQUE] render falhou:', errEstoque); } catch (_) {}
         _renderEstoqueWireframeState(
           page,
@@ -6503,8 +6579,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (state.maquina) qs.set('maquina', state.maquina);
       if (state.empresa_id) qs.set('empresa_id', state.empresa_id);
       if (state.todas_empresas) qs.set('todas_empresas', state.todas_empresas);
+      // #region debug-point C:cp-dashboard-fetch-start
+      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', 'dashboard caixas perdidas fetch iniciado', { force: !!force, periodo: state.periodo, maquina: state.maquina, empresa_id: state.empresa_id, todas_empresas: state.todas_empresas }); } catch (_) {}
+      // #endregion
       var resp = await fetch('/api/caixas-perdidas/dashboard?' + qs.toString(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
       var json = await resp.json().catch(function() { return null; });
+      // #region debug-point C:cp-dashboard-fetch-done
+      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', 'dashboard caixas perdidas fetch finalizado', { status: resp && resp.status ? Number(resp.status) : 0, ok: !!(resp && resp.ok), totalDetalhamento: Array.isArray(json && json.detalhamento) ? json.detalhamento.length : 0, rankMaquinas: Array.isArray(json && json.ranking_maquinas) ? json.ranking_maquinas.length : 0, rankOperadores: Array.isArray(json && json.ranking_operadores) ? json.ranking_operadores.length : 0, debug: json && json._debug ? json._debug : null }); } catch (_) {}
+      // #endregion
       if (!resp.ok || !json || json.ok === false) throw new Error(String(json && (json.error || json.message) || 'Falha ao carregar dashboard'));
       window._cpDashCache[key] = { ts: now, data: json };
       return json;
@@ -6513,18 +6595,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     function _cpDownloadCsv(rows) {
       try {
         var list = Array.isArray(rows) ? rows : [];
-        var lines = [['Data Conclusao','OF','Cliente','Produto','Qtd Perdida','Valor Perdido','Maquinas','Operadores','Concluido Por']];
+        var lines = [['Data Conclusao','OF','Cliente','Qtd Perdida','Maquina','Operadores']];
         list.forEach(function(r) {
+          var maquinas = _cpRowMaquinas(r);
+          var operadores = _cpRowOperadores(r);
           lines.push([
             r.data_conclusao || '',
             r.of_numero || '',
-            r.cliente_nome || '',
-            r.produto || '',
+            _cpRowCliente(r),
             r.quantidade_perdida || 0,
-            Number(r.valor_perdido || 0).toFixed(2).replace('.', ','),
-            (r.maquinas || []).join(' | '),
-            (r.operadores || []).join(' | '),
-            r.concluido_por || ''
+            maquinas[0] || '—',
+            operadores.join(' | ')
           ]);
         });
         var csv = lines.map(function(cols) {
@@ -6540,13 +6621,38 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       } catch (_) {}
     }
 
+    function _cpRowMaquinas(r) {
+      var arr = Array.isArray(r && r.maquinas) ? r.maquinas.slice() : [];
+      if (!arr.length) {
+        var maq = String(r && (r.maquina || r.maquina_nome) || '').trim();
+        if (maq) arr = [maq];
+      }
+      return arr.map(function(item) { return String(item || '').trim(); }).filter(Boolean);
+    }
+
+    function _cpRowOperadores(r) {
+      var arr = Array.isArray(r && r.operadores) ? r.operadores.slice() : [];
+      if (!arr.length && typeof (r && r.operadores) === 'string') {
+        arr = String(r.operadores || '').split(/[,;|]+/g);
+      }
+      if (!arr.length) {
+        var op = String(r && (r.operador_display || r.operador || r.usuario_conclusao || r.usuario) || '').trim();
+        if (op && op !== '—') arr = [op];
+      }
+      return arr.map(function(item) { return String(item || '').trim(); }).filter(Boolean);
+    }
+
+    function _cpRowCliente(r) {
+      return String(r && (r.cliente_nome || r.cliente) || '').trim() || '—';
+    }
+
     function _cpBuildTableRows(data) {
       var state = _cpState();
       var busca = _cpNorm(state.busca);
       var rows = Array.isArray(data && data.detalhamento) ? data.detalhamento.slice() : [];
       if (busca) {
         rows = rows.filter(function(r) {
-          var txt = [r.of_numero, r.cliente_nome, r.produto, (r.maquinas || []).join(' '), (r.operadores || []).join(' ')].join(' ');
+          var txt = [r.of_numero, _cpRowCliente(r), _cpRowMaquinas(r).join(' '), _cpRowOperadores(r).join(' ')].join(' ');
           return _cpNorm(txt).indexOf(busca) >= 0;
         });
       }
@@ -6570,16 +6676,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var rankM = Array.isArray(data && data.ranking_maquinas) ? data.ranking_maquinas : [];
       var rankO = Array.isArray(data && data.ranking_operadores) ? data.ranking_operadores : [];
       var rows = _cpBuildTableRows(data);
-      var maquinasOpts = Array.from(new Set((Array.isArray(data && data.detalhamento) ? data.detalhamento : []).reduce(function(acc, r) { return acc.concat(r && r.maquinas || []); }, []))).filter(Boolean);
+      var maquinasOpts = Array.from(new Set((Array.isArray(data && data.detalhamento) ? data.detalhamento : []).reduce(function(acc, r) { return acc.concat(_cpRowMaquinas(r)); }, []))).filter(Boolean);
       var empresasOpts = Array.from(new Set((Array.isArray(data && data.detalhamento) ? data.detalhamento : []).map(function(r) { return String(r && r.empresa_id || '').trim(); }).filter(Boolean)));
       var maxM = Math.max(1, ...rankM.map(function(r) { return Number(r && r.total_caixas || 0) || 0; }));
       var maxO = Math.max(1, ...rankO.map(function(r) { return Number(r && r.total_caixas || 0) || 0; }));
       var varCx = Number(comp.variacao_caixas_pct || 0) || 0;
       var varCls = varCx > 0 ? 'cpv2-compare-up' : 'cpv2-compare-down';
       var varArrow = varCx > 0 ? '↑' : '↓';
+      // #region debug-point C:cp-render-summary
+      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', 'dashboard caixas perdidas render resumo', { periodo: state.periodo, rows: rows.length, rankMaquinas: rankM.length, rankOperadores: rankO.length, totalCaixas: Number(resumo.total_caixas || 0) || 0 }); } catch (_) {}
+      // #endregion
       if (!(Array.isArray(data && data.detalhamento) && data.detalhamento.length)) {
         var dbgTab = (data && data._debug && data._debug.tabelaAtiva) ? String(data._debug.tabelaAtiva) : 'não encontrada';
         var dbgTot = (data && data._debug && data._debug.totalRegistros != null) ? String(data._debug.totalRegistros) : '0';
+        // #region debug-point C:cp-render-empty
+        try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', 'dashboard caixas perdidas render vazio', { periodo: state.periodo, tabela: dbgTab, totalHistorico: dbgTot }); } catch (_) {}
+        // #endregion
         host.innerHTML = ''
           + '<div class="cpv2"><div class="cpv2-head"><div><div class="cpv2-title">💥 Caixas Perdidas</div><div class="cpv2-sub">Dashboard consolidado de perdas</div></div></div>'
           + '<div class="cpv2-panel cpv2-empty">'
@@ -6618,27 +6730,23 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <div class="cpv2-card"><div class="cpv2-card-label">Ocorrências</div><div class="cpv2-card-value">' + _cpFmtNum(resumo.total_ocorrencias) + '</div><div class="cpv2-card-sub">Registros consolidados</div></div>'
         + '  </div>'
         + '  <div class="cpv2-ranks">'
-        + '    <div class="cpv2-panel"><div class="cpv2-panel-title">🏭 Ranking de Máquinas</div>' + rankM.map(function(r, idx) { var pct = Math.max(4, Math.round(((Number(r && r.total_caixas || 0) || 0) / maxM) * 100)); return '<div class="cpv2-rank-item"><div style="font-weight:900;color:#64748b">' + (idx + 1) + '.</div><div><div class="cpv2-rank-name">' + _cpEsc(r && r.maquina || '—') + '</div><div class="cp-ranking-track"><div class="cp-ranking-bar" style="width:' + pct + '%"></div></div><div class="cpv2-rank-meta">' + _cpFmtNum(r && r.total_caixas || 0) + ' cx · ' + _cpFmtMoney(r && r.valor_perdido || 0) + '</div></div><div class="cpv2-badge">' + _cpFmtNum(r && r.ocorrencias || 0) + '</div></div>'; }).join('') + '</div>'
-        + '    <div class="cpv2-panel"><div class="cpv2-panel-title">👷 Operadores com Mais Perdas</div>' + rankO.map(function(r, idx) { var pct = Math.max(4, Math.round(((Number(r && r.total_caixas || 0) || 0) / maxO) * 100)); return '<div class="cpv2-rank-item"><div style="font-weight:900;color:#64748b">' + (idx + 1) + '.</div><div><div class="cpv2-rank-name">' + _cpEsc(r && r.operador || '—') + '</div><div class="cp-ranking-track"><div class="cp-ranking-bar cp-rank-op-bar" style="width:' + pct + '%"></div></div><div class="cpv2-rank-meta">' + _cpFmtNum(r && r.total_caixas || 0) + ' cx · ' + _cpFmtMoney(r && r.valor_perdido || 0) + '</div></div><div class="cpv2-badge" style="background:rgba(245,158,11,.18);color:#fcd34d;border-color:rgba(245,158,11,.22)">' + _cpFmtNum(r && r.ocorrencias || 0) + '</div></div>'; }).join('') + '</div>'
+        + '    <div class="cpv2-panel"><div class="cpv2-panel-title">🏭 Ranking de Máquinas</div>' + (rankM.length ? rankM.map(function(r, idx) { var pct = Math.max(4, Math.round(((Number(r && r.total_caixas || 0) || 0) / maxM) * 100)); return '<div class="cpv2-rank-item"><div style="font-weight:900;color:#64748b">' + (idx + 1) + '.</div><div><div class="cpv2-rank-name">' + _cpEsc(r && r.maquina || '—') + '</div><div class="cp-ranking-track"><div class="cp-ranking-bar" style="width:' + pct + '%"></div></div><div class="cpv2-rank-meta">' + _cpFmtNum(r && r.total_caixas || 0) + ' cx · ' + _cpFmtMoney(r && r.valor_perdido || 0) + '</div></div><div class="cpv2-badge">' + _cpFmtNum(r && r.ocorrencias || 0) + '</div></div>'; }).join('') : '<div style="color:#94a3b8">Sem dados no período.</div>') + '</div>'
+        + '    <div class="cpv2-panel"><div class="cpv2-panel-title">👷 Operadores com Mais Perdas</div>' + (rankO.length ? rankO.map(function(r, idx) { var pct = Math.max(4, Math.round(((Number(r && r.total_caixas || 0) || 0) / maxO) * 100)); return '<div class="cpv2-rank-item"><div style="font-weight:900;color:#64748b">' + (idx + 1) + '.</div><div><div class="cpv2-rank-name">' + _cpEsc(r && r.operador || '—') + '</div><div class="cp-ranking-track"><div class="cp-ranking-bar cp-rank-op-bar" style="width:' + pct + '%"></div></div><div class="cpv2-rank-meta">' + _cpFmtNum(r && r.total_caixas || 0) + ' cx · ' + _cpFmtMoney(r && r.valor_perdido || 0) + '</div></div><div class="cpv2-badge" style="background:rgba(245,158,11,.18);color:#fcd34d;border-color:rgba(245,158,11,.22)">' + _cpFmtNum(r && r.ocorrencias || 0) + '</div></div>'; }).join('') : '<div style="color:#94a3b8">Sem dados no período.</div>') + '</div>'
         + '  </div>'
         + '  <div class="cpv2-table-panel">'
         + '    <div class="cpv2-table-actions"><input class="cpv2-search" id="cpv2-busca" placeholder="Buscar OF ou cliente..." value="' + _cpEsc(state.busca || '') + '"><button class="cpv2-btn" id="cpv2-excel">Excel</button></div>'
-        + '    <div style="overflow:auto"><table class="cpv2-table"><thead><tr><th>Data Conclusão</th><th>Nº OF</th><th>Cliente</th><th>Produto</th><th>Qtd Perdida</th><th>Valor Perdido</th><th>Máquinas</th><th>Operadores</th><th>Concluído Por</th></tr></thead><tbody>'
-        + rows.map(function(r, idx) {
-          var exp = !!state.expand[idx];
-          var line = '<tr class="' + (exp ? 'expandida' : '') + '" data-cp-row="' + idx + '">'
+        + '    <div style="overflow:auto"><table class="cpv2-table"><thead><tr><th>Data Conclusão</th><th>Nº OF</th><th>Cliente</th><th>Qtd Perdida</th><th>Máquina</th><th>Operadores</th></tr></thead><tbody>'
+        + rows.map(function(r) {
+          var maquinas = _cpRowMaquinas(r);
+          var operadores = _cpRowOperadores(r);
+          return '<tr>'
             + '<td>' + _cpEsc(_cpDateBr(r.data_conclusao)) + '</td>'
             + '<td style="font-weight:800;color:#93c5fd">#' + _cpEsc(r.of_numero || '—') + '</td>'
-            + '<td>' + _cpEsc(r.cliente_nome || '—') + '</td>'
-            + '<td>' + _cpEsc(r.produto || '—') + '</td>'
+            + '<td>' + _cpEsc(_cpRowCliente(r)) + '</td>'
             + '<td>' + _cpFmtNum(r.quantidade_perdida || 0) + '</td>'
-            + '<td style="font-weight:800">' + _cpFmtMoney(r.valor_perdido || 0) + '</td>'
-            + '<td>' + (r.maquinas || []).map(function(m) { return '<span class="cpv2-mach-badge">' + _cpEsc(m) + '</span>'; }).join('') + '</td>'
-            + '<td>' + (r.operadores || []).map(function(op) { return '<span class="cpv2-op-chip">' + _cpEsc(op) + '</span>'; }).join('') + '</td>'
-            + '<td>' + _cpEsc(r.concluido_por || '—') + '</td>'
+            + '<td>' + (maquinas[0] ? '<span class="cpv2-mach-badge">' + _cpEsc(maquinas[0]) + '</span>' : '—') + '</td>'
+            + '<td>' + (operadores.length ? operadores.map(function(op) { return '<span class="cpv2-op-chip">' + _cpEsc(op) + '</span>'; }).join('') : '—') + '</td>'
             + '</tr>';
-          if (!exp) return line;
-          return line + '<tr class="expandida" data-cp-detail="' + idx + '"><td colspan="9"><div class="cpv2-detail"><table class="cpv2-inner"><thead><tr><th>Máquina</th><th>Qtd Perdida</th><th>Operadores Responsáveis</th></tr></thead><tbody>' + (r.detalhes || []).map(function(d) { return '<tr><td>' + _cpEsc(d.maquina || '—') + '</td><td>' + _cpFmtNum(d.qtd_perdida || 0) + '</td><td>' + (d.operadores || []).map(function(op) { return '<span class="cpv2-op-chip">' + _cpEsc(op) + '</span>'; }).join('') + '</td></tr>'; }).join('') + '</tbody></table></div></td></tr>';
         }).join('')
         + '    </tbody></table></div>'
         + '  </div>'
@@ -6657,13 +6765,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (btnR) btnR.onclick = function() { _cpRenderPage(true); };
       var btnX = document.getElementById('cpv2-excel');
       if (btnX) btnX.onclick = function() { _cpDownloadCsv(rows); };
-      Array.prototype.slice.call(host.querySelectorAll('tr[data-cp-row]')).forEach(function(tr) {
-        tr.onclick = function() {
-          var idx = String(tr.getAttribute('data-cp-row') || '');
-          _cpState().expand[idx] = !_cpState().expand[idx];
-          _cpRender(data);
-        };
-      });
     }
 
     async function _cpRenderPage(force) {
@@ -11566,6 +11667,82 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return lista;
   }
 
+  function _setFieldValueChapa(id, value) {
+    try {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.value = value == null ? '' : String(value);
+    } catch (_) {}
+  }
+
+  function _resolverEmpresaEdicaoChapa(chapa) {
+    var empId = String(chapa && (chapa.emp_id || chapa.empId) || '').trim();
+    var raw = String(chapa && (chapa.empresa_vinculada || chapa.empresa || chapa.qual_cnpj || chapa.qual) || '').trim();
+    try {
+      if (typeof window.estEmpresaFromAny === 'function') return String(window.estEmpresaFromAny(raw, empId) || '').trim();
+    } catch (_) {}
+    return raw || 'Italy Embalagens';
+  }
+
+  async function _buscarChapaEstoquePorId(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return null;
+    var lista = _getListaChapasEstoqueCache();
+    var found = (lista || []).find(function(item) { return String(item && item.id || '').trim() === sid; }) || null;
+    if (found) return found;
+    lista = await _carregarListaSeletorChapas().catch(function() { return []; });
+    found = (lista || []).find(function(item) { return String(item && item.id || '').trim() === sid; }) || null;
+    if (found) return found;
+    lista = await _estoqueFetchChapasList(10000).catch(function() { return []; });
+    lista = Array.isArray(lista) ? lista : [];
+    if (lista.length) window.__estoqueChapasCacheGlobal = lista.slice();
+    return (lista || []).find(function(item) { return String(item && item.id || '').trim() === sid; }) || null;
+  }
+
+  function _preencherModalEdicaoChapa(chapa) {
+    if (!chapa) return false;
+    try {
+      if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa();
+    } catch (_) {}
+    var modal = document.getElementById('modal-nova-chapa');
+    if (!modal) return false;
+    _setFieldValueChapa('chapa-edit-id', chapa && chapa.id || '');
+    _setFieldValueChapa('chapa-categoria', chapa && chapa.categoria || 'Estoque Simples');
+    _setFieldValueChapa('chapa-nomenclatura', chapa && (chapa.nomenclatura || chapa.nom) || '');
+    _setFieldValueChapa('chapa-fornecedor', chapa && (chapa.fornecedor || chapa.forn) || '');
+    _setFieldValueChapa('chapa-empresa', _resolverEmpresaEdicaoChapa(chapa));
+    _setFieldValueChapa('chapa-tamanho', chapa && (chapa.tamanho || chapa.tam) || '');
+    _setFieldValueChapa('chapa-nome', chapa && (chapa.nome_uso || chapa.nome) || '');
+    _setFieldValueChapa('chapa-nf', chapa && (chapa.nf || chapa.nf_entrada) || '');
+    _setFieldValueChapa('chapa-quantidade', chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0);
+    _setFieldValueChapa('chapa-valor-unitario', chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0);
+    _setFieldValueChapa('chapa-estoque-minimo', chapa && (chapa.estoque_minimo != null ? chapa.estoque_minimo : chapa.min) || 200);
+    _setFieldValueChapa('chapa-data-entrada', chapa && chapa.data_entrada || '');
+    _setFieldValueChapa('chapa-vincos', chapa && chapa.vincos || '');
+    _setFieldValueChapa('chapa-riscada', chapa && chapa.riscada ? '1' : '0');
+    _setFieldValueChapa('chapa-risca-desc', chapa && chapa.risca_desc || '');
+    _setFieldValueChapa('chapa-obs', chapa && (chapa.observacao || chapa.obs) || '');
+    try {
+      var title = document.getElementById('chapa-modal-titulo');
+      if (title) title.textContent = 'Editar Chapa';
+    } catch (_) {}
+    try {
+      var prev = document.getElementById('chapa-foto-prev');
+      if (prev) {
+        var fotoUrl = '';
+        try { if (typeof window.estFotoUrlFromItem === 'function') fotoUrl = String(window.estFotoUrlFromItem(chapa) || '').trim(); } catch (_) { fotoUrl = ''; }
+        prev.src = fotoUrl || '';
+        prev.style.display = fotoUrl ? 'block' : 'none';
+      }
+    } catch (_) {}
+    try {
+      if (typeof window.setChapaRiscada === 'function') window.setChapaRiscada(!!(chapa && chapa.riscada));
+    } catch (_) {}
+    try { if (typeof window.calcTotalChapa === 'function') window.calcTotalChapa(); } catch (_) {}
+    try { modal.style.display = 'flex'; } catch (_) {}
+    return true;
+  }
+
   function _abrirSeletorChapaEstoque(opts) {
     opts = opts || {};
     var onSelect = typeof opts.onSelect === 'function' ? opts.onSelect : function() {};
@@ -11620,6 +11797,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       Array.prototype.slice.call(host.querySelectorAll('[data-chapa-select]')).forEach(function(btn) {
         btn.onclick = function() {
           var id = String(btn.getAttribute('data-chapa-select') || '').trim();
+          try { window.__erpRuntimeLastAction = 'alterar-chapa:select:' + id; } catch (_) {}
+          // #region debug-point E:chapa-selector-click
+          try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('E', 'item do seletor de chapa clicado', { id: id, titulo: String(btn.textContent || '').trim().slice(0, 120) }); } catch (_) {}
+          // #endregion
           fechar();
           onSelect(id);
         };
@@ -11648,20 +11829,41 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
   }
 
-  function _abrirEdicaoChapaEstoque(id) {
+  async function _abrirEdicaoChapaEstoque(id) {
     var sid = String(id || '').trim();
     if (!sid) return;
-    var chapa = null;
-    try { chapa = (_getListaChapasEstoqueCache() || []).find(function(item) { return String(item && item.id || '').trim() === sid; }) || null; } catch (_) { chapa = null; }
+    var chapa = await _buscarChapaEstoquePorId(sid).catch(function() { return null; });
+    // #region debug-point E:chapa-edicao-entry
+    try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('E', 'abrir edicao de chapa iniciado', { id: sid, cacheHit: !!chapa, hasEditarChapa: typeof window.editarChapa === 'function', hasAbrirModalNovaChapa: typeof window.abrirModalNovaChapa === 'function' }); } catch (_) {}
+    // #endregion
     if (chapa) {
+      try { window.__estoqueChapasCacheGlobal = _getListaChapasEstoqueCache().slice(); } catch (_) {}
       _upsertListaChapasNative('_estoqueBase', chapa);
       _upsertListaChapasNative('ESTOQUE', chapa);
     }
     try {
-      if (typeof window.editarChapa === 'function') window.editarChapa(sid);
-      else if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(sid);
-    } catch (_) {}
+      if (!_preencherModalEdicaoChapa(chapa) && typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa();
+    } catch (_) {
+      try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (__) {}
+    }
     _scheduleEnhanceModalNovaChapa();
+    setTimeout(function() {
+      // #region debug-point E:chapa-edicao-post-open
+      try {
+        var modal = document.getElementById('modal-nova-chapa');
+        var title = document.getElementById('chapa-modal-titulo');
+        var editId = document.getElementById('chapa-edit-id');
+        var filled = 0;
+        try {
+          filled = Array.prototype.slice.call((modal && modal.querySelectorAll) ? modal.querySelectorAll('input,select,textarea') : []).filter(function(el) {
+            var val = String(el && el.value || '').trim();
+            return !!val;
+          }).length;
+        } catch (_) { filled = -1; }
+        if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('E', 'modal de chapa apos abertura', { id: sid, modalVisible: !!(modal && modal.style.display !== 'none'), titulo: String(title && title.textContent || ''), editId: String(editId && editId.value || ''), filledCount: filled });
+      } catch (_) {}
+      // #endregion
+    }, 250);
   }
 
   function _botaoAcaoEstoque(opts) {
@@ -19357,16 +19559,27 @@ function _ocultarGraficoComissoes() {
 
   async function _carregarGramaturasParaConclusao() {
     var token = String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : _getToken()) || '').trim();
+    // #region debug-point B:gramaturas-conclusao-fetch-start
+    try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'carregar gramaturas para conclusao iniciado', { hasToken: !!token }); } catch (_) {}
+    // #endregion
     try {
       await fetch('/api/gramaturas/init', { method: 'POST', headers: token ? { Authorization: 'Bearer ' + token } : {} }).catch(function() { return null; });
     } catch (_) {}
     try {
-      var resp = await fetch('/api/gramaturas', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var resp = await fetch('/api/gramaturas?incluir_inativas=true', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
       var json = await resp.json().catch(function() { return null; });
       var lista = Array.isArray(json) ? json : ((json && (json.data || json.gramaturas)) || []);
-      lista = (Array.isArray(lista) ? lista : []).map(_normalizarGramaturaConclusao).filter(function(g) { return g && g.ativo; });
+      lista = (Array.isArray(lista) ? lista : []).map(_normalizarGramaturaConclusao);
+      var ativas = lista.filter(function(g) { return g && g.ativo; });
+      if (ativas.length) lista = ativas;
+      // #region debug-point B:gramaturas-conclusao-fetch-done
+      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'carregar gramaturas para conclusao finalizado', { status: resp && resp.status ? Number(resp.status) : 0, ok: !!(resp && resp.ok), bodyKind: Array.isArray(json) ? 'array' : typeof json, total: lista.length, preview: JSON.stringify(Array.isArray(lista) ? lista.slice(0, 2) : json).slice(0, 500) }); } catch (_) {}
+      // #endregion
       return lista;
     } catch (_) {
+      // #region debug-point B:gramaturas-conclusao-fetch-error
+      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'carregar gramaturas para conclusao falhou', {}); } catch (_) {}
+      // #endregion
       return [_gramaturaFallbackConclusao()];
     }
   }
@@ -19435,6 +19648,9 @@ function _ocultarGraficoComissoes() {
     try {
       _ensureConclusaoModalStyle();
       var of = ofDados || null;
+      // #region debug-point B:conclusao-modal-open
+      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'abertura do modal de conclusao iniciada', { ofId: String(ofId || ''), hasOfDados: !!ofDados }); } catch (_) {}
+      // #endregion
       if (!of) {
         var tokenFetch = _getToken();
         var respFetch = await fetch('/api/ofs/' + encodeURIComponent(String(ofId || '').trim()), { headers: tokenFetch ? { Authorization: 'Bearer ' + tokenFetch } : {} });
@@ -19466,6 +19682,9 @@ function _ocultarGraficoComissoes() {
       var preloadGramaturas = _carregarGramaturasParaConclusao().catch(function() { return [_gramaturaFallbackConclusao()]; });
       Promise.all([preloadMaquinas, preloadOperadores, preloadGramaturas]).then(function(pair) {
         try { console.log('[conclusao] máquinas:', (pair[0] && pair[0].length) || 0, 'operadores:', (pair[1] && pair[1].length) || 0, 'gramaturas:', (pair[2] && pair[2].length) || 0); } catch (_) {}
+        // #region debug-point B:conclusao-preloads-ready
+        try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'preloads da conclusao resolvidos', { maquinas: (pair[0] && pair[0].length) || 0, operadores: (pair[1] && pair[1].length) || 0, gramaturas: (pair[2] && pair[2].length) || 0 }); } catch (_) {}
+        // #endregion
       }).catch(function() {});
       var operadores = [];
       var gramaturasLista = [];
@@ -19606,6 +19825,9 @@ function _ocultarGraficoComissoes() {
           }));
           gramEl.innerHTML = opts.join('');
         }
+        // #region debug-point B:gramaturas-select-render
+        try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'select de gramaturas renderizado', { totalGramaturas: gramaturasLista.length, selectedAtual: atual, domOptions: gramEl && gramEl.options ? gramEl.options.length : 0, firstOption: gramEl && gramEl.options && gramEl.options[0] ? String(gramEl.options[0].text || '') : '' }); } catch (_) {}
+        // #endregion
       }
       function updateResumo() {
         var resumo = _getResumoConclusao(of, qtdEl && qtdEl.value, collectPerdas());
