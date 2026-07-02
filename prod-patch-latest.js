@@ -1,3 +1,4 @@
+/* patch-runtime-version:v13 */
 ﻿window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
@@ -32,75 +33,6 @@ if (typeof window._fmtRs === 'undefined') {
     return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 }
-function _erpModalEscapeText(v) {
-  return String(v == null ? '' : v)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-function _fecharModalPadrao(id) {
-  try {
-    if (typeof window.__patchModalPadraoRealClose === 'function' && window.__patchModalPadraoRealClose !== _fecharModalPadrao) {
-      return window.__patchModalPadraoRealClose(id);
-    }
-  } catch (_) {}
-  try {
-    if (id) {
-      var el = document.getElementById(String(id || '').trim());
-      if (el) el.remove();
-      return;
-    }
-    Array.prototype.slice.call(document.querySelectorAll('.estoque-modal-overlay[data-modal-padrao="1"]')).forEach(function(el) {
-      try { el.remove(); } catch (_) {}
-    });
-  } catch (_) {}
-}
-try {
-  if (typeof window._fecharModalPadrao !== 'function') window._fecharModalPadrao = _fecharModalPadrao;
-} catch (_) {}
-function _abrirModalPadrao(opts) {
-  try {
-    if (typeof window.__patchModalPadraoRealOpen === 'function' && window.__patchModalPadraoRealOpen !== _abrirModalPadrao) {
-      return window.__patchModalPadraoRealOpen(opts);
-    }
-  } catch (_) {}
-  opts = opts || {};
-  var modalId = String(opts.id || ('estoque-modal-' + Date.now())).trim();
-  _fecharModalPadrao(modalId);
-  var overlay = document.createElement('div');
-  overlay.id = modalId;
-  overlay.className = 'estoque-modal-overlay estoque-modal-overlay-padrao';
-  overlay.setAttribute('data-modal-padrao', '1');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(2,6,23,.82)';
-  overlay.innerHTML = ''
-    + '<div class="estoque-modal-shell estoque-modal-shell-padrao" style="width:min(' + _erpModalEscapeText(String(opts.largura || opts.width || '560px')) + ',96vw);max-height:min(88vh,900px);overflow:hidden;display:grid;grid-template-rows:auto minmax(0,1fr) auto;border-radius:18px;border:1px solid rgba(148,163,184,.14);background:#0f172a;color:#e2e8f0;box-shadow:0 20px 70px rgba(15,23,42,.45)">'
-    + '  <div class="estoque-modal-header estoque-modal-header-padrao" style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:20px 22px;border-bottom:1px solid rgba(148,163,184,.14)">'
-    + '    <div style="min-width:0">'
-    + '      <div class="estoque-modal-title" style="font-size:20px;font-weight:900;color:#f8fafc">' + _erpModalEscapeText(opts.titulo || opts.title || 'Modal') + '</div>'
-    + '      <div class="estoque-modal-sub" style="margin-top:6px;font-size:12px;line-height:1.5;color:#94a3b8">' + _erpModalEscapeText(opts.subtitulo || opts.sub || '') + '</div>'
-    + '    </div>'
-    + '    <button type="button" class="estoque-modal-close" data-modal-close="1" aria-label="Fechar" style="width:40px;height:40px;border:none;border-radius:999px;background:rgba(148,163,184,.14);color:#e2e8f0;font-size:18px;font-weight:900;cursor:pointer">×</button>'
-    + '  </div>'
-    + '  <div class="estoque-modal-content estoque-modal-content-padrao' + (opts.bodyClass ? (' ' + _erpModalEscapeText(opts.bodyClass)) : '') + '" style="min-height:0;overflow:auto;padding:20px 22px">' + String(opts.corpoHTML || opts.bodyHtml || '') + '</div>'
-    + '  <div class="estoque-modal-footer estoque-modal-footer-padrao' + ((opts.footerHTML || opts.footerHtml) ? '' : ' is-empty') + '" style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;padding:16px 22px;border-top:1px solid rgba(148,163,184,.12)">' + String(opts.footerHTML || opts.footerHtml || '') + '</div>'
-    + '</div>';
-  overlay.addEventListener('click', function(ev) {
-    if (ev && ev.target === overlay) _fecharModalPadrao(modalId);
-  });
-  document.body.appendChild(overlay);
-  Array.prototype.slice.call(overlay.querySelectorAll('[data-modal-close="1"]')).forEach(function(btn) {
-    btn.onclick = function() { _fecharModalPadrao(modalId); };
-  });
-  if (typeof opts.onOpen === 'function') {
-    try { opts.onOpen(overlay, overlay.firstElementChild); } catch (_) {}
-  }
-  return overlay;
-}
-try {
-  if (typeof window._abrirModalPadrao !== 'function') window._abrirModalPadrao = _abrirModalPadrao;
-} catch (_) {}
 (function patchUnifiedAuthRuntime() {
   if (window.__patchUnifiedAuthRuntimeInstalled) return;
   window.__patchUnifiedAuthRuntimeInstalled = true;
@@ -381,835 +313,6 @@ try {
       });
     });
   } catch (_) {}
-})();
-
-(function() {
-  if (window.__patchHistoricoPassagensMensal) return;
-  window.__patchHistoricoPassagensMensal = true;
-
-  function _histEsc(v) {
-    return String(v == null ? '' : v)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
-  function _histAttr(v) {
-    return _histEsc(v).replace(/`/g, '&#96;');
-  }
-
-  function _histToken() {
-    try {
-      return String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') || localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || '').trim();
-    } catch (_) {
-      return '';
-    }
-  }
-
-  function _histFmtMoney(v) {
-    try {
-      return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    } catch (_) {
-      return 'R$ 0,00';
-    }
-  }
-
-  function _histFmtNum(v) {
-    try {
-      return Number(v || 0).toLocaleString('pt-BR');
-    } catch (_) {
-      return '0';
-    }
-  }
-
-  function _histPad2(v) {
-    return String(v == null ? '' : v).padStart(2, '0');
-  }
-
-  function _histMonthName(mes) {
-    var meses = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-    var idx = (parseInt(String(mes || ''), 10) || 1) - 1;
-    return meses[idx] || 'Mes';
-  }
-
-  function _histFmtDateTime(row) {
-    var horaPassagem = String(row && row.hora_passagem || '').trim();
-    if (horaPassagem) {
-      var dt = new Date(horaPassagem);
-      if (!isNaN(dt.getTime())) {
-        return dt.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-      }
-    }
-    var data = String(row && row.data_passagem || '').trim();
-    if (data) {
-      var p = data.split('-');
-      if (p.length === 3) return p[2] + '/' + p[1] + '/' + p[0];
-      return data;
-    }
-    return '—';
-  }
-
-  function _histParseMonthValue(v) {
-    var s = String(v || '').trim();
-    if (!s || s.indexOf('-') < 0) return null;
-    var parts = s.split('-');
-    if (!parts[0] || !parts[1]) return null;
-    return { ano: String(parts[0]), mes: _histPad2(parts[1]) };
-  }
-
-  function _histCurrentMonthYearFromUi() {
-    var fim = _histParseMonthValue(String((document.getElementById('hist-filtro-data-fim') || {}).value || '').slice(0, 7));
-    if (fim) return fim;
-    var ini = _histParseMonthValue(String((document.getElementById('hist-filtro-data-ini') || {}).value || '').slice(0, 7));
-    if (ini) return ini;
-    try {
-      var now = new Date();
-      return { ano: String(now.getFullYear()), mes: _histPad2(now.getMonth() + 1) };
-    } catch (_) {
-      return { ano: '2026', mes: '07' };
-    }
-  }
-
-  function _histPrevMonth(mes, ano) {
-    var base = new Date(parseInt(String(ano || ''), 10) || 2026, (parseInt(String(mes || ''), 10) || 1) - 1, 1, 12, 0, 0);
-    if (isNaN(base.getTime())) return null;
-    base.setMonth(base.getMonth() - 1);
-    return { ano: String(base.getFullYear()), mes: _histPad2(base.getMonth() + 1) };
-  }
-
-  function _histGetPage() {
-    try { return document.getElementById('page-historico-passagens'); } catch (_) { return null; }
-  }
-
-  function _histGetFilters() {
-    if (typeof window.obterFiltrosHistoricoAtivos === 'function') {
-      try { return window.obterFiltrosHistoricoAtivos() || {}; } catch (_) {}
-    }
-    return {
-      cliente: String((document.getElementById('hist-filtro-cliente') || {}).value || '').trim(),
-      maquina: String((document.getElementById('hist-filtro-maquina') || {}).value || '').trim(),
-      data_inicio: String((document.getElementById('hist-filtro-data-ini') || {}).value || '').trim(),
-      data_fim: String((document.getElementById('hist-filtro-data-fim') || {}).value || '').trim()
-    };
-  }
-
-  function _histExportCsv(filename, columns, rows) {
-    try {
-      var lines = [columns.map(function(col) {
-        return '"' + String(col == null ? '' : col).replace(/"/g, '""') + '"';
-      }).join(';')];
-      (Array.isArray(rows) ? rows : []).forEach(function(row) {
-        lines.push((Array.isArray(row) ? row : []).map(function(value) {
-          return '"' + String(value == null ? '' : value).replace(/"/g, '""') + '"';
-        }).join(';'));
-      });
-      var blob = new Blob(["\uFEFF" + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(function() {
-        try { URL.revokeObjectURL(a.href); } catch (_) {}
-        try { a.remove(); } catch (_) {}
-      }, 0);
-    } catch (_) {}
-  }
-
-  function _histEmpresaNome() {
-    try {
-      var empId = String(window.EMP_FILTRO || '').trim();
-      if (empId && typeof window.estEmpresaFromEmpId === 'function') {
-        var nome = String(window.estEmpresaFromEmpId(empId) || '').trim();
-        if (nome) return nome;
-      }
-      if (empId) return empId;
-    } catch (_) {}
-    try {
-      return String(document.title || 'Italy Embalagens').trim() || 'Italy Embalagens';
-    } catch (_) {
-      return 'Italy Embalagens';
-    }
-  }
-
-  function _histPrintPeriodo(kind) {
-    if (kind === 'mensal') {
-      var ref = _histGetMonthlyRef();
-      return _histMonthName(ref.mes) + '/' + ref.ano;
-    }
-    var filtros = _histGetFilters();
-    if (filtros.data_inicio && filtros.data_fim && filtros.data_inicio === filtros.data_fim) {
-      return 'Dia ' + String(filtros.data_inicio);
-    }
-    if (filtros.data_inicio || filtros.data_fim) {
-      return 'Período ' + String(filtros.data_inicio || '—') + ' até ' + String(filtros.data_fim || '—');
-    }
-    return 'Lista filtrada atual';
-  }
-
-  function _histEnsurePrintRoot() {
-    var root = document.getElementById('hist-print-root');
-    if (!root) {
-      root = document.createElement('div');
-      root.id = 'hist-print-root';
-      document.body.appendChild(root);
-    }
-    return root;
-  }
-
-  function _histBuildPrintHtml(kind) {
-    var empresa = _histEmpresaNome();
-    var periodo = _histPrintPeriodo(kind);
-    if (kind === 'mensal') {
-      var data = window.__histMonthlyData || {};
-      var resumo = data && data.resumo_mes_atual ? data.resumo_mes_atual : {};
-      var rows = Array.isArray(window.__histMonthlyRowsSorted) ? window.__histMonthlyRowsSorted : (Array.isArray(window.__histMonthlyRows) ? window.__histMonthlyRows : []);
-      return ''
-        + '<div class="hist-print-sheet">'
-        + '  <div class="hist-print-title">Relatório Mensal por Máquina</div>'
-        + '  <div class="hist-print-sub">' + _histEsc(empresa) + ' | ' + _histEsc(periodo) + '</div>'
-        + '  <div class="hist-print-summary">'
-        + '    <div class="hist-print-card"><span class="lab">Máquinas</span><strong>' + _histEsc(_histFmtNum(resumo.total_maquinas || 0)) + '</strong></div>'
-        + '    <div class="hist-print-card"><span class="lab">OFs</span><strong>' + _histEsc(_histFmtNum(resumo.total_ofs || 0)) + '</strong></div>'
-        + '    <div class="hist-print-card"><span class="lab">Valor de Produção</span><strong>' + _histEsc(_histFmtMoney(resumo.valor_total_producao || 0)) + '</strong></div>'
-        + '    <div class="hist-print-card"><span class="lab">Caixas Produzidas</span><strong>' + _histEsc(_histFmtNum(resumo.caixas_produzidas || 0)) + '</strong></div>'
-        + '  </div>'
-        + '  <table class="hist-print-table">'
-        + '    <thead><tr><th>Máquina</th><th>Nº de OFs</th><th>Valor de Produção</th><th>Caixas Produzidas</th></tr></thead>'
-        + '    <tbody>'
-        +      (rows.length ? rows.map(function(row) {
-                 return '<tr>'
-                   + '<td>' + _histEsc(row && row.maquina || '—') + '</td>'
-                   + '<td class="num">' + _histEsc(_histFmtNum(row && row.total_ofs || 0)) + '</td>'
-                   + '<td class="num">' + _histEsc(_histFmtMoney(row && row.valor_total_producao || 0)) + '</td>'
-                   + '<td class="num">' + _histEsc(_histFmtNum(row && row.caixas_produzidas || 0)) + '</td>'
-                   + '</tr>';
-               }).join('') : '<tr><td colspan="4">Nenhum dado disponível para impressão.</td></tr>')
-        + '    </tbody>'
-        + '  </table>'
-        + '</div>';
-    }
-
-    var listRows = Array.isArray(window.__histPassagensRowsVisible) ? window.__histPassagensRowsVisible : [];
-    return ''
-      + '<div class="hist-print-sheet">'
-      + '  <div class="hist-print-title">Relatório Diário de Passagens por Máquina</div>'
-      + '  <div class="hist-print-sub">' + _histEsc(empresa) + ' | ' + _histEsc(periodo) + '</div>'
-      + '  <table class="hist-print-table">'
-      + '    <thead><tr><th>Nº OF</th><th>Status</th><th>Produto</th><th>Máquina</th><th>Responsável</th><th>Quantidade (cx)</th><th>Data/Hora</th></tr></thead>'
-      + '    <tbody>'
-      +      (listRows.length ? listRows.map(function(row) {
-               var qtd = Number(row && (row.qtd_produzida != null ? row.qtd_produzida : (row.quantidade != null ? row.quantidade : row.qtd)) || 0) || 0;
-               return '<tr>'
-                 + '<td>' + _histEsc(row && (row.of_numero || row.numero) || '—') + '</td>'
-                 + '<td>' + _histEsc(row && (row.status || row.tipo) || '—') + '</td>'
-                 + '<td>' + _histEsc(row && (row.produto || row.descricao) || '—') + '</td>'
-                 + '<td>' + _histEsc(row && (row.maquina || row.maquina_nome) || '—') + '</td>'
-                 + '<td>' + _histEsc(row && (row.responsavel || row.operador || row.operador_nome || row.concluido_por) || '—') + '</td>'
-                 + '<td class="num">' + _histEsc(_histFmtNum(qtd)) + '</td>'
-                 + '<td>' + _histEsc(_histFmtDateTime(row)) + '</td>'
-                 + '</tr>';
-             }).join('') : '<tr><td colspan="7">Nenhum dado disponível para impressão.</td></tr>')
-      + '    </tbody>'
-      + '  </table>'
-      + '</div>';
-  }
-
-  function _histPrint(kind) {
-    try {
-      var root = _histEnsurePrintRoot();
-      root.innerHTML = _histBuildPrintHtml(kind === 'mensal' ? 'mensal' : 'lista');
-      document.body.classList.add('hist-print-open');
-      var clear = function() {
-        try { document.body.classList.remove('hist-print-open'); } catch (_) {}
-      };
-      try {
-        window.removeEventListener('afterprint', clear);
-        window.addEventListener('afterprint', clear, { once: true });
-      } catch (_) {}
-      window.print();
-      setTimeout(clear, 1500);
-    } catch (_) {}
-  }
-
-  function _histEnsureStyle() {
-    try {
-      if (document.getElementById('patch-historico-passagens-style')) return;
-      var st = document.createElement('style');
-      st.id = 'patch-historico-passagens-style';
-      st.textContent = ''
-        + '#page-historico-passagens{min-height:0}'
-        + '#hist-filtros .hist-patch-btn,#hist-relatorio-mensal-shell .hist-patch-btn{background:#1e293b;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer}'
-        + '#hist-filtros .hist-patch-btn:hover,#hist-relatorio-mensal-shell .hist-patch-btn:hover{filter:brightness(1.06)}'
-        + '#hist-relatorio-mensal-shell{display:grid;gap:12px;margin:16px 0;padding:14px;border-radius:14px;background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.8));border:1px solid rgba(148,163,184,.14)}'
-        + '#hist-relatorio-mensal-shell .hist-month-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}'
-        + '#hist-relatorio-mensal-shell .hist-month-toolbar-left{display:flex;gap:10px;flex-wrap:wrap;align-items:center}'
-        + '#hist-relatorio-mensal-shell .hist-month-title{font-size:15px;font-weight:900;color:#f8fafc}'
-        + '#hist-relatorio-mensal-shell .hist-month-sub{font-size:12px;color:#94a3b8;margin-top:4px}'
-        + '#hist-relatorio-mensal-shell select{background:#0b1220;color:#e2e8f0;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;font-size:13px}'
-        + '#hist-relatorio-mensal-shell .hist-month-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}'
-        + '#hist-relatorio-mensal-shell .hist-month-card{background:rgba(255,255,255,.03);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:14px}'
-        + '#hist-relatorio-mensal-shell .hist-month-card .lab{font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:900;letter-spacing:.08em}'
-        + '#hist-relatorio-mensal-shell .hist-month-card .val{margin-top:8px;font-size:22px;font-weight:900;color:#f8fafc}'
-        + '#hist-relatorio-mensal-shell .hist-month-card .sub{margin-top:6px;font-size:12px;color:#94a3b8}'
-        + '#hist-relatorio-mensal-shell .hist-variation{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:900;border:1px solid rgba(148,163,184,.16)}'
-        + '#hist-relatorio-mensal-shell .hist-variation.pos{background:rgba(16,185,129,.14);color:#6ee7b7;border-color:rgba(16,185,129,.22)}'
-        + '#hist-relatorio-mensal-shell .hist-variation.neg{background:rgba(239,68,68,.14);color:#fda4af;border-color:rgba(239,68,68,.22)}'
-        + '#hist-relatorio-mensal-shell .hist-variation.neu{background:rgba(148,163,184,.12);color:#cbd5e1;border-color:rgba(148,163,184,.22)}'
-        + '#hist-relatorio-mensal-shell .hist-month-table-wrap{overflow:auto;max-height:420px;border:1px solid rgba(148,163,184,.14);border-radius:14px}'
-        + '#hist-relatorio-mensal-shell .hist-month-table{width:100%;border-collapse:separate;border-spacing:0;min-width:760px}'
-        + '#hist-relatorio-mensal-shell .hist-month-table thead th{position:sticky;top:0;background:#0f172a;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:12px 14px;text-align:left;border-bottom:1px solid rgba(148,163,184,.16)}'
-        + '#hist-relatorio-mensal-shell .hist-month-table thead th.num{text-align:right}'
-        + '#hist-relatorio-mensal-shell .hist-month-table thead button{background:transparent;border:none;color:inherit;font:inherit;cursor:pointer;padding:0}'
-        + '#hist-relatorio-mensal-shell .hist-month-table tbody td{padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.08);color:#e2e8f0;font-size:13px}'
-        + '#hist-relatorio-mensal-shell .hist-month-table tbody td.num{text-align:right;font-variant-numeric:tabular-nums}'
-        + '#hist-relatorio-mensal-shell .hist-month-table tbody tr:nth-child(even) td{background:rgba(255,255,255,.02)}'
-        + '#hist-relatorio-mensal-shell .hist-month-table tbody tr:hover td{background:rgba(30,41,59,.42)}'
-        + '#hist-passagens-resultado{display:grid;gap:10px;min-height:0}'
-        + '#hist-passagens-resultado .hist-passagens-toolbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}'
-        + '#hist-passagens-resultado .hist-passagens-scroll{display:block;max-height:min(58vh,calc(100vh - 360px));overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-right:4px;scrollbar-gutter:stable}'
-        + '#hist-passagens-resultado > #hist-passagens-items.hist-passagens-scroll{display:block !important;max-height:min(58vh,calc(100vh - 360px)) !important;overflow-y:auto !important;overflow-x:hidden !important;overscroll-behavior:contain !important;padding-right:4px !important}'
-        + '#hist-passagens-resultado .hist-passagens-scroll::-webkit-scrollbar,#hist-relatorio-mensal-shell .hist-month-table-wrap::-webkit-scrollbar{width:10px;height:10px}'
-        + '#hist-passagens-resultado .hist-passagens-scroll::-webkit-scrollbar-track,#hist-relatorio-mensal-shell .hist-month-table-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72)}'
-        + '#hist-passagens-resultado .hist-passagens-scroll::-webkit-scrollbar-thumb,#hist-relatorio-mensal-shell .hist-month-table-wrap::-webkit-scrollbar-thumb{background:rgba(100,116,139,.58);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
-        + '#hist-passagens-resultado .hist-passagens-scroll,#hist-relatorio-mensal-shell .hist-month-table-wrap{scrollbar-width:thin;scrollbar-color:rgba(100,116,139,.58) rgba(15,23,42,.72)}'
-        + '#hist-print-root{display:none}'
-        + '#hist-print-root .hist-print-sheet{color:#111;background:#fff;font-family:Arial,sans-serif}'
-        + '#hist-print-root .hist-print-title{font-size:22px;font-weight:800;margin-bottom:4px}'
-        + '#hist-print-root .hist-print-sub{font-size:12px;color:#555;margin-bottom:16px}'
-        + '#hist-print-root .hist-print-summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}'
-        + '#hist-print-root .hist-print-card{border:1px solid #d1d5db;border-radius:8px;padding:10px 12px;min-width:160px}'
-        + '#hist-print-root .hist-print-card .lab{display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;margin-bottom:5px}'
-        + '#hist-print-root .hist-print-table{width:100%;border-collapse:collapse;font-size:12px}'
-        + '#hist-print-root .hist-print-table th,#hist-print-root .hist-print-table td{border:1px solid #cbd5e1;padding:8px 10px;text-align:left;color:#111;background:#fff}'
-        + '#hist-print-root .hist-print-table th{background:#f8fafc;font-size:11px;text-transform:uppercase;letter-spacing:.06em}'
-        + '#hist-print-root .hist-print-table td.num,#hist-print-root .hist-print-table th.num{text-align:right}'
-        + '@media (max-width:760px){#hist-relatorio-mensal-shell .hist-month-cards{grid-template-columns:1fr}#hist-passagens-resultado .hist-passagens-scroll{max-height:min(62vh,calc(100vh - 280px)) !important}}'
-        + '@media print{body *{visibility:hidden !important}#hist-print-root,#hist-print-root *{visibility:visible !important}#hist-print-root{display:block !important;position:fixed;inset:0;background:#fff;padding:22px;z-index:2147483647;overflow:visible}#hist-print-root .hist-print-sheet{display:block}body.hist-print-open{background:#fff !important}}';
-      document.head.appendChild(st);
-    } catch (_) {}
-  }
-
-  function _histEnsureUi() {
-    _histEnsureStyle();
-    var page = _histGetPage();
-    if (!page) return;
-
-    var monthShell = document.getElementById('hist-relatorio-mensal-shell');
-    if (!monthShell) {
-      monthShell = document.createElement('div');
-      monthShell.id = 'hist-relatorio-mensal-shell';
-      monthShell.innerHTML = ''
-        + '<div class="hist-month-toolbar">'
-        + '  <div class="hist-month-toolbar-left">'
-        + '    <div><div class="hist-month-title">Relatório Mensal por Máquina</div><div class="hist-month-sub">Mesma base das passagens individuais, agregada por mês e por máquina.</div></div>'
-        + '    <select id="hist-rel-mes"></select>'
-        + '    <select id="hist-rel-ano"></select>'
-        + '    <button type="button" class="hist-patch-btn" id="hist-rel-carregar">Atualizar Relatório</button>'
-        + '  </div>'
-        + '  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-        + '    <button type="button" class="hist-patch-btn" id="hist-rel-exportar">Exportar Excel</button>'
-        + '    <button type="button" class="hist-patch-btn" id="hist-rel-imprimir">Imprimir</button>'
-        + '  </div>'
-        + '</div>'
-        + '<div id="hist-relatorio-mensal-cards" class="hist-month-cards"></div>'
-        + '<div id="hist-relatorio-mensal-tabela"></div>';
-      var graficos = document.getElementById('hist-graficos-wrap');
-      var filtros = document.getElementById('hist-filtros');
-      if (graficos && graficos.parentNode) graficos.parentNode.insertBefore(monthShell, filtros || graficos.nextSibling);
-      else if (filtros && filtros.parentNode) filtros.parentNode.insertBefore(monthShell, filtros);
-      else page.appendChild(monthShell);
-    }
-
-    var exportBtn = document.getElementById('hist-export-lista-btn');
-    var filtrosWrap = document.getElementById('hist-filtros');
-    if (!exportBtn && filtrosWrap) {
-      exportBtn = document.createElement('button');
-      exportBtn.type = 'button';
-      exportBtn.id = 'hist-export-lista-btn';
-      exportBtn.className = 'hist-patch-btn';
-      exportBtn.textContent = 'Exportar Excel da Lista';
-      filtrosWrap.appendChild(exportBtn);
-    }
-
-    var mesSel = document.getElementById('hist-rel-mes');
-    var anoSel = document.getElementById('hist-rel-ano');
-    if (mesSel && !mesSel.options.length) {
-      for (var i = 1; i <= 12; i += 1) {
-        var op = document.createElement('option');
-        op.value = _histPad2(i);
-        op.textContent = _histMonthName(i);
-        mesSel.appendChild(op);
-      }
-    }
-    if (anoSel && !anoSel.options.length) {
-      var baseAno = new Date().getFullYear();
-      for (var y = baseAno - 2; y <= baseAno + 1; y += 1) {
-        var oy = document.createElement('option');
-        oy.value = String(y);
-        oy.textContent = String(y);
-        anoSel.appendChild(oy);
-      }
-    }
-    if (mesSel && anoSel && !monthShell.dataset.initialized) {
-      var ref = _histCurrentMonthYearFromUi();
-      mesSel.value = ref.mes;
-      anoSel.value = ref.ano;
-      monthShell.dataset.initialized = '1';
-    }
-
-    var carBtn = document.getElementById('hist-rel-carregar');
-    if (carBtn && !carBtn.dataset.bound) {
-      carBtn.dataset.bound = '1';
-      carBtn.onclick = function() { _histFetchRelatorioMensal(); };
-    }
-    var relExpBtn = document.getElementById('hist-rel-exportar');
-    if (relExpBtn && !relExpBtn.dataset.bound) {
-      relExpBtn.dataset.bound = '1';
-      relExpBtn.onclick = function() { _histExportRelatorioMensal(); };
-    }
-    var relPrintBtn = document.getElementById('hist-rel-imprimir');
-    if (relPrintBtn && !relPrintBtn.dataset.bound) {
-      relPrintBtn.dataset.bound = '1';
-      relPrintBtn.onclick = function() { _histPrint('mensal'); };
-    }
-    if (exportBtn && !exportBtn.dataset.bound) {
-      exportBtn.dataset.bound = '1';
-      exportBtn.onclick = function() { _histExportListaVisivel(); };
-    }
-  }
-
-  function _histGetMonthlyRef() {
-    _histEnsureUi();
-    var mes = String((document.getElementById('hist-rel-mes') || {}).value || '').trim();
-    var ano = String((document.getElementById('hist-rel-ano') || {}).value || '').trim();
-    if (!mes || !ano) return _histCurrentMonthYearFromUi();
-    return { mes: _histPad2(mes), ano: ano };
-  }
-
-  function _histSortMonthlyRows(rows) {
-    var state = window.__histMonthlySortState || { key: 'total_ofs', dir: 'desc' };
-    var key = String(state.key || 'total_ofs');
-    var dir = String(state.dir || 'desc') === 'asc' ? 1 : -1;
-    return (Array.isArray(rows) ? rows.slice() : []).sort(function(a, b) {
-      var av = a && a[key];
-      var bv = b && b[key];
-      if (typeof av === 'string' || typeof bv === 'string') {
-        return String(av || '').localeCompare(String(bv || ''), 'pt-BR') * dir;
-      }
-      return ((Number(av || 0) || 0) - (Number(bv || 0) || 0)) * dir;
-    });
-  }
-
-  function _histVariationBadge(value) {
-    if (value == null || !isFinite(Number(value))) return '<span class="hist-variation neu">vs mês anterior: —</span>';
-    var n = Number(value) || 0;
-    var cls = n > 0 ? 'pos' : (n < 0 ? 'neg' : 'neu');
-    var prefix = n > 0 ? '+' : '';
-    return '<span class="hist-variation ' + cls + '">vs mês anterior: ' + _histEsc(prefix + n.toFixed(1).replace('.', ',') + '%') + '</span>';
-  }
-
-  function _histRenderRelatorioMensal(data) {
-    _histEnsureUi();
-    var cards = document.getElementById('hist-relatorio-mensal-cards');
-    var tableHost = document.getElementById('hist-relatorio-mensal-tabela');
-    if (!cards || !tableHost) return;
-
-    var ref = (data && data.referencia) || _histGetMonthlyRef();
-    var resumo = (data && data.resumo_mes_atual) || {};
-    var anterior = (data && data.resumo_mes_anterior) || {};
-    var rows = Array.isArray(data && data.rows) ? data.rows.slice() : [];
-    window.__histMonthlyRows = rows.slice();
-    var sorted = _histSortMonthlyRows(rows);
-    window.__histMonthlyRowsSorted = sorted.slice();
-
-    var varOfs = Number(anterior.total_ofs || 0) > 0 ? (((Number(resumo.total_ofs || 0) - Number(anterior.total_ofs || 0)) / Number(anterior.total_ofs || 0)) * 100) : null;
-    var varValor = Number(anterior.valor_total_producao || 0) > 0 ? (((Number(resumo.valor_total_producao || 0) - Number(anterior.valor_total_producao || 0)) / Number(anterior.valor_total_producao || 0)) * 100) : null;
-    var varCx = Number(anterior.caixas_produzidas || 0) > 0 ? (((Number(resumo.caixas_produzidas || 0) - Number(anterior.caixas_produzidas || 0)) / Number(anterior.caixas_produzidas || 0)) * 100) : null;
-
-    cards.innerHTML = ''
-      + '<div class="hist-month-card"><div class="lab">Mês de Referência</div><div class="val">' + _histEsc(_histMonthName(ref.mes) + '/' + ref.ano) + '</div><div class="sub">Base: passagens individuais por máquina</div></div>'
-      + '<div class="hist-month-card"><div class="lab">Total de OFs</div><div class="val">' + _histEsc(_histFmtNum(resumo.total_ofs || 0)) + '</div><div class="sub">' + _histVariationBadge(varOfs) + '</div></div>'
-      + '<div class="hist-month-card"><div class="lab">Valor de Produção</div><div class="val">' + _histEsc(_histFmtMoney(resumo.valor_total_producao || 0)) + '</div><div class="sub">' + _histVariationBadge(varValor) + '</div></div>'
-      + '<div class="hist-month-card"><div class="lab">Caixas Produzidas</div><div class="val">' + _histEsc(_histFmtNum(resumo.caixas_produzidas || 0)) + '</div><div class="sub">' + _histVariationBadge(varCx) + '</div></div>';
-
-    if (!sorted.length) {
-      tableHost.innerHTML = '<div style="padding:18px;border:1px dashed rgba(148,163,184,.16);border-radius:12px;color:#94a3b8;text-align:center">Nenhuma passagem encontrada para o mês selecionado.</div>';
-      return;
-    }
-
-    var sortState = window.__histMonthlySortState || { key: 'total_ofs', dir: 'desc' };
-    var th = function(label, key, numeric) {
-      var active = sortState.key === key;
-      var arrow = active ? (sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
-      return '<th' + (numeric ? ' class="num"' : '') + '><button type="button" data-hist-sort="' + _histAttr(key) + '">' + _histEsc(label + arrow) + '</button></th>';
-    };
-
-    tableHost.innerHTML = ''
-      + '<div class="hist-month-table-wrap">'
-      + '  <table class="hist-month-table">'
-      + '    <thead><tr>'
-      +        th('Máquina', 'maquina', false)
-      +        th('Nº de OFs', 'total_ofs', true)
-      +        th('Valor de Produção', 'valor_total_producao', true)
-      +        th('Caixas Produzidas', 'caixas_produzidas', true)
-      + '    </tr></thead>'
-      + '    <tbody>'
-      + sorted.map(function(row) {
-          return ''
-            + '<tr>'
-            + '  <td><div style="font-weight:900;color:#f8fafc">' + _histEsc(row.maquina || '—') + '</div><div style="margin-top:4px">' + _histVariationBadge(row.variacao_ofs_pct) + '</div></td>'
-            + '  <td class="num">' + _histEsc(_histFmtNum(row.total_ofs || 0)) + '</td>'
-            + '  <td class="num">' + _histEsc(_histFmtMoney(row.valor_total_producao || 0)) + '</td>'
-            + '  <td class="num">' + _histEsc(_histFmtNum(row.caixas_produzidas || 0)) + '</td>'
-            + '</tr>';
-        }).join('')
-      + '    </tbody>'
-      + '  </table>'
-      + '</div>';
-
-    Array.prototype.slice.call(tableHost.querySelectorAll('[data-hist-sort]')).forEach(function(btn) {
-      btn.onclick = function() {
-        var key = String(btn.getAttribute('data-hist-sort') || '').trim();
-        var current = window.__histMonthlySortState || { key: 'total_ofs', dir: 'desc' };
-        window.__histMonthlySortState = {
-          key: key,
-          dir: current.key === key && current.dir === 'desc' ? 'asc' : 'desc'
-        };
-        _histRenderRelatorioMensal(window.__histMonthlyData || data || {});
-      };
-    });
-  }
-
-  async function _histFetchRelatorioMensal() {
-    _histEnsureUi();
-    var tableHost = document.getElementById('hist-relatorio-mensal-tabela');
-    if (tableHost) tableHost.innerHTML = '<div style="padding:18px;color:#94a3b8">Carregando relatório mensal...</div>';
-    var ref = _histGetMonthlyRef();
-    var filtros = _histGetFilters();
-    var qs = new URLSearchParams();
-    qs.set('mes', String(parseInt(ref.mes, 10) || ref.mes));
-    qs.set('ano', ref.ano);
-    if (filtros.cliente) qs.set('cliente', filtros.cliente);
-    if (filtros.maquina) qs.set('maquina', filtros.maquina);
-    var token = _histToken();
-    try {
-      var resp = await fetch('/api/maquinas/relatorio-mensal?' + qs.toString(), {
-        headers: token ? { Authorization: 'Bearer ' + token } : {}
-      });
-      var json = await resp.json().catch(function() { return null; });
-      if (!resp.ok || !json || json.ok === false) throw new Error(String(json && (json.error || json.message) || 'Falha ao carregar relatório mensal'));
-      window.__histMonthlyData = json;
-      if (!window.__histMonthlySortState) window.__histMonthlySortState = { key: 'total_ofs', dir: 'desc' };
-      _histRenderRelatorioMensal(json);
-    } catch (e) {
-      if (tableHost) tableHost.innerHTML = '<div style="padding:18px;border:1px solid rgba(239,68,68,.22);border-radius:12px;color:#fca5a5">Falha ao carregar relatório mensal: ' + _histEsc(e && e.message || e) + '</div>';
-    }
-  }
-
-  function _histExportRelatorioMensal() {
-    var data = window.__histMonthlyRowsSorted || window.__histMonthlyRows || [];
-    var ref = _histGetMonthlyRef();
-    _histExportCsv(
-      'relatorio-mensal-maquinas-' + ref.ano + '-' + ref.mes + '.csv',
-      ['MÁQUINA', 'Nº DE OFs', 'VALOR DE PRODUÇÃO', 'CAIXAS PRODUZIDAS', 'VS MÊS ANTERIOR (%)'],
-      (Array.isArray(data) ? data : []).map(function(row) {
-        return [
-          row && row.maquina || '—',
-          Number(row && row.total_ofs || 0) || 0,
-          Number(row && row.valor_total_producao || 0) || 0,
-          Number(row && row.caixas_produzidas || 0) || 0,
-          row && row.variacao_ofs_pct != null ? Number(row.variacao_ofs_pct || 0).toFixed(2).replace('.', ',') : ''
-        ];
-      })
-    );
-  }
-
-  function _histExportListaVisivel() {
-    var rows = Array.isArray(window.__histPassagensRowsVisible) ? window.__histPassagensRowsVisible.slice() : [];
-    if (!rows.length) {
-      try { if (typeof window.toast === 'function') window.toast('Nenhuma passagem visível para exportar', 'var(--red)'); } catch (_) {}
-      return;
-    }
-    var filtros = _histGetFilters();
-    var dia = (filtros.data_inicio && filtros.data_fim && filtros.data_inicio === filtros.data_fim) ? filtros.data_inicio : 'lista-filtrada';
-    _histExportCsv(
-      'passagens-maquina-' + dia + '.csv',
-      ['Nº OF', 'Status', 'Produto', 'Máquina', 'Usuário/Responsável', 'Quantidade (cx)', 'Data/Hora'],
-      rows.map(function(row) {
-        return [
-          row && (row.of_numero || row.numero) || '—',
-          row && row.status || row && row.tipo || '—',
-          row && row.produto || row && row.descricao || '—',
-          row && (row.maquina || row.maquina_nome) || '—',
-          row && (row.responsavel || row.operador || row.operador_nome || row.concluido_por) || '—',
-          Number(row && (row.qtd_produzida != null ? row.qtd_produzida : (row.quantidade != null ? row.quantidade : row.qtd)) || 0) || 0,
-          _histFmtDateTime(row)
-        ];
-      })
-    );
-  }
-
-  async function _histBuscarLinhasVisiveisExport(st, filtros) {
-    var state = st || window._histPassagensState || {};
-    var totalLoaded = Math.max(1, (Number(state.page || 0) || 1) * (Number(state.limit || 50) || 50));
-    if (totalLoaded > 1000) totalLoaded = 1000;
-    var qs = new URLSearchParams();
-    qs.set('limit', String(totalLoaded));
-    qs.set('offset', '0');
-    if (filtros.cliente) qs.set('cliente', filtros.cliente);
-    if (filtros.maquina) qs.set('maquina', filtros.maquina);
-    if (filtros.data_inicio) qs.set('data_inicio', filtros.data_inicio);
-    if (filtros.data_fim) qs.set('data_fim', filtros.data_fim);
-    var token = _histToken();
-    try {
-      var resp = await fetch('/api/passagens/historico?' + qs.toString() + '&t=' + Date.now(), {
-        headers: token ? { Authorization: 'Bearer ' + token } : {}
-      });
-      var json = await resp.json().catch(function() { return null; });
-      window.__histPassagensRowsVisible = Array.isArray(json && json.passagens) ? json.passagens.slice() : [];
-    } catch (_) {
-      window.__histPassagensRowsVisible = Array.isArray(state.rows) ? state.rows.slice() : [];
-    }
-  }
-
-  async function _histBuscarHistoricoPassagens(arg, append) {
-    _histEnsureUi();
-
-    var container = document.getElementById('hist-passagens-resultado');
-    if (!container) return;
-
-    var st = window._histPassagensState || { page: 0, limit: 50, total: 0, key: '', loading: false, filtros: {}, rows: [] };
-    if (!Array.isArray(st.rows)) st.rows = [];
-    window._histPassagensState = st;
-
-    var filtros = (arg && typeof arg === 'object' && !Array.isArray(arg)) ? arg : _histGetFilters();
-    append = !!append;
-
-    var key = JSON.stringify({
-      cli: String(filtros.cliente || ''),
-      maq: String(filtros.maquina || ''),
-      ini: String(filtros.data_inicio || ''),
-      fim: String(filtros.data_fim || '')
-    });
-    if (st.key !== key) {
-      st.key = key;
-      st.page = 0;
-      st.rows = [];
-      append = false;
-    }
-    st.filtros = filtros;
-
-    var limit = Math.max(1, parseInt(String(st.limit || 50), 10) || 50);
-    if (limit > 1000) limit = 1000;
-    var offset = append ? ((Number(st.page || 0) || 0) * limit) : 0;
-
-    if (!append) {
-      container.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">Buscando...</p>';
-    } else {
-      var btnLM0 = document.getElementById('btnCarregarMaisPassagens');
-      if (btnLM0) { btnLM0.disabled = true; btnLM0.textContent = 'Carregando...'; }
-    }
-
-    st.loading = true;
-
-    var qs = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-    if (filtros.cliente) qs.set('cliente', filtros.cliente);
-    if (filtros.maquina) qs.set('maquina', filtros.maquina);
-    if (filtros.data_inicio) qs.set('data_inicio', filtros.data_inicio);
-    if (filtros.data_fim) qs.set('data_fim', filtros.data_fim);
-
-    var token = _histToken();
-
-    try {
-      var resp = await fetch('/api/passagens/historico?' + qs.toString() + '&t=' + Date.now(), {
-        headers: token ? { Authorization: 'Bearer ' + token } : {}
-      });
-      var data = await resp.json().catch(function() { return null; });
-      var lista = Array.isArray(data && data.passagens) ? data.passagens : [];
-
-      if (!lista.length && !append) {
-        st.loading = false;
-        st.total = 0;
-        st.page = 0;
-        st.rows = [];
-        window.__histPassagensRowsVisible = [];
-        container.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px">Nenhuma passagem encontrada.</p>';
-        await _histFetchRelatorioMensal();
-        return;
-      }
-
-      st.total = Number(data && data.total || 0) || 0;
-      st.page = append ? ((Number(st.page || 0) || 0) + 1) : 1;
-      st.limit = limit;
-      st.rows = append ? st.rows.concat(lista) : lista.slice();
-      window.__histPassagensRowsVisible = st.rows.slice();
-
-      var semMaquina = st.rows.filter(function(p) {
-        var m = String(p && p.maquina || '').trim().toLowerCase();
-        return !m || m === 'sem maquina' || m === 'sem máquina';
-      }).length;
-
-      var isSingleDay = filtros.data_inicio && filtros.data_fim && filtros.data_inicio === filtros.data_fim;
-      var resumoHtml = ''
-        + '<div class="hist-passagens-toolbar">'
-        + '  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-        + '    <span style="color:#64748b;font-size:12px">' + _histEsc(String(st.total || 0)) + ' passagens encontradas</span>'
-        +      (semMaquina > 0 ? ('<span style="background:rgba(100,116,139,0.15);color:#94a3b8;border-radius:6px;padding:3px 10px;font-size:12px">Sem máquina: <strong>' + _histEsc(String(semMaquina)) + '</strong></span>') : '')
-        +      (isSingleDay ? ('<span style="background:rgba(59,130,246,.14);color:#93c5fd;border-radius:6px;padding:3px 10px;font-size:12px">Relatório do dia: <strong>' + _histEsc(String(filtros.data_inicio || '')) + '</strong></span>') : '')
-        + '  </div>'
-        + '  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-        + '    <button type="button" class="hist-patch-btn" id="hist-export-inline">Exportar Excel da Lista</button>'
-        + '    <button type="button" class="hist-patch-btn" id="hist-print-inline">Imprimir Lista</button>'
-        + '  </div>'
-        + '</div>';
-
-      var cardsHtml = st.rows.map(function(p) {
-        var imgsArr = [];
-        try {
-          if (Array.isArray(p && p.imgs)) imgsArr = p.imgs;
-          else if (typeof (p && p.imgs) === 'string') imgsArr = JSON.parse(p.imgs || '[]');
-        } catch (_) { imgsArr = []; }
-        if (!Array.isArray(imgsArr)) imgsArr = [];
-
-        var imgUrl = String(
-          (p && (p.imagem_url || p.img || p.imagem || p.foto)) ||
-          (imgsArr.length ? imgsArr[0] : '') ||
-          ''
-        ).trim();
-        var cliente = String((p && (p.cliente || p.nome_cliente)) || '—').trim() || '—';
-        var produto = String((p && (p.produto || p.prod_desc || p.prodDesc || p.descricao || p.produto_desc)) || '').trim();
-        var qtd = Number((p && (p.qtd_produzida != null ? p.qtd_produzida : (p.quantidade != null ? p.quantidade : (p.caixas_produzidas != null ? p.caixas_produzidas : p.qtd)))) || 0) || 0;
-        var vlUnit = Number((p && (p.vl_unit != null ? p.vl_unit : (p.valor_unitario != null ? p.valor_unitario : p.vunit))) || 0) || 0;
-        var total = Number((p && (p.total != null ? p.total : (p.valor_total != null ? p.valor_total : p.valor_venda))) || 0) || 0;
-        var hora = _histFmtDateTime(p);
-        var tipo = String((p && (p.tipo || p.status)) || '').trim().toUpperCase();
-        var badgeCfg = (function() {
-          var map = {
-            'ENTRADA':    { bg: 'rgba(34,197,94,0.15)',  cor: '#4ade80',  label: '▲ ENTRADA' },
-            'SAIDA':      { bg: 'rgba(239,68,68,0.15)',  cor: '#f87171',  label: '▼ SAÍDA' },
-            'SAÍDA':      { bg: 'rgba(239,68,68,0.15)',  cor: '#f87171',  label: '▼ SAÍDA' },
-            'DESPACHADA': { bg: 'rgba(59,130,246,0.15)', cor: '#60a5fa',  label: '🚚 DESPACHADA' },
-            'CONCLUIDA':  { bg: 'rgba(168,85,247,0.15)', cor: '#c084fc',  label: '✓ CONCLUÍDA' },
-            'CONCLUÍDA':  { bg: 'rgba(168,85,247,0.15)', cor: '#c084fc',  label: '✓ CONCLUÍDA' },
-            'PASSAGEM':   { bg: 'rgba(168,85,247,0.15)', cor: '#c084fc',  label: '⚙ PASSAGEM' }
-          };
-          if (map[tipo]) return map[tipo];
-          if (tipo && tipo.indexOf('ENTR') >= 0) return map.ENTRADA;
-          if (tipo && (tipo.indexOf('SAIDA') >= 0 || tipo.indexOf('SAÍDA') >= 0)) return map.SAIDA;
-          if (tipo && tipo.indexOf('DESP') >= 0) return map.DESPACHADA;
-          if (tipo && tipo.indexOf('CONCLU') >= 0) return map.CONCLUIDA;
-          return map.PASSAGEM;
-        })();
-        var badgeHtml = badgeCfg ? ('<span style="background:' + _histAttr(badgeCfg.bg) + ';color:' + _histAttr(badgeCfg.cor) + ';border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800;border:1px solid rgba(255,255,255,0.08);white-space:nowrap">' + _histEsc(badgeCfg.label) + '</span>') : '';
-        var responsavel = String((p && (p.responsavel || p.operador || p.operador_nome || p.concluido_por)) || '').trim();
-
-        return ''
-          + '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px">'
-          +   (imgUrl
-                ? '<img src="' + _histAttr(imgUrl) + '" onclick="if(window.kbAbrirImagem) kbAbrirImagem(this.src)" style="width:52px;height:52px;object-fit:cover;border-radius:8px;flex-shrink:0;border:1px solid rgba(255,255,255,0.1);cursor:pointer" onerror="this.style.display=\'none\'">'
-                : '<div style="width:52px;height:52px;border-radius:8px;flex-shrink:0;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:20px">?</div>')
-          +   '<div style="flex:1;min-width:0">'
-          +     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">'
-          +       '<span style="font-weight:700;color:#4A90D9;font-size:13px">OF #' + _histEsc(String(p && (p.of_numero || p.numero) || '—')) + '</span>'
-          +       badgeHtml
-          +       '<span style="color:#e2e8f0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _histEsc(cliente) + '</span>'
-          +     '</div>'
-          +     (produto ? ('<div style="color:rgba(255,255,255,0.82);font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px">' + _histEsc(produto) + '</div>') : '')
-          +     '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#64748b">'
-          +       ((p && (p.maquina || p.maquina_nome)) ? ('<span>⚙ ' + _histEsc(String(p.maquina || p.maquina_nome)) + '</span>') : '')
-          +       (responsavel ? ('<span>👤 ' + _histEsc(responsavel) + '</span>') : '')
-          +       (qtd ? ('<span>📦 ' + _histEsc(String(qtd)) + ' cx</span>') : '')
-          +       (vlUnit ? ('<span>R$ ' + _histEsc(String(_histFmtMoney(vlUnit))) + '/cx</span>') : '')
-          +       (total ? ('<span>Total ' + _histEsc(String(_histFmtMoney(total))) + '</span>') : '')
-          +     '</div>'
-          +   '</div>'
-          +   '<div style="text-align:right;flex-shrink:0"><div style="color:#64748b;font-size:11px">' + _histEsc(hora) + '</div></div>'
-          + '</div>';
-      }).join('');
-
-      var loaded = ((Number(st.page || 0) || 0) * limit) >= st.total;
-      var loadMoreHtml = (!loaded && st.total > 0)
-        ? ('<div style="text-align:center;padding:16px"><button onclick="carregarMaisPassagens()" class="btn btn-ghost btn-sm" id="btnCarregarMaisPassagens">Carregar mais</button></div>')
-        : '';
-
-      try {
-        container.style.display = 'grid';
-        container.style.gridTemplateRows = 'auto minmax(0,1fr) auto';
-        container.style.minHeight = '0';
-        container.style.overflow = 'visible';
-      } catch (_) {}
-      container.innerHTML = resumoHtml + '<div id="hist-passagens-items" class="hist-passagens-scroll" style="display:block;max-height:min(58vh,calc(100vh - 360px));overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-right:4px;min-height:0">' + cardsHtml + '</div>' + loadMoreHtml;
-      // #region debug-point D:hist-scroll-metrics
-      try {
-        var scrollEl = document.getElementById('hist-passagens-items');
-        var parent1 = scrollEl && scrollEl.parentElement;
-        var parent2 = parent1 && parent1.parentElement;
-        var cs = scrollEl ? window.getComputedStyle(scrollEl) : null;
-        var p1 = parent1 ? window.getComputedStyle(parent1) : null;
-        var p2 = parent2 ? window.getComputedStyle(parent2) : null;
-        if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('D', 'metricas de scroll historico passagens', {
-          totalRows: st.rows.length,
-          selector: '#hist-passagens-items.hist-passagens-scroll',
-          clientHeight: scrollEl ? Number(scrollEl.clientHeight || 0) : 0,
-          scrollHeight: scrollEl ? Number(scrollEl.scrollHeight || 0) : 0,
-          computedHeight: cs ? String(cs.height || '') : '',
-          overflowY: cs ? String(cs.overflowY || '') : '',
-          maxHeight: cs ? String(cs.maxHeight || '') : '',
-          parentOverflowY: p1 ? String(p1.overflowY || '') : '',
-          grandParentOverflowY: p2 ? String(p2.overflowY || '') : '',
-          parentId: String(parent1 && parent1.id || ''),
-          grandParentId: String(parent2 && parent2.id || '')
-        });
-      } catch (_) {}
-      // #endregion
-
-      var exportInline = document.getElementById('hist-export-inline');
-      if (exportInline) exportInline.onclick = _histExportListaVisivel;
-      var printInline = document.getElementById('hist-print-inline');
-      if (printInline) printInline.onclick = function() { _histPrint('lista'); };
-
-      await _histBuscarLinhasVisiveisExport(st, filtros);
-      if (!append) await _histFetchRelatorioMensal();
-    } catch (e) {
-      if (!append) container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao buscar passagens.</p>';
-    }
-
-    st.loading = false;
-    try {
-      var btnLM = document.getElementById('btnCarregarMaisPassagens');
-      if (btnLM) { btnLM.disabled = false; btnLM.textContent = 'Carregar mais'; }
-    } catch (_) {}
-  }
-
-  function _histCarregarMaisPassagens() {
-    try {
-      var st = window._histPassagensState || { page: 0, limit: 50, total: 0, key: '', loading: false, filtros: {} };
-      if (st.loading) return;
-      _histBuscarHistoricoPassagens(st.filtros || _histGetFilters(), true);
-    } catch (_) {}
-  }
-
-  function _histEnhancePageBoot() {
-    try {
-      _histEnsureUi();
-      var page = _histGetPage();
-      if (page && page.offsetParent !== null) _histFetchRelatorioMensal();
-    } catch (_) {}
-  }
-
-  try {
-    window.buscarHistoricoPassagens = _histBuscarHistoricoPassagens;
-    window.carregarMaisPassagens = _histCarregarMaisPassagens;
-  } catch (_) {}
-
-  [0, 300, 1200].forEach(function(delay) {
-    setTimeout(function() {
-      try { _histEnhancePageBoot(); } catch (_) {}
-    }, delay);
-  });
 })();
 
 (function patchEstoqueRotasFinal() {
@@ -5021,11 +4124,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     function openChecklistModal(item, done) {
       var it = checklistNorm(item || {});
-      // #region debug-point A:checklist-modal-entry
-      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'openChecklistModal acionado', { itemId: String(it && it.id || ''), hasAbrirModalPadrao: typeof _abrirModalPadrao === 'function', hasFecharModalPadrao: typeof _fecharModalPadrao === 'function' }); } catch (_) {}
-      // #endregion
-      var bodyHtml = ''
-        + '  <div class="pep-grid estoque-modal-grid estoque-modal-grid-checklist">'
+      var wrap = document.createElement('div');
+      wrap.id = 'estoque-checklist-modal';
+      wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.82);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px';
+      wrap.innerHTML = ''
+        + '<div style="width:min(1100px,96vw);max-height:92vh;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:18px">'
+        + '  <div class="pep-head"><div><div class="pep-title" style="font-size:22px">📋 ' + (it.id ? 'Editar Checklist' : 'Novo Checklist') + '</div><div class="pep-sub">Cadastro manual de recebimento, sem movimentar estoque automaticamente.</div></div></div>'
+        + '  <div class="pep-grid">'
         + '    <div><div class="pep-sub">Data de Rec.</div><input class="pep-input" id="ck-data" type="date" value="' + esc(it.data_recebimento || '') + '"></div>'
         + '    <div><div class="pep-sub">Placa do Veiculo</div><input class="pep-input" id="ck-placa" value="' + esc(it.placa_veiculo || '') + '"></div>'
         + '    <div><div class="pep-sub">N Nota Fiscal</div><input class="pep-input" id="ck-nf" value="' + esc(it.nota_fiscal || '') + '"></div>'
@@ -5036,23 +4141,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <div><div class="pep-sub">Data de Validade</div><input class="pep-input" id="ck-validade" type="date" value="' + esc(it.data_validade || '') + '"></div>'
         + '    <div><div class="pep-sub">Resp. pelo Recebimento</div><input class="pep-input" id="ck-resp" value="' + esc(it.responsavel || '') + '"></div>'
         + '    <div><div class="pep-sub">Cliente</div><input class="pep-input" id="ck-cliente" value="' + esc(it.cliente || '') + '"></div>'
-        + '    <div style="grid-column:1/-1"><label style="display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:#0b1629"><input id="ck-devolucao" type="checkbox"' + (it.devolucao ? ' checked' : '') + '><span style="font-weight:700;color:#e5e7eb">Devolucao</span></label></div>'
-        + '  </div>';
-      var wrap = _abrirModalPadraoShared({
-        id: 'estoque-checklist-modal',
-        titulo: it.id ? 'Editar Checklist' : 'Novo Checklist',
-        subtitulo: 'Cadastro manual de recebimento, sem movimentar estoque automaticamente.',
-        largura: '1100px',
-        wide: true,
-        hero: '📋',
-        accent: 'blue',
-        corpoHTML: bodyHtml,
-        footerHtml: '<button class="estoque-modal-btn estoque-modal-btn-ghost" id="ck-cancel" data-modal-close="1">Cancelar</button><button class="estoque-modal-btn estoque-modal-btn-blue" id="ck-save">Salvar</button>'
-      });
-      // #region debug-point A:checklist-modal-opened
-      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'openChecklistModal abriu modal', { wrapId: String(wrap && wrap.id || ''), visible: !!(wrap && wrap.parentNode), title: String(document.getElementById('chapa-modal-titulo') && document.getElementById('chapa-modal-titulo').textContent || '') }); } catch (_) {}
-      // #endregion
+        + '    <div style="grid-column:1/-1"><label style="display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--s2)"><input id="ck-devolucao" type="checkbox"' + (it.devolucao ? ' checked' : '') + '><span style="font-weight:700;color:#e5e7eb">Devolucao</span></label></div>'
+        + '  </div>'
+        + '  <div class="pep-actions"><button class="pep-btn" id="ck-cancel">Cancelar</button><button class="pep-btn primary" id="ck-save">Salvar</button></div>'
+        + '</div>';
+      wrap.addEventListener('click', function(e) { if (e.target === wrap) wrap.remove(); });
+      document.body.appendChild(wrap);
       try { _agendarReaplicacaoUiEstoque(wrap); } catch (_) {}
+      document.getElementById('ck-cancel').onclick = function() { wrap.remove(); };
       document.getElementById('ck-save').onclick = async function() {
         try {
           var payload = {
@@ -5077,7 +4173,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
-          _fecharModalPadraoShared('estoque-checklist-modal');
+          wrap.remove();
           if (typeof done === 'function') done();
         } catch (e) {
           alert(String(e && e.message || e || 'Falha ao salvar checklist'));
@@ -5186,31 +4282,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     function _resolveChapaRowColor(chapa) {
       return _normalizeChapaRowColor(chapa && (chapa.cor || chapa.cor_linha || chapa.linha_cor) || '') || _extractChapaColorMeta(chapa && (chapa.observacao || chapa.obs) || '');
-    }
-    try { window._resolveChapaRowColor = _resolveChapaRowColor; } catch (_) {}
-    function _abrirModalPadraoShared(opts) {
-      // #region debug-point A:shared-modal-open-shim
-      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'wrapper compartilhado de abrir modal acionado', { hasLocal: typeof _abrirModalPadrao === 'function', hasGlobal: typeof window._abrirModalPadrao === 'function', id: String(opts && opts.id || ''), title: String(opts && (opts.titulo || opts.title) || '') }); } catch (_) {}
-      // #endregion
-      try {
-        if (typeof _abrirModalPadrao === 'function') return _abrirModalPadrao(opts);
-      } catch (_) {}
-      try {
-        if (typeof window._abrirModalPadrao === 'function') return window._abrirModalPadrao(opts);
-      } catch (_) {}
-      throw new Error('Modal padrão indisponível');
-    }
-    function _fecharModalPadraoShared(id) {
-      // #region debug-point A:shared-modal-close-shim
-      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'wrapper compartilhado de fechar modal acionado', { hasLocal: typeof _fecharModalPadrao === 'function', hasGlobal: typeof window._fecharModalPadrao === 'function', id: String(id || '') }); } catch (_) {}
-      // #endregion
-      try {
-        if (typeof _fecharModalPadrao === 'function') return _fecharModalPadrao(id);
-      } catch (_) {}
-      try {
-        if (typeof window._fecharModalPadrao === 'function') return window._fecharModalPadrao(id);
-      } catch (_) {}
-      return null;
     }
     function _hexToRgbaChapa(hex, alpha) {
       var norm = _normalizeChapaRowColor(hex);
@@ -5452,39 +4523,38 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }) || null;
     }
     function _estoqueWireCloseModal() {
-      // #region debug-point A:wire-modal-close
-      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'wire modal close solicitado', { hasFecharModalPadrao: typeof _fecharModalPadrao === 'function' }); } catch (_) {}
-      // #endregion
-      _fecharModalPadraoShared('estoque-wire-modal');
+      try {
+        var modal = document.getElementById('estoque-wire-modal');
+        if (modal) modal.remove();
+      } catch (_) {}
     }
     function _estoqueWireOpenModal(opts) {
-      // #region debug-point A:wire-modal-open-entry
-      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'wire modal open acionado', { hasAbrirModalPadrao: typeof _abrirModalPadrao === 'function', hasFecharModalPadrao: typeof _fecharModalPadrao === 'function', title: String(opts && opts.title || ''), wide: !!(opts && opts.wide) }); } catch (_) {}
-      // #endregion
       _estoqueWireCloseModal();
       var options = opts || {};
-      var overlay = _abrirModalPadraoShared({
-        id: 'estoque-wire-modal',
-        titulo: options.title || 'Detalhes',
-        subtitulo: options.sub || '',
-        largura: options.width || '560px',
-        wide: !!options.wide,
-        hero: options.hero || '▣',
-        accent: options.accent || 'blue',
-        shellClass: 'estoque-wire-sheet-shell' + (options.wide ? ' wide' : ''),
-        bodyClass: 'estoque-wire-sheet-body' + (options.bodyClass ? (' ' + options.bodyClass) : ''),
-        corpoHTML: String(options.bodyHtml || ''),
-        footerHtml: String(options.footerHtml || '').replace(/data-ew-close="1"/g, 'data-modal-close="1"')
+      var overlay = document.createElement('div');
+      overlay.id = 'estoque-wire-modal';
+      overlay.className = 'estoque-modal-overlay';
+      overlay.innerHTML = ''
+        + '<div class="estoque-modal-shell estoque-wire-sheet-shell' + (options.wide ? ' wide' : '') + '" style="width:min(' + esc(options.width || '560px') + ',96vw)">'
+        + '  <div class="estoque-wire-sheet-head">'
+        + '    <div>'
+        + '      <h3 class="estoque-wire-sheet-head-title">' + esc(options.title || 'Detalhes') + '</h3>'
+        + '      <div class="estoque-wire-sheet-head-sub">' + esc(options.sub || '') + '</div>'
+        + '    </div>'
+        + '    <button type="button" class="estoque-wire-sheet-close" data-ew-close="1" aria-label="Fechar">X</button>'
+        + '  </div>'
+        + '  <div class="estoque-wire-sheet-body' + (options.bodyClass ? (' ' + esc(options.bodyClass)) : '') + '">' + String(options.bodyHtml || '') + '</div>'
+        + '  <div class="estoque-wire-sheet-footer' + (options.footerHtml ? ' estoque-wire-modal-footer' : ' is-empty') + '">' + String(options.footerHtml || '') + '</div>'
+        + '</div>';
+      overlay.addEventListener('click', function(ev) {
+        if (ev && ev.target === overlay) _estoqueWireCloseModal();
       });
+      document.body.appendChild(overlay);
       try {
         Array.prototype.slice.call(overlay.querySelectorAll('[data-ew-close="1"]')).forEach(function(btn) {
-          btn.setAttribute('data-modal-close', '1');
-          btn.onclick = function() { _estoqueWireCloseModal(); };
+          btn.onclick = _estoqueWireCloseModal;
         });
       } catch (_) {}
-      // #region debug-point A:wire-modal-opened
-      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'wire modal aberto', { overlayId: String(overlay && overlay.id || ''), bodyClass: String(overlay && overlay.firstElementChild && overlay.firstElementChild.className || '') }); } catch (_) {}
-      // #endregion
     }
     function _estoqueWireOpenTonModal(lista) {
       var rows = (Array.isArray(lista) ? lista : []).map(function(chapa) {
@@ -5829,16 +4899,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (retryBtn) retryBtn.onclick = function() { renderEstoqueWireframePage().catch(function() {}); };
         var createBtn = document.getElementById('estoque-wire-open-create');
         if (createBtn) createBtn.onclick = function() {
-          try {
-            if (typeof window._abrirCriacaoChapaEstoque === 'function') {
-              window._abrirCriacaoChapaEstoque();
-              return;
-            }
-            if (typeof window.abrirModalNovaChapa === 'function') {
-              window.abrirModalNovaChapa();
-              return;
-            }
-          } catch (_) {}
+          try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {}
+          _scheduleEnhanceModalNovaChapa();
         };
       }
     }
@@ -8234,7 +7296,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '.cpv2-btn{cursor:pointer;font-weight:700}'
         + '.cpv2-btn.is-active{background:#1e293b;border-color:#334155;color:#fff}'
         + '.cpv2-btn.refresh{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#2563eb}'
-        + '.cpv2-btn.print{background:linear-gradient(135deg,#7c3aed,#5b21b6);border-color:#7c3aed}'
         + '.cpv2-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0}'
         + '.cpv2-card{background:linear-gradient(135deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:20px 24px;min-height:112px}'
         + '.cpv2-card-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#64748b;font-weight:800}'
@@ -8251,13 +7312,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '.cp-ranking-bar{height:8px;border-radius:4px;background:linear-gradient(90deg,#ef4444,#f97316);transition:width .6s ease}'
         + '.cp-rank-op-bar{background:linear-gradient(90deg,#f59e0b,#fbbf24)}'
         + '.cpv2-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(239,68,68,.16);color:#fecaca;border:1px solid rgba(239,68,68,.22)}'
-        + '.cpv2-table-panel{background:linear-gradient(135deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:18px;min-height:0}'
+        + '.cpv2-table-panel{background:linear-gradient(135deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:18px}'
         + '.cpv2-table-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}'
-        + '.cpv2-toolbar-group{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
-        + '.cpv2-table-wrap{overflow:auto;max-height:min(58vh,calc(100vh - 320px));border:1px solid rgba(148,163,184,.12);border-radius:12px;min-height:0;overscroll-behavior:contain}'
-        + '.cpv2-table-wrap::-webkit-scrollbar{width:10px;height:10px}'
-        + '.cpv2-table-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72)}'
-        + '.cpv2-table-wrap::-webkit-scrollbar-thumb{background:rgba(100,116,139,.58);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
         + '.cpv2-table{width:100%;border-collapse:collapse}'
         + '.cpv2-table thead th{background:#0f172a;text-transform:uppercase;font-size:11px;color:#64748b;letter-spacing:.08em;padding:10px 8px;border-bottom:1px solid #1e293b;text-align:left}'
         + '.cpv2-table tbody tr{border-bottom:1px solid #1e293b;cursor:pointer}'
@@ -8271,145 +7327,29 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '.cpv2-detail{padding:12px 10px 16px 10px}'
         + '.cpv2-inner{width:100%;border-collapse:collapse}'
         + '.cpv2-inner th,.cpv2-inner td{padding:8px 6px;border-bottom:1px solid rgba(148,163,184,.12);font-size:12px}'
-        + '#cp-print-root{display:none}'
-        + '#cp-print-root .cp-print-sheet{color:#111;background:#fff;font-family:Arial,sans-serif}'
-        + '#cp-print-root .cp-print-title{font-size:22px;font-weight:800;margin-bottom:4px}'
-        + '#cp-print-root .cp-print-sub{font-size:12px;color:#555;margin-bottom:16px}'
-        + '#cp-print-root .cp-print-summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}'
-        + '#cp-print-root .cp-print-card{border:1px solid #d1d5db;border-radius:8px;padding:10px 12px;min-width:160px}'
-        + '#cp-print-root .cp-print-card .lab{display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;margin-bottom:5px}'
-        + '#cp-print-root .cp-print-table{width:100%;border-collapse:collapse;font-size:12px}'
-        + '#cp-print-root .cp-print-table th,#cp-print-root .cp-print-table td{border:1px solid #cbd5e1;padding:8px 10px;text-align:left;color:#111;background:#fff}'
-        + '#cp-print-root .cp-print-table th{background:#f8fafc;font-size:11px;text-transform:uppercase;letter-spacing:.06em}'
-        + '#cp-print-root .cp-print-table td.num,#cp-print-root .cp-print-table th.num{text-align:right}'
         + '@media (max-width:980px){.cpv2-summary,.cpv2-ranks{grid-template-columns:1fr 1fr}}'
-        + '@media (max-width:720px){.cpv2-summary,.cpv2-ranks{grid-template-columns:1fr}.cpv2-table-actions{align-items:stretch}.cpv2-search,.cpv2-select{width:100%}.cpv2-toolbar-group{width:100%}}'
-        + '@media print{body *{visibility:hidden !important}#cp-print-root,#cp-print-root *{visibility:visible !important}#cp-print-root{display:block !important;position:fixed;inset:0;background:#fff;padding:22px;z-index:2147483647;overflow:visible}body.cp-print-open{background:#fff !important}}';
+        + '@media (max-width:720px){.cpv2-summary,.cpv2-ranks{grid-template-columns:1fr}.cpv2-table-actions{align-items:stretch}.cpv2-search,.cpv2-select{width:100%}}';
       document.head.appendChild(st);
     }
 
     function _cpState() {
       if (!window.__cpDashState) {
-        var nowRef = new Date();
-        window.__cpDashState = {
-          periodo: 'mes',
-          mes: String((nowRef.getMonth() + 1)).padStart(2, '0'),
-          ano: String(nowRef.getFullYear()),
-          maquina: '',
-          empresa_id: '',
-          todas_empresas: 'true',
-          busca: '',
-          expand: {}
-        };
+        window.__cpDashState = { periodo: 'mes', maquina: '', empresa_id: '', todas_empresas: 'true', busca: '', expand: {} };
       }
       return window.__cpDashState;
     }
 
-    function _cpMesAtual() {
-      return String((new Date().getMonth() + 1)).padStart(2, '0');
-    }
-
-    function _cpAnoAtual() {
-      return String(new Date().getFullYear());
-    }
-
-    function _cpMonthOptions(selected) {
-      var atual = String(selected || '').trim() || _cpMesAtual();
-      var meses = [
-        ['01', 'Janeiro'], ['02', 'Fevereiro'], ['03', 'Marco'], ['04', 'Abril'],
-        ['05', 'Maio'], ['06', 'Junho'], ['07', 'Julho'], ['08', 'Agosto'],
-        ['09', 'Setembro'], ['10', 'Outubro'], ['11', 'Novembro'], ['12', 'Dezembro']
-      ];
-      return meses.map(function(item) {
-        return '<option value="' + item[0] + '"' + (atual === item[0] ? ' selected' : '') + '>' + item[1] + '</option>';
-      }).join('');
-    }
-
-    function _cpYearOptions(selected) {
-      var atual = parseInt(String(selected || _cpAnoAtual()), 10) || parseInt(_cpAnoAtual(), 10);
-      var html = '';
-      for (var ano = atual + 1; ano >= 2024; ano -= 1) {
-        html += '<option value="' + ano + '"' + (ano === atual ? ' selected' : '') + '>' + ano + '</option>';
-      }
-      return html;
-    }
-
-    function _cpPeriodoDescricao(state) {
-      var st = state || _cpState();
-      if (st.periodo === 'hoje') return 'Hoje';
-      if (st.periodo === 'semana') return 'Esta Semana';
-      if (st.periodo === 'todos') return 'Todos os periodos';
-      return String(st.mes || _cpMesAtual()).padStart(2, '0') + '/' + String(st.ano || _cpAnoAtual());
-    }
-
-    function _cpEnsurePrintRoot() {
-      var root = document.getElementById('cp-print-root');
-      if (root) return root;
-      root = document.createElement('div');
-      root.id = 'cp-print-root';
-      document.body.appendChild(root);
-      return root;
-    }
-
-    function _cpPrint(data, rows) {
-      try {
-        var state = _cpState();
-        var root = _cpEnsurePrintRoot();
-        var resumo = (data && data.resumo_mes_atual) || {};
-        var periodo = _cpPeriodoDescricao(state);
-        var linhas = Array.isArray(rows) ? rows : [];
-        root.innerHTML = ''
-          + '<div class="cp-print-sheet">'
-          + '  <div class="cp-print-title">Relatorio de Caixas Perdidas</div>'
-          + '  <div class="cp-print-sub">Periodo: ' + _cpEsc(periodo) + '</div>'
-          + '  <div class="cp-print-summary">'
-          + '    <div class="cp-print-card"><span class="lab">Ocorrencias</span><strong>' + _cpEsc(_cpFmtNum(resumo.total_ocorrencias || linhas.length || 0)) + '</strong></div>'
-          + '    <div class="cp-print-card"><span class="lab">Caixas Perdidas</span><strong>' + _cpEsc(_cpFmtNum(resumo.total_caixas || 0)) + '</strong></div>'
-          + '    <div class="cp-print-card"><span class="lab">Valor Perdido</span><strong>' + _cpEsc(_cpFmtMoney(resumo.valor_total || 0)) + '</strong></div>'
-          + '  </div>'
-          + '  <table class="cp-print-table">'
-          + '    <thead><tr><th>Data</th><th>OF</th><th>Cliente</th><th>Maquina</th><th>Operadores</th><th class="num">Qtd Perdida</th></tr></thead>'
-          + '    <tbody>'
-          +      (linhas.length ? linhas.map(function(r) {
-                   var operadores = _cpRowOperadores(r);
-                   var maquinas = _cpRowMaquinas(r);
-                   return '<tr>'
-                     + '<td>' + _cpEsc(_cpDateBr(r.data_conclusao || r.data_ref || r.data)) + '</td>'
-                     + '<td>' + _cpEsc(r.of_numero || '—') + '</td>'
-                     + '<td>' + _cpEsc(_cpRowCliente(r)) + '</td>'
-                     + '<td>' + _cpEsc(maquinas.join(', ') || '—') + '</td>'
-                     + '<td>' + _cpEsc(operadores.join(', ') || '—') + '</td>'
-                     + '<td class="num">' + _cpEsc(_cpFmtNum(r.quantidade_perdida || 0)) + '</td>'
-                     + '</tr>';
-                 }).join('') : '<tr><td colspan="6">Nenhum registro no periodo selecionado.</td></tr>')
-          + '    </tbody>'
-          + '  </table>'
-          + '</div>';
-        document.body.classList.add('cp-print-open');
-        setTimeout(function() {
-          try { window.print(); } catch (_) {}
-          setTimeout(function() {
-            try { document.body.classList.remove('cp-print-open'); } catch (_) {}
-          }, 300);
-        }, 30);
-      } catch (_) {}
-    }
-
     async function _cpFetchDashboard(force) {
       var state = _cpState();
-      state.mes = String(state.mes || _cpMesAtual()).padStart(2, '0');
-      state.ano = String(state.ano || _cpAnoAtual()).trim();
       state.todas_empresas = state.empresa_id ? 'false' : 'true';
       var now = Date.now();
-      var key = JSON.stringify({ periodo: state.periodo, mes: state.mes, ano: state.ano, maquina: state.maquina, empresa_id: state.empresa_id, todas_empresas: state.todas_empresas });
+      var key = JSON.stringify({ periodo: state.periodo, maquina: state.maquina, empresa_id: state.empresa_id, todas_empresas: state.todas_empresas });
       if (!window._cpDashCache) window._cpDashCache = {};
       if (!force && window._cpDashCache[key] && (now - window._cpDashCache[key].ts) < 60000) return window._cpDashCache[key].data;
       var token = '';
       try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
       var qs = new URLSearchParams();
       if (state.periodo && state.periodo !== 'mes') qs.set('periodo', state.periodo);
-      if (state.mes) qs.set('mes', String(state.mes).padStart(2, '0'));
-      if (state.ano) qs.set('ano', String(state.ano));
       if (state.maquina) qs.set('maquina', state.maquina);
       if (state.empresa_id) qs.set('empresa_id', state.empresa_id);
       if (state.todas_empresas) qs.set('todas_empresas', state.todas_empresas);
@@ -8470,7 +7410,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         arr = String(r.operadores || '').split(/[,;|]+/g);
       }
       if (!arr.length) {
-        var op = String(r && (r.operador_display || r.operador) || '').trim();
+        var op = String(r && (r.operador_display || r.operador || r.usuario_conclusao || r.usuario) || '').trim();
         if (op && op !== '—') arr = [op];
       }
       return arr.map(function(item) { return String(item || '').trim(); }).filter(Boolean);
@@ -8503,8 +7443,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try {
         host.dataset.secaoAtiva = 'caixas-perdidas';
         host.setAttribute('data-secao-ativa', 'caixas-perdidas');
-        host.style.minHeight = '0';
-        host.style.overflow = 'visible';
       } catch (_) {}
       var state = _cpState();
       var resumo = (data && data.resumo_mes_atual) || {};
@@ -8553,8 +7491,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '        <button class="cpv2-btn' + (state.periodo === 'todos' ? ' is-active' : '') + '" data-cp-periodo="todos">Todos os períodos</button>'
         + '      </div>'
         + '      <div class="cpv2-filters">'
-        + '        <select class="cpv2-select" id="cpv2-mes">' + _cpMonthOptions(state.mes) + '</select>'
-        + '        <select class="cpv2-select" id="cpv2-ano">' + _cpYearOptions(state.ano) + '</select>'
         + '        <select class="cpv2-select" id="cpv2-maquina"><option value="">Todas as Máquinas</option>' + maquinasOpts.map(function(m) { return '<option value="' + _cpEsc(m) + '"' + (state.maquina === m ? ' selected' : '') + '>' + _cpEsc(m) + '</option>'; }).join('') + '</select>'
         + '        <select class="cpv2-select" id="cpv2-empresa"><option value="">Todas as Empresas</option>' + empresasOpts.map(function(eid) { return '<option value="' + _cpEsc(eid) + '"' + (state.empresa_id === eid ? ' selected' : '') + '>' + _cpEsc(eid) + '</option>'; }).join('') + '</select>'
         + '        <button class="cpv2-btn refresh" id="cpv2-refresh">Atualizar 🔄</button>'
@@ -8572,11 +7508,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <div class="cpv2-panel"><div class="cpv2-panel-title">👷 Operadores com Mais Perdas</div>' + (rankO.length ? rankO.map(function(r, idx) { var pct = Math.max(4, Math.round(((Number(r && r.total_caixas || 0) || 0) / maxO) * 100)); return '<div class="cpv2-rank-item"><div style="font-weight:900;color:#64748b">' + (idx + 1) + '.</div><div><div class="cpv2-rank-name">' + _cpEsc(r && r.operador || '—') + '</div><div class="cp-ranking-track"><div class="cp-ranking-bar cp-rank-op-bar" style="width:' + pct + '%"></div></div><div class="cpv2-rank-meta">' + _cpFmtNum(r && r.total_caixas || 0) + ' cx · ' + _cpFmtMoney(r && r.valor_perdido || 0) + '</div></div><div class="cpv2-badge" style="background:rgba(245,158,11,.18);color:#fcd34d;border-color:rgba(245,158,11,.22)">' + _cpFmtNum(r && r.ocorrencias || 0) + '</div></div>'; }).join('') : '<div style="color:#94a3b8">Sem dados no período.</div>') + '</div>'
         + '  </div>'
         + '  <div class="cpv2-table-panel">'
-        + '    <div class="cpv2-table-actions">'
-        + '      <input class="cpv2-search" id="cpv2-busca" placeholder="Buscar OF, cliente, máquina ou operador..." value="' + _cpEsc(state.busca || '') + '">'
-        + '      <div class="cpv2-toolbar-group"><button class="cpv2-btn" id="cpv2-excel">Excel</button><button class="cpv2-btn print" id="cpv2-print">Imprimir</button></div>'
-        + '    </div>'
-        + '    <div class="cpv2-table-wrap"><table class="cpv2-table"><thead><tr><th>Data Conclusão</th><th>Nº OF</th><th>Cliente</th><th>Qtd Perdida</th><th>Máquina</th><th>Operadores</th></tr></thead><tbody>'
+        + '    <div class="cpv2-table-actions"><input class="cpv2-search" id="cpv2-busca" placeholder="Buscar OF ou cliente..." value="' + _cpEsc(state.busca || '') + '"><button class="cpv2-btn" id="cpv2-excel">Excel</button></div>'
+        + '    <div style="overflow:auto"><table class="cpv2-table"><thead><tr><th>Data Conclusão</th><th>Nº OF</th><th>Cliente</th><th>Qtd Perdida</th><th>Máquina</th><th>Operadores</th></tr></thead><tbody>'
         + rows.map(function(r) {
           var maquinas = _cpRowMaquinas(r);
           var operadores = _cpRowOperadores(r);
@@ -8594,15 +7527,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '</div>';
 
       Array.prototype.slice.call(host.querySelectorAll('[data-cp-periodo]')).forEach(function(btn) {
-        btn.onclick = function() {
-          _cpState().periodo = String(btn.getAttribute('data-cp-periodo') || 'mes');
-          _cpRenderPage(false);
-        };
+        btn.onclick = function() { _cpState().periodo = String(btn.getAttribute('data-cp-periodo') || 'mes'); _cpRenderPage(false); };
       });
-      var selMes = document.getElementById('cpv2-mes');
-      if (selMes) selMes.onchange = function() { _cpState().mes = String(selMes.value || _cpMesAtual()).padStart(2, '0'); _cpState().periodo = 'mes'; _cpRenderPage(false); };
-      var selAno = document.getElementById('cpv2-ano');
-      if (selAno) selAno.onchange = function() { _cpState().ano = String(selAno.value || _cpAnoAtual()); _cpState().periodo = 'mes'; _cpRenderPage(false); };
       var selM = document.getElementById('cpv2-maquina');
       if (selM) selM.onchange = function() { _cpState().maquina = String(selM.value || ''); _cpRenderPage(false); };
       var selE = document.getElementById('cpv2-empresa');
@@ -8613,28 +7539,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (btnR) btnR.onclick = function() { _cpRenderPage(true); };
       var btnX = document.getElementById('cpv2-excel');
       if (btnX) btnX.onclick = function() { _cpDownloadCsv(rows); };
-      var btnP = document.getElementById('cpv2-print');
-      if (btnP) btnP.onclick = function() { _cpPrint(data, rows); };
-      // #region debug-point D:cp-scroll-metrics
-      try {
-        var tableWrap = host.querySelector('.cpv2-table-wrap');
-        var wrapStyle = tableWrap ? window.getComputedStyle(tableWrap) : null;
-        var hostStyle = host ? window.getComputedStyle(host) : null;
-        var parentWrap = tableWrap && tableWrap.parentElement;
-        var parentStyle = parentWrap ? window.getComputedStyle(parentWrap) : null;
-        if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('D', 'metricas de scroll caixas perdidas', {
-          selector: '.cpv2-table-wrap',
-          rows: rows.length,
-          clientHeight: tableWrap ? Number(tableWrap.clientHeight || 0) : 0,
-          scrollHeight: tableWrap ? Number(tableWrap.scrollHeight || 0) : 0,
-          computedHeight: wrapStyle ? String(wrapStyle.height || '') : '',
-          overflowY: wrapStyle ? String(wrapStyle.overflowY || '') : '',
-          hostOverflowY: hostStyle ? String(hostStyle.overflowY || '') : '',
-          parentOverflowY: parentStyle ? String(parentStyle.overflowY || '') : '',
-          parentId: String(parentWrap && parentWrap.id || '')
-        });
-      } catch (_) {}
-      // #endregion
     }
 
     async function _cpRenderPage(force) {
@@ -13070,73 +11974,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
   }
 
-  function _fecharModalPadrao(id) {
-    // #region debug-point A:shared-modal-close
-    try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'fechar modal padrao acionado', { id: String(id || ''), totalOpenBefore: document.querySelectorAll('.estoque-modal-overlay[data-modal-padrao="1"]').length }); } catch (_) {}
-    // #endregion
-    try {
-      if (id) {
-        var el = document.getElementById(String(id || '').trim());
-        if (el) el.remove();
-        return;
-      }
-      Array.prototype.slice.call(document.querySelectorAll('.estoque-modal-overlay[data-modal-padrao="1"]')).forEach(function(el) {
-        try { el.remove(); } catch (_) {}
-      });
-    } catch (_) {}
-  }
-  try { window._fecharModalPadrao = _fecharModalPadrao; } catch (_) {}
-  try { window.__patchModalPadraoRealClose = _fecharModalPadrao; } catch (_) {}
-
-  function _abrirModalPadrao(opts) {
-    // #region debug-point A:shared-modal-open
-    try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'abrir modal padrao acionado', { id: String(opts && opts.id || ''), title: String(opts && (opts.titulo || opts.title) || ''), wide: !!(opts && opts.wide) }); } catch (_) {}
-    // #endregion
-    _ensureEstoqueStyle();
-    opts = opts || {};
-    var modalId = String(opts.id || ('estoque-modal-' + Date.now())).trim();
-    _fecharModalPadrao(modalId);
-    var width = String(opts.largura || opts.width || '560px').trim() || '560px';
-    var hero = String(opts.hero || '').trim();
-    var accent = String(opts.accent || opts.variant || 'blue').trim().toLowerCase();
-    var shellClass = 'estoque-modal-shell estoque-modal-shell-padrao';
-    if (opts.wide) shellClass += ' estoque-modal-shell-lg';
-    if (opts.shellClass) shellClass += ' ' + String(opts.shellClass || '').trim();
-    var headerIconClass = 'estoque-modal-head-icon estoque-modal-head-icon-' + (/^(green|red|blue|teal)$/.test(accent) ? accent : 'blue');
-    var overlay = document.createElement('div');
-    overlay.id = modalId;
-    overlay.className = 'estoque-modal-overlay estoque-modal-overlay-padrao';
-    overlay.setAttribute('data-modal-padrao', '1');
-    overlay.innerHTML = ''
-      + '<div class="' + esc(shellClass) + '" style="width:min(' + esc(width) + ',96vw)">'
-      + '  <div class="estoque-modal-header estoque-modal-header-padrao">'
-      + '    <div class="estoque-modal-head-main">'
-      + (hero ? ('<span class="' + esc(headerIconClass) + '" aria-hidden="true">' + esc(hero) + '</span>') : '')
-      + '      <div class="estoque-modal-title-wrap">'
-      + '        <div class="estoque-modal-title">' + esc(opts.titulo || opts.title || 'Modal') + '</div>'
-      + '        <div class="estoque-modal-sub">' + esc(opts.subtitulo || opts.sub || '') + '</div>'
-      + '      </div>'
-      + '    </div>'
-      + '    <button type="button" class="estoque-modal-close" data-modal-close="1" aria-label="Fechar">×</button>'
-      + '  </div>'
-      + '  <div class="estoque-modal-content estoque-modal-content-padrao' + (opts.bodyClass ? (' ' + esc(opts.bodyClass)) : '') + '">' + String(opts.corpoHTML || opts.bodyHtml || '') + '</div>'
-      + '  <div class="estoque-modal-footer estoque-modal-footer-padrao' + ((opts.footerHTML || opts.footerHtml) ? '' : ' is-empty') + '">' + String(opts.footerHTML || opts.footerHtml || '') + '</div>'
-      + '</div>';
-    overlay.addEventListener('click', function(ev) {
-      if (ev && ev.target === overlay) _fecharModalPadrao(modalId);
-    });
-    document.body.appendChild(overlay);
-    Array.prototype.slice.call(overlay.querySelectorAll('[data-modal-close="1"]')).forEach(function(btn) {
-      btn.onclick = function() { _fecharModalPadrao(modalId); };
-    });
-    if (typeof opts.onOpen === 'function') {
-      try { opts.onOpen(overlay, overlay.firstElementChild); } catch (_) {}
-    }
-    return overlay;
-  }
-  try { window._abrirModalPadrao = _abrirModalPadrao; } catch (_) {}
-  try { window.__patchModalPadraoRealOpen = _abrirModalPadrao; } catch (_) {}
-
   function _getInputVal(id) {
     var el = document.getElementById(id);
     return el ? String(el.value || '').trim() : '';
@@ -13256,31 +12093,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return [];
   }
 
-  function _normalizeChapaRowColor(v) {
-    var raw = String(v == null ? '' : v).trim();
-    if (!raw) return '';
-    var hex = raw.replace(/[^#0-9a-f]/ig, '');
-    if (!hex) return '';
-    if (hex.charAt(0) !== '#') hex = '#' + hex;
-    if (/^#[0-9a-f]{3}$/i.test(hex)) hex = '#' + hex.slice(1).split('').map(function(ch) { return ch + ch; }).join('');
-    return /^#[0-9a-f]{6}$/i.test(hex) ? hex.toUpperCase() : '';
-  }
-
-  function _extractChapaColorMeta(obs) {
-    var m = String(obs || '').match(/\[\[COR_LINHA:(#[0-9A-F]{6})\]\]/i);
-    return m && m[1] ? _normalizeChapaRowColor(m[1]) : '';
-  }
-
-  function _resolveChapaRowColor(chapa) {
-    try {
-      if (typeof window._resolveChapaRowColor === 'function' && window._resolveChapaRowColor !== _resolveChapaRowColor) {
-        return String(window._resolveChapaRowColor(chapa) || '').trim();
-      }
-    } catch (_) {}
-    return _normalizeChapaRowColor(chapa && (chapa.cor || chapa.cor_linha || chapa.linha_cor) || '') || _extractChapaColorMeta(chapa && (chapa.observacao || chapa.obs) || '');
-  }
-  try { window._resolveChapaRowColor = _resolveChapaRowColor; } catch (_) {}
-
   async function _estoqueFetchChapasList(limit) {
     var qs = new URLSearchParams();
     var requested = Math.max(1, Math.trunc(Number(limit || 0) || 10000));
@@ -13288,17 +12100,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var empId = _estoqueAtualEmpId();
     if (empId) qs.set('empId', empId);
     var json = await _apiJsonAuth('/api/chapas_estoque?' + qs.toString());
-    var lista = _estoqueUnwrapList(json, ['chapas']);
-    lista = Array.isArray(lista) ? lista : [];
-    return lista.map(function(chapa) {
-      var cor = _resolveChapaRowColor(chapa);
-      if (!chapa || typeof chapa !== 'object') return chapa;
-      return Object.assign({}, chapa, {
-        cor: cor || null,
-        cor_linha: cor || null,
-        linha_cor: cor || null
-      });
-    });
+    return _estoqueUnwrapList(json, ['chapas']);
   }
 
   async function _estoqueFetchMovimentos(tipo, limit) {
@@ -13656,125 +12458,27 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return raw || 'Italy Embalagens';
   }
 
-  function _setEstadoModalChapa(mode, id) {
-    var nextMode = String(mode || '').trim().toLowerCase() === 'edit' ? 'edit' : 'create';
-    var nextId = nextMode === 'edit' ? String(id || '').trim() : '';
-    try { window.__estoqueModalChapaMode = nextMode; } catch (_) {}
-    try { window.__estoqueModalChapaEditId = nextId; } catch (_) {}
-    try { window.__estoqueModalChapaOpeningEdit = (nextMode === 'edit'); } catch (_) {}
-    return { mode: nextMode, id: nextId };
-  }
-
-  function _getEstadoModalChapa() {
-    var fieldId = '';
-    try { fieldId = String((document.getElementById('chapa-edit-id') || {}).value || '').trim(); } catch (_) {}
-    var storedMode = '';
-    try { storedMode = String(window.__estoqueModalChapaMode || '').trim().toLowerCase(); } catch (_) {}
-    var storedId = '';
-    try { storedId = String(window.__estoqueModalChapaEditId || '').trim(); } catch (_) {}
-    var forceCreate = storedMode === 'create' && !storedId;
-    var mode = forceCreate ? 'create' : ((storedMode === 'edit' || fieldId || storedId) ? 'edit' : 'create');
-    return {
-      mode: mode,
-      id: forceCreate ? '' : (fieldId || storedId || '')
-    };
-  }
-
-  function _sincronizarContextoModalChapa() {
-    var modal = document.getElementById('modal-nova-chapa');
-    if (!modal) return false;
-    var state = _getEstadoModalChapa();
-    var editIdField = document.getElementById('chapa-edit-id');
-    if (editIdField) editIdField.value = state.mode === 'edit' ? state.id : '';
-    var title = document.getElementById('chapa-modal-titulo');
-    if (title) title.textContent = state.mode === 'edit' ? 'Editar Chapa' : 'Nova Chapa';
-    modal.setAttribute('data-modal-mode', state.mode);
-    if (state.id) modal.setAttribute('data-modal-edit-id', state.id);
-    else modal.removeAttribute('data-modal-edit-id');
-    return true;
-  }
-
-  function _agendarSincronizacaoModalChapa() {
-    [0, 60, 220, 520].forEach(function(delay) {
-      setTimeout(function() {
-        try { _sincronizarContextoModalChapa(); } catch (_) {}
-      }, delay);
-    });
-  }
-
-  function _abrirCriacaoChapaEstoque() {
-    // #region debug-point B:chapa-create-entry
-    try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'abrir criacao de chapa acionado', { estadoAntes: String((window.__estoqueModalChapaMode || '') || ''), hasAbrirModalNovaChapa: typeof window.abrirModalNovaChapa === 'function' }); } catch (_) {}
-    // #endregion
-    _setEstadoModalChapa('create', '');
-    try { window.CHAPA_ATUAL_ID = ''; } catch (_) {}
-    try {
-      var editIdField = document.getElementById('chapa-edit-id');
-      if (editIdField) editIdField.value = '';
-    } catch (_) {}
-    try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {}
-    _scheduleEnhanceModalNovaChapa();
-    _agendarSincronizacaoModalChapa();
-    // #region debug-point B:chapa-create-post-open
-    try {
-      var modal = document.getElementById('modal-nova-chapa');
-      var title = document.getElementById('chapa-modal-titulo');
-      var editId = document.getElementById('chapa-edit-id');
-      if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'criacao de chapa apos abertura', { modalVisible: !!(modal && modal.style.display !== 'none'), titulo: String(title && title.textContent || ''), editId: String(editId && editId.value || ''), modoAtual: String(window.__estoqueModalChapaMode || '') });
-    } catch (_) {}
-    // #endregion
-  }
-  try { window._abrirCriacaoChapaEstoque = _abrirCriacaoChapaEstoque; } catch (_) {}
-
   async function _buscarChapaEstoquePorId(id) {
     var sid = String(id || '').trim();
     if (!sid) return null;
-    var lista = [];
-    try {
-      var qs = new URLSearchParams();
-      qs.set('limit', '500');
-      qs.set('nocache', '1');
-      qs.set('_', String(Date.now()));
-      var empId = _estoqueAtualEmpId();
-      if (empId) qs.set('empId', empId);
-      lista = await _apiJsonAuth('/api/chapas_estoque?' + qs.toString());
-      lista = _estoqueUnwrapList(lista, ['chapas']);
-    } catch (_) {
-      lista = [];
-    }
-    lista = Array.isArray(lista) ? lista.map(function(chapa) {
-      var cor = _resolveChapaRowColor(chapa);
-      if (!chapa || typeof chapa !== 'object') return chapa;
-      return Object.assign({}, chapa, {
-        cor: cor || null,
-        cor_linha: cor || null,
-        linha_cor: cor || null
-      });
-    }) : [];
-    if (lista.length) window.__estoqueChapasCacheGlobal = lista.slice();
+    var lista = _getListaChapasEstoqueCache();
     var found = (lista || []).find(function(item) { return String(item && item.id || '').trim() === sid; }) || null;
     if (found) return found;
-    lista = _getListaChapasEstoqueCache();
+    lista = await _carregarListaSeletorChapas().catch(function() { return []; });
     found = (lista || []).find(function(item) { return String(item && item.id || '').trim() === sid; }) || null;
     if (found) return found;
-    lista = await _carregarListaSeletorChapas().catch(function() { return []; });
+    lista = await _estoqueFetchChapasList(10000).catch(function() { return []; });
+    lista = Array.isArray(lista) ? lista : [];
+    if (lista.length) window.__estoqueChapasCacheGlobal = lista.slice();
     return (lista || []).find(function(item) { return String(item && item.id || '').trim() === sid; }) || null;
   }
 
   function _preencherModalEdicaoChapa(chapa) {
     if (!chapa) return false;
-    // #region debug-point B:chapa-edit-fill
-    try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'preencher modal edicao chapa', { id: String(chapa && chapa.id || ''), nome: String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura) || '').slice(0, 120), corLinha: String(chapa && (chapa.cor_linha || chapa.cor || chapa.linha_cor) || '') }); } catch (_) {}
-    // #endregion
-    _setEstadoModalChapa('edit', chapa && chapa.id || '');
-    try { window.CHAPA_ATUAL_ID = String(chapa && chapa.id || '').trim(); } catch (_) {}
+    try {
+      if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa();
+    } catch (_) {}
     var modal = document.getElementById('modal-nova-chapa');
-    if (!modal) {
-      try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {}
-      _scheduleEnhanceModalNovaChapa();
-      _agendarSincronizacaoModalChapa();
-      modal = document.getElementById('modal-nova-chapa');
-    }
     if (!modal) return false;
     _setFieldValueChapa('chapa-edit-id', chapa && chapa.id || '');
     _setFieldValueChapa('chapa-categoria', chapa && chapa.categoria || 'Estoque Simples');
@@ -13811,7 +12515,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (typeof window.setChapaRiscada === 'function') window.setChapaRiscada(!!(chapa && chapa.riscada));
     } catch (_) {}
     try { if (typeof window.calcTotalChapa === 'function') window.calcTotalChapa(); } catch (_) {}
-    try { _sincronizarContextoModalChapa(); } catch (_) {}
     try { modal.style.display = 'flex'; } catch (_) {}
     return true;
   }
@@ -13821,18 +12524,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var onSelect = typeof opts.onSelect === 'function' ? opts.onSelect : function() {};
     var titulo = String(opts.titulo || 'Selecionar Chapa');
     var subtitulo = String(opts.subtitulo || 'Escolha uma chapa existente para editar.');
-    var wrap = _abrirModalPadraoShared({
-      id: 'estoque-seletor-chapa-modal',
-      titulo: titulo,
-      subtitulo: subtitulo,
-      largura: '920px',
-      wide: true,
-      hero: '✎',
-      accent: 'blue',
-      corpoHTML: '<div style="display:grid;gap:14px"><input id="est-sel-q" class="estoque-modal-input" type="text" placeholder="Buscar por fornecedor, nomenclatura, tamanho ou nome..."><div id="est-sel-lista" style="display:grid;gap:8px"></div></div>',
-      footerHtml: '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" id="est-sel-close" data-modal-close="1">Fechar</button>'
-    });
-    var fechar = function() { _fecharModalPadraoShared('estoque-seletor-chapa-modal'); };
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.82);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px';
+    wrap.innerHTML = ''
+      + '<div style="width:min(920px,96vw);max-height:88vh;overflow:auto;background:linear-gradient(180deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.18);border-radius:18px;padding:18px;box-shadow:0 24px 60px rgba(2,6,23,.55)">'
+      + '  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">'
+      + '    <div><div style="font-size:24px;font-weight:900;color:var(--text)">' + _escapeHtmlLite(titulo) + '</div><div style="margin-top:6px;color:var(--text2);font-size:13px">' + _escapeHtmlLite(subtitulo) + '</div></div>'
+      + '    <button type="button" id="est-sel-close" class="pcp-btn" style="background:#334155">Fechar</button>'
+      + '  </div>'
+      + '  <div style="margin-top:14px"><input id="est-sel-q" type="text" placeholder="Buscar por fornecedor, nomenclatura, tamanho ou nome..." style="width:100%;padding:11px 14px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>'
+      + '  <div id="est-sel-lista" style="margin-top:14px;display:grid;gap:8px"></div>'
+      + '</div>';
+    document.body.appendChild(wrap);
+    var fechar = function() { try { wrap.remove(); } catch (_) {} };
+    wrap.addEventListener('click', function(ev) { if (ev.target === wrap) fechar(); });
+    var btnClose = document.getElementById('est-sel-close');
+    if (btnClose) btnClose.onclick = fechar;
     var render = function(q) {
       var host = document.getElementById('est-sel-lista');
       if (!host) return;
@@ -13901,31 +12608,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   async function _abrirEdicaoChapaEstoque(id) {
     var sid = String(id || '').trim();
     if (!sid) return;
-    _setEstadoModalChapa('edit', sid);
-    try { window.CHAPA_ATUAL_ID = sid; } catch (_) {}
     var chapa = await _buscarChapaEstoquePorId(sid).catch(function() { return null; });
     // #region debug-point E:chapa-edicao-entry
     try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('E', 'abrir edicao de chapa iniciado', { id: sid, cacheHit: !!chapa, hasEditarChapa: typeof window.editarChapa === 'function', hasAbrirModalNovaChapa: typeof window.abrirModalNovaChapa === 'function' }); } catch (_) {}
     // #endregion
-    if (!chapa) {
-      try { window.toast('Nao foi possivel carregar os dados atuais da chapa selecionada.', 'var(--red)'); } catch (_) {}
-      return;
-    }
     if (chapa) {
       try { window.__estoqueChapasCacheGlobal = _getListaChapasEstoqueCache().slice(); } catch (_) {}
       _upsertListaChapasNative('_estoqueBase', chapa);
       _upsertListaChapasNative('ESTOQUE', chapa);
     }
     try {
-      if (!_preencherModalEdicaoChapa(chapa)) {
-        _agendarSincronizacaoModalChapa();
-        setTimeout(function() {
-          try { _preencherModalEdicaoChapa(chapa); } catch (_) {}
-        }, 80);
-      }
-    } catch (_) {}
+      if (!_preencherModalEdicaoChapa(chapa) && typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa();
+    } catch (_) {
+      try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (__) {}
+    }
     _scheduleEnhanceModalNovaChapa();
-    _agendarSincronizacaoModalChapa();
     setTimeout(function() {
       // #region debug-point E:chapa-edicao-post-open
       try {
@@ -13978,9 +12675,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var btn = document.getElementById(buttonId || 'estoque-btn-alterar-chapas');
     if (!btn) return;
     btn.onclick = function() {
-      // #region debug-point B:chapa-edit-button
-      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'botao alterar chapas clicado', { buttonId: String(buttonId || 'estoque-btn-alterar-chapas') }); } catch (_) {}
-      // #endregion
       _abrirSeletorChapaEstoque({
         titulo: 'Alterar Chapa',
         subtitulo: 'Selecione a chapa que deseja editar.',
@@ -13998,10 +12692,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var btn = document.getElementById(buttonId || 'estoque-btn-criar-chapas');
     if (!btn) return;
     btn.onclick = function() {
-      // #region debug-point B:chapa-create-button
-      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'botao criar chapas clicado', { buttonId: String(buttonId || 'estoque-btn-criar-chapas') }); } catch (_) {}
-      // #endregion
-      _abrirCriacaoChapaEstoque();
+      try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {}
+      _scheduleEnhanceModalNovaChapa();
       if (typeof onDone === 'function') {
         setTimeout(function() { try { onDone(); } catch (_) {} }, 600);
       }
@@ -14010,8 +12702,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function _fecharModalChapaPatch() {
     try {
-      _setEstadoModalChapa('create', '');
-      try { window.CHAPA_ATUAL_ID = ''; } catch (_) {}
       var modal = document.getElementById('modal-nova-chapa');
       if (modal) modal.style.display = 'none';
     } catch (_) {}
@@ -14056,18 +12746,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var orig = window[fnName];
         if (typeof orig !== 'function' || orig.__patchEstoqueEnhanced) return;
         var wrapped = function() {
-          var arg0 = arguments.length ? arguments[0] : null;
-          var argId = '';
-          if (arg0 && typeof arg0 === 'object') argId = String(arg0.id || arg0.chapa_id || '').trim();
-          else argId = String(arg0 || '').trim();
-          var state = _getEstadoModalChapa();
-          var isEditFlow = fnName === 'editarChapa' || !!window.__estoqueModalChapaOpeningEdit || (!!argId && state.mode === 'edit');
-          if (isEditFlow) _setEstadoModalChapa('edit', argId || state.id || '');
-          else _setEstadoModalChapa('create', '');
           var out = orig.apply(this, arguments);
-          try { window.__estoqueModalChapaOpeningEdit = false; } catch (_) {}
           _scheduleEnhanceModalNovaChapa();
-          _agendarSincronizacaoModalChapa();
           return out;
         };
         wrapped.__patchEstoqueEnhanced = true;
@@ -14121,23 +12801,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           var modal = document.getElementById('modal-nova-chapa');
           var modalAberto = !!(modal && modal.style.display === 'flex');
           if (modalAberto && /^\/api\/chapas_estoque(?:\/[^/]+)?$/.test(u) && (m === 'POST' || m === 'PUT' || m === 'PATCH') && opts && opts.body) {
-            var editIdAtual = String((document.getElementById('chapa-edit-id') || {}).value || window.__estoqueModalChapaEditId || '').trim();
-            if (editIdAtual && /^(PUT|PATCH)$/.test(m) && /^\/api\/chapas_estoque(?:\?.*)?$/.test(u)) {
-              u = '/api/chapas_estoque/' + encodeURIComponent(editIdAtual);
-              url = u;
-            }
-            if (editIdAtual && m === 'POST' && /^\/api\/chapas_estoque(?:\?.*)?$/.test(u)) {
-              u = '/api/chapas_estoque/' + encodeURIComponent(editIdAtual);
-              url = u;
-              opts.method = 'PATCH';
-              m = 'PATCH';
-            }
             var cor = _normalizeChapaRowColor((document.getElementById('chapa-cor-linha') || {}).value || '');
             var mergePayload = function(body) {
               if (!body || typeof body !== 'object') return body;
               body.cor = cor || null;
               body.cor_linha = cor || null;
-              if (editIdAtual) body.id = editIdAtual;
               return body;
             };
             if (typeof opts.body === 'string') {
@@ -14147,7 +12815,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             }
           }
         } catch (_) {}
-        var out = orig.call(this, url, opts);
+        var out = orig.apply(this, arguments);
         try {
           if (out && typeof out.then === 'function') {
             out.then(function(resp) {
@@ -14156,18 +12824,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                 if (!/^\/api\/chapas_estoque(?:\/[^/]+)?$/.test(u) || !resp || !resp.ok || typeof resp.clone !== 'function') return;
                 resp.clone().json().then(function(json) {
                   var data = json && (json.data || json.chapa || json);
-                  if (data && data.id) {
-                    if (!String(data.cor || data.cor_linha || data.linha_cor || '').trim()) {
-                      data = Object.assign({}, data, {
-                        cor: cor || null,
-                        cor_linha: cor || null,
-                        linha_cor: cor || null
-                      });
-                    }
-                    _upsertChapaColorCache(data);
-                  } else if (editIdAtual && cor) {
-                    _upsertChapaColorCache({ id: editIdAtual, cor: cor, cor_linha: cor, linha_cor: cor });
-                  }
+                  if (data && data.id) _upsertChapaColorCache(data);
                 }).catch(function() {});
               } catch (_) {}
             }).catch(function() {});
@@ -14187,20 +12844,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!modal) return;
     var shell = modal.firstElementChild;
     if (!shell) return;
-    modal.classList.add('estoque-modal-overlay', 'estoque-modal-overlay-padrao');
-    modal.setAttribute('data-modal-padrao', '1');
+    modal.classList.add('estoque-modal-overlay');
     shell.classList.add('estoque-modal-shell', 'estoque-modal-shell-md', 'estoque-modal-shell-chapa');
     shell.style.cssText = '';
-    if (!modal.dataset.patchOverlayCloseBound) {
-      modal.dataset.patchOverlayCloseBound = '1';
-      modal.addEventListener('click', function(ev) {
-        if (ev && ev.target === modal) _fecharModalChapaPatch();
-      });
-    }
     var title = document.getElementById('chapa-modal-titulo');
     if (!title) return;
-    try { _sincronizarContextoModalChapa(); } catch (_) {}
-    var isEdit = _getEstadoModalChapa().mode === 'edit';
+    var isEdit = /editar/i.test(String(title.textContent || ''));
 
     var header = shell.querySelector('.estoque-modal-header');
     if (!header) {
@@ -14310,12 +12959,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         footerButtons[0].onclick = _fecharModalChapaPatch;
       }
       if (footerButtons[1]) {
-        footerButtons[1].className = 'estoque-modal-btn ' + (isEdit ? 'estoque-modal-btn-blue' : 'estoque-modal-btn-green');
-        footerButtons[1].innerHTML = isEdit ? '✓ Salvar Alterações' : '+ Criar Chapa';
+        footerButtons[1].className = 'estoque-modal-btn estoque-modal-btn-blue';
+        footerButtons[1].innerHTML = '✓ Salvar';
       }
     }
-    modal.style.alignItems = 'center';
-    modal.style.justifyContent = 'center';
   }
 
   function _normalizarModalEstoque(node) {
@@ -14546,7 +13193,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function _entradaEstoqueFecharModal() {
-    _fecharModalPadrao('estoque-entrada-real-modal');
+    var modal = document.getElementById('estoque-entrada-real-modal');
+    if (modal) modal.style.display = 'none';
   }
 
   async function _entradaEstoqueSalvar() {
@@ -14653,37 +13301,92 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   async function _abrirModalEntradaEstoqueReal() {
     var modal = document.getElementById('estoque-entrada-real-modal');
+    // #region debug-point F:entrada-modal-open-start
     try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('F', 'abrir modal dar entrada iniciado', { modalExists: !!modal }); } catch (_) {}
-    modal = _abrirModalPadrao({
-      id: 'estoque-entrada-real-modal',
-      titulo: 'Dar Entrada',
-      subtitulo: 'Lance varias chapas na mesma entrada e reaproveite a chapa existente quando ela ja estiver cadastrada.',
-      largura: '1280px',
-      wide: true,
-      hero: '↓',
-      accent: 'green',
-      corpoHTML: ''
-        + '<section class="estoque-modal-card">'
-        + '  <div class="estoque-modal-card-head"><div><div class="estoque-modal-card-title">Dados Gerais</div><div class="estoque-modal-card-sub">Identifique o recebimento, vincule fornecedor e registre a nota antes de listar os itens.</div></div></div>'
-        + '  <div class="estoque-modal-grid estoque-modal-grid-entrada">'
-        + '    <label class="estoque-modal-label"><span>Data da Entrada</span><input id="estoque-entrada-real-data" class="estoque-modal-input" type="date"></label>'
-        + '    <label class="estoque-modal-label"><span>Fornecedor</span><input id="estoque-entrada-real-fornecedor" class="estoque-modal-input" type="text" placeholder="Fornecedor do recebimento"></label>'
-        + '    <label class="estoque-modal-label"><span>Qual CNPJ</span><input id="estoque-entrada-real-cnpj" class="estoque-modal-input" type="text" placeholder="Empresa/CNPJ"></label>'
-        + '    <label class="estoque-modal-label"><span>NF</span><input id="estoque-entrada-real-nf" class="estoque-modal-input estoque-modal-mono" type="text" placeholder="Numero da nota fiscal"></label>'
-        + '    <label class="estoque-modal-label"><span>Responsavel</span><input id="estoque-entrada-real-responsavel" class="estoque-modal-input" type="text" placeholder="Quem recebeu/lancou"></label>'
-        + '    <label class="estoque-modal-label estoque-modal-field-full"><span>Observacoes</span><input id="estoque-entrada-real-obs" class="estoque-modal-input" type="text" placeholder="Observacoes gerais da entrada"></label>'
+    // #endregion
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'estoque-entrada-real-modal';
+      modal.className = 'estoque-modal-overlay';
+      modal.style.display = 'none';
+      modal.innerHTML = ''
+        + '<div class="estoque-modal-shell">'
+        + '  <div class="estoque-modal-header">'
+        + '    <div class="estoque-modal-head-main">'
+        + '      <span class="estoque-modal-head-icon estoque-modal-head-icon-green" aria-hidden="true">↓</span>'
+        + '      <div class="estoque-modal-title-wrap">'
+        + '        <div class="estoque-modal-title">Dar Entrada</div>'
+        + '        <div class="estoque-modal-sub">Lance varias chapas na mesma entrada e reaproveite a chapa existente quando ela ja estiver cadastrada.</div>'
+        + '      </div>'
+        + '    </div>'
+        + '    <button type="button" id="estoque-entrada-real-close" class="estoque-modal-close" aria-label="Fechar">×</button>'
         + '  </div>'
-        + '</section>'
-        + '<section class="estoque-modal-card">'
-        + '  <div class="estoque-modal-card-head"><div><div class="estoque-modal-card-title">Itens da Entrada</div><div class="estoque-modal-card-sub">Use "Existente" para somar saldo numa chapa ja cadastrada ou "Nova" para criar e dar entrada na mesma operacao.</div></div><button type="button" id="estoque-entrada-real-add" class="estoque-modal-outline">+ Adicionar Item</button></div>'
-        + '  <div class="estoque-modal-table-wrap"><table class="estoque-modal-table" style="min-width:1280px"><thead><tr><th>Modo</th><th>Chapa Existente</th><th>Gramatura</th><th>Nomenclatura</th><th>Tamanho</th><th>Nome/Uso</th><th>Qtd</th><th>R$/un</th><th style="text-align:right">Total</th><th style="text-align:center">Acao</th></tr></thead><tbody id="estoque-entrada-real-tbody"></tbody></table></div>'
-        + '</section>',
-      footerHtml: '<button type="button" id="estoque-entrada-real-cancel" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button type="button" id="estoque-entrada-real-save" class="estoque-modal-btn estoque-modal-btn-green">✓ Salvar Entrada</button>'
-    });
-    var saveBtn = document.getElementById('estoque-entrada-real-save');
-    if (saveBtn) saveBtn.onclick = _entradaEstoqueSalvar;
+        + '  <div class="estoque-modal-content">'
+        + '    <section class="estoque-modal-card">'
+        + '      <div class="estoque-modal-card-head">'
+        + '        <div>'
+        + '          <div class="estoque-modal-card-title">Dados Gerais</div>'
+        + '          <div class="estoque-modal-card-sub">Identifique o recebimento, vincule fornecedor e registre a nota antes de listar os itens.</div>'
+        + '        </div>'
+        + '      </div>'
+        + '      <div class="estoque-modal-grid estoque-modal-grid-entrada">'
+        + '        <label class="estoque-modal-label"><span>Data da Entrada</span><input id="estoque-entrada-real-data" class="estoque-modal-input" type="date"></label>'
+        + '        <label class="estoque-modal-label"><span>Fornecedor</span><input id="estoque-entrada-real-fornecedor" class="estoque-modal-input" type="text" placeholder="Fornecedor do recebimento"></label>'
+        + '        <label class="estoque-modal-label"><span>Qual CNPJ</span><input id="estoque-entrada-real-cnpj" class="estoque-modal-input" type="text" placeholder="Empresa/CNPJ"></label>'
+        + '        <label class="estoque-modal-label"><span>NF</span><input id="estoque-entrada-real-nf" class="estoque-modal-input estoque-modal-mono" type="text" placeholder="Numero da nota fiscal"></label>'
+        + '        <label class="estoque-modal-label"><span>Responsavel</span><input id="estoque-entrada-real-responsavel" class="estoque-modal-input" type="text" placeholder="Quem recebeu/lancou"></label>'
+        + '        <label class="estoque-modal-label estoque-modal-field-full"><span>Observacoes</span><input id="estoque-entrada-real-obs" class="estoque-modal-input" type="text" placeholder="Observacoes gerais da entrada"></label>'
+        + '      </div>'
+        + '    </section>'
+        + '    <section class="estoque-modal-card">'
+        + '      <div class="estoque-modal-card-head">'
+        + '        <div>'
+        + '          <div class="estoque-modal-card-title">Itens da Entrada</div>'
+        + '          <div class="estoque-modal-card-sub">Use "Existente" para somar saldo numa chapa ja cadastrada ou "Nova" para criar e dar entrada na mesma operacao.</div>'
+        + '        </div>'
+        + '        <button type="button" id="estoque-entrada-real-add" class="estoque-modal-outline">+ Adicionar Item</button>'
+        + '      </div>'
+        + '      <div class="estoque-modal-table-wrap">'
+        + '        <table class="estoque-modal-table" style="min-width:1280px">'
+        + '        <thead><tr>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Modo</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Chapa Existente</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Gramatura</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Nomenclatura</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Tamanho</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Nome/Uso</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Qtd</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">R$/un</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);text-align:right">Total</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);text-align:center">Acao</th>'
+        + '        </tr></thead>'
+        + '        <tbody id="estoque-entrada-real-tbody"></tbody>'
+        + '      </table>'
+        + '      </div>'
+        + '    </section>'
+        + '  </div>'
+        + '  <div class="estoque-modal-footer">'
+        + '    <button type="button" id="estoque-entrada-real-cancel" class="estoque-modal-btn estoque-modal-btn-ghost">Cancelar</button>'
+        + '    <button type="button" id="estoque-entrada-real-save" class="estoque-modal-btn estoque-modal-btn-green">✓ Salvar Entrada</button>'
+        + '  </div>'
+        + '</div>';
+      document.body.appendChild(modal);
+      modal.addEventListener('click', function(ev) {
+        if (ev.target === modal) _entradaEstoqueFecharModal();
+      });
+      var closeBtn = document.getElementById('estoque-entrada-real-close');
+      var cancelBtn = document.getElementById('estoque-entrada-real-cancel');
+      var saveBtn = document.getElementById('estoque-entrada-real-save');
+      if (closeBtn) closeBtn.onclick = _entradaEstoqueFecharModal;
+      if (cancelBtn) cancelBtn.onclick = _entradaEstoqueFecharModal;
+      if (saveBtn) saveBtn.onclick = _entradaEstoqueSalvar;
+    }
+
     var tbody = document.getElementById('estoque-entrada-real-tbody');
     if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="padding:18px;color:var(--text2)">Carregando chapas...</td></tr>';
+    modal.style.display = 'flex';
+    try { _ensureEstoqueStyle(); } catch (_) {}
+    try { _normalizarModalEstoque(modal); } catch (_) {}
     try { _agendarReaplicacaoUiEstoque(modal); } catch (_) {}
     // #region debug-point F:entrada-modal-open-dom
     try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('F', 'modal dar entrada visivel', { modalDisplay: String(modal && modal.style && modal.style.display || ''), modalClass: String(modal && modal.className || ''), shellClass: String(modal && modal.firstElementChild && modal.firstElementChild.className || '') }); } catch (_) {}
@@ -14895,7 +13598,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function _saidaEstoqueFecharModal() {
-    _fecharModalPadrao('estoque-saida-real-modal');
+    var modal = document.getElementById('estoque-saida-real-modal');
+    if (modal) modal.style.display = 'none';
   }
 
   async function _saidaEstoqueSalvar() {
@@ -14976,36 +13680,93 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   async function _abrirModalSaidaEstoqueReal() {
-    var modal = _abrirModalPadrao({
-      id: 'estoque-saida-real-modal',
-      titulo: 'Dar Saída',
-      subtitulo: 'Selecione varias chapas na mesma operacao, valide o saldo antes de salvar e informe o motivo da saida.',
-      largura: '1180px',
-      wide: true,
-      hero: '↑',
-      accent: 'red',
-      corpoHTML: ''
-        + '<section class="estoque-modal-card">'
-        + '  <div class="estoque-modal-card-head"><div><div class="estoque-modal-card-title">Dados Gerais</div><div class="estoque-modal-card-sub">Informe contexto da movimentacao, OF vinculada e motivo da baixa antes de escolher os itens.</div></div></div>'
-        + '  <div class="estoque-modal-grid estoque-modal-grid-saida">'
-        + '    <label class="estoque-modal-label"><span>Data da Saida</span><input id="estoque-saida-real-data" class="estoque-modal-input" type="date"></label>'
-        + '    <label class="estoque-modal-label"><span>Motivo</span><select id="estoque-saida-real-motivo" class="estoque-modal-select"><option value="">Selecionar...</option><option value="producao">Produção</option><option value="ajuste">Ajuste de Estoque</option><option value="devolucao">Devolução ao Fornecedor</option><option value="perda">Perda / Avaria</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></label>'
-        + '    <label class="estoque-modal-label"><span>Responsavel</span><input id="estoque-saida-real-responsavel" class="estoque-modal-input" type="text" placeholder="Quem lancou"></label>'
-        + '    <label class="estoque-modal-label"><span>OF</span><input id="estoque-saida-real-of" class="estoque-modal-input estoque-modal-mono" type="text" placeholder="Opcional"></label>'
-        + '    <label class="estoque-modal-label estoque-modal-field-full"><span>Observacoes</span><input id="estoque-saida-real-obs" class="estoque-modal-input" type="text" placeholder="Detalhes adicionais da saida"></label>'
+    var modal = document.getElementById('estoque-saida-real-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'estoque-saida-real-modal';
+      modal.className = 'estoque-modal-overlay';
+      modal.style.display = 'none';
+      modal.innerHTML = ''
+        + '<div class="estoque-modal-shell estoque-modal-shell-lg">'
+        + '  <div class="estoque-modal-header">'
+        + '    <div class="estoque-modal-head-main">'
+        + '      <span class="estoque-modal-head-icon estoque-modal-head-icon-red" aria-hidden="true">↑</span>'
+        + '      <div class="estoque-modal-title-wrap">'
+        + '        <div class="estoque-modal-title">Dar Saída</div>'
+        + '        <div class="estoque-modal-sub">Selecione varias chapas na mesma operacao, valide o saldo antes de salvar e informe o motivo da saida.</div>'
+        + '      </div>'
+        + '    </div>'
+        + '    <button type="button" id="estoque-saida-real-close" class="estoque-modal-close" aria-label="Fechar">×</button>'
         + '  </div>'
-        + '</section>'
-        + '<section class="estoque-modal-card">'
-        + '  <div class="estoque-modal-card-head"><div><div class="estoque-modal-card-title">Itens da Saída</div><div class="estoque-modal-card-sub">A validacao de saldo continua obrigatoria e bloqueia qualquer item acima do disponivel.</div></div><button type="button" id="estoque-saida-real-add" class="estoque-modal-outline">+ Adicionar Item</button></div>'
-        + '  <div class="estoque-modal-summary-grid"><div class="estoque-modal-summary-card"><span class="estoque-modal-summary-label">Resumo da saida</span><strong id="estoque-saida-real-resumo" class="estoque-modal-summary-value">Selecione as chapas e quantidades.</strong></div><div class="estoque-modal-summary-card"><span class="estoque-modal-summary-label">Validacao</span><strong class="estoque-modal-summary-value">Bloqueia saldo insuficiente ao salvar.</strong></div></div>'
-        + '  <div class="estoque-modal-table-wrap"><table class="estoque-modal-table" style="min-width:980px"><thead><tr><th>Chapa</th><th style="text-align:right">Saldo</th><th>Qtd Saída</th><th style="text-align:right">Valor Estimado</th><th style="text-align:center">Ação</th></tr></thead><tbody id="estoque-saida-real-tbody"></tbody></table></div>'
-        + '</section>',
-      footerHtml: '<button type="button" id="estoque-saida-real-cancel" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button type="button" id="estoque-saida-real-save" class="estoque-modal-btn estoque-modal-btn-red">✓ Salvar Saída</button>'
-    });
-    var saveBtn = document.getElementById('estoque-saida-real-save');
-    if (saveBtn) saveBtn.onclick = _saidaEstoqueSalvar;
+        + '  <div class="estoque-modal-content">'
+        + '    <section class="estoque-modal-card">'
+        + '      <div class="estoque-modal-card-head">'
+        + '        <div>'
+        + '          <div class="estoque-modal-card-title">Dados Gerais</div>'
+        + '          <div class="estoque-modal-card-sub">Informe contexto da movimentacao, of vinculada e motivo da baixa antes de escolher os itens.</div>'
+        + '        </div>'
+        + '      </div>'
+        + '      <div class="estoque-modal-grid estoque-modal-grid-saida">'
+        + '        <label class="estoque-modal-label"><span>Data da Saida</span><input id="estoque-saida-real-data" class="estoque-modal-input" type="date"></label>'
+        + '        <label class="estoque-modal-label"><span>Motivo</span><select id="estoque-saida-real-motivo" class="estoque-modal-select"><option value="">Selecionar...</option><option value="producao">Produção</option><option value="ajuste">Ajuste de Estoque</option><option value="devolucao">Devolução ao Fornecedor</option><option value="perda">Perda / Avaria</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></label>'
+        + '        <label class="estoque-modal-label"><span>Responsavel</span><input id="estoque-saida-real-responsavel" class="estoque-modal-input" type="text" placeholder="Quem lancou"></label>'
+        + '        <label class="estoque-modal-label"><span>OF</span><input id="estoque-saida-real-of" class="estoque-modal-input estoque-modal-mono" type="text" placeholder="Opcional"></label>'
+        + '        <label class="estoque-modal-label estoque-modal-field-full"><span>Observacoes</span><input id="estoque-saida-real-obs" class="estoque-modal-input" type="text" placeholder="Detalhes adicionais da saida"></label>'
+        + '      </div>'
+        + '    </section>'
+        + '    <section class="estoque-modal-card">'
+        + '      <div class="estoque-modal-card-head">'
+        + '        <div>'
+        + '          <div class="estoque-modal-card-title">Itens da Saída</div>'
+        + '          <div class="estoque-modal-card-sub">A validacao de saldo continua obrigatoria e bloqueia qualquer item acima do disponivel.</div>'
+        + '        </div>'
+        + '        <button type="button" id="estoque-saida-real-add" class="estoque-modal-outline">+ Adicionar Item</button>'
+        + '      </div>'
+        + '      <div class="estoque-modal-summary-grid">'
+        + '        <div class="estoque-modal-summary-card">'
+        + '          <span class="estoque-modal-summary-label">Resumo da saida</span>'
+        + '          <strong id="estoque-saida-real-resumo" class="estoque-modal-summary-value">Selecione as chapas e quantidades.</strong>'
+        + '        </div>'
+        + '        <div class="estoque-modal-summary-card">'
+        + '          <span class="estoque-modal-summary-label">Validacao</span>'
+        + '          <strong class="estoque-modal-summary-value">Bloqueia saldo insuficiente ao salvar.</strong>'
+        + '        </div>'
+        + '      </div>'
+        + '      <div class="estoque-modal-table-wrap">'
+        + '        <table class="estoque-modal-table" style="min-width:980px">'
+        + '        <thead><tr>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Chapa</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);text-align:right">Saldo</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Qtd Saída</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);text-align:right">Valor Estimado</th>'
+        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);text-align:center">Ação</th>'
+        + '        </tr></thead>'
+        + '        <tbody id="estoque-saida-real-tbody"></tbody>'
+        + '      </table>'
+        + '      </div>'
+        + '    </section>'
+        + '  </div>'
+        + '  <div class="estoque-modal-footer">'
+        + '    <button type="button" id="estoque-saida-real-cancel" class="estoque-modal-btn estoque-modal-btn-ghost">Cancelar</button>'
+        + '    <button type="button" id="estoque-saida-real-save" class="estoque-modal-btn estoque-modal-btn-red">✓ Salvar Saída</button>'
+        + '  </div>'
+        + '</div>';
+      document.body.appendChild(modal);
+      modal.addEventListener('click', function(ev) {
+        if (ev.target === modal) _saidaEstoqueFecharModal();
+      });
+      var closeBtn = document.getElementById('estoque-saida-real-close');
+      var cancelBtn = document.getElementById('estoque-saida-real-cancel');
+      var saveBtn = document.getElementById('estoque-saida-real-save');
+      if (closeBtn) closeBtn.onclick = _saidaEstoqueFecharModal;
+      if (cancelBtn) cancelBtn.onclick = _saidaEstoqueFecharModal;
+      if (saveBtn) saveBtn.onclick = _saidaEstoqueSalvar;
+    }
+
     var tbody = document.getElementById('estoque-saida-real-tbody');
     if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="padding:18px;color:var(--text2)">Carregando chapas...</td></tr>';
+    modal.style.display = 'flex';
+
     try {
       var chapas = await _estoqueFetchChapasList(2000);
       chapas = (Array.isArray(chapas) ? chapas : []).filter(function(chapa) {
@@ -15083,7 +13844,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (btnSaida) btnSaida.onclick = function() { _abrirModalSaidaEstoqueReal(); };
         _bindBotaoEditarChapas(window.__estoqueSaidasRefresh, 'estoque-saida-alterar-btn');
         _bindBotaoCriarChapas(window.__estoqueSaidasRefresh, 'estoque-saida-criar-btn');
-        try { _agendarReaplicacaoUiEstoque(host); } catch (_) {}
       };
       render();
     } catch (e) {
@@ -15332,31 +14092,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '.estoque-toggle-btn.active-yes{background:rgba(34,197,94,.18);color:#bbf7d0;box-shadow:inset 0 0 0 1px rgba(34,197,94,.28)}' +
       '.pep-table-wrap{overflow:auto;max-height:min(60vh,520px);overscroll-behavior:contain}' +
       '.pcp-input{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}' +
-      '.pcp-select{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}' +
-      '.estoque-modal-overlay-padrao{background:rgba(0,0,0,.68)!important;backdrop-filter:none!important}' +
-      '.estoque-modal-shell-padrao{display:grid!important;grid-template-rows:auto minmax(0,1fr) auto!important;max-height:85vh!important;overflow:hidden!important;background:#131b2e!important;border:1px solid rgba(148,163,184,.18)!important;border-radius:18px!important;box-shadow:0 36px 88px rgba(0,0,0,.62)!important}' +
-      '.estoque-modal-header-padrao{position:sticky;top:0;z-index:3;padding:22px 24px!important;background:#0f172a!important;border-bottom:1px solid rgba(148,163,184,.14)!important}' +
-      '.estoque-modal-content-padrao{min-height:0;overflow:auto;padding:22px 24px!important;background:linear-gradient(180deg,#131b2e,#10182a)!important}' +
-      '.estoque-modal-footer-padrao{padding:16px 24px!important;background:#10182a!important;border-top:1px solid rgba(148,163,184,.12)!important}' +
-      '.estoque-modal-footer-padrao.is-empty{display:none!important}' +
-      '.estoque-modal-title{font-size:24px!important;color:#f8fafc!important}' +
-      '.estoque-modal-sub{font-size:13px!important;line-height:1.55!important;color:#cbd5e1!important}' +
-      '.estoque-modal-card{background:#162033!important;border:1px solid rgba(148,163,184,.14)!important}' +
-      '.estoque-modal-card-title{color:#f8fafc!important}' +
-      '.estoque-modal-card-sub{color:#cbd5e1!important}' +
-      '.estoque-modal-label,.estoque-modal-label span{font-size:11px!important;font-weight:800!important;letter-spacing:.08em!important;text-transform:uppercase!important;color:#cbd5e1!important}' +
-      '.estoque-modal-input,.estoque-modal-select,.estoque-modal-textarea,.pep-input{background:#0b1220!important;color:#f8fafc!important;border:1px solid rgba(148,163,184,.22)!important}' +
-      '.estoque-modal-input::placeholder,.estoque-modal-textarea::placeholder{color:#94a3b8!important}' +
-      '.estoque-modal-btn-ghost{background:transparent!important;color:#e2e8f0!important;border-color:rgba(148,163,184,.26)!important}' +
-      '.estoque-modal-btn-blue{background:linear-gradient(135deg,#2563eb,#1d4ed8)!important}' +
-      '.estoque-modal-btn-green{background:linear-gradient(135deg,#16a34a,#15803d)!important}' +
-      '.estoque-modal-btn-red{background:linear-gradient(135deg,#dc2626,#b91c1c)!important}' +
-      '.estoque-modal-grid-checklist{grid-template-columns:repeat(2,minmax(0,1fr))!important}' +
-      '.estoque-wire-sheet-shell{display:grid!important;grid-template-rows:auto minmax(0,1fr) auto!important;max-height:85vh!important;overflow:hidden!important;background:#131b2e!important}' +
-      '.estoque-wire-sheet-head{display:none!important}' +
-      '.estoque-wire-sheet-body{padding:0!important;overflow:auto!important}' +
-      '.estoque-wire-sheet-footer{padding:16px 24px!important;background:#10182a!important}' +
-      '@media (max-width:760px){.estoque-modal-grid-checklist,.estoque-modal-grid-entrada,.estoque-modal-grid-saida,.estoque-modal-grid-chapa{grid-template-columns:1fr!important}.estoque-modal-header-padrao{padding:18px 18px!important}.estoque-modal-content-padrao{padding:18px!important}.estoque-modal-footer-padrao{padding:14px 18px!important}}';
+      '.pcp-select{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}';
     document.head.appendChild(st);
   }
   try { window.__patchEnsureEstoqueStyle = _ensureEstoqueStyle; } catch (_) {}
@@ -18485,7 +17221,7 @@ window._mbnActive = function(id) {
       }
     } catch (_) { operadores = []; }
     operadores = (Array.isArray(operadores) ? operadores : []).map(function(op) { return String(op || '').trim(); }).filter(Boolean);
-    var operadorDisplay = String(item && (item.operadores_nomes || item.operador_display || item.operador_principal || item.operador_nome || item.operador) || '').trim() || (operadores[0] || '—');
+    var operadorDisplay = String(item && (item.operadores_nomes || item.operador_display || item.operador_principal || item.operador_nome || item.operador || item.usuario_conclusao || item.usuario) || '').trim() || (operadores[0] || '—');
     var qtdPerdida = Number(item && (item.quantidade != null ? item.quantidade : (item.qtd_perdida != null ? item.qtd_perdida : item.caixas_perdidas)) || 0) || 0;
     var vlUnit = Number(item && (item.vl_unit != null ? item.vl_unit : item.valor_unitario) || (ofData && (ofData.vl_unit || ofData.valor_unitario)) || 0) || 0;
     var vlTotal = Number(item && (item.vl_total != null ? item.vl_total : item.valor_perdido) || 0) || ((qtdPerdida || 0) * (vlUnit || 0));
@@ -20091,47 +18827,6 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
     + '    <tbody id="tbody-ofs-comissao">' + (htmlFinal || '<tr><td colspan="11" style="padding:20px;text-align:center;color:#64748b">Nenhuma OF encontrada no período</td></tr>') + '</tbody>'
     + '  </table>'
     + '</div>';
-  try {
-    if (typeof window._exportarComissoesExcel !== 'function') {
-      window._exportarComissoesExcel = function() {
-        try {
-          var lista = Array.isArray(window._comissaoOFs) ? window._comissaoOFs.slice() : [];
-          if (!lista.length) return;
-          var lines = [['OF', 'CLIENTE', 'VENDEDOR', 'QTD', 'VALOR TOTAL', 'PRECO UNITARIO', 'COMISSAO %', 'COMISSAO R$', 'DATA']].concat(lista.map(function(of) {
-            var qtd = Number(of && (of.quantidade ?? of.qtd ?? 0) || 0) || 0;
-            var valor = Number(of && (of.valor_total ?? of.valor_venda ?? 0) || 0) || 0;
-            var vu = Number(of && (of.valor_unitario ?? 0) || 0) || (qtd > 0 ? (valor / qtd) : 0);
-            var pct = Number(of && (of.comissao_pct ?? 1) || 1) || 1;
-            var rs = valor * (pct / 100);
-            return [
-              String(of && (of.numero || of.of_numero) || ''),
-              String(of && (of.cliente_nome || of._cliente_nome || of.cliente) || ''),
-              String(getNomeVend(of) || ''),
-              qtd,
-              valor,
-              vu,
-              pct,
-              rs,
-              String(of && of.data_conclusao || '')
-            ];
-          }));
-          var csv = '\uFEFF' + lines.map(function(row) {
-            return row.map(function(value) { return '"' + String(value == null ? '' : value).replace(/"/g, '""') + '"'; }).join(';');
-          }).join('\r\n');
-          var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-          var a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
-          a.download = 'comissoes-ofs.csv';
-          document.body.appendChild(a);
-          a.click();
-          setTimeout(function() {
-            try { URL.revokeObjectURL(a.href); } catch (_) {}
-            try { a.remove(); } catch (_) {}
-          }, 0);
-        } catch (_) {}
-      };
-    }
-  } catch (_) {}
   setTimeout(function() {
     try {
       var root = secaoDetalhamento || secao || document;

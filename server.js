@@ -407,6 +407,49 @@ function _debugRuntimeWrite(raw) {
   }
 }
 
+function _runPatchInternalFunctionCheck() {
+  const patchPath = path.join(__dirname, 'patch.js');
+  const src = fs.readFileSync(patchPath, 'utf8');
+  const defs = new Set();
+  const addMatches = (regex, groupIdx) => {
+    let m;
+    while ((m = regex.exec(src))) {
+      const name = String(m[groupIdx] || '').trim();
+      if (name) defs.add(name);
+    }
+  };
+  addMatches(/\bfunction\s+([A-Za-z_$][\w$]*)\s*\(/g, 1);
+  addMatches(/\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*=>|[A-Za-z_$][\w$]*)/g, 1);
+  addMatches(/\bvar\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*=>|[A-Za-z_$][\w$]*)/g, 1);
+  addMatches(/\bwindow\.([A-Za-z_$][\w$]*)\s*=/g, 1);
+
+  const called = new Set();
+  let call;
+  const callRegex = /(?<!\.)\b(_[A-Za-z_$][\w$]*)\s*\(/g;
+  while ((call = callRegex.exec(src))) {
+    const name = String(call[1] || '').trim();
+    if (name) called.add(name);
+  }
+
+  const ignore = new Set([
+    '_',
+  ]);
+  const missing = Array.from(called).filter((name) => !defs.has(name) && !ignore.has(name)).sort();
+  const report = {
+    patchPath,
+    defined_count: defs.size,
+    called_internal_count: called.size,
+    missing_count: missing.length,
+    missing
+  };
+  process.stdout.write(JSON.stringify(report, null, 2) + '\n');
+  return missing.length ? 1 : 0;
+}
+
+if (process.argv.includes('--check-patch-internals')) {
+  process.exit(_runPatchInternalFunctionCheck());
+}
+
 app.post('/api/_debug/runtime', (req, res) => {
   try {
     let payload = req.body;
@@ -5798,7 +5841,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       const lote = ofIds.slice(i, i + 200);
       const { data } = await supabase
         .from('ofs')
-        .select('id,numero,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada')
+        .select('id,numero,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
         .in('id', lote);
       (Array.isArray(data) ? data : []).forEach((of) => {
         const id = String(of?.id || '').trim();
@@ -5815,7 +5858,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       const lote = numerosSemOf.slice(i, i + 200);
       const { data } = await supabase
         .from('ofs')
-        .select('id,numero,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada')
+        .select('id,numero,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
         .in('numero', lote);
       (Array.isArray(data) ? data : []).forEach((of) => {
         const numero = String(of?.numero || '').trim();
@@ -5877,12 +5920,18 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       clientesMap.get(String(ofData?.cli_id || '').trim()) ||
       String(row?.cliente || ofData?.cliente || '').trim() ||
       '—';
-    const maquinaNome =
-      maquinasMap.get(String(row?.maquina_id || '').trim()) ||
-      String(row?.maquina || row?.maquina_perda || ofData?.maq || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || '').trim() ||
-      '—';
+    const maquinaNome = _resolverNomeMaquinaPassagem({
+      maquina_id: row?.maquina_id || ofData?.maquina_id || '',
+      maquina_nome: row?.maquina_nome || row?.maquina || row?.maquina_perda || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || ofData?.maq || '',
+      maquina: row?.maquina || row?.maquina_perda || row?.maquina_nome || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || ofData?.maq || '',
+    }, maquinasMap) || 'Sem máquina';
     const quantidade = Number(row?.quantidade ?? row?.caixas_perdidas ?? row?.qtd_perdida ?? 0) || 0;
-    const operadores = _normalizarOperadoresCaixa(row).map((op) => _resolverPessoaCaixa(op, pessoasMap)).filter(Boolean);
+    const operadores = Array.from(new Set(
+      _normalizarOperadoresCaixa(row)
+        .concat(_normalizarOperadoresCaixa(ofData))
+        .map((op) => _resolverPessoaCaixa(op, pessoasMap))
+        .filter(Boolean)
+    ));
     const concluidoPor = _resolverPessoaCaixa(row?.concluido_por || row?.usuario_conclusao || ofData?.concluido_por || row?.usuario, pessoasMap) || '—';
     return {
       ...row,
@@ -6040,7 +6089,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
 
     const ofIds = Array.from(new Set((dadosFiltrados || []).map((r) => String(r?.of_id || r?.of_uuid || '').trim()).filter(Boolean)));
     const { data: ofsRows } = ofIds.length
-      ? await supabase.from('ofs').select('id,numero,cli_id,valor_total,quantidade,descricao').in('id', ofIds)
+      ? await supabase.from('ofs').select('id,numero,cli_id,valor_total,quantidade,descricao,operador_conclusao,operadores_conclusao,usuario_conclusao,concluido_por,maq,maquina,maquina_atual,maquina_agendada,maquina_id').in('id', ofIds)
       : { data: [] };
     const ofsMap = Object.create(null);
     (ofsRows || []).forEach((of) => { ofsMap[String(of.id || '').trim()] = of; });
@@ -6052,20 +6101,19 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     const clientesMap = Object.create(null);
     (clientesRows || []).forEach((cli) => { clientesMap[String(cli.id || '').trim()] = String(cli.nome || '').trim(); });
 
-    const maquinaIds = Array.from(new Set((dadosFiltrados || []).map((r) => String(r?.maquina_id || '').trim()).filter(Boolean)));
-    const maquinasMap = new Map();
-    if (maquinaIds.length) {
-      const { data: maqs } = await supabase.from('maquinas').select('id,nome').in('id', maquinaIds);
-      (Array.isArray(maqs) ? maqs : []).forEach((maq) => {
-        const id = String(maq?.id || '').trim();
-        const nome = String(maq?.nome || '').trim();
-        if (id && nome) maquinasMap.set(id, nome);
-      });
-    }
+    const maquinasMap = await _carregarMapaMaquinasPassagens((dadosFiltrados || []).map((r) => {
+      const ofData = ofsMap[String(r?.of_id || r?.of_uuid || '').trim()] || null;
+      return {
+        maquina_id: r?.maquina_id || ofData?.maquina_id || '',
+        maquina_nome: r?.maquina_nome || r?.maquina || r?.maquina_perda || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || ofData?.maq || '',
+        maquina: r?.maquina || r?.maquina_perda || r?.maquina_nome || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || ofData?.maq || '',
+      };
+    }));
 
     const pessoaIds = Array.from(new Set((dadosFiltrados || []).flatMap((r) => {
-      const ops = Array.isArray(r?.operadores) ? r.operadores : toArray(r?.operadores).concat(toArray(r?.operador));
-      const extras = [r?.usuario, r?.usuario_conclusao, r?.concluido_por];
+      const ofData = ofsMap[String(r?.of_id || r?.of_uuid || '').trim()] || null;
+      const ops = _normalizarOperadoresCaixa(r).concat(_normalizarOperadoresCaixa(ofData));
+      const extras = [r?.usuario, r?.usuario_conclusao, r?.concluido_por, ofData?.usuario_conclusao, ofData?.concluido_por];
       return ops.concat(extras).map((v) => String(v || '').trim()).filter(_isUuidText);
     })));
     const pessoasMap = await _carregarMapaPessoasCaixa(pessoaIds);
@@ -6084,12 +6132,19 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       ) || 0;
       const valorPerdido = Number(r?.valor_perdido ?? (vu * qtdPerdida)) || 0;
       const clienteNome = ofData?.cli_id ? (clientesMap[String(ofData.cli_id || '').trim()] || '') : '';
-      const operadores = _normalizarOperadoresCaixa(r)
-        .map((op) => _resolverPessoaCaixa(op, pessoasMap))
-        .filter(Boolean);
+      const operadores = Array.from(new Set(
+        _normalizarOperadoresCaixa(r)
+          .concat(_normalizarOperadoresCaixa(ofData))
+          .map((op) => _resolverPessoaCaixa(op, pessoasMap))
+          .filter(Boolean)
+      ));
       const concluidoPor = _resolverPessoaCaixa(r?.concluido_por || r?.usuario_conclusao || r?.usuario, pessoasMap) || '—';
       const dataRef = r?.created_at || r?.data || r?.data_perda || r?.data_conclusao || null;
-      const maquinaNome = maquinasMap.get(String(r?.maquina_id || '').trim()) || r?.maquina || r?.maquina_perda || r?.maquina_nome || '—';
+      const maquinaNome = _resolverNomeMaquinaPassagem({
+        maquina_id: r?.maquina_id || ofData?.maquina_id || '',
+        maquina_nome: r?.maquina_nome || r?.maquina || r?.maquina_perda || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || ofData?.maq || '',
+        maquina: r?.maquina || r?.maquina_perda || r?.maquina_nome || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || ofData?.maq || '',
+      }, maquinasMap) || 'Sem máquina';
 
       return {
         ...r,
@@ -7807,6 +7862,8 @@ function _resolverValorTotalPassagem(row, ofData) {
     row?.valor_venda ??
     row?.valor ??
     row?.vl_total ??
+    row?.valor_producao ??
+    row?.preco_total ??
     0
   ) || 0;
   if (direto > 0) return direto;
@@ -7816,6 +7873,9 @@ function _resolverValorTotalPassagem(row, ofData) {
     ofData?.total ??
     ofData?.valor_venda ??
     ofData?.vl_total ??
+    ofData?.valor ??
+    ofData?.valor_producao ??
+    ofData?.preco_total ??
     0
   ) || 0;
   if (valorOf > 0) return valorOf;
@@ -7833,12 +7893,105 @@ function _resolverValorTotalPassagem(row, ofData) {
     ofData?.valor_unitario ??
     ofData?.vunit ??
     ofData?.vl_unit ??
+    ofData?.preco ??
+    ofData?.valor_unit ??
     row?.valor_unitario ??
     row?.vunit ??
     row?.vl_unit ??
+    row?.preco ??
+    row?.valor_unit ??
     0
   ) || 0;
   return (qtd > 0 && vlUnit > 0) ? (qtd * vlUnit) : 0;
+}
+
+function _normalizarNumeroOfRef(v) {
+  return String(v || '').trim().replace(/^OF\s*#?/i, '').replace(/^#/, '').trim();
+}
+
+function _normalizarNumeroOfDigits(v) {
+  return _normalizarNumeroOfRef(v).replace(/\D+/g, '').trim();
+}
+
+function _extrairTokensMaquinaPassagem(v) {
+  if (Array.isArray(v)) return v.map((item) => String(item || '').trim()).filter(Boolean);
+  if (v && typeof v === 'object') {
+    const picked = v.id ?? v.nome ?? v.maquina ?? v.label ?? v.value ?? '';
+    return String(picked || '').trim() ? [String(picked || '').trim()] : [];
+  }
+  const s = String(v || '').trim();
+  if (!s) return [];
+  try {
+    const parsed = JSON.parse(s);
+    if (Array.isArray(parsed)) return parsed.map((item) => String(item && typeof item === 'object' ? (item.id ?? item.nome ?? item.maquina ?? item.label ?? item.value ?? '') : item || '').trim()).filter(Boolean);
+    if (parsed && typeof parsed === 'object') {
+      const picked = parsed.id ?? parsed.nome ?? parsed.maquina ?? parsed.label ?? parsed.value ?? '';
+      return String(picked || '').trim() ? [String(picked || '').trim()] : [];
+    }
+  } catch (_) {}
+  return s.split(/[,;|/]+/g).map((item) => String(item || '').trim()).filter(Boolean);
+}
+
+async function _carregarMapaMaquinasPassagens(rows) {
+  const ids = new Set();
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    const mid = String(row?.maquina_id || '').trim();
+    if (_isUuid(mid)) ids.add(mid);
+    _extrairTokensMaquinaPassagem(row?.maquina_nome).concat(_extrairTokensMaquinaPassagem(row?.maquina)).forEach((token) => {
+      if (_isUuid(token)) ids.add(token);
+    });
+  });
+  const mapa = new Map();
+  const lote = Array.from(ids);
+  if (!lote.length) return mapa;
+  const { data } = await supabase.from('maquinas').select('id,nome').in('id', lote);
+  (Array.isArray(data) ? data : []).forEach((maq) => {
+    const id = String(maq?.id || '').trim();
+    const nome = String(maq?.nome || '').trim();
+    if (id && nome) mapa.set(id, nome);
+  });
+  return mapa;
+}
+
+function _resolverNomeMaquinaPassagem(row, maquinasMap) {
+  const mapa = maquinasMap instanceof Map ? maquinasMap : new Map();
+  const tokens = []
+    .concat(_extrairTokensMaquinaPassagem(row?.maquina_nome))
+    .concat(_extrairTokensMaquinaPassagem(row?.maquina));
+  const diretos = [];
+  const maquinaId = String(row?.maquina_id || '').trim();
+  if (_isUuid(maquinaId) && mapa.has(maquinaId)) diretos.push(String(mapa.get(maquinaId) || '').trim());
+  tokens.forEach((token) => {
+    const raw = String(token || '').trim();
+    if (!raw) return;
+    if (_isUuid(raw)) {
+      const nome = String(mapa.get(raw) || '').trim();
+      if (nome) diretos.push(nome);
+      return;
+    }
+    const canon = _canonMaqNome(raw);
+    if (canon) {
+      diretos.push(canon);
+      return;
+    }
+    if (/^[\[{]/.test(raw)) return;
+    diretos.push(raw);
+  });
+  const nomes = Array.from(new Set(diretos.map((nome) => String(nome || '').trim()).filter(Boolean)));
+  return nomes[0] || 'Sem máquina';
+}
+
+async function _normalizarMaquinasPassagens(rows) {
+  const lista = Array.isArray(rows) ? rows.slice() : [];
+  const maquinasMap = await _carregarMapaMaquinasPassagens(lista);
+  return lista.map((row) => {
+    const maquinaNome = _resolverNomeMaquinaPassagem(row, maquinasMap);
+    return {
+      ...row,
+      maquina: maquinaNome,
+      maquina_nome: maquinaNome
+    };
+  });
 }
 
 async function _enriquecerPassagensHistoricoComOfs(passagens) {
@@ -7846,13 +7999,22 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
   const normId = (v) => String(v || '').trim();
   const ofIds = Array.from(new Set(rows.map((p) => normId(p?.of_id ?? p?.ofId ?? '')).filter(Boolean)));
   const ofNumeros = Array.from(new Set(rows.map((p) => normId(p?.of_numero ?? p?.numero ?? p?.of ?? '')).filter(Boolean)));
+  // #region debug-point C:passagens-enriquecimento-entry
+  _debugRuntimeWrite({
+    runId: 'pre-fix',
+    hypothesisId: 'C',
+    location: 'server.js:_enriquecerPassagensHistoricoComOfs',
+    msg: '[DEBUG] enriquecer passagens iniciado',
+    data: { totalRows: rows.length, ofIds: ofIds.length, ofNumeros: ofNumeros.length, sample: rows.slice(0, 3).map((p) => ({ of_id: p?.of_id ?? p?.ofId ?? null, of_numero: p?.of_numero ?? p?.numero ?? p?.of ?? null, maquina: p?.maquina ?? p?.maquina_nome ?? null, valor_total: p?.valor_total ?? p?.total ?? p?.valor_venda ?? null })) }
+  });
+  // #endregion
   if (!ofIds.length && !ofNumeros.length) return rows;
 
   const ofsData = [];
   if (ofIds.length) {
     const { data } = await supabase
       .from('ofs')
-      .select('id,numero,status,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd,qtd_produzida,valor_total,total,valor_venda,valor_unitario,vunit,vl_unit,concluido_por,usuario')
+      .select('id,of,numero,status,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd,qtd_produzida,valor_total,total,valor_venda,valor,valor_producao,vl_total,valor_unitario,vunit,vl_unit,preco,concluido_por,usuario,usuario_conclusao,operador_conclusao,operadores_conclusao,maquina,maquina_atual,maquina_agendada,maquina_id')
       .in('id', ofIds)
       .limit(5000);
     (Array.isArray(data) ? data : []).forEach((item) => ofsData.push(item));
@@ -7866,12 +8028,24 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
       });
     });
     if (numerosPendentes.length) {
+      const numeroVariants = Array.from(new Set(
+        numerosPendentes
+          .concat(numerosPendentes.map((numero) => _normalizarNumeroOfRef(numero)))
+          .concat(numerosPendentes.map((numero) => _normalizarNumeroOfDigits(numero)))
+          .filter(Boolean)
+      ));
       const { data } = await supabase
         .from('ofs')
-        .select('id,numero,status,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd,qtd_produzida,valor_total,total,valor_venda,valor_unitario,vunit,vl_unit,concluido_por,usuario')
-        .in('numero', numerosPendentes)
+        .select('id,of,numero,status,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd,qtd_produzida,valor_total,total,valor_venda,valor,valor_producao,vl_total,valor_unitario,vunit,vl_unit,preco,concluido_por,usuario,usuario_conclusao,operador_conclusao,operadores_conclusao,maquina,maquina_atual,maquina_agendada,maquina_id')
+        .in('numero', numeroVariants)
         .limit(5000);
       (Array.isArray(data) ? data : []).forEach((item) => ofsData.push(item));
+      const { data: dataByOf } = await supabase
+        .from('ofs')
+        .select('id,of,numero,status,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd,qtd_produzida,valor_total,total,valor_venda,valor,valor_producao,vl_total,valor_unitario,vunit,vl_unit,preco,concluido_por,usuario,usuario_conclusao,operador_conclusao,operadores_conclusao,maquina,maquina_atual,maquina_agendada,maquina_id')
+        .in('of', numeroVariants)
+        .limit(5000);
+      (Array.isArray(dataByOf) ? dataByOf : []).forEach((item) => ofsData.push(item));
     }
   }
 
@@ -7879,9 +8053,19 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
   const byNumero = new Map();
   (Array.isArray(ofsData) ? ofsData : []).forEach((o) => {
     const id = normId(o?.id);
-    const numero = normId(o?.numero);
+    const numero = normId(o?.numero ?? o?.of ?? '');
+    const numeroOf = normId(o?.of ?? '');
+    const numeroNorm = _normalizarNumeroOfRef(numero);
+    const numeroDigits = _normalizarNumeroOfDigits(numero);
+    const numeroOfNorm = _normalizarNumeroOfRef(numeroOf);
+    const numeroOfDigits = _normalizarNumeroOfDigits(numeroOf);
     if (id && !byId.has(id)) byId.set(id, o);
     if (numero && !byNumero.has(numero)) byNumero.set(numero, o);
+    if (numeroOf && !byNumero.has(numeroOf)) byNumero.set(numeroOf, o);
+    if (numeroNorm && !byNumero.has(numeroNorm)) byNumero.set(numeroNorm, o);
+    if (numeroDigits && !byNumero.has(numeroDigits)) byNumero.set(numeroDigits, o);
+    if (numeroOfNorm && !byNumero.has(numeroOfNorm)) byNumero.set(numeroOfNorm, o);
+    if (numeroOfDigits && !byNumero.has(numeroOfDigits)) byNumero.set(numeroOfDigits, o);
   });
 
   const parseImgs = (v) => {
@@ -7900,7 +8084,10 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
   rows = rows.map((p) => {
     const oid = normId(p?.of_id ?? p?.ofId ?? '');
     const numeroRef = normId(p?.of_numero ?? p?.numero ?? p?.of ?? '');
-    const of = (oid ? (byId.get(oid) || null) : null) || (numeroRef ? (byNumero.get(numeroRef) || null) : null);
+    const of = (oid ? (byId.get(oid) || null) : null)
+      || (numeroRef ? (byNumero.get(numeroRef) || null) : null)
+      || (numeroRef ? (byNumero.get(_normalizarNumeroOfRef(numeroRef)) || null) : null)
+      || (numeroRef ? (byNumero.get(_normalizarNumeroOfDigits(numeroRef)) || null) : null);
     if (!of) return p;
 
     const clienteOf = String(of?.cliNome || of?.clinome || of?.cliente_nome || '').trim();
@@ -7913,6 +8100,19 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
     const statusOf = String(of?.status || '').trim();
     const respOf = String(of?.concluido_por || of?.usuario || '').trim();
     const numeroOf = String(of?.numero || '').trim();
+    const valorAtual = Number(p?.valor_total ?? p?.total ?? p?.valor_venda ?? 0) || 0;
+    const vlUnitAtual = Number(p?.valor_unitario ?? p?.vunit ?? p?.vl_unit ?? p?.preco ?? 0) || 0;
+    const maqAtualCanon = _resolverNomeMaquinaPassagem({
+      maquina_id: p?.maquina_id || '',
+      maquina_nome: p?.maquina_nome || '',
+      maquina: p?.maquina || ''
+    }, null);
+    const precisaHerdarMaquina =
+      !String(p?.maquina || p?.maquina_nome || '').trim() ||
+      maqAtualCanon === 'Sem máquina' ||
+      _isUuid(String(p?.maquina || '').trim()) ||
+      _isUuid(String(p?.maquina_nome || '').trim()) ||
+      /^[\[{]/.test(String(p?.maquina || p?.maquina_nome || '').trim());
 
     return {
       ...p,
@@ -7922,13 +8122,27 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
       ...(p?.produto ? {} : (prodOf ? { produto: prodOf } : {})),
       ...(p?.quantidade ? {} : ((qtdOf != null) ? { quantidade: qtdOf, qtd_produzida: qtdOf } : {})),
       ...(p?.qtd_produzida != null ? {} : ((qtdOf != null) ? { qtd_produzida: qtdOf } : {})),
-      ...(p?.vl_unit != null ? {} : ((vlUnit != null) ? { vl_unit: vlUnit } : {})),
-      ...(p?.total != null ? {} : ((totalOf != null) ? { total: totalOf, valor_total: totalOf } : {})),
-      ...(p?.valor_total != null ? {} : ((totalOf != null) ? { valor_total: totalOf } : {})),
+      ...((vlUnit != null && !(vlUnitAtual > 0)) ? { vl_unit: vlUnit, valor_unitario: vlUnit, preco: vlUnit } : {}),
+      ...((totalOf > 0 && !(valorAtual > 0)) ? { total: totalOf, valor_total: totalOf, valor_venda: totalOf } : {}),
       ...(p?.status ? {} : (statusOf ? { status: statusOf } : {})),
-      ...((p?.operador || p?.operador_nome || p?.responsavel) ? {} : (respOf ? { responsavel: respOf } : {}))
+      ...((p?.operador || p?.operador_nome || p?.responsavel) ? {} : (respOf ? { responsavel: respOf } : {})),
+      ...(precisaHerdarMaquina && (of?.maquina || of?.maquina_atual || of?.maquina_agendada || of?.maquina_id) ? {
+        maquina: of?.maquina || of?.maquina_atual || of?.maquina_agendada || null,
+        maquina_nome: of?.maquina || of?.maquina_atual || of?.maquina_agendada || null,
+        maquina_id: of?.maquina_id || null,
+      } : {})
     };
   });
+
+  // #region debug-point C:passagens-enriquecimento-done
+  _debugRuntimeWrite({
+    runId: 'pre-fix',
+    hypothesisId: 'C',
+    location: 'server.js:_enriquecerPassagensHistoricoComOfs',
+    msg: '[DEBUG] enriquecer passagens finalizado',
+    data: { totalRows: rows.length, sample: rows.slice(0, 5).map((p) => ({ of_id: p?.of_id ?? null, of_numero: p?.of_numero ?? null, maquina: p?.maquina ?? p?.maquina_nome ?? null, valor_total: p?.valor_total ?? p?.total ?? p?.valor_venda ?? null, qtd_produzida: p?.qtd_produzida ?? p?.quantidade ?? p?.qtd ?? null })) }
+  });
+  // #endregion
 
   return rows;
 }
@@ -7937,7 +8151,18 @@ function _agruparPassagensRelatorioMensal(rows) {
   const mapa = new Map();
   (Array.isArray(rows) ? rows : []).forEach((row) => {
     const maquinaRaw = String(row?.maquina || row?.maquina_nome || '').trim();
-    const maquina = _canonMaqNome(maquinaRaw) || maquinaRaw || 'Sem máquina';
+    // #region debug-point C:passagens-agg-row
+    if (mapa.size < 8) {
+      _debugRuntimeWrite({
+        runId: 'pre-fix',
+        hypothesisId: 'C',
+        location: 'server.js:_agruparPassagensRelatorioMensal',
+        msg: '[DEBUG] agregando passagem mensal',
+        data: { maquinaRaw, maquinaCanonica: _canonMaqNome(maquinaRaw) || '', of_id: row?.of_id ?? row?.ofId ?? null, of_numero: row?.of_numero ?? row?.numero ?? row?.of ?? null, valorResolvido: _resolverValorTotalPassagem(row, null), valorOriginal: row?.valor_total ?? row?.total ?? row?.valor_venda ?? null }
+      });
+    }
+    // #endregion
+    const maquina = _resolverNomeMaquinaPassagem(row, null);
     if (!mapa.has(maquina)) {
       mapa.set(maquina, {
         maquina,
@@ -7981,6 +8206,7 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     let passagens = Array.isArray(pair?.rows) ? pair.rows : [];
     const count = Number(pair?.count || 0) || 0;
     try { passagens = await _enriquecerPassagensHistoricoComOfs(passagens); } catch (_) {}
+    try { passagens = await _normalizarMaquinasPassagens(passagens); } catch (_) {}
     res.json({ ok: true, passagens: passagens, total: count || 0, page, limit, offset }); 
   } catch(e) { 
     console.error('[passagens/historico]', e.message); 
@@ -8011,6 +8237,7 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
     });
     let atualRows = Array.isArray(atualPair?.rows) ? atualPair.rows : [];
     try { atualRows = await _enriquecerPassagensHistoricoComOfs(atualRows); } catch (_) {}
+    try { atualRows = await _normalizarMaquinasPassagens(atualRows); } catch (_) {}
 
     let anteriorRows = [];
     if (refAnterior) {
@@ -8025,10 +8252,20 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
       });
       anteriorRows = Array.isArray(anteriorPair?.rows) ? anteriorPair.rows : [];
       try { anteriorRows = await _enriquecerPassagensHistoricoComOfs(anteriorRows); } catch (_) {}
+      try { anteriorRows = await _normalizarMaquinasPassagens(anteriorRows); } catch (_) {}
     }
 
     const atualAgg = _agruparPassagensRelatorioMensal(atualRows);
     const anteriorAgg = _agruparPassagensRelatorioMensal(anteriorRows);
+    // #region debug-point C:relatorio-mensal-resumo
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'C',
+      location: 'server.js:/api/maquinas/relatorio-mensal',
+      msg: '[DEBUG] relatorio mensal agregado',
+      data: { mes: refAtual.mes, ano: refAtual.ano, totalAtualRows: atualRows.length, totalAnteriorRows: anteriorRows.length, totalAtualAgg: atualAgg.length, totalAnteriorAgg: anteriorAgg.length, sampleAgg: atualAgg.slice(0, 8) }
+    });
+    // #endregion
     const prevMap = new Map(anteriorAgg.map((item) => [String(item?.maquina || ''), item]));
 
     const rows = atualAgg.map((item) => {
