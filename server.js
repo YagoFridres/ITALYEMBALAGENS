@@ -13502,6 +13502,38 @@ function _chapasEmpresaFromEmpId(empId) {
   return 'ITALY EMBALAGENS';
 }
 
+function _chapasColorNormalize(v) {
+  const raw = String(v ?? '').trim();
+  if (!raw) return '';
+  let hex = raw.replace(/[^#0-9a-f]/gi, '');
+  if (!hex) return '';
+  if (hex[0] !== '#') hex = '#' + hex;
+  if (/^#[0-9a-f]{3}$/i.test(hex)) {
+    hex = '#' + hex.slice(1).split('').map((ch) => ch + ch).join('');
+  }
+  return /^#[0-9a-f]{6}$/i.test(hex) ? hex.toUpperCase() : '';
+}
+
+function _chapasObsExtractColor(obs) {
+  const txt = String(obs || '');
+  const m = txt.match(/\[\[COR_LINHA:(#[0-9A-F]{6})\]\]/i);
+  return m && m[1] ? _chapasColorNormalize(m[1]) : '';
+}
+
+function _chapasObsStripColor(obs) {
+  return String(obs || '')
+    .replace(/\s*\[\[COR_LINHA:(#[0-9A-F]{6})\]\]\s*/gi, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function _chapasObsWithColor(obs, color) {
+  const clean = _chapasObsStripColor(obs);
+  const cor = _chapasColorNormalize(color);
+  if (!cor) return clean;
+  return (clean ? (clean + ' ') : '') + '[[COR_LINHA:' + cor + ']]';
+}
+
 function _chapasCanonicalFromAny(row, table) {
   if (table === 'chapas_estoque_v2') {
     const qtd = Math.trunc(_chapasToNum(row.quantidade_atual ?? row.quantidade ?? row.qtd ?? 0, 0));
@@ -13516,6 +13548,8 @@ function _chapasCanonicalFromAny(row, table) {
       : ((row.qual != null && String(row.qual).trim() !== '') ? String(row.qual).trim()
       : _chapasEmpresaFromEmpId(empId)));
     const nf = (row.nf != null && String(row.nf).trim() !== '') ? String(row.nf).trim() : ((row.numero_nf != null) ? String(row.numero_nf).trim() : '');
+    const observacaoLimpa = _chapasObsStripColor(row.observacao || '');
+    const corLinha = _chapasColorNormalize(row.cor ?? row.cor_linha ?? row.linha_cor ?? _chapasObsExtractColor(row.observacao || ''));
     const canon = {
       id: row.id,
       fornecedor: row.fornecedor || '',
@@ -13534,7 +13568,9 @@ function _chapasCanonicalFromAny(row, table) {
       valor_total: vtot,
       categoria: row.categoria || 'Estoque Simples',
       vincos: row.vincos || '',
-      observacao: row.observacao || '',
+      observacao: observacaoLimpa,
+      cor: corLinha,
+      cor_linha: corLinha,
       cliente: row.cliente_nome || row.cliente || '',
       cliente_id: row.cliente_id || null,
       riscada: !!row.riscada,
@@ -13573,13 +13609,15 @@ function _chapasCanonicalFromAny(row, table) {
   const vtot = _chapasNum(_chapasGet(row, km, ['valor_total', 'valor total', 'total', 'vtot']));
   const estoqueMin = _chapasNum(_chapasGet(row, km, ['estoque_minimo', 'estoque minimo', 'quantidade_minima', 'quantidade minima', 'min']));
   const vincos = _chapasGet(row, km, ['vincos', 'víncos']);
-  const observacao = _chapasGet(row, km, ['observacao', 'observação', 'observacoes', 'observações', 'obs']);
+  const observacaoRaw = _chapasGet(row, km, ['observacao', 'observação', 'observacoes', 'observações', 'obs']);
+  const observacao = _chapasObsStripColor(observacaoRaw);
   const dataEntrada = _chapasGet(row, km, ['data_entrada', 'data entrada', 'entrada_de_dados', 'entrada de dados', 'entrada_de_dados']);
   const categoria = _chapasGet(row, km, ['categoria']) || 'Estoque Simples';
   const cliente = _chapasGet(row, km, ['cliente', 'cliente_nome', 'cliente nome']);
   const riscadaRaw = _chapasGet(row, km, ['riscada', 'riscado', 'ver_real', 'ver real']);
   const riscada = String(riscadaRaw).toLowerCase() === 'true' || String(riscadaRaw).toLowerCase() === 'sim' || String(riscadaRaw) === '1';
   const riscaDesc = _chapasGet(row, km, ['risca_desc', 'descricao_risca', 'descrição da risca', 'descricao da risca']);
+  const corLinha = _chapasColorNormalize(_chapasGet(row, km, ['cor', 'cor_linha', 'linha_cor']) || _chapasObsExtractColor(observacaoRaw));
   const empId = _chapasGet(row, km, ['emp_id', 'emp id', 'empId', 'empresa', 'empresa_id', 'empresa id']);
   const empresaVinc = qualCnpj || _chapasGet(row, km, ['empresa_vinculada', 'empresa vinculada', 'fabricante_empresa', 'fabricante empresa', 'empresa']) || _chapasEmpresaFromEmpId(empId);
   const id = _chapasGet(row, km, ['id']);
@@ -13605,6 +13643,8 @@ function _chapasCanonicalFromAny(row, table) {
     categoria,
     vincos,
     observacao,
+    cor: corLinha,
+    cor_linha: corLinha,
     cliente,
     cliente_id: null,
     riscada,
@@ -13717,8 +13757,11 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
   const qualCnpj = (b.qual_cnpj ?? b.qual ?? b.fabricante ?? '').toString().trim();
   const nf = (b.nf ?? b.nf_entrada ?? '').toString().trim();
   const vincos = (b.vincos ?? '').toString().trim();
-  const observacao = (b.observacao ?? b.observacoes ?? '').toString().trim();
+  const observacaoRaw = (b.observacao ?? b.observacoes ?? '').toString().trim();
   const riscaDesc = (b.risca_desc ?? b.descricao_risca ?? '').toString().trim();
+  const corLinhaRaw = (b.cor ?? b.cor_linha ?? b.linha_cor ?? '').toString().trim();
+  const corLinha = _chapasColorNormalize(corLinhaRaw);
+  const observacao = _chapasObsWithColor(observacaoRaw, corLinha);
   const estoqueMin = b.estoque_minimo != null ? Math.trunc(_chapasToNum(b.estoque_minimo, 200)) : undefined;
   const empIdBody = (b.emp_id ?? b.empId ?? '').toString().trim();
   const empIdQuery = req?.query?.empId ? String(req.query.empId).trim() : '';
@@ -13731,7 +13774,9 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
   if (b.empresa_vinculada !== undefined || b.empresaVinculada !== undefined || b.empresa !== undefined) set('empresa_vinculada', empresaVinculada);
   setText('risca_desc', riscaDesc, (b.risca_desc !== undefined || b.descricao_risca !== undefined));
   setText('vincos', vincos, (b.vincos !== undefined));
-  setText('observacao', observacao, (b.observacao !== undefined || b.observacoes !== undefined));
+  const corPresent = (b.cor !== undefined || b.cor_linha !== undefined || b.linha_cor !== undefined);
+  setText('observacao', observacao, (b.observacao !== undefined || b.observacoes !== undefined || corPresent));
+  if (corPresent) set('cor', corLinha || null);
   if (estoqueMin !== undefined) set('estoque_minimo', estoqueMin);
   if (empId !== '') set('emp_id', empId);
   if (b.gramatura !== undefined || b.espessura_mm !== undefined || b.espessura !== undefined) {
@@ -13775,7 +13820,7 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
 
 async function _chapasUpdateCompatV2(id, payload) {
   const p = { ...(payload || {}) };
-  const proibidos = ['observacao', 'obs', 'obs_chapa', 'retalho', 'retalho_tam', 'retalho_papel'];
+  const proibidos = ['obs', 'obs_chapa', 'retalho', 'retalho_tam', 'retalho_papel'];
   proibidos.forEach((k) => { delete p[k]; });
 
   let data = null;
@@ -14379,8 +14424,9 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
       quantidade_atual: Math.trunc(Number(b.quantidade_atual ?? b.quantidade ?? b.qtd ?? 0)),
       val: Number(b.valor_unitario ?? b.val ?? 0),
       valor_unitario: Number(b.valor_unitario ?? b.val ?? 0),
+      cor: _chapasColorNormalize(b.cor ?? b.cor_linha ?? b.linha_cor ?? '') || null,
       vincos: String(b.vincos ?? '').trim(),
-      observacao: String(b.observacao ?? b.obs ?? b.observacoes ?? '').trim(),
+      observacao: _chapasObsWithColor(String(b.observacao ?? b.obs ?? b.observacoes ?? '').trim(), b.cor ?? b.cor_linha ?? b.linha_cor ?? ''),
       data_entrada: b.data_entrada ?? b.dataEntrada ?? b.entrada_de_dados ?? null,
       emp_id: String(b.emp_id ?? b.empId ?? 'E1').trim(),
       categoria: String(b.categoria ?? 'Estoque Simples').trim(),
@@ -14431,10 +14477,28 @@ app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
     if (b.quantidade !== undefined || b.qtd !== undefined) payload.qtd = Number(b.quantidade ?? b.qtd ?? 0);
     if (b.valor_unitario !== undefined || b.val !== undefined) payload.val = Number(b.valor_unitario ?? b.val ?? 0);
     if (b.vincos !== undefined) payload.vincos = b.vincos;
-    if (b.observacao !== undefined) payload.observacao = b.observacao;
+    if (b.observacao !== undefined || b.obs !== undefined || b.observacoes !== undefined || b.cor !== undefined || b.cor_linha !== undefined || b.linha_cor !== undefined) {
+      payload.observacao = _chapasObsWithColor(String(b.observacao ?? b.obs ?? b.observacoes ?? '').trim(), b.cor ?? b.cor_linha ?? b.linha_cor ?? '');
+    }
+    if (b.cor !== undefined || b.cor_linha !== undefined || b.linha_cor !== undefined) payload.cor = _chapasColorNormalize(b.cor ?? b.cor_linha ?? b.linha_cor ?? '') || null;
     if (b.emp_id) payload.emp_id = b.emp_id;
     if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
-    const { data, error } = await supabase.from('chapas_estoque').update(payload).eq('id', req.params.id).select().single();
+    let updPayload = { ...payload };
+    let data = null;
+    let error = null;
+    for (let tentativa = 0; tentativa < 8; tentativa++) {
+      const r = await supabase.from('chapas_estoque').update(updPayload).eq('id', req.params.id).select().single();
+      data = r.data;
+      error = r.error;
+      if (!error) break;
+      const msg = String(error.message || error);
+      const col = msg.match(/Could not find the '([^']+)' column/)?.[1] || msg.match(/column\s+"([^"]+)"\s+does not exist/i)?.[1];
+      if (col && Object.prototype.hasOwnProperty.call(updPayload, col)) {
+        delete updPayload[col];
+        continue;
+      }
+      break;
+    }
     if (error) return res.status(500).json({ error: error.message });
     cacheClearPrefix('chapas_estoque:');
     await _chapasLogAcao(req, 'estoque_chapas_edicao', `Chapa atualizada (legado): ${data?.nom || ''} · ${data?.forn || ''} · ${data?.tam || ''}`);
@@ -14451,7 +14515,7 @@ app.patch('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
       if (b.quantidade !== undefined) payload.quantidade = Math.trunc(_chapasToNum(b.quantidade, 0));
       if (b.qtd !== undefined) payload.quantidade = Math.trunc(_chapasToNum(b.qtd, 0));
       if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
-      const { data, error } = await supabase.from('chapas_estoque_v2').update(payload).eq('id', req.params.id).select().single();
+      const { data, error } = await _chapasUpdateCompatV2(String(req.params.id || '').trim(), payload);
       if (error) return res.status(500).json({ error: error.message });
       cacheClearPrefix('chapas_estoque:');
       await _chapasLogAcao(req, 'estoque_chapas_patch', `Atualização rápida: ${data?.nome_uso || ''} · ${data?.fornecedor || ''} · ${data?.nomenclatura || ''} · ${data?.tamanho || ''} · qtd=${data?.quantidade ?? ''}`);

@@ -1,7 +1,7 @@
 /* sw.js — Italy Embalagens ERP
    Service Worker atualizado: API sempre vai para a rede, nunca para cache */
 
-var CACHE_NAME = 'italy-erp-v13';
+var CACHE_NAME = 'italy-erp-v14';
 
 var ARQUIVOS_CACHE = [
   '/',
@@ -9,7 +9,7 @@ var ARQUIVOS_CACHE = [
 ];
 
 self.addEventListener('install', function(event) {
-  console.log('[SW] instalando v13');
+  console.log('[SW] instalando v14');
   event.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
       return cache.addAll(ARQUIVOS_CACHE).catch(function(e) {
@@ -21,7 +21,7 @@ self.addEventListener('install', function(event) {
 });
 
 self.addEventListener('activate', function(event) {
-  console.log('[SW] ativando v13, limpando caches antigos');
+  console.log('[SW] ativando v14, limpando caches antigos');
   event.waitUntil(
     caches.keys().then(function(nomes) {
       return Promise.all(

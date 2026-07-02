@@ -33474,7 +33474,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', ()=>{
-      navigator.serviceWorker.register('/sw.js?v=13', { scope:'/' }).catch(()=>{});
+      navigator.serviceWorker.register('/sw.js?v=14', { scope:'/' }).catch(()=>{});
       try{
         navigator.serviceWorker.getRegistrations().then((registrations)=>{
           (registrations||[]).forEach((reg)=>{ try{ reg.update(); }catch(e){} });
@@ -57465,7 +57465,7 @@ async function renderHub(forcar=false){
     const ph = phrases[day % phrases.length];
     const motiv = document.getElementById('hub-motiv');
     if(motiv) motiv.textContent = ph;
-    verEl.textContent = 'PCP Pro v14 — Multiempresa';
+    verEl.textContent = 'PCP Pro v15 — Multiempresa';
 
     if(!window.__HUB_CHART_RANGE) window.__HUB_CHART_RANGE = '7d';
     const range = window.__HUB_CHART_RANGE;
@@ -59342,6 +59342,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=8"></script>
+<script src="/patch.js?v=9"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
