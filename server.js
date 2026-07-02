@@ -757,15 +757,51 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
+const PATCH_RUNTIME_VERSION = '13';
+const SW_RUNTIME_VERSION = '18';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v18';
+
 app.get('/sw.js', (req, res) => {
   try {
-    res.setHeader('Content-Type', 'application/javascript');
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-store');
     res.setHeader('Service-Worker-Allowed', '/');
     const fpPub = path.join(__dirname, 'public', 'sw.js');
     const fpRoot = path.join(__dirname, 'sw.js');
     const fp = fs.existsSync(fpPub) ? fpPub : fpRoot;
-    return res.sendFile(fp);
+    let body = fs.readFileSync(fp, 'utf8');
+    body = body.replace(/var\s+CACHE_NAME\s*=\s*['"][^'"]+['"]\s*;/, `var CACHE_NAME = '${SW_RUNTIME_CACHE_NAME}';`);
+    res.setHeader('x-sw-version', SW_RUNTIME_VERSION);
+    res.setHeader('x-sw-cache-name', SW_RUNTIME_CACHE_NAME);
+    return res.end(body, 'utf8');
+  } catch (e) {
+    return res.status(500).end();
+  }
+});
+
+app.get('/patch.js', (req, res) => {
+  try {
+    const requestedVersion = String(req.query?.v || '').trim();
+    if (requestedVersion && requestedVersion !== PATCH_RUNTIME_VERSION) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      return res.redirect(302, '/patch.js?v=' + encodeURIComponent(PATCH_RUNTIME_VERSION));
+    }
+    const fpRoot = path.join(__dirname, 'patch.js');
+    if (!fs.existsSync(fpRoot)) return res.status(404).end();
+    const raw = fs.readFileSync(fpRoot, 'utf8');
+    const body = `/* patch-runtime-version:v${PATCH_RUNTIME_VERSION} */\n${raw}`;
+    const sha1 = crypto.createHash('sha1').update(body).digest('hex');
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+    res.setHeader('CDN-Cache-Control', 'no-store');
+    res.setHeader('x-patch-version', PATCH_RUNTIME_VERSION);
+    res.setHeader('x-patch-sha1', sha1);
+    res.setHeader('x-patch-bytes', String(Buffer.byteLength(body, 'utf8')));
+    res.setHeader('x-patch-source', 'root/patch.js');
+    return res.end(body, 'utf8');
   } catch (e) {
     return res.status(500).end();
   }
@@ -5629,7 +5665,7 @@ async function _selectCompatRows(table, columns, applyQuery) {
 }
 
 function _normalizarOperadoresCaixa(row) {
-  const bruto = row?.operadores;
+  const bruto = row?.operadores ?? row?.operadores_conclusao;
   let lista = [];
   try {
     if (Array.isArray(bruto)) lista = bruto;
@@ -5652,7 +5688,7 @@ function _normalizarOperadoresCaixa(row) {
       row?.operador_principal,
       row?.operador_nome,
       row?.operador,
-      row?.usuario,
+      row?.operador_conclusao,
     ].map((v) => String(v || '').trim()).filter(Boolean);
     lista = candidatos.length ? candidatos : [];
   }
@@ -5722,7 +5758,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
     'id', 'of_id', 'of_numero', 'produto', 'cliente', 'valor_unitario', 'qtd_perdida', 'valor_perdido',
     'data', 'mes_referencia', 'emp_id', 'empresa_id', 'usuario', 'usuario_conclusao', 'concluido_por', 'obs', 'created_at',
     'maquina', 'maquina_nome', 'maquina_id', 'maquina_perda', 'quantidade', 'caixas_perdidas',
-    'operadores', 'operador', 'operador_nome', 'operador_principal', 'turno'
+    'operadores', 'operadores_conclusao', 'operador', 'operador_nome', 'operador_principal', 'operador_conclusao', 'turno'
   ].join(',');
   const ofId = String(req.query.of_id || req.query.ofId || '').trim();
   const tabelas = ['caixas_perdidas', 'caixas_perdas', 'perdas_producao'];
@@ -6048,8 +6084,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       ) || 0;
       const valorPerdido = Number(r?.valor_perdido ?? (vu * qtdPerdida)) || 0;
       const clienteNome = ofData?.cli_id ? (clientesMap[String(ofData.cli_id || '').trim()] || '') : '';
-      const operadores = (Array.isArray(r?.operadores) ? r.operadores
-        : (toArray(r?.operadores).length ? toArray(r?.operadores) : toArray(r?.operador)))
+      const operadores = _normalizarOperadoresCaixa(r)
         .map((op) => _resolverPessoaCaixa(op, pessoasMap))
         .filter(Boolean);
       const concluidoPor = _resolverPessoaCaixa(r?.concluido_por || r?.usuario_conclusao || r?.usuario, pessoasMap) || '—';
@@ -6109,7 +6144,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     enriquecidosFiltrados.forEach((r) => {
       const ops = Array.isArray(r?.operadores) && r.operadores.length
         ? r.operadores
-        : toArray(r?.operador).concat(toArray(r?.operador_conclusao)).concat(toArray(r?.usuario_conclusao));
+        : _normalizarOperadoresCaixa(r);
       ops.forEach((op) => {
         const nome = String(op || '').trim();
         if (!nome) return;
@@ -7129,7 +7164,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       caixas_boas: body.caixas_boas != null ? parseInt(body.caixas_boas, 10) : qtdFinal,
       caixas_perdidas: body.caixas_perdidas != null ? parseInt(body.caixas_perdidas, 10) : null,
       motivo_perda: body.motivo_perda || null,
-      operador_conclusao: body.operador_conclusao || body.usuario_conclusao || body.concluido_por || (req.usuario?.nome || null),
+      operador_conclusao: body.operador_conclusao || (operadoresConclusao[0] || null),
       qtd_produzida: qtdFinal,
       qtd_perdida: qtdPerdida,
       caixas_excedentes: excedente,
@@ -7345,7 +7380,9 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
           if (!(perdaQtd > 0)) continue;
           const maqNomeLinha = String(linha?.maquina_nome || linha?.maquina || maquinaNome || '').trim();
           const maqIdLinha = String(linha?.maquina_id || maquinaPerdaId || '').trim();
-          const operadoresLinha = Array.isArray(linha?.operadores) ? linha.operadores : operadoresConclusao;
+          const operadoresLinha = (Array.isArray(linha?.operadores) ? linha.operadores : operadoresConclusao)
+            .map((op) => String(op || '').trim())
+            .filter(Boolean);
           await _insertCaixaPerdidaCompat({
             of_id: sid,
             of_numero: ofNumero,
