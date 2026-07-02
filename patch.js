@@ -7409,7 +7409,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         arr = String(r.operadores || '').split(/[,;|]+/g);
       }
       if (!arr.length) {
-        var op = String(r && (r.operador_display || r.operador || r.usuario_conclusao || r.usuario) || '').trim();
+        var op = String(r && (r.operador_display || r.operador) || '').trim();
         if (op && op !== '—') arr = [op];
       }
       return arr.map(function(item) { return String(item || '').trim(); }).filter(Boolean);
@@ -17220,7 +17220,7 @@ window._mbnActive = function(id) {
       }
     } catch (_) { operadores = []; }
     operadores = (Array.isArray(operadores) ? operadores : []).map(function(op) { return String(op || '').trim(); }).filter(Boolean);
-    var operadorDisplay = String(item && (item.operadores_nomes || item.operador_display || item.operador_principal || item.operador_nome || item.operador || item.usuario_conclusao || item.usuario) || '').trim() || (operadores[0] || '—');
+    var operadorDisplay = String(item && (item.operadores_nomes || item.operador_display || item.operador_principal || item.operador_nome || item.operador) || '').trim() || (operadores[0] || '—');
     var qtdPerdida = Number(item && (item.quantidade != null ? item.quantidade : (item.qtd_perdida != null ? item.qtd_perdida : item.caixas_perdidas)) || 0) || 0;
     var vlUnit = Number(item && (item.vl_unit != null ? item.vl_unit : item.valor_unitario) || (ofData && (ofData.vl_unit || ofData.valor_unitario)) || 0) || 0;
     var vlTotal = Number(item && (item.vl_total != null ? item.vl_total : item.valor_perdido) || 0) || ((qtdPerdida || 0) * (vlUnit || 0));
