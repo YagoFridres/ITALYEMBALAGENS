@@ -4945,6 +4945,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     function _resolveChapaRowColor(chapa) {
       return _normalizeChapaRowColor(chapa && (chapa.cor || chapa.cor_linha || chapa.linha_cor) || '') || _extractChapaColorMeta(chapa && (chapa.observacao || chapa.obs) || '');
     }
+    try { window._resolveChapaRowColor = _resolveChapaRowColor; } catch (_) {}
     function _hexToRgbaChapa(hex, alpha) {
       var norm = _normalizeChapaRowColor(hex);
       if (!norm) return '';
@@ -5551,7 +5552,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (retryBtn) retryBtn.onclick = function() { renderEstoqueWireframePage().catch(function() {}); };
         var createBtn = document.getElementById('estoque-wire-open-create');
         if (createBtn) createBtn.onclick = function() {
-          _abrirCriacaoChapaEstoque();
+          try {
+            if (typeof window._abrirCriacaoChapaEstoque === 'function') {
+              window._abrirCriacaoChapaEstoque();
+              return;
+            }
+            if (typeof window.abrirModalNovaChapa === 'function') {
+              window.abrirModalNovaChapa();
+              return;
+            }
+          } catch (_) {}
         };
       }
     }
@@ -12801,6 +12811,31 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return [];
   }
 
+  function _normalizeChapaRowColor(v) {
+    var raw = String(v == null ? '' : v).trim();
+    if (!raw) return '';
+    var hex = raw.replace(/[^#0-9a-f]/ig, '');
+    if (!hex) return '';
+    if (hex.charAt(0) !== '#') hex = '#' + hex;
+    if (/^#[0-9a-f]{3}$/i.test(hex)) hex = '#' + hex.slice(1).split('').map(function(ch) { return ch + ch; }).join('');
+    return /^#[0-9a-f]{6}$/i.test(hex) ? hex.toUpperCase() : '';
+  }
+
+  function _extractChapaColorMeta(obs) {
+    var m = String(obs || '').match(/\[\[COR_LINHA:(#[0-9A-F]{6})\]\]/i);
+    return m && m[1] ? _normalizeChapaRowColor(m[1]) : '';
+  }
+
+  function _resolveChapaRowColor(chapa) {
+    try {
+      if (typeof window._resolveChapaRowColor === 'function' && window._resolveChapaRowColor !== _resolveChapaRowColor) {
+        return String(window._resolveChapaRowColor(chapa) || '').trim();
+      }
+    } catch (_) {}
+    return _normalizeChapaRowColor(chapa && (chapa.cor || chapa.cor_linha || chapa.linha_cor) || '') || _extractChapaColorMeta(chapa && (chapa.observacao || chapa.obs) || '');
+  }
+  try { window._resolveChapaRowColor = _resolveChapaRowColor; } catch (_) {}
+
   async function _estoqueFetchChapasList(limit) {
     var qs = new URLSearchParams();
     var requested = Math.max(1, Math.trunc(Number(limit || 0) || 10000));
@@ -13227,6 +13262,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     _scheduleEnhanceModalNovaChapa();
     _agendarSincronizacaoModalChapa();
   }
+  try { window._abrirCriacaoChapaEstoque = _abrirCriacaoChapaEstoque; } catch (_) {}
 
   async function _buscarChapaEstoquePorId(id) {
     var sid = String(id || '').trim();
