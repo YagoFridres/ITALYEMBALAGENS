@@ -33474,7 +33474,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', ()=>{
-      navigator.serviceWorker.register('/sw.js', { scope:'/' }).catch(()=>{});
+      navigator.serviceWorker.register('/sw.js?v=11', { scope:'/' }).catch(()=>{});
       try{
         navigator.serviceWorker.getRegistrations().then((registrations)=>{
           (registrations||[]).forEach((reg)=>{ try{ reg.update(); }catch(e){} });
@@ -57465,7 +57465,7 @@ async function renderHub(forcar=false){
     const ph = phrases[day % phrases.length];
     const motiv = document.getElementById('hub-motiv');
     if(motiv) motiv.textContent = ph;
-    verEl.textContent = 'PCP Pro v12 — Multiempresa';
+    verEl.textContent = 'PCP Pro v13 — Multiempresa';
 
     if(!window.__HUB_CHART_RANGE) window.__HUB_CHART_RANGE = '7d';
     const range = window.__HUB_CHART_RANGE;

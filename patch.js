@@ -3617,6 +3617,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '.pep-btn.primary{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#2563eb}'
         + '.pep-btn.danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3);color:#fecaca}'
         + '.pep-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px}'
+        + '.estoque-wire-cards{grid-template-columns:repeat(4,minmax(0,1fr))}'
         + '.pep-card,.pep-panel{background:linear-gradient(135deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:18px}'
         + '.pep-card-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;font-weight:800}'
         + '.pep-card-val{font-size:26px;font-weight:900;color:#f8fafc;margin-top:10px}'
@@ -3639,8 +3640,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '.pep-modal-box{width:min(620px,92vw);background:#0b1220;border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:18px}'
         + '.pep-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}'
         + '.pep-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}'
-        + '@media (max-width:960px){.pep-cards{grid-template-columns:1fr 1fr}.pep-grid{grid-template-columns:1fr}}'
-        + '@media (max-width:640px){.pep-cards{grid-template-columns:1fr}}';
+        + '@media (max-width:960px){.pep-cards,.estoque-wire-cards{grid-template-columns:1fr 1fr}.pep-grid{grid-template-columns:1fr}}'
+        + '@media (max-width:640px){.pep-cards,.estoque-wire-cards{grid-template-columns:1fr}}';
       document.head.appendChild(st);
     }
     function pagesParent() {
@@ -4131,7 +4132,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var breakdown = _resumoTopPorValor(lista, function(chapa) { return chapa && chapa.fornecedor || 'Sem fornecedor'; }, function(chapa) { return estoqueWireValor(chapa); }).slice(0, 4);
         page.innerHTML = ''
         + '<div class="pep-wrap">'
-        + '  <div class="pep-cards">'
+        + '  <div class="pep-cards estoque-wire-cards">'
         +      _makeCardEstoque({ label: 'Valor Total do Estoque', value: money(valorTotal), sub: 'Base atual do estoque' })
         +      _makeCardEstoque({ label: 'Toneladas em Estoque', value: num(tonTotal, 3) + ' t', sub: 'Saldo atual em toneladas' })
         +      _makeCardEstoque({ label: 'Quantidade de Chapas', value: num(lista.length, 0), sub: 'Itens cadastrados no estoque' })
@@ -4141,12 +4142,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF ou CNPJ" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
         + '    <button class="pep-btn primary" id="estoque-wire-buscar">Buscar</button>'
         + '  </div></div>'
-        + '  <div class="estoque-main-actions" style="margin-bottom:12px">'
-        +      _botaoAcaoEstoque({ id: 'estoque-wire-entrada-btn', label: 'Dar Entrada', icon: '↓', variant: 'green', title: 'Abrir modal de entrada de chapas' })
-        +      _botaoAcaoEstoque({ id: 'estoque-wire-saida-btn', label: 'Dar Saída', icon: '↑', variant: 'danger', title: 'Abrir modal de saída de chapas' })
-        +      _botaoEditarChapas('estoque-wire-alterar-btn')
-        +      _botaoAcaoEstoque({ id: 'estoque-wire-criar-btn', label: 'Criar Chapas', icon: '+', variant: 'teal', title: 'Cadastrar nova chapa no estoque' })
-        + '  </div>'
         + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-estoque"><table class="pep-table"><thead><tr><th>FORNECEDOR</th><th>GRAMATURA</th><th>NOMENCLATURA</th><th>TAMANHO</th><th>NOME</th><th>QUAL CNPJ</th><th>NF</th><th>QUANTIDADE</th><th>R$</th><th>TOTAL</th><th>Ações</th></tr></thead><tbody>'
         + (filtrada.length ? filtrada.map(function(chapa) {
             var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
@@ -4162,11 +4157,20 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               + '<td style="text-align:right">' + num(qtd, 0) + '</td>'
               + '<td style="text-align:right">' + money(vunit) + '</td>'
               + '<td style="text-align:right">' + money(estoqueWireValor(chapa)) + '</td>'
-              + '<td><button class="pep-btn" data-est-edit="' + esc(chapa && chapa.id || '') + '">Alterar</button> <button class="pep-btn danger" data-est-del="' + esc(chapa && chapa.id || '') + '">Excluir</button></td>'
+              + '<td><button class="pep-btn danger" data-est-del="' + esc(chapa && chapa.id || '') + '">Excluir</button> <button class="pep-btn" data-est-edit="' + esc(chapa && chapa.id || '') + '">Alterar</button></td>'
               + '</tr>';
           }).join('') : '<tr><td colspan="11" style="text-align:center;color:#94a3b8">Nenhum registro encontrado.</td></tr>')
         + '  </tbody></table></div></div>'
         + '</div>';
+      // #region debug-point G:wireframe-layout-shape
+      try {
+        if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('G', 'wireframe estoque shape atual', {
+          cards: page.querySelectorAll('.estoque-wire-cards .pep-card').length,
+          actionButtons: page.querySelectorAll('.estoque-main-actions .estoque-action-btn').length,
+          tableHeaders: Array.prototype.slice.call(page.querySelectorAll('.pep-table thead th')).map(function(th) { return String(th.textContent || '').trim(); }).join('|')
+        });
+      } catch (_) {}
+      // #endregion
       document.getElementById('estoque-wire-buscar').onclick = function() {
         window.__estoqueWireBusca = String((document.getElementById('estoque-wire-busca') || {}).value || '').trim();
         renderEstoqueWireframePage();
@@ -4189,12 +4193,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           try { if (typeof window.excluirChapa === 'function') window.excluirChapa(String(btn.getAttribute('data-est-del') || '')); } catch (_) {}
         };
       });
-      var btnEntrada = document.getElementById('estoque-wire-entrada-btn');
-      if (btnEntrada) btnEntrada.onclick = function() { _abrirModalEntradaEstoqueReal(); };
-      var btnSaida = document.getElementById('estoque-wire-saida-btn');
-      if (btnSaida) btnSaida.onclick = function() { _abrirModalSaidaEstoqueReal(); };
-      _bindBotaoEditarChapas(renderEstoqueWireframePage, 'estoque-wire-alterar-btn');
-      _bindBotaoCriarChapas(renderEstoqueWireframePage, 'estoque-wire-criar-btn');
       // #region debug-point A:estoque-wireframe-success
       try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'renderEstoqueWireframePage sucesso', { totalLista: lista.length, totalFiltrada: filtrada.length, hasBusca: !!busca }); } catch (_) {}
       // #endregion
@@ -14237,6 +14235,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       hidePatchHost();
       var r = orig.apply(this, arguments);
       if (page === 'estoque') {
+        // #region debug-point G:patchgo-estoque-entry
+        try {
+          if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('G', 'patchGo estoque acionado', {
+            page: page,
+            hasSync: typeof window.__syncEstoqueWireframeDom === 'function',
+            telaSimplificada: String(window.__estoqueTelaSimplificada || ''),
+            pageAtual: String(window._PAGE_ATUAL || '')
+          });
+        } catch (_) {}
+        // #endregion
         try { window.__estoqueTelaSimplificada = 'estoque'; } catch (_) {}
         try { if (typeof window.__setEstoqueWireframeMode === 'function') window.__setEstoqueWireframeMode(true); } catch (_) {}
         try { if (typeof window.__syncEstoqueWireframeDom === 'function') window.__syncEstoqueWireframeDom(); } catch (_) {}
