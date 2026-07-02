@@ -243,38 +243,6 @@ if (typeof window._fmtRs === 'undefined') {
   try { window.__authPatchPersist = _authPersist; } catch (_) {}
   try { window.__authPatchClear = _authClear; } catch (_) {}
 })();
-
-(function() {
-  if (window.__patchPapelaoRoutesRemoved) return;
-  window.__patchPapelaoRoutesRemoved = true;
-
-  var redirects = {
-    'sel-chapas': 'estoque',
-    'papelao-ia': 'estoque'
-  };
-
-  function wrapGo() {
-    try {
-      var orig = window.go;
-      if (typeof orig !== 'function' || orig.__patchPapelaoRoutesRemovedWrapped) return;
-      var wrapped = function(page) {
-        var pid = String(page || '').trim();
-        var destino = redirects[pid] || pid;
-        if (destino !== pid) {
-          try { console.warn('[PATCH] Rota removida redirecionada:', pid, '->', destino); } catch (_) {}
-        }
-        var args = Array.prototype.slice.call(arguments, 1);
-        return orig.apply(this, [destino].concat(args));
-      };
-      wrapped.__patchPapelaoRoutesRemovedWrapped = true;
-      window.go = wrapped;
-    } catch (_) {}
-  }
-
-  wrapGo();
-  setTimeout(wrapGo, 400);
-  setTimeout(wrapGo, 1400);
-})();
 (function() {
   if (window.__patchImgFixInstalled) return;
   window.__patchImgFixInstalled = true;
@@ -346,35 +314,6 @@ if (typeof window._fmtRs === 'undefined') {
   } catch (_) {}
 })();
 
-(function() {
-  if (window.__patchPapelaoRoutesRemovedFinal) return;
-  window.__patchPapelaoRoutesRemovedFinal = true;
-
-  var redirects = {
-    'sel-chapas': 'estoque',
-    'papelao-ia': 'estoque'
-  };
-
-  function wrapGoFinal() {
-    try {
-      var orig = window.go;
-      if (typeof orig !== 'function' || orig.__patchPapelaoRoutesRemovedFinalWrapped) return;
-      var wrapped = function(page) {
-        var pid = String(page || '').trim();
-        var destino = redirects[pid] || pid;
-        var args = Array.prototype.slice.call(arguments, 1);
-        return orig.apply(this, [destino].concat(args));
-      };
-      wrapped.__patchPapelaoRoutesRemovedFinalWrapped = true;
-      window.go = wrapped;
-    } catch (_) {}
-  }
-
-  wrapGoFinal();
-  setTimeout(wrapGoFinal, 250);
-  setTimeout(wrapGoFinal, 1200);
-})();
-
 (function patchEstoqueRotasFinal() {
   if (window.__patchEstoqueRotasFinal) return;
   window.__patchEstoqueRotasFinal = true;
@@ -401,6 +340,14 @@ if (typeof window._fmtRs === 'undefined') {
       }
       if (pid === 'toneladas-vendidas' && typeof window.renderToneladasVendidas === 'function') {
         Promise.resolve(window.renderToneladasVendidas()).catch(function() {});
+        return true;
+      }
+      if (pid === 'entradas-estoque' && typeof window.__patchRenderEntradasEstoque === 'function') {
+        Promise.resolve(window.__patchRenderEntradasEstoque()).catch(function() {});
+        return true;
+      }
+      if (pid === 'saidas-estoque' && typeof window.__patchRenderSaidasEstoque === 'function') {
+        Promise.resolve(window.__patchRenderSaidasEstoque()).catch(function() {});
         return true;
       }
     } catch (_) {}
@@ -1281,98 +1228,16 @@ if (typeof window._fmtRs === 'undefined') {
     }
   }
 
-  function _simdEsc(v) {
-    return String(v == null ? '' : v)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-
-  function _simdFmtPct(v) {
-    return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
-  }
-
-  function _simdFmtMoney(v) {
-    var num = Number(v || 0) || 0;
-    if (!(num > 0)) return '—';
-    try {
-      if (typeof window._fmtRs === 'function') return window._fmtRs(num);
-    } catch (_) {}
-    return 'R$ ' + num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-
-  function _simdMatchesFiltro(chapa, filtro) {
-    var txt = String(filtro || '').trim().toLowerCase();
-    if (!txt) return true;
-    var haystack = [
-      chapa && chapa.fornecedor,
-      chapa && chapa.forn,
-      chapa && chapa.nome,
-      chapa && chapa.nomenclatura,
-      chapa && chapa.nom,
-      chapa && chapa.tamanho,
-      chapa && chapa.tam
-    ].map(function(v) { return String(v || '').trim().toLowerCase(); }).join(' ');
-    return haystack.indexOf(txt) >= 0;
-  }
-
-  function _simdBuildPreview(row) {
-    var sheetW = Math.max(1, Number(row && row.largura_chapa || 0) || 1);
-    var sheetH = Math.max(1, Number(row && row.comprimento_chapa || 0) || 1);
-    var cols = Math.max(0, Math.trunc(Number(row && row.cols || 0) || 0));
-    var rows = Math.max(0, Math.trunc(Number(row && row.rows || 0) || 0));
-    var pieceW = Math.max(1, Number(row && row.largura_peca_corte || 0) || 1);
-    var pieceH = Math.max(1, Number(row && row.comprimento_peca_corte || 0) || 1);
-    var viewW = 260;
-    var viewH = 180;
-    var scale = Math.min(viewW / sheetW, viewH / sheetH);
-    var drawW = Math.max(1, Math.round(sheetW * scale));
-    var drawH = Math.max(1, Math.round(sheetH * scale));
-    var cellW = Math.max(2, pieceW * scale);
-    var cellH = Math.max(2, pieceH * scale);
-    var offsetX = Math.round((viewW - drawW) / 2);
-    var offsetY = Math.round((viewH - drawH) / 2);
-    var parts = [
-      '<svg viewBox="0 0 ' + viewW + ' ' + viewH + '" width="100%" height="180" role="img" aria-label="Layout de corte">',
-      '<rect x="' + offsetX + '" y="' + offsetY + '" width="' + drawW + '" height="' + drawH + '" rx="10" fill="#0f172a" stroke="rgba(148,163,184,.55)" stroke-width="1.5"></rect>'
-    ];
-    for (var r = 0; r < rows; r += 1) {
-      for (var c = 0; c < cols; c += 1) {
-        parts.push(
-          '<rect x="' + (offsetX + (c * cellW)) + '" y="' + (offsetY + (r * cellH)) + '" width="' + Math.max(1, cellW - 1) + '" height="' + Math.max(1, cellH - 1) + '" fill="rgba(34,197,94,.78)" stroke="rgba(5,46,22,.55)" stroke-width="0.6"></rect>'
-        );
-      }
-    }
-    var usedW = Math.min(drawW, cols * cellW);
-    var usedH = Math.min(drawH, rows * cellH);
-    if (drawW - usedW > 2) {
-      parts.push('<rect x="' + (offsetX + usedW) + '" y="' + offsetY + '" width="' + Math.max(1, drawW - usedW) + '" height="' + drawH + '" fill="rgba(239,68,68,.22)"></rect>');
-    }
-    if (drawH - usedH > 2) {
-      parts.push('<rect x="' + offsetX + '" y="' + (offsetY + usedH) + '" width="' + Math.max(1, usedW) + '" height="' + Math.max(1, drawH - usedH) + '" fill="rgba(245,158,11,.20)"></rect>');
-    }
-    parts.push('</svg>');
-    return parts.join('');
-  }
-
   function _simdCalcularLinha(chapa, largNec, compNec, qtdPedido) {
     var dims = _simdParseDimensoes(chapa);
     if (!dims) return null;
     var variantes = [
-      { cols: Math.floor(dims.largura / largNec), rows: Math.floor(dims.comprimento / compNec), largura: dims.largura, comprimento: dims.comprimento, rotacionado: false, pecaLargura: largNec, pecaComprimento: compNec },
-      { cols: Math.floor(dims.largura / compNec), rows: Math.floor(dims.comprimento / largNec), largura: dims.largura, comprimento: dims.comprimento, rotacionado: true, pecaLargura: compNec, pecaComprimento: largNec }
+      { cols: Math.floor(dims.largura / largNec), rows: Math.floor(dims.comprimento / compNec), largura: dims.largura, comprimento: dims.comprimento },
+      { cols: Math.floor(dims.largura / compNec), rows: Math.floor(dims.comprimento / largNec), largura: dims.largura, comprimento: dims.comprimento }
     ];
     variantes = variantes.filter(function(v) { return v.cols > 0 && v.rows > 0; });
     if (!variantes.length) return null;
-    variantes.sort(function(a, b) {
-      var totalA = a.cols * a.rows;
-      var totalB = b.cols * b.rows;
-      if (totalB !== totalA) return totalB - totalA;
-      var sobraA = (a.largura * a.comprimento) - (totalA * largNec * compNec);
-      var sobraB = (b.largura * b.comprimento) - (totalB * largNec * compNec);
-      return sobraA - sobraB;
-    });
+    variantes.sort(function(a, b) { return (b.cols * b.rows) - (a.cols * a.rows); });
     var best = variantes[0];
     var planPorChapa = best.cols * best.rows;
     var areaChapa = dims.largura * dims.comprimento;
@@ -1386,102 +1251,98 @@ if (typeof window._fmtRs === 'undefined') {
       id: chapa && chapa.id,
       nome: chapa && (chapa.nome || chapa.nomenclatura || chapa.nom || 'Chapa'),
       fornecedor: chapa && (chapa.fornecedor || chapa.forn || '—'),
-      tamanho: chapa && (chapa.tamanho || chapa.tam || (String(dims.largura) + ' x ' + String(dims.comprimento) + ' mm')),
+      tamanho: chapa && (chapa.tamanho || chapa.tam || '—'),
       quantidade: estoque,
       valor_unitario: valorUnit,
       planificacoes_por_chapa: planPorChapa,
       desperdicio_real_pct: desperdicioPct,
       desperdicio_area: desperdicioArea,
-      chapas_necessarias: chapasNec,
-      largura_chapa: dims.largura,
-      comprimento_chapa: dims.comprimento,
-      largura_peca: largNec,
-      comprimento_peca: compNec,
-      largura_peca_corte: best.pecaLargura,
-      comprimento_peca_corte: best.pecaComprimento,
-      orientacao: best.rotacionado ? 'Rotacionada 90°' : 'Normal',
-      cols: best.cols,
-      rows: best.rows,
-      area_utilizada: planPorChapa * areaPlan
+      chapas_necessarias: chapasNec
     };
   }
 
-  function _simdRenderResultadosPatched(rows, ctx) {
+  function _simdRenderResultadosPatched(rows) {
     var wrap = document.getElementById('simd-tabela-wrap');
     var linhas = document.getElementById('simd-linhas');
     var aviso = document.getElementById('simd-aviso');
-    var host = document.getElementById('sim-resultado');
-    if (!host) {
-      var parent = document.querySelector('.simulador-container, #simulador-desperdicio, .simulador-wrapper, #simd-resultado')
-        || (document.getElementById('simd-btn') ? document.getElementById('simd-btn').closest('div, form, section') : null)
-        || document.body;
-      if (parent) {
+    if (!wrap || !linhas) {
+      var host = document.getElementById('sim-resultado');
+      if (!host) {
+        var parent = document.querySelector('.simulador-container, #simulador-desperdicio, .simulador-wrapper, #simd-resultado')
+          || (document.getElementById('simd-btn') ? document.getElementById('simd-btn').closest('div, form, section') : null)
+          || document.body;
+        if (!parent) return;
         host = document.createElement('div');
         host.id = 'sim-resultado';
         host.style.cssText = 'margin-top:16px';
         parent.appendChild(host);
       }
+      if (!Array.isArray(rows) || !rows.length) {
+        host.innerHTML = '<p style="color:#f59e0b;margin-top:16px">Nenhuma chapa do estoque comporta essa planificação.</p>';
+        return;
+      }
+      host.innerHTML = ''
+        + '<table style="width:100%;margin-top:16px;border-collapse:collapse;font-size:13px">'
+        + '<thead><tr style="border-bottom:1px solid #333">'
+        + '<th style="text-align:left;padding:6px">Nome/Uso</th>'
+        + '<th style="text-align:left;padding:6px">Fornecedor</th>'
+        + '<th style="text-align:center;padding:6px">Tamanho</th>'
+        + '<th style="text-align:center;padding:6px">Planif./Chapa</th>'
+        + '<th style="text-align:center;padding:6px">Desperdício</th>'
+        + '<th style="text-align:center;padding:6px">Estoque</th>'
+        + '<th style="text-align:right;padding:6px">R$/un</th>'
+        + '</tr></thead><tbody>'
+        + rows.map(function(r) {
+          var cor = Number(r && r.desperdicio_real_pct || 0) < 10 ? '#4caf50' : (Number(r && r.desperdicio_real_pct || 0) < 25 ? '#f59e0b' : '#ef4444');
+          return ''
+            + '<tr style="border-bottom:1px solid #222">'
+            + '<td style="padding:6px">' + String(r && r.nome || '—').replace(/</g, '&lt;') + '</td>'
+            + '<td style="padding:6px">' + String(r && r.fornecedor || '—').replace(/</g, '&lt;') + '</td>'
+            + '<td style="text-align:center;padding:6px">' + String(r && r.tamanho || '—').replace(/</g, '&lt;') + '</td>'
+            + '<td style="text-align:center;padding:6px">' + String(r && r.planificacoes_por_chapa || 0) + '</td>'
+            + '<td style="text-align:center;padding:6px;color:' + cor + '">' + String(Number(r && r.desperdicio_real_pct || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })) + '%</td>'
+            + '<td style="text-align:center;padding:6px">' + String(r && r.quantidade || 0) + '</td>'
+            + '<td style="text-align:right;padding:6px">' + ((Number(r && r.valor_unitario || 0) > 0) ? window._fmtRs(r.valor_unitario) : '—') + '</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table>';
+      return;
     }
-    var infoBusca = String(ctx && ctx.filtroBusca || '').trim();
-    var emptyMsg = infoBusca
-      ? ('Nenhuma chapa encontrada para o filtro "' + _simdEsc(infoBusca) + '" ou compatível com estas medidas.')
-      : 'Nenhuma chapa do estoque comporta essa planificação.';
-    var renderHtml = '';
-    if (!Array.isArray(rows) || !rows.length) {
-      renderHtml = '<div style="padding:18px;border:1px dashed rgba(245,158,11,.28);border-radius:14px;background:rgba(15,23,42,.42);color:#f8fafc"><div style="font-weight:800;color:#f59e0b">Sem combinações válidas</div><div style="margin-top:6px;font-size:13px;color:#cbd5e1">' + emptyMsg + '</div></div>';
-    } else {
-      renderHtml = rows.map(function(r, idx) {
-        var destaque = idx === 0;
-        var cor = Number(r && r.desperdicio_real_pct || 0) <= 10 ? '#22c55e' : (Number(r && r.desperdicio_real_pct || 0) <= 25 ? '#f59e0b' : '#ef4444');
-        return ''
-          + '<div style="display:grid;grid-template-columns:minmax(0,1.35fr) minmax(260px,.9fr);gap:18px;padding:18px;border:1px solid ' + (destaque ? 'rgba(34,197,94,.28)' : 'rgba(148,163,184,.12)') + ';border-radius:18px;background:' + (destaque ? 'linear-gradient(180deg,rgba(6,78,59,.18),rgba(15,23,42,.92))' : 'rgba(15,23,42,.72)') + ';box-shadow:0 16px 38px -28px rgba(0,0,0,.65)">'
-          + '  <div style="min-width:0">'
-          + '    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">'
-          + '      <div>'
-          + '        <div style="font-size:16px;font-weight:900;color:#f8fafc">' + _simdEsc(r.nome || 'Chapa') + '</div>'
-          + '        <div style="margin-top:4px;font-size:12px;color:#94a3b8">' + _simdEsc(r.fornecedor || '—') + ' · ' + _simdEsc(r.tamanho || '—') + '</div>'
-          + '      </div>'
-          + '      <div style="display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:999px;background:rgba(15,23,42,.88);border:1px solid rgba(148,163,184,.18);font-size:13px;font-weight:900;color:' + cor + '">' + _simdFmtPct(r.desperdicio_real_pct || 0) + '</div>'
-          + '    </div>'
-          + '    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px">'
-          + '      <div style="padding:12px;border-radius:14px;background:rgba(8,17,32,.72);border:1px solid rgba(148,163,184,.12)"><div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8">Peças por Chapa</div><div style="margin-top:6px;font-size:20px;font-weight:900;color:#f8fafc">' + _simdEsc(r.planificacoes_por_chapa || 0) + '</div></div>'
-          + '      <div style="padding:12px;border-radius:14px;background:rgba(8,17,32,.72);border:1px solid rgba(148,163,184,.12)"><div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8">Chapas Necessárias</div><div style="margin-top:6px;font-size:20px;font-weight:900;color:#f8fafc">' + _simdEsc(r.chapas_necessarias == null ? '—' : r.chapas_necessarias) + '</div></div>'
-          + '      <div style="padding:12px;border-radius:14px;background:rgba(8,17,32,.72);border:1px solid rgba(148,163,184,.12)"><div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8">Estoque</div><div style="margin-top:6px;font-size:20px;font-weight:900;color:#f8fafc">' + _simdEsc(r.quantidade || 0) + '</div></div>'
-          + '    </div>'
-          + '    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px">'
-          + '      <div style="padding:12px;border-radius:14px;background:rgba(8,17,32,.58);border:1px solid rgba(148,163,184,.12)"><div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8">Orientação</div><div style="margin-top:6px;font-size:14px;color:#e2e8f0">' + _simdEsc(r.orientacao || 'Normal') + ' · ' + _simdEsc(r.cols || 0) + ' x ' + _simdEsc(r.rows || 0) + '</div></div>'
-          + '      <div style="padding:12px;border-radius:14px;background:rgba(8,17,32,.58);border:1px solid rgba(148,163,184,.12)"><div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8">Custo Unitário</div><div style="margin-top:6px;font-size:14px;color:#e2e8f0">' + _simdEsc(_simdFmtMoney(r.valor_unitario)) + '</div></div>'
-          + '      <div style="padding:12px;border-radius:14px;background:rgba(8,17,32,.58);border:1px solid rgba(148,163,184,.12)"><div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8">Área Utilizada</div><div style="margin-top:6px;font-size:14px;color:#e2e8f0">' + _simdEsc(((Number(r.area_utilizada || 0) || 0) / 1000000).toFixed(4)) + ' m²</div></div>'
-          + '      <div style="padding:12px;border-radius:14px;background:rgba(8,17,32,.58);border:1px solid rgba(148,163,184,.12)"><div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8">Área de Sobra</div><div style="margin-top:6px;font-size:14px;color:#e2e8f0">' + _simdEsc(((Number(r.desperdicio_area || 0) || 0) / 1000000).toFixed(4)) + ' m²</div></div>'
-          + '    </div>'
-          + '  </div>'
-          + '  <div style="padding:14px;border-radius:16px;background:rgba(8,17,32,.82);border:1px solid rgba(148,163,184,.14)">'
-          + '    <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8">Visual de Corte</div>'
-          + '    <div style="margin-top:10px">' + _simdBuildPreview(r) + '</div>'
-          + '    <div style="margin-top:10px;font-size:12px;line-height:1.55;color:#cbd5e1">Verde: peças úteis. Vermelho/laranja: área residual da chapa.</div>'
-          + '  </div>'
-          + '</div>';
-      }).join('<div style="height:12px"></div>');
-    }
-    if (host) host.innerHTML = renderHtml;
-    if (!wrap || !linhas) return;
     var head = wrap.querySelector('.simd-grid');
     if (head) {
-      head.style.display = 'none';
+      head.innerHTML =
+        '<div>Desperd.</div>' +
+        '<div>Nome/Uso</div>' +
+        '<div>Dimensões</div>' +
+        '<div>Fornecedor</div>' +
+        '<div style="text-align:center">Plan./chapa</div>' +
+        '<div style="text-align:center">Chapas nec.</div>' +
+        '<div style="text-align:right">Estoque</div>' +
+        '<div style="text-align:right">R$/un</div>';
     }
-    wrap.style.background = 'transparent';
-    wrap.style.border = 'none';
-    wrap.style.overflow = 'visible';
     if (!Array.isArray(rows) || !rows.length) {
       if (aviso) {
         aviso.style.display = 'block';
-        aviso.textContent = emptyMsg.replace(/&quot;/g, '"');
+        aviso.textContent = 'Nenhuma chapa em estoque é compatível com estas medidas. Verifique se há chapas cadastradas ou ajuste as medidas.';
       }
-      linhas.innerHTML = renderHtml;
+      linhas.innerHTML = '';
       return;
     }
     if (aviso) aviso.style.display = 'none';
-    linhas.innerHTML = renderHtml;
+    linhas.innerHTML = rows.map(function(r, idx) {
+      var bg = idx === 0 ? 'rgba(34,197,94,.10)' : 'transparent';
+      return ''
+        + '<div class="simd-grid" style="display:grid;grid-template-columns:60px 1fr 160px 120px 100px 100px 90px 100px;padding:11px 16px;gap:8px;align-items:center;background:' + bg + ';border-bottom:0.5px solid rgba(255,255,255,0.05)">'
+        + '<div style="font-size:16px;font-weight:800;color:' + (idx === 0 ? '#22c55e' : '#f59e0b') + ';text-align:center">' + String(Number(r.desperdicio_real_pct || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + '%</div>'
+        + '<div><div style="font-size:13px;font-weight:700;color:#f8fafc">' + String(r.nome || 'Chapa').replace(/</g, '&lt;') + '</div></div>'
+        + '<div style="font-size:12px;color:#cbd5e1">' + String(r.tamanho || '—').replace(/</g, '&lt;') + '</div>'
+        + '<div style="font-size:12px;color:#94a3b8">' + String(r.fornecedor || '—').replace(/</g, '&lt;') + '</div>'
+        + '<div style="font-size:13px;color:#e2e8f0;text-align:center">' + String(r.planificacoes_por_chapa || 0) + '</div>'
+        + '<div style="font-size:13px;color:#e2e8f0;text-align:center">' + String(r.chapas_necessarias == null ? '—' : r.chapas_necessarias) + '</div>'
+        + '<div style="font-size:13px;color:#e2e8f0;text-align:right">' + String(r.quantidade || 0) + '</div>'
+        + '<div style="font-size:13px;color:#e2e8f0;text-align:right">' + ((Number(r.valor_unitario || 0) > 0) ? ('R$ ' + Number(r.valor_unitario || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : '—') + '</div>'
+        + '</div>';
+    }).join('');
   }
 
   async function _simdCalcularPatched() {
@@ -1491,8 +1352,6 @@ if (typeof window._fmtRs === 'undefined') {
     var loading = document.getElementById('simd-loading');
     var resultado = document.getElementById('simd-resultado');
     var info = document.getElementById('simd-info-planif');
-    var buscaEl = document.getElementById('simd-busca-chapa');
-    var filtroBusca = String((buscaEl && buscaEl.value) || '').trim();
     if (!(larg > 0 && comp > 0)) {
       try { alert('Preencha largura e comprimento necessários.'); } catch (_) {}
       return;
@@ -1506,14 +1365,7 @@ if (typeof window._fmtRs === 'undefined') {
       try { console.log('[SIMD PATCH] calcular click', { largura: larg, comprimento: comp, quantidade: qtdPedido }); } catch (_) {}
       var baseRows = [];
       if (window._simdChapaSelecionada) baseRows = [window._simdChapaSelecionada];
-      else {
-        baseRows = await _simdCarregarChapasPatched();
-        if (filtroBusca) {
-          baseRows = (Array.isArray(baseRows) ? baseRows : []).filter(function(chapa) {
-            return _simdMatchesFiltro(chapa, filtroBusca);
-          });
-        }
-      }
+      else baseRows = await _simdCarregarChapasPatched();
       try {
         console.log('[SIMD PATCH] chapas carregadas:', Array.isArray(baseRows) ? baseRows.length : 0);
         if (Array.isArray(baseRows) && baseRows[0]) console.log('[SIMD PATCH] primeira chapa:', baseRows[0]);
@@ -1529,11 +1381,11 @@ if (typeof window._fmtRs === 'undefined') {
       });
       if (loading) loading.style.display = 'none';
       if (resultado) resultado.style.display = 'block';
-      _simdRenderResultadosPatched(rows, { filtroBusca: filtroBusca, largura: larg, comprimento: comp, qtdPedido: qtdPedido });
+      _simdRenderResultadosPatched(rows);
     } catch (e) {
       if (loading) loading.style.display = 'none';
       if (resultado) resultado.style.display = 'block';
-      _simdRenderResultadosPatched([], { filtroBusca: filtroBusca, largura: larg, comprimento: comp, qtdPedido: qtdPedido });
+      _simdRenderResultadosPatched([]);
       try { console.error('[SIMD PATCH]', e); } catch (_) {}
     }
   }
@@ -1573,19 +1425,6 @@ if (typeof window._fmtRs === 'undefined') {
           try { e.preventDefault(); } catch (_) {}
           try { if (typeof window._simdLimparChapaSelecionada === 'function') window._simdLimparChapaSelecionada(); } catch (_) {}
         });
-      }
-      if (!window.__patchSimdCaptureClick) {
-        window.__patchSimdCaptureClick = true;
-        document.addEventListener('click', function(e) {
-          try {
-            var trigger = e && e.target && (e.target.closest ? e.target.closest('#simd-btn') : null);
-            if (!trigger) return;
-            e.preventDefault();
-            e.stopPropagation();
-            if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
-            _simdCalcularPatched();
-          } catch (_) {}
-        }, true);
       }
     } catch (_) {}
   }
@@ -1994,7 +1833,7 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
         try { if (typeof window.go === 'function') window.go('cliches'); } catch (_) {}
       }
       if (tipo === 'chapa') {
-        try { if (typeof window.go === 'function') window.go('estoque'); } catch (_) { try { window.go('chapas'); } catch (__) {} }
+        try { if (typeof window.go === 'function') window.go('sel-chapas'); } catch (_) { try { window.go('chapas'); } catch (__) {} }
       }
     } catch (_) {}
   };
@@ -4083,13 +3922,52 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
       };
     }
+    function _toneladasVendidasFetchState() {
+      if (!window.__toneladasVendidasFetchState) {
+        window.__toneladasVendidasFetchState = {
+          inFlight: null,
+          cache: null,
+          lastErrorAt: 0,
+          lastErrorMsg: ''
+        };
+      }
+      return window.__toneladasVendidasFetchState;
+    }
+
+    async function _fetchToneladasVendidasSafe(force) {
+      var state = _toneladasVendidasFetchState();
+      if (state.inFlight) return state.inFlight;
+      var now = Date.now();
+      if (!force && state.lastErrorAt && (now - state.lastErrorAt) < 20000) {
+        return state.cache || { ok: false, rows: [], error: state.lastErrorMsg || 'Falha recente em toneladas vendidas', suppressed: true };
+      }
+      state.inFlight = apiJson('/api/analises/toneladas-vendidas')
+        .then(function(res) {
+          state.cache = res || { ok: true, rows: [] };
+          state.lastErrorAt = 0;
+          state.lastErrorMsg = '';
+          return state.cache;
+        })
+        .catch(function(err) {
+          state.lastErrorAt = Date.now();
+          state.lastErrorMsg = String(err && err.message || err || 'Falha ao carregar toneladas vendidas');
+          state.cache = state.cache || { ok: false, rows: [], error: state.lastErrorMsg };
+          try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('T', 'falha em toneladas vendidas suprimida por cooldown', { message: state.lastErrorMsg }); } catch (_) {}
+          return { ok: false, rows: [], error: state.lastErrorMsg };
+        })
+        .finally(function() {
+          state.inFlight = null;
+        });
+      return state.inFlight;
+    }
+
     async function renderGramaturasPage() {
       ensureStyles();
       var page = ensurePage('gramaturas');
       showOnlyPage('gramaturas');
       var pair = await Promise.all([
         loadGramaturas({ incluirInativas: true }),
-        apiJson('/api/analises/toneladas-vendidas').catch(function() { return null; })
+        _fetchToneladasVendidasSafe(false)
       ]);
       var lista = pair[0];
       var ofRows = Array.isArray(pair[1] && (pair[1].rows || pair[1].detalhamento)) ? (pair[1].rows || pair[1].detalhamento) : [];
@@ -4541,6 +4419,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     function _ensureEstoqueStylePatchedImpl() {
       try {
+        if (typeof window.__patchEnsureEstoqueStyle === 'function') {
+          window.__patchEnsureEstoqueStyle();
+          return;
+        }
+      } catch (_) {}
+      try {
         if (document.getElementById('patch-estoques-style')) return;
         var st = document.createElement('style');
         st.id = 'patch-estoques-style';
@@ -4616,7 +4500,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         (document.head || document.documentElement || document.body).appendChild(st);
       } catch (_) {}
     }
-    try { window.__patchEnsureEstoqueStylePatchedImpl = _ensureEstoqueStylePatchedImpl; } catch (_) {}
+    try { window.__patchEnsureEstoqueStyle = _ensureEstoqueStylePatchedImpl; } catch (_) {}
     function _ensureEstoqueStyle() {
       return _ensureEstoqueStylePatchedImpl();
     }
@@ -5157,12 +5041,20 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var page = ensurePage('toneladas-vendidas');
       showOnlyPage('toneladas-vendidas');
       var st = tonesState();
+      // #region debug-point T:toneladas-page-fetch-start
+      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('T', 'render toneladas iniciado', { periodo: st && st.periodo ? String(st.periodo) : '', mes: st && st.mes ? String(st.mes) : '', ano: st && st.ano ? String(st.ano) : '' }); } catch (_) {}
+      // #endregion
       var pair = await Promise.all([
-        apiJson('/api/analises/toneladas-vendidas').catch(function() { return null; }),
+        _fetchToneladasVendidasSafe(false),
         _carregarDadosMovimentacaoEstoque('').catch(function() { return []; }),
         _estoqueFetchChapasList(10000).catch(function() { return []; })
       ]);
-      var ofRows = Array.isArray(pair[0] && (pair[0].rows || pair[0].detalhamento)) ? (pair[0].rows || pair[0].detalhamento) : [];
+      var tonApi = pair[0] || null;
+      var ofRows = Array.isArray(tonApi && (tonApi.rows || tonApi.detalhamento)) ? (tonApi.rows || tonApi.detalhamento) : [];
+      var tonError = tonApi && tonApi.ok === false ? String(tonApi.error || 'Falha ao carregar toneladas vendidas') : '';
+      // #region debug-point T:toneladas-page-fetch-done
+      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('T', 'render toneladas resposta recebida', { apiOk: !!tonApi && tonApi.ok !== false, rows: ofRows.length, hasResumo: !!(tonApi && tonApi.resumo), tonError: tonError, bodyKeys: tonApi && typeof tonApi === 'object' ? Object.keys(tonApi).slice(0, 12) : [] }); } catch (_) {}
+      // #endregion
       var movRows = Array.isArray(pair[1]) ? pair[1] : [];
       var chapas = Array.isArray(pair[2]) ? pair[2] : [];
       var mesAtual = _mesAtualRefEstoque();
@@ -5185,6 +5077,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         .sort(function(a, b) { return String(b.data || '').localeCompare(String(a.data || '')); });
       page.innerHTML = ''
         + '<div class="pep-wrap">'
+        + (tonError ? ('  <div class="pep-panel" style="margin-bottom:14px;border-color:rgba(239,68,68,.38);background:rgba(127,29,29,.18)"><div class="pep-title" style="font-size:16px;color:#fecaca">Toneladas Vendidas Indisponível</div><div class="pep-sub" style="margin-top:6px;color:#fecaca">A consulta falhou e entrou em cooldown temporário para evitar loop de retries. Detalhe: ' + esc(tonError) + '</div></div>') : '')
         + '  <div class="pep-cards">'
         + '    <div class="pep-card"><div class="pep-card-label">Toneladas Vendidas no Mês</div><div class="pep-card-val">' + num(tonMes || 0, 3) + '</div><div class="pep-card-sub">OFs concluídas em ' + esc(mesAtual) + '</div></div>'
         + '    <div class="pep-card"><div class="pep-card-label">Toneladas Saíram por Fornecedor</div><div class="pep-card-val">' + num((saidaFornecedor[0] && saidaFornecedor[0].valor) || 0, 3) + '</div><div class="pep-card-sub">' + esc((saidaFornecedor[0] && saidaFornecedor[0].nome) || 'Sem fornecedor') + '</div></div>'
@@ -5207,6 +5100,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (pageId === 'gramaturas') { renderGramaturasPage().catch(function() {}); return true; }
       if (pageId === 'facas1') { Promise.resolve(renderFacasWireframePage()).catch(function() {}); return true; }
       if (pageId === 'toneladas-vendidas') { renderToneladasPage().catch(function() {}); return true; }
+      if (pageId === 'entradas-estoque') { _renderEntradasEstoque(getMainPatchHost('entradas-estoque', '📥 Entradas')); return true; }
+      if (pageId === 'saidas-estoque') { _renderSaidasEstoque(getMainPatchHost('saidas-estoque', '📤 Saídas')); return true; }
       return false;
     }
     try {
@@ -5226,6 +5121,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { window.renderGramaturas = renderGramaturasPage; } catch (_) {}
     try { window.carregarGramaturas = renderGramaturasPage; } catch (_) {}
     try { window.renderToneladasVendidas = renderToneladasPage; } catch (_) {}
+    try { window.__patchRenderEntradasEstoque = function() { return _renderEntradasEstoque(getMainPatchHost('entradas-estoque', '📥 Entradas')); }; } catch (_) {}
+    try { window.__patchRenderSaidasEstoque = function() { return _renderSaidasEstoque(getMainPatchHost('saidas-estoque', '📤 Saídas')); }; } catch (_) {}
     try { _ensureVendedoresMap(); } catch (_) {}
   })();
 
@@ -6683,6 +6580,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     {label:'Clientes',        page:'clientes'},
     {label:'Mapa Clientes',   page:'mapa-clientes'},
     {label:'Estoque',         page:'estoque'},
+    {label:'Sel. Chapas',     page:'sel-chapas'},
+    {label:'Papelão IA',      page:'papelao-ia'},
     {label:'Máquinas',        page:'maquinas'},
     {label:'Tempos Reais',    page:'tempos-reais'},
     {label:'Tipos Caixa',     page:'tipos-caixa'},
@@ -7434,17 +7333,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
     function _cpState() {
       if (!window.__cpDashState) {
-        var now = new Date();
-        window.__cpDashState = {
-          periodo: 'mes',
-          maquina: '',
-          empresa_id: '',
-          todas_empresas: 'true',
-          busca: '',
-          mes: String(now.getMonth() + 1),
-          ano: String(now.getFullYear()),
-          expand: {}
-        };
+        window.__cpDashState = { periodo: 'mes', maquina: '', empresa_id: '', todas_empresas: 'true', busca: '', expand: {} };
       }
       return window.__cpDashState;
     }
@@ -7453,7 +7342,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var state = _cpState();
       state.todas_empresas = state.empresa_id ? 'false' : 'true';
       var now = Date.now();
-      var key = JSON.stringify({ periodo: state.periodo, maquina: state.maquina, empresa_id: state.empresa_id, todas_empresas: state.todas_empresas, mes: state.mes, ano: state.ano });
+      var key = JSON.stringify({ periodo: state.periodo, maquina: state.maquina, empresa_id: state.empresa_id, todas_empresas: state.todas_empresas });
       if (!window._cpDashCache) window._cpDashCache = {};
       if (!force && window._cpDashCache[key] && (now - window._cpDashCache[key].ts) < 60000) return window._cpDashCache[key].data;
       var token = '';
@@ -7463,8 +7352,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (state.maquina) qs.set('maquina', state.maquina);
       if (state.empresa_id) qs.set('empresa_id', state.empresa_id);
       if (state.todas_empresas) qs.set('todas_empresas', state.todas_empresas);
-      if (state.mes) qs.set('mes', state.mes);
-      if (state.ano) qs.set('ano', state.ano);
       // #region debug-point C:cp-dashboard-fetch-start
       try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', 'dashboard caixas perdidas fetch iniciado', { force: !!force, periodo: state.periodo, maquina: state.maquina, empresa_id: state.empresa_id, todas_empresas: state.todas_empresas }); } catch (_) {}
       // #endregion
@@ -7478,37 +7365,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return json;
     }
 
-    function _cpMonthLabel(month, year) {
-      var m = Math.max(1, Math.min(12, parseInt(String(month || ''), 10) || 1));
-      var y = parseInt(String(year || ''), 10) || new Date().getFullYear();
-      return String(m).padStart(2, '0') + '/' + String(y);
-    }
-
-    function _cpAvailableYears(data) {
-      var years = {};
-      try {
-        (Array.isArray(data && data.detalhamento) ? data.detalhamento : []).forEach(function(r) {
-          var raw = String(r && (r.data_conclusao || r.data || r.data_ref || '') || '').trim();
-          var d = raw ? new Date(raw) : null;
-          if (d && !Number.isNaN(d.getTime())) years[String(d.getFullYear())] = true;
-        });
-      } catch (_) {}
-      var currentYear = new Date().getFullYear();
-      years[String(currentYear)] = true;
-      years[String(currentYear - 1)] = true;
-      return Object.keys(years).sort(function(a, b) { return Number(b) - Number(a); });
-    }
-
-    function _cpDownloadCsv(rows, data) {
+    function _cpDownloadCsv(rows) {
       try {
         var list = Array.isArray(rows) ? rows : [];
-        var state = _cpState();
-        var lines = [['Mes','Data Conclusao','OF','Cliente','Qtd Perdida','Maquina','Operadores']];
+        var lines = [['Data Conclusao','OF','Cliente','Qtd Perdida','Maquina','Operadores']];
         list.forEach(function(r) {
           var maquinas = _cpRowMaquinas(r);
           var operadores = _cpRowOperadores(r);
           lines.push([
-            String(r && (r.mes_referencia || (r.data_conclusao || '').slice(0, 7)) || ''),
             r.data_conclusao || '',
             r.of_numero || '',
             _cpRowCliente(r),
@@ -7524,7 +7388,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
         a.href = url;
-        a.download = 'caixas_perdidas_' + String(_cpMonthLabel(state.mes, state.ano)).replace('/', '-') + '.csv';
+        a.download = 'caixas_perdidas.csv';
         a.click();
         setTimeout(function() { URL.revokeObjectURL(url); }, 800);
       } catch (_) {}
@@ -7545,7 +7409,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         arr = String(r.operadores || '').split(/[,;|]+/g);
       }
       if (!arr.length) {
-        var op = String(r && (r.operador_display || r.operador) || '').trim();
+        var op = String(r && (r.operador_display || r.operador || r.usuario_conclusao || r.usuario) || '').trim();
         if (op && op !== '—') arr = [op];
       }
       return arr.map(function(item) { return String(item || '').trim(); }).filter(Boolean);
@@ -7587,7 +7451,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var rows = _cpBuildTableRows(data);
       var maquinasOpts = Array.from(new Set((Array.isArray(data && data.detalhamento) ? data.detalhamento : []).reduce(function(acc, r) { return acc.concat(_cpRowMaquinas(r)); }, []))).filter(Boolean);
       var empresasOpts = Array.from(new Set((Array.isArray(data && data.detalhamento) ? data.detalhamento : []).map(function(r) { return String(r && r.empresa_id || '').trim(); }).filter(Boolean)));
-      var years = _cpAvailableYears(data);
       var maxM = Math.max(1, ...rankM.map(function(r) { return Number(r && r.total_caixas || 0) || 0; }));
       var maxO = Math.max(1, ...rankO.map(function(r) { return Number(r && r.total_caixas || 0) || 0; }));
       var varCx = Number(comp.variacao_caixas_pct || 0) || 0;
@@ -7627,11 +7490,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '        <button class="cpv2-btn' + (state.periodo === 'todos' ? ' is-active' : '') + '" data-cp-periodo="todos">Todos os períodos</button>'
         + '      </div>'
         + '      <div class="cpv2-filters">'
-        + '        <select class="cpv2-select" id="cpv2-mes">' + ['01','02','03','04','05','06','07','08','09','10','11','12'].map(function(mm, idx) { return '<option value="' + String(idx + 1) + '"' + (String(state.mes || '') === String(idx + 1) ? ' selected' : '') + '>' + mm + '</option>'; }).join('') + '</select>'
-        + '        <select class="cpv2-select" id="cpv2-ano">' + years.map(function(yy) { return '<option value="' + _cpEsc(yy) + '"' + (String(state.ano || '') === String(yy) ? ' selected' : '') + '>' + _cpEsc(yy) + '</option>'; }).join('') + '</select>'
         + '        <select class="cpv2-select" id="cpv2-maquina"><option value="">Todas as Máquinas</option>' + maquinasOpts.map(function(m) { return '<option value="' + _cpEsc(m) + '"' + (state.maquina === m ? ' selected' : '') + '>' + _cpEsc(m) + '</option>'; }).join('') + '</select>'
         + '        <select class="cpv2-select" id="cpv2-empresa"><option value="">Todas as Empresas</option>' + empresasOpts.map(function(eid) { return '<option value="' + _cpEsc(eid) + '"' + (state.empresa_id === eid ? ' selected' : '') + '>' + _cpEsc(eid) + '</option>'; }).join('') + '</select>'
-        + '        <button class="cpv2-btn" id="cpv2-relatorio-mensal">Relatório Mensal</button>'
         + '        <button class="cpv2-btn refresh" id="cpv2-refresh">Atualizar 🔄</button>'
         + '      </div>'
         + '    </div>'
@@ -7668,10 +7528,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       Array.prototype.slice.call(host.querySelectorAll('[data-cp-periodo]')).forEach(function(btn) {
         btn.onclick = function() { _cpState().periodo = String(btn.getAttribute('data-cp-periodo') || 'mes'); _cpRenderPage(false); };
       });
-      var selMes = document.getElementById('cpv2-mes');
-      if (selMes) selMes.onchange = function() { _cpState().mes = String(selMes.value || ''); _cpState().periodo = 'mes'; _cpRenderPage(false); };
-      var selAno = document.getElementById('cpv2-ano');
-      if (selAno) selAno.onchange = function() { _cpState().ano = String(selAno.value || ''); _cpState().periodo = 'mes'; _cpRenderPage(false); };
       var selM = document.getElementById('cpv2-maquina');
       if (selM) selM.onchange = function() { _cpState().maquina = String(selM.value || ''); _cpRenderPage(false); };
       var selE = document.getElementById('cpv2-empresa');
@@ -7680,10 +7536,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (inpB) inpB.oninput = function() { _cpState().busca = String(inpB.value || ''); _cpRender(data); };
       var btnR = document.getElementById('cpv2-refresh');
       if (btnR) btnR.onclick = function() { _cpRenderPage(true); };
-      var btnM = document.getElementById('cpv2-relatorio-mensal');
-      if (btnM) btnM.onclick = function() { _cpState().periodo = 'mes'; _cpRenderPage(true); };
       var btnX = document.getElementById('cpv2-excel');
-      if (btnX) btnX.onclick = function() { _cpDownloadCsv(rows, data); };
+      if (btnX) btnX.onclick = function() { _cpDownloadCsv(rows); };
     }
 
     async function _cpRenderPage(force) {
@@ -13162,6 +13016,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       } catch (_) {}
       try { _normalizarModalEstoque(node); } catch (_) {}
     });
+    // #region debug-point F:estoque-ui-reapply
+    try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('F', 'reaplicar ui estoque executado', { rootId: String(root && root.id || ''), totalNodes: nodes.length, hasEntradaActions: !!document.querySelector('#estoque-entrada-lote-btn, .estoque-main-actions'), hasEntradaModal: !!document.getElementById('estoque-entrada-real-modal') }); } catch (_) {}
+    // #endregion
   }
 
   function _agendarReaplicacaoUiEstoque(root) {
@@ -13443,6 +13300,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   async function _abrirModalEntradaEstoqueReal() {
     var modal = document.getElementById('estoque-entrada-real-modal');
+    // #region debug-point F:entrada-modal-open-start
+    try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('F', 'abrir modal dar entrada iniciado', { modalExists: !!modal }); } catch (_) {}
+    // #endregion
     if (!modal) {
       modal = document.createElement('div');
       modal.id = 'estoque-entrada-real-modal';
@@ -13524,6 +13384,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var tbody = document.getElementById('estoque-entrada-real-tbody');
     if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="padding:18px;color:var(--text2)">Carregando chapas...</td></tr>';
     modal.style.display = 'flex';
+    try { _ensureEstoqueStyle(); } catch (_) {}
+    try { _normalizarModalEstoque(modal); } catch (_) {}
+    try { _agendarReaplicacaoUiEstoque(modal); } catch (_) {}
+    // #region debug-point F:entrada-modal-open-dom
+    try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('F', 'modal dar entrada visivel', { modalDisplay: String(modal && modal.style && modal.style.display || ''), modalClass: String(modal && modal.className || ''), shellClass: String(modal && modal.firstElementChild && modal.firstElementChild.className || '') }); } catch (_) {}
+    // #endregion
 
     try {
       var chapas = await _estoqueFetchChapasList(2000);
@@ -13542,7 +13408,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
       var btnAdd = document.getElementById('estoque-entrada-real-add');
       if (btnAdd) btnAdd.onclick = function() { _entradaEstoqueAdicionarLinha(tbody, chapas); };
+      // #region debug-point F:entrada-modal-data-ready
+      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('F', 'modal dar entrada carregado', { totalChapas: chapas.length, tbodyRows: tbody ? tbody.querySelectorAll('tr').length : 0 }); } catch (_) {}
+      // #endregion
     } catch (e) {
+      // #region debug-point F:entrada-modal-data-error
+      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('F', 'modal dar entrada falhou ao carregar chapas', { message: String(e && e.message || e || '') }); } catch (_) {}
+      // #endregion
       if (tbody) {
         tbody.innerHTML = '<tr><td colspan="10" style="padding:18px;color:#fca5a5">Falha ao carregar chapas: ' + _escapeHtmlLite(e && e.message || e) + '</td></tr>';
       }
@@ -13599,10 +13471,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                  { label: 'Empresa', key: 'empresa' },
                ])
           + '</div>';
+        // #region debug-point F:entradas-actions-rendered
+        try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('F', 'acoes da pagina entradas renderizadas', { totalHistorico: detalhado.length, filtrada: filtrada.length, btnEntrada: !!document.getElementById('estoque-entrada-lote-btn'), btnAlterar: !!document.getElementById('estoque-entrada-alterar-btn'), btnCriar: !!document.getElementById('estoque-entrada-criar-btn') }); } catch (_) {}
+        // #endregion
         var btnEntrada = document.getElementById('estoque-entrada-lote-btn');
         if (btnEntrada) btnEntrada.onclick = function() { _abrirModalEntradaEstoqueReal(); };
         _bindBotaoEditarChapas(window.__estoqueEntradasRefresh, 'estoque-entrada-alterar-btn');
         _bindBotaoCriarChapas(window.__estoqueEntradasRefresh, 'estoque-entrada-criar-btn');
+        try { _agendarReaplicacaoUiEstoque(host); } catch (_) {}
       };
       render();
     } catch (e) {
@@ -14118,8 +13994,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function _ensureEstoqueStyle() {
     try {
-      if (typeof window.__patchEnsureEstoqueStylePatchedImpl === 'function') {
-        return window.__patchEnsureEstoqueStylePatchedImpl();
+      if (typeof window.__patchEnsureEstoqueStyle === 'function') {
+        return window.__patchEnsureEstoqueStyle();
       }
     } catch (_) {}
     if (document.getElementById('patch-estoques-style')) return;
@@ -14218,7 +14094,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '.pcp-select{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}';
     document.head.appendChild(st);
   }
-  try { window.__patchEnsureEstoqueStyleLegacy = _ensureEstoqueStyle; } catch (_) {}
+  try { window.__patchEnsureEstoqueStyle = _ensureEstoqueStyle; } catch (_) {}
 
   function _abrirModalNovaTinta(tintaExistente) {
     _ensureEstoqueStyle();
@@ -21036,6 +20912,9 @@ function _ocultarGraficoComissoes() {
           operador_conclusao: operadoresConclusao[0] || null,
           _allow_partial: '1'
         };
+        // #region debug-point C:conclusao-of-payload-operadores
+        try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', 'payload conclusao com operadores montado', { ofId: String(of && of.id || ofId || ''), operadoresConclusao: operadoresConclusao.slice(), perdasLen: perdas.length, perdas: perdas.map(function(perda) { return { maquina: String(perda && perda.maquina || ''), qtd: Number(perda && perda.qtd || 0) || 0, operadores: Array.isArray(perda && perda.operadores) ? perda.operadores.slice() : [] }; }) }); } catch (_) {}
+        // #endregion
         btnSalvar.disabled = true;
         var token = _getToken();
         try {

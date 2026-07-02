@@ -15812,6 +15812,13 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
   try {
     setNoCache(res);
     const metricColsReady = await _ensureOfsConclusaoMetricasCols().catch(() => false);
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'T',
+      location: 'server.js:/api/analises/toneladas-vendidas',
+      msg: '[DEBUG] toneladas-vendidas inicio',
+      data: { metricColsReady, query: req.query || {} },
+    });
     const selectCols = [
       'id', 'numero', 'of', 'status', 'data_conclusao', 'gramatura',
       'qtd_produzida', 'quantidade', 'qtd',
@@ -15829,21 +15836,67 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
         if (_ofsSelectableHas(col)) selectCols.push(col);
       });
     }
-    const selectExpr = Array.from(new Set(selectCols)).join(',');
+    let selectedCols = Array.from(new Set(selectCols));
+    let canFilterDeletedAt = selectedCols.includes('deleted_at');
     let ofs = [];
-    let from = 0;
-    while (true) {
-      const { data, error } = await supabase.from('ofs')
-        .select(selectExpr)
-        .is('deleted_at', null)
-        .not('data_conclusao', 'is', null)
-        .range(from, from + 999);
-      if (error) throw error;
-      if (!data || !data.length) break;
-      ofs = ofs.concat(data);
-      if (data.length < 1000) break;
-      from += 1000;
+    for (let tentativa = 0; tentativa < 12; tentativa += 1) {
+      const selectExpr = selectedCols.join(',');
+      _debugRuntimeWrite({
+        runId: 'pre-fix',
+        hypothesisId: 'T',
+        location: 'server.js:/api/analises/toneladas-vendidas',
+        msg: '[DEBUG] toneladas-vendidas select pronto',
+        data: { tentativa, selectExpr, totalCols: selectedCols.length, canFilterDeletedAt },
+      });
+      ofs = [];
+      let from = 0;
+      let queryError = null;
+      while (true) {
+        let q = supabase.from('ofs').select(selectExpr);
+        if (canFilterDeletedAt) q = q.is('deleted_at', null);
+        q = q.not('data_conclusao', 'is', null).range(from, from + 999);
+        const { data, error } = await q;
+        if (error) {
+          queryError = error;
+          break;
+        }
+        if (!data || !data.length) break;
+        ofs = ofs.concat(data);
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+      if (!queryError) break;
+      const msg = String(queryError?.message || queryError || '');
+      const missingCol = msg.match(/Could not find the '([^']+)' column/i)?.[1]
+        || msg.match(/column\s+"?([\w.]+)"?\s+does not exist/i)?.[1]
+        || '';
+      const normalizedMissing = String(missingCol || '').split('.').pop();
+      _debugRuntimeWrite({
+        runId: 'pre-fix',
+        hypothesisId: 'T',
+        location: 'server.js:/api/analises/toneladas-vendidas',
+        msg: '[DEBUG] toneladas-vendidas tentativa falhou',
+        data: { tentativa, message: msg, missingCol: normalizedMissing, canFilterDeletedAt, selectedCols },
+      });
+      if (normalizedMissing && selectedCols.includes(normalizedMissing)) {
+        selectedCols = selectedCols.filter((col) => col !== normalizedMissing);
+        if (normalizedMissing === 'deleted_at') canFilterDeletedAt = false;
+        continue;
+      }
+      if (canFilterDeletedAt && /deleted_at/i.test(msg)) {
+        canFilterDeletedAt = false;
+        selectedCols = selectedCols.filter((col) => col !== 'deleted_at');
+        continue;
+      }
+      throw queryError;
     }
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'T',
+      location: 'server.js:/api/analises/toneladas-vendidas',
+      msg: '[DEBUG] toneladas-vendidas ofs carregadas',
+      data: { totalOfs: Array.isArray(ofs) ? ofs.length : 0, selectedCols, canFilterDeletedAt },
+    });
 
     const rows = (Array.isArray(ofs) ? ofs : []).filter((of) => {
       const status = String(of?.status || '').toLowerCase();
@@ -15886,9 +15939,23 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       };
     }).sort((a, b) => String(b?.data_conclusao || '').localeCompare(String(a?.data_conclusao || '')));
 
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'T',
+      location: 'server.js:/api/analises/toneladas-vendidas',
+      msg: '[DEBUG] toneladas-vendidas resposta montada',
+      data: { totalRows: Array.isArray(rows) ? rows.length : 0, sample: Array.isArray(rows) && rows[0] ? rows[0] : null },
+    });
+
     return res.json({ ok: true, rows });
   } catch (e) {
-    try { console.error('[TONELADAS_VENDIDAS]', e.message); } catch (_) {}
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'T',
+      location: 'server.js:/api/analises/toneladas-vendidas',
+      msg: '[DEBUG] toneladas-vendidas erro',
+      data: { message: String(e?.message || e), stack: String(e?.stack || '') },
+    });
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
