@@ -757,9 +757,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '13';
-const SW_RUNTIME_VERSION = '18';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v18';
+const PATCH_RUNTIME_VERSION = '14';
+const SW_RUNTIME_VERSION = '19';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v19';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -7800,20 +7800,89 @@ async function _buscarPassagensHistoricoCompat(req, opts) {
   };
 }
 
+function _resolverValorTotalPassagem(row, ofData) {
+  const direto = Number(
+    row?.valor_total ??
+    row?.total ??
+    row?.valor_venda ??
+    row?.valor ??
+    row?.vl_total ??
+    0
+  ) || 0;
+  if (direto > 0) return direto;
+
+  const valorOf = Number(
+    ofData?.valor_total ??
+    ofData?.total ??
+    ofData?.valor_venda ??
+    ofData?.vl_total ??
+    0
+  ) || 0;
+  if (valorOf > 0) return valorOf;
+
+  const qtd = Number(
+    ofData?.qtd_produzida ??
+    ofData?.quantidade ??
+    ofData?.qtd ??
+    row?.qtd_produzida ??
+    row?.quantidade ??
+    row?.qtd ??
+    0
+  ) || 0;
+  const vlUnit = Number(
+    ofData?.valor_unitario ??
+    ofData?.vunit ??
+    ofData?.vl_unit ??
+    row?.valor_unitario ??
+    row?.vunit ??
+    row?.vl_unit ??
+    0
+  ) || 0;
+  return (qtd > 0 && vlUnit > 0) ? (qtd * vlUnit) : 0;
+}
+
 async function _enriquecerPassagensHistoricoComOfs(passagens) {
   let rows = Array.isArray(passagens) ? passagens.slice() : [];
   const normId = (v) => String(v || '').trim();
   const ofIds = Array.from(new Set(rows.map((p) => normId(p?.of_id ?? p?.ofId ?? '')).filter(Boolean)));
-  if (!ofIds.length) return rows;
+  const ofNumeros = Array.from(new Set(rows.map((p) => normId(p?.of_numero ?? p?.numero ?? p?.of ?? '')).filter(Boolean)));
+  if (!ofIds.length && !ofNumeros.length) return rows;
 
-  const { data: ofsData } = await supabase
-    .from('ofs')
-    .select('id,numero,status,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd,qtd_produzida,valor_total,valor_venda,valor_unitario,vunit,vl_unit,concluido_por,usuario')
-    .in('id', ofIds)
-    .limit(5000);
+  const ofsData = [];
+  if (ofIds.length) {
+    const { data } = await supabase
+      .from('ofs')
+      .select('id,numero,status,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd,qtd_produzida,valor_total,total,valor_venda,valor_unitario,vunit,vl_unit,concluido_por,usuario')
+      .in('id', ofIds)
+      .limit(5000);
+    (Array.isArray(data) ? data : []).forEach((item) => ofsData.push(item));
+  }
+  if (ofNumeros.length) {
+    const idsEncontrados = new Set((Array.isArray(ofsData) ? ofsData : []).map((o) => normId(o?.id)).filter(Boolean));
+    const numerosPendentes = ofNumeros.filter((numero) => {
+      return !rows.some((r) => {
+        const rid = normId(r?.of_id ?? r?.ofId ?? '');
+        return rid && idsEncontrados.has(rid) && normId(r?.of_numero ?? r?.numero ?? r?.of ?? '') === numero;
+      });
+    });
+    if (numerosPendentes.length) {
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,numero,status,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd,qtd_produzida,valor_total,total,valor_venda,valor_unitario,vunit,vl_unit,concluido_por,usuario')
+        .in('numero', numerosPendentes)
+        .limit(5000);
+      (Array.isArray(data) ? data : []).forEach((item) => ofsData.push(item));
+    }
+  }
 
   const byId = new Map();
-  (Array.isArray(ofsData) ? ofsData : []).forEach((o) => { if (o?.id) byId.set(String(o.id), o); });
+  const byNumero = new Map();
+  (Array.isArray(ofsData) ? ofsData : []).forEach((o) => {
+    const id = normId(o?.id);
+    const numero = normId(o?.numero);
+    if (id && !byId.has(id)) byId.set(id, o);
+    if (numero && !byNumero.has(numero)) byNumero.set(numero, o);
+  });
 
   const parseImgs = (v) => {
     if (Array.isArray(v)) return v;
@@ -7830,7 +7899,8 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
 
   rows = rows.map((p) => {
     const oid = normId(p?.of_id ?? p?.ofId ?? '');
-    const of = oid ? (byId.get(oid) || null) : null;
+    const numeroRef = normId(p?.of_numero ?? p?.numero ?? p?.of ?? '');
+    const of = (oid ? (byId.get(oid) || null) : null) || (numeroRef ? (byNumero.get(numeroRef) || null) : null);
     if (!of) return p;
 
     const clienteOf = String(of?.cliNome || of?.clinome || of?.cliente_nome || '').trim();
@@ -7839,7 +7909,7 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
     const prodOf = String(of?.prodDesc || of?.produto || of?.descricao || '').trim();
     const qtdOf = (of?.qtd_produzida ?? of?.quantidade ?? of?.qtd);
     const vlUnit = (of?.valor_unitario ?? of?.vunit ?? of?.vl_unit);
-    const totalOf = (of?.valor_total ?? of?.valor_venda);
+    const totalOf = _resolverValorTotalPassagem(p, of);
     const statusOf = String(of?.status || '').trim();
     const respOf = String(of?.concluido_por || of?.usuario || '').trim();
     const numeroOf = String(of?.numero || '').trim();
@@ -7878,7 +7948,7 @@ function _agruparPassagensRelatorioMensal(rows) {
     }
     const agg = mapa.get(maquina);
     agg.total_ofs += 1;
-    agg.valor_total_producao += Number(row?.total ?? row?.valor_total ?? row?.valor_venda ?? 0) || 0;
+    agg.valor_total_producao += _resolverValorTotalPassagem(row, null);
     agg.caixas_produzidas += Number(row?.qtd_produzida ?? row?.quantidade ?? row?.qtd ?? row?.caixas_produzidas ?? 0) || 0;
   });
   return Array.from(mapa.values()).sort((a, b) => {

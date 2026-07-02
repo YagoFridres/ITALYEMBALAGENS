@@ -449,6 +449,122 @@ if (typeof window._fmtRs === 'undefined') {
     } catch (_) {}
   }
 
+  function _histEmpresaNome() {
+    try {
+      var empId = String(window.EMP_FILTRO || '').trim();
+      if (empId && typeof window.estEmpresaFromEmpId === 'function') {
+        var nome = String(window.estEmpresaFromEmpId(empId) || '').trim();
+        if (nome) return nome;
+      }
+      if (empId) return empId;
+    } catch (_) {}
+    try {
+      return String(document.title || 'Italy Embalagens').trim() || 'Italy Embalagens';
+    } catch (_) {
+      return 'Italy Embalagens';
+    }
+  }
+
+  function _histPrintPeriodo(kind) {
+    if (kind === 'mensal') {
+      var ref = _histGetMonthlyRef();
+      return _histMonthName(ref.mes) + '/' + ref.ano;
+    }
+    var filtros = _histGetFilters();
+    if (filtros.data_inicio && filtros.data_fim && filtros.data_inicio === filtros.data_fim) {
+      return 'Dia ' + String(filtros.data_inicio);
+    }
+    if (filtros.data_inicio || filtros.data_fim) {
+      return 'Período ' + String(filtros.data_inicio || '—') + ' até ' + String(filtros.data_fim || '—');
+    }
+    return 'Lista filtrada atual';
+  }
+
+  function _histEnsurePrintRoot() {
+    var root = document.getElementById('hist-print-root');
+    if (!root) {
+      root = document.createElement('div');
+      root.id = 'hist-print-root';
+      document.body.appendChild(root);
+    }
+    return root;
+  }
+
+  function _histBuildPrintHtml(kind) {
+    var empresa = _histEmpresaNome();
+    var periodo = _histPrintPeriodo(kind);
+    if (kind === 'mensal') {
+      var data = window.__histMonthlyData || {};
+      var resumo = data && data.resumo_mes_atual ? data.resumo_mes_atual : {};
+      var rows = Array.isArray(window.__histMonthlyRowsSorted) ? window.__histMonthlyRowsSorted : (Array.isArray(window.__histMonthlyRows) ? window.__histMonthlyRows : []);
+      return ''
+        + '<div class="hist-print-sheet">'
+        + '  <div class="hist-print-title">Relatório Mensal por Máquina</div>'
+        + '  <div class="hist-print-sub">' + _histEsc(empresa) + ' | ' + _histEsc(periodo) + '</div>'
+        + '  <div class="hist-print-summary">'
+        + '    <div class="hist-print-card"><span class="lab">Máquinas</span><strong>' + _histEsc(_histFmtNum(resumo.total_maquinas || 0)) + '</strong></div>'
+        + '    <div class="hist-print-card"><span class="lab">OFs</span><strong>' + _histEsc(_histFmtNum(resumo.total_ofs || 0)) + '</strong></div>'
+        + '    <div class="hist-print-card"><span class="lab">Valor de Produção</span><strong>' + _histEsc(_histFmtMoney(resumo.valor_total_producao || 0)) + '</strong></div>'
+        + '    <div class="hist-print-card"><span class="lab">Caixas Produzidas</span><strong>' + _histEsc(_histFmtNum(resumo.caixas_produzidas || 0)) + '</strong></div>'
+        + '  </div>'
+        + '  <table class="hist-print-table">'
+        + '    <thead><tr><th>Máquina</th><th>Nº de OFs</th><th>Valor de Produção</th><th>Caixas Produzidas</th></tr></thead>'
+        + '    <tbody>'
+        +      (rows.length ? rows.map(function(row) {
+                 return '<tr>'
+                   + '<td>' + _histEsc(row && row.maquina || '—') + '</td>'
+                   + '<td class="num">' + _histEsc(_histFmtNum(row && row.total_ofs || 0)) + '</td>'
+                   + '<td class="num">' + _histEsc(_histFmtMoney(row && row.valor_total_producao || 0)) + '</td>'
+                   + '<td class="num">' + _histEsc(_histFmtNum(row && row.caixas_produzidas || 0)) + '</td>'
+                   + '</tr>';
+               }).join('') : '<tr><td colspan="4">Nenhum dado disponível para impressão.</td></tr>')
+        + '    </tbody>'
+        + '  </table>'
+        + '</div>';
+    }
+
+    var listRows = Array.isArray(window.__histPassagensRowsVisible) ? window.__histPassagensRowsVisible : [];
+    return ''
+      + '<div class="hist-print-sheet">'
+      + '  <div class="hist-print-title">Relatório Diário de Passagens por Máquina</div>'
+      + '  <div class="hist-print-sub">' + _histEsc(empresa) + ' | ' + _histEsc(periodo) + '</div>'
+      + '  <table class="hist-print-table">'
+      + '    <thead><tr><th>Nº OF</th><th>Status</th><th>Produto</th><th>Máquina</th><th>Responsável</th><th>Quantidade (cx)</th><th>Data/Hora</th></tr></thead>'
+      + '    <tbody>'
+      +      (listRows.length ? listRows.map(function(row) {
+               var qtd = Number(row && (row.qtd_produzida != null ? row.qtd_produzida : (row.quantidade != null ? row.quantidade : row.qtd)) || 0) || 0;
+               return '<tr>'
+                 + '<td>' + _histEsc(row && (row.of_numero || row.numero) || '—') + '</td>'
+                 + '<td>' + _histEsc(row && (row.status || row.tipo) || '—') + '</td>'
+                 + '<td>' + _histEsc(row && (row.produto || row.descricao) || '—') + '</td>'
+                 + '<td>' + _histEsc(row && (row.maquina || row.maquina_nome) || '—') + '</td>'
+                 + '<td>' + _histEsc(row && (row.responsavel || row.operador || row.operador_nome || row.concluido_por) || '—') + '</td>'
+                 + '<td class="num">' + _histEsc(_histFmtNum(qtd)) + '</td>'
+                 + '<td>' + _histEsc(_histFmtDateTime(row)) + '</td>'
+                 + '</tr>';
+             }).join('') : '<tr><td colspan="7">Nenhum dado disponível para impressão.</td></tr>')
+      + '    </tbody>'
+      + '  </table>'
+      + '</div>';
+  }
+
+  function _histPrint(kind) {
+    try {
+      var root = _histEnsurePrintRoot();
+      root.innerHTML = _histBuildPrintHtml(kind === 'mensal' ? 'mensal' : 'lista');
+      document.body.classList.add('hist-print-open');
+      var clear = function() {
+        try { document.body.classList.remove('hist-print-open'); } catch (_) {}
+      };
+      try {
+        window.removeEventListener('afterprint', clear);
+        window.addEventListener('afterprint', clear, { once: true });
+      } catch (_) {}
+      window.print();
+      setTimeout(clear, 1500);
+    } catch (_) {}
+  }
+
   function _histEnsureStyle() {
     try {
       if (document.getElementById('patch-historico-passagens-style')) return;
@@ -484,12 +600,25 @@ if (typeof window._fmtRs === 'undefined') {
         + '#hist-relatorio-mensal-shell .hist-month-table tbody tr:hover td{background:rgba(30,41,59,.42)}'
         + '#hist-passagens-resultado{display:grid;gap:10px;min-height:0}'
         + '#hist-passagens-resultado .hist-passagens-toolbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}'
-        + '#hist-passagens-resultado .hist-passagens-scroll{max-height:calc(100vh - 420px);overflow-y:auto;padding-right:4px}'
+        + '#hist-passagens-resultado .hist-passagens-scroll{display:block;max-height:min(58vh,calc(100vh - 360px));overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-right:4px;scrollbar-gutter:stable}'
+        + '#hist-passagens-resultado > #hist-passagens-items.hist-passagens-scroll{display:block !important;max-height:min(58vh,calc(100vh - 360px)) !important;overflow-y:auto !important;overflow-x:hidden !important;overscroll-behavior:contain !important;padding-right:4px !important}'
         + '#hist-passagens-resultado .hist-passagens-scroll::-webkit-scrollbar,#hist-relatorio-mensal-shell .hist-month-table-wrap::-webkit-scrollbar{width:10px;height:10px}'
         + '#hist-passagens-resultado .hist-passagens-scroll::-webkit-scrollbar-track,#hist-relatorio-mensal-shell .hist-month-table-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72)}'
         + '#hist-passagens-resultado .hist-passagens-scroll::-webkit-scrollbar-thumb,#hist-relatorio-mensal-shell .hist-month-table-wrap::-webkit-scrollbar-thumb{background:rgba(100,116,139,.58);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
         + '#hist-passagens-resultado .hist-passagens-scroll,#hist-relatorio-mensal-shell .hist-month-table-wrap{scrollbar-width:thin;scrollbar-color:rgba(100,116,139,.58) rgba(15,23,42,.72)}'
-        + '@media (max-width:760px){#hist-relatorio-mensal-shell .hist-month-cards{grid-template-columns:1fr}#hist-passagens-resultado .hist-passagens-scroll{max-height:calc(100vh - 360px)}}';
+        + '#hist-print-root{display:none}'
+        + '#hist-print-root .hist-print-sheet{color:#111;background:#fff;font-family:Arial,sans-serif}'
+        + '#hist-print-root .hist-print-title{font-size:22px;font-weight:800;margin-bottom:4px}'
+        + '#hist-print-root .hist-print-sub{font-size:12px;color:#555;margin-bottom:16px}'
+        + '#hist-print-root .hist-print-summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}'
+        + '#hist-print-root .hist-print-card{border:1px solid #d1d5db;border-radius:8px;padding:10px 12px;min-width:160px}'
+        + '#hist-print-root .hist-print-card .lab{display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;margin-bottom:5px}'
+        + '#hist-print-root .hist-print-table{width:100%;border-collapse:collapse;font-size:12px}'
+        + '#hist-print-root .hist-print-table th,#hist-print-root .hist-print-table td{border:1px solid #cbd5e1;padding:8px 10px;text-align:left;color:#111;background:#fff}'
+        + '#hist-print-root .hist-print-table th{background:#f8fafc;font-size:11px;text-transform:uppercase;letter-spacing:.06em}'
+        + '#hist-print-root .hist-print-table td.num,#hist-print-root .hist-print-table th.num{text-align:right}'
+        + '@media (max-width:760px){#hist-relatorio-mensal-shell .hist-month-cards{grid-template-columns:1fr}#hist-passagens-resultado .hist-passagens-scroll{max-height:min(62vh,calc(100vh - 280px)) !important}}'
+        + '@media print{body *{visibility:hidden !important}#hist-print-root,#hist-print-root *{visibility:visible !important}#hist-print-root{display:block !important;position:fixed;inset:0;background:#fff;padding:22px;z-index:2147483647;overflow:visible}#hist-print-root .hist-print-sheet{display:block}body.hist-print-open{background:#fff !important}}';
       document.head.appendChild(st);
     } catch (_) {}
   }
@@ -513,6 +642,7 @@ if (typeof window._fmtRs === 'undefined') {
         + '  </div>'
         + '  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
         + '    <button type="button" class="hist-patch-btn" id="hist-rel-exportar">Exportar Excel</button>'
+        + '    <button type="button" class="hist-patch-btn" id="hist-rel-imprimir">Imprimir</button>'
         + '  </div>'
         + '</div>'
         + '<div id="hist-relatorio-mensal-cards" class="hist-month-cards"></div>'
@@ -570,6 +700,11 @@ if (typeof window._fmtRs === 'undefined') {
     if (relExpBtn && !relExpBtn.dataset.bound) {
       relExpBtn.dataset.bound = '1';
       relExpBtn.onclick = function() { _histExportRelatorioMensal(); };
+    }
+    var relPrintBtn = document.getElementById('hist-rel-imprimir');
+    if (relPrintBtn && !relPrintBtn.dataset.bound) {
+      relPrintBtn.dataset.bound = '1';
+      relPrintBtn.onclick = function() { _histPrint('mensal'); };
     }
     if (exportBtn && !exportBtn.dataset.bound) {
       exportBtn.dataset.bound = '1';
@@ -858,6 +993,7 @@ if (typeof window._fmtRs === 'undefined') {
         + '  </div>'
         + '  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
         + '    <button type="button" class="hist-patch-btn" id="hist-export-inline">Exportar Excel da Lista</button>'
+        + '    <button type="button" class="hist-patch-btn" id="hist-print-inline">Imprimir Lista</button>'
         + '  </div>'
         + '</div>';
 
@@ -930,10 +1066,12 @@ if (typeof window._fmtRs === 'undefined') {
         ? ('<div style="text-align:center;padding:16px"><button onclick="carregarMaisPassagens()" class="btn btn-ghost btn-sm" id="btnCarregarMaisPassagens">Carregar mais</button></div>')
         : '';
 
-      container.innerHTML = resumoHtml + '<div id="hist-passagens-items" class="hist-passagens-scroll">' + cardsHtml + '</div>' + loadMoreHtml;
+      container.innerHTML = resumoHtml + '<div id="hist-passagens-items" class="hist-passagens-scroll" style="display:block;max-height:min(58vh,calc(100vh - 360px));overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-right:4px">' + cardsHtml + '</div>' + loadMoreHtml;
 
       var exportInline = document.getElementById('hist-export-inline');
       if (exportInline) exportInline.onclick = _histExportListaVisivel;
+      var printInline = document.getElementById('hist-print-inline');
+      if (printInline) printInline.onclick = function() { _histPrint('lista'); };
 
       await _histBuscarLinhasVisiveisExport(st, filtros);
       if (!append) await _histFetchRelatorioMensal();
