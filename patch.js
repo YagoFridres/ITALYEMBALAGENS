@@ -3944,30 +3944,44 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var kgUn = Number(chapa && chapa.peso_kg_unidade || 0) || 0;
       return kgUn > 0 ? ((qtd * kgUn) / 1000) : 0;
     }
+    function _renderEstoqueWireframeState(page, title, message, extraHtml) {
+      if (!page) return;
+      page.innerHTML = ''
+        + '<div class="pep-wrap">'
+        + '  <div class="pep-panel" style="max-width:1040px;margin:0 auto">'
+        + '    <div class="pep-title" style="font-size:22px">' + esc(title || 'Estoque de Chapas') + '</div>'
+        + '    <div class="pep-sub" style="margin-top:8px;font-size:13px;color:#cbd5e1">' + esc(message || '') + '</div>'
+        +      String(extraHtml || '')
+        + '  </div>'
+        + '</div>';
+    }
     async function renderEstoqueWireframePage() {
       ensureStyles();
       _ensureEstoqueStyle();
       var page = ensurePage('estoque');
       showOnlyPage('estoque');
-      var lista = await _estoqueFetchChapasList(10000).catch(function() { return []; });
-      lista = Array.isArray(lista) ? lista : [];
-      var busca = String(window.__estoqueWireBusca || '').trim().toLowerCase();
-      var filtrada = busca ? lista.filter(function(chapa) {
-        var txt = [
-          chapa && chapa.fornecedor,
-          chapa && chapa.gramatura,
-          chapa && chapa.nomenclatura,
-          chapa && chapa.tamanho,
-          chapa && (chapa.nome_uso || chapa.nome),
-          chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || chapa.empresa),
-          chapa && chapa.nf
-        ].join(' ').toLowerCase();
-        return txt.indexOf(busca) >= 0;
-      }) : lista;
-      var valorTotal = lista.reduce(function(s, chapa) { return s + estoqueWireValor(chapa); }, 0);
-      var tonTotal = lista.reduce(function(s, chapa) { return s + estoqueWireTon(chapa); }, 0);
-      var breakdown = _resumoTopPorValor(lista, function(chapa) { return chapa && chapa.fornecedor || 'Sem fornecedor'; }, function(chapa) { return estoqueWireValor(chapa); }).slice(0, 4);
-      page.innerHTML = ''
+      _renderEstoqueWireframeState(page, 'Estoque de Chapas', 'Carregando indicadores, botões e tabela do estoque...');
+      try { console.log('[PATCH][ESTOQUE] renderEstoqueWireframePage:start'); } catch (_) {}
+      try {
+        var lista = await _estoqueFetchChapasList(10000);
+        lista = Array.isArray(lista) ? lista : [];
+        var busca = String(window.__estoqueWireBusca || '').trim().toLowerCase();
+        var filtrada = busca ? lista.filter(function(chapa) {
+          var txt = [
+            chapa && chapa.fornecedor,
+            chapa && chapa.gramatura,
+            chapa && chapa.nomenclatura,
+            chapa && chapa.tamanho,
+            chapa && (chapa.nome_uso || chapa.nome),
+            chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || chapa.empresa),
+            chapa && chapa.nf
+          ].join(' ').toLowerCase();
+          return txt.indexOf(busca) >= 0;
+        }) : lista;
+        var valorTotal = lista.reduce(function(s, chapa) { return s + estoqueWireValor(chapa); }, 0);
+        var tonTotal = lista.reduce(function(s, chapa) { return s + estoqueWireTon(chapa); }, 0);
+        var breakdown = _resumoTopPorValor(lista, function(chapa) { return chapa && chapa.fornecedor || 'Sem fornecedor'; }, function(chapa) { return estoqueWireValor(chapa); }).slice(0, 4);
+        page.innerHTML = ''
         + '<div class="pep-wrap">'
         + '  <div class="pep-cards">'
         +      _makeCardEstoque({ label: 'Valor Total do Estoque', value: money(valorTotal), sub: 'Base atual do estoque' })
@@ -4019,7 +4033,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       };
       Array.prototype.slice.call(page.querySelectorAll('[data-est-edit]')).forEach(function(btn) {
         btn.onclick = function() {
-          try { if (typeof window.editarChapa === 'function') window.editarChapa(String(btn.getAttribute('data-est-edit') || '')); } catch (_) {}
+          try { _abrirEdicaoChapaEstoque(String(btn.getAttribute('data-est-edit') || '')); } catch (_) {}
         };
       });
       Array.prototype.slice.call(page.querySelectorAll('[data-est-del]')).forEach(function(btn) {
@@ -4033,6 +4047,25 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (btnSaida) btnSaida.onclick = function() { _abrirModalSaidaEstoqueReal(); };
       _bindBotaoEditarChapas(renderEstoqueWireframePage, 'estoque-wire-alterar-btn');
       _bindBotaoCriarChapas(renderEstoqueWireframePage, 'estoque-wire-criar-btn');
+      } catch (errEstoque) {
+        try { console.error('[PATCH][ESTOQUE] render falhou:', errEstoque); } catch (_) {}
+        _renderEstoqueWireframeState(
+          page,
+          'Estoque de Chapas',
+          'Nao foi possivel renderizar o estoque agora. Tente recarregar os dados novamente.',
+          '<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">'
+            + '<button class="pep-btn primary" id="estoque-wire-retry">Recarregar</button>'
+            + '<button class="pep-btn" id="estoque-wire-open-create">Criar Chapa</button>'
+          + '</div>'
+        );
+        var retryBtn = document.getElementById('estoque-wire-retry');
+        if (retryBtn) retryBtn.onclick = function() { renderEstoqueWireframePage().catch(function() {}); };
+        var createBtn = document.getElementById('estoque-wire-open-create');
+        if (createBtn) createBtn.onclick = function() {
+          try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {}
+          _scheduleEnhanceModalNovaChapa();
+        };
+      }
     }
 
     function facaUsoScore(f) {
@@ -11541,7 +11574,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var wrap = document.createElement('div');
     wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.82);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px';
     wrap.innerHTML = ''
-      + '<div style="width:min(920px,96vw);max-height:88vh;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:18px">'
+      + '<div style="width:min(920px,96vw);max-height:88vh;overflow:auto;background:linear-gradient(180deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.18);border-radius:18px;padding:18px;box-shadow:0 24px 60px rgba(2,6,23,.55)">'
       + '  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">'
       + '    <div><div style="font-size:24px;font-weight:900;color:var(--text)">' + _escapeHtmlLite(titulo) + '</div><div style="margin-top:6px;color:var(--text2);font-size:13px">' + _escapeHtmlLite(subtitulo) + '</div></div>'
       + '    <button type="button" id="est-sel-close" class="pcp-btn" style="background:#334155">Fechar</button>'
@@ -11603,6 +11636,34 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     });
   }
 
+  function _upsertListaChapasNative(nome, chapa) {
+    if (!chapa) return;
+    try {
+      var lista = Array.isArray(window[nome]) ? window[nome].slice() : [];
+      var id = String(chapa && chapa.id || '').trim();
+      var idx = lista.findIndex(function(item) { return String(item && item.id || '').trim() === id; });
+      if (idx >= 0) lista[idx] = Object.assign({}, lista[idx], chapa);
+      else lista.unshift(Object.assign({}, chapa));
+      window[nome] = lista;
+    } catch (_) {}
+  }
+
+  function _abrirEdicaoChapaEstoque(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return;
+    var chapa = null;
+    try { chapa = (_getListaChapasEstoqueCache() || []).find(function(item) { return String(item && item.id || '').trim() === sid; }) || null; } catch (_) { chapa = null; }
+    if (chapa) {
+      _upsertListaChapasNative('_estoqueBase', chapa);
+      _upsertListaChapasNative('ESTOQUE', chapa);
+    }
+    try {
+      if (typeof window.editarChapa === 'function') window.editarChapa(sid);
+      else if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(sid);
+    } catch (_) {}
+    _scheduleEnhanceModalNovaChapa();
+  }
+
   function _botaoAcaoEstoque(opts) {
     opts = opts || {};
     var id = String(opts.id || '').trim();
@@ -11640,11 +11701,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         titulo: 'Alterar Chapa',
         subtitulo: 'Selecione a chapa que deseja editar.',
         onSelect: function(id) {
-          try {
-            if (typeof window.editarChapa === 'function') window.editarChapa(id);
-            else if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(id);
-          } catch (_) {}
-          _scheduleEnhanceModalNovaChapa();
+          _abrirEdicaoChapaEstoque(id);
           if (typeof onDone === 'function') {
             setTimeout(function() { try { onDone(); } catch (_) {} }, 600);
           }
@@ -19273,8 +19330,11 @@ function _ocultarGraficoComissoes() {
 
   function _normalizarGramaturaConclusao(item) {
     var src = item || {};
+    var rawId = String(src.id || '').trim();
+    var optionValue = rawId || String(src.codigo || src.nome || src.descricao || '').trim() || ('gramatura-' + String(Number(src.gramatura || 0) || 0) + '-' + String(Number(src.valor_unitario || 0) || 0));
     return {
-      id: String(src.id || '').trim(),
+      id: rawId,
+      option_value: optionValue,
       codigo: String(src.codigo || '').trim(),
       nome: String(src.nome || src.descricao || '').trim(),
       descricao: String(src.descricao || src.nome || '').trim(),
@@ -19512,29 +19572,37 @@ function _ocultarGraficoComissoes() {
       }
       function collectPerdas() {
         return Array.prototype.slice.call(perdasLista.querySelectorAll('.com-conc-loss-row')).map(function(row) {
-          var maq = String((row.querySelector('.conc-loss-maq') || {}).value || '').trim();
+          var maqSel = row.querySelector('.conc-loss-maq');
+          var maqVal = String((maqSel || {}).value || '').trim();
+          var maqLista = Array.isArray(row.__concMaquinasLista) ? row.__concMaquinasLista : [];
+          var maqObj = maqLista.find(function(item) {
+            var itemId = String(item && (item.id || item.nome || item.descricao) || '').trim();
+            return itemId === maqVal;
+          }) || null;
+          var maqNome = String(maqObj && (maqObj.nome || maqObj.descricao || maqObj.id) || maqVal).trim();
+          var maqId = String(maqObj && maqObj.id || '').trim();
           var qtd = Math.trunc(Number((row.querySelector('.conc-loss-qtd') || {}).value || 0) || 0);
           var ops = Array.prototype.slice.call(row.querySelectorAll('.conc-loss-op')).map(function(sel) {
             return String(sel && sel.value || '').trim();
           }).filter(Boolean);
-          return { maquina: maq, qtd: qtd, operadores: ops };
+          return { maquina: maqNome, maquina_nome: maqNome, maquina_id: maqId, qtd: qtd, operadores: ops };
         }).filter(function(item) { return item.maquina && item.qtd > 0; });
       }
       function currentGramatura() {
         var selectedId = String(gramEl && gramEl.value || '').trim();
-        var found = (gramaturasLista || []).find(function(g) { return String(g && g.id || '') === selectedId; }) || null;
+        var found = (gramaturasLista || []).find(function(g) { return String(g && (g.option_value || g.id) || '') === selectedId; }) || null;
         return found || _gramaturaFallbackConclusao();
       }
       function renderGramaturasSelect(lista) {
         gramaturasLista = (Array.isArray(lista) ? lista : []).map(_normalizarGramaturaConclusao).filter(function(g) {
-          return g && g.ativo && !g.fallback && String(g.id || '').trim();
+          return g && g.ativo && !g.fallback && (String(g.option_value || '').trim() || String(g.id || '').trim());
         });
         var atual = String(of && (of.gramatura_id || of.gramaturaId || '') || '').trim();
-        if (!atual || !(gramaturasLista || []).some(function(g) { return String(g && g.id || '') === atual; })) atual = '';
+        if (!atual || !(gramaturasLista || []).some(function(g) { return String(g && (g.id || g.option_value) || '') === atual; })) atual = '';
         if (gramEl) {
           var opts = ['<option value="">' + (gramaturasLista.length ? 'Selecionar gramatura...' : 'Nenhuma gramatura cadastrada') + '</option>'].concat(gramaturasLista.map(function(g) {
-            var id = String(g && g.id || '');
-            return '<option value="' + id.replace(/"/g, '&quot;') + '"' + (id === atual ? ' selected' : '') + '>' + _labelGramaturaConclusao(g).replace(/</g, '&lt;') + '</option>';
+            var optionValue = String(g && (g.option_value || g.id) || '');
+            return '<option value="' + optionValue.replace(/"/g, '&quot;') + '"' + ((optionValue === atual || String(g && g.id || '') === atual) ? ' selected' : '') + '>' + _labelGramaturaConclusao(g).replace(/</g, '&lt;') + '</option>';
           }));
           gramEl.innerHTML = opts.join('');
         }
@@ -19604,6 +19672,7 @@ function _ocultarGraficoComissoes() {
         var operadoresLista = (Array.isArray(opsApi) ? opsApi.slice() : []).filter(Boolean);
         var row = document.createElement('div');
         row.className = 'com-conc-loss-row';
+        row.__concMaquinasLista = maquinas;
         row.innerHTML = ''
           + '<div class="com-conc-loss-grid">'
           + '  <select class="com-conc-select conc-loss-maq">' + optionHtml(maquinas, payload.maquina || ((maquinas[0] && (maquinas[0].id || maquinas[0].nome || maquinas[0].descricao)) || ''), 'Selecionar máquina...') + '</select>'
@@ -19657,6 +19726,9 @@ function _ocultarGraficoComissoes() {
         if (!dataFaturamento) { try { alert('Informe a data de faturamento.'); } catch (_) {} return; }
         if (!resumo.gramaturaValida) { try { alert('Selecione uma gramatura válida antes de concluir a OF.'); } catch (_) {} return; }
         var perdas = collectPerdas();
+        var operadoresConclusao = Array.from(new Set(perdas.reduce(function(acc, perda) {
+          return acc.concat(Array.isArray(perda && perda.operadores) ? perda.operadores : []);
+        }, []).map(function(op) { return String(op || '').trim(); }).filter(Boolean)));
         var precoUnitario = Number(resumo.valorUnitario || 0) || 0;
         var gramaturaSel = resumo.gramatura || _gramaturaFallbackConclusao();
         var materiaPrima = resumo.materiaPrima || _calcularResumoMateriaPrimaConclusao(of, caixasProduzidas, gramaturaSel);
@@ -19681,6 +19753,19 @@ function _ocultarGraficoComissoes() {
           tonelada_vendida: Number(materiaPrima.toneladaVendida || 0) || 0,
           custo_m2_venda: Number(materiaPrima.custoM2Venda || 0) || 0,
           consumo_chapas_estimado: Number(materiaPrima.consumoChapas || 0) || 0,
+          caixas_perdidas: resumo.perdasQtd,
+          perdas_por_maquina: perdas.map(function(perda) {
+            return {
+              maquina: String(perda && perda.maquina || '').trim(),
+              maquina_nome: String(perda && (perda.maquina_nome || perda.maquina) || '').trim(),
+              maquina_id: String(perda && perda.maquina_id || '').trim() || null,
+              qtd_perdida: Number(perda && perda.qtd || 0) || 0,
+              quantidade: Number(perda && perda.qtd || 0) || 0,
+              operadores: Array.isArray(perda && perda.operadores) ? perda.operadores.slice() : []
+            };
+          }),
+          operadores_conclusao: operadoresConclusao,
+          operador_conclusao: operadoresConclusao[0] || usuario,
           _allow_partial: '1'
         };
         btnSalvar.disabled = true;
@@ -19701,31 +19786,6 @@ function _ocultarGraficoComissoes() {
               if (idxAtual >= 0) window.OFs[idxAtual] = Object.assign({}, window.OFs[idxAtual], ofAtualizada);
             }
           } catch (_) {}
-
-          for (var i = 0; i < perdas.length; i += 1) {
-            var perda = perdas[i];
-            await fetch('/api/caixas-perdidas', {
-              method: 'POST',
-              headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
-              body: JSON.stringify({
-                of_id: of.id || ofId,
-                of_numero: of.numero || null,
-                produto: of.produto || of.descricao || of.prodDesc || '',
-                cliente: cliente,
-                emp_id: of.emp_id || of.empId || of.empresa_id || 'E1',
-                maquina: perda.maquina,
-                quantidade: perda.qtd,
-                qtd_perdida: perda.qtd,
-                valor_unitario: resumo.valorUnitario,
-                valor_perdido: Math.round((resumo.valorUnitario * perda.qtd) * 100) / 100,
-                operadores: perda.operadores,
-                usuario: usuario,
-                usuario_conclusao: usuario,
-                data: dataFaturamento,
-                obs: 'Perda registrada na conclusão da OF'
-              })
-            }).catch(function() { return null; });
-          }
 
           closeModal();
           _mostrarPopupConclusaoOF({

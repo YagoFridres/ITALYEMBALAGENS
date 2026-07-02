@@ -5784,6 +5784,19 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
             : 0
         )
       ) || 0,
+      valor_perdido: Number(
+        row?.valor_perdido ??
+        (
+          (Number(row?.quantidade ?? row?.caixas_perdidas ?? row?.qtd_perdida ?? 0) || 0)
+          * (
+            Number(row?.valor_unitario ?? 0) || (
+              (Number(ofData?.quantidade ?? ofData?.qtd ?? 0) || 0) > 0
+                ? ((Number(ofData?.valor_total ?? ofData?.valor_venda ?? 0) || 0) / (Number(ofData?.quantidade ?? ofData?.qtd ?? 0) || 1))
+                : 0
+            )
+          )
+        )
+      ) || 0,
     };
   });
 }
@@ -5893,10 +5906,15 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       const ofId = String(r?.of_id || r?.of_uuid || '').trim();
       const ofData = ofId ? ofsMap[ofId] : null;
       const qtdPerdida = Number(r?.quantidade ?? r?.caixas_perdidas ?? r?.qtd_perdida ?? 0) || 0;
-      const vu = (Number(ofData?.valor_total || 0) > 0 && Number(ofData?.quantidade || 0) > 0)
-        ? (Number(ofData.valor_total) / Number(ofData.quantidade))
-        : 0;
-      const valorPerdido = vu * qtdPerdida;
+      const vu = Number(
+        r?.valor_unitario ??
+        (
+          (Number(ofData?.valor_total || 0) > 0 && Number(ofData?.quantidade || 0) > 0)
+            ? (Number(ofData.valor_total) / Number(ofData.quantidade))
+            : 0
+        )
+      ) || 0;
+      const valorPerdido = Number(r?.valor_perdido ?? (vu * qtdPerdida)) || 0;
       const clienteNome = ofData?.cli_id ? (clientesMap[String(ofData.cli_id || '').trim()] || '') : '';
       const operadores = (Array.isArray(r?.operadores) ? r.operadores
         : (toArray(r?.operadores).length ? toArray(r?.operadores) : toArray(r?.operador)))
@@ -6003,145 +6021,83 @@ app.get('/api/admin/corrigir_ofs_concluidas_sem_qtd', requireAdmin, async (req, 
   }
 });
 
+async function _insertCaixaPerdidaCompat(input, req) {
+  const b = input || {};
+  const hoje = new Date().toISOString().slice(0, 10);
+  const mes = new Date().toISOString().slice(0, 7);
+  const qtdPerdida = Math.trunc(Number(b.qtd_perdida ?? b.quantidade ?? b.caixas_perdidas ?? 0) || 0);
+  const rawOperadores = Array.isArray(b.operadores)
+    ? b.operadores
+    : (typeof b.operadores === 'string' ? b.operadores.split(/[,;|]+/g) : []);
+  const operadores = Array.from(new Set(rawOperadores.map((op) => String(op || '').trim()).filter(Boolean)));
+  const valorUnitario = Number(b.valor_unitario ?? b.vl_unit ?? 0) || 0;
+  const valorPerdido = Number(b.valor_perdido ?? (qtdPerdida * valorUnitario) ?? 0) || 0;
+  const payload = {
+    of_id: b.of_id || null,
+    of_numero: b.of_numero != null ? String(b.of_numero || '') : undefined,
+    produto: String(b.produto || ''),
+    cliente: String(b.cliente || b.cliente_nome || ''),
+    cliente_nome: b.cliente_nome != null ? String(b.cliente_nome || b.cliente || '') : undefined,
+    maquina: b.maquina != null ? String(b.maquina || b.maquina_nome || '') : undefined,
+    maquina_nome: b.maquina_nome != null ? String(b.maquina_nome || b.maquina || '') : undefined,
+    maquina_id: b.maquina_id != null ? String(b.maquina_id || '') : undefined,
+    valor_unitario: valorUnitario,
+    qtd_perdida: qtdPerdida,
+    quantidade: qtdPerdida,
+    valor_perdido: valorPerdido,
+    data: b.data || b.data_conclusao || hoje,
+    mes_referencia: b.mes_referencia || String((b.data || b.data_conclusao || mes)).slice(0, 7),
+    emp_id: b.emp_id || '',
+    usuario: b.usuario || req?.usuario?.nome || 'sistema',
+    usuario_conclusao: b.usuario_conclusao || req?.usuario?.nome || 'sistema',
+    obs: b.obs || '',
+    operadores: operadores,
+    operador: operadores[0] || (b.operador != null ? String(b.operador || '') : undefined),
+    turno: b.turno != null ? String(b.turno || '') : undefined,
+  };
+  try { console.log('[CP INSERT COMPAT] payload:', JSON.stringify(payload)); } catch (_) {}
+  ['of_numero', 'cliente_nome', 'maquina', 'maquina_nome', 'maquina_id', 'operadores', 'operador', 'turno'].forEach((key) => {
+    if (Array.isArray(payload[key]) && payload[key].length) return;
+    if (payload[key] == null || payload[key] === '') delete payload[key];
+  });
+  let currentPayload = { ...payload };
+  for (let i = 0; i < 12; i += 1) {
+    const { data, error } = await supabase.from('caixas_perdidas').insert([currentPayload]).select().single();
+    if (!error) return { skipped: false, data };
+    const msg = String(error.message || error);
+    const msgLower = msg.toLowerCase();
+    if (msgLower.includes('does not exist') || msgLower.includes('not exist') || msgLower.includes('not find') || msgLower.includes('not found')) {
+      return { skipped: true, reason: 'table_missing' };
+    }
+    const m = msg.match(/column\s+"?([a-z0-9_]+)"?\s+(?:of relation .* )?does not exist/i)
+      || msg.match(/Could not find the '([^']+)' column/i);
+    const missingCol = m && m[1] ? String(m[1]).trim() : '';
+    if (missingCol && Object.prototype.hasOwnProperty.call(currentPayload, missingCol)) {
+      delete currentPayload[missingCol];
+      continue;
+    }
+    if (msgLower.includes('column') && (msgLower.includes('maquina') || msgLower.includes('maquina_id') || msgLower.includes('operador') || msgLower.includes('turno') || msgLower.includes('quantidade') || msgLower.includes('of_numero') || msgLower.includes('cliente_nome'))) {
+      ['maquina', 'maquina_nome', 'maquina_id', 'operadores', 'operador', 'turno', 'quantidade', 'of_numero', 'cliente_nome'].forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(currentPayload, key)) delete currentPayload[key];
+      });
+      continue;
+    }
+    throw error;
+  }
+  return { skipped: true, reason: 'insert_aborted' };
+}
+
 app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
   try {
-    const b = req.body || {};
-    const hoje = new Date().toISOString().slice(0, 10);
-    const mes = new Date().toISOString().slice(0, 7);
-    const qtdPerdida = Math.trunc(Number(b.qtd_perdida ?? b.quantidade ?? b.caixas_perdidas ?? 0) || 0);
-    const rawOperadores = Array.isArray(b.operadores)
-      ? b.operadores
-      : (typeof b.operadores === 'string' ? b.operadores.split(/[,;|]+/g) : []);
-    const operadores = Array.from(new Set(rawOperadores.map((op) => String(op || '').trim()).filter(Boolean)));
-    const payload = {
-      of_id: b.of_id || null,
-      produto: String(b.produto || ''),
-      cliente: String(b.cliente || ''),
-      maquina: b.maquina != null ? String(b.maquina || '') : undefined,
-      maquina_nome: b.maquina_nome != null ? String(b.maquina_nome || b.maquina || '') : undefined,
-      maquina_id: b.maquina_id != null ? String(b.maquina_id || '') : undefined,
-      valor_unitario: Number(b.valor_unitario || 0),
-      qtd_perdida: qtdPerdida,
-      quantidade: qtdPerdida,
-      valor_perdido: Number(b.valor_perdido || 0),
-      data: b.data || hoje,
-      mes_referencia: b.mes_referencia || mes,
-      emp_id: b.emp_id || '',
-      usuario: b.usuario || req.usuario?.nome || 'sistema',
-      usuario_conclusao: b.usuario_conclusao || req.usuario?.nome || 'sistema',
-      obs: b.obs || '',
-      operadores: operadores,
-      operador: operadores[0] || undefined,
-      turno: b.turno != null ? String(b.turno || '') : undefined,
-    };
-    try { console.log('[CP POST] payload:', JSON.stringify(payload)); } catch (_) {}
-    if (!payload.maquina) delete payload.maquina;
-    if (!payload.maquina_nome) delete payload.maquina_nome;
-    if (!payload.maquina_id) delete payload.maquina_id;
-    if (!payload.operadores || !payload.operadores.length) delete payload.operadores;
-    if (!payload.operador) delete payload.operador;
-    if (!payload.turno) delete payload.turno;
-    let { data, error } = await supabase.from('caixas_perdidas').insert([payload]).select().single();
-    if (error) {
-      const msg = String(error.message || error);
-      const m = msg.toLowerCase();
-      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
-        return ok(res, { skipped: true, reason: 'table_missing' });
-      }
-      if (m.includes('column') && (m.includes('maquina') || m.includes('maquina_id') || m.includes('operador') || m.includes('turno') || m.includes('quantidade'))) {
-        const payload2 = { ...payload };
-        delete payload2.maquina;
-        delete payload2.maquina_nome;
-        delete payload2.maquina_id;
-        delete payload2.operadores;
-        delete payload2.operador;
-        delete payload2.turno;
-        delete payload2.quantidade;
-        const r2 = await supabase.from('caixas_perdidas').insert([payload2]).select().single();
-        if (r2.error) {
-          const msg2 = String(r2.error.message || r2.error);
-          const m2 = msg2.toLowerCase();
-          if (m2.includes('does not exist') || m2.includes('not exist') || m2.includes('not find') || m2.includes('not found')) {
-            return ok(res, { skipped: true, reason: 'table_missing' });
-          }
-          throw r2.error;
-        }
-        return ok(res, r2.data);
-      }
-      throw error;
-    }
-    return ok(res, data);
+    const result = await _insertCaixaPerdidaCompat(req.body || {}, req);
+    return ok(res, result.skipped ? result : result.data);
   } catch (e) { err(res, e); }
 });
 
 app.post('/api/caixas-perdidas', authMiddleware, async (req, res) => {
   try {
-    const b = req.body || {};
-    const hoje = new Date().toISOString().slice(0, 10);
-    const mes = new Date().toISOString().slice(0, 7);
-    const qtdPerdida = Math.trunc(Number(b.qtd_perdida ?? b.quantidade ?? b.caixas_perdidas ?? 0) || 0);
-    const rawOperadores = Array.isArray(b.operadores)
-      ? b.operadores
-      : (typeof b.operadores === 'string' ? b.operadores.split(/[,;|]+/g) : []);
-    const operadores = Array.from(new Set(rawOperadores.map((op) => String(op || '').trim()).filter(Boolean)));
-    const payload = {
-      of_id: b.of_id || null,
-      produto: String(b.produto || ''),
-      cliente: String(b.cliente || ''),
-      maquina: b.maquina != null ? String(b.maquina || '') : undefined,
-      maquina_nome: b.maquina_nome != null ? String(b.maquina_nome || b.maquina || '') : undefined,
-      maquina_id: b.maquina_id != null ? String(b.maquina_id || '') : undefined,
-      valor_unitario: Number(b.valor_unitario || 0),
-      qtd_perdida: qtdPerdida,
-      quantidade: qtdPerdida,
-      valor_perdido: Number(b.valor_perdido || 0),
-      data: b.data || hoje,
-      mes_referencia: b.mes_referencia || mes,
-      emp_id: b.emp_id || '',
-      usuario: b.usuario || req.usuario?.nome || 'sistema',
-      usuario_conclusao: b.usuario_conclusao || req.usuario?.nome || 'sistema',
-      obs: b.obs || '',
-      operadores: operadores,
-      operador: operadores[0] || undefined,
-      turno: b.turno != null ? String(b.turno || '') : undefined,
-    };
-    try { console.log('[CP POST ALT] payload:', JSON.stringify(payload)); } catch (_) {}
-    if (!payload.maquina) delete payload.maquina;
-    if (!payload.maquina_nome) delete payload.maquina_nome;
-    if (!payload.maquina_id) delete payload.maquina_id;
-    if (!payload.operadores || !payload.operadores.length) delete payload.operadores;
-    if (!payload.operador) delete payload.operador;
-    if (!payload.turno) delete payload.turno;
-    let { data, error } = await supabase.from('caixas_perdidas').insert([payload]).select().single();
-    if (error) {
-      const msg = String(error.message || error);
-      const m = msg.toLowerCase();
-      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
-        return ok(res, { skipped: true, reason: 'table_missing' });
-      }
-      if (m.includes('column') && (m.includes('maquina') || m.includes('maquina_id') || m.includes('operador') || m.includes('turno') || m.includes('quantidade'))) {
-        const payload2 = { ...payload };
-        delete payload2.maquina;
-        delete payload2.maquina_nome;
-        delete payload2.maquina_id;
-        delete payload2.operadores;
-        delete payload2.operador;
-        delete payload2.turno;
-        delete payload2.quantidade;
-        const r2 = await supabase.from('caixas_perdidas').insert([payload2]).select().single();
-        if (r2.error) {
-          const msg2 = String(r2.error.message || r2.error);
-          const m2 = msg2.toLowerCase();
-          if (m2.includes('does not exist') || m2.includes('not exist') || m2.includes('not find') || m2.includes('not found')) {
-            return ok(res, { skipped: true, reason: 'table_missing' });
-          }
-          throw r2.error;
-        }
-        return ok(res, r2.data);
-      }
-      throw error;
-    }
-    return ok(res, data);
+    const result = await _insertCaixaPerdidaCompat(req.body || {}, req);
+    return ok(res, result.skipped ? result : result.data);
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
@@ -7141,32 +7097,45 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         }
 
         const valorUnit = qtdPedida > 0 ? (valorTotalOriginal / qtdPedida) : 0;
-        const payloadPerda = {
-          of_id: sid,
-          produto: String(of.prodDesc || of.descricao || ''),
-          cliente: cliNome || '',
-          maquina_perda: maquinaNome || null,
-          maquina_perda_id: (maquinaPerdaId && isUuid(maquinaPerdaId)) ? maquinaPerdaId : null,
-          valor_unitario: Number.isFinite(valorUnit) ? valorUnit : 0,
+        const perdasDetalhadas = Array.isArray(updateData.perdas_por_maquina) ? updateData.perdas_por_maquina : [];
+        const linhasPerda = perdasDetalhadas.length ? perdasDetalhadas : [{
+          maquina: maquinaNome || null,
+          maquina_nome: maquinaNome || null,
+          maquina_id: (maquinaPerdaId && isUuid(maquinaPerdaId)) ? maquinaPerdaId : null,
           qtd_perdida: qtdPerdida,
-          valor_perdido: qtdPerdida * (Number.isFinite(valorUnit) ? valorUnit : 0),
-          data: nowIso.slice(0, 10),
-          mes_referencia: nowIso.slice(0, 7),
-          emp_id: String(of.emp_id || ''),
-          usuario: req.usuario?.nome || 'sistema',
-          obs: '',
-        };
-
-        let tentativa = payloadPerda;
-        for (let t = 0; t < 3; t++) {
-          const ins = await supabase.from('caixas_perdidas').insert([tentativa]).select().single();
-          const perdaErr = ins?.error || null;
-          if (!perdaErr) break;
-          const msg = String(perdaErr.message || '').toLowerCase();
-          if (msg.includes('maquina_perda_id') && msg.includes('column')) { delete tentativa.maquina_perda_id; continue; }
-          if (msg.includes('maquina_perda') && msg.includes('column')) { delete tentativa.maquina_perda; continue; }
-          if (msg.includes('maquina') && msg.includes('column')) { delete tentativa.maquina_perda; delete tentativa.maquina_perda_id; continue; }
-          break;
+          quantidade: qtdPerdida,
+          operadores: Array.isArray(operadoresConclusao) ? operadoresConclusao.slice() : []
+        }];
+        const ofNumero = String(of?.numero || of?.of_num || of?.of || '').trim() || null;
+        for (const linha of linhasPerda) {
+          const perdaQtd = Math.trunc(Number(linha?.qtd_perdida ?? linha?.quantidade ?? 0) || 0);
+          if (!(perdaQtd > 0)) continue;
+          const maqNomeLinha = String(linha?.maquina_nome || linha?.maquina || maquinaNome || '').trim();
+          const maqIdLinha = String(linha?.maquina_id || maquinaPerdaId || '').trim();
+          const operadoresLinha = Array.isArray(linha?.operadores) ? linha.operadores : operadoresConclusao;
+          await _insertCaixaPerdidaCompat({
+            of_id: sid,
+            of_numero: ofNumero,
+            produto: String(of.prodDesc || of.descricao || of.produto || ''),
+            cliente: cliNome || String(of?.cliente || '').trim() || '',
+            cliente_nome: cliNome || String(of?.cliente || '').trim() || '',
+            maquina: maqNomeLinha || null,
+            maquina_nome: maqNomeLinha || null,
+            maquina_id: (maqIdLinha && isUuid(maqIdLinha)) ? maqIdLinha : null,
+            valor_unitario: Number.isFinite(valorUnit) ? valorUnit : 0,
+            qtd_perdida: perdaQtd,
+            quantidade: perdaQtd,
+            valor_perdido: perdaQtd * (Number.isFinite(valorUnit) ? valorUnit : 0),
+            data: String(body.data_faturamento || nowIso.slice(0, 10)).slice(0, 10),
+            data_conclusao: String(updateData.data_conclusao || nowIso).slice(0, 10),
+            mes_referencia: String(body.data_faturamento || nowIso.slice(0, 7)).slice(0, 7),
+            emp_id: String(of.emp_id || ''),
+            usuario: req.usuario?.nome || 'sistema',
+            usuario_conclusao: body.usuario_conclusao || req.usuario?.nome || 'sistema',
+            operadores: Array.isArray(operadoresLinha) ? operadoresLinha : [],
+            operador: Array.isArray(operadoresLinha) && operadoresLinha[0] ? operadoresLinha[0] : undefined,
+            obs: 'Perda registrada na conclusão da OF'
+          }, req);
         }
       } catch (_) {}
     }
