@@ -4123,13 +4123,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     function openChecklistModal(item, done) {
       var it = checklistNorm(item || {});
-      var wrap = document.createElement('div');
-      wrap.id = 'estoque-checklist-modal';
-      wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.82);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px';
-      wrap.innerHTML = ''
-        + '<div style="width:min(1100px,96vw);max-height:92vh;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:18px">'
-        + '  <div class="pep-head"><div><div class="pep-title" style="font-size:22px">📋 ' + (it.id ? 'Editar Checklist' : 'Novo Checklist') + '</div><div class="pep-sub">Cadastro manual de recebimento, sem movimentar estoque automaticamente.</div></div></div>'
-        + '  <div class="pep-grid">'
+      var bodyHtml = ''
+        + '  <div class="pep-grid estoque-modal-grid estoque-modal-grid-checklist">'
         + '    <div><div class="pep-sub">Data de Rec.</div><input class="pep-input" id="ck-data" type="date" value="' + esc(it.data_recebimento || '') + '"></div>'
         + '    <div><div class="pep-sub">Placa do Veiculo</div><input class="pep-input" id="ck-placa" value="' + esc(it.placa_veiculo || '') + '"></div>'
         + '    <div><div class="pep-sub">N Nota Fiscal</div><input class="pep-input" id="ck-nf" value="' + esc(it.nota_fiscal || '') + '"></div>'
@@ -4140,14 +4135,20 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <div><div class="pep-sub">Data de Validade</div><input class="pep-input" id="ck-validade" type="date" value="' + esc(it.data_validade || '') + '"></div>'
         + '    <div><div class="pep-sub">Resp. pelo Recebimento</div><input class="pep-input" id="ck-resp" value="' + esc(it.responsavel || '') + '"></div>'
         + '    <div><div class="pep-sub">Cliente</div><input class="pep-input" id="ck-cliente" value="' + esc(it.cliente || '') + '"></div>'
-        + '    <div style="grid-column:1/-1"><label style="display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--s2)"><input id="ck-devolucao" type="checkbox"' + (it.devolucao ? ' checked' : '') + '><span style="font-weight:700;color:#e5e7eb">Devolucao</span></label></div>'
-        + '  </div>'
-        + '  <div class="pep-actions"><button class="pep-btn" id="ck-cancel">Cancelar</button><button class="pep-btn primary" id="ck-save">Salvar</button></div>'
-        + '</div>';
-      wrap.addEventListener('click', function(e) { if (e.target === wrap) wrap.remove(); });
-      document.body.appendChild(wrap);
+        + '    <div style="grid-column:1/-1"><label style="display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:#0b1629"><input id="ck-devolucao" type="checkbox"' + (it.devolucao ? ' checked' : '') + '><span style="font-weight:700;color:#e5e7eb">Devolucao</span></label></div>'
+        + '  </div>';
+      var wrap = _abrirModalPadrao({
+        id: 'estoque-checklist-modal',
+        titulo: it.id ? 'Editar Checklist' : 'Novo Checklist',
+        subtitulo: 'Cadastro manual de recebimento, sem movimentar estoque automaticamente.',
+        largura: '1100px',
+        wide: true,
+        hero: '📋',
+        accent: 'blue',
+        corpoHTML: bodyHtml,
+        footerHtml: '<button class="estoque-modal-btn estoque-modal-btn-ghost" id="ck-cancel" data-modal-close="1">Cancelar</button><button class="estoque-modal-btn estoque-modal-btn-blue" id="ck-save">Salvar</button>'
+      });
       try { _agendarReaplicacaoUiEstoque(wrap); } catch (_) {}
-      document.getElementById('ck-cancel').onclick = function() { wrap.remove(); };
       document.getElementById('ck-save').onclick = async function() {
         try {
           var payload = {
@@ -4172,7 +4173,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
-          wrap.remove();
+          _fecharModalPadrao('estoque-checklist-modal');
           if (typeof done === 'function') done();
         } catch (e) {
           alert(String(e && e.message || e || 'Falha ao salvar checklist'));
@@ -4521,37 +4522,27 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         return String(chapa && chapa.id || '').trim() === sid;
       }) || null;
     }
-    function _estoqueWireCloseModal() {
-      try {
-        var modal = document.getElementById('estoque-wire-modal');
-        if (modal) modal.remove();
-      } catch (_) {}
-    }
+    function _estoqueWireCloseModal() { _fecharModalPadrao('estoque-wire-modal'); }
     function _estoqueWireOpenModal(opts) {
       _estoqueWireCloseModal();
       var options = opts || {};
-      var overlay = document.createElement('div');
-      overlay.id = 'estoque-wire-modal';
-      overlay.className = 'estoque-modal-overlay';
-      overlay.innerHTML = ''
-        + '<div class="estoque-modal-shell estoque-wire-sheet-shell' + (options.wide ? ' wide' : '') + '" style="width:min(' + esc(options.width || '560px') + ',96vw)">'
-        + '  <div class="estoque-wire-sheet-head">'
-        + '    <div>'
-        + '      <h3 class="estoque-wire-sheet-head-title">' + esc(options.title || 'Detalhes') + '</h3>'
-        + '      <div class="estoque-wire-sheet-head-sub">' + esc(options.sub || '') + '</div>'
-        + '    </div>'
-        + '    <button type="button" class="estoque-wire-sheet-close" data-ew-close="1" aria-label="Fechar">X</button>'
-        + '  </div>'
-        + '  <div class="estoque-wire-sheet-body' + (options.bodyClass ? (' ' + esc(options.bodyClass)) : '') + '">' + String(options.bodyHtml || '') + '</div>'
-        + '  <div class="estoque-wire-sheet-footer' + (options.footerHtml ? ' estoque-wire-modal-footer' : ' is-empty') + '">' + String(options.footerHtml || '') + '</div>'
-        + '</div>';
-      overlay.addEventListener('click', function(ev) {
-        if (ev && ev.target === overlay) _estoqueWireCloseModal();
+      var overlay = _abrirModalPadrao({
+        id: 'estoque-wire-modal',
+        titulo: options.title || 'Detalhes',
+        subtitulo: options.sub || '',
+        largura: options.width || '560px',
+        wide: !!options.wide,
+        hero: options.hero || '▣',
+        accent: options.accent || 'blue',
+        shellClass: 'estoque-wire-sheet-shell' + (options.wide ? ' wide' : ''),
+        bodyClass: 'estoque-wire-sheet-body' + (options.bodyClass ? (' ' + options.bodyClass) : ''),
+        corpoHTML: String(options.bodyHtml || ''),
+        footerHtml: String(options.footerHtml || '').replace(/data-ew-close="1"/g, 'data-modal-close="1"')
       });
-      document.body.appendChild(overlay);
       try {
         Array.prototype.slice.call(overlay.querySelectorAll('[data-ew-close="1"]')).forEach(function(btn) {
-          btn.onclick = _estoqueWireCloseModal;
+          btn.setAttribute('data-modal-close', '1');
+          btn.onclick = function() { _estoqueWireCloseModal(); };
         });
       } catch (_) {}
     }
@@ -4898,8 +4889,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (retryBtn) retryBtn.onclick = function() { renderEstoqueWireframePage().catch(function() {}); };
         var createBtn = document.getElementById('estoque-wire-open-create');
         if (createBtn) createBtn.onclick = function() {
-          try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {}
-          _scheduleEnhanceModalNovaChapa();
+          _abrirCriacaoChapaEstoque();
         };
       }
     }
@@ -11973,6 +11963,63 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
   }
 
+  function _fecharModalPadrao(id) {
+    try {
+      if (id) {
+        var el = document.getElementById(String(id || '').trim());
+        if (el) el.remove();
+        return;
+      }
+      Array.prototype.slice.call(document.querySelectorAll('.estoque-modal-overlay[data-modal-padrao="1"]')).forEach(function(el) {
+        try { el.remove(); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  function _abrirModalPadrao(opts) {
+    _ensureEstoqueStyle();
+    opts = opts || {};
+    var modalId = String(opts.id || ('estoque-modal-' + Date.now())).trim();
+    _fecharModalPadrao(modalId);
+    var width = String(opts.largura || opts.width || '560px').trim() || '560px';
+    var hero = String(opts.hero || '').trim();
+    var accent = String(opts.accent || opts.variant || 'blue').trim().toLowerCase();
+    var shellClass = 'estoque-modal-shell estoque-modal-shell-padrao';
+    if (opts.wide) shellClass += ' estoque-modal-shell-lg';
+    if (opts.shellClass) shellClass += ' ' + String(opts.shellClass || '').trim();
+    var headerIconClass = 'estoque-modal-head-icon estoque-modal-head-icon-' + (/^(green|red|blue|teal)$/.test(accent) ? accent : 'blue');
+    var overlay = document.createElement('div');
+    overlay.id = modalId;
+    overlay.className = 'estoque-modal-overlay estoque-modal-overlay-padrao';
+    overlay.setAttribute('data-modal-padrao', '1');
+    overlay.innerHTML = ''
+      + '<div class="' + esc(shellClass) + '" style="width:min(' + esc(width) + ',96vw)">'
+      + '  <div class="estoque-modal-header estoque-modal-header-padrao">'
+      + '    <div class="estoque-modal-head-main">'
+      + (hero ? ('<span class="' + esc(headerIconClass) + '" aria-hidden="true">' + esc(hero) + '</span>') : '')
+      + '      <div class="estoque-modal-title-wrap">'
+      + '        <div class="estoque-modal-title">' + esc(opts.titulo || opts.title || 'Modal') + '</div>'
+      + '        <div class="estoque-modal-sub">' + esc(opts.subtitulo || opts.sub || '') + '</div>'
+      + '      </div>'
+      + '    </div>'
+      + '    <button type="button" class="estoque-modal-close" data-modal-close="1" aria-label="Fechar">×</button>'
+      + '  </div>'
+      + '  <div class="estoque-modal-content estoque-modal-content-padrao' + (opts.bodyClass ? (' ' + esc(opts.bodyClass)) : '') + '">' + String(opts.corpoHTML || opts.bodyHtml || '') + '</div>'
+      + '  <div class="estoque-modal-footer estoque-modal-footer-padrao' + ((opts.footerHTML || opts.footerHtml) ? '' : ' is-empty') + '">' + String(opts.footerHTML || opts.footerHtml || '') + '</div>'
+      + '</div>';
+    overlay.addEventListener('click', function(ev) {
+      if (ev && ev.target === overlay) _fecharModalPadrao(modalId);
+    });
+    document.body.appendChild(overlay);
+    Array.prototype.slice.call(overlay.querySelectorAll('[data-modal-close="1"]')).forEach(function(btn) {
+      btn.onclick = function() { _fecharModalPadrao(modalId); };
+    });
+    if (typeof opts.onOpen === 'function') {
+      try { opts.onOpen(overlay, overlay.firstElementChild); } catch (_) {}
+    }
+    return overlay;
+  }
+
   function _getInputVal(id) {
     var el = document.getElementById(id);
     return el ? String(el.value || '').trim() : '';
@@ -12099,7 +12146,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var empId = _estoqueAtualEmpId();
     if (empId) qs.set('empId', empId);
     var json = await _apiJsonAuth('/api/chapas_estoque?' + qs.toString());
-    return _estoqueUnwrapList(json, ['chapas']);
+    var lista = _estoqueUnwrapList(json, ['chapas']);
+    lista = Array.isArray(lista) ? lista : [];
+    return lista.map(function(chapa) {
+      var cor = _resolveChapaRowColor(chapa);
+      if (!chapa || typeof chapa !== 'object') return chapa;
+      return Object.assign({}, chapa, {
+        cor: cor || null,
+        cor_linha: cor || null,
+        linha_cor: cor || null
+      });
+    });
   }
 
   async function _estoqueFetchMovimentos(tipo, limit) {
@@ -12457,27 +12514,103 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return raw || 'Italy Embalagens';
   }
 
+  function _setEstadoModalChapa(mode, id) {
+    var nextMode = String(mode || '').trim().toLowerCase() === 'edit' ? 'edit' : 'create';
+    var nextId = nextMode === 'edit' ? String(id || '').trim() : '';
+    try { window.__estoqueModalChapaMode = nextMode; } catch (_) {}
+    try { window.__estoqueModalChapaEditId = nextId; } catch (_) {}
+    try { window.__estoqueModalChapaOpeningEdit = (nextMode === 'edit'); } catch (_) {}
+    return { mode: nextMode, id: nextId };
+  }
+
+  function _getEstadoModalChapa() {
+    var fieldId = '';
+    try { fieldId = String((document.getElementById('chapa-edit-id') || {}).value || '').trim(); } catch (_) {}
+    var storedMode = '';
+    try { storedMode = String(window.__estoqueModalChapaMode || '').trim().toLowerCase(); } catch (_) {}
+    var storedId = '';
+    try { storedId = String(window.__estoqueModalChapaEditId || '').trim(); } catch (_) {}
+    var mode = (storedMode === 'edit' || fieldId || storedId) ? 'edit' : 'create';
+    return {
+      mode: mode,
+      id: fieldId || storedId || ''
+    };
+  }
+
+  function _sincronizarContextoModalChapa() {
+    var modal = document.getElementById('modal-nova-chapa');
+    if (!modal) return false;
+    var state = _getEstadoModalChapa();
+    var editIdField = document.getElementById('chapa-edit-id');
+    if (editIdField) editIdField.value = state.mode === 'edit' ? state.id : '';
+    var title = document.getElementById('chapa-modal-titulo');
+    if (title) title.textContent = state.mode === 'edit' ? 'Editar Chapa' : 'Nova Chapa';
+    modal.setAttribute('data-modal-mode', state.mode);
+    if (state.id) modal.setAttribute('data-modal-edit-id', state.id);
+    else modal.removeAttribute('data-modal-edit-id');
+    return true;
+  }
+
+  function _agendarSincronizacaoModalChapa() {
+    [0, 60, 220, 520].forEach(function(delay) {
+      setTimeout(function() {
+        try { _sincronizarContextoModalChapa(); } catch (_) {}
+      }, delay);
+    });
+  }
+
+  function _abrirCriacaoChapaEstoque() {
+    _setEstadoModalChapa('create', '');
+    try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {}
+    _scheduleEnhanceModalNovaChapa();
+    _agendarSincronizacaoModalChapa();
+  }
+
   async function _buscarChapaEstoquePorId(id) {
     var sid = String(id || '').trim();
     if (!sid) return null;
-    var lista = _getListaChapasEstoqueCache();
+    var lista = [];
+    try {
+      var qs = new URLSearchParams();
+      qs.set('limit', '500');
+      qs.set('nocache', '1');
+      qs.set('_', String(Date.now()));
+      var empId = _estoqueAtualEmpId();
+      if (empId) qs.set('empId', empId);
+      lista = await _apiJsonAuth('/api/chapas_estoque?' + qs.toString());
+      lista = _estoqueUnwrapList(lista, ['chapas']);
+    } catch (_) {
+      lista = [];
+    }
+    lista = Array.isArray(lista) ? lista.map(function(chapa) {
+      var cor = _resolveChapaRowColor(chapa);
+      if (!chapa || typeof chapa !== 'object') return chapa;
+      return Object.assign({}, chapa, {
+        cor: cor || null,
+        cor_linha: cor || null,
+        linha_cor: cor || null
+      });
+    }) : [];
+    if (lista.length) window.__estoqueChapasCacheGlobal = lista.slice();
     var found = (lista || []).find(function(item) { return String(item && item.id || '').trim() === sid; }) || null;
     if (found) return found;
-    lista = await _carregarListaSeletorChapas().catch(function() { return []; });
+    lista = _getListaChapasEstoqueCache();
     found = (lista || []).find(function(item) { return String(item && item.id || '').trim() === sid; }) || null;
     if (found) return found;
-    lista = await _estoqueFetchChapasList(10000).catch(function() { return []; });
-    lista = Array.isArray(lista) ? lista : [];
-    if (lista.length) window.__estoqueChapasCacheGlobal = lista.slice();
+    lista = await _carregarListaSeletorChapas().catch(function() { return []; });
     return (lista || []).find(function(item) { return String(item && item.id || '').trim() === sid; }) || null;
   }
 
   function _preencherModalEdicaoChapa(chapa) {
     if (!chapa) return false;
-    try {
-      if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa();
-    } catch (_) {}
+    _setEstadoModalChapa('edit', chapa && chapa.id || '');
     var modal = document.getElementById('modal-nova-chapa');
+    if (!modal) {
+      try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {}
+      _scheduleEnhanceModalNovaChapa();
+      _agendarSincronizacaoModalChapa();
+      modal = document.getElementById('modal-nova-chapa');
+    }
     if (!modal) return false;
     _setFieldValueChapa('chapa-edit-id', chapa && chapa.id || '');
     _setFieldValueChapa('chapa-categoria', chapa && chapa.categoria || 'Estoque Simples');
@@ -12514,6 +12647,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (typeof window.setChapaRiscada === 'function') window.setChapaRiscada(!!(chapa && chapa.riscada));
     } catch (_) {}
     try { if (typeof window.calcTotalChapa === 'function') window.calcTotalChapa(); } catch (_) {}
+    try { _sincronizarContextoModalChapa(); } catch (_) {}
     try { modal.style.display = 'flex'; } catch (_) {}
     return true;
   }
@@ -12523,22 +12657,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var onSelect = typeof opts.onSelect === 'function' ? opts.onSelect : function() {};
     var titulo = String(opts.titulo || 'Selecionar Chapa');
     var subtitulo = String(opts.subtitulo || 'Escolha uma chapa existente para editar.');
-    var wrap = document.createElement('div');
-    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.82);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px';
-    wrap.innerHTML = ''
-      + '<div style="width:min(920px,96vw);max-height:88vh;overflow:auto;background:linear-gradient(180deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.18);border-radius:18px;padding:18px;box-shadow:0 24px 60px rgba(2,6,23,.55)">'
-      + '  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">'
-      + '    <div><div style="font-size:24px;font-weight:900;color:var(--text)">' + _escapeHtmlLite(titulo) + '</div><div style="margin-top:6px;color:var(--text2);font-size:13px">' + _escapeHtmlLite(subtitulo) + '</div></div>'
-      + '    <button type="button" id="est-sel-close" class="pcp-btn" style="background:#334155">Fechar</button>'
-      + '  </div>'
-      + '  <div style="margin-top:14px"><input id="est-sel-q" type="text" placeholder="Buscar por fornecedor, nomenclatura, tamanho ou nome..." style="width:100%;padding:11px 14px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>'
-      + '  <div id="est-sel-lista" style="margin-top:14px;display:grid;gap:8px"></div>'
-      + '</div>';
-    document.body.appendChild(wrap);
-    var fechar = function() { try { wrap.remove(); } catch (_) {} };
-    wrap.addEventListener('click', function(ev) { if (ev.target === wrap) fechar(); });
-    var btnClose = document.getElementById('est-sel-close');
-    if (btnClose) btnClose.onclick = fechar;
+    var wrap = _abrirModalPadrao({
+      id: 'estoque-seletor-chapa-modal',
+      titulo: titulo,
+      subtitulo: subtitulo,
+      largura: '920px',
+      wide: true,
+      hero: '✎',
+      accent: 'blue',
+      corpoHTML: '<div style="display:grid;gap:14px"><input id="est-sel-q" class="estoque-modal-input" type="text" placeholder="Buscar por fornecedor, nomenclatura, tamanho ou nome..."><div id="est-sel-lista" style="display:grid;gap:8px"></div></div>',
+      footerHtml: '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" id="est-sel-close" data-modal-close="1">Fechar</button>'
+    });
+    var fechar = function() { _fecharModalPadrao('estoque-seletor-chapa-modal'); };
     var render = function(q) {
       var host = document.getElementById('est-sel-lista');
       if (!host) return;
@@ -12607,21 +12737,30 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   async function _abrirEdicaoChapaEstoque(id) {
     var sid = String(id || '').trim();
     if (!sid) return;
+    _setEstadoModalChapa('edit', sid);
     var chapa = await _buscarChapaEstoquePorId(sid).catch(function() { return null; });
     // #region debug-point E:chapa-edicao-entry
     try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('E', 'abrir edicao de chapa iniciado', { id: sid, cacheHit: !!chapa, hasEditarChapa: typeof window.editarChapa === 'function', hasAbrirModalNovaChapa: typeof window.abrirModalNovaChapa === 'function' }); } catch (_) {}
     // #endregion
+    if (!chapa) {
+      try { window.toast('Nao foi possivel carregar os dados atuais da chapa selecionada.', 'var(--red)'); } catch (_) {}
+      return;
+    }
     if (chapa) {
       try { window.__estoqueChapasCacheGlobal = _getListaChapasEstoqueCache().slice(); } catch (_) {}
       _upsertListaChapasNative('_estoqueBase', chapa);
       _upsertListaChapasNative('ESTOQUE', chapa);
     }
     try {
-      if (!_preencherModalEdicaoChapa(chapa) && typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa();
-    } catch (_) {
-      try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (__) {}
-    }
+      if (!_preencherModalEdicaoChapa(chapa)) {
+        _agendarSincronizacaoModalChapa();
+        setTimeout(function() {
+          try { _preencherModalEdicaoChapa(chapa); } catch (_) {}
+        }, 80);
+      }
+    } catch (_) {}
     _scheduleEnhanceModalNovaChapa();
+    _agendarSincronizacaoModalChapa();
     setTimeout(function() {
       // #region debug-point E:chapa-edicao-post-open
       try {
@@ -12691,8 +12830,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var btn = document.getElementById(buttonId || 'estoque-btn-criar-chapas');
     if (!btn) return;
     btn.onclick = function() {
-      try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {}
-      _scheduleEnhanceModalNovaChapa();
+      _abrirCriacaoChapaEstoque();
       if (typeof onDone === 'function') {
         setTimeout(function() { try { onDone(); } catch (_) {} }, 600);
       }
@@ -12701,6 +12839,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function _fecharModalChapaPatch() {
     try {
+      _setEstadoModalChapa('create', '');
       var modal = document.getElementById('modal-nova-chapa');
       if (modal) modal.style.display = 'none';
     } catch (_) {}
@@ -12745,8 +12884,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var orig = window[fnName];
         if (typeof orig !== 'function' || orig.__patchEstoqueEnhanced) return;
         var wrapped = function() {
+          var arg0 = arguments.length ? arguments[0] : null;
+          var argId = '';
+          if (arg0 && typeof arg0 === 'object') argId = String(arg0.id || arg0.chapa_id || '').trim();
+          else argId = String(arg0 || '').trim();
+          var isEditFlow = fnName === 'editarChapa' || !!window.__estoqueModalChapaOpeningEdit || _getEstadoModalChapa().mode === 'edit';
+          if (isEditFlow) _setEstadoModalChapa('edit', argId || _getEstadoModalChapa().id || '');
+          else _setEstadoModalChapa('create', '');
           var out = orig.apply(this, arguments);
+          try { window.__estoqueModalChapaOpeningEdit = false; } catch (_) {}
           _scheduleEnhanceModalNovaChapa();
+          _agendarSincronizacaoModalChapa();
           return out;
         };
         wrapped.__patchEstoqueEnhanced = true;
@@ -12800,11 +12948,23 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           var modal = document.getElementById('modal-nova-chapa');
           var modalAberto = !!(modal && modal.style.display === 'flex');
           if (modalAberto && /^\/api\/chapas_estoque(?:\/[^/]+)?$/.test(u) && (m === 'POST' || m === 'PUT' || m === 'PATCH') && opts && opts.body) {
+            var editIdAtual = String((document.getElementById('chapa-edit-id') || {}).value || window.__estoqueModalChapaEditId || '').trim();
+            if (editIdAtual && /^(PUT|PATCH)$/.test(m) && /^\/api\/chapas_estoque(?:\?.*)?$/.test(u)) {
+              u = '/api/chapas_estoque/' + encodeURIComponent(editIdAtual);
+              url = u;
+            }
+            if (editIdAtual && m === 'POST' && /^\/api\/chapas_estoque(?:\?.*)?$/.test(u)) {
+              u = '/api/chapas_estoque/' + encodeURIComponent(editIdAtual);
+              url = u;
+              opts.method = 'PATCH';
+              m = 'PATCH';
+            }
             var cor = _normalizeChapaRowColor((document.getElementById('chapa-cor-linha') || {}).value || '');
             var mergePayload = function(body) {
               if (!body || typeof body !== 'object') return body;
               body.cor = cor || null;
               body.cor_linha = cor || null;
+              if (editIdAtual) body.id = editIdAtual;
               return body;
             };
             if (typeof opts.body === 'string') {
@@ -12814,7 +12974,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             }
           }
         } catch (_) {}
-        var out = orig.apply(this, arguments);
+        var out = orig.call(this, url, opts);
         try {
           if (out && typeof out.then === 'function') {
             out.then(function(resp) {
@@ -12843,12 +13003,20 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!modal) return;
     var shell = modal.firstElementChild;
     if (!shell) return;
-    modal.classList.add('estoque-modal-overlay');
+    modal.classList.add('estoque-modal-overlay', 'estoque-modal-overlay-padrao');
+    modal.setAttribute('data-modal-padrao', '1');
     shell.classList.add('estoque-modal-shell', 'estoque-modal-shell-md', 'estoque-modal-shell-chapa');
     shell.style.cssText = '';
+    if (!modal.dataset.patchOverlayCloseBound) {
+      modal.dataset.patchOverlayCloseBound = '1';
+      modal.addEventListener('click', function(ev) {
+        if (ev && ev.target === modal) _fecharModalChapaPatch();
+      });
+    }
     var title = document.getElementById('chapa-modal-titulo');
     if (!title) return;
-    var isEdit = /editar/i.test(String(title.textContent || ''));
+    try { _sincronizarContextoModalChapa(); } catch (_) {}
+    var isEdit = _getEstadoModalChapa().mode === 'edit';
 
     var header = shell.querySelector('.estoque-modal-header');
     if (!header) {
@@ -12958,10 +13126,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         footerButtons[0].onclick = _fecharModalChapaPatch;
       }
       if (footerButtons[1]) {
-        footerButtons[1].className = 'estoque-modal-btn estoque-modal-btn-blue';
-        footerButtons[1].innerHTML = '✓ Salvar';
+        footerButtons[1].className = 'estoque-modal-btn ' + (isEdit ? 'estoque-modal-btn-blue' : 'estoque-modal-btn-green');
+        footerButtons[1].innerHTML = isEdit ? '✓ Salvar Alterações' : '+ Criar Chapa';
       }
     }
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
   }
 
   function _normalizarModalEstoque(node) {
@@ -13192,8 +13362,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function _entradaEstoqueFecharModal() {
-    var modal = document.getElementById('estoque-entrada-real-modal');
-    if (modal) modal.style.display = 'none';
+    _fecharModalPadrao('estoque-entrada-real-modal');
   }
 
   async function _entradaEstoqueSalvar() {
@@ -13300,92 +13469,37 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   async function _abrirModalEntradaEstoqueReal() {
     var modal = document.getElementById('estoque-entrada-real-modal');
-    // #region debug-point F:entrada-modal-open-start
     try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('F', 'abrir modal dar entrada iniciado', { modalExists: !!modal }); } catch (_) {}
-    // #endregion
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'estoque-entrada-real-modal';
-      modal.className = 'estoque-modal-overlay';
-      modal.style.display = 'none';
-      modal.innerHTML = ''
-        + '<div class="estoque-modal-shell">'
-        + '  <div class="estoque-modal-header">'
-        + '    <div class="estoque-modal-head-main">'
-        + '      <span class="estoque-modal-head-icon estoque-modal-head-icon-green" aria-hidden="true">↓</span>'
-        + '      <div class="estoque-modal-title-wrap">'
-        + '        <div class="estoque-modal-title">Dar Entrada</div>'
-        + '        <div class="estoque-modal-sub">Lance varias chapas na mesma entrada e reaproveite a chapa existente quando ela ja estiver cadastrada.</div>'
-        + '      </div>'
-        + '    </div>'
-        + '    <button type="button" id="estoque-entrada-real-close" class="estoque-modal-close" aria-label="Fechar">×</button>'
+    modal = _abrirModalPadrao({
+      id: 'estoque-entrada-real-modal',
+      titulo: 'Dar Entrada',
+      subtitulo: 'Lance varias chapas na mesma entrada e reaproveite a chapa existente quando ela ja estiver cadastrada.',
+      largura: '1280px',
+      wide: true,
+      hero: '↓',
+      accent: 'green',
+      corpoHTML: ''
+        + '<section class="estoque-modal-card">'
+        + '  <div class="estoque-modal-card-head"><div><div class="estoque-modal-card-title">Dados Gerais</div><div class="estoque-modal-card-sub">Identifique o recebimento, vincule fornecedor e registre a nota antes de listar os itens.</div></div></div>'
+        + '  <div class="estoque-modal-grid estoque-modal-grid-entrada">'
+        + '    <label class="estoque-modal-label"><span>Data da Entrada</span><input id="estoque-entrada-real-data" class="estoque-modal-input" type="date"></label>'
+        + '    <label class="estoque-modal-label"><span>Fornecedor</span><input id="estoque-entrada-real-fornecedor" class="estoque-modal-input" type="text" placeholder="Fornecedor do recebimento"></label>'
+        + '    <label class="estoque-modal-label"><span>Qual CNPJ</span><input id="estoque-entrada-real-cnpj" class="estoque-modal-input" type="text" placeholder="Empresa/CNPJ"></label>'
+        + '    <label class="estoque-modal-label"><span>NF</span><input id="estoque-entrada-real-nf" class="estoque-modal-input estoque-modal-mono" type="text" placeholder="Numero da nota fiscal"></label>'
+        + '    <label class="estoque-modal-label"><span>Responsavel</span><input id="estoque-entrada-real-responsavel" class="estoque-modal-input" type="text" placeholder="Quem recebeu/lancou"></label>'
+        + '    <label class="estoque-modal-label estoque-modal-field-full"><span>Observacoes</span><input id="estoque-entrada-real-obs" class="estoque-modal-input" type="text" placeholder="Observacoes gerais da entrada"></label>'
         + '  </div>'
-        + '  <div class="estoque-modal-content">'
-        + '    <section class="estoque-modal-card">'
-        + '      <div class="estoque-modal-card-head">'
-        + '        <div>'
-        + '          <div class="estoque-modal-card-title">Dados Gerais</div>'
-        + '          <div class="estoque-modal-card-sub">Identifique o recebimento, vincule fornecedor e registre a nota antes de listar os itens.</div>'
-        + '        </div>'
-        + '      </div>'
-        + '      <div class="estoque-modal-grid estoque-modal-grid-entrada">'
-        + '        <label class="estoque-modal-label"><span>Data da Entrada</span><input id="estoque-entrada-real-data" class="estoque-modal-input" type="date"></label>'
-        + '        <label class="estoque-modal-label"><span>Fornecedor</span><input id="estoque-entrada-real-fornecedor" class="estoque-modal-input" type="text" placeholder="Fornecedor do recebimento"></label>'
-        + '        <label class="estoque-modal-label"><span>Qual CNPJ</span><input id="estoque-entrada-real-cnpj" class="estoque-modal-input" type="text" placeholder="Empresa/CNPJ"></label>'
-        + '        <label class="estoque-modal-label"><span>NF</span><input id="estoque-entrada-real-nf" class="estoque-modal-input estoque-modal-mono" type="text" placeholder="Numero da nota fiscal"></label>'
-        + '        <label class="estoque-modal-label"><span>Responsavel</span><input id="estoque-entrada-real-responsavel" class="estoque-modal-input" type="text" placeholder="Quem recebeu/lancou"></label>'
-        + '        <label class="estoque-modal-label estoque-modal-field-full"><span>Observacoes</span><input id="estoque-entrada-real-obs" class="estoque-modal-input" type="text" placeholder="Observacoes gerais da entrada"></label>'
-        + '      </div>'
-        + '    </section>'
-        + '    <section class="estoque-modal-card">'
-        + '      <div class="estoque-modal-card-head">'
-        + '        <div>'
-        + '          <div class="estoque-modal-card-title">Itens da Entrada</div>'
-        + '          <div class="estoque-modal-card-sub">Use "Existente" para somar saldo numa chapa ja cadastrada ou "Nova" para criar e dar entrada na mesma operacao.</div>'
-        + '        </div>'
-        + '        <button type="button" id="estoque-entrada-real-add" class="estoque-modal-outline">+ Adicionar Item</button>'
-        + '      </div>'
-        + '      <div class="estoque-modal-table-wrap">'
-        + '        <table class="estoque-modal-table" style="min-width:1280px">'
-        + '        <thead><tr>'
-        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Modo</th>'
-        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Chapa Existente</th>'
-        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Gramatura</th>'
-        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Nomenclatura</th>'
-        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Tamanho</th>'
-        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Nome/Uso</th>'
-        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Qtd</th>'
-        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">R$/un</th>'
-        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);text-align:right">Total</th>'
-        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);text-align:center">Acao</th>'
-        + '        </tr></thead>'
-        + '        <tbody id="estoque-entrada-real-tbody"></tbody>'
-        + '      </table>'
-        + '      </div>'
-        + '    </section>'
-        + '  </div>'
-        + '  <div class="estoque-modal-footer">'
-        + '    <button type="button" id="estoque-entrada-real-cancel" class="estoque-modal-btn estoque-modal-btn-ghost">Cancelar</button>'
-        + '    <button type="button" id="estoque-entrada-real-save" class="estoque-modal-btn estoque-modal-btn-green">✓ Salvar Entrada</button>'
-        + '  </div>'
-        + '</div>';
-      document.body.appendChild(modal);
-      modal.addEventListener('click', function(ev) {
-        if (ev.target === modal) _entradaEstoqueFecharModal();
-      });
-      var closeBtn = document.getElementById('estoque-entrada-real-close');
-      var cancelBtn = document.getElementById('estoque-entrada-real-cancel');
-      var saveBtn = document.getElementById('estoque-entrada-real-save');
-      if (closeBtn) closeBtn.onclick = _entradaEstoqueFecharModal;
-      if (cancelBtn) cancelBtn.onclick = _entradaEstoqueFecharModal;
-      if (saveBtn) saveBtn.onclick = _entradaEstoqueSalvar;
-    }
-
+        + '</section>'
+        + '<section class="estoque-modal-card">'
+        + '  <div class="estoque-modal-card-head"><div><div class="estoque-modal-card-title">Itens da Entrada</div><div class="estoque-modal-card-sub">Use "Existente" para somar saldo numa chapa ja cadastrada ou "Nova" para criar e dar entrada na mesma operacao.</div></div><button type="button" id="estoque-entrada-real-add" class="estoque-modal-outline">+ Adicionar Item</button></div>'
+        + '  <div class="estoque-modal-table-wrap"><table class="estoque-modal-table" style="min-width:1280px"><thead><tr><th>Modo</th><th>Chapa Existente</th><th>Gramatura</th><th>Nomenclatura</th><th>Tamanho</th><th>Nome/Uso</th><th>Qtd</th><th>R$/un</th><th style="text-align:right">Total</th><th style="text-align:center">Acao</th></tr></thead><tbody id="estoque-entrada-real-tbody"></tbody></table></div>'
+        + '</section>',
+      footerHtml: '<button type="button" id="estoque-entrada-real-cancel" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button type="button" id="estoque-entrada-real-save" class="estoque-modal-btn estoque-modal-btn-green">✓ Salvar Entrada</button>'
+    });
+    var saveBtn = document.getElementById('estoque-entrada-real-save');
+    if (saveBtn) saveBtn.onclick = _entradaEstoqueSalvar;
     var tbody = document.getElementById('estoque-entrada-real-tbody');
     if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="padding:18px;color:var(--text2)">Carregando chapas...</td></tr>';
-    modal.style.display = 'flex';
-    try { _ensureEstoqueStyle(); } catch (_) {}
-    try { _normalizarModalEstoque(modal); } catch (_) {}
     try { _agendarReaplicacaoUiEstoque(modal); } catch (_) {}
     // #region debug-point F:entrada-modal-open-dom
     try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('F', 'modal dar entrada visivel', { modalDisplay: String(modal && modal.style && modal.style.display || ''), modalClass: String(modal && modal.className || ''), shellClass: String(modal && modal.firstElementChild && modal.firstElementChild.className || '') }); } catch (_) {}
@@ -13597,8 +13711,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function _saidaEstoqueFecharModal() {
-    var modal = document.getElementById('estoque-saida-real-modal');
-    if (modal) modal.style.display = 'none';
+    _fecharModalPadrao('estoque-saida-real-modal');
   }
 
   async function _saidaEstoqueSalvar() {
@@ -13679,93 +13792,36 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   async function _abrirModalSaidaEstoqueReal() {
-    var modal = document.getElementById('estoque-saida-real-modal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'estoque-saida-real-modal';
-      modal.className = 'estoque-modal-overlay';
-      modal.style.display = 'none';
-      modal.innerHTML = ''
-        + '<div class="estoque-modal-shell estoque-modal-shell-lg">'
-        + '  <div class="estoque-modal-header">'
-        + '    <div class="estoque-modal-head-main">'
-        + '      <span class="estoque-modal-head-icon estoque-modal-head-icon-red" aria-hidden="true">↑</span>'
-        + '      <div class="estoque-modal-title-wrap">'
-        + '        <div class="estoque-modal-title">Dar Saída</div>'
-        + '        <div class="estoque-modal-sub">Selecione varias chapas na mesma operacao, valide o saldo antes de salvar e informe o motivo da saida.</div>'
-        + '      </div>'
-        + '    </div>'
-        + '    <button type="button" id="estoque-saida-real-close" class="estoque-modal-close" aria-label="Fechar">×</button>'
+    var modal = _abrirModalPadrao({
+      id: 'estoque-saida-real-modal',
+      titulo: 'Dar Saída',
+      subtitulo: 'Selecione varias chapas na mesma operacao, valide o saldo antes de salvar e informe o motivo da saida.',
+      largura: '1180px',
+      wide: true,
+      hero: '↑',
+      accent: 'red',
+      corpoHTML: ''
+        + '<section class="estoque-modal-card">'
+        + '  <div class="estoque-modal-card-head"><div><div class="estoque-modal-card-title">Dados Gerais</div><div class="estoque-modal-card-sub">Informe contexto da movimentacao, OF vinculada e motivo da baixa antes de escolher os itens.</div></div></div>'
+        + '  <div class="estoque-modal-grid estoque-modal-grid-saida">'
+        + '    <label class="estoque-modal-label"><span>Data da Saida</span><input id="estoque-saida-real-data" class="estoque-modal-input" type="date"></label>'
+        + '    <label class="estoque-modal-label"><span>Motivo</span><select id="estoque-saida-real-motivo" class="estoque-modal-select"><option value="">Selecionar...</option><option value="producao">Produção</option><option value="ajuste">Ajuste de Estoque</option><option value="devolucao">Devolução ao Fornecedor</option><option value="perda">Perda / Avaria</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></label>'
+        + '    <label class="estoque-modal-label"><span>Responsavel</span><input id="estoque-saida-real-responsavel" class="estoque-modal-input" type="text" placeholder="Quem lancou"></label>'
+        + '    <label class="estoque-modal-label"><span>OF</span><input id="estoque-saida-real-of" class="estoque-modal-input estoque-modal-mono" type="text" placeholder="Opcional"></label>'
+        + '    <label class="estoque-modal-label estoque-modal-field-full"><span>Observacoes</span><input id="estoque-saida-real-obs" class="estoque-modal-input" type="text" placeholder="Detalhes adicionais da saida"></label>'
         + '  </div>'
-        + '  <div class="estoque-modal-content">'
-        + '    <section class="estoque-modal-card">'
-        + '      <div class="estoque-modal-card-head">'
-        + '        <div>'
-        + '          <div class="estoque-modal-card-title">Dados Gerais</div>'
-        + '          <div class="estoque-modal-card-sub">Informe contexto da movimentacao, of vinculada e motivo da baixa antes de escolher os itens.</div>'
-        + '        </div>'
-        + '      </div>'
-        + '      <div class="estoque-modal-grid estoque-modal-grid-saida">'
-        + '        <label class="estoque-modal-label"><span>Data da Saida</span><input id="estoque-saida-real-data" class="estoque-modal-input" type="date"></label>'
-        + '        <label class="estoque-modal-label"><span>Motivo</span><select id="estoque-saida-real-motivo" class="estoque-modal-select"><option value="">Selecionar...</option><option value="producao">Produção</option><option value="ajuste">Ajuste de Estoque</option><option value="devolucao">Devolução ao Fornecedor</option><option value="perda">Perda / Avaria</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></label>'
-        + '        <label class="estoque-modal-label"><span>Responsavel</span><input id="estoque-saida-real-responsavel" class="estoque-modal-input" type="text" placeholder="Quem lancou"></label>'
-        + '        <label class="estoque-modal-label"><span>OF</span><input id="estoque-saida-real-of" class="estoque-modal-input estoque-modal-mono" type="text" placeholder="Opcional"></label>'
-        + '        <label class="estoque-modal-label estoque-modal-field-full"><span>Observacoes</span><input id="estoque-saida-real-obs" class="estoque-modal-input" type="text" placeholder="Detalhes adicionais da saida"></label>'
-        + '      </div>'
-        + '    </section>'
-        + '    <section class="estoque-modal-card">'
-        + '      <div class="estoque-modal-card-head">'
-        + '        <div>'
-        + '          <div class="estoque-modal-card-title">Itens da Saída</div>'
-        + '          <div class="estoque-modal-card-sub">A validacao de saldo continua obrigatoria e bloqueia qualquer item acima do disponivel.</div>'
-        + '        </div>'
-        + '        <button type="button" id="estoque-saida-real-add" class="estoque-modal-outline">+ Adicionar Item</button>'
-        + '      </div>'
-        + '      <div class="estoque-modal-summary-grid">'
-        + '        <div class="estoque-modal-summary-card">'
-        + '          <span class="estoque-modal-summary-label">Resumo da saida</span>'
-        + '          <strong id="estoque-saida-real-resumo" class="estoque-modal-summary-value">Selecione as chapas e quantidades.</strong>'
-        + '        </div>'
-        + '        <div class="estoque-modal-summary-card">'
-        + '          <span class="estoque-modal-summary-label">Validacao</span>'
-        + '          <strong class="estoque-modal-summary-value">Bloqueia saldo insuficiente ao salvar.</strong>'
-        + '        </div>'
-        + '      </div>'
-        + '      <div class="estoque-modal-table-wrap">'
-        + '        <table class="estoque-modal-table" style="min-width:980px">'
-        + '        <thead><tr>'
-        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Chapa</th>'
-        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);text-align:right">Saldo</th>'
-        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Qtd Saída</th>'
-        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);text-align:right">Valor Estimado</th>'
-        + '          <th style="padding:10px 8px;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);text-align:center">Ação</th>'
-        + '        </tr></thead>'
-        + '        <tbody id="estoque-saida-real-tbody"></tbody>'
-        + '      </table>'
-        + '      </div>'
-        + '    </section>'
-        + '  </div>'
-        + '  <div class="estoque-modal-footer">'
-        + '    <button type="button" id="estoque-saida-real-cancel" class="estoque-modal-btn estoque-modal-btn-ghost">Cancelar</button>'
-        + '    <button type="button" id="estoque-saida-real-save" class="estoque-modal-btn estoque-modal-btn-red">✓ Salvar Saída</button>'
-        + '  </div>'
-        + '</div>';
-      document.body.appendChild(modal);
-      modal.addEventListener('click', function(ev) {
-        if (ev.target === modal) _saidaEstoqueFecharModal();
-      });
-      var closeBtn = document.getElementById('estoque-saida-real-close');
-      var cancelBtn = document.getElementById('estoque-saida-real-cancel');
-      var saveBtn = document.getElementById('estoque-saida-real-save');
-      if (closeBtn) closeBtn.onclick = _saidaEstoqueFecharModal;
-      if (cancelBtn) cancelBtn.onclick = _saidaEstoqueFecharModal;
-      if (saveBtn) saveBtn.onclick = _saidaEstoqueSalvar;
-    }
-
+        + '</section>'
+        + '<section class="estoque-modal-card">'
+        + '  <div class="estoque-modal-card-head"><div><div class="estoque-modal-card-title">Itens da Saída</div><div class="estoque-modal-card-sub">A validacao de saldo continua obrigatoria e bloqueia qualquer item acima do disponivel.</div></div><button type="button" id="estoque-saida-real-add" class="estoque-modal-outline">+ Adicionar Item</button></div>'
+        + '  <div class="estoque-modal-summary-grid"><div class="estoque-modal-summary-card"><span class="estoque-modal-summary-label">Resumo da saida</span><strong id="estoque-saida-real-resumo" class="estoque-modal-summary-value">Selecione as chapas e quantidades.</strong></div><div class="estoque-modal-summary-card"><span class="estoque-modal-summary-label">Validacao</span><strong class="estoque-modal-summary-value">Bloqueia saldo insuficiente ao salvar.</strong></div></div>'
+        + '  <div class="estoque-modal-table-wrap"><table class="estoque-modal-table" style="min-width:980px"><thead><tr><th>Chapa</th><th style="text-align:right">Saldo</th><th>Qtd Saída</th><th style="text-align:right">Valor Estimado</th><th style="text-align:center">Ação</th></tr></thead><tbody id="estoque-saida-real-tbody"></tbody></table></div>'
+        + '</section>',
+      footerHtml: '<button type="button" id="estoque-saida-real-cancel" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button type="button" id="estoque-saida-real-save" class="estoque-modal-btn estoque-modal-btn-red">✓ Salvar Saída</button>'
+    });
+    var saveBtn = document.getElementById('estoque-saida-real-save');
+    if (saveBtn) saveBtn.onclick = _saidaEstoqueSalvar;
     var tbody = document.getElementById('estoque-saida-real-tbody');
     if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="padding:18px;color:var(--text2)">Carregando chapas...</td></tr>';
-    modal.style.display = 'flex';
-
     try {
       var chapas = await _estoqueFetchChapasList(2000);
       chapas = (Array.isArray(chapas) ? chapas : []).filter(function(chapa) {
@@ -13843,6 +13899,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (btnSaida) btnSaida.onclick = function() { _abrirModalSaidaEstoqueReal(); };
         _bindBotaoEditarChapas(window.__estoqueSaidasRefresh, 'estoque-saida-alterar-btn');
         _bindBotaoCriarChapas(window.__estoqueSaidasRefresh, 'estoque-saida-criar-btn');
+        try { _agendarReaplicacaoUiEstoque(host); } catch (_) {}
       };
       render();
     } catch (e) {
@@ -14091,7 +14148,31 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '.estoque-toggle-btn.active-yes{background:rgba(34,197,94,.18);color:#bbf7d0;box-shadow:inset 0 0 0 1px rgba(34,197,94,.28)}' +
       '.pep-table-wrap{overflow:auto;max-height:min(60vh,520px);overscroll-behavior:contain}' +
       '.pcp-input{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}' +
-      '.pcp-select{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}';
+      '.pcp-select{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}' +
+      '.estoque-modal-overlay-padrao{background:rgba(0,0,0,.68)!important;backdrop-filter:none!important}' +
+      '.estoque-modal-shell-padrao{display:grid!important;grid-template-rows:auto minmax(0,1fr) auto!important;max-height:85vh!important;overflow:hidden!important;background:#131b2e!important;border:1px solid rgba(148,163,184,.18)!important;border-radius:18px!important;box-shadow:0 36px 88px rgba(0,0,0,.62)!important}' +
+      '.estoque-modal-header-padrao{position:sticky;top:0;z-index:3;padding:22px 24px!important;background:#0f172a!important;border-bottom:1px solid rgba(148,163,184,.14)!important}' +
+      '.estoque-modal-content-padrao{min-height:0;overflow:auto;padding:22px 24px!important;background:linear-gradient(180deg,#131b2e,#10182a)!important}' +
+      '.estoque-modal-footer-padrao{padding:16px 24px!important;background:#10182a!important;border-top:1px solid rgba(148,163,184,.12)!important}' +
+      '.estoque-modal-footer-padrao.is-empty{display:none!important}' +
+      '.estoque-modal-title{font-size:24px!important;color:#f8fafc!important}' +
+      '.estoque-modal-sub{font-size:13px!important;line-height:1.55!important;color:#cbd5e1!important}' +
+      '.estoque-modal-card{background:#162033!important;border:1px solid rgba(148,163,184,.14)!important}' +
+      '.estoque-modal-card-title{color:#f8fafc!important}' +
+      '.estoque-modal-card-sub{color:#cbd5e1!important}' +
+      '.estoque-modal-label,.estoque-modal-label span{font-size:11px!important;font-weight:800!important;letter-spacing:.08em!important;text-transform:uppercase!important;color:#cbd5e1!important}' +
+      '.estoque-modal-input,.estoque-modal-select,.estoque-modal-textarea,.pep-input{background:#0b1220!important;color:#f8fafc!important;border:1px solid rgba(148,163,184,.22)!important}' +
+      '.estoque-modal-input::placeholder,.estoque-modal-textarea::placeholder{color:#94a3b8!important}' +
+      '.estoque-modal-btn-ghost{background:transparent!important;color:#e2e8f0!important;border-color:rgba(148,163,184,.26)!important}' +
+      '.estoque-modal-btn-blue{background:linear-gradient(135deg,#2563eb,#1d4ed8)!important}' +
+      '.estoque-modal-btn-green{background:linear-gradient(135deg,#16a34a,#15803d)!important}' +
+      '.estoque-modal-btn-red{background:linear-gradient(135deg,#dc2626,#b91c1c)!important}' +
+      '.estoque-modal-grid-checklist{grid-template-columns:repeat(2,minmax(0,1fr))!important}' +
+      '.estoque-wire-sheet-shell{display:grid!important;grid-template-rows:auto minmax(0,1fr) auto!important;max-height:85vh!important;overflow:hidden!important;background:#131b2e!important}' +
+      '.estoque-wire-sheet-head{display:none!important}' +
+      '.estoque-wire-sheet-body{padding:0!important;overflow:auto!important}' +
+      '.estoque-wire-sheet-footer{padding:16px 24px!important;background:#10182a!important}' +
+      '@media (max-width:760px){.estoque-modal-grid-checklist,.estoque-modal-grid-entrada,.estoque-modal-grid-saida,.estoque-modal-grid-chapa{grid-template-columns:1fr!important}.estoque-modal-header-padrao{padding:18px 18px!important}.estoque-modal-content-padrao{padding:18px!important}.estoque-modal-footer-padrao{padding:14px 18px!important}}';
     document.head.appendChild(st);
   }
   try { window.__patchEnsureEstoqueStyle = _ensureEstoqueStyle; } catch (_) {}
