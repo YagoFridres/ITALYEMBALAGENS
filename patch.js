@@ -32,6 +32,217 @@ if (typeof window._fmtRs === 'undefined') {
     return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 }
+(function patchUnifiedAuthRuntime() {
+  if (window.__patchUnifiedAuthRuntimeInstalled) return;
+  window.__patchUnifiedAuthRuntimeInstalled = true;
+
+  function _authNormalizeToken(token) {
+    var tok = String(token || '').trim();
+    if (!tok || tok === 'undefined' || tok === 'null' || tok === 'Bearer') return '';
+    return tok;
+  }
+
+  function _authCookieToken() {
+    try {
+      var cookie = String(document.cookie || '');
+      var m = cookie.match(/(?:^|;\s*)(?:access_token|token|refresh_token)=([^;]+)/i);
+      return _authNormalizeToken(m && m[1] ? decodeURIComponent(String(m[1])) : '');
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function _authGetToken() {
+    try {
+      return _authNormalizeToken(
+        window._token ||
+        window.AUTH_TOKEN ||
+        localStorage.getItem('token') ||
+        localStorage.getItem('access_token') ||
+        sessionStorage.getItem('token') ||
+        sessionStorage.getItem('access_token') ||
+        (typeof getStoredToken === 'function' ? getStoredToken() : '') ||
+        _authCookieToken() ||
+        ''
+      );
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function _authSetUser(user) {
+    if (!user || typeof user !== 'object') return;
+    try { window.CURRENT_USER = user; } catch (_) {}
+    try { window._currentUser = user; } catch (_) {}
+    try { localStorage.setItem('auth_user', JSON.stringify(user)); } catch (_) {}
+  }
+
+  function _authHeaders(extra) {
+    var token = _authGetToken();
+    return Object.assign({}, extra || {}, token ? { Authorization: 'Bearer ' + token } : {});
+  }
+
+  function _authPersist(token, user) {
+    var tok = _authNormalizeToken(token);
+    if (!tok) return '';
+    try { window._token = tok; } catch (_) {}
+    try { window.AUTH_TOKEN = tok; } catch (_) {}
+    try { localStorage.setItem('token', tok); } catch (_) {}
+    try { localStorage.setItem('access_token', tok); } catch (_) {}
+    try { sessionStorage.setItem('token', tok); } catch (_) {}
+    try { sessionStorage.setItem('access_token', tok); } catch (_) {}
+    try { if (typeof setStoredToken === 'function') setStoredToken(tok); } catch (_) {}
+    try { if (typeof authSave === 'function') authSave(tok, user || window.CURRENT_USER || null); } catch (_) {}
+    try {
+      document.cookie = 'access_token=' + encodeURIComponent(tok) + '; path=/; SameSite=Lax';
+      document.cookie = 'token=' + encodeURIComponent(tok) + '; path=/; SameSite=Lax';
+      document.cookie = 'refresh_token=' + encodeURIComponent(tok) + '; path=/; SameSite=Lax';
+    } catch (_) {}
+    if (user && typeof user === 'object') _authSetUser(user);
+    return tok;
+  }
+
+  function _authClear() {
+    try { delete window._token; } catch (_) {}
+    try { delete window.AUTH_TOKEN; } catch (_) {}
+    try { localStorage.removeItem('token'); } catch (_) {}
+    try { localStorage.removeItem('access_token'); } catch (_) {}
+    try { sessionStorage.removeItem('token'); } catch (_) {}
+    try { sessionStorage.removeItem('access_token'); } catch (_) {}
+    try { if (typeof clearStoredAuth === 'function') clearStoredAuth(); } catch (_) {}
+    try {
+      ['access_token', 'token', 'refresh_token'].forEach(function(name) {
+        document.cookie = name + '=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+      });
+    } catch (_) {}
+  }
+
+  function _isApiUrl(url) {
+    var txt = String(url || '');
+    if (!txt) return false;
+    if (txt.indexOf('/api/') === 0) return true;
+    try {
+      var u = new URL(txt, window.location.origin);
+      return u.origin === window.location.origin && u.pathname.indexOf('/api/') === 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function _isAuthUrl(url) {
+    var txt = String(url || '');
+    return txt.indexOf('/api/auth/login') >= 0 || txt.indexOf('/api/auth/refresh') >= 0;
+  }
+
+  async function _syncAuthFromResponse(resp) {
+    try {
+      if (!resp || !resp.ok) return;
+      var url = String(resp.url || '');
+      if (!_isAuthUrl(url)) return;
+      var json = await resp.clone().json().catch(function() { return null; });
+      var token = _authNormalizeToken(json && (json.token || json.access_token || json.refresh_token));
+      var user = json && (json.usuario || json.user || json.me || null);
+      if (token) _authPersist(token, user || null);
+    } catch (_) {}
+  }
+
+  async function _authRefreshUsingFetch(origFetch) {
+    if (window.__patchUnifiedAuthRefreshPromise) return window.__patchUnifiedAuthRefreshPromise;
+    window.__patchUnifiedAuthRefreshPromise = (async function() {
+      var token = _authGetToken();
+      if (!token) return '';
+      var refreshUrl = (window.location && window.location.protocol === 'file:' && window.API_BASE) ? (window.API_BASE + '/api/auth/refresh') : '/api/auth/refresh';
+      try {
+        var resp = await origFetch(refreshUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + token,
+            'x-refresh-token': token
+          },
+          body: JSON.stringify({
+            token: token,
+            access_token: token,
+            refresh_token: token
+          }),
+          credentials: 'same-origin'
+        });
+        if (!resp.ok) {
+          _authClear();
+          return '';
+        }
+        var json = await resp.clone().json().catch(function() { return null; });
+        var novo = _authNormalizeToken(json && (json.token || json.access_token || json.refresh_token));
+        if (!novo) {
+          _authClear();
+          return '';
+        }
+        _authPersist(novo, json && (json.usuario || null));
+        return novo;
+      } catch (_) {
+        return '';
+      } finally {
+        window.__patchUnifiedAuthRefreshPromise = null;
+      }
+    })();
+    return window.__patchUnifiedAuthRefreshPromise;
+  }
+
+  function _scheduleAuthFeedback() {
+    try {
+      if (window.__patchUnifiedAuthFeedbackShownAt && (Date.now() - window.__patchUnifiedAuthFeedbackShownAt) < 4000) return;
+      window.__patchUnifiedAuthFeedbackShownAt = Date.now();
+      if (typeof window.toast === 'function') window.toast('Sessão expirada. Faça login novamente.', 'var(--red)');
+      if (typeof window.mostrarTelaLogin === 'function') setTimeout(function() { try { window.mostrarTelaLogin(); } catch (_) {} }, 80);
+    } catch (_) {}
+  }
+
+  try {
+    var origFetch = window.fetch && window.fetch.bind(window);
+    if (origFetch && !origFetch.__patchUnifiedAuthWrapped) {
+      var wrappedFetch = async function(input, init) {
+        var requestUrl = typeof input === 'string' ? input : String(input && input.url || '');
+        var opts = Object.assign({}, init || {});
+        var headers = new Headers((init && init.headers) || (typeof input !== 'string' && input && input.headers) || {});
+        var authHeader = String(headers.get('Authorization') || headers.get('authorization') || '').trim();
+        var apiCall = _isApiUrl(requestUrl);
+        if (apiCall) {
+          var tokenAtual = _authGetToken();
+          if ((!authHeader || authHeader === 'Bearer') && tokenAtual) headers.set('Authorization', 'Bearer ' + tokenAtual);
+          if (!Object.prototype.hasOwnProperty.call(opts, 'credentials')) opts.credentials = 'same-origin';
+        }
+        opts.headers = headers;
+        var resp = await origFetch(input, opts);
+        await _syncAuthFromResponse(resp);
+        if (apiCall && resp.status === 401 && !_isAuthUrl(requestUrl) && !opts.__authRetried) {
+          var novoToken = await _authRefreshUsingFetch(origFetch);
+          if (novoToken) {
+            headers.set('Authorization', 'Bearer ' + novoToken);
+            opts.headers = headers;
+            opts.__authRetried = true;
+            resp = await origFetch(input, opts);
+            await _syncAuthFromResponse(resp);
+          } else {
+            _scheduleAuthFeedback();
+          }
+        }
+        return resp;
+      };
+      wrappedFetch.__patchUnifiedAuthWrapped = true;
+      window.fetch = wrappedFetch;
+    }
+  } catch (_) {}
+
+  try {
+    var authRestoreToken = _authGetToken();
+    if (authRestoreToken) _authPersist(authRestoreToken, null);
+  } catch (_) {}
+
+  try { window.__authPatchGetToken = _authGetToken; } catch (_) {}
+  try { window.__authPatchHeaders = _authHeaders; } catch (_) {}
+  try { window.__authPatchPersist = _authPersist; } catch (_) {}
+  try { window.__authPatchClear = _authClear; } catch (_) {}
+})();
 (function() {
   if (window.__patchImgFixInstalled) return;
   window.__patchImgFixInstalled = true;
@@ -166,7 +377,14 @@ if (typeof window._fmtRs === 'undefined') {
 
   function _estoqueAuthHeaders() {
     try {
-      var token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || '').trim();
+      if (typeof window.__authPatchHeaders === 'function') return window.__authPatchHeaders();
+      var token = String(
+        (typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') ||
+        localStorage.getItem('token') ||
+        sessionStorage.getItem('token') ||
+        localStorage.getItem('access_token') ||
+        ''
+      ).trim();
       return token ? { Authorization: 'Bearer ' + token } : {};
     } catch (_) {
       return {};
@@ -268,9 +486,12 @@ if (typeof window._fmtRs === 'undefined') {
   async function _ensureEstoqueMetricasPatch(force) {
     if (!_isEstoqueChapasAtivo()) return;
     if (window.__patchEstoqueMetricasBusy) return;
+    var tokenAtual = '';
+    try { tokenAtual = String(typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '').trim(); } catch (_) { tokenAtual = ''; }
     var emp = '';
     try { emp = String(window.EMP_FILTRO || '').trim(); } catch (_) {}
     var ttl = 60000;
+    if (!force && window.__patchEstoqueMetricasAuthFailed && window.__patchEstoqueMetricasTokenRef === tokenAtual) return;
     if (!force && window.__patchEstoqueMetricasEmp === emp && window.__patchEstoqueMetricasTs && (Date.now() - window.__patchEstoqueMetricasTs) < ttl && _resumoMetricoEstoque()) return;
     try {
       window.__patchEstoqueMetricasBusy = true;
@@ -280,11 +501,24 @@ if (typeof window._fmtRs === 'undefined') {
       var resp = await fetch('/api/chapas_estoque/metricas?' + qs.toString(), { headers: _estoqueAuthHeaders() });
       var json = await resp.json().catch(function() { return null; });
       var data = json && json.data ? json.data : (json && typeof json === 'object' ? json : null);
-      if (!resp.ok || !data || typeof data !== 'object') return;
+      if (resp.status === 401) {
+        window.__patchEstoqueMetricasAuthFailed = true;
+        window.__patchEstoqueMetricasTokenRef = tokenAtual;
+        window.__patchEstoqueMetricasErro = 'Nao foi possivel carregar os indicadores. Faca login novamente.';
+        return;
+      }
+      if (!resp.ok || !data || typeof data !== 'object') {
+        window.__patchEstoqueMetricasErro = 'Nao foi possivel carregar os indicadores no momento.';
+        return;
+      }
       try { window.CHAPAS_METRICAS = data; } catch (_) {}
       window.__patchEstoqueMetricasTs = Date.now();
       window.__patchEstoqueMetricasEmp = emp;
+      window.__patchEstoqueMetricasAuthFailed = false;
+      window.__patchEstoqueMetricasTokenRef = tokenAtual;
+      window.__patchEstoqueMetricasErro = '';
     } catch (_) {
+      window.__patchEstoqueMetricasErro = 'Nao foi possivel carregar os indicadores no momento.';
     } finally {
       window.__patchEstoqueMetricasBusy = false;
     }
@@ -331,6 +565,19 @@ if (typeof window._fmtRs === 'undefined') {
     try {
       var tableWrap = document.getElementById('est-table-wrap');
       if (!tableWrap) return;
+      var msgHost = document.getElementById('patch-estoque-main-panel-alert');
+      var msgTxt = String(window.__patchEstoqueMetricasErro || '').trim();
+      if (msgTxt) {
+        if (!msgHost) {
+          msgHost = document.createElement('div');
+          msgHost.id = 'patch-estoque-main-panel-alert';
+          msgHost.style.cssText = 'margin:8px 10px 12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(248,113,113,.35);background:rgba(127,29,29,.18);color:#fecaca;font-size:13px;font-weight:700';
+          tableWrap.parentNode.insertBefore(msgHost, tableWrap);
+        }
+        msgHost.textContent = msgTxt;
+      } else if (msgHost) {
+        try { msgHost.remove(); } catch (_) {}
+      }
       var resumo = _resumoMetricoEstoque();
       var lista = _getEstoqueListaAtual();
       if (!resumo) {
@@ -1041,7 +1288,7 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
   window.__patchPinsHubInstalled = true;
 
   function getToken() {
-    try { return String(localStorage.getItem('token') || localStorage.getItem('access_token') || window._token || '').trim(); } catch (_) { return ''; }
+    try { return String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : (localStorage.getItem('token') || localStorage.getItem('access_token') || window._token || '')) || '').trim(); } catch (_) { return ''; }
   }
   function authHeaders(extra) {
     var token = getToken();
@@ -2815,9 +3062,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   // ── UTIL: pegar token ──────────────────────────────────────────
   function getToken() {
-    return localStorage.getItem('token') ||
-           sessionStorage.getItem('token') ||
-           localStorage.getItem('access_token') || '';
+    try {
+      return String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') ||
+        localStorage.getItem('token') ||
+        sessionStorage.getItem('token') ||
+        localStorage.getItem('access_token') || '').trim();
+    } catch (_) {
+      return '';
+    }
   }
 
   function extractOfsRows(raw) {
@@ -7406,7 +7658,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var mesVal = String(ref.mesNum || '').padStart(2, '0');
     var anoVal = String(ref.anoNum || '');
     var token = '';
-    try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
+    try { token = String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
 
     try { console.log('[COM] Calculando:', anoVal + '-' + mesVal); } catch (_) {}
 
@@ -8450,7 +8702,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function getToken() {
-    try { return String(window._token || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || ''); } catch (_) { return ''; }
+    try { return String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') || window._token || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { return ''; }
   }
 
   function getColorsSource() {
@@ -10826,7 +11078,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function _getToken() {
     var token = '';
-    try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
+    try { token = String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') || localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || '').trim(); } catch (_) {}
     return token;
   }
 
@@ -14190,14 +14442,15 @@ window._mbnActive = function(id) {
   function getToken() {
     try {
       return String(
+        (typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') ||
         localStorage.getItem('access_token') ||
         localStorage.getItem('token') ||
         sessionStorage.getItem('token') ||
         window._token ||
         ''
-      );
+      ).trim();
     } catch (_) {
-      return String(window._token || '');
+      return String(window._token || '').trim();
     }
   }
 
@@ -17693,7 +17946,7 @@ function _ocultarGraficoComissoes() {
   }
 
   function _getToken() {
-    try { return String(localStorage.getItem('token') || localStorage.getItem('access_token') || window._token || '').trim(); } catch (_) { return ''; }
+    try { return String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') || localStorage.getItem('token') || localStorage.getItem('access_token') || window._token || '').trim(); } catch (_) { return ''; }
   }
 
   function _getPeriodoSelecionado() {
@@ -19043,7 +19296,7 @@ function _ocultarGraficoComissoes() {
   }
 
   async function _carregarGramaturasParaConclusao() {
-    var token = _getToken();
+    var token = String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : _getToken()) || '').trim();
     try {
       await fetch('/api/gramaturas/init', { method: 'POST', headers: token ? { Authorization: 'Bearer ' + token } : {} }).catch(function() { return null; });
     } catch (_) {}
@@ -20716,7 +20969,7 @@ function _ocultarGraficoComissoes() {
       var mes = String(ref.mesNum || '').trim() || String(new Date().getMonth() + 1);
       var ano = String(ref.anoNum || '').trim() || String(new Date().getFullYear());
       var token = '';
-      try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
+      try { token = String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
       var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano), {
         headers: token ? { Authorization: 'Bearer ' + token } : {}
       });

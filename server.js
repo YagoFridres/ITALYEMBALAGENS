@@ -740,17 +740,54 @@ app.get('/api/ofs_test', async (req, res) => {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'italy_secret_2026';
 
+function _normalizeTokenCandidate(value) {
+  const tok = String(value || '').trim();
+  if (!tok || tok === 'undefined' || tok === 'null' || tok === 'Bearer') return '';
+  return tok;
+}
+
 function _getTokenFromReq(req) {
   const raw = String(req.headers.authorization || req.headers.Authorization || '');
-  if (raw.toLowerCase().startsWith('bearer ')) return raw.slice(7).trim();
+  if (raw.toLowerCase().startsWith('bearer ')) return _normalizeTokenCandidate(raw.slice(7));
   const x = req.headers['x-access-token'] || req.headers['x-access_token'] || req.headers['x-token'];
-  if (x) return String(x).trim();
+  if (x) return _normalizeTokenCandidate(x);
+  const xRefresh = req.headers['x-refresh-token'] || req.headers['x-refresh_token'];
+  if (xRefresh) return _normalizeTokenCandidate(xRefresh);
   const cookieHeader = String(req.headers.cookie || '');
   if (cookieHeader) {
-    const m = cookieHeader.match(/(?:^|;\s*)(?:access_token|token)=([^;]+)/i);
-    if (m && m[1]) return decodeURIComponent(String(m[1]));
+    const m = cookieHeader.match(/(?:^|;\s*)(?:access_token|token|refresh_token)=([^;]+)/i);
+    if (m && m[1]) return _normalizeTokenCandidate(decodeURIComponent(String(m[1])));
   }
   return '';
+}
+
+const AUTH_TOKEN_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30;
+
+function _setAuthCookies(res, token) {
+  try {
+    const tok = String(token || '').trim();
+    if (!res || !tok || typeof res.cookie !== 'function') return;
+    const opts = {
+      httpOnly: false,
+      secure: false,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: AUTH_TOKEN_MAX_AGE_MS,
+    };
+    res.cookie('access_token', tok, opts);
+    res.cookie('token', tok, opts);
+    res.cookie('refresh_token', tok, opts);
+  } catch (_) {}
+}
+
+function _clearAuthCookies(res) {
+  try {
+    if (!res || typeof res.clearCookie !== 'function') return;
+    const opts = { httpOnly: false, secure: false, sameSite: 'lax', path: '/' };
+    ['access_token', 'token', 'refresh_token'].forEach((name) => {
+      try { res.clearCookie(name, opts); } catch (_) {}
+    });
+  } catch (_) {}
 }
 
 function authMiddleware(req, res, next) {
@@ -1142,9 +1179,14 @@ app.post('/api/auth/login', async (req, res) => {
 
     console.log('Login OK:', usuario.email);
 
+    _setAuthCookies(res, token);
     res.json({
       ok: true,
       token,
+      access_token: token,
+      refresh_token: token,
+      token_type: 'Bearer',
+      expires_in: AUTH_TOKEN_MAX_AGE_MS / 1000,
       usuario: {
         id: usuario.id,
         nome: usuario.nome,
@@ -1396,9 +1438,12 @@ app.post('/api/auth/refresh', async (req, res) => {
   try {
     const oldToken =
       _getTokenFromReq(req)
-      || String(req.body?.token || req.body?.access_token || req.body?.refresh_token || '').trim()
-      || String(req.headers['x-refresh-token'] || '').trim();
-    if (!oldToken) return res.status(401).json({ ok: false, error: 'token_missing', redirect: '/login' });
+      || _normalizeTokenCandidate(req.body?.token || req.body?.access_token || req.body?.refresh_token || req.body?.refreshToken || '')
+      || _normalizeTokenCandidate(req.headers['x-refresh-token'] || req.headers['x-refresh_token'] || '');
+    if (!oldToken) {
+      _clearAuthCookies(res);
+      return res.status(401).json({ ok: false, error: 'token_missing', redirect: '/login' });
+    }
 
     let payload = null;
     try {
@@ -1407,15 +1452,24 @@ app.post('/api/auth/refresh', async (req, res) => {
       try { payload = jwt.decode(oldToken); } catch (e) { payload = null; }
     }
     const uid = String(payload?.id || '').trim();
-    if (!uid) return res.status(401).json({ ok: false, error: 'token_invalid', redirect: '/login' });
+    if (!uid) {
+      _clearAuthCookies(res);
+      return res.status(401).json({ ok: false, error: 'token_invalid', redirect: '/login' });
+    }
 
     const { data: dbUser, error } = await supabase
       .from('usuarios')
       .select('id,nome,email,perfil,permissoes,canais_chat,ativo,avatar_iniciais,avatar_cor')
       .eq('id', uid)
       .single();
-    if (error || !dbUser) return res.status(401).json({ ok: false, error: 'user_not_found', redirect: '/login' });
-    if (dbUser.ativo === false) return res.status(401).json({ ok: false, error: 'user_inactive', redirect: '/login' });
+    if (error || !dbUser) {
+      _clearAuthCookies(res);
+      return res.status(401).json({ ok: false, error: 'user_not_found', redirect: '/login' });
+    }
+    if (dbUser.ativo === false) {
+      _clearAuthCookies(res);
+      return res.status(401).json({ ok: false, error: 'user_inactive', redirect: '/login' });
+    }
 
     let perms = dbUser.permissoes != null ? dbUser.permissoes : [];
     if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch (_) { perms = []; } }
@@ -1429,9 +1483,14 @@ app.post('/api/auth/refresh', async (req, res) => {
       { expiresIn: '30d' }
     );
     console.log('[TOKEN REFRESH] perfil:', dbUser.perfil, 'permissoes:', dbUser.permissoes);
+    _setAuthCookies(res, token);
     return res.json({
       ok: true,
       token,
+      access_token: token,
+      refresh_token: token,
+      token_type: 'Bearer',
+      expires_in: AUTH_TOKEN_MAX_AGE_MS / 1000,
       usuario: {
         id: dbUser.id,
         nome: dbUser.nome,
