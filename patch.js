@@ -4205,6 +4205,27 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var kgUn = Number(chapa && chapa.peso_kg_unidade || 0) || 0;
       return kgUn > 0 ? ((qtd * kgUn) / 1000) : 0;
     }
+    function _ensureEstoqueStyle() {
+      try {
+        if (typeof window.__patchEnsureEstoqueStyle === 'function') {
+          window.__patchEnsureEstoqueStyle();
+          return;
+        }
+      } catch (_) {}
+      try {
+        if (document.getElementById('patch-estoques-style')) return;
+        var st = document.createElement('style');
+        st.id = 'patch-estoques-style';
+        st.textContent = ''
+          + '.estoque-wire-cards{grid-template-columns:repeat(4,minmax(0,1fr))}'
+          + 'body[data-estoque-wireframe="1"] #page-sel-chapas{display:none!important;visibility:hidden!important;pointer-events:none!important}'
+          + 'body[data-estoque-wireframe="1"] #tabelaChapasEstoque{display:none!important;visibility:hidden!important}'
+          + '.pep-table-wrap-estoque{max-height:calc(100vh - 330px)}'
+          + '@media (max-width:960px){.estoque-wire-cards{grid-template-columns:1fr 1fr}}'
+          + '@media (max-width:640px){.estoque-wire-cards{grid-template-columns:1fr}}';
+        (document.head || document.documentElement || document.body).appendChild(st);
+      } catch (_) {}
+    }
     function _renderEstoqueWireframeState(page, title, message, extraHtml) {
       if (!page) return;
       page.innerHTML = ''
@@ -13398,6 +13419,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '.pcp-select{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}';
     document.head.appendChild(st);
   }
+  try { window.__patchEnsureEstoqueStyle = _ensureEstoqueStyle; } catch (_) {}
 
   function _abrirModalNovaTinta(tintaExistente) {
     _ensureEstoqueStyle();
