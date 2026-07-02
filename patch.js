@@ -391,6 +391,130 @@ if (typeof window._fmtRs === 'undefined') {
   }
 })();
 
+(function probeNativeRenderEstoque() {
+  if (window.__probeNativeRenderEstoqueInstalled) return;
+  window.__probeNativeRenderEstoqueInstalled = true;
+
+  function installProbe() {
+    try {
+      var orig = window.renderEstoque;
+      if (typeof orig !== 'function' || orig.__patchEstoqueNativeProbe) return false;
+      var wrapped = function() {
+        // #region debug-point H:native-render-estoque-called
+        try {
+          if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('H', 'renderEstoque nativo chamado', {
+            pageAtual: String(window._PAGE_ATUAL || ''),
+            legacyPage: !!document.getElementById('page-sel-chapas'),
+            legacyTable: !!document.getElementById('tabelaChapasEstoque'),
+            bodyAttr: document.body ? String(document.body.getAttribute('data-estoque-wireframe') || '') : ''
+          });
+        } catch (_) {}
+        // #endregion
+        return orig.apply(this, arguments);
+      };
+      wrapped.__patchEstoqueNativeProbe = true;
+      wrapped.__patchEstoqueNativeOrig = orig;
+      window.renderEstoque = wrapped;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  if (installProbe()) return;
+  [0, 200, 800, 1600].forEach(function(delay) {
+    setTimeout(function() {
+      try { installProbe(); } catch (_) {}
+    }, delay);
+  });
+})();
+
+(function overrideNativeRenderEstoque() {
+  if (window.__overrideNativeRenderEstoqueInstalled) return;
+  window.__overrideNativeRenderEstoqueInstalled = true;
+
+  function renderApprovedWireframe() {
+    try { window.__estoqueTelaSimplificada = 'estoque'; } catch (_) {}
+    try { if (typeof window.__setEstoqueWireframeMode === 'function') window.__setEstoqueWireframeMode(true); } catch (_) {}
+    try { if (typeof window.__syncEstoqueWireframeDom === 'function') window.__syncEstoqueWireframeDom(); } catch (_) {}
+    // #region debug-point H:native-render-estoque-overridden
+    try {
+      if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('H', 'override renderEstoque -> wireframe aprovado', {
+        pageAtual: String(window._PAGE_ATUAL || ''),
+        hasWireframe: typeof window.renderEstoqueWireframePage === 'function',
+        legacyPage: !!document.getElementById('page-sel-chapas'),
+        legacyTable: !!document.getElementById('tabelaChapasEstoque')
+      });
+    } catch (_) {}
+    // #endregion
+    if (typeof window.renderEstoqueWireframePage === 'function') return window.renderEstoqueWireframePage();
+    return undefined;
+  }
+
+  function installOverride() {
+    try {
+      var orig = window.renderEstoque;
+      if (typeof orig !== 'function') return false;
+      if (orig.__patchEstoqueNativeOverride) return true;
+      var wrapped = function() {
+        return renderApprovedWireframe.apply(this, arguments);
+      };
+      wrapped.__patchEstoqueNativeOverride = true;
+      wrapped.__patchEstoqueNativeOrig = orig;
+      window.renderEstoque = wrapped;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function installBaseGuard() {
+    try {
+      var origBase = window._renderEstoqueBase;
+      if (typeof origBase !== 'function' || origBase.__patchEstoqueBaseGuard) return false;
+      var wrappedBase = function() {
+        var ativo = false;
+        try {
+          ativo = String(window.__estoqueTelaSimplificada || '') === 'estoque'
+            || String(window._PAGE_ATUAL || '') === 'estoque'
+            || (document.body && String(document.body.getAttribute('data-estoque-wireframe') || '') === '1');
+        } catch (_) { ativo = false; }
+        if (ativo) {
+          // #region debug-point H:native-base-blocked
+          try {
+            if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('H', '_renderEstoqueBase bloqueado pelo override', {
+              pageAtual: String(window._PAGE_ATUAL || ''),
+              telaSimplificada: String(window.__estoqueTelaSimplificada || '')
+            });
+          } catch (_) {}
+          // #endregion
+          return renderApprovedWireframe();
+        }
+        return origBase.apply(this, arguments);
+      };
+      wrappedBase.__patchEstoqueBaseGuard = true;
+      wrappedBase.__patchEstoqueBaseOrig = origBase;
+      window._renderEstoqueBase = wrappedBase;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function tryInstallAll() {
+    var ok1 = installOverride();
+    var ok2 = installBaseGuard();
+    return !!(ok1 || ok2);
+  }
+
+  if (tryInstallAll()) return;
+  [0, 200, 800, 1600, 2600].forEach(function(delay) {
+    setTimeout(function() {
+      try { tryInstallAll(); } catch (_) {}
+    }, delay);
+  });
+})();
+
 (function() {
   if (window.__patchEstoqueChapasUiFixesInstalled) return;
   window.__patchEstoqueChapasUiFixesInstalled = true;
