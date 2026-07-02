@@ -13534,6 +13534,65 @@ function _chapasObsWithColor(obs, color) {
   return (clean ? (clean + ' ') : '') + '[[COR_LINHA:' + cor + ']]';
 }
 
+let _chapasColorColumnEnsured = false;
+let _chapasColorColumnEnsurePromise = null;
+async function _chapasEnsureColorColumn() {
+  if (_chapasColorColumnEnsured) return true;
+  if (_chapasColorColumnEnsurePromise) return _chapasColorColumnEnsurePromise;
+  _chapasColorColumnEnsurePromise = (async () => {
+    if (!supabase) return false;
+    const probeHasColor = async () => {
+      try {
+        const r = await supabase.from('chapas_estoque_v2').select('id,cor').limit(1);
+        if (!r.error) return true;
+        const msg = String(r.error.message || r.error || '');
+        if (/Could not find the 'cor' column|column\s+"cor"\s+does not exist/i.test(msg)) return false;
+        throw r.error;
+      } catch (e) {
+        throw e;
+      }
+    };
+    let hasColumn = false;
+    try { hasColumn = await probeHasColor(); } catch (e) {
+      _debugRuntimeWrite({
+        runId: 'pre-fix',
+        hypothesisId: 'K',
+        location: 'server.js:_chapasEnsureColorColumn',
+        msg: '[DEBUG] probe coluna cor falhou',
+        data: { error: String(e?.message || e) },
+      });
+    }
+    if (!hasColumn) {
+      try {
+        const sql = "ALTER TABLE chapas_estoque_v2 ADD COLUMN IF NOT EXISTS cor TEXT;";
+        const rpc = await supabase.rpc('exec_sql', { sql });
+        if (rpc?.error) throw rpc.error;
+        hasColumn = await probeHasColor();
+      } catch (e) {
+        _debugRuntimeWrite({
+          runId: 'pre-fix',
+          hypothesisId: 'K',
+          location: 'server.js:_chapasEnsureColorColumn',
+          msg: '[DEBUG] ensure coluna cor falhou',
+          data: { error: String(e?.message || e) },
+        });
+      }
+    }
+    _chapasColorColumnEnsured = !!hasColumn;
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'K',
+      location: 'server.js:_chapasEnsureColorColumn',
+      msg: '[DEBUG] ensure coluna cor concluido',
+      data: { hasColumn: !!hasColumn },
+    });
+    return !!hasColumn;
+  })().finally(() => {
+    _chapasColorColumnEnsurePromise = null;
+  });
+  return _chapasColorColumnEnsurePromise;
+}
+
 function _chapasCanonicalFromAny(row, table) {
   if (table === 'chapas_estoque_v2') {
     const qtd = Math.trunc(_chapasToNum(row.quantidade_atual ?? row.quantidade ?? row.qtd ?? 0, 0));
@@ -14061,6 +14120,7 @@ function _chapasParseCsv(text) {
 
 app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
+    try { await _chapasEnsureColorColumn(); } catch (_) {}
     if (!_chapasCacheClearedOnBoot || String(req.query.flush_cache || '') === '1') {
       cacheClearPrefix('chapas_');
       cacheClearPrefix('chapas_estoque:');
@@ -14342,6 +14402,7 @@ app.get('/api/chapas/qr/:codigo', authMiddleware, async (req, res) => {
 
 app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
+    try { await _chapasEnsureColorColumn(); } catch (_) {}
     const table = await _chapasPreferV2Table();
     const b = req.body || {};
 
@@ -14455,6 +14516,7 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
 });
 app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
   try {
+    try { await _chapasEnsureColorColumn(); } catch (_) {}
     const table = await _chapasPreferV2Table();
     const b = req.body || {};
 
@@ -14507,6 +14569,7 @@ app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
 });
 app.patch('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
   try {
+    try { await _chapasEnsureColorColumn(); } catch (_) {}
     const table = await _chapasPreferV2Table();
     const b = req.body || {};
 

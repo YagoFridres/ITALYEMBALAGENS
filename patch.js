@@ -4313,6 +4313,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + 'body[data-estoque-wireframe="1"] #page-sel-chapas{display:none!important;visibility:hidden!important;pointer-events:none!important}'
           + 'body[data-estoque-wireframe="1"] #tabelaChapasEstoque{display:none!important;visibility:hidden!important}'
           + '.pep-table-wrap-estoque{max-height:calc(100vh - 330px)}'
+          + '.estoque-wire-card-action{cursor:pointer}'
+          + '.estoque-wire-card-action > *{height:100%}'
+          + '.pep-table-estoque-wire thead th,.pep-table-estoque-wire tbody td{text-align:center;vertical-align:middle}'
+          + '.pep-table-estoque-wire .col-text{text-align:left}'
+          + '.pep-table-estoque-wire .col-num,.pep-table-estoque-wire .col-actions{text-align:center}'
+          + '.pep-table-estoque-wire tbody tr[data-chapa-id]{cursor:pointer;transition:filter .15s ease,transform .15s ease}'
+          + '.pep-table-estoque-wire tbody tr[data-chapa-id]:hover{filter:brightness(1.08)}'
+          + '.pep-table-estoque-wire tbody tr[data-chapa-id]:active{transform:translateY(1px)}'
+          + '.pep-table-estoque-wire .pep-btn{position:relative;z-index:2}'
+          + '.estoque-wire-modal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}'
+          + '.estoque-wire-modal-item{padding:12px 14px;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:rgba(15,23,42,.68)}'
+          + '.estoque-wire-modal-item b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px}'
+          + '.estoque-wire-modal-scroll{max-height:min(62vh,560px);overflow:auto;padding-right:4px}'
+          + '.estoque-wire-ton-row{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid rgba(148,163,184,.14);border-radius:12px;background:rgba(15,23,42,.62)}'
+          + '.estoque-wire-ton-row + .estoque-wire-ton-row{margin-top:10px}'
+          + '@media (max-width:760px){.estoque-wire-modal-grid{grid-template-columns:1fr}}'
           + '@media (max-width:960px){.estoque-wire-cards{grid-template-columns:1fr 1fr}}'
           + '@media (max-width:640px){.estoque-wire-cards{grid-template-columns:1fr}}';
         (document.head || document.documentElement || document.body).appendChild(st);
@@ -4328,6 +4344,137 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         +      String(extraHtml || '')
         + '  </div>'
         + '</div>';
+    }
+    function _estoqueWireFindById(lista, id) {
+      var sid = String(id || '').trim();
+      return (Array.isArray(lista) ? lista : []).find(function(chapa) {
+        return String(chapa && chapa.id || '').trim() === sid;
+      }) || null;
+    }
+    function _estoqueWireCloseModal() {
+      try {
+        var modal = document.getElementById('estoque-wire-modal');
+        if (modal) modal.remove();
+      } catch (_) {}
+    }
+    function _estoqueWireOpenModal(opts) {
+      _estoqueWireCloseModal();
+      var options = opts || {};
+      var overlay = document.createElement('div');
+      overlay.id = 'estoque-wire-modal';
+      overlay.className = 'pep-modal';
+      overlay.innerHTML = ''
+        + '<div class="pep-modal-box" style="width:min(' + esc(options.width || '760px') + ',96vw)">'
+        + '  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">'
+        + '    <div>'
+        + '      <div class="pep-title" style="font-size:20px">' + esc(options.title || 'Detalhes') + '</div>'
+        + '      <div class="pep-sub" style="margin-top:6px">' + esc(options.sub || '') + '</div>'
+        + '    </div>'
+        + '    <button type="button" class="pep-btn" data-ew-close="1">Fechar</button>'
+        + '  </div>'
+        + '  <div style="margin-top:16px">' + String(options.bodyHtml || '') + '</div>'
+        + '</div>';
+      overlay.addEventListener('click', function(ev) {
+        if (ev && ev.target === overlay) _estoqueWireCloseModal();
+      });
+      document.body.appendChild(overlay);
+      try {
+        overlay.querySelector('[data-ew-close="1"]').onclick = _estoqueWireCloseModal;
+      } catch (_) {}
+    }
+    function _estoqueWireOpenTonModal(lista) {
+      var rows = (Array.isArray(lista) ? lista : []).map(function(chapa) {
+        return {
+          id: String(chapa && chapa.id || '').trim(),
+          nome: String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura) || '—').trim(),
+          nomenclatura: String(chapa && chapa.nomenclatura || '—').trim(),
+          toneladas: Number(estoqueWireTon(chapa) || 0) || 0
+        };
+      }).sort(function(a, b) {
+        return b.toneladas - a.toneladas;
+      });
+      var html = rows.length ? rows.map(function(row) {
+        return ''
+          + '<div class="estoque-wire-ton-row">'
+          + '  <div><div style="font-weight:800;color:#e2e8f0">' + esc(row.nome) + '</div><div style="margin-top:4px;font-size:12px;color:#94a3b8">' + esc(row.nomenclatura) + '</div></div>'
+          + '  <div style="font-size:18px;font-weight:900;color:#f8fafc;white-space:nowrap">' + esc(num(row.toneladas, 3)) + ' t</div>'
+          + '</div>';
+      }).join('') : '<div class="pep-sub">Nenhuma chapa encontrada para detalhar toneladas.</div>';
+      _estoqueWireOpenModal({
+        title: 'Toneladas por Chapa',
+        sub: 'Detalhamento individual do saldo em toneladas de cada chapa no estoque.',
+        width: '720px',
+        bodyHtml: '<div class="estoque-wire-modal-scroll">' + html + '</div>'
+      });
+    }
+    function _estoqueWireOpenDetailModal(chapa) {
+      if (!chapa) return;
+      var campos = [
+        ['Fornecedor', chapa.fornecedor],
+        ['Gramatura', chapa.gramatura],
+        ['Nomenclatura', chapa.nomenclatura],
+        ['Tamanho', chapa.tamanho],
+        ['Nome', chapa.nome_uso || chapa.nome],
+        ['Qual CNPJ', chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual],
+        ['NF', chapa.nf],
+        ['Quantidade', num(chapa.quantidade_atual != null ? chapa.quantidade_atual : chapa.quantidade, 0)],
+        ['R$', money(chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val)],
+        ['Total', money(estoqueWireValor(chapa))],
+        ['Categoria', chapa.categoria],
+        ['Vincos', chapa.vincos],
+        ['Riscada', chapa.riscada ? 'Sim' : 'Nao'],
+        ['Descricao da Risca', chapa.risca_desc],
+        ['Estoque Minimo', num(chapa.estoque_minimo, 0)],
+        ['Data de Entrada', chapa.data_entrada],
+        ['Lote', chapa.lote],
+        ['Peso kg/unidade', num(chapa.peso_kg_unidade, 3)],
+        ['Toneladas', num(estoqueWireTon(chapa), 3) + ' t'],
+        ['Observacao', chapa.observacao]
+      ].filter(function(pair) {
+        return String(pair[1] == null ? '' : pair[1]).trim() !== '';
+      });
+      var html = campos.map(function(pair) {
+        return '<div class="estoque-wire-modal-item"><b>' + esc(pair[0]) + '</b><span>' + esc(String(pair[1])) + '</span></div>';
+      }).join('');
+      _estoqueWireOpenModal({
+        title: String(chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Detalhes da Chapa'),
+        sub: 'Visualizacao completa da chapa selecionada.',
+        width: '860px',
+        bodyHtml: '<div class="estoque-wire-modal-scroll"><div class="estoque-wire-modal-grid">' + html + '</div></div>'
+      });
+    }
+    function _bindEstoqueWireframeDelegation(page, lista) {
+      if (!page) return;
+      var wrap = page.querySelector('.pep-wrap');
+      if (!wrap) return;
+      wrap.onclick = function(ev) {
+        var target = ev && ev.target;
+        var editBtn = target && target.closest ? target.closest('[data-est-edit]') : null;
+        if (editBtn) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          try { _abrirEdicaoChapaEstoque(String(editBtn.getAttribute('data-est-edit') || '')); } catch (_) {}
+          return;
+        }
+        var delBtn = target && target.closest ? target.closest('[data-est-del]') : null;
+        if (delBtn) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          try { if (typeof window.excluirChapa === 'function') window.excluirChapa(String(delBtn.getAttribute('data-est-del') || '')); } catch (_) {}
+          return;
+        }
+        var tonCard = target && target.closest ? target.closest('[data-est-card="tons"]') : null;
+        if (tonCard) {
+          ev.preventDefault();
+          _estoqueWireOpenTonModal(lista);
+          return;
+        }
+        var row = target && target.closest ? target.closest('tr[data-chapa-id]') : null;
+        if (row && !(target && target.closest && target.closest('button,a,input,select,textarea,label'))) {
+          ev.preventDefault();
+          _estoqueWireOpenDetailModal(_estoqueWireFindById(lista, row.getAttribute('data-chapa-id')));
+        }
+      };
     }
     async function renderEstoqueWireframePage() {
       ensureStyles();
@@ -4371,7 +4518,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '<div class="pep-wrap">'
         + '  <div class="pep-cards estoque-wire-cards">'
         +      _makeCardEstoque({ label: 'Valor Total do Estoque', value: money(valorTotal), sub: 'Base atual do estoque' })
-        +      _makeCardEstoque({ label: 'Toneladas em Estoque', value: num(tonTotal, 3) + ' t', sub: 'Saldo atual em toneladas' })
+        + '    <div class="estoque-wire-card-action" data-est-card="tons">' + _makeCardEstoque({ label: 'Toneladas em Estoque', value: num(tonTotal, 3) + ' t', sub: 'Clique para detalhar por chapa' }) + '</div>'
         +      _makeCardEstoque({ label: 'Quantidade de Chapas', value: num(lista.length, 0), sub: 'Itens cadastrados no estoque' })
         +      _cardBreakdownEstoque('Por Fornecedor', breakdown, money)
         + '  </div>'
@@ -4379,22 +4526,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF ou CNPJ" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
         + '    <button class="pep-btn primary" id="estoque-wire-buscar">Buscar</button>'
         + '  </div></div>'
-        + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-estoque"><table class="pep-table"><thead><tr><th>FORNECEDOR</th><th>GRAMATURA</th><th>NOMENCLATURA</th><th>TAMANHO</th><th>NOME</th><th>QUAL CNPJ</th><th>NF</th><th>QUANTIDADE</th><th>R$</th><th>TOTAL</th><th>Ações</th></tr></thead><tbody>'
+        + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-estoque"><table class="pep-table pep-table-estoque-wire"><thead><tr><th class="col-text">FORNECEDOR</th><th class="col-text">GRAMATURA</th><th class="col-text">NOMENCLATURA</th><th class="col-text">TAMANHO</th><th class="col-text">NOME</th><th class="col-text">QUAL CNPJ</th><th class="col-text">NF</th><th class="col-num">QUANTIDADE</th><th class="col-num">R$</th><th class="col-num">TOTAL</th><th class="col-actions">Ações</th></tr></thead><tbody>'
         + (filtrada.length ? filtrada.map(function(chapa) {
             var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
             var vunit = Number(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0) || 0;
             return '<tr data-chapa-id="' + esc(chapa && chapa.id || '') + '" style="' + esc(_styleLinhaChapaCor(chapa)) + '">'
-              + '<td>' + esc(chapa && chapa.fornecedor || '—') + '</td>'
-              + '<td>' + esc(chapa && chapa.gramatura || '—') + '</td>'
-              + '<td>' + esc(chapa && chapa.nomenclatura || '—') + '</td>'
-              + '<td>' + esc(chapa && chapa.tamanho || '—') + '</td>'
-              + '<td>' + esc(chapa && (chapa.nome_uso || chapa.nome) || '—') + '</td>'
-              + '<td>' + esc(chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || chapa.empresa) || '—') + '</td>'
-              + '<td>' + esc(chapa && chapa.nf || '—') + '</td>'
-              + '<td style="text-align:right">' + num(qtd, 0) + '</td>'
-              + '<td style="text-align:right">' + money(vunit) + '</td>'
-              + '<td style="text-align:right">' + money(estoqueWireValor(chapa)) + '</td>'
-              + '<td><button class="pep-btn danger" data-est-del="' + esc(chapa && chapa.id || '') + '">Excluir</button> <button class="pep-btn" data-est-edit="' + esc(chapa && chapa.id || '') + '">Alterar</button></td>'
+              + '<td class="col-text">' + esc(chapa && chapa.fornecedor || '—') + '</td>'
+              + '<td class="col-text">' + esc(chapa && chapa.gramatura || '—') + '</td>'
+              + '<td class="col-text">' + esc(chapa && chapa.nomenclatura || '—') + '</td>'
+              + '<td class="col-text">' + esc(chapa && chapa.tamanho || '—') + '</td>'
+              + '<td class="col-text">' + esc(chapa && (chapa.nome_uso || chapa.nome) || '—') + '</td>'
+              + '<td class="col-text">' + esc(chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || chapa.empresa) || '—') + '</td>'
+              + '<td class="col-text">' + esc(chapa && chapa.nf || '—') + '</td>'
+              + '<td class="col-num">' + num(qtd, 0) + '</td>'
+              + '<td class="col-num">' + money(vunit) + '</td>'
+              + '<td class="col-num">' + money(estoqueWireValor(chapa)) + '</td>'
+              + '<td class="col-actions"><button class="pep-btn danger" data-est-del="' + esc(chapa && chapa.id || '') + '">Excluir</button> <button class="pep-btn" data-est-edit="' + esc(chapa && chapa.id || '') + '">Alterar</button></td>'
               + '</tr>';
           }).join('') : '<tr><td colspan="11" style="text-align:center;color:#94a3b8">Nenhum registro encontrado.</td></tr>')
         + '  </tbody></table></div></div>'
@@ -4403,7 +4550,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try {
         if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('G', 'wireframe estoque shape atual', {
           cards: page.querySelectorAll('.estoque-wire-cards .pep-card').length,
-          actionButtons: page.querySelectorAll('.estoque-main-actions .estoque-action-btn').length,
+          actionButtons: page.querySelectorAll('[data-est-edit],[data-est-del]').length,
+          coloredRows: Array.prototype.slice.call(page.querySelectorAll('.pep-table tbody tr[data-chapa-id]')).slice(0, 5).map(function(tr) {
+            return {
+              id: String(tr.getAttribute('data-chapa-id') || ''),
+              style: String(tr.getAttribute('style') || ''),
+              background: String((tr.style && tr.style.background) || '')
+            };
+          }),
           tableHeaders: Array.prototype.slice.call(page.querySelectorAll('.pep-table thead th')).map(function(th) { return String(th.textContent || '').trim(); }).join('|')
         });
       } catch (_) {}
@@ -4420,16 +4574,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           renderEstoqueWireframePage();
         }
       };
-      Array.prototype.slice.call(page.querySelectorAll('[data-est-edit]')).forEach(function(btn) {
-        btn.onclick = function() {
-          try { _abrirEdicaoChapaEstoque(String(btn.getAttribute('data-est-edit') || '')); } catch (_) {}
-        };
-      });
-      Array.prototype.slice.call(page.querySelectorAll('[data-est-del]')).forEach(function(btn) {
-        btn.onclick = function() {
-          try { if (typeof window.excluirChapa === 'function') window.excluirChapa(String(btn.getAttribute('data-est-del') || '')); } catch (_) {}
-        };
-      });
+      _bindEstoqueWireframeDelegation(page, lista);
       // #region debug-point A:estoque-wireframe-success
       try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'renderEstoqueWireframePage sucesso', { totalLista: lista.length, totalFiltrada: filtrada.length, hasBusca: !!busca }); } catch (_) {}
       // #endregion
