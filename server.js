@@ -7721,88 +7721,301 @@ app.get('/api/passagens/hoje', authMiddleware, async (req, res) => {
   } 
 });
 
+function _passagensFiltroMesAnoToRange(mes, ano) {
+  const anoN = parseInt(String(ano || '').trim(), 10);
+  const mesN = parseInt(String(mes || '').trim(), 10);
+  if (!anoN || !mesN || mesN < 1 || mesN > 12) return null;
+  const inicio = new Date(anoN, mesN - 1, 1, 0, 0, 0);
+  const fim = new Date(anoN, mesN, 0, 23, 59, 59);
+  return {
+    inicio: inicio.toISOString().slice(0, 10),
+    fim: fim.toISOString().slice(0, 10),
+    mes: String(mesN).padStart(2, '0'),
+    ano: String(anoN)
+  };
+}
+
+function _passagensMesAnterior(mes, ano) {
+  const ref = _passagensFiltroMesAnoToRange(mes, ano);
+  if (!ref) return null;
+  const base = new Date(parseInt(ref.ano, 10), parseInt(ref.mes, 10) - 1, 1, 12, 0, 0);
+  base.setMonth(base.getMonth() - 1);
+  return _passagensFiltroMesAnoToRange(base.getMonth() + 1, base.getFullYear());
+}
+
+async function _buscarPassagensHistoricoCompat(req, opts) {
+  const cfg = opts && typeof opts === 'object' ? opts : {};
+  const cliente = String(cfg.cliente || '').trim();
+  const maquina = String(cfg.maquina || '').trim();
+  const dataInicio = String(cfg.data_inicio || '').trim();
+  const dataFim = String(cfg.data_fim || '').trim();
+  const mes = String(cfg.mes || '').trim();
+  const ano = String(cfg.ano || '').trim();
+  const rangeMes = _passagensFiltroMesAnoToRange(mes, ano);
+  const limit = Number.isFinite(Number(cfg.limit)) ? Math.max(1, parseInt(String(cfg.limit), 10) || 1) : null;
+  const offset = Number.isFinite(Number(cfg.offset)) ? Math.max(0, parseInt(String(cfg.offset), 10) || 0) : 0;
+  const wantCount = !!cfg.count;
+
+  const empId = String(cfg.emp_id ?? cfg.empId ?? req.query.emp_id ?? req.query.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? '').trim();
+  let empresaUuid = '';
+  try { empresaUuid = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { empresaUuid = ''; }
+
+  const execQuery = async (withEmpresaFilter) => {
+    let query = supabase
+      .from('passagens_maquina')
+      .select('*', wantCount ? { count: 'exact' } : undefined);
+
+    if (cliente) query = query.ilike('cliente', '%' + cliente + '%');
+    if (maquina) query = query.eq('maquina', maquina);
+
+    if (dataInicio) query = query.gte('data_passagem', dataInicio);
+    if (dataFim) query = query.lte('data_passagem', dataFim);
+    if (rangeMes) {
+      query = query
+        .gte('data_passagem', rangeMes.inicio)
+        .lte('data_passagem', rangeMes.fim);
+    }
+
+    if (withEmpresaFilter) {
+      if (empId) query = query.eq('emp_id', empId);
+      else if (empresaUuid) query = query.eq('empresa_id', empresaUuid);
+    }
+
+    query = query.order('hora_passagem', { ascending: false });
+    if (limit != null) query = query.range(offset, offset + limit - 1);
+    return await query;
+  };
+
+  let resp = await execQuery(true);
+  if (resp?.error) {
+    const msg = String(resp.error.message || resp.error || '');
+    if ((msg.includes('does not exist') || msg.includes('Could not find') || msg.includes('column')) && (msg.includes('emp_id') || msg.includes('empresa_id'))) {
+      resp = await execQuery(false);
+    }
+  }
+  if (resp?.error) throw resp.error;
+  return {
+    rows: Array.isArray(resp?.data) ? resp.data : [],
+    count: Number(resp?.count || 0) || 0
+  };
+}
+
+async function _enriquecerPassagensHistoricoComOfs(passagens) {
+  let rows = Array.isArray(passagens) ? passagens.slice() : [];
+  const normId = (v) => String(v || '').trim();
+  const ofIds = Array.from(new Set(rows.map((p) => normId(p?.of_id ?? p?.ofId ?? '')).filter(Boolean)));
+  if (!ofIds.length) return rows;
+
+  const { data: ofsData } = await supabase
+    .from('ofs')
+    .select('id,numero,status,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd,qtd_produzida,valor_total,valor_venda,valor_unitario,vunit,vl_unit,concluido_por,usuario')
+    .in('id', ofIds)
+    .limit(5000);
+
+  const byId = new Map();
+  (Array.isArray(ofsData) ? ofsData : []).forEach((o) => { if (o?.id) byId.set(String(o.id), o); });
+
+  const parseImgs = (v) => {
+    if (Array.isArray(v)) return v;
+    if (typeof v === 'string') {
+      try {
+        const p = JSON.parse(v || '[]');
+        return Array.isArray(p) ? p : [];
+      } catch (_) {
+        return [];
+      }
+    }
+    return [];
+  };
+
+  rows = rows.map((p) => {
+    const oid = normId(p?.of_id ?? p?.ofId ?? '');
+    const of = oid ? (byId.get(oid) || null) : null;
+    if (!of) return p;
+
+    const clienteOf = String(of?.cliNome || of?.clinome || of?.cliente_nome || '').trim();
+    const imgsOf = parseImgs(of?.imgs);
+    const imgOf = String(of?.imagem_url || (imgsOf[0] || '') || '').trim();
+    const prodOf = String(of?.prodDesc || of?.produto || of?.descricao || '').trim();
+    const qtdOf = (of?.qtd_produzida ?? of?.quantidade ?? of?.qtd);
+    const vlUnit = (of?.valor_unitario ?? of?.vunit ?? of?.vl_unit);
+    const totalOf = (of?.valor_total ?? of?.valor_venda);
+    const statusOf = String(of?.status || '').trim();
+    const respOf = String(of?.concluido_por || of?.usuario || '').trim();
+    const numeroOf = String(of?.numero || '').trim();
+
+    return {
+      ...p,
+      ...(p?.of_numero ? {} : (numeroOf ? { of_numero: numeroOf } : {})),
+      ...(p?.cliente ? {} : (clienteOf ? { cliente: clienteOf } : {})),
+      ...(p?.imagem_url ? {} : (imgOf ? { imagem_url: imgOf, imgs: imgsOf } : {})),
+      ...(p?.produto ? {} : (prodOf ? { produto: prodOf } : {})),
+      ...(p?.quantidade ? {} : ((qtdOf != null) ? { quantidade: qtdOf, qtd_produzida: qtdOf } : {})),
+      ...(p?.qtd_produzida != null ? {} : ((qtdOf != null) ? { qtd_produzida: qtdOf } : {})),
+      ...(p?.vl_unit != null ? {} : ((vlUnit != null) ? { vl_unit: vlUnit } : {})),
+      ...(p?.total != null ? {} : ((totalOf != null) ? { total: totalOf, valor_total: totalOf } : {})),
+      ...(p?.valor_total != null ? {} : ((totalOf != null) ? { valor_total: totalOf } : {})),
+      ...(p?.status ? {} : (statusOf ? { status: statusOf } : {})),
+      ...((p?.operador || p?.operador_nome || p?.responsavel) ? {} : (respOf ? { responsavel: respOf } : {}))
+    };
+  });
+
+  return rows;
+}
+
+function _agruparPassagensRelatorioMensal(rows) {
+  const mapa = new Map();
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    const maquinaRaw = String(row?.maquina || row?.maquina_nome || '').trim();
+    const maquina = _canonMaqNome(maquinaRaw) || maquinaRaw || 'Sem máquina';
+    if (!mapa.has(maquina)) {
+      mapa.set(maquina, {
+        maquina,
+        total_ofs: 0,
+        valor_total_producao: 0,
+        caixas_produzidas: 0
+      });
+    }
+    const agg = mapa.get(maquina);
+    agg.total_ofs += 1;
+    agg.valor_total_producao += Number(row?.total ?? row?.valor_total ?? row?.valor_venda ?? 0) || 0;
+    agg.caixas_produzidas += Number(row?.qtd_produzida ?? row?.quantidade ?? row?.qtd ?? row?.caixas_produzidas ?? 0) || 0;
+  });
+  return Array.from(mapa.values()).sort((a, b) => {
+    if ((b.total_ofs || 0) !== (a.total_ofs || 0)) return (b.total_ofs || 0) - (a.total_ofs || 0);
+    if ((b.valor_total_producao || 0) !== (a.valor_total_producao || 0)) return (b.valor_total_producao || 0) - (a.valor_total_producao || 0);
+    return String(a.maquina || '').localeCompare(String(b.maquina || ''), 'pt-BR');
+  });
+}
+
 app.get('/api/passagens/historico', authMiddleware, async (req, res) => { 
   try { 
     const { cliente, maquina, data_inicio, data_fim, mes, ano } = req.query; 
-    const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit || ''), 10) || 50)); 
+    const limit = Math.min(1000, Math.max(1, parseInt(String(req.query.limit || ''), 10) || 50)); 
     const offsetReq = parseInt(String(req.query.offset || ''), 10); 
     const pageReq = Math.max(1, parseInt(String(req.query.page || ''), 10) || 1); 
     const offset = Number.isFinite(offsetReq) ? Math.max(0, offsetReq) : ((pageReq - 1) * limit); 
     const page = Math.max(1, Math.floor(offset / limit) + 1);
- 
-    let query = supabase 
-      .from('passagens_maquina') 
-      .select('*', { count: 'exact' }); 
- 
-    if (cliente)     query = query.ilike('cliente', '%' + cliente + '%'); 
-    if (maquina)     query = query.eq('maquina', maquina); 
-    if (data_inicio) query = query.gte('data_passagem', data_inicio); 
-    if (data_fim)    query = query.lte('data_passagem', data_fim); 
- 
-    if (mes && ano) { 
-      const anoN = parseInt(ano); 
-      const mesN = parseInt(mes); 
-      const mesStr = String(mesN).padStart(2, '0'); 
-      query = query 
-        .gte('data_passagem', anoN + '-' + mesStr + '-01') 
-        .lte('data_passagem', anoN + '-' + mesStr + '-31'); 
-    } 
- 
-    const { data, error, count } = await query 
-      .order('hora_passagem', { ascending: false }) 
-      .range(offset, offset + limit - 1); 
- 
-    if (error) { 
-      console.warn('[passagens/historico] Supabase error:', error.message); 
-      return res.json({ ok: true, passagens: [], total: 0, page }); 
-    } 
- 
-    let passagens = Array.isArray(data) ? data : []; 
-    try { 
-      const normId = (v) => String(v || '').trim(); 
-      const ofIds = Array.from(new Set(passagens.map((p) => normId(p?.of_id ?? p?.ofId ?? '')).filter(Boolean))); 
-      if (ofIds.length) { 
-        const { data: ofsData } = await supabase 
-          .from('ofs') 
-          .select('id,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd,valor_total,valor_venda,valor_unitario,vunit,vl_unit') 
-          .in('id', ofIds) 
-          .limit(1000); 
-        const byId = new Map(); 
-        (Array.isArray(ofsData) ? ofsData : []).forEach((o) => { if (o?.id) byId.set(String(o.id), o); }); 
-        const parseImgs = (v) => { 
-          if (Array.isArray(v)) return v; 
-          if (typeof v === 'string') { try { const p = JSON.parse(v || '[]'); return Array.isArray(p) ? p : []; } catch (_) { return []; } } 
-          return []; 
-        }; 
-        passagens = passagens.map((p) => { 
-          const oid = normId(p?.of_id ?? p?.ofId ?? ''); 
-          const of = oid ? (byId.get(oid) || null) : null; 
-          if (!of) return p; 
-          const clienteOf = String(of?.cliNome || of?.clinome || of?.cliente_nome || '').trim(); 
-          const imgsOf = parseImgs(of?.imgs); 
-          const imgOf = String(of?.imagem_url || (imgsOf[0] || '') || '').trim(); 
-          const prodOf = String(of?.prodDesc || of?.produto || of?.descricao || '').trim(); 
-          const qtdOf = (of?.quantidade ?? of?.qtd); 
-          const vlUnit = (of?.valor_unitario ?? of?.vunit ?? of?.vl_unit); 
-          const totalOf = (of?.valor_total ?? of?.valor_venda); 
-          return { 
-            ...p, 
-            ...(p?.cliente ? {} : (clienteOf ? { cliente: clienteOf } : {})), 
-            ...(p?.imagem_url ? {} : (imgOf ? { imagem_url: imgOf, imgs: imgsOf } : {})), 
-            ...(p?.produto ? {} : (prodOf ? { produto: prodOf } : {})), 
-            ...(p?.quantidade ? {} : ((qtdOf != null) ? { quantidade: qtdOf } : {})), 
-            ...(p?.vl_unit != null ? {} : ((vlUnit != null) ? { vl_unit: vlUnit } : {})),
-            ...(p?.total != null ? {} : ((totalOf != null) ? { total: totalOf } : {})),
-          }; 
-        }); 
-      } 
-    } catch (_) {} 
+    const pair = await _buscarPassagensHistoricoCompat(req, {
+      cliente,
+      maquina,
+      data_inicio,
+      data_fim,
+      mes,
+      ano,
+      limit,
+      offset,
+      count: true
+    });
+
+    let passagens = Array.isArray(pair?.rows) ? pair.rows : [];
+    const count = Number(pair?.count || 0) || 0;
+    try { passagens = await _enriquecerPassagensHistoricoComOfs(passagens); } catch (_) {}
     res.json({ ok: true, passagens: passagens, total: count || 0, page, limit, offset }); 
   } catch(e) { 
     console.error('[passagens/historico]', e.message); 
     res.json({ ok: true, passagens: [], total: 0, page: 1, erro: e.message }); 
   } 
 }); 
+
+app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
+  try {
+    const hoje = new Date();
+    const mes = String(req.query.mes || (hoje.getMonth() + 1)).trim();
+    const ano = String(req.query.ano || hoje.getFullYear()).trim();
+    const maquina = String(req.query.maquina || '').trim();
+    const cliente = String(req.query.cliente || '').trim();
+
+    const refAtual = _passagensFiltroMesAnoToRange(mes, ano);
+    if (!refAtual) return res.status(400).json({ ok: false, error: 'Mês/ano inválidos' });
+    const refAnterior = _passagensMesAnterior(refAtual.mes, refAtual.ano);
+
+    const atualPair = await _buscarPassagensHistoricoCompat(req, {
+      cliente,
+      maquina,
+      mes: refAtual.mes,
+      ano: refAtual.ano,
+      limit: 10000,
+      offset: 0,
+      count: false
+    });
+    let atualRows = Array.isArray(atualPair?.rows) ? atualPair.rows : [];
+    try { atualRows = await _enriquecerPassagensHistoricoComOfs(atualRows); } catch (_) {}
+
+    let anteriorRows = [];
+    if (refAnterior) {
+      const anteriorPair = await _buscarPassagensHistoricoCompat(req, {
+        cliente,
+        maquina,
+        mes: refAnterior.mes,
+        ano: refAnterior.ano,
+        limit: 10000,
+        offset: 0,
+        count: false
+      });
+      anteriorRows = Array.isArray(anteriorPair?.rows) ? anteriorPair.rows : [];
+      try { anteriorRows = await _enriquecerPassagensHistoricoComOfs(anteriorRows); } catch (_) {}
+    }
+
+    const atualAgg = _agruparPassagensRelatorioMensal(atualRows);
+    const anteriorAgg = _agruparPassagensRelatorioMensal(anteriorRows);
+    const prevMap = new Map(anteriorAgg.map((item) => [String(item?.maquina || ''), item]));
+
+    const rows = atualAgg.map((item) => {
+      const prev = prevMap.get(String(item?.maquina || '')) || null;
+      const prevOfs = Number(prev?.total_ofs || 0) || 0;
+      const prevValor = Number(prev?.valor_total_producao || 0) || 0;
+      const prevCaixas = Number(prev?.caixas_produzidas || 0) || 0;
+      return {
+        ...item,
+        ofs_mes_anterior: prevOfs,
+        valor_mes_anterior: prevValor,
+        caixas_mes_anterior: prevCaixas,
+        variacao_ofs_pct: prevOfs > 0 ? (((Number(item.total_ofs || 0) - prevOfs) / prevOfs) * 100) : null,
+        variacao_valor_pct: prevValor > 0 ? (((Number(item.valor_total_producao || 0) - prevValor) / prevValor) * 100) : null,
+        variacao_caixas_pct: prevCaixas > 0 ? (((Number(item.caixas_produzidas || 0) - prevCaixas) / prevCaixas) * 100) : null
+      };
+    });
+
+    const resumoAtual = rows.reduce((acc, item) => {
+      acc.total_maquinas += 1;
+      acc.total_ofs += Number(item?.total_ofs || 0) || 0;
+      acc.valor_total_producao += Number(item?.valor_total_producao || 0) || 0;
+      acc.caixas_produzidas += Number(item?.caixas_produzidas || 0) || 0;
+      return acc;
+    }, { total_maquinas: 0, total_ofs: 0, valor_total_producao: 0, caixas_produzidas: 0 });
+
+    const resumoAnterior = anteriorAgg.reduce((acc, item) => {
+      acc.total_maquinas += 1;
+      acc.total_ofs += Number(item?.total_ofs || 0) || 0;
+      acc.valor_total_producao += Number(item?.valor_total_producao || 0) || 0;
+      acc.caixas_produzidas += Number(item?.caixas_produzidas || 0) || 0;
+      return acc;
+    }, { total_maquinas: 0, total_ofs: 0, valor_total_producao: 0, caixas_produzidas: 0 });
+
+    return res.json({
+      ok: true,
+      referencia: {
+        mes: refAtual.mes,
+        ano: refAtual.ano,
+        inicio: refAtual.inicio,
+        fim: refAtual.fim
+      },
+      referencia_anterior: refAnterior ? {
+        mes: refAnterior.mes,
+        ano: refAnterior.ano,
+        inicio: refAnterior.inicio,
+        fim: refAnterior.fim
+      } : null,
+      resumo_mes_atual: resumoAtual,
+      resumo_mes_anterior: resumoAnterior,
+      rows
+    });
+  } catch (e) {
+    console.error('[maquinas/relatorio-mensal]', e.message);
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
 
 app.get('/api/passagens/graficos', authMiddleware, async (req, res) => {
   try {

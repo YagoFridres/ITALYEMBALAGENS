@@ -314,6 +314,668 @@ if (typeof window._fmtRs === 'undefined') {
   } catch (_) {}
 })();
 
+(function() {
+  if (window.__patchHistoricoPassagensMensal) return;
+  window.__patchHistoricoPassagensMensal = true;
+
+  function _histEsc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function _histAttr(v) {
+    return _histEsc(v).replace(/`/g, '&#96;');
+  }
+
+  function _histToken() {
+    try {
+      return String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') || localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || '').trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function _histFmtMoney(v) {
+    try {
+      return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    } catch (_) {
+      return 'R$ 0,00';
+    }
+  }
+
+  function _histFmtNum(v) {
+    try {
+      return Number(v || 0).toLocaleString('pt-BR');
+    } catch (_) {
+      return '0';
+    }
+  }
+
+  function _histPad2(v) {
+    return String(v == null ? '' : v).padStart(2, '0');
+  }
+
+  function _histMonthName(mes) {
+    var meses = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    var idx = (parseInt(String(mes || ''), 10) || 1) - 1;
+    return meses[idx] || 'Mes';
+  }
+
+  function _histFmtDateTime(row) {
+    var horaPassagem = String(row && row.hora_passagem || '').trim();
+    if (horaPassagem) {
+      var dt = new Date(horaPassagem);
+      if (!isNaN(dt.getTime())) {
+        return dt.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      }
+    }
+    var data = String(row && row.data_passagem || '').trim();
+    if (data) {
+      var p = data.split('-');
+      if (p.length === 3) return p[2] + '/' + p[1] + '/' + p[0];
+      return data;
+    }
+    return '—';
+  }
+
+  function _histParseMonthValue(v) {
+    var s = String(v || '').trim();
+    if (!s || s.indexOf('-') < 0) return null;
+    var parts = s.split('-');
+    if (!parts[0] || !parts[1]) return null;
+    return { ano: String(parts[0]), mes: _histPad2(parts[1]) };
+  }
+
+  function _histCurrentMonthYearFromUi() {
+    var fim = _histParseMonthValue(String((document.getElementById('hist-filtro-data-fim') || {}).value || '').slice(0, 7));
+    if (fim) return fim;
+    var ini = _histParseMonthValue(String((document.getElementById('hist-filtro-data-ini') || {}).value || '').slice(0, 7));
+    if (ini) return ini;
+    try {
+      var now = new Date();
+      return { ano: String(now.getFullYear()), mes: _histPad2(now.getMonth() + 1) };
+    } catch (_) {
+      return { ano: '2026', mes: '07' };
+    }
+  }
+
+  function _histPrevMonth(mes, ano) {
+    var base = new Date(parseInt(String(ano || ''), 10) || 2026, (parseInt(String(mes || ''), 10) || 1) - 1, 1, 12, 0, 0);
+    if (isNaN(base.getTime())) return null;
+    base.setMonth(base.getMonth() - 1);
+    return { ano: String(base.getFullYear()), mes: _histPad2(base.getMonth() + 1) };
+  }
+
+  function _histGetPage() {
+    try { return document.getElementById('page-historico-passagens'); } catch (_) { return null; }
+  }
+
+  function _histGetFilters() {
+    if (typeof window.obterFiltrosHistoricoAtivos === 'function') {
+      try { return window.obterFiltrosHistoricoAtivos() || {}; } catch (_) {}
+    }
+    return {
+      cliente: String((document.getElementById('hist-filtro-cliente') || {}).value || '').trim(),
+      maquina: String((document.getElementById('hist-filtro-maquina') || {}).value || '').trim(),
+      data_inicio: String((document.getElementById('hist-filtro-data-ini') || {}).value || '').trim(),
+      data_fim: String((document.getElementById('hist-filtro-data-fim') || {}).value || '').trim()
+    };
+  }
+
+  function _histExportCsv(filename, columns, rows) {
+    try {
+      var lines = [columns.map(function(col) {
+        return '"' + String(col == null ? '' : col).replace(/"/g, '""') + '"';
+      }).join(';')];
+      (Array.isArray(rows) ? rows : []).forEach(function(row) {
+        lines.push((Array.isArray(row) ? row : []).map(function(value) {
+          return '"' + String(value == null ? '' : value).replace(/"/g, '""') + '"';
+        }).join(';'));
+      });
+      var blob = new Blob(["\uFEFF" + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() {
+        try { URL.revokeObjectURL(a.href); } catch (_) {}
+        try { a.remove(); } catch (_) {}
+      }, 0);
+    } catch (_) {}
+  }
+
+  function _histEnsureStyle() {
+    try {
+      if (document.getElementById('patch-historico-passagens-style')) return;
+      var st = document.createElement('style');
+      st.id = 'patch-historico-passagens-style';
+      st.textContent = ''
+        + '#page-historico-passagens{min-height:0}'
+        + '#hist-filtros .hist-patch-btn,#hist-relatorio-mensal-shell .hist-patch-btn{background:#1e293b;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer}'
+        + '#hist-filtros .hist-patch-btn:hover,#hist-relatorio-mensal-shell .hist-patch-btn:hover{filter:brightness(1.06)}'
+        + '#hist-relatorio-mensal-shell{display:grid;gap:12px;margin:16px 0;padding:14px;border-radius:14px;background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.8));border:1px solid rgba(148,163,184,.14)}'
+        + '#hist-relatorio-mensal-shell .hist-month-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}'
+        + '#hist-relatorio-mensal-shell .hist-month-toolbar-left{display:flex;gap:10px;flex-wrap:wrap;align-items:center}'
+        + '#hist-relatorio-mensal-shell .hist-month-title{font-size:15px;font-weight:900;color:#f8fafc}'
+        + '#hist-relatorio-mensal-shell .hist-month-sub{font-size:12px;color:#94a3b8;margin-top:4px}'
+        + '#hist-relatorio-mensal-shell select{background:#0b1220;color:#e2e8f0;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;font-size:13px}'
+        + '#hist-relatorio-mensal-shell .hist-month-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}'
+        + '#hist-relatorio-mensal-shell .hist-month-card{background:rgba(255,255,255,.03);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:14px}'
+        + '#hist-relatorio-mensal-shell .hist-month-card .lab{font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:900;letter-spacing:.08em}'
+        + '#hist-relatorio-mensal-shell .hist-month-card .val{margin-top:8px;font-size:22px;font-weight:900;color:#f8fafc}'
+        + '#hist-relatorio-mensal-shell .hist-month-card .sub{margin-top:6px;font-size:12px;color:#94a3b8}'
+        + '#hist-relatorio-mensal-shell .hist-variation{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:900;border:1px solid rgba(148,163,184,.16)}'
+        + '#hist-relatorio-mensal-shell .hist-variation.pos{background:rgba(16,185,129,.14);color:#6ee7b7;border-color:rgba(16,185,129,.22)}'
+        + '#hist-relatorio-mensal-shell .hist-variation.neg{background:rgba(239,68,68,.14);color:#fda4af;border-color:rgba(239,68,68,.22)}'
+        + '#hist-relatorio-mensal-shell .hist-variation.neu{background:rgba(148,163,184,.12);color:#cbd5e1;border-color:rgba(148,163,184,.22)}'
+        + '#hist-relatorio-mensal-shell .hist-month-table-wrap{overflow:auto;max-height:420px;border:1px solid rgba(148,163,184,.14);border-radius:14px}'
+        + '#hist-relatorio-mensal-shell .hist-month-table{width:100%;border-collapse:separate;border-spacing:0;min-width:760px}'
+        + '#hist-relatorio-mensal-shell .hist-month-table thead th{position:sticky;top:0;background:#0f172a;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:12px 14px;text-align:left;border-bottom:1px solid rgba(148,163,184,.16)}'
+        + '#hist-relatorio-mensal-shell .hist-month-table thead th.num{text-align:right}'
+        + '#hist-relatorio-mensal-shell .hist-month-table thead button{background:transparent;border:none;color:inherit;font:inherit;cursor:pointer;padding:0}'
+        + '#hist-relatorio-mensal-shell .hist-month-table tbody td{padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.08);color:#e2e8f0;font-size:13px}'
+        + '#hist-relatorio-mensal-shell .hist-month-table tbody td.num{text-align:right;font-variant-numeric:tabular-nums}'
+        + '#hist-relatorio-mensal-shell .hist-month-table tbody tr:nth-child(even) td{background:rgba(255,255,255,.02)}'
+        + '#hist-relatorio-mensal-shell .hist-month-table tbody tr:hover td{background:rgba(30,41,59,.42)}'
+        + '#hist-passagens-resultado{display:grid;gap:10px;min-height:0}'
+        + '#hist-passagens-resultado .hist-passagens-toolbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}'
+        + '#hist-passagens-resultado .hist-passagens-scroll{max-height:calc(100vh - 420px);overflow-y:auto;padding-right:4px}'
+        + '#hist-passagens-resultado .hist-passagens-scroll::-webkit-scrollbar,#hist-relatorio-mensal-shell .hist-month-table-wrap::-webkit-scrollbar{width:10px;height:10px}'
+        + '#hist-passagens-resultado .hist-passagens-scroll::-webkit-scrollbar-track,#hist-relatorio-mensal-shell .hist-month-table-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72)}'
+        + '#hist-passagens-resultado .hist-passagens-scroll::-webkit-scrollbar-thumb,#hist-relatorio-mensal-shell .hist-month-table-wrap::-webkit-scrollbar-thumb{background:rgba(100,116,139,.58);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
+        + '#hist-passagens-resultado .hist-passagens-scroll,#hist-relatorio-mensal-shell .hist-month-table-wrap{scrollbar-width:thin;scrollbar-color:rgba(100,116,139,.58) rgba(15,23,42,.72)}'
+        + '@media (max-width:760px){#hist-relatorio-mensal-shell .hist-month-cards{grid-template-columns:1fr}#hist-passagens-resultado .hist-passagens-scroll{max-height:calc(100vh - 360px)}}';
+      document.head.appendChild(st);
+    } catch (_) {}
+  }
+
+  function _histEnsureUi() {
+    _histEnsureStyle();
+    var page = _histGetPage();
+    if (!page) return;
+
+    var monthShell = document.getElementById('hist-relatorio-mensal-shell');
+    if (!monthShell) {
+      monthShell = document.createElement('div');
+      monthShell.id = 'hist-relatorio-mensal-shell';
+      monthShell.innerHTML = ''
+        + '<div class="hist-month-toolbar">'
+        + '  <div class="hist-month-toolbar-left">'
+        + '    <div><div class="hist-month-title">Relatório Mensal por Máquina</div><div class="hist-month-sub">Mesma base das passagens individuais, agregada por mês e por máquina.</div></div>'
+        + '    <select id="hist-rel-mes"></select>'
+        + '    <select id="hist-rel-ano"></select>'
+        + '    <button type="button" class="hist-patch-btn" id="hist-rel-carregar">Atualizar Relatório</button>'
+        + '  </div>'
+        + '  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+        + '    <button type="button" class="hist-patch-btn" id="hist-rel-exportar">Exportar Excel</button>'
+        + '  </div>'
+        + '</div>'
+        + '<div id="hist-relatorio-mensal-cards" class="hist-month-cards"></div>'
+        + '<div id="hist-relatorio-mensal-tabela"></div>';
+      var graficos = document.getElementById('hist-graficos-wrap');
+      var filtros = document.getElementById('hist-filtros');
+      if (graficos && graficos.parentNode) graficos.parentNode.insertBefore(monthShell, filtros || graficos.nextSibling);
+      else if (filtros && filtros.parentNode) filtros.parentNode.insertBefore(monthShell, filtros);
+      else page.appendChild(monthShell);
+    }
+
+    var exportBtn = document.getElementById('hist-export-lista-btn');
+    var filtrosWrap = document.getElementById('hist-filtros');
+    if (!exportBtn && filtrosWrap) {
+      exportBtn = document.createElement('button');
+      exportBtn.type = 'button';
+      exportBtn.id = 'hist-export-lista-btn';
+      exportBtn.className = 'hist-patch-btn';
+      exportBtn.textContent = 'Exportar Excel da Lista';
+      filtrosWrap.appendChild(exportBtn);
+    }
+
+    var mesSel = document.getElementById('hist-rel-mes');
+    var anoSel = document.getElementById('hist-rel-ano');
+    if (mesSel && !mesSel.options.length) {
+      for (var i = 1; i <= 12; i += 1) {
+        var op = document.createElement('option');
+        op.value = _histPad2(i);
+        op.textContent = _histMonthName(i);
+        mesSel.appendChild(op);
+      }
+    }
+    if (anoSel && !anoSel.options.length) {
+      var baseAno = new Date().getFullYear();
+      for (var y = baseAno - 2; y <= baseAno + 1; y += 1) {
+        var oy = document.createElement('option');
+        oy.value = String(y);
+        oy.textContent = String(y);
+        anoSel.appendChild(oy);
+      }
+    }
+    if (mesSel && anoSel && !monthShell.dataset.initialized) {
+      var ref = _histCurrentMonthYearFromUi();
+      mesSel.value = ref.mes;
+      anoSel.value = ref.ano;
+      monthShell.dataset.initialized = '1';
+    }
+
+    var carBtn = document.getElementById('hist-rel-carregar');
+    if (carBtn && !carBtn.dataset.bound) {
+      carBtn.dataset.bound = '1';
+      carBtn.onclick = function() { _histFetchRelatorioMensal(); };
+    }
+    var relExpBtn = document.getElementById('hist-rel-exportar');
+    if (relExpBtn && !relExpBtn.dataset.bound) {
+      relExpBtn.dataset.bound = '1';
+      relExpBtn.onclick = function() { _histExportRelatorioMensal(); };
+    }
+    if (exportBtn && !exportBtn.dataset.bound) {
+      exportBtn.dataset.bound = '1';
+      exportBtn.onclick = function() { _histExportListaVisivel(); };
+    }
+  }
+
+  function _histGetMonthlyRef() {
+    _histEnsureUi();
+    var mes = String((document.getElementById('hist-rel-mes') || {}).value || '').trim();
+    var ano = String((document.getElementById('hist-rel-ano') || {}).value || '').trim();
+    if (!mes || !ano) return _histCurrentMonthYearFromUi();
+    return { mes: _histPad2(mes), ano: ano };
+  }
+
+  function _histSortMonthlyRows(rows) {
+    var state = window.__histMonthlySortState || { key: 'total_ofs', dir: 'desc' };
+    var key = String(state.key || 'total_ofs');
+    var dir = String(state.dir || 'desc') === 'asc' ? 1 : -1;
+    return (Array.isArray(rows) ? rows.slice() : []).sort(function(a, b) {
+      var av = a && a[key];
+      var bv = b && b[key];
+      if (typeof av === 'string' || typeof bv === 'string') {
+        return String(av || '').localeCompare(String(bv || ''), 'pt-BR') * dir;
+      }
+      return ((Number(av || 0) || 0) - (Number(bv || 0) || 0)) * dir;
+    });
+  }
+
+  function _histVariationBadge(value) {
+    if (value == null || !isFinite(Number(value))) return '<span class="hist-variation neu">vs mês anterior: —</span>';
+    var n = Number(value) || 0;
+    var cls = n > 0 ? 'pos' : (n < 0 ? 'neg' : 'neu');
+    var prefix = n > 0 ? '+' : '';
+    return '<span class="hist-variation ' + cls + '">vs mês anterior: ' + _histEsc(prefix + n.toFixed(1).replace('.', ',') + '%') + '</span>';
+  }
+
+  function _histRenderRelatorioMensal(data) {
+    _histEnsureUi();
+    var cards = document.getElementById('hist-relatorio-mensal-cards');
+    var tableHost = document.getElementById('hist-relatorio-mensal-tabela');
+    if (!cards || !tableHost) return;
+
+    var ref = (data && data.referencia) || _histGetMonthlyRef();
+    var resumo = (data && data.resumo_mes_atual) || {};
+    var anterior = (data && data.resumo_mes_anterior) || {};
+    var rows = Array.isArray(data && data.rows) ? data.rows.slice() : [];
+    window.__histMonthlyRows = rows.slice();
+    var sorted = _histSortMonthlyRows(rows);
+    window.__histMonthlyRowsSorted = sorted.slice();
+
+    var varOfs = Number(anterior.total_ofs || 0) > 0 ? (((Number(resumo.total_ofs || 0) - Number(anterior.total_ofs || 0)) / Number(anterior.total_ofs || 0)) * 100) : null;
+    var varValor = Number(anterior.valor_total_producao || 0) > 0 ? (((Number(resumo.valor_total_producao || 0) - Number(anterior.valor_total_producao || 0)) / Number(anterior.valor_total_producao || 0)) * 100) : null;
+    var varCx = Number(anterior.caixas_produzidas || 0) > 0 ? (((Number(resumo.caixas_produzidas || 0) - Number(anterior.caixas_produzidas || 0)) / Number(anterior.caixas_produzidas || 0)) * 100) : null;
+
+    cards.innerHTML = ''
+      + '<div class="hist-month-card"><div class="lab">Mês de Referência</div><div class="val">' + _histEsc(_histMonthName(ref.mes) + '/' + ref.ano) + '</div><div class="sub">Base: passagens individuais por máquina</div></div>'
+      + '<div class="hist-month-card"><div class="lab">Total de OFs</div><div class="val">' + _histEsc(_histFmtNum(resumo.total_ofs || 0)) + '</div><div class="sub">' + _histVariationBadge(varOfs) + '</div></div>'
+      + '<div class="hist-month-card"><div class="lab">Valor de Produção</div><div class="val">' + _histEsc(_histFmtMoney(resumo.valor_total_producao || 0)) + '</div><div class="sub">' + _histVariationBadge(varValor) + '</div></div>'
+      + '<div class="hist-month-card"><div class="lab">Caixas Produzidas</div><div class="val">' + _histEsc(_histFmtNum(resumo.caixas_produzidas || 0)) + '</div><div class="sub">' + _histVariationBadge(varCx) + '</div></div>';
+
+    if (!sorted.length) {
+      tableHost.innerHTML = '<div style="padding:18px;border:1px dashed rgba(148,163,184,.16);border-radius:12px;color:#94a3b8;text-align:center">Nenhuma passagem encontrada para o mês selecionado.</div>';
+      return;
+    }
+
+    var sortState = window.__histMonthlySortState || { key: 'total_ofs', dir: 'desc' };
+    var th = function(label, key, numeric) {
+      var active = sortState.key === key;
+      var arrow = active ? (sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
+      return '<th' + (numeric ? ' class="num"' : '') + '><button type="button" data-hist-sort="' + _histAttr(key) + '">' + _histEsc(label + arrow) + '</button></th>';
+    };
+
+    tableHost.innerHTML = ''
+      + '<div class="hist-month-table-wrap">'
+      + '  <table class="hist-month-table">'
+      + '    <thead><tr>'
+      +        th('Máquina', 'maquina', false)
+      +        th('Nº de OFs', 'total_ofs', true)
+      +        th('Valor de Produção', 'valor_total_producao', true)
+      +        th('Caixas Produzidas', 'caixas_produzidas', true)
+      + '    </tr></thead>'
+      + '    <tbody>'
+      + sorted.map(function(row) {
+          return ''
+            + '<tr>'
+            + '  <td><div style="font-weight:900;color:#f8fafc">' + _histEsc(row.maquina || '—') + '</div><div style="margin-top:4px">' + _histVariationBadge(row.variacao_ofs_pct) + '</div></td>'
+            + '  <td class="num">' + _histEsc(_histFmtNum(row.total_ofs || 0)) + '</td>'
+            + '  <td class="num">' + _histEsc(_histFmtMoney(row.valor_total_producao || 0)) + '</td>'
+            + '  <td class="num">' + _histEsc(_histFmtNum(row.caixas_produzidas || 0)) + '</td>'
+            + '</tr>';
+        }).join('')
+      + '    </tbody>'
+      + '  </table>'
+      + '</div>';
+
+    Array.prototype.slice.call(tableHost.querySelectorAll('[data-hist-sort]')).forEach(function(btn) {
+      btn.onclick = function() {
+        var key = String(btn.getAttribute('data-hist-sort') || '').trim();
+        var current = window.__histMonthlySortState || { key: 'total_ofs', dir: 'desc' };
+        window.__histMonthlySortState = {
+          key: key,
+          dir: current.key === key && current.dir === 'desc' ? 'asc' : 'desc'
+        };
+        _histRenderRelatorioMensal(window.__histMonthlyData || data || {});
+      };
+    });
+  }
+
+  async function _histFetchRelatorioMensal() {
+    _histEnsureUi();
+    var tableHost = document.getElementById('hist-relatorio-mensal-tabela');
+    if (tableHost) tableHost.innerHTML = '<div style="padding:18px;color:#94a3b8">Carregando relatório mensal...</div>';
+    var ref = _histGetMonthlyRef();
+    var filtros = _histGetFilters();
+    var qs = new URLSearchParams();
+    qs.set('mes', String(parseInt(ref.mes, 10) || ref.mes));
+    qs.set('ano', ref.ano);
+    if (filtros.cliente) qs.set('cliente', filtros.cliente);
+    if (filtros.maquina) qs.set('maquina', filtros.maquina);
+    var token = _histToken();
+    try {
+      var resp = await fetch('/api/maquinas/relatorio-mensal?' + qs.toString(), {
+        headers: token ? { Authorization: 'Bearer ' + token } : {}
+      });
+      var json = await resp.json().catch(function() { return null; });
+      if (!resp.ok || !json || json.ok === false) throw new Error(String(json && (json.error || json.message) || 'Falha ao carregar relatório mensal'));
+      window.__histMonthlyData = json;
+      if (!window.__histMonthlySortState) window.__histMonthlySortState = { key: 'total_ofs', dir: 'desc' };
+      _histRenderRelatorioMensal(json);
+    } catch (e) {
+      if (tableHost) tableHost.innerHTML = '<div style="padding:18px;border:1px solid rgba(239,68,68,.22);border-radius:12px;color:#fca5a5">Falha ao carregar relatório mensal: ' + _histEsc(e && e.message || e) + '</div>';
+    }
+  }
+
+  function _histExportRelatorioMensal() {
+    var data = window.__histMonthlyRowsSorted || window.__histMonthlyRows || [];
+    var ref = _histGetMonthlyRef();
+    _histExportCsv(
+      'relatorio-mensal-maquinas-' + ref.ano + '-' + ref.mes + '.csv',
+      ['MÁQUINA', 'Nº DE OFs', 'VALOR DE PRODUÇÃO', 'CAIXAS PRODUZIDAS', 'VS MÊS ANTERIOR (%)'],
+      (Array.isArray(data) ? data : []).map(function(row) {
+        return [
+          row && row.maquina || '—',
+          Number(row && row.total_ofs || 0) || 0,
+          Number(row && row.valor_total_producao || 0) || 0,
+          Number(row && row.caixas_produzidas || 0) || 0,
+          row && row.variacao_ofs_pct != null ? Number(row.variacao_ofs_pct || 0).toFixed(2).replace('.', ',') : ''
+        ];
+      })
+    );
+  }
+
+  function _histExportListaVisivel() {
+    var rows = Array.isArray(window.__histPassagensRowsVisible) ? window.__histPassagensRowsVisible.slice() : [];
+    if (!rows.length) {
+      try { if (typeof window.toast === 'function') window.toast('Nenhuma passagem visível para exportar', 'var(--red)'); } catch (_) {}
+      return;
+    }
+    var filtros = _histGetFilters();
+    var dia = (filtros.data_inicio && filtros.data_fim && filtros.data_inicio === filtros.data_fim) ? filtros.data_inicio : 'lista-filtrada';
+    _histExportCsv(
+      'passagens-maquina-' + dia + '.csv',
+      ['Nº OF', 'Status', 'Produto', 'Máquina', 'Usuário/Responsável', 'Quantidade (cx)', 'Data/Hora'],
+      rows.map(function(row) {
+        return [
+          row && (row.of_numero || row.numero) || '—',
+          row && row.status || row && row.tipo || '—',
+          row && row.produto || row && row.descricao || '—',
+          row && (row.maquina || row.maquina_nome) || '—',
+          row && (row.responsavel || row.operador || row.operador_nome || row.concluido_por) || '—',
+          Number(row && (row.qtd_produzida != null ? row.qtd_produzida : (row.quantidade != null ? row.quantidade : row.qtd)) || 0) || 0,
+          _histFmtDateTime(row)
+        ];
+      })
+    );
+  }
+
+  async function _histBuscarLinhasVisiveisExport(st, filtros) {
+    var state = st || window._histPassagensState || {};
+    var totalLoaded = Math.max(1, (Number(state.page || 0) || 1) * (Number(state.limit || 50) || 50));
+    if (totalLoaded > 1000) totalLoaded = 1000;
+    var qs = new URLSearchParams();
+    qs.set('limit', String(totalLoaded));
+    qs.set('offset', '0');
+    if (filtros.cliente) qs.set('cliente', filtros.cliente);
+    if (filtros.maquina) qs.set('maquina', filtros.maquina);
+    if (filtros.data_inicio) qs.set('data_inicio', filtros.data_inicio);
+    if (filtros.data_fim) qs.set('data_fim', filtros.data_fim);
+    var token = _histToken();
+    try {
+      var resp = await fetch('/api/passagens/historico?' + qs.toString() + '&t=' + Date.now(), {
+        headers: token ? { Authorization: 'Bearer ' + token } : {}
+      });
+      var json = await resp.json().catch(function() { return null; });
+      window.__histPassagensRowsVisible = Array.isArray(json && json.passagens) ? json.passagens.slice() : [];
+    } catch (_) {
+      window.__histPassagensRowsVisible = Array.isArray(state.rows) ? state.rows.slice() : [];
+    }
+  }
+
+  async function _histBuscarHistoricoPassagens(arg, append) {
+    _histEnsureUi();
+
+    var container = document.getElementById('hist-passagens-resultado');
+    if (!container) return;
+
+    var st = window._histPassagensState || { page: 0, limit: 50, total: 0, key: '', loading: false, filtros: {}, rows: [] };
+    if (!Array.isArray(st.rows)) st.rows = [];
+    window._histPassagensState = st;
+
+    var filtros = (arg && typeof arg === 'object' && !Array.isArray(arg)) ? arg : _histGetFilters();
+    append = !!append;
+
+    var key = JSON.stringify({
+      cli: String(filtros.cliente || ''),
+      maq: String(filtros.maquina || ''),
+      ini: String(filtros.data_inicio || ''),
+      fim: String(filtros.data_fim || '')
+    });
+    if (st.key !== key) {
+      st.key = key;
+      st.page = 0;
+      st.rows = [];
+      append = false;
+    }
+    st.filtros = filtros;
+
+    var limit = Math.max(1, parseInt(String(st.limit || 50), 10) || 50);
+    if (limit > 1000) limit = 1000;
+    var offset = append ? ((Number(st.page || 0) || 0) * limit) : 0;
+
+    if (!append) {
+      container.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">Buscando...</p>';
+    } else {
+      var btnLM0 = document.getElementById('btnCarregarMaisPassagens');
+      if (btnLM0) { btnLM0.disabled = true; btnLM0.textContent = 'Carregando...'; }
+    }
+
+    st.loading = true;
+
+    var qs = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (filtros.cliente) qs.set('cliente', filtros.cliente);
+    if (filtros.maquina) qs.set('maquina', filtros.maquina);
+    if (filtros.data_inicio) qs.set('data_inicio', filtros.data_inicio);
+    if (filtros.data_fim) qs.set('data_fim', filtros.data_fim);
+
+    var token = _histToken();
+
+    try {
+      var resp = await fetch('/api/passagens/historico?' + qs.toString() + '&t=' + Date.now(), {
+        headers: token ? { Authorization: 'Bearer ' + token } : {}
+      });
+      var data = await resp.json().catch(function() { return null; });
+      var lista = Array.isArray(data && data.passagens) ? data.passagens : [];
+
+      if (!lista.length && !append) {
+        st.loading = false;
+        st.total = 0;
+        st.page = 0;
+        st.rows = [];
+        window.__histPassagensRowsVisible = [];
+        container.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px">Nenhuma passagem encontrada.</p>';
+        await _histFetchRelatorioMensal();
+        return;
+      }
+
+      st.total = Number(data && data.total || 0) || 0;
+      st.page = append ? ((Number(st.page || 0) || 0) + 1) : 1;
+      st.limit = limit;
+      st.rows = append ? st.rows.concat(lista) : lista.slice();
+      window.__histPassagensRowsVisible = st.rows.slice();
+
+      var semMaquina = st.rows.filter(function(p) {
+        var m = String(p && p.maquina || '').trim().toLowerCase();
+        return !m || m === 'sem maquina' || m === 'sem máquina';
+      }).length;
+
+      var isSingleDay = filtros.data_inicio && filtros.data_fim && filtros.data_inicio === filtros.data_fim;
+      var resumoHtml = ''
+        + '<div class="hist-passagens-toolbar">'
+        + '  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+        + '    <span style="color:#64748b;font-size:12px">' + _histEsc(String(st.total || 0)) + ' passagens encontradas</span>'
+        +      (semMaquina > 0 ? ('<span style="background:rgba(100,116,139,0.15);color:#94a3b8;border-radius:6px;padding:3px 10px;font-size:12px">Sem máquina: <strong>' + _histEsc(String(semMaquina)) + '</strong></span>') : '')
+        +      (isSingleDay ? ('<span style="background:rgba(59,130,246,.14);color:#93c5fd;border-radius:6px;padding:3px 10px;font-size:12px">Relatório do dia: <strong>' + _histEsc(String(filtros.data_inicio || '')) + '</strong></span>') : '')
+        + '  </div>'
+        + '  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+        + '    <button type="button" class="hist-patch-btn" id="hist-export-inline">Exportar Excel da Lista</button>'
+        + '  </div>'
+        + '</div>';
+
+      var cardsHtml = st.rows.map(function(p) {
+        var imgsArr = [];
+        try {
+          if (Array.isArray(p && p.imgs)) imgsArr = p.imgs;
+          else if (typeof (p && p.imgs) === 'string') imgsArr = JSON.parse(p.imgs || '[]');
+        } catch (_) { imgsArr = []; }
+        if (!Array.isArray(imgsArr)) imgsArr = [];
+
+        var imgUrl = String(
+          (p && (p.imagem_url || p.img || p.imagem || p.foto)) ||
+          (imgsArr.length ? imgsArr[0] : '') ||
+          ''
+        ).trim();
+        var cliente = String((p && (p.cliente || p.nome_cliente)) || '—').trim() || '—';
+        var produto = String((p && (p.produto || p.prod_desc || p.prodDesc || p.descricao || p.produto_desc)) || '').trim();
+        var qtd = Number((p && (p.qtd_produzida != null ? p.qtd_produzida : (p.quantidade != null ? p.quantidade : (p.caixas_produzidas != null ? p.caixas_produzidas : p.qtd)))) || 0) || 0;
+        var vlUnit = Number((p && (p.vl_unit != null ? p.vl_unit : (p.valor_unitario != null ? p.valor_unitario : p.vunit))) || 0) || 0;
+        var total = Number((p && (p.total != null ? p.total : (p.valor_total != null ? p.valor_total : p.valor_venda))) || 0) || 0;
+        var hora = _histFmtDateTime(p);
+        var tipo = String((p && (p.tipo || p.status)) || '').trim().toUpperCase();
+        var badgeCfg = (function() {
+          var map = {
+            'ENTRADA':    { bg: 'rgba(34,197,94,0.15)',  cor: '#4ade80',  label: '▲ ENTRADA' },
+            'SAIDA':      { bg: 'rgba(239,68,68,0.15)',  cor: '#f87171',  label: '▼ SAÍDA' },
+            'SAÍDA':      { bg: 'rgba(239,68,68,0.15)',  cor: '#f87171',  label: '▼ SAÍDA' },
+            'DESPACHADA': { bg: 'rgba(59,130,246,0.15)', cor: '#60a5fa',  label: '🚚 DESPACHADA' },
+            'CONCLUIDA':  { bg: 'rgba(168,85,247,0.15)', cor: '#c084fc',  label: '✓ CONCLUÍDA' },
+            'CONCLUÍDA':  { bg: 'rgba(168,85,247,0.15)', cor: '#c084fc',  label: '✓ CONCLUÍDA' },
+            'PASSAGEM':   { bg: 'rgba(168,85,247,0.15)', cor: '#c084fc',  label: '⚙ PASSAGEM' }
+          };
+          if (map[tipo]) return map[tipo];
+          if (tipo && tipo.indexOf('ENTR') >= 0) return map.ENTRADA;
+          if (tipo && (tipo.indexOf('SAIDA') >= 0 || tipo.indexOf('SAÍDA') >= 0)) return map.SAIDA;
+          if (tipo && tipo.indexOf('DESP') >= 0) return map.DESPACHADA;
+          if (tipo && tipo.indexOf('CONCLU') >= 0) return map.CONCLUIDA;
+          return map.PASSAGEM;
+        })();
+        var badgeHtml = badgeCfg ? ('<span style="background:' + _histAttr(badgeCfg.bg) + ';color:' + _histAttr(badgeCfg.cor) + ';border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800;border:1px solid rgba(255,255,255,0.08);white-space:nowrap">' + _histEsc(badgeCfg.label) + '</span>') : '';
+        var responsavel = String((p && (p.responsavel || p.operador || p.operador_nome || p.concluido_por)) || '').trim();
+
+        return ''
+          + '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px">'
+          +   (imgUrl
+                ? '<img src="' + _histAttr(imgUrl) + '" onclick="if(window.kbAbrirImagem) kbAbrirImagem(this.src)" style="width:52px;height:52px;object-fit:cover;border-radius:8px;flex-shrink:0;border:1px solid rgba(255,255,255,0.1);cursor:pointer" onerror="this.style.display=\'none\'">'
+                : '<div style="width:52px;height:52px;border-radius:8px;flex-shrink:0;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:20px">?</div>')
+          +   '<div style="flex:1;min-width:0">'
+          +     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">'
+          +       '<span style="font-weight:700;color:#4A90D9;font-size:13px">OF #' + _histEsc(String(p && (p.of_numero || p.numero) || '—')) + '</span>'
+          +       badgeHtml
+          +       '<span style="color:#e2e8f0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _histEsc(cliente) + '</span>'
+          +     '</div>'
+          +     (produto ? ('<div style="color:rgba(255,255,255,0.82);font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px">' + _histEsc(produto) + '</div>') : '')
+          +     '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#64748b">'
+          +       ((p && (p.maquina || p.maquina_nome)) ? ('<span>⚙ ' + _histEsc(String(p.maquina || p.maquina_nome)) + '</span>') : '')
+          +       (responsavel ? ('<span>👤 ' + _histEsc(responsavel) + '</span>') : '')
+          +       (qtd ? ('<span>📦 ' + _histEsc(String(qtd)) + ' cx</span>') : '')
+          +       (vlUnit ? ('<span>R$ ' + _histEsc(String(_histFmtMoney(vlUnit))) + '/cx</span>') : '')
+          +       (total ? ('<span>Total ' + _histEsc(String(_histFmtMoney(total))) + '</span>') : '')
+          +     '</div>'
+          +   '</div>'
+          +   '<div style="text-align:right;flex-shrink:0"><div style="color:#64748b;font-size:11px">' + _histEsc(hora) + '</div></div>'
+          + '</div>';
+      }).join('');
+
+      var loaded = ((Number(st.page || 0) || 0) * limit) >= st.total;
+      var loadMoreHtml = (!loaded && st.total > 0)
+        ? ('<div style="text-align:center;padding:16px"><button onclick="carregarMaisPassagens()" class="btn btn-ghost btn-sm" id="btnCarregarMaisPassagens">Carregar mais</button></div>')
+        : '';
+
+      container.innerHTML = resumoHtml + '<div id="hist-passagens-items" class="hist-passagens-scroll">' + cardsHtml + '</div>' + loadMoreHtml;
+
+      var exportInline = document.getElementById('hist-export-inline');
+      if (exportInline) exportInline.onclick = _histExportListaVisivel;
+
+      await _histBuscarLinhasVisiveisExport(st, filtros);
+      if (!append) await _histFetchRelatorioMensal();
+    } catch (e) {
+      if (!append) container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao buscar passagens.</p>';
+    }
+
+    st.loading = false;
+    try {
+      var btnLM = document.getElementById('btnCarregarMaisPassagens');
+      if (btnLM) { btnLM.disabled = false; btnLM.textContent = 'Carregar mais'; }
+    } catch (_) {}
+  }
+
+  function _histCarregarMaisPassagens() {
+    try {
+      var st = window._histPassagensState || { page: 0, limit: 50, total: 0, key: '', loading: false, filtros: {} };
+      if (st.loading) return;
+      _histBuscarHistoricoPassagens(st.filtros || _histGetFilters(), true);
+    } catch (_) {}
+  }
+
+  function _histEnhancePageBoot() {
+    try {
+      _histEnsureUi();
+      var page = _histGetPage();
+      if (page && page.offsetParent !== null) _histFetchRelatorioMensal();
+    } catch (_) {}
+  }
+
+  try {
+    window.buscarHistoricoPassagens = _histBuscarHistoricoPassagens;
+    window.carregarMaisPassagens = _histCarregarMaisPassagens;
+  } catch (_) {}
+
+  [0, 300, 1200].forEach(function(delay) {
+    setTimeout(function() {
+      try { _histEnhancePageBoot(); } catch (_) {}
+    }, delay);
+  });
+})();
+
 (function patchEstoqueRotasFinal() {
   if (window.__patchEstoqueRotasFinal) return;
   window.__patchEstoqueRotasFinal = true;
