@@ -4206,15 +4206,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return kgUn > 0 ? ((qtd * kgUn) / 1000) : 0;
     }
     var _CHAPA_ROW_COLOR_OPTIONS = [
-      { value: '', label: 'Sem cor (padrão/transparente)' },
-      { value: '#1E3A5F', label: 'Azul escuro' },
-      { value: '#1F4D3A', label: 'Verde escuro' },
-      { value: '#4C2A85', label: 'Roxo escuro' },
-      { value: '#7C3A12', label: 'Laranja escuro' },
-      { value: '#7F1D1D', label: 'Vermelho escuro' },
-      { value: '#6B5A12', label: 'Amarelo escuro' },
-      { value: '#6B214D', label: 'Rosa escuro' },
-      { value: '#374151', label: 'Cinza escuro' }
+      { value: '', label: 'Sem cor' },
+      { value: '#3B82F6', label: 'Azul' },
+      { value: '#22C55E', label: 'Verde' },
+      { value: '#A855F7', label: 'Roxo' },
+      { value: '#F97316', label: 'Laranja' },
+      { value: '#EF4444', label: 'Vermelho' },
+      { value: '#EAB308', label: 'Amarelo' },
+      { value: '#EC4899', label: 'Rosa' },
+      { value: '#6B7280', label: 'Cinza' }
     ];
     function _normalizeChapaRowColor(v) {
       var raw = String(v == null ? '' : v).trim();
@@ -4248,39 +4248,72 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     function _styleLinhaChapaCor(chapa) {
       var cor = _resolveChapaRowColor(chapa);
       if (!cor) return '';
-      return 'background:' + _hexToRgbaChapa(cor, 0.18) + ';box-shadow:inset 4px 0 0 ' + cor + ';';
+      return 'background-color:' + _hexToRgbaChapa(cor, 0.15) + ';box-shadow:inset 4px 0 0 ' + cor + ';';
     }
-    function _optionsChapaCor(selected) {
+    function _findChapaColorOption(selected) {
+      var atual = _normalizeChapaRowColor(selected);
+      var found = _CHAPA_ROW_COLOR_OPTIONS.find(function(item) {
+        return _normalizeChapaRowColor(item.value) === atual;
+      });
+      return found || (atual ? { value: atual, label: 'Cor personalizada' } : _CHAPA_ROW_COLOR_OPTIONS[0]);
+    }
+    function _renderPaletteChapaCor(selected) {
       var atual = _normalizeChapaRowColor(selected);
       return _CHAPA_ROW_COLOR_OPTIONS.map(function(item) {
-        var sel = atual === _normalizeChapaRowColor(item.value) ? ' selected' : '';
-        return '<option value="' + esc(item.value || '') + '"' + sel + '>' + esc(item.label) + '</option>';
+        var cor = _normalizeChapaRowColor(item.value);
+        var ativo = atual === cor;
+        var semCor = !cor;
+        return ''
+          + '<button type="button" class="estoque-color-chip' + (ativo ? ' active' : '') + '" data-chapa-color="' + esc(cor || '') + '" aria-pressed="' + (ativo ? 'true' : 'false') + '" title="' + esc(item.label) + '">'
+          + '  <span class="estoque-color-chip-swatch' + (semCor ? ' is-none' : '') + '"' + (cor ? ' style="background:' + esc(cor) + ';box-shadow:0 0 0 1px rgba(255,255,255,.18), 0 10px 22px ' + esc(_hexToRgbaChapa(cor, 0.28)) + '"' : '') + '></span>'
+          + '  <span class="estoque-color-chip-label">' + esc(item.label) + '</span>'
+          + '</button>';
       }).join('');
     }
     function _renderCampoCorChapa() {
       return ''
         + '<div id="chapa-cor-wrap" class="estoque-modal-field full">'
-        + '  <label class="estoque-modal-label">Cor da linha'
-        + '    <select id="chapa-cor-linha" class="estoque-modal-select">'
-        +        _optionsChapaCor('')
-        + '    </select>'
-        + '  </label>'
+        + '  <label class="estoque-modal-label">Cor da linha</label>'
+        + '  <input id="chapa-cor-linha" type="hidden" value="">'
+        + '  <div id="chapa-cor-palette" class="estoque-color-palette">' + _renderPaletteChapaCor('') + '</div>'
         + '  <div style="margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
         + '    <span style="font-size:12px;color:#94a3b8">Pré-visualização</span>'
-        + '    <span id="chapa-cor-preview" style="display:inline-flex;align-items:center;justify-content:center;min-width:120px;padding:8px 12px;border-radius:10px;border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.6);color:#e2e8f0;font-size:12px;font-weight:700">Sem cor</span>'
+        + '    <span id="chapa-cor-preview" class="estoque-color-preview"><span id="chapa-cor-preview-bola" class="estoque-color-chip-swatch is-none"></span><span id="chapa-cor-preview-texto">Sem cor</span></span>'
         + '  </div>'
         + '</div>';
     }
+    function _setChapaColorValue(value) {
+      try {
+        var field = document.getElementById('chapa-cor-linha');
+        if (field) field.value = _normalizeChapaRowColor(value);
+      } catch (_) {}
+      _refreshChapaColorPreview();
+    }
     function _refreshChapaColorPreview() {
       try {
-        var select = document.getElementById('chapa-cor-linha');
+        var field = document.getElementById('chapa-cor-linha');
         var preview = document.getElementById('chapa-cor-preview');
+        var previewBola = document.getElementById('chapa-cor-preview-bola');
+        var previewTexto = document.getElementById('chapa-cor-preview-texto');
+        var palette = document.getElementById('chapa-cor-palette');
         if (!preview) return;
-        var cor = _normalizeChapaRowColor(select && select.value || '');
-        preview.textContent = cor || 'Sem cor';
+        var cor = _normalizeChapaRowColor(field && field.value || '');
+        var opt = _findChapaColorOption(cor);
+        if (field) field.value = cor;
+        if (previewTexto) previewTexto.textContent = opt && opt.label ? opt.label : (cor || 'Sem cor');
         preview.style.background = cor ? _hexToRgbaChapa(cor, 0.22) : 'rgba(15,23,42,.6)';
         preview.style.borderColor = cor ? cor : 'rgba(148,163,184,.18)';
         preview.style.boxShadow = cor ? ('inset 4px 0 0 ' + cor) : 'none';
+        if (previewBola) {
+          previewBola.classList.toggle('is-none', !cor);
+          previewBola.style.background = cor || '';
+          previewBola.style.boxShadow = cor ? ('0 0 0 1px rgba(255,255,255,.18), 0 10px 22px ' + _hexToRgbaChapa(cor, 0.28)) : '';
+        }
+        Array.prototype.slice.call((palette && palette.querySelectorAll) ? palette.querySelectorAll('[data-chapa-color]') : []).forEach(function(btn) {
+          var ativo = _normalizeChapaRowColor(btn.getAttribute('data-chapa-color') || '') === cor;
+          btn.classList.toggle('active', ativo);
+          btn.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+        });
       } catch (_) {}
     }
     function _upsertChapaColorCache(chapa) {
@@ -4322,12 +4355,27 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + '.pep-table-estoque-wire tbody tr[data-chapa-id]:hover{filter:brightness(1.08)}'
           + '.pep-table-estoque-wire tbody tr[data-chapa-id]:active{transform:translateY(1px)}'
           + '.pep-table-estoque-wire .pep-btn{position:relative;z-index:2}'
+          + '.estoque-color-palette{display:grid;grid-template-columns:repeat(auto-fit,minmax(116px,1fr));gap:10px;margin-top:10px}'
+          + '.estoque-color-chip{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.7);color:#e2e8f0;cursor:pointer;transition:border-color .15s ease,transform .15s ease,background .15s ease,box-shadow .15s ease;text-align:left}'
+          + '.estoque-color-chip:hover{transform:translateY(-1px);border-color:rgba(148,163,184,.32)}'
+          + '.estoque-color-chip.active{border-color:#38bdf8;background:rgba(14,116,144,.18);box-shadow:0 0 0 1px rgba(56,189,248,.26) inset}'
+          + '.estoque-color-chip-swatch{width:18px;height:18px;min-width:18px;border-radius:999px;border:1px solid rgba(255,255,255,.16);display:inline-block}'
+          + '.estoque-color-chip-swatch.is-none{background:linear-gradient(135deg,#e5e7eb 0 48%, #94a3b8 48% 52%, transparent 52% 100%)}'
+          + '.estoque-color-chip-label{font-size:12px;font-weight:700;line-height:1.2}'
+          + '.estoque-color-preview{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-width:140px;padding:8px 12px;border-radius:10px;border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.6);color:#e2e8f0;font-size:12px;font-weight:700}'
           + '.estoque-wire-modal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}'
           + '.estoque-wire-modal-item{padding:12px 14px;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:rgba(15,23,42,.68)}'
           + '.estoque-wire-modal-item b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px}'
+          + '.estoque-wire-modal-item .meta{display:block;line-height:1.45;color:#e2e8f0;word-break:break-word}'
+          + '.estoque-wire-modal-color{display:inline-flex;align-items:center;gap:10px;font-weight:700;color:#e2e8f0}'
+          + '.estoque-wire-modal-color .swatch{width:16px;height:16px;border-radius:999px;border:1px solid rgba(255,255,255,.2);display:inline-block}'
           + '.estoque-wire-modal-scroll{max-height:min(62vh,560px);overflow:auto;padding-right:4px}'
-          + '.estoque-wire-ton-row{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid rgba(148,163,184,.14);border-radius:12px;background:rgba(15,23,42,.62)}'
+          + '.estoque-wire-ton-row{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:12px 14px;border:1px solid rgba(148,163,184,.14);border-radius:12px;background:rgba(15,23,42,.62)}'
           + '.estoque-wire-ton-row + .estoque-wire-ton-row{margin-top:10px}'
+          + '.estoque-wire-ton-meta{display:grid;gap:4px;font-size:12px;color:#cbd5e1}'
+          + '.estoque-wire-ton-badge{display:inline-flex;align-items:center;justify-content:center;min-width:138px;padding:10px 12px;border-radius:12px;font-size:15px;font-weight:900;line-height:1.2;text-align:center;background:rgba(15,23,42,.92);border:1px solid rgba(148,163,184,.16);color:#f8fafc}'
+          + '.estoque-wire-ton-badge.warn{background:rgba(120,53,15,.28);border-color:rgba(251,191,36,.34);color:#fde68a}'
+          + '.estoque-wire-modal-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:16px}'
           + '@media (max-width:760px){.estoque-wire-modal-grid{grid-template-columns:1fr}}'
           + '@media (max-width:960px){.estoque-wire-cards{grid-template-columns:1fr 1fr}}'
           + '@media (max-width:640px){.estoque-wire-cards{grid-template-columns:1fr}}';
@@ -4379,69 +4427,169 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
       document.body.appendChild(overlay);
       try {
-        overlay.querySelector('[data-ew-close="1"]').onclick = _estoqueWireCloseModal;
+        Array.prototype.slice.call(overlay.querySelectorAll('[data-ew-close="1"]')).forEach(function(btn) {
+          btn.onclick = _estoqueWireCloseModal;
+        });
       } catch (_) {}
     }
     function _estoqueWireOpenTonModal(lista) {
       var rows = (Array.isArray(lista) ? lista : []).map(function(chapa) {
+        var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : chapa.quantidade) || 0) || 0));
+        var kgUn = Number(chapa && chapa.peso_kg_unidade || 0) || 0;
+        var toneladas = kgUn > 0 ? ((qtd * kgUn) / 1000) : (Number(estoqueWireTon(chapa) || 0) || 0);
         return {
           id: String(chapa && chapa.id || '').trim(),
           nome: String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura) || '—').trim(),
           nomenclatura: String(chapa && chapa.nomenclatura || '—').trim(),
-          toneladas: Number(estoqueWireTon(chapa) || 0) || 0
+          fornecedor: String(chapa && (chapa.fornecedor || chapa.forn) || '—').trim(),
+          quantidade: qtd,
+          toneladas: toneladas,
+          temPeso: kgUn > 0
         };
       }).sort(function(a, b) {
-        return b.toneladas - a.toneladas;
+        if (a.temPeso !== b.temPeso) return a.temPeso ? -1 : 1;
+        if (a.temPeso && b.temPeso && b.toneladas !== a.toneladas) return b.toneladas - a.toneladas;
+        return b.quantidade - a.quantidade;
       });
       var html = rows.length ? rows.map(function(row) {
+        var destaque = row.temPeso ? (num(row.toneladas, 3) + ' t') : ('Qtd ' + num(row.quantidade, 0));
         return ''
           + '<div class="estoque-wire-ton-row">'
-          + '  <div><div style="font-weight:800;color:#e2e8f0">' + esc(row.nome) + '</div><div style="margin-top:4px;font-size:12px;color:#94a3b8">' + esc(row.nomenclatura) + '</div></div>'
-          + '  <div style="font-size:18px;font-weight:900;color:#f8fafc;white-space:nowrap">' + esc(num(row.toneladas, 3)) + ' t</div>'
+          + '  <div style="min-width:0">'
+          + '    <div style="font-weight:800;color:#e2e8f0">' + esc(row.nome) + '</div>'
+          + '    <div style="margin-top:4px;font-size:12px;color:#94a3b8">' + esc(row.nomenclatura) + '</div>'
+          + '    <div class="estoque-wire-ton-meta">'
+          + '      <span>Fornecedor: ' + esc(row.fornecedor) + '</span>'
+          + '      <span>Quantidade em estoque: ' + esc(num(row.quantidade, 0)) + '</span>'
+          + '      <span>' + esc(row.temPeso ? ('Toneladas calculadas por quantidade x peso_kg_unidade') : 'Peso nao cadastrado: exibindo quantidade') + '</span>'
+          + '    </div>'
+          + '  </div>'
+          + '  <div class="estoque-wire-ton-badge' + (row.temPeso ? '' : ' warn') + '">' + esc(destaque) + '</div>'
           + '</div>';
       }).join('') : '<div class="pep-sub">Nenhuma chapa encontrada para detalhar toneladas.</div>';
       _estoqueWireOpenModal({
         title: 'Toneladas por Chapa',
-        sub: 'Detalhamento individual do saldo em toneladas de cada chapa no estoque.',
+        sub: 'Lista ordenada do maior para o menor em toneladas; quando faltar peso cadastrado, a quantidade em estoque e sinalizada.',
         width: '720px',
         bodyHtml: '<div class="estoque-wire-modal-scroll">' + html + '</div>'
       });
     }
+    function _estoqueWireFormatFieldValue(key, value) {
+      if (value == null) return '';
+      if (typeof value === 'boolean') return value ? 'Sim' : 'Nao';
+      var rawKey = String(key || '').toLowerCase();
+      if (rawKey === 'valor_unitario' || rawKey === 'val' || rawKey === 'valor_total' || rawKey === 'total') return money(value);
+      if (/(_at|_em)$/.test(rawKey) || /^data/.test(rawKey)) {
+        var dt = new Date(value);
+        if (!isNaN(dt.getTime())) return dt.toLocaleString('pt-BR');
+      }
+      if (typeof value === 'number') return String(value);
+      return String(value);
+    }
+    function _estoqueWireFieldLabel(key) {
+      var custom = {
+        id: 'ID',
+        nome_uso: 'Nome de uso',
+        qual_cnpj: 'Qual CNPJ',
+        empresa_vinculada: 'Empresa vinculada',
+        numero_nf: 'Numero NF',
+        valor_unitario: 'Valor unitario',
+        valor_total: 'Valor total',
+        estoque_minimo: 'Estoque minimo',
+        data_entrada: 'Data de entrada',
+        risca_desc: 'Descricao da risca',
+        criado_por: 'Criado por',
+        atualizado_por: 'Atualizado por',
+        criado_em: 'Data de criacao',
+        atualizado_em: 'Ultima atualizacao',
+        created_at: 'Data de criacao',
+        updated_at: 'Ultima atualizacao',
+        peso_kg_unidade: 'Peso kg/unidade',
+        largura_mm: 'Largura mm',
+        comprimento_mm: 'Comprimento mm',
+        cor: 'Cor da linha',
+        cor_linha: 'Cor da linha'
+      };
+      var skey = String(key || '');
+      if (custom[skey]) return custom[skey];
+      return skey.replace(/_/g, ' ').replace(/\b([a-z])/g, function(_, ch) { return ch.toUpperCase(); });
+    }
+    function _estoqueWireRenderDetailItem(label, valueHtml) {
+      return '<div class="estoque-wire-modal-item"><b>' + esc(label) + '</b><span class="meta">' + String(valueHtml || '') + '</span></div>';
+    }
     function _estoqueWireOpenDetailModal(chapa) {
       if (!chapa) return;
+      var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : chapa.quantidade) || 0) || 0));
+      var cor = _resolveChapaRowColor(chapa);
+      var corOpt = _findChapaColorOption(cor);
       var campos = [
-        ['Fornecedor', chapa.fornecedor],
-        ['Gramatura', chapa.gramatura],
-        ['Nomenclatura', chapa.nomenclatura],
-        ['Tamanho', chapa.tamanho],
-        ['Nome', chapa.nome_uso || chapa.nome],
-        ['Qual CNPJ', chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual],
-        ['NF', chapa.nf],
-        ['Quantidade', num(chapa.quantidade_atual != null ? chapa.quantidade_atual : chapa.quantidade, 0)],
-        ['R$', money(chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val)],
-        ['Total', money(estoqueWireValor(chapa))],
-        ['Categoria', chapa.categoria],
-        ['Vincos', chapa.vincos],
-        ['Riscada', chapa.riscada ? 'Sim' : 'Nao'],
-        ['Descricao da Risca', chapa.risca_desc],
-        ['Estoque Minimo', num(chapa.estoque_minimo, 0)],
-        ['Data de Entrada', chapa.data_entrada],
-        ['Lote', chapa.lote],
-        ['Peso kg/unidade', num(chapa.peso_kg_unidade, 3)],
-        ['Toneladas', num(estoqueWireTon(chapa), 3) + ' t'],
-        ['Observacao', chapa.observacao]
+        ['Fornecedor', esc(chapa.fornecedor || '—')],
+        ['Gramatura', esc(chapa.gramatura || '—')],
+        ['Nomenclatura', esc(chapa.nomenclatura || '—')],
+        ['Tamanho', esc(chapa.tamanho || '—')],
+        ['Nome', esc(chapa.nome_uso || chapa.nome || '—')],
+        ['Qual CNPJ', esc(chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || '—')],
+        ['NF', esc(chapa.nf || chapa.numero_nf || '—')],
+        ['Quantidade atual', esc(num(qtd, 0))],
+        ['Valor unitario (R$)', esc(money(chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val))],
+        ['Total (R$)', esc(money(estoqueWireValor(chapa)))],
+        ['Cor da linha', cor ? ('<span class="estoque-wire-modal-color"><span class="swatch" style="background:' + esc(cor) + ';box-shadow:0 0 0 1px rgba(255,255,255,.18),0 10px 22px ' + esc(_hexToRgbaChapa(cor, 0.24)) + '"></span>' + esc(corOpt.label + ' (' + cor + ')') + '</span>') : 'Sem cor'],
+        ['Data de criacao', esc(_estoqueWireFormatFieldValue('created_at', chapa.criado_em || chapa.created_at || '—'))],
+        ['Ultima atualizacao', esc(_estoqueWireFormatFieldValue('updated_at', chapa.atualizado_em || chapa.updated_at || '—'))],
+        ['Categoria', esc(chapa.categoria || '—')],
+        ['Vincos', esc(chapa.vincos || '—')],
+        ['Riscada', esc(chapa.riscada ? 'Sim' : 'Nao')],
+        ['Descricao da risca', esc(chapa.risca_desc || '—')],
+        ['Estoque minimo', esc(num(chapa.estoque_minimo, 0))],
+        ['Data de entrada', esc(_estoqueWireFormatFieldValue('data_entrada', chapa.data_entrada || '—'))],
+        ['Lote', esc(chapa.lote || '—')],
+        ['Peso kg/unidade', chapa.peso_kg_unidade ? esc(num(chapa.peso_kg_unidade, 3)) : 'Peso nao cadastrado'],
+        ['Toneladas', chapa.peso_kg_unidade ? esc(num(estoqueWireTon(chapa), 3) + ' t') : 'Peso nao cadastrado'],
+        ['Observacao', esc(chapa.observacao || '—')]
       ].filter(function(pair) {
         return String(pair[1] == null ? '' : pair[1]).trim() !== '';
       });
+      var extrasIgnorados = {
+        id: 1, fornecedor: 1, forn: 1, gramatura: 1, nomenclatura: 1, nom: 1, tamanho: 1, tam: 1, nome: 1, nome_uso: 1,
+        qual_cnpj: 1, qual: 1, empresa_vinculada: 1, nf: 1, numero_nf: 1, quantidade: 1, quantidade_atual: 1, qtd: 1,
+        valor_unitario: 1, val: 1, valor_total: 1, categoria: 1, vincos: 1, riscada: 1, risca_desc: 1, estoque_minimo: 1,
+        data_entrada: 1, lote: 1, peso_kg_unidade: 1, toneladas: 1, toneladas_atual: 1, observacao: 1, obs: 1,
+        cor: 1, cor_linha: 1, linha_cor: 1, criado_em: 1, created_at: 1, atualizado_em: 1, updated_at: 1
+      };
+      var extras = Object.keys(chapa).sort().map(function(key) {
+        if (extrasIgnorados[key]) return '';
+        var value = chapa[key];
+        if (value == null || typeof value === 'function' || typeof value === 'object') return '';
+        var texto = _estoqueWireFormatFieldValue(key, value);
+        if (String(texto || '').trim() === '') return '';
+        return _estoqueWireRenderDetailItem(_estoqueWireFieldLabel(key), esc(texto));
+      }).filter(Boolean);
       var html = campos.map(function(pair) {
-        return '<div class="estoque-wire-modal-item"><b>' + esc(pair[0]) + '</b><span>' + esc(String(pair[1])) + '</span></div>';
-      }).join('');
+        return _estoqueWireRenderDetailItem(pair[0], pair[1]);
+      }).join('') + extras.join('');
+      var chapaId = String(chapa.id || '').trim();
+      var actions = ''
+        + '<div class="estoque-wire-modal-actions">'
+        + '  <button type="button" class="pep-btn" data-ew-close="1">Fechar</button>'
+        + (chapaId ? ('  <button type="button" class="pep-btn primary" data-ew-edit="' + esc(chapaId) + '">Editar</button>') : '')
+        + '</div>';
       _estoqueWireOpenModal({
         title: String(chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Detalhes da Chapa'),
-        sub: 'Visualizacao completa da chapa selecionada.',
+        sub: 'Visualizacao completa da chapa selecionada com todos os campos disponiveis.',
         width: '860px',
-        bodyHtml: '<div class="estoque-wire-modal-scroll"><div class="estoque-wire-modal-grid">' + html + '</div></div>'
+        bodyHtml: '<div class="estoque-wire-modal-scroll"><div class="estoque-wire-modal-grid">' + html + '</div>' + actions + '</div>'
       });
+      try {
+        var modal = document.getElementById('estoque-wire-modal');
+        var editBtn = modal && modal.querySelector ? modal.querySelector('[data-ew-edit]') : null;
+        if (editBtn) {
+          editBtn.onclick = function(ev) {
+            ev.preventDefault();
+            _estoqueWireCloseModal();
+            _abrirEdicaoChapaEstoque(chapaId);
+          };
+        }
+      } catch (_) {}
     }
     function _bindEstoqueWireframeDelegation(page, lista) {
       if (!page) return;
@@ -12601,6 +12749,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       label.classList.add('estoque-modal-label');
     });
     Array.prototype.slice.call(shell.querySelectorAll('input,select,textarea')).forEach(function(el) {
+      if (String(el.type || '').toLowerCase() === 'hidden') return;
       if (el.id === 'chapa-riscada') return;
       if (el.tagName === 'SELECT') el.classList.add('estoque-modal-select');
       else if (el.tagName === 'TEXTAREA') el.classList.add('estoque-modal-textarea');
@@ -12616,6 +12765,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (corField && !corField.dataset.patchBound) {
       corField.dataset.patchBound = '1';
       corField.onchange = _refreshChapaColorPreview;
+    }
+    var corPalette = document.getElementById('chapa-cor-palette');
+    if (corPalette && !corPalette.dataset.patchBound) {
+      corPalette.dataset.patchBound = '1';
+      corPalette.addEventListener('click', function(ev) {
+        var btn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-chapa-color]') : null;
+        if (!btn) return;
+        ev.preventDefault();
+        _setChapaColorValue(btn.getAttribute('data-chapa-color') || '');
+      });
     }
     if (!isEdit && !String((document.getElementById('chapa-edit-id') || {}).value || '').trim() && corField) {
       corField.value = '';
