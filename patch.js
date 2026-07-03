@@ -41,11 +41,9 @@ function _erpModalEscapeText(v) {
     .replace(/'/g, '&#39;');
 }
 function _fecharModalPadrao(id) {
-  try {
-    if (typeof window.__patchModalPadraoRealClose === 'function' && window.__patchModalPadraoRealClose !== _fecharModalPadrao) {
-      return window.__patchModalPadraoRealClose(id);
-    }
-  } catch (_) {}
+  // #region debug-point A:shared-modal-close
+  try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'fechar modal padrao acionado', { id: String(id || ''), totalOpenBefore: document.querySelectorAll('.estoque-modal-overlay[data-modal-padrao="1"]').length }); } catch (_) {}
+  // #endregion
   try {
     if (id) {
       var el = document.getElementById(String(id || '').trim());
@@ -61,30 +59,40 @@ try {
   if (typeof window._fecharModalPadrao !== 'function') window._fecharModalPadrao = _fecharModalPadrao;
 } catch (_) {}
 function _abrirModalPadrao(opts) {
-  try {
-    if (typeof window.__patchModalPadraoRealOpen === 'function' && window.__patchModalPadraoRealOpen !== _abrirModalPadrao) {
-      return window.__patchModalPadraoRealOpen(opts);
-    }
-  } catch (_) {}
+  // #region debug-point A:shared-modal-open
+  try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'abrir modal padrao acionado', { id: String(opts && opts.id || ''), title: String(opts && (opts.titulo || opts.title) || ''), wide: !!(opts && opts.wide) }); } catch (_) {}
+  // #endregion
   opts = opts || {};
+  try {
+    if (typeof _ensureEstoqueStyle === 'function') _ensureEstoqueStyle();
+  } catch (_) {}
   var modalId = String(opts.id || ('estoque-modal-' + Date.now())).trim();
+  var width = String(opts.largura || opts.width || '560px').trim() || '560px';
+  var hero = String(opts.hero || '').trim();
+  var accent = String(opts.accent || opts.variant || 'blue').trim().toLowerCase();
+  var shellClass = 'estoque-modal-shell estoque-modal-shell-padrao';
+  if (opts.wide) shellClass += ' estoque-modal-shell-lg';
+  if (opts.shellClass) shellClass += ' ' + String(opts.shellClass || '').trim();
+  var headerIconClass = 'estoque-modal-head-icon estoque-modal-head-icon-' + (/^(green|red|blue|teal)$/.test(accent) ? accent : 'blue');
   _fecharModalPadrao(modalId);
   var overlay = document.createElement('div');
   overlay.id = modalId;
   overlay.className = 'estoque-modal-overlay estoque-modal-overlay-padrao';
   overlay.setAttribute('data-modal-padrao', '1');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(2,6,23,.82)';
   overlay.innerHTML = ''
-    + '<div class="estoque-modal-shell estoque-modal-shell-padrao" style="width:min(' + _erpModalEscapeText(String(opts.largura || opts.width || '560px')) + ',96vw);max-height:min(88vh,900px);overflow:hidden;display:grid;grid-template-rows:auto minmax(0,1fr) auto;border-radius:18px;border:1px solid rgba(148,163,184,.14);background:#0f172a;color:#e2e8f0;box-shadow:0 20px 70px rgba(15,23,42,.45)">'
-    + '  <div class="estoque-modal-header estoque-modal-header-padrao" style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:20px 22px;border-bottom:1px solid rgba(148,163,184,.14)">'
-    + '    <div style="min-width:0">'
-    + '      <div class="estoque-modal-title" style="font-size:20px;font-weight:900;color:#f8fafc">' + _erpModalEscapeText(opts.titulo || opts.title || 'Modal') + '</div>'
-    + '      <div class="estoque-modal-sub" style="margin-top:6px;font-size:12px;line-height:1.5;color:#94a3b8">' + _erpModalEscapeText(opts.subtitulo || opts.sub || '') + '</div>'
+    + '<div class="' + _erpModalEscapeText(shellClass) + '" style="width:min(' + _erpModalEscapeText(width) + ',96vw)">'
+    + '  <div class="estoque-modal-header estoque-modal-header-padrao">'
+    + '    <div class="estoque-modal-head-main">'
+    + (hero ? ('<span class="' + _erpModalEscapeText(headerIconClass) + '" aria-hidden="true">' + _erpModalEscapeText(hero) + '</span>') : '')
+    + '      <div class="estoque-modal-title-wrap">'
+    + '        <div class="estoque-modal-title">' + _erpModalEscapeText(opts.titulo || opts.title || 'Modal') + '</div>'
+    + '        <div class="estoque-modal-sub">' + _erpModalEscapeText(opts.subtitulo || opts.sub || '') + '</div>'
+    + '      </div>'
     + '    </div>'
-    + '    <button type="button" class="estoque-modal-close" data-modal-close="1" aria-label="Fechar" style="width:40px;height:40px;border:none;border-radius:999px;background:rgba(148,163,184,.14);color:#e2e8f0;font-size:18px;font-weight:900;cursor:pointer">×</button>'
+    + '    <button type="button" class="estoque-modal-close" data-modal-close="1" aria-label="Fechar">×</button>'
     + '  </div>'
-    + '  <div class="estoque-modal-content estoque-modal-content-padrao' + (opts.bodyClass ? (' ' + _erpModalEscapeText(opts.bodyClass)) : '') + '" style="min-height:0;overflow:auto;padding:20px 22px">' + String(opts.corpoHTML || opts.bodyHtml || '') + '</div>'
-    + '  <div class="estoque-modal-footer estoque-modal-footer-padrao' + ((opts.footerHTML || opts.footerHtml) ? '' : ' is-empty') + '" style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;padding:16px 22px;border-top:1px solid rgba(148,163,184,.12)">' + String(opts.footerHTML || opts.footerHtml || '') + '</div>'
+    + '  <div class="estoque-modal-content estoque-modal-content-padrao' + (opts.bodyClass ? (' ' + _erpModalEscapeText(opts.bodyClass)) : '') + '">' + String(opts.corpoHTML || opts.bodyHtml || '') + '</div>'
+    + '  <div class="estoque-modal-footer estoque-modal-footer-padrao' + ((opts.footerHTML || opts.footerHtml) ? '' : ' is-empty') + '">' + String(opts.footerHTML || opts.footerHtml || '') + '</div>'
     + '</div>';
   overlay.addEventListener('click', function(ev) {
     if (ev && ev.target === overlay) _fecharModalPadrao(modalId);
@@ -5038,7 +5046,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <div><div class="pep-sub">Cliente</div><input class="pep-input" id="ck-cliente" value="' + esc(it.cliente || '') + '"></div>'
         + '    <div style="grid-column:1/-1"><label style="display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:#0b1629"><input id="ck-devolucao" type="checkbox"' + (it.devolucao ? ' checked' : '') + '><span style="font-weight:700;color:#e5e7eb">Devolucao</span></label></div>'
         + '  </div>';
-      var wrap = _abrirModalPadraoShared({
+      var wrap = _abrirModalPadrao({
         id: 'estoque-checklist-modal',
         titulo: it.id ? 'Editar Checklist' : 'Novo Checklist',
         subtitulo: 'Cadastro manual de recebimento, sem movimentar estoque automaticamente.',
@@ -5077,7 +5085,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
-          _fecharModalPadraoShared('estoque-checklist-modal');
+          _fecharModalPadrao('estoque-checklist-modal');
           if (typeof done === 'function') done();
         } catch (e) {
           alert(String(e && e.message || e || 'Falha ao salvar checklist'));
@@ -5188,30 +5196,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return _normalizeChapaRowColor(chapa && (chapa.cor || chapa.cor_linha || chapa.linha_cor) || '') || _extractChapaColorMeta(chapa && (chapa.observacao || chapa.obs) || '');
     }
     try { window._resolveChapaRowColor = _resolveChapaRowColor; } catch (_) {}
-    function _abrirModalPadraoShared(opts) {
-      // #region debug-point A:shared-modal-open-shim
-      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'wrapper compartilhado de abrir modal acionado', { hasLocal: typeof _abrirModalPadrao === 'function', hasGlobal: typeof window._abrirModalPadrao === 'function', id: String(opts && opts.id || ''), title: String(opts && (opts.titulo || opts.title) || '') }); } catch (_) {}
-      // #endregion
-      try {
-        if (typeof _abrirModalPadrao === 'function') return _abrirModalPadrao(opts);
-      } catch (_) {}
-      try {
-        if (typeof window._abrirModalPadrao === 'function') return window._abrirModalPadrao(opts);
-      } catch (_) {}
-      throw new Error('Modal padrão indisponível');
-    }
-    function _fecharModalPadraoShared(id) {
-      // #region debug-point A:shared-modal-close-shim
-      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'wrapper compartilhado de fechar modal acionado', { hasLocal: typeof _fecharModalPadrao === 'function', hasGlobal: typeof window._fecharModalPadrao === 'function', id: String(id || '') }); } catch (_) {}
-      // #endregion
-      try {
-        if (typeof _fecharModalPadrao === 'function') return _fecharModalPadrao(id);
-      } catch (_) {}
-      try {
-        if (typeof window._fecharModalPadrao === 'function') return window._fecharModalPadrao(id);
-      } catch (_) {}
-      return null;
-    }
     function _hexToRgbaChapa(hex, alpha) {
       var norm = _normalizeChapaRowColor(hex);
       if (!norm) return '';
@@ -5455,7 +5439,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       // #region debug-point A:wire-modal-close
       try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'wire modal close solicitado', { hasFecharModalPadrao: typeof _fecharModalPadrao === 'function' }); } catch (_) {}
       // #endregion
-      _fecharModalPadraoShared('estoque-wire-modal');
+      _fecharModalPadrao('estoque-wire-modal');
     }
     function _estoqueWireOpenModal(opts) {
       // #region debug-point A:wire-modal-open-entry
@@ -5463,7 +5447,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       // #endregion
       _estoqueWireCloseModal();
       var options = opts || {};
-      var overlay = _abrirModalPadraoShared({
+      var overlay = _abrirModalPadrao({
         id: 'estoque-wire-modal',
         titulo: options.title || 'Detalhes',
         subtitulo: options.sub || '',
@@ -13070,73 +13054,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
   }
 
-  function _fecharModalPadrao(id) {
-    // #region debug-point A:shared-modal-close
-    try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'fechar modal padrao acionado', { id: String(id || ''), totalOpenBefore: document.querySelectorAll('.estoque-modal-overlay[data-modal-padrao="1"]').length }); } catch (_) {}
-    // #endregion
-    try {
-      if (id) {
-        var el = document.getElementById(String(id || '').trim());
-        if (el) el.remove();
-        return;
-      }
-      Array.prototype.slice.call(document.querySelectorAll('.estoque-modal-overlay[data-modal-padrao="1"]')).forEach(function(el) {
-        try { el.remove(); } catch (_) {}
-      });
-    } catch (_) {}
-  }
-  try { window._fecharModalPadrao = _fecharModalPadrao; } catch (_) {}
-  try { window.__patchModalPadraoRealClose = _fecharModalPadrao; } catch (_) {}
-
-  function _abrirModalPadrao(opts) {
-    // #region debug-point A:shared-modal-open
-    try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'abrir modal padrao acionado', { id: String(opts && opts.id || ''), title: String(opts && (opts.titulo || opts.title) || ''), wide: !!(opts && opts.wide) }); } catch (_) {}
-    // #endregion
-    _ensureEstoqueStyle();
-    opts = opts || {};
-    var modalId = String(opts.id || ('estoque-modal-' + Date.now())).trim();
-    _fecharModalPadrao(modalId);
-    var width = String(opts.largura || opts.width || '560px').trim() || '560px';
-    var hero = String(opts.hero || '').trim();
-    var accent = String(opts.accent || opts.variant || 'blue').trim().toLowerCase();
-    var shellClass = 'estoque-modal-shell estoque-modal-shell-padrao';
-    if (opts.wide) shellClass += ' estoque-modal-shell-lg';
-    if (opts.shellClass) shellClass += ' ' + String(opts.shellClass || '').trim();
-    var headerIconClass = 'estoque-modal-head-icon estoque-modal-head-icon-' + (/^(green|red|blue|teal)$/.test(accent) ? accent : 'blue');
-    var overlay = document.createElement('div');
-    overlay.id = modalId;
-    overlay.className = 'estoque-modal-overlay estoque-modal-overlay-padrao';
-    overlay.setAttribute('data-modal-padrao', '1');
-    overlay.innerHTML = ''
-      + '<div class="' + esc(shellClass) + '" style="width:min(' + esc(width) + ',96vw)">'
-      + '  <div class="estoque-modal-header estoque-modal-header-padrao">'
-      + '    <div class="estoque-modal-head-main">'
-      + (hero ? ('<span class="' + esc(headerIconClass) + '" aria-hidden="true">' + esc(hero) + '</span>') : '')
-      + '      <div class="estoque-modal-title-wrap">'
-      + '        <div class="estoque-modal-title">' + esc(opts.titulo || opts.title || 'Modal') + '</div>'
-      + '        <div class="estoque-modal-sub">' + esc(opts.subtitulo || opts.sub || '') + '</div>'
-      + '      </div>'
-      + '    </div>'
-      + '    <button type="button" class="estoque-modal-close" data-modal-close="1" aria-label="Fechar">×</button>'
-      + '  </div>'
-      + '  <div class="estoque-modal-content estoque-modal-content-padrao' + (opts.bodyClass ? (' ' + esc(opts.bodyClass)) : '') + '">' + String(opts.corpoHTML || opts.bodyHtml || '') + '</div>'
-      + '  <div class="estoque-modal-footer estoque-modal-footer-padrao' + ((opts.footerHTML || opts.footerHtml) ? '' : ' is-empty') + '">' + String(opts.footerHTML || opts.footerHtml || '') + '</div>'
-      + '</div>';
-    overlay.addEventListener('click', function(ev) {
-      if (ev && ev.target === overlay) _fecharModalPadrao(modalId);
-    });
-    document.body.appendChild(overlay);
-    Array.prototype.slice.call(overlay.querySelectorAll('[data-modal-close="1"]')).forEach(function(btn) {
-      btn.onclick = function() { _fecharModalPadrao(modalId); };
-    });
-    if (typeof opts.onOpen === 'function') {
-      try { opts.onOpen(overlay, overlay.firstElementChild); } catch (_) {}
-    }
-    return overlay;
-  }
-  try { window._abrirModalPadrao = _abrirModalPadrao; } catch (_) {}
-  try { window.__patchModalPadraoRealOpen = _abrirModalPadrao; } catch (_) {}
-
   function _getInputVal(id) {
     var el = document.getElementById(id);
     return el ? String(el.value || '').trim() : '';
@@ -13821,7 +13738,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var onSelect = typeof opts.onSelect === 'function' ? opts.onSelect : function() {};
     var titulo = String(opts.titulo || 'Selecionar Chapa');
     var subtitulo = String(opts.subtitulo || 'Escolha uma chapa existente para editar.');
-    var wrap = _abrirModalPadraoShared({
+    // #region debug-point A:seletor-modal-callsite
+    try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'seletor de chapa vai abrir modal', { hasCanonOpen: typeof _abrirModalPadrao === 'function', hasCanonClose: typeof _fecharModalPadrao === 'function' }); } catch (_) {}
+    // #endregion
+    var wrap = _abrirModalPadrao({
       id: 'estoque-seletor-chapa-modal',
       titulo: titulo,
       subtitulo: subtitulo,
@@ -13832,7 +13752,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       corpoHTML: '<div style="display:grid;gap:14px"><input id="est-sel-q" class="estoque-modal-input" type="text" placeholder="Buscar por fornecedor, nomenclatura, tamanho ou nome..."><div id="est-sel-lista" style="display:grid;gap:8px"></div></div>',
       footerHtml: '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" id="est-sel-close" data-modal-close="1">Fechar</button>'
     });
-    var fechar = function() { _fecharModalPadraoShared('estoque-seletor-chapa-modal'); };
+    var fechar = function() { _fecharModalPadrao('estoque-seletor-chapa-modal'); };
     var render = function(q) {
       var host = document.getElementById('est-sel-lista');
       if (!host) return;

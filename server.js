@@ -410,40 +410,196 @@ function _debugRuntimeWrite(raw) {
 function _runPatchInternalFunctionCheck() {
   const patchPath = path.join(__dirname, 'patch.js');
   const src = fs.readFileSync(patchPath, 'utf8');
+  const sanitize = (input) => {
+    let out = '';
+    let state = 'code';
+    for (let i = 0; i < input.length; i += 1) {
+      const ch = input[i];
+      const next = input[i + 1];
+      if (state === 'line_comment') {
+        if (ch === '\n') {
+          state = 'code';
+          out += '\n';
+        } else out += ' ';
+        continue;
+      }
+      if (state === 'block_comment') {
+        if (ch === '*' && next === '/') {
+          out += '  ';
+          i += 1;
+          state = 'code';
+        } else out += (ch === '\n' ? '\n' : ' ');
+        continue;
+      }
+      if (state === 'single') {
+        if (ch === '\\') {
+          out += '  ';
+          i += 1;
+        } else if (ch === '\'') {
+          out += ' ';
+          state = 'code';
+        } else out += (ch === '\n' ? '\n' : ' ');
+        continue;
+      }
+      if (state === 'double') {
+        if (ch === '\\') {
+          out += '  ';
+          i += 1;
+        } else if (ch === '"') {
+          out += ' ';
+          state = 'code';
+        } else out += (ch === '\n' ? '\n' : ' ');
+        continue;
+      }
+      if (state === 'template') {
+        if (ch === '\\') {
+          out += '  ';
+          i += 1;
+        } else if (ch === '`') {
+          out += ' ';
+          state = 'code';
+        } else out += (ch === '\n' ? '\n' : ' ');
+        continue;
+      }
+      if (ch === '/' && next === '/') {
+        out += '  ';
+        i += 1;
+        state = 'line_comment';
+        continue;
+      }
+      if (ch === '/' && next === '*') {
+        out += '  ';
+        i += 1;
+        state = 'block_comment';
+        continue;
+      }
+      if (ch === '\'') {
+        out += ' ';
+        state = 'single';
+        continue;
+      }
+      if (ch === '"') {
+        out += ' ';
+        state = 'double';
+        continue;
+      }
+      if (ch === '`') {
+        out += ' ';
+        state = 'template';
+        continue;
+      }
+      out += ch;
+    }
+    return out;
+  };
+  const clean = sanitize(src);
   const defs = new Set();
-  const addMatches = (regex, groupIdx) => {
-    let m;
+  const defCounts = new Map();
+  const addDef = (name) => {
+    const cleanName = String(name || '').trim();
+    if (!cleanName) return;
+    defs.add(cleanName);
+    defCounts.set(cleanName, (defCounts.get(cleanName) || 0) + 1);
+  };
+  let m;
+  const addRegexDefs = (regex, groupIdx) => {
     while ((m = regex.exec(src))) {
       const name = String(m[groupIdx] || '').trim();
-      if (name) defs.add(name);
+      if (!name) continue;
+      addDef(name);
     }
   };
-  addMatches(/\bfunction\s+([A-Za-z_$][\w$]*)\s*\(/g, 1);
-  addMatches(/\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*=>|[A-Za-z_$][\w$]*)/g, 1);
-  addMatches(/\bvar\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*=>|[A-Za-z_$][\w$]*)/g, 1);
-  addMatches(/\bwindow\.([A-Za-z_$][\w$]*)\s*=/g, 1);
-
-  const called = new Set();
-  let call;
-  const callRegex = /(?<!\.)\b(_[A-Za-z_$][\w$]*)\s*\(/g;
-  while ((call = callRegex.exec(src))) {
-    const name = String(call[1] || '').trim();
-    if (name) called.add(name);
+  addRegexDefs(/\bfunction\s+([A-Za-z_$][\w$]*)\s*\(/g, 1);
+  addRegexDefs(/\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*=>|[A-Za-z_$][\w$]*)/g, 1);
+  addRegexDefs(/\blet\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*=>|[A-Za-z_$][\w$]*)/g, 1);
+  addRegexDefs(/\bvar\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*=>|[A-Za-z_$][\w$]*)/g, 1);
+  addRegexDefs(/\bclass\s+([A-Za-z_$][\w$]*)\b/g, 1);
+  const exportRegex = /\b(?:window|globalThis|self)\.([A-Za-z_$][\w$]*)\s*=/g;
+  while ((m = exportRegex.exec(src))) {
+    const name = String(m[1] || '').trim();
+    if (!name) continue;
+    addDef(name);
   }
-
-  const ignore = new Set([
-    '_',
-  ]);
-  const missing = Array.from(called).filter((name) => !defs.has(name) && !ignore.has(name)).sort();
+  const isIgnoredCall = (name) => {
+    const ignore = new Set([
+      '_', 'if', 'for', 'while', 'switch', 'catch', 'function', 'return', 'typeof', 'delete', 'throw',
+      'do', 'else', 'case', 'new', 'void', 'in', 'of', 'await', 'yield', 'class', 'super', 'import',
+      'Number', 'String', 'Boolean', 'Object', 'Array', 'Date', 'Math', 'JSON', 'RegExp', 'Error',
+      'TypeError', 'Promise', 'Set', 'Map', 'WeakMap', 'WeakSet', 'Symbol', 'parseInt', 'parseFloat',
+      'isNaN', 'isFinite', 'encodeURIComponent', 'decodeURIComponent', 'encodeURI', 'decodeURI',
+      'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'requestAnimationFrame',
+      'cancelAnimationFrame', 'fetch', 'URL', 'URLSearchParams', 'FormData', 'Headers', 'Request',
+      'Response', 'Blob', 'File', 'EventSource', 'WebSocket', 'atob', 'btoa', 'alert', 'confirm',
+      'prompt', 'console', 'require', 'module', 'exports', 'process', 'Buffer', 'window', 'document',
+      'navigator', 'location', 'history', 'localStorage', 'sessionStorage', 'caches', 'performance',
+      'MutationObserver', 'IntersectionObserver', 'ResizeObserver', 'Image', 'Audio', 'FileReader',
+      'Event', 'CustomEvent', 'Sortable',
+      'blur', 'brightness', 'gradient', 'media', 'minmax', 'repeat', 'rgba', 'scale', 'translate', 'var',
+      'callback', 'child', 'done', 'getComputedStyle', 'getName', 'getValue', 'getter', 'onClose', 'onDone',
+      'pin', 'shouldSkip'
+    ]);
+    const hostGlobals = new Set([
+      'abrirNovaOF', 'abrirNovaOf', 'alterarOf', 'buscarRecebimentosInsumos', 'chapasForcarReload',
+      'chpSetTab', 'normalizeCli', 'cancelarOf'
+    ]);
+    if (hostGlobals.has(name)) return true;
+    if (/^[A-ZÀ-Ý][A-Za-zÀ-ÿ0-9_]*$/.test(name)) return true;
+    if (/^[a-z]{1,2}$/.test(name)) return true;
+    if (/^[a-z0-9_]+$/.test(name) && !name.startsWith('_') && !/[A-Z]/.test(name)) return true;
+    return ignore.has(name);
+  };
+  const called = new Set();
+  const callRegex = /(?:^|[^.\w$])([A-Za-z_$][\w$]*)\s*\(/g;
+  while ((m = callRegex.exec(clean))) {
+    const name = String(m[1] || '').trim();
+    if (!name || isIgnoredCall(name)) continue;
+    const callPos = m.index + m[0].lastIndexOf(name);
+    const before = clean.slice(Math.max(0, callPos - 24), callPos);
+    if (/\bfunction\s*$/.test(before) || /\bclass\s*$/.test(before)) continue;
+    called.add(name);
+  }
+  const missing = Array.from(called).filter((name) => !defs.has(name)).sort();
+  const forbiddenVariantSuffixRegex = /^(.*?)(Shared|Real|Compat|Legacy|Shim)$/;
+  const forbidden_helper_variants = Array.from(new Set(
+    Array.from(new Set(Array.from(defs).concat(Array.from(called)))).filter((name) => {
+      const match = String(name || '').match(forbiddenVariantSuffixRegex);
+      if (!match) return false;
+      const base = String(match[1] || '').trim();
+      return !!base && /ModalPadrao/i.test(base);
+    })
+  )).sort().map((name) => {
+    const match = String(name || '').match(forbiddenVariantSuffixRegex);
+    const base = match && match[1] ? String(match[1]).trim() : '';
+    return {
+      name,
+      base,
+      base_defined: defs.has(base),
+      called: called.has(name),
+      defined: defs.has(name)
+    };
+  });
+  const duplicate_definitions = Array.from(defCounts.entries())
+    .filter((entry) => Number(entry[1] || 0) > 1)
+    .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
   const report = {
     patchPath,
     defined_count: defs.size,
-    called_internal_count: called.size,
+    called_count: called.size,
     missing_count: missing.length,
-    missing
+    missing,
+    forbidden_variant_count: forbidden_helper_variants.length,
+    forbidden_helper_variants,
+    duplicate_definition_count: duplicate_definitions.length,
+    duplicate_definitions: duplicate_definitions.slice(0, 100)
   };
   process.stdout.write(JSON.stringify(report, null, 2) + '\n');
-  return missing.length ? 1 : 0;
+  missing.forEach((name) => {
+    process.stdout.write(`MISSING_NAME ${name}\n`);
+  });
+  forbidden_helper_variants.forEach((entry) => {
+    process.stdout.write(`FORBIDDEN_VARIANT ${entry.name} BASE ${entry.base}\n`);
+  });
+  return (missing.length || forbidden_helper_variants.length) ? 1 : 0;
 }
 
 if (process.argv.includes('--check-patch-internals')) {
