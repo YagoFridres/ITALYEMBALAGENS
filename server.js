@@ -724,6 +724,9 @@ function cacheClearPrefix(prefix) {
     if (k.startsWith(prefix)) cacheClear(k);
   });
 }
+function _clearOfsCaches() {
+  try { cacheClearPrefix('ofs_'); } catch (_) {}
+}
 async function resolverEmpresaId(req) {
   const emailRaw = String(
     req?.user?.email ||
@@ -956,9 +959,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '14';
-const SW_RUNTIME_VERSION = '19';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v19';
+const PATCH_RUNTIME_VERSION = '15';
+const SW_RUNTIME_VERSION = '20';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -4852,7 +4855,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     const warnings = (createdRes && Array.isArray(createdRes.ignoredColumns) && createdRes.ignoredColumns.length)
       ? { ignored_columns: createdRes.ignoredColumns.slice() }
       : null;
-    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    _clearOfsCaches();
     return res.json({ ok: true, data: created, ...(warnings ? { warnings } : {}) });
   } catch (e) {
     _logApiError('OFS POST', req, e, { bodyKeys: Object.keys(req.body || {}), bodySize: _safeJson(req.body || {}).length });
@@ -5079,7 +5082,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     const { data, error } = await supabase
       .from('ofs').update(body).eq('id', req.params.id).select().single();
     if (error) return res.status(400).json({ ok: false, error: error.message });
-    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    _clearOfsCaches();
     res.json({ ok: true, data });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -5101,7 +5104,7 @@ app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
       if (msg.toLowerCase().includes('deleted_at') && (msg.includes('column') || msg.includes('Could not find'))) {
         await deleteOne('ofs', id);
         await logAuditoria('ofs', 'DELETE', id, antes, null, req);
-        try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+        _clearOfsCaches();
         return ok(res, true);
       }
       throw error;
@@ -5120,7 +5123,7 @@ app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
       }
     } catch (_) {}
     await logAuditoria('ofs', 'DELETE', id, antes, null, req);
-    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    _clearOfsCaches();
     return res.json({ ok: true, data });
   } catch (e) { bad(res, e.message); }
 });
@@ -5132,7 +5135,7 @@ app.patch('/api/ofs/:id/restore', authMiddleware, async (req, res) => {
     const payload = { deleted_at: null, updated_at: now };
     const { data, error } = await supabase.from('ofs').update(payload).eq('id', id).select('*').maybeSingle();
     if (error) throw error;
-    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    _clearOfsCaches();
     return res.json({ ok: true, data });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
@@ -5226,9 +5229,7 @@ app.post('/api/ofs/:id/imagem', authMiddleware, async (req, res) => {
       .maybeSingle();
     if (error) throw error;
 
-    try { cacheClearPrefix('ofs_'); } catch (_) {}
-    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
-    try { cacheClearPrefix('ofs_v11_'); } catch (_) {}
+    _clearOfsCaches();
 
     return res.json({ ok: true, imagem_url: payload.imagem_url, imgs, data });
   } catch (e) {
@@ -5864,6 +5865,28 @@ async function _selectCompatRows(table, columns, applyQuery) {
 }
 
 function _normalizarOperadoresCaixa(row) {
+  const extrairOp = (op) => {
+    if (op == null) return '';
+    if (typeof op === 'string' || typeof op === 'number') return String(op || '').trim();
+    if (Array.isArray(op)) {
+      return op.map(extrairOp).filter(Boolean).join(', ');
+    }
+    if (typeof op === 'object') {
+      return String(
+        op.nome ??
+        op.name ??
+        op.label ??
+        op.value ??
+        op.operador ??
+        op.operador_nome ??
+        op.operadorName ??
+        op.operador_id ??
+        op.id ??
+        ''
+      ).trim();
+    }
+    return '';
+  };
   const bruto = row?.operadores ?? row?.operadores_conclusao;
   let lista = [];
   try {
@@ -5880,7 +5903,7 @@ function _normalizarOperadoresCaixa(row) {
       }
     }
   } catch (_) {}
-  lista = (Array.isArray(lista) ? lista : []).map((op) => String(op || '').trim()).filter(Boolean);
+  lista = (Array.isArray(lista) ? lista : []).map(extrairOp).filter(Boolean);
   if (!lista.length) {
     const candidatos = [
       row?.operador_display,
@@ -5888,7 +5911,7 @@ function _normalizarOperadoresCaixa(row) {
       row?.operador_nome,
       row?.operador,
       row?.operador_conclusao,
-    ].map((v) => String(v || '').trim()).filter(Boolean);
+    ].map(extrairOp).filter(Boolean);
     lista = candidatos.length ? candidatos : [];
   }
   return Array.from(new Set(lista));
@@ -6993,7 +7016,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         }
       }
     } catch (_) {}
-    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    _clearOfsCaches();
     return res.json({ ok: true, data });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
@@ -7011,7 +7034,7 @@ app.patch('/api/ofs/:id/urgente', authMiddleware, async (req, res) => {
     };
     const upd = await ofsUpdateWithRetry(id, payload);
     if (upd.error) throw upd.error;
-    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    _clearOfsCaches();
     return res.json({ ok: true, data: upd.data });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -7190,7 +7213,7 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
         dataOut = refetch?.data || null;
       } catch (_) { dataOut = null; }
     }
-    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    _clearOfsCaches();
     return res.json({ ok: true, data: dataOut || { id }, concluida, proxima: proxima || null, status: (dataOut && dataOut.status) || payload.status });
   } catch (e) {
     const msg = String(e?.message || e);
@@ -7353,20 +7376,65 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     const pesoUtilizadoKgCalc = (areaTotalM2Calc * gramaturaConclusaoValor) / 1000;
     const toneladaVendidaCalc = (areaUnitM2Calc * gramaturaConclusaoValor * qtdFinal) / 1000000;
     const custoM2VendaCalc = areaUnitM2Calc * gramaturaValorUnitario;
+    const _normalizarOperadoresConclusaoInput = (raw) => {
+      let lista = [];
+      const pick = (item) => {
+        if (item == null) return '';
+        if (typeof item === 'string' || typeof item === 'number') return String(item || '').trim();
+        if (Array.isArray(item)) return item.map(pick).filter(Boolean);
+        if (typeof item === 'object') {
+          return String(
+            item.nome ??
+            item.name ??
+            item.label ??
+            item.value ??
+            item.operador ??
+            item.operador_nome ??
+            item.operador_id ??
+            item.id ??
+            ''
+          ).trim();
+        }
+        return '';
+      };
+      try {
+        if (typeof raw === 'string') {
+          const txt = String(raw || '').trim();
+          if (!txt) lista = [];
+          else if (txt[0] === '[' || txt[0] === '{') {
+            const parsed = JSON.parse(txt);
+            lista = Array.isArray(parsed) ? parsed : [parsed];
+          } else {
+            lista = txt.split(/[,;|]+/g);
+          }
+        } else if (Array.isArray(raw)) {
+          lista = raw;
+        } else if (raw && typeof raw === 'object') {
+          lista = [raw];
+        }
+      } catch (_) {
+        lista = [];
+      }
+      return Array.from(new Set(
+        (Array.isArray(lista) ? lista : [lista])
+          .flatMap((item) => {
+            const out = pick(item);
+            return Array.isArray(out) ? out : [out];
+          })
+          .map((item) => String(item || '').trim())
+          .filter(Boolean)
+      ));
+    };
     let operadoresConclusao = [];
     try {
       if (Object.prototype.hasOwnProperty.call(body, 'operadores_conclusao')) {
         const raw = body.operadores_conclusao;
-        if (typeof raw === 'string') operadoresConclusao = JSON.parse(raw || '[]');
-        else if (Array.isArray(raw)) operadoresConclusao = raw;
-        else if (raw && typeof raw === 'object') operadoresConclusao = raw;
+        operadoresConclusao = _normalizarOperadoresConclusaoInput(raw);
       } else if (body.operador_conclusao) {
-        operadoresConclusao = [String(body.operador_conclusao || '').trim()];
+        operadoresConclusao = _normalizarOperadoresConclusaoInput(body.operador_conclusao);
       }
     } catch (_) { operadoresConclusao = []; }
-    operadoresConclusao = (Array.isArray(operadoresConclusao) ? operadoresConclusao : [])
-      .map((x) => String(x || '').trim())
-      .filter(Boolean);
+    operadoresConclusao = (Array.isArray(operadoresConclusao) ? operadoresConclusao : []).filter(Boolean);
     operadoresConclusao = [...new Set(operadoresConclusao)];
 
     const updateData = {
@@ -7405,6 +7473,18 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       updateData.operadores_conclusao = operadoresConclusao;
       if (!updateData.operador_conclusao) updateData.operador_conclusao = operadoresConclusao[0];
     }
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'C',
+      location: 'server.js:/api/ofs/:id/concluir',
+      msg: '[DEBUG] operadores conclusao normalizados',
+      data: {
+        ofId: String(of?.id || req.params?.id || '').trim(),
+        operadorPrincipal: String(updateData.operador_conclusao || '').trim(),
+        operadoresConclusao: Array.isArray(updateData.operadores_conclusao) ? updateData.operadores_conclusao.slice(0, 12) : [],
+        totalOperadores: Array.isArray(updateData.operadores_conclusao) ? updateData.operadores_conclusao.length : 0
+      }
+    });
     const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
     const fluxoPickMaquina = () => {
       try {
@@ -7717,7 +7797,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     }
 
     const dataOut = upd?.data ? { ...upd.data, ...updateData } : { id: sid, ...updateData };
-    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    _clearOfsCaches();
     return res.json({
       ok: true,
       data: { ...dataOut, maquina_producao: maquinaProducaoOut || null },
@@ -7845,7 +7925,7 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     } catch (_) {}
 
     console.debug('[PASSOU] OK:', id);
-    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    _clearOfsCaches();
     return res.json({ ok: true });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -8339,6 +8419,91 @@ function _agruparPassagensRelatorioMensal(rows) {
   });
 }
 
+function _countPassagensComValor(rows) {
+  return (Array.isArray(rows) ? rows : []).reduce((acc, row) => {
+    return acc + (_resolverValorTotalPassagem(row, null) > 0 ? 1 : 0);
+  }, 0);
+}
+
+async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', clienteFiltro = '') {
+  const range = ref && typeof ref === 'object' ? ref : null;
+  if (!range?.inicio || !range?.fim) return { agg: [], totalRows: 0, rowsComValor: 0 };
+  const clienteNeedle = String(clienteFiltro || '').trim().toLowerCase();
+  const maquinaNeedle = _canonMaqNome(maquinaFiltro) || String(maquinaFiltro || '').trim();
+  const empId = String(req?.usuario?.emp_id ?? req?.usuario?.empId ?? req?.query?.emp_id ?? req?.query?.empId ?? '').trim();
+  let empresaUuid = '';
+  try { empresaUuid = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { empresaUuid = ''; }
+
+  const selectedCols = [
+    'id', 'of', 'numero', 'status', 'data_conclusao',
+    'cliNome', 'clinome', 'cliente_nome',
+    'quantidade', 'qtd', 'qtd_produzida',
+    'valor_total', 'total', 'valor_venda', 'valor', 'valor_producao', 'vl_total',
+    'maq', 'fluxo_maquinas', 'maquina', 'maquina_atual', 'maquina_agendada', 'maquina_atual_index',
+    'deleted_at'
+  ];
+
+  let rows = [];
+  let canFilterDeletedAt = true;
+  let cols = selectedCols.slice();
+  for (let tentativa = 0; tentativa < 8; tentativa += 1) {
+    const selectExpr = Array.from(new Set(cols)).join(',');
+    let q = supabase.from('ofs').select(selectExpr);
+    q = q.not('data_conclusao', 'is', null).gte('data_conclusao', range.inicio).lte('data_conclusao', range.fim).limit(10000);
+    if (canFilterDeletedAt) q = q.is('deleted_at', null);
+    if (empId) q = q.or('emp_id.eq.' + empId + ',empresa_id.eq.' + empId + ',empresa_id.is.null');
+    else if (empresaUuid) q = q.or('empresa_id.eq.' + empresaUuid + ',empresa_id.is.null');
+    const { data, error } = await q;
+    if (!error) {
+      rows = Array.isArray(data) ? data : [];
+      break;
+    }
+    const msg = String(error.message || error || '');
+    const missingCol = msg.match(/Could not find the '([^']+)' column/i)?.[1]
+      || msg.match(/column\s+"?([\w.]+)"?\s+does not exist/i)?.[1]
+      || '';
+    const normalized = String(missingCol || '').split('.').pop();
+    if (normalized && cols.includes(normalized)) {
+      cols = cols.filter((col) => col !== normalized);
+      if (normalized === 'deleted_at') canFilterDeletedAt = false;
+      continue;
+    }
+    if (canFilterDeletedAt && /deleted_at/i.test(msg)) {
+      canFilterDeletedAt = false;
+      cols = cols.filter((col) => col !== 'deleted_at');
+      continue;
+    }
+    throw error;
+  }
+
+  const filtradas = rows.filter((row) => {
+    const clienteNome = String(row?.cliNome || row?.clinome || row?.cliente_nome || '').trim().toLowerCase();
+    if (clienteNeedle && !clienteNome.includes(clienteNeedle)) return false;
+    const maqNome = String(_canonMaqNome(_ofPickMaqAtualName(row) || row?.maquina_atual || row?.maquina_agendada || row?.maquina || '') || '').trim();
+    if (maquinaNeedle && maqNome !== maquinaNeedle) return false;
+    return true;
+  }).map((row) => {
+    const maqNome = String(_canonMaqNome(_ofPickMaqAtualName(row) || row?.maquina_atual || row?.maquina_agendada || row?.maquina || '') || row?.maquina_atual || row?.maquina || 'Sem máquina').trim() || 'Sem máquina';
+    return {
+      maquina: maqNome,
+      maquina_nome: maqNome,
+      qtd_produzida: row?.qtd_produzida ?? row?.quantidade ?? row?.qtd ?? 0,
+      valor_total: row?.valor_total ?? row?.total ?? row?.valor_venda ?? row?.valor ?? row?.valor_producao ?? row?.vl_total ?? 0,
+      total: row?.total ?? row?.valor_total ?? 0,
+      valor_venda: row?.valor_venda ?? row?.valor_total ?? 0,
+      numero: row?.numero ?? row?.of ?? null,
+      of: row?.of ?? row?.numero ?? null,
+      data_conclusao: row?.data_conclusao || null
+    };
+  });
+
+  return {
+    agg: _agruparPassagensRelatorioMensal(filtradas),
+    totalRows: filtradas.length,
+    rowsComValor: _countPassagensComValor(filtradas)
+  };
+}
+
 app.get('/api/passagens/historico', authMiddleware, async (req, res) => { 
   try { 
     const { cliente, maquina, data_inicio, data_fim, mes, ano } = req.query; 
@@ -8411,15 +8576,43 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
       try { anteriorRows = await _normalizarMaquinasPassagens(anteriorRows); } catch (_) {}
     }
 
-    const atualAgg = _agruparPassagensRelatorioMensal(atualRows);
-    const anteriorAgg = _agruparPassagensRelatorioMensal(anteriorRows);
+    const atualRowsComValor = _countPassagensComValor(atualRows);
+    const anteriorRowsComValor = _countPassagensComValor(anteriorRows);
+    let atualAgg = _agruparPassagensRelatorioMensal(atualRows);
+    let anteriorAgg = _agruparPassagensRelatorioMensal(anteriorRows);
+    let fallbackAtual = { agg: [], totalRows: 0, rowsComValor: 0 };
+    let fallbackAnterior = { agg: [], totalRows: 0, rowsComValor: 0 };
+    const atualValorTotal = atualAgg.reduce((acc, item) => acc + (Number(item?.valor_total_producao || 0) || 0), 0);
+    const anteriorValorTotal = anteriorAgg.reduce((acc, item) => acc + (Number(item?.valor_total_producao || 0) || 0), 0);
+    if (!atualAgg.length || !(atualValorTotal > 0) || !atualRowsComValor) {
+      fallbackAtual = await _agruparOfsRelatorioMensalFallback(req, refAtual, maquina, cliente);
+      if (fallbackAtual.agg.length && (!(atualValorTotal > 0) || !atualAgg.length)) atualAgg = fallbackAtual.agg;
+    }
+    if (refAnterior && (!anteriorAgg.length || !(anteriorValorTotal > 0) || !anteriorRowsComValor)) {
+      fallbackAnterior = await _agruparOfsRelatorioMensalFallback(req, refAnterior, maquina, cliente);
+      if (fallbackAnterior.agg.length && (!(anteriorValorTotal > 0) || !anteriorAgg.length)) anteriorAgg = fallbackAnterior.agg;
+    }
     // #region debug-point C:relatorio-mensal-resumo
     _debugRuntimeWrite({
       runId: 'pre-fix',
       hypothesisId: 'C',
       location: 'server.js:/api/maquinas/relatorio-mensal',
       msg: '[DEBUG] relatorio mensal agregado',
-      data: { mes: refAtual.mes, ano: refAtual.ano, totalAtualRows: atualRows.length, totalAnteriorRows: anteriorRows.length, totalAtualAgg: atualAgg.length, totalAnteriorAgg: anteriorAgg.length, sampleAgg: atualAgg.slice(0, 8) }
+      data: {
+        mes: refAtual.mes,
+        ano: refAtual.ano,
+        totalAtualRows: atualRows.length,
+        totalAnteriorRows: anteriorRows.length,
+        atualRowsComValor,
+        anteriorRowsComValor,
+        fallbackAtualRows: fallbackAtual.totalRows,
+        fallbackAtualRowsComValor: fallbackAtual.rowsComValor,
+        fallbackAnteriorRows: fallbackAnterior.totalRows,
+        fallbackAnteriorRowsComValor: fallbackAnterior.rowsComValor,
+        totalAtualAgg: atualAgg.length,
+        totalAnteriorAgg: anteriorAgg.length,
+        sampleAgg: atualAgg.slice(0, 8)
+      }
     });
     // #endregion
     const prevMap = new Map(anteriorAgg.map((item) => [String(item?.maquina || ''), item]));
@@ -11574,7 +11767,7 @@ async function agendarOFsAutomaticamente() {
     }
     if (agendadas > 0) {
       try { console.log('[AGENDAMENTO AUTO] OFs agendadas:', agendadas); } catch (_) {}
-      try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+      _clearOfsCaches();
     }
   } catch (e) {
     const msg = String(e?.message || e);
@@ -12112,6 +12305,108 @@ app.get('/api/fornecedores/:id/precos', authMiddleware, async (req, res) => {
       pontos: (pontos || []).slice().sort((a, b) => String(a.t).localeCompare(String(b.t))),
     })).sort((a, b) => String(a.item).localeCompare(String(b.item), 'pt-BR'));
     return ok(res, out);
+  } catch (e) { return err(res, e); }
+});
+
+app.get('/api/fornecedores/:id/detalhes', authMiddleware, async (req, res) => {
+  try {
+    const fornId = String(req.params.id || '').trim();
+    if (!fornId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const { data: forn, error: ef } = await supabase.from('fornecedores').select('id,nome').eq('id', fornId).maybeSingle();
+    if (ef) throw ef;
+    if (!forn) return res.status(404).json({ ok: false, error: 'Fornecedor não encontrado' });
+
+    const now = new Date();
+    const inicioPadrao = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    const fimPadrao = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+    const de = String(req.query.de || inicioPadrao).slice(0, 10);
+    const ate = String(req.query.ate || fimPadrao).slice(0, 10);
+    const fornNome = String(forn?.nome || '').trim();
+    const fornNeedle = fornNome.toLowerCase();
+
+    const stockTable = await _chapasPreferV2Table();
+    let chapasRaw = [];
+    try {
+      const { data, error } = await supabase.from(stockTable).select('*').limit(10000);
+      if (error) throw error;
+      chapasRaw = Array.isArray(data) ? data : [];
+    } catch (_) {
+      const { data } = await supabase.from('chapas_estoque').select('*').limit(10000);
+      chapasRaw = Array.isArray(data) ? data : [];
+    }
+    const chapasCanon = chapasRaw.map((row) => _chapasCanonicalFromAny(row, stockTable)).filter((row) => {
+      const f = String(row?.fornecedor || row?.forn || '').trim().toLowerCase();
+      return !!f && f === fornNeedle;
+    });
+    const chapaIds = new Set(chapasCanon.map((row) => String(row?.id || '').trim()).filter(Boolean));
+    const chapas = chapasCanon.map((row) => ({
+      id: row.id || null,
+      nome: String(row?.nome_uso || row?.nome || row?.nomenclatura || 'Chapa').trim(),
+      tamanho: String(row?.tamanho || row?.tam || '—').trim() || '—',
+      quantidade: Number(row?.quantidade ?? row?.qtd ?? 0) || 0,
+      valor_unitario: Number(row?.valor_unitario ?? row?.val ?? 0) || 0,
+      valor_total: Number(row?.valor_total ?? 0) || ((Number(row?.quantidade ?? row?.qtd ?? 0) || 0) * (Number(row?.valor_unitario ?? row?.val ?? 0) || 0)),
+      gramatura: Number(row?.gramatura ?? 0) || 0
+    })).sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+
+    let gramaturas = [];
+    try {
+      const { data } = await supabase.from('gramaturas').select('*').order('nome').limit(5000);
+      gramaturas = (Array.isArray(data) ? data : []).filter((row) => {
+        const byId = String(row?.fornecedor_id || '').trim() === fornId;
+        const byNome = String(row?.fornecedor_nome || '').trim().toLowerCase() === fornNeedle;
+        return byId || byNome;
+      }).map((row) => ({
+        id: row?.id || null,
+        nome: String(row?.nome || row?.descricao || '').trim() || 'Gramatura',
+        gramatura: Number(row?.gramatura || 0) || 0,
+        valor_unitario: Number(row?.valor_unitario || 0) || 0,
+        ativo: row?.ativo !== false
+      }));
+    } catch (_) { gramaturas = []; }
+
+    const movTables = ['chapas_estoque_movimentos_v2', 'chapas_estoque_movimentos'];
+    let movs = [];
+    for (const table of movTables) {
+      try {
+        const { data, error } = await supabase.from(table).select('*').gte('created_at', `${de}T00:00:00.000Z`).lte('created_at', `${ate}T23:59:59.999Z`).limit(10000);
+        if (!error && Array.isArray(data) && data.length) {
+          movs = data;
+          break;
+        }
+      } catch (_) {}
+    }
+    const resumo = movs.reduce((acc, row) => {
+      const fMov = String(row?.fornecedor || row?.forn || '').trim().toLowerCase();
+      const chapaId = String(row?.chapa_id || '').trim();
+      if (!(fMov === fornNeedle || (chapaId && chapaIds.has(chapaId)))) return acc;
+      const delta = Math.abs(Math.trunc(Number(row?.delta || row?.quantidade || row?.qtd || 0) || 0));
+      const vu = Number(row?.valor_unitario ?? row?.valor ?? row?.vunit ?? row?.val ?? 0) || 0;
+      const tipo = String(row?.tipo || '').trim().toLowerCase();
+      const entrada = tipo === 'entrada' || Number(row?.delta || 0) > 0;
+      const saida = tipo === 'saida' || Number(row?.delta || 0) < 0;
+      if (entrada) {
+        acc.entradas.quantidade += delta;
+        acc.entradas.valor += (delta * vu);
+      }
+      if (saida) {
+        acc.saidas.quantidade += delta;
+        acc.saidas.valor += (delta * vu);
+      }
+      return acc;
+    }, {
+      entradas: { quantidade: 0, valor: 0 },
+      saidas: { quantidade: 0, valor: 0 }
+    });
+
+    return res.json({
+      ok: true,
+      fornecedor: { id: fornId, nome: fornNome },
+      periodo: { de, ate },
+      chapas,
+      gramaturas,
+      totais: resumo
+    });
   } catch (e) { return err(res, e); }
 });
 
@@ -14179,6 +14474,22 @@ function _chapasNum(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function _normalizarDimensaoMm(a, b) {
+  let larg = _chapasNum(a);
+  let comp = _chapasNum(b);
+  if (!(larg > 0 && comp > 0)) return { larg: 0, comp: 0 };
+  const max = Math.max(larg, comp);
+  const min = Math.min(larg, comp);
+  if (max <= 300) {
+    larg *= 10;
+    comp *= 10;
+  } else if (min > 0 && min <= 300 && max >= 600) {
+    if (larg === min) larg *= 10;
+    if (comp === min) comp *= 10;
+  }
+  return { larg, comp };
+}
+
 function _chapasParseTamanhoMm(v) {
   const s = String(v || '').trim().toLowerCase();
   if (!s) return { larg: 0, comp: 0 };
@@ -14187,7 +14498,7 @@ function _chapasParseTamanhoMm(v) {
   const a = _chapasNum(nums[0]);
   const b = _chapasNum(nums[1]);
   if (!(a > 0 && b > 0)) return { larg: 0, comp: 0 };
-  return { larg: a, comp: b };
+  return _normalizarDimensaoMm(a, b);
 }
 
 function _chapasPesoKgUnidadeFromAny(row) {
@@ -22605,7 +22916,7 @@ app.post('/api/ofs/reordenar', authMiddleware, async (req, res) => {
     if (erros.length) {
       try { console.warn('[reordenar] erros parciais:', erros.map(r => r.error?.message)); } catch (_) {}
     }
-    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    _clearOfsCaches();
 
     let saved = null;
     if (maquina) {
@@ -22755,7 +23066,7 @@ app.patch('/api/ofs/:id/ordem', authMiddleware, async (req, res) => {
 
     const r = await supabase.from('ofs').update({ ordem_maquina: Math.trunc(ordem_maquina) }).eq('id', id);
     if (r?.error) return res.status(500).json({ ok: false, error: r.error.message || String(r.error) });
-    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    _clearOfsCaches();
     return res.json({ ok: true });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -23748,7 +24059,7 @@ async function _jobAdiamento18h(){
       }]);
     }catch(_){}
   }
-  try{ cacheClearPrefix('ofs_v4'); }catch(_){}
+  _clearOfsCaches();
   return { ok:true, hoje, proximo: prox, moved };
 }
 
