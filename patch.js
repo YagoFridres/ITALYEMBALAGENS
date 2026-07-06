@@ -801,7 +801,7 @@ try {
       var st = document.createElement('style');
       st.id = 'patch-historico-passagens-style';
       st.textContent = ''
-        + '#page-historico-passagens{min-height:0}'
+        + '#page-historico-passagens{min-height:0;max-height:100vh;overflow-y:auto;overflow-x:hidden}'
         + '#hist-filtros .hist-patch-btn,#hist-relatorio-mensal-shell .hist-patch-btn{background:#1e293b;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer}'
         + '#hist-filtros .hist-patch-btn:hover,#hist-relatorio-mensal-shell .hist-patch-btn:hover{filter:brightness(1.06)}'
         + '#hist-relatorio-mensal-shell{display:grid;gap:12px;margin:16px 0;padding:14px;border-radius:14px;background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.8));border:1px solid rgba(148,163,184,.14)}'
@@ -1324,9 +1324,24 @@ try {
         container.style.display = 'grid';
         container.style.gridTemplateRows = 'auto minmax(0,1fr) auto';
         container.style.minHeight = '0';
-        container.style.overflow = 'visible';
+        container.style.overflowY = 'auto';
+        container.style.overflowX = 'hidden';
+        var pageRoot = getPage();
+        if (pageRoot) {
+          pageRoot.style.minHeight = '0';
+          pageRoot.style.maxHeight = '100vh';
+          pageRoot.style.overflowY = 'auto';
+          pageRoot.style.overflowX = 'hidden';
+        }
+        var contentRoot = document.getElementById('content') || (pageRoot && pageRoot.parentElement);
+        if (contentRoot) {
+          contentRoot.style.minHeight = '0';
+          contentRoot.style.height = '100vh';
+          contentRoot.style.overflowY = 'auto';
+          contentRoot.style.overflowX = 'hidden';
+        }
       } catch (_) {}
-      container.innerHTML = resumoHtml + '<div id="hist-passagens-items" class="hist-passagens-scroll" style="display:block;max-height:min(58vh,calc(100vh - 360px));overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-right:4px;min-height:0">' + cardsHtml + '</div>' + loadMoreHtml;
+      container.innerHTML = resumoHtml + '<div id="hist-passagens-items" class="hist-passagens-scroll" style="display:block;max-height:none;overflow-y:visible;overflow-x:hidden;overscroll-behavior:contain;padding-right:4px;min-height:0">' + cardsHtml + '</div>' + loadMoreHtml;
       _histRepairScrollContainer();
       // #region debug-point D:hist-scroll-metrics
       try {
@@ -5029,12 +5044,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <div><div class="pep-sub">Nome da Gramatura</div><input class="pep-input" id="pg-nome" value="' + esc(it.nome || it.descricao || '') + '" placeholder="Ex.: Kraft 250"></div>'
         + '    <div><div class="pep-sub">Gramatura (g/m²)</div><input class="pep-input" id="pg-gram" type="number" step="0.01" value="' + esc(it.gramatura || '') + '"></div>'
         + '    <div><div class="pep-sub">Valor Unitário</div><input class="pep-input" id="pg-vunit" type="number" step="0.01" value="' + esc(it.valor_unitario || '') + '"></div>'
-        + '    <div><div class="pep-sub">Fornecedor</div>'
-        + (fornecedores.length
-            ? '<select class="pep-select" id="pg-forn"><option value="">Selecionar fornecedor...</option>' + fornecedores.map(function(f) { var id = String(f && f.id || ''); var nm = String(f && f.nome || ''); return '<option value="' + esc(id) + '"' + (String(it.fornecedor_id || '') === id ? ' selected' : '') + '>' + esc(nm) + '</option>'; }).join('') + '</select>'
-            : '<input class="pep-input" id="pg-forn-livre" value="' + esc(it.fornecedor_nome || '') + '" placeholder="Fornecedor">')
-        + '    </div>'
-        + '    <div><div class="pep-sub">Status</div><select class="pep-select" id="pg-status"><option value="ativo"' + (gramAtiva(it) ? ' selected' : '') + '>Ativo</option><option value="inativo"' + (gramAtiva(it) ? '' : ' selected') + '>Inativo</option></select></div>'
+        + '    <div><div class="pep-sub">Fornecedor</div><select class="pep-select" id="pg-forn"><option value="">Sem fornecedor</option>' + fornecedores.map(function(f) { var id = String(f && f.id || ''); var nm = String(f && f.nome || ''); return '<option value="' + esc(id) + '"' + (String(it.fornecedor_id || '') === id ? ' selected' : '') + '>' + esc(nm) + '</option>'; }).join('') + '</select></div>'
         + '  </div>'
         + '  <div class="pep-actions"><button class="pep-btn" id="pg-cancel">Cancelar</button><button class="pep-btn primary" id="pg-save">Salvar</button></div>'
         + '</div>';
@@ -5049,19 +5059,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           if (!(gramaturaNum > 0)) throw new Error('Informe a gramatura em g/m².');
           var body = {
             nome: nome,
-            descricao: nome,
             gramatura: gramaturaNum,
-            valor_unitario: Number(document.getElementById('pg-vunit').value || 0) || 0,
-            ativo: String(document.getElementById('pg-status').value || 'ativo') !== 'inativo'
+            valor_unitario: Number(document.getElementById('pg-vunit').value || 0) || 0
           };
           var sel = document.getElementById('pg-forn');
-          var livre = document.getElementById('pg-forn-livre');
-          if (sel && sel.value) {
-            body.fornecedor_id = String(sel.value || '').trim();
-            body.fornecedor_nome = String(sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].text || '').trim();
-          } else if (livre) {
-            body.fornecedor_nome = String(livre.value || '').trim();
-          }
+          body.fornecedor_id = (sel && sel.value) ? String(sel.value || '').trim() : null;
           await apiJson(it.id ? ('/api/gramaturas/' + encodeURIComponent(it.id)) : '/api/gramaturas', {
             method: it.id ? 'PUT' : 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -5145,12 +5147,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <input class="pep-input" id="gram-busca" placeholder="Buscador de gramaturas" value="' + esc(window.__gramaturasBusca || '') + '" style="min-width:320px;flex:1">'
         + '    <button class="pep-btn" id="gram-buscar">Buscar</button>'
         + '  </div></div>'
-        + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-gramaturas"><table class="pep-table"><thead><tr><th>Nome da Gramatura</th><th>Gramatura</th><th>Fornecedor</th><th>Valor Unitário</th><th>Status</th><th>Ações</th></tr></thead><tbody>'
+        + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-gramaturas"><table class="pep-table"><thead><tr><th>Nome da Gramatura</th><th>Gramatura</th><th>Fornecedor</th><th>Valor Unitário</th><th>Ações</th></tr></thead><tbody>'
         + (filtrada.length ? filtrada.map(function(g) {
-          var statusTxt = gramAtiva(g) ? 'Ativo' : 'Inativo';
-          var statusColor = gramAtiva(g) ? '#22c55e' : '#f59e0b';
-          return '<tr data-gid="' + esc(g.id || '') + '"><td><div style="font-weight:800">' + esc(g.nome || g.descricao || '—') + '</div></td><td>' + num(g.gramatura || 0, 2) + ' g/m²</td><td>' + esc(g.fornecedor_nome || '—') + '</td><td>' + money(g.valor_unitario || 0) + '</td><td><span style="display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(15,23,42,.9);border:1px solid ' + statusColor + ';color:' + statusColor + ';font-weight:700">' + statusTxt + '</span></td><td><button class="pep-btn" data-gedit="' + esc(g.id || '') + '">Editar</button> <button class="pep-btn' + (gramAtiva(g) ? ' danger' : '') + '" data-gdelete="' + esc(g.id || '') + '">' + (gramAtiva(g) ? 'Excluir' : 'Ativar') + '</button></td></tr>';
-        }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8">Nenhuma gramatura encontrada.</td></tr>')
+          return '<tr data-gid="' + esc(g.id || '') + '"><td><div style="font-weight:800">' + esc(g.nome || g.descricao || '—') + '</div></td><td>' + num(g.gramatura || 0, 2) + ' g/m²</td><td>' + esc(g.fornecedor_nome || '—') + '</td><td>' + money(g.valor_unitario || 0) + '</td><td><button class="pep-btn" data-gedit="' + esc(g.id || '') + '">Editar</button> <button class="pep-btn danger" data-gdelete="' + esc(g.id || '') + '">Excluir</button></td></tr>';
+        }).join('') : '<tr><td colspan="5" style="text-align:center;color:#94a3b8">Nenhuma gramatura encontrada.</td></tr>')
         + '  </tbody></table></div></div>'
         + '</div>';
       document.getElementById('gram-nova').onclick = function() { openGramaturaModal(null, renderGramaturasPage); };
@@ -5179,18 +5179,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           var id = String(btn.getAttribute('data-gdelete') || '');
           var item = (lista || []).find(function(g) { return String(g && g.id || '') === id; }) || null;
           if (!item) return;
-          var ativa = gramAtiva(item);
-          if (!confirm(ativa ? 'Excluir esta gramatura da lista ativa?' : 'Reativar esta gramatura?')) return;
+          if (!confirm('Excluir esta gramatura?')) return;
           try {
-            if (ativa) {
-              await apiJson('/api/gramaturas/' + encodeURIComponent(id), { method: 'DELETE' });
-            } else {
-              await apiJson('/api/gramaturas/' + encodeURIComponent(id), {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ativo: true })
-              });
-            }
+            await apiJson('/api/gramaturas/' + encodeURIComponent(id), { method: 'DELETE' });
             renderGramaturasPage();
           } catch (e) { alert(String(e && e.message || e || 'Falha ao atualizar status')); }
         };
@@ -5813,7 +5804,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  <div class="estoque-wire-detail-value' + (opts.money ? ' money' : '') + '">' + String(valueHtml || '—') + '</div>'
         + '</div>';
     }
+    function _estoqueWireHasMeaningfulValue(value) {
+      if (value == null) return false;
+      var txt = String(value).replace(/<[^>]+>/g, '').trim();
+      if (!txt) return false;
+      return txt !== '—' && txt !== 'Sem cor' && txt !== 'Sem medida' && txt !== 'Peso nao cadastrado';
+    }
+    function _estoqueWireRenderMaybeDetailCard(label, valueHtml, opts) {
+      return _estoqueWireHasMeaningfulValue(valueHtml) ? _estoqueWireRenderDetailCard(label, valueHtml, opts) : '';
+    }
     function _estoqueWireRenderSection(title, sub, gridHtml) {
+      var content = String(gridHtml || '').trim();
+      if (!content) return '';
       return ''
         + '<section class="estoque-wire-section">'
         + '  <div class="estoque-wire-section-head">'
@@ -5830,7 +5832,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var corOpt = _findChapaColorOption(cor);
       var corHtml = cor
         ? ('<span class="estoque-wire-modal-color"><span class="swatch" style="background:' + esc(cor) + ';box-shadow:0 0 0 1px rgba(255,255,255,.18),0 10px 22px ' + esc(_hexToRgbaChapa(cor, 0.24)) + '"></span>' + esc(corOpt.label + ' (' + cor + ')') + '</span>')
-        : '<span class="estoque-wire-modal-color"><span class="swatch none"></span>Sem cor</span>';
+        : '';
       var extrasIgnorados = {
         id: 1, fornecedor: 1, forn: 1, gramatura: 1, nomenclatura: 1, nom: 1, tamanho: 1, tam: 1, nome: 1, nome_uso: 1,
         qual_cnpj: 1, qual: 1, empresa_vinculada: 1, nf: 1, numero_nf: 1, quantidade: 1, quantidade_atual: 1, qtd: 1,
@@ -5847,37 +5849,37 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         return _estoqueWireRenderDetailCard(_estoqueWireFieldLabel(key), esc(texto), {});
       }).filter(Boolean);
       var identificacao = [
-        _estoqueWireRenderDetailCard('Fornecedor', esc(chapa.fornecedor || '—')),
-        _estoqueWireRenderDetailCard('Gramatura', esc(chapa.gramatura || '—')),
-        _estoqueWireRenderDetailCard('Nomenclatura', esc(chapa.nomenclatura || '—')),
-        _estoqueWireRenderDetailCard('Tamanho', esc(chapa.tamanho || '—')),
-        _estoqueWireRenderDetailCard('Nome', esc(chapa.nome_uso || chapa.nome || '—')),
-        _estoqueWireRenderDetailCard('Qual CNPJ', esc(chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || '—')),
-        _estoqueWireRenderDetailCard('NF', esc(chapa.nf || chapa.numero_nf || '—')),
-        _estoqueWireRenderDetailCard('Categoria', esc(chapa.categoria || '—'))
-      ].join('');
+        _estoqueWireRenderMaybeDetailCard('Fornecedor', esc(chapa.fornecedor || '')),
+        _estoqueWireRenderMaybeDetailCard('Gramatura', esc(chapa.gramatura || '')),
+        _estoqueWireRenderMaybeDetailCard('Nomenclatura', esc(chapa.nomenclatura || '')),
+        _estoqueWireRenderMaybeDetailCard('Tamanho', esc(chapa.tamanho || '')),
+        _estoqueWireRenderMaybeDetailCard('Nome', esc(chapa.nome_uso || chapa.nome || '')),
+        _estoqueWireRenderMaybeDetailCard('Qual CNPJ', esc(chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || '')),
+        _estoqueWireRenderMaybeDetailCard('NF', esc(chapa.nf || chapa.numero_nf || '')),
+        _estoqueWireRenderMaybeDetailCard('Categoria', esc(chapa.categoria || ''))
+      ].filter(Boolean).join('');
       var estoqueValores = [
         _estoqueWireRenderDetailCard('Quantidade atual', esc(num(qtd, 0))),
-        _estoqueWireRenderDetailCard('Cor da linha', corHtml),
+        _estoqueWireRenderMaybeDetailCard('Cor da linha', corHtml),
         _estoqueWireRenderDetailCard('Valor unitario (R$)', esc(money(chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val)), { money: true }),
         _estoqueWireRenderDetailCard('Total (R$)', esc(money(estoqueWireValor(chapa))), { money: true }),
-        _estoqueWireRenderDetailCard('Estoque minimo', esc(num(chapa.estoque_minimo, 0))),
-        _estoqueWireRenderDetailCard('Lote', esc(chapa.lote || '—')),
-        _estoqueWireRenderDetailCard('Peso kg/unidade', chapa.peso_kg_unidade ? esc(num(chapa.peso_kg_unidade, 3)) : 'Peso nao cadastrado'),
-        _estoqueWireRenderDetailCard('Toneladas', chapa.peso_kg_unidade ? esc(num(estoqueWireTon(chapa), 3) + ' t') : 'Peso nao cadastrado'),
-        _estoqueWireRenderDetailCard('Vincos', esc(chapa.vincos || '—')),
+        _estoqueWireRenderMaybeDetailCard('Estoque minimo', esc(chapa.estoque_minimo != null ? num(chapa.estoque_minimo, 0) : '')),
+        _estoqueWireRenderMaybeDetailCard('Lote', esc(chapa.lote || '')),
+        _estoqueWireRenderMaybeDetailCard('Peso kg/unidade', chapa.peso_kg_unidade ? esc(num(chapa.peso_kg_unidade, 3)) : ''),
+        _estoqueWireRenderMaybeDetailCard('Toneladas', chapa.peso_kg_unidade ? esc(num(estoqueWireTon(chapa), 3) + ' t') : ''),
+        _estoqueWireRenderMaybeDetailCard('Vincos', esc(chapa.vincos || '')),
         _estoqueWireRenderDetailCard('Riscada', esc(chapa.riscada ? 'Sim' : 'Nao')),
-        _estoqueWireRenderDetailCard('Descricao da risca', esc(chapa.risca_desc || '—')),
-        _estoqueWireRenderDetailCard('Observacao', esc(chapa.observacao || '—'), { full: true })
-      ].join('');
+        _estoqueWireRenderMaybeDetailCard('Descricao da risca', esc(chapa.risca_desc || '')),
+        _estoqueWireRenderMaybeDetailCard('Observacao', esc(chapa.observacao || ''), { full: true })
+      ].filter(Boolean).join('');
       var metadados = [
-        _estoqueWireRenderDetailCard('Data de criacao', esc(_estoqueWireFormatFieldValue('created_at', chapa.criado_em || chapa.created_at || '—'))),
-        _estoqueWireRenderDetailCard('Ultima atualizacao', esc(_estoqueWireFormatFieldValue('updated_at', chapa.atualizado_em || chapa.updated_at || '—'))),
-        _estoqueWireRenderDetailCard('Data de entrada', esc(_estoqueWireFormatFieldValue('data_entrada', chapa.data_entrada || '—'))),
-        _estoqueWireRenderDetailCard('Criado por', esc(chapa.criado_por || '—')),
-        _estoqueWireRenderDetailCard('Atualizado por', esc(chapa.atualizado_por || '—')),
-        _estoqueWireRenderDetailCard('ID', esc(chapa.id || '—'))
-      ].join('') + extras.join('');
+        _estoqueWireRenderMaybeDetailCard('Data de criacao', esc(_estoqueWireFormatFieldValue('created_at', chapa.criado_em || chapa.created_at || ''))),
+        _estoqueWireRenderMaybeDetailCard('Ultima atualizacao', esc(_estoqueWireFormatFieldValue('updated_at', chapa.atualizado_em || chapa.updated_at || ''))),
+        _estoqueWireRenderMaybeDetailCard('Data de entrada', esc(_estoqueWireFormatFieldValue('data_entrada', chapa.data_entrada || ''))),
+        _estoqueWireRenderMaybeDetailCard('Criado por', esc(chapa.criado_por || '')),
+        _estoqueWireRenderMaybeDetailCard('Atualizado por', esc(chapa.atualizado_por || '')),
+        _estoqueWireRenderMaybeDetailCard('ID', esc(chapa.id || ''))
+      ].filter(Boolean).join('') + extras.join('');
       var html = ''
         + _estoqueWireRenderSection('Identificacao', 'Dados principais da chapa e do fornecedor.', identificacao)
         + _estoqueWireRenderSection('Estoque e Valores', 'Saldo atual, custos e configuracao visual da linha.', estoqueValores)
@@ -17421,6 +17423,90 @@ window._mbnActive = function(id) {
     }) || null;
   }
 
+  function _ofmaqGetMachineLists() {
+    return Array.prototype.slice.call(document.querySelectorAll('#ofs-por-maquina-container .maq-body[data-maquina-id], #ofs-por-maquina-container .maq-ofs[data-maquina-id], #ofs-por-maquina-container [data-maquina-lista="1"][data-maquina-id]'))
+      .filter(function(el) {
+        return !!(el && el.querySelector && el.querySelector('[data-of-id]'));
+      });
+  }
+
+  function _ofmaqGetMachineName(listEl) {
+    try {
+      return String(
+        (listEl && (listEl.getAttribute('data-maquina-id') || listEl.getAttribute('data-maquina') || listEl.getAttribute('data-maquina-name') || listEl.getAttribute('data-maquina-nome'))) ||
+        ''
+      ).trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function _ofmaqBuildLookupMap() {
+    var map = {};
+    var groups = getVisibleGroups();
+    Object.keys(groups || {}).forEach(function(maquina) {
+      var list = Array.isArray(groups[maquina]) ? groups[maquina] : [];
+      list.forEach(function(of) {
+        var id = String(of && of.id || '').trim();
+        if (id && !map[id]) map[id] = of;
+      });
+    });
+    var raw = Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window._ofmaqBaseList) ? window._ofmaqBaseList : []);
+    (Array.isArray(raw) ? raw : []).forEach(function(of) {
+      var id = String(of && of.id || '').trim();
+      if (id && !map[id]) map[id] = of;
+    });
+    return map;
+  }
+
+  function _ofmaqGetCurrentOfsFromList(listEl) {
+    var maquina = _ofmaqGetMachineName(listEl);
+    var ids = Array.prototype.slice.call((listEl && listEl.querySelectorAll) ? listEl.querySelectorAll('[data-of-id]') : []).map(function(card) {
+      return String(card && card.getAttribute('data-of-id') || '').trim();
+    }).filter(Boolean);
+    var lookup = _ofmaqBuildLookupMap();
+    var ofs = ids.map(function(id) { return lookup[id] || getCurrentOfById(id); }).filter(Boolean);
+    if (!ofs.length) {
+      var groups = getVisibleGroups();
+      ofs = Array.isArray(groups[maquina]) ? groups[maquina].slice() : [];
+    }
+    return ofs;
+  }
+
+  function _ofmaqGetCurrentGroupsFromDom() {
+    var out = {};
+    _ofmaqGetMachineLists().forEach(function(listEl) {
+      var maquina = _ofmaqGetMachineName(listEl);
+      if (!maquina) return;
+      out[maquina] = _ofmaqGetCurrentOfsFromList(listEl);
+    });
+    return out;
+  }
+
+  function _ofmaqRemoveSetupDecorations(scope) {
+    Array.prototype.slice.call((scope || document).querySelectorAll('.setup-separador, .patch-setup-reason')).forEach(function(el) {
+      try { el.remove(); } catch (_) {}
+    });
+  }
+
+  function _ofmaqApplyDomOrder(listEl, orderedOfs) {
+    if (!listEl) return;
+    _ofmaqRemoveSetupDecorations(listEl);
+    var cardMap = {};
+    Array.prototype.slice.call(listEl.querySelectorAll('[data-of-id]')).forEach(function(card) {
+      var id = String(card && card.getAttribute('data-of-id') || '').trim();
+      if (id) cardMap[id] = card;
+    });
+    (Array.isArray(orderedOfs) ? orderedOfs : []).forEach(function(of, idx) {
+      var id = String(of && of.id || '').trim();
+      var card = id ? cardMap[id] : null;
+      if (!card) return;
+      listEl.appendChild(card);
+      var badge = card.querySelector('.of-ordem-badge, .ordem-badge');
+      if (badge) badge.textContent = String(idx + 1);
+    });
+  }
+
   function _isoDateOnly(d) {
     try {
       var x = d instanceof Date ? d : new Date(d);
@@ -17554,12 +17640,37 @@ window._mbnActive = function(id) {
       else toolbar.appendChild(wrap);
     }
     if (!document.getElementById('patch-btn-prioridade')) {
+      var ordWrap = document.createElement('div');
+      ordWrap.id = 'patch-btn-prioridade';
+      ordWrap.style.cssText = 'position:relative;display:inline-flex';
       var btnOrd = document.createElement('button');
-      btnOrd.id = 'patch-btn-prioridade';
+      btnOrd.id = 'btn-ordenar-prioridade';
+      btnOrd.type = 'button';
       btnOrd.style.cssText = 'padding:7px 14px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:13px';
-      btnOrd.textContent = '🎯 Ordenar por Prioridade';
-      btnOrd.onclick = function() { try { if (typeof window._ordenarPorPrioridade === 'function') window._ordenarPorPrioridade(); else if (typeof window.ordenarOFsPorPrioridade === 'function') window.ordenarOFsPorPrioridade(); } catch (_) {} };
-      wrap.appendChild(btnOrd);
+      btnOrd.textContent = '🎯 Ordenar por Prioridade ▾';
+      var menu = document.createElement('div');
+      menu.id = 'patch-menu-prioridade';
+      menu.style.cssText = 'display:none;position:absolute;top:calc(100% + 6px);left:0;min-width:220px;background:#0f172a;border:1px solid rgba(148,163,184,.18);border-radius:12px;box-shadow:0 16px 34px rgba(0,0,0,.35);padding:6px;z-index:10080';
+      menu.innerHTML = ''
+        + '<button type="button" data-ord-mode="desc" style="width:100%;text-align:left;background:transparent;border:none;color:var(--text1);padding:10px 12px;border-radius:8px;cursor:pointer">Maior → Menor</button>'
+        + '<button type="button" data-ord-mode="asc" style="width:100%;text-align:left;background:transparent;border:none;color:var(--text1);padding:10px 12px;border-radius:8px;cursor:pointer">Menor → Maior</button>'
+        + '<button type="button" data-ord-mode="similar" style="width:100%;text-align:left;background:transparent;border:none;color:var(--text1);padding:10px 12px;border-radius:8px;cursor:pointer">Tamanhos Próximos</button>';
+      btnOrd.onclick = function(ev) {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+      };
+      Array.prototype.slice.call(menu.querySelectorAll('[data-ord-mode]')).forEach(function(btn) {
+        btn.onmouseenter = function() { btn.style.background = 'rgba(255,255,255,.06)'; };
+        btn.onmouseleave = function() { btn.style.background = 'transparent'; };
+        btn.onclick = function(ev) {
+          try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+          menu.style.display = 'none';
+          try { if (typeof window._ordenarPorPrioridade === 'function') window._ordenarPorPrioridade(String(btn.getAttribute('data-ord-mode') || 'desc')); } catch (_) {}
+        };
+      });
+      ordWrap.appendChild(btnOrd);
+      ordWrap.appendChild(menu);
+      wrap.appendChild(ordWrap);
     }
     if (!document.getElementById('btn-agrupar-setup')) {
       var btnAgr = document.createElement('button');
@@ -17576,7 +17687,15 @@ window._mbnActive = function(id) {
         var t = String(b && b.textContent || '').toLowerCase();
         if (t.indexOf('ordenar por prioridade') >= 0 && !b._patchBoundPrior) {
           b._patchBoundPrior = true;
-          b.onclick = function() { try { if (typeof window._ordenarPorPrioridade === 'function') window._ordenarPorPrioridade(); } catch (_) {} };
+          b.onclick = function(ev) {
+            try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+            var trigger = document.getElementById('btn-ordenar-prioridade');
+            if (trigger && trigger !== b) {
+              try { trigger.click(); } catch (_) {}
+              return;
+            }
+            try { if (typeof window._ordenarPorPrioridade === 'function') window._ordenarPorPrioridade('desc'); } catch (_) {}
+          };
         }
         if (t.indexOf('agrupar setup') >= 0 && !b._patchBoundSetup) {
           b._patchBoundSetup = true;
@@ -17584,6 +17703,16 @@ window._mbnActive = function(id) {
         }
       });
     } catch (_) {}
+    if (!document.body._patchOfmaqPriorityMenuBound) {
+      document.body._patchOfmaqPriorityMenuBound = '1';
+      document.addEventListener('click', function(ev) {
+        var menu = document.getElementById('patch-menu-prioridade');
+        var wrapEl = document.getElementById('patch-btn-prioridade');
+        if (!menu || !wrapEl) return;
+        if (wrapEl.contains(ev.target)) return;
+        menu.style.display = 'none';
+      }, true);
+    }
   }
 
   function updateAgrupamentoButton() {
@@ -17609,6 +17738,84 @@ window._mbnActive = function(id) {
     if (content) return content;
     if (card.children && card.children[1] && card.children[1].tagName === 'DIV') return card.children[1];
     return card.querySelector('div') || card;
+  }
+
+  function _ofmaqFmtEntregaLegivel(iso) {
+    var s = String(iso || '').slice(0, 10);
+    if (!s) return '—';
+    try {
+      if (typeof fmtDateBR === 'function') return fmtDateBR(s);
+    } catch (_) {}
+    return s;
+  }
+
+  function _ofmaqTextWrap(card, content) {
+    var contentEl = content || getCardContentEl(card);
+    if (!contentEl) return null;
+    var kids = Array.prototype.slice.call(contentEl.children || []).filter(function(el) {
+      return !!(el && el.tagName === 'DIV');
+    });
+    if (kids.length >= 2) return kids[kids.length - 1];
+    return contentEl;
+  }
+
+  function _ofmaqApplyReadableCardLayout(card, of) {
+    if (!card || !of) return;
+    try {
+      card.style.padding = '14px';
+      card.style.lineHeight = '1.5';
+      card.style.marginBottom = '10px';
+    } catch (_) {}
+    var content = getCardContentEl(card);
+    var textWrap = _ofmaqTextWrap(card, content);
+    if (!content || !textWrap) return;
+    try {
+      content.style.gap = '14px';
+      content.style.alignItems = 'flex-start';
+      content.classList.add('patch-ofmaq-card-main');
+    } catch (_) {}
+    var title = textWrap.querySelector('.of-produto, .of-descricao');
+    if (!title) {
+      title = Array.prototype.slice.call(textWrap.children || []).find(function(el) {
+        return el && el.tagName === 'DIV';
+      }) || null;
+    }
+    if (title) {
+      title.style.fontSize = '16px';
+      title.style.fontWeight = '700';
+      title.style.lineHeight = '1.35';
+      title.style.marginBottom = '10px';
+      title.style.whiteSpace = 'normal';
+      title.style.overflow = 'visible';
+      title.style.textOverflow = 'clip';
+      title.textContent = String(of && (of.numero || of.of || '') || '').trim()
+        ? ('OF #' + String(of.numero || of.of || '').trim() + ' · ' + String(of && (of.prodDesc || of.produto || of.descricao || '') || '').trim())
+        : String(of && (of.prodDesc || of.produto || of.descricao || '') || '').trim();
+    }
+    Array.prototype.slice.call(textWrap.children || []).forEach(function(child) {
+      if (!child || child === title) return;
+      if (child.classList && (child.classList.contains('patch-ofmaq-readable-meta') || child.classList.contains('patch-setup-reason') || child.classList.contains('patch-ofmaq-badges'))) return;
+      child.style.display = 'none';
+    });
+    var dim = parseDimensions(of);
+    var tamanho = (Number(dim && dim.comprimento || 0) > 0 && Number(dim && dim.largura || 0) > 0)
+      ? (String(dim.comprimento) + '×' + String(dim.largura) + 'mm')
+      : '—';
+    var produto = String(of && (of.prodDesc || of.produto || of.descricao || '') || '').trim() || '—';
+    var cliente = String(of && (of.cliNome || of.cliente || of.cliente_nome || '') || '').trim() || '—';
+    var entrega = _ofmaqFmtEntregaLegivel(getOfDelivery(of));
+    var meta = textWrap.querySelector('.patch-ofmaq-readable-meta');
+    if (!meta) {
+      meta = document.createElement('div');
+      meta.className = 'patch-ofmaq-readable-meta';
+      textWrap.appendChild(meta);
+    }
+    meta.style.cssText = 'display:grid;gap:6px;margin-top:0;font-size:14px;line-height:1.5';
+    meta.innerHTML = ''
+      + '<div><span style="color:var(--text2)">Cliente:</span> <span style="color:var(--text1)">' + escH(cliente) + '</span></div>'
+      + '<div><span style="color:var(--text2)">Produto:</span> <span style="color:var(--text1)">' + escH(produto) + '</span></div>'
+      + '<div><span style="color:var(--text2)">Tamanho:</span> <span style="color:var(--text1)">' + escH(tamanho) + '</span></div>'
+      + '<div><span style="color:var(--text2)">Entrega:</span> <span style="color:var(--text1)">' + escH(entrega) + '</span></div>';
   }
 
   function buildSuggestionMap() {
@@ -17647,6 +17854,7 @@ window._mbnActive = function(id) {
       var id = String(card.getAttribute('data-of-id') || '').trim();
       var of = getCurrentOfById(id);
       if (!of) return;
+      try { _ofmaqApplyReadableCardLayout(card, of); } catch (_) {}
       var content = getCardContentEl(card);
       if (!content) return;
       var existing = content.querySelector('.patch-ofmaq-badges');
@@ -18052,10 +18260,69 @@ window._mbnActive = function(id) {
       payload.maquina_agendada = maqNova;
     }
     var r1 = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PUT', body: payload });
-    if (r1 && r1.resp && r1.resp.ok && !(r1.data && r1.data.ok === false)) return true;
-    var r2 = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: payload });
-    return !!(r2 && r2.resp && r2.resp.ok && !(r2.data && r2.data.ok === false));
+    return !!(r1 && r1.resp && r1.resp.ok && !(r1.data && r1.data.ok === false));
   }
+
+  function _redistribSugestoesAtivas(state) {
+    var st = state || window.__ofmaqRedistribState || {};
+    var list = Array.isArray(st.sugestoes) ? st.sugestoes : [];
+    var ignored = st.ignored || {};
+    return list.filter(function(s) { return s && !ignored[s.id]; });
+  }
+
+  function _redistribAtualizarResumo(overlay, state) {
+    var root = overlay || document.getElementById('patch-ofmaq-redistrib-modal');
+    var st = state || window.__ofmaqRedistribState || {};
+    if (!root) return;
+    var ativos = _redistribSugestoesAtivas(st);
+    var totalEl = root.querySelector('[data-red-total]');
+    var sobreEl = root.querySelector('[data-red-sobre]');
+    var foraEl = root.querySelector('[data-red-fora]');
+    if (totalEl) totalEl.textContent = String(ativos.length);
+    if (sobreEl) sobreEl.textContent = String(ativos.filter(function(s) { return !!s.sobreHoje; }).length);
+    if (foraEl) foraEl.textContent = String(ativos.filter(function(s) { return !!s.foraPrazo; }).length);
+  }
+
+  function _redistribRemoverCard(card, state) {
+    var st = state || window.__ofmaqRedistribState || {};
+    var listEl = document.getElementById('patch-red-list');
+    var overlay = document.getElementById('patch-ofmaq-redistrib-modal');
+    try { if (card) card.remove(); } catch (_) {}
+    if (listEl && !listEl.querySelector('.card')) {
+      listEl.innerHTML = '<div style="color:var(--text2);padding:14px">Nenhuma sugestão para este filtro.</div>';
+    }
+    _redistribAtualizarResumo(overlay, st);
+  }
+
+  window._ignorarSugestaoRedistribuicao = function(ofId, card) {
+    var id = String(ofId || '').trim();
+    var state = window.__ofmaqRedistribState || { filter: 'todas', ignored: {}, sugestoes: [] };
+    if (!id) return false;
+    state.ignored[id] = true;
+    window.__ofmaqRedistribState = state;
+    _redistribRemoverCard(card || null, state);
+    return true;
+  };
+
+  window._aplicarSugestaoRedistribuicao = async function(ofId, novaData, maquinaNova, card) {
+    var id = String(ofId || '').trim();
+    var dt = String(novaData || '').slice(0, 10);
+    var state = window.__ofmaqRedistribState || { filter: 'todas', ignored: {}, sugestoes: [] };
+    if (!id || !/^\d{4}-\d{2}-\d{2}$/.test(dt)) return false;
+    try {
+      var okk = await _aplicarDataProducao(id, dt, maquinaNova);
+      if (!okk) throw new Error('Falha ao aplicar sugestão');
+      state.ignored[id] = true;
+      window.__ofmaqRedistribState = state;
+      try { window.toast('✅ Sugestão aplicada: ' + fmtDateBR(dt), 'var(--green)'); } catch (_) {}
+      _redistribRemoverCard(card || null, state);
+      try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
+      return true;
+    } catch (e) {
+      try { window.toast('Erro ao aplicar sugestão: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+      return false;
+    }
+  };
 
   function _maquinasCandidatasRedistribuicao(of) {
     var list = [];
@@ -18202,7 +18469,7 @@ window._mbnActive = function(id) {
       + '  <div class="top">'
       + '    <div>'
       + '      <div class="ttl">⚡ Sugestões de Redistribuição</div>'
-      + '      <div class="sub">' + escHLocal(String(total)) + ' OFs identificadas · Sobrecarregadas hoje: ' + escHLocal(String(sobre)) + ' · Fora do prazo: ' + escHLocal(String(fora)) + '</div>'
+      + '      <div class="sub"><span data-red-total="1">' + escHLocal(String(total)) + '</span> OFs identificadas · Sobrecarregadas hoje: <span data-red-sobre="1">' + escHLocal(String(sobre)) + '</span> · Fora do prazo: <span data-red-fora="1">' + escHLocal(String(fora)) + '</span></div>'
       + '    </div>'
       + '    <button type="button" class="close" id="patch-red-close">Fechar</button>'
       + '  </div>'
@@ -18264,8 +18531,7 @@ window._mbnActive = function(id) {
         var card = btn.closest('.card');
         var id = String(card && card.getAttribute('data-id') || '');
         if (!id) return;
-        state.ignored[id] = true;
-        _renderSugestoesRedistribuicaoModal();
+        window._ignorarSugestaoRedistribuicao(id, card);
       };
     });
     listEl.querySelectorAll('[data-act="apply"]').forEach(function(btn) {
@@ -18277,17 +18543,7 @@ window._mbnActive = function(id) {
         if (!id || !dt) return;
         btn.disabled = true;
         try {
-          var okk = await _aplicarDataProducao(id, dt, maqNova);
-          if (okk) {
-            state.ignored[id] = true;
-            try { window.toast('✓ Aplicado: ' + fmtDateBR(dt), 'var(--green)'); } catch (_) {}
-            try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
-            _renderSugestoesRedistribuicaoModal();
-          } else {
-            try { window.toast('Erro ao aplicar sugestão', 'var(--red)'); } catch (_) {}
-          }
-        } catch (e) {
-          try { window.toast('Erro: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+          await window._aplicarSugestaoRedistribuicao(id, dt, maqNova, card);
         } finally {
           btn.disabled = false;
         }
@@ -18338,9 +18594,14 @@ window._mbnActive = function(id) {
   };
 
   async function savePriorityOrder(maquina, ids) {
+    var list = Array.isArray(ids) ? ids : [];
+    var ordens = list.map(function(item, idx) {
+      if (item && typeof item === 'object') return { id: String(item.id || '').trim(), seq: idx };
+      return { id: String(item || '').trim(), seq: idx };
+    }).filter(function(item) { return !!item.id; });
     return apiJson('/api/ofs/reordenar', {
       method: 'POST',
-      body: { maquina_id: maquina, ids: ids, ordem: ids }
+      body: { maquina_id: maquina, ids: ordens.map(function(item) { return item.id; }), ordem: ordens.map(function(item) { return item.id; }), ordens: ordens }
     });
   }
 
@@ -18398,8 +18659,117 @@ window._mbnActive = function(id) {
     });
   }
 
-  window._ordenarPorPrioridade = async function() {
-    var groups = getVisibleGroups();
+  function _sortByAreaWithDirection(ofs, direction) {
+    var dir = String(direction || 'desc').trim().toLowerCase();
+    return (Array.isArray(ofs) ? ofs.slice() : []).sort(function(a, b) {
+      var aa = _areaOf(a);
+      var ab = _areaOf(b);
+      if (aa == null && ab == null) return String(a && (a.numero || a.of || '') || '').localeCompare(String(b && (b.numero || b.of || '') || ''), 'pt-BR');
+      if (aa == null) return 1;
+      if (ab == null) return -1;
+      if (aa !== ab) return dir === 'asc' ? (aa - ab) : (ab - aa);
+      return String(a && (a.numero || a.of || '') || '').localeCompare(String(b && (b.numero || b.of || '') || ''), 'pt-BR');
+    });
+  }
+
+  function _sortBySimilarArea(ofs) {
+    var pool = _sortByAreaWithDirection(ofs, 'desc');
+    var out = [];
+    while (pool.length) {
+      var atual = pool.shift();
+      out.push(atual);
+      var areaAtual = Number(_areaOf(atual) || 0) || 0;
+      if (!(areaAtual > 0)) continue;
+      for (var i = 0; i < pool.length; ) {
+        var cand = pool[i];
+        var areaCand = Number(_areaOf(cand) || 0) || 0;
+        var ratio = areaCand > 0 ? Math.abs(areaCand - areaAtual) / areaAtual : 999;
+        if (ratio <= 0.10) {
+          out.push(cand);
+          pool.splice(i, 1);
+          areaAtual = areaCand || areaAtual;
+          continue;
+        }
+        i += 1;
+      }
+    }
+    return out;
+  }
+
+  function _labelOrdenacaoPrioridade(mode) {
+    var key = String(mode || 'desc').trim().toLowerCase();
+    if (key === 'asc') return 'Menor → Maior';
+    if (key === 'similar') return 'Tamanhos Próximos';
+    return 'Maior → Menor';
+  }
+
+  function _buildOrderedOfsByMode(ofs, mode) {
+    var key = String(mode || 'desc').trim().toLowerCase();
+    if (key === 'asc') return _sortByAreaWithDirection(ofs, 'asc');
+    if (key === 'similar') return _sortBySimilarArea(ofs);
+    return _sortByAreaWithDirection(ofs, 'desc');
+  }
+
+  function _setupGroupLabel(of) {
+    var cores = parseColors(of).join(' + ');
+    cores = String(cores || 'SEM COR').toUpperCase().trim() || 'SEM COR';
+    var dim = parseDimensions(of);
+    var largura = Number(dim && dim.largura || 0) || 0;
+    var comprimento = Number(dim && dim.comprimento || 0) || 0;
+    var medida = (largura > 0 && comprimento > 0) ? (comprimento + '×' + largura + 'mm') : 'sem medida';
+    return {
+      key: cores,
+      reason: 'Setup: ' + cores + ' · ' + medida,
+      separator: '🎨 Novo setup: ' + cores + ' · ' + medida
+    };
+  }
+
+  function _applySetupDecorations(listEl, orderedOfs) {
+    if (!listEl) return 0;
+    _ofmaqRemoveSetupDecorations(listEl);
+    var totalGrupos = 0;
+    var lastKey = '';
+    (Array.isArray(orderedOfs) ? orderedOfs : []).forEach(function(of) {
+      var id = String(of && of.id || '').trim();
+      var card = id ? listEl.querySelector('[data-of-id="' + escSel(id) + '"]') : null;
+      if (!card) return;
+      var info = _setupGroupLabel(of);
+      if (info.key !== lastKey) {
+        totalGrupos += 1;
+        lastKey = info.key;
+        var sep = document.createElement('div');
+        sep.className = 'setup-separador';
+        sep.style.cssText = 'grid-column:1/-1;border-top:2px dashed var(--accent);margin:10px 0;padding-top:6px;font-size:12px;color:var(--text2)';
+        sep.textContent = info.separator;
+        listEl.insertBefore(sep, card);
+      }
+      var content = getCardContentEl(card) || card;
+      var old = content.querySelector('.patch-setup-reason');
+      if (old) old.remove();
+      var line = document.createElement('div');
+      line.className = 'patch-setup-reason';
+      line.style.cssText = 'margin-top:8px;font-size:12px;line-height:1.45;color:var(--text2)';
+      line.textContent = info.reason;
+      content.appendChild(line);
+    });
+    return totalGrupos;
+  }
+
+  function _restoreDefaultOfmaqOrderFromDom() {
+    var groups = _ofmaqGetCurrentGroupsFromDom();
+    Object.keys(groups || {}).forEach(function(maquina) {
+      var ofs = Array.isArray(groups[maquina]) ? groups[maquina].slice() : [];
+      var listEl = getMachineListEl(maquina);
+      if (!listEl || !ofs.length) return;
+      var ordered = sortOfsByPriorityLocal(ofs);
+      _ofmaqApplyDomOrder(listEl, ordered);
+      savePriorityOrder(maquina, ordered).catch(function() {});
+    });
+    _ofmaqRemoveSetupDecorations(document);
+  }
+
+  window._ordenarPorPrioridade = async function(mode) {
+    var groups = _ofmaqGetCurrentGroupsFromDom();
     var maquinas = Object.keys(groups || {});
     if (!maquinas.length) return false;
     try {
@@ -18407,15 +18777,16 @@ window._mbnActive = function(id) {
         var maq = maquinas[i];
         var ofs = Array.isArray(groups[maq]) ? groups[maq].slice() : [];
         if (!ofs.length) continue;
-        var ids = _orderedIdsBySizePriority(ofs);
-        if (!ids.length) continue;
+        var listEl = getMachineListEl(maq);
+        var ordered = _buildOrderedOfsByMode(ofs, mode);
+        if (!ordered.length) continue;
+        if (listEl) _ofmaqApplyDomOrder(listEl, ordered);
+        var ids = ordered.map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
         if (!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
         window._ordemMaquinas[maq] = ids.slice();
-        await savePriorityOrder(maq, ids);
+        await savePriorityOrder(maq, ordered);
       }
-      _refreshOfmaqCachesFromRuntime();
-      try { if (typeof window.renderOFsPorMaquina === 'function') await window.renderOFsPorMaquina(); } catch (_) {}
-      try { window.toast('✅ OFs agrupadas por medida e ordenadas da maior para a menor', 'var(--green)'); } catch (_) {}
+      try { window.toast('✅ OFs ordenadas: ' + _labelOrdenacaoPrioridade(mode), 'var(--green)'); } catch (_) {}
       return true;
     } catch (e) {
       try { window.toast('Erro ao ordenar OFs: ' + (e && e.message ? e.message : e), 'var(--red)'); } catch (_) {}
@@ -18434,7 +18805,7 @@ window._mbnActive = function(id) {
   };
 
   window._agruparPorSetup = async function() {
-    var groups = getVisibleGroups();
+    var groups = _ofmaqGetCurrentGroupsFromDom();
     var maquinas = Object.keys(groups || {});
     if (!maquinas.length) return false;
     try {
@@ -18443,54 +18814,34 @@ window._mbnActive = function(id) {
         var maq = maquinas[i];
         var ofs = Array.isArray(groups[maq]) ? groups[maq].slice() : [];
         if (!ofs.length) continue;
+        var listEl = getMachineListEl(maq);
         var buckets = {};
         ofs.forEach(function(of) {
-          var k = parseColors(of).join(' + ');
-          k = String(k || 'SEM COR').toUpperCase().trim() || 'SEM COR';
+          var k = _setupGroupLabel(of).key;
           if (!buckets[k]) buckets[k] = [];
           buckets[k].push(of);
         });
-        var keys = Object.keys(buckets);
-        totalGrupos += keys.length;
-        keys.sort(function(a, b) {
-          var areaA = _areaOf((buckets[a] || [])[0]);
-          var areaB = _areaOf((buckets[b] || [])[0]);
+        var keys = Object.keys(buckets).sort(function(a, b) {
+          var areaA = _areaOf(_sortByAreaWithDirection(buckets[a] || [], 'desc')[0]);
+          var areaB = _areaOf(_sortByAreaWithDirection(buckets[b] || [], 'desc')[0]);
           if ((areaB || 0) !== (areaA || 0)) return (areaB || 0) - (areaA || 0);
-          return (buckets[b].length || 0) - (buckets[a].length || 0);
+          return a.localeCompare(b, 'pt-BR');
         });
         var ordered = [];
         keys.forEach(function(k) {
-          var list = buckets[k] || [];
-          var bySize = {};
-          list.forEach(function(of) {
-            var sizeKey = _sizeBucketKey(of);
-            if (!bySize[sizeKey]) bySize[sizeKey] = [];
-            bySize[sizeKey].push(of);
-          });
-          Object.keys(bySize).sort(function(a, b) {
-            var areaA = _areaOf((bySize[a] || [])[0]);
-            var areaB = _areaOf((bySize[b] || [])[0]);
-            if ((areaB || 0) !== (areaA || 0)) return (areaB || 0) - (areaA || 0);
-            return a.localeCompare(b, 'pt-BR');
-          }).forEach(function(sizeKey) {
-            var ug = [];
-            var nn = [];
-            (bySize[sizeKey] || []).forEach(function(of) { (isUrgente(of) ? ug : nn).push(of); });
-            _sortByAreaDesc(ug).forEach(function(of) { ordered.push(of); });
-            _sortByAreaDesc(nn).forEach(function(of) { ordered.push(of); });
-          });
+          _sortByAreaWithDirection(buckets[k] || [], 'desc').forEach(function(of) { ordered.push(of); });
         });
+        if (!ordered.length) continue;
+        if (listEl) _ofmaqApplyDomOrder(listEl, ordered);
+        totalGrupos += _applySetupDecorations(listEl, ordered);
         var ids = ordered.map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
-        if (!ids.length) continue;
         if (!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
         window._ordemMaquinas[maq] = ids.slice();
-        await savePriorityOrder(maq, ids);
+        await savePriorityOrder(maq, ordered);
       }
       window._agrupamentoSetupAtivo = true;
       updateAgrupamentoButton();
-      _refreshOfmaqCachesFromRuntime();
-      try { if (typeof window.renderOFsPorMaquina === 'function') await window.renderOFsPorMaquina(); } catch (_) {}
-      try { window.toast('✅ OFs agrupadas por setup/cor (' + totalGrupos + ' grupos)', 'var(--green)'); } catch (_) {}
+      try { window.toast('✅ ' + totalGrupos + ' grupos de setup identificados', 'var(--green)'); } catch (_) {}
       return true;
     } catch (e) {
       try { window.toast('Erro ao agrupar OFs: ' + (e && e.message ? e.message : e), 'var(--red)'); } catch (_) {}
@@ -18505,7 +18856,8 @@ window._mbnActive = function(id) {
       window._agruparPorSetup().catch(function() {});
       return;
     }
-    try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
+    _restoreDefaultOfmaqOrderFromDom();
+    try { decorateOfmaqCards(); } catch (_) {}
   };
 
   function afterRenderOfmaq() {

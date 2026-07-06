@@ -959,9 +959,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '15';
-const SW_RUNTIME_VERSION = '20';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20';
+const PATCH_RUNTIME_VERSION = '16';
+const SW_RUNTIME_VERSION = '21';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v21';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -1212,7 +1212,7 @@ app.use((req, res, next) => {
 });
 
 function ok(res, data) {
-  res.json({ ok: true, data });
+  res.json({ ok: true, data: _sanitizeOfPayloadDeep(data) });
 }
 
 function err(res, e) {
@@ -4243,7 +4243,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       }
       imgsArr = Array.isArray(imgsArr) ? imgsArr.map((v) => String(v || '').trim()).filter(Boolean).filter(_urlValidaImagem) : [];
       const primeiraImagem = imgsArr[0] ? String(imgsArr[0] || '').trim() : '';
-      const iuRaw = String(of?.imagem_url || '').trim();
+      const ofSafe = _sanitizeOfImagesForResponse(of);
+      const iuRaw = String(ofSafe?.imagem_url || '').trim();
       const imagemUrl = _urlValidaImagem(iuRaw) ? iuRaw : (_urlValidaImagem(primeiraImagem) ? primeiraImagem : null);
 
       return {
@@ -4254,6 +4255,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         maquina_atual: maquinaNome,
         produto: produtoNome,
         imagem_url: imagemUrl,
+        imgs: ofSafe?.imgs ?? of?.imgs,
         total: total || of.total || 0,
         itens_parsed: itensArr,
         urgente: of.urgente || of.urg || false,
@@ -5083,7 +5085,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       .from('ofs').update(body).eq('id', req.params.id).select().single();
     if (error) return res.status(400).json({ ok: false, error: error.message });
     _clearOfsCaches();
-    res.json({ ok: true, data });
+    res.json({ ok: true, data: _sanitizeOfImagesForResponse(data) });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -7214,7 +7216,7 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
       } catch (_) { dataOut = null; }
     }
     _clearOfsCaches();
-    return res.json({ ok: true, data: dataOut || { id }, concluida, proxima: proxima || null, status: (dataOut && dataOut.status) || payload.status });
+    return res.json({ ok: true, data: _sanitizeOfImagesForResponse(dataOut || { id }), concluida, proxima: proxima || null, status: (dataOut && dataOut.status) || payload.status });
   } catch (e) {
     const msg = String(e?.message || e);
     return res.status(500).json({ ok: false, error: msg });
@@ -7800,7 +7802,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     _clearOfsCaches();
     return res.json({
       ok: true,
-      data: { ...dataOut, maquina_producao: maquinaProducaoOut || null },
+      data: { ..._sanitizeOfImagesForResponse(dataOut), maquina_producao: maquinaProducaoOut || null },
       concluida: true,
       proxima: null,
       status: 'Concluído',
@@ -8327,8 +8329,9 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
     if (!of) return p;
 
     const clienteOf = String(of?.cliNome || of?.clinome || of?.cliente_nome || '').trim();
-    const imgsOf = parseImgs(of?.imgs);
-    const imgOf = String(of?.imagem_url || (imgsOf[0] || '') || '').trim();
+      const ofSafe = _sanitizeOfImagesForResponse(of);
+      const imgsOf = parseImgs(ofSafe?.imgs);
+      const imgOf = String(ofSafe?.imagem_url || (imgsOf[0] || '') || '').trim();
     const prodOf = String(of?.prodDesc || of?.produto || of?.descricao || '').trim();
     const qtdOf = (of?.qtd_produzida ?? of?.quantidade ?? of?.qtd);
     const vlUnit = (of?.valor_unitario ?? of?.vunit ?? of?.vl_unit);
@@ -12498,12 +12501,25 @@ app.get('/api/gramaturas', authMiddleware, async (req, res) => {
       return res.json({ ok: true, data: [], gramaturas: [] });
     }
     const empresa_id = await _empresaUuidSafe(req);
-    const incluirInativas = String(req.query?.incluir_inativas || '').trim().toLowerCase() === 'true';
     let q = supabase.from('gramaturas').select('*').order('nome');
     if (empresa_id) q = q.eq('empresa_id', empresa_id);
-    if (!incluirInativas) q = q.eq('ativo', true);
     const { data, error } = await q;
     if (error) throw error;
+    const rows = Array.isArray(data) ? data : [];
+    const fornecedorIds = Array.from(new Set(rows.map((g) => String(g?.fornecedor_id || '').trim()).filter(Boolean)));
+    let fornecedoresMap = new Map();
+    if (fornecedorIds.length) {
+      const { data: fornecedoresRows, error: ef } = await supabase
+        .from('fornecedores')
+        .select('id,nome')
+        .in('id', fornecedorIds.slice(0, 5000));
+      if (ef) throw ef;
+      fornecedoresMap = new Map((Array.isArray(fornecedoresRows) ? fornecedoresRows : []).map((f) => [String(f?.id || '').trim(), String(f?.nome || '').trim()]));
+    }
+    const out = rows.map((g) => ({
+      ...g,
+      fornecedor_nome: fornecedoresMap.get(String(g?.fornecedor_id || '').trim()) || String(g?.fornecedor_nome || '').trim() || ''
+    }));
     _debugRuntimeWrite({
       runId: 'pre-fix',
       hypothesisId: 'B',
@@ -12511,16 +12527,16 @@ app.get('/api/gramaturas', authMiddleware, async (req, res) => {
       msg: '[DEBUG] gramaturas retornadas',
       data: {
         incluir_inativas: String(req.query?.incluir_inativas || ''),
-        total: Array.isArray(data) ? data.length : 0,
-        preview: Array.isArray(data) ? data.slice(0, 2).map((g) => ({
+        total: out.length,
+        preview: out.slice(0, 2).map((g) => ({
           id: g && g.id ? String(g.id) : '',
           nome: String(g && (g.nome || g.descricao) || ''),
           gramatura: Number(g && g.gramatura || 0) || 0,
-          ativo: !(g && g.ativo === false),
-        })) : [],
+          fornecedor_nome: String(g && g.fornecedor_nome || ''),
+        })),
       },
     });
-    return res.json({ ok: true, data: data || [], gramaturas: data || [] });
+    return res.json({ ok: true, data: out, gramaturas: out });
   } catch (e) {
     _debugRuntimeWrite({
       runId: 'pre-fix',
@@ -12539,29 +12555,35 @@ app.post('/api/gramaturas', authMiddleware, async (req, res) => {
     if (!ready) return res.status(500).json({ ok: false, error: 'tabela_gramaturas_indisponivel' });
     const empresa_id = await _empresaUuidSafe(req);
     const b = req.body || {};
-    const descricao = _gramaturaTexto(b.descricao ?? b.nome);
-    const codigo = _gramaturaTexto(b.codigo);
+    const nome = _gramaturaTexto(b.nome ?? b.descricao);
     const gramatura = Number(b.gramatura || 0) || 0;
     const valor_unitario = Number(b.valor_unitario || 0) || 0;
-    if (!descricao || !(gramatura > 0) || !(valor_unitario >= 0)) return res.status(400).json({ ok: false, error: 'dados_invalidos' });
-    const nowIso = new Date().toISOString();
+    const fornecedorRaw = String(b.fornecedor_id || '').trim();
+    const fornecedor_id = fornecedorRaw
+      ? (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(fornecedorRaw) ? fornecedorRaw : null)
+      : null;
+    if (!nome || !(gramatura > 0) || !(valor_unitario >= 0)) {
+      return res.status(400).json({ ok: false, error: 'dados_invalidos', detail: 'Campos aceitos: nome, gramatura, valor_unitario, fornecedor_id, empresa_id' });
+    }
     const payload = {
-      nome: _gramaturaNomeExibicao({ codigo, descricao, gramatura, nome: b.nome }),
-      codigo,
-      descricao,
+      nome,
       gramatura,
       valor_unitario,
-      fornecedor_id: b.fornecedor_id ? String(b.fornecedor_id || '').trim() : null,
-      fornecedor_nome: b.fornecedor_nome != null ? String(b.fornecedor_nome || '').trim() : null,
-      tipo_papel: _gramaturaTexto(b.tipo_papel),
-      faixa_utilizacao: _gramaturaTexto(b.faixa_utilizacao),
-      observacoes: _gramaturaTexto(b.observacoes),
-      empresa_id: empresa_id || null,
-      ativo: _gramaturaAtivaFromBody(b, true),
-      updated_at: nowIso,
+      fornecedor_id,
+      empresa_id: empresa_id || (b.empresa_id ? String(b.empresa_id || '').trim() : null),
     };
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'B',
+      location: 'server.js:/api/gramaturas',
+      msg: '[DEBUG] gramaturas payload insert',
+      data: { payload }
+    });
     const { data, error } = await supabase.from('gramaturas').insert([payload]).select('*').single();
-    if (error) throw error;
+    if (error) {
+      try { console.error('[gramaturas][insert]', error.message || error, payload); } catch (_) {}
+      return res.status(400).json({ ok: false, error: String(error.message || error), payload });
+    }
     return res.json({ ok: true, data });
   } catch (e) { return err(res, e); }
 });
@@ -12573,33 +12595,25 @@ app.put('/api/gramaturas/:id', authMiddleware, async (req, res) => {
     const empresa_id = await _empresaUuidSafe(req);
     const id = String(req.params.id || '').trim();
     const b = req.body || {};
-    let atual = null;
-    {
-      let qAtual = supabase.from('gramaturas').select('*').eq('id', id).maybeSingle();
-      if (empresa_id) qAtual = qAtual.eq('empresa_id', empresa_id);
-      const { data: atualData } = await qAtual;
-      atual = atualData || null;
-    }
     const payload = {};
-    if (Object.prototype.hasOwnProperty.call(b, 'nome')) payload.nome = String(b.nome || '').trim();
-    if (Object.prototype.hasOwnProperty.call(b, 'codigo')) payload.codigo = _gramaturaTexto(b.codigo);
-    if (Object.prototype.hasOwnProperty.call(b, 'descricao')) payload.descricao = _gramaturaTexto(b.descricao);
+    if (Object.prototype.hasOwnProperty.call(b, 'nome')) payload.nome = _gramaturaTexto(b.nome);
     if (Object.prototype.hasOwnProperty.call(b, 'gramatura')) payload.gramatura = Number(b.gramatura || 0) || 0;
     if (Object.prototype.hasOwnProperty.call(b, 'valor_unitario')) payload.valor_unitario = Number(b.valor_unitario || 0) || 0;
-    if (Object.prototype.hasOwnProperty.call(b, 'fornecedor_id')) payload.fornecedor_id = b.fornecedor_id ? String(b.fornecedor_id || '').trim() : null;
-    if (Object.prototype.hasOwnProperty.call(b, 'fornecedor_nome')) payload.fornecedor_nome = b.fornecedor_nome != null ? String(b.fornecedor_nome || '').trim() : null;
-    if (Object.prototype.hasOwnProperty.call(b, 'tipo_papel')) payload.tipo_papel = _gramaturaTexto(b.tipo_papel);
-    if (Object.prototype.hasOwnProperty.call(b, 'faixa_utilizacao')) payload.faixa_utilizacao = _gramaturaTexto(b.faixa_utilizacao);
-    if (Object.prototype.hasOwnProperty.call(b, 'observacoes')) payload.observacoes = _gramaturaTexto(b.observacoes);
-    if (Object.prototype.hasOwnProperty.call(b, 'ativo') || Object.prototype.hasOwnProperty.call(b, 'status')) payload.ativo = _gramaturaAtivaFromBody(b, atual?.ativo !== false);
+    if (Object.prototype.hasOwnProperty.call(b, 'fornecedor_id')) {
+      const fornecedorRaw = String(b.fornecedor_id || '').trim();
+      payload.fornecedor_id = fornecedorRaw
+        ? (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(fornecedorRaw) ? fornecedorRaw : null)
+        : null;
+    }
+    if (Object.prototype.hasOwnProperty.call(b, 'empresa_id') && !empresa_id) payload.empresa_id = String(b.empresa_id || '').trim() || null;
     if (!Object.keys(payload).length) return res.status(400).json({ ok: false, error: 'nenhum_campo' });
-    const merged = { ...(atual || {}), ...payload };
-    payload.nome = _gramaturaNomeExibicao(merged);
-    payload.updated_at = new Date().toISOString();
     let q = supabase.from('gramaturas').update(payload).eq('id', id).select('*').single();
     if (empresa_id) q = q.eq('empresa_id', empresa_id);
     const { data, error } = await q;
-    if (error) throw error;
+    if (error) {
+      try { console.error('[gramaturas][update]', error.message || error, payload); } catch (_) {}
+      return res.status(400).json({ ok: false, error: String(error.message || error), payload });
+    }
     return res.json({ ok: true, data });
   } catch (e) { return err(res, e); }
 });
@@ -12610,7 +12624,7 @@ app.delete('/api/gramaturas/:id', authMiddleware, async (req, res) => {
     if (!ready) return res.json({ ok: true });
     const empresa_id = await _empresaUuidSafe(req);
     const id = String(req.params.id || '').trim();
-    let q = supabase.from('gramaturas').update({ ativo: false }).eq('id', id);
+    let q = supabase.from('gramaturas').delete().eq('id', id);
     if (empresa_id) q = q.eq('empresa_id', empresa_id);
     const { error } = await q;
     if (error) throw error;
@@ -19447,14 +19461,14 @@ async function _jarvisFindOFByNumero(ofNum) {
     .or(`of.eq.${n},numero.eq.${n}`)
     .is('deleted_at', null)
     .limit(1);
-  if (Array.isArray(d1) && d1[0]) return d1[0];
+  if (Array.isArray(d1) && d1[0]) return _sanitizeOfImagesForResponse(d1[0]);
   const { data: d2 } = await supabase
     .from('ofs')
     .select('*')
     .or(`of.ilike.%${n}%,numero.ilike.%${n}%`)
     .is('deleted_at', null)
     .limit(1);
-  return Array.isArray(d2) && d2[0] ? d2[0] : null;
+  return Array.isArray(d2) && d2[0] ? _sanitizeOfImagesForResponse(d2[0]) : null;
 }
 
 async function _jarvisFindClienteByNome(nome) {
@@ -19618,11 +19632,55 @@ function _urlValidaImagem(url) {
   return true;
 }
 
+function _ofShouldHideImage(row) {
+  try {
+    const status = String(row?.status || '').trim().toLowerCase();
+    const dataConclusao = String(row?.data_conclusao || '').slice(0, 10);
+    if (!dataConclusao || !(status.includes('conclu') || status === 'pedido pronto')) return false;
+    const concl = new Date(dataConclusao + 'T00:00:00');
+    if (!Number.isFinite(concl.getTime())) return false;
+    const now = new Date();
+    const diffMs = now.getTime() - concl.getTime();
+    return diffMs > (10 * 24 * 60 * 60 * 1000);
+  } catch (_) {
+    return false;
+  }
+}
+
+function _sanitizeOfImagesForResponse(row) {
+  if (!row || typeof row !== 'object') return row;
+  if (!_ofShouldHideImage(row)) return row;
+  return {
+    ...row,
+    imagem_url: null,
+    imagem: null,
+    img: null,
+    imgs: Array.isArray(row?.imgs) ? [] : '[]'
+  };
+}
+
+function _sanitizeOfPayloadDeep(payload) {
+  if (Array.isArray(payload)) return payload.map((item) => _sanitizeOfPayloadDeep(item));
+  if (!payload || typeof payload !== 'object') return payload;
+  const base = _sanitizeOfImagesForResponse(payload);
+  const out = { ...base };
+  Object.keys(out).forEach((key) => {
+    const value = out[key];
+    if (Array.isArray(value)) {
+      out[key] = value.map((item) => _sanitizeOfPayloadDeep(item));
+      return;
+    }
+    if (value && typeof value === 'object') out[key] = _sanitizeOfPayloadDeep(value);
+  });
+  return out;
+}
+
 function _jarvisPickAllImgs(o) {
-  const iuRaw = String(o.imagem_url || '').trim();
+  const safeOf = _sanitizeOfImagesForResponse(o);
+  const iuRaw = String(safeOf?.imagem_url || '').trim();
   const iu = _urlValidaImagem(iuRaw) ? iuRaw : '';
   try {
-    const raw = o.imgs;
+    const raw = safeOf?.imgs;
     const arr = typeof raw === 'string' ? JSON.parse(raw || '[]') : (Array.isArray(raw) ? raw : []);
     const lista = [...(iu ? [iu] : []), ...arr.map(x => String(x || '').trim())]
       .filter(Boolean)
@@ -22893,10 +22951,21 @@ app.post('/api/ofs/reordenar', authMiddleware, async (req, res) => {
   try{
     if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
     const maquina = String(req.body?.maquina_id || req.body?.maquina || '').trim();
-    const ordemIn = Array.isArray(req.body?.ids) && req.body.ids.length ? req.body.ids : req.body?.ordem;
+    const ordensIn = Array.isArray(req.body?.ordens) ? req.body.ordens : [];
+    const ordemIn = ordensIn.length
+      ? ordensIn
+      : (Array.isArray(req.body?.ids) && req.body.ids.length ? req.body.ids : req.body?.ordem);
     let ids = [];
     if(Array.isArray(ordemIn)){
-      ids = ordemIn.map((x)=>String((typeof x === 'string' ? x : (x?.of_id || x?.id || x?.ofId || '')) || '').trim()).filter(Boolean);
+      ids = ordemIn
+        .slice()
+        .sort((a, b) => {
+          const sa = Number(typeof a === 'object' ? (a?.seq ?? a?.posicao ?? a?.ordem_maquina ?? 0) : 0) || 0;
+          const sb = Number(typeof b === 'object' ? (b?.seq ?? b?.posicao ?? b?.ordem_maquina ?? 0) : 0) || 0;
+          return sa - sb;
+        })
+        .map((x)=>String((typeof x === 'string' ? x : (x?.of_id || x?.id || x?.ofId || '')) || '').trim())
+        .filter(Boolean);
     } else if(typeof ordemIn === 'string'){
       ids = ordemIn.split(',').map((x)=>String(x||'').trim()).filter(Boolean);
     }
