@@ -6131,8 +6131,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var chapaId = String(chapa && chapa.id || '').trim();
       var cor = _resolveChapaRowColor(chapa);
       return ''
-        + '<button class="pep-btn estoque-row-color-btn' + (cor ? ' is-active' : '') + '" data-est-color="' + _escapeHtmlLite(chapaId) + '" title="' + _escapeHtmlLite(cor ? ('Alterar cor da linha (' + cor + ')') : 'Definir cor da linha') + '">'
-        + '  <span class="estoque-row-color-swatch' + (cor ? '' : ' is-none') + '"' + (cor ? (' style="background:' + _escapeHtmlLite(cor) + ';box-shadow:0 0 0 1px rgba(255,255,255,.14),0 8px 18px ' + _escapeHtmlLite(_hexToRgbaChapa(cor, 0.28)) + '"') : '') + '></span>'
+        + '<button class="pep-btn estoque-row-color-btn' + (cor ? ' is-active' : '') + '" data-est-color="' + esc(chapaId) + '" title="' + esc(cor ? ('Alterar cor da linha (' + cor + ')') : 'Definir cor da linha') + '">'
+        + '  <span class="estoque-row-color-swatch' + (cor ? '' : ' is-none') + '"' + (cor ? (' style="background:' + esc(cor) + ';box-shadow:0 0 0 1px rgba(255,255,255,.14),0 8px 18px ' + esc(_hexToRgbaChapa(cor, 0.28)) + '"') : '') + '></span>'
         + '</button>';
     }
     function _estoquePinBtnHtml(chapa) {
@@ -6141,7 +6141,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var style = pinned
         ? 'background:#f59e0b;color:#111827;border:1px solid #f59e0b;font-weight:900'
         : 'background:#0f172a;color:#f8fafc;border:1px solid rgba(255,255,255,.14)';
-      return '<button class="pep-btn" data-est-pin="' + _escapeHtmlLite(chapaId) + '" title="' + _escapeHtmlLite(pinned ? 'Remover sugestão de compra' : 'Fixar como sugestão de compra') + '" style="' + style + '">📌</button>';
+      return '<button class="pep-btn" data-est-pin="' + esc(chapaId) + '" title="' + esc(pinned ? 'Remover sugestão de compra' : 'Fixar como sugestão de compra') + '" style="' + style + '">📌</button>';
     }
     async function _estoqueSalvarCorLinha(chapa, cor) {
       var chapaId = String(chapa && chapa.id || '').trim();
@@ -6170,13 +6170,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var body = ''
         + '<div style="display:grid;gap:16px">'
         + '  <div style="display:grid;gap:6px">'
-        + '    <div style="font-size:14px;font-weight:900;color:#f8fafc">' + _escapeHtmlLite(_chapaLabelEstoque(chapa)) + '</div>'
+        + '    <div style="font-size:14px;font-weight:900;color:#f8fafc">' + esc(_chapaLabelEstoque(chapa)) + '</div>'
         + '    <div style="font-size:12px;color:#94a3b8">Escolha uma cor discreta para destacar esta linha em qualquer sessão ou computador.</div>'
         + '  </div>'
-        + '  <input id="estoque-row-color-value" type="hidden" value="' + _escapeHtmlLite(corAtual) + '">'
+        + '  <input id="estoque-row-color-value" type="hidden" value="' + esc(corAtual) + '">'
         + '  <div id="estoque-row-color-palette" class="estoque-color-palette">' + _renderPaletteChapaCor(corAtual) + '</div>'
         + '  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
-        + '    <label style="display:flex;align-items:center;gap:8px;color:#cbd5e1;font-size:12px">Cor customizada <input id="estoque-row-color-custom" type="color" value="' + _escapeHtmlLite(corAtual || '#3B82F6') + '" style="width:42px;height:32px;padding:0;border:none;background:transparent;cursor:pointer"></label>'
+        + '    <label style="display:flex;align-items:center;gap:8px;color:#cbd5e1;font-size:12px">Cor customizada <input id="estoque-row-color-custom" type="color" value="' + esc(corAtual || '#3B82F6') + '" style="width:42px;height:32px;padding:0;border:none;background:transparent;cursor:pointer"></label>'
         + '    <button type="button" class="pep-btn" id="estoque-row-color-clear" style="background:#1f2937">Remover cor</button>'
         + '  </div>'
         + '  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
@@ -6350,14 +6350,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var opts = ['<option value="">Sem grupo</option>']
         .concat(_estoqueSortGruposChapas(grupos).map(function(grupo) {
           var gid = String(grupo && grupo.id || '').trim();
-          return '<option value="' + _escapeHtmlLite(gid) + '"' + (gid === atual ? ' selected' : '') + '>' + _escapeHtmlLite(String(grupo && grupo.nome || 'Grupo')) + '</option>';
+          return '<option value="' + esc(gid) + '"' + (gid === atual ? ' selected' : '') + '>' + esc(String(grupo && grupo.nome || 'Grupo')) + '</option>';
         }))
         .concat(['<option value="__novo__">+ Novo grupo...</option>']);
       return opts.join('');
     }
     function _estoqueGrupoSelectHtml(chapa, grupos) {
       var chapaId = String(chapa && chapa.id || '').trim();
-      return '<select class="estoque-row-group-select" data-est-group="' + _escapeHtmlLite(chapaId) + '">' + _estoqueGrupoOptionsHtml(chapa, grupos) + '</select>';
+      return '<select class="estoque-row-group-select" data-est-group="' + esc(chapaId) + '">' + _estoqueGrupoOptionsHtml(chapa, grupos) + '</select>';
     }
     function _estoqueLinhaTabelaHtml(chapa, grupos) {
       var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
@@ -6423,8 +6423,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var gid = String(grupo && grupo.id || '').trim();
         var cor = _normalizeChapaRowColor(grupo && grupo.cor || '') || '#3B82F6';
         return '<div class="estoque-grupo-card">'
-          + '<div class="estoque-grupo-card-head"><span class="estoque-grupo-card-swatch" style="background:' + _escapeHtmlLite(cor) + ';box-shadow:0 10px 22px ' + _escapeHtmlLite(_hexToRgbaChapa(cor, 0.26)) + '"></span><div><div class="estoque-grupo-card-title">' + _escapeHtmlLite(String(grupo && grupo.nome || 'Grupo')) + '</div><div class="estoque-grupo-card-sub">Ordem: ' + _escapeHtmlLite(String(Math.trunc(Number(grupo && grupo.ordem || 0) || 0))) + '</div></div></div>'
-          + '<div class="estoque-grupo-card-actions"><button type="button" class="pep-btn" data-est-grupo-edit="' + _escapeHtmlLite(gid) + '">Editar</button><button type="button" class="pep-btn danger" data-est-grupo-del="' + _escapeHtmlLite(gid) + '">Excluir</button></div>'
+          + '<div class="estoque-grupo-card-head"><span class="estoque-grupo-card-swatch" style="background:' + esc(cor) + ';box-shadow:0 10px 22px ' + esc(_hexToRgbaChapa(cor, 0.26)) + '"></span><div><div class="estoque-grupo-card-title">' + esc(String(grupo && grupo.nome || 'Grupo')) + '</div><div class="estoque-grupo-card-sub">Ordem: ' + esc(String(Math.trunc(Number(grupo && grupo.ordem || 0) || 0))) + '</div></div></div>'
+          + '<div class="estoque-grupo-card-actions"><button type="button" class="pep-btn" data-est-grupo-edit="' + esc(gid) + '">Editar</button><button type="button" class="pep-btn danger" data-est-grupo-del="' + esc(gid) + '">Excluir</button></div>'
           + '</div>';
       }).join('') + '</div>';
     }
@@ -6550,7 +6550,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
       resetForm(null);
       recarregar(false).catch(function(err) {
-        if (listaEl) listaEl.innerHTML = '<div class="estoque-modal-empty">Erro ao carregar grupos: ' + _escapeHtmlLite(String(err && err.message || err)) + '</div>';
+        if (listaEl) listaEl.innerHTML = '<div class="estoque-modal-empty">Erro ao carregar grupos: ' + esc(String(err && err.message || err)) + '</div>';
       });
     }
     function _renderSugestoesCompraTopo(sugestoes) {
@@ -6562,7 +6562,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '      <div style="font-size:18px;font-weight:900;color:#f8fafc">💡 Sugestões de Compra (fixadas no estoque)</div>'
         + '      <div style="font-size:12px;color:#94a3b8">Itens marcados com 📌 no estoque e ainda pendentes de compra.</div>'
         + '    </div>'
-        + '    <div style="font-size:12px;color:#cbd5e1">Pendentes: <strong style="color:#fff">' + _escapeHtmlLite(String(lista.length)) + '</strong></div>'
+        + '    <div style="font-size:12px;color:#cbd5e1">Pendentes: <strong style="color:#fff">' + esc(String(lista.length)) + '</strong></div>'
         + '  </div>'
         + (lista.length ? (
           '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">' + lista.map(function(item) {
@@ -6570,14 +6570,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             return ''
               + '<div style="background:#111827;border:1px solid rgba(245,158,11,.35);border-left:4px solid #f59e0b;border-radius:14px;padding:14px;display:grid;gap:10px">'
               + '  <div style="display:grid;gap:4px">'
-              + '    <div style="font-size:14px;font-weight:900;color:#f8fafc">' + _escapeHtmlLite(chapa.fornecedor || 'Sem fornecedor') + '</div>'
-              + '    <div style="font-size:13px;color:#e5e7eb">' + _escapeHtmlLite(chapa.nomenclatura || chapa.nome_uso || chapa.nome || 'Sem nomenclatura') + '</div>'
-              + '    <div style="font-size:12px;color:#94a3b8">' + _escapeHtmlLite([chapa.tamanho || 'Sem tamanho', chapa.gramatura ? (String(chapa.gramatura) + ' g/m²') : 'Sem gramatura'].join(' · ')) + '</div>'
-              + '    <div style="font-size:12px;color:#cbd5e1">Quantidade atual: <strong style="color:#fff">' + _escapeHtmlLite(String(_estoqueQtdAtualChapa(chapa))) + '</strong></div>'
+              + '    <div style="font-size:14px;font-weight:900;color:#f8fafc">' + esc(chapa.fornecedor || 'Sem fornecedor') + '</div>'
+              + '    <div style="font-size:13px;color:#e5e7eb">' + esc(chapa.nomenclatura || chapa.nome_uso || chapa.nome || 'Sem nomenclatura') + '</div>'
+              + '    <div style="font-size:12px;color:#94a3b8">' + esc([chapa.tamanho || 'Sem tamanho', chapa.gramatura ? (String(chapa.gramatura) + ' g/m²') : 'Sem gramatura'].join(' · ')) + '</div>'
+              + '    <div style="font-size:12px;color:#cbd5e1">Quantidade atual: <strong style="color:#fff">' + esc(String(_estoqueQtdAtualChapa(chapa))) + '</strong></div>'
               + '  </div>'
               + '  <div style="display:flex;gap:8px;flex-wrap:wrap">'
-              + '    <button class="pep-btn primary" type="button" data-sug-buy="' + _escapeHtmlLite(String(item && item.id || '')) + '">✅ Comprar</button>'
-              + '    <button class="pep-btn" type="button" data-sug-ignore="' + _escapeHtmlLite(String(item && item.chapa_id || (chapa && chapa.id) || '')) + '" style="background:#1f2937">Ignorar</button>'
+              + '    <button class="pep-btn primary" type="button" data-sug-buy="' + esc(String(item && item.id || '')) + '">✅ Comprar</button>'
+              + '    <button class="pep-btn" type="button" data-sug-ignore="' + esc(String(item && item.chapa_id || (chapa && chapa.id) || '')) + '" style="background:#1f2937">Ignorar</button>'
               + '  </div>'
               + '</div>';
           }).join('') + '</div>'
@@ -6608,14 +6608,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var body = ''
         + '<div style="display:grid;gap:14px">'
         + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">'
-        + '    <div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Fornecedor</div><div style="font-weight:800;color:#f8fafc">' + _escapeHtmlLite(chapa.fornecedor || '—') + '</div></div>'
-        + '    <div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Nomenclatura</div><div style="font-weight:800;color:#f8fafc">' + _escapeHtmlLite(chapa.nomenclatura || chapa.nome_uso || chapa.nome || '—') + '</div></div>'
-        + '    <div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Tamanho</div><div style="font-weight:800;color:#f8fafc">' + _escapeHtmlLite(chapa.tamanho || '—') + '</div></div>'
-        + '    <div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Gramatura</div><div style="font-weight:800;color:#f8fafc">' + _escapeHtmlLite(chapa.gramatura || '—') + '</div></div>'
+        + '    <div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Fornecedor</div><div style="font-weight:800;color:#f8fafc">' + esc(chapa.fornecedor || '—') + '</div></div>'
+        + '    <div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Nomenclatura</div><div style="font-weight:800;color:#f8fafc">' + esc(chapa.nomenclatura || chapa.nome_uso || chapa.nome || '—') + '</div></div>'
+        + '    <div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Tamanho</div><div style="font-weight:800;color:#f8fafc">' + esc(chapa.tamanho || '—') + '</div></div>'
+        + '    <div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Gramatura</div><div style="font-weight:800;color:#f8fafc">' + esc(chapa.gramatura || '—') + '</div></div>'
         + '  </div>'
         + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">'
         + '    <label style="display:grid;gap:6px"><span style="font-size:12px;color:#cbd5e1">Quantidade</span><input id="estoque-sugestao-qtd" class="estoque-modal-input" type="number" min="1" step="1" value="1"></label>'
-        + '    <label style="display:grid;gap:6px"><span style="font-size:12px;color:#cbd5e1">Valor unitário</span><input id="estoque-sugestao-vu" class="estoque-modal-input" type="number" min="0" step="0.00001" value="' + _escapeHtmlLite(String(Number(chapa.valor_unitario || chapa.val || 0) || 0)) + '"></label>'
+        + '    <label style="display:grid;gap:6px"><span style="font-size:12px;color:#cbd5e1">Valor unitário</span><input id="estoque-sugestao-vu" class="estoque-modal-input" type="number" min="0" step="0.00001" value="' + esc(String(Number(chapa.valor_unitario || chapa.val || 0) || 0)) + '"></label>'
         + '  </div>'
         + '  <div style="font-size:12px;color:#94a3b8">A confirmação marca a sugestão como comprada e registra a entrada no estoque desta chapa.</div>'
         + '</div>';
