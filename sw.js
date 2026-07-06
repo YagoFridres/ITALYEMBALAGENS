@@ -42,6 +42,18 @@ self.addEventListener('fetch', function(event) {
   var url = event.request.url;
   var metodo = event.request.method;
 
+  if (url.includes('/api/_debug/runtime')) {
+    event.respondWith(
+      fetch(event.request).catch(function() {
+        return new Response(
+          JSON.stringify({ ok: true, skipped: true, debug: 'disabled' }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      })
+    );
+    return;
+  }
+
   if (url.includes('/api/')) {
     event.respondWith(
       fetch(event.request).catch(function(e) {

@@ -501,47 +501,9 @@ try {
 (function patchRuntimeDebugBridge() {
   if (window.__patchRuntimeDebugBridgeInstalled) return;
   window.__patchRuntimeDebugBridgeInstalled = true;
-  function send(hypothesisId, msg, data) {
-    try {
-      fetch('/api/_debug/runtime', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        keepalive: true,
-        body: JSON.stringify({
-          sessionId: 'erp-runtime-regressions',
-          runId: 'pre-fix',
-          hypothesisId: String(hypothesisId || ''),
-          location: 'patch.js',
-          msg: '[DEBUG] ' + String(msg || ''),
-          data: data && typeof data === 'object' ? data : {},
-          ts: Date.now()
-        })
-      }).catch(function() {});
-    } catch (_) {}
-  }
+  function send() { return null; }
+  try { window.__erpRuntimeDebugDisabled = true; } catch (_) {}
   try { window.__erpRuntimeDebug = send; } catch (_) {}
-  try {
-    window.addEventListener('error', function(ev) {
-      send('A', 'window.error capturado', {
-        message: String(ev && ev.message || ''),
-        filename: String(ev && ev.filename || ''),
-        lineno: Number(ev && ev.lineno || 0) || 0,
-        colno: Number(ev && ev.colno || 0) || 0,
-        stack: String(ev && ev.error && ev.error.stack || ''),
-        lastAction: String(window.__erpRuntimeLastAction || '')
-      });
-    }, true);
-  } catch (_) {}
-  try {
-    window.addEventListener('unhandledrejection', function(ev) {
-      var reason = ev && ev.reason;
-      send('A', 'window.unhandledrejection capturado', {
-        message: String(reason && reason.message || reason || ''),
-        stack: String(reason && reason.stack || ''),
-        lastAction: String(window.__erpRuntimeLastAction || '')
-      });
-    });
-  } catch (_) {}
 })();
 
 (function() {
