@@ -4545,23 +4545,121 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return '001';
   };
 
+  function _ensureSalvarOfRapidaHooksInfra() {
+    try {
+      window.__salvarOfRapida_hooks__ = Array.isArray(window.__salvarOfRapida_hooks__) ? window.__salvarOfRapida_hooks__ : [];
+      if (!window.__salvarOfRapida_BASE__ && typeof window.salvarOfRapida === 'function' && !window.salvarOfRapida.__salvarOfRapidaDispatcher) {
+        window.__salvarOfRapida_BASE__ = window.salvarOfRapida;
+      }
+      if (!window.__salvarOfRapida_BASE__) return false;
+      if (!window.__salvarOfRapida_final_definida__) {
+        var finalFn = async function() {
+          var hooks = Array.isArray(window.__salvarOfRapida_hooks__) ? window.__salvarOfRapida_hooks__.slice() : [];
+          hooks.sort(function(a, b) {
+            var ao = Number(a && a.order || 0) || 0;
+            var bo = Number(b && b.order || 0) || 0;
+            if (ao !== bo) return ao - bo;
+            return String(a && a.id || '').localeCompare(String(b && b.id || ''));
+          });
+          var args = Array.prototype.slice.call(arguments);
+          var meta = {
+            args: args,
+            context: this,
+            editandoIdAntes: String(window._ofRapidaEditandoId || '').trim(),
+            ts: Date.now(),
+          };
+          var result;
+          var handled = false;
+          for (var i = 0; i < hooks.length; i += 1) {
+            var hook = hooks[i];
+            if (!hook || hook.phase !== 'override' || typeof hook.fn !== 'function') continue;
+            try {
+              var overrideResult = await hook.fn.call(this, meta);
+              if (overrideResult && overrideResult.__salvarOfRapidaHandled__) {
+                result = overrideResult.result;
+                handled = true;
+                break;
+              }
+            } catch (e) {
+              try { console.error('[salvarOfRapida][override hook]', hook.id, e); } catch (_) {}
+            }
+          }
+          if (!handled) {
+            for (var j = 0; j < hooks.length; j += 1) {
+              var beforeHook = hooks[j];
+              if (!beforeHook || beforeHook.phase !== 'before' || typeof beforeHook.fn !== 'function') continue;
+              try {
+                var beforeResult = await beforeHook.fn.call(this, meta);
+                if (beforeResult && beforeResult.__salvarOfRapidaHandled__) {
+                  return beforeResult.result;
+                }
+              } catch (e) {
+                try { console.error('[salvarOfRapida][before hook]', beforeHook.id, e); } catch (_) {}
+              }
+            }
+            result = await window.__salvarOfRapida_BASE__.apply(this, args);
+          }
+          meta.result = result;
+          meta.handled = handled;
+          for (var k = 0; k < hooks.length; k += 1) {
+            var afterHook = hooks[k];
+            if (!afterHook || afterHook.phase !== 'after' || typeof afterHook.fn !== 'function') continue;
+            try {
+              await afterHook.fn.call(this, meta);
+            } catch (e) {
+              try { console.error('[salvarOfRapida][after hook]', afterHook.id, e); } catch (_) {}
+            }
+          }
+          return result;
+        };
+        finalFn.__salvarOfRapidaDispatcher = true;
+        window.__salvarOfRapida_final_fn__ = finalFn;
+        window.salvarOfRapida = finalFn;
+        window.__salvarOfRapida_final_definida__ = true;
+      } else if (window.__salvarOfRapida_final_fn__ && window.salvarOfRapida !== window.__salvarOfRapida_final_fn__) {
+        window.salvarOfRapida = window.__salvarOfRapida_final_fn__;
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function _salvarOfRapidaHasHook(id) {
+    var targetId = String(id || '').trim();
+    return !!(targetId && Array.isArray(window.__salvarOfRapida_hooks__) && window.__salvarOfRapida_hooks__.some(function(item) {
+      return String(item && item.id || '').trim() === targetId;
+    }));
+  }
+
+  function _salvarOfRapidaRegisterHook(id, phase, fn, order) {
+    var targetId = String(id || '').trim();
+    if (!targetId || typeof fn !== 'function') return false;
+    if (!_ensureSalvarOfRapidaHooksInfra()) return false;
+    if (_salvarOfRapidaHasHook(targetId)) return true;
+    window.__salvarOfRapida_hooks__.push({
+      id: targetId,
+      phase: String(phase || 'after'),
+      fn: fn,
+      order: Number(order || 0) || 0,
+    });
+    return true;
+  }
+
+  function _salvarOfRapidaHandled(result) {
+    return { __salvarOfRapidaHandled__: true, result: result };
+  }
+
   // ── PATCH 3: garantir numero no payload ao salvar OF Rapida ───
-  var _origSalvar1 = window.salvarOfRapida;
-  var _origSalvar2 = window.salvarNovaOfRapida;
-  var _wrapSalvar = function(orig) {
-    return function() {
-      var el = document.getElementById('of-r-numero');
-      var num = window._ofRapidaNumero ||
-                (el ? (el.value || el.textContent || '').replace(/[^0-9]/g,'') : '') ||
-                '001';
-      window._ofRapidaNumero = num;
-      if (el) { if (el.tagName === 'INPUT') el.value = num; else el.textContent = num; }
-      console.log('[PATCH] salvar OF Rapida numero:', num);
-      if (typeof orig === 'function') return orig.apply(this, arguments);
-    };
-  };
-  if (typeof _origSalvar1 === 'function') window.salvarOfRapida = _wrapSalvar(_origSalvar1);
-  if (typeof _origSalvar2 === 'function') window.salvarNovaOfRapida = _wrapSalvar(_origSalvar2);
+  _salvarOfRapidaRegisterHook('__patch_of_rapida_numero__', 'before', function() {
+    var el = document.getElementById('of-r-numero');
+    var num = window._ofRapidaNumero ||
+              (el ? (el.value || el.textContent || '').replace(/[^0-9]/g,'') : '') ||
+              '001';
+    window._ofRapidaNumero = num;
+    if (el) { if (el.tagName === 'INPUT') el.value = num; else el.textContent = num; }
+    try { console.log('[PATCH] salvar OF Rapida numero:', num); } catch (_) {}
+  }, 10);
 
   // ── PATCH 4: carregarPassagensHoje com filtros ─────────────────
   window.carregarPassagensHoje = async function(opts) {
@@ -10663,6 +10761,27 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function patchSalvar(fnName) {
+    if (fnName === 'salvarOfRapida') {
+      _salvarOfRapidaRegisterHook('__patch_cliente_especial_of_rapida__', 'before', async function() {
+        var el = document.getElementById('of-r-cliente');
+        if (!el) return;
+        var cli = null;
+        try { cli = await ensureClienteId(el); } catch (_) { cli = syncClienteOfRapida(el); }
+        var cliId = String((el.dataset && el.dataset.clienteId) ? el.dataset.clienteId : '').trim();
+        if (!cliId) {
+          try { alert('Selecione um cliente válido da lista.'); } catch (_) {}
+          try { el.focus(); el.select && el.select(); } catch (_) {}
+          return _salvarOfRapidaHandled(undefined);
+        }
+        var nomeCanonico = String((cli && (cli.nome || cli.razao_social || cli.razao)) || el.dataset.clienteNome || el.value || '').trim();
+        if (nomeCanonico) el.value = nomeCanonico;
+        try {
+          var hiddenCli = document.querySelector('#f-cli-id, input[name="cli_id"], input[name="cliId"]');
+          if (hiddenCli) hiddenCli.value = cliId;
+        } catch (_) {}
+      }, 20);
+      return;
+    }
     var orig = window[fnName];
     if (typeof orig !== 'function' || orig._patchClienteEspecial) return;
     var wrapped = async function() {
@@ -10748,131 +10867,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function patchSalvarOfRapida() {
-    if (typeof window.salvarOfRapida !== 'function') return;
-    if (window.salvarOfRapida._patchEditToPatch) return;
-    var orig = window.salvarOfRapida;
-    window.salvarOfRapida = async function() {
-      var editId = String(window._ofRapidaEditandoId || '').trim();
-      if (!editId) return orig.apply(this, arguments);
-
-      var btn = document.getElementById('btn-salvar-of-rapida');
-      try { if (btn) { btn.textContent = 'Salvando...'; btn.disabled = true; } } catch (_) {}
-      try {
-        var clienteNome = String(document.getElementById('of-r-cliente')?.value || '').trim();
-        var produto = String(document.getElementById('of-r-produto')?.value || '').trim();
-        var empId = String(document.getElementById('of-r-empresa')?.value || 'E1').trim() || 'E1';
-        var vendId = String(document.getElementById('of-r-vendedor')?.value || '').trim();
-        var qtd = Math.trunc(Number(document.getElementById('of-r-qtd')?.value || 0) || 0);
-        var vlunit = parseFloat(String(document.getElementById('of-r-vlunit')?.value || '0').replace(',', '.')) || 0;
-        var totalManualEl = document.getElementById('of-r-total');
-        var total = parseFloat(String(totalManualEl?.value || '0').replace(',', '.')) || (qtd * vlunit);
-        var ref = String(document.getElementById('of-r-ref')?.value || '').trim();
-        var comp = parseFloat(String(document.getElementById('of-r-comp')?.value || '').replace(',', '.')) || 0;
-        var larg = parseFloat(String(document.getElementById('of-r-larg')?.value || '').replace(',', '.')) || 0;
-        var entrega = String(document.getElementById('of-r-entrega')?.value || '').slice(0, 10);
-        var urgente = !!document.getElementById('of-r-urgente')?.checked;
-        var maquinaSel = String(document.getElementById('of-r-maquina')?.value || '').trim();
-        var dataAgend = String(window._ofRapidaDataAgendamento || '').slice(0, 10);
-        var agendamentoAuto = !!(maquinaSel && dataAgend);
-
-        var erros = [];
-        if (!clienteNome) erros.push('Cliente');
-        if (!produto) erros.push('Produto');
-        if (!(qtd > 0)) erros.push('Quantidade');
-        if (!(vlunit > 0)) erros.push('Valor Unit.');
-        if (!(larg > 0 && comp > 0)) erros.push('Dimensões (L×C)');
-        if (!maquinaSel) erros.push('Máquina');
-        if (!entrega) erros.push('Data de Entrega');
-        if (erros.length) {
-          alert('Preencha: ' + erros.join(', '));
-          return;
-        }
-
-        var cli = (Array.isArray(window.CLIENTES) ? window.CLIENTES : (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES) ? CLIENTES : [])).find(function(c) {
-          var n = String(c?.nome || c?.razao_social || c?.razao || '').trim();
-          if (!n) return false;
-          return n.toLowerCase() === clienteNome.toLowerCase();
-        }) || null;
-        var cliId = String(cli?.id || '').trim();
-        if (!cliId) {
-          alert('Selecione um cliente válido da lista.');
-          return;
-        }
-
-        var coresPayload = [];
-        try {
-          if (typeof window.coresPayloadFromSelecionadas === 'function') coresPayload = window.coresPayloadFromSelecionadas(window.coresSelecionadasOFRapida);
-        } catch (_) {}
-
-        var payload = {
-          cli_id: cliId,
-          cliId: cliId,
-          cliente_id: cliId,
-          vendedor_id: vendId,
-          vendId: vendId,
-          vend_id: vendId,
-          prodDesc: produto,
-          descricao: produto,
-          produto: produto,
-          quantidade: qtd,
-          qtd: qtd,
-          valor_total: total,
-          valor_venda: total,
-          ent: entrega,
-          data_entrega: entrega,
-          urg: urgente,
-          urgente: urgente,
-          emp_id: empId,
-          empId: empId,
-          caixa_comprimento: comp,
-          caixa_largura: larg,
-          dim_comprimento: comp,
-          dim_largura: larg,
-          cores_impressao: coresPayload,
-          itens: [{
-            desc: produto,
-            descricao: produto,
-            ref: ref,
-            qtd: qtd,
-            quantidade: qtd,
-            vunit: vlunit,
-            valor_unitario: vlunit,
-            valor_total: total,
-            maquina: maquinaSel || '',
-            maquinas_fluxo: [],
-            maquinas_fluxo_ids: [],
-          }],
-          maquina_agendada: maquinaSel || undefined,
-          data_agendamento: agendamentoAuto ? dataAgend : undefined,
-          agendamento_auto: agendamentoAuto ? true : undefined,
-          fluxo_maquinas: maquinaSel ? [maquinaSel] : [],
-          maq: maquinaSel ? [maquinaSel] : undefined,
-        };
-
-        var r2 = null;
-        if (typeof window.apiFetch === 'function') {
-          r2 = await window.apiFetch('/api/ofs/' + encodeURIComponent(editId), { method: 'PATCH', body: payload });
-        } else {
-          r2 = await fetch('/api/ofs/' + encodeURIComponent(editId), { method: 'PATCH', headers: Object.assign({ 'Content-Type': 'application/json' }, tokenHeaders()), body: JSON.stringify(payload) });
-        }
-        var d2 = r2 ? await r2.json().catch(function() { return null; }) : null;
-        if (!(r2 && r2.ok) || (d2 && d2.ok === false)) throw new Error(d2?.error || d2?.message || 'Erro ao salvar');
-
-        window._ofRapidaEditandoId = null;
-        try { if (typeof window.fecharNovaOfRapida === 'function') window.fecharNovaOfRapida(); } catch (_) {}
-        try { window.toast('OF atualizada com sucesso! ✅', 'var(--green)'); } catch (_) {}
-        try { if (typeof window.carregarOFs === 'function') window.carregarOFs(); } catch (_) {}
-        try { if (typeof window.renderPCP === 'function') window.renderPCP(); } catch (_) {}
-        try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
-        return;
-      } catch (e) {
-        try { window.toast('Erro ao atualizar OF: ' + String(e?.message || e), 'var(--red)'); } catch (_) {}
-        return;
-      } finally {
-        try { if (btn) { btn.textContent = '💾 Salvar Alterações'; btn.disabled = false; } } catch (_) {}
-      }
-    };
-    window.salvarOfRapida._patchEditToPatch = true;
+    _salvarOfRapidaRegisterHook('__patch_edicao_of_rapida__', 'override', async function(meta) {
+      if (!String(window._ofRapidaEditandoId || '').trim()) return null;
+      if (typeof window.salvarEdicaoOf !== 'function') return _salvarOfRapidaHandled(undefined);
+      var result = await window.salvarEdicaoOf.apply(this, meta && meta.args ? meta.args : []);
+      return _salvarOfRapidaHandled(result);
+    }, 5);
   }
 
   function patchAbrirModalOF() {
@@ -10954,7 +10954,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { tick(); } catch (_) {}
       try {
         var abriuOk = !!(window.abrirModalOF && window.abrirModalOF._patchToOfRapidaEdit);
-        var salvarOk = !!(window.salvarOfRapida && window.salvarOfRapida._patchSalvarEdicaoOf);
+        var salvarOk = !!(window.__salvarOfRapida_final_definida__ && _salvarOfRapidaHasHook('__patch_edicao_of_rapida__'));
         if (abriuOk && salvarOk && window.__patchOfRapidaEditInterval) {
           clearInterval(window.__patchOfRapidaEditInterval);
           window.__patchOfRapidaEditInterval = null;
@@ -11368,14 +11368,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   };
 
   function wrapSalvarOfRapidaEdicao() {
-    if (typeof window.salvarOfRapida !== 'function') return;
-    if (window.salvarOfRapida._patchSalvarEdicaoOf) return;
-    var orig = window.salvarOfRapida;
-    window.salvarOfRapida = async function() {
-      if (String(window._ofRapidaEditandoId || '').trim()) return window.salvarEdicaoOf();
-      return orig.apply(this, arguments);
-    };
-    window.salvarOfRapida._patchSalvarEdicaoOf = true;
+    patchSalvarOfRapida();
   }
 
   function patchAbrirModalNumero() {
@@ -20617,6 +20610,17 @@ window._mbnActive = function(id) {
 
   function _wrapNotifFn(fnName, mensagem, tipo, shouldSkip) {
     try {
+      if (fnName === 'salvarOfRapida') {
+        _salvarOfRapidaRegisterHook('__patch_notificacao_of_rapida__', 'after', async function(meta) {
+          var skip = false;
+          try { skip = typeof shouldSkip === 'function' ? !!shouldSkip(meta) : false; } catch (_) {}
+          if (skip) return;
+          setTimeout(function() {
+            try { window._notificacaoOF(mensagem, tipo); } catch (_) {}
+          }, 500);
+        }, 100);
+        return;
+      }
       var orig = window[fnName];
       if (typeof orig !== 'function' || orig._patchNotifOfWrapped) return;
       var wrapped = async function() {
@@ -20636,7 +20640,9 @@ window._mbnActive = function(id) {
   }
 
   function _patchNotificacoesOF() {
-    _wrapNotifFn('salvarOfRapida', 'OF Criada com Sucesso!', 'criada', function() { return !!window._ofRapidaEditandoId; });
+    _wrapNotifFn('salvarOfRapida', 'OF Criada com Sucesso!', 'criada', function(meta) {
+      return !!(meta && meta.editandoIdAntes);
+    });
     _wrapNotifFn('salvarNovaOfRapida', 'OF Criada com Sucesso!', 'criada');
     _wrapNotifFn('salvarOFRapida', 'OF Criada com Sucesso!', 'criada');
     _wrapNotifFn('salvarNovaOF', 'OF Criada com Sucesso!', 'criada');
