@@ -8448,52 +8448,58 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       st.id = 'cp-dashboard-v2-style';
       st.textContent = ''
         + '.cpv2{padding:18px;color:var(--text1,#e5e7eb)}'
-        + '.cpv2-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}'
         + '.cpv2-title{font-size:24px;font-weight:800;color:#f8fafc}'
         + '.cpv2-sub{font-size:12px;color:#94a3b8;margin-top:4px}'
-        + '.cpv2-actions,.cpv2-filters,.cpv2-periods{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
+        + '.cpv2-topline{display:grid;grid-template-columns:minmax(260px,1fr) minmax(320px,auto);gap:12px;align-items:stretch;margin-bottom:14px}'
+        + '.cpv2-topbox,.cpv2-table-panel,.cpv2-panel{background:linear-gradient(135deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:18px}'
+        + '.cpv2-box-title{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;font-weight:800;margin-bottom:10px}'
+        + '.cpv2-box-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}'
         + '.cpv2-btn,.cpv2-select,.cpv2-search{background:#0f172a;border:1px solid #1e293b;color:#e5e7eb;border-radius:10px;padding:10px 12px;font-size:13px}'
         + '.cpv2-btn{cursor:pointer;font-weight:700}'
-        + '.cpv2-btn.is-active{background:#1e293b;border-color:#334155;color:#fff}'
-        + '.cpv2-btn.refresh{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#2563eb}'
-        + '.cpv2-btn.print{background:linear-gradient(135deg,#7c3aed,#5b21b6);border-color:#7c3aed}'
-        + '.cpv2-summary{display:grid;grid-template-columns:repeat(5,minmax(180px,1fr));gap:12px;margin:14px 0;align-items:stretch}'
-        + '.cpv2-card{background:linear-gradient(135deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:20px 24px;min-height:112px;display:flex;flex-direction:column;justify-content:center;min-width:0}'
-        + '.cpv2-card-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#64748b;font-weight:800}'
-        + '.cpv2-card-value{font-size:28px;font-weight:900;color:#f8fafc;margin-top:10px;line-height:1.15;word-break:break-word}'
-        + '.cpv2-card-sub{font-size:12px;color:#94a3b8;margin-top:8px}'
+        + '.cpv2-btn.print{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#2563eb}'
+        + '.cpv2-btn.primary{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#2563eb}'
+        + '.cpv2-select{min-width:120px}'
+        + '.cpv2-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:0 0 14px 0;align-items:stretch}'
+        + '.cpv2-card{background:linear-gradient(135deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:18px;min-height:136px;display:flex;flex-direction:column;justify-content:space-between;min-width:0}'
+        + '.cpv2-card.is-action{cursor:pointer;transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease;text-align:left;font:inherit;appearance:none;-webkit-appearance:none}'
+        + '.cpv2-card.is-action:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.42);box-shadow:0 10px 26px rgba(15,23,42,.28)}'
+        + '.cpv2-card-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#64748b;font-weight:800;line-height:1.5}'
+        + '.cpv2-card-value{font-size:26px;font-weight:900;color:#f8fafc;margin-top:10px;line-height:1.15;word-break:break-word}'
+        + '.cpv2-card-sub{font-size:12px;color:#94a3b8;margin-top:8px;line-height:1.45}'
         + '.cpv2-card-note{font-size:11px;color:#64748b;margin-top:6px;line-height:1.4}'
-        + '.cpv2-compare-up{color:#ef4444}.cpv2-compare-down{color:#22c55e}'
-        + '.cpv2-ranks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px}'
-        + '.cpv2-panel{background:linear-gradient(135deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:18px}'
-        + '.cpv2-panel-title{font-size:16px;font-weight:800;color:#f8fafc;margin-bottom:14px}'
-        + '.cpv2-rank-item{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin-bottom:12px}'
-        + '.cpv2-rank-name{font-size:13px;color:#e5e7eb;font-weight:700}'
-        + '.cpv2-rank-meta{font-size:11px;color:#94a3b8}'
-        + '.cp-ranking-track{height:8px;border-radius:4px;background:#1e293b;overflow:hidden;margin-top:6px}'
-        + '.cp-ranking-bar{height:8px;border-radius:4px;background:linear-gradient(90deg,#ef4444,#f97316);transition:width .6s ease}'
-        + '.cp-rank-op-bar{background:linear-gradient(90deg,#f59e0b,#fbbf24)}'
-        + '.cpv2-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(239,68,68,.16);color:#fecaca;border:1px solid rgba(239,68,68,.22)}'
-        + '.cpv2-table-panel{background:linear-gradient(135deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:18px;min-height:0}'
-        + '.cpv2-table-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}'
-        + '.cpv2-toolbar-group{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
-        + '.cpv2-table-wrap{overflow:auto;max-height:min(58vh,calc(100vh - 320px));border:1px solid rgba(148,163,184,.12);border-radius:12px;min-height:0;overscroll-behavior:contain}'
+        + '.cpv2-card-cta{display:inline-flex;align-items:center;gap:6px;color:#93c5fd;font-weight:800;font-size:12px;margin-top:10px}'
+        + '.cpv2-search-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px 0}'
+        + '.cpv2-search{flex:1 1 480px;min-width:260px}'
+        + '.cpv2-section-title{font-size:18px;font-weight:800;color:#f8fafc;margin:0 0 12px 0}'
+        + '.cpv2-table-wrap{overflow:auto;overflow-y:auto;max-height:min(62vh,calc(100vh - 300px));border:1px solid rgba(148,163,184,.12);border-radius:12px;min-height:0;overscroll-behavior:contain;background:#0b1120}'
         + '.cpv2-table-wrap::-webkit-scrollbar{width:10px;height:10px}'
         + '.cpv2-table-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72)}'
         + '.cpv2-table-wrap::-webkit-scrollbar-thumb{background:rgba(100,116,139,.58);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
         + '.cpv2-table{width:100%;border-collapse:collapse}'
-        + '.cpv2-table thead th{background:#0f172a;text-transform:uppercase;font-size:11px;color:#64748b;letter-spacing:.08em;padding:10px 8px;border-bottom:1px solid #1e293b;text-align:left}'
-        + '.cpv2-table tbody tr{border-bottom:1px solid #1e293b;cursor:pointer}'
+        + '.cpv2-table thead th{position:sticky;top:0;z-index:2;background:#0f172a;text-transform:uppercase;font-size:11px;color:#64748b;letter-spacing:.08em;padding:12px 10px;border-bottom:1px solid #1e293b;text-align:left}'
+        + '.cpv2-table tbody tr{border-bottom:1px solid #1e293b}'
+        + '.cpv2-table tbody tr:nth-child(odd){background:rgba(30,41,59,.28)}'
+        + '.cpv2-table tbody tr:nth-child(even){background:rgba(15,23,42,.6)}'
         + '.cpv2-table tbody tr:hover{background:#1e293b}'
-        + '.cpv2-table tbody tr.expandida{background:#1a2035}'
-        + '.cpv2-table td{padding:10px 8px;font-size:12px;color:#e5e7eb;vertical-align:top}'
+        + '.cpv2-table td{padding:11px 10px;font-size:12px;color:#e5e7eb;vertical-align:top}'
         + '.cpv2-mach-badge{display:inline-flex;align-items:center;background:#1e3a5f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:800;margin:2px 4px 2px 0}'
         + '.cpv2-op-chip{display:inline-flex;align-items:center;background:#2d1f0e;color:#f59e0b;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:800;margin:2px 4px 2px 0}'
         + '.cpv2-empty{padding:48px 18px;text-align:center;color:#94a3b8}'
         + '.cpv2-empty-ico{font-size:54px;display:block;margin-bottom:14px}'
-        + '.cpv2-detail{padding:12px 10px 16px 10px}'
-        + '.cpv2-inner{width:100%;border-collapse:collapse}'
-        + '.cpv2-inner th,.cpv2-inner td{padding:8px 6px;border-bottom:1px solid rgba(148,163,184,.12);font-size:12px}'
+        + '.cpv2-modal{position:fixed;inset:0;background:rgba(2,6,23,.72);display:flex;align-items:center;justify-content:center;padding:18px;z-index:2147483640}'
+        + '.cpv2-modal[hidden]{display:none !important}'
+        + '.cpv2-modal-card{width:min(920px,100%);max-height:min(82vh,900px);display:flex;flex-direction:column;background:linear-gradient(135deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.16);border-radius:16px;box-shadow:0 30px 80px rgba(2,6,23,.55)}'
+        + '.cpv2-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 18px 12px 18px;border-bottom:1px solid rgba(148,163,184,.12)}'
+        + '.cpv2-modal-title{font-size:18px;font-weight:800;color:#f8fafc}'
+        + '.cpv2-modal-sub{font-size:12px;color:#94a3b8;margin-top:4px}'
+        + '.cpv2-modal-close{background:#111827;border:1px solid #334155;color:#e5e7eb;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:800}'
+        + '.cpv2-modal-body{padding:16px 18px 18px 18px;overflow:auto}'
+        + '.cpv2-modal-table{width:100%;border-collapse:collapse}'
+        + '.cpv2-modal-table th,.cpv2-modal-table td{padding:11px 10px;border-bottom:1px solid rgba(148,163,184,.12);font-size:12px;text-align:left}'
+        + '.cpv2-modal-table th{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em}'
+        + '.cpv2-rank-pos{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;background:#1e293b;color:#f8fafc;font-weight:900}'
+        + '.cpv2-rank-name{font-size:13px;font-weight:800;color:#e5e7eb}'
+        + '.cpv2-rank-meta{font-size:11px;color:#94a3b8}'
         + '#cp-print-root{display:none}'
         + '#cp-print-root .cp-print-sheet{color:#111;background:#fff;font-family:Arial,sans-serif}'
         + '#cp-print-root .cp-print-title{font-size:22px;font-weight:800;margin-bottom:4px}'
@@ -8506,8 +8512,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '#cp-print-root .cp-print-table th{background:#f8fafc;font-size:11px;text-transform:uppercase;letter-spacing:.06em}'
         + '#cp-print-root .cp-print-table td.num,#cp-print-root .cp-print-table th.num{text-align:right}'
         + '@media (max-width:1200px){.cpv2-summary{grid-template-columns:repeat(3,minmax(0,1fr))}}'
-        + '@media (max-width:980px){.cpv2-summary,.cpv2-ranks{grid-template-columns:1fr 1fr}}'
-        + '@media (max-width:720px){.cpv2-summary,.cpv2-ranks{grid-template-columns:1fr}.cpv2-table-actions{align-items:stretch}.cpv2-search,.cpv2-select{width:100%}.cpv2-toolbar-group{width:100%}}'
+        + '@media (max-width:920px){.cpv2-topline,.cpv2-summary{grid-template-columns:1fr 1fr}}'
+        + '@media (max-width:720px){.cpv2-topline,.cpv2-summary{grid-template-columns:1fr}.cpv2-search,.cpv2-select,.cpv2-btn{width:100%}.cpv2-box-row,.cpv2-search-row{align-items:stretch}}'
         + '@media print{body *{visibility:hidden !important}#cp-print-root,#cp-print-root *{visibility:visible !important}#cp-print-root{display:block !important;position:fixed;inset:0;background:#fff;padding:22px;z-index:2147483647;overflow:visible}body.cp-print-open{background:#fff !important}}';
       document.head.appendChild(st);
     }
@@ -8560,8 +8566,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
     function _cpPeriodoDescricao(state) {
       var st = state || _cpState();
-      if (st.periodo === 'hoje') return 'Hoje';
-      if (st.periodo === 'semana') return 'Esta Semana';
+      if (st.periodo === 'dia') return 'Dia atual';
+      if (st.periodo === 'semana') return 'Semana atual';
       if (st.periodo === 'todos') return 'Todos os periodos';
       return String(st.mes || _cpMesAtual()).padStart(2, '0') + '/' + String(st.ano || _cpAnoAtual());
     }
@@ -8687,7 +8693,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (maq) arr = [maq];
       }
       arr = arr.map(function(item) { return String(item || '').trim(); }).filter(Boolean);
-      return arr.length ? arr : ['Sem operador registrado'];
+      return arr.length ? arr : ['Sem máquina'];
     }
 
     function _cpRowOperadores(r) {
@@ -8699,7 +8705,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var op = String(r && (r.operador_display || r.operador) || '').trim();
         if (op && op !== '—') arr = [op];
       }
-      return arr.map(function(item) { return String(item || '').trim(); }).filter(Boolean);
+      arr = arr.map(function(item) { return String(item || '').trim(); }).filter(Boolean);
+      return arr.length ? arr : ['Sem operador registrado'];
     }
 
     function _cpRowCliente(r) {
@@ -8712,11 +8719,66 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var rows = Array.isArray(data && data.detalhamento) ? data.detalhamento.slice() : [];
       if (busca) {
         rows = rows.filter(function(r) {
-          var txt = [r.of_numero, _cpRowCliente(r), _cpRowMaquinas(r).join(' '), _cpRowOperadores(r).join(' ')].join(' ');
+          var txt = [r.of_numero, _cpRowCliente(r), r.produto || '', _cpRowMaquinas(r).join(' '), _cpRowOperadores(r).join(' ')].join(' ');
           return _cpNorm(txt).indexOf(busca) >= 0;
         });
       }
       return rows;
+    }
+
+    function _cpModalRoot() {
+      var root = document.getElementById('cpv2-modal-root');
+      if (root) return root;
+      root = document.createElement('div');
+      root.id = 'cpv2-modal-root';
+      root.className = 'cpv2-modal';
+      root.hidden = true;
+      root.innerHTML = '<div class="cpv2-modal-card"></div>';
+      root.addEventListener('click', function(ev) {
+        if (ev.target === root) _cpCloseModal();
+      });
+      document.body.appendChild(root);
+      return root;
+    }
+
+    function _cpCloseModal() {
+      var root = document.getElementById('cpv2-modal-root');
+      if (!root) return;
+      root.hidden = true;
+      var card = root.querySelector('.cpv2-modal-card');
+      if (card) card.innerHTML = '';
+    }
+
+    function _cpOpenRankingModal(kind, list) {
+      var rows = Array.isArray(list) ? list.slice() : [];
+      var titulo = kind === 'operadores' ? 'Ranking de Operadores' : 'Ranking de Máquinas';
+      var nomeKey = kind === 'operadores' ? 'operador' : 'maquina';
+      var root = _cpModalRoot();
+      var card = root.querySelector('.cpv2-modal-card');
+      if (!card) return;
+      card.innerHTML = ''
+        + '<div class="cpv2-modal-head">'
+        + '  <div><div class="cpv2-modal-title">' + _cpEsc(titulo) + '</div><div class="cpv2-modal-sub">Ranking completo do período selecionado</div></div>'
+        + '  <button class="cpv2-modal-close" id="cpv2-modal-close">Fechar</button>'
+        + '</div>'
+        + '<div class="cpv2-modal-body">'
+        +   (rows.length
+              ? '<table class="cpv2-modal-table"><thead><tr><th>Posição</th><th>' + (kind === 'operadores' ? 'Operador' : 'Máquina') + '</th><th>Qtd. Perdida</th><th>Valor Perdido</th><th>Ocorrências</th></tr></thead><tbody>'
+                + rows.map(function(item, idx) {
+                    return '<tr>'
+                      + '<td><span class="cpv2-rank-pos">' + _cpEsc(idx + 1) + '</span></td>'
+                      + '<td><div class="cpv2-rank-name">' + _cpEsc(item && item[nomeKey] || '—') + '</div></td>'
+                      + '<td>' + _cpEsc(_cpFmtNum(item && item.total_caixas || 0)) + '</td>'
+                      + '<td>' + _cpEsc(_cpFmtMoney(item && item.valor_perdido || 0)) + '</td>'
+                      + '<td>' + _cpEsc(_cpFmtNum(item && item.ocorrencias || 0)) + '</td>'
+                      + '</tr>';
+                  }).join('')
+                + '</tbody></table>'
+              : '<div class="cpv2-empty"><span class="cpv2-empty-ico">📊</span><div>Nenhum registro no período selecionado.</div></div>')
+        + '</div>';
+      root.hidden = false;
+      var btnClose = document.getElementById('cpv2-modal-close');
+      if (btnClose) btnClose.onclick = _cpCloseModal;
     }
 
     function _cpRender(data) {
@@ -8734,19 +8796,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       } catch (_) {}
       var state = _cpState();
       var resumo = (data && data.resumo_mes_atual) || {};
-      var comp = (data && data.comparacao_mes_anterior) || {};
       var rankM = Array.isArray(data && data.ranking_maquinas) ? data.ranking_maquinas : [];
       var rankO = Array.isArray(data && data.ranking_operadores) ? data.ranking_operadores : [];
       var rows = _cpBuildTableRows(data);
-      var maquinasOpts = Array.from(new Set((Array.isArray(data && data.detalhamento) ? data.detalhamento : []).reduce(function(acc, r) { return acc.concat(_cpRowMaquinas(r)); }, []))).filter(Boolean);
-      var empresasOpts = Array.from(new Set((Array.isArray(data && data.detalhamento) ? data.detalhamento : []).map(function(r) { return String(r && r.empresa_id || '').trim(); }).filter(Boolean)));
-      var maxM = Math.max(1, ...rankM.map(function(r) { return Number(r && r.total_caixas || 0) || 0; }));
-      var maxO = Math.max(1, ...rankO.map(function(r) { return Number(r && r.total_caixas || 0) || 0; }));
-      var varCx = Number(comp.variacao_caixas_pct || 0) || 0;
       var tonSemDados = Number(resumo.toneladas_sem_dados || 0) || 0;
       var tonNota = tonSemDados > 0 ? (_cpFmtNum(tonSemDados) + ' registros sem dados suficientes') : 'Todas as perdas do período possuem dados para cálculo';
-      var varCls = varCx > 0 ? 'cpv2-compare-up' : 'cpv2-compare-down';
-      var varArrow = varCx > 0 ? '↑' : '↓';
+      var topMaquina = rankM[0] || null;
+      var topOperador = rankO[0] || null;
       // #region debug-point C:cp-render-summary
       try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', 'dashboard caixas perdidas render resumo', { periodo: state.periodo, rows: rows.length, rankMaquinas: rankM.length, rankOperadores: rankO.length, totalCaixas: Number(resumo.total_caixas || 0) || 0 }); } catch (_) {}
       // #endregion
@@ -8757,7 +8813,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', 'dashboard caixas perdidas render vazio', { periodo: state.periodo, tabela: dbgTab, totalHistorico: dbgTot }); } catch (_) {}
         // #endregion
         host.innerHTML = ''
-          + '<div class="cpv2"><div class="cpv2-head"><div><div class="cpv2-title">💥 Caixas Perdidas</div><div class="cpv2-sub">Dashboard consolidado de perdas</div></div></div>'
+          + '<div class="cpv2"><div><div class="cpv2-title">💥 Caixas Perdidas</div><div class="cpv2-sub">Dashboard consolidado de perdas</div></div>'
           + '<div class="cpv2-panel cpv2-empty">'
           + '  <span class="cpv2-empty-ico">📦</span>'
           + '  <div style="font-size:18px;font-weight:800;color:#e5e7eb">Nenhuma perda no período selecionado</div>'
@@ -8771,49 +8827,46 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
       host.innerHTML = ''
         + '<div class="cpv2">'
-        + '  <div class="cpv2-head">'
-        + '    <div><div class="cpv2-title">💥 Caixas Perdidas</div><div class="cpv2-sub">Dashboard consolidado de perdas</div></div>'
-        + '    <div class="cpv2-actions">'
-        + '      <div class="cpv2-periods">'
-        + '        <button class="cpv2-btn' + (state.periodo === 'hoje' ? ' is-active' : '') + '" data-cp-periodo="hoje">Hoje</button>'
-        + '        <button class="cpv2-btn' + (state.periodo === 'semana' ? ' is-active' : '') + '" data-cp-periodo="semana">Esta Semana</button>'
-        + '        <button class="cpv2-btn' + (state.periodo === 'mes' ? ' is-active' : '') + '" data-cp-periodo="mes">Este Mês</button>'
-        + '        <button class="cpv2-btn' + (state.periodo === 'todos' ? ' is-active' : '') + '" data-cp-periodo="todos">Todos os períodos</button>'
-        + '      </div>'
-        + '      <div class="cpv2-filters">'
-        + '        <select class="cpv2-select" id="cpv2-mes">' + _cpMonthOptions(state.mes) + '</select>'
+        + '  <div><div class="cpv2-title">💥 Caixas Perdidas</div><div class="cpv2-sub">Dashboard consolidado de perdas</div></div>'
+        + '  <div class="cpv2-topline">'
+        + '    <div class="cpv2-topbox">'
+        + '      <div class="cpv2-box-title">Relatório para Imprimir</div>'
+        + '      <div class="cpv2-box-row"><button class="cpv2-btn print" id="cpv2-print">Imprimir relatório</button></div>'
+        + '    </div>'
+        + '    <div class="cpv2-topbox">'
+        + '      <div class="cpv2-box-title">Seletor de período</div>'
+        + '      <div class="cpv2-box-row">'
+        + '        <select class="cpv2-select" id="cpv2-periodo"><option value="mes"' + (state.periodo === 'mes' ? ' selected' : '') + '>Mês</option><option value="semana"' + (state.periodo === 'semana' ? ' selected' : '') + '>Semana</option><option value="dia"' + (state.periodo === 'dia' ? ' selected' : '') + '>Dia</option></select>'
+        + '        <select class="cpv2-select" id="cpv2-mes"' + (state.periodo === 'mes' ? '' : ' style="display:none"') + '>' + _cpMonthOptions(state.mes) + '</select>'
         + '        <select class="cpv2-select" id="cpv2-ano">' + _cpYearOptions(state.ano) + '</select>'
-        + '        <select class="cpv2-select" id="cpv2-maquina"><option value="">Todas as Máquinas</option>' + maquinasOpts.map(function(m) { return '<option value="' + _cpEsc(m) + '"' + (state.maquina === m ? ' selected' : '') + '>' + _cpEsc(m) + '</option>'; }).join('') + '</select>'
-        + '        <select class="cpv2-select" id="cpv2-empresa"><option value="">Todas as Empresas</option>' + empresasOpts.map(function(eid) { return '<option value="' + _cpEsc(eid) + '"' + (state.empresa_id === eid ? ' selected' : '') + '>' + _cpEsc(eid) + '</option>'; }).join('') + '</select>'
-        + '        <button class="cpv2-btn refresh" id="cpv2-refresh">Atualizar 🔄</button>'
+        + '        <button class="cpv2-btn primary" id="cpv2-refresh">Atualizar</button>'
         + '      </div>'
         + '    </div>'
         + '  </div>'
         + '  <div class="cpv2-summary">'
-        + '    <div class="cpv2-card"><div class="cpv2-card-label">Caixas Perdidas</div><div class="cpv2-card-value">' + _cpFmtNum(resumo.total_caixas) + ' cx</div><div class="cpv2-card-sub">' + _cpEsc(resumo.mes_referencia || '') + '</div></div>'
-        + '    <div class="cpv2-card"><div class="cpv2-card-label">Valor Perdido</div><div class="cpv2-card-value">' + _cpFmtMoney(resumo.valor_total) + '</div><div class="cpv2-card-sub">Perdas do período</div></div>'
-        + '    <div class="cpv2-card"><div class="cpv2-card-label">VS Mês Anterior</div><div class="cpv2-card-value ' + varCls + '">' + varArrow + ' ' + String(Math.abs(varCx)).replace('.', ',') + '%</div><div class="cpv2-card-sub">Anterior: ' + _cpFmtNum(comp.total_caixas) + ' cx · ' + _cpFmtMoney(comp.valor_total) + '</div></div>'
-        + '    <div class="cpv2-card"><div class="cpv2-card-label">Ocorrências</div><div class="cpv2-card-value">' + _cpFmtNum(resumo.total_ocorrencias) + '</div><div class="cpv2-card-sub">Registros consolidados</div></div>'
-        + '    <div class="cpv2-card"><div class="cpv2-card-label">Toneladas Perdidas</div><div class="cpv2-card-value">' + _cpFmtTon(resumo.toneladas_perdidas || 0) + '</div><div class="cpv2-card-sub">Soma do período filtrado</div><div class="cpv2-card-note">' + _cpEsc(tonNota) + '</div></div>'
-        + '  </div>'
-        + '  <div class="cpv2-ranks">'
-        + '    <div class="cpv2-panel"><div class="cpv2-panel-title">🏭 Ranking de Máquinas</div>' + (rankM.length ? rankM.map(function(r, idx) { var pct = Math.max(4, Math.round(((Number(r && r.total_caixas || 0) || 0) / maxM) * 100)); return '<div class="cpv2-rank-item"><div style="font-weight:900;color:#64748b">' + (idx + 1) + '.</div><div><div class="cpv2-rank-name">' + _cpEsc(r && r.maquina || '—') + '</div><div class="cp-ranking-track"><div class="cp-ranking-bar" style="width:' + pct + '%"></div></div><div class="cpv2-rank-meta">' + _cpFmtNum(r && r.total_caixas || 0) + ' cx · ' + _cpFmtMoney(r && r.valor_perdido || 0) + '</div></div><div class="cpv2-badge">' + _cpFmtNum(r && r.ocorrencias || 0) + '</div></div>'; }).join('') : '<div style="color:#94a3b8">Sem dados no período.</div>') + '</div>'
-        + '    <div class="cpv2-panel"><div class="cpv2-panel-title">👷 Operadores com Mais Perdas</div>' + (rankO.length ? rankO.map(function(r, idx) { var pct = Math.max(4, Math.round(((Number(r && r.total_caixas || 0) || 0) / maxO) * 100)); return '<div class="cpv2-rank-item"><div style="font-weight:900;color:#64748b">' + (idx + 1) + '.</div><div><div class="cpv2-rank-name">' + _cpEsc(r && r.operador || '—') + '</div><div class="cp-ranking-track"><div class="cp-ranking-bar cp-rank-op-bar" style="width:' + pct + '%"></div></div><div class="cpv2-rank-meta">' + _cpFmtNum(r && r.total_caixas || 0) + ' cx · ' + _cpFmtMoney(r && r.valor_perdido || 0) + '</div></div><div class="cpv2-badge" style="background:rgba(245,158,11,.18);color:#fcd34d;border-color:rgba(245,158,11,.22)">' + _cpFmtNum(r && r.ocorrencias || 0) + '</div></div>'; }).join('') : '<div style="color:#94a3b8">Sem dados no período.</div>') + '</div>'
+        + '    <div class="cpv2-card"><div><div class="cpv2-card-label">Quantas caixas perdeu no Mês</div><div class="cpv2-card-value">' + _cpFmtNum(resumo.total_caixas) + '</div></div><div class="cpv2-card-sub">Total de caixas perdidas no período</div></div>'
+        + '    <div class="cpv2-card"><div><div class="cpv2-card-label">Quantas toneladas perdeu no Mês</div><div class="cpv2-card-value">' + _cpFmtTon(resumo.toneladas_perdidas || 0) + '</div></div><div class="cpv2-card-sub">Toneladas perdidas consolidadas</div><div class="cpv2-card-note">' + _cpEsc(tonNota) + '</div></div>'
+        + '    <div class="cpv2-card"><div><div class="cpv2-card-label">Quanto de valor perdeu no Mês</div><div class="cpv2-card-value">' + _cpFmtMoney(resumo.valor_total) + '</div></div><div class="cpv2-card-sub">Soma de valor perdido no período</div></div>'
+        + '    <button type="button" class="cpv2-card is-action" id="cpv2-open-maquinas"><div><div class="cpv2-card-label">Quais máquinas mais perderam caixas</div><div class="cpv2-card-value">' + _cpFmtNum(topMaquina && topMaquina.total_caixas || 0) + '</div></div><div class="cpv2-card-sub">' + _cpEsc(topMaquina && topMaquina.maquina || 'Sem máquina') + '</div><div class="cpv2-card-cta">Ver ranking completo</div></button>'
+        + '    <button type="button" class="cpv2-card is-action" id="cpv2-open-operadores"><div><div class="cpv2-card-label">Quais operadores mais perderam caixas</div><div class="cpv2-card-value">' + _cpFmtNum(topOperador && topOperador.total_caixas || 0) + '</div></div><div class="cpv2-card-sub">' + _cpEsc(topOperador && topOperador.operador || 'Sem operador registrado') + '</div><div class="cpv2-card-cta">Ver ranking completo</div></button>'
         + '  </div>'
         + '  <div class="cpv2-table-panel">'
-        + '    <div class="cpv2-table-actions">'
-        + '      <input class="cpv2-search" id="cpv2-busca" placeholder="Buscar OF, cliente, máquina ou operador..." value="' + _cpEsc(state.busca || '') + '">'
-        + '      <div class="cpv2-toolbar-group"><button class="cpv2-btn" id="cpv2-excel">Excel</button><button class="cpv2-btn print" id="cpv2-print">Imprimir</button></div>'
+        + '    <div class="cpv2-search-row">'
+        + '      <input class="cpv2-search" id="cpv2-busca" placeholder="Buscar OF, cliente, produto, máquina ou operador..." value="' + _cpEsc(state.busca || '') + '">'
+        + '      <button class="cpv2-btn primary" id="cpv2-buscar">Buscar</button>'
         + '    </div>'
-        + '    <div class="cpv2-table-wrap"><table class="cpv2-table"><thead><tr><th>Data Conclusão</th><th>Nº OF</th><th>Cliente</th><th>Qtd Perdida</th><th>Máquina</th><th>Operadores</th></tr></thead><tbody>'
+        + '    <div class="cpv2-section-title">Detalhamento de perdas:</div>'
+        + '    <div class="cpv2-table-wrap"><table class="cpv2-table"><thead><tr><th>OF</th><th>Cliente</th><th>Produto</th><th>Valor Unitário</th><th>Qtd. Perdida</th><th>Valor Total Perdido</th><th>Máquina</th><th>Operadores</th></tr></thead><tbody>'
         + rows.map(function(r) {
           var maquinas = _cpRowMaquinas(r);
           var operadores = _cpRowOperadores(r);
           return '<tr>'
-            + '<td>' + _cpEsc(_cpDateBr(r.data_conclusao)) + '</td>'
             + '<td style="font-weight:800;color:#93c5fd">#' + _cpEsc(r.of_numero || '—') + '</td>'
             + '<td>' + _cpEsc(_cpRowCliente(r)) + '</td>'
-            + '<td>' + _cpFmtNum(r.quantidade_perdida || 0) + '</td>'
+            + '<td>' + _cpEsc(r.produto || '—') + '</td>'
+            + '<td>' + _cpEsc(_cpFmtMoney(r.valor_unitario || 0)) + '</td>'
+            + '<td>' + _cpEsc(_cpFmtNum(r.quantidade_perdida || 0)) + '</td>'
+            + '<td>' + _cpEsc(_cpFmtMoney(r.valor_perdido || 0)) + '</td>'
             + '<td>' + (maquinas[0] ? '<span class="cpv2-mach-badge">' + _cpEsc(maquinas[0]) + '</span>' : '—') + '</td>'
             + '<td>' + (operadores.length ? operadores.map(function(op) { return '<span class="cpv2-op-chip">' + _cpEsc(op) + '</span>'; }).join('') : '—') + '</td>'
             + '</tr>';
@@ -8822,28 +8875,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  </div>'
         + '</div>';
 
-      Array.prototype.slice.call(host.querySelectorAll('[data-cp-periodo]')).forEach(function(btn) {
-        btn.onclick = function() {
-          _cpState().periodo = String(btn.getAttribute('data-cp-periodo') || 'mes');
-          _cpRenderPage(false);
-        };
-      });
+      var selPeriodo = document.getElementById('cpv2-periodo');
+      if (selPeriodo) selPeriodo.onchange = function() { _cpState().periodo = String(selPeriodo.value || 'mes'); _cpRenderPage(false); };
       var selMes = document.getElementById('cpv2-mes');
-      if (selMes) selMes.onchange = function() { _cpState().mes = String(selMes.value || _cpMesAtual()).padStart(2, '0'); _cpState().periodo = 'mes'; _cpRenderPage(false); };
+      if (selMes) selMes.onchange = function() { _cpState().mes = String(selMes.value || _cpMesAtual()).padStart(2, '0'); _cpRenderPage(false); };
       var selAno = document.getElementById('cpv2-ano');
-      if (selAno) selAno.onchange = function() { _cpState().ano = String(selAno.value || _cpAnoAtual()); _cpState().periodo = 'mes'; _cpRenderPage(false); };
-      var selM = document.getElementById('cpv2-maquina');
-      if (selM) selM.onchange = function() { _cpState().maquina = String(selM.value || ''); _cpRenderPage(false); };
-      var selE = document.getElementById('cpv2-empresa');
-      if (selE) selE.onchange = function() { _cpState().empresa_id = String(selE.value || ''); _cpState().todas_empresas = _cpState().empresa_id ? 'false' : 'true'; _cpRenderPage(false); };
+      if (selAno) selAno.onchange = function() { _cpState().ano = String(selAno.value || _cpAnoAtual()); _cpRenderPage(false); };
       var inpB = document.getElementById('cpv2-busca');
-      if (inpB) inpB.oninput = function() { _cpState().busca = String(inpB.value || ''); _cpRender(data); };
+      if (inpB) inpB.onkeydown = function(ev) { if (ev && ev.key === 'Enter') { _cpState().busca = String(inpB.value || ''); _cpRender(data); } };
+      var btnBuscar = document.getElementById('cpv2-buscar');
+      if (btnBuscar) btnBuscar.onclick = function() { _cpState().busca = String((document.getElementById('cpv2-busca') || {}).value || ''); _cpRender(data); };
       var btnR = document.getElementById('cpv2-refresh');
       if (btnR) btnR.onclick = function() { _cpRenderPage(true); };
-      var btnX = document.getElementById('cpv2-excel');
-      if (btnX) btnX.onclick = function() { _cpDownloadCsv(rows); };
       var btnP = document.getElementById('cpv2-print');
       if (btnP) btnP.onclick = function() { _cpPrint(data, rows); };
+      var btnM = document.getElementById('cpv2-open-maquinas');
+      if (btnM) btnM.onclick = function() { _cpOpenRankingModal('maquinas', rankM); };
+      var btnO = document.getElementById('cpv2-open-operadores');
+      if (btnO) btnO.onclick = function() { _cpOpenRankingModal('operadores', rankO); };
       // #region debug-point D:cp-scroll-metrics
       try {
         var tableWrap = host.querySelector('.cpv2-table-wrap');
