@@ -33474,10 +33474,17 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', ()=>{
-      navigator.serviceWorker.register('/sw.js?v=15', { scope:'/' }).catch(()=>{});
+      const swVersion = '20260706095342';
+      navigator.serviceWorker.register('/sw.js?v=' + swVersion, { scope:'/' }).catch(()=>{});
       try{
         navigator.serviceWorker.getRegistrations().then((registrations)=>{
-          (registrations||[]).forEach((reg)=>{ try{ reg.update(); }catch(e){} });
+          (registrations||[]).forEach((reg)=>{
+            try{
+              const activeUrl = String(reg?.active?.scriptURL || reg?.waiting?.scriptURL || reg?.installing?.scriptURL || '');
+              if(activeUrl.includes('/sw.js') && !activeUrl.includes('v=' + swVersion)) reg.unregister().catch(()=>null);
+            }catch(e){}
+            try{ reg.update(); }catch(e){}
+          });
         }).catch(()=>null);
       }catch(e){}
     });
