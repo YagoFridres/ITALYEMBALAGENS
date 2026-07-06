@@ -6049,36 +6049,6 @@ function _normalizarOperadoresCaixa(row) {
   return Array.from(new Set(lista));
 }
 
-let _caixasOperadorColumnEnsured = false;
-let _caixasOperadorColumnEnsurePromise = null;
-async function _ensureCaixasPerdidasOperadorColumn() {
-  if (_caixasOperadorColumnEnsured) return true;
-  if (_caixasOperadorColumnEnsurePromise) return _caixasOperadorColumnEnsurePromise;
-  _caixasOperadorColumnEnsurePromise = (async () => {
-    let hasColumn = false;
-    try {
-      const probe = await supabase.from('caixas_perdidas').select('operador').limit(1);
-      if (!probe?.error) hasColumn = true;
-      else {
-        const msg = String(probe.error?.message || probe.error || '').toLowerCase();
-        if (!(msg.includes('could not find the') || msg.includes('does not exist') || msg.includes('column'))) {
-          throw probe.error;
-        }
-      }
-    } catch (e) {
-      const msg = String(e?.message || e || '').toLowerCase();
-      if (!(msg.includes('could not find the') || msg.includes('does not exist') || msg.includes('column'))) throw e;
-    }
-    if (!hasColumn) {
-      try { console.warn('[caixas_perdidas][operador] coluna operador ausente; auto-criacao via RPC desativada'); } catch (_) {}
-    }
-    _caixasOperadorColumnEnsured = !!hasColumn;
-    _caixasOperadorColumnEnsurePromise = null;
-    return _caixasOperadorColumnEnsured;
-  })();
-  return _caixasOperadorColumnEnsurePromise;
-}
-
 function _isUuidText(v) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v || '').trim());
 }
@@ -6266,7 +6236,6 @@ function _caixasPerdidasDashboardVazio(mesRef = '') {
 }
 
 async function _listarCaixasPerdidasEnriquecidas(req) {
-  try { await _ensureCaixasPerdidasOperadorColumn(); } catch (_) {}
   const baseCols = [
     'id', 'of_id', 'of_numero', 'produto', 'cliente', 'valor_unitario', 'qtd_perdida', 'valor_perdido',
     'data', 'mes_referencia', 'emp_id', 'empresa_id', 'usuario', 'usuario_conclusao', 'concluido_por', 'obs', 'created_at',
@@ -6474,7 +6443,6 @@ app.get('/api/caixas-perdidas', authMiddleware, async (req, res) => {
 app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    try { await _ensureCaixasPerdidasOperadorColumn(); } catch (_) {}
 
     const toArray = (v) => {
       if (Array.isArray(v)) return v.map((x) => String(x || '').trim()).filter(Boolean);
@@ -6793,7 +6761,6 @@ app.get('/api/admin/corrigir_ofs_concluidas_sem_qtd', requireAdmin, async (req, 
 });
 
 async function _insertCaixaPerdidaCompat(input, req) {
-  try { await _ensureCaixasPerdidasOperadorColumn(); } catch (_) {}
   const b = input || {};
   const hoje = new Date().toISOString().slice(0, 10);
   const mes = new Date().toISOString().slice(0, 7);
@@ -6826,11 +6793,10 @@ async function _insertCaixaPerdidaCompat(input, req) {
     usuario_conclusao: b.usuario_conclusao || req?.usuario?.nome || 'sistema',
     obs: b.obs || '',
     operadores: operadores,
-    operador: operadores[0] || (b.operador != null ? String(b.operador || '') : undefined),
     turno: b.turno != null ? String(b.turno || '') : undefined,
   };
   try { console.log('[CP INSERT COMPAT] payload:', JSON.stringify(payload)); } catch (_) {}
-  ['of_numero', 'cliente_nome', 'maquina', 'maquina_nome', 'maquina_id', 'operadores', 'operador', 'turno'].forEach((key) => {
+  ['of_numero', 'cliente_nome', 'maquina', 'maquina_nome', 'maquina_id', 'operadores', 'turno'].forEach((key) => {
     if (Array.isArray(payload[key]) && payload[key].length) return;
     if (payload[key] == null || payload[key] === '') delete payload[key];
   });
