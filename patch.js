@@ -11350,6 +11350,221 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 })();
 
+(function patchOfRapidaCoresLoadingAndCache() {
+  if (window.__patchOfRapidaCoresLoadingInstalled) return;
+  window.__patchOfRapidaCoresLoadingInstalled = true;
+
+  function wait(ms) {
+    return new Promise(function(resolve) { setTimeout(resolve, ms); });
+  }
+
+  function getToken() {
+    try {
+      return String(
+        window._token
+        || localStorage.getItem('token')
+        || localStorage.getItem('access_token')
+        || sessionStorage.getItem('token')
+        || ''
+      ).trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function getEmpIdSan(value) {
+    try {
+      if (typeof empIdSanitize === 'function') return String(empIdSanitize(value || '') || '').trim();
+    } catch (_) {}
+    return String(value || '').trim();
+  }
+
+  function setGlobalColors(rows) {
+    try { coresDisponiveis = Array.isArray(rows) ? rows.slice() : []; } catch (_) {}
+    try { window.coresDisponiveis = Array.isArray(rows) ? rows.slice() : []; } catch (_) {}
+  }
+
+  function getCachedColors(empId) {
+    var cache = window._coresCache || {};
+    var key = String(empId || '').trim() || '_default';
+    var rows = cache[key];
+    return Array.isArray(rows) && rows.length ? rows.slice() : [];
+  }
+
+  function updateCache(empId, rows) {
+    var key = String(empId || '').trim() || '_default';
+    if (!window._coresCache || typeof window._coresCache !== 'object') window._coresCache = {};
+    window._coresCache[key] = Array.isArray(rows) ? rows.slice() : [];
+  }
+
+  function setRapidaState(state, errMsg, retryEmpId) {
+    var grid = document.getElementById('seletorCoresOFRapida');
+    var label = document.getElementById('btnCoresLabelRapida');
+    var resumo = document.getElementById('resumoCoresSelecionadasRapida');
+    window.__ofRapidaCoresState = {
+      status: String(state || ''),
+      error: String(errMsg || ''),
+      empId: String(retryEmpId || '').trim()
+    };
+    if (resumo && state !== 'ready') {
+      resumo.style.display = 'none';
+      resumo.innerHTML = '';
+    }
+    if (!grid) return;
+    if (state === 'loading') {
+      if (label) label.textContent = 'Carregando cores...';
+      grid.innerHTML = '<div style="padding:12px;color:var(--text2);font-size:13px">Carregando cores...</div>';
+      return;
+    }
+    if (state === 'error') {
+      if (label) label.textContent = 'Erro ao carregar cores';
+      grid.innerHTML = '<button type="button" id="patch-retry-cores-of-rapida" style="width:100%;padding:12px;border:1px dashed rgba(239,68,68,.45);border-radius:10px;background:rgba(239,68,68,.08);color:#fecaca;text-align:left;cursor:pointer">Erro ao carregar cores - clique para tentar novamente</button>';
+      var retryBtn = document.getElementById('patch-retry-cores-of-rapida');
+      if (retryBtn) {
+        retryBtn.onclick = function() {
+          try {
+            if (typeof window.carregarCoresImpressao === 'function') {
+              window.carregarCoresImpressao(retryEmpId || '', { force: true, retryOnce: true }).then(function() {
+                try {
+                  if (typeof window.renderSeletorCores === 'function') {
+                    window.renderSeletorCores('seletorCoresOFRapida', window.coresSelecionadasOFRapida || []);
+                  }
+                } catch (_) {}
+              }).catch(function() {});
+            }
+          } catch (_) {}
+        };
+      }
+      return;
+    }
+    window.__ofRapidaCoresState = { status: 'ready', error: '', empId: String(retryEmpId || '').trim() };
+  }
+
+  async function fetchColors(empId) {
+    var emp = getEmpIdSan(empId || '');
+    var url = '/api/cores-impressao' + (emp ? ('?empId=' + encodeURIComponent(emp)) : '');
+    if (typeof window.apiFetch === 'function') {
+      var apiResp = await window.apiFetch(url, { method: 'GET' });
+      var apiJson = apiResp ? await apiResp.json().catch(function() { return null; }) : null;
+      if (!(apiResp && apiResp.ok)) throw new Error(apiJson && (apiJson.error || apiJson.message) || 'Falha ao carregar cores');
+      if (Array.isArray(apiJson)) return apiJson;
+      if (apiJson && Array.isArray(apiJson.data)) return apiJson.data;
+      return [];
+    }
+    var headers = {};
+    var token = getToken();
+    if (token) headers.Authorization = 'Bearer ' + token;
+    var resp = await fetch(url, { method: 'GET', headers: headers });
+    var json = await resp.json().catch(function() { return null; });
+    if (!resp.ok) throw new Error(json && (json.error || json.message) || 'Falha ao carregar cores');
+    if (Array.isArray(json)) return json;
+    if (json && Array.isArray(json.data)) return json.data;
+    return [];
+  }
+
+  function install() {
+    if (typeof carregarCoresImpressao !== 'function' || typeof window.abrirNovaOfRapida !== 'function' || typeof window.renderSeletorCores !== 'function') return false;
+    if (window.carregarCoresImpressao && window.carregarCoresImpressao._patchWithCache) return true;
+
+    var origCarregar = carregarCoresImpressao;
+    var origRender = window.renderSeletorCores;
+    var origAbrir = window.abrirNovaOfRapida;
+
+    window.renderSeletorCores = function(containerId, selecionadas) {
+      var cid = String(containerId || '').trim();
+      var state = window.__ofRapidaCoresState || {};
+      if (cid === 'seletorCoresOFRapida' && state.status === 'loading') {
+        setRapidaState('loading', '', state.empId || '');
+        return;
+      }
+      if (cid === 'seletorCoresOFRapida' && state.status === 'error') {
+        setRapidaState('error', state.error || '', state.empId || '');
+        return;
+      }
+      var out = origRender.apply(this, arguments);
+      if (cid === 'seletorCoresOFRapida') setRapidaState('ready', '', state.empId || '');
+      return out;
+    };
+    window.renderSeletorCores._patchWithCache = true;
+
+    window.carregarCoresImpressao = async function(empIdOverride, opts) {
+      var options = opts || {};
+      var emp = getEmpIdSan(empIdOverride || (document.getElementById('of-r-empresa') && document.getElementById('of-r-empresa').value) || window.EMP_FILTRO || '');
+      var key = String(emp || '').trim() || '_default';
+      var cached = !options.force ? getCachedColors(key) : [];
+      if (cached.length) {
+        setGlobalColors(cached);
+        setRapidaState('ready', '', key);
+        return cached.slice();
+      }
+      if (!window._coresCacheLoading || typeof window._coresCacheLoading !== 'object') window._coresCacheLoading = {};
+      if (!options.force && window._coresCacheLoading[key]) return window._coresCacheLoading[key];
+
+      setRapidaState('loading', '', key);
+      var promise = (async function() {
+        try {
+          var rows = await fetchColors(key);
+          setGlobalColors(rows);
+          updateCache(key, rows);
+          setRapidaState('ready', '', key);
+          return rows.slice();
+        } catch (err) {
+          if (options.retryOnce !== false && !options._retried) {
+            await wait(1000);
+            return window.carregarCoresImpressao(key, { force: true, retryOnce: false, _retried: true });
+          }
+          var fallback = getCachedColors(key);
+          if (fallback.length) {
+            setGlobalColors(fallback);
+            setRapidaState('ready', '', key);
+            return fallback.slice();
+          }
+          try { origCarregar.call(this, key); } catch (_) {}
+          setGlobalColors([]);
+          setRapidaState('error', String(err && err.message || err || 'Falha ao carregar cores'), key);
+          throw err;
+        } finally {
+          try { delete window._coresCacheLoading[key]; } catch (_) {}
+        }
+      })();
+      window._coresCacheLoading[key] = promise;
+      return promise;
+    };
+    window.carregarCoresImpressao._patchWithCache = true;
+
+    window.abrirNovaOfRapida = function() {
+      var out = origAbrir.apply(this, arguments);
+      setTimeout(function() {
+        try {
+          var empSel = document.getElementById('of-r-empresa');
+          var empId = getEmpIdSan((empSel && empSel.value) || window.EMP_FILTRO || 'E1') || 'E1';
+          setRapidaState('loading', '', empId);
+          window.carregarCoresImpressao(empId, { retryOnce: true }).then(function() {
+            try {
+              if (typeof window.renderSeletorCores === 'function') {
+                window.renderSeletorCores('seletorCoresOFRapida', window.coresSelecionadasOFRapida || []);
+              }
+            } catch (_) {}
+          }).catch(function() {});
+        } catch (_) {}
+      }, 20);
+      return out;
+    };
+    window.abrirNovaOfRapida._patchWithCache = true;
+    return true;
+  }
+
+  if (!install()) {
+    var tries = 0;
+    var timer = setInterval(function() {
+      tries += 1;
+      if (install() || tries > 30) {
+        clearInterval(timer);
+      }
+    }, 400);
+  }
+})();
+
 (function patchClienteValidoNovaOf() {
   function normClienteNome(v) {
     var s = String(v == null ? '' : v).trim();

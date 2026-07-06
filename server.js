@@ -959,9 +959,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '16';
-const SW_RUNTIME_VERSION = '21';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v21';
+const PATCH_RUNTIME_VERSION = '17';
+const SW_RUNTIME_VERSION = '22';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v22';
 
 app.get('/sw.js', (req, res) => {
   try {
