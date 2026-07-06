@@ -6578,6 +6578,73 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       } catch (_) {}
       return resumo;
     }
+    var _ESTOQUE_AUTO_FAMILIA_CORES = [
+      '#2563EB', '#7C3AED', '#0891B2', '#0F766E', '#16A34A',
+      '#65A30D', '#CA8A04', '#EA580C', '#DC2626', '#DB2777',
+      '#4F46E5', '#0284C7', '#0D9488', '#059669', '#9333EA',
+      '#C2410C', '#B91C1C', '#BE185D', '#1D4ED8', '#4338CA'
+    ];
+    function _estoqueAutoFamiliaNorm(v) {
+      return String(v || '').trim().replace(/\s+/g, ' ').toUpperCase();
+    }
+    async function _estoqueExecutarEmLotes(itens, tamanho, iterator) {
+      var lista = Array.isArray(itens) ? itens : [];
+      var lote = Math.max(1, Math.trunc(Number(tamanho || 0) || 1));
+      for (var i = 0; i < lista.length; i += lote) {
+        await Promise.all(lista.slice(i, i + lote).map(iterator));
+      }
+    }
+    async function _estoqueColorirFamiliasAutomaticamente() {
+      var lista = await _estoqueFetchChapasList(10000);
+      lista = Array.isArray(lista) ? lista : [];
+      var familias = Object.create(null);
+      var semDados = 0;
+      lista.forEach(function(chapa) {
+        var forn = _estoqueAutoFamiliaNorm(chapa && chapa.fornecedor || '');
+        var nom = _estoqueAutoFamiliaNorm(chapa && chapa.nomenclatura || '');
+        if (!forn && !nom) {
+          semDados += 1;
+          return;
+        }
+        var key = forn + '||' + nom;
+        if (!familias[key]) familias[key] = [];
+        familias[key].push(chapa);
+      });
+      var chaves = Object.keys(familias).sort(function(a, b) {
+        return String(a || '').localeCompare(String(b || ''), 'pt-BR', { sensitivity: 'base' });
+      });
+      var patches = [];
+      var chapasColoridas = 0;
+      chaves.forEach(function(key, idx) {
+        var cor = _ESTOQUE_AUTO_FAMILIA_CORES[idx % _ESTOQUE_AUTO_FAMILIA_CORES.length];
+        (familias[key] || []).forEach(function(chapa) {
+          chapasColoridas += 1;
+          if (_normalizeChapaRowColor(_resolveChapaRowColor(chapa)) === cor) return;
+          patches.push({ chapa: chapa, cor: cor });
+        });
+      });
+      await _estoqueExecutarEmLotes(patches, 8, async function(item) {
+        await _estoqueSalvarCorLinha(item && item.chapa, item && item.cor);
+      });
+      try { if (typeof chapasForcarReload === 'function') await chapasForcarReload(); } catch (_) {}
+      if (String(window._PAGE_ATUAL || '') === 'estoque' && typeof renderEstoqueWireframePage === 'function') {
+        await renderEstoqueWireframePage();
+      }
+      try {
+        window.toast(
+          String(chaves.length) + ' famílias coloridas, '
+          + String(chapasColoridas) + ' chapas organizadas por cor, '
+          + String(semDados) + ' sem dados suficientes',
+          'var(--green)'
+        );
+      } catch (_) {}
+      return {
+        familias: chaves.length,
+        chapas_coloridas: chapasColoridas,
+        chapas_atualizadas: patches.length,
+        chapas_sem_dados: semDados
+      };
+    }
     function _renderSugestoesCompraTopo(sugestoes) {
       var lista = Array.isArray(sugestoes) ? sugestoes : [];
       return ''
@@ -6753,6 +6820,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <button class="pep-btn primary" id="estoque-wire-buscar">Buscar</button>'
         + '    <button class="pep-btn" id="estoque-wire-open-grupos">＋ Novo Grupo</button>'
         + '    <button class="pep-btn" id="estoque-wire-auto-grupos">🔮 Sugerir Grupos Automaticamente</button>'
+        + '    <button class="pep-btn" id="estoque-wire-auto-cores">🎨 Colorir por Família Automaticamente</button>'
         + '  </div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px">'
         + '    <span style="font-size:12px;color:#94a3b8;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Visualização</span>'
         + '    <button class="pep-btn' + (modoAgrupamento === 'agrupado' ? ' primary' : '') + '" id="estoque-wire-modo-agrupado" type="button">Agrupado</button>'
@@ -6797,6 +6865,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           try { window.toast('Erro ao sugerir grupos automaticamente: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
         } finally {
           btnAutoGrupos.disabled = false;
+        }
+      };
+      var btnAutoCores = document.getElementById('estoque-wire-auto-cores');
+      if (btnAutoCores) btnAutoCores.onclick = async function() {
+        if (btnAutoCores.disabled) return;
+        btnAutoCores.disabled = true;
+        try {
+          await _estoqueColorirFamiliasAutomaticamente();
+        } catch (e) {
+          try { window.toast('Erro ao colorir famílias automaticamente: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+        } finally {
+          btnAutoCores.disabled = false;
         }
       };
       var btnModoAgrupado = document.getElementById('estoque-wire-modo-agrupado');
