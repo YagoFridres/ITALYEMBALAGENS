@@ -6571,7 +6571,6 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
         totalFiltrado: Array.isArray(dadosFiltrados) ? dadosFiltrados.length : 0,
         mes,
         ano,
-        fallbackMesRecente: false,
       },
     });
 
@@ -6756,7 +6755,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     }, 0);
 
     return res.json({
-      _debug: { tabelaAtiva, totalHistorico: todos?.length || 0, totalFiltrado: enriquecidosFiltrados.length, periodoSolicitado: requestedPeriodo, mesAplicado: mes, anoAplicado: ano, fallbackMesRecente },
+      _debug: { tabelaAtiva, totalHistorico: todos?.length || 0, totalFiltrado: enriquecidosFiltrados.length, periodoSolicitado: requestedPeriodo, mesAplicado: mes, anoAplicado: ano },
       resumo_mes_atual: { total_caixas: totalCaixas, valor_total: valorTotal, total_ocorrencias: enriquecidosFiltrados.length, mes_referencia: String(ano) + '-' + String(mes).padStart(2, '0'), toneladas_perdidas: toneladasPerdidas, toneladas_sem_dados: toneladasSemDados },
       comparacao_mes_anterior: {
         total_caixas: totalCaixasAnt,
