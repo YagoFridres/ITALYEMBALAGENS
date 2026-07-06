@@ -8729,10 +8729,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       state.mes = String(state.mes || _cpMesAtual()).padStart(2, '0');
       state.ano = String(state.ano || _cpAnoAtual()).trim();
       state.todas_empresas = state.empresa_id ? 'false' : 'true';
-      var now = Date.now();
-      var key = JSON.stringify({ periodo: state.periodo, mes: state.mes, ano: state.ano, maquina: state.maquina, empresa_id: state.empresa_id, todas_empresas: state.todas_empresas });
-      if (!window._cpDashCache) window._cpDashCache = {};
-      if (!force && window._cpDashCache[key] && (now - window._cpDashCache[key].ts) < 60000) return window._cpDashCache[key].data;
       var token = '';
       try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
       var qs = new URLSearchParams();
@@ -8742,16 +8738,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (state.maquina) qs.set('maquina', state.maquina);
       if (state.empresa_id) qs.set('empresa_id', state.empresa_id);
       if (state.todas_empresas) qs.set('todas_empresas', state.todas_empresas);
+      qs.set('_t', String(Date.now()));
       // #region debug-point C:cp-dashboard-fetch-start
       try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', 'dashboard caixas perdidas fetch iniciado', { force: !!force, periodo: state.periodo, maquina: state.maquina, empresa_id: state.empresa_id, todas_empresas: state.todas_empresas }); } catch (_) {}
       // #endregion
-      var resp = await fetch('/api/caixas-perdidas/dashboard?' + qs.toString(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var resp = await fetch('/api/caixas-perdidas/dashboard?' + qs.toString(), { cache: 'no-store', headers: token ? { Authorization: 'Bearer ' + token } : {} });
       var json = await resp.json().catch(function() { return null; });
       // #region debug-point C:cp-dashboard-fetch-done
       try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', 'dashboard caixas perdidas fetch finalizado', { status: resp && resp.status ? Number(resp.status) : 0, ok: !!(resp && resp.ok), totalDetalhamento: Array.isArray(json && json.detalhamento) ? json.detalhamento.length : 0, rankMaquinas: Array.isArray(json && json.ranking_maquinas) ? json.ranking_maquinas.length : 0, rankOperadores: Array.isArray(json && json.ranking_operadores) ? json.ranking_operadores.length : 0, debug: json && json._debug ? json._debug : null }); } catch (_) {}
       // #endregion
       if (!resp.ok || !json || json.ok === false) throw new Error(String(json && (json.error || json.message) || 'Falha ao carregar dashboard'));
-      window._cpDashCache[key] = { ts: now, data: json };
       return json;
     }
 

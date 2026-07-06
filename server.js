@@ -971,6 +971,11 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use('/api', (req, res, next) => {
+  setNoCache(res);
+  next();
+});
+
 const _pwaIconCache = {};
 function _crc32(buf) {
   const table = _crc32.table || (_crc32.table = (() => {
@@ -1084,9 +1089,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260706095342';
-const SW_RUNTIME_VERSION = '20260706095342';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260706095342';
+const PATCH_RUNTIME_VERSION = '20260706164000';
+const SW_RUNTIME_VERSION = '20260706164000';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260706164000';
 
 app.get('/sw.js', (req, res) => {
   try {
