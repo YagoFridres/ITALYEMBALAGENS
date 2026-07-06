@@ -6178,51 +6178,83 @@ function _caixasParsePerdasPorMaquina(value) {
   return [];
 }
 
+const _CAIXAS_OPERADOR_SEM = 'SEM OPERADOR REGISTRADO';
+
+function _caixasNormalizarOperadorExibicao(value) {
+  try {
+    return String(value || '').trim().toUpperCase();
+  } catch (_) {
+    return String(value || '').trim().toUpperCase();
+  }
+}
+
+function _caixasExtrairOperadoresItemPerda(item) {
+  let lista = [];
+  try {
+    if (Array.isArray(item?.operadores)) {
+      lista = item.operadores;
+    } else if (typeof item?.operadores === 'string') {
+      const txt = String(item.operadores || '').trim();
+      if (txt) {
+        if (txt[0] === '[') {
+          const parsed = JSON.parse(txt);
+          if (Array.isArray(parsed)) lista = parsed;
+        } else {
+          lista = txt.split(/[,;|]+/g);
+        }
+      }
+    }
+  } catch (_) {}
+  return Array.from(new Set(
+    (Array.isArray(lista) ? lista : [])
+      .map((op) => {
+        if (op && typeof op === 'object') {
+          return op.nome ?? op.name ?? op.label ?? op.value ?? op.operador ?? '';
+        }
+        return op;
+      })
+      .map((op) => _caixasNormalizarOperadorExibicao(op))
+      .filter(Boolean)
+  ));
+}
+
 function _resolverOperadorDaPerda(row, ofData, pessoasMap, maquinasMap) {
-  const rowMachineKeys = _caixasMachineCandidates(row, ofData, maquinasMap);
   const perdasDetalhadas = _caixasParsePerdasPorMaquina(ofData?.perdas_por_maquina);
-  const operadoresDetalhe = [];
-  perdasDetalhadas.forEach((item) => {
-    const itemMachineKeys = [
-      item?.maquina_id,
-      item?.maquina_nome,
-      item?.maquina,
-      item?.maquina_perda,
-      item?.nome_maquina,
+  const maquinaPerdaKey = _caixasNormKey(
+    row?.maquina_perda ||
+    row?.maquina ||
+    row?.maquina_nome ||
+    _resolverNomeMaquinaPassagem({
+      maquina_id: row?.maquina_id || ofData?.maquina_id || '',
+      maquina_nome: row?.maquina_nome || row?.maquina || row?.maquina_perda || '',
+      maquina: row?.maquina || row?.maquina_perda || row?.maquina_nome || '',
+    }, maquinasMap)
+  );
+  const detalheExato = perdasDetalhadas.find((item) => {
+    const itemMachineKey = _caixasNormKey(
+      item?.maquina ||
+      item?.maquina_perda ||
+      item?.maquina_nome ||
+      item?.nome_maquina ||
       _resolverNomeMaquinaPassagem({
         maquina_id: item?.maquina_id || '',
         maquina_nome: item?.maquina_nome || item?.maquina || item?.maquina_perda || item?.nome_maquina || '',
         maquina: item?.maquina || item?.maquina_perda || item?.maquina_nome || item?.nome_maquina || '',
-      }, maquinasMap),
-    ].map((v) => _caixasNormKey(v)).filter(Boolean);
-    const sameMachine = !rowMachineKeys.length || !itemMachineKeys.length || itemMachineKeys.some((key) => rowMachineKeys.includes(key));
-    if (!sameMachine) return;
-    const ops = _normalizarOperadoresCaixa({
-      operadores: item?.operadores ?? item?.operadores_conclusao ?? item?.operador ?? item?.operador_nome ?? item?.operador_conclusao ?? item?.usuario,
-      operadores_conclusao: item?.operadores_conclusao,
-      operador: item?.operador,
-      operador_nome: item?.operador_nome,
-      operador_conclusao: item?.operador_conclusao,
-      operador_display: item?.operador_display,
-      operador_principal: item?.operador_principal,
-    }).map((op) => _resolverPessoaCaixa(op, pessoasMap)).filter(Boolean);
-    operadoresDetalhe.push.apply(operadoresDetalhe, ops);
-  });
-  const detalhe = Array.from(new Set(operadoresDetalhe.filter(Boolean)));
-  if (detalhe.length) return detalhe;
+      }, maquinasMap)
+    );
+    return !!(maquinaPerdaKey && itemMachineKey && itemMachineKey === maquinaPerdaKey);
+  }) || null;
+  const opsExatos = _caixasExtrairOperadoresItemPerda(detalheExato);
+  if (opsExatos.length) return opsExatos;
 
-  const conclusao = _normalizarOperadoresCaixa({
-    operadores: ofData?.operadores_conclusao,
-    operadores_conclusao: ofData?.operadores_conclusao,
-    operador: ofData?.operador_conclusao,
-    operador_conclusao: ofData?.operador_conclusao,
-  }).map((op) => _resolverPessoaCaixa(op, pessoasMap)).filter(Boolean);
-  if (conclusao.length) return Array.from(new Set(conclusao));
+  const detalheFallback = perdasDetalhadas.find((item) => _caixasExtrairOperadoresItemPerda(item).length) || null;
+  const opsFallback = _caixasExtrairOperadoresItemPerda(detalheFallback);
+  if (opsFallback.length) return opsFallback;
 
-  const usuario = _resolverPessoaCaixa(row?.usuario, pessoasMap);
+  const usuario = _caixasNormalizarOperadorExibicao(_resolverPessoaCaixa(row?.usuario, pessoasMap));
   if (usuario) return [usuario];
 
-  return ['Sem operador registrado'];
+  return [_CAIXAS_OPERADOR_SEM];
 }
 
 function _caixasPerdidasDashboardVazio(mesRef = '') {
@@ -6409,7 +6441,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       quantidade,
       qtd_perdida: quantidade,
       operadores,
-      operador: operadores[0] || 'Sem operador registrado',
+      operador: operadores[0] || _CAIXAS_OPERADOR_SEM,
       operador_display: operadores.join(', '),
       data: String(row?.data || row?.created_at || '').slice(0, 10),
       usuario: concluidoPor,
@@ -6661,7 +6693,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
         maquina_nome: maquinaNome,
         maquinas: maquinaNome && maquinaNome !== '—' ? [maquinaNome] : [],
         operadores,
-        operador: operadores[0] || 'Sem operador registrado',
+        operador: operadores[0] || _CAIXAS_OPERADOR_SEM,
         operadores_nomes: operadores.join(', '),
         usuario: concluidoPor,
         usuario_conclusao: concluidoPor,
@@ -6707,9 +6739,9 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     enriquecidosFiltrados.forEach((r) => {
       const ops = Array.isArray(r?.operadores) && r.operadores.length
         ? r.operadores
-        : ['Sem operador registrado'];
+        : [_CAIXAS_OPERADOR_SEM];
       ops.forEach((op) => {
-        const nome = String(op || '').trim();
+        const nome = _caixasNormalizarOperadorExibicao(op);
         if (!nome) return;
         if (!opMap[nome]) opMap[nome] = { operador: nome, total_caixas: 0, valor_perdido: 0, ocorrencias: 0 };
         opMap[nome].total_caixas += Number(r?.quantidade_perdida || 0) || 0;
@@ -6718,8 +6750,8 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       });
     });
     const rankingOperadores = Object.values(opMap).sort((a, b) => {
-      const aSem = String(a?.operador || '').trim() === 'Sem operador registrado';
-      const bSem = String(b?.operador || '').trim() === 'Sem operador registrado';
+      const aSem = String(a?.operador || '').trim() === _CAIXAS_OPERADOR_SEM;
+      const bSem = String(b?.operador || '').trim() === _CAIXAS_OPERADOR_SEM;
       if (aSem !== bSem) return aSem ? 1 : -1;
       return (Number(b?.total_caixas || 0) || 0) - (Number(a?.total_caixas || 0) || 0);
     });
