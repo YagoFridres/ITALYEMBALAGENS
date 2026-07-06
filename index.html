@@ -33473,20 +33473,65 @@ try{
 
 try{
   if('serviceWorker' in navigator){
-    window.addEventListener('load', ()=>{
+    window.addEventListener('load', async ()=>{
       const swVersion = '20260706095342';
-      navigator.serviceWorker.register('/sw.js?v=' + swVersion, { scope:'/' }).catch(()=>{});
-      try{
-        navigator.serviceWorker.getRegistrations().then((registrations)=>{
-          (registrations||[]).forEach((reg)=>{
+      const swPath = '/sw.js?v=' + swVersion;
+      const swUrl = new URL(swPath, window.location.origin).href;
+      function isNotFoundSwError(err){
+        const msg = String(err && (err.message || err.stack || err) || '').toLowerCase();
+        return msg.includes('not found') || msg.includes('404');
+      }
+      async function unregisterZombies(){
+        try{
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for(const reg of (registrations||[])){
             try{
               const activeUrl = String(reg?.active?.scriptURL || reg?.waiting?.scriptURL || reg?.installing?.scriptURL || '');
-              if(activeUrl.includes('/sw.js') && !activeUrl.includes('v=' + swVersion)) reg.unregister().catch(()=>null);
+              if(activeUrl && activeUrl !== swUrl){
+                console.info('[SW] removendo registro zumbi:', activeUrl, 'esperado:', swUrl);
+                await reg.unregister().catch(()=>null);
+              }
             }catch(e){}
-            try{ reg.update(); }catch(e){}
-          });
-        }).catch(()=>null);
-      }catch(e){}
+          }
+        }catch(e){
+          console.warn('[SW] falha ao listar registros existentes:', e);
+        }
+      }
+      async function registerSw(cleanRetry){
+        console.info('[SW] registrando service worker:', swUrl, 'retryLimpo=', !!cleanRetry);
+        let registration = null;
+        try{
+          registration = await navigator.serviceWorker.register(swPath, { scope:'/', updateViaCache:'none' });
+          try{
+            console.info('[SW] solicitando update do service worker:', swUrl);
+            await registration.update();
+          }catch(updateErr){
+            if(isNotFoundSwError(updateErr)){
+              console.warn('[SW] update falhou com Not found, limpando e registrando novamente:', swUrl, updateErr);
+              await registration.unregister().catch(()=>null);
+              if(!cleanRetry) return registerSw(true);
+            }
+            throw updateErr;
+          }
+          return registration;
+        }catch(registerErr){
+          if(isNotFoundSwError(registerErr)){
+            console.warn('[SW] registro falhou com Not found, limpando zumbis e tentando novamente:', swUrl, registerErr);
+            try{
+              if(registration) await registration.unregister().catch(()=>null);
+            }catch(e){}
+            if(!cleanRetry) return registerSw(true);
+          }
+          console.warn('[SW] falha ao registrar service worker:', swUrl, registerErr);
+          throw registerErr;
+        }
+      }
+      try{
+        await unregisterZombies();
+        await registerSw(false);
+      }catch(e){
+        console.warn('[SW] registro final falhou:', swUrl, e);
+      }
     });
   }
 }catch(e){}
