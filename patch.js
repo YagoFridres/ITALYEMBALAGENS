@@ -794,10 +794,23 @@ try {
         + '#hist-passagens-resultado .hist-passagens-toolbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}'
         + '#page-historico-passagens #hist-passagens-resultado .hist-passagens-scroll{display:block;min-height:0;max-height:min(58vh,calc(100vh - 360px));overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-right:4px;scrollbar-gutter:stable}'
         + '#page-historico-passagens #hist-passagens-resultado > #hist-passagens-items.hist-passagens-scroll{display:block !important;min-height:0 !important;max-height:min(58vh,calc(100vh - 360px)) !important;overflow-y:auto !important;overflow-x:hidden !important;overscroll-behavior:contain !important;padding-right:4px !important}'
+        + '#hist-passagens-resultado .hist-detalhamento-box{display:grid;gap:12px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);border-radius:16px;padding:14px}'
+        + '#hist-passagens-resultado .hist-detalhamento-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}'
+        + '#hist-passagens-resultado .hist-detalhamento-title{font-size:16px;font-weight:900;color:#f8fafc}'
+        + '#hist-passagens-resultado .hist-detalhamento-sub{font-size:12px;color:#94a3b8}'
+        + '#hist-passagens-resultado .hist-detalhamento-search{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
+        + '#hist-passagens-resultado .hist-detalhamento-search input{width:min(520px,100%);min-width:260px;background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:11px 14px;font-size:13px}'
+        + '#hist-passagens-resultado .hist-detalhamento-table-wrap{max-height:min(58vh,calc(100vh - 360px));overflow:auto;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(2,6,23,.55)}'
+        + '#hist-passagens-resultado .hist-detalhamento-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1240px}'
+        + '#hist-passagens-resultado .hist-detalhamento-table thead th{position:sticky;top:0;z-index:2;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.18);text-align:left}'
+        + '#hist-passagens-resultado .hist-detalhamento-table tbody td{padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.12);font-size:13px;color:#e2e8f0;vertical-align:top}'
+        + '#hist-passagens-resultado .hist-detalhamento-table tbody tr:hover td{background:rgba(148,163,184,.06)}'
+        + '#hist-passagens-resultado .hist-detalhamento-table .num{text-align:right;font-variant-numeric:tabular-nums}'
+        + '#hist-passagens-resultado .hist-detalhamento-empty{padding:28px 16px;text-align:center;color:#94a3b8}'
         + '#hist-passagens-resultado .hist-passagens-scroll::-webkit-scrollbar,#hist-relatorio-mensal-shell .hist-month-table-wrap::-webkit-scrollbar{width:10px;height:10px}'
-        + '#hist-passagens-resultado .hist-passagens-scroll::-webkit-scrollbar-track,#hist-relatorio-mensal-shell .hist-month-table-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72)}'
-        + '#hist-passagens-resultado .hist-passagens-scroll::-webkit-scrollbar-thumb,#hist-relatorio-mensal-shell .hist-month-table-wrap::-webkit-scrollbar-thumb{background:rgba(100,116,139,.58);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
-        + '#hist-passagens-resultado .hist-passagens-scroll,#hist-relatorio-mensal-shell .hist-month-table-wrap{scrollbar-width:thin;scrollbar-color:rgba(100,116,139,.58) rgba(15,23,42,.72)}'
+        + '#hist-passagens-resultado .hist-passagens-scroll::-webkit-scrollbar-track,#hist-relatorio-mensal-shell .hist-month-table-wrap::-webkit-scrollbar-track,#hist-passagens-resultado .hist-detalhamento-table-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72)}'
+        + '#hist-passagens-resultado .hist-passagens-scroll::-webkit-scrollbar-thumb,#hist-relatorio-mensal-shell .hist-month-table-wrap::-webkit-scrollbar-thumb,#hist-passagens-resultado .hist-detalhamento-table-wrap::-webkit-scrollbar-thumb{background:rgba(100,116,139,.58);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
+        + '#hist-passagens-resultado .hist-passagens-scroll,#hist-relatorio-mensal-shell .hist-month-table-wrap,#hist-passagens-resultado .hist-detalhamento-table-wrap{scrollbar-width:thin;scrollbar-color:rgba(100,116,139,.58) rgba(15,23,42,.72)}'
         + '#hist-print-root{display:none}'
         + '#hist-print-root .hist-print-sheet{color:#111;background:#fff;font-family:Arial,sans-serif}'
         + '#hist-print-root .hist-print-title{font-size:22px;font-weight:800;margin-bottom:4px}'
@@ -886,7 +899,10 @@ try {
     var carBtn = document.getElementById('hist-rel-carregar');
     if (carBtn && !carBtn.dataset.bound) {
       carBtn.dataset.bound = '1';
-      carBtn.onclick = function() { _histFetchRelatorioMensal(); };
+      carBtn.onclick = async function() {
+        await _histFetchRelatorioMensal();
+        await _histBuscarHistoricoPassagens();
+      };
     }
     var relExpBtn = document.getElementById('hist-rel-exportar');
     if (relExpBtn && !relExpBtn.dataset.bound) {
@@ -934,6 +950,142 @@ try {
     var ano = String((document.getElementById('hist-rel-ano') || {}).value || '').trim();
     if (!mes || !ano) return _histCurrentMonthYearFromUi();
     return { mes: _histPad2(mes), ano: ano };
+  }
+
+  function _histNormBusca(v) {
+    var s = String(v == null ? '' : v).trim().toUpperCase();
+    try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+    return s.replace(/\s+/g, ' ').trim();
+  }
+
+  function _histPassagemCliente(row) {
+    return String((row && (row.cliente || row.nome_cliente || row.cliente_nome)) || '—').trim() || '—';
+  }
+
+  function _histPassagemProduto(row) {
+    return String((row && (row.produto || row.prod_desc || row.prodDesc || row.descricao || row.produto_desc)) || '—').trim() || '—';
+  }
+
+  function _histPassagemQuantidade(row) {
+    return Number((row && (row.qtd_produzida != null ? row.qtd_produzida : (row.quantidade != null ? row.quantidade : (row.caixas_produzidas != null ? row.caixas_produzidas : row.qtd)))) || 0) || 0;
+  }
+
+  function _histPassagemValorUnit(row) {
+    return Number((row && (row.vl_unit != null ? row.vl_unit : (row.valor_unitario != null ? row.valor_unitario : row.vunit))) || 0) || 0;
+  }
+
+  function _histPassagemValorTotal(row) {
+    return Number((row && (row.total != null ? row.total : (row.valor_total != null ? row.valor_total : row.valor_venda))) || 0) || 0;
+  }
+
+  function _histPassagemMaquinas(row) {
+    var lista = [];
+    try {
+      if (Array.isArray(row && row.maquinas)) lista = row.maquinas.slice();
+      else if (Array.isArray(row && row.maquinas_lista)) lista = row.maquinas_lista.slice();
+    } catch (_) {}
+    if (!lista.length) {
+      var unica = String((row && (row.maquina || row.maquina_nome)) || '').trim();
+      if (unica) lista = [unica];
+    }
+    lista = lista.map(function(v) { return String(v || '').trim(); }).filter(Boolean);
+    return lista.length ? lista.join(', ') : '—';
+  }
+
+  function _histFiltrarDetalhamentoRows(rows, termo) {
+    var lista = Array.isArray(rows) ? rows.slice() : [];
+    var busca = _histNormBusca(termo);
+    if (!busca) return lista;
+    return lista.filter(function(row) {
+      var hay = [
+        row && (row.of_numero || row.numero),
+        _histPassagemCliente(row),
+        _histPassagemProduto(row),
+        _histPassagemMaquinas(row)
+      ].map(_histNormBusca).join(' ');
+      return hay.indexOf(busca) >= 0;
+    });
+  }
+
+  function _histRenderDetalhamentoPassagens() {
+    var container = document.getElementById('hist-passagens-resultado');
+    if (!container) return;
+    var allRows = Array.isArray(window.__histPassagensDetalhamentoRows) ? window.__histPassagensDetalhamentoRows.slice() : [];
+    var busca = String(window.__histPassagensDetalhamentoBusca || '').trim();
+    var rows = _histFiltrarDetalhamentoRows(allRows, busca);
+    window.__histPassagensRowsVisible = rows.slice();
+    var ref = _histGetMonthlyRef();
+    var resumo = ''
+      + '<div class="hist-passagens-toolbar">'
+      + '  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+      + '    <span style="color:#64748b;font-size:12px">' + _histEsc(String(rows.length)) + ' OFs no detalhamento</span>'
+      + '    <span style="background:rgba(59,130,246,.14);color:#93c5fd;border-radius:6px;padding:3px 10px;font-size:12px">' + _histEsc(_histMonthName(ref.mes) + '/' + ref.ano) + '</span>'
+      + '  </div>'
+      + '  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+      + '    <button type="button" class="hist-patch-btn" id="hist-export-inline">Exportar Excel da Lista</button>'
+      + '    <button type="button" class="hist-patch-btn" id="hist-print-inline">Imprimir Lista</button>'
+      + '  </div>'
+      + '</div>';
+    var tableHtml = !rows.length
+      ? '<div class="hist-detalhamento-empty">Nenhuma passagem encontrada para o mês selecionado</div>'
+      : ''
+        + '<div class="hist-detalhamento-table-wrap">'
+        + '  <table class="hist-detalhamento-table">'
+        + '    <thead><tr>'
+        + '      <th>OF</th>'
+        + '      <th>Cliente</th>'
+        + '      <th>Produto</th>'
+        + '      <th class="num">Valor Unitário</th>'
+        + '      <th class="num">Quantidade</th>'
+        + '      <th class="num">Valor Total</th>'
+        + '      <th>Máquinas</th>'
+        + '      <th>Data da Conclusão</th>'
+        + '    </tr></thead>'
+        + '    <tbody>'
+        + rows.map(function(row) {
+            return ''
+              + '<tr>'
+              + '  <td><strong style="color:#f8fafc">#' + _histEsc(String(row && (row.of_numero || row.numero) || '—')) + '</strong></td>'
+              + '  <td>' + _histEsc(_histPassagemCliente(row)) + '</td>'
+              + '  <td>' + _histEsc(_histPassagemProduto(row)) + '</td>'
+              + '  <td class="num">' + _histEsc(_histFmtMoney(_histPassagemValorUnit(row))) + '</td>'
+              + '  <td class="num">' + _histEsc(_histFmtNum(_histPassagemQuantidade(row))) + '</td>'
+              + '  <td class="num">' + _histEsc(_histFmtMoney(_histPassagemValorTotal(row))) + '</td>'
+              + '  <td>' + _histEsc(_histPassagemMaquinas(row)) + '</td>'
+              + '  <td>' + _histEsc(_histFmtDateTime(row)) + '</td>'
+              + '</tr>';
+          }).join('')
+        + '    </tbody>'
+        + '  </table>'
+        + '</div>';
+
+    container.innerHTML = ''
+      + resumo
+      + '<div class="hist-detalhamento-box">'
+      + '  <div class="hist-detalhamento-head">'
+      + '    <div><div class="hist-detalhamento-title">Detalhamento de passagens:</div><div class="hist-detalhamento-sub">Busca por OF, cliente, produto ou máquina dentro do mês selecionado.</div></div>'
+      + '    <div class="hist-detalhamento-search"><input id="hist-detalhamento-busca" type="text" placeholder="Buscar por OF, cliente, produto ou máquina" value="' + _histAttr(busca) + '"><button type="button" class="hist-patch-btn" id="hist-detalhamento-busca-btn">Buscar</button></div>'
+      + '  </div>'
+      + tableHtml
+      + '</div>';
+
+    var input = document.getElementById('hist-detalhamento-busca');
+    var btn = document.getElementById('hist-detalhamento-busca-btn');
+    var applyBusca = function() {
+      window.__histPassagensDetalhamentoBusca = String((input || {}).value || '').trim();
+      _histRenderDetalhamentoPassagens();
+    };
+    if (btn) btn.onclick = applyBusca;
+    if (input) input.onkeydown = function(ev) {
+      if ((ev && ev.key) === 'Enter') {
+        ev.preventDefault();
+        applyBusca();
+      }
+    };
+    var exportInline = document.getElementById('hist-export-inline');
+    if (exportInline) exportInline.onclick = _histExportListaVisivel;
+    var printInline = document.getElementById('hist-print-inline');
+    if (printInline) printInline.onclick = function() { _histPrint('lista'); };
   }
 
   function _histSortMonthlyRows(rows) {
@@ -1128,18 +1280,19 @@ try {
     var container = document.getElementById('hist-passagens-resultado');
     if (!container) return;
 
-    var st = window._histPassagensState || { page: 0, limit: 50, total: 0, key: '', loading: false, filtros: {}, rows: [] };
+    var st = window._histPassagensState || { page: 0, limit: 10000, total: 0, key: '', loading: false, filtros: {}, rows: [] };
     if (!Array.isArray(st.rows)) st.rows = [];
     window._histPassagensState = st;
 
     var filtros = (arg && typeof arg === 'object' && !Array.isArray(arg)) ? arg : _histGetFilters();
-    append = !!append;
+    append = false;
+    var ref = _histGetMonthlyRef();
 
     var key = JSON.stringify({
       cli: String(filtros.cliente || ''),
       maq: String(filtros.maquina || ''),
-      ini: String(filtros.data_inicio || ''),
-      fim: String(filtros.data_fim || '')
+      mes: String(ref.mes || ''),
+      ano: String(ref.ano || '')
     });
     if (st.key !== key) {
       st.key = key;
@@ -1149,24 +1302,20 @@ try {
     }
     st.filtros = filtros;
 
-    var limit = Math.max(1, parseInt(String(st.limit || 50), 10) || 50);
+    var limit = Math.max(1, parseInt(String(st.limit || 10000), 10) || 10000);
     if (limit > 1000) limit = 1000;
-    var offset = append ? ((Number(st.page || 0) || 0) * limit) : 0;
+    limit = 1000;
+    var offset = 0;
 
-    if (!append) {
-      container.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">Buscando...</p>';
-    } else {
-      var btnLM0 = document.getElementById('btnCarregarMaisPassagens');
-      if (btnLM0) { btnLM0.disabled = true; btnLM0.textContent = 'Carregando...'; }
-    }
+    container.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">Buscando...</p>';
 
     st.loading = true;
 
     var qs = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (filtros.cliente) qs.set('cliente', filtros.cliente);
     if (filtros.maquina) qs.set('maquina', filtros.maquina);
-    if (filtros.data_inicio) qs.set('data_inicio', filtros.data_inicio);
-    if (filtros.data_fim) qs.set('data_fim', filtros.data_fim);
+    qs.set('mes', String(ref.mes || ''));
+    qs.set('ano', String(ref.ano || ''));
 
     var token = _histToken();
 
@@ -1177,110 +1326,11 @@ try {
       var data = await resp.json().catch(function() { return null; });
       var lista = Array.isArray(data && data.passagens) ? data.passagens : [];
 
-      if (!lista.length && !append) {
-        st.loading = false;
-        st.total = 0;
-        st.page = 0;
-        st.rows = [];
-        window.__histPassagensRowsVisible = [];
-        container.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px">Nenhuma passagem encontrada.</p>';
-        await _histFetchRelatorioMensal();
-        return;
-      }
-
       st.total = Number(data && data.total || 0) || 0;
-      st.page = append ? ((Number(st.page || 0) || 0) + 1) : 1;
+      st.page = 1;
       st.limit = limit;
-      st.rows = append ? st.rows.concat(lista) : lista.slice();
-      window.__histPassagensRowsVisible = st.rows.slice();
-
-      var semMaquina = st.rows.filter(function(p) {
-        var m = String(p && p.maquina || '').trim().toLowerCase();
-        return !m || m === 'sem maquina' || m === 'sem máquina';
-      }).length;
-
-      var isSingleDay = filtros.data_inicio && filtros.data_fim && filtros.data_inicio === filtros.data_fim;
-      var resumoHtml = ''
-        + '<div class="hist-passagens-toolbar">'
-        + '  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-        + '    <span style="color:#64748b;font-size:12px">' + _histEsc(String(st.total || 0)) + ' passagens encontradas</span>'
-        +      (semMaquina > 0 ? ('<span style="background:rgba(100,116,139,0.15);color:#94a3b8;border-radius:6px;padding:3px 10px;font-size:12px">Sem máquina: <strong>' + _histEsc(String(semMaquina)) + '</strong></span>') : '')
-        +      (isSingleDay ? ('<span style="background:rgba(59,130,246,.14);color:#93c5fd;border-radius:6px;padding:3px 10px;font-size:12px">Relatório do dia: <strong>' + _histEsc(String(filtros.data_inicio || '')) + '</strong></span>') : '')
-        + '  </div>'
-        + '  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-        + '    <button type="button" class="hist-patch-btn" id="hist-export-inline">Exportar Excel da Lista</button>'
-        + '    <button type="button" class="hist-patch-btn" id="hist-print-inline">Imprimir Lista</button>'
-        + '  </div>'
-        + '</div>';
-
-      var cardsHtml = st.rows.map(function(p) {
-        var imgsArr = [];
-        try {
-          if (Array.isArray(p && p.imgs)) imgsArr = p.imgs;
-          else if (typeof (p && p.imgs) === 'string') imgsArr = JSON.parse(p.imgs || '[]');
-        } catch (_) { imgsArr = []; }
-        if (!Array.isArray(imgsArr)) imgsArr = [];
-
-        var imgUrl = String(
-          (p && (p.imagem_url || p.img || p.imagem || p.foto)) ||
-          (imgsArr.length ? imgsArr[0] : '') ||
-          ''
-        ).trim();
-        var cliente = String((p && (p.cliente || p.nome_cliente)) || '—').trim() || '—';
-        var produto = String((p && (p.produto || p.prod_desc || p.prodDesc || p.descricao || p.produto_desc)) || '').trim();
-        var qtd = Number((p && (p.qtd_produzida != null ? p.qtd_produzida : (p.quantidade != null ? p.quantidade : (p.caixas_produzidas != null ? p.caixas_produzidas : p.qtd)))) || 0) || 0;
-        var vlUnit = Number((p && (p.vl_unit != null ? p.vl_unit : (p.valor_unitario != null ? p.valor_unitario : p.vunit))) || 0) || 0;
-        var total = Number((p && (p.total != null ? p.total : (p.valor_total != null ? p.valor_total : p.valor_venda))) || 0) || 0;
-        var hora = _histFmtDateTime(p);
-        var tipo = String((p && (p.tipo || p.status)) || '').trim().toUpperCase();
-        var badgeCfg = (function() {
-          var map = {
-            'ENTRADA':    { bg: 'rgba(34,197,94,0.15)',  cor: '#4ade80',  label: '▲ ENTRADA' },
-            'SAIDA':      { bg: 'rgba(239,68,68,0.15)',  cor: '#f87171',  label: '▼ SAÍDA' },
-            'SAÍDA':      { bg: 'rgba(239,68,68,0.15)',  cor: '#f87171',  label: '▼ SAÍDA' },
-            'DESPACHADA': { bg: 'rgba(59,130,246,0.15)', cor: '#60a5fa',  label: '🚚 DESPACHADA' },
-            'CONCLUIDA':  { bg: 'rgba(168,85,247,0.15)', cor: '#c084fc',  label: '✓ CONCLUÍDA' },
-            'CONCLUÍDA':  { bg: 'rgba(168,85,247,0.15)', cor: '#c084fc',  label: '✓ CONCLUÍDA' },
-            'PASSAGEM':   { bg: 'rgba(168,85,247,0.15)', cor: '#c084fc',  label: '⚙ PASSAGEM' }
-          };
-          if (map[tipo]) return map[tipo];
-          if (tipo && tipo.indexOf('ENTR') >= 0) return map.ENTRADA;
-          if (tipo && (tipo.indexOf('SAIDA') >= 0 || tipo.indexOf('SAÍDA') >= 0)) return map.SAIDA;
-          if (tipo && tipo.indexOf('DESP') >= 0) return map.DESPACHADA;
-          if (tipo && tipo.indexOf('CONCLU') >= 0) return map.CONCLUIDA;
-          return map.PASSAGEM;
-        })();
-        var badgeHtml = badgeCfg ? ('<span style="background:' + _histAttr(badgeCfg.bg) + ';color:' + _histAttr(badgeCfg.cor) + ';border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800;border:1px solid rgba(255,255,255,0.08);white-space:nowrap">' + _histEsc(badgeCfg.label) + '</span>') : '';
-        var responsavel = String((p && (p.responsavel || p.operador || p.operador_nome || p.concluido_por)) || '').trim();
-
-        return ''
-          + '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px">'
-          +   (imgUrl
-                ? '<img src="' + _histAttr(imgUrl) + '" onclick="if(window.kbAbrirImagem) kbAbrirImagem(this.src)" style="width:52px;height:52px;object-fit:cover;border-radius:8px;flex-shrink:0;border:1px solid rgba(255,255,255,0.1);cursor:pointer" onerror="this.style.display=\'none\'">'
-                : '<div style="width:52px;height:52px;border-radius:8px;flex-shrink:0;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:20px">?</div>')
-          +   '<div style="flex:1;min-width:0">'
-          +     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">'
-          +       '<span style="font-weight:700;color:#4A90D9;font-size:13px">OF #' + _histEsc(String(p && (p.of_numero || p.numero) || '—')) + '</span>'
-          +       badgeHtml
-          +       '<span style="color:#e2e8f0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _histEsc(cliente) + '</span>'
-          +     '</div>'
-          +     (produto ? ('<div style="color:rgba(255,255,255,0.82);font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px">' + _histEsc(produto) + '</div>') : '')
-          +     '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#64748b">'
-          +       ((p && (p.maquina || p.maquina_nome)) ? ('<span>⚙ ' + _histEsc(String(p.maquina || p.maquina_nome)) + '</span>') : '')
-          +       (responsavel ? ('<span>👤 ' + _histEsc(responsavel) + '</span>') : '')
-          +       (qtd ? ('<span>📦 ' + _histEsc(String(qtd)) + ' cx</span>') : '')
-          +       (vlUnit ? ('<span>R$ ' + _histEsc(String(_histFmtMoney(vlUnit))) + '/cx</span>') : '')
-          +       (total ? ('<span>Total ' + _histEsc(String(_histFmtMoney(total))) + '</span>') : '')
-          +     '</div>'
-          +   '</div>'
-          +   '<div style="text-align:right;flex-shrink:0"><div style="color:#64748b;font-size:11px">' + _histEsc(hora) + '</div></div>'
-          + '</div>';
-      }).join('');
-
-      var loaded = ((Number(st.page || 0) || 0) * limit) >= st.total;
-      var loadMoreHtml = (!loaded && st.total > 0)
-        ? ('<div style="text-align:center;padding:16px"><button onclick="carregarMaisPassagens()" class="btn btn-ghost btn-sm" id="btnCarregarMaisPassagens">Carregar mais</button></div>')
-        : '';
+      st.rows = lista.slice();
+      window.__histPassagensDetalhamentoRows = st.rows.slice();
 
       try {
         container.style.display = 'grid';
@@ -1303,7 +1353,7 @@ try {
           contentRoot.style.overflowX = 'hidden';
         }
       } catch (_) {}
-      container.innerHTML = resumoHtml + '<div id="hist-passagens-items" class="hist-passagens-scroll" style="display:block;max-height:none;overflow-y:visible;overflow-x:hidden;overscroll-behavior:contain;padding-right:4px;min-height:0">' + cardsHtml + '</div>' + loadMoreHtml;
+      _histRenderDetalhamentoPassagens();
       _histRepairScrollContainer();
       // #region debug-point D:hist-scroll-metrics
       try {
@@ -1328,16 +1378,8 @@ try {
         });
       } catch (_) {}
       // #endregion
-
-      var exportInline = document.getElementById('hist-export-inline');
-      if (exportInline) exportInline.onclick = _histExportListaVisivel;
-      var printInline = document.getElementById('hist-print-inline');
-      if (printInline) printInline.onclick = function() { _histPrint('lista'); };
-
-      await _histBuscarLinhasVisiveisExport(st, filtros);
-      if (!append) await _histFetchRelatorioMensal();
     } catch (e) {
-      if (!append) container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao buscar passagens.</p>';
+      container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao buscar passagens.</p>';
     }
 
     st.loading = false;
