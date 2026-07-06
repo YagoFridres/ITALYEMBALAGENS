@@ -5972,6 +5972,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (!wrap) return;
       wrap.onclick = function(ev) {
         var target = ev && ev.target;
+        var pinBtn = target && target.closest ? target.closest('[data-est-pin]') : null;
+        if (pinBtn) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          try { _estoqueTogglePinCompra(_estoqueWireFindById(lista, String(pinBtn.getAttribute('data-est-pin') || ''))); } catch (_) {}
+          return;
+        }
         var editBtn = target && target.closest ? target.closest('[data-est-edit]') : null;
         if (editBtn) {
           ev.preventDefault();
@@ -5999,6 +6006,206 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
       };
     }
+    function _estoqueQtdAtualChapa(chapa) {
+      return Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
+    }
+    function _estoqueInvalidateSugestoesCompra() {
+      window.__estoqueSugestoesCompraCache = null;
+      window.__estoqueSugestoesCompraPromise = null;
+    }
+    async function _estoqueFetchSugestoesCompra(force) {
+      var ttl = 15000;
+      var now = Date.now();
+      var cache = window.__estoqueSugestoesCompraCache || null;
+      if (!force && cache && cache.ts && (now - cache.ts) < ttl && Array.isArray(cache.data)) return cache.data.slice();
+      if (!force && window.__estoqueSugestoesCompraPromise) return window.__estoqueSugestoesCompraPromise;
+      window.__estoqueSugestoesCompraPromise = fetch('/api/chapas_estoque_v2/sugestoes-compra?_t=' + Date.now(), {
+        headers: _estoqueAuthHeaders(),
+        cache: 'no-store'
+      }).then(function(resp) {
+        return resp.json().catch(function() { return null; }).then(function(json) {
+          if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao carregar sugestões de compra'));
+          var data = Array.isArray(json && json.data) ? json.data : [];
+          var byChapa = Object.create(null);
+          var byPin = Object.create(null);
+          data.forEach(function(item) {
+            var chapaId = String(item && (item.chapa_id || (item.chapa && item.chapa.id) || '') || '').trim();
+            var pinId = String(item && item.id || '').trim();
+            if (chapaId) byChapa[chapaId] = item;
+            if (pinId) byPin[pinId] = item;
+          });
+          window.__estoqueSugestoesCompraCache = { ts: Date.now(), data: data.slice(), byChapa: byChapa, byPin: byPin };
+          window.__estoqueSugestoesCompraPromise = null;
+          return data.slice();
+        });
+      }).catch(function(err) {
+        window.__estoqueSugestoesCompraPromise = null;
+        throw err;
+      });
+      return window.__estoqueSugestoesCompraPromise;
+    }
+    function _estoqueSugestaoCompraByChapa(chapaId) {
+      var cache = window.__estoqueSugestoesCompraCache || null;
+      var map = cache && cache.byChapa ? cache.byChapa : Object.create(null);
+      return map[String(chapaId || '').trim()] || null;
+    }
+    async function _estoqueRefreshAfterSugestaoCompra() {
+      _estoqueInvalidateSugestoesCompra();
+      try { if (typeof chapasForcarReload === 'function') chapasForcarReload(); } catch (_) {}
+      try {
+        if (String(window._PAGE_ATUAL || '') === 'estoque' && typeof renderEstoqueWireframePage === 'function') {
+          await renderEstoqueWireframePage();
+        }
+      } catch (_) {}
+      try {
+        if (typeof window.__estoqueEntradasRefresh === 'function') {
+          await window.__estoqueEntradasRefresh();
+        }
+      } catch (_) {}
+    }
+    async function _estoqueTogglePinCompra(chapa) {
+      var chapaId = String(chapa && chapa.id || '').trim();
+      if (!chapaId) return;
+      var atual = _estoqueSugestaoCompraByChapa(chapaId);
+      var endpoint = '/api/chapas_estoque_v2/' + encodeURIComponent(chapaId) + (atual ? '/despin' : '/pin');
+      var resp = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, _estoqueAuthHeaders()),
+        body: JSON.stringify({
+          qtd_sugerida: _estoqueQtdAtualChapa(chapa),
+          observacao: ''
+        })
+      });
+      var json = await resp.json().catch(function() { return null; });
+      if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao atualizar sugestão'));
+      try { window.toast(atual ? 'Sugestão removida da compra' : 'Sugestão fixada para compra', 'var(--green)'); } catch (_) {}
+      await _estoqueRefreshAfterSugestaoCompra();
+    }
+    function _estoquePinBtnHtml(chapa) {
+      var chapaId = String(chapa && chapa.id || '').trim();
+      var pinned = !!_estoqueSugestaoCompraByChapa(chapaId);
+      var style = pinned
+        ? 'background:#f59e0b;color:#111827;border:1px solid #f59e0b;font-weight:900'
+        : 'background:#0f172a;color:#f8fafc;border:1px solid rgba(255,255,255,.14)';
+      return '<button class="pep-btn" data-est-pin="' + _escapeHtmlLite(chapaId) + '" title="' + _escapeHtmlLite(pinned ? 'Remover sugestão de compra' : 'Fixar como sugestão de compra') + '" style="' + style + '">📌</button>';
+    }
+    function _renderSugestoesCompraTopo(sugestoes) {
+      var lista = Array.isArray(sugestoes) ? sugestoes : [];
+      return ''
+        + '<div class="pep-panel" style="margin-bottom:12px">'
+        + '  <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">'
+        + '    <div>'
+        + '      <div style="font-size:18px;font-weight:900;color:#f8fafc">💡 Sugestões de Compra (fixadas no estoque)</div>'
+        + '      <div style="font-size:12px;color:#94a3b8">Itens marcados com 📌 no estoque e ainda pendentes de compra.</div>'
+        + '    </div>'
+        + '    <div style="font-size:12px;color:#cbd5e1">Pendentes: <strong style="color:#fff">' + _escapeHtmlLite(String(lista.length)) + '</strong></div>'
+        + '  </div>'
+        + (lista.length ? (
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">' + lista.map(function(item) {
+            var chapa = item && item.chapa || {};
+            return ''
+              + '<div style="background:#111827;border:1px solid rgba(245,158,11,.35);border-left:4px solid #f59e0b;border-radius:14px;padding:14px;display:grid;gap:10px">'
+              + '  <div style="display:grid;gap:4px">'
+              + '    <div style="font-size:14px;font-weight:900;color:#f8fafc">' + _escapeHtmlLite(chapa.fornecedor || 'Sem fornecedor') + '</div>'
+              + '    <div style="font-size:13px;color:#e5e7eb">' + _escapeHtmlLite(chapa.nomenclatura || chapa.nome_uso || chapa.nome || 'Sem nomenclatura') + '</div>'
+              + '    <div style="font-size:12px;color:#94a3b8">' + _escapeHtmlLite([chapa.tamanho || 'Sem tamanho', chapa.gramatura ? (String(chapa.gramatura) + ' g/m²') : 'Sem gramatura'].join(' · ')) + '</div>'
+              + '    <div style="font-size:12px;color:#cbd5e1">Quantidade atual: <strong style="color:#fff">' + _escapeHtmlLite(String(_estoqueQtdAtualChapa(chapa))) + '</strong></div>'
+              + '  </div>'
+              + '  <div style="display:flex;gap:8px;flex-wrap:wrap">'
+              + '    <button class="pep-btn primary" type="button" data-sug-buy="' + _escapeHtmlLite(String(item && item.id || '')) + '">✅ Comprar</button>'
+              + '    <button class="pep-btn" type="button" data-sug-ignore="' + _escapeHtmlLite(String(item && item.chapa_id || (chapa && chapa.id) || '')) + '" style="background:#1f2937">Ignorar</button>'
+              + '  </div>'
+              + '</div>';
+          }).join('') + '</div>'
+        ) : '<div style="padding:16px;border:1px dashed rgba(255,255,255,.14);border-radius:12px;color:#94a3b8">Nenhuma sugestão de compra pendente no momento.</div>')
+        + '</div>';
+    }
+    async function _estoqueIgnorarSugestaoCompra(chapaId) {
+      var id = String(chapaId || '').trim();
+      if (!id) return;
+      var resp = await fetch('/api/chapas_estoque_v2/' + encodeURIComponent(id) + '/ignorar-sugestao', {
+        method: 'PATCH',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, _estoqueAuthHeaders())
+      });
+      var json = await resp.json().catch(function() { return null; });
+      if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao ignorar sugestão'));
+      try { window.toast('Sugestão ignorada', 'var(--green)'); } catch (_) {}
+      await _estoqueRefreshAfterSugestaoCompra();
+    }
+    function _abrirModalComprarSugestaoCompra(item) {
+      var sugestao = item || {};
+      var chapa = sugestao.chapa || {};
+      var pinId = String(sugestao.id || '').trim();
+      if (!pinId) {
+        try { window.toast('Sugestão de compra inválida', 'var(--red)'); } catch (_) {}
+        return;
+      }
+      var modalId = 'estoque-sugestao-compra-modal';
+      var body = ''
+        + '<div style="display:grid;gap:14px">'
+        + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">'
+        + '    <div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Fornecedor</div><div style="font-weight:800;color:#f8fafc">' + _escapeHtmlLite(chapa.fornecedor || '—') + '</div></div>'
+        + '    <div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Nomenclatura</div><div style="font-weight:800;color:#f8fafc">' + _escapeHtmlLite(chapa.nomenclatura || chapa.nome_uso || chapa.nome || '—') + '</div></div>'
+        + '    <div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Tamanho</div><div style="font-weight:800;color:#f8fafc">' + _escapeHtmlLite(chapa.tamanho || '—') + '</div></div>'
+        + '    <div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Gramatura</div><div style="font-weight:800;color:#f8fafc">' + _escapeHtmlLite(chapa.gramatura || '—') + '</div></div>'
+        + '  </div>'
+        + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">'
+        + '    <label style="display:grid;gap:6px"><span style="font-size:12px;color:#cbd5e1">Quantidade</span><input id="estoque-sugestao-qtd" class="estoque-modal-input" type="number" min="1" step="1" value="1"></label>'
+        + '    <label style="display:grid;gap:6px"><span style="font-size:12px;color:#cbd5e1">Valor unitário</span><input id="estoque-sugestao-vu" class="estoque-modal-input" type="number" min="0" step="0.00001" value="' + _escapeHtmlLite(String(Number(chapa.valor_unitario || chapa.val || 0) || 0)) + '"></label>'
+        + '  </div>'
+        + '  <div style="font-size:12px;color:#94a3b8">A confirmação marca a sugestão como comprada e registra a entrada no estoque desta chapa.</div>'
+        + '</div>';
+      var footer = ''
+        + '<button type="button" class="pep-btn" data-modal-close="1">Cancelar</button>'
+        + '<button type="button" class="pep-btn primary" id="estoque-sugestao-comprar-save">Confirmar compra</button>';
+      var modal = _abrirModalPadrao({
+        id: modalId,
+        titulo: 'Confirmar compra sugerida',
+        subtitulo: 'Complete apenas quantidade e valor unitário',
+        hero: '💡',
+        accent: 'green',
+        largura: '720px',
+        corpoHTML: body,
+        footerHTML: footer
+      });
+      var saveBtn = modal && modal.querySelector ? modal.querySelector('#estoque-sugestao-comprar-save') : null;
+      if (saveBtn) saveBtn.onclick = async function() {
+        if (saveBtn.disabled) return;
+        var qtdEl = document.getElementById('estoque-sugestao-qtd');
+        var vuEl = document.getElementById('estoque-sugestao-vu');
+        var qtd = Math.trunc(Number(qtdEl && qtdEl.value || 0) || 0);
+        var vu = Number(String(vuEl && vuEl.value || '0').replace(',', '.'));
+        if (!(qtd > 0)) {
+          try { window.toast('Informe uma quantidade válida', 'var(--red)'); } catch (_) {}
+          return;
+        }
+        if (!Number.isFinite(vu) || vu < 0) {
+          try { window.toast('Informe um valor unitário válido', 'var(--red)'); } catch (_) {}
+          return;
+        }
+        saveBtn.disabled = true;
+        try {
+          var resp = await fetch('/api/chapas/pins/' + encodeURIComponent(pinId) + '/comprado', {
+            method: 'PATCH',
+            headers: Object.assign({ 'Content-Type': 'application/json' }, _estoqueAuthHeaders()),
+            body: JSON.stringify({
+              quantidade: qtd,
+              valor_unitario: vu,
+              tamanho: String(chapa.tamanho || '').trim()
+            })
+          });
+          var json = await resp.json().catch(function() { return null; });
+          if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao registrar compra sugerida'));
+          _fecharModalPadrao(modalId);
+          try { window.toast('Compra registrada a partir da sugestão', 'var(--green)'); } catch (_) {}
+          await _estoqueRefreshAfterSugestaoCompra();
+        } catch (e) {
+          try { window.toast('Erro ao registrar compra: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+        } finally {
+          saveBtn.disabled = false;
+        }
+      };
+    }
     async function renderEstoqueWireframePage() {
       ensureStyles();
       _ensureEstoqueStyle();
@@ -6020,6 +6227,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       // #endregion
       try {
         var lista = await _estoqueFetchChapasList(10000);
+        try { await _estoqueFetchSugestoesCompra(false); } catch (_) {}
         lista = Array.isArray(lista) ? lista : [];
         var busca = String(window.__estoqueWireBusca || '').trim().toLowerCase();
         var filtrada = busca ? lista.filter(function(chapa) {
@@ -6065,7 +6273,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               + '<td class="col-num">' + num(qtd, 0) + '</td>'
               + '<td class="col-num">' + money(vunit) + '</td>'
               + '<td class="col-num">' + money(estoqueWireValor(chapa)) + '</td>'
-              + '<td class="col-actions"><button class="pep-btn danger" data-est-del="' + esc(chapa && chapa.id || '') + '">Excluir</button> <button class="pep-btn" data-est-edit="' + esc(chapa && chapa.id || '') + '">Alterar</button></td>'
+              + '<td class="col-actions">' + _estoquePinBtnHtml(chapa) + ' <button class="pep-btn danger" data-est-del="' + esc(chapa && chapa.id || '') + '">Excluir</button> <button class="pep-btn" data-est-edit="' + esc(chapa && chapa.id || '') + '">Alterar</button></td>'
               + '</tr>';
           }).join('') : '<tr><td colspan="11" style="text-align:center;color:#94a3b8">Nenhum registro encontrado.</td></tr>')
         + '  </tbody></table></div></div>'
@@ -15123,6 +15331,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         await _renderEntradasEstoque(target);
       };
       var raw = await _carregarDadosMovimentacaoEstoque('entrada');
+      var sugestoesCompra = [];
+      try { sugestoesCompra = await _estoqueFetchSugestoesCompra(false); } catch (_) {}
       var detalhado = (raw || []).filter(_historicoEntradaEhRecebimento);
       var base = _agruparHistoricoOperacoesEstoque(detalhado, 'entrada');
       var mesAtual = _mesAtualRefEstoque();
@@ -15141,6 +15351,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var topChapa = _topItemTexto(mesRows, function(r) { return r.chapa_label || '—'; }, function(r) { return Number(r.quantidade || 0) || 0; }, '—');
         host.innerHTML = ''
           + '<div style="display:grid;gap:16px">'
+          +      _renderSugestoesCompraTopo(sugestoesCompra)
           + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' 
           +      [_makeCardEstoque({ label: 'Valor Total no Mês', value: _fmtRsEstoque(totalValorMes), sub: 'Recebido em ' + mesAtual }),
                   _makeCardEstoque({ label: 'Quantas Entradas Foram Dadas', value: _fmtNumEstoque(mesLanc.length), sub: 'Lançamentos manuais no mês' }),
@@ -15168,6 +15379,20 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         // #endregion
         var btnEntrada = document.getElementById('estoque-entrada-lote-btn');
         if (btnEntrada) btnEntrada.onclick = function() { _abrirModalEntradaEstoqueReal(); };
+        Array.prototype.slice.call(host.querySelectorAll('[data-sug-buy]')).forEach(function(btn) {
+          btn.onclick = function() {
+            var pinId = String(btn.getAttribute('data-sug-buy') || '').trim();
+            var alvo = (Array.isArray(sugestoesCompra) ? sugestoesCompra : []).find(function(item) { return String(item && item.id || '').trim() === pinId; }) || null;
+            if (alvo) _abrirModalComprarSugestaoCompra(alvo);
+          };
+        });
+        Array.prototype.slice.call(host.querySelectorAll('[data-sug-ignore]')).forEach(function(btn) {
+          btn.onclick = function() {
+            _estoqueIgnorarSugestaoCompra(String(btn.getAttribute('data-sug-ignore') || '').trim()).catch(function(e) {
+              try { window.toast('Erro ao ignorar sugestão: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+            });
+          };
+        });
         _bindBotaoEditarChapas(window.__estoqueEntradasRefresh, 'estoque-entrada-alterar-btn');
         _bindBotaoCriarChapas(window.__estoqueEntradasRefresh, 'estoque-entrada-criar-btn');
         try { _agendarReaplicacaoUiEstoque(host); } catch (_) {}

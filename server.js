@@ -1089,9 +1089,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260706164000';
-const SW_RUNTIME_VERSION = '20260706164000';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260706164000';
+const PATCH_RUNTIME_VERSION = '20260706181500';
+const SW_RUNTIME_VERSION = '20260706181500';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260706181500';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -17405,6 +17405,181 @@ app.post('/api/chapas/pins', authMiddleware, async (req, res) => {
       throw ins.error;
     }
     return res.status(500).json({ ok: false, error: 'Falha ao criar pin' });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+async function _chapasCompraSugestoesContext(req, body) {
+  const b = body || {};
+  const userId = String(req.query.userId || b.userId || req.usuario?.id || '').trim();
+  let empresa_id = '';
+  if (userId) empresa_id = await _empresaUuidByUserId(userId);
+  if (!empresa_id) empresa_id = await _resolveEmpresaUuid(req);
+  const emp_id = String(b.empId || b.emp_id || req.query?.empId || req.query?.emp_id || req.usuario?.empId || req.usuario?.emp_id || req.usuario?.sigla || '').trim() || null;
+  return { empresa_id, emp_id };
+}
+
+async function _chapasCompraSugestoesPendentes(req) {
+  const ctx = await _chapasCompraSugestoesContext(req, {});
+  if (!ctx.empresa_id) return [];
+  const { data: pins, error } = await supabase
+    .from('chapas_pins')
+    .select('*')
+    .eq('empresa_id', ctx.empresa_id)
+    .eq('status', 'pendente')
+    .order('created_at', { ascending: false });
+  if (error) {
+    const msg = String(error.message || error || '').toLowerCase();
+    if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('could not find')) return [];
+    throw error;
+  }
+  const rows = Array.isArray(pins) ? pins : [];
+  const ids = Array.from(new Set(rows.map((p) => String(p?.chapa_id || '').trim()).filter(Boolean)));
+  const chapasMap = Object.create(null);
+  if (ids.length) {
+    try {
+      const { data: chapasRows, error: chapasErr } = await supabase.from('chapas_estoque_v2').select('*').in('id', ids);
+      if (!chapasErr) {
+        (Array.isArray(chapasRows) ? chapasRows : []).forEach((row) => {
+          const canon = _chapasCanonicalFromAny(row, 'chapas_estoque_v2');
+          chapasMap[String(canon?.id || '').trim()] = canon;
+        });
+      }
+    } catch (_) {}
+  }
+  return rows.map((pin) => {
+    const chapaId = String(pin?.chapa_id || '').trim();
+    const chapa = chapasMap[chapaId] || null;
+    return {
+      id: String(pin?.id || '').trim(),
+      chapa_id: chapaId,
+      pinned_compra: true,
+      pinned_status: 'pendente',
+      pinned_em: pin?.created_at || pin?.pinned_em || null,
+      observacao: String(pin?.observacao || '').trim(),
+      qtd_sugerida: pin?.qtd_sugerida != null ? Math.trunc(Number(pin.qtd_sugerida) || 0) : null,
+      criado_por: String(pin?.criado_por || '').trim(),
+      chapa,
+    };
+  }).filter((item) => !!item.chapa_id);
+}
+
+app.patch('/api/chapas_estoque_v2/:id/pin', authMiddleware, async (req, res) => {
+  try {
+    const chapaId = String(req.params.id || '').trim();
+    if (!chapaId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const ctx = await _chapasCompraSugestoesContext(req, req.body || {});
+    if (!ctx.empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+
+    const existente = await supabase
+      .from('chapas_pins')
+      .select('*')
+      .eq('chapa_id', chapaId)
+      .eq('empresa_id', ctx.empresa_id)
+      .eq('status', 'pendente')
+      .maybeSingle();
+    if (existente?.error) {
+      const msg = String(existente.error.message || existente.error || '').toLowerCase();
+      if (!(msg.includes('does not exist') || msg.includes('relation') || msg.includes('could not find'))) throw existente.error;
+    }
+    if (existente?.data?.id) return res.json({ ok: true, data: existente.data, already_pinned: true });
+
+    const b = req.body || {};
+    const payload = {
+      chapa_id: chapaId,
+      empresa_id: ctx.empresa_id,
+      emp_id: ctx.emp_id,
+      criado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
+      qtd_sugerida: b.qtd_sugerida != null ? Math.trunc(Number(b.qtd_sugerida) || 0) : null,
+      observacao: String(b.observacao || '').trim() || null,
+      status: 'pendente',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    let toInsert = { ...payload };
+    for (let i = 0; i < 10; i += 1) {
+      const ins = await supabase.from('chapas_pins').insert([toInsert]).select().maybeSingle();
+      if (!ins?.error) return res.json({ ok: true, data: ins.data || null });
+      const msg = String(ins.error.message || ins.error || '');
+      const low = msg.toLowerCase();
+      if (low.includes('does not exist') || low.includes('relation') || low.includes('could not find')) {
+        return res.status(500).json({ ok: false, error: 'Tabela chapas_pins não encontrada' });
+      }
+      const m = msg.match(/column \"([^\"]+)\" of relation/i);
+      if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
+        delete toInsert[m[1]];
+        continue;
+      }
+      throw ins.error;
+    }
+    return res.status(500).json({ ok: false, error: 'Falha ao fixar sugestão de compra' });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.patch('/api/chapas_estoque_v2/:id/despin', authMiddleware, async (req, res) => {
+  try {
+    const chapaId = String(req.params.id || '').trim();
+    if (!chapaId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const ctx = await _chapasCompraSugestoesContext(req, req.body || {});
+    if (!ctx.empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    const del = await supabase
+      .from('chapas_pins')
+      .delete()
+      .eq('chapa_id', chapaId)
+      .eq('empresa_id', ctx.empresa_id)
+      .eq('status', 'pendente');
+    if (del?.error) throw del.error;
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/chapas_estoque_v2/sugestoes-compra', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const lista = await _chapasCompraSugestoesPendentes(req);
+    return res.json({ ok: true, data: lista });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.patch('/api/chapas_estoque_v2/:id/ignorar-sugestao', authMiddleware, async (req, res) => {
+  try {
+    const chapaId = String(req.params.id || '').trim();
+    if (!chapaId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const ctx = await _chapasCompraSugestoesContext(req, req.body || {});
+    if (!ctx.empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    const payload = {
+      status: 'ignorado',
+      ignored_at: new Date().toISOString(),
+      ignored_by: req.usuario?.nome || req.usuario?.email || 'Usuário',
+      updated_at: new Date().toISOString(),
+    };
+    let toUpdate = { ...payload };
+    let upd = null;
+    for (let i = 0; i < 10; i += 1) {
+      upd = await supabase
+        .from('chapas_pins')
+        .update(toUpdate)
+        .eq('chapa_id', chapaId)
+        .eq('empresa_id', ctx.empresa_id)
+        .eq('status', 'pendente')
+        .select();
+      if (!upd?.error) return res.json({ ok: true, data: upd.data || [] });
+      const msg = String(upd.error.message || upd.error || '');
+      const m = msg.match(/column \"([^\"]+)\" of relation/i);
+      if (m && m[1] && Object.prototype.hasOwnProperty.call(toUpdate, m[1])) {
+        delete toUpdate[m[1]];
+        continue;
+      }
+      throw upd.error;
+    }
+    return res.json({ ok: true, data: [] });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
