@@ -5935,6 +5935,48 @@ function _normalizarOperadoresCaixa(row) {
   return Array.from(new Set(lista));
 }
 
+let _caixasOperadorColumnEnsured = false;
+let _caixasOperadorColumnEnsurePromise = null;
+function _caixasPerdidasOperadorSql() {
+  return "ALTER TABLE caixas_perdidas ADD COLUMN IF NOT EXISTS operador text;";
+}
+async function _ensureCaixasPerdidasOperadorColumn() {
+  if (_caixasOperadorColumnEnsured) return true;
+  if (_caixasOperadorColumnEnsurePromise) return _caixasOperadorColumnEnsurePromise;
+  _caixasOperadorColumnEnsurePromise = (async () => {
+    let hasColumn = false;
+    try {
+      const probe = await supabase.from('caixas_perdidas').select('operador').limit(1);
+      if (!probe?.error) hasColumn = true;
+      else {
+        const msg = String(probe.error?.message || probe.error || '').toLowerCase();
+        if (!(msg.includes('could not find the') || msg.includes('does not exist') || msg.includes('column'))) {
+          throw probe.error;
+        }
+      }
+    } catch (e) {
+      const msg = String(e?.message || e || '').toLowerCase();
+      if (!(msg.includes('could not find the') || msg.includes('does not exist') || msg.includes('column'))) throw e;
+    }
+    if (!hasColumn) {
+      try {
+        const rpc = await supabase.rpc('exec_sql', { sql: _caixasPerdidasOperadorSql() });
+        if (rpc?.error) {
+          try { console.warn('[caixas_perdidas][operador] exec_sql:', rpc.error.message || rpc.error); } catch (_) {}
+        } else {
+          hasColumn = true;
+        }
+      } catch (e) {
+        try { console.warn('[caixas_perdidas][operador] ensure falhou:', e?.message || e); } catch (_) {}
+      }
+    }
+    _caixasOperadorColumnEnsured = !!hasColumn;
+    _caixasOperadorColumnEnsurePromise = null;
+    return _caixasOperadorColumnEnsured;
+  })();
+  return _caixasOperadorColumnEnsurePromise;
+}
+
 function _isUuidText(v) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v || '').trim());
 }
@@ -5980,6 +6022,8 @@ function _caixasPerdidasDashboardVazio(mesRef = '') {
       valor_total: 0,
       total_ocorrencias: 0,
       mes_referencia: mesRef || '',
+      toneladas_perdidas: 0,
+      toneladas_sem_dados: 0,
     },
     comparacao_mes_anterior: {
       total_caixas: 0,
@@ -5994,6 +6038,7 @@ function _caixasPerdidasDashboardVazio(mesRef = '') {
 }
 
 async function _listarCaixasPerdidasEnriquecidas(req) {
+  try { await _ensureCaixasPerdidasOperadorColumn(); } catch (_) {}
   const baseCols = [
     'id', 'of_id', 'of_numero', 'produto', 'cliente', 'valor_unitario', 'qtd_perdida', 'valor_perdido',
     'data', 'mes_referencia', 'emp_id', 'empresa_id', 'usuario', 'usuario_conclusao', 'concluido_por', 'obs', 'created_at',
@@ -6123,12 +6168,13 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       maquina: row?.maquina || row?.maquina_perda || row?.maquina_nome || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || ofData?.maq || '',
     }, maquinasMap) || 'Sem máquina';
     const quantidade = Number(row?.quantidade ?? row?.caixas_perdidas ?? row?.qtd_perdida ?? 0) || 0;
-    const operadores = Array.from(new Set(
+    let operadores = Array.from(new Set(
       _normalizarOperadoresCaixa(row)
         .concat(_normalizarOperadoresCaixa(ofData))
         .map((op) => _resolverPessoaCaixa(op, pessoasMap))
         .filter(Boolean)
     ));
+    if (!operadores.length) operadores = ['Sem operador registrado'];
     const concluidoPor = _resolverPessoaCaixa(row?.concluido_por || row?.usuario_conclusao || ofData?.concluido_por || row?.usuario, pessoasMap) || '—';
     return {
       ...row,
@@ -6141,6 +6187,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       quantidade,
       qtd_perdida: quantidade,
       operadores,
+      operador: operadores[0] || 'Sem operador registrado',
       operador_display: operadores.join(', '),
       data: String(row?.data || row?.created_at || '').slice(0, 10),
       usuario: concluidoPor,
@@ -6188,6 +6235,7 @@ app.get('/api/caixas-perdidas', authMiddleware, async (req, res) => {
 app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
+    try { await _ensureCaixasPerdidasOperadorColumn(); } catch (_) {}
 
     const toArray = (v) => {
       if (Array.isArray(v)) return v.map((x) => String(x || '').trim()).filter(Boolean);
@@ -6286,10 +6334,19 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
 
     const ofIds = Array.from(new Set((dadosFiltrados || []).map((r) => String(r?.of_id || r?.of_uuid || '').trim()).filter(Boolean)));
     const { data: ofsRows } = ofIds.length
-      ? await supabase.from('ofs').select('id,numero,cli_id,valor_total,quantidade,descricao,operador_conclusao,operadores_conclusao,usuario_conclusao,concluido_por,maq,maquina,maquina_atual,maquina_agendada,maquina_id').in('id', ofIds)
+      ? await supabase.from('ofs').select('id,numero,cli_id,valor_total,quantidade,qtd,descricao,produto,operador_conclusao,operadores_conclusao,usuario_conclusao,concluido_por,maq,maquina,maquina_atual,maquina_agendada,maquina_id,caixa_comprimento,caixa_largura,comprimento_mm,largura_mm,dim_comprimento,dim_largura,comprimento,largura,gramatura_id,gramatura,gramatura_nome').in('id', ofIds)
       : { data: [] };
     const ofsMap = Object.create(null);
     (ofsRows || []).forEach((of) => { ofsMap[String(of.id || '').trim()] = of; });
+
+    const gramaturaIds = Array.from(new Set((ofsRows || []).map((of) => String(of?.gramatura_id || '').trim()).filter(Boolean)));
+    const { data: gramaturasRows } = gramaturaIds.length
+      ? await supabase.from('gramaturas').select('id,gramatura,nome').in('id', gramaturaIds)
+      : { data: [] };
+    const gramaturasMap = Object.create(null);
+    (gramaturasRows || []).forEach((g) => {
+      gramaturasMap[String(g?.id || '').trim()] = Number(g?.gramatura || 0) || 0;
+    });
 
     const cliIds = Array.from(new Set((ofsRows || []).map((of) => String(of?.cli_id || '').trim()).filter(Boolean)));
     const { data: clientesRows } = cliIds.length
@@ -6315,26 +6372,49 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     })));
     const pessoasMap = await _carregarMapaPessoasCaixa(pessoaIds);
 
+    const parseDimMm = (src, keys) => {
+      const arr = Array.isArray(keys) ? keys : [];
+      for (const key of arr) {
+        if (!src || !Object.prototype.hasOwnProperty.call(src, key)) continue;
+        const v = Number(src[key] || 0) || 0;
+        if (v > 0) return v;
+      }
+      return 0;
+    };
+    const resolveToneladasPerdidasItem = (ofData, qtdPerdida) => {
+      const comprimentoMm = parseDimMm(ofData, ['comprimento_mm', 'caixa_comprimento', 'dim_comprimento', 'comprimento']);
+      const larguraMm = parseDimMm(ofData, ['largura_mm', 'caixa_largura', 'dim_largura', 'largura']);
+      const gramatura = Number(
+        ofData?.gramatura ??
+        gramaturasMap[String(ofData?.gramatura_id || '').trim()] ??
+        0
+      ) || 0;
+      if (!(comprimentoMm > 0) || !(larguraMm > 0) || !(gramatura > 0) || !(qtdPerdida > 0)) return null;
+      return ((comprimentoMm / 1000) * (larguraMm / 1000) * gramatura * qtdPerdida) / 1000000;
+    };
+
     const enriquecidos = (dadosFiltrados || []).map((r) => {
       const ofId = String(r?.of_id || r?.of_uuid || '').trim();
       const ofData = ofId ? ofsMap[ofId] : null;
       const qtdPerdida = Number(r?.quantidade ?? r?.caixas_perdidas ?? r?.qtd_perdida ?? 0) || 0;
+      const qtdOfBase = Number(ofData?.quantidade ?? ofData?.qtd ?? 0) || 0;
       const vu = Number(
         r?.valor_unitario ??
         (
-          (Number(ofData?.valor_total || 0) > 0 && Number(ofData?.quantidade || 0) > 0)
-            ? (Number(ofData.valor_total) / Number(ofData.quantidade))
+          (Number(ofData?.valor_total || 0) > 0 && qtdOfBase > 0)
+            ? (Number(ofData?.valor_total || 0) / qtdOfBase)
             : 0
         )
       ) || 0;
       const valorPerdido = Number(r?.valor_perdido ?? (vu * qtdPerdida)) || 0;
       const clienteNome = ofData?.cli_id ? (clientesMap[String(ofData.cli_id || '').trim()] || '') : '';
-      const operadores = Array.from(new Set(
+      let operadores = Array.from(new Set(
         _normalizarOperadoresCaixa(r)
           .concat(_normalizarOperadoresCaixa(ofData))
           .map((op) => _resolverPessoaCaixa(op, pessoasMap))
           .filter(Boolean)
       ));
+      if (!operadores.length) operadores = ['Sem operador registrado'];
       const concluidoPor = _resolverPessoaCaixa(r?.concluido_por || r?.usuario_conclusao || r?.usuario, pessoasMap) || '—';
       const dataRef = r?.created_at || r?.data || r?.data_perda || r?.data_conclusao || null;
       const maquinaNome = _resolverNomeMaquinaPassagem({
@@ -6342,6 +6422,8 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
         maquina_nome: r?.maquina_nome || r?.maquina || r?.maquina_perda || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || ofData?.maq || '',
         maquina: r?.maquina || r?.maquina_perda || r?.maquina_nome || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || ofData?.maq || '',
       }, maquinasMap) || 'Sem máquina';
+
+      const toneladasPerdidasItem = resolveToneladasPerdidasItem(ofData, qtdPerdida);
 
       return {
         ...r,
@@ -6355,6 +6437,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
         maquina_nome: maquinaNome,
         maquinas: maquinaNome && maquinaNome !== '—' ? [maquinaNome] : [],
         operadores,
+        operador: operadores[0] || 'Sem operador registrado',
         operadores_nomes: operadores.join(', '),
         usuario: concluidoPor,
         usuario_conclusao: concluidoPor,
@@ -6366,6 +6449,8 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
           qtd_perdida: qtdPerdida,
           operadores,
         }],
+        toneladas_perdidas_item: toneladasPerdidasItem,
+        toneladas_perdidas_calculavel: Number.isFinite(toneladasPerdidasItem) && toneladasPerdidasItem > 0,
       };
     });
 
@@ -6381,6 +6466,8 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
 
     const totalCaixas = enriquecidosFiltrados.reduce((s, r) => s + (Number(r?.quantidade_perdida || 0) || 0), 0);
     const valorTotal = enriquecidosFiltrados.reduce((s, r) => s + (Number(r?.valor_perdido || 0) || 0), 0);
+    const toneladasPerdidas = enriquecidosFiltrados.reduce((s, r) => s + (Number(r?.toneladas_perdidas_item || 0) || 0), 0);
+    const toneladasSemDados = enriquecidosFiltrados.reduce((s, r) => s + ((r?.toneladas_perdidas_calculavel ? 0 : 1)), 0);
 
     const maqMap = Object.create(null);
     enriquecidosFiltrados.forEach((r) => {
@@ -6396,7 +6483,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     enriquecidosFiltrados.forEach((r) => {
       const ops = Array.isArray(r?.operadores) && r.operadores.length
         ? r.operadores
-        : _normalizarOperadoresCaixa(r);
+        : (_normalizarOperadoresCaixa(r).length ? _normalizarOperadoresCaixa(r) : ['Sem operador registrado']);
       ops.forEach((op) => {
         const nome = String(op || '').trim();
         if (!nome) return;
@@ -6406,7 +6493,12 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
         opMap[nome].ocorrencias += 1;
       });
     });
-    const rankingOperadores = Object.values(opMap).sort((a, b) => b.total_caixas - a.total_caixas);
+    const rankingOperadores = Object.values(opMap).sort((a, b) => {
+      const aSem = String(a?.operador || '').trim() === 'Sem operador registrado';
+      const bSem = String(b?.operador || '').trim() === 'Sem operador registrado';
+      if (aSem !== bSem) return aSem ? 1 : -1;
+      return (Number(b?.total_caixas || 0) || 0) - (Number(a?.total_caixas || 0) || 0);
+    });
 
     const mesAnt = mes === 1 ? 12 : mes - 1;
     const anoAnt = mes === 1 ? ano - 1 : ano;
@@ -6420,7 +6512,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
 
     return res.json({
       _debug: { tabelaAtiva, totalHistorico: todos?.length || 0, totalFiltrado: enriquecidosFiltrados.length, periodoSolicitado: requestedPeriodo, mesAplicado: mes, anoAplicado: ano, fallbackMesRecente },
-      resumo_mes_atual: { total_caixas: totalCaixas, valor_total: valorTotal, total_ocorrencias: enriquecidosFiltrados.length, mes_referencia: String(ano) + '-' + String(mes).padStart(2, '0') },
+      resumo_mes_atual: { total_caixas: totalCaixas, valor_total: valorTotal, total_ocorrencias: enriquecidosFiltrados.length, mes_referencia: String(ano) + '-' + String(mes).padStart(2, '0'), toneladas_perdidas: toneladasPerdidas, toneladas_sem_dados: toneladasSemDados },
       comparacao_mes_anterior: {
         total_caixas: totalCaixasAnt,
         valor_total: valorTotalAnt,
@@ -6471,13 +6563,16 @@ app.get('/api/admin/corrigir_ofs_concluidas_sem_qtd', requireAdmin, async (req, 
 });
 
 async function _insertCaixaPerdidaCompat(input, req) {
+  try { await _ensureCaixasPerdidasOperadorColumn(); } catch (_) {}
   const b = input || {};
   const hoje = new Date().toISOString().slice(0, 10);
   const mes = new Date().toISOString().slice(0, 7);
   const qtdPerdida = Math.trunc(Number(b.qtd_perdida ?? b.quantidade ?? b.caixas_perdidas ?? 0) || 0);
   const rawOperadores = Array.isArray(b.operadores)
     ? b.operadores
-    : (typeof b.operadores === 'string' ? b.operadores.split(/[,;|]+/g) : []);
+    : (typeof b.operadores === 'string'
+        ? b.operadores.split(/[,;|]+/g)
+        : [b.operador, b.operador_conclusao, b.operador_display, b.usuario_conclusao]);
   const operadores = Array.from(new Set(rawOperadores.map((op) => String(op || '').trim()).filter(Boolean)));
   const valorUnitario = Number(b.valor_unitario ?? b.vl_unit ?? 0) || 0;
   const valorPerdido = Number(b.valor_perdido ?? (qtdPerdida * valorUnitario) ?? 0) || 0;

@@ -8416,6 +8416,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     function _cpEsc(v) { return String(v == null ? '' : v).replace(/[&<>"]/g, function(ch) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[ch] || ch; }); }
     function _cpFmtMoney(v) { try { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return 'R$ 0,00'; } }
     function _cpFmtNum(v) { try { return Number(v || 0).toLocaleString('pt-BR'); } catch (_) { return String(v || 0); } }
+    function _cpFmtTon(v) { try { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' t'; } catch (_) { return '0,000 t'; } }
     function _cpNorm(v) { try { return String(v || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) { return String(v || '').trim().toLowerCase(); } }
     function _cpDateBr(v) {
       var s = String(v || '').trim();
@@ -8456,11 +8457,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '.cpv2-btn.is-active{background:#1e293b;border-color:#334155;color:#fff}'
         + '.cpv2-btn.refresh{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#2563eb}'
         + '.cpv2-btn.print{background:linear-gradient(135deg,#7c3aed,#5b21b6);border-color:#7c3aed}'
-        + '.cpv2-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0}'
-        + '.cpv2-card{background:linear-gradient(135deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:20px 24px;min-height:112px}'
+        + '.cpv2-summary{display:grid;grid-template-columns:repeat(5,minmax(180px,1fr));gap:12px;margin:14px 0;align-items:stretch}'
+        + '.cpv2-card{background:linear-gradient(135deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:20px 24px;min-height:112px;display:flex;flex-direction:column;justify-content:center;min-width:0}'
         + '.cpv2-card-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#64748b;font-weight:800}'
-        + '.cpv2-card-value{font-size:28px;font-weight:900;color:#f8fafc;margin-top:10px}'
+        + '.cpv2-card-value{font-size:28px;font-weight:900;color:#f8fafc;margin-top:10px;line-height:1.15;word-break:break-word}'
         + '.cpv2-card-sub{font-size:12px;color:#94a3b8;margin-top:8px}'
+        + '.cpv2-card-note{font-size:11px;color:#64748b;margin-top:6px;line-height:1.4}'
         + '.cpv2-compare-up{color:#ef4444}.cpv2-compare-down{color:#22c55e}'
         + '.cpv2-ranks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px}'
         + '.cpv2-panel{background:linear-gradient(135deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:18px}'
@@ -8503,6 +8505,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '#cp-print-root .cp-print-table th,#cp-print-root .cp-print-table td{border:1px solid #cbd5e1;padding:8px 10px;text-align:left;color:#111;background:#fff}'
         + '#cp-print-root .cp-print-table th{background:#f8fafc;font-size:11px;text-transform:uppercase;letter-spacing:.06em}'
         + '#cp-print-root .cp-print-table td.num,#cp-print-root .cp-print-table th.num{text-align:right}'
+        + '@media (max-width:1200px){.cpv2-summary{grid-template-columns:repeat(3,minmax(0,1fr))}}'
         + '@media (max-width:980px){.cpv2-summary,.cpv2-ranks{grid-template-columns:1fr 1fr}}'
         + '@media (max-width:720px){.cpv2-summary,.cpv2-ranks{grid-template-columns:1fr}.cpv2-table-actions{align-items:stretch}.cpv2-search,.cpv2-select{width:100%}.cpv2-toolbar-group{width:100%}}'
         + '@media print{body *{visibility:hidden !important}#cp-print-root,#cp-print-root *{visibility:visible !important}#cp-print-root{display:block !important;position:fixed;inset:0;background:#fff;padding:22px;z-index:2147483647;overflow:visible}body.cp-print-open{background:#fff !important}}';
@@ -8587,6 +8590,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + '    <div class="cp-print-card"><span class="lab">Ocorrencias</span><strong>' + _cpEsc(_cpFmtNum(resumo.total_ocorrencias || linhas.length || 0)) + '</strong></div>'
           + '    <div class="cp-print-card"><span class="lab">Caixas Perdidas</span><strong>' + _cpEsc(_cpFmtNum(resumo.total_caixas || 0)) + '</strong></div>'
           + '    <div class="cp-print-card"><span class="lab">Valor Perdido</span><strong>' + _cpEsc(_cpFmtMoney(resumo.valor_total || 0)) + '</strong></div>'
+          + '    <div class="cp-print-card"><span class="lab">Toneladas Perdidas</span><strong>' + _cpEsc(_cpFmtTon(resumo.toneladas_perdidas || 0)) + '</strong></div>'
           + '  </div>'
           + '  <table class="cp-print-table">'
           + '    <thead><tr><th>Data</th><th>OF</th><th>Cliente</th><th>Maquina</th><th>Operadores</th><th class="num">Qtd Perdida</th></tr></thead>'
@@ -8682,7 +8686,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var maq = String(r && (r.maquina || r.maquina_nome) || '').trim();
         if (maq) arr = [maq];
       }
-      return arr.map(function(item) { return String(item || '').trim(); }).filter(Boolean);
+      arr = arr.map(function(item) { return String(item || '').trim(); }).filter(Boolean);
+      return arr.length ? arr : ['Sem operador registrado'];
     }
 
     function _cpRowOperadores(r) {
@@ -8738,6 +8743,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var maxM = Math.max(1, ...rankM.map(function(r) { return Number(r && r.total_caixas || 0) || 0; }));
       var maxO = Math.max(1, ...rankO.map(function(r) { return Number(r && r.total_caixas || 0) || 0; }));
       var varCx = Number(comp.variacao_caixas_pct || 0) || 0;
+      var tonSemDados = Number(resumo.toneladas_sem_dados || 0) || 0;
+      var tonNota = tonSemDados > 0 ? (_cpFmtNum(tonSemDados) + ' registros sem dados suficientes') : 'Todas as perdas do período possuem dados para cálculo';
       var varCls = varCx > 0 ? 'cpv2-compare-up' : 'cpv2-compare-down';
       var varArrow = varCx > 0 ? '↑' : '↓';
       // #region debug-point C:cp-render-summary
@@ -8787,6 +8794,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <div class="cpv2-card"><div class="cpv2-card-label">Valor Perdido</div><div class="cpv2-card-value">' + _cpFmtMoney(resumo.valor_total) + '</div><div class="cpv2-card-sub">Perdas do período</div></div>'
         + '    <div class="cpv2-card"><div class="cpv2-card-label">VS Mês Anterior</div><div class="cpv2-card-value ' + varCls + '">' + varArrow + ' ' + String(Math.abs(varCx)).replace('.', ',') + '%</div><div class="cpv2-card-sub">Anterior: ' + _cpFmtNum(comp.total_caixas) + ' cx · ' + _cpFmtMoney(comp.valor_total) + '</div></div>'
         + '    <div class="cpv2-card"><div class="cpv2-card-label">Ocorrências</div><div class="cpv2-card-value">' + _cpFmtNum(resumo.total_ocorrencias) + '</div><div class="cpv2-card-sub">Registros consolidados</div></div>'
+        + '    <div class="cpv2-card"><div class="cpv2-card-label">Toneladas Perdidas</div><div class="cpv2-card-value">' + _cpFmtTon(resumo.toneladas_perdidas || 0) + '</div><div class="cpv2-card-sub">Soma do período filtrado</div><div class="cpv2-card-note">' + _cpEsc(tonNota) + '</div></div>'
         + '  </div>'
         + '  <div class="cpv2-ranks">'
         + '    <div class="cpv2-panel"><div class="cpv2-panel-title">🏭 Ranking de Máquinas</div>' + (rankM.length ? rankM.map(function(r, idx) { var pct = Math.max(4, Math.round(((Number(r && r.total_caixas || 0) || 0) / maxM) * 100)); return '<div class="cpv2-rank-item"><div style="font-weight:900;color:#64748b">' + (idx + 1) + '.</div><div><div class="cpv2-rank-name">' + _cpEsc(r && r.maquina || '—') + '</div><div class="cp-ranking-track"><div class="cp-ranking-bar" style="width:' + pct + '%"></div></div><div class="cpv2-rank-meta">' + _cpFmtNum(r && r.total_caixas || 0) + ' cx · ' + _cpFmtMoney(r && r.valor_perdido || 0) + '</div></div><div class="cpv2-badge">' + _cpFmtNum(r && r.ocorrencias || 0) + '</div></div>'; }).join('') : '<div style="color:#94a3b8">Sem dados no período.</div>') + '</div>'
@@ -19584,9 +19592,16 @@ window._mbnActive = function(id) {
         container0.setAttribute('data-secao-ativa', 'caixas-perdidas');
       }
     } catch (_) {}
+    if (typeof window._renderCaixasPerdidasV2 === 'function') {
+      try { fixarBotaoNovaInconformidade(); } catch (_) {}
+      return window._renderCaixasPerdidasV2(false);
+    }
     renderCpRowsPatched(Array.isArray(window._cpRows) ? window._cpRows : []);
     try { fixarBotaoNovaInconformidade(); } catch (_) {}
   };
+  try {
+    if (typeof window._renderCaixasPerdidasV2 === 'function') window.renderCaixasPerdidas._patchDashboardV2 = true;
+  } catch (_) {}
 
   if (typeof window.cpRender === 'function' && !window.cpRender._patchInconfRows) {
     var _cpRenderOriginal = window.cpRender;
@@ -19600,7 +19615,7 @@ window._mbnActive = function(id) {
     window.cpRender._patchInconfRows = true;
   }
 
-  if (typeof window.carregarCaixasPerdidas === 'function' && !window.carregarCaixasPerdidas._patchInconfRows) {
+  if (typeof window.carregarCaixasPerdidas === 'function' && !window.carregarCaixasPerdidas._patchInconfRows && !window.carregarCaixasPerdidas._patchDashboardV2) {
     var _carregarCaixasPerdidasOriginal = window.carregarCaixasPerdidas;
     window.carregarCaixasPerdidas = async function() {
       var result = await _carregarCaixasPerdidasOriginal.apply(this, arguments);
