@@ -1554,6 +1554,22 @@ app.post('/api/debug/check_usuario', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/debug/schema-caixas-perdidas', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('caixas_perdidas')
+      .select('*')
+      .limit(1);
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json({
+      colunas: data && data[0] ? Object.keys(data[0]) : [],
+      exemplo: data && data[0] ? data[0] : null
+    });
+  } catch (err) {
+    return res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
   try {
     const { data: usuario, error } = await supabase
