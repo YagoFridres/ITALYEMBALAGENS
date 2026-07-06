@@ -11348,10 +11348,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
   };
 
-  function wrapSalvarOfRapidaEdicao() {
-    patchSalvarOfRapida();
-  }
-
   function patchAbrirModalNumero() {
     if (typeof window.abrirModalOF !== 'function') return;
     if (window.abrirModalOF._patchNumeroEdicao) return;
@@ -11369,7 +11365,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function tick() {
     ensureMultiItemColors();
-    wrapSalvarOfRapidaEdicao();
     patchAbrirModalNumero();
   }
 
