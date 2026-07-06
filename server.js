@@ -794,6 +794,116 @@ app.get('/api/_debug/caixas-perdidas/operadores', async (req, res) => {
   }
 });
 
+app.get('/api/_debug/caixas-perdidas/of-link', async (req, res) => {
+  try {
+    const ano = String(req.query.ano || '2026').trim() || '2026';
+    const mes = String(req.query.mes || '07').trim().padStart(2, '0');
+    const mesRef = `${ano}-${mes}`;
+    let tabelaAtiva = null;
+    for (const t of ['caixas_perdidas', 'caixas_perdas', 'perdas_producao']) {
+      const { error } = await supabase.from(t).select('*').limit(1);
+      if (!error) { tabelaAtiva = t; break; }
+    }
+    if (!tabelaAtiva) return res.json({ ok: true, tabela: null, periodo: mesRef, rows: [] });
+
+    let rows = [];
+    let cpError = null;
+    const q1 = await supabase
+      .from(tabelaAtiva)
+      .select('id,of_id,of_numero,produto,cliente,usuario,data,mes_referencia,created_at,maquina,maquina_id,maquina_perda')
+      .eq('mes_referencia', mesRef)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (!q1.error) rows = Array.isArray(q1.data) ? q1.data : [];
+    else cpError = String(q1.error.message || q1.error || '');
+
+    if (!rows.length) {
+      const q2 = await supabase
+        .from(tabelaAtiva)
+        .select('id,of_id,of_numero,produto,cliente,usuario,data,mes_referencia,created_at,maquina,maquina_id,maquina_perda')
+        .gte('data', `${mesRef}-01`)
+        .lt('data', `${ano}-${String(Number(mes) + 1).padStart(2, '0')}-01`)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      if (!q2.error) rows = Array.isArray(q2.data) ? q2.data : [];
+      else if (!cpError) cpError = String(q2.error.message || q2.error || '');
+    }
+
+    let typeInfo = { caixas_perdidas: null, ofs: null, error: null };
+    try {
+      const sql = [
+        "select table_name, column_name, data_type, udt_name",
+        "from information_schema.columns",
+        "where (table_name = 'caixas_perdidas' and column_name = 'of_id')",
+        "   or (table_name = 'ofs' and column_name = 'id')",
+        "order by table_name, column_name"
+      ].join(' ');
+      const rpc = await supabase.rpc('exec_sql', { sql });
+      if (rpc?.error) {
+        typeInfo.error = String(rpc.error.message || rpc.error || '');
+      } else {
+        const data = Array.isArray(rpc?.data) ? rpc.data : [];
+        typeInfo.caixas_perdidas = data.find((r) => String(r?.table_name || '') === 'caixas_perdidas') || null;
+        typeInfo.ofs = data.find((r) => String(r?.table_name || '') === 'ofs') || null;
+      }
+    } catch (e) {
+      typeInfo.error = String(e?.message || e);
+    }
+
+    const detalhes = [];
+    for (const row of rows) {
+      const rawOfId = row?.of_id;
+      const ofId = String(rawOfId || '').trim();
+      let byId = null;
+      let byIdError = null;
+      if (ofId) {
+        const qr = await supabase
+          .from('ofs')
+          .select('id,numero,of,perdas_por_maquina')
+          .eq('id', ofId)
+          .maybeSingle();
+        byId = qr?.data || null;
+        byIdError = qr?.error ? String(qr.error.message || qr.error || '') : null;
+      }
+      detalhes.push({
+        perda_id: row?.id || null,
+        of_id_raw: rawOfId,
+        of_id_texto: ofId || null,
+        of_id_js_type: rawOfId == null ? 'null' : typeof rawOfId,
+        of_id_preenchido: !!ofId,
+        of_numero_row: row?.of_numero || null,
+        maquina_perda: row?.maquina_perda || row?.maquina || null,
+        usuario: row?.usuario || null,
+        mes_referencia: row?.mes_referencia || null,
+        data: row?.data || null,
+        ofs_eq_id_encontrou: !!byId,
+        ofs_eq_id_error: byIdError,
+        ofs_id: byId?.id || null,
+        ofs_numero: byId?.numero || null,
+        ofs_of: byId?.of || null,
+        ofs_perdas_por_maquina: byId?.perdas_por_maquina ?? null,
+      });
+    }
+
+    return res.json({
+      ok: true,
+      tabela: tabelaAtiva,
+      periodo: mesRef,
+      query_atual_server: {
+        listagem: ".from('ofs').select(...).in('id', lote)",
+        dashboard: ".from('ofs').select(...).in('id', ofIds)",
+        diagnostico_linha: ".from('ofs').select('id,numero,of,perdas_por_maquina').eq('id', of_id).maybeSingle()",
+      },
+      tipos: typeInfo,
+      total_amostra: detalhes.length,
+      erro_busca_caixas: cpError,
+      rows: detalhes,
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 
 function _newRid() {
   try { return crypto.randomBytes(8).toString('hex'); } catch (_) {}
