@@ -1089,9 +1089,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260706181500';
-const SW_RUNTIME_VERSION = '20260706181500';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260706181500';
+const PATCH_RUNTIME_VERSION = '20260706183500';
+const SW_RUNTIME_VERSION = '20260706183500';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260706183500';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -17580,6 +17580,38 @@ app.patch('/api/chapas_estoque_v2/:id/ignorar-sugestao', authMiddleware, async (
       throw upd.error;
     }
     return res.json({ ok: true, data: [] });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.patch('/api/chapas_estoque_v2/:id/cor', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+
+    const atual = await supabase
+      .from('chapas_estoque_v2')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (atual?.error) return res.status(500).json({ ok: false, error: String(atual.error.message || atual.error) });
+    if (!atual?.data) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+
+    const cor = _chapasColorNormalize(req.body?.cor_linha ?? req.body?.cor ?? req.body?.linha_cor ?? '') || null;
+    const observacaoAtual = String(atual.data?.observacao ?? atual.data?.obs ?? atual.data?.observacoes ?? '').trim();
+    const payload = {
+      cor: cor,
+      observacao: _chapasObsWithColor(observacaoAtual, cor || ''),
+      atualizado_por: req?.usuario?.nome || req?.usuario?.email || 'sistema',
+    };
+
+    const { data, error } = await _chapasUpdateCompatV2(id, payload);
+    if (error) return res.status(500).json({ ok: false, error: String(error.message || error) });
+    cacheClearPrefix('chapas_estoque:');
+    await _chapasLogAcao(req, 'estoque_chapas_cor_linha', `Cor da linha atualizada: ${data?.nome_uso || data?.nomenclatura || ''} · ${cor || 'sem cor'}`);
+    return res.json({ ok: true, data: _chapasCanonicalFromAny(data || { ...atual.data, ...payload }, 'chapas_estoque_v2') });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
