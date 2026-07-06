@@ -6534,6 +6534,10 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       : { data: [], error: null };
     const ofsMap = Object.create(null);
     (ofsRows || []).forEach((of) => { ofsMap[String(of.id || '').trim()] = of; });
+    try {
+      console.log('[TRACE-OFSMAP] total de chaves no ofsMap:', Object.keys(ofsMap || {}).length);
+      console.log('[TRACE-OFSMAP] amostra de chaves:', Object.keys(ofsMap || {}).slice(0, 10));
+    } catch (_) {}
 
     const gramaturaIds = Array.from(new Set((ofsRows || []).map((of) => String(of?.gramatura_id || '').trim()).filter(Boolean)));
     const { data: gramaturasRows } = gramaturaIds.length
@@ -6597,6 +6601,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       return ((comprimentoMm / 1000) * (larguraMm / 1000) * gramatura * qtdPerdida) / 1000000;
     };
 
+    let _traceOperadorCount = 0;
     const enriquecidos = (dadosFiltrados || []).map((r) => {
       const ofId = String(r?.of_id || r?.of_uuid || '').trim();
       const ofData = ofId ? ofsMap[ofId] : null;
@@ -6613,6 +6618,21 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       const valorPerdido = Number(r?.valor_perdido ?? (vu * qtdPerdida)) || 0;
       const clienteNome = ofData?.cli_id ? (clientesMap[String(ofData.cli_id || '').trim()] || '') : '';
       const operadores = _resolverOperadorDaPerda(r, ofData, pessoasMap, maquinasMap);
+      const operadorResolvido = operadores[0] || _CAIXAS_OPERADOR_SEM;
+      if (_traceOperadorCount < 5) {
+        try {
+          console.log('[TRACE-OPERADOR]', JSON.stringify({
+            registro_of_id: r?.of_id,
+            registro_maquina_perda: r?.maquina_perda,
+            registro_usuario: r?.usuario,
+            ofData_encontrada: !!ofData,
+            ofData_id: ofData ? ofData.id : null,
+            ofData_perdas_por_maquina: ofData ? ofData.perdas_por_maquina : 'OFDATA_NULL',
+            resultado_final_operador: operadorResolvido,
+          }));
+        } catch (_) {}
+        _traceOperadorCount += 1;
+      }
       const concluidoPor = _resolverPessoaCaixa(r?.concluido_por || r?.usuario_conclusao || r?.usuario, pessoasMap) || '—';
       const dataRef = r?.created_at || r?.data || r?.data_perda || r?.data_conclusao || null;
       const maquinaNome = _resolverNomeMaquinaPassagem({
@@ -6635,7 +6655,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
         maquina_nome: maquinaNome,
         maquinas: maquinaNome && maquinaNome !== '—' ? [maquinaNome] : [],
         operadores,
-        operador: operadores[0] || _CAIXAS_OPERADOR_SEM,
+        operador: operadorResolvido,
         operadores_nomes: operadores.join(', '),
         usuario: concluidoPor,
         usuario_conclusao: concluidoPor,
