@@ -1089,9 +1089,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260706203000';
-const SW_RUNTIME_VERSION = '20260706203000';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260706203000';
+const PATCH_RUNTIME_VERSION = '20260706212000';
+const SW_RUNTIME_VERSION = '20260706212000';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260706212000';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -15037,6 +15037,33 @@ async function _chapasGruposSave(req, empresa_id, grupos) {
   return lista;
 }
 
+function _chapasAutoGrupoNormNome(v) {
+  return String(v || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toUpperCase();
+}
+
+function _chapasAutoGrupoNomeExibicao(bucket) {
+  const contagens = bucket && bucket.contagens ? bucket.contagens : {};
+  const pares = Object.entries(contagens).sort((a, b) => {
+    const diff = Number(b?.[1] || 0) - Number(a?.[1] || 0);
+    if (diff !== 0) return diff;
+    return String(a?.[0] || '').localeCompare(String(b?.[0] || ''), 'pt-BR', { sensitivity: 'base' });
+  });
+  return String((pares[0] && pares[0][0]) || bucket?.nome || '').trim();
+}
+
+const _CHAPAS_AUTO_GRUPO_CORES = [
+  '#3B82F6', '#8B5CF6', '#0EA5E9', '#14B8A6', '#22C55E',
+  '#84CC16', '#F59E0B', '#F97316', '#EF4444', '#EC4899',
+  '#6366F1', '#06B6D4', '#10B981', '#A855F7', '#EAB308',
+];
+
+function _chapasAutoGrupoCor(idx) {
+  return _CHAPAS_AUTO_GRUPO_CORES[Math.abs(Number(idx || 0)) % _CHAPAS_AUTO_GRUPO_CORES.length];
+}
+
 function _chapasAnexarGrupoNaLista(rows, grupos) {
   const mapa = Object.create(null);
   (Array.isArray(grupos) ? grupos : []).forEach((g) => {
@@ -15908,6 +15935,130 @@ app.delete('/api/chapas_grupos/:id', authMiddleware, async (req, res) => {
     const lista = (loaded?.grupos || []).filter((item) => _chapasGroupIdNormalize(item?.id) !== gid);
     await _chapasGruposSave(req, loaded?.empresa_id || '', lista);
     return res.json({ ok: true, data: { id: gid } });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post('/api/chapas_grupos/auto-sugerir', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const loaded = await _chapasGruposList(req);
+    const empresaUuid = String(loaded?.empresa_id || '').trim();
+    const empIdCtx = String(
+      req?.body?.emp_id ?? req?.body?.empId ??
+      req?.query?.emp_id ?? req?.query?.empId ??
+      req?.usuario?.emp_id ?? req?.usuario?.empId ??
+      req?.user?.emp_id ?? req?.user?.empId ??
+      ''
+    ).trim().split(':')[0].trim();
+
+    let query = supabase.from('chapas_estoque_v2').select('*').limit(10000);
+    if (empIdCtx) query = query.eq('emp_id', empIdCtx);
+    else if (empresaUuid) query = query.eq('empresa_id', empresaUuid);
+
+    const { data, error } = await query;
+    if (error) return res.status(500).json({ ok: false, error: String(error.message || error) });
+
+    const rows = Array.isArray(data) ? data : [];
+    const buckets = Object.create(null);
+    rows.forEach((row) => {
+      const nomeOriginal = String(row?.nome ?? '').trim().replace(/\s+/g, ' ');
+      const nomeNorm = _chapasAutoGrupoNormNome(nomeOriginal);
+      if (!nomeNorm) return;
+      if (!buckets[nomeNorm]) {
+        buckets[nomeNorm] = {
+          nome: nomeOriginal,
+          contagens: Object.create(null),
+          rows: [],
+        };
+      }
+      buckets[nomeNorm].rows.push(row);
+      buckets[nomeNorm].contagens[nomeOriginal] = Number(buckets[nomeNorm].contagens[nomeOriginal] || 0) + 1;
+    });
+
+    const gruposExistentes = Array.isArray(loaded?.grupos) ? loaded.grupos.slice() : [];
+    const gruposPorNomeNorm = Object.create(null);
+    gruposExistentes.forEach((grupo) => {
+      const key = _chapasAutoGrupoNormNome(grupo?.nome);
+      if (key && !gruposPorNomeNorm[key]) gruposPorNomeNorm[key] = grupo;
+    });
+
+    const elegiveis = Object.entries(buckets)
+      .filter(([, bucket]) => Array.isArray(bucket?.rows) && bucket.rows.length >= 2)
+      .sort((a, b) => {
+        const nomeA = _chapasAutoGrupoNomeExibicao(a?.[1]);
+        const nomeB = _chapasAutoGrupoNomeExibicao(b?.[1]);
+        return nomeA.localeCompare(nomeB, 'pt-BR', { sensitivity: 'base' });
+      });
+
+    let gruposCriados = 0;
+    elegiveis.forEach(([nomeNorm, bucket], idx) => {
+      if (gruposPorNomeNorm[nomeNorm]) return;
+      const nome = _chapasAutoGrupoNomeExibicao(bucket) || ('Grupo ' + String(gruposExistentes.length + gruposCriados + 1));
+      const novo = _chapasGrupoNormalize({
+        nome,
+        cor: _chapasAutoGrupoCor(gruposExistentes.length + idx),
+        ordem: gruposExistentes.length + idx,
+      }, gruposExistentes.length + idx);
+      if (!novo) return;
+      gruposExistentes.push(novo);
+      gruposPorNomeNorm[nomeNorm] = novo;
+      gruposCriados += 1;
+    });
+
+    let gruposSalvos = gruposExistentes;
+    if (gruposCriados > 0) {
+      gruposSalvos = await _chapasGruposSave(req, empresaUuid, gruposExistentes);
+      Object.keys(gruposPorNomeNorm).forEach((key) => { delete gruposPorNomeNorm[key]; });
+      gruposSalvos.forEach((grupo) => {
+        const key = _chapasAutoGrupoNormNome(grupo?.nome);
+        if (key && !gruposPorNomeNorm[key]) gruposPorNomeNorm[key] = grupo;
+      });
+    }
+
+    let chapasAtualizadas = 0;
+    let chapasOrganizadas = 0;
+    let chapasSemGrupo = 0;
+    for (const [nomeNorm, bucket] of Object.entries(buckets)) {
+      const itens = Array.isArray(bucket?.rows) ? bucket.rows : [];
+      if (itens.length < 2) {
+        chapasSemGrupo += itens.length;
+        continue;
+      }
+      const grupo = gruposPorNomeNorm[nomeNorm] || null;
+      if (!grupo?.id) continue;
+      chapasOrganizadas += itens.length;
+      for (const row of itens) {
+        const id = String(row?.id || '').trim();
+        if (!id) continue;
+        const observacaoAtual = String(row?.observacao ?? row?.obs ?? row?.observacoes ?? '').trim();
+        const grupoAtual = _chapasGroupIdNormalize(row?.grupo_id ?? row?.group_id ?? _chapasObsExtractGroupId(observacaoAtual));
+        const observacaoNova = _chapasObsWithGroup(observacaoAtual, grupo.id);
+        if (grupoAtual === grupo.id && observacaoNova === observacaoAtual) continue;
+        const upd = await _chapasUpdateCompatV2(id, {
+          observacao: observacaoNova,
+          atualizado_por: req?.usuario?.nome || req?.usuario?.email || 'sistema',
+          grupo_id: grupo.id,
+          group_id: grupo.id,
+        });
+        if (upd?.error) return res.status(500).json({ ok: false, error: String(upd.error.message || upd.error) });
+        chapasAtualizadas += 1;
+      }
+    }
+
+    cacheClearPrefix('chapas_estoque:');
+    return res.json({
+      ok: true,
+      resumo: {
+        grupos_criados: gruposCriados,
+        chapas_organizadas: chapasOrganizadas,
+        chapas_atualizadas: chapasAtualizadas,
+        chapas_sem_grupo: chapasSemGrupo,
+        total_chapas: rows.length,
+      },
+      grupos: gruposSalvos,
+    });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

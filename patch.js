@@ -6553,6 +6553,31 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (listaEl) listaEl.innerHTML = '<div class="estoque-modal-empty">Erro ao carregar grupos: ' + esc(String(err && err.message || err)) + '</div>';
       });
     }
+    async function _estoqueAutoSugerirGrupos() {
+      var resp = await fetch('/api/chapas_grupos/auto-sugerir', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, _estoqueAuthHeaders()),
+        body: JSON.stringify({})
+      });
+      var json = await resp.json().catch(function() { return null; });
+      if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao sugerir grupos automaticamente'));
+      var resumo = json && json.resumo ? json.resumo : {};
+      _estoqueInvalidateGruposChapas();
+      window.__estoqueWireModoAgrupamento = 'agrupado';
+      try { if (typeof chapasForcarReload === 'function') await chapasForcarReload(); } catch (_) {}
+      if (String(window._PAGE_ATUAL || '') === 'estoque' && typeof renderEstoqueWireframePage === 'function') {
+        await renderEstoqueWireframePage();
+      }
+      try {
+        window.toast(
+          String(Number(resumo.grupos_criados || 0)) + ' grupos criados, '
+          + String(Number(resumo.chapas_organizadas || 0)) + ' chapas organizadas automaticamente, '
+          + String(Number(resumo.chapas_sem_grupo || 0)) + ' continuam sem grupo',
+          'var(--green)'
+        );
+      } catch (_) {}
+      return resumo;
+    }
     function _renderSugestoesCompraTopo(sugestoes) {
       var lista = Array.isArray(sugestoes) ? sugestoes : [];
       return ''
@@ -6727,6 +6752,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF, CNPJ ou grupo" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
         + '    <button class="pep-btn primary" id="estoque-wire-buscar">Buscar</button>'
         + '    <button class="pep-btn" id="estoque-wire-open-grupos">＋ Novo Grupo</button>'
+        + '    <button class="pep-btn" id="estoque-wire-auto-grupos">🔮 Sugerir Grupos Automaticamente</button>'
         + '  </div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px">'
         + '    <span style="font-size:12px;color:#94a3b8;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Visualização</span>'
         + '    <button class="pep-btn' + (modoAgrupamento === 'agrupado' ? ' primary' : '') + '" id="estoque-wire-modo-agrupado" type="button">Agrupado</button>'
@@ -6760,6 +6786,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var btnNovoGrupo = document.getElementById('estoque-wire-open-grupos');
       if (btnNovoGrupo) btnNovoGrupo.onclick = function() {
         try { _estoqueAbrirModalGrupos(); } catch (_) {}
+      };
+      var btnAutoGrupos = document.getElementById('estoque-wire-auto-grupos');
+      if (btnAutoGrupos) btnAutoGrupos.onclick = async function() {
+        if (btnAutoGrupos.disabled) return;
+        btnAutoGrupos.disabled = true;
+        try {
+          await _estoqueAutoSugerirGrupos();
+        } catch (e) {
+          try { window.toast('Erro ao sugerir grupos automaticamente: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+        } finally {
+          btnAutoGrupos.disabled = false;
+        }
       };
       var btnModoAgrupado = document.getElementById('estoque-wire-modo-agrupado');
       if (btnModoAgrupado) btnModoAgrupado.onclick = function() {
