@@ -18415,10 +18415,13 @@ app.post('/api/chapas_estoque/upsert_sem_historico', authMiddleware, async (req,
     try { console.log('[UPSERT CHAPAS]', rowsRaw.length, 'itens recebidos'); } catch (_) {}
     if (!rowsRaw.length) return res.status(400).json({ ok: false, error: 'rows vazio' });
 
-    const normNom = (v) => String(v || '').trim().toUpperCase();
+    const normText = (v) => String(v || '').trim().toUpperCase();
     const normTam = (v) => String(v || '').trim().toUpperCase().replace(/\s+/g, '').replace(/MM/g, '').replace(/×/g, 'X');
     const toInt = (v) => Math.trunc(Number(String(v ?? '').toString().replace(/\./g, '').replace(',', '.')) || 0);
     const toNum = (v) => Number(String(v ?? '').toString().replace(/R\$/gi, '').replace(/\s+/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+    const sameText = (a, b) => normText(a) === normText(b);
+    const sameNum = (a, b) => Math.abs((Number(a || 0) || 0) - (Number(b || 0) || 0)) < 0.000001;
+    const sameInt = (a, b) => (Math.trunc(Number(a || 0) || 0) === Math.trunc(Number(b || 0) || 0));
 
     const byKey = new Map();
     const errors = [];
@@ -18430,52 +18433,99 @@ app.post('/api/chapas_estoque/upsert_sem_historico', authMiddleware, async (req,
       const nome = String(row.nome ?? row.nome_uso ?? row.NOME ?? '').trim();
       const qualCnpj = String(row.qual_cnpj ?? row.qual ?? row['QUAL CNPJ'] ?? row.QUAL_CNPJ ?? '').trim();
       const nf = String(row.nf ?? row.NF ?? '').trim();
+      const gramatura = toNum(row.gramatura ?? row.GRAMATURA ?? row.espessura ?? row.ESPESSURA ?? 0);
       const quantidade = toInt(row.quantidade ?? row.qtd ?? row.QUANTIDADE ?? 0);
       const valorUnitario = toNum(row.valor_unitario ?? row.val ?? row.VALOR ?? row['R$'] ?? row['R$ (UN)'] ?? row['R$ (UNIDADE)'] ?? 0);
+      const valorTotal = toNum(row.valor_total ?? row.total ?? row.VTOTAL ?? row['VALOR TOTAL'] ?? 0);
 
-      const key = `${normNom(nomenclatura)}|${normTam(tamanho)}`;
-      if (!nomenclatura || !tamanho) {
-        errors.push({ idx, error: 'nomenclatura/tamanho obrigatórios' });
+      const key = `${normText(fornecedor)}|${normText(nomenclatura)}|${normTam(tamanho)}`;
+      if (!fornecedor || !nomenclatura || !tamanho) {
+        errors.push({ idx, error: 'fornecedor/nomenclatura/tamanho obrigatórios' });
         return;
       }
-      byKey.set(key, { idx, fornecedor, nomenclatura, tamanho, nome, qual_cnpj: qualCnpj, nf, quantidade, valor_unitario: valorUnitario });
+      byKey.set(key, {
+        idx,
+        fornecedor,
+        nomenclatura,
+        tamanho,
+        nome,
+        qual_cnpj: qualCnpj,
+        nf,
+        gramatura,
+        quantidade,
+        valor_unitario: valorUnitario,
+        valor_total: valorTotal
+      });
     });
 
     const rows = Array.from(byKey.values());
+    if (!rows.length) return res.status(400).json({ ok: false, error: 'Nenhuma linha válida após normalização', errors });
     const nomCol = table === 'chapas_estoque_v2' ? 'nomenclatura' : 'nom';
     const tamCol = table === 'chapas_estoque_v2' ? 'tamanho' : 'tam';
+    const fornCol = table === 'chapas_estoque_v2' ? 'fornecedor' : 'forn';
 
-    const noms = Array.from(new Set(rows.map((r) => normNom(r.nomenclatura)))).slice(0, 500);
+    const forns = Array.from(new Set(rows.map((r) => normText(r.fornecedor)))).slice(0, 500);
+    const noms = Array.from(new Set(rows.map((r) => normText(r.nomenclatura)))).slice(0, 500);
     const tams = Array.from(new Set(rows.map((r) => normTam(r.tamanho)))).slice(0, 500);
 
     let existing = [];
-    if (noms.length && tams.length) {
-      const r0 = await supabase.from(table).select(`id,${nomCol},${tamCol}`).in(nomCol, noms).in(tamCol, tams);
+    if (forns.length && noms.length && tams.length) {
+      const selectCols = table === 'chapas_estoque_v2'
+        ? `id,${fornCol},${nomCol},${tamCol},nome_uso,nome,qual_cnpj,nf,gramatura,quantidade,valor_unitario,valor_total`
+        : `id,${fornCol},${nomCol},${tamCol},nome,nome_uso,qual_cnpj,qual,nf,qtd,val`;
+      const r0 = await supabase.from(table).select(selectCols).in(fornCol, forns).in(nomCol, noms).in(tamCol, tams);
       if (r0.error) throw r0.error;
       existing = Array.isArray(r0.data) ? r0.data : [];
     }
-    const existingKeys = new Set(existing.map((e) => `${normNom(e?.[nomCol])}|${normTam(e?.[tamCol])}`));
+    const existingMap = new Map(existing.map((e) => [
+      `${normText(e?.[fornCol])}|${normText(e?.[nomCol])}|${normTam(e?.[tamCol])}`,
+      e
+    ]));
 
     const updPayload = [];
     const insPayload = [];
+    let unchanged = 0;
     rows.forEach((r) => {
-      const key = `${normNom(r.nomenclatura)}|${normTam(r.tamanho)}`;
-      const isUpd = existingKeys.has(key);
+      const key = `${normText(r.fornecedor)}|${normText(r.nomenclatura)}|${normTam(r.tamanho)}`;
+      const existente = existingMap.get(key) || null;
+      const isUpd = !!existente;
 
       if (table === 'chapas_estoque_v2') {
         const base = {
           fornecedor: r.fornecedor,
           nomenclatura: r.nomenclatura,
           tamanho: String(r.tamanho || '').trim().toUpperCase(),
+          nome_uso: r.nome || r.nomenclatura,
           qual_cnpj: r.qual_cnpj || null,
           nf: r.nf || null,
+          gramatura: Math.max(0, Number(r.gramatura || 0) || 0),
           quantidade: Math.max(0, Math.trunc(Number(r.quantidade || 0) || 0)),
           valor_unitario: Math.max(0, Number(r.valor_unitario || 0) || 0),
+          valor_total: Math.max(0, Number(r.valor_total || 0) || 0),
         };
-        if (isUpd) updPayload.push(base);
+        if (isUpd) {
+          const nomeExist = String(existente?.nome_uso ?? existente?.nome ?? '').trim();
+          const qualExist = String(existente?.qual_cnpj || '').trim();
+          const nfExist = String(existente?.nf || '').trim();
+          const gramExist = Number(existente?.gramatura || 0) || 0;
+          const qtdExist = Math.trunc(Number(existente?.quantidade || 0) || 0);
+          const vUnitExist = Number(existente?.valor_unitario || 0) || 0;
+          const vTotExist = Number(existente?.valor_total || 0) || 0;
+          const changed = !sameText(nomeExist, base.nome_uso)
+            || !sameText(qualExist, base.qual_cnpj)
+            || !sameText(nfExist, base.nf)
+            || !sameNum(gramExist, base.gramatura)
+            || !sameInt(qtdExist, base.quantidade)
+            || !sameNum(vUnitExist, base.valor_unitario)
+            || !sameNum(vTotExist, base.valor_total)
+            || !sameText(existente?.fornecedor, base.fornecedor)
+            || !sameText(existente?.[nomCol], base.nomenclatura)
+            || !sameText(existente?.[tamCol], base.tamanho);
+          if (changed) updPayload.push(base);
+          else unchanged += 1;
+        }
         else insPayload.push({
           ...base,
-          nome_uso: r.nome || r.nomenclatura,
           categoria: 'Estoque Simples',
         });
         return;
@@ -18488,16 +18538,31 @@ app.post('/api/chapas_estoque/upsert_sem_historico', authMiddleware, async (req,
         qual_cnpj: r.qual_cnpj || null,
         qual: r.qual_cnpj || null,
         nf: r.nf || null,
+        gramatura: Math.max(0, Number(r.gramatura || 0) || 0),
         qtd: Math.max(0, Math.trunc(Number(r.quantidade || 0) || 0)),
         val: Math.max(0, Number(r.valor_unitario || 0) || 0),
+        valor_total: Math.max(0, Number(r.valor_total || 0) || 0),
       };
-      if (isUpd) updPayload.push(base);
+      if (isUpd) {
+        const changed = !sameText(existente?.nome ?? existente?.nome_uso, base.nome)
+          || !sameText(existente?.qual_cnpj ?? existente?.qual, base.qual_cnpj)
+          || !sameText(existente?.nf, base.nf)
+          || !sameNum(existente?.gramatura, base.gramatura)
+          || !sameInt(existente?.qtd, base.qtd)
+          || !sameNum(existente?.val, base.val)
+          || !sameNum(existente?.valor_total, base.valor_total)
+          || !sameText(existente?.[fornCol], base.forn)
+          || !sameText(existente?.[nomCol], base.nom)
+          || !sameText(existente?.[tamCol], base.tam);
+        if (changed) updPayload.push(base);
+        else unchanged += 1;
+      }
       else insPayload.push({ ...base, nome: r.nome || r.nomenclatura, nome_uso: r.nome || r.nomenclatura });
     });
 
     let updated = 0;
     let inserted = 0;
-    const onConflict = `${nomCol},${tamCol}`;
+    const onConflict = `${fornCol},${nomCol},${tamCol}`;
 
     const runUpsert = async (payload, kind) => {
       if (!payload.length) return;
@@ -18515,7 +18580,7 @@ app.post('/api/chapas_estoque/upsert_sem_historico', authMiddleware, async (req,
         const p = payload[i];
         try {
           if (kind === 'upd') {
-            const u = await supabase.from(table).update(p).eq(nomCol, p[nomCol]).eq(tamCol, p[tamCol]);
+            const u = await supabase.from(table).update(p).eq(fornCol, p[fornCol]).eq(nomCol, p[nomCol]).eq(tamCol, p[tamCol]);
             if (u.error) throw u.error;
             updated += 1;
           } else {
@@ -18533,7 +18598,7 @@ app.post('/api/chapas_estoque/upsert_sem_historico', authMiddleware, async (req,
     await runUpsert(insPayload, 'ins');
 
     cacheClearPrefix('chapas_estoque:');
-    return res.json({ ok: true, updated, inserted, errors });
+    return res.json({ ok: true, updated, inserted, unchanged, errors });
   } catch (e) {
     _logApiError('CHAPAS UPSERT SEM HIST', req, e, { bodyKeys: Object.keys(req.body || {}) });
     return res.status(500).json({ ok: false, error: String(e?.message || e), rid: req._rid || null });

@@ -1401,7 +1401,10 @@ try {
     try {
       _histEnsureUi();
       var page = _histGetPage();
-      if (page && page.offsetParent !== null) _histFetchRelatorioMensal();
+      if (page && page.offsetParent !== null) {
+        _histFetchRelatorioMensal();
+        _histBuscarHistoricoPassagens();
+      }
     } catch (_) {}
   }
 
@@ -1414,6 +1417,171 @@ try {
     setTimeout(function() {
       try { _histEnhancePageBoot(); } catch (_) {}
       try { _histRepairScrollContainer(); } catch (_) {}
+    }, delay);
+  });
+
+  function _patchBindImportEstoqueChapas() {
+    try {
+      if (window.__patchImportEstoqueChapasBound) return;
+      window.__patchImportEstoqueChapasBound = true;
+      window.handleImportAtualizarEstoqueChapasFile = async function(file) {
+        if (!file) return;
+        var name = String(file.name || '').toLowerCase();
+        var isCsv = name.endsWith('.csv');
+        var isXlsx = name.endsWith('.xlsx') || name.endsWith('.xls');
+        if (!isCsv && !isXlsx) {
+          if (typeof toast === 'function') toast('Formato não suportado. Use .csv, .xlsx ou .xls', 'var(--red)');
+          return;
+        }
+        if (typeof XLSX === 'undefined' || !XLSX || !XLSX.utils) {
+          if (typeof toast === 'function') toast('SheetJS (XLSX) não carregado', 'var(--red)');
+          return;
+        }
+        var readFile = function() { return new Promise(function(resolve, reject) {
+          var fr = new FileReader();
+          fr.onerror = function() { reject(fr.error || new Error('read_error')); };
+          fr.onload = function() { resolve(fr.result); };
+          if (isCsv) fr.readAsText(file);
+          else fr.readAsArrayBuffer(file);
+        }); };
+        var normalizeHeader = function(s) {
+          var txt = String(s || '').trim().toUpperCase();
+          try { txt = txt.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+          return txt;
+        };
+        var toNum = function(v) {
+          if (v == null) return 0;
+          if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+          var s = String(v).trim();
+          if (!s) return 0;
+          s = s.replace(/R\$/gi, '').replace(/\s+/g, '');
+          var hasDot = s.indexOf('.') >= 0;
+          var hasComma = s.indexOf(',') >= 0;
+          if (hasDot && hasComma) {
+            if (s.lastIndexOf(',') > s.lastIndexOf('.')) s = s.replace(/\./g, '').replace(',', '.');
+            else s = s.replace(/,/g, '');
+          } else if (hasComma) {
+            s = s.replace(/\./g, '').replace(',', '.');
+          } else {
+            s = s.replace(/,/g, '');
+          }
+          var n = Number(s);
+          return Number.isFinite(n) ? n : 0;
+        };
+        var toInt = function(v) { return Math.trunc(toNum(v) || 0); };
+        var toNF = function(v) {
+          if (v == null) return '';
+          if (typeof v === 'number') {
+            if (!Number.isFinite(v)) return '';
+            var i = Math.trunc(v);
+            if (Math.abs(v - i) < 1e-9) return String(i);
+          }
+          return String(v || '').trim().replace(/[^\d]/g, '');
+        };
+        try {
+          if (typeof showSaveIndicator === 'function') showSaveIndicator('⏳ lendo arquivo...', 'var(--yellow)');
+          var raw = await readFile();
+          var wb = isCsv ? XLSX.read(raw, { type: 'string' }) : XLSX.read(raw, { type: 'array' });
+          var sheetName = (wb.SheetNames || [])[0];
+          var ws = wb.Sheets[sheetName];
+          var rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+          if (!rows.length) {
+            if (typeof showSaveIndicator === 'function') showSaveIndicator('⚠ arquivo vazio', 'var(--orange)');
+            if (typeof toast === 'function') toast('Arquivo sem linhas', 'var(--orange)');
+            return;
+          }
+          var headerMap = {};
+          Object.keys(rows[0] || {}).forEach(function(h) { headerMap[normalizeHeader(h)] = h; });
+          var pick = function(row, keys) {
+            for (var i = 0; i < keys.length; i += 1) {
+              var kk = headerMap[keys[i]] || keys[i];
+              if (row[kk] != null && String(row[kk]).trim() !== '') return row[kk];
+            }
+            return null;
+          };
+          var keys = {
+            forn: ['FORNECEDOR', 'FORN'],
+            nom: ['NOMENCLATURA', 'NOM'],
+            tam: ['TAMANHO', 'TAM'],
+            nome: ['NOME', 'NOME_USO', 'NOME USO'],
+            qual_cnpj: ['QUAL CNPJ', 'QUAL_CNPJ', 'QUAL'],
+            nf: ['NF'],
+            gramatura: ['GRAMATURA', 'ESPESSURA'],
+            qtd: ['QUANTIDADE', 'QTD'],
+            val: ['R$', 'R$ (UN)', 'VAL', 'VALOR', 'VALOR UNITARIO', 'VALOR_UNITARIO'],
+            valor_total: ['VALOR TOTAL', 'TOTAL', 'VTOTAL']
+          };
+          var payloadRows = [];
+          for (var i = 0; i < rows.length; i += 1) {
+            var r = rows[i];
+            var forn = String(pick(r, keys.forn) || '').trim();
+            var nom = String(pick(r, keys.nom) || '').trim();
+            var tam = String(pick(r, keys.tam) || '').trim();
+            if (!forn || !nom || !tam) continue;
+            payloadRows.push({
+              fornecedor: forn,
+              nomenclatura: nom,
+              tamanho: tam,
+              nome: String(pick(r, keys.nome) || '').trim(),
+              qual_cnpj: String(pick(r, keys.qual_cnpj) || '').trim(),
+              nf: toNF(pick(r, keys.nf)),
+              gramatura: toNum(pick(r, keys.gramatura)),
+              quantidade: toInt(pick(r, keys.qtd)),
+              valor_unitario: toNum(pick(r, keys.val)),
+              valor_total: toNum(pick(r, keys.valor_total))
+            });
+          }
+          if (!payloadRows.length) {
+            if (typeof showSaveIndicator === 'function') showSaveIndicator('⚠ nada para importar', 'var(--orange)');
+            if (typeof toast === 'function') toast('Nenhuma linha válida (fornecedor + nomenclatura + tamanho obrigatórios)', 'var(--orange)');
+            return;
+          }
+          var updated = 0;
+          var inserted = 0;
+          var unchanged = 0;
+          var errCount = 0;
+          var errs = [];
+          var chunkSize = 200;
+          if (typeof toast === 'function') toast('⏳ Processando 0/' + payloadRows.length + '...', 'var(--orange)');
+          if (typeof showSaveIndicator === 'function') showSaveIndicator('⏳ processando 0/' + payloadRows.length, 'var(--yellow)');
+          for (var off = 0; off < payloadRows.length; off += chunkSize) {
+            var chunk = payloadRows.slice(off, off + chunkSize);
+            var r2 = await api('POST', '/chapas_estoque/upsert_sem_historico', { rows: chunk });
+            if (!r2 || r2.ok === false) throw new Error((r2 && r2.error) ? r2.error : 'Falha ao importar');
+            updated += Number(r2.updated || 0) || 0;
+            inserted += Number(r2.inserted || 0) || 0;
+            unchanged += Number(r2.unchanged || 0) || 0;
+            var earr = Array.isArray(r2.errors) ? r2.errors : [];
+            if (earr.length) {
+              errCount += earr.length;
+              errs = errs.concat(earr.slice(0, 10));
+            }
+            var done = Math.min(payloadRows.length, off + chunk.length);
+            if (typeof showSaveIndicator === 'function') showSaveIndicator('⏳ processando ' + done + '/' + payloadRows.length, 'var(--yellow)');
+          }
+          try { if (typeof carregarChapas === 'function') await carregarChapas(true); } catch (_) {}
+          try { if (typeof renderEstoque === 'function') renderEstoque(); } catch (_) {}
+          try {
+            if (String(window._PAGE_ATUAL || '') === 'estoque' && typeof renderEstoqueWireframePage === 'function') {
+              await renderEstoqueWireframePage();
+            }
+          } catch (_) {}
+          if (typeof showSaveIndicator === 'function') showSaveIndicator('✓ atualizados=' + updated + ' · inseridos=' + inserted + ' · sem alteração=' + unchanged + ' · erros=' + errCount, 'var(--green)');
+          if (typeof toast === 'function') toast('✓ Estoque atualizado: ' + updated + ' atualizados, ' + inserted + ' criados, ' + unchanged + ' sem alteração, ' + errCount + ' erros', 'var(--green)');
+          if (errs.length) console.warn('[UPSERT ESTOQUE] erros (amostra):', errs);
+        } catch (e) {
+          if (typeof showSaveIndicator === 'function') showSaveIndicator('✖ erro', 'var(--red)');
+          if (typeof toast === 'function') toast('Erro: ' + String(e && e.message || e), 'var(--red)');
+        }
+      };
+      window.handleUpsertEstoqueChapasFile = window.handleImportAtualizarEstoqueChapasFile;
+      window.handleImportChapasFile = window.handleImportAtualizarEstoqueChapasFile;
+    } catch (_) {}
+  }
+
+  [0, 300, 1200].forEach(function(delay) {
+    setTimeout(function() {
+      try { _patchBindImportEstoqueChapas(); } catch (_) {}
     }, delay);
   });
 
