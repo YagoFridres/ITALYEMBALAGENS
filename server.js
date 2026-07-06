@@ -6556,18 +6556,9 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     });
 
     const ofIds = Array.from(new Set((dadosFiltrados || []).map((r) => String(r?.of_id || r?.of_uuid || '').trim()).filter(Boolean)));
-    try {
-      console.log('[DEBUG-OFIDS] total:', ofIds.length, 'amostra:', ofIds.slice(0, 5));
-      console.log('[DEBUG-OFIDS] tipos:', ofIds.slice(0, 5).map((x) => typeof x));
-    } catch (_) {}
     const { data: ofsRows, error: ofsRowsError } = ofIds.length
       ? await supabase.from('ofs').select('id,numero,cli_id,valor_total,quantidade,qtd,descricao,produto,operador_conclusao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,concluido_por,maq,maquina,maquina_atual,maquina_agendada,maquina_id,caixa_comprimento,caixa_largura,comprimento_mm,largura_mm,dim_comprimento,dim_largura,comprimento,largura,gramatura_id,gramatura,gramatura_nome').in('id', ofIds)
       : { data: [], error: null };
-    try {
-      console.log('[DEBUG-OFSROWS] total encontrado:', (ofsRows || []).length);
-      console.log('[DEBUG-OFSROWS] amostra ids retornados:', (ofsRows || []).slice(0, 5).map((o) => o && o.id ? o.id : null));
-      console.log('[DEBUG-OFSROWS] erro da query:', ofsRowsError ? (ofsRowsError.message || String(ofsRowsError)) : null);
-    } catch (_) {}
     const ofsMap = Object.create(null);
     (ofsRows || []).forEach((of) => { ofsMap[String(of.id || '').trim()] = of; });
 
@@ -6633,16 +6624,9 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       return ((comprimentoMm / 1000) * (larguraMm / 1000) * gramatura * qtdPerdida) / 1000000;
     };
 
-    let _debugMatchCount = 0;
     const enriquecidos = (dadosFiltrados || []).map((r) => {
       const ofId = String(r?.of_id || r?.of_uuid || '').trim();
       const ofData = ofId ? ofsMap[ofId] : null;
-      if (_debugMatchCount < 5) {
-        try {
-          console.log('[DEBUG-MATCH] r.of_id:', r?.of_id, '| encontrado no map?', !!ofsMap[String(r?.of_id || '').trim()], '| chaves do ofsMap (amostra):', Object.keys(ofsMap).slice(0, 5));
-        } catch (_) {}
-        _debugMatchCount += 1;
-      }
       const qtdPerdida = Number(r?.quantidade ?? r?.caixas_perdidas ?? r?.qtd_perdida ?? 0) || 0;
       const qtdOfBase = Number(ofData?.quantidade ?? ofData?.qtd ?? 0) || 0;
       const vu = Number(
