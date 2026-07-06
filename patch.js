@@ -6214,7 +6214,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (pinBtn) {
           ev.preventDefault();
           ev.stopPropagation();
-          try { _estoqueTogglePinCompra(_estoqueWireFindById(lista, String(pinBtn.getAttribute('data-est-pin') || ''))); } catch (_) {}
+          try {
+            _estoqueTogglePinCompra(_estoqueWireFindById(lista, String(pinBtn.getAttribute('data-est-pin') || ''))).catch(function(err) {
+              try { window.toast('Erro ao atualizar sugestão de compra: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+            });
+          } catch (_) {}
           return;
         }
         var editBtn = target && target.closest ? target.closest('[data-est-edit]') : null;
@@ -6319,18 +6323,91 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
       } catch (_) {}
     }
+    function _estoqueDescricaoSugestaoCompra(item) {
+      var chapa = item && item.chapa || {};
+      var qtd = Math.trunc(Number(item && item.qtd_sugerida != null ? item.qtd_sugerida : (chapa && chapa.pin_qtd_sugerida) || 0) || 0);
+      var de = String(item && item.pin_tamanho_de || chapa && chapa.pin_tamanho_de || '').trim();
+      var ate = String(item && item.pin_tamanho_ate || chapa && chapa.pin_tamanho_ate || '').trim();
+      var base = [chapa && chapa.fornecedor, chapa && (chapa.nomenclatura || chapa.nome_uso || chapa.nome)].filter(Boolean).join(' — ');
+      var desc = base;
+      if (qtd > 0) desc += (desc ? ' — ' : '') + 'Comprar ' + qtd + ' unidades';
+      if (de || ate) desc += (desc ? ' de ' : '') + (de || '—') + ' até ' + (ate || '—');
+      return desc || 'Sugestão de compra';
+    }
+    function _estoqueAbrirModalPinCompra(chapa) {
+      return new Promise(function(resolve) {
+        if (!chapa || !chapa.id) return resolve(null);
+        var atualQtd = Math.max(1, _estoqueQtdAtualChapa(chapa) || 1);
+        var tamanhoBase = String(chapa.tamanho || '').trim();
+        var modalId = 'estoque-pin-compra-modal';
+        var body = ''
+          + '<div style="display:grid;gap:14px">'
+          + '  <div style="display:grid;gap:4px">'
+          + '    <div style="font-size:14px;font-weight:900;color:#f8fafc">' + esc(_chapaLabelEstoque(chapa)) + '</div>'
+          + '    <div style="font-size:12px;color:#94a3b8">Defina a mensagem descritiva antes de confirmar o 📌.</div>'
+          + '  </div>'
+          + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">'
+          + '    <label style="display:grid;gap:6px"><span style="font-size:12px;color:#cbd5e1">Quantidade sugerida</span><input id="estoque-pin-qtd" class="estoque-modal-input" type="number" min="1" step="1" value="' + esc(String(atualQtd)) + '"></label>'
+          + '  </div>'
+          + '  <div style="display:grid;gap:10px">'
+          + '    <div style="font-size:12px;color:#cbd5e1;font-weight:800">Faixa de tamanho sugerida</div>'
+          + '    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">'
+          + '      <label style="display:grid;gap:6px"><span style="font-size:12px;color:#94a3b8">De</span><input id="estoque-pin-tam-de" class="estoque-modal-input" type="text" value="' + esc(String(chapa.pin_tamanho_de || tamanhoBase || '')) + '" placeholder="Ex: 2170x1350"></label>'
+          + '      <label style="display:grid;gap:6px"><span style="font-size:12px;color:#94a3b8">Até</span><input id="estoque-pin-tam-ate" class="estoque-modal-input" type="text" value="' + esc(String(chapa.pin_tamanho_ate || tamanhoBase || '')) + '" placeholder="Ex: 2170x2820"></label>'
+          + '    </div>'
+          + '  </div>'
+          + '</div>';
+        var footer = ''
+          + '<button type="button" class="pep-btn" data-modal-close="1">Cancelar</button>'
+          + '<button type="button" class="pep-btn primary" id="estoque-pin-compra-save">Confirmar 📌</button>';
+        var modal = _abrirModalPadrao({
+          id: modalId,
+          titulo: 'Fixar sugestão de compra',
+          subtitulo: 'Quantidade sugerida e faixa de tamanho',
+          hero: '📌',
+          accent: 'amber',
+          largura: '720px',
+          corpoHTML: body,
+          footerHTML: footer,
+          onClose: function() { resolve(null); }
+        });
+        var saveBtn = modal && modal.querySelector ? modal.querySelector('#estoque-pin-compra-save') : null;
+        if (saveBtn) saveBtn.onclick = function() {
+          var qtd = Math.trunc(Number((document.getElementById('estoque-pin-qtd') || {}).value || 0) || 0);
+          var de = String((document.getElementById('estoque-pin-tam-de') || {}).value || '').trim().toUpperCase();
+          var ate = String((document.getElementById('estoque-pin-tam-ate') || {}).value || '').trim().toUpperCase();
+          if (!(qtd > 0)) {
+            try { window.toast('Informe uma quantidade sugerida válida', 'var(--red)'); } catch (_) {}
+            return;
+          }
+          if (!de && !ate) {
+            try { window.toast('Informe pelo menos um tamanho de referência', 'var(--red)'); } catch (_) {}
+            return;
+          }
+          _fecharModalPadrao(modalId);
+          resolve({
+            qtd_sugerida: qtd,
+            pin_tamanho_de: de || null,
+            pin_tamanho_ate: ate || null,
+            observacao: ''
+          });
+        };
+      });
+    }
     async function _estoqueTogglePinCompra(chapa) {
       var chapaId = String(chapa && chapa.id || '').trim();
       if (!chapaId) return;
       var atual = _estoqueSugestaoCompraByChapa(chapaId);
       var endpoint = '/api/chapas_estoque_v2/' + encodeURIComponent(chapaId) + (atual ? '/despin' : '/pin');
+      var payload = {};
+      if (!atual) {
+        payload = await _estoqueAbrirModalPinCompra(chapa);
+        if (!payload) return;
+      }
       var resp = await fetch(endpoint, {
         method: 'PATCH',
         headers: Object.assign({ 'Content-Type': 'application/json' }, _estoqueAuthHeaders()),
-        body: JSON.stringify({
-          qtd_sugerida: _estoqueQtdAtualChapa(chapa),
-          observacao: ''
-        })
+        body: JSON.stringify(atual ? {} : payload)
       });
       var json = await resp.json().catch(function() { return null; });
       if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao atualizar sugestão'));
@@ -6876,6 +6953,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               + '    <div style="font-size:13px;color:#e5e7eb">' + esc(chapa.nomenclatura || chapa.nome_uso || chapa.nome || 'Sem nomenclatura') + '</div>'
               + '    <div style="font-size:12px;color:#94a3b8">' + esc([chapa.tamanho || 'Sem tamanho', chapa.gramatura ? (String(chapa.gramatura) + ' g/m²') : 'Sem gramatura'].join(' · ')) + '</div>'
               + '    <div style="font-size:12px;color:#cbd5e1">Quantidade atual: <strong style="color:#fff">' + esc(String(_estoqueQtdAtualChapa(chapa))) + '</strong></div>'
+              + '    <div style="font-size:12px;color:#fcd34d;line-height:1.45">' + esc(item && item.descricao_compra || _estoqueDescricaoSugestaoCompra(item)) + '</div>'
               + '  </div>'
               + '  <div style="display:flex;gap:8px;flex-wrap:wrap">'
               + '    <button class="pep-btn primary" type="button" data-sug-buy="' + esc(String(item && item.id || '')) + '">✅ Comprar</button>'
@@ -6916,10 +6994,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Gramatura</div><div style="font-weight:800;color:#f8fafc">' + esc(chapa.gramatura || '—') + '</div></div>'
         + '  </div>'
         + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">'
-        + '    <label style="display:grid;gap:6px"><span style="font-size:12px;color:#cbd5e1">Quantidade</span><input id="estoque-sugestao-qtd" class="estoque-modal-input" type="number" min="1" step="1" value="1"></label>'
+        + '    <label style="display:grid;gap:6px"><span style="font-size:12px;color:#cbd5e1">Quantidade</span><input id="estoque-sugestao-qtd" class="estoque-modal-input" type="number" min="1" step="1" value="' + esc(String(Math.max(1, Math.trunc(Number(sugestao.qtd_sugerida || chapa.pin_qtd_sugerida || 1) || 1)))) + '"></label>'
         + '    <label style="display:grid;gap:6px"><span style="font-size:12px;color:#cbd5e1">Valor unitário</span><input id="estoque-sugestao-vu" class="estoque-modal-input" type="number" min="0" step="0.00001" value="' + esc(String(Number(chapa.valor_unitario || chapa.val || 0) || 0)) + '"></label>'
         + '  </div>'
-        + '  <div style="font-size:12px;color:#94a3b8">A confirmação marca a sugestão como comprada e registra a entrada no estoque desta chapa.</div>'
+        + '  <div style="font-size:12px;color:#fcd34d">' + esc(sugestao && sugestao.descricao_compra || _estoqueDescricaoSugestaoCompra(sugestao)) + '</div>'
+        + '  <div style="font-size:12px;color:#94a3b8">A confirmação marca a sugestão como comprada e registra a entrada no estoque desta chapa. A faixa de tamanho segue como referência para a compra.</div>'
         + '</div>';
       var footer = ''
         + '<button type="button" class="pep-btn" data-modal-close="1">Cancelar</button>'
@@ -6957,7 +7036,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             body: JSON.stringify({
               quantidade: qtd,
               valor_unitario: vu,
-              tamanho: String(chapa.tamanho || '').trim()
+              tamanho: String(chapa.tamanho || '').trim(),
+              observacao: String(sugestao && sugestao.descricao_compra || _estoqueDescricaoSugestaoCompra(sugestao) || '').trim()
             })
           });
           var json = await resp.json().catch(function() { return null; });

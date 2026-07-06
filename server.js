@@ -1089,9 +1089,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260706214500';
-const SW_RUNTIME_VERSION = '20260706214500';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260706214500';
+const PATCH_RUNTIME_VERSION = '20260706233000';
+const SW_RUNTIME_VERSION = '20260706233000';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260706233000';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -11806,6 +11806,49 @@ async function _ensureOfsConclusaoMetricasCols() {
   return false;
 }
 
+const _CHAPAS_PIN_SCHEMA_COLS = [
+  'pinned_compra',
+  'pinned_em',
+  'pinned_status',
+  'pin_qtd_sugerida',
+  'pin_tamanho_de',
+  'pin_tamanho_ate',
+];
+const _CHAPAS_PIN_SCHEMA_SQL =
+  "ALTER TABLE chapas_estoque_v2 ADD COLUMN IF NOT EXISTS pinned_compra boolean DEFAULT false; " +
+  "ALTER TABLE chapas_estoque_v2 ADD COLUMN IF NOT EXISTS pinned_em timestamptz; " +
+  "ALTER TABLE chapas_estoque_v2 ADD COLUMN IF NOT EXISTS pinned_status text; " +
+  "ALTER TABLE chapas_estoque_v2 ADD COLUMN IF NOT EXISTS pin_qtd_sugerida numeric; " +
+  "ALTER TABLE chapas_estoque_v2 ADD COLUMN IF NOT EXISTS pin_tamanho_de text; " +
+  "ALTER TABLE chapas_estoque_v2 ADD COLUMN IF NOT EXISTS pin_tamanho_ate text;";
+let _chapasPinSchemaReady = null;
+async function _ensureChapasPinSchemaCols() {
+  if (_chapasPinSchemaReady === true) return true;
+  if (!supabase) {
+    console.error('[BOOT][CHAPAS_PIN_SCHEMA] Supabase indisponível; não foi possível validar schema.');
+    _chapasPinSchemaReady = false;
+    return false;
+  }
+  try {
+    const probe = await supabase.from('chapas_estoque_v2').select(['id'].concat(_CHAPAS_PIN_SCHEMA_COLS).join(',')).limit(1);
+    if (!probe.error) {
+      _chapasPinSchemaReady = true;
+      console.log('[BOOT][CHAPAS_PIN_SCHEMA] OK - colunas presentes:', _CHAPAS_PIN_SCHEMA_COLS.join(', '));
+      return true;
+    }
+    const msg = String(probe.error?.message || probe.error || '');
+    console.error('[BOOT][CHAPAS_PIN_SCHEMA] FALHA - colunas ausentes ou schema indisponível:', msg);
+    console.error('[BOOT][CHAPAS_PIN_SCHEMA] SQL necessário:', _CHAPAS_PIN_SCHEMA_SQL);
+    _chapasPinSchemaReady = false;
+    return false;
+  } catch (e) {
+    console.error('[BOOT][CHAPAS_PIN_SCHEMA] ERRO ao validar schema:', String(e?.message || e));
+    console.error('[BOOT][CHAPAS_PIN_SCHEMA] SQL necessário:', _CHAPAS_PIN_SCHEMA_SQL);
+    _chapasPinSchemaReady = false;
+    return false;
+  }
+}
+
 async function _empresaUuidSafe(req) {
   try {
     const emp = String(await _resolveEmpresaUuid(req) || '').trim();
@@ -15192,6 +15235,12 @@ function _chapasCanonicalFromAny(row, table) {
       cor: corLinha,
       cor_linha: corLinha,
       grupo_id: grupoId || null,
+      pinned_compra: !!row.pinned_compra,
+      pinned_status: String(row.pinned_status || '').trim() || null,
+      pinned_em: row.pinned_em || null,
+      pin_qtd_sugerida: row.pin_qtd_sugerida != null ? Number(row.pin_qtd_sugerida || 0) || 0 : null,
+      pin_tamanho_de: row.pin_tamanho_de != null ? String(row.pin_tamanho_de || '').trim() || null : null,
+      pin_tamanho_ate: row.pin_tamanho_ate != null ? String(row.pin_tamanho_ate || '').trim() || null : null,
       cliente: row.cliente_nome || row.cliente || '',
       cliente_id: row.cliente_id || null,
       riscada: !!row.riscada,
@@ -17913,57 +17962,95 @@ async function _chapasCompraSugestoesContext(req, body) {
   return { empresa_id, emp_id };
 }
 
+function _chapasSugestaoDescricao(item) {
+  const chapa = item?.chapa || {};
+  const qtd = Math.trunc(Number(item?.qtd_sugerida || chapa?.pin_qtd_sugerida || 0) || 0);
+  const de = String(item?.pin_tamanho_de || chapa?.pin_tamanho_de || '').trim();
+  const ate = String(item?.pin_tamanho_ate || chapa?.pin_tamanho_ate || '').trim();
+  const partes = [
+    String(chapa?.fornecedor || '').trim(),
+    String(chapa?.nomenclatura || chapa?.nome_uso || chapa?.nome || '').trim(),
+  ].filter(Boolean);
+  let msg = partes.join(' — ');
+  if (qtd > 0) msg += (msg ? ' — ' : '') + 'Comprar ' + String(qtd) + ' unidades';
+  if (de || ate) msg += (msg ? ' de ' : '') + String(de || '—') + ' até ' + String(ate || '—');
+  return msg.trim();
+}
+
+function _chapasSugestaoItemFromCanon(canon, extra = {}) {
+  const chapa = canon ? { ...canon } : null;
+  const item = {
+    id: String(extra.id || (canon && canon.id) || '').trim(),
+    chapa_id: String((canon && canon.id) || extra.chapa_id || '').trim(),
+    pinned_compra: true,
+    pinned_status: String(extra.pinned_status || canon?.pinned_status || 'pendente').trim() || 'pendente',
+    pinned_em: extra.pinned_em || canon?.pinned_em || null,
+    observacao: String(extra.observacao || '').trim(),
+    qtd_sugerida: extra.qtd_sugerida != null ? Math.trunc(Number(extra.qtd_sugerida || 0) || 0) : (canon?.pin_qtd_sugerida != null ? Math.trunc(Number(canon.pin_qtd_sugerida || 0) || 0) : null),
+    pin_tamanho_de: String(extra.pin_tamanho_de || canon?.pin_tamanho_de || '').trim() || null,
+    pin_tamanho_ate: String(extra.pin_tamanho_ate || canon?.pin_tamanho_ate || '').trim() || null,
+    criado_por: String(extra.criado_por || '').trim(),
+    chapa,
+  };
+  item.descricao_compra = _chapasSugestaoDescricao(item);
+  return item;
+}
+
 async function _chapasCompraSugestoesPendentes(req) {
+  const schemaOk = await _ensureChapasPinSchemaCols();
+  if (!schemaOk) throw new Error('schema_chapas_pin_cols_missing');
   const ctx = await _chapasCompraSugestoesContext(req, {});
   if (!ctx.empresa_id) return [];
-  const { data: pins, error } = await supabase
-    .from('chapas_pins')
+  const probe = await supabase
+    .from('chapas_estoque_v2')
     .select('*')
     .eq('empresa_id', ctx.empresa_id)
-    .eq('status', 'pendente')
-    .order('created_at', { ascending: false });
-  if (error) {
-    const msg = String(error.message || error || '').toLowerCase();
-    if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('could not find')) return [];
-    throw error;
-  }
-  const rows = Array.isArray(pins) ? pins : [];
-  const ids = Array.from(new Set(rows.map((p) => String(p?.chapa_id || '').trim()).filter(Boolean)));
-  const chapasMap = Object.create(null);
-  if (ids.length) {
-    try {
-      const { data: chapasRows, error: chapasErr } = await supabase.from('chapas_estoque_v2').select('*').in('id', ids);
-      if (!chapasErr) {
-        (Array.isArray(chapasRows) ? chapasRows : []).forEach((row) => {
-          const canon = _chapasCanonicalFromAny(row, 'chapas_estoque_v2');
-          chapasMap[String(canon?.id || '').trim()] = canon;
-        });
-      }
-    } catch (_) {}
-  }
-  return rows.map((pin) => {
-    const chapaId = String(pin?.chapa_id || '').trim();
-    const chapa = chapasMap[chapaId] || null;
-    return {
-      id: String(pin?.id || '').trim(),
-      chapa_id: chapaId,
-      pinned_compra: true,
-      pinned_status: 'pendente',
-      pinned_em: pin?.created_at || pin?.pinned_em || null,
-      observacao: String(pin?.observacao || '').trim(),
-      qtd_sugerida: pin?.qtd_sugerida != null ? Math.trunc(Number(pin.qtd_sugerida) || 0) : null,
-      criado_por: String(pin?.criado_por || '').trim(),
-      chapa,
-    };
-  }).filter((item) => !!item.chapa_id);
+    .eq('pinned_compra', true)
+    .eq('pinned_status', 'pendente')
+    .order('pinned_em', { ascending: false });
+  if (probe?.error) throw probe.error;
+  return (Array.isArray(probe.data) ? probe.data : []).map((row) => {
+    const canon = _chapasCanonicalFromAny(row, 'chapas_estoque_v2');
+    return _chapasSugestaoItemFromCanon(canon, {
+      id: canon?.id,
+      pinned_em: row?.pinned_em || null,
+      qtd_sugerida: row?.pin_qtd_sugerida,
+      pin_tamanho_de: row?.pin_tamanho_de,
+      pin_tamanho_ate: row?.pin_tamanho_ate,
+    });
+  });
 }
 
 app.patch('/api/chapas_estoque_v2/:id/pin', authMiddleware, async (req, res) => {
   try {
+    setNoCache(res);
+    const schemaOk = await _ensureChapasPinSchemaCols();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_chapas_pin_cols_missing' });
     const chapaId = String(req.params.id || '').trim();
     if (!chapaId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const ctx = await _chapasCompraSugestoesContext(req, req.body || {});
     if (!ctx.empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    const atual = await supabase.from('chapas_estoque_v2').select('*').eq('id', chapaId).maybeSingle();
+    if (atual?.error) return res.status(500).json({ ok: false, error: String(atual.error.message || atual.error) });
+    if (!atual?.data) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+
+    const b = req.body || {};
+    const qtdSugerida = b.qtd_sugerida != null ? Math.trunc(Number(b.qtd_sugerida || 0) || 0) : null;
+    const pinTamanhoDe = String(b.pin_tamanho_de ?? b.tamanho_de ?? b.faixa_de ?? atual.data?.pin_tamanho_de ?? atual.data?.tamanho ?? '').trim().toUpperCase();
+    const pinTamanhoAte = String(b.pin_tamanho_ate ?? b.tamanho_ate ?? b.faixa_ate ?? atual.data?.pin_tamanho_ate ?? atual.data?.tamanho ?? '').trim().toUpperCase();
+    const observacao = String(b.observacao || '').trim() || null;
+
+    const payloadChapa = {
+      pinned_compra: true,
+      pinned_status: 'pendente',
+      pinned_em: new Date().toISOString(),
+      pin_qtd_sugerida: qtdSugerida > 0 ? qtdSugerida : null,
+      pin_tamanho_de: pinTamanhoDe || null,
+      pin_tamanho_ate: pinTamanhoAte || null,
+      atualizado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
+    };
+    const updChapa = await _chapasUpdateCompatV2(chapaId, payloadChapa);
+    if (updChapa?.error) return res.status(500).json({ ok: false, error: String(updChapa.error.message || updChapa.error) });
 
     const existente = await supabase
       .from('chapas_pins')
@@ -17976,16 +18063,28 @@ app.patch('/api/chapas_estoque_v2/:id/pin', authMiddleware, async (req, res) => 
       const msg = String(existente.error.message || existente.error || '').toLowerCase();
       if (!(msg.includes('does not exist') || msg.includes('relation') || msg.includes('could not find'))) throw existente.error;
     }
-    if (existente?.data?.id) return res.json({ ok: true, data: existente.data, already_pinned: true });
+    if (existente?.data?.id) {
+      cacheClearPrefix('chapas_estoque:');
+      return res.json({ ok: true, data: _chapasSugestaoItemFromCanon(_chapasCanonicalFromAny(updChapa.data || atual.data, 'chapas_estoque_v2'), {
+        id: String(existente.data.id || chapaId).trim(),
+        pinned_em: payloadChapa.pinned_em,
+        observacao,
+        qtd_sugerida: payloadChapa.pin_qtd_sugerida,
+        pin_tamanho_de: payloadChapa.pin_tamanho_de,
+        pin_tamanho_ate: payloadChapa.pin_tamanho_ate,
+        criado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
+      }), already_pinned: true });
+    }
 
-    const b = req.body || {};
     const payload = {
       chapa_id: chapaId,
       empresa_id: ctx.empresa_id,
       emp_id: ctx.emp_id,
       criado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
-      qtd_sugerida: b.qtd_sugerida != null ? Math.trunc(Number(b.qtd_sugerida) || 0) : null,
-      observacao: String(b.observacao || '').trim() || null,
+      qtd_sugerida: payloadChapa.pin_qtd_sugerida,
+      pin_tamanho_de: payloadChapa.pin_tamanho_de,
+      pin_tamanho_ate: payloadChapa.pin_tamanho_ate,
+      observacao,
       status: 'pendente',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -17993,11 +18092,31 @@ app.patch('/api/chapas_estoque_v2/:id/pin', authMiddleware, async (req, res) => 
     let toInsert = { ...payload };
     for (let i = 0; i < 10; i += 1) {
       const ins = await supabase.from('chapas_pins').insert([toInsert]).select().maybeSingle();
-      if (!ins?.error) return res.json({ ok: true, data: ins.data || null });
+      if (!ins?.error) {
+        cacheClearPrefix('chapas_estoque:');
+        return res.json({ ok: true, data: _chapasSugestaoItemFromCanon(_chapasCanonicalFromAny(updChapa.data || atual.data, 'chapas_estoque_v2'), {
+          id: String(ins.data?.id || chapaId).trim(),
+          pinned_em: payload.created_at,
+          observacao,
+          qtd_sugerida: payload.qtd_sugerida,
+          pin_tamanho_de: payload.pin_tamanho_de,
+          pin_tamanho_ate: payload.pin_tamanho_ate,
+          criado_por: payload.criado_por,
+        }) });
+      }
       const msg = String(ins.error.message || ins.error || '');
       const low = msg.toLowerCase();
       if (low.includes('does not exist') || low.includes('relation') || low.includes('could not find')) {
-        return res.status(500).json({ ok: false, error: 'Tabela chapas_pins não encontrada' });
+        cacheClearPrefix('chapas_estoque:');
+        return res.json({ ok: true, data: _chapasSugestaoItemFromCanon(_chapasCanonicalFromAny(updChapa.data || atual.data, 'chapas_estoque_v2'), {
+          id: chapaId,
+          pinned_em: payloadChapa.pinned_em,
+          observacao,
+          qtd_sugerida: payloadChapa.pin_qtd_sugerida,
+          pin_tamanho_de: payloadChapa.pin_tamanho_de,
+          pin_tamanho_ate: payloadChapa.pin_tamanho_ate,
+          criado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
+        }), fallback_chapa: true });
       }
       const m = msg.match(/column \"([^\"]+)\" of relation/i);
       if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
@@ -18014,17 +18133,33 @@ app.patch('/api/chapas_estoque_v2/:id/pin', authMiddleware, async (req, res) => 
 
 app.patch('/api/chapas_estoque_v2/:id/despin', authMiddleware, async (req, res) => {
   try {
+    setNoCache(res);
+    const schemaOk = await _ensureChapasPinSchemaCols();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_chapas_pin_cols_missing' });
     const chapaId = String(req.params.id || '').trim();
     if (!chapaId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const ctx = await _chapasCompraSugestoesContext(req, req.body || {});
     if (!ctx.empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    const updChapa = await _chapasUpdateCompatV2(chapaId, {
+      pinned_compra: false,
+      pinned_status: null,
+      pin_qtd_sugerida: null,
+      pin_tamanho_de: null,
+      pin_tamanho_ate: null,
+      atualizado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
+    });
+    if (updChapa?.error) return res.status(500).json({ ok: false, error: String(updChapa.error.message || updChapa.error) });
     const del = await supabase
       .from('chapas_pins')
       .delete()
       .eq('chapa_id', chapaId)
       .eq('empresa_id', ctx.empresa_id)
       .eq('status', 'pendente');
-    if (del?.error) throw del.error;
+    if (del?.error) {
+      const msg = String(del.error.message || del.error || '').toLowerCase();
+      if (!(msg.includes('does not exist') || msg.includes('relation') || msg.includes('could not find'))) throw del.error;
+    }
+    cacheClearPrefix('chapas_estoque:');
     return res.json({ ok: true });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -18034,6 +18169,8 @@ app.patch('/api/chapas_estoque_v2/:id/despin', authMiddleware, async (req, res) 
 app.get('/api/chapas_estoque_v2/sugestoes-compra', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
+    const schemaOk = await _ensureChapasPinSchemaCols();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_chapas_pin_cols_missing' });
     const lista = await _chapasCompraSugestoesPendentes(req);
     return res.json({ ok: true, data: lista });
   } catch (e) {
@@ -18043,10 +18180,19 @@ app.get('/api/chapas_estoque_v2/sugestoes-compra', authMiddleware, async (req, r
 
 app.patch('/api/chapas_estoque_v2/:id/ignorar-sugestao', authMiddleware, async (req, res) => {
   try {
+    setNoCache(res);
+    const schemaOk = await _ensureChapasPinSchemaCols();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_chapas_pin_cols_missing' });
     const chapaId = String(req.params.id || '').trim();
     if (!chapaId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const ctx = await _chapasCompraSugestoesContext(req, req.body || {});
     if (!ctx.empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    const updChapa = await _chapasUpdateCompatV2(chapaId, {
+      pinned_compra: false,
+      pinned_status: 'ignorado',
+      atualizado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
+    });
+    if (updChapa?.error) return res.status(500).json({ ok: false, error: String(updChapa.error.message || updChapa.error) });
     const payload = {
       status: 'ignorado',
       ignored_at: new Date().toISOString(),
@@ -18072,6 +18218,7 @@ app.patch('/api/chapas_estoque_v2/:id/ignorar-sugestao', authMiddleware, async (
       }
       throw upd.error;
     }
+    cacheClearPrefix('chapas_estoque:');
     return res.json({ ok: true, data: [] });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -18112,16 +18259,34 @@ app.patch('/api/chapas_estoque_v2/:id/cor', authMiddleware, async (req, res) => 
 
 app.patch('/api/chapas/pins/:id/comprado', authMiddleware, async (req, res) => {
   try {
+    const schemaOk = await _ensureChapasPinSchemaCols();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_chapas_pin_cols_missing' });
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const b = req.body || {};
     const tamanho = String(b.tamanho || b.tam || '').trim().toUpperCase();
     const quantidade = Math.trunc(Number(b.quantidade || b.qtd || 0) || 0);
     const valorUnit = Number(String(b.valor_unitario ?? b.valor ?? 0).replace(',', '.'));
+    let atual = null;
     const pinRow = await supabase.from('chapas_pins').select('*').eq('id', id).maybeSingle();
-    if (pinRow?.error) throw pinRow.error;
-    const atual = pinRow?.data || null;
-    if (!atual) return res.status(404).json({ ok: false, error: 'pin não encontrado' });
+    if (pinRow?.error) {
+      const msgPin = String(pinRow.error.message || pinRow.error || '').toLowerCase();
+      if (!(msgPin.includes('does not exist') || msgPin.includes('relation') || msgPin.includes('could not find'))) throw pinRow.error;
+    } else {
+      atual = pinRow?.data || null;
+    }
+    if (!atual) {
+      const chapaRow = await supabase.from('chapas_estoque_v2').select('*').eq('id', id).maybeSingle();
+      if (chapaRow?.error) throw chapaRow.error;
+      if (!chapaRow?.data) return res.status(404).json({ ok: false, error: 'pin não encontrado' });
+      atual = {
+        id,
+        chapa_id: id,
+        status: chapaRow.data?.pinned_status || 'pendente',
+        empresa_id: chapaRow.data?.empresa_id || null,
+        emp_id: chapaRow.data?.emp_id || null,
+      };
+    }
     if (String(atual.status || '').trim().toLowerCase() === 'comprado') {
       return res.json({ ok: true, data: atual, movimento: null });
     }
@@ -18134,12 +18299,19 @@ app.patch('/api/chapas/pins/:id/comprado', authMiddleware, async (req, res) => {
       quantidade_compra: quantidade > 0 ? quantidade : null,
       valor_unitario_compra: Number.isFinite(valorUnit) && valorUnit > 0 ? valorUnit : null,
     };
+    let upd = { data: atual };
+    let pinTableMissing = false;
     let toUpdate = { ...payload };
-    let upd = null;
     for (let i = 0; i < 10; i++) {
       upd = await supabase.from('chapas_pins').update(toUpdate).eq('id', id).select().maybeSingle();
       if (!upd?.error) break;
       const msg = String(upd.error.message || '');
+      const low = msg.toLowerCase();
+      if (low.includes('does not exist') || low.includes('relation') || low.includes('could not find')) {
+        pinTableMissing = true;
+        upd = { data: atual };
+        break;
+      }
       const m = msg.match(/column \"([^\"]+)\" of relation/i);
       if (m && m[1] && Object.prototype.hasOwnProperty.call(toUpdate, m[1])) {
         delete toUpdate[m[1]];
@@ -18147,7 +18319,7 @@ app.patch('/api/chapas/pins/:id/comprado', authMiddleware, async (req, res) => {
       }
       throw upd.error;
     }
-    if (upd?.error) throw upd.error;
+    if (upd?.error && !pinTableMissing) throw upd.error;
 
     let movimento = null;
     const chapaId = String(atual?.chapa_id || '').trim();
@@ -18175,7 +18347,7 @@ app.patch('/api/chapas/pins/:id/comprado', authMiddleware, async (req, res) => {
         tipo: 'entrada',
         quantidade: quantidade,
         nf: null,
-        obs: 'Compra via pin',
+        obs: String(b.observacao || '').trim() || 'Compra via pin',
         origem: 'pin_compra',
         origem_id: id,
         usuario: req?.usuario?.nome || req?.usuario?.email || 'Usuário',
@@ -18190,6 +18362,13 @@ app.patch('/api/chapas/pins/:id/comprado', authMiddleware, async (req, res) => {
       movimento = { quantidade, valor_unitario: Number.isFinite(valorUnit) && valorUnit > 0 ? valorUnit : null };
       try { cacheClearPrefix('chapas_estoque:'); } catch (_) {}
     }
+
+    const updChapa = await _chapasUpdateCompatV2(chapaId, {
+      pinned_compra: false,
+      pinned_status: 'comprado',
+      atualizado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
+    });
+    if (updChapa?.error) return res.status(500).json({ ok: false, error: String(updChapa.error.message || updChapa.error) });
 
     return res.json({ ok: true, data: upd.data || null, movimento });
   } catch (e) {
@@ -25481,4 +25660,9 @@ setInterval(agendarOFsAutomaticamente, 30 * 60 * 1000);
 setTimeout(agendarOFsAutomaticamente, 10 * 1000);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+  _ensureChapasPinSchemaCols().catch((e) => {
+    console.error('[BOOT][CHAPAS_PIN_SCHEMA] ERRO inesperado:', String(e?.message || e));
+  });
+});
