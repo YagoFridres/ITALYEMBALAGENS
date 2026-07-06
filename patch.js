@@ -8872,7 +8872,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                       + '</tr>';
                   }).join('')
                 + '</tbody></table>'
-              : '<div class="cpv2-empty"><span class="cpv2-empty-ico">📊</span><div>Nenhum registro no período selecionado.</div></div>')
+              : '<div class="cpv2-empty"><span class="cpv2-empty-ico">📊</span><div>Nenhuma perda registrada neste período.</div></div>')
         + '</div>';
       root.hidden = false;
       var btnClose = document.getElementById('cpv2-modal-close');
@@ -8904,25 +8904,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       // #region debug-point C:cp-render-summary
       try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', 'dashboard caixas perdidas render resumo', { periodo: state.periodo, rows: rows.length, rankMaquinas: rankM.length, rankOperadores: rankO.length, totalCaixas: Number(resumo.total_caixas || 0) || 0 }); } catch (_) {}
       // #endregion
-      if (!(Array.isArray(data && data.detalhamento) && data.detalhamento.length)) {
-        var dbgTab = (data && data._debug && data._debug.tabelaAtiva) ? String(data._debug.tabelaAtiva) : 'não encontrada';
-        var dbgTot = (data && data._debug && data._debug.totalRegistros != null) ? String(data._debug.totalRegistros) : '0';
-        // #region debug-point C:cp-render-empty
-        try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', 'dashboard caixas perdidas render vazio', { periodo: state.periodo, tabela: dbgTab, totalHistorico: dbgTot }); } catch (_) {}
-        // #endregion
-        host.innerHTML = ''
-          + '<div class="cpv2"><div><div class="cpv2-title">💥 Caixas Perdidas</div><div class="cpv2-sub">Dashboard consolidado de perdas</div></div>'
-          + '<div class="cpv2-panel cpv2-empty">'
-          + '  <span class="cpv2-empty-ico">📦</span>'
-          + '  <div style="font-size:18px;font-weight:800;color:#e5e7eb">Nenhuma perda no período selecionado</div>'
-          + '  <div style="margin-top:6px">Ajuste os filtros ou verifique outros períodos.</div>'
-          + '  <div style="margin-top:12px;color:#64748b;font-size:13px">Tabela: ' + _cpEsc(dbgTab) + ' · Registros históricos: ' + _cpEsc(dbgTot) + '</div>'
-          + '  <div style="margin-top:18px">'
-          + '    <button onclick="window._carregarCPTodosPeriodos && window._carregarCPTodosPeriodos()" style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:10px 20px;cursor:pointer;font-size:14px">📊 Ver todos os períodos</button>'
-          + '  </div>'
-          + '</div></div>';
-        return;
-      }
       host.innerHTML = ''
         + '<div class="cpv2">'
         + '  <div><div class="cpv2-title">💥 Caixas Perdidas</div><div class="cpv2-sub">Dashboard consolidado de perdas</div></div>'

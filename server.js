@@ -6643,7 +6643,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     try { if (todos?.[0]) console.log('[CP] primeiro_registro:', JSON.stringify(todos[0])); } catch (_) {}
 
     const parseRowDate = (row) => {
-      const raw = row?.created_at || row?.data || row?.data_perda || row?.data_conclusao || null;
+      const raw = row?.data || row?.data_perda || row?.data_conclusao || row?.created_at || null;
       if (!raw) return null;
       const dt = new Date(raw);
       return Number.isNaN(dt.getTime()) ? null : dt;
@@ -6668,17 +6668,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       return matchMonthYear(d, month, year);
     });
 
-    let dadosFiltrados = semFiltro ? (todos || []) : filtrarPeriodo(todos || [], requestedPeriodo, mes, ano);
-    let fallbackMesRecente = false;
-    if (!dadosFiltrados.length && !semFiltro && requestedPeriodo === 'mes') {
-      const maisRecente = (todos || []).map((r) => ({ row: r, dt: parseRowDate(r) })).filter((item) => !!item.dt).sort((a, b) => b.dt - a.dt)[0] || null;
-      if (maisRecente && maisRecente.dt) {
-        mes = maisRecente.dt.getMonth() + 1;
-        ano = maisRecente.dt.getFullYear();
-        dadosFiltrados = filtrarPeriodo(todos || [], 'mes', mes, ano);
-        fallbackMesRecente = true;
-      }
-    }
+    const dadosFiltrados = semFiltro ? (todos || []) : filtrarPeriodo(todos || [], requestedPeriodo, mes, ano);
     _debugRuntimeWrite({
       runId: 'pre-fix',
       hypothesisId: 'C',
@@ -6692,7 +6682,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
         totalFiltrado: Array.isArray(dadosFiltrados) ? dadosFiltrados.length : 0,
         mes,
         ano,
-        fallbackMesRecente,
+        fallbackMesRecente: false,
       },
     });
 
