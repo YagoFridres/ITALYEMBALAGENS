@@ -5659,6 +5659,23 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + '.pep-table-estoque-wire .estoque-row-color-btn.is-active{border-color:rgba(59,130,246,.42);background:rgba(15,23,42,.92)}'
           + '.pep-table-estoque-wire .estoque-row-color-swatch{display:inline-block;width:14px;height:14px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:#94a3b8;vertical-align:middle}'
           + '.pep-table-estoque-wire .estoque-row-color-swatch.is-none{background:linear-gradient(135deg,#e5e7eb 0 48%, #94a3b8 48% 52%, transparent 52% 100%)}'
+          + '.pep-table-estoque-wire .estoque-row-group-select{min-width:180px;max-width:220px;padding:8px 10px;border-radius:10px;background:#081120;color:#e2e8f0;border:1px solid rgba(148,163,184,.18)}'
+          + '.pep-table-estoque-wire .estoque-grupo-col{text-align:left}'
+          + '.pep-table-estoque-wire tr.estoque-grupo-separador td{padding:10px 12px;border-bottom:none;background:transparent!important}'
+          + '.estoque-grupo-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(8,17,32,.88)}'
+          + '.estoque-grupo-head.is-empty{border-color:rgba(148,163,184,.16);box-shadow:inset 4px 0 0 rgba(148,163,184,.28)}'
+          + '.estoque-grupo-badge{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;border:1px solid rgba(59,130,246,.28);font-size:11px;font-weight:900;letter-spacing:.04em;text-transform:uppercase}'
+          + '.estoque-grupo-badge.is-empty{background:rgba(148,163,184,.12);color:#cbd5e1;border-color:rgba(148,163,184,.18)}'
+          + '.estoque-grupo-title{font-size:16px;font-weight:900;color:#f8fafc}'
+          + '.estoque-grupo-count{margin-left:auto;font-size:12px;color:#94a3b8}'
+          + '.estoque-grupos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}'
+          + '.estoque-grupo-card{display:grid;gap:12px;padding:14px;border-radius:14px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.74)}'
+          + '.estoque-grupo-card-head{display:flex;align-items:flex-start;gap:10px}'
+          + '.estoque-grupo-card-swatch{width:16px;height:16px;border-radius:999px;border:1px solid rgba(255,255,255,.16);display:inline-block;flex:0 0 16px;margin-top:2px}'
+          + '.estoque-grupo-card-title{font-size:14px;font-weight:900;color:#f8fafc}'
+          + '.estoque-grupo-card-sub{font-size:12px;color:#94a3b8;margin-top:4px}'
+          + '.estoque-grupo-card-actions{display:flex;gap:8px;flex-wrap:wrap}'
+          + '.estoque-grupo-form-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(160px,1fr) minmax(120px,1fr);gap:12px}'
           + '.estoque-color-palette{display:grid;grid-template-columns:repeat(auto-fit,minmax(116px,1fr));gap:10px;margin-top:10px}'
           + '.estoque-color-chip{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.7);color:#e2e8f0;cursor:pointer;transition:border-color .15s ease,transform .15s ease,background .15s ease,box-shadow .15s ease;text-align:left}'
           + '.estoque-color-chip:hover{transform:translateY(-1px);border-color:rgba(148,163,184,.32)}'
@@ -6016,6 +6033,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           _estoqueWireOpenDetailModal(_estoqueWireFindById(lista, row.getAttribute('data-chapa-id')));
         }
       };
+      wrap.onchange = function(ev) {
+        var target = ev && ev.target;
+        var grupoSel = target && target.closest ? target.closest('[data-est-group]') : null;
+        if (!grupoSel) return;
+        var chapa = _estoqueWireFindById(lista, String(grupoSel.getAttribute('data-est-group') || ''));
+        var valor = String(grupoSel.value || '').trim();
+        if (valor === '__novo__') {
+          try { _estoqueAbrirModalGrupos(); } catch (_) {}
+          try { grupoSel.value = String(chapa && (chapa.grupo_id || chapa.group_id || '') || '').trim(); } catch (_) {}
+          return;
+        }
+        _estoqueSalvarGrupoChapa(chapa, valor).then(function() {
+          try { window.toast(valor ? 'Grupo vinculado à chapa' : 'Grupo removido da chapa', 'var(--green)'); } catch (_) {}
+        }).catch(function(err) {
+          try { grupoSel.value = String(chapa && (chapa.grupo_id || chapa.group_id || '') || '').trim(); } catch (_) {}
+          try { window.toast('Erro ao salvar grupo da chapa: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+        });
+      };
     }
     function _estoqueQtdAtualChapa(chapa) {
       return Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
@@ -6228,6 +6263,296 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
       sync(corAtual);
     }
+    function _estoqueInvalidateGruposChapas() {
+      window.__estoqueGruposChapasCache = null;
+      window.__estoqueGruposChapasPromise = null;
+    }
+    function _estoqueSortGruposChapas(grupos) {
+      return (Array.isArray(grupos) ? grupos : []).slice().sort(function(a, b) {
+        var oa = Math.trunc(Number(a && a.ordem || 0) || 0);
+        var ob = Math.trunc(Number(b && b.ordem || 0) || 0);
+        if (oa !== ob) return oa - ob;
+        return String(a && a.nome || '').localeCompare(String(b && b.nome || ''), 'pt-BR', { sensitivity: 'base' });
+      });
+    }
+    async function _estoqueFetchChapasGrupos(force) {
+      var ttl = 15000;
+      var now = Date.now();
+      var cache = window.__estoqueGruposChapasCache || null;
+      if (!force && cache && cache.ts && (now - cache.ts) < ttl && Array.isArray(cache.data)) return cache.data.slice();
+      if (!force && window.__estoqueGruposChapasPromise) return window.__estoqueGruposChapasPromise;
+      window.__estoqueGruposChapasPromise = _apiJsonAuth('/api/chapas_grupos?_t=' + Date.now()).then(function(json) {
+        var data = _estoqueSortGruposChapas(Array.isArray(json && json.data) ? json.data : []);
+        var byId = Object.create(null);
+        data.forEach(function(item) {
+          var gid = String(item && item.id || '').trim();
+          if (gid) byId[gid] = item;
+        });
+        window.__estoqueGruposChapasCache = { ts: Date.now(), data: data.slice(), byId: byId };
+        window.__estoqueGruposChapasPromise = null;
+        return data.slice();
+      }).catch(function(err) {
+        window.__estoqueGruposChapasPromise = null;
+        throw err;
+      });
+      return window.__estoqueGruposChapasPromise;
+    }
+    function _estoqueGrupoById(grupoId) {
+      var cache = window.__estoqueGruposChapasCache || null;
+      var byId = cache && cache.byId ? cache.byId : Object.create(null);
+      return byId[String(grupoId || '').trim()] || null;
+    }
+    function _estoqueDecorarChapasComGrupos(lista, grupos) {
+      var byId = Object.create(null);
+      _estoqueSortGruposChapas(grupos).forEach(function(g) {
+        var gid = String(g && g.id || '').trim();
+        if (gid) byId[gid] = g;
+      });
+      return (Array.isArray(lista) ? lista : []).map(function(chapa) {
+        var gid = String(chapa && (chapa.grupo_id || chapa.group_id || '') || '').trim();
+        var grupo = gid ? (byId[gid] || null) : null;
+        return Object.assign({}, chapa || {}, {
+          grupo_id: gid || null,
+          group_id: gid || null,
+          grupo: grupo || null,
+          grupo_nome: grupo && grupo.nome || '',
+          grupo_cor: grupo && grupo.cor || ''
+        });
+      });
+    }
+    function _estoqueGrupoAtualChapa(chapa) {
+      var gid = String(chapa && (chapa.grupo_id || chapa.group_id || '') || '').trim();
+      return (chapa && chapa.grupo) || _estoqueGrupoById(gid) || null;
+    }
+    function _estoqueGrupoLabelChapa(chapa) {
+      var grupo = _estoqueGrupoAtualChapa(chapa);
+      return String(grupo && grupo.nome || '').trim() || 'Sem grupo';
+    }
+    async function _estoqueSalvarGrupoChapa(chapa, grupoId) {
+      var chapaId = String(chapa && chapa.id || '').trim();
+      if (!chapaId) throw new Error('Chapa inválida');
+      var gid = String(grupoId || '').trim();
+      var resp = await fetch('/api/chapas_estoque_v2/' + encodeURIComponent(chapaId) + '/grupo', {
+        method: 'PATCH',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, _estoqueAuthHeaders()),
+        body: JSON.stringify({ grupo_id: gid || null })
+      });
+      var json = await resp.json().catch(function() { return null; });
+      if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao salvar grupo da chapa'));
+      try { if (typeof chapasForcarReload === 'function') chapasForcarReload(); } catch (_) {}
+      if (String(window._PAGE_ATUAL || '') === 'estoque' && typeof renderEstoqueWireframePage === 'function') {
+        await renderEstoqueWireframePage();
+      }
+      return json && (json.data || json);
+    }
+    function _estoqueGrupoOptionsHtml(chapa, grupos) {
+      var atual = String(chapa && (chapa.grupo_id || chapa.group_id || '') || '').trim();
+      var opts = ['<option value="">Sem grupo</option>']
+        .concat(_estoqueSortGruposChapas(grupos).map(function(grupo) {
+          var gid = String(grupo && grupo.id || '').trim();
+          return '<option value="' + _escapeHtmlLite(gid) + '"' + (gid === atual ? ' selected' : '') + '>' + _escapeHtmlLite(String(grupo && grupo.nome || 'Grupo')) + '</option>';
+        }))
+        .concat(['<option value="__novo__">+ Novo grupo...</option>']);
+      return opts.join('');
+    }
+    function _estoqueGrupoSelectHtml(chapa, grupos) {
+      var chapaId = String(chapa && chapa.id || '').trim();
+      return '<select class="estoque-row-group-select" data-est-group="' + _escapeHtmlLite(chapaId) + '">' + _estoqueGrupoOptionsHtml(chapa, grupos) + '</select>';
+    }
+    function _estoqueLinhaTabelaHtml(chapa, grupos) {
+      var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
+      var vunit = Number(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0) || 0;
+      var corLinha = _resolveChapaRowColor(chapa);
+      return '<tr data-chapa-id="' + esc(chapa && chapa.id || '') + '"' + (corLinha ? ' data-row-color="1"' : '') + ' style="' + esc(_styleLinhaChapaCor(chapa)) + '">'
+        + '<td class="col-text">' + esc(chapa && chapa.fornecedor || '—') + '</td>'
+        + '<td class="col-text">' + esc(chapa && chapa.gramatura || '—') + '</td>'
+        + '<td class="col-text">' + esc(chapa && chapa.nomenclatura || '—') + '</td>'
+        + '<td class="col-text">' + esc(chapa && chapa.tamanho || '—') + '</td>'
+        + '<td class="col-text">' + esc(chapa && (chapa.nome_uso || chapa.nome) || '—') + '</td>'
+        + '<td class="col-text">' + esc(chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || chapa.empresa) || '—') + '</td>'
+        + '<td class="col-text">' + esc(chapa && chapa.nf || '—') + '</td>'
+        + '<td class="col-num">' + num(qtd, 0) + '</td>'
+        + '<td class="col-num">' + money(vunit) + '</td>'
+        + '<td class="col-num">' + money(estoqueWireValor(chapa)) + '</td>'
+        + '<td class="col-text estoque-grupo-col">' + _estoqueGrupoSelectHtml(chapa, grupos) + '</td>'
+        + '<td class="col-actions">' + _estoqueCorBtnHtml(chapa) + ' ' + _estoquePinBtnHtml(chapa) + ' <button class="pep-btn danger" data-est-del="' + esc(chapa && chapa.id || '') + '">Excluir</button> <button class="pep-btn" data-est-edit="' + esc(chapa && chapa.id || '') + '">Alterar</button></td>'
+        + '</tr>';
+    }
+    function _estoqueTabelaAgrupadaHtml(lista, grupos, modo) {
+      var chapas = Array.isArray(lista) ? lista.slice() : [];
+      if (!chapas.length) return '<tr><td colspan="12" style="text-align:center;color:#94a3b8">Nenhum registro encontrado.</td></tr>';
+      if (String(modo || 'agrupado') !== 'agrupado') {
+        return chapas.map(function(chapa) { return _estoqueLinhaTabelaHtml(chapa, grupos); }).join('');
+      }
+      var ordenados = _estoqueSortGruposChapas(grupos);
+      var orderedMap = Object.create(null);
+      ordenados.forEach(function(g) { orderedMap[String(g && g.id || '').trim()] = g; });
+      function orderedHas(gid) {
+        return orderedMap[gid];
+      }
+      var porGrupo = Object.create(null);
+      var semGrupo = [];
+      chapas.forEach(function(chapa) {
+        var gid = String(chapa && (chapa.grupo_id || chapa.group_id || '') || '').trim();
+        if (!gid || !orderedHas(gid)) {
+          semGrupo.push(chapa);
+          return;
+        }
+        if (!porGrupo[gid]) porGrupo[gid] = [];
+        porGrupo[gid].push(chapa);
+      });
+      var html = '';
+      ordenados.forEach(function(grupo) {
+        var gid = String(grupo && grupo.id || '').trim();
+        var items = porGrupo[gid] || [];
+        if (!items.length) return;
+        var cor = _normalizeChapaRowColor(grupo && grupo.cor || '') || '#3B82F6';
+        html += '<tr class="estoque-grupo-separador"><td colspan="12"><div class="estoque-grupo-head" style="border-color:' + esc(_hexToRgbaChapa(cor, 0.45)) + ';box-shadow:inset 4px 0 0 ' + esc(cor) + '"><span class="estoque-grupo-badge" style="background:' + esc(_hexToRgbaChapa(cor, 0.18)) + ';color:' + esc(cor) + ';border-color:' + esc(_hexToRgbaChapa(cor, 0.34)) + '">📦 Grupo</span><span class="estoque-grupo-title">' + esc(grupo && grupo.nome || 'Grupo') + '</span><span class="estoque-grupo-count">' + esc(String(items.length)) + ' chapa(s)</span></div></td></tr>';
+        html += items.map(function(chapa) { return _estoqueLinhaTabelaHtml(chapa, grupos); }).join('');
+      });
+      if (semGrupo.length) {
+        html += '<tr class="estoque-grupo-separador"><td colspan="12"><div class="estoque-grupo-head is-empty"><span class="estoque-grupo-badge is-empty">📦 Grupo</span><span class="estoque-grupo-title">Sem grupo</span><span class="estoque-grupo-count">' + esc(String(semGrupo.length)) + ' chapa(s)</span></div></td></tr>';
+        html += semGrupo.map(function(chapa) { return _estoqueLinhaTabelaHtml(chapa, grupos); }).join('');
+      }
+      return html;
+    }
+    function _estoqueRenderCardsGruposLista(grupos) {
+      var lista = _estoqueSortGruposChapas(grupos);
+      if (!lista.length) return '<div class="estoque-modal-empty">Nenhum grupo criado ainda.</div>';
+      return '<div class="estoque-grupos-grid">' + lista.map(function(grupo) {
+        var gid = String(grupo && grupo.id || '').trim();
+        var cor = _normalizeChapaRowColor(grupo && grupo.cor || '') || '#3B82F6';
+        return '<div class="estoque-grupo-card">'
+          + '<div class="estoque-grupo-card-head"><span class="estoque-grupo-card-swatch" style="background:' + _escapeHtmlLite(cor) + ';box-shadow:0 10px 22px ' + _escapeHtmlLite(_hexToRgbaChapa(cor, 0.26)) + '"></span><div><div class="estoque-grupo-card-title">' + _escapeHtmlLite(String(grupo && grupo.nome || 'Grupo')) + '</div><div class="estoque-grupo-card-sub">Ordem: ' + _escapeHtmlLite(String(Math.trunc(Number(grupo && grupo.ordem || 0) || 0))) + '</div></div></div>'
+          + '<div class="estoque-grupo-card-actions"><button type="button" class="pep-btn" data-est-grupo-edit="' + _escapeHtmlLite(gid) + '">Editar</button><button type="button" class="pep-btn danger" data-est-grupo-del="' + _escapeHtmlLite(gid) + '">Excluir</button></div>'
+          + '</div>';
+      }).join('') + '</div>';
+    }
+    function _estoqueAbrirModalGrupos() {
+      var modalId = 'estoque-grupos-modal';
+      var body = ''
+        + '<div style="display:grid;gap:18px">'
+        + '  <div class="estoque-grupo-form-grid">'
+        + '    <input id="estoque-grupo-id" type="hidden" value="">'
+        + '    <label class="estoque-modal-label"><span>Nome do grupo</span><input id="estoque-grupo-nome" class="estoque-modal-input" type="text" placeholder="Ex: Klabin — Onda B"></label>'
+        + '    <label class="estoque-modal-label"><span>Cor do título</span><input id="estoque-grupo-cor" class="estoque-modal-input" type="color" value="#3B82F6" style="padding:6px"></label>'
+        + '    <label class="estoque-modal-label"><span>Ordem</span><input id="estoque-grupo-ordem" class="estoque-modal-input" type="number" min="0" step="1" value="0"></label>'
+        + '  </div>'
+        + '  <div><div style="font-size:12px;color:#94a3b8;margin-bottom:8px">Grupos já cadastrados</div><div id="estoque-grupos-lista"></div></div>'
+        + '</div>';
+      var footer = ''
+        + '<button type="button" class="pep-btn" data-modal-close="1">Fechar</button>'
+        + '<button type="button" class="pep-btn primary" id="estoque-grupo-save">Salvar grupo</button>';
+      var modal = _abrirModalPadrao({
+        id: modalId,
+        titulo: 'Agrupamento nomeado de chapas',
+        subtitulo: 'Crie, edite ou remova grupos usados para separar visualmente o estoque.',
+        hero: '📦',
+        accent: 'blue',
+        largura: '860px',
+        corpoHTML: body,
+        footerHTML: footer
+      });
+      if (!modal) return;
+      var idEl = modal.querySelector('#estoque-grupo-id');
+      var nomeEl = modal.querySelector('#estoque-grupo-nome');
+      var corEl = modal.querySelector('#estoque-grupo-cor');
+      var ordemEl = modal.querySelector('#estoque-grupo-ordem');
+      var listaEl = modal.querySelector('#estoque-grupos-lista');
+      var saveBtn = modal.querySelector('#estoque-grupo-save');
+      var grupos = [];
+      var resetForm = function(grupo) {
+        var g = grupo || null;
+        if (idEl) idEl.value = g && g.id || '';
+        if (nomeEl) nomeEl.value = g && g.nome || '';
+        if (corEl) corEl.value = _normalizeChapaRowColor(g && g.cor || '') || '#3B82F6';
+        if (ordemEl) ordemEl.value = String(Math.trunc(Number(g && g.ordem || 0) || 0));
+        if (saveBtn) saveBtn.textContent = g ? 'Atualizar grupo' : 'Salvar grupo';
+      };
+      var renderLista = function() {
+        if (listaEl) listaEl.innerHTML = _estoqueRenderCardsGruposLista(grupos);
+      };
+      var recarregar = async function(force) {
+        grupos = await _estoqueFetchChapasGrupos(!!force);
+        renderLista();
+      };
+      if (listaEl) {
+        listaEl.addEventListener('click', function(ev) {
+          var editBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-est-grupo-edit]') : null;
+          if (editBtn) {
+            ev.preventDefault();
+            var gid = String(editBtn.getAttribute('data-est-grupo-edit') || '').trim();
+            var grupo = (grupos || []).find(function(item) { return String(item && item.id || '').trim() === gid; }) || null;
+            resetForm(grupo);
+            return;
+          }
+          var delBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-est-grupo-del]') : null;
+          if (delBtn) {
+            ev.preventDefault();
+            var gidDel = String(delBtn.getAttribute('data-est-grupo-del') || '').trim();
+            if (!gidDel) return;
+            if (!window.confirm('Excluir este grupo? Chapas vinculadas a ele passarão a aparecer como "Sem grupo".')) return;
+            fetch('/api/chapas_grupos/' + encodeURIComponent(gidDel), {
+              method: 'DELETE',
+              headers: _estoqueAuthHeaders()
+            }).then(function(resp) {
+              return resp.json().catch(function() { return null; }).then(function(json) {
+                if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao excluir grupo'));
+                _estoqueInvalidateGruposChapas();
+                resetForm(null);
+                return recarregar(true).then(function() {
+                  if (String(window._PAGE_ATUAL || '') === 'estoque' && typeof renderEstoqueWireframePage === 'function') return renderEstoqueWireframePage();
+                });
+              });
+            }).then(function() {
+              try { window.toast('Grupo removido', 'var(--green)'); } catch (_) {}
+            }).catch(function(err) {
+              try { window.toast('Erro ao excluir grupo: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+            });
+          }
+        });
+      }
+      if (saveBtn) {
+        saveBtn.onclick = async function() {
+          if (saveBtn.disabled) return;
+          var nome = String(nomeEl && nomeEl.value || '').trim();
+          var cor = _normalizeChapaRowColor(corEl && corEl.value || '') || '#3B82F6';
+          var ordem = Math.max(0, Math.trunc(Number(ordemEl && ordemEl.value || 0) || 0));
+          var gid = String(idEl && idEl.value || '').trim();
+          if (!nome) {
+            try { window.toast('Informe o nome do grupo', 'var(--red)'); } catch (_) {}
+            return;
+          }
+          saveBtn.disabled = true;
+          try {
+            var endpoint = '/api/chapas_grupos' + (gid ? ('/' + encodeURIComponent(gid)) : '');
+            var method = gid ? 'PUT' : 'POST';
+            var resp = await fetch(endpoint, {
+              method: method,
+              headers: Object.assign({ 'Content-Type': 'application/json' }, _estoqueAuthHeaders()),
+              body: JSON.stringify({ nome: nome, cor: cor, ordem: ordem })
+            });
+            var json = await resp.json().catch(function() { return null; });
+            if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao salvar grupo'));
+            _estoqueInvalidateGruposChapas();
+            await recarregar(true);
+            resetForm(null);
+            if (String(window._PAGE_ATUAL || '') === 'estoque' && typeof renderEstoqueWireframePage === 'function') {
+              await renderEstoqueWireframePage();
+            }
+            try { window.toast(gid ? 'Grupo atualizado' : 'Grupo criado', 'var(--green)'); } catch (_) {}
+          } catch (e) {
+            try { window.toast('Erro ao salvar grupo: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+          } finally {
+            saveBtn.disabled = false;
+          }
+        };
+      }
+      resetForm(null);
+      recarregar(false).catch(function(err) {
+        if (listaEl) listaEl.innerHTML = '<div class="estoque-modal-empty">Erro ao carregar grupos: ' + _escapeHtmlLite(String(err && err.message || err)) + '</div>';
+      });
+    }
     function _renderSugestoesCompraTopo(sugestoes) {
       var lista = Array.isArray(sugestoes) ? sugestoes : [];
       return ''
@@ -6367,7 +6692,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try {
         var lista = await _estoqueFetchChapasList(10000);
         try { await _estoqueFetchSugestoesCompra(false); } catch (_) {}
+        var grupos = [];
+        try { grupos = await _estoqueFetchChapasGrupos(false); } catch (_) {}
         lista = Array.isArray(lista) ? lista : [];
+        lista = _estoqueDecorarChapasComGrupos(lista, grupos);
+        var modoAgrupamento = String(window.__estoqueWireModoAgrupamento || 'agrupado').trim().toLowerCase();
+        if (modoAgrupamento !== 'lista') modoAgrupamento = 'agrupado';
         var busca = String(window.__estoqueWireBusca || '').trim().toLowerCase();
         var filtrada = busca ? lista.filter(function(chapa) {
           var txt = [
@@ -6377,7 +6707,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             chapa && chapa.tamanho,
             chapa && (chapa.nome_uso || chapa.nome),
             chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || chapa.empresa),
-            chapa && chapa.nf
+            chapa && chapa.nf,
+            _estoqueGrupoLabelChapa(chapa)
           ].join(' ').toLowerCase();
           return txt.indexOf(busca) >= 0;
         }) : lista;
@@ -6393,28 +6724,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         +      _cardBreakdownEstoque('Por Fornecedor', breakdown, money)
         + '  </div>'
         + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
-        + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF ou CNPJ" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
+        + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF, CNPJ ou grupo" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
         + '    <button class="pep-btn primary" id="estoque-wire-buscar">Buscar</button>'
+        + '    <button class="pep-btn" id="estoque-wire-open-grupos">＋ Novo Grupo</button>'
+        + '  </div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px">'
+        + '    <span style="font-size:12px;color:#94a3b8;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Visualização</span>'
+        + '    <button class="pep-btn' + (modoAgrupamento === 'agrupado' ? ' primary' : '') + '" id="estoque-wire-modo-agrupado" type="button">Agrupado</button>'
+        + '    <button class="pep-btn' + (modoAgrupamento === 'lista' ? ' primary' : '') + '" id="estoque-wire-modo-lista" type="button">Lista completa</button>'
+        + '    <span style="font-size:12px;color:#94a3b8">' + esc(String(grupos.length)) + ' grupo(s) cadastrado(s)</span>'
         + '  </div></div>'
-        + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-estoque"><table class="pep-table pep-table-estoque-wire"><thead><tr><th class="col-text">FORNECEDOR</th><th class="col-text">GRAMATURA</th><th class="col-text">NOMENCLATURA</th><th class="col-text">TAMANHO</th><th class="col-text">NOME</th><th class="col-text">QUAL CNPJ</th><th class="col-text">NF</th><th class="col-num">QUANTIDADE</th><th class="col-num">R$</th><th class="col-num">TOTAL</th><th class="col-actions">Ações</th></tr></thead><tbody>'
-        + (filtrada.length ? filtrada.map(function(chapa) {
-            var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
-            var vunit = Number(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0) || 0;
-            var corLinha = _resolveChapaRowColor(chapa);
-            return '<tr data-chapa-id="' + esc(chapa && chapa.id || '') + '"' + (corLinha ? ' data-row-color="1"' : '') + ' style="' + esc(_styleLinhaChapaCor(chapa)) + '">'
-              + '<td class="col-text">' + esc(chapa && chapa.fornecedor || '—') + '</td>'
-              + '<td class="col-text">' + esc(chapa && chapa.gramatura || '—') + '</td>'
-              + '<td class="col-text">' + esc(chapa && chapa.nomenclatura || '—') + '</td>'
-              + '<td class="col-text">' + esc(chapa && chapa.tamanho || '—') + '</td>'
-              + '<td class="col-text">' + esc(chapa && (chapa.nome_uso || chapa.nome) || '—') + '</td>'
-              + '<td class="col-text">' + esc(chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || chapa.empresa) || '—') + '</td>'
-              + '<td class="col-text">' + esc(chapa && chapa.nf || '—') + '</td>'
-              + '<td class="col-num">' + num(qtd, 0) + '</td>'
-              + '<td class="col-num">' + money(vunit) + '</td>'
-              + '<td class="col-num">' + money(estoqueWireValor(chapa)) + '</td>'
-              + '<td class="col-actions">' + _estoqueCorBtnHtml(chapa) + ' ' + _estoquePinBtnHtml(chapa) + ' <button class="pep-btn danger" data-est-del="' + esc(chapa && chapa.id || '') + '">Excluir</button> <button class="pep-btn" data-est-edit="' + esc(chapa && chapa.id || '') + '">Alterar</button></td>'
-              + '</tr>';
-          }).join('') : '<tr><td colspan="11" style="text-align:center;color:#94a3b8">Nenhum registro encontrado.</td></tr>')
+        + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-estoque"><table class="pep-table pep-table-estoque-wire"><thead><tr><th class="col-text">FORNECEDOR</th><th class="col-text">GRAMATURA</th><th class="col-text">NOMENCLATURA</th><th class="col-text">TAMANHO</th><th class="col-text">NOME</th><th class="col-text">QUAL CNPJ</th><th class="col-text">NF</th><th class="col-num">QUANTIDADE</th><th class="col-num">R$</th><th class="col-num">TOTAL</th><th class="col-text">GRUPO</th><th class="col-actions">Ações</th></tr></thead><tbody>'
+        + _estoqueTabelaAgrupadaHtml(filtrada, grupos, modoAgrupamento)
         + '  </tbody></table></div></div>'
         + '</div>';
       // #region debug-point G:wireframe-layout-shape
@@ -6435,6 +6755,20 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       // #endregion
       document.getElementById('estoque-wire-buscar').onclick = function() {
         window.__estoqueWireBusca = String((document.getElementById('estoque-wire-busca') || {}).value || '').trim();
+        renderEstoqueWireframePage();
+      };
+      var btnNovoGrupo = document.getElementById('estoque-wire-open-grupos');
+      if (btnNovoGrupo) btnNovoGrupo.onclick = function() {
+        try { _estoqueAbrirModalGrupos(); } catch (_) {}
+      };
+      var btnModoAgrupado = document.getElementById('estoque-wire-modo-agrupado');
+      if (btnModoAgrupado) btnModoAgrupado.onclick = function() {
+        window.__estoqueWireModoAgrupamento = 'agrupado';
+        renderEstoqueWireframePage();
+      };
+      var btnModoLista = document.getElementById('estoque-wire-modo-lista');
+      if (btnModoLista) btnModoLista.onclick = function() {
+        window.__estoqueWireModoAgrupamento = 'lista';
         renderEstoqueWireframePage();
       };
       var buscaEl = document.getElementById('estoque-wire-busca');

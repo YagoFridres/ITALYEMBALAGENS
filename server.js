@@ -1089,9 +1089,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260706185500';
-const SW_RUNTIME_VERSION = '20260706185500';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260706185500';
+const PATCH_RUNTIME_VERSION = '20260706203000';
+const SW_RUNTIME_VERSION = '20260706203000';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260706203000';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -14939,6 +14939,17 @@ function _chapasObsExtractColor(obs) {
   return m && m[1] ? _chapasColorNormalize(m[1]) : '';
 }
 
+function _chapasGroupIdNormalize(v) {
+  const txt = String(v || '').trim();
+  return txt ? txt.slice(0, 80) : '';
+}
+
+function _chapasObsExtractGroupId(obs) {
+  const txt = String(obs || '');
+  const m = txt.match(/\[\[GRUPO_CHAPA:([A-Z0-9-]{1,80})\]\]/i);
+  return m && m[1] ? _chapasGroupIdNormalize(m[1]) : '';
+}
+
 function _chapasObsStripColor(obs) {
   return String(obs || '')
     .replace(/\s*\[\[COR_LINHA:(#[0-9A-F]{6})\]\]\s*/gi, ' ')
@@ -14946,11 +14957,120 @@ function _chapasObsStripColor(obs) {
     .trim();
 }
 
+function _chapasObsStripGroup(obs) {
+  return String(obs || '')
+    .replace(/\s*\[\[GRUPO_CHAPA:([A-Z0-9-]{1,80})\]\]\s*/gi, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function _chapasObsStripMeta(obs) {
+  return _chapasObsStripGroup(_chapasObsStripColor(obs));
+}
+
+function _chapasObsComposeMeta(obs, opts = {}) {
+  const clean = _chapasObsStripMeta(obs);
+  const cor = Object.prototype.hasOwnProperty.call(opts, 'color')
+    ? _chapasColorNormalize(opts.color)
+    : _chapasObsExtractColor(obs);
+  const groupId = Object.prototype.hasOwnProperty.call(opts, 'groupId')
+    ? _chapasGroupIdNormalize(opts.groupId)
+    : _chapasObsExtractGroupId(obs);
+  const parts = [];
+  if (clean) parts.push(clean);
+  if (groupId) parts.push('[[GRUPO_CHAPA:' + groupId + ']]');
+  if (cor) parts.push('[[COR_LINHA:' + cor + ']]');
+  return parts.join(' ').trim();
+}
+
 function _chapasObsWithColor(obs, color) {
-  const clean = _chapasObsStripColor(obs);
-  const cor = _chapasColorNormalize(color);
-  if (!cor) return clean;
-  return (clean ? (clean + ' ') : '') + '[[COR_LINHA:' + cor + ']]';
+  return _chapasObsComposeMeta(obs, { color });
+}
+
+function _chapasObsWithGroup(obs, groupId) {
+  return _chapasObsComposeMeta(obs, { groupId });
+}
+
+function _chapasGroupConfigKey(empresaId) {
+  const emp = String(empresaId || 'global').trim() || 'global';
+  return 'chapas_grupos:' + emp;
+}
+
+function _chapasGrupoNormalize(item, idx = 0) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const nome = String(raw.nome || raw.titulo || raw.label || '').trim();
+  if (!nome) return null;
+  const cor = _chapasColorNormalize(raw.cor || raw.color || '') || '#3B82F6';
+  const ordem = Math.trunc(Number(raw.ordem != null ? raw.ordem : idx) || idx);
+  const id = _chapasGroupIdNormalize(raw.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : ('grupo-' + Date.now() + '-' + idx)));
+  return {
+    id,
+    nome,
+    cor,
+    ordem,
+    created_at: raw.created_at || raw.createdAt || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+async function _chapasGruposList(req) {
+  let empresa_id = '';
+  try { empresa_id = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { empresa_id = ''; }
+  const lista = await _loadConfigJson(_chapasGroupConfigKey(empresa_id), []);
+  const norm = (Array.isArray(lista) ? lista : [])
+    .map((item, idx) => _chapasGrupoNormalize(item, idx))
+    .filter(Boolean)
+    .sort((a, b) => {
+      const oa = Number(a?.ordem || 0) || 0;
+      const ob = Number(b?.ordem || 0) || 0;
+      if (oa !== ob) return oa - ob;
+      return String(a?.nome || '').localeCompare(String(b?.nome || ''), 'pt-BR', { sensitivity: 'base' });
+    });
+  return { empresa_id, grupos: norm };
+}
+
+async function _chapasGruposSave(req, empresa_id, grupos) {
+  const lista = (Array.isArray(grupos) ? grupos : [])
+    .map((item, idx) => _chapasGrupoNormalize(item, idx))
+    .filter(Boolean);
+  await _saveConfigJson(_chapasGroupConfigKey(empresa_id), lista, req);
+  return lista;
+}
+
+function _chapasAnexarGrupoNaLista(rows, grupos) {
+  const mapa = Object.create(null);
+  (Array.isArray(grupos) ? grupos : []).forEach((g) => {
+    const gid = _chapasGroupIdNormalize(g?.id);
+    if (gid) mapa[gid] = g;
+  });
+  return (Array.isArray(rows) ? rows : []).map((row) => {
+    const gid = _chapasGroupIdNormalize(row?.grupo_id || row?.group_id || '');
+    const grupo = gid ? (mapa[gid] || null) : null;
+    return {
+      ...row,
+      grupo_id: gid || null,
+      grupo: grupo ? { ...grupo } : null,
+      grupo_nome: grupo?.nome || '',
+      grupo_cor: grupo?.cor || '',
+    };
+  });
+}
+
+async function _chapasPreservarMetaObservacao(id, payload, body, table) {
+  const p = payload && typeof payload === 'object' ? payload : {};
+  if (p.observacao === undefined && p.obs === undefined) return p;
+  try {
+    const r = await supabase.from(table).select('*').eq('id', String(id || '').trim()).maybeSingle();
+    const atual = r?.data || null;
+    if (!atual) return p;
+    const groupPresent = body && (Object.prototype.hasOwnProperty.call(body, 'grupo_id') || Object.prototype.hasOwnProperty.call(body, 'group_id'));
+    const colorPresent = body && (Object.prototype.hasOwnProperty.call(body, 'cor') || Object.prototype.hasOwnProperty.call(body, 'cor_linha') || Object.prototype.hasOwnProperty.call(body, 'linha_cor'));
+    let obs = String(p.observacao ?? p.obs ?? '').trim();
+    if (!groupPresent) obs = _chapasObsWithGroup(obs, atual?.grupo_id || atual?.group_id || _chapasObsExtractGroupId(atual?.observacao || atual?.obs || ''));
+    if (!colorPresent) obs = _chapasObsWithColor(obs, atual?.cor || atual?.cor_linha || atual?.linha_cor || _chapasObsExtractColor(atual?.observacao || atual?.obs || ''));
+    p.observacao = obs;
+  } catch (_) {}
+  return p;
 }
 
 let _chapasColorColumnEnsured = false;
@@ -15019,8 +15139,10 @@ function _chapasCanonicalFromAny(row, table) {
       : ((row.qual != null && String(row.qual).trim() !== '') ? String(row.qual).trim()
       : _chapasEmpresaFromEmpId(empId)));
     const nf = (row.nf != null && String(row.nf).trim() !== '') ? String(row.nf).trim() : ((row.numero_nf != null) ? String(row.numero_nf).trim() : '');
-    const observacaoLimpa = _chapasObsStripColor(row.observacao || '');
-    const corLinha = _chapasColorNormalize(row.cor ?? row.cor_linha ?? row.linha_cor ?? _chapasObsExtractColor(row.observacao || ''));
+    const observacaoRaw = row.observacao || '';
+    const observacaoLimpa = _chapasObsStripMeta(observacaoRaw);
+    const corLinha = _chapasColorNormalize(row.cor ?? row.cor_linha ?? row.linha_cor ?? _chapasObsExtractColor(observacaoRaw));
+    const grupoId = _chapasGroupIdNormalize(row.grupo_id ?? row.group_id ?? _chapasObsExtractGroupId(observacaoRaw));
     const canon = {
       id: row.id,
       fornecedor: row.fornecedor || '',
@@ -15042,6 +15164,7 @@ function _chapasCanonicalFromAny(row, table) {
       observacao: observacaoLimpa,
       cor: corLinha,
       cor_linha: corLinha,
+      grupo_id: grupoId || null,
       cliente: row.cliente_nome || row.cliente || '',
       cliente_id: row.cliente_id || null,
       riscada: !!row.riscada,
@@ -15081,7 +15204,7 @@ function _chapasCanonicalFromAny(row, table) {
   const estoqueMin = _chapasNum(_chapasGet(row, km, ['estoque_minimo', 'estoque minimo', 'quantidade_minima', 'quantidade minima', 'min']));
   const vincos = _chapasGet(row, km, ['vincos', 'víncos']);
   const observacaoRaw = _chapasGet(row, km, ['observacao', 'observação', 'observacoes', 'observações', 'obs']);
-  const observacao = _chapasObsStripColor(observacaoRaw);
+  const observacao = _chapasObsStripMeta(observacaoRaw);
   const dataEntrada = _chapasGet(row, km, ['data_entrada', 'data entrada', 'entrada_de_dados', 'entrada de dados', 'entrada_de_dados']);
   const categoria = _chapasGet(row, km, ['categoria']) || 'Estoque Simples';
   const cliente = _chapasGet(row, km, ['cliente', 'cliente_nome', 'cliente nome']);
@@ -15089,6 +15212,7 @@ function _chapasCanonicalFromAny(row, table) {
   const riscada = String(riscadaRaw).toLowerCase() === 'true' || String(riscadaRaw).toLowerCase() === 'sim' || String(riscadaRaw) === '1';
   const riscaDesc = _chapasGet(row, km, ['risca_desc', 'descricao_risca', 'descrição da risca', 'descricao da risca']);
   const corLinha = _chapasColorNormalize(_chapasGet(row, km, ['cor', 'cor_linha', 'linha_cor']) || _chapasObsExtractColor(observacaoRaw));
+  const grupoId = _chapasGroupIdNormalize(_chapasGet(row, km, ['grupo_id', 'group_id']) || _chapasObsExtractGroupId(observacaoRaw));
   const empId = _chapasGet(row, km, ['emp_id', 'emp id', 'empId', 'empresa', 'empresa_id', 'empresa id']);
   const empresaVinc = qualCnpj || _chapasGet(row, km, ['empresa_vinculada', 'empresa vinculada', 'fabricante_empresa', 'fabricante empresa', 'empresa']) || _chapasEmpresaFromEmpId(empId);
   const id = _chapasGet(row, km, ['id']);
@@ -15116,6 +15240,7 @@ function _chapasCanonicalFromAny(row, table) {
     observacao,
     cor: corLinha,
     cor_linha: corLinha,
+    grupo_id: grupoId || null,
     cliente,
     cliente_id: null,
     riscada,
@@ -15232,7 +15357,12 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
   const riscaDesc = (b.risca_desc ?? b.descricao_risca ?? '').toString().trim();
   const corLinhaRaw = (b.cor ?? b.cor_linha ?? b.linha_cor ?? '').toString().trim();
   const corLinha = _chapasColorNormalize(corLinhaRaw);
-  const observacao = _chapasObsWithColor(observacaoRaw, corLinha);
+  const grupoIdRaw = (b.grupo_id ?? b.group_id ?? '').toString().trim();
+  const grupoId = _chapasGroupIdNormalize(grupoIdRaw);
+  const metaOpts = {};
+  if (b.cor !== undefined || b.cor_linha !== undefined || b.linha_cor !== undefined) metaOpts.color = corLinha;
+  if (b.grupo_id !== undefined || b.group_id !== undefined) metaOpts.groupId = grupoId;
+  const observacao = _chapasObsComposeMeta(observacaoRaw, metaOpts);
   const estoqueMin = b.estoque_minimo != null ? Math.trunc(_chapasToNum(b.estoque_minimo, 200)) : undefined;
   const empIdBody = (b.emp_id ?? b.empId ?? '').toString().trim();
   const empIdQuery = req?.query?.empId ? String(req.query.empId).trim() : '';
@@ -15246,8 +15376,11 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
   setText('risca_desc', riscaDesc, (b.risca_desc !== undefined || b.descricao_risca !== undefined));
   setText('vincos', vincos, (b.vincos !== undefined));
   const corPresent = (b.cor !== undefined || b.cor_linha !== undefined || b.linha_cor !== undefined);
-  setText('observacao', observacao, (b.observacao !== undefined || b.observacoes !== undefined || corPresent));
+  const grupoPresent = (b.grupo_id !== undefined || b.group_id !== undefined);
+  setText('observacao', observacao, (b.observacao !== undefined || b.observacoes !== undefined || corPresent || grupoPresent));
   if (corPresent) set('cor', corLinha || null);
+  if (grupoPresent) set('group_id', grupoId || null);
+  if (grupoPresent) set('grupo_id', grupoId || null);
   if (estoqueMin !== undefined) set('estoque_minimo', estoqueMin);
   if (empId !== '') set('emp_id', empId);
   if (b.gramatura !== undefined || b.espessura_mm !== undefined || b.espessura !== undefined) {
@@ -15686,6 +15819,17 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
 
     try { res.setHeader('X-Chapas-Table', usedTable); } catch (_) {}
 
+    let gruposCfg = [];
+    try {
+      const loaded = await _chapasGruposList(req);
+      gruposCfg = loaded?.grupos || [];
+    } catch (_) {}
+    rows = _chapasAnexarGrupoNaLista(rows, gruposCfg);
+    if (String(req.query.grupo_id || '').trim()) {
+      const gidReq = _chapasGroupIdNormalize(req.query.grupo_id);
+      rows = rows.filter((r) => String(r?.grupo_id || '').trim() === gidReq);
+    }
+
     rows.sort((a,b)=>{
       const ca = String(a.categoria||'').toLowerCase();
       const cb = String(b.categoria||'').toLowerCase();
@@ -15707,6 +15851,133 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('[chapas_estoque] catch:', err.message);
     return res.json([]);
+  }
+});
+
+app.get('/api/chapas_grupos', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const loaded = await _chapasGruposList(req);
+    return res.json({ ok: true, empresa_id: loaded?.empresa_id || '', data: loaded?.grupos || [] });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post('/api/chapas_grupos', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const loaded = await _chapasGruposList(req);
+    const body = req.body || {};
+    const novo = _chapasGrupoNormalize(body, (loaded?.grupos || []).length);
+    if (!novo) return res.status(400).json({ ok: false, error: 'nome obrigatório' });
+    const lista = [...(loaded?.grupos || []), novo];
+    const saved = await _chapasGruposSave(req, loaded?.empresa_id || '', lista);
+    return res.json({ ok: true, data: novo, grupos: saved });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.put('/api/chapas_grupos/:id', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const gid = _chapasGroupIdNormalize(req.params.id);
+    if (!gid) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const loaded = await _chapasGruposList(req);
+    let updated = null;
+    const lista = (loaded?.grupos || []).map((item, idx) => {
+      if (_chapasGroupIdNormalize(item?.id) !== gid) return item;
+      updated = _chapasGrupoNormalize({ ...item, ...(req.body || {}), id: gid }, idx);
+      return updated;
+    });
+    if (!updated) return res.status(404).json({ ok: false, error: 'Grupo não encontrado' });
+    const saved = await _chapasGruposSave(req, loaded?.empresa_id || '', lista);
+    return res.json({ ok: true, data: updated, grupos: saved });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.delete('/api/chapas_grupos/:id', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const gid = _chapasGroupIdNormalize(req.params.id);
+    if (!gid) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const loaded = await _chapasGruposList(req);
+    const lista = (loaded?.grupos || []).filter((item) => _chapasGroupIdNormalize(item?.id) !== gid);
+    await _chapasGruposSave(req, loaded?.empresa_id || '', lista);
+    return res.json({ ok: true, data: { id: gid } });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.patch('/api/chapas_estoque_v2/:id/grupo', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const loaded = await _chapasGruposList(req);
+    const groupId = _chapasGroupIdNormalize(req.body?.grupo_id ?? req.body?.group_id ?? '');
+    if (groupId && !(loaded?.grupos || []).some((g) => _chapasGroupIdNormalize(g?.id) === groupId)) {
+      return res.status(400).json({ ok: false, error: 'Grupo inválido' });
+    }
+
+    const tryV2 = await supabase.from('chapas_estoque_v2').select('*').eq('id', id).maybeSingle();
+    let table = 'chapas_estoque_v2';
+    let atual = tryV2?.data || null;
+    if (tryV2?.error && !String(tryV2.error.message || '').toLowerCase().includes('does not exist')) throw tryV2.error;
+    if (!atual) {
+      const tryLegacy = await supabase.from('chapas_estoque').select('*').eq('id', id).maybeSingle();
+      if (tryLegacy?.error) throw tryLegacy.error;
+      atual = tryLegacy?.data || null;
+      table = 'chapas_estoque';
+    }
+    if (!atual) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+
+    const observacaoAtual = String(atual?.observacao ?? atual?.obs ?? atual?.observacoes ?? '').trim();
+    const observacaoNova = _chapasObsWithGroup(observacaoAtual, groupId || '');
+    if (table === 'chapas_estoque_v2') {
+      const payload = {
+        observacao: observacaoNova,
+        atualizado_por: req?.usuario?.nome || req?.usuario?.email || 'sistema',
+        grupo_id: groupId || null,
+        group_id: groupId || null,
+      };
+      const { data, error } = await _chapasUpdateCompatV2(id, payload);
+      if (error) return res.status(500).json({ ok: false, error: String(error.message || error) });
+      cacheClearPrefix('chapas_estoque:');
+      return res.json({ ok: true, data: _chapasAnexarGrupoNaLista([_chapasCanonicalFromAny(data || { ...atual, ...payload }, 'chapas_estoque_v2')], loaded?.grupos || [])[0] || null });
+    }
+
+    const basePayload = {
+      observacao: observacaoNova,
+      atualizado_por: req?.usuario?.nome || req?.usuario?.email || 'sistema',
+      grupo_id: groupId || null,
+      group_id: groupId || null,
+    };
+    let updPayload = { ...basePayload };
+    let data = null;
+    let error = null;
+    for (let tentativa = 0; tentativa < 8; tentativa++) {
+      const r = await supabase.from('chapas_estoque').update(updPayload).eq('id', id).select().maybeSingle();
+      data = r?.data || null;
+      error = r?.error || null;
+      if (!error) break;
+      const msg = String(error.message || error);
+      const col = msg.match(/Could not find the '([^']+)' column/)?.[1] || msg.match(/column\s+"([^"]+)"\s+does not exist/i)?.[1];
+      if (col && Object.prototype.hasOwnProperty.call(updPayload, col)) {
+        delete updPayload[col];
+        continue;
+      }
+      break;
+    }
+    if (error) return res.status(500).json({ ok: false, error: String(error.message || error) });
+    cacheClearPrefix('chapas_estoque:');
+    return res.json({ ok: true, data: _chapasAnexarGrupoNaLista([_chapasCanonicalFromAny(data || { ...atual, ...basePayload }, 'chapas_estoque')], loaded?.grupos || [])[0] || null });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
@@ -15934,6 +16205,7 @@ app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
 
     if (table === 'chapas_estoque_v2') {
       const payload = _chapasPayloadV2FromBody(b, req, true);
+      await _chapasPreservarMetaObservacao(String(req.params.id || '').trim(), payload, b, 'chapas_estoque_v2');
       if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
       const { data, error } = await _chapasUpdateCompatV2(String(req.params.id || '').trim(), payload);
       if (error) return res.status(500).json({ error: error.message });
@@ -15957,6 +16229,7 @@ app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
     if (b.cor !== undefined || b.cor_linha !== undefined || b.linha_cor !== undefined) payload.cor = _chapasColorNormalize(b.cor ?? b.cor_linha ?? b.linha_cor ?? '') || null;
     if (b.emp_id) payload.emp_id = b.emp_id;
     if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+    await _chapasPreservarMetaObservacao(String(req.params.id || '').trim(), payload, b, 'chapas_estoque');
     let updPayload = { ...payload };
     let data = null;
     let error = null;
@@ -15987,6 +16260,7 @@ app.patch('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
 
     if (table === 'chapas_estoque_v2') {
       const payload = _chapasPayloadV2FromBody(b, req, true);
+      await _chapasPreservarMetaObservacao(String(req.params.id || '').trim(), payload, b, 'chapas_estoque_v2');
       if (b.quantidade !== undefined) payload.quantidade = Math.trunc(_chapasToNum(b.quantidade, 0));
       if (b.qtd !== undefined) payload.quantidade = Math.trunc(_chapasToNum(b.qtd, 0));
       if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
