@@ -1089,9 +1089,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260706183500';
-const SW_RUNTIME_VERSION = '20260706183500';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260706183500';
+const PATCH_RUNTIME_VERSION = '20260706185500';
+const SW_RUNTIME_VERSION = '20260706185500';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260706185500';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -2048,6 +2048,129 @@ app.get('/api/usuarios/lista', authMiddleware, async (req, res) => {
   }
 });
 
+async function _comissoesEnriquecerLista(baseRows) {
+  let todasOFs = Array.isArray(baseRows) ? baseRows.slice() : [];
+  try {
+    const missingQtdIds = todasOFs
+      .filter((of) => of && of.id && (of.quantidade == null && of.qtd == null && of.qtd_pedida == null))
+      .map((of) => String(of.id).trim())
+      .filter(Boolean);
+    if (missingQtdIds.length) {
+      const mapaQtd = {};
+      const chunkSize = 100;
+      for (let i = 0; i < missingQtdIds.length; i += chunkSize) {
+        const chunk = missingQtdIds.slice(i, i + chunkSize);
+        const { data: ofsQtd, error: errQtd } = await supabase
+          .from('ofs')
+          .select('id,quantidade,qtd,qtd_pedida')
+          .in('id', chunk);
+        if (errQtd) continue;
+        (ofsQtd || []).forEach((row) => {
+          mapaQtd[String(row.id)] = row;
+        });
+      }
+      todasOFs.forEach((of) => {
+        const row = mapaQtd[String(of && of.id || '')];
+        if (!row) return;
+        if (of.quantidade == null && row.quantidade != null) of.quantidade = row.quantidade;
+        if (of.qtd == null && row.qtd != null) of.qtd = row.qtd;
+        if (of.qtd_pedida == null && row.qtd_pedida != null) of.qtd_pedida = row.qtd_pedida;
+      });
+    }
+  } catch (_) {}
+  try {
+    const idsValor = todasOFs
+      .map((of) => String(of && of.id || '').trim())
+      .filter(Boolean);
+    if (idsValor.length) {
+      const mapaValor = {};
+      const chunkSizeValor = 100;
+      for (let i = 0; i < idsValor.length; i += chunkSizeValor) {
+        const chunk = idsValor.slice(i, i + chunkSizeValor);
+        const { data: ofsValor, error: errValor } = await supabase
+          .from('ofs')
+          .select('id,valor_total,valor_venda,preco,total')
+          .in('id', chunk);
+        if (errValor) continue;
+        (ofsValor || []).forEach((row) => {
+          mapaValor[String(row.id)] = row;
+        });
+      }
+      todasOFs.forEach((of) => {
+        const row = mapaValor[String(of && of.id || '')];
+        if (!row) return;
+        if (row.valor_total != null) of.valor_total = row.valor_total;
+        if (row.valor_venda != null) of.valor_venda = row.valor_venda;
+        if (row.preco != null) of.preco = row.preco;
+        if (row.total != null && of.total == null) of.total = row.total;
+      });
+    }
+  } catch (_) {}
+  try {
+    todasOFs = await _enriquecerRespostaOFs(todasOFs);
+  } catch (_) {}
+  return todasOFs;
+}
+
+function _comissoesMontarPayload(todasOFs, extra = {}) {
+  const porVend = {};
+  let totalGeral = 0;
+  (Array.isArray(todasOFs) ? todasOFs : []).forEach((of) => {
+    const val = Number(of.valor_total ?? of.total ?? of.valor_venda ?? 0) || 0;
+    if (!val) return;
+    totalGeral += val;
+    const vid = of.vendedor_id || of.vendId || of.vend_id || of.vendid || '__sem__';
+    const nome = of.vendedor_nome || of.vendedor || of.vendNome || 'Sem Vendedor';
+    const pct = Number(of.comissao_pct || 1);
+    if (!porVend[vid]) {
+      porVend[vid] = { id: vid, nome, comissao_pct: pct, ofs: 0, total: 0 };
+    }
+    porVend[vid].ofs++;
+    porVend[vid].total += val;
+  });
+
+  const vendedoresResult = Object.values(porVend)
+    .sort((a, b) => b.total - a.total)
+    .map((v) => ({ ...v, comissao_rs: v.total * (v.comissao_pct / 100) }));
+
+  const ofsDetalhadas = (Array.isArray(todasOFs) ? todasOFs : []).map((of) => {
+    const valor_total = Number(of.valor_total ?? of.total ?? of.valor_venda ?? 0) || 0;
+    const comissao_pct = Number(of.comissao_pct || 1);
+    const comissao_rs = (of.comissao_rs != null) ? Number(of.comissao_rs || 0) : (valor_total * (comissao_pct / 100));
+    const preco = Number(of.preco ?? of.valor_unitario ?? of.vl_unit ?? 0) || 0;
+    return {
+      id: of.id,
+      numero: of.numero || of.of,
+      of: of.of || of.numero || null,
+      cli_id: of.cli_id || of.cliId || of.cliente_id || of.clienteId || null,
+      vendedor_id: of.vendedor_id || of.vendId || of.vend_id || of.vendid || null,
+      cliente: of.clinome || of.cliente_nome || of.cliNome || of.cliente || '—',
+      vendedor: of.vendedor || of.vendedor_nome || of.vendNome || 'Sem Vendedor',
+      quantidade: of.quantidade ?? of.qtd ?? of.qtd_pedida ?? null,
+      valor_total,
+      total: valor_total,
+      preco,
+      valor_unitario: preco,
+      comissao_pct,
+      comissao_rs,
+      created_at: of.created_at || null,
+      data_conclusao: of.data_conclusao,
+      status: of.status || '—'
+    };
+  });
+
+  const totalComissao = vendedoresResult.reduce((s, v) => s + v.comissao_rs, 0);
+  return {
+    ok: true,
+    total_ofs: (Array.isArray(todasOFs) ? todasOFs.length : 0),
+    total_vendido: totalGeral,
+    total_comissao: totalComissao,
+    vendedores: vendedoresResult,
+    ofs: ofsDetalhadas,
+    ...extra,
+  };
+}
+
 app.get('/api/comissoes/relatorio', autenticar, async (req, res) => { 
   try { 
     const { mes, ano } = req.query; 
@@ -2074,127 +2197,72 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
     } 
 
     console.log('[COM] OFs da view:', ofs?.length); 
-
-    let todasOFs = Array.isArray(ofs) ? ofs.slice() : []; 
-    try {
-      const missingQtdIds = todasOFs
-        .filter(of => of && of.id && (of.quantidade == null && of.qtd == null && of.qtd_pedida == null))
-        .map(of => String(of.id).trim())
-        .filter(Boolean);
-      if (missingQtdIds.length) {
-        const mapaQtd = {};
-        const chunkSize = 100;
-        for (let i = 0; i < missingQtdIds.length; i += chunkSize) {
-          const chunk = missingQtdIds.slice(i, i + chunkSize);
-          const { data: ofsQtd, error: errQtd } = await supabase
-            .from('ofs')
-            .select('id,quantidade,qtd,qtd_pedida')
-            .in('id', chunk);
-          if (errQtd) continue;
-          (ofsQtd || []).forEach(row => {
-            mapaQtd[String(row.id)] = row;
-          });
-        }
-        todasOFs.forEach(of => {
-          const row = mapaQtd[String(of && of.id || '')];
-          if (!row) return;
-          if (of.quantidade == null && row.quantidade != null) of.quantidade = row.quantidade;
-          if (of.qtd == null && row.qtd != null) of.qtd = row.qtd;
-          if (of.qtd_pedida == null && row.qtd_pedida != null) of.qtd_pedida = row.qtd_pedida;
-        });
-      }
-    } catch (_) {}
-    try {
-      const idsValor = todasOFs
-        .map(of => String(of && of.id || '').trim())
-        .filter(Boolean);
-      if (idsValor.length) {
-        const mapaValor = {};
-        const chunkSizeValor = 100;
-        for (let i = 0; i < idsValor.length; i += chunkSizeValor) {
-          const chunk = idsValor.slice(i, i + chunkSizeValor);
-          const { data: ofsValor, error: errValor } = await supabase
-            .from('ofs')
-            .select('id,valor_total,valor_venda,preco,total')
-            .in('id', chunk);
-          if (errValor) continue;
-          (ofsValor || []).forEach(row => {
-            mapaValor[String(row.id)] = row;
-          });
-        }
-        todasOFs.forEach(of => {
-          const row = mapaValor[String(of && of.id || '')];
-          if (!row) return;
-          if (row.valor_total != null) of.valor_total = row.valor_total;
-          if (row.valor_venda != null) of.valor_venda = row.valor_venda;
-          if (row.preco != null) of.preco = row.preco;
-        });
-      }
-    } catch (_) {}
-    try {
-      todasOFs = await _enriquecerRespostaOFs(todasOFs);
-    } catch (_) {}
-
-    // Agrupar por vendedor 
-    const porVend = {}; 
-    let totalGeral = 0; 
-    todasOFs.forEach(of => { 
-      const val = Number(of.valor_total ?? of.total ?? of.valor_venda ?? 0) || 0; 
-      if (!val) return; 
-      totalGeral += val; 
-      const vid = of.vendedor_id || of.vendId || of.vend_id || of.vendid || '__sem__'; 
-      const nome = of.vendedor_nome || of.vendedor || of.vendNome || 'Sem Vendedor'; 
-      const pct = Number(of.comissao_pct || 1); 
-      if (!porVend[vid]) { 
-        porVend[vid] = { id: vid, nome, comissao_pct: pct, ofs: 0, total: 0 }; 
-      } 
-      porVend[vid].ofs++; 
-      porVend[vid].total += val; 
-    }); 
-
-    const vendedoresResult = Object.values(porVend) 
-      .sort((a,b) => b.total - a.total) 
-      .map(v => ({ ...v, comissao_rs: v.total * (v.comissao_pct/100) })); 
-
-    const ofsDetalhadas = todasOFs.map(of => { 
-      const valor_total = Number(of.valor_total ?? of.total ?? of.valor_venda ?? 0) || 0; 
-      const comissao_pct = Number(of.comissao_pct || 1); 
-      const comissao_rs = (of.comissao_rs != null) ? Number(of.comissao_rs || 0) : (valor_total * (comissao_pct/100)); 
-      return { 
-        id: of.id, 
-        numero: of.numero || of.of, 
-        cli_id: of.cli_id || of.cliId || of.cliente_id || of.clienteId || null, 
-        vendedor_id: of.vendedor_id || of.vendId || of.vend_id || null, 
-        cliente: of.clinome || of.cliente_nome || of.cliNome || of.cliente || '—', 
-        vendedor: of.vendedor || of.vendedor_nome || of.vendNome || 'Sem Vendedor', 
-        quantidade: of.quantidade ?? of.qtd ?? of.qtd_pedida ?? null, 
-        valor_total, 
-        total: valor_total,
-        comissao_pct, 
-        comissao_rs, 
-        created_at: of.created_at || null, 
-        data_conclusao: of.data_conclusao, 
-        status: of.status || '—' 
-      }; 
-    }); 
-
-    const totalComissao = vendedoresResult.reduce((s,v) => s+v.comissao_rs, 0); 
-    console.log('[COM] FINAL ofs:', todasOFs.length, 'total:', totalGeral); 
-
-    return res.json({ 
-      ok: true, 
-      mes: `${ano}-${mesStr}`, 
-      total_ofs: todasOFs.length, 
-      total_vendido: totalGeral, 
-      total_comissao: totalComissao, 
-      vendedores: vendedoresResult, 
-      ofs: ofsDetalhadas 
-    }); 
+    const todasOFs = await _comissoesEnriquecerLista(ofs);
+    const payload = _comissoesMontarPayload(todasOFs, { mes: `${ano}-${mesStr}` });
+    console.log('[COM] FINAL ofs:', todasOFs.length, 'total:', payload.total_vendido); 
+    return res.json(payload); 
   } catch(e) { 
     console.error('[COM] erro:', e.message); 
     return res.json({ ok: false, error: e.message }); 
   } 
 }); 
+
+app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
+  try {
+    setNoCache(res);
+    const q = String(req.query?.q || '').trim();
+    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || '').trim();
+    const termos = String(q || '')
+      .split(/[,\n;]+/)
+      .map((t) => String(t || '').trim())
+      .filter(Boolean);
+    if (!termos.length) return res.json(_comissoesMontarPayload([], { busca: q }));
+
+    let query = supabase
+      .from('ofs')
+      .select('id')
+      .is('deleted_at', null)
+      .limit(50);
+    if (empresaId) query = query.eq('empresa_id', empresaId);
+
+    const filtros = termos.flatMap((t) => {
+      const txt = String(t || '').trim();
+      if (!txt) return [];
+      return [
+        `of.eq.${txt}`,
+        `numero.eq.${txt}`,
+        `of.ilike.%${txt}%`,
+        `numero.ilike.%${txt}%`,
+        `clinome.ilike.%${txt}%`
+      ];
+    }).join(',');
+
+    query = query.or(filtros);
+    const { data: hits, error: hitsError } = await query;
+    if (hitsError) return res.status(500).json({ ok: false, error: String(hitsError.message || hitsError) });
+
+    const ids = Array.from(new Set((hits || []).map((row) => String(row?.id || '').trim()).filter(Boolean)));
+    if (!ids.length) return res.json(_comissoesMontarPayload([], { busca: q }));
+
+    const { data: viewRows, error: viewError } = await supabase
+      .from('vw_comissoes')
+      .select('*')
+      .in('id', ids)
+      .ilike('status', '%conclu%');
+    if (viewError) return res.status(500).json({ ok: false, error: String(viewError.message || viewError) });
+
+    let todasOFs = await _comissoesEnriquecerLista(viewRows);
+    const ordem = Object.fromEntries(ids.map((id, idx) => [id, idx]));
+    todasOFs = (Array.isArray(todasOFs) ? todasOFs : []).slice().sort((a, b) => {
+      const ai = ordem[String(a?.id || '').trim()];
+      const bi = ordem[String(b?.id || '').trim()];
+      return (ai == null ? 999999 : ai) - (bi == null ? 999999 : bi);
+    });
+    return res.json(_comissoesMontarPayload(todasOFs, { busca: q }));
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
 
 app.get('/api/backup/exportar', authMiddleware, async (req, res) => {
   try {

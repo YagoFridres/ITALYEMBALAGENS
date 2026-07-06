@@ -24542,45 +24542,12 @@ function _ocultarGraficoComissoes() {
   async function _buscarOFsDetalhamento(termosStr) {
     var termos = _comBuscaTokens(termosStr);
     if (!termos.length) return [];
-    var token = '';
-    try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
-    var headers = token ? { Authorization: 'Bearer ' + token } : {};
-    var sbClient = null;
-    try { sbClient = window._supabase || window.supabase || null; } catch (_) { sbClient = null; }
     var empresaSel = _comEmpresaBuscaSelecionada();
-    try {
-      if (sbClient && typeof sbClient.from === 'function') {
-        var filtros = termos.flatMap(function(t) {
-          var txt = String(t || '').trim();
-          if (!txt) return [];
-          return [
-            'of.eq.' + txt,
-            'of.ilike.%' + txt + '%',
-            'clinome.ilike.%' + txt + '%'
-          ];
-        }).join(',');
-        var query = sbClient
-          .from('ofs')
-          .select('id, of, clinome, vendedor, vendid, preco, total, qtd, qtd_produzida, ent, dia, status, empresa_id, itens, cores_impressao')
-          .or(filtros)
-          .is('deleted_at', null)
-          .limit(50);
-        if (empresaSel) query = query.eq('empresa_id', empresaSel);
-        var sbRes = await query;
-        try { console.log('[BUSCA DETALHAMENTO] termos:', termos, 'filtros:', filtros, 'resultado:', sbRes && sbRes.data && sbRes.data.length, 'erro:', sbRes && sbRes.error); } catch (_) {}
-        if (!sbRes.error) return _comBuscaDedup(Array.isArray(sbRes.data) ? sbRes.data : []);
-      }
-    } catch (e) {
-      try { console.error('[BUSCA DETALHAMENTO] exceção:', e); } catch (_) {}
-    }
-    try {
-      var resp = await fetch('/api/ofs/busca?q=' + encodeURIComponent(String(termosStr || '').trim()), { headers: headers });
-      var json = await resp.json().catch(function() { return null; });
-      if (resp.ok) return _comBuscaDedup((json && (json.ofs || json.data || json)) || []);
-    } catch (e2) {
-      try { console.error('[BUSCA DETALHAMENTO] fallback erro:', e2); } catch (_) {}
-    }
-    return [];
+    var qs = new URLSearchParams();
+    qs.set('q', String(termosStr || '').trim());
+    if (empresaSel) qs.set('empresa_id', empresaSel);
+    var json = await _apiJsonAuth('/api/comissoes/busca-of?' + qs.toString());
+    return _comBuscaDedup(Array.isArray(json && json.ofs) ? json.ofs : []);
   }
 
   function _comBindSearchListeners() {
