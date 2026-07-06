@@ -70,13 +70,6 @@ async function _ensurePinsStorage() {
       _pinsStorageMode = 'file';
       return _pinsStorageMode;
     }
-    try {
-      const rpc = await supabase.rpc('exec_sql', { sql: _pinsCreateSql() });
-      if (!rpc.error) {
-        _pinsStorageMode = 'table';
-        return _pinsStorageMode;
-      }
-    } catch (_) {}
   } catch (_) {}
   _pinsStorageMode = 'file';
   return _pinsStorageMode;
@@ -6053,9 +6046,6 @@ function _normalizarOperadoresCaixa(row) {
 
 let _caixasOperadorColumnEnsured = false;
 let _caixasOperadorColumnEnsurePromise = null;
-function _caixasPerdidasOperadorSql() {
-  return "ALTER TABLE caixas_perdidas ADD COLUMN IF NOT EXISTS operador text;";
-}
 async function _ensureCaixasPerdidasOperadorColumn() {
   if (_caixasOperadorColumnEnsured) return true;
   if (_caixasOperadorColumnEnsurePromise) return _caixasOperadorColumnEnsurePromise;
@@ -6075,16 +6065,7 @@ async function _ensureCaixasPerdidasOperadorColumn() {
       if (!(msg.includes('could not find the') || msg.includes('does not exist') || msg.includes('column'))) throw e;
     }
     if (!hasColumn) {
-      try {
-        const rpc = await supabase.rpc('exec_sql', { sql: _caixasPerdidasOperadorSql() });
-        if (rpc?.error) {
-          try { console.warn('[caixas_perdidas][operador] exec_sql:', rpc.error.message || rpc.error); } catch (_) {}
-        } else {
-          hasColumn = true;
-        }
-      } catch (e) {
-        try { console.warn('[caixas_perdidas][operador] ensure falhou:', e?.message || e); } catch (_) {}
-      }
+      try { console.warn('[caixas_perdidas][operador] coluna operador ausente; auto-criacao via RPC desativada'); } catch (_) {}
     }
     _caixasOperadorColumnEnsured = !!hasColumn;
     _caixasOperadorColumnEnsurePromise = null;
@@ -11754,13 +11735,6 @@ async function _ensureGramaturasTable() {
     if (!(msg.includes('does not exist') || msg.includes('not exist') || msg.includes('could not find'))) {
       return false;
     }
-    try {
-      const rpc = await supabase.rpc('exec_sql', { sql: _gramaturasCreateSql() });
-      if (!rpc.error) {
-        _gramaturasReady = true;
-        return true;
-      }
-    } catch (_) {}
   } catch (_) {}
   return false;
 }
@@ -11785,13 +11759,6 @@ async function _ensureOfsConclusaoMetricasCols() {
     if (!(msg.includes('column') || msg.includes('does not exist') || msg.includes('could not find') || msg.includes('schema cache'))) {
       return false;
     }
-    try {
-      const rpc = await supabase.rpc('exec_sql', { sql: _ofsConclusaoMetricasSql() });
-      if (!rpc.error) {
-        _ofsConclusaoMetricasReady = true;
-        return true;
-      }
-    } catch (_) {}
   } catch (_) {}
   return false;
 }
@@ -14972,20 +14939,13 @@ async function _chapasEnsureColorColumn() {
       });
     }
     if (!hasColumn) {
-      try {
-        const sql = "ALTER TABLE chapas_estoque_v2 ADD COLUMN IF NOT EXISTS cor TEXT;";
-        const rpc = await supabase.rpc('exec_sql', { sql });
-        if (rpc?.error) throw rpc.error;
-        hasColumn = await probeHasColor();
-      } catch (e) {
-        _debugRuntimeWrite({
-          runId: 'pre-fix',
-          hypothesisId: 'K',
-          location: 'server.js:_chapasEnsureColorColumn',
-          msg: '[DEBUG] ensure coluna cor falhou',
-          data: { error: String(e?.message || e) },
-        });
-      }
+      _debugRuntimeWrite({
+        runId: 'pre-fix',
+        hypothesisId: 'K',
+        location: 'server.js:_chapasEnsureColorColumn',
+        msg: '[DEBUG] coluna cor ausente; auto-criacao via RPC desativada',
+        data: {},
+      });
     }
     _chapasColorColumnEnsured = !!hasColumn;
     _debugRuntimeWrite({
