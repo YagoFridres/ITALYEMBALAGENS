@@ -661,6 +661,139 @@ app.get('/api/_debug/caixas-perdidas/recentes', async (req, res) => {
   }
 });
 
+app.get('/api/_debug/caixas-perdidas/operadores', async (req, res) => {
+  try {
+    let tabelaAtiva = null;
+    for (const t of ['caixas_perdidas', 'caixas_perdas', 'perdas_producao']) {
+      const { error } = await supabase.from(t).select('*').limit(1);
+      if (!error) { tabelaAtiva = t; break; }
+    }
+    if (!tabelaAtiva) return res.json({ ok: true, tabela: null, rows: [] });
+
+    const { data: rows, error } = await supabase
+      .from(tabelaAtiva)
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (error) throw error;
+
+    const ofIds = Array.from(new Set((rows || []).map((r) => String(r?.of_id || r?.of_uuid || '').trim()).filter(Boolean)));
+    const ofNumeros = Array.from(new Set((rows || []).map((r) => String(r?.of_numero || '').trim()).filter(Boolean)));
+    const ofsMap = new Map();
+    if (ofIds.length) {
+      const { data: ofsById } = await supabase
+        .from('ofs')
+        .select('id,numero,of,operador_conclusao,operadores_conclusao,perdas_por_maquina,maquina,maquina_atual,maquina_agendada,maq,maquina_id')
+        .in('id', ofIds);
+      (Array.isArray(ofsById) ? ofsById : []).forEach((of) => {
+        const id = String(of?.id || '').trim();
+        if (id) ofsMap.set(id, of);
+      });
+    }
+    if (ofNumeros.length) {
+      const { data: ofsByNumero } = await supabase
+        .from('ofs')
+        .select('id,numero,of,operador_conclusao,operadores_conclusao,perdas_por_maquina,maquina,maquina_atual,maquina_agendada,maq,maquina_id')
+        .in('numero', ofNumeros);
+      (Array.isArray(ofsByNumero) ? ofsByNumero : []).forEach((of) => {
+        const numero = String(of?.numero || '').trim();
+        if (numero) ofsMap.set('numero:' + numero, of);
+      });
+    }
+
+    const maquinasMap = await _carregarMapaMaquinasPassagens((rows || []).map((r) => {
+      const ofData = ofsMap.get(String(r?.of_id || r?.of_uuid || '').trim()) || ofsMap.get('numero:' + String(r?.of_numero || '').trim()) || null;
+      return {
+        maquina_id: r?.maquina_id || ofData?.maquina_id || '',
+        maquina_nome: r?.maquina_nome || r?.maquina || r?.maquina_perda || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || ofData?.maq || '',
+        maquina: r?.maquina || r?.maquina_perda || r?.maquina_nome || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || ofData?.maq || '',
+      };
+    }));
+
+    const pessoaIds = Array.from(new Set((rows || []).flatMap((r) => {
+      const ofData = ofsMap.get(String(r?.of_id || r?.of_uuid || '').trim()) || ofsMap.get('numero:' + String(r?.of_numero || '').trim()) || null;
+      const ops = _normalizarOperadoresCaixa(r)
+        .concat(_normalizarOperadoresCaixa(ofData))
+        .concat(_caixasParsePerdasPorMaquina(ofData?.perdas_por_maquina).flatMap((item) => _normalizarOperadoresCaixa({
+          operadores: item?.operadores ?? item?.operadores_conclusao ?? item?.operador ?? item?.operador_nome ?? item?.operador_conclusao ?? item?.usuario,
+          operadores_conclusao: item?.operadores_conclusao,
+          operador: item?.operador,
+          operador_nome: item?.operador_nome,
+          operador_conclusao: item?.operador_conclusao,
+        })));
+      const extras = [r?.usuario, ofData?.operador_conclusao, ofData?.usuario_conclusao, ofData?.concluido_por];
+      return ops.concat(extras).map((v) => String(v || '').trim()).filter(_isUuidText);
+    })));
+    const pessoasMap = await _carregarMapaPessoasCaixa(pessoaIds);
+
+    const sample = (rows || []).map((r) => {
+      const ofData = ofsMap.get(String(r?.of_id || r?.of_uuid || '').trim()) || ofsMap.get('numero:' + String(r?.of_numero || '').trim()) || null;
+      const perdasDetalhadas = _caixasParsePerdasPorMaquina(ofData?.perdas_por_maquina);
+      const rowMachineKeys = _caixasMachineCandidates(r, ofData, maquinasMap);
+      let source = 'fallback:sem-operador';
+      let detalheMatch = [];
+      for (const item of perdasDetalhadas) {
+        const itemMachineKeys = [
+          item?.maquina_id,
+          item?.maquina_nome,
+          item?.maquina,
+          item?.maquina_perda,
+          item?.nome_maquina,
+          _resolverNomeMaquinaPassagem({
+            maquina_id: item?.maquina_id || '',
+            maquina_nome: item?.maquina_nome || item?.maquina || item?.maquina_perda || item?.nome_maquina || '',
+            maquina: item?.maquina || item?.maquina_perda || item?.maquina_nome || item?.nome_maquina || '',
+          }, maquinasMap),
+        ].map((v) => _caixasNormKey(v)).filter(Boolean);
+        const sameMachine = !rowMachineKeys.length || !itemMachineKeys.length || itemMachineKeys.some((key) => rowMachineKeys.includes(key));
+        if (!sameMachine) continue;
+        detalheMatch = _normalizarOperadoresCaixa({
+          operadores: item?.operadores ?? item?.operadores_conclusao ?? item?.operador ?? item?.operador_nome ?? item?.operador_conclusao ?? item?.usuario,
+          operadores_conclusao: item?.operadores_conclusao,
+          operador: item?.operador,
+          operador_nome: item?.operador_nome,
+          operador_conclusao: item?.operador_conclusao,
+        }).map((op) => _resolverPessoaCaixa(op, pessoasMap)).filter(Boolean);
+        if (detalheMatch.length) {
+          source = 'ofs.perdas_por_maquina.operadores';
+          break;
+        }
+      }
+      if (source === 'fallback:sem-operador') {
+        const conclusao = _normalizarOperadoresCaixa({
+          operadores: ofData?.operadores_conclusao,
+          operadores_conclusao: ofData?.operadores_conclusao,
+          operador: ofData?.operador_conclusao,
+          operador_conclusao: ofData?.operador_conclusao,
+        }).map((op) => _resolverPessoaCaixa(op, pessoasMap)).filter(Boolean);
+        if (conclusao.length) source = 'ofs.operadores_conclusao';
+        else if (String(r?.usuario || '').trim()) source = 'caixas_perdidas.usuario';
+      }
+      return {
+        perda_id: r?.id || null,
+        of_id: r?.of_id || r?.of_uuid || null,
+        of_numero_row: r?.of_numero || null,
+        of_numero_ofs: ofData?.numero || null,
+        of_ofs: ofData?.of || null,
+        maquina_row: r?.maquina || r?.maquina_nome || r?.maquina_perda || null,
+        maquina_keys: rowMachineKeys,
+        usuario_row: r?.usuario || null,
+        perdas_por_maquina_existe: !!(ofData && ofData.perdas_por_maquina != null && String(ofData.perdas_por_maquina).trim() !== ''),
+        perdas_por_maquina: ofData?.perdas_por_maquina ?? null,
+        operadores_conclusao_existe: !!(ofData && ofData.operadores_conclusao != null && String(ofData.operadores_conclusao).trim() !== ''),
+        operadores_conclusao: ofData?.operadores_conclusao ?? null,
+        operador_conclusao: ofData?.operador_conclusao ?? null,
+        fonte_usada: source,
+        operadores_resolvidos: _resolverOperadorDaPerda(r, ofData, pessoasMap, maquinasMap),
+      };
+    });
+
+    return res.json({ ok: true, tabela: tabelaAtiva, rows: sample });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 
 function _newRid() {
   try { return crypto.randomBytes(8).toString('hex'); } catch (_) {}
