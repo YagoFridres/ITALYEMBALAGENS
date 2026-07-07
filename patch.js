@@ -944,6 +944,313 @@ try {
   }, 900);
 })();
 
+(function patchOrcamentosImpressao() {
+  if (window.__patchOrcamentosImpressaoV2) return;
+  window.__patchOrcamentosImpressaoV2 = true;
+
+  function _orcPrintEsc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function _orcPrintPick() {
+    for (var i = 0; i < arguments.length; i += 1) {
+      var txt = String(arguments[i] == null ? '' : arguments[i]).trim();
+      if (txt) return txt;
+    }
+    return '';
+  }
+
+  function _orcPrintNum(v, dec) {
+    var n = Number(v || 0) || 0;
+    return n.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
+
+  function _orcPrintMoney(v) {
+    var n = Number(v || 0) || 0;
+    return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function _orcPrintDate(v) {
+    if (!v) return '—';
+    try { return new Date(v).toLocaleDateString('pt-BR'); } catch (_) { return '—'; }
+  }
+
+  function _orcPrintAddress() {
+    return 'Rua Geovani Barrichello, 200 — Sao Miguel do Oeste — SC';
+  }
+
+  async function _orcPrintEnsureClientes() {
+    try {
+      if (Array.isArray(window.CLIENTES) && window.CLIENTES.length) return;
+      if (typeof window.carregarClientes === 'function') {
+        try { await window.carregarClientes(true); } catch (_) { try { await window.carregarClientes(); } catch (_) {} }
+      }
+    } catch (_) {}
+  }
+
+  async function _orcPrintLoadById(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return null;
+    var local = null;
+    try {
+      local = (Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : []).find(function(item) {
+        return String(item && item.id || '').trim() === sid;
+      }) || null;
+    } catch (_) { local = null; }
+    if (window._apiConectado && window.CURRENT_USER && typeof window.apiFetch === 'function') {
+      try {
+        var resp = await window.apiFetch('/api/orcamentos/' + encodeURIComponent(sid), { method: 'GET' });
+        var json = resp ? await resp.json().catch(function() { return null; }) : null;
+        var full = json && (json.data || json.id) ? (json.data || json) : null;
+        if (full) local = Object.assign({}, local || {}, full);
+      } catch (_) {}
+    }
+    if (!local) return null;
+    var cliId = _orcPrintPick(local.cliente_id, local.cli_id, local.clienteId, local.cliId);
+    var clienteNome = _orcPrintPick(local.cliente_nome, local.clienteNome, local.cliente, local.descricao);
+    if (cliId && (!clienteNome || /selecione/i.test(clienteNome))) {
+      await _orcPrintEnsureClientes();
+      try {
+        var cli = typeof window.getCli === 'function' ? window.getCli(cliId) : null;
+        if (cli && cli.nome) local.cliente_nome = cli.nome;
+      } catch (_) {}
+    }
+    return local;
+  }
+
+  function _orcPrintSelectedOndas() {
+    var ids = ['calc-print-b', 'calc-print-c', 'calc-print-bc'];
+    var values = ['B', 'C', 'BC'];
+    var out = [];
+    ids.forEach(function(id, idx) {
+      try {
+        var el = document.getElementById(id);
+        if (el && el.checked) out.push(values[idx]);
+      } catch (_) {}
+    });
+    return out;
+  }
+
+  function _orcPrintCollectCurrentDraft() {
+    var calcCli = document.getElementById('calc-cli');
+    var clienteId = String((calcCli && calcCli.value) || '').trim();
+    var clienteNome = '';
+    try {
+      if (calcCli && calcCli.options && calcCli.selectedIndex >= 0) clienteNome = String(calcCli.options[calcCli.selectedIndex].textContent || '').trim();
+    } catch (_) {}
+    var comp = String(((document.getElementById('calc-c') || document.getElementById('calc-comp') || {}).value) || '').trim();
+    var larg = String(((document.getElementById('calc-l') || document.getElementById('calc-larg') || {}).value) || '').trim();
+    var alt = String(((document.getElementById('calc-a') || document.getElementById('calc-alt') || {}).value) || '').trim();
+    var qtd = Number(((document.getElementById('calc-qtd') || {}).value) || 0) || 0;
+    var tipo = _orcPrintPick((document.getElementById('calc-tipo') || {}).value, (document.getElementById('calc-onda') || {}).value);
+    var local = null;
+    try {
+      local = (Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : []).find(function(item) {
+        return String(item && item.id || '').trim() === String(window._orcIdAtual || '').trim();
+      }) || null;
+    } catch (_) { local = null; }
+    return Object.assign({}, local || {}, {
+      id: _orcPrintPick(window._orcIdAtual, local && local.id),
+      numero_orcamento: _orcPrintPick(window._orcNumeroAtual, local && local.numero_orcamento, local && local.numero),
+      cliente_id: _orcPrintPick(clienteId, local && local.cliente_id, local && local.cli_id),
+      cliente_nome: _orcPrintPick(clienteNome, local && local.cliente_nome, local && local.clienteNome, local && local.descricao),
+      comp: _orcPrintPick(comp, local && local.comp),
+      larg: _orcPrintPick(larg, local && local.larg),
+      alt: _orcPrintPick(alt, local && local.alt),
+      medidas: _orcPrintPick([comp, larg, alt].filter(Boolean).join(' x '), local && local.medidas, local && local.titulo),
+      quantidade: qtd || Number(local && (local.quantidade || local.qtd) || 0) || 0,
+      tipo: _orcPrintPick(tipo, local && local.tipo, local && local.parametros && local.parametros.tipo),
+      resultados: (window.calcLastResult && Array.isArray(window.calcLastResult.allResults) && window.calcLastResult.allResults.length)
+        ? window.calcLastResult.allResults.slice()
+        : (Array.isArray(local && local.resultados) ? local.resultados.slice() : []),
+      criado_em: _orcPrintPick(local && local.criado_em, local && local.data, new Date().toISOString()),
+      valor_total: local && local.valor_total,
+      vendedor: _orcPrintPick(local && local.vendedor, local && local.vendNome, local && local.vendedor_nome),
+      vendTel: _orcPrintPick(local && local.vendTel, local && local.vendedor_telefone, local && local.telefone),
+      vendTel2: _orcPrintPick(local && local.vendTel2, local && local.vendedor_telefone2, local && local.telefone2),
+      vendEmail: _orcPrintPick(local && local.vendEmail, local && local.vendedor_email, local && local.email)
+    });
+  }
+
+  function _orcPrintBuildRows(orc, ondasSelecionadas) {
+    var rows = Array.isArray(orc && orc.resultados) ? orc.resultados.slice() : [];
+    if (!rows.length && orc && orc.parametros && Array.isArray(orc.parametros.resultados)) rows = orc.parametros.resultados.slice();
+    if (!rows.length && typeof window._orcResultadosFromParametros === 'function') {
+      try { rows = window._orcResultadosFromParametros(orc) || []; } catch (_) { rows = []; }
+    }
+    var qtd = Number(orc && (orc.quantidade != null ? orc.quantidade : orc.qtd) || 0) || 0;
+    var filter = Array.isArray(ondasSelecionadas) && ondasSelecionadas.length
+      ? ondasSelecionadas.map(function(item) { return String(item || '').trim().toUpperCase(); }).filter(Boolean)
+      : null;
+    return rows.filter(function(row) {
+      if (!filter) return true;
+      return filter.indexOf(String(row && row.onda || '').trim().toUpperCase()) >= 0;
+    }).map(function(row, idx) {
+      var onda = String(row && row.onda || '').trim() || '—';
+      var liquidaTotal = Number(row && (row.liquida != null ? row.liquida : row.valor_liquido) || 0) || 0;
+      var freteTotal = Number(row && (row.comFrete != null ? row.comFrete : (row.total != null ? row.total : row.vUnit)) || 0) || 0;
+      var unitLiq = Number(row && (row.vLiq != null ? row.vLiq : row.valor_unitario_liquido) || 0) || (qtd > 0 ? (liquidaTotal / qtd) : 0);
+      var unitFrete = Number(row && (row.vUnit != null ? row.vUnit : row.valor_unitario) || 0) || (qtd > 0 ? (freteTotal / qtd) : 0);
+      var total = Number(row && (row.total != null ? row.total : row.comFrete) || 0) || (qtd > 0 ? (unitFrete * qtd) : 0);
+      return {
+        comp: _orcPrintPick(row && row.compTitle, row && row.compLabel, row && row.label, onda ? ('Onda ' + onda) : '', '—'),
+        onda: onda,
+        unitLiq: unitLiq,
+        unitFrete: unitFrete,
+        total: total,
+        idx: idx
+      };
+    });
+  }
+
+  function _orcPrintBuildHtml(orc, rows) {
+    var numero = _orcPrintPick(orc && orc.numero_orcamento, orc && orc.numero, orc && orc.id ? String(orc.id).slice(0, 8) : '', '—');
+    var cliente = _orcPrintPick(orc && orc.cliente_nome, orc && orc.clienteNome, orc && orc.cliente, orc && orc.descricao, '—');
+    var comp = _orcPrintPick(orc && orc.comp, orc && orc.parametros && orc.parametros.comp, '—');
+    var larg = _orcPrintPick(orc && orc.larg, orc && orc.parametros && orc.parametros.larg, '—');
+    var alt = _orcPrintPick(orc && orc.alt, orc && orc.parametros && orc.parametros.alt, '—');
+    var qtd = Number(orc && (orc.quantidade != null ? orc.quantidade : orc.qtd) || 0) || 0;
+    var tipo = _orcPrintPick(orc && orc.tipo, orc && orc.parametros && orc.parametros.tipo, orc && orc.onda, '—');
+    var medidas = _orcPrintPick(orc && orc.medidas, [comp, larg, alt].filter(Boolean).join(' x '), '—');
+    var data = _orcPrintDate(orc && (orc.criado_em || orc.created_at || orc.data));
+    var totalGeral = rows.reduce(function(sum, row) { return sum + (Number(row && row.total || 0) || 0); }, 0);
+    if (!(totalGeral > 0)) totalGeral = Number(orc && (orc.valor_total != null ? orc.valor_total : orc.vtot) || 0) || 0;
+    var vendedor = _orcPrintPick(orc && orc.vendedor, orc && orc.vendNome, orc && orc.vendedor_nome, '—');
+    var tel1 = _orcPrintPick(orc && orc.vendTel, orc && orc.vendedor_telefone, orc && orc.telefone, '—');
+    var tel2 = _orcPrintPick(orc && orc.vendTel2, orc && orc.vendedor_telefone2, orc && orc.telefone2, '—');
+    var email = _orcPrintPick(orc && orc.vendEmail, orc && orc.vendedor_email, orc && orc.email, '—');
+    var logo = _orcPrintPick(window.ITALY_LOGO_B64, window.LOGO_ITALY);
+    var rowsHtml = rows.length ? rows.map(function(row) {
+      return ''
+        + '<tr>'
+        + '  <td>' + _orcPrintEsc(row.comp || '—') + '</td>'
+        + '  <td class="center">' + _orcPrintEsc(row.onda || '—') + '</td>'
+        + '  <td class="num">' + _orcPrintMoney(row.unitLiq) + '</td>'
+        + '  <td class="num">' + _orcPrintMoney(row.unitFrete) + '</td>'
+        + '  <td class="num strong">' + _orcPrintMoney(row.total) + '</td>'
+        + '</tr>';
+    }).join('') : '<tr><td>—</td><td class="center">—</td><td class="num">R$ 0,00</td><td class="num">R$ 0,00</td><td class="num strong">R$ 0,00</td></tr>';
+
+    return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Orçamento Nº ' + _orcPrintEsc(numero) + ' — Italy Embalagens</title>'
+      + '<style>'
+      + 'body{font-family:Arial,sans-serif;color:#111;background:#fff;margin:0;padding:24px}'
+      + '.sheet{max-width:860px;margin:0 auto}'
+      + '.block{border:1px solid #111;margin-bottom:14px}'
+      + '.header{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;padding:16px}'
+      + '.brand{display:flex;gap:12px;align-items:flex-start}'
+      + '.brand img{max-width:150px;max-height:70px;object-fit:contain}'
+      + '.title{font-size:26px;font-weight:900;letter-spacing:.06em;text-align:right}'
+      + '.sub{font-size:12px;line-height:1.5}'
+      + '.section-title{padding:10px 14px;border-bottom:1px solid #111;font-size:12px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}'
+      + '.section-body{padding:14px}'
+      + '.client-name{font-size:18px;font-weight:800}'
+      + '.grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid #111}'
+      + '.cell{padding:12px 14px;border-right:1px solid #111;border-bottom:1px solid #111;min-height:62px}'
+      + '.cell:nth-child(3n){border-right:none}'
+      + '.label{font-size:11px;font-weight:900;text-transform:uppercase;margin-bottom:6px}'
+      + '.value{font-size:15px;font-weight:700}'
+      + 'table{width:100%;border-collapse:collapse}'
+      + 'th,td{border-right:1px solid #111;border-bottom:1px solid #111;padding:10px 12px;font-size:12px}'
+      + 'th:last-child,td:last-child{border-right:none}'
+      + 'thead th{font-size:11px;font-weight:900;text-transform:uppercase}'
+      + '.num{text-align:right}'
+      + '.center{text-align:center}'
+      + '.strong{font-weight:900}'
+      + '.total-row td{font-weight:900}'
+      + '.note{padding:12px 14px;font-size:12px;line-height:1.5}'
+      + '.footer{padding:12px 14px;font-size:12px;line-height:1.6}'
+      + '@media print{body{padding:0}.sheet{max-width:none}.no-print{display:none}}'
+      + '</style></head><body><div class="sheet">'
+      + '<div class="block header">'
+      + '  <div class="brand">'
+      +      (logo ? '<img src="' + _orcPrintEsc(logo) + '" alt="Italy Embalagens">' : '<div style="font-size:22px;font-weight:900">Italy Embalagens</div>')
+      + '    <div class="sub"><div style="font-size:18px;font-weight:900">Italy Embalagens</div><div>Orçamento Nº ' + _orcPrintEsc(numero) + '</div></div>'
+      + '  </div>'
+      + '  <div>'
+      + '    <div class="title">ORÇAMENTO</div>'
+      + '    <div class="sub" style="text-align:right;margin-top:10px">Data: ' + _orcPrintEsc(data) + '<br>Italy Embalagens — ' + _orcPrintEsc(_orcPrintAddress()) + '</div>'
+      + '  </div>'
+      + '</div>'
+      + '<div class="block"><div class="section-title">Cliente do orçamento</div><div class="section-body"><div class="client-name">' + _orcPrintEsc(cliente) + '</div></div></div>'
+      + '<div class="block">'
+      + '  <div class="grid">'
+      + '    <div class="cell"><div class="label">Tipo</div><div class="value">' + _orcPrintEsc(tipo) + '</div></div>'
+      + '    <div class="cell"><div class="label">Comprimento (mm)</div><div class="value">' + _orcPrintEsc(comp) + '</div></div>'
+      + '    <div class="cell"><div class="label">Largura (mm)</div><div class="value">' + _orcPrintEsc(larg) + '</div></div>'
+      + '    <div class="cell"><div class="label">Altura (mm)</div><div class="value">' + _orcPrintEsc(alt) + '</div></div>'
+      + '    <div class="cell"><div class="label">Quantidade</div><div class="value">' + _orcPrintEsc(qtd > 0 ? _orcPrintNum(qtd, 0) : '—') + '</div></div>'
+      + '    <div class="cell"><div class="label">Medidas</div><div class="value">' + _orcPrintEsc(medidas) + '</div></div>'
+      + '  </div>'
+      + '</div>'
+      + '<div class="block"><table><thead><tr><th>Comp.</th><th class="center">Onda</th><th class="num">VL Unit. Liquido</th><th class="num">VL Unit. c/Frete</th><th class="num">Total</th></tr></thead><tbody>'
+      + rowsHtml
+      + '<tr class="total-row"><td colspan="4" class="num">Total Geral</td><td class="num">' + _orcPrintMoney(totalGeral) + '</td></tr>'
+      + '</tbody></table></div>'
+      + '<div class="block"><div class="note">A quantidade pode variar 5% pra mais ou menos, devido ao acerto de maquina.</div></div>'
+      + '<div class="block"><div class="footer">' + _orcPrintEsc(vendedor) + ' | ' + _orcPrintEsc(tel1) + ' | ' + _orcPrintEsc(tel2) + ' | ' + _orcPrintEsc(email) + '<br>Italy Embalagens — ' + _orcPrintEsc(_orcPrintAddress()) + '</div></div>'
+      + '</div><script>window.onload=function(){setTimeout(function(){try{window.print()}catch(e){}},120)}<\/script></body></html>';
+  }
+
+  function _orcPrintOpen(orc, ondasSelecionadas) {
+    if (!orc) {
+      try { window.toast('Orçamento não encontrado', 'var(--orange)'); } catch (_) {}
+      return;
+    }
+    var rows = _orcPrintBuildRows(orc, ondasSelecionadas);
+    var win = null;
+    try { win = window.open('', '_blank', 'width=920,height=760'); } catch (_) { win = null; }
+    if (!win) {
+      try { window.toast('Permita pop-up para imprimir', 'var(--yellow)'); } catch (_) {}
+      return;
+    }
+    try {
+      win.document.write(_orcPrintBuildHtml(orc, rows));
+      win.document.close();
+      win.focus();
+    } catch (_) {
+      try { win.close(); } catch (_) {}
+    }
+  }
+
+  window.imprimirOrcData = function(orc) {
+    _orcPrintOpen(orc, null);
+  };
+
+  window.imprimirOrcamentoId = async function(id) {
+    var orc = await _orcPrintLoadById(id);
+    if (!orc) {
+      try {
+        orc = (Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : []).find(function(item) {
+          return String(item && item.id || '').trim() === String(id || '').trim();
+        }) || null;
+      } catch (_) { orc = null; }
+    }
+    _orcPrintOpen(orc, null);
+  };
+
+  window.imprimirOrcamentoCalc = async function() {
+    var ok = true;
+    try {
+      if (typeof window.salvarOrcamentoCalc === 'function') ok = await window.salvarOrcamentoCalc();
+    } catch (_) {
+      ok = false;
+    }
+    if (!ok) return;
+    var orc = await _orcPrintLoadById(window._orcIdAtual);
+    if (!orc) orc = _orcPrintCollectCurrentDraft();
+    _orcPrintOpen(orc, _orcPrintSelectedOndas());
+  };
+
+  window.imprimirOrc = function() {
+    return window.imprimirOrcamentoCalc();
+  };
+})();
+
 (function patchFornecedorDetalhesPanel() {
   if (window.__patchFornecedorDetalhesPanel) return;
   window.__patchFornecedorDetalhesPanel = true;
@@ -12135,15 +12442,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (!root) return;
       Array.prototype.slice.call(root.querySelectorAll('button')).forEach(function(btn) {
         try {
+          if (!btn || btn.dataset.patchPrint === '1') return;
           var txt = String(btn.textContent || '').trim();
-          if ((txt.indexOf('Imprimir') >= 0 || txt.indexOf('imprimir') >= 0) && !btn.dataset.patchPrint) {
-            btn.dataset.patchPrint = '1';
-            btn.addEventListener('click', function(e) {
-              try { e.preventDefault(); } catch (_) {}
-              try { e.stopPropagation(); } catch (_) {}
-              _abrirModalImpressao();
-            }, true);
-          }
+          var onclick = String(btn.getAttribute('onclick') || '').trim();
+          var isComissoesPrint = txt === 'Imprimir Relatório' || onclick.indexOf('imprimirRelatorioComissoes') >= 0;
+          if (!isComissoesPrint) return;
+          btn.dataset.patchPrint = '1';
+          btn.addEventListener('click', function(e) {
+            try { e.preventDefault(); } catch (_) {}
+            try { e.stopPropagation(); } catch (_) {}
+            _abrirModalImpressao();
+          }, true);
         } catch (_) {}
       });
     } catch (_) {}
