@@ -11051,25 +11051,28 @@ app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
     if (atual.error) return res.status(500).json({ error: atual.error.message });
     if (atual.data) {
       try {
-        const last = await supabase.from('orcamentos_versoes')
-          .select('versao')
-          .eq('orcamento_id', id)
-          .order('versao', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        const lastV = Math.trunc(Number(last?.data?.versao || 0) || 0);
-        const verRow = {
-          orcamento_id: id,
-          versao: lastV + 1,
-          snapshot: atual.data,
-          criado_por: req.usuario?.nome || 'sistema',
-        };
-        const ins = await supabase.from('orcamentos_versoes').insert([verRow]);
-        if (ins.error) {
-          const msg = String(ins.error.message || ins.error);
-          const m = msg.toLowerCase();
-          if (!(m.includes('does not exist') || m.includes('relation') || m.includes('schema cache'))) {
-            throw ins.error;
+        const versoesOk = await _ensureOrcamentosVersoesSchema();
+        if (versoesOk) {
+          const last = await supabase.from('orcamentos_versoes')
+            .select('versao')
+            .eq('orcamento_id', id)
+            .order('versao', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          const lastV = Math.trunc(Number(last?.data?.versao || 0) || 0);
+          const verRow = {
+            orcamento_id: id,
+            versao: lastV + 1,
+            snapshot: atual.data,
+            criado_por: req.usuario?.nome || 'sistema',
+          };
+          const ins = await supabase.from('orcamentos_versoes').insert([verRow]);
+          if (ins.error) {
+            const msg = String(ins.error.message || ins.error);
+            const m = msg.toLowerCase();
+            if (!(m.includes('does not exist') || m.includes('relation') || m.includes('schema cache'))) {
+              throw ins.error;
+            }
           }
         }
       } catch (_) {}
@@ -11213,6 +11216,8 @@ app.get('/api/orcamentos/:id/versoes', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const schemaOk = await _ensureOrcamentosVersoesSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_orcamentos_versoes_missing', sql: _ORCAMENTOS_VERSOES_SCHEMA_SQL });
     const r = await supabase.from('orcamentos_versoes')
       .select('*')
       .eq('orcamento_id', id)
@@ -11234,6 +11239,8 @@ app.post('/api/orcamentos/:id/restaurar', authMiddleware, async (req, res) => {
     const versao = Math.trunc(Number(req.body?.versao ?? 0) || 0);
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     if (!(versao > 0)) return res.status(400).json({ ok: false, error: 'versao obrigatória' });
+    const schemaOk = await _ensureOrcamentosVersoesSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_orcamentos_versoes_missing', sql: _ORCAMENTOS_VERSOES_SCHEMA_SQL });
 
     const cur = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
     if (cur.error) return res.status(500).json({ ok: false, error: cur.error.message });
@@ -11260,9 +11267,13 @@ app.post('/api/orcamentos/:id/restaurar', authMiddleware, async (req, res) => {
     } catch (_) {}
 
     const s = (v.data.snapshot && typeof v.data.snapshot === 'object') ? v.data.snapshot : {};
-    const updates = {
-      titulo: s.titulo ?? '',
-      descricao: s.descricao ?? '',
+    const ultimo = await supabase.from('orcamentos').select('numero_orcamento').order('criado_em', { ascending: false }).limit(1);
+    const ultimoNum = parseInt(String(ultimo?.data?.[0]?.numero_orcamento || '0').replace(/\D/g, ''), 10) || 0;
+    const novoNum = String(ultimoNum + 1).padStart(4, '0');
+    const payload = {
+      numero_orcamento: novoNum,
+      titulo: s.titulo ?? s.medidas ?? '',
+      descricao: s.descricao ?? s.cliente_nome ?? '',
       cliente_nome: s.cliente_nome ?? '',
       medidas: s.medidas ?? '',
       quantidade: s.quantidade ?? 0,
@@ -11271,11 +11282,27 @@ app.post('/api/orcamentos/:id/restaurar', authMiddleware, async (req, res) => {
       valor_total: s.valor_total ?? 0,
       parametros: s.parametros ?? {},
       resultados: s.resultados ?? [],
+      emp_id: s.emp_id ?? cur.data.emp_id ?? '',
+      criado_por: req.usuario?.nome || 'sistema',
+      criado_em: new Date().toISOString(),
       status: s.status ?? cur.data.status ?? 'Rascunho',
+      public_token: crypto.randomBytes(24).toString('hex'),
     };
-    const upd = await supabase.from('orcamentos').update(updates).eq('id', id).select().single();
-    if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message });
-    return ok(res, upd.data);
+    if (s.cliente_id && String(s.cliente_id).match(/^[0-9a-f-]{36}$/i)) payload.cliente_id = s.cliente_id;
+    if (Object.prototype.hasOwnProperty.call(s, 'pasta_id')) payload.pasta_id = s.pasta_id ? String(s.pasta_id).trim() : null;
+    let ins = await supabase.from('orcamentos').insert([payload]).select().single();
+    if (ins.error) {
+      const msg = String(ins.error.message || ins.error);
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col && Object.prototype.hasOwnProperty.call(payload, col)) {
+        delete payload[col];
+        ins = await supabase.from('orcamentos').insert([payload]).select().single();
+      }
+    }
+    if (ins.error) return res.status(500).json({ ok: false, error: ins.error.message });
+    return ok(res, ins.data);
   } catch (e) { return err(res, e); }
 });
 
@@ -12002,7 +12029,27 @@ const _ORCAMENTOS_PASTAS_SCHEMA_SQL =
   "empresa_id uuid, " +
   "created_at timestamptz DEFAULT now() ); " +
   "ALTER TABLE orcamentos ADD COLUMN IF NOT EXISTS pasta_id uuid REFERENCES orcamentos_pastas(id);";
+const _ORCAMENTOS_VERSOES_SCHEMA_SQL =
+  "CREATE TABLE IF NOT EXISTS orcamentos_versoes ( " +
+  "id uuid PRIMARY KEY DEFAULT gen_random_uuid(), " +
+  "orcamento_id uuid NOT NULL REFERENCES orcamentos(id) ON DELETE CASCADE, " +
+  "versao integer NOT NULL, " +
+  "snapshot jsonb NOT NULL DEFAULT '{}'::jsonb, " +
+  "criado_por text, " +
+  "created_at timestamptz DEFAULT now(), " +
+  "UNIQUE (orcamento_id, versao) );";
+const _CHAPAS_GRUPOS_SCHEMA_SQL =
+  "CREATE TABLE IF NOT EXISTS chapas_grupos ( " +
+  "id uuid PRIMARY KEY DEFAULT gen_random_uuid(), " +
+  "nome text NOT NULL, " +
+  "cor text, " +
+  "ordem integer DEFAULT 0, " +
+  "empresa_id uuid, " +
+  "created_at timestamptz DEFAULT now(), " +
+  "updated_at timestamptz DEFAULT now() );";
 let _orcamentosPastasSchemaReady = null;
+let _orcamentosVersoesSchemaReady = null;
+let _chapasGruposSchemaReady = null;
 function _orcamentosPastasSchemaMissingMessage(err) {
   const low = String(err?.message || err || '').toLowerCase();
   if (
@@ -12016,6 +12063,58 @@ function _orcamentosPastasSchemaMissingMessage(err) {
     return low;
   }
   return '';
+}
+async function _ensureOrcamentosVersoesSchema() {
+  if (_orcamentosVersoesSchemaReady === true) return true;
+  if (!supabase) {
+    console.error('[BOOT][ORC_VERSOES_SCHEMA] Supabase indisponível; não foi possível validar schema.');
+    _orcamentosVersoesSchemaReady = false;
+    return false;
+  }
+  try {
+    const probe = await supabase.from('orcamentos_versoes').select('id,orcamento_id,versao,snapshot,criado_por,created_at').limit(1);
+    if (!probe.error) {
+      _orcamentosVersoesSchemaReady = true;
+      console.log('[BOOT][ORC_VERSOES_SCHEMA] OK - tabela orcamentos_versoes presente');
+      return true;
+    }
+    const msg = _orcamentosPastasSchemaMissingMessage(probe.error) || String(probe.error?.message || probe.error || 'schema indisponível');
+    console.error('[BOOT][ORC_VERSOES_SCHEMA] FALHA - schema ausente ou indisponível:', msg);
+    console.error('[BOOT][ORC_VERSOES_SCHEMA] SQL necessário:', _ORCAMENTOS_VERSOES_SCHEMA_SQL);
+    _orcamentosVersoesSchemaReady = false;
+    return false;
+  } catch (e) {
+    console.error('[BOOT][ORC_VERSOES_SCHEMA] ERRO ao validar schema:', String(e?.message || e));
+    console.error('[BOOT][ORC_VERSOES_SCHEMA] SQL necessário:', _ORCAMENTOS_VERSOES_SCHEMA_SQL);
+    _orcamentosVersoesSchemaReady = false;
+    return false;
+  }
+}
+async function _ensureChapasGruposSchema() {
+  if (_chapasGruposSchemaReady === true) return true;
+  if (!supabase) {
+    console.error('[BOOT][CHAPAS_GRUPOS_SCHEMA] Supabase indisponível; não foi possível validar schema.');
+    _chapasGruposSchemaReady = false;
+    return false;
+  }
+  try {
+    const probe = await supabase.from('chapas_grupos').select('id,nome,cor,ordem,empresa_id,created_at,updated_at').limit(1);
+    if (!probe.error) {
+      _chapasGruposSchemaReady = true;
+      console.log('[BOOT][CHAPAS_GRUPOS_SCHEMA] OK - tabela chapas_grupos presente');
+      return true;
+    }
+    const msg = _orcamentosPastasSchemaMissingMessage(probe.error) || String(probe.error?.message || probe.error || 'schema indisponível');
+    console.error('[BOOT][CHAPAS_GRUPOS_SCHEMA] FALHA - schema ausente ou indisponível:', msg);
+    console.error('[BOOT][CHAPAS_GRUPOS_SCHEMA] SQL necessário:', _CHAPAS_GRUPOS_SCHEMA_SQL);
+    _chapasGruposSchemaReady = false;
+    return false;
+  } catch (e) {
+    console.error('[BOOT][CHAPAS_GRUPOS_SCHEMA] ERRO ao validar schema:', String(e?.message || e));
+    console.error('[BOOT][CHAPAS_GRUPOS_SCHEMA] SQL necessário:', _CHAPAS_GRUPOS_SCHEMA_SQL);
+    _chapasGruposSchemaReady = false;
+    return false;
+  }
 }
 async function _ensureOrcamentosPastasSchema() {
   if (_orcamentosPastasSchemaReady === true) return true;
@@ -15255,10 +15354,25 @@ function _chapasGrupoNormalize(item, idx = 0) {
 }
 
 async function _chapasGruposList(req) {
+  const schemaOk = await _ensureChapasGruposSchema();
+  if (!schemaOk) {
+    const err = new Error('schema_chapas_grupos_missing');
+    err.code = 'schema_chapas_grupos_missing';
+    err.sql = _CHAPAS_GRUPOS_SCHEMA_SQL;
+    throw err;
+  }
   let empresa_id = '';
   try { empresa_id = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { empresa_id = ''; }
-  const lista = await _loadConfigJson(_chapasGroupConfigKey(empresa_id), []);
-  const norm = (Array.isArray(lista) ? lista : [])
+  let query = supabase
+    .from('chapas_grupos')
+    .select('id,nome,cor,ordem,empresa_id,created_at,updated_at')
+    .order('ordem', { ascending: true })
+    .order('nome', { ascending: true });
+  if (empresa_id) query = query.eq('empresa_id', empresa_id);
+  else query = query.is('empresa_id', null);
+  const { data, error } = await query;
+  if (error) throw error;
+  const norm = (Array.isArray(data) ? data : [])
     .map((item, idx) => _chapasGrupoNormalize(item, idx))
     .filter(Boolean)
     .sort((a, b) => {
@@ -15271,10 +15385,32 @@ async function _chapasGruposList(req) {
 }
 
 async function _chapasGruposSave(req, empresa_id, grupos) {
+  const schemaOk = await _ensureChapasGruposSchema();
+  if (!schemaOk) {
+    const err = new Error('schema_chapas_grupos_missing');
+    err.code = 'schema_chapas_grupos_missing';
+    err.sql = _CHAPAS_GRUPOS_SCHEMA_SQL;
+    throw err;
+  }
   const lista = (Array.isArray(grupos) ? grupos : [])
     .map((item, idx) => _chapasGrupoNormalize(item, idx))
-    .filter(Boolean);
-  await _saveConfigJson(_chapasGroupConfigKey(empresa_id), lista, req);
+    .filter(Boolean)
+    .map((item, idx) => ({
+      id: item.id,
+      nome: item.nome,
+      cor: item.cor,
+      ordem: Math.trunc(Number(item.ordem != null ? item.ordem : idx) || idx),
+      empresa_id: empresa_id || null,
+      created_at: item.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
+  const { error: delError } = await (empresa_id
+    ? supabase.from('chapas_grupos').delete().eq('empresa_id', empresa_id)
+    : supabase.from('chapas_grupos').delete().is('empresa_id', null));
+  if (delError) throw delError;
+  if (!lista.length) return [];
+  const { error } = await supabase.from('chapas_grupos').insert(lista);
+  if (error) throw error;
   return lista;
 }
 
@@ -16134,6 +16270,9 @@ app.get('/api/chapas_grupos', authMiddleware, async (req, res) => {
     const loaded = await _chapasGruposList(req);
     return res.json({ ok: true, empresa_id: loaded?.empresa_id || '', data: loaded?.grupos || [] });
   } catch (e) {
+    if (e?.code === 'schema_chapas_grupos_missing') {
+      return res.status(500).json({ ok: false, error: 'schema_chapas_grupos_missing', sql: e.sql || _CHAPAS_GRUPOS_SCHEMA_SQL });
+    }
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
@@ -16149,6 +16288,9 @@ app.post('/api/chapas_grupos', authMiddleware, async (req, res) => {
     const saved = await _chapasGruposSave(req, loaded?.empresa_id || '', lista);
     return res.json({ ok: true, data: novo, grupos: saved });
   } catch (e) {
+    if (e?.code === 'schema_chapas_grupos_missing') {
+      return res.status(500).json({ ok: false, error: 'schema_chapas_grupos_missing', sql: e.sql || _CHAPAS_GRUPOS_SCHEMA_SQL });
+    }
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
@@ -16169,6 +16311,9 @@ app.put('/api/chapas_grupos/:id', authMiddleware, async (req, res) => {
     const saved = await _chapasGruposSave(req, loaded?.empresa_id || '', lista);
     return res.json({ ok: true, data: updated, grupos: saved });
   } catch (e) {
+    if (e?.code === 'schema_chapas_grupos_missing') {
+      return res.status(500).json({ ok: false, error: 'schema_chapas_grupos_missing', sql: e.sql || _CHAPAS_GRUPOS_SCHEMA_SQL });
+    }
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
@@ -16183,6 +16328,9 @@ app.delete('/api/chapas_grupos/:id', authMiddleware, async (req, res) => {
     await _chapasGruposSave(req, loaded?.empresa_id || '', lista);
     return res.json({ ok: true, data: { id: gid } });
   } catch (e) {
+    if (e?.code === 'schema_chapas_grupos_missing') {
+      return res.status(500).json({ ok: false, error: 'schema_chapas_grupos_missing', sql: e.sql || _CHAPAS_GRUPOS_SCHEMA_SQL });
+    }
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
@@ -16307,6 +16455,9 @@ app.post('/api/chapas_grupos/auto-sugerir', authMiddleware, async (req, res) => 
       grupos: gruposSalvos,
     });
   } catch (e) {
+    if (e?.code === 'schema_chapas_grupos_missing') {
+      return res.status(500).json({ ok: false, error: 'schema_chapas_grupos_missing', sql: e.sql || _CHAPAS_GRUPOS_SCHEMA_SQL });
+    }
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });

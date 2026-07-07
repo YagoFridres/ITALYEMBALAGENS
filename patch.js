@@ -7300,6 +7300,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
       } catch (_) {}
     }
+    function _estoqueChapaLabelSafe(chapa) {
+      if (!chapa) return '—';
+      return [
+        String(chapa.fornecedor || chapa.forn || '').trim(),
+        String(chapa.nomenclatura || chapa.nom || chapa.nome_uso || chapa.nome || '').trim(),
+        String(chapa.tamanho || chapa.tam || '').trim()
+      ].filter(Boolean).join(' · ') || 'Chapa';
+    }
     function _estoqueDescricaoSugestaoCompra(item) {
       var chapa = item && item.chapa || {};
       var qtd = Math.trunc(Number(item && item.qtd_sugerida != null ? item.qtd_sugerida : (chapa && chapa.pin_qtd_sugerida) || 0) || 0);
@@ -7320,7 +7328,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var body = ''
           + '<div style="display:grid;gap:14px">'
           + '  <div style="display:grid;gap:4px">'
-          + '    <div style="font-size:14px;font-weight:900;color:#f8fafc">' + esc(_chapaLabelEstoque(chapa)) + '</div>'
+          + '    <div style="font-size:14px;font-weight:900;color:#f8fafc">' + esc(_estoqueChapaLabelSafe(chapa)) + '</div>'
           + '    <div style="font-size:12px;color:#94a3b8">Defina a mensagem descritiva antes de confirmar o 📌.</div>'
           + '  </div>'
           + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">'
@@ -7434,7 +7442,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var body = ''
         + '<div style="display:grid;gap:16px">'
         + '  <div style="display:grid;gap:6px">'
-        + '    <div style="font-size:14px;font-weight:900;color:#f8fafc">' + esc(_chapaLabelEstoque(chapa)) + '</div>'
+        + '    <div style="font-size:14px;font-weight:900;color:#f8fafc">' + esc(_estoqueChapaLabelSafe(chapa)) + '</div>'
         + '    <div style="font-size:12px;color:#94a3b8">Escolha uma cor discreta para destacar esta linha em qualquer sessão ou computador.</div>'
         + '  </div>'
         + '  <input id="estoque-row-color-value" type="hidden" value="' + esc(corAtual) + '">'
