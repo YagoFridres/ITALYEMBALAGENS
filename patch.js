@@ -11249,7 +11249,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function _vincularBtnCalcular() {
     try {
-      Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(btn) {
+      var root = document.querySelector('#page-comissoes, [data-page="comissoes"], .page-comissoes');
+      if (!root) return;
+      Array.prototype.slice.call(root.querySelectorAll('button')).forEach(function(btn) {
         try {
           if (!btn || btn.dataset.patchCom === '1') return;
           var txt = String(btn.textContent || '').trim();
@@ -11457,7 +11459,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function _vincularBtnImprimir() {
     try {
-      Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(btn) {
+      var root = document.querySelector('#page-comissoes, [data-page="comissoes"], .page-comissoes');
+      if (!root) return;
+      Array.prototype.slice.call(root.querySelectorAll('button')).forEach(function(btn) {
         try {
           var txt = String(btn.textContent || '').trim();
           if ((txt.indexOf('Imprimir') >= 0 || txt.indexOf('imprimir') >= 0) && !btn.dataset.patchPrint) {
