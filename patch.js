@@ -984,6 +984,10 @@ try {
     return 'Rua Geovani Barrichello, 200 — Sao Miguel do Oeste — SC';
   }
 
+  function _orcPrintResolveLogo() {
+    return _orcPrintPick(window.ITALY_LOGO_B64, window.LOGO_ITALY);
+  }
+
   async function _orcPrintEnsureClientes() {
     try {
       if (Array.isArray(window.CLIENTES) && window.CLIENTES.length) return;
@@ -1124,7 +1128,7 @@ try {
     var tel1 = _orcPrintPick(orc && orc.vendTel, orc && orc.vendedor_telefone, orc && orc.telefone, '—');
     var tel2 = _orcPrintPick(orc && orc.vendTel2, orc && orc.vendedor_telefone2, orc && orc.telefone2, '—');
     var email = _orcPrintPick(orc && orc.vendEmail, orc && orc.vendedor_email, orc && orc.email, '—');
-    var logo = _orcPrintPick(window.ITALY_LOGO_B64, window.LOGO_ITALY);
+    var logo = _orcPrintResolveLogo();
     var rowsHtml = rows.length ? rows.map(function(row) {
       return ''
         + '<tr>'
@@ -1143,7 +1147,7 @@ try {
       + '.block{border:1px solid #111;margin-bottom:14px}'
       + '.header{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;padding:16px}'
       + '.brand{display:flex;gap:12px;align-items:flex-start}'
-      + '.brand img{max-width:150px;max-height:70px;object-fit:contain}'
+      + '.brand img{max-width:150px;max-height:50px;object-fit:contain}'
       + '.title{font-size:26px;font-weight:900;letter-spacing:.06em;text-align:right}'
       + '.sub{font-size:12px;line-height:1.5}'
       + '.section-title{padding:10px 14px;border-bottom:1px solid #111;font-size:12px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}'
