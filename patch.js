@@ -58,6 +58,27 @@ function _fecharModalPadrao(id) {
 try {
   if (typeof window._fecharModalPadrao !== 'function') window._fecharModalPadrao = _fecharModalPadrao;
 } catch (_) {}
+if (typeof window._apiAuthFetch !== 'function') {
+  window._apiAuthFetch = async function(url, options) {
+    options = options || {};
+    var token = '';
+    try {
+      token = (typeof _getToken === 'function') ? _getToken() : (
+        (typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') ||
+        window._token ||
+        localStorage.getItem('token') ||
+        localStorage.getItem('access_token') ||
+        sessionStorage.getItem('token') ||
+        sessionStorage.getItem('access_token') ||
+        ''
+      );
+    } catch (_) {
+      token = '';
+    }
+    options.headers = Object.assign({}, options.headers || {}, token ? { 'Authorization': 'Bearer ' + token } : {});
+    return fetch(url, options);
+  };
+}
 function _abrirModalPadrao(opts) {
   // #region debug-point A:shared-modal-open
   try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'abrir modal padrao acionado', { id: String(opts && opts.id || ''), title: String(opts && (opts.titulo || opts.title) || ''), wide: !!(opts && opts.wide) }); } catch (_) {}
@@ -154,7 +175,7 @@ try {
     try { localStorage.setItem('auth_user', JSON.stringify(user)); } catch (_) {}
   }
 
-  function _authHeaders(extra) {
+  function _buildAuthHeaders(extra) {
     var token = _authGetToken();
     return Object.assign({}, extra || {}, token ? { Authorization: 'Bearer ' + token } : {});
   }
@@ -316,7 +337,7 @@ try {
   } catch (_) {}
 
   try { window.__authPatchGetToken = _authGetToken; } catch (_) {}
-  try { window.__authPatchHeaders = _authHeaders; } catch (_) {}
+  try { window.__authPatchHeaders = _buildAuthHeaders; } catch (_) {}
   try { window.__authPatchPersist = _authPersist; } catch (_) {}
   try { window.__authPatchClear = _authClear; } catch (_) {}
 })();
@@ -1556,6 +1577,19 @@ try {
       exportBtn.dataset.bound = '1';
       exportBtn.onclick = function() { _histExportListaVisivel(); };
     }
+
+    var cardsHost = document.getElementById('hist-relatorio-mensal-cards');
+    if (page && page.offsetParent !== null && cardsHost && !String(cardsHost.textContent || '').trim()) {
+      if (!window.__histResumoCardsEnsureTimer) {
+        window.__histResumoCardsEnsureTimer = setTimeout(function() {
+          window.__histResumoCardsEnsureTimer = null;
+          try {
+            if (window.__histMonthlyData) _histRenderRelatorioMensal(window.__histMonthlyData);
+            else _histFetchRelatorioMensal();
+          } catch (_) {}
+        }, 40);
+      }
+    }
   }
 
   function _histRepairScrollContainer() {
@@ -1750,6 +1784,7 @@ try {
       + '<div class="hist-month-card"><div class="lab">Total de OFs</div><div class="val">' + _histEsc(_histFmtNum(resumo.total_ofs || 0)) + '</div><div class="sub">' + _histVariationBadge(varOfs) + '</div></div>'
       + '<div class="hist-month-card"><div class="lab">Valor de Produção</div><div class="val">' + _histEsc(_histFmtMoney(resumo.valor_total_producao || 0)) + '</div><div class="sub">' + _histVariationBadge(varValor) + '</div></div>'
       + '<div class="hist-month-card"><div class="lab">Caixas Produzidas</div><div class="val">' + _histEsc(_histFmtNum(resumo.caixas_produzidas || 0)) + '</div><div class="sub">' + _histVariationBadge(varCx) + '</div></div>';
+    cards.dataset.rendered = '1';
 
     if (!sorted.length) {
       tableHost.innerHTML = '<div style="padding:18px;border:1px dashed rgba(148,163,184,.16);border-radius:12px;color:#94a3b8;text-align:center">Nenhuma passagem encontrada para o mês selecionado.</div>';
@@ -2539,22 +2574,6 @@ try {
     return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
   }
 
-  function _estoqueAuthHeaders() {
-    try {
-      if (typeof window.__authPatchHeaders === 'function') return window.__authPatchHeaders();
-      var token = String(
-        (typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') ||
-        localStorage.getItem('token') ||
-        sessionStorage.getItem('token') ||
-        localStorage.getItem('access_token') ||
-        ''
-      ).trim();
-      return token ? { Authorization: 'Bearer ' + token } : {};
-    } catch (_) {
-      return {};
-    }
-  }
-
   function _toNumEst(v) {
     var n = Number(String(v == null ? '' : v).replace(',', '.'));
     return Number.isFinite(n) ? n : 0;
@@ -2662,7 +2681,7 @@ try {
       var qs = new URLSearchParams();
       qs.set('months', '12');
       if (emp) qs.set('empId', emp);
-      var resp = await fetch('/api/chapas_estoque/metricas?' + qs.toString(), { headers: _estoqueAuthHeaders() });
+      var resp = await window._apiAuthFetch('/api/chapas_estoque/metricas?' + qs.toString());
       var json = await resp.json().catch(function() { return null; });
       var data = json && json.data ? json.data : (json && typeof json === 'object' ? json : null);
       if (resp.status === 401) {
@@ -3508,19 +3527,11 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
 (function() {
   if (window.__patchPinsHubInstalled) return;
   window.__patchPinsHubInstalled = true;
-
-  function getToken() {
-    try { return String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : (localStorage.getItem('token') || localStorage.getItem('access_token') || window._token || '')) || '').trim(); } catch (_) { return ''; }
-  }
-  function authHeaders(extra) {
-    var token = getToken();
-    return Object.assign({}, extra || {}, token ? { Authorization: 'Bearer ' + token } : {});
-  }
   async function apiJson(url, opts) {
     var o = opts || {};
-    var headers = authHeaders(o.body ? { 'Content-Type': 'application/json' } : {});
+    var headers = o.body ? { 'Content-Type': 'application/json' } : {};
     if (o.headers) headers = Object.assign(headers, o.headers);
-    var resp = await fetch(url, {
+    var resp = await window._apiAuthFetch(url, {
       method: o.method || 'GET',
       headers: headers,
       body: o.body ? JSON.stringify(o.body) : undefined
@@ -6525,14 +6536,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + '.estoque-wire-sheet-footer{position:sticky;bottom:0;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;padding:16px 24px;border-top:1px solid rgba(148,163,184,.12);background:linear-gradient(180deg,rgba(9,17,31,.18),rgba(9,17,31,.96))}'
           + '.estoque-wire-sheet-footer.is-empty{display:none}'
           + '.estoque-wire-section + .estoque-wire-section{margin-top:18px}'
+          + '.estoque-wire-section{padding:16px;border-radius:18px;border:1px solid rgba(148,163,184,.12);background:var(--bg3,rgba(15,23,42,.66))}'
           + '.estoque-wire-section-head{display:grid;gap:4px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(148,163,184,.12)}'
           + '.estoque-wire-section-title{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#cbd5e1}'
           + '.estoque-wire-section-sub{font-size:12px;line-height:1.45;color:#94a3b8}'
           + '.estoque-wire-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px}'
-          + '.estoque-wire-detail-card{display:grid;gap:6px;padding:12px 14px;border-radius:14px;border:1px solid rgba(148,163,184,.12);background:rgba(15,23,42,.66);min-width:0}'
+          + '.estoque-wire-detail-card{display:grid;grid-template-columns:minmax(120px,150px) minmax(0,1fr);align-items:start;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid rgba(148,163,184,.12);background:rgba(2,6,23,.18);min-width:0}'
           + '.estoque-wire-detail-card.full{grid-column:1/-1}'
-          + '.estoque-wire-detail-label{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}'
-          + '.estoque-wire-detail-value{font-size:14px;line-height:1.45;color:#f8fafc;word-break:break-word}'
+          + '.estoque-wire-detail-label{font-size:12px;font-weight:700;letter-spacing:.02em;text-transform:none;color:#94a3b8;padding-top:2px}'
+          + '.estoque-wire-detail-value{font-size:14px;line-height:1.5;color:#f8fafc;word-break:break-word;font-weight:800;text-align:left}'
           + '.estoque-wire-detail-value.money{color:#4ade80;font-weight:900}'
           + '.estoque-wire-modal-color{display:inline-flex;align-items:center;gap:10px;font-weight:700;color:#f8fafc}'
           + '.estoque-wire-modal-color .swatch{width:12px;height:12px;border-radius:999px;border:1px solid rgba(255,255,255,.22);display:inline-block;flex:0 0 12px}'
@@ -6796,7 +6808,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       _estoqueWireOpenModal({
         title: String(chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Detalhes da Chapa'),
         sub: 'Visualizacao completa da chapa selecionada com todos os campos disponiveis.',
-        width: '560px',
+        width: '760px',
         bodyHtml: html,
         footerHtml: ''
           + '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-ew-close="1">&#10005; Fechar</button>'
@@ -6896,8 +6908,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var cache = window.__estoqueSugestoesCompraCache || null;
       if (!force && cache && cache.ts && (now - cache.ts) < ttl && Array.isArray(cache.data)) return cache.data.slice();
       if (!force && window.__estoqueSugestoesCompraPromise) return window.__estoqueSugestoesCompraPromise;
-      window.__estoqueSugestoesCompraPromise = fetch('/api/chapas_estoque_v2/sugestoes-compra?_t=' + Date.now(), {
-        headers: _estoqueAuthHeaders(),
+      window.__estoqueSugestoesCompraPromise = window._apiAuthFetch('/api/chapas_estoque_v2/sugestoes-compra?_t=' + Date.now(), {
         cache: 'no-store'
       }).then(function(resp) {
         return resp.json().catch(function() { return null; }).then(function(json) {
@@ -7021,9 +7032,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         payload = await _estoqueAbrirModalPinCompra(chapa);
         if (!payload) return;
       }
-      var resp = await fetch(endpoint, {
+      var resp = await window._apiAuthFetch(endpoint, {
         method: 'PATCH',
-        headers: Object.assign({ 'Content-Type': 'application/json' }, _estoqueAuthHeaders()),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(atual ? {} : payload)
       });
       var json = await resp.json().catch(function() { return null; });
@@ -7050,9 +7061,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     async function _estoqueSalvarCorLinha(chapa, cor) {
       var chapaId = String(chapa && chapa.id || '').trim();
       if (!chapaId) throw new Error('Chapa inválida');
-      var resp = await fetch('/api/chapas_estoque_v2/' + encodeURIComponent(chapaId) + '/cor', {
+      var resp = await window._apiAuthFetch('/api/chapas_estoque_v2/' + encodeURIComponent(chapaId) + '/cor', {
         method: 'PATCH',
-        headers: Object.assign({ 'Content-Type': 'application/json' }, _estoqueAuthHeaders()),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cor_linha: cor || null })
       });
       var json = await resp.json().catch(function() { return null; });
@@ -7185,7 +7196,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var cache = window.__estoqueGruposChapasCache || null;
       if (!force && cache && cache.ts && (now - cache.ts) < ttl && Array.isArray(cache.data)) return cache.data.slice();
       if (!force && window.__estoqueGruposChapasPromise) return window.__estoqueGruposChapasPromise;
-      window.__estoqueGruposChapasPromise = _apiJsonAuth('/api/chapas_grupos?_t=' + Date.now()).then(function(json) {
+      window.__estoqueGruposChapasPromise = window._apiAuthFetch('/api/chapas_grupos?_t=' + Date.now()).then(function(resp) {
+        return resp.json().catch(function() { return null; }).then(function(json) {
+          if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao carregar grupos'));
+          return json;
+        });
+      }).then(function(json) {
         var data = _estoqueSortGruposChapas(Array.isArray(json && json.data) ? json.data : []);
         var byId = Object.create(null);
         data.forEach(function(item) {
@@ -7236,9 +7252,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var chapaId = String(chapa && chapa.id || '').trim();
       if (!chapaId) throw new Error('Chapa inválida');
       var gid = String(grupoId || '').trim();
-      var resp = await fetch('/api/chapas_estoque_v2/' + encodeURIComponent(chapaId) + '/grupo', {
+      var resp = await window._apiAuthFetch('/api/chapas_estoque_v2/' + encodeURIComponent(chapaId) + '/grupo', {
         method: 'PATCH',
-        headers: Object.assign({ 'Content-Type': 'application/json' }, _estoqueAuthHeaders()),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ grupo_id: gid || null })
       });
       var json = await resp.json().catch(function() { return null; });
@@ -7336,13 +7352,25 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var modalId = 'estoque-grupos-modal';
       var body = ''
         + '<div style="display:grid;gap:18px">'
-        + '  <div class="estoque-grupo-form-grid">'
-        + '    <input id="estoque-grupo-id" type="hidden" value="">'
-        + '    <label class="estoque-modal-label"><span>Nome do grupo</span><input id="estoque-grupo-nome" class="estoque-modal-input" type="text" placeholder="Ex: Klabin — Onda B"></label>'
-        + '    <label class="estoque-modal-label"><span>Cor do título</span><input id="estoque-grupo-cor" class="estoque-modal-input" type="color" value="#3B82F6" style="padding:6px"></label>'
-        + '    <label class="estoque-modal-label"><span>Ordem</span><input id="estoque-grupo-ordem" class="estoque-modal-input" type="number" min="0" step="1" value="0"></label>'
-        + '  </div>'
-        + '  <div><div style="font-size:12px;color:#94a3b8;margin-bottom:8px">Grupos já cadastrados</div><div id="estoque-grupos-lista"></div></div>'
+        + '  <section class="estoque-modal-card">'
+        + '    <div class="estoque-modal-card-head">'
+        + '      <div class="estoque-modal-card-title">Identificação do Grupo</div>'
+        + '      <div class="estoque-modal-card-sub">Defina o nome, a cor e a ordem de exibição do agrupamento.</div>'
+        + '    </div>'
+        + '    <div class="estoque-grupo-form-grid">'
+        + '      <input id="estoque-grupo-id" type="hidden" value="">'
+        + '      <label class="estoque-modal-label"><span>Nome do grupo</span><input id="estoque-grupo-nome" class="estoque-modal-input" type="text" placeholder="Ex: Klabin — Onda B"></label>'
+        + '      <label class="estoque-modal-label"><span>Cor do título</span><input id="estoque-grupo-cor" class="estoque-modal-input" type="color" value="#3B82F6" style="padding:6px"></label>'
+        + '      <label class="estoque-modal-label"><span>Ordem</span><input id="estoque-grupo-ordem" class="estoque-modal-input" type="number" min="0" step="1" value="0"></label>'
+        + '    </div>'
+        + '  </section>'
+        + '  <section class="estoque-modal-card">'
+        + '    <div class="estoque-modal-card-head">'
+        + '      <div class="estoque-modal-card-title">Grupos Cadastrados</div>'
+        + '      <div class="estoque-modal-card-sub">Edite ou exclua grupos existentes sem sair do modal.</div>'
+        + '    </div>'
+        + '    <div id="estoque-grupos-lista"></div>'
+        + '  </section>'
         + '</div>';
       var footer = ''
         + '<button type="button" class="pep-btn" data-modal-close="1">Fechar</button>'
@@ -7396,9 +7424,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             var gidDel = String(delBtn.getAttribute('data-est-grupo-del') || '').trim();
             if (!gidDel) return;
             if (!window.confirm('Excluir este grupo? Chapas vinculadas a ele passarão a aparecer como "Sem grupo".')) return;
-            fetch('/api/chapas_grupos/' + encodeURIComponent(gidDel), {
+            window._apiAuthFetch('/api/chapas_grupos/' + encodeURIComponent(gidDel), {
               method: 'DELETE',
-              headers: _estoqueAuthHeaders()
+              headers: {}
             }).then(function(resp) {
               return resp.json().catch(function() { return null; }).then(function(json) {
                 if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao excluir grupo'));
@@ -7431,9 +7459,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           try {
             var endpoint = '/api/chapas_grupos' + (gid ? ('/' + encodeURIComponent(gid)) : '');
             var method = gid ? 'PUT' : 'POST';
-            var resp = await fetch(endpoint, {
+            var resp = await window._apiAuthFetch(endpoint, {
               method: method,
-              headers: Object.assign({ 'Content-Type': 'application/json' }, _estoqueAuthHeaders()),
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ nome: nome, cor: cor, ordem: ordem })
             });
             var json = await resp.json().catch(function() { return null; });
@@ -7458,9 +7486,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
     }
     async function _estoqueAutoSugerirGrupos() {
-      var resp = await fetch('/api/chapas_grupos/auto-sugerir', {
+      var resp = await window._apiAuthFetch('/api/chapas_grupos/auto-sugerir', {
         method: 'POST',
-        headers: Object.assign({ 'Content-Type': 'application/json' }, _estoqueAuthHeaders()),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
       var json = await resp.json().catch(function() { return null; });
@@ -7584,9 +7612,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     async function _estoqueIgnorarSugestaoCompra(chapaId) {
       var id = String(chapaId || '').trim();
       if (!id) return;
-      var resp = await fetch('/api/chapas_estoque_v2/' + encodeURIComponent(id) + '/ignorar-sugestao', {
+      var resp = await window._apiAuthFetch('/api/chapas_estoque_v2/' + encodeURIComponent(id) + '/ignorar-sugestao', {
         method: 'PATCH',
-        headers: Object.assign({ 'Content-Type': 'application/json' }, _estoqueAuthHeaders())
+        headers: { 'Content-Type': 'application/json' }
       });
       var json = await resp.json().catch(function() { return null; });
       if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao ignorar sugestão'));
@@ -7647,9 +7675,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
         saveBtn.disabled = true;
         try {
-          var resp = await fetch('/api/chapas/pins/' + encodeURIComponent(pinId) + '/comprado', {
+          var resp = await window._apiAuthFetch('/api/chapas/pins/' + encodeURIComponent(pinId) + '/comprado', {
             method: 'PATCH',
-            headers: Object.assign({ 'Content-Type': 'application/json' }, _estoqueAuthHeaders()),
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               quantidade: qtd,
               valor_unitario: vu,
@@ -15147,12 +15175,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 })();
 
 (function patchGoClientesEEstoques() {
-  function authHeaders() {
-    var token = '';
-    try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
-    return token ? { Authorization: 'Bearer ' + token } : {};
-  }
-
   function esc(v) {
     return String(v == null ? '' : v)
       .replace(/&/g, '&amp;')
@@ -15254,8 +15276,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return token;
   }
 
-  async function _apiJsonAuth(url) {
-    var resp = await fetch(url, { headers: authHeaders() });
+  async function _apiFetchJson(url, options) {
+    var resp = await window._apiAuthFetch(url, options || {});
     var json = await resp.json().catch(function() { return null; });
     if (!resp.ok) throw new Error(String(json && (json.error || json.message) || ('Falha em ' + url)));
     return json;
@@ -15274,7 +15296,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     for (var i = 0; i < defs.length; i += 1) {
       var def = defs[i];
       try {
-        var json = await _apiJsonAuth(def.url);
+        var json = await _apiFetchJson(def.url);
         var lista = Array.isArray(json) ? json : ((json && (json.data || json.itens || json.cliches || json.tintas || json.materiais)) || []);
         lista = Array.isArray(lista) ? lista : [];
         out[def.key] = Object.assign({}, def, { hasData: lista.length > 0, total: lista.length, checked: true, available: true });
@@ -15388,7 +15410,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     qs.set('limit', String(requested));
     var empId = _estoqueAtualEmpId();
     if (empId) qs.set('empId', empId);
-    var json = await _apiJsonAuth('/api/chapas_estoque?' + qs.toString());
+    var json = await _apiFetchJson('/api/chapas_estoque?' + qs.toString());
     var lista = _estoqueUnwrapList(json, ['chapas']);
     lista = Array.isArray(lista) ? lista : [];
     return lista.map(function(chapa) {
@@ -15408,7 +15430,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (tipo) qs.set('tipo', tipo);
     var empId = _estoqueAtualEmpId();
     if (empId) qs.set('empId', empId);
-    var json = await _apiJsonAuth('/api/chapas_estoque_movimentos?' + qs.toString());
+    var json = await _apiFetchJson('/api/chapas_estoque_movimentos?' + qs.toString());
     return _estoqueUnwrapList(json, ['movimentos', 'itens']);
   }
 
@@ -15501,7 +15523,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { if (!window.__estoqueOfCache) window.__estoqueOfCache = {}; } catch (_) {}
     if (window.__estoqueOfCache && Object.prototype.hasOwnProperty.call(window.__estoqueOfCache, ofNum)) return window.__estoqueOfCache[ofNum];
     try {
-      var j = await _apiJsonAuth('/api/ofs/buscar?numero=' + encodeURIComponent(ofNum));
+      var j = await _apiFetchJson('/api/ofs/buscar?numero=' + encodeURIComponent(ofNum));
       var data = j && j.data ? j.data : j;
       if (Array.isArray(data)) data = data[0] || null;
       if (window.__estoqueOfCache) window.__estoqueOfCache[ofNum] = data || null;
@@ -15838,7 +15860,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       qs.set('_', String(Date.now()));
       var empId = _estoqueAtualEmpId();
       if (empId) qs.set('empId', empId);
-      lista = await _apiJsonAuth('/api/chapas_estoque?' + qs.toString());
+      lista = await _apiFetchJson('/api/chapas_estoque?' + qs.toString());
       lista = _estoqueUnwrapList(lista, ['chapas']);
     } catch (_) {
       lista = [];
@@ -18015,7 +18037,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       renderRows(list);
     }
 
-    fetch('/api/estoque_tintas', { headers: authHeaders() })
+    window._apiAuthFetch('/api/estoque_tintas')
       .then(function(r) { return r.json(); })
       .then(function(res) {
         var data = res && (res.data || res) || [];
@@ -18186,7 +18208,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       renderList(list);
     }
 
-    fetch('/api/estoque_materiais', { headers: authHeaders() })
+    window._apiAuthFetch('/api/estoque_materiais')
       .then(function(r) { return r.json(); })
       .then(function(res) {
         var data = res && (res.data || res) || [];
@@ -18224,7 +18246,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); } catch (_) { return 'R$ ' + String(n.toFixed(2)); }
     }
 
-    fetch('/api/dashboard/estoques-resumo', { headers: authHeaders() })
+    window._apiAuthFetch('/api/dashboard/estoques-resumo')
       .then(function(r) { return r.json(); })
       .then(function(res) {
         var container = document.getElementById('patch-dashboard-body');
@@ -18518,7 +18540,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
   return;
 
-  function authHeaders() {
+  function buildDashboardHeaders() {
     var token = '';
     try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
     return token ? { Authorization: 'Bearer ' + token } : {};
@@ -18557,7 +18579,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     container.dataset.loading = '1';
     container.innerHTML = '<div style="padding:20px;color:var(--text2)">Carregando...</div>';
 
-    fetch('/api/estoque_dashboard', { headers: authHeaders() })
+    window._apiAuthFetch('/api/estoque_dashboard')
       .then(function(r) { return r.json(); })
       .then(function(res) {
         if (!res || res.ok === false) throw new Error((res && res.error) || 'Falha ao carregar dashboard');
@@ -21025,7 +21047,7 @@ window._mbnActive = function(id) {
     }
   }
 
-  function authHeaders(extra) {
+  function buildCpHeaders(extra) {
     var token = authToken();
     var headers = extra ? Object.assign({}, extra) : {};
     if (token) headers.Authorization = 'Bearer ' + token;
@@ -21206,7 +21228,7 @@ window._mbnActive = function(id) {
   }
 
   async function fetchInconformidadesCp() {
-    var resp = await fetch('/api/caixas_perdidas', { headers: authHeaders() });
+    var resp = await window._apiAuthFetch('/api/caixas_perdidas');
     var json = await resp.json().catch(function() { return null; });
     if (!resp.ok) throw new Error(String(json && json.error || resp.status));
     var arr = Array.isArray(json) ? json : (Array.isArray(json && json.data) ? json.data : (Array.isArray(json && json.inconformidades) ? json.inconformidades : []));
@@ -21378,7 +21400,7 @@ window._mbnActive = function(id) {
     if (of) return of;
     if (!ofId) return null;
     try {
-      var resp = await fetch('/api/ofs/' + encodeURIComponent(String(ofId || '').trim()), { headers: authHeaders() });
+      var resp = await window._apiAuthFetch('/api/ofs/' + encodeURIComponent(String(ofId || '').trim()));
       var json = await resp.json().catch(function() { return null; });
       return json && (json.data || json) || null;
     } catch (_) {
@@ -21388,7 +21410,7 @@ window._mbnActive = function(id) {
 
   async function carregarOperadoresModal() {
     try {
-      var r = await fetch('/api/operadores?t=' + Date.now(), { headers: authHeaders() });
+      var r = await window._apiAuthFetch('/api/operadores?t=' + Date.now());
       var j = await r.json().catch(function() { return null; });
       var ops = (j && j.ok && Array.isArray(j.data)) ? j.data : (Array.isArray(j && j.data) ? j.data : []);
       return uniqStrings(ops.map(function(o) { return String(o && (o.nome || o.name || o.operador_nome) || '').trim(); }));
@@ -21523,9 +21545,9 @@ window._mbnActive = function(id) {
     if (btnConfirmar) { btnConfirmar.disabled = true; btnConfirmar.textContent = 'Salvando...'; }
 
     try {
-      var resp = await fetch('/api/inconformidades', {
+      var resp = await window._apiAuthFetch('/api/inconformidades', {
         method: 'POST',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           of_id: ofId || null,
           of_numero: ofNumero || null,
@@ -24642,7 +24664,11 @@ function _ocultarGraficoComissoes() {
         + '    </div>'
         + '    <div class="com-conc-field">'
         + '      <label class="com-conc-label">📐 Gramatura Utilizada *</label>'
-        + '      <select id="conclusao-gramatura" class="com-conc-select"><option value="">Carregando gramaturas...</option></select>'
+        + '      <div id="conclusao-gramatura-autocomplete" style="position:relative">'
+        + '        <input id="conclusao-gramatura-busca" class="com-conc-input" type="text" placeholder="Buscar por código, nome ou gramatura..." autocomplete="off"/>'
+        + '        <div id="conclusao-gramatura-suggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:99999;background:#1e2433;border:1px solid #334155;border-top:none;border-radius:0 0 8px 8px;max-height:240px;overflow-y:auto;box-shadow:0 12px 32px rgba(0,0,0,0.7)"></div>'
+        + '      </div>'
+        + '      <select id="conclusao-gramatura" class="com-conc-select" style="display:none"><option value="">Carregando gramaturas...</option></select>'
         + '      <div id="conclusao-gramatura-ajuda" style="margin-top:8px;font-size:12px;color:#94a3b8">Selecione a gramatura cadastrada. O valor unitário (R$/m²) será usado para calcular o custo da venda em tempo real.</div>'
         + '    </div>'
         + '    <div class="com-conc-field">'
@@ -24680,9 +24706,17 @@ function _ocultarGraficoComissoes() {
       var qtdEl = backdrop.querySelector('#conclusao-caixas-produzidas');
       var dataEl = backdrop.querySelector('#conclusao-data-faturamento');
       var gramEl = backdrop.querySelector('#conclusao-gramatura');
+      var gramBuscaEl = backdrop.querySelector('#conclusao-gramatura-busca');
+      var gramSuggestEl = backdrop.querySelector('#conclusao-gramatura-suggest');
       var perdasLista = backdrop.querySelector('#conclusao-perdas-lista');
       var totalPerdidoEl = backdrop.querySelector('#conclusao-total-perdido');
       var btnSalvar = backdrop.querySelector('#conclusao-confirmar');
+      var onDocClick = function(e) {
+        try {
+          if (!e || !e.target || !e.target.closest || e.target.closest('#conclusao-gramatura-autocomplete')) return;
+          if (gramSuggestEl) gramSuggestEl.style.display = 'none';
+        } catch (_) {}
+      };
       var onEsc = function(e) {
         try {
           if (e && e.key === 'Escape') closeModal();
@@ -24690,9 +24724,11 @@ function _ocultarGraficoComissoes() {
       };
 
       function closeModal() {
+        try { document.removeEventListener('click', onDocClick, true); } catch (_) {}
         try { document.removeEventListener('keydown', onEsc, true); } catch (_) {}
         try { if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop); } catch (_) {}
       }
+      try { document.addEventListener('click', onDocClick, true); } catch (_) {}
       try { document.addEventListener('keydown', onEsc, true); } catch (_) {}
       backdrop.addEventListener('click', function(e) { if (e.target === backdrop) closeModal(); });
       if (shell) shell.addEventListener('click', function(e) { try { e.stopPropagation(); } catch (_) {} });
@@ -24734,6 +24770,85 @@ function _ocultarGraficoComissoes() {
           return { maquina: maqNome, maquina_nome: maqNome, maquina_id: maqId, qtd: qtd, operadores: ops };
         }).filter(function(item) { return item.maquina && item.qtd > 0; });
       }
+      function normalizarBuscaGramatura(v) {
+        var s = String(v == null ? '' : v).trim().toUpperCase();
+        try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+        return s.replace(/\s+/g, ' ').trim();
+      }
+      function termoBuscaGramatura(item) {
+        var g = _normalizarGramaturaConclusao(item);
+        return normalizarBuscaGramatura([
+          g.codigo,
+          g.nome,
+          g.descricao,
+          g.fornecedor_nome,
+          g.gramatura > 0 ? String(g.gramatura) : '',
+          _labelGramaturaConclusao(g)
+        ].join(' '));
+      }
+      function esconderSugestoesGramatura() {
+        if (gramSuggestEl) gramSuggestEl.style.display = 'none';
+      }
+      function selecionarGramaturaAutocomplete(optionValue) {
+        var selected = (gramaturasLista || []).find(function(g) {
+          return String(g && (g.option_value || g.id) || '') === String(optionValue || '');
+        }) || null;
+        if (!selected || !gramEl) return;
+        var finalValue = String(selected.option_value || selected.id || '').trim();
+        if (!finalValue) return;
+        try { gramEl.value = finalValue; } catch (_) {}
+        if (gramBuscaEl) gramBuscaEl.value = _labelGramaturaConclusao(selected);
+        esconderSugestoesGramatura();
+        try { gramEl.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+      }
+      function sincronizarAutocompleteGramatura() {
+        if (!gramBuscaEl || !gramEl) return;
+        var selectedId = String(gramEl.value || '').trim();
+        var selected = (gramaturasLista || []).find(function(g) {
+          return String(g && (g.option_value || g.id) || '') === selectedId;
+        }) || null;
+        gramBuscaEl.value = selected ? _labelGramaturaConclusao(selected) : '';
+      }
+      function renderSugestoesGramatura(termo) {
+        if (!gramSuggestEl) return;
+        var lista = Array.isArray(gramaturasLista) ? gramaturasLista.slice() : [];
+        var busca = normalizarBuscaGramatura(termo);
+        lista.sort(function(a, b) {
+          return _labelGramaturaConclusao(a).localeCompare(_labelGramaturaConclusao(b), 'pt-BR');
+        });
+        var filtrada = busca
+          ? lista.filter(function(g) { return termoBuscaGramatura(g).indexOf(busca) >= 0; }).slice(0, 15)
+          : lista.slice(0, 10);
+        if (!lista.length) {
+          gramSuggestEl.innerHTML = '<div style="padding:12px 14px;color:#94a3b8;font-size:13px">Carregando gramaturas...</div>';
+          gramSuggestEl.style.display = 'block';
+          return;
+        }
+        if (!filtrada.length) {
+          gramSuggestEl.innerHTML = '<div style="padding:12px 14px;color:#94a3b8;font-size:13px">Nenhuma gramatura encontrada</div>';
+          gramSuggestEl.style.display = 'block';
+          return;
+        }
+        gramSuggestEl.innerHTML = '';
+        filtrada.forEach(function(g) {
+          var row = document.createElement('div');
+          row.style.cssText = 'padding:10px 14px;cursor:pointer;border-bottom:1px solid #2d3748;transition:background 0.1s;background:#1e2433';
+          row.onmouseover = function() { try { row.style.background = '#2a3347'; } catch (_) {} };
+          row.onmouseout = function() { try { row.style.background = '#1e2433'; } catch (_) {} };
+          row.innerHTML =
+            '<div style="font-weight:500;color:#f1f5f9;font-size:13px">' + _labelGramaturaConclusao(g).replace(/</g, '&lt;') + '</div>' +
+            '<div style="font-size:11px;color:#64748b">' + String(g && g.fornecedor_nome || '').replace(/</g, '&lt;') + '</div>';
+          row.onclick = function(ev) {
+            try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
+            selecionarGramaturaAutocomplete(String(g && (g.option_value || g.id) || '').trim());
+          };
+          gramSuggestEl.appendChild(row);
+        });
+        if (!busca && lista.length > 10) {
+          gramSuggestEl.innerHTML += '<div style="padding:8px 14px;color:#64748b;font-size:11px;text-align:center;border-top:1px solid #2d3748">Digite para filtrar entre ' + String(lista.length) + ' gramaturas</div>';
+        }
+        gramSuggestEl.style.display = 'block';
+      }
       function currentGramatura() {
         var selectedId = String(gramEl && gramEl.value || '').trim();
         var found = (gramaturasLista || []).find(function(g) { return String(g && (g.option_value || g.id) || '') === selectedId; }) || null;
@@ -24752,6 +24867,7 @@ function _ocultarGraficoComissoes() {
           }));
           gramEl.innerHTML = opts.join('');
         }
+        sincronizarAutocompleteGramatura();
         // #region debug-point B:gramaturas-select-render
         try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'select de gramaturas renderizado', { totalGramaturas: gramaturasLista.length, selectedAtual: atual, domOptions: gramEl && gramEl.options ? gramEl.options.length : 0, firstOption: gramEl && gramEl.options && gramEl.options[0] ? String(gramEl.options[0].text || '') : '' }); } catch (_) {}
         // #endregion
@@ -24856,7 +24972,20 @@ function _ocultarGraficoComissoes() {
       if (addPerdaBtn) addPerdaBtn.onclick = function() { addPerdaRow({}).catch(function() {}); };
       if (qtdEl) qtdEl.oninput = updateResumo;
       if (dataEl) dataEl.onchange = updateResumo;
-      if (gramEl) gramEl.onchange = updateResumo;
+      if (gramEl) gramEl.onchange = function() {
+        sincronizarAutocompleteGramatura();
+        updateResumo();
+      };
+      if (gramBuscaEl) {
+        gramBuscaEl.addEventListener('focus', function() {
+          renderSugestoesGramatura(String(gramBuscaEl.value || ''));
+        }, true);
+        gramBuscaEl.addEventListener('input', function() {
+          if (gramEl) gramEl.value = '';
+          updateResumo();
+          renderSugestoesGramatura(String(gramBuscaEl.value || ''));
+        }, true);
+      }
       preloadGramaturas.then(function(lista) {
         renderGramaturasSelect(lista);
         updateResumo();
@@ -26580,7 +26709,7 @@ function _ocultarGraficoComissoes() {
     }
     return String(v);
   }
-  function authHeaders() {
+  function buildPainelHeaders() {
     try {
       if (typeof headersAuth === 'function') return headersAuth();
     } catch (_) {}
@@ -26590,7 +26719,7 @@ function _ocultarGraficoComissoes() {
   }
   async function fetchJson(url) {
     try {
-      var resp = await fetch(url, { headers: authHeaders() });
+      var resp = await window._apiAuthFetch(url, { headers: buildPainelHeaders() });
       return await resp.json().catch(function() { return null; });
     } catch (_) { return null; }
   }

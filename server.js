@@ -1089,9 +1089,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260707114500';
-const SW_RUNTIME_VERSION = '20260707114500';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260707114500';
+const PATCH_RUNTIME_VERSION = '20260707133500';
+const SW_RUNTIME_VERSION = '20260707133500';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260707133500';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -2218,45 +2218,104 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
       .filter(Boolean);
     if (!termos.length) return res.json(_comissoesMontarPayload([], { busca: q }));
 
+    const termoVariants = Array.from(new Set(
+      termos.flatMap((t) => {
+        const raw = String(t || '').trim();
+        const ref = _normalizarNumeroOfRef(raw);
+        const digits = _normalizarNumeroOfDigits(raw);
+        return [raw, ref, digits].map((txt) => String(txt || '').trim()).filter(Boolean);
+      })
+    ));
+
+    const montarFiltrosBuscaOf = (lista, includeCliente) => {
+      return Array.from(new Set((Array.isArray(lista) ? lista : []).flatMap((txt, idx) => {
+        const valor = String(txt || '').trim();
+        if (!valor) return [];
+        const filtrosTxt = [
+          `of.eq.${valor}`,
+          `numero.eq.${valor}`,
+          `of.ilike.%${valor}%`,
+          `numero.ilike.%${valor}%`
+        ];
+        if (includeCliente && idx === 0) filtrosTxt.push(`clinome.ilike.%${valor}%`);
+        return filtrosTxt;
+      }))).join(',');
+    };
+
     let query = supabase
       .from('ofs')
-      .select('id')
+      .select('id,of,numero,status,data_conclusao,created_at,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,cliente,vendedor,vendid,vendId,vend_id,vendedor_id,vendedor_nome,vendNome,preco,valor_unitario,vl_unit,total,valor_total,valor_venda,qtd,quantidade,qtd_pedida,itens')
       .is('deleted_at', null)
       .limit(50);
     if (empresaId) query = query.eq('empresa_id', empresaId);
 
-    const filtros = termos.flatMap((t) => {
-      const txt = String(t || '').trim();
-      if (!txt) return [];
-      return [
-        `of.eq.${txt}`,
-        `numero.eq.${txt}`,
-        `of.ilike.%${txt}%`,
-        `numero.ilike.%${txt}%`,
-        `clinome.ilike.%${txt}%`
-      ];
-    }).join(',');
-
+    const filtros = montarFiltrosBuscaOf(termoVariants, true);
     query = query.or(filtros);
-    const { data: hits, error: hitsError } = await query;
+    const { data: hitsBase, error: hitsError } = await query;
     if (hitsError) return res.status(500).json({ ok: false, error: String(hitsError.message || hitsError) });
 
-    const ids = Array.from(new Set((hits || []).map((row) => String(row?.id || '').trim()).filter(Boolean)));
-    if (!ids.length) return res.json(_comissoesMontarPayload([], { busca: q }));
+    const ids = Array.from(new Set((hitsBase || []).map((row) => String(row?.id || '').trim()).filter(Boolean)));
+    const numeroVariants = Array.from(new Set(
+      (hitsBase || []).flatMap((row) => {
+        return [
+          String(row?.numero || '').trim(),
+          String(row?.of || '').trim(),
+          _normalizarNumeroOfRef(row?.numero),
+          _normalizarNumeroOfRef(row?.of),
+          _normalizarNumeroOfDigits(row?.numero),
+          _normalizarNumeroOfDigits(row?.of)
+        ].filter(Boolean);
+      }).concat(termoVariants)
+    ));
+    if (!ids.length && !numeroVariants.length) return res.json(_comissoesMontarPayload([], { busca: q }));
 
-    const { data: viewRows, error: viewError } = await supabase
-      .from('vw_comissoes')
-      .select('*')
-      .in('id', ids)
-      .ilike('status', '%conclu%');
-    if (viewError) return res.status(500).json({ ok: false, error: String(viewError.message || viewError) });
+    const rowsMap = new Map();
+    const pushRows = (lista) => {
+      (Array.isArray(lista) ? lista : []).forEach((row) => {
+        if (!row || typeof row !== 'object') return;
+        const key = String(row.id || '').trim() || ('numero:' + String(row.numero || row.of || '').trim());
+        if (!key) return;
+        if (!rowsMap.has(key)) rowsMap.set(key, row);
+      });
+    };
 
-    let todasOFs = await _comissoesEnriquecerLista(viewRows);
+    if (ids.length) {
+      const { data: viewRowsById, error: viewError } = await supabase
+        .from('vw_comissoes')
+        .select('*')
+        .in('id', ids)
+        .ilike('status', '%conclu%');
+      if (viewError) return res.status(500).json({ ok: false, error: String(viewError.message || viewError) });
+      pushRows(viewRowsById);
+    }
+
+    if (numeroVariants.length) {
+      const filtrosView = montarFiltrosBuscaOf(numeroVariants, false);
+      const { data: viewRowsByNumero, error: viewNumeroError } = await supabase
+        .from('vw_comissoes')
+        .select('*')
+        .or(filtrosView)
+        .ilike('status', '%conclu%')
+        .limit(50);
+      if (viewNumeroError) return res.status(500).json({ ok: false, error: String(viewNumeroError.message || viewNumeroError) });
+      pushRows(viewRowsByNumero);
+    }
+
+    const fallbackOfs = (Array.isArray(hitsBase) ? hitsBase : []).filter((row) => {
+      return String(row?.status || '').toLowerCase().includes('conclu');
+    });
+    if (!rowsMap.size && fallbackOfs.length) pushRows(fallbackOfs);
+
+    let todasOFs = await _comissoesEnriquecerLista(Array.from(rowsMap.values()));
     const ordem = Object.fromEntries(ids.map((id, idx) => [id, idx]));
+    const ordemNumero = Object.fromEntries(numeroVariants.map((numero, idx) => [String(numero || '').trim(), idx]));
     todasOFs = (Array.isArray(todasOFs) ? todasOFs : []).slice().sort((a, b) => {
       const ai = ordem[String(a?.id || '').trim()];
       const bi = ordem[String(b?.id || '').trim()];
-      return (ai == null ? 999999 : ai) - (bi == null ? 999999 : bi);
+      if (ai != null || bi != null) return (ai == null ? 999999 : ai) - (bi == null ? 999999 : bi);
+      const an = ordemNumero[String(a?.numero || a?.of || '').trim()] ?? ordemNumero[_normalizarNumeroOfRef(a?.numero || a?.of)] ?? ordemNumero[_normalizarNumeroOfDigits(a?.numero || a?.of)];
+      const bn = ordemNumero[String(b?.numero || b?.of || '').trim()] ?? ordemNumero[_normalizarNumeroOfRef(b?.numero || b?.of)] ?? ordemNumero[_normalizarNumeroOfDigits(b?.numero || b?.of)];
+      return (an == null ? 999999 : an) - (bn == null ? 999999 : bn);
     });
     return res.json(_comissoesMontarPayload(todasOFs, { busca: q }));
   } catch (e) {
@@ -6687,17 +6746,31 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       const clienteNome = ofData?.cli_id ? (clientesMap[String(ofData.cli_id || '').trim()] || '') : '';
       const operadores = _resolverOperadorDaPerda(r, ofData, pessoasMap, maquinasMap);
       const operadorResolvido = operadores[0] || _CAIXAS_OPERADOR_SEM;
-      if (_traceOperadorCount < 5) {
+      if (_traceOperadorCount < 3) {
         try {
-          console.log('[TRACE-OPERADOR]', JSON.stringify({
+          const tracePayload = {
             registro_of_id: r?.of_id,
+            registro_of_numero: r?.of_numero,
             registro_maquina_perda: r?.maquina_perda,
+            registro_maquina_id: r?.maquina_id,
             registro_usuario: r?.usuario,
             ofData_encontrada: !!ofData,
             ofData_id: ofData ? ofData.id : null,
+            ofData_numero: ofData ? ofData.numero : null,
+            ofData_maquina_id: ofData ? ofData.maquina_id : null,
+            ofData_maquina: ofData ? (ofData.maquina || ofData.maquina_atual || ofData.maquina_agendada || ofData.maq || '') : null,
             ofData_perdas_por_maquina: ofData ? ofData.perdas_por_maquina : 'OFDATA_NULL',
+            operadores_resolvidos: operadores,
             resultado_final_operador: operadorResolvido,
-          }));
+          };
+          console.log('[TRACE-OPERADOR]', JSON.stringify(tracePayload));
+          _debugRuntimeWrite({
+            runId: 'pre-fix',
+            hypothesisId: 'C',
+            location: 'server.js:/api/caixas-perdidas/dashboard',
+            msg: '[TRACE] dashboard caixas perdidas operador resolvido',
+            data: tracePayload,
+          });
         } catch (_) {}
         _traceOperadorCount += 1;
       }
@@ -7625,7 +7698,12 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     if (!sid) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const metricColsReady = await _ensureOfsConclusaoMetricasCols();
     if (!metricColsReady) {
-      return res.status(500).json({ ok: false, error: 'Não foi possível preparar as colunas de tonelada e custo da OF.' });
+      return res.status(500).json({
+        ok: false,
+        error: _ofsConclusaoMetricasSchemaError(),
+        code: 'schema_ofs_conclusao_metricas_missing',
+        sql_necessario: _OFS_CONCLUSAO_METRICAS_SQL,
+      });
     }
 
     const body = req.body || {};
@@ -8539,7 +8617,12 @@ function _resolverValorTotalPassagem(row, ofData) {
 }
 
 function _normalizarNumeroOfRef(v) {
-  return String(v || '').trim().replace(/^OF\s*#?/i, '').replace(/^#/, '').trim();
+  return String(v || '')
+    .trim()
+    .replace(/^OF\s*#?/i, '')
+    .replace(/^(?:N[º°o]?\.?\s*)+/i, '')
+    .replace(/^#/, '')
+    .trim();
 }
 
 function _normalizarNumeroOfDigits(v) {
@@ -11858,28 +11941,54 @@ async function _ensureGramaturasTable() {
   return false;
 }
 
-function _ofsConclusaoMetricasSql() {
-  return (
-    "ALTER TABLE ofs ADD COLUMN IF NOT EXISTS tonelada_vendida numeric DEFAULT 0;" +
-    "ALTER TABLE ofs ADD COLUMN IF NOT EXISTS custo_m2_venda numeric DEFAULT 0;"
-  );
+const _OFS_CONCLUSAO_METRICAS_COLS = ['tonelada_vendida', 'custo_m2_venda'];
+const _OFS_CONCLUSAO_METRICAS_SQL =
+  "ALTER TABLE ofs ADD COLUMN IF NOT EXISTS tonelada_vendida numeric DEFAULT 0; " +
+  "ALTER TABLE ofs ADD COLUMN IF NOT EXISTS custo_m2_venda numeric DEFAULT 0;";
+function _ofsConclusaoMetricasMissingMessage(err) {
+  const low = String(err?.message || err || '').toLowerCase();
+  if (
+    low.includes('does not exist') ||
+    low.includes('not exist') ||
+    low.includes('relation') ||
+    low.includes('schema cache') ||
+    low.includes('could not find') ||
+    low.includes('column')
+  ) {
+    return low;
+  }
+  return '';
 }
-
+function _ofsConclusaoMetricasSchemaError() {
+  return 'Schema ausente na tabela ofs para concluir a OF. Execute o SQL: ' + _OFS_CONCLUSAO_METRICAS_SQL;
+}
 let _ofsConclusaoMetricasReady = null;
 async function _ensureOfsConclusaoMetricasCols() {
   if (_ofsConclusaoMetricasReady === true) return true;
+  if (!supabase) {
+    console.error('[BOOT][OFS_CONCLUSAO_METRICAS] Supabase indisponível; não foi possível validar schema.');
+    console.error('[BOOT][OFS_CONCLUSAO_METRICAS] SQL necessário:', _OFS_CONCLUSAO_METRICAS_SQL);
+    _ofsConclusaoMetricasReady = false;
+    return false;
+  }
   try {
-    const probe = await supabase.from('ofs').select('id,tonelada_vendida,custo_m2_venda').limit(1);
+    const probe = await supabase.from('ofs').select(['id'].concat(_OFS_CONCLUSAO_METRICAS_COLS).join(',')).limit(1);
     if (!probe.error) {
       _ofsConclusaoMetricasReady = true;
+      console.log('[BOOT][OFS_CONCLUSAO_METRICAS] OK - colunas presentes:', _OFS_CONCLUSAO_METRICAS_COLS.join(', '));
       return true;
     }
-    const msg = String(probe.error?.message || probe.error || '').toLowerCase();
-    if (!(msg.includes('column') || msg.includes('does not exist') || msg.includes('could not find') || msg.includes('schema cache'))) {
-      return false;
-    }
-  } catch (_) {}
-  return false;
+    const msg = _ofsConclusaoMetricasMissingMessage(probe.error) || String(probe.error?.message || probe.error || 'schema indisponível');
+    console.error('[BOOT][OFS_CONCLUSAO_METRICAS] FALHA - colunas ausentes ou schema indisponível:', msg);
+    console.error('[BOOT][OFS_CONCLUSAO_METRICAS] SQL necessário:', _OFS_CONCLUSAO_METRICAS_SQL);
+    _ofsConclusaoMetricasReady = false;
+    return false;
+  } catch (e) {
+    console.error('[BOOT][OFS_CONCLUSAO_METRICAS] ERRO ao validar schema:', String(e?.message || e));
+    console.error('[BOOT][OFS_CONCLUSAO_METRICAS] SQL necessário:', _OFS_CONCLUSAO_METRICAS_SQL);
+    _ofsConclusaoMetricasReady = false;
+    return false;
+  }
 }
 
 const _CHAPAS_PIN_SCHEMA_COLS = [
@@ -25790,6 +25899,9 @@ setTimeout(agendarOFsAutomaticamente, 10 * 1000);
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
+  _ensureOfsConclusaoMetricasCols().catch((e) => {
+    console.error('[BOOT][OFS_CONCLUSAO_METRICAS] ERRO inesperado:', String(e?.message || e));
+  });
   _ensureChapasPinSchemaCols().catch((e) => {
     console.error('[BOOT][CHAPAS_PIN_SCHEMA] ERRO inesperado:', String(e?.message || e));
   });
