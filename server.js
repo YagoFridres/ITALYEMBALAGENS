@@ -1089,9 +1089,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260707101000';
-const SW_RUNTIME_VERSION = '20260707101000';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260707101000';
+const PATCH_RUNTIME_VERSION = '20260707114500';
+const SW_RUNTIME_VERSION = '20260707114500';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260707114500';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -10980,6 +10980,9 @@ app.post('/api/orcamentos', authMiddleware, async (req, res) => {
     };
     payload.public_token = crypto.randomBytes(24).toString('hex');
     if (b.cliente_id && String(b.cliente_id).match(/^[0-9a-f-]{36}$/i)) payload.cliente_id = b.cliente_id;
+    if (Object.prototype.hasOwnProperty.call(b, 'pasta_id')) {
+      payload.pasta_id = b.pasta_id ? String(b.pasta_id).trim() : null;
+    }
 
     let inserted = await supabase.from('orcamentos').insert([payload]).select().single();
     if (inserted.error) {
@@ -11043,6 +11046,7 @@ app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
     if (has('parametros')) updates.parametros = b.parametros ?? {};
     if (has('resultados')) updates.resultados = b.resultados ?? [];
     if (has('status')) updates.status = b.status ?? atual.data?.status ?? 'Rascunho';
+    if (has('pasta_id')) updates.pasta_id = b.pasta_id ? String(b.pasta_id).trim() : null;
     if (!Object.keys(updates).length) return ok(res, atual.data || null);
     let upd = await supabase.from('orcamentos').update(updates).eq('id', id).select().single();
     if (upd.error) {
@@ -11064,6 +11068,78 @@ app.delete('/api/orcamentos/:id', async (req, res) => {
     const { error } = await supabase.from('orcamentos').delete().eq('id', req.params.id);
     if (error) throw error;
     return ok(res, true);
+  } catch (e) { return err(res, e); }
+});
+
+app.get('/api/orcamentos_pastas', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureOrcamentosPastasSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_orcamentos_pastas_missing', sql: _ORCAMENTOS_PASTAS_SCHEMA_SQL });
+    let q = supabase.from('orcamentos_pastas').select('*').order('nome', { ascending: true });
+    const empresaId = String(req.query.empresa_id || req.query.emp_id || '').trim();
+    if (empresaId) q = q.eq('empresa_id', empresaId);
+    const { data, error } = await q;
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    return ok(res, data || []);
+  } catch (e) { return err(res, e); }
+});
+
+app.post('/api/orcamentos_pastas', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureOrcamentosPastasSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_orcamentos_pastas_missing', sql: _ORCAMENTOS_PASTAS_SCHEMA_SQL });
+    const nome = String(req.body?.nome || '').trim();
+    const empresaId = String(req.body?.empresa_id || req.body?.emp_id || '').trim() || null;
+    if (!nome) return res.status(400).json({ ok: false, error: 'nome obrigatório' });
+
+    let dupQ = supabase.from('orcamentos_pastas').select('*').eq('nome', nome).limit(1);
+    dupQ = empresaId ? dupQ.eq('empresa_id', empresaId) : dupQ.is('empresa_id', null);
+    const dup = await dupQ.maybeSingle();
+    if (dup.data) return ok(res, dup.data);
+    if (dup.error) return res.status(500).json({ ok: false, error: dup.error.message });
+
+    const ins = await supabase.from('orcamentos_pastas').insert([{
+      nome,
+      empresa_id: empresaId,
+    }]).select().single();
+    if (ins.error) return res.status(500).json({ ok: false, error: ins.error.message });
+    return ok(res, ins.data);
+  } catch (e) { return err(res, e); }
+});
+
+app.delete('/api/orcamentos_pastas/:id', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureOrcamentosPastasSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_orcamentos_pastas_missing', sql: _ORCAMENTOS_PASTAS_SCHEMA_SQL });
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+
+    const clear = await supabase.from('orcamentos').update({ pasta_id: null }).eq('pasta_id', id);
+    if (clear.error) return res.status(500).json({ ok: false, error: clear.error.message });
+
+    const del = await supabase.from('orcamentos_pastas').delete().eq('id', id);
+    if (del.error) return res.status(500).json({ ok: false, error: del.error.message });
+    return ok(res, true);
+  } catch (e) { return err(res, e); }
+});
+
+app.patch('/api/orcamentos/:id/pasta', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureOrcamentosPastasSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_orcamentos_pastas_missing', sql: _ORCAMENTOS_PASTAS_SCHEMA_SQL });
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const pastaId = req.body?.pasta_id ? String(req.body.pasta_id).trim() : null;
+
+    if (pastaId) {
+      const pasta = await supabase.from('orcamentos_pastas').select('id').eq('id', pastaId).maybeSingle();
+      if (pasta.error) return res.status(500).json({ ok: false, error: pasta.error.message });
+      if (!pasta.data) return res.status(404).json({ ok: false, error: 'Pasta não encontrada' });
+    }
+
+    const upd = await supabase.from('orcamentos').update({ pasta_id: pastaId }).eq('id', id).select().single();
+    if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message });
+    return ok(res, upd.data);
   } catch (e) { return err(res, e); }
 });
 
@@ -11845,6 +11921,58 @@ async function _ensureChapasPinSchemaCols() {
     console.error('[BOOT][CHAPAS_PIN_SCHEMA] ERRO ao validar schema:', String(e?.message || e));
     console.error('[BOOT][CHAPAS_PIN_SCHEMA] SQL necessário:', _CHAPAS_PIN_SCHEMA_SQL);
     _chapasPinSchemaReady = false;
+    return false;
+  }
+}
+
+const _ORCAMENTOS_PASTAS_SCHEMA_SQL =
+  "CREATE TABLE IF NOT EXISTS orcamentos_pastas ( " +
+  "id uuid PRIMARY KEY DEFAULT gen_random_uuid(), " +
+  "nome text NOT NULL, " +
+  "empresa_id uuid, " +
+  "created_at timestamptz DEFAULT now() ); " +
+  "ALTER TABLE orcamentos ADD COLUMN IF NOT EXISTS pasta_id uuid REFERENCES orcamentos_pastas(id);";
+let _orcamentosPastasSchemaReady = null;
+function _orcamentosPastasSchemaMissingMessage(err) {
+  const low = String(err?.message || err || '').toLowerCase();
+  if (
+    low.includes('does not exist') ||
+    low.includes('not exist') ||
+    low.includes('relation') ||
+    low.includes('schema cache') ||
+    low.includes('could not find') ||
+    low.includes('column')
+  ) {
+    return low;
+  }
+  return '';
+}
+async function _ensureOrcamentosPastasSchema() {
+  if (_orcamentosPastasSchemaReady === true) return true;
+  if (!supabase) {
+    console.error('[BOOT][ORC_PASTAS_SCHEMA] Supabase indisponível; não foi possível validar schema.');
+    _orcamentosPastasSchemaReady = false;
+    return false;
+  }
+  try {
+    const probePastas = await supabase.from('orcamentos_pastas').select('id,nome,empresa_id,created_at').limit(1);
+    const probeOrc = await supabase.from('orcamentos').select('id,pasta_id').limit(1);
+    if (!probePastas.error && !probeOrc.error) {
+      _orcamentosPastasSchemaReady = true;
+      console.log('[BOOT][ORC_PASTAS_SCHEMA] OK - tabela orcamentos_pastas e coluna orcamentos.pasta_id presentes');
+      return true;
+    }
+    const msgPastas = _orcamentosPastasSchemaMissingMessage(probePastas.error);
+    const msgOrc = _orcamentosPastasSchemaMissingMessage(probeOrc.error);
+    const msg = String(msgPastas || msgOrc || probePastas.error?.message || probeOrc.error?.message || 'schema indisponível');
+    console.error('[BOOT][ORC_PASTAS_SCHEMA] FALHA - schema ausente ou indisponível:', msg);
+    console.error('[BOOT][ORC_PASTAS_SCHEMA] SQL necessário:', _ORCAMENTOS_PASTAS_SCHEMA_SQL);
+    _orcamentosPastasSchemaReady = false;
+    return false;
+  } catch (e) {
+    console.error('[BOOT][ORC_PASTAS_SCHEMA] ERRO ao validar schema:', String(e?.message || e));
+    console.error('[BOOT][ORC_PASTAS_SCHEMA] SQL necessário:', _ORCAMENTOS_PASTAS_SCHEMA_SQL);
+    _orcamentosPastasSchemaReady = false;
     return false;
   }
 }
@@ -25664,5 +25792,8 @@ app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
   _ensureChapasPinSchemaCols().catch((e) => {
     console.error('[BOOT][CHAPAS_PIN_SCHEMA] ERRO inesperado:', String(e?.message || e));
+  });
+  _ensureOrcamentosPastasSchema().catch((e) => {
+    console.error('[BOOT][ORC_PASTAS_SCHEMA] ERRO inesperado:', String(e?.message || e));
   });
 });

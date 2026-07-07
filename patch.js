@@ -321,6 +321,608 @@ try {
   try { window.__authPatchClear = _authClear; } catch (_) {}
 })();
 
+(function patchOrcamentosPastasEImpressao() {
+  if (window.__patchOrcamentosPastasInstalled) return;
+  window.__patchOrcamentosPastasInstalled = true;
+
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function(ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] || ch;
+    });
+  }
+  function escAttr(v) {
+    return esc(v).replace(/`/g, '&#96;');
+  }
+  function fmtMoney(v) {
+    try { if (typeof fmtR === 'function') return fmtR(v); } catch (_) {}
+    var n = Number(v || 0) || 0;
+    return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtDate(v) {
+    try { if (typeof fmtD === 'function') return fmtD(v); } catch (_) {}
+    if (!v) return '—';
+    try { return new Date(v).toLocaleDateString('pt-BR'); } catch (_) {}
+    return String(v || '—');
+  }
+  function currentEmpId() {
+    try {
+      return String(
+        ((document.getElementById('orc-fil-emp') || {}).value) ||
+        window.EMP_FILTRO ||
+        window.CURRENT_USER?.emp_id ||
+        window.CURRENT_USER?.empId ||
+        window.CURRENT_USER?.sigla ||
+        ''
+      ).trim();
+    } catch (_) { return ''; }
+  }
+  function currentFilter() {
+    return String(window.__orcPastaFiltro || '__all');
+  }
+  function setCurrentFilter(v) {
+    window.__orcPastaFiltro = String(v || '__all');
+  }
+  function folderIdOf(orc) {
+    return String(orc && (orc.pasta_id != null ? orc.pasta_id : orc.pastaId) || '').trim();
+  }
+  function folderNameOf(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return '';
+    var found = (Array.isArray(window.__orcPastasData) ? window.__orcPastasData : []).find(function(item) {
+      return String(item && item.id || '').trim() === sid;
+    });
+    return String(found && found.nome || '').trim();
+  }
+  function ensureStyles() {
+    if (document.getElementById('patch-orc-pastas-style')) return;
+    var st = document.createElement('style');
+    st.id = 'patch-orc-pastas-style';
+    st.textContent = ''
+      + '#page-orcamentos #orc-pastas-panel{display:grid;gap:10px;margin:10px 0 14px}'
+      + '#page-orcamentos .orc-pastas-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}'
+      + '#page-orcamentos .orc-pasta-card{background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);border-radius:14px;padding:12px;display:grid;gap:6px;cursor:pointer;transition:.16s ease}'
+      + '#page-orcamentos .orc-pasta-card:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.38)}'
+      + '#page-orcamentos .orc-pasta-card.is-active{border-color:rgba(96,165,250,.55);box-shadow:0 0 0 1px rgba(96,165,250,.22) inset}'
+      + '#page-orcamentos .orc-pasta-head{display:flex;align-items:center;justify-content:space-between;gap:8px}'
+      + '#page-orcamentos .orc-pasta-title{font-size:13px;font-weight:900;color:#f8fafc}'
+      + '#page-orcamentos .orc-pasta-sub{font-size:11px;color:#94a3b8}'
+      + '#page-orcamentos .orc-pasta-del{background:transparent;border:1px solid rgba(248,113,113,.35);color:#fca5a5;border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer}'
+      + '#page-orcamentos .orc-folder-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(59,130,246,.14);color:#bfdbfe;border:1px solid rgba(59,130,246,.25);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700}'
+      + '#page-orcamentos .orc-folder-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}'
+      + '#page-orcamentos .orc-folder-row select{min-width:180px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px}'
+      + '#page-orcamentos #calc-pasta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-2px 0 12px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px}'
+      + '#page-orcamentos #calc-pasta-row label{font-size:12px;font-weight:800;color:rgba(255,255,255,.72);text-transform:uppercase;letter-spacing:.04em}'
+      + '#page-orcamentos #calc-pasta{min-width:240px;flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px}'
+      + '#orc-pasta-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100001;align-items:center;justify-content:center;padding:16px}'
+      + '#orc-pasta-modal .box{width:min(460px,96vw);background:#0f172a;border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:18px;display:grid;gap:12px}'
+      + '#orc-pasta-modal .ttl{font-size:16px;font-weight:900;color:#f8fafc}'
+      + '#orc-pasta-modal .sub{font-size:12px;color:#94a3b8}'
+      + '#orc-pasta-modal input{width:100%;background:#020617;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:10px;padding:12px 14px}'
+      + '#orc-pasta-modal .actions{display:flex;justify-content:flex-end;gap:8px}'
+      + '#orc-pasta-modal .actions button{border-radius:10px;padding:10px 14px;border:1px solid rgba(148,163,184,.22);cursor:pointer}'
+      + '@media (max-width:760px){#page-orcamentos #calc-pasta{min-width:0;width:100%}#page-orcamentos #calc-pasta-row{align-items:stretch}}';
+    document.head.appendChild(st);
+  }
+  function ensureUi() {
+    ensureStyles();
+    var page = document.getElementById('page-orcamentos');
+    if (!page) return;
+    var toolbar = page.querySelector('.ptoolbar');
+    if (toolbar && !document.getElementById('orc-btn-nova-pasta')) {
+      var btn = document.createElement('button');
+      btn.id = 'orc-btn-nova-pasta';
+      btn.className = 'btn btn-ghost btn-sm';
+      btn.textContent = '📁 Nova Pasta';
+      btn.onclick = function() { window.orcAbrirModalPasta(''); };
+      toolbar.appendChild(btn);
+    }
+    if (!document.getElementById('orc-pastas-panel')) {
+      var host = document.createElement('div');
+      host.id = 'orc-pastas-panel';
+      var body = document.getElementById('orc-body');
+      if (body && body.parentNode) body.parentNode.insertBefore(host, body);
+    }
+    ensureFolderModal();
+  }
+  function ensureFolderModal() {
+    if (document.getElementById('orc-pasta-modal')) return;
+    var modal = document.createElement('div');
+    modal.id = 'orc-pasta-modal';
+    modal.innerHTML = ''
+      + '<div class="box">'
+      + '  <div class="ttl">📁 Nova Pasta</div>'
+      + '  <div class="sub">Crie uma pasta nomeada para arquivar e revisar orçamentos depois.</div>'
+      + '  <input id="orc-pasta-nome" type="text" placeholder="Ex: Cliente XPTO, Revisão Julho, Aguardando retorno">'
+      + '  <div class="actions">'
+      + '    <button type="button" id="orc-pasta-cancelar">Cancelar</button>'
+      + '    <button type="button" id="orc-pasta-salvar" style="background:#2563eb;color:#fff;border-color:#2563eb">Salvar Pasta</button>'
+      + '  </div>'
+      + '</div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) modal.style.display = 'none';
+    });
+    modal.querySelector('#orc-pasta-cancelar').onclick = function() {
+      modal.style.display = 'none';
+    };
+    modal.querySelector('#orc-pasta-salvar').onclick = function() {
+      saveFolderFromModal();
+    };
+    modal.querySelector('#orc-pasta-nome').addEventListener('keydown', function(e) {
+      if (e && e.key === 'Enter') {
+        try { e.preventDefault(); } catch (_) {}
+        saveFolderFromModal();
+      }
+    });
+  }
+  function requestJson(path, opts) {
+    var url = String(path || '');
+    var options = opts || {};
+    if (typeof apiFetch === 'function') {
+      return apiFetch(url, options).then(function(resp) {
+        return resp.json().catch(function() { return null; }).then(function(json) {
+          if (!resp.ok || (json && json.ok === false)) {
+            throw new Error(String(json && (json.error || json.message) || ('Falha em ' + url)));
+          }
+          return json && Object.prototype.hasOwnProperty.call(json, 'data') ? json.data : json;
+        });
+      });
+    }
+    var token = '';
+    try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || window._token || '').trim(); } catch (_) { token = ''; }
+    var headers = Object.assign({}, options.headers || {}, token ? { Authorization: 'Bearer ' + token } : {});
+    var body = options.body;
+    if (body && typeof body === 'object' && !(body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+      body = JSON.stringify(body);
+    }
+    return fetch(url, Object.assign({}, options, { headers: headers, body: body })).then(function(resp) {
+      return resp.json().catch(function() { return null; }).then(function(json) {
+        if (!resp.ok || (json && json.ok === false)) {
+          throw new Error(String(json && (json.error || json.message) || ('Falha em ' + url)));
+        }
+        return json && Object.prototype.hasOwnProperty.call(json, 'data') ? json.data : json;
+      });
+    });
+  }
+  function mergeFolderIntoCache(folder) {
+    var item = folder && typeof folder === 'object' ? {
+      id: String(folder.id || '').trim(),
+      nome: String(folder.nome || '').trim(),
+      empresa_id: String(folder.empresa_id || folder.emp_id || '').trim() || null,
+      created_at: folder.created_at || null,
+    } : null;
+    if (!item || !item.id) return;
+    var list = Array.isArray(window.__orcPastasData) ? window.__orcPastasData.slice() : [];
+    var idx = list.findIndex(function(x) { return String(x && x.id || '') === item.id; });
+    if (idx >= 0) list[idx] = item;
+    else list.push(item);
+    list.sort(function(a, b) { return String(a && a.nome || '').localeCompare(String(b && b.nome || ''), 'pt-BR'); });
+    window.__orcPastasData = list;
+  }
+  function activePageIsOrcamentos() {
+    try {
+      var p = document.querySelector('.page.active');
+      return !!(p && p.id === 'page-orcamentos');
+    } catch (_) { return false; }
+  }
+  function loadFolders(force) {
+    if (!force && Array.isArray(window.__orcPastasData)) return Promise.resolve(window.__orcPastasData);
+    if (!force && window.__orcPastasLoading) return window.__orcPastasLoading;
+    var url = '/api/orcamentos_pastas';
+    var empId = currentEmpId();
+    if (empId) url += '?empresa_id=' + encodeURIComponent(empId);
+    window.__orcPastasLoading = requestJson(url, { method: 'GET' }).then(function(data) {
+      window.__orcPastasSchemaMissing = false;
+      window.__orcPastasSchemaWarned = false;
+      window.__orcPastasData = (Array.isArray(data) ? data : []).map(function(item) {
+        return {
+          id: String(item && item.id || '').trim(),
+          nome: String(item && item.nome || '').trim(),
+          empresa_id: String(item && item.empresa_id || '').trim() || null,
+          created_at: item && item.created_at || null,
+        };
+      }).sort(function(a, b) {
+        return String(a && a.nome || '').localeCompare(String(b && b.nome || ''), 'pt-BR');
+      });
+      return window.__orcPastasData;
+    }).catch(function(err) {
+      var msg = String(err && err.message || err || '');
+      if (msg.indexOf('schema_orcamentos_pastas_missing') >= 0) {
+        window.__orcPastasSchemaMissing = true;
+        if (!window.__orcPastasSchemaWarned) {
+          window.__orcPastasSchemaWarned = true;
+          try { toast('Pastas de orçamentos indisponíveis: schema ainda não aplicado no banco.', 'var(--yellow)'); } catch (_) {}
+        }
+      }
+      window.__orcPastasData = [];
+      return [];
+    }).finally(function() {
+      window.__orcPastasLoading = null;
+      try {
+        if (activePageIsOrcamentos() && typeof window.renderOrcamentos === 'function') window.renderOrcamentos();
+      } catch (_) {}
+      try { syncCalcFolderUi(); } catch (_) {}
+    });
+    return window.__orcPastasLoading;
+  }
+  function folderOptionsHtml(selectedId) {
+    var current = String(selectedId || '').trim();
+    var opts = ['<option value="">Sem pasta</option>'];
+    (Array.isArray(window.__orcPastasData) ? window.__orcPastasData : []).forEach(function(item) {
+      var id = String(item && item.id || '').trim();
+      if (!id) return;
+      opts.push('<option value="' + escAttr(id) + '"' + (id === current ? ' selected' : '') + '>' + esc(item && item.nome || '') + '</option>');
+    });
+    return opts.join('');
+  }
+  function filterMatches(orc) {
+    var filter = currentFilter();
+    var pastaId = folderIdOf(orc);
+    if (filter === '__all') return true;
+    if (filter === '__sem_pasta') return !pastaId;
+    if (filter.indexOf('id:') === 0) return pastaId === filter.slice(3);
+    return true;
+  }
+  function countByFilter(baseList, filter) {
+    return (Array.isArray(baseList) ? baseList : []).filter(function(item) {
+      var id = folderIdOf(item);
+      if (filter === '__all') return true;
+      if (filter === '__sem_pasta') return !id;
+      if (String(filter || '').indexOf('id:') === 0) return id === String(filter).slice(3);
+      return true;
+    }).length;
+  }
+  function renderFoldersPanel(baseList) {
+    var host = document.getElementById('orc-pastas-panel');
+    if (!host) return;
+    if (window.__orcPastasSchemaMissing) {
+      host.innerHTML = '<div class="orc-pasta-card"><div class="orc-pasta-title">Pastas indisponíveis</div><div class="orc-pasta-sub">Aplique o schema de `orcamentos_pastas` e a coluna `orcamentos.pasta_id` para ativar esta funcionalidade.</div></div>';
+      return;
+    }
+    var filter = currentFilter();
+    var list = Array.isArray(window.__orcPastasData) ? window.__orcPastasData : [];
+    var cards = [
+      { id: '__all', nome: 'Todas', qtd: countByFilter(baseList, '__all') },
+      { id: '__sem_pasta', nome: 'Sem pasta', qtd: countByFilter(baseList, '__sem_pasta') }
+    ].concat(list.map(function(item) {
+      return {
+        id: 'id:' + String(item && item.id || '').trim(),
+        rawId: String(item && item.id || '').trim(),
+        nome: String(item && item.nome || '').trim(),
+        qtd: countByFilter(baseList, 'id:' + String(item && item.id || '').trim())
+      };
+    }));
+    host.innerHTML = '<div class="orc-pastas-grid">' + cards.map(function(card) {
+      var active = filter === String(card.id || '');
+      var removeBtn = card.rawId
+        ? '<button class="orc-pasta-del" type="button" onclick="event.stopPropagation();orcExcluirPasta(\'' + escAttr(card.rawId) + '\')">Excluir</button>'
+        : '';
+      return ''
+        + '<button type="button" class="orc-pasta-card' + (active ? ' is-active' : '') + '" onclick="orcSelecionarPastaFiltro(\'' + escAttr(card.id) + '\')">'
+        + '  <div class="orc-pasta-head"><div class="orc-pasta-title">📁 ' + esc(card.nome || '') + '</div>' + removeBtn + '</div>'
+        + '  <div class="orc-pasta-sub">' + esc(String(card.qtd)) + ' orçamento(s)</div>'
+        + '</button>';
+    }).join('') + '</div>';
+  }
+  function currentOrcamentoFromState() {
+    try {
+      if (typeof _orcIdAtual !== 'undefined' && _orcIdAtual) {
+        var byId = (Array.isArray(ORCAMENTOS) ? ORCAMENTOS : []).find(function(item) {
+          return String(item && item.id || '') === String(_orcIdAtual || '');
+        });
+        if (byId) return byId;
+      }
+    } catch (_) {}
+    try {
+      var txt = String((document.getElementById('orc-numero-display') || {}).textContent || '').replace(/[^\d]/g, '').trim();
+      if (txt) {
+        return (Array.isArray(ORCAMENTOS) ? ORCAMENTOS : []).find(function(item) {
+          return String(item && item.numero_orcamento || '').replace(/[^\d]/g, '').trim() === txt;
+        }) || null;
+      }
+    } catch (_) {}
+    return null;
+  }
+  function ensureCalcFolderUi() {
+    var calc = document.getElementById('modal-calculadora');
+    if (!calc) return;
+    var header = calc.querySelector('.calc-header-row');
+    if (!header) return;
+    if (document.getElementById('calc-pasta-row')) return;
+    var row = document.createElement('div');
+    row.id = 'calc-pasta-row';
+    row.innerHTML = ''
+      + '<label for="calc-pasta">Salvar em pasta</label>'
+      + '<select id="calc-pasta"></select>'
+      + '<button type="button" class="btn btn-ghost btn-sm" id="calc-pasta-nova">📁 Nova Pasta</button>';
+    header.insertAdjacentElement('afterend', row);
+    row.querySelector('#calc-pasta-nova').onclick = function() {
+      window.orcAbrirModalPasta('calc-pasta');
+    };
+  }
+  function syncCalcFolderUi() {
+    ensureCalcFolderUi();
+    var select = document.getElementById('calc-pasta');
+    if (!select) return;
+    var current = currentOrcamentoFromState();
+    var selected = folderIdOf(current);
+    select.innerHTML = folderOptionsHtml(selected);
+    select.value = selected;
+  }
+  function patchNormalizeOrc() {
+    if (typeof window.normalizeOrc !== 'function' || window.normalizeOrc.__patchPastas) return;
+    var original = window.normalizeOrc;
+    window.normalizeOrc = function(r) {
+      var out = original(r);
+      try {
+        out.pasta_id = (r && (r.pasta_id != null ? r.pasta_id : r.pastaId)) ? String(r.pasta_id != null ? r.pasta_id : r.pastaId).trim() : null;
+      } catch (_) {
+        out.pasta_id = null;
+      }
+      return out;
+    };
+    window.normalizeOrc.__patchPastas = true;
+  }
+  function updateLocalOrcamento(row) {
+    if (!row || !row.id || !Array.isArray(ORCAMENTOS)) return;
+    var next = (typeof normalizeOrc === 'function') ? normalizeOrc(row) : row;
+    next.pasta_id = row.pasta_id != null ? String(row.pasta_id || '').trim() || null : null;
+    var idx = ORCAMENTOS.findIndex(function(item) { return String(item && item.id || '') === String(next.id || ''); });
+    if (idx >= 0) ORCAMENTOS[idx] = Object.assign({}, ORCAMENTOS[idx], next);
+    else ORCAMENTOS.unshift(next);
+  }
+  function moveToFolder(id, pastaId, opts) {
+    var sid = String(id || '').trim();
+    var target = String(pastaId || '').trim() || null;
+    var options = opts || {};
+    if (!sid) return Promise.resolve(null);
+    return requestJson('/api/orcamentos/' + encodeURIComponent(sid) + '/pasta', {
+      method: 'PATCH',
+      body: { pasta_id: target }
+    }).then(function(data) {
+      var row = data && data.id ? data : { id: sid, pasta_id: target };
+      updateLocalOrcamento(row);
+      if (!options.skipRender) {
+        try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
+      }
+      try { syncCalcFolderUi(); } catch (_) {}
+      if (!options.silent) {
+        try { toast(target ? 'Orçamento movido para a pasta ✓' : 'Orçamento removido da pasta ✓', 'var(--green)'); } catch (_) {}
+      }
+      return row;
+    });
+  }
+  function persistCurrentCalcFolder() {
+    var select = document.getElementById('calc-pasta');
+    if (!select) return Promise.resolve(true);
+    var current = currentOrcamentoFromState();
+    var currentId = String((current && current.id) || (typeof _orcIdAtual !== 'undefined' ? (_orcIdAtual || '') : '') || '').trim();
+    if (!currentId) return Promise.resolve(true);
+    var desired = String(select.value || '').trim() || null;
+    var atual = folderIdOf(current) || null;
+    if (String(atual || '') === String(desired || '')) return Promise.resolve(true);
+    return moveToFolder(currentId, desired, { silent: true, skipRender: true }).then(function() {
+      try { if (activePageIsOrcamentos() && typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
+      return true;
+    }).catch(function(err) {
+      try { toast('Erro ao salvar pasta do orçamento: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+      return false;
+    });
+  }
+  function saveFolderFromModal() {
+    var modal = document.getElementById('orc-pasta-modal');
+    var input = document.getElementById('orc-pasta-nome');
+    var nome = String((input && input.value) || '').trim();
+    if (!nome) {
+      try { toast('Informe um nome para a pasta', 'var(--yellow)'); } catch (_) {}
+      return;
+    }
+    requestJson('/api/orcamentos_pastas', {
+      method: 'POST',
+      body: {
+        nome: nome,
+        empresa_id: currentEmpId() || null
+      }
+    }).then(function(folder) {
+      mergeFolderIntoCache(folder);
+      if (modal) modal.style.display = 'none';
+      var targetSelectId = String((modal && modal.dataset && modal.dataset.targetSelect) || '').trim();
+      if (targetSelectId) {
+        var select = document.getElementById(targetSelectId);
+        if (select) {
+          select.innerHTML = folderOptionsHtml(String(folder && folder.id || '').trim());
+          select.value = String(folder && folder.id || '').trim();
+        }
+      }
+      try { syncCalcFolderUi(); } catch (_) {}
+      try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
+      try { toast('Pasta criada ✓', 'var(--green)'); } catch (_) {}
+    }).catch(function(err) {
+      try { toast('Erro ao criar pasta: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+    });
+  }
+  window.orcAbrirModalPasta = function(targetSelectId) {
+    ensureUi();
+    loadFolders(false).catch(function() { return []; }).finally(function() {
+      var modal = document.getElementById('orc-pasta-modal');
+      var input = document.getElementById('orc-pasta-nome');
+      if (!modal || !input) return;
+      modal.dataset.targetSelect = String(targetSelectId || '').trim();
+      input.value = '';
+      modal.style.display = 'flex';
+      setTimeout(function() {
+        try { input.focus(); } catch (_) {}
+      }, 30);
+    });
+  };
+  window.orcSelecionarPastaFiltro = function(filter) {
+    setCurrentFilter(filter);
+    try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
+  };
+  window.orcExcluirPasta = function(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return;
+    if (!confirm('Excluir esta pasta? Os orçamentos serão mantidos e ficarão sem pasta.')) return;
+    requestJson('/api/orcamentos_pastas/' + encodeURIComponent(sid), { method: 'DELETE' }).then(function() {
+      window.__orcPastasData = (Array.isArray(window.__orcPastasData) ? window.__orcPastasData : []).filter(function(item) {
+        return String(item && item.id || '') !== sid;
+      });
+      try {
+        (Array.isArray(ORCAMENTOS) ? ORCAMENTOS : []).forEach(function(item) {
+          if (folderIdOf(item) === sid) item.pasta_id = null;
+        });
+      } catch (_) {}
+      if (currentFilter() === ('id:' + sid)) setCurrentFilter('__all');
+      try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
+      try { syncCalcFolderUi(); } catch (_) {}
+      try { toast('Pasta excluída ✓', 'var(--green)'); } catch (_) {}
+    }).catch(function(err) {
+      try { toast('Erro ao excluir pasta: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+    });
+  };
+  window.orcMoverParaPasta = function(id, pastaId) {
+    moveToFolder(id, pastaId).catch(function(err) {
+      try { toast('Erro ao mover orçamento: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+    });
+  };
+
+  patchNormalizeOrc();
+
+  window.renderOrcamentos = function renderOrcamentosPatched() {
+    ensureUi();
+    loadFolders(false).catch(function() { return []; });
+    var body = document.getElementById('orc-body');
+    if (!body) return;
+    var empFil = String(((document.getElementById('orc-fil-emp') || {}).value) || window.EMP_FILTRO || '').trim();
+    var lista = Array.isArray(ORCAMENTOS) ? ORCAMENTOS.slice() : [];
+    if (empFil) {
+      lista = lista.filter(function(item) {
+        return String(item && (item.empId || item.emp_id || '') || '').trim() === empFil;
+      });
+    }
+    renderFoldersPanel(lista);
+    lista = lista.filter(filterMatches);
+
+    var modoCompare = !!window._ORC_COMPARE_MODE;
+    var sel = Array.isArray(window._ORC_COMPARE_SEL) ? window._ORC_COMPARE_SEL.map(function(x) { return String(x || '').trim(); }).filter(Boolean) : [];
+    var filter = currentFilter();
+    if (!lista.length) {
+      var msg = filter === '__sem_pasta'
+        ? 'Nenhum orçamento sem pasta.'
+        : (filter.indexOf('id:') === 0 ? 'Nenhum orçamento encontrado nesta pasta.' : 'Nenhum orçamento.');
+      body.innerHTML = '<div style="color:var(--text3)">' + esc(msg) + '</div>';
+      return;
+    }
+
+    body.innerHTML = lista.map(function(orc) {
+      var num = orc.numero_orcamento || (orc.id ? String(orc.id).substring(0, 8) : '');
+      var cliente = orc.cliente_nome || orc.descricao || '—';
+      var medidas = orc.medidas || orc.titulo || '—';
+      var qtd = orc.quantidade != null ? orc.quantidade : (orc.qtd != null ? orc.qtd : '—');
+      var onda = orc.onda || '—';
+      var vtot = orc.valor_total != null ? orc.valor_total : (orc.vtot != null ? orc.vtot : 0);
+      var dt = orc.criado_em || orc.data || '';
+      var id = String(orc.id || '').trim();
+      var isSel = id && sel.indexOf(id) >= 0;
+      var border = isSel ? 'rgba(234,179,8,.55)' : 'var(--border)';
+      var bg = isSel ? 'rgba(234,179,8,.08)' : 'var(--bg2)';
+      var cursor = modoCompare ? 'cursor:pointer' : '';
+      var pastaId = folderIdOf(orc);
+      var pastaNome = folderNameOf(pastaId);
+      var badge = pastaId
+        ? '<span class="orc-folder-badge">📁 ' + esc(pastaNome || 'Pasta') + '</span>'
+        : '<span class="orc-folder-badge" style="background:rgba(148,163,184,.12);color:#cbd5e1;border-color:rgba(148,163,184,.18)">Sem pasta</span>';
+      return ''
+        + '<div class="orc-card" onclick="orcCompareCardClick(event,\'' + escAttr(id) + '\')" style="background:' + bg + ';border:1px solid ' + border + ';border-radius:8px;padding:14px;margin-bottom:8px;' + cursor + '">'
+        + '  <div class="orc-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap">'
+        + '    <span style="font-weight:bold;color:var(--accent)">Orç. Nº ' + esc(num) + '</span>'
+        + '    <span style="font-size:11px;color:var(--text2)">' + esc(fmtDate(dt)) + '</span>'
+        + '  </div>'
+        + '  <div style="margin-bottom:8px">' + badge + '</div>'
+        + '  <div><b>Cliente:</b> ' + esc(cliente) + '</div>'
+        + '  <div><b>Medidas:</b> ' + esc(medidas) + ' | <b>Qtd:</b> ' + esc(String(qtd)) + ' | <b>Onda:</b> ' + esc(onda) + '</div>'
+        + '  <div style="color:var(--green)"><b>Valor Total:</b> ' + esc(fmtMoney(vtot)) + '</div>'
+        + '  <div class="orc-folder-row" onclick="event.stopPropagation()">'
+        + '    <span style="font-size:12px;color:var(--text2);font-weight:700">Pasta</span>'
+        + '    <select onchange="orcMoverParaPasta(\'' + escAttr(id) + '\', this.value)">' + folderOptionsHtml(pastaId) + '</select>'
+        + '    <button type="button" class="btn btn-ghost btn-sm" onclick="event.stopPropagation();orcAbrirModalPasta(\'\')">Nova Pasta</button>'
+        + '  </div>'
+        + '  <div class="orc-actions" style="display:flex;gap:8px;margin-top:10px">'
+        + '    <button onclick="event.stopPropagation();abrirCalculadoraComOrc(\'' + escAttr(id) + '\')" style="padding:5px 10px;border-radius:5px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px">✏️ Editar/Ver</button>'
+        + '    <button onclick="event.stopPropagation();imprimirOrcamentoId(\'' + escAttr(id) + '\')" style="padding:5px 10px;border-radius:5px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:12px">🖨 Imprimir</button>'
+        + '    <button onclick="event.stopPropagation();copiarLinkAprovacaoOrcamento(\'' + escAttr(id) + '\')" style="padding:5px 10px;border-radius:5px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:12px">🔗 Link</button>'
+        + '    <button onclick="event.stopPropagation();abrirVersoesOrcamento(\'' + escAttr(id) + '\')" style="padding:5px 10px;border-radius:5px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:12px">🕘 Versões</button>'
+        + '    <button onclick="event.stopPropagation();excluirOrcamento(\'' + escAttr(id) + '\')" style="padding:5px 10px;border-radius:5px;background:#f44336;color:#fff;border:none;cursor:pointer;font-size:12px">🗑</button>'
+        + '  </div>'
+        + '</div>';
+    }).join('');
+  };
+
+  if (typeof window.abrirCalculadora === 'function' && !window.abrirCalculadora.__patchOrcPastas) {
+    var _origAbrirCalculadora = window.abrirCalculadora;
+    window.abrirCalculadora = function() {
+      var out = _origAbrirCalculadora.apply(this, arguments);
+      setTimeout(function() {
+        loadFolders(false).catch(function() { return []; }).finally(function() {
+          syncCalcFolderUi();
+        });
+      }, 60);
+      return out;
+    };
+    window.abrirCalculadora.__patchOrcPastas = true;
+  }
+  if (typeof window.carregarOrcamentoCalc === 'function' && !window.carregarOrcamentoCalc.__patchOrcPastas) {
+    var _origCarregarOrcamentoCalc = window.carregarOrcamentoCalc;
+    window.carregarOrcamentoCalc = function() {
+      var out = _origCarregarOrcamentoCalc.apply(this, arguments);
+      setTimeout(function() {
+        syncCalcFolderUi();
+      }, 30);
+      return out;
+    };
+    window.carregarOrcamentoCalc.__patchOrcPastas = true;
+  }
+  if (typeof window.novoOrcamentoCalc === 'function' && !window.novoOrcamentoCalc.__patchOrcPastas) {
+    var _origNovoOrcamentoCalc = window.novoOrcamentoCalc;
+    window.novoOrcamentoCalc = function() {
+      var out = _origNovoOrcamentoCalc.apply(this, arguments);
+      setTimeout(function() {
+        ensureCalcFolderUi();
+        var select = document.getElementById('calc-pasta');
+        if (select) {
+          select.innerHTML = folderOptionsHtml('');
+          select.value = '';
+        }
+      }, 30);
+      return out;
+    };
+    window.novoOrcamentoCalc.__patchOrcPastas = true;
+  }
+  if (typeof window.salvarOrcamentoCalc === 'function' && !window.salvarOrcamentoCalc.__patchOrcPastas) {
+    var _origSalvarOrcamentoCalc = window.salvarOrcamentoCalc;
+    window.salvarOrcamentoCalc = async function() {
+      var ok = await _origSalvarOrcamentoCalc.apply(this, arguments);
+      if (!ok) return ok;
+      await persistCurrentCalcFolder();
+      return ok;
+    };
+    window.salvarOrcamentoCalc.__patchOrcPastas = true;
+  }
+
+  ensureUi();
+  loadFolders(false).catch(function() { return []; });
+  setTimeout(function() {
+    try {
+      if (window._apiConectado && window.CURRENT_USER && typeof window.carregarOrcamentos === 'function') {
+        window.carregarOrcamentos().then(function() {
+          try { if (activePageIsOrcamentos()) window.renderOrcamentos(); } catch (_) {}
+        }).catch(function() { return null; });
+      }
+    } catch (_) {}
+  }, 900);
+})();
+
 (function patchFornecedorDetalhesPanel() {
   if (window.__patchFornecedorDetalhesPanel) return;
   window.__patchFornecedorDetalhesPanel = true;
