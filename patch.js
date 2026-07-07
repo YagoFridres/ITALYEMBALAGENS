@@ -25288,7 +25288,11 @@ function _ocultarGraficoComissoes() {
     var qs = new URLSearchParams();
     qs.set('q', String(termosStr || '').trim());
     if (empresaSel) qs.set('empresa_id', empresaSel);
-    var json = await _apiJsonAuth('/api/comissoes/busca-of?' + qs.toString());
+    var resp = await fetch('/api/comissoes/busca-of?' + qs.toString(), { headers: authHeaders() });
+    var json = await resp.json().catch(function() { return null; });
+    if (!resp.ok || (json && json.ok === false)) {
+      throw new Error(String(json && (json.error || json.message) || 'Falha ao buscar OF em Comissões'));
+    }
     return _comBuscaDedup(Array.isArray(json && json.ofs) ? json.ofs : []);
   }
 
