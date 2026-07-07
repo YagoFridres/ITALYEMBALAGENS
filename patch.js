@@ -25303,7 +25303,10 @@ function _ocultarGraficoComissoes() {
     var qs = new URLSearchParams();
     qs.set('q', String(termosStr || '').trim());
     if (empresaSel) qs.set('empresa_id', empresaSel);
-    var resp = await fetch('/api/comissoes/busca-of?' + qs.toString(), { headers: authHeaders() });
+    var token = _getToken();
+    var resp = await fetch('/api/comissoes/busca-of?' + qs.toString(), {
+      headers: token ? { Authorization: 'Bearer ' + token } : {}
+    });
     var json = await resp.json().catch(function() { return null; });
     if (!resp.ok || (json && json.ok === false)) {
       throw new Error(String(json && (json.error || json.message) || 'Falha ao buscar OF em Comissões'));
