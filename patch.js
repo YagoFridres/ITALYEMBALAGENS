@@ -869,6 +869,42 @@ try {
       exportBtn.textContent = 'Exportar Excel da Lista';
       filtrosWrap.appendChild(exportBtn);
     }
+    if (filtrosWrap && !filtrosWrap.dataset.patchDetalhamentoReady) {
+      filtrosWrap.dataset.patchDetalhamentoReady = '1';
+      try {
+        var buscaInput = document.getElementById('hist-filtro-cliente');
+        var maquinaSel = document.getElementById('hist-filtro-maquina');
+        var dataIni = document.getElementById('hist-filtro-data-ini');
+        var dataFim = document.getElementById('hist-filtro-data-fim');
+        var btnBuscar = filtrosWrap.querySelector('button');
+        if (buscaInput) {
+          buscaInput.placeholder = 'Buscar por OF, cliente, produto ou máquina';
+          buscaInput.style.minWidth = '320px';
+          buscaInput.oninput = function() {
+            try { clearTimeout(window.__histBuscaDetalhamentoDebounce); } catch (_) {}
+            window.__histBuscaDetalhamentoDebounce = setTimeout(function() {
+              try {
+                window.__histPassagensDetalhamentoBusca = String((buscaInput || {}).value || '').trim();
+                _histRenderDetalhamentoPassagens();
+              } catch (_) {}
+            }, 180);
+          };
+        }
+        if (btnBuscar) {
+          btnBuscar.onclick = function() {
+            try {
+              window.__histPassagensDetalhamentoBusca = String((buscaInput || {}).value || '').trim();
+              _histRenderDetalhamentoPassagens();
+            } catch (_) {}
+          };
+        }
+        [maquinaSel, dataIni, dataFim].forEach(function(el) {
+          if (!el) return;
+          try { el.value = ''; } catch (_) {}
+          try { el.style.display = 'none'; } catch (_) {}
+        });
+      } catch (_) {}
+    }
 
     var mesSel = document.getElementById('hist-rel-mes');
     var anoSel = document.getElementById('hist-rel-ano');
@@ -1010,22 +1046,14 @@ try {
   function _histRenderDetalhamentoPassagens() {
     var container = document.getElementById('hist-passagens-resultado');
     if (!container) return;
+    _histEnsureUi();
     var allRows = Array.isArray(window.__histPassagensDetalhamentoRows) ? window.__histPassagensDetalhamentoRows.slice() : [];
-    var busca = String(window.__histPassagensDetalhamentoBusca || '').trim();
+    var buscaInput = document.getElementById('hist-filtro-cliente');
+    var busca = String((buscaInput && buscaInput.value) || window.__histPassagensDetalhamentoBusca || '').trim();
+    window.__histPassagensDetalhamentoBusca = busca;
     var rows = _histFiltrarDetalhamentoRows(allRows, busca);
     window.__histPassagensRowsVisible = rows.slice();
     var ref = _histGetMonthlyRef();
-    var resumo = ''
-      + '<div class="hist-passagens-toolbar">'
-      + '  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-      + '    <span style="color:#64748b;font-size:12px">' + _histEsc(String(rows.length)) + ' OFs no detalhamento</span>'
-      + '    <span style="background:rgba(59,130,246,.14);color:#93c5fd;border-radius:6px;padding:3px 10px;font-size:12px">' + _histEsc(_histMonthName(ref.mes) + '/' + ref.ano) + '</span>'
-      + '  </div>'
-      + '  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-      + '    <button type="button" class="hist-patch-btn" id="hist-export-inline">Exportar Excel da Lista</button>'
-      + '    <button type="button" class="hist-patch-btn" id="hist-print-inline">Imprimir Lista</button>'
-      + '  </div>'
-      + '</div>';
     var tableHtml = !rows.length
       ? '<div class="hist-detalhamento-empty">Nenhuma passagem encontrada para o mês selecionado</div>'
       : ''
@@ -1060,30 +1088,17 @@ try {
         + '</div>';
 
     container.innerHTML = ''
-      + resumo
       + '<div class="hist-detalhamento-box">'
       + '  <div class="hist-detalhamento-head">'
       + '    <div><div class="hist-detalhamento-title">Detalhamento de passagens:</div><div class="hist-detalhamento-sub">Busca por OF, cliente, produto ou máquina dentro do mês selecionado.</div></div>'
-      + '    <div class="hist-detalhamento-search"><input id="hist-detalhamento-busca" type="text" placeholder="Buscar por OF, cliente, produto ou máquina" value="' + _histAttr(busca) + '"><button type="button" class="hist-patch-btn" id="hist-detalhamento-busca-btn">Buscar</button></div>'
+      + '    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+      + '      <span style="color:#64748b;font-size:12px">' + _histEsc(String(rows.length)) + ' OFs no detalhamento</span>'
+      + '      <span style="background:rgba(59,130,246,.14);color:#93c5fd;border-radius:6px;padding:3px 10px;font-size:12px">' + _histEsc(_histMonthName(ref.mes) + '/' + ref.ano) + '</span>'
+      + '      <button type="button" class="hist-patch-btn" id="hist-print-inline">Imprimir Lista</button>'
+      + '    </div>'
       + '  </div>'
       + tableHtml
       + '</div>';
-
-    var input = document.getElementById('hist-detalhamento-busca');
-    var btn = document.getElementById('hist-detalhamento-busca-btn');
-    var applyBusca = function() {
-      window.__histPassagensDetalhamentoBusca = String((input || {}).value || '').trim();
-      _histRenderDetalhamentoPassagens();
-    };
-    if (btn) btn.onclick = applyBusca;
-    if (input) input.onkeydown = function(ev) {
-      if ((ev && ev.key) === 'Enter') {
-        ev.preventDefault();
-        applyBusca();
-      }
-    };
-    var exportInline = document.getElementById('hist-export-inline');
-    if (exportInline) exportInline.onclick = _histExportListaVisivel;
     var printInline = document.getElementById('hist-print-inline');
     if (printInline) printInline.onclick = function() { _histPrint('lista'); };
   }
