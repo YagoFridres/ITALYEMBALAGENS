@@ -24892,7 +24892,27 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
   }
 
-  function _getResumoConclusao(of, qtdProd, perdas) {
+  function _calcularMetricasPerdaConclusao(of, qtdPerdida, gramaturaSel, valorUnitario, areaUnitM2Ref) {
+    var qtd = Math.trunc(Number(qtdPerdida || 0) || 0);
+    var vunit = Number(valorUnitario || 0) || 0;
+    var gramSel = _normalizarGramaturaConclusao(gramaturaSel || _gramaturaFallbackConclusao());
+    var areaUnitM2 = Number(areaUnitM2Ref || 0) || 0;
+    if (!(areaUnitM2 > 0)) {
+      var dims = _extrairDimensoesConclusao(of);
+      areaUnitM2 = Number(dims.areaUnitM2 || 0) || 0;
+    }
+    var valorPerdido = Math.round((vunit * qtd) * 100) / 100;
+    var toneladasPerdidas = (qtd > 0 && areaUnitM2 > 0 && Number(gramSel.gramatura || 0) > 0)
+      ? ((areaUnitM2 * Number(gramSel.gramatura || 0) * qtd) / 1000000)
+      : 0;
+    return {
+      qtdPerdida: qtd,
+      valorPerdido: valorPerdido,
+      toneladasPerdidas: Math.round(toneladasPerdidas * 1000000) / 1000000
+    };
+  }
+
+  function _getResumoConclusao(of, qtdProd, perdas, gramaturaSel, areaUnitM2Ref) {
     var qtdPedido = Math.trunc(Number(of && (of.qtd_pedida ?? of.quantidade ?? of.qtd ?? 0) || 0) || 0);
     var produzidas = Math.trunc(Number(qtdProd || 0) || 0);
     var perdasQtd = (Array.isArray(perdas) ? perdas : []).reduce(function(s, p) { return s + (Math.trunc(Number(p && p.qtd || 0)) || 0); }, 0);
@@ -24903,8 +24923,17 @@ function _ocultarGraficoComissoes() {
       if (vt > 0) vunit = vt / qtdPedido;
     }
     var novoTotal = Math.round((vunit * produzidas) * 100) / 100;
-    var perdasValor = Math.round((vunit * perdasQtd) * 100) / 100;
-    return { qtdPedido: qtdPedido, produzidas: produzidas, perdasQtd: perdasQtd, excedente: excedente, valorUnitario: vunit, novoTotal: novoTotal, perdasValor: perdasValor };
+    var perdasMetricas = _calcularMetricasPerdaConclusao(of, perdasQtd, gramaturaSel, vunit, areaUnitM2Ref);
+    return {
+      qtdPedido: qtdPedido,
+      produzidas: produzidas,
+      perdasQtd: perdasQtd,
+      excedente: excedente,
+      valorUnitario: vunit,
+      novoTotal: novoTotal,
+      perdasValor: perdasMetricas.valorPerdido,
+      perdasToneladas: perdasMetricas.toneladasPerdidas
+    };
   }
 
   function _fmtNum4(v) {
@@ -25321,15 +25350,16 @@ function _ocultarGraficoComissoes() {
         // #endregion
       }
       function updateResumo() {
-        var resumo = _getResumoConclusao(of, qtdEl && qtdEl.value, collectPerdas());
-        var materia = _calcularResumoMateriaPrimaConclusao(of, resumo.produzidas, currentGramatura());
+        var qtdProduzidasAtual = Math.trunc(Number(qtdEl && qtdEl.value || 0) || 0);
+        var materia = _calcularResumoMateriaPrimaConclusao(of, qtdProduzidasAtual, currentGramatura());
+        var resumo = _getResumoConclusao(of, qtdProduzidasAtual, collectPerdas(), materia.gramatura, materia.areaUnitM2);
         var gramaturaSelecionada = materia.gramatura || _gramaturaFallbackConclusao();
         var gramOk = !!(gramaturaSelecionada && !gramaturaSelecionada.fallback && String(gramaturaSelecionada.id || '').trim());
         try { backdrop.querySelector('#conc-res-pedido').textContent = String(resumo.qtdPedido); } catch (_) {}
         try { backdrop.querySelector('#conc-res-produzidas').textContent = String(resumo.produzidas); } catch (_) {}
         try { backdrop.querySelector('#conc-res-excedente').textContent = String(resumo.excedente); } catch (_) {}
         try { backdrop.querySelector('#conc-res-perdas').textContent = String(resumo.perdasQtd); } catch (_) {}
-        try { totalPerdidoEl.textContent = 'Total perdido: ' + String(resumo.perdasQtd) + ' caixas'; } catch (_) {}
+        try { totalPerdidoEl.textContent = 'Total perdido: ' + String(resumo.perdasQtd) + ' caixas  ·  ' + _fmtMoney(resumo.perdasValor) + '  ·  ' + _fmtTon(resumo.perdasToneladas); } catch (_) {}
         try {
           var tonVendaEl = backdrop.querySelector('#conc-res-ton-venda');
           if (tonVendaEl) tonVendaEl.textContent = _fmtTon(materia.toneladaVendida);
@@ -25346,7 +25376,7 @@ function _ocultarGraficoComissoes() {
           var financeiro = backdrop.querySelector('#conc-res-financeiro');
           if (financeiro) {
             financeiro.style.color = resumo.perdasQtd > 0 ? '#fca5a5' : '#10b981';
-            financeiro.textContent = 'Valor da gramatura: ' + _fmtMoney4(materia.valorUnitarioGramatura) + '/m²  ·  Novo total: ' + _fmtMoney(resumo.novoTotal) + '  ·  Perdas: ' + _fmtMoney(resumo.perdasValor);
+            financeiro.textContent = 'Valor da gramatura: ' + _fmtMoney4(materia.valorUnitarioGramatura) + '/m²  ·  Novo total: ' + _fmtMoney(resumo.novoTotal) + '  ·  Perdas: ' + _fmtMoney(resumo.perdasValor) + '  ·  Ton perdida: ' + _fmtTon(resumo.perdasToneladas);
           }
         } catch (_) {}
         try {
@@ -25481,12 +25511,15 @@ function _ocultarGraficoComissoes() {
           consumo_chapas_estimado: Number(materiaPrima.consumoChapas || 0) || 0,
           caixas_perdidas: resumo.perdasQtd,
           perdas_por_maquina: perdas.map(function(perda) {
+            var perdaMetricas = _calcularMetricasPerdaConclusao(of, Number(perda && perda.qtd || 0) || 0, gramaturaSel, precoUnitario, materiaPrima.areaUnitM2);
             return {
               maquina: String(perda && perda.maquina || '').trim(),
               maquina_nome: String(perda && (perda.maquina_nome || perda.maquina) || '').trim(),
               maquina_id: String(perda && perda.maquina_id || '').trim() || null,
-              qtd_perdida: Number(perda && perda.qtd || 0) || 0,
-              quantidade: Number(perda && perda.qtd || 0) || 0,
+              qtd_perdida: perdaMetricas.qtdPerdida,
+              quantidade: perdaMetricas.qtdPerdida,
+              valor_perdido: perdaMetricas.valorPerdido,
+              toneladas_perdidas: perdaMetricas.toneladasPerdidas,
               operadores: Array.isArray(perda && perda.operadores) ? perda.operadores.slice() : []
             };
           }),

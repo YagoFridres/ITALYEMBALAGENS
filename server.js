@@ -6716,7 +6716,14 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       }
       return 0;
     };
-    const resolveToneladasPerdidasItem = (ofData, qtdPerdida) => {
+    const resolveToneladasPerdidasItem = (row, ofData, qtdPerdida) => {
+      const tonPersistida = Number(
+        row?.toneladas_perdidas ??
+        row?.tonelada_perdida ??
+        row?.toneladas ??
+        0
+      ) || 0;
+      if (tonPersistida > 0) return tonPersistida;
       const comprimentoMm = parseDimMm(ofData, ['comprimento_mm', 'caixa_comprimento', 'dim_comprimento', 'comprimento']);
       const larguraMm = parseDimMm(ofData, ['largura_mm', 'caixa_largura', 'dim_largura', 'largura']);
       const gramatura = Number(
@@ -6782,7 +6789,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
         maquina: r?.maquina || r?.maquina_perda || r?.maquina_nome || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || ofData?.maq || '',
       }, maquinasMap) || 'Sem máquina';
 
-      const toneladasPerdidasItem = resolveToneladasPerdidasItem(ofData, qtdPerdida);
+      const toneladasPerdidasItem = resolveToneladasPerdidasItem(r, ofData, qtdPerdida);
 
       return {
         ...r,
@@ -6934,6 +6941,7 @@ async function _insertCaixaPerdidaCompat(input, req) {
   const operadores = Array.from(new Set(rawOperadores.map((op) => String(op || '').trim()).filter(Boolean)));
   const valorUnitario = Number(b.valor_unitario ?? b.vl_unit ?? 0) || 0;
   const valorPerdido = Number(b.valor_perdido ?? (qtdPerdida * valorUnitario) ?? 0) || 0;
+  const toneladasPerdidas = Number(b.toneladas_perdidas ?? b.tonelada_perdida ?? 0) || 0;
   const payload = {
     of_id: b.of_id || null,
     of_numero: b.of_numero != null ? String(b.of_numero || '') : undefined,
@@ -6947,6 +6955,7 @@ async function _insertCaixaPerdidaCompat(input, req) {
     qtd_perdida: qtdPerdida,
     quantidade: qtdPerdida,
     valor_perdido: valorPerdido,
+    toneladas_perdidas: toneladasPerdidas,
     data: b.data || b.data_conclusao || hoje,
     mes_referencia: b.mes_referencia || String((b.data || b.data_conclusao || mes)).slice(0, 7),
     emp_id: b.emp_id || '',
@@ -6976,6 +6985,7 @@ async function _insertCaixaPerdidaCompat(input, req) {
       operadores: currentPayload.operadores || [],
       qtd_perdida: currentPayload.qtd_perdida || 0,
       valor_perdido: currentPayload.valor_perdido || 0,
+        toneladas_perdidas: currentPayload.toneladas_perdidas || 0,
       data: currentPayload.data || null,
     },
   });
@@ -8029,9 +8039,53 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     }
 
     Object.keys(updateData).forEach((k) => updateData[k] === undefined && delete updateData[k]);
-    console.debug('[CONCLUIR OF] updateData:', JSON.stringify(updateData));
-    const upd = await ofsUpdateWithRetry(sid, updateData);
-    if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message || String(upd.error) });
+    let amostraOfs = null;
+    let erroAmostraOfs = null;
+    try {
+      const sampleRes = await supabase.from('ofs').select('*').limit(1).single();
+      if (!sampleRes?.error && sampleRes?.data && typeof sampleRes.data === 'object') amostraOfs = sampleRes.data;
+      else erroAmostraOfs = sampleRes?.error || null;
+    } catch (eSample) {
+      erroAmostraOfs = eSample;
+    }
+    if (erroAmostraOfs) {
+      try { console.error('[concluir OF] falha ao consultar amostra de schema de ofs:', String(erroAmostraOfs?.message || erroAmostraOfs)); } catch (_) {}
+    }
+    const colunasReaisSet = new Set([
+      ...Object.keys(amostraOfs && typeof amostraOfs === 'object' ? amostraOfs : {}),
+      ...Object.keys(of && typeof of === 'object' ? of : {}),
+      ...(Array.isArray(OFS_TABLE_COLS) ? OFS_TABLE_COLS : []),
+    ]);
+    const updateSeguro = {};
+    const colunasDescartadas = [];
+    Object.keys(updateData).forEach((k) => {
+      if (colunasReaisSet.has(k)) updateSeguro[k] = updateData[k];
+      else colunasDescartadas.push(k);
+    });
+    if (!Object.keys(updateSeguro).length) {
+      try { console.error('[concluir OF] nenhuma coluna válida restou para atualizar ofs', { ofId: sid, payloadKeys: Object.keys(updateData || {}) }); } catch (_) {}
+      return res.status(500).json({ ok: false, error: 'Nenhuma coluna válida restou para atualizar a OF.', ignored_columns: colunasDescartadas });
+    }
+    if (colunasDescartadas.length) {
+      try { console.error('[concluir OF] colunas ignoradas (não existem em ofs):', colunasDescartadas); } catch (_) {}
+    }
+    console.debug('[CONCLUIR OF] updateSeguro:', JSON.stringify(updateSeguro));
+    const upd = await supabase.from('ofs').update(updateSeguro).eq('id', sid).select('*').single();
+    if (upd.error) {
+      try {
+        console.error('[concluir OF] erro real do Supabase ao atualizar OF:', String(upd.error?.message || upd.error), {
+          ofId: sid,
+          payloadKeys: Object.keys(updateSeguro || {}),
+          ignoredColumns: colunasDescartadas,
+        });
+      } catch (_) {}
+      return res.status(500).json({
+        ok: false,
+        error: String(upd.error?.message || upd.error),
+        ignored_columns: colunasDescartadas,
+        payload_keys: Object.keys(updateSeguro || {}),
+      });
+    }
     try {
       console.debug('[CONCLUIR OF] after updRes:', {
         id: sid,
@@ -8162,8 +8216,11 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
             qtd_perdida: perdaQtd,
             quantidade: perdaQtd,
             valor_perdido: perdaQtd * (Number.isFinite(valorUnit) ? valorUnit : 0),
+            toneladas_perdidas: (areaUnitM2Calc > 0 && gramaturaConclusaoValor > 0)
+              ? Math.round((((areaUnitM2Calc * gramaturaConclusaoValor * perdaQtd) / 1000000) * 1000000)) / 1000000
+              : 0,
             data: String(body.data_faturamento || nowIso.slice(0, 10)).slice(0, 10),
-            data_conclusao: String(updateData.data_conclusao || nowIso).slice(0, 10),
+            data_conclusao: String(updateSeguro.data_conclusao || nowIso).slice(0, 10),
             mes_referencia: String(body.data_faturamento || nowIso.slice(0, 7)).slice(0, 7),
             emp_id: String(of.emp_id || ''),
             usuario: req.usuario?.nome || 'sistema',
@@ -8271,7 +8328,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       try { console.warn('[conclusao] historico operadores:', eOp.message); } catch (_) {}
     }
 
-    const dataOut = upd?.data ? { ...upd.data, ...updateData } : { id: sid, ...updateData };
+    const dataOut = upd?.data ? { ...upd.data, ...updateSeguro } : { id: sid, ...updateSeguro };
     _clearOfsCaches();
     return res.json({
       ok: true,
@@ -8281,6 +8338,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       status: 'Concluído',
       excedente,
       novo_valor_total: novoValor,
+      ignored_columns: colunasDescartadas,
       mensagem: `OF concluída.${excedente > 0 ? (' ' + excedente + ' caixas excedentes.') : ''}`,
     });
   } catch (e) {
