@@ -1700,6 +1700,8 @@ try {
         + '#page-historico-passagens{min-height:0;max-height:100vh;overflow-y:auto;overflow-x:hidden}'
         + '#hist-filtros .hist-patch-btn,#hist-relatorio-mensal-shell .hist-patch-btn{background:#1e293b;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer}'
         + '#hist-filtros .hist-patch-btn:hover,#hist-relatorio-mensal-shell .hist-patch-btn:hover{filter:brightness(1.06)}'
+        + '#hist-filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0;padding:14px 16px;border-radius:14px;background:rgba(15,23,42,.82);border:1px solid rgba(148,163,184,.14)}'
+        + '#hist-filtros input[type="text"]{flex:1;min-width:320px;background:#0b1220;color:#e2e8f0;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:11px 14px;font-size:13px}'
         + '#hist-relatorio-mensal-shell{display:grid;gap:12px;margin:16px 0;padding:14px;border-radius:14px;background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.8));border:1px solid rgba(148,163,184,.14)}'
         + '#hist-relatorio-mensal-shell .hist-month-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}'
         + '#hist-relatorio-mensal-shell .hist-month-toolbar-left{display:flex;gap:10px;flex-wrap:wrap;align-items:center}'
@@ -1729,9 +1731,8 @@ try {
         + '#page-historico-passagens #hist-passagens-resultado .hist-passagens-scroll{display:block;min-height:0;max-height:min(58vh,calc(100vh - 360px));overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-right:4px;scrollbar-gutter:stable}'
         + '#page-historico-passagens #hist-passagens-resultado > #hist-passagens-items.hist-passagens-scroll{display:block !important;min-height:0 !important;max-height:min(58vh,calc(100vh - 360px)) !important;overflow-y:auto !important;overflow-x:hidden !important;overscroll-behavior:contain !important;padding-right:4px !important}'
         + '#hist-passagens-resultado .hist-detalhamento-box{display:grid;gap:12px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);border-radius:16px;padding:14px}'
-        + '#hist-passagens-resultado .hist-detalhamento-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}'
+        + '#hist-passagens-resultado .hist-detalhamento-head{display:flex;justify-content:flex-start;gap:12px;flex-wrap:wrap;align-items:center}'
         + '#hist-passagens-resultado .hist-detalhamento-title{font-size:16px;font-weight:900;color:#f8fafc}'
-        + '#hist-passagens-resultado .hist-detalhamento-sub{font-size:12px;color:#94a3b8}'
         + '#hist-passagens-resultado .hist-detalhamento-search{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
         + '#hist-passagens-resultado .hist-detalhamento-search input{width:min(520px,100%);min-width:260px;background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:11px 14px;font-size:13px}'
         + '#hist-passagens-resultado .hist-detalhamento-table-wrap{max-height:min(58vh,calc(100vh - 360px));overflow:auto;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(2,6,23,.55)}'
@@ -1774,7 +1775,7 @@ try {
       monthShell.innerHTML = ''
         + '<div class="hist-month-toolbar">'
         + '  <div class="hist-month-toolbar-left">'
-        + '    <div><div class="hist-month-title">Relatório Mensal por Máquina</div><div class="hist-month-sub">Mesma base das passagens individuais, agregada por mês e por máquina.</div></div>'
+        + '    <div><div class="hist-month-title">Relatório Mensal por Máquina</div></div>'
         + '    <select id="hist-rel-mes"></select>'
         + '    <select id="hist-rel-ano"></select>'
         + '    <button type="button" class="hist-patch-btn" id="hist-rel-carregar">Atualizar Relatório</button>'
@@ -1793,16 +1794,7 @@ try {
       else page.appendChild(monthShell);
     }
 
-    var exportBtn = document.getElementById('hist-export-lista-btn');
     var filtrosWrap = document.getElementById('hist-filtros');
-    if (!exportBtn && filtrosWrap) {
-      exportBtn = document.createElement('button');
-      exportBtn.type = 'button';
-      exportBtn.id = 'hist-export-lista-btn';
-      exportBtn.className = 'hist-patch-btn';
-      exportBtn.textContent = 'Exportar Excel da Lista';
-      filtrosWrap.appendChild(exportBtn);
-    }
     if (filtrosWrap && !filtrosWrap.dataset.patchDetalhamentoReady) {
       filtrosWrap.dataset.patchDetalhamentoReady = '1';
       try {
@@ -1884,11 +1876,6 @@ try {
       relPrintBtn.dataset.bound = '1';
       relPrintBtn.onclick = function() { _histPrint('mensal'); };
     }
-    if (exportBtn && !exportBtn.dataset.bound) {
-      exportBtn.dataset.bound = '1';
-      exportBtn.onclick = function() { _histExportListaVisivel(); };
-    }
-
     var cardsHost = document.getElementById('hist-relatorio-mensal-cards');
     if (page && page.offsetParent !== null && cardsHost && !String(cardsHost.textContent || '').trim()) {
       if (!window.__histResumoCardsEnsureTimer) {
@@ -2022,7 +2009,7 @@ try {
         + '      <th>Cliente</th>'
         + '      <th>Produto</th>'
         + '      <th class="num">Valor Unitário</th>'
-        + '      <th class="num">Quantidade</th>'
+        + '      <th class="num">Qntdade</th>'
         + '      <th class="num">Valor Total</th>'
         + '      <th>Máquinas</th>'
         + '      <th>Data da Conclusão</th>'
@@ -2048,17 +2035,10 @@ try {
     container.innerHTML = ''
       + '<div class="hist-detalhamento-box">'
       + '  <div class="hist-detalhamento-head">'
-      + '    <div><div class="hist-detalhamento-title">Detalhamento de passagens:</div><div class="hist-detalhamento-sub">Busca por OF, cliente, produto ou máquina dentro do mês selecionado.</div></div>'
-      + '    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-      + '      <span style="color:#64748b;font-size:12px">' + _histEsc(String(rows.length)) + ' OFs no detalhamento</span>'
-      + '      <span style="background:rgba(59,130,246,.14);color:#93c5fd;border-radius:6px;padding:3px 10px;font-size:12px">' + _histEsc(_histMonthName(ref.mes) + '/' + ref.ano) + '</span>'
-      + '      <button type="button" class="hist-patch-btn" id="hist-print-inline">Imprimir Lista</button>'
-      + '    </div>'
+      + '    <div><div class="hist-detalhamento-title">Detalhamento de passagens:</div></div>'
       + '  </div>'
       + tableHtml
       + '</div>';
-    var printInline = document.getElementById('hist-print-inline');
-    if (printInline) printInline.onclick = function() { _histPrint('lista'); };
   }
 
   function _histSortMonthlyRows(rows) {
