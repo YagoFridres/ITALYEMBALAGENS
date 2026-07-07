@@ -1559,8 +1559,8 @@ try {
     if (carBtn && !carBtn.dataset.bound) {
       carBtn.dataset.bound = '1';
       carBtn.onclick = async function() {
-        await _histFetchRelatorioMensal();
-        await _histBuscarHistoricoPassagens();
+        await _histFetchRelatorioMensal({ force: true });
+        await _histBuscarHistoricoPassagens(null, false, { force: true });
       };
     }
     var relExpBtn = document.getElementById('hist-rel-exportar');
@@ -1622,6 +1622,17 @@ try {
     var ano = String((document.getElementById('hist-rel-ano') || {}).value || '').trim();
     if (!mes || !ano) return _histCurrentMonthYearFromUi();
     return { mes: _histPad2(mes), ano: ano };
+  }
+
+  function _histCurrentLoadKey(filtros, ref) {
+    var baseFiltros = filtros && typeof filtros === 'object' ? filtros : _histGetFilters();
+    var baseRef = ref && typeof ref === 'object' ? ref : _histGetMonthlyRef();
+    return JSON.stringify({
+      cli: String(baseFiltros.cliente || ''),
+      maq: String(baseFiltros.maquina || ''),
+      mes: String(baseRef.mes || ''),
+      ano: String(baseRef.ano || '')
+    });
   }
 
   function _histNormBusca(v) {
@@ -1834,30 +1845,48 @@ try {
     });
   }
 
-  async function _histFetchRelatorioMensal() {
+  async function _histFetchRelatorioMensal(opts) {
     _histEnsureUi();
+    opts = opts && typeof opts === 'object' ? opts : {};
     var tableHost = document.getElementById('hist-relatorio-mensal-tabela');
-    if (tableHost) tableHost.innerHTML = '<div style="padding:18px;color:#94a3b8">Carregando relatório mensal...</div>';
     var ref = _histGetMonthlyRef();
     var filtros = _histGetFilters();
+    var key = _histCurrentLoadKey(filtros, ref);
+    if (!opts.force && window.__histMonthlyLoadedKey === key && window.__histMonthlyData) {
+      _histRenderRelatorioMensal(window.__histMonthlyData);
+      return window.__histMonthlyData;
+    }
+    if (window.__histMonthlyInflight && window.__histMonthlyInflight.key === key && window.__histMonthlyInflight.promise) {
+      return window.__histMonthlyInflight.promise;
+    }
+    if (tableHost) tableHost.innerHTML = '<div style="padding:18px;color:#94a3b8">Carregando relatório mensal...</div>';
     var qs = new URLSearchParams();
     qs.set('mes', String(parseInt(ref.mes, 10) || ref.mes));
     qs.set('ano', ref.ano);
     if (filtros.cliente) qs.set('cliente', filtros.cliente);
     if (filtros.maquina) qs.set('maquina', filtros.maquina);
     var token = _histToken();
-    try {
-      var resp = await fetch('/api/maquinas/relatorio-mensal?' + qs.toString(), {
-        headers: token ? { Authorization: 'Bearer ' + token } : {}
-      });
-      var json = await resp.json().catch(function() { return null; });
-      if (!resp.ok || !json || json.ok === false) throw new Error(String(json && (json.error || json.message) || 'Falha ao carregar relatório mensal'));
-      window.__histMonthlyData = json;
-      if (!window.__histMonthlySortState) window.__histMonthlySortState = { key: 'total_ofs', dir: 'desc' };
-      _histRenderRelatorioMensal(json);
-    } catch (e) {
-      if (tableHost) tableHost.innerHTML = '<div style="padding:18px;border:1px solid rgba(239,68,68,.22);border-radius:12px;color:#fca5a5">Falha ao carregar relatório mensal: ' + _histEsc(e && e.message || e) + '</div>';
-    }
+    var promise = (async function() {
+      try {
+        var resp = await fetch('/api/maquinas/relatorio-mensal?' + qs.toString(), {
+          headers: token ? { Authorization: 'Bearer ' + token } : {}
+        });
+        var json = await resp.json().catch(function() { return null; });
+        if (!resp.ok || !json || json.ok === false) throw new Error(String(json && (json.error || json.message) || 'Falha ao carregar relatório mensal'));
+        window.__histMonthlyData = json;
+        window.__histMonthlyLoadedKey = key;
+        if (!window.__histMonthlySortState) window.__histMonthlySortState = { key: 'total_ofs', dir: 'desc' };
+        _histRenderRelatorioMensal(json);
+        return json;
+      } catch (e) {
+        if (tableHost) tableHost.innerHTML = '<div style="padding:18px;border:1px solid rgba(239,68,68,.22);border-radius:12px;color:#fca5a5">Falha ao carregar relatório mensal: ' + _histEsc(e && e.message || e) + '</div>';
+        throw e;
+      } finally {
+        if (window.__histMonthlyInflight && window.__histMonthlyInflight.promise === promise) window.__histMonthlyInflight = null;
+      }
+    })();
+    window.__histMonthlyInflight = { key: key, promise: promise };
+    return promise;
   }
 
   function _histExportRelatorioMensal() {
@@ -1926,8 +1955,9 @@ try {
     }
   }
 
-  async function _histBuscarHistoricoPassagens(arg, append) {
+  async function _histBuscarHistoricoPassagens(arg, append, opts) {
     _histEnsureUi();
+    opts = opts && typeof opts === 'object' ? opts : {};
 
     var container = document.getElementById('hist-passagens-resultado');
     if (!container) return;
@@ -1940,12 +1970,7 @@ try {
     append = false;
     var ref = _histGetMonthlyRef();
 
-    var key = JSON.stringify({
-      cli: String(filtros.cliente || ''),
-      maq: String(filtros.maquina || ''),
-      mes: String(ref.mes || ''),
-      ano: String(ref.ano || '')
-    });
+    var key = _histCurrentLoadKey(filtros, ref);
     if (st.key !== key) {
       st.key = key;
       st.page = 0;
@@ -1953,6 +1978,15 @@ try {
       append = false;
     }
     st.filtros = filtros;
+    if (!opts.force && window.__histPassagensLoadedKey === key && Array.isArray(st.rows)) {
+      window.__histPassagensDetalhamentoRows = st.rows.slice();
+      _histRenderDetalhamentoPassagens();
+      _histRepairScrollContainer();
+      return st.rows.slice();
+    }
+    if (window.__histPassagensInflight && window.__histPassagensInflight.key === key && window.__histPassagensInflight.promise) {
+      return window.__histPassagensInflight.promise;
+    }
 
     var limit = Math.max(1, parseInt(String(st.limit || 10000), 10) || 10000);
     if (limit > 1000) limit = 1000;
@@ -1971,74 +2005,82 @@ try {
 
     var token = _histToken();
 
-    try {
-      var resp = await fetch('/api/passagens/historico?' + qs.toString() + '&t=' + Date.now(), {
-        headers: token ? { Authorization: 'Bearer ' + token } : {}
-      });
-      var data = await resp.json().catch(function() { return null; });
-      var lista = Array.isArray(data && data.passagens) ? data.passagens : [];
-
-      st.total = Number(data && data.total || 0) || 0;
-      st.page = 1;
-      st.limit = limit;
-      st.rows = lista.slice();
-      window.__histPassagensDetalhamentoRows = st.rows.slice();
-
+    var promise = (async function() {
       try {
-        container.style.display = 'grid';
-        container.style.gridTemplateRows = 'auto minmax(0,1fr) auto';
-        container.style.minHeight = '0';
-        container.style.overflowY = 'auto';
-        container.style.overflowX = 'hidden';
-        var pageRoot = getPage();
-        if (pageRoot) {
-          pageRoot.style.minHeight = '0';
-          pageRoot.style.maxHeight = '100vh';
-          pageRoot.style.overflowY = 'auto';
-          pageRoot.style.overflowX = 'hidden';
-        }
-        var contentRoot = document.getElementById('content') || (pageRoot && pageRoot.parentElement);
-        if (contentRoot) {
-          contentRoot.style.minHeight = '0';
-          contentRoot.style.height = '100vh';
-          contentRoot.style.overflowY = 'auto';
-          contentRoot.style.overflowX = 'hidden';
-        }
-      } catch (_) {}
-      _histRenderDetalhamentoPassagens();
-      _histRepairScrollContainer();
-      // #region debug-point D:hist-scroll-metrics
-      try {
-        var scrollEl = document.getElementById('hist-passagens-items');
-        var parent1 = scrollEl && scrollEl.parentElement;
-        var parent2 = parent1 && parent1.parentElement;
-        var cs = scrollEl ? window.getComputedStyle(scrollEl) : null;
-        var p1 = parent1 ? window.getComputedStyle(parent1) : null;
-        var p2 = parent2 ? window.getComputedStyle(parent2) : null;
-        if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('D', 'metricas de scroll historico passagens', {
-          totalRows: st.rows.length,
-          selector: '#hist-passagens-items.hist-passagens-scroll',
-          clientHeight: scrollEl ? Number(scrollEl.clientHeight || 0) : 0,
-          scrollHeight: scrollEl ? Number(scrollEl.scrollHeight || 0) : 0,
-          computedHeight: cs ? String(cs.height || '') : '',
-          overflowY: cs ? String(cs.overflowY || '') : '',
-          maxHeight: cs ? String(cs.maxHeight || '') : '',
-          parentOverflowY: p1 ? String(p1.overflowY || '') : '',
-          grandParentOverflowY: p2 ? String(p2.overflowY || '') : '',
-          parentId: String(parent1 && parent1.id || ''),
-          grandParentId: String(parent2 && parent2.id || '')
+        var resp = await fetch('/api/passagens/historico?' + qs.toString() + '&t=' + Date.now(), {
+          headers: token ? { Authorization: 'Bearer ' + token } : {}
         });
-      } catch (_) {}
-      // #endregion
-    } catch (e) {
-      container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao buscar passagens.</p>';
-    }
+        var data = await resp.json().catch(function() { return null; });
+        var lista = Array.isArray(data && data.passagens) ? data.passagens : [];
 
-    st.loading = false;
-    try {
-      var btnLM = document.getElementById('btnCarregarMaisPassagens');
-      if (btnLM) { btnLM.disabled = false; btnLM.textContent = 'Carregar mais'; }
-    } catch (_) {}
+        st.total = Number(data && data.total || 0) || 0;
+        st.page = 1;
+        st.limit = limit;
+        st.rows = lista.slice();
+        window.__histPassagensDetalhamentoRows = st.rows.slice();
+        window.__histPassagensLoadedKey = key;
+
+        try {
+          container.style.display = 'grid';
+          container.style.gridTemplateRows = 'auto minmax(0,1fr) auto';
+          container.style.minHeight = '0';
+          container.style.overflowY = 'auto';
+          container.style.overflowX = 'hidden';
+          var pageRoot = getPage();
+          if (pageRoot) {
+            pageRoot.style.minHeight = '0';
+            pageRoot.style.maxHeight = '100vh';
+            pageRoot.style.overflowY = 'auto';
+            pageRoot.style.overflowX = 'hidden';
+          }
+          var contentRoot = document.getElementById('content') || (pageRoot && pageRoot.parentElement);
+          if (contentRoot) {
+            contentRoot.style.minHeight = '0';
+            contentRoot.style.height = '100vh';
+            contentRoot.style.overflowY = 'auto';
+            contentRoot.style.overflowX = 'hidden';
+          }
+        } catch (_) {}
+        _histRenderDetalhamentoPassagens();
+        _histRepairScrollContainer();
+        // #region debug-point D:hist-scroll-metrics
+        try {
+          var scrollEl = document.getElementById('hist-passagens-items');
+          var parent1 = scrollEl && scrollEl.parentElement;
+          var parent2 = parent1 && parent1.parentElement;
+          var cs = scrollEl ? window.getComputedStyle(scrollEl) : null;
+          var p1 = parent1 ? window.getComputedStyle(parent1) : null;
+          var p2 = parent2 ? window.getComputedStyle(parent2) : null;
+          if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('D', 'metricas de scroll historico passagens', {
+            totalRows: st.rows.length,
+            selector: '#hist-passagens-items.hist-passagens-scroll',
+            clientHeight: scrollEl ? Number(scrollEl.clientHeight || 0) : 0,
+            scrollHeight: scrollEl ? Number(scrollEl.scrollHeight || 0) : 0,
+            computedHeight: cs ? String(cs.height || '') : '',
+            overflowY: cs ? String(cs.overflowY || '') : '',
+            maxHeight: cs ? String(cs.maxHeight || '') : '',
+            parentOverflowY: p1 ? String(p1.overflowY || '') : '',
+            grandParentOverflowY: p2 ? String(p2.overflowY || '') : '',
+            parentId: String(parent1 && parent1.id || ''),
+            grandParentId: String(parent2 && parent2.id || '')
+          });
+        } catch (_) {}
+        // #endregion
+        return st.rows.slice();
+      } catch (e) {
+        container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao buscar passagens.</p>';
+        throw e;
+      } finally {
+        st.loading = false;
+        try {
+          var btnLM = document.getElementById('btnCarregarMaisPassagens');
+          if (btnLM) { btnLM.disabled = false; btnLM.textContent = 'Carregar mais'; }
+        } catch (_) {}
+        if (window.__histPassagensInflight && window.__histPassagensInflight.promise === promise) window.__histPassagensInflight = null;
+      }
+    })();
+    window.__histPassagensInflight = { key: key, promise: promise };
+    return promise;
   }
 
   function _histCarregarMaisPassagens() {

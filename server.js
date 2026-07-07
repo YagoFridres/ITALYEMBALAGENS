@@ -3568,7 +3568,7 @@ async function _enriquecerRespostaOFs(listaInput) {
     try {
       const { data, error } = await supabase
         .from('ofs')
-        .select('id,of,numero,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,cliente,vendedor,vendid,vendId,vend_id,vendedor_id,vendedor_nome,vendNome,preco,valor_unitario,vl_unit,total,valor_total,valor_venda,qtd,quantidade,qtd_pedida,itens')
+        .select('id,of,numero,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,vendedor,vendid,vendId,vend_id,vendedor_id,vendedor_nome,vendNome,preco,valor_unitario,vl_unit,total,valor_total,valor_venda,qtd,quantidade,qtd_pedida,itens')
         .in('id', chunk);
       if (error) continue;
       (Array.isArray(data) ? data : []).forEach((row) => {
@@ -8930,7 +8930,12 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
   for (let tentativa = 0; tentativa < 8; tentativa += 1) {
     const selectExpr = Array.from(new Set(cols)).join(',');
     let q = supabase.from('ofs').select(selectExpr);
-    q = q.not('data_conclusao', 'is', null).gte('data_conclusao', range.inicio).lte('data_conclusao', range.fim).limit(10000);
+    q = q
+      .not('data_conclusao', 'is', null)
+      .gte('data_conclusao', range.inicio)
+      .lte('data_conclusao', range.fim)
+      .order('data_conclusao', { ascending: false })
+      .limit(10000);
     if (canFilterDeletedAt) q = q.is('deleted_at', null);
     if (empId) q = q.or('emp_id.eq.' + empId + ',empresa_id.eq.' + empId + ',empresa_id.is.null');
     else if (empresaUuid) q = q.or('empresa_id.eq.' + empresaUuid + ',empresa_id.is.null');
@@ -9027,52 +9032,12 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
     const refAtual = _passagensFiltroMesAnoToRange(mes, ano);
     if (!refAtual) return res.status(400).json({ ok: false, error: 'Mês/ano inválidos' });
     const refAnterior = _passagensMesAnterior(refAtual.mes, refAtual.ano);
-
-    const atualPair = await _buscarPassagensHistoricoCompat(req, {
-      cliente,
-      maquina,
-      mes: refAtual.mes,
-      ano: refAtual.ano,
-      limit: 10000,
-      offset: 0,
-      count: false
-    });
-    let atualRows = Array.isArray(atualPair?.rows) ? atualPair.rows : [];
-    try { atualRows = await _enriquecerPassagensHistoricoComOfs(atualRows); } catch (_) {}
-    try { atualRows = await _normalizarMaquinasPassagens(atualRows); } catch (_) {}
-
-    let anteriorRows = [];
-    if (refAnterior) {
-      const anteriorPair = await _buscarPassagensHistoricoCompat(req, {
-        cliente,
-        maquina,
-        mes: refAnterior.mes,
-        ano: refAnterior.ano,
-        limit: 10000,
-        offset: 0,
-        count: false
-      });
-      anteriorRows = Array.isArray(anteriorPair?.rows) ? anteriorPair.rows : [];
-      try { anteriorRows = await _enriquecerPassagensHistoricoComOfs(anteriorRows); } catch (_) {}
-      try { anteriorRows = await _normalizarMaquinasPassagens(anteriorRows); } catch (_) {}
-    }
-
-    const atualRowsComValor = _countPassagensComValor(atualRows);
-    const anteriorRowsComValor = _countPassagensComValor(anteriorRows);
-    let atualAgg = _agruparPassagensRelatorioMensal(atualRows);
-    let anteriorAgg = _agruparPassagensRelatorioMensal(anteriorRows);
-    let fallbackAtual = { agg: [], totalRows: 0, rowsComValor: 0 };
-    let fallbackAnterior = { agg: [], totalRows: 0, rowsComValor: 0 };
-    const atualValorTotal = atualAgg.reduce((acc, item) => acc + (Number(item?.valor_total_producao || 0) || 0), 0);
-    const anteriorValorTotal = anteriorAgg.reduce((acc, item) => acc + (Number(item?.valor_total_producao || 0) || 0), 0);
-    if (!atualAgg.length || !(atualValorTotal > 0) || !atualRowsComValor) {
-      fallbackAtual = await _agruparOfsRelatorioMensalFallback(req, refAtual, maquina, cliente);
-      if (fallbackAtual.agg.length && (!(atualValorTotal > 0) || !atualAgg.length)) atualAgg = fallbackAtual.agg;
-    }
-    if (refAnterior && (!anteriorAgg.length || !(anteriorValorTotal > 0) || !anteriorRowsComValor)) {
-      fallbackAnterior = await _agruparOfsRelatorioMensalFallback(req, refAnterior, maquina, cliente);
-      if (fallbackAnterior.agg.length && (!(anteriorValorTotal > 0) || !anteriorAgg.length)) anteriorAgg = fallbackAnterior.agg;
-    }
+    const atualResumo = await _agruparOfsRelatorioMensalFallback(req, refAtual, maquina, cliente);
+    const anteriorResumo = refAnterior
+      ? await _agruparOfsRelatorioMensalFallback(req, refAnterior, maquina, cliente)
+      : { agg: [], totalRows: 0, rowsComValor: 0 };
+    const atualAgg = Array.isArray(atualResumo?.agg) ? atualResumo.agg : [];
+    const anteriorAgg = Array.isArray(anteriorResumo?.agg) ? anteriorResumo.agg : [];
     // #region debug-point C:relatorio-mensal-resumo
     _debugRuntimeWrite({
       runId: 'pre-fix',
@@ -9082,14 +9047,10 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
       data: {
         mes: refAtual.mes,
         ano: refAtual.ano,
-        totalAtualRows: atualRows.length,
-        totalAnteriorRows: anteriorRows.length,
-        atualRowsComValor,
-        anteriorRowsComValor,
-        fallbackAtualRows: fallbackAtual.totalRows,
-        fallbackAtualRowsComValor: fallbackAtual.rowsComValor,
-        fallbackAnteriorRows: fallbackAnterior.totalRows,
-        fallbackAnteriorRowsComValor: fallbackAnterior.rowsComValor,
+        totalAtualRows: Number(atualResumo?.totalRows || 0) || 0,
+        totalAnteriorRows: Number(anteriorResumo?.totalRows || 0) || 0,
+        atualRowsComValor: Number(atualResumo?.rowsComValor || 0) || 0,
+        anteriorRowsComValor: Number(anteriorResumo?.rowsComValor || 0) || 0,
         totalAtualAgg: atualAgg.length,
         totalAnteriorAgg: anteriorAgg.length,
         sampleAgg: atualAgg.slice(0, 8)
