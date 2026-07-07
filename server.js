@@ -2244,7 +2244,7 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
 
     let query = supabase
       .from('ofs')
-      .select('id,of,numero,status,data_conclusao,created_at,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,cliente,vendedor,vendid,vendId,vend_id,vendedor_id,vendedor_nome,vendNome,preco,valor_unitario,vl_unit,total,valor_total,valor_venda,qtd,quantidade,qtd_pedida,itens')
+      .select('id,of,numero,status,data_conclusao,created_at,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,vendedor,vendid,vendId,vend_id,vendedor_id,vendedor_nome,vendNome,preco,valor_unitario,vl_unit,total,valor_total,valor_venda,qtd,quantidade,qtd_pedida,itens')
       .is('deleted_at', null)
       .limit(50);
     if (empresaId) query = query.eq('empresa_id', empresaId);
