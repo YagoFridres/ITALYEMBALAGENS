@@ -2209,6 +2209,16 @@ try {
     return '<span class="hist-variation ' + cls + '">vs mês anterior: ' + _histEsc(prefix + n.toFixed(1).replace('.', ',') + '%') + '</span>';
   }
 
+  function _histRankingResumoHtml(items, labelKey) {
+    var lista = Array.isArray(items) ? items.slice(0, 5) : [];
+    if (!lista.length) return 'Sem dados no período';
+    return lista.map(function(item, idx) {
+      var nome = String(item && item[labelKey] || '—').trim() || '—';
+      var total = Number(item && item.total_ofs || 0) || 0;
+      return (idx + 1) + '. ' + _histEsc(nome) + ' (' + _histEsc(_histFmtNum(total)) + ' OFs)';
+    }).join('<br>');
+  }
+
   function _histRenderRelatorioMensal(data) {
     _histEnsureUi();
     var cards = document.getElementById('hist-relatorio-mensal-cards');
@@ -2226,12 +2236,18 @@ try {
     var varOfs = Number(anterior.total_ofs || 0) > 0 ? (((Number(resumo.total_ofs || 0) - Number(anterior.total_ofs || 0)) / Number(anterior.total_ofs || 0)) * 100) : null;
     var varValor = Number(anterior.valor_total_producao || 0) > 0 ? (((Number(resumo.valor_total_producao || 0) - Number(anterior.valor_total_producao || 0)) / Number(anterior.valor_total_producao || 0)) * 100) : null;
     var varCx = Number(anterior.caixas_produzidas || 0) > 0 ? (((Number(resumo.caixas_produzidas || 0) - Number(anterior.caixas_produzidas || 0)) / Number(anterior.caixas_produzidas || 0)) * 100) : null;
+    var topCores = Array.isArray(data && data.top_cores) ? data.top_cores : [];
+    var topTamanhos = Array.isArray(data && data.top_tamanhos) ? data.top_tamanhos : [];
+    var corTop = topCores[0] || null;
+    var tamanhoTop = topTamanhos[0] || null;
 
     cards.innerHTML = ''
       + '<div class="hist-month-card"><div class="lab">Mês de Referência</div><div class="val">' + _histEsc(_histMonthName(ref.mes) + '/' + ref.ano) + '</div><div class="sub">Base: passagens individuais por máquina</div></div>'
       + '<div class="hist-month-card"><div class="lab">Total de OFs</div><div class="val">' + _histEsc(_histFmtNum(resumo.total_ofs || 0)) + '</div><div class="sub">' + _histVariationBadge(varOfs) + '</div></div>'
       + '<div class="hist-month-card"><div class="lab">Valor de Produção</div><div class="val">' + _histEsc(_histFmtMoney(resumo.valor_total_producao || 0)) + '</div><div class="sub">' + _histVariationBadge(varValor) + '</div></div>'
-      + '<div class="hist-month-card"><div class="lab">Caixas Produzidas</div><div class="val">' + _histEsc(_histFmtNum(resumo.caixas_produzidas || 0)) + '</div><div class="sub">' + _histVariationBadge(varCx) + '</div></div>';
+      + '<div class="hist-month-card"><div class="lab">Caixas Produzidas</div><div class="val">' + _histEsc(_histFmtNum(resumo.caixas_produzidas || 0)) + '</div><div class="sub">' + _histVariationBadge(varCx) + '</div></div>'
+      + '<div class="hist-month-card"><div class="lab">Cores Mais Usadas</div><div class="val" style="font-size:18px">' + _histEsc(corTop && corTop.cor || 'Sem dados') + '</div><div class="sub">' + _histRankingResumoHtml(topCores, 'cor') + '</div></div>'
+      + '<div class="hist-month-card"><div class="lab">Tamanhos Mais Usados</div><div class="val" style="font-size:18px">' + _histEsc(tamanhoTop && tamanhoTop.tamanho || 'Sem dados') + '</div><div class="sub">' + _histRankingResumoHtml(topTamanhos, 'tamanho') + '</div></div>';
     cards.dataset.rendered = '1';
 
     if (!sorted.length) {

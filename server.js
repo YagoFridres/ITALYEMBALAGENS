@@ -9114,10 +9114,14 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
 
   const selectedCols = [
     'id', 'of', 'numero', 'status', 'data_conclusao',
-    'cliNome', 'clinome', 'cliente_nome',
+    'cli_id', 'cliente_id', 'cliNome', 'clinome', 'cliente_nome',
     'quantidade', 'qtd', 'qtd_produzida',
     'valor_total', 'total', 'valor_venda', 'valor', 'valor_producao', 'vl_total',
     'maq', 'fluxo_maquinas', 'maquina', 'maquina_atual', 'maquina_agendada', 'maquina_atual_index',
+    'cores_impressao',
+    'caixa_comprimento', 'caixa_largura', 'caixa_altura',
+    'dim_comprimento', 'dim_largura', 'dim_altura',
+    'comprimento', 'largura', 'altura',
     'deleted_at'
   ];
 
@@ -9159,13 +9163,77 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
     throw error;
   }
 
-  const filtradas = rows.filter((row) => {
+  const filtrarCoresOf = (value) => {
+    const add = (bucket, raw) => {
+      const nome = String(
+        raw && typeof raw === 'object'
+          ? (raw.nome ?? raw.name ?? raw.cor ?? raw.color ?? raw.label ?? raw.value ?? '')
+          : (raw ?? '')
+      ).trim();
+      if (nome) bucket.add(nome);
+    };
+    const bucket = new Set();
+    if (Array.isArray(value)) {
+      value.forEach((item) => add(bucket, item));
+      return Array.from(bucket);
+    }
+    const raw = String(value || '').trim();
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((item) => add(bucket, item));
+        return Array.from(bucket);
+      }
+      if (parsed && typeof parsed === 'object') {
+        add(bucket, parsed);
+        return Array.from(bucket);
+      }
+    } catch (_) {}
+    raw.split(/[,;|/]+/g).forEach((item) => add(bucket, item));
+    return Array.from(bucket);
+  };
+  const pickDimMm = (row, keys) => {
+    for (const key of (Array.isArray(keys) ? keys : [])) {
+      const num = Number(row?.[key] || 0) || 0;
+      if (num > 0) return num;
+    }
+    return 0;
+  };
+  const formatTamanhoOf = (row) => {
+    const comp = pickDimMm(row, ['caixa_comprimento', 'dim_comprimento', 'comprimento']);
+    const larg = pickDimMm(row, ['caixa_largura', 'dim_largura', 'largura']);
+    const alt = pickDimMm(row, ['caixa_altura', 'dim_altura', 'altura']);
+    if (!(comp > 0) || !(larg > 0) || !(alt > 0)) return '';
+    return [comp, larg, alt].map((n) => String(Math.trunc(Number(n || 0) || 0))).join('×');
+  };
+  const buildTop5 = (mapa, keyName) => Array.from(mapa.entries())
+    .map(([nome, total_ofs]) => ({ [keyName]: nome, total_ofs }))
+    .sort((a, b) => {
+      if ((b.total_ofs || 0) !== (a.total_ofs || 0)) return (b.total_ofs || 0) - (a.total_ofs || 0);
+      return String(a[keyName] || '').localeCompare(String(b[keyName] || ''), 'pt-BR');
+    })
+    .slice(0, 5);
+
+  const filtradasBase = rows.filter((row) => {
     const clienteNome = String(row?.cliNome || row?.clinome || row?.cliente_nome || '').trim().toLowerCase();
     if (clienteNeedle && !clienteNome.includes(clienteNeedle)) return false;
     const maqNome = String(_canonMaqNome(_ofPickMaqAtualName(row) || row?.maquina_atual || row?.maquina_agendada || row?.maquina || '') || '').trim();
     if (maquinaNeedle && maqNome !== maquinaNeedle) return false;
     return true;
-  }).map((row) => {
+  });
+
+  const coresMap = new Map();
+  const tamanhosMap = new Map();
+  filtradasBase.forEach((row) => {
+    filtrarCoresOf(row?.cores_impressao).forEach((cor) => {
+      coresMap.set(cor, (coresMap.get(cor) || 0) + 1);
+    });
+    const tamanho = formatTamanhoOf(row);
+    if (tamanho) tamanhosMap.set(tamanho, (tamanhosMap.get(tamanho) || 0) + 1);
+  });
+
+  const filtradas = filtradasBase.map((row) => {
     const maqNome = String(_canonMaqNome(_ofPickMaqAtualName(row) || row?.maquina_atual || row?.maquina_agendada || row?.maquina || '') || row?.maquina_atual || row?.maquina || 'Sem máquina').trim() || 'Sem máquina';
     return {
       maquina: maqNome,
@@ -9183,7 +9251,9 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
   return {
     agg: _agruparPassagensRelatorioMensal(filtradas),
     totalRows: filtradas.length,
-    rowsComValor: _countPassagensComValor(filtradas)
+    rowsComValor: _countPassagensComValor(filtradas),
+    top_cores: buildTop5(coresMap, 'cor'),
+    top_tamanhos: buildTop5(tamanhosMap, 'tamanho')
   };
 }
 
@@ -9304,7 +9374,9 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
       } : null,
       resumo_mes_atual: resumoAtual,
       resumo_mes_anterior: resumoAnterior,
-      rows
+      rows,
+      top_cores: Array.isArray(atualResumo?.top_cores) ? atualResumo.top_cores : [],
+      top_tamanhos: Array.isArray(atualResumo?.top_tamanhos) ? atualResumo.top_tamanhos : []
     });
   } catch (e) {
     console.error('[maquinas/relatorio-mensal]', e.message);
