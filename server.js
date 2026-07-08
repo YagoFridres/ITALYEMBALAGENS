@@ -6301,6 +6301,9 @@ function _caixasExtrairOperadoresItemPerda(item) {
 }
 
 function _resolverOperadorDaPerda(row, ofData, pessoasMap, maquinasMap) {
+  const opsRegistro = _normalizarOperadoresCaixa(row);
+  if (opsRegistro.length) return opsRegistro;
+
   const perdasDetalhadas = _caixasParsePerdasPorMaquina(ofData?.perdas_por_maquina);
   const maquinaPerdaKey = _caixasNormKey(
     row?.maquina_perda ||
@@ -6653,12 +6656,40 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     });
 
     const ofIds = Array.from(new Set((dadosFiltrados || []).map((r) => String(r?.of_id || r?.of_uuid || '').trim()).filter(Boolean)));
-    const { data: ofsRows, error: ofsRowsError } = ofIds.length
-      ? await supabase.from('ofs').select('id,numero,cli_id,valor_total,quantidade,qtd,descricao,produto,operador_conclusao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,concluido_por,maq,maquina,maquina_atual,maquina_agendada,maquina_id,caixa_comprimento,caixa_largura,comprimento_mm,largura_mm,dim_comprimento,dim_largura,comprimento,largura,gramatura_id,gramatura,gramatura_nome').in('id', ofIds)
-      : { data: [], error: null };
+    const ofNumeros = Array.from(new Set((dadosFiltrados || []).map((r) => String(r?.of_numero || '').trim()).filter(Boolean)));
+    const ofsRows = [];
+    let ofsRowsError = null;
+    if (ofIds.length) {
+      const { data, error } = await supabase
+        .from('ofs')
+        .select('id,numero,cli_id,valor_total,quantidade,qtd,descricao,produto,operador_conclusao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,concluido_por,maq,maquina,maquina_atual,maquina_agendada,maquina_id,caixa_comprimento,caixa_largura,comprimento_mm,largura_mm,dim_comprimento,dim_largura,comprimento,largura,gramatura_id,gramatura,gramatura_nome')
+        .in('id', ofIds);
+      ofsRowsError = error || null;
+      (Array.isArray(data) ? data : []).forEach((of) => ofsRows.push(of));
+    }
+    const numerosPendentes = ofNumeros.filter((numero) => {
+      return numero && !ofsRows.some((of) => String(of?.numero || '').trim() === numero);
+    });
+    if (numerosPendentes.length) {
+      const { data, error } = await supabase
+        .from('ofs')
+        .select('id,numero,cli_id,valor_total,quantidade,qtd,descricao,produto,operador_conclusao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,concluido_por,maq,maquina,maquina_atual,maquina_agendada,maquina_id,caixa_comprimento,caixa_largura,comprimento_mm,largura_mm,dim_comprimento,dim_largura,comprimento,largura,gramatura_id,gramatura,gramatura_nome')
+        .in('numero', numerosPendentes);
+      if (!ofsRowsError) ofsRowsError = error || null;
+      (Array.isArray(data) ? data : []).forEach((of) => {
+        const id = String(of?.id || '').trim();
+        if (id && !ofsRows.some((item) => String(item?.id || '').trim() === id)) ofsRows.push(of);
+      });
+    }
     const ofsMap = Object.create(null);
-    (ofsRows || []).forEach((of) => { ofsMap[String(of.id || '').trim()] = of; });
+    (ofsRows || []).forEach((of) => {
+      const id = String(of?.id || '').trim();
+      const numero = String(of?.numero || '').trim();
+      if (id) ofsMap[id] = of;
+      if (numero) ofsMap['numero:' + numero] = of;
+    });
     try {
+      console.log('[TRACE-OFSMAP] query carregou OFs:', Array.isArray(ofsRows) ? ofsRows.length : 0, 'idsSolicitados:', ofIds.length, 'numerosSolicitados:', ofNumeros.length, 'numerosPendentes:', numerosPendentes.length);
       console.log('[TRACE-OFSMAP] total de chaves no ofsMap:', Object.keys(ofsMap || {}).length);
       console.log('[TRACE-OFSMAP] amostra de chaves:', Object.keys(ofsMap || {}).slice(0, 10));
     } catch (_) {}
@@ -6680,7 +6711,10 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     (clientesRows || []).forEach((cli) => { clientesMap[String(cli.id || '').trim()] = String(cli.nome || '').trim(); });
 
     const maquinasMap = await _carregarMapaMaquinasPassagens((dadosFiltrados || []).map((r) => {
-      const ofData = ofsMap[String(r?.of_id || r?.of_uuid || '').trim()] || null;
+      const ofData =
+        ofsMap[String(r?.of_id || r?.of_uuid || '').trim()] ||
+        ofsMap['numero:' + String(r?.of_numero || '').trim()] ||
+        null;
       return {
         maquina_id: r?.maquina_id || ofData?.maquina_id || '',
         maquina_nome: r?.maquina_nome || r?.maquina || r?.maquina_perda || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || ofData?.maq || '',
@@ -6689,7 +6723,10 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     }));
 
     const pessoaIds = Array.from(new Set((dadosFiltrados || []).flatMap((r) => {
-      const ofData = ofsMap[String(r?.of_id || r?.of_uuid || '').trim()] || null;
+      const ofData =
+        ofsMap[String(r?.of_id || r?.of_uuid || '').trim()] ||
+        ofsMap['numero:' + String(r?.of_numero || '').trim()] ||
+        null;
       const ops = _normalizarOperadoresCaixa(r)
         .concat(_normalizarOperadoresCaixa(ofData))
         .concat(_caixasParsePerdasPorMaquina(ofData?.perdas_por_maquina).flatMap((item) => _normalizarOperadoresCaixa({
@@ -6735,7 +6772,8 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     let _traceOperadorCount = 0;
     const enriquecidos = (dadosFiltrados || []).map((r) => {
       const ofId = String(r?.of_id || r?.of_uuid || '').trim();
-      const ofData = ofId ? ofsMap[ofId] : null;
+      const ofNumero = String(r?.of_numero || '').trim();
+      const ofData = (ofId ? ofsMap[ofId] : null) || (ofNumero ? ofsMap['numero:' + ofNumero] : null) || null;
       const qtdPerdida = Number(r?.quantidade ?? r?.caixas_perdidas ?? r?.qtd_perdida ?? 0) || 0;
       const qtdOfBase = Number(ofData?.quantidade ?? ofData?.qtd ?? 0) || 0;
       const vu = Number(
