@@ -6942,6 +6942,7 @@ async function _insertCaixaPerdidaCompat(input, req) {
   const valorUnitario = Number(b.valor_unitario ?? b.vl_unit ?? 0) || 0;
   const valorPerdido = Number(b.valor_perdido ?? (qtdPerdida * valorUnitario) ?? 0) || 0;
   const toneladasPerdidas = Number(b.toneladas_perdidas ?? b.tonelada_perdida ?? 0) || 0;
+  const operadorTexto = operadores.join(', ');
   const payload = {
     of_id: b.of_id || null,
     of_numero: b.of_numero != null ? String(b.of_numero || '') : undefined,
@@ -6958,19 +6959,50 @@ async function _insertCaixaPerdidaCompat(input, req) {
     toneladas_perdidas: toneladasPerdidas,
     data: b.data || b.data_conclusao || hoje,
     mes_referencia: b.mes_referencia || String((b.data || b.data_conclusao || mes)).slice(0, 7),
-    emp_id: b.emp_id || '',
+    empresa_id: b.empresa_id || b.emp_id || '',
+    emp_id: b.emp_id || b.empresa_id || '',
     usuario: b.usuario || req?.usuario?.nome || 'sistema',
     usuario_conclusao: b.usuario_conclusao || req?.usuario?.nome || 'sistema',
     obs: b.obs || '',
     operadores: operadores,
+    operador: operadorTexto || undefined,
     turno: b.turno != null ? String(b.turno || '') : undefined,
   };
   try { console.log('[CP INSERT COMPAT] payload:', JSON.stringify(payload)); } catch (_) {}
-  ['of_numero', 'cliente_nome', 'maquina', 'maquina_nome', 'maquina_id', 'operadores', 'turno'].forEach((key) => {
+  ['of_numero', 'cliente_nome', 'maquina', 'maquina_nome', 'maquina_id', 'operadores', 'operador', 'turno'].forEach((key) => {
     if (Array.isArray(payload[key]) && payload[key].length) return;
     if (payload[key] == null || payload[key] === '') delete payload[key];
   });
-  let currentPayload = { ...payload };
+  const fallbackCols = [
+    'id', 'of_id', 'of_numero', 'produto', 'cliente', 'cliente_nome', 'valor_unitario', 'qtd_perdida', 'valor_perdido',
+    'toneladas_perdidas', 'data', 'mes_referencia', 'emp_id', 'empresa_id', 'usuario', 'usuario_conclusao', 'concluido_por', 'obs', 'created_at',
+    'maquina', 'maquina_nome', 'maquina_id', 'maquina_perda', 'quantidade', 'caixas_perdidas',
+    'operadores', 'operadores_conclusao', 'operador', 'operador_nome', 'operador_principal', 'operador_conclusao', 'turno'
+  ];
+  const colunasReaisSet = new Set(fallbackCols);
+  let erroSchema = null;
+  try {
+    const sample = await supabase.from('caixas_perdidas').select('*').limit(1);
+    if (sample?.error) {
+      erroSchema = sample.error;
+    } else if (Array.isArray(sample?.data) && sample.data[0] && typeof sample.data[0] === 'object') {
+      Object.keys(sample.data[0]).forEach((k) => colunasReaisSet.add(k));
+    }
+  } catch (eSample) {
+    erroSchema = eSample;
+  }
+  if (erroSchema) {
+    try { console.error('[caixas_perdidas] falha ao consultar schema real:', String(erroSchema?.message || erroSchema)); } catch (_) {}
+  }
+  const ignoredColumns = [];
+  let currentPayload = {};
+  Object.keys(payload).forEach((key) => {
+    if (colunasReaisSet.has(key)) currentPayload[key] = payload[key];
+    else ignoredColumns.push(key);
+  });
+  if (ignoredColumns.length) {
+    try { console.error('[caixas_perdidas] colunas ignoradas no prefilter:', ignoredColumns); } catch (_) {}
+  }
   _debugRuntimeWrite({
     runId: 'pre-fix',
     hypothesisId: 'C',
@@ -6999,7 +7031,7 @@ async function _insertCaixaPerdidaCompat(input, req) {
         msg: '[DEBUG] insert caixa perdida sucesso',
         data: { id: data && data.id ? String(data.id) : null, of_numero: currentPayload.of_numero || null },
       });
-      return { skipped: false, data };
+      return { skipped: false, data, ignored_columns_perda: ignoredColumns.slice() };
     }
     const msg = String(error.message || error);
     const msgLower = msg.toLowerCase();
@@ -7011,24 +7043,28 @@ async function _insertCaixaPerdidaCompat(input, req) {
       data: { error: msg, tentativa: i + 1, payloadKeys: Object.keys(currentPayload || {}) },
     });
     if (msgLower.includes('does not exist') || msgLower.includes('not exist') || msgLower.includes('not find') || msgLower.includes('not found')) {
-      return { skipped: true, reason: 'table_missing' };
+      return { skipped: true, reason: 'table_missing', error_message: msg, ignored_columns_perda: ignoredColumns.slice() };
     }
     const m = msg.match(/column\s+"?([a-z0-9_]+)"?\s+(?:of relation .* )?does not exist/i)
       || msg.match(/Could not find the '([^']+)' column/i);
     const missingCol = m && m[1] ? String(m[1]).trim() : '';
     if (missingCol && Object.prototype.hasOwnProperty.call(currentPayload, missingCol)) {
+      if (!ignoredColumns.includes(missingCol)) ignoredColumns.push(missingCol);
       delete currentPayload[missingCol];
       continue;
     }
     if (msgLower.includes('column') && (msgLower.includes('maquina') || msgLower.includes('maquina_id') || msgLower.includes('operador') || msgLower.includes('turno') || msgLower.includes('quantidade') || msgLower.includes('of_numero') || msgLower.includes('cliente_nome'))) {
       ['maquina', 'maquina_nome', 'maquina_id', 'operadores', 'operador', 'turno', 'quantidade', 'of_numero', 'cliente_nome'].forEach((key) => {
-        if (Object.prototype.hasOwnProperty.call(currentPayload, key)) delete currentPayload[key];
+        if (Object.prototype.hasOwnProperty.call(currentPayload, key)) {
+          if (!ignoredColumns.includes(key)) ignoredColumns.push(key);
+          delete currentPayload[key];
+        }
       });
       continue;
     }
     throw error;
   }
-  return { skipped: true, reason: 'insert_aborted' };
+  return { skipped: true, reason: 'insert_aborted', ignored_columns_perda: ignoredColumns.slice() };
 }
 
 app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
@@ -8160,6 +8196,8 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
 
     if (qtdPerdida > 0) {
       try {
+        const ignoredColumnsPerda = [];
+        const perdaErrors = [];
         let cliNome = '';
         const cliId = String(
           of.cli_id || of.cliente_id || of.cliId || ''
@@ -8203,7 +8241,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
           const operadoresLinha = (Array.isArray(linha?.operadores) ? linha.operadores : operadoresConclusao)
             .map((op) => String(op || '').trim())
             .filter(Boolean);
-          await _insertCaixaPerdidaCompat({
+          const payloadPerda = {
             of_id: sid,
             of_numero: ofNumero,
             produto: String(of.prodDesc || of.descricao || of.produto || ''),
@@ -8222,15 +8260,36 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
             data: String(body.data_faturamento || nowIso.slice(0, 10)).slice(0, 10),
             data_conclusao: String(updateSeguro.data_conclusao || nowIso).slice(0, 10),
             mes_referencia: String(body.data_faturamento || nowIso.slice(0, 7)).slice(0, 7),
-            emp_id: String(of.emp_id || ''),
+            empresa_id: String(of.empresa_id || of.emp_id || ''),
+            emp_id: String(of.emp_id || of.empresa_id || ''),
             usuario: req.usuario?.nome || 'sistema',
             usuario_conclusao: body.usuario_conclusao || req.usuario?.nome || 'sistema',
             operadores: Array.isArray(operadoresLinha) ? operadoresLinha : [],
-            operador: Array.isArray(operadoresLinha) && operadoresLinha[0] ? operadoresLinha[0] : undefined,
+            operador: Array.isArray(operadoresLinha) ? operadoresLinha.join(', ') : '',
             obs: 'Perda registrada na conclusão da OF'
-          }, req);
+          };
+          try {
+            const perdaRes = await _insertCaixaPerdidaCompat(payloadPerda, req);
+            if (Array.isArray(perdaRes?.ignored_columns_perda)) {
+              perdaRes.ignored_columns_perda.forEach((col) => {
+                const txt = String(col || '').trim();
+                if (txt && !ignoredColumnsPerda.includes(txt)) ignoredColumnsPerda.push(txt);
+              });
+            }
+            if (perdaRes?.error_message) perdaErrors.push(String(perdaRes.error_message || ''));
+          } catch (ePerda) {
+            const msgPerda = String(ePerda?.message || ePerda);
+            perdaErrors.push(msgPerda);
+            try { console.error('[caixas_perdidas] insert falhou:', msgPerda, 'payload:', JSON.stringify(payloadPerda)); } catch (_) {}
+          }
         }
-      } catch (_) {}
+        if (ignoredColumnsPerda.length) updateData.__ignored_columns_perda = ignoredColumnsPerda.slice();
+        if (perdaErrors.length) updateData.__caixas_perdidas_erro = perdaErrors.join(' | ');
+      } catch (ePerdaBloco) {
+        const msgPerdaBloco = String(ePerdaBloco?.message || ePerdaBloco);
+        try { console.error('[caixas_perdidas] insert falhou:', msgPerdaBloco); } catch (_) {}
+        updateData.__caixas_perdidas_erro = msgPerdaBloco;
+      }
     }
 
     try {
@@ -8339,6 +8398,8 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       excedente,
       novo_valor_total: novoValor,
       ignored_columns: colunasDescartadas,
+      ignored_columns_perda: Array.isArray(updateData.__ignored_columns_perda) ? updateData.__ignored_columns_perda : [],
+      caixas_perdidas_erro: updateData.__caixas_perdidas_erro || null,
       mensagem: `OF concluída.${excedente > 0 ? (' ' + excedente + ' caixas excedentes.') : ''}`,
     });
   } catch (e) {
