@@ -6754,8 +6754,9 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     if (ofIds.length) {
       const { data, error } = await supabase
         .from('ofs')
-        .select('id,numero,of,cli_id,valor_total,quantidade,qtd,descricao,produto,operador_conclusao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,concluido_por,maq,maquina,maquina_atual,maquina_agendada,maquina_id,caixa_comprimento,caixa_largura,comprimento_mm,largura_mm,dim_comprimento,dim_largura,comprimento,largura,gramatura_id,gramatura,gramatura_nome')
+        .select('id,numero,of,cli_id,valor_total,quantidade,qtd,descricao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,operador_conclusao,maq,maquina_agendada,caixa_comprimento,caixa_largura,dim_comprimento,dim_largura,gramatura_id,gramatura,gramatura_nome')
         .in('id', ofIds);
+      console.log('[OFSMAP-FIX] erro:', error?.message || 'ok', 'linhas:', (data||[]).length);
       ofsRowsError = error || null;
       (Array.isArray(data) ? data : []).forEach((of) => ofsRows.push(of));
     }
@@ -6771,7 +6772,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       ));
       const { data, error } = await supabase
         .from('ofs')
-        .select('id,numero,of,cli_id,valor_total,quantidade,qtd,descricao,produto,operador_conclusao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,concluido_por,maq,maquina,maquina_atual,maquina_agendada,maquina_id,caixa_comprimento,caixa_largura,comprimento_mm,largura_mm,dim_comprimento,dim_largura,comprimento,largura,gramatura_id,gramatura,gramatura_nome')
+        .select('id,numero,of,cli_id,valor_total,quantidade,qtd,descricao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,operador_conclusao,maq,maquina_agendada,caixa_comprimento,caixa_largura,dim_comprimento,dim_largura,gramatura_id,gramatura,gramatura_nome')
         .in('numero', numeroVariants);
       if (!ofsRowsError) ofsRowsError = error || null;
       (Array.isArray(data) ? data : []).forEach((of) => {
@@ -6780,7 +6781,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       });
       const { data: dataByOf, error: errorByOf } = await supabase
         .from('ofs')
-        .select('id,numero,of,cli_id,valor_total,quantidade,qtd,descricao,produto,operador_conclusao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,concluido_por,maq,maquina,maquina_atual,maquina_agendada,maquina_id,caixa_comprimento,caixa_largura,comprimento_mm,largura_mm,dim_comprimento,dim_largura,comprimento,largura,gramatura_id,gramatura,gramatura_nome')
+        .select('id,numero,of,cli_id,valor_total,quantidade,qtd,descricao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,operador_conclusao,maq,maquina_agendada,caixa_comprimento,caixa_largura,dim_comprimento,dim_largura,gramatura_id,gramatura,gramatura_nome')
         .in('of', numeroVariants);
       if (!ofsRowsError) ofsRowsError = errorByOf || null;
       (Array.isArray(dataByOf) ? dataByOf : []).forEach((of) => {
