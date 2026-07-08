@@ -1,4 +1,4 @@
-﻿window._comRodando = false;
+window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
 if (!window.__comRodandoWatchdogInstalled) {
@@ -17323,7 +17323,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var topChapa = _topItemTexto(mesRows, function(r) { return r.chapa_label || '—'; }, function(r) { return Number(r.quantidade || 0) || 0; }, '—');
         host.innerHTML = ''
           + '<div style="display:grid;gap:16px">'
-          +      _renderSugestoesCompraTopo(sugestoesCompra)
+          +      (typeof _renderSugestoesCompraTopo === 'function' ? _renderSugestoesCompraTopo(sugestoesCompra) : '')
           + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' 
           +      [_makeCardEstoque({ label: 'Valor Total no Mês', value: _fmtRsEstoque(totalValorMes), sub: 'Recebido em ' + mesAtual }),
                   _makeCardEstoque({ label: 'Quantas Entradas Foram Dadas', value: _fmtNumEstoque(mesLanc.length), sub: 'Lançamentos manuais no mês' }),
