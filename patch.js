@@ -1778,77 +1778,94 @@ try {
   }
 
   function _histBuildPrintHtml(kind) {
-    var empresa = _histEmpresaNome();
     var periodo = _histPrintPeriodo(kind);
+    if (typeof window._buildStyledPrintHtml !== 'function') return '';
     if (kind === 'mensal') {
       var data = window.__histMonthlyData || {};
       var resumo = data && data.resumo_mes_atual ? data.resumo_mes_atual : {};
-      var rows = Array.isArray(window.__histMonthlyRowsSorted) ? window.__histMonthlyRowsSorted : (Array.isArray(window.__histMonthlyRows) ? window.__histMonthlyRows : []);
-      return ''
-        + '<div class="hist-print-sheet">'
-        + '  <div class="hist-print-title">Relatório Mensal por Máquina</div>'
-        + '  <div class="hist-print-sub">' + _histEsc(empresa) + ' | ' + _histEsc(periodo) + '</div>'
-        + '  <div class="hist-print-summary">'
-        + '    <div class="hist-print-card"><span class="lab">Máquinas</span><strong>' + _histEsc(_histFmtNum(resumo.total_maquinas || 0)) + '</strong></div>'
-        + '    <div class="hist-print-card"><span class="lab">OFs</span><strong>' + _histEsc(_histFmtNum(resumo.total_ofs || 0)) + '</strong></div>'
-        + '    <div class="hist-print-card"><span class="lab">Valor de Produção</span><strong>' + _histEsc(_histFmtMoney(resumo.valor_total_producao || 0)) + '</strong></div>'
-        + '    <div class="hist-print-card"><span class="lab">Caixas Produzidas</span><strong>' + _histEsc(_histFmtNum(resumo.caixas_produzidas || 0)) + '</strong></div>'
-        + '  </div>'
-        + '  <table class="hist-print-table">'
-        + '    <thead><tr><th>Máquina</th><th>Nº de OFs</th><th>Valor de Produção</th><th>Caixas Produzidas</th></tr></thead>'
-        + '    <tbody>'
-        +      (rows.length ? rows.map(function(row) {
-                 return '<tr>'
-                   + '<td>' + _histEsc(row && row.maquina || '—') + '</td>'
-                   + '<td class="num">' + _histEsc(_histFmtNum(row && row.total_ofs || 0)) + '</td>'
-                   + '<td class="num">' + _histEsc(_histFmtMoney(row && row.valor_total_producao || 0)) + '</td>'
-                   + '<td class="num">' + _histEsc(_histFmtNum(row && row.caixas_produzidas || 0)) + '</td>'
-                   + '</tr>';
-               }).join('') : '<tr><td colspan="4">Nenhum dado disponível para impressão.</td></tr>')
-        + '    </tbody>'
-        + '  </table>'
-        + '</div>';
+      var summaryRows = Array.isArray(window.__histMonthlyRowsSorted) ? window.__histMonthlyRowsSorted : (Array.isArray(window.__histMonthlyRows) ? window.__histMonthlyRows : []);
+      var detailRows = Array.isArray(window.__histPassagensRowsVisible) ? window.__histPassagensRowsVisible.slice() : [];
+      return window._buildStyledPrintHtml({
+        title: 'Relatório de Histórico de Passagens',
+        periodo: periodo,
+        cards: [
+          { label: 'Total de OFs', value: _histFmtNum(resumo.total_ofs || 0), sub: 'OFs no período' },
+          { label: 'Valor de Produção', value: _histFmtMoney(resumo.valor_total_producao || 0), sub: 'Soma de produção' },
+          { label: 'Caixas Produzidas', value: _histFmtNum(resumo.caixas_produzidas || 0), sub: 'Volume consolidado' },
+          { label: 'Resumo por Máquina', value: _histFmtNum(resumo.total_maquinas || 0), sub: 'Máquinas no período' }
+        ],
+        summaryTitle: 'Tabela-resumo por máquina',
+        summaryHeaders: ['Máquina', 'Nº OFs', 'Valor produção', 'Caixas'],
+        summaryRows: summaryRows.map(function(row) {
+          return [
+            _printEscText(row && row.maquina || '—'),
+            _printEscText(_histFmtNum(row && row.total_ofs || 0)),
+            _printEscText(_histFmtMoney(row && row.valor_total_producao || 0)),
+            _printEscText(_histFmtNum(row && row.caixas_produzidas || 0))
+          ];
+        }),
+        detailTitle: 'Detalhamento',
+        detailHeaders: ['OF', 'Cliente', 'Produto', 'Valor unitário', 'Qtd', 'Valor total', 'Máquinas', 'Data conclusão'],
+        detailRows: detailRows.map(function(row) {
+          return [
+            _printEscText(String(row && (row.of_numero || row.numero) || '—')),
+            _printEscText(_histPassagemCliente(row)),
+            _printEscText(_histPassagemProduto(row)),
+            _printEscText(_histFmtMoney(_histPassagemValorUnit(row))),
+            _printEscText(_histFmtNum(_histPassagemQuantidade(row))),
+            _printEscText(_histFmtMoney(_histPassagemValorTotal(row))),
+            _printEscText(_histPassagemMaquinas(row)),
+            _printEscText(_histFmtDateTime(row))
+          ];
+        }),
+        emptySummaryCols: 4,
+        emptyDetailCols: 8
+      });
     }
 
     var listRows = Array.isArray(window.__histPassagensRowsVisible) ? window.__histPassagensRowsVisible : [];
-    return ''
-      + '<div class="hist-print-sheet">'
-      + '  <div class="hist-print-title">Relatório Diário de Passagens por Máquina</div>'
-      + '  <div class="hist-print-sub">' + _histEsc(empresa) + ' | ' + _histEsc(periodo) + '</div>'
-      + '  <table class="hist-print-table">'
-      + '    <thead><tr><th>Nº OF</th><th>Status</th><th>Produto</th><th>Máquina</th><th>Responsável</th><th>Quantidade (cx)</th><th>Data/Hora</th></tr></thead>'
-      + '    <tbody>'
-      +      (listRows.length ? listRows.map(function(row) {
-               var qtd = Number(row && (row.qtd_produzida != null ? row.qtd_produzida : (row.quantidade != null ? row.quantidade : row.qtd)) || 0) || 0;
-               return '<tr>'
-                 + '<td>' + _histEsc(row && (row.of_numero || row.numero) || '—') + '</td>'
-                 + '<td>' + _histEsc(row && (row.status || row.tipo) || '—') + '</td>'
-                 + '<td>' + _histEsc(row && (row.produto || row.descricao) || '—') + '</td>'
-                 + '<td>' + _histEsc(row && (row.maquina || row.maquina_nome) || '—') + '</td>'
-                 + '<td>' + _histEsc(row && (row.responsavel || row.operador || row.operador_nome || row.concluido_por) || '—') + '</td>'
-                 + '<td class="num">' + _histEsc(_histFmtNum(qtd)) + '</td>'
-                 + '<td>' + _histEsc(_histFmtDateTime(row)) + '</td>'
-                 + '</tr>';
-             }).join('') : '<tr><td colspan="7">Nenhum dado disponível para impressão.</td></tr>')
-      + '    </tbody>'
-      + '  </table>'
-      + '</div>';
+    return window._buildStyledPrintHtml({
+      title: 'Relatório de Histórico de Passagens',
+      periodo: periodo,
+      cards: [
+        { label: 'Passagens Visíveis', value: _histFmtNum(listRows.length), sub: 'Linhas filtradas' },
+        { label: 'Valor de Produção', value: _histFmtMoney(listRows.reduce(function(acc, row) { return acc + _histPassagemValorTotal(row); }, 0)), sub: 'Somatório visível' },
+        { label: 'Caixas Produzidas', value: _histFmtNum(listRows.reduce(function(acc, row) { return acc + _histPassagemQuantidade(row); }, 0)), sub: 'Volume visível' },
+        { label: 'Máquinas', value: _histFmtNum(Array.from(new Set(listRows.map(function(row) { return _histPassagemMaquinas(row); }).filter(Boolean))).length), sub: 'Máquinas listadas' }
+      ],
+      summaryTitle: 'Tabela-resumo por máquina',
+      summaryHeaders: ['Máquina', 'Nº OFs'],
+      summaryRows: Array.from((listRows || []).reduce(function(map, row) {
+        var nome = _histPassagemMaquinas(row);
+        map.set(nome, (map.get(nome) || 0) + 1);
+        return map;
+      }, new Map()).entries()).map(function(entry) {
+        return [_printEscText(entry[0] || '—'), _printEscText(_histFmtNum(entry[1] || 0))];
+      }),
+      detailTitle: 'Detalhamento',
+      detailHeaders: ['OF', 'Cliente', 'Produto', 'Valor unitário', 'Qtd', 'Valor total', 'Máquinas', 'Data conclusão'],
+      detailRows: listRows.map(function(row) {
+        return [
+          _printEscText(String(row && (row.of_numero || row.numero) || '—')),
+          _printEscText(_histPassagemCliente(row)),
+          _printEscText(_histPassagemProduto(row)),
+          _printEscText(_histFmtMoney(_histPassagemValorUnit(row))),
+          _printEscText(_histFmtNum(_histPassagemQuantidade(row))),
+          _printEscText(_histFmtMoney(_histPassagemValorTotal(row))),
+          _printEscText(_histPassagemMaquinas(row)),
+          _printEscText(_histFmtDateTime(row))
+        ];
+      }),
+      emptySummaryCols: 2,
+      emptyDetailCols: 8
+    });
   }
 
   function _histPrint(kind) {
     try {
-      var root = _histEnsurePrintRoot();
-      root.innerHTML = _histBuildPrintHtml(kind === 'mensal' ? 'mensal' : 'lista');
-      document.body.classList.add('hist-print-open');
-      var clear = function() {
-        try { document.body.classList.remove('hist-print-open'); } catch (_) {}
-      };
-      try {
-        window.removeEventListener('afterprint', clear);
-        window.addEventListener('afterprint', clear, { once: true });
-      } catch (_) {}
-      window.print();
-      setTimeout(clear, 1500);
+      var html = _histBuildPrintHtml(kind === 'mensal' ? 'mensal' : 'lista');
+      if (!html) return null;
+      if (typeof window._openStyledPrintWindow === 'function') return window._openStyledPrintWindow(html);
     } catch (_) {}
   }
 
