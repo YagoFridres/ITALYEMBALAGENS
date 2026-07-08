@@ -8872,24 +8872,20 @@ function _resolverValorTotalPassagem(row, ofData) {
 
   const qtd = Number(
     ofData?.qtd_produzida ??
-    ofData?.quantidade ??
     ofData?.qtd ??
+    ofData?.quantidade ??
     row?.qtd_produzida ??
-    row?.quantidade ??
     row?.qtd ??
+    row?.quantidade ??
     0
   ) || 0;
   const vlUnit = Number(
     ofData?.valor_unitario ??
-    ofData?.vunit ??
     ofData?.vl_unit ??
     ofData?.preco ??
-    ofData?.valor_unit ??
     row?.valor_unitario ??
-    row?.vunit ??
     row?.vl_unit ??
     row?.preco ??
-    row?.valor_unit ??
     0
   ) || 0;
   return (qtd > 0 && vlUnit > 0) ? (qtd * vlUnit) : 0;
@@ -9006,20 +9002,13 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
   // #endregion
   if (!ofIds.length && !ofNumeros.length) return rows;
 
-  const ofSelectCols = Array.from(new Set([
-    'id', 'of', 'numero', 'status',
-    'cli_id', 'cliId', 'cliente_id', 'clienteId',
-    'cliNome', 'clinome', 'cliente_nome',
-    'imagem_url', 'imgs',
-    'prodDesc', 'descricao', 'produto',
-    'quantidade', 'qtd', 'qtd_produzida',
-    'valor_total', 'total', 'valor_venda', 'valor', 'valor_producao', 'vl_total',
-    'valor_unitario', 'vunit', 'vl_unit', 'preco',
-    'concluido_por', 'usuario', 'usuario_conclusao',
-    'operador_conclusao', 'operadores_conclusao',
-    'maquina', 'maquina_atual', 'maquina_agendada', 'maquina_id',
-    'passagens_maquina'
-  ].filter((col) => _ofsSelectableHas(col))));
+  const ofSelectCols = [
+    'id', 'numero', 'of', 'cli_id', 'valor_total', 'quantidade', 'qtd', 'qtd_produzida', 'descricao',
+    'operadores_conclusao', 'perdas_por_maquina', 'usuario_conclusao', 'operador_conclusao', 'maq',
+    'maquina_agendada', 'caixa_comprimento', 'caixa_largura', 'dim_comprimento', 'dim_largura',
+    'gramatura_id', 'gramatura', 'gramatura_nome', 'tonelada_vendida', 'custo_m2_venda', 'preco',
+    'valor_unitario', 'valor_venda', 'data_conclusao', 'cores_impressao'
+  ];
   const ofSelectExpr = ofSelectCols.join(',');
   if (!ofSelectExpr) return rows;
 
@@ -9081,19 +9070,19 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
     if (numeroOfDigits && !byNumero.has(numeroOfDigits)) byNumero.set(numeroOfDigits, o);
   });
 
-  const cliIds = Array.from(new Set((Array.isArray(ofsData) ? ofsData : []).map((of) => pickOfCliId(of)).filter(Boolean)));
+  const cliIds = Array.from(new Set((Array.isArray(ofsData) ? ofsData : []).map((of) => String(of?.cli_id || '').trim()).filter(Boolean)));
   const clientesMap = new Map();
   if (cliIds.length) {
     for (let i = 0; i < cliIds.length; i += 200) {
       const lote = cliIds.slice(i, i + 200);
       const { data } = await supabase
         .from('clientes')
-        .select('id,nome,cliente_nome,razao_social,fantasia,rs')
+        .select('id,nome')
         .in('id', lote);
       (Array.isArray(data) ? data : []).forEach((cli) => {
         const id = String(cli?.id || '').trim();
         if (!id) return;
-        clientesMap.set(id, String(cli?.nome || cli?.cliente_nome || cli?.razao_social || cli?.fantasia || cli?.rs || '').trim());
+        clientesMap.set(id, String(cli?.nome || '').trim());
       });
     }
   }
@@ -9120,50 +9109,36 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
       || (numeroRef ? (byNumero.get(_normalizarNumeroOfDigits(numeroRef)) || null) : null);
     if (!of) return p;
 
-    const clienteOf = clientesMap.get(pickOfCliId(of))
-      || String(of?.cliNome || of?.clinome || of?.cliente_nome || '').trim();
-    const ofSafe = _sanitizeOfImagesForResponse(of);
-    const imgsOf = parseImgs(ofSafe?.imgs);
-    const imgOf = String(ofSafe?.imagem_url || (imgsOf[0] || '') || '').trim();
-    const prodOf = String(of?.prodDesc || of?.produto || of?.descricao || '').trim();
-    const qtdOf = (of?.qtd_produzida ?? of?.quantidade ?? of?.qtd);
-    const vlUnit = (of?.valor_unitario ?? of?.vunit ?? of?.vl_unit ?? of?.preco ?? 0);
+    const clienteOf = clientesMap.get(String(of?.cli_id || '').trim()) || '';
+    const prodOf = String(of?.descricao || '').trim();
+    const qtdOf = (of?.qtd_produzida ?? of?.qtd ?? of?.quantidade);
+    const vlUnit = (of?.valor_unitario ?? of?.vl_unit ?? of?.preco ?? 0);
     const totalOf = _resolverValorTotalPassagem(p, of);
-    const statusOf = String(of?.status || '').trim();
-    const respOf = String(of?.concluido_por || of?.usuario || '').trim();
+    const statusOf = String(of?.data_conclusao || '').trim() ? 'Concluído' : '';
+    const respOf = String(of?.operador_conclusao || of?.usuario_conclusao || '').trim();
     const numeroOf = String(of?.numero || '').trim();
-    const passagensOf = _normalizarPassagensMaquinaPayload(of?.passagens_maquina);
     const valorAtual = Number(p?.valor_total ?? p?.total ?? p?.valor_venda ?? 0) || 0;
     const vlUnitAtual = Number(p?.valor_unitario ?? p?.vunit ?? p?.vl_unit ?? p?.preco ?? 0) || 0;
-    const maqAtualCanon = _resolverNomeMaquinaPassagem({
-      maquina_id: p?.maquina_id || '',
-      maquina_nome: p?.maquina_nome || '',
-      maquina: p?.maquina || ''
-    }, null);
+    const maqAtualCanon = _resolverNomeMaquinaPassagem({ maquina_nome: p?.maquina_nome || '', maquina: p?.maquina || '' }, null);
     const precisaHerdarMaquina =
       !String(p?.maquina || p?.maquina_nome || '').trim() ||
       maqAtualCanon === 'Sem máquina' ||
-      _isUuid(String(p?.maquina || '').trim()) ||
-      _isUuid(String(p?.maquina_nome || '').trim()) ||
       /^[\[{]/.test(String(p?.maquina || p?.maquina_nome || '').trim());
 
     return {
       ...p,
       ...(p?.of_numero ? {} : (numeroOf ? { of_numero: numeroOf } : {})),
       ...((String(p?.cliente || p?.cliente_nome || '').trim()) ? {} : (clienteOf ? { cliente: clienteOf, cliente_nome: clienteOf, nome_cliente: clienteOf } : {})),
-      ...(p?.imagem_url ? {} : (imgOf ? { imagem_url: imgOf, imgs: imgsOf } : {})),
       ...(p?.produto ? {} : (prodOf ? { produto: prodOf } : {})),
       ...(p?.quantidade ? {} : ((qtdOf != null) ? { quantidade: qtdOf, qtd_produzida: qtdOf } : {})),
       ...(p?.qtd_produzida != null ? {} : ((qtdOf != null) ? { qtd_produzida: qtdOf } : {})),
-      ...(Array.isArray(p?.passagens_maquina) && p.passagens_maquina.length ? {} : (passagensOf.length ? { passagens_maquina: passagensOf } : {})),
       ...((vlUnit != null && !(vlUnitAtual > 0)) ? { vl_unit: vlUnit, valor_unitario: vlUnit, preco: vlUnit } : {}),
       ...((totalOf > 0 && !(valorAtual > 0)) ? { total: totalOf, valor_total: totalOf, valor_venda: totalOf } : {}),
       ...(p?.status ? {} : (statusOf ? { status: statusOf } : {})),
       ...((p?.operador || p?.operador_nome || p?.responsavel) ? {} : (respOf ? { responsavel: respOf } : {})),
-      ...(precisaHerdarMaquina && (of?.maquina || of?.maquina_atual || of?.maquina_agendada || of?.maquina_id) ? {
-        maquina: of?.maquina || of?.maquina_atual || of?.maquina_agendada || null,
-        maquina_nome: of?.maquina || of?.maquina_atual || of?.maquina_agendada || null,
-        maquina_id: of?.maquina_id || null,
+      ...(precisaHerdarMaquina && (of?.maquina_agendada || of?.maq) ? {
+        maquina: of?.maquina_agendada || of?.maq || null,
+        maquina_nome: of?.maquina_agendada || of?.maq || null,
       } : {})
     };
   });
@@ -9233,23 +9208,16 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
   try { empresaUuid = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { empresaUuid = ''; }
 
   const selectedCols = [
-    'id', 'of', 'numero', 'status', 'data_conclusao',
-    'cli_id', 'cliente_id', 'cliNome', 'clinome', 'cliente_nome',
-    'quantidade', 'qtd', 'qtd_produzida',
-    'valor_total', 'total', 'valor_venda', 'valor', 'valor_producao', 'vl_total',
-    'maq', 'fluxo_maquinas', 'passagens_maquina', 'maquina', 'maquina_atual', 'maquina_agendada', 'maquina_atual_index',
-    'cores_impressao',
-    'caixa_comprimento', 'caixa_largura', 'caixa_altura',
-    'dim_comprimento', 'dim_largura', 'dim_altura',
-    'comprimento', 'largura', 'altura',
-    'deleted_at'
+    'id', 'numero', 'of', 'cli_id', 'valor_total', 'quantidade', 'qtd', 'qtd_produzida', 'descricao',
+    'operadores_conclusao', 'perdas_por_maquina', 'usuario_conclusao', 'operador_conclusao', 'maq',
+    'maquina_agendada', 'caixa_comprimento', 'caixa_largura', 'dim_comprimento', 'dim_largura',
+    'gramatura_id', 'gramatura', 'gramatura_nome', 'tonelada_vendida', 'custo_m2_venda', 'preco',
+    'valor_unitario', 'valor_venda', 'data_conclusao', 'cores_impressao'
   ];
 
   let rows = [];
-  let canFilterDeletedAt = true;
-  let cols = selectedCols.slice();
-  for (let tentativa = 0; tentativa < 8; tentativa += 1) {
-    const selectExpr = Array.from(new Set(cols)).join(',');
+  {
+    const selectExpr = Array.from(new Set(selectedCols)).join(',');
     let q = supabase.from('ofs').select(selectExpr);
     q = q
       .not('data_conclusao', 'is', null)
@@ -9257,30 +9225,24 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
       .lte('data_conclusao', range.fim)
       .order('data_conclusao', { ascending: false })
       .limit(10000);
-    if (canFilterDeletedAt) q = q.is('deleted_at', null);
     if (empId) q = q.or('emp_id.eq.' + empId + ',empresa_id.eq.' + empId + ',empresa_id.is.null');
     else if (empresaUuid) q = q.or('empresa_id.eq.' + empresaUuid + ',empresa_id.is.null');
     const { data, error } = await q;
-    if (!error) {
-      rows = Array.isArray(data) ? data : [];
-      break;
+    if (error) throw error;
+    rows = Array.isArray(data) ? data : [];
+  }
+
+  const cliIds = Array.from(new Set(rows.map((row) => String(row?.cli_id || '').trim()).filter(Boolean)));
+  const clientesMap = new Map();
+  if (cliIds.length) {
+    for (let i = 0; i < cliIds.length; i += 200) {
+      const lote = cliIds.slice(i, i + 200);
+      const { data } = await supabase.from('clientes').select('id,nome').in('id', lote);
+      (Array.isArray(data) ? data : []).forEach((cli) => {
+        const id = String(cli?.id || '').trim();
+        if (id) clientesMap.set(id, String(cli?.nome || '').trim());
+      });
     }
-    const msg = String(error.message || error || '');
-    const missingCol = msg.match(/Could not find the '([^']+)' column/i)?.[1]
-      || msg.match(/column\s+"?([\w.]+)"?\s+does not exist/i)?.[1]
-      || '';
-    const normalized = String(missingCol || '').split('.').pop();
-    if (normalized && cols.includes(normalized)) {
-      cols = cols.filter((col) => col !== normalized);
-      if (normalized === 'deleted_at') canFilterDeletedAt = false;
-      continue;
-    }
-    if (canFilterDeletedAt && /deleted_at/i.test(msg)) {
-      canFilterDeletedAt = false;
-      cols = cols.filter((col) => col !== 'deleted_at');
-      continue;
-    }
-    throw error;
   }
 
   const filtrarCoresOf = (value) => {
@@ -9321,11 +9283,10 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
     return 0;
   };
   const formatTamanhoOf = (row) => {
-    const comp = pickDimMm(row, ['caixa_comprimento', 'dim_comprimento', 'comprimento']);
-    const larg = pickDimMm(row, ['caixa_largura', 'dim_largura', 'largura']);
-    const alt = pickDimMm(row, ['caixa_altura', 'dim_altura', 'altura']);
-    if (!(comp > 0) || !(larg > 0) || !(alt > 0)) return '';
-    return [comp, larg, alt].map((n) => String(Math.trunc(Number(n || 0) || 0))).join('×');
+    const comp = pickDimMm(row, ['dim_comprimento', 'caixa_comprimento']);
+    const larg = pickDimMm(row, ['dim_largura', 'caixa_largura']);
+    if (!(comp > 0) || !(larg > 0)) return '';
+    return [comp, larg].map((n) => String(Math.trunc(Number(n || 0) || 0))).join('×');
   };
   const buildTop5 = (mapa, keyName) => Array.from(mapa.entries())
     .map(([nome, total_ofs]) => ({ [keyName]: nome, total_ofs }))
@@ -9336,9 +9297,9 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
     .slice(0, 5);
 
   const filtradasBase = rows.filter((row) => {
-    const clienteNome = String(row?.cliNome || row?.clinome || row?.cliente_nome || '').trim().toLowerCase();
+    const clienteNome = String(clientesMap.get(String(row?.cli_id || '').trim()) || '').trim().toLowerCase();
     if (clienteNeedle && !clienteNome.includes(clienteNeedle)) return false;
-    const maqNome = String(_canonMaqNome(_ofPickMaqAtualName(row) || row?.maquina_atual || row?.maquina_agendada || row?.maquina || '') || '').trim();
+    const maqNome = String(_canonMaqNome(row?.maquina_agendada || row?.maq || '') || '').trim();
     if (maquinaNeedle && maqNome !== maquinaNeedle) return false;
     return true;
   });
@@ -9354,11 +9315,12 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
   });
 
   const filtradas = filtradasBase.map((row) => {
-    const maqNome = String(_canonMaqNome(_ofPickMaqAtualName(row) || row?.maquina_atual || row?.maquina_agendada || row?.maquina || '') || row?.maquina_atual || row?.maquina || 'Sem máquina').trim() || 'Sem máquina';
+    const maqNome = String(_canonMaqNome(row?.maquina_agendada || row?.maq || '') || row?.maquina_agendada || row?.maq || 'Sem máquina').trim() || 'Sem máquina';
     return {
       maquina: maqNome,
       maquina_nome: maqNome,
-      qtd_produzida: row?.qtd_produzida ?? row?.quantidade ?? row?.qtd ?? 0,
+      cliente_nome: clientesMap.get(String(row?.cli_id || '').trim()) || '—',
+      qtd_produzida: row?.qtd_produzida ?? row?.qtd ?? row?.quantidade ?? 0,
       valor_total: row?.valor_total ?? row?.total ?? row?.valor_venda ?? row?.valor ?? row?.valor_producao ?? row?.vl_total ?? 0,
       total: row?.total ?? row?.valor_total ?? 0,
       valor_venda: row?.valor_venda ?? row?.valor_total ?? 0,

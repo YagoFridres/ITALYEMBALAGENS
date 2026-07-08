@@ -2142,11 +2142,11 @@ try {
   }
 
   function _histPassagemQuantidade(row) {
-    return Number((row && (row.qtd_produzida != null ? row.qtd_produzida : (row.quantidade != null ? row.quantidade : (row.caixas_produzidas != null ? row.caixas_produzidas : row.qtd)))) || 0) || 0;
+    return Number((row && (row.qtd_produzida != null ? row.qtd_produzida : (row.qtd != null ? row.qtd : (row.quantidade != null ? row.quantidade : row.caixas_produzidas)))) || 0) || 0;
   }
 
   function _histPassagemValorUnit(row) {
-    return Number((row && (row.vl_unit != null ? row.vl_unit : (row.valor_unitario != null ? row.valor_unitario : (row.vunit != null ? row.vunit : row.preco)))) || 0) || 0;
+    return Number((row && (row.valor_unitario != null ? row.valor_unitario : (row.vl_unit != null ? row.vl_unit : (row.preco != null ? row.preco : row.vunit)))) || 0) || 0;
   }
 
   function _histPassagemValorTotal(row) {
