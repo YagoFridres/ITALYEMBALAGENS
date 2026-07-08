@@ -1871,8 +1871,20 @@ try {
     } catch (_) {}
   }
 
+  function _histHideTopWidgets() {
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('#hist-graficos-wrap,#hist-resumo')).forEach(function(node) {
+        if (!node) return;
+        try { node.style.display = 'none'; } catch (_) {}
+        try { node.setAttribute('aria-hidden', 'true'); } catch (_) {}
+        try { node.remove(); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
   function _histEnsureUi() {
     _histEnsureStyle();
+    _histHideTopWidgets();
     var page = _histGetPage();
     if (!page) return;
 
@@ -1904,10 +1916,12 @@ try {
       if (graficos) {
         try { graficos.style.display = 'none'; } catch (_) {}
         try { graficos.setAttribute('aria-hidden', 'true'); } catch (_) {}
+        try { graficos.remove(); } catch (_) {}
       }
       if (resumoTopo) {
         try { resumoTopo.style.display = 'none'; } catch (_) {}
         try { resumoTopo.setAttribute('aria-hidden', 'true'); } catch (_) {}
+        try { resumoTopo.remove(); } catch (_) {}
       }
       if (page && !document.getElementById('hist-scroll-bottom-btn')) {
         try {
@@ -2515,6 +2529,7 @@ try {
   function _histEnhancePageBoot() {
     try {
       _histEnsureUi();
+      _histHideTopWidgets();
       var page = _histGetPage();
       if (page && page.offsetParent !== null) {
         _histFetchRelatorioMensal();
@@ -2704,6 +2719,7 @@ try {
     if (!window.__histScrollRepairObs) {
       window.__histScrollRepairObs = new MutationObserver(function() {
         try { _histRepairScrollContainer(); } catch (_) {}
+        try { _histHideTopWidgets(); } catch (_) {}
       });
       window.__histScrollRepairObs.observe(document.body, { childList: true, subtree: true });
     }
@@ -8472,6 +8488,63 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var r = toneDateRange(periodo);
       return d >= r.ini && d <= r.fim;
     }
+    function tonesPeriodoLabel(mesAtual) {
+      return 'Período: ' + String(mesAtual || _mesAtualRefEstoque() || '').trim();
+    }
+    function tonesExportCsv(rows, mesAtual) {
+      try {
+        if (typeof _histExportCsv === 'function') {
+          _histExportCsv(
+            'relatorio-toneladas-vendidas-' + String(mesAtual || _mesAtualRefEstoque() || 'atual') + '.csv',
+            ['DATA', 'OF VINCULADA', 'CLIENTE', 'PRODUTO', 'GRAMATURA', 'FORNECEDOR', 'QTD CAIXAS PRODUZIDAS', 'TONELADAS'],
+            (Array.isArray(rows) ? rows : []).map(function(r) {
+              return [
+                checklistFmtDate(r && r.data || ''),
+                r && r.of_numero || '—',
+                r && r.cliente || '—',
+                r && r.produto || '—',
+                r && r.gramatura_nome || '—',
+                r && r.fornecedor || '—',
+                r && r.qtd_caixas_produzidas != null ? r.qtd_caixas_produzidas : '—',
+                Number(r && r.toneladas || 0) || 0
+              ];
+            })
+          );
+        }
+      } catch (_) {}
+    }
+    function tonesBuildPrintHtml(report) {
+      var info = report || {};
+      var cards = Array.isArray(info.cards) ? info.cards : [];
+      var tabela = Array.isArray(info.rows) ? info.rows : [];
+      return ''
+        + '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de Toneladas Vendidas</title>'
+        + '<style>body{font-family:Arial,sans-serif;color:#111;margin:0;padding:24px;background:#fff}h1{font-size:24px;margin:0 0 4px}p{margin:0 0 16px;color:#555}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.card{border:1px solid #d1d5db;border-radius:10px;padding:12px}.lab{display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;margin-bottom:6px}.val{font-size:22px;font-weight:800;color:#111}.sub{margin-top:6px;font-size:12px;color:#555}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #cbd5e1;padding:8px 10px;text-align:left}th{background:#f8fafc;font-size:11px;text-transform:uppercase;letter-spacing:.06em}td.num,th.num{text-align:right}@media print{body{padding:12px}.cards{break-inside:avoid}table{break-inside:auto}tr{break-inside:avoid}}</style>'
+        + '</head><body>'
+        + '<h1>Relatório de Toneladas Vendidas</h1>'
+        + '<p>' + esc(tonesPeriodoLabel(info.mesAtual || '')) + '</p>'
+        + '<div class="cards">'
+        + cards.map(function(card) {
+          return '<div class="card"><span class="lab">' + esc(card && card.label || '') + '</span><div class="val">' + esc(card && card.value || '0') + '</div><div class="sub">' + esc(card && card.sub || '') + '</div></div>';
+        }).join('')
+        + '</div>'
+        + '<table><thead><tr><th>Data</th><th>OF vinculada</th><th>Cliente</th><th>Produto</th><th>Gramatura</th><th>Fornecedor</th><th class="num">Qtd caixas produzidas</th><th class="num">Toneladas</th></tr></thead><tbody>'
+        + (tabela.length ? tabela.map(function(r) {
+          return '<tr><td>' + esc(checklistFmtDate(r && r.data || '')) + '</td><td>' + esc(r && r.of_numero || '—') + '</td><td>' + esc(r && r.cliente || '—') + '</td><td>' + esc(r && r.produto || '—') + '</td><td>' + esc(r && r.gramatura_nome || '—') + '</td><td>' + esc(r && r.fornecedor || '—') + '</td><td class="num">' + esc(String(r && r.qtd_caixas_produzidas != null ? r.qtd_caixas_produzidas : '—')) + '</td><td class="num">' + esc(num(r && r.toneladas || 0, 3)) + '</td></tr>';
+        }).join('') : '<tr><td colspan="8">Nenhum registro encontrado.</td></tr>')
+        + '</tbody></table>'
+        + '<script>window.onload=function(){setTimeout(function(){try{window.focus()}catch(e){}try{window.print()}catch(e){}},250)}<\/script>'
+        + '</body></html>';
+    }
+    function tonesPrintReport(report) {
+      try {
+        var win = window.open('', '_blank', 'width=1200,height=900');
+        if (!win) return;
+        win.document.open();
+        win.document.write(tonesBuildPrintHtml(report));
+        win.document.close();
+      } catch (_) {}
+    }
     async function renderToneladasPage() {
       ensureStyles();
       var page = ensurePage('toneladas-vendidas');
@@ -8501,6 +8574,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var saidaFornecedor = _resumoTopPorValor(saidasOfMes, function(r) { return r.fornecedor_nome || r.fornecedor || 'Sem fornecedor'; }, function(r) { return Number(r.toneladas || 0) || 0; });
       var entradaFornecedor = _resumoTopPorValor(entradasMes, function(r) { return r.fornecedor || 'Sem fornecedor'; }, function(r) { return Number(r.toneladas || 0) || 0; });
       var tonEstoque = (chapas || []).reduce(function(s, chapa) { return s + (Number((typeof _calcTonAtualEst === 'function') ? _calcTonAtualEst(chapa) : 0) || 0); }, 0);
+      var cardsResumo = [
+        { label: 'Toneladas Vendidas no Mês', value: num(tonMes || 0, 3), sub: 'OFs concluídas em ' + String(mesAtual || '') },
+        { label: 'Toneladas Saíram por Fornecedor', value: num((saidaFornecedor[0] && saidaFornecedor[0].valor) || 0, 3), sub: (saidaFornecedor[0] && saidaFornecedor[0].nome) || 'Sem fornecedor' },
+        { label: 'Toneladas Entraram por Fornecedor', value: num((entradaFornecedor[0] && entradaFornecedor[0].valor) || 0, 3), sub: (entradaFornecedor[0] && entradaFornecedor[0].nome) || 'Sem fornecedor' },
+        { label: 'Toneladas em Estoque', value: num(tonEstoque || 0, 3), sub: 'Saldo atual do estoque' }
+      ];
       var tabela = []
         .concat(entradasMes.map(function(r) {
           return { data: r.data, tipo: 'Entrada', fornecedor: r.fornecedor, cliente: '—', produto: r.chapa_label || '—', gramatura_nome: '—', toneladas: r.toneladas, qtd_caixas_produzidas: '—', of_numero: '—' };
@@ -8525,6 +8604,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       page.innerHTML = ''
         + '<div class="pep-wrap">'
         + (tonError ? ('  <div class="pep-panel" style="margin-bottom:14px;border-color:rgba(239,68,68,.38);background:rgba(127,29,29,.18)"><div class="pep-title" style="font-size:16px;color:#fecaca">Toneladas Vendidas Indisponível</div><div class="pep-sub" style="margin-top:6px;color:#fecaca">A consulta falhou e entrou em cooldown temporário para evitar loop de retries. Detalhe: ' + esc(tonError) + '</div></div>') : '')
+        + '  <div class="pep-head" style="margin-bottom:14px"><div><div class="pep-title">Toneladas Vendidas</div><div class="pep-sub">' + esc(tonesPeriodoLabel(mesAtual)) + '</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pep-btn" id="tones-exportar">Exportar Excel</button><button class="pep-btn primary" id="tones-imprimir">Imprimir Relatório</button></div></div>'
         + '  <div class="pep-cards">'
         + '    <div class="pep-card"><div class="pep-card-label">Toneladas Vendidas no Mês</div><div class="pep-card-val">' + num(tonMes || 0, 3) + '</div><div class="pep-card-sub">OFs concluídas em ' + esc(mesAtual) + '</div></div>'
         + '    <div class="pep-card"><div class="pep-card-label">Toneladas Saíram por Fornecedor</div><div class="pep-card-val">' + num((saidaFornecedor[0] && saidaFornecedor[0].valor) || 0, 3) + '</div><div class="pep-card-sub">' + esc((saidaFornecedor[0] && saidaFornecedor[0].nome) || 'Sem fornecedor') + '</div></div>'
@@ -8540,6 +8620,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    </tbody></table></div>'
         + '  </div>'
         + '</div>';
+      var exportBtn = document.getElementById('tones-exportar');
+      if (exportBtn) exportBtn.onclick = function() { tonesExportCsv(tabela, mesAtual); };
+      var printBtn = document.getElementById('tones-imprimir');
+      if (printBtn) printBtn.onclick = function() {
+        tonesPrintReport({ mesAtual: mesAtual, cards: cardsResumo, rows: tabela });
+      };
     }
 
     function openCustomPage(pageId) {
