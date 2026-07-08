@@ -7358,7 +7358,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (editBtn) {
           ev.preventDefault();
           ev.stopPropagation();
-          try { _abrirEdicaoChapaEstoque(String(editBtn.getAttribute('data-est-edit') || '')); } catch (_) {}
+          try {
+            if (typeof window._abrirEdicaoChapaEstoque === 'function') {
+              window._abrirEdicaoChapaEstoque(String(editBtn.getAttribute('data-est-edit') || ''));
+            }
+          } catch (_) {}
           return;
         }
         var delBtn = target && target.closest ? target.closest('[data-est-del]') : null;
@@ -7366,7 +7370,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           ev.preventDefault();
           ev.stopPropagation();
           try {
-            _excluirChapaEstoquePatched(String(delBtn.getAttribute('data-est-del') || '')).catch(function(err) {
+            var excluirFn = (typeof window._excluirChapaEstoquePatched === 'function')
+              ? window._excluirChapaEstoquePatched
+              : _excluirChapaEstoquePatched;
+            excluirFn(String(delBtn.getAttribute('data-est-del') || '')).catch(function(err) {
               try { window.toast('Erro ao excluir chapa: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
             });
           } catch (_) {}
@@ -16991,6 +16998,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       // #endregion
     }, 250);
   }
+  try { window._abrirEdicaoChapaEstoque = _abrirEdicaoChapaEstoque; } catch (_) {}
 
   async function _excluirChapaEstoquePatched(id) {
     var sid = String(id || '').trim();
@@ -17018,6 +17026,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
     return true;
   }
+  try { window._excluirChapaEstoquePatched = _excluirChapaEstoquePatched; } catch (_) {}
   try {
     window.excluirChapa = function(id) {
       return _excluirChapaEstoquePatched(id).catch(function(err) {
