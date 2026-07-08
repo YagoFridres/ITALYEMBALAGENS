@@ -20220,6 +20220,211 @@ window._mbnActive = function(id) {
     return out;
   }
 
+  function _ofmaqBuscaState() {
+    if (!window.__ofmaqBuscaState || typeof window.__ofmaqBuscaState !== 'object') {
+      window.__ofmaqBuscaState = { q: '' };
+    }
+    return window.__ofmaqBuscaState;
+  }
+
+  function _ofmaqNormBusca(v) {
+    var s = String(v == null ? '' : v).toLowerCase().trim();
+    try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+    return s.replace(/\s+/g, ' ');
+  }
+
+  function _ofmaqNumeroLabel(of) {
+    return String(of && (of.numero || of.of_num || of.of_numero || of.of || '') || '').trim();
+  }
+
+  function _ofmaqClienteLabel(of) {
+    return String(of && (of.cliente_nome || of.cliente || of.cliNome || of.clinome || of.nome_cliente || '') || '').trim();
+  }
+
+  function _ofmaqProdutoLabel(of) {
+    return String(of && (of.descricao || of.produto || of.prodDesc || of.nome_produto || of.observacao || of.obs || '') || '').trim();
+  }
+
+  function _ofmaqUniqueOfs(list) {
+    var seen = {};
+    return (Array.isArray(list) ? list : []).filter(function(of) {
+      var id = String(of && of.id || '').trim();
+      if (!id || seen[id]) return false;
+      seen[id] = true;
+      return true;
+    });
+  }
+
+  function _ofmaqVisibleOfsFlat() {
+    var groups = _ofmaqGetCurrentGroupsFromDom();
+    var keys = Object.keys(groups || {});
+    if (!keys.length) groups = getVisibleGroups();
+    var out = [];
+    Object.keys(groups || {}).forEach(function(maquina) {
+      (Array.isArray(groups[maquina]) ? groups[maquina] : []).forEach(function(of) {
+        if (!of) return;
+        out.push(Object.assign({}, of, { __maquina_busca: maquina }));
+      });
+    });
+    return _ofmaqUniqueOfs(out);
+  }
+
+  function _ofmaqMatchesBusca(of, termNorm) {
+    if (!termNorm) return true;
+    var hay = [
+      _ofmaqNumeroLabel(of),
+      _ofmaqClienteLabel(of),
+      _ofmaqProdutoLabel(of),
+      String(of && of.__maquina_busca || '').trim()
+    ].join(' ');
+    return _ofmaqNormBusca(hay).indexOf(termNorm) >= 0;
+  }
+
+  function _ofmaqApplySearchFilter(termRaw) {
+    var termNorm = _ofmaqNormBusca(termRaw);
+    _ofmaqGetMachineLists().forEach(function(listEl) {
+      var visibleCount = 0;
+      Array.prototype.slice.call(listEl.querySelectorAll('[data-of-id]')).forEach(function(card) {
+        var ofId = String(card && card.getAttribute('data-of-id') || '').trim();
+        var of = getCurrentOfById(ofId);
+        var show = _ofmaqMatchesBusca(of, termNorm);
+        card.style.display = show ? '' : 'none';
+        if (show) visibleCount += 1;
+      });
+      var holder = (listEl.closest && listEl.closest('[data-maquina-wrapper], .maq-col, .maq-column, .maq-box, .maq-card, .maq-bloco')) || listEl;
+      if (holder && holder !== document.body) holder.style.display = visibleCount ? '' : 'none';
+    });
+  }
+
+  function _ofmaqRunAction(acao, of) {
+    var ofId = String(of && of.id || '').trim();
+    if (!ofId) return;
+    if (acao === 'editar') {
+      if (typeof window._abrirModalEdicaoOF === 'function') {
+        window._abrirModalEdicaoOF(of || ofId);
+      } else if (typeof window.__comAbrirModalOF === 'function') {
+        window.__comAbrirModalOF(ofId);
+      }
+      return;
+    }
+    if (acao === 'concluir') {
+      if (typeof window._abrirFluxoConclusaoOF === 'function') window._abrirFluxoConclusaoOF(ofId, of || null);
+      return;
+    }
+    if (acao === 'clonar') {
+      if (typeof window.__patchCloneOF === 'function') window.__patchCloneOF(ofId);
+    }
+  }
+
+  function _ofmaqRenderBuscaCards(ofs) {
+    if (!Array.isArray(ofs) || !ofs.length) {
+      return '<div style="padding:14px;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:rgba(15,23,42,.5);color:#94a3b8">Nenhuma OF encontrada para esse filtro.</div>';
+    }
+    return ofs.map(function(of) {
+      var numero = _ofmaqNumeroLabel(of) || '—';
+      var cliente = _ofmaqClienteLabel(of) || '—';
+      var produto = _ofmaqProdutoLabel(of) || '—';
+      var maquina = String(of && of.__maquina_busca || '').trim() || 'Sem máquina';
+      var entrega = String(getOfDelivery(of) || '').trim();
+      return ''
+        + '<div class="ofmaq-busca-card" data-of-id="' + escAttrLocal(String(of && of.id || '')) + '" style="border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:14px;background:linear-gradient(145deg,rgba(8,17,32,.95),rgba(15,23,42,.95));box-shadow:0 14px 34px rgba(0,0,0,.24)">'
+        + '  <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">'
+        + '    <div><div style="font-size:15px;font-weight:900;color:#f8fafc">OF #' + escHLocal(numero) + '</div><div style="margin-top:4px;font-size:13px;color:#cbd5e1">' + escHLocal(cliente) + '</div></div>'
+        + '    <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">Máquina: <b style="color:#e2e8f0">' + escHLocal(maquina) + '</b></div>'
+        + '  </div>'
+        + '  <div style="margin-top:10px;font-size:13px;color:#e2e8f0;font-weight:700">' + escHLocal(produto || '—') + '</div>'
+        + '  <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 12px;font-size:12px;color:#94a3b8">'
+        + '    <div><span style="color:#64748b">Entrega:</span> <b style="color:#e2e8f0">' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</b></div>'
+        + '    <div><span style="color:#64748b">Quantidade:</span> <b style="color:#e2e8f0">' + escHLocal(String(_getQtdOf(of) != null ? _getQtdOf(of) : '—')) + '</b></div>'
+        + '    <div><span style="color:#64748b">Status:</span> <b style="color:#e2e8f0">' + escHLocal(String(of && of.status || '—')) + '</b></div>'
+        + '  </div>'
+        + '  <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
+        + '    <button type="button" class="pep-btn primary" data-acao="concluir">Concluir</button>'
+        + '    <button type="button" class="pep-btn" data-acao="editar">Editar</button>'
+        + '    <button type="button" class="pep-btn" data-acao="clonar">Clonar</button>'
+        + '  </div>'
+        + '</div>';
+    }).join('');
+  }
+
+  function _ofmaqRenderBuscaUi(forceTerm) {
+    var state = _ofmaqBuscaState();
+    if (forceTerm !== undefined) state.q = String(forceTerm || '').trim();
+    var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body') || document.querySelector('#page-ofmaq');
+    if (!container) return;
+    var root = document.getElementById('ofmaq-search-panel');
+    if (!root) return;
+    var input = document.getElementById('ofmaq-search-input');
+    var meta = document.getElementById('ofmaq-search-meta');
+    var results = document.getElementById('ofmaq-search-results');
+    if (input && input.value !== state.q) input.value = state.q;
+    var ofs = _ofmaqVisibleOfsFlat();
+    var termNorm = _ofmaqNormBusca(state.q);
+    var matches = termNorm ? ofs.filter(function(of) { return _ofmaqMatchesBusca(of, termNorm); }) : [];
+    _ofmaqApplySearchFilter(state.q);
+    if (meta) {
+      meta.textContent = state.q
+        ? (String(matches.length) + ' OF(s) encontradas para "' + state.q + '"')
+        : (String(ofs.length) + ' OF(s) distribuídas nas máquinas');
+    }
+    if (results) {
+      if (!state.q) {
+        results.style.display = 'none';
+        results.innerHTML = '';
+      } else {
+        results.style.display = 'grid';
+        results.innerHTML = _ofmaqRenderBuscaCards(matches);
+      }
+    }
+  }
+
+  function _ofmaqEnsureBuscaUi() {
+    var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body') || document.querySelector('#page-ofmaq');
+    if (!container) return;
+    var root = document.getElementById('ofmaq-search-panel');
+    if (!root) {
+      root = document.createElement('div');
+      root.id = 'ofmaq-search-panel';
+      root.style.cssText = 'margin:0 0 18px 0;padding:16px 18px;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(8,17,32,.88)';
+      root.innerHTML = ''
+        + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
+        + '  <input id="ofmaq-search-input" class="pep-input" type="text" placeholder="Buscar OFs por número, cliente ou produto..." style="flex:1;min-width:320px">'
+        + '  <button id="ofmaq-search-clear" type="button" class="pep-btn">Limpar</button>'
+        + '</div>'
+        + '<div id="ofmaq-search-meta" style="margin-top:10px;font-size:12px;color:#94a3b8"></div>'
+        + '<div id="ofmaq-search-results" style="display:none;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:14px"></div>';
+      container.insertBefore(root, container.firstChild || null);
+      root.onclick = function(ev) {
+        var btn = ev && ev.target && ev.target.closest ? ev.target.closest('button[data-acao]') : null;
+        if (!btn) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        var card = btn.closest('.ofmaq-busca-card');
+        var ofId = String(card && card.getAttribute('data-of-id') || '').trim();
+        var of = getCurrentOfById(ofId);
+        _ofmaqRunAction(String(btn.getAttribute('data-acao') || '').trim(), of || { id: ofId });
+      };
+      var input = document.getElementById('ofmaq-search-input');
+      if (input) {
+        input.oninput = function() { _ofmaqRenderBuscaUi(String(input.value || '')); };
+        input.onkeydown = function(ev) {
+          if (String(ev && ev.key || '') === 'Escape') {
+            ev.preventDefault();
+            input.value = '';
+            _ofmaqRenderBuscaUi('');
+          }
+        };
+      }
+      var clearBtn = document.getElementById('ofmaq-search-clear');
+      if (clearBtn) clearBtn.onclick = function() {
+        var inp = document.getElementById('ofmaq-search-input');
+        if (inp) inp.value = '';
+        _ofmaqRenderBuscaUi('');
+      };
+    }
+    _ofmaqRenderBuscaUi();
+  }
+
   function _ofmaqRemoveSetupDecorations(scope) {
     Array.prototype.slice.call((scope || document).querySelectorAll('.setup-separador, .patch-setup-reason')).forEach(function(el) {
       try { el.remove(); } catch (_) {}
@@ -21604,6 +21809,7 @@ window._mbnActive = function(id) {
     applySetupGroupingVisual();
     try { _atualizarCapacidadePorMaquina(); } catch (_) {}
     try { if (typeof window._hookRedistribBanner === 'function') window._hookRedistribBanner(); } catch (_) {}
+    try { _ofmaqEnsureBuscaUi(); } catch (_) {}
   }
 
   function hookRenderOfmaq() {
