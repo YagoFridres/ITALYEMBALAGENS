@@ -8837,6 +8837,7 @@ async function _normalizarMaquinasPassagens(rows) {
 async function _enriquecerPassagensHistoricoComOfs(passagens) {
   let rows = Array.isArray(passagens) ? passagens.slice() : [];
   const normId = (v) => String(v || '').trim();
+  const pickOfCliId = (of) => String(of?.cli_id ?? of?.cliId ?? of?.cliente_id ?? of?.clienteId ?? '').trim();
   const ofIds = Array.from(new Set(rows.map((p) => normId(p?.of_id ?? p?.ofId ?? '')).filter(Boolean)));
   const ofNumeros = Array.from(new Set(rows.map((p) => normId(p?.of_numero ?? p?.numero ?? p?.of ?? '')).filter(Boolean)));
   // #region debug-point C:passagens-enriquecimento-entry
@@ -8850,11 +8851,27 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
   // #endregion
   if (!ofIds.length && !ofNumeros.length) return rows;
 
+  const ofSelectCols = Array.from(new Set([
+    'id', 'of', 'numero', 'status',
+    'cli_id', 'cliId', 'cliente_id', 'clienteId',
+    'cliNome', 'clinome', 'cliente_nome',
+    'imagem_url', 'imgs',
+    'prodDesc', 'descricao', 'produto',
+    'quantidade', 'qtd', 'qtd_produzida',
+    'valor_total', 'total', 'valor_venda', 'valor', 'valor_producao', 'vl_total',
+    'valor_unitario', 'vunit', 'vl_unit', 'preco',
+    'concluido_por', 'usuario', 'usuario_conclusao',
+    'operador_conclusao', 'operadores_conclusao',
+    'maquina', 'maquina_atual', 'maquina_agendada', 'maquina_id'
+  ].filter((col) => _ofsSelectableHas(col))));
+  const ofSelectExpr = ofSelectCols.join(',');
+  if (!ofSelectExpr) return rows;
+
   const ofsData = [];
   if (ofIds.length) {
     const { data } = await supabase
       .from('ofs')
-      .select('id,of,numero,status,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd,qtd_produzida,valor_total,total,valor_venda,valor,valor_producao,vl_total,valor_unitario,vunit,vl_unit,preco,concluido_por,usuario,usuario_conclusao,operador_conclusao,operadores_conclusao,maquina,maquina_atual,maquina_agendada,maquina_id')
+      .select(ofSelectExpr)
       .in('id', ofIds)
       .limit(5000);
     (Array.isArray(data) ? data : []).forEach((item) => ofsData.push(item));
@@ -8876,13 +8893,13 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
       ));
       const { data } = await supabase
         .from('ofs')
-        .select('id,of,numero,status,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd,qtd_produzida,valor_total,total,valor_venda,valor,valor_producao,vl_total,valor_unitario,vunit,vl_unit,preco,concluido_por,usuario,usuario_conclusao,operador_conclusao,operadores_conclusao,maquina,maquina_atual,maquina_agendada,maquina_id')
+        .select(ofSelectExpr)
         .in('numero', numeroVariants)
         .limit(5000);
       (Array.isArray(data) ? data : []).forEach((item) => ofsData.push(item));
       const { data: dataByOf } = await supabase
         .from('ofs')
-        .select('id,of,numero,status,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd,qtd_produzida,valor_total,total,valor_venda,valor,valor_producao,vl_total,valor_unitario,vunit,vl_unit,preco,concluido_por,usuario,usuario_conclusao,operador_conclusao,operadores_conclusao,maquina,maquina_atual,maquina_agendada,maquina_id')
+        .select(ofSelectExpr)
         .in('of', numeroVariants)
         .limit(5000);
       (Array.isArray(dataByOf) ? dataByOf : []).forEach((item) => ofsData.push(item));
@@ -8908,6 +8925,23 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
     if (numeroOfDigits && !byNumero.has(numeroOfDigits)) byNumero.set(numeroOfDigits, o);
   });
 
+  const cliIds = Array.from(new Set((Array.isArray(ofsData) ? ofsData : []).map((of) => pickOfCliId(of)).filter(Boolean)));
+  const clientesMap = new Map();
+  if (cliIds.length) {
+    for (let i = 0; i < cliIds.length; i += 200) {
+      const lote = cliIds.slice(i, i + 200);
+      const { data } = await supabase
+        .from('clientes')
+        .select('id,nome,cliente_nome,razao_social,fantasia,rs')
+        .in('id', lote);
+      (Array.isArray(data) ? data : []).forEach((cli) => {
+        const id = String(cli?.id || '').trim();
+        if (!id) return;
+        clientesMap.set(id, String(cli?.nome || cli?.cliente_nome || cli?.razao_social || cli?.fantasia || cli?.rs || '').trim());
+      });
+    }
+  }
+
   const parseImgs = (v) => {
     if (Array.isArray(v)) return v;
     if (typeof v === 'string') {
@@ -8930,13 +8964,14 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
       || (numeroRef ? (byNumero.get(_normalizarNumeroOfDigits(numeroRef)) || null) : null);
     if (!of) return p;
 
-    const clienteOf = String(of?.cliNome || of?.clinome || of?.cliente_nome || '').trim();
-      const ofSafe = _sanitizeOfImagesForResponse(of);
-      const imgsOf = parseImgs(ofSafe?.imgs);
-      const imgOf = String(ofSafe?.imagem_url || (imgsOf[0] || '') || '').trim();
+    const clienteOf = clientesMap.get(pickOfCliId(of))
+      || String(of?.cliNome || of?.clinome || of?.cliente_nome || '').trim();
+    const ofSafe = _sanitizeOfImagesForResponse(of);
+    const imgsOf = parseImgs(ofSafe?.imgs);
+    const imgOf = String(ofSafe?.imagem_url || (imgsOf[0] || '') || '').trim();
     const prodOf = String(of?.prodDesc || of?.produto || of?.descricao || '').trim();
     const qtdOf = (of?.qtd_produzida ?? of?.quantidade ?? of?.qtd);
-    const vlUnit = (of?.valor_unitario ?? of?.vunit ?? of?.vl_unit);
+    const vlUnit = (of?.valor_unitario ?? of?.vunit ?? of?.vl_unit ?? of?.preco ?? 0);
     const totalOf = _resolverValorTotalPassagem(p, of);
     const statusOf = String(of?.status || '').trim();
     const respOf = String(of?.concluido_por || of?.usuario || '').trim();
@@ -8958,7 +8993,7 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
     return {
       ...p,
       ...(p?.of_numero ? {} : (numeroOf ? { of_numero: numeroOf } : {})),
-      ...(p?.cliente ? {} : (clienteOf ? { cliente: clienteOf } : {})),
+      ...((String(p?.cliente || p?.cliente_nome || '').trim()) ? {} : (clienteOf ? { cliente: clienteOf, cliente_nome: clienteOf, nome_cliente: clienteOf } : {})),
       ...(p?.imagem_url ? {} : (imgOf ? { imagem_url: imgOf, imgs: imgsOf } : {})),
       ...(p?.produto ? {} : (prodOf ? { produto: prodOf } : {})),
       ...(p?.quantidade ? {} : ((qtdOf != null) ? { quantidade: qtdOf, qtd_produzida: qtdOf } : {})),
@@ -18146,15 +18181,17 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       data: { metricColsReady, query: req.query || {} },
     });
     const selectCols = [
-      'id', 'numero', 'of', 'status', 'data_conclusao', 'gramatura', 'gramatura_id',
+      'id', 'numero', 'of', 'status', 'data_conclusao',
+      'cli_id', 'cliId', 'cliente_id', 'clienteId', 'cliNome', 'cliente_nome', 'cliente',
+      'gramatura_id', 'gramaturaId', 'gramatura', 'gramatura_nome',
+      'preco', 'valor_unitario', 'valor_total',
       'qtd_produzida', 'quantidade', 'qtd',
-      'cli_id', 'cliNome', 'cliente_nome', 'cliente',
       'descricao', 'produto',
       'comprimento', 'largura',
       'caixa_comprimento', 'caixa_largura',
       'created_at', 'deleted_at'
     ].filter((col) => _ofsSelectableHas(col));
-    ['gramatura_nome', 'tamanho_m2', 'comprimento_mm', 'largura_mm'].forEach((col) => {
+    ['tamanho_m2', 'comprimento_mm', 'largura_mm'].forEach((col) => {
       if (_ofsSelectableHas(col)) selectCols.push(col);
     });
     if (metricColsReady) {

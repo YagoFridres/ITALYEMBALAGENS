@@ -2096,11 +2096,13 @@ try {
   }
 
   function _histPassagemValorUnit(row) {
-    return Number((row && (row.vl_unit != null ? row.vl_unit : (row.valor_unitario != null ? row.valor_unitario : row.vunit))) || 0) || 0;
+    return Number((row && (row.vl_unit != null ? row.vl_unit : (row.valor_unitario != null ? row.valor_unitario : (row.vunit != null ? row.vunit : row.preco)))) || 0) || 0;
   }
 
   function _histPassagemValorTotal(row) {
-    return Number((row && (row.total != null ? row.total : (row.valor_total != null ? row.valor_total : row.valor_venda))) || 0) || 0;
+    var direto = Number((row && (row.total != null ? row.total : (row.valor_total != null ? row.valor_total : row.valor_venda))) || 0) || 0;
+    if (direto > 0) return direto;
+    return _histPassagemQuantidade(row) * _histPassagemValorUnit(row);
   }
 
   function _histPassagemMaquinas(row) {
@@ -25054,6 +25056,16 @@ function _ocultarGraficoComissoes() {
     return [];
   }
 
+  function _normNomeMaquinaConclusao(v) {
+    var s = String(v == null ? '' : v).trim().toUpperCase();
+    try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+    return s.replace(/\s+/g, ' ').trim();
+  }
+
+  function _listaMaquinasHistoricoConclusao() {
+    return ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
+  }
+
   async function _carregarOperadoresParaConclusao() {
     try { window._operadoresConclusaoCache = null; } catch (_) {}
     try { delete window._operadoresConclusaoCache; } catch (_) {}
@@ -25406,6 +25418,7 @@ function _ocultarGraficoComissoes() {
         var maqAtual = String(of && (of.maquina || of.maq || of.maquina_atual || of.maquina_agendada) || '').trim();
         if (maqAtual) maquinasFluxo = [maqAtual];
       }
+      var maquinasHistoricoSelecionadas = maquinasFluxo.slice();
       var preloadMaquinas = _carregarMaquinasParaConclusao().catch(function() { return []; });
       var preloadOperadores = _carregarOperadoresParaConclusao().catch(function() { return []; });
       var preloadGramaturas = _carregarGramaturasParaConclusao().catch(function() { return [_gramaturaFallbackConclusao()]; });
@@ -25470,6 +25483,10 @@ function _ocultarGraficoComissoes() {
         + '      <div id="conclusao-perdas-lista"></div>'
         + '      <div id="conclusao-total-perdido" style="margin-top:10px;font-size:13px;font-weight:700;color:#ef4444">Total perdido: 0 caixas</div>'
         + '    </div>'
+        + '    <div class="com-conc-field">'
+        + '      <label class="com-conc-label">🧭 MÁQUINAS QUE O PEDIDO PASSOU</label>'
+        + '      <div id="conclusao-maquinas-passagem" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px"></div>'
+        + '    </div>'
         + '    <div class="com-conc-summary">'
         + '      <div class="com-conc-metrics">'
         + '        <div class="com-conc-metric-card"><span class="com-conc-metric-label">Tonelada Vendida</span><strong id="conc-res-ton-venda" class="com-conc-metric-value">0,0000 t</strong></div>'
@@ -25501,6 +25518,7 @@ function _ocultarGraficoComissoes() {
       var gramEl = backdrop.querySelector('#conclusao-gramatura');
       var gramBuscaEl = backdrop.querySelector('#conclusao-gramatura-busca');
       var gramSuggestEl = backdrop.querySelector('#conclusao-gramatura-suggest');
+      var maquinasPassagemEl = backdrop.querySelector('#conclusao-maquinas-passagem');
       var perdasLista = backdrop.querySelector('#conclusao-perdas-lista');
       var totalPerdidoEl = backdrop.querySelector('#conclusao-total-perdido');
       var btnSalvar = backdrop.querySelector('#conclusao-confirmar');
@@ -25545,6 +25563,24 @@ function _ocultarGraficoComissoes() {
         }));
         return opts.join('');
       }
+      function renderMaquinasPassagemConclusao() {
+        if (!maquinasPassagemEl) return;
+        var base = _listaMaquinasHistoricoConclusao();
+        var selecionadasNorm = (Array.isArray(maquinasHistoricoSelecionadas) ? maquinasHistoricoSelecionadas : []).map(_normNomeMaquinaConclusao);
+        maquinasPassagemEl.innerHTML = base.map(function(nome) {
+          var checked = selecionadasNorm.indexOf(_normNomeMaquinaConclusao(nome)) >= 0;
+          return ''
+            + '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid rgba(148,163,184,.18);border-radius:12px;background:rgba(15,23,42,.45);color:#e2e8f0;font-size:13px;font-weight:700">'
+            + '  <input type="checkbox" class="conc-maq-passagem" value="' + String(nome).replace(/"/g, '&quot;') + '"' + (checked ? ' checked' : '') + '>'
+            + '  <span>' + String(nome).replace(/</g, '&lt;') + '</span>'
+            + '</label>';
+        }).join('');
+      }
+      function collectMaquinasPassagemConclusao() {
+        return Array.prototype.slice.call((maquinasPassagemEl || backdrop).querySelectorAll('.conc-maq-passagem:checked')).map(function(input) {
+          return String(input && input.value || '').trim();
+        }).filter(Boolean);
+      }
       function collectPerdas() {
         return Array.prototype.slice.call(perdasLista.querySelectorAll('.com-conc-loss-row')).map(function(row) {
           var maqSel = row.querySelector('.conc-loss-maq');
@@ -25578,6 +25614,7 @@ function _ocultarGraficoComissoes() {
           return { maquina: maqNome, maquina_nome: maqNome, maquina_id: maqId, qtd: qtd, operadores: ops };
         }).filter(function(item) { return item.maquina && item.qtd > 0; });
       }
+      renderMaquinasPassagemConclusao();
       function normalizarBuscaGramatura(v) {
         var s = String(v == null ? '' : v).trim().toUpperCase();
         try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
@@ -25872,6 +25909,7 @@ function _ocultarGraficoComissoes() {
         if (!dataFaturamento) { try { alert('Informe a data de faturamento.'); } catch (_) {} return; }
         if (!resumo.gramaturaValida) { try { alert('Selecione uma gramatura válida antes de concluir a OF.'); } catch (_) {} return; }
         var perdas = collectPerdas();
+        var maquinasPassagem = collectMaquinasPassagemConclusao();
         var operadoresConclusao = Array.from(new Set(perdas.reduce(function(acc, perda) {
           return acc.concat(Array.isArray(perda && perda.operadores) ? perda.operadores : []);
         }, []).map(function(op) { return String(op || '').trim(); }).filter(Boolean)));
@@ -25900,6 +25938,7 @@ function _ocultarGraficoComissoes() {
           tonelada_vendida: Number(materiaPrima.toneladaVendida || 0) || 0,
           custo_m2_venda: Number(materiaPrima.custoM2Venda || 0) || 0,
           consumo_chapas_estimado: Number(materiaPrima.consumoChapas || 0) || 0,
+          maq: maquinasPassagem,
           caixas_perdidas: resumo.perdasQtd,
           perdas_por_maquina: perdas.map(function(perda) {
             var perdaMetricas = _calcularMetricasPerdaConclusao(of, Number(perda && perda.qtd || 0) || 0, gramaturaSel, precoUnitario, materiaPrima.areaUnitM2);
