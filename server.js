@@ -18410,85 +18410,39 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       msg: '[DEBUG] toneladas-vendidas inicio',
       data: { metricColsReady, query: req.query || {} },
     });
-    const selectCols = [
-      'id', 'numero', 'of', 'status', 'data_conclusao',
-      'cli_id', 'cliId', 'cliente_id', 'clienteId', 'cliNome', 'cliente_nome', 'cliente',
-      'gramatura_id', 'gramaturaId', 'gramatura', 'gramatura_nome',
-      'preco', 'valor_unitario', 'valor_total',
-      'qtd_produzida', 'quantidade', 'qtd',
-      'descricao', 'produto',
-      'comprimento', 'largura',
-      'caixa_comprimento', 'caixa_largura',
-      'created_at', 'deleted_at'
-    ].filter((col) => _ofsSelectableHas(col));
-    ['tamanho_m2', 'comprimento_mm', 'largura_mm'].forEach((col) => {
-      if (_ofsSelectableHas(col)) selectCols.push(col);
-    });
-    if (metricColsReady) {
-      ['tonelada_vendida', 'custo_m2_venda'].forEach((col) => {
-        if (_ofsSelectableHas(col)) selectCols.push(col);
-      });
-    }
-    let selectedCols = Array.from(new Set(selectCols));
-    let canFilterDeletedAt = selectedCols.includes('deleted_at');
+    const selectedCols = [
+      'id', 'numero', 'of', 'cli_id', 'valor_total', 'quantidade', 'qtd', 'descricao',
+      'operadores_conclusao', 'perdas_por_maquina', 'usuario_conclusao', 'operador_conclusao',
+      'maq', 'maquina_agendada', 'caixa_comprimento', 'caixa_largura', 'dim_comprimento', 'dim_largura',
+      'gramatura_id', 'gramatura', 'gramatura_nome', 'tonelada_vendida', 'custo_m2_venda',
+      'preco', 'valor_unitario', 'valor_venda', 'data_conclusao'
+    ];
     let ofs = [];
-    for (let tentativa = 0; tentativa < 12; tentativa += 1) {
-      const selectExpr = selectedCols.join(',');
-      _debugRuntimeWrite({
-        runId: 'pre-fix',
-        hypothesisId: 'T',
-        location: 'server.js:/api/analises/toneladas-vendidas',
-        msg: '[DEBUG] toneladas-vendidas select pronto',
-        data: { tentativa, selectExpr, totalCols: selectedCols.length, canFilterDeletedAt },
-      });
-      ofs = [];
-      let from = 0;
-      let queryError = null;
-      while (true) {
-        let q = supabase.from('ofs').select(selectExpr);
-        if (canFilterDeletedAt) q = q.is('deleted_at', null);
-        q = q.not('data_conclusao', 'is', null).range(from, from + 999);
-        const { data, error } = await q;
-        if (error) {
-          queryError = error;
-          break;
-        }
-        if (!data || !data.length) break;
-        ofs = ofs.concat(data);
-        if (data.length < 1000) break;
-        from += 1000;
-      }
-      if (!queryError) break;
-      const msg = String(queryError?.message || queryError || '');
-      const missingCol = msg.match(/Could not find the '([^']+)' column/i)?.[1]
-        || msg.match(/column\s+"?([\w.]+)"?\s+does not exist/i)?.[1]
-        || '';
-      const normalizedMissing = String(missingCol || '').split('.').pop();
-      _debugRuntimeWrite({
-        runId: 'pre-fix',
-        hypothesisId: 'T',
-        location: 'server.js:/api/analises/toneladas-vendidas',
-        msg: '[DEBUG] toneladas-vendidas tentativa falhou',
-        data: { tentativa, message: msg, missingCol: normalizedMissing, canFilterDeletedAt, selectedCols },
-      });
-      if (normalizedMissing && selectedCols.includes(normalizedMissing)) {
-        selectedCols = selectedCols.filter((col) => col !== normalizedMissing);
-        if (normalizedMissing === 'deleted_at') canFilterDeletedAt = false;
-        continue;
-      }
-      if (canFilterDeletedAt && /deleted_at/i.test(msg)) {
-        canFilterDeletedAt = false;
-        selectedCols = selectedCols.filter((col) => col !== 'deleted_at');
-        continue;
-      }
-      throw queryError;
+    const selectExpr = selectedCols.join(',');
+    _debugRuntimeWrite({
+      runId: 'pre-fix',
+      hypothesisId: 'T',
+      location: 'server.js:/api/analises/toneladas-vendidas',
+      msg: '[DEBUG] toneladas-vendidas select pronto',
+      data: { selectExpr, totalCols: selectedCols.length },
+    });
+    let from = 0;
+    while (true) {
+      let q = supabase.from('ofs').select(selectExpr);
+      q = q.not('data_conclusao', 'is', null).range(from, from + 999);
+      const { data, error } = await q;
+      if (error) throw error;
+      if (!data || !data.length) break;
+      ofs = ofs.concat(data);
+      if (data.length < 1000) break;
+      from += 1000;
     }
     _debugRuntimeWrite({
       runId: 'pre-fix',
       hypothesisId: 'T',
       location: 'server.js:/api/analises/toneladas-vendidas',
       msg: '[DEBUG] toneladas-vendidas ofs carregadas',
-      data: { totalOfs: Array.isArray(ofs) ? ofs.length : 0, selectedCols, canFilterDeletedAt },
+      data: { totalOfs: Array.isArray(ofs) ? ofs.length : 0, selectedCols },
     });
 
     const cliIds = Array.from(new Set((Array.isArray(ofs) ? ofs : []).map((of) => pickOfCliId(of)).filter(Boolean)));
@@ -18518,25 +18472,23 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
     }));
 
     const rows = (Array.isArray(ofs) ? ofs : []).filter((of) => {
-      const status = String(of?.status || '').toLowerCase();
       const gramaturaInfo = gramaturasMap.get(pickOfGramaturaId(of)) || null;
       const gramatura = Number(of?.gramatura || gramaturaInfo?.gramatura || 0) || 0;
       const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
-      return status.includes('conclu') && (tonPersistida > 0 || gramatura > 0);
+      return !!String(of?.data_conclusao || '').trim() && (tonPersistida > 0 || gramatura > 0);
     }).map((of) => {
+      const cliId = String(pickOfCliId(of) || '').trim();
       const gramaturaInfo = gramaturasMap.get(pickOfGramaturaId(of)) || null;
       const qtd = Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.quantidade ?? of?.qtd ?? 0) || 0));
       const gramatura = Number(of?.gramatura || gramaturaInfo?.gramatura || 0) || 0;
       const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
       const custoM2Venda = Number(of?.custo_m2_venda || 0) || 0;
-      let areaUnitM2 = Number(of?.tamanho_m2 || 0) || 0;
+      let areaUnitM2 = 0;
+      const compMm = Number(of?.dim_comprimento ?? of?.caixa_comprimento ?? 0) || 0;
+      const largMm = Number(of?.dim_largura ?? of?.caixa_largura ?? 0) || 0;
+      if (compMm > 0 && largMm > 0) areaUnitM2 = (compMm / 1000) * (largMm / 1000);
       if (!(areaUnitM2 > 0)) {
-        const compMm = Number(of?.comprimento_mm ?? of?.comprimento ?? of?.caixa_comprimento ?? 0) || 0;
-        const largMm = Number(of?.largura_mm ?? of?.largura ?? of?.caixa_largura ?? 0) || 0;
-        if (compMm > 0 && largMm > 0) areaUnitM2 = (compMm / 1000) * (largMm / 1000);
-      }
-      if (!(areaUnitM2 > 0)) {
-        const desc = String(of?.descricao || of?.produto || '').trim();
+        const desc = String(of?.descricao || '').trim();
         const match = desc.match(/(\d+(?:[.,]\d+)?)\s*[×xX]\s*(\d+(?:[.,]\d+)?)/);
         const compCm = match ? parseFloat(String(match[1] || '').replace(',', '.')) : 0;
         const largCm = match ? parseFloat(String(match[2] || '').replace(',', '.')) : 0;
@@ -18544,13 +18496,14 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       }
       const areaTotalM2 = areaUnitM2 > 0 ? (areaUnitM2 * qtd) : 0;
       const toneladas = tonPersistida > 0 ? tonPersistida : (areaTotalM2 > 0 ? ((areaTotalM2 * gramatura) / 1000000) : 0);
-      const clienteNome = clientesMap.get(pickOfCliId(of)) || String(of?.cliNome || of?.cliente_nome || of?.cliente || '').trim() || '—';
+      const clienteNome = clientesMap.get(cliId) || '—';
       const fornecedorNome = String(gramaturaInfo?.fornecedor_nome || '').trim() || '—';
+      console.log('[TONELADAS-FIX] of:', of.of, 'cli_id:', cliId, 'clienteNome:', clienteNome, 'fornecedorNome:', fornecedorNome);
       return {
         id: of?.id || null,
         of_numero: of?.numero || of?.of || null,
         cliente_nome: clienteNome,
-        produto: String(of?.descricao || of?.produto || '').trim() || '—',
+        produto: String(of?.descricao || '').trim() || '—',
         data_conclusao: of?.data_conclusao || null,
         gramatura,
         gramatura_nome: String(of?.gramatura_nome || gramaturaInfo?.nome || '').trim() || null,
