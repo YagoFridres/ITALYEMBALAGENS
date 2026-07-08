@@ -6533,7 +6533,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         +      _cardBreakdownEstoque('Caixas por Gramatura', caixasBreakdown, _fmtNumEstoque)
         +      _cardBreakdownEstoque('Gramaturas por Fornecedor', fornBreakdown, _fmtNumEstoque)
         + '  </div>'
-        + '  <div class="pep-head" style="margin-top:16px"><div><div class="pep-title">📐 Gramaturas</div><div class="pep-sub">CRUD da base usada na conclusão de OF e no estoque de chapas.</div></div><button class="pep-btn primary" id="gram-nova">Criar Gramaturas</button></div>'
+        + '  <div class="pep-head" style="margin-top:16px"><div><div class="pep-title">📐 Gramaturas</div><div class="pep-sub">CRUD da base usada na conclusão de OF e no estoque de chapas.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pep-btn" id="gram-imprimir">Imprimir Relatório</button><button class="pep-btn primary" id="gram-nova">Criar Gramaturas</button></div></div>'
         + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
         + '    <input class="pep-input" id="gram-busca" placeholder="Buscador de gramaturas" value="' + esc(window.__gramaturasBusca || '') + '" style="min-width:320px;flex:1">'
         + '    <button class="pep-btn" id="gram-buscar">Buscar</button>'
@@ -6545,6 +6545,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  </tbody></table></div></div>'
         + '</div>';
       document.getElementById('gram-nova').onclick = function() { openGramaturaModal(null, renderGramaturasPage); };
+      var btnPrintGram = document.getElementById('gram-imprimir');
+      if (btnPrintGram) btnPrintGram.onclick = function() {
+        gramaturasPrintReport({
+          periodoTitulo: _mesAtualRefEstoque(),
+          lista: lista,
+          uso: uso,
+          menosUso: menosUso,
+          caixasBreakdown: caixasBreakdown,
+          fornBreakdown: fornBreakdown
+        });
+      };
       var buscaEl = document.getElementById('gram-busca');
       var btnBusca = document.getElementById('gram-buscar');
       if (btnBusca) btnBusca.onclick = function() {
@@ -8255,6 +8266,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var valorTotal = lista.reduce(function(s, chapa) { return s + estoqueWireValor(chapa); }, 0);
         var tonTotal = lista.reduce(function(s, chapa) { return s + estoqueWireTon(chapa); }, 0);
         var breakdown = _resumoTopPorValor(lista, function(chapa) { return chapa && chapa.fornecedor || 'Sem fornecedor'; }, function(chapa) { return estoqueWireValor(chapa); }).slice(0, 4);
+        var resumoFornecedorPrint = Object.values(lista.reduce(function(acc, chapa) {
+          var nome = String(chapa && chapa.fornecedor || 'Sem fornecedor').trim() || 'Sem fornecedor';
+          if (!acc[nome]) acc[nome] = { nome: nome, qtd: 0, ton: 0, valor: 0 };
+          acc[nome].qtd += 1;
+          acc[nome].ton += estoqueWireTon(chapa);
+          acc[nome].valor += estoqueWireValor(chapa);
+          return acc;
+        }, {})).sort(function(a, b) {
+          return (b.valor - a.valor) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+        });
         page.innerHTML = ''
         + '<div class="pep-wrap">'
         + '  <div class="pep-cards estoque-wire-cards">'
@@ -8266,6 +8287,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
         + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF, CNPJ ou grupo" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
         + '    <button class="pep-btn primary" id="estoque-wire-buscar">Buscar</button>'
+        + '    <button class="pep-btn" id="estoque-wire-imprimir">Imprimir Relatório</button>'
         + '    <button class="pep-btn" id="estoque-wire-open-grupos">＋ Novo Grupo</button>'
         + '    <button class="pep-btn" id="estoque-wire-auto-grupos">🔮 Sugerir Grupos Automaticamente</button>'
         + '    <button class="pep-btn" id="estoque-wire-auto-cores">🎨 Colorir por Família Automaticamente</button>'
@@ -8301,6 +8323,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       document.getElementById('estoque-wire-buscar').onclick = function() {
         window.__estoqueWireBusca = String((document.getElementById('estoque-wire-busca') || {}).value || '').trim();
         renderEstoqueWireframePage();
+      };
+      var btnPrintEstoque = document.getElementById('estoque-wire-imprimir');
+      if (btnPrintEstoque) btnPrintEstoque.onclick = function() {
+        estoquePrintReport({
+          periodoTitulo: _mesAtualRefEstoque(),
+          lista: lista,
+          valorTotal: valorTotal,
+          tonTotal: tonTotal,
+          qtdChapas: lista.length,
+          resumoFornecedor: resumoFornecedorPrint
+        });
       };
       var btnNovoGrupo = document.getElementById('estoque-wire-open-grupos');
       if (btnNovoGrupo) btnNovoGrupo.onclick = function() {
@@ -8586,6 +8619,105 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     function tonesPrintReport(report) {
       try { _openStyledPrintWindow(tonesBuildPrintHtml(report)); } catch (_) {}
     }
+
+    function _printTopListText(items, labelKey, valueFormatter, emptyText) {
+      var lista = Array.isArray(items) ? items.slice(0, 4) : [];
+      if (!lista.length) return emptyText || 'Sem dados';
+      return lista.map(function(item) {
+        var nome = String(item && item[labelKey] || '—').trim() || '—';
+        var valor = valueFormatter ? valueFormatter(item && item.valor) : String(item && item.valor || '0');
+        return nome + ': ' + valor;
+      }).join(' | ');
+    }
+
+    function gramaturasBuildPrintHtml(report) {
+      var info = report || {};
+      var lista = Array.isArray(info.lista) ? info.lista : [];
+      var uso = Array.isArray(info.uso) ? info.uso : [];
+      var menosUso = Array.isArray(info.menosUso) ? info.menosUso : [];
+      var caixasBreakdown = Array.isArray(info.caixasBreakdown) ? info.caixasBreakdown : [];
+      var fornBreakdown = Array.isArray(info.fornBreakdown) ? info.fornBreakdown : [];
+      return _buildStyledPrintHtml({
+        title: 'Relatório de Gramaturas',
+        periodo: info.periodoTitulo || '',
+        cards: [
+          { label: 'Gramaturas Mais Usadas', value: (uso[0] && uso[0].nome) || 'Sem dados', sub: (uso[0] ? (_fmtNumEstoque(uso[0].valor) + ' caixas') : 'Sem uso no período') },
+          { label: 'Gramaturas Menos Usadas', value: (menosUso[0] && menosUso[0].nome) || 'Sem dados', sub: (menosUso[0] ? (_fmtNumEstoque(menosUso[0].valor) + ' caixas') : 'Sem uso no período') },
+          { label: 'Caixas por Gramatura', value: (caixasBreakdown[0] && caixasBreakdown[0].nome) || 'Sem dados', sub: _printTopListText(caixasBreakdown, 'nome', _fmtNumEstoque, 'Sem dados') },
+          { label: 'Gramaturas por Fornecedor', value: (fornBreakdown[0] && fornBreakdown[0].nome) || 'Sem dados', sub: _printTopListText(fornBreakdown, 'nome', _fmtNumEstoque, 'Sem dados') }
+        ],
+        summaryTitle: 'Tabela-resumo',
+        summaryHeaders: ['Indicador', 'Referência', 'Valor'],
+        summaryRows: []
+          .concat(uso.slice(0, 5).map(function(item) { return ['Gramaturas Mais Usadas', item && item.nome || '—', _fmtNumEstoque(item && item.valor || 0) + ' caixas']; }))
+          .concat(fornBreakdown.slice(0, 5).map(function(item) { return ['Gramaturas por Fornecedor', item && item.nome || '—', _fmtNumEstoque(item && item.valor || 0) + ' cadastro(s)']; })),
+        detailTitle: 'Tabela completa de gramaturas',
+        detailHeaders: ['Nome da Gramatura', 'Gramatura', 'Fornecedor', 'Valor Unitário'],
+        detailRows: lista.map(function(g) {
+          return [
+            g && (g.nome || g.descricao) || '—',
+            num(g && g.gramatura || 0, 2) + ' g/m²',
+            g && g.fornecedor_nome || '—',
+            money(g && g.valor_unitario || 0)
+          ];
+        }),
+        emptySummaryCols: 3,
+        emptyDetailCols: 4
+      });
+    }
+
+    function gramaturasPrintReport(report) {
+      try { _openStyledPrintWindow(gramaturasBuildPrintHtml(report)); } catch (_) {}
+    }
+
+    function estoqueBuildPrintHtml(report) {
+      var info = report || {};
+      var lista = Array.isArray(info.lista) ? info.lista : [];
+      var resumoFornecedor = Array.isArray(info.resumoFornecedor) ? info.resumoFornecedor : [];
+      return _buildStyledPrintHtml({
+        title: 'Relatório de Estoque de Chapas',
+        periodo: info.periodoTitulo || '',
+        cards: [
+          { label: 'Valor Total do Estoque', value: money(info.valorTotal || 0), sub: 'Base atual do estoque', green: true },
+          { label: 'Toneladas em Estoque', value: num(info.tonTotal || 0, 3) + ' t', sub: 'Saldo atual do estoque' },
+          { label: 'Quantidade de Chapas', value: num(info.qtdChapas || 0, 0), sub: 'Itens cadastrados' },
+          { label: 'Por Fornecedor', value: (resumoFornecedor[0] && resumoFornecedor[0].nome) || 'Sem fornecedor', sub: _printTopListText(resumoFornecedor, 'nome', function(v) { return money(v || 0); }, 'Sem dados') }
+        ],
+        summaryTitle: 'Resumo por fornecedor',
+        summaryHeaders: ['Fornecedor', 'Qtd Chapas', 'Toneladas', 'Valor'],
+        summaryRows: resumoFornecedor.map(function(item) {
+          return [
+            item && item.nome || '—',
+            num(item && item.qtd || 0, 0),
+            num(item && item.ton || 0, 3) + ' t',
+            money(item && item.valor || 0)
+          ];
+        }),
+        detailTitle: 'Tabela completa do estoque',
+        detailHeaders: ['Fornecedor', 'Gramatura', 'Nomenclatura', 'Tamanho', 'Nome', 'Quantidade', 'Valor Unitário', 'Valor Total'],
+        detailRows: lista.map(function(chapa) {
+          var qtd = Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0);
+          var vunit = Number(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0) || 0;
+          return [
+            chapa && chapa.fornecedor || '—',
+            chapa && chapa.gramatura || '—',
+            chapa && chapa.nomenclatura || '—',
+            chapa && chapa.tamanho || '—',
+            chapa && (chapa.nome_uso || chapa.nome) || '—',
+            num(qtd, 0),
+            money(vunit),
+            money(estoqueWireValor(chapa))
+          ];
+        }),
+        emptySummaryCols: 4,
+        emptyDetailCols: 8
+      });
+    }
+
+    function estoquePrintReport(report) {
+      try { _openStyledPrintWindow(estoqueBuildPrintHtml(report)); } catch (_) {}
+    }
+
     async function renderToneladasPage() {
       ensureStyles();
       var page = ensurePage('toneladas-vendidas');
