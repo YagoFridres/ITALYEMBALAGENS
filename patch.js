@@ -912,6 +912,7 @@ try {
       + '    <table class="orc-table">'
       + '      <thead><tr>'
       + '        <th>Número do orçamento</th>'
+      + '        <th>Nome do orçamento</th>'
       + '        <th>Cliente</th>'
       + '        <th>Medidas</th>'
       + '        <th>Onda do papelão</th>'
@@ -922,6 +923,7 @@ try {
       + '      <tbody>'
       + lista.map(function(orc) {
       var num = orc.numero_orcamento || (orc.id ? String(orc.id).substring(0, 8) : '');
+      var nome = orc.nome || orc.nome_orcamento || '—';
       var cliente = orc.cliente_nome || orc.descricao || '—';
       var medidas = orc.medidas || orc.titulo || '—';
       var qtd = orc.quantidade != null ? orc.quantidade : (orc.qtd != null ? orc.qtd : '—');
@@ -936,6 +938,7 @@ try {
       return ''
         + '<tr>'
         + '  <td><strong style="color:#f8fafc">Nº ' + esc(num) + '</strong></td>'
+        + '  <td>' + esc(nome) + '</td>'
         + '  <td>' + esc(cliente) + '</td>'
         + '  <td>' + esc(medidas) + '</td>'
         + '  <td>' + esc(onda) + '</td>'
@@ -11693,6 +11696,31 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!sel) return;
     if (sel.dataset.patchAutocomplete === '1') return;
     sel.dataset.patchAutocomplete = '1';
+    try {
+      var nomeHost = sel.parentNode;
+      if (nomeHost && !document.getElementById('calc-nome-orcamento')) {
+        var nomeWrap = document.createElement('div');
+        nomeWrap.id = 'wrap-calc-nome-orcamento';
+        nomeWrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-bottom:10px';
+        nomeWrap.innerHTML = ''
+          + '<label for="calc-nome-orcamento" style="font-size:11px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Nome do orçamento</label>'
+          + '<input id="calc-nome-orcamento" type="text" placeholder="Ex: Caixa Ripke reforçada" style="width:100%;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:14px">';
+        nomeHost.insertBefore(nomeWrap, sel);
+      }
+    } catch (_) {}
+    try {
+      var nomeInput = document.getElementById('calc-nome-orcamento');
+      var orcAtual = currentOrcamentoFromState();
+      var orcAtualId = String(orcAtual && orcAtual.id || '').trim();
+      if (nomeInput) {
+        if (!orcAtualId) {
+          if (nomeInput.dataset.lastOrcamentoId) nomeInput.dataset.lastOrcamentoId = '';
+        } else if (nomeInput.dataset.lastOrcamentoId !== orcAtualId) {
+          nomeInput.value = String(orcAtual && (orcAtual.nome || orcAtual.nome_orcamento) || '').trim();
+          nomeInput.dataset.lastOrcamentoId = orcAtualId;
+        }
+      }
+    } catch (_) {}
 
     var wrap = document.createElement('div');
     wrap.id = 'wrap-calc-cliente';
@@ -13975,6 +14003,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var empresaEl = document.getElementById('of-r-empresa')
         || document.getElementById('ofr-empresa')
         || document.querySelector('select[name="empresa_id"], select[name="emp_id"]');
+      var nomeOrcEl = document.getElementById('calc-nome-orcamento');
       var cliId = String(
         (clienteIdEl && clienteIdEl.value)
         || (clienteInput && clienteInput.dataset && (clienteInput.dataset.clienteId || clienteInput.dataset.cliId))
@@ -13997,6 +14026,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         cliNome: cliNome,
         vendedorId: vendedorId,
         vendedorNome: vendedorNome,
+        nomeOrcamento: String((nomeOrcEl && nomeOrcEl.value) || '').trim(),
         preco: numVal(precoEl && precoEl.value),
         qtd: Math.trunc(numVal(qtdEl && qtdEl.value)),
         total: numVal(totalEl && totalEl.value),
@@ -14025,6 +14055,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (!body.vendedor && ctx.vendedorNome) body.vendedor = ctx.vendedorNome;
       if (!body.vendNome && ctx.vendedorNome) body.vendNome = ctx.vendedorNome;
       if (!body.vendid) body.vendid = ctx.vendedorNome || ctx.vendedorId || '';
+      if (!body.nome && ctx.nomeOrcamento) body.nome = ctx.nomeOrcamento;
+      if (!body.nome_orcamento && ctx.nomeOrcamento) body.nome_orcamento = ctx.nomeOrcamento;
 
       if (!(Number(body.preco || 0) > 0) && preco > 0) body.preco = preco;
       if (!(Number(body.valor_unitario || 0) > 0) && preco > 0) body.valor_unitario = preco;
