@@ -25364,8 +25364,23 @@ function _ocultarGraficoComissoes() {
           var maqNome = String(maqObj && (maqObj.nome || maqObj.descricao || maqObj.id) || maqVal).trim();
           var maqId = String(maqObj && maqObj.id || '').trim();
           var qtd = Math.trunc(Number((row.querySelector('.conc-loss-qtd') || {}).value || 0) || 0);
+          var opsLista = Array.isArray(row.__concOperadoresLista) ? row.__concOperadoresLista : [];
           var ops = Array.prototype.slice.call(row.querySelectorAll('.conc-loss-op')).map(function(sel) {
-            return String(sel && sel.value || '').trim();
+            var value = String(sel && sel.value || '').trim();
+            var label = '';
+            try {
+              var opt = sel && sel.options ? sel.options[sel.selectedIndex] : null;
+              label = String(opt && opt.textContent || '').trim();
+            } catch (_) {}
+            if (label && label !== 'Selecionar operador...') return label;
+            if (value) {
+              var found = opsLista.find(function(item) {
+                return String(item && (item.id || item.nome || item.descricao || item.email) || '').trim() === value;
+              }) || null;
+              var resolved = String(found && (found.nome || found.descricao || found.email || found.id) || value).trim();
+              if (resolved && resolved !== 'Selecionar operador...') return resolved;
+            }
+            return '';
           }).filter(Boolean);
           return { maquina: maqNome, maquina_nome: maqNome, maquina_id: maqId, qtd: qtd, operadores: ops };
         }).filter(function(item) { return item.maquina && item.qtd > 0; });
@@ -25589,6 +25604,7 @@ function _ocultarGraficoComissoes() {
         var row = document.createElement('div');
         row.className = 'com-conc-loss-row';
         row.__concMaquinasLista = maquinas;
+        row.__concOperadoresLista = operadoresLista;
         row.innerHTML = ''
           + '<div class="com-conc-loss-grid">'
           + '  <select class="com-conc-select conc-loss-maq">' + optionHtml(maquinas, payload.maquina || ((maquinas[0] && (maquinas[0].id || maquinas[0].nome || maquinas[0].descricao)) || ''), 'Selecionar máquina...') + '</select>'
