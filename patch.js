@@ -8589,7 +8589,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var info = report || {};
       var tabela = Array.isArray(info.rows) ? info.rows : [];
       var resumoRows = Array.isArray(info.summaryRows) ? info.summaryRows : [];
-      return _buildStyledPrintHtml({
+      return window._buildStyledPrintHtml({
         title: 'Relatório de Toneladas Vendidas',
         periodo: info.periodoTitulo || info.mesAtual || '',
         cards: Array.isArray(info.cards) ? info.cards : [],
@@ -8617,7 +8617,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
     }
     function tonesPrintReport(report) {
-      try { _openStyledPrintWindow(tonesBuildPrintHtml(report)); } catch (_) {}
+      try { if (typeof window._openStyledPrintWindow === 'function') return window._openStyledPrintWindow(tonesBuildPrintHtml(report)); } catch (_) {}
     }
 
     function _printTopListText(items, labelKey, valueFormatter, emptyText) {
@@ -8637,7 +8637,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var menosUso = Array.isArray(info.menosUso) ? info.menosUso : [];
       var caixasBreakdown = Array.isArray(info.caixasBreakdown) ? info.caixasBreakdown : [];
       var fornBreakdown = Array.isArray(info.fornBreakdown) ? info.fornBreakdown : [];
-      return _buildStyledPrintHtml({
+      return window._buildStyledPrintHtml({
         title: 'Relatório de Gramaturas',
         periodo: info.periodoTitulo || '',
         cards: [
@@ -8667,14 +8667,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
 
     function gramaturasPrintReport(report) {
-      try { _openStyledPrintWindow(gramaturasBuildPrintHtml(report)); } catch (_) {}
+      try { if (typeof window._openStyledPrintWindow === 'function') return window._openStyledPrintWindow(gramaturasBuildPrintHtml(report)); } catch (_) {}
     }
 
     function estoqueBuildPrintHtml(report) {
       var info = report || {};
       var lista = Array.isArray(info.lista) ? info.lista : [];
       var resumoFornecedor = Array.isArray(info.resumoFornecedor) ? info.resumoFornecedor : [];
-      return _buildStyledPrintHtml({
+      return window._buildStyledPrintHtml({
         title: 'Relatório de Estoque de Chapas',
         periodo: info.periodoTitulo || '',
         cards: [
@@ -8715,7 +8715,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
 
     function estoquePrintReport(report) {
-      try { _openStyledPrintWindow(estoqueBuildPrintHtml(report)); } catch (_) {}
+      try { if (typeof window._openStyledPrintWindow === 'function') return window._openStyledPrintWindow(estoqueBuildPrintHtml(report)); } catch (_) {}
     }
 
     async function renderToneladasPage() {
@@ -11186,7 +11186,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           });
         });
         var resumoMaquinas = Object.keys(resumoMaquinaMap).map(function(key) { return resumoMaquinaMap[key]; }).sort(function(a, b) { return (b.valor - a.valor) || (b.qtd - a.qtd) || String(a.nome || '').localeCompare(String(b.nome || '')); });
-        return _openStyledPrintWindow(_buildStyledPrintHtml({
+        return (typeof window._openStyledPrintWindow === 'function' && typeof window._buildStyledPrintHtml === 'function') ? window._openStyledPrintWindow(window._buildStyledPrintHtml({
           title: 'Relatório de Caixas Perdidas',
           periodo: periodo,
           cards: [
@@ -11219,7 +11219,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           }),
           emptySummaryCols: 3,
           emptyDetailCols: 8
-        }));
+        })) : null;
       } catch (e) {
         try { console.error('[caixas-perdidas][print]', e && e.message || e); } catch (_) {}
         try { alert('Falha ao imprimir Caixas Perdidas: ' + String(e && e.message || e)); } catch (_) {}
@@ -12787,6 +12787,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     return win;
   }
+  try { window._buildStyledPrintHtml = _buildStyledPrintHtml; } catch (_) {}
+  try { window._openStyledPrintWindow = _openStyledPrintWindow; } catch (_) {}
 
   async function _abrirModalImpressao() {
     var data = window._comissoesSqlData || {};
