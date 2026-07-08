@@ -8515,35 +8515,37 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     function tonesBuildPrintHtml(report) {
       var info = report || {};
-      var cards = Array.isArray(info.cards) ? info.cards : [];
       var tabela = Array.isArray(info.rows) ? info.rows : [];
-      return ''
-        + '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de Toneladas Vendidas</title>'
-        + '<style>body{font-family:Arial,sans-serif;color:#111;margin:0;padding:24px;background:#fff}h1{font-size:24px;margin:0 0 4px}p{margin:0 0 16px;color:#555}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.card{border:1px solid #d1d5db;border-radius:10px;padding:12px}.lab{display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;margin-bottom:6px}.val{font-size:22px;font-weight:800;color:#111}.sub{margin-top:6px;font-size:12px;color:#555}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #cbd5e1;padding:8px 10px;text-align:left}th{background:#f8fafc;font-size:11px;text-transform:uppercase;letter-spacing:.06em}td.num,th.num{text-align:right}@media print{body{padding:12px}.cards{break-inside:avoid}table{break-inside:auto}tr{break-inside:avoid}}</style>'
-        + '</head><body>'
-        + '<h1>Relatório de Toneladas Vendidas</h1>'
-        + '<p>' + esc(tonesPeriodoLabel(info.mesAtual || '')) + '</p>'
-        + '<div class="cards">'
-        + cards.map(function(card) {
-          return '<div class="card"><span class="lab">' + esc(card && card.label || '') + '</span><div class="val">' + esc(card && card.value || '0') + '</div><div class="sub">' + esc(card && card.sub || '') + '</div></div>';
-        }).join('')
-        + '</div>'
-        + '<table><thead><tr><th>Data</th><th>OF vinculada</th><th>Cliente</th><th>Produto</th><th>Gramatura</th><th>Fornecedor</th><th class="num">Qtd caixas produzidas</th><th class="num">Toneladas</th></tr></thead><tbody>'
-        + (tabela.length ? tabela.map(function(r) {
-          return '<tr><td>' + esc(checklistFmtDate(r && r.data || '')) + '</td><td>' + esc(r && r.of_numero || '—') + '</td><td>' + esc(r && r.cliente || '—') + '</td><td>' + esc(r && r.produto || '—') + '</td><td>' + esc(r && r.gramatura_nome || '—') + '</td><td>' + esc(r && r.fornecedor || '—') + '</td><td class="num">' + esc(String(r && r.qtd_caixas_produzidas != null ? r.qtd_caixas_produzidas : '—')) + '</td><td class="num">' + esc(num(r && r.toneladas || 0, 3)) + '</td></tr>';
-        }).join('') : '<tr><td colspan="8">Nenhum registro encontrado.</td></tr>')
-        + '</tbody></table>'
-        + '<script>window.onload=function(){setTimeout(function(){try{window.focus()}catch(e){}try{window.print()}catch(e){}},250)}<\/script>'
-        + '</body></html>';
+      var resumoRows = Array.isArray(info.summaryRows) ? info.summaryRows : [];
+      return _buildStyledPrintHtml({
+        title: 'Relatório de Toneladas Vendidas',
+        periodo: info.periodoTitulo || info.mesAtual || '',
+        cards: Array.isArray(info.cards) ? info.cards : [],
+        summaryTitle: 'Tabela-resumo',
+        summaryHeaders: ['Fornecedor', 'Toneladas'],
+        summaryRows: resumoRows.map(function(row) {
+          return [row && row.nome || '—', num(row && row.toneladas || 0, 3)];
+        }),
+        detailTitle: 'Detalhamento',
+        detailHeaders: ['Data', 'OF', 'Cliente', 'Produto', 'Gramatura', 'Fornecedor', 'Qtd caixas produzidas', 'Toneladas'],
+        detailRows: tabela.map(function(r) {
+          return [
+            checklistFmtDate(r && r.data || ''),
+            r && r.of_numero || '—',
+            r && r.cliente || '—',
+            r && r.produto || '—',
+            r && r.gramatura_nome || '—',
+            r && r.fornecedor || '—',
+            String(r && r.qtd_caixas_produzidas != null ? r.qtd_caixas_produzidas : '—'),
+            num(r && r.toneladas || 0, 3)
+          ];
+        }),
+        emptySummaryCols: 2,
+        emptyDetailCols: 8
+      });
     }
     function tonesPrintReport(report) {
-      try {
-        var win = window.open('', '_blank', 'width=1200,height=900');
-        if (!win) return;
-        win.document.open();
-        win.document.write(tonesBuildPrintHtml(report));
-        win.document.close();
-      } catch (_) {}
+      try { _openStyledPrintWindow(tonesBuildPrintHtml(report)); } catch (_) {}
     }
     async function renderToneladasPage() {
       ensureStyles();
@@ -8601,6 +8603,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           };
         }))
         .sort(function(a, b) { return String(b.data || '').localeCompare(String(a.data || '')); });
+      var resumoFornecedorMap = {};
+      tabela.forEach(function(r) {
+        var nome = String(r && r.fornecedor || '—').trim() || '—';
+        if (!resumoFornecedorMap[nome]) resumoFornecedorMap[nome] = { nome: nome, toneladas: 0 };
+        resumoFornecedorMap[nome].toneladas += Number(r && r.toneladas || 0) || 0;
+      });
+      var resumoFornecedorRows = Object.keys(resumoFornecedorMap).map(function(key) { return resumoFornecedorMap[key]; }).sort(function(a, b) {
+        return (b.toneladas - a.toneladas) || String(a.nome || '').localeCompare(String(b.nome || ''));
+      });
       page.innerHTML = ''
         + '<div class="pep-wrap">'
         + (tonError ? ('  <div class="pep-panel" style="margin-bottom:14px;border-color:rgba(239,68,68,.38);background:rgba(127,29,29,.18)"><div class="pep-title" style="font-size:16px;color:#fecaca">Toneladas Vendidas Indisponível</div><div class="pep-sub" style="margin-top:6px;color:#fecaca">A consulta falhou e entrou em cooldown temporário para evitar loop de retries. Detalhe: ' + esc(tonError) + '</div></div>') : '')
@@ -8624,7 +8635,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (exportBtn) exportBtn.onclick = function() { tonesExportCsv(tabela, mesAtual); };
       var printBtn = document.getElementById('tones-imprimir');
       if (printBtn) printBtn.onclick = function() {
-        tonesPrintReport({ mesAtual: mesAtual, cards: cardsResumo, rows: tabela });
+        tonesPrintReport({ mesAtual: mesAtual, periodoTitulo: mesAtual, cards: cardsResumo, summaryRows: resumoFornecedorRows, rows: tabela });
       };
     }
 
@@ -10984,45 +10995,60 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     function _cpPrint(data, rows) {
       try {
         var state = _cpState();
-        var root = _cpEnsurePrintRoot();
         var resumo = (data && data.resumo_mes_atual) || {};
+        var rankM = Array.isArray(data && data.ranking_maquinas) ? data.ranking_maquinas : [];
+        var rankO = Array.isArray(data && data.ranking_operadores) ? data.ranking_operadores : [];
+        var topMaquina = rankM[0] || null;
+        var topOperador = rankO[0] || null;
         var periodo = _cpPeriodoDescricao(state);
         var linhas = Array.isArray(rows) ? rows : [];
-        root.innerHTML = ''
-          + '<div class="cp-print-sheet">'
-          + '  <div class="cp-print-title">Relatorio de Caixas Perdidas</div>'
-          + '  <div class="cp-print-sub">Periodo: ' + _cpEsc(periodo) + '</div>'
-          + '  <div class="cp-print-summary">'
-          + '    <div class="cp-print-card"><span class="lab">Ocorrencias</span><strong>' + _cpEsc(_cpFmtNum(resumo.total_ocorrencias || linhas.length || 0)) + '</strong></div>'
-          + '    <div class="cp-print-card"><span class="lab">Caixas Perdidas</span><strong>' + _cpEsc(_cpFmtNum(resumo.total_caixas || 0)) + '</strong></div>'
-          + '    <div class="cp-print-card"><span class="lab">Valor Perdido</span><strong>' + _cpEsc(_cpFmtMoney(resumo.valor_total || 0)) + '</strong></div>'
-          + '    <div class="cp-print-card"><span class="lab">Toneladas Perdidas</span><strong>' + _cpEsc(_cpFmtTon(resumo.toneladas_perdidas || 0)) + '</strong></div>'
-          + '  </div>'
-          + '  <table class="cp-print-table">'
-          + '    <thead><tr><th>Data</th><th>OF</th><th>Cliente</th><th>Maquina</th><th>Operadores</th><th class="num">Qtd Perdida</th></tr></thead>'
-          + '    <tbody>'
-          +      (linhas.length ? linhas.map(function(r) {
-                   var operadores = _cpRowOperadores(r);
-                   var maquinas = _cpRowMaquinas(r);
-                   return '<tr>'
-                     + '<td>' + _cpEsc(_cpDateBr(r.data_conclusao || r.data_ref || r.data)) + '</td>'
-                     + '<td>' + _cpEsc(r.of_numero || '—') + '</td>'
-                     + '<td>' + _cpEsc(_cpRowCliente(r)) + '</td>'
-                     + '<td>' + _cpEsc(maquinas.join(', ') || '—') + '</td>'
-                     + '<td>' + _cpEsc(operadores.join(', ') || '—') + '</td>'
-                     + '<td class="num">' + _cpEsc(_cpFmtNum(r.quantidade_perdida || 0)) + '</td>'
-                     + '</tr>';
-                 }).join('') : '<tr><td colspan="6">Nenhum registro no periodo selecionado.</td></tr>')
-          + '    </tbody>'
-          + '  </table>'
-          + '</div>';
-        document.body.classList.add('cp-print-open');
-        setTimeout(function() {
-          try { window.print(); } catch (_) {}
-          setTimeout(function() {
-            try { document.body.classList.remove('cp-print-open'); } catch (_) {}
-          }, 300);
-        }, 30);
+        var resumoMaquinaMap = {};
+        linhas.forEach(function(r) {
+          var maquinas = _cpRowMaquinas(r);
+          var qtd = Number(r && (r.quantidade_perdida != null ? r.quantidade_perdida : r.qtd_perdida) || 0) || 0;
+          var valor = Number(r && (r.valor_perdido != null ? r.valor_perdido : r.vl_total) || 0) || 0;
+          maquinas.forEach(function(nome) {
+            var key = String(nome || '').trim() || '—';
+            if (!resumoMaquinaMap[key]) resumoMaquinaMap[key] = { nome: key, qtd: 0, valor: 0 };
+            resumoMaquinaMap[key].qtd += qtd;
+            resumoMaquinaMap[key].valor += valor;
+          });
+        });
+        var resumoMaquinas = Object.keys(resumoMaquinaMap).map(function(key) { return resumoMaquinaMap[key]; }).sort(function(a, b) { return (b.valor - a.valor) || (b.qtd - a.qtd) || String(a.nome || '').localeCompare(String(b.nome || '')); });
+        _openStyledPrintWindow(_buildStyledPrintHtml({
+          title: 'Relatório de Caixas Perdidas',
+          periodo: periodo,
+          cards: [
+            { label: 'Total de Caixas Perdidas', value: _cpFmtNum(resumo.total_caixas || 0), sub: 'Período selecionado' },
+            { label: 'Toneladas Perdidas', value: _cpFmtTon(resumo.toneladas_perdidas || 0), sub: 'Período selecionado' },
+            { label: 'Valor Perdido', value: _cpFmtMoney(resumo.valor_total || 0), sub: 'Período selecionado' },
+            { label: 'Máquina que mais perdeu', value: topMaquina && topMaquina.maquina || '—', sub: _cpFmtNum(topMaquina && topMaquina.total_caixas || 0) + ' caixas' },
+            { label: 'Operador que mais perdeu', value: topOperador && topOperador.operador || '—', sub: _cpFmtNum(topOperador && topOperador.total_caixas || 0) + ' caixas' }
+          ],
+          summaryTitle: 'Tabela-resumo',
+          summaryHeaders: ['Máquina', 'Qtd caixas', 'Valor'],
+          summaryRows: resumoMaquinas.map(function(item) {
+            return [item.nome || '—', _cpFmtNum(item.qtd || 0), _cpFmtMoney(item.valor || 0)];
+          }),
+          detailTitle: 'Detalhamento',
+          detailHeaders: ['OF', 'Cliente', 'Produto', 'Valor unitário', 'Qtd perdida', 'Valor total perdido', 'Máquina', 'Operadores'],
+          detailRows: linhas.map(function(r) {
+            var operadores = _cpRowOperadores(r);
+            var maquinas = _cpRowMaquinas(r);
+            return [
+              r && r.of_numero || '—',
+              _cpRowCliente(r),
+              r && r.produto || '—',
+              _cpFmtMoney(r && (r.valor_unitario != null ? r.valor_unitario : r.vl_unit) || 0),
+              _cpFmtNum(r && (r.quantidade_perdida != null ? r.quantidade_perdida : r.qtd_perdida) || 0),
+              _cpFmtMoney(r && (r.valor_perdido != null ? r.valor_perdido : r.vl_total) || 0),
+              maquinas.join(', ') || '—',
+              operadores.join(', ') || '—'
+            ];
+          }),
+          emptySummaryCols: 3,
+          emptyDetailCols: 8
+        }));
       } catch (_) {}
     }
 
@@ -12497,6 +12523,87 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   try { setTimeout(_preencherMesAtual, 800); } catch (_) {}
   try { setTimeout(_preencherMesAtual, 2000); } catch (_) {}
   try { setTimeout(_iniciarTelaCom, 500); } catch (_) {}
+
+  function _printMesNomeBr(mes) {
+    var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    return meses[Math.max(0, (parseInt(mes, 10) || 1) - 1)] || String(mes || '');
+  }
+
+  function _printPeriodoTituloBr(raw) {
+    var txt = String(raw || '').trim();
+    var m = txt.match(/^(\d{4})-(\d{2})(?:-\d{2})?$/) || txt.match(/^(\d{2})\/(\d{4})$/);
+    if (m) {
+      var ano = m[1].length === 4 ? m[1] : m[2];
+      var mes = m[1].length === 4 ? m[2] : m[1];
+      return _printMesNomeBr(mes) + '/' + ano;
+    }
+    return txt || 'Período atual';
+  }
+
+  function _printGeradoEmBr() {
+    var agora = new Date();
+    return agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function _printEscText(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function _printCssPadraoComissoes() {
+    return '*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px}h1{font-size:20px;margin-bottom:4px}h2{font-size:13px;color:#666;font-weight:normal;margin-bottom:20px}.brandline{font-size:13px;color:#666;font-weight:700;margin-bottom:4px}.cards{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}.card{border:1px solid #ddd;border-radius:6px;padding:12px 18px;min-width:140px}.lbl{font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px}.val{font-size:16px;font-weight:700}.green{color:#16a34a}table{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:11px}th{background:#f0f0f0;padding:7px 8px;text-align:left;border-bottom:2px solid #ccc;font-size:10px;text-transform:uppercase}td{padding:6px 8px;border-bottom:1px solid #eee}.vh{background:#1a1a2e;color:#fff;padding:8px 12px;border-radius:4px;margin:16px 0 8px;font-weight:700;font-size:12px}.tf{font-weight:700;background:#f5f5f5}.zebra tbody tr:nth-child(even) td{background:#f8fafc}.dark thead th{background:#1a1a2e;color:#fff;border-bottom:2px solid #111}.footer-print{position:fixed;left:20px;right:20px;bottom:8px;text-align:right;font-size:10px;color:#666}.footer-print .page-num:after{content:counter(page)}@page{margin:16mm 12mm 18mm 12mm}@media print{body{padding:0}.footer-print{position:fixed}}';
+  }
+
+  function _buildStyledPrintHtml(opts) {
+    var cfg = opts || {};
+    var cards = Array.isArray(cfg.cards) ? cfg.cards : [];
+    var summaryRows = Array.isArray(cfg.summaryRows) ? cfg.summaryRows : [];
+    var detailRows = Array.isArray(cfg.detailRows) ? cfg.detailRows : [];
+    return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + String(cfg.title || 'Relatório').replace(/</g, '&lt;') + '</title>'
+      + '<style>' + _printCssPadraoComissoes() + '</style>'
+      + '</head><body>'
+      + '<div class="brandline">Italy Embalagens</div>'
+      + '<h2>Gerado em ' + _printEscText(_printGeradoEmBr()) + '</h2>'
+      + '<h1>' + _printEscText((cfg.title || 'Relatório') + ' — ' + _printPeriodoTituloBr(cfg.periodo || '')) + '</h1>'
+      + '<div class="cards">'
+      + cards.map(function(card) {
+        return '<div class="card"><div class="lbl">' + _printEscText(card && card.label || '') + '</div><div class="val' + (card && card.green ? ' green' : '') + '">' + _printEscText(card && card.value || '0') + '</div><div style="font-size:11px;color:#666;margin-top:6px">' + _printEscText(card && card.sub || '') + '</div></div>';
+      }).join('')
+      + '</div>'
+      + '<h3 style="margin-bottom:8px;font-size:13px">' + _printEscText(cfg.summaryTitle || 'Tabela-resumo') + '</h3>'
+      + '<table class="zebra"><thead><tr>' + (Array.isArray(cfg.summaryHeaders) ? cfg.summaryHeaders : []).map(function(head) { return '<th>' + _printEscText(head || '') + '</th>'; }).join('') + '</tr></thead><tbody>'
+      + (summaryRows.length ? summaryRows.map(function(row) { return '<tr>' + (Array.isArray(row) ? row : []).map(function(col) { return '<td>' + String(col == null ? '' : col) + '</td>'; }).join('') + '</tr>'; }).join('') : '<tr><td colspan="' + String(cfg.emptySummaryCols || 1) + '">Nenhum registro encontrado.</td></tr>')
+      + '</tbody></table>'
+      + '<div class="vh">' + _printEscText(cfg.detailTitle || 'Detalhamento') + '</div>'
+      + '<table class="dark zebra"><thead><tr>' + (Array.isArray(cfg.detailHeaders) ? cfg.detailHeaders : []).map(function(head) { return '<th>' + _printEscText(head || '') + '</th>'; }).join('') + '</tr></thead><tbody>'
+      + (detailRows.length ? detailRows.map(function(row) { return '<tr>' + (Array.isArray(row) ? row : []).map(function(col) { return '<td>' + String(col == null ? '' : col) + '</td>'; }).join('') + '</tr>'; }).join('') : '<tr><td colspan="' + String(cfg.emptyDetailCols || 1) + '">Nenhum registro encontrado.</td></tr>')
+      + '</tbody></table>'
+      + '<div class="footer-print">Página <span class="page-num"></span></div>'
+      + '<script>window.onload=function(){setTimeout(function(){try{window.focus()}catch(e){}try{window.print()}catch(e){}},700)}<\/script>'
+      + '</body></html>';
+  }
+
+  function _openStyledPrintWindow(html) {
+    var win = null;
+    try { win = window.open('', '_blank', 'width=960,height=720'); } catch (_) { win = null; }
+    if (!win) {
+      try { alert('Popup bloqueado! Permita popups para este site e tente novamente.'); } catch (_) {}
+      return null;
+    }
+    try {
+      win.document.open();
+      win.document.write(String(html || ''));
+      win.document.close();
+    } catch (e) {
+      try { alert('Erro ao abrir impressão: ' + String(e && e.message || e)); } catch (_) {}
+      return null;
+    }
+    return win;
+  }
 
   async function _abrirModalImpressao() {
     var data = window._comissoesSqlData || {};
