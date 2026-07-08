@@ -1893,10 +1893,32 @@ try {
         + '<div id="hist-relatorio-mensal-cards" class="hist-month-cards"></div>'
         + '<div id="hist-relatorio-mensal-tabela"></div>';
       var graficos = document.getElementById('hist-graficos-wrap');
+      var resumoTopo = document.getElementById('hist-resumo');
       var filtros = document.getElementById('hist-filtros');
       if (graficos && graficos.parentNode) graficos.parentNode.insertBefore(monthShell, filtros || graficos.nextSibling);
       else if (filtros && filtros.parentNode) filtros.parentNode.insertBefore(monthShell, filtros);
       else page.appendChild(monthShell);
+      if (graficos) {
+        try { graficos.style.display = 'none'; } catch (_) {}
+        try { graficos.setAttribute('aria-hidden', 'true'); } catch (_) {}
+      }
+      if (resumoTopo) {
+        try { resumoTopo.style.display = 'none'; } catch (_) {}
+        try { resumoTopo.setAttribute('aria-hidden', 'true'); } catch (_) {}
+      }
+      if (page && !document.getElementById('hist-scroll-bottom-btn')) {
+        try {
+          var scrollBtn = document.createElement('button');
+          scrollBtn.id = 'hist-scroll-bottom-btn';
+          scrollBtn.type = 'button';
+          scrollBtn.textContent = '↓ Ver tudo';
+          scrollBtn.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:9999;background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.28);border-radius:999px;padding:12px 16px;font-weight:900;box-shadow:0 18px 42px rgba(0,0,0,.28);cursor:pointer';
+          scrollBtn.onclick = function() {
+            try { page.scrollTo({ top: page.scrollHeight, behavior: 'smooth' }); } catch (_) { try { page.scrollTop = page.scrollHeight; } catch (_) {} }
+          };
+          document.body.appendChild(scrollBtn);
+        } catch (_) {}
+      }
     }
 
     var filtrosWrap = document.getElementById('hist-filtros');
