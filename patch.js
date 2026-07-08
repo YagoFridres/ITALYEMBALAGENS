@@ -13711,6 +13711,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!idx) idx = getItemIdxFromContainer(card, '');
     if (!idx) return [];
     var values = Array.isArray(rawValues) ? rawValues.slice() : [];
+    var hasExplicitValues = Array.isArray(rawValues);
     if (!values.length) {
       try {
         values = Array.prototype.slice.call(
@@ -13718,6 +13719,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         ).map(function(el) {
           return String(el && (el.value || (el.dataset && el.dataset.cor) || el.getAttribute('data-cor') || '') || '').trim();
         }).filter(Boolean);
+      } catch (_) { values = []; }
+    }
+    if (!values.length && !hasExplicitValues) {
+      try {
+        var datasetRaw = String((card.dataset && (card.dataset.coresSel || card.dataset.coresSelecionadas)) || '').trim();
+        if (datasetRaw && (datasetRaw.charAt(0) === '[' || datasetRaw.charAt(0) === '{')) {
+          var parsed = JSON.parse(datasetRaw);
+          if (Array.isArray(parsed)) {
+            values = parsed.map(function(v) { return String(v || '').trim(); }).filter(Boolean);
+          }
+        }
+      } catch (_) {}
+    }
+    if (!values.length && !hasExplicitValues) {
+      try {
+        values = getItemColorIds(idx).slice().map(function(v) { return String(v || '').trim(); }).filter(Boolean);
       } catch (_) { values = []; }
     }
     window.coresSelecionadasOFRapidaItens = window.coresSelecionadasOFRapidaItens || {};
