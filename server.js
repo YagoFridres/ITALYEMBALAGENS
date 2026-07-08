@@ -18137,7 +18137,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       data: { metricColsReady, query: req.query || {} },
     });
     const selectCols = [
-      'id', 'numero', 'of', 'status', 'data_conclusao', 'gramatura',
+      'id', 'numero', 'of', 'status', 'data_conclusao', 'gramatura', 'gramatura_id',
       'qtd_produzida', 'quantidade', 'qtd',
       'cliNome', 'cliente_nome', 'cliente',
       'descricao', 'produto',
@@ -18215,14 +18215,34 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       data: { totalOfs: Array.isArray(ofs) ? ofs.length : 0, selectedCols, canFilterDeletedAt },
     });
 
+    const gramaturaIds = Array.from(new Set((Array.isArray(ofs) ? ofs : []).map((of) => String(of?.gramatura_id || '').trim()).filter(Boolean)));
+    const { data: gramaturasRows } = gramaturaIds.length
+      ? await supabase.from('gramaturas').select('id,fornecedor_id,fornecedor_nome,gramatura,nome').in('id', gramaturaIds)
+      : { data: [] };
+    const fornecedorIds = Array.from(new Set((Array.isArray(gramaturasRows) ? gramaturasRows : []).map((g) => String(g?.fornecedor_id || '').trim()).filter(Boolean)));
+    const { data: fornecedoresRows } = fornecedorIds.length
+      ? await supabase.from('fornecedores').select('id,nome').in('id', fornecedorIds)
+      : { data: [] };
+    const fornecedoresMap = new Map((Array.isArray(fornecedoresRows) ? fornecedoresRows : []).map((f) => [String(f?.id || '').trim(), String(f?.nome || '').trim()]));
+    const gramaturasMap = new Map((Array.isArray(gramaturasRows) ? gramaturasRows : []).map((g) => {
+      const fornecedorNome = fornecedoresMap.get(String(g?.fornecedor_id || '').trim()) || String(g?.fornecedor_nome || '').trim() || '';
+      return [String(g?.id || '').trim(), {
+        gramatura: Number(g?.gramatura || 0) || 0,
+        nome: String(g?.nome || '').trim() || '',
+        fornecedor_nome: fornecedorNome,
+      }];
+    }));
+
     const rows = (Array.isArray(ofs) ? ofs : []).filter((of) => {
       const status = String(of?.status || '').toLowerCase();
-      const gramatura = Number(of?.gramatura || 0) || 0;
+      const gramaturaInfo = gramaturasMap.get(String(of?.gramatura_id || '').trim()) || null;
+      const gramatura = Number(of?.gramatura || gramaturaInfo?.gramatura || 0) || 0;
       const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
       return status.includes('conclu') && (tonPersistida > 0 || gramatura > 0);
     }).map((of) => {
+      const gramaturaInfo = gramaturasMap.get(String(of?.gramatura_id || '').trim()) || null;
       const qtd = Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.quantidade ?? of?.qtd ?? 0) || 0));
-      const gramatura = Number(of?.gramatura || 0) || 0;
+      const gramatura = Number(of?.gramatura || gramaturaInfo?.gramatura || 0) || 0;
       const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
       const custoM2Venda = Number(of?.custo_m2_venda || 0) || 0;
       let areaUnitM2 = Number(of?.tamanho_m2 || 0) || 0;
@@ -18247,7 +18267,9 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
         produto: String(of?.descricao || of?.produto || '').trim() || '—',
         data_conclusao: of?.data_conclusao || null,
         gramatura,
-        gramatura_nome: String(of?.gramatura_nome || '').trim() || null,
+        gramatura_nome: String(of?.gramatura_nome || gramaturaInfo?.nome || '').trim() || null,
+        fornecedor_nome: String(gramaturaInfo?.fornecedor_nome || '').trim() || null,
+        fornecedor: String(gramaturaInfo?.fornecedor_nome || '').trim() || null,
         quantidade: qtd,
         area_unit_m2: Number(areaUnitM2.toFixed(4)),
         area_total_m2: Number(areaTotalM2.toFixed(4)),

@@ -8483,7 +8483,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           return { data: r.data, tipo: 'Saída', fornecedor: r.fornecedor, chapa: r.chapa_label, toneladas: r.toneladas, of_numero: r.of_numero || '—' };
         }))
         .concat(ofRows.filter(function(r) { return String(r.data_conclusao || '').slice(0, 7) === mesAtual; }).map(function(r) {
-          return { data: r.data_conclusao, tipo: 'OF', fornecedor: '—', chapa: r.produto || '—', toneladas: r.toneladas, of_numero: r.of_numero || '—' };
+          return { data: r.data_conclusao, tipo: 'OF', fornecedor: r.fornecedor_nome || r.fornecedor || '—', chapa: r.produto || '—', toneladas: r.toneladas, of_numero: r.of_numero || '—' };
         }))
         .sort(function(a, b) { return String(b.data || '').localeCompare(String(a.data || '')); });
       page.innerHTML = ''
