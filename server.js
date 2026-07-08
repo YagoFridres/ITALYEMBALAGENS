@@ -18411,7 +18411,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       data: { metricColsReady, query: req.query || {} },
     });
     const selectedCols = [
-      'id', 'numero', 'of', 'cli_id', 'valor_total', 'quantidade', 'qtd', 'descricao',
+      'id', 'numero', 'of', 'cli_id', 'valor_total', 'quantidade', 'qtd', 'qtd_produzida', 'descricao',
       'operadores_conclusao', 'perdas_por_maquina', 'usuario_conclusao', 'operador_conclusao',
       'maq', 'maquina_agendada', 'caixa_comprimento', 'caixa_largura', 'dim_comprimento', 'dim_largura',
       'gramatura_id', 'gramatura', 'gramatura_nome', 'tonelada_vendida', 'custo_m2_venda',
@@ -18446,13 +18446,14 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
     });
 
     const cliIds = [...new Set((Array.isArray(ofs) ? ofs : []).map((o) => String(o?.cli_id || '').trim()).filter(Boolean))];
-    const { data: cli } = cliIds.length
+    const { data: clientesRows } = cliIds.length
       ? await supabase.from('clientes').select('id,nome').in('id', cliIds)
       : { data: [] };
     const clientesMap = new Map();
-    (cli || []).forEach((c) => {
+    (clientesRows || []).forEach((c) => {
       clientesMap.set(String(c?.id || '').trim(), String(c?.nome || '').trim());
     });
+    console.log('[TONELADAS-CLI] cliIds:', cliIds.length, 'retornados:', (clientesRows || []).length, 'ex:', clientesRows?.[0]);
     const gramaturaIds = [...new Set((Array.isArray(ofs) ? ofs : []).map((o) => String(o?.gramatura_id || '').trim()).filter(Boolean))];
     const { data: gramaturasRows } = gramaturaIds.length
       ? await supabase.from('gramaturas').select('id,fornecedor_id').in('id', gramaturaIds)
@@ -18483,7 +18484,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       const cliId = String(of?.cli_id || '').trim();
       const gramaturaId = String(of?.gramatura_id || '').trim();
       const gramaturaInfo = gramaturasMap.get(gramaturaId) || null;
-      const qtd = Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.quantidade ?? of?.qtd ?? 0) || 0));
+      const qtd = Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.qtd ?? of?.quantidade ?? 0) || 0));
       const gramatura = Number(of?.gramatura || 0) || 0;
       const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
       const custoM2Venda = Number(of?.custo_m2_venda || 0) || 0;
@@ -18507,6 +18508,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
         id: of?.id || null,
         of_numero: of?.numero || of?.of || null,
         cliente_nome: clienteNome,
+        cliente: clienteNome,
         produto: String(of?.descricao || '').trim() || '—',
         data_conclusao: of?.data_conclusao || null,
         gramatura,

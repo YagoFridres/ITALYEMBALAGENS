@@ -8843,7 +8843,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             data: r.data_conclusao,
             tipo: 'OF',
             fornecedor: r.fornecedor_nome || r.fornecedor || '—',
-            cliente: r.cliente_nome || '—',
+            cliente: r.cliente_nome || r.cliente || '—',
             produto: r.produto || '—',
             gramatura_nome: r.gramatura_nome || '—',
             toneladas: r.toneladas,
