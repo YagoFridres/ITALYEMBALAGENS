@@ -8472,18 +8472,29 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var tonMes = ofRows.filter(function(r) { return String(r.data_conclusao || '').slice(0, 7) === mesAtual; }).reduce(function(s, r) { return s + (Number(r.toneladas || 0) || 0); }, 0);
       var saidasMes = movRows.filter(function(r) { return String(r.tipo || '') === 'saida' && String(r.data || '').slice(0, 7) === mesAtual; });
       var entradasMes = movRows.filter(function(r) { return String(r.tipo || '') === 'entrada' && String(r.data || '').slice(0, 7) === mesAtual; });
-      var saidaFornecedor = _resumoTopPorValor(saidasMes, function(r) { return r.fornecedor || 'Sem fornecedor'; }, function(r) { return Number(r.toneladas || 0) || 0; });
+      var saidasOfMes = ofRows.filter(function(r) { return String(r.data_conclusao || '').slice(0, 7) === mesAtual; });
+      var saidaFornecedor = _resumoTopPorValor(saidasOfMes, function(r) { return r.fornecedor_nome || r.fornecedor || 'Sem fornecedor'; }, function(r) { return Number(r.toneladas || 0) || 0; });
       var entradaFornecedor = _resumoTopPorValor(entradasMes, function(r) { return r.fornecedor || 'Sem fornecedor'; }, function(r) { return Number(r.toneladas || 0) || 0; });
       var tonEstoque = (chapas || []).reduce(function(s, chapa) { return s + (Number((typeof _calcTonAtualEst === 'function') ? _calcTonAtualEst(chapa) : 0) || 0); }, 0);
       var tabela = []
         .concat(entradasMes.map(function(r) {
-          return { data: r.data, tipo: 'Entrada', fornecedor: r.fornecedor, chapa: r.chapa_label, toneladas: r.toneladas, of_numero: '—' };
+          return { data: r.data, tipo: 'Entrada', fornecedor: r.fornecedor, cliente: '—', produto: r.chapa_label || '—', gramatura_nome: '—', toneladas: r.toneladas, qtd_caixas_produzidas: '—', of_numero: '—' };
         }))
         .concat(saidasMes.map(function(r) {
-          return { data: r.data, tipo: 'Saída', fornecedor: r.fornecedor, chapa: r.chapa_label, toneladas: r.toneladas, of_numero: r.of_numero || '—' };
+          return { data: r.data, tipo: 'Saída', fornecedor: r.fornecedor, cliente: '—', produto: r.chapa_label || '—', gramatura_nome: '—', toneladas: r.toneladas, qtd_caixas_produzidas: '—', of_numero: r.of_numero || '—' };
         }))
-        .concat(ofRows.filter(function(r) { return String(r.data_conclusao || '').slice(0, 7) === mesAtual; }).map(function(r) {
-          return { data: r.data_conclusao, tipo: 'OF', fornecedor: r.fornecedor_nome || r.fornecedor || '—', chapa: r.produto || '—', toneladas: r.toneladas, of_numero: r.of_numero || '—' };
+        .concat(saidasOfMes.map(function(r) {
+          return {
+            data: r.data_conclusao,
+            tipo: 'OF',
+            fornecedor: r.fornecedor_nome || r.fornecedor || '—',
+            cliente: r.cliente_nome || '—',
+            produto: r.produto || '—',
+            gramatura_nome: r.gramatura_nome || '—',
+            toneladas: r.toneladas,
+            qtd_caixas_produzidas: r.qtd_caixas_produzidas != null ? r.qtd_caixas_produzidas : (r.quantidade != null ? r.quantidade : '—'),
+            of_numero: r.of_numero || '—'
+          };
         }))
         .sort(function(a, b) { return String(b.data || '').localeCompare(String(a.data || '')); });
       page.innerHTML = ''
@@ -8497,10 +8508,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  </div>'
         + '  <div class="pep-panel">'
         + '    <div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Tabela de Toneladas</div><div class="pep-sub">Movimentações do mês atual</div></div>'
-        + '    <div style="overflow:auto"><table class="pep-table"><thead><tr><th>Data</th><th>Tipo</th><th>Fornecedor</th><th>Chapa</th><th>Toneladas</th><th>OF vinculada</th></tr></thead><tbody>'
+        + '    <div style="overflow:auto"><table class="pep-table"><thead><tr><th>Data</th><th>OF vinculada</th><th>Cliente</th><th>Produto</th><th>Gramatura</th><th>Fornecedor</th><th>Qtd caixas produzidas</th><th>Toneladas</th></tr></thead><tbody>'
         + (tabela.length ? tabela.map(function(r) {
-          return '<tr><td>' + esc(checklistFmtDate(r.data || '')) + '</td><td>' + esc(r.tipo || '—') + '</td><td>' + esc(r.fornecedor || '—') + '</td><td>' + esc(r.chapa || '—') + '</td><td>' + num(r.toneladas || 0, 3) + '</td><td>' + esc(r.of_numero || '—') + '</td></tr>';
-        }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8">Nenhum registro encontrado.</td></tr>')
+          return '<tr><td>' + esc(checklistFmtDate(r.data || '')) + '</td><td>' + esc(r.of_numero || '—') + '</td><td>' + esc(r.cliente || '—') + '</td><td>' + esc(r.produto || '—') + '</td><td>' + esc(r.gramatura_nome || '—') + '</td><td>' + esc(r.fornecedor || '—') + '</td><td>' + esc(String(r.qtd_caixas_produzidas != null ? r.qtd_caixas_produzidas : '—')) + '</td><td>' + num(r.toneladas || 0, 3) + '</td></tr>';
+        }).join('') : '<tr><td colspan="8" style="text-align:center;color:#94a3b8">Nenhum registro encontrado.</td></tr>')
         + '    </tbody></table></div>'
         + '  </div>'
         + '</div>';
