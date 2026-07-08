@@ -14268,26 +14268,32 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function syncClienteNovaOf(input) {
+    if (window.__patchClienteValidoSyncing) return null;
+    window.__patchClienteValidoSyncing = true;
     var el = input || document.getElementById('f-cli-search');
-    if (!el) return null;
-    var cli = acharClienteRobusto(el.value);
-    if (cli && cli.id) {
-      el.dataset.clienteId = String(cli.id);
-      el.dataset.clienteNome = String(cli.nome || cli.rs || cli.razao_social || cli.razao || el.value || '').trim();
-      try {
-        var sel = document.getElementById('f-cli');
-        if (sel) sel.value = String(cli.id);
-      } catch (_) {}
-      try {
-        var hid = document.getElementById('f-cli-id');
-        if (hid) hid.value = String(cli.id);
-      } catch (_) {}
-      try { if (typeof window.ofCliChange === 'function') window.ofCliChange(); } catch (_) {}
-      return cli;
+    try {
+      if (!el) return null;
+      var cli = acharClienteRobusto(el.value);
+      if (cli && cli.id) {
+        el.dataset.clienteId = String(cli.id);
+        el.dataset.clienteNome = String(cli.nome || cli.rs || cli.razao_social || cli.razao || el.value || '').trim();
+        try {
+          var sel = document.getElementById('f-cli');
+          if (sel) sel.value = String(cli.id);
+        } catch (_) {}
+        try {
+          var hid = document.getElementById('f-cli-id');
+          if (hid) hid.value = String(cli.id);
+        } catch (_) {}
+        try { if (typeof window.ofCliChange === 'function') window.ofCliChange(); } catch (_) {}
+        return cli;
+      }
+      delete el.dataset.clienteId;
+      delete el.dataset.clienteNome;
+      return null;
+    } finally {
+      window.__patchClienteValidoSyncing = false;
     }
-    delete el.dataset.clienteId;
-    delete el.dataset.clienteNome;
-    return null;
   }
 
   function bindClienteNovaOf() {
@@ -14324,27 +14330,33 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var orig = window.ofCliChange;
     if (typeof orig !== 'function' || orig._patchClienteValidoNovaOf) return;
     var wrapped = function() {
-      var r = orig.apply(this, arguments);
+      if (window.__patchClienteValidoOfCliChangeBusy) return null;
+      window.__patchClienteValidoOfCliChangeBusy = true;
       try {
-        var sel = document.getElementById('f-cli');
-        var id = sel ? String(sel.value || '').trim() : '';
-        var inp = document.getElementById('f-cli-search');
-        if (inp && inp.dataset) {
-          if (id) {
-            inp.dataset.clienteId = id;
-            try {
-              if (typeof window.getCli === 'function') {
-                var c = window.getCli(id);
-                if (c && (c.nome || c.rs)) inp.dataset.clienteNome = String(c.nome || c.rs || '').trim();
-              }
-            } catch (_) {}
-          } else {
-            delete inp.dataset.clienteId;
-            delete inp.dataset.clienteNome;
+      var r = orig.apply(this, arguments);
+        try {
+          var sel = document.getElementById('f-cli');
+          var id = sel ? String(sel.value || '').trim() : '';
+          var inp = document.getElementById('f-cli-search');
+          if (inp && inp.dataset) {
+            if (id) {
+              inp.dataset.clienteId = id;
+              try {
+                if (typeof window.getCli === 'function') {
+                  var c = window.getCli(id);
+                  if (c && (c.nome || c.rs)) inp.dataset.clienteNome = String(c.nome || c.rs || '').trim();
+                }
+              } catch (_) {}
+            } else {
+              delete inp.dataset.clienteId;
+              delete inp.dataset.clienteNome;
+            }
           }
-        }
-      } catch (_) {}
-      return r;
+        } catch (_) {}
+        return r;
+      } finally {
+        window.__patchClienteValidoOfCliChangeBusy = false;
+      }
     };
     wrapped._patchClienteValidoNovaOf = true;
     window.ofCliChange = wrapped;
