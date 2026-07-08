@@ -691,6 +691,8 @@ try {
     var pastaNome = folderNameOf(folderIdOf(orc));
     var hay = [
       orc && orc.numero_orcamento,
+      orc && orc.nome,
+      orc && orc.nome_orcamento,
       orc && orc.cliente_nome,
       orc && orc.descricao,
       orc && orc.medidas,
@@ -718,6 +720,13 @@ try {
       }
     } catch (_) {}
     return null;
+  }
+  function calcNomeOrcamentoAtual() {
+    try {
+      return String((document.getElementById('calc-nome-orcamento') || {}).value || '').trim();
+    } catch (_) {
+      return '';
+    }
   }
   function ensureCalcFolderUi() {
     var calc = document.getElementById('modal-calculadora');
@@ -765,9 +774,42 @@ try {
     if (!row || !row.id || !Array.isArray(ORCAMENTOS)) return;
     var next = (typeof normalizeOrc === 'function') ? normalizeOrc(row) : row;
     next.pasta_id = row.pasta_id != null ? String(row.pasta_id || '').trim() || null : null;
+    next.nome = String(next && (next.nome != null ? next.nome : row && row.nome) || '').trim();
+    next.nome_orcamento = String(next && (next.nome_orcamento != null ? next.nome_orcamento : row && row.nome_orcamento) || next.nome || '').trim();
     var idx = ORCAMENTOS.findIndex(function(item) { return String(item && item.id || '') === String(next.id || ''); });
     if (idx >= 0) ORCAMENTOS[idx] = Object.assign({}, ORCAMENTOS[idx], next);
     else ORCAMENTOS.unshift(next);
+  }
+  function patchApiOrcamentoNome() {
+    if (typeof window.api !== 'function' || window.api.__patchOrcNome) return;
+    var originalApi = window.api;
+    window.api = async function(method, url, body) {
+      var m = String(method || '').trim().toUpperCase();
+      var u = String(url || '').trim();
+      var nomeAtual = calcNomeOrcamentoAtual();
+      var payload = body;
+      if ((m === 'POST' || m === 'PUT' || m === 'PATCH') && /^\/orcamentos(?:\/|$)/.test(u) && body && typeof body === 'object') {
+        payload = Object.assign({}, body);
+        if (nomeAtual) {
+          payload.nome = nomeAtual;
+          payload.nome_orcamento = nomeAtual;
+        }
+      }
+      var result = await originalApi.call(this, method, url, payload);
+      if ((m === 'POST' || m === 'PUT' || m === 'PATCH') && /^\/orcamentos(?:\/|$)/.test(u) && nomeAtual && result && typeof result === 'object') {
+        var data = result.data && typeof result.data === 'object' ? Object.assign({}, result.data) : null;
+        if (data) {
+          if (!String(data.nome || '').trim()) data.nome = nomeAtual;
+          if (!String(data.nome_orcamento || '').trim()) data.nome_orcamento = nomeAtual;
+          result = Object.assign({}, result, { data: data });
+        } else {
+          if (!String(result.nome || '').trim()) result.nome = nomeAtual;
+          if (!String(result.nome_orcamento || '').trim()) result.nome_orcamento = nomeAtual;
+        }
+      }
+      return result;
+    };
+    window.api.__patchOrcNome = true;
   }
   function moveToFolder(id, pastaId, opts) {
     var sid = String(id || '').trim();
@@ -885,6 +927,7 @@ try {
   };
 
   patchNormalizeOrc();
+  patchApiOrcamentoNome();
 
   window.renderOrcamentos = function renderOrcamentosPatched() {
     ensureUi();
@@ -1033,9 +1076,17 @@ try {
   if (typeof window.salvarOrcamentoCalc === 'function' && !window.salvarOrcamentoCalc.__patchOrcPastas) {
     var _origSalvarOrcamentoCalc = window.salvarOrcamentoCalc;
     window.salvarOrcamentoCalc = async function() {
+      var nomeAtual = calcNomeOrcamentoAtual();
       var ok = await _origSalvarOrcamentoCalc.apply(this, arguments);
       if (!ok) return ok;
+      try {
+        var current = currentOrcamentoFromState();
+        if (current && nomeAtual) {
+          updateLocalOrcamento(Object.assign({}, current, { nome: nomeAtual, nome_orcamento: nomeAtual }));
+        }
+      } catch (_) {}
       await persistCurrentCalcFolder();
+      try { if (activePageIsOrcamentos() && typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
       return ok;
     };
     window.salvarOrcamentoCalc.__patchOrcPastas = true;
