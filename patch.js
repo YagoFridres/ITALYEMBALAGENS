@@ -752,6 +752,8 @@ try {
       var out = original(r);
       try {
         out.pasta_id = (r && (r.pasta_id != null ? r.pasta_id : r.pastaId)) ? String(r.pasta_id != null ? r.pasta_id : r.pastaId).trim() : null;
+        out.nome = String(r && (r.nome != null ? r.nome : (out && out.nome)) || '').trim();
+        out.nome_orcamento = String(r && (r.nome_orcamento != null ? r.nome_orcamento : (out && out.nome_orcamento)) || out.nome || '').trim();
       } catch (_) {
         out.pasta_id = null;
       }
@@ -1882,9 +1884,19 @@ try {
     } catch (_) {}
   }
 
+  function _histRemoveScrollButton() {
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('#hist-scroll-bottom-btn')).forEach(function(node) {
+        if (!node) return;
+        try { node.remove(); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
   function _histEnsureUi() {
     _histEnsureStyle();
     _histHideTopWidgets();
+    _histRemoveScrollButton();
     var page = _histGetPage();
     if (!page) return;
 
@@ -1922,19 +1934,6 @@ try {
         try { resumoTopo.style.display = 'none'; } catch (_) {}
         try { resumoTopo.setAttribute('aria-hidden', 'true'); } catch (_) {}
         try { resumoTopo.remove(); } catch (_) {}
-      }
-      if (page && !document.getElementById('hist-scroll-bottom-btn')) {
-        try {
-          var scrollBtn = document.createElement('button');
-          scrollBtn.id = 'hist-scroll-bottom-btn';
-          scrollBtn.type = 'button';
-          scrollBtn.textContent = '↓ Ver tudo';
-          scrollBtn.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:9999;background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.28);border-radius:999px;padding:12px 16px;font-weight:900;box-shadow:0 18px 42px rgba(0,0,0,.28);cursor:pointer';
-          scrollBtn.onclick = function() {
-            try { page.scrollTo({ top: page.scrollHeight, behavior: 'smooth' }); } catch (_) { try { page.scrollTop = page.scrollHeight; } catch (_) {} }
-          };
-          document.body.appendChild(scrollBtn);
-        } catch (_) {}
       }
     }
 
@@ -2734,13 +2733,10 @@ try {
   });
 
   try {
-    if (!window.__histScrollRepairObs) {
-      window.__histScrollRepairObs = new MutationObserver(function() {
-        try { _histRepairScrollContainer(); } catch (_) {}
-        try { _histHideTopWidgets(); } catch (_) {}
-      });
-      window.__histScrollRepairObs.observe(document.body, { childList: true, subtree: true });
+    if (window.__histScrollRepairObs && typeof window.__histScrollRepairObs.disconnect === 'function') {
+      window.__histScrollRepairObs.disconnect();
     }
+    window.__histScrollRepairObs = null;
   } catch (_) {}
 })();
 
@@ -7358,7 +7354,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (delBtn) {
           ev.preventDefault();
           ev.stopPropagation();
-          try { if (typeof window.excluirChapa === 'function') window.excluirChapa(String(delBtn.getAttribute('data-est-del') || '')); } catch (_) {}
+          try {
+            _excluirChapaEstoquePatched(String(delBtn.getAttribute('data-est-del') || '')).catch(function(err) {
+              try { window.toast('Erro ao excluir chapa: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+            });
+          } catch (_) {}
           return;
         }
         var tonCard = target && target.closest ? target.closest('[data-est-card="tons"]') : null;
@@ -11019,7 +11019,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var topMaquina = rankM[0] || null;
         var topOperador = rankO[0] || null;
         var periodo = _cpPeriodoDescricao(state);
-        var linhas = Array.isArray(rows) ? rows : [];
+        var linhas = Array.isArray(rows) && rows.length ? rows : _cpBuildTableRows(data);
         var resumoMaquinaMap = {};
         linhas.forEach(function(r) {
           var maquinas = _cpRowMaquinas(r);
@@ -11033,7 +11033,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           });
         });
         var resumoMaquinas = Object.keys(resumoMaquinaMap).map(function(key) { return resumoMaquinaMap[key]; }).sort(function(a, b) { return (b.valor - a.valor) || (b.qtd - a.qtd) || String(a.nome || '').localeCompare(String(b.nome || '')); });
-        _openStyledPrintWindow(_buildStyledPrintHtml({
+        return _openStyledPrintWindow(_buildStyledPrintHtml({
           title: 'Relatório de Caixas Perdidas',
           periodo: periodo,
           cards: [
@@ -11067,8 +11067,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           emptySummaryCols: 3,
           emptyDetailCols: 8
         }));
-      } catch (_) {}
+      } catch (e) {
+        try { console.error('[caixas-perdidas][print]', e && e.message || e); } catch (_) {}
+        try { alert('Falha ao imprimir Caixas Perdidas: ' + String(e && e.message || e)); } catch (_) {}
+        return null;
+      }
     }
+    try {
+      window.__cpPrintReport = function(data) {
+        return _cpPrint(data, _cpBuildTableRows(data));
+      };
+    } catch (_) {}
 
     async function _cpFetchDashboard(force) {
       var state = _cpState();
@@ -11309,7 +11318,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var btnR = document.getElementById('cpv2-refresh');
       if (btnR) btnR.onclick = function() { _cpRenderPage(true); };
       var btnP = document.getElementById('cpv2-print');
-      if (btnP) btnP.onclick = function() { _cpPrint(data, rows); };
+      if (btnP) btnP.onclick = function() {
+        if (typeof window.__cpPrintReport === 'function') return window.__cpPrintReport(data);
+        return _cpPrint(data, rows);
+      };
       var btnM = document.getElementById('cpv2-open-maquinas');
       if (btnM) btnM.onclick = function() { _cpOpenRankingModal('maquinas', rankM); };
       var btnO = document.getElementById('cpv2-open-operadores');
@@ -16812,6 +16824,41 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       // #endregion
     }, 250);
   }
+
+  async function _excluirChapaEstoquePatched(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return false;
+    if (!confirm('Excluir esta chapa do estoque?')) return false;
+    var resp = await window._apiAuthFetch('/api/chapas_estoque/' + encodeURIComponent(sid), {
+      method: 'DELETE'
+    });
+    var json = await resp.json().catch(function() { return null; });
+    if (!resp.ok || (json && json.ok === false)) {
+      throw new Error(String(json && (json.error || json.message) || 'Falha ao excluir chapa'));
+    }
+    ['__estoqueChapasCacheGlobal', '__estoqueWireChapasCache', '__entradaEstoqueChapasCache', '__saidaEstoqueChapasCache', '_estoqueBase', 'ESTOQUE'].forEach(function(nome) {
+      try {
+        if (!Array.isArray(window[nome])) return;
+        window[nome] = window[nome].filter(function(item) { return String(item && item.id || '').trim() !== sid; });
+      } catch (_) {}
+    });
+    try { if (typeof chapasForcarReload === 'function') chapasForcarReload(); } catch (_) {}
+    try { window.toast('Chapa excluída com sucesso', 'var(--green)'); } catch (_) {}
+    try {
+      if (String(window._PAGE_ATUAL || '') === 'estoque' && typeof renderEstoqueWireframePage === 'function') {
+        await renderEstoqueWireframePage();
+      }
+    } catch (_) {}
+    return true;
+  }
+  try {
+    window.excluirChapa = function(id) {
+      return _excluirChapaEstoquePatched(id).catch(function(err) {
+        try { window.toast('Erro ao excluir chapa: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+        return false;
+      });
+    };
+  } catch (_) {}
 
   function _botaoAcaoEstoque(opts) {
     opts = opts || {};
