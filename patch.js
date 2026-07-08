@@ -25641,6 +25641,12 @@ function _ocultarGraficoComissoes() {
           });
           var j1 = await r1.json().catch(function() { return null; });
           if (!j1 || !j1.ok) throw new Error(String(j1 && (j1.error || j1.message) || 'Falha ao concluir OF'));
+          if (j1 && String(j1.caixas_perdidas_erro || '').trim()) {
+            try {
+              var ignored = Array.isArray(j1.ignored_columns_perda) ? j1.ignored_columns_perda.join(', ') : String(j1.ignored_columns_perda || '').trim();
+              alert('PERDA NÃO GRAVOU: ' + String(j1.caixas_perdidas_erro || '').trim() + ' | ignoradas: ' + ignored);
+            } catch (_) {}
+          }
           try {
             var ofAtualizada = j1.data || j1.of || null;
             if (ofAtualizada && of && typeof of === 'object') Object.assign(of, ofAtualizada);
