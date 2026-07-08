@@ -8856,11 +8856,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           return { data: r.data, tipo: 'Saída', fornecedor: r.fornecedor, cliente: '—', produto: r.chapa_label || '—', gramatura_nome: '—', toneladas: r.toneladas, qtd_caixas_produzidas: '—', of_numero: r.of_numero || '—' };
         }))
         .concat(saidasOfMes.map(function(r) {
+          var clienteLinha = String((r && (r.cliente_nome || r.cliente || '—')) || '—').trim() || '—';
           return {
             data: r.data_conclusao,
             tipo: 'OF',
             fornecedor: r.fornecedor_nome || r.fornecedor || '—',
-            cliente: r.cliente_nome || r.cliente || '—',
+            cliente_nome: clienteLinha,
+            cliente: clienteLinha,
             produto: r.produto || '—',
             gramatura_nome: r.gramatura_nome || '—',
             toneladas: r.toneladas,
