@@ -13305,7 +13305,23 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var pos = list.indexOf(id);
     if (pos >= 0) list.splice(pos, 1);
     else list.push(id);
-    window.renderSeletorCoresItemOFRapida(idx);
+    try {
+      var grid = document.getElementById('seletorCoresItemOFRapida_' + idx);
+      if (grid) {
+        Array.prototype.slice.call(grid.querySelectorAll('.btn-cor')).forEach(function(btn) {
+          var bid = String(btn && btn.getAttribute('data-cor-id') || '').trim();
+          var on = list.indexOf(bid) >= 0;
+          try { btn.classList.toggle('selecionado', on); } catch (_) {}
+          try {
+            var cor = getColorsSource().find(function(item) { return String(item && (item.id || item.nome) || '').trim() === bid; }) || null;
+            var hex = String(cor && (cor.hex || cor.cor) || '#64748b').trim() || '#64748b';
+            btn.style.borderColor = on ? hex : '';
+            btn.style.color = on ? hex : '';
+            btn.style.background = on ? (hex + '18') : '';
+          } catch (_) {}
+        });
+      }
+    } catch (_) {}
     try {
       var card = document.querySelector('.ofr-item-card[data-item-idx="' + idx + '"], [data-item-idx="' + idx + '"], [data-item-index="' + idx + '"]');
       if (card) syncItemColorState(card, idx, list);
@@ -13380,7 +13396,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var corId = String(btn.getAttribute('data-cor-id') || '').trim();
         if (!idx || !corId) return;
         try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-        if (typeof window.toggleCorItemOFRapida === 'function') window.toggleCorItemOFRapida(idx, corId);
+        if (btn.__patchHandledClick) return;
+        btn.__patchHandledClick = true;
+        setTimeout(function() { try { btn.__patchHandledClick = false; } catch (_) {} }, 0);
       } catch (_) {}
     }, true);
     document.addEventListener('click', function(ev) {
