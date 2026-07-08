@@ -9071,10 +9071,13 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
   });
 
   const cliIds = Array.from(new Set((Array.isArray(ofsData) ? ofsData : []).map((of) => String(of?.cli_id || '').trim()).filter(Boolean)));
+  const isUuidCli = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || '').trim());
+  const cliIdsUuid = cliIds.filter(isUuidCli);
+  const cliIdsCodigo = cliIds.filter((v) => !isUuidCli(v));
   const clientesMap = new Map();
-  if (cliIds.length) {
-    for (let i = 0; i < cliIds.length; i += 200) {
-      const lote = cliIds.slice(i, i + 200);
+  if (cliIdsUuid.length) {
+    for (let i = 0; i < cliIdsUuid.length; i += 200) {
+      const lote = cliIdsUuid.slice(i, i + 200);
       const { data } = await supabase
         .from('clientes')
         .select('id,nome')
@@ -9086,6 +9089,7 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
       });
     }
   }
+  console.log('[TONELADAS-CLI2] uuids:', cliIdsUuid.length, 'codigos:', cliIdsCodigo.length, 'retornados:', clientesMap.size);
 
   const parseImgs = (v) => {
     if (Array.isArray(v)) return v;
@@ -9233,10 +9237,13 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
   }
 
   const cliIds = Array.from(new Set(rows.map((row) => String(row?.cli_id || '').trim()).filter(Boolean)));
+  const isUuidCli = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || '').trim());
+  const cliIdsUuid = cliIds.filter(isUuidCli);
+  const cliIdsCodigo = cliIds.filter((v) => !isUuidCli(v));
   const clientesMap = new Map();
-  if (cliIds.length) {
-    for (let i = 0; i < cliIds.length; i += 200) {
-      const lote = cliIds.slice(i, i + 200);
+  if (cliIdsUuid.length) {
+    for (let i = 0; i < cliIdsUuid.length; i += 200) {
+      const lote = cliIdsUuid.slice(i, i + 200);
       const { data } = await supabase.from('clientes').select('id,nome').in('id', lote);
       (Array.isArray(data) ? data : []).forEach((cli) => {
         const id = String(cli?.id || '').trim();
@@ -9244,6 +9251,7 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
       });
     }
   }
+  console.log('[TONELADAS-CLI2] uuids:', cliIdsUuid.length, 'codigos:', cliIdsCodigo.length, 'retornados:', clientesMap.size);
 
   const filtrarCoresOf = (value) => {
     const add = (bucket, raw) => {
@@ -18409,14 +18417,18 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
     });
 
     const cliIds = [...new Set((Array.isArray(ofs) ? ofs : []).map((o) => pickOfCliId(o)).filter(Boolean))];
-    const { data: clientesRows } = cliIds.length
-      ? await supabase.from('clientes').select('id,nome').in('id', cliIds)
+    const isUuid = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || '').trim());
+    const cliIdsUuid = cliIds.filter(isUuid);
+    const cliIdsCodigo = cliIds.filter((v) => !isUuid(v));
+    const { data: clientesRows } = cliIdsUuid.length
+      ? await supabase.from('clientes').select('id,nome').in('id', cliIdsUuid)
       : { data: [] };
     const clientesMap = new Map();
     (clientesRows || []).forEach((c) => {
       clientesMap.set(_tonesNormId(c?.id || ''), String(c?.nome || '').trim());
     });
     console.log('[TONELADAS-CLI] cliIds:', cliIds.length, 'retornados:', (clientesRows || []).length, 'sampleCliIds:', cliIds.slice(0, 10), 'ex:', clientesRows?.[0]);
+    console.log('[TONELADAS-CLI2] uuids:', cliIdsUuid.length, 'codigos:', cliIdsCodigo.length, 'retornados:', (clientesRows || []).length);
     const gramaturaIds = [...new Set((Array.isArray(ofs) ? ofs : []).map((o) => pickOfGramaturaId(o)).filter(Boolean))];
     const { data: gramaturasRows } = gramaturaIds.length
       ? await supabase.from('gramaturas').select('id,fornecedor_id').in('id', gramaturaIds)
