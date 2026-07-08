@@ -18445,31 +18445,34 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       data: { totalOfs: Array.isArray(ofs) ? ofs.length : 0, selectedCols },
     });
 
-    const cliIds = Array.from(new Set((Array.isArray(ofs) ? ofs : []).map((of) => pickOfCliId(of)).filter(Boolean)));
-    const gramaturaIds = Array.from(new Set((Array.isArray(ofs) ? ofs : []).map((of) => pickOfGramaturaId(of)).filter(Boolean)));
-    const { data: clientesRows } = cliIds.length
-      ? await supabase.from('clientes').select('id,nome,cliente_nome,razao_social,fantasia,rs').in('id', cliIds)
+    const cliIds = [...new Set((Array.isArray(ofs) ? ofs : []).map((o) => String(o?.cli_id || '').trim()).filter(Boolean))];
+    const { data: cli } = cliIds.length
+      ? await supabase.from('clientes').select('id,nome').in('id', cliIds)
       : { data: [] };
+    const clientesMap = new Map();
+    (cli || []).forEach((c) => {
+      clientesMap.set(String(c?.id || '').trim(), String(c?.nome || '').trim());
+    });
+    const gramaturaIds = [...new Set((Array.isArray(ofs) ? ofs : []).map((o) => String(o?.gramatura_id || '').trim()).filter(Boolean))];
     const { data: gramaturasRows } = gramaturaIds.length
-      ? await supabase.from('gramaturas').select('id,fornecedor_id,fornecedor_nome,gramatura,nome').in('id', gramaturaIds)
+      ? await supabase.from('gramaturas').select('id,fornecedor_id').in('id', gramaturaIds)
       : { data: [] };
-    const fornecedorIds = Array.from(new Set((Array.isArray(gramaturasRows) ? gramaturasRows : []).map((g) => String(g?.fornecedor_id || '').trim()).filter(Boolean)));
+    const fornecedorIds = [...new Set((Array.isArray(gramaturasRows) ? gramaturasRows : []).map((g) => String(g?.fornecedor_id || '').trim()).filter(Boolean))];
     const { data: fornecedoresRows } = fornecedorIds.length
       ? await supabase.from('fornecedores').select('id,nome').in('id', fornecedorIds)
       : { data: [] };
-    const clientesMap = new Map((Array.isArray(clientesRows) ? clientesRows : []).map((cli) => [
-      String(cli?.id || '').trim(),
-      String(cli?.nome || cli?.cliente_nome || cli?.razao_social || cli?.fantasia || cli?.rs || '').trim()
-    ]));
-    const fornecedoresMap = new Map((Array.isArray(fornecedoresRows) ? fornecedoresRows : []).map((f) => [String(f?.id || '').trim(), String(f?.nome || '').trim()]));
-    const gramaturasMap = new Map((Array.isArray(gramaturasRows) ? gramaturasRows : []).map((g) => {
-      const fornecedorNome = fornecedoresMap.get(String(g?.fornecedor_id || '').trim()) || String(g?.fornecedor_nome || '').trim() || '';
-      return [String(g?.id || '').trim(), {
-        gramatura: Number(g?.gramatura || 0) || 0,
-        nome: String(g?.nome || '').trim() || '',
-        fornecedor_nome: fornecedorNome,
-      }];
-    }));
+    const fornecedoresMap = new Map();
+    (fornecedoresRows || []).forEach((f) => {
+      fornecedoresMap.set(String(f?.id || '').trim(), String(f?.nome || '').trim());
+    });
+    const gramaturasMap = new Map();
+    (gramaturasRows || []).forEach((g) => {
+      const gramId = String(g?.id || '').trim();
+      if (!gramId) return;
+      gramaturasMap.set(gramId, {
+        fornecedor_id: String(g?.fornecedor_id || '').trim(),
+      });
+    });
 
     const rows = (Array.isArray(ofs) ? ofs : []).filter((of) => {
       const gramaturaInfo = gramaturasMap.get(pickOfGramaturaId(of)) || null;
@@ -18477,10 +18480,11 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
       return !!String(of?.data_conclusao || '').trim() && (tonPersistida > 0 || gramatura > 0);
     }).map((of) => {
-      const cliId = String(pickOfCliId(of) || '').trim();
-      const gramaturaInfo = gramaturasMap.get(pickOfGramaturaId(of)) || null;
+      const cliId = String(of?.cli_id || '').trim();
+      const gramaturaId = String(of?.gramatura_id || '').trim();
+      const gramaturaInfo = gramaturasMap.get(gramaturaId) || null;
       const qtd = Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.quantidade ?? of?.qtd ?? 0) || 0));
-      const gramatura = Number(of?.gramatura || gramaturaInfo?.gramatura || 0) || 0;
+      const gramatura = Number(of?.gramatura || 0) || 0;
       const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
       const custoM2Venda = Number(of?.custo_m2_venda || 0) || 0;
       let areaUnitM2 = 0;
@@ -18496,8 +18500,8 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       }
       const areaTotalM2 = areaUnitM2 > 0 ? (areaUnitM2 * qtd) : 0;
       const toneladas = tonPersistida > 0 ? tonPersistida : (areaTotalM2 > 0 ? ((areaTotalM2 * gramatura) / 1000000) : 0);
-      const clienteNome = clientesMap.get(cliId) || '—';
-      const fornecedorNome = String(gramaturaInfo?.fornecedor_nome || '').trim() || '—';
+      const clienteNome = clientesMap.get(String(of?.cli_id || '').trim()) || '—';
+      const fornecedorNome = fornecedoresMap.get(String(gramaturaInfo?.fornecedor_id || '').trim()) || '—';
       console.log('[TONELADAS-FIX] of:', of.of, 'cli_id:', cliId, 'clienteNome:', clienteNome, 'fornecedorNome:', fornecedorNome);
       return {
         id: of?.id || null,
@@ -18506,7 +18510,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
         produto: String(of?.descricao || '').trim() || '—',
         data_conclusao: of?.data_conclusao || null,
         gramatura,
-        gramatura_nome: String(of?.gramatura_nome || gramaturaInfo?.nome || '').trim() || null,
+        gramatura_nome: String(of?.gramatura_nome || '').trim() || null,
         fornecedor_nome: fornecedorNome,
         fornecedor: fornecedorNome,
         quantidade: qtd,
