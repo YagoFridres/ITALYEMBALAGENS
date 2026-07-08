@@ -6974,10 +6974,9 @@ async function _insertCaixaPerdidaCompat(input, req) {
     if (payload[key] == null || payload[key] === '') delete payload[key];
   });
   const fallbackCols = [
-    'id', 'of_id', 'of_numero', 'produto', 'cliente', 'cliente_nome', 'valor_unitario', 'qtd_perdida', 'valor_perdido',
-    'toneladas_perdidas', 'data', 'mes_referencia', 'emp_id', 'empresa_id', 'usuario', 'usuario_conclusao', 'concluido_por', 'obs', 'created_at',
-    'maquina', 'maquina_nome', 'maquina_id', 'maquina_perda', 'quantidade', 'caixas_perdidas',
-    'operadores', 'operadores_conclusao', 'operador', 'operador_nome', 'operador_principal', 'operador_conclusao', 'turno'
+    'id', 'of_id', 'of_numero', 'produto', 'cliente', 'valor_unitario', 'qtd_perdida', 'valor_perdido',
+    'data', 'mes_referencia', 'emp_id', 'usuario', 'obs', 'created_at',
+    'maquina', 'maquina_id', 'maquina_perda', 'toneladas_perdidas', 'operador'
   ];
   const colunasReaisSet = new Set(fallbackCols);
   let erroSchema = null;
@@ -7042,9 +7041,6 @@ async function _insertCaixaPerdidaCompat(input, req) {
       msg: '[DEBUG] insert caixa perdida falhou',
       data: { error: msg, tentativa: i + 1, payloadKeys: Object.keys(currentPayload || {}) },
     });
-    if (msgLower.includes('does not exist') || msgLower.includes('not exist') || msgLower.includes('not find') || msgLower.includes('not found')) {
-      return { skipped: true, reason: 'table_missing', error_message: msg, ignored_columns_perda: ignoredColumns.slice() };
-    }
     const m = msg.match(/column\s+"?([a-z0-9_]+)"?\s+(?:of relation .* )?does not exist/i)
       || msg.match(/Could not find the '([^']+)' column/i);
     const missingCol = m && m[1] ? String(m[1]).trim() : '';
@@ -7052,6 +7048,16 @@ async function _insertCaixaPerdidaCompat(input, req) {
       if (!ignoredColumns.includes(missingCol)) ignoredColumns.push(missingCol);
       delete currentPayload[missingCol];
       continue;
+    }
+    const tabelaAusente =
+      (
+        (msgLower.includes('relation') && msgLower.includes('does not exist')) ||
+        (msgLower.includes('table') && (msgLower.includes('does not exist') || msgLower.includes('not found') || msgLower.includes('not exist'))) ||
+        msgLower.includes("could not find the table")
+      ) &&
+      !msgLower.includes('column');
+    if (tabelaAusente) {
+      return { skipped: true, reason: 'table_missing', error_message: msg, ignored_columns_perda: ignoredColumns.slice() };
     }
     if (msgLower.includes('column') && (msgLower.includes('maquina') || msgLower.includes('maquina_id') || msgLower.includes('operador') || msgLower.includes('turno') || msgLower.includes('quantidade') || msgLower.includes('of_numero') || msgLower.includes('cliente_nome'))) {
       ['maquina', 'maquina_nome', 'maquina_id', 'operadores', 'operador', 'turno', 'quantidade', 'of_numero', 'cliente_nome'].forEach((key) => {
@@ -7965,6 +7971,8 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       caixas_perdidas: body.caixas_perdidas != null ? parseInt(body.caixas_perdidas, 10) : null,
       motivo_perda: body.motivo_perda || null,
       operador_conclusao: body.operador_conclusao || (operadoresConclusao[0] || null),
+      qtd: qtdFinal,
+      quantidade: qtdFinal,
       qtd_produzida: qtdFinal,
       qtd_perdida: qtdPerdida,
       caixas_excedentes: excedente,
@@ -11126,6 +11134,7 @@ app.post('/api/orcamentos', authMiddleware, async (req, res) => {
 
     const payload = {
       numero_orcamento: novoNum,
+      nome: b.nome || b.nome_orcamento || '',
       titulo: b.medidas || b.titulo || '',
       descricao: b.cliente_nome || b.descricao || '',
       cliente_nome: b.cliente_nome || '',
@@ -11200,6 +11209,7 @@ app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
     const updates = {};
     const has = (k) => Object.prototype.hasOwnProperty.call(b, k);
     if (has('medidas') || has('titulo')) updates.titulo = b.medidas ?? b.titulo ?? '';
+    if (has('nome') || has('nome_orcamento')) updates.nome = b.nome ?? b.nome_orcamento ?? '';
     if (has('cliente_nome') || has('descricao')) {
       updates.descricao = b.cliente_nome ?? b.descricao ?? '';
       updates.cliente_nome = b.cliente_nome ?? '';
@@ -18139,7 +18149,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
     const selectCols = [
       'id', 'numero', 'of', 'status', 'data_conclusao', 'gramatura', 'gramatura_id',
       'qtd_produzida', 'quantidade', 'qtd',
-      'cliNome', 'cliente_nome', 'cliente',
+      'cli_id', 'cliNome', 'cliente_nome', 'cliente',
       'descricao', 'produto',
       'comprimento', 'largura',
       'caixa_comprimento', 'caixa_largura',
@@ -18215,7 +18225,11 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       data: { totalOfs: Array.isArray(ofs) ? ofs.length : 0, selectedCols, canFilterDeletedAt },
     });
 
+    const cliIds = Array.from(new Set((Array.isArray(ofs) ? ofs : []).map((of) => String(of?.cli_id || '').trim()).filter(Boolean)));
     const gramaturaIds = Array.from(new Set((Array.isArray(ofs) ? ofs : []).map((of) => String(of?.gramatura_id || '').trim()).filter(Boolean)));
+    const { data: clientesRows } = cliIds.length
+      ? await supabase.from('clientes').select('id,nome,cliente_nome,razao_social,fantasia,rs').in('id', cliIds)
+      : { data: [] };
     const { data: gramaturasRows } = gramaturaIds.length
       ? await supabase.from('gramaturas').select('id,fornecedor_id,fornecedor_nome,gramatura,nome').in('id', gramaturaIds)
       : { data: [] };
@@ -18223,6 +18237,10 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
     const { data: fornecedoresRows } = fornecedorIds.length
       ? await supabase.from('fornecedores').select('id,nome').in('id', fornecedorIds)
       : { data: [] };
+    const clientesMap = new Map((Array.isArray(clientesRows) ? clientesRows : []).map((cli) => [
+      String(cli?.id || '').trim(),
+      String(cli?.nome || cli?.cliente_nome || cli?.razao_social || cli?.fantasia || cli?.rs || '').trim()
+    ]));
     const fornecedoresMap = new Map((Array.isArray(fornecedoresRows) ? fornecedoresRows : []).map((f) => [String(f?.id || '').trim(), String(f?.nome || '').trim()]));
     const gramaturasMap = new Map((Array.isArray(gramaturasRows) ? gramaturasRows : []).map((g) => {
       const fornecedorNome = fornecedoresMap.get(String(g?.fornecedor_id || '').trim()) || String(g?.fornecedor_nome || '').trim() || '';
@@ -18260,17 +18278,20 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       }
       const areaTotalM2 = areaUnitM2 > 0 ? (areaUnitM2 * qtd) : 0;
       const toneladas = tonPersistida > 0 ? tonPersistida : (areaTotalM2 > 0 ? ((areaTotalM2 * gramatura) / 1000000) : 0);
+      const clienteNome = clientesMap.get(String(of?.cli_id || '').trim()) || String(of?.cliNome || of?.cliente_nome || of?.cliente || '').trim() || '—';
+      const fornecedorNome = String(gramaturaInfo?.fornecedor_nome || '').trim() || '—';
       return {
         id: of?.id || null,
         of_numero: of?.numero || of?.of || null,
-        cliente_nome: String(of?.cliNome || of?.cliente_nome || of?.cliente || '').trim() || '—',
+        cliente_nome: clienteNome,
         produto: String(of?.descricao || of?.produto || '').trim() || '—',
         data_conclusao: of?.data_conclusao || null,
         gramatura,
         gramatura_nome: String(of?.gramatura_nome || gramaturaInfo?.nome || '').trim() || null,
-        fornecedor_nome: String(gramaturaInfo?.fornecedor_nome || '').trim() || null,
-        fornecedor: String(gramaturaInfo?.fornecedor_nome || '').trim() || null,
+        fornecedor_nome: fornecedorNome,
+        fornecedor: fornecedorNome,
         quantidade: qtd,
+        qtd_caixas_produzidas: qtd,
         area_unit_m2: Number(areaUnitM2.toFixed(4)),
         area_total_m2: Number(areaTotalM2.toFixed(4)),
         toneladas: Number(toneladas.toFixed(6)),
