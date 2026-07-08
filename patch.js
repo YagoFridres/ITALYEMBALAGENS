@@ -2156,6 +2156,26 @@ try {
   }
 
   function _histPassagemMaquinas(row) {
+    var listaDetalhada = [];
+    try {
+      var passagens = row && (row.passagens_maquina || row.passagens_por_maquina);
+      if (typeof passagens === 'string') {
+        var txt = String(passagens || '').trim();
+        if (txt && (txt.charAt(0) === '[' || txt.charAt(0) === '{')) {
+          passagens = JSON.parse(txt);
+        }
+      }
+      if (Array.isArray(passagens)) {
+        listaDetalhada = passagens.map(function(item) {
+          if (!item || typeof item !== 'object') return '';
+          var maquina = String(item.maquina || item.maquina_nome || item.nome || '').trim();
+          var qtd = Math.trunc(Number(item.qtd_caixas != null ? item.qtd_caixas : (item.qtd != null ? item.qtd : (item.quantidade != null ? item.quantidade : item.caixas))) || 0);
+          if (!maquina) return '';
+          return qtd > 0 ? (maquina + ': ' + _histFmtNum(qtd) + ' caixas') : maquina;
+        }).filter(Boolean);
+      }
+    } catch (_) {}
+    if (listaDetalhada.length) return listaDetalhada.join(', ');
     var lista = [];
     try {
       if (Array.isArray(row && row.maquinas)) lista = row.maquinas.slice();
@@ -25562,6 +25582,21 @@ function _ocultarGraficoComissoes() {
     return ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
   }
 
+  function _parsePassagensMaquinaConclusao(raw) {
+    var lista = _parseFluxoConclusao(raw);
+    return (Array.isArray(lista) ? lista : []).map(function(item) {
+      if (item && typeof item === 'object' && !Array.isArray(item)) {
+        var maquinaObj = String(item.maquina || item.maquina_nome || item.nome || item.name || '').trim();
+        var qtdObj = Math.trunc(Number(item.qtd_caixas != null ? item.qtd_caixas : (item.qtd != null ? item.qtd : (item.quantidade != null ? item.quantidade : item.caixas))) || 0);
+        if (!maquinaObj) return null;
+        return { maquina: maquinaObj, qtd_caixas: qtdObj > 0 ? qtdObj : '' };
+      }
+      var maquina = String(item || '').trim();
+      if (!maquina) return null;
+      return { maquina: maquina, qtd_caixas: '' };
+    }).filter(Boolean);
+  }
+
   async function _carregarOperadoresParaConclusao() {
     try { window._operadoresConclusaoCache = null; } catch (_) {}
     try { delete window._operadoresConclusaoCache; } catch (_) {}
@@ -25905,6 +25940,7 @@ function _ocultarGraficoComissoes() {
       try { usuario = String((window.CURRENT_USER && (window.CURRENT_USER.nome || window.CURRENT_USER.name)) || localStorage.getItem('nome') || 'Usuário').trim(); } catch (_) { usuario = 'Usuário'; }
       var hoje = new Date().toISOString().slice(0, 10);
       var qtdInicial = Math.trunc(Number(of && (of.quantidade ?? of.qtd ?? of.qtd_pedida ?? 0) || 0) || 0);
+      var passagensMaquinaEstruturadas = _parsePassagensMaquinaConclusao(of && (of.passagens_maquina || of.passagens_por_maquina));
       var maquinasFluxo = _parseFluxoConclusao(of && (of.fluxo_maquinas || of.maq));
       maquinasFluxo = (Array.isArray(maquinasFluxo) ? maquinasFluxo : []).map(function(x) {
         if (x && typeof x === 'object') return String(x.nome || x.name || x.maquina || x.col || x.id || '').trim();
@@ -25914,7 +25950,6 @@ function _ocultarGraficoComissoes() {
         var maqAtual = String(of && (of.maquina || of.maq || of.maquina_atual || of.maquina_agendada) || '').trim();
         if (maqAtual) maquinasFluxo = [maqAtual];
       }
-      var maquinasHistoricoSelecionadas = maquinasFluxo.slice();
       var preloadMaquinas = _carregarMaquinasParaConclusao().catch(function() { return []; });
       var preloadOperadores = _carregarOperadoresParaConclusao().catch(function() { return []; });
       var preloadGramaturas = _carregarGramaturasParaConclusao().catch(function() { return [_gramaturaFallbackConclusao()]; });
@@ -25980,13 +26015,12 @@ function _ocultarGraficoComissoes() {
         + '      <div id="conclusao-total-perdido" style="margin-top:10px;font-size:13px;font-weight:700;color:#ef4444">Total perdido: 0 caixas</div>'
         + '    </div>'
         + '    <div class="com-conc-field">'
-        + '      <label class="com-conc-label">🧭 MÁQUINAS QUE O PEDIDO PASSOU</label>'
-        + '      <div id="conclusao-maquinas-autocomplete" style="position:relative">'
-        + '        <input id="conclusao-maquinas-busca" class="com-conc-input" type="text" placeholder="Buscar e selecionar máquinas..." autocomplete="off"/>'
-        + '        <div id="conclusao-maquinas-suggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:99999;background:#1e2433;border:1px solid #334155;border-top:none;border-radius:0 0 8px 8px;max-height:240px;overflow-y:auto;box-shadow:0 12px 32px rgba(0,0,0,0.7)"></div>'
+        + '      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">'
+        + '        <label class="com-conc-label" style="margin-bottom:0">🧭 Caixas por Máquina</label>'
+        + '        <button type="button" class="com-conc-mini-btn" id="conclusao-add-passagem-maquina">+ Adicionar máquina</button>'
         + '      </div>'
-        + '      <div id="conclusao-maquinas-passagem" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div>'
-        + '      <div style="margin-top:8px;font-size:12px;color:#94a3b8">Selecione uma ou mais máquinas pelas quais o pedido passou.</div>'
+        + '      <div id="conclusao-maquinas-passagem-lista"></div>'
+        + '      <div style="margin-top:8px;font-size:12px;color:#94a3b8">Informe a máquina e quantas caixas passaram em cada etapa do pedido.</div>'
         + '    </div>'
         + '    <div class="com-conc-summary">'
         + '      <div class="com-conc-metrics">'
@@ -26019,9 +26053,8 @@ function _ocultarGraficoComissoes() {
       var gramEl = backdrop.querySelector('#conclusao-gramatura');
       var gramBuscaEl = backdrop.querySelector('#conclusao-gramatura-busca');
       var gramSuggestEl = backdrop.querySelector('#conclusao-gramatura-suggest');
-      var maquinasBuscaEl = backdrop.querySelector('#conclusao-maquinas-busca');
-      var maquinasSuggestEl = backdrop.querySelector('#conclusao-maquinas-suggest');
-      var maquinasPassagemEl = backdrop.querySelector('#conclusao-maquinas-passagem');
+      var maquinasPassagemListaEl = backdrop.querySelector('#conclusao-maquinas-passagem-lista');
+      var addPassagemMaquinaBtn = backdrop.querySelector('#conclusao-add-passagem-maquina');
       var perdasLista = backdrop.querySelector('#conclusao-perdas-lista');
       var totalPerdidoEl = backdrop.querySelector('#conclusao-total-perdido');
       var btnSalvar = backdrop.querySelector('#conclusao-confirmar');
@@ -26029,7 +26062,6 @@ function _ocultarGraficoComissoes() {
         try {
           if (!e || !e.target || !e.target.closest) return;
           if (!e.target.closest('#conclusao-gramatura-autocomplete') && gramSuggestEl) gramSuggestEl.style.display = 'none';
-          if (!e.target.closest('#conclusao-maquinas-autocomplete') && maquinasSuggestEl) maquinasSuggestEl.style.display = 'none';
         } catch (_) {}
       };
       var onEsc = function(e) {
@@ -26067,58 +26099,36 @@ function _ocultarGraficoComissoes() {
         }));
         return opts.join('');
       }
-      function renderMaquinasPassagemConclusao() {
-        if (!maquinasPassagemEl) return;
-        var base = _listaMaquinasHistoricoConclusao();
-        var selecionadasNorm = (Array.isArray(maquinasHistoricoSelecionadas) ? maquinasHistoricoSelecionadas : []).map(_normNomeMaquinaConclusao);
-        maquinasPassagemEl.innerHTML = base.filter(function(nome) {
-          return selecionadasNorm.indexOf(_normNomeMaquinaConclusao(nome)) >= 0;
-        }).map(function(nome) {
-          return ''
-            + '<span class="conc-maq-chip" data-conc-maq-chip="' + String(nome).replace(/"/g, '&quot;') + '" style="display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid rgba(96,165,250,.28);border-radius:999px;background:rgba(37,99,235,.18);color:#dbeafe;font-size:12px;font-weight:800">'
-            + '  <span>' + String(nome).replace(/</g, '&lt;') + '</span>'
-            + '  <button type="button" data-conc-maq-remove="' + String(nome).replace(/"/g, '&quot;') + '" style="border:none;background:transparent;color:#bfdbfe;font-size:14px;line-height:1;cursor:pointer">×</button>'
-            + '</span>';
-        }).join('') || '<span style="font-size:12px;color:#94a3b8">Nenhuma máquina selecionada.</span>';
-      }
       function collectMaquinasPassagemConclusao() {
-        return (Array.isArray(maquinasHistoricoSelecionadas) ? maquinasHistoricoSelecionadas : []).map(function(item) {
-          return String(item || '').trim();
-        }).filter(Boolean);
-      }
-      function filtrarMaquinasPassagemConclusao(termo) {
-        var base = _listaMaquinasHistoricoConclusao();
-        var busca = _normNomeMaquinaConclusao(termo);
-        if (!busca) return base;
-        return base.filter(function(nome) {
-          return _normNomeMaquinaConclusao(nome).indexOf(busca) >= 0;
+        return Array.prototype.slice.call((maquinasPassagemListaEl || document.createElement('div')).querySelectorAll('.com-conc-passagem-row')).map(function(row) {
+          var maqSel = row.querySelector('.conc-passagem-maq');
+          var maqVal = String((maqSel || {}).value || '').trim();
+          var maqLista = Array.isArray(row.__concMaquinasLista) ? row.__concMaquinasLista : [];
+          var maqObj = maqLista.find(function(item) {
+            var itemId = String(item && (item.id || item.nome || item.descricao) || '').trim();
+            var itemNome = String(item && (item.nome || item.descricao || item.id) || '').trim();
+            return itemId === maqVal || _normNomeMaquinaConclusao(itemNome) === _normNomeMaquinaConclusao(maqVal);
+          }) || null;
+          var maqNome = String(maqObj && (maqObj.nome || maqObj.descricao || maqObj.id) || maqVal).trim();
+          var qtd = Math.trunc(Number((row.querySelector('.conc-passagem-qtd') || {}).value || 0) || 0);
+          return {
+            maquina: maqNome,
+            maquina_nome: maqNome,
+            maquina_id: String(maqObj && maqObj.id || '').trim() || null,
+            qtd_caixas: qtd,
+            quantidade: qtd
+          };
+        }).filter(function(item) {
+          return item.maquina && item.qtd_caixas > 0;
         });
       }
-      function toggleMaquinaPassagemConclusao(nome) {
-        var raw = String(nome || '').trim();
-        if (!raw) return;
-        var alvo = _normNomeMaquinaConclusao(raw);
-        var atual = Array.isArray(maquinasHistoricoSelecionadas) ? maquinasHistoricoSelecionadas.slice() : [];
-        var idx = atual.findIndex(function(item) { return _normNomeMaquinaConclusao(item) === alvo; });
-        if (idx >= 0) atual.splice(idx, 1);
-        else atual.push(raw);
-        maquinasHistoricoSelecionadas = atual;
-        renderMaquinasPassagemConclusao();
-        renderSugestoesMaquinasPassagem(maquinasBuscaEl ? maquinasBuscaEl.value : '');
-      }
-      function renderSugestoesMaquinasPassagem(termo) {
-        if (!maquinasSuggestEl) return;
-        var lista = filtrarMaquinasPassagemConclusao(termo);
-        var selecionadasNorm = (Array.isArray(maquinasHistoricoSelecionadas) ? maquinasHistoricoSelecionadas : []).map(_normNomeMaquinaConclusao);
-        maquinasSuggestEl.innerHTML = lista.length ? lista.map(function(nome) {
-          var ativo = selecionadasNorm.indexOf(_normNomeMaquinaConclusao(nome)) >= 0;
-          return ''
-            + '<button type="button" data-conc-maq-option="' + String(nome).replace(/"/g, '&quot;') + '" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:none;border-bottom:1px solid rgba(148,163,184,.10);background:' + (ativo ? 'rgba(37,99,235,.18)' : 'transparent') + ';color:#e2e8f0;text-align:left;cursor:pointer">'
-            + '  <span style="font-weight:700">' + String(nome).replace(/</g, '&lt;') + '</span>'
-            + '  <span style="font-size:11px;color:' + (ativo ? '#bfdbfe' : '#94a3b8') + ';font-weight:800">' + (ativo ? 'Selecionada' : 'Selecionar') + '</span>'
-            + '</button>';
-        }).join('') : '<div style="padding:12px;color:#94a3b8;font-size:12px">Nenhuma máquina encontrada.</div>';
-        maquinasSuggestEl.style.display = 'block';
+      function hasMaquinasPassagemIncompletasConclusao() {
+        return Array.prototype.slice.call((maquinasPassagemListaEl || document.createElement('div')).querySelectorAll('.com-conc-passagem-row')).some(function(row) {
+          var maqSel = row.querySelector('.conc-passagem-maq');
+          var maqVal = String((maqSel || {}).value || '').trim();
+          var qtd = Math.trunc(Number((row.querySelector('.conc-passagem-qtd') || {}).value || 0) || 0);
+          return (!!maqVal && !(qtd > 0)) || (!(maqVal) && qtd > 0);
+        });
       }
       function collectPerdas() {
         return Array.prototype.slice.call(perdasLista.querySelectorAll('.com-conc-loss-row')).map(function(row) {
@@ -26153,48 +26163,56 @@ function _ocultarGraficoComissoes() {
           return { maquina: maqNome, maquina_nome: maqNome, maquina_id: maqId, qtd: qtd, operadores: ops };
         }).filter(function(item) { return item.maquina && item.qtd > 0; });
       }
-      renderMaquinasPassagemConclusao();
-      if (maquinasBuscaEl) {
-        maquinasBuscaEl.addEventListener('focus', function() {
-          renderSugestoesMaquinasPassagem(String(maquinasBuscaEl.value || ''));
-        });
-        maquinasBuscaEl.addEventListener('input', function() {
-          renderSugestoesMaquinasPassagem(String(maquinasBuscaEl.value || ''));
-        });
-        maquinasBuscaEl.addEventListener('keydown', function(ev) {
-          if (ev && ev.key === 'Enter') {
-            ev.preventDefault();
-            var lista = filtrarMaquinasPassagemConclusao(String(maquinasBuscaEl.value || ''));
-            if (lista[0]) toggleMaquinaPassagemConclusao(lista[0]);
-            maquinasBuscaEl.value = '';
-            renderSugestoesMaquinasPassagem('');
-          } else if (ev && ev.key === 'Backspace' && !String(maquinasBuscaEl.value || '').trim()) {
-            var atuais = collectMaquinasPassagemConclusao();
-            if (atuais.length) {
-              toggleMaquinaPassagemConclusao(atuais[atuais.length - 1]);
-            }
-          }
-        });
+      async function addPassagemMaquinaRow(data) {
+        if (!maquinasPassagemListaEl) return;
+        var payload = data || {};
+        var maquinasApi = await preloadMaquinas.catch(function() { return []; });
+        var maquinas = (Array.isArray(maquinasApi) ? maquinasApi.slice() : []).filter(Boolean);
+        if (!maquinas.length && maquinasFluxo.length) {
+          maquinas = maquinasFluxo.map(function(nome) { return { id: nome, nome: nome }; });
+        }
+        if (!maquinas.length) {
+          maquinas = _listaMaquinasHistoricoConclusao().map(function(nome) { return { id: nome, nome: nome }; });
+        }
+        var maqSelecionada = String(payload.maquina || payload.maquina_nome || '').trim();
+        var maqSelecionadaNorm = _normNomeMaquinaConclusao(maqSelecionada);
+        var maqSelecionadaValue = '';
+        var maqSelecionadaObj = maquinas.find(function(item) {
+          var itemId = String(item && (item.id || item.nome || item.descricao) || '').trim();
+          var itemNome = String(item && (item.nome || item.descricao || item.id) || '').trim();
+          return itemId === maqSelecionada || _normNomeMaquinaConclusao(itemNome) === maqSelecionadaNorm;
+        }) || null;
+        if (maqSelecionadaObj) {
+          maqSelecionadaValue = String(maqSelecionadaObj.id || maqSelecionadaObj.nome || maqSelecionadaObj.descricao || '').trim();
+        } else if (maqSelecionada) {
+          maquinas.unshift({ id: maqSelecionada, nome: maqSelecionada });
+          maqSelecionadaValue = maqSelecionada;
+        }
+        var qtdSelecionada = Math.trunc(Number(payload.qtd_caixas != null ? payload.qtd_caixas : (payload.qtd != null ? payload.qtd : (payload.quantidade != null ? payload.quantidade : payload.caixas))) || 0);
+        var row = document.createElement('div');
+        row.className = 'com-conc-loss-row com-conc-passagem-row';
+        row.__concMaquinasLista = maquinas;
+        row.innerHTML = ''
+          + '<div class="com-conc-loss-grid">'
+          + '  <select class="com-conc-select conc-passagem-maq">' + optionHtml(maquinas, maqSelecionadaValue || ((maquinas[0] && (maquinas[0].id || maquinas[0].nome || maquinas[0].descricao)) || ''), 'Selecionar máquina...') + '</select>'
+          + '  <input class="com-conc-input conc-passagem-qtd" type="number" min="0" step="1" value="' + String(qtdSelecionada > 0 ? qtdSelecionada : '') + '" placeholder="Caixas"/>'
+          + '  <button type="button" class="com-conc-remove">×</button>'
+          + '</div>';
+        maquinasPassagemListaEl.appendChild(row);
+        row.querySelector('.com-conc-remove').onclick = function() { row.remove(); };
       }
-      if (maquinasSuggestEl) {
-        maquinasSuggestEl.addEventListener('click', function(ev) {
-          var btn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-conc-maq-option]') : null;
-          if (!btn) return;
-          ev.preventDefault();
-          toggleMaquinaPassagemConclusao(String(btn.getAttribute('data-conc-maq-option') || ''));
-          if (maquinasBuscaEl) {
-            maquinasBuscaEl.value = '';
-            try { maquinasBuscaEl.focus(); } catch (_) {}
-          }
-          renderSugestoesMaquinasPassagem('');
-        });
+      if (addPassagemMaquinaBtn) {
+        addPassagemMaquinaBtn.onclick = function() {
+          addPassagemMaquinaRow({}).catch(function() {});
+        };
       }
-      if (maquinasPassagemEl) {
-        maquinasPassagemEl.addEventListener('click', function(ev) {
-          var btn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-conc-maq-remove]') : null;
-          if (!btn) return;
-          ev.preventDefault();
-          toggleMaquinaPassagemConclusao(String(btn.getAttribute('data-conc-maq-remove') || ''));
+      if (passagensMaquinaEstruturadas.length) {
+        passagensMaquinaEstruturadas.forEach(function(item) {
+          addPassagemMaquinaRow(item).catch(function() {});
+        });
+      } else if (maquinasFluxo.length) {
+        maquinasFluxo.forEach(function(nome) {
+          addPassagemMaquinaRow({ maquina: nome }).catch(function() {});
         });
       }
       function normalizarBuscaGramatura(v) {
@@ -26490,6 +26508,7 @@ function _ocultarGraficoComissoes() {
         if (!(caixasProduzidas > 0)) { try { alert('Informe as caixas produzidas.'); } catch (_) {} return; }
         if (!dataFaturamento) { try { alert('Informe a data de faturamento.'); } catch (_) {} return; }
         if (!resumo.gramaturaValida) { try { alert('Selecione uma gramatura válida antes de concluir a OF.'); } catch (_) {} return; }
+        if (hasMaquinasPassagemIncompletasConclusao()) { try { alert('Preencha a quantidade de caixas em cada máquina adicionada ou remova a linha antes de concluir a OF.'); } catch (_) {} return; }
         var perdas = collectPerdas();
         var maquinasPassagem = collectMaquinasPassagemConclusao();
         var operadoresConclusao = Array.from(new Set(perdas.reduce(function(acc, perda) {
@@ -26520,7 +26539,8 @@ function _ocultarGraficoComissoes() {
           tonelada_vendida: Number(materiaPrima.toneladaVendida || 0) || 0,
           custo_m2_venda: Number(materiaPrima.custoM2Venda || 0) || 0,
           consumo_chapas_estimado: Number(materiaPrima.consumoChapas || 0) || 0,
-          maq: maquinasPassagem,
+          passagens_maquina: maquinasPassagem,
+          maq: maquinasPassagem.map(function(item) { return String(item && item.maquina || '').trim(); }).filter(Boolean),
           caixas_perdidas: resumo.perdasQtd,
           perdas_por_maquina: perdas.map(function(perda) {
             var perdaMetricas = _calcularMetricasPerdaConclusao(of, Number(perda && perda.qtd || 0) || 0, gramaturaSel, precoUnitario, materiaPrima.areaUnitM2);

@@ -3198,6 +3198,9 @@ function ofIn(p) {
   if (has('maq')) {
     out.maq = Array.isArray(p.maq) ? JSON.stringify(p.maq) : (typeof p.maq === 'string' ? p.maq : '[]');
   }
+  if (has('passagens_maquina')) {
+    out.passagens_maquina = _normalizarPassagensMaquinaPayload(p.passagens_maquina);
+  }
   if (has('imgs')) {
     out.imgs = Array.isArray(p.imgs) ? JSON.stringify(p.imgs) : (typeof p.imgs === 'string' ? p.imgs : '[]');
   }
@@ -3327,6 +3330,71 @@ function ofIn(p) {
   return out;
 }
 
+function _normalizarPassagensMaquinaPayload(raw) {
+  let lista = [];
+  try {
+    if (Array.isArray(raw)) lista = raw;
+    else if (typeof raw === 'string') {
+      const txt = String(raw || '').trim();
+      if (!txt) lista = [];
+      else if (txt[0] === '[' || txt[0] === '{') {
+        const parsed = JSON.parse(txt);
+        if (Array.isArray(parsed)) lista = parsed;
+        else if (parsed && typeof parsed === 'object') {
+          lista = Array.isArray(parsed.passagens_maquina)
+            ? parsed.passagens_maquina
+            : (Array.isArray(parsed.passagens) ? parsed.passagens : (Array.isArray(parsed.maquinas) ? parsed.maquinas : []));
+        }
+      } else {
+        lista = txt.split(/[,;|\n\t]+/g).map((item) => String(item || '').trim()).filter(Boolean);
+      }
+    } else if (raw && typeof raw === 'object') {
+      lista = Array.isArray(raw.passagens_maquina)
+        ? raw.passagens_maquina
+        : (Array.isArray(raw.passagens) ? raw.passagens : [raw]);
+    }
+  } catch (_) {
+    lista = [];
+  }
+
+  const norm = (v) => {
+    let s = String(v == null ? '' : v).trim().toUpperCase();
+    try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+    return s.replace(/\s+/g, ' ').trim();
+  };
+
+  const mapa = new Map();
+  (Array.isArray(lista) ? lista : []).forEach((item) => {
+    let maquina = '';
+    let maquina_id = '';
+    let qtd = 0;
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+      maquina = String(item.maquina || item.maquina_nome || item.nome || item.name || '').trim();
+      maquina_id = String(item.maquina_id || item.id || '').trim();
+      qtd = Math.trunc(Number(item.qtd_caixas ?? item.qtd ?? item.quantidade ?? item.caixas ?? 0) || 0);
+    } else {
+      maquina = String(item || '').trim();
+    }
+    if (!maquina) return;
+    const key = norm(maquina);
+    const prev = mapa.get(key) || {
+      maquina,
+      maquina_nome: maquina,
+      maquina_id: maquina_id || null,
+      qtd_caixas: 0,
+      quantidade: 0,
+    };
+    prev.maquina = prev.maquina || maquina;
+    prev.maquina_nome = prev.maquina_nome || maquina;
+    if (!prev.maquina_id && maquina_id) prev.maquina_id = maquina_id;
+    prev.qtd_caixas += Math.max(0, qtd);
+    prev.quantidade = prev.qtd_caixas;
+    mapa.set(key, prev);
+  });
+
+  return Array.from(mapa.values()).filter((item) => String(item?.maquina || '').trim());
+}
+
 function sanitizeOfUpdatePayload(input) {
   const out = { ...(input || {}) };
   Object.keys(out).forEach((key) => {
@@ -3342,7 +3410,7 @@ const CAMPOS_OFS_UPDATE = new Set([
   'cores_impressao', 'empresa_id', 'emp_id', 'deleted_at',
   'usuario_conclusao', 'data_faturamento', 'data_conclusao',
   'caixa_comprimento', 'caixa_largura', 'caixa_altura', 'tipo_caixa',
-  'imagem_url', 'imgs', 'itens', 'perdas_por_maquina', 'operadores_conclusao',
+  'imagem_url', 'imgs', 'itens', 'perdas_por_maquina', 'operadores_conclusao', 'passagens_maquina',
   'sem_papel', 'passou_maquina', 'passou_em', 'passou_maquina_nome',
   'ordem_maquina', 'prioridade', 'prioridade_ordem', 'maquina_agendada',
   'data_agendamento', 'agendamento_auto', 'setor_finalizacao',
@@ -3394,7 +3462,7 @@ const OFS_TABLE_COLS = [
   'vl_total', 'vl_unit', 'valor_unitario',
   'descricao', 'obs', 'obs2', 'observacoes',
   'itens', 'imgs', 'imagem_url',
-  'maq', 'fluxo', 'fluxo_maquinas', 'maquina_atual_index',
+  'maq', 'fluxo', 'fluxo_maquinas', 'passagens_maquina', 'maquina_atual_index',
   'chp', 'chapa_id', 'maquina_perda',
   'deleted_at',
   'prioridade', 'sem_papel',
@@ -7846,6 +7914,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         gramatura_id: body.gramatura_id || null,
         caixas_perdidas: body.caixas_perdidas || 0,
         perdas_por_maquina_len: Array.isArray(body.perdas_por_maquina) ? body.perdas_por_maquina.length : -1,
+        passagens_maquina_len: Array.isArray(body.passagens_maquina) ? body.passagens_maquina.length : -1,
       },
     });
     console.debug('[CONCLUIR OF] body:', JSON.stringify(body));
@@ -8134,6 +8203,11 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       } catch (_) { parsed = []; }
       updateData.perdas_por_maquina = Array.isArray(parsed) ? parsed : [];
     }
+    if (Object.prototype.hasOwnProperty.call(body, 'passagens_maquina')) {
+      const passagensMaquina = _normalizarPassagensMaquinaPayload(body.passagens_maquina);
+      updateData.passagens_maquina = passagensMaquina;
+      updateData.maq = passagensMaquina.map((item) => String(item?.maquina || '').trim()).filter(Boolean);
+    }
     _debugRuntimeWrite({
       runId: 'pre-fix',
       hypothesisId: 'C',
@@ -8143,6 +8217,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         ofId: sid,
         operadoresConclusao,
         perdasPorMaquinaLen: Array.isArray(updateData.perdas_por_maquina) ? updateData.perdas_por_maquina.length : 0,
+        passagensMaquinaLen: Array.isArray(updateData.passagens_maquina) ? updateData.passagens_maquina.length : 0,
         maquina_perda: updateData.maquina_perda || null,
         maquina_perda_id: updateData.maquina_perda_id || null,
       },
@@ -8941,7 +9016,8 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
     'valor_unitario', 'vunit', 'vl_unit', 'preco',
     'concluido_por', 'usuario', 'usuario_conclusao',
     'operador_conclusao', 'operadores_conclusao',
-    'maquina', 'maquina_atual', 'maquina_agendada', 'maquina_id'
+    'maquina', 'maquina_atual', 'maquina_agendada', 'maquina_id',
+    'passagens_maquina'
   ].filter((col) => _ofsSelectableHas(col))));
   const ofSelectExpr = ofSelectCols.join(',');
   if (!ofSelectExpr) return rows;
@@ -9055,6 +9131,7 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
     const statusOf = String(of?.status || '').trim();
     const respOf = String(of?.concluido_por || of?.usuario || '').trim();
     const numeroOf = String(of?.numero || '').trim();
+    const passagensOf = _normalizarPassagensMaquinaPayload(of?.passagens_maquina);
     const valorAtual = Number(p?.valor_total ?? p?.total ?? p?.valor_venda ?? 0) || 0;
     const vlUnitAtual = Number(p?.valor_unitario ?? p?.vunit ?? p?.vl_unit ?? p?.preco ?? 0) || 0;
     const maqAtualCanon = _resolverNomeMaquinaPassagem({
@@ -9077,6 +9154,7 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
       ...(p?.produto ? {} : (prodOf ? { produto: prodOf } : {})),
       ...(p?.quantidade ? {} : ((qtdOf != null) ? { quantidade: qtdOf, qtd_produzida: qtdOf } : {})),
       ...(p?.qtd_produzida != null ? {} : ((qtdOf != null) ? { qtd_produzida: qtdOf } : {})),
+      ...(Array.isArray(p?.passagens_maquina) && p.passagens_maquina.length ? {} : (passagensOf.length ? { passagens_maquina: passagensOf } : {})),
       ...((vlUnit != null && !(vlUnitAtual > 0)) ? { vl_unit: vlUnit, valor_unitario: vlUnit, preco: vlUnit } : {}),
       ...((totalOf > 0 && !(valorAtual > 0)) ? { total: totalOf, valor_total: totalOf, valor_venda: totalOf } : {}),
       ...(p?.status ? {} : (statusOf ? { status: statusOf } : {})),
@@ -9158,7 +9236,7 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
     'cli_id', 'cliente_id', 'cliNome', 'clinome', 'cliente_nome',
     'quantidade', 'qtd', 'qtd_produzida',
     'valor_total', 'total', 'valor_venda', 'valor', 'valor_producao', 'vl_total',
-    'maq', 'fluxo_maquinas', 'maquina', 'maquina_atual', 'maquina_agendada', 'maquina_atual_index',
+    'maq', 'fluxo_maquinas', 'passagens_maquina', 'maquina', 'maquina_atual', 'maquina_agendada', 'maquina_atual_index',
     'cores_impressao',
     'caixa_comprimento', 'caixa_largura', 'caixa_altura',
     'dim_comprimento', 'dim_largura', 'dim_altura',
