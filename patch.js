@@ -24912,12 +24912,13 @@ function _ocultarGraficoComissoes() {
     };
   }
 
-  function _getResumoConclusao(of, qtdProd, perdas, gramaturaSel, areaUnitM2Ref) {
+  function _getResumoConclusao(of, qtdProd, perdas, gramaturaSel, areaUnitM2Ref, valorUnitarioOverride) {
     var qtdPedido = Math.trunc(Number(of && (of.qtd_pedida ?? of.quantidade ?? of.qtd ?? 0) || 0) || 0);
     var produzidas = Math.trunc(Number(qtdProd || 0) || 0);
     var perdasQtd = (Array.isArray(perdas) ? perdas : []).reduce(function(s, p) { return s + (Math.trunc(Number(p && p.qtd || 0)) || 0); }, 0);
     var excedente = produzidas - qtdPedido;
-    var vunit = Number(of && (of.preco ?? of.valor_unitario ?? of.vl_unit ?? 0) || 0) || 0;
+    var vunit = Number(valorUnitarioOverride || 0) || 0;
+    if (!(vunit > 0)) vunit = Number(of && (of.preco ?? of.valor_unitario ?? of.vl_unit ?? 0) || 0) || 0;
     if (!(vunit > 0) && qtdPedido > 0) {
       var vt = Number(of && (of.valor_total ?? of.valor_venda ?? 0) || 0) || 0;
       if (vt > 0) vunit = vt / qtdPedido;
@@ -25136,6 +25137,10 @@ function _ocultarGraficoComissoes() {
         + '      <input id="conclusao-caixas-produzidas" class="com-conc-qtd" type="number" min="0" step="1" value="' + String(qtdInicial) + '"/>'
         + '    </div>'
         + '    <div class="com-conc-field">'
+        + '      <label class="com-conc-label">💲 Valor Unitário (R$)</label>'
+        + '      <input id="conclusao-valor-unitario" class="com-conc-input" type="number" min="0" step="0.0001" value="' + String(Number(of && (of.preco ?? of.valor_unitario ?? of.vl_unit ?? 0) || 0) || 0) + '"/>'
+        + '    </div>'
+        + '    <div class="com-conc-field">'
         + '      <label class="com-conc-label">📅 Data de Faturamento *</label>'
         + '      <input id="conclusao-data-faturamento" class="com-conc-input" type="date" value="' + hoje + '"/>'
         + '    </div>'
@@ -25181,6 +25186,7 @@ function _ocultarGraficoComissoes() {
 
       var shell = backdrop.querySelector('.com-conc-shell');
       var qtdEl = backdrop.querySelector('#conclusao-caixas-produzidas');
+      var valorUnitEl = backdrop.querySelector('#conclusao-valor-unitario');
       var dataEl = backdrop.querySelector('#conclusao-data-faturamento');
       var gramEl = backdrop.querySelector('#conclusao-gramatura');
       var gramBuscaEl = backdrop.querySelector('#conclusao-gramatura-busca');
@@ -25331,6 +25337,11 @@ function _ocultarGraficoComissoes() {
         var found = (gramaturasLista || []).find(function(g) { return String(g && (g.option_value || g.id) || '') === selectedId; }) || null;
         return found || _gramaturaFallbackConclusao();
       }
+      function currentValorUnitario() {
+        var bruto = String(valorUnitEl && valorUnitEl.value || '').trim();
+        var num = Number(bruto.replace(',', '.')) || 0;
+        return num > 0 ? num : 0;
+      }
       function renderGramaturasSelect(lista) {
         gramaturasLista = (Array.isArray(lista) ? lista : []).map(_normalizarGramaturaConclusao).filter(function(g) {
           return g && g.ativo && !g.fallback && (String(g.option_value || '').trim() || String(g.id || '').trim());
@@ -25352,7 +25363,7 @@ function _ocultarGraficoComissoes() {
       function updateResumo() {
         var qtdProduzidasAtual = Math.trunc(Number(qtdEl && qtdEl.value || 0) || 0);
         var materia = _calcularResumoMateriaPrimaConclusao(of, qtdProduzidasAtual, currentGramatura());
-        var resumo = _getResumoConclusao(of, qtdProduzidasAtual, collectPerdas(), materia.gramatura, materia.areaUnitM2);
+        var resumo = _getResumoConclusao(of, qtdProduzidasAtual, collectPerdas(), materia.gramatura, materia.areaUnitM2, currentValorUnitario());
         var gramaturaSelecionada = materia.gramatura || _gramaturaFallbackConclusao();
         var gramOk = !!(gramaturaSelecionada && !gramaturaSelecionada.fallback && String(gramaturaSelecionada.id || '').trim());
         try { backdrop.querySelector('#conc-res-pedido').textContent = String(resumo.qtdPedido); } catch (_) {}
@@ -25376,7 +25387,7 @@ function _ocultarGraficoComissoes() {
           var financeiro = backdrop.querySelector('#conc-res-financeiro');
           if (financeiro) {
             financeiro.style.color = resumo.perdasQtd > 0 ? '#fca5a5' : '#10b981';
-            financeiro.textContent = 'Valor da gramatura: ' + _fmtMoney4(materia.valorUnitarioGramatura) + '/m²  ·  Novo total: ' + _fmtMoney(resumo.novoTotal) + '  ·  Perdas: ' + _fmtMoney(resumo.perdasValor) + '  ·  Ton perdida: ' + _fmtTon(resumo.perdasToneladas);
+            financeiro.textContent = 'Valor unitário da caixa: ' + _fmtMoney(resumo.valorUnitario) + '  ·  Valor da gramatura: ' + _fmtMoney4(materia.valorUnitarioGramatura) + '/m²  ·  Novo total: ' + _fmtMoney(resumo.novoTotal) + '  ·  Perdas: ' + _fmtMoney(resumo.perdasValor) + '  ·  Ton perdida: ' + _fmtTon(resumo.perdasToneladas);
           }
         } catch (_) {}
         try {
@@ -25449,6 +25460,7 @@ function _ocultarGraficoComissoes() {
       var addPerdaBtn = backdrop.querySelector('#conclusao-add-perda');
       if (addPerdaBtn) addPerdaBtn.onclick = function() { addPerdaRow({}).catch(function() {}); };
       if (qtdEl) qtdEl.oninput = updateResumo;
+      if (valorUnitEl) valorUnitEl.oninput = updateResumo;
       if (dataEl) dataEl.onchange = updateResumo;
       if (gramEl) gramEl.onchange = function() {
         sincronizarAutocompleteGramatura();
