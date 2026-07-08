@@ -25090,7 +25090,33 @@ function _ocultarGraficoComissoes() {
       try { window._operadoresConclusaoCache = null; } catch (_) {}
 
       var numero = String(of && (of.numero || of.of_num || of.of_numero || '') || '—').trim();
-      var cliente = String(of && (of.cliNome || of.cliente_nome || of.cliente || '') || 'Cliente não identificado').trim();
+      var cliIdAtual = String(of && (of.cli_id || of.cliId || of.cliente_id || of.clienteId || '') || '').trim();
+      var cliente = String(of && (of.cliNome || of.cliente_nome || of.cliente || '') || '').trim();
+      if (!cliente && cliIdAtual) {
+        try {
+          var clienteAtual = await _buscarClienteAtual(String(cliIdAtual || '').trim());
+          var clienteAtualNome = String(clienteAtual && (clienteAtual.nome || clienteAtual.cliente_nome || clienteAtual.razao_social || clienteAtual.fantasia || '') || '').trim();
+          if (clienteAtualNome) {
+            cliente = clienteAtualNome;
+            try {
+              if (of && typeof of === 'object') {
+                of.cliNome = of.cliNome || clienteAtualNome;
+                of.cliente_nome = of.cliente_nome || clienteAtualNome;
+                of.cliente = of.cliente || clienteAtualNome;
+              }
+            } catch (_) {}
+          }
+        } catch (_) {}
+      }
+      if (!cliente) cliente = 'Cliente não identificado';
+      var vendedorAtualId = String(of && (of.vendedor_id || of.vendId || of.vend_id || '') || '').trim();
+      var vendedorAtualNome = String(of && (of.vendedor || of.vendedor_nome || of.vendNome || '') || '').trim();
+      if (!vendedorAtualNome && vendedorAtualId) {
+        try {
+          var vendedorAtualObj = await _buscarVendedorAtual(vendedorAtualId);
+          vendedorAtualNome = String(vendedorAtualObj && (vendedorAtualObj.nome || vendedorAtualObj.vendedor || vendedorAtualObj.vendedor_nome || '') || '').trim();
+        } catch (_) {}
+      }
       var usuario = '';
       try { usuario = String((window.CURRENT_USER && (window.CURRENT_USER.nome || window.CURRENT_USER.name)) || localStorage.getItem('nome') || 'Usuário').trim(); } catch (_) { usuario = 'Usuário'; }
       var hoje = new Date().toISOString().slice(0, 10);
@@ -25107,14 +25133,17 @@ function _ocultarGraficoComissoes() {
       var preloadMaquinas = _carregarMaquinasParaConclusao().catch(function() { return []; });
       var preloadOperadores = _carregarOperadoresParaConclusao().catch(function() { return []; });
       var preloadGramaturas = _carregarGramaturasParaConclusao().catch(function() { return [_gramaturaFallbackConclusao()]; });
-      Promise.all([preloadMaquinas, preloadOperadores, preloadGramaturas]).then(function(pair) {
-        try { console.log('[conclusao] máquinas:', (pair[0] && pair[0].length) || 0, 'operadores:', (pair[1] && pair[1].length) || 0, 'gramaturas:', (pair[2] && pair[2].length) || 0); } catch (_) {}
+      var preloadVendedores = _loadVendedoresLista().catch(function() { return []; });
+      Promise.all([preloadMaquinas, preloadOperadores, preloadGramaturas, preloadVendedores]).then(function(pair) {
+        try { console.log('[conclusao] máquinas:', (pair[0] && pair[0].length) || 0, 'operadores:', (pair[1] && pair[1].length) || 0, 'gramaturas:', (pair[2] && pair[2].length) || 0, 'vendedores:', (pair[3] && pair[3].length) || 0); } catch (_) {}
         // #region debug-point B:conclusao-preloads-ready
-        try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'preloads da conclusao resolvidos', { maquinas: (pair[0] && pair[0].length) || 0, operadores: (pair[1] && pair[1].length) || 0, gramaturas: (pair[2] && pair[2].length) || 0 }); } catch (_) {}
+        try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'preloads da conclusao resolvidos', { maquinas: (pair[0] && pair[0].length) || 0, operadores: (pair[1] && pair[1].length) || 0, gramaturas: (pair[2] && pair[2].length) || 0, vendedores: (pair[3] && pair[3].length) || 0 }); } catch (_) {}
         // #endregion
       }).catch(function() {});
       var operadores = [];
       var gramaturasLista = [];
+      var vendedoresLista = [];
+      var gramaturaSelecionadaAtual = null;
 
       var backdrop = document.createElement('div');
       backdrop.className = 'com-conc-backdrop';
@@ -25131,6 +25160,10 @@ function _ocultarGraficoComissoes() {
         + '    <div class="com-conc-field">'
         + '      <label class="com-conc-label">Concluído por</label>'
         + '      <input id="conclusao-usuario" class="com-conc-input" readonly value="' + String(usuario).replace(/"/g, '&quot;') + '"/>'
+        + '    </div>'
+        + '    <div class="com-conc-field">'
+        + '      <label class="com-conc-label">Vendedor</label>'
+        + '      <select id="conclusao-vendedor" class="com-conc-select"><option value="">' + String(vendedorAtualNome || 'Carregando vendedores...').replace(/</g, '&lt;') + '</option></select>'
         + '    </div>'
         + '    <div class="com-conc-field">'
         + '      <label class="com-conc-label" style="color:#10b981">🏭 Caixas Produzidas *</label>'
@@ -25188,6 +25221,7 @@ function _ocultarGraficoComissoes() {
       var qtdEl = backdrop.querySelector('#conclusao-caixas-produzidas');
       var valorUnitEl = backdrop.querySelector('#conclusao-valor-unitario');
       var dataEl = backdrop.querySelector('#conclusao-data-faturamento');
+      var vendedorEl = backdrop.querySelector('#conclusao-vendedor');
       var gramEl = backdrop.querySelector('#conclusao-gramatura');
       var gramBuscaEl = backdrop.querySelector('#conclusao-gramatura-busca');
       var gramSuggestEl = backdrop.querySelector('#conclusao-gramatura-suggest');
@@ -25279,10 +25313,22 @@ function _ocultarGraficoComissoes() {
         if (!selected || !gramEl) return;
         var finalValue = String(selected.option_value || selected.id || '').trim();
         if (!finalValue) return;
+        gramaturaSelecionadaAtual = _normalizarGramaturaConclusao(selected);
         try { gramEl.value = finalValue; } catch (_) {}
-        if (gramBuscaEl) gramBuscaEl.value = _labelGramaturaConclusao(selected);
+        try {
+          gramEl.dataset.gramaturaId = String(gramaturaSelecionadaAtual.id || '').trim();
+          gramEl.dataset.gramaturaNome = String(gramaturaSelecionadaAtual.nome || gramaturaSelecionadaAtual.descricao || '').trim();
+        } catch (_) {}
+        if (gramBuscaEl) {
+          gramBuscaEl.value = _labelGramaturaConclusao(gramaturaSelecionadaAtual);
+          try {
+            gramBuscaEl.dataset.gramaturaId = String(gramaturaSelecionadaAtual.id || '').trim();
+            gramBuscaEl.dataset.gramaturaNome = String(gramaturaSelecionadaAtual.nome || gramaturaSelecionadaAtual.descricao || '').trim();
+          } catch (_) {}
+        }
         esconderSugestoesGramatura();
         try { gramEl.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+        try { updateResumo(); } catch (_) {}
       }
       function sincronizarAutocompleteGramatura() {
         if (!gramBuscaEl || !gramEl) return;
@@ -25290,6 +25336,7 @@ function _ocultarGraficoComissoes() {
         var selected = (gramaturasLista || []).find(function(g) {
           return String(g && (g.option_value || g.id) || '') === selectedId;
         }) || null;
+        gramaturaSelecionadaAtual = selected || null;
         gramBuscaEl.value = selected ? _labelGramaturaConclusao(selected) : '';
       }
       function renderSugestoesGramatura(termo) {
@@ -25321,7 +25368,7 @@ function _ocultarGraficoComissoes() {
           row.innerHTML =
             '<div style="font-weight:500;color:#f1f5f9;font-size:13px">' + _labelGramaturaConclusao(g).replace(/</g, '&lt;') + '</div>' +
             '<div style="font-size:11px;color:#64748b">' + String(g && g.fornecedor_nome || '').replace(/</g, '&lt;') + '</div>';
-          row.onclick = function(ev) {
+          row.onmousedown = function(ev) {
             try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
             selecionarGramaturaAutocomplete(String(g && (g.option_value || g.id) || '').trim());
           };
@@ -25333,14 +25380,43 @@ function _ocultarGraficoComissoes() {
         gramSuggestEl.style.display = 'block';
       }
       function currentGramatura() {
+        if (gramaturaSelecionadaAtual && !gramaturaSelecionadaAtual.fallback) return gramaturaSelecionadaAtual;
         var selectedId = String(gramEl && gramEl.value || '').trim();
         var found = (gramaturasLista || []).find(function(g) { return String(g && (g.option_value || g.id) || '') === selectedId; }) || null;
         return found || _gramaturaFallbackConclusao();
+      }
+      function currentVendedor() {
+        var selectedId = String(vendedorEl && vendedorEl.value || vendedorAtualId || '').trim();
+        var found = (vendedoresLista || []).find(function(v) {
+          return String(v && (v.id || v.vendedor_id || v.vendid || '') || '').trim() === selectedId;
+        }) || null;
+        return {
+          id: selectedId,
+          nome: String(found && (found.nome || found.vendedor || found.vendedor_nome) || vendedorAtualNome || '').trim()
+        };
       }
       function currentValorUnitario() {
         var bruto = String(valorUnitEl && valorUnitEl.value || '').trim();
         var num = Number(bruto.replace(',', '.')) || 0;
         return num > 0 ? num : 0;
+      }
+      function renderVendedoresSelect(lista) {
+        vendedoresLista = Array.isArray(lista) ? lista.slice() : [];
+        var atual = String(vendedorAtualId || '').trim();
+        if (!atual && vendedorAtualNome) {
+          var hitNome = vendedoresLista.find(function(v) {
+            return String(v && (v.nome || v.vendedor || v.vendedor_nome || '') || '').trim().toLowerCase() === String(vendedorAtualNome || '').trim().toLowerCase();
+          }) || null;
+          if (hitNome) atual = String(hitNome && (hitNome.id || hitNome.vendedor_id || hitNome.vendid || '') || '').trim();
+        }
+        if (!vendedorEl) return;
+        var html = ['<option value="">Sem vendedor</option>'].concat(vendedoresLista.map(function(v) {
+          var id = String(v && (v.id || v.vendedor_id || v.vendid || '') || '').trim();
+          var nome = String(v && (v.nome || v.vendedor || v.vendedor_nome || id || '—') || '—').trim();
+          return '<option value="' + id.replace(/"/g, '&quot;') + '"' + (id === atual ? ' selected' : '') + '>' + nome.replace(/</g, '&lt;') + '</option>';
+        }));
+        vendedorEl.innerHTML = html.join('');
+        vendedorEl.value = atual;
       }
       function renderGramaturasSelect(lista) {
         gramaturasLista = (Array.isArray(lista) ? lista : []).map(_normalizarGramaturaConclusao).filter(function(g) {
@@ -25348,6 +25424,9 @@ function _ocultarGraficoComissoes() {
         });
         var atual = String(of && (of.gramatura_id || of.gramaturaId || '') || '').trim();
         if (!atual || !(gramaturasLista || []).some(function(g) { return String(g && (g.id || g.option_value) || '') === atual; })) atual = '';
+        gramaturaSelecionadaAtual = (gramaturasLista || []).find(function(g) {
+          return String(g && (g.id || g.option_value) || '') === atual || String(g && (g.option_value || g.id) || '') === atual;
+        }) || null;
         if (gramEl) {
           var opts = ['<option value="">' + (gramaturasLista.length ? 'Selecionar gramatura...' : 'Nenhuma gramatura cadastrada') + '</option>'].concat(gramaturasLista.map(function(g) {
             var optionValue = String(g && (g.option_value || g.id) || '');
@@ -25471,11 +25550,18 @@ function _ocultarGraficoComissoes() {
           renderSugestoesGramatura(String(gramBuscaEl.value || ''));
         }, true);
         gramBuscaEl.addEventListener('input', function() {
+          gramaturaSelecionadaAtual = null;
           if (gramEl) gramEl.value = '';
           updateResumo();
           renderSugestoesGramatura(String(gramBuscaEl.value || ''));
         }, true);
       }
+      if (vendedorEl) vendedorEl.onchange = updateResumo;
+      preloadVendedores.then(function(lista) {
+        renderVendedoresSelect(lista);
+      }).catch(function() {
+        renderVendedoresSelect([]);
+      });
       preloadGramaturas.then(function(lista) {
         renderGramaturasSelect(lista);
         updateResumo();
@@ -25499,6 +25585,7 @@ function _ocultarGraficoComissoes() {
         }, []).map(function(op) { return String(op || '').trim(); }).filter(Boolean)));
         var precoUnitario = Number(resumo.valorUnitario || 0) || 0;
         var gramaturaSel = resumo.gramatura || _gramaturaFallbackConclusao();
+        var vendedorAtualSel = currentVendedor();
         var materiaPrima = resumo.materiaPrima || _calcularResumoMateriaPrimaConclusao(of, caixasProduzidas, gramaturaSel);
         var body = {
           status: 'Concluído',
@@ -25539,6 +25626,8 @@ function _ocultarGraficoComissoes() {
           operador_conclusao: operadoresConclusao[0] || null,
           _allow_partial: '1'
         };
+        if (vendedorAtualSel.id) body.vendedor_id = vendedorAtualSel.id;
+        if (vendedorAtualSel.nome) body.vendedor = vendedorAtualSel.nome;
         // #region debug-point C:conclusao-of-payload-operadores
         try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', 'payload conclusao com operadores montado', { ofId: String(of && of.id || ofId || ''), operadoresConclusao: operadoresConclusao.slice(), perdasLen: perdas.length, perdas: perdas.map(function(perda) { return { maquina: String(perda && perda.maquina || ''), qtd: Number(perda && perda.qtd || 0) || 0, operadores: Array.isArray(perda && perda.operadores) ? perda.operadores.slice() : [] }; }) }); } catch (_) {}
         // #endregion
