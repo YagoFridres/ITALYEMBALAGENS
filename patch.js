@@ -11012,11 +11012,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         arr = String(r.operadores || '').split(/[,;|]+/g);
       }
       if (!arr.length) {
-        var op = String(r && (r.operador_display || r.operador) || '').trim();
+        var op = String(r && r.operador || '').trim();
         if (op && op !== '—') arr = [op];
       }
       arr = arr.map(function(item) { return String(item || '').trim(); }).filter(Boolean);
-      return arr.length ? arr : ['Sem operador registrado'];
+      return arr.length ? arr : ['—'];
     }
 
     function _cpRowCliente(r) {
@@ -11139,7 +11139,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <div class="cpv2-card"><div><div class="cpv2-card-label">Quantas toneladas perdeu no Mês</div><div class="cpv2-card-value">' + _cpFmtTon(resumo.toneladas_perdidas || 0) + '</div></div><div class="cpv2-card-sub">Toneladas perdidas consolidadas</div><div class="cpv2-card-note">' + _cpEsc(tonNota) + '</div></div>'
         + '    <div class="cpv2-card"><div><div class="cpv2-card-label">Quanto de valor perdeu no Mês</div><div class="cpv2-card-value">' + _cpFmtMoney(resumo.valor_total) + '</div></div><div class="cpv2-card-sub">Soma de valor perdido no período</div></div>'
         + '    <button type="button" class="cpv2-card is-action" id="cpv2-open-maquinas"><div><div class="cpv2-card-label">Quais máquinas mais perderam caixas</div><div class="cpv2-card-value">' + _cpFmtNum(topMaquina && topMaquina.total_caixas || 0) + '</div></div><div class="cpv2-card-sub">' + _cpEsc(topMaquina && topMaquina.maquina || 'Sem máquina') + '</div><div class="cpv2-card-cta">Ver ranking completo</div></button>'
-        + '    <button type="button" class="cpv2-card is-action" id="cpv2-open-operadores"><div><div class="cpv2-card-label">Quais operadores mais perderam caixas</div><div class="cpv2-card-value">' + _cpFmtNum(topOperador && topOperador.total_caixas || 0) + '</div></div><div class="cpv2-card-sub">' + _cpEsc(topOperador && topOperador.operador || 'Sem operador registrado') + '</div><div class="cpv2-card-cta">Ver ranking completo</div></button>'
+        + '    <button type="button" class="cpv2-card is-action" id="cpv2-open-operadores"><div><div class="cpv2-card-label">Quais operadores mais perderam caixas</div><div class="cpv2-card-value">' + _cpFmtNum(topOperador && topOperador.total_caixas || 0) + '</div></div><div class="cpv2-card-sub">' + _cpEsc(topOperador && topOperador.operador || '—') + '</div><div class="cpv2-card-cta">Ver ranking completo</div></button>'
         + '  </div>'
         + '  <div class="cpv2-table-panel">'
         + '    <div class="cpv2-search-row">'
@@ -21702,7 +21702,7 @@ window._mbnActive = function(id) {
     var ofData = getOfCacheById(item && item.of_id);
     var operadores = [];
     try {
-      var rawOps = item && (item.operadores_nomes || item.operador_display || item.operadores);
+      var rawOps = item && (item.operadores || item.operador);
       if (Array.isArray(rawOps)) operadores = rawOps;
       else if (typeof rawOps === 'string') {
         var txtOps = String(rawOps || '').trim();
@@ -21717,7 +21717,7 @@ window._mbnActive = function(id) {
       }
     } catch (_) { operadores = []; }
     operadores = (Array.isArray(operadores) ? operadores : []).map(function(op) { return String(op || '').trim(); }).filter(Boolean);
-    var operadorDisplay = String(item && (item.operadores_nomes || item.operador_display || item.operador_principal || item.operador_nome || item.operador) || '').trim() || (operadores[0] || '—');
+    var operadorDisplay = String(item && item.operador || '').trim() || (operadores[0] || '—');
     var qtdPerdida = Number(item && (item.quantidade != null ? item.quantidade : (item.qtd_perdida != null ? item.qtd_perdida : item.caixas_perdidas)) || 0) || 0;
     var vlUnit = Number(item && (item.vl_unit != null ? item.vl_unit : item.valor_unitario) || (ofData && (ofData.vl_unit || ofData.valor_unitario)) || 0) || 0;
     var vlTotal = Number(item && (item.vl_total != null ? item.vl_total : item.valor_perdido) || 0) || ((qtdPerdida || 0) * (vlUnit || 0));
@@ -21744,7 +21744,7 @@ window._mbnActive = function(id) {
       usuario_conclusao: String(item && (item.usuario_conclusao || item.concluido_por || item.usuario) || '').trim() || '—',
       concluido_por: String(item && (item.usuario_conclusao || item.concluido_por || item.usuario) || '').trim() || '—',
       operador_display: operadorDisplay,
-      operador_principal: String(item && item.operador_principal || '').trim(),
+      operador_principal: String(item && item.operador || '').trim(),
       operadores_nomes: operadores.join(', '),
       operadores: operadores,
       turno: String(item && item.turno || '').trim(),
@@ -21842,7 +21842,7 @@ window._mbnActive = function(id) {
       var id = String(item && item.id || '').trim();
       var maquinaDisplay = (item && (item.maquina || item.maquina_perda)) || '—';
       var operadoresLista = Array.isArray(item && item.operadores) ? item.operadores : [];
-      var operadorDisplay = String(item && (item.operador_display || item.usuario) || '—').trim() || '—';
+      var operadorDisplay = String(item && item.operador || '—').trim() || '—';
       var qtdPerdida = Number(item && item.qtd_perdida || 0) || 0;
       var vlUnit = Number(item && (item.vl_unit != null ? item.vl_unit : item.valor_unitario) || 0) || 0;
       var vlTotal = Number(item && (item.vl_total != null ? item.vl_total : item.valor_perdido) || 0) || ((qtdPerdida || 0) * (vlUnit || 0));

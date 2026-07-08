@@ -6333,9 +6333,6 @@ function _resolverOperadorDaPerda(row, ofData, pessoasMap, maquinasMap) {
   const opsFallback = _caixasExtrairOperadoresItemPerda(detalheFallback);
   if (opsFallback.length) return opsFallback;
 
-  const usuario = _caixasNormalizarOperadorExibicao(_resolverPessoaCaixa(row?.usuario, pessoasMap));
-  if (usuario) return [usuario];
-
   return [_CAIXAS_OPERADOR_SEM];
 }
 
@@ -6849,10 +6846,10 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     enriquecidosFiltrados.forEach((r) => {
       const ops = Array.isArray(r?.operadores) && r.operadores.length
         ? r.operadores
-        : [_CAIXAS_OPERADOR_SEM];
+        : [];
       ops.forEach((op) => {
         const nome = _caixasNormalizarOperadorExibicao(op);
-        if (!nome) return;
+        if (!nome || nome === _CAIXAS_OPERADOR_SEM) return;
         if (!opMap[nome]) opMap[nome] = { operador: nome, total_caixas: 0, valor_perdido: 0, ocorrencias: 0 };
         opMap[nome].total_caixas += Number(r?.quantidade_perdida || 0) || 0;
         opMap[nome].valor_perdido += Number(r?.valor_perdido || 0) || 0;
