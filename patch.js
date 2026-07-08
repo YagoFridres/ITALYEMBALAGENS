@@ -1862,11 +1862,29 @@ try {
   }
 
   function _histPrint(kind) {
+    var popup = null;
+    try { popup = window.open('', '_blank', 'width=960,height=720'); } catch (_) { popup = null; }
     try {
       var html = _histBuildPrintHtml(kind === 'mensal' ? 'mensal' : 'lista');
-      if (!html) return null;
-      if (typeof window._openStyledPrintWindow === 'function') return window._openStyledPrintWindow(html);
-    } catch (_) {}
+      if (!html) {
+        try { if (popup && !popup.closed) popup.close(); } catch (_) {}
+        return null;
+      }
+      if (typeof window._openStyledPrintWindow === 'function') return window._openStyledPrintWindow(html, popup);
+      if (!popup) {
+        try { alert('Popup bloqueado! Permita popups para este site e tente novamente.'); } catch (_) {}
+        return null;
+      }
+      popup.document.open();
+      popup.document.write(String(html || ''));
+      popup.document.close();
+      return popup;
+    } catch (e) {
+      try { if (popup && !popup.closed) popup.close(); } catch (_) {}
+      try { console.error('[HIST-PRINT] erro ao abrir impressão:', e); } catch (_) {}
+      try { alert('Erro ao abrir impressão: ' + String(e && e.message || e)); } catch (_) {}
+      return null;
+    }
   }
 
   function _histEnsureStyle() {
@@ -12867,9 +12885,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '</body></html>';
   }
 
-  function _openStyledPrintWindow(html) {
+  function _openStyledPrintWindow(html, preopenedWin) {
     var win = null;
-    try { win = window.open('', '_blank', 'width=960,height=720'); } catch (_) { win = null; }
+    try { win = (preopenedWin && !preopenedWin.closed) ? preopenedWin : null; } catch (_) { win = null; }
+    if (!win) {
+      try { win = window.open('', '_blank', 'width=960,height=720'); } catch (_) { win = null; }
+    }
     if (!win) {
       try { alert('Popup bloqueado! Permita popups para este site e tente novamente.'); } catch (_) {}
       return null;
