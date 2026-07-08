@@ -684,13 +684,25 @@ app.get('/api/_debug/caixas-perdidas/operadores', async (req, res) => {
       });
     }
     if (ofNumeros.length) {
+      const numeroVariants = Array.from(new Set(
+        ofNumeros
+          .concat(ofNumeros.map((numero) => _normalizarNumeroOfRef(numero)))
+          .concat(ofNumeros.map((numero) => _normalizarNumeroOfDigits(numero)))
+          .filter(Boolean)
+      ));
       const { data: ofsByNumero } = await supabase
         .from('ofs')
         .select('id,numero,of,operador_conclusao,operadores_conclusao,perdas_por_maquina,maquina,maquina_atual,maquina_agendada,maq,maquina_id')
-        .in('numero', ofNumeros);
-      (Array.isArray(ofsByNumero) ? ofsByNumero : []).forEach((of) => {
+        .in('numero', numeroVariants);
+      const { data: ofsByOf } = await supabase
+        .from('ofs')
+        .select('id,numero,of,operador_conclusao,operadores_conclusao,perdas_por_maquina,maquina,maquina_atual,maquina_agendada,maq,maquina_id')
+        .in('of', numeroVariants);
+      (Array.isArray(ofsByNumero) ? ofsByNumero : []).concat(Array.isArray(ofsByOf) ? ofsByOf : []).forEach((of) => {
         const numero = String(of?.numero || '').trim();
+        const numeroOf = String(of?.of || '').trim();
         if (numero) ofsMap.set('numero:' + numero, of);
+        if (numeroOf) ofsMap.set('numero:' + numeroOf, of);
       });
     }
 
@@ -6407,7 +6419,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       const lote = ofIds.slice(i, i + 200);
       const { data } = await supabase
         .from('ofs')
-        .select('id,numero,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
+        .select('id,numero,of,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
         .in('id', lote);
       (Array.isArray(data) ? data : []).forEach((of) => {
         const id = String(of?.id || '').trim();
@@ -6422,13 +6434,25 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
   if (numerosSemOf.length) {
     for (let i = 0; i < numerosSemOf.length; i += 200) {
       const lote = numerosSemOf.slice(i, i + 200);
-      const { data } = await supabase
+        const numeroVariants = Array.from(new Set(
+          lote
+            .concat(lote.map((numero) => _normalizarNumeroOfRef(numero)))
+            .concat(lote.map((numero) => _normalizarNumeroOfDigits(numero)))
+            .filter(Boolean)
+        ));
+        const { data } = await supabase
         .from('ofs')
-        .select('id,numero,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
-        .in('numero', lote);
-      (Array.isArray(data) ? data : []).forEach((of) => {
+          .select('id,numero,of,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
+          .in('numero', numeroVariants);
+        const { data: dataByOf } = await supabase
+          .from('ofs')
+          .select('id,numero,of,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
+          .in('of', numeroVariants);
+        (Array.isArray(data) ? data : []).concat(Array.isArray(dataByOf) ? dataByOf : []).forEach((of) => {
         const numero = String(of?.numero || '').trim();
+          const numeroOf = String(of?.of || '').trim();
         if (numero) ofsMap.set('numero:' + numero, of);
+          if (numeroOf) ofsMap.set('numero:' + numeroOf, of);
       });
     }
   }
@@ -6662,7 +6686,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     if (ofIds.length) {
       const { data, error } = await supabase
         .from('ofs')
-        .select('id,numero,cli_id,valor_total,quantidade,qtd,descricao,produto,operador_conclusao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,concluido_por,maq,maquina,maquina_atual,maquina_agendada,maquina_id,caixa_comprimento,caixa_largura,comprimento_mm,largura_mm,dim_comprimento,dim_largura,comprimento,largura,gramatura_id,gramatura,gramatura_nome')
+        .select('id,numero,of,cli_id,valor_total,quantidade,qtd,descricao,produto,operador_conclusao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,concluido_por,maq,maquina,maquina_atual,maquina_agendada,maquina_id,caixa_comprimento,caixa_largura,comprimento_mm,largura_mm,dim_comprimento,dim_largura,comprimento,largura,gramatura_id,gramatura,gramatura_nome')
         .in('id', ofIds);
       ofsRowsError = error || null;
       (Array.isArray(data) ? data : []).forEach((of) => ofsRows.push(of));
@@ -6671,12 +6695,27 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       return numero && !ofsRows.some((of) => String(of?.numero || '').trim() === numero);
     });
     if (numerosPendentes.length) {
+      const numeroVariants = Array.from(new Set(
+        numerosPendentes
+          .concat(numerosPendentes.map((numero) => _normalizarNumeroOfRef(numero)))
+          .concat(numerosPendentes.map((numero) => _normalizarNumeroOfDigits(numero)))
+          .filter(Boolean)
+      ));
       const { data, error } = await supabase
         .from('ofs')
-        .select('id,numero,cli_id,valor_total,quantidade,qtd,descricao,produto,operador_conclusao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,concluido_por,maq,maquina,maquina_atual,maquina_agendada,maquina_id,caixa_comprimento,caixa_largura,comprimento_mm,largura_mm,dim_comprimento,dim_largura,comprimento,largura,gramatura_id,gramatura,gramatura_nome')
-        .in('numero', numerosPendentes);
+        .select('id,numero,of,cli_id,valor_total,quantidade,qtd,descricao,produto,operador_conclusao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,concluido_por,maq,maquina,maquina_atual,maquina_agendada,maquina_id,caixa_comprimento,caixa_largura,comprimento_mm,largura_mm,dim_comprimento,dim_largura,comprimento,largura,gramatura_id,gramatura,gramatura_nome')
+        .in('numero', numeroVariants);
       if (!ofsRowsError) ofsRowsError = error || null;
       (Array.isArray(data) ? data : []).forEach((of) => {
+        const id = String(of?.id || '').trim();
+        if (id && !ofsRows.some((item) => String(item?.id || '').trim() === id)) ofsRows.push(of);
+      });
+      const { data: dataByOf, error: errorByOf } = await supabase
+        .from('ofs')
+        .select('id,numero,of,cli_id,valor_total,quantidade,qtd,descricao,produto,operador_conclusao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,concluido_por,maq,maquina,maquina_atual,maquina_agendada,maquina_id,caixa_comprimento,caixa_largura,comprimento_mm,largura_mm,dim_comprimento,dim_largura,comprimento,largura,gramatura_id,gramatura,gramatura_nome')
+        .in('of', numeroVariants);
+      if (!ofsRowsError) ofsRowsError = errorByOf || null;
+      (Array.isArray(dataByOf) ? dataByOf : []).forEach((of) => {
         const id = String(of?.id || '').trim();
         if (id && !ofsRows.some((item) => String(item?.id || '').trim() === id)) ofsRows.push(of);
       });
@@ -6685,8 +6724,10 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     (ofsRows || []).forEach((of) => {
       const id = String(of?.id || '').trim();
       const numero = String(of?.numero || '').trim();
+      const numeroOf = String(of?.of || '').trim();
       if (id) ofsMap[id] = of;
       if (numero) ofsMap['numero:' + numero] = of;
+      if (numeroOf) ofsMap['numero:' + numeroOf] = of;
     });
     try {
       console.log('[TRACE-OFSMAP] query carregou OFs:', Array.isArray(ofsRows) ? ofsRows.length : 0, 'idsSolicitados:', ofIds.length, 'numerosSolicitados:', ofNumeros.length, 'numerosPendentes:', numerosPendentes.length);
