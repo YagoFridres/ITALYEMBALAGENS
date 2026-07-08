@@ -8230,6 +8230,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         lista = _estoqueDecorarChapasComGrupos(lista, grupos);
         var modoAgrupamento = String(window.__estoqueWireModoAgrupamento || 'agrupado').trim().toLowerCase();
         if (modoAgrupamento !== 'lista') modoAgrupamento = 'agrupado';
+        var filtroRapido = String(window.__estoqueWireFiltroRapido || '').trim().toLowerCase();
+        if (filtroRapido !== 'baixo200' && filtroRapido !== 'zeradas') filtroRapido = '';
         var busca = String(window.__estoqueWireBusca || '').trim().toLowerCase();
         var filtrada = busca ? lista.filter(function(chapa) {
           var txt = [
@@ -8244,6 +8246,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           ].join(' ').toLowerCase();
           return txt.indexOf(busca) >= 0;
         }) : lista;
+        filtrada = filtrada.filter(function(chapa) {
+          var qtd = Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0);
+          if (filtroRapido === 'baixo200') return qtd < 200;
+          if (filtroRapido === 'zeradas') return qtd === 0;
+          return true;
+        });
         var valorTotal = lista.reduce(function(s, chapa) { return s + estoqueWireValor(chapa); }, 0);
         var tonTotal = lista.reduce(function(s, chapa) { return s + estoqueWireTon(chapa); }, 0);
         var breakdown = _resumoTopPorValor(lista, function(chapa) { return chapa && chapa.fornecedor || 'Sem fornecedor'; }, function(chapa) { return estoqueWireValor(chapa); }).slice(0, 4);
@@ -8265,6 +8273,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <span style="font-size:12px;color:#94a3b8;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Visualização</span>'
         + '    <button class="pep-btn' + (modoAgrupamento === 'agrupado' ? ' primary' : '') + '" id="estoque-wire-modo-agrupado" type="button">Agrupado</button>'
         + '    <button class="pep-btn' + (modoAgrupamento === 'lista' ? ' primary' : '') + '" id="estoque-wire-modo-lista" type="button">Lista completa</button>'
+        + '    <span style="font-size:12px;color:#94a3b8;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin-left:10px">Filtros rápidos</span>'
+        + '    <button class="pep-btn' + (filtroRapido === 'baixo200' ? ' primary' : '') + '" id="estoque-wire-fil-baixo" type="button">Abaixo de 200</button>'
+        + '    <button class="pep-btn' + (filtroRapido === 'zeradas' ? ' primary' : '') + '" id="estoque-wire-fil-zeradas" type="button">Zeradas</button>'
         + '    <span style="font-size:12px;color:#94a3b8">' + esc(String(grupos.length)) + ' grupo(s) cadastrado(s)</span>'
         + '  </div></div>'
         + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-estoque"><table class="pep-table pep-table-estoque-wire"><thead><tr><th class="col-text">FORNECEDOR</th><th class="col-text">GRAMATURA</th><th class="col-text">NOMENCLATURA</th><th class="col-text">TAMANHO</th><th class="col-text">NOME</th><th class="col-text">QUAL CNPJ</th><th class="col-text">NF</th><th class="col-num">QUANTIDADE</th><th class="col-num">R$</th><th class="col-num">TOTAL</th><th class="col-text">GRUPO</th><th class="col-actions">Ações</th></tr></thead><tbody>'
@@ -8327,6 +8338,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var btnModoLista = document.getElementById('estoque-wire-modo-lista');
       if (btnModoLista) btnModoLista.onclick = function() {
         window.__estoqueWireModoAgrupamento = 'lista';
+        renderEstoqueWireframePage();
+      };
+      var btnFilBaixo = document.getElementById('estoque-wire-fil-baixo');
+      if (btnFilBaixo) btnFilBaixo.onclick = function() {
+        window.__estoqueWireFiltroRapido = (String(window.__estoqueWireFiltroRapido || '') === 'baixo200') ? '' : 'baixo200';
+        renderEstoqueWireframePage();
+      };
+      var btnFilZeradas = document.getElementById('estoque-wire-fil-zeradas');
+      if (btnFilZeradas) btnFilZeradas.onclick = function() {
+        window.__estoqueWireFiltroRapido = (String(window.__estoqueWireFiltroRapido || '') === 'zeradas') ? '' : 'zeradas';
         renderEstoqueWireframePage();
       };
       var buscaEl = document.getElementById('estoque-wire-busca');
