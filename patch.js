@@ -7785,24 +7785,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           _estoqueWireOpenDetailModal(_estoqueWireFindById(lista, row.getAttribute('data-chapa-id')));
         }
       };
-      wrap.onchange = function(ev) {
-        var target = ev && ev.target;
-        var grupoSel = target && target.closest ? target.closest('[data-est-group]') : null;
-        if (!grupoSel) return;
-        var chapa = _estoqueWireFindById(lista, String(grupoSel.getAttribute('data-est-group') || ''));
-        var valor = String(grupoSel.value || '').trim();
-        if (valor === '__novo__') {
-          try { _estoqueAbrirModalGrupos(); } catch (_) {}
-          try { grupoSel.value = String(chapa && (chapa.grupo_id || chapa.group_id || '') || '').trim(); } catch (_) {}
-          return;
-        }
-        _estoqueSalvarGrupoChapa(chapa, valor).then(function() {
-          try { window.toast(valor ? 'Grupo vinculado à chapa' : 'Grupo removido da chapa', 'var(--green)'); } catch (_) {}
-        }).catch(function(err) {
-          try { grupoSel.value = String(chapa && (chapa.grupo_id || chapa.group_id || '') || '').trim(); } catch (_) {}
-          try { window.toast('Erro ao salvar grupo da chapa: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
-        });
-      };
+      wrap.onchange = null;
     }
     function _estoqueQtdAtualChapa(chapa) {
       return Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
@@ -8263,7 +8246,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var arrow = active ? (state.dir === 'asc' ? ' ▲' : ' ▼') : '';
       return '<th class="' + esc(cls || '') + '"><button type="button" data-est-sort="' + esc(key) + '" style="all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:4px;color:inherit;font:inherit;text-transform:inherit;letter-spacing:inherit;font-weight:inherit">' + esc(label + arrow) + '</button></th>';
     }
-    function _estoqueLinhaTabelaHtml(chapa, grupos) {
+    function _estoqueLinhaTabelaHtml(chapa) {
       var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
       var vunit = Number(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0) || 0;
       var corLinha = _resolveChapaRowColor(chapa);
@@ -8278,47 +8261,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '<td class="col-num">' + num(qtd, 0) + '</td>'
         + '<td class="col-num">' + money(vunit) + '</td>'
         + '<td class="col-num">' + money(estoqueWireValor(chapa)) + '</td>'
-        + '<td class="col-text estoque-grupo-col">' + _estoqueGrupoSelectHtml(chapa, grupos) + '</td>'
         + '<td class="col-actions">' + _estoqueCorBtnHtml(chapa) + ' ' + _estoquePinBtnHtml(chapa) + ' <button class="pep-btn danger" data-est-del="' + esc(chapa && chapa.id || '') + '">Excluir</button> <button class="pep-btn" data-est-edit="' + esc(chapa && chapa.id || '') + '">Alterar</button></td>'
         + '</tr>';
     }
-    function _estoqueTabelaAgrupadaHtml(lista, grupos, modo) {
+    function _estoqueTabelaAgrupadaHtml(lista) {
       var chapas = Array.isArray(lista) ? lista.slice() : [];
-      if (!chapas.length) return '<tr><td colspan="12" style="text-align:center;color:#94a3b8">Nenhum registro encontrado.</td></tr>';
-      if (String(modo || 'agrupado') !== 'agrupado') {
-        return chapas.map(function(chapa) { return _estoqueLinhaTabelaHtml(chapa, grupos); }).join('');
-      }
-      var ordenados = _estoqueSortGruposChapas(grupos);
-      var orderedMap = Object.create(null);
-      ordenados.forEach(function(g) { orderedMap[String(g && g.id || '').trim()] = g; });
-      function orderedHas(gid) {
-        return orderedMap[gid];
-      }
-      var porGrupo = Object.create(null);
-      var semGrupo = [];
-      chapas.forEach(function(chapa) {
-        var gid = String(chapa && (chapa.grupo_id || chapa.group_id || '') || '').trim();
-        if (!gid || !orderedHas(gid)) {
-          semGrupo.push(chapa);
-          return;
-        }
-        if (!porGrupo[gid]) porGrupo[gid] = [];
-        porGrupo[gid].push(chapa);
-      });
-      var html = '';
-      ordenados.forEach(function(grupo) {
-        var gid = String(grupo && grupo.id || '').trim();
-        var items = porGrupo[gid] || [];
-        if (!items.length) return;
-        var cor = _normalizeChapaRowColor(grupo && grupo.cor || '') || '#3B82F6';
-        html += '<tr class="estoque-grupo-separador"><td colspan="12"><div class="estoque-grupo-head" style="border-color:' + esc(_hexToRgbaChapa(cor, 0.45)) + ';box-shadow:inset 4px 0 0 ' + esc(cor) + '"><span class="estoque-grupo-badge" style="background:' + esc(_hexToRgbaChapa(cor, 0.18)) + ';color:' + esc(cor) + ';border-color:' + esc(_hexToRgbaChapa(cor, 0.34)) + '">📦 Grupo</span><span class="estoque-grupo-title">' + esc(grupo && grupo.nome || 'Grupo') + '</span><span class="estoque-grupo-count">' + esc(String(items.length)) + ' chapa(s)</span></div></td></tr>';
-        html += items.map(function(chapa) { return _estoqueLinhaTabelaHtml(chapa, grupos); }).join('');
-      });
-      if (semGrupo.length) {
-        html += '<tr class="estoque-grupo-separador"><td colspan="12"><div class="estoque-grupo-head is-empty"><span class="estoque-grupo-badge is-empty">📦 Grupo</span><span class="estoque-grupo-title">Sem grupo</span><span class="estoque-grupo-count">' + esc(String(semGrupo.length)) + ' chapa(s)</span></div></td></tr>';
-        html += semGrupo.map(function(chapa) { return _estoqueLinhaTabelaHtml(chapa, grupos); }).join('');
-      }
-      return html;
+      if (!chapas.length) return '<tr><td colspan="11" style="text-align:center;color:#94a3b8">Nenhum registro encontrado.</td></tr>';
+      return chapas.map(function(chapa) { return _estoqueLinhaTabelaHtml(chapa); }).join('');
     }
     function _estoqueRenderCardsGruposLista(grupos) {
       var lista = _estoqueSortGruposChapas(grupos);
@@ -8702,13 +8651,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       // #endregion
       try {
         var lista = await _estoqueFetchChapasList(10000);
-        try { await _estoqueFetchSugestoesCompra(false); } catch (_) {}
-        var grupos = [];
-        try { grupos = await _estoqueFetchChapasGrupos(false); } catch (_) {}
         lista = Array.isArray(lista) ? lista : [];
-        lista = _estoqueDecorarChapasComGrupos(lista, grupos);
-        var modoAgrupamento = String(window.__estoqueWireModoAgrupamento || 'agrupado').trim().toLowerCase();
-        if (modoAgrupamento !== 'lista') modoAgrupamento = 'agrupado';
+        try { await _estoqueFetchSugestoesCompra(false); } catch (_) {}
         var filtroRapido = String(window.__estoqueWireFiltroRapido || '').trim().toLowerCase();
         if (filtroRapido !== 'baixo200' && filtroRapido !== 'zeradas') filtroRapido = '';
         var busca = String(window.__estoqueWireBusca || '').trim().toLowerCase();
@@ -8720,8 +8664,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             chapa && chapa.tamanho,
             chapa && (chapa.nome_uso || chapa.nome),
             chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || chapa.empresa),
-            chapa && chapa.nf,
-            _estoqueGrupoLabelChapa(chapa)
+            chapa && chapa.nf
           ].join(' ').toLowerCase();
           return txt.indexOf(busca) >= 0;
         }) : lista;
@@ -8754,20 +8697,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         +      _cardBreakdownEstoque('Por Fornecedor', breakdown, money)
         + '  </div>'
         + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
-        + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF, CNPJ ou grupo" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
+        + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF ou CNPJ" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
         + '    <button class="pep-btn primary" id="estoque-wire-buscar">Buscar</button>'
         + '    <button class="pep-btn" id="estoque-wire-imprimir">Imprimir Relatório</button>'
-        + '    <button class="pep-btn" id="estoque-wire-open-grupos">＋ Novo Grupo</button>'
-        + '    <button class="pep-btn" id="estoque-wire-auto-grupos">🔮 Sugerir Grupos Automaticamente</button>'
-        + '    <button class="pep-btn" id="estoque-wire-auto-cores">🎨 Colorir por Família Automaticamente</button>'
         + '  </div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px">'
-        + '    <span style="font-size:12px;color:#94a3b8;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Visualização</span>'
-        + '    <button class="pep-btn' + (modoAgrupamento === 'agrupado' ? ' primary' : '') + '" id="estoque-wire-modo-agrupado" type="button">Agrupado</button>'
-        + '    <button class="pep-btn' + (modoAgrupamento === 'lista' ? ' primary' : '') + '" id="estoque-wire-modo-lista" type="button">Lista completa</button>'
-        + '    <span style="font-size:12px;color:#94a3b8;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin-left:10px">Filtros rápidos</span>'
+        + '    <span style="font-size:12px;color:#94a3b8;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Filtros rápidos</span>'
         + '    <button class="pep-btn' + (filtroRapido === 'baixo200' ? ' primary' : '') + '" id="estoque-wire-fil-baixo" type="button">Abaixo de 200</button>'
         + '    <button class="pep-btn' + (filtroRapido === 'zeradas' ? ' primary' : '') + '" id="estoque-wire-fil-zeradas" type="button">Zeradas</button>'
-        + '    <span style="font-size:12px;color:#94a3b8">' + esc(String(grupos.length)) + ' grupo(s) cadastrado(s)</span>'
         + '  </div></div>'
         + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-estoque"><table class="pep-table pep-table-estoque-wire"><thead><tr>'
         +      _estoqueWireHeaderSortHtml('FORNECEDOR', 'fornecedor', 'col-text')
@@ -8780,8 +8716,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         +      _estoqueWireHeaderSortHtml('QUANTIDADE', 'quantidade', 'col-num')
         +      _estoqueWireHeaderSortHtml('R$', 'valor_unitario', 'col-num')
         +      _estoqueWireHeaderSortHtml('TOTAL', 'valor_total', 'col-num')
-        +      '<th class="col-text">GRUPO</th><th class="col-actions">Ações</th></tr></thead><tbody>'
-        + _estoqueTabelaAgrupadaHtml(filtrada, grupos, modoAgrupamento)
+        +      '<th class="col-actions">Ações</th></tr></thead><tbody>'
+        + _estoqueTabelaAgrupadaHtml(filtrada)
         + '  </tbody></table></div></div>'
         + '</div>';
       // #region debug-point G:wireframe-layout-shape
@@ -8814,44 +8750,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           qtdChapas: lista.length,
           resumoFornecedor: resumoFornecedorPrint
         });
-      };
-      var btnNovoGrupo = document.getElementById('estoque-wire-open-grupos');
-      if (btnNovoGrupo) btnNovoGrupo.onclick = function() {
-        try { _estoqueAbrirModalGrupos(); } catch (_) {}
-      };
-      var btnAutoGrupos = document.getElementById('estoque-wire-auto-grupos');
-      if (btnAutoGrupos) btnAutoGrupos.onclick = async function() {
-        if (btnAutoGrupos.disabled) return;
-        btnAutoGrupos.disabled = true;
-        try {
-          await _estoqueAutoSugerirGrupos();
-        } catch (e) {
-          try { window.toast('Erro ao sugerir grupos automaticamente: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
-        } finally {
-          btnAutoGrupos.disabled = false;
-        }
-      };
-      var btnAutoCores = document.getElementById('estoque-wire-auto-cores');
-      if (btnAutoCores) btnAutoCores.onclick = async function() {
-        if (btnAutoCores.disabled) return;
-        btnAutoCores.disabled = true;
-        try {
-          await _estoqueColorirFamiliasAutomaticamente();
-        } catch (e) {
-          try { window.toast('Erro ao colorir famílias automaticamente: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
-        } finally {
-          btnAutoCores.disabled = false;
-        }
-      };
-      var btnModoAgrupado = document.getElementById('estoque-wire-modo-agrupado');
-      if (btnModoAgrupado) btnModoAgrupado.onclick = function() {
-        window.__estoqueWireModoAgrupamento = 'agrupado';
-        renderEstoqueWireframePage();
-      };
-      var btnModoLista = document.getElementById('estoque-wire-modo-lista');
-      if (btnModoLista) btnModoLista.onclick = function() {
-        window.__estoqueWireModoAgrupamento = 'lista';
-        renderEstoqueWireframePage();
       };
       var btnFilBaixo = document.getElementById('estoque-wire-fil-baixo');
       if (btnFilBaixo) btnFilBaixo.onclick = function() {
