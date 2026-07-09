@@ -6352,8 +6352,79 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     function _papelaoTargets() {
       return ['selecao de chapas', 'inteligencia do papelao'];
     }
+    function _papelaoBlockedMenuIds() {
+      return ['menu-papelao-sel-chapas', 'menu-papelao-ia'];
+    }
+    function _papelaoBlockedOnclickMarkers() {
+      return ["go('sel-chapas')", "go('papelao-ia')"];
+    }
+    function _papelaoIsBlockedPage(v) {
+      var pid = String(v || '').trim().toLowerCase();
+      return pid === 'sel-chapas' || pid === 'papelao-ia';
+    }
+    function _papelaoRemoveByIdV4() {
+      try {
+        _papelaoBlockedMenuIds().forEach(function(id) {
+          try {
+            var el = document.getElementById(id);
+            if (!el) return;
+            try { el.style.display = 'none'; } catch (_) {}
+            try { el.style.visibility = 'hidden'; } catch (_) {}
+            try { el.remove(); } catch (_) {}
+          } catch (_) {}
+        });
+      } catch (_) {}
+      try {
+        var markers = _papelaoBlockedOnclickMarkers();
+        Array.prototype.slice.call(document.querySelectorAll('[onclick]')).forEach(function(el) {
+          try {
+            var onclickTxt = String(el && el.getAttribute && el.getAttribute('onclick') || '').trim();
+            if (!onclickTxt) return;
+            var hit = markers.some(function(marker) { return onclickTxt.indexOf(marker) >= 0; });
+            if (!hit) return;
+            try { el.style.display = 'none'; } catch (_) {}
+            try { el.style.visibility = 'hidden'; } catch (_) {}
+            try { el.remove(); } catch (_) {}
+          } catch (_) {}
+        });
+      } catch (_) {}
+    }
+    function _papelaoRedirectBlockedPageV4() {
+      try {
+        var current = String(window._PAGE_ATUAL || window.page || '').trim();
+        var hash = String((window.location && window.location.hash) || '').replace(/^#/, '').trim();
+        if (!_papelaoIsBlockedPage(current) && !_papelaoIsBlockedPage(hash)) return;
+        if (window.__papelaoRedirectingV4) return;
+        window.__papelaoRedirectingV4 = true;
+        setTimeout(function() {
+          try {
+            if (typeof window.go === 'function') window.go('hub');
+          } catch (_) {}
+          window.__papelaoRedirectingV4 = false;
+        }, 0);
+      } catch (_) {}
+    }
+    function _patchGoPapelaoBlockV4() {
+      try {
+        var origGo = window.go;
+        if (typeof origGo !== 'function') return;
+        if (origGo._patchPapelaoBlockV4) return;
+        var wrapped = function(id) {
+          var pid = String(id || '').trim();
+          if (_papelaoIsBlockedPage(pid)) {
+            try { _papelaoRemoveByIdV4(); } catch (_) {}
+            try { console.warn('[MENU-PAPELAO] acesso bloqueado para', pid); } catch (_) {}
+            return origGo.call(this, 'hub');
+          }
+          return origGo.apply(this, arguments);
+        };
+        wrapped._patchPapelaoBlockV4 = true;
+        window.go = wrapped;
+      } catch (_) {}
+    }
     function _ocultarPapelaoItensV3() {
       try {
+        _papelaoRemoveByIdV4();
         var targets = _papelaoTargets();
         Array.prototype.slice.call(document.querySelectorAll('a, li, span, div, button')).forEach(function(el) {
           try {
@@ -6379,6 +6450,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     function _removerPapelaoItensV3() {
       try {
+        _papelaoRemoveByIdV4();
         var targets = _papelaoTargets();
         Array.prototype.slice.call(document.querySelectorAll('*')).forEach(function(el) {
           try {
@@ -6396,6 +6468,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     function tickMenus() {
       try { _ocultarRelatorioMensal(); } catch (_) {}
       try { _removerRelatorioMensalAgressivo(); } catch (_) {}
+      try { _patchGoPapelaoBlockV4(); } catch (_) {}
+      try { _papelaoRemoveByIdV4(); } catch (_) {}
+      try { _papelaoRedirectBlockedPageV4(); } catch (_) {}
       try { _ocultarPapelaoItensV3(); } catch (_) {}
       try { _removerPapelaoItensV3(); } catch (_) {}
     }
@@ -6419,8 +6494,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { _removerPapelaoItensV3(); } catch (_) {}
     try { [100, 500, 1000, 2000, 5000].forEach(function(t) { setTimeout(_ocultarRelatorioMensal, t); }); } catch (_) {}
     try { [500, 1500, 3000].forEach(function(t) { setTimeout(_removerRelatorioMensalAgressivo, t); }); } catch (_) {}
+    try { [0, 120, 320, 640, 1200, 2000, 3000].forEach(function(t) { setTimeout(function() { try { tickMenus(); } catch (_) {} }, t); }); } catch (_) {}
     try { [120, 620, 1200, 2400, 5200].forEach(function(t) { setTimeout(_ocultarPapelaoItensV3, t); }); } catch (_) {}
     try { [800, 1800, 3600].forEach(function(t) { setTimeout(_removerPapelaoItensV3, t); }); } catch (_) {}
+    try {
+      if (!window.__papelaoMenuGuardTimerV4) {
+        var startedAt = Date.now();
+        window.__papelaoMenuGuardTimerV4 = setInterval(function() {
+          try { tickMenus(); } catch (_) {}
+          if ((Date.now() - startedAt) >= 3000) {
+            try { clearInterval(window.__papelaoMenuGuardTimerV4); } catch (_) {}
+            window.__papelaoMenuGuardTimerV4 = null;
+          }
+        }, 250);
+      }
+    } catch (_) {}
     try {
       if (!window.__patchRelMensalObs) {
         window.__patchRelMensalObs = new MutationObserver(_ocultarRelatorioMensal);
