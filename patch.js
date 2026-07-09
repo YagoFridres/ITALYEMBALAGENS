@@ -912,6 +912,9 @@ window._compraPapelaoRenderPage = async function() {
     if (window.__compraPapelaoOrigRenderCompras) return window.__compraPapelaoOrigRenderCompras.apply(this, arguments);
     return null;
   }
+  try {
+    console.log('[COMPRA-PAPELAO] render iniciado, empresa:', window._compraPapelaoEmpresaAtual() || 'todas');
+  } catch (_) {}
   window._compraPapelaoEnsureStyles();
   window._compraPapelaoEnsureToolbar();
   var host = document.getElementById('cmp-body');
@@ -31968,24 +31971,37 @@ function _ocultarGraficoComissoes() {
   if (window.__instalarCompraPapelaoGlobalsNoFimReal) return;
   window.__instalarCompraPapelaoGlobalsNoFimReal = true;
 
+  function agendarRenderCompraPapelao() {
+    [0, 60, 250, 700].forEach(function(wait) {
+      setTimeout(function() {
+        try {
+          if (typeof window._compraPapelaoRenderPage === 'function' && window._compraPapelaoIsActive()) {
+            window._compraPapelaoRenderPage();
+          }
+        } catch (_) {}
+      }, wait);
+    });
+  }
+
+  function abrirTelaCompraPapelaoPatched() {
+    try { window._comprasTipoFiltro = 'chapas'; } catch (_) {}
+    try {
+      if (typeof window.go === 'function') window.go('compras');
+    } catch (_) {}
+    try { if (typeof closeNavGroupsExcept === 'function') closeNavGroupsExcept('ng-papelao'); } catch (_) {}
+    try {
+      if (document.body && document.body.classList && document.body.classList.contains('is-mobile') && typeof toggleMobMenu === 'function') {
+        toggleMobMenu();
+      }
+    } catch (_) {}
+    agendarRenderCompraPapelao();
+    return null;
+  }
+
   function aplicar() {
     try {
       if (typeof window._compraPapelaoRenderPage !== 'function') return;
-      window.papelaoAbrirComprasChapas = function() {
-        window._comprasTipoFiltro = 'chapas';
-        try { if (typeof window.go === 'function') window.go('compras'); } catch (_) {}
-        setTimeout(function() { try { window.renderCompras(); } catch (_) {} }, 50);
-        setTimeout(function() { try { window.renderCompras(); } catch (_) {} }, 250);
-        return null;
-      };
-      window.abrirModalCompra = function(id) {
-        if (!window._compraPapelaoIsActive()) {
-          if (window.__compraPapelaoOrigAbrirModalCompra) return window.__compraPapelaoOrigAbrirModalCompra.apply(this, arguments);
-          return null;
-        }
-        return window._compraPapelaoOpenCompraModal(id || null);
-      };
-      window.renderCompras = function() {
+      var renderFn = function() {
         if (!window._compraPapelaoIsActive()) {
           window._compraPapelaoEnsureToolbar();
           if (window.__compraPapelaoOrigRenderCompras) return window.__compraPapelaoOrigRenderCompras.apply(this, arguments);
@@ -31993,6 +32009,46 @@ function _ocultarGraficoComissoes() {
         }
         return window._compraPapelaoRenderPage();
       };
+      var abrirModalFn = function(id) {
+        if (!window._compraPapelaoIsActive()) {
+          if (window.__compraPapelaoOrigAbrirModalCompra) return window.__compraPapelaoOrigAbrirModalCompra.apply(this, arguments);
+          return null;
+        }
+        return window._compraPapelaoOpenCompraModal(id || null);
+      };
+      window.papelaoAbrirComprasChapas = abrirTelaCompraPapelaoPatched;
+      window.abrirModalCompra = abrirModalFn;
+      window.renderCompras = renderFn;
+      try { papelaoAbrirComprasChapas = abrirTelaCompraPapelaoPatched; } catch (_) {}
+      try { abrirModalCompra = abrirModalFn; } catch (_) {}
+      try { renderCompras = renderFn; } catch (_) {}
+
+      if (typeof window.go === 'function' && !window.go.__compraPapelaoRouterPatched) {
+        var origGo = window.go;
+        var wrappedGo = function(id) {
+          var out = origGo.apply(this, arguments);
+          try {
+            if (String(id || '').trim().toLowerCase() === 'compras' && window._compraPapelaoIsActive()) {
+              agendarRenderCompraPapelao();
+            }
+          } catch (_) {}
+          return out;
+        };
+        wrappedGo.__compraPapelaoRouterPatched = true;
+        wrappedGo.__origGo = origGo;
+        window.go = wrappedGo;
+        try { go = wrappedGo; } catch (_) {}
+      }
+
+      try {
+        var menu = document.getElementById('menu-papelao-compras');
+        if (menu) {
+          menu.onclick = function(ev) {
+            try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
+            return abrirTelaCompraPapelaoPatched();
+          };
+        }
+      } catch (_) {}
     } catch (_) {}
   }
 
