@@ -8052,6 +8052,61 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (!meta.length) return '';
       return '<div style="margin-top:4px;font-size:11px;line-height:1.35;color:#94a3b8">' + esc(meta.join(' | ')) + '</div>';
     }
+    function _estoqueWireGetSortState() {
+      var raw = window.__estoqueWireSortState || {};
+      var key = String(raw.key || '').trim();
+      var dir = String(raw.dir || 'asc').trim().toLowerCase() === 'desc' ? 'desc' : 'asc';
+      return { key: key, dir: dir };
+    }
+    function _estoqueWireToggleSort(key) {
+      var prev = _estoqueWireGetSortState();
+      var next = { key: String(key || '').trim(), dir: 'asc' };
+      if (prev.key === next.key) next.dir = prev.dir === 'asc' ? 'desc' : 'asc';
+      window.__estoqueWireSortState = next;
+      return next;
+    }
+    function _estoqueWireParseTamanho(v) {
+      var nums = String(v || '').replace(/,/g, '.').match(/\d+(?:\.\d+)?/g) || [];
+      return [
+        Number(nums[0] || 0) || 0,
+        Number(nums[1] || 0) || 0
+      ];
+    }
+    function _estoqueWireSortComparator(a, b, sortState) {
+      var state = sortState || _estoqueWireGetSortState();
+      var dir = state.dir === 'desc' ? -1 : 1;
+      var key = String(state.key || '').trim();
+      if (!key) return 0;
+      var qtdA = Math.max(0, Math.trunc(Number(a && (a.quantidade_atual != null ? a.quantidade_atual : (a.quantidade != null ? a.quantidade : a.qtd)) || 0) || 0));
+      var qtdB = Math.max(0, Math.trunc(Number(b && (b.quantidade_atual != null ? b.quantidade_atual : (b.quantidade != null ? b.quantidade : b.qtd)) || 0) || 0));
+      var valUnitA = Number(a && (a.valor_unitario != null ? a.valor_unitario : a.val) || 0) || 0;
+      var valUnitB = Number(b && (b.valor_unitario != null ? b.valor_unitario : b.val) || 0) || 0;
+      if (key === 'fornecedor') return String(a && a.fornecedor || '').localeCompare(String(b && b.fornecedor || ''), 'pt-BR') * dir;
+      if (key === 'gramatura') return (((Number(a && a.gramatura || 0) || 0) - (Number(b && b.gramatura || 0) || 0)) || String(a && a.gramatura || '').localeCompare(String(b && b.gramatura || ''), 'pt-BR')) * dir;
+      if (key === 'quantidade') return ((qtdA - qtdB) || String(a && (a.nome_uso || a.nome || '') || '').localeCompare(String(b && (b.nome_uso || b.nome || '') || ''), 'pt-BR')) * dir;
+      if (key === 'valor_unitario') return ((valUnitA - valUnitB) || String(a && (a.nome_uso || a.nome || '') || '').localeCompare(String(b && (b.nome_uso || b.nome || '') || ''), 'pt-BR')) * dir;
+      if (key === 'valor_total') return ((estoqueWireValor(a) - estoqueWireValor(b)) || String(a && (a.nome_uso || a.nome || '') || '').localeCompare(String(b && (b.nome_uso || b.nome || '') || ''), 'pt-BR')) * dir;
+      if (key === 'tamanho') {
+        var ta = _estoqueWireParseTamanho(a && a.tamanho || '');
+        var tb = _estoqueWireParseTamanho(b && b.tamanho || '');
+        return (((ta[0] - tb[0]) || (ta[1] - tb[1]) || String(a && a.tamanho || '').localeCompare(String(b && b.tamanho || ''), 'pt-BR'))) * dir;
+      }
+      return 0;
+    }
+    function _estoqueWireSortLista(lista) {
+      var rows = Array.isArray(lista) ? lista.slice() : [];
+      var state = _estoqueWireGetSortState();
+      if (!state.key) return rows;
+      return rows.sort(function(a, b) {
+        return _estoqueWireSortComparator(a, b, state);
+      });
+    }
+    function _estoqueWireHeaderSortHtml(label, key, cls) {
+      var state = _estoqueWireGetSortState();
+      var active = state.key === key;
+      var arrow = active ? (state.dir === 'asc' ? ' ▲' : ' ▼') : '';
+      return '<th class="' + esc(cls || '') + '"><button type="button" data-est-sort="' + esc(key) + '" style="all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:4px;color:inherit;font:inherit;text-transform:inherit;letter-spacing:inherit;font-weight:inherit">' + esc(label + arrow) + '</button></th>';
+    }
     function _estoqueLinhaTabelaHtml(chapa, grupos) {
       var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
       var vunit = Number(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0) || 0;
@@ -8520,6 +8575,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           if (filtroRapido === 'zeradas') return qtd === 0;
           return true;
         });
+        filtrada = _estoqueWireSortLista(filtrada);
         var valorTotal = lista.reduce(function(s, chapa) { return s + estoqueWireValor(chapa); }, 0);
         var tonTotal = lista.reduce(function(s, chapa) { return s + estoqueWireTon(chapa); }, 0);
         var breakdown = _resumoTopPorValor(lista, function(chapa) { return chapa && chapa.fornecedor || 'Sem fornecedor'; }, function(chapa) { return estoqueWireValor(chapa); }).slice(0, 4);
@@ -8557,7 +8613,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <button class="pep-btn' + (filtroRapido === 'zeradas' ? ' primary' : '') + '" id="estoque-wire-fil-zeradas" type="button">Zeradas</button>'
         + '    <span style="font-size:12px;color:#94a3b8">' + esc(String(grupos.length)) + ' grupo(s) cadastrado(s)</span>'
         + '  </div></div>'
-        + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-estoque"><table class="pep-table pep-table-estoque-wire"><thead><tr><th class="col-text">FORNECEDOR</th><th class="col-text">GRAMATURA</th><th class="col-text">NOMENCLATURA</th><th class="col-text">TAMANHO</th><th class="col-text">NOME</th><th class="col-text">QUAL CNPJ</th><th class="col-text">NF</th><th class="col-num">QUANTIDADE</th><th class="col-num">R$</th><th class="col-num">TOTAL</th><th class="col-text">GRUPO</th><th class="col-actions">Ações</th></tr></thead><tbody>'
+        + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-estoque"><table class="pep-table pep-table-estoque-wire"><thead><tr>'
+        +      _estoqueWireHeaderSortHtml('FORNECEDOR', 'fornecedor', 'col-text')
+        +      _estoqueWireHeaderSortHtml('GRAMATURA', 'gramatura', 'col-text')
+        +      '<th class="col-text">NOMENCLATURA</th>'
+        +      _estoqueWireHeaderSortHtml('TAMANHO', 'tamanho', 'col-text')
+        +      '<th class="col-text">NOME</th>'
+        +      '<th class="col-text">QUAL CNPJ</th>'
+        +      '<th class="col-text">NF</th>'
+        +      _estoqueWireHeaderSortHtml('QUANTIDADE', 'quantidade', 'col-num')
+        +      _estoqueWireHeaderSortHtml('R$', 'valor_unitario', 'col-num')
+        +      _estoqueWireHeaderSortHtml('TOTAL', 'valor_total', 'col-num')
+        +      '<th class="col-text">GRUPO</th><th class="col-actions">Ações</th></tr></thead><tbody>'
         + _estoqueTabelaAgrupadaHtml(filtrada, grupos, modoAgrupamento)
         + '  </tbody></table></div></div>'
         + '</div>';
@@ -8648,6 +8715,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           renderEstoqueWireframePage();
         }
       };
+      Array.prototype.slice.call(page.querySelectorAll('[data-est-sort]')).forEach(function(btn) {
+        btn.onclick = function(ev) {
+          if (ev) ev.preventDefault();
+          _estoqueWireToggleSort(String(btn.getAttribute('data-est-sort') || '').trim());
+          renderEstoqueWireframePage();
+        };
+      });
       _syncRenderedChapaRowColors(page, lista);
       _bindEstoqueWireframeDelegation(page, lista);
       // #region debug-point A:estoque-wireframe-success
