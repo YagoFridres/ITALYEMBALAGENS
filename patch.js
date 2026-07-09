@@ -16913,12 +16913,115 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '</div>';
   }
 
+  function _movEstoqueAcoesHtml(row) {
+    var movId = String(row && row.id || '').trim();
+    if (!movId) return '—';
+    return ''
+      + '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">'
+      + '  <button type="button" class="pep-btn" data-mov-edit="' + _escapeHtmlLite(movId) + '">Alterar</button>'
+      + '  <button type="button" class="pep-btn danger" data-mov-del="' + _escapeHtmlLite(movId) + '">Excluir</button>'
+      + '</div>';
+  }
+
+  async function _movEstoqueExcluir(row, refreshFn) {
+    var movId = String(row && row.id || '').trim();
+    if (!movId) return;
+    var okDel = true;
+    try { okDel = !!window.confirm('Reverter esta movimentação? O saldo da chapa será ajustado de volta.'); } catch (_) {}
+    if (!okDel) return;
+    try {
+      await _apiFetchJson('/api/chapas_estoque_movimentos/' + encodeURIComponent(movId), { method: 'DELETE' });
+      try { window.toast('Movimentação revertida com sucesso.', 'var(--green)'); } catch (_) {}
+      if (typeof refreshFn === 'function') await refreshFn();
+    } catch (e) {
+      try { alert('Erro ao excluir movimentação: ' + String(e && e.message || e)); } catch (_) {}
+    }
+  }
+
+  function _movEstoqueAbrirEdicao(row, refreshFn) {
+    var movId = String(row && row.id || '').trim();
+    if (!movId) return;
+    var qtdAtual = Math.max(1, Math.trunc(Number(row && row.quantidade || 0) || 0));
+    var obsAtual = String(row && row.observacoes || '').trim();
+    var modalId = 'estoque-mov-edit-modal';
+    var body = ''
+      + '<div style="display:grid;gap:16px">'
+      + '  <label class="estoque-modal-label"><span>Quantidade</span><input id="mov-edit-qtd" class="estoque-modal-input" type="number" min="1" step="1" value="' + _escapeHtmlLite(String(qtdAtual)) + '"></label>'
+      + '  <label class="estoque-modal-label"><span>Observação</span><textarea id="mov-edit-obs" class="estoque-modal-textarea" rows="4" placeholder="Descreva o ajuste desta movimentação.">' + _escapeHtmlLite(obsAtual) + '</textarea></label>'
+      + '</div>';
+    var footer = ''
+      + '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button>'
+      + '<button type="button" class="estoque-modal-btn estoque-modal-btn-blue" id="mov-edit-save">Salvar Alteração</button>';
+    _abrirModalPadrao({
+      id: modalId,
+      titulo: 'Alterar Movimentação',
+      subtitulo: 'Corrija a quantidade e a observação; o saldo da chapa será reajustado automaticamente.',
+      hero: '✎',
+      accent: 'blue',
+      width: '520px',
+      bodyHtml: body,
+      footerHtml: footer,
+      onOpen: function(overlay) {
+        var saveBtn = overlay.querySelector('#mov-edit-save');
+        if (!saveBtn) return;
+        saveBtn.onclick = async function() {
+          var qtdEl = overlay.querySelector('#mov-edit-qtd');
+          var obsEl = overlay.querySelector('#mov-edit-obs');
+          var payload = {
+            quantidade: Math.max(1, Math.trunc(Number(qtdEl && qtdEl.value || 0) || 0)),
+            obs: String(obsEl && obsEl.value || '').trim()
+          };
+          saveBtn.disabled = true;
+          try {
+            await _apiFetchJson('/api/chapas_estoque_movimentos/' + encodeURIComponent(movId), {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            _fecharModalPadrao(modalId);
+            try { window.toast('Movimentação alterada com sucesso.', 'var(--green)'); } catch (_) {}
+            if (typeof refreshFn === 'function') await refreshFn();
+          } catch (e) {
+            try { alert('Erro ao alterar movimentação: ' + String(e && e.message || e)); } catch (_) {}
+          } finally {
+            saveBtn.disabled = false;
+          }
+        };
+      }
+    });
+  }
+
+  function _bindTabelaMovEstoqueAcoes(host, rows, refreshFn) {
+    if (!host) return;
+    var mapa = Object.create(null);
+    (Array.isArray(rows) ? rows : []).forEach(function(row) {
+      var id = String(row && row.id || '').trim();
+      if (id) mapa[id] = row;
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-mov-edit]')).forEach(function(btn) {
+      btn.onclick = function(ev) {
+        if (ev) ev.preventDefault();
+        var movId = String(btn.getAttribute('data-mov-edit') || '').trim();
+        if (!movId || !mapa[movId]) return;
+        _movEstoqueAbrirEdicao(mapa[movId], refreshFn);
+      };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-mov-del]')).forEach(function(btn) {
+      btn.onclick = function(ev) {
+        if (ev) ev.preventDefault();
+        var movId = String(btn.getAttribute('data-mov-del') || '').trim();
+        if (!movId || !mapa[movId]) return;
+        _movEstoqueExcluir(mapa[movId], refreshFn).catch(function() {});
+      };
+    });
+  }
+
   async function _carregarDadosMovimentacaoEstoque(tipo) {
     var pair = await Promise.all([
       _estoqueFetchMovimentos(tipo, 500),
       _estoqueFetchChapasList(1000)
     ]);
-    var movs = Array.isArray(pair[0]) ? pair[0] : [];
+    var movs = Array.isArray(pair[0]) ? pair[0].filter(function(mov) { return !(mov && mov.reverted); }) : [];
     var chapas = Array.isArray(pair[1]) ? pair[1] : [];
     var mapaChapas = {};
     chapas.forEach(function(c) { mapaChapas[String(c && c.id || '').trim()] = c; });
@@ -16934,6 +17037,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         chapa: chapa,
         data: mov && mov.created_at || '',
         tipo: String(mov && mov.tipo || '').trim().toLowerCase(),
+        reverted: !!(mov && mov.reverted),
         quantidade: qtd,
         kg: Number(tons.kg || 0) || 0,
         toneladas: Number(tons.ton || 0) || 0,
@@ -16943,7 +17047,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         empresa: _empresaNomeEstoque(chapa),
         nf: String(mov && mov.nf || chapa && chapa.nf || '').trim() || '—',
         lote: String(mov && mov.nf || chapa && (chapa.lote || chapa.nf) || '').trim() || '—',
-        observacoes: String(mov && (mov.obs || mov.descricao) || '').trim(),
+        observacoes: [String(mov && mov.obs || '').trim(), String(mov && mov.descricao || '').trim()].filter(Boolean).join(' · '),
         usuario: String(mov && mov.usuario || '').trim() || '—',
         of_numero: ofNumero || '—',
         chapa_label: _chapaLabelEstoque(chapa),
@@ -18340,7 +18444,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                  { label: 'Chapa', key: 'chapa_label', render: function(r) { return _escapeHtmlLite(r.chapa_label || '—'); } },
                  { label: 'Quantidade', key: 'quantidade', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900;color:var(--green)">' + _escapeHtmlLite(_fmtNumEstoque(r.quantidade)) + '</span>'; } },
                  { label: 'Valor', key: 'valor_total', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900">' + _escapeHtmlLite(_fmtRsEstoque(r.valor_total)) + '</span>'; } },
-                 { label: 'Empresa', key: 'empresa' },
+                { label: 'Empresa', key: 'empresa' },
+                { label: 'Ações', key: 'acoes', align: 'right', render: function(r) { return _movEstoqueAcoesHtml(r); } }
                ])
           + '</div>';
         // #region debug-point F:entradas-actions-rendered
@@ -18364,6 +18469,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         });
         _bindBotaoEditarChapas(window.__estoqueEntradasRefresh, 'estoque-entrada-alterar-btn');
         _bindBotaoCriarChapas(window.__estoqueEntradasRefresh, 'estoque-entrada-criar-btn');
+        _bindTabelaMovEstoqueAcoes(host, filtrada, window.__estoqueEntradasRefresh);
         try { _agendarReaplicacaoUiEstoque(host); } catch (_) {}
       };
       render();
@@ -18664,13 +18770,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                  { label: 'Chapa', key: 'chapa_label', render: function(r) { return _escapeHtmlLite(r.chapa_label || '—'); } },
                  { label: 'Quantidade', key: 'quantidade', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900;color:#fca5a5">' + _escapeHtmlLite(_fmtNumEstoque(r.quantidade)) + '</span>'; } },
                  { label: 'Valor', key: 'valor_total', align: 'right', render: function(r) { return '<span style="font-family:var(--mono);font-weight:900">' + _escapeHtmlLite(_fmtRsEstoque(r.valor_total)) + '</span>'; } },
-                 { label: 'Empresa', key: 'empresa' }
+                 { label: 'Empresa', key: 'empresa' },
+                 { label: 'Ações', key: 'acoes', align: 'right', render: function(r) { return _movEstoqueAcoesHtml(r); } }
                ])
           + '</div>';
         var btnSaida = document.getElementById('estoque-saida-lote-btn');
         if (btnSaida) btnSaida.onclick = function() { _abrirModalSaidaEstoqueReal(); };
         _bindBotaoEditarChapas(window.__estoqueSaidasRefresh, 'estoque-saida-alterar-btn');
         _bindBotaoCriarChapas(window.__estoqueSaidasRefresh, 'estoque-saida-criar-btn');
+        _bindTabelaMovEstoqueAcoes(host, filtrada, window.__estoqueSaidasRefresh);
         try { _agendarReaplicacaoUiEstoque(host); } catch (_) {}
       };
       render();

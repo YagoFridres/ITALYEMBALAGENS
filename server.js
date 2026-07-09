@@ -19348,6 +19348,75 @@ app.patch('/api/chapas_estoque_movimentos/:id/confirmar', authMiddleware, async 
   } catch (e) { err(res, e); }
 });
 
+app.patch('/api/chapas_estoque_movimentos/:id', authMiddleware, async (req, res) => {
+  try {
+    const preferred = await _chapasPreferV2Table();
+    if (preferred !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'Movimentações disponíveis apenas no v2' });
+
+    const movId = String(req.params.id || '').trim();
+    if (!movId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+
+    const qtdNova = Math.trunc(Number(req.body?.quantidade));
+    if (!Number.isFinite(qtdNova) || qtdNova <= 0) return res.status(400).json({ ok: false, error: 'quantidade inválida' });
+    const obsNova = String(req.body?.obs || req.body?.observacao || '').trim();
+
+    const { data: mov, error: movErr } = await supabase.from('chapas_estoque_movimentos_v2').select('*').eq('id', movId).single();
+    if (movErr || !mov) return res.status(404).json({ ok: false, error: 'Movimentação não encontrada' });
+    if (mov.reverted) return res.status(400).json({ ok: false, error: 'Movimentação já revertida' });
+
+    const chapaId = String(mov.chapa_id || '').trim();
+    const { data: cur, error: curErr } = await supabase.from('chapas_estoque_v2').select('*').eq('id', chapaId).single();
+    if (curErr || !cur) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+
+    const canonCur = _chapasCanonicalFromAny(cur, 'chapas_estoque_v2');
+    const deltaAtual = Math.trunc(Number(mov.delta || 0) || 0);
+    const qtdAtual = Math.abs(deltaAtual);
+    const sinalAtual = deltaAtual < 0 ? -1 : 1;
+    const deltaNovo = sinalAtual * qtdNova;
+    const diff = deltaNovo - deltaAtual;
+
+    if (diff !== 0) {
+      const tipoRpc = diff > 0 ? 'entrada' : 'saida';
+      const qtdRpc = Math.abs(diff);
+      const movRes = await _chapasMovimentarV2Rpc({
+        chapa_id: chapaId,
+        tipo: tipoRpc,
+        quantidade: qtdRpc,
+        nf: mov.nf || null,
+        obs: `Ajuste do movimento ${movId} (${mov.tipo})`.trim(),
+        origem: 'ajuste_movimento',
+        origem_id: movId,
+        usuario: req?.usuario?.nome || 'sistema',
+        emp_id: canonCur.emp_id || mov.emp_id || null,
+      });
+      if (movRes?.error) {
+        if (_chapasMovRpcIsSaldoInsuficiente(movRes.error)) return res.status(409).json({ ok: false, error: 'Saldo insuficiente' });
+        if (_chapasMovRpcIsValidacao(movRes.error)) return res.status(400).json({ ok: false, error: movRes.error.message || String(movRes.error) });
+        return res.status(500).json({ ok: false, error: movRes.error.message || String(movRes.error) });
+      }
+    }
+
+    const payload = {
+      delta: deltaNovo,
+      obs: obsNova,
+    };
+    const { data: updMov, error: updErr } = await supabase
+      .from('chapas_estoque_movimentos_v2')
+      .update(payload)
+      .eq('id', movId)
+      .select()
+      .single();
+    if (updErr) return res.status(500).json({ ok: false, error: updErr.message || String(updErr) });
+
+    cacheClearPrefix('chapas_estoque:');
+    const { data: updChapa } = await supabase.from('chapas_estoque_v2').select('*').eq('id', chapaId).maybeSingle();
+    const canonUpd = updChapa ? _chapasCanonicalFromAny(updChapa, 'chapas_estoque_v2') : canonCur;
+    await _chapasLogAcao(req, 'estoque_movimento_alterado', `Movimento alterado (${mov.tipo}) qtd ${qtdAtual} -> ${qtdNova} · ${canonUpd.nome || ''} · ${canonUpd.fornecedor || ''} · ${canonUpd.nomenclatura || ''} · ${canonUpd.tamanho || ''}`);
+
+    return ok(res, { movimento: updMov, chapa: canonUpd });
+  } catch (e) { err(res, e); }
+});
+
 app.delete('/api/chapas_estoque_movimentos/:id', authMiddleware, async (req, res) => {
   try {
     const preferred = await _chapasPreferV2Table();
