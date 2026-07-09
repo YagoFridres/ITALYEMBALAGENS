@@ -16465,7 +16465,7 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
       return !_isFiltroVazioChapas(v);
     });
     const hasFiltros = qEntries.length > 0;
-    const limitDb = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 500));
+    const limitDb = Math.max(1, Math.min(10000, parseInt(String(req.query.limit || ''), 10) || 500));
     const offsetDb = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
     const CACHE_VERSION = 'chapas_v1';
     const cacheKey = hasFiltros
@@ -16623,19 +16623,20 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
 
     console.log('[chapas_estoque] OK:', rows.length, 'registros', '| table:', usedTable);
     if (!forceNoCache && rows.length > 0) cacheSet(cacheKey, rows, 10 * 1000);
-    if (!forceNoCache && baseCacheKey && rows.length > 0 && rows.length < limitDb) {
+    if (!forceNoCache && baseCacheKey && rows.length > 0 && rows.length <= limitDb) {
       cacheSet(baseCacheKey, { full: true, rows }, 10 * 1000);
     }
     return res.json(rows);
   } catch (err) {
-    console.error('[chapas_estoque] catch:', err.message);
+    console.error('[chapas_estoque] catch:', err && (err.stack || err.message || err));
     return res.json([]);
   }
 });
 
-app.get('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
+app.get('/api/chapas_estoque/:id', authMiddleware, async (req, res, next) => {
   try {
     const id = String(req.params.id || '').trim();
+    if (id === 'metricas' || id === 'toneladas') return next();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const tablesToTry = ['chapas_estoque_v2', 'chapas_estoque'];
     for (const table of tablesToTry) {
@@ -16657,6 +16658,7 @@ app.get('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
     }
     return res.status(404).json({ ok: false, error: 'chapa não encontrada' });
   } catch (e) {
+    console.error('[chapas_estoque/:id] catch:', e && (e.stack || e.message || e));
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
@@ -18191,6 +18193,7 @@ app.get('/api/chapas_estoque/metricas', authMiddleware, async (req, res) => {
     };
     return ok(res, out);
   } catch (e) {
+    console.error('[chapas_estoque/metricas] catch:', e && (e.stack || e.message || e));
     _logApiError('CHAPAS_METRICAS', req, e);
     return res.status(500).json({ ok: false, error: String(e?.message || e), rid: req._rid || null });
   }
@@ -18218,6 +18221,7 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
 
     if (error) {
       const msg = String(error?.message || error || '');
+      console.error('[chapas_estoque/toneladas] erro query:', msg);
       if (msg.toLowerCase().includes('could not find the') || msg.toLowerCase().includes('does not exist') || msg.toLowerCase().includes('column')) {
         return res.json({
           ok: true,
@@ -18324,6 +18328,7 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
       valor_total: round2(valorTotal),
     });
   } catch (e) {
+    console.error('[chapas_estoque/toneladas] catch:', e && (e.stack || e.message || e));
     _logApiError('TONELADAS', req, e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

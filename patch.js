@@ -6992,6 +6992,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return _normalizeChapaRowColor(chapa && (chapa.cor || chapa.cor_linha || chapa.linha_cor) || '') || _extractChapaColorMeta(chapa && (chapa.observacao || chapa.obs) || '');
     }
     try { window._resolveChapaRowColor = _resolveChapaRowColor; } catch (_) {}
+    try { window._stripChapaColorMeta = _stripChapaColorMeta; } catch (_) {}
     function _hexToRgbaChapa(hex, alpha) {
       var norm = _normalizeChapaRowColor(hex);
       if (!norm) return '';
@@ -17073,6 +17074,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     lista = await _carregarListaSeletorChapas().catch(function() { return []; });
     return (lista || []).find(function(item) { return String(item && item.id || '').trim() === sid; }) || null;
   }
+  function _stripChapaColorMetaSafe(obs) {
+    try {
+      if (typeof _stripChapaColorMeta === 'function') return _stripChapaColorMeta(obs);
+    } catch (_) {}
+    try {
+      if (typeof window._stripChapaColorMeta === 'function') return window._stripChapaColorMeta(obs);
+    } catch (_) {}
+    return String(obs || '').replace(/\s*\[\[COR_LINHA:(#[0-9A-F]{6})\]\]\s*/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+  }
 
   function _preencherModalEdicaoChapa(chapa) {
     if (!chapa) return false;
@@ -17104,7 +17114,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     _setFieldValueChapa('chapa-vincos', chapa && chapa.vincos || '');
     _setFieldValueChapa('chapa-riscada', chapa && chapa.riscada ? '1' : '0');
     _setFieldValueChapa('chapa-risca-desc', chapa && chapa.risca_desc || '');
-    _setFieldValueChapa('chapa-obs', _stripChapaColorMeta(chapa && (chapa.observacao || chapa.obs) || ''));
+    _setFieldValueChapa('chapa-obs', _stripChapaColorMetaSafe(chapa && (chapa.observacao || chapa.obs) || ''));
     _setFieldValueChapa('chapa-cor-linha', _resolveChapaRowColor(chapa));
     try { _refreshChapaColorPreview(); } catch (_) {}
     try {
@@ -17456,7 +17466,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (out && typeof out === 'object') {
           out.cor = cor;
           out.cor_linha = cor;
-          out.observacao = _stripChapaColorMeta(out.observacao || out.obs || '');
+          out.observacao = _stripChapaColorMetaSafe(out.observacao || out.obs || '');
         }
         return out;
       };
