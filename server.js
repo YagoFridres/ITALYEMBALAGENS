@@ -1103,7 +1103,7 @@ app.get('/manifest.json', (req, res) => {
 
 const PATCH_RUNTIME_VERSION = '20260707133500';
 const SW_RUNTIME_VERSION = '20260707133500';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260709152148';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260709153450';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -19110,6 +19110,40 @@ function _comprasChapasEmpId(req, body) {
   );
 }
 
+function _comprasChapasEmpUuidFallback(raw) {
+  const val = _comprasChapasStr(raw).toUpperCase();
+  if (!val) return '';
+  const map = {
+    E1: 'df5f7672-0a6b-402d-ae65-296554236c31',
+    E2: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+    E3: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+    'ITALY EMBALAGENS': 'df5f7672-0a6b-402d-ae65-296554236c31',
+    ITALY: 'df5f7672-0a6b-402d-ae65-296554236c31',
+    CARTOESTE: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+    CARTO: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+    OESTEPACK: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+    OESTE: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+  };
+  return _comprasChapasStr(map[val]);
+}
+
+async function _comprasChapasResolveEmpId(req, body) {
+  const raw = _comprasChapasEmpId(req, body);
+  if (_isUuid(raw)) return { empId: raw, raw };
+  const fallback = _comprasChapasEmpUuidFallback(raw);
+  if (_isUuid(fallback)) return { empId: fallback, raw };
+  const mergedReq = {
+    ...(req || {}),
+    body: { ...(req?.body || {}), ...(body || {}), emp_id: raw || req?.body?.emp_id || req?.body?.empId },
+    query: { ...(req?.query || {}), emp_id: raw || req?.query?.emp_id || req?.query?.empId },
+  };
+  let resolved = '';
+  try { resolved = _comprasChapasStr(await _resolveEmpresaUuid(mergedReq)); } catch (_) { resolved = ''; }
+  if (_isUuid(resolved)) return { empId: resolved, raw };
+  if (!raw) return { empId: '', raw: '' };
+  return { empId: '', raw };
+}
+
 function _comprasChapasDateIso(row) {
   const raw = row?.criado_em || row?.created_at || row?.data_compra || row?.data || null;
   if (!raw) return '';
@@ -19348,8 +19382,9 @@ async function _comprasChapasLoadById(id) {
 // ══════════════════════════════════════════════════════════════
 app.get('/api/compras-chapas/pastas', authMiddleware, async (req, res) => {
   try {
-    const empId = _comprasChapasEmpId(req);
-    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id obrigatório' });
+    const empInfo = await _comprasChapasResolveEmpId(req);
+    const empId = empInfo.empId;
+    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || req.query?.emp_id || req.query?.empId) });
     const pastasOut = await supabase.from('compras_pastas').select('*').eq('emp_id', empId).order('nome', { ascending: true });
     if (pastasOut.error) return res.status(500).json({ ok: false, error: pastasOut.error.message });
     const comprasOut = await supabase.from('compras_chapas').select('id,pasta_id').eq('emp_id', empId);
@@ -19374,9 +19409,10 @@ app.get('/api/compras-chapas/pastas', authMiddleware, async (req, res) => {
 app.post('/api/compras-chapas/pastas', authMiddleware, async (req, res) => {
   try {
     const nome = _comprasChapasStr(req.body?.nome);
-    const empId = _comprasChapasEmpId(req, req.body);
+    const empInfo = await _comprasChapasResolveEmpId(req, req.body);
+    const empId = empInfo.empId;
     if (!nome) return res.status(400).json({ ok: false, error: 'nome obrigatório' });
-    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id obrigatório' });
+    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || req.body?.emp_id || req.body?.empId) });
     const dup = await supabase.from('compras_pastas').select('*').eq('emp_id', empId).eq('nome', nome).maybeSingle();
     if (dup.error) return res.status(500).json({ ok: false, error: dup.error.message });
     if (dup.data) return ok(res, dup.data);
@@ -19420,10 +19456,11 @@ app.delete('/api/compras-chapas/pastas/:id', authMiddleware, async (req, res) =>
 
 app.get('/api/compras-chapas/relatorios/fornecedor', authMiddleware, async (req, res) => {
   try {
-    const empId = _comprasChapasEmpId(req);
+    const empInfo = await _comprasChapasResolveEmpId(req);
+    const empId = empInfo.empId;
     const dataInicio = _comprasChapasStr(req.query?.data_inicio);
     const dataFim = _comprasChapasStr(req.query?.data_fim);
-    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id obrigatório' });
+    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || req.query?.emp_id || req.query?.empId) });
     const compras = await _comprasChapasFetchNested({ empId });
     const filtradas = compras.filter((row) => _comprasChapasInPeriod(row, dataInicio, dataFim));
     const grouped = {};
@@ -19462,10 +19499,11 @@ app.get('/api/compras-chapas/relatorios/fornecedor', authMiddleware, async (req,
 
 app.get('/api/compras-chapas/relatorios/resumo', authMiddleware, async (req, res) => {
   try {
-    const empId = _comprasChapasEmpId(req);
+    const empInfo = await _comprasChapasResolveEmpId(req);
+    const empId = empInfo.empId;
     const dataInicio = _comprasChapasStr(req.query?.data_inicio);
     const dataFim = _comprasChapasStr(req.query?.data_fim);
-    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id obrigatório' });
+    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || req.query?.emp_id || req.query?.empId) });
     const compras = await _comprasChapasFetchNested({ empId });
     const filtradas = compras.filter((row) => _comprasChapasInPeriod(row, dataInicio, dataFim));
     const resumo = filtradas.reduce((acc, compra) => {
@@ -19489,11 +19527,12 @@ app.get('/api/compras-chapas/relatorios/resumo', authMiddleware, async (req, res
 
 app.get('/api/compras-chapas', authMiddleware, async (req, res) => {
   try {
-    const empId = _comprasChapasEmpId(req);
+    const empInfo = await _comprasChapasResolveEmpId(req);
+    const empId = empInfo.empId;
     const pastaId = _comprasChapasStr(req.query?.pasta_id);
     const semPasta = String(req.query?.sem_pasta || '').trim().toLowerCase() === 'true';
     const busca = _comprasChapasStr(req.query?.busca);
-    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id obrigatório' });
+    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || req.query?.emp_id || req.query?.empId) });
     let ids = null;
     if (busca) {
       ids = await _comprasChapasBuscaIds(empId, pastaId, semPasta, busca);
@@ -19510,8 +19549,9 @@ app.get('/api/compras-chapas', authMiddleware, async (req, res) => {
 app.post('/api/compras-chapas', authMiddleware, async (req, res) => {
   try {
     const body = req.body || {};
-    const empId = _comprasChapasEmpId(req, body);
-    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id obrigatório' });
+    const empInfo = await _comprasChapasResolveEmpId(req, body);
+    const empId = empInfo.empId;
+    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || body.emp_id || body.empId) });
     if (!_comprasChapasStr(body.fornecedor)) return res.status(400).json({ ok: false, error: 'fornecedor obrigatório' });
     const pastaId = body.pasta_id ? _comprasChapasStr(body.pasta_id) : null;
     if (pastaId) {
@@ -19629,7 +19669,9 @@ app.put('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
     const atual = await _comprasChapasLoadById(id);
     if (!atual) return res.status(404).json({ ok: false, error: 'Compra não encontrada' });
     const body = req.body || {};
-    const empId = _comprasChapasStr(atual.emp_id || _comprasChapasEmpId(req, body));
+    const empInfo = await _comprasChapasResolveEmpId(req, body);
+    const empId = _comprasChapasStr(atual.emp_id || empInfo.empId);
+    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || body.emp_id || body.empId) });
     const hasPasta = Object.prototype.hasOwnProperty.call(body, 'pasta_id');
     const pastaId = hasPasta ? (body.pasta_id ? _comprasChapasStr(body.pasta_id) : null) : (_comprasChapasStr(atual.pasta_id) || null);
     if (pastaId) {

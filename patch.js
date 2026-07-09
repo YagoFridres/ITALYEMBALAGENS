@@ -411,6 +411,39 @@ window._compraPapelaoStateRef = function() {
 window._compraPapelaoIsActive = function() {
   return String(window._comprasTipoFiltro || '').trim().toLowerCase() === 'chapas';
 };
+window._compraPapelaoEmpresaUuidFallbackMap = function() {
+  return {
+    E1: 'df5f7672-0a6b-402d-ae65-296554236c31',
+    E2: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+    E3: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+    'ITALY EMBALAGENS': 'df5f7672-0a6b-402d-ae65-296554236c31',
+    ITALY: 'df5f7672-0a6b-402d-ae65-296554236c31',
+    CARTOESTE: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+    CARTO: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+    OESTEPACK: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+    OESTE: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
+  };
+};
+window._compraPapelaoResolveEmpresaUuid = function(rawValue) {
+  var raw = String(rawValue || '').trim();
+  if (!raw) return '';
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw)) return raw;
+  try {
+    if (typeof window._resolveEmpresaUuid === 'function') {
+      var resolved = String(window._resolveEmpresaUuid(raw) || '').trim();
+      if (resolved) return resolved;
+    }
+  } catch (_) {}
+  try {
+    if (typeof empresaUuidBy === 'function') {
+      var byDb = String(empresaUuidBy(raw) || '').trim();
+      if (byDb) return byDb;
+    }
+  } catch (_) {}
+  var upper = raw.toUpperCase();
+  var map = window._compraPapelaoEmpresaUuidFallbackMap();
+  return String(map[upper] || map[raw] || '').trim();
+};
 window._compraPapelaoEmpresasBase = function() {
   var src = Array.isArray(window.EMPRESAS) && window.EMPRESAS.length ? window.EMPRESAS : [
     { id: 'E1', nome: 'Italy Embalagens' },
@@ -418,16 +451,23 @@ window._compraPapelaoEmpresasBase = function() {
     { id: 'E3', nome: 'Oestepack' }
   ];
   return src.map(function(row) {
+    var id = String(row && row.id || '').trim();
+    var nome = String(row && row.nome || row && row.sigla || '').trim();
     return {
-      id: String(row && row.id || '').trim(),
-      nome: String(row && row.nome || row && row.sigla || '').trim()
+      id: id,
+      nome: nome,
+      uuid: window._compraPapelaoResolveEmpresaUuid(
+        row && (row.uuid || row.empresa_id || row.emp_id || row.codigo || row.sigla || row.nome || id || nome)
+      )
     };
   }).filter(function(row) { return row.id; });
 };
 window._compraPapelaoEmpresaNome = function(empId) {
   var id = String(empId || '').trim();
   if (!id) return 'Todas as empresas';
-  var found = window._compraPapelaoEmpresasBase().find(function(row) { return row.id === id; }) || null;
+  var found = window._compraPapelaoEmpresasBase().find(function(row) {
+    return row.id === id || row.uuid === id;
+  }) || null;
   return String(found && found.nome || id);
 };
 window._compraPapelaoEmpresaAtual = function() {
@@ -442,10 +482,18 @@ window._compraPapelaoEmpresaAtual = function() {
   if (String(raw).toLowerCase() === 'todas') raw = '';
   return raw;
 };
+window._compraPapelaoEmpresaAtualUuid = function() {
+  return window._compraPapelaoResolveEmpresaUuid(window._compraPapelaoEmpresaAtual());
+};
 window._compraPapelaoEmpresaIdsConsulta = function() {
   var atual = window._compraPapelaoEmpresaAtual();
-  if (atual) return [atual];
-  return window._compraPapelaoEmpresasBase().map(function(row) { return row.id; }).filter(Boolean);
+  if (atual) {
+    var atualUuid = window._compraPapelaoResolveEmpresaUuid(atual);
+    return atualUuid ? [atualUuid] : [];
+  }
+  return window._compraPapelaoEmpresasBase().map(function(row) {
+    return String(row && row.uuid || '').trim();
+  }).filter(Boolean);
 };
 window._compraPapelaoEmpresaLabelAtual = function() {
   var atual = window._compraPapelaoEmpresaAtual();
@@ -783,7 +831,11 @@ window._compraPapelaoRenderItemRowsHtml = function(compra) {
 };
 window._compraPapelaoRenderBlocksHtml = function() {
   var compras = Array.isArray(window._compraPapelaoStateRef().compras) ? window._compraPapelaoStateRef().compras : [];
-  if (!compras.length) return '<div class="ccpx-empty">Nenhuma compra encontrada com os filtros atuais.</div>';
+  if (!compras.length) {
+    var st = window._compraPapelaoStateRef();
+    var hasFiltro = !!String(st && st.busca || '').trim() || String(st && st.filtroCard || 'all') !== 'all';
+    return '<div class="ccpx-empty">' + (hasFiltro ? 'Nenhuma compra encontrada com os filtros atuais.' : 'Nenhuma compra ainda — clique em + Nova Compra.') + '</div>';
+  }
   return compras.map(function(compra, idx) {
     var id = String(compra && compra.id || '').trim();
     var expanded = !!window._compraPapelaoStateRef().expanded[id] || idx === 0;
@@ -913,24 +965,43 @@ window._compraPapelaoRenderPage = async function() {
     return null;
   }
   try {
-    console.log('[COMPRA-PAPELAO] render iniciado, empresa:', window._compraPapelaoEmpresaAtual() || 'todas');
+    console.log('[COMPRA-PAPELAO] render iniciado, empresa:', window._compraPapelaoEmpresaAtual() || 'todas', 'uuid:', window._compraPapelaoEmpresaAtualUuid() || 'multi');
   } catch (_) {}
   window._compraPapelaoEnsureStyles();
   window._compraPapelaoEnsureToolbar();
   var host = document.getElementById('cmp-body');
   if (!host) return null;
   host.innerHTML = '<div class="ccpx-empty">Carregando compras de papelão...</div>';
-  try {
-    await Promise.all([
-      window._compraPapelaoLoadPastas(),
-      window._compraPapelaoLoadCompras(),
-      window._compraPapelaoLoadPins()
-    ]);
+  var st = window._compraPapelaoStateRef();
+  st.sectionErrors = [];
+  if (!window._compraPapelaoEmpresaIdsConsulta().length) {
+    st.pastas = [];
+    st.compras = [];
+    st.pins = [];
     window._compraPapelaoRenderBody();
-  } catch (e) {
-    console.error('[COMPRA-PAPELAO]', e);
-    host.innerHTML = '<div class="ccpx-empty">Erro ao carregar a tela: ' + window._compraPapelaoEsc(String(e && e.message || e)) + '</div>';
+    return null;
   }
+  var settled = await Promise.allSettled([
+    window._compraPapelaoLoadPastas(),
+    window._compraPapelaoLoadCompras(),
+    window._compraPapelaoLoadPins()
+  ]);
+  if (settled[0] && settled[0].status === 'rejected') {
+    st.pastas = [];
+    st.sectionErrors.push('pastas');
+    try { console.error('[COMPRA-PAPELAO] pastas:', settled[0].reason); } catch (_) {}
+  }
+  if (settled[1] && settled[1].status === 'rejected') {
+    st.compras = [];
+    st.sectionErrors.push('compras');
+    try { console.error('[COMPRA-PAPELAO] compras:', settled[1].reason); } catch (_) {}
+  }
+  if (settled[2] && settled[2].status === 'rejected') {
+    st.pins = [];
+    st.sectionErrors.push('pins');
+    try { console.error('[COMPRA-PAPELAO] pins:', settled[2].reason); } catch (_) {}
+  }
+  window._compraPapelaoRenderBody();
   return null;
 };
 window._compraPapelaoCollectModalRows = function(overlay) {
@@ -1004,7 +1075,7 @@ window._compraPapelaoRefreshModalComputed = function(overlay) {
   if (t2) t2.textContent = window._compraPapelaoFmtMoney(totalValor);
 };
 window._compraPapelaoCompraModalHtml = function(compra) {
-  var empId = String(compra && compra._emp_id_consulta || window._compraPapelaoEmpresaAtual() || 'E1');
+  var empId = String(compra && compra._emp_id_consulta || window._compraPapelaoEmpresaAtualUuid() || '');
   return ''
     + '<div class="ccpx-modal-grid">'
     + '  <div class="ccpx-modal-field"><label>Fornecedor</label><input id="ccpx-fornecedor" value="' + window._compraPapelaoAttr(compra && compra.fornecedor || '') + '"></div>'
@@ -1020,7 +1091,7 @@ window._compraPapelaoCompraModalHtml = function(compra) {
     + '</div>';
 };
 window._compraPapelaoCollectCompraPayload = function(overlay, compra) {
-  var empId = String(compra && compra._emp_id_consulta || window._compraPapelaoEmpresaAtual() || 'E1');
+  var empId = String(compra && compra._emp_id_consulta || window._compraPapelaoEmpresaAtualUuid() || '');
   return {
     fornecedor: String((overlay.querySelector('#ccpx-fornecedor') || {}).value || '').trim(),
     ped_fornecedor: String((overlay.querySelector('#ccpx-ped-forn') || {}).value || '').trim(),
@@ -1037,10 +1108,10 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
       ped_fornecedor: '',
       pasta_id: null,
       observacao: '',
-      _emp_id_consulta: window._compraPapelaoEmpresaAtual() || 'E1',
+      _emp_id_consulta: window._compraPapelaoEmpresaAtualUuid() || '',
       itens: [window._compraPapelaoBlankItem()]
     };
-    if (!compra._emp_id_consulta) compra._emp_id_consulta = window._compraPapelaoEmpresaAtual() || 'E1';
+    if (!compra._emp_id_consulta) compra._emp_id_consulta = window._compraPapelaoEmpresaAtualUuid() || '';
     if (!Array.isArray(compra.itens) || !compra.itens.length) compra.itens = [window._compraPapelaoBlankItem()];
     var overlay = _abrirModalPadrao({
       id: 'ccpx-modal-compra',
@@ -1104,7 +1175,7 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
   }
 };
 window._compraPapelaoOpenFolderModal = function() {
-  var empresaAtual = window._compraPapelaoEmpresaAtual();
+  var empresaAtual = window._compraPapelaoEmpresaAtualUuid();
   if (!empresaAtual) return alert('Selecione uma empresa específica no topo para criar uma pasta.');
   var overlay = _abrirModalPadrao({
     id: 'ccpx-modal-pasta',
@@ -1342,6 +1413,7 @@ window._compraPapelaoMergeResumoRows = function(rows) {
 };
 window._compraPapelaoFetchReport = async function(kind, dataInicio, dataFim) {
   var ids = window._compraPapelaoEmpresaIdsConsulta();
+  if (!ids.length) return kind === 'fornecedor' ? [] : { total_compras: 0, quantidade: 0, area_m2: 0, valor_total: 0 };
   var out = await Promise.all(ids.map(function(empId) {
     var qs = ['emp_id=' + encodeURIComponent(empId)];
     if (dataInicio) qs.push('data_inicio=' + encodeURIComponent(dataInicio));
