@@ -1801,6 +1801,10 @@ try {
       var resumo = data && data.resumo_mes_atual ? data.resumo_mes_atual : {};
       var summaryRows = Array.isArray(window.__histMonthlyRowsSorted) ? window.__histMonthlyRowsSorted : (Array.isArray(window.__histMonthlyRows) ? window.__histMonthlyRows : []);
       var detailRows = Array.isArray(window.__histPassagensRowsVisible) ? window.__histPassagensRowsVisible.slice() : [];
+      var topCores = Array.isArray(data && data.top_cores) ? data.top_cores : [];
+      var topTamanhos = Array.isArray(data && data.top_tamanhos) ? data.top_tamanhos : [];
+      var corTop = topCores[0] || null;
+      var tamanhoTop = topTamanhos[0] || null;
       return window._buildStyledPrintHtml({
         title: 'Relatório de Histórico de Passagens',
         periodo: periodo,
@@ -1808,7 +1812,9 @@ try {
           { label: 'Total de OFs', value: _histFmtNum(resumo.total_ofs || 0), sub: 'OFs no período' },
           { label: 'Valor de Produção', value: _histFmtMoney(resumo.valor_total_producao || 0), sub: 'Soma de produção' },
           { label: 'Caixas Produzidas', value: _histFmtNum(resumo.caixas_produzidas || 0), sub: 'Volume consolidado' },
-          { label: 'Resumo por Máquina', value: _histFmtNum(resumo.total_maquinas || 0), sub: 'Máquinas no período' }
+          { label: 'Resumo por Máquina', value: _histFmtNum(resumo.total_maquinas || 0), sub: 'Máquinas no período' },
+          { label: 'Cores Mais Usadas', value: corTop && corTop.cor || 'Sem dados', sub: _histRankingResumoHtml(topCores, 'cor') },
+          { label: 'Tamanhos Mais Usados', value: tamanhoTop && tamanhoTop.tamanho || 'Sem dados', sub: _histRankingResumoHtml(topTamanhos, 'tamanho') }
         ],
         summaryTitle: 'Tabela-resumo por máquina',
         summaryHeaders: ['Máquina', 'Nº OFs', 'Valor produção', 'Caixas'],
@@ -1840,6 +1846,26 @@ try {
     }
 
     var listRows = Array.isArray(window.__histPassagensRowsVisible) ? window.__histPassagensRowsVisible : [];
+    var colorMap = Object.create(null);
+    var sizeMap = Object.create(null);
+    listRows.forEach(function(row) {
+      try {
+        parseColors(row).forEach(function(cor) {
+          var nomeCor = String(cor || '').trim() || 'Sem cor';
+          colorMap[nomeCor] = (colorMap[nomeCor] || 0) + 1;
+        });
+      } catch (_) {}
+      try {
+        var tamanho = buildSizeLabel(parseDimensions(row));
+        sizeMap[tamanho] = (sizeMap[tamanho] || 0) + 1;
+      } catch (_) {}
+    });
+    var topCoresLista = Object.keys(colorMap).map(function(key) { return { cor: key, total_ofs: colorMap[key] }; }).sort(function(a, b) {
+      return (b.total_ofs - a.total_ofs) || String(a.cor || '').localeCompare(String(b.cor || ''), 'pt-BR');
+    }).slice(0, 5);
+    var topTamanhosLista = Object.keys(sizeMap).map(function(key) { return { tamanho: key, total_ofs: sizeMap[key] }; }).sort(function(a, b) {
+      return (b.total_ofs - a.total_ofs) || String(a.tamanho || '').localeCompare(String(b.tamanho || ''), 'pt-BR');
+    }).slice(0, 5);
     return window._buildStyledPrintHtml({
       title: 'Relatório de Histórico de Passagens',
       periodo: periodo,
@@ -1847,7 +1873,9 @@ try {
         { label: 'Passagens Visíveis', value: _histFmtNum(listRows.length), sub: 'Linhas filtradas' },
         { label: 'Valor de Produção', value: _histFmtMoney(listRows.reduce(function(acc, row) { return acc + _histPassagemValorTotal(row); }, 0)), sub: 'Somatório visível' },
         { label: 'Caixas Produzidas', value: _histFmtNum(listRows.reduce(function(acc, row) { return acc + _histPassagemQuantidade(row); }, 0)), sub: 'Volume visível' },
-        { label: 'Máquinas', value: _histFmtNum(Array.from(new Set(listRows.map(function(row) { return _histPassagemMaquinas(row); }).filter(Boolean))).length), sub: 'Máquinas listadas' }
+        { label: 'Máquinas', value: _histFmtNum(Array.from(new Set(listRows.map(function(row) { return _histPassagemMaquinas(row); }).filter(Boolean))).length), sub: 'Máquinas listadas' },
+        { label: 'Cores Mais Usadas', value: topCoresLista[0] && topCoresLista[0].cor || 'Sem dados', sub: _histRankingResumoHtml(topCoresLista, 'cor') },
+        { label: 'Tamanhos Mais Usados', value: topTamanhosLista[0] && topTamanhosLista[0].tamanho || 'Sem dados', sub: _histRankingResumoHtml(topTamanhosLista, 'tamanho') }
       ],
       summaryTitle: 'Tabela-resumo por máquina',
       summaryHeaders: ['Máquina', 'Nº OFs'],
