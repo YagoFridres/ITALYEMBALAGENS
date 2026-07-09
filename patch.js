@@ -17124,13 +17124,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function _movEstoquePrint(kind, periodo, rows) {
     var popup = null;
     try { popup = window.open('', '_blank', 'width=960,height=720'); } catch (_) { popup = null; }
-    var html = _movEstoqueBuildPrintHtml(kind, periodo, rows);
-    if (!html) {
+    try {
+      var html = _movEstoqueBuildPrintHtml(kind, periodo, rows);
+      if (!html) throw new Error('HTML de impressão vazio');
+      if (typeof window._openStyledPrintWindow === 'function') return window._openStyledPrintWindow(html, popup);
+      throw new Error('_openStyledPrintWindow indisponível');
+    } catch (e) {
       try { if (popup && !popup.closed) popup.close(); } catch (_) {}
+      try { console.error('[MOV-PRINT] erro:', e); } catch (_) {}
+      try { alert('Erro ao abrir impressão: ' + String(e && e.message || e)); } catch (_) {}
       return null;
     }
-    if (typeof window._openStyledPrintWindow === 'function') return window._openStyledPrintWindow(html, popup);
-    return null;
   }
 
   async function _carregarDadosMovimentacaoEstoque(tipo) {
@@ -18553,7 +18557,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           +      _botaoAcaoEstoque({ id: 'estoque-entrada-lote-btn', label: 'Dar Entrada', icon: '↓', variant: 'green', title: 'Lançar entrada manual no estoque' })
           +      _botaoEditarChapas('estoque-entrada-alterar-btn')
           +      _botaoAcaoEstoque({ id: 'estoque-entrada-criar-btn', label: 'Criar Chapas', icon: '+', variant: 'teal', title: 'Cadastrar nova chapa no estoque' })
-          +      _botaoAcaoEstoque({ id: 'estoque-entrada-print-btn', label: 'Imprimir Relatório', icon: '🖨', variant: 'blue', title: 'Imprimir as entradas do mês selecionado' })
+          +      _botaoAcaoEstoque({ id: 'estoque-entrada-print-btn', label: 'Imprimir Relatório', icon: '🖨', variant: 'accent', title: 'Imprimir as entradas do mês selecionado' })
           + '  </div>'
           +    _renderTabelaMovEstoque(filtrada, [
                  { label: 'Data', key: 'data', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(_fmtDateEstoque(r.data)) + '</span>'; } },
@@ -18885,7 +18889,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           +      _botaoAcaoEstoque({ id: 'estoque-saida-lote-btn', label: 'Dar Saída', icon: '↑', variant: 'danger', title: 'Lançar saída manual do estoque' })
           +      _botaoEditarChapas('estoque-saida-alterar-btn')
           +      _botaoAcaoEstoque({ id: 'estoque-saida-criar-btn', label: 'Criar Chapas', icon: '+', variant: 'teal', title: 'Cadastrar nova chapa no estoque' })
-          +      _botaoAcaoEstoque({ id: 'estoque-saida-print-btn', label: 'Imprimir Relatório', icon: '🖨', variant: 'blue', title: 'Imprimir as saídas do mês selecionado' })
+          +      _botaoAcaoEstoque({ id: 'estoque-saida-print-btn', label: 'Imprimir Relatório', icon: '🖨', variant: 'accent', title: 'Imprimir as saídas do mês selecionado' })
           + '  </div>'
           +    _renderTabelaMovEstoque(filtrada, [
                  { label: 'Data', key: 'data', render: function(r) { return '<span style="font-family:var(--mono)">' + _escapeHtmlLite(_fmtDateEstoque(r.data)) + '</span>'; } },
