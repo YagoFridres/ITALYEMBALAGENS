@@ -3935,7 +3935,10 @@ try {
   }
 
   async function _simdCarregarChapasPatched() {
-    if (Array.isArray(window._simdChapasCache) && window._simdChapasCache.length) return window._simdChapasCache;
+    if (Array.isArray(window._simdChapasCache) && window._simdChapasCache.length) {
+      try { console.log('[SIMULADOR] chapas carregadas:', window._simdChapasCache.length); } catch (_) {}
+      return window._simdChapasCache;
+    }
     try {
       var resp = null;
       if (typeof window._apiAuthFetch === 'function') {
@@ -3951,8 +3954,10 @@ try {
         return (Math.trunc(Number(ch && (ch.quantidade ?? ch.qtd ?? ch.quantidade_atual) || 0) || 0)) > 0;
       });
       window._simdChapasCache = arr;
+      try { console.log('[SIMULADOR] chapas carregadas:', arr.length); } catch (_) {}
       return arr;
     } catch (e) {
+      try { console.log('[SIMULADOR] chapas carregadas:', 0); } catch (_) {}
       try { console.error('[SIMD CHAPAS]', e); } catch (_) {}
       return [];
     }
@@ -4046,6 +4051,7 @@ try {
       aviso.textContent = 'Nenhuma chapa em estoque é compatível com estas medidas. Verifique se há chapas cadastradas ou ajuste as medidas.';
     }
     if (!wrap) return;
+    try { wrap.style.display = 'block'; } catch (_) {}
     if (!lista.length) {
       wrap.innerHTML = '<div style="padding:22px;text-align:center;color:rgba(255,255,255,0.55)">Nenhuma chapa do estoque comporta essa peça.</div>';
       if (visual) visual.style.display = 'none';
@@ -4104,6 +4110,7 @@ try {
     var loading = document.getElementById('simd-loading');
     var resultado = document.getElementById('simd-resultado');
     var info = document.getElementById('simd-info-planif');
+    try { console.log('[SIMULADOR] calcular clicado, largura:', larg, 'comprimento:', comp); } catch (_) {}
     if (!(larg > 0 && comp > 0)) {
       try { alert('Preencha largura e comprimento necessários.'); } catch (_) {}
       return;
@@ -4114,8 +4121,8 @@ try {
       info.innerHTML = 'Peça informada: <strong style="color:rgba(255,255,255,0.88)">' + String(comp) + ' x ' + String(larg) + ' mm</strong> · Área unitária: <strong style="color:rgba(255,255,255,0.88)">' + _simdFmtArea(comp * larg) + '</strong>';
     }
     try {
-      try { console.log('[SIMD PATCH] calcular click', { largura: larg, comprimento: comp, quantidade: qtdPedido }); } catch (_) {}
       var baseRows = window._simdChapaSelecionada ? [window._simdChapaSelecionada] : await _simdCarregarChapasPatched();
+      try { console.log('[SIMULADOR] chapas carregadas:', Array.isArray(baseRows) ? baseRows.length : 0); } catch (_) {}
       var rows = (Array.isArray(baseRows) ? baseRows : []).map(function(chapa) {
         return _simdCalcularLinha(chapa, larg, comp, qtdPedido);
       }).filter(Boolean);
@@ -4128,6 +4135,7 @@ try {
       });
       if (loading) loading.style.display = 'none';
       if (resultado) resultado.style.display = 'block';
+      try { console.log('[SIMULADOR] resultados:', rows.length); } catch (_) {}
       _simdRenderResultadosPatched(rows, {
         peca_larg_mm: larg,
         peca_comp_mm: comp,
@@ -4136,12 +4144,14 @@ try {
     } catch (e) {
       if (loading) loading.style.display = 'none';
       if (resultado) resultado.style.display = 'block';
+      try { console.log('[SIMULADOR] resultados:', 0); } catch (_) {}
       _simdRenderResultadosPatched([], {
         peca_larg_mm: larg,
         peca_comp_mm: comp,
         qtd_pedido: qtdPedido
       });
       try { console.error('[SIMD PATCH]', e); } catch (_) {}
+      try { alert('Erro ao calcular desperdício: ' + String(e && e.message || e)); } catch (_) {}
     }
   }
 
@@ -4150,13 +4160,16 @@ try {
       var btn = document.getElementById('simd-btn');
       if (btn && btn.dataset.patchSimdBound !== '1') {
         btn.dataset.patchSimdBound = '1';
+        try { btn.type = 'button'; } catch (_) {}
         try { btn.removeAttribute('onclick'); } catch (_) {}
-        btn.addEventListener('click', function(e) {
+        var runCalculo = function(e) {
           try { e.preventDefault(); } catch (_) {}
-          try { console.log('[SIMD PATCH] botao calcular acionado'); } catch (_) {}
-          try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('S', 'simd botao clicado', {}); } catch (_) {}
+          try { e.stopPropagation(); } catch (_) {}
           _simdCalcularPatched();
-        });
+          return false;
+        };
+        try { btn.onclick = runCalculo; } catch (_) {}
+        btn.addEventListener('click', runCalculo);
       }
       ['simd-larg', 'simd-comp', 'simd-qtd'].forEach(function(id) {
         var el = document.getElementById(id);
@@ -4182,11 +4195,21 @@ try {
           try { if (typeof window._simdLimparChapaSelecionada === 'function') window._simdLimparChapaSelecionada(); } catch (_) {}
         });
       }
+      try {
+        var resultado = document.getElementById('simd-resultado');
+        var wrap = document.getElementById('simd-tabela-wrap');
+        if (resultado) resultado.style.display = resultado.style.display || 'none';
+        if (wrap) wrap.style.display = 'block';
+      } catch (_) {}
     } catch (_) {}
   }
 
   try { window._simdCarregarChapas = _simdCarregarChapasPatched; } catch (_) {}
-  try { window._simdCalcular = _simdCalcularPatched; } catch (_) {}
+  try {
+    window._simdCalcular = function() {
+      return _simdCalcularPatched.apply(this, arguments);
+    };
+  } catch (_) {}
   try {
     if (typeof window.calcTonChapa === 'function' && !window.calcTonChapa._patchedDimMm) {
       var origCalcTonChapa = window.calcTonChapa;
