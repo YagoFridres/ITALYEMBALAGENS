@@ -16977,7 +16977,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function _getListaChapasEstoqueCache() {
+    var fetchState = null;
+    try { fetchState = _estoqueChapasFetchState(); } catch (_) { fetchState = null; }
     var candidatos = [
+      fetchState && Array.isArray(fetchState.cache) ? fetchState.cache : null,
       window.__estoqueChapasCacheGlobal,
       window.__estoqueWireChapasCache,
       window.__entradaEstoqueChapasCache,
@@ -16993,7 +16996,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   async function _carregarListaSeletorChapas() {
     var lista = _getListaChapasEstoqueCache();
-    if (lista.length) return lista;
+    if (lista.length >= 20) return lista;
     lista = await _estoqueFetchChapasList(10000).catch(function() { return []; });
     lista = Array.isArray(lista) ? lista : [];
     if (lista.length) window.__estoqueChapasCacheGlobal = lista.slice();
