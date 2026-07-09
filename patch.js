@@ -349,6 +349,767 @@ try {
   try { window.__authPatchPersist = _authPersist; } catch (_) {}
   try { window.__authPatchClear = _authClear; } catch (_) {}
 })();
+;(function() {
+  if (window.__simdBoxPlannerTailApplied) return;
+  window.__simdBoxPlannerTailApplied = true;
+  function reapply() {
+    try {
+      if (typeof window.__simdBoxPlannerFetch === 'function') window._simdCarregarChapas = window.__simdBoxPlannerFetch;
+      if (typeof window.__simdBoxPlannerVerify === 'function') window._simdVerificarCampos = window.__simdBoxPlannerVerify;
+      if (typeof window.__simdBoxPlannerRestore === 'function') window._simdRestoreState = window.__simdBoxPlannerRestore;
+      if (typeof window.__simdBoxPlannerRun === 'function') {
+        window._simdCalcularFluxoImpl = window.__simdBoxPlannerRun;
+        window._simdCalcularPatchedImpl = window.__simdBoxPlannerRun;
+        window.__simdCalcularImpl = window.__simdBoxPlannerRun;
+        window._simdCalcular = window.__simdBoxPlannerRun;
+      }
+      if (typeof window.__simdBoxPlannerApply === 'function') window.__simdBoxPlannerApply();
+    } catch (e) {
+      try { console.error('[SIMD] tail reapply falhou', e); } catch (_) {}
+    }
+  }
+  reapply();
+  setTimeout(reapply, 0);
+  setTimeout(reapply, 200);
+  setTimeout(reapply, 1200);
+})();
+;(function() {
+  if (window.__simdBoxPlannerPatched) return;
+  window.__simdBoxPlannerPatched = true;
+
+  function sLog() {
+    try {
+      var args = Array.prototype.slice.call(arguments || []);
+      args.unshift('[SIMD]');
+      console.log.apply(console, args);
+    } catch (_) {}
+  }
+
+  function sErr() {
+    try {
+      var args = Array.prototype.slice.call(arguments || []);
+      args.unshift('[SIMD]');
+      console.error.apply(console, args);
+    } catch (_) {}
+  }
+
+  function sEsc(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function sNum(value) {
+    var n = Number(String(value == null ? '' : value).replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function sInt(value) {
+    return Math.max(0, Math.trunc(sNum(value)));
+  }
+
+  function sFmtNum(value, decimals) {
+    var numValue = Number(value || 0) || 0;
+    try {
+      return numValue.toLocaleString('pt-BR', {
+        minimumFractionDigits: decimals || 0,
+        maximumFractionDigits: decimals || 0
+      });
+    } catch (_) {
+      return String(numValue);
+    }
+  }
+
+  function sFmtMoney(value) {
+    return 'R$ ' + sFmtNum(Number(value || 0) || 0, 2);
+  }
+
+  function sFmtPct(value) {
+    return sFmtNum(Number(value || 0) || 0, 2) + '%';
+  }
+
+  function sFmtAreaMm2(value) {
+    return sFmtNum((Number(value || 0) || 0) / 1000000, 4) + ' m²';
+  }
+
+  function sFmtMm(value) {
+    return sFmtNum(Number(value || 0) || 0, 0) + ' mm';
+  }
+
+  function sStateKey() {
+    return String(window._simdStateKey || 'simd_state_v2').trim() || 'simd_state_v2';
+  }
+
+  function sPlanFromDom() {
+    var caixaComp = sNum((document.getElementById('simd-caixa-comp') || {}).value);
+    var caixaLarg = sNum((document.getElementById('simd-caixa-larg') || {}).value);
+    var caixaAlt = sNum((document.getElementById('simd-caixa-alt') || {}).value);
+    var onda = String((document.getElementById('simd-onda') || {}).value || '').trim() || 'B';
+    var qtdPedido = sInt((document.getElementById('simd-qtd') || {}).value);
+    var pecaLarg = caixaLarg > 0 && caixaAlt > 0 ? (caixaLarg + (caixaAlt * 2) + 15) : 0;
+    var pecaComp = caixaComp > 0 && caixaLarg > 0 ? (((caixaComp + caixaLarg) * 2) + 20) : 0;
+    return {
+      caixa_comp_mm: caixaComp,
+      caixa_larg_mm: caixaLarg,
+      caixa_alt_mm: caixaAlt,
+      onda: onda,
+      qtd_pedido: qtdPedido,
+      peca_larg_mm: pecaLarg,
+      peca_comp_mm: pecaComp,
+      area_planificacao_mm2: (pecaLarg > 0 && pecaComp > 0) ? (pecaLarg * pecaComp) : 0
+    };
+  }
+
+  function sFillComputed(plan) {
+    var largEl = document.getElementById('simd-larg');
+    var compEl = document.getElementById('simd-comp');
+    var resumo = document.getElementById('simd-plan-resumo');
+    if (largEl) largEl.value = plan && plan.peca_larg_mm > 0 ? String(Math.round(plan.peca_larg_mm)) : '';
+    if (compEl) compEl.value = plan && plan.peca_comp_mm > 0 ? String(Math.round(plan.peca_comp_mm)) : '';
+    if (resumo) {
+      if (plan && plan.peca_larg_mm > 0 && plan.peca_comp_mm > 0) {
+        resumo.innerHTML = ''
+          + '<div class="simd-meta-card"><span>Planificação</span><strong>' + sEsc(sFmtMm(plan.peca_comp_mm) + ' x ' + sFmtMm(plan.peca_larg_mm)) + '</strong></div>'
+          + '<div class="simd-meta-card"><span>Área unitária</span><strong>' + sEsc(sFmtAreaMm2(plan.area_planificacao_mm2)) + '</strong></div>'
+          + '<div class="simd-meta-card"><span>Onda</span><strong>' + sEsc(plan.onda || '—') + '</strong></div>';
+      } else {
+        resumo.innerHTML = '<div class="simd-inline-tip">Preencha comprimento, largura e altura da caixa para calcular a planificação automaticamente.</div>';
+      }
+    }
+  }
+
+  function sSheetDims(chapa) {
+    var comp = sNum(chapa && (chapa.comprimento != null ? chapa.comprimento : (chapa.comprimento_mm != null ? chapa.comprimento_mm : (chapa.dim_comprimento != null ? chapa.dim_comprimento : chapa.caixa_comprimento))));
+    var larg = sNum(chapa && (chapa.largura != null ? chapa.largura : (chapa.largura_mm != null ? chapa.largura_mm : (chapa.dim_largura != null ? chapa.dim_largura : chapa.caixa_largura))));
+    if (comp > 0 && larg > 0) {
+      return { comprimento: Math.max(comp, larg), largura: Math.min(comp, larg) };
+    }
+    var raw = String(chapa && (chapa.tamanho || chapa.tam || chapa.nome || chapa.nomenclatura || '') || '').trim();
+    var match = raw.match(/(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)/);
+    if (!match) return null;
+    var compTxt = sNum(match[1]);
+    var largTxt = sNum(match[2]);
+    if (!(compTxt > 0 && largTxt > 0)) return null;
+    return { comprimento: Math.max(compTxt, largTxt), largura: Math.min(compTxt, largTxt) };
+  }
+
+  function sRowKey(row) {
+    return String(row && (row.__row_key || row.id || row.nome || row.tamanho || '') || '').trim();
+  }
+
+  function sCalcCandidate(chapa, plan) {
+    var dims = sSheetDims(chapa);
+    if (!dims) {
+      return {
+        ok: false,
+        nome: String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim(),
+        fornecedor: String(chapa && (chapa.fornecedor || chapa.forn || '—') || '—').trim() || '—',
+        tamanho: String(chapa && (chapa.tamanho || chapa.tam || 'Sem tamanho') || 'Sem tamanho').trim() || 'Sem tamanho',
+        motivo: 'Sem dimensões válidas na ficha da chapa.'
+      };
+    }
+    var sheetComp = Number(dims.comprimento || 0) || 0;
+    var sheetLarg = Number(dims.largura || 0) || 0;
+    var pieceComp = Number(plan && plan.peca_comp_mm || 0) || 0;
+    var pieceLarg = Number(plan && plan.peca_larg_mm || 0) || 0;
+    var variants = [
+      {
+        label: 'Padrão',
+        cols: Math.floor(sheetLarg / pieceLarg),
+        rows: Math.floor(sheetComp / pieceComp),
+        orient_comp_mm: pieceComp,
+        orient_larg_mm: pieceLarg
+      },
+      {
+        label: 'Rotacionada 90°',
+        cols: Math.floor(sheetLarg / pieceComp),
+        rows: Math.floor(sheetComp / pieceLarg),
+        orient_comp_mm: pieceLarg,
+        orient_larg_mm: pieceComp
+      }
+    ].filter(function(item) {
+      return item.cols > 0 && item.rows > 0;
+    });
+    if (!variants.length) {
+      return {
+        ok: false,
+        id: chapa && chapa.id,
+        nome: String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim(),
+        fornecedor: String(chapa && (chapa.fornecedor || chapa.forn || '—') || '—').trim() || '—',
+        tamanho: String(chapa && (chapa.tamanho || chapa.tam || (sheetComp + 'x' + sheetLarg)) || (sheetComp + 'x' + sheetLarg)).trim(),
+        motivo: 'A planificação não cabe nem no sentido padrão nem no rotacionado.'
+      };
+    }
+    variants.sort(function(a, b) {
+      var aCount = a.cols * a.rows;
+      var bCount = b.cols * b.rows;
+      if (bCount !== aCount) return bCount - aCount;
+      var areaChapa = sheetComp * sheetLarg;
+      var aWaste = areaChapa - (aCount * pieceComp * pieceLarg);
+      var bWaste = areaChapa - (bCount * pieceComp * pieceLarg);
+      return aWaste - bWaste;
+    });
+    var best = variants[0];
+    var caixasPorChapa = best.cols * best.rows;
+    var areaChapa = sheetComp * sheetLarg;
+    var areaUsada = caixasPorChapa * pieceComp * pieceLarg;
+    var desperdicioPct = areaChapa > 0 ? ((1 - (areaUsada / areaChapa)) * 100) : 100;
+    var valorUnitario = sNum(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val));
+    var chapasNec = plan && plan.qtd_pedido > 0 ? Math.ceil(plan.qtd_pedido / caixasPorChapa) : null;
+    return {
+      ok: true,
+      id: chapa && chapa.id,
+      __row_key: String(chapa && chapa.id || [chapa && chapa.nome_uso, chapa && chapa.tamanho, best.label, best.cols, best.rows].join('|')).trim(),
+      nome: String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim(),
+      fornecedor: String(chapa && (chapa.fornecedor || chapa.forn || '—') || '—').trim() || '—',
+      tamanho: String(chapa && (chapa.tamanho || chapa.tam || (sheetComp + 'x' + sheetLarg)) || (sheetComp + 'x' + sheetLarg)).trim(),
+      estoque: sInt(chapa && (chapa.quantidade != null ? chapa.quantidade : (chapa.qtd != null ? chapa.qtd : chapa.quantidade_atual))),
+      valor_unitario: valorUnitario,
+      chapa_comp_mm: sheetComp,
+      chapa_larg_mm: sheetLarg,
+      orientacao_label: best.label,
+      orient_comp_mm: best.orient_comp_mm,
+      orient_larg_mm: best.orient_larg_mm,
+      cols: best.cols,
+      rows: best.rows,
+      caixas_por_chapa: caixasPorChapa,
+      area_chapa_mm2: areaChapa,
+      area_usada_mm2: areaUsada,
+      area_planificacao_mm2: pieceComp * pieceLarg,
+      desperdicio_pct: Math.max(0, Math.round(desperdicioPct * 100) / 100),
+      chapas_necessarias: chapasNec,
+      custo_estimado: chapasNec != null ? (chapasNec * valorUnitario) : null,
+      gramatura: String(chapa && (chapa.gramatura != null ? chapa.gramatura : '') || '').trim() || '—'
+    };
+  }
+
+  function sBadgeTone(value) {
+    var pct = Number(value || 0) || 0;
+    if (pct < 10) return { bg: 'rgba(34,197,94,.16)', bd: 'rgba(34,197,94,.32)', fg: '#86efac' };
+    if (pct <= 25) return { bg: 'rgba(234,179,8,.16)', bd: 'rgba(234,179,8,.32)', fg: '#fde68a' };
+    return { bg: 'rgba(239,68,68,.16)', bd: 'rgba(239,68,68,.32)', fg: '#fca5a5' };
+  }
+
+  function sSvg(row) {
+    if (!row) return '';
+    var sheetComp = Number(row.chapa_comp_mm || 0) || 0;
+    var sheetLarg = Number(row.chapa_larg_mm || 0) || 0;
+    var pieceComp = Number(row.orient_comp_mm || 0) || 0;
+    var pieceLarg = Number(row.orient_larg_mm || 0) || 0;
+    var cols = sInt(row.cols);
+    var rows = sInt(row.rows);
+    if (!(sheetComp > 0 && sheetLarg > 0 && pieceComp > 0 && pieceLarg > 0 && cols > 0 && rows > 0)) return '';
+    var pad = 14;
+    var maxW = 420;
+    var maxH = 240;
+    var scale = Math.min((maxW - (pad * 2)) / sheetComp, (maxH - (pad * 2)) / sheetLarg);
+    if (!(scale > 0)) scale = 1;
+    var renderW = Math.max(20, Math.round(sheetComp * scale));
+    var renderH = Math.max(20, Math.round(sheetLarg * scale));
+    var pieces = '';
+    for (var r = 0; r < rows; r += 1) {
+      for (var c = 0; c < cols; c += 1) {
+        pieces += '<rect x="' + String(Math.round((pad + (c * pieceComp * scale)) * 100) / 100) + '" y="' + String(Math.round((pad + (r * pieceLarg * scale)) * 100) / 100) + '" width="' + String(Math.round((pieceComp * scale) * 100) / 100) + '" height="' + String(Math.round((pieceLarg * scale) * 100) / 100) + '" rx="2" fill="#185FA5" stroke="rgba(255,255,255,.24)" stroke-width=".8"></rect>';
+      }
+    }
+    return ''
+      + '<svg viewBox="0 0 ' + String(renderW + (pad * 2)) + ' ' + String(renderH + (pad * 2) + 20) + '" width="100%" height="100%" aria-label="Simulação de corte">'
+      + '<rect x="' + String(pad) + '" y="' + String(pad) + '" width="' + String(renderW) + '" height="' + String(renderH) + '" rx="8" fill="rgba(239,159,39,.2)" stroke="#EF9F27" stroke-width="1.5"></rect>'
+      + pieces
+      + '<text x="' + String(pad) + '" y="' + String(renderH + (pad * 2) + 14) + '" fill="#94a3b8" font-size="11" font-family="Arial, sans-serif">Chapa ' + sEsc(sFmtMm(sheetComp) + ' x ' + sFmtMm(sheetLarg)) + ' · Caixa ' + sEsc(sFmtMm(pieceComp) + ' x ' + sFmtMm(pieceLarg)) + '</text>'
+      + '</svg>';
+  }
+
+  function sRenderVisual(row, plan) {
+    var visual = document.getElementById('simd-visual');
+    var titulo = document.getElementById('simd-visual-titulo');
+    var svgHost = document.getElementById('simd-svg-container');
+    var dados = document.getElementById('simd-visual-dados');
+    if (!visual || !svgHost || !dados || !row) return;
+    if (titulo) titulo.textContent = String((row.nome || 'Chapa') + ' · ' + (row.tamanho || 'Sem tamanho'));
+    svgHost.innerHTML = sSvg(row);
+    dados.innerHTML = ''
+      + '<div class="simd-visual-grid">'
+      + '  <div><span>Fornecedor</span><strong>' + sEsc(row.fornecedor || '—') + '</strong></div>'
+      + '  <div><span>Peças por chapa</span><strong>' + sEsc(String(row.caixas_por_chapa || 0)) + '</strong></div>'
+      + '  <div><span>Desperdício</span><strong>' + sEsc(sFmtPct(row.desperdicio_pct || 0)) + '</strong></div>'
+      + '  <div><span>Estoque</span><strong>' + sEsc(String(row.estoque || 0)) + '</strong></div>'
+      + '  <div><span>Planificação</span><strong>' + sEsc(sFmtMm(plan && plan.peca_comp_mm || 0) + ' x ' + sFmtMm(plan && plan.peca_larg_mm || 0)) + '</strong></div>'
+      + '  <div><span>Onda</span><strong>' + sEsc(plan && plan.onda || '—') + '</strong></div>'
+      + '</div>'
+      + '<div class="simd-visual-notes">'
+      + '  <div><strong>Orientação:</strong> ' + sEsc(row.orientacao_label || '—') + ' · ' + sEsc(String(row.cols || 0)) + ' x ' + sEsc(String(row.rows || 0)) + '</div>'
+      + '  <div><strong>Área usada:</strong> ' + sEsc(sFmtAreaMm2(row.area_usada_mm2 || 0)) + ' · <strong>Área da chapa:</strong> ' + sEsc(sFmtAreaMm2(row.area_chapa_mm2 || 0)) + '</div>'
+      + '  <div><strong>Valor unit.:</strong> ' + sEsc(row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : 'Sem valor') + (row.chapas_necessarias != null ? (' · <strong>Chapas necessárias:</strong> ' + sEsc(String(row.chapas_necessarias)) + ' · <strong>Custo estimado:</strong> ' + sEsc(sFmtMoney(row.custo_estimado || 0))) : '') + '</div>'
+      + '</div>';
+    visual.style.display = 'grid';
+  }
+
+  function sRenderResults(compatibles, incompatibles, plan) {
+    var resultado = document.getElementById('simd-resultado');
+    var info = document.getElementById('simd-info-planif');
+    var aviso = document.getElementById('simd-aviso');
+    var wrap = document.getElementById('simd-tabela-wrap');
+    var visual = document.getElementById('simd-visual');
+    if (resultado) resultado.style.display = 'block';
+    if (info) {
+      info.innerHTML = ''
+        + '<strong>Planificação automática:</strong> ' + sEsc(sFmtMm(plan.peca_comp_mm) + ' x ' + sFmtMm(plan.peca_larg_mm))
+        + ' · <strong>Área:</strong> ' + sEsc(sFmtAreaMm2(plan.area_planificacao_mm2))
+        + ' · <strong>Onda:</strong> ' + sEsc(plan.onda || '—')
+        + (plan.qtd_pedido > 0 ? (' · <strong>Quantidade:</strong> ' + sEsc(String(plan.qtd_pedido))) : '');
+    }
+    if (!wrap) return;
+    if (!compatibles.length) {
+      if (aviso) {
+        aviso.style.display = 'block';
+        aviso.textContent = 'Nenhuma chapa do estoque comporta essa planificação. Veja a seção de não compatíveis para revisar os tamanhos.';
+      }
+      if (visual) visual.style.display = 'none';
+    } else if (aviso) {
+      aviso.style.display = 'none';
+      aviso.textContent = '';
+    }
+    var selectedId = String(window.__simdSelectedRowId || '').trim();
+    var selected = compatibles.find(function(row) { return sRowKey(row) === selectedId; }) || compatibles[0] || null;
+    window.__simdLastRows = compatibles.slice();
+    window.__simdLastPlan = Object.assign({}, plan);
+    window.__simdSelectedRowId = selected ? sRowKey(selected) : '';
+    wrap.innerHTML = ''
+      + '<div class="simd-table-shell">'
+      + '  <table class="simd-table">'
+      + '    <thead><tr><th>% Desperdício</th><th>Chapa</th><th>Fornecedor</th><th>Tamanho</th><th>Caixas/chapa</th><th>Estoque</th><th>Valor unit.</th><th>' + (plan.qtd_pedido > 0 ? 'Chapas necessárias / Custo' : 'Custo estimado') + '</th></tr></thead>'
+      + '    <tbody>'
+      + compatibles.map(function(row, idx) {
+          var tone = sBadgeTone(row.desperdicio_pct);
+          var rowId = sRowKey(row);
+          var selectedRow = rowId === window.__simdSelectedRowId;
+          return ''
+            + '<tr data-simd-row="' + sEsc(rowId) + '"' + (selectedRow ? ' class="is-selected"' : '') + '>'
+            + '  <td><span class="simd-badge" style="background:' + tone.bg + ';border-color:' + tone.bd + ';color:' + tone.fg + '">' + sEsc(sFmtPct(row.desperdicio_pct)) + '</span></td>'
+            + '  <td><div class="simd-cell-main">' + sEsc(row.nome || 'Chapa') + '</div><div class="simd-cell-sub">' + (idx === 0 ? 'Melhor opção' : ('Ranking ' + String(idx + 1))) + '</div></td>'
+            + '  <td>' + sEsc(row.fornecedor || '—') + '</td>'
+            + '  <td>' + sEsc(row.tamanho || '—') + '</td>'
+            + '  <td class="num">' + sEsc(sFmtNum(row.caixas_por_chapa || 0, 0)) + '</td>'
+            + '  <td class="num">' + sEsc(sFmtNum(row.estoque || 0, 0)) + '</td>'
+            + '  <td class="num">' + sEsc(row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : '—') + '</td>'
+            + '  <td class="num">' + sEsc(plan.qtd_pedido > 0 ? ((row.chapas_necessarias == null ? '—' : String(row.chapas_necessarias)) + ' / ' + sFmtMoney(row.custo_estimado || 0)) : (row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : '—')) + '</td>'
+            + '</tr>';
+        }).join('')
+      + '    </tbody>'
+      + '  </table>'
+      + '  <details class="simd-incompat">'
+      + '    <summary>Não compatíveis (' + sEsc(String(incompatibles.length)) + ')</summary>'
+      + '    <div class="simd-incompat-list">'
+      + incompatibles.map(function(row) {
+          return '<div class="simd-incompat-row"><strong>' + sEsc(row.nome || 'Chapa') + '</strong><span>' + sEsc([row.fornecedor || '—', row.tamanho || 'Sem tamanho', row.motivo || 'Sem encaixe'].join(' · ')) + '</span></div>';
+        }).join('')
+      + '    </div>'
+      + '  </details>'
+      + '</div>';
+    Array.prototype.slice.call(wrap.querySelectorAll('[data-simd-row]')).forEach(function(rowEl) {
+      rowEl.onclick = function() {
+        var rowId = String(rowEl.getAttribute('data-simd-row') || '').trim();
+        var row = compatibles.find(function(item) { return sRowKey(item) === rowId; }) || compatibles[0] || null;
+        if (!row) return;
+        window.__simdSelectedRowId = rowId;
+        sRenderResults(compatibles, incompatibles, plan);
+      };
+    });
+    if (selected) sRenderVisual(selected, plan);
+  }
+
+  function sBuildMailBody(row, plan) {
+    return [
+      'Pedido sugerido para caixa ' + sFmtMm(plan.caixa_comp_mm) + ' x ' + sFmtMm(plan.caixa_larg_mm) + ' x ' + sFmtMm(plan.caixa_alt_mm),
+      'Onda: ' + (plan.onda || '—'),
+      'Planificação: ' + sFmtMm(plan.peca_comp_mm) + ' x ' + sFmtMm(plan.peca_larg_mm),
+      'Chapa: ' + (row.nome || 'Chapa') + ' - ' + (row.tamanho || '—'),
+      'Fornecedor: ' + (row.fornecedor || '—'),
+      'Caixas por chapa: ' + String(row.caixas_por_chapa || 0),
+      'Desperdício: ' + sFmtPct(row.desperdicio_pct || 0),
+      'Quantidade em estoque: ' + String(row.estoque || 0),
+      'Valor unitário: ' + (row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : 'Sem valor'),
+      row.chapas_necessarias != null ? ('Chapas necessárias: ' + String(row.chapas_necessarias)) : '',
+      row.custo_estimado != null ? ('Custo estimado: ' + sFmtMoney(row.custo_estimado)) : ''
+    ].filter(Boolean).join('\n');
+  }
+
+  function sPrintSelected() {
+    var rows = Array.isArray(window.__simdLastRows) ? window.__simdLastRows : [];
+    if (!rows.length) {
+      try { alert('Calcule o simulador antes de imprimir.'); } catch (_) {}
+      return;
+    }
+    var selected = rows.find(function(row) { return sRowKey(row) === String(window.__simdSelectedRowId || '').trim(); }) || rows[0];
+    var plan = window.__simdLastPlan || {};
+    var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Simulador de Desperdício</title>'
+      + '<style>' + (typeof window._printCssPadraoComissoes === 'function' ? window._printCssPadraoComissoes() : 'body{font-family:Arial,sans-serif;padding:24px;color:#0f172a}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.card{border:1px solid #cbd5e1;border-radius:12px;padding:12px}.lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.08em}.val{font-size:20px;font-weight:700;margin-top:6px}') + '</style>'
+      + '</head><body>'
+      + '<div class="brandline">Italy Embalagens</div>'
+      + '<h1>Simulador de Desperdício</h1>'
+      + '<h2>Gerado em ' + sEsc(typeof window._printGeradoEmBr === 'function' ? window._printGeradoEmBr() : new Date().toLocaleString('pt-BR')) + '</h2>'
+      + '<div class="cards">'
+      + '<div class="card"><div class="lbl">Caixa</div><div class="val">' + sEsc(sFmtMm(plan.caixa_comp_mm) + ' x ' + sFmtMm(plan.caixa_larg_mm) + ' x ' + sFmtMm(plan.caixa_alt_mm)) + '</div></div>'
+      + '<div class="card"><div class="lbl">Onda</div><div class="val">' + sEsc(plan.onda || '—') + '</div></div>'
+      + '<div class="card"><div class="lbl">Planificação</div><div class="val">' + sEsc(sFmtMm(plan.peca_comp_mm) + ' x ' + sFmtMm(plan.peca_larg_mm)) + '</div></div>'
+      + '<div class="card"><div class="lbl">Melhor chapa</div><div class="val">' + sEsc(selected.nome || 'Chapa') + '</div></div>'
+      + '</div>'
+      + '<table><thead><tr><th>Fornecedor</th><th>Tamanho</th><th>Caixas/chapa</th><th>Desperdício</th><th>Estoque</th><th>Valor unit.</th><th>Chapas necessárias</th><th>Custo estimado</th></tr></thead>'
+      + '<tbody><tr>'
+      + '<td>' + sEsc(selected.fornecedor || '—') + '</td>'
+      + '<td>' + sEsc(selected.tamanho || '—') + '</td>'
+      + '<td>' + sEsc(String(selected.caixas_por_chapa || 0)) + '</td>'
+      + '<td>' + sEsc(sFmtPct(selected.desperdicio_pct || 0)) + '</td>'
+      + '<td>' + sEsc(String(selected.estoque || 0)) + '</td>'
+      + '<td>' + sEsc(selected.valor_unitario > 0 ? sFmtMoney(selected.valor_unitario) : '—') + '</td>'
+      + '<td>' + sEsc(selected.chapas_necessarias == null ? '—' : String(selected.chapas_necessarias)) + '</td>'
+      + '<td>' + sEsc(selected.custo_estimado == null ? '—' : sFmtMoney(selected.custo_estimado)) + '</td>'
+      + '</tr></tbody></table>'
+      + '<div style="margin-top:18px">' + sSvg(selected) + '</div>'
+      + '<script>window.onload=function(){setTimeout(function(){try{window.focus()}catch(e){}try{window.print()}catch(e){}},400)}<\/script>'
+      + '</body></html>';
+    if (typeof window._openStyledPrintWindow === 'function') {
+      return window._openStyledPrintWindow(html);
+    }
+    try {
+      var w = window.open('', '_blank', 'width=1100,height=760');
+      if (w && w.document) {
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+      }
+    } catch (_) {}
+  }
+
+  async function sFetchChapas() {
+    if (Array.isArray(window.__simdAllChapasCache) && window.__simdAllChapasCache.length) {
+      sLog('chapas em cache:', window.__simdAllChapasCache.length);
+      return window.__simdAllChapasCache.slice();
+    }
+    var resp = null;
+    if (typeof window._apiAuthFetch === 'function') {
+      resp = await window._apiAuthFetch('/api/chapas_estoque?limit=10000&nocache=1&_t=' + Date.now(), { cache: 'no-store' });
+    } else {
+      resp = await fetch('/api/chapas_estoque?limit=10000&nocache=1&_t=' + Date.now(), { cache: 'no-store' });
+    }
+    var data = await resp.json().catch(function() { return null; });
+    if (!resp.ok) throw new Error(String(data && (data.error || data.message) || 'Falha ao carregar chapas do estoque'));
+    var rows = Array.isArray(data) ? data : (Array.isArray(data && data.data) ? data.data : (Array.isArray(data && data.chapas) ? data.chapas : []));
+    rows = (Array.isArray(rows) ? rows : []).filter(function(row) {
+      return sInt(row && (row.quantidade != null ? row.quantidade : (row.qtd != null ? row.qtd : row.quantidade_atual))) > 0;
+    });
+    window.__simdAllChapasCache = rows.slice();
+    sLog('chapas carregadas:', rows.length);
+    return rows;
+  }
+
+  function sMailSelected() {
+    var rows = Array.isArray(window.__simdLastRows) ? window.__simdLastRows : [];
+    if (!rows.length) {
+      try { alert('Calcule o simulador antes de enviar por e-mail.'); } catch (_) {}
+      return;
+    }
+    var selected = rows.find(function(row) { return sRowKey(row) === String(window.__simdSelectedRowId || '').trim(); }) || rows[0];
+    var plan = window.__simdLastPlan || {};
+    var subject = encodeURIComponent('Simulacao de chapa - caixa ' + sFmtMm(plan.caixa_comp_mm) + ' x ' + sFmtMm(plan.caixa_larg_mm) + ' x ' + sFmtMm(plan.caixa_alt_mm));
+    var body = encodeURIComponent(sBuildMailBody(selected, plan));
+    try { window.location.href = 'mailto:?subject=' + subject + '&body=' + body; } catch (_) {}
+  }
+
+  async function sCalcular() {
+    var plan = sPlanFromDom();
+    var loading = document.getElementById('simd-loading');
+    var resultado = document.getElementById('simd-resultado');
+    if (!(plan.peca_larg_mm > 0 && plan.peca_comp_mm > 0)) {
+      sLog('calcular bloqueado: medidas insuficientes', plan);
+      try { alert('Preencha comprimento, largura e altura da caixa para calcular a planificação.'); } catch (_) {}
+      return;
+    }
+    window._simdSaveState();
+    if (loading) loading.style.display = 'block';
+    if (resultado) resultado.style.display = 'none';
+    try {
+      var base = window._simdChapaSelecionada ? [window._simdChapaSelecionada] : await sFetchChapas();
+      var compatibles = [];
+      var incompatibles = [];
+      (Array.isArray(base) ? base : []).forEach(function(chapa) {
+        var row = sCalcCandidate(chapa, plan);
+        if (row && row.ok) compatibles.push(row);
+        else incompatibles.push(row);
+      });
+      compatibles.sort(function(a, b) {
+        if (Number(a.desperdicio_pct || 0) !== Number(b.desperdicio_pct || 0)) return Number(a.desperdicio_pct || 0) - Number(b.desperdicio_pct || 0);
+        if (Number(b.caixas_por_chapa || 0) !== Number(a.caixas_por_chapa || 0)) return Number(b.caixas_por_chapa || 0) - Number(a.caixas_por_chapa || 0);
+        return Number(a.area_chapa_mm2 || 0) - Number(b.area_chapa_mm2 || 0);
+      });
+      sLog('calcular ranking', JSON.stringify({
+        caixa: {
+          comprimento: plan.caixa_comp_mm,
+          largura: plan.caixa_larg_mm,
+          altura: plan.caixa_alt_mm,
+          onda: plan.onda
+        },
+        planificacao: {
+          comprimento: plan.peca_comp_mm,
+          largura: plan.peca_larg_mm
+        },
+        base: base.length,
+        compativeis: compatibles.length,
+        nao_compativeis: incompatibles.length
+      }));
+      sRenderResults(compatibles, incompatibles, plan);
+    } catch (e) {
+      sErr('erro ao calcular', e);
+      try { alert('Erro ao calcular desperdício: ' + String(e && e.message || e)); } catch (_) {}
+      sRenderResults([], [], plan);
+    } finally {
+      if (loading) loading.style.display = 'none';
+      if (resultado) resultado.style.display = 'block';
+    }
+  }
+
+  function sVerificarCampos() {
+    var plan = sPlanFromDom();
+    var btn = document.getElementById('simd-btn');
+    sFillComputed(plan);
+    if (btn) {
+      var ok = plan.peca_larg_mm > 0 && plan.peca_comp_mm > 0;
+      btn.disabled = !ok;
+      btn.style.opacity = ok ? '1' : '0.55';
+      btn.style.cursor = ok ? 'pointer' : 'not-allowed';
+    }
+    try { window._simdSaveState(); } catch (_) {}
+  }
+
+  function sRenderShell() {
+    var host = document.getElementById('tela-simulador-desperdicio');
+    if (!host) return false;
+    if (host.dataset.simdBoxUi === '1') return true;
+    host.dataset.simdBoxUi = '1';
+    host.innerHTML = ''
+      + '<style>'
+      + '#tela-simulador-desperdicio .simd-shell{display:grid;gap:16px}'
+      + '#tela-simulador-desperdicio .simd-panel{background:rgba(15,23,42,.68);border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:18px}'
+      + '#tela-simulador-desperdicio .simd-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}'
+      + '#tela-simulador-desperdicio .simd-field{display:grid;gap:6px}'
+      + '#tela-simulador-desperdicio .simd-field label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}'
+      + '#tela-simulador-desperdicio .simd-field input,#tela-simulador-desperdicio .simd-field select{width:100%;padding:11px 12px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:12px;color:#f8fafc;font-size:13px}'
+      + '#tela-simulador-desperdicio .simd-field input[readonly]{background:rgba(15,23,42,.9);color:#cbd5e1}'
+      + '#tela-simulador-desperdicio .simd-plan-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}'
+      + '#tela-simulador-desperdicio .simd-plan-resumo{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}'
+      + '#tela-simulador-desperdicio .simd-meta-card{display:grid;gap:4px;padding:12px 14px;border-radius:14px;border:1px solid rgba(59,130,246,.2);background:rgba(30,41,59,.65)}'
+      + '#tela-simulador-desperdicio .simd-meta-card span{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
+      + '#tela-simulador-desperdicio .simd-meta-card strong{font-size:15px;color:#f8fafc}'
+      + '#tela-simulador-desperdicio .simd-inline-tip{padding:12px 14px;border-radius:12px;border:1px dashed rgba(148,163,184,.24);color:#94a3b8;font-size:12px}'
+      + '#tela-simulador-desperdicio .simd-actions{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px}'
+      + '#tela-simulador-desperdicio .simd-actions-left,#tela-simulador-desperdicio .simd-actions-right{display:flex;gap:10px;flex-wrap:wrap;align-items:center}'
+      + '#tela-simulador-desperdicio .simd-btn{padding:11px 18px;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:800;cursor:pointer}'
+      + '#tela-simulador-desperdicio .simd-btn.primary{background:linear-gradient(135deg,#2563eb,#1d4ed8)}'
+      + '#tela-simulador-desperdicio .simd-btn.ghost{background:rgba(15,23,42,.92);border:1px solid rgba(148,163,184,.18);color:#e2e8f0}'
+      + '#tela-simulador-desperdicio .simd-search-wrap{display:grid;gap:10px}'
+      + '#tela-simulador-desperdicio .simd-table-shell{display:grid;gap:14px}'
+      + '#tela-simulador-desperdicio .simd-table{width:100%;border-collapse:separate;border-spacing:0;min-width:980px}'
+      + '#tela-simulador-desperdicio .simd-table th{position:sticky;top:0;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;padding:12px;border-bottom:1px solid rgba(148,163,184,.18);text-align:left}'
+      + '#tela-simulador-desperdicio .simd-table td{padding:12px;border-bottom:1px solid rgba(148,163,184,.12);font-size:12px;color:#e2e8f0;background:rgba(15,23,42,.38)}'
+      + '#tela-simulador-desperdicio .simd-table tbody tr{cursor:pointer}'
+      + '#tela-simulador-desperdicio .simd-table tbody tr.is-selected td{background:rgba(24,95,165,.18)}'
+      + '#tela-simulador-desperdicio .simd-table .num{text-align:right;font-variant-numeric:tabular-nums}'
+      + '#tela-simulador-desperdicio .simd-badge{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;border:1px solid transparent;font-weight:900;font-size:11px}'
+      + '#tela-simulador-desperdicio .simd-cell-main{font-weight:800;color:#f8fafc}'
+      + '#tela-simulador-desperdicio .simd-cell-sub{font-size:11px;color:#94a3b8;margin-top:4px}'
+      + '#tela-simulador-desperdicio .simd-incompat{border:1px solid rgba(148,163,184,.14);border-radius:14px;background:rgba(2,6,23,.46);padding:12px 14px}'
+      + '#tela-simulador-desperdicio .simd-incompat summary{cursor:pointer;font-size:12px;font-weight:900;color:#cbd5e1;letter-spacing:.06em;text-transform:uppercase}'
+      + '#tela-simulador-desperdicio .simd-incompat-list{display:grid;gap:10px;margin-top:12px}'
+      + '#tela-simulador-desperdicio .simd-incompat-row{display:grid;gap:4px;padding:12px;border-radius:12px;background:rgba(15,23,42,.52);border:1px solid rgba(148,163,184,.12)}'
+      + '#tela-simulador-desperdicio .simd-incompat-row strong{color:#f8fafc;font-size:13px}'
+      + '#tela-simulador-desperdicio .simd-incompat-row span{color:#94a3b8;font-size:12px}'
+      + '#tela-simulador-desperdicio .simd-visual{display:none;grid-template-columns:1.1fr .9fr;gap:16px;align-items:start;margin-top:18px}'
+      + '#tela-simulador-desperdicio .simd-visual-box{background:rgba(15,23,42,.58);border:1px solid rgba(148,163,184,.14);border-radius:14px;padding:14px}'
+      + '#tela-simulador-desperdicio .simd-visual-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
+      + '#tela-simulador-desperdicio .simd-visual-grid span{display:block;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px}'
+      + '#tela-simulador-desperdicio .simd-visual-grid strong{font-size:14px;color:#f8fafc}'
+      + '#tela-simulador-desperdicio .simd-visual-notes{display:grid;gap:8px;margin-top:12px;font-size:12px;color:#cbd5e1}'
+      + '#tela-simulador-desperdicio #simd-resultado{display:none}'
+      + '#tela-simulador-desperdicio #simd-tabela-wrap{overflow:auto;border:1px solid rgba(148,163,184,.12);border-radius:16px;background:rgba(2,6,23,.35)}'
+      + '@media (max-width:1100px){#tela-simulador-desperdicio .simd-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#tela-simulador-desperdicio .simd-plan-grid{grid-template-columns:1fr}#tela-simulador-desperdicio .simd-plan-resumo{grid-template-columns:1fr}#tela-simulador-desperdicio .simd-visual{grid-template-columns:1fr}}'
+      + '@media (max-width:760px){#tela-simulador-desperdicio .simd-grid{grid-template-columns:1fr}#tela-simulador-desperdicio .simd-visual-grid{grid-template-columns:1fr}}'
+      + '</style>'
+      + '<div class="simd-shell">'
+      + '  <div class="simd-panel">'
+      + '    <div style="display:grid;gap:6px;margin-bottom:16px"><div style="font-size:18px;font-weight:800;color:#f8fafc">Simulador de Desperdício de Papelão</div><div style="font-size:13px;color:#94a3b8">Informe as medidas da caixa, veja a planificação automática e rankeie as chapas reais do estoque do menor para o maior desperdício.</div></div>'
+      + '    <div class="simd-grid">'
+      + '      <div class="simd-field"><label>Comprimento da Caixa (mm)</label><input type="number" min="1" id="simd-caixa-comp" placeholder="Ex: 400"></div>'
+      + '      <div class="simd-field"><label>Largura da Caixa (mm)</label><input type="number" min="1" id="simd-caixa-larg" placeholder="Ex: 300"></div>'
+      + '      <div class="simd-field"><label>Altura da Caixa (mm)</label><input type="number" min="1" id="simd-caixa-alt" placeholder="Ex: 200"></div>'
+      + '      <div class="simd-field"><label>Tipo de Onda</label><select id="simd-onda"><option value="B">B</option><option value="C">C</option><option value="BC">BC</option><option value="E">E</option></select></div>'
+      + '    </div>'
+      + '    <div class="simd-plan-grid" style="margin-top:16px">'
+      + '      <div class="simd-field"><label>Largura Necessária (mm)</label><input type="number" id="simd-larg" readonly><div style="font-size:11px;color:#64748b">Fórmula: largura + (altura × 2) + 15</div></div>'
+      + '      <div class="simd-field"><label>Comprimento Necessário (mm)</label><input type="number" id="simd-comp" readonly><div style="font-size:11px;color:#64748b">Fórmula: (comprimento + largura) × 2 + 20</div></div>'
+      + '    </div>'
+      + '    <div class="simd-grid" style="margin-top:16px">'
+      + '      <div class="simd-field"><label>Quantidade do Pedido (opcional)</label><input type="number" min="0" id="simd-qtd" placeholder="Ex: 1000"></div>'
+      + '      <div class="simd-field" style="grid-column:span 3"><label>Simular com Chapa Específica (opcional)</label><div class="simd-search-wrap"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="text" id="simd-busca-chapa" placeholder="Digite o nome ou fornecedor da chapa..." style="flex:1"><button type="button" class="simd-btn ghost" id="simd-btn-limpar-chapa" style="display:none">Limpar</button></div><div id="simd-busca-resultados" style="display:none;background:#111827;border:1px solid rgba(148,163,184,.14);border-radius:12px;overflow:hidden;max-height:220px;overflow:auto"></div><div id="simd-chapa-selecionada" style="display:none;padding:12px 14px;background:rgba(24,95,165,.16);border:1px solid rgba(24,95,165,.36);border-radius:12px"><div style="font-size:11px;color:#94a3b8;margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em">Chapa selecionada</div><div id="simd-chapa-sel-nome" style="font-size:14px;font-weight:800;color:#f8fafc"></div><div id="simd-chapa-sel-info" style="font-size:12px;color:#cbd5e1;margin-top:4px"></div></div></div></div>'
+      + '    </div>'
+      + '    <div id="simd-plan-resumo" class="simd-plan-resumo" style="margin-top:16px"></div>'
+      + '    <div class="simd-actions">'
+      + '      <div class="simd-actions-left"><button type="button" id="simd-btn" class="simd-btn primary">Calcular</button></div>'
+      + '      <div class="simd-actions-right"><div style="font-size:12px;color:#64748b">O ranking considera rotação 90° automaticamente e busca chapas reais do estoque.</div></div>'
+      + '    </div>'
+      + '  </div>'
+      + '  <div id="simd-loading" class="simd-panel" style="display:none;padding:26px;text-align:center;font-size:13px;color:#94a3b8">Calculando ranking de chapas...</div>'
+      + '  <div id="simd-resultado" class="simd-panel">'
+      + '    <div id="simd-info-planif" style="font-size:13px;color:#cbd5e1;margin-bottom:14px;padding:12px 14px;background:rgba(24,95,165,.12);border-radius:12px;border-left:3px solid #185FA5"></div>'
+      + '    <div id="simd-aviso" style="display:none;padding:16px;text-align:center;font-size:13px;color:#fde68a;background:rgba(234,179,8,.1);border-radius:12px;margin-bottom:14px"></div>'
+      + '    <div id="simd-tabela-wrap"></div>'
+      + '    <div id="simd-visual" class="simd-visual">'
+      + '      <div class="simd-visual-box"><div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Esquema de corte</div><div id="simd-svg-container"></div></div>'
+      + '      <div class="simd-visual-box"><div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Melhor chapa selecionada: <span id="simd-visual-titulo" style="color:#9FE1CB"></span></div><div id="simd-visual-dados"></div></div>'
+      + '    </div>'
+      + '  </div>'
+      + '</div>';
+    return true;
+  }
+
+  function sBindShell() {
+    if (!sRenderShell()) return false;
+    ['simd-caixa-comp', 'simd-caixa-larg', 'simd-caixa-alt', 'simd-onda', 'simd-qtd'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el || el.dataset.simdBoxBound === '1') return;
+      el.dataset.simdBoxBound = '1';
+      el.addEventListener('input', sVerificarCampos);
+      el.addEventListener('change', sVerificarCampos);
+      el.addEventListener('keydown', function(e) {
+        if (!e || e.key !== 'Enter') return;
+        try { e.preventDefault(); } catch (_) {}
+        var btn = document.getElementById('simd-btn');
+        if (btn && !btn.disabled) sCalcular();
+      });
+    });
+    var btn = document.getElementById('simd-btn');
+    if (btn && btn.dataset.simdBoxBound !== '1') {
+      btn.dataset.simdBoxBound = '1';
+      btn.onclick = function(e) {
+        try { if (e) e.preventDefault(); } catch (_) {}
+        return sCalcular();
+      };
+    }
+    var busca = document.getElementById('simd-busca-chapa');
+    if (busca && busca.dataset.simdBuscaBound !== '1') {
+      busca.dataset.simdBuscaBound = '1';
+      busca.addEventListener('input', function() {
+        try { if (typeof window._simdBuscarChapa === 'function') window._simdBuscarChapa(String(busca.value || '')); } catch (_) {}
+      });
+    }
+    var limpar = document.getElementById('simd-btn-limpar-chapa');
+    if (limpar && limpar.dataset.simdClearBound !== '1') {
+      limpar.dataset.simdClearBound = '1';
+      limpar.onclick = function(e) {
+        try { if (e) e.preventDefault(); } catch (_) {}
+        if (typeof window._simdLimparChapaSelecionada === 'function') window._simdLimparChapaSelecionada();
+      };
+    }
+    sVerificarCampos();
+    return true;
+  }
+
+  window._simdSaveState = function() {
+    try {
+      var plan = sPlanFromDom();
+      var chapa = window._simdChapaSelecionada || null;
+      localStorage.setItem(sStateKey(), JSON.stringify({
+        caixa_comp_mm: plan.caixa_comp_mm,
+        caixa_larg_mm: plan.caixa_larg_mm,
+        caixa_alt_mm: plan.caixa_alt_mm,
+        onda: plan.onda,
+        qtd_pedido: plan.qtd_pedido,
+        chapa: chapa ? {
+          id: chapa.id,
+          nome: chapa.nome || chapa.nome_uso || null,
+          fornecedor: chapa.fornecedor || chapa.forn || null,
+          tamanho: chapa.tamanho || chapa.tam || null,
+          quantidade: chapa.quantidade ?? chapa.qtd ?? null,
+          valor_unitario: chapa.valor_unitario ?? chapa.val ?? null,
+          nomenclatura: chapa.nomenclatura ?? chapa.nom ?? null
+        } : null
+      }));
+    } catch (_) {}
+  };
+
+  window._simdRestoreState = function() {
+    try {
+      if (!sBindShell()) return;
+      var raw = localStorage.getItem(sStateKey());
+      var st = raw ? JSON.parse(raw) : null;
+      if (!st || typeof st !== 'object') {
+        sVerificarCampos();
+        return;
+      }
+      function setVal(id, value) {
+        var el = document.getElementById(id);
+        if (!el || value == null || value === '') return;
+        el.value = String(value);
+      }
+      setVal('simd-caixa-comp', st.caixa_comp_mm);
+      setVal('simd-caixa-larg', st.caixa_larg_mm);
+      setVal('simd-caixa-alt', st.caixa_alt_mm);
+      setVal('simd-onda', st.onda || 'B');
+      setVal('simd-qtd', st.qtd_pedido);
+      sVerificarCampos();
+      if (st.chapa && st.chapa.id && typeof window._simdCarregarChapas === 'function') {
+        window._simdCarregarChapas().then(function(arr) {
+          var found = (Array.isArray(arr) ? arr : []).find(function(item) {
+            return String(item && item.id || '').trim() === String(st.chapa.id || '').trim();
+          }) || st.chapa;
+          if (typeof window._simdSelecionarChapa === 'function') window._simdSelecionarChapa(found);
+        }).catch(function() {
+          try { if (typeof window._simdSelecionarChapa === 'function') window._simdSelecionarChapa(st.chapa); } catch (_) {}
+        });
+      }
+    } catch (e) {
+      sErr('restore state falhou', e);
+    }
+  };
+
+  window._simdVerificarCampos = sVerificarCampos;
+  window._simdCarregarChapas = sFetchChapas;
+  window._simdCalcularFluxoImpl = sCalcular;
+  window._simdCalcularPatchedImpl = sCalcular;
+  window.__simdCalcularImpl = sCalcular;
+  window._simdCalcular = sCalcular;
+  window.__simdBoxPlannerFetch = sFetchChapas;
+  window.__simdBoxPlannerVerify = sVerificarCampos;
+  window.__simdBoxPlannerRestore = window._simdRestoreState;
+  window.__simdBoxPlannerApply = sApply;
+  window.__simdBoxPlannerRun = sCalcular;
+
+  function sApply() {
+    try {
+      if (!sBindShell()) return;
+      sVerificarCampos();
+    } catch (e) {
+      sErr('apply falhou', e);
+    }
+  }
+
+  sApply();
+  setTimeout(sApply, 0);
+  setTimeout(sApply, 300);
+  setTimeout(sApply, 1200);
+  try {
+    if (!window.__simdBoxPlannerObs) {
+      window.__simdBoxPlannerObs = new MutationObserver(function() {
+        try { clearTimeout(window.__simdBoxPlannerObsTimer); } catch (_) {}
+        window.__simdBoxPlannerObsTimer = setTimeout(sApply, 80);
+      });
+      window.__simdBoxPlannerObs.observe(document.body, { childList: true, subtree: true });
+    }
+  } catch (_) {}
+})();
 window.__compraPapelaoOrigRenderCompras = window.__compraPapelaoOrigRenderCompras || (typeof window.renderCompras === 'function' ? window.renderCompras : null);
 window.__compraPapelaoOrigAbrirModalCompra = window.__compraPapelaoOrigAbrirModalCompra || (typeof window.abrirModalCompra === 'function' ? window.abrirModalCompra : null);
 window.__compraPapelaoOrigAbrirTela = window.__compraPapelaoOrigAbrirTela || (typeof window.papelaoAbrirComprasChapas === 'function' ? window.papelaoAbrirComprasChapas : null);
@@ -32832,4 +33593,28 @@ function _ocultarGraficoComissoes() {
     if (erro) return null;
     return itens;
   };
+})();
+;(function() {
+  if (window.__simdBoxPlannerTailAtRealEndApplied) return;
+  window.__simdBoxPlannerTailAtRealEndApplied = true;
+  function reapply() {
+    try {
+      if (typeof window.__simdBoxPlannerFetch === 'function') window._simdCarregarChapas = window.__simdBoxPlannerFetch;
+      if (typeof window.__simdBoxPlannerVerify === 'function') window._simdVerificarCampos = window.__simdBoxPlannerVerify;
+      if (typeof window.__simdBoxPlannerRestore === 'function') window._simdRestoreState = window.__simdBoxPlannerRestore;
+      if (typeof window.__simdBoxPlannerRun === 'function') {
+        window._simdCalcularFluxoImpl = window.__simdBoxPlannerRun;
+        window._simdCalcularPatchedImpl = window.__simdBoxPlannerRun;
+        window.__simdCalcularImpl = window.__simdBoxPlannerRun;
+        window._simdCalcular = window.__simdBoxPlannerRun;
+      }
+      if (typeof window.__simdBoxPlannerApply === 'function') window.__simdBoxPlannerApply();
+    } catch (e) {
+      try { console.error('[SIMD] tail real reapply falhou', e); } catch (_) {}
+    }
+  }
+  reapply();
+  setTimeout(reapply, 0);
+  setTimeout(reapply, 200);
+  setTimeout(reapply, 1200);
 })();
