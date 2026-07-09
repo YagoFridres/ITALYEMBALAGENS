@@ -3766,173 +3766,341 @@ try {
   }
 
   function _simdParseDimensoes(chapa) {
-    var larguraAvulsa = _simdToNum(chapa && (chapa.largura ?? chapa.largura_mm ?? chapa.dim_largura ?? chapa.caixa_largura));
     var comprimentoAvulso = _simdToNum(chapa && (chapa.comprimento ?? chapa.comprimento_mm ?? chapa.dim_comprimento ?? chapa.caixa_comprimento));
-    if (larguraAvulsa > 0 && comprimentoAvulso > 0) {
-      return _patchNormalizeDimMm(larguraAvulsa, comprimentoAvulso);
+    var larguraAvulsa = _simdToNum(chapa && (chapa.largura ?? chapa.largura_mm ?? chapa.dim_largura ?? chapa.caixa_largura));
+    if (comprimentoAvulso > 0 && larguraAvulsa > 0) {
+      var dimsCampos = _patchNormalizeDimMm(larguraAvulsa, comprimentoAvulso);
+      return { largura: dimsCampos.largura, comprimento: dimsCampos.comprimento, origem: 'campos' };
     }
     var src = String(chapa && (chapa.tamanho || chapa.tam || chapa.nome || chapa.nomenclatura || '') || '').trim();
     var m = src.match(/(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)/);
     if (!m) return null;
-    var d1 = _simdToNum(m[1]);
-    var d2 = _simdToNum(m[2]);
-    if (!(d1 > 0 && d2 > 0)) return null;
-    return _patchNormalizeDimMm(d1, d2);
+    var compTxt = _simdToNum(m[1]);
+    var largTxt = _simdToNum(m[2]);
+    if (!(compTxt > 0 && largTxt > 0)) return null;
+    var dimsTam = _patchNormalizeDimMm(largTxt, compTxt);
+    return { largura: dimsTam.largura, comprimento: dimsTam.comprimento, origem: 'tamanho' };
+  }
+
+  function _simdFmtMm(v) {
+    return num(Number(v || 0) || 0, 0) + ' mm';
+  }
+
+  function _simdFmtPct(v) {
+    return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+  }
+
+  function _simdFmtArea(v) {
+    return (Number(v || 0) / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' m²';
+  }
+
+  function _simdGetRowKey(row) {
+    var raw = row && (row.id || row.__row_key || row.nome || row.tamanho || '');
+    return String(raw || '').trim();
+  }
+
+  function _simdBuildRetalhoLabel(row) {
+    var partes = [];
+    if (Number(row && row.sobra_comp_mm || 0) > 0) partes.push('Faixa lateral ' + _simdFmtMm(row.sobra_comp_mm));
+    if (Number(row && row.sobra_larg_mm || 0) > 0) partes.push('Faixa inferior ' + _simdFmtMm(row.sobra_larg_mm));
+    partes.push(_simdFmtArea(row && row.retalho_area_mm2 || 0));
+    return partes.join(' · ');
+  }
+
+  function _simdBuildSvg(row) {
+    if (!row) return '';
+    var chapaComp = Number(row.chapa_comprimento_mm || 0) || 0;
+    var chapaLarg = Number(row.chapa_largura_mm || 0) || 0;
+    var pecaComp = Number(row.orient_comp_mm || 0) || 0;
+    var pecaLarg = Number(row.orient_larg_mm || 0) || 0;
+    var cols = Math.max(0, Math.trunc(Number(row.cols || 0) || 0));
+    var rows = Math.max(0, Math.trunc(Number(row.rows || 0) || 0));
+    if (!(chapaComp > 0 && chapaLarg > 0 && pecaComp > 0 && pecaLarg > 0 && cols > 0 && rows > 0)) return '';
+    var pad = 14;
+    var maxW = 420;
+    var maxH = 240;
+    var scale = Math.min((maxW - (pad * 2)) / chapaComp, (maxH - (pad * 2)) / chapaLarg);
+    if (!(scale > 0)) scale = 1;
+    var renderW = Math.max(24, Math.round(chapaComp * scale));
+    var renderH = Math.max(24, Math.round(chapaLarg * scale));
+    var svgW = renderW + (pad * 2);
+    var svgH = renderH + (pad * 2) + 26;
+    var x0 = pad;
+    var y0 = pad;
+    var pieces = '';
+    for (var r = 0; r < rows; r += 1) {
+      for (var c = 0; c < cols; c += 1) {
+        pieces += '<rect x="' + String(Math.round(x0 + (c * pecaComp * scale) * 100) / 100) + '" y="' + String(Math.round(y0 + (r * pecaLarg * scale) * 100) / 100) + '" width="' + String(Math.max(1, Math.round((pecaComp * scale) * 100) / 100)) + '" height="' + String(Math.max(1, Math.round((pecaLarg * scale) * 100) / 100)) + '" rx="2" fill="#185FA5" stroke="rgba(255,255,255,.28)" stroke-width="0.8"></rect>';
+      }
+    }
+    return ''
+      + '<svg viewBox="0 0 ' + String(svgW) + ' ' + String(svgH) + '" width="100%" height="100%" role="img" aria-label="Esquema de corte">'
+      + '  <rect x="' + String(x0) + '" y="' + String(y0) + '" width="' + String(renderW) + '" height="' + String(renderH) + '" rx="10" fill="rgba(239,159,39,.22)" stroke="#EF9F27" stroke-width="1.5"></rect>'
+      + pieces
+      + '  <text x="' + String(x0) + '" y="' + String(svgH - 8) + '" fill="#94a3b8" font-size="11" font-family="Arial, sans-serif">Chapa ' + esc(chapaComp + ' x ' + chapaLarg + ' mm') + ' · Peça ' + esc(pecaComp + ' x ' + pecaLarg + ' mm') + '</text>'
+      + '</svg>';
+  }
+
+  function _simdRenderVisual(row, plan) {
+    var visual = document.getElementById('simd-visual');
+    var titulo = document.getElementById('simd-visual-titulo');
+    var svgHost = document.getElementById('simd-svg-container');
+    var dadosHost = document.getElementById('simd-visual-dados');
+    if (!visual || !svgHost || !dadosHost || !row) return;
+    if (titulo) titulo.textContent = String((row.nome || 'Chapa') + ' · ' + (row.tamanho || 'Sem tamanho'));
+    svgHost.innerHTML = _simdBuildSvg(row);
+    dadosHost.innerHTML = ''
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">'
+      + '  <div style="display:grid;gap:4px"><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,0.4)">Fornecedor</div><div style="font-size:14px;font-weight:700;color:#f8fafc">' + esc(String(row.fornecedor || '—')) + '</div></div>'
+      + '  <div style="display:grid;gap:4px"><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,0.4)">Gramatura</div><div style="font-size:14px;font-weight:700;color:#f8fafc">' + esc(String(row.gramatura || '—')) + '</div></div>'
+      + '  <div style="display:grid;gap:4px"><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,0.4)">Peças por chapa</div><div style="font-size:14px;font-weight:700;color:#9FE1CB">' + esc(String(row.pecas_por_chapa || 0)) + '</div></div>'
+      + '  <div style="display:grid;gap:4px"><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,0.4)">Desperdicio</div><div style="font-size:14px;font-weight:700;color:#EF9F27">' + esc(_simdFmtPct(row.desperdicio_pct || 0)) + '</div></div>'
+      + '</div>'
+      + '<div style="margin-top:14px;display:grid;gap:8px;font-size:12px;color:rgba(255,255,255,0.7)">'
+      + '  <div><strong style="color:#f8fafc">Orientação:</strong> ' + esc(String(row.orientacao_label || '—')) + '</div>'
+      + '  <div><strong style="color:#f8fafc">Grade:</strong> ' + esc(String(row.cols || 0)) + ' x ' + esc(String(row.rows || 0)) + ' peças</div>'
+      + '  <div><strong style="color:#f8fafc">Retalho:</strong> ' + esc(_simdBuildRetalhoLabel(row)) + '</div>'
+      + '  <div><strong style="color:#f8fafc">Área usada:</strong> ' + esc(_simdFmtArea(row.area_usada_mm2 || 0)) + ' · <strong style="color:#f8fafc">Área da chapa:</strong> ' + esc(_simdFmtArea(row.area_chapa_mm2 || 0)) + '</div>'
+      + (Number(plan && plan.qtd_pedido || 0) > 0 ? ('  <div><strong style="color:#f8fafc">Chapas necessárias:</strong> ' + esc(String(row.chapas_necessarias == null ? '—' : row.chapas_necessarias)) + '</div>') : '')
+      + '</div>';
+    visual.style.display = 'block';
+  }
+
+  function _simdBuildPrintHtml(row, plan) {
+    var titulo = 'Relatório do Simulador de Desperdício';
+    var pecaComp = Number(plan && plan.peca_comp_mm || 0) || 0;
+    var pecaLarg = Number(plan && plan.peca_larg_mm || 0) || 0;
+    return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + window._printEscText(titulo) + '</title>'
+      + '<style>' + _printCssPadraoComissoes() + '.simd-print-grid{display:grid;grid-template-columns:1.2fr .9fr;gap:18px;margin-top:18px}.simd-print-box{border:1px solid #dbe4f0;border-radius:16px;padding:16px;background:#fff}.simd-print-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;font-size:12px;color:#334155}.simd-print-meta strong{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px}.simd-print-svg svg{max-width:100%;height:auto}@media print{.simd-print-grid{grid-template-columns:1fr 1fr}}</style>'
+      + '</head><body>'
+      + '<div class="brandline">Italy Embalagens</div>'
+      + '<h2>Gerado em ' + window._printEscText(_printGeradoEmBr()) + '</h2>'
+      + '<h1>' + window._printEscText(titulo) + '</h1>'
+      + '<div class="cards">'
+      + '<div class="card"><div class="lbl">Melhor chapa</div><div class="val green">' + window._printEscText(row && (row.nome || row.tamanho || '—')) + '</div><div style="font-size:11px;color:#666;margin-top:6px">' + window._printEscText(row && row.fornecedor || '—') + '</div></div>'
+      + '<div class="card"><div class="lbl">Peças por chapa</div><div class="val">' + window._printEscText(String(row && row.pecas_por_chapa || 0)) + '</div><div style="font-size:11px;color:#666;margin-top:6px">' + window._printEscText(row && row.orientacao_label || '—') + '</div></div>'
+      + '<div class="card"><div class="lbl">Desperdicio</div><div class="val">' + window._printEscText(_simdFmtPct(row && row.desperdicio_pct || 0)) + '</div><div style="font-size:11px;color:#666;margin-top:6px">' + window._printEscText(_simdBuildRetalhoLabel(row)) + '</div></div>'
+      + '<div class="card"><div class="lbl">Quantidade em estoque</div><div class="val">' + window._printEscText(String(row && row.quantidade || 0)) + '</div><div style="font-size:11px;color:#666;margin-top:6px">' + window._printEscText(row && row.gramatura || 'Sem gramatura') + '</div></div>'
+      + '</div>'
+      + '<div class="simd-print-grid">'
+      + '  <div class="simd-print-box simd-print-svg">' + _simdBuildSvg(row) + '</div>'
+      + '  <div class="simd-print-box">'
+      + '    <div class="simd-print-meta">'
+      + '      <div><strong>Peça informada</strong>' + window._printEscText(pecaComp + ' x ' + pecaLarg + ' mm') + '</div>'
+      + '      <div><strong>Tamanho da chapa</strong>' + window._printEscText(String(row && row.tamanho || '—')) + '</div>'
+      + '      <div><strong>Fornecedor</strong>' + window._printEscText(row && row.fornecedor || '—') + '</div>'
+      + '      <div><strong>Gramatura</strong>' + window._printEscText(row && row.gramatura || '—') + '</div>'
+      + '      <div><strong>Área usada</strong>' + window._printEscText(_simdFmtArea(row && row.area_usada_mm2 || 0)) + '</div>'
+      + '      <div><strong>Área da chapa</strong>' + window._printEscText(_simdFmtArea(row && row.area_chapa_mm2 || 0)) + '</div>'
+      + '      <div><strong>Retalho</strong>' + window._printEscText(_simdBuildRetalhoLabel(row)) + '</div>'
+      + '      <div><strong>Chapas necessárias</strong>' + window._printEscText(String(row && row.chapas_necessarias == null ? '—' : row.chapas_necessarias)) + '</div>'
+      + '    </div>'
+      + '  </div>'
+      + '</div>'
+      + '<script>window.onload=function(){setTimeout(function(){try{window.focus()}catch(e){}try{window.print()}catch(e){}},700)}<\/script>'
+      + '</body></html>';
+  }
+
+  function _simdPrintSelecionada() {
+    var rows = Array.isArray(window.__simdLastRows) ? window.__simdLastRows : [];
+    if (!rows.length) {
+      try { alert('Calcule o simulador antes de imprimir.'); } catch (_) {}
+      return null;
+    }
+    var selectedId = String(window.__simdSelectedRowId || '').trim();
+    var row = rows.find(function(item) { return _simdGetRowKey(item) === selectedId; }) || rows[0];
+    if (!row) return null;
+    var html = _simdBuildPrintHtml(row, window.__simdLastPlan || {});
+    if (typeof window._openStyledPrintWindow === 'function') return window._openStyledPrintWindow(html);
+    return null;
+  }
+
+  function _simdBindRenderedActions(rows, plan) {
+    var wrap = document.getElementById('simd-tabela-wrap');
+    if (!wrap) return;
+    Array.prototype.slice.call(wrap.querySelectorAll('[data-simd-row]')).forEach(function(card) {
+      card.onclick = function() {
+        var rowId = String(card.getAttribute('data-simd-row') || '').trim();
+        window.__simdSelectedRowId = rowId;
+        var row = (Array.isArray(rows) ? rows : []).find(function(item) { return _simdGetRowKey(item) === rowId; }) || rows[0];
+        _simdRenderResultadosPatched(rows, plan);
+        _simdRenderVisual(row, plan);
+      };
+    });
+    var printBtn = wrap.querySelector('[data-simd-print]');
+    if (printBtn) printBtn.onclick = function(ev) {
+      if (ev) ev.preventDefault();
+      _simdPrintSelecionada();
+    };
   }
 
   async function _simdCarregarChapasPatched() {
     if (Array.isArray(window._simdChapasCache) && window._simdChapasCache.length) return window._simdChapasCache;
     try {
-      var sbClient = window._supabase || window.supabase || null;
-      if (sbClient && typeof sbClient.from === 'function') {
-        var sbRes = await sbClient
-          .from('chapas_estoque_v2')
-          .select('*')
-          .gt('quantidade', 0)
-          .limit(1000);
-        if (!sbRes.error && Array.isArray(sbRes.data) && sbRes.data.length) {
-          window._simdChapasCache = sbRes.data;
-          return sbRes.data;
-        }
+      var resp = null;
+      if (typeof window._apiAuthFetch === 'function') {
+        resp = await window._apiAuthFetch('/api/chapas_estoque?limit=1000&nocache=1&_t=' + Date.now(), { cache: 'no-store' });
+      } else {
+        var token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || '').trim();
+        var headers = token ? { Authorization: 'Bearer ' + token } : {};
+        resp = await fetch('/api/chapas_estoque?limit=1000&nocache=1&_t=' + Date.now(), { headers: headers, cache: 'no-store' });
       }
-    } catch (_) {}
-    try {
-      var token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || '').trim();
-      var headers = token ? { Authorization: 'Bearer ' + token } : {};
-      var resp = await fetch('/api/chapas_estoque?limit=1000', { headers: headers });
       var data = await resp.json().catch(function() { return null; });
       var arr = Array.isArray(data) ? data : (Array.isArray(data && data.data) ? data.data : (Array.isArray(data && data.chapas) ? data.chapas : []));
-      arr = arr.filter(function(ch) {
-        return (Number(ch && (ch.quantidade ?? ch.qtd ?? ch.quantidade_atual) || 0) || 0) > 0;
+      arr = (Array.isArray(arr) ? arr : []).filter(function(ch) {
+        return (Math.trunc(Number(ch && (ch.quantidade ?? ch.qtd ?? ch.quantidade_atual) || 0) || 0)) > 0;
       });
       window._simdChapasCache = arr;
       return arr;
-    } catch (_) {
+    } catch (e) {
+      try { console.error('[SIMD CHAPAS]', e); } catch (_) {}
       return [];
     }
   }
 
-  function _simdCalcularLinha(chapa, largNec, compNec, qtdPedido) {
+  function _simdCalcularLinha(chapa, pecaLarg, pecaComp, qtdPedido) {
     var dims = _simdParseDimensoes(chapa);
     if (!dims) return null;
+    var chapaComp = Number(dims.comprimento || 0) || 0;
+    var chapaLarg = Number(dims.largura || 0) || 0;
+    if (!(chapaComp > 0 && chapaLarg > 0)) return null;
     var variantes = [
-      { cols: Math.floor(dims.largura / largNec), rows: Math.floor(dims.comprimento / compNec), largura: dims.largura, comprimento: dims.comprimento },
-      { cols: Math.floor(dims.largura / compNec), rows: Math.floor(dims.comprimento / largNec), largura: dims.largura, comprimento: dims.comprimento }
-    ];
-    variantes = variantes.filter(function(v) { return v.cols > 0 && v.rows > 0; });
+      {
+        sentido: 'A',
+        orient_comp_mm: pecaComp,
+        orient_larg_mm: pecaLarg,
+        cols: Math.floor(chapaComp / pecaComp),
+        rows: Math.floor(chapaLarg / pecaLarg)
+      },
+      {
+        sentido: 'B',
+        orient_comp_mm: pecaLarg,
+        orient_larg_mm: pecaComp,
+        cols: Math.floor(chapaComp / pecaLarg),
+        rows: Math.floor(chapaLarg / pecaComp)
+      }
+    ].filter(function(item) {
+      return item.cols > 0 && item.rows > 0;
+    });
     if (!variantes.length) return null;
-    variantes.sort(function(a, b) { return (b.cols * b.rows) - (a.cols * a.rows); });
+    variantes.sort(function(a, b) {
+      var pecasA = a.cols * a.rows;
+      var pecasB = b.cols * b.rows;
+      if (pecasB !== pecasA) return pecasB - pecasA;
+      var sobraA = (chapaComp * chapaLarg) - (pecasA * pecaComp * pecaLarg);
+      var sobraB = (chapaComp * chapaLarg) - (pecasB * pecaComp * pecaLarg);
+      return sobraA - sobraB;
+    });
     var best = variantes[0];
-    var planPorChapa = best.cols * best.rows;
-    var areaChapa = dims.largura * dims.comprimento;
-    var areaPlan = largNec * compNec;
-    var desperdicioArea = Math.max(0, areaChapa - (planPorChapa * areaPlan));
-    var desperdicioPct = areaChapa > 0 ? Math.round((desperdicioArea / areaChapa) * 10000) / 100 : 100;
-    var estoque = Math.trunc(_simdToNum(chapa && (chapa.quantidade ?? chapa.qtd ?? chapa.quantidade_atual)));
-    var valorUnit = _simdToNum(chapa && (chapa.valor_unitario ?? chapa.val));
-    var chapasNec = (qtdPedido > 0 && planPorChapa > 0) ? Math.ceil(qtdPedido / planPorChapa) : null;
+    var nPecas = best.cols * best.rows;
+    if (!(nPecas > 0)) return null;
+    var areaChapa = chapaComp * chapaLarg;
+    var areaUsada = nPecas * pecaComp * pecaLarg;
+    var retalhoArea = Math.max(0, areaChapa - areaUsada);
+    var desperdicioPct = areaChapa > 0 ? ((1 - (areaUsada / areaChapa)) * 100) : 100;
+    var estoque = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade ?? chapa.qtd ?? chapa.quantidade_atual) || 0) || 0));
+    var nome = String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || chapa.nom || 'Chapa') || 'Chapa').trim();
+    var tamanho = String(chapa && (chapa.tamanho || chapa.tam) || (chapaComp + 'x' + chapaLarg)).trim();
+    var gramatura = String(chapa && (chapa.gramatura != null ? chapa.gramatura : chapa.espessura_mm) || '').trim();
+    var rowKey = String(chapa && chapa.id || [nome, tamanho, best.sentido, best.cols, best.rows].join('|')).trim();
+    var chapasNec = (qtdPedido > 0) ? Math.ceil(qtdPedido / nPecas) : null;
     return {
       id: chapa && chapa.id,
-      nome: chapa && (chapa.nome || chapa.nomenclatura || chapa.nom || 'Chapa'),
-      fornecedor: chapa && (chapa.fornecedor || chapa.forn || '—'),
-      tamanho: chapa && (chapa.tamanho || chapa.tam || '—'),
+      __row_key: rowKey,
+      nome: nome || 'Chapa',
+      fornecedor: String(chapa && (chapa.fornecedor || chapa.forn) || '—').trim() || '—',
+      gramatura: gramatura ? (gramatura + ' g/m²') : '—',
+      tamanho: tamanho || '—',
       quantidade: estoque,
-      valor_unitario: valorUnit,
-      planificacoes_por_chapa: planPorChapa,
-      desperdicio_real_pct: desperdicioPct,
-      desperdicio_area: desperdicioArea,
+      valor_unitario: _simdToNum(chapa && (chapa.valor_unitario ?? chapa.val)),
+      peca_comp_mm: pecaComp,
+      peca_larg_mm: pecaLarg,
+      chapa_comprimento_mm: chapaComp,
+      chapa_largura_mm: chapaLarg,
+      cols: best.cols,
+      rows: best.rows,
+      pecas_por_chapa: nPecas,
+      planificacoes_por_chapa: nPecas,
+      orientacao: best.sentido,
+      orientacao_label: best.sentido === 'A' ? ('Peça ' + pecaComp + ' x ' + pecaLarg + ' mm') : ('Peça rotacionada ' + pecaLarg + ' x ' + pecaComp + ' mm'),
+      orient_comp_mm: best.orient_comp_mm,
+      orient_larg_mm: best.orient_larg_mm,
+      area_usada_mm2: areaUsada,
+      area_chapa_mm2: areaChapa,
+      retalho_area_mm2: retalhoArea,
+      desperdicio_pct: Math.max(0, Math.round(desperdicioPct * 100) / 100),
+      desperdicio_real_pct: Math.max(0, Math.round(desperdicioPct * 100) / 100),
+      sobra_comp_mm: Math.max(0, chapaComp - (best.cols * best.orient_comp_mm)),
+      sobra_larg_mm: Math.max(0, chapaLarg - (best.rows * best.orient_larg_mm)),
       chapas_necessarias: chapasNec
     };
   }
 
-  function _simdRenderResultadosPatched(rows) {
+  function _simdRenderResultadosPatched(rows, plan) {
     var wrap = document.getElementById('simd-tabela-wrap');
-    var linhas = document.getElementById('simd-linhas');
     var aviso = document.getElementById('simd-aviso');
-    if (!wrap || !linhas) {
-      var host = document.getElementById('sim-resultado');
-      if (!host) {
-        var parent = document.querySelector('.simulador-container, #simulador-desperdicio, .simulador-wrapper, #simd-resultado')
-          || (document.getElementById('simd-btn') ? document.getElementById('simd-btn').closest('div, form, section') : null)
-          || document.body;
-        if (!parent) return;
-        host = document.createElement('div');
-        host.id = 'sim-resultado';
-        host.style.cssText = 'margin-top:16px';
-        parent.appendChild(host);
-      }
-      if (!Array.isArray(rows) || !rows.length) {
-        host.innerHTML = '<p style="color:#f59e0b;margin-top:16px">Nenhuma chapa do estoque comporta essa planificação.</p>';
-        return;
-      }
-      host.innerHTML = ''
-        + '<table style="width:100%;margin-top:16px;border-collapse:collapse;font-size:13px">'
-        + '<thead><tr style="border-bottom:1px solid #333">'
-        + '<th style="text-align:left;padding:6px">Nome/Uso</th>'
-        + '<th style="text-align:left;padding:6px">Fornecedor</th>'
-        + '<th style="text-align:center;padding:6px">Tamanho</th>'
-        + '<th style="text-align:center;padding:6px">Planif./Chapa</th>'
-        + '<th style="text-align:center;padding:6px">Desperdício</th>'
-        + '<th style="text-align:center;padding:6px">Estoque</th>'
-        + '<th style="text-align:right;padding:6px">R$/un</th>'
-        + '</tr></thead><tbody>'
-        + rows.map(function(r) {
-          var cor = Number(r && r.desperdicio_real_pct || 0) < 10 ? '#4caf50' : (Number(r && r.desperdicio_real_pct || 0) < 25 ? '#f59e0b' : '#ef4444');
-          return ''
-            + '<tr style="border-bottom:1px solid #222">'
-            + '<td style="padding:6px">' + String(r && r.nome || '—').replace(/</g, '&lt;') + '</td>'
-            + '<td style="padding:6px">' + String(r && r.fornecedor || '—').replace(/</g, '&lt;') + '</td>'
-            + '<td style="text-align:center;padding:6px">' + String(r && r.tamanho || '—').replace(/</g, '&lt;') + '</td>'
-            + '<td style="text-align:center;padding:6px">' + String(r && r.planificacoes_por_chapa || 0) + '</td>'
-            + '<td style="text-align:center;padding:6px;color:' + cor + '">' + String(Number(r && r.desperdicio_real_pct || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })) + '%</td>'
-            + '<td style="text-align:center;padding:6px">' + String(r && r.quantidade || 0) + '</td>'
-            + '<td style="text-align:right;padding:6px">' + ((Number(r && r.valor_unitario || 0) > 0) ? window._fmtRs(r.valor_unitario) : '—') + '</td>'
-            + '</tr>';
-        }).join('')
-        + '</tbody></table>';
+    var visual = document.getElementById('simd-visual');
+    var lista = Array.isArray(rows) ? rows.slice() : [];
+    if (aviso) {
+      aviso.style.display = lista.length ? 'none' : 'block';
+      aviso.textContent = 'Nenhuma chapa em estoque é compatível com estas medidas. Verifique se há chapas cadastradas ou ajuste as medidas.';
+    }
+    if (!wrap) return;
+    if (!lista.length) {
+      wrap.innerHTML = '<div style="padding:22px;text-align:center;color:rgba(255,255,255,0.55)">Nenhuma chapa do estoque comporta essa peça.</div>';
+      if (visual) visual.style.display = 'none';
       return;
     }
-    var head = wrap.querySelector('.simd-grid');
-    if (head) {
-      head.innerHTML =
-        '<div>Desperd.</div>' +
-        '<div>Nome/Uso</div>' +
-        '<div>Dimensões</div>' +
-        '<div>Fornecedor</div>' +
-        '<div style="text-align:center">Plan./chapa</div>' +
-        '<div style="text-align:center">Chapas nec.</div>' +
-        '<div style="text-align:right">Estoque</div>' +
-        '<div style="text-align:right">R$/un</div>';
-    }
-    if (!Array.isArray(rows) || !rows.length) {
-      if (aviso) {
-        aviso.style.display = 'block';
-        aviso.textContent = 'Nenhuma chapa em estoque é compatível com estas medidas. Verifique se há chapas cadastradas ou ajuste as medidas.';
-      }
-      linhas.innerHTML = '';
-      return;
-    }
-    if (aviso) aviso.style.display = 'none';
-    linhas.innerHTML = rows.map(function(r, idx) {
-      var bg = idx === 0 ? 'rgba(34,197,94,.10)' : 'transparent';
+    window.__simdLastRows = lista.slice();
+    window.__simdLastPlan = Object.assign({}, plan || {});
+    var selectedId = String(window.__simdSelectedRowId || '').trim();
+    var selected = lista.find(function(item) { return _simdGetRowKey(item) === selectedId; }) || lista[0];
+    window.__simdSelectedRowId = _simdGetRowKey(selected);
+    var qtdPedido = Math.max(0, Math.trunc(Number(plan && plan.qtd_pedido || 0) || 0));
+    var cardsHtml = lista.map(function(row, idx) {
+      var rowId = _simdGetRowKey(row);
+      var isSelected = rowId === window.__simdSelectedRowId;
+      var isBest = idx === 0;
       return ''
-        + '<div class="simd-grid" style="display:grid;grid-template-columns:60px 1fr 160px 120px 100px 100px 90px 100px;padding:11px 16px;gap:8px;align-items:center;background:' + bg + ';border-bottom:0.5px solid rgba(255,255,255,0.05)">'
-        + '<div style="font-size:16px;font-weight:800;color:' + (idx === 0 ? '#22c55e' : '#f59e0b') + ';text-align:center">' + String(Number(r.desperdicio_real_pct || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + '%</div>'
-        + '<div><div style="font-size:13px;font-weight:700;color:#f8fafc">' + String(r.nome || 'Chapa').replace(/</g, '&lt;') + '</div></div>'
-        + '<div style="font-size:12px;color:#cbd5e1">' + String(r.tamanho || '—').replace(/</g, '&lt;') + '</div>'
-        + '<div style="font-size:12px;color:#94a3b8">' + String(r.fornecedor || '—').replace(/</g, '&lt;') + '</div>'
-        + '<div style="font-size:13px;color:#e2e8f0;text-align:center">' + String(r.planificacoes_por_chapa || 0) + '</div>'
-        + '<div style="font-size:13px;color:#e2e8f0;text-align:center">' + String(r.chapas_necessarias == null ? '—' : r.chapas_necessarias) + '</div>'
-        + '<div style="font-size:13px;color:#e2e8f0;text-align:right">' + String(r.quantidade || 0) + '</div>'
-        + '<div style="font-size:13px;color:#e2e8f0;text-align:right">' + ((Number(r.valor_unitario || 0) > 0) ? ('R$ ' + Number(r.valor_unitario || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : '—') + '</div>'
-        + '</div>';
+        + '<button type="button" data-simd-row="' + esc(rowId) + '" style="text-align:left;display:grid;gap:12px;padding:16px 18px;border-radius:14px;border:1px solid ' + (isSelected ? 'rgba(24,95,165,.85)' : 'rgba(255,255,255,.08)') + ';background:' + (isSelected ? 'rgba(24,95,165,.14)' : 'rgba(255,255,255,.03)') + ';cursor:pointer;box-shadow:' + (isSelected ? '0 0 0 1px rgba(24,95,165,.24) inset' : 'none') + '">'
+        + '  <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">'
+        + '    <div style="display:grid;gap:4px">'
+        + '      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:' + (isBest ? '#9FE1CB' : '#94a3b8') + '">' + (isBest ? 'Melhor opcao' : ('Ranking ' + String(idx + 1))) + '</span>' + (isSelected ? '<span style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#60a5fa">Selecionada</span>' : '') + '</div>'
+        + '      <div style="font-size:16px;font-weight:800;color:#f8fafc">' + esc(row.nome || 'Chapa') + '</div>'
+        + '      <div style="font-size:12px;color:rgba(255,255,255,.55)">' + esc([row.fornecedor || '—', row.gramatura || '—', row.tamanho || '—'].join(' · ')) + '</div>'
+        + '    </div>'
+        + '    <div style="text-align:right">'
+        + '      <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8">Desperdicio</div>'
+        + '      <div style="font-size:22px;font-weight:900;color:' + (isBest ? '#9FE1CB' : '#EF9F27') + '">' + esc(_simdFmtPct(row.desperdicio_pct || 0)) + '</div>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">'
+        + '    <div style="display:grid;gap:3px"><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#64748b">Peças por chapa</div><div style="font-size:15px;font-weight:800;color:#f8fafc">' + esc(String(row.pecas_por_chapa || 0)) + '</div></div>'
+        + '    <div style="display:grid;gap:3px"><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#64748b">Retalho</div><div style="font-size:13px;font-weight:700;color:#f8fafc">' + esc(_simdBuildRetalhoLabel(row)) + '</div></div>'
+        + '    <div style="display:grid;gap:3px"><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#64748b">Quantidade em estoque</div><div style="font-size:15px;font-weight:800;color:#f8fafc">' + esc(String(row.quantidade || 0)) + '</div></div>'
+        + (qtdPedido > 0 ? ('    <div style="display:grid;gap:3px"><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#64748b">Chapas necessarias</div><div style="font-size:15px;font-weight:800;color:#f8fafc">' + esc(String(row.chapas_necessarias == null ? '—' : row.chapas_necessarias)) + '</div></div>') : '')
+        + '  </div>'
+        + '</button>';
     }).join('');
+    wrap.innerHTML = ''
+      + '<div style="padding:16px;display:grid;gap:14px;background:rgba(255,255,255,.02)">'
+      + '  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
+      + '    <div style="display:grid;gap:4px">'
+      + '      <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#64748b">Ranking do menor desperdicio para o maior</div>'
+      + '      <div style="font-size:14px;color:rgba(255,255,255,.58)">Clique em uma chapa para ver o desenho esquemático e usar a seleção na impressão.</div>'
+      + '    </div>'
+      + '    <button type="button" data-simd-print style="padding:10px 16px;background:#185FA5;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer">Imprimir Relatorio</button>'
+      + '  </div>'
+      + '  <div style="display:grid;gap:12px">' + cardsHtml + '</div>'
+      + '</div>';
+    _simdBindRenderedActions(lista, plan);
+    _simdRenderVisual(selected, plan);
   }
 
   async function _simdCalcularPatched() {
     var larg = _simdToNum((document.getElementById('simd-larg') || {}).value);
     var comp = _simdToNum((document.getElementById('simd-comp') || {}).value);
-    var qtdPedido = Math.trunc(_simdToNum((document.getElementById('simd-qtd') || {}).value));
+    var qtdPedido = Math.max(0, Math.trunc(_simdToNum((document.getElementById('simd-qtd') || {}).value)));
     var loading = document.getElementById('simd-loading');
     var resultado = document.getElementById('simd-resultado');
     var info = document.getElementById('simd-info-planif');
@@ -3943,39 +4111,37 @@ try {
     if (loading) loading.style.display = 'block';
     if (resultado) resultado.style.display = 'none';
     if (info) {
-      info.innerHTML = 'Planificação: <strong style="color:rgba(255,255,255,0.8)">' + String(comp) + ' × ' + String(larg) + ' mm</strong> — Área: <strong style="color:rgba(255,255,255,0.8)">' + ((larg * comp) / 1000000).toFixed(4) + ' m²</strong>';
+      info.innerHTML = 'Peça informada: <strong style="color:rgba(255,255,255,0.88)">' + String(comp) + ' x ' + String(larg) + ' mm</strong> · Área unitária: <strong style="color:rgba(255,255,255,0.88)">' + _simdFmtArea(comp * larg) + '</strong>';
     }
     try {
       try { console.log('[SIMD PATCH] calcular click', { largura: larg, comprimento: comp, quantidade: qtdPedido }); } catch (_) {}
-      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('S', 'simd calcular acionado', { largura: larg, comprimento: comp, quantidade: qtdPedido, chapaSelecionada: !!window._simdChapaSelecionada }); } catch (_) {}
-      var baseRows = [];
-      if (window._simdChapaSelecionada) baseRows = [window._simdChapaSelecionada];
-      else baseRows = await _simdCarregarChapasPatched();
-      try {
-        console.log('[SIMD PATCH] chapas carregadas:', Array.isArray(baseRows) ? baseRows.length : 0);
-        if (Array.isArray(baseRows) && baseRows[0]) console.log('[SIMD PATCH] primeira chapa:', baseRows[0]);
-      } catch (_) {}
-      var totalComDimensao = 0;
+      var baseRows = window._simdChapaSelecionada ? [window._simdChapaSelecionada] : await _simdCarregarChapasPatched();
       var rows = (Array.isArray(baseRows) ? baseRows : []).map(function(chapa) {
-        if (_simdParseDimensoes(chapa)) totalComDimensao += 1;
         return _simdCalcularLinha(chapa, larg, comp, qtdPedido);
       }).filter(Boolean);
       rows.sort(function(a, b) {
-        var da = Number(a && a.desperdicio_real_pct || 0);
-        var db = Number(b && b.desperdicio_real_pct || 0);
+        var da = Number(a && a.desperdicio_pct || 0);
+        var db = Number(b && b.desperdicio_pct || 0);
         if (da !== db) return da - db;
-        return Number(a && a.desperdicio_area || 0) - Number(b && b.desperdicio_area || 0);
+        if (Number(b && b.pecas_por_chapa || 0) !== Number(a && a.pecas_por_chapa || 0)) return Number(b && b.pecas_por_chapa || 0) - Number(a && a.pecas_por_chapa || 0);
+        return Number(a && a.retalho_area_mm2 || 0) - Number(b && b.retalho_area_mm2 || 0);
       });
       if (loading) loading.style.display = 'none';
       if (resultado) resultado.style.display = 'block';
-      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('S', 'simd processamento concluido', { totalChapas: Array.isArray(baseRows) ? baseRows.length : 0, totalComDimensao: totalComDimensao, totalCompativeis: rows.length, primeiraCompativel: rows[0] ? { nome: String(rows[0].nome || '').slice(0, 120), largura: Number(rows[0].largura || 0) || 0, comprimento: Number(rows[0].comprimento || 0) || 0, desperdicioPct: Number(rows[0].desperdicio_real_pct || 0) || 0 } : null }); } catch (_) {}
-      _simdRenderResultadosPatched(rows);
+      _simdRenderResultadosPatched(rows, {
+        peca_larg_mm: larg,
+        peca_comp_mm: comp,
+        qtd_pedido: qtdPedido
+      });
     } catch (e) {
       if (loading) loading.style.display = 'none';
       if (resultado) resultado.style.display = 'block';
-      _simdRenderResultadosPatched([]);
+      _simdRenderResultadosPatched([], {
+        peca_larg_mm: larg,
+        peca_comp_mm: comp,
+        qtd_pedido: qtdPedido
+      });
       try { console.error('[SIMD PATCH]', e); } catch (_) {}
-      try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('S', 'simd processamento falhou', { message: String(e && e.message || e), stack: String(e && e.stack || '') }); } catch (_) {}
     }
   }
 

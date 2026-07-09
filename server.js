@@ -19983,6 +19983,41 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
     }
 
     const areaPlanif = planifLarg * planifComp;
+    const toNum = (v) => {
+      const n = Number(String(v == null ? '' : v).replace(',', '.'));
+      return Number.isFinite(n) ? n : 0;
+    };
+    const normalizeMm = (largura, comprimento) => {
+      let larg = toNum(largura);
+      let comp = toNum(comprimento);
+      if (!(larg > 0 && comp > 0)) return { largura: 0, comprimento: 0 };
+      const max = Math.max(larg, comp);
+      const min = Math.min(larg, comp);
+      if (max <= 300) {
+        larg *= 10;
+        comp *= 10;
+      } else if (min > 0 && min <= 300 && max >= 600) {
+        if (larg === min) larg *= 10;
+        if (comp === min) comp *= 10;
+      }
+      return { largura: larg, comprimento: comp };
+    };
+    const parseDimensoes = (chapa) => {
+      const comp = toNum(chapa?.comprimento ?? chapa?.comprimento_mm ?? chapa?.dim_comprimento ?? chapa?.caixa_comprimento);
+      const larg = toNum(chapa?.largura ?? chapa?.largura_mm ?? chapa?.dim_largura ?? chapa?.caixa_largura);
+      if (comp > 0 && larg > 0) {
+        const dimsCampos = normalizeMm(larg, comp);
+        return { comprimento: dimsCampos.comprimento, largura: dimsCampos.largura, origem: 'campos' };
+      }
+      const tam = String(chapa?.tamanho || chapa?.tam || '').trim();
+      const match = tam.match(/(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)/);
+      if (!match) return null;
+      const compTam = toNum(match[1]);
+      const largTam = toNum(match[2]);
+      if (!(compTam > 0 && largTam > 0)) return null;
+      const dimsTam = normalizeMm(largTam, compTam);
+      return { comprimento: dimsTam.comprimento, largura: dimsTam.largura, origem: 'tamanho' };
+    };
 
     const table = await _chapasPreferV2Table();
     let q = supabase.from(table).select('*');
@@ -19997,52 +20032,73 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
     const resultados = [];
 
     for (const c of chapas) {
-      const tam = String(c.tamanho || c.tam || '').trim();
-      const m = tam.match(/(\d+)\s*[xX×]\s*(\d+)/);
-      if (!m) continue;
+      const dims = parseDimensoes(c);
+      if (!dims) continue;
+      const chapaComp = Number(dims.comprimento || 0) || 0;
+      const chapaLarg = Number(dims.largura || 0) || 0;
+      if (!(chapaComp > 0 && chapaLarg > 0)) continue;
 
-      const d1 = Number(m[1]);
-      const d2 = Number(m[2]);
-      if (!(d1 > 0 && d2 > 0)) continue;
+      const variantes = [
+        {
+          sentido: 'A',
+          orient_comp_mm: planifComp,
+          orient_larg_mm: planifLarg,
+          cols: Math.floor(chapaComp / planifComp),
+          rows: Math.floor(chapaLarg / planifLarg)
+        },
+        {
+          sentido: 'B',
+          orient_comp_mm: planifLarg,
+          orient_larg_mm: planifComp,
+          cols: Math.floor(chapaComp / planifLarg),
+          rows: Math.floor(chapaLarg / planifComp)
+        }
+      ].filter((item) => item.cols > 0 && item.rows > 0);
+      if (!variantes.length) continue;
 
-      const areaChapa = d1 * d2;
+      variantes.sort((a, b) => {
+        const pecasA = a.cols * a.rows;
+        const pecasB = b.cols * b.rows;
+        if (pecasB !== pecasA) return pecasB - pecasA;
+        const sobraA = (chapaComp * chapaLarg) - (pecasA * areaPlanif);
+        const sobraB = (chapaComp * chapaLarg) - (pecasB * areaPlanif);
+        return sobraA - sobraB;
+      });
 
-      const sentidoA = d1 >= planifComp && d2 >= planifLarg;
-      const sentidoB = d1 >= planifLarg && d2 >= planifComp;
-      if (!sentidoA && !sentidoB) continue;
-
-      let melhorCx = 0;
-      let melhorSentido = null;
-
-      if (sentidoA) {
-        const cx = Math.floor(d1 / planifComp) * Math.floor(d2 / planifLarg);
-        if (cx > melhorCx) { melhorCx = cx; melhorSentido = 'A'; }
-      }
-      if (sentidoB) {
-        const cx = Math.floor(d1 / planifLarg) * Math.floor(d2 / planifComp);
-        if (cx > melhorCx) { melhorCx = cx; melhorSentido = 'B'; }
-      }
-      if (!(melhorCx > 0)) continue;
-
-      const caixasPorChapa = melhorCx;
+      const melhor = variantes[0];
+      const caixasPorChapa = melhor.cols * melhor.rows;
+      if (!(caixasPorChapa > 0)) continue;
+      const areaChapa = chapaComp * chapaLarg;
       const areaUsada = caixasPorChapa * areaPlanif;
       const areaSobra = Math.max(0, areaChapa - areaUsada);
-      const despPct = areaChapa > 0 ? Math.round((areaSobra / areaChapa) * 100) : 0;
+      const despPct = areaChapa > 0 ? Math.round(((1 - (areaUsada / areaChapa)) * 100) * 100) / 100 : 100;
+      const chapasNec = caixasPorChapa > 0 && Number(req.body?.qtd_pedido || 0) > 0 ? Math.ceil((Number(req.body?.qtd_pedido || 0) || 0) / caixasPorChapa) : null;
 
       resultados.push({
         id: c.id,
-        nome: String(c.nome || c.nomenclatura || c.nom || '').trim(),
+        nome: String(c.nome_uso || c.nome || c.nomenclatura || c.nom || '').trim(),
         nomenclatura: String(c.nomenclatura || c.nom || '').trim(),
         fornecedor: String(c.fornecedor || '').trim(),
-        tamanho: tam,
-        dim1: d1,
-        dim2: d2,
+        gramatura: Number(c.gramatura || 0) || 0,
+        tamanho: String(c.tamanho || c.tam || `${chapaComp}x${chapaLarg}`).trim(),
+        dim1: chapaComp,
+        dim2: chapaLarg,
         area_chapa_mm2: areaChapa,
         quantidade: Number(c.quantidade || c.qtd || 0) || 0,
         valor_unitario: Number(c.valor_unitario || c.val || 0) || 0,
         cabe: true,
         caixas_por_chapa: caixasPorChapa,
-        sentido: melhorSentido,
+        pecas_por_chapa: caixasPorChapa,
+        sentido: melhor.sentido,
+        orient_comp_mm: melhor.orient_comp_mm,
+        orient_larg_mm: melhor.orient_larg_mm,
+        cols: melhor.cols,
+        rows: melhor.rows,
+        retalho_area_mm2: areaSobra,
+        sobra_comp_mm: Math.max(0, chapaComp - (melhor.cols * melhor.orient_comp_mm)),
+        sobra_larg_mm: Math.max(0, chapaLarg - (melhor.rows * melhor.orient_larg_mm)),
+        chapas_necessarias: chapasNec,
+        desperdicio_pct: Math.max(0, despPct),
         desperdicio_real_pct: Math.max(0, despPct),
         economia_vs_pior: 0,
       });
