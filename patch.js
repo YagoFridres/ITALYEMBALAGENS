@@ -21355,13 +21355,13 @@ window._mbnActive = function(id) {
       var tamanho = _ofmaqTamanhoLabel(of);
       var cores = _ofmaqCoresLabel(of);
       return ''
-        + '<div class="ofmaq-busca-card" data-of-id="' + escAttrLocal(String(of && of.id || '')) + '" style="border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:14px;background:linear-gradient(145deg,rgba(8,17,32,.95),rgba(15,23,42,.95));box-shadow:0 14px 34px rgba(0,0,0,.24)">'
+        + '<div class="ofmaq-busca-card" data-of-id="' + escAttrLocal(String(of && of.id || '')) + '" style="border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:16px;min-height:196px;background:linear-gradient(145deg,rgba(8,17,32,.95),rgba(15,23,42,.95));box-shadow:0 14px 34px rgba(0,0,0,.24)">'
         + '  <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">'
-        + '    <div><div style="font-size:15px;font-weight:900;color:#f8fafc">OF #' + escHLocal(numero) + '</div><div style="margin-top:4px;font-size:13px;color:#cbd5e1">' + escHLocal(cliente) + '</div></div>'
+          + '    <div><div style="font-size:16px;font-weight:900;color:#f8fafc">OF #' + escHLocal(numero) + '</div><div style="margin-top:4px;font-size:13px;color:#cbd5e1">' + escHLocal(cliente) + '</div></div>'
         + '    <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">Máquina: <b style="color:#e2e8f0">' + escHLocal(maquina) + '</b></div>'
         + '  </div>'
-        + '  <div style="margin-top:10px;font-size:13px;color:#e2e8f0;font-weight:700">' + escHLocal(produto || '—') + '</div>'
-        + '  <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 12px;font-size:12px;color:#94a3b8">'
+        + '  <div style="margin-top:12px;font-size:13px;color:#e2e8f0;font-weight:700;line-height:1.45">' + escHLocal(produto || '—') + '</div>'
+        + '  <div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 12px;font-size:12px;color:#94a3b8">'
         + '    <div><span style="color:#64748b">Entrega:</span> <b style="color:#e2e8f0">' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</b></div>'
         + '    <div><span style="color:#64748b">Quantidade:</span> <b style="color:#e2e8f0">' + escHLocal(String(_getQtdOf(of) != null ? _getQtdOf(of) : '—')) + '</b></div>'
         + '    <div><span style="color:#64748b">Tamanho:</span> <b style="color:#e2e8f0">' + escHLocal(tamanho) + '</b></div>'
@@ -21735,15 +21735,17 @@ window._mbnActive = function(id) {
   function _ofmaqApplyReadableCardLayout(card, of) {
     if (!card || !of) return;
     try {
-      card.style.padding = '14px';
+      card.style.padding = '16px';
       card.style.lineHeight = '1.5';
-      card.style.marginBottom = '10px';
+      card.style.marginBottom = '12px';
+      card.style.borderRadius = '16px';
+      card.style.minHeight = '184px';
     } catch (_) {}
     var content = getCardContentEl(card);
     var textWrap = _ofmaqTextWrap(card, content);
     if (!content || !textWrap) return;
     try {
-      content.style.gap = '14px';
+      content.style.gap = '16px';
       content.style.alignItems = 'flex-start';
       content.classList.add('patch-ofmaq-card-main');
     } catch (_) {}
@@ -21754,7 +21756,7 @@ window._mbnActive = function(id) {
       }) || null;
     }
     if (title) {
-      title.style.fontSize = '16px';
+      title.style.fontSize = '17px';
       title.style.fontWeight = '700';
       title.style.lineHeight = '1.35';
       title.style.marginBottom = '10px';
