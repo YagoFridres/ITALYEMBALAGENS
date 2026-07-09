@@ -1103,7 +1103,7 @@ app.get('/manifest.json', (req, res) => {
 
 const PATCH_RUNTIME_VERSION = '20260707133500';
 const SW_RUNTIME_VERSION = '20260707133500';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260709173542';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260709180145';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -3430,6 +3430,7 @@ const CAMPOS_OFS_UPDATE = new Set([
   'ordem_maquina', 'prioridade', 'prioridade_ordem', 'maquina_agendada',
   'data_agendamento', 'agendamento_auto', 'setor_finalizacao',
   'caixas_boas', 'caixas_perdidas', 'motivo_perda', 'operador_conclusao',
+  'tempo_setup_real', 'tempo_producao_real',
   'dim_comprimento', 'dim_largura', 'dim_altura', 'gramatura_id',
   'chapa_id', 'modo_programacao', 'dia_programacao', 'cidade_entrega',
   'valor_venda', 'valor_total', 'fluxo_maquinas', 'maquina_atual_index',

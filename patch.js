@@ -374,6 +374,367 @@ try {
   setTimeout(reapply, 1200);
 })();
 ;(function() {
+  if (window.__ofmaqActionsFixTailApplied) return;
+  window.__ofmaqActionsFixTailApplied = true;
+
+  function logOfmaq(msg, extra) {
+    try {
+      if (extra === undefined) console.log('[OFS-MAQ]', msg);
+      else console.log('[OFS-MAQ]', msg, extra);
+    } catch (_) {}
+  }
+
+  function cleanupOfmaqArtifacts() {
+    try {
+      Array.prototype.slice.call(document.querySelectorAll(
+        '#ofmaq-acoes-ov,#ofmaq-acoes-sheet,#bs-overlay,#bs-acoes,.acoes-dropdown,.dropdown-backdrop,.estoque-modal-overlay[data-modal-padrao="1"]'
+      )).forEach(function(el) {
+        try { el.remove(); } catch (_) {}
+      });
+    } catch (_) {}
+    try {
+      ['modal-alterar-entrega', 'modal-alterar-maquina-ofmaq'].forEach(function(id) {
+        var modal = document.getElementById(id);
+        if (!modal) return;
+        try {
+          if (typeof fechar === 'function') fechar(id);
+          else modal.style.display = 'none';
+        } catch (_) {
+          try { modal.style.display = 'none'; } catch (_) {}
+        }
+      });
+    } catch (_) {}
+    try { if (typeof fecharOfmaqAcoesSheet === 'function') fecharOfmaqAcoesSheet(); } catch (_) {}
+    try { ofEmEdicaoMaquina = null; } catch (_) {}
+  }
+
+  function getOfmaqById(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return null;
+    try {
+      if (typeof ofmaqGetOFById === 'function') {
+        var found = ofmaqGetOFById(sid);
+        if (found) return found;
+      }
+    } catch (_) {}
+    var pools = [window.OFS, typeof OFs !== 'undefined' ? OFs : null, window.OFS_ARQUIVO];
+    for (var i = 0; i < pools.length; i += 1) {
+      var list = Array.isArray(pools[i]) ? pools[i] : [];
+      for (var j = 0; j < list.length; j += 1) {
+        if (String(list[j] && list[j].id || '').trim() === sid) return list[j];
+      }
+    }
+    return null;
+  }
+
+  function mergeOfLocal(id, patch) {
+    var sid = String(id || '').trim();
+    if (!sid || !patch || typeof patch !== 'object') return;
+    [window.OFS, typeof OFs !== 'undefined' ? OFs : null, window.OFS_ARQUIVO].forEach(function(pool) {
+      if (!Array.isArray(pool)) return;
+      var idx = pool.findIndex(function(item) { return String(item && item.id || '').trim() === sid; });
+      if (idx >= 0) pool[idx] = Object.assign({}, pool[idx] || {}, patch);
+    });
+  }
+
+  async function refreshOfmaq(reason) {
+    logOfmaq('refresh tela', reason || '');
+    try {
+      window._ofmaqForceReload = true;
+      window._ofmaqBaseList = null;
+      window._ofmaqCache = {};
+    } catch (_) {}
+    try {
+      if (typeof renderOFsPorMaquina === 'function') await renderOFsPorMaquina();
+    } catch (e) {
+      logOfmaq('erro refresh renderOFsPorMaquina', String(e && e.message || e));
+    }
+    setTimeout(function() {
+      try { if (typeof window.__ofmaqEnsureBuscaUiPatch === 'function') window.__ofmaqEnsureBuscaUiPatch(); } catch (_) {}
+      try { bindNativeBusca(); } catch (_) {}
+    }, 60);
+  }
+
+  function machineOptions() {
+    var map = {};
+    function add(name) {
+      var raw = String(name || '').trim();
+      if (!raw) return;
+      var canon = '';
+      try { canon = typeof maqAtivaFromNome === 'function' ? String(maqAtivaFromNome(raw) || raw).trim() : raw; } catch (_) { canon = raw; }
+      if (!canon || /^sem m[aá]quina$/i.test(canon)) return;
+      map[canon] = canon;
+    }
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('#ofmaq-altmaq-sel option')).forEach(function(opt) {
+        add(String(opt && opt.value || '').trim());
+      });
+    } catch (_) {}
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('[data-maquina-id],[data-maquina-wrapper],.maq-col,.maq-column,.maq-box')).forEach(function(el) {
+        add(el.getAttribute && (el.getAttribute('data-maquina-id') || el.getAttribute('data-maquina-wrapper') || el.getAttribute('data-maquina')));
+        add(el.dataset && (el.dataset.maquinaId || el.dataset.maquinaWrapper || el.dataset.maquina));
+      });
+    } catch (_) {}
+    try {
+      (Array.isArray(window.OFS) ? window.OFS : []).forEach(function(of) {
+        try { add(typeof getMaquinaAtual === 'function' ? getMaquinaAtual(of) : ''); } catch (_) {}
+        add(of && (of.maquina || of.maquina_agendada || of.maq));
+      });
+    } catch (_) {}
+    return Object.keys(map).sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); });
+  }
+
+  function buildSelectOptions(current) {
+    var actual = String(current || '').trim();
+    return machineOptions().map(function(name) {
+      return '<option value="' + sEsc(name) + '"' + (name === actual ? ' selected' : '') + '>' + sEsc(name) + '</option>';
+    }).join('');
+  }
+
+  async function persistPatch(id, payload) {
+    logOfmaq('PATCH /api/ofs/:id', { id: id, payload: payload });
+    var r = await apiFetch('/api/ofs/' + encodeURIComponent(String(id || '').trim()), { method: 'PATCH', body: payload });
+    var j = r ? await r.json().catch(function() { return null; }) : null;
+    if (!r || !r.ok || (j && j.ok === false)) throw new Error(j && (j.error || j.message) || 'Falha ao salvar');
+    return (j && (j.data || j)) || payload;
+  }
+
+  async function openAlterarMaquinaPatched(ofId, ofNum) {
+    cleanupOfmaqArtifacts();
+    var of = getOfmaqById(ofId);
+    var id = String(ofId || '').trim();
+    if (!id || !of) return;
+    var maqAtual = '';
+    try { maqAtual = typeof getMaquinaAtual === 'function' ? String(getMaquinaAtual(of) || '').trim() : ''; } catch (_) {}
+    maqAtual = maqAtual || String(of.maquina_agendada || of.maquina || (Array.isArray(of.maq) ? of.maq[0] : of.maq) || '').trim();
+    var entAtual = String(of.data_entrega || of.ent || '').slice(0, 10);
+    var overlay = _abrirModalPadrao({
+      modalId: 'patch-ofmaq-altmaq',
+      title: 'Alterar Máquina',
+      bodyHtml: ''
+        + '<div class="ccpx-modal-grid">'
+        + '  <div class="ccpx-modal-field full"><label>OF</label><input type="text" value="OF #' + sEsc(String(ofNum || of.numero || of.of || '').trim() || '—') + '" readonly></div>'
+        + '  <div class="ccpx-modal-field"><label>Máquina Atual</label><input type="text" value="' + sEsc(maqAtual || '—') + '" readonly></div>'
+        + '  <div class="ccpx-modal-field"><label>Nova Máquina</label><select id="patch-ofmaq-maq-nova">' + buildSelectOptions(maqAtual) + '</select></div>'
+        + '  <div class="ccpx-modal-field"><label>Alterar Entrega Também?</label><select id="patch-ofmaq-maq-alterar-data"><option value="0">Não</option><option value="1">Sim</option></select></div>'
+        + '  <div class="ccpx-modal-field"><label>Nova Data de Entrega</label><input id="patch-ofmaq-maq-data" type="date" value="' + sEsc(entAtual) + '"></div>'
+        + '</div>',
+      footerHtml: '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button type="button" class="estoque-modal-btn estoque-modal-btn-blue" id="patch-ofmaq-maq-save">Salvar</button>'
+    });
+    if (!overlay) return;
+    var saveBtn = overlay.querySelector('#patch-ofmaq-maq-save');
+    if (!saveBtn) return;
+    saveBtn.onclick = async function() {
+      var novaMaq = String((overlay.querySelector('#patch-ofmaq-maq-nova') || {}).value || '').trim();
+      var alterarData = String((overlay.querySelector('#patch-ofmaq-maq-alterar-data') || {}).value || '') === '1';
+      var novaData = String((overlay.querySelector('#patch-ofmaq-maq-data') || {}).value || '').slice(0, 10);
+      if (!novaMaq) { try { window.toast('Selecione a nova máquina.', 'var(--red)'); } catch (_) {} return; }
+      if (alterarData && !novaData) { try { window.toast('Informe a nova data.', 'var(--red)'); } catch (_) {} return; }
+      try {
+        saveBtn.disabled = true;
+        var ofRef = getOfmaqById(id) || of;
+        var idx0 = Number(ofRef && ofRef.maquina_atual_index != null ? ofRef.maquina_atual_index : 0);
+        var idx = (Number.isFinite(idx0) && idx0 >= 0) ? idx0 : 0;
+        var fluxo = ofRef && (ofRef.fluxo_maquinas != null ? ofRef.fluxo_maquinas : (ofRef.maq != null ? ofRef.maq : []));
+        if (typeof fluxo === 'string') { try { fluxo = JSON.parse(fluxo || '[]'); } catch (_) { fluxo = []; } }
+        if (!Array.isArray(fluxo)) fluxo = [];
+        var fluxoNovo = (fluxo.length ? fluxo.slice() : [novaMaq]).map(function(item, pos) {
+          if (pos !== Math.min(idx, Math.max(0, fluxo.length - 1))) return item;
+          if (item && typeof item === 'object' && !Array.isArray(item)) return Object.assign({}, item, { nome: novaMaq, maquina: novaMaq, name: novaMaq });
+          return novaMaq;
+        });
+        var payload = { maquina: novaMaq, maq: [novaMaq], maquina_agendada: novaMaq, fluxo_maquinas: fluxoNovo, maquina_atual_index: idx };
+        if (alterarData && novaData) {
+          payload.data_entrega = novaData;
+          payload.ent = novaData;
+        }
+        var row = await persistPatch(id, payload);
+        mergeOfLocal(id, Object.assign({}, payload, row || {}));
+        try { _fecharModalPadrao('patch-ofmaq-altmaq'); } catch (_) {}
+        cleanupOfmaqArtifacts();
+        await refreshOfmaq('alterar-maquina');
+        try { window.toast('Máquina alterada com sucesso.', 'var(--green)'); } catch (_) {}
+      } catch (e) {
+        logOfmaq('erro alterar máquina', String(e && e.message || e));
+        saveBtn.disabled = false;
+        try { window.toast('Erro ao alterar máquina: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+      }
+    };
+  }
+
+  async function openAlterarDataPatched(ofId, ofNum, dataAtual) {
+    cleanupOfmaqArtifacts();
+    var of = getOfmaqById(ofId);
+    var id = String(ofId || '').trim();
+    if (!id || !of) return;
+    var entAtual = String(dataAtual || of.data_entrega || of.ent || '').slice(0, 10);
+    var overlay = _abrirModalPadrao({
+      modalId: 'patch-ofmaq-altdata',
+      title: 'Alterar Data de Entrega',
+      bodyHtml: ''
+        + '<div class="ccpx-modal-grid">'
+        + '  <div class="ccpx-modal-field full"><label>OF</label><input type="text" value="OF #' + sEsc(String(ofNum || of.numero || of.of || '').trim() || '—') + '" readonly></div>'
+        + '  <div class="ccpx-modal-field"><label>Motivo</label><select id="patch-ofmaq-data-motivo"><option value="Falta de Papelão">Falta de Papelão</option><option value="Outro">Outro</option></select></div>'
+        + '  <div class="ccpx-modal-field"><label>Nova Data</label><input id="patch-ofmaq-data-ent" type="date" value="' + sEsc(entAtual) + '"></div>'
+        + '  <div class="ccpx-modal-field full"><label>Observação do Motivo</label><input id="patch-ofmaq-data-obs" type="text" placeholder="Descreva o motivo quando necessário"></div>'
+        + '</div>',
+      footerHtml: '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button type="button" class="estoque-modal-btn estoque-modal-btn-blue" id="patch-ofmaq-data-save">Salvar</button>'
+    });
+    if (!overlay) return;
+    var saveBtn = overlay.querySelector('#patch-ofmaq-data-save');
+    if (!saveBtn) return;
+    saveBtn.onclick = async function() {
+      var novaData = String((overlay.querySelector('#patch-ofmaq-data-ent') || {}).value || '').slice(0, 10);
+      var motivo = String((overlay.querySelector('#patch-ofmaq-data-motivo') || {}).value || '').trim() || 'Outro';
+      var obs = String((overlay.querySelector('#patch-ofmaq-data-obs') || {}).value || '').trim();
+      if (!novaData) { try { window.toast('Informe a nova data.', 'var(--red)'); } catch (_) {} return; }
+      try {
+        saveBtn.disabled = true;
+        var payload = {
+          data_entrega: novaData,
+          ent: novaData,
+          sem_papel: motivo === 'Falta de Papelão',
+          obs2: obs || ('Motivo alteração entrega: ' + motivo)
+        };
+        var row = await persistPatch(id, payload);
+        mergeOfLocal(id, Object.assign({}, payload, row || {}));
+        try { _fecharModalPadrao('patch-ofmaq-altdata'); } catch (_) {}
+        cleanupOfmaqArtifacts();
+        await refreshOfmaq('alterar-data');
+        try { window.toast('Data de entrega alterada com sucesso.', 'var(--green)'); } catch (_) {}
+      } catch (e) {
+        logOfmaq('erro alterar data', String(e && e.message || e));
+        saveBtn.disabled = false;
+        try { window.toast('Erro ao alterar data: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+      }
+    };
+  }
+
+  async function openRegistrarTempoPatched(ofId, ofNum) {
+    cleanupOfmaqArtifacts();
+    var of = getOfmaqById(ofId);
+    var id = String(ofId || '').trim();
+    if (!id || !of) return;
+    var overlay = _abrirModalPadrao({
+      modalId: 'patch-ofmaq-tempo',
+      title: 'Registrar Tempo',
+      bodyHtml: ''
+        + '<div class="ccpx-modal-grid">'
+        + '  <div class="ccpx-modal-field full"><label>OF</label><input type="text" value="OF #' + sEsc(String(ofNum || of.numero || of.of || '').trim() || '—') + '" readonly></div>'
+        + '  <div class="ccpx-modal-field"><label>Tempo de Setup (min)</label><input id="patch-ofmaq-setup" type="number" min="0" value="' + sEsc(String(of.tempo_setup_real || 0)) + '"></div>'
+        + '  <div class="ccpx-modal-field"><label>Tempo de Produção (min)</label><input id="patch-ofmaq-producao" type="number" min="0" value="' + sEsc(String(of.tempo_producao_real || 0)) + '"></div>'
+        + '</div>',
+      footerHtml: '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button type="button" class="estoque-modal-btn estoque-modal-btn-blue" id="patch-ofmaq-tempo-save">Salvar</button>'
+    });
+    if (!overlay) return;
+    var saveBtn = overlay.querySelector('#patch-ofmaq-tempo-save');
+    if (!saveBtn) return;
+    saveBtn.onclick = async function() {
+      var setup = Math.max(0, Math.trunc(Number((overlay.querySelector('#patch-ofmaq-setup') || {}).value || 0) || 0));
+      var prod = Math.max(0, Math.trunc(Number((overlay.querySelector('#patch-ofmaq-producao') || {}).value || 0) || 0));
+      try {
+        saveBtn.disabled = true;
+        var payload = { tempo_setup_real: setup, tempo_producao_real: prod };
+        var row = await persistPatch(id, payload);
+        mergeOfLocal(id, Object.assign({}, payload, row || {}));
+        try { _fecharModalPadrao('patch-ofmaq-tempo'); } catch (_) {}
+        cleanupOfmaqArtifacts();
+        await refreshOfmaq('registrar-tempo');
+        try { window.toast('Tempo registrado com sucesso.', 'var(--green)'); } catch (_) {}
+      } catch (e) {
+        logOfmaq('erro registrar tempo', String(e && e.message || e));
+        saveBtn.disabled = false;
+        try { window.toast('Erro ao registrar tempo: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+      }
+    };
+  }
+
+  function syncBuscaUi(termRaw) {
+    var term = String(termRaw || '').trim();
+    logOfmaq('busca nativa', term);
+    try {
+      if (typeof window.__ofmaqBuscaStatePatch === 'function') window.__ofmaqBuscaStatePatch().q = term;
+      if (typeof window.__ofmaqRenderBuscaUiPatch === 'function') {
+        window.__ofmaqRenderBuscaUiPatch(term);
+        return true;
+      }
+      if (typeof window.__ofmaqApplySearchFilterPatch === 'function') {
+        window.__ofmaqApplySearchFilterPatch(term);
+        return true;
+      }
+    } catch (e) {
+      logOfmaq('erro busca nativa', String(e && e.message || e));
+    }
+    try {
+      if (typeof renderOFsPorMaquina === 'function') {
+        renderOFsPorMaquina();
+        return true;
+      }
+    } catch (e2) {
+      logOfmaq('erro render busca nativa', String(e2 && e2.message || e2));
+    }
+    return false;
+  }
+
+  function bindNativeBusca() {
+    var input = document.getElementById('ofmaq-busca');
+    if (!input || input.dataset.patchNativeBound === '1') return;
+    input.dataset.patchNativeBound = '1';
+    var sync = function() {
+      syncBuscaUi(input.value);
+    };
+    input.addEventListener('input', sync);
+    input.addEventListener('keydown', function(ev) {
+      if (!ev || ev.key !== 'Escape') return;
+      try { ev.preventDefault(); } catch (_) {}
+      input.value = '';
+      sync();
+    });
+  }
+
+  window.alterarMaquinaOf = function(ofId, ofNum) {
+    logOfmaq('abrir alterar máquina', { ofId: ofId, ofNum: ofNum });
+    return openAlterarMaquinaPatched(ofId, ofNum);
+  };
+  window.alterarDataOf = function(ofId, ofNum, dataAtual) {
+    logOfmaq('abrir alterar data', { ofId: ofId, ofNum: ofNum, dataAtual: dataAtual });
+    return openAlterarDataPatched(ofId, ofNum, dataAtual);
+  };
+  window.registrarTempoOf = function(ofId, ofNum) {
+    logOfmaq('abrir registrar tempo', { ofId: ofId, ofNum: ofNum });
+    return openRegistrarTempoPatched(ofId, ofNum);
+  };
+  window.ofmaqOnBuscaInput = function() {
+    var input = document.getElementById('ofmaq-busca');
+    var value = String((input && input.value) || '').trim();
+    try { clearTimeout(window.__ofmaqBuscaInputTimer); } catch (_) {}
+    window.__ofmaqBuscaInputTimer = setTimeout(function() {
+      syncBuscaUi(value);
+    }, 120);
+  };
+  try { alterarMaquinaOf = window.alterarMaquinaOf; } catch (_) {}
+  try { registrarTempoOf = window.registrarTempoOf; } catch (_) {}
+  try { ofmaqOnBuscaInput = window.ofmaqOnBuscaInput; } catch (_) {}
+
+  cleanupOfmaqArtifacts();
+  bindNativeBusca();
+  setTimeout(bindNativeBusca, 200);
+  setTimeout(bindNativeBusca, 1200);
+  try {
+    if (!window.__ofmaqActionsFixObs) {
+      window.__ofmaqActionsFixObs = new MutationObserver(function() {
+        try { clearTimeout(window.__ofmaqActionsFixObsTimer); } catch (_) {}
+        window.__ofmaqActionsFixObsTimer = setTimeout(function() {
+          cleanupOfmaqArtifacts();
+          bindNativeBusca();
+        }, 100);
+      });
+      window.__ofmaqActionsFixObs.observe(document.body, { childList: true, subtree: true });
+    }
+  } catch (_) {}
+})();
+;(function() {
   if (window.__simdBoxPlannerPatched) return;
   window.__simdBoxPlannerPatched = true;
 
@@ -25149,6 +25510,11 @@ window._mbnActive = function(id) {
     }
     _ofmaqRenderBuscaUi();
   }
+  window.__ofmaqBuscaStatePatch = _ofmaqBuscaState;
+  window.__ofmaqApplySearchFilterPatch = _ofmaqApplySearchFilter;
+  window.__ofmaqRenderBuscaUiPatch = _ofmaqRenderBuscaUi;
+  window.__ofmaqEnsureBuscaUiPatch = _ofmaqEnsureBuscaUi;
+  window.__ofmaqMatchesBuscaPatch = _ofmaqMatchesBusca;
 
   function _ofmaqRemoveSetupDecorations(scope) {
     Array.prototype.slice.call((scope || document).querySelectorAll('.setup-separador, .patch-setup-reason')).forEach(function(el) {
