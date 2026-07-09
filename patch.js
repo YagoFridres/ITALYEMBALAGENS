@@ -1777,6 +1777,18 @@ try {
     return root;
   }
 
+  function _histPrintEsc(v) {
+    try {
+      if (typeof window._printEscText === 'function') return window._printEscText(v);
+    } catch (_) {}
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function _histBuildPrintHtml(kind) {
     var periodo = _histPrintPeriodo(kind);
     if (typeof window._buildStyledPrintHtml !== 'function') return '';
@@ -1798,24 +1810,24 @@ try {
         summaryHeaders: ['Máquina', 'Nº OFs', 'Valor produção', 'Caixas'],
         summaryRows: summaryRows.map(function(row) {
           return [
-            _printEscText(row && row.maquina || '—'),
-            _printEscText(_histFmtNum(row && row.total_ofs || 0)),
-            _printEscText(_histFmtMoney(row && row.valor_total_producao || 0)),
-            _printEscText(_histFmtNum(row && row.caixas_produzidas || 0))
+            _histPrintEsc(row && row.maquina || '—'),
+            _histPrintEsc(_histFmtNum(row && row.total_ofs || 0)),
+            _histPrintEsc(_histFmtMoney(row && row.valor_total_producao || 0)),
+            _histPrintEsc(_histFmtNum(row && row.caixas_produzidas || 0))
           ];
         }),
         detailTitle: 'Detalhamento',
         detailHeaders: ['OF', 'Cliente', 'Produto', 'Valor unitário', 'Qtd', 'Valor total', 'Máquinas', 'Data conclusão'],
         detailRows: detailRows.map(function(row) {
           return [
-            _printEscText(String(row && (row.of_numero || row.numero) || '—')),
-            _printEscText(_histPassagemCliente(row)),
-            _printEscText(_histPassagemProduto(row)),
-            _printEscText(_histFmtMoney(_histPassagemValorUnit(row))),
-            _printEscText(_histFmtNum(_histPassagemQuantidade(row))),
-            _printEscText(_histFmtMoney(_histPassagemValorTotal(row))),
-            _printEscText(_histPassagemMaquinas(row)),
-            _printEscText(_histFmtDateTime(row))
+            _histPrintEsc(String(row && (row.of_numero || row.numero) || '—')),
+            _histPrintEsc(_histPassagemCliente(row)),
+            _histPrintEsc(_histPassagemProduto(row)),
+            _histPrintEsc(_histFmtMoney(_histPassagemValorUnit(row))),
+            _histPrintEsc(_histFmtNum(_histPassagemQuantidade(row))),
+            _histPrintEsc(_histFmtMoney(_histPassagemValorTotal(row))),
+            _histPrintEsc(_histPassagemMaquinas(row)),
+            _histPrintEsc(_histFmtDateTime(row))
           ];
         }),
         emptySummaryCols: 4,
@@ -1840,20 +1852,20 @@ try {
         map.set(nome, (map.get(nome) || 0) + 1);
         return map;
       }, new Map()).entries()).map(function(entry) {
-        return [_printEscText(entry[0] || '—'), _printEscText(_histFmtNum(entry[1] || 0))];
+        return [_histPrintEsc(entry[0] || '—'), _histPrintEsc(_histFmtNum(entry[1] || 0))];
       }),
       detailTitle: 'Detalhamento',
       detailHeaders: ['OF', 'Cliente', 'Produto', 'Valor unitário', 'Qtd', 'Valor total', 'Máquinas', 'Data conclusão'],
       detailRows: listRows.map(function(row) {
         return [
-          _printEscText(String(row && (row.of_numero || row.numero) || '—')),
-          _printEscText(_histPassagemCliente(row)),
-          _printEscText(_histPassagemProduto(row)),
-          _printEscText(_histFmtMoney(_histPassagemValorUnit(row))),
-          _printEscText(_histFmtNum(_histPassagemQuantidade(row))),
-          _printEscText(_histFmtMoney(_histPassagemValorTotal(row))),
-          _printEscText(_histPassagemMaquinas(row)),
-          _printEscText(_histFmtDateTime(row))
+          _histPrintEsc(String(row && (row.of_numero || row.numero) || '—')),
+          _histPrintEsc(_histPassagemCliente(row)),
+          _histPrintEsc(_histPassagemProduto(row)),
+          _histPrintEsc(_histFmtMoney(_histPassagemValorUnit(row))),
+          _histPrintEsc(_histFmtNum(_histPassagemQuantidade(row))),
+          _histPrintEsc(_histFmtMoney(_histPassagemValorTotal(row))),
+          _histPrintEsc(_histPassagemMaquinas(row)),
+          _histPrintEsc(_histFmtDateTime(row))
         ];
       }),
       emptySummaryCols: 2,
