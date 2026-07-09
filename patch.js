@@ -350,6 +350,747 @@ try {
   try { window.__authPatchClear = _authClear; } catch (_) {}
 })();
 
+(function patchComprasChapasFrontendV1() {
+  if (window.__patchComprasChapasFrontendV1) return;
+  window.__patchComprasChapasFrontendV1 = true;
+
+  var origRenderCompras = typeof window.renderCompras === 'function' ? window.renderCompras : null;
+  var origAbrirModalCompra = typeof window.abrirModalCompra === 'function' ? window.abrirModalCompra : null;
+  var origAbrirComprasChapas = typeof window.papelaoAbrirComprasChapas === 'function' ? window.papelaoAbrirComprasChapas : null;
+
+  function cEsc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+  function cAttr(v) {
+    return cEsc(v);
+  }
+  function cNum(v) {
+    var n = Number(String(v == null ? '' : v).replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  }
+  function cFmtNum(v, dec) {
+    try {
+      return Number(v || 0).toLocaleString('pt-BR', {
+        minimumFractionDigits: dec || 0,
+        maximumFractionDigits: dec || 0
+      });
+    } catch (_) {
+      return String(v || 0);
+    }
+  }
+  function cFmtRs(v) {
+    try { return window._fmtRs(v); } catch (_) { return 'R$ ' + cFmtNum(v, 2); }
+  }
+  function cIsChapas() {
+    return String(window._comprasTipoFiltro || '').trim().toLowerCase() === 'chapas';
+  }
+  function cEmpId() {
+    return String(
+      (window.__comprasChapasEmpIdManual || '') ||
+      (window.EMP_FILTRO || '') ||
+      (window.CURRENT_USER && (window.CURRENT_USER.emp_id || window.CURRENT_USER.empId) || '') ||
+      ''
+    ).trim();
+  }
+  function cState() {
+    if (!window.__comprasChapasState) {
+      window.__comprasChapasState = {
+        busca: '',
+        pastaFiltro: '__all',
+        pastas: [],
+        compras: [],
+        loading: false,
+        lastEmpId: ''
+      };
+    }
+    return window.__comprasChapasState;
+  }
+  async function cApi(path, opts) {
+    var url = String(path || '');
+    var cfg = opts || {};
+    var headers = Object.assign({}, cfg.headers || {});
+    var body = cfg.body;
+    if (body && typeof body !== 'string' && !(body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+      body = JSON.stringify(body);
+    }
+    var resp;
+    if (typeof window._apiAuthFetch === 'function') resp = await window._apiAuthFetch(url, Object.assign({}, cfg, { headers: headers, body: body }));
+    else resp = await fetch(url, Object.assign({}, cfg, { headers: headers, body: body }));
+    var json = await resp.json().catch(function() { return null; });
+    if (!resp.ok || (json && json.ok === false)) throw new Error(String(json && (json.error || json.message) || ('Falha em ' + url)));
+    return json && Object.prototype.hasOwnProperty.call(json, 'data') ? json.data : json;
+  }
+  function cEnsureStyle() {
+    if (document.getElementById('patch-compras-chapas-style')) return;
+    var st = document.createElement('style');
+    st.id = 'patch-compras-chapas-style';
+    st.textContent = ''
+      + '#page-compras .ccp-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}'
+      + '#page-compras .ccp-toolbar .btn{border-radius:12px;padding:11px 16px;font-weight:900}'
+      + '#page-compras .ccp-shell{display:grid;gap:16px}'
+      + '#page-compras .ccp-search-shell{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:linear-gradient(135deg,rgba(24,95,165,.95),rgba(11,37,69,.92));border:1px solid rgba(96,165,250,.25);border-radius:18px;padding:14px 16px;box-shadow:0 18px 48px rgba(0,0,0,.24)}'
+      + '#page-compras .ccp-search-shell input{flex:1;min-width:280px;background:rgba(255,255,255,.1);color:#f8fafc;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:12px 14px;font-size:13px;font-weight:700}'
+      + '#page-compras .ccp-search-shell input::placeholder{color:rgba(226,232,240,.84)}'
+      + '#page-compras .ccp-search-shell button{background:#08111f;color:#eff6ff;border:1px solid rgba(191,219,254,.18);border-radius:12px;padding:12px 18px;font-weight:900;cursor:pointer}'
+      + '#page-compras .ccp-pastas-strip-wrap{display:grid;gap:8px}'
+      + '#page-compras .ccp-pastas-strip{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin;scrollbar-color:rgba(96,165,250,.48) rgba(15,23,42,.72)}'
+      + '#page-compras .ccp-pastas-strip::-webkit-scrollbar{height:10px}'
+      + '#page-compras .ccp-pastas-strip::-webkit-scrollbar-track{background:rgba(15,23,42,.72);border-radius:999px}'
+      + '#page-compras .ccp-pastas-strip::-webkit-scrollbar-thumb{background:rgba(96,165,250,.48);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
+      + '#page-compras .ccp-pasta-card{min-width:210px;background:rgba(15,23,42,.74);border:1px solid rgba(148,163,184,.16);border-radius:16px;padding:14px;display:grid;gap:8px;cursor:pointer;transition:.16s ease;flex:0 0 auto;text-align:left}'
+      + '#page-compras .ccp-pasta-card:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.38)}'
+      + '#page-compras .ccp-pasta-card.is-active{border-color:rgba(96,165,250,.55);box-shadow:0 0 0 1px rgba(96,165,250,.22) inset}'
+      + '#page-compras .ccp-pasta-title{font-size:13px;font-weight:900;color:#f8fafc}'
+      + '#page-compras .ccp-pasta-sub{font-size:11px;color:#94a3b8}'
+      + '#page-compras .ccp-table-shell{display:grid;gap:12px;background:rgba(15,23,42,.74);border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:14px}'
+      + '#page-compras .ccp-table-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}'
+      + '#page-compras .ccp-table-title{font-size:16px;font-weight:900;color:#f8fafc}'
+      + '#page-compras .ccp-table-sub{font-size:12px;color:#94a3b8}'
+      + '#page-compras .ccp-table-wrap{overflow:auto;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(2,6,23,.48)}'
+      + '#page-compras .ccp-table-wrap::-webkit-scrollbar{width:10px;height:10px}'
+      + '#page-compras .ccp-table-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72)}'
+      + '#page-compras .ccp-table-wrap::-webkit-scrollbar-thumb{background:rgba(100,116,139,.58);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
+      + '#page-compras .ccp-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1260px}'
+      + '#page-compras .ccp-table th{position:sticky;top:0;z-index:2;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.18);text-align:left}'
+      + '#page-compras .ccp-table td{padding:13px 14px;border-bottom:1px solid rgba(148,163,184,.12);font-size:13px;color:#e2e8f0;vertical-align:middle}'
+      + '#page-compras .ccp-table tbody tr:hover td{background:rgba(148,163,184,.06)}'
+      + '#page-compras .ccp-table .num{text-align:right;font-variant-numeric:tabular-nums}'
+      + '#page-compras .ccp-row-main{display:grid;gap:4px}'
+      + '#page-compras .ccp-row-title{font-weight:800;color:#f8fafc}'
+      + '#page-compras .ccp-row-sub{font-size:11px;color:#94a3b8}'
+      + '#page-compras .ccp-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}'
+      + '#page-compras .ccp-actions button,#page-compras .ccp-actions select{padding:7px 10px;border-radius:10px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-size:12px}'
+      + '#page-compras .ccp-actions button.primary{background:var(--accent);color:#fff;border-color:transparent}'
+      + '#page-compras .ccp-actions button.danger{background:#7f1d1d;color:#fff;border-color:#991b1b}'
+      + '#page-compras .ccp-empty{padding:22px 8px;text-align:center;color:#94a3b8}'
+      + '#page-compras .ccp-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}'
+      + '#page-compras .ccp-kpi{display:grid;gap:6px;padding:14px;border-radius:14px;border:1px solid rgba(148,163,184,.14);background:rgba(2,6,23,.28)}'
+      + '#page-compras .ccp-kpi .lbl{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
+      + '#page-compras .ccp-kpi .val{font-size:22px;font-weight:900;color:#f8fafc}'
+      + '#page-compras .ccp-kpi .sub{font-size:12px;color:#94a3b8}'
+      + '.ccp-modal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}'
+      + '.ccp-modal-field{display:grid;gap:6px}'
+      + '.ccp-modal-field.full{grid-column:1 / -1}'
+      + '.ccp-modal-field label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
+      + '.ccp-modal-field input,.ccp-modal-field select,.ccp-modal-field textarea{width:100%;background:#020617;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:11px 12px;font-size:13px}'
+      + '.ccp-modal-field textarea{min-height:88px;resize:vertical}'
+      + '.ccp-modal-items-shell{display:grid;gap:12px;padding:16px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.6)}'
+      + '.ccp-modal-items-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}'
+      + '.ccp-modal-items-title{font-size:14px;font-weight:900;color:#f8fafc}'
+      + '.ccp-modal-items-sub{font-size:12px;color:#94a3b8}'
+      + '.ccp-modal-items-wrap{overflow:auto;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(2,6,23,.42)}'
+      + '.ccp-modal-items-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1180px}'
+      + '.ccp-modal-items-table th{background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;padding:12px;border-bottom:1px solid rgba(148,163,184,.18)}'
+      + '.ccp-modal-items-table td{padding:10px 12px;border-bottom:1px solid rgba(148,163,184,.12);color:#e2e8f0;font-size:12px}'
+      + '.ccp-modal-items-table input{width:100%;background:rgba(255,255,255,.06);color:#f8fafc;border:1px solid rgba(148,163,184,.16);border-radius:10px;padding:9px 10px;font-size:12px}'
+      + '.ccp-modal-items-table .num{text-align:right;font-variant-numeric:tabular-nums}'
+      + '.ccp-modal-items-table .danger{background:#7f1d1d;color:#fff;border:1px solid #991b1b;border-radius:10px;padding:8px 10px;cursor:pointer}'
+      + '.ccp-modal-summary{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}'
+      + '.ccp-modal-summary-chip{display:grid;gap:4px;min-width:150px;padding:12px 14px;border-radius:12px;border:1px solid rgba(148,163,184,.14);background:rgba(2,6,23,.28)}'
+      + '.ccp-modal-summary-chip .lbl{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
+      + '.ccp-modal-summary-chip .val{font-size:16px;font-weight:900;color:#f8fafc}'
+      + '@media (max-width:900px){.ccp-modal-grid{grid-template-columns:1fr}#page-compras .ccp-search-shell{align-items:stretch}#page-compras .ccp-search-shell button{width:100%}}';
+    document.head.appendChild(st);
+  }
+  function cEnsureToolbar() {
+    var page = document.getElementById('page-compras');
+    if (!page) return;
+    var toolbar = page.querySelector('.ptoolbar');
+    if (!toolbar) return;
+    if (!toolbar.dataset.ccpOrigHtml) toolbar.dataset.ccpOrigHtml = toolbar.innerHTML;
+    if (!cIsChapas()) {
+      if (toolbar.dataset.ccpActive === '1') {
+        toolbar.innerHTML = toolbar.dataset.ccpOrigHtml || '';
+        toolbar.dataset.ccpActive = '0';
+      }
+      return;
+    }
+    toolbar.dataset.ccpActive = '1';
+    toolbar.innerHTML = ''
+      + '<div class="ccp-toolbar">'
+      + '  <button type="button" class="btn btn-accent" id="ccp-btn-nova">＋ Nova Compra</button>'
+      + '  <button type="button" class="btn btn-ghost btn-sm" id="ccp-btn-pasta">📁 Nova Pasta</button>'
+      + '  <button type="button" class="btn btn-ghost btn-sm" id="ccp-btn-sugestoes">💡 Sugestões</button>'
+      + '  <div style="flex:1"></div>'
+      + '  <div style="font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b">Compra de Papelão</div>'
+      + '</div>';
+    toolbar.querySelector('#ccp-btn-nova').onclick = function() { window.abrirModalCompra(); };
+    toolbar.querySelector('#ccp-btn-pasta').onclick = function() { cAbrirModalPasta(); };
+    toolbar.querySelector('#ccp-btn-sugestoes').onclick = function() { cAbrirSugestoesPlaceholder(); };
+  }
+  function cBlankItem() {
+    return { ped_cliente: '', nomenclatura: '', largura: '', comprimento: '', quantidade: '', valor_m2: '' };
+  }
+  function cItemDerived(item) {
+    var largura = cNum(item && item.largura);
+    var comprimento = cNum(item && item.comprimento);
+    var quantidade = cNum(item && item.quantidade);
+    var valorM2 = cNum(item && item.valor_m2);
+    var area = ((largura * comprimento) / 1000000) * quantidade;
+    var total = area * valorM2;
+    var mil = quantidade > 0 ? (total / quantidade) * 1000 : 0;
+    return {
+      area_m2: area,
+      valor_total: total,
+      vl_p_mil: mil
+    };
+  }
+  function cCompraTotals(compra) {
+    return (Array.isArray(compra && compra.itens) ? compra.itens : []).reduce(function(acc, item) {
+      acc.qtd += cNum(item && item.quantidade);
+      acc.area += cNum(item && item.area_m2 != null ? item.area_m2 : cItemDerived(item).area_m2);
+      acc.total += cNum(item && item.valor_total != null ? item.valor_total : cItemDerived(item).valor_total);
+      return acc;
+    }, { qtd: 0, area: 0, total: 0 });
+  }
+  function cFolderOptionsHtml(selectedId, includeBlank) {
+    var state = cState();
+    var opts = [];
+    if (includeBlank !== false) opts.push('<option value="">Sem pasta</option>');
+    (Array.isArray(state.pastas) ? state.pastas : []).forEach(function(pasta) {
+      var pid = String(pasta && pasta.id || '').trim();
+      opts.push('<option value="' + cAttr(pid) + '"' + (String(selectedId || '').trim() === pid ? ' selected' : '') + '>' + cEsc(pasta && pasta.nome || 'Pasta') + '</option>');
+    });
+    return opts.join('');
+  }
+  async function cLoadPastas() {
+    var empId = cEmpId();
+    if (!empId) return [];
+    var data = await cApi('/api/compras-chapas/pastas?emp_id=' + encodeURIComponent(empId));
+    cState().pastas = Array.isArray(data) ? data : [];
+    return cState().pastas;
+  }
+  async function cLoadCompras() {
+    var empId = cEmpId();
+    if (!empId) return [];
+    var state = cState();
+    var qs = ['emp_id=' + encodeURIComponent(empId)];
+    if (state.busca) qs.push('busca=' + encodeURIComponent(state.busca));
+    if (state.pastaFiltro === '__sem_pasta') qs.push('sem_pasta=true');
+    else if (state.pastaFiltro && state.pastaFiltro.indexOf('id:') === 0) qs.push('pasta_id=' + encodeURIComponent(state.pastaFiltro.slice(3)));
+    var data = await cApi('/api/compras-chapas?' + qs.join('&'));
+    state.compras = Array.isArray(data) ? data : [];
+    state.lastEmpId = empId;
+    return state.compras;
+  }
+  function cFolderCardsHtml() {
+    var state = cState();
+    var compras = Array.isArray(state.compras) ? state.compras : [];
+    var cards = [
+      { id: '__all', nome: 'Todas', qtd: compras.length },
+      { id: '__sem_pasta', nome: 'Sem Pasta', qtd: compras.filter(function(row) { return !String(row && row.pasta_id || '').trim(); }).length }
+    ].concat((Array.isArray(state.pastas) ? state.pastas : []).map(function(pasta) {
+      return {
+        id: 'id:' + String(pasta && pasta.id || '').trim(),
+        nome: String(pasta && pasta.nome || 'Pasta').trim(),
+        qtd: Math.trunc(cNum(pasta && (pasta.total_compras != null ? pasta.total_compras : pasta.qtd) || 0))
+      };
+    }));
+    return '<div class="ccp-pastas-strip-wrap"><div class="ccp-pastas-strip">' + cards.map(function(card) {
+      return '<button type="button" class="ccp-pasta-card' + (state.pastaFiltro === card.id ? ' is-active' : '') + '" data-ccp-pasta="' + cAttr(card.id) + '">'
+        + '<div class="ccp-pasta-title">📁 ' + cEsc(card.nome) + '</div>'
+        + '<div class="ccp-pasta-sub">' + cEsc(String(card.qtd || 0)) + ' compra(s)</div>'
+        + '</button>';
+    }).join('') + '</div></div>';
+  }
+  function cComprasTableHtml() {
+    var state = cState();
+    var compras = Array.isArray(state.compras) ? state.compras : [];
+    var totalQtd = 0;
+    var totalArea = 0;
+    var totalValor = 0;
+    var rowsHtml = compras.map(function(compra) {
+      var totals = cCompraTotals(compra);
+      totalQtd += totals.qtd;
+      totalArea += totals.area;
+      totalValor += totals.total;
+      var id = String(compra && compra.id || '').trim();
+      return ''
+        + '<tr>'
+        + '  <td><div class="ccp-row-main"><div class="ccp-row-title">#' + cEsc(String(compra && compra.numero_compra || '—')) + '</div><div class="ccp-row-sub">' + cEsc(String((compra && compra.itens && compra.itens.length) || 0)) + ' item(ns)</div></div></td>'
+        + '  <td><div class="ccp-row-main"><div class="ccp-row-title">' + cEsc(compra && compra.fornecedor || '—') + '</div><div class="ccp-row-sub">' + cEsc(compra && compra.observacao || 'Sem observação') + '</div></div></td>'
+        + '  <td>' + cEsc(compra && compra.ped_fornecedor || '—') + '</td>'
+        + '  <td class="num">' + cEsc(cFmtNum(totals.qtd, 0)) + '</td>'
+        + '  <td class="num">' + cEsc(cFmtNum(totals.area, 4)) + '</td>'
+        + '  <td class="num">' + cEsc(cFmtRs(totals.total)) + '</td>'
+        + '  <td><div class="ccp-actions">'
+        + '    <select data-ccp-move="' + cAttr(id) + '">' + cFolderOptionsHtml(compra && compra.pasta_id, true) + '</select>'
+        + '    <button type="button" data-ccp-edit="' + cAttr(id) + '">Editar</button>'
+        + '    <button type="button" data-ccp-print="' + cAttr(id) + '">Imprimir</button>'
+        + '    <button type="button" data-ccp-clone="' + cAttr(id) + '">Clonar</button>'
+        + '    <button type="button" class="danger" data-ccp-del="' + cAttr(id) + '">Excluir</button>'
+        + '  </div></td>'
+        + '</tr>';
+    }).join('');
+    var bodyHtml = compras.length ? rowsHtml : '<tr><td colspan="7"><div class="ccp-empty">Nenhuma compra encontrada com os filtros atuais.</div></td></tr>';
+    return ''
+      + '<div class="ccp-kpi-grid">'
+      + '  <div class="ccp-kpi"><div class="lbl">Compras</div><div class="val">' + cEsc(cFmtNum(compras.length, 0)) + '</div><div class="sub">Registros visíveis</div></div>'
+      + '  <div class="ccp-kpi"><div class="lbl">Quantidade</div><div class="val">' + cEsc(cFmtNum(totalQtd, 0)) + '</div><div class="sub">Soma dos itens</div></div>'
+      + '  <div class="ccp-kpi"><div class="lbl">Área</div><div class="val">' + cEsc(cFmtNum(totalArea, 4)) + ' m²</div><div class="sub">Área total comprada</div></div>'
+      + '  <div class="ccp-kpi"><div class="lbl">Valor</div><div class="val">' + cEsc(cFmtRs(totalValor)) + '</div><div class="sub">Total financeiro</div></div>'
+      + '</div>'
+      + '<div class="ccp-table-shell">'
+      + '  <div class="ccp-table-head"><div><div class="ccp-table-title">Compras de Papelão</div><div class="ccp-table-sub">Gestão no padrão visual da área de Orçamentos, consumindo `/api/compras-chapas`.</div></div></div>'
+      + '  <div class="ccp-table-wrap"><table class="ccp-table"><thead><tr>'
+      + '    <th>Número</th><th>Fornecedor</th><th>Pedido fornecedor</th><th class="num">Qtd total</th><th class="num">Área m² total</th><th class="num">Valor total</th><th>Ações</th>'
+      + '  </tr></thead><tbody>' + bodyHtml + '</tbody></table></div>'
+      + '</div>';
+  }
+  function cRenderBody() {
+    var host = document.getElementById('cmp-body');
+    if (!host) return;
+    var empId = cEmpId();
+    if (!empId) {
+      host.innerHTML = '<div class="ccp-empty">Empresas não carregadas. Selecione uma empresa válida antes de abrir Compras de Papelão.</div>';
+      return;
+    }
+    var state = cState();
+    host.innerHTML = ''
+      + '<div class="ccp-shell">'
+      + '  <div class="ccp-search-shell">'
+      + '    <input id="ccp-busca" type="text" placeholder="Buscar por número, fornecedor, pedido do fornecedor, pedido do cliente ou nomenclatura" value="' + cAttr(state.busca || '') + '">'
+      + '    <button type="button" id="ccp-buscar">Buscar</button>'
+      + '  </div>'
+      + cFolderCardsHtml()
+      + cComprasTableHtml()
+      + '</div>';
+    cBindBody();
+  }
+  async function cRenderPage() {
+    if (!cIsChapas()) {
+      cEnsureToolbar();
+      if (origRenderCompras) return origRenderCompras.apply(this, arguments);
+      return;
+    }
+    cEnsureStyle();
+    cEnsureToolbar();
+    var host = document.getElementById('cmp-body');
+    if (!host) return;
+    var empId = cEmpId();
+    if (!empId) {
+      host.innerHTML = '<div class="ccp-empty">Empresas não carregadas. Abra a área após autenticar e selecionar a empresa.</div>';
+      return;
+    }
+    host.innerHTML = '<div class="ccp-empty">Carregando compras de papelão...</div>';
+    try {
+      await Promise.all([cLoadPastas(), cLoadCompras()]);
+      cRenderBody();
+    } catch (e) {
+      host.innerHTML = '<div class="ccp-empty">Erro ao carregar compras de papelão: ' + cEsc(String(e && e.message || e)) + '</div>';
+      try { window.toast('Erro ao carregar compras de papelão: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+    }
+  }
+  function cBindBody() {
+    var host = document.getElementById('cmp-body');
+    if (!host) return;
+    var busca = host.querySelector('#ccp-busca');
+    var btnBusca = host.querySelector('#ccp-buscar');
+    if (btnBusca) btnBusca.onclick = function() {
+      cState().busca = String((host.querySelector('#ccp-busca') || {}).value || '').trim();
+      cRenderPage();
+    };
+    if (busca && busca.dataset.ccpEnter !== '1') {
+      busca.dataset.ccpEnter = '1';
+      busca.addEventListener('keydown', function(e) {
+        if (!e || e.key !== 'Enter') return;
+        try { e.preventDefault(); } catch (_) {}
+        cState().busca = String(busca.value || '').trim();
+        cRenderPage();
+      });
+    }
+    Array.prototype.slice.call(host.querySelectorAll('[data-ccp-pasta]')).forEach(function(btn) {
+      btn.onclick = function() {
+        cState().pastaFiltro = String(btn.getAttribute('data-ccp-pasta') || '__all');
+        cRenderPage();
+      };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-ccp-edit]')).forEach(function(btn) {
+      btn.onclick = function() { cAbrirModalCompra(String(btn.getAttribute('data-ccp-edit') || '').trim()); };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-ccp-print]')).forEach(function(btn) {
+      btn.onclick = function() { cImprimirCompra(String(btn.getAttribute('data-ccp-print') || '').trim()); };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-ccp-clone]')).forEach(function(btn) {
+      btn.onclick = function() { cClonarCompra(String(btn.getAttribute('data-ccp-clone') || '').trim()); };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-ccp-del]')).forEach(function(btn) {
+      btn.onclick = function() { cExcluirCompra(String(btn.getAttribute('data-ccp-del') || '').trim()); };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-ccp-move]')).forEach(function(sel) {
+      sel.onchange = function() {
+        cMoverCompraParaPasta(String(sel.getAttribute('data-ccp-move') || '').trim(), String(sel.value || '').trim() || null);
+      };
+    });
+  }
+  function cCompraModalRowsHtml(itens) {
+    var rows = (Array.isArray(itens) && itens.length ? itens : [cBlankItem()]);
+    return rows.map(function(item, idx) {
+      var d = cItemDerived(item);
+      return ''
+        + '<tr data-ccp-item-row="' + idx + '">'
+        + '  <td><input data-field="ped_cliente" value="' + cAttr(item && item.ped_cliente || '') + '" placeholder="Pedido do cliente"></td>'
+        + '  <td><input data-field="nomenclatura" value="' + cAttr(item && item.nomenclatura || '') + '" placeholder="Nomenclatura"></td>'
+        + '  <td><input data-field="largura" type="number" min="0" step="0.01" value="' + cAttr(item && item.largura || '') + '" placeholder="0"></td>'
+        + '  <td><input data-field="comprimento" type="number" min="0" step="0.01" value="' + cAttr(item && item.comprimento || '') + '" placeholder="0"></td>'
+        + '  <td><input data-field="quantidade" type="number" min="0" step="1" value="' + cAttr(item && item.quantidade || '') + '" placeholder="0"></td>'
+        + '  <td><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + cAttr(item && item.valor_m2 || '') + '" placeholder="0,00"></td>'
+        + '  <td class="num" data-ccp-area>' + cEsc(cFmtNum(d.area_m2, 4)) + '</td>'
+        + '  <td class="num" data-ccp-total>' + cEsc(cFmtRs(d.valor_total)) + '</td>'
+        + '  <td class="num" data-ccp-mil>' + cEsc(cFmtRs(d.vl_p_mil)) + '</td>'
+        + '  <td><button type="button" class="danger" data-ccp-item-del="' + idx + '">Remover</button></td>'
+        + '</tr>';
+    }).join('');
+  }
+  function cCompraModalHtml(compra) {
+    return ''
+      + '<div class="ccp-modal-grid">'
+      + '  <div class="ccp-modal-field"><label>Fornecedor</label><input id="ccp-modal-fornecedor" value="' + cAttr(compra && compra.fornecedor || '') + '" placeholder="Fornecedor"></div>'
+      + '  <div class="ccp-modal-field"><label>Pedido do fornecedor</label><input id="ccp-modal-pedforn" value="' + cAttr(compra && compra.ped_fornecedor || '') + '" placeholder="Pedido do fornecedor"></div>'
+      + '  <div class="ccp-modal-field"><label>Pasta</label><select id="ccp-modal-pasta">' + cFolderOptionsHtml(compra && compra.pasta_id, true) + '</select></div>'
+      + '  <div class="ccp-modal-field"><label>Número</label><input id="ccp-modal-numero" value="' + cAttr(compra && compra.numero_compra || 'Automático') + '" disabled></div>'
+      + '  <div class="ccp-modal-field full"><label>Observação</label><textarea id="ccp-modal-obs" placeholder="Observações da compra">' + cEsc(compra && compra.observacao || '') + '</textarea></div>'
+      + '</div>'
+      + '<div class="ccp-modal-items-shell" style="margin-top:18px">'
+      + '  <div class="ccp-modal-items-head"><div><div class="ccp-modal-items-title">Itens da Compra</div><div class="ccp-modal-items-sub">Adicione as linhas e acompanhe os cálculos de área, total e valor por mil direto no modal.</div></div><button type="button" class="pep-btn" id="ccp-modal-add-item">＋ Adicionar Item</button></div>'
+      + '  <div class="ccp-modal-items-wrap"><table class="ccp-modal-items-table"><thead><tr><th>Ped. cliente</th><th>Nomenclatura</th><th>Largura</th><th>Comprimento</th><th>Quantidade</th><th>Valor/m²</th><th class="num">Área m²</th><th class="num">Valor total</th><th class="num">R$/mil</th><th>Ação</th></tr></thead><tbody id="ccp-modal-items-body">' + cCompraModalRowsHtml(compra && compra.itens || []) + '</tbody></table></div>'
+      + '  <div class="ccp-modal-summary">'
+      + '    <div class="ccp-modal-summary-chip"><div class="lbl">Quantidade</div><div class="val" id="ccp-modal-sum-qtd">0</div></div>'
+      + '    <div class="ccp-modal-summary-chip"><div class="lbl">Área</div><div class="val" id="ccp-modal-sum-area">0,0000 m²</div></div>'
+      + '    <div class="ccp-modal-summary-chip"><div class="lbl">Valor</div><div class="val" id="ccp-modal-sum-total">R$ 0,00</div></div>'
+      + '  </div>'
+      + '</div>';
+  }
+  function cCollectModalRows(overlay) {
+    return Array.prototype.slice.call(overlay.querySelectorAll('#ccp-modal-items-body tr[data-ccp-item-row]')).map(function(row) {
+      return {
+        ped_cliente: String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim(),
+        nomenclatura: String((row.querySelector('[data-field="nomenclatura"]') || {}).value || '').trim(),
+        largura: String((row.querySelector('[data-field="largura"]') || {}).value || '').trim(),
+        comprimento: String((row.querySelector('[data-field="comprimento"]') || {}).value || '').trim(),
+        quantidade: String((row.querySelector('[data-field="quantidade"]') || {}).value || '').trim(),
+        valor_m2: String((row.querySelector('[data-field="valor_m2"]') || {}).value || '').trim()
+      };
+    }).filter(function(item) {
+      return item.ped_cliente || item.nomenclatura || item.largura || item.comprimento || item.quantidade || item.valor_m2;
+    });
+  }
+  function cRefreshCompraModalComputed(overlay) {
+    if (!overlay) return;
+    var totalQtd = 0;
+    var totalArea = 0;
+    var totalValor = 0;
+    Array.prototype.slice.call(overlay.querySelectorAll('#ccp-modal-items-body tr[data-ccp-item-row]')).forEach(function(row) {
+      var item = {
+        largura: (row.querySelector('[data-field="largura"]') || {}).value,
+        comprimento: (row.querySelector('[data-field="comprimento"]') || {}).value,
+        quantidade: (row.querySelector('[data-field="quantidade"]') || {}).value,
+        valor_m2: (row.querySelector('[data-field="valor_m2"]') || {}).value
+      };
+      var d = cItemDerived(item);
+      totalQtd += cNum(item.quantidade);
+      totalArea += d.area_m2;
+      totalValor += d.valor_total;
+      var areaEl = row.querySelector('[data-ccp-area]');
+      var totalEl = row.querySelector('[data-ccp-total]');
+      var milEl = row.querySelector('[data-ccp-mil]');
+      if (areaEl) areaEl.textContent = cFmtNum(d.area_m2, 4);
+      if (totalEl) totalEl.textContent = cFmtRs(d.valor_total);
+      if (milEl) milEl.textContent = cFmtRs(d.vl_p_mil);
+    });
+    var q = overlay.querySelector('#ccp-modal-sum-qtd');
+    var a = overlay.querySelector('#ccp-modal-sum-area');
+    var t = overlay.querySelector('#ccp-modal-sum-total');
+    if (q) q.textContent = cFmtNum(totalQtd, 0);
+    if (a) a.textContent = cFmtNum(totalArea, 4) + ' m²';
+    if (t) t.textContent = cFmtRs(totalValor);
+  }
+  function cRenderCompraModalRows(overlay, items) {
+    var tbody = overlay && overlay.querySelector ? overlay.querySelector('#ccp-modal-items-body') : null;
+    if (!tbody) return;
+    tbody.innerHTML = cCompraModalRowsHtml(items);
+    cRefreshCompraModalComputed(overlay);
+  }
+  function cCollectCompraPayload(overlay) {
+    return {
+      fornecedor: String((overlay.querySelector('#ccp-modal-fornecedor') || {}).value || '').trim(),
+      ped_fornecedor: String((overlay.querySelector('#ccp-modal-pedforn') || {}).value || '').trim(),
+      pasta_id: String((overlay.querySelector('#ccp-modal-pasta') || {}).value || '').trim() || null,
+      observacao: String((overlay.querySelector('#ccp-modal-obs') || {}).value || '').trim(),
+      emp_id: cEmpId(),
+      itens: cCollectModalRows(overlay)
+    };
+  }
+  async function cSalvarCompraModal(compraId) {
+    var overlay = document.getElementById('ccp-modal-compra');
+    if (!overlay) return;
+    var payload = cCollectCompraPayload(overlay);
+    if (!payload.fornecedor) {
+      alert('Informe o fornecedor da compra.');
+      return;
+    }
+    if (!payload.itens.length) {
+      alert('Adicione pelo menos um item na compra.');
+      return;
+    }
+    var btn = overlay.querySelector('#ccp-modal-save');
+    if (btn) btn.disabled = true;
+    try {
+      if (compraId) await cApi('/api/compras-chapas/' + encodeURIComponent(compraId), { method: 'PUT', body: payload });
+      else await cApi('/api/compras-chapas', { method: 'POST', body: payload });
+      try { if (typeof window.toast === 'function') window.toast(compraId ? 'Compra atualizada com sucesso' : 'Compra criada com sucesso', 'var(--green)'); } catch (_) {}
+      _fecharModalPadrao('ccp-modal-compra');
+      await cRenderPage();
+    } catch (e) {
+      console.error('[COMPRAS-CHAPAS FRONT]', e);
+      alert('Erro ao salvar compra: ' + String(e && e.message || e));
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+  async function cAbrirModalCompra(compraId) {
+    try {
+      var compra = compraId ? await cApi('/api/compras-chapas/' + encodeURIComponent(compraId), { method: 'GET' }) : {
+        numero_compra: 'Automático',
+        fornecedor: '',
+        ped_fornecedor: '',
+        pasta_id: null,
+        observacao: '',
+        itens: [cBlankItem()]
+      };
+      if (!Array.isArray(compra.itens) || !compra.itens.length) compra.itens = [cBlankItem()];
+      var overlay = _abrirModalPadrao({
+        id: 'ccp-modal-compra',
+        titulo: compraId ? 'Editar Compra de Papelão' : 'Nova Compra de Papelão',
+        subtitulo: 'Cadastro completo no padrão visual de Orçamentos, com cálculo automático de área, valor total e valor por mil.',
+        largura: '1180px',
+        wide: true,
+        hero: '🛒',
+        bodyHtml: cCompraModalHtml(compra),
+        footerHtml: ''
+          + '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button>'
+          + '<button type="button" class="estoque-modal-btn" id="ccp-modal-save" style="background:#185FA5;color:#fff;border-color:#185FA5">' + (compraId ? 'Salvar Alterações' : 'Salvar Compra') + '</button>'
+      });
+      if (!overlay) return;
+      cRefreshCompraModalComputed(overlay);
+      var addBtn = overlay.querySelector('#ccp-modal-add-item');
+      if (addBtn) addBtn.onclick = function() {
+        var itens = cCollectModalRows(overlay);
+        itens.push(cBlankItem());
+        cRenderCompraModalRows(overlay, itens);
+      };
+      var tbody = overlay.querySelector('#ccp-modal-items-body');
+      if (tbody) {
+        tbody.addEventListener('click', function(ev) {
+          var btnDel = ev && ev.target && (ev.target.closest ? ev.target.closest('[data-ccp-item-del]') : null);
+          if (!btnDel) return;
+          var idx = Math.max(0, Math.trunc(cNum(btnDel.getAttribute('data-ccp-item-del'))));
+          var itens = cCollectModalRows(overlay);
+          itens.splice(idx, 1);
+          if (!itens.length) itens.push(cBlankItem());
+          cRenderCompraModalRows(overlay, itens);
+        });
+        tbody.addEventListener('input', function() { cRefreshCompraModalComputed(overlay); });
+      }
+      var saveBtn = overlay.querySelector('#ccp-modal-save');
+      if (saveBtn) saveBtn.onclick = function() { cSalvarCompraModal(compraId || null); };
+    } catch (e) {
+      console.error('[COMPRAS-CHAPAS FRONT]', e);
+      alert('Erro ao abrir compra: ' + String(e && e.message || e));
+    }
+  }
+  async function cAbrirModalPasta() {
+    var overlay = _abrirModalPadrao({
+      id: 'ccp-modal-pasta',
+      titulo: 'Nova Pasta de Compras',
+      subtitulo: 'Crie uma pasta nomeada para organizar as compras de papelão da empresa.',
+      largura: '460px',
+      hero: '📁',
+      bodyHtml: '<div class="ccp-modal-field"><label>Nome da pasta</label><input id="ccp-pasta-nome" placeholder="Ex: Fornecedor XPTO, Julho, Aguardando chegada"></div>',
+      footerHtml: '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button type="button" class="estoque-modal-btn" id="ccp-pasta-salvar" style="background:#185FA5;color:#fff;border-color:#185FA5">Salvar Pasta</button>'
+    });
+    if (!overlay) return;
+    var input = overlay.querySelector('#ccp-pasta-nome');
+    var saveBtn = overlay.querySelector('#ccp-pasta-salvar');
+    if (input) setTimeout(function() { try { input.focus(); } catch (_) {} }, 50);
+    if (saveBtn) saveBtn.onclick = async function() {
+      var nome = String((input || {}).value || '').trim();
+      if (!nome) {
+        alert('Informe o nome da pasta.');
+        return;
+      }
+      try {
+        await cApi('/api/compras-chapas/pastas', { method: 'POST', body: { nome: nome, emp_id: cEmpId() } });
+        _fecharModalPadrao('ccp-modal-pasta');
+        await cLoadPastas();
+        await cLoadCompras();
+        cRenderBody();
+        try { if (typeof window.toast === 'function') window.toast('Pasta criada com sucesso', 'var(--green)'); } catch (_) {}
+      } catch (e) {
+        console.error('[COMPRAS-CHAPAS FRONT]', e);
+        alert('Erro ao criar pasta: ' + String(e && e.message || e));
+      }
+    };
+  }
+  function cAbrirSugestoesPlaceholder() {
+    _abrirModalPadrao({
+      id: 'ccp-modal-sugestoes',
+      titulo: 'Sugestões de Compra',
+      subtitulo: 'Placeholder temporário até conectar o fluxo dos pins à nova área de compras.',
+      largura: '520px',
+      hero: '💡',
+      bodyHtml: '<div style="display:grid;gap:12px"><div style="padding:16px;border-radius:14px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.72);color:#cbd5e1;font-size:13px;line-height:1.6">Esta área será conectada às sugestões vindas dos pins de compra. Por enquanto, a tela principal de Compras de Papelão já está pronta para cadastro manual e gestão por pastas.</div></div>',
+      footerHtml: '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Fechar</button>'
+    });
+  }
+  async function cMoverCompraParaPasta(id, pastaId) {
+    try {
+      await cApi('/api/compras-chapas/' + encodeURIComponent(id) + '/pasta', { method: 'PUT', body: { pasta_id: pastaId || null } });
+      try { if (typeof window.toast === 'function') window.toast(pastaId ? 'Compra movida para a pasta' : 'Compra removida da pasta', 'var(--green)'); } catch (_) {}
+      await Promise.all([cLoadPastas(), cLoadCompras()]);
+      cRenderBody();
+    } catch (e) {
+      console.error('[COMPRAS-CHAPAS FRONT]', e);
+      alert('Erro ao mover compra: ' + String(e && e.message || e));
+    }
+  }
+  async function cExcluirCompra(id) {
+    if (!id) return;
+    if (!confirm('Excluir esta compra?')) return;
+    try {
+      await cApi('/api/compras-chapas/' + encodeURIComponent(id), { method: 'DELETE' });
+      try { if (typeof window.toast === 'function') window.toast('Compra excluída', 'var(--orange)'); } catch (_) {}
+      await Promise.all([cLoadPastas(), cLoadCompras()]);
+      cRenderBody();
+    } catch (e) {
+      console.error('[COMPRAS-CHAPAS FRONT]', e);
+      alert('Erro ao excluir compra: ' + String(e && e.message || e));
+    }
+  }
+  async function cClonarCompra(id) {
+    if (!id) return;
+    try {
+      await cApi('/api/compras-chapas/' + encodeURIComponent(id) + '/clonar', { method: 'POST', body: {} });
+      try { if (typeof window.toast === 'function') window.toast('Compra clonada com sucesso', 'var(--green)'); } catch (_) {}
+      await Promise.all([cLoadPastas(), cLoadCompras()]);
+      cRenderBody();
+    } catch (e) {
+      console.error('[COMPRAS-CHAPAS FRONT]', e);
+      alert('Erro ao clonar compra: ' + String(e && e.message || e));
+    }
+  }
+  function cBuildPrintHtml(compra) {
+    var totals = cCompraTotals(compra);
+    if (typeof window._buildStyledPrintHtml !== 'function') return '';
+    return window._buildStyledPrintHtml({
+      title: 'Relatório de Compra de Papelão',
+      periodo: 'Compra #' + String(compra && compra.numero_compra || '—') + ' · ' + String(compra && compra.fornecedor || '—'),
+      cards: [
+        { label: 'Fornecedor', value: String(compra && compra.fornecedor || '—'), sub: String(compra && compra.ped_fornecedor || 'Sem pedido fornecedor') },
+        { label: 'Itens', value: cFmtNum((compra && compra.itens && compra.itens.length) || 0, 0), sub: 'Linhas cadastradas' },
+        { label: 'Quantidade Total', value: cFmtNum(totals.qtd, 0), sub: 'Soma dos itens' },
+        { label: 'Área Total', value: cFmtNum(totals.area, 4) + ' m²', sub: 'Área comprada' },
+        { label: 'Valor Total', value: cFmtRs(totals.total), sub: String(compra && compra.observacao || 'Sem observação') }
+      ],
+      summaryTitle: 'Resumo da compra',
+      summaryHeaders: ['Número', 'Pedido fornecedor', 'Pasta'],
+      summaryRows: [[
+        cEsc(String(compra && compra.numero_compra || '—')),
+        cEsc(String(compra && compra.ped_fornecedor || '—')),
+        cEsc(String(compra && compra.pasta_id || 'Sem pasta'))
+      ]],
+      detailTitle: 'Itens da compra',
+      detailHeaders: ['Ped. cliente', 'Nomenclatura', 'Largura', 'Comprimento', 'Quantidade', 'Valor/m²', 'Área m²', 'Valor total', 'R$/mil'],
+      detailRows: (Array.isArray(compra && compra.itens) ? compra.itens : []).map(function(item) {
+        var d = cItemDerived(item);
+        return [
+          cEsc(String(item && item.ped_cliente || '—')),
+          cEsc(String(item && item.nomenclatura || '—')),
+          cEsc(cFmtNum(item && item.largura || 0, 0)),
+          cEsc(cFmtNum(item && item.comprimento || 0, 0)),
+          cEsc(cFmtNum(item && item.quantidade || 0, 0)),
+          cEsc(cFmtRs(item && item.valor_m2 || 0)),
+          cEsc(cFmtNum(item && item.area_m2 != null ? item.area_m2 : d.area_m2, 4)),
+          cEsc(cFmtRs(item && item.valor_total != null ? item.valor_total : d.valor_total)),
+          cEsc(cFmtRs(item && item.vl_p_mil != null ? item.vl_p_mil : d.vl_p_mil))
+        ];
+      }),
+      emptySummaryCols: 3,
+      emptyDetailCols: 9
+    });
+  }
+  async function cImprimirCompra(id) {
+    try {
+      var compra = await cApi('/api/compras-chapas/' + encodeURIComponent(id), { method: 'GET' });
+      var html = cBuildPrintHtml(compra);
+      if (!html) throw new Error('Relatório indisponível');
+      if (typeof window._openStyledPrintWindow === 'function') return window._openStyledPrintWindow(html);
+      throw new Error('Janela de impressão indisponível');
+    } catch (e) {
+      console.error('[COMPRAS-CHAPAS FRONT]', e);
+      alert('Erro ao imprimir compra: ' + String(e && e.message || e));
+    }
+  }
+
+  function cInstallOverrides() {
+    try {
+      if (typeof window.renderCompras === 'function' && window.renderCompras !== cRenderWrapper && window.renderCompras !== origRenderCompras) {
+        origRenderCompras = window.renderCompras;
+      }
+      if (typeof window.abrirModalCompra === 'function' && window.abrirModalCompra !== cAbrirModalWrapper && window.abrirModalCompra !== origAbrirModalCompra) {
+        origAbrirModalCompra = window.abrirModalCompra;
+      }
+      if (typeof window.papelaoAbrirComprasChapas === 'function' && window.papelaoAbrirComprasChapas !== cAbrirComprasChapasWrapper && window.papelaoAbrirComprasChapas !== origAbrirComprasChapas) {
+        origAbrirComprasChapas = window.papelaoAbrirComprasChapas;
+      }
+      window.papelaoAbrirComprasChapas = cAbrirComprasChapasWrapper;
+      window.abrirModalCompra = cAbrirModalWrapper;
+      window.renderCompras = cRenderWrapper;
+    } catch (_) {}
+  }
+  function cAbrirComprasChapasWrapper() {
+    window._comprasTipoFiltro = 'chapas';
+    try { if (typeof window.go === 'function') window.go('compras'); } catch (_) {
+      try { if (origAbrirComprasChapas) origAbrirComprasChapas.apply(this, arguments); } catch (__) {}
+    }
+    setTimeout(function() { try { cInstallOverrides(); window.renderCompras(); } catch (_) {} }, 50);
+    setTimeout(function() { try { cInstallOverrides(); window.renderCompras(); } catch (_) {} }, 250);
+  }
+  function cAbrirModalWrapper(id) {
+    if (!cIsChapas()) {
+      if (origAbrirModalCompra) return origAbrirModalCompra.apply(this, arguments);
+      return null;
+    }
+    return cAbrirModalCompra(id || null);
+  }
+  function cRenderWrapper() {
+    if (!cIsChapas()) {
+      cEnsureToolbar();
+      if (origRenderCompras) return origRenderCompras.apply(this, arguments);
+      return null;
+    }
+    return cRenderPage();
+  }
+
+  try { cEnsureStyle(); } catch (_) {}
+  cInstallOverrides();
+  setTimeout(function() { try { cInstallOverrides(); } catch (_) {} }, 0);
+  setTimeout(function() { try { cInstallOverrides(); } catch (_) {} }, 500);
+  setTimeout(function() { try { cInstallOverrides(); } catch (_) {} }, 1500);
+  setTimeout(function() {
+    try {
+      cInstallOverrides();
+      if (cIsChapas() && document.getElementById('page-compras')) window.renderCompras();
+    } catch (_) {}
+  }, 500);
+})();
+
 (function patchSimuladorFluxoGlobalV2() {
   if (window.__patchSimuladorFluxoGlobalV2) return;
   window.__patchSimuladorFluxoGlobalV2 = true;
