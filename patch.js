@@ -14050,10 +14050,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (lbl && lbl.id !== 'btnCoresLabelItemOFRapida_' + idx) lbl.id = 'btnCoresLabelItemOFRapida_' + idx;
       if (btn && btn.dataset.patchColorIdx !== idx) {
         btn.dataset.patchColorIdx = idx;
-        btn.onclick = function(ev) {
-          try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-          window.toggleDropdownCores('dropdownCoresItemOFRapida_' + idx, 'btnAbrirCoresItemOFRapida_' + idx);
-        };
+        (function(boundIdx) {
+          btn.onclick = function(ev) {
+            try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+            window.toggleDropdownCores('dropdownCoresItemOFRapida_' + boundIdx, 'btnAbrirCoresItemOFRapida_' + boundIdx);
+          };
+        })(idx);
       }
       try { syncItemColorState(card, idx); } catch (_) {}
       try { window.renderSeletorCoresItemOFRapida(idx); } catch (_) {}
@@ -14083,6 +14085,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
         if (btn.__patchHandledClick) return;
         btn.__patchHandledClick = true;
+        try { if (typeof window.toggleCorItemOFRapida === 'function') window.toggleCorItemOFRapida(idx, corId); } catch (_) {}
         setTimeout(function() { try { btn.__patchHandledClick = false; } catch (_) {} }, 0);
       } catch (_) {}
     }, true);
