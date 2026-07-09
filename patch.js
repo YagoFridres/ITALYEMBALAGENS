@@ -40,6 +40,15 @@ function _erpModalEscapeText(v) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+if (typeof window._printEscText !== 'function') {
+  window._printEscText = function(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  };
+}
 function _fecharModalPadrao(id) {
   // #region debug-point A:shared-modal-close
   try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'fechar modal padrao acionado', { id: String(id || ''), totalOpenBefore: document.querySelectorAll('.estoque-modal-overlay[data-modal-padrao="1"]').length }); } catch (_) {}
@@ -13185,13 +13194,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function _printEscText(v) {
+    if (typeof window._printEscText === 'function') return window._printEscText(v);
     return String(v == null ? '' : v)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+      .replace(/"/g, '&quot;');
   }
+  try { window._printEscText = _printEscText; } catch (_) {}
 
   function _printCssPadraoComissoes() {
     return '*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px}h1{font-size:20px;margin-bottom:4px}h2{font-size:13px;color:#666;font-weight:normal;margin-bottom:20px}.brandline{font-size:13px;color:#666;font-weight:700;margin-bottom:4px}.cards{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}.card{border:1px solid #ddd;border-radius:6px;padding:12px 18px;min-width:140px}.lbl{font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px}.val{font-size:16px;font-weight:700}.green{color:#16a34a}table{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:11px}th{background:#f0f0f0;padding:7px 8px;text-align:left;border-bottom:2px solid #ccc;font-size:10px;text-transform:uppercase}td{padding:6px 8px;border-bottom:1px solid #eee}.vh{background:#1a1a2e;color:#fff;padding:8px 12px;border-radius:4px;margin:16px 0 8px;font-weight:700;font-size:12px}.tf{font-weight:700;background:#f5f5f5}.zebra tbody tr:nth-child(even) td{background:#f8fafc}.dark thead th{background:#1a1a2e;color:#fff;border-bottom:2px solid #111}.footer-print{position:fixed;left:20px;right:20px;bottom:8px;text-align:right;font-size:10px;color:#666}.footer-print .page-num:after{content:counter(page)}@page{margin:16mm 12mm 18mm 12mm}@media print{body{padding:0}.footer-print{position:fixed}}';
