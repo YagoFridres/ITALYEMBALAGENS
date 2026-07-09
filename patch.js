@@ -7917,15 +7917,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (!page) return;
       var wrap = page.querySelector('.pep-wrap');
       if (!wrap) return;
+      try {
+        var legacyColorModal = document.getElementById('estoque-cor-linha-modal');
+        if (legacyColorModal) legacyColorModal.remove();
+      } catch (_) {}
       wrap.onclick = function(ev) {
         var target = ev && ev.target;
-        var colorBtn = target && target.closest ? target.closest('[data-est-color]') : null;
-        if (colorBtn) {
-          ev.preventDefault();
-          ev.stopPropagation();
-          try { _estoqueAbrirModalCorLinha(_estoqueWireFindById(lista, String(colorBtn.getAttribute('data-est-color') || ''))); } catch (_) {}
-          return;
-        }
         var pinBtn = target && target.closest ? target.closest('[data-est-pin]') : null;
         if (pinBtn) {
           ev.preventDefault();
@@ -8131,14 +8128,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { window.toast(atual ? 'Sugestão removida da compra' : 'Sugestão fixada para compra', 'var(--green)'); } catch (_) {}
       await _estoqueRefreshAfterSugestaoCompra();
     }
-    function _estoqueCorBtnHtml(chapa) {
-      var chapaId = String(chapa && chapa.id || '').trim();
-      var cor = _resolveChapaRowColor(chapa);
-      return ''
-        + '<button class="pep-btn estoque-row-color-btn' + (cor ? ' is-active' : '') + '" data-est-color="' + esc(chapaId) + '" title="' + esc(cor ? ('Alterar cor da linha (' + cor + ')') : 'Definir cor da linha') + '">'
-        + '  <span class="estoque-row-color-swatch' + (cor ? '' : ' is-none') + '"' + (cor ? (' style="background:' + esc(cor) + ';box-shadow:0 0 0 1px rgba(255,255,255,.14),0 8px 18px ' + esc(_hexToRgbaChapa(cor, 0.28)) + '"') : '') + '></span>'
-        + '</button>';
-    }
     function _estoquePinBtnHtml(chapa) {
       var chapaId = String(chapa && chapa.id || '').trim();
       var pinned = !!_estoqueSugestaoCompraByChapa(chapaId);
@@ -8166,106 +8155,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           renderEstoqueWireframePage().catch(function() {});
         }
       } catch (_) {}
-    }
-    function _estoqueAbrirModalCorLinha(chapa) {
-      if (!chapa || !chapa.id) return;
-      var corAtual = _normalizeChapaRowColor(_resolveChapaRowColor(chapa));
-      var modalId = 'estoque-cor-linha-modal';
-      var body = ''
-        + '<div style="display:grid;gap:16px">'
-        + '  <div style="display:grid;gap:6px">'
-        + '    <div style="font-size:14px;font-weight:900;color:#f8fafc">' + esc(_estoqueChapaLabelSafe(chapa)) + '</div>'
-        + '    <div style="font-size:12px;color:#94a3b8">Escolha uma cor discreta para destacar esta linha em qualquer sessão ou computador.</div>'
-        + '  </div>'
-        + '  <input id="estoque-row-color-value" type="hidden" value="' + esc(corAtual) + '">'
-        + '  <div id="estoque-row-color-palette" class="estoque-color-palette">' + _renderPaletteChapaCor(corAtual) + '</div>'
-        + '  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
-        + '    <label style="display:flex;align-items:center;gap:8px;color:#cbd5e1;font-size:12px">Cor customizada <input id="estoque-row-color-custom" type="color" value="' + esc(corAtual || '#3B82F6') + '" style="width:42px;height:32px;padding:0;border:none;background:transparent;cursor:pointer"></label>'
-        + '    <button type="button" class="pep-btn" id="estoque-row-color-clear" style="background:#1f2937">Remover cor</button>'
-        + '  </div>'
-        + '  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
-        + '    <span style="font-size:12px;color:#94a3b8">Pré-visualização</span>'
-        + '    <span id="estoque-row-color-preview" class="estoque-color-preview"><span id="estoque-row-color-preview-bola" class="estoque-color-chip-swatch is-none"></span><span id="estoque-row-color-preview-texto">Sem cor</span></span>'
-        + '  </div>'
-        + '</div>';
-      var footer = ''
-        + '<button type="button" class="pep-btn" data-modal-close="1">Cancelar</button>'
-        + '<button type="button" class="pep-btn primary" id="estoque-row-color-save">Salvar cor</button>';
-      var modal = _abrirModalPadrao({
-        id: modalId,
-        titulo: 'Cor da linha',
-        subtitulo: 'A cor fica salva no banco e reaparece no estoque em qualquer acesso',
-        hero: '🎨',
-        accent: 'blue',
-        largura: '760px',
-        corpoHTML: body,
-        footerHTML: footer
-      });
-      var hidden = modal && modal.querySelector ? modal.querySelector('#estoque-row-color-value') : null;
-      var palette = modal && modal.querySelector ? modal.querySelector('#estoque-row-color-palette') : null;
-      var custom = modal && modal.querySelector ? modal.querySelector('#estoque-row-color-custom') : null;
-      var preview = modal && modal.querySelector ? modal.querySelector('#estoque-row-color-preview') : null;
-      var previewBola = modal && modal.querySelector ? modal.querySelector('#estoque-row-color-preview-bola') : null;
-      var previewTexto = modal && modal.querySelector ? modal.querySelector('#estoque-row-color-preview-texto') : null;
-      var clearBtn = modal && modal.querySelector ? modal.querySelector('#estoque-row-color-clear') : null;
-      var saveBtn = modal && modal.querySelector ? modal.querySelector('#estoque-row-color-save') : null;
-      var sync = function(value) {
-        var cor = _normalizeChapaRowColor(value || (hidden && hidden.value) || '');
-        if (hidden) hidden.value = cor;
-        if (custom) custom.value = cor || '#3B82F6';
-        if (previewTexto) {
-          var opt = _findChapaColorOption(cor);
-          previewTexto.textContent = cor ? ((opt && opt.label) || cor) : 'Sem cor';
-        }
-        if (preview) {
-          preview.style.background = cor ? _hexToRgbaChapa(cor, 0.22) : 'rgba(15,23,42,.6)';
-          preview.style.borderColor = cor ? cor : 'rgba(148,163,184,.18)';
-          preview.style.boxShadow = cor ? ('inset 4px 0 0 ' + cor) : 'none';
-        }
-        if (previewBola) {
-          previewBola.classList.toggle('is-none', !cor);
-          previewBola.style.background = cor || '';
-          previewBola.style.boxShadow = cor ? ('0 0 0 1px rgba(255,255,255,.18), 0 10px 22px ' + _hexToRgbaChapa(cor, 0.28)) : '';
-        }
-        Array.prototype.slice.call((palette && palette.querySelectorAll) ? palette.querySelectorAll('[data-chapa-color]') : []).forEach(function(btn) {
-          var ativo = _normalizeChapaRowColor(btn.getAttribute('data-chapa-color') || '') === cor;
-          btn.classList.toggle('active', ativo);
-          btn.setAttribute('aria-pressed', ativo ? 'true' : 'false');
-        });
-      };
-      if (palette) {
-        palette.addEventListener('click', function(ev) {
-          var btn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-chapa-color]') : null;
-          if (!btn) return;
-          ev.preventDefault();
-          sync(btn.getAttribute('data-chapa-color') || '');
-        });
-      }
-      if (custom) {
-        custom.addEventListener('input', function() {
-          sync(custom.value || '');
-        });
-      }
-      if (clearBtn) {
-        clearBtn.onclick = function() { sync(''); };
-      }
-      if (saveBtn) {
-        saveBtn.onclick = async function() {
-          if (saveBtn.disabled) return;
-          saveBtn.disabled = true;
-          try {
-            var data = await _estoqueSalvarCorLinha(chapa, hidden && hidden.value || '');
-            _fecharModalPadrao(modalId);
-            _estoqueAplicarCorCacheEUi(data || Object.assign({}, chapa, { cor_linha: hidden && hidden.value || null, cor: hidden && hidden.value || null, linha_cor: hidden && hidden.value || null }));
-            try { window.toast((hidden && hidden.value) ? 'Cor da linha salva' : 'Cor da linha removida', 'var(--green)'); } catch (_) {}
-          } catch (e) {
-            try { window.toast('Erro ao salvar cor da linha: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
-          } finally {
-            saveBtn.disabled = false;
-          }
-        };
-      }
-      sync(corAtual);
     }
     function _estoqueInvalidateGruposChapas() {
       window.__estoqueGruposChapasCache = null;
@@ -8450,7 +8339,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '<td class="col-num">' + num(qtd, 0) + '</td>'
         + '<td class="col-num">' + money(vunit) + '</td>'
         + '<td class="col-num">' + money(estoqueWireValor(chapa)) + '</td>'
-        + '<td class="col-actions">' + _estoqueCorBtnHtml(chapa) + ' ' + _estoquePinBtnHtml(chapa) + ' <button class="pep-btn danger" data-est-del="' + esc(chapa && chapa.id || '') + '">Excluir</button> <button class="pep-btn" data-est-edit="' + esc(chapa && chapa.id || '') + '">Alterar</button></td>'
+        + '<td class="col-actions">' + _estoquePinBtnHtml(chapa) + ' <button class="pep-btn danger" data-est-del="' + esc(chapa && chapa.id || '') + '">Excluir</button> <button class="pep-btn" data-est-edit="' + esc(chapa && chapa.id || '') + '">Alterar</button></td>'
         + '</tr>';
     }
     function _estoqueTabelaAgrupadaHtml(lista) {
