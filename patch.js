@@ -16971,6 +16971,26 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   async function _buscarChapaEstoquePorId(id) {
     var sid = String(id || '').trim();
     if (!sid) return null;
+    try {
+      var jsonById = await _apiFetchJson('/api/chapas_estoque/' + encodeURIComponent(sid));
+      var chapaById = jsonById && (jsonById.data || jsonById.chapa || jsonById);
+      if (chapaById && typeof chapaById === 'object') {
+        var corById = _resolveChapaRowColor(chapaById);
+        var decoratedById = Object.assign({}, chapaById, {
+          cor: corById || null,
+          cor_linha: corById || null,
+          linha_cor: corById || null
+        });
+        try {
+          var cacheAtual = _getListaChapasEstoqueCache().slice();
+          var idxAtual = cacheAtual.findIndex(function(item) { return String(item && item.id || '').trim() === sid; });
+          if (idxAtual >= 0) cacheAtual[idxAtual] = Object.assign({}, cacheAtual[idxAtual], decoratedById);
+          else cacheAtual.unshift(decoratedById);
+          window.__estoqueChapasCacheGlobal = cacheAtual;
+        } catch (_) {}
+        return decoratedById;
+      }
+    } catch (_) {}
     var lista = [];
     try {
       var qs = new URLSearchParams();
@@ -17148,6 +17168,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!sid) return;
     _setEstadoModalChapa('edit', sid);
     try { window.CHAPA_ATUAL_ID = sid; } catch (_) {}
+    try { if (typeof window.abrirModalNovaChapa === 'function') window.abrirModalNovaChapa(); } catch (_) {}
+    _scheduleEnhanceModalNovaChapa();
+    _agendarSincronizacaoModalChapa();
     var chapa = await _buscarChapaEstoquePorId(sid).catch(function() { return null; });
     // #region debug-point E:chapa-edicao-entry
     try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('E', 'abrir edicao de chapa iniciado', { id: sid, cacheHit: !!chapa, hasEditarChapa: typeof window.editarChapa === 'function', hasAbrirModalNovaChapa: typeof window.abrirModalNovaChapa === 'function' }); } catch (_) {}

@@ -16625,6 +16625,34 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const tablesToTry = ['chapas_estoque_v2', 'chapas_estoque'];
+    for (const table of tablesToTry) {
+      const r = await supabase.from(table).select('*').eq('id', id).maybeSingle();
+      const error = r?.error || null;
+      if (error) {
+        const msg = String(error.message || error || '');
+        if (msg.includes('does not exist') || msg.includes('relation') || msg.toLowerCase().includes('could not find')) continue;
+        return res.status(500).json({ ok: false, error: msg });
+      }
+      if (r?.data) {
+        let chapa = _chapasCanonicalFromAny(r.data, table);
+        try {
+          const loaded = await _chapasGruposList(req);
+          chapa = _chapasAnexarGrupoNaLista([chapa], loaded?.grupos || [])[0] || chapa;
+        } catch (_) {}
+        return res.json({ ok: true, data: chapa });
+      }
+    }
+    return res.status(404).json({ ok: false, error: 'chapa não encontrada' });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/chapas_grupos', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
