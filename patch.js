@@ -21352,6 +21352,8 @@ window._mbnActive = function(id) {
       var produto = _ofmaqProdutoLabel(of) || '—';
       var maquina = String(of && of.__maquina_busca || '').trim() || 'Sem máquina';
       var entrega = String(getOfDelivery(of) || '').trim();
+      var tamanho = _ofmaqTamanhoLabel(of);
+      var cores = _ofmaqCoresLabel(of);
       return ''
         + '<div class="ofmaq-busca-card" data-of-id="' + escAttrLocal(String(of && of.id || '')) + '" style="border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:14px;background:linear-gradient(145deg,rgba(8,17,32,.95),rgba(15,23,42,.95));box-shadow:0 14px 34px rgba(0,0,0,.24)">'
         + '  <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">'
@@ -21362,6 +21364,8 @@ window._mbnActive = function(id) {
         + '  <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 12px;font-size:12px;color:#94a3b8">'
         + '    <div><span style="color:#64748b">Entrega:</span> <b style="color:#e2e8f0">' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</b></div>'
         + '    <div><span style="color:#64748b">Quantidade:</span> <b style="color:#e2e8f0">' + escHLocal(String(_getQtdOf(of) != null ? _getQtdOf(of) : '—')) + '</b></div>'
+        + '    <div><span style="color:#64748b">Tamanho:</span> <b style="color:#e2e8f0">' + escHLocal(tamanho) + '</b></div>'
+        + '    <div><span style="color:#64748b">Cores:</span> <b style="color:#e2e8f0">' + escHLocal(cores) + '</b></div>'
         + '    <div><span style="color:#64748b">Status:</span> <b style="color:#e2e8f0">' + escHLocal(String(of && of.status || '—')) + '</b></div>'
         + '  </div>'
         + '  <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
@@ -21766,10 +21770,8 @@ window._mbnActive = function(id) {
       if (child.classList && (child.classList.contains('patch-ofmaq-readable-meta') || child.classList.contains('patch-setup-reason') || child.classList.contains('patch-ofmaq-badges'))) return;
       child.style.display = 'none';
     });
-    var dim = parseDimensions(of);
-    var tamanho = (Number(dim && dim.comprimento || 0) > 0 && Number(dim && dim.largura || 0) > 0)
-      ? (String(dim.comprimento) + '×' + String(dim.largura) + 'mm')
-      : '—';
+    var tamanho = _ofmaqTamanhoLabel(of);
+    var cores = _ofmaqCoresLabel(of);
     var produto = String(of && (of.prodDesc || of.produto || of.descricao || '') || '').trim() || '—';
     var cliente = String(of && (of.cliNome || of.cliente || of.cliente_nome || '') || '').trim() || '—';
     var entrega = _ofmaqFmtEntregaLegivel(getOfDelivery(of));
@@ -21784,6 +21786,7 @@ window._mbnActive = function(id) {
       + '<div><span style="color:var(--text2)">Cliente:</span> <span style="color:var(--text1)">' + escH(cliente) + '</span></div>'
       + '<div><span style="color:var(--text2)">Produto:</span> <span style="color:var(--text1)">' + escH(produto) + '</span></div>'
       + '<div><span style="color:var(--text2)">Tamanho:</span> <span style="color:var(--text1)">' + escH(tamanho) + '</span></div>'
+      + '<div><span style="color:var(--text2)">Cores:</span> <span style="color:var(--text1)">' + escH(cores) + '</span></div>'
       + '<div><span style="color:var(--text2)">Entrega:</span> <span style="color:var(--text1)">' + escH(entrega) + '</span></div>';
   }
 
