@@ -9121,9 +9121,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         { label: 'Valor Vendido por m²', value: money(valorVendidoPorM2 || 0) + '/m²', sub: 'Valor vendido ÷ área produzida' }
       ];
       var tabela = []
-        .concat(entradasMes.map(function(r) {
-          return { data: r.data, tipo: 'Entrada', fornecedor: r.fornecedor, cliente: '—', produto: r.chapa_label || '—', gramatura_nome: '—', toneladas: r.toneladas, qtd_caixas_produzidas: '—', of_numero: '—' };
-        }))
         .concat(saidasMes.map(function(r) {
           return { data: r.data, tipo: 'Saída', fornecedor: r.fornecedor, cliente: '—', produto: r.chapa_label || '—', gramatura_nome: '—', toneladas: r.toneladas, qtd_caixas_produzidas: '—', of_numero: r.of_numero || '—' };
         }))
