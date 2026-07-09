@@ -40,15 +40,14 @@ function _erpModalEscapeText(v) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
-if (typeof window._printEscText !== 'function') {
-  window._printEscText = function(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  };
-}
+window._printEscText = function(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+};
 function _fecharModalPadrao(id) {
   // #region debug-point A:shared-modal-close
   try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'fechar modal padrao acionado', { id: String(id || ''), totalOpenBefore: document.querySelectorAll('.estoque-modal-overlay[data-modal-padrao="1"]').length }); } catch (_) {}
@@ -13193,16 +13192,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
 
-  function _printEscText(v) {
-    if (typeof window._printEscText === 'function') return window._printEscText(v);
-    return String(v == null ? '' : v)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-  try { window._printEscText = _printEscText; } catch (_) {}
-
   function _printCssPadraoComissoes() {
     return '*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px}h1{font-size:20px;margin-bottom:4px}h2{font-size:13px;color:#666;font-weight:normal;margin-bottom:20px}.brandline{font-size:13px;color:#666;font-weight:700;margin-bottom:4px}.cards{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}.card{border:1px solid #ddd;border-radius:6px;padding:12px 18px;min-width:140px}.lbl{font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px}.val{font-size:16px;font-weight:700}.green{color:#16a34a}table{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:11px}th{background:#f0f0f0;padding:7px 8px;text-align:left;border-bottom:2px solid #ccc;font-size:10px;text-transform:uppercase}td{padding:6px 8px;border-bottom:1px solid #eee}.vh{background:#1a1a2e;color:#fff;padding:8px 12px;border-radius:4px;margin:16px 0 8px;font-weight:700;font-size:12px}.tf{font-weight:700;background:#f5f5f5}.zebra tbody tr:nth-child(even) td{background:#f8fafc}.dark thead th{background:#1a1a2e;color:#fff;border-bottom:2px solid #111}.footer-print{position:fixed;left:20px;right:20px;bottom:8px;text-align:right;font-size:10px;color:#666}.footer-print .page-num:after{content:counter(page)}@page{margin:16mm 12mm 18mm 12mm}@media print{body{padding:0}.footer-print{position:fixed}}';
   }
@@ -13216,19 +13205,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '<style>' + _printCssPadraoComissoes() + '</style>'
       + '</head><body>'
       + '<div class="brandline">Italy Embalagens</div>'
-      + '<h2>Gerado em ' + _printEscText(_printGeradoEmBr()) + '</h2>'
-      + '<h1>' + _printEscText((cfg.title || 'Relatório') + ' — ' + _printPeriodoTituloBr(cfg.periodo || '')) + '</h1>'
+      + '<h2>Gerado em ' + window._printEscText(_printGeradoEmBr()) + '</h2>'
+      + '<h1>' + window._printEscText((cfg.title || 'Relatório') + ' — ' + _printPeriodoTituloBr(cfg.periodo || '')) + '</h1>'
       + '<div class="cards">'
       + cards.map(function(card) {
-        return '<div class="card"><div class="lbl">' + _printEscText(card && card.label || '') + '</div><div class="val' + (card && card.green ? ' green' : '') + '">' + _printEscText(card && card.value || '0') + '</div><div style="font-size:11px;color:#666;margin-top:6px">' + _printEscText(card && card.sub || '') + '</div></div>';
+        return '<div class="card"><div class="lbl">' + window._printEscText(card && card.label || '') + '</div><div class="val' + (card && card.green ? ' green' : '') + '">' + window._printEscText(card && card.value || '0') + '</div><div style="font-size:11px;color:#666;margin-top:6px">' + window._printEscText(card && card.sub || '') + '</div></div>';
       }).join('')
       + '</div>'
-      + '<h3 style="margin-bottom:8px;font-size:13px">' + _printEscText(cfg.summaryTitle || 'Tabela-resumo') + '</h3>'
-      + '<table class="zebra"><thead><tr>' + (Array.isArray(cfg.summaryHeaders) ? cfg.summaryHeaders : []).map(function(head) { return '<th>' + _printEscText(head || '') + '</th>'; }).join('') + '</tr></thead><tbody>'
+      + '<h3 style="margin-bottom:8px;font-size:13px">' + window._printEscText(cfg.summaryTitle || 'Tabela-resumo') + '</h3>'
+      + '<table class="zebra"><thead><tr>' + (Array.isArray(cfg.summaryHeaders) ? cfg.summaryHeaders : []).map(function(head) { return '<th>' + window._printEscText(head || '') + '</th>'; }).join('') + '</tr></thead><tbody>'
       + (summaryRows.length ? summaryRows.map(function(row) { return '<tr>' + (Array.isArray(row) ? row : []).map(function(col) { return '<td>' + String(col == null ? '' : col) + '</td>'; }).join('') + '</tr>'; }).join('') : '<tr><td colspan="' + String(cfg.emptySummaryCols || 1) + '">Nenhum registro encontrado.</td></tr>')
       + '</tbody></table>'
-      + '<div class="vh">' + _printEscText(cfg.detailTitle || 'Detalhamento') + '</div>'
-      + '<table class="dark zebra"><thead><tr>' + (Array.isArray(cfg.detailHeaders) ? cfg.detailHeaders : []).map(function(head) { return '<th>' + _printEscText(head || '') + '</th>'; }).join('') + '</tr></thead><tbody>'
+      + '<div class="vh">' + window._printEscText(cfg.detailTitle || 'Detalhamento') + '</div>'
+      + '<table class="dark zebra"><thead><tr>' + (Array.isArray(cfg.detailHeaders) ? cfg.detailHeaders : []).map(function(head) { return '<th>' + window._printEscText(head || '') + '</th>'; }).join('') + '</tr></thead><tbody>'
       + (detailRows.length ? detailRows.map(function(row) { return '<tr>' + (Array.isArray(row) ? row : []).map(function(col) { return '<td>' + String(col == null ? '' : col) + '</td>'; }).join('') + '</tr>'; }).join('') : '<tr><td colspan="' + String(cfg.emptyDetailCols || 1) + '">Nenhum registro encontrado.</td></tr>')
       + '</tbody></table>'
       + '<div class="footer-print">Página <span class="page-num"></span></div>'
@@ -17189,29 +17178,29 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       summaryHeaders: ['Fornecedor', 'Lançamentos', 'Quantidade', 'Valor'],
       summaryRows: resumo.map(function(item) {
         return [
-          _printEscText(item && item.nome || '—'),
-          _printEscText(_fmtNumEstoque(item && item.lancamentos || 0)),
-          _printEscText(_fmtNumEstoque(item && item.quantidade || 0)),
-          _printEscText(_fmtRsEstoque(item && item.valor || 0))
+          window._printEscText(item && item.nome || '—'),
+          window._printEscText(_fmtNumEstoque(item && item.lancamentos || 0)),
+          window._printEscText(_fmtNumEstoque(item && item.quantidade || 0)),
+          window._printEscText(_fmtRsEstoque(item && item.valor || 0))
         ];
       }),
       detailTitle: 'Detalhamento',
       detailHeaders: isEntrada ? ['Data', 'Chapa', 'Fornecedor', 'Quantidade', 'NF', 'Usuário'] : ['Data', 'Chapa', 'Fornecedor', 'Quantidade', 'Motivo', 'Usuário'],
       detailRows: lista.map(function(row) {
         return isEntrada ? [
-          _printEscText(_fmtDateEstoque(row && row.data || '')),
-          _printEscText(row && row.chapa_label || '—'),
-          _printEscText(row && row.fornecedor || '—'),
-          _printEscText(_fmtNumEstoque(row && row.quantidade || 0)),
-          _printEscText(row && row.nf || '—'),
-          _printEscText(row && row.usuario || '—')
+          window._printEscText(_fmtDateEstoque(row && row.data || '')),
+          window._printEscText(row && row.chapa_label || '—'),
+          window._printEscText(row && row.fornecedor || '—'),
+          window._printEscText(_fmtNumEstoque(row && row.quantidade || 0)),
+          window._printEscText(row && row.nf || '—'),
+          window._printEscText(row && row.usuario || '—')
         ] : [
-          _printEscText(_fmtDateEstoque(row && row.data || '')),
-          _printEscText(row && row.chapa_label || '—'),
-          _printEscText(row && row.fornecedor || '—'),
-          _printEscText(_fmtNumEstoque(row && row.quantidade || 0)),
-          _printEscText(row && (row.motivo || row.observacoes || '—') || '—'),
-          _printEscText(row && row.usuario || '—')
+          window._printEscText(_fmtDateEstoque(row && row.data || '')),
+          window._printEscText(row && row.chapa_label || '—'),
+          window._printEscText(row && row.fornecedor || '—'),
+          window._printEscText(_fmtNumEstoque(row && row.quantidade || 0)),
+          window._printEscText(row && (row.motivo || row.observacoes || '—') || '—'),
+          window._printEscText(row && row.usuario || '—')
         ];
       }),
       emptySummaryCols: 4,
