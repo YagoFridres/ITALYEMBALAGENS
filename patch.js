@@ -8040,6 +8040,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var chapaId = String(chapa && chapa.id || '').trim();
       return '<select class="estoque-row-group-select" data-est-group="' + esc(chapaId) + '">' + _estoqueGrupoOptionsHtml(chapa, grupos) + '</select>';
     }
+    function _estoqueLinhaMetaHtml(chapa) {
+      var meta = [];
+      var categoria = String(chapa && chapa.categoria || '').trim();
+      var vincos = String(chapa && chapa.vincos || '').trim();
+      var obs = String(chapa && (chapa.observacao || chapa.obs) || '').replace(/\s+/g, ' ').trim();
+      if (categoria) meta.push(categoria);
+      if (chapa && chapa.riscada) meta.push('Riscada');
+      if (vincos) meta.push('Vincos: ' + vincos);
+      if (obs) meta.push('Obs: ' + (obs.length > 64 ? (obs.slice(0, 61) + '...') : obs));
+      if (!meta.length) return '';
+      return '<div style="margin-top:4px;font-size:11px;line-height:1.35;color:#94a3b8">' + esc(meta.join(' | ')) + '</div>';
+    }
     function _estoqueLinhaTabelaHtml(chapa, grupos) {
       var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0) || 0));
       var vunit = Number(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0) || 0;
@@ -8048,8 +8060,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '<td class="col-text">' + esc(chapa && chapa.fornecedor || '—') + '</td>'
         + '<td class="col-text">' + esc(chapa && chapa.gramatura || '—') + '</td>'
         + '<td class="col-text">' + esc(chapa && chapa.nomenclatura || '—') + '</td>'
-        + '<td class="col-text">' + esc(chapa && chapa.tamanho || '—') + '</td>'
-        + '<td class="col-text">' + esc(chapa && (chapa.nome_uso || chapa.nome) || '—') + '</td>'
+        + '<td class="col-text">' + esc(chapa && chapa.tamanho || '—') + (String(chapa && chapa.vincos || '').trim() ? ('<div style="margin-top:4px;font-size:11px;line-height:1.35;color:#94a3b8">Vincos: ' + esc(chapa.vincos) + '</div>') : '') + '</td>'
+        + '<td class="col-text">' + esc(chapa && (chapa.nome_uso || chapa.nome) || '—') + _estoqueLinhaMetaHtml(chapa) + '</td>'
         + '<td class="col-text">' + esc(chapa && (chapa.qual_cnpj || chapa.empresa_vinculada || chapa.qual || chapa.empresa) || '—') + '</td>'
         + '<td class="col-text">' + esc(chapa && chapa.nf || '—') + '</td>'
         + '<td class="col-num">' + num(qtd, 0) + '</td>'
@@ -17187,6 +17199,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     _setFieldValueChapa('chapa-nomenclatura', chapa && (chapa.nomenclatura || chapa.nom) || '');
     _setFieldValueChapa('chapa-fornecedor', chapa && (chapa.fornecedor || chapa.forn) || '');
     _setFieldValueChapa('chapa-empresa', _resolverEmpresaEdicaoChapa(chapa));
+    _setFieldValueChapa('chapa-gramatura', chapa && (chapa.gramatura != null ? chapa.gramatura : chapa.espessura_mm) || '');
     _setFieldValueChapa('chapa-tamanho', chapa && (chapa.tamanho || chapa.tam) || '');
     _setFieldValueChapa('chapa-nome', chapa && (chapa.nome_uso || chapa.nome) || '');
     _setFieldValueChapa('chapa-nf', chapa && (chapa.nf || chapa.nf_entrada) || '');
@@ -17477,6 +17490,33 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     });
   }
 
+  function _ensureGramaturaFieldModalChapa(shell) {
+    var modalShell = shell || ((document.getElementById('modal-nova-chapa') || {}).firstElementChild);
+    if (!modalShell) return;
+    var existing = document.getElementById('chapa-gramatura');
+    if (existing) {
+      var existingWrap = existing.closest ? existing.closest('label, .estoque-modal-field') : null;
+      if (existingWrap) existingWrap.classList.add('estoque-modal-field');
+      existing.classList.add('estoque-modal-input');
+      existing.setAttribute('type', 'number');
+      existing.setAttribute('min', '0');
+      existing.setAttribute('step', '1');
+      existing.setAttribute('placeholder', 'Ex: 350');
+      return;
+    }
+    var grids = modalShell.querySelectorAll('.estoque-modal-grid-chapa');
+    var generalGrid = grids && grids[0] ? grids[0] : modalShell.querySelector('.estoque-modal-grid-chapa');
+    if (!generalGrid) return;
+    var wrap = document.createElement('label');
+    wrap.className = 'estoque-modal-label estoque-modal-field';
+    wrap.setAttribute('for', 'chapa-gramatura');
+    wrap.innerHTML = '<span>Gramatura</span><input id="chapa-gramatura" class="estoque-modal-input" type="number" min="0" step="1" placeholder="Ex: 350">';
+    var before = document.getElementById('chapa-tamanho');
+    var beforeWrap = before && before.closest ? before.closest('label, .estoque-modal-field') : null;
+    if (beforeWrap && beforeWrap.parentNode === generalGrid) generalGrid.insertBefore(wrap, beforeWrap);
+    else generalGrid.appendChild(wrap);
+  }
+
   function _refreshChapaRiscadaPill() {
     var noBtn = document.getElementById('chapa-riscada-nao');
     var yesBtn = document.getElementById('chapa-riscada-sim');
@@ -17582,10 +17622,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               m = 'PATCH';
             }
             var cor = _normalizeChapaRowColor((document.getElementById('chapa-cor-linha') || {}).value || '');
+            var gramaturaEl = document.getElementById('chapa-gramatura');
+            var gramaturaVal = gramaturaEl ? String(gramaturaEl.value || '').trim() : '';
             var mergePayload = function(body) {
               if (!body || typeof body !== 'object') return body;
               body.cor = cor || null;
               body.cor_linha = cor || null;
+              if (gramaturaVal !== '') body.gramatura = gramaturaVal;
               if (editIdAtual) body.id = editIdAtual;
               return body;
             };
@@ -17709,6 +17752,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       grid.replaceWith(general, detail);
     }
     var detailTarget = shell.querySelectorAll('.estoque-modal-grid-chapa')[1] || shell.querySelector('.estoque-modal-grid-chapa');
+    _ensureGramaturaFieldModalChapa(shell);
     if (detailTarget && !document.getElementById('chapa-cor-wrap')) {
       detailTarget.insertAdjacentHTML('beforeend', _renderCampoCorChapa());
     }
@@ -17746,6 +17790,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     if (!isEdit && !String((document.getElementById('chapa-edit-id') || {}).value || '').trim() && corField) {
       corField.value = '';
+    }
+    if (!isEdit) {
+      var gramaturaInput = document.getElementById('chapa-gramatura');
+      if (gramaturaInput && !String(gramaturaInput.value || '').trim()) gramaturaInput.value = '';
     }
     _refreshChapaColorPreview();
 
