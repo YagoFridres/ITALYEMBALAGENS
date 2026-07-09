@@ -10667,8 +10667,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     {label:'Clientes',        page:'clientes'},
     {label:'Mapa Clientes',   page:'mapa-clientes'},
     {label:'Estoque',         page:'estoque'},
-    {label:'Sel. Chapas',     page:'sel-chapas'},
-    {label:'Papelão IA',      page:'papelao-ia'},
     {label:'Máquinas',        page:'maquinas'},
     {label:'Tempos Reais',    page:'tempos-reais'},
     {label:'Tipos Caixa',     page:'tipos-caixa'},
