@@ -7386,7 +7386,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + '.estoque-wire-sheet-footer{position:sticky;bottom:0;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;padding:18px 26px;border-top:1px solid rgba(148,163,184,.12);background:linear-gradient(180deg,rgba(9,17,31,.18),rgba(9,17,31,.98))}'
           + '.estoque-wire-sheet-footer.is-empty{display:none}'
           + '.estoque-wire-section + .estoque-wire-section{margin-top:18px}'
-          + '.estoque-wire-section{padding:18px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:linear-gradient(180deg,rgba(15,23,42,.88),rgba(15,23,42,.72))}'
+          + '.estoque-wire-section{padding:20px;border-radius:16px;border:1px solid #1e293b;background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.78))}'
           + '.estoque-wire-section-head{display:grid;gap:6px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(148,163,184,.12)}'
           + '.estoque-wire-section-title{font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#64748b}'
           + '.estoque-wire-section-sub{font-size:12px;line-height:1.45;color:#94a3b8}'
@@ -7417,6 +7417,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + '.estoque-wire-ton-main{font-weight:800;color:#f8fafc}'
           + '.estoque-wire-ton-sub{display:block;margin-top:4px;font-size:12px;color:#94a3b8}'
           + '.estoque-wire-ton-badge{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;border:1px solid rgba(148,163,184,.2);background:rgba(30,41,59,.8);font-size:11px;font-weight:800;color:#cbd5e1;white-space:nowrap}'
+          + '.estoque-wire-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}'
+          + '.estoque-wire-kpi-card{display:grid;gap:8px;padding:16px;border-radius:14px;border:1px solid #1e293b;background:linear-gradient(180deg,rgba(8,17,32,.88),rgba(15,23,42,.8))}'
+          + '.estoque-wire-kpi-label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
+          + '.estoque-wire-kpi-value{font-size:22px;font-weight:900;line-height:1.15;color:#f8fafc}'
+          + '.estoque-wire-kpi-sub{font-size:12px;line-height:1.45;color:#94a3b8}'
+          + '.estoque-wire-note{padding:14px 16px;border-radius:12px;border:1px solid rgba(59,130,246,.22);background:rgba(37,99,235,.08);font-size:12px;line-height:1.55;color:#cbd5e1}'
           + '.estoque-wire-modal-empty{padding:18px;border:1px dashed rgba(148,163,184,.18);border-radius:14px;color:#94a3b8;text-align:center}'
           + '.estoque-wire-modal-footer .estoque-modal-btn{min-height:46px}'
           + '.estoque-wire-modal-footer{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}'
@@ -7504,18 +7510,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var totalQtd = rows.reduce(function(s, row) { return s + (Number(row && row.quantidade || 0) || 0); }, 0);
       var totalTon = rows.reduce(function(s, row) { return s + (Number(row && row.toneladas || 0) || 0); }, 0);
       var totalComPeso = rows.filter(function(row) { return !!(row && row.temPeso); }).length;
-      var resumoHtml = ''
-        + '<div class="estoque-wire-stat-grid">'
-        + '  <div class="estoque-wire-stat-card"><div class="estoque-wire-stat-label">Chapas</div><div class="estoque-wire-stat-value">' + esc(num(rows.length, 0)) + '</div><div class="estoque-wire-stat-sub">Itens no detalhamento atual</div></div>'
-        + '  <div class="estoque-wire-stat-card"><div class="estoque-wire-stat-label">Quantidade total</div><div class="estoque-wire-stat-value">' + esc(num(totalQtd, 0)) + '</div><div class="estoque-wire-stat-sub">Saldo consolidado em unidades</div></div>'
-        + '  <div class="estoque-wire-stat-card"><div class="estoque-wire-stat-label">Toneladas</div><div class="estoque-wire-stat-value">' + esc(num(totalTon, 3) + ' t') + '</div><div class="estoque-wire-stat-sub">Somente chapas com peso calculável</div></div>'
-        + '  <div class="estoque-wire-stat-card"><div class="estoque-wire-stat-label">Com peso válido</div><div class="estoque-wire-stat-value">' + esc(num(totalComPeso, 0)) + '</div><div class="estoque-wire-stat-sub">Linhas aptas ao cálculo de tonelagem</div></div>'
-        + '</div>';
-      var html = rows.length ? ''
-        + resumoHtml
+      var resumoHtml = _estoqueWireRenderKpiGrid([
+        { label: 'Chapas', value: num(rows.length, 0), sub: 'Itens no detalhamento atual' },
+        { label: 'Quantidade Total', value: num(totalQtd, 0), sub: 'Saldo consolidado em unidades' },
+        { label: 'Toneladas', value: num(totalTon, 3) + ' t', sub: 'Somente chapas com peso calculável' },
+        { label: 'Com Peso Válido', value: num(totalComPeso, 0), sub: 'Linhas aptas ao cálculo de tonelagem' }
+      ]);
+      var tabelaHtml = ''
         + '<div class="estoque-wire-ton-table-wrap">'
         + '  <table class="estoque-wire-ton-table">'
-        + '    <thead><tr><th>Nome / Nomenclatura</th><th>Fornecedor</th><th class="num">Quantidade</th><th class="num">Toneladas</th></tr></thead>'
+        + '    <thead><tr><th>Chapa</th><th>Fornecedor</th><th class="num">Quantidade</th><th class="num">Toneladas</th></tr></thead>'
         + '    <tbody>'
         + rows.map(function(row) {
             return ''
@@ -7528,13 +7532,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           }).join('')
         + '    </tbody>'
         + '  </table>'
-        + '</div>'
+        + '</div>';
+      var html = rows.length ? ''
+        + _estoqueWireRenderSection('Resumo do Estoque', 'Visão consolidada das chapas consideradas neste detalhamento.', resumoHtml)
+        + _estoqueWireRenderSection('Detalhamento por Chapa', 'Tabela ordenada do maior para o menor volume em toneladas.', tabelaHtml)
+        + '<div class="estoque-wire-note">Quando o peso por unidade não estiver cadastrado, a linha continua disponível para conferência, mas o cálculo de toneladas fica sinalizado como pendente.</div>'
         : '<div class="estoque-wire-modal-empty">Nenhuma chapa encontrada para detalhar toneladas.</div>';
       _estoqueWireOpenModal({
         title: 'Toneladas em Estoque por Chapa',
-        sub: 'Detalhamento do estoque ordenado do maior para o menor em toneladas, com fallback visual quando o peso nao estiver cadastrado.',
+        sub: 'Resumo e detalhamento do estoque no mesmo padrão visual dos modais operacionais do sistema.',
         width: '800px',
         wide: true,
+        hero: '⚖',
         bodyHtml: html,
         footerHtml: '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-ew-close="1">Fechar</button>'
       });
@@ -7611,6 +7620,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  <div class="estoque-wire-detail-grid">' + String(gridHtml || '') + '</div>'
         + '</section>';
     }
+    function _estoqueWireRenderKpiCard(label, value, sub) {
+      return ''
+        + '<div class="estoque-wire-kpi-card">'
+        + '  <div class="estoque-wire-kpi-label">' + esc(label || '') + '</div>'
+        + '  <div class="estoque-wire-kpi-value">' + esc(value || '—') + '</div>'
+        + '  <div class="estoque-wire-kpi-sub">' + esc(sub || '') + '</div>'
+        + '</div>';
+    }
+    function _estoqueWireRenderKpiGrid(items) {
+      var lista = Array.isArray(items) ? items.filter(Boolean) : [];
+      if (!lista.length) return '';
+      return '<div class="estoque-wire-kpi-grid">' + lista.map(function(item) {
+        return _estoqueWireRenderKpiCard(item.label, item.value, item.sub);
+      }).join('') + '</div>';
+    }
     function _estoqueWireOpenDetailModal(chapa) {
       if (!chapa) return;
       var qtd = Math.max(0, Math.trunc(Number(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : chapa.quantidade) || 0) || 0));
@@ -7667,14 +7691,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         _estoqueWireRenderMaybeDetailCard('ID', esc(chapa.id || ''))
       ].filter(Boolean).join('') + extras.join('');
       var html = ''
+        + _estoqueWireRenderKpiGrid([
+          { label: 'Quantidade Atual', value: num(qtd, 0), sub: 'Saldo disponível desta chapa' },
+          { label: 'Valor Total', value: money(estoqueWireValor(chapa)), sub: 'Quantidade × valor unitário' },
+          { label: 'Toneladas', value: chapa.peso_kg_unidade ? (num(estoqueWireTon(chapa), 3) + ' t') : '—', sub: chapa.peso_kg_unidade ? 'Cálculo com peso cadastrado' : 'Peso por unidade não cadastrado' },
+          { label: 'Tamanho', value: String(chapa.tamanho || '—'), sub: String(chapa.gramatura || '').trim() ? (String(chapa.gramatura) + ' g/m²') : 'Sem gramatura informada' }
+        ])
+        + '<div class="estoque-wire-note">As informações desta chapa foram reorganizadas em seções, com labels em destaque e leitura mais limpa no padrão dos modais operacionais do sistema.</div>'
         + _estoqueWireRenderSection('Identificacao', 'Dados principais da chapa e do fornecedor.', identificacao)
         + _estoqueWireRenderSection('Estoque e Valores', 'Saldo atual, custos e configuracao visual da linha.', estoqueValores)
         + _estoqueWireRenderSection('Metadados', 'Datas e demais campos disponiveis no cadastro.', metadados);
       var chapaId = String(chapa.id || '').trim();
       _estoqueWireOpenModal({
         title: String(chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Detalhes da Chapa'),
-        sub: 'Visualizacao completa da chapa selecionada com todos os campos disponiveis.',
+        sub: 'Visualização completa da chapa selecionada com resumo, seções separadas e leitura mais legível.',
         width: '760px',
+        hero: '▣',
         bodyHtml: html,
         footerHtml: ''
           + '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-ew-close="1">&#10005; Fechar</button>'
@@ -18068,7 +18100,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!shell) return;
     modal.classList.add('estoque-modal-overlay', 'estoque-modal-overlay-padrao');
     modal.setAttribute('data-modal-padrao', '1');
-    shell.classList.add('estoque-modal-shell', 'estoque-modal-shell-md', 'estoque-modal-shell-chapa');
+    shell.classList.add('estoque-modal-shell', 'estoque-modal-shell-md', 'estoque-modal-shell-padrao', 'estoque-modal-shell-chapa');
     shell.style.cssText = '';
     if (!modal.dataset.patchOverlayCloseBound) {
       modal.dataset.patchOverlayCloseBound = '1';
@@ -18111,7 +18143,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     title.className = 'estoque-modal-title';
     var subtitle = document.getElementById('chapa-modal-subtitulo');
-    if (subtitle) subtitle.textContent = isEdit ? 'Atualize os dados da chapa mantendo o cadastro, o saldo e o histórico vinculados.' : 'Cadastre uma nova chapa com dados gerais, estoque inicial e detalhes de acabamento.';
+    if (subtitle) subtitle.textContent = isEdit ? 'Atualize o cadastro da chapa com os dados organizados em seções, sem perder histórico nem saldo vinculado.' : 'Cadastre a nova chapa em blocos separados, com leitura clara dos dados gerais, estoque inicial e acabamento.';
     var hero = document.getElementById('chapa-modal-hero');
     if (hero) {
       hero.textContent = isEdit ? '✎' : '+';
@@ -19250,6 +19282,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '.pcp-select{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}' +
       '.estoque-modal-overlay-padrao{background:rgba(0,0,0,.68)!important;backdrop-filter:none!important}' +
       '.estoque-modal-shell-padrao{display:grid!important;grid-template-rows:auto minmax(0,1fr) auto!important;max-height:85vh!important;overflow:hidden!important;background:#131b2e!important;border:1px solid rgba(148,163,184,.18)!important;border-radius:18px!important;box-shadow:0 36px 88px rgba(0,0,0,.62)!important}' +
+      '.estoque-modal-shell-chapa{max-height:min(88vh,980px)!important}' +
       '.estoque-modal-header-padrao{position:sticky;top:0;z-index:3;padding:22px 24px!important;background:#0f172a!important;border-bottom:1px solid rgba(148,163,184,.14)!important}' +
       '.estoque-modal-content-padrao{min-height:0;overflow:auto;padding:22px 24px!important;background:linear-gradient(180deg,#131b2e,#10182a)!important}' +
       '.estoque-modal-footer-padrao{padding:16px 24px!important;background:#10182a!important;border-top:1px solid rgba(148,163,184,.12)!important}' +
