@@ -16486,6 +16486,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return json;
   }
 
+  async function apiJson(url, options) {
+    var cfg = options || {};
+    var headers = Object.assign({}, cfg.headers || {});
+    var body = cfg.body;
+    if (body && typeof body !== 'string' && !(body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+      body = JSON.stringify(body);
+    }
+    var resp = await window._apiAuthFetch(url, Object.assign({}, cfg, { headers: headers, body: body }));
+    var data = await resp.json().catch(function() { return null; });
+    return { resp: resp, data: data };
+  }
+
   async function _carregarResumoLegadoEstoque() {
     if (window.__estoqueLegacyFetchDone && window.__estoqueLegacyFetchCache) return window.__estoqueLegacyFetchCache;
     if (window.__estoqueLegacyFetchPromise) return window.__estoqueLegacyFetchPromise;
