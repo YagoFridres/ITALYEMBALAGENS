@@ -18173,7 +18173,7 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
       const qtdCol = table === 'chapas_estoque_v2' ? 'quantidade_atual' : 'quantidade';
       let q = supabase.from(table).select('*').gt(qtdCol, 0);
       if (empId) q = q.eq('emp_id', empId);
-      const r = await q.limit(1000);
+      const r = await q.limit(5000);
       chapas = r?.data || [];
       error = r?.error || null;
     } catch (e) {
@@ -18197,7 +18197,7 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
       throw error;
     }
 
-    const lista = Array.isArray(chapas) ? chapas : [];
+    const lista = (Array.isArray(chapas) ? chapas : []).map((row) => _chapasCanonicalFromAny(row, table));
     let tonTotal = 0;
     let unidadesTotal = 0;
     let valorTotal = 0;
@@ -18229,7 +18229,7 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
     lista.forEach((c) => {
       const qtd = Math.trunc(toNum(c?.quantidade_atual ?? c?.quantidade ?? c?.qtd ?? 0) || 0);
       const pesoKg = toNum(c?.peso_kg_unidade) || 0;
-      const val = Number(c?.valor_unitario) || 0;
+      const val = Number(c?.valor_unitario ?? c?.val) || 0;
       const forn = String(c?.fornecedor || 'Outros').trim() || 'Outros';
       const cat = String(c?.categoria || 'Outros').trim() || 'Outros';
       if (!(qtd > 0)) return;

@@ -6623,6 +6623,45 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         });
       return state.inFlight;
     }
+    function _toneladasEstoqueFetchState() {
+      if (!window.__toneladasEstoqueFetchState) {
+        window.__toneladasEstoqueFetchState = {
+          inFlight: null,
+          cache: null,
+          lastErrorAt: 0,
+          lastErrorMsg: ''
+        };
+      }
+      return window.__toneladasEstoqueFetchState;
+    }
+
+    async function _fetchToneladasEstoqueResumoSafe(force) {
+      var state = _toneladasEstoqueFetchState();
+      if (state.inFlight) return state.inFlight;
+      var now = Date.now();
+      if (!force && state.cache && (now - (state.cacheAt || 0)) < 20000) return state.cache;
+      if (!force && state.lastErrorAt && (now - state.lastErrorAt) < 20000) {
+        return state.cache || { ok: false, ton_estoque_atual: 0, error: state.lastErrorMsg || 'Falha recente em toneladas do estoque', suppressed: true };
+      }
+      state.inFlight = apiJson('/api/chapas_estoque/toneladas')
+        .then(function(res) {
+          state.cache = res || { ok: true, ton_estoque_atual: 0 };
+          state.cacheAt = Date.now();
+          state.lastErrorAt = 0;
+          state.lastErrorMsg = '';
+          return state.cache;
+        })
+        .catch(function(err) {
+          state.lastErrorAt = Date.now();
+          state.lastErrorMsg = String(err && err.message || err || 'Falha ao carregar toneladas do estoque');
+          state.cache = state.cache || { ok: false, ton_estoque_atual: 0, error: state.lastErrorMsg };
+          return state.cache;
+        })
+        .finally(function() {
+          state.inFlight = null;
+        });
+      return state.inFlight;
+    }
 
     async function renderGramaturasPage() {
       ensureStyles();
@@ -8860,7 +8899,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var pair = await Promise.all([
         _fetchToneladasVendidasSafe(false),
         _carregarDadosMovimentacaoEstoque('').catch(function() { return []; }),
-        _estoqueFetchChapasList(10000).catch(function() { return []; })
+        _fetchToneladasEstoqueResumoSafe(false).catch(function() { return { ok: false, ton_estoque_atual: 0 }; })
       ]);
       var tonApi = pair[0] || null;
       var ofRows = Array.isArray(tonApi && (tonApi.rows || tonApi.detalhamento)) ? (tonApi.rows || tonApi.detalhamento) : [];
@@ -8869,7 +8908,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('T', 'render toneladas resposta recebida', { apiOk: !!tonApi && tonApi.ok !== false, rows: ofRows.length, hasResumo: !!(tonApi && tonApi.resumo), tonError: tonError, bodyKeys: tonApi && typeof tonApi === 'object' ? Object.keys(tonApi).slice(0, 12) : [] }); } catch (_) {}
       // #endregion
       var movRows = Array.isArray(pair[1]) ? pair[1] : [];
-      var chapas = Array.isArray(pair[2]) ? pair[2] : [];
+      var tonEstoqueResumo = pair[2] && typeof pair[2] === 'object' ? pair[2] : { ton_estoque_atual: 0 };
       var mesAtual = _mesAtualRefEstoque();
       var tonMes = ofRows.filter(function(r) { return String(r.data_conclusao || '').slice(0, 7) === mesAtual; }).reduce(function(s, r) { return s + (Number(r.toneladas || 0) || 0); }, 0);
       var saidasMes = movRows.filter(function(r) { return String(r.tipo || '') === 'saida' && String(r.data || '').slice(0, 7) === mesAtual; });
@@ -8878,7 +8917,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var valorVendidoPorM2 = tonesValorVendidoPorM2(saidasOfMes);
       var saidaFornecedor = _resumoTopPorValor(saidasOfMes, function(r) { return r.fornecedor_nome || r.fornecedor || 'Sem fornecedor'; }, function(r) { return Number(r.toneladas || 0) || 0; });
       var entradaFornecedor = _resumoTopPorValor(entradasMes, function(r) { return r.fornecedor || 'Sem fornecedor'; }, function(r) { return Number(r.toneladas || 0) || 0; });
-      var tonEstoque = (chapas || []).reduce(function(s, chapa) { return s + (Number((typeof _calcTonAtualEst === 'function') ? _calcTonAtualEst(chapa) : 0) || 0); }, 0);
+      var tonEstoque = Number(tonEstoqueResumo && tonEstoqueResumo.ton_estoque_atual || 0) || 0;
       var cardsResumo = [
         { label: 'Toneladas Vendidas no Mês', value: num(tonMes || 0, 3), sub: 'OFs concluídas em ' + String(mesAtual || '') },
         { label: 'Toneladas Saíram por Fornecedor', value: num((saidaFornecedor[0] && saidaFornecedor[0].valor) || 0, 3), sub: (saidaFornecedor[0] && saidaFornecedor[0].nome) || 'Sem fornecedor' },
