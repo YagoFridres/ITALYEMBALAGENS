@@ -19079,6 +19079,605 @@ app.patch('/api/chapas_estoque_v2/:id/ignorar-sugestao', authMiddleware, async (
   }
 });
 
+function _comprasChapasLog(stage, error) {
+  console.error('[COMPRAS-CHAPAS]', stage, String(error?.message || error || 'erro_desconhecido'));
+}
+
+function _comprasChapasStr(v) {
+  return String(v == null ? '' : v).trim();
+}
+
+function _comprasChapasNum(v) {
+  const n = Number(String(v == null ? '' : v).replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function _comprasChapasUser(req) {
+  return String(req?.usuario?.nome || req?.usuario?.email || req?.user?.nome || req?.user?.email || 'sistema').trim() || 'sistema';
+}
+
+function _comprasChapasEmpId(req, body) {
+  const b = body || {};
+  return _comprasChapasStr(
+    b.emp_id ??
+    b.empId ??
+    req?.query?.emp_id ??
+    req?.query?.empId ??
+    req?.usuario?.emp_id ??
+    req?.usuario?.empId ??
+    req?.user?.emp_id ??
+    req?.user?.empId
+  );
+}
+
+function _comprasChapasDateIso(row) {
+  const raw = row?.criado_em || row?.created_at || row?.data_compra || row?.data || null;
+  if (!raw) return '';
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString();
+}
+
+function _comprasChapasInPeriod(row, dataInicio, dataFim) {
+  const iso = _comprasChapasDateIso(row);
+  if (!iso) return !(dataInicio || dataFim);
+  if (dataInicio) {
+    const ini = new Date(String(dataInicio).trim() + 'T00:00:00.000Z');
+    if (!Number.isNaN(ini.getTime()) && iso < ini.toISOString()) return false;
+  }
+  if (dataFim) {
+    const fim = new Date(String(dataFim).trim() + 'T23:59:59.999Z');
+    if (!Number.isNaN(fim.getTime()) && iso > fim.toISOString()) return false;
+  }
+  return true;
+}
+
+async function _comprasChapasInsertCompat(table, rows, selectExpr = '*') {
+  let payloadRows = (Array.isArray(rows) ? rows : []).map((row) => ({ ...(row || {}) }));
+  for (let i = 0; i < 16; i += 1) {
+    let q = supabase.from(table).insert(payloadRows);
+    if (selectExpr) q = q.select(selectExpr);
+    const out = await q;
+    if (!out?.error) return out;
+    const msg = String(out.error.message || out.error || '');
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const m3 = msg.match(/column \"([^\"]+)\" of relation/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]) || null;
+    if (!col) return out;
+    const exists = payloadRows.some((row) => Object.prototype.hasOwnProperty.call(row, col));
+    if (!exists) return out;
+    payloadRows = payloadRows.map((row) => {
+      const next = { ...row };
+      delete next[col];
+      return next;
+    });
+  }
+  return { data: null, error: new Error('Falha ao inserir em ' + table) };
+}
+
+async function _comprasChapasUpdateCompat(table, id, payload, selectExpr = '*') {
+  let current = { ...(payload || {}) };
+  for (let i = 0; i < 16; i += 1) {
+    let q = supabase.from(table).update(current).eq('id', id);
+    if (selectExpr) q = q.select(selectExpr).maybeSingle();
+    const out = await q;
+    if (!out?.error) return out;
+    const msg = String(out.error.message || out.error || '');
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const m3 = msg.match(/column \"([^\"]+)\" of relation/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]) || null;
+    if (!col || !Object.prototype.hasOwnProperty.call(current, col)) return out;
+    delete current[col];
+  }
+  return { data: null, error: new Error('Falha ao atualizar em ' + table) };
+}
+
+async function _comprasChapasValidarPasta(pastaId, empId) {
+  if (!pastaId) return { ok: true, data: null };
+  let q = supabase.from('compras_pastas').select('*').eq('id', pastaId);
+  if (empId) q = q.eq('emp_id', empId);
+  const out = await q.maybeSingle();
+  if (out.error) return { ok: false, error: out.error };
+  if (!out.data) return { ok: false, error: new Error('Pasta não encontrada') };
+  return { ok: true, data: out.data };
+}
+
+async function _comprasChapasProximoNumero(empId) {
+  const empresaId = _comprasChapasStr(empId);
+  if (!empresaId) throw new Error('emp_id obrigatório');
+  const out = await supabase.from('compras_chapas').select('numero_compra').eq('emp_id', empresaId);
+  if (out.error) throw out.error;
+  const max = (Array.isArray(out.data) ? out.data : []).reduce((acc, row) => {
+    const num = Math.trunc(_comprasChapasNum(row?.numero_compra));
+    return num > acc ? num : acc;
+  }, 0);
+  return max + 1;
+}
+
+function _comprasChapasBuildHeaderPayload(body, req, opts = {}) {
+  const b = body && typeof body === 'object' ? { ...body } : {};
+  delete b.id;
+  delete b.itens;
+  delete b.created_at;
+  delete b.updated_at;
+  delete b.criado_em;
+  delete b.atualizado_em;
+  delete b.criado_por;
+  delete b.atualizado_por;
+  if (opts.numeroCompra != null) b.numero_compra = Math.trunc(_comprasChapasNum(opts.numeroCompra));
+  b.fornecedor = _comprasChapasStr(b.fornecedor);
+  b.ped_fornecedor = _comprasChapasStr(b.ped_fornecedor ?? b.pedido_fornecedor);
+  b.observacao = _comprasChapasStr(b.observacao ?? b.obs);
+  b.pasta_id = b.pasta_id ? _comprasChapasStr(b.pasta_id) : null;
+  b.emp_id = _comprasChapasStr(opts.empId || b.emp_id || b.empId);
+  const nowIso = new Date().toISOString();
+  const usuario = _comprasChapasUser(req);
+  if (opts.isInsert) {
+    b.criado_em = nowIso;
+    b.criado_por = usuario;
+  }
+  b.atualizado_em = nowIso;
+  b.atualizado_por = usuario;
+  return b;
+}
+
+function _comprasChapasBuildItemPayload(raw, compraId, seq) {
+  const item = raw && typeof raw === 'object' ? { ...raw } : {};
+  delete item.id;
+  delete item.compra_id;
+  delete item.created_at;
+  delete item.updated_at;
+  delete item.criado_em;
+  delete item.atualizado_em;
+  delete item.areaM2;
+  delete item.valorTotal;
+  delete item.vlPMil;
+  const largura = _comprasChapasNum(item.largura ?? item.largura_mm);
+  const comprimento = _comprasChapasNum(item.comprimento ?? item.comprimento_mm);
+  const quantidade = _comprasChapasNum(item.quantidade);
+  const valorM2 = _comprasChapasNum(item.valor_m2 ?? item.valorM2);
+  const areaM2 = ((largura * comprimento) / 1000000) * quantidade;
+  const valorTotal = areaM2 * valorM2;
+  const vlPMil = quantidade > 0 ? (valorTotal / quantidade) * 1000 : 0;
+  item.compra_id = compraId;
+  item.seq = Math.max(1, Math.trunc(_comprasChapasNum(seq)));
+  item.ped_cliente = _comprasChapasStr(item.ped_cliente);
+  item.nomenclatura = _comprasChapasStr(item.nomenclatura);
+  item.largura = largura;
+  item.comprimento = comprimento;
+  item.quantidade = quantidade;
+  item.valor_m2 = valorM2;
+  item.area_m2 = Number(areaM2.toFixed(6));
+  item.valor_total = Number(valorTotal.toFixed(2));
+  item.vl_p_mil = Number(vlPMil.toFixed(2));
+  return item;
+}
+
+async function _comprasChapasFetchNested(filters = {}) {
+  const empId = _comprasChapasStr(filters.empId);
+  let q = supabase.from('compras_chapas').select('*');
+  if (empId) q = q.eq('emp_id', empId);
+  if (filters.semPasta) q = q.is('pasta_id', null);
+  else if (filters.pastaId) q = q.eq('pasta_id', _comprasChapasStr(filters.pastaId));
+  if (Array.isArray(filters.ids) && filters.ids.length) q = q.in('id', filters.ids);
+  const comprasOut = await q;
+  if (comprasOut.error) throw comprasOut.error;
+  const compras = Array.isArray(comprasOut.data) ? comprasOut.data : [];
+  const ids = compras.map((row) => _comprasChapasStr(row?.id)).filter(Boolean);
+  let itens = [];
+  if (ids.length) {
+    const itensOut = await supabase.from('compras_chapas_itens').select('*').in('compra_id', ids).order('seq', { ascending: true });
+    if (itensOut.error) throw itensOut.error;
+    itens = Array.isArray(itensOut.data) ? itensOut.data : [];
+  }
+  const itensMap = ids.reduce((acc, id) => {
+    acc[id] = [];
+    return acc;
+  }, {});
+  itens.forEach((item) => {
+    const key = _comprasChapasStr(item?.compra_id);
+    if (!key) return;
+    if (!itensMap[key]) itensMap[key] = [];
+    itensMap[key].push(item);
+  });
+  return compras
+    .map((row) => ({ ...row, itens: itensMap[_comprasChapasStr(row?.id)] || [] }))
+    .sort((a, b) => (Math.trunc(_comprasChapasNum(b?.numero_compra)) - Math.trunc(_comprasChapasNum(a?.numero_compra))));
+}
+
+async function _comprasChapasBuscaIds(empId, pastaId, semPasta, busca) {
+  const termo = _comprasChapasStr(busca);
+  if (!termo) return null;
+  const termLike = `%${termo}%`;
+  const ids = new Set();
+
+  let qHeaders = supabase
+    .from('compras_chapas')
+    .select('id')
+    .eq('emp_id', _comprasChapasStr(empId))
+    .or('numero_compra.ilike.' + termLike + ',fornecedor.ilike.' + termLike + ',ped_fornecedor.ilike.' + termLike);
+  if (semPasta) qHeaders = qHeaders.is('pasta_id', null);
+  else if (pastaId) qHeaders = qHeaders.eq('pasta_id', _comprasChapasStr(pastaId));
+  const headersOut = await qHeaders;
+  if (headersOut.error) throw headersOut.error;
+  (Array.isArray(headersOut.data) ? headersOut.data : []).forEach((row) => {
+    const id = _comprasChapasStr(row?.id);
+    if (id) ids.add(id);
+  });
+
+  const itensOut = await supabase
+    .from('compras_chapas_itens')
+    .select('compra_id,ped_cliente,nomenclatura')
+    .or('ped_cliente.ilike.' + termLike + ',nomenclatura.ilike.' + termLike);
+  if (itensOut.error) throw itensOut.error;
+  const compraIdsItens = (Array.isArray(itensOut.data) ? itensOut.data : [])
+    .map((row) => _comprasChapasStr(row?.compra_id))
+    .filter(Boolean);
+  if (compraIdsItens.length) {
+    let qComprasItens = supabase.from('compras_chapas').select('id').eq('emp_id', _comprasChapasStr(empId)).in('id', compraIdsItens);
+    if (semPasta) qComprasItens = qComprasItens.is('pasta_id', null);
+    else if (pastaId) qComprasItens = qComprasItens.eq('pasta_id', _comprasChapasStr(pastaId));
+    const comprasItensOut = await qComprasItens;
+    if (comprasItensOut.error) throw comprasItensOut.error;
+    (Array.isArray(comprasItensOut.data) ? comprasItensOut.data : []).forEach((row) => {
+      const id = _comprasChapasStr(row?.id);
+      if (id) ids.add(id);
+    });
+  }
+  return Array.from(ids);
+}
+
+async function _comprasChapasLoadById(id) {
+  const compraId = _comprasChapasStr(id);
+  if (!compraId) throw new Error('id obrigatório');
+  const compraOut = await supabase.from('compras_chapas').select('*').eq('id', compraId).maybeSingle();
+  if (compraOut.error) throw compraOut.error;
+  if (!compraOut.data) return null;
+  const itensOut = await supabase.from('compras_chapas_itens').select('*').eq('compra_id', compraId).order('seq', { ascending: true });
+  if (itensOut.error) throw itensOut.error;
+  return {
+    ...compraOut.data,
+    itens: Array.isArray(itensOut.data) ? itensOut.data : [],
+  };
+}
+
+// ══════════════════════════════════════════════════════════════
+// COMPRAS DE CHAPAS (PAPELÃO)
+// Rotas fixas vêm antes das rotas com /:id
+// ══════════════════════════════════════════════════════════════
+app.get('/api/compras-chapas/pastas', authMiddleware, async (req, res) => {
+  try {
+    const empId = _comprasChapasEmpId(req);
+    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id obrigatório' });
+    const pastasOut = await supabase.from('compras_pastas').select('*').eq('emp_id', empId).order('nome', { ascending: true });
+    if (pastasOut.error) return res.status(500).json({ ok: false, error: pastasOut.error.message });
+    const comprasOut = await supabase.from('compras_chapas').select('id,pasta_id').eq('emp_id', empId);
+    if (comprasOut.error) return res.status(500).json({ ok: false, error: comprasOut.error.message });
+    const contagem = {};
+    (Array.isArray(comprasOut.data) ? comprasOut.data : []).forEach((row) => {
+      const pastaId = _comprasChapasStr(row?.pasta_id);
+      if (!pastaId) return;
+      contagem[pastaId] = (contagem[pastaId] || 0) + 1;
+    });
+    const data = (Array.isArray(pastasOut.data) ? pastasOut.data : []).map((row) => ({
+      ...row,
+      total_compras: contagem[_comprasChapasStr(row?.id)] || 0,
+    }));
+    return ok(res, data);
+  } catch (e) {
+    _comprasChapasLog('GET /api/compras-chapas/pastas', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post('/api/compras-chapas/pastas', authMiddleware, async (req, res) => {
+  try {
+    const nome = _comprasChapasStr(req.body?.nome);
+    const empId = _comprasChapasEmpId(req, req.body);
+    if (!nome) return res.status(400).json({ ok: false, error: 'nome obrigatório' });
+    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id obrigatório' });
+    const dup = await supabase.from('compras_pastas').select('*').eq('emp_id', empId).eq('nome', nome).maybeSingle();
+    if (dup.error) return res.status(500).json({ ok: false, error: dup.error.message });
+    if (dup.data) return ok(res, dup.data);
+    const ins = await _comprasChapasInsertCompat('compras_pastas', [{ nome, emp_id: empId }], '*');
+    if (ins.error) return res.status(500).json({ ok: false, error: String(ins.error.message || ins.error) });
+    const data = Array.isArray(ins.data) ? ins.data[0] : ins.data;
+    return ok(res, { ...data, total_compras: 0 });
+  } catch (e) {
+    _comprasChapasLog('POST /api/compras-chapas/pastas', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.put('/api/compras-chapas/pastas/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = _comprasChapasStr(req.params.id);
+    const nome = _comprasChapasStr(req.body?.nome);
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!nome) return res.status(400).json({ ok: false, error: 'nome obrigatório' });
+    const upd = await _comprasChapasUpdateCompat('compras_pastas', id, { nome }, '*');
+    if (upd.error) return res.status(500).json({ ok: false, error: String(upd.error.message || upd.error) });
+    return ok(res, upd.data || null);
+  } catch (e) {
+    _comprasChapasLog('PUT /api/compras-chapas/pastas/:id', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.delete('/api/compras-chapas/pastas/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = _comprasChapasStr(req.params.id);
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const del = await supabase.from('compras_pastas').delete().eq('id', id);
+    if (del.error) return res.status(500).json({ ok: false, error: del.error.message });
+    return ok(res, true);
+  } catch (e) {
+    _comprasChapasLog('DELETE /api/compras-chapas/pastas/:id', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/compras-chapas/relatorios/fornecedor', authMiddleware, async (req, res) => {
+  try {
+    const empId = _comprasChapasEmpId(req);
+    const dataInicio = _comprasChapasStr(req.query?.data_inicio);
+    const dataFim = _comprasChapasStr(req.query?.data_fim);
+    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id obrigatório' });
+    const compras = await _comprasChapasFetchNested({ empId });
+    const filtradas = compras.filter((row) => _comprasChapasInPeriod(row, dataInicio, dataFim));
+    const grouped = {};
+    filtradas.forEach((compra) => {
+      const fornecedor = _comprasChapasStr(compra?.fornecedor) || 'Sem fornecedor';
+      if (!grouped[fornecedor]) {
+        grouped[fornecedor] = {
+          fornecedor,
+          total_compras: 0,
+          quantidade: 0,
+          area_m2: 0,
+          valor_total: 0,
+        };
+      }
+      grouped[fornecedor].total_compras += 1;
+      (Array.isArray(compra?.itens) ? compra.itens : []).forEach((item) => {
+        grouped[fornecedor].quantidade += _comprasChapasNum(item?.quantidade);
+        grouped[fornecedor].area_m2 += _comprasChapasNum(item?.area_m2);
+        grouped[fornecedor].valor_total += _comprasChapasNum(item?.valor_total);
+      });
+    });
+    const data = Object.values(grouped)
+      .map((row) => ({
+        ...row,
+        quantidade: Number(row.quantidade.toFixed(3)),
+        area_m2: Number(row.area_m2.toFixed(6)),
+        valor_total: Number(row.valor_total.toFixed(2)),
+      }))
+      .sort((a, b) => String(a.fornecedor).localeCompare(String(b.fornecedor), 'pt-BR'));
+    return ok(res, data);
+  } catch (e) {
+    _comprasChapasLog('GET /api/compras-chapas/relatorios/fornecedor', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/compras-chapas/relatorios/resumo', authMiddleware, async (req, res) => {
+  try {
+    const empId = _comprasChapasEmpId(req);
+    const dataInicio = _comprasChapasStr(req.query?.data_inicio);
+    const dataFim = _comprasChapasStr(req.query?.data_fim);
+    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id obrigatório' });
+    const compras = await _comprasChapasFetchNested({ empId });
+    const filtradas = compras.filter((row) => _comprasChapasInPeriod(row, dataInicio, dataFim));
+    const resumo = filtradas.reduce((acc, compra) => {
+      acc.total_compras += 1;
+      (Array.isArray(compra?.itens) ? compra.itens : []).forEach((item) => {
+        acc.quantidade += _comprasChapasNum(item?.quantidade);
+        acc.area_m2 += _comprasChapasNum(item?.area_m2);
+        acc.valor_total += _comprasChapasNum(item?.valor_total);
+      });
+      return acc;
+    }, { total_compras: 0, quantidade: 0, area_m2: 0, valor_total: 0 });
+    resumo.quantidade = Number(resumo.quantidade.toFixed(3));
+    resumo.area_m2 = Number(resumo.area_m2.toFixed(6));
+    resumo.valor_total = Number(resumo.valor_total.toFixed(2));
+    return ok(res, resumo);
+  } catch (e) {
+    _comprasChapasLog('GET /api/compras-chapas/relatorios/resumo', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/compras-chapas', authMiddleware, async (req, res) => {
+  try {
+    const empId = _comprasChapasEmpId(req);
+    const pastaId = _comprasChapasStr(req.query?.pasta_id);
+    const semPasta = String(req.query?.sem_pasta || '').trim().toLowerCase() === 'true';
+    const busca = _comprasChapasStr(req.query?.busca);
+    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id obrigatório' });
+    let ids = null;
+    if (busca) {
+      ids = await _comprasChapasBuscaIds(empId, pastaId, semPasta, busca);
+      if (!ids.length) return ok(res, []);
+    }
+    const data = await _comprasChapasFetchNested({ empId, pastaId, semPasta, ids });
+    return ok(res, data);
+  } catch (e) {
+    _comprasChapasLog('GET /api/compras-chapas', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post('/api/compras-chapas', authMiddleware, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const empId = _comprasChapasEmpId(req, body);
+    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id obrigatório' });
+    if (!_comprasChapasStr(body.fornecedor)) return res.status(400).json({ ok: false, error: 'fornecedor obrigatório' });
+    const pastaId = body.pasta_id ? _comprasChapasStr(body.pasta_id) : null;
+    if (pastaId) {
+      const pastaOk = await _comprasChapasValidarPasta(pastaId, empId);
+      if (!pastaOk.ok) return res.status(404).json({ ok: false, error: String(pastaOk.error?.message || pastaOk.error) });
+    }
+    const numeroCompra = await _comprasChapasProximoNumero(empId);
+    const headerPayload = _comprasChapasBuildHeaderPayload({ ...body, pasta_id: pastaId }, req, {
+      isInsert: true,
+      empId,
+      numeroCompra,
+    });
+    const insHeader = await _comprasChapasInsertCompat('compras_chapas', [headerPayload], '*');
+    if (insHeader.error) return res.status(500).json({ ok: false, error: String(insHeader.error.message || insHeader.error) });
+    const compraCriada = Array.isArray(insHeader.data) ? insHeader.data[0] : insHeader.data;
+    const itens = Array.isArray(body.itens) ? body.itens : [];
+    if (itens.length) {
+      const itensPayload = itens.map((item, idx) => _comprasChapasBuildItemPayload(item, compraCriada.id, idx + 1));
+      const insItens = await _comprasChapasInsertCompat('compras_chapas_itens', itensPayload, '*');
+      if (insItens.error) {
+        await supabase.from('compras_chapas').delete().eq('id', compraCriada.id);
+        return res.status(500).json({ ok: false, error: String(insItens.error.message || insItens.error) });
+      }
+    }
+    const full = await _comprasChapasLoadById(compraCriada.id);
+    return ok(res, full);
+  } catch (e) {
+    _comprasChapasLog('POST /api/compras-chapas', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post('/api/compras-chapas/:id/clonar', authMiddleware, async (req, res) => {
+  try {
+    const id = _comprasChapasStr(req.params.id);
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const atual = await _comprasChapasLoadById(id);
+    if (!atual) return res.status(404).json({ ok: false, error: 'Compra não encontrada' });
+    const empId = _comprasChapasStr(atual.emp_id || _comprasChapasEmpId(req, atual));
+    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id obrigatório' });
+    const numeroCompra = await _comprasChapasProximoNumero(empId);
+    const headerPayload = _comprasChapasBuildHeaderPayload({
+      fornecedor: atual.fornecedor,
+      ped_fornecedor: atual.ped_fornecedor,
+      pasta_id: atual.pasta_id,
+      emp_id: empId,
+      observacao: atual.observacao,
+    }, req, {
+      isInsert: true,
+      empId,
+      numeroCompra,
+    });
+    const insHeader = await _comprasChapasInsertCompat('compras_chapas', [headerPayload], '*');
+    if (insHeader.error) return res.status(500).json({ ok: false, error: String(insHeader.error.message || insHeader.error) });
+    const clone = Array.isArray(insHeader.data) ? insHeader.data[0] : insHeader.data;
+    const itens = Array.isArray(atual.itens) ? atual.itens : [];
+    if (itens.length) {
+      const itensPayload = itens.map((item, idx) => _comprasChapasBuildItemPayload(item, clone.id, idx + 1));
+      const insItens = await _comprasChapasInsertCompat('compras_chapas_itens', itensPayload, '*');
+      if (insItens.error) {
+        await supabase.from('compras_chapas').delete().eq('id', clone.id);
+        return res.status(500).json({ ok: false, error: String(insItens.error.message || insItens.error) });
+      }
+    }
+    const full = await _comprasChapasLoadById(clone.id);
+    return ok(res, full);
+  } catch (e) {
+    _comprasChapasLog('POST /api/compras-chapas/:id/clonar', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.put('/api/compras-chapas/:id/pasta', authMiddleware, async (req, res) => {
+  try {
+    const id = _comprasChapasStr(req.params.id);
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const atual = await _comprasChapasLoadById(id);
+    if (!atual) return res.status(404).json({ ok: false, error: 'Compra não encontrada' });
+    const pastaId = req.body?.pasta_id ? _comprasChapasStr(req.body.pasta_id) : null;
+    if (pastaId) {
+      const pastaOk = await _comprasChapasValidarPasta(pastaId, _comprasChapasStr(atual.emp_id));
+      if (!pastaOk.ok) return res.status(404).json({ ok: false, error: String(pastaOk.error?.message || pastaOk.error) });
+    }
+    const upd = await _comprasChapasUpdateCompat('compras_chapas', id, {
+      pasta_id: pastaId,
+      atualizado_em: new Date().toISOString(),
+      atualizado_por: _comprasChapasUser(req),
+    }, '*');
+    if (upd.error) return res.status(500).json({ ok: false, error: String(upd.error.message || upd.error) });
+    const full = await _comprasChapasLoadById(id);
+    return ok(res, full);
+  } catch (e) {
+    _comprasChapasLog('PUT /api/compras-chapas/:id/pasta', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = _comprasChapasStr(req.params.id);
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const data = await _comprasChapasLoadById(id);
+    if (!data) return res.status(404).json({ ok: false, error: 'Compra não encontrada' });
+    return ok(res, data);
+  } catch (e) {
+    _comprasChapasLog('GET /api/compras-chapas/:id', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.put('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = _comprasChapasStr(req.params.id);
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const atual = await _comprasChapasLoadById(id);
+    if (!atual) return res.status(404).json({ ok: false, error: 'Compra não encontrada' });
+    const body = req.body || {};
+    const empId = _comprasChapasStr(atual.emp_id || _comprasChapasEmpId(req, body));
+    const hasPasta = Object.prototype.hasOwnProperty.call(body, 'pasta_id');
+    const pastaId = hasPasta ? (body.pasta_id ? _comprasChapasStr(body.pasta_id) : null) : (_comprasChapasStr(atual.pasta_id) || null);
+    if (pastaId) {
+      const pastaOk = await _comprasChapasValidarPasta(pastaId, empId);
+      if (!pastaOk.ok) return res.status(404).json({ ok: false, error: String(pastaOk.error?.message || pastaOk.error) });
+    }
+    const headerPayload = _comprasChapasBuildHeaderPayload({
+      ...atual,
+      ...body,
+      emp_id: empId,
+      pasta_id: pastaId,
+      numero_compra: atual.numero_compra,
+    }, req, {
+      isInsert: false,
+      empId,
+    });
+    delete headerPayload.numero_compra;
+    const upd = await _comprasChapasUpdateCompat('compras_chapas', id, headerPayload, '*');
+    if (upd.error) return res.status(500).json({ ok: false, error: String(upd.error.message || upd.error) });
+    const delItens = await supabase.from('compras_chapas_itens').delete().eq('compra_id', id);
+    if (delItens.error) return res.status(500).json({ ok: false, error: delItens.error.message });
+    const itens = Array.isArray(body.itens) ? body.itens : [];
+    if (itens.length) {
+      const itensPayload = itens.map((item, idx) => _comprasChapasBuildItemPayload(item, id, idx + 1));
+      const insItens = await _comprasChapasInsertCompat('compras_chapas_itens', itensPayload, '*');
+      if (insItens.error) return res.status(500).json({ ok: false, error: String(insItens.error.message || insItens.error) });
+    }
+    const full = await _comprasChapasLoadById(id);
+    return ok(res, full);
+  } catch (e) {
+    _comprasChapasLog('PUT /api/compras-chapas/:id', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.delete('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = _comprasChapasStr(req.params.id);
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const del = await supabase.from('compras_chapas').delete().eq('id', id);
+    if (del.error) return res.status(500).json({ ok: false, error: del.error.message });
+    return ok(res, true);
+  } catch (e) {
+    _comprasChapasLog('DELETE /api/compras-chapas/:id', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.patch('/api/chapas_estoque_v2/:id/cor', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
