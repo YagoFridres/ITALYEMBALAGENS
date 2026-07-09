@@ -349,7 +349,6 @@ try {
   try { window.__authPatchPersist = _authPersist; } catch (_) {}
   try { window.__authPatchClear = _authClear; } catch (_) {}
 })();
-
 window.__compraPapelaoOrigRenderCompras = window.__compraPapelaoOrigRenderCompras || (typeof window.renderCompras === 'function' ? window.renderCompras : null);
 window.__compraPapelaoOrigAbrirModalCompra = window.__compraPapelaoOrigAbrirModalCompra || (typeof window.abrirModalCompra === 'function' ? window.abrirModalCompra : null);
 window.__compraPapelaoOrigAbrirTela = window.__compraPapelaoOrigAbrirTela || (typeof window.papelaoAbrirComprasChapas === 'function' ? window.papelaoAbrirComprasChapas : null);
@@ -3201,7 +3200,6 @@ setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 9
   setTimeout(aplicar, 300);
   setTimeout(aplicar, 1200);
 })();
-
 (function patchOrcamentosPastasEImpressao() {
   if (window.__patchOrcamentosPastasInstalled) return;
   window.__patchOrcamentosPastasInstalled = true;
@@ -32602,4 +32600,230 @@ function _ocultarGraficoComissoes() {
   setTimeout(aplicar, 0);
   setTimeout(aplicar, 300);
   setTimeout(aplicar, 1200);
+})();
+;(function() {
+  if (window.__ofCoresDomTailAtRealEndApplied) return;
+  window.__ofCoresDomTailAtRealEndApplied = true;
+
+  function dbg(value) {
+    try { return JSON.stringify(value); } catch (_) { return '"[unserializable]"'; }
+  }
+
+  function bridge() {
+    var store = {};
+    try {
+      if (coresSelecionadasOFRapidaItens && typeof coresSelecionadasOFRapidaItens === 'object') store = coresSelecionadasOFRapidaItens;
+    } catch (_) {}
+    try {
+      if ((!store || typeof store !== 'object') && window.coresSelecionadasOFRapidaItens && typeof window.coresSelecionadasOFRapidaItens === 'object') store = window.coresSelecionadasOFRapidaItens;
+    } catch (_) {}
+    if (!store || typeof store !== 'object') store = {};
+    try { coresSelecionadasOFRapidaItens = store; } catch (_) {}
+    try { window.coresSelecionadasOFRapidaItens = store; } catch (_) {}
+    return store;
+  }
+
+  function cards() {
+    var painel = document.getElementById('painel-mais-itens');
+    if (!painel) return [];
+    return Array.prototype.slice.call(painel.querySelectorAll('.ofr-item-card'));
+  }
+
+  function idxOf(card, fallback) {
+    return String(
+      card && (
+        card.getAttribute('data-item-idx')
+        || card.getAttribute('data-item-index')
+        || (card.dataset ? (card.dataset.itemIdx || card.dataset.itemIndex) : '')
+        || fallback
+      ) || fallback || ''
+    ).trim();
+  }
+
+  function findCard(idx) {
+    var wanted = String(idx == null ? '' : idx).trim();
+    var list = cards();
+    for (var i = 0; i < list.length; i += 1) {
+      if (idxOf(list[i], String(i)) === wanted) return list[i];
+    }
+    return null;
+  }
+
+  function selectedIds(card, fallbackIdx) {
+    if (!card) return [];
+    var idx = idxOf(card, fallbackIdx);
+    var ids = [];
+    try {
+      ids = Array.prototype.slice.call(card.querySelectorAll('[id^="seletorCoresItemOFRapida_"] .btn-cor.selecionado[data-cor-id], .btn-cor.selecionado[data-cor-id]')).map(function(btn) {
+        return String(btn && btn.getAttribute('data-cor-id') || '').trim();
+      }).filter(Boolean);
+    } catch (_) { ids = []; }
+    if (!ids.length) {
+      try {
+        ids = Array.prototype.slice.call(card.querySelectorAll('input[type="checkbox"][data-cor]:checked, .cor-opcao input:checked, .cores-item input:checked')).map(function(el) {
+          return String(el && (el.value || (el.dataset && el.dataset.cor) || el.getAttribute('data-cor') || '') || '').trim();
+        }).filter(Boolean);
+      } catch (_) { ids = []; }
+    }
+    if (!ids.length) {
+      try {
+        var sel = card.querySelector('.cores-select, select[multiple], select[data-tipo="cores"], .cores-impressao-select, select[name*="cores"]');
+        if (sel) ids = Array.prototype.slice.call(sel.selectedOptions || []).map(function(opt) { return String(opt && opt.value || '').trim(); }).filter(Boolean);
+      } catch (_) { ids = []; }
+    }
+    if (!ids.length) {
+      try {
+        var raw = String((card.dataset && (card.dataset.coresSel || card.dataset.coresSelecionadas)) || '').trim();
+        if (raw && raw.charAt(0) === '[') {
+          var parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) ids = parsed.map(function(v) { return String(v || '').trim(); }).filter(Boolean);
+        }
+      } catch (_) { ids = []; }
+    }
+    if (!ids.length) {
+      var store = bridge();
+      ids = Array.isArray(store[idx]) ? store[idx].map(function(v) { return String(v || '').trim(); }).filter(Boolean) : [];
+    }
+    return ids.filter(function(id, pos, arr) { return id && arr.indexOf(id) === pos; });
+  }
+
+  function payload(ids) {
+    if (typeof window.coresPayloadFromSelecionadas === 'function') {
+      try { return window.coresPayloadFromSelecionadas(ids); } catch (_) {}
+    }
+    var cores = Array.isArray(window.coresDisponiveis) ? window.coresDisponiveis : [];
+    return (Array.isArray(ids) ? ids : []).map(function(id) {
+      var sid = String(id || '').trim();
+      var cor = cores.find(function(item) { return String(item && (item.id || item.nome) || '').trim() === sid; }) || null;
+      if (!cor) return null;
+      return { id: cor.id || cor.nome, nome: cor.nome || cor.id, hex: cor.hex || cor.cor || '#64748b' };
+    }).filter(Boolean);
+  }
+
+  function sync(card, fallbackIdx, reason) {
+    if (!card) return { idx: String(fallbackIdx || ''), ids: [] };
+    var idx = idxOf(card, fallbackIdx);
+    var ids = selectedIds(card, idx);
+    var store = bridge();
+    store.__marca = 'ponte';
+    store[idx] = ids.slice();
+    try { card.setAttribute('data-item-idx', idx); } catch (_) {}
+    try { card.setAttribute('data-item-index', idx); } catch (_) {}
+    try { card.dataset.coresSel = JSON.stringify(ids); } catch (_) {}
+    try { card.dataset.coresSelecionadas = JSON.stringify(ids); } catch (_) {}
+    console.log('[OF-CORES-DEBUG] sync item adicional', dbg({ reason: reason || 'sync', idx: idx, ids: ids, bridge: store }));
+    return { idx: idx, ids: ids };
+  }
+
+  window.resyncAllItemColorCards = function(reason) {
+    var result = cards().map(function(card, order) {
+      return sync(card, String(order), reason || 'resync');
+    });
+    console.log('[OF-CORES-DEBUG] resyncAllItemColorCards', dbg({ reason: reason || 'manual', cards: result.length, result: result }));
+    return result;
+  };
+
+  window.getItemColorPayloadOFRapida = function(idx) {
+    var card = findCard(idx);
+    return payload(card ? selectedIds(card, idx) : []);
+  };
+
+  if (typeof window.toggleCorItemOFRapida === 'function' && !window.toggleCorItemOFRapida.__ofCoresDomTailAtRealEndWrapped) {
+    var origToggle = window.toggleCorItemOFRapida;
+    window.toggleCorItemOFRapida = function(index, corId) {
+      var out = origToggle.apply(this, arguments);
+      try {
+        var idx = String(index == null ? '' : index).trim();
+        var synced = sync(findCard(idx), idx, 'click');
+        console.log('[OF-CORES-DEBUG] clique cor item adicional', dbg({
+          idx: idx,
+          cor: String(corId || '').trim(),
+          bridge: bridge(),
+          selecionadas: synced.ids
+        }));
+      } catch (e) {
+        try { console.error('[OF-CORES-DEBUG] erro clique', e); } catch (_) {}
+      }
+      return out;
+    };
+    window.toggleCorItemOFRapida.__ofCoresDomTailAtRealEndWrapped = true;
+  }
+
+  window.coletarItensAdicionais = function() {
+    var itens = [];
+    var erro = false;
+    var list = cards();
+    window.resyncAllItemColorCards('coletar');
+    list.forEach(function(row, order) {
+      if (erro) return;
+      var idx = idxOf(row, String(order));
+      var ref = '';
+      var qtd = 0;
+      var unit = 0;
+      var total = 0;
+      var imagemFile = null;
+      var maq = '';
+      var dimLarg = 0;
+      var dimComp = 0;
+      try { ref = String((row.querySelector('.item-ref') || {}).value || '').trim(); } catch (_) { ref = ''; }
+      try { qtd = parseInt(String((row.querySelector('.item-qtd') || {}).value || '0').trim(), 10) || 0; } catch (_) { qtd = 0; }
+      try { unit = parseFloat(String((row.querySelector('.item-vl-unit') || {}).value || '0').replace(',', '.')) || 0; } catch (_) { unit = 0; }
+      try { total = parseFloat(String((row.querySelector('.item-vl-total') || {}).value || '0').replace(',', '.')) || 0; } catch (_) { total = 0; }
+      try { maq = String((row.querySelector('.item-maquina') || {}).value || '').trim(); } catch (_) { maq = ''; }
+      try { dimLarg = parseFloat(String((row.querySelector('.item-dim-larg') || {}).value || '0').replace(',', '.')) || 0; } catch (_) { dimLarg = 0; }
+      try { dimComp = parseFloat(String((row.querySelector('.item-dim-comp') || {}).value || '0').replace(',', '.')) || 0; } catch (_) { dimComp = 0; }
+      try {
+        var imgIn = row.querySelector('.item-img-input');
+        imagemFile = imgIn && imgIn.files ? (imgIn.files[0] || null) : null;
+      } catch (_) { imagemFile = null; }
+
+      var store = bridge();
+      store.__marca = 'ponte';
+      var coresIds = selectedIds(row, idx);
+      store[idx] = coresIds.slice();
+      console.log('[OF-CORES-DEBUG] validar item adicional', dbg({ idx: idx, bridge: store, lidasDoDom: coresIds }));
+
+      if (qtd > 0) {
+        if (!maq) {
+          try { alert('Selecione a máquina do item adicional.'); } catch (_) {}
+          erro = true;
+          return;
+        }
+        if (!(dimLarg > 0 && dimComp > 0)) {
+          try { alert('Informe largura e comprimento do item adicional.'); } catch (_) {}
+          erro = true;
+          return;
+        }
+        if (!Array.isArray(coresIds) || !coresIds.length) {
+          try { alert('Selecione ao menos uma cor no item adicional.'); } catch (_) {}
+          erro = true;
+          return;
+        }
+        var coresPayload = payload(coresIds);
+        if (!Array.isArray(coresPayload) || !coresPayload.length) {
+          try { alert('Selecione ao menos uma cor válida no item adicional.'); } catch (_) {}
+          erro = true;
+          return;
+        }
+        itens.push({
+          referencia: ref,
+          quantidade: qtd,
+          vl_unit: unit,
+          vl_total: total || (qtd * unit),
+          imagemFile: imagemFile,
+          maquina: maq,
+          maquina_agendada: maq,
+          caixa_largura: dimLarg,
+          caixa_comprimento: dimComp,
+          caixa_altura: null,
+          dim_largura: dimLarg,
+          dim_comprimento: dimComp,
+          dim_altura: null,
+          cores_impressao: coresPayload
+        });
+      }
+    });
+    if (erro) return null;
+    return itens;
+  };
 })();
