@@ -2239,7 +2239,7 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
       })
     ));
 
-    const montarFiltrosBuscaOf = (lista, includeCliente) => {
+    const montarFiltrosBuscaOf = (lista) => {
       return Array.from(new Set((Array.isArray(lista) ? lista : []).flatMap((txt, idx) => {
         const valor = String(txt || '').trim();
         if (!valor) return [];
@@ -2249,22 +2249,31 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
           `of.ilike.%${valor}%`,
           `numero.ilike.%${valor}%`
         ];
-        if (includeCliente && idx === 0) filtrosTxt.push(`clinome.ilike.%${valor}%`);
         return filtrosTxt;
       }))).join(',');
     };
 
-    let query = supabase
-      .from('ofs')
-      .select('id,of,numero,status,data_conclusao,created_at,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,vendedor,vendid,vendId,vendedor_id,vendedor_nome,vendNome,preco,valor_unitario,vl_unit,total,valor_total,valor_venda,qtd,quantidade,qtd_pedida,itens')
-      .is('deleted_at', null)
-      .limit(50);
-    if (empresaId) query = query.eq('empresa_id', empresaId);
+    const selectCols = 'id,of,numero,cli_id,preco,valor_unitario,valor_venda,valor_total,qtd,quantidade,qtd_pedida,itens,data_conclusao,descricao';
+    let queryBase = supabase.from('ofs').select(selectCols).limit(50);
+    if (empresaId) {
+      try { queryBase = queryBase.eq('empresa_id', empresaId); } catch (_) {}
+    }
 
-    const filtros = montarFiltrosBuscaOf(termoVariants, true);
-    query = query.or(filtros);
-    const { data: hitsBase, error: hitsError } = await query;
-    if (hitsError) return res.status(500).json({ ok: false, error: String(hitsError.message || hitsError) });
+    const filtros = montarFiltrosBuscaOf(termoVariants);
+    let hitsBase = null;
+    let hitsError = null;
+    try {
+      const r = await queryBase.or(filtros);
+      hitsBase = r?.data || [];
+      hitsError = r?.error || null;
+    } catch (e) {
+      hitsError = e;
+      hitsBase = [];
+    }
+    if (hitsError) {
+      console.error('[COM] busca-of erro base:', String(hitsError?.message || hitsError));
+      return res.status(500).json({ ok: false, error: String(hitsError.message || hitsError) });
+    }
 
     const ids = Array.from(new Set((hitsBase || []).map((row) => String(row?.id || '').trim()).filter(Boolean)));
     const numeroVariants = Array.from(new Set(
@@ -2302,7 +2311,7 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
     }
 
     if (numeroVariants.length) {
-      const filtrosView = montarFiltrosBuscaOf(numeroVariants, false);
+      const filtrosView = montarFiltrosBuscaOf(numeroVariants);
       const { data: viewRowsByNumero, error: viewNumeroError } = await supabase
         .from('vw_comissoes')
         .select('*')
