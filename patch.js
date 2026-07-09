@@ -16378,10 +16378,44 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     ];
   }
 
+  function getSharedItemColorStore() {
+    var lexicalStore = null;
+    try {
+      lexicalStore = coresSelecionadasOFRapidaItens;
+    } catch (_) {
+      lexicalStore = null;
+    }
+    if (!lexicalStore || typeof lexicalStore !== 'object') {
+      lexicalStore = (window.coresSelecionadasOFRapidaItens && typeof window.coresSelecionadasOFRapidaItens === 'object')
+        ? window.coresSelecionadasOFRapidaItens
+        : {};
+    }
+    try { coresSelecionadasOFRapidaItens = lexicalStore; } catch (_) {}
+    try { window.coresSelecionadasOFRapidaItens = lexicalStore; } catch (_) {}
+    return lexicalStore;
+  }
+
+  function setItemColorIds(idx, values) {
+    var key = String(idx == null ? '' : idx).trim();
+    if (!key) return [];
+    var store = getSharedItemColorStore();
+    var normalized = (Array.isArray(values) ? values : []).map(function(v) {
+      return String(v || '').trim();
+    }).filter(Boolean);
+    store[key] = normalized;
+    try { coresSelecionadasOFRapidaItens = store; } catch (_) {}
+    try { window.coresSelecionadasOFRapidaItens = store; } catch (_) {}
+    return store[key];
+  }
+
   function getItemColorIds(idx) {
-    if (!window.coresSelecionadasOFRapidaItens || typeof window.coresSelecionadasOFRapidaItens !== 'object') window.coresSelecionadasOFRapidaItens = {};
-    if (!Array.isArray(window.coresSelecionadasOFRapidaItens[idx])) window.coresSelecionadasOFRapidaItens[idx] = [];
-    return window.coresSelecionadasOFRapidaItens[idx];
+    var key = String(idx == null ? '' : idx).trim();
+    if (!key) return [];
+    var store = getSharedItemColorStore();
+    if (!Array.isArray(store[key])) store[key] = [];
+    try { coresSelecionadasOFRapidaItens = store; } catch (_) {}
+    try { window.coresSelecionadasOFRapidaItens = store; } catch (_) {}
+    return store[key];
   }
 
   function getItemIdxFromContainer(card, fallback) {
@@ -16427,8 +16461,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         values = getItemColorIds(idx).slice().map(function(v) { return String(v || '').trim(); }).filter(Boolean);
       } catch (_) { values = []; }
     }
-    window.coresSelecionadasOFRapidaItens = window.coresSelecionadasOFRapidaItens || {};
-    window.coresSelecionadasOFRapidaItens[idx] = values;
+    setItemColorIds(idx, values);
     try { card.setAttribute('data-item-idx', idx); } catch (_) {}
     try { card.setAttribute('data-item-index', idx); } catch (_) {}
     try { card.dataset.coresSel = JSON.stringify(values); } catch (_) {}
@@ -16539,8 +16572,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function ensureMultiItemColors() {
+    var seen = {};
     Array.prototype.slice.call(document.querySelectorAll('.ofr-item-card, [data-item-idx], [data-item-index], .item-adicional, .item-of')).forEach(function(card, order) {
-      var idx = getItemIdxFromContainer(card, order);
+      var idx = getItemIdxFromContainer(card, '');
+      if (!idx || seen[idx]) idx = String(order);
+      seen[idx] = true;
       if (!card) return;
       try { card.setAttribute('data-item-idx', idx); } catch (_) {}
       try { card.setAttribute('data-item-index', idx); } catch (_) {}
@@ -16568,6 +16604,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     });
   }
 
+  function resyncAllItemColorCards() {
+    try {
+      ensureMultiItemColors();
+      Array.prototype.slice.call(document.querySelectorAll('.ofr-item-card, [data-item-idx], [data-item-index], .item-adicional, .item-of')).forEach(function(card, order) {
+        var idx = getItemIdxFromContainer(card, String(order));
+        if (!idx) idx = String(order);
+        syncItemColorState(card, idx);
+      });
+    } catch (e) {
+      try { console.error('[OF-CORES-FIX] resyncAllItemColorCards:', e); } catch (_) {}
+    }
+  }
+
   if (!window.__patchColorOutsideClickBound) {
     window.__patchColorOutsideClickBound = true;
     document.addEventListener('click', function(ev) {
@@ -16577,6 +16626,37 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (el) el.style.display = 'none';
       });
     }, true);
+  }
+  if (typeof window.coletarItensAdicionais === 'function' && !window.coletarItensAdicionais._ofCoresFixPatched) {
+    var _origColetarItensAdicionais = window.coletarItensAdicionais;
+    window.coletarItensAdicionais = function() {
+      try { resyncAllItemColorCards(); } catch (e) { try { console.error('[OF-CORES-FIX] pre-coletar:', e); } catch (_) {} }
+      var itens = _origColetarItensAdicionais.apply(this, arguments);
+      try {
+        if (Array.isArray(itens)) {
+          var cards = Array.prototype.slice.call(document.querySelectorAll('#painel-mais-itens .ofr-item-card'));
+          itens = itens.map(function(item, idx) {
+            var card = cards[idx] || null;
+            var itemIdx = card ? getItemIdxFromContainer(card, String(idx)) : String(idx);
+            return Object.assign({}, item || {}, {
+              cores_impressao: getItemColorPayload(itemIdx)
+            });
+          });
+        }
+      } catch (e) {
+        try { console.error('[OF-CORES-FIX] pos-coletar:', e); } catch (_) {}
+      }
+      return itens;
+    };
+    window.coletarItensAdicionais._ofCoresFixPatched = true;
+  }
+  if (typeof window.salvarOF === 'function' && !window.salvarOF._ofCoresFixPatched) {
+    var _origSalvarOFComCores = window.salvarOF;
+    window.salvarOF = function() {
+      try { resyncAllItemColorCards(); } catch (e) { try { console.error('[OF-CORES-FIX] pre-salvarOF:', e); } catch (_) {} }
+      return _origSalvarOFComCores.apply(this, arguments);
+    };
+    window.salvarOF._ofCoresFixPatched = true;
   }
   if (!window.__patchColorItemDelegationBound) {
     window.__patchColorItemDelegationBound = true;
