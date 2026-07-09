@@ -16471,8 +16471,13 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     const cacheKey = hasFiltros
       ? ('chapas_estoque:' + CACHE_VERSION + ':q:' + new URLSearchParams(qEntries.sort((a, b) => String(a[0]).localeCompare(String(b[0])))).toString())
       : ('chapas_estoque:' + CACHE_VERSION + ':all:limit=' + String(limitDb) + ':offset=' + String(offsetDb));
+    const baseCacheKey = (!hasFiltros && offsetDb === 0) ? ('chapas_estoque:' + CACHE_VERSION + ':all:base') : '';
     const cached = forceNoCache ? null : cacheGet(cacheKey);
     if (cached != null && !(Array.isArray(cached) && cached.length === 0)) return res.json(cached);
+    const cachedBase = (!forceNoCache && baseCacheKey) ? cacheGet(baseCacheKey) : null;
+    if (cachedBase && cachedBase.full && Array.isArray(cachedBase.rows)) {
+      return res.json(cachedBase.rows.slice(0, limitDb));
+    }
     const applyFilters = (inRows) => {
       let rows = Array.isArray(inRows) ? inRows : [];
       if (!_isFiltroVazioChapas(req.query.empId)) {
@@ -16618,6 +16623,9 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
 
     console.log('[chapas_estoque] OK:', rows.length, 'registros', '| table:', usedTable);
     if (!forceNoCache && rows.length > 0) cacheSet(cacheKey, rows, 10 * 1000);
+    if (!forceNoCache && baseCacheKey && rows.length > 0 && rows.length < limitDb) {
+      cacheSet(baseCacheKey, { full: true, rows }, 10 * 1000);
+    }
     return res.json(rows);
   } catch (err) {
     console.error('[chapas_estoque] catch:', err.message);

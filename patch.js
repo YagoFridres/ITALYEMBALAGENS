@@ -16503,6 +16503,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { return String(window.EMP_FILTRO || '').trim(); } catch (_) { return ''; }
   }
 
+  function _estoqueChapasFetchState() {
+    if (!window.__estoqueChapasFetchState) {
+      window.__estoqueChapasFetchState = {
+        key: '',
+        cacheAt: 0,
+        cache: [],
+        inFlight: null
+      };
+    }
+    return window.__estoqueChapasFetchState;
+  }
+
   function _estoqueUnwrapList(json, keys) {
     if (Array.isArray(json)) return json;
     var obj = json && json.data ? json.data : json;
@@ -16540,23 +16552,46 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   try { window._resolveChapaRowColor = _resolveChapaRowColor; } catch (_) {}
 
   async function _estoqueFetchChapasList(limit) {
-    var qs = new URLSearchParams();
     var requested = Math.max(1, Math.trunc(Number(limit || 0) || 10000));
-    qs.set('limit', String(requested));
     var empId = _estoqueAtualEmpId();
-    if (empId) qs.set('empId', empId);
-    var json = await _apiFetchJson('/api/chapas_estoque?' + qs.toString());
-    var lista = _estoqueUnwrapList(json, ['chapas']);
-    lista = Array.isArray(lista) ? lista : [];
-    return lista.map(function(chapa) {
-      var cor = _resolveChapaRowColor(chapa);
-      if (!chapa || typeof chapa !== 'object') return chapa;
-      return Object.assign({}, chapa, {
-        cor: cor || null,
-        cor_linha: cor || null,
-        linha_cor: cor || null
+    var state = _estoqueChapasFetchState();
+    var cacheKey = String(empId || '__all__');
+    var now = Date.now();
+    if (state.key === cacheKey && Array.isArray(state.cache) && state.cache.length && (now - Number(state.cacheAt || 0)) < 20000) {
+      return state.cache.slice(0, requested);
+    }
+    if (state.key === cacheKey && state.inFlight) {
+      return state.inFlight.then(function(lista) {
+        return (Array.isArray(lista) ? lista : []).slice(0, requested);
       });
-    });
+    }
+    var fetchLimit = Math.max(requested, 10000);
+    var qs = new URLSearchParams();
+    qs.set('limit', String(fetchLimit));
+    if (empId) qs.set('empId', empId);
+    state.key = cacheKey;
+    state.inFlight = _apiFetchJson('/api/chapas_estoque?' + qs.toString())
+      .then(function(json) {
+        var lista = _estoqueUnwrapList(json, ['chapas']);
+        lista = Array.isArray(lista) ? lista : [];
+        lista = lista.map(function(chapa) {
+          var cor = _resolveChapaRowColor(chapa);
+          if (!chapa || typeof chapa !== 'object') return chapa;
+          return Object.assign({}, chapa, {
+            cor: cor || null,
+            cor_linha: cor || null,
+            linha_cor: cor || null
+          });
+        });
+        state.cache = lista.slice();
+        state.cacheAt = Date.now();
+        return lista;
+      })
+      .finally(function() {
+        state.inFlight = null;
+      });
+    var listaOut = await state.inFlight;
+    return (Array.isArray(listaOut) ? listaOut : []).slice(0, requested);
   }
 
   async function _estoqueFetchMovimentos(tipo, limit) {
