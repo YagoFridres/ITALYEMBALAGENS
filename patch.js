@@ -763,6 +763,8 @@ try {
         out.pasta_id = (r && (r.pasta_id != null ? r.pasta_id : r.pastaId)) ? String(r.pasta_id != null ? r.pasta_id : r.pastaId).trim() : null;
         out.nome = String(r && (r.nome != null ? r.nome : (out && out.nome)) || '').trim();
         out.nome_orcamento = String(r && (r.nome_orcamento != null ? r.nome_orcamento : (out && out.nome_orcamento)) || out.nome || '').trim();
+        if (!out.nome_orcamento && out.nome) out.nome_orcamento = out.nome;
+        if (!out.nome && out.nome_orcamento) out.nome = out.nome_orcamento;
       } catch (_) {
         out.pasta_id = null;
       }
@@ -776,6 +778,8 @@ try {
     next.pasta_id = row.pasta_id != null ? String(row.pasta_id || '').trim() || null : null;
     next.nome = String(next && (next.nome != null ? next.nome : row && row.nome) || '').trim();
     next.nome_orcamento = String(next && (next.nome_orcamento != null ? next.nome_orcamento : row && row.nome_orcamento) || next.nome || '').trim();
+    if (!next.nome_orcamento && next.nome) next.nome_orcamento = next.nome;
+    if (!next.nome && next.nome_orcamento) next.nome = next.nome_orcamento;
     var idx = ORCAMENTOS.findIndex(function(item) { return String(item && item.id || '') === String(next.id || ''); });
     if (idx >= 0) ORCAMENTOS[idx] = Object.assign({}, ORCAMENTOS[idx], next);
     else ORCAMENTOS.unshift(next);

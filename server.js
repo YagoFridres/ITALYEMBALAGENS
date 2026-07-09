@@ -11336,6 +11336,17 @@ app.get('/api/orcamentos', authMiddleware, async (req, res) => {
       console.error('[ORCAMENTOS] error:', error.message);
       return ok(res, []);
     }
+    try {
+      const rows = Array.isArray(data) ? data : [];
+      const sample = rows && rows[0] ? rows[0] : null;
+      if (!sample) console.log('[ORCAMENTOS] GET ok: 0 linhas');
+      else console.log('[ORCAMENTOS] GET ok sample:', {
+        id: sample.id,
+        numero_orcamento: sample.numero_orcamento,
+        nome: sample.nome,
+        nome_orcamento: sample.nome_orcamento,
+      });
+    } catch (_) {}
     return ok(res, data || []);
   } catch (e) {
     console.error('[ORCAMENTOS] catch:', String(e?.message || e));
