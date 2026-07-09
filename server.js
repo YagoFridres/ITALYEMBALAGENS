@@ -2306,8 +2306,11 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
         .select('*')
         .in('id', ids)
         .ilike('status', '%conclu%');
-      if (viewError) return res.status(500).json({ ok: false, error: String(viewError.message || viewError) });
-      pushRows(viewRowsById);
+      if (viewError) {
+        console.error('[COM] busca-of erro vw_comissoes por id:', String(viewError.message || viewError), 'ids:', JSON.stringify(ids.slice(0, 20)));
+      } else {
+        pushRows(viewRowsById);
+      }
     }
 
     if (numeroVariants.length) {
@@ -2318,12 +2321,15 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
         .or(filtrosView)
         .ilike('status', '%conclu%')
         .limit(50);
-      if (viewNumeroError) return res.status(500).json({ ok: false, error: String(viewNumeroError.message || viewNumeroError) });
-      pushRows(viewRowsByNumero);
+      if (viewNumeroError) {
+        console.error('[COM] busca-of erro vw_comissoes por numero:', String(viewNumeroError.message || viewNumeroError), 'filtros:', filtrosView);
+      } else {
+        pushRows(viewRowsByNumero);
+      }
     }
 
     const fallbackOfs = (Array.isArray(hitsBase) ? hitsBase : []).filter((row) => {
-      return String(row?.status || '').toLowerCase().includes('conclu');
+      return !!(String(row?.data_conclusao || '').trim() || String(row?.id || '').trim());
     });
     if (!rowsMap.size && fallbackOfs.length) pushRows(fallbackOfs);
 
