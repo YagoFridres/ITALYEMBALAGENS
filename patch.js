@@ -8744,6 +8744,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     function tonesPrintReport(report) {
       try { if (typeof window._openStyledPrintWindow === 'function') return window._openStyledPrintWindow(tonesBuildPrintHtml(report)); } catch (_) {}
     }
+    function tonesValorVendidoPorM2(rows) {
+      var lista = Array.isArray(rows) ? rows : [];
+      var areaTotal = lista.reduce(function(s, r) { return s + (Number(r && r.area_total_m2 || 0) || 0); }, 0);
+      var valorTotal = lista.reduce(function(s, r) { return s + (Number(r && r.valor_total || 0) || 0); }, 0);
+      return areaTotal > 0 ? (valorTotal / areaTotal) : 0;
+    }
 
     function _printTopListText(items, labelKey, valueFormatter, emptyText) {
       var lista = Array.isArray(items) ? items.slice(0, 4) : [];
@@ -8869,6 +8875,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var saidasMes = movRows.filter(function(r) { return String(r.tipo || '') === 'saida' && String(r.data || '').slice(0, 7) === mesAtual; });
       var entradasMes = movRows.filter(function(r) { return String(r.tipo || '') === 'entrada' && String(r.data || '').slice(0, 7) === mesAtual; });
       var saidasOfMes = ofRows.filter(function(r) { return String(r.data_conclusao || '').slice(0, 7) === mesAtual; });
+      var valorVendidoPorM2 = tonesValorVendidoPorM2(saidasOfMes);
       var saidaFornecedor = _resumoTopPorValor(saidasOfMes, function(r) { return r.fornecedor_nome || r.fornecedor || 'Sem fornecedor'; }, function(r) { return Number(r.toneladas || 0) || 0; });
       var entradaFornecedor = _resumoTopPorValor(entradasMes, function(r) { return r.fornecedor || 'Sem fornecedor'; }, function(r) { return Number(r.toneladas || 0) || 0; });
       var tonEstoque = (chapas || []).reduce(function(s, chapa) { return s + (Number((typeof _calcTonAtualEst === 'function') ? _calcTonAtualEst(chapa) : 0) || 0); }, 0);
@@ -8876,7 +8883,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         { label: 'Toneladas Vendidas no Mês', value: num(tonMes || 0, 3), sub: 'OFs concluídas em ' + String(mesAtual || '') },
         { label: 'Toneladas Saíram por Fornecedor', value: num((saidaFornecedor[0] && saidaFornecedor[0].valor) || 0, 3), sub: (saidaFornecedor[0] && saidaFornecedor[0].nome) || 'Sem fornecedor' },
         { label: 'Toneladas Entraram por Fornecedor', value: num((entradaFornecedor[0] && entradaFornecedor[0].valor) || 0, 3), sub: (entradaFornecedor[0] && entradaFornecedor[0].nome) || 'Sem fornecedor' },
-        { label: 'Toneladas em Estoque', value: num(tonEstoque || 0, 3), sub: 'Saldo atual do estoque' }
+        { label: 'Toneladas em Estoque', value: num(tonEstoque || 0, 3), sub: 'Saldo atual do estoque' },
+        { label: 'Valor Vendido por m²', value: money(valorVendidoPorM2 || 0) + '/m²', sub: 'Valor vendido ÷ área produzida' }
       ];
       var tabela = []
         .concat(entradasMes.map(function(r) {
@@ -8895,6 +8903,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             cliente: clienteLinha,
             produto: r.produto || '—',
             gramatura_nome: r.gramatura_nome || '—',
+            valor_unitario: Number(r.valor_unitario || 0) || 0,
+            valor_total: Number(r.valor_total || 0) || 0,
+            area_total_m2: Number(r.area_total_m2 || 0) || 0,
             toneladas: r.toneladas,
             qtd_caixas_produzidas: r.qtd_caixas_produzidas != null ? r.qtd_caixas_produzidas : (r.quantidade != null ? r.quantidade : '—'),
             of_numero: r.of_numero || '—'
@@ -8919,6 +8930,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <div class="pep-card"><div class="pep-card-label">Toneladas Saíram por Fornecedor</div><div class="pep-card-val">' + num((saidaFornecedor[0] && saidaFornecedor[0].valor) || 0, 3) + '</div><div class="pep-card-sub">' + esc((saidaFornecedor[0] && saidaFornecedor[0].nome) || 'Sem fornecedor') + '</div></div>'
         + '    <div class="pep-card"><div class="pep-card-label">Toneladas Entraram por Fornecedor</div><div class="pep-card-val">' + num((entradaFornecedor[0] && entradaFornecedor[0].valor) || 0, 3) + '</div><div class="pep-card-sub">' + esc((entradaFornecedor[0] && entradaFornecedor[0].nome) || 'Sem fornecedor') + '</div></div>'
         + '    <div class="pep-card"><div class="pep-card-label">Toneladas em Estoque</div><div class="pep-card-val">' + num(tonEstoque || 0, 3) + '</div><div class="pep-card-sub">Saldo atual do estoque</div></div>'
+        + '    <div class="pep-card"><div class="pep-card-label">Valor Vendido por m²</div><div class="pep-card-val">' + esc(money(valorVendidoPorM2 || 0) + '/m²') + '</div><div class="pep-card-sub">Valor vendido ÷ área produzida</div></div>'
         + '  </div>'
         + '  <div class="pep-panel">'
         + '    <div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Tabela de Toneladas</div><div class="pep-sub">Movimentações do mês atual</div></div>'

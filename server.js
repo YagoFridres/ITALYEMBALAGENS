@@ -18463,6 +18463,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       const gramatura = Number(of?.gramatura || 0) || 0;
       const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
       const custoM2Venda = Number(of?.custo_m2_venda || 0) || 0;
+      const valorUnitario = Number(of?.valor_unitario ?? of?.preco ?? 0) || 0;
       let areaUnitM2 = 0;
       const compMm = Number(of?.dim_comprimento ?? of?.caixa_comprimento ?? 0) || 0;
       const largMm = Number(of?.dim_largura ?? of?.caixa_largura ?? 0) || 0;
@@ -18476,6 +18477,8 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       }
       const areaTotalM2 = areaUnitM2 > 0 ? (areaUnitM2 * qtd) : 0;
       const toneladas = tonPersistida > 0 ? tonPersistida : (areaTotalM2 > 0 ? ((areaTotalM2 * gramatura) / 1000000) : 0);
+      const valorTotalBase = Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0;
+      const valorTotal = valorTotalBase > 0 ? valorTotalBase : ((qtd > 0 && valorUnitario > 0) ? (qtd * valorUnitario) : 0);
       const clienteNome = clientesMap.get(cliId) || '—';
       const fornecedorNome = fornecedoresMap.get(_tonesNormId(gramaturaInfo?.fornecedor_id || '')) || '—';
       console.log('[TONELADAS-FIX] of:', of.of, 'cli_id:', cliId, 'clienteNome:', clienteNome, 'fornecedorNome:', fornecedorNome);
@@ -18494,6 +18497,8 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
         qtd_caixas_produzidas: qtd,
         area_unit_m2: Number(areaUnitM2.toFixed(4)),
         area_total_m2: Number(areaTotalM2.toFixed(4)),
+        valor_unitario: Number(valorUnitario.toFixed(6)),
+        valor_total: Number(valorTotal.toFixed(6)),
         toneladas: Number(toneladas.toFixed(6)),
         custo_m2_venda: Number(custoM2Venda.toFixed(6)),
       };
