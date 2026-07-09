@@ -16969,6 +16969,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!okDel) return;
     try {
       await _apiFetchJson('/api/chapas_estoque_movimentos/' + encodeURIComponent(movId), { method: 'DELETE' });
+      _resetChapasCaches();
       try { window.toast('Movimentação revertida com sucesso.', 'var(--green)'); } catch (_) {}
       if (typeof refreshFn === 'function') await refreshFn();
     } catch (e) {
@@ -17016,6 +17017,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(payload)
             });
+            _resetChapasCaches();
             _fecharModalPadrao(modalId);
             try { window.toast('Movimentação alterada com sucesso.', 'var(--green)'); } catch (_) {}
             if (typeof refreshFn === 'function') await refreshFn();
