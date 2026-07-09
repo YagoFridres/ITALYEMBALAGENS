@@ -889,27 +889,20 @@ window._compraPapelaoEnsureToolbar = function() {
   var toolbar = page && page.querySelector ? page.querySelector('.ptoolbar') : null;
   if (!toolbar) return;
   if (!toolbar.dataset.ccpxOrigHtml) toolbar.dataset.ccpxOrigHtml = toolbar.innerHTML;
-  if (!window._compraPapelaoIsActive()) {
-    if (toolbar.dataset.ccpxActive === '1') {
-      toolbar.innerHTML = toolbar.dataset.ccpxOrigHtml || '';
-      toolbar.dataset.ccpxActive = '0';
-    }
-    return;
+  if (toolbar.dataset.ccpxActive === '1' || window._compraPapelaoIsActive()) {
+    toolbar.innerHTML = toolbar.dataset.ccpxOrigHtml || '';
   }
-  toolbar.dataset.ccpxActive = '1';
-  toolbar.innerHTML = ''
-    + '<div class="estoque-main-actions">'
-    +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-btn-nova', label: 'Nova Compra', icon: '+', variant: 'green', title: 'Cadastrar nova compra de papelão' }) : '<button type="button" class="btn btn-accent" id="ccpx-btn-nova">Nova Compra</button>')
-    +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-btn-pasta', label: 'Nova Pasta', icon: '📁', variant: 'teal', title: 'Criar pasta para organizar compras' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-btn-pasta">Nova Pasta</button>')
-    +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-btn-rel-forn', label: 'Compras por Fornecedor', icon: '📊', variant: 'accent', title: 'Abrir relatório por fornecedor' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-btn-rel-forn">Compras por Fornecedor</button>')
-    +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-btn-rel-resumo', label: 'Quantidade e Valor Comprado', icon: 'Σ', variant: 'accent', title: 'Abrir consolidado financeiro' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-btn-rel-resumo">Quantidade e Valor Comprado</button>')
-    +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-btn-print', label: 'Imprimir Relatório', icon: '🖨', variant: 'accent', title: 'Imprimir relatório atual' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-btn-print">Imprimir Relatório</button>')
+  toolbar.dataset.ccpxActive = '0';
+};
+window._compraPapelaoRenderActionCards = function() {
+  return ''
+    + '<div class="estoque-main-actions" id="ccpx-action-cards">'
+    +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-nova', label: 'Nova Compra', icon: '+', variant: 'green', title: 'Cadastrar nova compra de papelão' }) : '<button type="button" class="btn btn-accent" id="ccpx-body-btn-nova">Nova Compra</button>')
+    +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-pasta', label: 'Nova Pasta', icon: '📁', variant: 'accent', title: 'Criar pasta para organizar compras' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-pasta">Nova Pasta</button>')
+    +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-rel-forn', label: 'Compras por Fornecedor', icon: '📊', variant: 'navy', title: 'Abrir relatório por fornecedor' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-rel-forn">Compras por Fornecedor</button>')
+    +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-rel-resumo', label: 'Quantidade e Valor Comprado', icon: '💰', variant: 'purple', title: 'Abrir consolidado financeiro' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-rel-resumo">Quantidade e Valor Comprado</button>')
+    +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-print', label: 'Imprimir Relatório', icon: '🖨', variant: 'accent', title: 'Imprimir relatório atual' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-print">Imprimir Relatório</button>')
     + '</div>';
-  toolbar.querySelector('#ccpx-btn-nova').onclick = function() { window.abrirModalCompra(); };
-  toolbar.querySelector('#ccpx-btn-pasta').onclick = function() { window._compraPapelaoOpenFolderModal(); };
-  toolbar.querySelector('#ccpx-btn-rel-forn').onclick = function() { window._compraPapelaoOpenReportModal('fornecedor'); };
-  toolbar.querySelector('#ccpx-btn-rel-resumo').onclick = function() { window._compraPapelaoOpenReportModal('resumo'); };
-  toolbar.querySelector('#ccpx-btn-print').onclick = function() { window._compraPapelaoPrintCurrentReport(); };
 };
 window._compraPapelaoRenderCardsHtml = function() {
   var st = window._compraPapelaoStateRef();
@@ -1075,6 +1068,7 @@ window._compraPapelaoRenderBody = function() {
   }
   host.innerHTML = ''
     + '<div class="ccpx-shell">'
+    +      window._compraPapelaoRenderActionCards()
     +      window._compraPapelaoRenderStatsHtml()
     + '  <div class="ccpx-search"><input class="pep-input" id="ccpx-busca" type="text" placeholder="Buscar pastas e compras de chapas..." value="' + window._compraPapelaoAttr(window._compraPapelaoStateRef().busca || '') + '"><button type="button" class="pep-btn primary" id="ccpx-btn-buscar">Buscar</button></div>'
     + '  ' + window._compraPapelaoRenderCardsHtml()
@@ -1087,6 +1081,16 @@ window._compraPapelaoRenderBody = function() {
 window._compraPapelaoBindBody = function() {
   var host = document.getElementById('cmp-body');
   if (!host) return;
+  var btnNova = host.querySelector('#ccpx-body-btn-nova');
+  var btnPasta = host.querySelector('#ccpx-body-btn-pasta');
+  var btnRelFornecedor = host.querySelector('#ccpx-body-btn-rel-forn');
+  var btnRelResumo = host.querySelector('#ccpx-body-btn-rel-resumo');
+  var btnPrint = host.querySelector('#ccpx-body-btn-print');
+  if (btnNova) btnNova.onclick = function() { window.abrirModalCompra(); };
+  if (btnPasta) btnPasta.onclick = function() { window._compraPapelaoOpenFolderModal(); };
+  if (btnRelFornecedor) btnRelFornecedor.onclick = function() { window._compraPapelaoOpenReportModal('fornecedor'); };
+  if (btnRelResumo) btnRelResumo.onclick = function() { window._compraPapelaoOpenReportModal('resumo'); };
+  if (btnPrint) btnPrint.onclick = function() { window._compraPapelaoPrintCurrentReport(); };
   var busca = host.querySelector('#ccpx-busca');
   var buscar = host.querySelector('#ccpx-btn-buscar');
   if (buscar) buscar.onclick = function() {
@@ -22120,6 +22124,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '.estoque-action-danger{background:linear-gradient(135deg,rgba(249,115,22,.24),rgba(220,38,38,.88));border-color:rgba(249,115,22,.45)}' +
       '.estoque-action-accent{background:linear-gradient(135deg,rgba(59,130,246,.24),rgba(37,99,235,.88));border-color:rgba(59,130,246,.45)}' +
       '.estoque-action-teal{background:linear-gradient(135deg,rgba(20,184,166,.24),rgba(109,40,217,.88));border-color:rgba(45,212,191,.40)}' +
+      '.estoque-action-navy{background:linear-gradient(135deg,rgba(30,41,59,.38),rgba(29,78,216,.92));border-color:rgba(96,165,250,.38)}' +
+      '.estoque-action-purple{background:linear-gradient(135deg,rgba(124,58,237,.32),rgba(91,33,182,.92));border-color:rgba(167,139,250,.4)}' +
       'body[data-estoque-wireframe="1"] #page-sel-chapas{display:none!important;visibility:hidden!important;pointer-events:none!important}' +
       'body[data-estoque-wireframe="1"] #tabelaChapasEstoque{display:none!important;visibility:hidden!important}' +
       '.estoque-modal-overlay{position:fixed;inset:0;background:rgba(2,6,23,.84);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(6px)}' +
