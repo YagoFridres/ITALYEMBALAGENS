@@ -16092,18 +16092,57 @@ function _chapasMovRpcIsValidacao(err) {
 
 async function _chapasMovimentarV2Rpc(params) {
   const p = params || {};
-  const rpcArgs = {
-    p_chapa_id: p.chapa_id,
-    p_tipo: p.tipo,
-    p_quantidade: p.quantidade,
-    p_nf: p.nf ?? null,
-    p_obs: p.obs ?? null,
-    p_origem: p.origem ?? null,
-    p_origem_id: p.origem_id ?? null,
-    p_usuario: p.usuario ?? null,
-    p_emp_id: p.emp_id ?? null,
+  const chapaId = String(p.chapa_id || '').trim();
+  const tipo = String(p.tipo || '').trim().toLowerCase();
+  const quantidade = Number(p.quantidade || 0);
+  const paramsNorm = {
+    chapa_id: chapaId,
+    tipo,
+    quantidade,
+    nf: p.nf ?? null,
+    obs: p.obs ?? null,
+    origem: p.origem ?? null,
+    origem_id: p.origem_id ?? null,
+    usuario: p.usuario ?? null,
+    emp_id: p.emp_id ?? null,
   };
-  return supabase.rpc('movimentar_chapa_estoque_v2', rpcArgs);
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRe.test(chapaId)) {
+    const error = new Error('p_chapa_id inválido');
+    console.error('[MOV-CHAPA] tipo:', tipo || '—', 'params:', JSON.stringify(paramsNorm), 'erro:', error?.message);
+    return { data: null, error };
+  }
+  if (tipo !== 'entrada' && tipo !== 'saida') {
+    const error = new Error('p_tipo inválido');
+    console.error('[MOV-CHAPA] tipo:', tipo || '—', 'params:', JSON.stringify(paramsNorm), 'erro:', error?.message);
+    return { data: null, error };
+  }
+  if (!Number.isFinite(quantidade) || !(quantidade > 0)) {
+    const error = new Error('p_quantidade inválido');
+    console.error('[MOV-CHAPA] tipo:', tipo || '—', 'params:', JSON.stringify(paramsNorm), 'erro:', error?.message);
+    return { data: null, error };
+  }
+  const rpcArgs = {
+    p_chapa_id: chapaId,
+    p_tipo: tipo,
+    p_quantidade: quantidade,
+    p_nf: paramsNorm.nf,
+    p_obs: paramsNorm.obs,
+    p_origem: paramsNorm.origem,
+    p_origem_id: paramsNorm.origem_id,
+    p_usuario: paramsNorm.usuario,
+    p_emp_id: paramsNorm.emp_id,
+  };
+  try {
+    const result = await supabase.rpc('movimentar_chapa_estoque_v2', rpcArgs);
+    if (result?.error) {
+      console.error('[MOV-CHAPA] tipo:', tipo, 'params:', JSON.stringify(paramsNorm), 'erro:', result.error?.message);
+    }
+    return result;
+  } catch (error) {
+    console.error('[MOV-CHAPA] tipo:', tipo, 'params:', JSON.stringify(paramsNorm), 'erro:', error?.message);
+    return { data: null, error };
+  }
 }
 
 function _chapasPayloadV2FromBody(b, req, isUpdate) {
