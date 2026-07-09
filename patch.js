@@ -1091,6 +1091,46 @@ try {
   }, 500);
 })();
 
+window.__simdCalcularImpl = window.__simdCalcularImpl || null;
+window._simdCalcular = function() {
+  console.log('[SIMD] entrou');
+  var impl = null;
+  try {
+    impl = typeof window.__simdCalcularImpl === 'function'
+      ? window.__simdCalcularImpl
+      : (typeof window._simdCalcularPatchedImpl === 'function'
+          ? window._simdCalcularPatchedImpl
+          : (typeof window._simdCalcularFluxoImpl === 'function' ? window._simdCalcularFluxoImpl : null));
+  } catch (_) {
+    impl = null;
+  }
+  if (typeof impl !== 'function') {
+    try { console.error('[SIMD] erro:', new Error('Handler global do simulador não disponível')); } catch (_) {}
+    try { alert('Simulador indisponível no momento. Recarregue a página.'); } catch (_) {}
+    return false;
+  }
+  return impl.apply(this, arguments);
+};
+window._simdBindBotaoDireto = function() {
+  var btn = null;
+  try { btn = document.getElementById('simd-btn'); } catch (_) { btn = null; }
+  if (!btn || typeof window._simdCalcular !== 'function') return false;
+  try { btn.type = 'button'; } catch (_) {}
+  try { btn.onclick = window._simdCalcular; } catch (_) {}
+  if (btn.dataset.simdDirectBound !== '1') {
+    btn.dataset.simdDirectBound = '1';
+    btn.addEventListener('click', function(e) {
+      try { if (e) e.preventDefault(); } catch (_) {}
+      return window._simdCalcular.call(this, e);
+    });
+  }
+  return true;
+};
+try { window._simdBindBotaoDireto(); } catch (_) {}
+setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 50);
+setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 300);
+setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 900);
+
 (function patchSimuladorFluxoGlobalV2() {
   if (window.__patchSimuladorFluxoGlobalV2) return;
   window.__patchSimuladorFluxoGlobalV2 = true;
@@ -1385,7 +1425,12 @@ try {
   }
   function sBind() {
     try {
-      window._simdCalcular = function() {
+      window._simdCalcularFluxoImpl = sRun;
+      window.__simdCalcularImpl = sRun;
+    } catch (_) {}
+    try {
+      window._simdCalcular = window._simdCalcular || function() {
+        console.log('[SIMD] entrou');
         return sRun.apply(this, arguments);
       };
     } catch (_) {}
@@ -1393,10 +1438,11 @@ try {
     if (btn && btn.dataset.simdGlobalBound !== '1') {
       btn.dataset.simdGlobalBound = '1';
       try { btn.type = 'button'; } catch (_) {}
-      btn.onclick = function(e) {
+      btn.onclick = window._simdCalcular;
+      btn.addEventListener('click', function(e) {
         try { if (e) e.preventDefault(); } catch (_) {}
-        return window._simdCalcular();
-      };
+        return window._simdCalcular.call(this, e);
+      });
     }
     ['simd-larg', 'simd-comp', 'simd-qtd'].forEach(function(id) {
       var el = document.getElementById(id);
@@ -1416,6 +1462,7 @@ try {
     if (!window.__simdGlobalObsV2) {
       window.__simdGlobalObsV2 = new MutationObserver(function() {
         try { sBind(); } catch (_) {}
+        try { window._simdBindBotaoDireto(); } catch (_) {}
       });
       window.__simdGlobalObsV2.observe(document.body, { childList: true, subtree: true });
     }
@@ -5233,14 +5280,13 @@ try {
       if (btn && btn.dataset.patchSimdBound !== '1') {
         btn.dataset.patchSimdBound = '1';
         try { btn.type = 'button'; } catch (_) {}
-        try { btn.removeAttribute('onclick'); } catch (_) {}
         var runCalculo = function(e) {
           try { e.preventDefault(); } catch (_) {}
           try { e.stopPropagation(); } catch (_) {}
-          _simdCalcularPatched();
+          return window._simdCalcular.call(this, e);
           return false;
         };
-        try { btn.onclick = runCalculo; } catch (_) {}
+        try { btn.onclick = window._simdCalcular; } catch (_) {}
         btn.addEventListener('click', runCalculo);
       }
       ['simd-larg', 'simd-comp', 'simd-qtd'].forEach(function(id) {
@@ -5273,14 +5319,14 @@ try {
         if (resultado) resultado.style.display = resultado.style.display || 'none';
         if (wrap) wrap.style.display = 'block';
       } catch (_) {}
+      try { window._simdBindBotaoDireto(); } catch (_) {}
     } catch (_) {}
   }
 
   try { window._simdCarregarChapas = _simdCarregarChapasPatched; } catch (_) {}
   try {
-    window._simdCalcular = function() {
-      return _simdCalcularPatched.apply(this, arguments);
-    };
+    window._simdCalcularPatchedImpl = _simdCalcularPatched;
+    window.__simdCalcularImpl = _simdCalcularPatched;
   } catch (_) {}
   try {
     if (typeof window.calcTonChapa === 'function' && !window.calcTonChapa._patchedDimMm) {
