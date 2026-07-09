@@ -16708,6 +16708,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return window.__estoqueChapasFetchState;
   }
 
+  function _resetChapasCaches() {
+    try {
+      var state = _estoqueChapasFetchState();
+      if (state) {
+        state.key = '';
+        state.cacheAt = 0;
+        state.cache = [];
+        state.inFlight = null;
+      }
+    } catch (_) {}
+    ['__estoqueChapasCacheGlobal', '__estoqueWireChapasCache', '__entradaEstoqueChapasCache', '__saidaEstoqueChapasCache', '_estoqueBase', 'ESTOQUE'].forEach(function(nome) {
+      try { window[nome] = []; } catch (_) {}
+    });
+  }
+
   function _estoqueUnwrapList(json, keys) {
     if (Array.isArray(json)) return json;
     var obj = json && json.data ? json.data : json;
@@ -17669,7 +17684,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         window[nome] = window[nome].filter(function(item) { return String(item && item.id || '').trim() !== sid; });
       } catch (_) {}
     });
-    try { if (typeof chapasForcarReload === 'function') chapasForcarReload(); } catch (_) {}
+    _resetChapasCaches();
+    try { if (typeof chapasForcarReload === 'function') await chapasForcarReload(); } catch (_) {}
     try { window.toast('Chapa excluída com sucesso', 'var(--green)'); } catch (_) {}
     try {
       if (String(window._PAGE_ATUAL || '') === 'estoque' && typeof renderEstoqueWireframePage === 'function') {

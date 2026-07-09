@@ -15973,6 +15973,8 @@ function _chapasCanonicalFromAny(row, table) {
       atualizado_por: row.atualizado_por || '',
       criado_em: row.created_at || row.criado_em || null,
       atualizado_em: row.updated_at || row.atualizado_em || null,
+      deleted_at: row.deleted_at || null,
+      status: row.status || '',
       lote: row.lote || row.numero_lote || row.codigo_lote || row.lote_codigo || '',
       peso_kg_unidade: _chapasNum(row.peso_kg_unidade ?? row.peso_kg ?? 0) || _chapasPesoKgUnidadeFromAny(row),
       largura_mm: _chapasNum(row.largura_mm ?? row.largura ?? row.larg ?? 0) || 0,
@@ -16281,6 +16283,34 @@ async function _chapasUpdateCompatV2(id, payload) {
     break;
   }
   return { data, error };
+}
+
+async function _chapasSoftDeleteCompat(table, id, req) {
+  const now = new Date().toISOString();
+  let payload = {
+    deleted_at: now,
+    status: 'excluida',
+    updated_at: now,
+    atualizado_por: req?.usuario?.nome || 'sistema',
+  };
+  let data = null;
+  let error = null;
+  for (let tentativa = 0; tentativa < 6; tentativa++) {
+    const r = await supabase.from(table).update(payload).eq('id', id).select('id').maybeSingle();
+    data = r?.data || null;
+    error = r?.error || null;
+    if (!error) break;
+    const msg = String(error.message || error);
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+    if (col && Object.prototype.hasOwnProperty.call(payload, col)) {
+      delete payload[col];
+      continue;
+    }
+    break;
+  }
+  return { data, error, payload };
 }
 
 function _chapasEntradaNormKeyPart(v) {
@@ -16645,7 +16675,9 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
         continue;
       }
 
-      const canon = (data || []).map((r) => _chapasCanonicalFromAny(r, table));
+      const canon = (data || []).map((r) => _chapasCanonicalFromAny(r, table)).filter((r) => {
+        return !String(r?.deleted_at || '').trim() && String(r?.status || '').trim().toLowerCase() !== 'excluida';
+      });
       const filtered = applyFilters(canon);
       if (filtered.length > 0 || table === tablesToTry[tablesToTry.length - 1]) {
         usedTable = table;
@@ -19827,23 +19859,55 @@ app.post('/api/chapas_estoque/migrar_legacy', authMiddleware, requireAdmin, asyn
 });
 app.delete('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
   try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const preferred = await _chapasPreferV2Table();
     const tables = preferred === 'chapas_estoque_v2'
       ? ['chapas_estoque_v2', 'chapas_estoque', 'estoque_chapas', 'estoque']
       : ['chapas_estoque', 'estoque_chapas', 'estoque'];
     let lastErr = null;
+    let lastMode = 'physical';
     for (const t of tables) {
-      const { error } = await supabase.from(t).delete().eq('id', req.params.id);
-      if (!error) {
-        await _chapasLogAcao(req, 'estoque_chapas_excluir', `Chapa excluída (id=${req.params.id})`);
-        return res.json({ ok: true });
+      const { data, error, count } = await supabase.from(t).delete({ count: 'exact' }).eq('id', id).select('id');
+      console.error('[DEL-CHAPA] id:', id, 'erro:', error?.message, 'count:', count);
+      if (!error && ((Number(count || 0) > 0) || (Array.isArray(data) && data.length > 0))) {
+        cacheClearPrefix('chapas_');
+        cacheClearPrefix('chapas_estoque:');
+        await _chapasLogAcao(req, 'estoque_chapas_excluir', `Chapa excluída fisicamente (id=${id})`);
+        return res.json({ ok: true, mode: 'physical', deleted: Number(count || (data || []).length || 0) });
       }
-      lastErr = error;
-      const msg = String(error.message || error);
+      if (!error && !count) {
+        lastErr = new Error('Nenhuma linha removida no delete físico');
+      } else {
+        lastErr = error;
+      }
+      const msg = String((lastErr && lastErr.message) || lastErr || '');
+      if (!error && !count) {
+        const soft = await _chapasSoftDeleteCompat(t, id, req);
+        console.error('[DEL-CHAPA] id:', id, 'erro:', soft.error?.message, 'count:', soft.data ? 1 : 0);
+        if (!soft.error && soft.data) {
+          cacheClearPrefix('chapas_');
+          cacheClearPrefix('chapas_estoque:');
+          lastMode = 'logical';
+          await _chapasLogAcao(req, 'estoque_chapas_excluir', `Chapa excluída logicamente (id=${id})`);
+          return res.json({ ok: true, mode: 'logical', deleted: 1 });
+        }
+      }
+      if (msg.includes('foreign key') || msg.includes('violates foreign key constraint') || msg.includes('constraint')) {
+        const soft = await _chapasSoftDeleteCompat(t, id, req);
+        console.error('[DEL-CHAPA] id:', id, 'erro:', soft.error?.message, 'count:', soft.data ? 1 : 0);
+        if (!soft.error && soft.data) {
+          cacheClearPrefix('chapas_');
+          cacheClearPrefix('chapas_estoque:');
+          lastMode = 'logical';
+          await _chapasLogAcao(req, 'estoque_chapas_excluir', `Chapa excluída logicamente por vínculo (id=${id})`);
+          return res.json({ ok: true, mode: 'logical', deleted: 1 });
+        }
+      }
       if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
-      throw error;
+      if (msg.toLowerCase().includes('row-level security')) break;
     }
-    throw lastErr;
+    return res.status(500).json({ ok: false, error: String(lastErr?.message || lastErr || 'Falha ao excluir chapa'), mode: lastMode });
   } catch (e) { err(res, e); }
 });
 
