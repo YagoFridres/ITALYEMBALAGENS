@@ -21239,6 +21239,35 @@ window._mbnActive = function(id) {
     return String(of && (of.descricao || of.produto || of.prodDesc || of.nome_produto || of.observacao || of.obs || '') || '').trim();
   }
 
+  function _ofmaqTamanhoLabel(of) {
+    try {
+      var largura = Number(of && (of.dim_largura || of.caixa_largura || of.largura || of.larg)) || 0;
+      var comprimento = Number(of && (of.dim_comprimento || of.caixa_comprimento || of.comprimento || of.compr)) || 0;
+      var altura = Number(of && (of.dim_altura || of.caixa_altura || of.altura)) || 0;
+      if (largura > 0 && comprimento > 0 && altura > 0) return '~' + largura + '×' + comprimento + '×' + altura + 'mm';
+      return buildSizeLabel(parseDimensions(of));
+    } catch (_) {
+      return 'sem medida definida';
+    }
+  }
+
+  function _ofmaqCoresLabel(of) {
+    try {
+      return parseColors(of).filter(Boolean).join(' + ');
+    } catch (_) {
+      return 'Sem cor';
+    }
+  }
+
+  function _ofmaqQuantidadeLabel(of) {
+    try {
+      var qtd = _getQtdOf(of);
+      return qtd != null && qtd !== '' ? String(qtd) : '—';
+    } catch (_) {
+      return '—';
+    }
+  }
+
   function _ofmaqUniqueOfs(list) {
     var seen = {};
     return (Array.isArray(list) ? list : []).filter(function(of) {
@@ -21269,7 +21298,10 @@ window._mbnActive = function(id) {
       _ofmaqNumeroLabel(of),
       _ofmaqClienteLabel(of),
       _ofmaqProdutoLabel(of),
-      String(of && of.__maquina_busca || '').trim()
+      String(of && of.__maquina_busca || '').trim(),
+      _ofmaqTamanhoLabel(of),
+      _ofmaqQuantidadeLabel(of),
+      _ofmaqCoresLabel(of)
     ].join(' ');
     return _ofmaqNormBusca(hay).indexOf(termNorm) >= 0;
   }
@@ -21355,6 +21387,7 @@ window._mbnActive = function(id) {
     var ofs = _ofmaqVisibleOfsFlat();
     var termNorm = _ofmaqNormBusca(state.q);
     var matches = termNorm ? ofs.filter(function(of) { return _ofmaqMatchesBusca(of, termNorm); }) : [];
+    try { console.log('[BUSCA-OFMAQ] termo:', state.q, 'total OFs:', ofs.length, 'encontradas:', matches.length); } catch (_) {}
     _ofmaqApplySearchFilter(state.q);
     if (meta) {
       meta.textContent = state.q
@@ -21382,7 +21415,7 @@ window._mbnActive = function(id) {
       root.style.cssText = 'margin:0 0 18px 0;padding:16px 18px;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(8,17,32,.88)';
       root.innerHTML = ''
         + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
-        + '  <input id="ofmaq-search-input" class="pep-input" type="text" placeholder="Buscar OFs por número, cliente ou produto..." style="flex:1;min-width:320px">'
+        + '  <input id="ofmaq-search-input" class="pep-input" type="text" placeholder="Buscar OFs por número, cliente, produto, tamanho, quantidade ou cor..." style="flex:1;min-width:320px">'
         + '  <button id="ofmaq-search-clear" type="button" class="pep-btn">Limpar</button>'
         + '</div>'
         + '<div id="ofmaq-search-meta" style="margin-top:10px;font-size:12px;color:#94a3b8"></div>'
