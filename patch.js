@@ -376,6 +376,21 @@ try {
 ;(function() {
   if (window.__ofmaqActionsFixTailApplied) return;
   window.__ofmaqActionsFixTailApplied = true;
+  var originalAbrirModalAlterarMaquinaOfmaq = typeof window.abrirModalAlterarMaquinaOfmaq === 'function'
+    ? window.abrirModalAlterarMaquinaOfmaq
+    : (typeof abrirModalAlterarMaquinaOfmaq === 'function' ? abrirModalAlterarMaquinaOfmaq : null);
+  var originalAlterarMaquinaOf = typeof window.alterarMaquinaOf === 'function'
+    ? window.alterarMaquinaOf
+    : (typeof alterarMaquinaOf === 'function' ? alterarMaquinaOf : null);
+  var originalAlterarDataOf = typeof window.alterarDataOf === 'function'
+    ? window.alterarDataOf
+    : null;
+  var originalRegistrarTempoOf = typeof window.registrarTempoOf === 'function'
+    ? window.registrarTempoOf
+    : (typeof registrarTempoOf === 'function' ? registrarTempoOf : null);
+  var originalPassouPelaMaquina = typeof window.passouPelaMaquina === 'function'
+    ? window.passouPelaMaquina
+    : null;
 
   function logOfmaq(msg, extra) {
     try {
@@ -387,25 +402,12 @@ try {
   function cleanupOfmaqArtifacts() {
     try {
       Array.prototype.slice.call(document.querySelectorAll(
-        '#ofmaq-acoes-ov,#ofmaq-acoes-sheet,#bs-overlay,#bs-acoes,.acoes-dropdown,.dropdown-backdrop,.estoque-modal-overlay[data-modal-padrao="1"]'
+        '#ofmaq-acoes-ov,#ofmaq-acoes-sheet,#bs-overlay,#bs-acoes,.acoes-dropdown,.dropdown-backdrop'
       )).forEach(function(el) {
         try { el.remove(); } catch (_) {}
       });
     } catch (_) {}
-    try {
-      ['modal-alterar-entrega', 'modal-alterar-maquina-ofmaq'].forEach(function(id) {
-        var modal = document.getElementById(id);
-        if (!modal) return;
-        try {
-          if (typeof fechar === 'function') fechar(id);
-          else modal.style.display = 'none';
-        } catch (_) {
-          try { modal.style.display = 'none'; } catch (_) {}
-        }
-      });
-    } catch (_) {}
     try { if (typeof window.fecharOfmaqAcoesSheet === 'function') window.fecharOfmaqAcoesSheet(); } catch (_) {}
-    try { ofEmEdicaoMaquina = null; } catch (_) {}
   }
 
   function getOfmaqById(id) {
@@ -652,17 +654,15 @@ try {
 
   function syncBuscaUi(termRaw) {
     var term = String(termRaw || '').trim();
-    logOfmaq('busca nativa', term);
+    var input = document.getElementById('ofmaq-busca');
+    if (input && input.value !== term) input.value = term;
+    logOfmaq('input buscador', {
+      termo: term,
+      hasRender: typeof renderOFsPorMaquina === 'function',
+      hasInput: !!input
+    });
     try {
       if (typeof window.__ofmaqBuscaStatePatch === 'function') window.__ofmaqBuscaStatePatch().q = term;
-      if (typeof window.__ofmaqRenderBuscaUiPatch === 'function') {
-        window.__ofmaqRenderBuscaUiPatch(term);
-        return true;
-      }
-      if (typeof window.__ofmaqApplySearchFilterPatch === 'function') {
-        window.__ofmaqApplySearchFilterPatch(term);
-        return true;
-      }
     } catch (e) {
       logOfmaq('erro busca nativa', String(e && e.message || e));
     }
@@ -694,16 +694,64 @@ try {
   }
 
   window.alterarMaquinaOf = function(ofId, ofNum) {
-    logOfmaq('abrir alterar máquina', { ofId: ofId, ofNum: ofNum });
-    return openAlterarMaquinaPatched(ofId, ofNum);
+    logOfmaq('clique ação Alterar Máquina', { ofId: ofId, ofNum: ofNum });
+    cleanupOfmaqArtifacts();
+    try {
+      if (typeof originalAbrirModalAlterarMaquinaOfmaq === 'function') {
+        var opened = originalAbrirModalAlterarMaquinaOfmaq(ofId, ofNum);
+        logOfmaq('modal alterar máquina aberto via original', { ofId: ofId, ofNum: ofNum });
+        return opened;
+      }
+      if (typeof originalAlterarMaquinaOf === 'function') {
+        var fallback = originalAlterarMaquinaOf.apply(this, arguments);
+        logOfmaq('modal alterar máquina aberto via fallback', { ofId: ofId, ofNum: ofNum });
+        return fallback;
+      }
+      logOfmaq('erro abrir alterar máquina', 'função original indisponível');
+    } catch (e) {
+      logOfmaq('erro abrir alterar máquina', String(e && e.message || e));
+      throw e;
+    }
   };
   window.alterarDataOf = function(ofId, ofNum, dataAtual) {
-    logOfmaq('abrir alterar data', { ofId: ofId, ofNum: ofNum, dataAtual: dataAtual });
-    return openAlterarDataPatched(ofId, ofNum, dataAtual);
+    logOfmaq('clique ação Alterar Data de Entrega', { ofId: ofId, ofNum: ofNum, dataAtual: dataAtual });
+    cleanupOfmaqArtifacts();
+    try {
+      if (typeof originalAlterarDataOf === 'function') {
+        var opened = originalAlterarDataOf.apply(this, arguments);
+        logOfmaq('modal alterar data aberto via original', { ofId: ofId, ofNum: ofNum });
+        return opened;
+      }
+      logOfmaq('erro abrir alterar data', 'função original indisponível');
+    } catch (e) {
+      logOfmaq('erro abrir alterar data', String(e && e.message || e));
+      throw e;
+    }
   };
   window.registrarTempoOf = function(ofId, ofNum) {
-    logOfmaq('abrir registrar tempo', { ofId: ofId, ofNum: ofNum });
-    return openRegistrarTempoPatched(ofId, ofNum);
+    logOfmaq('clique ação Registrar Tempo', { ofId: ofId, ofNum: ofNum });
+    cleanupOfmaqArtifacts();
+    try {
+      if (typeof originalRegistrarTempoOf === 'function') {
+        var opened = originalRegistrarTempoOf.apply(this, arguments);
+        logOfmaq('modal registrar tempo aberto via original', { ofId: ofId, ofNum: ofNum });
+        return opened;
+      }
+      logOfmaq('erro abrir registrar tempo', 'função original indisponível');
+    } catch (e) {
+      logOfmaq('erro abrir registrar tempo', String(e && e.message || e));
+      throw e;
+    }
+  };
+  window.passouPelaMaquina = function(ofId, ofNum, nomeMaquina) {
+    logOfmaq('clique ação Passou pela Máquina', { ofId: ofId, ofNum: ofNum, nomeMaquina: nomeMaquina });
+    try {
+      if (typeof originalPassouPelaMaquina === 'function') return originalPassouPelaMaquina.apply(this, arguments);
+      logOfmaq('erro abrir passou pela máquina', 'função original indisponível');
+    } catch (e) {
+      logOfmaq('erro abrir passou pela máquina', String(e && e.message || e));
+      throw e;
+    }
   };
   window.ofmaqOnBuscaInput = function() {
     var input = document.getElementById('ofmaq-busca');
@@ -715,6 +763,7 @@ try {
   };
   try { alterarMaquinaOf = window.alterarMaquinaOf; } catch (_) {}
   try { registrarTempoOf = window.registrarTempoOf; } catch (_) {}
+  try { passouPelaMaquina = window.passouPelaMaquina; } catch (_) {}
   try { ofmaqOnBuscaInput = window.ofmaqOnBuscaInput; } catch (_) {}
 
   cleanupOfmaqArtifacts();
@@ -726,7 +775,6 @@ try {
       window.__ofmaqActionsFixObs = new MutationObserver(function() {
         try { clearTimeout(window.__ofmaqActionsFixObsTimer); } catch (_) {}
         window.__ofmaqActionsFixObsTimer = setTimeout(function() {
-          cleanupOfmaqArtifacts();
           bindNativeBusca();
         }, 100);
       });
