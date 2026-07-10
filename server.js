@@ -1103,7 +1103,7 @@ app.get('/manifest.json', (req, res) => {
 
 const PATCH_RUNTIME_VERSION = '20260707133500';
 const SW_RUNTIME_VERSION = '20260707133500';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260709184620';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260709191510';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -7628,51 +7628,23 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       const agoraConcluida = stNovoWanted && (stNovoWanted.includes('conclu') || concluidoValues.has(stNovoWanted));
       if (!antesConcluida && agoraConcluida) {
         const hoje = new Date().toISOString().slice(0, 10);
-        let ja = null;
-        try {
-          const rj = await supabase
-            .from('passagens_maquina')
-            .select('id,status,data_passagem')
-            .eq('of_id', id)
-            .eq('status', 'DESPACHADA')
-            .order('hora_passagem', { ascending: false })
-            .limit(1);
-          ja = Array.isArray(rj?.data) && rj.data[0] ? rj.data[0] : null;
-        } catch (_) {}
-        if (!ja || String(ja.data_passagem || '').slice(0, 10) !== hoje) {
-          const ofNumero = String(data?.numero || data?.of_num || data?.of || '').trim() || null;
-          const maquina = String(data?.maquina || '').trim() || null;
-          const operador = String(req.usuario?.nome || 'Sistema').trim();
-          const insertBase = {
-            of_id: id,
-            of_numero: ofNumero,
-            cliente: String(data?.cliente || data?.cliente_nome || '').trim() || null,
-            produto: String(data?.produto || data?.descricao || data?.produto_desc || data?.prodDesc || '').trim() || null,
-            referencia: String(data?.referencia || data?.ref || '').trim() || null,
-            imagem_url: data?.imagem_url || data?.imagem || data?.img || null,
-            maquina,
-            operador,
-            quantidade: Number(data?.quantidade ?? data?.qtd ?? 0) || 0,
-            data_passagem: hoje,
-            hora_passagem: new Date().toISOString(),
-            status: 'DESPACHADA',
-            empresa: String(data?.empresa || 'Italy Embalagens'),
-          };
-          let toInsert = { ...insertBase };
-          for (let i = 0; i < 8; i++) {
-            const ins = await supabase.from('passagens_maquina').insert([toInsert]);
-            if (!ins?.error) break;
-            const msg = String(ins.error.message || '').toLowerCase();
-            const m = msg.match(/column \"([^\"]+)\" of relation/i);
-            if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
-              delete toInsert[m[1]];
-              continue;
-            }
-            const missing = msg.includes('does not exist') || msg.includes('relation') && msg.includes('passagens_maquina');
-            if (missing) break;
-            break;
-          }
-        }
+        const maquina = String(data?.maquina || data?.maquina_agendada || (Array.isArray(data?.maq) ? data.maq[0] : data?.maq) || data?.passou_maquina_nome || '').trim() || null;
+        const upsertResult = await _upsertPassagemMaquinaRegistro({
+          of_id: id,
+          of_numero: String(data?.numero || data?.of_num || data?.of || '').trim() || null,
+          cliente: String(data?.cliente || data?.cliente_nome || '').trim() || null,
+          produto: String(data?.produto || data?.descricao || data?.produto_desc || data?.prodDesc || '').trim() || null,
+          referencia: String(data?.referencia || data?.ref || '').trim() || null,
+          imagem_url: data?.imagem_url || data?.imagem || data?.img || null,
+          maquina,
+          operador: String(req.usuario?.nome || 'Sistema').trim(),
+          quantidade: Number(data?.qtd_produzida ?? data?.quantidade ?? data?.qtd ?? 0) || 0,
+          data_passagem: hoje,
+          hora_passagem: new Date().toISOString(),
+          status: 'Despachada',
+          empresa: String(data?.empresa || 'Italy Embalagens'),
+        }, { status: 'Despachada' });
+        try { console.debug('[PASSAGENS] patch OF concluiu upsert:', { id, maquina, mode: upsertResult?.mode || 'none' }); } catch (_) {}
       }
     } catch (_) {}
     try {
@@ -8313,52 +8285,24 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
 
     try {
       const hoje = nowIso.slice(0, 10);
-      let ja = null;
-      try {
-        const rj = await supabase
-          .from('passagens_maquina')
-          .select('id,status,data_passagem')
-          .eq('of_id', sid)
-          .eq('status', 'DESPACHADA')
-          .order('hora_passagem', { ascending: false })
-          .limit(1);
-        ja = Array.isArray(rj?.data) && rj.data[0] ? rj.data[0] : null;
-      } catch (_) {}
-
-      if (!ja || String(ja.data_passagem || '').slice(0, 10) !== hoje) {
-        const picked = fluxoPickMaquina();
-        const maquinaNome = String(mprodRaw || body.maquina || of.maq || of.maquina || picked.nome || '').trim() || 'Sem máquina';
-        const ofNumero = String(of?.numero || of?.of_num || of?.of || '').trim() || null;
-        let toInsert = {
-          of_id: sid,
-          of_numero: ofNumero,
-          cliente: String(of?.cliente || '').trim() || null,
-          produto: String(of?.produto || of?.descricao || of?.produto_desc || of?.prodDesc || '').trim() || null,
-          referencia: String(of?.referencia || of?.ref || '').trim() || null,
-          imagem_url: of?.imagem_url || of?.imagem || of?.img || null,
-          maquina: maquinaNome,
-          operador: String(req.usuario?.nome || 'Sistema').trim(),
-          quantidade: Number(qtdFinal || 0) || 0,
-          data_passagem: hoje,
-          hora_passagem: nowIso,
-          status: 'DESPACHADA',
-          empresa: String(of?.empresa || 'Italy Embalagens'),
-        };
-
-        for (let i = 0; i < 8; i++) {
-          const ins = await supabase.from('passagens_maquina').insert([toInsert]);
-          if (!ins?.error) break;
-          const msg = String(ins.error.message || '').toLowerCase();
-          const m = msg.match(/column \"([^\"]+)\" of relation/i);
-          if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
-            delete toInsert[m[1]];
-            continue;
-          }
-          const missing = msg.includes('does not exist') || msg.includes('relation') && msg.includes('passagens_maquina');
-          if (missing) break;
-          break;
-        }
-      }
+      const picked = fluxoPickMaquina();
+      const maquinaNome = String(mprodRaw || body.maquina || of.maq || of.maquina || picked.nome || of.passou_maquina_nome || '').trim() || 'Sem máquina';
+      const upsertResult = await _upsertPassagemMaquinaRegistro({
+        of_id: sid,
+        of_numero: String(of?.numero || of?.of_num || of?.of || '').trim() || null,
+        cliente: String(of?.cliente || '').trim() || null,
+        produto: String(of?.produto || of?.descricao || of?.produto_desc || of?.prodDesc || '').trim() || null,
+        referencia: String(of?.referencia || of?.ref || '').trim() || null,
+        imagem_url: of?.imagem_url || of?.imagem || of?.img || null,
+        maquina: maquinaNome,
+        operador: String(req.usuario?.nome || 'Sistema').trim(),
+        quantidade: Number(qtdFinal || 0) || 0,
+        data_passagem: hoje,
+        hora_passagem: nowIso,
+        status: 'Despachada',
+        empresa: String(of?.empresa || 'Italy Embalagens'),
+      }, { status: 'Despachada' });
+      try { console.debug('[PASSAGENS] concluir OF upsert:', { ofId: sid, maquinaNome, mode: upsertResult?.mode || 'none' }); } catch (_) {}
     } catch (_) {}
 
     try {
@@ -8662,24 +8606,22 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
                         fluxo[idxAtual] || 
                         'Nao informada'; 
  
-      await supabase.from('passagens_maquina').insert({ 
-        of_id:         req.params.id, 
-        of_numero:     of.numero || of.of_num || '', 
-        cliente:       of.cliente || '', 
-        produto:       of.produto || of.descricao || of.produto_desc || '', 
-        referencia:    of.referencia || of.ref || '', 
-        imagem_url:    of.imagem || of.img || of.imagem_url || null, 
-        maquina:       maqPassou, 
-        operador:      req.usuario?.nome || req.body.operador || null, 
-        quantidade:    req.body.quantidade 
-                         ? parseInt(req.body.quantidade) 
-                         : (of.quantidade || null), 
-        data_passagem: new Date().toISOString().split('T')[0], 
-        hora_passagem: new Date().toISOString(), 
-        status:        'Concluida', 
-        empresa:       of.empresa || 'Italy Embalagens' 
-      }); 
-      console.debug('[passou-maquina] passagem registrada:', maqPassou);
+      const upsertResult = await _upsertPassagemMaquinaRegistro({
+        of_id: req.params.id,
+        of_numero: of.numero || of.of_num || '',
+        cliente: of.cliente || '',
+        produto: of.produto || of.descricao || of.produto_desc || '',
+        referencia: of.referencia || of.ref || '',
+        imagem_url: of.imagem || of.img || of.imagem_url || null,
+        maquina: maqPassou,
+        operador: req.usuario?.nome || req.body.operador || null,
+        quantidade: req.body.quantidade ? parseInt(req.body.quantidade) : (of.quantidade || null),
+        data_passagem: new Date().toISOString().split('T')[0],
+        hora_passagem: new Date().toISOString(),
+        status: 'Passou pela máquina',
+        empresa: of.empresa || 'Italy Embalagens'
+      }, { status: 'Passou pela máquina' });
+      console.debug('[PASSAGENS] passou-maquina upsert:', { maqPassou, mode: upsertResult?.mode || 'none' });
     } catch(ep){ console.warn('[passou-maquina] erro ao registrar passagem:', ep.message); } 
 
     try {
@@ -8988,6 +8930,127 @@ function _resolverNomeMaquinaPassagem(row, maquinasMap) {
   return nomes[0] || 'Sem máquina';
 }
 
+function _normalizarStatusPassagem(v) {
+  let s = String(v || '').trim();
+  if (!s) return '';
+  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+  const low = s.toLowerCase();
+  if (low.includes('despach')) return 'Despachada';
+  if (low.includes('passou')) return 'Passou pela máquina';
+  if (low.includes('conclu')) return 'Despachada';
+  return s;
+}
+
+function _pesoStatusPassagem(v) {
+  const s = _normalizarStatusPassagem(v);
+  if (s === 'Despachada') return 2;
+  if (s === 'Passou pela máquina') return 1;
+  return 0;
+}
+
+function _timestampPassagem(row) {
+  const hora = String(row?.hora_passagem || row?.updated_at || row?.created_at || '').trim();
+  if (hora) {
+    const dt = new Date(hora);
+    if (!isNaN(dt.getTime())) return dt.getTime();
+  }
+  const dia = String(row?.data_passagem || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dia)) {
+    const dt = new Date(dia + 'T12:00:00');
+    if (!isNaN(dt.getTime())) return dt.getTime();
+  }
+  return 0;
+}
+
+function _passagemDedupKey(row) {
+  const ofId = String(row?.of_id || row?.ofId || '').trim();
+  const ofNumero = _normalizarNumeroOfRef(row?.of_numero ?? row?.numero ?? row?.of ?? '');
+  const maq = String(_canonMaqNome(row?.maquina_nome || row?.maquina || '') || row?.maquina_nome || row?.maquina || '').trim().toUpperCase();
+  return [ofId || ofNumero || 'sem-of', maq || 'SEM-MAQUINA'].join('::');
+}
+
+function _dedupePassagensMaquinaRows(rows) {
+  const mapa = new Map();
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    const current = row && typeof row === 'object' ? { ...row } : {};
+    current.status = _normalizarStatusPassagem(current.status || '');
+    const key = _passagemDedupKey(current);
+    const prev = mapa.get(key);
+    if (!prev) {
+      mapa.set(key, current);
+      return;
+    }
+    const prevPeso = _pesoStatusPassagem(prev.status);
+    const curPeso = _pesoStatusPassagem(current.status);
+    if (curPeso > prevPeso) {
+      mapa.set(key, current);
+      return;
+    }
+    if (curPeso < prevPeso) return;
+    if (_timestampPassagem(current) >= _timestampPassagem(prev)) mapa.set(key, current);
+  });
+  return Array.from(mapa.values()).sort((a, b) => _timestampPassagem(b) - _timestampPassagem(a));
+}
+
+async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
+  const raw = basePayload && typeof basePayload === 'object' ? { ...basePayload } : {};
+  const ofId = String(raw.of_id || '').trim();
+  const maquinaNome = String(_canonMaqNome(raw.maquina || raw.maquina_nome || '') || raw.maquina || raw.maquina_nome || '').trim();
+  if (!ofId || !maquinaNome) return { ok: false, skipped: true };
+  const preferStatus = _normalizarStatusPassagem((opts && opts.status) || raw.status || '');
+  raw.maquina = maquinaNome;
+  raw.maquina_nome = maquinaNome;
+  if (preferStatus) raw.status = preferStatus;
+  if (!raw.data_passagem) raw.data_passagem = new Date().toISOString().slice(0, 10);
+  if (!raw.hora_passagem) raw.hora_passagem = new Date().toISOString();
+  let existente = null;
+  try {
+    const q = await supabase
+      .from('passagens_maquina')
+      .select('*')
+      .eq('of_id', ofId)
+      .order('hora_passagem', { ascending: false })
+      .limit(30);
+    existente = Array.isArray(q?.data) && q.data.length
+      ? _dedupePassagensMaquinaRows(q.data).find((row) => {
+          const maqExistente = String(_canonMaqNome(row?.maquina_nome || row?.maquina || '') || row?.maquina_nome || row?.maquina || '').trim();
+          return maqExistente === maquinaNome;
+        }) || null
+      : null;
+  } catch (_) {}
+
+  if (existente && String(existente.id || '').trim()) {
+    let toUpdate = { ...raw };
+    delete toUpdate.of_id;
+    delete toUpdate.of_numero;
+    for (let i = 0; i < 8; i += 1) {
+      const upd = await supabase.from('passagens_maquina').update(toUpdate).eq('id', existente.id);
+      if (!upd?.error) return { ok: true, mode: 'update', id: existente.id, payload: toUpdate };
+      const msg = String(upd.error.message || '').toLowerCase();
+      const m = msg.match(/column \"([^\"]+)\" of relation/i);
+      if (m && m[1] && Object.prototype.hasOwnProperty.call(toUpdate, m[1])) {
+        delete toUpdate[m[1]];
+        continue;
+      }
+      break;
+    }
+  }
+
+  let toInsert = { ...raw };
+  for (let i = 0; i < 8; i += 1) {
+    const ins = await supabase.from('passagens_maquina').insert([toInsert]);
+    if (!ins?.error) return { ok: true, mode: 'insert', payload: toInsert };
+    const msg = String(ins.error.message || '').toLowerCase();
+    const m = msg.match(/column \"([^\"]+)\" of relation/i);
+    if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
+      delete toInsert[m[1]];
+      continue;
+    }
+    break;
+  }
+  return { ok: false, payload: raw };
+}
+
 async function _normalizarMaquinasPassagens(rows) {
   const lista = Array.isArray(rows) ? rows.slice() : [];
   const maquinasMap = await _carregarMapaMaquinasPassagens(lista);
@@ -9178,7 +9241,7 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
 
 function _agruparPassagensRelatorioMensal(rows) {
   const mapa = new Map();
-  (Array.isArray(rows) ? rows : []).forEach((row) => {
+  _dedupePassagensMaquinaRows(rows).forEach((row) => {
     const maquinaRaw = String(row?.maquina || row?.maquina_nome || '').trim();
     // #region debug-point C:passagens-agg-row
     if (mapa.size < 8) {
@@ -9387,7 +9450,8 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     const count = Number(pair?.count || 0) || 0;
     try { passagens = await _enriquecerPassagensHistoricoComOfs(passagens); } catch (_) {}
     try { passagens = await _normalizarMaquinasPassagens(passagens); } catch (_) {}
-    res.json({ ok: true, passagens: passagens, total: count || 0, page, limit, offset }); 
+    try { passagens = _dedupePassagensMaquinaRows(passagens); } catch (_) {}
+    res.json({ ok: true, passagens: passagens, total: passagens.length || count || 0, page, limit, offset }); 
   } catch(e) { 
     console.error('[passagens/historico]', e.message); 
     res.json({ ok: true, passagens: [], total: 0, page: 1, erro: e.message }); 

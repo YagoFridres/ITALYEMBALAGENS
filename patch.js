@@ -6266,6 +6266,26 @@ setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 9
     return _histPassagemQuantidade(row) * _histPassagemValorUnit(row);
   }
 
+  function _histPassagemStatus(row) {
+    var raw = String((row && row.status) || '').trim();
+    if (!raw) return 'Passou pela máquina';
+    var norm = raw.toLowerCase();
+    try { norm = norm.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+    if (norm.indexOf('despach') >= 0) return 'Despachada';
+    if (norm.indexOf('passou') >= 0) return 'Passou pela máquina';
+    if (norm.indexOf('conclu') >= 0) return 'Despachada';
+    return raw;
+  }
+
+  function _histPassagemStatusBadge(row) {
+    var status = _histPassagemStatus(row);
+    var isDespachada = status === 'Despachada';
+    var bg = isDespachada ? 'rgba(16,185,129,.14)' : 'rgba(59,130,246,.14)';
+    var bd = isDespachada ? 'rgba(16,185,129,.34)' : 'rgba(250,204,21,.32)';
+    var fg = isDespachada ? '#34d399' : '#93c5fd';
+    return '<span style="display:inline-flex;align-items:center;justify-content:center;padding:5px 10px;border-radius:999px;border:1px solid ' + bd + ';background:' + bg + ';color:' + fg + ';font-size:11px;font-weight:900;letter-spacing:.03em;white-space:nowrap">' + _histEsc(status) + '</span>';
+  }
+
   function _histPassagemMaquinas(row) {
     var listaDetalhada = [];
     try {
@@ -6333,6 +6353,7 @@ setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 9
         + '  <table class="hist-detalhamento-table">'
         + '    <thead><tr>'
         + '      <th>OF</th>'
+        + '      <th>Status</th>'
         + '      <th>Cliente</th>'
         + '      <th>Produto</th>'
         + '      <th class="num">Valor Unitário</th>'
@@ -6346,6 +6367,7 @@ setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 9
             return ''
               + '<tr>'
               + '  <td><strong style="color:#f8fafc">#' + _histEsc(String(row && (row.of_numero || row.numero) || '—')) + '</strong></td>'
+              + '  <td>' + _histPassagemStatusBadge(row) + '</td>'
               + '  <td>' + _histEsc(_histPassagemCliente(row)) + '</td>'
               + '  <td>' + _histEsc(_histPassagemProduto(row)) + '</td>'
               + '  <td class="num">' + _histEsc(_histFmtMoney(_histPassagemValorUnit(row))) + '</td>'
@@ -6646,6 +6668,7 @@ setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 9
         });
         var data = await resp.json().catch(function() { return null; });
         var lista = Array.isArray(data && data.passagens) ? data.passagens : [];
+        try { console.log('[PASSAGENS]', 'historico carregado', { totalApi: Number(data && data.total || 0) || 0, rows: lista.length }); } catch (_) {}
 
         st.total = Number(data && data.total || 0) || 0;
         st.page = 1;
