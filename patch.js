@@ -34352,3 +34352,843 @@ function _ocultarGraficoComissoes() {
   setTimeout(reapply, 200);
   setTimeout(reapply, 1200);
 })();
+;(function() {
+  if (window.__simdSheetMeasureTailApplied) return;
+  window.__simdSheetMeasureTailApplied = true;
+
+  function sLog() {
+    try {
+      var args = Array.prototype.slice.call(arguments || []);
+      args.unshift('[SIMD]');
+      console.log.apply(console, args);
+    } catch (_) {}
+  }
+
+  function sErr() {
+    try {
+      var args = Array.prototype.slice.call(arguments || []);
+      args.unshift('[SIMD]');
+      console.error.apply(console, args);
+    } catch (_) {}
+  }
+
+  function sEsc(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function sNum(value) {
+    var n = Number(String(value == null ? '' : value).replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function sInt(value) {
+    return Math.max(0, Math.trunc(sNum(value)));
+  }
+
+  function sFmtNum(value, decimals) {
+    var numValue = Number(value || 0) || 0;
+    try {
+      return numValue.toLocaleString('pt-BR', {
+        minimumFractionDigits: decimals || 0,
+        maximumFractionDigits: decimals || 0
+      });
+    } catch (_) {
+      return String(numValue);
+    }
+  }
+
+  function sFmtMoney(value) {
+    return 'R$ ' + sFmtNum(Number(value || 0) || 0, 2);
+  }
+
+  function sFmtPct(value) {
+    return sFmtNum(Number(value || 0) || 0, 2) + '%';
+  }
+
+  function sFmtAreaMm2(value) {
+    return sFmtNum((Number(value || 0) || 0) / 1000000, 4) + ' m²';
+  }
+
+  function sFmtMm(value) {
+    return sFmtNum(Number(value || 0) || 0, 0) + ' mm';
+  }
+
+  function sStateKey() {
+    return 'simd_state_v4';
+  }
+
+  function sGetPlan() {
+    var largura = sNum((document.getElementById('simd-larg') || {}).value);
+    var comprimento = sNum((document.getElementById('simd-comp') || {}).value);
+    var qtdPedido = sInt((document.getElementById('simd-qtd') || {}).value);
+    return {
+      peca_larg_mm: largura,
+      peca_comp_mm: comprimento,
+      qtd_pedido: qtdPedido,
+      area_peca_mm2: (largura > 0 && comprimento > 0) ? (largura * comprimento) : 0
+    };
+  }
+
+  function sRowKey(row) {
+    return String(row && (row.__row_key || row.id || row.nome || row.tamanho || '') || '').trim();
+  }
+
+  function sEmpresa(row) {
+    try {
+      if (typeof window._empresaNomeEstoque === 'function') {
+        var nome = String(window._empresaNomeEstoque(row) || '').trim();
+        if (nome) return nome;
+      }
+    } catch (_) {}
+    return String(row && (row.empresa_vinculada || row.empresa || row.qual_cnpj || row.emp_id || '') || '').trim() || 'Italy Embalagens';
+  }
+
+  function sPreferredFetchUrl() {
+    return '/api/chapas_estoque?limit=10000&nocache=1&preferred=chapas_estoque_v2&_t=' + Date.now();
+  }
+
+  function sExtractRows(data) {
+    var rows = Array.isArray(data) ? data : (Array.isArray(data && data.data) ? data.data : (Array.isArray(data && data.chapas) ? data.chapas : []));
+    return (Array.isArray(rows) ? rows : []).filter(function(row) {
+      return sInt(row && (row.quantidade_atual != null ? row.quantidade_atual : (row.quantidade != null ? row.quantidade : row.qtd))) > 0;
+    });
+  }
+
+  function sNormalizeSheetDims(width, height) {
+    var w = sNum(width);
+    var h = sNum(height);
+    if (!(w > 0 && h > 0)) return null;
+    if (w <= 300 && h <= 300) {
+      w *= 10;
+      h *= 10;
+    }
+    return {
+      width: Math.max(w, h),
+      height: Math.min(w, h)
+    };
+  }
+
+  function sSheetDims(chapa) {
+    var direct = sNormalizeSheetDims(
+      chapa && (chapa.largura_mm != null ? chapa.largura_mm : (chapa.largura != null ? chapa.largura : (chapa.dim_largura != null ? chapa.dim_largura : chapa.caixa_largura))),
+      chapa && (chapa.comprimento_mm != null ? chapa.comprimento_mm : (chapa.comprimento != null ? chapa.comprimento : (chapa.dim_comprimento != null ? chapa.dim_comprimento : chapa.caixa_comprimento)))
+    );
+    if (direct) return direct;
+    var raw = String(chapa && (chapa.tamanho || chapa.tam || chapa.nome || chapa.nomenclatura || '') || '').trim();
+    var match = raw.match(/(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)/);
+    if (!match) return null;
+    return sNormalizeSheetDims(match[1], match[2]);
+  }
+
+  function sCalcCandidate(chapa, plan) {
+    var dims = sSheetDims(chapa);
+    if (!dims) {
+      return {
+        ok: false,
+        nome: String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim(),
+        fornecedor: String(chapa && (chapa.fornecedor || chapa.forn || '—') || '—').trim() || '—',
+        tamanho: String(chapa && (chapa.tamanho || chapa.tam || 'Sem tamanho') || 'Sem tamanho').trim() || 'Sem tamanho',
+        motivo: 'Sem dimensões válidas na ficha da chapa.'
+      };
+    }
+    var sheetWidth = Number(dims.width || 0) || 0;
+    var sheetHeight = Number(dims.height || 0) || 0;
+    var pieceWidth = Number(plan && plan.peca_larg_mm || 0) || 0;
+    var pieceHeight = Number(plan && plan.peca_comp_mm || 0) || 0;
+    var variants = [
+      {
+        label: 'Normal',
+        piece_width_mm: pieceWidth,
+        piece_height_mm: pieceHeight,
+        cols: Math.floor(sheetWidth / pieceWidth),
+        rows: Math.floor(sheetHeight / pieceHeight)
+      },
+      {
+        label: 'Rotacionada 90°',
+        piece_width_mm: pieceHeight,
+        piece_height_mm: pieceWidth,
+        cols: Math.floor(sheetWidth / pieceHeight),
+        rows: Math.floor(sheetHeight / pieceWidth)
+      }
+    ].filter(function(item) {
+      return item.cols > 0 && item.rows > 0;
+    });
+    if (!variants.length) {
+      return {
+        ok: false,
+        id: chapa && chapa.id,
+        nome: String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim(),
+        fornecedor: String(chapa && (chapa.fornecedor || chapa.forn || '—') || '—').trim() || '—',
+        tamanho: String(chapa && (chapa.tamanho || chapa.tam || (sheetWidth + ' x ' + sheetHeight)) || (sheetWidth + ' x ' + sheetHeight)).trim(),
+        motivo: 'A chapa não comporta a peça nem no sentido normal nem rotacionado.'
+      };
+    }
+    variants.sort(function(a, b) {
+      var aCount = a.cols * a.rows;
+      var bCount = b.cols * b.rows;
+      if (bCount !== aCount) return bCount - aCount;
+      var areaChapa = sheetWidth * sheetHeight;
+      var aWaste = areaChapa - (aCount * plan.area_peca_mm2);
+      var bWaste = areaChapa - (bCount * plan.area_peca_mm2);
+      return aWaste - bWaste;
+    });
+    var best = variants[0];
+    var pecasPorChapa = best.cols * best.rows;
+    var areaChapa = sheetWidth * sheetHeight;
+    var areaUsada = pecasPorChapa * plan.area_peca_mm2;
+    var areaDesperdicio = Math.max(0, areaChapa - areaUsada);
+    var desperdicioPct = areaChapa > 0 ? ((1 - (areaUsada / areaChapa)) * 100) : 100;
+    var valorUnitario = sNum(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val));
+    var chapasNec = plan && plan.qtd_pedido > 0 ? Math.ceil(plan.qtd_pedido / pecasPorChapa) : null;
+    return {
+      ok: true,
+      id: chapa && chapa.id,
+      __row_key: String(chapa && chapa.id || [chapa && chapa.nome_uso, chapa && chapa.tamanho, best.label, best.cols, best.rows].join('|')).trim(),
+      nome: String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim(),
+      nomenclatura: String(chapa && (chapa.nomenclatura || chapa.nom || '') || '').trim(),
+      fornecedor: String(chapa && (chapa.fornecedor || chapa.forn || '—') || '—').trim() || '—',
+      empresa: sEmpresa(chapa),
+      tamanho: String(chapa && (chapa.tamanho || chapa.tam || (sheetWidth + ' x ' + sheetHeight)) || (sheetWidth + ' x ' + sheetHeight)).trim(),
+      estoque: sInt(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd))),
+      valor_unitario: valorUnitario,
+      chapa_width_mm: sheetWidth,
+      chapa_height_mm: sheetHeight,
+      piece_width_mm: best.piece_width_mm,
+      piece_height_mm: best.piece_height_mm,
+      cols: best.cols,
+      rows: best.rows,
+      pecas_por_chapa: pecasPorChapa,
+      area_chapa_mm2: areaChapa,
+      area_usada_mm2: areaUsada,
+      area_desperdicio_mm2: areaDesperdicio,
+      area_peca_mm2: plan.area_peca_mm2,
+      desperdicio_pct: Math.max(0, Math.round(desperdicioPct * 100) / 100),
+      aproveitamento_pct: Math.max(0, Math.round((100 - desperdicioPct) * 100) / 100),
+      chapas_necessarias: chapasNec,
+      custo_estimado: chapasNec != null ? (chapasNec * valorUnitario) : null,
+      orientacao_label: best.label
+    };
+  }
+
+  function sBadgeTone(value) {
+    var pct = Number(value || 0) || 0;
+    if (pct < 10) return { bg: 'rgba(34,197,94,.16)', bd: 'rgba(34,197,94,.32)', fg: '#86efac' };
+    if (pct <= 25) return { bg: 'rgba(234,179,8,.16)', bd: 'rgba(234,179,8,.32)', fg: '#fde68a' };
+    return { bg: 'rgba(239,68,68,.16)', bd: 'rgba(239,68,68,.32)', fg: '#fca5a5' };
+  }
+
+  function sSvg(row) {
+    if (!row) return '';
+    var sheetWidth = Number(row.chapa_width_mm || 0) || 0;
+    var sheetHeight = Number(row.chapa_height_mm || 0) || 0;
+    var pieceWidth = Number(row.piece_width_mm || 0) || 0;
+    var pieceHeight = Number(row.piece_height_mm || 0) || 0;
+    var cols = sInt(row.cols);
+    var rows = sInt(row.rows);
+    if (!(sheetWidth > 0 && sheetHeight > 0 && pieceWidth > 0 && pieceHeight > 0 && cols > 0 && rows > 0)) return '';
+    var padX = 44;
+    var padY = 28;
+    var legendH = 64;
+    var maxW = 700;
+    var maxH = 300;
+    var scale = Math.min((maxW - (padX * 2)) / sheetWidth, (maxH - (padY * 2)) / sheetHeight);
+    if (!(scale > 0)) scale = 1;
+    var renderW = Math.max(20, Math.round(sheetWidth * scale));
+    var renderH = Math.max(20, Math.round(sheetHeight * scale));
+    var width = renderW + (padX * 2);
+    var height = renderH + (padY * 2) + legendH;
+    var grid = '';
+    var pieces = '';
+    for (var c = 1; c < cols; c += 1) {
+      var lineX = Math.round((padX + (c * pieceWidth * scale)) * 100) / 100;
+      grid += '<line x1="' + String(lineX) + '" y1="' + String(padY) + '" x2="' + String(lineX) + '" y2="' + String(padY + renderH) + '" stroke="rgba(255,255,255,.22)" stroke-width="1"></line>';
+    }
+    for (var r = 1; r < rows; r += 1) {
+      var lineY = Math.round((padY + (r * pieceHeight * scale)) * 100) / 100;
+      grid += '<line x1="' + String(padX) + '" y1="' + String(lineY) + '" x2="' + String(padX + renderW) + '" y2="' + String(lineY) + '" stroke="rgba(255,255,255,.22)" stroke-width="1"></line>';
+    }
+    for (var rowIdx = 0; rowIdx < rows; rowIdx += 1) {
+      for (var colIdx = 0; colIdx < cols; colIdx += 1) {
+        pieces += '<rect x="' + String(Math.round((padX + (colIdx * pieceWidth * scale)) * 100) / 100) + '" y="' + String(Math.round((padY + (rowIdx * pieceHeight * scale)) * 100) / 100) + '" width="' + String(Math.round((pieceWidth * scale) * 100) / 100) + '" height="' + String(Math.round((pieceHeight * scale) * 100) / 100) + '" fill="#185FA5" stroke="rgba(255,255,255,.26)" stroke-width="1"></rect>';
+      }
+    }
+    return ''
+      + '<svg viewBox="0 0 ' + String(width) + ' ' + String(height) + '" width="100%" height="100%" aria-label="Desenho do corte">'
+      + '<rect x="' + String(padX) + '" y="' + String(padY) + '" width="' + String(renderW) + '" height="' + String(renderH) + '" rx="10" fill="#EF9F27" fill-opacity=".34" stroke="#EF9F27" stroke-width="2"></rect>'
+      + pieces
+      + grid
+      + '<line x1="' + String(padX) + '" y1="' + String(padY - 12) + '" x2="' + String(padX + renderW) + '" y2="' + String(padY - 12) + '" stroke="#cbd5e1" stroke-width="1"></line>'
+      + '<line x1="' + String(padX) + '" y1="' + String(padY - 16) + '" x2="' + String(padX) + '" y2="' + String(padY - 8) + '" stroke="#cbd5e1" stroke-width="1"></line>'
+      + '<line x1="' + String(padX + renderW) + '" y1="' + String(padY - 16) + '" x2="' + String(padX + renderW) + '" y2="' + String(padY - 8) + '" stroke="#cbd5e1" stroke-width="1"></line>'
+      + '<text x="' + String(padX + (renderW / 2)) + '" y="' + String(padY - 16) + '" fill="#e2e8f0" font-size="12" text-anchor="middle" font-family="Arial, sans-serif">Chapa: ' + sEsc(sFmtMm(sheetWidth)) + '</text>'
+      + '<line x1="' + String(padX - 12) + '" y1="' + String(padY) + '" x2="' + String(padX - 12) + '" y2="' + String(padY + renderH) + '" stroke="#cbd5e1" stroke-width="1"></line>'
+      + '<line x1="' + String(padX - 16) + '" y1="' + String(padY) + '" x2="' + String(padX - 8) + '" y2="' + String(padY) + '" stroke="#cbd5e1" stroke-width="1"></line>'
+      + '<line x1="' + String(padX - 16) + '" y1="' + String(padY + renderH) + '" x2="' + String(padX - 8) + '" y2="' + String(padY + renderH) + '" stroke="#cbd5e1" stroke-width="1"></line>'
+      + '<text x="' + String(padX - 18) + '" y="' + String(padY + (renderH / 2)) + '" fill="#e2e8f0" font-size="12" text-anchor="middle" font-family="Arial, sans-serif" transform="rotate(-90 ' + String(padX - 18) + ' ' + String(padY + (renderH / 2)) + ')">Altura: ' + sEsc(sFmtMm(sheetHeight)) + '</text>'
+      + '<text x="' + String(width / 2) + '" y="' + String(height - 40) + '" fill="#e2e8f0" font-size="12" text-anchor="middle" font-family="Arial, sans-serif">Peça: ' + sEsc(sFmtMm(pieceWidth)) + ' × ' + sEsc(sFmtMm(pieceHeight)) + ' · Orientação: ' + sEsc(row.orientacao_label || '—') + '</text>'
+      + '<rect x="' + String(padX) + '" y="' + String(height - 28) + '" width="16" height="16" rx="3" fill="#185FA5"></rect>'
+      + '<text x="' + String(padX + 24) + '" y="' + String(height - 15) + '" fill="#e2e8f0" font-size="12" font-family="Arial, sans-serif">Aproveitado ' + sEsc(sFmtPct(row.aproveitamento_pct || 0)) + '</text>'
+      + '<rect x="' + String(padX + 190) + '" y="' + String(height - 28) + '" width="16" height="16" rx="3" fill="#EF9F27" fill-opacity=".45" stroke="#EF9F27"></rect>'
+      + '<text x="' + String(padX + 214) + '" y="' + String(height - 15) + '" fill="#e2e8f0" font-size="12" font-family="Arial, sans-serif">Desperdício ' + sEsc(sFmtPct(row.desperdicio_pct || 0)) + '</text>'
+      + '</svg>';
+  }
+
+  function sRenderVisual(row, plan) {
+    var visual = document.getElementById('simd-visual');
+    var titulo = document.getElementById('simd-visual-titulo');
+    var svgHost = document.getElementById('simd-svg-container');
+    var dados = document.getElementById('simd-visual-dados');
+    if (!visual || !svgHost || !dados || !row) return;
+    if (titulo) titulo.textContent = String((row.nome || 'Chapa') + ' · ' + (row.tamanho || 'Sem tamanho'));
+    svgHost.innerHTML = sSvg(row);
+    dados.innerHTML = ''
+      + '<div class="simd-visual-grid">'
+      + '  <div><span>Fornecedor</span><strong>' + sEsc(row.fornecedor || '—') + '</strong></div>'
+      + '  <div><span>Empresa</span><strong>' + sEsc(row.empresa || '—') + '</strong></div>'
+      + '  <div><span>Peças por Chapa</span><strong>' + sEsc(String(row.pecas_por_chapa || 0)) + '</strong></div>'
+      + '  <div><span>Estoque</span><strong>' + sEsc(String(row.estoque || 0)) + '</strong></div>'
+      + '  <div><span>Peça Solicitada</span><strong>' + sEsc(sFmtMm(plan && plan.peca_larg_mm || 0) + ' × ' + sFmtMm(plan && plan.peca_comp_mm || 0)) + '</strong></div>'
+      + '  <div><span>Desperdício</span><strong>' + sEsc(sFmtPct(row.desperdicio_pct || 0)) + '</strong></div>'
+      + '</div>'
+      + '<div class="simd-visual-notes">'
+      + '  <div><strong>Orientação:</strong> ' + sEsc(row.orientacao_label || '—') + ' · <strong>Grade:</strong> ' + sEsc(String(row.cols || 0)) + ' × ' + sEsc(String(row.rows || 0)) + '</div>'
+      + '  <div><strong>Área da peça:</strong> ' + sEsc(sFmtAreaMm2(plan && plan.area_peca_mm2 || 0)) + ' · <strong>Área da chapa:</strong> ' + sEsc(sFmtAreaMm2(row.area_chapa_mm2 || 0)) + '</div>'
+      + '  <div><strong>Área aproveitada:</strong> ' + sEsc(sFmtAreaMm2(row.area_usada_mm2 || 0)) + ' · <strong>Área desperdiçada:</strong> ' + sEsc(sFmtAreaMm2(row.area_desperdicio_mm2 || 0)) + '</div>'
+      + '  <div><strong>Valor unitário:</strong> ' + sEsc(row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : 'Sem valor') + (row.chapas_necessarias != null ? (' · <strong>Chapas necessárias:</strong> ' + sEsc(String(row.chapas_necessarias)) + ' · <strong>Custo:</strong> ' + sEsc(sFmtMoney(row.custo_estimado || 0))) : '') + '</div>'
+      + '</div>';
+    visual.style.display = 'grid';
+  }
+
+  function sRenderResults(compatibles, incompatibles, plan) {
+    var resultado = document.getElementById('simd-resultado');
+    var info = document.getElementById('simd-info-planif');
+    var aviso = document.getElementById('simd-aviso');
+    var wrap = document.getElementById('simd-tabela-wrap');
+    var visual = document.getElementById('simd-visual');
+    var printBtn = document.getElementById('simd-btn-print');
+    if (resultado) resultado.style.display = 'block';
+    if (printBtn) printBtn.disabled = !compatibles.length;
+    if (info) {
+      info.innerHTML = ''
+        + '<strong>Peça solicitada:</strong> ' + sEsc(sFmtMm(plan.peca_larg_mm) + ' × ' + sFmtMm(plan.peca_comp_mm))
+        + ' · <strong>Área unitária:</strong> ' + sEsc(sFmtAreaMm2(plan.area_peca_mm2))
+        + (plan.qtd_pedido > 0 ? (' · <strong>Quantidade:</strong> ' + sEsc(String(plan.qtd_pedido))) : '')
+        + ' · <strong>Fonte:</strong> estoque de chapas (preferência `chapas_estoque_v2`).';
+    }
+    if (!wrap) return;
+    if (!compatibles.length) {
+      if (aviso) {
+        aviso.style.display = 'block';
+        aviso.textContent = window._simdChapaSelecionada
+          ? 'A chapa específica selecionada não comporta esta peça. Limpe a seleção para ver outras chapas do estoque.'
+          : 'Nenhuma chapa do estoque comporta essa peça nas orientações testadas.';
+      }
+      if (wrap) wrap.innerHTML = incompatibles.length ? ('<div class="simd-empty">Nenhuma chapa compatível encontrada. Revise a lista de não compatíveis logo abaixo.</div>') : '<div class="simd-empty">Nenhuma chapa compatível encontrada.</div>';
+      if (visual) visual.style.display = 'none';
+      return;
+    }
+    if (aviso) {
+      aviso.style.display = 'none';
+      aviso.textContent = '';
+    }
+    var selectedId = String(window.__simdSelectedRowId || '').trim();
+    var selected = compatibles.find(function(row) { return sRowKey(row) === selectedId; }) || compatibles[0] || null;
+    window.__simdLastRows = compatibles.slice();
+    window.__simdLastPlan = Object.assign({}, plan);
+    window.__simdLastIncompatRows = incompatibles.slice();
+    window.__simdSelectedRowId = selected ? sRowKey(selected) : '';
+    wrap.innerHTML = ''
+      + '<div class="simd-table-shell">'
+      + '  <table class="simd-table">'
+      + '    <thead><tr><th>% Desperdício</th><th>Chapa</th><th>Fornecedor</th><th>Tamanho</th><th>Peças/chapa</th><th>Estoque</th><th>Valor unit.</th><th>' + (plan.qtd_pedido > 0 ? 'Custo' : 'Custo estimado') + '</th></tr></thead>'
+      + '    <tbody>'
+      + compatibles.map(function(row, idx) {
+          var tone = sBadgeTone(row.desperdicio_pct);
+          var rowId = sRowKey(row);
+          var isSelected = rowId === window.__simdSelectedRowId;
+          return ''
+            + '<tr data-simd-row="' + sEsc(rowId) + '"' + (isSelected ? ' class="is-selected"' : '') + '>'
+            + '  <td><span class="simd-badge" style="background:' + tone.bg + ';border-color:' + tone.bd + ';color:' + tone.fg + '">' + sEsc(sFmtPct(row.desperdicio_pct)) + '</span></td>'
+            + '  <td><div class="simd-cell-main">' + sEsc(row.nome || 'Chapa') + '</div><div class="simd-cell-sub">' + sEsc(idx === 0 ? 'Melhor opção' : ('Ranking ' + String(idx + 1))) + '</div></td>'
+            + '  <td><div class="simd-cell-main">' + sEsc(row.fornecedor || '—') + '</div><div class="simd-cell-sub">' + sEsc(row.empresa || '—') + '</div></td>'
+            + '  <td>' + sEsc(row.tamanho || '—') + '</td>'
+            + '  <td class="num">' + sEsc(sFmtNum(row.pecas_por_chapa || 0, 0)) + '</td>'
+            + '  <td class="num">' + sEsc(sFmtNum(row.estoque || 0, 0)) + '</td>'
+            + '  <td class="num">' + sEsc(row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : '—') + '</td>'
+            + '  <td class="num">' + sEsc(plan.qtd_pedido > 0 ? (row.custo_estimado != null ? sFmtMoney(row.custo_estimado) : '—') : (row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : '—')) + '</td>'
+            + '</tr>';
+        }).join('')
+      + '    </tbody>'
+      + '  </table>'
+      + (incompatibles.length ? ('<details class="simd-incompat"><summary>Não compatíveis (' + sEsc(String(incompatibles.length)) + ')</summary><div class="simd-incompat-list">' + incompatibles.map(function(row) {
+          return '<div class="simd-incompat-row"><strong>' + sEsc(row.nome || 'Chapa') + '</strong><span>' + sEsc([row.fornecedor || '—', row.tamanho || 'Sem tamanho', row.motivo || 'Sem encaixe'].join(' · ')) + '</span></div>';
+        }).join('') + '</div></details>') : '')
+      + '</div>';
+    Array.prototype.slice.call(wrap.querySelectorAll('[data-simd-row]')).forEach(function(rowEl) {
+      rowEl.onclick = function() {
+        var rowId = String(rowEl.getAttribute('data-simd-row') || '').trim();
+        var found = compatibles.find(function(item) { return sRowKey(item) === rowId; }) || compatibles[0] || null;
+        if (!found) return;
+        window.__simdSelectedRowId = rowId;
+        sRenderResults(compatibles, incompatibles, plan);
+      };
+    });
+    if (selected) sRenderVisual(selected, plan);
+  }
+
+  function sPrintSelected() {
+    var rows = Array.isArray(window.__simdLastRows) ? window.__simdLastRows : [];
+    var plan = window.__simdLastPlan || {};
+    if (!rows.length) {
+      try { alert('Calcule o simulador antes de imprimir.'); } catch (_) {}
+      return;
+    }
+    var selected = rows.find(function(row) { return sRowKey(row) === String(window.__simdSelectedRowId || '').trim(); }) || rows[0];
+    var tableRows = rows.map(function(row) {
+      return '<tr>'
+        + '<td>' + sEsc(sFmtPct(row.desperdicio_pct || 0)) + '</td>'
+        + '<td>' + sEsc(row.nome || 'Chapa') + '</td>'
+        + '<td>' + sEsc(row.fornecedor || '—') + '</td>'
+        + '<td>' + sEsc(row.tamanho || '—') + '</td>'
+        + '<td style="text-align:right">' + sEsc(sFmtNum(row.pecas_por_chapa || 0, 0)) + '</td>'
+        + '<td style="text-align:right">' + sEsc(sFmtNum(row.estoque || 0, 0)) + '</td>'
+        + '<td style="text-align:right">' + sEsc(row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : '—') + '</td>'
+        + '<td style="text-align:right">' + sEsc(row.chapas_necessarias != null ? String(row.chapas_necessarias) : '—') + '</td>'
+        + '<td style="text-align:right">' + sEsc(row.custo_estimado != null ? sFmtMoney(row.custo_estimado) : '—') + '</td>'
+        + '</tr>';
+    }).join('');
+    var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Simulador por Medida da Chapa</title>'
+      + '<style>' + (typeof window._printCssPadraoComissoes === 'function'
+        ? window._printCssPadraoComissoes() + '.simd-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.simd-card{border:1px solid #cbd5e1;border-radius:12px;padding:12px}.simd-card .lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.08em}.simd-card .val{font-size:18px;font-weight:800;margin-top:6px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:8px;font-size:12px;text-align:left}th{text-transform:uppercase;font-size:10px;letter-spacing:.08em}.num{text-align:right}'
+        : 'body{font-family:Arial,sans-serif;padding:24px;color:#0f172a}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:8px;font-size:12px;text-align:left}th{text-transform:uppercase;font-size:10px;letter-spacing:.08em}.simd-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.simd-card{border:1px solid #cbd5e1;border-radius:12px;padding:12px}.simd-card .lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.08em}.simd-card .val{font-size:18px;font-weight:800;margin-top:6px}.num{text-align:right}svg{max-width:100%;height:auto}@page{size:A4 landscape;margin:10mm}') + '</style>'
+      + '</head><body>'
+      + '<div class="brandline">Italy Embalagens</div>'
+      + '<h1>Simulador por Medida da Chapa</h1>'
+      + '<h2>Gerado em ' + sEsc(typeof window._printGeradoEmBr === 'function' ? window._printGeradoEmBr() : new Date().toLocaleString('pt-BR')) + '</h2>'
+      + '<div class="simd-cards">'
+      + '<div class="simd-card"><div class="lbl">Largura solicitada</div><div class="val">' + sEsc(sFmtMm(plan.peca_larg_mm || 0)) + '</div></div>'
+      + '<div class="simd-card"><div class="lbl">Comprimento solicitado</div><div class="val">' + sEsc(sFmtMm(plan.peca_comp_mm || 0)) + '</div></div>'
+      + '<div class="simd-card"><div class="lbl">Área da peça</div><div class="val">' + sEsc(sFmtAreaMm2(plan.area_peca_mm2 || 0)) + '</div></div>'
+      + '<div class="simd-card"><div class="lbl">Melhor chapa</div><div class="val">' + sEsc((selected.nome || 'Chapa') + ' · ' + (selected.tamanho || '—')) + '</div></div>'
+      + '</div>'
+      + '<div style="margin:18px 0 10px;font-size:14px;font-weight:700">Desenho do corte selecionado</div>'
+      + '<div style="padding:14px;border:1px solid #cbd5e1;border-radius:12px">' + sSvg(selected) + '</div>'
+      + '<div style="margin:18px 0 10px;font-size:14px;font-weight:700">Ranking das chapas</div>'
+      + '<table><thead><tr><th>% Desp.</th><th>Chapa</th><th>Fornecedor</th><th>Tamanho</th><th>Peças/chapa</th><th>Estoque</th><th>Valor unit.</th><th>Chapas necessárias</th><th>Custo</th></tr></thead><tbody>' + tableRows + '</tbody></table>'
+      + '<script>window.onload=function(){setTimeout(function(){try{window.focus()}catch(e){}try{window.print()}catch(e){}},400)}<\/script>'
+      + '</body></html>';
+    if (typeof window._openStyledPrintWindow === 'function') return window._openStyledPrintWindow(html);
+    try {
+      var w = window.open('', '_blank', 'width=1280,height=860');
+      if (w && w.document) {
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+      }
+    } catch (_) {}
+  }
+
+  async function sFetchChapas() {
+    if (Array.isArray(window.__simdAllChapasCache) && window.__simdAllChapasCache.length) {
+      return window.__simdAllChapasCache.slice();
+    }
+    var resp = null;
+    var url = sPreferredFetchUrl();
+    if (typeof window._apiAuthFetch === 'function') {
+      resp = await window._apiAuthFetch(url, { cache: 'no-store' });
+    } else {
+      resp = await fetch(url, { cache: 'no-store' });
+    }
+    var data = await resp.json().catch(function() { return null; });
+    if (!resp.ok) throw new Error(String(data && (data.error || data.message) || 'Falha ao carregar chapas do estoque'));
+    var rows = sExtractRows(data);
+    window.__simdAllChapasCache = rows.slice();
+    sLog('chapas carregadas', rows.length);
+    return rows;
+  }
+
+  function sRenderSearchResults(chapas, term) {
+    var resultados = document.getElementById('simd-busca-resultados');
+    if (!resultados) return;
+    if (!term) {
+      resultados.style.display = 'none';
+      resultados.innerHTML = '';
+      return;
+    }
+    var lista = (Array.isArray(chapas) ? chapas : []).slice(0, 12);
+    if (!lista.length) {
+      resultados.style.display = 'block';
+      resultados.innerHTML = '<div class="simd-search-item" style="cursor:default">Nenhuma chapa encontrada.</div>';
+      return;
+    }
+    resultados.style.display = 'block';
+    resultados.innerHTML = lista.map(function(chapa) {
+      var dims = sSheetDims(chapa);
+      var tamanho = dims ? (sFmtNum(dims.width, 0) + ' × ' + sFmtNum(dims.height, 0) + ' mm') : String(chapa && (chapa.tamanho || chapa.tam || 'Sem tamanho') || 'Sem tamanho');
+      var payload = encodeURIComponent(JSON.stringify(chapa || {}));
+      return '<button type="button" class="simd-search-item" data-simd-chapa="' + payload + '"><strong>' + sEsc(String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim()) + '</strong><span>' + sEsc([String(chapa && (chapa.fornecedor || chapa.forn || '—') || '—').trim() || '—', tamanho, 'Estoque: ' + String(sInt(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd))))].join(' · ')) + '</span></button>';
+    }).join('');
+    Array.prototype.slice.call(resultados.querySelectorAll('[data-simd-chapa]')).forEach(function(btn) {
+      btn.onclick = function() {
+        var raw = String(btn.getAttribute('data-simd-chapa') || '');
+        var chapa = null;
+        try { chapa = JSON.parse(decodeURIComponent(raw)); } catch (_) { chapa = null; }
+        if (chapa) window._simdSelecionarChapa(chapa);
+      };
+    });
+  }
+
+  window._simdBuscarChapa = async function(termo) {
+    var term = String(termo || '').trim().toLowerCase();
+    var resultados = document.getElementById('simd-busca-resultados');
+    if (!term) {
+      if (resultados) {
+        resultados.style.display = 'none';
+        resultados.innerHTML = '';
+      }
+      return;
+    }
+    try {
+      var chapas = await sFetchChapas();
+      var filtradas = chapas.filter(function(row) {
+        return [row && row.nome_uso, row && row.nome, row && row.nomenclatura, row && row.fornecedor, row && row.tamanho, row && row.tam, sEmpresa(row)].join(' ').toLowerCase().includes(term);
+      });
+      sRenderSearchResults(filtradas, term);
+    } catch (e) {
+      sErr('erro busca chapa', e);
+      if (resultados) {
+        resultados.style.display = 'block';
+        resultados.innerHTML = '<div class="simd-search-item" style="cursor:default">Erro ao buscar chapas.</div>';
+      }
+    }
+  };
+
+  window._simdSelecionarChapa = function(chapa) {
+    window._simdChapaSelecionada = chapa || null;
+    var elCard = document.getElementById('simd-chapa-selecionada');
+    var elNome = document.getElementById('simd-chapa-sel-nome');
+    var elInfo = document.getElementById('simd-chapa-sel-info');
+    var elBtn = document.getElementById('simd-btn-limpar-chapa');
+    var elInput = document.getElementById('simd-busca-chapa');
+    var elResultados = document.getElementById('simd-busca-resultados');
+    if (chapa) {
+      var dims = sSheetDims(chapa);
+      if (elCard) elCard.style.display = 'block';
+      if (elBtn) elBtn.style.display = 'inline-flex';
+      if (elNome) elNome.textContent = String(chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa');
+      if (elInfo) elInfo.textContent = [String(chapa.fornecedor || chapa.forn || '—').trim() || '—', dims ? (sFmtNum(dims.width, 0) + ' × ' + sFmtNum(dims.height, 0) + ' mm') : String(chapa.tamanho || chapa.tam || 'Sem tamanho'), 'Estoque: ' + String(sInt(chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)))].join(' · ');
+      if (elInput) elInput.value = String(chapa.nome_uso || chapa.nome || chapa.nomenclatura || '');
+    } else {
+      if (elCard) elCard.style.display = 'none';
+      if (elBtn) elBtn.style.display = 'none';
+      if (elNome) elNome.textContent = '';
+      if (elInfo) elInfo.textContent = '';
+      if (elInput) elInput.value = '';
+    }
+    if (elResultados) {
+      elResultados.style.display = 'none';
+      elResultados.innerHTML = '';
+    }
+    try { window._simdSaveState(); } catch (_) {}
+  };
+
+  window._simdLimparChapaSelecionada = function() {
+    window._simdSelecionarChapa(null);
+  };
+
+  window._simdSaveState = function() {
+    try {
+      var plan = sGetPlan();
+      var chapa = window._simdChapaSelecionada || null;
+      localStorage.setItem(sStateKey(), JSON.stringify({
+        peca_larg_mm: plan.peca_larg_mm,
+        peca_comp_mm: plan.peca_comp_mm,
+        qtd_pedido: plan.qtd_pedido,
+        chapa: chapa ? {
+          id: chapa.id,
+          nome: chapa.nome || chapa.nome_uso || chapa.nomenclatura || null,
+          fornecedor: chapa.fornecedor || chapa.forn || null,
+          tamanho: chapa.tamanho || chapa.tam || null,
+          quantidade_atual: chapa.quantidade_atual ?? chapa.quantidade ?? chapa.qtd ?? null,
+          valor_unitario: chapa.valor_unitario ?? chapa.val ?? null,
+          largura: chapa.largura ?? chapa.largura_mm ?? null,
+          comprimento: chapa.comprimento ?? chapa.comprimento_mm ?? null
+        } : null
+      }));
+    } catch (_) {}
+  };
+
+  window._simdRestoreState = function() {
+    try {
+      if (!sBindShell()) return;
+      var raw = localStorage.getItem(sStateKey());
+      var st = raw ? JSON.parse(raw) : null;
+      if (!st || typeof st !== 'object') {
+        sVerificarCampos();
+        return;
+      }
+      function setVal(id, value) {
+        var el = document.getElementById(id);
+        if (!el || value == null || value === '') return;
+        el.value = String(value);
+      }
+      setVal('simd-larg', st.peca_larg_mm);
+      setVal('simd-comp', st.peca_comp_mm);
+      setVal('simd-qtd', st.qtd_pedido);
+      sVerificarCampos();
+      if (st.chapa && st.chapa.id) {
+        sFetchChapas().then(function(arr) {
+          var found = (Array.isArray(arr) ? arr : []).find(function(item) {
+            return String(item && item.id || '').trim() === String(st.chapa.id || '').trim();
+          }) || st.chapa;
+          window._simdSelecionarChapa(found);
+        }).catch(function() {
+          window._simdSelecionarChapa(st.chapa);
+        });
+      }
+    } catch (e) {
+      sErr('restore state falhou', e);
+    }
+  };
+
+  async function sCalcular() {
+    var plan = sGetPlan();
+    var loading = document.getElementById('simd-loading');
+    var resultado = document.getElementById('simd-resultado');
+    if (!(plan.peca_larg_mm > 0 && plan.peca_comp_mm > 0)) {
+      sLog('calcular bloqueado: medidas insuficientes', plan);
+      try { alert('Informe largura e comprimento da chapa que deseja produzir.'); } catch (_) {}
+      return;
+    }
+    try { window._simdSaveState(); } catch (_) {}
+    if (loading) loading.style.display = 'block';
+    if (resultado) resultado.style.display = 'none';
+    try {
+      var base = window._simdChapaSelecionada ? [window._simdChapaSelecionada] : await sFetchChapas();
+      var compatibles = [];
+      var incompatibles = [];
+      (Array.isArray(base) ? base : []).forEach(function(chapa) {
+        var row = sCalcCandidate(chapa, plan);
+        if (row && row.ok) compatibles.push(row);
+        else if (row) incompatibles.push(row);
+      });
+      compatibles.sort(function(a, b) {
+        if (Number(a.desperdicio_pct || 0) !== Number(b.desperdicio_pct || 0)) return Number(a.desperdicio_pct || 0) - Number(b.desperdicio_pct || 0);
+        if (Number(b.pecas_por_chapa || 0) !== Number(a.pecas_por_chapa || 0)) return Number(b.pecas_por_chapa || 0) - Number(a.pecas_por_chapa || 0);
+        return Number(a.area_chapa_mm2 || 0) - Number(b.area_chapa_mm2 || 0);
+      });
+      sLog('ranking calculado', {
+        largura: plan.peca_larg_mm,
+        comprimento: plan.peca_comp_mm,
+        qtd: plan.qtd_pedido,
+        base: base.length,
+        compativeis: compatibles.length,
+        nao_compativeis: incompatibles.length,
+        chapa_especifica: !!window._simdChapaSelecionada
+      });
+      sRenderResults(compatibles, incompatibles, plan);
+    } catch (e) {
+      sErr('erro ao calcular', e);
+      try { alert('Erro ao calcular desperdício: ' + String(e && e.message || e)); } catch (_) {}
+      sRenderResults([], [], plan);
+    } finally {
+      if (loading) loading.style.display = 'none';
+      if (resultado) resultado.style.display = 'block';
+    }
+  }
+
+  function sVerificarCampos() {
+    var plan = sGetPlan();
+    var btn = document.getElementById('simd-btn');
+    if (btn) {
+      var ok = plan.peca_larg_mm > 0 && plan.peca_comp_mm > 0;
+      btn.disabled = !ok;
+      btn.style.opacity = ok ? '1' : '0.55';
+      btn.style.cursor = ok ? 'pointer' : 'not-allowed';
+    }
+    try { window._simdSaveState(); } catch (_) {}
+  }
+
+  function sRenderShell() {
+    var host = document.getElementById('tela-simulador-desperdicio');
+    if (!host) return false;
+    if (host.dataset.simdSheetUi === '1') return true;
+    host.dataset.simdSheetUi = '1';
+    host.innerHTML = ''
+      + '<style>'
+      + '#tela-simulador-desperdicio .simd-shell{display:grid;gap:16px}'
+      + '#tela-simulador-desperdicio .simd-panel{background:rgba(15,23,42,.68);border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:18px}'
+      + '#tela-simulador-desperdicio .simd-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}'
+      + '#tela-simulador-desperdicio .simd-field{display:grid;gap:6px}'
+      + '#tela-simulador-desperdicio .simd-field label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}'
+      + '#tela-simulador-desperdicio .simd-field input{width:100%;padding:11px 12px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:12px;color:#f8fafc;font-size:13px}'
+      + '#tela-simulador-desperdicio .simd-inline-tip{padding:12px 14px;border-radius:12px;border:1px dashed rgba(148,163,184,.24);color:#94a3b8;font-size:12px}'
+      + '#tela-simulador-desperdicio .simd-actions{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px}'
+      + '#tela-simulador-desperdicio .simd-actions-left,#tela-simulador-desperdicio .simd-actions-right{display:flex;gap:10px;flex-wrap:wrap;align-items:center}'
+      + '#tela-simulador-desperdicio .simd-btn{padding:11px 18px;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:800;cursor:pointer}'
+      + '#tela-simulador-desperdicio .simd-btn.primary{background:linear-gradient(135deg,#2563eb,#1d4ed8)}'
+      + '#tela-simulador-desperdicio .simd-btn.ghost{background:rgba(15,23,42,.92);border:1px solid rgba(148,163,184,.18);color:#e2e8f0}'
+      + '#tela-simulador-desperdicio .simd-btn:disabled{opacity:.55;cursor:not-allowed}'
+      + '#tela-simulador-desperdicio .simd-search-wrap{display:grid;gap:10px}'
+      + '#tela-simulador-desperdicio .simd-search-item{display:grid;gap:4px;width:100%;padding:12px 14px;text-align:left;border:0;background:rgba(15,23,42,.94);border-bottom:1px solid rgba(148,163,184,.12);color:#e2e8f0;cursor:pointer}'
+      + '#tela-simulador-desperdicio .simd-search-item:last-child{border-bottom:none}'
+      + '#tela-simulador-desperdicio .simd-search-item strong{font-size:13px;color:#f8fafc}'
+      + '#tela-simulador-desperdicio .simd-search-item span{font-size:12px;color:#94a3b8}'
+      + '#tela-simulador-desperdicio .simd-table-shell{display:grid;gap:14px}'
+      + '#tela-simulador-desperdicio .simd-table{width:100%;border-collapse:separate;border-spacing:0;min-width:980px}'
+      + '#tela-simulador-desperdicio .simd-table th{position:sticky;top:0;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;padding:12px;border-bottom:1px solid rgba(148,163,184,.18);text-align:left}'
+      + '#tela-simulador-desperdicio .simd-table td{padding:12px;border-bottom:1px solid rgba(148,163,184,.12);font-size:12px;color:#e2e8f0;background:rgba(15,23,42,.38)}'
+      + '#tela-simulador-desperdicio .simd-table tbody tr{cursor:pointer}'
+      + '#tela-simulador-desperdicio .simd-table tbody tr.is-selected td{background:rgba(24,95,165,.18)}'
+      + '#tela-simulador-desperdicio .simd-table .num{text-align:right;font-variant-numeric:tabular-nums}'
+      + '#tela-simulador-desperdicio .simd-badge{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;border:1px solid transparent;font-weight:900;font-size:11px}'
+      + '#tela-simulador-desperdicio .simd-cell-main{font-weight:800;color:#f8fafc}'
+      + '#tela-simulador-desperdicio .simd-cell-sub{font-size:11px;color:#94a3b8;margin-top:4px}'
+      + '#tela-simulador-desperdicio .simd-empty{padding:18px;text-align:center;color:#94a3b8}'
+      + '#tela-simulador-desperdicio .simd-incompat{border:1px solid rgba(148,163,184,.14);border-radius:14px;background:rgba(2,6,23,.46);padding:12px 14px}'
+      + '#tela-simulador-desperdicio .simd-incompat summary{cursor:pointer;font-size:12px;font-weight:900;color:#cbd5e1;letter-spacing:.06em;text-transform:uppercase}'
+      + '#tela-simulador-desperdicio .simd-incompat-list{display:grid;gap:10px;margin-top:12px}'
+      + '#tela-simulador-desperdicio .simd-incompat-row{display:grid;gap:4px;padding:12px;border-radius:12px;background:rgba(15,23,42,.52);border:1px solid rgba(148,163,184,.12)}'
+      + '#tela-simulador-desperdicio .simd-incompat-row strong{color:#f8fafc;font-size:13px}'
+      + '#tela-simulador-desperdicio .simd-incompat-row span{color:#94a3b8;font-size:12px}'
+      + '#tela-simulador-desperdicio .simd-visual{display:none;grid-template-columns:1.2fr .8fr;gap:16px;align-items:start;margin-top:18px}'
+      + '#tela-simulador-desperdicio .simd-visual-box{background:rgba(15,23,42,.58);border:1px solid rgba(148,163,184,.14);border-radius:14px;padding:14px}'
+      + '#tela-simulador-desperdicio .simd-visual-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
+      + '#tela-simulador-desperdicio .simd-visual-grid span{display:block;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px}'
+      + '#tela-simulador-desperdicio .simd-visual-grid strong{font-size:14px;color:#f8fafc}'
+      + '#tela-simulador-desperdicio .simd-visual-notes{display:grid;gap:8px;margin-top:12px;font-size:12px;color:#cbd5e1}'
+      + '#tela-simulador-desperdicio #simd-resultado{display:none}'
+      + '#tela-simulador-desperdicio #simd-tabela-wrap{overflow:auto;border:1px solid rgba(148,163,184,.12);border-radius:16px;background:rgba(2,6,23,.35)}'
+      + '@media (max-width:1100px){#tela-simulador-desperdicio .simd-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#tela-simulador-desperdicio .simd-visual{grid-template-columns:1fr}}'
+      + '@media (max-width:760px){#tela-simulador-desperdicio .simd-grid{grid-template-columns:1fr}#tela-simulador-desperdicio .simd-visual-grid{grid-template-columns:1fr}}'
+      + '</style>'
+      + '<div class="simd-shell">'
+      + '  <div class="simd-panel">'
+      + '    <div style="display:grid;gap:6px;margin-bottom:16px"><div style="font-size:18px;font-weight:800;color:#f8fafc">Simulador de Desperdício de Papelão</div><div style="font-size:13px;color:#94a3b8">Informe apenas a largura e o comprimento da chapa desejada para rankear as chapas reais do estoque do menor para o maior desperdício.</div></div>'
+      + '    <div class="simd-grid">'
+      + '      <div class="simd-field"><label>Largura da Peça (mm)</label><input type="number" min="1" id="simd-larg" placeholder="Ex: 900"></div>'
+      + '      <div class="simd-field"><label>Comprimento da Peça (mm)</label><input type="number" min="1" id="simd-comp" placeholder="Ex: 900"></div>'
+      + '      <div class="simd-field"><label>Quantidade do Pedido (opcional)</label><input type="number" min="0" id="simd-qtd" placeholder="Ex: 1000"></div>'
+      + '      <div class="simd-field"><label>Resumo</label><div class="simd-inline-tip">Rotação 90° é testada automaticamente em cada chapa para escolher o melhor encaixe.</div></div>'
+      + '    </div>'
+      + '    <div class="simd-grid" style="margin-top:16px">'
+      + '      <div class="simd-field" style="grid-column:span 4"><label>Simular com Chapa Específica (opcional)</label><div class="simd-search-wrap"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="text" id="simd-busca-chapa" placeholder="Digite o nome, fornecedor ou tamanho da chapa..." style="flex:1"><button type="button" class="simd-btn ghost" id="simd-btn-limpar-chapa" style="display:none">Limpar</button></div><div id="simd-busca-resultados" style="display:none;background:#111827;border:1px solid rgba(148,163,184,.14);border-radius:12px;overflow:hidden;max-height:220px;overflow:auto"></div><div id="simd-chapa-selecionada" style="display:none;padding:12px 14px;background:rgba(24,95,165,.16);border:1px solid rgba(24,95,165,.36);border-radius:12px"><div style="font-size:11px;color:#94a3b8;margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em">Chapa selecionada</div><div id="simd-chapa-sel-nome" style="font-size:14px;font-weight:800;color:#f8fafc"></div><div id="simd-chapa-sel-info" style="font-size:12px;color:#cbd5e1;margin-top:4px"></div></div></div></div>'
+      + '    </div>'
+      + '    <div class="simd-actions">'
+      + '      <div class="simd-actions-left"><button type="button" id="simd-btn" class="simd-btn primary">Calcular</button><button type="button" id="simd-btn-print" class="simd-btn ghost" disabled>Imprimir Relatório</button></div>'
+      + '      <div class="simd-actions-right"><div style="font-size:12px;color:#64748b">O ranking mostra peças/chapa, estoque, valor unitário e custo estimado quando houver quantidade informada.</div></div>'
+      + '    </div>'
+      + '  </div>'
+      + '  <div id="simd-loading" class="simd-panel" style="display:none;padding:26px;text-align:center;font-size:13px;color:#94a3b8">Calculando ranking de chapas...</div>'
+      + '  <div id="simd-resultado" class="simd-panel">'
+      + '    <div id="simd-info-planif" style="font-size:13px;color:#cbd5e1;margin-bottom:14px;padding:12px 14px;background:rgba(24,95,165,.12);border-radius:12px;border-left:3px solid #185FA5"></div>'
+      + '    <div id="simd-aviso" style="display:none;padding:16px;text-align:center;font-size:13px;color:#fde68a;background:rgba(234,179,8,.1);border-radius:12px;margin-bottom:14px"></div>'
+      + '    <div id="simd-tabela-wrap"></div>'
+      + '    <div id="simd-visual" class="simd-visual">'
+      + '      <div class="simd-visual-box"><div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Desenho do corte</div><div id="simd-svg-container"></div></div>'
+      + '      <div class="simd-visual-box"><div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Chapa selecionada: <span id="simd-visual-titulo" style="color:#9FE1CB"></span></div><div id="simd-visual-dados"></div></div>'
+      + '    </div>'
+      + '  </div>'
+      + '</div>';
+    return true;
+  }
+
+  function sBindShell() {
+    if (!sRenderShell()) return false;
+    ['simd-larg', 'simd-comp', 'simd-qtd'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el || el.dataset.simdMeasureBound === '1') return;
+      el.dataset.simdMeasureBound = '1';
+      el.addEventListener('input', sVerificarCampos);
+      el.addEventListener('keydown', function(e) {
+        if (!e || e.key !== 'Enter') return;
+        try { e.preventDefault(); } catch (_) {}
+        var btn = document.getElementById('simd-btn');
+        if (btn && !btn.disabled) sCalcular();
+      });
+    });
+    var busca = document.getElementById('simd-busca-chapa');
+    if (busca && busca.dataset.simdBuscaBound !== '1') {
+      busca.dataset.simdBuscaBound = '1';
+      busca.addEventListener('input', function() {
+        window._simdBuscarChapa(String(busca.value || ''));
+      });
+    }
+    var clearBtn = document.getElementById('simd-btn-limpar-chapa');
+    if (clearBtn && clearBtn.dataset.simdClearBound !== '1') {
+      clearBtn.dataset.simdClearBound = '1';
+      clearBtn.onclick = function(e) {
+        try { if (e) e.preventDefault(); } catch (_) {}
+        window._simdLimparChapaSelecionada();
+      };
+    }
+    var calcBtn = document.getElementById('simd-btn');
+    if (calcBtn && calcBtn.dataset.simdCalcBound !== '1') {
+      calcBtn.dataset.simdCalcBound = '1';
+      calcBtn.onclick = function(e) {
+        try { if (e) e.preventDefault(); } catch (_) {}
+        return sCalcular();
+      };
+    }
+    var printBtn = document.getElementById('simd-btn-print');
+    if (printBtn && printBtn.dataset.simdPrintBound !== '1') {
+      printBtn.dataset.simdPrintBound = '1';
+      printBtn.onclick = function(e) {
+        try { if (e) e.preventDefault(); } catch (_) {}
+        return sPrintSelected();
+      };
+    }
+    if (!document.body.dataset.simdSearchOutsideBound) {
+      document.body.dataset.simdSearchOutsideBound = '1';
+      document.addEventListener('click', function(e) {
+        var resultados = document.getElementById('simd-busca-resultados');
+        if (!resultados || resultados.style.display === 'none') return;
+        if (e.target && e.target.closest && (e.target.closest('#simd-busca-chapa') || e.target.closest('#simd-busca-resultados'))) return;
+        resultados.style.display = 'none';
+      }, true);
+    }
+    sVerificarCampos();
+    return true;
+  }
+
+  function sApply() {
+    try {
+      if (!sBindShell()) return;
+      sVerificarCampos();
+      try { if (typeof window._simdBindBotaoDireto === 'function') window._simdBindBotaoDireto(); } catch (_) {}
+    } catch (e) {
+      sErr('apply falhou', e);
+    }
+  }
+
+  window._simdVerificarCampos = sVerificarCampos;
+  window._simdCarregarChapas = sFetchChapas;
+  window._simdCalcularFluxoImpl = sCalcular;
+  window._simdCalcularPatchedImpl = sCalcular;
+  window.__simdCalcularImpl = sCalcular;
+  window._simdCalcular = sCalcular;
+  window.__simdBoxPlannerFetch = sFetchChapas;
+  window.__simdBoxPlannerVerify = sVerificarCampos;
+  window.__simdBoxPlannerRestore = window._simdRestoreState;
+  window.__simdBoxPlannerApply = sApply;
+  window.__simdBoxPlannerRun = sCalcular;
+
+  sApply();
+  setTimeout(sApply, 0);
+  setTimeout(sApply, 300);
+  setTimeout(sApply, 1200);
+  try {
+    if (!window.__simdSheetMeasureObs) {
+      window.__simdSheetMeasureObs = new MutationObserver(function() {
+        try { clearTimeout(window.__simdSheetMeasureObsTimer); } catch (_) {}
+        window.__simdSheetMeasureObsTimer = setTimeout(sApply, 80);
+      });
+      window.__simdSheetMeasureObs.observe(document.body, { childList: true, subtree: true });
+    }
+  } catch (_) {}
+})();
