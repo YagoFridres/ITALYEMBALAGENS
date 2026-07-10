@@ -167,7 +167,7 @@ try {
         localStorage.getItem('access_token') ||
         sessionStorage.getItem('token') ||
         sessionStorage.getItem('access_token') ||
-        (typeof getStoredToken === 'function' ? getStoredToken() : '') ||
+        (typeof window.getStoredToken === 'function' ? window.getStoredToken() : '') ||
         _authCookieToken() ||
         ''
       );
@@ -197,8 +197,8 @@ try {
     try { localStorage.setItem('access_token', tok); } catch (_) {}
     try { sessionStorage.setItem('token', tok); } catch (_) {}
     try { sessionStorage.setItem('access_token', tok); } catch (_) {}
-    try { if (typeof setStoredToken === 'function') setStoredToken(tok); } catch (_) {}
-    try { if (typeof authSave === 'function') authSave(tok, user || window.CURRENT_USER || null); } catch (_) {}
+    try { if (typeof window.setStoredToken === 'function') window.setStoredToken(tok); } catch (_) {}
+    try { if (typeof window.authSave === 'function') window.authSave(tok, user || window.CURRENT_USER || null); } catch (_) {}
     try {
       document.cookie = 'access_token=' + encodeURIComponent(tok) + '; path=/; SameSite=Lax';
       document.cookie = 'token=' + encodeURIComponent(tok) + '; path=/; SameSite=Lax';
@@ -215,7 +215,7 @@ try {
     try { localStorage.removeItem('access_token'); } catch (_) {}
     try { sessionStorage.removeItem('token'); } catch (_) {}
     try { sessionStorage.removeItem('access_token'); } catch (_) {}
-    try { if (typeof clearStoredAuth === 'function') clearStoredAuth(); } catch (_) {}
+    try { if (typeof window.clearStoredAuth === 'function') window.clearStoredAuth(); } catch (_) {}
     try {
       ['access_token', 'token', 'refresh_token'].forEach(function(name) {
         document.cookie = name + '=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
@@ -404,7 +404,7 @@ try {
         }
       });
     } catch (_) {}
-    try { if (typeof fecharOfmaqAcoesSheet === 'function') fecharOfmaqAcoesSheet(); } catch (_) {}
+    try { if (typeof window.fecharOfmaqAcoesSheet === 'function') window.fecharOfmaqAcoesSheet(); } catch (_) {}
     try { ofEmEdicaoMaquina = null; } catch (_) {}
   }
 
@@ -412,8 +412,8 @@ try {
     var sid = String(id || '').trim();
     if (!sid) return null;
     try {
-      if (typeof ofmaqGetOFById === 'function') {
-        var found = ofmaqGetOFById(sid);
+      if (typeof window.ofmaqGetOFById === 'function') {
+        var found = window.ofmaqGetOFById(sid);
         if (found) return found;
       }
     } catch (_) {}
@@ -478,7 +478,7 @@ try {
     } catch (_) {}
     try {
       (Array.isArray(window.OFS) ? window.OFS : []).forEach(function(of) {
-        try { add(typeof getMaquinaAtual === 'function' ? getMaquinaAtual(of) : ''); } catch (_) {}
+        try { add(typeof window.getMaquinaAtual === 'function' ? window.getMaquinaAtual(of) : ''); } catch (_) {}
         add(of && (of.maquina || of.maquina_agendada || of.maq));
       });
     } catch (_) {}
@@ -506,7 +506,7 @@ try {
     var id = String(ofId || '').trim();
     if (!id || !of) return;
     var maqAtual = '';
-    try { maqAtual = typeof getMaquinaAtual === 'function' ? String(getMaquinaAtual(of) || '').trim() : ''; } catch (_) {}
+    try { maqAtual = typeof window.getMaquinaAtual === 'function' ? String(window.getMaquinaAtual(of) || '').trim() : ''; } catch (_) {}
     maqAtual = maqAtual || String(of.maquina_agendada || of.maquina || (Array.isArray(of.maq) ? of.maq[0] : of.maq) || '').trim();
     var entAtual = String(of.data_entrega || of.ent || '').slice(0, 10);
     var overlay = _abrirModalPadrao({
@@ -8332,7 +8332,8 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
     document.addEventListener('keydown', function(e) {
       try {
         if (!e || e.key !== 'Escape') return;
-        window._ofRapidaEditandoId = null;
+        if (typeof window.__clearOfRapidaEditContext === 'function') window.__clearOfRapidaEditContext();
+        else window._ofRapidaEditandoId = null;
         run();
       } catch (_) {}
     }, true);
@@ -10218,7 +10219,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           var meta = {
             args: args,
             context: this,
-            editandoIdAntes: String(window._ofRapidaEditandoId || '').trim(),
+            editandoIdAntes: (typeof window.__getOfRapidaEditingId === 'function')
+              ? window.__getOfRapidaEditingId()
+              : String(window._ofRapidaEditandoId || '').trim(),
             ts: Date.now(),
           };
           var result;
@@ -10302,6 +10305,66 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function _salvarOfRapidaHandled(result) {
     return { __salvarOfRapidaHandled__: true, result: result };
   }
+
+  function _getOfRapidaModalEl() {
+    return document.getElementById('modal-of-rapida')
+      || document.getElementById('modal-nova-of-rapida')
+      || document.getElementById('modal-of-rapida-ov');
+  }
+
+  function _getOfRapidaEditingId() {
+    var modal = _getOfRapidaModalEl();
+    var dataId = String(modal && modal.dataset ? (modal.dataset.ofEditandoId || modal.dataset.ofId || '') : '').trim();
+    var winId = String(window._ofRapidaEditandoId || '').trim();
+    var pendingId = String(window.__ofRapidaPendingEditId || '').trim();
+    return dataId || winId || pendingId || '';
+  }
+
+  function _setOfRapidaEditContext(id, numero) {
+    var sid = String(id || '').trim();
+    var snum = String(numero || '').trim();
+    var modal = _getOfRapidaModalEl();
+    try { window._ofRapidaEditandoId = sid || null; } catch (_) {}
+    try { window.__ofRapidaPendingEditId = sid || null; } catch (_) {}
+    if (snum) {
+      try { window._ofRapidaEditandoNumero = snum; } catch (_) {}
+      try { window._ofRapidaNumero = snum; } catch (_) {}
+    }
+    if (modal && modal.dataset) {
+      if (sid) {
+        modal.dataset.ofMode = 'edit';
+        modal.dataset.ofEditandoId = sid;
+      } else {
+        delete modal.dataset.ofMode;
+        delete modal.dataset.ofEditandoId;
+      }
+      if (snum) modal.dataset.ofNumero = snum;
+    }
+    try { console.log('[OF-EDIT-FIX] contexto edicao setado', { id: sid, numero: snum || null }); } catch (_) {}
+    return sid;
+  }
+
+  function _clearOfRapidaEditContext() {
+    var modal = _getOfRapidaModalEl();
+    try { window._ofRapidaEditandoId = null; } catch (_) {}
+    try { window._ofRapidaEditandoNumero = null; } catch (_) {}
+    try { window.__ofRapidaPendingEditId = null; } catch (_) {}
+    if (modal && modal.dataset) {
+      delete modal.dataset.ofMode;
+      delete modal.dataset.ofEditandoId;
+      delete modal.dataset.ofNumero;
+    }
+    try { console.log('[OF-EDIT-FIX] contexto edicao limpo'); } catch (_) {}
+  }
+
+  window._ensureSalvarOfRapidaHooksInfra = _ensureSalvarOfRapidaHooksInfra;
+  window._salvarOfRapidaHasHook = _salvarOfRapidaHasHook;
+  window._salvarOfRapidaRegisterHook = _salvarOfRapidaRegisterHook;
+  window._salvarOfRapidaHandled = _salvarOfRapidaHandled;
+  window.__getOfRapidaModalEl = _getOfRapidaModalEl;
+  window.__getOfRapidaEditingId = _getOfRapidaEditingId;
+  window.__setOfRapidaEditContext = _setOfRapidaEditContext;
+  window.__clearOfRapidaEditContext = _clearOfRapidaEditContext;
 
   // ── PATCH 3: garantir numero no payload ao salvar OF Rapida ───
   _salvarOfRapidaRegisterHook('__patch_of_rapida_numero__', 'before', function() {
@@ -17805,7 +17868,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function patchSalvar(fnName) {
     if (fnName === 'salvarOfRapida') {
-      _salvarOfRapidaRegisterHook('__patch_cliente_especial_of_rapida__', 'before', async function() {
+          if (typeof window._salvarOfRapidaRegisterHook !== 'function') return;
+          window._salvarOfRapidaRegisterHook('__patch_cliente_especial_of_rapida__', 'before', async function() {
         var el = document.getElementById('of-r-cliente');
         if (!el) return;
         var cli = null;
@@ -17814,7 +17878,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (!cliId) {
           try { alert('Selecione um cliente válido da lista.'); } catch (_) {}
           try { el.focus(); el.select && el.select(); } catch (_) {}
-          return _salvarOfRapidaHandled(undefined);
+          return (typeof window._salvarOfRapidaHandled === 'function') ? window._salvarOfRapidaHandled(undefined) : undefined;
         }
         var nomeCanonico = String((cli && (cli.nome || cli.razao_social || cli.razao)) || el.dataset.clienteNome || el.value || '').trim();
         if (nomeCanonico) el.value = nomeCanonico;
@@ -17910,11 +17974,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function patchSalvarOfRapida() {
-    _salvarOfRapidaRegisterHook('__patch_edicao_of_rapida__', 'override', async function(meta) {
-      if (!String(window._ofRapidaEditandoId || '').trim()) return null;
-      if (typeof window.salvarEdicaoOf !== 'function') return _salvarOfRapidaHandled(undefined);
+    if (typeof window._salvarOfRapidaRegisterHook !== 'function') return;
+    window._salvarOfRapidaRegisterHook('__patch_edicao_of_rapida__', 'override', async function(meta) {
+      var editId = typeof window.__getOfRapidaEditingId === 'function'
+        ? window.__getOfRapidaEditingId()
+        : String(window._ofRapidaEditandoId || '').trim();
+      if (!editId) return null;
+      if (typeof window.salvarEdicaoOf !== 'function') {
+        return (typeof window._salvarOfRapidaHandled === 'function') ? window._salvarOfRapidaHandled(undefined) : undefined;
+      }
       var result = await window.salvarEdicaoOf.apply(this, meta && meta.args ? meta.args : []);
-      return _salvarOfRapidaHandled(result);
+      return (typeof window._salvarOfRapidaHandled === 'function') ? window._salvarOfRapidaHandled(result) : result;
     }, 5);
   }
 
@@ -17927,12 +17997,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (!sid) return orig.apply(this, arguments);
       if (typeof window.abrirNovaOfRapida !== 'function') return orig.apply(this, arguments);
 
-      try { window._ofRapidaEditandoId = sid; } catch (_) {}
+      try { window.__ofRapidaPendingEditId = sid; } catch (_) {}
+      try {
+        if (typeof window.__setOfRapidaEditContext === 'function') window.__setOfRapidaEditContext(sid, '');
+        else window._ofRapidaEditandoId = sid;
+      } catch (_) {}
       try { window.abrirNovaOfRapida(); } catch (_) { return orig.apply(this, arguments); }
 
       await new Promise(function(r) { setTimeout(r, 450); });
       var of = await fetchOf(sid);
-      if (!of || of.error) return;
+      if (!of || of.error) {
+        try {
+          if (typeof window.__clearOfRapidaEditContext === 'function') window.__clearOfRapidaEditContext();
+        } catch (_) {}
+        return;
+      }
 
       var cliNome = String(of.cliente || of.cliNome || of.cliente_nome || '').trim();
       var produto = String(of.produto || of.prodDesc || of.descricao || '').trim();
@@ -17970,6 +18049,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (numSpan) numSpan.textContent = String(of.numero || of.of || sid.slice(0, 8));
       } catch (_) {}
       try { window._ofRapidaNumero = String(of.numero || of.of || '').trim(); } catch (_) {}
+      try {
+        if (typeof window.__setOfRapidaEditContext === 'function') {
+          window.__setOfRapidaEditContext(sid, String(of.numero || of.of || '').trim());
+        }
+      } catch (_) {}
 
       try {
         var header = document.querySelector('#modal-of-rapida div[style*="font-weight:800"]');
@@ -17997,7 +18081,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { tick(); } catch (_) {}
       try {
         var abriuOk = !!(window.abrirModalOF && window.abrirModalOF._patchToOfRapidaEdit);
-        var salvarOk = !!(window.__salvarOfRapida_final_definida__ && _salvarOfRapidaHasHook('__patch_edicao_of_rapida__'));
+        var salvarOk = !!(window.__salvarOfRapida_final_definida__ && typeof window._salvarOfRapidaHasHook === 'function' && window._salvarOfRapidaHasHook('__patch_edicao_of_rapida__'));
         if (abriuOk && salvarOk && window.__patchOfRapidaEditInterval) {
           clearInterval(window.__patchOfRapidaEditInterval);
           window.__patchOfRapidaEditInterval = null;
@@ -18377,11 +18461,25 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }, true);
   }
 
+  function mergeEditedOfLocal(id, patch) {
+    var sid = String(id || '').trim();
+    if (!sid || !patch || typeof patch !== 'object') return;
+    [window.OFS, typeof OFs !== 'undefined' ? OFs : null, window.OFS_ARQUIVO].forEach(function(pool) {
+      if (!Array.isArray(pool)) return;
+      var idx = pool.findIndex(function(item) {
+        return String(item && item.id || '').trim() === sid;
+      });
+      if (idx >= 0) pool[idx] = Object.assign({}, pool[idx] || {}, patch);
+    });
+  }
+
   window.salvarEdicaoOf = async function() {
-    var id = String(window._ofRapidaEditandoId || '').trim();
+    var id = (typeof window.__getOfRapidaEditingId === 'function')
+      ? window.__getOfRapidaEditingId()
+      : String(window._ofRapidaEditandoId || '').trim();
     var toast = getToastFn();
     if (!id) {
-      try { console.warn('[salvarEdicaoOf] sem id de edição'); } catch (_) {}
+      try { console.warn('[OF-EDIT-FIX] salvarEdicaoOf sem id de edição'); } catch (_) {}
       return;
     }
 
@@ -18482,7 +18580,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return;
     }
 
-    try { console.log('[salvarEdicaoOf] enviando PATCH para OF', id, body); } catch (_) {}
+    try { console.log('[OF-EDIT-FIX] enviando PATCH para OF', id, body); } catch (_) {}
     var btn = document.getElementById('btn-salvar-of-rapida');
     try { if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; } } catch (_) {}
     try {
@@ -18492,14 +18590,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         body: JSON.stringify(body)
       });
       var result = await resp.json().catch(function() { return {}; });
-      try { console.log('[salvarEdicaoOf] resposta:', resp.status, result); } catch (_) {}
+      try { console.log('[OF-EDIT-FIX] resposta PATCH:', resp.status, result); } catch (_) {}
       if (!resp.ok || (result && result.ok === false)) {
         toast('❌ Erro ao salvar: ' + String(result && result.error || resp.status));
         return;
       }
+      var updatedOf = result && (result.data || result) ? (result.data || result) : {};
+      try { mergeEditedOfLocal(id, updatedOf); } catch (_) {}
       toast('✅ OF #' + String(window._ofRapidaEditandoNumero || id.substring(0, 8)) + ' salva!');
-      window._ofRapidaEditandoId = null;
-      window._ofRapidaEditandoNumero = null;
+      try {
+        if (typeof window.__clearOfRapidaEditContext === 'function') window.__clearOfRapidaEditContext();
+        else {
+          window._ofRapidaEditandoId = null;
+          window._ofRapidaEditandoNumero = null;
+        }
+      } catch (_) {}
       try { document.getElementById('btn-salvar-edicao-of') && document.getElementById('btn-salvar-edicao-of').remove(); } catch (_) {}
       try {
         var btnOrig = document.querySelector('#modal-of-rapida button[type="submit"], .btn-salvar-of');
@@ -18521,7 +18626,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         try { if (window.carregarOFs) window.carregarOFs(true); else if (window.renderPCP) window.renderPCP(); } catch (_) {}
       }, 300);
     } catch (e) {
-      try { console.error('[salvarEdicaoOf]', e); } catch (_) {}
+      try { console.error('[OF-EDIT-FIX][salvarEdicaoOf]', e); } catch (_) {}
       toast('❌ Erro de rede: ' + String(e && e.message || e));
     } finally {
       try { if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Alterações'; } } catch (_) {}
@@ -18536,7 +18641,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var r = await orig.apply(this, arguments);
       try {
         var span = document.getElementById('of-r-numero');
-        if (span) window._ofRapidaEditandoNumero = String(span.textContent || '').trim() || null;
+        if (span) {
+          window._ofRapidaEditandoNumero = String(span.textContent || '').trim() || null;
+          if (typeof window.__setOfRapidaEditContext === 'function') {
+            window.__setOfRapidaEditContext(
+              (typeof window.__getOfRapidaEditingId === 'function' ? window.__getOfRapidaEditingId() : window._ofRapidaEditandoId),
+              window._ofRapidaEditandoNumero
+            );
+          }
+        }
       } catch (_) {}
       return r;
     };
@@ -18739,9 +18852,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     window.carregarCoresImpressao._patchWithCache = true;
 
     window.abrirNovaOfRapida = function() {
+      var pendingEditId = String(window.__ofRapidaPendingEditId || '').trim();
+      if (!pendingEditId) {
+        try {
+          if (typeof window.__clearOfRapidaEditContext === 'function') window.__clearOfRapidaEditContext();
+        } catch (_) {}
+      }
       var out = origAbrir.apply(this, arguments);
       setTimeout(function() {
         try {
+          var modal = typeof window.__getOfRapidaModalEl === 'function' ? window.__getOfRapidaModalEl() : null;
+          var currentEditId = String(window.__ofRapidaPendingEditId || window._ofRapidaEditandoId || '').trim();
+          if (modal && modal.dataset) {
+            modal.dataset.ofMode = currentEditId ? 'edit' : 'create';
+            if (currentEditId) modal.dataset.ofEditandoId = currentEditId;
+            else delete modal.dataset.ofEditandoId;
+          }
           var empSel = document.getElementById('of-r-empresa');
           var empId = getEmpIdSan((empSel && empSel.value) || window.EMP_FILTRO || 'E1') || 'E1';
           setRapidaState('loading', '', empId);
@@ -28419,7 +28545,8 @@ window._mbnActive = function(id) {
   function _wrapNotifFn(fnName, mensagem, tipo, shouldSkip) {
     try {
       if (fnName === 'salvarOfRapida') {
-        _salvarOfRapidaRegisterHook('__patch_notificacao_of_rapida__', 'after', async function(meta) {
+        if (typeof window._salvarOfRapidaRegisterHook !== 'function') return;
+        window._salvarOfRapidaRegisterHook('__patch_notificacao_of_rapida__', 'after', async function(meta) {
           var skip = false;
           try { skip = typeof shouldSkip === 'function' ? !!shouldSkip(meta) : false; } catch (_) {}
           if (skip) return;

@@ -529,7 +529,7 @@ function _runPatchInternalFunctionCheck() {
       'Event', 'CustomEvent', 'Sortable',
       'blur', 'brightness', 'gradient', 'media', 'minmax', 'repeat', 'rgba', 'scale', 'translate', 'var',
       'callback', 'child', 'done', 'getComputedStyle', 'getName', 'getValue', 'getter', 'onClose', 'onDone',
-      'pin', 'shouldSkip'
+      'pin', 'shouldSkip', 'refreshFn', 'excluirFn', 'valueFormatter', 'translateY', 'R$'
     ]);
     const hostGlobals = new Set([
       'abrirNovaOF', 'abrirNovaOf', 'alterarOf', 'buscarRecebimentosInsumos', 'chapasForcarReload',
@@ -1103,7 +1103,7 @@ app.get('/manifest.json', (req, res) => {
 
 const PATCH_RUNTIME_VERSION = '20260707133500';
 const SW_RUNTIME_VERSION = '20260707133500';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260709180145';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260709182210';
 
 app.get('/sw.js', (req, res) => {
   try {
