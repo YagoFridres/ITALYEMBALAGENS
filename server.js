@@ -10984,8 +10984,6 @@ async function _relatoriosLoadClientesDetails(ids) {
 }
 
 function _relatoriosPickVendedorNome(of, vendedoresMap) {
-  const nomeDireto = String(of?.vendedor_nome || of?.vendNome || of?.vendedor || '').trim();
-  if (nomeDireto && !_isUuid(nomeDireto)) return nomeDireto;
   const vendedorId = _relatoriosPickVendedorId(of);
   return String(vendedoresMap?.get(vendedorId) || vendedorId || 'Sem vendedor').trim() || 'Sem vendedor';
 }
@@ -11056,7 +11054,7 @@ async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
     'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida',
     'qtd_perdida', 'caixas_perdidas',
     'tonelada_vendida',
-    'vendedor', 'vendedor_nome', 'vendNome', 'vendedor_id', 'vendId', 'vend_id'
+    'vendedor_id', 'vendId', 'vend_id'
   ].join(',');
   const companyIds = Array.isArray(opts.companyIds) ? opts.companyIds.map((v) => String(v || '').trim()).filter(Boolean) : [];
   const result = await _selectCompatRows('ofs', columns, (q) => {
