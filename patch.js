@@ -28686,16 +28686,24 @@ window._mbnActive = function(id) {
       };
       window.carregarOFsFresh._patchedOfmaqDisplay = true;
     }
-    if (typeof window.renderOFsPorMaquina !== 'function') return;
-    if (window.renderOFsPorMaquina._patchedPriorityHub) return;
-    var orig = window.renderOFsPorMaquina;
-    window.renderOFsPorMaquina = async function() {
-      _refreshOfmaqCachesFromRuntime();
-      var result = await orig.apply(this, arguments);
-      setTimeout(afterRenderOfmaq, 40);
-      return result;
-    };
-    window.renderOFsPorMaquina._patchedPriorityHub = true;
+    try {
+      var fn = window.renderOFsPorMaquina;
+      if (typeof fn !== 'function') return;
+      if (fn._patchedPriorityHub) return;
+      var orig = fn;
+      window.renderOFsPorMaquina = async function() {
+        _refreshOfmaqCachesFromRuntime();
+        var result = await orig.apply(this, arguments);
+        setTimeout(afterRenderOfmaq, 40);
+        return result;
+      };
+      window.renderOFsPorMaquina._patchedPriorityHub = true;
+      try {
+        if (String(window._PAGE_ATUAL || '') === 'ofmaq') setTimeout(afterRenderOfmaq, 0);
+      } catch (_) {}
+    } catch (_) {
+      return;
+    }
   }
 
   if (typeof originalCardOfmaq === 'function' && !window.cardOFMaquina._patchedPriorityHub) {
