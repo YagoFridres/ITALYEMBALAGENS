@@ -10965,6 +10965,21 @@ async function _relatoriosLoadVendedoresByIds(ids) {
   return map;
 }
 
+async function _relatoriosLoadClientesDetails(ids) {
+  const uniq = Array.from(new Set((Array.isArray(ids) ? ids : []).map((v) => String(v || '').trim()).filter(_isUuid)));
+  const map = new Map();
+  for (let i = 0; i < uniq.length; i += 200) {
+    const chunk = uniq.slice(i, i + 200);
+    const { data, error } = await supabase.from('clientes').select('id,nome,ramo,empresa_id,created_at').in('id', chunk);
+    if (error) throw error;
+    (Array.isArray(data) ? data : []).forEach((row) => {
+      const id = String(row?.id || '').trim();
+      if (id) map.set(id, row);
+    });
+  }
+  return map;
+}
+
 function _relatoriosPickVendedorNome(of, vendedoresMap) {
   const nomeDireto = String(of?.vendedor_nome || of?.vendNome || of?.vendedor || '').trim();
   if (nomeDireto && !_isUuid(nomeDireto)) return nomeDireto;
@@ -11199,6 +11214,66 @@ app.get('/api/relatorios/evolucao-vendas', authMiddleware, async (req, res) => {
     });
   } catch (e) {
     console.error('[RELATORIOS][EVOLUCAO-VENDAS]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/relatorios/vendas-por-ramo', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    if (!range?.inicio || !range?.fim_exclusivo) {
+      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
+    }
+    let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+    const ofs = await _relatoriosFetchOfsConcluidas(range, {
+      companyIds: empresa_id ? [empresa_id] : []
+    });
+    const clientesMap = await _relatoriosLoadClientesDetails(ofs.map((of) => _assistPickOfClienteId(of)));
+    const grupos = new Map();
+    ofs.forEach((of) => {
+      const cliId = _assistPickOfClienteId(of);
+      const cliente = cliId && _isUuid(cliId) ? clientesMap.get(cliId) : null;
+      const ramo = String(cliente?.ramo || '').trim() || 'Sem ramo';
+      if (!grupos.has(ramo)) {
+        grupos.set(ramo, {
+          ramo,
+          valor_vendido: 0,
+          total_clientes: 0,
+          total_ofs: 0,
+          _clientes: new Set()
+        });
+      }
+      const item = grupos.get(ramo);
+      item.valor_vendido += _relatoriosPickValorOf(of);
+      item.total_ofs += 1;
+      if (cliId && _isUuid(cliId)) item._clientes.add(cliId);
+    });
+    const rows = Array.from(grupos.values()).map((item) => ({
+      ramo: item.ramo,
+      valor_vendido: Number(item.valor_vendido || 0),
+      total_clientes: item._clientes.size,
+      total_ofs: Number(item.total_ofs || 0) || 0
+    })).sort((a, b) => {
+      if (Number(b.valor_vendido || 0) !== Number(a.valor_vendido || 0)) return Number(b.valor_vendido || 0) - Number(a.valor_vendido || 0);
+      return String(a.ramo || '').localeCompare(String(b.ramo || ''), 'pt-BR');
+    });
+    const resumo = rows.reduce((acc, item) => {
+      acc.valor_vendido += Number(item?.valor_vendido || 0) || 0;
+      acc.total_clientes += Number(item?.total_clientes || 0) || 0;
+      acc.total_ofs += Number(item?.total_ofs || 0) || 0;
+      return acc;
+    }, { valor_vendido: 0, total_clientes: 0, total_ofs: 0 });
+    return res.json({
+      ok: true,
+      data_inicio: range.inicio,
+      data_fim: range.fim,
+      resumo,
+      rows
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][VENDAS-POR-RAMO]', e?.message || e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
