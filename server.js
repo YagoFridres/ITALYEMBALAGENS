@@ -11073,6 +11073,100 @@ async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
   });
 }
 
+async function _relatoriosFetchOfsCriadas(range, opts = {}) {
+  const columns = [
+    'id', 'numero', 'of', 'status', 'created_at', 'deleted_at', 'empresa_id',
+    'cli_id', 'cliId', 'cliente_id', 'cliente_nome', 'cliNome', 'clinome',
+    'produto', 'descricao', 'prodDesc',
+    'qtd', 'quantidade', 'qtd_pedida',
+    'valor_total', 'valor_venda', 'total',
+    'valor_unitario', 'preco', 'vl_unit'
+  ].join(',');
+  const companyIds = Array.isArray(opts.companyIds) ? opts.companyIds.map((v) => String(v || '').trim()).filter(Boolean) : [];
+  const result = await _selectCompatRows('ofs', columns, (q) => {
+    let query = q
+      .gte('created_at', range.inicio)
+      .lt('created_at', range.fim_exclusivo)
+      .order('created_at', { ascending: true });
+    if (companyIds.length) query = query.in('empresa_id', companyIds);
+    return query.limit(10000);
+  });
+  if (result?.error) throw result.error;
+  return (Array.isArray(result?.data) ? result.data : []).filter((of) => !of?.deleted_at);
+}
+
+app.get('/api/relatorios/ofs-entradas-mes', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const now = new Date();
+    const ano = Math.max(2000, Math.min(2100, parseInt(String(req.query.ano || now.getFullYear()), 10) || now.getFullYear()));
+    const mes = Math.max(1, Math.min(12, parseInt(String(req.query.mes || (now.getMonth() + 1)), 10) || (now.getMonth() + 1)));
+    const inicioDate = new Date(Date.UTC(ano, mes - 1, 1, 0, 0, 0));
+    const fimExclusivoDate = new Date(Date.UTC(ano, mes, 1, 0, 0, 0));
+    const fimDate = new Date(Date.UTC(ano, mes, 0, 0, 0, 0));
+    const range = {
+      inicio: inicioDate.toISOString().slice(0, 10),
+      fim: fimDate.toISOString().slice(0, 10),
+      fim_exclusivo: fimExclusivoDate.toISOString().slice(0, 10)
+    };
+    let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+    const ofs = await _relatoriosFetchOfsCriadas(range, {
+      companyIds: empresa_id ? [empresa_id] : []
+    });
+    const cliIds = ofs.map((of) => _assistPickOfClienteId(of)).filter(_isUuid);
+    const clientesMap = cliIds.length ? await _assistLoadClientesByIds(cliIds) : new Map();
+    const rows = ofs.map((of) => {
+      const quantidade = Math.max(0, Math.trunc(Number(of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
+      const valorTotalBase = Number(of?.valor_total ?? of?.valor_venda ?? of?.total ?? 0) || 0;
+      const valorUnitBase = Number(of?.valor_unitario ?? of?.preco ?? of?.vl_unit ?? 0) || 0;
+      const valorUnitario = valorUnitBase > 0 ? valorUnitBase : (quantidade > 0 && valorTotalBase > 0 ? (valorTotalBase / quantidade) : 0);
+      const valorTotal = valorTotalBase > 0 ? valorTotalBase : (valorUnitario > 0 && quantidade > 0 ? (valorUnitario * quantidade) : 0);
+      const clienteId = _assistPickOfClienteId(of);
+      const clienteNome = String(
+        of?.cliente_nome ||
+        of?.cliNome ||
+        of?.clinome ||
+        clientesMap.get(clienteId) ||
+        'Sem cliente'
+      ).trim() || 'Sem cliente';
+      return {
+        id: of?.id || null,
+        numero: String(of?.numero || of?.of || '—').trim() || '—',
+        cliente_nome: clienteNome,
+        produto: String(of?.produto || of?.descricao || of?.prodDesc || '—').trim() || '—',
+        quantidade,
+        valor_unitario: Number(valorUnitario || 0),
+        valor_total: Number(valorTotal || 0),
+        created_at: String(of?.created_at || '').slice(0, 19)
+      };
+    }).sort((a, b) => {
+      const da = String(a?.created_at || '');
+      const db = String(b?.created_at || '');
+      if (da !== db) return da.localeCompare(db, 'pt-BR');
+      return String(a?.numero || '').localeCompare(String(b?.numero || ''), 'pt-BR');
+    });
+    const resumo = rows.reduce((acc, row) => {
+      acc.total_ofs += 1;
+      acc.valor_total += Number(row?.valor_total || 0) || 0;
+      acc.quantidade_total += Number(row?.quantidade || 0) || 0;
+      return acc;
+    }, { total_ofs: 0, valor_total: 0, quantidade_total: 0 });
+    return res.json({
+      ok: true,
+      mes,
+      ano,
+      data_inicio: range.inicio,
+      data_fim: range.fim,
+      resumo,
+      rows
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][OFS-ENTRADAS-MES]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/relatorios/vendas-por-empresa', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);

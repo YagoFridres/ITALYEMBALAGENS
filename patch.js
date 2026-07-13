@@ -591,8 +591,30 @@ try {
       + '#patch-relatorios-central .rr-desc{font-size:12px;color:#94a3b8;line-height:1.45}'
       + '#patch-relatorios-central .rr-btn{display:inline-flex;align-items:center;justify-content:center;padding:11px 14px;border:none;border-radius:12px;background:linear-gradient(135deg,#185FA5,#2563eb);color:#fff;font-size:13px;font-weight:900;cursor:pointer}'
       + '#patch-relatorios-central .rr-btn:disabled{opacity:.6;cursor:wait}'
+      + '#rr-modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,.82);z-index:999999;display:flex;align-items:center;justify-content:center;padding:18px}'
+      + '#rr-modal-backdrop .rr-modal{width:min(1120px,100%);max-height:92vh;overflow:auto;background:linear-gradient(180deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.18);border-radius:18px;box-shadow:0 30px 60px rgba(2,6,23,.45);padding:18px}'
+      + '#rr-modal-backdrop .rr-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}'
+      + '#rr-modal-backdrop .rr-modal-title{font-size:22px;font-weight:900;color:#f8fafc}'
+      + '#rr-modal-backdrop .rr-modal-sub{font-size:12px;color:#94a3b8;margin-top:4px}'
+      + '#rr-modal-backdrop .rr-close{border:1px solid rgba(148,163,184,.2);background:#020617;color:#cbd5e1;border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:900}'
+      + '#rr-modal-backdrop .rr-modal-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}'
+      + '#rr-modal-backdrop .rr-modal-field{display:grid;gap:6px}'
+      + '#rr-modal-backdrop .rr-modal-field label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}'
+      + '#rr-modal-backdrop .rr-modal-field input,#rr-modal-backdrop .rr-modal-field select,#rr-modal-backdrop .rr-modal-field textarea{width:100%;padding:11px 12px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:12px;color:#f8fafc;font-size:13px}'
+      + '#rr-modal-backdrop .rr-modal-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:16px}'
+      + '#rr-modal-backdrop .rr-btn-ghost{display:inline-flex;align-items:center;justify-content:center;padding:11px 14px;border:1px solid rgba(148,163,184,.18);border-radius:12px;background:#020617;color:#e2e8f0;font-size:13px;font-weight:900;cursor:pointer}'
+      + '#rr-sergio-builder{display:grid;gap:14px}'
+      + '#rr-sergio-table-wrap{overflow:auto;border:1px solid rgba(148,163,184,.16);border-radius:16px}'
+      + '#rr-sergio-table{width:100%;border-collapse:collapse;min-width:980px}'
+      + '#rr-sergio-table th{background:#020617;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:10px;border-bottom:1px solid rgba(148,163,184,.16)}'
+      + '#rr-sergio-table td{padding:10px;border-bottom:1px solid rgba(148,163,184,.1);vertical-align:top}'
+      + '#rr-sergio-table .rr-row-remove{padding:9px 10px;border-radius:10px;border:1px solid rgba(248,113,113,.18);background:rgba(127,29,29,.2);color:#fecaca;cursor:pointer;font-weight:900}'
+      + '#rr-sergio-table .rr-autocomplete{position:relative}'
+      + '#rr-sergio-table .rr-suggest{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:3;max-height:220px;overflow:auto;background:#0f172a;border:1px solid rgba(148,163,184,.2);border-radius:12px;box-shadow:0 16px 36px rgba(2,6,23,.5)}'
+      + '#rr-sergio-table .rr-suggest button{width:100%;display:block;text-align:left;padding:10px 12px;border:none;background:transparent;color:#f8fafc;cursor:pointer}'
+      + '#rr-sergio-table .rr-suggest button:hover{background:rgba(37,99,235,.18)}'
       + '@media (max-width:980px){#patch-relatorios-central .rr-period-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
-      + '@media (max-width:760px){#patch-relatorios-central .rr-grid{grid-template-columns:1fr}#patch-relatorios-central .rr-period-grid{grid-template-columns:1fr}}';
+      + '@media (max-width:760px){#patch-relatorios-central .rr-grid{grid-template-columns:1fr}#patch-relatorios-central .rr-period-grid{grid-template-columns:1fr}#rr-modal-backdrop .rr-modal-grid{grid-template-columns:1fr}}';
     document.head.appendChild(st);
   }
 
@@ -1344,6 +1366,323 @@ try {
     });
   }
 
+  function rrPad2(v) {
+    return String(Math.max(0, Math.trunc(Number(v || 0) || 0))).padStart(2, '0');
+  }
+
+  function rrMonthName(mes) {
+    var nomes = ['Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    return nomes[Math.max(0, Math.min(11, Number(mes || 1) - 1))] || 'Mes';
+  }
+
+  function rrRemoveModal() {
+    var old = document.getElementById('rr-modal-backdrop');
+    if (old) old.remove();
+  }
+
+  function rrOpenModal(opts) {
+    rrRemoveModal();
+    var cfg = opts || {};
+    var overlay = document.createElement('div');
+    overlay.id = 'rr-modal-backdrop';
+    overlay.innerHTML = ''
+      + '<div class="rr-modal">'
+      + '  <div class="rr-modal-head">'
+      + '    <div>'
+      + '      <div class="rr-modal-title">' + rrEsc(cfg.title || 'Relatório') + '</div>'
+      + '      <div class="rr-modal-sub">' + rrEsc(cfg.subtitle || '') + '</div>'
+      + '    </div>'
+      + '    <button type="button" class="rr-close" data-rr-close>Fechar</button>'
+      + '  </div>'
+      + '  <div id="rr-modal-body"></div>'
+      + '</div>';
+    overlay.addEventListener('click', function(ev) {
+      if (ev.target === overlay) rrRemoveModal();
+    });
+    document.body.appendChild(overlay);
+    Array.prototype.slice.call(overlay.querySelectorAll('[data-rr-close]')).forEach(function(btn) {
+      btn.onclick = rrRemoveModal;
+    });
+    var body = overlay.querySelector('#rr-modal-body');
+    if (typeof cfg.render === 'function') cfg.render(body, overlay);
+    return overlay;
+  }
+
+  function rrMonthYearOptions() {
+    var ref = rrMonthRef();
+    var anos = [];
+    for (var ano = ref.ano - 3; ano <= ref.ano + 2; ano += 1) anos.push(ano);
+    return { mes: ref.mes, ano: ref.ano, anos: anos };
+  }
+
+  function rrFetchClientesLite(term) {
+    var txt = String(term || '').trim();
+    if (!txt) return Promise.resolve([]);
+    return rrFetchJson('/api/clientes?search=' + encodeURIComponent(txt) + '&limit=8&lite=1').then(function(json) {
+      return rrList(json, ['data', 'clientes']).map(function(row) {
+        return {
+          id: String(row && row.id || '').trim(),
+          nome: String(row && (row.nome || row.rs || row.razao_social) || '').trim(),
+          cidade: String(row && row.cidade || '').trim(),
+          uf: String(row && row.uf || '').trim()
+        };
+      });
+    }).catch(function() { return []; });
+  }
+
+  async function rrReportOfsEntradasMes(params) {
+    var now = new Date();
+    var mes = Math.max(1, Math.min(12, Math.trunc(Number(params && params.mes || (now.getMonth() + 1)) || (now.getMonth() + 1))));
+    var ano = Math.max(2000, Math.min(2100, Math.trunc(Number(params && params.ano || now.getFullYear()) || now.getFullYear())));
+    var json = await rrFetchJson('/api/relatorios/ofs-entradas-mes?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano));
+    var resumo = json && json.resumo || {};
+    var rows = rrList(json, ['rows', 'data']);
+    return rrOpenPrint({
+      title: 'Relatório de Valor de OFs que Entraram no Mês',
+      periodo: rrMonthName(mes) + ' / ' + String(ano),
+      cards: [
+        { label: 'OFs do Mês', value: rrFmtNum(resumo.total_ofs || rows.length, 0), sub: 'OFs criadas no período selecionado' },
+        { label: 'Valor Total', value: rrFmtMoney(resumo.valor_total || rows.reduce(function(s, r) { return s + rrNum(r && r.valor_total); }, 0)), sub: 'Somatório do mês' },
+        { label: 'Quantidade Total', value: rrFmtNum(resumo.quantidade_total || rows.reduce(function(s, r) { return s + rrInt(r && r.quantidade); }, 0), 0), sub: 'Itens produzidos/pedidos' },
+        { label: 'Período', value: rrPad2(mes) + '/' + String(ano), sub: rrEsc(String(json && json.data_inicio || '') + ' a ' + String(json && json.data_fim || '')) }
+      ],
+      summaryTitle: 'Resumo mensal',
+      summaryHeaders: ['Mês/Ano', 'OFs', 'Quantidade', 'Valor total'],
+      summaryRows: [[rrEsc(rrPad2(mes) + '/' + String(ano)), rrEsc(rrFmtNum(resumo.total_ofs || rows.length, 0)), rrEsc(rrFmtNum(resumo.quantidade_total || 0, 0)), rrEsc(rrFmtMoney(resumo.valor_total || 0))]],
+      detailTitle: 'OFs que entraram no mês',
+      detailHeaders: ['Data de entrada', 'Nº da OF', 'Cliente', 'Produto', 'Quantidade', 'Valor unitário', 'Valor total'],
+      detailRows: rows.map(function(row) {
+        return [
+          rrEsc(rrFmtDate(row && row.created_at)),
+          rrEsc(String(row && row.numero || '—')),
+          rrEsc(String(row && row.cliente_nome || '—')),
+          rrEsc(String(row && row.produto || '—')),
+          rrEsc(rrFmtNum(row && row.quantidade || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.valor_unitario || 0)),
+          rrEsc(rrFmtMoney(row && row.valor_total || 0))
+        ];
+      }),
+      emptySummaryCols: 4,
+      emptyDetailCols: 7
+    });
+  }
+
+  function rrOpenOfsEntradasMesModal() {
+    var ref = rrMonthYearOptions();
+    rrOpenModal({
+      title: 'Valor de OFs que Entraram no Mês',
+      subtitle: 'Escolha o mês e o ano de referência para gerar o relatório no padrão visual atual.',
+      render: function(body) {
+        body.innerHTML = ''
+          + '<div class="rr-modal-grid">'
+          + '  <div class="rr-modal-field"><label>Mês</label><select id="rr-ofmes-mes">'
+          + Array.from({ length: 12 }).map(function(_, idx) {
+              var mes = idx + 1;
+              return '<option value="' + mes + '"' + (mes === ref.mes ? ' selected' : '') + '>' + rrEsc(rrMonthName(mes)) + '</option>';
+            }).join('')
+          + '  </select></div>'
+          + '  <div class="rr-modal-field"><label>Ano</label><select id="rr-ofmes-ano">'
+          + ref.anos.map(function(ano) { return '<option value="' + ano + '"' + (ano === ref.ano ? ' selected' : '') + '>' + ano + '</option>'; }).join('')
+          + '  </select></div>'
+          + '</div>'
+          + '<div class="rr-modal-actions">'
+          + '  <button type="button" class="rr-btn-ghost" data-rr-close>Cancelar</button>'
+          + '  <button type="button" class="rr-btn" id="rr-ofmes-gerar">Gerar relatório</button>'
+          + '</div>';
+        body.querySelector('#rr-ofmes-gerar').onclick = async function() {
+          var btn = this;
+          btn.disabled = true;
+          btn.textContent = 'Gerando...';
+          try {
+            await rrReportOfsEntradasMes({
+              mes: Number(body.querySelector('#rr-ofmes-mes').value || ref.mes),
+              ano: Number(body.querySelector('#rr-ofmes-ano').value || ref.ano)
+            });
+            rrRemoveModal();
+          } catch (e) {
+            alert('Erro ao gerar relatório: ' + String(e && e.message || e));
+          } finally {
+            btn.disabled = false;
+            btn.textContent = 'Gerar relatório';
+          }
+        };
+      }
+    });
+  }
+
+  function rrSergioState() {
+    if (!window.__rrSergioState || typeof window.__rrSergioState !== 'object') {
+      window.__rrSergioState = {
+        items: [
+          { cliente: '', cliente_id: '', modelo: '', pedido: '', data_prevista: '', data_entrega: '', cidade: '' }
+        ]
+      };
+    }
+    return window.__rrSergioState;
+  }
+
+  function rrSergioCloneItems() {
+    return rrSergioState().items.map(function(item) {
+      return {
+        cliente: String(item && item.cliente || '').trim(),
+        cliente_id: String(item && item.cliente_id || '').trim(),
+        modelo: String(item && item.modelo || '').trim(),
+        pedido: String(item && item.pedido || '').trim(),
+        data_prevista: String(item && item.data_prevista || '').trim(),
+        data_entrega: String(item && item.data_entrega || '').trim(),
+        cidade: String(item && item.cidade || '').trim()
+      };
+    });
+  }
+
+  function rrSergioLargePrintCss() {
+    return 'body{font-size:18px;padding:22px}.brandline{font-size:18px}.cards{gap:10px;margin-bottom:18px}.card{min-width:180px;padding:14px 18px}.lbl{font-size:13px}.val{font-size:28px}.green{font-size:28px}h1{font-size:34px;line-height:1.15}h2{font-size:18px;margin-bottom:16px}h3{font-size:18px!important}table{font-size:19px;margin-bottom:20px}th{font-size:14px;padding:11px 10px}td{padding:12px 10px;font-size:19px;line-height:1.3}.vh{font-size:18px;padding:10px 14px}.footer-print{font-size:12px}@page{margin:12mm 10mm 16mm 10mm}';
+  }
+
+  function rrPrintSergioReport(items) {
+    var rows = (Array.isArray(items) ? items : []).filter(function(item) {
+      return [item && item.cliente, item && item.modelo, item && item.pedido, item && item.data_prevista, item && item.data_entrega, item && item.cidade].some(Boolean);
+    });
+    if (!rows.length) throw new Error('Adicione pelo menos um item antes de gerar o relatório.');
+    var porCliente = {};
+    rows.forEach(function(item) {
+      var key = String(item && item.cliente || 'Sem cliente').trim() || 'Sem cliente';
+      porCliente[key] = (porCliente[key] || 0) + 1;
+    });
+    return rrOpenPrint({
+      title: 'Relatório Sérgio',
+      periodo: 'Montagem manual',
+      printCssExtra: rrSergioLargePrintCss(),
+      cards: [
+        { label: 'Itens', value: rrFmtNum(rows.length, 0), sub: 'Linhas montadas manualmente' },
+        { label: 'Clientes', value: rrFmtNum(Object.keys(porCliente).length, 0), sub: 'Clientes distintos no relatório' },
+        { label: 'Cidades', value: rrFmtNum(Array.from(new Set(rows.map(function(item) { return String(item && item.cidade || '').trim(); }).filter(Boolean))).length, 0), sub: 'Cidades preenchidas' }
+      ],
+      summaryTitle: 'Resumo por cliente',
+      summaryHeaders: ['Cliente', 'Itens'],
+      summaryRows: Object.keys(porCliente).sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); }).map(function(cliente) {
+        return [rrEsc(cliente), rrEsc(rrFmtNum(porCliente[cliente], 0))];
+      }),
+      detailTitle: 'Itens do relatório',
+      detailHeaders: ['Cliente', 'Modelo', 'Número do pedido', 'Data prevista', 'Data de entrega', 'Cidade'],
+      detailRows: rows.map(function(item) {
+        return [
+          rrEsc(item.cliente || '—'),
+          rrEsc(item.modelo || '—'),
+          rrEsc(item.pedido || '—'),
+          rrEsc(item.data_prevista ? rrFmtDate(item.data_prevista) : '—'),
+          rrEsc(item.data_entrega ? rrFmtDate(item.data_entrega) : '—'),
+          rrEsc(item.cidade || '—')
+        ];
+      }),
+      emptySummaryCols: 2,
+      emptyDetailCols: 6
+    });
+  }
+
+  function rrRenderSergioBuilder(body) {
+    var state = rrSergioState();
+    body.innerHTML = ''
+      + '<div id="rr-sergio-builder">'
+      + '  <div class="rr-period-help">Monte o relatório linha por linha. O campo Cliente aceita digitação manual ou autocomplete usando os clientes cadastrados.</div>'
+      + '  <div id="rr-sergio-table-wrap"><table id="rr-sergio-table"><thead><tr>'
+      + '    <th>Cliente</th><th>Modelo</th><th>Número do pedido</th><th>Data prevista</th><th>Data de entrega</th><th>Cidade</th><th style="width:84px">Ações</th>'
+      + '  </tr></thead><tbody>'
+      + state.items.map(function(item, idx) {
+          return ''
+            + '<tr data-rr-sergio-row="' + idx + '">'
+            + '  <td><div class="rr-autocomplete"><input type="text" data-rr-sergio-field="cliente" data-rr-sergio-index="' + idx + '" value="' + rrEsc(item.cliente || '') + '" autocomplete="off" placeholder="Cliente"><input type="hidden" data-rr-sergio-field="cliente_id" data-rr-sergio-index="' + idx + '" value="' + rrEsc(item.cliente_id || '') + '"><div class="rr-suggest" data-rr-suggest="' + idx + '"></div></div></td>'
+            + '  <td><input type="text" data-rr-sergio-field="modelo" data-rr-sergio-index="' + idx + '" value="' + rrEsc(item.modelo || '') + '" placeholder="Modelo"></td>'
+            + '  <td><input type="text" data-rr-sergio-field="pedido" data-rr-sergio-index="' + idx + '" value="' + rrEsc(item.pedido || '') + '" placeholder="Pedido"></td>'
+            + '  <td><input type="date" data-rr-sergio-field="data_prevista" data-rr-sergio-index="' + idx + '" value="' + rrEsc(item.data_prevista || '') + '"></td>'
+            + '  <td><input type="date" data-rr-sergio-field="data_entrega" data-rr-sergio-index="' + idx + '" value="' + rrEsc(item.data_entrega || '') + '"></td>'
+            + '  <td><input type="text" data-rr-sergio-field="cidade" data-rr-sergio-index="' + idx + '" value="' + rrEsc(item.cidade || '') + '" placeholder="Cidade"></td>'
+            + '  <td><button type="button" class="rr-row-remove" data-rr-sergio-remove="' + idx + '">Remover</button></td>'
+            + '</tr>';
+        }).join('')
+      + '  </tbody></table></div>'
+      + '  <div class="rr-modal-actions">'
+      + '    <button type="button" class="rr-btn-ghost" id="rr-sergio-add">+ Adicionar item</button>'
+      + '    <button type="button" class="rr-btn" id="rr-sergio-print">Gerar relatório</button>'
+      + '  </div>'
+      + '</div>';
+
+    Array.prototype.slice.call(body.querySelectorAll('[data-rr-sergio-field]')).forEach(function(input) {
+      input.oninput = function() {
+        var idx = Number(input.getAttribute('data-rr-sergio-index') || 0);
+        var field = String(input.getAttribute('data-rr-sergio-field') || '').trim();
+        if (!state.items[idx]) return;
+        state.items[idx][field] = input.value;
+        if (field === 'cliente') {
+          state.items[idx].cliente_id = '';
+          var suggest = body.querySelector('[data-rr-suggest="' + idx + '"]');
+          var q = String(input.value || '').trim();
+          if (!q || q.length < 2) {
+            if (suggest) suggest.style.display = 'none';
+            return;
+          }
+          rrFetchClientesLite(q).then(function(rows) {
+            if (!suggest) return;
+            if (!rows.length) {
+              suggest.style.display = 'none';
+              return;
+            }
+            suggest.innerHTML = rows.map(function(row) {
+              var cidade = [row.cidade, row.uf].filter(Boolean).join(' / ');
+              return '<button type="button" data-rr-pick="' + idx + '" data-id="' + rrEsc(row.id) + '" data-nome="' + rrEsc(row.nome) + '" data-cidade="' + rrEsc(cidade) + '">' + rrEsc(row.nome) + (cidade ? ('<div style="font-size:11px;color:#94a3b8;margin-top:3px">' + rrEsc(cidade) + '</div>') : '') + '</button>';
+            }).join('');
+            suggest.style.display = 'block';
+            Array.prototype.slice.call(suggest.querySelectorAll('[data-rr-pick]')).forEach(function(btn) {
+              btn.onclick = function() {
+                var pickIdx = Number(btn.getAttribute('data-rr-pick') || idx);
+                var nome = String(btn.getAttribute('data-nome') || '').trim();
+                var id = String(btn.getAttribute('data-id') || '').trim();
+                var cidade = String(btn.getAttribute('data-cidade') || '').trim();
+                if (!state.items[pickIdx]) return;
+                state.items[pickIdx].cliente = nome;
+                state.items[pickIdx].cliente_id = id;
+                if (!state.items[pickIdx].cidade && cidade) state.items[pickIdx].cidade = cidade;
+                rrRenderSergioBuilder(body);
+              };
+            });
+          });
+        }
+      };
+      input.onfocus = function() {
+        if (String(input.getAttribute('data-rr-sergio-field') || '') !== 'cliente') return;
+        if (String(input.value || '').trim().length >= 2) input.oninput();
+      };
+    });
+
+    Array.prototype.slice.call(body.querySelectorAll('[data-rr-sergio-remove]')).forEach(function(btn) {
+      btn.onclick = function() {
+        var idx = Number(btn.getAttribute('data-rr-sergio-remove') || 0);
+        state.items.splice(idx, 1);
+        if (!state.items.length) state.items.push({ cliente: '', cliente_id: '', modelo: '', pedido: '', data_prevista: '', data_entrega: '', cidade: '' });
+        rrRenderSergioBuilder(body);
+      };
+    });
+
+    body.querySelector('#rr-sergio-add').onclick = function() {
+      state.items.push({ cliente: '', cliente_id: '', modelo: '', pedido: '', data_prevista: '', data_entrega: '', cidade: '' });
+      rrRenderSergioBuilder(body);
+    };
+
+    body.querySelector('#rr-sergio-print').onclick = function() {
+      rrPrintSergioReport(rrSergioCloneItems());
+    };
+  }
+
+  function rrOpenSergioBuilder() {
+    rrOpenModal({
+      title: 'Relatório Sérgio',
+      subtitle: 'Monte vários itens manualmente e gere a impressão em fonte ampliada para leitura à distância.',
+      render: function(body) {
+        rrRenderSergioBuilder(body);
+      }
+    });
+  }
+
   var rrDefs = [
     { id: 'passagens', label: 'Histórico de Passagens', icon: '🕒', desc: 'Passagens registradas nas máquinas com resumo e detalhamento.', run: rrReportPassagens },
     { id: 'comissoes', label: 'Comissões', icon: '💵', desc: 'Resumo por vendedor e detalhamento das OFs comissionadas.', run: rrReportComissoes },
@@ -1360,7 +1699,9 @@ try {
     { id: 'vendas-por-ramo', label: 'Vendas por Ramo de Atividade', icon: '🏷️', desc: 'Agrupa as vendas concluídas por clientes.ramo.', run: rrReportVendasPorRamo },
     { id: 'chapas-abaixo-200', label: 'Chapas abaixo de 200 no estoque', icon: '🧾', desc: 'Lista as chapas com necessidade de reposição imediata.', run: rrReportChapasAbaixo200 },
     { id: 'clientes-menos-compraram', label: 'Clientes que menos compraram', icon: '📉', desc: 'Ranking do menor para o maior valor comprado no período.', run: rrReportClientesMenosCompraram },
-    { id: 'clientes-inativos', label: 'Clientes inativos', icon: '🕳️', desc: 'Clientes sem OF concluída no período selecionado.', run: rrReportClientesInativos }
+    { id: 'clientes-inativos', label: 'Clientes inativos', icon: '🕳️', desc: 'Clientes sem OF concluída no período selecionado.', run: rrReportClientesInativos },
+    { id: 'ofs-entradas-mes', label: 'Valor de OFs que entraram no mês', icon: '🧮', desc: 'Lista OFs criadas no mês/ano escolhido com valor unitário, total e somatório mensal.', run: rrOpenOfsEntradasMesModal },
+    { id: 'relatorio-sergio', label: 'Relatório Sérgio', icon: '📝', desc: 'Montagem manual com múltiplos itens, autocomplete de clientes e impressão com fonte ampliada.', run: rrOpenSergioBuilder }
   ];
 
   async function rrOpen(def) {
@@ -18748,8 +19089,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var cards = Array.isArray(cfg.cards) ? cfg.cards : [];
     var summaryRows = Array.isArray(cfg.summaryRows) ? cfg.summaryRows : [];
     var detailRows = Array.isArray(cfg.detailRows) ? cfg.detailRows : [];
+    var introHtml = String(cfg.introHtml || '');
+    var extraCss = String(cfg.printCssExtra || '');
     return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + String(cfg.title || 'Relatório').replace(/</g, '&lt;') + '</title>'
-      + '<style>' + _printCssPadraoComissoes() + '</style>'
+      + '<style>' + _printCssPadraoComissoes() + extraCss + '</style>'
       + '</head><body>'
       + '<div class="brandline">Italy Embalagens</div>'
       + '<h2>Gerado em ' + window._printEscText(_printGeradoEmBr()) + '</h2>'
@@ -18759,6 +19102,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         return '<div class="card"><div class="lbl">' + window._printEscText(card && card.label || '') + '</div><div class="val' + (card && card.green ? ' green' : '') + '">' + window._printEscText(card && card.value || '0') + '</div><div style="font-size:11px;color:#666;margin-top:6px">' + window._printEscText(card && card.sub || '') + '</div></div>';
       }).join('')
       + '</div>'
+      + introHtml
       + '<h3 style="margin-bottom:8px;font-size:13px">' + window._printEscText(cfg.summaryTitle || 'Tabela-resumo') + '</h3>'
       + '<table class="zebra"><thead><tr>' + (Array.isArray(cfg.summaryHeaders) ? cfg.summaryHeaders : []).map(function(head) { return '<th>' + window._printEscText(head || '') + '</th>'; }).join('') + '</tr></thead><tbody>'
       + (summaryRows.length ? summaryRows.map(function(row) { return '<tr>' + (Array.isArray(row) ? row : []).map(function(col) { return '<td>' + String(col == null ? '' : col) + '</td>'; }).join('') + '</tr>'; }).join('') : '<tr><td colspan="' + String(cfg.emptySummaryCols || 1) + '">Nenhum registro encontrado.</td></tr>')
