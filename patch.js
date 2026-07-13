@@ -1309,20 +1309,19 @@ try {
   }
 
   async function rrReportClientesInativos() {
-    var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/relatorios/clientes-inativos?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson('/api/relatorios/clientes-inativos?dias=30');
     var resumo = json && json.resumo || {};
     var rows = rrList(json, ['rows', 'data']);
     return rrOpenPrint({
       title: 'Relatório de Clientes Inativos',
-      periodo: ref.titulo,
+      periodo: 'Clientes sem compra há mais de 30 dias',
       cards: [
-        { label: 'Clientes Inativos', value: rrFmtNum(resumo.total_clientes || rows.length, 0), sub: 'Sem OF concluída no período selecionado' },
-        { label: 'Sem Compra 30+ Dias', value: rrFmtNum(resumo.sem_compra_30_dias || 0, 0), sub: 'Considerando a última compra histórica' },
+        { label: 'Clientes Inativos', value: rrFmtNum(resumo.total_clientes || rows.length, 0), sub: 'Sem OF concluída há mais de 30 dias' },
+        { label: 'Sem Compra 30+ Dias', value: rrFmtNum(resumo.sem_compra_30_dias || 0, 0), sub: 'Inclui clientes que nunca compraram' },
         { label: 'Última Compra Mais Antiga', value: rows[0] ? rrFmtDate(rows[0].data_ultima_compra) : '—', sub: rows[0] ? String(rows[0].cliente_nome || '—') : 'Sem dados' },
-        { label: 'Período', value: ref.titulo, sub: 'Filtro universal aplicado' }
+        { label: 'Janela', value: '30 dias', sub: 'Parâmetro padrão do relatório' }
       ],
-      summaryTitle: 'Clientes sem compra no período',
+      summaryTitle: 'Clientes sem comprar há mais de 30 dias',
       summaryHeaders: ['Cliente', 'Data da última compra', 'Há quantos dias sem comprar'],
       summaryRows: rows.map(function(row) {
         return [

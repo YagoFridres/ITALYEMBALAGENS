@@ -6077,79 +6077,65 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
 
 app.get('/api/relatorios/clientes-inativos', authMiddleware, async (req, res) => {
   try {
+    setNoCache(res);
     const empresa_id = await _resolveEmpresaUuid(req);
     if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
-    const diasMinimo = Math.max(1, parseInt(String(req.query.dias || '30'), 10) || 30);
-
-    const { data: ofs, error: ofsErr } = await supabase
-      .from('ofs')
-      .select('cliente_id,created_at,data_entrega')
-      .eq('empresa_id', empresa_id)
-      .not('cliente_id', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(10000);
-    if (ofsErr) throw ofsErr;
-
-    const ultimoPorCliente = {};
-    (Array.isArray(ofs) ? ofs : []).forEach((of) => {
-      const cid = of?.cliente_id;
-      if (!cid) return;
-      const dt = of?.created_at ? new Date(of.created_at) : null;
-      if (!dt || Number.isNaN(dt.getTime())) return;
-      if (!ultimoPorCliente[cid] || dt > ultimoPorCliente[cid]) ultimoPorCliente[cid] = dt;
-    });
-
+    const diasMinimos = Math.max(1, parseInt(String(req.query.dias || '30'), 10) || 30);
     const hoje = new Date();
-    const clientesInativos = Object.entries(ultimoPorCliente)
-      .map(([cliente_id, data]) => ({
-        cliente_id,
-        ultimo_pedido: (data instanceof Date) ? data.toISOString() : String(data),
-        dias_sem_pedido: Math.floor((hoje.getTime() - (data instanceof Date ? data.getTime() : new Date(data).getTime())) / 86400000),
-      }))
-      .filter((c) => Number(c.dias_sem_pedido || 0) >= diasMinimo)
-      .sort((a, b) => Number(b.dias_sem_pedido || 0) - Number(a.dias_sem_pedido || 0));
+    const msDia = 86400000;
 
-    if (!clientesInativos.length) return res.json({ ok: true, data: [] });
-
-    const ids = clientesInativos.map((c) => String(c.cliente_id || '').trim()).filter(Boolean);
-    const { data: clientes, error: cliErr } = await supabase
+    const { data: clientesRaw, error: clientesError } = await supabase
       .from('clientes')
-      .select('id,nome,telefone,tel,email,cidade,uf,cnpj,documento,endereco,ativo,vendedor_id')
-      .in('id', ids)
-      .limit(10000);
-    if (cliErr) throw cliErr;
+      .select('id,nome,empresa_id,created_at')
+      .eq('empresa_id', empresa_id)
+      .limit(5000);
+    if (clientesError) throw clientesError;
+    const clientes = (Array.isArray(clientesRaw) ? clientesRaw : []).filter((cli) => cli && _isUuid(String(cli?.id || '').trim()));
 
-    const clientesMap = {};
-    (Array.isArray(clientes) ? clientes : []).forEach((c) => { if (c?.id) clientesMap[String(c.id)] = c; });
+    const ofsHistorico = await _relatoriosFetchOfsConcluidas({
+      inicio: '2000-01-01',
+      fim: '2100-01-01',
+      fim_exclusivo: '2100-01-02'
+    }, { companyIds: [empresa_id] });
 
-    const vendIds = Array.from(new Set((Array.isArray(clientes) ? clientes : []).map((c) => String(c?.vendedor_id || '').trim()).filter(_isUuid))).slice(0, 10000);
-    const vendMap = {};
-    if (vendIds.length) {
-      const { data: usrs, error: usrErr } = await supabase.from('usuarios').select('id,nome,email').in('id', vendIds).limit(10000);
-      if (usrErr) throw usrErr;
-      (Array.isArray(usrs) ? usrs : []).forEach((u) => { if (u?.id) vendMap[String(u.id)] = u; });
-    }
-
-    const resultado = clientesInativos.map((c) => {
-      const dados = clientesMap[String(c.cliente_id)] || {};
-      const vend = dados?.vendedor_id ? vendMap[String(dados.vendedor_id)] : null;
-      return {
-        cliente_id: c.cliente_id,
-        ultimo_pedido: c.ultimo_pedido,
-        dias_sem_pedido: c.dias_sem_pedido,
-        nome: dados.nome || '—',
-        telefone: dados.telefone || dados.tel || '—',
-        email: dados.email || '—',
-        cidade: dados.cidade || '—',
-        uf: dados.uf || '—',
-        cnpj: dados.cnpj || dados.documento || '—',
-        vendedor: vend?.nome || '—',
-        vendedor_email: vend?.email || '—',
-        ativo: dados.ativo,
-      };
+    const ultimaCompra = new Map();
+    ofsHistorico.forEach((of) => {
+      const cliId = _assistPickOfClienteId(of);
+      if (!_isUuid(cliId)) return;
+      const data = String(_assistPickOfConclusao(of) || '').slice(0, 10);
+      if (!data) return;
+      if (!ultimaCompra.has(cliId) || String(ultimaCompra.get(cliId)) < data) ultimaCompra.set(cliId, data);
     });
 
-    return res.json({ ok: true, data: resultado });
+    const rows = clientes.map((cli) => {
+      const id = String(cli?.id || '').trim();
+      const ultima = String(ultimaCompra.get(id) || '').trim() || null;
+      const diasSemComprar = ultima ? Math.max(0, Math.floor((hoje.getTime() - new Date(`${ultima}T12:00:00`).getTime()) / msDia)) : null;
+      return {
+        cliente_id: id,
+        cliente_nome: String(cli?.nome || '—').trim() || '—',
+        data_ultima_compra: ultima,
+        dias_sem_comprar: diasSemComprar
+      };
+    }).filter((item) => {
+      if (item.data_ultima_compra == null) return true;
+      return Number(item?.dias_sem_comprar || 0) >= diasMinimos;
+    }).sort((a, b) => {
+      if (a.data_ultima_compra == null && b.data_ultima_compra != null) return -1;
+      if (a.data_ultima_compra != null && b.data_ultima_compra == null) return 1;
+      if ((a.data_ultima_compra || '') !== (b.data_ultima_compra || '')) return String(a.data_ultima_compra || '').localeCompare(String(b.data_ultima_compra || ''));
+      return String(a.cliente_nome || '').localeCompare(String(b.cliente_nome || ''), 'pt-BR');
+    });
+
+    return res.json({
+      ok: true,
+      dias_minimos: diasMinimos,
+      resumo: {
+        total_clientes: rows.length,
+        sem_compra_30_dias: rows.filter((item) => item.data_ultima_compra == null || Number(item?.dias_sem_comprar || 0) >= 30).length
+      },
+      rows
+    });
   } catch (e) {
     console.error('[CLIENTES INATIVOS]', e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -11326,77 +11312,6 @@ app.get('/api/relatorios/chapas-abaixo-200', authMiddleware, async (req, res) =>
     });
   } catch (e) {
     console.error('[RELATORIOS][CHAPAS-ABAIXO-200]', e?.message || e);
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
-  }
-});
-
-app.get('/api/relatorios/clientes-inativos', authMiddleware, async (req, res) => {
-  try {
-    setNoCache(res);
-    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
-    const diasMinimos = Math.max(0, Math.trunc(Number(req.query.dias || 0) || 0));
-    if (!range?.inicio || !range?.fim_exclusivo) {
-      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
-    }
-    let empresa_id = null;
-    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
-    let qCli = supabase.from('clientes').select('id,nome,ramo,ativo,created_at,empresa_id').limit(5000);
-    if (empresa_id) qCli = qCli.eq('empresa_id', empresa_id);
-    const { data: clientesRaw, error: clientesError } = await qCli;
-    if (clientesError) throw clientesError;
-    const clientes = (Array.isArray(clientesRaw) ? clientesRaw : []).filter((cli) => cli && String(cli?.id || '').trim());
-    const companyIds = empresa_id ? [empresa_id] : [];
-    const ofsPeriodo = await _relatoriosFetchOfsConcluidas(range, { companyIds });
-    const ofsHistorico = await _relatoriosFetchOfsConcluidas({
-      inicio: '2000-01-01',
-      fim: '2100-01-01',
-      fim_exclusivo: '2100-01-02'
-    }, { companyIds });
-    const clientesAtivosPeriodo = new Set(ofsPeriodo.map((of) => _assistPickOfClienteId(of)).filter(_isUuid));
-    const ultimaCompra = new Map();
-    ofsHistorico.forEach((of) => {
-      const cliId = _assistPickOfClienteId(of);
-      if (!_isUuid(cliId)) return;
-      const data = String(_assistPickOfConclusao(of) || '').slice(0, 10);
-      if (!data) return;
-      if (!ultimaCompra.has(cliId) || String(ultimaCompra.get(cliId)) < data) ultimaCompra.set(cliId, data);
-    });
-    const hoje = new Date();
-    const msDia = 86400000;
-    const rows = clientes.map((cli) => {
-      const id = String(cli?.id || '').trim();
-      const ultima = String(ultimaCompra.get(id) || '').trim() || null;
-      const diasSemComprar = ultima ? Math.max(0, Math.floor((hoje.getTime() - new Date(`${ultima}T12:00:00`).getTime()) / msDia)) : null;
-      return {
-        cliente_id: id,
-        cliente_nome: String(cli?.nome || '—').trim() || '—',
-        data_ultima_compra: ultima,
-        dias_sem_comprar: diasSemComprar
-      };
-    }).filter((item) => !clientesAtivosPeriodo.has(item.cliente_id)).filter((item) => {
-      if (!diasMinimos) return true;
-      return Number(item?.dias_sem_comprar || 0) >= diasMinimos;
-    }).sort((a, b) => {
-      if ((a.data_ultima_compra || '') !== (b.data_ultima_compra || '')) {
-        if (!a.data_ultima_compra) return -1;
-        if (!b.data_ultima_compra) return 1;
-        return String(a.data_ultima_compra).localeCompare(String(b.data_ultima_compra));
-      }
-      return String(a.cliente_nome || '').localeCompare(String(b.cliente_nome || ''), 'pt-BR');
-    });
-    return res.json({
-      ok: true,
-      data_inicio: range.inicio,
-      data_fim: range.fim,
-      dias_minimos: diasMinimos,
-      resumo: {
-        total_clientes: rows.length,
-        sem_compra_30_dias: rows.filter((item) => Number(item?.dias_sem_comprar || 0) >= 30).length
-      },
-      rows
-    });
-  } catch (e) {
-    console.error('[RELATORIOS][CLIENTES-INATIVOS]', e?.message || e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
