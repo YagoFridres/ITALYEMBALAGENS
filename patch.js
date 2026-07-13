@@ -350,6 +350,669 @@ try {
   try { window.__authPatchClear = _authClear; } catch (_) {}
 })();
 ;(function() {
+  if (window.__relatoriosCentralV1Applied) return;
+  window.__relatoriosCentralV1Applied = true;
+
+  function rrLog() {
+    try {
+      var args = Array.prototype.slice.call(arguments || []);
+      args.unshift('[RELATORIOS]');
+      console.log.apply(console, args);
+    } catch (_) {}
+  }
+
+  function rrEsc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function rrNum(v) {
+    var n = Number(v || 0);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function rrInt(v) {
+    return Math.max(0, Math.trunc(rrNum(v)));
+  }
+
+  function rrFmtNum(v, d) {
+    var num = rrNum(v);
+    try {
+      return num.toLocaleString('pt-BR', {
+        minimumFractionDigits: d || 0,
+        maximumFractionDigits: d || 0
+      });
+    } catch (_) {
+      return String(num);
+    }
+  }
+
+  function rrFmtMoney(v) {
+    return 'R$ ' + rrFmtNum(rrNum(v), 2);
+  }
+
+  function rrFmtDate(v) {
+    if (!v) return '—';
+    try {
+      var d = new Date(v);
+      if (!Number.isFinite(d.getTime())) return '—';
+      return d.toLocaleDateString('pt-BR');
+    } catch (_) {
+      return '—';
+    }
+  }
+
+  function rrFmtDateTime(v) {
+    if (!v) return '—';
+    try {
+      var d = new Date(v);
+      if (!Number.isFinite(d.getTime())) return '—';
+      return d.toLocaleString('pt-BR');
+    } catch (_) {
+      return '—';
+    }
+  }
+
+  function rrMonthRef() {
+    var now = new Date();
+    return {
+      ano: now.getFullYear(),
+      mes: now.getMonth() + 1
+    };
+  }
+
+  function rrMonthRange() {
+    var ref = rrMonthRef();
+    var ini = new Date(ref.ano, ref.mes - 1, 1);
+    var fim = new Date(ref.ano, ref.mes, 0);
+    return {
+      mes: ref.mes,
+      ano: ref.ano,
+      data_inicio: ini.toISOString().slice(0, 10),
+      data_fim: fim.toISOString().slice(0, 10),
+      titulo: String(ref.mes).padStart(2, '0') + '/' + String(ref.ano)
+    };
+  }
+
+  function rrToken() {
+    try {
+      return String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || '').trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function rrHeaders(extra) {
+    var headers = Object.assign({}, extra || {});
+    var token = rrToken();
+    if (token) headers.Authorization = 'Bearer ' + token;
+    return headers;
+  }
+
+  async function rrFetchJson(url) {
+    var resp = await fetch(url, { cache: 'no-store', headers: rrHeaders() });
+    var json = await resp.json().catch(function() { return null; });
+    if (!resp.ok || (json && json.ok === false)) {
+      throw new Error(String(json && (json.error || json.message) || ('HTTP ' + resp.status)));
+    }
+    return json;
+  }
+
+  function rrList(payload, keys) {
+    if (Array.isArray(payload)) return payload;
+    var arr = [];
+    (Array.isArray(keys) ? keys : []).some(function(key) {
+      if (Array.isArray(payload && payload[key])) {
+        arr = payload[key];
+        return true;
+      }
+      return false;
+    });
+    return Array.isArray(arr) ? arr : [];
+  }
+
+  function rrHost() {
+    var main = document.querySelector('.content, #content, .content-wrapper, .main-area, #main-content, #page-content, body > div:last-child');
+    if (!main) return null;
+    var host = document.getElementById('patch-page-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'patch-page-host';
+      host.className = 'page';
+      host.style.cssText = 'display:none;flex:1;overflow-y:auto;padding:20px;background:var(--bg)';
+      host.innerHTML = ''
+        + '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">'
+        + '  <h2 id="patch-page-title" style="margin:0;color:var(--text);font-size:18px"></h2>'
+        + '</div>'
+        + '<div id="patch-page-body"></div>';
+      main.appendChild(host);
+    }
+    try {
+      document.querySelectorAll('[id^="page-"]').forEach(function(el) {
+        if (el !== host) el.style.display = 'none';
+      });
+    } catch (_) {}
+    try { host.style.display = 'block'; } catch (_) {}
+    try { document.getElementById('patch-page-title').textContent = '🖨 Central de Relatórios'; } catch (_) {}
+    try { window._PAGE_ATUAL = 'relatorios'; } catch (_) {}
+    return document.getElementById('patch-page-body');
+  }
+
+  function rrEnsureStyle() {
+    if (document.getElementById('patch-relatorios-central-style')) return;
+    var st = document.createElement('style');
+    st.id = 'patch-relatorios-central-style';
+    st.textContent = ''
+      + '#patch-relatorios-central{display:grid;gap:16px}'
+      + '#patch-relatorios-central .rr-panel{background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:18px}'
+      + '#patch-relatorios-central .rr-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}'
+      + '#patch-relatorios-central .rr-title{font-size:24px;font-weight:900;color:#f8fafc}'
+      + '#patch-relatorios-central .rr-sub{margin-top:6px;font-size:13px;color:#94a3b8;max-width:860px}'
+      + '#patch-relatorios-central .rr-badge{display:inline-flex;align-items:center;padding:7px 12px;border-radius:999px;background:rgba(24,95,165,.16);color:#93c5fd;border:1px solid rgba(59,130,246,.28);font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}'
+      + '#patch-relatorios-central .rr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}'
+      + '#patch-relatorios-central .rr-card{display:grid;gap:14px;background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:18px}'
+      + '#patch-relatorios-central .rr-card:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.32)}'
+      + '#patch-relatorios-central .rr-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}'
+      + '#patch-relatorios-central .rr-icon{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,rgba(24,95,165,.22),rgba(37,99,235,.2));font-size:22px}'
+      + '#patch-relatorios-central .rr-label{font-size:16px;font-weight:900;color:#f8fafc}'
+      + '#patch-relatorios-central .rr-desc{font-size:12px;color:#94a3b8;line-height:1.45}'
+      + '#patch-relatorios-central .rr-btn{display:inline-flex;align-items:center;justify-content:center;padding:11px 14px;border:none;border-radius:12px;background:linear-gradient(135deg,#185FA5,#2563eb);color:#fff;font-size:13px;font-weight:900;cursor:pointer}'
+      + '#patch-relatorios-central .rr-btn:disabled{opacity:.6;cursor:wait}'
+      + '@media (max-width:760px){#patch-relatorios-central .rr-grid{grid-template-columns:1fr}}';
+    document.head.appendChild(st);
+  }
+
+  function rrPassagensProduto(row) {
+    return String(row && (row.produto || row.descricao || row.prodDesc || (row.itens && row.itens[0] && row.itens[0].desc) || '') || '').trim() || '—';
+  }
+
+  function rrPassagensCliente(row) {
+    return String(row && (row.cliente_nome || row.cliente || row.clinome || row.cliNome) || '').trim() || '—';
+  }
+
+  function rrPassagensMaquina(row) {
+    return String(row && (row.maquina_nome || row.maquina || row.maq) || '').trim() || '—';
+  }
+
+  function rrPassagensValorUnit(row) {
+    return rrNum(row && (row.valor_unitario != null ? row.valor_unitario : row.preco));
+  }
+
+  function rrPassagensQtd(row) {
+    return rrInt(row && (row.qtd_produzida != null ? row.qtd_produzida : (row.quantidade != null ? row.quantidade : row.qtd)));
+  }
+
+  function rrPassagensValorTotal(row) {
+    return rrNum(row && (row.valor_total != null ? row.valor_total : row.valor_venda));
+  }
+
+  function rrOpenPrint(cfg) {
+    if (typeof window._buildStyledPrintHtml !== 'function' || typeof window._openStyledPrintWindow !== 'function') {
+      throw new Error('Infra de impressão indisponível');
+    }
+    return window._openStyledPrintWindow(window._buildStyledPrintHtml(cfg));
+  }
+
+  async function rrReportPassagens() {
+    var ref = rrMonthRange();
+    var json = await rrFetchJson('/api/passagens/historico?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim) + '&limit=1000');
+    var rows = rrList(json, ['passagens', 'data']);
+    var resumoMap = new Map();
+    rows.forEach(function(row) {
+      var maq = rrPassagensMaquina(row);
+      if (!resumoMap.has(maq)) resumoMap.set(maq, { maquina: maq, total_ofs: 0, valor_total: 0, caixas: 0 });
+      var item = resumoMap.get(maq);
+      item.total_ofs += 1;
+      item.valor_total += rrPassagensValorTotal(row);
+      item.caixas += rrPassagensQtd(row);
+    });
+    var resumoRows = Array.from(resumoMap.values()).sort(function(a, b) {
+      return (b.valor_total - a.valor_total) || String(a.maquina || '').localeCompare(String(b.maquina || ''), 'pt-BR');
+    });
+    return rrOpenPrint({
+      title: 'Relatório de Histórico de Passagens',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Passagens', value: rrFmtNum(rows.length, 0), sub: 'Linhas no período' },
+        { label: 'Valor Produzido', value: rrFmtMoney(rows.reduce(function(s, r) { return s + rrPassagensValorTotal(r); }, 0)), sub: 'Somatório do período' },
+        { label: 'Caixas Produzidas', value: rrFmtNum(rows.reduce(function(s, r) { return s + rrPassagensQtd(r); }, 0), 0), sub: 'Quantidade total' },
+        { label: 'Máquinas', value: rrFmtNum(resumoRows.length, 0), sub: 'Máquinas com passagens' }
+      ],
+      summaryTitle: 'Resumo por máquina',
+      summaryHeaders: ['Máquina', 'Passagens', 'Caixas', 'Valor Total'],
+      summaryRows: resumoRows.map(function(row) {
+        return [rrEsc(row.maquina), rrEsc(rrFmtNum(row.total_ofs, 0)), rrEsc(rrFmtNum(row.caixas, 0)), rrEsc(rrFmtMoney(row.valor_total))];
+      }),
+      detailTitle: 'Detalhamento',
+      detailHeaders: ['OF', 'Cliente', 'Produto', 'Status', 'Máquina', 'Qtd', 'Valor Unit.', 'Valor Total', 'Data'],
+      detailRows: rows.map(function(row) {
+        return [
+          rrEsc(String(row && (row.of_numero || row.numero || row.of) || '—')),
+          rrEsc(rrPassagensCliente(row)),
+          rrEsc(rrPassagensProduto(row)),
+          rrEsc(String(row && row.status || '—')),
+          rrEsc(rrPassagensMaquina(row)),
+          rrEsc(rrFmtNum(rrPassagensQtd(row), 0)),
+          rrEsc(rrFmtMoney(rrPassagensValorUnit(row))),
+          rrEsc(rrFmtMoney(rrPassagensValorTotal(row))),
+          rrEsc(rrFmtDateTime(row && (row.hora_passagem || row.data_conclusao || row.data_passagem)))
+        ];
+      }),
+      emptySummaryCols: 4,
+      emptyDetailCols: 9
+    });
+  }
+
+  async function rrReportComissoes() {
+    var ref = rrMonthRange();
+    var json = await rrFetchJson('/api/comissoes/relatorio?mes=' + encodeURIComponent(String(ref.mes)) + '&ano=' + encodeURIComponent(String(ref.ano)));
+    var vendedores = rrList(json, ['vendedores']);
+    var ofs = rrList(json, ['ofs']);
+    return rrOpenPrint({
+      title: 'Relatório de Comissões',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Total Vendido', value: rrFmtMoney(json && json.total_vendido || 0), sub: 'Período selecionado' },
+        { label: 'Total Comissão', value: rrFmtMoney(json && json.total_comissao || 0), sub: 'Comissões calculadas' },
+        { label: 'OFs', value: rrFmtNum(json && json.total_ofs || 0, 0), sub: 'Pedidos concluídos' },
+        { label: 'Vendedores', value: rrFmtNum(vendedores.length, 0), sub: 'Comissionados no período' }
+      ],
+      summaryTitle: 'Resumo por vendedor',
+      summaryHeaders: ['Vendedor', 'OFs', 'Total Vendido', '%', 'Comissão'],
+      summaryRows: vendedores.map(function(v) {
+        return [
+          rrEsc(v && v.nome || '—'),
+          rrEsc(rrFmtNum(v && v.ofs || 0, 0)),
+          rrEsc(rrFmtMoney(v && v.total || 0)),
+          rrEsc(rrFmtNum(v && v.comissao_pct || 0, 2) + '%'),
+          rrEsc(rrFmtMoney(v && v.comissao_rs || 0))
+        ];
+      }),
+      detailTitle: 'Detalhamento',
+      detailHeaders: ['OF', 'Cliente', 'Vendedor', 'Valor Total', '%', 'Comissão', 'Data Conclusão', 'Status'],
+      detailRows: ofs.map(function(of) {
+        return [
+          rrEsc(String(of && (of.numero || of.of_numero || of.of) || '—')),
+          rrEsc(String(of && of.cliente || '—')),
+          rrEsc(String(of && of.vendedor || '—')),
+          rrEsc(rrFmtMoney(of && of.valor_total || 0)),
+          rrEsc(rrFmtNum(of && of.comissao_pct || 0, 2) + '%'),
+          rrEsc(rrFmtMoney(of && of.comissao_rs || 0)),
+          rrEsc(rrFmtDate(of && (of.data_conclusao || of.created_at))),
+          rrEsc(String(of && of.status || '—'))
+        ];
+      }),
+      emptySummaryCols: 5,
+      emptyDetailCols: 8
+    });
+  }
+
+  async function rrReportCaixasPerdidas() {
+    var ref = rrMonthRange();
+    var json = await rrFetchJson('/api/caixas-perdidas/dashboard?periodo=mes&mes=' + encodeURIComponent(String(ref.mes)) + '&ano=' + encodeURIComponent(String(ref.ano)));
+    var rows = rrList(json, ['detalhamento']);
+    var rankingMaq = rrList(json, ['ranking_maquinas']);
+    var rankingOps = rrList(json, ['ranking_operadores']);
+    var resumo = json && json.resumo_mes_atual || {};
+    return rrOpenPrint({
+      title: 'Relatório de Caixas Perdidas',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Caixas Perdidas', value: rrFmtNum(resumo.total_caixas || rows.reduce(function(s, r) { return s + rrInt(r && (r.quantidade_perdida || r.qtd_perdida || r.qtd)); }, 0), 0), sub: 'Total do período' },
+        { label: 'Valor Perdido', value: rrFmtMoney(resumo.valor_total || rows.reduce(function(s, r) { return s + rrNum(r && (r.valor_perdido || r.valor_total)); }, 0), 0), sub: 'Impacto estimado' },
+        { label: 'Ocorrências', value: rrFmtNum(resumo.total_ocorrencias || rows.length, 0), sub: 'Registros detalhados' },
+        { label: 'Máquinas', value: rrFmtNum(rankingMaq.length, 0), sub: 'Máquinas com perdas' }
+      ],
+      summaryTitle: 'Ranking consolidado',
+      summaryHeaders: ['Tipo', 'Nome', 'Caixas Perdidas'],
+      summaryRows: []
+        .concat(rankingMaq.slice(0, 5).map(function(item) { return ['Máquina', item && item.maquina || '—', rrFmtNum(item && (item.total || item.valor || item.qtd) || 0, 0)]; }))
+        .concat(rankingOps.slice(0, 5).map(function(item) { return ['Operador', item && item.operador || '—', rrFmtNum(item && (item.total || item.valor || item.qtd) || 0, 0)]; })),
+      detailTitle: 'Detalhamento',
+      detailHeaders: ['Data', 'OF', 'Cliente', 'Produto', 'Máquinas', 'Operadores', 'Qtd Perdida', 'Valor'],
+      detailRows: rows.map(function(r) {
+        var maquinas = Array.isArray(r && r.maquinas) ? r.maquinas.join(' | ') : String(r && (r.maquina || r.maquina_nome) || '—');
+        var operadores = Array.isArray(r && r.operadores) ? r.operadores.join(' | ') : String(r && r.operador || '—');
+        return [
+          rrEsc(rrFmtDate(r && (r.data_conclusao || r.data || r.data_perda || r.created_at))),
+          rrEsc(String(r && (r.of_numero || r.of || r.numero) || '—')),
+          rrEsc(String(r && (r.cliente_nome || r.cliente) || '—')),
+          rrEsc(String(r && (r.produto || r.descricao) || '—')),
+          rrEsc(maquinas || '—'),
+          rrEsc(operadores || '—'),
+          rrEsc(rrFmtNum(r && (r.quantidade_perdida || r.qtd_perdida || r.qtd) || 0, 0)),
+          rrEsc(rrFmtMoney(r && (r.valor_perdido || r.valor_total) || 0))
+        ];
+      }),
+      emptySummaryCols: 3,
+      emptyDetailCols: 8
+    });
+  }
+
+  async function rrReportToneladas() {
+    var ref = rrMonthRange();
+    var json = await rrFetchJson('/api/analises/toneladas-vendidas?mes=' + encodeURIComponent(String(ref.mes)) + '&ano=' + encodeURIComponent(String(ref.ano)));
+    var rows = rrList(json, ['rows', 'detalhamento']);
+    var porFornecedor = new Map();
+    rows.forEach(function(row) {
+      var nome = String(row && (row.fornecedor_nome || row.fornecedor) || 'Sem fornecedor').trim() || 'Sem fornecedor';
+      porFornecedor.set(nome, (porFornecedor.get(nome) || 0) + rrNum(row && row.toneladas));
+    });
+    var resumoRows = Array.from(porFornecedor.entries()).map(function(entry) {
+      return { nome: entry[0], toneladas: entry[1] };
+    }).sort(function(a, b) { return b.toneladas - a.toneladas; });
+    return rrOpenPrint({
+      title: 'Relatório de Toneladas Vendidas',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Toneladas', value: rrFmtNum(rows.reduce(function(s, r) { return s + rrNum(r && r.toneladas); }, 0), 3) + ' t', sub: 'Peso vendido no período' },
+        { label: 'OFs', value: rrFmtNum(rows.length, 0), sub: 'Pedidos concluídos' },
+        { label: 'Receita', value: rrFmtMoney(rows.reduce(function(s, r) { return s + rrNum(r && r.valor_total); }, 0)), sub: 'Valor vendido no período' },
+        { label: 'Fornecedor Top', value: resumoRows[0] ? resumoRows[0].nome : 'Sem dados', sub: resumoRows[0] ? (rrFmtNum(resumoRows[0].toneladas, 3) + ' t') : 'Sem dados' }
+      ],
+      summaryTitle: 'Resumo por fornecedor',
+      summaryHeaders: ['Fornecedor', 'Toneladas'],
+      summaryRows: resumoRows.map(function(item) {
+        return [rrEsc(item.nome), rrEsc(rrFmtNum(item.toneladas, 3) + ' t')];
+      }),
+      detailTitle: 'Detalhamento',
+      detailHeaders: ['Data', 'OF', 'Cliente', 'Produto', 'Gramatura', 'Fornecedor', 'Qtd Caixas', 'Toneladas'],
+      detailRows: rows.map(function(r) {
+        return [
+          rrEsc(rrFmtDate(r && r.data_conclusao)),
+          rrEsc(String(r && r.of_numero || '—')),
+          rrEsc(String(r && (r.cliente_nome || r.cliente) || '—')),
+          rrEsc(String(r && r.produto || '—')),
+          rrEsc(String(r && r.gramatura_nome || r && r.gramatura || '—')),
+          rrEsc(String(r && (r.fornecedor_nome || r.fornecedor) || '—')),
+          rrEsc(rrFmtNum(r && (r.qtd_caixas_produzidas || r.quantidade) || 0, 0)),
+          rrEsc(rrFmtNum(r && r.toneladas || 0, 3) + ' t')
+        ];
+      }),
+      emptySummaryCols: 2,
+      emptyDetailCols: 8
+    });
+  }
+
+  async function rrReportGramaturas() {
+    var ref = rrMonthRange();
+    var pair = await Promise.all([
+      rrFetchJson('/api/gramaturas'),
+      rrFetchJson('/api/analises/toneladas-vendidas?mes=' + encodeURIComponent(String(ref.mes)) + '&ano=' + encodeURIComponent(String(ref.ano)))
+    ]);
+    var grams = rrList(pair[0], ['data', 'gramaturas']);
+    var tonRows = rrList(pair[1], ['rows', 'detalhamento']);
+    var usoMap = new Map();
+    tonRows.forEach(function(row) {
+      var nome = String(row && (row.gramatura_nome || row.gramatura || 'Sem gramatura') || 'Sem gramatura').trim() || 'Sem gramatura';
+      usoMap.set(nome, (usoMap.get(nome) || 0) + rrInt(row && (row.qtd_caixas_produzidas || row.quantidade)));
+    });
+    var uso = Array.from(usoMap.entries()).map(function(entry) {
+      return { nome: entry[0], valor: entry[1] };
+    }).sort(function(a, b) { return b.valor - a.valor; });
+    var menosUso = uso.slice().filter(function(item) { return item.valor > 0; }).sort(function(a, b) { return a.valor - b.valor; }).slice(0, 5);
+    var fornMap = new Map();
+    grams.forEach(function(g) {
+      var nome = String(g && g.fornecedor_nome || 'Sem fornecedor').trim() || 'Sem fornecedor';
+      fornMap.set(nome, (fornMap.get(nome) || 0) + 1);
+    });
+    var fornRows = Array.from(fornMap.entries()).map(function(entry) {
+      return { nome: entry[0], valor: entry[1] };
+    }).sort(function(a, b) { return b.valor - a.valor; });
+    return rrOpenPrint({
+      title: 'Relatório de Gramaturas',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Gramaturas Cadastradas', value: rrFmtNum(grams.length, 0), sub: 'Base ativa' },
+        { label: 'Mais Usada', value: uso[0] ? uso[0].nome : 'Sem dados', sub: uso[0] ? (rrFmtNum(uso[0].valor, 0) + ' caixas') : 'Sem uso no período' },
+        { label: 'Menos Usada', value: menosUso[0] ? menosUso[0].nome : 'Sem dados', sub: menosUso[0] ? (rrFmtNum(menosUso[0].valor, 0) + ' caixas') : 'Sem uso no período' },
+        { label: 'Fornecedor Top', value: fornRows[0] ? fornRows[0].nome : 'Sem dados', sub: fornRows[0] ? (rrFmtNum(fornRows[0].valor, 0) + ' cadastro(s)') : 'Sem dados' }
+      ],
+      summaryTitle: 'Resumo',
+      summaryHeaders: ['Indicador', 'Referência', 'Valor'],
+      summaryRows: []
+        .concat(uso.slice(0, 5).map(function(item) { return ['Gramaturas Mais Usadas', item.nome, rrFmtNum(item.valor, 0) + ' caixas']; }))
+        .concat(fornRows.slice(0, 5).map(function(item) { return ['Gramaturas por Fornecedor', item.nome, rrFmtNum(item.valor, 0) + ' cadastro(s)']; })),
+      detailTitle: 'Tabela completa de gramaturas',
+      detailHeaders: ['Nome', 'Gramatura', 'Fornecedor', 'Valor Unitário'],
+      detailRows: grams.map(function(g) {
+        return [
+          rrEsc(String(g && (g.nome || g.descricao) || '—')),
+          rrEsc(rrFmtNum(g && g.gramatura || 0, 2) + ' g/m²'),
+          rrEsc(String(g && g.fornecedor_nome || '—')),
+          rrEsc(rrFmtMoney(g && g.valor_unitario || 0))
+        ];
+      }),
+      emptySummaryCols: 3,
+      emptyDetailCols: 4
+    });
+  }
+
+  function rrChapaValor(row) {
+    var qtd = rrInt(row && (row.quantidade_atual != null ? row.quantidade_atual : (row.quantidade != null ? row.quantidade : row.qtd)));
+    var val = rrNum(row && (row.valor_unitario != null ? row.valor_unitario : row.val));
+    return qtd * val;
+  }
+
+  async function rrReportEstoque() {
+    var ref = rrMonthRange();
+    var pair = await Promise.all([
+      rrFetchJson('/api/chapas_estoque?limit=5000'),
+      rrFetchJson('/api/chapas_estoque/toneladas'),
+      rrFetchJson('/api/chapas_estoque_movimentos?de=' + encodeURIComponent(ref.data_inicio) + '&ate=' + encodeURIComponent(ref.data_fim) + '&limit=5000')
+    ]);
+    var chapas = rrList(pair[0], ['data', 'rows', 'chapas']);
+    var tons = pair[1] || {};
+    var movs = rrList(pair[2], ['data', 'rows']);
+    var porFornecedor = new Map();
+    chapas.forEach(function(chapa) {
+      var nome = String(chapa && chapa.fornecedor || 'Sem fornecedor').trim() || 'Sem fornecedor';
+      if (!porFornecedor.has(nome)) porFornecedor.set(nome, { nome: nome, qtd: 0, ton: 0, valor: 0 });
+      var item = porFornecedor.get(nome);
+      item.qtd += rrInt(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)));
+      item.valor += rrChapaValor(chapa);
+    });
+    rrList(tons, ['ton_por_fornecedor']).forEach(function(item) {
+      var nome = String(item && item.fornecedor || 'Sem fornecedor').trim() || 'Sem fornecedor';
+      if (!porFornecedor.has(nome)) porFornecedor.set(nome, { nome: nome, qtd: 0, ton: 0, valor: 0 });
+      porFornecedor.get(nome).ton += rrNum(item && item.ton);
+    });
+    var resumoRows = Array.from(porFornecedor.values()).sort(function(a, b) {
+      return (b.valor - a.valor) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+    });
+    var entradasPeriodo = movs.filter(function(m) { return String(m && m.tipo || '').toLowerCase() === 'entrada'; }).length;
+    var saidasPeriodo = movs.filter(function(m) { return String(m && m.tipo || '').toLowerCase() === 'saida'; }).length;
+    return rrOpenPrint({
+      title: 'Relatório de Estoque de Chapas',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Valor Total do Estoque', value: rrFmtMoney(tons && tons.valor_total || chapas.reduce(function(s, r) { return s + rrChapaValor(r); }, 0)), sub: 'Snapshot atual' },
+        { label: 'Toneladas em Estoque', value: rrFmtNum(tons && tons.ton_estoque_atual || 0, 3) + ' t', sub: 'Saldo atual' },
+        { label: 'Chapas Cadastradas', value: rrFmtNum(chapas.length, 0), sub: 'Itens no estoque' },
+        { label: 'Movimentos no Mês', value: rrFmtNum(movs.length, 0), sub: rrFmtNum(entradasPeriodo, 0) + ' entradas · ' + rrFmtNum(saidasPeriodo, 0) + ' saídas' }
+      ],
+      summaryTitle: 'Resumo por fornecedor',
+      summaryHeaders: ['Fornecedor', 'Qtd Chapas', 'Toneladas', 'Valor'],
+      summaryRows: resumoRows.map(function(item) {
+        return [rrEsc(item.nome), rrEsc(rrFmtNum(item.qtd, 0)), rrEsc(rrFmtNum(item.ton, 3) + ' t'), rrEsc(rrFmtMoney(item.valor))];
+      }),
+      detailTitle: 'Tabela completa do estoque',
+      detailHeaders: ['Fornecedor', 'Gramatura', 'Nomenclatura', 'Tamanho', 'Nome', 'Quantidade', 'Valor Unitário', 'Valor Total'],
+      detailRows: chapas.map(function(chapa) {
+        return [
+          rrEsc(String(chapa && chapa.fornecedor || '—')),
+          rrEsc(String(chapa && chapa.gramatura || '—')),
+          rrEsc(String(chapa && chapa.nomenclatura || '—')),
+          rrEsc(String(chapa && chapa.tamanho || '—')),
+          rrEsc(String(chapa && (chapa.nome_uso || chapa.nome) || '—')),
+          rrEsc(rrFmtNum(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)) || 0, 0)),
+          rrEsc(rrFmtMoney(chapa && (chapa.valor_unitario != null ? chapa.valor_unitario : chapa.val) || 0)),
+          rrEsc(rrFmtMoney(rrChapaValor(chapa)))
+        ];
+      }),
+      emptySummaryCols: 4,
+      emptyDetailCols: 8
+    });
+  }
+
+  async function rrReportMovimentos(kind) {
+    var ref = rrMonthRange();
+    var isEntrada = String(kind || '') === 'entrada';
+    var json = await rrFetchJson('/api/chapas_estoque_movimentos?tipo=' + encodeURIComponent(isEntrada ? 'entrada' : 'saida') + '&de=' + encodeURIComponent(ref.data_inicio) + '&ate=' + encodeURIComponent(ref.data_fim) + '&limit=5000');
+    var rows = rrList(json, ['data', 'rows']);
+    var resumo = new Map();
+    rows.forEach(function(row) {
+      var nome = String(row && row.fornecedor || 'Sem fornecedor').trim() || 'Sem fornecedor';
+      if (!resumo.has(nome)) resumo.set(nome, { nome: nome, lancamentos: 0, quantidade: 0, valor: 0 });
+      var item = resumo.get(nome);
+      item.lancamentos += 1;
+      item.quantidade += rrInt(row && row.quantidade);
+      item.valor += rrNum(row && row.valor_total);
+    });
+    var resumoRows = Array.from(resumo.values()).sort(function(a, b) {
+      return (b.valor - a.valor) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+    });
+    return rrOpenPrint({
+      title: isEntrada ? 'Relatório de Entradas' : 'Relatório de Saídas',
+      periodo: ref.titulo,
+      cards: [
+        { label: isEntrada ? 'Entradas' : 'Saídas', value: rrFmtNum(rows.length, 0), sub: 'Lançamentos no período' },
+        { label: 'Quantidade Total', value: rrFmtNum(rows.reduce(function(s, r) { return s + rrInt(r && r.quantidade); }, 0), 0), sub: 'Unidades movimentadas' },
+        { label: 'Valor Total', value: rrFmtMoney(rows.reduce(function(s, r) { return s + rrNum(r && r.valor_total); }, 0)), sub: 'Valor no período' },
+        { label: 'Fornecedor Top', value: resumoRows[0] ? resumoRows[0].nome : 'Sem dados', sub: resumoRows[0] ? rrFmtMoney(resumoRows[0].valor) : 'Sem dados' }
+      ],
+      summaryTitle: 'Resumo por fornecedor',
+      summaryHeaders: ['Fornecedor', 'Lançamentos', 'Quantidade', 'Valor'],
+      summaryRows: resumoRows.map(function(item) {
+        return [rrEsc(item.nome), rrEsc(rrFmtNum(item.lancamentos, 0)), rrEsc(rrFmtNum(item.quantidade, 0)), rrEsc(rrFmtMoney(item.valor))];
+      }),
+      detailTitle: 'Detalhamento',
+      detailHeaders: isEntrada ? ['Data', 'Chapa', 'Fornecedor', 'Quantidade', 'NF', 'Usuário'] : ['Data', 'Chapa', 'Fornecedor', 'Quantidade', 'Motivo', 'Usuário'],
+      detailRows: rows.map(function(row) {
+        return isEntrada ? [
+          rrEsc(rrFmtDate(row && (row.data || row.created_at))),
+          rrEsc(String(row && row.chapa_label || row && row.descricao || '—')),
+          rrEsc(String(row && row.fornecedor || '—')),
+          rrEsc(rrFmtNum(row && row.quantidade || 0, 0)),
+          rrEsc(String(row && row.nf || '—')),
+          rrEsc(String(row && row.usuario || '—'))
+        ] : [
+          rrEsc(rrFmtDate(row && (row.data || row.created_at))),
+          rrEsc(String(row && row.chapa_label || row && row.descricao || '—')),
+          rrEsc(String(row && row.fornecedor || '—')),
+          rrEsc(rrFmtNum(row && row.quantidade || 0, 0)),
+          rrEsc(String(row && (row.motivo || row.observacoes || row.descricao) || '—')),
+          rrEsc(String(row && row.usuario || '—'))
+        ];
+      }),
+      emptySummaryCols: 4,
+      emptyDetailCols: 6
+    });
+  }
+
+  var rrDefs = [
+    { id: 'passagens', label: 'Histórico de Passagens', icon: '🕒', desc: 'Passagens registradas nas máquinas com resumo e detalhamento.', run: rrReportPassagens },
+    { id: 'comissoes', label: 'Comissões', icon: '💵', desc: 'Resumo por vendedor e detalhamento das OFs comissionadas.', run: rrReportComissoes },
+    { id: 'caixas-perdidas', label: 'Caixas Perdidas', icon: '📦', desc: 'Consolidado de perdas com ranking e detalhamento.', run: rrReportCaixasPerdidas },
+    { id: 'toneladas-vendidas', label: 'Toneladas Vendidas', icon: '⚖️', desc: 'Toneladas vendidas por fornecedor com detalhamento das OFs.', run: rrReportToneladas },
+    { id: 'gramaturas', label: 'Gramaturas', icon: '📐', desc: 'Base de gramaturas e uso consolidado no período atual.', run: rrReportGramaturas },
+    { id: 'estoque-chapas', label: 'Estoque de Chapas', icon: '🟦', desc: 'Snapshot do estoque com resumo por fornecedor.', run: rrReportEstoque },
+    { id: 'entradas', label: 'Entradas', icon: '📥', desc: 'Movimentações de entrada no estoque de chapas.', run: function() { return rrReportMovimentos('entrada'); } },
+    { id: 'saidas', label: 'Saídas', icon: '📤', desc: 'Movimentações de saída no estoque de chapas.', run: function() { return rrReportMovimentos('saida'); } }
+  ];
+
+  async function rrOpen(def) {
+    if (!def || typeof def.run !== 'function') return;
+    var btn = document.querySelector('[data-rr-open="' + String(def.id || '').replace(/"/g, '&quot;') + '"]');
+    var old = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Gerando...';
+    }
+    try {
+      rrLog('abrindo relatorio', def.id);
+      await def.run();
+    } catch (e) {
+      rrLog('erro', def.id, e && e.message || e);
+      try { alert('Erro ao abrir relatório: ' + String(e && e.message || e)); } catch (_) {}
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = old || 'Abrir Relatório';
+      }
+    }
+  }
+
+  function rrRenderPage() {
+    rrEnsureStyle();
+    var host = rrHost();
+    if (!host) return false;
+    var ref = rrMonthRange();
+    host.innerHTML = ''
+      + '<div id="patch-relatorios-central">'
+      + '  <div class="rr-panel">'
+      + '    <div class="rr-head">'
+      + '      <div>'
+      + '        <div class="rr-title">Central de Relatórios</div>'
+      + '        <div class="rr-sub">Área unificada com apenas relatórios existentes e funcionais, todos abrindo no mesmo padrão visual de impressão do sistema.</div>'
+      + '      </div>'
+      + '      <div class="rr-badge">Período base atual: ' + rrEsc(ref.titulo) + '</div>'
+      + '    </div>'
+      + '  </div>'
+      + '  <div class="rr-grid">'
+      + rrDefs.map(function(def) {
+          return ''
+            + '<div class="rr-card">'
+            + '  <div class="rr-card-top"><div class="rr-icon">' + rrEsc(def.icon || '🖨') + '</div></div>'
+            + '  <div><div class="rr-label">' + rrEsc(def.label || 'Relatório') + '</div><div class="rr-desc">' + rrEsc(def.desc || '') + '</div></div>'
+            + '  <button type="button" class="rr-btn" data-rr-open="' + rrEsc(def.id || '') + '">Abrir Relatório</button>'
+            + '</div>';
+        }).join('')
+      + '  </div>'
+      + '</div>';
+    Array.prototype.slice.call(host.querySelectorAll('[data-rr-open]')).forEach(function(btn) {
+      btn.onclick = function() {
+        var id = String(btn.getAttribute('data-rr-open') || '').trim();
+        var def = rrDefs.find(function(item) { return item.id === id; }) || null;
+        rrOpen(def);
+      };
+    });
+    return true;
+  }
+
+  function rrInstallGoWrapper() {
+    if (window.__rrGoWrapped) return;
+    var origGo = window.go;
+    if (typeof origGo !== 'function') return;
+    window.go = function(id) {
+      var pid = String(id || '').trim();
+      if (pid === 'relatorios') {
+        rrRenderPage();
+        return;
+      }
+      return origGo.apply(this, arguments);
+    };
+    window.__rrGoWrapped = true;
+  }
+
+  function rrBoot() {
+    try {
+      rrInstallGoWrapper();
+      if (String(window._PAGE_ATUAL || '').trim() === 'relatorios') rrRenderPage();
+    } catch (_) {}
+  }
+
+  try { window.renderCentralRelatorios = rrRenderPage; } catch (_) {}
+  rrBoot();
+  setTimeout(rrBoot, 0);
+  setTimeout(rrBoot, 400);
+  setTimeout(rrBoot, 1200);
+})();
+;(function() {
   if (window.__simdBoxPlannerTailApplied) return;
   window.__simdBoxPlannerTailApplied = true;
   function reapply() {
