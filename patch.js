@@ -28944,15 +28944,25 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   function afterRenderOfmaq() {
     try { console.log('[OFMAQ-REDESIGN-ATIVO] versao nova rodando'); } catch (_) {}
-    ensureStyles();
-    ensureOfmaqToolbarButtons();
-    try { _ofmaqApplySavedOrderToDom(); } catch (_) {}
-    try { _ofmaqSyncLayoutMode(); } catch (_) {}
-    decorateOfmaqCards();
-    applySetupGroupingVisual();
-    try { _atualizarCapacidadePorMaquina(); } catch (_) {}
-    try { if (typeof window._hookRedistribBanner === 'function') window._hookRedistribBanner(); } catch (_) {}
-    try { _ofmaqEnsureBuscaUi(); } catch (_) {}
+    try {
+      var firstCard = (_ofmaqCardsInDom(document) || [])[0] || null;
+      if (firstCard) {
+        try { console.log('[OFMAQ-SEL] card exemplo html:', String(firstCard.outerHTML || '').slice(0, 500)); } catch (_) {}
+      } else {
+        try { console.log('[OFMAQ-SEL] card exemplo html:', 'sem card'); } catch (_) {}
+      }
+      ensureStyles();
+      ensureOfmaqToolbarButtons();
+      try { _ofmaqApplySavedOrderToDom(); } catch (_) {}
+      try { _ofmaqSyncLayoutMode(); } catch (_) {}
+      decorateOfmaqCards();
+      applySetupGroupingVisual();
+      try { _atualizarCapacidadePorMaquina(); } catch (_) {}
+      try { if (typeof window._hookRedistribBanner === 'function') window._hookRedistribBanner(); } catch (_) {}
+      try { _ofmaqEnsureBuscaUi(); } catch (_) {}
+    } catch (e) {
+      try { console.error('[OFMAQ-AFTER-ERRO]:', e); } catch (_) {}
+    }
   }
 
   function hookRenderOfmaq() {
