@@ -10920,7 +10920,7 @@ function _relatoriosEmpresaNome(empId) {
 }
 
 function _relatoriosPickEmpresaId(of) {
-  return String(of?.empresa_id || of?.emp_id || '').trim();
+  return String(of?.empresa_id || '').trim();
 }
 
 function _relatoriosPickValorOf(of) {
@@ -10940,11 +10940,11 @@ function _relatoriosPickTonOf(of) {
 }
 
 function _relatoriosPickVendedorId(of) {
-  return String(of?.vendedor_id ?? of?.vendId ?? of?.vend_id ?? '').trim();
+  return String(of?.vendedor_id ?? '').trim();
 }
 
 async function _relatoriosLoadVendedoresByIds(ids) {
-  const uniq = Array.from(new Set((Array.isArray(ids) ? ids : []).map((v) => String(v || '').trim()).filter(Boolean)));
+  const uniq = Array.from(new Set((Array.isArray(ids) ? ids : []).map((v) => String(v || '').trim()).filter(_isUuid)));
   const map = new Map();
   for (let i = 0; i < uniq.length; i += 200) {
     const chunk = uniq.slice(i, i + 200);
@@ -10975,7 +10975,7 @@ async function _relatoriosLoadClientesDetails(ids) {
 
 function _relatoriosPickVendedorNome(of, vendedoresMap) {
   const vendedorId = _relatoriosPickVendedorId(of);
-  return String(vendedoresMap?.get(vendedorId) || vendedorId || 'Sem vendedor').trim() || 'Sem vendedor';
+  return String(vendedoresMap?.get(vendedorId) || 'Sem vendedor').trim() || 'Sem vendedor';
 }
 
 function _relatoriosSummarizeOfs(ofs, opts = {}) {
@@ -11039,12 +11039,12 @@ function _relatoriosSummarizeOfs(ofs, opts = {}) {
 async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
   const columns = [
     'id', 'numero', 'of', 'status', 'data_conclusao', 'deleted_at', 'created_at',
-    'empresa_id', 'emp_id', 'cli_id',
+    'empresa_id', 'cli_id',
     'valor_total', 'valor_venda', 'total',
     'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida',
     'qtd_perdida', 'caixas_perdidas',
     'tonelada_vendida',
-    'vendedor_id', 'vendId', 'vend_id'
+    'vendedor_id'
   ].join(',');
   const companyIds = Array.isArray(opts.companyIds) ? opts.companyIds.map((v) => String(v || '').trim()).filter(Boolean) : [];
   const result = await _selectCompatRows('ofs', columns, (q) => {
@@ -11277,18 +11277,10 @@ app.get('/api/relatorios/chapas-abaixo-200', authMiddleware, async (req, res) =>
       ? 'id,fornecedor,gramatura,nomenclatura,nome_uso,nome,tamanho,quantidade_atual,quantidade,estoque_minimo,empresa_id'
       : 'id,fornecedor,gramatura,nomenclatura,nome_uso,nome,tamanho,quantidade,quantidade_atual,qtd,estoque_minimo,emp_id,empresa_id';
     let q = supabase.from(table).select(cols).limit(5000);
-    let empresa_id = null;
-    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
-    if (empresa_id) {
-      if (table === 'chapas_estoque_v2') q = q.eq('empresa_id', empresa_id);
-      else q = q.or('empresa_id.eq.' + empresa_id + ',emp_id.eq.' + empresa_id + ',empresa_id.is.null');
-    }
     const { data, error } = await q;
     if (error) throw error;
     const rows = (Array.isArray(data) ? data : []).map((row) => {
-      const quantidadeAtual = table === 'chapas_estoque_v2'
-        ? Math.trunc(Number(row?.quantidade ?? row?.quantidade_atual ?? 0) || 0)
-        : Math.trunc(Number(row?.quantidade ?? row?.quantidade_atual ?? row?.qtd ?? 0) || 0);
+      const quantidadeAtual = Math.trunc(Number(row?.quantidade ?? 0) || 0);
       return {
         id: row?.id || null,
         fornecedor: String(row?.fornecedor || '—').trim() || '—',
@@ -11302,6 +11294,7 @@ app.get('/api/relatorios/chapas-abaixo-200', authMiddleware, async (req, res) =>
       if (Number(a.quantidade_atual || 0) !== Number(b.quantidade_atual || 0)) return Number(a.quantidade_atual || 0) - Number(b.quantidade_atual || 0);
       return String(a.nomenclatura || '').localeCompare(String(b.nomenclatura || ''), 'pt-BR');
     });
+    console.log('[CHAPAS-200] encontradas:', rows.length);
     return res.json({
       ok: true,
       rows,
