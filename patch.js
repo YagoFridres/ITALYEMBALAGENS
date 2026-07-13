@@ -6620,7 +6620,11 @@ setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 9
       var onda = String(row && row.onda || '').trim() || '—';
       var liquidaTotal = Number(row && (row.liquida != null ? row.liquida : row.valor_liquido) || 0) || 0;
       var freteTotal = Number(row && (row.comFrete != null ? row.comFrete : (row.total != null ? row.total : row.vUnit)) || 0) || 0;
-      var unitLiq = Number(row && (row.vLiq != null ? row.vLiq : row.valor_unitario_liquido) || 0) || (qtd > 0 ? (liquidaTotal / qtd) : 0);
+      var freteLinha = Number(row && (row.frete != null ? row.frete : (row.valor_frete != null ? row.valor_frete : row.frete_total)) || 0) || 0;
+      if (!(freteLinha > 0) && freteTotal > liquidaTotal && liquidaTotal > 0) freteLinha = freteTotal - liquidaTotal;
+      var unitLiq = Number(row && (row.vLiq != null ? row.vLiq : row.valor_unitario_liquido) || 0) || 0;
+      if (!(unitLiq > 0) && qtd > 0 && liquidaTotal > 0) unitLiq = liquidaTotal / qtd;
+      if (!(unitLiq > 0) && qtd > 0 && freteTotal > 0) unitLiq = Math.max(0, (freteTotal - freteLinha) / qtd);
       var unitFrete = Number(row && (row.vUnit != null ? row.vUnit : row.valor_unitario) || 0) || (qtd > 0 ? (freteTotal / qtd) : 0);
       var total = Number(row && (row.total != null ? row.total : row.comFrete) || 0) || (qtd > 0 ? (unitFrete * qtd) : 0);
       return {
@@ -6713,7 +6717,7 @@ setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 9
       + '    <div class="cell"><div class="label">Medidas</div><div class="value">' + _orcPrintEsc(medidas) + '</div></div>'
       + '  </div>'
       + '</div>'
-      + '<div class="block"><table><thead><tr><th>Comp.</th><th class="center">Onda</th><th class="num">VL Unit. Liquido</th><th class="num">VL Unit. c/Frete</th><th class="num">Total</th></tr></thead><tbody>'
+      + '<div class="block"><table><thead><tr><th>Comp.</th><th class="center">Onda</th><th class="num">VL Unit.</th><th class="num">VL Unit. c/Frete</th><th class="num">Total</th></tr></thead><tbody>'
       + rowsHtml
       + '<tr class="total-row"><td colspan="4" class="num">Total Geral</td><td class="num">' + _orcPrintMoney(totalGeral) + '</td></tr>'
       + '</tbody></table></div>'
