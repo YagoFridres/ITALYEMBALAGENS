@@ -11284,7 +11284,7 @@ app.get('/api/relatorios/chapas-abaixo-200', authMiddleware, async (req, res) =>
     setNoCache(res);
     const table = await _chapasPreferV2Table();
     const cols = table === 'chapas_estoque_v2'
-      ? 'id,fornecedor,gramatura,nomenclatura,nome_uso,nome,tamanho,quantidade_atual,quantidade,qtd,estoque_minimo,empresa_id'
+      ? 'id,fornecedor,gramatura,nomenclatura,nome_uso,nome,tamanho,quantidade_atual,quantidade,estoque_minimo,empresa_id'
       : 'id,fornecedor,gramatura,nomenclatura,nome_uso,nome,tamanho,quantidade,quantidade_atual,qtd,estoque_minimo,emp_id,empresa_id';
     let q = supabase.from(table).select(cols).limit(5000);
     let empresa_id = null;
@@ -11296,7 +11296,9 @@ app.get('/api/relatorios/chapas-abaixo-200', authMiddleware, async (req, res) =>
     const { data, error } = await q;
     if (error) throw error;
     const rows = (Array.isArray(data) ? data : []).map((row) => {
-      const quantidadeAtual = Math.trunc(Number(row?.quantidade_atual ?? row?.quantidade ?? row?.qtd ?? 0) || 0);
+      const quantidadeAtual = table === 'chapas_estoque_v2'
+        ? Math.trunc(Number(row?.quantidade ?? row?.quantidade_atual ?? 0) || 0)
+        : Math.trunc(Number(row?.quantidade ?? row?.quantidade_atual ?? row?.qtd ?? 0) || 0);
       return {
         id: row?.id || null,
         fornecedor: String(row?.fornecedor || '—').trim() || '—',
