@@ -10806,6 +10806,116 @@ app.get('/api/clientes/ranking', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    if (!range?.inicio || !range?.fim_exclusivo) {
+      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
+    }
+
+    let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+
+    const selectCols = [
+      'id', 'numero', 'of', 'status', 'data_conclusao', 'deleted_at', 'empresa_id',
+      'cli_id', 'cliente_id', 'cliNome', 'clinome', 'cliente_nome', 'cliente',
+      'valor_total', 'valor_venda', 'total',
+      'qtd', 'qtd_produzida', 'quantidade', 'qtd_pedida'
+    ].join(',');
+
+    const isUuid = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v || '').trim());
+    const rows = [];
+    let from = 0;
+    while (true) {
+      let q = supabase
+        .from('ofs')
+        .select(selectCols)
+        .not('data_conclusao', 'is', null)
+        .gte('data_conclusao', range.inicio)
+        .lt('data_conclusao', range.fim_exclusivo)
+        .range(from, from + 999);
+      if (empresa_id) q = q.eq('empresa_id', empresa_id);
+      const { data, error } = await q;
+      if (error) throw error;
+      if (!Array.isArray(data) || !data.length) break;
+      rows.push(...data);
+      if (data.length < 1000) break;
+      from += 1000;
+    }
+
+    const elegiveis = rows.filter((of) => {
+      if (!of || of.deleted_at) return false;
+      if (!_assistPickOfConclusao(of)) return false;
+      if (_assistIsCancelada(of)) return false;
+      const status = String(of?.status || '').trim().toLowerCase();
+      return !status || status === 'pedido pronto' || _assistIsConcluida(of);
+    });
+
+    const grupos = new Map();
+    elegiveis.forEach((of) => {
+      const cliId = _assistPickOfClienteId(of);
+      const nomeFallback = String(of?.cliente_nome || of?.clinome || of?.cliNome || of?.cliente || '').trim();
+      const key = cliId || (nomeFallback ? ('nome:' + nomeFallback.toLowerCase()) : 'sem-cliente');
+      if (!grupos.has(key)) {
+        grupos.set(key, {
+          cli_id: cliId || null,
+          cliente_nome_fallback: nomeFallback || '',
+          valor_total: 0,
+          caixas_compradas: 0,
+          total_ofs: 0
+        });
+      }
+      const atual = grupos.get(key);
+      atual.valor_total += _assistPickOfValor(of);
+      atual.caixas_compradas += Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
+      atual.total_ofs += 1;
+      if (!atual.cliente_nome_fallback && nomeFallback) atual.cliente_nome_fallback = nomeFallback;
+    });
+
+    const cliIds = Array.from(new Set(Array.from(grupos.values()).map((item) => String(item?.cli_id || '').trim()).filter(isUuid)));
+    const clientesMap = cliIds.length ? await _assistLoadClientesByIds(cliIds) : new Map();
+
+    const rowsOut = Array.from(grupos.values()).map((item) => {
+      const nome = clientesMap.get(String(item?.cli_id || '').trim()) || item.cliente_nome_fallback || String(item?.cli_id || '').trim() || 'Sem cliente';
+      const ticketMedio = item.total_ofs > 0 ? (item.valor_total / item.total_ofs) : 0;
+      return {
+        cliente_id: item.cli_id || null,
+        cliente_nome: nome,
+        valor_total: Number(item.valor_total || 0),
+        caixas_compradas: Math.max(0, Math.trunc(Number(item.caixas_compradas || 0) || 0)),
+        total_ofs: Math.max(0, Math.trunc(Number(item.total_ofs || 0) || 0)),
+        ticket_medio: Number(ticketMedio || 0)
+      };
+    }).sort((a, b) => {
+      if (Number(b.valor_total || 0) !== Number(a.valor_total || 0)) return Number(b.valor_total || 0) - Number(a.valor_total || 0);
+      if (Number(b.caixas_compradas || 0) !== Number(a.caixas_compradas || 0)) return Number(b.caixas_compradas || 0) - Number(a.caixas_compradas || 0);
+      if (Number(b.total_ofs || 0) !== Number(a.total_ofs || 0)) return Number(b.total_ofs || 0) - Number(a.total_ofs || 0);
+      return String(a.cliente_nome || '').localeCompare(String(b.cliente_nome || ''), 'pt-BR');
+    });
+
+    const resumo = rowsOut.reduce((acc, item) => {
+      acc.total_clientes += 1;
+      acc.valor_total += Number(item?.valor_total || 0) || 0;
+      acc.total_caixas += Number(item?.caixas_compradas || 0) || 0;
+      acc.total_ofs += Number(item?.total_ofs || 0) || 0;
+      return acc;
+    }, { total_clientes: 0, valor_total: 0, total_caixas: 0, total_ofs: 0 });
+    resumo.ticket_medio_geral = resumo.total_ofs > 0 ? (resumo.valor_total / resumo.total_ofs) : 0;
+
+    return res.json({
+      ok: true,
+      data_inicio: range.inicio,
+      data_fim: range.fim,
+      resumo,
+      rows: rowsOut
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][CLIENTES-MAIS-COMPRARAM]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();

@@ -984,6 +984,47 @@ try {
     });
   }
 
+  async function rrReportClientesMaisCompraram() {
+    var ref = rrCurrentRange();
+    var json = await rrFetchJson('/api/relatorios/clientes-mais-compraram?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var resumo = json && json.resumo || {};
+    var rows = rrList(json, ['rows', 'data', 'clientes']);
+    return rrOpenPrint({
+      title: 'Relatório de Clientes que Mais Compraram',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Clientes', value: rrFmtNum(resumo.total_clientes || rows.length, 0), sub: 'Clientes com compras no período' },
+        { label: 'Valor Total', value: rrFmtMoney(resumo.valor_total || rows.reduce(function(s, r) { return s + rrNum(r && r.valor_total); }, 0)), sub: 'Faturamento consolidado' },
+        { label: 'Ticket Médio Geral', value: rrFmtMoney(resumo.ticket_medio_geral || 0), sub: 'Valor total dividido por pedidos' },
+        { label: 'Caixas Compradas', value: rrFmtNum(resumo.total_caixas || rows.reduce(function(s, r) { return s + rrInt(r && r.caixas_compradas); }, 0), 0), sub: 'Total vendido no período' }
+      ],
+      summaryTitle: 'Top clientes',
+      summaryHeaders: ['Cliente', 'Valor Total', 'Caixas Compradas', 'Nº Pedidos', 'Ticket Médio'],
+      summaryRows: rows.slice(0, 10).map(function(row) {
+        return [
+          rrEsc(String(row && row.cliente_nome || '—')),
+          rrEsc(rrFmtMoney(row && row.valor_total || 0)),
+          rrEsc(rrFmtNum(row && row.caixas_compradas || 0, 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.ticket_medio || 0))
+        ];
+      }),
+      detailTitle: 'Ranking completo',
+      detailHeaders: ['Cliente', 'Valor total', 'Caixas compradas', 'Nº pedidos', 'Ticket médio'],
+      detailRows: rows.map(function(row) {
+        return [
+          rrEsc(String(row && row.cliente_nome || '—')),
+          rrEsc(rrFmtMoney(row && row.valor_total || 0)),
+          rrEsc(rrFmtNum(row && row.caixas_compradas || 0, 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.ticket_medio || 0))
+        ];
+      }),
+      emptySummaryCols: 5,
+      emptyDetailCols: 5
+    });
+  }
+
   var rrDefs = [
     { id: 'passagens', label: 'Histórico de Passagens', icon: '🕒', desc: 'Passagens registradas nas máquinas com resumo e detalhamento.', run: rrReportPassagens },
     { id: 'comissoes', label: 'Comissões', icon: '💵', desc: 'Resumo por vendedor e detalhamento das OFs comissionadas.', run: rrReportComissoes },
@@ -992,7 +1033,8 @@ try {
     { id: 'gramaturas', label: 'Gramaturas', icon: '📐', desc: 'Base de gramaturas e uso consolidado no período atual.', run: rrReportGramaturas },
     { id: 'estoque-chapas', label: 'Estoque de Chapas', icon: '🟦', desc: 'Snapshot do estoque com resumo por fornecedor.', run: rrReportEstoque },
     { id: 'entradas', label: 'Entradas', icon: '📥', desc: 'Movimentações de entrada no estoque de chapas.', run: function() { return rrReportMovimentos('entrada'); } },
-    { id: 'saidas', label: 'Saídas', icon: '📤', desc: 'Movimentações de saída no estoque de chapas.', run: function() { return rrReportMovimentos('saida'); } }
+    { id: 'saidas', label: 'Saídas', icon: '📤', desc: 'Movimentações de saída no estoque de chapas.', run: function() { return rrReportMovimentos('saida'); } },
+    { id: 'clientes-mais-compraram', label: 'Clientes que mais compraram', icon: '🏆', desc: 'Ranking por valor comprado com ticket médio e caixas vendidas.', run: rrReportClientesMaisCompraram }
   ];
 
   async function rrOpen(def) {
