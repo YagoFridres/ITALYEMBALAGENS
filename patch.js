@@ -29313,10 +29313,42 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function _ofmaqScheduleAfterRender(reason, delay) {
-    try { if (window.__ofmaqAfterRenderTimer) clearTimeout(window.__ofmaqAfterRenderTimer); } catch (_) {}
-    window.__ofmaqAfterRenderTimer = setTimeout(function() {
-      _ofmaqRunAfterRender(reason);
-    }, Math.max(0, Number(delay || 0) || 0));
+    var wait = Math.max(0, Number(delay || 0) || 0);
+    if (wait > 0) {
+      try { if (window.__ofmaqAfterRenderDelayTimer) clearTimeout(window.__ofmaqAfterRenderDelayTimer); } catch (_) {}
+      return new Promise(function(resolve) {
+        window.__ofmaqAfterRenderDelayTimer = setTimeout(function() {
+          _ofmaqScheduleAfterRender(reason, 0).then(resolve).catch(function() { resolve(false); });
+        }, wait);
+      });
+    }
+    if (!Array.isArray(window.__ofmaqScheduleReasons)) window.__ofmaqScheduleReasons = [];
+    if (reason) window.__ofmaqScheduleReasons.push(String(reason));
+    if (window.__ofmaqRenderPendente) return window.__ofmaqRenderPromise || Promise.resolve(false);
+    window.__ofmaqRenderPendente = true;
+    window.__ofmaqRenderPromise = new Promise(function(resolve) {
+      var raf = (typeof window.requestAnimationFrame === 'function')
+        ? window.requestAnimationFrame.bind(window)
+        : function(cb) { return setTimeout(cb, 16); };
+      raf(function() {
+        var reasons = Array.isArray(window.__ofmaqScheduleReasons) ? window.__ofmaqScheduleReasons.slice() : [];
+        window.__ofmaqScheduleReasons = [];
+        var motivo = reasons.length ? reasons.join(' | ') : String(reason || 'raf');
+        var ok = false;
+        try {
+          _ofmaqPauseRenderObserver();
+          ok = _ofmaqRunAfterRender(motivo);
+        } catch (_) {
+          ok = false;
+        } finally {
+          window.__ofmaqRenderPendente = false;
+          window.__ofmaqRenderPromise = null;
+          _ofmaqResumeRenderObserver();
+          resolve(ok);
+        }
+      });
+    });
+    return window.__ofmaqRenderPromise;
   }
 
   function _ofmaqEnsureRenderObserver() {
@@ -29362,10 +29394,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   function _ofmaqEnsureRenderPolling() {
     try {
-      if (window.__ofmaqRenderPoll) return;
-      window.__ofmaqRenderPoll = setInterval(function() {
-        _ofmaqRunAfterRender('interval-400ms');
-      }, 400);
+      if (window.__ofmaqRenderPoll) {
+        clearInterval(window.__ofmaqRenderPoll);
+        window.__ofmaqRenderPoll = null;
+      }
     } catch (_) {}
   }
 
@@ -29444,9 +29476,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var orig = fn;
       window.renderOFsPorMaquina = async function() {
         _refreshOfmaqCachesFromRuntime();
-        var result = await orig.apply(this, arguments);
-        _ofmaqScheduleAfterRender('hook-wrapper', 40);
-        return result;
+        _ofmaqPauseRenderObserver();
+        try {
+          var result = await orig.apply(this, arguments);
+          await _ofmaqScheduleAfterRender('hook-wrapper', 0);
+          return result;
+        } finally {
+          _ofmaqResumeRenderObserver();
+        }
       };
       window.renderOFsPorMaquina._patchedPriorityHub = true;
       try { console.log('[OFMAQ-HOOK] hook registrado'); } catch (_) {}
