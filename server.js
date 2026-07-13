@@ -12921,6 +12921,8 @@ function _gramaturasCreateSql() {
     "codigo text," +
     "descricao text," +
     "gramatura numeric NOT NULL," +
+    "medida_comprimento numeric," +
+    "medida_largura numeric," +
     "valor_unitario numeric NOT NULL DEFAULT 0," +
     "fornecedor_id uuid," +
     "fornecedor_nome text," +
@@ -12935,6 +12937,8 @@ function _gramaturasCreateSql() {
     "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS codigo text;" +
     "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS descricao text;" +
     "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS valor_unitario numeric DEFAULT 0;" +
+    "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS medida_comprimento numeric;" +
+    "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS medida_largura numeric;" +
     "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS fornecedor_id uuid;" +
     "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS fornecedor_nome text;" +
     "ALTER TABLE gramaturas ADD COLUMN IF NOT EXISTS tipo_papel text;" +
@@ -13199,6 +13203,12 @@ function _gramaturaTexto(v) {
   if (v === undefined || v === null) return null;
   const s = String(v || '').trim();
   return s ? s : null;
+}
+
+function _gramaturaMedida(v) {
+  if (v === undefined || v === null || v === '') return null;
+  const n = Number(String(v).replace(',', '.'));
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 function _gramaturaAtivaFromBody(body, fallback = true) {
@@ -14290,6 +14300,8 @@ app.get('/api/gramaturas', authMiddleware, async (req, res) => {
           id: g && g.id ? String(g.id) : '',
           nome: String(g && (g.nome || g.descricao) || ''),
           gramatura: Number(g && g.gramatura || 0) || 0,
+          medida_comprimento: _gramaturaMedida(g && g.medida_comprimento),
+          medida_largura: _gramaturaMedida(g && g.medida_largura),
           fornecedor_nome: String(g && g.fornecedor_nome || ''),
         })),
       },
@@ -14316,6 +14328,8 @@ app.post('/api/gramaturas', authMiddleware, async (req, res) => {
     const nome = _gramaturaTexto(b.nome ?? b.descricao);
     const gramatura = Number(b.gramatura || 0) || 0;
     const valor_unitario = Number(b.valor_unitario || 0) || 0;
+    const medida_comprimento = _gramaturaMedida(b.medida_comprimento);
+    const medida_largura = _gramaturaMedida(b.medida_largura);
     const fornecedorRaw = String(b.fornecedor_id || '').trim();
     const fornecedor_id = fornecedorRaw
       ? (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(fornecedorRaw) ? fornecedorRaw : null)
@@ -14326,6 +14340,8 @@ app.post('/api/gramaturas', authMiddleware, async (req, res) => {
     const payload = {
       nome,
       gramatura,
+      medida_comprimento,
+      medida_largura,
       valor_unitario,
       fornecedor_id,
       empresa_id: empresa_id || (b.empresa_id ? String(b.empresa_id || '').trim() : null),
@@ -14356,6 +14372,8 @@ app.put('/api/gramaturas/:id', authMiddleware, async (req, res) => {
     const payload = {};
     if (Object.prototype.hasOwnProperty.call(b, 'nome')) payload.nome = _gramaturaTexto(b.nome);
     if (Object.prototype.hasOwnProperty.call(b, 'gramatura')) payload.gramatura = Number(b.gramatura || 0) || 0;
+    if (Object.prototype.hasOwnProperty.call(b, 'medida_comprimento')) payload.medida_comprimento = _gramaturaMedida(b.medida_comprimento);
+    if (Object.prototype.hasOwnProperty.call(b, 'medida_largura')) payload.medida_largura = _gramaturaMedida(b.medida_largura);
     if (Object.prototype.hasOwnProperty.call(b, 'valor_unitario')) payload.valor_unitario = Number(b.valor_unitario || 0) || 0;
     if (Object.prototype.hasOwnProperty.call(b, 'fornecedor_id')) {
       const fornecedorRaw = String(b.fornecedor_id || '').trim();

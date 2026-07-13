@@ -12318,12 +12318,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var codigo = gramTxt(src.codigo);
       var descricao = gramTxt(src.descricao || src.nome);
       var gramaturaNum = Number(src.gramatura || 0) || 0;
+      var medidaComprimento = Number(src.medida_comprimento || 0) || 0;
+      var medidaLargura = Number(src.medida_largura || 0) || 0;
       var nome = gramTxt(src.nome || descricao || codigo || (gramaturaNum > 0 ? (String(gramaturaNum).replace('.', ',') + ' g/m²') : 'Gramatura'));
       return Object.assign({}, src, {
         codigo: codigo,
         descricao: descricao || nome,
         nome: nome,
         gramatura: gramaturaNum,
+        medida_comprimento: medidaComprimento > 0 ? medidaComprimento : null,
+        medida_largura: medidaLargura > 0 ? medidaLargura : null,
         tipo_papel: gramTxt(src.tipo_papel),
         faixa_utilizacao: gramTxt(src.faixa_utilizacao),
         observacoes: gramTxt(src.observacoes),
@@ -12331,11 +12335,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         ativo: gramAtiva(src)
       });
     }
+    function gramaturaMedidasOficiais(item) {
+      var g = normalizeGramatura(item);
+      var comp = Number(g && g.medida_comprimento || 0) || 0;
+      var larg = Number(g && g.medida_largura || 0) || 0;
+      if (!(comp > 0) && !(larg > 0)) return '—';
+      return [comp > 0 ? num(comp, 0) : '—', larg > 0 ? num(larg, 0) : '—'].join(' x ') + ' mm';
+    }
     function gramaturaLabel(item, curto) {
       var g = normalizeGramatura(item);
       var base = g.descricao || g.nome || g.codigo || 'Gramatura';
       if (!curto && g.codigo && base.toLowerCase().indexOf(g.codigo.toLowerCase()) !== 0) base = g.codigo + ' · ' + base;
       if (g.gramatura > 0) base += ' · ' + num(g.gramatura || 0, 0) + ' g/m²';
+      if (!curto && (g.medida_comprimento || g.medida_largura)) base += ' · ' + gramaturaMedidasOficiais(g);
       return base;
     }
     async function loadGramaturas(opts) {
@@ -12363,6 +12375,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  <div class="pep-grid">'
         + '    <div><div class="pep-sub">Nome da Gramatura</div><input class="pep-input" id="pg-nome" value="' + esc(it.nome || it.descricao || '') + '" placeholder="Ex.: Kraft 250"></div>'
         + '    <div><div class="pep-sub">Gramatura (g/m²)</div><input class="pep-input" id="pg-gram" type="number" step="0.01" value="' + esc(it.gramatura || '') + '"></div>'
+        + '    <div><div class="pep-sub">Comprimento Oficial (mm)</div><input class="pep-input" id="pg-med-comp" type="number" min="0" step="0.01" value="' + esc(it.medida_comprimento || '') + '" placeholder="Ex.: 600"></div>'
+        + '    <div><div class="pep-sub">Largura Oficial (mm)</div><input class="pep-input" id="pg-med-larg" type="number" min="0" step="0.01" value="' + esc(it.medida_largura || '') + '" placeholder="Ex.: 400"></div>'
         + '    <div><div class="pep-sub">Valor Unitário</div><input class="pep-input" id="pg-vunit" type="number" step="0.01" value="' + esc(it.valor_unitario || '') + '"></div>'
         + '    <div><div class="pep-sub">Fornecedor</div><select class="pep-select" id="pg-forn"><option value="">Sem fornecedor</option>' + fornecedores.map(function(f) { var id = String(f && f.id || ''); var nm = String(f && f.nome || ''); return '<option value="' + esc(id) + '"' + (String(it.fornecedor_id || '') === id ? ' selected' : '') + '>' + esc(nm) + '</option>'; }).join('') + '</select></div>'
         + '  </div>'
@@ -12380,6 +12394,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           var body = {
             nome: nome,
             gramatura: gramaturaNum,
+            medida_comprimento: Number(document.getElementById('pg-med-comp').value || 0) || null,
+            medida_largura: Number(document.getElementById('pg-med-larg').value || 0) || null,
             valor_unitario: Number(document.getElementById('pg-vunit').value || 0) || 0
           };
           var sel = document.getElementById('pg-forn');
@@ -12506,10 +12522,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <input class="pep-input" id="gram-busca" placeholder="Buscador de gramaturas" value="' + esc(window.__gramaturasBusca || '') + '" style="min-width:320px;flex:1">'
         + '    <button class="pep-btn" id="gram-buscar">Buscar</button>'
         + '  </div></div>'
-        + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-gramaturas"><table class="pep-table"><thead><tr><th>Nome da Gramatura</th><th>Gramatura</th><th>Fornecedor</th><th>Valor Unitário</th><th>Ações</th></tr></thead><tbody>'
+        + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-gramaturas"><table class="pep-table"><thead><tr><th>Nome da Gramatura</th><th>Gramatura</th><th>Medidas Oficiais</th><th>Fornecedor</th><th>Valor Unitário</th><th>Ações</th></tr></thead><tbody>'
         + (filtrada.length ? filtrada.map(function(g) {
-          return '<tr data-gid="' + esc(g.id || '') + '"><td><div style="font-weight:800">' + esc(g.nome || g.descricao || '—') + '</div></td><td>' + num(g.gramatura || 0, 2) + ' g/m²</td><td>' + esc(g.fornecedor_nome || '—') + '</td><td>' + money(g.valor_unitario || 0) + '</td><td><button class="pep-btn" data-gedit="' + esc(g.id || '') + '">Editar</button> <button class="pep-btn danger" data-gdelete="' + esc(g.id || '') + '">Excluir</button></td></tr>';
-        }).join('') : '<tr><td colspan="5" style="text-align:center;color:#94a3b8">Nenhuma gramatura encontrada.</td></tr>')
+          return '<tr data-gid="' + esc(g.id || '') + '"><td><div style="font-weight:800">' + esc(g.nome || g.descricao || '—') + '</div></td><td>' + num(g.gramatura || 0, 2) + ' g/m²</td><td>' + esc(gramaturaMedidasOficiais(g)) + '</td><td>' + esc(g.fornecedor_nome || '—') + '</td><td>' + money(g.valor_unitario || 0) + '</td><td><button class="pep-btn" data-gedit="' + esc(g.id || '') + '">Editar</button> <button class="pep-btn danger" data-gdelete="' + esc(g.id || '') + '">Excluir</button></td></tr>';
+        }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8">Nenhuma gramatura encontrada.</td></tr>')
         + '  </tbody></table></div></div>'
         + '</div>';
       document.getElementById('gram-nova').onclick = function() { openGramaturaModal(null, renderGramaturasPage); };
