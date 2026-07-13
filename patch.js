@@ -10084,6 +10084,30 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
     }
   };
 
+  window.pcpAbrirModalClonarOF = async function(id, ofNum) {
+    try {
+      var nova = null;
+      if (typeof window.__patchCloneOF === 'function') {
+        nova = await window.__patchCloneOF(id, null);
+      } else {
+        throw new Error('Clonador de OF indisponível');
+      }
+      try {
+        if (typeof window.carregarOFs === 'function') await window.carregarOFs();
+      } catch (_) {}
+      try {
+        if (typeof window.renderTabelaPCP === 'function') window.renderTabelaPCP();
+      } catch (_) {}
+      try {
+        if (typeof window.aplicarFiltrosOFs === 'function') window.aplicarFiltrosOFs();
+      } catch (_) {}
+      return nova;
+    } catch (e) {
+      try { notify('Erro ao clonar OF #' + String(ofNum || '—') + ': ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+      throw e;
+    }
+  };
+
   try {
     var hubDeb = null;
     var obs = new MutationObserver(function() {
