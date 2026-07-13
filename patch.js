@@ -438,6 +438,69 @@ try {
     };
   }
 
+  function rrState() {
+    if (!window.__relatoriosCentralState || typeof window.__relatoriosCentralState !== 'object') {
+      var today = new Date().toISOString().slice(0, 10);
+      window.__relatoriosCentralState = {
+        periodo: 'mes',
+        data_referencia: today,
+        data_inicio: today,
+        data_fim: today
+      };
+    }
+    return window.__relatoriosCentralState;
+  }
+
+  function rrClampDateText(value) {
+    var txt = String(value || '').trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(txt) ? txt : '';
+  }
+
+  function rrCurrentRange() {
+    var st = rrState();
+    var refTxt = rrClampDateText(st.data_referencia) || new Date().toISOString().slice(0, 10);
+    var refDate = new Date(refTxt + 'T12:00:00');
+    if (!Number.isFinite(refDate.getTime())) refDate = new Date();
+    var ini = null;
+    var fim = null;
+    var titulo = '';
+    if (st.periodo === 'dia') {
+      ini = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+      fim = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+      titulo = rrFmtDate(ini);
+    } else if (st.periodo === 'semana') {
+      ini = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+      ini.setDate(ini.getDate() - ((ini.getDay() + 6) % 7));
+      fim = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate() + 6);
+      titulo = rrFmtDate(ini) + ' a ' + rrFmtDate(fim);
+    } else if (st.periodo === 'ano') {
+      ini = new Date(refDate.getFullYear(), 0, 1);
+      fim = new Date(refDate.getFullYear(), 11, 31);
+      titulo = String(refDate.getFullYear());
+    } else if (st.periodo === 'personalizado') {
+      var dataInicio = rrClampDateText(st.data_inicio) || refTxt;
+      var dataFim = rrClampDateText(st.data_fim) || dataInicio;
+      if (dataFim < dataInicio) dataFim = dataInicio;
+      ini = new Date(dataInicio + 'T12:00:00');
+      fim = new Date(dataFim + 'T12:00:00');
+      titulo = rrFmtDate(ini) + ' a ' + rrFmtDate(fim);
+    } else {
+      ini = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+      fim = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0);
+      titulo = String(refDate.getMonth() + 1).padStart(2, '0') + '/' + String(refDate.getFullYear());
+      st.periodo = 'mes';
+    }
+    return {
+      periodo: st.periodo,
+      data_referencia: refTxt,
+      data_inicio: ini.toISOString().slice(0, 10),
+      data_fim: fim.toISOString().slice(0, 10),
+      mes: ini.getMonth() + 1,
+      ano: ini.getFullYear(),
+      titulo: titulo
+    };
+  }
+
   function rrToken() {
     try {
       return String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || '').trim();
@@ -513,6 +576,12 @@ try {
       + '#patch-relatorios-central .rr-title{font-size:24px;font-weight:900;color:#f8fafc}'
       + '#patch-relatorios-central .rr-sub{margin-top:6px;font-size:13px;color:#94a3b8;max-width:860px}'
       + '#patch-relatorios-central .rr-badge{display:inline-flex;align-items:center;padding:7px 12px;border-radius:999px;background:rgba(24,95,165,.16);color:#93c5fd;border:1px solid rgba(59,130,246,.28);font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}'
+      + '#patch-relatorios-central .rr-period{display:grid;gap:12px;margin-top:16px;padding:16px;border-radius:16px;background:rgba(2,6,23,.38);border:1px solid rgba(148,163,184,.12)}'
+      + '#patch-relatorios-central .rr-period-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}'
+      + '#patch-relatorios-central .rr-field{display:grid;gap:6px}'
+      + '#patch-relatorios-central .rr-field label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}'
+      + '#patch-relatorios-central .rr-field select,#patch-relatorios-central .rr-field input{width:100%;padding:11px 12px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:12px;color:#f8fafc;font-size:13px}'
+      + '#patch-relatorios-central .rr-period-help{font-size:12px;color:#94a3b8}'
       + '#patch-relatorios-central .rr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}'
       + '#patch-relatorios-central .rr-card{display:grid;gap:14px;background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:18px}'
       + '#patch-relatorios-central .rr-card:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.32)}'
@@ -522,7 +591,8 @@ try {
       + '#patch-relatorios-central .rr-desc{font-size:12px;color:#94a3b8;line-height:1.45}'
       + '#patch-relatorios-central .rr-btn{display:inline-flex;align-items:center;justify-content:center;padding:11px 14px;border:none;border-radius:12px;background:linear-gradient(135deg,#185FA5,#2563eb);color:#fff;font-size:13px;font-weight:900;cursor:pointer}'
       + '#patch-relatorios-central .rr-btn:disabled{opacity:.6;cursor:wait}'
-      + '@media (max-width:760px){#patch-relatorios-central .rr-grid{grid-template-columns:1fr}}';
+      + '@media (max-width:980px){#patch-relatorios-central .rr-period-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
+      + '@media (max-width:760px){#patch-relatorios-central .rr-grid{grid-template-columns:1fr}#patch-relatorios-central .rr-period-grid{grid-template-columns:1fr}}';
     document.head.appendChild(st);
   }
 
@@ -558,7 +628,7 @@ try {
   }
 
   async function rrReportPassagens() {
-    var ref = rrMonthRange();
+    var ref = rrCurrentRange();
     var json = await rrFetchJson('/api/passagens/historico?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim) + '&limit=1000');
     var rows = rrList(json, ['passagens', 'data']);
     var resumoMap = new Map();
@@ -608,8 +678,8 @@ try {
   }
 
   async function rrReportComissoes() {
-    var ref = rrMonthRange();
-    var json = await rrFetchJson('/api/comissoes/relatorio?mes=' + encodeURIComponent(String(ref.mes)) + '&ano=' + encodeURIComponent(String(ref.ano)));
+    var ref = rrCurrentRange();
+    var json = await rrFetchJson('/api/comissoes/relatorio?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
     var vendedores = rrList(json, ['vendedores']);
     var ofs = rrList(json, ['ofs']);
     return rrOpenPrint({
@@ -652,8 +722,8 @@ try {
   }
 
   async function rrReportCaixasPerdidas() {
-    var ref = rrMonthRange();
-    var json = await rrFetchJson('/api/caixas-perdidas/dashboard?periodo=mes&mes=' + encodeURIComponent(String(ref.mes)) + '&ano=' + encodeURIComponent(String(ref.ano)));
+    var ref = rrCurrentRange();
+    var json = await rrFetchJson('/api/caixas-perdidas/dashboard?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
     var rows = rrList(json, ['detalhamento']);
     var rankingMaq = rrList(json, ['ranking_maquinas']);
     var rankingOps = rrList(json, ['ranking_operadores']);
@@ -694,8 +764,8 @@ try {
   }
 
   async function rrReportToneladas() {
-    var ref = rrMonthRange();
-    var json = await rrFetchJson('/api/analises/toneladas-vendidas?mes=' + encodeURIComponent(String(ref.mes)) + '&ano=' + encodeURIComponent(String(ref.ano)));
+    var ref = rrCurrentRange();
+    var json = await rrFetchJson('/api/analises/toneladas-vendidas?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
     var rows = rrList(json, ['rows', 'detalhamento']);
     var porFornecedor = new Map();
     rows.forEach(function(row) {
@@ -739,10 +809,10 @@ try {
   }
 
   async function rrReportGramaturas() {
-    var ref = rrMonthRange();
+    var ref = rrCurrentRange();
     var pair = await Promise.all([
       rrFetchJson('/api/gramaturas'),
-      rrFetchJson('/api/analises/toneladas-vendidas?mes=' + encodeURIComponent(String(ref.mes)) + '&ano=' + encodeURIComponent(String(ref.ano)))
+      rrFetchJson('/api/analises/toneladas-vendidas?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim))
     ]);
     var grams = rrList(pair[0], ['data', 'gramaturas']);
     var tonRows = rrList(pair[1], ['rows', 'detalhamento']);
@@ -799,11 +869,11 @@ try {
   }
 
   async function rrReportEstoque() {
-    var ref = rrMonthRange();
+    var ref = rrCurrentRange();
     var pair = await Promise.all([
       rrFetchJson('/api/chapas_estoque?limit=5000'),
       rrFetchJson('/api/chapas_estoque/toneladas'),
-      rrFetchJson('/api/chapas_estoque_movimentos?de=' + encodeURIComponent(ref.data_inicio) + '&ate=' + encodeURIComponent(ref.data_fim) + '&limit=5000')
+      rrFetchJson('/api/chapas_estoque_movimentos?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim) + '&limit=5000')
     ]);
     var chapas = rrList(pair[0], ['data', 'rows', 'chapas']);
     var tons = pair[1] || {};
@@ -860,9 +930,9 @@ try {
   }
 
   async function rrReportMovimentos(kind) {
-    var ref = rrMonthRange();
+    var ref = rrCurrentRange();
     var isEntrada = String(kind || '') === 'entrada';
-    var json = await rrFetchJson('/api/chapas_estoque_movimentos?tipo=' + encodeURIComponent(isEntrada ? 'entrada' : 'saida') + '&de=' + encodeURIComponent(ref.data_inicio) + '&ate=' + encodeURIComponent(ref.data_fim) + '&limit=5000');
+    var json = await rrFetchJson('/api/chapas_estoque_movimentos?tipo=' + encodeURIComponent(isEntrada ? 'entrada' : 'saida') + '&data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim) + '&limit=5000');
     var rows = rrList(json, ['data', 'rows']);
     var resumo = new Map();
     rows.forEach(function(row) {
@@ -947,11 +1017,46 @@ try {
     }
   }
 
+  function rrPeriodHtml(ref) {
+    var st = rrState();
+    var personalizado = st.periodo === 'personalizado';
+    return ''
+      + '<div class="rr-period">'
+      + '  <div class="rr-period-grid">'
+      + '    <div class="rr-field"><label>Período</label><select id="rr-periodo"><option value="dia"' + (st.periodo === 'dia' ? ' selected' : '') + '>Dia</option><option value="semana"' + (st.periodo === 'semana' ? ' selected' : '') + '>Semana</option><option value="mes"' + (st.periodo === 'mes' ? ' selected' : '') + '>Mês</option><option value="ano"' + (st.periodo === 'ano' ? ' selected' : '') + '>Ano</option><option value="personalizado"' + (personalizado ? ' selected' : '') + '>Personalizado</option></select></div>'
+      + '    <div class="rr-field" id="rr-ref-wrap"' + (personalizado ? ' style="display:none"' : '') + '><label>Data de Referência</label><input id="rr-ref-date" type="date" value="' + rrEsc(st.data_referencia || ref.data_referencia || ref.data_inicio) + '"></div>'
+      + '    <div class="rr-field" id="rr-inicio-wrap"' + (!personalizado ? ' style="display:none"' : '') + '><label>Data Início</label><input id="rr-data-inicio" type="date" value="' + rrEsc(st.data_inicio || ref.data_inicio) + '"></div>'
+      + '    <div class="rr-field" id="rr-fim-wrap"' + (!personalizado ? ' style="display:none"' : '') + '><label>Data Fim</label><input id="rr-data-fim" type="date" value="' + rrEsc(st.data_fim || ref.data_fim) + '"></div>'
+      + '    <div class="rr-field"><label>Aplicação</label><div class="rr-period-help">Período ativo: <strong>' + rrEsc(ref.titulo) + '</strong>. O filtro é usado em todos os relatórios da central.</div></div>'
+      + '  </div>'
+      + '</div>';
+  }
+
+  function rrBindPeriodControls(host) {
+    if (!host) return;
+    var st = rrState();
+    var periodoEl = host.querySelector('#rr-periodo');
+    var refEl = host.querySelector('#rr-ref-date');
+    var iniEl = host.querySelector('#rr-data-inicio');
+    var fimEl = host.querySelector('#rr-data-fim');
+    function sync() {
+      if (periodoEl) st.periodo = String(periodoEl.value || 'mes').trim() || 'mes';
+      if (refEl) st.data_referencia = rrClampDateText(refEl.value) || st.data_referencia;
+      if (iniEl) st.data_inicio = rrClampDateText(iniEl.value) || st.data_inicio;
+      if (fimEl) st.data_fim = rrClampDateText(fimEl.value) || st.data_fim;
+      rrRenderPage();
+    }
+    if (periodoEl) periodoEl.onchange = sync;
+    if (refEl) refEl.onchange = sync;
+    if (iniEl) iniEl.onchange = sync;
+    if (fimEl) fimEl.onchange = sync;
+  }
+
   function rrRenderPage() {
     rrEnsureStyle();
     var host = rrHost();
     if (!host) return false;
-    var ref = rrMonthRange();
+    var ref = rrCurrentRange();
     host.innerHTML = ''
       + '<div id="patch-relatorios-central">'
       + '  <div class="rr-panel">'
@@ -960,8 +1065,9 @@ try {
       + '        <div class="rr-title">Central de Relatórios</div>'
       + '        <div class="rr-sub">Área unificada com apenas relatórios existentes e funcionais, todos abrindo no mesmo padrão visual de impressão do sistema.</div>'
       + '      </div>'
-      + '      <div class="rr-badge">Período base atual: ' + rrEsc(ref.titulo) + '</div>'
+      + '      <div class="rr-badge">Período ativo: ' + rrEsc(ref.titulo) + '</div>'
       + '    </div>'
+      +       rrPeriodHtml(ref)
       + '  </div>'
       + '  <div class="rr-grid">'
       + rrDefs.map(function(def) {
@@ -981,6 +1087,7 @@ try {
         rrOpen(def);
       };
     });
+    rrBindPeriodControls(host);
     return true;
   }
 

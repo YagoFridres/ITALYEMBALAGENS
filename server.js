@@ -2183,24 +2183,70 @@ function _comissoesMontarPayload(todasOFs, extra = {}) {
   };
 }
 
+function _relatoriosIsoDateOnly(value) {
+  const txt = String(value || '').trim().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(txt) ? txt : '';
+}
+
+function _relatoriosAddDaysIso(dateStr, days) {
+  const base = _relatoriosIsoDateOnly(dateStr);
+  if (!base) return '';
+  const dt = new Date(`${base}T12:00:00`);
+  if (!Number.isFinite(dt.getTime())) return '';
+  dt.setDate(dt.getDate() + Number(days || 0));
+  return dt.toISOString().slice(0, 10);
+}
+
+function _relatoriosResolveDateRange(query, opts = {}) {
+  const q = query || {};
+  const dataInicio = _relatoriosIsoDateOnly(q.data_inicio || q.dataInicio || opts.data_inicio);
+  const dataFim = _relatoriosIsoDateOnly(q.data_fim || q.dataFim || opts.data_fim);
+  if (dataInicio || dataFim) {
+    let inicio = dataInicio || dataFim;
+    let fim = dataFim || dataInicio || inicio;
+    if (inicio && fim && fim < inicio) {
+      const swap = inicio;
+      inicio = fim;
+      fim = swap;
+    }
+    return {
+      inicio,
+      fim,
+      fim_exclusivo: _relatoriosAddDaysIso(fim, 1),
+      origem: 'custom'
+    };
+  }
+  const mes = parseInt(String(q.mes || opts.mes || '').trim(), 10);
+  const ano = parseInt(String(q.ano || opts.ano || '').trim(), 10);
+  if (mes >= 1 && mes <= 12 && ano > 1900) {
+    const inicio = `${ano}-${String(mes).padStart(2, '0')}-01`;
+    const fim_exclusivo = mes === 12 ? `${ano + 1}-01-01` : `${ano}-${String(mes + 1).padStart(2, '0')}-01`;
+    return {
+      inicio,
+      fim: _relatoriosAddDaysIso(fim_exclusivo, -1),
+      fim_exclusivo,
+      origem: 'mes_ano'
+    };
+  }
+  if (opts.defaultCurrentMonth) {
+    const now = new Date();
+    return _relatoriosResolveDateRange({}, { mes: now.getMonth() + 1, ano: now.getFullYear() });
+  }
+  return null;
+}
+
 app.get('/api/comissoes/relatorio', autenticar, async (req, res) => { 
   try { 
-    const { mes, ano } = req.query; 
-    if (!mes || !ano) return res.json({ ok: false, error: 'mes e ano obrigatorios' }); 
+    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    if (!range?.inicio || !range?.fim_exclusivo) return res.json({ ok: false, error: 'periodo inválido' }); 
 
-    const mesStr = String(mes).padStart(2, '0'); 
-    const inicio = `${ano}-${mesStr}-01`; 
-    const fimAno = parseInt(mes) === 12 ? parseInt(ano)+1 : parseInt(ano); 
-    const fimMes = parseInt(mes) === 12 ? '01' : String(parseInt(mes)+1).padStart(2,'0'); 
-    const fim = `${fimAno}-${fimMes}-01`; 
-
-    console.log('[COM] buscando', inicio, 'ate', fim); 
+    console.log('[COM] buscando', range.inicio, 'ate', range.fim_exclusivo); 
 
     const { data: ofs, error } = await supabase 
       .from('vw_comissoes') 
       .select('*') 
-      .gte('data_conclusao', inicio) 
-      .lt('data_conclusao', fim) 
+      .gte('data_conclusao', range.inicio) 
+      .lt('data_conclusao', range.fim_exclusivo) 
       .ilike('status', '%conclu%'); 
 
     if (error) { 
@@ -2210,7 +2256,11 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
 
     console.log('[COM] OFs da view:', ofs?.length); 
     const todasOFs = await _comissoesEnriquecerLista(ofs);
-    const payload = _comissoesMontarPayload(todasOFs, { mes: `${ano}-${mesStr}` });
+    const payload = _comissoesMontarPayload(todasOFs, {
+      mes: String(range.inicio || '').slice(0, 7),
+      data_inicio: range.inicio,
+      data_fim: range.fim
+    });
     console.log('[COM] FINAL ofs:', todasOFs.length, 'total:', payload.total_vendido); 
     return res.json(payload); 
   } catch(e) { 
@@ -6726,6 +6776,11 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       const dt = new Date(raw);
       return Number.isNaN(dt.getTime()) ? null : dt;
     };
+    const customInicio = _relatoriosIsoDateOnly(req.query.data_inicio || req.query.dataInicio);
+    const customFim = _relatoriosIsoDateOnly(req.query.data_fim || req.query.dataFim);
+    const customIniDate = customInicio ? new Date(`${customInicio}T00:00:00`) : null;
+    const customFimDate = customFim ? new Date(`${customFim}T23:59:59.999`) : null;
+    const hasCustomRange = !!(customInicio || customFim);
     const matchMonthYear = (dt, month, year) => !!(dt && (dt.getMonth() + 1 === month) && dt.getFullYear() === year);
     const requestedPeriodo = String(req.query.periodo || '').trim().toLowerCase() || 'mes';
     let mes = parseInt(String(req.query.mes || ''), 10) || (new Date().getMonth() + 1);
@@ -6740,6 +6795,11 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     const filtrarPeriodo = (rows, periodo, month, year) => (rows || []).filter((r) => {
       const d = parseRowDate(r);
       if (!d) return true;
+      if (hasCustomRange) {
+        if (customIniDate && d < customIniDate) return false;
+        if (customFimDate && d > customFimDate) return false;
+        return true;
+      }
       if (periodo === 'hoje' || periodo === 'dia') return d >= hojeRef;
       if (periodo === 'semana') return d >= semanaIni && d < semanaFim;
       if (periodo === 'todos') return true;
@@ -6755,6 +6815,9 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       data: {
         tabelaAtiva,
         periodo: requestedPeriodo,
+        data_inicio: customInicio,
+        data_fim: customFim,
+        hasCustomRange,
         semFiltro,
         totalHistorico: Array.isArray(todos) ? todos.length : 0,
         totalFiltrado: Array.isArray(dadosFiltrados) ? dadosFiltrados.length : 0,
@@ -7039,6 +7102,8 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
 
     return res.json({
       _debug: { tabelaAtiva, totalHistorico: todos?.length || 0, totalFiltrado: enriquecidosFiltrados.length, periodoSolicitado: requestedPeriodo, mesAplicado: mes, anoAplicado: ano },
+      data_inicio: customInicio || null,
+      data_fim: customFim || null,
       resumo_mes_atual: { total_caixas: totalCaixas, valor_total: valorTotal, total_ocorrencias: enriquecidosFiltrados.length, mes_referencia: String(ano) + '-' + String(mes).padStart(2, '0'), toneladas_perdidas: toneladasPerdidas, toneladas_sem_dados: toneladasSemDados },
       comparacao_mes_anterior: {
         total_caixas: totalCaixasAnt,
@@ -9451,7 +9516,16 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     try { passagens = await _enriquecerPassagensHistoricoComOfs(passagens); } catch (_) {}
     try { passagens = await _normalizarMaquinasPassagens(passagens); } catch (_) {}
     try { passagens = _dedupePassagensMaquinaRows(passagens); } catch (_) {}
-    res.json({ ok: true, passagens: passagens, total: passagens.length || count || 0, page, limit, offset }); 
+    res.json({
+      ok: true,
+      passagens: passagens,
+      total: passagens.length || count || 0,
+      page,
+      limit,
+      offset,
+      data_inicio: _relatoriosIsoDateOnly(data_inicio),
+      data_fim: _relatoriosIsoDateOnly(data_fim)
+    }); 
   } catch(e) { 
     console.error('[passagens/historico]', e.message); 
     res.json({ ok: true, passagens: [], total: 0, page: 1, erro: e.message }); 
@@ -18573,6 +18647,7 @@ app.get('/api/analises/toneladas', authMiddleware, async (req, res) => {
 app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
+    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: false });
     const _tonesNormId = (v) => String(v == null ? '' : v).trim().replace(/^['"]+|['"]+$/g, '');
     const pickOfCliId = (of) => _tonesNormId(of?.cli_id ?? of?.cliId ?? of?.cliente_id ?? of?.clienteId ?? '');
     const pickOfGramaturaId = (of) => _tonesNormId(of?.gramatura_id ?? of?.gramaturaId ?? '');
@@ -18603,7 +18678,10 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
     let from = 0;
     while (true) {
       let q = supabase.from('ofs').select(selectExpr);
-      q = q.not('data_conclusao', 'is', null).range(from, from + 999);
+      q = q.not('data_conclusao', 'is', null);
+      if (range?.inicio) q = q.gte('data_conclusao', range.inicio);
+      if (range?.fim_exclusivo) q = q.lt('data_conclusao', range.fim_exclusivo);
+      q = q.range(from, from + 999);
       const { data, error } = await q;
       if (error) throw error;
       if (!data || !data.length) break;
@@ -18715,7 +18793,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       data: { totalRows: Array.isArray(rows) ? rows.length : 0, sample: Array.isArray(rows) && rows[0] ? rows[0] : null },
     });
 
-    return res.json({ ok: true, rows });
+    return res.json({ ok: true, rows, data_inicio: range?.inicio || null, data_fim: range?.fim || null });
   } catch (e) {
     _debugRuntimeWrite({
       runId: 'pre-fix',
@@ -19994,8 +20072,8 @@ app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
     const chapaId = String(req.query.chapa_id || '').trim();
     const tipo = String(req.query.tipo || '').trim().toLowerCase();
     const empId = String(req.query.empId || '').trim();
-    const de = String(req.query.de || '').trim();
-    const ate = String(req.query.ate || '').trim();
+    const de = String(req.query.de || req.query.data_inicio || req.query.dataInicio || '').trim();
+    const ate = String(req.query.ate || req.query.data_fim || req.query.dataFim || '').trim();
     const isIsoDate = (s) => /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(s || '').trim());
     const deIso = isIsoDate(de) ? `${de}T00:00:00.000Z` : '';
     const ateIso = isIsoDate(ate) ? `${ate}T23:59:59.999Z` : '';
