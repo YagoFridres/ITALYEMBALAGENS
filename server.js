@@ -10888,13 +10888,13 @@ app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, r
       };
     }).sort((a, b) => {
       if (ordem === 'asc') {
-        if (Number(b.valor_total || 0) !== Number(a.valor_total || 0)) return Number(b.valor_total || 0) - Number(a.valor_total || 0);
-        if (Number(b.caixas_compradas || 0) !== Number(a.caixas_compradas || 0)) return Number(b.caixas_compradas || 0) - Number(a.caixas_compradas || 0);
-        if (Number(b.total_ofs || 0) !== Number(a.total_ofs || 0)) return Number(b.total_ofs || 0) - Number(a.total_ofs || 0);
+        if (Number(b.valor_total || 0) !== Number(a.valor_total || 0)) return Number(a.valor_total || 0) - Number(b.valor_total || 0);
+        if (Number(b.caixas_compradas || 0) !== Number(a.caixas_compradas || 0)) return Number(a.caixas_compradas || 0) - Number(b.caixas_compradas || 0);
+        if (Number(b.total_ofs || 0) !== Number(a.total_ofs || 0)) return Number(a.total_ofs || 0) - Number(b.total_ofs || 0);
       }
-      if (Number(b.valor_total || 0) !== Number(a.valor_total || 0)) return Number(a.valor_total || 0) - Number(b.valor_total || 0);
-      if (Number(b.caixas_compradas || 0) !== Number(a.caixas_compradas || 0)) return Number(a.caixas_compradas || 0) - Number(b.caixas_compradas || 0);
-      if (Number(b.total_ofs || 0) !== Number(a.total_ofs || 0)) return Number(a.total_ofs || 0) - Number(b.total_ofs || 0);
+      if (Number(b.valor_total || 0) !== Number(a.valor_total || 0)) return Number(b.valor_total || 0) - Number(a.valor_total || 0);
+      if (Number(b.caixas_compradas || 0) !== Number(a.caixas_compradas || 0)) return Number(b.caixas_compradas || 0) - Number(a.caixas_compradas || 0);
+      if (Number(b.total_ofs || 0) !== Number(a.total_ofs || 0)) return Number(b.total_ofs || 0) - Number(a.total_ofs || 0);
       return String(a.cliente_nome || '').localeCompare(String(b.cliente_nome || ''), 'pt-BR');
     });
 
