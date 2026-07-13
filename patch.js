@@ -1838,6 +1838,13 @@ try {
     logOfmaq('clique ação Alterar Máquina', { ofId: ofId, ofNum: ofNum });
     cleanupOfmaqArtifacts();
     try {
+      var patched = openAlterarMaquinaPatched(ofId, ofNum);
+      logOfmaq('modal alterar máquina aberto via patch', { ofId: ofId, ofNum: ofNum });
+      return patched;
+    } catch (e0) {
+      logOfmaq('erro abrir alterar máquina via patch', String(e0 && e0.message || e0));
+    }
+    try {
       if (typeof originalAbrirModalAlterarMaquinaOfmaq === 'function') {
         var opened = originalAbrirModalAlterarMaquinaOfmaq(ofId, ofNum);
         logOfmaq('modal alterar máquina aberto via original', { ofId: ofId, ofNum: ofNum });
@@ -1857,6 +1864,13 @@ try {
   window.alterarDataOf = function(ofId, ofNum, dataAtual) {
     logOfmaq('clique ação Alterar Data de Entrega', { ofId: ofId, ofNum: ofNum, dataAtual: dataAtual });
     cleanupOfmaqArtifacts();
+    try {
+      var patched = openAlterarDataPatched(ofId, ofNum, dataAtual);
+      logOfmaq('modal alterar data aberto via patch', { ofId: ofId, ofNum: ofNum });
+      return patched;
+    } catch (e0) {
+      logOfmaq('erro abrir alterar data via patch', String(e0 && e0.message || e0));
+    }
     try {
       if (typeof originalAlterarDataOf === 'function') {
         var opened = originalAlterarDataOf.apply(this, arguments);
