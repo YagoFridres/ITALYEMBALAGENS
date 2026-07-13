@@ -1125,18 +1125,13 @@ app.get('/sw.js', (req, res) => {
 
 app.get('/patch.js', (req, res) => {
   try {
-    const requestedVersion = String(req.query?.v || '').trim();
-    if (requestedVersion && requestedVersion !== PATCH_RUNTIME_VERSION) {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-      return res.redirect(302, '/patch.js?v=' + encodeURIComponent(PATCH_RUNTIME_VERSION));
-    }
     const fpRoot = path.join(__dirname, 'patch.js');
     if (!fs.existsSync(fpRoot)) return res.status(404).end();
     const raw = fs.readFileSync(fpRoot, 'utf8');
     const body = `/* patch-runtime-version:v${PATCH_RUNTIME_VERSION} */\n${raw}`;
     const sha1 = crypto.createHash('sha1').update(body).digest('hex');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('Surrogate-Control', 'no-store');

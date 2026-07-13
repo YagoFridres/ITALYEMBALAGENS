@@ -3,20 +3,24 @@
 
 var CACHE_NAME = 'italy-erp-v20260713160000';
 
-var ARQUIVOS_CACHE = [
-  '/',
-  '/index.html'
-];
+var CACHE_PREFIX = 'italy-erp-v';
+var STATIC_ASSET_RE = /\.(?:png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|otf|eot)$/i;
+
+function isNetworkOnlyPath(url, request) {
+  if (!url) return false;
+  if (url.includes('/patch.js') || url.includes('/sw.js')) return true;
+  if (request && request.mode === 'navigate') return true;
+  if (url === self.location.origin + '/' || url.includes('/index.html')) return true;
+  return false;
+}
+
+function isStaticAsset(url) {
+  return STATIC_ASSET_RE.test(String(url || ''));
+}
 
 self.addEventListener('install', function(event) {
   console.log('[SW] instalando cache:', CACHE_NAME);
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll(ARQUIVOS_CACHE).catch(function(e) {
-        console.warn('[SW] erro ao cachear arquivos:', e);
-      });
-    })
-  );
+  event.waitUntil(Promise.resolve());
   self.skipWaiting();
 });
 
@@ -26,7 +30,7 @@ self.addEventListener('activate', function(event) {
     caches.keys().then(function(nomes) {
       return Promise.all(
         nomes.filter(function(nome) {
-          return nome !== CACHE_NAME;
+          return String(nome || '').indexOf(CACHE_PREFIX) === 0 && nome !== CACHE_NAME;
         }).map(function(nome) {
           console.log('[SW] removendo cache antigo:', nome);
           return caches.delete(nome);
@@ -73,10 +77,10 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  if (url.includes('patch.js') || url.includes('sw.js')) {
+  if (isNetworkOnlyPath(url, event.request)) {
     event.respondWith(
       fetch(event.request, { cache: 'no-store' }).catch(function() {
-        return caches.match(event.request);
+        return new Response('Offline', { status: 503 });
       })
     );
     return;
@@ -87,25 +91,29 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  event.respondWith(
-    fetch(event.request)
-      .then(function(resposta) {
-        if (resposta && resposta.status === 200 && resposta.type === 'basic') {
-          var respostaCopia = resposta.clone();
-          caches.open(CACHE_NAME).then(function(cache) {
-            cache.put(event.request, respostaCopia);
-          });
-        }
-        return resposta;
-      })
-      .catch(function() {
-        return caches.match(event.request).then(function(cached) {
-          if (cached) return cached;
-          if (event.request.mode === 'navigate') {
-            return caches.match('/index.html');
+  if (isStaticAsset(url)) {
+    event.respondWith(
+      caches.match(event.request).then(function(cached) {
+        if (cached) return cached;
+        return fetch(event.request).then(function(resposta) {
+          if (resposta && resposta.status === 200 && resposta.type === 'basic') {
+            var respostaCopia = resposta.clone();
+            caches.open(CACHE_NAME).then(function(cache) {
+              cache.put(event.request, respostaCopia);
+            });
           }
-          return new Response('Offline', { status: 503 });
+          return resposta;
         });
+      }).catch(function() {
+        return new Response('Offline', { status: 503 });
       })
+    );
+    return;
+  }
+
+  event.respondWith(
+    fetch(event.request, { cache: 'no-store' }).catch(function() {
+      return new Response('Offline', { status: 503 });
+    })
   );
 });
