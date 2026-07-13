@@ -26360,7 +26360,8 @@ window._mbnActive = function(id) {
 })();
 
 (function patchOfmaqAndHubIntelligence() {
-  try { console.log('[OFMAQ-HOOK] patchOfmaq chamado'); } catch (_) {}
+  try {
+    try { console.log('[OFMAQ-HOOK] patchOfmaq chamado'); } catch (_) {}
   var originalSortByPriority = (typeof window.ordenarOFsPorPrioridade === 'function')
     ? window.ordenarOFsPorPrioridade
     : null;
@@ -28949,6 +28950,9 @@ window._mbnActive = function(id) {
   } else {
     tick();
     _ofmaqScheduleAfterRender('init', 500);
+  }
+  } catch (e) {
+    try { console.error('[OFMAQ-HOOK] ERRO na IIFE:', e); } catch (_) {}
   }
 })();
 
@@ -36652,3 +36656,4 @@ function _ocultarGraficoComissoes() {
     }
   } catch (_) {}
 })();
+console.log('[PATCH-FIM] patch.js executou ate o fim');
