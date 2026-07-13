@@ -15401,13 +15401,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
    'carregarOFsMaquina','loadOFsMaquina'].forEach(function(nome) {
     if (typeof window[nome] === 'function' && !window[nome]._patchedAccordion) {
       var orig = window[nome];
-      window[nome] = function() {
+      var wrapped = function() {
         var res = orig.apply(this, arguments);
         setTimeout(aplicarAccordion, 300);
         setTimeout(aplicarAccordion, 700);
         return res;
       };
-      window[nome]._patchedAccordion = true;
+      wrapped._patchedAccordion = true;
+      wrapped.__patchWrapOriginal = orig.__patchWrapOriginal || orig;
+      wrapped._patchedSwipeMaq = !!orig._patchedSwipeMaq;
+      wrapped._patchedPriorityHub = !!orig._patchedPriorityHub;
+      window[nome] = wrapped;
       console.log('[PATCH] interceptou render:', nome);
     }
   });
@@ -15665,14 +15669,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function patchRenderHub() {
     if (window.renderHub && !window.renderHub._patched) {
       var _orig = window.renderHub;
-      window.renderHub = async function() {
+      var wrappedRenderHub = async function() {
         var res = await _orig.apply(this, arguments);
         setTimeout(function() {
           try { window.carregarPassagensHoje(); } catch(_) {}
         }, 400);
         return res;
       };
-      window.renderHub._patched = true;
+      wrappedRenderHub._patched = true;
+      wrappedRenderHub._patchedHubIntel = !!_orig._patchedHubIntel;
+      wrappedRenderHub.__patchWrapOriginal = _orig.__patchWrapOriginal || _orig;
+      window.renderHub = wrappedRenderHub;
       console.log('[PATCH] renderHub interceptada');
     }
   }
@@ -15753,12 +15760,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var fn = window[nome];
         if (typeof fn !== 'function') return;
         if (fn._patchedSwipeMaq) return;
-        window[nome] = function(){
+        var wrappedSwipe = function(){
           var r = fn.apply(this, arguments);
           setTimeout(_bindSwipeMaquinas, 280);
           return r;
         };
-        window[nome]._patchedSwipeMaq = true;
+        wrappedSwipe._patchedSwipeMaq = true;
+        wrappedSwipe._patchedAccordion = !!fn._patchedAccordion;
+        wrappedSwipe._patchedPriorityHub = !!fn._patchedPriorityHub;
+        wrappedSwipe.__patchWrapOriginal = fn.__patchWrapOriginal || fn;
+        window[nome] = wrappedSwipe;
       }catch(_){}
     });
 
@@ -26588,6 +26599,33 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     return escHLocal(s).replace(/`/g, '&#96;');
   }
 
+  function _ofmaqCopyWrapFlags(target, source) {
+    var src = source && typeof source === 'function' ? source : null;
+    var dst = target && typeof target === 'function' ? target : null;
+    if (!dst || !src) return dst;
+    try { dst.__patchWrapOriginal = src.__patchWrapOriginal || src; } catch (_) {}
+    ['_patchedAccordion','_patchedSwipeMaq','_patchedPriorityHub','_patchedHubIntel','_patched'].forEach(function(flag) {
+      try { if (src[flag]) dst[flag] = true; } catch (_) {}
+    });
+    return dst;
+  }
+
+  function _ofmaqWrapWindowFnOnce(nome, flag, factory) {
+    try {
+      var current = window[nome];
+      if (typeof current !== 'function') return null;
+      if (current[flag]) return current;
+      var wrapped = factory(current);
+      if (typeof wrapped !== 'function') return current;
+      wrapped[flag] = true;
+      _ofmaqCopyWrapFlags(wrapped, current);
+      window[nome] = wrapped;
+      return wrapped;
+    } catch (_) {
+      return null;
+    }
+  }
+
   function getToken() {
     try {
       return String(
@@ -26787,6 +26825,32 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq .kb-col-aviso.patch-ofmaq-aviso{margin:0 !important;border-radius:12px !important;background:linear-gradient(135deg,rgba(127,29,29,.32),rgba(69,10,10,.24)) !important;border-color:rgba(248,113,113,.32) !important;color:#fecaca !important;padding:10px 12px !important}'
       + '#page-ofmaq .patch-ofmaq-col-summary{display:flex;gap:8px;flex-wrap:wrap;color:#94a3b8;font-size:11px}'
       + '#page-ofmaq .patch-ofmaq-col-body{display:grid;gap:12px}'
+      + '#page-ofmaq .patch-ofmaq-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:18px}'
+      + '#page-ofmaq .patch-ofmaq-summary-card{padding:16px;border-radius:16px;background:linear-gradient(135deg,rgba(15,23,42,.98),rgba(30,41,59,.94));border:1px solid rgba(51,65,85,.8);box-shadow:0 18px 32px rgba(2,6,23,.22),inset 0 1px 0 rgba(255,255,255,.04)}'
+      + '#page-ofmaq .patch-ofmaq-summary-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}'
+      + '#page-ofmaq .patch-ofmaq-summary-card-title{font-size:15px;font-weight:900;color:#f8fafc;line-height:1.2}'
+      + '#page-ofmaq .patch-ofmaq-summary-card-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;border:1px solid rgba(96,165,250,.28);background:rgba(37,99,235,.14);color:#bfdbfe;font-size:11px;font-weight:800}'
+      + '#page-ofmaq .patch-ofmaq-summary-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}'
+      + '#page-ofmaq .patch-ofmaq-summary-item{padding:10px 12px;border-radius:12px;background:rgba(15,23,42,.58);border:1px solid rgba(71,85,105,.4)}'
+      + '#page-ofmaq .patch-ofmaq-summary-item b{display:block;margin-top:6px;font-size:15px;color:#f8fafc}'
+      + '#page-ofmaq .patch-ofmaq-summary-progress{height:10px;margin-top:12px;padding:2px;border-radius:999px;background:rgba(15,23,42,.58);border:1px solid rgba(71,85,105,.45);overflow:hidden}'
+      + '#page-ofmaq .patch-ofmaq-summary-progress > span{display:block;height:100%;border-radius:999px}'
+      + '#page-ofmaq .patch-ofmaq-table-wrap{overflow:auto;border-radius:16px;border:1px solid rgba(51,65,85,.85);background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(15,23,42,.88));box-shadow:0 20px 36px rgba(2,6,23,.22),inset 0 1px 0 rgba(255,255,255,.03)}'
+      + '#page-ofmaq .patch-ofmaq-table{width:100%;min-width:1220px;border-collapse:separate;border-spacing:0}'
+      + '#page-ofmaq .patch-ofmaq-table thead th{position:sticky;top:0;z-index:2;padding:14px 12px;background:rgba(15,23,42,.98);border-bottom:1px solid rgba(71,85,105,.85);font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#64748b;text-align:left;white-space:nowrap}'
+      + '#page-ofmaq .patch-ofmaq-table tbody td{padding:13px 12px;border-bottom:1px solid rgba(51,65,85,.45);font-size:13px;line-height:1.4;color:#e2e8f0;vertical-align:middle}'
+      + '#page-ofmaq .patch-ofmaq-row{background:rgba(15,23,42,.46);transition:background .16s ease}'
+      + '#page-ofmaq .patch-ofmaq-row:hover{background:rgba(30,41,59,.72)}'
+      + '#page-ofmaq .patch-ofmaq-row[data-urgencia="urgente"] td{background-image:linear-gradient(90deg,rgba(127,29,29,.18),transparent)}'
+      + '#page-ofmaq .patch-ofmaq-row[data-urgencia="atrasada"] td{background-image:linear-gradient(90deg,rgba(120,53,15,.18),transparent)}'
+      + '#page-ofmaq .patch-ofmaq-cell-main{display:grid;gap:3px;min-width:0}'
+      + '#page-ofmaq .patch-ofmaq-cell-main strong{font-size:14px;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+      + '#page-ofmaq .patch-ofmaq-cell-sub{font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+      + '#page-ofmaq .patch-ofmaq-seq-badge{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 10px;border-radius:999px;background:rgba(37,99,235,.18);border:1px solid rgba(96,165,250,.3);color:#dbeafe;font-size:13px;font-weight:900}'
+      + '#page-ofmaq .patch-ofmaq-tag{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;border:1px solid rgba(71,85,105,.45);background:rgba(15,23,42,.58);font-size:11px;font-weight:800;color:#e2e8f0;white-space:nowrap}'
+      + '#page-ofmaq .patch-ofmaq-tag.is-danger{border-color:rgba(248,113,113,.35);background:rgba(127,29,29,.22);color:#fecaca}'
+      + '#page-ofmaq .patch-ofmaq-tag.is-warn{border-color:rgba(251,191,36,.35);background:rgba(120,53,15,.2);color:#fde68a}'
+      + '#page-ofmaq .patch-ofmaq-empty{padding:26px 20px;color:#94a3b8;text-align:center}'
       + '.patch-ofmaq-toolbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}'
       + '.patch-ofmaq-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}'
       + '.patch-ofmaq-color-dot{width:10px;height:10px;border-radius:999px;display:inline-block;border:1px solid rgba(255,255,255,0.18);box-shadow:0 0 0 2px rgba(0,0,0,0.18) inset}'
@@ -26870,7 +26934,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#patch-ofmaq-redistrib-modal .actions button.primary{background:var(--accent);border-color:var(--accent);color:#fff}'
       + '#patch-ofmaq-redistrib-modal .foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)}'
       + '@media (max-width: 1100px){#patch-ofmaq-titlebar{flex-direction:column}.patch-ofmaq-title-stats{justify-content:flex-start}#page-ofmaq .patch-ofmaq-toprow{grid-template-columns:minmax(0,1fr)}#page-ofmaq .kb-col-ofmaq.patch-ofmaq-col{min-width:320px}}'
-      + '@media (max-width: 720px){#page-ofmaq.patch-ofmaq-page{padding:12px}#page-ofmaq .ptoolbar.patch-ofmaq-toolbar{padding:14px}#patch-ofmaq-titlebar{padding:14px}.patch-ofmaq-title-main{font-size:24px}.patch-ofmaq-title-stat{min-width:96px}#page-ofmaq #ofmaq-busca{min-width:220px !important}#page-ofmaq .patch-ofmaq-col-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-col-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}'
+      + '@media (max-width: 720px){#page-ofmaq.patch-ofmaq-page{padding:12px}#page-ofmaq .ptoolbar.patch-ofmaq-toolbar{padding:14px}#patch-ofmaq-titlebar{padding:14px}.patch-ofmaq-title-main{font-size:24px}.patch-ofmaq-title-stat{min-width:96px}#page-ofmaq #ofmaq-busca{min-width:220px !important}#page-ofmaq .patch-ofmaq-col-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-col-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#page-ofmaq .patch-ofmaq-summary-meta{grid-template-columns:repeat(2,minmax(0,1fr))}}'
       + '#hub-inteligencia .patch-hub-intel-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;margin-bottom:8px;border-radius:8px;cursor:pointer;transition:filter 0.15s}'
       + '#hub-inteligencia .patch-hub-intel-item:hover{filter:brightness(1.12)}';
     document.head.appendChild(st);
@@ -27121,7 +27185,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function _ofmaqDomCards(scope) {
     var root = scope || document;
     try {
-      var cards = Array.prototype.slice.call(root.querySelectorAll('.kb-card.kb-card-ofmaq[data-of-id], .kb-card-ofmaq[data-of-id], .of-card-maquina[data-of-id], .ofmaq-card[data-of-id], .of-card[data-of-id]'));
+      var cards = Array.prototype.slice.call(root.querySelectorAll('.kb-card.kb-card-ofmaq[data-of-id], .kb-card-ofmaq[data-of-id], .of-card-maquina[data-of-id], .ofmaq-card[data-of-id], .of-card[data-of-id], tr.patch-ofmaq-row[data-of-id]'));
       var seen = {};
       return cards.filter(function(card) {
         var id = String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
@@ -27310,6 +27374,27 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     });
     var filt = termNorm ? arr.filter(function(item) { return _ofmaqCardMatchesBusca(item.card, item.of, termNorm); }) : arr.slice();
     try { console.log('[OFMAQ-BUSCA] termo:', String(termRaw || ''), 'total:', arr.length, 'achou:', filt.length); } catch (_) {}
+    var tableRows = Array.prototype.slice.call(document.querySelectorAll('tr.patch-ofmaq-row[data-of-id]'));
+    if (tableRows.length) {
+      var visibleRows = 0;
+      tableRows.forEach(function(row) {
+        var ofId = String(row && row.getAttribute && row.getAttribute('data-of-id') || '').trim();
+        var of = lookup[ofId] || getCurrentOfById(ofId);
+        var show = _ofmaqCardMatchesBusca(row, of, termNorm);
+        row.style.display = show ? '' : 'none';
+        if (show) visibleRows += 1;
+      });
+      var tbody = tableRows[0] && tableRows[0].parentElement;
+      var empty = document.getElementById('patch-ofmaq-empty-search');
+      if (!empty && tbody) {
+        empty = document.createElement('tr');
+        empty.id = 'patch-ofmaq-empty-search';
+        empty.innerHTML = '<td colspan="10" class="patch-ofmaq-empty">Nenhuma OF encontrada para esse termo.</td>';
+        tbody.appendChild(empty);
+      }
+      if (empty) empty.style.display = visibleRows ? 'none' : '';
+      return;
+    }
     _ofmaqGetMachineLists().forEach(function(listEl) {
       var visibleCount = 0;
       _ofmaqDomCards(listEl).forEach(function(card) {
@@ -27773,6 +27858,233 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     };
   }
 
+  function _ofmaqStatusToneFromPct(pct) {
+    var n = Number(pct || 0) || 0;
+    if (n >= 100) return { tone: 'danger', color: '#f87171', label: 'Acima da capacidade' };
+    if (n >= 80) return { tone: 'warn', color: '#fbbf24', label: 'Quase no limite' };
+    return { tone: 'ok', color: '#38bdf8', label: 'Dentro da capacidade' };
+  }
+
+  function _ofmaqEntregaIso(of) {
+    return String(getOfDelivery(of) || of && (of.data_entrega || of.ent || of.dataEntrega) || '').slice(0, 10);
+  }
+
+  function _ofmaqTempoMinForMachine(of, maqDados) {
+    try {
+      return Math.max(0, Math.round(Number(typeof calcularTempoOf === 'function' ? calcularTempoOf(of, maqDados) : 0) || 0));
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  function _ofmaqUrgenciaTipo(of) {
+    var entrega = _ofmaqEntregaIso(of);
+    var urgente = !!(of && (of.urg || of.urgente));
+    if (urgente) return 'urgente';
+    try {
+      var hoje = new Date().toISOString().slice(0, 10);
+      var concl = (typeof _assistIsConcluida === 'function') ? !!_assistIsConcluida(of) : false;
+      if (entrega && entrega < hoje && !concl) return 'atrasada';
+    } catch (_) {}
+    return 'normal';
+  }
+
+  function _ofmaqSortGroupForTable(maquina, ofs) {
+    var list = Array.isArray(ofs) ? ofs.slice() : [];
+    var baseSorted = (typeof ordenarOFsPorPrioridade === 'function')
+      ? ordenarOFsPorPrioridade(list.slice())
+      : _ofmaqSortMachineQueue(list.slice());
+    var pos = new Map();
+    var ordArr = Array.isArray(window._ordemMaquinas && window._ordemMaquinas[maquina]) ? window._ordemMaquinas[maquina] : [];
+    ordArr.forEach(function(id, idx) {
+      var key = String(id || '').trim();
+      if (key) pos.set(key, idx);
+    });
+    var buckets = [[], [], [], []];
+    baseSorted.forEach(function(of) {
+      buckets[ofmaqPrioridadeBucket(of) || 3].push(of);
+    });
+    var sorted = buckets.flatMap(function(bucket) {
+      if (!bucket.length) return [];
+      if (!pos.size) return bucket;
+      return bucket.slice().sort(function(a, b) {
+        var ia = pos.has(String(a && a.id || '')) ? pos.get(String(a && a.id || '')) : 999999;
+        var ib = pos.has(String(b && b.id || '')) ? pos.get(String(b && b.id || '')) : 999999;
+        if (ia !== ib) return ia - ib;
+        return 0;
+      });
+    });
+    try {
+      var hasOrdem = sorted.some(function(of) {
+        return Number.isFinite(Number(of && of.ordem_maquina)) && Number(of.ordem_maquina) !== 0;
+      });
+      if (hasOrdem) {
+        sorted = sorted.slice().sort(function(a, b) {
+          return Number(a && a.ordem_maquina || 0) - Number(b && b.ordem_maquina || 0);
+        });
+      }
+    } catch (_) {}
+    return sorted;
+  }
+
+  function _ofmaqRenderTableShell(grupos, maquinasOrdenadas, container, alertasHtml) {
+    var orderedGroups = {};
+    (maquinasOrdenadas || []).forEach(function(maquina) {
+      if (!grupos || !Array.isArray(grupos[maquina]) || !grupos[maquina].length) return;
+      orderedGroups[maquina] = _ofmaqSortGroupForTable(maquina, grupos[maquina]);
+    });
+    try { window._ofmaqLastGroupOfs = orderedGroups; } catch (_) {}
+    var summaries = [];
+    var rowsHtml = [];
+    Object.keys(orderedGroups).forEach(function(maquina) {
+      var ofs = orderedGroups[maquina] || [];
+      if (!ofs.length) return;
+      try { if (typeof ofmaqMarcarAgrupamento === 'function') ofmaqMarcarAgrupamento(ofs); } catch (_) {}
+      var maqDados = (typeof getDadosMaquina === 'function') ? getDadosMaquina(maquina) : null;
+      var cap = (typeof calcularCapacidadeMaquina === 'function')
+        ? calcularCapacidadeMaquina(maqDados, ofs)
+        : { pct: 0, minOcupados: 0, minTotal: 480, cor: '#38bdf8', label: 'OK', cxHora: 0, horaInicio: '07:00', horaFim: '18:00', setups: ofs.length };
+      var tone = _ofmaqStatusToneFromPct(cap && cap.pct);
+      var urgentes = ofs.filter(function(of) { return _ofmaqUrgenciaTipo(of) !== 'normal'; }).length;
+      var totalCx = ofs.reduce(function(sum, of) { return sum + (Number(_getQtdOf(of) || 0) || 0); }, 0);
+      summaries.push(
+        '<div class="patch-ofmaq-summary-card" data-maq="' + escAttrLocal(maquina) + '">'
+        + '<div class="patch-ofmaq-summary-card-head">'
+        + '  <div><div class="patch-ofmaq-summary-card-title">' + escHLocal(maquina) + '</div><div class="patch-ofmaq-cell-sub">' + escHLocal(_ofmaqFmtInt(ofs.length)) + ' OF(s) na fila</div></div>'
+        + '  <span class="patch-ofmaq-summary-card-badge">' + escHLocal(String(cap && cap.pct || 0)) + '%</span>'
+        + '</div>'
+        + '<div class="patch-ofmaq-summary-meta">'
+        + '  <div class="patch-ofmaq-summary-item"><span class="patch-ofmaq-control-label">Tempo</span><b>' + escHLocal(_ofmaqFmtTempoValue(cap && cap.minOcupados || 0)) + '</b></div>'
+        + '  <div class="patch-ofmaq-summary-item"><span class="patch-ofmaq-control-label">Urgentes/Atrasadas</span><b>' + escHLocal(_ofmaqFmtInt(urgentes)) + '</b></div>'
+        + '  <div class="patch-ofmaq-summary-item"><span class="patch-ofmaq-control-label">Caixas</span><b>' + escHLocal(_ofmaqFmtInt(totalCx)) + '</b></div>'
+        + '  <div class="patch-ofmaq-summary-item"><span class="patch-ofmaq-control-label">Setup / Janela</span><b>' + escHLocal(String(cap && cap.setups || ofs.length)) + ' setup(s)</b><span class="patch-ofmaq-cell-sub">' + escHLocal(String(cap && cap.horaInicio || '07:00') + ' - ' + String(cap && cap.horaFim || '18:00')) + '</span></div>'
+        + '</div>'
+        + '<div class="patch-ofmaq-summary-progress"><span style="width:' + escAttrLocal(String(Math.min(Number(cap && cap.pct || 0) || 0, 100))) + '%;background:' + escAttrLocal(String(tone.color || (cap && cap.cor) || '#38bdf8')) + '"></span></div>'
+        + '<div class="patch-ofmaq-col-summary"><span>' + escHLocal(String((cap && cap.label) || tone.label || 'Status')) + '</span><span>' + escHLocal(_ofmaqFmtTempoValue(cap && cap.minTotal || 0)) + ' disponíveis</span>' + ((cap && cap.cxHora) ? ('<span>' + escHLocal(String(cap.cxHora)) + ' cx/h</span>') : '') + '</div>'
+        + '</div>'
+      );
+      ofs.forEach(function(of, idx) {
+        var id = String(of && of.id || '').trim();
+        if (!id) return;
+        var urg = _ofmaqUrgenciaTipo(of);
+        var numero = _ofmaqNumeroLabel(of) || '—';
+        var cliente = _ofmaqClienteLabel(of) || '—';
+        var produto = _ofmaqProdutoLabel(of) || '—';
+        var tamanho = _ofmaqTamanhoLabel(of) || '—';
+        var cores = _ofmaqCoresLabel(of) || '—';
+        var quantidade = _getQtdOf(of);
+        var entrega = _ofmaqEntregaIso(of);
+        var tempoMin = _ofmaqTempoMinForMachine(of, maqDados);
+        var tagClass = urg === 'urgente' ? ' is-danger' : (urg === 'atrasada' ? ' is-warn' : '');
+        var tagText = urg === 'urgente' ? 'Urgente' : (urg === 'atrasada' ? 'Atrasada' : 'No prazo');
+        rowsHtml.push(
+          '<tr class="patch-ofmaq-row" data-of-id="' + escAttrLocal(id) + '" data-maq="' + escAttrLocal(maquina) + '" data-tempo-min="' + escAttrLocal(String(tempoMin || 0)) + '" data-qtd="' + escAttrLocal(String(quantidade != null ? quantidade : '')) + '" data-urgencia="' + escAttrLocal(urg) + '"'
+          + ' onclick="if(event.target&&event.target.closest&&event.target.closest(\'a,button,input,select,textarea\'))return; try{abrirBottomSheetAcoes(&quot;' + escAttrLocal(id) + '&quot;,&quot;' + escAttrLocal(String(numero || '')) + '&quot;)}catch(_e){}">'
+          + '<td><span class="patch-ofmaq-seq-badge">' + escHLocal(String(idx + 1)) + '</span></td>'
+          + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(numero) + '</strong><span class="patch-ofmaq-cell-sub">' + escHLocal(tagText) + '</span></div></td>'
+          + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(cliente) + '</strong><span class="patch-ofmaq-cell-sub">' + escHLocal(String(of && of.status || 'Em aberto')) + '</span></div></td>'
+          + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(produto) + '</strong></div></td>'
+          + '<td><span class="patch-ofmaq-tag">' + escHLocal(tamanho) + '</span></td>'
+          + '<td><span class="patch-ofmaq-tag">' + escHLocal(cores) + '</span></td>'
+          + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(_ofmaqFmtInt(quantidade != null ? quantidade : 0)) + '</strong></div></td>'
+          + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</strong><span class="patch-ofmaq-cell-sub">' + (entrega ? escHLocal(fmtWeekdayDate(entrega)) : '—') + '</span></div></td>'
+          + '<td><span class="patch-ofmaq-tag' + tagClass + '">' + escHLocal(_ofmaqFmtTempoValue(tempoMin)) + '</span></td>'
+          + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(maquina) + '</strong></div></td>'
+          + '</tr>'
+        );
+      });
+    });
+    var html = String(alertasHtml || '');
+    html += '<div class="patch-ofmaq-summary-grid">' + (summaries.join('') || '<div class="patch-ofmaq-summary-card"><div class="patch-ofmaq-empty">Nenhuma máquina com OFs para este filtro.</div></div>') + '</div>';
+    html += '<div class="patch-ofmaq-table-wrap"><table class="patch-ofmaq-table"><thead><tr>'
+      + '<th>Sequência</th><th>Nº da OF</th><th>Cliente</th><th>Produto</th><th>Tamanho</th><th>Cores</th><th>Quantidade</th><th>Data de Entrega</th><th>Tempo</th><th>Máquina</th>'
+      + '</tr></thead><tbody>' + (rowsHtml.join('') || '<tr><td colspan="10" class="patch-ofmaq-empty">Nenhuma OF encontrada para este filtro.</td></tr>') + '</tbody></table></div>';
+    container.innerHTML = html;
+    try { container.setAttribute('data-ofmaq-view-mode', 'table'); } catch (_) {}
+  }
+
+  function hookRenderKanbanOfmaqTable() {
+    if (typeof window.renderKanbanOfmaq !== 'function') return;
+    if (window.renderKanbanOfmaq._patchedOfmaqTableView) return;
+    var original = window.renderKanbanOfmaq;
+    var wrapped = function(grupos, maquinasOrdenadas, container, alertasHtml) {
+      try {
+        _ofmaqRenderTableShell(grupos, maquinasOrdenadas, container, alertasHtml);
+      } catch (e) {
+        try { console.error('[OFMAQ-TABLE-ERRO]:', e); } catch (_) {}
+        return original.apply(this, arguments);
+      }
+    };
+    wrapped._patchedOfmaqTableView = true;
+    _ofmaqCopyWrapFlags(wrapped, original);
+    wrapped.__patchWrapOriginal = original.__patchWrapOriginal || original;
+    window.renderKanbanOfmaq = wrapped;
+  }
+
+  function ensureConfiguracoesAlias() {
+    try {
+      if (typeof window.renderConfiguracoes !== 'function' && typeof window.renderSistema === 'function') {
+        window.renderConfiguracoes = function() {
+          return window.renderSistema.apply(this, arguments);
+        };
+      }
+    } catch (_) {}
+  }
+
+  function _ofmaqExtractContainerAlerts(container) {
+    if (!container) return '';
+    try {
+      return Array.prototype.slice.call(container.children || []).filter(function(node) {
+        if (!node || node.nodeType !== 1) return false;
+        if (node.classList && (node.classList.contains('kb-board-ofmaq') || node.classList.contains('patch-ofmaq-table-wrap') || node.classList.contains('patch-ofmaq-summary-grid'))) return false;
+        return true;
+      }).map(function(node) {
+        return String(node.outerHTML || '');
+      }).join('');
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function _ofmaqCaptureGroupsFromKanban(container) {
+    var host = container || document.getElementById('ofs-por-maquina-container');
+    var out = {};
+    if (!host) return out;
+    var lookup = _ofmaqBuildLookupMap();
+    Array.prototype.slice.call(host.querySelectorAll('.kb-col-ofmaq[data-maq]')).forEach(function(col) {
+      var maquina = String(col && col.getAttribute && col.getAttribute('data-maq') || '').trim();
+      if (!maquina) return;
+      var ofs = Array.prototype.slice.call(col.querySelectorAll('.kb-card-ofmaq[data-of-id]')).map(function(card) {
+        var id = String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
+        return lookup[id] || getCurrentOfById(id) || null;
+      }).filter(Boolean);
+      if (ofs.length) out[maquina] = ofs;
+    });
+    return out;
+  }
+
+  function _ofmaqEnsureTableViewFromDom() {
+    var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body');
+    if (!container) return false;
+    if (container.querySelector('.patch-ofmaq-table')) return true;
+    if (!container.querySelector('.kb-board-ofmaq')) {
+      var txt = _ofmaqNormBusca(container.textContent || '');
+      if (txt.indexOf('nenhuma of encontrada') >= 0) {
+        _ofmaqRenderTableShell({}, [], container, '');
+        return true;
+      }
+      return false;
+    }
+    var groups = _ofmaqCaptureGroupsFromKanban(container);
+    var keys = Object.keys(groups || {}).filter(function(maquina) {
+      return Array.isArray(groups[maquina]) && groups[maquina].length;
+    });
+    if (!keys.length) return false;
+    var alertsHtml = _ofmaqExtractContainerAlerts(container);
+    _ofmaqRenderTableShell(groups, keys, container, alertsHtml);
+    return true;
+  }
+
   function _ofmaqDecorateShell() {
     var page = document.getElementById('page-ofmaq');
     if (!page) return;
@@ -28227,6 +28539,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     buildSuggestionMap();
     _ofmaqDomCards(document).forEach(function(card) {
       if (!card) return;
+      if (String(card.tagName || '').toUpperCase() === 'TR') return;
       var id = String(card.getAttribute('data-of-id') || '').trim();
       var of = getCurrentOfById(id);
       if (!of) return;
@@ -29283,7 +29596,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function _ofmaqCanApplyRedesign() {
     var host = _ofmaqRootContainer(document);
     if (!host) return false;
-    return _ofmaqCardsInDom(host).length > 0;
+    if (_ofmaqCardsInDom(host).length > 0) return true;
+    return _ofmaqNormBusca(host.textContent || '').indexOf('nenhuma of encontrada') >= 0;
   }
 
   function _ofmaqRunAfterRender(reason) {
@@ -29291,8 +29605,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var host = _ofmaqRootContainer(document);
       if (!host) return false;
       var cards = _ofmaqCardsInDom(host);
-      if (!cards.length) return false;
-      var sig = _ofmaqDomSignature(host, cards);
+      var hostText = _ofmaqNormBusca(host.textContent || '');
+      var hasEmptyState = hostText.indexOf('nenhuma of encontrada') >= 0;
+      if (!cards.length && !hasEmptyState) return false;
+      var sig = cards.length ? _ofmaqDomSignature(host, cards) : ('empty::' + hostText);
       var now = Date.now();
       var lastSig = String(host.dataset.ofmaqProcessado || '').trim();
       var lastAt = Number(host.dataset.ofmaqProcessadoAt || 0) || 0;
@@ -29301,7 +29617,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       host.dataset.ofmaqProcessadoAt = String(now);
       window.__ofmaqLastAfterRenderSig = sig;
       window.__ofmaqLastAfterRenderAt = now;
-      try { console.log('[OFMAQ-HOOK] afterRender disparado por', String(reason || 'desconhecido'), 'cards:', cards.length); } catch (_) {}
+      try { console.log('[OFMAQ-HOOK] afterRender disparado por', String(reason || 'desconhecido'), 'cards:', cards.length, 'empty:', hasEmptyState); } catch (_) {}
       var currentAfterRender = (typeof window.afterRenderOfmaq === 'function')
         ? window.afterRenderOfmaq
         : (typeof afterRenderOfmaq === 'function' ? afterRenderOfmaq : null);
@@ -29358,9 +29674,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (!target) return;
       var observer = new MutationObserver(function(mutations) {
         if (window.__ofmaqRenderObserverPaused === '1') return;
+        var host = _ofmaqRootContainer(document);
         var relevant = (mutations || []).some(function(m) {
           return Array.prototype.slice.call(m.addedNodes || []).some(function(node) {
             if (!node || node.nodeType !== 1) return false;
+            if (String(window._PAGE_ATUAL || '') === 'ofmaq' && host) {
+              try {
+                if (node === host) return true;
+                if (host.contains(node)) return true;
+                if (node.contains && node.contains(host)) return true;
+              } catch (_) {}
+            }
             if (node.matches && (node.matches('[data-of-id]') || node.matches('.maq-body,.maq-ofs,#ofs-por-maquina-container,#ofsmaq-container,#ofmaq-body'))) return true;
             return !!(node.querySelector && node.querySelector('[data-of-id], .maq-body, .maq-ofs, #ofs-por-maquina-container, #ofsmaq-container, #ofmaq-body'));
           });
@@ -29414,6 +29738,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       ensureStyles();
       ensureOfmaqToolbarButtons();
       _ofmaqDecorateShell();
+      try { _ofmaqEnsureTableViewFromDom(); } catch (_) {}
       try { _ofmaqApplySavedOrderToDom(); } catch (_) {}
       try { _ofmaqSyncLayoutMode(); } catch (_) {}
       try { _ofmaqDecorateColumns(); } catch (_) {}
@@ -29431,6 +29756,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   function hookRenderOfmaq() {
     try { console.log('[OFMAQ-HOOK] hookRenderOfmaq chamado'); } catch (_) {}
+    ensureConfiguracoesAlias();
+    hookRenderKanbanOfmaqTable();
     if (typeof window.normalizeOF === 'function' && !window.normalizeOF._patchedOfmaqDisplay) {
       var origNormalize = window.normalizeOF;
       window.normalizeOF = function(row) {
@@ -29470,22 +29797,20 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       window.carregarOFsFresh._patchedOfmaqDisplay = true;
     }
     try {
-      var fn = window.renderOFsPorMaquina;
-      if (typeof fn !== 'function') return;
-      if (fn._patchedPriorityHub) return;
-      var orig = fn;
-      window.renderOFsPorMaquina = async function() {
-        _refreshOfmaqCachesFromRuntime();
-        _ofmaqPauseRenderObserver();
-        try {
-          var result = await orig.apply(this, arguments);
-          await _ofmaqScheduleAfterRender('hook-wrapper', 0);
-          return result;
-        } finally {
-          _ofmaqResumeRenderObserver();
-        }
-      };
-      window.renderOFsPorMaquina._patchedPriorityHub = true;
+      var wrappedRender = _ofmaqWrapWindowFnOnce('renderOFsPorMaquina', '_patchedPriorityHub', function(orig) {
+        return async function() {
+          _refreshOfmaqCachesFromRuntime();
+          _ofmaqPauseRenderObserver();
+          try {
+            var result = await orig.apply(this, arguments);
+            await _ofmaqScheduleAfterRender('hook-wrapper', 0);
+            return result;
+          } finally {
+            _ofmaqResumeRenderObserver();
+          }
+        };
+      });
+      if (typeof wrappedRender !== 'function') return;
       try { console.log('[OFMAQ-HOOK] hook registrado'); } catch (_) {}
       try {
         if (String(window._PAGE_ATUAL || '') === 'ofmaq') _ofmaqScheduleAfterRender('hook-registrado', 0);
@@ -29496,10 +29821,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   if (typeof originalCardOfmaq === 'function' && !window.cardOFMaquina._patchedPriorityHub) {
-    window.cardOFMaquina = function() {
+    var wrappedCardOfmaq = function() {
       return originalCardOfmaq.apply(this, arguments);
     };
-    window.cardOFMaquina._patchedPriorityHub = true;
+    wrappedCardOfmaq._patchedPriorityHub = true;
+    _ofmaqCopyWrapFlags(wrappedCardOfmaq, window.cardOFMaquina || originalCardOfmaq);
+    wrappedCardOfmaq.__patchWrapOriginal = (window.cardOFMaquina && window.cardOFMaquina.__patchWrapOriginal) || originalCardOfmaq;
+    window.cardOFMaquina = wrappedCardOfmaq;
   }
 
   function buildHubIntelBlockHtml() {
@@ -29614,18 +29942,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   function hookRenderHubIntel() {
     if (typeof window.renderHub !== 'function') return;
-    if (window.renderHub._patchedHubIntel) return;
-    var orig = window.renderHub;
-    window.renderHub = async function() {
-      var result = await orig.apply(this, arguments);
-      var block = ensureHubIntelBlock();
-      if (block && block.dataset.hubIntelLoaded !== '1') {
-        block.dataset.hubIntelLoaded = '1';
-        try { window.carregarInteligenciaHub(); } catch (_) {}
-      }
-      return result;
-    };
-    window.renderHub._patchedHubIntel = true;
+    _ofmaqWrapWindowFnOnce('renderHub', '_patchedHubIntel', function(orig) {
+      return async function() {
+        var result = await orig.apply(this, arguments);
+        var block = ensureHubIntelBlock();
+        if (block && block.dataset.hubIntelLoaded !== '1') {
+          block.dataset.hubIntelLoaded = '1';
+          try { window.carregarInteligenciaHub(); } catch (_) {}
+        }
+        return result;
+      };
+    });
   }
 
   function initHubObserver() {
@@ -29637,6 +29964,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   function tick() {
     ensureStyles();
+    ensureConfiguracoesAlias();
     hookRenderOfmaq();
     hookRenderHubIntel();
     _ofmaqEnsureRenderObserver();
