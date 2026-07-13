@@ -26544,10 +26544,28 @@ window._mbnActive = function(id) {
       + '.patch-ofmaq-cap-badge.ok{background:rgba(16,185,129,0.12);border-color:rgba(16,185,129,0.28);color:#34d399}'
       + '.patch-ofmaq-cap-badge.warn{background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.3);color:#fbbf24}'
       + '.patch-ofmaq-cap-badge.bad{background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.3);color:#fca5a5}'
+      + '.patch-ofmaq-card{position:relative;border:1px solid rgba(148,163,184,.14)!important;background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(17,24,39,.94))!important;box-shadow:0 18px 38px rgba(2,6,23,.32),inset 0 1px 0 rgba(255,255,255,.04);overflow:hidden;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}'
+      + '.patch-ofmaq-card:hover{transform:translateY(-1px);box-shadow:0 24px 44px rgba(2,6,23,.38),inset 0 1px 0 rgba(255,255,255,.05);border-color:rgba(96,165,250,.28)!important}'
+      + '.patch-ofmaq-card::before{content:"";position:absolute;inset:0 0 auto 0;height:96px;background:linear-gradient(135deg,rgba(59,130,246,.22),rgba(6,182,212,.1),transparent 72%);pointer-events:none;opacity:.95}'
+      + '.patch-ofmaq-card > *{position:relative;z-index:1}'
+      + '.patch-ofmaq-card-main{display:flex;gap:16px;align-items:flex-start}'
+      + '.patch-ofmaq-card-title{font-size:17px;font-weight:800;line-height:1.3;letter-spacing:.01em;color:#f8fafc}'
+      + '.patch-ofmaq-readable-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin-top:0}'
+      + '.patch-ofmaq-meta-item{min-width:0;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(148,163,184,.12)}'
+      + '.patch-ofmaq-meta-label{display:block;margin-bottom:4px;font-size:11px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8}'
+      + '.patch-ofmaq-meta-value{display:block;font-size:13px;font-weight:700;line-height:1.45;color:#e2e8f0;white-space:normal;word-break:break-word}'
       + '.patch-ofmaq-seq-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 0}'
       + '.patch-ofmaq-seq-row label{font-size:11px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8}'
       + '.patch-ofmaq-seq-input{width:72px;padding:8px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.88);color:#f8fafc;font-size:15px;font-weight:900;text-align:center}'
       + '.patch-ofmaq-seq-btn{padding:8px 12px;border-radius:10px;border:1px solid rgba(96,165,250,.24);background:linear-gradient(135deg,rgba(37,99,235,.3),rgba(29,78,216,.5));color:#dbeafe;font-size:12px;font-weight:900;cursor:pointer}'
+      + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-card{padding:24px !important;min-height:280px !important;border-radius:22px !important}'
+      + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-card-title{font-size:22px !important}'
+      + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-readable-meta{gap:14px;grid-template-columns:repeat(2,minmax(0,1fr))}'
+      + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-meta-item{padding:14px 16px;border-radius:14px}'
+      + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-meta-label{font-size:12px}'
+      + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-meta-value{font-size:16px}'
+      + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-seq-input{width:88px;padding:10px 12px;font-size:17px}'
+      + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-seq-btn{padding:10px 14px;font-size:13px}'
       + '.patch-ofmaq-calendar-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:none;border-radius:999px;background:rgba(74,144,217,0.18);color:#93c5fd;cursor:pointer;font-size:15px}'
       + '.patch-ofmaq-calendar-btn:hover{filter:brightness(1.12)}'
       + '.patch-ofmaq-setup-sep{margin:10px 0 6px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);font-size:12px;font-weight:800;color:var(--text1)}'
@@ -26760,6 +26778,37 @@ window._mbnActive = function(id) {
       .filter(function(el) {
         return !!(el && el.querySelector && el.querySelector('[data-of-id]'));
       });
+  }
+
+  function _ofmaqMachineFilterValue() {
+    try {
+      var sel = document.getElementById('ofsmaq-select-maquina') || document.getElementById('ofsmaq-filtro-maquina');
+      return String(sel && sel.value || '').trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function _ofmaqIsAllMachinesValue(v) {
+    var norm = _ofmaqNormBusca(v);
+    return !norm || /^(todas?|todos|all|geral|\*)$/.test(norm);
+  }
+
+  function _ofmaqIsSingleMachineFocus() {
+    var filterValue = _ofmaqMachineFilterValue();
+    if (!_ofmaqIsAllMachinesValue(filterValue)) return true;
+    return _ofmaqGetMachineLists().length === 1;
+  }
+
+  function _ofmaqSyncLayoutMode() {
+    var container = document.getElementById('ofs-por-maquina-container');
+    if (!container) return;
+    var single = _ofmaqIsSingleMachineFocus();
+    try {
+      container.classList.toggle('patch-ofmaq-single-machine', !!single);
+      container.classList.toggle('patch-ofmaq-multi-machine', !single);
+      container.setAttribute('data-ofmaq-layout', single ? 'single' : 'multi');
+    } catch (_) {}
   }
 
   function _ofmaqGetMachineName(listEl) {
@@ -27375,6 +27424,7 @@ window._mbnActive = function(id) {
   function _ofmaqApplyReadableCardLayout(card, of) {
     if (!card || !of) return;
     try {
+      card.classList.add('patch-ofmaq-card');
       card.style.padding = '16px';
       card.style.lineHeight = '1.5';
       card.style.marginBottom = '12px';
@@ -27396,16 +27446,17 @@ window._mbnActive = function(id) {
       }) || null;
     }
     if (title) {
+      title.classList.add('patch-ofmaq-card-title');
       title.style.fontSize = '17px';
-      title.style.fontWeight = '700';
+      title.style.fontWeight = '800';
       title.style.lineHeight = '1.35';
       title.style.marginBottom = '10px';
       title.style.whiteSpace = 'normal';
       title.style.overflow = 'visible';
       title.style.textOverflow = 'clip';
       title.textContent = String(of && (of.numero || of.of || '') || '').trim()
-        ? ('OF #' + String(of.numero || of.of || '').trim() + ' · ' + String(of && (of.prodDesc || of.produto || of.descricao || '') || '').trim())
-        : String(of && (of.prodDesc || of.produto || of.descricao || '') || '').trim();
+        ? ('OF #' + String(of.numero || of.of || '').trim())
+        : ('OF ' + String(of && of.id || '').trim());
     }
     Array.prototype.slice.call(textWrap.children || []).forEach(function(child) {
       if (!child || child === title) return;
@@ -27416,6 +27467,7 @@ window._mbnActive = function(id) {
     var cores = _ofmaqCoresLabel(of);
     var produto = String(of && (of.prodDesc || of.produto || of.descricao || '') || '').trim() || '—';
     var cliente = String(of && (of.cliNome || of.cliente || of.cliente_nome || '') || '').trim() || '—';
+    var maquina = String(_maqAtualOf(of) || _ofmaqGetMachineName(_ofmaqCardListEl(card)) || '').trim() || '—';
     var entrega = _ofmaqFmtEntregaLegivel(getOfDelivery(of));
     var meta = textWrap.querySelector('.patch-ofmaq-readable-meta');
     if (!meta) {
@@ -27423,13 +27475,14 @@ window._mbnActive = function(id) {
       meta.className = 'patch-ofmaq-readable-meta';
       textWrap.appendChild(meta);
     }
-    meta.style.cssText = 'display:grid;gap:6px;margin-top:0;font-size:14px;line-height:1.5';
+    meta.style.cssText = '';
     meta.innerHTML = ''
-      + '<div><span style="color:var(--text2)">Cliente:</span> <span style="color:var(--text1)">' + escH(cliente) + '</span></div>'
-      + '<div><span style="color:var(--text2)">Produto:</span> <span style="color:var(--text1)">' + escH(produto) + '</span></div>'
-      + '<div><span style="color:var(--text2)">Tamanho:</span> <span style="color:var(--text1)">' + escH(tamanho) + '</span></div>'
-      + '<div><span style="color:var(--text2)">Cores:</span> <span style="color:var(--text1)">' + escH(cores) + '</span></div>'
-      + '<div><span style="color:var(--text2)">Entrega:</span> <span style="color:var(--text1)">' + escH(entrega) + '</span></div>';
+      + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Cliente</span><span class="patch-ofmaq-meta-value">' + escH(cliente) + '</span></div>'
+      + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Produto</span><span class="patch-ofmaq-meta-value">' + escH(produto) + '</span></div>'
+      + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Tamanho</span><span class="patch-ofmaq-meta-value">' + escH(tamanho) + '</span></div>'
+      + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Cores</span><span class="patch-ofmaq-meta-value">' + escH(cores) + '</span></div>'
+      + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Máquina</span><span class="patch-ofmaq-meta-value">' + escH(maquina) + '</span></div>'
+      + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Prazo</span><span class="patch-ofmaq-meta-value">' + escH(entrega) + '</span></div>';
   }
 
   function _ofmaqCardListEl(card) {
@@ -28585,6 +28638,7 @@ window._mbnActive = function(id) {
     ensureStyles();
     ensureOfmaqToolbarButtons();
     try { _ofmaqApplySavedOrderToDom(); } catch (_) {}
+    try { _ofmaqSyncLayoutMode(); } catch (_) {}
     decorateOfmaqCards();
     applySetupGroupingVisual();
     try { _atualizarCapacidadePorMaquina(); } catch (_) {}
