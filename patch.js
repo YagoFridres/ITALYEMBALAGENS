@@ -23116,6 +23116,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function _abrirCriacaoChapaEstoque() {
+    var fromEntradaLote = false;
+    try { fromEntradaLote = !!window.__entradaEstoqueAbrindoNovaChapa; } catch (_) {}
+    try { window.__entradaEstoqueAbrindoNovaChapa = false; } catch (_) {}
+    if (!fromEntradaLote) {
+      try { window.__entradaEstoqueNovaCtx = null; } catch (_) {}
+    }
     // #region debug-point B:chapa-create-entry
     try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'abrir criacao de chapa acionado', { estadoAntes: String((window.__estoqueModalChapaMode || '') || ''), hasAbrirModalNovaChapa: typeof window.abrirModalNovaChapa === 'function' }); } catch (_) {}
     // #endregion
@@ -23133,6 +23139,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var modal = document.getElementById('modal-nova-chapa');
       var title = document.getElementById('chapa-modal-titulo');
       var editId = document.getElementById('chapa-edit-id');
+      var qtdEl = document.getElementById('chapa-quantidade');
+      if (qtdEl) {
+        qtdEl.readOnly = false;
+        qtdEl.title = '';
+      }
+      if (modal) modal.setAttribute('data-entrada-vinculada', fromEntradaLote ? '1' : '0');
       if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'criacao de chapa apos abertura', { modalVisible: !!(modal && modal.style.display !== 'none'), titulo: String(title && title.textContent || ''), editId: String(editId && editId.value || ''), modoAtual: String(window.__estoqueModalChapaMode || '') });
     } catch (_) {}
     // #endregion
@@ -23682,6 +23694,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                       });
                     }
                     _upsertChapaColorCache(data);
+                    try {
+                      var ctxEntrada = window.__entradaEstoqueNovaCtx;
+                      var modalEntrada = document.getElementById('modal-nova-chapa');
+                      if (ctxEntrada && ctxEntrada.tr && modalEntrada && modalEntrada.getAttribute('data-entrada-vinculada') === '1' && /^\/api\/chapas_estoque(?:\?.*)?$/.test(u) && String(m || '').toUpperCase() === 'POST') {
+                        _entradaEstoqueVincularNovaChapa(ctxEntrada.tr, ctxEntrada.chapas, data);
+                        window.__entradaEstoqueNovaCtx = null;
+                      }
+                    } catch (_) {}
                   } else if (editIdAtual && cor) {
                     _upsertChapaColorCache({ id: editIdAtual, cor: cor, cor_linha: cor, linha_cor: cor });
                   }
@@ -23980,6 +24000,80 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     });
   }
 
+  function _entradaEstoqueEmpresaModal(raw) {
+    var txt = String(raw || '').trim().toLowerCase();
+    if (txt.indexOf('cartoeste') >= 0) return 'Cartoeste';
+    if (txt.indexOf('oestepack') >= 0 || txt.indexOf('oeste pack') >= 0) return 'Oestepack';
+    return 'Italy Embalagens';
+  }
+
+  function _entradaEstoqueVincularNovaChapa(tr, chapas, chapa) {
+    if (!tr || !chapa) return;
+    var lista = Array.isArray(chapas) ? chapas : [];
+    var id = String(chapa && chapa.id || '').trim();
+    if (!id) return;
+    var idx = lista.findIndex(function(item) { return String(item && item.id || '').trim() === id; });
+    if (idx >= 0) lista[idx] = chapa;
+    else lista.unshift(chapa);
+    try { window.__entradaEstoqueChapasCache = lista.slice(); } catch (_) {}
+    try { window.__estoqueChapasCacheGlobal = lista.slice(); } catch (_) {}
+    var chapaEl = tr.querySelector('.est-ent-chapa');
+    var modoEl = tr.querySelector('.est-ent-modo');
+    var qtdEl = tr.querySelector('.est-ent-qtd');
+    if (chapaEl && !chapaEl.querySelector('option[value="' + id.replace(/"/g, '&quot;') + '"]')) {
+      chapaEl.insertAdjacentHTML('afterbegin', '<option value="' + _escapeHtmlLite(id) + '">' + _escapeHtmlLite([
+        String(chapa && (chapa.nomenclatura || chapa.nom) || '').trim(),
+        String(chapa && (chapa.tamanho || chapa.tam) || '').trim(),
+        String(chapa && (chapa.nome_uso || chapa.nome) || '').trim(),
+        String(chapa && (chapa.fornecedor || chapa.forn) || '').trim()
+      ].filter(Boolean).join(' · ')) + '</option>');
+    }
+    if (modoEl) modoEl.value = 'existente';
+    if (chapaEl) chapaEl.value = id;
+    if (qtdEl && !(Number(qtdEl.value || 0) > 0)) qtdEl.value = '1';
+    tr.dataset.lastMode = 'existente';
+    _entradaEstoqueAtualizarLinha(tr, lista);
+    try { window.toast('Chapa nova vinculada à entrada. Agora o lote será lançado nela.', 'var(--green)'); } catch (_) {}
+  }
+
+  function _entradaEstoqueAbrirCriacaoCompleta(tr, chapas) {
+    if (!tr) return;
+    try { window.__entradaEstoqueNovaCtx = { tr: tr, chapas: Array.isArray(chapas) ? chapas : [] }; } catch (_) {}
+    try { window.__entradaEstoqueAbrindoNovaChapa = true; } catch (_) {}
+    _abrirCriacaoChapaEstoque();
+    [0, 80, 220, 520].forEach(function(delay) {
+      setTimeout(function() {
+        try {
+          var forn = document.getElementById('estoque-entrada-real-fornecedor');
+          var qual = document.getElementById('estoque-entrada-real-cnpj');
+          var nf = document.getElementById('estoque-entrada-real-nf');
+          var data = document.getElementById('estoque-entrada-real-data');
+          var modal = document.getElementById('modal-nova-chapa');
+          if (modal) modal.setAttribute('data-entrada-vinculada', '1');
+          _setFieldValueChapa('chapa-fornecedor', String((forn && forn.value) || '').trim());
+          _setFieldValueChapa('chapa-nomenclatura', String((tr.querySelector('.est-ent-nomenclatura') && tr.querySelector('.est-ent-nomenclatura').value) || '').trim());
+          _setFieldValueChapa('chapa-tamanho', String((tr.querySelector('.est-ent-tamanho') && tr.querySelector('.est-ent-tamanho').value) || '').trim().toUpperCase());
+          _setFieldValueChapa('chapa-nome', String((tr.querySelector('.est-ent-nome') && tr.querySelector('.est-ent-nome').value) || '').trim());
+          _setFieldValueChapa('chapa-nf', String((nf && nf.value) || '').trim());
+          _setFieldValueChapa('chapa-data-entrada', String((data && data.value) || '').trim());
+          _setFieldValueChapa('chapa-valor-unitario', String((tr.querySelector('.est-ent-vu') && tr.querySelector('.est-ent-vu').value) || '').trim());
+          _setFieldValueChapa('chapa-quantidade', '0');
+          _setFieldValueChapa('chapa-obs', 'Cadastro criado pela entrada de estoque. A quantidade será lançada no lote após salvar.');
+          _setFieldValueChapa('chapa-gramatura', String((tr.querySelector('.est-ent-gramatura') && tr.querySelector('.est-ent-gramatura').value) || '').trim());
+          var empresaEl = document.getElementById('chapa-empresa');
+          if (empresaEl) empresaEl.value = _entradaEstoqueEmpresaModal(qual && qual.value);
+          var qtdEl = document.getElementById('chapa-quantidade');
+          if (qtdEl) {
+            qtdEl.readOnly = true;
+            qtdEl.title = 'A quantidade desta chapa será lançada pela entrada em lote após salvar o cadastro.';
+          }
+          var totalEl = document.getElementById('chapa-total');
+          if (totalEl) totalEl.value = 'R$ 0,00';
+        } catch (_) {}
+      }, delay);
+    });
+  }
+
   function _entradaEstoqueAtualizarLinha(tr, chapas) {
     if (!tr) return;
     var modoEl = tr.querySelector('.est-ent-modo');
@@ -23991,6 +24085,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var qtdEl = tr.querySelector('.est-ent-qtd');
     var vuEl = tr.querySelector('.est-ent-vu');
     var totalEl = tr.querySelector('.est-ent-total');
+    var btnNovaEl = tr.querySelector('.est-ent-criar-completa');
     var modo = modoEl && String(modoEl.value || '') === 'nova' ? 'nova' : 'existente';
     var chapa = _entradaEstoqueFindChapa(chapas, chapaEl && chapaEl.value);
 
@@ -24012,8 +24107,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (vuEl) vuEl.value = String(Number(chapa.valor_unitario || chapa.val || 0) || 0);
       }
       _entradaEstoqueToggleCampos(tr, true);
+      if (btnNovaEl) btnNovaEl.style.display = 'none';
     } else {
       _entradaEstoqueToggleCampos(tr, false);
+      if (btnNovaEl) btnNovaEl.style.display = '';
       if (String(tr.dataset.lastMode || '') !== 'nova' && chapa) {
         if (gramEl && !gramEl.value) gramEl.value = chapa.gramatura != null && chapa.gramatura !== '' ? String(chapa.gramatura) : '';
         if (nomEl && !nomEl.value) nomEl.value = String(chapa.nomenclatura || chapa.nom || '').trim();
@@ -24049,7 +24146,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-qtd estoque-modal-input" type="number" min="1" value="1" style="width:90px;font-family:var(--mono);font-weight:800;text-align:right"></td>'
       + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-vu estoque-modal-input" type="number" min="0" step="0.00001" value="0" style="width:110px;font-family:var(--mono);font-weight:800;text-align:right"></td>'
       + '<td style="padding:8px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:900;white-space:nowrap"><span class="est-ent-total">R$ 0,00</span></td>'
-      + '<td style="padding:8px;border-bottom:1px solid var(--border);text-align:center"><button type="button" class="estoque-modal-icon-btn est-ent-remover" title="Remover item">🗑</button></td>';
+      + '<td style="padding:8px;border-bottom:1px solid var(--border);text-align:center"><div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap"><button type="button" class="estoque-modal-outline est-ent-criar-completa" style="display:none">Nova completa</button><button type="button" class="estoque-modal-icon-btn est-ent-remover" title="Remover item">🗑</button></div></td>';
     tbody.appendChild(tr);
 
     var sync = function() { _entradaEstoqueAtualizarLinha(tr, chapas); };
@@ -24060,6 +24157,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       el.addEventListener('input', sync);
     });
     var btnRem = tr.querySelector('.est-ent-remover');
+    var btnNova = tr.querySelector('.est-ent-criar-completa');
+    var modoEl = tr.querySelector('.est-ent-modo');
+    if (btnNova) btnNova.onclick = function() { _entradaEstoqueAbrirCriacaoCompleta(tr, chapas); };
+    if (modoEl) modoEl.addEventListener('change', function() {
+      if (String(modoEl.value || '') === 'nova') _entradaEstoqueAbrirCriacaoCompleta(tr, chapas);
+    });
     if (btnRem) btnRem.onclick = function() {
       try { tr.remove(); } catch (_) {}
       if (!tbody.children.length) _entradaEstoqueAdicionarLinha(tbody, chapas);
