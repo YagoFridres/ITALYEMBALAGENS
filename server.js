@@ -1146,19 +1146,32 @@ app.get('/patch.js', (req, res) => {
   }
 });
 
-// Forçar no-cache para o index.html
-app.get('/', (req, res) => {
+function _renderIndexHtmlWithRuntimeVersions() {
+  const fp = path.join(__dirname, 'index.html');
+  let html = fs.readFileSync(fp, 'utf8');
+  html = html.replace(/\/patch\.js\?v=\d+/g, '/patch.js?v=' + PATCH_RUNTIME_VERSION);
+  html = html.replace(/const\s+swVersion\s*=\s*['"]\d+['"]\s*;/g, `const swVersion = '${SW_RUNTIME_VERSION}';`);
+  html = html.replace(/\/sw\.js\?v=\d+/g, '/sw.js?v=' + SW_RUNTIME_VERSION);
+  return html;
+}
+
+function _serveIndexHtmlWithRuntimeVersions(res) {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.setHeader('x-index-patch-version', PATCH_RUNTIME_VERSION);
+  res.setHeader('x-index-sw-version', SW_RUNTIME_VERSION);
+  return res.end(_renderIndexHtmlWithRuntimeVersions(), 'utf8');
+}
+
+// Forçar no-cache para o index.html
+app.get('/', (req, res) => {
+  return _serveIndexHtmlWithRuntimeVersions(res);
 });
 
 app.get('/index.html', (req, res) => {
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  res.sendFile(path.join(__dirname, 'index.html'));
+  return _serveIndexHtmlWithRuntimeVersions(res);
 });
 
 app.use(express.static(path.join(__dirname, 'public'), { etag: false, lastModified: false, setHeaders: setNoCache }));
