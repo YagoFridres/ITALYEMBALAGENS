@@ -10946,6 +10946,64 @@ function _relatoriosPickTonOf(of) {
   return Number(of?.tonelada_vendida || 0) || 0;
 }
 
+function _relatoriosSummarizeOfs(ofs, opts = {}) {
+  const companyIds = Array.isArray(opts.companyIds) ? opts.companyIds.map((v) => String(v || '').trim()).filter(Boolean) : [];
+  const porEmpresa = new Map();
+  companyIds.forEach((id) => {
+    porEmpresa.set(id, {
+      empresa_id: id,
+      empresa_nome: _relatoriosEmpresaNome(id),
+      valor_vendido: 0,
+      caixas_produzidas: 0,
+      caixas_perdidas: 0,
+      total_ofs: 0,
+      toneladas_vendidas: 0
+    });
+  });
+  const resumo = {
+    valor_vendido: 0,
+    caixas_produzidas: 0,
+    caixas_perdidas: 0,
+    total_ofs: 0,
+    toneladas_vendidas: 0
+  };
+  (Array.isArray(ofs) ? ofs : []).forEach((of) => {
+    const valor = _relatoriosPickValorOf(of);
+    const qtd = _relatoriosPickQtdOf(of);
+    const perda = _relatoriosPickPerdaOf(of);
+    const ton = _relatoriosPickTonOf(of);
+    resumo.valor_vendido += valor;
+    resumo.caixas_produzidas += qtd;
+    resumo.caixas_perdidas += perda;
+    resumo.total_ofs += 1;
+    resumo.toneladas_vendidas += ton;
+    const empresaId = _relatoriosPickEmpresaId(of);
+    if (empresaId) {
+      if (!porEmpresa.has(empresaId)) {
+        porEmpresa.set(empresaId, {
+          empresa_id: empresaId,
+          empresa_nome: _relatoriosEmpresaNome(empresaId),
+          valor_vendido: 0,
+          caixas_produzidas: 0,
+          caixas_perdidas: 0,
+          total_ofs: 0,
+          toneladas_vendidas: 0
+        });
+      }
+      const item = porEmpresa.get(empresaId);
+      item.valor_vendido += valor;
+      item.caixas_produzidas += qtd;
+      item.caixas_perdidas += perda;
+      item.total_ofs += 1;
+      item.toneladas_vendidas += ton;
+    }
+  });
+  return {
+    resumo,
+    por_empresa: Array.from(porEmpresa.values()).sort((a, b) => String(a.empresa_nome || '').localeCompare(String(b.empresa_nome || ''), 'pt-BR'))
+  };
+}
+
 async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
   const columns = [
     'id', 'numero', 'of', 'status', 'data_conclusao', 'deleted_at', 'created_at',
@@ -10985,43 +11043,78 @@ app.get('/api/relatorios/vendas-por-empresa', authMiddleware, async (req, res) =
     const ofs = await _relatoriosFetchOfsConcluidas(range, {
       companyIds: _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id)
     });
-    const baseMap = new Map(_RELATORIOS_EMPRESAS_FIXAS.map((item) => [item.id, {
-      empresa_id: item.id,
-      empresa_nome: item.nome,
-      valor_vendido: 0,
-      caixas_produzidas: 0,
-      caixas_perdidas: 0,
-      total_ofs: 0,
-      toneladas_vendidas: 0
-    }]));
-    ofs.forEach((of) => {
-      const empresaId = _relatoriosPickEmpresaId(of);
-      if (!baseMap.has(empresaId)) return;
-      const item = baseMap.get(empresaId);
-      item.valor_vendido += _relatoriosPickValorOf(of);
-      item.caixas_produzidas += _relatoriosPickQtdOf(of);
-      item.caixas_perdidas += _relatoriosPickPerdaOf(of);
-      item.total_ofs += 1;
-      item.toneladas_vendidas += _relatoriosPickTonOf(of);
+    const aggregated = _relatoriosSummarizeOfs(ofs, {
+      companyIds: _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id)
     });
-    const rows = Array.from(baseMap.values()).sort((a, b) => String(a.empresa_nome || '').localeCompare(String(b.empresa_nome || ''), 'pt-BR'));
-    const resumo = rows.reduce((acc, item) => {
-      acc.valor_vendido += Number(item?.valor_vendido || 0) || 0;
-      acc.caixas_produzidas += Number(item?.caixas_produzidas || 0) || 0;
-      acc.caixas_perdidas += Number(item?.caixas_perdidas || 0) || 0;
-      acc.total_ofs += Number(item?.total_ofs || 0) || 0;
-      acc.toneladas_vendidas += Number(item?.toneladas_vendidas || 0) || 0;
-      return acc;
-    }, { valor_vendido: 0, caixas_produzidas: 0, caixas_perdidas: 0, total_ofs: 0, toneladas_vendidas: 0 });
     return res.json({
       ok: true,
       data_inicio: range.inicio,
       data_fim: range.fim,
-      resumo,
-      rows
+      resumo: aggregated.resumo,
+      rows: aggregated.por_empresa
     });
   } catch (e) {
     console.error('[RELATORIOS][VENDAS-POR-EMPRESA]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/relatorios/comparativo-mensal', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const atual = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    if (!atual?.inicio || !atual?.fim || !atual?.fim_exclusivo) {
+      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
+    }
+    const inicioAtual = new Date(`${atual.inicio}T12:00:00`);
+    const fimAtual = new Date(`${atual.fim}T12:00:00`);
+    const dias = Math.max(1, Math.round((fimAtual.getTime() - inicioAtual.getTime()) / 86400000) + 1);
+    const inicioAnterior = _relatoriosAddDaysIso(atual.inicio, -dias);
+    const fimAnterior = _relatoriosAddDaysIso(atual.inicio, -1);
+    const anterior = {
+      inicio: inicioAnterior,
+      fim: fimAnterior,
+      fim_exclusivo: atual.inicio
+    };
+    const companyIds = _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id);
+    const [ofsAtual, ofsAnterior] = await Promise.all([
+      _relatoriosFetchOfsConcluidas(atual, { companyIds }),
+      _relatoriosFetchOfsConcluidas(anterior, { companyIds })
+    ]);
+    const aggAtual = _relatoriosSummarizeOfs(ofsAtual, { companyIds });
+    const aggAnterior = _relatoriosSummarizeOfs(ofsAnterior, { companyIds });
+    const valueOrZero = (v) => Number(v || 0) || 0;
+    const variacaoPct = (cur, prev) => (prev > 0 ? Number((((cur - prev) / prev) * 100).toFixed(1)) : null);
+    const rows = []
+      .concat(_RELATORIOS_EMPRESAS_FIXAS.map((empresa) => {
+        const prev = aggAnterior.por_empresa.find((item) => item.empresa_id === empresa.id) || {};
+        const cur = aggAtual.por_empresa.find((item) => item.empresa_id === empresa.id) || {};
+        const atualValor = valueOrZero(cur.valor_vendido);
+        const anteriorValor = valueOrZero(prev.valor_vendido);
+        return {
+          metrica: 'Valor vendido - ' + empresa.nome,
+          anterior: anteriorValor,
+          atual: atualValor,
+          variacao_pct: variacaoPct(atualValor, anteriorValor),
+          tipo: 'currency'
+        };
+      }))
+      .concat([
+        { metrica: 'Valor vendido total', anterior: valueOrZero(aggAnterior.resumo.valor_vendido), atual: valueOrZero(aggAtual.resumo.valor_vendido), variacao_pct: variacaoPct(valueOrZero(aggAtual.resumo.valor_vendido), valueOrZero(aggAnterior.resumo.valor_vendido)), tipo: 'currency' },
+        { metrica: 'Caixas perdidas', anterior: valueOrZero(aggAnterior.resumo.caixas_perdidas), atual: valueOrZero(aggAtual.resumo.caixas_perdidas), variacao_pct: variacaoPct(valueOrZero(aggAtual.resumo.caixas_perdidas), valueOrZero(aggAnterior.resumo.caixas_perdidas)), tipo: 'number' },
+        { metrica: 'Nº OFs', anterior: valueOrZero(aggAnterior.resumo.total_ofs), atual: valueOrZero(aggAtual.resumo.total_ofs), variacao_pct: variacaoPct(valueOrZero(aggAtual.resumo.total_ofs), valueOrZero(aggAnterior.resumo.total_ofs)), tipo: 'number' },
+        { metrica: 'Toneladas', anterior: valueOrZero(aggAnterior.resumo.toneladas_vendidas), atual: valueOrZero(aggAtual.resumo.toneladas_vendidas), variacao_pct: variacaoPct(valueOrZero(aggAtual.resumo.toneladas_vendidas), valueOrZero(aggAnterior.resumo.toneladas_vendidas)), tipo: 'ton' }
+      ]);
+    return res.json({
+      ok: true,
+      periodo_atual: { inicio: atual.inicio, fim: atual.fim },
+      periodo_anterior: { inicio: anterior.inicio, fim: anterior.fim },
+      resumo_atual: aggAtual.resumo,
+      resumo_anterior: aggAnterior.resumo,
+      rows
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][COMPARATIVO-MENSAL]', e?.message || e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });

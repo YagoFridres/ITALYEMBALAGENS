@@ -1068,6 +1068,50 @@ try {
     });
   }
 
+  async function rrReportComparativoMensal() {
+    var ref = rrCurrentRange();
+    var json = await rrFetchJson('/api/relatorios/comparativo-mensal?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var rows = rrList(json, ['rows', 'data']);
+    function rrCmpFmt(row, value) {
+      var tipo = String(row && row.tipo || '').trim();
+      if (tipo === 'currency') return rrFmtMoney(value || 0);
+      if (tipo === 'ton') return rrFmtNum(value || 0, 3) + ' t';
+      return rrFmtNum(value || 0, 0);
+    }
+    return rrOpenPrint({
+      title: 'Relatório Comparativo Mensal',
+      periodo: rrFmtDate(json && json.periodo_anterior && json.periodo_anterior.inicio) + ' a ' + rrFmtDate(json && json.periodo_atual && json.periodo_atual.fim),
+      cards: [
+        { label: 'Período Anterior', value: rrFmtDate(json && json.periodo_anterior && json.periodo_anterior.inicio) + ' a ' + rrFmtDate(json && json.periodo_anterior && json.periodo_anterior.fim), sub: 'Base de comparação' },
+        { label: 'Período Atual', value: rrFmtDate(json && json.periodo_atual && json.periodo_atual.inicio) + ' a ' + rrFmtDate(json && json.periodo_atual && json.periodo_atual.fim), sub: 'Período selecionado' },
+        { label: 'Valor Atual', value: rrFmtMoney(json && json.resumo_atual && json.resumo_atual.valor_vendido || 0), sub: 'Vendas consolidadas' },
+        { label: 'OFs Atuais', value: rrFmtNum(json && json.resumo_atual && json.resumo_atual.total_ofs || 0, 0), sub: 'Pedidos concluídos' }
+      ],
+      summaryTitle: 'Comparativo',
+      summaryHeaders: ['Métrica', 'Mês anterior', 'Mês atual', 'Variação %'],
+      summaryRows: rows.map(function(row) {
+        return [
+          rrEsc(String(row && row.metrica || '—')),
+          rrEsc(rrCmpFmt(row, row && row.anterior || 0)),
+          rrEsc(rrCmpFmt(row, row && row.atual || 0)),
+          rrEsc(row && row.variacao_pct != null ? (rrFmtNum(row.variacao_pct || 0, 1) + '%') : '—')
+        ];
+      }),
+      detailTitle: 'Detalhamento',
+      detailHeaders: ['Métrica', 'Mês anterior', 'Mês atual', 'Variação %'],
+      detailRows: rows.map(function(row) {
+        return [
+          rrEsc(String(row && row.metrica || '—')),
+          rrEsc(rrCmpFmt(row, row && row.anterior || 0)),
+          rrEsc(rrCmpFmt(row, row && row.atual || 0)),
+          rrEsc(row && row.variacao_pct != null ? (rrFmtNum(row.variacao_pct || 0, 1) + '%') : '—')
+        ];
+      }),
+      emptySummaryCols: 4,
+      emptyDetailCols: 4
+    });
+  }
+
   var rrDefs = [
     { id: 'passagens', label: 'Histórico de Passagens', icon: '🕒', desc: 'Passagens registradas nas máquinas com resumo e detalhamento.', run: rrReportPassagens },
     { id: 'comissoes', label: 'Comissões', icon: '💵', desc: 'Resumo por vendedor e detalhamento das OFs comissionadas.', run: rrReportComissoes },
@@ -1078,7 +1122,8 @@ try {
     { id: 'entradas', label: 'Entradas', icon: '📥', desc: 'Movimentações de entrada no estoque de chapas.', run: function() { return rrReportMovimentos('entrada'); } },
     { id: 'saidas', label: 'Saídas', icon: '📤', desc: 'Movimentações de saída no estoque de chapas.', run: function() { return rrReportMovimentos('saida'); } },
     { id: 'clientes-mais-compraram', label: 'Clientes que mais compraram', icon: '🏆', desc: 'Ranking por valor comprado com ticket médio e caixas vendidas.', run: rrReportClientesMaisCompraram },
-    { id: 'vendas-por-empresa', label: 'Vendas por Empresa', icon: '🏢', desc: 'Consolidado de Italy, Cartoeste e Oestepack no período selecionado.', run: rrReportVendasPorEmpresa }
+    { id: 'vendas-por-empresa', label: 'Vendas por Empresa', icon: '🏢', desc: 'Consolidado de Italy, Cartoeste e Oestepack no período selecionado.', run: rrReportVendasPorEmpresa },
+    { id: 'comparativo-mensal', label: 'Comparativo Mensal', icon: '📊', desc: 'Compara o período atual com o período imediatamente anterior equivalente.', run: rrReportComparativoMensal }
   ];
 
   async function rrOpen(def) {
