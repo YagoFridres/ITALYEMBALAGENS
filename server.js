@@ -10946,6 +10946,32 @@ function _relatoriosPickTonOf(of) {
   return Number(of?.tonelada_vendida || 0) || 0;
 }
 
+function _relatoriosPickVendedorId(of) {
+  return String(of?.vendedor_id ?? of?.vendId ?? of?.vend_id ?? '').trim();
+}
+
+async function _relatoriosLoadVendedoresByIds(ids) {
+  const uniq = Array.from(new Set((Array.isArray(ids) ? ids : []).map((v) => String(v || '').trim()).filter(Boolean)));
+  const map = new Map();
+  for (let i = 0; i < uniq.length; i += 200) {
+    const chunk = uniq.slice(i, i + 200);
+    const { data, error } = await supabase.from('vendedores').select('id,nome').in('id', chunk);
+    if (error) throw error;
+    (Array.isArray(data) ? data : []).forEach((row) => {
+      const id = String(row?.id || '').trim();
+      if (id) map.set(id, String(row?.nome || '').trim());
+    });
+  }
+  return map;
+}
+
+function _relatoriosPickVendedorNome(of, vendedoresMap) {
+  const nomeDireto = String(of?.vendedor_nome || of?.vendNome || of?.vendedor || '').trim();
+  if (nomeDireto && !_isUuid(nomeDireto)) return nomeDireto;
+  const vendedorId = _relatoriosPickVendedorId(of);
+  return String(vendedoresMap?.get(vendedorId) || vendedorId || 'Sem vendedor').trim() || 'Sem vendedor';
+}
+
 function _relatoriosSummarizeOfs(ofs, opts = {}) {
   const companyIds = Array.isArray(opts.companyIds) ? opts.companyIds.map((v) => String(v || '').trim()).filter(Boolean) : [];
   const porEmpresa = new Map();
@@ -11115,6 +11141,64 @@ app.get('/api/relatorios/comparativo-mensal', authMiddleware, async (req, res) =
     });
   } catch (e) {
     console.error('[RELATORIOS][COMPARATIVO-MENSAL]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/relatorios/evolucao-vendas', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    if (!range?.inicio || !range?.fim_exclusivo) {
+      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
+    }
+    const ofs = await _relatoriosFetchOfsConcluidas(range, {
+      companyIds: _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id)
+    });
+    const vendedoresMap = await _relatoriosLoadVendedoresByIds(ofs.map((of) => _relatoriosPickVendedorId(of)).filter(Boolean));
+    const porMes = new Map();
+    const porVendedor = new Map();
+    ofs.forEach((of) => {
+      const mes = String(_assistPickOfConclusao(of) || '').slice(0, 7);
+      if (!mes) return;
+      const valor = _relatoriosPickValorOf(of);
+      const vendedor = _relatoriosPickVendedorNome(of, vendedoresMap);
+      if (!porMes.has(mes)) porMes.set(mes, { mes_ref: mes, valor_total: 0, total_ofs: 0, por_vendedor: {} });
+      const itemMes = porMes.get(mes);
+      itemMes.valor_total += valor;
+      itemMes.total_ofs += 1;
+      itemMes.por_vendedor[vendedor] = Number(itemMes.por_vendedor[vendedor] || 0) + valor;
+      if (!porVendedor.has(vendedor)) porVendedor.set(vendedor, { vendedor, valor_total: 0, total_ofs: 0 });
+      const itemVend = porVendedor.get(vendedor);
+      itemVend.valor_total += valor;
+      itemVend.total_ofs += 1;
+    });
+    const meses = Array.from(porMes.values()).sort((a, b) => String(a.mes_ref || '').localeCompare(String(b.mes_ref || ''))).map((item) => ({
+      mes_ref: item.mes_ref,
+      valor_total: Number(item.valor_total || 0),
+      total_ofs: Number(item.total_ofs || 0) || 0,
+      por_vendedor: item.por_vendedor || {}
+    }));
+    const vendedores = Array.from(porVendedor.values()).sort((a, b) => {
+      if (Number(b.valor_total || 0) !== Number(a.valor_total || 0)) return Number(b.valor_total || 0) - Number(a.valor_total || 0);
+      return String(a.vendedor || '').localeCompare(String(b.vendedor || ''), 'pt-BR');
+    });
+    const resumo = {
+      valor_total: meses.reduce((s, item) => s + (Number(item?.valor_total || 0) || 0), 0),
+      total_ofs: meses.reduce((s, item) => s + (Number(item?.total_ofs || 0) || 0), 0),
+      total_meses: meses.length,
+      total_vendedores: vendedores.length
+    };
+    return res.json({
+      ok: true,
+      data_inicio: range.inicio,
+      data_fim: range.fim,
+      resumo,
+      meses,
+      vendedores
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][EVOLUCAO-VENDAS]', e?.message || e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });

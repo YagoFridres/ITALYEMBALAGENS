@@ -1112,6 +1112,79 @@ try {
     });
   }
 
+  function rrSvgBars(rows) {
+    var items = Array.isArray(rows) ? rows.slice(0, 24) : [];
+    if (!items.length) return '';
+    var width = 720;
+    var height = 220;
+    var pad = { top: 18, right: 18, bottom: 42, left: 46 };
+    var plotW = width - pad.left - pad.right;
+    var plotH = height - pad.top - pad.bottom;
+    var max = items.reduce(function(acc, item) { return Math.max(acc, rrNum(item && item.valor_total)); }, 0) || 1;
+    var barW = Math.max(18, Math.floor(plotW / Math.max(items.length, 1)) - 8);
+    return ''
+      + '<svg viewBox="0 0 ' + width + ' ' + height + '" width="100%" height="220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Evolução das vendas">'
+      + '<rect x="0" y="0" width="' + width + '" height="' + height + '" fill="#0f172a" rx="18" />'
+      + items.map(function(item, index) {
+          var value = rrNum(item && item.valor_total);
+          var h = Math.max(4, Math.round((value / max) * plotH));
+          var x = pad.left + (index * (barW + 8));
+          var y = pad.top + (plotH - h);
+          var label = String(item && item.mes_ref || '').slice(5, 7) + '/' + String(item && item.mes_ref || '').slice(2, 4);
+          return ''
+            + '<rect x="' + x + '" y="' + y + '" width="' + barW + '" height="' + h + '" rx="8" fill="url(#rrBarsGradient)" />'
+            + '<text x="' + (x + Math.floor(barW / 2)) + '" y="' + (pad.top + plotH + 18) + '" text-anchor="middle" font-size="11" fill="#cbd5e1">' + rrEsc(label) + '</text>';
+        }).join('')
+      + '<text x="' + pad.left + '" y="' + (pad.top - 2) + '" font-size="11" fill="#cbd5e1">R$ ' + rrEsc(rrFmtNum(max, 0)) + '</text>'
+      + '<defs><linearGradient id="rrBarsGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#2563eb"/></linearGradient></defs>'
+      + '</svg>';
+  }
+
+  async function rrReportEvolucaoVendas() {
+    var ref = rrCurrentRange();
+    var json = await rrFetchJson('/api/relatorios/evolucao-vendas?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var resumo = json && json.resumo || {};
+    var meses = rrList(json, ['meses', 'rows', 'data']);
+    var vendedores = rrList(json, ['vendedores']);
+    var svg = rrSvgBars(meses);
+    return rrOpenPrint({
+      title: 'Relatório de Evolução das Vendas',
+      periodo: ref.titulo,
+      introHtml: svg ? '<div style="margin:8px 0 18px">' + svg + '</div>' : '',
+      cards: [
+        { label: 'Valor Total', value: rrFmtMoney(resumo.valor_total || 0), sub: 'Período selecionado' },
+        { label: 'Meses com Dados', value: rrFmtNum(resumo.total_meses || meses.length, 0), sub: 'Meses consolidados' },
+        { label: 'Vendedores', value: rrFmtNum(resumo.total_vendedores || vendedores.length, 0), sub: 'Com vendas no período' },
+        { label: 'OFs', value: rrFmtNum(resumo.total_ofs || 0, 0), sub: 'Pedidos concluídos' }
+      ],
+      summaryTitle: 'Evolução mês a mês',
+      summaryHeaders: ['Mês', 'Valor vendido', 'Nº OFs', 'Top vendedor'],
+      summaryRows: meses.map(function(item) {
+        var porVend = item && item.por_vendedor && typeof item.por_vendedor === 'object' ? item.por_vendedor : {};
+        var top = Object.keys(porVend).map(function(nome) {
+          return { nome: nome, valor: rrNum(porVend[nome]) };
+        }).sort(function(a, b) { return b.valor - a.valor; })[0] || null;
+        return [
+          rrEsc(String(item && item.mes_ref || '—')),
+          rrEsc(rrFmtMoney(item && item.valor_total || 0)),
+          rrEsc(rrFmtNum(item && item.total_ofs || 0, 0)),
+          rrEsc(top ? (top.nome + ' · ' + rrFmtMoney(top.valor)) : '—')
+        ];
+      }),
+      detailTitle: 'Total por vendedor',
+      detailHeaders: ['Vendedor', 'Valor total', 'Nº OFs'],
+      detailRows: vendedores.map(function(item) {
+        return [
+          rrEsc(String(item && item.vendedor || '—')),
+          rrEsc(rrFmtMoney(item && item.valor_total || 0)),
+          rrEsc(rrFmtNum(item && item.total_ofs || 0, 0))
+        ];
+      }),
+      emptySummaryCols: 4,
+      emptyDetailCols: 3
+    });
+  }
+
   var rrDefs = [
     { id: 'passagens', label: 'Histórico de Passagens', icon: '🕒', desc: 'Passagens registradas nas máquinas com resumo e detalhamento.', run: rrReportPassagens },
     { id: 'comissoes', label: 'Comissões', icon: '💵', desc: 'Resumo por vendedor e detalhamento das OFs comissionadas.', run: rrReportComissoes },
@@ -1123,7 +1196,8 @@ try {
     { id: 'saidas', label: 'Saídas', icon: '📤', desc: 'Movimentações de saída no estoque de chapas.', run: function() { return rrReportMovimentos('saida'); } },
     { id: 'clientes-mais-compraram', label: 'Clientes que mais compraram', icon: '🏆', desc: 'Ranking por valor comprado com ticket médio e caixas vendidas.', run: rrReportClientesMaisCompraram },
     { id: 'vendas-por-empresa', label: 'Vendas por Empresa', icon: '🏢', desc: 'Consolidado de Italy, Cartoeste e Oestepack no período selecionado.', run: rrReportVendasPorEmpresa },
-    { id: 'comparativo-mensal', label: 'Comparativo Mensal', icon: '📊', desc: 'Compara o período atual com o período imediatamente anterior equivalente.', run: rrReportComparativoMensal }
+    { id: 'comparativo-mensal', label: 'Comparativo Mensal', icon: '📊', desc: 'Compara o período atual com o período imediatamente anterior equivalente.', run: rrReportComparativoMensal },
+    { id: 'evolucao-vendas', label: 'Evolução das Vendas', icon: '📈', desc: 'Mostra a evolução mensal das vendas e o consolidado por vendedor.', run: rrReportEvolucaoVendas }
   ];
 
   async function rrOpen(def) {
