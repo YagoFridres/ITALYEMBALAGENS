@@ -26360,6 +26360,7 @@ window._mbnActive = function(id) {
 })();
 
 (function patchOfmaqAndHubIntelligence() {
+  try { console.log('[OFMAQ-HOOK] patchOfmaq chamado'); } catch (_) {}
   var originalSortByPriority = (typeof window.ordenarOFsPorPrioridade === 'function')
     ? window.ordenarOFsPorPrioridade
     : null;
@@ -28634,6 +28635,77 @@ window._mbnActive = function(id) {
     try { decorateOfmaqCards(); } catch (_) {}
   };
 
+  function _ofmaqCardsInDom(scope) {
+    var root = scope || document;
+    try {
+      return Array.prototype.slice.call(root.querySelectorAll('#ofs-por-maquina-container .of-card-maquina[data-of-id], #ofs-por-maquina-container .of-card[data-of-id], #ofsmaq-container .of-card-maquina[data-of-id], #ofmaq-body .of-card-maquina[data-of-id]'));
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function _ofmaqCanApplyRedesign() {
+    if (String(window._PAGE_ATUAL || '') !== 'ofmaq') return false;
+    return _ofmaqCardsInDom().length > 0;
+  }
+
+  function _ofmaqRunAfterRender(reason) {
+    try {
+      if (!_ofmaqCanApplyRedesign()) return false;
+      var cards = _ofmaqCardsInDom();
+      var sig = cards.map(function(card) {
+        return String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
+      }).filter(Boolean).join('|');
+      var now = Date.now();
+      if (sig && window.__ofmaqLastAfterRenderSig === sig && (now - Number(window.__ofmaqLastAfterRenderAt || 0) < 400)) return false;
+      window.__ofmaqLastAfterRenderSig = sig;
+      window.__ofmaqLastAfterRenderAt = now;
+      try { console.log('[OFMAQ-HOOK] afterRender disparado por', String(reason || 'desconhecido'), 'cards:', cards.length); } catch (_) {}
+      afterRenderOfmaq();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function _ofmaqScheduleAfterRender(reason, delay) {
+    try { if (window.__ofmaqAfterRenderTimer) clearTimeout(window.__ofmaqAfterRenderTimer); } catch (_) {}
+    window.__ofmaqAfterRenderTimer = setTimeout(function() {
+      _ofmaqRunAfterRender(reason);
+    }, Math.max(0, Number(delay || 0) || 0));
+  }
+
+  function _ofmaqEnsureRenderObserver() {
+    try {
+      if (window.__ofmaqRenderObserver) return;
+      var target = document.body || document.documentElement;
+      if (!target) return;
+      var observer = new MutationObserver(function(mutations) {
+        if (String(window._PAGE_ATUAL || '') !== 'ofmaq') return;
+        var relevant = (mutations || []).some(function(m) {
+          return Array.prototype.slice.call(m.addedNodes || []).some(function(node) {
+            if (!node || node.nodeType !== 1) return false;
+            if (node.matches && (node.matches('[data-of-id]') || node.matches('.maq-body,.maq-ofs,#ofs-por-maquina-container,#ofsmaq-container,#ofmaq-body'))) return true;
+            return !!(node.querySelector && node.querySelector('[data-of-id], .maq-body, .maq-ofs, #ofs-por-maquina-container, #ofsmaq-container, #ofmaq-body'));
+          });
+        });
+        if (relevant) _ofmaqScheduleAfterRender('observer', 30);
+      });
+      observer.observe(target, { childList: true, subtree: true });
+      window.__ofmaqRenderObserver = observer;
+    } catch (_) {}
+  }
+
+  function _ofmaqEnsureRenderPolling() {
+    try {
+      if (window.__ofmaqRenderPoll) return;
+      window.__ofmaqRenderPoll = setInterval(function() {
+        if (String(window._PAGE_ATUAL || '') !== 'ofmaq') return;
+        _ofmaqRunAfterRender('poll');
+      }, 800);
+    } catch (_) {}
+  }
+
   function afterRenderOfmaq() {
     try { console.log('[OFMAQ-REDESIGN-ATIVO] versao nova rodando'); } catch (_) {}
     ensureStyles();
@@ -28648,6 +28720,7 @@ window._mbnActive = function(id) {
   }
 
   function hookRenderOfmaq() {
+    try { console.log('[OFMAQ-HOOK] hookRenderOfmaq chamado'); } catch (_) {}
     if (typeof window.normalizeOF === 'function' && !window.normalizeOF._patchedOfmaqDisplay) {
       var origNormalize = window.normalizeOF;
       window.normalizeOF = function(row) {
@@ -28694,12 +28767,13 @@ window._mbnActive = function(id) {
       window.renderOFsPorMaquina = async function() {
         _refreshOfmaqCachesFromRuntime();
         var result = await orig.apply(this, arguments);
-        setTimeout(afterRenderOfmaq, 40);
+        _ofmaqScheduleAfterRender('hook-wrapper', 40);
         return result;
       };
       window.renderOFsPorMaquina._patchedPriorityHub = true;
+      try { console.log('[OFMAQ-HOOK] hook registrado'); } catch (_) {}
       try {
-        if (String(window._PAGE_ATUAL || '') === 'ofmaq') setTimeout(afterRenderOfmaq, 0);
+        if (String(window._PAGE_ATUAL || '') === 'ofmaq') _ofmaqScheduleAfterRender('hook-registrado', 0);
       } catch (_) {}
     } catch (_) {
       return;
@@ -28850,6 +28924,8 @@ window._mbnActive = function(id) {
     ensureStyles();
     hookRenderOfmaq();
     hookRenderHubIntel();
+    _ofmaqEnsureRenderObserver();
+    _ofmaqEnsureRenderPolling();
     ensureOfmaqToolbarButtons();
     try { if (window._hubIntelInterval) clearInterval(window._hubIntelInterval); } catch (_) {}
     try { window._hubIntelInterval = null; } catch (_) {}
@@ -28868,11 +28944,11 @@ window._mbnActive = function(id) {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
       tick();
-      setTimeout(afterRenderOfmaq, 500);
+      _ofmaqScheduleAfterRender('domcontentloaded', 500);
     });
   } else {
     tick();
-    setTimeout(afterRenderOfmaq, 500);
+    _ofmaqScheduleAfterRender('init', 500);
   }
 })();
 
