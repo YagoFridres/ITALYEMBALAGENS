@@ -1224,6 +1224,49 @@ try {
     });
   }
 
+  async function rrReportChapasAbaixo200() {
+    var ref = rrCurrentRange();
+    var json = await rrFetchJson('/api/relatorios/chapas-abaixo-200?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var resumo = json && json.resumo || {};
+    var rows = rrList(json, ['rows', 'data']);
+    return rrOpenPrint({
+      title: 'Relatório de Chapas Abaixo de 200 no Estoque',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Chapas Críticas', value: rrFmtNum(resumo.total_chapas || rows.length, 0), sub: 'Itens com quantidade abaixo de 200' },
+        { label: 'Quantidade Total', value: rrFmtNum(resumo.quantidade_total || 0, 0), sub: 'Soma do saldo atual dessas chapas' },
+        { label: 'Menor Saldo', value: rrFmtNum(rows[0] && rows[0].quantidade_atual || 0, 0), sub: rows[0] ? String(rows[0].nomenclatura || '—') : 'Sem dados' },
+        { label: 'Fornecedor Top', value: rows[0] ? String(rows[0].fornecedor || '—') : 'Sem dados', sub: 'Primeiro item após ordenação' }
+      ],
+      summaryTitle: 'Chapas para reposição',
+      summaryHeaders: ['Fornecedor', 'Gramatura', 'Nomenclatura', 'Tamanho', 'Quantidade atual', 'Estoque mínimo'],
+      summaryRows: rows.map(function(row) {
+        return [
+          rrEsc(String(row && row.fornecedor || '—')),
+          rrEsc(String(row && row.gramatura || '—')),
+          rrEsc(String(row && row.nomenclatura || '—')),
+          rrEsc(String(row && row.tamanho || '—')),
+          rrEsc(rrFmtNum(row && row.quantidade_atual || 0, 0)),
+          rrEsc(rrFmtNum(row && row.estoque_minimo || 0, 0))
+        ];
+      }),
+      detailTitle: 'Detalhamento',
+      detailHeaders: ['Fornecedor', 'Gramatura', 'Nomenclatura', 'Tamanho', 'Quantidade atual', 'Estoque mínimo'],
+      detailRows: rows.map(function(row) {
+        return [
+          rrEsc(String(row && row.fornecedor || '—')),
+          rrEsc(String(row && row.gramatura || '—')),
+          rrEsc(String(row && row.nomenclatura || '—')),
+          rrEsc(String(row && row.tamanho || '—')),
+          rrEsc(rrFmtNum(row && row.quantidade_atual || 0, 0)),
+          rrEsc(rrFmtNum(row && row.estoque_minimo || 0, 0))
+        ];
+      }),
+      emptySummaryCols: 6,
+      emptyDetailCols: 6
+    });
+  }
+
   var rrDefs = [
     { id: 'passagens', label: 'Histórico de Passagens', icon: '🕒', desc: 'Passagens registradas nas máquinas com resumo e detalhamento.', run: rrReportPassagens },
     { id: 'comissoes', label: 'Comissões', icon: '💵', desc: 'Resumo por vendedor e detalhamento das OFs comissionadas.', run: rrReportComissoes },
@@ -1237,7 +1280,8 @@ try {
     { id: 'vendas-por-empresa', label: 'Vendas por Empresa', icon: '🏢', desc: 'Consolidado de Italy, Cartoeste e Oestepack no período selecionado.', run: rrReportVendasPorEmpresa },
     { id: 'comparativo-mensal', label: 'Comparativo Mensal', icon: '📊', desc: 'Compara o período atual com o período imediatamente anterior equivalente.', run: rrReportComparativoMensal },
     { id: 'evolucao-vendas', label: 'Evolução das Vendas', icon: '📈', desc: 'Mostra a evolução mensal das vendas e o consolidado por vendedor.', run: rrReportEvolucaoVendas },
-    { id: 'vendas-por-ramo', label: 'Vendas por Ramo de Atividade', icon: '🏷️', desc: 'Agrupa as vendas concluídas por clientes.ramo.', run: rrReportVendasPorRamo }
+    { id: 'vendas-por-ramo', label: 'Vendas por Ramo de Atividade', icon: '🏷️', desc: 'Agrupa as vendas concluídas por clientes.ramo.', run: rrReportVendasPorRamo },
+    { id: 'chapas-abaixo-200', label: 'Chapas abaixo de 200 no estoque', icon: '🧾', desc: 'Lista as chapas com necessidade de reposição imediata.', run: rrReportChapasAbaixo200 }
   ];
 
   async function rrOpen(def) {

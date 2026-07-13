@@ -11278,6 +11278,51 @@ app.get('/api/relatorios/vendas-por-ramo', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/relatorios/chapas-abaixo-200', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const table = await _chapasPreferV2Table();
+    const cols = table === 'chapas_estoque_v2'
+      ? 'id,fornecedor,gramatura,nomenclatura,nome_uso,nome,tamanho,quantidade_atual,quantidade,qtd,estoque_minimo,empresa_id'
+      : 'id,fornecedor,gramatura,nomenclatura,nome_uso,nome,tamanho,quantidade,quantidade_atual,qtd,estoque_minimo,emp_id,empresa_id';
+    let q = supabase.from(table).select(cols).limit(5000);
+    let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+    if (empresa_id) {
+      if (table === 'chapas_estoque_v2') q = q.eq('empresa_id', empresa_id);
+      else q = q.or('empresa_id.eq.' + empresa_id + ',emp_id.eq.' + empresa_id + ',empresa_id.is.null');
+    }
+    const { data, error } = await q;
+    if (error) throw error;
+    const rows = (Array.isArray(data) ? data : []).map((row) => {
+      const quantidadeAtual = Math.trunc(Number(row?.quantidade_atual ?? row?.quantidade ?? row?.qtd ?? 0) || 0);
+      return {
+        id: row?.id || null,
+        fornecedor: String(row?.fornecedor || '—').trim() || '—',
+        gramatura: String(row?.gramatura || '—').trim() || '—',
+        nomenclatura: String(row?.nomenclatura || row?.nome_uso || row?.nome || '—').trim() || '—',
+        tamanho: String(row?.tamanho || '—').trim() || '—',
+        quantidade_atual: quantidadeAtual,
+        estoque_minimo: Math.trunc(Number(row?.estoque_minimo ?? 200) || 200)
+      };
+    }).filter((row) => Number(row?.quantidade_atual || 0) < 200).sort((a, b) => {
+      if (Number(a.quantidade_atual || 0) !== Number(b.quantidade_atual || 0)) return Number(a.quantidade_atual || 0) - Number(b.quantidade_atual || 0);
+      return String(a.nomenclatura || '').localeCompare(String(b.nomenclatura || ''), 'pt-BR');
+    });
+    return res.json({
+      ok: true,
+      rows,
+      resumo: {
+        total_chapas: rows.length,
+        quantidade_total: rows.reduce((s, item) => s + (Number(item?.quantidade_atual || 0) || 0), 0)
+      }
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][CHAPAS-ABAIXO-200]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
