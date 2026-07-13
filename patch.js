@@ -1267,6 +1267,47 @@ try {
     });
   }
 
+  async function rrReportClientesMenosCompraram() {
+    var ref = rrCurrentRange();
+    var json = await rrFetchJson('/api/relatorios/clientes-mais-compraram?ordem=asc&data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var resumo = json && json.resumo || {};
+    var rows = rrList(json, ['rows', 'data', 'clientes']);
+    return rrOpenPrint({
+      title: 'Relatório de Clientes que Menos Compraram',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Clientes', value: rrFmtNum(resumo.total_clientes || rows.length, 0), sub: 'Clientes com compras no período' },
+        { label: 'Valor Total', value: rrFmtMoney(resumo.valor_total || rows.reduce(function(s, r) { return s + rrNum(r && r.valor_total); }, 0)), sub: 'Total consolidado do período' },
+        { label: 'Ticket Médio Geral', value: rrFmtMoney(resumo.ticket_medio_geral || 0), sub: 'Valor total dividido por pedidos' },
+        { label: 'Caixas Compradas', value: rrFmtNum(resumo.total_caixas || rows.reduce(function(s, r) { return s + rrInt(r && r.caixas_compradas); }, 0), 0), sub: 'Total vendido no período' }
+      ],
+      summaryTitle: 'Clientes com menor faturamento',
+      summaryHeaders: ['Cliente', 'Valor Total', 'Caixas Compradas', 'Nº Pedidos', 'Ticket Médio'],
+      summaryRows: rows.map(function(row) {
+        return [
+          rrEsc(String(row && row.cliente_nome || '—')),
+          rrEsc(rrFmtMoney(row && row.valor_total || 0)),
+          rrEsc(rrFmtNum(row && row.caixas_compradas || 0, 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.ticket_medio || 0))
+        ];
+      }),
+      detailTitle: 'Ranking completo',
+      detailHeaders: ['Cliente', 'Valor total', 'Caixas compradas', 'Nº pedidos', 'Ticket médio'],
+      detailRows: rows.map(function(row) {
+        return [
+          rrEsc(String(row && row.cliente_nome || '—')),
+          rrEsc(rrFmtMoney(row && row.valor_total || 0)),
+          rrEsc(rrFmtNum(row && row.caixas_compradas || 0, 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.ticket_medio || 0))
+        ];
+      }),
+      emptySummaryCols: 5,
+      emptyDetailCols: 5
+    });
+  }
+
   var rrDefs = [
     { id: 'passagens', label: 'Histórico de Passagens', icon: '🕒', desc: 'Passagens registradas nas máquinas com resumo e detalhamento.', run: rrReportPassagens },
     { id: 'comissoes', label: 'Comissões', icon: '💵', desc: 'Resumo por vendedor e detalhamento das OFs comissionadas.', run: rrReportComissoes },
@@ -1281,7 +1322,8 @@ try {
     { id: 'comparativo-mensal', label: 'Comparativo Mensal', icon: '📊', desc: 'Compara o período atual com o período imediatamente anterior equivalente.', run: rrReportComparativoMensal },
     { id: 'evolucao-vendas', label: 'Evolução das Vendas', icon: '📈', desc: 'Mostra a evolução mensal das vendas e o consolidado por vendedor.', run: rrReportEvolucaoVendas },
     { id: 'vendas-por-ramo', label: 'Vendas por Ramo de Atividade', icon: '🏷️', desc: 'Agrupa as vendas concluídas por clientes.ramo.', run: rrReportVendasPorRamo },
-    { id: 'chapas-abaixo-200', label: 'Chapas abaixo de 200 no estoque', icon: '🧾', desc: 'Lista as chapas com necessidade de reposição imediata.', run: rrReportChapasAbaixo200 }
+    { id: 'chapas-abaixo-200', label: 'Chapas abaixo de 200 no estoque', icon: '🧾', desc: 'Lista as chapas com necessidade de reposição imediata.', run: rrReportChapasAbaixo200 },
+    { id: 'clientes-menos-compraram', label: 'Clientes que menos compraram', icon: '📉', desc: 'Ranking do menor para o maior valor comprado no período.', run: rrReportClientesMenosCompraram }
   ];
 
   async function rrOpen(def) {
