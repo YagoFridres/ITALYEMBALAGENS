@@ -10362,7 +10362,7 @@ window.addEventListener('unhandledrejection', function(e) {
       msg.indexOf('[CRITICO]') === 0 ||
       msg.indexOf('[CRÍTICO]') === 0 ||
       msg.indexOf('[PATCH') === 0 ||
-      msg.indexOf('[OFMAQ-HOOK]') === 0 ||
+      msg.indexOf('[OFMAQ-') === 0 ||
       msg.indexOf('[COM]') === 0 ||
       msg.indexOf('[COM PATCH]') === 0 ||
       msg.indexOf('[IMPRIMIR]') === 0 ||
@@ -28899,7 +28899,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       window.__ofmaqLastAfterRenderSig = sig;
       window.__ofmaqLastAfterRenderAt = now;
       try { console.log('[OFMAQ-HOOK] afterRender disparado por', String(reason || 'desconhecido'), 'cards:', cards.length); } catch (_) {}
-      afterRenderOfmaq();
+      var currentAfterRender = (typeof window.afterRenderOfmaq === 'function')
+        ? window.afterRenderOfmaq
+        : (typeof afterRenderOfmaq === 'function' ? afterRenderOfmaq : null);
+      if (typeof currentAfterRender === 'function') currentAfterRender();
       return true;
     } catch (_) {
       return false;
@@ -28942,7 +28945,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     } catch (_) {}
   }
 
-  function afterRenderOfmaq() {
+  window.afterRenderOfmaq = function afterRenderOfmaq() {
     try { console.log('[OFMAQ-REDESIGN-ATIVO] versao nova rodando'); } catch (_) {}
     try {
       var firstCard = (_ofmaqCardsInDom(document) || [])[0] || null;
@@ -28963,7 +28966,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     } catch (e) {
       try { console.error('[OFMAQ-AFTER-ERRO]:', e); } catch (_) {}
     }
-  }
+  };
 
   function hookRenderOfmaq() {
     try { console.log('[OFMAQ-HOOK] hookRenderOfmaq chamado'); } catch (_) {}
