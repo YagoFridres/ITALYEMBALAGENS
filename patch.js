@@ -33836,7 +33836,17 @@ function _ocultarGraficoComissoes() {
   }
 
   function _gramaturaFallbackConclusao() {
-    return { id: '', nome: 'Selecione uma gramatura', descricao: 'Selecione uma gramatura', gramatura: 0, valor_unitario: 0, ativo: true, fallback: true };
+    return {
+      id: '',
+      nome: 'Selecione uma gramatura',
+      descricao: 'Selecione uma gramatura',
+      gramatura: 0,
+      valor_unitario: 0,
+      medida_comprimento: 0,
+      medida_largura: 0,
+      ativo: true,
+      fallback: true
+    };
   }
 
   function _normalizarGramaturaConclusao(item) {
@@ -33851,6 +33861,8 @@ function _ocultarGraficoComissoes() {
       descricao: String(src.descricao || src.nome || '').trim(),
       gramatura: Number(src.gramatura || 0) || 0,
       valor_unitario: Number(src.valor_unitario || 0) || 0,
+      medida_comprimento: Number(src.medida_comprimento ?? src.comprimentoMm ?? src.comprimento_mm ?? 0) || 0,
+      medida_largura: Number(src.medida_largura ?? src.larguraMm ?? src.largura_mm ?? 0) || 0,
       fornecedor_nome: String(src.fornecedor_nome || '').trim(),
       ativo: !(src.ativo === false || String(src.status || '').toLowerCase() === 'inativo'),
       fallback: !!src.fallback
@@ -33912,6 +33924,14 @@ function _ocultarGraficoComissoes() {
     return { comprimentoMm: comp, larguraMm: larg, areaUnitM2: areaUnitM2 };
   }
 
+  function _extrairDimensoesGramaturaConclusao(gramaturaSel) {
+    var gramSel = _normalizarGramaturaConclusao(gramaturaSel || _gramaturaFallbackConclusao());
+    var comp = Number(gramSel.medida_comprimento || 0) || 0;
+    var larg = Number(gramSel.medida_largura || 0) || 0;
+    var areaUnitM2 = (comp > 0 && larg > 0) ? ((comp / 1000) * (larg / 1000)) : 0;
+    return { comprimentoMm: comp, larguraMm: larg, areaUnitM2: areaUnitM2 };
+  }
+
   function _extrairAreaTotalConclusao(of, qtdProduzidas) {
     var qtd = Math.max(0, Number(qtdProduzidas || 0) || 0);
     var dims = _extrairDimensoesConclusao(of);
@@ -33920,7 +33940,10 @@ function _ocultarGraficoComissoes() {
 
   function _calcularResumoMateriaPrimaConclusao(of, qtdProduzidas, gramaturaSel) {
     var gramSel = _normalizarGramaturaConclusao(gramaturaSel || _gramaturaFallbackConclusao());
-    var dims = _extrairDimensoesConclusao(of);
+    var dimsGramatura = _extrairDimensoesGramaturaConclusao(gramSel);
+    var dims = (dimsGramatura.comprimentoMm > 0 && dimsGramatura.larguraMm > 0)
+      ? dimsGramatura
+      : _extrairDimensoesConclusao(of);
     var areaUnitM2 = Number(dims.areaUnitM2 || 0) || 0;
     var areaTotalM2 = Math.round((areaUnitM2 * (Math.max(0, Number(qtdProduzidas || 0) || 0))) * 10000) / 10000;
     var pesoKg = (gramSel.gramatura > 0 && areaTotalM2 > 0) ? ((areaTotalM2 * gramSel.gramatura) / 1000) : 0;
