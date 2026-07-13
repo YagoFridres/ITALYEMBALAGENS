@@ -10914,6 +10914,118 @@ app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, r
   }
 });
 
+const _RELATORIOS_EMPRESAS_FIXAS = [
+  { id: 'df5f7672-0a6b-402d-ae65-296554236c31', nome: 'Italy Embalagens' },
+  { id: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e', nome: 'Cartoeste' },
+  { id: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667', nome: 'Oestepack' }
+];
+
+function _relatoriosEmpresaNome(empId) {
+  const id = String(empId || '').trim();
+  const found = _RELATORIOS_EMPRESAS_FIXAS.find((item) => String(item?.id || '').trim() === id);
+  return found?.nome || (id ? id : 'Sem empresa');
+}
+
+function _relatoriosPickEmpresaId(of) {
+  return String(of?.empresa_id || of?.emp_id || '').trim();
+}
+
+function _relatoriosPickValorOf(of) {
+  return Number(of?.valor_total ?? of?.valor_venda ?? of?.total ?? 0) || 0;
+}
+
+function _relatoriosPickQtdOf(of) {
+  return Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
+}
+
+function _relatoriosPickPerdaOf(of) {
+  return Math.max(0, Math.trunc(Number(of?.qtd_perdida ?? of?.caixas_perdidas ?? 0) || 0));
+}
+
+function _relatoriosPickTonOf(of) {
+  return Number(of?.tonelada_vendida || 0) || 0;
+}
+
+async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
+  const columns = [
+    'id', 'numero', 'of', 'status', 'data_conclusao', 'deleted_at', 'created_at',
+    'empresa_id', 'emp_id', 'cli_id',
+    'valor_total', 'valor_venda', 'total',
+    'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida',
+    'qtd_perdida', 'caixas_perdidas',
+    'tonelada_vendida',
+    'vendedor', 'vendedor_nome', 'vendNome', 'vendedor_id', 'vendId', 'vend_id'
+  ].join(',');
+  const companyIds = Array.isArray(opts.companyIds) ? opts.companyIds.map((v) => String(v || '').trim()).filter(Boolean) : [];
+  const result = await _selectCompatRows('ofs', columns, (q) => {
+    let query = q
+      .not('data_conclusao', 'is', null)
+      .gte('data_conclusao', range.inicio)
+      .lt('data_conclusao', range.fim_exclusivo)
+      .order('data_conclusao', { ascending: true });
+    if (companyIds.length) query = query.in('empresa_id', companyIds);
+    return query.limit(10000);
+  });
+  if (result?.error) throw result.error;
+  return (Array.isArray(result?.data) ? result.data : []).filter((of) => {
+    if (!of || of.deleted_at) return false;
+    if (!_assistPickOfConclusao(of)) return false;
+    if (_assistIsCancelada(of)) return false;
+    return _assistIsConcluida(of) || String(of?.status || '').trim().toLowerCase() === 'pedido pronto' || !String(of?.status || '').trim();
+  });
+}
+
+app.get('/api/relatorios/vendas-por-empresa', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    if (!range?.inicio || !range?.fim_exclusivo) {
+      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
+    }
+    const ofs = await _relatoriosFetchOfsConcluidas(range, {
+      companyIds: _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id)
+    });
+    const baseMap = new Map(_RELATORIOS_EMPRESAS_FIXAS.map((item) => [item.id, {
+      empresa_id: item.id,
+      empresa_nome: item.nome,
+      valor_vendido: 0,
+      caixas_produzidas: 0,
+      caixas_perdidas: 0,
+      total_ofs: 0,
+      toneladas_vendidas: 0
+    }]));
+    ofs.forEach((of) => {
+      const empresaId = _relatoriosPickEmpresaId(of);
+      if (!baseMap.has(empresaId)) return;
+      const item = baseMap.get(empresaId);
+      item.valor_vendido += _relatoriosPickValorOf(of);
+      item.caixas_produzidas += _relatoriosPickQtdOf(of);
+      item.caixas_perdidas += _relatoriosPickPerdaOf(of);
+      item.total_ofs += 1;
+      item.toneladas_vendidas += _relatoriosPickTonOf(of);
+    });
+    const rows = Array.from(baseMap.values()).sort((a, b) => String(a.empresa_nome || '').localeCompare(String(b.empresa_nome || ''), 'pt-BR'));
+    const resumo = rows.reduce((acc, item) => {
+      acc.valor_vendido += Number(item?.valor_vendido || 0) || 0;
+      acc.caixas_produzidas += Number(item?.caixas_produzidas || 0) || 0;
+      acc.caixas_perdidas += Number(item?.caixas_perdidas || 0) || 0;
+      acc.total_ofs += Number(item?.total_ofs || 0) || 0;
+      acc.toneladas_vendidas += Number(item?.toneladas_vendidas || 0) || 0;
+      return acc;
+    }, { valor_vendido: 0, caixas_produzidas: 0, caixas_perdidas: 0, total_ofs: 0, toneladas_vendidas: 0 });
+    return res.json({
+      ok: true,
+      data_inicio: range.inicio,
+      data_fim: range.fim,
+      resumo,
+      rows
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][VENDAS-POR-EMPRESA]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();

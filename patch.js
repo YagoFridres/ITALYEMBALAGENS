@@ -1025,6 +1025,49 @@ try {
     });
   }
 
+  async function rrReportVendasPorEmpresa() {
+    var ref = rrCurrentRange();
+    var json = await rrFetchJson('/api/relatorios/vendas-por-empresa?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var resumo = json && json.resumo || {};
+    var rows = rrList(json, ['rows', 'data']);
+    return rrOpenPrint({
+      title: 'Relatório de Vendas por Empresa',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Valor Vendido', value: rrFmtMoney(resumo.valor_vendido || 0), sub: 'Somatório das 3 empresas' },
+        { label: 'Caixas Produzidas', value: rrFmtNum(resumo.caixas_produzidas || 0, 0), sub: 'Produção concluída no período' },
+        { label: 'Caixas Perdidas', value: rrFmtNum(resumo.caixas_perdidas || 0, 0), sub: 'Perdas registradas nas OFs' },
+        { label: 'Toneladas', value: rrFmtNum(resumo.toneladas_vendidas || 0, 3) + ' t', sub: rrFmtNum(resumo.total_ofs || 0, 0) + ' OFs concluídas' }
+      ],
+      summaryTitle: 'Consolidado por empresa',
+      summaryHeaders: ['Empresa', 'Valor vendido', 'Caixas produzidas', 'Caixas perdidas', 'Nº OFs', 'Toneladas'],
+      summaryRows: rows.map(function(row) {
+        return [
+          rrEsc(String(row && row.empresa_nome || '—')),
+          rrEsc(rrFmtMoney(row && row.valor_vendido || 0)),
+          rrEsc(rrFmtNum(row && row.caixas_produzidas || 0, 0)),
+          rrEsc(rrFmtNum(row && row.caixas_perdidas || 0, 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtNum(row && row.toneladas_vendidas || 0, 3) + ' t')
+        ];
+      }),
+      detailTitle: 'Detalhamento',
+      detailHeaders: ['Empresa', 'Valor vendido', 'Caixas produzidas', 'Caixas perdidas', 'Nº OFs', 'Toneladas'],
+      detailRows: rows.map(function(row) {
+        return [
+          rrEsc(String(row && row.empresa_nome || '—')),
+          rrEsc(rrFmtMoney(row && row.valor_vendido || 0)),
+          rrEsc(rrFmtNum(row && row.caixas_produzidas || 0, 0)),
+          rrEsc(rrFmtNum(row && row.caixas_perdidas || 0, 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtNum(row && row.toneladas_vendidas || 0, 3) + ' t')
+        ];
+      }),
+      emptySummaryCols: 6,
+      emptyDetailCols: 6
+    });
+  }
+
   var rrDefs = [
     { id: 'passagens', label: 'Histórico de Passagens', icon: '🕒', desc: 'Passagens registradas nas máquinas com resumo e detalhamento.', run: rrReportPassagens },
     { id: 'comissoes', label: 'Comissões', icon: '💵', desc: 'Resumo por vendedor e detalhamento das OFs comissionadas.', run: rrReportComissoes },
@@ -1034,7 +1077,8 @@ try {
     { id: 'estoque-chapas', label: 'Estoque de Chapas', icon: '🟦', desc: 'Snapshot do estoque com resumo por fornecedor.', run: rrReportEstoque },
     { id: 'entradas', label: 'Entradas', icon: '📥', desc: 'Movimentações de entrada no estoque de chapas.', run: function() { return rrReportMovimentos('entrada'); } },
     { id: 'saidas', label: 'Saídas', icon: '📤', desc: 'Movimentações de saída no estoque de chapas.', run: function() { return rrReportMovimentos('saida'); } },
-    { id: 'clientes-mais-compraram', label: 'Clientes que mais compraram', icon: '🏆', desc: 'Ranking por valor comprado com ticket médio e caixas vendidas.', run: rrReportClientesMaisCompraram }
+    { id: 'clientes-mais-compraram', label: 'Clientes que mais compraram', icon: '🏆', desc: 'Ranking por valor comprado com ticket médio e caixas vendidas.', run: rrReportClientesMaisCompraram },
+    { id: 'vendas-por-empresa', label: 'Vendas por Empresa', icon: '🏢', desc: 'Consolidado de Italy, Cartoeste e Oestepack no período selecionado.', run: rrReportVendasPorEmpresa }
   ];
 
   async function rrOpen(def) {
