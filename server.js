@@ -10819,7 +10819,7 @@ app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, r
 
     const selectCols = [
       'id', 'numero', 'of', 'status', 'data_conclusao', 'deleted_at', 'empresa_id',
-      'cli_id', 'cliente_id', 'cliNome', 'clinome', 'cliente_nome', 'cliente',
+      'cli_id',
       'valor_total', 'valor_venda', 'total',
       'qtd', 'qtd_produzida', 'quantidade', 'qtd_pedida'
     ].join(',');
@@ -10855,12 +10855,10 @@ app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, r
     const grupos = new Map();
     elegiveis.forEach((of) => {
       const cliId = _assistPickOfClienteId(of);
-      const nomeFallback = String(of?.cliente_nome || of?.clinome || of?.cliNome || of?.cliente || '').trim();
-      const key = cliId || (nomeFallback ? ('nome:' + nomeFallback.toLowerCase()) : 'sem-cliente');
+      const key = cliId || 'sem-cliente';
       if (!grupos.has(key)) {
         grupos.set(key, {
           cli_id: cliId || null,
-          cliente_nome_fallback: nomeFallback || '',
           valor_total: 0,
           caixas_compradas: 0,
           total_ofs: 0
@@ -10870,14 +10868,14 @@ app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, r
       atual.valor_total += _assistPickOfValor(of);
       atual.caixas_compradas += Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
       atual.total_ofs += 1;
-      if (!atual.cliente_nome_fallback && nomeFallback) atual.cliente_nome_fallback = nomeFallback;
     });
 
     const cliIds = Array.from(new Set(Array.from(grupos.values()).map((item) => String(item?.cli_id || '').trim()).filter(isUuid)));
     const clientesMap = cliIds.length ? await _assistLoadClientesByIds(cliIds) : new Map();
 
     const rowsOut = Array.from(grupos.values()).map((item) => {
-      const nome = clientesMap.get(String(item?.cli_id || '').trim()) || item.cliente_nome_fallback || String(item?.cli_id || '').trim() || 'Sem cliente';
+      const cliId = String(item?.cli_id || '').trim();
+      const nome = clientesMap.get(cliId) || cliId || 'Sem cliente';
       const ticketMedio = item.total_ofs > 0 ? (item.valor_total / item.total_ofs) : 0;
       return {
         cliente_id: item.cli_id || null,
