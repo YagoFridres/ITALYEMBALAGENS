@@ -26544,6 +26544,10 @@ window._mbnActive = function(id) {
       + '.patch-ofmaq-cap-badge.ok{background:rgba(16,185,129,0.12);border-color:rgba(16,185,129,0.28);color:#34d399}'
       + '.patch-ofmaq-cap-badge.warn{background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.3);color:#fbbf24}'
       + '.patch-ofmaq-cap-badge.bad{background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.3);color:#fca5a5}'
+      + '.patch-ofmaq-seq-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 0}'
+      + '.patch-ofmaq-seq-row label{font-size:11px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8}'
+      + '.patch-ofmaq-seq-input{width:72px;padding:8px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.88);color:#f8fafc;font-size:15px;font-weight:900;text-align:center}'
+      + '.patch-ofmaq-seq-btn{padding:8px 12px;border-radius:10px;border:1px solid rgba(96,165,250,.24);background:linear-gradient(135deg,rgba(37,99,235,.3),rgba(29,78,216,.5));color:#dbeafe;font-size:12px;font-weight:900;cursor:pointer}'
       + '.patch-ofmaq-calendar-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:none;border-radius:999px;background:rgba(74,144,217,0.18);color:#93c5fd;cursor:pointer;font-size:15px}'
       + '.patch-ofmaq-calendar-btn:hover{filter:brightness(1.12)}'
       + '.patch-ofmaq-setup-sep{margin:10px 0 6px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);font-size:12px;font-weight:800;color:var(--text1)}'
@@ -26699,6 +26703,26 @@ window._mbnActive = function(id) {
     });
   }
 
+  function _ofmaqSortMachineQueue(ofs) {
+    return (Array.isArray(ofs) ? ofs.slice() : []).sort(function(a, b) {
+      var oa = _safeNumOrder(a && (a.ordem_maquina != null ? a.ordem_maquina : a.seq));
+      var ob = _safeNumOrder(b && (b.ordem_maquina != null ? b.ordem_maquina : b.seq));
+      if (oa != null && ob != null && oa !== ob) return oa - ob;
+      if (oa != null && ob == null) return -1;
+      if (oa == null && ob != null) return 1;
+      var ua = isUrgente(a);
+      var ub = isUrgente(b);
+      if (ua !== ub) return ua ? -1 : 1;
+      var da = getOfDelivery(a) || '9999-99-99';
+      var db = getOfDelivery(b) || '9999-99-99';
+      if (da !== db) return da.localeCompare(db);
+      var ca = String(a && (a.created_at || a.updated_at || '') || '');
+      var cb = String(b && (b.created_at || b.updated_at || '') || '');
+      if (ca !== cb) return ca.localeCompare(cb);
+      return String(a && (a.numero || a.of || a.id || '') || '').localeCompare(String(b && (b.numero || b.of || b.id || '') || ''), 'pt-BR');
+    });
+  }
+
   function getVisibleGroups() {
     var groups = window._ofmaqLastGroupOfs;
     return (groups && typeof groups === 'object') ? groups : {};
@@ -26789,6 +26813,20 @@ window._mbnActive = function(id) {
       out[maquina] = _ofmaqGetCurrentOfsFromList(listEl);
     });
     return out;
+  }
+
+  function _ofmaqApplySavedOrderToDom() {
+    var groups = getVisibleGroups();
+    var keys = Object.keys(groups || {});
+    if (!keys.length) return;
+    var nextGroups = {};
+    keys.forEach(function(maquina) {
+      var ofs = _ofmaqSortMachineQueue(groups[maquina]);
+      nextGroups[maquina] = ofs;
+      var listEl = getMachineListEl(maquina);
+      if (listEl && ofs.length) _ofmaqApplyDomOrder(listEl, ofs);
+    });
+    try { window._ofmaqLastGroupOfs = nextGroups; } catch (_) {}
   }
 
   function _ofmaqBuscaState() {
@@ -27394,6 +27432,112 @@ window._mbnActive = function(id) {
       + '<div><span style="color:var(--text2)">Entrega:</span> <span style="color:var(--text1)">' + escH(entrega) + '</span></div>';
   }
 
+  function _ofmaqCardListEl(card) {
+    return card && card.closest ? card.closest('.maq-body[data-maquina-id], .maq-ofs[data-maquina-id], [data-maquina-lista="1"][data-maquina-id]') : null;
+  }
+
+  function _ofmaqVisibleCardsInList(listEl) {
+    return Array.prototype.slice.call((listEl && listEl.querySelectorAll) ? listEl.querySelectorAll('[data-of-id]') : []).filter(function(card) {
+      return !card || card.style.display !== 'none';
+    });
+  }
+
+  function _ofmaqCardPosition(card, of) {
+    var listEl = _ofmaqCardListEl(card);
+    var cards = _ofmaqVisibleCardsInList(listEl);
+    var idx = cards.indexOf(card);
+    if (idx >= 0) return idx + 1;
+    var ord = _safeNumOrder(of && (of.ordem_maquina != null ? of.ordem_maquina : of.seq));
+    return ord != null ? (ord + 1) : '';
+  }
+
+  function _ofmaqUpdateRuntimeOrder(maquina, ordered) {
+    var map = {};
+    (Array.isArray(ordered) ? ordered : []).forEach(function(of, idx) {
+      var id = String(of && of.id || '').trim();
+      if (!id) return;
+      map[id] = { ordem_maquina: idx, seq: idx, maquina_atual: maquina, maquina: maquina };
+    });
+    [window.OFS, typeof OFs !== 'undefined' ? OFs : null, window._ofmaqBaseList].forEach(function(pool) {
+      if (!Array.isArray(pool)) return;
+      pool.forEach(function(item) {
+        var id = String(item && item.id || '').trim();
+        if (id && map[id]) Object.assign(item, map[id]);
+      });
+    });
+    try {
+      if (window._ofmaqLastGroupOfs && Array.isArray(window._ofmaqLastGroupOfs[maquina])) {
+        window._ofmaqLastGroupOfs[maquina] = _ofmaqSortMachineQueue(ordered);
+      }
+    } catch (_) {}
+    try { _refreshOfmaqCachesFromRuntime(); } catch (_) {}
+  }
+
+  async function _ofmaqSaveManualPosition(ofId, desiredPos, card, inputEl, btnEl) {
+    var id = String(ofId || '').trim();
+    if (!id) return false;
+    var listEl = _ofmaqCardListEl(card);
+    var maquina = _ofmaqGetMachineName(listEl);
+    var current = _ofmaqGetCurrentOfsFromList(listEl).slice();
+    var currentIdx = current.findIndex(function(of) { return String(of && of.id || '').trim() === id; });
+    if (currentIdx < 0 || !current.length) return false;
+    var clamped = Math.max(1, Math.min(current.length, Math.trunc(Number(desiredPos) || 0)));
+    if (inputEl) inputEl.value = String(clamped);
+    var moved = current.splice(currentIdx, 1)[0];
+    current.splice(clamped - 1, 0, moved);
+    try {
+      if (btnEl) btnEl.disabled = true;
+      _ofmaqApplyDomOrder(listEl, current);
+      _ofmaqUpdateRuntimeOrder(maquina, current);
+      if (!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
+      window._ordemMaquinas[maquina] = current.map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
+      await savePriorityOrder(maquina, current);
+      try { window.toast('Sequência atualizada para posição ' + clamped + '.', 'var(--green)'); } catch (_) {}
+      return true;
+    } catch (e) {
+      try { window.toast('Erro ao salvar sequência: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+      return false;
+    } finally {
+      if (btnEl) btnEl.disabled = false;
+      if (inputEl) inputEl.value = String(_ofmaqCardPosition(card, moved));
+    }
+  }
+
+  function _ofmaqEnsureSequenceControl(card, of) {
+    if (!card || !of) return;
+    var content = getCardContentEl(card);
+    var textWrap = _ofmaqTextWrap(card, content) || content;
+    if (!textWrap) return;
+    var row = textWrap.querySelector('.patch-ofmaq-seq-row');
+    if (!row) {
+      row = document.createElement('div');
+      row.className = 'patch-ofmaq-seq-row';
+      row.innerHTML = ''
+        + '<label>Posição</label>'
+        + '<input class="patch-ofmaq-seq-input" type="number" min="1" step="1" inputmode="numeric">'
+        + '<button type="button" class="patch-ofmaq-seq-btn">Salvar posição</button>';
+      textWrap.appendChild(row);
+    }
+    var input = row.querySelector('.patch-ofmaq-seq-input');
+    var btn = row.querySelector('.patch-ofmaq-seq-btn');
+    if (input) input.value = String(_ofmaqCardPosition(card, of) || '');
+    if (btn && !btn._patchSeqBound) {
+      btn._patchSeqBound = true;
+      btn.onclick = function(ev) {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        _ofmaqSaveManualPosition(String(of && of.id || ''), Number((input && input.value) || 0), card, input, btn);
+      };
+    }
+    if (input && !input._patchSeqBound) {
+      input._patchSeqBound = true;
+      input.onkeydown = function(ev) {
+        if (String(ev && ev.key || '') !== 'Enter') return;
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        _ofmaqSaveManualPosition(String(of && of.id || ''), Number(input.value || 0), card, input, btn);
+      };
+    }
+  }
+
   function buildSuggestionMap() {
     var groups = getVisibleGroups();
     var out = {};
@@ -27431,6 +27575,7 @@ window._mbnActive = function(id) {
       var of = getCurrentOfById(id);
       if (!of) return;
       try { _ofmaqApplyReadableCardLayout(card, of); } catch (_) {}
+      try { _ofmaqEnsureSequenceControl(card, of); } catch (_) {}
       var content = getCardContentEl(card);
       if (!content) return;
       var existing = content.querySelector('.patch-ofmaq-badges');
@@ -28439,6 +28584,7 @@ window._mbnActive = function(id) {
   function afterRenderOfmaq() {
     ensureStyles();
     ensureOfmaqToolbarButtons();
+    try { _ofmaqApplySavedOrderToDom(); } catch (_) {}
     decorateOfmaqCards();
     applySetupGroupingVisual();
     try { _atualizarCapacidadePorMaquina(); } catch (_) {}
