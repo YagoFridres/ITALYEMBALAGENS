@@ -1794,6 +1794,8 @@ try {
     var term = String(termRaw || '').trim();
     var input = document.getElementById('ofmaq-busca');
     if (input && input.value !== term) input.value = term;
+    var panelInput = document.getElementById('ofmaq-search-input');
+    if (panelInput && panelInput.value !== term) panelInput.value = term;
     logOfmaq('input buscador', {
       termo: term,
       hasRender: typeof renderOFsPorMaquina === 'function',
@@ -1805,10 +1807,11 @@ try {
       logOfmaq('erro busca nativa', String(e && e.message || e));
     }
     try {
-      if (typeof renderOFsPorMaquina === 'function') {
-        renderOFsPorMaquina();
+      if (typeof window.__ofmaqRenderBuscaUiPatch === 'function') {
+        window.__ofmaqRenderBuscaUiPatch(term);
         return true;
       }
+      if (typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina();
     } catch (e2) {
       logOfmaq('erro render busca nativa', String(e2 && e2.message || e2));
     }
@@ -26828,6 +26831,30 @@ window._mbnActive = function(id) {
     }
   }
 
+  function _ofmaqSearchFields(of) {
+    var tamanho = _ofmaqTamanhoLabel(of);
+    var largura = String(of && (of.dim_largura || of.caixa_largura || of.largura || of.larg || '') || '').trim();
+    var comprimento = String(of && (of.dim_comprimento || of.caixa_comprimento || of.comprimento || of.compr || '') || '').trim();
+    var altura = String(of && (of.dim_altura || of.caixa_altura || of.altura || '') || '').trim();
+    return [
+      _ofmaqNumeroLabel(of),
+      _ofmaqClienteLabel(of),
+      String(of && (of.cliente_nome || of.cliente || of.cliNome || of.clinome || of.nome_cliente || '') || '').trim(),
+      _ofmaqProdutoLabel(of),
+      String(of && (of.descricao || of.produto || of.prodDesc || of.nome_produto || of.observacao || of.obs || '') || '').trim(),
+      String(of && of.__maquina_busca || '').trim(),
+      tamanho,
+      largura,
+      comprimento,
+      altura,
+      [largura, comprimento, altura].filter(Boolean).join('x'),
+      [largura, comprimento].filter(Boolean).join('x'),
+      _ofmaqQuantidadeLabel(of),
+      _ofmaqCoresLabel(of),
+      String(of && of.cores_impressao || '').trim()
+    ].filter(Boolean);
+  }
+
   function _ofmaqUniqueOfs(list) {
     var seen = {};
     return (Array.isArray(list) ? list : []).filter(function(of) {
@@ -26854,25 +26881,21 @@ window._mbnActive = function(id) {
 
   function _ofmaqMatchesBusca(of, termNorm) {
     if (!termNorm) return true;
-    var hay = [
-      _ofmaqNumeroLabel(of),
-      _ofmaqClienteLabel(of),
-      _ofmaqProdutoLabel(of),
-      String(of && of.__maquina_busca || '').trim(),
-      _ofmaqTamanhoLabel(of),
-      _ofmaqQuantidadeLabel(of),
-      _ofmaqCoresLabel(of)
-    ].join(' ');
+    var hay = _ofmaqSearchFields(of).join(' ');
     return _ofmaqNormBusca(hay).indexOf(termNorm) >= 0;
   }
 
   function _ofmaqApplySearchFilter(termRaw) {
     var termNorm = _ofmaqNormBusca(termRaw);
+    var lookup = _ofmaqBuildLookupMap();
+    var arr = _ofmaqVisibleOfsFlat();
+    var filt = termNorm ? arr.filter(function(of) { return _ofmaqMatchesBusca(of, termNorm); }) : arr.slice();
+    try { console.log('[OFMAQ-BUSCA] termo:', String(termRaw || ''), 'total:', arr.length, 'achou:', filt.length); } catch (_) {}
     _ofmaqGetMachineLists().forEach(function(listEl) {
       var visibleCount = 0;
       Array.prototype.slice.call(listEl.querySelectorAll('[data-of-id]')).forEach(function(card) {
         var ofId = String(card && card.getAttribute('data-of-id') || '').trim();
-        var of = getCurrentOfById(ofId);
+        var of = lookup[ofId] || getCurrentOfById(ofId);
         var show = _ofmaqMatchesBusca(of, termNorm);
         card.style.display = show ? '' : 'none';
         if (show) visibleCount += 1;
@@ -26951,7 +26974,7 @@ window._mbnActive = function(id) {
     var ofs = _ofmaqVisibleOfsFlat();
     var termNorm = _ofmaqNormBusca(state.q);
     var matches = termNorm ? ofs.filter(function(of) { return _ofmaqMatchesBusca(of, termNorm); }) : [];
-    try { console.log('[BUSCA-OFMAQ] termo:', state.q, 'total OFs:', ofs.length, 'encontradas:', matches.length); } catch (_) {}
+    try { console.log('[OFMAQ-BUSCA] termo:', state.q, 'total:', ofs.length, 'achou:', matches.length); } catch (_) {}
     _ofmaqApplySearchFilter(state.q);
     if (meta) {
       meta.textContent = state.q
