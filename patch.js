@@ -28635,6 +28635,7 @@ window._mbnActive = function(id) {
   };
 
   function afterRenderOfmaq() {
+    try { console.log('[OFMAQ-REDESIGN-ATIVO] versao nova rodando'); } catch (_) {}
     ensureStyles();
     ensureOfmaqToolbarButtons();
     try { _ofmaqApplySavedOrderToDom(); } catch (_) {}
