@@ -26748,6 +26748,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '.patch-ofmaq-card:hover{transform:translateY(-1px);box-shadow:0 24px 44px rgba(2,6,23,.38),inset 0 1px 0 rgba(255,255,255,.05);border-color:rgba(96,165,250,.28)!important}'
       + '.patch-ofmaq-card::before{content:"";position:absolute;inset:0 0 auto 0;height:96px;background:linear-gradient(135deg,rgba(59,130,246,.22),rgba(6,182,212,.1),transparent 72%);pointer-events:none;opacity:.95}'
       + '.patch-ofmaq-card > *{position:relative;z-index:1}'
+      + '.patch-ofmaq-card.kb-card-ofmaq{padding:14px 14px 16px!important;border-radius:18px!important;min-height:228px!important;border:1px solid rgba(148,163,184,.14)!important;background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(17,24,39,.94))!important}'
+      + '.patch-ofmaq-card.kb-card-ofmaq .kb-card-top{gap:12px;align-items:flex-start}'
+      + '.patch-ofmaq-card.kb-card-ofmaq .kb-badge.kb-ordem{width:26px;height:26px;font-size:12px;font-weight:900;background:rgba(59,130,246,.18);color:#93c5fd;border:1px solid rgba(96,165,250,.2)}'
+      + '.patch-ofmaq-card.kb-card-ofmaq .kb-img,.patch-ofmaq-card.kb-card-ofmaq .kb-of-img,.patch-ofmaq-card.kb-card-ofmaq .kb-img-ph,.patch-ofmaq-card.kb-card-ofmaq .kb-of-img-ph{width:58px;height:58px;border-radius:12px}'
+      + '.patch-ofmaq-card.kb-card-ofmaq .kb-info{display:grid;gap:6px;min-width:0;flex:1}'
+      + '.patch-ofmaq-card.kb-card-ofmaq .kb-num{font-size:16px;font-weight:900;line-height:1.2;color:#f8fafc}'
+      + '.patch-ofmaq-card.kb-card-ofmaq .kb-cliente{font-size:13px;line-height:1.35;color:#cbd5e1;font-weight:700}'
+      + '.patch-ofmaq-card.kb-card-ofmaq .kb-produto{font-size:15px;line-height:1.35;color:#f8fafc;font-weight:800}'
+      + '.patch-ofmaq-card.kb-card-ofmaq .kb-meta{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-top:12px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(148,163,184,.12);color:#cbd5e1}'
+      + '.patch-ofmaq-card.kb-card-ofmaq .kb-acoes{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px}'
       + '.patch-ofmaq-card-main{display:flex;gap:16px;align-items:flex-start}'
       + '.patch-ofmaq-card-title{font-size:17px;font-weight:800;line-height:1.3;letter-spacing:.01em;color:#f8fafc}'
       + '.patch-ofmaq-readable-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin-top:0}'
@@ -26759,6 +26769,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '.patch-ofmaq-seq-input{width:72px;padding:8px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.88);color:#f8fafc;font-size:15px;font-weight:900;text-align:center}'
       + '.patch-ofmaq-seq-btn{padding:8px 12px;border-radius:10px;border:1px solid rgba(96,165,250,.24);background:linear-gradient(135deg,rgba(37,99,235,.3),rgba(29,78,216,.5));color:#dbeafe;font-size:12px;font-weight:900;cursor:pointer}'
       + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-card{padding:24px !important;min-height:280px !important;border-radius:22px !important}'
+      + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-card.kb-card-ofmaq{padding:22px 22px 24px !important;min-height:320px !important;border-radius:24px !important}'
+      + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-card.kb-card-ofmaq .kb-img,#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-card.kb-card-ofmaq .kb-of-img,#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-card.kb-card-ofmaq .kb-img-ph,#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-card.kb-card-ofmaq .kb-of-img-ph{width:74px;height:74px;border-radius:16px}'
+      + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-card.kb-card-ofmaq .kb-num{font-size:22px !important}'
+      + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-card.kb-card-ofmaq .kb-cliente{font-size:15px !important}'
+      + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-card.kb-card-ofmaq .kb-produto{font-size:18px !important}'
+      + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-card.kb-card-ofmaq .kb-meta{padding:14px 16px;font-size:14px}'
       + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-card-title{font-size:22px !important}'
       + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-readable-meta{gap:14px;grid-template-columns:repeat(2,minmax(0,1fr))}'
       + '#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-meta-item{padding:14px 16px;border-radius:14px}'
@@ -27040,6 +27056,43 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     return map;
   }
 
+  function _ofmaqDomCards(scope) {
+    var root = scope || document;
+    try {
+      var cards = Array.prototype.slice.call(root.querySelectorAll('.kb-card.kb-card-ofmaq[data-of-id], .kb-card-ofmaq[data-of-id], .of-card-maquina[data-of-id], .ofmaq-card[data-of-id], .of-card[data-of-id]'));
+      var seen = {};
+      return cards.filter(function(card) {
+        var id = String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
+        if (!id || seen[id]) return false;
+        seen[id] = true;
+        return true;
+      });
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function _ofmaqCardSearchText(card, of) {
+    var bits = [];
+    try {
+      bits.push(String(card && card.innerText || '').trim());
+      bits.push(String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim());
+      bits.push(String(card && (card.getAttribute('data-maq') || card.getAttribute('data-maquina') || card.getAttribute('data-ofmaq-maquina-atual')) || '').trim());
+      bits.push(String(card && card.getAttribute && card.getAttribute('data-qtd') || '').trim());
+      bits.push(String(card && card.getAttribute && card.getAttribute('data-tempo-min') || '').trim());
+      bits.push(String(card && card.getAttribute && card.getAttribute('data-cx-hora') || '').trim());
+    } catch (_) {}
+    try {
+      if (of) bits = bits.concat(_ofmaqSearchFields(of));
+    } catch (_) {}
+    return _ofmaqNormBusca(bits.filter(Boolean).join(' '));
+  }
+
+  function _ofmaqCardMatchesBusca(card, of, termNorm) {
+    if (!termNorm) return true;
+    return _ofmaqCardSearchText(card, of).indexOf(termNorm) >= 0;
+  }
+
   function _ofmaqGetCurrentOfsFromList(listEl) {
     var maquina = _ofmaqGetMachineName(listEl);
     var ids = Array.prototype.slice.call((listEl && listEl.querySelectorAll) ? listEl.querySelectorAll('[data-of-id]') : []).map(function(card) {
@@ -27189,15 +27242,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function _ofmaqApplySearchFilter(termRaw) {
     var termNorm = _ofmaqNormBusca(termRaw);
     var lookup = _ofmaqBuildLookupMap();
-    var arr = _ofmaqVisibleOfsFlat();
-    var filt = termNorm ? arr.filter(function(of) { return _ofmaqMatchesBusca(of, termNorm); }) : arr.slice();
+    var arr = _ofmaqDomCards(document).map(function(card) {
+      var id = String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
+      return { card: card, of: lookup[id] || getCurrentOfById(id) || null };
+    });
+    var filt = termNorm ? arr.filter(function(item) { return _ofmaqCardMatchesBusca(item.card, item.of, termNorm); }) : arr.slice();
     try { console.log('[OFMAQ-BUSCA] termo:', String(termRaw || ''), 'total:', arr.length, 'achou:', filt.length); } catch (_) {}
     _ofmaqGetMachineLists().forEach(function(listEl) {
       var visibleCount = 0;
-      Array.prototype.slice.call(listEl.querySelectorAll('[data-of-id]')).forEach(function(card) {
+      _ofmaqDomCards(listEl).forEach(function(card) {
         var ofId = String(card && card.getAttribute('data-of-id') || '').trim();
         var of = lookup[ofId] || getCurrentOfById(ofId);
-        var show = _ofmaqMatchesBusca(of, termNorm);
+        var show = _ofmaqCardMatchesBusca(card, of, termNorm);
         card.style.display = show ? '' : 'none';
         if (show) visibleCount += 1;
       });
@@ -27272,9 +27328,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var meta = document.getElementById('ofmaq-search-meta');
     var results = document.getElementById('ofmaq-search-results');
     if (input && input.value !== state.q) input.value = state.q;
-    var ofs = _ofmaqVisibleOfsFlat();
+    var lookup = _ofmaqBuildLookupMap();
+    var domCards = _ofmaqDomCards(document);
+    var ofs = domCards.map(function(card) {
+      var id = String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
+      return lookup[id] || getCurrentOfById(id) || { id: id };
+    });
     var termNorm = _ofmaqNormBusca(state.q);
-    var matches = termNorm ? ofs.filter(function(of) { return _ofmaqMatchesBusca(of, termNorm); }) : [];
+    var matches = termNorm ? domCards.map(function(card) {
+      var id = String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
+      var of = lookup[id] || getCurrentOfById(id) || { id: id };
+      return _ofmaqCardMatchesBusca(card, of, termNorm) ? of : null;
+    }).filter(Boolean) : [];
     try { console.log('[OFMAQ-BUSCA] termo:', state.q, 'total:', ofs.length, 'achou:', matches.length); } catch (_) {}
     _ofmaqApplySearchFilter(state.q);
     if (meta) {
@@ -27364,7 +27429,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var card = id ? cardMap[id] : null;
       if (!card) return;
       listEl.appendChild(card);
-      var badge = card.querySelector('.of-ordem-badge, .ordem-badge');
+      var badge = card.querySelector('.kb-badge.kb-ordem, .of-ordem-badge, .ordem-badge');
       if (badge) badge.textContent = String(idx + 1);
     });
   }
@@ -27596,6 +27661,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   function getCardContentEl(card) {
     if (!card) return null;
+    if (card.classList && card.classList.contains('kb-card-ofmaq')) {
+      return card.querySelector('.kb-info') || card.querySelector('.kb-card-top') || card;
+    }
     var content = card.querySelector('.patch-ofmaq-card-main');
     if (content) return content;
     if (card.children && card.children[1] && card.children[1].tagName === 'DIV') return card.children[1];
@@ -27614,6 +27682,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function _ofmaqTextWrap(card, content) {
     var contentEl = content || getCardContentEl(card);
     if (!contentEl) return null;
+    if (card && card.classList && card.classList.contains('kb-card-ofmaq')) {
+      return card.querySelector('.kb-info') || contentEl;
+    }
     var kids = Array.prototype.slice.call(contentEl.children || []).filter(function(el) {
       return !!(el && el.tagName === 'DIV');
     });
@@ -27623,6 +27694,43 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   function _ofmaqApplyReadableCardLayout(card, of) {
     if (!card || !of) return;
+    if (card.classList && card.classList.contains('kb-card-ofmaq')) {
+      try {
+        card.classList.add('patch-ofmaq-card');
+        card.style.lineHeight = '1.45';
+        card.style.marginBottom = '12px';
+      } catch (_) {}
+      var kbTop = card.querySelector('.kb-card-top');
+      var kbInfo = card.querySelector('.kb-info');
+      var kbMeta = card.querySelector('.kb-meta');
+      var kbActions = card.querySelector('.kb-acoes');
+      if (kbTop) kbTop.classList.add('patch-ofmaq-card-main');
+      var tamanhoKb = _ofmaqTamanhoLabel(of);
+      var coresKb = _ofmaqCoresLabel(of);
+      var maqKb = String(card.getAttribute('data-maq') || _maqAtualOf(of) || _ofmaqGetMachineName(_ofmaqCardListEl(card)) || '').trim() || '—';
+      var entregaKb = _ofmaqFmtEntregaLegivel(getOfDelivery(of));
+      var qtdKb = String(card.getAttribute('data-qtd') || (_getQtdOf(of) != null ? _getQtdOf(of) : '') || '').trim() || '—';
+      var tempoKb = String(card.getAttribute('data-tempo-min') || '').trim();
+      var cxHoraKb = String(card.getAttribute('data-cx-hora') || '').trim();
+      var metaKb = card.querySelector('.patch-ofmaq-readable-meta');
+      if (!metaKb) {
+        metaKb = document.createElement('div');
+        metaKb.className = 'patch-ofmaq-readable-meta';
+        if (kbMeta && kbMeta.parentNode) kbMeta.parentNode.insertBefore(metaKb, kbMeta.nextSibling);
+        else if (kbInfo && kbInfo.parentNode) kbInfo.parentNode.insertBefore(metaKb, (kbActions || kbInfo.nextSibling || null));
+        else card.appendChild(metaKb);
+      }
+      metaKb.innerHTML = ''
+        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Cliente</span><span class="patch-ofmaq-meta-value">' + escH(String(of && (of.cliNome || of.cliente || of.cliente_nome || '') || '').trim() || '—') + '</span></div>'
+        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Produto</span><span class="patch-ofmaq-meta-value">' + escH(String(of && (of.prodDesc || of.produto || of.descricao || '') || '').trim() || '—') + '</span></div>'
+        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Tamanho</span><span class="patch-ofmaq-meta-value">' + escH(tamanhoKb || '—') + '</span></div>'
+        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Cores</span><span class="patch-ofmaq-meta-value">' + escH(coresKb || '—') + '</span></div>'
+        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Máquina</span><span class="patch-ofmaq-meta-value">' + escH(maqKb) + '</span></div>'
+        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Prazo</span><span class="patch-ofmaq-meta-value">' + escH(entregaKb) + '</span></div>'
+        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Quantidade</span><span class="patch-ofmaq-meta-value">' + escH(qtdKb) + '</span></div>'
+        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Tempo</span><span class="patch-ofmaq-meta-value">' + escH(tempoKb ? (tempoKb + ' min') : '—') + (cxHoraKb ? (' <span style="color:#64748b">| ' + escH(cxHoraKb + ' cx/h') + '</span>') : '') + '</span></div>';
+      return;
+    }
     try {
       card.classList.add('patch-ofmaq-card');
       card.style.padding = '16px';
@@ -27690,7 +27798,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function _ofmaqVisibleCardsInList(listEl) {
-    return Array.prototype.slice.call((listEl && listEl.querySelectorAll) ? listEl.querySelectorAll('[data-of-id]') : []).filter(function(card) {
+    return _ofmaqDomCards(listEl).filter(function(card) {
       return !card || card.style.display !== 'none';
     });
   }
@@ -27758,6 +27866,43 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   function _ofmaqEnsureSequenceControl(card, of) {
     if (!card || !of) return;
+    if (card.classList && card.classList.contains('kb-card-ofmaq')) {
+      var kbActions = card.querySelector('.kb-acoes');
+      if (!kbActions) {
+        kbActions = document.createElement('div');
+        kbActions.className = 'kb-acoes';
+        card.appendChild(kbActions);
+      }
+      var kbRow = kbActions.querySelector('.patch-ofmaq-seq-row');
+      if (!kbRow) {
+        kbRow = document.createElement('div');
+        kbRow.className = 'patch-ofmaq-seq-row';
+        kbRow.innerHTML = ''
+          + '<label>Posição</label>'
+          + '<input class="patch-ofmaq-seq-input" type="number" min="1" step="1" inputmode="numeric">'
+          + '<button type="button" class="patch-ofmaq-seq-btn">Salvar posição</button>';
+        kbActions.insertBefore(kbRow, kbActions.firstChild || null);
+      }
+      var kbInput = kbRow.querySelector('.patch-ofmaq-seq-input');
+      var kbBtn = kbRow.querySelector('.patch-ofmaq-seq-btn');
+      if (kbInput) kbInput.value = String(_ofmaqCardPosition(card, of) || '');
+      if (kbBtn && !kbBtn._patchSeqBound) {
+        kbBtn._patchSeqBound = true;
+        kbBtn.onclick = function(ev) {
+          try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+          _ofmaqSaveManualPosition(String(of && of.id || ''), Number((kbInput && kbInput.value) || 0), card, kbInput, kbBtn);
+        };
+      }
+      if (kbInput && !kbInput._patchSeqBound) {
+        kbInput._patchSeqBound = true;
+        kbInput.onkeydown = function(ev) {
+          if (String(ev && ev.key || '') !== 'Enter') return;
+          try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+          _ofmaqSaveManualPosition(String(of && of.id || ''), Number(kbInput.value || 0), card, kbInput, kbBtn);
+        };
+      }
+      return;
+    }
     var content = getCardContentEl(card);
     var textWrap = _ofmaqTextWrap(card, content) || content;
     if (!textWrap) return;
@@ -27822,7 +27967,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   function decorateOfmaqCards() {
     buildSuggestionMap();
-    Array.prototype.slice.call(document.querySelectorAll('#ofs-por-maquina-container .of-card-maquina[data-of-id], #ofs-por-maquina-container .of-card[data-of-id]')).forEach(function(card) {
+    _ofmaqDomCards(document).forEach(function(card) {
       if (!card) return;
       var id = String(card.getAttribute('data-of-id') || '').trim();
       var of = getCurrentOfById(id);
