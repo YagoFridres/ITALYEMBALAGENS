@@ -4541,6 +4541,7 @@ setTimeout(function() {
   } catch (_) {}
 }, 200);
 
+try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes patchComprasChapasFrontendV1'); } catch (_) {}
 (function patchComprasChapasFrontendV1() {
   if (window.__patchComprasChapasFrontendV1) return;
   window.__patchComprasChapasFrontendV1 = true;
@@ -5324,6 +5325,7 @@ setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 5
 setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 300);
 setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 900);
 
+try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(6, 'antes patchSimuladorFluxoGlobalV2'); } catch (_) {}
 (function patchSimuladorFluxoGlobalV2() {
   if (window.__patchSimuladorFluxoGlobalV2) return;
   window.__patchSimuladorFluxoGlobalV2 = true;
@@ -5662,6 +5664,7 @@ setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 9
   } catch (_) {}
 })();
 
+try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(7, 'antes instalarCompraPapelaoGlobalsNoFim'); } catch (_) {}
 (function instalarCompraPapelaoGlobalsNoFim() {
   if (window.__instalarCompraPapelaoGlobalsNoFim) return;
   window.__instalarCompraPapelaoGlobalsNoFim = true;
@@ -5699,6 +5702,7 @@ setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 9
   setTimeout(aplicar, 300);
   setTimeout(aplicar, 1200);
 })();
+try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes patchOrcamentosPastasEImpressao'); } catch (_) {}
 (function patchOrcamentosPastasEImpressao() {
   if (window.__patchOrcamentosPastasInstalled) return;
   window.__patchOrcamentosPastasInstalled = true;
@@ -6466,6 +6470,7 @@ setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 9
   }, 900);
 })();
 
+try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(9, 'antes patchOrcamentosImpressao'); } catch (_) {}
 (function patchOrcamentosImpressao() {
   if (window.__patchOrcamentosImpressaoV2) return;
   window.__patchOrcamentosImpressaoV2 = true;
@@ -6781,6 +6786,7 @@ setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 9
   };
 })();
 
+try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(10, 'antes patchFornecedorDetalhesPanel'); } catch (_) {}
 (function patchFornecedorDetalhesPanel() {
   if (window.__patchFornecedorDetalhesPanel) return;
   window.__patchFornecedorDetalhesPanel = true;
@@ -6887,6 +6893,7 @@ setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 9
   setTimeout(installFornecedorOverride, 500);
 })();
 
+try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes patchOfmaqAlterarEntregaOverlay'); } catch (_) {}
 (function patchOfmaqAlterarEntregaOverlay() {
   if (window.__patchOfmaqAlterarEntregaOverlay) return;
   window.__patchOfmaqAlterarEntregaOverlay = true;
@@ -10354,6 +10361,8 @@ window.addEventListener('unhandledrejection', function(e) {
       msg.indexOf('[ERRO]') === 0 ||
       msg.indexOf('[CRITICO]') === 0 ||
       msg.indexOf('[CRÍTICO]') === 0 ||
+      msg.indexOf('[PATCH') === 0 ||
+      msg.indexOf('[OFMAQ-HOOK]') === 0 ||
       msg.indexOf('[COM]') === 0 ||
       msg.indexOf('[COM PATCH]') === 0 ||
       msg.indexOf('[IMPRIMIR]') === 0 ||
@@ -10371,8 +10380,32 @@ window.addEventListener('unhandledrejection', function(e) {
 })();
 
 (function() {
-  try { document.getElementById('patch-light-mode')?.remove(); } catch (_) {}
   try {
+    window.__patchDiagCheckpoint = window.__patchDiagCheckpoint || function(n, extra) {
+      try { console.log('[PATCH-CHECKPOINT-' + String(n || '') + ']', String(extra || '')); } catch (e) {
+        try { console.error('[PATCH-ERRO no checkpoint ' + String(n || '') + ']:', e); } catch (_) {}
+      }
+      return true;
+    };
+    if (!window.__patchDiagGlobalErrorInstalled) {
+      window.__patchDiagGlobalErrorInstalled = true;
+      window.addEventListener('error', function(ev) {
+        try { console.error('[PATCH-ERRO global]:', ev && (ev.error || ev.message || ev)); } catch (_) {}
+      });
+      window.addEventListener('unhandledrejection', function(ev) {
+        try { console.error('[PATCH-ERRO promise]:', ev && (ev.reason || ev)); } catch (_) {}
+      });
+    }
+    window.__patchDiagCheckpoint(1, 'apos filtro de console');
+  } catch (e) {
+    try { console.error('[PATCH-ERRO no bloco diag-init]:', e); } catch (_) {}
+  }
+})();
+
+try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(2, 'antes bloco light-mode'); } catch (_) {}
+(function() {
+  try {
+    try { document.getElementById('patch-light-mode')?.remove(); } catch (_) {}
     var _existeStyleClaro = document.getElementById('patch-light-mode-v2');
     if (_existeStyleClaro) return;
     var s = document.createElement('style');
@@ -10388,31 +10421,39 @@ window.addEventListener('unhandledrejection', function(e) {
       + 'body.light .sidebar,body[data-theme=\"light\"] .sidebar{background:#fff!important;}'
       + 'body.light .topbar,body[data-theme=\"light\"] .topbar{background:#fff!important;}';
     document.head.appendChild(s);
-  } catch (_) {}
+  } catch (e) {
+    try { console.error('[PATCH-ERRO no bloco light-mode]:', e); } catch (_) {}
+  }
 })();
+try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(3, 'antes bloco fetch-guard'); } catch (_) {}
 (function() {
-  if (window.__patchFetchGuardInstalled) return;
-  window.__patchFetchGuardInstalled = true;
-  var _fetchOrig = window.fetch;
-  if (typeof _fetchOrig !== 'function') return;
-  window.fetch = function(input, init) {
-    try {
-      var url = '';
-      try { url = input && typeof input === 'object' && input.url ? String(input.url) : String(input || ''); } catch (_) { url = ''; }
-      var u = String(url || '');
-      if (
-        u.indexOf('undefined') >= 0 ||
-        u.indexOf('null') >= 0 ||
-        u.indexOf('[object') >= 0 ||
-        u.indexOf('/[]') >= 0
-      ) {
-        try { console.warn('[GUARD] URL inválida bloqueada:', u.substring(0, 140)); } catch (_) {}
-        try { return Promise.resolve(new Response('{}', { status: 400, headers: { 'Content-Type': 'application/json' } })); } catch (_) { return Promise.resolve({ ok: false, status: 400 }); }
-      }
-    } catch (_) {}
-    return _fetchOrig.apply(this, arguments);
-  };
+  try {
+    if (window.__patchFetchGuardInstalled) return;
+    window.__patchFetchGuardInstalled = true;
+    var _fetchOrig = window.fetch;
+    if (typeof _fetchOrig !== 'function') return;
+    window.fetch = function(input, init) {
+      try {
+        var url = '';
+        try { url = input && typeof input === 'object' && input.url ? String(input.url) : String(input || ''); } catch (_) { url = ''; }
+        var u = String(url || '');
+        if (
+          u.indexOf('undefined') >= 0 ||
+          u.indexOf('null') >= 0 ||
+          u.indexOf('[object') >= 0 ||
+          u.indexOf('/[]') >= 0
+        ) {
+          try { console.warn('[GUARD] URL inválida bloqueada:', u.substring(0, 140)); } catch (_) {}
+          try { return Promise.resolve(new Response('{}', { status: 400, headers: { 'Content-Type': 'application/json' } })); } catch (_) { return Promise.resolve({ ok: false, status: 400 }); }
+        }
+      } catch (_) {}
+      return _fetchOrig.apply(this, arguments);
+    };
+  } catch (e) {
+    try { console.error('[PATCH-ERRO no bloco fetch-guard]:', e); } catch (_) {}
+  }
 })();
+try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(4, 'antes bootstrap principal'); } catch (_) {}
 if (!window._debounce) {
   window._debounce = function(fn, delay) {
     var timer = null;
@@ -26515,6 +26556,7 @@ window._mbnActive = function(id) {
   } else { init(); }
 })();
 
+try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes patchOfmaqAndHubIntelligence'); } catch (_) {}
 (function patchOfmaqAndHubIntelligence() {
   try {
     try { console.log('[OFMAQ-HOOK] patchOfmaq chamado'); } catch (_) {}
@@ -34853,6 +34895,7 @@ function _ocultarGraficoComissoes() {
         try { _connectComissoesObserver(); } catch (_) {}
       }, 120);
       try { console.log('[COM PATCH] render finalizado, _comRodando liberado'); } catch (_) {}
+      try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(30, 'apos render comissoes patch'); } catch (_) {}
     }
   }
 
@@ -36812,4 +36855,5 @@ function _ocultarGraficoComissoes() {
     }
   } catch (_) {}
 })();
+try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(99, 'antes PATCH-FIM'); } catch (_) {}
 console.log('[PATCH-FIM] patch.js executou ate o fim');
