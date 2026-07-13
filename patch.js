@@ -28834,29 +28834,68 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     try { decorateOfmaqCards(); } catch (_) {}
   };
 
-  function _ofmaqCardsInDom(scope) {
+  function _ofmaqRootContainer(scope) {
     var root = scope || document;
     try {
-      return Array.prototype.slice.call(root.querySelectorAll('#ofs-por-maquina-container .of-card-maquina[data-of-id], #ofs-por-maquina-container .of-card[data-of-id], #ofsmaq-container .of-card-maquina[data-of-id], #ofmaq-body .of-card-maquina[data-of-id]'));
+      return root.querySelector('#ofs-por-maquina-container')
+        || root.querySelector('#ofsmaq-container')
+        || root.querySelector('#ofmaq-body')
+        || root.querySelector('.ofs-maquina-board')
+        || root.querySelector('[id*="ofs-maquina"]');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function _ofmaqCardsInDom(scope) {
+    var host = _ofmaqRootContainer(scope) || scope || document;
+    try {
+      return Array.prototype.slice.call(host.querySelectorAll('.of-card-maquina[data-of-id], .ofmaq-card[data-of-id], .of-card[data-of-id], [data-of-id]')).filter(function(card) {
+        return !!String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
+      });
     } catch (_) {
       return [];
     }
   }
 
+  function _ofmaqDomSignature(host, cards) {
+    var list = Array.isArray(cards) ? cards : _ofmaqCardsInDom(host);
+    var ids = list.map(function(card) {
+      return String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
+    }).filter(Boolean);
+    var visibleLists = 0;
+    try {
+      visibleLists = Array.prototype.slice.call((host || document).querySelectorAll('.maq-ofs, .maq-body, [data-maquina-lista="1"]')).filter(function(el) {
+        return !!el && el.offsetParent !== null;
+      }).length;
+    } catch (_) {}
+    return [
+      String(host && host.childElementCount || 0),
+      String(visibleLists || 0),
+      String(ids.length),
+      ids.join('|')
+    ].join('::');
+  }
+
   function _ofmaqCanApplyRedesign() {
-    if (String(window._PAGE_ATUAL || '') !== 'ofmaq') return false;
-    return _ofmaqCardsInDom().length > 0;
+    var host = _ofmaqRootContainer(document);
+    if (!host) return false;
+    return _ofmaqCardsInDom(host).length > 0;
   }
 
   function _ofmaqRunAfterRender(reason) {
     try {
-      if (!_ofmaqCanApplyRedesign()) return false;
-      var cards = _ofmaqCardsInDom();
-      var sig = cards.map(function(card) {
-        return String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
-      }).filter(Boolean).join('|');
+      var host = _ofmaqRootContainer(document);
+      if (!host) return false;
+      var cards = _ofmaqCardsInDom(host);
+      if (!cards.length) return false;
+      var sig = _ofmaqDomSignature(host, cards);
       var now = Date.now();
-      if (sig && window.__ofmaqLastAfterRenderSig === sig && (now - Number(window.__ofmaqLastAfterRenderAt || 0) < 400)) return false;
+      var lastSig = String(host.dataset.ofmaqProcessado || '').trim();
+      var lastAt = Number(host.dataset.ofmaqProcessadoAt || 0) || 0;
+      if (sig && sig === lastSig && (now - lastAt < 350)) return false;
+      host.dataset.ofmaqProcessado = sig;
+      host.dataset.ofmaqProcessadoAt = String(now);
       window.__ofmaqLastAfterRenderSig = sig;
       window.__ofmaqLastAfterRenderAt = now;
       try { console.log('[OFMAQ-HOOK] afterRender disparado por', String(reason || 'desconhecido'), 'cards:', cards.length); } catch (_) {}
@@ -28880,7 +28919,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var target = document.body || document.documentElement;
       if (!target) return;
       var observer = new MutationObserver(function(mutations) {
-        if (String(window._PAGE_ATUAL || '') !== 'ofmaq') return;
         var relevant = (mutations || []).some(function(m) {
           return Array.prototype.slice.call(m.addedNodes || []).some(function(node) {
             if (!node || node.nodeType !== 1) return false;
@@ -28899,9 +28937,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     try {
       if (window.__ofmaqRenderPoll) return;
       window.__ofmaqRenderPoll = setInterval(function() {
-        if (String(window._PAGE_ATUAL || '') !== 'ofmaq') return;
-        _ofmaqRunAfterRender('poll');
-      }, 800);
+        _ofmaqRunAfterRender('interval-400ms');
+      }, 400);
     } catch (_) {}
   }
 
