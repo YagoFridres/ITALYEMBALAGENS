@@ -29150,6 +29150,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body');
     var titlebar = document.getElementById('patch-ofmaq-titlebar');
     if (!page || !container || !titlebar) return;
+    _ofmaqRemoveNovaOfButton();
     var selectedIso = _ofmaqV2SelectedIso();
     var weekDays = _ofmaqV2WeekDays(selectedIso);
     var cardsDom = _ofmaqV2CollectCardsFromDom();
@@ -29900,6 +29901,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (!(larg > 0 && comp > 0)) return { largura: 0, comprimento: 0 };
       return { largura: larg, comprimento: comp };
     };
+  }
+
+  function _ofmaqRemoveNovaOfButton() {
+    try {
+      var page = document.getElementById('page-ofmaq') || document;
+      Array.prototype.slice.call(page.querySelectorAll('button,[onclick]')).forEach(function(el) {
+        var txt = String(el && el.textContent || '').trim();
+        if (txt !== 'Nova OF') return;
+        if (el.style) el.style.display = 'none';
+        try { el.setAttribute('hidden', 'hidden'); } catch (_) {}
+      });
+    } catch (_) {}
   }
 
   function parseDimensions(of) {
