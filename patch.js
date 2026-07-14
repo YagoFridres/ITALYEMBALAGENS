@@ -27559,8 +27559,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-btn[data-active="1"]{background:rgba(37,99,235,.18);border-color:rgba(96,165,250,.4);color:#bfdbfe}'
       + '#page-ofmaq.patch-ofmaq-v2 #ofmaq-busca{flex:1 1 460px !important;min-width:320px !important}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-list{display:grid;gap:6px;padding:16px;border-radius:18px;background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(15,23,42,.72));border:1px solid rgba(51,65,85,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row{display:grid;grid-template-columns:86px minmax(120px,160px) minmax(180px,1.2fr) minmax(180px,1.2fr) minmax(140px,180px) minmax(140px,200px) 110px 130px 110px 140px;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:#1e293b;border:1px solid rgba(51,65,85,.75);position:relative;overflow:hidden}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row:nth-child(even){background:rgba(30,41,59,.82)}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-grid{display:grid;grid-template-columns:86px minmax(110px,140px) minmax(180px,1fr) minmax(220px,1.35fr) minmax(130px,160px) minmax(170px,220px) 100px 130px 110px 120px;gap:10px;align-items:center}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-headcols{padding:0 12px 8px 12px;color:#94a3b8;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row{display:grid;grid-template-columns:86px minmax(110px,140px) minmax(180px,1fr) minmax(220px,1.35fr) minmax(130px,160px) minmax(170px,220px) 100px 130px 110px 120px;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:#1e293b;border:1px solid rgba(51,65,85,.75);position:relative;overflow:hidden}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row:nth-child(odd){background:rgba(30,41,59,.82)}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row::before{content:"";position:absolute;inset:0 auto 0 0;width:6px;background:rgba(34,197,94,.85)}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row[data-status-tone="warn"]::before{background:rgba(245,158,11,.9)}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row[data-status-tone="danger"]::before{background:rgba(239,68,68,.9)}'
@@ -27570,6 +27572,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-cell strong{display:block;font-size:15px;font-weight:900;color:#f8fafc;line-height:1.1}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-cell span{display:block;margin-top:3px;font-size:12px;color:#94a3b8;line-height:1.25}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-colors{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-colorchip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.16);font-size:11px;font-weight:900;line-height:1;color:#f8fafc;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-dot{width:12px;height:12px;border-radius:999px;border:1px solid rgba(15,23,42,.6);box-shadow:0 0 0 2px rgba(2,6,23,.22)}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-badge{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:12px;font-weight:900}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-badge.is-danger{background:rgba(127,29,29,.28);border-color:rgba(248,113,113,.32);color:#fecaca}'
@@ -29009,7 +29012,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         numero: numero || '—',
         cliente: cliente || '—',
         produto: produto || '—',
-        tamanho: of ? (_ofmaqTamanhoLabel(of) || '—') : '—',
+        tamanho: _ofmaqV2SizeLabel(_ofmaqV2CardDimensions(card, of)),
         cores: of ? parseColors(of) : ['Sem cor'],
         entregaIso: of ? (_ofmaqEntregaIso(of) || _ofmaqV2CardDateIso(card, of)) : _ofmaqV2CardDateIso(card, null),
         diaIso: _ofmaqV2CardDateIso(card, of),
@@ -29085,13 +29088,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var numero = String((of && of.numero) || _ofmaqNumeroLabel(of) || '—').trim() || '—';
     var cliente = String((of && of.cliente) || _ofmaqClienteLabel(of) || '—').trim() || '—';
     var produto = String((of && of.produto) || _ofmaqProdutoLabel(of) || '—').trim() || '—';
-    var tamanho = String((of && of.tamanho) || _ofmaqTamanhoLabel(of) || '—').trim() || '—';
+    var tamanho = String((of && of.tamanho) || _ofmaqV2SizeLabel(parseDimensions(of)) || '—').trim() || '—';
     var coresArr = Array.isArray(of && of.cores) ? of.cores : parseColors(of);
-    var coresDots = (Array.isArray(coresArr) ? coresArr : []).slice(0, 8).map(function(c) {
-      var name = String(c || '').trim();
-      if (!name) return '';
-      return '<span class="patch-ofmaq-v2-dot" title="' + escAttrLocal(name) + '" style="background:' + escAttrLocal(_hashColor(name)) + '"></span>';
-    }).join('');
+    var coresHtml = _ofmaqV2ColorChipsHtml(coresArr);
     var quantidade = Number(of && (of.qtd != null ? of.qtd : _getQtdOf(of)) || 0) || 0;
     var entrega = String((of && (of.entregaIso || of.diaIso)) || _ofmaqEntregaIso(of) || '').slice(0, 10);
     var tempoMin = Number(of && (of.tempoMin != null ? of.tempoMin : _ofmaqTempoMinForMachine(of, typeof window.getDadosMaquina === 'function' ? window.getDadosMaquina(maquina) : null)) || 0) || 0;
@@ -29103,14 +29102,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '    <span class="of-ordem-badge">' + escHLocal(String(idx + 1)) + '</span>'
       + '    <input class="patch-ofmaq-v2-seq-input" type="number" min="1" step="1" inputmode="numeric" value="' + escAttrLocal(String(idx + 1)) + '" data-of-id="' + escAttrLocal(id) + '">'
       + '  </div>'
-      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(numero) + '</strong><span>' + escHLocal(st.text) + '</span></div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(numero) + '</strong><span>' + escHLocal(_ofmaqFmtTempoValue(tempoMin)) + '</span></div>'
       + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(cliente) + '</strong><span>' + escHLocal(String(of && of.status || 'Em aberto')) + '</span></div>'
-      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(produto) + '</strong><span>' + escHLocal(tamanho) + '</span></div>'
-      + '  <div class="patch-ofmaq-v2-colors">' + (coresDots || '<span class="patch-ofmaq-v2-badge">Sem cor</span>') + '</div>'
-      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(_ofmaqFmtInt(quantidade != null ? quantidade : 0)) + '</strong><span>Quantidade</span></div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(produto) + '</strong><span>' + escHLocal(maquina) + '</span></div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(tamanho) + '</strong><span>Medida real</span></div>'
+      + '  <div class="patch-ofmaq-v2-colors">' + (coresHtml || '<span class="patch-ofmaq-v2-badge">Sem cor</span>') + '</div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(_ofmaqFmtInt(quantidade != null ? quantidade : 0)) + '</strong><span>Caixas</span></div>'
       + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</strong><span>' + escHLocal(entrega ? fmtWeekdayDate(entrega) : 'Sem prazo') + '</span></div>'
-      + '  <div><span class="patch-ofmaq-v2-badge' + badgeCls + '">' + escHLocal(_ofmaqFmtTempoValue(tempoMin)) + '</span></div>'
-      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(maquina) + '</strong><span>Máquina</span></div>'
+      + '  <div><span class="patch-ofmaq-v2-badge' + badgeCls + '">' + escHLocal(st.text) + '</span></div>'
       + '  <div class="patch-ofmaq-v2-actions"><button type="button" data-of-id="' + escAttrLocal(id) + '" data-of-num="' + escAttrLocal(String(numero || '')) + '">Ações</button></div>'
       + '</div>';
   }
@@ -29245,7 +29244,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       listEl.setAttribute('data-maquina-id', String(maquina || '').trim());
     } catch (_) {}
     listEl.innerHTML = list.length
-      ? list.map(function(item, idx) { return _ofmaqV2RowHtml(item.of || item, idx, maquina); }).join('')
+      ? '<div class="patch-ofmaq-v2-headcols patch-ofmaq-v2-grid">'
+        + '<div>Seq</div><div>Nº OF</div><div>Cliente</div><div>Produto</div><div>Tamanho</div><div>Cores</div><div>Qtd</div><div>Prazo</div><div>Status</div><div>Ações</div>'
+        + '</div>'
+        + list.map(function(item, idx) { return _ofmaqV2RowHtml(item.of || item, idx, maquina); }).join('')
       : '<div class="patch-ofmaq-empty">Nenhuma OF encontrada para este filtro.</div>';
 
     Array.prototype.slice.call(listEl.querySelectorAll('.patch-ofmaq-v2-actions button[data-of-id]')).forEach(function(btn) {
@@ -29913,6 +29915,38 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         try { el.setAttribute('hidden', 'hidden'); } catch (_) {}
       });
     } catch (_) {}
+  }
+
+  function _ofmaqV2CardDimensions(card, of) {
+    var attrPairs = [
+      ['data-caixa-largura', 'data-caixa-comprimento'],
+      ['data-largura', 'data-comprimento'],
+      ['data-dim-largura', 'data-dim-comprimento']
+    ];
+    for (var i = 0; i < attrPairs.length; i += 1) {
+      var larg = Number(card && card.getAttribute && card.getAttribute(attrPairs[i][0]) || 0) || 0;
+      var comp = Number(card && card.getAttribute && card.getAttribute(attrPairs[i][1]) || 0) || 0;
+      if (larg > 0 && comp > 0) return window._patchNormalizeDimMm(larg, comp);
+    }
+    var txt = String(card && card.innerText || '').trim();
+    var m = txt.match(/(\d{2,4}(?:[.,]\d+)?)\s*(?:mm)?\s*[x×]\s*(\d{2,4}(?:[.,]\d+)?)/i);
+    if (m) return window._patchNormalizeDimMm(Number(String(m[1]).replace(',', '.')) || 0, Number(String(m[2]).replace(',', '.')) || 0);
+    return parseDimensions(of || {});
+  }
+
+  function _ofmaqV2SizeLabel(dim) {
+    var largura = Number(dim && dim.largura || 0) || 0;
+    var comprimento = Number(dim && dim.comprimento || 0) || 0;
+    if (largura > 0 && comprimento > 0) return largura + '×' + comprimento + ' mm';
+    return 'Sem medida';
+  }
+
+  function _ofmaqV2ColorChipsHtml(coresArr) {
+    return (Array.isArray(coresArr) ? coresArr : []).slice(0, 8).map(function(c) {
+      var name = String(c || '').trim();
+      if (!name) return '';
+      return '<span class="patch-ofmaq-v2-colorchip" title="' + escAttrLocal(name) + '" style="background:' + escAttrLocal(_hashColor(name)) + ';border-color:rgba(255,255,255,.18)"><span class="patch-ofmaq-v2-dot" style="background:' + escAttrLocal(_hashColor(name)) + '"></span>' + escHLocal(name) + '</span>';
+    }).join('');
   }
 
   function parseDimensions(of) {
