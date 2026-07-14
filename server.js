@@ -11198,18 +11198,18 @@ app.get('/api/relatorios/vendas-por-empresa', authMiddleware, async (req, res) =
 app.get('/api/relatorios/comparativo-mensal', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const atual = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
-    if (!atual?.inicio || !atual?.fim || !atual?.fim_exclusivo) {
-      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
-    }
-    const inicioAtual = new Date(`${atual.inicio}T12:00:00`);
-    const fimAtual = new Date(`${atual.fim}T12:00:00`);
-    const dias = Math.max(1, Math.round((fimAtual.getTime() - inicioAtual.getTime()) / 86400000) + 1);
-    const inicioAnterior = _relatoriosAddDaysIso(atual.inicio, -dias);
-    const fimAnterior = _relatoriosAddDaysIso(atual.inicio, -1);
+    const now = new Date();
+    const inicioAtualDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1, 0, 0, 0));
+    const inicioProximoDate = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0));
+    const inicioAnteriorDate = new Date(Date.UTC(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0));
+    const atual = {
+      inicio: inicioAtualDate.toISOString().slice(0, 10),
+      fim: _relatoriosAddDaysIso(inicioProximoDate.toISOString().slice(0, 10), -1),
+      fim_exclusivo: inicioProximoDate.toISOString().slice(0, 10)
+    };
     const anterior = {
-      inicio: inicioAnterior,
-      fim: fimAnterior,
+      inicio: inicioAnteriorDate.toISOString().slice(0, 10),
+      fim: _relatoriosAddDaysIso(atual.inicio, -1),
       fim_exclusivo: atual.inicio
     };
     const companyIds = _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id);
