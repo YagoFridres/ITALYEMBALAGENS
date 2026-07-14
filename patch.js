@@ -27480,6 +27480,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq .patch-ofmaq-days-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:56px;padding:10px 12px;border-radius:12px;background:rgba(15,23,42,.55);border:1px solid rgba(51,65,85,.55)}'
       + '#page-ofmaq #ofs-por-maquina-container.patch-ofmaq-container{padding:18px;border-radius:18px;background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(15,23,42,.72));border:1px solid rgba(51,65,85,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}'
       + '#page-ofmaq.patch-ofmaq-v2 .ofmaq-toprow,#page-ofmaq.patch-ofmaq-v2 #ofmaq-dias-bar,#page-ofmaq.patch-ofmaq-v2 .kb-board-ofmaq,#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-summary-grid,#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-table-wrap{display:none !important}'
+      + '#page-ofmaq.patch-ofmaq-v2 .ptoolbar.patch-ofmaq-toolbar > :not(#patch-ofmaq-titlebar){display:none !important}'
       + '#page-ofmaq.patch-ofmaq-v2 #ofs-por-maquina-container.patch-ofmaq-container{padding:0 !important;border:none !important;background:transparent !important;box-shadow:none !important}'
       + '#page-ofmaq.patch-ofmaq-v2 #patch-ofmaq-titlebar{padding:18px 18px 16px;border-radius:18px}'
       + '#page-ofmaq.patch-ofmaq-v2 #patch-ofmaq-v2-header{display:grid;gap:12px;width:100%}'
@@ -29127,6 +29128,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '<div class="patch-ofmaq-v2-machine"><select id="patch-ofmaq-v2-machine"></select></div>'
         + '<button type="button" class="patch-ofmaq-v2-btn" id="patch-ofmaq-v2-agrupar" data-active="' + (_ofmaqV2State().agrupar ? '1' : '0') + '">Agrupar</button>';
       if (search && search.parentNode !== ctrlHost) ctrlHost.appendChild(search);
+      var reportBtn = document.getElementById('ofmaq-btn-relatorio');
+      if (reportBtn && reportBtn.parentNode !== ctrlHost) ctrlHost.appendChild(reportBtn);
       var machineSel = ctrlHost.querySelector('#patch-ofmaq-v2-machine');
       if (machineSel) {
         machineSel.innerHTML = _ofmaqV2MachineOptions().map(function(opt) {
