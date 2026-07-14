@@ -10923,7 +10923,7 @@ app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, r
 });
 
 const _RELATORIOS_EMPRESAS_FIXAS = [
-  { id: 'df5f7672-0a6b-402d-ae65-296554236c31', nome: 'Italy Embalagens' },
+  { id: 'df5f7672-0a6b-402d-ae65-296554236c31', nome: 'Italy' },
   { id: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e', nome: 'Cartoeste' },
   { id: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667', nome: 'Oestepack' }
 ];
@@ -11182,12 +11182,16 @@ app.get('/api/relatorios/vendas-por-empresa', authMiddleware, async (req, res) =
     const aggregated = _relatoriosSummarizeOfs(ofs, {
       companyIds: _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id)
     });
+    const rows = (Array.isArray(aggregated.por_empresa) ? aggregated.por_empresa.slice() : []).sort((a, b) => {
+      if (Number(a?.valor_vendido || 0) !== Number(b?.valor_vendido || 0)) return Number(b?.valor_vendido || 0) - Number(a?.valor_vendido || 0);
+      return String(a?.empresa_nome || '').localeCompare(String(b?.empresa_nome || ''), 'pt-BR');
+    });
     return res.json({
       ok: true,
       data_inicio: range.inicio,
       data_fim: range.fim,
       resumo: aggregated.resumo,
-      rows: aggregated.por_empresa
+      rows
     });
   } catch (e) {
     console.error('[RELATORIOS][VENDAS-POR-EMPRESA]', e?.message || e);
