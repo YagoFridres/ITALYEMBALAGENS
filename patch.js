@@ -29143,6 +29143,175 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     return true;
   }
 
+  function _ofmaqReportRowsFromDom() {
+    var selectedIso = _ofmaqV2SelectedIso();
+    return _ofmaqV2CollectCardsFromDom().map(function(item) {
+      var src = item && (item.of || item) || {};
+      var diaIso = String(item && item.diaIso || item && item.entregaIso || selectedIso || '').slice(0, 10);
+      var cores = Array.isArray(src && src.cores) ? src.cores : (Array.isArray(item && item.cores) ? item.cores : parseColors(src));
+      var tamanho = String((item && item.tamanho) || _ofmaqTamanhoLabel(src) || '—').trim() || '—';
+      return {
+        maquina: String(item && item.maq || '').trim(),
+        diaIso: diaIso,
+        numero: String((item && item.numero) || _ofmaqNumeroLabel(src) || '—').trim() || '—',
+        cliente: String((item && item.cliente) || _ofmaqClienteLabel(src) || '—').trim() || '—',
+        produto: String((item && item.produto) || _ofmaqProdutoLabel(src) || '—').trim() || '—',
+        tamanho: tamanho,
+        cores: (Array.isArray(cores) ? cores : []).filter(Boolean),
+        qtd: Number(item && item.qtd != null ? item.qtd : _getQtdOf(src)) || 0,
+        prazo: diaIso,
+        status: String(_ofmaqV2StatusTone(src).text || src && src.status || 'Normal').trim() || 'Normal'
+      };
+    }).filter(function(row) {
+      return !!String(row && row.maquina || '').trim();
+    });
+  }
+
+  function _ofmaqReportDaysFromRows(rows) {
+    var seen = {};
+    return (Array.isArray(rows) ? rows : []).map(function(row) {
+      var iso = String(row && row.diaIso || '').slice(0, 10);
+      if (!iso || seen[iso]) return null;
+      seen[iso] = true;
+      return {
+        iso: iso,
+        label: fmtWeekdayDate(iso)
+      };
+    }).filter(Boolean).sort(function(a, b) {
+      return String(a.iso || '').localeCompare(String(b.iso || ''), 'pt-BR');
+    });
+  }
+
+  function _ofmaqPrintReportForSelection(maquinasSel, diasSel) {
+    var rows = _ofmaqReportRowsFromDom();
+    var maquinas = (Array.isArray(maquinasSel) ? maquinasSel : []).map(function(v) { return String(v || '').trim(); }).filter(Boolean);
+    var dias = (Array.isArray(diasSel) ? diasSel : []).map(function(v) { return String(v || '').slice(0, 10); }).filter(Boolean);
+    var filtered = rows.filter(function(row) {
+      if (maquinas.length && maquinas.indexOf(String(row && row.maquina || '').trim()) < 0) return false;
+      if (dias.length && dias.indexOf(String(row && row.diaIso || '').slice(0, 10)) < 0) return false;
+      return true;
+    }).sort(function(a, b) {
+      var ma = String(a && a.maquina || '');
+      var mb = String(b && b.maquina || '');
+      if (ma !== mb) return ma.localeCompare(mb, 'pt-BR');
+      var da = String(a && a.diaIso || '');
+      var db = String(b && b.diaIso || '');
+      if (da !== db) return da.localeCompare(db, 'pt-BR');
+      return String(a && a.numero || '').localeCompare(String(b && b.numero || ''), 'pt-BR', { numeric: true });
+    });
+    if (!filtered.length) throw new Error('Nenhuma OF encontrada para as máquinas e dias selecionados.');
+    var grouped = {};
+    filtered.forEach(function(row) {
+      var key = String(row.maquina || '') + '|' + String(row.diaIso || '');
+      if (!grouped[key]) grouped[key] = { maquina: row.maquina, diaIso: row.diaIso, rows: [] };
+      grouped[key].rows.push(row);
+    });
+    var sections = Object.keys(grouped).sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); }).map(function(key) {
+      var group = grouped[key];
+      return {
+        title: String(group.maquina || 'Máquina') + ' — ' + fmtWeekdayDate(group.diaIso || ''),
+        headers: ['Nº OF', 'Cliente', 'Produto', 'Tamanho', 'Cores', 'Qtd', 'Prazo', 'Status'],
+        rows: group.rows.map(function(row) {
+          return [
+            escHLocal(row.numero || '—'),
+            escHLocal(row.cliente || '—'),
+            escHLocal(row.produto || '—'),
+            escHLocal(row.tamanho || '—'),
+            escHLocal((Array.isArray(row.cores) ? row.cores : []).join(' + ') || 'Sem cor'),
+            escHLocal(_ofmaqFmtInt(row.qtd || 0)),
+            escHLocal(row.prazo ? fmtDateBR(row.prazo) : '—'),
+            escHLocal(row.status || 'Normal')
+          ];
+        }),
+        emptyCols: 8
+      };
+    });
+    var html = window._buildStyledPrintHtml({
+      title: 'Relatório de OFs por Máquina e Dia',
+      periodo: [dias[0] || '', dias[dias.length - 1] || ''].filter(Boolean).join(' até ') || 'Seleção manual',
+      cards: [
+        { label: 'Máquinas', value: String(new Set(filtered.map(function(row) { return row.maquina; })).size), sub: maquinas.length ? maquinas.join(', ') : 'Todas as máquinas selecionadas' },
+        { label: 'Dias', value: String(new Set(filtered.map(function(row) { return row.diaIso; })).size), sub: dias.length ? dias.map(function(d) { return fmtWeekdayDate(d); }).join(' | ') : 'Dias presentes na seleção' },
+        { label: 'OFs', value: String(filtered.length), sub: 'Linhas impressas' }
+      ],
+      summaryTitle: 'Resumo da seleção',
+      summaryHeaders: ['Indicador', 'Valor'],
+      summaryRows: [
+        ['Máquinas selecionadas', escHLocal(maquinas.length ? maquinas.join(', ') : 'Todas')],
+        ['Dias selecionados', escHLocal(dias.length ? dias.map(function(d) { return fmtWeekdayDate(d); }).join(' | ') : 'Todos')],
+        ['OFs no relatório', escHLocal(String(filtered.length))]
+      ],
+      detailSections: sections,
+      emptySummaryCols: 2
+    });
+    if (typeof window._openStyledPrintWindow !== 'function') throw new Error('Janela de impressão indisponível');
+    return window._openStyledPrintWindow(html);
+  }
+
+  function _ofmaqOpenPrintReportModal() {
+    var rows = _ofmaqReportRowsFromDom();
+    var machineOpts = _ofmaqV2MachineOptions().filter(function(opt) { return String(opt && opt.value || '').trim(); });
+    var dayOpts = _ofmaqReportDaysFromRows(rows);
+    if (!machineOpts.length) throw new Error('Nenhuma máquina disponível para o relatório.');
+    if (!dayOpts.length) {
+      dayOpts = _ofmaqV2WeekDays(_ofmaqV2SelectedIso()).map(function(day) {
+        return { iso: day.iso, label: day.label };
+      });
+    }
+    var defaultMachine = String(_ofmaqV2State().maquina || machineOpts[0].value || '').trim();
+    var defaultDay = String(_ofmaqV2SelectedIso() || (dayOpts[0] && dayOpts[0].iso) || '').slice(0, 10);
+    var body = ''
+      + '<div style="display:grid;gap:18px">'
+      + '  <div style="display:grid;gap:10px">'
+      + '    <div style="font-size:13px;font-weight:800;color:#e2e8f0">Máquinas</div>'
+      + '    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">' + machineOpts.map(function(opt) {
+            var value = String(opt && opt.value || '').trim();
+            var checked = value === defaultMachine ? ' checked' : '';
+            return '<label style="display:flex;gap:8px;align-items:center;padding:12px;border-radius:12px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.62);color:#e2e8f0"><input type="checkbox" data-ofmaq-print-maq="' + escAttrLocal(value) + '"' + checked + '><span>' + escHLocal(opt.label || value) + '</span></label>';
+          }).join('') + '</div>'
+      + '  </div>'
+      + '  <div style="display:grid;gap:10px">'
+      + '    <div style="font-size:13px;font-weight:800;color:#e2e8f0">Dias</div>'
+      + '    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">' + dayOpts.map(function(day) {
+            var iso = String(day && day.iso || '').slice(0, 10);
+            var checked = iso === defaultDay ? ' checked' : '';
+            return '<label style="display:flex;gap:8px;align-items:center;padding:12px;border-radius:12px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.62);color:#e2e8f0"><input type="checkbox" data-ofmaq-print-dia="' + escAttrLocal(iso) + '"' + checked + '><span>' + escHLocal(day.label || iso) + '</span></label>';
+          }).join('') + '</div>'
+      + '  </div>'
+      + '</div>';
+    var modal = _abrirModalPadrao({
+      id: 'ofmaq-print-report-modal',
+      titulo: 'Imprimir Relatório de OFs',
+      subtitulo: 'Escolha uma ou mais máquinas e um ou mais dias para montar o relatório.',
+      hero: '🖨',
+      accent: 'blue',
+      largura: '980px',
+      wide: true,
+      corpoHTML: body,
+      footerHTML: '<button type="button" class="pep-btn" data-modal-close="1">Cancelar</button><button type="button" class="pep-btn primary" id="ofmaq-print-report-run">Gerar relatório</button>'
+    });
+    if (!modal) return;
+    var runBtn = modal.querySelector('#ofmaq-print-report-run');
+    if (runBtn) runBtn.onclick = function() {
+      var maquinas = Array.prototype.slice.call(modal.querySelectorAll('[data-ofmaq-print-maq]:checked')).map(function(el) {
+        return String(el.getAttribute('data-ofmaq-print-maq') || '').trim();
+      }).filter(Boolean);
+      var dias = Array.prototype.slice.call(modal.querySelectorAll('[data-ofmaq-print-dia]:checked')).map(function(el) {
+        return String(el.getAttribute('data-ofmaq-print-dia') || '').slice(0, 10);
+      }).filter(Boolean);
+      if (!maquinas.length) {
+        try { window.toast('Selecione pelo menos uma máquina', 'var(--red)'); } catch (_) {}
+        return;
+      }
+      if (!dias.length) {
+        try { window.toast('Selecione pelo menos um dia', 'var(--red)'); } catch (_) {}
+        return;
+      }
+      _ofmaqPrintReportForSelection(maquinas, dias);
+      _fecharModalPadrao('ofmaq-print-report-modal');
+    };
+  }
+
   function _ofmaqRenderV2() {
     var ok = _ofmaqEnsureV2Shell();
     if (!ok) return;
@@ -29198,6 +29367,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (search && search.parentNode !== ctrlHost) ctrlHost.appendChild(search);
       var reportBtn = document.getElementById('ofmaq-btn-relatorio');
       if (reportBtn && reportBtn.parentNode !== ctrlHost) ctrlHost.appendChild(reportBtn);
+      if (reportBtn && !reportBtn._patchOfmaqReportBound) {
+        reportBtn._patchOfmaqReportBound = true;
+        reportBtn.onclick = function(ev) {
+          try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
+          try { _ofmaqOpenPrintReportModal(); } catch (e) {
+            try { window.toast('Erro ao montar relatório: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+          }
+        };
+      }
       var machineSel = ctrlHost.querySelector('#patch-ofmaq-v2-machine');
       if (machineSel) {
         machineSel.innerHTML = _ofmaqV2MachineOptions().map(function(opt) {
