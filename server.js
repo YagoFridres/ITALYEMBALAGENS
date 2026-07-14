@@ -6547,7 +6547,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       const lote = ofIds.slice(i, i + 200);
       const { data } = await supabase
         .from('ofs')
-        .select('id,numero,of,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
+        .select('id,numero,of,cli_id,cliente,descricao,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
         .in('id', lote);
       (Array.isArray(data) ? data : []).forEach((of) => {
         const id = String(of?.id || '').trim();
@@ -6570,11 +6570,11 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
         ));
         const { data } = await supabase
         .from('ofs')
-          .select('id,numero,of,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
+          .select('id,numero,of,cli_id,cliente,descricao,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
           .in('numero', numeroVariants);
         const { data: dataByOf } = await supabase
           .from('ofs')
-          .select('id,numero,of,cli_id,cliente,descricao,produto,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
+          .select('id,numero,of,cli_id,cliente,descricao,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
           .in('of', numeroVariants);
         (Array.isArray(data) ? data : []).concat(Array.isArray(dataByOf) ? dataByOf : []).forEach((of) => {
         const numero = String(of?.numero || '').trim();
@@ -23256,7 +23256,7 @@ async function _jarvisOfsDoCliente(cliId) {
       const { data, error } = await supabase
         .from('ofs')
         .select(
-          'id,of,numero,status,cli_id,cliente_id,descricao,prodDesc,produto,' +
+          'id,of,numero,status,cli_id,cliente_id,descricao,prodDesc,' +
           'qtd,quantidade,qtd_pedida,qtd_produzida,' +
           'ent,data_entrega,data_conclusao,data_producao,dia,' +
           'fluxo_maquinas,maq,maquina_atual_index,' +
@@ -24310,11 +24310,11 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
     if (hasAny('produtos mais fabricados','produtos mais vendidos','mais fabricados','mais produzidos','ranking de produtos')) {
       const m=new Date().toISOString().slice(0,7);
-      const {data:ofsRaw}=await supabase.from('ofs').select('descricao,prodDesc,produto,qtd_produzida,qtd,status,deleted_at,data_conclusao').gte('data_conclusao',m+'-01').is('deleted_at',null).limit(5000);
+      const {data:ofsRaw}=await supabase.from('ofs').select('descricao,prodDesc,qtd_produzida,qtd,status,deleted_at,data_conclusao').gte('data_conclusao',m+'-01').is('deleted_at',null).limit(5000);
       const rows=(Array.isArray(ofsRaw)?ofsRaw:[]).filter(o=>String(o.status||'').toLowerCase().includes('conclu'));
       const ranking=new Map();
       rows.forEach(o=>{
-        const prod=String(o.descricao||o.prodDesc||o.produto||'Sem descrição').trim();
+        const prod=String(o.descricao||o.prodDesc||'Sem descrição').trim();
         const qtd=Math.trunc(Number(o.qtd_produzida||o.qtd||0)||0);
         ranking.set(prod,(ranking.get(prod)||0)+qtd);
       });
