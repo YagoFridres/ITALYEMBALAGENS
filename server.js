@@ -10842,52 +10842,20 @@ app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, r
   try {
     setNoCache(res);
     const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
-    const ordem = String(req.query.ordem || 'desc').trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
+    const ordem = 'desc';
     if (!range?.inicio || !range?.fim_exclusivo) {
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
 
     let empresa_id = null;
     try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
-
-    const selectCols = [
-      'id', 'numero', 'of', 'status', 'data_conclusao', 'deleted_at', 'empresa_id',
-      'cli_id',
-      'valor_total', 'valor_venda', 'total',
-      'qtd', 'qtd_produzida', 'quantidade', 'qtd_pedida'
-    ].join(',');
-
-    const isUuid = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v || '').trim());
-    const rows = [];
-    let from = 0;
-    while (true) {
-      let q = supabase
-        .from('ofs')
-        .select(selectCols)
-        .not('data_conclusao', 'is', null)
-        .gte('data_conclusao', range.inicio)
-        .lt('data_conclusao', range.fim_exclusivo)
-        .range(from, from + 999);
-      if (empresa_id) q = q.eq('empresa_id', empresa_id);
-      const { data, error } = await q;
-      if (error) throw error;
-      if (!Array.isArray(data) || !data.length) break;
-      rows.push(...data);
-      if (data.length < 1000) break;
-      from += 1000;
-    }
-
-    const elegiveis = rows.filter((of) => {
-      if (!of || of.deleted_at) return false;
-      if (!_assistPickOfConclusao(of)) return false;
-      if (_assistIsCancelada(of)) return false;
-      const status = String(of?.status || '').trim().toLowerCase();
-      return !status || status === 'pedido pronto' || _assistIsConcluida(of);
+    const elegiveis = await _relatoriosFetchOfsConcluidas(range, {
+      companyIds: empresa_id ? [empresa_id] : []
     });
 
     const grupos = new Map();
     elegiveis.forEach((of) => {
-      const cliId = _assistPickOfClienteId(of);
+      const cliId = String(_assistPickOfClienteId(of) || '').trim();
       const key = cliId || 'sem-cliente';
       if (!grupos.has(key)) {
         grupos.set(key, {
@@ -10899,11 +10867,11 @@ app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, r
       }
       const atual = grupos.get(key);
       atual.valor_total += _assistPickOfValor(of);
-      atual.caixas_compradas += Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
+      atual.caixas_compradas += _relatoriosPickQtdOf(of);
       atual.total_ofs += 1;
     });
 
-    const cliIds = Array.from(new Set(Array.from(grupos.values()).map((item) => String(item?.cli_id || '').trim()).filter(isUuid)));
+    const cliIds = Array.from(new Set(Array.from(grupos.values()).map((item) => String(item?.cli_id || '').trim()).filter(_isUuid)));
     const clientesMap = cliIds.length ? await _assistLoadClientesByIds(cliIds) : new Map();
 
     const rowsOut = Array.from(grupos.values()).map((item) => {
@@ -11084,7 +11052,7 @@ function _relatoriosSummarizeOfs(ofs, opts = {}) {
 
 async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
   const columns = [
-    'id', 'numero', 'of', 'status', 'data_conclusao', 'deleted_at', 'created_at',
+    'id', 'numero', 'of', 'status', 'data_conclusao', 'created_at',
     'empresa_id', 'cli_id',
     'valor_total', 'valor_venda', 'total',
     'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida',
@@ -11095,7 +11063,7 @@ async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
   const companyIds = Array.isArray(opts.companyIds) ? opts.companyIds.map((v) => String(v || '').trim()).filter(Boolean) : [];
   const result = await _selectCompatRows('ofs', columns, (q) => {
     let query = q
-      .not('data_conclusao', 'is', null)
+      .ilike('status', '%conclu%')
       .gte('data_conclusao', range.inicio)
       .lt('data_conclusao', range.fim_exclusivo)
       .order('data_conclusao', { ascending: true });
@@ -11103,12 +11071,7 @@ async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
     return query.limit(10000);
   });
   if (result?.error) throw result.error;
-  return (Array.isArray(result?.data) ? result.data : []).filter((of) => {
-    if (!of || of.deleted_at) return false;
-    if (!_assistPickOfConclusao(of)) return false;
-    if (_assistIsCancelada(of)) return false;
-    return _assistIsConcluida(of) || String(of?.status || '').trim().toLowerCase() === 'pedido pronto' || !String(of?.status || '').trim();
-  });
+  return Array.isArray(result?.data) ? result.data : [];
 }
 
 async function _relatoriosFetchOfsCriadas(range, opts = {}) {
