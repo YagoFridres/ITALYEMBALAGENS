@@ -3562,6 +3562,19 @@ window._compraPapelaoEmpresaLabelAtual = function() {
   if (atual) return window._compraPapelaoEmpresaNome(atual);
   return 'Italy Embalagens / Cartoeste / Oestepack';
 };
+window._compraPapelaoCurrentEmpId = function() {
+  try {
+    return String(
+      (window._usuarioAtual && (window._usuarioAtual.emp_id || window._usuarioAtual.empId)) ||
+      (window._usuarioLogado && (window._usuarioLogado.emp_id || window._usuarioLogado.empId)) ||
+      (window.CURRENT_USER && (window.CURRENT_USER.emp_id || window.CURRENT_USER.empId)) ||
+      window._compraPapelaoEmpresaCriacaoUuid() ||
+      ''
+    ).trim();
+  } catch (_) {
+    return String(window._compraPapelaoEmpresaCriacaoUuid() || '').trim();
+  }
+};
 window._compraPapelaoApi = async function(path, opts) {
   var cfg = opts || {};
   var headers = Object.assign({}, cfg.headers || {});
@@ -3898,25 +3911,38 @@ window._compraPapelaoEnsureStyles = function() {
     + '#page-compras .ccpx-search{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--card,#0f172a);border:1px solid var(--border,rgba(148,163,184,.18));border-radius:14px;padding:14px 16px;box-shadow:0 10px 28px rgba(2,6,23,.18)}'
     + '#page-compras .ccpx-search input{flex:1;min-width:320px}'
     + '#page-compras .ccpx-search button{white-space:nowrap}'
-    + '#page-compras .ccpx-card-strip{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scrollbar-width:thin;scrollbar-color:rgba(96,165,250,.48) rgba(15,23,42,.72)}'
-    + '#page-compras .ccpx-card-strip::-webkit-scrollbar{height:10px}'
-    + '#page-compras .ccpx-card-strip::-webkit-scrollbar-track{background:rgba(15,23,42,.72);border-radius:999px}'
-    + '#page-compras .ccpx-card-strip::-webkit-scrollbar-thumb{background:rgba(96,165,250,.48);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
-    + '#page-compras .ccpx-card{min-width:240px;flex:0 0 auto;display:grid;gap:8px;padding:16px;border-radius:14px;background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);cursor:pointer;position:relative;text-align:left;color:#e2e8f0;box-shadow:0 10px 28px rgba(2,6,23,.18);transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}'
-    + '#page-compras .ccpx-card:hover{transform:translateY(-2px);border-color:rgba(96,165,250,.42);box-shadow:0 18px 34px rgba(2,6,23,.28)}'
-    + '#page-compras .ccpx-card.is-active{border-color:#2563eb;box-shadow:0 0 0 1px rgba(37,99,235,.28) inset,0 18px 34px rgba(2,6,23,.28)}'
-    + '#page-compras .ccpx-card .k{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
-    + '#page-compras .ccpx-card .v{font-size:22px;font-weight:900;color:#f8fafc}'
-    + '#page-compras .ccpx-card .t{font-size:14px;font-weight:800;color:#f8fafc}'
-    + '#page-compras .ccpx-card .s{font-size:11px;color:#94a3b8}'
-    + '#page-compras .ccpx-card-more{position:absolute;top:10px;right:10px;border:none;background:rgba(255,255,255,.06);color:#cbd5e1;border-radius:10px;width:30px;height:30px;cursor:pointer}'
-    + '#page-compras .ccpx-card-menu{position:absolute;top:46px;right:10px;display:grid;gap:6px;padding:8px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:12px;min-width:130px;z-index:4;box-shadow:0 18px 46px rgba(0,0,0,.38)}'
+    + '#page-compras .ccpx-tabs{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin;scrollbar-color:rgba(96,165,250,.48) rgba(15,23,42,.72)}'
+    + '#page-compras .ccpx-tabs::-webkit-scrollbar{height:10px}'
+    + '#page-compras .ccpx-tabs::-webkit-scrollbar-track{background:rgba(15,23,42,.72);border-radius:999px}'
+    + '#page-compras .ccpx-tabs::-webkit-scrollbar-thumb{background:rgba(96,165,250,.48);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
+    + '#page-compras .ccpx-tab-wrap{position:relative;display:flex;flex:0 0 auto}'
+    + '#page-compras .ccpx-tab{display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border-radius:999px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.86);color:#cbd5e1;cursor:pointer;font-size:12px;font-weight:800;white-space:nowrap;box-shadow:0 10px 24px rgba(2,6,23,.16)}'
+    + '#page-compras .ccpx-tab:hover{border-color:rgba(96,165,250,.35);color:#f8fafc}'
+    + '#page-compras .ccpx-tab.is-active{background:linear-gradient(135deg,#1d4ed8,#2563eb);border-color:#2563eb;color:#fff}'
+    + '#page-compras .ccpx-tab .meta{opacity:.78;font-weight:700}'
+    + '#page-compras .ccpx-tab .count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:rgba(255,255,255,.12);font-size:11px;font-weight:900}'
+    + '#page-compras .ccpx-card-more{position:absolute;top:6px;right:4px;border:none;background:rgba(255,255,255,.06);color:#cbd5e1;border-radius:10px;width:28px;height:28px;cursor:pointer}'
+    + '#page-compras .ccpx-card-menu{position:absolute;top:40px;right:0;display:grid;gap:6px;padding:8px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:12px;min-width:130px;z-index:4;box-shadow:0 18px 46px rgba(0,0,0,.38)}'
     + '#page-compras .ccpx-card-menu button{border:1px solid rgba(148,163,184,.16);background:rgba(255,255,255,.04);color:#e2e8f0;border-radius:10px;padding:8px 10px;cursor:pointer;text-align:left}'
     + '#page-compras .ccpx-section{display:grid;gap:12px;background:var(--card,#0f172a);border:1px solid var(--border,rgba(148,163,184,.16));border-radius:14px;padding:14px;box-shadow:0 10px 28px rgba(2,6,23,.18)}'
     + '#page-compras .ccpx-section-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}'
     + '#page-compras .ccpx-title{font-size:16px;font-weight:900;color:#f8fafc}'
     + '#page-compras .ccpx-sub{font-size:12px;color:#94a3b8}'
     + '#page-compras .ccpx-empty{padding:22px 8px;text-align:center;color:#94a3b8}'
+    + '#page-compras .ccpx-table-panel{display:grid;gap:12px}'
+    + '#page-compras .ccpx-table-panel-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}'
+    + '#page-compras .ccpx-table-panel-head .meta{font-size:12px;color:#94a3b8}'
+    + '#page-compras .ccpx-table-clean{width:100%;border-collapse:separate;border-spacing:0;min-width:980px}'
+    + '#page-compras .ccpx-table-clean th{position:sticky;top:0;z-index:2;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;padding:12px;border-bottom:1px solid rgba(148,163,184,.18);text-align:left}'
+    + '#page-compras .ccpx-table-clean td{padding:13px 12px;border-bottom:1px solid rgba(148,163,184,.1);font-size:13px;color:#e2e8f0;vertical-align:middle}'
+    + '#page-compras .ccpx-table-clean tbody tr:hover td{background:rgba(30,41,59,.46)}'
+    + '#page-compras .ccpx-row-stack{display:grid;gap:4px}'
+    + '#page-compras .ccpx-row-stack strong{font-size:13px;color:#f8fafc}'
+    + '#page-compras .ccpx-row-stack span{font-size:11px;color:#94a3b8}'
+    + '#page-compras .ccpx-actions-compact{display:flex;gap:8px;align-items:center;flex-wrap:wrap}'
+    + '#page-compras .ccpx-actions-compact button{padding:8px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.16);background:#111827;color:#f8fafc;cursor:pointer;font-size:12px;font-weight:800}'
+    + '#page-compras .ccpx-actions-compact .primary{background:#1d4ed8;border-color:#1d4ed8}'
+    + '#page-compras .ccpx-actions-compact .danger{background:#991b1b;border-color:#991b1b}'
     + '#page-compras .ccpx-block{border:1px solid var(--border,rgba(148,163,184,.14));border-radius:14px;background:var(--card,#0f172a);overflow:hidden}'
     + '#page-compras .ccpx-block-head{display:grid;gap:10px;padding:14px 16px;background:' + "'linear-gradient(180deg,rgba(15,23,42,.96),rgba(15,23,42,.9))'" + '}'
     + '#page-compras .ccpx-block-top{display:grid;grid-template-columns:minmax(220px,1.2fr) repeat(4,minmax(120px,.7fr)) auto;gap:12px;align-items:start}'
@@ -4052,7 +4078,7 @@ window._compraPapelaoRenderCardsHtml = function() {
       folder: pasta
     });
   });
-  return '<div class="ccpx-card-strip">' + cards.map(function(card) {
+  return '<div class="ccpx-tabs">' + cards.map(function(card) {
     var isActive = filtro === card.key;
     var more = card.folder
       ? '<button type="button" class="ccpx-card-more" data-ccpx-folder-more="' + window._compraPapelaoAttr(card.key) + '">⋮</button>'
@@ -4061,13 +4087,14 @@ window._compraPapelaoRenderCardsHtml = function() {
           : '')
       : '';
     return ''
-      + '<button type="button" class="ccpx-card' + (isActive ? ' is-active' : '') + '" data-ccpx-card="' + window._compraPapelaoAttr(card.key) + '">'
+      + '<div class="ccpx-tab-wrap">'
+      + '<button type="button" class="ccpx-tab' + (isActive ? ' is-active' : '') + '" data-ccpx-card="' + window._compraPapelaoAttr(card.key) + '">'
       + more
-      + '<div class="k">' + window._compraPapelaoEsc(card.meta || '') + '</div>'
-      + '<div class="t">' + window._compraPapelaoEsc(card.title) + '</div>'
-      + '<div class="v">' + window._compraPapelaoEsc(card.value) + '</div>'
-      + '<div class="s">' + window._compraPapelaoEsc(card.sub) + '</div>'
-      + '</button>';
+      + '<span>' + window._compraPapelaoEsc(card.title) + '</span>'
+      + '<span class="count">' + window._compraPapelaoEsc(card.value) + '</span>'
+      + '<span class="meta">' + window._compraPapelaoEsc(card.sub) + '</span>'
+      + '</button>'
+      + '</div>';
   }).join('') + '</div>';
 };
 window._compraPapelaoRenderItemRowsHtml = function(compra) {
@@ -4102,47 +4129,35 @@ window._compraPapelaoRenderBlocksHtml = function() {
     var hasFiltro = !!String(st && st.busca || '').trim() || String(st && st.filtroCard || 'all') !== 'all';
     return '<div class="ccpx-empty">' + (hasFiltro ? 'Nenhuma compra encontrada com os filtros atuais.' : 'Nenhuma compra ainda — clique em + Nova Compra.') + '</div>';
   }
-  var expandedState = st && st.expanded && typeof st.expanded === 'object' ? st.expanded : {};
-  var hasExpandedPrefs = Object.keys(expandedState).length > 0;
-  var defaultExpandedId = !hasExpandedPrefs && compras[0] ? String(compras[0].id || '').trim() : '';
-  return compras.map(function(compra, idx) {
-    var id = String(compra && compra.id || '').trim();
-    var expanded = Object.prototype.hasOwnProperty.call(expandedState, id) ? !!expandedState[id] : (id && id === defaultExpandedId);
+  return ''
+    + '<div class="ccpx-table-panel">'
+    + '  <div class="ccpx-table-panel-head"><div class="meta">Tabela resumida com totais consolidados por compra.</div><div class="meta">Empresa atual: ' + window._compraPapelaoEsc(window._compraPapelaoEmpresaLabelAtual()) + '</div></div>'
+    + '  <div class="ccpx-block-scroll"><table class="ccpx-table-clean"><thead><tr><th>Nº</th><th>Fornecedor</th><th>Pedido</th><th class="num">Qtd</th><th class="num">Área m²</th><th class="num">Valor</th><th>Ações</th></tr></thead><tbody>'
+    + compras.map(function(compra) {
+        var id = String(compra && compra.id || '').trim();
+        var pastaNome = (Array.isArray(window._compraPapelaoStateRef().pastas) ? window._compraPapelaoStateRef().pastas : []).find(function(row) {
+          return String(row && row.id || '') === String(compra && compra.pasta_id || '') && String(row && row._emp_id_consulta || '') === String(compra && compra._emp_id_consulta || '');
+        });
     var totals = window._compraPapelaoCompraTotals(compra);
     var dataRef = compra && (compra.data_compra || compra.data || compra.atualizado_em || compra.criado_em || compra.created_at || compra.updated_at);
     return ''
-      + '<div class="ccpx-block' + (expanded ? ' is-open' : '') + '" data-ccpx-compra="' + window._compraPapelaoAttr(id) + '">'
-      + '  <div class="ccpx-block-head">'
-      + '    <div class="ccpx-block-top">'
-      + '      <div class="ccpx-main"><div class="num">' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(compra && compra.numero_compra || '')) + '</div><div class="meta">' + window._compraPapelaoEsc(compra && compra.fornecedor || '—') + '</div></div>'
-      + '      <div class="ccpx-col"><div class="lbl">Ped. Fornecedor</div><div class="val">' + window._compraPapelaoEsc(compra && compra.ped_fornecedor || '—') + '</div></div>'
-      + '      <div class="ccpx-col"><div class="lbl">Data</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(dataRef)) + '</div></div>'
-      + '      <div class="ccpx-col"><div class="lbl">Status</div><div class="val">' + window._compraPapelaoEsc(compra && compra.status || 'Solicitada') + '</div></div>'
-      + '      <div class="ccpx-col"><div class="lbl">Qtd Total</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.qtd, 0)) + '</div></div>'
-      + '      <div class="ccpx-col"><div class="lbl">Valor Total</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(totals.valor)) + '</div></div>'
-      + '      <div class="ccpx-actions-line">'
-      + '        <button type="button" data-ccpx-clone="' + window._compraPapelaoAttr(id) + '">Clonar</button>'
-      + '        <button type="button" data-ccpx-folder-move="' + window._compraPapelaoAttr(id) + '" class="primary">Pasta</button>'
-      + '        <button type="button" data-ccpx-edit="' + window._compraPapelaoAttr(id) + '">Editar</button>'
-      + '        <button type="button" data-ccpx-print-one="' + window._compraPapelaoAttr(id) + '">Imprimir</button>'
-      + '        <button type="button" data-ccpx-delete="' + window._compraPapelaoAttr(id) + '" class="danger">Excluir</button>'
-      + '        <button type="button" data-ccpx-toggle="' + window._compraPapelaoAttr(id) + '">' + (expanded ? 'Recolher' : 'Expandir') + '</button>'
-      + '      </div>'
-      + '    </div>'
-      + '    <div class="ccpx-summary">'
-      + '      <div class="ccpx-chip"><div class="lbl">Pasta</div><div class="val">' + window._compraPapelaoEsc((function() { var p = (Array.isArray(window._compraPapelaoStateRef().pastas) ? window._compraPapelaoStateRef().pastas : []).find(function(row) { return String(row && row.id || '') === String(compra && compra.pasta_id || '') && String(row && row._emp_id_consulta || '') === String(compra && compra._emp_id_consulta || ''); }); return p && p.nome || 'Sem pasta'; })()) + '</div></div>'
-      + '      <div class="ccpx-chip"><div class="lbl">Itens</div><div class="val">' + window._compraPapelaoEsc(String((compra && compra.itens && compra.itens.length) || 0)) + '</div></div>'
-      + '      <div class="ccpx-chip"><div class="lbl">Área m²</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.area, 4)) + '</div></div>'
-      + '      <div class="ccpx-chip"><div class="lbl">Previsão</div><div class="val">' + window._compraPapelaoEsc(compra && compra.previsao_chegada ? window._compraPapelaoFmtDate(compra.previsao_chegada) : 'Sem previsão') + '</div></div>'
-      + '      <div class="ccpx-chip"><div class="lbl">CNPJ</div><div class="val">' + window._compraPapelaoEsc(compra && compra.cnpj_fornecedor || 'Sem CNPJ') + '</div></div>'
-      + '      <div class="ccpx-chip"><div class="lbl">Observação</div><div class="val">' + window._compraPapelaoEsc(compra && compra.observacao || 'Sem observação') + '</div></div>'
-      + '    </div>'
-      + '  </div>'
-      + '  <div class="ccpx-block-body">'
-      + '    <div class="ccpx-block-scroll"><table class="ccpx-table"><thead><tr><th>Nº</th><th>Ped. Cliente</th><th>Entrega</th><th>PO</th><th>Medidas</th><th>Vincos</th><th class="num">Quantidade</th><th class="num">Lote Mínimo</th><th class="num">Área m²</th><th class="num">Valor m²</th><th class="num">VL P/MIL</th><th class="num">Valor Total</th><th>Observação</th></tr></thead><tbody>' + window._compraPapelaoRenderItemRowsHtml(compra) + '</tbody></table></div>'
-      + '  </div>'
-      + '</div>';
-  }).join('');
+          + '<tr data-ccpx-compra="' + window._compraPapelaoAttr(id) + '">'
+          + '  <td><div class="ccpx-row-stack"><strong>' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(compra && compra.numero_compra || '')) + '</strong><span>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(dataRef)) + '</span></div></td>'
+          + '  <td><div class="ccpx-row-stack"><strong>' + window._compraPapelaoEsc(compra && compra.fornecedor || '—') + '</strong><span>' + window._compraPapelaoEsc(compra && compra.status || 'Solicitada') + '</span></div></td>'
+          + '  <td><div class="ccpx-row-stack"><strong>' + window._compraPapelaoEsc(compra && compra.ped_fornecedor || '—') + '</strong><span>' + window._compraPapelaoEsc(pastaNome && pastaNome.nome || 'Sem pasta') + '</span></div></td>'
+          + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.qtd, 0)) + '</td>'
+          + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.area, 4)) + '</td>'
+          + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(totals.valor)) + '</td>'
+          + '  <td><div class="ccpx-actions-compact">'
+          + '    <button type="button" data-ccpx-edit="' + window._compraPapelaoAttr(id) + '" class="primary">Editar</button>'
+          + '    <button type="button" data-ccpx-folder-move="' + window._compraPapelaoAttr(id) + '">Pasta</button>'
+          + '    <button type="button" data-ccpx-print-one="' + window._compraPapelaoAttr(id) + '">Imprimir</button>'
+          + '    <button type="button" data-ccpx-delete="' + window._compraPapelaoAttr(id) + '" class="danger">Excluir</button>'
+          + '  </div></td>'
+          + '</tr>';
+      }).join('')
+    + '  </tbody></table></div>'
+    + '</div>';
 };
 window._compraPapelaoRenderStatsHtml = function() {
   var resumo = window._compraPapelaoStatsResumo();
@@ -4178,11 +4193,11 @@ window._compraPapelaoRenderBody = function() {
     + '<div class="ccpx-shell">'
     +      window._compraPapelaoRenderActionCards()
     +      window._compraPapelaoRenderStatsHtml()
-    + '  <div class="ccpx-search"><input class="pep-input" id="ccpx-busca" type="text" placeholder="Buscar pastas e compras de chapas..." value="' + window._compraPapelaoAttr(window._compraPapelaoStateRef().busca || '') + '"><button type="button" class="pep-btn primary" id="ccpx-btn-buscar">Buscar</button></div>'
+    + '  <div class="ccpx-search"><input class="pep-input" id="ccpx-busca" type="text" placeholder="Buscar fornecedor, pedido ou número da compra..." value="' + window._compraPapelaoAttr(window._compraPapelaoStateRef().busca || '') + '"><button type="button" class="pep-btn primary" id="ccpx-btn-buscar">Buscar</button></div>'
     + '  ' + window._compraPapelaoRenderCardsHtml()
     + (breadcrumb || '')
     + (sectionErrors.length ? '<div class="ccpx-inline-warning">Algumas seções não carregaram completamente: ' + window._compraPapelaoEsc(sectionErrors.join(', ')) + '.</div>' : '')
-    + '  <div class="ccpx-section"><div class="ccpx-section-head"><div><div class="ccpx-title">Detalhamento de Compras</div><div class="ccpx-sub">Blocos expansíveis com itens, totais e ações da compra.</div></div></div>' + window._compraPapelaoRenderBlocksHtml() + '</div>'
+    + '  <div class="ccpx-section"><div class="ccpx-section-head"><div><div class="ccpx-title">Compras de Papelão</div><div class="ccpx-sub">Visão simplificada por compra com totais, pedido e ações rápidas.</div></div></div>' + window._compraPapelaoRenderBlocksHtml() + '</div>'
     + '</div>';
   window._compraPapelaoBindBody();
 };
@@ -4427,34 +4442,27 @@ window._compraPapelaoRefreshModalComputed = function(overlay) {
   if (tg) tg.textContent = window._compraPapelaoFmtMoney(totalValor);
 };
 window._compraPapelaoCompraModalHtml = function(compra) {
-  var empId = String(compra && compra._emp_id_consulta || window._compraPapelaoEmpresaCriacaoUuid() || '');
+  var empId = String(compra && compra._emp_id_consulta || window._compraPapelaoCurrentEmpId() || window._compraPapelaoEmpresaCriacaoUuid() || '');
   var header = window._compraPapelaoNormalizeCompraHeader(compra);
   return ''
-    + '<div style="display:grid;gap:18px">'
-    + '  <div style="display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap">'
-    + '    <div style="display:grid;gap:6px">'
-    + '      <div style="font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#60a5fa">Planilha do Pedido</div>'
-    + '      <div style="font-size:22px;font-weight:900;color:#f8fafc">PEDIDO DE CHAPAS — ' + window._compraPapelaoEsc(header.fornecedor || 'FORNECEDOR') + '</div>'
-    + '      <div style="font-size:12px;color:#94a3b8">Planilha do pedido com linhas prontas para preenchimento, totais automáticos e impressão.</div>'
-    + '    </div>'
-    + '    <div style="min-width:320px;display:grid;gap:10px;padding:16px;border-radius:16px;border:1px solid rgba(148,163,184,.16);background:linear-gradient(180deg,rgba(15,23,42,.96),rgba(15,23,42,.82))">'
-    + '      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">'
-    + '        <div class="ccpx-modal-inline-stack"><label>Pedido</label><input id="ccpx-numero" class="ccpx-modal-num" value="' + window._compraPapelaoAttr(window._compraPapelaoNumeroLabel(header.numero_compra)) + '" readonly></div>'
-    + '        <div class="ccpx-modal-inline-stack"><label>Data</label><input id="ccpx-data-compra" type="date" value="' + window._compraPapelaoAttr(header.data_compra || window._compraPapelaoTodayIso()) + '"></div>'
-    + '        <div class="ccpx-modal-inline-stack"><label>Fornecedor</label><input id="ccpx-fornecedor-manual" value="' + window._compraPapelaoAttr(header.fornecedor || '') + '" placeholder="Fornecedor"></div>'
-    + '      </div>'
-    + '    </div>'
+    + '<div style="display:grid;gap:16px">'
+    + '  <div style="display:grid;gap:6px;padding:14px 16px;border-radius:14px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.82)">'
+    + '    <div style="font-size:18px;font-weight:900;color:#f8fafc">Compra de Papelão</div>'
+    + '    <div style="font-size:12px;color:#94a3b8">Preencha os dados principais da compra e os itens da planilha.</div>'
     + '  </div>'
-    + '  <div class="ccpx-modal-head-grid" style="grid-template-columns:repeat(5,minmax(0,1fr))">'
-    + '    <div class="ccpx-modal-inline-stack"><label>Ped. Fornecedor</label><input id="ccpx-ped-forn" value="' + window._compraPapelaoAttr(header.ped_fornecedor || '') + '"></div>'
-    + '    <div class="ccpx-modal-inline-stack"><label>CNPJ Fornecedor</label><input id="ccpx-cnpj-fornecedor" value="' + window._compraPapelaoAttr(header.cnpj_fornecedor || '') + '"></div>'
-    + '    <div class="ccpx-modal-inline-stack"><label>Previsão de Chegada</label><input id="ccpx-prev-chegada" type="date" value="' + window._compraPapelaoAttr(header.previsao_chegada || '') + '"></div>'
-    + '    <div class="ccpx-modal-inline-stack"><label>Status</label><select id="ccpx-status">' + window._compraPapelaoStatusOptionsHtml(header.status || 'Solicitada') + '</select></div>'
+    + '  <div class="ccpx-modal-head-grid">'
+    + '    <div class="ccpx-modal-inline-stack"><label>Nº</label><input id="ccpx-numero" class="ccpx-modal-num" value="' + window._compraPapelaoAttr(window._compraPapelaoNumeroLabel(header.numero_compra)) + '" readonly></div>'
+    + '    <div class="ccpx-modal-inline-stack"><label>Fornecedor</label><input id="ccpx-fornecedor-manual" value="' + window._compraPapelaoAttr(header.fornecedor || '') + '" placeholder="Fornecedor"></div>'
+    + '    <div class="ccpx-modal-inline-stack"><label>Data</label><input id="ccpx-data-compra" type="date" value="' + window._compraPapelaoAttr(header.data_compra || window._compraPapelaoTodayIso()) + '"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Pasta</label><select id="ccpx-pasta">' + window._compraPapelaoFolderOptionsHtml(header && header.pasta_id, empId) + '</select></div>'
+    + '    <div class="ccpx-modal-inline-stack"><label>Ped. Fornecedor</label><input id="ccpx-ped-forn" value="' + window._compraPapelaoAttr(header.ped_fornecedor || '') + '"></div>'
+    + '    <div class="ccpx-modal-inline-stack"><label>Status</label><select id="ccpx-status">' + window._compraPapelaoStatusOptionsHtml(header.status || 'Solicitada') + '</select></div>'
+    + '    <div class="ccpx-modal-inline-stack"><label>Previsão de Chegada</label><input id="ccpx-prev-chegada" type="date" value="' + window._compraPapelaoAttr(header.previsao_chegada || '') + '"></div>'
+    + '    <div class="ccpx-modal-inline-stack"><label>CNPJ Fornecedor</label><input id="ccpx-cnpj-fornecedor" value="' + window._compraPapelaoAttr(header.cnpj_fornecedor || '') + '"></div>'
     + '    <div class="ccpx-modal-inline-stack full"><label>Observações</label><textarea id="ccpx-obs" rows="2">' + window._compraPapelaoEsc(header.observacao || '') + '</textarea></div>'
     + '  </div>'
     + '<div class="ccpx-modal-items-sheet" style="margin-top:18px">'
-    + '  <div class="ccpx-modal-items-toolbar"><div><div style="font-size:14px;font-weight:900;color:#f8fafc">Itens da Planilha</div><div style="font-size:12px;color:#94a3b8">Tab navega entre células; Enter na última célula da última linha cria uma nova linha.</div></div><button type="button" class="btn btn-ghost btn-sm" id="ccpx-add-item">+ Nova Linha</button></div>'
+    + '  <div class="ccpx-modal-items-toolbar"><div><div style="font-size:14px;font-weight:900;color:#f8fafc">Itens da Compra</div><div style="font-size:12px;color:#94a3b8">Tab navega entre células; Enter na última célula da última linha cria uma nova linha.</div></div><button type="button" class="btn btn-ghost btn-sm" id="ccpx-add-item">+ Nova Linha</button></div>'
     + '  <div class="ccpx-modal-items-wrap"><table><thead><tr><th>Pedido Cliente</th><th>Entrega</th><th>PO</th><th>Medidas L × C</th><th>Vincos</th><th>Qtde</th><th>Lote Mínimo</th><th>Área Pedido (m²)</th><th>Valor m²</th><th>Valor p/mil</th><th>Valor Total</th><th>Obs</th><th>Ped. Fornecedor</th><th>Ações</th></tr></thead><tbody id="ccpx-modal-items-body">' + window._compraPapelaoRenderModalRowsHtml(header && header.itens || []) + '</tbody></table></div>'
     + '  <div class="ccpx-summary"><div class="ccpx-chip"><div class="lbl">Quantidade</div><div class="val" id="ccpx-sum-qtd">0</div></div><div class="ccpx-chip"><div class="lbl">Área</div><div class="val" id="ccpx-sum-area">0,0000 m²</div></div><div class="ccpx-chip"><div class="lbl">Valor</div><div class="val" id="ccpx-sum-total">R$ 0,00</div></div></div>'
     + '  <div class="ccpx-modal-totalbar"><div class="lbl">Total Geral</div><div class="val" id="ccpx-total-geral">R$ 0,00</div></div>'
@@ -4462,7 +4470,7 @@ window._compraPapelaoCompraModalHtml = function(compra) {
     + '</div>';
 };
 window._compraPapelaoCollectCompraPayload = function(overlay, compra) {
-  var empId = String(compra && compra._emp_id_consulta || window._compraPapelaoEmpresaCriacaoUuid() || '');
+  var empId = String(window._compraPapelaoCurrentEmpId() || compra && compra._emp_id_consulta || window._compraPapelaoEmpresaCriacaoUuid() || '');
   var fornManual = String((overlay.querySelector('#ccpx-fornecedor-manual') || {}).value || '').trim();
   var fornecedor = fornManual;
   var itens = window._compraPapelaoCollectModalRows(overlay).map(function(item) {
