@@ -1541,6 +1541,18 @@ try {
     return { mes: ref.mes, ano: ref.ano, anos: anos };
   }
 
+  function rrEmpId() {
+    try {
+      return String(
+        (window._usuarioLogado && (window._usuarioLogado.emp_id || window._usuarioLogado.empId)) ||
+        (window.CURRENT_USER && (window.CURRENT_USER.emp_id || window.CURRENT_USER.empId)) ||
+        ''
+      ).trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
   function rrFetchClientesLite(term) {
     var txt = String(term || '').trim();
     if (!txt) return Promise.resolve([]);
@@ -1633,6 +1645,54 @@ try {
           }
         };
       }
+    });
+  }
+
+  async function rrReportTiposCaixa() {
+    var ref = rrCurrentRange();
+    var empId = rrEmpId();
+    var qs = [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ];
+    if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
+    var json = await rrFetchJson('/api/relatorios/tipos-caixa?' + qs.join('&'));
+    var rows = rrList(json, ['rows', 'data']).map(function(row) {
+      return {
+        tipo: String(row && (row.tipo || row.tipo_caixa || row.nome) || 'Sem tipo').trim() || 'Sem tipo',
+        total_ofs: rrInt(row && row.total_ofs || 0),
+        qtd_produzida: rrInt(row && row.qtd_produzida || 0)
+      };
+    });
+    var totalOfs = rrInt((json && json.resumo && json.resumo.total_ofs) || rows.reduce(function(sum, row) { return sum + rrInt(row && row.total_ofs || 0); }, 0));
+    var totalTipos = rrInt((json && json.resumo && json.resumo.total_tipos) || rows.length);
+    var totalQtd = rrInt((json && json.resumo && json.resumo.qtd_produzida) || rows.reduce(function(sum, row) { return sum + rrInt(row && row.qtd_produzida || 0); }, 0));
+    return rrOpenPrint({
+      title: 'Tipos de Caixa mais produzidos',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Tipos', value: rrFmtNum(totalTipos, 0), sub: 'Tipos distintos no período' },
+        { label: 'Nº OFs', value: rrFmtNum(totalOfs, 0), sub: 'OFs concluídas agrupadas por tipo' },
+        { label: 'Qtd produzida', value: rrFmtNum(totalQtd, 0), sub: 'Somatório produzido no período' }
+      ],
+      summaryTitle: 'Resumo do período',
+      summaryHeaders: ['Indicador', 'Valor'],
+      summaryRows: [
+        ['Tipos distintos', rrEsc(rrFmtNum(totalTipos, 0))],
+        ['OFs concluídas', rrEsc(rrFmtNum(totalOfs, 0))],
+        ['Qtd produzida', rrEsc(rrFmtNum(totalQtd, 0))]
+      ],
+      detailTitle: 'Tipos de caixa mais produzidos',
+      detailHeaders: ['Tipo', 'Nº OFs', 'Qtd produzida'],
+      detailRows: rows.map(function(row) {
+        return [
+          rrEsc(row.tipo || 'Sem tipo'),
+          rrEsc(rrFmtNum(row.total_ofs || 0, 0)),
+          rrEsc(rrFmtNum(row.qtd_produzida || 0, 0))
+        ];
+      }),
+      emptySummaryCols: 2,
+      emptyDetailCols: 3
     });
   }
 
@@ -1977,6 +2037,7 @@ try {
     { id: 'clientes-menos-compraram', label: 'Clientes que menos compraram', icon: '📉', desc: 'Ranking do menor para o maior valor comprado no período.', run: rrReportClientesMenosCompraram },
     { id: 'clientes-inativos', label: 'Clientes inativos', icon: '🕳️', desc: 'Clientes sem OF concluída no período selecionado.', run: rrReportClientesInativos },
     { id: 'ofs-entradas-mes', label: 'Valor de OFs que entraram no mês', icon: '🧮', desc: 'Lista OFs criadas no mês/ano escolhido com valor unitário, total e somatório mensal.', run: rrOpenOfsEntradasMesModal },
+    { id: 'tipos-caixa-rel', label: 'Tipos de Caixa', icon: '📦', desc: 'Agrupa OFs concluídas por tipo de caixa e destaca os mais produzidos no período ativo.', run: rrReportTiposCaixa },
     { id: 'relatorio-sergio', label: 'Relatório Sérgio', icon: '📝', desc: 'Montagem manual com múltiplos itens, autocomplete de clientes e impressão com fonte ampliada.', run: rrOpenSergioBuilder }
   ];
 
@@ -34686,6 +34747,47 @@ function _ocultarGraficoComissoes() {
     }
   }
 
+  function _empIdConclusao(of) {
+    try {
+      return String(
+        (of && (of.emp_id || of.empId || of.empresa_id || of.empresaId)) ||
+        (window._usuarioLogado && (window._usuarioLogado.emp_id || window._usuarioLogado.empId)) ||
+        (window.CURRENT_USER && (window.CURRENT_USER.emp_id || window.CURRENT_USER.empId)) ||
+        ''
+      ).trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function _normalizarTipoCaixaConclusao(item) {
+    var src = item || {};
+    return {
+      id: String(src.id || '').trim(),
+      nome: String(src.nome || src.tipo_caixa || src.descricao || '').trim(),
+      setup_min: Math.trunc(Number(src.setup_min || src.setup || 0) || 0),
+      producao_hora: Math.trunc(Number(src.producao_hora || src.producao || 0) || 0),
+      observacoes: String(src.observacoes || src.obs || '').trim(),
+      emp_id: String(src.emp_id || src.empId || '').trim()
+    };
+  }
+
+  async function _carregarTiposCaixaParaConclusao(of) {
+    var token = String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : _getToken()) || '').trim();
+    var empId = _empIdConclusao(of);
+    var url = '/api/tipos-caixa' + (empId ? ('?emp_id=' + encodeURIComponent(empId)) : '');
+    try {
+      var resp = await fetch(url, { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var json = await resp.json().catch(function() { return null; });
+      var lista = Array.isArray(json) ? json : ((json && (json.data || json.rows || json.tipos)) || []);
+      return (Array.isArray(lista) ? lista : []).map(_normalizarTipoCaixaConclusao).filter(function(item) {
+        return String(item && item.id || '').trim() && String(item && item.nome || '').trim();
+      });
+    } catch (_) {
+      return [];
+    }
+  }
+
   function _extrairDimensoesConclusao(of) {
     var comp = Number(of && (of.comprimento_mm ?? of.caixa_comprimento ?? of.dim_comprimento ?? of.comprimento ?? 0) || 0) || 0;
     var larg = Number(of && (of.largura_mm ?? of.caixa_largura ?? of.dim_largura ?? of.largura ?? 0) || 0) || 0;
@@ -34820,15 +34922,17 @@ function _ocultarGraficoComissoes() {
       var preloadMaquinas = _carregarMaquinasParaConclusao().catch(function() { return []; });
       var preloadOperadores = _carregarOperadoresParaConclusao().catch(function() { return []; });
       var preloadGramaturas = _carregarGramaturasParaConclusao().catch(function() { return [_gramaturaFallbackConclusao()]; });
+      var preloadTiposCaixa = _carregarTiposCaixaParaConclusao(of).catch(function() { return []; });
       var preloadVendedores = _loadVendedoresLista().catch(function() { return []; });
-      Promise.all([preloadMaquinas, preloadOperadores, preloadGramaturas, preloadVendedores]).then(function(pair) {
-        try { console.log('[conclusao] máquinas:', (pair[0] && pair[0].length) || 0, 'operadores:', (pair[1] && pair[1].length) || 0, 'gramaturas:', (pair[2] && pair[2].length) || 0, 'vendedores:', (pair[3] && pair[3].length) || 0); } catch (_) {}
+      Promise.all([preloadMaquinas, preloadOperadores, preloadGramaturas, preloadTiposCaixa, preloadVendedores]).then(function(pair) {
+        try { console.log('[conclusao] máquinas:', (pair[0] && pair[0].length) || 0, 'operadores:', (pair[1] && pair[1].length) || 0, 'gramaturas:', (pair[2] && pair[2].length) || 0, 'tipos:', (pair[3] && pair[3].length) || 0, 'vendedores:', (pair[4] && pair[4].length) || 0); } catch (_) {}
         // #region debug-point B:conclusao-preloads-ready
-        try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'preloads da conclusao resolvidos', { maquinas: (pair[0] && pair[0].length) || 0, operadores: (pair[1] && pair[1].length) || 0, gramaturas: (pair[2] && pair[2].length) || 0, vendedores: (pair[3] && pair[3].length) || 0 }); } catch (_) {}
+        try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', 'preloads da conclusao resolvidos', { maquinas: (pair[0] && pair[0].length) || 0, operadores: (pair[1] && pair[1].length) || 0, gramaturas: (pair[2] && pair[2].length) || 0, tiposCaixa: (pair[3] && pair[3].length) || 0, vendedores: (pair[4] && pair[4].length) || 0 }); } catch (_) {}
         // #endregion
       }).catch(function() {});
       var operadores = [];
       var gramaturasLista = [];
+      var tiposCaixaLista = [];
       var vendedoresLista = [];
       var gramaturaSelecionadaAtual = null;
 
@@ -34872,6 +34976,11 @@ function _ocultarGraficoComissoes() {
         + '      </div>'
         + '      <select id="conclusao-gramatura" class="com-conc-select" style="display:none"><option value="">Carregando gramaturas...</option></select>'
         + '      <div id="conclusao-gramatura-ajuda" style="margin-top:8px;font-size:12px;color:#94a3b8">Selecione a gramatura cadastrada. O valor unitário (R$/m²) será usado para calcular o custo da venda em tempo real.</div>'
+        + '    </div>'
+        + '    <div class="com-conc-field">'
+        + '      <label class="com-conc-label">📦 Tipo de Caixa *</label>'
+        + '      <select id="conclusao-tipo-caixa" class="com-conc-select"><option value="">Carregando tipos de caixa...</option></select>'
+        + '      <div id="conclusao-tipo-caixa-ajuda" style="margin-top:8px;font-size:12px;color:#94a3b8">Selecione o tipo de caixa para salvar junto com a conclusão da OF.</div>'
         + '    </div>'
         + '    <div class="com-conc-field">'
         + '      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">'
@@ -34920,6 +35029,7 @@ function _ocultarGraficoComissoes() {
       var gramEl = backdrop.querySelector('#conclusao-gramatura');
       var gramBuscaEl = backdrop.querySelector('#conclusao-gramatura-busca');
       var gramSuggestEl = backdrop.querySelector('#conclusao-gramatura-suggest');
+      var tipoCaixaEl = backdrop.querySelector('#conclusao-tipo-caixa');
       var maquinasPassagemListaEl = backdrop.querySelector('#conclusao-maquinas-passagem-lista');
       var addPassagemMaquinaBtn = backdrop.querySelector('#conclusao-add-passagem-maquina');
       var perdasLista = backdrop.querySelector('#conclusao-perdas-lista');
@@ -35180,6 +35290,12 @@ function _ocultarGraficoComissoes() {
         var found = (gramaturasLista || []).find(function(g) { return String(g && (g.option_value || g.id) || '') === selectedId; }) || null;
         return found || _gramaturaFallbackConclusao();
       }
+      function currentTipoCaixa() {
+        var selectedId = String(tipoCaixaEl && tipoCaixaEl.value || '').trim();
+        return (tiposCaixaLista || []).find(function(item) {
+          return String(item && item.id || '').trim() === selectedId;
+        }) || null;
+      }
       function currentVendedor() {
         var selectedId = String(vendedorEl && vendedorEl.value || vendedorAtualId || '').trim();
         var found = (vendedoresLista || []).find(function(v) {
@@ -35213,6 +35329,29 @@ function _ocultarGraficoComissoes() {
         vendedorEl.innerHTML = html.join('');
         vendedorEl.value = atual;
       }
+      function renderTiposCaixaSelect(lista) {
+        tiposCaixaLista = (Array.isArray(lista) ? lista : []).map(_normalizarTipoCaixaConclusao).filter(function(item) {
+          return String(item && item.id || '').trim() && String(item && item.nome || '').trim();
+        });
+        if (!tipoCaixaEl) return;
+        var atual = String(of && (of.tipo_caixa_id || of.tipoCaixaId || '') || '').trim();
+        if (!atual) {
+          var nomeAtual = String(of && (of.tipo_caixa || of.tipoCaixa || '') || '').trim().toLowerCase();
+          if (nomeAtual) {
+            var hit = tiposCaixaLista.find(function(item) {
+              return String(item && item.nome || '').trim().toLowerCase() === nomeAtual;
+            }) || null;
+            if (hit) atual = String(hit && hit.id || '').trim();
+          }
+        }
+        var html = ['<option value="">' + (tiposCaixaLista.length ? 'Selecionar tipo de caixa...' : 'Nenhum tipo de caixa cadastrado') + '</option>'].concat(tiposCaixaLista.map(function(item) {
+          var id = String(item && item.id || '').trim();
+          var nome = String(item && item.nome || id || '—').trim();
+          return '<option value="' + id.replace(/"/g, '&quot;') + '"' + (id === atual ? ' selected' : '') + '>' + nome.replace(/</g, '&lt;') + '</option>';
+        }));
+        tipoCaixaEl.innerHTML = html.join('');
+        tipoCaixaEl.value = atual;
+      }
       function renderGramaturasSelect(lista) {
         gramaturasLista = (Array.isArray(lista) ? lista : []).map(_normalizarGramaturaConclusao).filter(function(g) {
           return g && g.ativo && !g.fallback && (String(g.option_value || '').trim() || String(g.id || '').trim());
@@ -35240,6 +35379,8 @@ function _ocultarGraficoComissoes() {
         var resumo = _getResumoConclusao(of, qtdProduzidasAtual, collectPerdas(), materia.gramatura, materia.areaUnitM2, currentValorUnitario());
         var gramaturaSelecionada = materia.gramatura || _gramaturaFallbackConclusao();
         var gramOk = !!(gramaturaSelecionada && !gramaturaSelecionada.fallback && String(gramaturaSelecionada.id || '').trim());
+        var tipoAtual = currentTipoCaixa();
+        var tipoOk = !tiposCaixaLista.length || !!(tipoAtual && String(tipoAtual.id || '').trim());
         try { backdrop.querySelector('#conc-res-pedido').textContent = String(resumo.qtdPedido); } catch (_) {}
         try { backdrop.querySelector('#conc-res-produzidas').textContent = String(resumo.produzidas); } catch (_) {}
         try { backdrop.querySelector('#conc-res-excedente').textContent = String(resumo.excedente); } catch (_) {}
@@ -35273,10 +35414,21 @@ function _ocultarGraficoComissoes() {
               : 'Selecione uma gramatura válida para calcular e salvar a conclusão.';
           }
         } catch (_) {}
-        if (btnSalvar) btnSalvar.disabled = !(resumo.produzidas > 0 && gramOk);
+        try {
+          var tipoAjudaEl = backdrop.querySelector('#conclusao-tipo-caixa-ajuda');
+          if (tipoAjudaEl) {
+            tipoAjudaEl.style.color = tipoOk ? '#94a3b8' : '#fca5a5';
+            tipoAjudaEl.textContent = tiposCaixaLista.length
+              ? (tipoAtual ? ('Tipo selecionado: ' + String(tipoAtual.nome || '').trim()) : 'Selecione o tipo de caixa para salvar junto com a conclusão da OF.')
+              : 'Nenhum tipo de caixa cadastrado para a empresa atual.';
+          }
+        } catch (_) {}
+        if (btnSalvar) btnSalvar.disabled = !(resumo.produzidas > 0 && gramOk && tipoOk);
         resumo.materiaPrima = materia;
         resumo.gramatura = materia.gramatura;
         resumo.gramaturaValida = gramOk;
+        resumo.tipoCaixa = tipoAtual;
+        resumo.tipoCaixaValido = tipoOk;
         return resumo;
       }
       function addOperadorRow(host, selected) {
@@ -35352,6 +35504,7 @@ function _ocultarGraficoComissoes() {
           renderSugestoesGramatura(String(gramBuscaEl.value || ''));
         }, true);
       }
+      if (tipoCaixaEl) tipoCaixaEl.onchange = updateResumo;
       if (vendedorEl) vendedorEl.onchange = updateResumo;
       preloadVendedores.then(function(lista) {
         renderVendedoresSelect(lista);
@@ -35365,6 +35518,13 @@ function _ocultarGraficoComissoes() {
         renderGramaturasSelect([]);
         updateResumo();
       });
+      preloadTiposCaixa.then(function(lista) {
+        renderTiposCaixaSelect(lista);
+        updateResumo();
+      }).catch(function() {
+        renderTiposCaixaSelect([]);
+        updateResumo();
+      });
       updateResumo();
 
       if (btnSalvar) btnSalvar.onclick = async function(e) {
@@ -35375,6 +35535,7 @@ function _ocultarGraficoComissoes() {
         if (!(caixasProduzidas > 0)) { try { alert('Informe as caixas produzidas.'); } catch (_) {} return; }
         if (!dataFaturamento) { try { alert('Informe a data de faturamento.'); } catch (_) {} return; }
         if (!resumo.gramaturaValida) { try { alert('Selecione uma gramatura válida antes de concluir a OF.'); } catch (_) {} return; }
+        if (!resumo.tipoCaixaValido) { try { alert('Selecione um tipo de caixa antes de concluir a OF.'); } catch (_) {} return; }
         if (hasMaquinasPassagemIncompletasConclusao()) { try { alert('Preencha a quantidade de caixas em cada máquina adicionada ou remova a linha antes de concluir a OF.'); } catch (_) {} return; }
         var perdas = collectPerdas();
         var maquinasPassagem = collectMaquinasPassagemConclusao();
@@ -35383,6 +35544,7 @@ function _ocultarGraficoComissoes() {
         }, []).map(function(op) { return String(op || '').trim(); }).filter(Boolean)));
         var precoUnitario = Number(resumo.valorUnitario || 0) || 0;
         var gramaturaSel = resumo.gramatura || _gramaturaFallbackConclusao();
+        var tipoCaixaSel = resumo.tipoCaixa || currentTipoCaixa();
         var vendedorAtualSel = currentVendedor();
         var materiaPrima = resumo.materiaPrima || _calcularResumoMateriaPrimaConclusao(of, caixasProduzidas, gramaturaSel);
         var body = {
@@ -35396,6 +35558,8 @@ function _ocultarGraficoComissoes() {
           valor_total: resumo.novoTotal,
           valor_venda: resumo.novoTotal,
           usuario_conclusao: usuario,
+          tipo_caixa_id: tipoCaixaSel ? String(tipoCaixaSel.id || '').trim() : null,
+          tipo_caixa: tipoCaixaSel ? String(tipoCaixaSel.nome || '').trim() : null,
           gramatura_id: gramaturaSel && !gramaturaSel.fallback ? String(gramaturaSel.id || '').trim() : null,
           gramatura_nome: String(gramaturaSel.nome || gramaturaSel.descricao || '').trim(),
           gramatura: Number(gramaturaSel && gramaturaSel.gramatura || 0) || 0,

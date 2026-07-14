@@ -8068,6 +8068,20 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         gramaturaConclusao = null;
       }
     }
+    const tipoCaixaConclusaoId = body.tipo_caixa_id != null ? String(body.tipo_caixa_id || '').trim() : '';
+    let tipoCaixaConclusao = null;
+    if (tipoCaixaConclusaoId) {
+      try {
+        const { data } = await supabase
+          .from('tipos_caixa')
+          .select('id,nome')
+          .eq('id', tipoCaixaConclusaoId)
+          .maybeSingle();
+        tipoCaixaConclusao = data || null;
+      } catch (_) {
+        tipoCaixaConclusao = null;
+      }
+    }
     _debugRuntimeWrite({
       runId: 'pre-fix',
       hypothesisId: 'B',
@@ -8185,6 +8199,9 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     const areaTotalM2 = Number(body.area_total_m2 || areaTotalM2Calc || 0) || 0;
     const consumoChapasEstimado = Number(body.consumo_chapas_estimado || 0) || 0;
     if (Object.prototype.hasOwnProperty.call(body, 'gramatura_id')) updateData.gramatura_id = gramaturaConclusaoId || null;
+    if (Object.prototype.hasOwnProperty.call(body, 'tipo_caixa_id')) updateData.tipo_caixa_id = tipoCaixaConclusaoId || null;
+    if (tipoCaixaConclusao && tipoCaixaConclusao.nome) updateData.tipo_caixa = String(tipoCaixaConclusao.nome || '').trim();
+    else if (Object.prototype.hasOwnProperty.call(body, 'tipo_caixa')) updateData.tipo_caixa = String(body.tipo_caixa || '').trim() || null;
     if (gramaturaConclusaoNome) updateData.gramatura_nome = gramaturaConclusaoNome;
     if (gramaturaConclusaoValor > 0) updateData.gramatura = gramaturaConclusaoValor;
     if (pesoUtilizadoKg > 0) updateData.peso_utilizado_kg = Math.round(pesoUtilizadoKg * 1000) / 1000;
@@ -13836,7 +13853,7 @@ app.get('/api/fluxos', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // TIPOS DE CAIXA
 // ══════════════════════════════════════════════════════════════
-app.get('/api/tipos_caixa', authMiddleware, async (req, res) => {
+async function _handleGetTiposCaixa(req, res) {
   try {
     const emp = String(req.query.emp_id ?? req.query.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? '').trim();
     const cacheKey = emp ? `tipos_caixa:${emp}` : 'tipos_caixa:all';
@@ -13849,7 +13866,10 @@ app.get('/api/tipos_caixa', authMiddleware, async (req, res) => {
     cacheSet(cacheKey, data || []);
     ok(res, data || []);
   } catch (e) { err(res, e); }
-});
+}
+
+app.get('/api/tipos_caixa', authMiddleware, _handleGetTiposCaixa);
+app.get('/api/tipos-caixa', authMiddleware, _handleGetTiposCaixa);
 
 app.post('/api/tipos_caixa', authMiddleware, async (req, res) => {
   try {
@@ -13900,6 +13920,56 @@ app.delete('/api/tipos_caixa/:id', authMiddleware, async (req, res) => {
     cacheClearPrefix('tipos_caixa:');
     ok(res, { ok: true });
   } catch (e) { err(res, e); }
+});
+
+app.get('/api/relatorios/tipos-caixa', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const dataInicio = String(req.query.data_inicio || '').trim() || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+    const dataFim = String(req.query.data_fim || '').trim() || new Date().toISOString().slice(0, 10);
+    const emp = String(req.query.emp_id ?? req.query.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? '').trim();
+    let query = supabase
+      .from('ofs')
+      .select('id,tipo_caixa_id,tipo_caixa,qtd_produzida,quantidade,qtd,status,data_conclusao,deleted_at,empresa_id,emp_id')
+      .gte('data_conclusao', dataInicio)
+      .lte('data_conclusao', dataFim)
+      .is('deleted_at', null)
+      .order('data_conclusao', { ascending: false })
+      .limit(10000);
+    if (emp) query = query.or('empresa_id.eq.' + emp + ',emp_id.eq.' + emp);
+    const { data: ofsRows, error: ofsError } = await query;
+    if (ofsError) throw ofsError;
+    const rowsBase = (Array.isArray(ofsRows) ? ofsRows : []).filter((row) => String(row?.status || '').toLowerCase().includes('conclu'));
+    const tipoIds = Array.from(new Set(rowsBase.map((row) => String(row?.tipo_caixa_id || '').trim()).filter(Boolean)));
+    let tiposMap = new Map();
+    if (tipoIds.length) {
+      let tq = supabase.from('tipos_caixa').select('id,nome');
+      if (emp) tq = tq.eq('emp_id', emp);
+      const { data: tiposData } = await tq.in('id', tipoIds);
+      tiposMap = new Map((Array.isArray(tiposData) ? tiposData : []).map((row) => [String(row?.id || '').trim(), String(row?.nome || '').trim()]));
+    }
+    const grouped = new Map();
+    rowsBase.forEach((row) => {
+      const tipoId = String(row?.tipo_caixa_id || '').trim();
+      const tipoNome = String(row?.tipo_caixa || tiposMap.get(tipoId) || 'Sem tipo').trim() || 'Sem tipo';
+      const key = tipoId || ('nome:' + tipoNome);
+      if (!grouped.has(key)) grouped.set(key, { tipo_caixa_id: tipoId || null, tipo: tipoNome, total_ofs: 0, qtd_produzida: 0 });
+      const item = grouped.get(key);
+      item.total_ofs += 1;
+      item.qtd_produzida += Math.trunc(Number(row?.qtd_produzida ?? row?.quantidade ?? row?.qtd ?? 0) || 0);
+    });
+    const rows = Array.from(grouped.values()).sort((a, b) => (b.qtd_produzida - a.qtd_produzida) || (b.total_ofs - a.total_ofs) || String(a.tipo || '').localeCompare(String(b.tipo || ''), 'pt-BR'));
+    const resumo = rows.reduce((acc, row) => {
+      acc.total_tipos += 1;
+      acc.total_ofs += Number(row?.total_ofs || 0) || 0;
+      acc.qtd_produzida += Number(row?.qtd_produzida || 0) || 0;
+      return acc;
+    }, { total_tipos: 0, total_ofs: 0, qtd_produzida: 0 });
+    return res.json({ ok: true, data_inicio: dataInicio, data_fim: dataFim, resumo, rows });
+  } catch (e) {
+    console.error('[RELATORIOS][TIPOS-CAIXA]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.post('/api/fluxos', authMiddleware, async (req, res) => {
