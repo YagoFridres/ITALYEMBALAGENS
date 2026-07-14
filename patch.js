@@ -27479,6 +27479,42 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq .patch-ofmaq-toprow{display:grid !important;grid-template-columns:minmax(0,1fr) auto;gap:12px !important;align-items:stretch !important;margin:0 !important;padding:14px 16px;border-radius:16px;background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(30,41,59,.9));border:1px solid rgba(51,65,85,.75);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}'
       + '#page-ofmaq .patch-ofmaq-days-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:56px;padding:10px 12px;border-radius:12px;background:rgba(15,23,42,.55);border:1px solid rgba(51,65,85,.55)}'
       + '#page-ofmaq #ofs-por-maquina-container.patch-ofmaq-container{padding:18px;border-radius:18px;background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(15,23,42,.72));border:1px solid rgba(51,65,85,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}'
+      + '#page-ofmaq.patch-ofmaq-v2 .ofmaq-toprow,#page-ofmaq.patch-ofmaq-v2 #ofmaq-dias-bar,#page-ofmaq.patch-ofmaq-v2 .kb-board-ofmaq,#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-summary-grid,#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-table-wrap{display:none !important}'
+      + '#page-ofmaq.patch-ofmaq-v2 #ofs-por-maquina-container.patch-ofmaq-container{padding:0 !important;border:none !important;background:transparent !important;box-shadow:none !important}'
+      + '#page-ofmaq.patch-ofmaq-v2 #patch-ofmaq-titlebar{padding:18px 18px 16px;border-radius:18px}'
+      + '#page-ofmaq.patch-ofmaq-v2 #patch-ofmaq-v2-header{display:grid;gap:12px;width:100%}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-headrow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-title{font-size:28px;font-weight:900;color:#f8fafc;letter-spacing:.01em}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-sub{font-size:13px;color:#94a3b8;line-height:1.45}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-days{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-days button{min-height:38px;padding:8px 12px;border-radius:12px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-days button[data-active="1"]{background:linear-gradient(135deg,rgba(37,99,235,.95),rgba(29,78,216,.88));border-color:rgba(96,165,250,.7);color:#eff6ff}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-days button:hover{border-color:rgba(96,165,250,.65)}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-machine{display:inline-flex;align-items:center;gap:8px}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-machine select{min-height:38px;padding:8px 12px;border-radius:12px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:12px;font-weight:900}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-btn{min-height:38px;padding:8px 12px;border-radius:12px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:12px;font-weight:900;cursor:pointer}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-btn[data-active="1"]{background:rgba(37,99,235,.18);border-color:rgba(96,165,250,.4);color:#bfdbfe}'
+      + '#page-ofmaq.patch-ofmaq-v2 #ofmaq-busca{flex:1 1 460px !important;min-width:320px !important}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-list{display:grid;gap:6px;padding:16px;border-radius:18px;background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(15,23,42,.72));border:1px solid rgba(51,65,85,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row{display:grid;grid-template-columns:86px minmax(120px,160px) minmax(180px,1.2fr) minmax(180px,1.2fr) minmax(140px,180px) minmax(140px,200px) 110px 130px 110px 140px;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:#1e293b;border:1px solid rgba(51,65,85,.75);position:relative;overflow:hidden}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row:nth-child(even){background:rgba(30,41,59,.82)}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row::before{content:"";position:absolute;inset:0 auto 0 0;width:6px;background:rgba(34,197,94,.85)}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row[data-status-tone="warn"]::before{background:rgba(245,158,11,.9)}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row[data-status-tone="danger"]::before{background:rgba(239,68,68,.9)}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-seq{display:flex;align-items:center;gap:8px}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-seq .of-ordem-badge{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:12px;background:rgba(37,99,235,.16);border:1px solid rgba(96,165,250,.24);color:#bfdbfe;font-weight:900}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-seq input{width:52px;min-height:34px;padding:6px 8px;border-radius:10px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#f8fafc;font-size:14px;font-weight:900;text-align:center}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-cell strong{display:block;font-size:15px;font-weight:900;color:#f8fafc;line-height:1.1}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-cell span{display:block;margin-top:3px;font-size:12px;color:#94a3b8;line-height:1.25}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-colors{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-dot{width:12px;height:12px;border-radius:999px;border:1px solid rgba(15,23,42,.6);box-shadow:0 0 0 2px rgba(2,6,23,.22)}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-badge{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:12px;font-weight:900}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-badge.is-danger{background:rgba(127,29,29,.28);border-color:rgba(248,113,113,.32);color:#fecaca}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-badge.is-warn{background:rgba(120,53,15,.28);border-color:rgba(251,191,36,.32);color:#fde68a}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-actions{display:flex;justify-content:flex-end}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-actions button{min-height:34px;padding:7px 10px;border-radius:12px;border:1px solid rgba(96,165,250,.28);background:rgba(2,6,23,.35);color:#dbeafe;font-size:12px;font-weight:900;cursor:pointer}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-actions button:hover{border-color:rgba(96,165,250,.6)}'
       + '#page-ofmaq .kb-board-ofmaq.patch-ofmaq-board{gap:18px;padding:4px 2px 6px;align-items:stretch}'
       + '#page-ofmaq .kb-col-ofmaq.patch-ofmaq-col{display:flex;flex-direction:column;gap:12px;min-width:340px;max-width:360px;padding:16px;border-radius:16px;background:linear-gradient(135deg,rgba(15,23,42,.98),rgba(30,41,59,.95));border:1px solid rgba(51,65,85,.9);box-shadow:0 22px 44px rgba(2,6,23,.22),inset 0 1px 0 rgba(255,255,255,.04)}'
       + '#page-ofmaq .kb-col-ofmaq.patch-ofmaq-col.kb-col-dragover{border-color:rgba(96,165,250,.88);box-shadow:0 0 0 1px rgba(96,165,250,.26),0 22px 44px rgba(2,6,23,.24),inset 0 1px 0 rgba(255,255,255,.05)}'
@@ -27866,7 +27902,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function _ofmaqDomCards(scope) {
     var root = scope || document;
     try {
-      var cards = Array.prototype.slice.call(root.querySelectorAll('.kb-card.kb-card-ofmaq[data-of-id], .kb-card-ofmaq[data-of-id], .of-card-maquina[data-of-id], .ofmaq-card[data-of-id], .of-card[data-of-id], tr.patch-ofmaq-row[data-of-id]'));
+      var cards = Array.prototype.slice.call(root.querySelectorAll('.kb-card.kb-card-ofmaq[data-of-id], .kb-card-ofmaq[data-of-id], .of-card-maquina[data-of-id], .ofmaq-card[data-of-id], .of-card[data-of-id], tr.patch-ofmaq-row[data-of-id], .patch-ofmaq-v2-row[data-of-id]'));
       var seen = {};
       return cards.filter(function(card) {
         var id = String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
@@ -28764,6 +28800,322 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var alertsHtml = _ofmaqExtractContainerAlerts(container);
     _ofmaqRenderTableShell(groups, keys, container, alertsHtml);
     return true;
+  }
+
+  function _ofmaqV2State() {
+    if (!window.__ofmaqV2State || typeof window.__ofmaqV2State !== 'object') {
+      window.__ofmaqV2State = {
+        agrupar: false,
+      };
+    }
+    return window.__ofmaqV2State;
+  }
+
+  function _ofmaqV2WeekStart(iso) {
+    var base = _parseIsoDayLocal(iso) || new Date();
+    base.setHours(0, 0, 0, 0);
+    var diff = (base.getDay() + 6) % 7;
+    var start = new Date(base.getTime());
+    start.setDate(start.getDate() - diff);
+    return start;
+  }
+
+  function _ofmaqV2IsoFromDate(d) {
+    try {
+      var x = d instanceof Date ? d : new Date(d);
+      if (!Number.isFinite(x.getTime())) return '';
+      x.setHours(0, 0, 0, 0);
+      return x.toISOString().slice(0, 10);
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function _ofmaqV2SelectedIso() {
+    var inp = document.getElementById('ofmaq-data');
+    var v = String(inp && inp.value || '').slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+    return _ofmaqV2IsoFromDate(new Date());
+  }
+
+  function _ofmaqV2WeekDays(iso) {
+    var start = _ofmaqV2WeekStart(iso);
+    var labels = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
+    var out = [];
+    for (var i = 0; i < 7; i += 1) {
+      var d = new Date(start.getTime());
+      d.setDate(d.getDate() + i);
+      out.push({ idx: i, label: labels[i] || String(i + 1), iso: _ofmaqV2IsoFromDate(d), date: d });
+    }
+    return out;
+  }
+
+  function _ofmaqV2MachineOptions() {
+    var sel = document.getElementById('ofsmaq-select-maquina') || document.getElementById('ofsmaq-filtro-maquina');
+    var opts = [];
+    try {
+      if (sel && sel.options && sel.options.length) {
+        Array.prototype.slice.call(sel.options).forEach(function(opt) {
+          var v = String(opt && opt.value || '').trim();
+          var t = String(opt && opt.textContent || opt && opt.label || v || '').trim();
+          if (!v || _ofmaqIsAllMachinesValue(v)) return;
+          opts.push({ value: v, label: t || v });
+        });
+      }
+    } catch (_) {}
+    if (!opts.length) {
+      opts = [
+        { value: 'IMP 01', label: 'IMP 01' },
+        { value: 'IMP 02', label: 'IMP 02' },
+        { value: 'IMP 03', label: 'IMP 03' },
+        { value: 'IMP 04', label: 'IMP 04' },
+        { value: 'IMP 05', label: 'IMP 05' },
+        { value: 'CORTE VINCO ROTATIVA', label: 'CORTE VINCO ROTATIVA' },
+      ];
+    }
+    return opts;
+  }
+
+  function _ofmaqV2PickMachine(groups) {
+    var filterValue = _ofmaqMachineFilterValue();
+    if (filterValue && !_ofmaqIsAllMachinesValue(filterValue)) return filterValue;
+    var keys = Object.keys(groups || {}).filter(function(k) { return Array.isArray(groups[k]) && groups[k].length; });
+    if (keys[0]) return keys[0];
+    var opts = _ofmaqV2MachineOptions();
+    return opts[0] ? opts[0].value : '';
+  }
+
+  function _ofmaqV2SetMachine(value) {
+    var v = String(value || '').trim();
+    if (!v) return;
+    var sel = document.getElementById('ofsmaq-select-maquina') || document.getElementById('ofsmaq-filtro-maquina');
+    if (!sel) return;
+    try {
+      sel.value = v;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    } catch (_) {}
+  }
+
+  function _ofmaqV2SetDate(iso) {
+    var v = String(iso || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+    var inp = document.getElementById('ofmaq-data');
+    if (!inp) return;
+    try {
+      inp.value = v;
+      inp.dispatchEvent(new Event('change', { bubbles: true }));
+    } catch (_) {}
+  }
+
+  function _ofmaqV2TriggerRefresh() {
+    try {
+      var btn = document.getElementById('ofmaq-btn-atualizar');
+      if (btn && typeof btn.click === 'function') return btn.click();
+    } catch (_) {}
+    try {
+      if (typeof window.renderOFsPorMaquina === 'function') return window.renderOFsPorMaquina();
+    } catch (_) {}
+    try { _ofmaqScheduleAfterRender('v2-refresh', 0); } catch (_) {}
+  }
+
+  function _ofmaqV2SortGrouped(ofs) {
+    var state = _ofmaqV2State();
+    var list = Array.isArray(ofs) ? ofs.slice() : [];
+    if (!state.agrupar) return list;
+    var enriched = list.map(function(of, idx) {
+      var cores = _pickCorKey(of);
+      var tam = _ofmaqTamanhoLabel(of);
+      return { of: of, idx: idx, key: String(cores || '') + '|' + String(tam || '') };
+    });
+    enriched.sort(function(a, b) {
+      if (a.key !== b.key) return a.key.localeCompare(b.key, 'pt-BR');
+      return a.idx - b.idx;
+    });
+    return enriched.map(function(x) { return x.of; });
+  }
+
+  function _ofmaqV2StatusTone(of) {
+    var urg = _ofmaqUrgenciaTipo(of);
+    if (urg === 'urgente') return { urg: urg, tone: 'danger', text: 'Urgente' };
+    if (urg === 'atrasada') return { urg: urg, tone: 'warn', text: 'Atrasada' };
+    return { urg: urg || 'normal', tone: 'ok', text: 'Normal' };
+  }
+
+  function _ofmaqV2RowHtml(of, idx, maquina) {
+    var id = String(of && of.id || '').trim();
+    if (!id) return '';
+    var numero = _ofmaqNumeroLabel(of) || '—';
+    var cliente = _ofmaqClienteLabel(of) || '—';
+    var produto = _ofmaqProdutoLabel(of) || '—';
+    var tamanho = _ofmaqTamanhoLabel(of) || '—';
+    var coresArr = parseColors(of);
+    var coresDots = (Array.isArray(coresArr) ? coresArr : []).slice(0, 8).map(function(c) {
+      var name = String(c || '').trim();
+      if (!name) return '';
+      return '<span class="patch-ofmaq-v2-dot" title="' + escAttrLocal(name) + '" style="background:' + escAttrLocal(_hashColor(name)) + '"></span>';
+    }).join('');
+    var quantidade = _getQtdOf(of);
+    var entrega = _ofmaqEntregaIso(of);
+    var tempoMin = _ofmaqTempoMinForMachine(of, typeof window.getDadosMaquina === 'function' ? window.getDadosMaquina(maquina) : null);
+    var st = _ofmaqV2StatusTone(of);
+    var badgeCls = st.tone === 'danger' ? ' is-danger' : (st.tone === 'warn' ? ' is-warn' : '');
+    return ''
+      + '<div class="patch-ofmaq-v2-row" data-of-id="' + escAttrLocal(id) + '" data-maq="' + escAttrLocal(maquina) + '" data-tempo-min="' + escAttrLocal(String(tempoMin || 0)) + '" data-qtd="' + escAttrLocal(String(quantidade != null ? quantidade : '')) + '" data-urgencia="' + escAttrLocal(st.urg) + '" data-status-tone="' + escAttrLocal(st.tone) + '">'
+      + '  <div class="patch-ofmaq-v2-seq">'
+      + '    <span class="of-ordem-badge">' + escHLocal(String(idx + 1)) + '</span>'
+      + '    <input class="patch-ofmaq-v2-seq-input" type="number" min="1" step="1" inputmode="numeric" value="' + escAttrLocal(String(idx + 1)) + '" data-of-id="' + escAttrLocal(id) + '">'
+      + '  </div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(numero) + '</strong><span>' + escHLocal(st.text) + '</span></div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(cliente) + '</strong><span>' + escHLocal(String(of && of.status || 'Em aberto')) + '</span></div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(produto) + '</strong><span>' + escHLocal(tamanho) + '</span></div>'
+      + '  <div class="patch-ofmaq-v2-colors">' + (coresDots || '<span class="patch-ofmaq-v2-badge">Sem cor</span>') + '</div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(_ofmaqFmtInt(quantidade != null ? quantidade : 0)) + '</strong><span>Quantidade</span></div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</strong><span>' + escHLocal(entrega ? fmtWeekdayDate(entrega) : 'Sem prazo') + '</span></div>'
+      + '  <div><span class="patch-ofmaq-v2-badge' + badgeCls + '">' + escHLocal(_ofmaqFmtTempoValue(tempoMin)) + '</span></div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(maquina) + '</strong><span>Máquina</span></div>'
+      + '  <div class="patch-ofmaq-v2-actions"><button type="button" data-of-id="' + escAttrLocal(id) + '" data-of-num="' + escAttrLocal(String(numero || '')) + '">Ações</button></div>'
+      + '</div>';
+  }
+
+  function _ofmaqEnsureV2Shell() {
+    var page = document.getElementById('page-ofmaq');
+    var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body');
+    if (!page || !container) return false;
+    try { page.classList.add('patch-ofmaq-v2'); } catch (_) {}
+    var titlebar = document.getElementById('patch-ofmaq-titlebar');
+    if (!titlebar) return false;
+    if (!document.getElementById('patch-ofmaq-v2-header')) {
+      titlebar.innerHTML = ''
+        + '<div id="patch-ofmaq-v2-header">'
+        + '  <div class="patch-ofmaq-v2-headrow">'
+        + '    <div>'
+        + '      <div class="patch-ofmaq-v2-title">OFs por Máquina</div>'
+        + '      <div class="patch-ofmaq-v2-sub">Uma máquina por vez, cards horizontais por OF, filtros por semana e sequência editável.</div>'
+        + '    </div>'
+        + '    <div class="patch-ofmaq-v2-controls"></div>'
+        + '  </div>'
+        + '</div>';
+    }
+    if (!container.querySelector('.patch-ofmaq-v2-list')) {
+      container.innerHTML = '<div class="patch-ofmaq-v2-list" id="patch-ofmaq-v2-list"></div>';
+    }
+    return true;
+  }
+
+  function _ofmaqRenderV2() {
+    var ok = _ofmaqEnsureV2Shell();
+    if (!ok) return;
+    var page = document.getElementById('page-ofmaq');
+    var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body');
+    var titlebar = document.getElementById('patch-ofmaq-titlebar');
+    if (!page || !container || !titlebar) return;
+    var groups = getVisibleGroups();
+    var selectedIso = _ofmaqV2SelectedIso();
+    var weekDays = _ofmaqV2WeekDays(selectedIso);
+    var maquina = _ofmaqV2PickMachine(groups);
+    if (maquina) _ofmaqV2SetMachine(maquina);
+    var list = Array.isArray(groups[maquina]) ? groups[maquina].slice() : [];
+    list = _ofmaqV2SortGrouped(_ofmaqSortMachineQueue(list));
+
+    var ctrlHost = titlebar.querySelector('.patch-ofmaq-v2-controls');
+    if (ctrlHost) {
+      var search = document.getElementById('ofmaq-busca');
+      ctrlHost.innerHTML = ''
+        + '<div class="patch-ofmaq-v2-days" id="patch-ofmaq-v2-days">'
+        + '  <button type="button" data-shift="-7">← Anterior</button>'
+        + weekDays.map(function(d) {
+          return '<button type="button" data-date="' + escAttrLocal(d.iso) + '" data-active="' + (d.iso === selectedIso ? '1' : '0') + '">' + escHLocal(d.label) + '</button>';
+        }).join('')
+        + '  <button type="button" data-shift="7">Próximo →</button>'
+        + '</div>'
+        + '<div class="patch-ofmaq-v2-machine"><select id="patch-ofmaq-v2-machine"></select></div>'
+        + '<button type="button" class="patch-ofmaq-v2-btn" id="patch-ofmaq-v2-agrupar" data-active="' + (_ofmaqV2State().agrupar ? '1' : '0') + '">Agrupar</button>';
+      if (search && search.parentNode !== ctrlHost) ctrlHost.appendChild(search);
+      var machineSel = ctrlHost.querySelector('#patch-ofmaq-v2-machine');
+      if (machineSel) {
+        machineSel.innerHTML = _ofmaqV2MachineOptions().map(function(opt) {
+          return '<option value="' + escAttrLocal(opt.value) + '"' + (opt.value === maquina ? ' selected' : '') + '>' + escHLocal(opt.label) + '</option>';
+        }).join('');
+        machineSel.onchange = function() {
+          _ofmaqV2SetMachine(String(machineSel.value || '').trim());
+          _ofmaqV2TriggerRefresh();
+        };
+      }
+      var agrBtn = ctrlHost.querySelector('#patch-ofmaq-v2-agrupar');
+      if (agrBtn) {
+        agrBtn.onclick = function() {
+          _ofmaqV2State().agrupar = !_ofmaqV2State().agrupar;
+          _ofmaqRenderV2();
+        };
+      }
+      var daysWrap = ctrlHost.querySelector('#patch-ofmaq-v2-days');
+      if (daysWrap && !daysWrap._patchBound) {
+        daysWrap._patchBound = true;
+        daysWrap.onclick = function(ev) {
+          var btn = ev && ev.target && ev.target.closest ? ev.target.closest('button') : null;
+          if (!btn) return;
+          var date = String(btn.getAttribute('data-date') || '').slice(0, 10);
+          var shift = Number(btn.getAttribute('data-shift') || 0) || 0;
+          if (date) {
+            _ofmaqV2SetDate(date);
+            _ofmaqV2TriggerRefresh();
+            return;
+          }
+          if (shift) {
+            var cur = _parseIsoDayLocal(_ofmaqV2SelectedIso()) || new Date();
+            cur.setDate(cur.getDate() + shift);
+            _ofmaqV2SetDate(_ofmaqV2IsoFromDate(cur));
+            _ofmaqV2TriggerRefresh();
+          }
+        };
+      }
+    }
+
+    var listEl = container.querySelector('#patch-ofmaq-v2-list') || container.querySelector('.patch-ofmaq-v2-list');
+    if (!listEl) return;
+    try {
+      listEl.setAttribute('data-maquina-lista', '1');
+      listEl.setAttribute('data-maquina-id', String(maquina || '').trim());
+    } catch (_) {}
+    listEl.innerHTML = list.length
+      ? list.map(function(of, idx) { return _ofmaqV2RowHtml(of, idx, maquina); }).join('')
+      : '<div class="patch-ofmaq-empty">Nenhuma OF encontrada para este filtro.</div>';
+
+    Array.prototype.slice.call(listEl.querySelectorAll('.patch-ofmaq-v2-actions button[data-of-id]')).forEach(function(btn) {
+      if (btn._patchOfmaqActionBound) return;
+      btn._patchOfmaqActionBound = true;
+      btn.onclick = function(ev) {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        var id = String(btn.getAttribute('data-of-id') || '').trim();
+        var num = String(btn.getAttribute('data-of-num') || '').trim();
+        try { if (typeof window.abrirBottomSheetAcoes === 'function') window.abrirBottomSheetAcoes(id, num); } catch (_) {}
+      };
+    });
+    Array.prototype.slice.call(listEl.querySelectorAll('.patch-ofmaq-v2-row')).forEach(function(row) {
+      if (row._patchRowClickBound) return;
+      row._patchRowClickBound = true;
+      row.onclick = function(ev) {
+        if (ev && ev.target && ev.target.closest && ev.target.closest('button,input,select,textarea,a')) return;
+        var id = String(row.getAttribute('data-of-id') || '').trim();
+        var num = '';
+        try {
+          var numEl = row.querySelector('.patch-ofmaq-v2-cell strong');
+          num = String(numEl && numEl.textContent || '').trim();
+        } catch (_) {}
+        try { if (typeof window.abrirBottomSheetAcoes === 'function') window.abrirBottomSheetAcoes(id, num); } catch (_) {}
+      };
+    });
+    Array.prototype.slice.call(listEl.querySelectorAll('.patch-ofmaq-v2-seq-input')).forEach(function(inp) {
+      if (inp._patchSeqInputBound) return;
+      inp._patchSeqInputBound = true;
+      inp.onkeydown = function(ev) {
+        if (String(ev && ev.key || '') !== 'Enter') return;
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        var id = String(inp.getAttribute('data-of-id') || '').trim();
+        var card = inp.closest ? inp.closest('.patch-ofmaq-v2-row') : null;
+        _ofmaqSaveManualPosition(id, Number(inp.value || 0), card, inp, null);
+      };
+    });
   }
 
   function _ofmaqDecorateShell() {
@@ -30419,14 +30771,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       ensureStyles();
       ensureOfmaqToolbarButtons();
       _ofmaqDecorateShell();
-      try { _ofmaqEnsureTableViewFromDom(); } catch (_) {}
-      try { _ofmaqApplySavedOrderToDom(); } catch (_) {}
-      try { _ofmaqSyncLayoutMode(); } catch (_) {}
-      try { _ofmaqDecorateColumns(); } catch (_) {}
-      decorateOfmaqCards();
-      applySetupGroupingVisual();
-      try { _atualizarCapacidadePorMaquina(); } catch (_) {}
-      try { if (typeof window._hookRedistribBanner === 'function') window._hookRedistribBanner(); } catch (_) {}
+      try { _ofmaqRenderV2(); } catch (_) {}
       try { _ofmaqEnsureBuscaUi(); } catch (_) {}
     } catch (e) {
       try { console.error('[OFMAQ-AFTER-ERRO]:', e); } catch (_) {}
