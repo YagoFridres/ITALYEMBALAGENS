@@ -11356,19 +11356,22 @@ app.get('/api/relatorios/vendas-por-ramo', authMiddleware, async (req, res) => {
     });
     const rows = Array.from(grupos.values()).map((item) => ({
       ramo: item.ramo,
+      valor_total: Number(item.valor_vendido || 0),
       valor_vendido: Number(item.valor_vendido || 0),
       total_clientes: item._clientes.size,
       total_ofs: Number(item.total_ofs || 0) || 0
     })).sort((a, b) => {
-      if (Number(b.valor_vendido || 0) !== Number(a.valor_vendido || 0)) return Number(b.valor_vendido || 0) - Number(a.valor_vendido || 0);
+      if (Number(b.valor_total || 0) !== Number(a.valor_total || 0)) return Number(b.valor_total || 0) - Number(a.valor_total || 0);
       return String(a.ramo || '').localeCompare(String(b.ramo || ''), 'pt-BR');
     });
     const resumo = rows.reduce((acc, item) => {
-      acc.valor_vendido += Number(item?.valor_vendido || 0) || 0;
+      acc.valor_total += Number(item?.valor_total || 0) || 0;
       acc.total_clientes += Number(item?.total_clientes || 0) || 0;
       acc.total_ofs += Number(item?.total_ofs || 0) || 0;
       return acc;
-    }, { valor_vendido: 0, total_clientes: 0, total_ofs: 0 });
+    }, { valor_total: 0, total_clientes: 0, total_ofs: 0 });
+    resumo.total_ramos = rows.length;
+    resumo.valor_vendido = resumo.valor_total;
     return res.json({
       ok: true,
       data_inicio: range.inicio,
