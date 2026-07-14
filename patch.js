@@ -3817,10 +3817,9 @@ window._compraPapelaoLoadPastas = async function() {
   return window._compraPapelaoStateRef().pastas;
 };
 window._compraPapelaoLoadPins = async function() {
-  var ids = window._compraPapelaoEmpresaIdsConsulta();
-  var out = await Promise.all(ids.map(async function(empId) {
+  var out = await Promise.all(window._compraPapelaoEmpresaIdsConsulta().map(async function(empId) {
     try {
-      var data = await window._compraPapelaoApi('/api/chapas/pins?emp_id=' + encodeURIComponent(empId), { method: 'GET' });
+      var data = await window._compraPapelaoApi('/api/sugestoes-compra?status=pendente&emp_id=' + encodeURIComponent(empId), { method: 'GET' });
       return (Array.isArray(data) ? data : []).map(function(row) {
         return Object.assign({}, row, { _emp_id_consulta: empId });
       });
@@ -5041,14 +5040,15 @@ window._compraPapelaoPrintCompra = async function(id) {
 window._compraPapelaoOpenPinsModal = function() {
   var pins = Array.isArray(window._compraPapelaoStateRef().pins) ? window._compraPapelaoStateRef().pins : [];
   var body = !pins.length
-    ? '<div class="ccpx-empty">Nenhum pin pendente para compra.</div>'
+    ? '<div class="ccpx-empty">Nenhuma sugestão pendente para compra.</div>'
     : '<div style="display:grid;gap:12px">' + pins.map(function(pin) {
         var chapa = pin && pin.chapa || {};
         var pinId = String(pin && pin.id || '').trim();
+        var texto = String(pin && pin.texto || pin && pin.descricao_compra || '').trim();
         return '<div style="display:grid;gap:8px;padding:14px;border-radius:14px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.72)">'
           + '<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">'
-          + '<div style="display:grid;gap:4px"><div style="font-size:14px;font-weight:900;color:#f8fafc">' + window._compraPapelaoEsc(chapa.nomenclatura || chapa.nome_uso || 'Chapa') + '</div><div style="font-size:12px;color:#94a3b8">' + window._compraPapelaoEsc([chapa.fornecedor || 'Sem fornecedor', chapa.tamanho || 'Sem tamanho', chapa.gramatura || 'Sem gramatura'].join(' · ')) + '</div><div style="font-size:12px;color:#94a3b8">' + window._compraPapelaoEsc(pin && pin.observacao || 'Sem observação') + '</div></div>'
-          + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-accent" data-ccpx-pin-buy="' + window._compraPapelaoAttr(pinId) + '">✓ Comprado</button><button type="button" class="btn btn-ghost btn-sm" data-ccpx-pin-cancel="' + window._compraPapelaoAttr(pinId) + '">Cancelar</button></div>'
+          + '<div style="display:grid;gap:4px"><div style="font-size:14px;font-weight:900;color:#f8fafc">' + window._compraPapelaoEsc(pin && pin.chapa_nome || chapa.nomenclatura || chapa.nome_uso || chapa.nome || 'Chapa') + '</div><div style="font-size:12px;color:#94a3b8">' + window._compraPapelaoEsc([pin && pin.fornecedor || chapa.fornecedor || 'Sem fornecedor', pin && pin.tamanho || chapa.tamanho || 'Sem tamanho', pin && pin.gramatura || chapa.gramatura || 'Sem gramatura'].join(' · ')) + '</div><div style="font-size:12px;color:#fcd34d;line-height:1.45">' + window._compraPapelaoEsc(texto || 'Sem texto') + '</div></div>'
+          + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-accent" data-ccpx-pin-buy="' + window._compraPapelaoAttr(pinId) + '">✓ OK, vou comprar</button><button type="button" class="btn btn-ghost btn-sm" data-ccpx-pin-cancel="' + window._compraPapelaoAttr(pinId) + '">✗ Ignorar</button></div>'
           + '</div>'
           + '</div>';
       }).join('') + '</div>';
@@ -5066,26 +5066,34 @@ window._compraPapelaoOpenPinsModal = function() {
   Array.prototype.slice.call(overlay.querySelectorAll('[data-ccpx-pin-buy]')).forEach(function(btn) {
     btn.onclick = async function() {
       try {
-        await window._compraPapelaoApi('/api/chapas/pins/' + encodeURIComponent(String(btn.getAttribute('data-ccpx-pin-buy') || '')) + '/comprado', { method: 'PATCH', body: {} });
+        await window._compraPapelaoApi('/api/sugestoes-compra/' + encodeURIComponent(String(btn.getAttribute('data-ccpx-pin-buy') || '')), {
+          method: 'PUT',
+          body: { status: 'aceita' }
+        });
         _fecharModalPadrao('ccpx-modal-pins');
         await window._compraPapelaoRenderPage();
         window._compraPapelaoOpenPinsModal();
       } catch (e) {
         console.error('[COMPRA-PAPELAO]', e);
-        alert('Erro ao marcar pin como comprado: ' + String(e && e.message || e));
+        alert('Erro ao aceitar sugestão: ' + String(e && e.message || e));
       }
     };
   });
   Array.prototype.slice.call(overlay.querySelectorAll('[data-ccpx-pin-cancel]')).forEach(function(btn) {
     btn.onclick = async function() {
       try {
-        await window._compraPapelaoApi('/api/chapas/pins/' + encodeURIComponent(String(btn.getAttribute('data-ccpx-pin-cancel') || '')), { method: 'DELETE' });
+        var motivo = String(window.prompt('Motivo para ignorar a sugestão:', '') || '').trim();
+        if (!motivo) return;
+        await window._compraPapelaoApi('/api/sugestoes-compra/' + encodeURIComponent(String(btn.getAttribute('data-ccpx-pin-cancel') || '')), {
+          method: 'PUT',
+          body: { status: 'ignorada', motivo_ignorado: motivo }
+        });
         _fecharModalPadrao('ccpx-modal-pins');
         await window._compraPapelaoRenderPage();
         window._compraPapelaoOpenPinsModal();
       } catch (e) {
         console.error('[COMPRA-PAPELAO]', e);
-        alert('Erro ao cancelar pin: ' + String(e && e.message || e));
+        alert('Erro ao ignorar sugestão: ' + String(e && e.message || e));
       }
     };
   });
@@ -14240,13 +14248,34 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       window.__estoqueSugestoesCompraCache = null;
       window.__estoqueSugestoesCompraPromise = null;
     }
-    async function _estoqueFetchSugestoesCompra(force) {
+    function _estoqueCurrentEmpId() {
+      try {
+        return String(
+          (window._usuarioAtual && (window._usuarioAtual.emp_id || window._usuarioAtual.empId)) ||
+          (window._usuarioLogado && (window._usuarioLogado.emp_id || window._usuarioLogado.empId)) ||
+          (window.CURRENT_USER && (window.CURRENT_USER.emp_id || window.CURRENT_USER.empId)) ||
+          ''
+        ).trim();
+      } catch (_) {
+        return '';
+      }
+    }
+    async function _estoqueFetchSugestoesCompra(force, opts) {
+      opts = opts && typeof opts === 'object' ? opts : {};
+      var modeKey = opts.all ? 'all' : 'pending';
       var ttl = 15000;
       var now = Date.now();
-      var cache = window.__estoqueSugestoesCompraCache || null;
+      var allCache = window.__estoqueSugestoesCompraCache || {};
+      var cache = allCache[modeKey] || null;
       if (!force && cache && cache.ts && (now - cache.ts) < ttl && Array.isArray(cache.data)) return cache.data.slice();
-      if (!force && window.__estoqueSugestoesCompraPromise) return window.__estoqueSugestoesCompraPromise;
-      window.__estoqueSugestoesCompraPromise = window._apiAuthFetch('/api/chapas_estoque_v2/sugestoes-compra?_t=' + Date.now(), {
+      if (!force && window.__estoqueSugestoesCompraPromise && window.__estoqueSugestoesCompraPromise[modeKey]) return window.__estoqueSugestoesCompraPromise[modeKey];
+      var qs = ['_t=' + Date.now()];
+      var empId = _estoqueCurrentEmpId();
+      if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
+      if (opts.all) qs.push('all=1');
+      else qs.push('status=pendente');
+      if (!window.__estoqueSugestoesCompraPromise || typeof window.__estoqueSugestoesCompraPromise !== 'object') window.__estoqueSugestoesCompraPromise = {};
+      window.__estoqueSugestoesCompraPromise[modeKey] = window._apiAuthFetch('/api/sugestoes-compra?' + qs.join('&'), {
         cache: 'no-store'
       }).then(function(resp) {
         return resp.json().catch(function() { return null; }).then(function(json) {
@@ -14260,18 +14289,20 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             if (chapaId) byChapa[chapaId] = item;
             if (pinId) byPin[pinId] = item;
           });
-          window.__estoqueSugestoesCompraCache = { ts: Date.now(), data: data.slice(), byChapa: byChapa, byPin: byPin };
-          window.__estoqueSugestoesCompraPromise = null;
+          allCache[modeKey] = { ts: Date.now(), data: data.slice(), byChapa: byChapa, byPin: byPin };
+          window.__estoqueSugestoesCompraCache = allCache;
+          window.__estoqueSugestoesCompraPromise[modeKey] = null;
           return data.slice();
         });
       }).catch(function(err) {
-        window.__estoqueSugestoesCompraPromise = null;
+        window.__estoqueSugestoesCompraPromise[modeKey] = null;
         throw err;
       });
-      return window.__estoqueSugestoesCompraPromise;
+      return window.__estoqueSugestoesCompraPromise[modeKey];
     }
     function _estoqueSugestaoCompraByChapa(chapaId) {
-      var cache = window.__estoqueSugestoesCompraCache || null;
+      var cacheAll = window.__estoqueSugestoesCompraCache || {};
+      var cache = cacheAll.pending || null;
       var map = cache && cache.byChapa ? cache.byChapa : Object.create(null);
       return map[String(chapaId || '').trim()] || null;
     }
@@ -14308,11 +14339,109 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (de || ate) desc += (desc ? ' de ' : '') + (de || '—') + ' até ' + (ate || '—');
       return desc || 'Sugestão de compra';
     }
+    function _estoqueStatusSugestaoCompraMeta(status) {
+      var st = String(status || 'pendente').trim().toLowerCase();
+      if (st === 'aceita') return { icon: '✓', label: 'Aceita', bg: 'rgba(34,197,94,.16)', border: 'rgba(34,197,94,.35)', color: '#86efac' };
+      if (st === 'ignorada' || st === 'ignorado') return { icon: '✗', label: 'Ignorada', bg: 'rgba(239,68,68,.16)', border: 'rgba(239,68,68,.35)', color: '#fca5a5' };
+      return { icon: '•', label: 'Pendente', bg: 'rgba(245,158,11,.16)', border: 'rgba(245,158,11,.35)', color: '#fcd34d' };
+    }
+    function _estoqueStatusSugestaoCompraBadgeHtml(status) {
+      var meta = _estoqueStatusSugestaoCompraMeta(status);
+      return '<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid ' + esc(meta.border) + ';background:' + esc(meta.bg) + ';color:' + esc(meta.color) + ';font-size:11px;font-weight:900;letter-spacing:.04em;text-transform:uppercase">' + esc(meta.icon + ' ' + meta.label) + '</span>';
+    }
+    async function _estoqueAceitarSugestaoCompra(item) {
+      var id = String(item && item.id || item || '').trim();
+      if (!id) throw new Error('Sugestão inválida');
+      var resp = await window._apiAuthFetch('/api/sugestoes-compra/' + encodeURIComponent(id), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'aceita' })
+      });
+      var json = await resp.json().catch(function() { return null; });
+      if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao aceitar sugestão'));
+      try { window.toast('Sugestão marcada como aceita', 'var(--green)'); } catch (_) {}
+      await _estoqueRefreshAfterSugestaoCompra();
+      return json && (json.data || json);
+    }
+    async function _estoqueIgnorarSugestaoCompra(item) {
+      var sugestao = item && typeof item === 'object' ? item : { id: item };
+      var id = String(sugestao && sugestao.id || '').trim();
+      if (!id) throw new Error('Sugestão inválida');
+      var motivo = String(window.prompt('Motivo para ignorar a sugestão:', String(sugestao && sugestao.motivo_ignorado || '').trim()) || '').trim();
+      if (!motivo) throw new Error('Motivo obrigatório');
+      var resp = await window._apiAuthFetch('/api/sugestoes-compra/' + encodeURIComponent(id), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'ignorada', motivo_ignorado: motivo })
+      });
+      var json = await resp.json().catch(function() { return null; });
+      if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao ignorar sugestão'));
+      try { window.toast('Sugestão ignorada', 'var(--green)'); } catch (_) {}
+      await _estoqueRefreshAfterSugestaoCompra();
+      return json && (json.data || json);
+    }
+    function _estoqueAbrirModalSugestoesCompra() {
+      var modalId = 'estoque-sugestoes-compra-modal';
+      var renderBody = function(lista) {
+        var rows = Array.isArray(lista) ? lista : [];
+        if (!rows.length) {
+          return '<div style="padding:18px;border:1px dashed rgba(148,163,184,.2);border-radius:14px;color:#94a3b8;text-align:center">Nenhuma sugestão de compra cadastrada.</div>';
+        }
+        return ''
+          + '<div style="display:grid;gap:12px">'
+          + '  <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">'
+          + '    <div style="font-size:12px;color:#94a3b8">Histórico completo das sugestões criadas no estoque.</div>'
+          + '    <div style="font-size:12px;color:#cbd5e1">Total: <strong style="color:#fff">' + esc(String(rows.length)) + '</strong></div>'
+          + '  </div>'
+          + '  <div style="overflow:auto;border:1px solid rgba(148,163,184,.14);border-radius:14px;background:rgba(2,6,23,.45)">'
+          + '    <table style="width:100%;border-collapse:separate;border-spacing:0;min-width:920px">'
+          + '      <thead><tr>'
+          + '        <th style="padding:12px;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;text-align:left">Chapa</th>'
+          + '        <th style="padding:12px;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;text-align:left">Texto</th>'
+          + '        <th style="padding:12px;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;text-align:left">Status</th>'
+          + '        <th style="padding:12px;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;text-align:left">Motivo</th>'
+          + '        <th style="padding:12px;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;text-align:left">Data</th>'
+          + '      </tr></thead>'
+          + '      <tbody>' + rows.map(function(item, idx) {
+                var chapa = item && item.chapa || {};
+                var label = [
+                  String(item && item.chapa_nome || chapa.nomenclatura || chapa.nome_uso || chapa.nome || '').trim(),
+                  String(item && item.fornecedor || chapa.fornecedor || '').trim(),
+                  String(item && item.tamanho || chapa.tamanho || '').trim()
+                ].filter(Boolean).join(' · ') || 'Chapa';
+                return '<tr>'
+                  + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + ';color:#f8fafc;font-weight:800">' + esc(label) + '</td>'
+                  + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + ';color:#cbd5e1;line-height:1.45">' + esc(String(item && item.texto || item && item.descricao_compra || '').trim() || 'Sem texto') + '</td>'
+                  + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + '">' + _estoqueStatusSugestaoCompraBadgeHtml(item && item.status) + '</td>'
+                  + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + ';color:#cbd5e1">' + esc(String(item && item.motivo_ignorado || '').trim() || '—') + '</td>'
+                  + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + ';color:#cbd5e1;font-family:var(--mono,inherit)">' + esc(_fmtDateEstoque(item && item.criado_em || item && item.decidido_em || '')) + '</td>'
+                  + '</tr>';
+              }).join('') + '</tbody>'
+          + '    </table>'
+          + '  </div>'
+          + '</div>';
+      };
+      var modal = _abrirModalPadrao({
+        id: modalId,
+        titulo: 'Sugestões de Compra',
+        subtitulo: 'Histórico completo das sugestões geradas a partir do estoque.',
+        hero: '📌',
+        accent: 'amber',
+        largura: '1080px',
+        corpoHTML: '<div id="estoque-sugestoes-compra-body" style="display:grid;gap:12px"><div style="padding:18px;color:#94a3b8">Carregando sugestões...</div></div>',
+        footerHTML: '<button type="button" class="pep-btn" data-modal-close="1">Fechar</button>'
+      });
+      if (!modal) return;
+      var bodyEl = modal.querySelector('#estoque-sugestoes-compra-body');
+      _estoqueFetchSugestoesCompra(true, { all: true }).then(function(lista) {
+        if (bodyEl) bodyEl.innerHTML = renderBody(lista);
+      }).catch(function(err) {
+        if (bodyEl) bodyEl.innerHTML = '<div style="padding:18px;border:1px solid rgba(239,68,68,.25);border-radius:14px;background:rgba(127,29,29,.22);color:#fecaca">Erro ao carregar sugestões: ' + esc(String(err && err.message || err)) + '</div>';
+      });
+    }
     function _estoqueAbrirModalPinCompra(chapa) {
       return new Promise(function(resolve) {
         if (!chapa || !chapa.id) return resolve(null);
-        var atualQtd = Math.max(1, _estoqueQtdAtualChapa(chapa) || 1);
-        var tamanhoBase = String(chapa.tamanho || '').trim();
         var modalId = 'estoque-pin-compra-modal';
         var body = ''
           + '<div style="display:grid;gap:14px">'
@@ -14320,16 +14449,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + '    <div style="font-size:14px;font-weight:900;color:#f8fafc">' + esc(_estoqueChapaLabelSafe(chapa)) + '</div>'
           + '    <div style="font-size:12px;color:#94a3b8">Defina a mensagem descritiva antes de confirmar o 📌.</div>'
           + '  </div>'
-          + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">'
-          + '    <label style="display:grid;gap:6px"><span style="font-size:12px;color:#cbd5e1">Quantidade sugerida</span><input id="estoque-pin-qtd" class="estoque-modal-input" type="number" min="1" step="1" value="' + esc(String(atualQtd)) + '"></label>'
-          + '  </div>'
-          + '  <div style="display:grid;gap:10px">'
-          + '    <div style="font-size:12px;color:#cbd5e1;font-weight:800">Faixa de tamanho sugerida</div>'
-          + '    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">'
-          + '      <label style="display:grid;gap:6px"><span style="font-size:12px;color:#94a3b8">De</span><input id="estoque-pin-tam-de" class="estoque-modal-input" type="text" value="' + esc(String(chapa.pin_tamanho_de || tamanhoBase || '')) + '" placeholder="Ex: 2170x1350"></label>'
-          + '      <label style="display:grid;gap:6px"><span style="font-size:12px;color:#94a3b8">Até</span><input id="estoque-pin-tam-ate" class="estoque-modal-input" type="text" value="' + esc(String(chapa.pin_tamanho_ate || tamanhoBase || '')) + '" placeholder="Ex: 2170x2820"></label>'
-          + '    </div>'
-          + '  </div>'
+          + '  <label style="display:grid;gap:6px">'
+          + '    <span style="font-size:12px;color:#cbd5e1">Texto da sugestão</span>'
+          + '    <textarea id="estoque-pin-texto" class="estoque-modal-input" rows="4" placeholder="Ex: comprar 200 chapas deste tamanho para repor o estoque"></textarea>'
+          + '  </label>'
           + '</div>';
         var footer = ''
           + '<button type="button" class="pep-btn" data-modal-close="1">Cancelar</button>'
@@ -14337,7 +14460,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var modal = _abrirModalPadrao({
           id: modalId,
           titulo: 'Fixar sugestão de compra',
-          subtitulo: 'Quantidade sugerida e faixa de tamanho',
+          subtitulo: 'Descreva livremente a necessidade antes de enviar para compra.',
           hero: '📌',
           accent: 'amber',
           largura: '720px',
@@ -14347,23 +14470,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         });
         var saveBtn = modal && modal.querySelector ? modal.querySelector('#estoque-pin-compra-save') : null;
         if (saveBtn) saveBtn.onclick = function() {
-          var qtd = Math.trunc(Number((document.getElementById('estoque-pin-qtd') || {}).value || 0) || 0);
-          var de = String((document.getElementById('estoque-pin-tam-de') || {}).value || '').trim().toUpperCase();
-          var ate = String((document.getElementById('estoque-pin-tam-ate') || {}).value || '').trim().toUpperCase();
-          if (!(qtd > 0)) {
-            try { window.toast('Informe uma quantidade sugerida válida', 'var(--red)'); } catch (_) {}
-            return;
-          }
-          if (!de && !ate) {
-            try { window.toast('Informe pelo menos um tamanho de referência', 'var(--red)'); } catch (_) {}
+          var texto = String((document.getElementById('estoque-pin-texto') || {}).value || '').trim();
+          if (!texto) {
+            try { window.toast('Informe o texto da sugestão', 'var(--red)'); } catch (_) {}
             return;
           }
           _fecharModalPadrao(modalId);
           resolve({
-            qtd_sugerida: qtd,
-            pin_tamanho_de: de || null,
-            pin_tamanho_ate: ate || null,
-            observacao: ''
+            texto: texto
           });
         };
       });
@@ -14372,20 +14486,37 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var chapaId = String(chapa && chapa.id || '').trim();
       if (!chapaId) return;
       var atual = _estoqueSugestaoCompraByChapa(chapaId);
-      var endpoint = '/api/chapas_estoque_v2/' + encodeURIComponent(chapaId) + (atual ? '/despin' : '/pin');
-      var payload = {};
       if (!atual) {
-        payload = await _estoqueAbrirModalPinCompra(chapa);
+        var payload = await _estoqueAbrirModalPinCompra(chapa);
         if (!payload) return;
+        var respAdd = await window._apiAuthFetch('/api/sugestoes-compra', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chapa_id: chapaId,
+            chapa_nome: String(chapa && (chapa.nomenclatura || chapa.nome_uso || chapa.nome) || '').trim(),
+            fornecedor: String(chapa && chapa.fornecedor || '').trim(),
+            gramatura: String(chapa && chapa.gramatura || '').trim(),
+            tamanho: String(chapa && chapa.tamanho || '').trim(),
+            texto: String(payload && payload.texto || '').trim(),
+            emp_id: _estoqueCurrentEmpId()
+          })
+        });
+        var jsonAdd = await respAdd.json().catch(function() { return null; });
+        if (!respAdd.ok) throw new Error(String(jsonAdd && (jsonAdd.error || jsonAdd.message) || 'Falha ao criar sugestão'));
+        try { window.toast('Sugestão fixada para compra', 'var(--green)'); } catch (_) {}
+      } else {
+        var motivo = String(window.prompt('Motivo para ignorar a sugestão:', '') || '').trim();
+        if (!motivo) return;
+        var respUpd = await window._apiAuthFetch('/api/sugestoes-compra/' + encodeURIComponent(String(atual.id || '').trim()), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'ignorada', motivo_ignorado: motivo })
+        });
+        var jsonUpd = await respUpd.json().catch(function() { return null; });
+        if (!respUpd.ok) throw new Error(String(jsonUpd && (jsonUpd.error || jsonUpd.message) || 'Falha ao ignorar sugestão'));
+        try { window.toast('Sugestão marcada como ignorada', 'var(--green)'); } catch (_) {}
       }
-      var resp = await window._apiAuthFetch(endpoint, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(atual ? {} : payload)
-      });
-      var json = await resp.json().catch(function() { return null; });
-      if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao atualizar sugestão'));
-      try { window.toast(atual ? 'Sugestão removida da compra' : 'Sugestão fixada para compra', 'var(--green)'); } catch (_) {}
       await _estoqueRefreshAfterSugestaoCompra();
     }
     function _estoquePinBtnHtml(chapa) {
@@ -14869,34 +15000,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               + '    <div style="font-size:13px;color:#e5e7eb">' + esc(chapa.nomenclatura || chapa.nome_uso || chapa.nome || 'Sem nomenclatura') + '</div>'
               + '    <div style="font-size:12px;color:#94a3b8">' + esc([chapa.tamanho || 'Sem tamanho', chapa.gramatura ? (String(chapa.gramatura) + ' g/m²') : 'Sem gramatura'].join(' · ')) + '</div>'
               + '    <div style="font-size:12px;color:#cbd5e1">Quantidade atual: <strong style="color:#fff">' + esc(String(_estoqueQtdAtualChapa(chapa))) + '</strong></div>'
-              + '    <div style="font-size:12px;color:#fcd34d;line-height:1.45">' + esc(item && item.descricao_compra || _estoqueDescricaoSugestaoCompra(item)) + '</div>'
+              + '    <div style="font-size:12px;color:#fcd34d;line-height:1.45">' + esc(item && item.texto || item && item.descricao_compra || _estoqueDescricaoSugestaoCompra(item)) + '</div>'
               + '  </div>'
               + '  <div style="display:flex;gap:8px;flex-wrap:wrap">'
-              + '    <button class="pep-btn primary" type="button" data-sug-buy="' + esc(String(item && item.id || '')) + '">✅ Comprar</button>'
-              + '    <button class="pep-btn" type="button" data-sug-ignore="' + esc(String(item && item.chapa_id || (chapa && chapa.id) || '')) + '" style="background:#1f2937">Ignorar</button>'
+              + '    <button class="pep-btn primary" type="button" data-sug-buy="' + esc(String(item && item.id || '')) + '">✓ OK, vou comprar</button>'
+              + '    <button class="pep-btn" type="button" data-sug-ignore="' + esc(String(item && item.id || '')) + '" style="background:#1f2937">✗ Ignorar</button>'
               + '  </div>'
               + '</div>';
           }).join('') + '</div>'
         ) : '<div style="padding:16px;border:1px dashed rgba(255,255,255,.14);border-radius:12px;color:#94a3b8">Nenhuma sugestão de compra pendente no momento.</div>')
         + '</div>';
     }
-    async function _estoqueIgnorarSugestaoCompra(chapaId) {
-      var id = String(chapaId || '').trim();
-      if (!id) return;
-      var resp = await window._apiAuthFetch('/api/chapas_estoque_v2/' + encodeURIComponent(id) + '/ignorar-sugestao', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      var json = await resp.json().catch(function() { return null; });
-      if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao ignorar sugestão'));
-      try { window.toast('Sugestão ignorada', 'var(--green)'); } catch (_) {}
-      await _estoqueRefreshAfterSugestaoCompra();
-    }
     function _abrirModalComprarSugestaoCompra(item) {
       var sugestao = item || {};
       var chapa = sugestao.chapa || {};
-      var pinId = String(sugestao.id || '').trim();
-      if (!pinId) {
+      var sugId = String(sugestao.id || '').trim();
+      if (!sugId) {
         try { window.toast('Sugestão de compra inválida', 'var(--red)'); } catch (_) {}
         return;
       }
@@ -14909,20 +15028,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Tamanho</div><div style="font-weight:800;color:#f8fafc">' + esc(chapa.tamanho || '—') + '</div></div>'
         + '    <div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Gramatura</div><div style="font-weight:800;color:#f8fafc">' + esc(chapa.gramatura || '—') + '</div></div>'
         + '  </div>'
-        + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">'
-        + '    <label style="display:grid;gap:6px"><span style="font-size:12px;color:#cbd5e1">Quantidade</span><input id="estoque-sugestao-qtd" class="estoque-modal-input" type="number" min="1" step="1" value="' + esc(String(Math.max(1, Math.trunc(Number(sugestao.qtd_sugerida || chapa.pin_qtd_sugerida || 1) || 1)))) + '"></label>'
-        + '    <label style="display:grid;gap:6px"><span style="font-size:12px;color:#cbd5e1">Valor unitário</span><input id="estoque-sugestao-vu" class="estoque-modal-input" type="number" min="0" step="0.00001" value="' + esc(String(Number(chapa.valor_unitario || chapa.val || 0) || 0)) + '"></label>'
-        + '  </div>'
-        + '  <div style="font-size:12px;color:#fcd34d">' + esc(sugestao && sugestao.descricao_compra || _estoqueDescricaoSugestaoCompra(sugestao)) + '</div>'
-        + '  <div style="font-size:12px;color:#94a3b8">A confirmação marca a sugestão como comprada e registra a entrada no estoque desta chapa. A faixa de tamanho segue como referência para a compra.</div>'
+        + '  <div style="font-size:12px;color:#fcd34d;line-height:1.5">' + esc(sugestao && sugestao.texto || sugestao && sugestao.descricao_compra || _estoqueDescricaoSugestaoCompra(sugestao)) + '</div>'
+        + '  <div style="font-size:12px;color:#94a3b8">Ao confirmar, a sugestão será marcada como aceita para seguir o fluxo de compra de papelão.</div>'
         + '</div>';
       var footer = ''
         + '<button type="button" class="pep-btn" data-modal-close="1">Cancelar</button>'
-        + '<button type="button" class="pep-btn primary" id="estoque-sugestao-comprar-save">Confirmar compra</button>';
+        + '<button type="button" class="pep-btn primary" id="estoque-sugestao-comprar-save">✓ OK, vou comprar</button>';
       var modal = _abrirModalPadrao({
         id: modalId,
-        titulo: 'Confirmar compra sugerida',
-        subtitulo: 'Complete apenas quantidade e valor unitário',
+        titulo: 'Aceitar sugestão de compra',
+        subtitulo: 'Confirme para enviar a sugestão ao fluxo da Compra de Papelão',
         hero: '💡',
         accent: 'green',
         largura: '720px',
@@ -14932,37 +15047,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var saveBtn = modal && modal.querySelector ? modal.querySelector('#estoque-sugestao-comprar-save') : null;
       if (saveBtn) saveBtn.onclick = async function() {
         if (saveBtn.disabled) return;
-        var qtdEl = document.getElementById('estoque-sugestao-qtd');
-        var vuEl = document.getElementById('estoque-sugestao-vu');
-        var qtd = Math.trunc(Number(qtdEl && qtdEl.value || 0) || 0);
-        var vu = Number(String(vuEl && vuEl.value || '0').replace(',', '.'));
-        if (!(qtd > 0)) {
-          try { window.toast('Informe uma quantidade válida', 'var(--red)'); } catch (_) {}
-          return;
-        }
-        if (!Number.isFinite(vu) || vu < 0) {
-          try { window.toast('Informe um valor unitário válido', 'var(--red)'); } catch (_) {}
-          return;
-        }
         saveBtn.disabled = true;
         try {
-          var resp = await window._apiAuthFetch('/api/chapas/pins/' + encodeURIComponent(pinId) + '/comprado', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              quantidade: qtd,
-              valor_unitario: vu,
-              tamanho: String(chapa.tamanho || '').trim(),
-              observacao: String(sugestao && sugestao.descricao_compra || _estoqueDescricaoSugestaoCompra(sugestao) || '').trim()
-            })
-          });
-          var json = await resp.json().catch(function() { return null; });
-          if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao registrar compra sugerida'));
+          await _estoqueAceitarSugestaoCompra(sugId);
           _fecharModalPadrao(modalId);
-          try { window.toast('Compra registrada a partir da sugestão', 'var(--green)'); } catch (_) {}
-          await _estoqueRefreshAfterSugestaoCompra();
         } catch (e) {
-          try { window.toast('Erro ao registrar compra: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+          try { window.toast('Erro ao aceitar sugestão: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
         } finally {
           saveBtn.disabled = false;
         }
@@ -15037,6 +15127,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
         + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF ou CNPJ" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
         + '    <button class="pep-btn primary" id="estoque-wire-buscar">Buscar</button>'
+        + '    <button class="pep-btn" id="estoque-wire-sugestoes">Sugestões</button>'
         + '    <button class="pep-btn" id="estoque-wire-imprimir">Imprimir Relatório</button>'
         + '  </div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px">'
         + '    <span style="font-size:12px;color:#94a3b8;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Filtros rápidos</span>'
@@ -15077,6 +15168,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       document.getElementById('estoque-wire-buscar').onclick = function() {
         window.__estoqueWireBusca = String((document.getElementById('estoque-wire-busca') || {}).value || '').trim();
         renderEstoqueWireframePage();
+      };
+      var btnSugestoesEstoque = document.getElementById('estoque-wire-sugestoes');
+      if (btnSugestoesEstoque) btnSugestoesEstoque.onclick = function() {
+        _estoqueAbrirModalSugestoesCompra();
       };
       var btnPrintEstoque = document.getElementById('estoque-wire-imprimir');
       if (btnPrintEstoque) btnPrintEstoque.onclick = function() {
@@ -25208,7 +25303,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         });
         Array.prototype.slice.call(host.querySelectorAll('[data-sug-ignore]')).forEach(function(btn) {
           btn.onclick = function() {
-            _estoqueIgnorarSugestaoCompra(String(btn.getAttribute('data-sug-ignore') || '').trim()).catch(function(e) {
+            var sugId = String(btn.getAttribute('data-sug-ignore') || '').trim();
+            var alvo = (Array.isArray(sugestoesCompra) ? sugestoesCompra : []).find(function(item) { return String(item && item.id || '').trim() === sugId; }) || { id: sugId };
+            _estoqueIgnorarSugestaoCompra(alvo).catch(function(e) {
               try { window.toast('Erro ao ignorar sugestão: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
             });
           };

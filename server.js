@@ -19645,8 +19645,97 @@ async function _chapasCompraSugestoesContext(req, body) {
   let empresa_id = '';
   if (userId) empresa_id = await _empresaUuidByUserId(userId);
   if (!empresa_id) empresa_id = await _resolveEmpresaUuid(req);
-  const emp_id = String(b.empId || b.emp_id || req.query?.empId || req.query?.emp_id || req.usuario?.empId || req.usuario?.emp_id || req.usuario?.sigla || '').trim() || null;
+  const emp_id = String(
+    b.empId ||
+    b.emp_id ||
+    req.query?.empId ||
+    req.query?.emp_id ||
+    req.usuario?.empId ||
+    req.usuario?.emp_id ||
+    req.usuario?.sigla ||
+    empresa_id ||
+    ''
+  ).trim() || null;
   return { empresa_id, emp_id };
+}
+
+async function _sugestoesCompraFetchChapasMap(ids) {
+  const list = Array.from(new Set((Array.isArray(ids) ? ids : []).map((v) => String(v || '').trim()).filter(Boolean)));
+  if (!list.length) return new Map();
+  const out = new Map();
+  for (let i = 0; i < list.length; i += 200) {
+    const lote = list.slice(i, i + 200);
+    try {
+      const { data, error } = await supabase
+        .from('chapas_estoque_v2')
+        .select('*')
+        .in('id', lote);
+      if (error) throw error;
+      (Array.isArray(data) ? data : []).forEach((row) => {
+        const id = String(row?.id || '').trim();
+        if (id) out.set(id, row);
+      });
+    } catch (_) {}
+  }
+  return out;
+}
+
+function _sugestoesCompraNormalizeRow(row, chapaRow) {
+  const chapa = chapaRow ? _chapasCanonicalFromAny(chapaRow, 'chapas_estoque_v2') : null;
+  return {
+    id: String(row?.id || '').trim(),
+    chapa_id: String(row?.chapa_id || '').trim(),
+    chapa_nome: String(row?.chapa_nome || chapa?.nomenclatura || chapa?.nome_uso || chapa?.nome || '').trim(),
+    fornecedor: String(row?.fornecedor || chapa?.fornecedor || '').trim(),
+    gramatura: String(row?.gramatura || chapa?.gramatura || '').trim(),
+    tamanho: String(row?.tamanho || chapa?.tamanho || '').trim(),
+    texto: String(row?.texto || row?.observacao || '').trim(),
+    status: String(row?.status || 'pendente').trim() || 'pendente',
+    motivo_ignorado: String(row?.motivo_ignorado || '').trim(),
+    criado_por: String(row?.criado_por || '').trim(),
+    criado_em: row?.criado_em || row?.created_at || null,
+    decidido_por: String(row?.decidido_por || '').trim(),
+    decidido_em: row?.decidido_em || null,
+    emp_id: String(row?.emp_id || '').trim(),
+    descricao_compra: String(row?.texto || row?.observacao || '').trim() || _chapasSugestaoDescricao({ chapa: chapa || {}, observacao: row?.texto || '' }),
+    chapa: chapa ? { ...chapa } : {
+      id: String(row?.chapa_id || '').trim(),
+      nomenclatura: String(row?.chapa_nome || '').trim(),
+      nome_uso: String(row?.chapa_nome || '').trim(),
+      fornecedor: String(row?.fornecedor || '').trim(),
+      gramatura: String(row?.gramatura || '').trim(),
+      tamanho: String(row?.tamanho || '').trim()
+    }
+  };
+}
+
+async function _sugestoesCompraList(req) {
+  const status = String(req.query.status || '').trim().toLowerCase();
+  const all = String(req.query.all || req.query.todas || '').trim() === '1';
+  const ctx = await _chapasCompraSugestoesContext(req, {});
+  let q = supabase.from('sugestoes_compra').select('*').order('criado_em', { ascending: false });
+  if (ctx.emp_id) q = q.eq('emp_id', ctx.emp_id);
+  if (!all && status) q = q.eq('status', status);
+  else if (!all && !status) q = q.eq('status', 'pendente');
+  const { data, error } = await q;
+  if (error) throw error;
+  const rows = Array.isArray(data) ? data : [];
+  const chapasMap = await _sugestoesCompraFetchChapasMap(rows.map((row) => row?.chapa_id));
+  return rows.map((row) => _sugestoesCompraNormalizeRow(row, chapasMap.get(String(row?.chapa_id || '').trim()) || null));
+}
+
+async function _sugestoesCompraMarkChapa(chapaId, status, actorName) {
+  const id = String(chapaId || '').trim();
+  if (!id) return;
+  const nextStatus = String(status || '').trim();
+  const payload = {
+    pinned_compra: nextStatus === 'pendente',
+    pinned_status: nextStatus || null,
+    pinned_em: new Date().toISOString(),
+    atualizado_por: actorName || 'Usuário'
+  };
+  try { await _chapasUpdateCompatV2(id, payload); } catch (_) {}
+  cacheClearPrefix('chapas_estoque:');
 }
 
 function _chapasSugestaoDescricao(item) {
@@ -19860,6 +19949,105 @@ app.get('/api/chapas_estoque_v2/sugestoes-compra', authMiddleware, async (req, r
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_chapas_pin_cols_missing' });
     const lista = await _chapasCompraSugestoesPendentes(req);
     return res.json({ ok: true, data: lista });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/sugestoes-compra', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const rows = await _sugestoesCompraList(req);
+    return res.json({ ok: true, data: rows });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post('/api/sugestoes-compra', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const b = req.body || {};
+    const ctx = await _chapasCompraSugestoesContext(req, b);
+    const chapaId = String(b.chapa_id || b.chapaId || '').trim();
+    const texto = String(b.texto || b.observacao || '').trim();
+    if (!ctx.emp_id) return res.status(400).json({ ok: false, error: 'emp_id obrigatório' });
+    if (!chapaId) return res.status(400).json({ ok: false, error: 'chapa_id obrigatório' });
+    if (!texto) return res.status(400).json({ ok: false, error: 'texto obrigatório' });
+    let chapa = null;
+    try {
+      const probe = await supabase.from('chapas_estoque_v2').select('*').eq('id', chapaId).maybeSingle();
+      if (probe?.error) throw probe.error;
+      chapa = probe?.data || null;
+    } catch (_) {
+      chapa = null;
+    }
+    const payload = {
+      chapa_id: chapaId,
+      chapa_nome: String(b.chapa_nome || b.chapaNome || chapa?.nomenclatura || chapa?.nome_uso || chapa?.nome || '').trim(),
+      fornecedor: String(b.fornecedor || chapa?.fornecedor || '').trim(),
+      gramatura: String(b.gramatura || chapa?.gramatura || '').trim(),
+      tamanho: String(b.tamanho || chapa?.tamanho || '').trim(),
+      texto,
+      status: 'pendente',
+      motivo_ignorado: null,
+      criado_por: String(req.usuario?.nome || req.usuario?.email || 'Usuário').trim(),
+      criado_em: new Date().toISOString(),
+      decidido_por: null,
+      decidido_em: null,
+      emp_id: ctx.emp_id
+    };
+    const existente = await supabase
+      .from('sugestoes_compra')
+      .select('*')
+      .eq('chapa_id', chapaId)
+      .eq('emp_id', ctx.emp_id)
+      .eq('status', 'pendente')
+      .order('criado_em', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existente?.error) throw existente.error;
+    if (existente?.data) {
+      await _sugestoesCompraMarkChapa(chapaId, 'pendente', payload.criado_por);
+      const data = _sugestoesCompraNormalizeRow(existente.data, chapa);
+      return res.json({ ok: true, data, already_exists: true });
+    }
+    const inserted = await _comprasChapasInsertCompat('sugestoes_compra', [payload], '*');
+    if (inserted?.error) throw inserted.error;
+    await _sugestoesCompraMarkChapa(chapaId, 'pendente', payload.criado_por);
+    const data = _sugestoesCompraNormalizeRow(inserted?.data && inserted.data[0] ? inserted.data[0] : inserted?.data || payload, chapa);
+    return res.json({ ok: true, data });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.put('/api/sugestoes-compra/:id', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const id = String(req.params.id || '').trim();
+    const b = req.body || {};
+    const status = String(b.status || '').trim().toLowerCase();
+    const motivo = String(b.motivo_ignorado || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (status !== 'aceita' && status !== 'ignorada') return res.status(400).json({ ok: false, error: 'status inválido' });
+    if (status === 'ignorada' && !motivo) return res.status(400).json({ ok: false, error: 'motivo_ignorado obrigatório' });
+    const atual = await supabase.from('sugestoes_compra').select('*').eq('id', id).maybeSingle();
+    if (atual?.error) throw atual.error;
+    if (!atual?.data) return res.status(404).json({ ok: false, error: 'Sugestão não encontrada' });
+    const actor = String(req.usuario?.nome || req.usuario?.email || 'Usuário').trim();
+    const payload = {
+      status,
+      motivo_ignorado: status === 'ignorada' ? motivo : null,
+      decidido_por: actor,
+      decidido_em: new Date().toISOString()
+    };
+    const updated = await _comprasChapasUpdateCompat('sugestoes_compra', id, payload, '*');
+    if (updated?.error) throw updated.error;
+    await _sugestoesCompraMarkChapa(atual.data?.chapa_id, status, actor);
+    const chapasMap = await _sugestoesCompraFetchChapasMap([atual.data?.chapa_id]);
+    const data = _sugestoesCompraNormalizeRow(updated?.data || { ...atual.data, ...payload }, chapasMap.get(String(atual.data?.chapa_id || '').trim()) || null);
+    return res.json({ ok: true, data });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
