@@ -28669,41 +28669,47 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function _ofmaqSortGroupForTable(maquina, ofs) {
-    var list = Array.isArray(ofs) ? ofs.slice() : [];
-    var baseSorted = (typeof ordenarOFsPorPrioridade === 'function')
-      ? ordenarOFsPorPrioridade(list.slice())
-      : _ofmaqSortMachineQueue(list.slice());
-    var pos = new Map();
-    var ordArr = Array.isArray(window._ordemMaquinas && window._ordemMaquinas[maquina]) ? window._ordemMaquinas[maquina] : [];
-    ordArr.forEach(function(id, idx) {
-      var key = String(id || '').trim();
-      if (key) pos.set(key, idx);
-    });
-    var buckets = [[], [], [], []];
-    baseSorted.forEach(function(of) {
-      buckets[ofmaqPrioridadeBucket(of) || 3].push(of);
-    });
-    var sorted = buckets.flatMap(function(bucket) {
-      if (!bucket.length) return [];
-      if (!pos.size) return bucket;
-      return bucket.slice().sort(function(a, b) {
-        var ia = pos.has(String(a && a.id || '')) ? pos.get(String(a && a.id || '')) : 999999;
-        var ib = pos.has(String(b && b.id || '')) ? pos.get(String(b && b.id || '')) : 999999;
-        if (ia !== ib) return ia - ib;
-        return 0;
-      });
-    });
     try {
-      var hasOrdem = sorted.some(function(of) {
-        return Number.isFinite(Number(of && of.ordem_maquina)) && Number(of.ordem_maquina) !== 0;
+      var list = Array.isArray(ofs) ? ofs.slice() : [];
+      var baseSorted = (typeof ordenarOFsPorPrioridade === 'function')
+        ? ordenarOFsPorPrioridade(list.slice())
+        : _ofmaqSortMachineQueue(list.slice());
+      if (!Array.isArray(baseSorted)) baseSorted = list.slice();
+      var pos = new Map();
+      var ordArr = Array.isArray(window._ordemMaquinas && window._ordemMaquinas[maquina]) ? window._ordemMaquinas[maquina] : [];
+      ordArr.forEach(function(id, idx) {
+        var key = String(id || '').trim();
+        if (key) pos.set(key, idx);
       });
-      if (hasOrdem) {
-        sorted = sorted.slice().sort(function(a, b) {
-          return Number(a && a.ordem_maquina || 0) - Number(b && b.ordem_maquina || 0);
+      var buckets = [[], [], [], []];
+      baseSorted.forEach(function(of) {
+        buckets[ofmaqPrioridadeBucket(of) || 3].push(of);
+      });
+      var sorted = buckets.flatMap(function(bucket) {
+        if (!bucket.length) return [];
+        if (!pos.size) return bucket;
+        return bucket.slice().sort(function(a, b) {
+          var ia = pos.has(String(a && a.id || '')) ? pos.get(String(a && a.id || '')) : 999999;
+          var ib = pos.has(String(b && b.id || '')) ? pos.get(String(b && b.id || '')) : 999999;
+          if (ia !== ib) return ia - ib;
+          return 0;
         });
-      }
-    } catch (_) {}
-    return sorted;
+      });
+      if (!Array.isArray(sorted)) sorted = [];
+      try {
+        var hasOrdem = sorted.some(function(of) {
+          return Number.isFinite(Number(of && of.ordem_maquina)) && Number(of.ordem_maquina) !== 0;
+        });
+        if (hasOrdem) {
+          sorted = sorted.slice().sort(function(a, b) {
+            return Number(a && a.ordem_maquina || 0) - Number(b && b.ordem_maquina || 0);
+          });
+        }
+      } catch (_) {}
+      return Array.isArray(sorted) ? sorted : [];
+    } catch (_) {
+      return [];
+    }
   }
 
   function _ofmaqRenderTableShell(grupos, maquinasOrdenadas, container, alertasHtml) {
@@ -29887,6 +29893,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     return { background: _hashColor(k), border: 'rgba(255,255,255,0.22)' };
   };
 
+  if (typeof window._patchNormalizeDimMm !== 'function') {
+    window._patchNormalizeDimMm = function(a, b) {
+      var larg = parseFloat(String(a == null ? '' : a).replace(',', '.')) || 0;
+      var comp = parseFloat(String(b == null ? '' : b).replace(',', '.')) || 0;
+      if (!(larg > 0 && comp > 0)) return { largura: 0, comprimento: 0 };
+      return { largura: larg, comprimento: comp };
+    };
+  }
+
   function parseDimensions(of) {
     var candidates = [
       of && of.medidas,
@@ -29902,12 +29917,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     ];
     var largura = Number(of && (of.dim_largura || of.caixa_largura || of.largura || of.larg)) || 0;
     var comprimento = Number(of && (of.dim_comprimento || of.caixa_comprimento || of.comprimento || of.compr || of.altura)) || 0;
-    if (largura > 0 && comprimento > 0) return _patchNormalizeDimMm(largura, comprimento);
+    if (largura > 0 && comprimento > 0) return window._patchNormalizeDimMm(largura, comprimento);
     for (var i = 0; i < candidates.length; i += 1) {
       var s = String(candidates[i] || '');
       var m = s.match(/(\d{2,4})\s*[x×]\s*(\d{2,4})/i);
       if (m) {
-        return _patchNormalizeDimMm(Number(m[1]) || 0, Number(m[2]) || 0);
+        return window._patchNormalizeDimMm(Number(m[1]) || 0, Number(m[2]) || 0);
       }
     }
     return { largura: 0, comprimento: 0 };
