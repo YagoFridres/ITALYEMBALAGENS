@@ -11077,9 +11077,9 @@ async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
 
 async function _relatoriosFetchOfsCriadas(range, opts = {}) {
   const columns = [
-    'id', 'numero', 'of', 'status', 'created_at', 'deleted_at', 'empresa_id',
+    'id', 'numero', 'of', 'status', 'dia', 'empresa_id',
     'cli_id', 'cliId', 'cliente_id', 'cliente_nome', 'cliNome', 'clinome',
-    'produto', 'descricao', 'prodDesc',
+    'descricao', 'prodDesc',
     'qtd', 'quantidade', 'qtd_pedida',
     'valor_total', 'valor_venda', 'total',
     'valor_unitario', 'preco', 'vl_unit'
@@ -11087,30 +11087,26 @@ async function _relatoriosFetchOfsCriadas(range, opts = {}) {
   const companyIds = Array.isArray(opts.companyIds) ? opts.companyIds.map((v) => String(v || '').trim()).filter(Boolean) : [];
   const result = await _selectCompatRows('ofs', columns, (q) => {
     let query = q
-      .gte('created_at', range.inicio)
-      .lt('created_at', range.fim_exclusivo)
-      .order('created_at', { ascending: true });
+      .gte('dia', range.inicio)
+      .lt('dia', range.fim_exclusivo)
+      .order('dia', { ascending: true });
     if (companyIds.length) query = query.in('empresa_id', companyIds);
     return query.limit(10000);
   });
   if (result?.error) throw result.error;
-  return (Array.isArray(result?.data) ? result.data : []).filter((of) => !of?.deleted_at);
+  return Array.isArray(result?.data) ? result.data : [];
 }
 
 app.get('/api/relatorios/ofs-entradas-mes', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const now = new Date();
-    const ano = Math.max(2000, Math.min(2100, parseInt(String(req.query.ano || now.getFullYear()), 10) || now.getFullYear()));
-    const mes = Math.max(1, Math.min(12, parseInt(String(req.query.mes || (now.getMonth() + 1)), 10) || (now.getMonth() + 1)));
-    const inicioDate = new Date(Date.UTC(ano, mes - 1, 1, 0, 0, 0));
-    const fimExclusivoDate = new Date(Date.UTC(ano, mes, 1, 0, 0, 0));
-    const fimDate = new Date(Date.UTC(ano, mes, 0, 0, 0, 0));
-    const range = {
-      inicio: inicioDate.toISOString().slice(0, 10),
-      fim: fimDate.toISOString().slice(0, 10),
-      fim_exclusivo: fimExclusivoDate.toISOString().slice(0, 10)
-    };
+    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    if (!range?.inicio || !range?.fim_exclusivo) {
+      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
+    }
+    const refMes = new Date(range.inicio + 'T12:00:00');
+    const ano = Number.isFinite(refMes.getTime()) ? refMes.getFullYear() : null;
+    const mes = Number.isFinite(refMes.getTime()) ? (refMes.getMonth() + 1) : null;
     let empresa_id = null;
     try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
     const ofs = await _relatoriosFetchOfsCriadas(range, {
@@ -11136,15 +11132,15 @@ app.get('/api/relatorios/ofs-entradas-mes', authMiddleware, async (req, res) => 
         id: of?.id || null,
         numero: String(of?.numero || of?.of || '—').trim() || '—',
         cliente_nome: clienteNome,
-        produto: String(of?.produto || of?.descricao || of?.prodDesc || '—').trim() || '—',
+        produto: String(of?.descricao || of?.prodDesc || '—').trim() || '—',
         quantidade,
         valor_unitario: Number(valorUnitario || 0),
         valor_total: Number(valorTotal || 0),
-        created_at: String(of?.created_at || '').slice(0, 19)
+        dia: String(of?.dia || '').slice(0, 10)
       };
     }).sort((a, b) => {
-      const da = String(a?.created_at || '');
-      const db = String(b?.created_at || '');
+      const da = String(a?.dia || '');
+      const db = String(b?.dia || '');
       if (da !== db) return da.localeCompare(db, 'pt-BR');
       return String(a?.numero || '').localeCompare(String(b?.numero || ''), 'pt-BR');
     });
