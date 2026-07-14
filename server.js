@@ -11258,7 +11258,9 @@ app.get('/api/relatorios/comparativo-mensal', authMiddleware, async (req, res) =
 app.get('/api/relatorios/evolucao-vendas', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const currentYear = new Date().getFullYear();
+    const range = _relatoriosResolveDateRange(req.query, { data_inicio: `${currentYear}-01-01`, data_fim: todayIso });
     if (!range?.inicio || !range?.fim_exclusivo) {
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
@@ -11268,8 +11270,15 @@ app.get('/api/relatorios/evolucao-vendas', authMiddleware, async (req, res) => {
     const vendedoresMap = await _relatoriosLoadVendedoresByIds(ofs.map((of) => _relatoriosPickVendedorId(of)).filter(Boolean));
     const porMes = new Map();
     const porVendedor = new Map();
+    const monthKeyFromConclusao = (value) => {
+      const iso = String(value || '').slice(0, 10);
+      if (!iso) return '';
+      const dt = new Date(iso + 'T12:00:00');
+      if (!Number.isFinite(dt.getTime())) return '';
+      return String(dt.getFullYear()) + '-' + String(dt.getMonth() + 1).padStart(2, '0');
+    };
     ofs.forEach((of) => {
-      const mes = String(_assistPickOfConclusao(of) || '').slice(0, 7);
+      const mes = monthKeyFromConclusao(_assistPickOfConclusao(of));
       if (!mes) return;
       const valor = _relatoriosPickValorOf(of);
       const vendedor = _relatoriosPickVendedorNome(of, vendedoresMap);
