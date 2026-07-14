@@ -3129,6 +3129,7 @@ try {
     if (resultado) resultado.style.display = 'none';
     try {
       var base = window._simdChapaSelecionada ? [window._simdChapaSelecionada] : await sFetchChapas();
+      try { console.log('[SIMD] calculando larg:', plan.peca_larg_mm, 'comp:', plan.peca_comp_mm, 'chapas:', Array.isArray(base) ? base.length : 0); } catch (_) {}
       var compatibles = [];
       var incompatibles = [];
       (Array.isArray(base) ? base : []).forEach(function(chapa) {
