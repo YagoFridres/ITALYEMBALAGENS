@@ -1938,6 +1938,7 @@ try {
   }
 
   function rrOpenSergioBuilder(opts) {
+    try { console.log('[SERGIO] botao clicado'); } catch (_) {}
     var openCfg = opts || {};
     var state = rrSergioState();
     state.origin = String(openCfg.origin || 'central').trim() || 'central';
@@ -2149,6 +2150,8 @@ try {
 
   try { window.renderCentralRelatorios = rrRenderPage; } catch (_) {}
   try { window.openRelatorioSergioFromPcp = rrOpenSergioFromPcp; } catch (_) {}
+  try { window._abrirRelatorioSergio = rrOpenSergioBuilder; } catch (_) {}
+  try { window._abrirRelatorioSergioPcp = rrOpenSergioFromPcp; } catch (_) {}
   rrBoot();
   setTimeout(rrBoot, 0);
   setTimeout(rrBoot, 400);
