@@ -6770,11 +6770,31 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       const dt = new Date(raw);
       return Number.isNaN(dt.getTime()) ? null : dt;
     };
+    const monthRefOf = (row) => String(row?.mes_referencia || '').trim().slice(0, 7);
+    const monthRefsBetween = (iniIso, fimExclusivoIso) => {
+      const refs = new Set();
+      const ini = String(iniIso || '').trim();
+      const fimEx = String(fimExclusivoIso || '').trim();
+      if (!ini || !fimEx) return refs;
+      const cursor = new Date(ini + 'T12:00:00');
+      const limite = new Date(fimEx + 'T12:00:00');
+      if (!Number.isFinite(cursor.getTime()) || !Number.isFinite(limite.getTime())) return refs;
+      cursor.setDate(1);
+      while (cursor < limite) {
+        refs.add(String(cursor.getFullYear()) + '-' + String(cursor.getMonth() + 1).padStart(2, '0'));
+        cursor.setMonth(cursor.getMonth() + 1, 1);
+      }
+      return refs;
+    };
+    const resolvedRange = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
     const customInicio = _relatoriosIsoDateOnly(req.query.data_inicio || req.query.dataInicio);
     const customFim = _relatoriosIsoDateOnly(req.query.data_fim || req.query.dataFim);
-    const customIniDate = customInicio ? new Date(`${customInicio}T00:00:00`) : null;
-    const customFimDate = customFim ? new Date(`${customFim}T23:59:59.999`) : null;
-    const hasCustomRange = !!(customInicio || customFim);
+    const rangeInicio = customInicio || resolvedRange?.inicio || '';
+    const rangeFimExclusivo = customFim || resolvedRange?.fim_exclusivo || '';
+    const customIniDate = rangeInicio ? new Date(`${rangeInicio}T00:00:00`) : null;
+    const customFimDate = rangeFimExclusivo ? new Date(`${rangeFimExclusivo}T00:00:00`) : null;
+    const hasCustomRange = !!(rangeInicio && rangeFimExclusivo);
+    const monthRefsRange = monthRefsBetween(rangeInicio, rangeFimExclusivo);
     const matchMonthYear = (dt, month, year) => !!(dt && (dt.getMonth() + 1 === month) && dt.getFullYear() === year);
     const requestedPeriodo = String(req.query.periodo || '').trim().toLowerCase() || 'mes';
     let mes = parseInt(String(req.query.mes || ''), 10) || (new Date().getMonth() + 1);
@@ -6788,16 +6808,17 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     semanaFim.setDate(semanaIni.getDate() + 7);
     const filtrarPeriodo = (rows, periodo, month, year) => (rows || []).filter((r) => {
       const d = parseRowDate(r);
-      if (!d) return true;
+      const mesRef = monthRefOf(r);
       if (hasCustomRange) {
-        if (customIniDate && d < customIniDate) return false;
-        if (customFimDate && d > customFimDate) return false;
-        return true;
+        const byMesRef = !!(mesRef && monthRefsRange.has(mesRef));
+        const byData = !!(d && (!customIniDate || d >= customIniDate) && (!customFimDate || d < customFimDate));
+        return byMesRef || byData;
       }
+      if (!d && !mesRef) return true;
       if (periodo === 'hoje' || periodo === 'dia') return d >= hojeRef;
       if (periodo === 'semana') return d >= semanaIni && d < semanaFim;
       if (periodo === 'todos') return true;
-      return matchMonthYear(d, month, year);
+      return mesRef === (String(year) + '-' + String(month).padStart(2, '0')) || matchMonthYear(d, month, year);
     });
 
     const dadosFiltrados = semFiltro ? (todos || []) : filtrarPeriodo(todos || [], requestedPeriodo, mes, ano);
@@ -7042,7 +7063,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     const maquinaFiltro = String(req.query.maquina || '').trim().toLowerCase();
     let enriquecidosFiltrados = enriquecidos.slice();
     if (empresaIdFiltro) {
-      enriquecidosFiltrados = enriquecidosFiltrados.filter((r) => String(r?.empresa_id || r?.emp_id || '').trim() === empresaIdFiltro);
+      enriquecidosFiltrados = enriquecidosFiltrados.filter((r) => String(r?.empresa_id || '').trim() === empresaIdFiltro);
     }
     if (maquinaFiltro) {
       enriquecidosFiltrados = enriquecidosFiltrados.filter((r) => String(r?.maquina || '').trim().toLowerCase() === maquinaFiltro);
