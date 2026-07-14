@@ -28073,7 +28073,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function _ofmaqDomCards(scope) {
     var root = scope || document;
     try {
-      var cards = Array.prototype.slice.call(root.querySelectorAll('.kb-card.kb-card-ofmaq[data-of-id], .kb-card-ofmaq[data-of-id], .of-card-maquina[data-of-id], .ofmaq-card[data-of-id], .of-card[data-of-id], tr.patch-ofmaq-row[data-of-id], .patch-ofmaq-v2-row[data-of-id]'));
+      var cards = Array.prototype.slice.call(root.querySelectorAll('tr.patch-ofmaq-row[data-of-id]'));
       var seen = {};
       return cards.filter(function(card) {
         var id = String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
@@ -28945,14 +28945,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var out = {};
     if (!host) return out;
     var lookup = _ofmaqBuildLookupMap();
-    Array.prototype.slice.call(host.querySelectorAll('.kb-col-ofmaq[data-maq]')).forEach(function(col) {
-      var maquina = String(col && col.getAttribute && col.getAttribute('data-maq') || '').trim();
+    Array.prototype.slice.call(host.querySelectorAll('tr.patch-ofmaq-row[data-of-id][data-maq]')).forEach(function(card) {
+      var maquina = String(card && card.getAttribute && card.getAttribute('data-maq') || '').trim();
       if (!maquina) return;
-      var ofs = Array.prototype.slice.call(col.querySelectorAll('.kb-card-ofmaq[data-of-id]')).map(function(card) {
-        var id = String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
-        return lookup[id] || getCurrentOfById(id) || null;
-      }).filter(Boolean);
-      if (ofs.length) out[maquina] = ofs;
+      var id = String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
+      var of = lookup[id] || getCurrentOfById(id) || null;
+      if (!of) return;
+      if (!Array.isArray(out[maquina])) out[maquina] = [];
+      out[maquina].push(of);
     });
     return out;
   }
@@ -29090,10 +29090,20 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function _ofmaqV2CollectCardsFromDom() {
     var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body') || document;
     var lookup = _ofmaqBuildLookupMap();
-    return Array.prototype.slice.call(container.querySelectorAll('.kb-card.kb-card-ofmaq[data-of-id], .kb-card-ofmaq[data-of-id]')).map(function(card, idx) {
+    return Array.prototype.slice.call(container.querySelectorAll('tr.patch-ofmaq-row[data-of-id]')).map(function(card, idx) {
       var id = String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
       if (!id) return null;
       var of = lookup[id] || getCurrentOfById(id) || null;
+      var cells = Array.prototype.slice.call(card && card.children || []);
+      var cellText = function(index, selector) {
+        var cell = cells[index] || null;
+        if (!cell) return '';
+        if (selector && cell.querySelector) {
+          var el = cell.querySelector(selector);
+          if (el) return String(el.textContent || '').trim();
+        }
+        return String(cell.textContent || '').trim();
+      };
       var maq = String(
         card && (
           card.getAttribute('data-maq') ||
@@ -29104,11 +29114,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         (of && (of.maquina_atual || of.maquina || of.maquina_agendada || (Array.isArray(of.maq) ? of.maq[0] : of.maq))) ||
         ''
       ).trim();
-      var info = card && card.querySelector ? card.querySelector('.kb-info') : null;
-      var numero = String((card && card.querySelector && card.querySelector('.kb-num') && card.querySelector('.kb-num').textContent) || (of && (of.numero || of.of)) || '').trim();
-      var cliente = String((card && card.querySelector && card.querySelector('.kb-cliente') && card.querySelector('.kb-cliente').textContent) || (of && (of.cliente || of.clinome || of.cliente_nome || of.cliNome)) || '').trim();
-      var produto = String((card && card.querySelector && card.querySelector('.kb-produto') && card.querySelector('.kb-produto').textContent) || (of && (of.descricao || of.prodDesc || of.produto)) || '').trim();
-      var text = _ofmaqNormBusca(String(info && info.innerText || card && card.innerText || '').trim());
+      var numero = String(cellText(1, 'strong') || (of && (of.numero || of.of)) || '').trim();
+      var cliente = String(cellText(2, 'strong') || (of && (of.cliente || of.clinome || of.cliente_nome || of.cliNome)) || '').trim();
+      var produto = String(cellText(3, 'strong') || (of && (of.descricao || of.prodDesc || of.produto)) || '').trim();
+      var tamanhoTxt = String(cellText(4) || '').trim();
+      var coresTxt = String(cellText(5) || '').trim();
+      var prazoTxt = String(cellText(7) || '').trim();
+      var text = _ofmaqNormBusca(String(card && card.innerText || '').trim());
+      var coresList = of ? parseColors(of) : [];
+      if (!coresList.length && coresTxt) {
+        coresList = coresTxt.split(/\s*\+\s*|\s*,\s*|\s*\/\s*/).map(function(part) {
+          return String(part || '').trim();
+        }).filter(Boolean);
+      }
       return {
         id: id,
         maq: maq,
@@ -29118,11 +29136,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         numero: numero || '—',
         cliente: cliente || '—',
         produto: produto || '—',
-        tamanho: _ofmaqV2SizeLabel(_ofmaqV2CardDimensions(card, of)),
-        cores: of ? parseColors(of) : ['Sem cor'],
-        entregaIso: of ? (_ofmaqEntregaIso(of) || _ofmaqV2CardDateIso(card, of)) : _ofmaqV2CardDateIso(card, null),
+        tamanho: tamanhoTxt || _ofmaqV2SizeLabel(_ofmaqV2CardDimensions(card, of)),
+        cores: coresList.length ? coresList : ['Sem cor'],
+        entregaIso: of ? (_ofmaqEntregaIso(of) || _ofmaqV2CardDateIso(card, of)) : (_ofmaqV2CardDateIso(card, null) || prazoTxt),
         diaIso: _ofmaqV2CardDateIso(card, of),
-        urgencia: of ? _ofmaqUrgenciaTipo(of) : 'normal',
+        urgencia: String(card && card.getAttribute && card.getAttribute('data-urgencia') || (of ? _ofmaqUrgenciaTipo(of) : 'normal')).trim() || 'normal',
         status: String(of && of.status || '').trim(),
         of: of,
         card: card,
@@ -31105,7 +31123,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function _ofmaqCardsInDom(scope) {
     var host = _ofmaqRootContainer(scope) || scope || document;
     try {
-      return Array.prototype.slice.call(host.querySelectorAll('.of-card-maquina[data-of-id], .ofmaq-card[data-of-id], .of-card[data-of-id], [data-of-id]')).filter(function(card) {
+      return Array.prototype.slice.call(host.querySelectorAll('tr.patch-ofmaq-row[data-of-id]')).filter(function(card) {
         return !!String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
       });
     } catch (_) {
