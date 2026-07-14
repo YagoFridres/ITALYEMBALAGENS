@@ -604,6 +604,25 @@ try {
       + '#rr-modal-backdrop .rr-modal-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:16px}'
       + '#rr-modal-backdrop .rr-btn-ghost{display:inline-flex;align-items:center;justify-content:center;padding:11px 14px;border:1px solid rgba(148,163,184,.18);border-radius:12px;background:#020617;color:#e2e8f0;font-size:13px;font-weight:900;cursor:pointer}'
       + '#rr-sergio-builder{display:grid;gap:14px}'
+      + '#rr-sergio-builder .rr-sergio-toolbar{display:grid;gap:10px;padding:12px;border:1px solid rgba(148,163,184,.16);border-radius:16px;background:rgba(15,23,42,.45)}'
+      + '#rr-sergio-builder .rr-sergio-toolbar-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}'
+      + '#rr-sergio-builder .rr-sergio-toggle{display:inline-flex;align-items:center;gap:8px;color:#e2e8f0;font-size:13px;font-weight:800}'
+      + '#rr-sergio-builder .rr-sergio-toggle input{accent-color:#2563eb}'
+      + '#rr-sergio-builder .rr-sergio-week-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}'
+      + '#rr-sergio-builder .rr-sergio-week-pill{padding:10px 12px;border:1px solid rgba(37,99,235,.26);border-radius:12px;background:rgba(37,99,235,.10);color:#bfdbfe;font-size:12px;font-weight:900}'
+      + '#rr-sergio-builder .rr-sergio-inline{display:inline-flex;align-items:center;gap:8px;color:#94a3b8;font-size:12px;font-weight:800}'
+      + '#rr-sergio-builder .rr-sergio-inline select{padding:9px 11px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:12px;color:#f8fafc;font-size:13px}'
+      + '#rr-sergio-builder .rr-sergio-preview{display:grid;gap:10px}'
+      + '#rr-sergio-builder .rr-sergio-preview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}'
+      + '#rr-sergio-builder .rr-sergio-day-card{border:1px solid rgba(148,163,184,.14);border-radius:14px;background:rgba(2,6,23,.35);padding:12px}'
+      + '#rr-sergio-builder .rr-sergio-day-title{font-size:12px;font-weight:900;color:#e2e8f0;margin-bottom:8px}'
+      + '#rr-sergio-builder .rr-sergio-day-sub{font-size:11px;color:#94a3b8;margin-top:2px}'
+      + '#rr-sergio-builder .rr-sergio-day-item{padding:8px 0;border-top:1px solid rgba(148,163,184,.1)}'
+      + '#rr-sergio-builder .rr-sergio-day-item:first-child{border-top:none;padding-top:0}'
+      + '#rr-sergio-builder .rr-sergio-day-main{font-size:13px;font-weight:800;color:#f8fafc}'
+      + '#rr-sergio-builder .rr-sergio-day-meta{font-size:11px;color:#94a3b8;margin-top:3px}'
+      + '#rr-sergio-builder .rr-sergio-preview-note{font-size:12px;color:#94a3b8}'
+      + '#rr-sergio-builder .rr-sergio-preview-empty{padding:14px;border:1px dashed rgba(148,163,184,.18);border-radius:14px;color:#94a3b8;font-size:12px;background:rgba(15,23,42,.35)}'
       + '#rr-sergio-table-wrap{overflow:auto;border:1px solid rgba(148,163,184,.16);border-radius:16px}'
       + '#rr-sergio-table{width:100%;border-collapse:collapse;min-width:980px}'
       + '#rr-sergio-table th{background:#020617;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:10px;border-bottom:1px solid rgba(148,163,184,.16)}'
@@ -614,7 +633,7 @@ try {
       + '#rr-sergio-table .rr-suggest button{width:100%;display:block;text-align:left;padding:10px 12px;border:none;background:transparent;color:#f8fafc;cursor:pointer}'
       + '#rr-sergio-table .rr-suggest button:hover{background:rgba(37,99,235,.18)}'
       + '@media (max-width:980px){#patch-relatorios-central .rr-period-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
-      + '@media (max-width:760px){#patch-relatorios-central .rr-grid{grid-template-columns:1fr}#patch-relatorios-central .rr-period-grid{grid-template-columns:1fr}#rr-modal-backdrop .rr-modal-grid{grid-template-columns:1fr}}';
+      + '@media (max-width:760px){#patch-relatorios-central .rr-grid{grid-template-columns:1fr}#patch-relatorios-central .rr-period-grid{grid-template-columns:1fr}#rr-modal-backdrop .rr-modal-grid{grid-template-columns:1fr}#rr-sergio-builder .rr-sergio-toolbar-top,#rr-sergio-builder .rr-sergio-week-controls{align-items:stretch}#rr-sergio-builder .rr-sergio-inline{display:grid;gap:6px}}';
     document.head.appendChild(st);
   }
 
@@ -1375,6 +1394,113 @@ try {
     return nomes[Math.max(0, Math.min(11, Number(mes || 1) - 1))] || 'Mes';
   }
 
+  function rrDateAtLocal(v) {
+    if (!v) return null;
+    try {
+      if (Object.prototype.toString.call(v) === '[object Date]') {
+        if (!Number.isFinite(v.getTime())) return null;
+        return new Date(v.getFullYear(), v.getMonth(), v.getDate());
+      }
+      var txt = String(v || '').trim();
+      if (!txt) return null;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(txt)) {
+        var parts = txt.split('-');
+        return new Date(Number(parts[0] || 0), Number(parts[1] || 1) - 1, Number(parts[2] || 1));
+      }
+      var parsed = new Date(txt);
+      if (!Number.isFinite(parsed.getTime())) return null;
+      return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function rrDateText(v) {
+    var d = rrDateAtLocal(v);
+    if (!d) return '';
+    return [d.getFullYear(), rrPad2(d.getMonth() + 1), rrPad2(d.getDate())].join('-');
+  }
+
+  function rrAddDays(v, days) {
+    var d = rrDateAtLocal(v);
+    if (!d) return null;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() + Math.trunc(Number(days || 0) || 0));
+  }
+
+  function rrStartOfWeek(v) {
+    var d = rrDateAtLocal(v) || rrDateAtLocal(new Date());
+    var diff = (d.getDay() + 6) % 7;
+    return rrAddDays(d, -diff);
+  }
+
+  function rrWeekRangeLabel(v) {
+    var inicio = rrStartOfWeek(v);
+    var fim = rrAddDays(inicio, 6);
+    return rrFmtDate(inicio) + ' a ' + rrFmtDate(fim);
+  }
+
+  function rrSergioDateFieldLabel(field) {
+    return String(field || '').trim() === 'data_entrega' ? 'Data de entrega' : 'Data prevista';
+  }
+
+  function rrSergioResolveDate(item, field) {
+    var modo = String(field || 'data_prevista').trim() === 'data_entrega' ? 'data_entrega' : 'data_prevista';
+    var primary = String(item && item[modo] || '').trim();
+    var fallbackField = modo === 'data_prevista' ? 'data_entrega' : 'data_prevista';
+    var fallback = String(item && item[fallbackField] || '').trim();
+    var raw = primary || fallback || '';
+    var date = rrDateAtLocal(raw);
+    return {
+      date: date,
+      iso: rrDateText(date),
+      sourceField: primary ? modo : (fallback ? fallbackField : ''),
+      raw: raw
+    };
+  }
+
+  function rrSergioBuildWeekData(items, opts) {
+    var cfg = opts || {};
+    var baseField = String(cfg.date_field || 'data_prevista').trim() === 'data_entrega' ? 'data_entrega' : 'data_prevista';
+    var weekStart = rrStartOfWeek(cfg.week_start || new Date());
+    var groups = [];
+    var inWeek = [];
+    var semData = [];
+    var outsideWeek = [];
+    for (var i = 0; i < 7; i += 1) {
+      var dayDate = rrAddDays(weekStart, i);
+      groups.push({
+        index: i,
+        iso: rrDateText(dayDate),
+        date: dayDate,
+        label: String(dayDate.toLocaleDateString('pt-BR', { weekday: 'long' }) || '').replace(/^\w/, function(ch) { return ch.toUpperCase(); }),
+        items: []
+      });
+    }
+    (Array.isArray(items) ? items : []).forEach(function(item) {
+      var info = rrSergioResolveDate(item, baseField);
+      if (!info.date || !info.iso) {
+        semData.push(item);
+        return;
+      }
+      var diffDays = Math.round((info.date.getTime() - weekStart.getTime()) / 86400000);
+      if (diffDays < 0 || diffDays > 6) {
+        outsideWeek.push(item);
+        return;
+      }
+      groups[diffDays].items.push(item);
+      inWeek.push(item);
+    });
+    return {
+      baseField: baseField,
+      weekStart: weekStart,
+      weekEnd: rrAddDays(weekStart, 6),
+      groups: groups,
+      inWeek: inWeek,
+      semData: semData,
+      outsideWeek: outsideWeek
+    };
+  }
+
   function rrRemoveModal() {
     var old = document.getElementById('rr-modal-backdrop');
     if (old) old.remove();
@@ -1511,13 +1637,27 @@ try {
   }
 
   function rrSergioState() {
+    var defaultWeekStart = rrDateText(rrStartOfWeek(new Date()));
     if (!window.__rrSergioState || typeof window.__rrSergioState !== 'object') {
       window.__rrSergioState = {
         items: [
           { cliente: '', cliente_id: '', modelo: '', pedido: '', data_prevista: '', data_entrega: '', cidade: '' }
-        ]
+        ],
+        weekly_mode: false,
+        week_start: defaultWeekStart,
+        date_field: 'data_prevista',
+        origin: 'central'
       };
     }
+    if (!Array.isArray(window.__rrSergioState.items) || !window.__rrSergioState.items.length) {
+      window.__rrSergioState.items = [
+        { cliente: '', cliente_id: '', modelo: '', pedido: '', data_prevista: '', data_entrega: '', cidade: '' }
+      ];
+    }
+    window.__rrSergioState.weekly_mode = !!window.__rrSergioState.weekly_mode;
+    window.__rrSergioState.week_start = rrDateText(window.__rrSergioState.week_start) || defaultWeekStart;
+    window.__rrSergioState.date_field = String(window.__rrSergioState.date_field || 'data_prevista').trim() === 'data_entrega' ? 'data_entrega' : 'data_prevista';
+    window.__rrSergioState.origin = String(window.__rrSergioState.origin || 'central').trim() || 'central';
     return window.__rrSergioState;
   }
 
@@ -1539,11 +1679,81 @@ try {
     return 'body{font-size:18px;padding:22px}.brandline{font-size:18px}.cards{gap:10px;margin-bottom:18px}.card{min-width:180px;padding:14px 18px}.lbl{font-size:13px}.val{font-size:28px}.green{font-size:28px}h1{font-size:34px;line-height:1.15}h2{font-size:18px;margin-bottom:16px}h3{font-size:18px!important}table{font-size:19px;margin-bottom:20px}th{font-size:14px;padding:11px 10px}td{padding:12px 10px;font-size:19px;line-height:1.3}.vh{font-size:18px;padding:10px 14px}.footer-print{font-size:12px}@page{margin:12mm 10mm 16mm 10mm}';
   }
 
-  function rrPrintSergioReport(items) {
+  function rrSergioWeekPreviewHtml(items, state) {
+    var cfg = state || rrSergioState();
+    if (!cfg.weekly_mode) {
+      return '<div class="rr-sergio-preview-note">Ative a organização por semana para separar a saída por dia e navegar entre as semanas.</div>';
+    }
+    var week = rrSergioBuildWeekData(items, cfg);
+    var groups = week.groups.filter(function(group) { return group.items.length; });
+    if (!groups.length) {
+      return '<div class="rr-sergio-preview-empty">Nenhum item com ' + rrEsc(rrSergioDateFieldLabel(week.baseField).toLowerCase()) + ' dentro da semana ' + rrEsc(rrWeekRangeLabel(week.weekStart)) + '.</div>';
+    }
+    var note = '<div class="rr-sergio-preview-note">Semana exibida: <strong>' + rrEsc(rrWeekRangeLabel(week.weekStart)) + '</strong> · Base: <strong>' + rrEsc(rrSergioDateFieldLabel(week.baseField)) + '</strong>';
+    if (week.outsideWeek.length) note += ' · Fora da semana: <strong>' + rrEsc(rrFmtNum(week.outsideWeek.length, 0)) + '</strong>';
+    if (week.semData.length) note += ' · Sem data: <strong>' + rrEsc(rrFmtNum(week.semData.length, 0)) + '</strong>';
+    note += '</div>';
+    return note + '<div class="rr-sergio-preview-grid">' + groups.map(function(group) {
+      return '<div class="rr-sergio-day-card">'
+        + '<div class="rr-sergio-day-title">' + rrEsc(group.label) + '</div>'
+        + '<div class="rr-sergio-day-sub">' + rrEsc(rrFmtDate(group.date)) + ' · ' + rrEsc(rrFmtNum(group.items.length, 0)) + ' item(ns)</div>'
+        + group.items.map(function(item) {
+          var meta = [item && item.modelo, item && item.pedido, item && item.cidade].filter(Boolean).join(' · ');
+          return '<div class="rr-sergio-day-item"><div class="rr-sergio-day-main">' + rrEsc(String(item && item.cliente || 'Sem cliente')) + '</div><div class="rr-sergio-day-meta">' + rrEsc(meta || 'Sem complemento') + '</div></div>';
+        }).join('')
+        + '</div>';
+    }).join('') + '</div>';
+  }
+
+  function rrPrintSergioReport(items, opts) {
+    var cfg = opts || {};
     var rows = (Array.isArray(items) ? items : []).filter(function(item) {
       return [item && item.cliente, item && item.modelo, item && item.pedido, item && item.data_prevista, item && item.data_entrega, item && item.cidade].some(Boolean);
     });
     if (!rows.length) throw new Error('Adicione pelo menos um item antes de gerar o relatório.');
+    if (cfg.weekly_mode) {
+      var week = rrSergioBuildWeekData(rows, cfg);
+      var dayGroups = week.groups.filter(function(group) { return group.items.length; });
+      if (!dayGroups.length) {
+        throw new Error('Nenhum item da semana selecionada possui ' + rrSergioDateFieldLabel(week.baseField).toLowerCase() + ' válida.');
+      }
+      return rrOpenPrint({
+        title: 'Relatório Sérgio',
+        periodo: 'Semana de ' + rrWeekRangeLabel(week.weekStart),
+        printCssExtra: rrSergioLargePrintCss(),
+        introHtml: '<div style="margin:0 0 14px;font-size:12px;color:#475569">Agrupado por <strong>' + rrEsc(rrSergioDateFieldLabel(week.baseField).toLowerCase()) + '</strong>. Itens fora da semana: <strong>' + rrEsc(rrFmtNum(week.outsideWeek.length, 0)) + '</strong> · Sem data: <strong>' + rrEsc(rrFmtNum(week.semData.length, 0)) + '</strong>.</div>',
+        cards: [
+          { label: 'Itens na Semana', value: rrFmtNum(week.inWeek.length, 0), sub: 'Linhas da semana selecionada' },
+          { label: 'Dias com Itens', value: rrFmtNum(dayGroups.length, 0), sub: 'Blocos separados na impressão' },
+          { label: 'Semana', value: rrFmtDate(week.weekStart), sub: rrFmtDate(week.weekEnd) },
+          { label: 'Base', value: rrSergioDateFieldLabel(week.baseField), sub: 'Agrupamento por dia' }
+        ],
+        summaryTitle: 'Resumo por dia',
+        summaryHeaders: ['Dia', 'Data', 'Itens'],
+        summaryRows: dayGroups.map(function(group) {
+          return [rrEsc(group.label), rrEsc(rrFmtDate(group.date)), rrEsc(rrFmtNum(group.items.length, 0))];
+        }),
+        detailSections: dayGroups.map(function(group) {
+          return {
+            title: group.label + ' — ' + rrFmtDate(group.date),
+            headers: ['Cliente', 'Modelo', 'Número do pedido', 'Data prevista', 'Data de entrega', 'Cidade'],
+            rows: group.items.map(function(item) {
+              return [
+                rrEsc(item.cliente || '—'),
+                rrEsc(item.modelo || '—'),
+                rrEsc(item.pedido || '—'),
+                rrEsc(item.data_prevista ? rrFmtDate(item.data_prevista) : '—'),
+                rrEsc(item.data_entrega ? rrFmtDate(item.data_entrega) : '—'),
+                rrEsc(item.cidade || '—')
+              ];
+            }),
+            emptyCols: 6
+          };
+        }),
+        emptySummaryCols: 3,
+        emptyDetailCols: 6
+      });
+    }
     var porCliente = {};
     rows.forEach(function(item) {
       var key = String(item && item.cliente || 'Sem cliente').trim() || 'Sem cliente';
@@ -1585,6 +1795,19 @@ try {
     body.innerHTML = ''
       + '<div id="rr-sergio-builder">'
       + '  <div class="rr-period-help">Monte o relatório linha por linha. O campo Cliente aceita digitação manual ou autocomplete usando os clientes cadastrados.</div>'
+      + '  <div class="rr-sergio-toolbar">'
+      + '    <div class="rr-sergio-toolbar-top">'
+      + '      <label class="rr-sergio-toggle"><input type="checkbox" id="rr-sergio-week-mode"' + (state.weekly_mode ? ' checked' : '') + '> Organizar impressão por semana</label>'
+      + '      <div class="rr-sergio-week-pill">Semana: ' + rrEsc(rrWeekRangeLabel(state.week_start)) + '</div>'
+      + '    </div>'
+      + '    <div class="rr-sergio-week-controls"' + (state.weekly_mode ? '' : ' style="display:none"') + ' id="rr-sergio-week-controls">'
+      + '      <button type="button" class="rr-btn-ghost" id="rr-sergio-week-prev">← Ant</button>'
+      + '      <button type="button" class="rr-btn-ghost" id="rr-sergio-week-current">Semana atual</button>'
+      + '      <button type="button" class="rr-btn-ghost" id="rr-sergio-week-next">Prox →</button>'
+      + '      <label class="rr-sergio-inline"><span>Base do dia</span><select id="rr-sergio-date-field"><option value="data_prevista"' + (state.date_field === 'data_prevista' ? ' selected' : '') + '>Data prevista</option><option value="data_entrega"' + (state.date_field === 'data_entrega' ? ' selected' : '') + '>Data de entrega</option></select></label>'
+      + '    </div>'
+      + '    <div class="rr-sergio-preview">' + rrSergioWeekPreviewHtml(state.items, state) + '</div>'
+      + '  </div>'
       + '  <div id="rr-sergio-table-wrap"><table id="rr-sergio-table"><thead><tr>'
       + '    <th>Cliente</th><th>Modelo</th><th>Número do pedido</th><th>Data prevista</th><th>Data de entrega</th><th>Cidade</th><th style="width:84px">Ações</th>'
       + '  </tr></thead><tbody>'
@@ -1654,6 +1877,42 @@ try {
       };
     });
 
+    var weekModeEl = body.querySelector('#rr-sergio-week-mode');
+    var dateFieldEl = body.querySelector('#rr-sergio-date-field');
+    var prevWeekEl = body.querySelector('#rr-sergio-week-prev');
+    var nextWeekEl = body.querySelector('#rr-sergio-week-next');
+    var currentWeekEl = body.querySelector('#rr-sergio-week-current');
+    if (weekModeEl) {
+      weekModeEl.onchange = function() {
+        state.weekly_mode = !!weekModeEl.checked;
+        rrRenderSergioBuilder(body);
+      };
+    }
+    if (dateFieldEl) {
+      dateFieldEl.onchange = function() {
+        state.date_field = String(dateFieldEl.value || 'data_prevista').trim() === 'data_entrega' ? 'data_entrega' : 'data_prevista';
+        rrRenderSergioBuilder(body);
+      };
+    }
+    if (prevWeekEl) {
+      prevWeekEl.onclick = function() {
+        state.week_start = rrDateText(rrAddDays(state.week_start, -7)) || state.week_start;
+        rrRenderSergioBuilder(body);
+      };
+    }
+    if (nextWeekEl) {
+      nextWeekEl.onclick = function() {
+        state.week_start = rrDateText(rrAddDays(state.week_start, 7)) || state.week_start;
+        rrRenderSergioBuilder(body);
+      };
+    }
+    if (currentWeekEl) {
+      currentWeekEl.onclick = function() {
+        state.week_start = rrDateText(rrStartOfWeek(new Date()));
+        rrRenderSergioBuilder(body);
+      };
+    }
+
     Array.prototype.slice.call(body.querySelectorAll('[data-rr-sergio-remove]')).forEach(function(btn) {
       btn.onclick = function() {
         var idx = Number(btn.getAttribute('data-rr-sergio-remove') || 0);
@@ -1669,14 +1928,30 @@ try {
     };
 
     body.querySelector('#rr-sergio-print').onclick = function() {
-      rrPrintSergioReport(rrSergioCloneItems());
+      rrPrintSergioReport(rrSergioCloneItems(), {
+        weekly_mode: state.weekly_mode,
+        week_start: state.week_start,
+        date_field: state.date_field,
+        origin: state.origin
+      });
     };
   }
 
-  function rrOpenSergioBuilder() {
+  function rrOpenSergioBuilder(opts) {
+    var openCfg = opts || {};
+    var state = rrSergioState();
+    state.origin = String(openCfg.origin || 'central').trim() || 'central';
+    if (Object.prototype.hasOwnProperty.call(openCfg, 'weekly_mode')) state.weekly_mode = !!openCfg.weekly_mode;
+    else if (state.origin === 'pcp') state.weekly_mode = true;
+    if (openCfg.date_field === 'data_prevista' || openCfg.date_field === 'data_entrega') state.date_field = openCfg.date_field;
+    else if (state.origin === 'pcp') state.date_field = 'data_prevista';
+    if (openCfg.week_start) state.week_start = rrDateText(rrStartOfWeek(openCfg.week_start)) || state.week_start;
+    else if (state.origin === 'pcp') state.week_start = rrDateText(rrStartOfWeek(new Date()));
     rrOpenModal({
       title: 'Relatório Sérgio',
-      subtitle: 'Monte vários itens manualmente e gere a impressão em fonte ampliada para leitura à distância.',
+      subtitle: state.origin === 'pcp'
+        ? 'Monte os itens manualmente e, se quiser, organize a saída por semana usando a data prevista ou a data de entrega.'
+        : 'Monte vários itens manualmente e gere a impressão em fonte ampliada para leitura à distância.',
       render: function(body) {
         rrRenderSergioBuilder(body);
       }
@@ -1815,14 +2090,65 @@ try {
     window.__rrGoWrapped = true;
   }
 
+  function rrOpenSergioFromPcp() {
+    return rrOpenSergioBuilder({
+      origin: 'pcp',
+      weekly_mode: true,
+      date_field: 'data_prevista',
+      week_start: rrDateText(rrStartOfWeek(new Date()))
+    });
+  }
+
+  function rrEnsurePcpSergioButton() {
+    rrEnsureStyle();
+    var toolbar = document.querySelector('#page-pcp .ptoolbar');
+    if (!toolbar) return false;
+    if (toolbar.querySelector('#pcp-btn-relatorio-sergio')) return true;
+    var btn = document.createElement('button');
+    btn.id = 'pcp-btn-relatorio-sergio';
+    btn.className = 'btn btn-ghost btn-sm';
+    btn.textContent = '📝 Relatório Sérgio';
+    btn.title = 'Abrir o relatório manual com organização semanal';
+    btn.onclick = function() { rrOpenSergioFromPcp(); };
+    var anchor = toolbar.querySelector('#pcp-dia-resumo') || toolbar.querySelector('#btn-cancelar-of') || null;
+    if (anchor && anchor.parentNode === toolbar) toolbar.insertBefore(btn, anchor);
+    else toolbar.appendChild(btn);
+    return true;
+  }
+
+  function rrSchedulePcpSergioButton() {
+    if (window.__rrPcpSergioButtonPending) return;
+    window.__rrPcpSergioButtonPending = true;
+    requestAnimationFrame(function() {
+      window.__rrPcpSergioButtonPending = false;
+      rrEnsurePcpSergioButton();
+    });
+  }
+
+  function rrInstallPcpSergioButtonObserver() {
+    if (window.__rrPcpSergioObserverInstalled) return;
+    var page = document.getElementById('page-pcp');
+    if (!page) return;
+    var observer = new MutationObserver(function() {
+      rrSchedulePcpSergioButton();
+    });
+    observer.observe(page, { childList: true, subtree: true });
+    window.__rrPcpSergioObserverInstalled = true;
+    window.__rrPcpSergioObserver = observer;
+    rrEnsurePcpSergioButton();
+  }
+
   function rrBoot() {
     try {
       rrInstallGoWrapper();
       if (String(window._PAGE_ATUAL || '').trim() === 'relatorios') rrRenderPage();
+      rrInstallPcpSergioButtonObserver();
+      rrEnsurePcpSergioButton();
     } catch (_) {}
   }
 
   try { window.renderCentralRelatorios = rrRenderPage; } catch (_) {}
+  try { window.openRelatorioSergioFromPcp = rrOpenSergioFromPcp; } catch (_) {}
   rrBoot();
   setTimeout(rrBoot, 0);
   setTimeout(rrBoot, 400);
@@ -19089,6 +19415,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var cards = Array.isArray(cfg.cards) ? cfg.cards : [];
     var summaryRows = Array.isArray(cfg.summaryRows) ? cfg.summaryRows : [];
     var detailRows = Array.isArray(cfg.detailRows) ? cfg.detailRows : [];
+    var detailSections = Array.isArray(cfg.detailSections) ? cfg.detailSections : [];
     var introHtml = String(cfg.introHtml || '');
     var extraCss = String(cfg.printCssExtra || '');
     return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + String(cfg.title || 'Relatório').replace(/</g, '&lt;') + '</title>'
@@ -19107,10 +19434,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '<table class="zebra"><thead><tr>' + (Array.isArray(cfg.summaryHeaders) ? cfg.summaryHeaders : []).map(function(head) { return '<th>' + window._printEscText(head || '') + '</th>'; }).join('') + '</tr></thead><tbody>'
       + (summaryRows.length ? summaryRows.map(function(row) { return '<tr>' + (Array.isArray(row) ? row : []).map(function(col) { return '<td>' + String(col == null ? '' : col) + '</td>'; }).join('') + '</tr>'; }).join('') : '<tr><td colspan="' + String(cfg.emptySummaryCols || 1) + '">Nenhum registro encontrado.</td></tr>')
       + '</tbody></table>'
-      + '<div class="vh">' + window._printEscText(cfg.detailTitle || 'Detalhamento') + '</div>'
+      + (detailSections.length ? detailSections.map(function(section) {
+        var headers = Array.isArray(section && section.headers) ? section.headers : (Array.isArray(cfg.detailHeaders) ? cfg.detailHeaders : []);
+        var rows = Array.isArray(section && section.rows) ? section.rows : [];
+        return '<div class="vh">' + window._printEscText(section && section.title || cfg.detailTitle || 'Detalhamento') + '</div>'
+          + '<table class="dark zebra"><thead><tr>' + headers.map(function(head) { return '<th>' + window._printEscText(head || '') + '</th>'; }).join('') + '</tr></thead><tbody>'
+          + (rows.length ? rows.map(function(row) { return '<tr>' + (Array.isArray(row) ? row : []).map(function(col) { return '<td>' + String(col == null ? '' : col) + '</td>'; }).join('') + '</tr>'; }).join('') : '<tr><td colspan="' + String(section && section.emptyCols || cfg.emptyDetailCols || 1) + '">Nenhum registro encontrado.</td></tr>')
+          + '</tbody></table>';
+      }).join('') : ('<div class="vh">' + window._printEscText(cfg.detailTitle || 'Detalhamento') + '</div>'
       + '<table class="dark zebra"><thead><tr>' + (Array.isArray(cfg.detailHeaders) ? cfg.detailHeaders : []).map(function(head) { return '<th>' + window._printEscText(head || '') + '</th>'; }).join('') + '</tr></thead><tbody>'
       + (detailRows.length ? detailRows.map(function(row) { return '<tr>' + (Array.isArray(row) ? row : []).map(function(col) { return '<td>' + String(col == null ? '' : col) + '</td>'; }).join('') + '</tr>'; }).join('') : '<tr><td colspan="' + String(cfg.emptyDetailCols || 1) + '">Nenhum registro encontrado.</td></tr>')
-      + '</tbody></table>'
+      + '</tbody></table>'))
       + '<div class="footer-print">Página <span class="page-num"></span></div>'
       + '<script>window.onload=function(){setTimeout(function(){try{window.focus()}catch(e){}try{window.print()}catch(e){}},700)}<\/script>'
       + '</body></html>';
