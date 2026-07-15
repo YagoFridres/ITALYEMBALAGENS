@@ -15803,12 +15803,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         overlay.querySelector('[data-del="1"]').onclick = async function() {
           try {
             var out = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'DELETE' });
+            var respStatus = Number(out && out.resp && out.resp.status || 0) || 0;
+            try { console.log('[TONELADAS-DEL] of_id:', id, 'status:', respStatus); } catch (_) {}
             if (!out || !out.resp || !out.resp.ok || (out.data && out.data.ok === false)) {
               throw new Error((out && out.data && (out.data.error || out.data.message)) || 'Falha ao excluir');
             }
             try {
+              var idx = tabela.findIndex(function(r) { return String(r && r.id || '').trim() === id; });
+              if (idx >= 0) tabela.splice(idx, 1);
+            } catch (_) {}
+            try {
               var tr = page.querySelector('tr[data-of-id="' + id + '"]');
               if (tr) tr.remove();
+            } catch (_) {}
+            try {
+              var tbody = page.querySelector('.pep-table tbody');
+              if (tbody && !tbody.querySelector('tr[data-of-id]')) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#94a3b8">Nenhum registro encontrado.</td></tr>';
+              }
             } catch (_) {}
             closeModal();
             try { window.toast('✓ OF excluída', 'var(--green)'); } catch (_) {}
