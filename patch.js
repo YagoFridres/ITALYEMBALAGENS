@@ -1029,6 +1029,9 @@ try {
     return rrOpenPrint({
       title: 'Relatório de Estoque de Chapas',
       periodo: ref.titulo,
+      printCssExtra: ''
+        + 'table.dark th,table.zebra th{background:#1e293b!important;color:#94a3b8!important;text-transform:uppercase!important;font-size:11px!important;letter-spacing:.08em!important}'
+        + 'table.dark td,table.zebra td{padding:10px 14px!important;min-height:44px!important;font-size:13px!important;line-height:1.5!important;vertical-align:middle!important}',
       cards: [
         { label: 'Valor Total do Estoque', value: rrFmtMoney(tons && tons.valor_total || chapas.reduce(function(s, r) { return s + rrChapaValor(r); }, 0)), sub: 'Snapshot atual' },
         { label: 'Toneladas em Estoque', value: rrFmtNum(tons && tons.ton_estoque_atual || 0, 3) + ' t', sub: 'Saldo atual' },
@@ -17113,6 +17116,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return window._buildStyledPrintHtml({
         title: 'Relatório de Estoque de Chapas',
         periodo: info.periodoTitulo || '',
+      printCssExtra: ''
+        + 'table.dark th,table.zebra th{background:#1e293b!important;color:#94a3b8!important;text-transform:uppercase!important;font-size:11px!important;letter-spacing:.08em!important}'
+        + 'table.dark td,table.zebra td{padding:10px 14px!important;min-height:44px!important;font-size:13px!important;line-height:1.5!important;vertical-align:middle!important}',
         cards: [
           { label: 'Valor Total do Estoque', value: money(info.valorTotal || 0), sub: 'Base atual do estoque', green: true },
           { label: 'Toneladas em Estoque', value: num(info.tonTotal || 0, 3) + ' t', sub: 'Saldo atual do estoque' },
