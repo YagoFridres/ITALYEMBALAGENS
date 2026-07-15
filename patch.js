@@ -11570,22 +11570,24 @@ window.addEventListener('unhandledrejection', function(e) {
     return { rank: 2, text: '🟢 OK', bg: '#14532d', color: '#bbf7d0' };
   }
 
-  function parseColors(value) {
-    if (Array.isArray(value)) {
-      return value.map(function(item) { return String(item || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean);
-    }
-    if (value == null) return [];
-    if (typeof value === 'string') {
-      var raw = String(value || '').trim();
-      if (!raw) return [];
+  function parseColors(raw) {
+    if (!raw) return [];
+    var arr = raw;
+    if (typeof raw === 'string') {
       try {
-        var parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return parseColors(parsed);
-        if (typeof parsed === 'string') return parseColors(parsed);
-      } catch (_) {}
-      return raw.split(',').map(function(item) { return String(item || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean);
+        arr = JSON.parse(raw);
+      } catch (_) {
+        return String(raw || '').split(',').map(function(s) { return String(s || '').trim(); }).filter(Boolean);
+      }
     }
-    return [String(value || '').trim()].filter(Boolean);
+    if (!Array.isArray(arr)) return [];
+    return arr.map(function(item) {
+      if (typeof item === 'string') return item.trim();
+      if (item && item.nome) return item.nome;
+      if (item && item.name) return item.name;
+      if (item && item.color) return item.color;
+      return String(item || '');
+    }).filter(Boolean);
   }
 
   function normCor(s) {
@@ -12464,7 +12466,7 @@ window.addEventListener('unhandledrejection', function(e) {
         var rawDia = of && (of.dia || of.data || of.data_pedido || of.created_at);
         console.log('[OFMAQ-DIA-DEBUG] of.dia:', rawDia, 'norm:', normDia(rawDia), 'diaSel:', state.selectedDateIso, 'match:', ofMatchDia(of, state.selectedDateIso));
       });
-      if (baseOfs.length) console.log('[COR-DEBUG]', baseOfs[0] && baseOfs[0].cores_impressao);
+      if (baseOfs.length) console.log('[COR-RAW]', JSON.stringify(baseOfs[0] && baseOfs[0].cores_impressao));
     } catch (_) {}
     var rows = baseOfs.map(function(of, idx) { return getRowData(of, idx); }).filter(Boolean);
     state.currentRows = rows;
