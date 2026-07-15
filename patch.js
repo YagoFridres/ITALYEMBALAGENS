@@ -11758,7 +11758,13 @@ window.addEventListener('unhandledrejection', function(e) {
       + '<button type="button" class="close-btn" data-close-modal="' + escAttrLocal(id) + '">&times;</button>'
       + '<h3>' + escHLocal(title) + '</h3>'
       + '<div class="ofmaq-direct-modal-body">' + bodyHtml + '</div>';
-    overlay.onclick = function() { removeModal(id); };
+    overlay.onclick = function(ev) {
+      if (ev && ev.target !== overlay) return;
+      removeModal(id);
+    };
+    modal.onclick = function(ev) {
+      try { ev.stopPropagation(); } catch (_) {}
+    };
     document.body.appendChild(overlay);
     document.body.appendChild(modal);
     var btn = modal.querySelector('[data-close-modal="' + id + '"]');
@@ -12146,6 +12152,7 @@ window.addEventListener('unhandledrejection', function(e) {
       }
       var actBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-actions-of-id]') : null;
       if (actBtn) {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
         var actId = String(actBtn.getAttribute('data-actions-of-id') || '').trim();
         var rowEl = actBtn.closest ? actBtn.closest('tr[data-of-id]') : null;
         var rowData = (state.currentRows || []).filter(function(item) { return item.id === actId; })[0] || null;
