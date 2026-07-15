@@ -27835,6 +27835,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq .patch-ofmaq-control-label{font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#64748b}'
       + '#page-ofmaq .patch-ofmaq-toprow{display:grid !important;grid-template-columns:minmax(0,1fr) auto;gap:12px !important;align-items:stretch !important;margin:0 !important;padding:14px 16px;border-radius:16px;background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(30,41,59,.9));border:1px solid rgba(51,65,85,.75);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}'
       + '#page-ofmaq .patch-ofmaq-days-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:56px;padding:10px 12px;border-radius:12px;background:rgba(15,23,42,.55);border:1px solid rgba(51,65,85,.55)}'
+      + '#page-ofmaq .patch-ofmaq-days-bar button[data-has-ofs="1"]{border-color:rgba(239,68,68,.56) !important;color:#fecaca !important;background:rgba(127,29,29,.18) !important}'
+      + '#page-ofmaq .patch-ofmaq-days-bar button[data-active="1"]{box-shadow:0 0 0 1px rgba(248,113,113,.28),0 10px 18px rgba(127,29,29,.22) !important}'
       + '#page-ofmaq #ofs-por-maquina-container.patch-ofmaq-container{padding:18px;border-radius:18px;background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(15,23,42,.72));border:1px solid rgba(51,65,85,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}'
       + '#page-ofmaq.patch-ofmaq-v2 .ofmaq-toprow,#page-ofmaq.patch-ofmaq-v2 #ofmaq-dias-bar,#page-ofmaq.patch-ofmaq-v2 .kb-board-ofmaq,#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-summary-grid,#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-table-wrap{display:none !important}'
       + '#page-ofmaq.patch-ofmaq-v2 .ptoolbar.patch-ofmaq-toolbar > :not(#patch-ofmaq-titlebar){display:none !important}'
@@ -28507,6 +28509,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var tableRows = Array.prototype.slice.call(document.querySelectorAll('tr.patch-ofmaq-row[data-of-id]'));
     if (tableRows.length) {
       var maquinaTabela = String(_ofmaqMachineFilterValue() || '').trim();
+      var diaTabela = String(_ofmaqV2SelectedIso() || _isoDateOnly(new Date()) || '').slice(0, 10);
       var visibleBeforeRows = tableRows.filter(function(row) {
         return row && row.style && row.style.display !== 'none';
       }).length;
@@ -28522,17 +28525,23 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var ofId = String(row && row.getAttribute && row.getAttribute('data-of-id') || '').trim();
         var of = lookup[ofId] || getCurrentOfById(ofId);
         var maqRow = String(row && row.getAttribute && row.getAttribute('data-maq') || '').trim();
+        var diaRow = String(row && row.getAttribute && row.getAttribute('data-dia') || '').slice(0, 10);
         var show = _ofmaqCardMatchesBusca(row, of, termNorm);
         if (show && maquinaTabela && !_ofmaqIsAllMachinesValue(maquinaTabela) && maqRow && maqRow !== maquinaTabela) show = false;
+        if (show && diaTabela && diaRow && diaRow !== diaTabela) show = false;
         row.style.display = show ? '' : 'none';
         if (show) visibleRows += 1;
       });
       var tbody = tableRows[0] && tableRows[0].parentElement;
       var empty = document.getElementById('patch-ofmaq-empty-search');
       if (!empty && tbody) {
+        var colspan = 10;
+        try {
+          colspan = Number(document.querySelectorAll('#ofmaq-tabela-v2 thead th').length || 10) || 10;
+        } catch (_) {}
         empty = document.createElement('tr');
         empty.id = 'patch-ofmaq-empty-search';
-        empty.innerHTML = '<td colspan="10" class="patch-ofmaq-empty">Nenhuma OF encontrada para esse termo.</td>';
+        empty.innerHTML = '<td colspan="' + String(colspan) + '" class="patch-ofmaq-empty">Nenhuma OF encontrada para esse filtro.</td>';
         tbody.appendChild(empty);
       }
       if (empty) empty.style.display = visibleRows ? 'none' : '';
@@ -30093,6 +30102,117 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     });
     try { console.log('[OFMAQ-TABELA] linhas:', rowsData.length, 'pai:', wrap.parentElement && wrap.parentElement.id); } catch (_) {}
     _ofmaqApplySearchFilter(String(((document.getElementById('ofmaq-busca') || {}).value) || ''));
+  }
+
+  function _ofmaqLocalTodayIso() {
+    var hoje = new Date();
+    return [
+      String(hoje.getFullYear()),
+      String(hoje.getMonth() + 1).padStart(2, '0'),
+      String(hoje.getDate()).padStart(2, '0')
+    ].join('-');
+  }
+
+  function _ofmaqDirectTableRows() {
+    return Array.prototype.slice.call(document.querySelectorAll('#ofmaq-tabela-v2-body tr.patch-ofmaq-row[data-of-id]'));
+  }
+
+  function _ofmaqEnsureDateInputLocal() {
+    var input = document.getElementById('ofmaq-data');
+    if (!input) return '';
+    var current = String(input.value || '').slice(0, 10);
+    var valid = /^\d{4}-\d{2}-\d{2}$/.test(current) ? current : '';
+    var localIso = _ofmaqLocalTodayIso();
+    if (!valid) {
+      try { input.value = localIso; } catch (_) {}
+      valid = localIso;
+    }
+    return valid || localIso;
+  }
+
+  function _ofmaqSyncMachineSelectorFromRows() {
+    var sel = document.getElementById('ofsmaq-select-maquina') || document.getElementById('ofsmaq-filtro-maquina');
+    if (!sel) return;
+    var rows = _ofmaqDirectTableRows();
+    var current = String(sel.value || '').trim();
+    var seen = {};
+    var machines = rows.map(function(row) {
+      return String(row && row.getAttribute && row.getAttribute('data-maq') || '').trim();
+    }).filter(function(v) {
+      if (!v || seen[v]) return false;
+      seen[v] = true;
+      return true;
+    }).sort(function(a, b) {
+      return a.localeCompare(b, 'pt-BR', { numeric: true });
+    });
+    var options = ['<option value="">Todas</option>'].concat(machines.map(function(mk) {
+      return '<option value="' + escAttrLocal(mk) + '">' + escHLocal(mk) + '</option>';
+    }));
+    sel.innerHTML = options.join('');
+    if (current && machines.indexOf(current) >= 0) sel.value = current;
+  }
+
+  function _ofmaqRenderDirectDaysBar() {
+    var daysBar = document.getElementById('ofmaq-dias-bar');
+    if (!daysBar) return;
+    var baseIso = _ofmaqEnsureDateInputLocal() || _ofmaqLocalTodayIso();
+    var selectedIso = String(baseIso || '').slice(0, 10);
+    var selectedMachine = String(_ofmaqMachineFilterValue() || '').trim();
+    var weekDays = _ofmaqV2WeekDays(selectedIso);
+    var counts = {};
+    weekDays.forEach(function(day) {
+      counts[String(day && day.iso || '').slice(0, 10)] = 0;
+    });
+    _ofmaqDirectTableRows().forEach(function(row) {
+      var dia = String(row && row.getAttribute && row.getAttribute('data-dia') || '').slice(0, 10);
+      var maq = String(row && row.getAttribute && row.getAttribute('data-maq') || '').trim();
+      if (!dia || counts[dia] == null) return;
+      if (selectedMachine && !_ofmaqIsAllMachinesValue(selectedMachine) && maq !== selectedMachine) return;
+      counts[dia] += 1;
+    });
+    daysBar.innerHTML = weekDays.map(function(day) {
+      var iso = String(day && day.iso || '').slice(0, 10);
+      var qtd = Number(counts[iso] || 0) || 0;
+      var dt = '';
+      try {
+        var d = _parseIsoDayLocal(iso) || new Date(iso + 'T00:00:00');
+        dt = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+      } catch (_) {
+        dt = fmtDateBR(iso);
+      }
+      return '<button type="button" data-date="' + escAttrLocal(iso) + '" data-active="' + (iso === selectedIso ? '1' : '0') + '" data-has-ofs="' + (qtd > 0 ? '1' : '0') + '">' + escHLocal(String(day && day.label || '').trim() + ' ' + dt + ' (' + String(qtd) + ' OFs)') + '</button>';
+    }).join('');
+  }
+
+  function _ofmaqBindDirectTableControls() {
+    var page = document.getElementById('page-ofmaq');
+    if (!page || page._patchOfmaqDirectControls === '1') return;
+    page._patchOfmaqDirectControls = '1';
+    page.addEventListener('change', function(ev) {
+      var target = ev && ev.target;
+      if (!target) return;
+      if (target.id === 'ofsmaq-select-maquina' || target.id === 'ofsmaq-filtro-maquina') {
+        _ofmaqRenderDirectDaysBar();
+        _ofmaqApplySearchFilter(String(((document.getElementById('ofmaq-busca') || {}).value) || ''));
+        return;
+      }
+      if (target.id === 'ofmaq-data') {
+        _ofmaqRenderDirectDaysBar();
+        _ofmaqApplySearchFilter(String(((document.getElementById('ofmaq-busca') || {}).value) || ''));
+      }
+    });
+    page.addEventListener('click', function(ev) {
+      var btn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-dias-bar button[data-date]') : null;
+      if (!btn) return;
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      var iso = String(btn.getAttribute('data-date') || '').slice(0, 10);
+      var input = document.getElementById('ofmaq-data');
+      if (input && iso) {
+        try { input.value = iso; } catch (_) {}
+      }
+      _ofmaqRenderDirectDaysBar();
+      _ofmaqApplySearchFilter(String(((document.getElementById('ofmaq-busca') || {}).value) || ''));
+    });
   }
 
   function _ofmaqDecorateShell() {
@@ -31971,8 +32091,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           try { el.remove(); } catch (_) {}
         });
       } catch (_) {}
+      try {
+        var toolbar = document.querySelector('#page-ofmaq .ptoolbar') || document.getElementById('patch-ofmaq-titlebar');
+        _ofmaqEnsureSearchInputVisible(toolbar || null);
+      } catch (_) {}
       _ofmaqBindBuscaFilter();
       try { _ofmaqRenderV2(); } catch (_) {}
+      try { _ofmaqSyncMachineSelectorFromRows(); } catch (_) {}
+      try { _ofmaqEnsureDateInputLocal(); } catch (_) {}
+      try { _ofmaqRenderDirectDaysBar(); } catch (_) {}
+      try { _ofmaqApplySearchFilter(String(((document.getElementById('ofmaq-busca') || {}).value) || '')); } catch (_) {}
+      try { _ofmaqBindDirectTableControls(); } catch (_) {}
     } catch (e) {
       try { console.error('[OFMAQ-AFTER-ERRO]:', e); } catch (_) {}
     } finally {
