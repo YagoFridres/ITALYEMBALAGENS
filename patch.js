@@ -11545,6 +11545,14 @@ window.addEventListener('unhandledrejection', function(e) {
     return minutos + 'min';
   }
 
+  function getStatusInfo(of) {
+    var urgent = !!(of && (of.urg === true || of.urgente === true || String(of.status || '').toLowerCase() === 'urgente'));
+    if (urgent) return { rank: 0, text: '🔴 URGENTE', bg: '#7f1d1d', color: '#fecaca' };
+    var atrasada = !!(of && (String(of.status || '').toLowerCase() === 'atrasada' || String(of.urg_tipo || '').toLowerCase() === 'atrasada'));
+    if (atrasada) return { rank: 1, text: '🟠 ATRASADA', bg: '#7c2d12', color: '#fdba74' };
+    return { rank: 2, text: '🟢 OK', bg: '#14532d', color: '#bbf7d0' };
+  }
+
   function parseColors(value) {
     if (Array.isArray(value)) {
       return value.map(function(item) { return String(item || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean);
@@ -11764,6 +11772,7 @@ window.addEventListener('unhandledrejection', function(e) {
       machines: machines,
       imageUrl: String(of && (of.imagem_url || of.imagem || of.img) || '').trim(),
       order: order,
+      statusInfo: getStatusInfo(of),
       search: normText([number, client, product].join(' ')),
       colorKey: normText(colors[0] || 'sem impressao'),
       sizeKey: normText(getOfDimLabel(of)),
@@ -11810,6 +11819,7 @@ window.addEventListener('unhandledrejection', function(e) {
       + '#ofmaq-tabela th.col-prazo,#ofmaq-tabela td.col-prazo{width:85px}'
       + '#ofmaq-tabela th.col-tempo,#ofmaq-tabela td.col-tempo{width:90px}'
       + '#ofmaq-tabela th.col-maq,#ofmaq-tabela td.col-maq{width:90px}'
+      + '#ofmaq-tabela th.col-status,#ofmaq-tabela td.col-status{width:110px}'
       + '#ofmaq-tabela th.col-acoes,#ofmaq-tabela td.col-acoes{width:95px}'
       + '.ofmaq-direct-seq{width:100%;max-width:54px;min-height:34px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f8fafc;padding:4px 6px;text-align:center}'
       + '.ofmaq-direct-thumb-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border:none;background:transparent;padding:0;cursor:pointer}'
@@ -11948,6 +11958,9 @@ window.addEventListener('unhandledrejection', function(e) {
         var gb = String(b.getAttribute('data-color-key') || '') + '|' + String(b.getAttribute('data-size-key') || '');
         if (ga !== gb) return ga.localeCompare(gb, 'pt-BR');
       }
+      var sa = Number(a.getAttribute('data-status-rank') || 9) || 9;
+      var sb = Number(b.getAttribute('data-status-rank') || 9) || 9;
+      if (sa !== sb) return sa - sb;
       var oa = Number(a.getAttribute('data-order') || 0) || 0;
       var ob = Number(b.getAttribute('data-order') || 0) || 0;
       if (oa !== ob) return oa - ob;
@@ -11983,7 +11996,7 @@ window.addEventListener('unhandledrejection', function(e) {
     if (!empty) {
       empty = document.createElement('tr');
       empty.className = 'ofmaq-direct-empty';
-      empty.innerHTML = '<td colspan="12">Nenhuma OF encontrada para este filtro.</td>';
+      empty.innerHTML = '<td colspan="13">Nenhuma OF encontrada para este filtro.</td>';
       tbody.appendChild(empty);
     }
     empty.style.display = visibleCount ? 'none' : 'table-row';
@@ -12222,7 +12235,7 @@ window.addEventListener('unhandledrejection', function(e) {
       + '</div>'
       + '<div class="ofmaq-direct-table-wrap">'
       + '  <table id="ofmaq-tabela">'
-      + '    <thead><tr><th class="col-seq">SEQ</th><th class="col-img">IMG</th><th class="col-of">N&ordm; OF</th><th class="col-cliente">CLIENTE</th><th class="col-produto">PRODUTO</th><th class="col-tamanho">TAMANHO</th><th class="col-cores">CORES</th><th class="col-qtd">QTD</th><th class="col-prazo">PRAZO</th><th class="col-tempo">TEMPO</th><th class="col-maq">MAQUINA</th><th class="col-acoes">ACOES</th></tr></thead>'
+      + '    <thead><tr><th class="col-seq">SEQ</th><th class="col-img">IMG</th><th class="col-of">N&ordm; OF</th><th class="col-cliente">CLIENTE</th><th class="col-produto">PRODUTO</th><th class="col-tamanho">TAMANHO</th><th class="col-cores">CORES</th><th class="col-qtd">QTD</th><th class="col-prazo">PRAZO</th><th class="col-tempo">TEMPO</th><th class="col-maq">MAQUINA</th><th class="col-status">STATUS</th><th class="col-acoes">ACOES</th></tr></thead>'
       + '    <tbody id="ofmaq-tbody"></tbody>'
       + '  </table>'
       + '</div>';
@@ -12235,14 +12248,14 @@ window.addEventListener('unhandledrejection', function(e) {
       try { el.remove(); } catch (_) {}
     });
     if (!rows.length) {
-      tbody.innerHTML = '<tr class="ofmaq-direct-empty"><td colspan="12">Nenhuma OF encontrada.</td></tr>';
+      tbody.innerHTML = '<tr class="ofmaq-direct-empty"><td colspan="13">Nenhuma OF encontrada.</td></tr>';
     } else {
       tbody.innerHTML = rows.map(function(item) {
         var imgHtml = item.imageUrl
           ? ('<button type="button" class="ofmaq-direct-thumb-btn" data-img-of-id="' + escAttrLocal(item.id) + '"><span class="ofmaq-direct-thumb"><img src="' + escAttrLocal(item.imageUrl) + '" alt="Imagem da OF"></span></button>')
           : '<span class="ofmaq-direct-thumb-fallback">&#128230;</span>';
         return ''
-          + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-maq-list="' + escAttrLocal(item.machines.join('|')) + '" data-day="' + escAttrLocal(item.diaIso || '') + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-color-key="' + escAttrLocal(item.colorKey || '') + '" data-size-key="' + escAttrLocal(item.sizeKey || '') + '" data-search="' + escAttrLocal(item.search || '') + '" data-of-number="' + escAttrLocal(item.number || '') + '">'
+          + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-maq-list="' + escAttrLocal(item.machines.join('|')) + '" data-day="' + escAttrLocal(item.diaIso || '') + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-status-rank="' + escAttrLocal(String(item.statusInfo && item.statusInfo.rank != null ? item.statusInfo.rank : 9)) + '" data-color-key="' + escAttrLocal(item.colorKey || '') + '" data-size-key="' + escAttrLocal(item.sizeKey || '') + '" data-search="' + escAttrLocal(item.search || '') + '" data-of-number="' + escAttrLocal(item.number || '') + '">'
           + '  <td class="col-seq"><input class="ofmaq-direct-seq" type="number" min="1" step="1" value="' + escAttrLocal(String(item.order || 1)) + '" data-seq-of-id="' + escAttrLocal(item.id) + '"></td>'
           + '  <td class="col-img">' + imgHtml + '</td>'
           + '  <td class="col-of"><strong>' + escHLocal(item.number || '-') + '</strong></td>'
@@ -12254,6 +12267,7 @@ window.addEventListener('unhandledrejection', function(e) {
           + '  <td class="col-prazo">' + escHLocal(item.prazoIso ? formatDateBR(item.prazoIso) : '-') + '</td>'
           + '  <td class="col-tempo">' + escHLocal(formatMinutesHuman(item.tempoMin || 0)) + '</td>'
           + '  <td class="col-maq">' + escHLocal(state.selectedMachine || item.machines[0] || '-') + '</td>'
+          + '  <td class="col-status"><span class="ofmaq-direct-color" style="background:' + escAttrLocal(item.statusInfo.bg) + ';color:' + escAttrLocal(item.statusInfo.color) + '">' + escHLocal(item.statusInfo.text) + '</span></td>'
           + '  <td class="col-acoes"><button type="button" class="ofmaq-direct-btn" data-actions-of-id="' + escAttrLocal(item.id) + '">&#9889; Acoes</button></td>'
           + '</tr>';
       }).join('');
