@@ -26433,6 +26433,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!shell) return;
     modal.classList.add('estoque-modal-overlay', 'estoque-modal-overlay-padrao');
     modal.setAttribute('data-modal-padrao', '1');
+    modal.style.zIndex = '10000';
     shell.classList.add('estoque-modal-shell', 'estoque-modal-shell-md', 'estoque-modal-shell-padrao', 'estoque-modal-shell-chapa');
     shell.style.cssText = '';
     if (!modal.dataset.patchOverlayCloseBound) {
@@ -26589,6 +26590,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     if (modal.id !== 'estoque-entrada-real-modal' && modal.id !== 'estoque-saida-real-modal') return;
     modal.classList.add('estoque-modal-overlay');
+    modal.style.zIndex = modal.id === 'estoque-entrada-real-modal' ? '9000' : '9001';
     var shell = modal.firstElementChild;
     if (!shell) return;
     shell.classList.add('estoque-modal-shell');
@@ -27012,6 +27014,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '</section>',
       footerHtml: '<button type="button" id="estoque-entrada-real-cancel" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button type="button" id="estoque-entrada-real-save" class="estoque-modal-btn estoque-modal-btn-green">✓ Salvar Entrada</button>'
     });
+    try { if (modal && modal.style) modal.style.zIndex = '9000'; } catch (_) {}
     var saveBtn = document.getElementById('estoque-entrada-real-save');
     if (saveBtn) saveBtn.onclick = _entradaEstoqueSalvar;
     var tbody = document.getElementById('estoque-entrada-real-tbody');
