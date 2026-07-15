@@ -11520,15 +11520,19 @@ window.addEventListener('unhandledrejection', function(e) {
   }
 
   function getOfTempoMin(of) {
+    var id = String(of && of.id || '').trim();
+    try {
+      var safeId = id ? (typeof CSS !== 'undefined' && CSS && typeof CSS.escape === 'function' ? CSS.escape(id) : id.replace(/"/g, '\\"')) : '';
+      var card = safeId ? document.querySelector('.kb-card.kb-card-ofmaq[data-of-id="' + safeId + '"], [data-of-id="' + safeId + '"]') : null;
+      var attr = card && card.dataset ? Number(card.dataset.tempoMin || 0) : 0;
+      if (Number.isFinite(attr) && attr > 0) return attr;
+    } catch (_) {}
     var raw = of && (of.tempo_estimado != null ? of.tempo_estimado : (of.tempo_min != null ? of.tempo_min : (of.tempo != null ? of.tempo : of.data_tempo_min)));
     var n = Number(raw);
     if (Number.isFinite(n) && n > 0) return n;
-    try {
-      var id = String(of && of.id || '').trim();
-      var card = id ? document.querySelector('.kb-card[data-of-id="' + CSS.escape(id) + '"]') : null;
-      var attr = card ? Number(card.getAttribute('data-tempo-min') || 0) : 0;
-      if (Number.isFinite(attr) && attr > 0) return attr;
-    } catch (_) {}
+    var qtd = Number(of && (of.quantidade != null ? of.quantidade : of.qtd) || 0) || 0;
+    var prodHora = Number(of && (of.producao_hora_media != null ? of.producao_hora_media : of.cx_hora_media) || 500) || 500;
+    if (qtd > 0 && prodHora > 0) return Math.round((qtd / prodHora) * 60);
     return 0;
   }
 
