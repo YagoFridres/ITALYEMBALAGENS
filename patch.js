@@ -11888,6 +11888,16 @@ window.addEventListener('unhandledrejection', function(e) {
     }, 0);
   }
 
+  function getOfmaqAuthHeaders(extra) {
+    var token = '';
+    try {
+      token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || window._token || '').trim();
+    } catch (_) {
+      token = '';
+    }
+    return Object.assign({}, extra || {}, token ? { Authorization: 'Bearer ' + token } : {});
+  }
+
   function removeModal(id) {
     Array.prototype.slice.call(document.querySelectorAll('.ofmaq-direct-overlay[data-modal-id="' + id + '"], .ofmaq-direct-modal[data-modal-id="' + id + '"]')).forEach(function(el) {
       try { el.remove(); } catch (_) {}
@@ -12221,6 +12231,9 @@ window.addEventListener('unhandledrejection', function(e) {
       return '<option value="' + escAttrLocal(machine) + '">' + escHLocal(machine) + '</option>';
     }).join('');
     var tbody = root.querySelector('#ofmaq-tbody');
+    Array.prototype.slice.call(root.querySelectorAll('.patch-ofmaq-seq-badge')).forEach(function(el) {
+      try { el.remove(); } catch (_) {}
+    });
     if (!rows.length) {
       tbody.innerHTML = '<tr class="ofmaq-direct-empty"><td colspan="12">Nenhuma OF encontrada.</td></tr>';
     } else {
@@ -12303,9 +12316,18 @@ window.addEventListener('unhandledrejection', function(e) {
       if (!id || !row) return;
       try {
         try { console.log('[OFMAQ-SEQ] salvando id:', id, 'valor:', value); } catch (_) {}
-        var out = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { ordem_maquina: value } });
-        try { console.log('[OFMAQ-SEQ] resposta:', out && out.resp ? out.resp.status : 'sem-status'); } catch (_) {}
-        if (!out || !out.resp || !out.resp.ok || (out.data && out.data.ok === false)) throw new Error((out && out.data && (out.data.error || out.data.message)) || 'Falha ao salvar sequencia');
+        var url = '/api/ofs/' + encodeURIComponent(id);
+        var body = { ordem_maquina: value };
+        var resp = await fetch(url, {
+          method: 'PATCH',
+          headers: getOfmaqAuthHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(body)
+        });
+        var respostaJson = {};
+        try { respostaJson = await resp.clone().json(); } catch (_) { respostaJson = {}; }
+        try { console.log('[SEQ-DEBUG] url:', url, 'body:', body, 'status:', resp.status, 'resposta:', respostaJson); } catch (_) {}
+        try { console.log('[OFMAQ-SEQ] resposta:', resp.status); } catch (_) {}
+        if (!resp.ok || (respostaJson && respostaJson.ok === false)) throw new Error((respostaJson && (respostaJson.error || respostaJson.message)) || 'Falha ao salvar sequencia');
         updateCachedOf(id, function(of) { of.ordem_maquina = value; });
         row.setAttribute('data-order', String(value));
         input.value = String(value);
