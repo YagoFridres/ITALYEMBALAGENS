@@ -11520,8 +11520,9 @@ window.addEventListener('unhandledrejection', function(e) {
       try {
         var parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) return parseColors(parsed);
+        if (typeof parsed === 'string') return parseColors(parsed);
       } catch (_) {}
-      return raw.split(/[|,;+\/]+/).map(function(item) { return String(item || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean);
+      return raw.split(',').map(function(item) { return String(item || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean);
     }
     return [String(value || '').trim()].filter(Boolean);
   }
@@ -11555,10 +11556,11 @@ window.addEventListener('unhandledrejection', function(e) {
   }
 
   function colorHtml(colors) {
-    return (Array.isArray(colors) ? colors : []).map(function(name) {
+    var list = (Array.isArray(colors) ? colors : []).map(function(name) {
       var bg = resolveColorHex(name);
       return '<span class="ofmaq-direct-color" style="background:' + escAttrLocal(bg) + ';color:' + escAttrLocal(colorText(bg)) + '">' + escHLocal(name) + '</span>';
-    }).join('');
+    });
+    return list.length ? list.join('') : '<span class="ofmaq-direct-color" style="background:#0f172a;color:#94a3b8;border:1px solid #334155">—</span>';
   }
 
   function getSourceLengths() {
