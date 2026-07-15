@@ -628,6 +628,9 @@ try {
       + '#patch-relatorios-central .rr-field label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}'
       + '#patch-relatorios-central .rr-field select,#patch-relatorios-central .rr-field input{width:100%;padding:11px 12px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:12px;color:#f8fafc;font-size:13px}'
       + '#patch-relatorios-central .rr-period-help{font-size:12px;color:#94a3b8}'
+      + '#patch-relatorios-central .rr-search-row{margin-top:14px}'
+      + '#patch-relatorios-central .rr-search-input{width:100%;padding:11px 12px;background:#1e293b;border:1px solid #334155;border-radius:12px;color:#f8fafc;font-size:13px}'
+      + '#patch-relatorios-central .rr-search-input::placeholder{color:#94a3b8}'
       + '#patch-relatorios-central .rr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}'
       + '#patch-relatorios-central .rr-card{display:grid;gap:14px;background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:18px}'
       + '#patch-relatorios-central .rr-card:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.32)}'
@@ -2224,11 +2227,12 @@ try {
       + '      <div class="rr-badge">Período ativo: ' + rrEsc(ref.titulo) + '</div>'
       + '    </div>'
       +       rrPeriodHtml(ref)
+      + '    <div class="rr-search-row"><input id="rr-search-relatorios" class="rr-search-input" type="text" placeholder="Buscar relatório..." value="' + rrEsc(String(window.__rrBuscaRelatorios || '')) + '"></div>'
       + '  </div>'
       + '  <div class="rr-grid">'
       + rrDefs.map(function(def) {
           return ''
-            + '<div class="rr-card">'
+            + '<div class="rr-card" data-rr-search="' + rrEsc(((def.label || '') + ' ' + (def.desc || '')).toLowerCase()) + '">'
             + '  <div class="rr-card-top"><div class="rr-icon">' + rrEsc(def.icon || '🖨') + '</div></div>'
             + '  <div><div class="rr-label">' + rrEsc(def.label || 'Relatório') + '</div><div class="rr-desc">' + rrEsc(def.desc || '') + '</div></div>'
             + '  <button type="button" class="rr-btn" data-rr-open="' + rrEsc(def.id || '') + '">Abrir Relatório</button>'
@@ -2243,6 +2247,21 @@ try {
         rrOpen(def);
       };
     });
+    (function() {
+      var inp = host.querySelector('#rr-search-relatorios');
+      if (!inp) return;
+      var norm = function(v) { return String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); };
+      var apply = function() {
+        var q = norm(inp.value || '');
+        try { window.__rrBuscaRelatorios = inp.value || ''; } catch (_) {}
+        Array.prototype.slice.call(host.querySelectorAll('.rr-card')).forEach(function(card) {
+          var hay = norm(card.getAttribute('data-rr-search') || card.textContent || '');
+          card.style.display = (!q || hay.indexOf(q) >= 0) ? '' : 'none';
+        });
+      };
+      inp.addEventListener('input', apply);
+      apply();
+    })();
     try { host.setAttribute('data-rr-defs-sig', defsSig); } catch (_) {}
     rrBindPeriodControls(host);
     return true;
