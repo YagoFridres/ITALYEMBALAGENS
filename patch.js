@@ -11840,8 +11840,8 @@ window.addEventListener('unhandledrejection', function(e) {
       + '.ofmaq-direct-color-wrap{display:flex;flex-wrap:wrap;gap:4px}'
       + '.ofmaq-direct-color{display:inline-flex;align-items:center;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:800;margin:2px 2px 0 0}'
       + '.ofmaq-direct-empty td{text-align:center;color:#94a3b8;padding:24px 12px}'
-      + '.ofmaq-direct-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998}'
-      + '.ofmaq-direct-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#1e293b;border-radius:12px;padding:24px;min-width:300px;max-width:min(92vw,760px);box-shadow:0 25px 50px rgba(0,0,0,.5);color:#f8fafc}'
+      + '.ofmaq-direct-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998;pointer-events:all}'
+      + '.ofmaq-direct-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#1e293b;border-radius:12px;padding:24px;min-width:300px;max-width:min(92vw,760px);box-shadow:0 25px 50px rgba(0,0,0,.5);color:#f8fafc;pointer-events:all}'
       + '.ofmaq-direct-modal h3{margin:0 0 14px 0;font-size:20px}'
       + '.ofmaq-direct-modal .close-btn{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:999px;border:1px solid #475569;background:#0f172a;color:#f8fafc;cursor:pointer}'
       + '.ofmaq-direct-modal-body{display:grid;gap:10px}'
@@ -11888,13 +11888,13 @@ window.addEventListener('unhandledrejection', function(e) {
       + '<button type="button" class="close-btn" data-close-modal="' + escAttrLocal(id) + '">&times;</button>'
       + '<h3>' + escHLocal(title) + '</h3>'
       + '<div class="ofmaq-direct-modal-body">' + bodyHtml + '</div>';
-    overlay.onclick = function(ev) {
-      if (ev && ev.target !== overlay) return;
+    overlay.addEventListener('click', function(ev) {
+      if (!ev || ev.target !== overlay) return;
       removeModal(id);
-    };
-    modal.onclick = function(ev) {
+    });
+    modal.addEventListener('click', function(ev) {
       try { ev.stopPropagation(); } catch (_) {}
-    };
+    });
     document.body.appendChild(overlay);
     document.body.appendChild(modal);
     var btn = modal.querySelector('[data-close-modal="' + id + '"]');
@@ -11906,7 +11906,7 @@ window.addEventListener('unhandledrejection', function(e) {
     setTimeout(function() {
       var modal = createModal(id, title, bodyHtml);
       if (typeof onReady === 'function') onReady(modal);
-    }, 0);
+    }, 50);
   }
 
   function getOfmaqAuthHeaders(extra) {
