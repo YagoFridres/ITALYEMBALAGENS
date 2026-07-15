@@ -11484,6 +11484,19 @@ window.addEventListener('unhandledrejection', function(e) {
     return Number.isFinite(dt.getTime()) ? dt.toISOString().slice(0, 10) : '';
   }
 
+  function ofMatchDia(of, diaSel) {
+    if (!diaSel) return true;
+    var d = of && (of.dia || of.data || of.data_pedido || of.created_at || '');
+    var norm = typeof d === 'string'
+      ? String(d || '').slice(0, 10)
+      : d instanceof Date
+        ? d.toISOString().slice(0, 10)
+        : d
+          ? new Date(d).toISOString().slice(0, 10)
+          : '';
+    return norm === diaSel;
+  }
+
   function getOfNumber(of) {
     return String(of && (of.of || of.numero || of.of_num || of.seq) || '').trim();
   }
@@ -11749,7 +11762,7 @@ window.addEventListener('unhandledrejection', function(e) {
   function getRowData(of, idx) {
     var machines = getOfMachines(of);
     var prazoIso = getOfDateIso(of);
-    var diaIso = normDia(of && of.dia) || prazoIso;
+    var diaIso = normDia(of && (of.dia || of.data || of.data_pedido || of.created_at)) || prazoIso;
     var client = getOfClient(of);
     var product = getOfProduct(of);
     var number = getOfNumber(of) || String(of && of.id || '').trim();
@@ -12006,9 +12019,10 @@ window.addEventListener('unhandledrejection', function(e) {
     Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]')).forEach(function(row) {
       var machineTokens = String(row.getAttribute('data-maq-list') || '').split('|').filter(Boolean);
       var rowDate = String(row.getAttribute('data-day') || '').slice(0, 10);
+      var rowDiaSource = String(row.getAttribute('data-dia-source') || '');
       var hay = String(row.getAttribute('data-search') || '');
       var show = machineTokens.indexOf(state.selectedMachine) >= 0;
-      if (show && state.selectedDateIso) show = rowDate === state.selectedDateIso;
+      if (show && state.selectedDateIso) show = ofMatchDia({ dia: rowDiaSource || rowDate }, state.selectedDateIso);
       if (show && state.searchTerm) show = hay.indexOf(normText(state.searchTerm)) >= 0;
       row.style.display = show ? 'table-row' : 'none';
       var machineCell = row.querySelector('.col-maq');
@@ -12253,7 +12267,7 @@ window.addEventListener('unhandledrejection', function(e) {
           ? ('<button type="button" class="ofmaq-direct-thumb-btn" data-img-of-id="' + escAttrLocal(item.id) + '"><span class="ofmaq-direct-thumb"><img src="' + escAttrLocal(item.imageUrl) + '" alt="Imagem da OF"></span></button>')
           : '<span class="ofmaq-direct-thumb-fallback">&#128230;</span>';
         return ''
-          + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-maq-list="' + escAttrLocal(item.machines.join('|')) + '" data-day="' + escAttrLocal(item.diaIso || '') + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-status-rank="' + escAttrLocal(String(item.statusInfo && item.statusInfo.rank != null ? item.statusInfo.rank : 9)) + '" data-color-key="' + escAttrLocal(item.colorKey || '') + '" data-size-key="' + escAttrLocal(item.sizeKey || '') + '" data-search="' + escAttrLocal(item.search || '') + '" data-of-number="' + escAttrLocal(item.number || '') + '">'
+          + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-maq-list="' + escAttrLocal(item.machines.join('|')) + '" data-day="' + escAttrLocal(item.diaIso || '') + '" data-dia-source="' + escAttrLocal(String(item.of && (item.of.dia || item.of.data || item.of.data_pedido || item.of.created_at) || '')) + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-status-rank="' + escAttrLocal(String(item.statusInfo && item.statusInfo.rank != null ? item.statusInfo.rank : 9)) + '" data-color-key="' + escAttrLocal(item.colorKey || '') + '" data-size-key="' + escAttrLocal(item.sizeKey || '') + '" data-search="' + escAttrLocal(item.search || '') + '" data-of-number="' + escAttrLocal(item.number || '') + '">'
           + '  <td class="col-seq"><input class="ofmaq-direct-seq" type="number" min="1" step="1" value="' + escAttrLocal(String(item.order || 1)) + '" data-seq-of-id="' + escAttrLocal(item.id) + '"></td>'
           + '  <td class="col-img">' + imgHtml + '</td>'
           + '  <td class="col-of"><strong>' + escHLocal(item.number || '-') + '</strong></td>'
@@ -12390,10 +12404,10 @@ window.addEventListener('unhandledrejection', function(e) {
     var container = getContainer();
     if (!container) return null;
     try {
-      if (baseOfs.length) {
-        var firstDia = baseOfs[0] && baseOfs[0].dia;
-        console.log('[OFMAQ-DIA-DEBUG] of.dia:', firstDia, 'norm:', normDia(firstDia), 'diaSel:', state.selectedDateIso, 'match:', normDia(firstDia) === state.selectedDateIso);
-      }
+      baseOfs.slice(0, 3).forEach(function(of) {
+        var rawDia = of && (of.dia || of.data || of.data_pedido || of.created_at);
+        console.log('[OFMAQ-DIA-DEBUG] of.dia:', rawDia, 'norm:', normDia(rawDia), 'diaSel:', state.selectedDateIso, 'match:', ofMatchDia(of, state.selectedDateIso));
+      });
     } catch (_) {}
     var rows = baseOfs.map(function(of, idx) { return getRowData(of, idx); }).filter(Boolean);
     state.currentRows = rows;
