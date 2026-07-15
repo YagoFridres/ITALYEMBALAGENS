@@ -12060,6 +12060,22 @@ window.addEventListener('unhandledrejection', function(e) {
     });
   }
 
+  function bindRowClickHandlers(root) {
+    var tbody = root && root.querySelector ? root.querySelector('#ofmaq-tbody') : null;
+    if (!tbody) return;
+    Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]')).forEach(function(tr) {
+      tr.style.cursor = 'pointer';
+      if (tr.dataset.ofmaqRowClickBound === '1') return;
+      tr.dataset.ofmaqRowClickBound = '1';
+      tr.addEventListener('click', function(e) {
+        if (e && e.target && e.target.closest && e.target.closest('input,img,button')) return;
+        var ofId = String(tr.getAttribute('data-of-id') || '').trim();
+        var rowData = (state.currentRows || []).filter(function(item) { return item.id === ofId; })[0] || null;
+        if (rowData) openActionsModal(root, rowData, tr);
+      });
+    });
+  }
+
   function ensureEmptyRow(tbody) {
     var empty = tbody.querySelector('.ofmaq-direct-empty');
     var visibleCount = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]')).filter(function(row) {
@@ -12348,6 +12364,7 @@ window.addEventListener('unhandledrejection', function(e) {
           + '</tr>';
       }).join('');
       ensureSingleSeqInputPerRow(tbody);
+      bindRowClickHandlers(root);
     }
     renderQtyHeader(root);
     return root;
@@ -12449,13 +12466,6 @@ window.addEventListener('unhandledrejection', function(e) {
         var rowData = (state.currentRows || []).filter(function(item) { return item.id === actId; })[0] || null;
         if (rowData && rowEl) openActionsModal(root, rowData, rowEl);
         return;
-      }
-      if (ev && ev.target && ev.target.closest && ev.target.closest('input,img,button')) return;
-      var rowElDirect = ev && ev.target && ev.target.closest ? ev.target.closest('tr[data-of-id]') : null;
-      if (rowElDirect) {
-        var ofId = String(rowElDirect.getAttribute('data-of-id') || '').trim();
-        var rowDataDirect = (state.currentRows || []).filter(function(item) { return item.id === ofId; })[0] || null;
-        if (rowDataDirect) openActionsModal(root, rowDataDirect, rowElDirect);
       }
     });
     var thead = root.querySelector('#ofmaq-tabela thead');
