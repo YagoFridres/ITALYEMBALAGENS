@@ -15594,6 +15594,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         .concat(saidasOfMes.map(function(r) {
           var clienteLinha = String((r && (r.cliente_nome || r.cliente || '—')) || '—').trim() || '—';
           return {
+            id: r.id || null,
             data: r.data_conclusao,
             tipo: 'OF',
             fornecedor: r.fornecedor_nome || r.fornecedor || '—',
@@ -15601,8 +15602,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             cliente: clienteLinha,
             produto: r.produto || '—',
             gramatura_nome: r.gramatura_nome || '—',
+            gramatura: Number(r.gramatura || 0) || 0,
             valor_unitario: Number(r.valor_unitario || 0) || 0,
             valor_total: Number(r.valor_total || 0) || 0,
+            area_unit_m2: Number(r.area_unit_m2 || 0) || 0,
             area_total_m2: Number(r.area_total_m2 || 0) || 0,
             toneladas: r.toneladas,
             qtd_caixas_produzidas: r.qtd_caixas_produzidas != null ? r.qtd_caixas_produzidas : (r.quantidade != null ? r.quantidade : '—'),
@@ -15632,10 +15635,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  </div>'
         + '  <div class="pep-panel">'
         + '    <div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Tabela de Toneladas</div><div class="pep-sub">Movimentações do mês atual</div></div>'
-        + '    <div style="overflow:auto"><table class="pep-table"><thead><tr><th>Data</th><th>OF vinculada</th><th>Cliente</th><th>Produto</th><th>Gramatura</th><th>Fornecedor</th><th>Qtd caixas produzidas</th><th>Toneladas</th></tr></thead><tbody>'
+        + '    <div style="overflow:auto"><table class="pep-table"><thead><tr><th>Data</th><th>OF vinculada</th><th>Cliente</th><th>Produto</th><th>Gramatura</th><th>Fornecedor</th><th>Qtd caixas produzidas</th><th>Toneladas</th><th>Ações</th></tr></thead><tbody>'
         + (tabela.length ? tabela.map(function(r) {
-          return '<tr><td>' + esc(checklistFmtDate(r.data || '')) + '</td><td>' + esc(r.of_numero || '—') + '</td><td>' + esc(r.cliente || '—') + '</td><td>' + esc(r.produto || '—') + '</td><td>' + esc(r.gramatura_nome || '—') + '</td><td>' + esc(r.fornecedor || '—') + '</td><td>' + esc(String(r.qtd_caixas_produzidas != null ? r.qtd_caixas_produzidas : '—')) + '</td><td>' + num(r.toneladas || 0, 3) + '</td></tr>';
-        }).join('') : '<tr><td colspan="8" style="text-align:center;color:#94a3b8">Nenhum registro encontrado.</td></tr>')
+          var id = String(r && r.id || '').trim();
+          var actions = (String(r && r.tipo || '') === 'OF' && id)
+            ? ('<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="pep-btn" data-tones-edit="' + escAttr(id) + '">Editar</button><button type="button" class="pep-btn" data-tones-del="' + escAttr(id) + '">Excluir</button></div>')
+            : '';
+          return '<tr' + (id ? (' data-of-id="' + escAttr(id) + '"') : '') + '><td>' + esc(checklistFmtDate(r.data || '')) + '</td><td>' + esc(r.of_numero || '—') + '</td><td>' + esc(r.cliente || '—') + '</td><td>' + esc(r.produto || '—') + '</td><td>' + esc(r.gramatura_nome || '—') + '</td><td>' + esc(r.fornecedor || '—') + '</td><td>' + esc(String(r.qtd_caixas_produzidas != null ? r.qtd_caixas_produzidas : '—')) + '</td><td>' + num(r.toneladas || 0, 3) + '</td><td>' + actions + '</td></tr>';
+        }).join('') : '<tr><td colspan="9" style="text-align:center;color:#94a3b8">Nenhum registro encontrado.</td></tr>')
         + '    </tbody></table></div>'
         + '  </div>'
         + '</div>';
@@ -15645,6 +15652,110 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (printBtn) printBtn.onclick = function() {
         tonesPrintReport({ mesAtual: mesAtual, periodoTitulo: mesAtual, cards: cardsResumo, summaryRows: resumoFornecedorRows, rows: tabela });
       };
+      var closeModal = function() {
+        var modal = document.getElementById('tones-edit-modal');
+        if (modal) modal.remove();
+      };
+      var openModalBase = function(title, bodyHtml, footerHtml) {
+        closeModal();
+        var overlay = document.createElement('div');
+        overlay.id = 'tones-edit-modal';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(2,6,23,.72);display:flex;align-items:center;justify-content:center;padding:18px';
+        overlay.innerHTML = ''
+          + '<div role="dialog" aria-modal="true" style="width:min(720px,100%);border-radius:18px;border:1px solid rgba(148,163,184,.18);background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(2,6,23,.92));box-shadow:0 28px 80px rgba(0,0,0,.45);overflow:hidden">'
+          + '  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid rgba(148,163,184,.12)">'
+          + '    <div style="font-size:16px;font-weight:900;color:#f8fafc">' + esc(title) + '</div>'
+          + '    <button type="button" data-close="1" style="width:38px;height:38px;border-radius:12px;border:1px solid rgba(148,163,184,.22);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:18px;font-weight:900;cursor:pointer">✕</button>'
+          + '  </div>'
+          + '  <div style="display:grid;gap:12px;padding:16px 18px">' + bodyHtml + '</div>'
+          + '  <div style="display:flex;justify-content:flex-end;gap:10px;padding:14px 18px;border-top:1px solid rgba(148,163,184,.12)">' + footerHtml + '</div>'
+          + '</div>';
+        overlay.onclick = function(ev) { if (ev && ev.target === overlay) closeModal(); };
+        overlay.querySelector('[data-close="1"]').onclick = closeModal;
+        document.body.appendChild(overlay);
+        return overlay;
+      };
+      var openEdit = function(ofId) {
+        var id = String(ofId || '').trim();
+        if (!id) return;
+        var row = tabela.find(function(r) { return String(r && r.id || '').trim() === id; }) || null;
+        if (!row) return;
+        var qtd = String(row && row.qtd_caixas_produzidas != null ? row.qtd_caixas_produzidas : '').trim();
+        var vunit = String(row && row.valor_unitario != null ? row.valor_unitario : '').trim();
+        var gram = String(row && row.gramatura != null ? row.gramatura : '').trim();
+        var dataConc = String(row && row.data || '').slice(0, 10);
+        var bodyHtml = ''
+          + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">'
+          + '  <label style="display:grid;gap:6px;color:#e2e8f0;font-weight:900;font-size:12px">Qtd produzida<input id="tones-qtd" type="number" min="0" step="1" value="' + escAttr(qtd) + '" style="height:36px;padding:8px 12px;border-radius:12px;border:1px solid #334155;background:#1e293b;color:#fff"></label>'
+          + '  <label style="display:grid;gap:6px;color:#e2e8f0;font-weight:900;font-size:12px">Valor unitário<input id="tones-vunit" type="number" min="0" step="0.000001" value="' + escAttr(vunit) + '" style="height:36px;padding:8px 12px;border-radius:12px;border:1px solid #334155;background:#1e293b;color:#fff"></label>'
+          + '  <label style="display:grid;gap:6px;color:#e2e8f0;font-weight:900;font-size:12px">Gramatura<input id="tones-gram" type="number" min="0" step="0.01" value="' + escAttr(gram) + '" style="height:36px;padding:8px 12px;border-radius:12px;border:1px solid #334155;background:#1e293b;color:#fff"></label>'
+          + '  <label style="display:grid;gap:6px;color:#e2e8f0;font-weight:900;font-size:12px">Data de conclusão<input id="tones-data" type="date" value="' + escAttr(dataConc) + '" style="height:36px;padding:8px 12px;border-radius:12px;border:1px solid #334155;background:#1e293b;color:#fff"></label>'
+          + '</div>';
+        var overlay = openModalBase('Editar OF no histórico de toneladas', bodyHtml, '<button type="button" class="pep-btn" data-cancel="1">Cancelar</button><button type="button" class="pep-btn primary" data-save="1">Salvar</button>');
+        overlay.querySelector('[data-cancel="1"]').onclick = closeModal;
+        overlay.querySelector('[data-save="1"]').onclick = async function() {
+          try {
+            var qtdN = Math.max(0, Math.trunc(Number(document.getElementById('tones-qtd').value || 0) || 0));
+            var vunitN = Number(String(document.getElementById('tones-vunit').value || '0').replace(',', '.')) || 0;
+            var gramN = Number(String(document.getElementById('tones-gram').value || '0').replace(',', '.')) || 0;
+            var dataN = String(document.getElementById('tones-data').value || '').slice(0, 10);
+            var payload = { qtd_produzida: qtdN, valor_unitario: vunitN, gramatura: gramN, data_conclusao: dataN };
+            var out = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: payload });
+            if (!out || !out.resp || !out.resp.ok || (out.data && out.data.ok === false)) {
+              throw new Error((out && out.data && (out.data.error || out.data.message)) || 'Falha ao salvar');
+            }
+            row.qtd_caixas_produzidas = qtdN;
+            row.valor_unitario = vunitN;
+            row.gramatura = gramN;
+            row.gramatura_nome = String(gramN || '');
+            row.data = dataN;
+            row.data_conclusao = dataN;
+            try {
+              var tr = page.querySelector('tr[data-of-id="' + id + '"]');
+              if (tr && tr.children && tr.children.length >= 8) {
+                tr.children[0].textContent = checklistFmtDate(dataN || '');
+                tr.children[4].textContent = String(row.gramatura_nome || '—');
+                tr.children[6].textContent = String(qtdN);
+                var areaUnit = Number(row.area_unit_m2 || 0) || 0;
+                var ton = (areaUnit > 0 && gramN > 0) ? ((areaUnit * qtdN * gramN) / 1000000) : Number(row.toneladas || 0) || 0;
+                tr.children[7].textContent = num(ton || 0, 3);
+              }
+            } catch (_) {}
+            closeModal();
+            try { window.toast('✓ OF atualizada', 'var(--green)'); } catch (_) {}
+          } catch (e) {
+            try { window.toast('Erro ao salvar: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+          }
+        };
+      };
+      var openDelete = function(ofId) {
+        var id = String(ofId || '').trim();
+        if (!id) return;
+        var overlay = openModalBase('Excluir OF do histórico', '<div style="color:#e2e8f0;font-weight:800">Tem certeza que deseja excluir esta OF do histórico de toneladas?</div>', '<button type="button" class="pep-btn" data-cancel="1">Cancelar</button><button type="button" class="pep-btn primary" data-del="1">Excluir</button>');
+        overlay.querySelector('[data-cancel="1"]').onclick = closeModal;
+        overlay.querySelector('[data-del="1"]').onclick = async function() {
+          try {
+            var out = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'DELETE' });
+            if (!out || !out.resp || !out.resp.ok || (out.data && out.data.ok === false)) {
+              throw new Error((out && out.data && (out.data.error || out.data.message)) || 'Falha ao excluir');
+            }
+            try {
+              var tr = page.querySelector('tr[data-of-id="' + id + '"]');
+              if (tr) tr.remove();
+            } catch (_) {}
+            closeModal();
+            try { window.toast('✓ OF excluída', 'var(--green)'); } catch (_) {}
+          } catch (e) {
+            try { window.toast('Erro ao excluir: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+          }
+        };
+      };
+      Array.prototype.slice.call(page.querySelectorAll('button[data-tones-edit]')).forEach(function(btn) {
+        btn.onclick = function() { openEdit(String(btn.getAttribute('data-tones-edit') || '').trim()); };
+      });
+      Array.prototype.slice.call(page.querySelectorAll('button[data-tones-del]')).forEach(function(btn) {
+        btn.onclick = function() { openDelete(String(btn.getAttribute('data-tones-del') || '').trim()); };
+      });
     }
 
     function openCustomPage(pageId) {
