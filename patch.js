@@ -12416,6 +12416,14 @@ window.addEventListener('unhandledrejection', function(e) {
         var rowEl = actBtn.closest ? actBtn.closest('tr[data-of-id]') : null;
         var rowData = (state.currentRows || []).filter(function(item) { return item.id === actId; })[0] || null;
         if (rowData && rowEl) openActionsModal(root, rowData, rowEl);
+        return;
+      }
+      if (ev && ev.target && ev.target.closest && ev.target.closest('input,img,button')) return;
+      var rowElDirect = ev && ev.target && ev.target.closest ? ev.target.closest('tr[data-of-id]') : null;
+      if (rowElDirect) {
+        var ofId = String(rowElDirect.getAttribute('data-of-id') || '').trim();
+        var rowDataDirect = (state.currentRows || []).filter(function(item) { return item.id === ofId; })[0] || null;
+        if (rowDataDirect) openActionsModal(root, rowDataDirect, rowElDirect);
       }
     });
     var thead = root.querySelector('#ofmaq-tabela thead');
