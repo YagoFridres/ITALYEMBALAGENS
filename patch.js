@@ -11233,6 +11233,8 @@ window.addEventListener('unhandledrejection', function(e) {
     fallbackLoading: false
   };
   window.__patchOfmaqDirectState = state;
+  window._ofmaqUltimaAssinatura = String(window._ofmaqUltimaAssinatura || '');
+  window.__patchOfmaqObserverConnected = !!window.__patchOfmaqObserverConnected;
 
   function escHLocal(v) {
     try { if (typeof window.escH === 'function') return window.escH(v); } catch (_) {}
@@ -11638,6 +11640,16 @@ window.addEventListener('unhandledrejection', function(e) {
     state.renderTimer = setTimeout(function() {
       try { window._ofmaqRenderNovo(); } catch (_) {}
     }, Math.max(0, Number(delay || 100) || 100));
+  }
+
+  function buildRenderSignature(ofs, opcoes) {
+    var list = Array.isArray(ofs) ? ofs : [];
+    var ids = list.slice(0, 12).map(function(of) { return String(of && of.id || of && of.of || '').trim(); }).join(',');
+    var tail = list.length ? String((list[list.length - 1] && (list[list.length - 1].id || list[list.length - 1].of)) || '').trim() : '';
+    var currentPage = String(window._PAGE_ATUAL || '').trim();
+    var dia = String((opcoes && (opcoes.dia || opcoes.data || opcoes.dateIso)) || state.selectedDateIso || '').slice(0, 10);
+    var maquina = normalizeMachine((opcoes && (opcoes.maquina || opcoes.machine)) || state.selectedMachine || '');
+    return [currentPage, maquina, dia, list.length, ids, tail].join('|');
   }
 
   async function fetchFallbackOfs() {
@@ -12354,20 +12366,29 @@ window.addEventListener('unhandledrejection', function(e) {
         wrapRenderKanban();
         requestRender(100);
       });
-      window.__patchOfmaqDirectObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+      if (!window.__patchOfmaqObserverConnected) {
+        window.__patchOfmaqDirectObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+        window.__patchOfmaqObserverConnected = true;
+      }
     } catch (_) {}
     setInterval(function() {
       if (window._ofmaqRenderandoAgora) return;
       try { wrapRenderKanban(); } catch (_) {}
       if (!isOfmaqActive()) return;
       hideLegacyOfmaqUi();
+      var currentOfs = getCurrentSourceOfs();
+      var nextSignature = buildRenderSignature(currentOfs, null);
+      if (nextSignature === String(window._ofmaqUltimaAssinatura || '')) return;
       requestRender(100);
     }, 2000);
   }
 
   function disconnectDirectObserver() {
     try {
-      if (window.__patchOfmaqDirectObserver && typeof window.__patchOfmaqDirectObserver.disconnect === 'function') window.__patchOfmaqDirectObserver.disconnect();
+      if (window.__patchOfmaqObserverConnected && window.__patchOfmaqDirectObserver && typeof window.__patchOfmaqDirectObserver.disconnect === 'function') {
+        window.__patchOfmaqDirectObserver.disconnect();
+        window.__patchOfmaqObserverConnected = false;
+      }
     } catch (_) {}
   }
 
@@ -12375,17 +12396,20 @@ window.addEventListener('unhandledrejection', function(e) {
     try {
       if (!window.__patchOfmaqDirectPollInstalled) return;
       if (!window.__patchOfmaqDirectObserver || typeof window.__patchOfmaqDirectObserver.observe !== 'function') return;
+      if (window.__patchOfmaqObserverConnected) return;
       window.__patchOfmaqDirectObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+      window.__patchOfmaqObserverConnected = true;
     } catch (_) {}
   }
 
   window._ofmaqRenderandoAgora = !!window._ofmaqRenderandoAgora;
   window._ofmaqRenderNovo = async function(ofs, maquinas, opcoes) {
-    if (window._ofmaqRenderandoAgora) return null;
+    if (window._ofmaqRenderandoAgora) { return null; }
     window._ofmaqRenderandoAgora = true;
     disconnectDirectObserver();
     try {
       var source = await resolveSourceOfs(ofs);
+      var nextSignature = buildRenderSignature(source, opcoes);
       if (!source.length) {
         if (!isOfmaqActive()) return null;
         hideLegacyOfmaqUi();
@@ -12394,7 +12418,9 @@ window.addEventListener('unhandledrejection', function(e) {
         return null;
       }
       clearTimeout(state.retryTimer);
-      return renderDirect(source, maquinas || window._listaMaquinas || window._ofmaqUltimasMaquinas || [], opcoes || {});
+      var rendered = renderDirect(source, maquinas || window._listaMaquinas || window._ofmaqUltimasMaquinas || [], opcoes || {});
+      window._ofmaqUltimaAssinatura = nextSignature;
+      return rendered;
     } finally {
       window._ofmaqRenderandoAgora = false;
       reconnectDirectObserver();
