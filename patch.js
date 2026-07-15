@@ -7510,14 +7510,20 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(9, 'antes pat
       var freteTotal = Number(row && (row.comFrete != null ? row.comFrete : (row.total != null ? row.total : row.vUnit)) || 0) || 0;
       var freteLinha = Number(row && (row.frete != null ? row.frete : (row.valor_frete != null ? row.valor_frete : row.frete_total)) || 0) || 0;
       if (!(freteLinha > 0) && freteTotal > liquidaTotal && liquidaTotal > 0) freteLinha = freteTotal - liquidaTotal;
+      var vlUnit = Number(row && (row.valor_unitario != null ? row.valor_unitario : (row.preco != null ? row.preco : (row.vLiq != null ? row.vLiq : row.vUnit))) || 0) || 0;
       var unitLiq = Number(row && (row.vLiq != null ? row.vLiq : row.valor_unitario_liquido) || 0) || 0;
+      if (!(unitLiq > 0) && vlUnit > 0) unitLiq = vlUnit;
       if (!(unitLiq > 0) && qtd > 0 && liquidaTotal > 0) unitLiq = liquidaTotal / qtd;
-      var unitFrete = Number(row && (row.vUnit != null ? row.vUnit : row.valor_unitario) || 0) || (qtd > 0 ? (freteTotal / qtd) : 0);
+      if (!(vlUnit > 0) && unitLiq > 0) vlUnit = unitLiq;
+      var freteUnit = qtd > 0 ? (freteLinha / qtd) : 0;
+      var unitFreteBase = Number(row && (row.valor_unitario_com_frete != null ? row.valor_unitario_com_frete : row.vUnitComFrete) || 0) || 0;
+      var unitFrete = unitFreteBase > 0 ? unitFreteBase : ((vlUnit > 0 || freteUnit > 0) ? (vlUnit + freteUnit) : 0);
+      try { console.log('[ORC-PRINT] vlUnit:', vlUnit, 'frete:', freteLinha); } catch (_) {}
       var total = Number(row && (row.total != null ? row.total : row.comFrete) || 0) || (qtd > 0 ? (unitFrete * qtd) : 0);
       return {
         comp: _orcPrintPick(row && row.compTitle, row && row.compLabel, row && row.label, onda ? ('Onda ' + onda) : '', '—'),
         onda: onda,
-        unitLiq: unitLiq,
+        unitLiq: vlUnit > 0 ? vlUnit : unitLiq,
         unitFrete: unitFrete,
         total: total,
         idx: idx
