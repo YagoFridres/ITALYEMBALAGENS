@@ -11442,12 +11442,27 @@ window.addEventListener('unhandledrejection', function(e) {
   }
 
   function getOfDateIso(of) {
-    var raw = String(of && (of.dia || of.ent || of.data_entrega || of.data_programada || of.data_producao) || '').trim();
+    var rawValue = of && (of.dia != null ? of.dia : (of.ent != null ? of.ent : (of.data_entrega != null ? of.data_entrega : (of.data_programada != null ? of.data_programada : of.data_producao))));
+    if (rawValue == null || rawValue === '') return '';
+    if (rawValue instanceof Date) {
+      return Number.isFinite(rawValue.getTime()) ? rawValue.toISOString().slice(0, 10) : '';
+    }
+    if (typeof rawValue === 'number') {
+      var numDate = new Date(rawValue);
+      return Number.isFinite(numDate.getTime()) ? numDate.toISOString().slice(0, 10) : '';
+    }
+    var raw = String(rawValue || '').trim();
     if (!raw) return '';
+    if (/^\d{10,13}$/.test(raw)) {
+      var stamp = new Date(Number(raw));
+      return Number.isFinite(stamp.getTime()) ? stamp.toISOString().slice(0, 10) : '';
+    }
     var isoMatch = raw.match(/^(\d{4}-\d{2}-\d{2})/);
     if (isoMatch) return isoMatch[1];
     var brMatch = raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
     if (brMatch) return [brMatch[3], brMatch[2], brMatch[1]].join('-');
+    var parsed = new Date(raw);
+    if (Number.isFinite(parsed.getTime())) return parsed.toISOString().slice(0, 10);
     return '';
   }
 
@@ -12261,6 +12276,7 @@ window.addEventListener('unhandledrejection', function(e) {
     hideLegacyOfmaqUi();
     var container = getContainer();
     if (!container) return null;
+    try { console.log('[OFMAQ-DIA] of.dia exemplo:', baseOfs[0] && baseOfs[0].dia, 'tipo:', typeof (baseOfs[0] && baseOfs[0].dia)); } catch (_) {}
     var rows = baseOfs.map(function(of, idx) { return getRowData(of, idx); }).filter(Boolean);
     state.currentRows = rows;
     var nextSignature = [state.selectedMachine, state.selectedDateIso, rows.length].join('|');
