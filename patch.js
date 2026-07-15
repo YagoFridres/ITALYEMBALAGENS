@@ -11475,26 +11475,28 @@ window.addEventListener('unhandledrejection', function(e) {
     if (typeof v === 'string') {
       var raw = String(v || '').trim();
       if (!raw) return '';
-      var iso = raw.slice(0, 10);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
-      var dtStr = new Date(raw);
-      return Number.isFinite(dtStr.getTime()) ? dtStr.toISOString().slice(0, 10) : '';
+      if (raw.indexOf('T') >= 0) return raw.slice(0, 10);
+      if (raw.indexOf('/') >= 0) {
+        var p = raw.split('/');
+        if (p.length >= 3) return String(p[2] || '') + '-' + String(p[1] || '').padStart(2, '0') + '-' + String(p[0] || '').padStart(2, '0');
+      }
+      return raw.slice(0, 10);
     }
-    if (v instanceof Date) return Number.isFinite(v.getTime()) ? v.toISOString().slice(0, 10) : '';
-    var dt = new Date(v);
-    return Number.isFinite(dt.getTime()) ? dt.toISOString().slice(0, 10) : '';
+    try { return new Date(v).toISOString().slice(0, 10); } catch (_) { return ''; }
   }
+
+  window._ofmaqDebugDia = function(ofs) {
+    (Array.isArray(ofs) ? ofs : []).slice(0, 3).forEach(function(of, i) {
+      try {
+        console.log('[DIA-RAW-' + String(i) + '] of.dia:', JSON.stringify(of && of.dia), 'tipo:', typeof (of && of.dia), 'norm:', normDia(of && of.dia));
+      } catch (_) {}
+    });
+  };
 
   function ofMatchDia(of, diaSel) {
     if (!diaSel) return true;
     var d = of && (of.dia || of.data || of.data_pedido || of.created_at || '');
-    var norm = typeof d === 'string'
-      ? String(d || '').slice(0, 10)
-      : d instanceof Date
-        ? d.toISOString().slice(0, 10)
-        : d
-          ? new Date(d).toISOString().slice(0, 10)
-          : '';
+    var norm = normDia(d);
     return norm === diaSel;
   }
 
@@ -12572,6 +12574,7 @@ window.addEventListener('unhandledrejection', function(e) {
     disconnectDirectObserver();
     try {
       var source = await resolveSourceOfs(ofs);
+      try { window._ofmaqDebugDia(source); } catch (_) {}
       var nextSignature = buildRenderSignature(source, opcoes);
       if (!source.length) {
         if (!isOfmaqActive()) return null;
