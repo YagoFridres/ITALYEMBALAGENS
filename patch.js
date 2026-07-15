@@ -10977,14 +10977,24 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
     try {
       var sid = String(id || '').trim();
       if (!sid) throw new Error('OF inválida para clonar');
-      if (typeof window.abrirNovaOfRapida !== 'function') throw new Error('Modal de OF rápida indisponível');
-      var of = await fetchOf(sid);
+      var token = String(window._authToken || window._token || '').trim();
+      var resp = await fetch('/api/ofs/' + encodeURIComponent(sid), {
+        headers: Object.assign({}, token ? { Authorization: 'Bearer ' + token } : {})
+      });
+      var data = await resp.json().catch(function() { return null; });
+      if (!resp.ok) throw new Error(String(data && (data.error || data.message) || ('HTTP ' + resp.status)));
+      var of = data && (data.of || data.data || data);
       if (!of || of.error) throw new Error('Não foi possível carregar os dados da OF');
+      if (typeof window.abrirNovaOfRapida !== 'function' && typeof window.abrirModalOFRapida !== 'function' && typeof window.abrirModalNovaOF !== 'function') {
+        throw new Error('Modal de OF rápida indisponível');
+      }
       try {
         if (typeof window.__clearOfRapidaEditContext === 'function') window.__clearOfRapidaEditContext();
       } catch (_) {}
       try { window._ofRapidaNumero = ''; } catch (_) {}
-      window.abrirNovaOfRapida();
+      if (typeof window.abrirModalOFRapida === 'function') window.abrirModalOFRapida(of);
+      else if (typeof window.abrirModalNovaOF === 'function') window.abrirModalNovaOF(of);
+      else if (typeof window.abrirNovaOfRapida === 'function') window.abrirNovaOfRapida();
       await new Promise(function(r) { setTimeout(r, 450); });
       var cliNome = String(of.cliente || of.cliNome || of.cliente_nome || '').trim();
       var produto = String(of.produto || of.descricao || '').trim();
@@ -11026,6 +11036,8 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       } catch (_) {}
       return of;
     } catch (e) {
+      try { console.error('[CLONAR-OF]', e); } catch (_) {}
+      try { alert('Erro ao clonar OF: ' + String(e && e.message || e)); } catch (_) {}
       try { notify('Erro ao clonar OF #' + String(ofNum || '—') + ': ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
       throw e;
     }
