@@ -27940,6 +27940,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq .patch-ofmaq-cell-main strong{font-size:14px;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
       + '#page-ofmaq .patch-ofmaq-cell-sub{font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
       + '#page-ofmaq .patch-ofmaq-seq-badge{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 10px;border-radius:999px;background:rgba(37,99,235,.18);border:1px solid rgba(96,165,250,.3);color:#dbeafe;font-size:13px;font-weight:900}'
+      + '#page-ofmaq .patch-ofmaq-seq-wrap{display:flex;align-items:center;gap:8px}'
+      + '#page-ofmaq .patch-ofmaq-seq-input{width:54px;min-height:34px;padding:6px 8px;border-radius:10px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#f8fafc;font-size:14px;font-weight:900;text-align:center}'
       + '#page-ofmaq .patch-ofmaq-thumb{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:4px;overflow:hidden;background:#1e293b;border:1px solid rgba(71,85,105,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}'
       + '#page-ofmaq .patch-ofmaq-thumb img{width:100%;height:100%;object-fit:cover;display:block}'
       + '#page-ofmaq .patch-ofmaq-thumb.is-empty{color:#64748b;font-size:18px;background:rgba(30,41,59,.7)}'
@@ -30106,7 +30108,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var imagemHtml = _ofmaqImageCellHtmlFromUrl(item.imagemUrl);
       return ''
         + '<tr class="patch-ofmaq-row" data-direct-v2="1" data-of-id="' + escAttrLocal(item.id) + '" data-maq="' + escAttrLocal(maq) + '" data-dia="' + escAttrLocal(item.dia) + '" data-qtd="' + escAttrLocal(String(item.qtd || 0)) + '" data-tempo-min="' + escAttrLocal(String(item.tempoMin || 0)) + '" data-ordem="' + escAttrLocal(String(idx + 1)) + '" data-urgencia="' + escAttrLocal(item.statusTone && item.statusTone.urg || 'normal') + '">'
-        + '  <td><span class="patch-ofmaq-seq-badge">' + escHLocal(String(idx + 1)) + '</span></td>'
+        + '  <td><div class="patch-ofmaq-seq-wrap"><span class="patch-ofmaq-seq-badge">' + escHLocal(String(idx + 1)) + '</span><input class="patch-ofmaq-seq-input" type="number" min="1" step="1" inputmode="numeric" value="' + escAttrLocal(String(idx + 1)) + '" data-of-id="' + escAttrLocal(item.id) + '"></div></td>'
         + '  <td>' + imagemHtml + '</td>'
         + '  <td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(numero) + '</strong><span class="patch-ofmaq-cell-sub">' + escHLocal(item.statusTone && item.statusTone.text || String(of && of.status || 'Em aberto')) + '</span></div></td>'
         + '  <td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(cliente) + '</strong><span class="patch-ofmaq-cell-sub">' + escHLocal(String(of && of.status || 'Em aberto')) + '</span></div></td>'
@@ -30155,6 +30157,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           _ofmaqCloseCentralModal('ofmaq-image-modal');
         };
         document.body.appendChild(overlay);
+      };
+    });
+    Array.prototype.slice.call(wrap.querySelectorAll('.patch-ofmaq-seq-input')).forEach(function(inp) {
+      inp.onkeydown = function(ev) {
+        if (String(ev && ev.key || '') !== 'Enter') return;
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        var id = String(inp.getAttribute('data-of-id') || '').trim();
+        var row = inp.closest ? inp.closest('tr.patch-ofmaq-row') : null;
+        _ofmaqSaveManualPosition(id, Number(inp.value || 0), row, inp, null);
       };
     });
     try { console.log('[OFMAQ-TABELA] linhas:', rowsData.length, 'pai:', wrap.parentElement && wrap.parentElement.id); } catch (_) {}
