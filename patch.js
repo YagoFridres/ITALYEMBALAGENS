@@ -27837,6 +27837,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq .patch-ofmaq-days-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:56px;padding:10px 12px;border-radius:12px;background:rgba(15,23,42,.55);border:1px solid rgba(51,65,85,.55)}'
       + '#page-ofmaq #ofs-por-maquina-container.patch-ofmaq-container{padding:18px;border-radius:18px;background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(15,23,42,.72));border:1px solid rgba(51,65,85,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}'
       + '#page-ofmaq.patch-ofmaq-v2 .ofmaq-toprow,#page-ofmaq.patch-ofmaq-v2 #ofmaq-dias-bar,#page-ofmaq.patch-ofmaq-v2 .kb-board-ofmaq,#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-summary-grid,#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-table-wrap{display:none !important}'
+      + '#page-ofmaq.patch-ofmaq-v2 .ptoolbar.patch-ofmaq-toolbar > :not(#patch-ofmaq-titlebar){display:none !important}'
       + '#page-ofmaq.patch-ofmaq-v2 #ofs-por-maquina-container.patch-ofmaq-container{padding:0 !important;border:none !important;background:transparent !important;box-shadow:none !important}'
       + '#page-ofmaq.patch-ofmaq-v2 #patch-ofmaq-titlebar{padding:18px 18px 16px;border-radius:18px}'
       + '#page-ofmaq.patch-ofmaq-v2 #patch-ofmaq-v2-header{display:grid;gap:12px;width:100%}'
@@ -27854,8 +27855,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-btn[data-active="1"]{background:rgba(37,99,235,.18);border-color:rgba(96,165,250,.4);color:#bfdbfe}'
       + '#page-ofmaq.patch-ofmaq-v2 #ofmaq-busca{flex:1 1 460px !important;min-width:320px !important}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-list{display:grid;gap:6px;padding:16px;border-radius:18px;background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(15,23,42,.72));border:1px solid rgba(51,65,85,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row{display:grid;grid-template-columns:86px minmax(120px,160px) minmax(180px,1.2fr) minmax(180px,1.2fr) minmax(140px,180px) minmax(140px,200px) 110px 130px 110px 140px;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:#1e293b;border:1px solid rgba(51,65,85,.75);position:relative;overflow:hidden}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row:nth-child(even){background:rgba(30,41,59,.82)}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-grid{display:grid;grid-template-columns:86px minmax(110px,140px) minmax(180px,1fr) minmax(220px,1.35fr) minmax(130px,160px) minmax(170px,220px) 100px 130px 110px 120px;gap:10px;align-items:center}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-headcols{padding:0 12px 8px 12px;color:#94a3b8;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row{display:grid;grid-template-columns:86px minmax(110px,140px) minmax(180px,1fr) minmax(220px,1.35fr) minmax(130px,160px) minmax(170px,220px) 100px 130px 110px 120px;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:#1e293b;border:1px solid rgba(51,65,85,.75);position:relative;overflow:hidden}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row:nth-child(odd){background:rgba(30,41,59,.82)}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row::before{content:"";position:absolute;inset:0 auto 0 0;width:6px;background:rgba(34,197,94,.85)}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row[data-status-tone="warn"]::before{background:rgba(245,158,11,.9)}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row[data-status-tone="danger"]::before{background:rgba(239,68,68,.9)}'
@@ -27865,6 +27868,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-cell strong{display:block;font-size:15px;font-weight:900;color:#f8fafc;line-height:1.1}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-cell span{display:block;margin-top:3px;font-size:12px;color:#94a3b8;line-height:1.25}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-colors{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-colorchip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.16);font-size:11px;font-weight:900;line-height:1;color:#f8fafc;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-dot{width:12px;height:12px;border-radius:999px;border:1px solid rgba(15,23,42,.6);box-shadow:0 0 0 2px rgba(2,6,23,.22)}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-badge{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:12px;font-weight:900}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-badge.is-danger{background:rgba(127,29,29,.28);border-color:rgba(248,113,113,.32);color:#fecaca}'
@@ -28964,41 +28968,47 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function _ofmaqSortGroupForTable(maquina, ofs) {
-    var list = Array.isArray(ofs) ? ofs.slice() : [];
-    var baseSorted = (typeof ordenarOFsPorPrioridade === 'function')
-      ? ordenarOFsPorPrioridade(list.slice())
-      : _ofmaqSortMachineQueue(list.slice());
-    var pos = new Map();
-    var ordArr = Array.isArray(window._ordemMaquinas && window._ordemMaquinas[maquina]) ? window._ordemMaquinas[maquina] : [];
-    ordArr.forEach(function(id, idx) {
-      var key = String(id || '').trim();
-      if (key) pos.set(key, idx);
-    });
-    var buckets = [[], [], [], []];
-    baseSorted.forEach(function(of) {
-      buckets[ofmaqPrioridadeBucket(of) || 3].push(of);
-    });
-    var sorted = buckets.flatMap(function(bucket) {
-      if (!bucket.length) return [];
-      if (!pos.size) return bucket;
-      return bucket.slice().sort(function(a, b) {
-        var ia = pos.has(String(a && a.id || '')) ? pos.get(String(a && a.id || '')) : 999999;
-        var ib = pos.has(String(b && b.id || '')) ? pos.get(String(b && b.id || '')) : 999999;
-        if (ia !== ib) return ia - ib;
-        return 0;
-      });
-    });
     try {
-      var hasOrdem = sorted.some(function(of) {
-        return Number.isFinite(Number(of && of.ordem_maquina)) && Number(of.ordem_maquina) !== 0;
+      var list = Array.isArray(ofs) ? ofs.slice() : [];
+      var baseSorted = (typeof ordenarOFsPorPrioridade === 'function')
+        ? ordenarOFsPorPrioridade(list.slice())
+        : _ofmaqSortMachineQueue(list.slice());
+      if (!Array.isArray(baseSorted)) baseSorted = list.slice();
+      var pos = new Map();
+      var ordArr = Array.isArray(window._ordemMaquinas && window._ordemMaquinas[maquina]) ? window._ordemMaquinas[maquina] : [];
+      ordArr.forEach(function(id, idx) {
+        var key = String(id || '').trim();
+        if (key) pos.set(key, idx);
       });
-      if (hasOrdem) {
-        sorted = sorted.slice().sort(function(a, b) {
-          return Number(a && a.ordem_maquina || 0) - Number(b && b.ordem_maquina || 0);
+      var buckets = [[], [], [], []];
+      baseSorted.forEach(function(of) {
+        buckets[ofmaqPrioridadeBucket(of) || 3].push(of);
+      });
+      var sorted = buckets.flatMap(function(bucket) {
+        if (!bucket.length) return [];
+        if (!pos.size) return bucket;
+        return bucket.slice().sort(function(a, b) {
+          var ia = pos.has(String(a && a.id || '')) ? pos.get(String(a && a.id || '')) : 999999;
+          var ib = pos.has(String(b && b.id || '')) ? pos.get(String(b && b.id || '')) : 999999;
+          if (ia !== ib) return ia - ib;
+          return 0;
         });
-      }
-    } catch (_) {}
-    return sorted;
+      });
+      if (!Array.isArray(sorted)) sorted = [];
+      try {
+        var hasOrdem = sorted.some(function(of) {
+          return Number.isFinite(Number(of && of.ordem_maquina)) && Number(of.ordem_maquina) !== 0;
+        });
+        if (hasOrdem) {
+          sorted = sorted.slice().sort(function(a, b) {
+            return Number(a && a.ordem_maquina || 0) - Number(b && b.ordem_maquina || 0);
+          });
+        }
+      } catch (_) {}
+      return Array.isArray(sorted) ? sorted : [];
+    } catch (_) {
+      return [];
+    }
   }
 
   function _ofmaqRenderTableShell(grupos, maquinasOrdenadas, container, alertasHtml) {
@@ -29242,6 +29252,76 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     return opts[0] ? opts[0].value : '';
   }
 
+  function _ofmaqV2CardDateIso(card, lookupOf) {
+    var attrKeys = ['data-dia', 'data-data', 'data-entrega', 'data-programacao', 'data-agendamento', 'data-entrega-iso'];
+    for (var i = 0; i < attrKeys.length; i += 1) {
+      var val = String(card && card.getAttribute && card.getAttribute(attrKeys[i]) || '').slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    }
+    try {
+      var of = lookupOf || null;
+      var fallback = String(
+        of && (
+          of.data_agendamento ||
+          of.dia_programacao ||
+          of.diaProgramacao ||
+          of.data_programada ||
+          of.data_producao ||
+          of.dia ||
+          of.data_entrega ||
+          of.ent
+        ) || ''
+      ).slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(fallback)) return fallback;
+    } catch (_) {}
+    return '';
+  }
+
+  function _ofmaqV2CollectCardsFromDom() {
+    var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body') || document;
+    var lookup = _ofmaqBuildLookupMap();
+    return Array.prototype.slice.call(container.querySelectorAll('.kb-card.kb-card-ofmaq[data-of-id], .kb-card-ofmaq[data-of-id]')).map(function(card, idx) {
+      var id = String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
+      if (!id) return null;
+      var of = lookup[id] || getCurrentOfById(id) || null;
+      var maq = String(
+        card && (
+          card.getAttribute('data-maq') ||
+          card.getAttribute('data-maquina') ||
+          card.getAttribute('data-ofmaq-maquina-atual')
+        ) ||
+        (card.closest && card.closest('.kb-col-ofmaq[data-maq]') && card.closest('.kb-col-ofmaq[data-maq]').getAttribute('data-maq')) ||
+        (of && (of.maquina_atual || of.maquina || of.maquina_agendada || (Array.isArray(of.maq) ? of.maq[0] : of.maq))) ||
+        ''
+      ).trim();
+      var info = card && card.querySelector ? card.querySelector('.kb-info') : null;
+      var numero = String((card && card.querySelector && card.querySelector('.kb-num') && card.querySelector('.kb-num').textContent) || (of && (of.numero || of.of)) || '').trim();
+      var cliente = String((card && card.querySelector && card.querySelector('.kb-cliente') && card.querySelector('.kb-cliente').textContent) || (of && (of.cliente || of.clinome || of.cliente_nome || of.cliNome)) || '').trim();
+      var produto = String((card && card.querySelector && card.querySelector('.kb-produto') && card.querySelector('.kb-produto').textContent) || (of && (of.descricao || of.prodDesc || of.produto)) || '').trim();
+      var text = _ofmaqNormBusca(String(info && info.innerText || card && card.innerText || '').trim());
+      return {
+        id: id,
+        maq: maq,
+        qtd: Number(card && card.getAttribute && card.getAttribute('data-qtd') || (of && _getQtdOf(of)) || 0) || 0,
+        tempoMin: Number(card && card.getAttribute && card.getAttribute('data-tempo-min') || (of && _ofmaqTempoMinForMachine(of, typeof window.getDadosMaquina === 'function' ? window.getDadosMaquina(maq) : null)) || 0) || 0,
+        cxHora: Number(card && card.getAttribute && card.getAttribute('data-cx-hora') || 0) || 0,
+        numero: numero || '—',
+        cliente: cliente || '—',
+        produto: produto || '—',
+        tamanho: _ofmaqV2SizeLabel(_ofmaqV2CardDimensions(card, of)),
+        cores: of ? parseColors(of) : ['Sem cor'],
+        entregaIso: of ? (_ofmaqEntregaIso(of) || _ofmaqV2CardDateIso(card, of)) : _ofmaqV2CardDateIso(card, null),
+        diaIso: _ofmaqV2CardDateIso(card, of),
+        urgencia: of ? _ofmaqUrgenciaTipo(of) : 'normal',
+        status: String(of && of.status || '').trim(),
+        of: of,
+        card: card,
+        text: text,
+        orderIdx: idx
+      };
+    }).filter(Boolean);
+  }
+
   function _ofmaqV2SetMachine(value) {
     var v = String(value || '').trim();
     if (!v) return;
@@ -29301,20 +29381,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function _ofmaqV2RowHtml(of, idx, maquina) {
     var id = String(of && of.id || '').trim();
     if (!id) return '';
-    var numero = _ofmaqNumeroLabel(of) || '—';
-    var cliente = _ofmaqClienteLabel(of) || '—';
-    var produto = _ofmaqProdutoLabel(of) || '—';
-    var tamanho = _ofmaqTamanhoLabel(of) || '—';
-    var coresArr = parseColors(of);
-    var coresDots = (Array.isArray(coresArr) ? coresArr : []).slice(0, 8).map(function(c) {
-      var name = String(c || '').trim();
-      if (!name) return '';
-      return '<span class="patch-ofmaq-v2-dot" title="' + escAttrLocal(name) + '" style="background:' + escAttrLocal(_hashColor(name)) + '"></span>';
-    }).join('');
-    var quantidade = _getQtdOf(of);
-    var entrega = _ofmaqEntregaIso(of);
-    var tempoMin = _ofmaqTempoMinForMachine(of, typeof window.getDadosMaquina === 'function' ? window.getDadosMaquina(maquina) : null);
-    var st = _ofmaqV2StatusTone(of);
+    var numero = String((of && of.numero) || _ofmaqNumeroLabel(of) || '—').trim() || '—';
+    var cliente = String((of && of.cliente) || _ofmaqClienteLabel(of) || '—').trim() || '—';
+    var produto = String((of && of.produto) || _ofmaqProdutoLabel(of) || '—').trim() || '—';
+    var tamanho = String((of && of.tamanho) || _ofmaqV2SizeLabel(parseDimensions(of)) || '—').trim() || '—';
+    var coresArr = Array.isArray(of && of.cores) ? of.cores : parseColors(of);
+    var coresHtml = _ofmaqV2ColorChipsHtml(coresArr);
+    var quantidade = Number(of && (of.qtd != null ? of.qtd : _getQtdOf(of)) || 0) || 0;
+    var entrega = String((of && (of.entregaIso || of.diaIso)) || _ofmaqEntregaIso(of) || '').slice(0, 10);
+    var tempoMin = Number(of && (of.tempoMin != null ? of.tempoMin : _ofmaqTempoMinForMachine(of, typeof window.getDadosMaquina === 'function' ? window.getDadosMaquina(maquina) : null)) || 0) || 0;
+    var st = _ofmaqV2StatusTone(of && of.of ? of.of : of);
     var badgeCls = st.tone === 'danger' ? ' is-danger' : (st.tone === 'warn' ? ' is-warn' : '');
     return ''
       + '<div class="patch-ofmaq-v2-row" data-of-id="' + escAttrLocal(id) + '" data-maq="' + escAttrLocal(maquina) + '" data-tempo-min="' + escAttrLocal(String(tempoMin || 0)) + '" data-qtd="' + escAttrLocal(String(quantidade != null ? quantidade : '')) + '" data-urgencia="' + escAttrLocal(st.urg) + '" data-status-tone="' + escAttrLocal(st.tone) + '">'
@@ -29322,14 +29398,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '    <span class="of-ordem-badge">' + escHLocal(String(idx + 1)) + '</span>'
       + '    <input class="patch-ofmaq-v2-seq-input" type="number" min="1" step="1" inputmode="numeric" value="' + escAttrLocal(String(idx + 1)) + '" data-of-id="' + escAttrLocal(id) + '">'
       + '  </div>'
-      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(numero) + '</strong><span>' + escHLocal(st.text) + '</span></div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(numero) + '</strong><span>' + escHLocal(_ofmaqFmtTempoValue(tempoMin)) + '</span></div>'
       + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(cliente) + '</strong><span>' + escHLocal(String(of && of.status || 'Em aberto')) + '</span></div>'
-      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(produto) + '</strong><span>' + escHLocal(tamanho) + '</span></div>'
-      + '  <div class="patch-ofmaq-v2-colors">' + (coresDots || '<span class="patch-ofmaq-v2-badge">Sem cor</span>') + '</div>'
-      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(_ofmaqFmtInt(quantidade != null ? quantidade : 0)) + '</strong><span>Quantidade</span></div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(produto) + '</strong><span>' + escHLocal(maquina) + '</span></div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(tamanho) + '</strong><span>Medida real</span></div>'
+      + '  <div class="patch-ofmaq-v2-colors">' + (coresHtml || '<span class="patch-ofmaq-v2-badge">Sem cor</span>') + '</div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(_ofmaqFmtInt(quantidade != null ? quantidade : 0)) + '</strong><span>Caixas</span></div>'
       + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</strong><span>' + escHLocal(entrega ? fmtWeekdayDate(entrega) : 'Sem prazo') + '</span></div>'
-      + '  <div><span class="patch-ofmaq-v2-badge' + badgeCls + '">' + escHLocal(_ofmaqFmtTempoValue(tempoMin)) + '</span></div>'
-      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(maquina) + '</strong><span>Máquina</span></div>'
+      + '  <div><span class="patch-ofmaq-v2-badge' + badgeCls + '">' + escHLocal(st.text) + '</span></div>'
       + '  <div class="patch-ofmaq-v2-actions"><button type="button" data-of-id="' + escAttrLocal(id) + '" data-of-num="' + escAttrLocal(String(numero || '')) + '">Ações</button></div>'
       + '</div>';
   }
@@ -29354,7 +29430,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '</div>';
     }
     if (!container.querySelector('.patch-ofmaq-v2-list')) {
-      container.innerHTML = '<div class="patch-ofmaq-v2-list" id="patch-ofmaq-v2-list"></div>';
+      var list = document.createElement('div');
+      list.className = 'patch-ofmaq-v2-list';
+      list.id = 'patch-ofmaq-v2-list';
+      container.appendChild(list);
     }
     return true;
   }
@@ -29366,13 +29445,37 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body');
     var titlebar = document.getElementById('patch-ofmaq-titlebar');
     if (!page || !container || !titlebar) return;
-    var groups = getVisibleGroups();
+    _ofmaqRemoveNovaOfButton();
     var selectedIso = _ofmaqV2SelectedIso();
     var weekDays = _ofmaqV2WeekDays(selectedIso);
-    var maquina = _ofmaqV2PickMachine(groups);
+    var cardsDom = _ofmaqV2CollectCardsFromDom();
+    var domGroups = {};
+    cardsDom.forEach(function(item) {
+      var mk = String(item && item.maq || '').trim();
+      if (!mk) return;
+      if (!Array.isArray(domGroups[mk])) domGroups[mk] = [];
+      domGroups[mk].push(item);
+    });
+    var maquina = _ofmaqV2PickMachine(domGroups);
     if (maquina) _ofmaqV2SetMachine(maquina);
-    var list = Array.isArray(groups[maquina]) ? groups[maquina].slice() : [];
-    list = _ofmaqV2SortGrouped(_ofmaqSortMachineQueue(list));
+    var termNorm = _ofmaqNormBusca(String((document.getElementById('ofmaq-busca') || {}).value || '').trim());
+    var list = cardsDom.filter(function(item) {
+      if (String(item && item.maq || '').trim() !== String(maquina || '').trim()) return false;
+      if (selectedIso && item.diaIso && item.diaIso !== selectedIso) return false;
+      if (termNorm && String(item && item.text || '').indexOf(termNorm) < 0) return false;
+      return true;
+    }).sort(function(a, b) {
+      if (_ofmaqV2State().agrupar) {
+        var ga = (_pickCorKey(a.of || a) || '') + '|' + (_ofmaqTamanhoLabel(a.of || a) || '');
+        var gb = (_pickCorKey(b.of || b) || '') + '|' + (_ofmaqTamanhoLabel(b.of || b) || '');
+        if (ga !== gb) return ga.localeCompare(gb, 'pt-BR');
+      }
+      var oa = _safeNumOrder(a && a.of && (a.of.ordem_maquina != null ? a.of.ordem_maquina : a.of.seq));
+      var ob = _safeNumOrder(b && b.of && (b.of.ordem_maquina != null ? b.of.ordem_maquina : b.of.seq));
+      if (oa != null && ob != null && oa !== ob) return oa - ob;
+      return Number(a && a.orderIdx || 0) - Number(b && b.orderIdx || 0);
+    });
+    try { console.log('[OFMAQ-V2] cards dom:', cardsDom.length, 'maquina:', maquina, 'exibindo:', list.length); } catch (_) {}
 
     var ctrlHost = titlebar.querySelector('.patch-ofmaq-v2-controls');
     if (ctrlHost) {
@@ -29388,6 +29491,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '<div class="patch-ofmaq-v2-machine"><select id="patch-ofmaq-v2-machine"></select></div>'
         + '<button type="button" class="patch-ofmaq-v2-btn" id="patch-ofmaq-v2-agrupar" data-active="' + (_ofmaqV2State().agrupar ? '1' : '0') + '">Agrupar</button>';
       if (search && search.parentNode !== ctrlHost) ctrlHost.appendChild(search);
+      var reportBtn = document.getElementById('ofmaq-btn-relatorio');
+      if (reportBtn && reportBtn.parentNode !== ctrlHost) ctrlHost.appendChild(reportBtn);
       var machineSel = ctrlHost.querySelector('#patch-ofmaq-v2-machine');
       if (machineSel) {
         machineSel.innerHTML = _ofmaqV2MachineOptions().map(function(opt) {
@@ -29435,7 +29540,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       listEl.setAttribute('data-maquina-id', String(maquina || '').trim());
     } catch (_) {}
     listEl.innerHTML = list.length
-      ? list.map(function(of, idx) { return _ofmaqV2RowHtml(of, idx, maquina); }).join('')
+      ? '<div class="patch-ofmaq-v2-headcols patch-ofmaq-v2-grid">'
+        + '<div>Seq</div><div>Nº OF</div><div>Cliente</div><div>Produto</div><div>Tamanho</div><div>Cores</div><div>Qtd</div><div>Prazo</div><div>Status</div><div>Ações</div>'
+        + '</div>'
+        + list.map(function(item, idx) { return _ofmaqV2RowHtml(item.of || item, idx, maquina); }).join('')
       : '<div class="patch-ofmaq-empty">Nenhuma OF encontrada para este filtro.</div>';
 
     Array.prototype.slice.call(listEl.querySelectorAll('.patch-ofmaq-v2-actions button[data-of-id]')).forEach(function(btn) {
@@ -30084,6 +30192,59 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     return { background: _hashColor(k), border: 'rgba(255,255,255,0.22)' };
   };
 
+  if (typeof window._patchNormalizeDimMm !== 'function') {
+    window._patchNormalizeDimMm = function(a, b) {
+      var larg = parseFloat(String(a == null ? '' : a).replace(',', '.')) || 0;
+      var comp = parseFloat(String(b == null ? '' : b).replace(',', '.')) || 0;
+      if (!(larg > 0 && comp > 0)) return { largura: 0, comprimento: 0 };
+      return { largura: larg, comprimento: comp };
+    };
+  }
+
+  function _ofmaqRemoveNovaOfButton() {
+    try {
+      var page = document.getElementById('page-ofmaq') || document;
+      Array.prototype.slice.call(page.querySelectorAll('button,[onclick]')).forEach(function(el) {
+        var txt = String(el && el.textContent || '').trim();
+        if (txt !== 'Nova OF') return;
+        if (el.style) el.style.display = 'none';
+        try { el.setAttribute('hidden', 'hidden'); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  function _ofmaqV2CardDimensions(card, of) {
+    var attrPairs = [
+      ['data-caixa-largura', 'data-caixa-comprimento'],
+      ['data-largura', 'data-comprimento'],
+      ['data-dim-largura', 'data-dim-comprimento']
+    ];
+    for (var i = 0; i < attrPairs.length; i += 1) {
+      var larg = Number(card && card.getAttribute && card.getAttribute(attrPairs[i][0]) || 0) || 0;
+      var comp = Number(card && card.getAttribute && card.getAttribute(attrPairs[i][1]) || 0) || 0;
+      if (larg > 0 && comp > 0) return window._patchNormalizeDimMm(larg, comp);
+    }
+    var txt = String(card && card.innerText || '').trim();
+    var m = txt.match(/(\d{2,4}(?:[.,]\d+)?)\s*(?:mm)?\s*[x×]\s*(\d{2,4}(?:[.,]\d+)?)/i);
+    if (m) return window._patchNormalizeDimMm(Number(String(m[1]).replace(',', '.')) || 0, Number(String(m[2]).replace(',', '.')) || 0);
+    return parseDimensions(of || {});
+  }
+
+  function _ofmaqV2SizeLabel(dim) {
+    var largura = Number(dim && dim.largura || 0) || 0;
+    var comprimento = Number(dim && dim.comprimento || 0) || 0;
+    if (largura > 0 && comprimento > 0) return largura + '×' + comprimento + ' mm';
+    return 'Sem medida';
+  }
+
+  function _ofmaqV2ColorChipsHtml(coresArr) {
+    return (Array.isArray(coresArr) ? coresArr : []).slice(0, 8).map(function(c) {
+      var name = String(c || '').trim();
+      if (!name) return '';
+      return '<span class="patch-ofmaq-v2-colorchip" title="' + escAttrLocal(name) + '" style="background:' + escAttrLocal(_hashColor(name)) + ';border-color:rgba(255,255,255,.18)"><span class="patch-ofmaq-v2-dot" style="background:' + escAttrLocal(_hashColor(name)) + '"></span>' + escHLocal(name) + '</span>';
+    }).join('');
+  }
+
   function parseDimensions(of) {
     var candidates = [
       of && of.medidas,
@@ -30099,12 +30260,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     ];
     var largura = Number(of && (of.dim_largura || of.caixa_largura || of.largura || of.larg)) || 0;
     var comprimento = Number(of && (of.dim_comprimento || of.caixa_comprimento || of.comprimento || of.compr || of.altura)) || 0;
-    if (largura > 0 && comprimento > 0) return _patchNormalizeDimMm(largura, comprimento);
+    if (largura > 0 && comprimento > 0) return window._patchNormalizeDimMm(largura, comprimento);
     for (var i = 0; i < candidates.length; i += 1) {
       var s = String(candidates[i] || '');
       var m = s.match(/(\d{2,4})\s*[x×]\s*(\d{2,4})/i);
       if (m) {
-        return _patchNormalizeDimMm(Number(m[1]) || 0, Number(m[2]) || 0);
+        return window._patchNormalizeDimMm(Number(m[1]) || 0, Number(m[2]) || 0);
       }
     }
     return { largura: 0, comprimento: 0 };
