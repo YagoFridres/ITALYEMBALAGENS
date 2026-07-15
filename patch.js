@@ -31494,6 +31494,1036 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     try { console.error('[OFMAQ-HOOK] ERRO na IIFE:', e); } catch (_) {}
   }
 })();
+(function patchOfmaqRebuildFromZero() {
+  try {
+    var MACHINES = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
+    var DAY_LABELS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
+    var COLOR_MAP = {
+      azul: '#3b82f6',
+      vermelho: '#ef4444',
+      verde: '#22c55e',
+      amarelo: '#eab308',
+      preto: '#1e293b',
+      branco: '#f8fafc',
+      roxo: '#8b5cf6',
+      rosa: '#ec4899',
+      laranja: '#f97316',
+      dourado: '#d97706',
+      marrom: '#92400e'
+    };
+    var state = window.__patchOfmaqZeroStateV2 || {
+      selectedMachine: 'IMP 01',
+      selectedDateIso: '',
+      weekStartIso: '',
+      searchTerm: '',
+      grouped: false,
+      dataSignature: '',
+      observer: null,
+      observerReady: false,
+      pollReady: false,
+      renderTimer: null,
+      rowsData: []
+    };
+    window.__patchOfmaqZeroStateV2 = state;
+
+    function escHLocal(v) {
+      try { if (typeof window.escH === 'function') return window.escH(v); } catch (_) {}
+      return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function escAttrLocal(v) {
+      return escHLocal(v).replace(/`/g, '&#96;');
+    }
+
+    function getToken() {
+      try {
+        return String(
+          (typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') ||
+          localStorage.getItem('access_token') ||
+          localStorage.getItem('token') ||
+          sessionStorage.getItem('token') ||
+          window._token ||
+          ''
+        ).trim();
+      } catch (_) {
+        return String(window._token || '').trim();
+      }
+    }
+
+    function getAuthHeader() {
+      var token = getToken();
+      return token ? { Authorization: 'Bearer ' + token } : {};
+    }
+
+    async function apiJson(url, opts) {
+      var cfg = opts || {};
+      if (typeof window.apiFetch === 'function') {
+        var resp0 = await window.apiFetch(url, cfg);
+        var data0 = await resp0.json().catch(function() { return null; });
+        return { resp: resp0, data: data0 };
+      }
+      var headers = Object.assign({}, getAuthHeader(), cfg.headers || {});
+      if (cfg.body && typeof cfg.body !== 'string' && !(cfg.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+        cfg.body = JSON.stringify(cfg.body);
+      }
+      var resp = await fetch(url, Object.assign({}, cfg, { headers: headers }));
+      var data = await resp.json().catch(function() { return null; });
+      return { resp: resp, data: data };
+    }
+
+    function normText(v) {
+      var s = String(v || '').trim().toLowerCase();
+      try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+      return s;
+    }
+
+    function pad2(v) {
+      return String(v || 0).padStart(2, '0');
+    }
+
+    function isoFromLocalDate(d) {
+      if (!(d instanceof Date) || !Number.isFinite(d.getTime())) return '';
+      return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    }
+
+    function parseIsoLocal(iso) {
+      var s = String(iso || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+      var d = new Date(s + 'T00:00:00');
+      return Number.isFinite(d.getTime()) ? d : null;
+    }
+
+    function addDaysIso(iso, amount) {
+      var d = parseIsoLocal(iso) || new Date();
+      d.setDate(d.getDate() + (Number(amount || 0) || 0));
+      return isoFromLocalDate(d);
+    }
+
+    function currentBusinessDate() {
+      var d = new Date();
+      var day = d.getDay();
+      if (day === 6) d.setDate(d.getDate() - 1);
+      if (day === 0) d.setDate(d.getDate() - 2);
+      return d;
+    }
+
+    function weekStartIso(iso) {
+      var d = parseIsoLocal(iso) || currentBusinessDate();
+      var day = d.getDay();
+      var diff = day === 0 ? -6 : (1 - day);
+      d.setDate(d.getDate() + diff);
+      return isoFromLocalDate(d);
+    }
+
+    function weekDays(startIso) {
+      var start = parseIsoLocal(startIso) || parseIsoLocal(weekStartIso(isoFromLocalDate(currentBusinessDate()))) || currentBusinessDate();
+      return DAY_LABELS.map(function(label, idx) {
+        var d = new Date(start.getTime());
+        d.setDate(start.getDate() + idx);
+        return { label: label, iso: isoFromLocalDate(d) };
+      });
+    }
+
+    function fmtDateBR(iso) {
+      var d = parseIsoLocal(iso);
+      return d ? (pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear()) : '—';
+    }
+
+    function fmtDayShort(iso) {
+      var d = parseIsoLocal(iso);
+      return d ? (pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1)) : '—';
+    }
+
+    function ensureDefaults() {
+      if (!state.selectedDateIso) state.selectedDateIso = isoFromLocalDate(currentBusinessDate());
+      if (!state.weekStartIso) state.weekStartIso = weekStartIso(state.selectedDateIso);
+      if (!state.selectedMachine) state.selectedMachine = 'IMP 01';
+    }
+
+    function normalizeMachine(raw) {
+      var original = String(raw || '').trim();
+      var compact = normText(original).replace(/\s+/g, '');
+      var map = {
+        imp01: 'IMP 01',
+        imp02: 'IMP 02',
+        imp03: 'IMP 03',
+        imp04: 'IMP 04',
+        imp05: 'IMP 05',
+        cortevinco: 'CORTE VINCO ROTATIVA',
+        cortevincorotativa: 'CORTE VINCO ROTATIVA',
+        cvr: 'CORTE VINCO ROTATIVA'
+      };
+      return map[compact] || original || 'IMP 01';
+    }
+
+    function getPage() {
+      return document.getElementById('page-ofmaq');
+    }
+
+    function getContainer() {
+      return document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body') || getPage();
+    }
+
+    function getBoard() {
+      var container = getContainer();
+      if (!container || !container.querySelector) return null;
+      return container.querySelector('.kb-board-ofmaq') || container.querySelector('.kb-board') || null;
+    }
+
+    function sourceCards() {
+      var container = getContainer();
+      if (!container || !container.querySelectorAll) return [];
+      return Array.prototype.slice.call(container.querySelectorAll('.kb-card.kb-card-ofmaq[data-of-id], .kb-card-ofmaq[data-of-id]')).filter(function(card) {
+        return String(card && card.getAttribute && card.getAttribute('data-ofmaq-dismissed') || '').trim() !== '1';
+      });
+    }
+
+    function removeNovaOfButtons() {
+      var page = getPage();
+      if (!page) return;
+      Array.prototype.slice.call(page.querySelectorAll('button,a,.btn,[onclick]')).forEach(function(el) {
+        var text = String(el && el.textContent || '').replace(/\s+/g, ' ').trim();
+        var meta = String(el && el.getAttribute && (el.getAttribute('title') || el.getAttribute('aria-label')) || '').replace(/\s+/g, ' ').trim();
+        if (!/nova\s*of/i.test(text + ' ' + meta)) return;
+        try { el.remove(); } catch (_) {}
+      });
+    }
+
+    function hideLegacyViews() {
+      var page = getPage();
+      if (!page) return;
+      Array.prototype.slice.call(page.querySelectorAll('.kb-board,.kb-board-ofmaq,.patch-ofmaq-table-wrap,#patch-ofmaq-titlebar,.patch-ofmaq-v2-list,[id^="patch-ofmaq-v2"]')).forEach(function(el) {
+        if (!el) return;
+        el.style.display = 'none';
+        try { el.setAttribute('aria-hidden', 'true'); } catch (_) {}
+      });
+    }
+
+    function ensureStyle() {
+      if (document.getElementById('patch-ofmaq-zero-style-v2')) return;
+      var st = document.createElement('style');
+      st.id = 'patch-ofmaq-zero-style-v2';
+      st.textContent = ''
+        + '#page-ofmaq .ofmaq-toolbar-zero{display:grid;gap:14px;margin-bottom:16px;padding:18px;border-radius:18px;background:linear-gradient(180deg,rgba(15,23,42,.96),rgba(15,23,42,.88));border:1px solid rgba(51,65,85,.8);box-shadow:0 16px 36px rgba(2,6,23,.24)}'
+        + '#page-ofmaq .ofmaq-toolbar-zero h2{margin:0;color:#f8fafc;font-size:28px;line-height:1.1;font-weight:900}'
+        + '#page-ofmaq .ofmaq-toolbar-zero .controls{display:grid;grid-template-columns:minmax(0,1.75fr) 210px minmax(250px,1fr) auto auto;gap:10px;align-items:center}'
+        + '#page-ofmaq .ofmaq-toolbar-zero .days{display:flex;align-items:center;gap:8px;flex-wrap:wrap}'
+        + '#page-ofmaq .ofmaq-toolbar-zero button{min-height:36px;padding:8px 12px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-weight:800;cursor:pointer}'
+        + '#page-ofmaq .ofmaq-toolbar-zero .day-btn[data-hot="1"]{border-color:#ef4444;color:#ef4444}'
+        + '#page-ofmaq .ofmaq-toolbar-zero .day-btn[data-active="1"]{background:#3b82f6;border-color:#60a5fa;color:#eff6ff}'
+        + '#page-ofmaq .ofmaq-toolbar-zero select,#page-ofmaq .ofmaq-toolbar-zero input[type="search"]{width:100%;min-height:36px;border-radius:10px;border:1px solid #334155;background:#1e293b;color:#f8fafc;padding:8px 12px}'
+        + '#page-ofmaq .ofmaq-table-wrap-zero{overflow:auto;border:1px solid #1e293b;border-radius:16px;background:#0f172a;box-shadow:0 18px 40px rgba(2,6,23,.24)}'
+        + '#page-ofmaq #ofmaq-tabela-nova{width:100%;min-width:1400px;border-collapse:collapse;table-layout:fixed}'
+        + '#page-ofmaq #ofmaq-tabela-nova thead th{position:sticky;top:0;z-index:2;background:#1e293b;color:#64748b;text-transform:uppercase;font-size:11px;letter-spacing:.08em;padding:10px 12px;text-align:left}'
+        + '#page-ofmaq #ofmaq-tabela-nova tbody tr:nth-child(odd){background:#1e293b}'
+        + '#page-ofmaq #ofmaq-tabela-nova tbody tr:nth-child(even){background:#0f172a}'
+        + '#page-ofmaq #ofmaq-tabela-nova tbody tr:hover{background:#334155}'
+        + '#page-ofmaq #ofmaq-tabela-nova tbody td{padding:8px 12px;border-top:1px solid #1e293b;color:#f1f5f9;vertical-align:middle;overflow:hidden;text-overflow:ellipsis}'
+        + '#page-ofmaq #ofmaq-tabela-nova th.col-seq,#page-ofmaq #ofmaq-tabela-nova td.col-seq{width:50px}'
+        + '#page-ofmaq #ofmaq-tabela-nova th.col-img,#page-ofmaq #ofmaq-tabela-nova td.col-img{width:60px}'
+        + '#page-ofmaq #ofmaq-tabela-nova th.col-of,#page-ofmaq #ofmaq-tabela-nova td.col-of{width:80px}'
+        + '#page-ofmaq #ofmaq-tabela-nova th.col-cliente,#page-ofmaq #ofmaq-tabela-nova td.col-cliente{width:15%}'
+        + '#page-ofmaq #ofmaq-tabela-nova th.col-produto,#page-ofmaq #ofmaq-tabela-nova td.col-produto{width:15%}'
+        + '#page-ofmaq #ofmaq-tabela-nova th.col-tamanho,#page-ofmaq #ofmaq-tabela-nova td.col-tamanho{width:100px}'
+        + '#page-ofmaq #ofmaq-tabela-nova th.col-cores,#page-ofmaq #ofmaq-tabela-nova td.col-cores{width:15%}'
+        + '#page-ofmaq #ofmaq-tabela-nova th.col-qtd,#page-ofmaq #ofmaq-tabela-nova td.col-qtd{width:60px}'
+        + '#page-ofmaq #ofmaq-tabela-nova th.col-prazo,#page-ofmaq #ofmaq-tabela-nova td.col-prazo{width:90px}'
+        + '#page-ofmaq #ofmaq-tabela-nova th.col-maq,#page-ofmaq #ofmaq-tabela-nova td.col-maq{width:100px}'
+        + '#page-ofmaq #ofmaq-tabela-nova th.col-acoes,#page-ofmaq #ofmaq-tabela-nova td.col-acoes{width:110px}'
+        + '#page-ofmaq .ofmaq-seq-input-zero{width:100%;max-width:54px;min-height:34px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f8fafc;padding:4px 6px;text-align:center}'
+        + '#page-ofmaq .ofmaq-thumb-btn-zero{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border:none;background:transparent;padding:0;cursor:pointer}'
+        + '#page-ofmaq .ofmaq-thumb-zero,#page-ofmaq .ofmaq-thumb-fallback-zero{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:4px;background:#1e293b;overflow:hidden;border:1px solid rgba(148,163,184,.18)}'
+        + '#page-ofmaq .ofmaq-thumb-zero img{width:40px;height:40px;object-fit:cover;display:block}'
+        + '#page-ofmaq .ofmaq-thumb-fallback-zero{font-size:18px}'
+        + '#page-ofmaq .ofmaq-cor-wrap-zero{display:flex;flex-wrap:wrap;gap:4px}'
+        + '#page-ofmaq .ofmaq-cor-pill-zero{display:inline-flex;align-items:center;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:800;margin:2px 2px 0 0}'
+        + '#page-ofmaq .ofmaq-action-btn-zero{width:100%;justify-content:center}'
+        + '#page-ofmaq .ofmaq-empty-row-zero td{text-align:center;color:#94a3b8;padding:24px 12px}'
+        + '#page-ofmaq .ofmaq-overlay-zero{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998}'
+        + '#page-ofmaq .ofmaq-modal-zero{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#1e293b;border-radius:12px;padding:24px;min-width:280px;max-width:min(92vw,720px);color:#f8fafc;box-shadow:0 24px 70px rgba(0,0,0,.35)}'
+        + '#page-ofmaq .ofmaq-modal-zero .close-btn{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:999px;border:1px solid #475569;background:#0f172a;color:#f8fafc;cursor:pointer}'
+        + '#page-ofmaq .ofmaq-modal-zero h3{margin:0 0 16px 0;font-size:20px}'
+        + '#page-ofmaq .ofmaq-modal-zero .body{display:grid;gap:10px}'
+        + '#page-ofmaq .ofmaq-modal-zero .body button,#page-ofmaq .ofmaq-modal-zero .body select,#page-ofmaq .ofmaq-modal-zero .body input{min-height:38px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#f8fafc;padding:8px 12px}'
+        + '#page-ofmaq .ofmaq-print-grid-zero{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}'
+        + '@media (max-width:1200px){#page-ofmaq .ofmaq-toolbar-zero .controls{grid-template-columns:1fr;}}';
+      document.head.appendChild(st);
+    }
+
+    function ensureShell() {
+      ensureStyle();
+      var page = getPage();
+      var container = getContainer();
+      if (!page || !container) return null;
+      var board = getBoard();
+      var toolbar = document.getElementById('ofmaq-toolbar-zero');
+      if (!toolbar) {
+        toolbar = document.createElement('div');
+        toolbar.id = 'ofmaq-toolbar-zero';
+        toolbar.className = 'ofmaq-toolbar-zero';
+        toolbar.innerHTML = ''
+          + '<h2>OFs por Máquina</h2>'
+          + '<div class="controls">'
+          + '  <div class="days" id="ofmaq-days-zero"></div>'
+          + '  <select id="ofmaq-select-maquina-zero"></select>'
+          + '  <input id="ofmaq-busca-zero" type="search" placeholder="Buscar OF, cliente, produto...">'
+          + '  <button type="button" id="ofmaq-btn-agrupar-zero">Agrupar</button>'
+          + '  <button type="button" id="ofmaq-btn-imprimir-zero">Imprimir</button>'
+          + '</div>';
+      }
+      var wrap = document.getElementById('ofmaq-wrap-zero');
+      if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.id = 'ofmaq-wrap-zero';
+        wrap.className = 'ofmaq-table-wrap-zero';
+        wrap.innerHTML = ''
+          + '<table id="ofmaq-tabela-nova">'
+          + '  <thead>'
+          + '    <tr>'
+          + '      <th class="col-seq">SEQ</th>'
+          + '      <th class="col-img">IMG</th>'
+          + '      <th class="col-of">Nº OF</th>'
+          + '      <th class="col-cliente">CLIENTE</th>'
+          + '      <th class="col-produto">PRODUTO</th>'
+          + '      <th class="col-tamanho">TAMANHO</th>'
+          + '      <th class="col-cores">CORES</th>'
+          + '      <th class="col-qtd">QTD</th>'
+          + '      <th class="col-prazo">PRAZO</th>'
+          + '      <th class="col-maq">MÁQUINA</th>'
+          + '      <th class="col-acoes">AÇÕES</th>'
+          + '    </tr>'
+          + '  </thead>'
+          + '  <tbody id="ofmaq-tbody-zero"></tbody>'
+          + '</table>';
+      }
+      if (!toolbar.parentElement) {
+        if (container.firstChild) container.insertBefore(toolbar, container.firstChild);
+        else container.appendChild(toolbar);
+      }
+      if (!wrap.parentElement) {
+        if (board && board.parentElement) board.parentElement.insertBefore(wrap, board.nextSibling);
+        else container.appendChild(wrap);
+      }
+      var select = toolbar.querySelector('#ofmaq-select-maquina-zero');
+      if (select && !select.options.length) {
+        select.innerHTML = MACHINES.map(function(machine) {
+          return '<option value="' + escAttrLocal(machine) + '">' + escHLocal(machine) + '</option>';
+        }).join('');
+      }
+      return { page: page, container: container, board: board, toolbar: toolbar, wrap: wrap, tbody: wrap.querySelector('#ofmaq-tbody-zero') };
+    }
+
+    function parseDimensionsFromCard(card) {
+      var attrPairs = [
+        ['data-dim-comprimento', 'data-dim-largura'],
+        ['data-caixa-comprimento', 'data-caixa-largura'],
+        ['data-comprimento', 'data-largura']
+      ];
+      for (var i = 0; i < attrPairs.length; i += 1) {
+        var comp0 = Number(card && card.getAttribute && card.getAttribute(attrPairs[i][0]) || 0) || 0;
+        var larg0 = Number(card && card.getAttribute && card.getAttribute(attrPairs[i][1]) || 0) || 0;
+        if (comp0 > 0 && larg0 > 0) return { comprimento: comp0, largura: larg0 };
+      }
+      var text = String(card && card.innerText || '').trim();
+      var match = text.match(/(\d{2,4}(?:[.,]\d+)?)\s*(?:mm)?\s*[x×]\s*(\d{2,4}(?:[.,]\d+)?)/i);
+      if (match) {
+        return {
+          comprimento: Number(String(match[1]).replace(',', '.')) || 0,
+          largura: Number(String(match[2]).replace(',', '.')) || 0
+        };
+      }
+      return { comprimento: 0, largura: 0 };
+    }
+
+    function sizeLabelFromCard(card) {
+      var dim = parseDimensionsFromCard(card);
+      return (dim.comprimento > 0 && dim.largura > 0) ? (dim.comprimento + 'x' + dim.largura + ' mm') : '—';
+    }
+
+    function extractText(card, selectors) {
+      if (!card || !card.querySelector) return '';
+      for (var i = 0; i < selectors.length; i += 1) {
+        try {
+          var el = card.querySelector(selectors[i]);
+          var txt = String(el && (el.textContent || el.innerText) || '').replace(/\s+/g, ' ').trim();
+          if (txt) return txt;
+        } catch (_) {}
+      }
+      return '';
+    }
+
+    function extractNumber(card, fallbackId) {
+      var txt = extractText(card, ['.kb-num', '[data-kb-num]', '.kb-of', '.of-num']);
+      if (txt) return txt.replace(/^#/, '').trim();
+      var raw = String(card && card.innerText || '').replace(/\s+/g, ' ').trim();
+      var match = raw.match(/(?:^|\s)(?:OF|N[ºo°]?\s*OF)\s*#?\s*([\w/-]+)/i);
+      return match ? String(match[1] || '').trim() : String(fallbackId || '').trim();
+    }
+
+    function extractClient(card) {
+      return extractText(card, ['.kb-cliente', '[data-kb-cliente]', '.of-cliente', '.cliente']);
+    }
+
+    function extractProduct(card) {
+      var txt = extractText(card, ['.kb-produto', '.kb-product', '[data-kb-produto]', '.of-produto', '.produto', '.kb-info']);
+      return txt.replace(/\b\d{2,4}(?:[.,]\d+)?\s*(?:mm)?\s*[x×]\s*\d{2,4}(?:[.,]\d+)?(?:\s*mm)?\b/ig, '').replace(/\s+/g, ' ').trim();
+    }
+
+    function extractImage(card) {
+      try {
+        var attr = String(
+          (card && card.getAttribute && (card.getAttribute('data-imagem') || card.getAttribute('data-imagem-url') || card.getAttribute('data-image') || card.getAttribute('data-image-url'))) ||
+          ''
+        ).trim();
+        if (attr) return attr;
+      } catch (_) {}
+      try {
+        var img = card && card.querySelector ? card.querySelector('img[src]') : null;
+        var src = String(img && img.getAttribute && img.getAttribute('src') || '').trim();
+        if (src) return src;
+      } catch (_) {}
+      return '';
+    }
+
+    function extractIsoDate(card) {
+      var attrs = ['data-dia', 'data-entrega', 'data-data', 'data-entrega-iso', 'data-programacao', 'data-agendamento'];
+      for (var i = 0; i < attrs.length; i += 1) {
+        var attr = String(card && card.getAttribute && card.getAttribute(attrs[i]) || '').slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(attr)) return attr;
+      }
+      var txt = extractText(card, ['.kb-prazo', '.kb-entrega', '[data-kb-prazo]', '.of-prazo', '.prazo']);
+      var match = txt.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+      return match ? ([match[3], match[2], match[1]].join('-')) : '';
+    }
+
+    function splitColors(value) {
+      return String(value || '')
+        .split(/[,|/+;\n]+/)
+        .map(function(item) { return String(item || '').replace(/\s+/g, ' ').trim(); })
+        .filter(Boolean)
+        .filter(function(item, idx, arr) { return arr.indexOf(item) === idx; });
+    }
+
+    function extractColors(card) {
+      var txt = String(
+        extractText(card, ['.kb-cores', '.kb-cor', '.of-cores', '.cores']) ||
+        (card && card.getAttribute && (card.getAttribute('data-cores') || card.getAttribute('data-cor'))) ||
+        ''
+      ).trim();
+      var colors = splitColors(txt);
+      if (!colors.length) {
+        try {
+          colors = Array.prototype.slice.call(card.querySelectorAll('[data-color-name], .color-name, .kb-color, .cor')).map(function(el) {
+            return String(el && (el.getAttribute('data-color-name') || el.textContent || '') || '').replace(/\s+/g, ' ').trim();
+          }).filter(Boolean);
+        } catch (_) {}
+      }
+      return colors.filter(function(name) { return normText(name) !== 'sem cor'; });
+    }
+
+    function resolveColorHex(name) {
+      var key = normText(name);
+      if (!key) return '#475569';
+      if (key.indexOf('azul') >= 0) return COLOR_MAP.azul;
+      if (key.indexOf('vermelh') >= 0) return COLOR_MAP.vermelho;
+      if (key.indexOf('verde') >= 0) return COLOR_MAP.verde;
+      if (key.indexOf('amarel') >= 0) return COLOR_MAP.amarelo;
+      if (key.indexOf('pret') >= 0) return COLOR_MAP.preto;
+      if (key.indexOf('branc') >= 0) return COLOR_MAP.branco;
+      if (key.indexOf('rox') >= 0) return COLOR_MAP.roxo;
+      if (key.indexOf('rosa') >= 0) return COLOR_MAP.rosa;
+      if (key.indexOf('laranj') >= 0) return COLOR_MAP.laranja;
+      if (key.indexOf('dourad') >= 0) return COLOR_MAP.dourado;
+      if (key.indexOf('marrom') >= 0) return COLOR_MAP.marrom;
+      return '#475569';
+    }
+
+    function textColorForHex(hex) {
+      return String(hex || '').toLowerCase() === '#f8fafc' ? '#0f172a' : '#ffffff';
+    }
+
+    function colorHtml(colors) {
+      return (Array.isArray(colors) ? colors : []).map(function(name) {
+        var bg = resolveColorHex(name);
+        var fg = textColorForHex(bg);
+        return '<span class="ofmaq-cor-pill-zero" style="background:' + escAttrLocal(bg) + ';color:' + escAttrLocal(fg) + '">' + escHLocal(name) + '</span>';
+      }).join('');
+    }
+
+    function rowFromCard(card, idx) {
+      var id = String(card && card.getAttribute && card.getAttribute('data-of-id') || '').trim();
+      if (!id) return null;
+      var maq = normalizeMachine(
+        (card.getAttribute('data-maq') || card.getAttribute('data-maquina') || '') ||
+        ((card.closest && card.closest('[data-maq]') && card.closest('[data-maq]').getAttribute('data-maq')) || '')
+      );
+      if (!maq) maq = 'IMP 01';
+      var numero = extractNumber(card, id) || id;
+      var cliente = extractClient(card) || '—';
+      var produto = extractProduct(card) || '—';
+      var tamanho = sizeLabelFromCard(card);
+      var cores = extractColors(card);
+      var prazoIso = extractIsoDate(card);
+      var qtd = Number(card.getAttribute('data-qtd') || 0) || 0;
+      var order = Number(card.getAttribute('data-ordem-maquina') || card.getAttribute('data-ordem') || idx + 1) || (idx + 1);
+      return {
+        id: id,
+        maquina: maq,
+        numero: numero,
+        cliente: cliente,
+        produto: produto,
+        tamanho: tamanho,
+        tamanhoKey: normText(tamanho),
+        cores: cores,
+        corPrincipal: normText(cores[0] || 'sem-cor'),
+        quantidade: qtd,
+        prazoIso: prazoIso,
+        imagemUrl: extractImage(card),
+        order: order,
+        sourceIndex: idx,
+        cardEl: card,
+        searchText: normText([numero, cliente, produto].join(' '))
+      };
+    }
+
+    function currentRowsSignature(rows) {
+      return String((rows || []).length) + '|' + (rows || []).map(function(item) {
+        return [item.id, item.maquina, item.prazoIso, item.quantidade].join(':');
+      }).join('|');
+    }
+
+    function collectRows() {
+      return sourceCards().map(function(card, idx) { return rowFromCard(card, idx); }).filter(Boolean);
+    }
+
+    function rowHtml(item) {
+      var imgCell = item.imagemUrl
+        ? ('<button type="button" class="ofmaq-thumb-btn-zero" data-ofmaq-image-zero="' + escAttrLocal(item.id) + '"><span class="ofmaq-thumb-zero"><img src="' + escAttrLocal(item.imagemUrl) + '" alt="Imagem da OF"></span></button>')
+        : '<span class="ofmaq-thumb-fallback-zero">📦</span>';
+      return ''
+        + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-maq="' + escAttrLocal(item.maquina) + '" data-dia="' + escAttrLocal(item.prazoIso || '') + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-cor-key="' + escAttrLocal(item.corPrincipal || '') + '" data-size-key="' + escAttrLocal(item.tamanhoKey || '') + '" data-search="' + escAttrLocal(item.searchText || '') + '">'
+        + '  <td class="col-seq"><input class="ofmaq-seq-input-zero" type="number" min="1" step="1" value="' + escAttrLocal(String(item.order || 1)) + '" data-of-id="' + escAttrLocal(item.id) + '"></td>'
+        + '  <td class="col-img">' + imgCell + '</td>'
+        + '  <td class="col-of"><strong>' + escHLocal(item.numero || '—') + '</strong></td>'
+        + '  <td class="col-cliente">' + escHLocal(item.cliente || '—') + '</td>'
+        + '  <td class="col-produto">' + escHLocal(item.produto || '—') + '</td>'
+        + '  <td class="col-tamanho">' + escHLocal(item.tamanho || '—') + '</td>'
+        + '  <td class="col-cores"><div class="ofmaq-cor-wrap-zero">' + colorHtml(item.cores || []) + '</div></td>'
+        + '  <td class="col-qtd">' + escHLocal(String(item.quantidade || 0)) + '</td>'
+        + '  <td class="col-prazo">' + escHLocal(item.prazoIso ? fmtDateBR(item.prazoIso) : '—') + '</td>'
+        + '  <td class="col-maq">' + escHLocal(item.maquina || '—') + '</td>'
+        + '  <td class="col-acoes"><button type="button" class="ofmaq-action-btn-zero" data-ofmaq-actions-zero="' + escAttrLocal(item.id) + '">⚡ Ações</button></td>'
+        + '</tr>';
+    }
+
+    function rowDataById(id) {
+      return state.rowsData.filter(function(item) { return item.id === id; })[0] || null;
+    }
+
+    function sortRows(rows) {
+      var list = Array.isArray(rows) ? rows.slice() : [];
+      list.sort(function(a, b) {
+        if (state.grouped) {
+          var groupA = String(a.getAttribute('data-cor-key') || '') + '|' + String(a.getAttribute('data-size-key') || '');
+          var groupB = String(b.getAttribute('data-cor-key') || '') + '|' + String(b.getAttribute('data-size-key') || '');
+          if (groupA !== groupB) return groupA.localeCompare(groupB, 'pt-BR');
+        }
+        var orderA = Number(a.getAttribute('data-order') || 0) || 0;
+        var orderB = Number(b.getAttribute('data-order') || 0) || 0;
+        if (orderA !== orderB) return orderA - orderB;
+        var ofA = String(a.querySelector('.col-of') && a.querySelector('.col-of').textContent || '').trim();
+        var ofB = String(b.querySelector('.col-of') && b.querySelector('.col-of').textContent || '').trim();
+        return ofA.localeCompare(ofB, 'pt-BR', { numeric: true });
+      });
+      return list;
+    }
+
+    function visibleRow(row) {
+      var machine = normalizeMachine(state.selectedMachine || 'IMP 01');
+      var selectedDate = String(state.selectedDateIso || '').slice(0, 10);
+      var term = normText(state.searchTerm || '');
+      var rowMachine = normalizeMachine(String(row.getAttribute('data-maq') || '').trim());
+      var rowDate = String(row.getAttribute('data-dia') || '').slice(0, 10);
+      var rowSearch = String(row.getAttribute('data-search') || '');
+      if (rowMachine !== machine) return false;
+      if (selectedDate && rowDate && rowDate !== selectedDate) return false;
+      if (term && rowSearch.indexOf(term) < 0) return false;
+      return true;
+    }
+
+    function ensureEmptyState(tbody) {
+      var empty = tbody.querySelector('.ofmaq-empty-row-zero');
+      var visibleCount = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]')).filter(function(row) {
+        return row.style.display !== 'none';
+      }).length;
+      if (!empty) {
+        empty = document.createElement('tr');
+        empty.className = 'ofmaq-empty-row-zero';
+        empty.innerHTML = '<td colspan="11">Nenhuma OF encontrada para este filtro.</td>';
+        tbody.appendChild(empty);
+      }
+      empty.style.display = visibleCount ? 'none' : 'table-row';
+    }
+
+    function reorderVisibleRows() {
+      var tbody = document.getElementById('ofmaq-tbody-zero');
+      if (!tbody) return;
+      var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]'));
+      if (!rows.length) return;
+      var frag = document.createDocumentFragment();
+      sortRows(rows).forEach(function(row) { frag.appendChild(row); });
+      tbody.appendChild(frag);
+      ensureEmptyState(tbody);
+    }
+
+    function applyFilters() {
+      var tbody = document.getElementById('ofmaq-tbody-zero');
+      if (!tbody) return;
+      Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]')).forEach(function(row) {
+        row.style.display = visibleRow(row) ? 'table-row' : 'none';
+      });
+      reorderVisibleRows();
+    }
+
+    function countsByDay(machine) {
+      var out = {};
+      weekDays(state.weekStartIso).forEach(function(day) { out[day.iso] = 0; });
+      state.rowsData.forEach(function(item) {
+        if (String(item.maquina || '').trim() !== String(machine || '').trim()) return;
+        var iso = String(item.prazoIso || '').slice(0, 10);
+        if (iso && Object.prototype.hasOwnProperty.call(out, iso)) out[iso] += 1;
+      });
+      return out;
+    }
+
+    function updateToolbar(shell) {
+      if (!shell || !shell.toolbar) return;
+      var machine = normalizeMachine(state.selectedMachine || 'IMP 01');
+      state.selectedMachine = machine;
+      var select = shell.toolbar.querySelector('#ofmaq-select-maquina-zero');
+      if (select) select.value = machine;
+      var search = shell.toolbar.querySelector('#ofmaq-busca-zero');
+      if (search && search.value !== String(state.searchTerm || '')) search.value = String(state.searchTerm || '');
+      var groupBtn = shell.toolbar.querySelector('#ofmaq-btn-agrupar-zero');
+      if (groupBtn) groupBtn.style.background = state.grouped ? '#3b82f6' : '#0f172a';
+      var counts = countsByDay(machine);
+      var daysWrap = shell.toolbar.querySelector('#ofmaq-days-zero');
+      if (daysWrap) {
+        daysWrap.innerHTML = ''
+          + '<button type="button" data-week-shift="-7">←</button>'
+          + weekDays(state.weekStartIso).map(function(day) {
+            var count = Number(counts[day.iso] || 0) || 0;
+            return '<button type="button" class="day-btn" data-date="' + escAttrLocal(day.iso) + '" data-hot="' + (count > 0 ? '1' : '0') + '" data-active="' + (state.selectedDateIso === day.iso ? '1' : '0') + '">' + escHLocal(day.label + ' ' + fmtDayShort(day.iso) + ' (' + count + ')') + '</button>';
+          }).join('')
+          + '<button type="button" data-week-shift="7">→</button>';
+      }
+    }
+
+    function closeModal(id) {
+      Array.prototype.slice.call(document.querySelectorAll('.ofmaq-overlay-zero[data-modal="' + id + '"], .ofmaq-modal-zero[data-modal="' + id + '"]')).forEach(function(el) {
+        try { el.remove(); } catch (_) {}
+      });
+    }
+
+    function openModal(id, title, bodyHtml) {
+      closeModal(id);
+      var overlay = document.createElement('div');
+      overlay.className = 'ofmaq-overlay-zero';
+      overlay.setAttribute('data-modal', id);
+      var modal = document.createElement('div');
+      modal.className = 'ofmaq-modal-zero';
+      modal.setAttribute('data-modal', id);
+      modal.innerHTML = ''
+        + '<button type="button" class="close-btn" data-modal-close="' + escAttrLocal(id) + '">✕</button>'
+        + '<h3>' + escHLocal(title) + '</h3>'
+        + '<div class="body">' + bodyHtml + '</div>';
+      overlay.onclick = function() { closeModal(id); };
+      document.body.appendChild(overlay);
+      document.body.appendChild(modal);
+      var closeBtn = modal.querySelector('[data-modal-close="' + id + '"]');
+      if (closeBtn) closeBtn.onclick = function() { closeModal(id); };
+      return modal;
+    }
+
+    function openImageModal(id) {
+      var item = rowDataById(id);
+      if (!item || !item.imagemUrl) return;
+      openModal('ofmaq-image-zero', 'Imagem da OF #' + String(item.numero || item.id), '<img src="' + escAttrLocal(item.imagemUrl) + '" alt="Imagem da OF" style="display:block;max-width:80vw;max-height:80vh;border-radius:8px">');
+    }
+
+    function updateRowMachine(id, machine) {
+      var row = document.querySelector('#ofmaq-tbody-zero tr[data-of-id="' + id + '"]');
+      var item = rowDataById(id);
+      if (!row || !item) return;
+      row.setAttribute('data-maq', machine);
+      var cell = row.querySelector('.col-maq');
+      if (cell) cell.textContent = machine;
+      item.maquina = machine;
+      try { if (item.cardEl) item.cardEl.setAttribute('data-maq', machine); } catch (_) {}
+      updateToolbar(ensureShell());
+      applyFilters();
+    }
+
+    function updateRowDate(id, dateIso) {
+      var row = document.querySelector('#ofmaq-tbody-zero tr[data-of-id="' + id + '"]');
+      var item = rowDataById(id);
+      if (!row || !item) return;
+      row.setAttribute('data-dia', dateIso);
+      var cell = row.querySelector('.col-prazo');
+      if (cell) cell.textContent = dateIso ? fmtDateBR(dateIso) : '—';
+      item.prazoIso = dateIso;
+      try {
+        if (item.cardEl) {
+          item.cardEl.setAttribute('data-dia', dateIso);
+          item.cardEl.setAttribute('data-entrega', dateIso);
+        }
+      } catch (_) {}
+      updateToolbar(ensureShell());
+      applyFilters();
+    }
+
+    function openMoveModal(id) {
+      var item = rowDataById(id);
+      if (!item) return;
+      var modal = openModal('ofmaq-move-zero', 'Mover OF #' + String(item.numero || item.id), '<select id="ofmaq-move-select-zero">' + MACHINES.map(function(machine) { return '<option value="' + escAttrLocal(machine) + '"' + (machine === item.maquina ? ' selected' : '') + '>' + escHLocal(machine) + '</option>'; }).join('') + '</select><button type="button" id="ofmaq-move-save-zero">Salvar</button>');
+      var save = modal.querySelector('#ofmaq-move-save-zero');
+      if (save) {
+        save.onclick = async function() {
+          var select = modal.querySelector('#ofmaq-move-select-zero');
+          var machine = normalizeMachine(String(select && select.value || '').trim());
+          if (!machine) return;
+          try {
+            var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { maq: [machine], maquina: machine, maquina_agendada: machine } });
+            if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF');
+            closeModal('ofmaq-move-zero');
+            updateRowMachine(id, machine);
+          } catch (err) {
+            try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+          }
+        };
+      }
+    }
+
+    function openDateModal(id) {
+      var item = rowDataById(id);
+      if (!item) return;
+      var modal = openModal('ofmaq-date-zero', 'Alterar data da OF #' + String(item.numero || item.id), '<input id="ofmaq-date-input-zero" type="date" value="' + escAttrLocal(item.prazoIso || '') + '"><button type="button" id="ofmaq-date-save-zero">Salvar</button>');
+      var save = modal.querySelector('#ofmaq-date-save-zero');
+      if (save) {
+        save.onclick = async function() {
+          var input = modal.querySelector('#ofmaq-date-input-zero');
+          var value = String(input && input.value || '').slice(0, 10);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
+          try {
+            var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { data_entrega: value, ent: value } });
+            if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao alterar data');
+            closeModal('ofmaq-date-zero');
+            updateRowDate(id, value);
+          } catch (err) {
+            try { window.toast('Erro ao alterar data: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+          }
+        };
+      }
+    }
+
+    function openActionsModal(id) {
+      var item = rowDataById(id);
+      if (!item) return;
+      var modal = openModal('ofmaq-actions-zero', 'Ações da OF #' + String(item.numero || item.id), ''
+        + '<button type="button" id="ofmaq-action-pass-zero">✓ Passou pela máquina</button>'
+        + '<button type="button" id="ofmaq-action-move-zero">↔ Mover de máquina</button>'
+        + '<button type="button" id="ofmaq-action-date-zero">📅 Alterar data</button>');
+      var passBtn = modal.querySelector('#ofmaq-action-pass-zero');
+      var moveBtn = modal.querySelector('#ofmaq-action-move-zero');
+      var dateBtn = modal.querySelector('#ofmaq-action-date-zero');
+      if (passBtn) {
+        passBtn.onclick = async function() {
+          try {
+            var result = await apiJson('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method: 'POST', body: { maquina: item.maquina, maquina_nome: item.maquina } });
+            if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao registrar passagem');
+            closeModal('ofmaq-actions-zero');
+            try {
+              if (item.cardEl) {
+                item.cardEl.setAttribute('data-ofmaq-dismissed', '1');
+                item.cardEl.style.display = 'none';
+              }
+            } catch (_) {}
+            state.rowsData = state.rowsData.filter(function(entry) { return entry.id !== id; });
+            var row = document.querySelector('#ofmaq-tbody-zero tr[data-of-id="' + id + '"]');
+            if (row) row.remove();
+            updateToolbar(ensureShell());
+            applyFilters();
+          } catch (err) {
+            try { window.toast('Erro ao registrar passagem: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+          }
+        };
+      }
+      if (moveBtn) moveBtn.onclick = function() { closeModal('ofmaq-actions-zero'); openMoveModal(id); };
+      if (dateBtn) dateBtn.onclick = function() { closeModal('ofmaq-actions-zero'); openDateModal(id); };
+    }
+
+    function openPrintModal() {
+      var modal = openModal('ofmaq-print-zero', 'Imprimir relatório OFs por Máquina', ''
+        + '<div class="ofmaq-print-grid-zero">'
+        + '  <label><input type="checkbox" data-print-machine-zero="TODAS" checked> Todas</label>'
+        + MACHINES.map(function(machine) {
+            return '<label><input type="checkbox" data-print-machine-zero="' + escAttrLocal(machine) + '"> ' + escHLocal(machine) + '</label>';
+          }).join('')
+        + '</div>'
+        + '<label><input type="radio" name="ofmaq-print-period-zero" value="dia" checked> Dia atual</label>'
+        + '<label><input type="radio" name="ofmaq-print-period-zero" value="semana"> Semana atual (Seg-Sex)</label>'
+        + '<button type="button" id="ofmaq-print-run-zero">Gerar relatório</button>');
+      Array.prototype.slice.call(modal.querySelectorAll('input[data-print-machine-zero]')).forEach(function(input) {
+        input.onchange = function() {
+          var all = modal.querySelector('input[data-print-machine-zero="TODAS"]');
+          var value = String(input.getAttribute('data-print-machine-zero') || '').trim();
+          if (value === 'TODAS' && all && all.checked) {
+            Array.prototype.slice.call(modal.querySelectorAll('input[data-print-machine-zero]')).forEach(function(el) {
+              el.checked = String(el.getAttribute('data-print-machine-zero') || '').trim() === 'TODAS';
+            });
+            return;
+          }
+          if (value !== 'TODAS' && input.checked && all) all.checked = false;
+        };
+      });
+      var run = modal.querySelector('#ofmaq-print-run-zero');
+      if (run) {
+        run.onclick = function() {
+          var selected = Array.prototype.slice.call(modal.querySelectorAll('input[data-print-machine-zero]:checked')).map(function(el) {
+            return String(el.getAttribute('data-print-machine-zero') || '').trim();
+          }).filter(Boolean);
+          if (selected.indexOf('TODAS') >= 0) selected = MACHINES.slice();
+          if (!selected.length) return;
+          var period = String((modal.querySelector('input[name="ofmaq-print-period-zero"]:checked') || {}).value || 'dia');
+          closeModal('ofmaq-print-zero');
+          printReport(selected, period);
+        };
+      }
+    }
+
+    function printReport(selectedMachines, period) {
+      var days = period === 'semana'
+        ? weekDays(state.weekStartIso).map(function(day) { return day.iso; })
+        : [state.selectedDateIso];
+      var sections = selectedMachines.map(function(machine) {
+        var rows = state.rowsData.filter(function(item) {
+          if (String(item.maquina || '').trim() !== String(machine || '').trim()) return false;
+          if (!days.length) return true;
+          var itemDay = String(item.prazoIso || '').slice(0, 10);
+          return !itemDay || days.indexOf(itemDay) >= 0;
+        });
+        var totalQtd = rows.reduce(function(sum, item) { return sum + (Number(item.quantidade || 0) || 0); }, 0);
+        return ''
+          + '<section style="margin-bottom:24px">'
+          + '  <h2 style="margin:0 0 8px 0">' + escHLocal(machine) + '</h2>'
+          + '  <div style="margin:0 0 10px 0;color:#475569">' + escHLocal(period === 'semana' ? 'Semana atual (Seg-Sex)' : fmtDateBR(state.selectedDateIso)) + '</div>'
+          + '  <table style="width:100%;border-collapse:collapse">'
+          + '    <thead><tr><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Nº OF</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Cliente</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Produto</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Tamanho</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Cores</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Qtd</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Prazo</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Status</th></tr></thead>'
+          + '    <tbody>' + rows.map(function(item) {
+              return '<tr>'
+                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(item.numero || '—') + '</td>'
+                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(item.cliente || '—') + '</td>'
+                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(item.produto || '—') + '</td>'
+                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(item.tamanho || '—') + '</td>'
+                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal((item.cores || []).join(', ')) + '</td>'
+                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(String(item.quantidade || 0)) + '</td>'
+                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(item.prazoIso ? fmtDateBR(item.prazoIso) : '—') + '</td>'
+                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">Em aberto</td>'
+                + '</tr>';
+            }).join('') + '</tbody>'
+          + '  </table>'
+          + '  <div style="margin-top:10px;font-weight:700">Total de OFs: ' + rows.length + ' | Total de caixas: ' + totalQtd + '</div>'
+          + '</section>';
+      }).join('');
+      var html = ''
+        + '<html><head><title>Relatório OFs por Máquina</title></head><body style="font-family:Arial,sans-serif;padding:24px;background:#fff;color:#0f172a">'
+        + '<h1 style="margin:0 0 18px 0">Relatório OFs por Máquina</h1>'
+        + sections
+        + '</body></html>';
+      if (typeof window._openStyledPrintWindow === 'function') window._openStyledPrintWindow(html);
+    }
+
+    function bindToolbar(shell) {
+      if (!shell || !shell.toolbar) return;
+      if (shell.toolbar.getAttribute('data-ofmaq-bound-zero') === '1') return;
+      shell.toolbar.setAttribute('data-ofmaq-bound-zero', '1');
+      shell.toolbar.addEventListener('click', function(ev) {
+        var dayBtn = ev && ev.target && ev.target.closest ? ev.target.closest('.day-btn') : null;
+        if (dayBtn) {
+          state.selectedDateIso = String(dayBtn.getAttribute('data-date') || '').slice(0, 10);
+          updateToolbar(shell);
+          applyFilters();
+          return;
+        }
+        var shiftBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-week-shift]') : null;
+        if (shiftBtn) {
+          var shift = Number(shiftBtn.getAttribute('data-week-shift') || 0) || 0;
+          state.weekStartIso = addDaysIso(state.weekStartIso, shift);
+          state.selectedDateIso = addDaysIso(state.selectedDateIso, shift);
+          updateToolbar(shell);
+          applyFilters();
+          return;
+        }
+        var groupBtn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-btn-agrupar-zero') : null;
+        if (groupBtn) {
+          state.grouped = !state.grouped;
+          updateToolbar(shell);
+          applyFilters();
+          return;
+        }
+        var printBtn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-btn-imprimir-zero') : null;
+        if (printBtn) openPrintModal();
+      });
+      shell.toolbar.addEventListener('change', function(ev) {
+        var select = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-select-maquina-zero') : null;
+        if (select) {
+          state.selectedMachine = normalizeMachine(String(select.value || '').trim());
+          updateToolbar(shell);
+          applyFilters();
+        }
+      });
+      shell.toolbar.addEventListener('input', function(ev) {
+        var input = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-busca-zero') : null;
+        if (!input) return;
+        state.searchTerm = String(input.value || '');
+        applyFilters();
+      });
+    }
+
+    function bindTable(shell) {
+      if (!shell || !shell.wrap) return;
+      if (shell.wrap.getAttribute('data-ofmaq-bound-zero') === '1') return;
+      shell.wrap.setAttribute('data-ofmaq-bound-zero', '1');
+      shell.wrap.addEventListener('keydown', async function(ev) {
+        var input = ev && ev.target && ev.target.closest ? ev.target.closest('.ofmaq-seq-input-zero') : null;
+        if (!input || String(ev.key || '') !== 'Enter') return;
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        var row = input.closest ? input.closest('tr[data-of-id]') : null;
+        var id = String(input.getAttribute('data-of-id') || '').trim();
+        var value = Math.max(1, Number(input.value || 0) || 1);
+        if (!row || !id) return;
+        try {
+          var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { ordem_maquina: value } });
+          if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao salvar sequência');
+          row.setAttribute('data-order', String(value));
+          input.value = String(value);
+          var item = rowDataById(id);
+          if (item) {
+            item.order = value;
+            try { if (item.cardEl) item.cardEl.setAttribute('data-ordem-maquina', String(value)); } catch (_) {}
+          }
+          applyFilters();
+        } catch (err) {
+          try { window.toast('Erro ao salvar sequência: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+        }
+      });
+      shell.wrap.addEventListener('click', function(ev) {
+        var imageBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofmaq-image-zero]') : null;
+        if (imageBtn) {
+          try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+          openImageModal(String(imageBtn.getAttribute('data-ofmaq-image-zero') || '').trim());
+          return;
+        }
+        var actionBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofmaq-actions-zero]') : null;
+        if (actionBtn) {
+          try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+          openActionsModal(String(actionBtn.getAttribute('data-ofmaq-actions-zero') || '').trim());
+        }
+      });
+    }
+
+    function renderRows(shell) {
+      var tbody = shell && shell.tbody;
+      if (!tbody) return;
+      if (!state.rowsData.length) {
+        tbody.innerHTML = '<tr class="ofmaq-empty-row-zero"><td colspan="11">Nenhuma OF encontrada.</td></tr>';
+      } else {
+        tbody.innerHTML = state.rowsData.map(rowHtml).join('');
+      }
+      bindTable(shell);
+      try { console.log('[OFMAQ-TABELA] linhas:', state.rowsData.length, 'pai:', shell && shell.wrap && shell.wrap.parentElement ? shell.wrap.parentElement.id : ''); } catch (_) {}
+    }
+
+    function afterRenderCore() {
+      ensureDefaults();
+      removeNovaOfButtons();
+      hideLegacyViews();
+      var shell = ensureShell();
+      if (!shell) return;
+      bindToolbar(shell);
+      var cards = sourceCards();
+      if (!cards.length) return;
+      var rows = collectRows();
+      var nextSig = currentRowsSignature(rows);
+      if (nextSig !== state.dataSignature || !document.getElementById('ofmaq-tbody-zero')) {
+        state.dataSignature = nextSig;
+        state.rowsData = rows;
+        renderRows(shell);
+      }
+      updateToolbar(shell);
+      applyFilters();
+    }
+
+    function scheduleRender(delay) {
+      try { clearTimeout(state.renderTimer); } catch (_) {}
+      state.renderTimer = setTimeout(function() {
+        try { window.afterRenderOfmaq(); } catch (_) {}
+      }, Math.max(0, Number(delay || 0) || 0));
+    }
+
+    function ensureObserver() {
+      if (state.observerReady || typeof MutationObserver !== 'function') return;
+      var page = getPage() || document.body;
+      if (!page) return;
+      state.observerReady = true;
+      state.observer = new MutationObserver(function() {
+        scheduleRender(80);
+      });
+      state.observer.observe(page, { childList: true, subtree: true, attributes: true });
+    }
+
+    function ensurePolling() {
+      if (state.pollReady) return;
+      state.pollReady = true;
+      state.poller = setInterval(function() {
+        scheduleRender(0);
+      }, 1500);
+    }
+
+    window.ensureOfmaqToolbarButtons = function ensureOfmaqToolbarButtonsZero() {
+      ensureDefaults();
+      removeNovaOfButtons();
+      hideLegacyViews();
+      updateToolbar(ensureShell());
+    };
+
+    window.decorateOfmaqCards = function decorateOfmaqCardsZero() {
+      removeNovaOfButtons();
+      hideLegacyViews();
+    };
+
+    window.afterRenderOfmaq = function afterRenderOfmaqZero() {
+      try {
+        afterRenderCore();
+      } catch (err) {
+        try { console.error('[OFMAQ-ZERO-ERRO]', err); } catch (_) {}
+      }
+    };
+
+    ensureDefaults();
+    ensureObserver();
+    ensurePolling();
+    scheduleRender(20);
+  } catch (err) {
+    try { console.error('[OFMAQ-ZERO-BLOCK]', err); } catch (_) {}
+  }
+})();
 
 (function patchInconformidadesCaixasPerdidas() {
   function authToken() {
