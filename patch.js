@@ -11928,6 +11928,29 @@ window.addEventListener('unhandledrejection', function(e) {
     return Object.assign({}, extra || {}, token ? { Authorization: 'Bearer ' + token } : {});
   }
 
+  function runSeqRouteTestOnce(ofs) {
+    if (window.__ofmaqSeqRouteTestDone) return;
+    var first = (Array.isArray(ofs) ? ofs : []).filter(function(of) { return String(of && of.id || '').trim(); })[0] || null;
+    if (!first) return;
+    window.__ofmaqSeqRouteTestDone = true;
+    var ofId = String(first.id || '').trim();
+    fetch('/api/ofs/' + encodeURIComponent(ofId), {
+      method: 'PATCH',
+      headers: getOfmaqAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ ordem_maquina: 1 })
+    }).then(function(r) {
+      return r.json().then(function(d) {
+        try { console.log('[SEQ-TEST]', d); } catch (_) {}
+        return d;
+      }).catch(function() {
+        try { console.log('[SEQ-TEST]', { ok: r.ok, status: r.status }); } catch (_) {}
+        return null;
+      });
+    }).catch(function(err) {
+      try { console.log('[SEQ-TEST]', { error: String(err && err.message || err) }); } catch (_) {}
+    });
+  }
+
   function removeModal(id) {
     Array.prototype.slice.call(document.querySelectorAll('.ofmaq-direct-overlay[data-modal-id="' + id + '"], .ofmaq-direct-modal[data-modal-id="' + id + '"]')).forEach(function(el) {
       try { el.remove(); } catch (_) {}
@@ -12302,11 +12325,13 @@ window.addEventListener('unhandledrejection', function(e) {
       tbody.innerHTML = '<tr class="ofmaq-direct-empty"><td colspan="13">Nenhuma OF encontrada.</td></tr>';
     } else {
       tbody.innerHTML = rows.map(function(item) {
+        if (item && item._ofmaqRendered === '1') return '';
+        if (item) item._ofmaqRendered = '1';
         var imgHtml = item.imageUrl
           ? ('<button type="button" class="ofmaq-direct-thumb-btn" data-img-of-id="' + escAttrLocal(item.id) + '"><span class="ofmaq-direct-thumb"><img src="' + escAttrLocal(item.imageUrl) + '" alt="Imagem da OF"></span></button>')
           : '<span class="ofmaq-direct-thumb-fallback">&#128230;</span>';
         return ''
-          + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-maq-list="' + escAttrLocal(item.machines.join('|')) + '" data-day="' + escAttrLocal(item.diaIso || '') + '" data-dia-source="' + escAttrLocal(String(item.of && (item.of.dia || item.of.data || item.of.data_pedido || item.of.created_at) || '')) + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-qtd="' + escAttrLocal(String(item.qty || 0)) + '" data-status-rank="' + escAttrLocal(String(item.statusInfo && item.statusInfo.rank != null ? item.statusInfo.rank : 9)) + '" data-color-key="' + escAttrLocal(item.colorKey || '') + '" data-size-key="' + escAttrLocal(item.sizeKey || '') + '" data-search="' + escAttrLocal(item.search || '') + '" data-of-number="' + escAttrLocal(item.number || '') + '">'
+          + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-ofmaq-rendered="1" data-maq-list="' + escAttrLocal(item.machines.join('|')) + '" data-day="' + escAttrLocal(item.diaIso || '') + '" data-dia-source="' + escAttrLocal(String(item.of && (item.of.dia || item.of.data || item.of.data_pedido || item.of.created_at) || '')) + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-qtd="' + escAttrLocal(String(item.qty || 0)) + '" data-status-rank="' + escAttrLocal(String(item.statusInfo && item.statusInfo.rank != null ? item.statusInfo.rank : 9)) + '" data-color-key="' + escAttrLocal(item.colorKey || '') + '" data-size-key="' + escAttrLocal(item.sizeKey || '') + '" data-search="' + escAttrLocal(item.search || '') + '" data-of-number="' + escAttrLocal(item.number || '') + '">'
           + '  <td class="col-seq"><input class="ofmaq-direct-seq" type="number" min="1" step="1" value="' + escAttrLocal(String(item.order || 1)) + '" data-seq-of-id="' + escAttrLocal(item.id) + '"></td>'
           + '  <td class="col-img">' + imgHtml + '</td>'
           + '  <td class="col-of"><strong>' + escHLocal(item.number || '-') + '</strong></td>'
@@ -12580,6 +12605,7 @@ window.addEventListener('unhandledrejection', function(e) {
     try {
       var source = await resolveSourceOfs(ofs);
       try { window._ofmaqDebugDia(source); } catch (_) {}
+      try { runSeqRouteTestOnce(source); } catch (_) {}
       var nextSignature = buildRenderSignature(source, opcoes);
       if (!source.length) {
         if (!isOfmaqActive()) return null;
