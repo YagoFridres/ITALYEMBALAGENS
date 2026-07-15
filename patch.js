@@ -11559,12 +11559,24 @@ window.addEventListener('unhandledrejection', function(e) {
     return [String(value || '').trim()].filter(Boolean);
   }
 
+  function normCor(s) {
+    return String(s || '').trim()
+      .replace(/_/g, ' ')
+      .replace(/\s+/g, ' ')
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); })
+      .join(' ');
+  }
+
   function getOfColors(of) {
-    return parseColors(of && (of.cores_impressao != null ? of.cores_impressao : (of.cores != null ? of.cores : of.cor)));
+    return parseColors(of && (of.cores_impressao != null ? of.cores_impressao : (of.cores != null ? of.cores : of.cor))).map(normCor).filter(Boolean);
   }
 
   function resolveColorHex(name) {
-    var key = normText(name).replace(/\s+/g, '');
+    var normalizedName = normCor(name);
+    var key = normText(normalizedName).replace(/\s+/g, '');
     if (key === 'azulclaro') return OFMAQ_COLOR_MAP.azulclaro;
     if (key === 'azulescuro') return OFMAQ_COLOR_MAP.azulescuro;
     if (key === 'verdelimao') return OFMAQ_COLOR_MAP.verdelimao;
@@ -11590,7 +11602,11 @@ window.addEventListener('unhandledrejection', function(e) {
   function colorHtml(colors) {
     var list = (Array.isArray(colors) ? colors : []).map(function(name) {
       var bg = resolveColorHex(name);
-      return '<span class="ofmaq-direct-color" style="background:' + escAttrLocal(bg) + ';color:' + escAttrLocal(colorText(bg)) + '">' + escHLocal(name) + '</span>';
+      var label = normCor(name);
+      if (!bg || String(bg || '').toLowerCase() === '#64748b' && normText(label).replace(/\s+/g, '') !== 'semimpressao' && normText(label).replace(/\s+/g, '') !== 'azul' && normText(label).replace(/\s+/g, '') !== 'vermelho' && normText(label).replace(/\s+/g, '') !== 'verde' && normText(label).replace(/\s+/g, '') !== 'amarelo' && normText(label).replace(/\s+/g, '') !== 'preto' && normText(label).replace(/\s+/g, '') !== 'branco' && normText(label).replace(/\s+/g, '') !== 'roxo' && normText(label).replace(/\s+/g, '') !== 'rosa' && normText(label).replace(/\s+/g, '') !== 'laranja' && normText(label).replace(/\s+/g, '') !== 'dourado' && normText(label).replace(/\s+/g, '') !== 'marrom' && normText(label).replace(/\s+/g, '') !== 'azulclaro' && normText(label).replace(/\s+/g, '') !== 'azulescuro' && normText(label).replace(/\s+/g, '') !== 'verdelimao') {
+        return '<span class="ofmaq-direct-color" style="background:transparent;color:#f1f5f9;border:1px solid #334155">' + escHLocal(label) + '</span>';
+      }
+      return '<span class="ofmaq-direct-color" style="background:' + escAttrLocal(bg) + ';color:' + escAttrLocal(colorText(bg)) + '">' + escHLocal(label) + '</span>';
     });
     return list.length ? list.join('') : '<span class="ofmaq-direct-color" style="background:#0f172a;color:#94a3b8;border:1px solid #334155">—</span>';
   }
