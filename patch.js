@@ -12077,6 +12077,24 @@ window.addEventListener('unhandledrejection', function(e) {
     });
   }
 
+  function _ofmaqReordenarTbody() {
+    var tbody = document.querySelector('#ofmaq-tabela-nova tbody') || document.querySelector('#ofmaq-tabela tbody');
+    if (!tbody) return;
+    var rows = Array.from(tbody.querySelectorAll('tr[data-of-id]'));
+    rows.sort(function(a, b) {
+      var va = parseInt(a.dataset.ordem || a.getAttribute('data-order') || ((a.querySelector('input[type="number"]') || {}).value) || 999, 10);
+      var vb = parseInt(b.dataset.ordem || b.getAttribute('data-order') || ((b.querySelector('input[type="number"]') || {}).value) || 999, 10);
+      return va - vb;
+    });
+    rows.forEach(function(tr) { tbody.appendChild(tr); });
+    rows.forEach(function(tr, i) {
+      var input = tr.querySelector('input[type="number"]');
+      if (input && input !== document.activeElement) input.value = i + 1;
+      tr.dataset.ordem = i + 1;
+      tr.setAttribute('data-order', String(i + 1));
+    });
+  }
+
   function bindRowClickHandlers(root) {
     var tbody = root && root.querySelector ? root.querySelector('#ofmaq-tbody') : null;
     if (!tbody) return;
@@ -12459,7 +12477,9 @@ window.addEventListener('unhandledrejection', function(e) {
         if (!resp.ok || (respostaJson && respostaJson.ok === false)) throw new Error((respostaJson && (respostaJson.error || respostaJson.message)) || 'Falha ao salvar sequencia');
         updateCachedOf(id, function(of) { of.ordem_maquina = value; });
         row.setAttribute('data-order', String(value));
+        row.dataset.ordem = String(value);
         input.value = String(value);
+        _ofmaqReordenarTbody();
         sortRows(tbody);
         syncSequenceInputs(tbody);
         ensureEmptyRow(tbody);
