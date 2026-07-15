@@ -3386,10 +3386,8 @@ function ofIn(p) {
   const primeiroDesc = String(primeiroItem.desc ?? primeiroItem.descricao ?? '').trim();
   if (primeiroDesc && !out.descricao_manual) {
     out.descricao = primeiroDesc;
-    out.prodDesc = primeiroDesc;
   } else {
     if ((out.descricao == null || String(out.descricao).trim() === '') && primeiroDesc) out.descricao = primeiroDesc;
-    if ((out.prodDesc == null || String(out.prodDesc).trim() === '') && primeiroDesc) out.prodDesc = primeiroDesc;
   }
   if (out.valor_total === undefined && out.valor_venda === undefined && Array.isArray(out.itens) && out.itens.length) {
     const sum = out.itens.reduce((s, it) => {
@@ -3552,7 +3550,7 @@ const OFS_TABLE_COLS = [
   'created_at', 'updated_at',
 ];
 const OFS_TABLE_COLS_SET = new Set(OFS_TABLE_COLS);
-const OFS_SELECTABLE_COLS = OFS_TABLE_COLS.filter((c) => c !== 'prodDesc');
+const OFS_SELECTABLE_COLS = OFS_TABLE_COLS.slice();
 const OFS_SELECTABLE_COLS_SET = new Set(OFS_SELECTABLE_COLS);
 try { console.log('[BOOT] OFS_SELECTABLE_COLS_SET size:', OFS_SELECTABLE_COLS_SET?.size); } catch (_) {}
 function _ofsSelectableHas(col) {
@@ -5202,7 +5200,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       const ent = String(merged.ent ?? merged.data_entrega ?? '').slice(0, 10);
       const itens = parseItens(merged.itens ?? body.itens);
       const item0 = (Array.isArray(itens) ? itens : [])[0] || {};
-      const prod = String(merged.prodDesc ?? merged.descricao ?? merged.produto ?? item0.desc ?? item0.descricao ?? '').trim();
+      const prod = String(merged.descricao ?? merged.produto ?? item0.desc ?? item0.descricao ?? '').trim();
       const total = Number(merged.total ?? merged.valor_total ?? merged.valor_venda ?? 0) || 0;
       const vunitItens = Math.max(0, ...(Array.isArray(itens) ? itens : []).map((it) => Number(it?.valor_unitario ?? it?.vunit ?? 0) || 0));
       const vunit = Number(merged.preco ?? merged.valor_unitario ?? merged.vl_unit ?? 0) || ((vunitItens > 0) ? vunitItens : ((qtd > 0) ? (total / qtd) : 0));
@@ -6547,7 +6545,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       const lote = ofIds.slice(i, i + 200);
       const { data } = await supabase
         .from('ofs')
-        .select('id,numero,of,cli_id,cliente,descricao,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
+        .select('id,numero,of,cli_id,cliente,descricao,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
         .in('id', lote);
       (Array.isArray(data) ? data : []).forEach((of) => {
         const id = String(of?.id || '').trim();
@@ -6570,11 +6568,11 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
         ));
         const { data } = await supabase
         .from('ofs')
-          .select('id,numero,of,cli_id,cliente,descricao,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
+          .select('id,numero,of,cli_id,cliente,descricao,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
           .in('numero', numeroVariants);
         const { data: dataByOf } = await supabase
           .from('ofs')
-          .select('id,numero,of,cli_id,cliente,descricao,prodDesc,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
+          .select('id,numero,of,cli_id,cliente,descricao,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
           .in('of', numeroVariants);
         (Array.isArray(data) ? data : []).concat(Array.isArray(dataByOf) ? dataByOf : []).forEach((of) => {
         const numero = String(of?.numero || '').trim();
@@ -6668,7 +6666,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       of_numero: String(row?.of_numero || ofData?.numero || '').trim() || '—',
       cliente_nome: clienteNome,
       cliente: clienteNome,
-      produto: String(row?.produto || ofData?.produto || ofData?.descricao || ofData?.prodDesc || '').trim() || '—',
+      produto: String(row?.produto || ofData?.produto || ofData?.descricao || '').trim() || '—',
       maquina: maquinaNome,
       maquina_nome: maquinaNome,
       quantidade,
@@ -7713,7 +7711,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
           of_id: id,
           of_numero: String(data?.numero || data?.of_num || data?.of || '').trim() || null,
           cliente: String(data?.cliente || data?.cliente_nome || '').trim() || null,
-          produto: String(data?.produto || data?.descricao || data?.produto_desc || data?.prodDesc || '').trim() || null,
+          produto: String(data?.produto || data?.descricao || data?.produto_desc || '').trim() || null,
           referencia: String(data?.referencia || data?.ref || '').trim() || null,
           imagem_url: data?.imagem_url || data?.imagem || data?.img || null,
           maquina,
@@ -7891,7 +7889,7 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
           mes_referencia: mesRef,
           data: nowIso.slice(0, 10),
           cliente: of.cli_id ?? of.cliente_id ?? of.cliId ?? '',
-          produto: of.prodDesc ?? of.prod_desc ?? of.prod ?? of.descricao ?? '',
+          produto: of.descricao ?? of.prod_desc ?? of.prod ?? '',
           quantidade: ofRel.qtd ?? ofRel.quantidade ?? 0,
           valor: ofRel.valor_total ?? ofRel.valor_venda ?? 0,
           maquina: atual || '',
@@ -8059,7 +8057,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     let comprimentoMm = parseDimMm(of, ['comprimento_mm', 'caixa_comprimento', 'dim_comprimento', 'comprimento']);
     let larguraMm = parseDimMm(of, ['largura_mm', 'caixa_largura', 'dim_largura', 'largura']);
     if (!(comprimentoMm > 0 && larguraMm > 0)) {
-      const desc = String(of?.descricao || of?.produto || of?.prodDesc || '').trim();
+      const desc = String(of?.descricao || of?.produto || '').trim();
       const match = desc.match(/(\d+(?:[.,]\d+)?)\s*[×xX]\s*(\d+(?:[.,]\d+)?)/);
       if (match) {
         comprimentoMm = parseFloat(String(match[1] || '').replace(',', '.')) || 0;
@@ -8388,7 +8386,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         of_id: sid,
         of_numero: String(of?.numero || of?.of_num || of?.of || '').trim() || null,
         cliente: String(of?.cliente || '').trim() || null,
-        produto: String(of?.produto || of?.descricao || of?.produto_desc || of?.prodDesc || '').trim() || null,
+        produto: String(of?.produto || of?.descricao || of?.produto_desc || '').trim() || null,
         referencia: String(of?.referencia || of?.ref || '').trim() || null,
         imagem_url: of?.imagem_url || of?.imagem || of?.img || null,
         maquina: maquinaNome,
@@ -8461,7 +8459,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
           const payloadPerda = {
             of_id: sid,
             of_numero: ofNumero,
-            produto: String(of.prodDesc || of.descricao || of.produto || ''),
+            produto: String(of.descricao || of.produto || ''),
             cliente: cliNome || String(of?.cliente || '').trim() || '',
             cliente_nome: cliNome || String(of?.cliente || '').trim() || '',
             maquina: maqNomeLinha || null,
@@ -8563,7 +8561,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         mes_referencia: mesRef,
         data: nowIso.slice(0, 10),
         cliente: of.cli_id ?? of.cliente_id ?? of.cliId ?? '',
-        produto: of.prodDesc ?? of.prod_desc ?? of.prod ?? of.descricao ?? '',
+        produto: of.descricao ?? of.prod_desc ?? of.prod ?? '',
         quantidade: ofRel.qtd ?? ofRel.quantidade ?? 0,
         valor: ofRel.valor_total ?? ofRel.valor_venda ?? 0,
         maquina: maquinaProducaoOut || '',
@@ -11079,7 +11077,7 @@ async function _relatoriosFetchOfsCriadas(range, opts = {}) {
   const columns = [
     'id', 'numero', 'of', 'status', 'dia', 'empresa_id',
     'cli_id', 'cliId', 'cliente_id', 'cliente_nome', 'cliNome', 'clinome',
-    'descricao', 'prodDesc',
+    'descricao',
     'qtd', 'quantidade', 'qtd_pedida',
     'valor_total', 'valor_venda', 'total',
     'valor_unitario', 'preco', 'vl_unit'
@@ -11132,7 +11130,7 @@ app.get('/api/relatorios/ofs-entradas-mes', authMiddleware, async (req, res) => 
         id: of?.id || null,
         numero: String(of?.numero || of?.of || '—').trim() || '—',
         cliente_nome: clienteNome,
-        produto: String(of?.descricao || of?.prodDesc || '—').trim() || '—',
+        produto: String(of?.descricao || '—').trim() || '—',
         quantidade,
         valor_unitario: Number(valorUnitario || 0),
         valor_total: Number(valorTotal || 0),
@@ -14695,7 +14693,7 @@ app.get('/api/inconformidades', authMiddleware, async (req, res) => {
       } catch (_) {}
     }
 
-    const pickOfProduto = (of) => String(of?.produto || of?.descricao || of?.prodDesc || '').trim();
+    const pickOfProduto = (of) => String(of?.produto || of?.descricao || '').trim();
     const pickOfCliente = (of) => String(of?.cli_nome || of?.cliente || of?.cliente_nome || of?.cliNome || '').trim();
     const pickOfMaquina = (of) => String(of?.maq || of?.maquina || of?.maquina_atual || of?.maquina_agendada || '').trim();
     const pickOfNumero = (of) => String(of?.numero || of?.of || '').trim();
@@ -14824,7 +14822,7 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
       of_id: ofId || null,
       of_numero: String(payload.of_numero || b?.of_numero || ofData?.numero || ofData?.of || '').trim() || null,
       maquina: String(b?.maquina || ofData?.maq || ofData?.maquina || ofData?.maquina_atual || '').trim() || null,
-      produto: String(b?.produto || ofData?.produto || ofData?.descricao || ofData?.prodDesc || '').trim() || null,
+      produto: String(b?.produto || ofData?.produto || ofData?.descricao || '').trim() || null,
       cliente: String(b?.cliente || b?.cliente_nome || ofData?.cliente || ofData?.cliente_nome || ofData?.cli_nome || ofData?.cliNome || '').trim() || null,
       operadores,
       operador_principal,
@@ -23593,7 +23591,7 @@ async function _jarvisOfsDoCliente(cliId) {
       const { data, error } = await supabase
         .from('ofs')
         .select(
-          'id,of,numero,status,cli_id,cliente_id,descricao,prodDesc,' +
+          'id,of,numero,status,cli_id,cliente_id,descricao,' +
           'qtd,quantidade,qtd_pedida,qtd_produzida,' +
           'ent,data_entrega,data_conclusao,data_producao,dia,' +
           'fluxo_maquinas,maq,maquina_atual_index,' +
@@ -23729,7 +23727,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
           const ofRow = r.of;
           const num = String(ofRow?.of || ofRow?.numero || '').trim();
           const cli = String(ofRow?.cliNome || ofRow?.cliente_nome || '').trim();
-          const prod = String(ofRow?.descricao || ofRow?.prodDesc || '').trim();
+          const prod = String(ofRow?.descricao || '').trim();
           const ent = String(ofRow?.data_entrega || ofRow?.ent || '').slice(0, 10);
           const mk = String(_ofPickMaqAtualName(ofRow) || '').trim();
           return respond(
@@ -24024,7 +24022,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
         const imagens = ofsComImg.map(({ o, url }) => ({
           numero: o.of || o.numero || '',
-          descricao: String(o.descricao || o.prodDesc || o.produto || '').trim(),
+          descricao: String(o.descricao || o.produto || '').trim(),
           imgUrl: url,
           status: String(o.status || '').trim(),
         }));
@@ -24043,7 +24041,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const cliMap = await _assistLoadClientesByIds([cid]);
       const cNome = String(cliMap.get(cid) || of.cliNome || of.cliente_nome || '—').trim() || '—';
       const numOf = _assistPickOfNumber(of);
-      const produto = String(of.descricao || of.prodDesc || of.produto || of.prod || '').trim() || '—';
+      const produto = String(of.descricao || of.produto || of.prod || '').trim() || '—';
       const qtd = Math.trunc(Number(of.qtd_pedida || of.qtd_produzida || of.quantidade || of.qtd || 0) || 0);
       const valor = _assistPickOfValor(of);
       const status = String(of.status || '—').trim() || '—';
@@ -24139,7 +24137,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
       const fmtOf = (o) => {
         const num  = String(o.of||o.numero||'—');
-        const desc = String(o.descricao||o.prodDesc||o.produto||'—').trim();
+        const desc = String(o.descricao||o.produto||'—').trim();
         const qtd  = Math.trunc(Number(o.qtd_pedida||o.quantidade||o.qtd||0)||0);
         const ent  = String(o.data_entrega||o.ent||'').slice(0,10);
         const dia  = String(o.data_producao||o.dia||'').slice(0,10);
@@ -24155,7 +24153,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       };
       const fmtConc = (o) => {
         const num  = String(o.of||o.numero||'—');
-        const desc = String(o.descricao||o.prodDesc||o.produto||'—').trim();
+        const desc = String(o.descricao||o.produto||'—').trim();
         const qtd  = Math.trunc(Number(o.qtd_produzida||o.qtd||0)||0);
         const dc   = String(o.data_conclusao||'').slice(0,10);
         const val  = Number(o.valor_total||o.valor_venda||0);
@@ -24475,7 +24473,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const maqBusca = mMaq ? String(mMaq[1]||'').trim().toUpperCase() : '';
       if (!maqBusca) return respond(`${nome}, qual máquina? Ex: "fila da IMP 02"`);
 
-      const {data:ofsAll} = await supabase.from('ofs').select('id,of,numero,status,cliNome,cliente_nome,cli_id,descricao,prodDesc,qtd,quantidade,qtd_pedida,data_entrega,ent,dia,data_producao,fluxo_maquinas,maq,maquina_atual_index,urg,urgente,deleted_at').is('deleted_at',null).limit(500);
+      const {data:ofsAll} = await supabase.from('ofs').select('id,of,numero,status,cliNome,cliente_nome,cli_id,descricao,qtd,quantidade,qtd_pedida,data_entrega,ent,dia,data_producao,fluxo_maquinas,maq,maquina_atual_index,urg,urgente,deleted_at').is('deleted_at',null).limit(500);
       const fila = (Array.isArray(ofsAll)?ofsAll:[]).filter(o=>{
         const s=String(o.status||'').toLowerCase();
         if(s.includes('conclu')||s.includes('cancel')) return false;
@@ -24501,7 +24499,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const linhas=fila.slice(0,15).map((o,i)=>{
         const num=String(o.of||o.numero||'—');
         const cli=String(cliMap.get(String(o.cli_id||o.cliente_id||'').trim())||o.cliNome||o.cliente_nome||'—').trim();
-        const desc=String(o.descricao||o.prodDesc||'').trim();
+        const desc=String(o.descricao||'').trim();
         const qtd=Math.trunc(Number(o.qtd_pedida||o.quantidade||o.qtd||0)||0);
         const ent=String(o.data_entrega||o.ent||'').slice(0,10);
         const dia=String(o.data_producao||o.dia||'').slice(0,10);
@@ -24564,7 +24562,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const totalCx=concluidas.reduce((s,o)=>s+Math.trunc(Number(o.qtd_produzida||o.qtd||0)||0),0);
       const ultimas=concluidas.slice(0,5).map(o=>{
         const num=String(o.of||o.numero||'—');
-        const desc=String(o.descricao||o.prodDesc||o.produto||'').trim();
+        const desc=String(o.descricao||o.produto||'').trim();
         const dc=String(o.data_conclusao||'').slice(0,10);
         const val=Number(o.valor_total||o.valor_venda||0);
         return `• OF #${num} — ${desc} — ${dc?dc.split('-').reverse().join('/'):'—'} — R$ ${val.toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
@@ -24647,11 +24645,11 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
     if (hasAny('produtos mais fabricados','produtos mais vendidos','mais fabricados','mais produzidos','ranking de produtos')) {
       const m=new Date().toISOString().slice(0,7);
-      const {data:ofsRaw}=await supabase.from('ofs').select('descricao,prodDesc,qtd_produzida,qtd,status,deleted_at,data_conclusao').gte('data_conclusao',m+'-01').is('deleted_at',null).limit(5000);
+      const {data:ofsRaw}=await supabase.from('ofs').select('descricao,qtd_produzida,qtd,status,deleted_at,data_conclusao').gte('data_conclusao',m+'-01').is('deleted_at',null).limit(5000);
       const rows=(Array.isArray(ofsRaw)?ofsRaw:[]).filter(o=>String(o.status||'').toLowerCase().includes('conclu'));
       const ranking=new Map();
       rows.forEach(o=>{
-        const prod=String(o.descricao||o.prodDesc||'Sem descrição').trim();
+        const prod=String(o.descricao||'Sem descrição').trim();
         const qtd=Math.trunc(Number(o.qtd_produzida||o.qtd||0)||0);
         ranking.set(prod,(ranking.get(prod)||0)+qtd);
       });
@@ -24830,7 +24828,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const cNome = String(cliMap.get(cid)||of.cliNome||of.cliente_nome||'—').trim()||'—';
       const nOf   = _assistPickOfNumber(of);
       const qtd   = Math.trunc(Number(of.qtd_pedida||of.quantidade||of.qtd||0)||0);
-      const desc  = String(of.descricao||of.prodDesc||of.produto||of.prod||'').trim()||'—';
+      const desc  = String(of.descricao||of.produto||of.prod||'').trim()||'—';
       const fluxo = parseFluxo(of.fluxo_maquinas||of.maq||[]);
 
       return res.json({
@@ -24860,7 +24858,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const nOf = _assistPickOfNumber(of);
       const qtd = Math.trunc(Number(of.qtd_pedida || of.quantidade || of.qtd || 0) || 0);
       const entrega = _assistPickOfEntrega(of);
-      const desc = String(of.descricao || of.prodDesc || of.produto || of.prod || '').trim() || '—';
+      const desc = String(of.descricao || of.produto || of.prod || '').trim() || '—';
       const obs = String(of.obs || of.observacao || '').trim();
       const urg = !!(of.urg || of.urgente);
       const fluxo = parseFluxo(of.fluxo_maquinas || of.maq || []);
@@ -26193,7 +26191,7 @@ app.get('/api/relatorio/cliente_pdf', authMiddleware, async (req, res) => {
       const atras = ent && ent < new Date().toISOString().slice(0,10);
       return `<tr${atras?' style="background:#fff3cd"':''}>
         <td>${esc(o.of||o.numero||'')}</td>
-        <td>${esc(o.descricao||o.prodDesc||o.produto||'')}</td>
+        <td>${esc(o.descricao||o.produto||'')}</td>
         <td>${Math.trunc(Number(o.qtd_pedida||o.quantidade||o.qtd||0)||0).toLocaleString('pt-BR')}</td>
         <td>${esc(o.status||'')}</td>
         <td>${fmtData(ent)}${atras?' ⚠️':''}</td>
@@ -26203,7 +26201,7 @@ app.get('/api/relatorio/cliente_pdf', authMiddleware, async (req, res) => {
 
     const rowsConc = concluidas.slice(0,20).map(o => `<tr>
       <td>${esc(o.of||o.numero||'')}</td>
-      <td>${esc(o.descricao||o.prodDesc||o.produto||'')}</td>
+      <td>${esc(o.descricao||o.produto||'')}</td>
       <td>${Math.trunc(Number(o.qtd_produzida||o.qtd||0)||0).toLocaleString('pt-BR')}</td>
       <td>${fmtData(String(o.data_conclusao||'').slice(0,10))}</td>
       <td>R$ ${Number(o.valor_total||o.valor_venda||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
@@ -26802,7 +26800,7 @@ async function _pedidoLinguagemNaturalProcess({ texto, empId, usuario_id, req })
     cliente_id: cliId,
     cliNome: String(exato?.nome||'').trim(),
     descricao: String(extraidos.produto||'').trim(),
-    prodDesc: String(extraidos.produto||'').trim(),
+    descricao: String(extraidos.produto||'').trim(),
     qtd: Math.trunc(Number(extraidos.quantidade)||0),
     quantidade: Math.trunc(Number(extraidos.quantidade)||0),
     ent: extraidos.data_entrega,
@@ -27745,7 +27743,7 @@ async function _gerarRecorrenteSePrecisa(rec, forcar){
     cliId,
     cliente_id: cliId,
     descricao: desc,
-    prodDesc: desc,
+    descricao: desc,
     qtd,
     quantidade: qtd,
     ent: entrega,
