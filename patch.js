@@ -11881,6 +11881,13 @@ window.addEventListener('unhandledrejection', function(e) {
     return modal;
   }
 
+  function createModalDeferred(id, title, bodyHtml, onReady) {
+    setTimeout(function() {
+      var modal = createModal(id, title, bodyHtml);
+      if (typeof onReady === 'function') onReady(modal);
+    }, 0);
+  }
+
   function removeModal(id) {
     Array.prototype.slice.call(document.querySelectorAll('.ofmaq-direct-overlay[data-modal-id="' + id + '"], .ofmaq-direct-modal[data-modal-id="' + id + '"]')).forEach(function(el) {
       try { el.remove(); } catch (_) {}
@@ -12058,133 +12065,135 @@ window.addEventListener('unhandledrejection', function(e) {
   }
 
   function openActionsModal(root, rowData, rowEl) {
-    var modal = createModal('ofmaq-direct-actions', 'OF #' + String(rowData.number || rowData.id), ''
+    createModalDeferred('ofmaq-direct-actions', 'OF #' + String(rowData.number || rowData.id), ''
       + '<button type="button" id="ofmaq-direct-pass-btn">&#10003; Passou pela maquina</button>'
       + '<button type="button" id="ofmaq-direct-move-btn">&#8596; Mover de maquina</button>'
       + '<button type="button" id="ofmaq-direct-date-btn">&#128197; Alterar data</button>'
-      + '<button type="button" id="ofmaq-direct-close-btn">&times; Fechar</button>');
-    var passBtn = modal.querySelector('#ofmaq-direct-pass-btn');
-    var moveBtn = modal.querySelector('#ofmaq-direct-move-btn');
-    var dateBtn = modal.querySelector('#ofmaq-direct-date-btn');
-    var closeBtn = modal.querySelector('#ofmaq-direct-close-btn');
-    if (closeBtn) closeBtn.onclick = function() { removeModal('ofmaq-direct-actions'); };
-    if (passBtn) passBtn.onclick = async function() {
-      try {
-        var out = await apiJson('/api/ofs/' + encodeURIComponent(String(rowData.id || '').trim()) + '/passou-maquina', { method: 'POST', body: { maquina: state.selectedMachine, maquina_nome: state.selectedMachine } });
-        if (!out || !out.resp || !out.resp.ok || (out.data && out.data.ok === false)) throw new Error((out && out.data && (out.data.error || out.data.message)) || 'Falha ao registrar passagem');
-        window._ofmaqUltimosOfs = (Array.isArray(window._ofmaqUltimosOfs) ? window._ofmaqUltimosOfs : []).filter(function(of) {
-          return String(of && of.id || '').trim() !== String(rowData.id || '').trim();
-        });
-        rowEl.remove();
+      + '<button type="button" id="ofmaq-direct-close-btn">&times; Fechar</button>', function(modal) {
+      var passBtn = modal.querySelector('#ofmaq-direct-pass-btn');
+      var moveBtn = modal.querySelector('#ofmaq-direct-move-btn');
+      var dateBtn = modal.querySelector('#ofmaq-direct-date-btn');
+      var closeBtn = modal.querySelector('#ofmaq-direct-close-btn');
+      if (closeBtn) closeBtn.onclick = function() { removeModal('ofmaq-direct-actions'); };
+      if (passBtn) passBtn.onclick = async function() {
+        try {
+          var out = await apiJson('/api/ofs/' + encodeURIComponent(String(rowData.id || '').trim()) + '/passou-maquina', { method: 'POST', body: { maquina: state.selectedMachine, maquina_nome: state.selectedMachine } });
+          if (!out || !out.resp || !out.resp.ok || (out.data && out.data.ok === false)) throw new Error((out && out.data && (out.data.error || out.data.message)) || 'Falha ao registrar passagem');
+          window._ofmaqUltimosOfs = (Array.isArray(window._ofmaqUltimosOfs) ? window._ofmaqUltimosOfs : []).filter(function(of) {
+            return String(of && of.id || '').trim() !== String(rowData.id || '').trim();
+          });
+          rowEl.remove();
+          removeModal('ofmaq-direct-actions');
+          refilterTable(root);
+        } catch (err) {
+          try { window.toast('Erro ao registrar passagem: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+        }
+      };
+      if (moveBtn) moveBtn.onclick = function() {
         removeModal('ofmaq-direct-actions');
-        refilterTable(root);
-      } catch (err) {
-        try { window.toast('Erro ao registrar passagem: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
-      }
-    };
-    if (moveBtn) moveBtn.onclick = function() {
-      removeModal('ofmaq-direct-actions');
-      openMoveModal(root, rowData, rowEl);
-    };
-    if (dateBtn) dateBtn.onclick = function() {
-      removeModal('ofmaq-direct-actions');
-      openDateModal(root, rowData, rowEl);
-    };
+        openMoveModal(root, rowData, rowEl);
+      };
+      if (dateBtn) dateBtn.onclick = function() {
+        removeModal('ofmaq-direct-actions');
+        openDateModal(root, rowData, rowEl);
+      };
+    });
   }
 
   function openPrintModal() {
-    var modal = createModal('ofmaq-direct-print', 'Imprimir relatorio OFs por Maquina', ''
+    createModalDeferred('ofmaq-direct-print', 'Imprimir relatorio OFs por Maquina', ''
       + '<div class="ofmaq-direct-print-grid">'
       + '  <label><input type="checkbox" data-print-machine="TODAS" checked> Todas</label>'
       + state.lastMachines.map(function(machine) { return '<label><input type="checkbox" data-print-machine="' + escAttrLocal(machine) + '"> ' + escHLocal(machine) + '</label>'; }).join('')
       + '</div>'
       + '<label><input type="radio" name="ofmaq-direct-period" value="dia" checked> Dia atual</label>'
       + '<label><input type="radio" name="ofmaq-direct-period" value="semana"> Semana atual (Seg-Sex)</label>'
-      + '<button type="button" id="ofmaq-direct-print-run">Gerar relatorio</button>');
-    Array.prototype.slice.call(modal.querySelectorAll('input[data-print-machine]')).forEach(function(input) {
-      input.onchange = function() {
-        var all = modal.querySelector('input[data-print-machine="TODAS"]');
-        var value = String(input.getAttribute('data-print-machine') || '').trim();
-        if (value === 'TODAS' && all && all.checked) {
-          Array.prototype.slice.call(modal.querySelectorAll('input[data-print-machine]')).forEach(function(el) {
-            el.checked = String(el.getAttribute('data-print-machine') || '').trim() === 'TODAS';
-          });
-          return;
-        }
-        if (value !== 'TODAS' && input.checked && all) all.checked = false;
-      };
-    });
-    var runBtn = modal.querySelector('#ofmaq-direct-print-run');
-    if (runBtn) runBtn.onclick = function() {
-      var selected = Array.prototype.slice.call(modal.querySelectorAll('input[data-print-machine]:checked')).map(function(el) {
-        return String(el.getAttribute('data-print-machine') || '').trim();
-      }).filter(Boolean);
-      if (selected.indexOf('TODAS') >= 0) selected = state.lastMachines.slice();
-      if (!selected.length) return;
-      var period = String((modal.querySelector('input[name="ofmaq-direct-period"]:checked') || {}).value || 'dia');
-      removeModal('ofmaq-direct-print');
-      var baseOfs = Array.isArray(window._ofmaqUltimosOfs) ? window._ofmaqUltimosOfs.slice() : [];
-      var refDate = localIsoFromDate(getCurrentBusinessDate());
-      var allowedDays = period === 'semana' ? getWeekDays(getWeekStartIso(refDate)).map(function(day) { return day.iso; }) : [refDate];
-      var machineReports = selected.map(function(machine) {
-        var filtered = baseOfs.filter(function(of) {
-          var machines = getOfMachines(of);
-          var dateIso = getOfDateIso(of);
-          return machines.indexOf(machine) >= 0 && (!allowedDays.length || allowedDays.indexOf(dateIso) >= 0);
-        });
-        var totalQtd = filtered.reduce(function(sum, of) { return sum + getOfQty(of); }, 0);
-        return {
-          machine: machine,
-          filtered: filtered,
-          totalQtd: totalQtd
+      + '<button type="button" id="ofmaq-direct-print-run">Gerar relatorio</button>', function(modal) {
+      Array.prototype.slice.call(modal.querySelectorAll('input[data-print-machine]')).forEach(function(input) {
+        input.onchange = function() {
+          var all = modal.querySelector('input[data-print-machine="TODAS"]');
+          var value = String(input.getAttribute('data-print-machine') || '').trim();
+          if (value === 'TODAS' && all && all.checked) {
+            Array.prototype.slice.call(modal.querySelectorAll('input[data-print-machine]')).forEach(function(el) {
+              el.checked = String(el.getAttribute('data-print-machine') || '').trim() === 'TODAS';
+            });
+            return;
+          }
+          if (value !== 'TODAS' && input.checked && all) all.checked = false;
         };
       });
-      var totalOfs = machineReports.reduce(function(sum, item) { return sum + item.filtered.length; }, 0);
-      var totalQtdAll = machineReports.reduce(function(sum, item) { return sum + item.totalQtd; }, 0);
-      var periodoTitulo = period === 'semana'
-        ? (formatDateBR(allowedDays[0]) + ' a ' + formatDateBR(allowedDays[allowedDays.length - 1]))
-        : formatDateBR(refDate);
-      if (typeof window._buildStyledPrintHtml === 'function' && typeof window._openStyledPrintWindow === 'function') {
-        var html = window._buildStyledPrintHtml({
-          title: 'Relatorio OFs por Maquina',
-          periodo: periodoTitulo,
-          cards: [
-            { label: 'Maquinas selecionadas', value: String(selected.length), sub: selected.join(', ') || '-' },
-            { label: 'Total de OFs', value: String(totalOfs), sub: 'OFs listadas no periodo' },
-            { label: 'Total de caixas', value: String(totalQtdAll), sub: 'Somatorio das quantidades' },
-            { label: 'Periodo', value: (period === 'semana' ? 'Semana atual' : 'Dia atual'), sub: periodoTitulo }
-          ],
-          summaryTitle: 'Resumo por maquina',
-          summaryHeaders: ['Maquina', 'OFs', 'Caixas'],
-          summaryRows: machineReports.map(function(item) {
-            return [item.machine, String(item.filtered.length), String(item.totalQtd)];
-          }),
-          detailSections: machineReports.map(function(item) {
-            return {
-              title: item.machine,
-              headers: ['Nº OF', 'Cliente', 'Produto', 'Tamanho', 'Cores', 'Qtd', 'Prazo', 'Status'],
-              rows: item.filtered.map(function(of) {
-                return [
-                  getOfNumber(of) || '-',
-                  getOfClient(of) || '-',
-                  getOfProduct(of) || '-',
-                  getOfDimLabel(of) || '-',
-                  getOfColors(of).join(', ') || '-',
-                  String(getOfQty(of)),
-                  formatDateBR(getOfDateIso(of)),
-                  String(of && of.status || 'Em aberto')
-                ];
-              }),
-              emptyCols: 8
-            };
-          }),
-          emptySummaryCols: 3,
-          emptyDetailCols: 8
+      var runBtn = modal.querySelector('#ofmaq-direct-print-run');
+      if (runBtn) runBtn.onclick = function() {
+        var selected = Array.prototype.slice.call(modal.querySelectorAll('input[data-print-machine]:checked')).map(function(el) {
+          return String(el.getAttribute('data-print-machine') || '').trim();
+        }).filter(Boolean);
+        if (selected.indexOf('TODAS') >= 0) selected = state.lastMachines.slice();
+        if (!selected.length) return;
+        var period = String((modal.querySelector('input[name="ofmaq-direct-period"]:checked') || {}).value || 'dia');
+        removeModal('ofmaq-direct-print');
+        var baseOfs = Array.isArray(window._ofmaqUltimosOfs) ? window._ofmaqUltimosOfs.slice() : [];
+        var refDate = localIsoFromDate(getCurrentBusinessDate());
+        var allowedDays = period === 'semana' ? getWeekDays(getWeekStartIso(refDate)).map(function(day) { return day.iso; }) : [refDate];
+        var machineReports = selected.map(function(machine) {
+          var filtered = baseOfs.filter(function(of) {
+            var machines = getOfMachines(of);
+            var dateIso = getOfDateIso(of);
+            return machines.indexOf(machine) >= 0 && (!allowedDays.length || allowedDays.indexOf(dateIso) >= 0);
+          });
+          var totalQtd = filtered.reduce(function(sum, of) { return sum + getOfQty(of); }, 0);
+          return {
+            machine: machine,
+            filtered: filtered,
+            totalQtd: totalQtd
+          };
         });
-        window._openStyledPrintWindow(html);
-        return;
-      }
-    };
+        var totalOfs = machineReports.reduce(function(sum, item) { return sum + item.filtered.length; }, 0);
+        var totalQtdAll = machineReports.reduce(function(sum, item) { return sum + item.totalQtd; }, 0);
+        var periodoTitulo = period === 'semana'
+          ? (formatDateBR(allowedDays[0]) + ' a ' + formatDateBR(allowedDays[allowedDays.length - 1]))
+          : formatDateBR(refDate);
+        if (typeof window._buildStyledPrintHtml === 'function' && typeof window._openStyledPrintWindow === 'function') {
+          var html = window._buildStyledPrintHtml({
+            title: 'Relatorio OFs por Maquina',
+            periodo: periodoTitulo,
+            cards: [
+              { label: 'Maquinas selecionadas', value: String(selected.length), sub: selected.join(', ') || '-' },
+              { label: 'Total de OFs', value: String(totalOfs), sub: 'OFs listadas no periodo' },
+              { label: 'Total de caixas', value: String(totalQtdAll), sub: 'Somatorio das quantidades' },
+              { label: 'Periodo', value: (period === 'semana' ? 'Semana atual' : 'Dia atual'), sub: periodoTitulo }
+            ],
+            summaryTitle: 'Resumo por maquina',
+            summaryHeaders: ['Maquina', 'OFs', 'Caixas'],
+            summaryRows: machineReports.map(function(item) {
+              return [item.machine, String(item.filtered.length), String(item.totalQtd)];
+            }),
+            detailSections: machineReports.map(function(item) {
+              return {
+                title: item.machine,
+                headers: ['Nº OF', 'Cliente', 'Produto', 'Tamanho', 'Cores', 'Qtd', 'Prazo', 'Status'],
+                rows: item.filtered.map(function(of) {
+                  return [
+                    getOfNumber(of) || '-',
+                    getOfClient(of) || '-',
+                    getOfProduct(of) || '-',
+                    getOfDimLabel(of) || '-',
+                    getOfColors(of).join(', ') || '-',
+                    String(getOfQty(of)),
+                    formatDateBR(getOfDateIso(of)),
+                    String(of && of.status || 'Em aberto')
+                  ];
+                }),
+                emptyCols: 8
+              };
+            }),
+            emptySummaryCols: 3,
+            emptyDetailCols: 8
+          });
+          window._openStyledPrintWindow(html);
+          return;
+        }
+      };
+    });
   }
 
   function buildRoot(rows) {
