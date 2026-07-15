@@ -32,6 +32,35 @@ if (!window.__ofmaqDataCheckInstalled) {
     } catch (_) {}
   }, 500);
 }
+if (!window.__ofmaqDiag3sInstalled) {
+  window.__ofmaqDiag3sInstalled = true;
+  setTimeout(function() {
+    var fontes = {
+      _ofmaqListaCompleta: (window._ofmaqListaCompleta || []).length,
+      _ofmaqBaseList: (window._ofmaqBaseList || []).length,
+      OFS: (window.OFS || []).length,
+      kbOfs: (window.kbOfs || []).length,
+      _ofmaqLastGroupOfs: window._ofmaqLastGroupOfs ? (Object.keys(window._ofmaqLastGroupOfs).length + ' grupos') : 0
+    };
+    console.log('[OFMAQ-FONTES-3S]', JSON.stringify(fontes));
+    var ofs = window._ofmaqListaCompleta || window._ofmaqBaseList || window.OFS || [];
+    if (ofs.length > 0) {
+      console.log('[OFMAQ-OF-EXEMPLO]', JSON.stringify({
+        dia: ofs[0].dia,
+        maq: ofs[0].maq,
+        cores: ofs[0].cores_impressao,
+        status: ofs[0].status,
+        of: ofs[0].of
+      }));
+    } else {
+      console.log('[OFMAQ-FONTES-3S] TODAS VAZIAS - dados não chegaram ainda');
+      var allKeys = Object.keys(window).filter(function(k) {
+        return k.toLowerCase().includes('of') && Array.isArray(window[k]) && window[k].length > 0;
+      });
+      console.log('[OFMAQ-WINDOW-ARRAYS]', allKeys.slice(0, 10));
+    }
+  }, 3000);
+}
 if (!window._urlValida) {
   window._urlValida = function(url) {
     if (!url) return false;
