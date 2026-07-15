@@ -29609,10 +29609,22 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     });
   }
 
-  function _ofmaqPrintReportForSelection(maquinasSel, diasSel) {
+  function _ofmaqReportPeriodDays(periodo) {
+    var modo = String(periodo || 'dia').toLowerCase().trim();
+    var baseIso = _nextBusinessIsoFrom(new Date()) || _ofmaqV2SelectedIso();
+    if (modo === 'semana') {
+      return _ofmaqV2WeekDays(baseIso).map(function(day) {
+        return String(day && day.iso || '').slice(0, 10);
+      }).filter(Boolean);
+    }
+    return [String(baseIso || '').slice(0, 10)].filter(Boolean);
+  }
+
+  function _ofmaqPrintReportForSelection(maquinasSel, diasSel, periodoSelecionado) {
     var rows = _ofmaqReportRowsFromDom();
     var maquinas = (Array.isArray(maquinasSel) ? maquinasSel : []).map(function(v) { return String(v || '').trim(); }).filter(Boolean);
     var dias = (Array.isArray(diasSel) ? diasSel : []).map(function(v) { return String(v || '').slice(0, 10); }).filter(Boolean);
+    var periodoModo = String(periodoSelecionado || (dias.length > 1 ? 'semana' : 'dia')).toLowerCase().trim();
     var filtered = rows.filter(function(row) {
       if (maquinas.length && maquinas.indexOf(String(row && row.maquina || '').trim()) < 0) return false;
       if (dias.length && dias.indexOf(String(row && row.diaIso || '').slice(0, 10)) < 0) return false;
@@ -29653,40 +29665,41 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         emptyCols: 8
       };
     });
+    var totalOfs = filtered.length;
+    var totalCaixas = filtered.reduce(function(sum, row) {
+      return sum + (Number(row && row.qtd || 0) || 0);
+    }, 0);
+    var periodoLabel = periodoModo === 'semana'
+      ? 'Semana atual (' + (dias[0] ? fmtDateBR(dias[0]) : '—') + ' a ' + (dias[dias.length - 1] ? fmtDateBR(dias[dias.length - 1]) : '—') + ')'
+      : 'Dia atual (' + (dias[0] ? fmtDateBR(dias[0]) : '—') + ')';
     var html = window._buildStyledPrintHtml({
-      title: 'Relatório de OFs por Máquina e Dia',
-      periodo: [dias[0] || '', dias[dias.length - 1] || ''].filter(Boolean).join(' até ') || 'Seleção manual',
+      title: 'Relatório de OFs por Máquina',
+      periodo: periodoLabel,
       cards: [
         { label: 'Máquinas', value: String(new Set(filtered.map(function(row) { return row.maquina; })).size), sub: maquinas.length ? maquinas.join(', ') : 'Todas as máquinas selecionadas' },
-        { label: 'Dias', value: String(new Set(filtered.map(function(row) { return row.diaIso; })).size), sub: dias.length ? dias.map(function(d) { return fmtWeekdayDate(d); }).join(' | ') : 'Dias presentes na seleção' },
-        { label: 'OFs', value: String(filtered.length), sub: 'Linhas impressas' }
+        { label: 'Período', value: periodoModo === 'semana' ? 'Semana atual' : 'Dia atual', sub: periodoLabel },
+        { label: 'OFs', value: String(totalOfs), sub: 'Linhas impressas' }
       ],
       summaryTitle: 'Resumo da seleção',
       summaryHeaders: ['Indicador', 'Valor'],
       summaryRows: [
         ['Máquinas selecionadas', escHLocal(maquinas.length ? maquinas.join(', ') : 'Todas')],
-        ['Dias selecionados', escHLocal(dias.length ? dias.map(function(d) { return fmtWeekdayDate(d); }).join(' | ') : 'Todos')],
-        ['OFs no relatório', escHLocal(String(filtered.length))]
+        ['Período', escHLocal(periodoLabel)],
+        ['OFs no relatório', escHLocal(String(totalOfs))],
+        ['Total de caixas', escHLocal(_ofmaqFmtInt(totalCaixas))]
       ],
       detailSections: sections,
-      emptySummaryCols: 2
+      emptySummaryCols: 2,
+      introHtml: '<div style="margin:0 0 16px;font-size:12px;color:#475569;font-weight:700">Italy Embalagens | ' + escHLocal(periodoLabel) + '</div>'
     });
     if (typeof window._openStyledPrintWindow !== 'function') throw new Error('Janela de impressão indisponível');
     return window._openStyledPrintWindow(html);
   }
 
   function _ofmaqOpenPrintReportModal() {
-    var rows = _ofmaqReportRowsFromDom();
     var machineOpts = _ofmaqV2MachineOptions().filter(function(opt) { return String(opt && opt.value || '').trim(); });
-    var dayOpts = _ofmaqReportDaysFromRows(rows);
     if (!machineOpts.length) throw new Error('Nenhuma máquina disponível para o relatório.');
-    if (!dayOpts.length) {
-      dayOpts = _ofmaqV2WeekDays(_ofmaqV2SelectedIso()).map(function(day) {
-        return { iso: day.iso, label: day.label };
-      });
-    }
     var defaultMachine = String(_ofmaqV2State().maquina || machineOpts[0].value || '').trim();
-    var defaultDay = String(_ofmaqV2SelectedIso() || (dayOpts[0] && dayOpts[0].iso) || '').slice(0, 10);
     var body = ''
       + '<div style="display:grid;gap:18px">'
       + '  <div style="display:grid;gap:10px">'
@@ -29698,12 +29711,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           }).join('') + '</div>'
       + '  </div>'
       + '  <div style="display:grid;gap:10px">'
-      + '    <div style="font-size:13px;font-weight:800;color:#e2e8f0">Dias</div>'
-      + '    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">' + dayOpts.map(function(day) {
-            var iso = String(day && day.iso || '').slice(0, 10);
-            var checked = iso === defaultDay ? ' checked' : '';
-            return '<label style="display:flex;gap:8px;align-items:center;padding:12px;border-radius:12px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.62);color:#e2e8f0"><input type="checkbox" data-ofmaq-print-dia="' + escAttrLocal(iso) + '"' + checked + '><span>' + escHLocal(day.label || iso) + '</span></label>';
-          }).join('') + '</div>'
+      + '    <div style="font-size:13px;font-weight:800;color:#e2e8f0">Período</div>'
+      + '    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">'
+      + '      <label style="display:flex;gap:8px;align-items:center;padding:12px;border-radius:12px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.62);color:#e2e8f0"><input type="radio" name="ofmaq-print-periodo" value="dia" checked><span>Dia atual</span></label>'
+      + '      <label style="display:flex;gap:8px;align-items:center;padding:12px;border-radius:12px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.62);color:#e2e8f0"><input type="radio" name="ofmaq-print-periodo" value="semana"><span>Semana atual (Seg-Sex)</span></label>'
+      + '    </div>'
       + '  </div>'
       + '</div>';
     var modal = _abrirModalPadrao({
@@ -29723,18 +29735,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var maquinas = Array.prototype.slice.call(modal.querySelectorAll('[data-ofmaq-print-maq]:checked')).map(function(el) {
         return String(el.getAttribute('data-ofmaq-print-maq') || '').trim();
       }).filter(Boolean);
-      var dias = Array.prototype.slice.call(modal.querySelectorAll('[data-ofmaq-print-dia]:checked')).map(function(el) {
-        return String(el.getAttribute('data-ofmaq-print-dia') || '').slice(0, 10);
-      }).filter(Boolean);
+      var periodoEl = modal.querySelector('input[name="ofmaq-print-periodo"]:checked');
+      var periodo = String(periodoEl && periodoEl.value || 'dia').trim() || 'dia';
+      var dias = _ofmaqReportPeriodDays(periodo);
       if (!maquinas.length) {
         try { window.toast('Selecione pelo menos uma máquina', 'var(--red)'); } catch (_) {}
         return;
       }
       if (!dias.length) {
-        try { window.toast('Selecione pelo menos um dia', 'var(--red)'); } catch (_) {}
+        try { window.toast('Não foi possível montar o período selecionado', 'var(--red)'); } catch (_) {}
         return;
       }
-      _ofmaqPrintReportForSelection(maquinas, dias);
+      _ofmaqPrintReportForSelection(maquinas, dias, periodo);
       _fecharModalPadrao('ofmaq-print-report-modal');
     };
   }
