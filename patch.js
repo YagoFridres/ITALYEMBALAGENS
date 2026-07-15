@@ -849,6 +849,49 @@ try {
     });
   }
 
+  async function rrReportCustos() {
+    var ref = rrCurrentRange();
+    var qs = [];
+    var empId = rrEmpId();
+    if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
+    qs.push('data_inicio=' + encodeURIComponent(ref.data_inicio));
+    qs.push('data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson('/api/relatorios/custos?' + qs.join('&'));
+    var rows = rrList(json, ['rows']);
+    var totalOfs = rows.length;
+    var totalCusto = rows.reduce(function(s, r) { return s + rrNum(r && r.custo_total); }, 0);
+    var totalQtd = rows.reduce(function(s, r) { return s + rrInt(r && r.qtd_produzida); }, 0);
+    var custoMedio = totalQtd > 0 ? (totalCusto / totalQtd) : 0;
+    return rrOpenPrint({
+      title: 'Relatório de Custos por OF (R$/m²)',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Total OFs', value: rrFmtNum(totalOfs, 0), sub: 'OFs concluídas no período' },
+        { label: 'Custo total', value: rrFmtMoney(totalCusto), sub: 'Somatório do custo total' },
+        { label: 'Custo médio/unid.', value: rrFmtMoney(custoMedio), sub: 'Custo total ÷ qtd produzida' }
+      ],
+      detailTitle: 'Detalhamento',
+      detailHeaders: ['OF', 'Cliente', 'Produto', 'Tamanho', 'Valor/m²', 'Custo unit.', 'Qtd', 'Custo total'],
+      detailRows: rows.map(function(r) {
+        var comp = rrNum(r && r.comp);
+        var larg = rrNum(r && r.larg);
+        var tam = (comp > 0 && larg > 0) ? (rrFmtNum(comp, 0) + '×' + rrFmtNum(larg, 0) + ' mm') : '—';
+        return [
+          rrEsc(String(r && (r.of || r.numero) || '—')),
+          rrEsc(String(r && r.cliente || '—')),
+          rrEsc(String(r && (r.descricao || r.produto) || '—')),
+          rrEsc(tam),
+          rrEsc(rrFmtMoney(r && r.valor_unitario_m2 || 0)),
+          rrEsc(rrFmtMoney(r && r.custo_unitario || 0)),
+          rrEsc(rrFmtNum(r && r.qtd_produzida || 0, 0)),
+          rrEsc(rrFmtMoney(r && r.custo_total || 0))
+        ];
+      }),
+      emptySummaryCols: 3,
+      emptyDetailCols: 8
+    });
+  }
+
   async function rrReportGramaturas() {
     var ref = rrCurrentRange();
     var pair = await Promise.all([
@@ -2024,6 +2067,7 @@ try {
     { id: 'comissoes', label: 'Comissões', icon: '💵', desc: 'Resumo por vendedor e detalhamento das OFs comissionadas.', run: rrReportComissoes },
     { id: 'caixas-perdidas', label: 'Caixas Perdidas', icon: '📦', desc: 'Consolidado de perdas com ranking e detalhamento.', run: rrReportCaixasPerdidas },
     { id: 'toneladas-vendidas', label: 'Toneladas Vendidas', icon: '⚖️', desc: 'Toneladas vendidas por fornecedor com detalhamento das OFs.', run: rrReportToneladas },
+    { id: 'custos-por-of', label: 'Custo por OF', icon: '🧾', desc: 'Custo por OF calculado por área (R$/m²) com total e custo unitário.', run: rrReportCustos },
     { id: 'gramaturas', label: 'Gramaturas', icon: '📐', desc: 'Base de gramaturas e uso consolidado no período atual.', run: rrReportGramaturas },
     { id: 'estoque-chapas', label: 'Estoque de Chapas', icon: '🟦', desc: 'Snapshot do estoque com resumo por fornecedor.', run: rrReportEstoque },
     { id: 'entradas', label: 'Entradas', icon: '📥', desc: 'Movimentações de entrada no estoque de chapas.', run: function() { return rrReportMovimentos('entrada'); } },

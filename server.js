@@ -11385,6 +11385,86 @@ app.get('/api/relatorios/vendas-por-ramo', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    if (!range?.inicio || !range?.fim_exclusivo) {
+      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
+    }
+    const empId = String(req.query.emp_id || req.query.empId || '').trim();
+    const cols = [
+      'id', 'numero', 'of', 'descricao', 'status', 'data_conclusao',
+      'empresa_id', 'cli_id',
+      'gramatura_id', 'gramatura_nome', 'gramatura',
+      'dim_comprimento', 'dim_largura', 'caixa_comprimento', 'caixa_largura',
+      'qtd_produzida', 'qtd', 'quantidade', 'qtd_pedida'
+    ].join(',');
+    const sel = await _selectCompatRows('ofs', cols, (q) => {
+      let query = q
+        .ilike('status', '%conclu%')
+        .gte('data_conclusao', range.inicio)
+        .lt('data_conclusao', range.fim_exclusivo)
+        .order('data_conclusao', { ascending: false });
+      if (empId && _isUuid(empId)) query = query.eq('empresa_id', empId);
+      return query.limit(10000);
+    });
+    if (sel?.error) throw sel.error;
+    const ofs = Array.isArray(sel?.data) ? sel.data : [];
+    const cliIds = Array.from(new Set(ofs.map((of) => String(of?.cli_id || '').trim()).filter(_isUuid)));
+    const clientesMap = cliIds.length ? await _assistLoadClientesByIds(cliIds) : new Map();
+    const gramIds = Array.from(new Set(ofs.map((of) => String(of?.gramatura_id || '').trim()).filter(_isUuid)));
+    const gramMap = new Map();
+    for (let i = 0; i < gramIds.length; i += 200) {
+      const chunk = gramIds.slice(i, i + 200);
+      const { data, error } = await supabase.from('gramaturas').select('id,nome,descricao,gramatura,valor_unitario').in('id', chunk);
+      if (error) throw error;
+      (Array.isArray(data) ? data : []).forEach((g) => {
+        const id = String(g?.id || '').trim();
+        if (id) gramMap.set(id, g);
+      });
+    }
+    const pickQtd = (of) => Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
+    const rows = ofs.map((of) => {
+      const comp = Number(of?.dim_comprimento ?? of?.caixa_comprimento ?? 0) || 0;
+      const larg = Number(of?.dim_largura ?? of?.caixa_largura ?? 0) || 0;
+      const gramId = String(of?.gramatura_id || '').trim();
+      const gram = gramId ? (gramMap.get(gramId) || null) : null;
+      const valorUnitM2 = Number(gram?.valor_unitario ?? 0) || 0;
+      const areaM2 = (comp > 0 && larg > 0) ? ((comp / 1000) * (larg / 1000)) : 0;
+      const custoUnit = areaM2 > 0 ? (areaM2 * valorUnitM2) : 0;
+      const qtd = pickQtd(of);
+      const custoTotal = custoUnit * qtd;
+      const cliId = String(of?.cli_id || '').trim();
+      return {
+        of: of?.numero ?? of?.of ?? null,
+        cliente: clientesMap.get(cliId) || (cliId || 'Sem cliente'),
+        descricao: String(of?.descricao || '').trim() || '—',
+        comp,
+        larg,
+        gramatura: String(gram?.nome || gram?.descricao || of?.gramatura_nome || of?.gramatura || '').trim() || '—',
+        valor_unitario_m2: Number(valorUnitM2 || 0),
+        custo_unitario: Number(custoUnit || 0),
+        qtd_produzida: qtd,
+        custo_total: Number(custoTotal || 0),
+        data_conclusao: of?.data_conclusao || null
+      };
+    }).filter((r) => (Number(r?.custo_total || 0) || 0) > 0).sort((a, b) => {
+      if (Number(b?.custo_total || 0) !== Number(a?.custo_total || 0)) return Number(b?.custo_total || 0) - Number(a?.custo_total || 0);
+      return String(a?.cliente || '').localeCompare(String(b?.cliente || ''), 'pt-BR');
+    });
+    return res.json({
+      ok: true,
+      data_inicio: range.inicio,
+      data_fim: range.fim,
+      rows
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][CUSTOS]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/relatorios/chapas-abaixo-200', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
