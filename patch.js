@@ -30041,8 +30041,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var body = document.createElement('div');
     body.id = 'ofmaq-print-modal';
     body.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(2,6,23,.72);display:flex;align-items:center;justify-content:center;padding:18px';
-    var machineHtml = machines.map(function(mk) {
-      return '<label style="display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.62);color:#e2e8f0"><input type="checkbox" data-mk="' + escAttrLocal(mk) + '"><span style="font-weight:900">' + escHLocal(mk) + '</span></label>';
+    var machineHtml = ['Todas'].concat(machines).map(function(mk) {
+      return '<label style="display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.62);color:#e2e8f0"><input type="checkbox" data-mk="' + escAttrLocal(mk) + '"' + (mk === 'Todas' ? ' checked' : '') + '><span style="font-weight:900">' + escHLocal(mk) + '</span></label>';
     }).join('');
     body.innerHTML = ''
       + '<div role="dialog" aria-modal="true" style="width:min(860px,100%);border-radius:18px;border:1px solid rgba(148,163,184,.18);background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(2,6,23,.92));box-shadow:0 28px 80px rgba(0,0,0,.45);overflow:hidden">'
@@ -30071,8 +30071,25 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     body.onclick = function(ev) { if (ev && ev.target === body) _ofmaqCloseCentralModal('ofmaq-print-modal'); };
     body.querySelector('[data-close="1"]').onclick = function() { _ofmaqCloseCentralModal('ofmaq-print-modal'); };
     body.querySelector('[data-cancel="1"]').onclick = function() { _ofmaqCloseCentralModal('ofmaq-print-modal'); };
+    Array.prototype.slice.call(body.querySelectorAll('input[data-mk]')).forEach(function(input) {
+      input.onchange = function() {
+        var val = String(input.getAttribute('data-mk') || '').trim();
+        var allInputs = Array.prototype.slice.call(body.querySelectorAll('input[data-mk]'));
+        if (val === 'Todas') {
+          if (input.checked) {
+            allInputs.forEach(function(el) { el.checked = String(el.getAttribute('data-mk') || '').trim() === 'Todas'; });
+          }
+          return;
+        }
+        if (input.checked) {
+          var all = body.querySelector('input[data-mk="Todas"]');
+          if (all) all.checked = false;
+        }
+      };
+    });
     body.querySelector('[data-run="1"]').onclick = function() {
       var sel = Array.prototype.slice.call(body.querySelectorAll('input[data-mk]:checked')).map(function(el) { return String(el.getAttribute('data-mk') || '').trim(); }).filter(Boolean);
+      if (sel.indexOf('Todas') >= 0) sel = machines.slice();
       var periodEl = body.querySelector('input[name="ofmaq-print-period"]:checked');
       var periodo = String(periodEl && periodEl.value || 'dia').trim() || 'dia';
       if (!sel.length) {
@@ -30088,7 +30105,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function _ofmaqPrintRelatorio(maquinasSel, periodo) {
     var maquinas = (Array.isArray(maquinasSel) ? maquinasSel : []).map(function(v) { return String(v || '').trim(); }).filter(Boolean);
     if (!maquinas.length) return;
-    var baseIso = _nextBusinessIsoFrom(new Date()) || _ofmaqV2IsoFromDate(new Date());
+    var baseIso = _ofmaqLocalTodayIso() || _ofmaqV2IsoFromDate(new Date());
     var dias = String(periodo || 'dia').toLowerCase().trim() === 'semana'
       ? _ofmaqV2WeekDays(baseIso).map(function(d) { return String(d && d.iso || '').slice(0, 10); }).filter(Boolean)
       : [String(baseIso || '').slice(0, 10)].filter(Boolean);
@@ -30408,9 +30425,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (target.id === 'ofmaq-data') {
         _ofmaqRenderDirectDaysBar();
         _ofmaqApplySearchFilter(String(((document.getElementById('ofmaq-busca') || {}).value) || ''));
+        return;
+      }
+      if (target.id === 'ofmaq-btn-relatorio') {
+        try { _ofmaqOpenPrintModalV2(); } catch (_) {}
       }
     });
     page.addEventListener('click', function(ev) {
+      var reportBtn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-btn-relatorio') : null;
+      if (reportBtn) {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        try { _ofmaqOpenPrintModalV2(); } catch (_) {}
+        return;
+      }
       var btn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-dias-bar button[data-date]') : null;
       if (!btn) return;
       try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
