@@ -11235,6 +11235,7 @@ window.addEventListener('unhandledrejection', function(e) {
   window.__patchOfmaqDirectState = state;
   window._ofmaqUltimaAssinatura = String(window._ofmaqUltimaAssinatura || '');
   window.__patchOfmaqObserverConnected = !!window.__patchOfmaqObserverConnected;
+  window.__patchOfmaqObserverReconnectTimer = window.__patchOfmaqObserverReconnectTimer || null;
 
   function escHLocal(v) {
     try { if (typeof window.escH === 'function') return window.escH(v); } catch (_) {}
@@ -11687,12 +11688,9 @@ window.addEventListener('unhandledrejection', function(e) {
 
   function buildRenderSignature(ofs, opcoes) {
     var list = Array.isArray(ofs) ? ofs : [];
-    var ids = list.slice(0, 12).map(function(of) { return String(of && of.id || of && of.of || '').trim(); }).join(',');
-    var tail = list.length ? String((list[list.length - 1] && (list[list.length - 1].id || list[list.length - 1].of)) || '').trim() : '';
-    var currentPage = String(window._PAGE_ATUAL || '').trim();
     var dia = String((opcoes && (opcoes.dia || opcoes.data || opcoes.dateIso)) || state.selectedDateIso || '').slice(0, 10);
     var maquina = normalizeMachine((opcoes && (opcoes.maquina || opcoes.machine)) || state.selectedMachine || '');
-    return [currentPage, maquina, dia, list.length, ids, tail].join('|');
+    return [maquina, dia, list.length].join('|');
   }
 
   async function fetchFallbackOfs() {
@@ -12463,7 +12461,6 @@ window.addEventListener('unhandledrejection', function(e) {
       if (window._ofmaqRenderandoAgora) return;
       try { wrapRenderKanban(); } catch (_) {}
       if (!isOfmaqActive()) return;
-      hideLegacyOfmaqUi();
       var currentOfs = getCurrentSourceOfs();
       var nextSignature = buildRenderSignature(currentOfs, null);
       if (nextSignature === String(window._ofmaqUltimaAssinatura || '')) return;
@@ -12473,6 +12470,8 @@ window.addEventListener('unhandledrejection', function(e) {
 
   function disconnectDirectObserver() {
     try {
+      clearTimeout(window.__patchOfmaqObserverReconnectTimer);
+      window.__patchOfmaqObserverReconnectTimer = null;
       if (window.__patchOfmaqObserverConnected && window.__patchOfmaqDirectObserver && typeof window.__patchOfmaqDirectObserver.disconnect === 'function') {
         window.__patchOfmaqDirectObserver.disconnect();
         window.__patchOfmaqObserverConnected = false;
@@ -12480,13 +12479,20 @@ window.addEventListener('unhandledrejection', function(e) {
     } catch (_) {}
   }
 
-  function reconnectDirectObserver() {
+  function reconnectDirectObserverDeferred(delay) {
     try {
       if (!window.__patchOfmaqDirectPollInstalled) return;
       if (!window.__patchOfmaqDirectObserver || typeof window.__patchOfmaqDirectObserver.observe !== 'function') return;
       if (window.__patchOfmaqObserverConnected) return;
-      window.__patchOfmaqDirectObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
-      window.__patchOfmaqObserverConnected = true;
+      clearTimeout(window.__patchOfmaqObserverReconnectTimer);
+      window.__patchOfmaqObserverReconnectTimer = setTimeout(function() {
+        try {
+          if (window.__patchOfmaqObserverConnected) return;
+          if (!window.__patchOfmaqDirectObserver || typeof window.__patchOfmaqDirectObserver.observe !== 'function') return;
+          window.__patchOfmaqDirectObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+          window.__patchOfmaqObserverConnected = true;
+        } catch (_) {}
+      }, Math.max(0, Number(delay || 500) || 500));
     } catch (_) {}
   }
 
@@ -12502,6 +12508,7 @@ window.addEventListener('unhandledrejection', function(e) {
         if (!isOfmaqActive()) return null;
         hideLegacyOfmaqUi();
         showLoadingState();
+        window._ofmaqUltimaAssinatura = buildRenderSignature(source, opcoes);
         scheduleRetryRender(1000);
         return null;
       }
@@ -12511,7 +12518,7 @@ window.addEventListener('unhandledrejection', function(e) {
       return rendered;
     } finally {
       window._ofmaqRenderandoAgora = false;
-      reconnectDirectObserver();
+      reconnectDirectObserverDeferred(500);
     }
   };
 
