@@ -11893,6 +11893,22 @@ window.addEventListener('unhandledrejection', function(e) {
     tbody.appendChild(frag);
   }
 
+  function syncSequenceInputs(tbody) {
+    var rows = Array.prototype.slice.call((tbody && tbody.querySelectorAll ? tbody.querySelectorAll('tr[data-of-id]') : []) || []);
+    rows.forEach(function(row, idx) {
+      var seq = idx + 1;
+      row.setAttribute('data-order', String(seq));
+      var input = row.querySelector('[data-seq-of-id]');
+      if (input) input.value = String(seq);
+      var id = String(row.getAttribute('data-of-id') || '').trim();
+      updateCachedOf(id, function(of) { of.ordem_maquina = seq; });
+      (state.currentRows || []).forEach(function(item) {
+        if (String(item && item.id || '').trim() !== id) return;
+        item.order = seq;
+      });
+    });
+  }
+
   function ensureEmptyRow(tbody) {
     var empty = tbody.querySelector('.ofmaq-direct-empty');
     var visibleCount = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]')).filter(function(row) {
@@ -12227,12 +12243,16 @@ window.addEventListener('unhandledrejection', function(e) {
       var value = Math.max(1, Number(input.value || 0) || 1);
       if (!id || !row) return;
       try {
+        try { console.log('[OFMAQ-SEQ] salvando id:', id, 'valor:', value); } catch (_) {}
         var out = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { ordem_maquina: value } });
+        try { console.log('[OFMAQ-SEQ] resposta:', out && out.resp ? out.resp.status : 'sem-status'); } catch (_) {}
         if (!out || !out.resp || !out.resp.ok || (out.data && out.data.ok === false)) throw new Error((out && out.data && (out.data.error || out.data.message)) || 'Falha ao salvar sequencia');
         updateCachedOf(id, function(of) { of.ordem_maquina = value; });
         row.setAttribute('data-order', String(value));
         input.value = String(value);
-        refilterTable(root);
+        sortRows(tbody);
+        syncSequenceInputs(tbody);
+        ensureEmptyRow(tbody);
       } catch (err) {
         try { window.toast('Erro ao salvar sequencia: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
       }
