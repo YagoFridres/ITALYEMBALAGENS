@@ -27943,6 +27943,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq .patch-ofmaq-thumb{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:4px;overflow:hidden;background:#1e293b;border:1px solid rgba(71,85,105,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}'
       + '#page-ofmaq .patch-ofmaq-thumb img{width:100%;height:100%;object-fit:cover;display:block}'
       + '#page-ofmaq .patch-ofmaq-thumb.is-empty{color:#64748b;font-size:18px;background:rgba(30,41,59,.7)}'
+      + '#page-ofmaq .patch-ofmaq-thumb-btn{display:inline-flex;align-items:center;justify-content:center;padding:0;border:none;background:transparent;cursor:pointer}'
       + '#page-ofmaq .patch-ofmaq-tag{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;border:1px solid rgba(71,85,105,.45);background:rgba(15,23,42,.58);font-size:11px;font-weight:800;color:#e2e8f0;white-space:nowrap}'
       + '#page-ofmaq .patch-ofmaq-tag.is-danger{border-color:rgba(248,113,113,.35);background:rgba(127,29,29,.22);color:#fecaca}'
       + '#page-ofmaq .patch-ofmaq-tag.is-warn{border-color:rgba(251,191,36,.35);background:rgba(120,53,15,.2);color:#fde68a}'
@@ -28998,6 +28999,36 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     return '<span class="patch-ofmaq-thumb is-empty" title="Sem imagem">📦</span>';
   }
 
+  function _ofmaqImageUrlFromCard(card, of) {
+    var fromCard = '';
+    try {
+      fromCard = String(
+        (card && card.getAttribute && (
+          card.getAttribute('data-imagem') ||
+          card.getAttribute('data-imagem-url') ||
+          card.getAttribute('data-image') ||
+          card.getAttribute('data-image-url')
+        )) ||
+        ''
+      ).trim();
+    } catch (_) {}
+    if (fromCard) return fromCard;
+    try {
+      var img = card && card.querySelector ? card.querySelector('img[src]') : null;
+      var src = String(img && img.getAttribute && img.getAttribute('src') || '').trim();
+      if (src) return src;
+    } catch (_) {}
+    return _ofmaqImageUrl(of);
+  }
+
+  function _ofmaqImageCellHtmlFromUrl(url) {
+    var src = String(url || '').trim();
+    if (src) {
+      return '<button type="button" class="patch-ofmaq-thumb-btn" data-ofmaq-image-open="1" data-image-url="' + escAttrLocal(src) + '" title="Ampliar imagem"><span class="patch-ofmaq-thumb"><img src="' + escAttrLocal(src) + '" alt="Imagem da OF"></span></button>';
+    }
+    return '<span class="patch-ofmaq-thumb is-empty" title="Sem imagem">📦</span>';
+  }
+
   function _ofmaqParsePct(txt) {
     var raw = String(txt || '').replace(',', '.');
     var m = raw.match(/-?\d+(?:\.\d+)?/);
@@ -30042,6 +30073,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         dia: dia,
         qtd: qtd,
         tempoMin: tempoMin,
+        imagemUrl: _ofmaqImageUrlFromCard(card, of),
         statusTone: _ofmaqV2StatusTone(of),
       };
     }).filter(function(item) {
@@ -30071,9 +30103,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var cores = _ofmaqCoresLabel(of) || '—';
       var prazo = item.dia ? fmtDateBR(item.dia) : (String(_ofmaqEntregaIso(of) || '').trim() ? fmtDateBR(_ofmaqEntregaIso(of)) : '—');
       var prazoSub = item.dia ? fmtWeekdayDate(item.dia) : '—';
+      var imagemHtml = _ofmaqImageCellHtmlFromUrl(item.imagemUrl);
       return ''
         + '<tr class="patch-ofmaq-row" data-direct-v2="1" data-of-id="' + escAttrLocal(item.id) + '" data-maq="' + escAttrLocal(maq) + '" data-dia="' + escAttrLocal(item.dia) + '" data-qtd="' + escAttrLocal(String(item.qtd || 0)) + '" data-tempo-min="' + escAttrLocal(String(item.tempoMin || 0)) + '" data-ordem="' + escAttrLocal(String(idx + 1)) + '" data-urgencia="' + escAttrLocal(item.statusTone && item.statusTone.urg || 'normal') + '">'
         + '  <td><span class="patch-ofmaq-seq-badge">' + escHLocal(String(idx + 1)) + '</span></td>'
+        + '  <td>' + imagemHtml + '</td>'
         + '  <td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(numero) + '</strong><span class="patch-ofmaq-cell-sub">' + escHLocal(item.statusTone && item.statusTone.text || String(of && of.status || 'Em aberto')) + '</span></div></td>'
         + '  <td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(cliente) + '</strong><span class="patch-ofmaq-cell-sub">' + escHLocal(String(of && of.status || 'Em aberto')) + '</span></div></td>'
         + '  <td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(produto) + '</strong></div></td>'
@@ -30088,8 +30122,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     }).join('');
     wrap.innerHTML = ''
       + '<table class="patch-ofmaq-table" id="ofmaq-tabela-v2">'
-      + '  <thead><tr><th>SEQ</th><th>Nº OF</th><th>CLIENTE</th><th>PRODUTO</th><th>QTD</th><th>PRAZO</th><th>TAMANHO</th><th>CORES</th><th>TEMPO</th><th>MÁQUINA</th><th>AÇÕES</th></tr></thead>'
-      + '  <tbody id="ofmaq-tabela-v2-body">' + (rowsHtml || '<tr><td colspan="11" class="patch-ofmaq-empty">Nenhuma OF encontrada para este filtro.</td></tr>') + '</tbody>'
+      + '  <thead><tr><th>SEQ</th><th>IMAGEM</th><th>Nº OF</th><th>CLIENTE</th><th>PRODUTO</th><th>QTD</th><th>PRAZO</th><th>TAMANHO</th><th>CORES</th><th>TEMPO</th><th>MÁQUINA</th><th>AÇÕES</th></tr></thead>'
+      + '  <tbody id="ofmaq-tabela-v2-body">' + (rowsHtml || '<tr><td colspan="12" class="patch-ofmaq-empty">Nenhuma OF encontrada para este filtro.</td></tr>') + '</tbody>'
       + '</table>';
     Array.prototype.slice.call(wrap.querySelectorAll('button[data-ofmaq-open-actions="1"]')).forEach(function(btn) {
       btn.onclick = function(ev) {
@@ -30098,6 +30132,29 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var num = String(btn.getAttribute('data-of-num') || '').trim();
         var of = lookup[id] || getCurrentOfById(id) || null;
         try { _ofmaqOpenCentralActionsModal(id, num, of); } catch (_) {}
+      };
+    });
+    Array.prototype.slice.call(wrap.querySelectorAll('button[data-ofmaq-image-open="1"]')).forEach(function(btn) {
+      btn.onclick = function(ev) {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        var src = String(btn.getAttribute('data-image-url') || '').trim();
+        if (!src) return;
+        _ofmaqCloseCentralModal('ofmaq-image-modal');
+        var overlay = document.createElement('div');
+        overlay.id = 'ofmaq-image-modal';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(2,6,23,.82);display:flex;align-items:center;justify-content:center;padding:20px';
+        overlay.innerHTML = ''
+          + '<div role="dialog" aria-modal="true" style="position:relative;max-width:80vw;max-height:80vh;padding:14px;border-radius:18px;background:rgba(15,23,42,.98);border:1px solid rgba(148,163,184,.18);box-shadow:0 28px 80px rgba(0,0,0,.45)">'
+          + '  <button type="button" data-close="1" style="position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:12px;border:1px solid rgba(148,163,184,.22);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:18px;font-weight:900;cursor:pointer">✕</button>'
+          + '  <img src="' + escAttrLocal(src) + '" alt="Imagem da OF" style="display:block;max-width:80vw;max-height:80vh;border-radius:12px">'
+          + '</div>';
+        overlay.onclick = function(e) {
+          if (e && e.target === overlay) _ofmaqCloseCentralModal('ofmaq-image-modal');
+        };
+        overlay.querySelector('[data-close="1"]').onclick = function() {
+          _ofmaqCloseCentralModal('ofmaq-image-modal');
+        };
+        document.body.appendChild(overlay);
       };
     });
     try { console.log('[OFMAQ-TABELA] linhas:', rowsData.length, 'pai:', wrap.parentElement && wrap.parentElement.id); } catch (_) {}
