@@ -11999,6 +11999,23 @@ window.addEventListener('unhandledrejection', function(e) {
     });
   }
 
+  function ensureSingleSeqInputPerRow(tbody) {
+    Array.prototype.slice.call((tbody && tbody.querySelectorAll ? tbody.querySelectorAll('tr[data-of-id]') : []) || []).forEach(function(row) {
+      Array.prototype.slice.call(row.querySelectorAll('.patch-ofmaq-seq-badge')).forEach(function(el) {
+        try { el.remove(); } catch (_) {}
+      });
+      var seqInputs = Array.prototype.slice.call(row.querySelectorAll('[data-seq-of-id]'));
+      if (seqInputs.length <= 1) return;
+      seqInputs.slice(1).forEach(function(input) {
+        var td = input.closest ? input.closest('td') : null;
+        try {
+          if (td) td.remove();
+          else input.remove();
+        } catch (_) {}
+      });
+    });
+  }
+
   function ensureEmptyRow(tbody) {
     var empty = tbody.querySelector('.ofmaq-direct-empty');
     var visibleCount = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]')).filter(function(row) {
@@ -12283,6 +12300,7 @@ window.addEventListener('unhandledrejection', function(e) {
           + '  <td class="col-acoes"><button type="button" class="ofmaq-direct-btn" data-actions-of-id="' + escAttrLocal(item.id) + '">&#9889; Acoes</button></td>'
           + '</tr>';
       }).join('');
+      ensureSingleSeqInputPerRow(tbody);
     }
     return root;
   }
@@ -12353,6 +12371,9 @@ window.addEventListener('unhandledrejection', function(e) {
         try { respostaJson = await resp.clone().json(); } catch (_) { respostaJson = {}; }
         try { console.log('[SEQ-DEBUG] url:', url, 'body:', body, 'status:', resp.status, 'resposta:', respostaJson); } catch (_) {}
         try { console.log('[OFMAQ-SEQ] resposta:', resp.status); } catch (_) {}
+        if (resp.status !== 200 && resp.status !== 204) {
+          try { console.error('[SEQ-DEBUG] erro save ordem_maquina', { url: url, body: body, status: resp.status, resposta: respostaJson }); } catch (_) {}
+        }
         if (!resp.ok || (respostaJson && respostaJson.ok === false)) throw new Error((respostaJson && (respostaJson.error || respostaJson.message)) || 'Falha ao salvar sequencia');
         updateCachedOf(id, function(of) { of.ordem_maquina = value; });
         row.setAttribute('data-order', String(value));
