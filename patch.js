@@ -2085,6 +2085,22 @@ try {
     { id: 'relatorio-sergio', label: 'Relatório Sérgio', icon: '📝', desc: 'Montagem manual com múltiplos itens, autocomplete de clientes e impressão com fonte ampliada.', run: rrOpenSergioBuilder }
   ];
 
+  function rrDefsSignature() {
+    return rrDefs.map(function(def) {
+      return String(def && def.id || '').trim();
+    }).filter(Boolean).join('|');
+  }
+
+  function rrEnsureFreshPage(force) {
+    var current = String(window._PAGE_ATUAL || '').trim();
+    var host = document.getElementById('patch-page-body');
+    var expected = rrDefsSignature();
+    var rendered = String(host && host.getAttribute && host.getAttribute('data-rr-defs-sig') || '').trim();
+    if (!force && current !== 'relatorios' && rendered === expected) return false;
+    rrRenderPage();
+    return true;
+  }
+
   async function rrOpen(def) {
     if (!def || typeof def.run !== 'function') return;
     var btn = document.querySelector('[data-rr-open="' + String(def.id || '').replace(/"/g, '&quot;') + '"]');
@@ -2147,6 +2163,7 @@ try {
     var host = rrHost();
     if (!host) return false;
     var ref = rrCurrentRange();
+    var defsSig = rrDefsSignature();
     host.innerHTML = ''
       + '<div id="patch-relatorios-central">'
       + '  <div class="rr-panel">'
@@ -2177,6 +2194,7 @@ try {
         rrOpen(def);
       };
     });
+    try { host.setAttribute('data-rr-defs-sig', defsSig); } catch (_) {}
     rrBindPeriodControls(host);
     return true;
   }
@@ -2188,7 +2206,7 @@ try {
     window.go = function(id) {
       var pid = String(id || '').trim();
       if (pid === 'relatorios') {
-        rrRenderPage();
+        rrEnsureFreshPage(true);
         return;
       }
       return origGo.apply(this, arguments);
@@ -2247,13 +2265,18 @@ try {
   function rrBoot() {
     try {
       rrInstallGoWrapper();
-      if (String(window._PAGE_ATUAL || '').trim() === 'relatorios') rrRenderPage();
+      if (String(window._PAGE_ATUAL || '').trim() === 'relatorios') rrEnsureFreshPage(true);
       rrInstallPcpSergioButtonObserver();
       rrEnsurePcpSergioButton();
+      setTimeout(function() {
+        try {
+          if (String(window._PAGE_ATUAL || '').trim() === 'relatorios') rrEnsureFreshPage(true);
+        } catch (_) {}
+      }, 120);
     } catch (_) {}
   }
 
-  try { window.renderCentralRelatorios = rrRenderPage; } catch (_) {}
+  try { window.renderCentralRelatorios = function() { return rrEnsureFreshPage(true); }; } catch (_) {}
   try { window.openRelatorioSergioFromPcp = rrOpenSergioFromPcp; } catch (_) {}
   try { window._abrirRelatorioSergio = rrOpenSergioBuilder; } catch (_) {}
   try { window._abrirRelatorioSergioPcp = rrOpenSergioFromPcp; } catch (_) {}
