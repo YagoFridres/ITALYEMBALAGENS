@@ -15,6 +15,23 @@ if (!window.__comRodandoWatchdogInstalled) {
     } catch (_) {}
   }, 5000);
 }
+if (!window.__ofmaqDataCheckInstalled) {
+  window.__ofmaqDataCheckInstalled = true;
+  var _ofmaqDataCheckInterval = setInterval(function() {
+    try {
+      var ofs = window._ofmaqListaCompleta || window._ofmaqBaseList || window.OFS || window.kbOfs || [];
+      if (!(ofs && ofs.length > 0)) return;
+      console.log('[OFMAQ-DADOS] encontrou', ofs.length, 'OFs em',
+        window._ofmaqListaCompleta ? '_ofmaqListaCompleta' :
+        window._ofmaqBaseList ? '_ofmaqBaseList' :
+        window.OFS ? 'OFS' : 'kbOfs');
+      console.log('[DIA-RAW-0]', JSON.stringify(ofs[0] && ofs[0].dia));
+      console.log('[COR-RAW-0]', JSON.stringify(ofs[0] && ofs[0].cores_impressao));
+      clearInterval(_ofmaqDataCheckInterval);
+      if (window._PAGE_ATUAL === 'ofmaq' && typeof window._ofmaqRenderNovo === 'function') window._ofmaqRenderNovo(ofs);
+    } catch (_) {}
+  }, 500);
+}
 if (!window._urlValida) {
   window._urlValida = function(url) {
     if (!url) return false;
