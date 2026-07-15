@@ -11763,8 +11763,6 @@ window.addEventListener('unhandledrejection', function(e) {
   }
 
   function getCurrentSourceOfs() {
-    var lens = getSourceLengths();
-    try { console.log('[OFMAQ-FONTES]', lens); } catch (_) {}
     if (Array.isArray(window._ofmaqListaCompleta) && window._ofmaqListaCompleta.length) return window._ofmaqListaCompleta.slice();
     if (Array.isArray(window._ofmaqBaseList) && window._ofmaqBaseList.length) return window._ofmaqBaseList.slice();
     if (Array.isArray(window._ofmaqUltimosOfs) && window._ofmaqUltimosOfs.length) return window._ofmaqUltimosOfs.slice();
@@ -11806,7 +11804,7 @@ window.addEventListener('unhandledrejection', function(e) {
   }
 
   function buildRenderSignature(ofs, opcoes) {
-    var list = Array.isArray(ofs) ? ofs : [];
+    var list = Array.isArray(window.OFS) ? window.OFS : (Array.isArray(ofs) ? ofs : []);
     var dia = String((opcoes && (opcoes.dia || opcoes.data || opcoes.dateIso)) || state.selectedDateIso || '').slice(0, 10);
     var maquina = normalizeMachine((opcoes && (opcoes.maquina || opcoes.machine)) || state.selectedMachine || '');
     return [maquina, dia, list.length].join('|');
@@ -12676,22 +12674,11 @@ window.addEventListener('unhandledrejection', function(e) {
   function scheduleActiveOfmaqWatch() {
     if (window.__patchOfmaqDirectPollInstalled) return;
     window.__patchOfmaqDirectPollInstalled = true;
+    window.__patchOfmaqObserverDisabled = true;
     try {
       if (window.__patchOfmaqDirectObserver && typeof window.__patchOfmaqDirectObserver.disconnect === 'function') window.__patchOfmaqDirectObserver.disconnect();
     } catch (_) {}
-    try {
-      window.__patchOfmaqDirectObserver = new MutationObserver(function() {
-        if (window._ofmaqRenderandoAgora) return;
-        if (!isOfmaqActive()) return;
-        hideLegacyOfmaqUi();
-        wrapRenderKanban();
-        requestRender(100);
-      });
-      if (!window.__patchOfmaqObserverConnected) {
-        window.__patchOfmaqDirectObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
-        window.__patchOfmaqObserverConnected = true;
-      }
-    } catch (_) {}
+    try { window.__patchOfmaqObserverConnected = false; } catch (_) {}
     setInterval(function() {
       if (window._ofmaqRenderandoAgora) return;
       try { wrapRenderKanban(); } catch (_) {}
@@ -12704,6 +12691,7 @@ window.addEventListener('unhandledrejection', function(e) {
   }
 
   function disconnectDirectObserver() {
+    if (window.__patchOfmaqObserverDisabled) return;
     try {
       clearTimeout(window.__patchOfmaqObserverReconnectTimer);
       window.__patchOfmaqObserverReconnectTimer = null;
@@ -12715,6 +12703,7 @@ window.addEventListener('unhandledrejection', function(e) {
   }
 
   function reconnectDirectObserverDeferred(delay) {
+    if (window.__patchOfmaqObserverDisabled) return;
     try {
       if (!window.__patchOfmaqDirectPollInstalled) return;
       if (!window.__patchOfmaqDirectObserver || typeof window.__patchOfmaqDirectObserver.observe !== 'function') return;
@@ -12738,6 +12727,7 @@ window.addEventListener('unhandledrejection', function(e) {
     disconnectDirectObserver();
     try {
       var source = await resolveSourceOfs(ofs);
+      try { console.log('[OFMAQ-FONTES]', getSourceLengths()); } catch (_) {}
       try { window._ofmaqDebugDia(source); } catch (_) {}
       try { runSeqRouteTestOnce(source); } catch (_) {}
       var nextSignature = buildRenderSignature(source, opcoes);
@@ -12749,13 +12739,13 @@ window.addEventListener('unhandledrejection', function(e) {
         scheduleRetryRender(1000);
         return null;
       }
+      if (state.root && nextSignature === String(window._ofmaqUltimaAssinatura || '')) return state.root;
       clearTimeout(state.retryTimer);
       var rendered = renderDirect(source, maquinas || window._listaMaquinas || window._ofmaqUltimasMaquinas || [], opcoes || {});
       window._ofmaqUltimaAssinatura = nextSignature;
       return rendered;
     } finally {
       window._ofmaqRenderandoAgora = false;
-      reconnectDirectObserverDeferred(500);
     }
   };
 
