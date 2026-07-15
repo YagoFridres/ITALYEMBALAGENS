@@ -26350,6 +26350,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               body.cor_linha = cor || null;
               if (gramaturaVal !== '') body.gramatura = gramaturaVal;
               if (editIdAtual) body.id = editIdAtual;
+              if (modal && modal.getAttribute('data-entrada-vinculada') === '1' && m === 'POST') {
+                body.quantidade = 0;
+                body.qtd = 0;
+                body.quantidade_atual = 0;
+              }
               return body;
             };
             if (typeof opts.body === 'string') {
@@ -26383,6 +26388,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                       if (ctxEntrada && ctxEntrada.tr && modalEntrada && modalEntrada.getAttribute('data-entrada-vinculada') === '1' && /^\/api\/chapas_estoque(?:\?.*)?$/.test(u) && String(m || '').toUpperCase() === 'POST') {
                         _entradaEstoqueVincularNovaChapa(ctxEntrada.tr, ctxEntrada.chapas, data);
                         window.__entradaEstoqueNovaCtx = null;
+                        setTimeout(function() {
+                          try {
+                            if (window.__entradaEstoqueAutoSaving) return;
+                            window.__entradaEstoqueAutoSaving = true;
+                            Promise.resolve(_entradaEstoqueSalvarModal()).finally(function() {
+                              window.__entradaEstoqueAutoSaving = false;
+                            });
+                          } catch (_) {
+                            try { window.__entradaEstoqueAutoSaving = false; } catch (_) {}
+                          }
+                        }, 180);
                       }
                     } catch (_) {}
                   } else if (editIdAtual && cor) {
@@ -26740,15 +26756,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           _setFieldValueChapa('chapa-nf', String((nf && nf.value) || '').trim());
           _setFieldValueChapa('chapa-data-entrada', String((data && data.value) || '').trim());
           _setFieldValueChapa('chapa-valor-unitario', String((tr.querySelector('.est-ent-vu') && tr.querySelector('.est-ent-vu').value) || '').trim());
-          _setFieldValueChapa('chapa-quantidade', '0');
-          _setFieldValueChapa('chapa-obs', 'Cadastro criado pela entrada de estoque. A quantidade será lançada no lote após salvar.');
+          _setFieldValueChapa('chapa-quantidade', String((tr.querySelector('.est-ent-qtd') && tr.querySelector('.est-ent-qtd').value) || '1').trim());
+          _setFieldValueChapa('chapa-obs', 'Cadastro criado pela entrada de estoque. A entrada será registrada automaticamente após salvar a chapa.');
           _setFieldValueChapa('chapa-gramatura', String((tr.querySelector('.est-ent-gramatura') && tr.querySelector('.est-ent-gramatura').value) || '').trim());
           var empresaEl = document.getElementById('chapa-empresa');
           if (empresaEl) empresaEl.value = _entradaEstoqueEmpresaModal(qual && qual.value);
           var qtdEl = document.getElementById('chapa-quantidade');
           if (qtdEl) {
             qtdEl.readOnly = true;
-            qtdEl.title = 'A quantidade desta chapa será lançada pela entrada em lote após salvar o cadastro.';
+            qtdEl.title = 'A quantidade desta chapa será usada para registrar automaticamente a entrada após salvar o cadastro.';
           }
           var totalEl = document.getElementById('chapa-total');
           if (totalEl) totalEl.value = 'R$ 0,00';
