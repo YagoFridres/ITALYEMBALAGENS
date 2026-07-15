@@ -11412,14 +11412,7 @@ window.addEventListener('unhandledrejection', function(e) {
   }
 
   function resolveMachines(maquinas) {
-    var base = Array.isArray(maquinas) ? maquinas.slice() : [];
-    var fixed = OFMAQ_FIXED_MACHINES.slice();
-    base.forEach(function(item) {
-      var value = normalizeMachine(item && (item.value || item.nome || item.label || item) || '');
-      if (!value) return;
-      if (fixed.indexOf(value) < 0) fixed.push(value);
-    });
-    return fixed;
+    return OFMAQ_FIXED_MACHINES.slice();
   }
 
   function parseMachineList(value) {
