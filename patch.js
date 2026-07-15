@@ -11224,7 +11224,10 @@ window.addEventListener('unhandledrejection', function(e) {
     searchTerm: '',
     grouped: false,
     lastMachines: OFMAQ_FIXED_MACHINES.slice(),
-    currentRows: []
+    currentRows: [],
+    lastRenderSignature: '',
+    lastVisibleCount: 0,
+    root: null
   };
   window.__patchOfmaqDirectState = state;
 
@@ -11368,6 +11371,43 @@ window.addEventListener('unhandledrejection', function(e) {
     return document.getElementById('ofs-por-maquina-container') || document.getElementById('ofmaq-body') || document.getElementById('ofsmaq-container') || document.getElementById('page-ofmaq');
   }
 
+  function getPage() {
+    return document.getElementById('page-ofmaq');
+  }
+
+  function isOfmaqActive() {
+    var page = getPage();
+    var activePage = String(window._PAGE_ATUAL || '').trim();
+    if (activePage === 'ofmaq') return true;
+    if (!page) return false;
+    try {
+      if (page.classList && page.classList.contains('active')) return true;
+      if (page.style && page.style.display && page.style.display !== 'none') return true;
+    } catch (_) {}
+    return false;
+  }
+
+  function hideEl(el) {
+    if (!el || el === state.root) return;
+    try { el.style.setProperty('display', 'none', 'important'); } catch (_) {
+      try { el.style.display = 'none'; } catch (__){ }
+    }
+  }
+
+  function hideLegacyOfmaqUi() {
+    var page = getPage();
+    if (!page) return;
+    try {
+      Array.prototype.slice.call(page.querySelectorAll('.ptoolbar, .ofmaq-toprow, #ofmaq-dias-bar, #ofsmaq-select-maquina, #ofmaq-fab-nova-of, .kb-board, .kb-board-ofmaq')).forEach(hideEl);
+      var container = getContainer();
+      if (container) {
+        Array.prototype.slice.call(container.children || []).forEach(function(child) {
+          if (!(child && child.classList && child.classList.contains('ofmaq-direct-root'))) hideEl(child);
+        });
+      }
+    } catch (_) {}
+  }
+
   function resolveMachines(maquinas) {
     var base = Array.isArray(maquinas) ? maquinas.slice() : [];
     var fixed = OFMAQ_FIXED_MACHINES.slice();
@@ -11503,8 +11543,33 @@ window.addEventListener('unhandledrejection', function(e) {
     }).join('');
   }
 
+  function getCurrentSourceOfs() {
+    if (Array.isArray(window._ofmaqListaCompleta) && window._ofmaqListaCompleta.length) return window._ofmaqListaCompleta.slice();
+    if (Array.isArray(window._ofmaqBaseList) && window._ofmaqBaseList.length) return window._ofmaqBaseList.slice();
+    if (Array.isArray(window._ofmaqUltimosOfs) && window._ofmaqUltimosOfs.length) return window._ofmaqUltimosOfs.slice();
+    if (Array.isArray(window.OFS) && window.OFS.length) return window.OFS.slice();
+    try {
+      if (typeof OFs !== 'undefined' && Array.isArray(OFs) && OFs.length) return OFs.slice();
+    } catch (_) {}
+    return [];
+  }
+
+  function getMachineListFromOfs(ofs) {
+    var seen = {};
+    var list = [];
+    (Array.isArray(ofs) ? ofs : []).forEach(function(of) {
+      getOfMachines(of).forEach(function(machine) {
+        var name = normalizeMachine(machine);
+        if (!name || seen[name]) return;
+        seen[name] = true;
+        list.push(name);
+      });
+    });
+    return list;
+  }
+
   function normalizeOfs(ofs) {
-    var base = Array.isArray(ofs) ? ofs.slice() : (Array.isArray(window._ofmaqUltimosOfs) ? window._ofmaqUltimosOfs.slice() : []);
+    var base = Array.isArray(ofs) ? ofs.slice() : getCurrentSourceOfs();
     window._ofmaqUltimosOfs = base.slice();
     return base;
   }
@@ -11704,7 +11769,12 @@ window.addEventListener('unhandledrejection', function(e) {
     });
     sortRows(tbody);
     ensureEmptyRow(tbody);
+    state.lastRenderSignature = [state.selectedMachine, state.selectedDateIso, (state.currentRows || []).length].join('|');
+    state.lastVisibleCount = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]')).filter(function(row) {
+      return row.style.display !== 'none';
+    }).length;
     renderToolbar(root, state.currentRows || []);
+    try { console.log('[OFMAQ-NOVO] ofs:', (state.currentRows || []).length, 'maq:', state.selectedMachine, 'dia:', state.selectedDateIso, 'exibindo:', state.lastVisibleCount); } catch (_) {}
   }
 
   function updateCachedOf(id, mutator) {
@@ -12008,7 +12078,12 @@ window.addEventListener('unhandledrejection', function(e) {
     ensureStyle();
     ensureDefaultState();
     var baseOfs = normalizeOfs(ofs);
-    state.lastMachines = resolveMachines(maquinas || window._ofmaqUltimasMaquinas || []);
+    var machineSeed = []
+      .concat(Array.isArray(maquinas) ? maquinas : [])
+      .concat(Array.isArray(window._listaMaquinas) ? window._listaMaquinas : [])
+      .concat(Array.isArray(window._ofmaqUltimasMaquinas) ? window._ofmaqUltimasMaquinas : [])
+      .concat(getMachineListFromOfs(baseOfs));
+    state.lastMachines = resolveMachines(machineSeed);
     window._ofmaqUltimasMaquinas = state.lastMachines.slice();
     window._ofmaqUltimasOpcoes = opcoes || window._ofmaqUltimasOpcoes || {};
     if (opcoes && typeof opcoes === 'object') {
@@ -12016,14 +12091,21 @@ window.addEventListener('unhandledrejection', function(e) {
       if (opcoes.dia || opcoes.data || opcoes.dateIso) state.selectedDateIso = String(opcoes.dia || opcoes.data || opcoes.dateIso || '').slice(0, 10);
     }
     ensureDefaultState();
+    hideLegacyOfmaqUi();
     var container = getContainer();
     if (!container) return null;
-    container.innerHTML = '';
     var rows = baseOfs.map(function(of, idx) { return getRowData(of, idx); }).filter(Boolean);
     state.currentRows = rows;
-    var root = buildRoot(rows);
-    container.appendChild(root);
-    bindEvents(root);
+    var nextSignature = [state.selectedMachine, state.selectedDateIso, rows.length].join('|');
+    var root = state.root && state.root.parentElement === container ? state.root : (container.querySelector ? container.querySelector('.ofmaq-direct-root') : null);
+    if (!root || state.lastRenderSignature !== nextSignature) {
+      container.innerHTML = '';
+      root = buildRoot(rows);
+      container.appendChild(root);
+      bindEvents(root);
+      state.root = root;
+      state.lastRenderSignature = nextSignature;
+    }
     renderToolbar(root, rows);
     refilterTable(root);
     removeModal('ofmaq-direct-actions');
@@ -12034,8 +12116,63 @@ window.addEventListener('unhandledrejection', function(e) {
     return container;
   }
 
+  function wrapRenderKanban() {
+    try {
+      if (typeof window.renderKanbanOfmaq !== 'function') return false;
+      if (window.renderKanbanOfmaq._patchedOfmaqNovo) return true;
+      var _origRenderKanban = window.renderKanbanOfmaq;
+      var wrappedKanban = function() {
+        var resultado = _origRenderKanban ? _origRenderKanban.apply(this, arguments) : null;
+        try { window._ofmaqRenderNovo(); } catch (e) { try { console.error('[OFMAQ-NOVO] erro hook renderKanbanOfmaq', e); } catch (_) {} }
+        return resultado;
+      };
+      wrappedKanban._patchedOfmaqNovo = true;
+      wrappedKanban._patchedAccordion = true;
+      wrappedKanban.__patchWrapOriginal = _origRenderKanban.__patchWrapOriginal || _origRenderKanban;
+      window.renderKanbanOfmaq = wrappedKanban;
+      try { console.log('[PATCH] interceptou render: renderKanbanOfmaq'); } catch (_) {}
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function scheduleActiveOfmaqWatch() {
+    if (window.__patchOfmaqDirectPollInstalled) return;
+    window.__patchOfmaqDirectPollInstalled = true;
+    try {
+      if (window.__patchOfmaqDirectObserver && typeof window.__patchOfmaqDirectObserver.disconnect === 'function') window.__patchOfmaqDirectObserver.disconnect();
+    } catch (_) {}
+    try {
+      window.__patchOfmaqDirectObserver = new MutationObserver(function() {
+        if (!isOfmaqActive()) return;
+        hideLegacyOfmaqUi();
+        wrapRenderKanban();
+        if (getCurrentSourceOfs().length) {
+          try { window._ofmaqRenderNovo(); } catch (_) {}
+        }
+      });
+      window.__patchOfmaqDirectObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+    } catch (_) {}
+    setInterval(function() {
+      try { wrapRenderKanban(); } catch (_) {}
+      if (!isOfmaqActive()) return;
+      hideLegacyOfmaqUi();
+      var ofs = getCurrentSourceOfs();
+      if (ofs.length) {
+        try { window._ofmaqRenderNovo(); } catch (_) {}
+      }
+    }, 800);
+  }
+
+  window._ofmaqRenderNovo = function(ofs, maquinas, opcoes) {
+    var source = Array.isArray(ofs) ? ofs : getCurrentSourceOfs();
+    if (!source.length && !isOfmaqActive()) return null;
+    return renderDirect(source, maquinas || window._listaMaquinas || window._ofmaqUltimasMaquinas || [], opcoes || {});
+  };
+
   window.renderOFsPorMaquina = function(ofs, maquinas, opcoes) {
-    return renderDirect(ofs, maquinas, opcoes);
+    return window._ofmaqRenderNovo(ofs, maquinas, opcoes);
   };
   window.renderOFsPorMaquina._patchedAccordion = true;
   window.renderOFsPorMaquina._patchedSwipeMaq = true;
@@ -12058,6 +12195,8 @@ window.addEventListener('unhandledrejection', function(e) {
     var root = container && container.querySelector ? container.querySelector('.ofmaq-direct-root') : null;
     if (root) refilterTable(root);
   };
+  wrapRenderKanban();
+  scheduleActiveOfmaqWatch();
 })();
 (function() {
   try {
