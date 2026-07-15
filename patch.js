@@ -11223,6 +11223,7 @@ window.addEventListener('unhandledrejection', function(e) {
     weekStartIso: '',
     searchTerm: '',
     grouped: false,
+    qtySortDirection: '',
     lastMachines: OFMAQ_FIXED_MACHINES.slice(),
     currentRows: [],
     lastRenderSignature: '',
@@ -11815,6 +11816,7 @@ window.addEventListener('unhandledrejection', function(e) {
       + '.ofmaq-direct-table-wrap{overflow:auto;border:1px solid #1e293b;border-radius:16px;background:#0f172a;box-shadow:0 18px 40px rgba(2,6,23,.24)}'
       + '#ofmaq-tabela{width:100%;min-width:1450px;border-collapse:collapse;table-layout:fixed}'
       + '#ofmaq-tabela thead th{position:sticky;top:0;z-index:2;background:#1e293b;color:#64748b;text-transform:uppercase;font-size:11px;letter-spacing:.08em;padding:10px 12px;text-align:left}'
+      + '#ofmaq-tabela thead th button{all:unset;cursor:pointer;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit}'
       + '#ofmaq-tabela tbody tr:nth-child(odd){background:#0f172a}'
       + '#ofmaq-tabela tbody tr:nth-child(even){background:#1e293b}'
       + '#ofmaq-tabela tbody tr:hover{background:#334155}'
@@ -11964,6 +11966,11 @@ window.addEventListener('unhandledrejection', function(e) {
     var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]'));
     var frag = document.createDocumentFragment();
     rows.sort(function(a, b) {
+      if (state.qtySortDirection) {
+        var qa = Number(a.getAttribute('data-qtd') || 0) || 0;
+        var qb = Number(b.getAttribute('data-qtd') || 0) || 0;
+        if (qa !== qb) return state.qtySortDirection === 'desc' ? (qb - qa) : (qa - qb);
+      }
       if (state.grouped) {
         var ga = String(a.getAttribute('data-color-key') || '') + '|' + String(a.getAttribute('data-size-key') || '');
         var gb = String(b.getAttribute('data-color-key') || '') + '|' + String(b.getAttribute('data-size-key') || '');
@@ -11981,6 +11988,13 @@ window.addEventListener('unhandledrejection', function(e) {
     });
     rows.forEach(function(row) { frag.appendChild(row); });
     tbody.appendChild(frag);
+  }
+
+  function renderQtyHeader(root) {
+    var th = root && root.querySelector ? root.querySelector('th.col-qtd') : null;
+    if (!th) return;
+    var arrow = state.qtySortDirection === 'desc' ? ' ▼' : (state.qtySortDirection === 'asc' ? ' ▲' : '');
+    th.innerHTML = '<button type="button" data-sort-qtd="1">QTD' + arrow + '</button>';
   }
 
   function syncSequenceInputs(tbody) {
@@ -12052,6 +12066,7 @@ window.addEventListener('unhandledrejection', function(e) {
       return row.style.display !== 'none';
     }).length;
     renderToolbar(root, state.currentRows || []);
+    renderQtyHeader(root);
     try { console.log('[OFMAQ-NOVO] ofs:', (state.currentRows || []).length, 'maq:', state.selectedMachine, 'dia:', state.selectedDateIso, 'exibindo:', state.lastVisibleCount); } catch (_) {}
   }
 
@@ -12284,7 +12299,7 @@ window.addEventListener('unhandledrejection', function(e) {
           ? ('<button type="button" class="ofmaq-direct-thumb-btn" data-img-of-id="' + escAttrLocal(item.id) + '"><span class="ofmaq-direct-thumb"><img src="' + escAttrLocal(item.imageUrl) + '" alt="Imagem da OF"></span></button>')
           : '<span class="ofmaq-direct-thumb-fallback">&#128230;</span>';
         return ''
-          + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-maq-list="' + escAttrLocal(item.machines.join('|')) + '" data-day="' + escAttrLocal(item.diaIso || '') + '" data-dia-source="' + escAttrLocal(String(item.of && (item.of.dia || item.of.data || item.of.data_pedido || item.of.created_at) || '')) + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-status-rank="' + escAttrLocal(String(item.statusInfo && item.statusInfo.rank != null ? item.statusInfo.rank : 9)) + '" data-color-key="' + escAttrLocal(item.colorKey || '') + '" data-size-key="' + escAttrLocal(item.sizeKey || '') + '" data-search="' + escAttrLocal(item.search || '') + '" data-of-number="' + escAttrLocal(item.number || '') + '">'
+          + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-maq-list="' + escAttrLocal(item.machines.join('|')) + '" data-day="' + escAttrLocal(item.diaIso || '') + '" data-dia-source="' + escAttrLocal(String(item.of && (item.of.dia || item.of.data || item.of.data_pedido || item.of.created_at) || '')) + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-qtd="' + escAttrLocal(String(item.qty || 0)) + '" data-status-rank="' + escAttrLocal(String(item.statusInfo && item.statusInfo.rank != null ? item.statusInfo.rank : 9)) + '" data-color-key="' + escAttrLocal(item.colorKey || '') + '" data-size-key="' + escAttrLocal(item.sizeKey || '') + '" data-search="' + escAttrLocal(item.search || '') + '" data-of-number="' + escAttrLocal(item.number || '') + '">'
           + '  <td class="col-seq"><input class="ofmaq-direct-seq" type="number" min="1" step="1" value="' + escAttrLocal(String(item.order || 1)) + '" data-seq-of-id="' + escAttrLocal(item.id) + '"></td>'
           + '  <td class="col-img">' + imgHtml + '</td>'
           + '  <td class="col-of"><strong>' + escHLocal(item.number || '-') + '</strong></td>'
@@ -12302,6 +12317,7 @@ window.addEventListener('unhandledrejection', function(e) {
       }).join('');
       ensureSingleSeqInputPerRow(tbody);
     }
+    renderQtyHeader(root);
     return root;
   }
 
@@ -12401,6 +12417,15 @@ window.addEventListener('unhandledrejection', function(e) {
         var rowData = (state.currentRows || []).filter(function(item) { return item.id === actId; })[0] || null;
         if (rowData && rowEl) openActionsModal(root, rowData, rowEl);
       }
+    });
+    var thead = root.querySelector('#ofmaq-tabela thead');
+    if (thead) thead.addEventListener('click', function(ev) {
+      var sortBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-sort-qtd]') : null;
+      if (!sortBtn) return;
+      state.qtySortDirection = state.qtySortDirection === 'desc' ? 'asc' : 'desc';
+      sortRows(tbody);
+      ensureEmptyRow(tbody);
+      renderQtyHeader(root);
     });
   }
 
