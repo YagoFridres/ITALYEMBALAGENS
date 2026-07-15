@@ -11487,6 +11487,28 @@ window.addEventListener('unhandledrejection', function(e) {
     return (comp > 0 && larg > 0) ? (comp + '\u00d7' + larg + ' mm') : '-';
   }
 
+  function getOfTempoMin(of) {
+    var raw = of && (of.tempo_estimado != null ? of.tempo_estimado : (of.tempo_min != null ? of.tempo_min : (of.tempo != null ? of.tempo : of.data_tempo_min)));
+    var n = Number(raw);
+    if (Number.isFinite(n) && n > 0) return n;
+    try {
+      var id = String(of && of.id || '').trim();
+      var card = id ? document.querySelector('.kb-card[data-of-id="' + CSS.escape(id) + '"]') : null;
+      var attr = card ? Number(card.getAttribute('data-tempo-min') || 0) : 0;
+      if (Number.isFinite(attr) && attr > 0) return attr;
+    } catch (_) {}
+    return 0;
+  }
+
+  function formatMinutesHuman(totalMin) {
+    var total = Math.max(0, Number(totalMin || 0) || 0);
+    var horas = Math.floor(total / 60);
+    var minutos = total % 60;
+    if (horas > 0 && minutos > 0) return horas + 'h ' + minutos + 'min';
+    if (horas > 0) return horas + 'h';
+    return minutos + 'min';
+  }
+
   function parseColors(value) {
     if (Array.isArray(value)) {
       return value.map(function(item) { return String(item || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean);
@@ -11672,6 +11694,7 @@ window.addEventListener('unhandledrejection', function(e) {
       colors: colors,
       qty: getOfQty(of),
       prazoIso: prazoIso,
+      tempoMin: getOfTempoMin(of),
       machines: machines,
       imageUrl: String(of && (of.imagem_url || of.imagem || of.img) || '').trim(),
       order: order,
@@ -11699,8 +11722,12 @@ window.addEventListener('unhandledrejection', function(e) {
       + '.ofmaq-direct-day[data-hot="1"]{border-color:#ef4444;color:#ef4444}'
       + '.ofmaq-direct-day[data-active="1"]{background:#3b82f6;border-color:#60a5fa;color:#eff6ff}'
       + '.ofmaq-direct-select,.ofmaq-direct-search{width:100%;min-height:36px;border-radius:10px;border:1px solid #334155;background:#1e293b;color:#f8fafc;padding:8px 12px}'
+      + '.ofmaq-direct-machine-box{display:grid;gap:6px}'
+      + '.ofmaq-direct-load{font-size:12px;font-weight:800;color:#94a3b8;padding:2px 4px}'
+      + '.ofmaq-direct-load[data-overload="1"]{color:#ef4444}'
+      + '.ofmaq-direct-load[data-overload="0"]{color:#22c55e}'
       + '.ofmaq-direct-table-wrap{overflow:auto;border:1px solid #1e293b;border-radius:16px;background:#0f172a;box-shadow:0 18px 40px rgba(2,6,23,.24)}'
-      + '#ofmaq-tabela{width:100%;min-width:1360px;border-collapse:collapse;table-layout:fixed}'
+      + '#ofmaq-tabela{width:100%;min-width:1450px;border-collapse:collapse;table-layout:fixed}'
       + '#ofmaq-tabela thead th{position:sticky;top:0;z-index:2;background:#1e293b;color:#64748b;text-transform:uppercase;font-size:11px;letter-spacing:.08em;padding:10px 12px;text-align:left}'
       + '#ofmaq-tabela tbody tr:nth-child(odd){background:#0f172a}'
       + '#ofmaq-tabela tbody tr:nth-child(even){background:#1e293b}'
@@ -11715,6 +11742,7 @@ window.addEventListener('unhandledrejection', function(e) {
       + '#ofmaq-tabela th.col-cores,#ofmaq-tabela td.col-cores{width:14%}'
       + '#ofmaq-tabela th.col-qtd,#ofmaq-tabela td.col-qtd{width:55px}'
       + '#ofmaq-tabela th.col-prazo,#ofmaq-tabela td.col-prazo{width:85px}'
+      + '#ofmaq-tabela th.col-tempo,#ofmaq-tabela td.col-tempo{width:90px}'
       + '#ofmaq-tabela th.col-maq,#ofmaq-tabela td.col-maq{width:90px}'
       + '#ofmaq-tabela th.col-acoes,#ofmaq-tabela td.col-acoes{width:95px}'
       + '.ofmaq-direct-seq{width:100%;max-width:54px;min-height:34px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f8fafc;padding:4px 6px;text-align:center}'
@@ -11744,6 +11772,21 @@ window.addEventListener('unhandledrejection', function(e) {
       if (item.prazoIso && Object.prototype.hasOwnProperty.call(counts, item.prazoIso)) counts[item.prazoIso] += 1;
     });
     return counts;
+  }
+
+  function computeMachineLoad(rows, machine, dateIso) {
+    var totalMin = (Array.isArray(rows) ? rows : []).reduce(function(sum, item) {
+      if (!item || !Array.isArray(item.machines) || item.machines.indexOf(machine) < 0) return sum;
+      if (dateIso && String(item.prazoIso || '').slice(0, 10) !== String(dateIso || '').slice(0, 10)) return sum;
+      return sum + (Number(item.tempoMin || 0) || 0);
+    }, 0);
+    var capacity = 480;
+    var percent = capacity > 0 ? Math.round((totalMin / capacity) * 100) : 0;
+    return {
+      totalMin: totalMin,
+      overload: totalMin > capacity,
+      percent: percent
+    };
   }
 
   function createModal(id, title, bodyHtml) {
@@ -11799,6 +11842,14 @@ window.addEventListener('unhandledrejection', function(e) {
     }
     var select = toolbar.querySelector('#ofmaq-direct-machine');
     if (select) select.value = state.selectedMachine;
+    var loadEl = toolbar.querySelector('#ofmaq-direct-load');
+    if (loadEl) {
+      var load = computeMachineLoad(rows, state.selectedMachine, state.selectedDateIso);
+      loadEl.setAttribute('data-overload', load.overload ? '1' : '0');
+      loadEl.textContent = load.overload
+        ? ('Sobrecarregada (' + formatMinutesHuman(load.totalMin) + ')')
+        : ('✓ ' + String(Math.max(0, load.percent)) + '% ocupada');
+    }
     var input = toolbar.querySelector('#ofmaq-direct-search');
     if (input && input.value !== String(state.searchTerm || '')) input.value = String(state.searchTerm || '');
     var agrupar = toolbar.querySelector('#ofmaq-direct-agrupar');
@@ -11833,7 +11884,7 @@ window.addEventListener('unhandledrejection', function(e) {
     if (!empty) {
       empty = document.createElement('tr');
       empty.className = 'ofmaq-direct-empty';
-      empty.innerHTML = '<td colspan="11">Nenhuma OF encontrada para este filtro.</td>';
+      empty.innerHTML = '<td colspan="12">Nenhuma OF encontrada para este filtro.</td>';
       tbody.appendChild(empty);
     }
     empty.style.display = visibleCount ? 'none' : 'table-row';
@@ -12061,7 +12112,7 @@ window.addEventListener('unhandledrejection', function(e) {
       + '  <h2>OFs por Maquina</h2>'
       + '  <div class="ofmaq-direct-controls">'
       + '    <div class="ofmaq-direct-days"></div>'
-      + '    <select id="ofmaq-direct-machine" class="ofmaq-direct-select"></select>'
+      + '    <div class="ofmaq-direct-machine-box"><select id="ofmaq-direct-machine" class="ofmaq-direct-select"></select><div id="ofmaq-direct-load" class="ofmaq-direct-load" data-overload="0"></div></div>'
       + '    <input id="ofmaq-direct-search" class="ofmaq-direct-search" type="search" placeholder="Buscar OF, cliente, produto...">'
       + '    <button type="button" id="ofmaq-direct-agrupar" class="ofmaq-direct-btn">Agrupar</button>'
       + '    <button type="button" id="ofmaq-direct-imprimir" class="ofmaq-direct-btn">Imprimir</button>'
@@ -12069,7 +12120,7 @@ window.addEventListener('unhandledrejection', function(e) {
       + '</div>'
       + '<div class="ofmaq-direct-table-wrap">'
       + '  <table id="ofmaq-tabela">'
-      + '    <thead><tr><th class="col-seq">SEQ</th><th class="col-img">IMG</th><th class="col-of">N&ordm; OF</th><th class="col-cliente">CLIENTE</th><th class="col-produto">PRODUTO</th><th class="col-tamanho">TAMANHO</th><th class="col-cores">CORES</th><th class="col-qtd">QTD</th><th class="col-prazo">PRAZO</th><th class="col-maq">MAQUINA</th><th class="col-acoes">ACOES</th></tr></thead>'
+      + '    <thead><tr><th class="col-seq">SEQ</th><th class="col-img">IMG</th><th class="col-of">N&ordm; OF</th><th class="col-cliente">CLIENTE</th><th class="col-produto">PRODUTO</th><th class="col-tamanho">TAMANHO</th><th class="col-cores">CORES</th><th class="col-qtd">QTD</th><th class="col-prazo">PRAZO</th><th class="col-tempo">TEMPO</th><th class="col-maq">MAQUINA</th><th class="col-acoes">ACOES</th></tr></thead>'
       + '    <tbody id="ofmaq-tbody"></tbody>'
       + '  </table>'
       + '</div>';
@@ -12079,7 +12130,7 @@ window.addEventListener('unhandledrejection', function(e) {
     }).join('');
     var tbody = root.querySelector('#ofmaq-tbody');
     if (!rows.length) {
-      tbody.innerHTML = '<tr class="ofmaq-direct-empty"><td colspan="11">Nenhuma OF encontrada.</td></tr>';
+      tbody.innerHTML = '<tr class="ofmaq-direct-empty"><td colspan="12">Nenhuma OF encontrada.</td></tr>';
     } else {
       tbody.innerHTML = rows.map(function(item) {
         var imgHtml = item.imageUrl
@@ -12096,6 +12147,7 @@ window.addEventListener('unhandledrejection', function(e) {
           + '  <td class="col-cores"><div class="ofmaq-direct-color-wrap">' + colorHtml(item.colors || []) + '</div></td>'
           + '  <td class="col-qtd">' + escHLocal(String(item.qty || 0)) + '</td>'
           + '  <td class="col-prazo">' + escHLocal(item.prazoIso ? formatDateBR(item.prazoIso) : '-') + '</td>'
+          + '  <td class="col-tempo">' + escHLocal(formatMinutesHuman(item.tempoMin || 0)) + '</td>'
           + '  <td class="col-maq">' + escHLocal(state.selectedMachine || item.machines[0] || '-') + '</td>'
           + '  <td class="col-acoes"><button type="button" class="ofmaq-direct-btn" data-actions-of-id="' + escAttrLocal(item.id) + '">&#9889; Acoes</button></td>'
           + '</tr>';
