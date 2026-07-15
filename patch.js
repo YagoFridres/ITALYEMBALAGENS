@@ -10975,22 +10975,56 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
 
   window.pcpAbrirModalClonarOF = async function(id, ofNum) {
     try {
-      var nova = null;
-      if (typeof window.__patchCloneOF === 'function') {
-        nova = await window.__patchCloneOF(id, null);
-      } else {
-        throw new Error('Clonador de OF indisponível');
-      }
+      var sid = String(id || '').trim();
+      if (!sid) throw new Error('OF inválida para clonar');
+      if (typeof window.abrirNovaOfRapida !== 'function') throw new Error('Modal de OF rápida indisponível');
+      var of = await fetchOf(sid);
+      if (!of || of.error) throw new Error('Não foi possível carregar os dados da OF');
       try {
-        if (typeof window.carregarOFs === 'function') await window.carregarOFs();
+        if (typeof window.__clearOfRapidaEditContext === 'function') window.__clearOfRapidaEditContext();
+      } catch (_) {}
+      try { window._ofRapidaNumero = ''; } catch (_) {}
+      window.abrirNovaOfRapida();
+      await new Promise(function(r) { setTimeout(r, 450); });
+      var cliNome = String(of.cliente || of.cliNome || of.cliente_nome || '').trim();
+      var produto = String(of.produto || of.descricao || '').trim();
+      var empId = String(of.emp_id || of.empId || 'E1').trim() || 'E1';
+      var vendId = String(of.vendedor_id || of.vendId || of.vend_id || '').trim();
+      var qtd = of.quantidade ?? of.qtd ?? of.qtd_pedida ?? '';
+      var vlunit = of.vl_unit ?? of.valor_unitario ?? of.vunit ?? '';
+      var total = of.total ?? of.valor_total ?? of.valor_venda ?? '';
+      var entrega = String(of.data_entrega || of.ent || '').slice(0, 10);
+      var pedido = String(of.data_pedido || of.dia || of.created_at || '').slice(0, 10);
+      var comp = of.caixa_comprimento ?? of.dim_comprimento ?? of.comprimento ?? '';
+      var larg = of.caixa_largura ?? of.dim_largura ?? of.largura ?? '';
+      var maquina = '';
+      try {
+        if (Array.isArray(of.maq) && of.maq.length) maquina = String(of.maq[0] || '').trim();
+      } catch (_) {}
+      maquina = maquina || String(of.maquina_agendada || of.maquina || of.maquina_atual || '').trim();
+      try { setVal('of-r-cliente', cliNome); } catch (_) {}
+      try { setVal('of-r-cliente-id', String(of.cli_id || of.cliente_id || '').trim()); } catch (_) {}
+      try { setVal('of-r-produto', produto); } catch (_) {}
+      try { setVal('of-r-empresa', empId); } catch (_) {}
+      try { setVal('of-r-vendedor', vendId); } catch (_) {}
+      try { setVal('of-r-qtd', qtd); } catch (_) {}
+      try { setVal('of-r-vlunit', vlunit); } catch (_) {}
+      try { setVal('of-r-total', total); } catch (_) {}
+      try { setVal('of-r-entrega', entrega); } catch (_) {}
+      try { if (pedido) setVal('of-r-pedido', pedido); } catch (_) {}
+      try { setVal('of-r-comp', comp); } catch (_) {}
+      try { setVal('of-r-larg', larg); } catch (_) {}
+      try { setVal('of-r-maquina', maquina); } catch (_) {}
+      try { setChecked('of-r-urgente', !!(of.urgente === true || of.urg === true || of.urgente === 1 || of.urg === 1)); } catch (_) {}
+      try {
+        var header = document.querySelector('#modal-of-rapida div[style*="font-weight:800"]');
+        if (header) header.textContent = '📋 Clonar OF Rápida';
       } catch (_) {}
       try {
-        if (typeof window.renderTabelaPCP === 'function') window.renderTabelaPCP();
+        var btn = document.getElementById('btn-salvar-of-rapida');
+        if (btn) btn.textContent = '➕ Criar OF Clonada';
       } catch (_) {}
-      try {
-        if (typeof window.aplicarFiltrosOFs === 'function') window.aplicarFiltrosOFs();
-      } catch (_) {}
-      return nova;
+      return of;
     } catch (e) {
       try { notify('Erro ao clonar OF #' + String(ofNum || '—') + ': ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
       throw e;
@@ -32003,7 +32037,7 @@ function _ocultarGraficoComissoes() {
             }
             if (acao === 'concluir') { _abrirFluxoConclusaoOF(ofId, of || null); return; }
             if (acao === 'clonar') {
-              if (typeof window.__patchCloneOF === 'function') window.__patchCloneOF(ofId);
+              if (typeof window.pcpAbrirModalClonarOF === 'function') window.pcpAbrirModalClonarOF(ofId, of && (of.numero || of.of));
               return;
             }
           } catch (_) {}
@@ -35472,8 +35506,8 @@ function _ocultarGraficoComissoes() {
       btnCloneOf.onclick = async function() {
         try {
           btnCloneOf.disabled = true;
-          if (typeof window.__patchCloneOF === 'function') {
-            await window.__patchCloneOF(String(obj && obj.id || item && item.id || ''), modal);
+          if (typeof window.pcpAbrirModalClonarOF === 'function') {
+            await window.pcpAbrirModalClonarOF(String(obj && obj.id || item && item.id || ''), obj && (obj.numero || obj.of || item && item.numero || item && item.of));
           }
         } catch (_) {
         } finally {
