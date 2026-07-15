@@ -1033,8 +1033,8 @@ try {
       title: 'Relatório de Estoque de Chapas',
       periodo: ref.titulo,
       printCssExtra: ''
-        + 'table.dark th,table.zebra th{background:#1e293b!important;color:#94a3b8!important;text-transform:uppercase!important;font-size:11px!important;letter-spacing:.08em!important}'
-        + 'table.dark td,table.zebra td{padding:10px 14px!important;min-height:44px!important;font-size:13px!important;line-height:1.5!important;vertical-align:middle!important}',
+        + 'table.dark th,table.zebra th{background:#1e293b!important;color:#94a3b8!important;text-transform:uppercase!important;font-size:12px!important;letter-spacing:.08em!important;padding:12px 16px!important}'
+        + 'table.dark td,table.zebra td{padding:12px 16px!important;min-height:44px!important;font-size:14px!important;font-weight:500!important;line-height:1.5!important;vertical-align:middle!important}',
       cards: [
         { label: 'Valor Total do Estoque', value: rrFmtMoney(tons && tons.valor_total || chapas.reduce(function(s, r) { return s + rrChapaValor(r); }, 0)), sub: 'Snapshot atual' },
         { label: 'Toneladas em Estoque', value: rrFmtNum(tons && tons.ton_estoque_atual || 0, 3) + ' t', sub: 'Saldo atual' },
