@@ -11115,7 +11115,7 @@ app.get('/api/relatorios/ofs-entradas-mes', authMiddleware, async (req, res) => 
     const rows = ofs.map((of) => {
       const quantidade = Math.max(0, Math.trunc(Number(of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
       const valorTotalBase = Number(of?.valor_total ?? of?.valor_venda ?? of?.total ?? 0) || 0;
-      const valorUnitBase = Number(of?.valor_unitario ?? of?.preco ?? of?.vl_unit ?? 0) || 0;
+      const valorUnitBase = Number(of?.valor_unitario ?? of?.preco ?? 0) || 0;
       const valorUnitario = valorUnitBase > 0 ? valorUnitBase : (quantidade > 0 && valorTotalBase > 0 ? (valorTotalBase / quantidade) : 0);
       const valorTotal = valorTotalBase > 0 ? valorTotalBase : (valorUnitario > 0 && quantidade > 0 ? (valorUnitario * quantidade) : 0);
       const clienteId = _assistPickOfClienteId(of);
