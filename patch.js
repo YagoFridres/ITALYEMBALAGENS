@@ -11468,6 +11468,21 @@ window.addEventListener('unhandledrejection', function(e) {
     return '';
   }
 
+  function normDia(v) {
+    if (!v) return '';
+    if (typeof v === 'string') {
+      var raw = String(v || '').trim();
+      if (!raw) return '';
+      var iso = raw.slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+      var dtStr = new Date(raw);
+      return Number.isFinite(dtStr.getTime()) ? dtStr.toISOString().slice(0, 10) : '';
+    }
+    if (v instanceof Date) return Number.isFinite(v.getTime()) ? v.toISOString().slice(0, 10) : '';
+    var dt = new Date(v);
+    return Number.isFinite(dt.getTime()) ? dt.toISOString().slice(0, 10) : '';
+  }
+
   function getOfNumber(of) {
     return String(of && (of.of || of.numero || of.of_num || of.seq) || '').trim();
   }
@@ -11708,6 +11723,7 @@ window.addEventListener('unhandledrejection', function(e) {
   function getRowData(of, idx) {
     var machines = getOfMachines(of);
     var prazoIso = getOfDateIso(of);
+    var diaIso = normDia(of && of.dia) || prazoIso;
     var client = getOfClient(of);
     var product = getOfProduct(of);
     var number = getOfNumber(of) || String(of && of.id || '').trim();
@@ -11723,6 +11739,7 @@ window.addEventListener('unhandledrejection', function(e) {
       colors: colors,
       qty: getOfQty(of),
       prazoIso: prazoIso,
+      diaIso: diaIso,
       tempoMin: getOfTempoMin(of),
       machines: machines,
       imageUrl: String(of && (of.imagem_url || of.imagem || of.img) || '').trim(),
@@ -11798,7 +11815,7 @@ window.addEventListener('unhandledrejection', function(e) {
     getWeekDays(startIso).forEach(function(day) { counts[day.iso] = 0; });
     rows.forEach(function(item) {
       if (item.machines.indexOf(machine) < 0) return;
-      if (item.prazoIso && Object.prototype.hasOwnProperty.call(counts, item.prazoIso)) counts[item.prazoIso] += 1;
+      if (item.diaIso && Object.prototype.hasOwnProperty.call(counts, item.diaIso)) counts[item.diaIso] += 1;
     });
     return counts;
   }
@@ -11806,7 +11823,7 @@ window.addEventListener('unhandledrejection', function(e) {
   function computeMachineLoad(rows, machine, dateIso) {
     var totalMin = (Array.isArray(rows) ? rows : []).reduce(function(sum, item) {
       if (!item || !Array.isArray(item.machines) || item.machines.indexOf(machine) < 0) return sum;
-      if (dateIso && String(item.prazoIso || '').slice(0, 10) !== String(dateIso || '').slice(0, 10)) return sum;
+      if (dateIso && String(item.diaIso || '').slice(0, 10) !== String(dateIso || '').slice(0, 10)) return sum;
       return sum + (Number(item.tempoMin || 0) || 0);
     }, 0);
     var capacity = 480;
@@ -12009,6 +12026,7 @@ window.addEventListener('unhandledrejection', function(e) {
         updateCachedOf(rowData.id, function(of) { of.data_entrega = value; of.ent = value; of.dia = value; });
         rowData.prazoIso = value;
         rowEl.setAttribute('data-day', value);
+        rowData.diaIso = value;
         var prazoCell = rowEl.querySelector('.col-prazo');
         if (prazoCell) prazoCell.textContent = formatDateBR(value);
         removeModal('ofmaq-direct-date');
@@ -12182,7 +12200,7 @@ window.addEventListener('unhandledrejection', function(e) {
           ? ('<button type="button" class="ofmaq-direct-thumb-btn" data-img-of-id="' + escAttrLocal(item.id) + '"><span class="ofmaq-direct-thumb"><img src="' + escAttrLocal(item.imageUrl) + '" alt="Imagem da OF"></span></button>')
           : '<span class="ofmaq-direct-thumb-fallback">&#128230;</span>';
         return ''
-          + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-maq-list="' + escAttrLocal(item.machines.join('|')) + '" data-day="' + escAttrLocal(item.prazoIso || '') + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-color-key="' + escAttrLocal(item.colorKey || '') + '" data-size-key="' + escAttrLocal(item.sizeKey || '') + '" data-search="' + escAttrLocal(item.search || '') + '" data-of-number="' + escAttrLocal(item.number || '') + '">'
+          + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-maq-list="' + escAttrLocal(item.machines.join('|')) + '" data-day="' + escAttrLocal(item.diaIso || '') + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-color-key="' + escAttrLocal(item.colorKey || '') + '" data-size-key="' + escAttrLocal(item.sizeKey || '') + '" data-search="' + escAttrLocal(item.search || '') + '" data-of-number="' + escAttrLocal(item.number || '') + '">'
           + '  <td class="col-seq"><input class="ofmaq-direct-seq" type="number" min="1" step="1" value="' + escAttrLocal(String(item.order || 1)) + '" data-seq-of-id="' + escAttrLocal(item.id) + '"></td>'
           + '  <td class="col-img">' + imgHtml + '</td>'
           + '  <td class="col-of"><strong>' + escHLocal(item.number || '-') + '</strong></td>'
@@ -12308,7 +12326,12 @@ window.addEventListener('unhandledrejection', function(e) {
     hideLegacyOfmaqUi();
     var container = getContainer();
     if (!container) return null;
-    try { console.log('[OFMAQ-DIA] of.dia exemplo:', baseOfs[0] && baseOfs[0].dia, 'tipo:', typeof (baseOfs[0] && baseOfs[0].dia)); } catch (_) {}
+    try {
+      if (baseOfs.length) {
+        var firstDia = baseOfs[0] && baseOfs[0].dia;
+        console.log('[OFMAQ-DIA-DEBUG] of.dia:', firstDia, 'norm:', normDia(firstDia), 'diaSel:', state.selectedDateIso, 'match:', normDia(firstDia) === state.selectedDateIso);
+      }
+    } catch (_) {}
     var rows = baseOfs.map(function(of, idx) { return getRowData(of, idx); }).filter(Boolean);
     state.currentRows = rows;
     var nextSignature = [state.selectedMachine, state.selectedDateIso, rows.length].join('|');
