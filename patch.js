@@ -11890,13 +11890,15 @@ window.addEventListener('unhandledrejection', function(e) {
     var modal = document.createElement('div');
     modal.className = 'ofmaq-direct-modal';
     modal.setAttribute('data-modal-id', id);
+    modal.setAttribute('tabindex', '-1');
     modal.innerHTML = ''
       + '<button type="button" class="close-btn" data-close-modal="' + escAttrLocal(id) + '">&times;</button>'
       + '<h3>' + escHLocal(title) + '</h3>'
       + '<div class="ofmaq-direct-modal-body">' + bodyHtml + '</div>';
     overlay.addEventListener('click', function(ev) {
-      if (!ev || ev.target !== overlay) return;
-      removeModal(id);
+      if (!ev) return;
+      if (ev.target === overlay) removeModal(id);
+      else ev.stopPropagation();
     });
     modal.addEventListener('click', function(ev) {
       try { ev.stopPropagation(); } catch (_) {}
@@ -11905,6 +11907,7 @@ window.addEventListener('unhandledrejection', function(e) {
     document.body.appendChild(modal);
     var btn = modal.querySelector('[data-close-modal="' + id + '"]');
     if (btn) btn.onclick = function() { removeModal(id); };
+    try { modal.focus(); } catch (_) {}
     return modal;
   }
 
@@ -11912,7 +11915,7 @@ window.addEventListener('unhandledrejection', function(e) {
     setTimeout(function() {
       var modal = createModal(id, title, bodyHtml);
       if (typeof onReady === 'function') onReady(modal);
-    }, 50);
+    }, 100);
   }
 
   function getOfmaqAuthHeaders(extra) {
