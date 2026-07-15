@@ -13853,11 +13853,13 @@ app.get('/api/fluxos', async (req, res) => {
 async function _handleGetTiposCaixa(req, res) {
   try {
     const emp = String(req.query.emp_id ?? req.query.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? '').trim();
-    const cacheKey = emp ? `tipos_caixa:${emp}` : 'tipos_caixa:all';
+    const cacheKey = emp ? `tipos_caixa:shared:${emp}` : 'tipos_caixa:shared:all';
     const cached = cacheGet(cacheKey);
     if (cached) return ok(res, cached);
     let q = supabase.from('tipos_caixa').select('*').order('nome', { ascending: true });
-    if (emp) q = q.eq('emp_id', emp);
+    // Tipos de caixa foram cadastrados como compartilhados em E1 e precisam
+    // aparecer para todas as empresas na conclusão de OF.
+    if (emp && emp !== 'E1') q = q.or(`emp_id.eq.${emp},emp_id.eq.E1`);
     const { data, error } = await q;
     if (error) throw error;
     cacheSet(cacheKey, data || []);
