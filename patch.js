@@ -11901,12 +11901,15 @@ window.addEventListener('unhandledrejection', function(e) {
 
   function createModal(id, title, bodyHtml) {
     removeModal(id);
+    var modalKey = String(id || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
     var overlay = document.createElement('div');
     overlay.className = 'ofmaq-direct-overlay';
     overlay.setAttribute('data-modal-id', id);
+    overlay.id = 'ofmaq-overlay-' + modalKey;
     var modal = document.createElement('div');
     modal.className = 'ofmaq-direct-modal';
     modal.setAttribute('data-modal-id', id);
+    modal.id = 'ofmaq-modal-' + modalKey;
     modal.setAttribute('tabindex', '-1');
     modal.innerHTML = ''
       + '<button type="button" class="close-btn" data-close-modal="' + escAttrLocal(id) + '">&times;</button>'
@@ -11914,7 +11917,7 @@ window.addEventListener('unhandledrejection', function(e) {
       + '<div class="ofmaq-direct-modal-body">' + bodyHtml + '</div>';
     overlay.addEventListener('click', function(ev) {
       if (!ev) return;
-      if (ev.target === overlay) removeModal(id);
+      if (ev.target && ev.target.id === overlay.id) removeModal(id);
       else ev.stopPropagation();
     });
     modal.addEventListener('click', function(ev) {
