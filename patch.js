@@ -7493,7 +7493,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(9, 'antes pat
       if (!(freteLinha > 0) && freteTotal > liquidaTotal && liquidaTotal > 0) freteLinha = freteTotal - liquidaTotal;
       var unitLiq = Number(row && (row.vLiq != null ? row.vLiq : row.valor_unitario_liquido) || 0) || 0;
       if (!(unitLiq > 0) && qtd > 0 && liquidaTotal > 0) unitLiq = liquidaTotal / qtd;
-      if (!(unitLiq > 0) && qtd > 0 && freteTotal > 0) unitLiq = Math.max(0, (freteTotal - freteLinha) / qtd);
       var unitFrete = Number(row && (row.vUnit != null ? row.vUnit : row.valor_unitario) || 0) || (qtd > 0 ? (freteTotal / qtd) : 0);
       var total = Number(row && (row.total != null ? row.total : row.comFrete) || 0) || (qtd > 0 ? (unitFrete * qtd) : 0);
       return {
