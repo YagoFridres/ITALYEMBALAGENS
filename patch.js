@@ -11992,41 +11992,64 @@ window.addEventListener('unhandledrejection', function(e) {
       var baseOfs = Array.isArray(window._ofmaqUltimosOfs) ? window._ofmaqUltimosOfs.slice() : [];
       var refDate = localIsoFromDate(getCurrentBusinessDate());
       var allowedDays = period === 'semana' ? getWeekDays(getWeekStartIso(refDate)).map(function(day) { return day.iso; }) : [refDate];
-      var sections = selected.map(function(machine) {
+      var machineReports = selected.map(function(machine) {
         var filtered = baseOfs.filter(function(of) {
           var machines = getOfMachines(of);
           var dateIso = getOfDateIso(of);
           return machines.indexOf(machine) >= 0 && (!allowedDays.length || allowedDays.indexOf(dateIso) >= 0);
         });
         var totalQtd = filtered.reduce(function(sum, of) { return sum + getOfQty(of); }, 0);
-        return ''
-          + '<section style="margin-bottom:24px">'
-          + '  <h2 style="margin:0 0 8px 0">' + escHLocal(machine) + '</h2>'
-          + '  <div style="margin:0 0 10px 0;color:#475569">' + escHLocal(period === 'semana' ? 'Semana atual (Seg-Sex)' : formatDateBR(refDate)) + '</div>'
-          + '  <table style="width:100%;border-collapse:collapse">'
-          + '    <thead><tr><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">N&ordm; OF</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Cliente</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Produto</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Tamanho</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Cores</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Qtd</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Prazo</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Status</th></tr></thead>'
-          + '    <tbody>' + filtered.map(function(of) {
-                return '<tr>'
-                  + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(getOfNumber(of) || '-') + '</td>'
-                  + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(getOfClient(of) || '-') + '</td>'
-                  + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(getOfProduct(of) || '-') + '</td>'
-                  + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(getOfDimLabel(of) || '-') + '</td>'
-                  + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(getOfColors(of).join(', ')) + '</td>'
-                  + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(String(getOfQty(of))) + '</td>'
-                  + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(formatDateBR(getOfDateIso(of))) + '</td>'
-                  + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(String(of && of.status || 'Em aberto')) + '</td>'
-                  + '</tr>';
-              }).join('') + '</tbody>'
-          + '  </table>'
-          + '  <div style="margin-top:10px;font-weight:700">Total de OFs: ' + filtered.length + ' | Total de caixas: ' + totalQtd + '</div>'
-          + '</section>';
-      }).join('');
-      var html = ''
-        + '<html><head><title>Relatorio OFs por Maquina</title></head><body style="font-family:Arial,sans-serif;padding:24px;background:#fff;color:#0f172a">'
-        + '<h1 style="margin:0 0 18px 0">Relatorio OFs por Maquina</h1>'
-        + sections
-        + '</body></html>';
-      if (typeof window._openStyledPrintWindow === 'function') window._openStyledPrintWindow(html);
+        return {
+          machine: machine,
+          filtered: filtered,
+          totalQtd: totalQtd
+        };
+      });
+      var totalOfs = machineReports.reduce(function(sum, item) { return sum + item.filtered.length; }, 0);
+      var totalQtdAll = machineReports.reduce(function(sum, item) { return sum + item.totalQtd; }, 0);
+      var periodoTitulo = period === 'semana'
+        ? (formatDateBR(allowedDays[0]) + ' a ' + formatDateBR(allowedDays[allowedDays.length - 1]))
+        : formatDateBR(refDate);
+      if (typeof window._buildStyledPrintHtml === 'function' && typeof window._openStyledPrintWindow === 'function') {
+        var html = window._buildStyledPrintHtml({
+          title: 'Relatorio OFs por Maquina',
+          periodo: periodoTitulo,
+          cards: [
+            { label: 'Maquinas selecionadas', value: String(selected.length), sub: selected.join(', ') || '-' },
+            { label: 'Total de OFs', value: String(totalOfs), sub: 'OFs listadas no periodo' },
+            { label: 'Total de caixas', value: String(totalQtdAll), sub: 'Somatorio das quantidades' },
+            { label: 'Periodo', value: (period === 'semana' ? 'Semana atual' : 'Dia atual'), sub: periodoTitulo }
+          ],
+          summaryTitle: 'Resumo por maquina',
+          summaryHeaders: ['Maquina', 'OFs', 'Caixas'],
+          summaryRows: machineReports.map(function(item) {
+            return [item.machine, String(item.filtered.length), String(item.totalQtd)];
+          }),
+          detailSections: machineReports.map(function(item) {
+            return {
+              title: item.machine,
+              headers: ['Nº OF', 'Cliente', 'Produto', 'Tamanho', 'Cores', 'Qtd', 'Prazo', 'Status'],
+              rows: item.filtered.map(function(of) {
+                return [
+                  getOfNumber(of) || '-',
+                  getOfClient(of) || '-',
+                  getOfProduct(of) || '-',
+                  getOfDimLabel(of) || '-',
+                  getOfColors(of).join(', ') || '-',
+                  String(getOfQty(of)),
+                  formatDateBR(getOfDateIso(of)),
+                  String(of && of.status || 'Em aberto')
+                ];
+              }),
+              emptyCols: 8
+            };
+          }),
+          emptySummaryCols: 3,
+          emptyDetailCols: 8
+        });
+        window._openStyledPrintWindow(html);
+        return;
+      }
     };
   }
 
@@ -12109,7 +12132,10 @@ window.addEventListener('unhandledrejection', function(e) {
         return;
       }
       var imprimirBtn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-direct-imprimir') : null;
-      if (imprimirBtn) openPrintModal();
+      if (imprimirBtn) {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        openPrintModal();
+      }
     });
     toolbar.addEventListener('change', function(ev) {
       var select = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-direct-machine') : null;
