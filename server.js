@@ -11163,6 +11163,99 @@ app.get('/api/relatorios/ofs-entradas-mes', authMiddleware, async (req, res) => 
   }
 });
 
+app.get('/api/relatorios/cores-tamanhos', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    if (!range?.inicio || !range?.fim_exclusivo) {
+      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
+    }
+    const emp = String(req.query.emp_id ?? req.query.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? '').trim();
+    let query = supabase
+      .from('ofs')
+      .select('id,status,data_conclusao,deleted_at,empresa_id,emp_id,cores_impressao,dim_comprimento,dim_largura,caixa_comprimento,caixa_largura')
+      .gte('data_conclusao', range.inicio)
+      .lt('data_conclusao', range.fim_exclusivo)
+      .is('deleted_at', null)
+      .order('data_conclusao', { ascending: false })
+      .limit(10000);
+    if (emp) query = query.or('empresa_id.eq.' + emp + ',emp_id.eq.' + emp);
+    const { data: ofsRows, error: ofsError } = await query;
+    if (ofsError) throw ofsError;
+
+    const normalizeColorName = (value) => String(value || '')
+      .trim()
+      .replace(/_/g, ' ')
+      .replace(/\s+/g, ' ')
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+
+    const parseColors = (raw) => {
+      if (raw == null || raw === '') return [];
+      let arr = raw;
+      if (typeof arr === 'string') {
+        try {
+          arr = JSON.parse(arr);
+        } catch (_) {
+          arr = String(raw || '').split(',');
+        }
+      }
+      if (!Array.isArray(arr)) arr = [arr];
+      return Array.from(new Set(arr.map((item) => {
+        if (typeof item === 'string') return normalizeColorName(item);
+        if (item && typeof item === 'object') return normalizeColorName(item.nome || item.name || item.color || item.cor || '');
+        return normalizeColorName(item);
+      }).filter(Boolean)));
+    };
+
+    const sizePart = (value) => {
+      if (value == null) return '';
+      const txt = String(value).trim();
+      if (!txt || txt === '0' || txt === '0.0' || txt === '0.00') return '';
+      return txt;
+    };
+
+    const resolveSize = (row) => {
+      const comp = sizePart(row?.dim_comprimento ?? row?.caixa_comprimento);
+      const larg = sizePart(row?.dim_largura ?? row?.caixa_largura);
+      if (!comp || !larg) return '';
+      return comp + 'x' + larg;
+    };
+
+    const rowsBase = (Array.isArray(ofsRows) ? ofsRows : []).filter((row) => String(row?.status || '').toLowerCase().includes('conclu'));
+    const colorCounts = new Map();
+    const sizeCounts = new Map();
+
+    rowsBase.forEach((row) => {
+      parseColors(row?.cores_impressao).forEach((nome) => {
+        colorCounts.set(nome, (Number(colorCounts.get(nome) || 0) || 0) + 1);
+      });
+      const tamanho = resolveSize(row);
+      if (tamanho) sizeCounts.set(tamanho, (Number(sizeCounts.get(tamanho) || 0) || 0) + 1);
+    });
+
+    const cores = Array.from(colorCounts.entries()).map(([nome, count]) => ({ nome, count: Number(count || 0) || 0 }))
+      .sort((a, b) => (b.count - a.count) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+    const tamanhos = Array.from(sizeCounts.entries()).map(([tamanho, count]) => ({ tamanho, count: Number(count || 0) || 0 }))
+      .sort((a, b) => (b.count - a.count) || String(a.tamanho || '').localeCompare(String(b.tamanho || ''), 'pt-BR'));
+
+    return res.json({
+      ok: true,
+      data_inicio: range.inicio,
+      data_fim: range.fim,
+      total_ofs: rowsBase.length,
+      cores,
+      tamanhos
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][CORES-TAMANHOS]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/relatorios/vendas-por-empresa', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);

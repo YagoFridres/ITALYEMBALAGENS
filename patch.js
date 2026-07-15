@@ -1791,6 +1791,115 @@ try {
     });
   }
 
+  async function rrReportCoresTamanhos() {
+    var ref = rrCurrentRange();
+    var empId = rrEmpId();
+    var qs = [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ];
+    if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
+    var json = await rrFetchJson('/api/relatorios/cores-tamanhos?' + qs.join('&'));
+    var totalOfs = rrInt(json && json.total_ofs || 0);
+    var cores = rrList(json, ['cores', 'data']).map(function(row) {
+      return {
+        nome: String(row && row.nome || 'Sem cor').trim() || 'Sem cor',
+        count: rrInt(row && row.count || 0)
+      };
+    });
+    var tamanhos = rrList(json, ['tamanhos']).map(function(row) {
+      return {
+        tamanho: String(row && row.tamanho || 'Sem tamanho').trim() || 'Sem tamanho',
+        count: rrInt(row && row.count || 0)
+      };
+    });
+    var colorMap = {
+      'Azul': '#3b82f6',
+      'Azul Claro': '#60a5fa',
+      'Azul Escuro': '#1d4ed8',
+      'Vermelho': '#ef4444',
+      'Verde': '#22c55e',
+      'Verde Limao': '#84cc16',
+      'Verde Limão': '#84cc16',
+      'Amarelo': '#eab308',
+      'Preto': '#111827',
+      'Branco': '#e5e7eb',
+      'Roxo': '#8b5cf6',
+      'Rosa': '#ec4899',
+      'Laranja': '#f97316',
+      'Dourado': '#d97706',
+      'Marrom': '#92400e',
+      'Sem Impressao': '#64748b',
+      'Sem Impressão': '#64748b'
+    };
+    function rrNormCorNome(v) {
+      return String(v || '').trim()
+        .replace(/_/g, ' ')
+        .replace(/\s+/g, ' ')
+        .toLowerCase()
+        .split(' ')
+        .filter(Boolean)
+        .map(function(part) { return part.charAt(0).toUpperCase() + part.slice(1); })
+        .join(' ');
+    }
+    function rrCorCell(nome) {
+      var normalizado = rrNormCorNome(nome);
+      var bg = colorMap[normalizado] || '#94a3b8';
+      var border = bg === '#e5e7eb' ? '#94a3b8' : bg;
+      return '<span style="display:inline-flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:999px;background:' + rrEsc(bg) + ';border:1px solid ' + rrEsc(border) + ';display:inline-block"></span><span>' + rrEsc(normalizado || 'Sem cor') + '</span></span>';
+    }
+    function rrPct(value) {
+      if (!(totalOfs > 0)) return '0,00%';
+      return rrFmtNum((rrNum(value) / totalOfs) * 100, 2) + '%';
+    }
+    return rrOpenPrint({
+      title: 'Cores e Tamanhos mais usados',
+      periodo: ref.titulo,
+      printCssExtra: '.rr-ct-muted{color:#64748b}',
+      cards: [
+        { label: 'OFs analisadas', value: rrFmtNum(totalOfs, 0), sub: 'OFs concluídas no período' },
+        { label: 'Cores distintas', value: rrFmtNum(cores.length, 0), sub: 'Cores com ocorrência registrada' },
+        { label: 'Tamanhos distintos', value: rrFmtNum(tamanhos.length, 0), sub: 'Combinações de medidas encontradas' }
+      ],
+      summaryTitle: 'Resumo do período',
+      summaryHeaders: ['Indicador', 'Valor'],
+      summaryRows: [
+        ['OFs analisadas', rrEsc(rrFmtNum(totalOfs, 0))],
+        ['Cores distintas', rrEsc(rrFmtNum(cores.length, 0))],
+        ['Tamanhos distintos', rrEsc(rrFmtNum(tamanhos.length, 0))],
+        ['Período', rrEsc(ref.titulo)]
+      ],
+      detailSections: [
+        {
+          title: 'Cores mais usadas',
+          headers: ['Cor', 'Nº de OFs', '% do total'],
+          rows: cores.map(function(row) {
+            return [
+              rrCorCell(row.nome),
+              rrEsc(rrFmtNum(row.count, 0)),
+              rrEsc(rrPct(row.count))
+            ];
+          }),
+          emptyCols: 3
+        },
+        {
+          title: 'Tamanhos mais usados',
+          headers: ['Tamanho', 'Nº de OFs', '% do total'],
+          rows: tamanhos.map(function(row) {
+            return [
+              rrEsc(row.tamanho),
+              rrEsc(rrFmtNum(row.count, 0)),
+              rrEsc(rrPct(row.count))
+            ];
+          }),
+          emptyCols: 3
+        }
+      ],
+      emptySummaryCols: 2,
+      emptyDetailCols: 3
+    });
+  }
+
   function rrSergioState() {
     var defaultWeekStart = rrDateText(rrStartOfWeek(new Date()));
     if (!window.__rrSergioState || typeof window.__rrSergioState !== 'object') {
@@ -2134,6 +2243,7 @@ try {
     { id: 'clientes-inativos', label: 'Clientes inativos', icon: '🕳️', desc: 'Clientes sem OF concluída no período selecionado.', run: rrReportClientesInativos },
     { id: 'ofs-entradas-mes', label: 'Valor de OFs que entraram no mês', icon: '🧮', desc: 'Lista OFs criadas no mês/ano escolhido com valor unitário, total e somatório mensal.', run: rrOpenOfsEntradasMesModal },
     { id: 'tipos-caixa-rel', label: 'Tipos de Caixa', icon: '📦', desc: 'Agrupa OFs concluídas por tipo de caixa e destaca os mais produzidos no período ativo.', run: rrReportTiposCaixa },
+    { id: 'cores-tamanhos-rel', label: 'Cores e Tamanhos mais usados', icon: '🎨', desc: 'Conta as cores de impressão e os tamanhos mais frequentes nas OFs concluídas do período ativo.', run: rrReportCoresTamanhos },
     { id: 'relatorio-sergio', label: 'Relatório Sérgio', icon: '📝', desc: 'Montagem manual com múltiplos itens, autocomplete de clientes e impressão com fonte ampliada.', run: rrOpenSergioBuilder }
   ];
 
