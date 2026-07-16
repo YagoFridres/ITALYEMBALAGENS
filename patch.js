@@ -2228,7 +2228,7 @@ try {
     { id: 'comissoes', label: 'Comissões', icon: '💵', desc: 'Resumo por vendedor e detalhamento das OFs comissionadas.', run: rrReportComissoes },
     { id: 'caixas-perdidas', label: 'Caixas Perdidas', icon: '📦', desc: 'Consolidado de perdas com ranking e detalhamento.', run: rrReportCaixasPerdidas },
     { id: 'toneladas-vendidas', label: 'Toneladas Vendidas', icon: '⚖️', desc: 'Toneladas vendidas por fornecedor com detalhamento das OFs.', run: rrReportToneladas },
-    { id: 'custos-por-of', label: 'Custo por OF', icon: '🧾', desc: 'Custo por OF calculado por área (R$/m²) com total e custo unitário.', run: rrReportCustos },
+    { id: 'custo-por-of', label: 'Custo por OF', icon: '🧾', desc: 'Custo por OF calculado por área (R$/m²) com total e custo unitário.', run: rrReportCustos },
     { id: 'gramaturas', label: 'Gramaturas', icon: '📐', desc: 'Base de gramaturas e uso consolidado no período atual.', run: rrReportGramaturas },
     { id: 'estoque-chapas', label: 'Estoque de Chapas', icon: '🟦', desc: 'Snapshot do estoque com resumo por fornecedor.', run: rrReportEstoque },
     { id: 'entradas', label: 'Entradas', icon: '📥', desc: 'Movimentações de entrada no estoque de chapas.', run: function() { return rrReportMovimentos('entrada'); } },
@@ -2246,6 +2246,33 @@ try {
     { id: 'cores-tamanhos-rel', label: 'Cores e Tamanhos mais usados', icon: '🎨', desc: 'Conta as cores de impressão e os tamanhos mais frequentes nas OFs concluídas do período ativo.', run: rrReportCoresTamanhos },
     { id: 'relatorio-sergio', label: 'Relatório Sérgio', icon: '📝', desc: 'Montagem manual com múltiplos itens, autocomplete de clientes e impressão com fonte ampliada.', run: rrOpenSergioBuilder }
   ];
+
+  (function rrEnsureCustosCard() {
+    var custoDef = null;
+    rrDefs = rrDefs.filter(function(def) {
+      var id = String(def && def.id || '').trim();
+      var isCustos = id === 'custo-por-of' || id === 'custos-por-of' || String(def && def.label || '').trim() === 'Custo por OF';
+      if (!isCustos) return true;
+      if (!custoDef) {
+        custoDef = Object.assign({}, def || {}, {
+          id: 'custo-por-of',
+          label: 'Custo por OF',
+          icon: '🧾',
+          desc: 'Custo por OF calculado por área (R$/m²) com total e custo unitário.',
+          run: rrReportCustos
+        });
+      }
+      return false;
+    });
+    rrDefs.splice(4, 0, custoDef || {
+      id: 'custo-por-of',
+      label: 'Custo por OF',
+      icon: '🧾',
+      desc: 'Custo por OF calculado por área (R$/m²) com total e custo unitário.',
+      run: rrReportCustos
+    });
+    try { console.log('[RELATORIO-CUSTOS] card adicionado ao rrDefs'); } catch (_) {}
+  })();
 
   function rrDefsSignature() {
     return rrDefs.map(function(def) {
