@@ -11936,6 +11936,22 @@ window.addEventListener('unhandledrejection', function(e) {
     return lens;
   }
 
+  function getOfDayDistribution(ofs) {
+    var dias = {};
+    (Array.isArray(ofs) ? ofs : []).forEach(function(of) {
+      var dia = normDia(of && (of.dia || of.data || of.data_pedido || of.created_at)) || '';
+      dias[dia] = (dias[dia] || 0) + 1;
+    });
+    return dias;
+  }
+
+  function hasSuspiciousSingleDaySource(ofs) {
+    var list = Array.isArray(ofs) ? ofs : [];
+    if (!list.length) return false;
+    var keys = Object.keys(getOfDayDistribution(list)).filter(Boolean);
+    return keys.length <= 1 && list.length >= 100;
+  }
+
   function getCurrentSourceOfs() {
     if (Array.isArray(window._ofmaqListaCompleta) && window._ofmaqListaCompleta.length) return window._ofmaqListaCompleta.slice();
     if (Array.isArray(window._ofmaqBaseList) && window._ofmaqBaseList.length) return window._ofmaqBaseList.slice();
@@ -11984,11 +12000,17 @@ window.addEventListener('unhandledrejection', function(e) {
     return [maquina, dia, list.length].join('|');
   }
 
-  async function fetchFallbackOfs() {
+  async function fetchFallbackOfs(machineName) {
     if (state.fallbackLoading) return [];
     state.fallbackLoading = true;
     try {
-      var out = await apiJson('/api/ofs?status=em_producao&limit=500', { method: 'GET' });
+      var qs = new URLSearchParams();
+      qs.set('status', 'em_producao');
+      qs.set('limit', '0');
+      qs.set('nocache', '1');
+      qs.set('_t', String(Date.now()));
+      if (machineName) qs.set('maq', machineName);
+      var out = await apiJson('/api/ofs?' + qs.toString(), { method: 'GET' });
       var rows = Array.isArray(out && out.data) ? out.data : (Array.isArray(out && out.data && out.data.data) ? out.data.data : []);
       if ((!rows || !rows.length) && out && out.resp && out.resp.ok) {
         try {
@@ -12011,10 +12033,13 @@ window.addEventListener('unhandledrejection', function(e) {
     }
   }
 
-  async function resolveSourceOfs(ofs) {
+  async function resolveSourceOfs(ofs, opcoes) {
     var source = Array.isArray(ofs) && ofs.length ? ofs.slice() : getCurrentSourceOfs();
-    if (source.length) return source;
-    return fetchFallbackOfs();
+    var machineName = normalizeMachine((opcoes && (opcoes.maquina || opcoes.machine)) || state.selectedMachine || '');
+    if (source.length && !hasSuspiciousSingleDaySource(source)) return source;
+    var fetched = await fetchFallbackOfs(machineName);
+    if (fetched.length) return fetched;
+    return source;
   }
 
   function getMachineListFromOfs(ofs) {
@@ -12911,8 +12936,12 @@ window.addEventListener('unhandledrejection', function(e) {
     window._ofmaqRenderandoAgora = true;
     disconnectDirectObserver();
     try {
-      var source = await resolveSourceOfs(ofs);
+      var source = await resolveSourceOfs(ofs, opcoes);
       try { console.log('[OFMAQ-FONTES]', getSourceLengths()); } catch (_) {}
+      try {
+        var dias = getOfDayDistribution(Array.isArray(window.OFS) && window.OFS.length ? window.OFS : source);
+        console.log('[OFMAQ-DIAS-DIST]', JSON.stringify(dias));
+      } catch (_) {}
       try {
         if (Array.isArray(window.OFS) && window.OFS.length) console.log('[COR-DEBUG]', JSON.stringify(window.OFS[0] && window.OFS[0].cores_impressao));
       } catch (_) {}
