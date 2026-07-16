@@ -11478,6 +11478,8 @@ window.addEventListener('unhandledrejection', function(e) {
   };
   window.__patchOfmaqDirectState = state;
   window._ofmaqUltimaAssinatura = String(window._ofmaqUltimaAssinatura || '');
+  window._ofmaqTabelaJaRenderizada = !!window._ofmaqTabelaJaRenderizada;
+  window._ofmaqTabelaAssinatura = String(window._ofmaqTabelaAssinatura || '');
   window.__patchOfmaqObserverConnected = !!window.__patchOfmaqObserverConnected;
   window.__patchOfmaqObserverReconnectTimer = window.__patchOfmaqObserverReconnectTimer || null;
 
@@ -11618,7 +11620,7 @@ window.addEventListener('unhandledrejection', function(e) {
   }
 
   function getContainer() {
-    return document.getElementById('ofs-por-maquina-container') || document.getElementById('ofmaq-body') || document.getElementById('ofsmaq-container') || document.getElementById('page-ofmaq');
+    return document.getElementById('page-ofmaq') || document.getElementById('ofs-por-maquina-container') || document.getElementById('ofmaq-body') || document.getElementById('ofsmaq-container');
   }
 
   function getPage() {
@@ -12763,6 +12765,7 @@ window.addEventListener('unhandledrejection', function(e) {
     hideLegacyOfmaqUi();
     var container = getContainer();
     if (!container) return null;
+    try { container.style.position = 'relative'; } catch (_) {}
     try {
       baseOfs.slice(0, 3).forEach(function(of) {
         var rawDia = of && (of.dia || of.data || of.data_pedido || of.created_at);
@@ -12772,15 +12775,24 @@ window.addEventListener('unhandledrejection', function(e) {
     } catch (_) {}
     var rows = baseOfs.map(function(of, idx) { return getRowData(of, idx); }).filter(Boolean);
     state.currentRows = rows;
-    var nextSignature = [state.selectedMachine, state.selectedDateIso, rows.length].join('|');
+    var nextSignature = [state.selectedMachine, state.selectedDateIso].join('|');
     var root = state.root && state.root.parentElement === container ? state.root : (container.querySelector ? container.querySelector('.ofmaq-direct-root') : null);
-    if (!root || state.lastRenderSignature !== nextSignature) {
-      container.innerHTML = '';
+    var shouldCreate = !root || !window._ofmaqTabelaJaRenderizada || window._ofmaqTabelaAssinatura !== nextSignature;
+    if (shouldCreate) {
+      if (root && root.parentElement === container) root.remove();
       root = buildRoot(rows);
       container.appendChild(root);
       bindEvents(root);
       state.root = root;
+      window._ofmaqTabelaJaRenderizada = true;
+      window._ofmaqTabelaAssinatura = nextSignature;
       state.lastRenderSignature = nextSignature;
+      try { console.log('[OFMAQ-RENDER] criando tabela, linhas:', rows.length, 'container:', container && container.id, 'visivel:', !!(container && container.offsetHeight > 0)); } catch (_) {}
+    } else {
+      try {
+        root.style.display = '';
+        container.style.display = '';
+      } catch (_) {}
     }
     renderToolbar(root, rows);
     refilterTable(root);
@@ -12828,6 +12840,7 @@ window.addEventListener('unhandledrejection', function(e) {
       var currentOfs = getCurrentSourceOfs();
       var nextSignature = buildRenderSignature(currentOfs, null);
       if (nextSignature === String(window._ofmaqUltimaAssinatura || '')) return;
+      window._ofmaqTabelaJaRenderizada = false;
       requestRender(100);
     }, 2000);
   }
@@ -12877,11 +12890,22 @@ window.addEventListener('unhandledrejection', function(e) {
         if (!isOfmaqActive()) return null;
         hideLegacyOfmaqUi();
         showLoadingState();
+        window._ofmaqTabelaJaRenderizada = false;
         window._ofmaqUltimaAssinatura = buildRenderSignature(source, opcoes);
         scheduleRetryRender(1000);
         return null;
       }
-      if (state.root && nextSignature === String(window._ofmaqUltimaAssinatura || '')) return state.root;
+      if (state.root && window._ofmaqTabelaJaRenderizada && nextSignature === String(window._ofmaqUltimaAssinatura || '')) {
+        try {
+          state.root.style.display = '';
+          var parent = state.root.parentElement || getContainer();
+          if (parent && parent.style) {
+            parent.style.display = '';
+            parent.style.position = 'relative';
+          }
+        } catch (_) {}
+        return state.root;
+      }
       clearTimeout(state.retryTimer);
       var rendered = renderDirect(source, maquinas || window._listaMaquinas || window._ofmaqUltimasMaquinas || [], opcoes || {});
       window._ofmaqUltimaAssinatura = nextSignature;
