@@ -2283,17 +2283,37 @@ try {
   function rrEnsureCustosCardInDom(host) {
     var scope = host || rrHost();
     if (!scope || !scope.querySelector) return;
-    var centralContainer = scope.querySelector('.rr-grid, #central-relatorios-grid, .relatorios-grid, #relatorios-cards, [class*="relatorio"][class*="grid"]');
-    if (!centralContainer || scope.querySelector('#card-custo-por-of')) return;
-    var card = document.createElement('div');
-    card.id = 'card-custo-por-of';
-    card.className = 'rr-card';
-    card.setAttribute('data-rr-search', 'custo por of custo por of calculado por area (r$/m²) com total e custo unitario.');
-    card.innerHTML = ''
-      + '<div class="rr-card-top"><div class="rr-icon">🧾</div></div>'
-      + '<div><div class="rr-label">Custo por OF</div><div class="rr-desc">Custo por OF calculado por área (R$/m²) com total e custo unitário.</div></div>'
-      + '<button type="button" class="rr-btn" data-rr-open="custo-por-of">Abrir Relatório</button>';
-    centralContainer.appendChild(card);
+    var grid = scope.querySelector('.rr-grid')
+      || scope.querySelector('#relatorios-grid')
+      || scope.querySelector('[class*="rr-grid"]')
+      || scope.querySelector('[id*="relatorio"]');
+    try { console.log('[CUSTOS-GRID] container encontrado:', grid ? (grid.id || grid.className) : ''); } catch (_) {}
+    if (!grid || scope.querySelector('#card-custo-por-of')) return;
+    var cardBase = grid.querySelector('.rr-card');
+    try { console.log('[CUSTOS-GRID] card base:', cardBase ? cardBase.className : ''); } catch (_) {}
+    if (!cardBase) return;
+    var novoCard = cardBase.cloneNode(true);
+    novoCard.id = 'card-custo-por-of';
+    novoCard.setAttribute('data-rr-search', 'custo por of custo por of calculado por area (r$/m²) com total e custo unitario.');
+    novoCard.style.display = '';
+    var tituloEl = novoCard.querySelector('[class*="titulo"],[class*="title"],h3,h4,strong,.rr-label');
+    if (tituloEl) tituloEl.textContent = 'Custo por OF';
+    var descEl = novoCard.querySelector('.rr-desc');
+    if (descEl) descEl.textContent = 'Custo por OF calculado por área (R$/m²) com total e custo unitário.';
+    var iconEl = novoCard.querySelector('.rr-icon');
+    if (iconEl) iconEl.textContent = '🧾';
+    var btn = novoCard.querySelector('button,[class*="btn"]');
+    if (btn) {
+      btn.textContent = 'Abrir Relatório';
+      btn.setAttribute('data-rr-open', 'custo-por-of');
+      btn.onclick = function() {
+        if (typeof window.rrReportCustos === 'function') window.rrReportCustos();
+        else if (typeof rrReportCustos === 'function') rrReportCustos();
+        else alert('Relatório de custos não configurado');
+      };
+    }
+    grid.appendChild(novoCard);
+    try { console.log('[CUSTOS-GRID] card injetado com sucesso'); } catch (_) {}
   }
 
   function rrEnsureFreshPage(force) {
@@ -2366,6 +2386,7 @@ try {
 
   function rrRenderPage() {
     rrEnsureCustosCard();
+    try { window.rrReportCustos = rrReportCustos; } catch (_) {}
     rrEnsureStyle();
     var host = rrHost();
     if (!host) return false;
@@ -2430,7 +2451,7 @@ try {
           };
         }
       } catch (_) {}
-    }, 500);
+    }, 1500);
     try { host.setAttribute('data-rr-defs-sig', defsSig); } catch (_) {}
     rrBindPeriodControls(host);
     return true;
