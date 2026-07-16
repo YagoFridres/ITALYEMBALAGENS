@@ -1,4 +1,4 @@
-﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1101,9 +1101,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260713160000';
-const SW_RUNTIME_VERSION = '20260713160000';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260713160000';
+const PATCH_RUNTIME_VERSION = '20260716173000';
+const SW_RUNTIME_VERSION = '20260716173000';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260716173000';
 
 app.get('/sw.js', (req, res) => {
   try {
