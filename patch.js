@@ -12361,21 +12361,20 @@ window.addEventListener('unhandledrejection', function(e) {
     });
   }
 
-  function _ofmaqReordenarTbody() {
+  function reordenarTbody() {
     var tbody = document.querySelector('#ofmaq-tabela-nova tbody') || document.querySelector('#ofmaq-tabela tbody');
     if (!tbody) return;
     var rows = Array.from(tbody.querySelectorAll('tr[data-of-id]'));
     rows.sort(function(a, b) {
-      var va = parseInt(a.dataset.ordem || a.getAttribute('data-order') || ((a.querySelector('input[type="number"]') || {}).value) || 999, 10);
-      var vb = parseInt(b.dataset.ordem || b.getAttribute('data-order') || ((b.querySelector('input[type="number"]') || {}).value) || 999, 10);
-      return va - vb;
+      return (parseInt(((a.querySelector('input') || {}).value), 10) || 999)
+        - (parseInt(((b.querySelector('input') || {}).value), 10) || 999);
     });
     rows.forEach(function(tr) { tbody.appendChild(tr); });
-    rows.forEach(function(tr, i) {
+    rows.forEach(function(tr) {
       var input = tr.querySelector('input[type="number"]');
-      if (input && input !== document.activeElement) input.value = i + 1;
-      tr.dataset.ordem = i + 1;
-      tr.setAttribute('data-order', String(i + 1));
+      var ordem = parseInt(((input || {}).value), 10) || 999;
+      tr.dataset.ordem = String(ordem);
+      tr.setAttribute('data-order', String(ordem));
     });
   }
 
@@ -12763,9 +12762,7 @@ window.addEventListener('unhandledrejection', function(e) {
         row.setAttribute('data-order', String(value));
         row.dataset.ordem = String(value);
         input.value = String(value);
-        _ofmaqReordenarTbody();
-        sortRows(tbody);
-        syncSequenceInputs(tbody);
+        if (resp.status === 200 || resp.status === 204) reordenarTbody();
         ensureEmptyRow(tbody);
       } catch (err) {
         try { window.toast('Erro ao salvar sequencia: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
