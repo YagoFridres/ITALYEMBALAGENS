@@ -1,4 +1,4 @@
-window._comRodando = false;
+﻿window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
 if (!window.__comRodandoWatchdogInstalled) {
@@ -3972,6 +3972,7 @@ window._compraPapelaoBlankItem = function() {
   return {
     ped_cliente: '',
     data_entrega: '',
+    nomenclatura: '',
     po: '',
     largura: '',
     comprimento: '',
@@ -3982,9 +3983,11 @@ window._compraPapelaoBlankItem = function() {
     vinco4: '',
     quantidade: '',
     lote_minimo: '',
+    area_m2: '',
     valor_m2: '',
-    observacao: '',
-    ped_fornecedor: ''
+    vl_p_mil: '',
+    valor_total: '',
+    observacao: ''
   };
 };
 window._compraPapelaoStatsResumo = function() {
@@ -4041,12 +4044,16 @@ window._compraPapelaoNormalizeCompraHeader = function(compra) {
     var vincosTxt = String(current.vincos || '').trim();
     var partes = vincosTxt ? vincosTxt.split('/').map(function(part) { return String(part || '').trim(); }) : [];
     return Object.assign({}, item || {}, {
+      nomenclatura: String(current.nomenclatura || current.po || '').trim(),
       po: String(current.po || current.nomenclatura || '').trim(),
+      vincos: vincosTxt,
       vinco1: String(current.vinco1 || partes[0] || '').trim(),
       vinco2: String(current.vinco2 || partes[1] || '').trim(),
       vinco3: String(current.vinco3 || partes[2] || '').trim(),
       vinco4: String(current.vinco4 || partes[3] || '').trim(),
-      ped_fornecedor: String(item && (item.ped_fornecedor || item.pedido_fornecedor) || '').trim()
+      area_m2: current.area_m2 != null ? current.area_m2 : '',
+      vl_p_mil: current.vl_p_mil != null ? current.vl_p_mil : '',
+      valor_total: current.valor_total != null ? current.valor_total : ''
     });
   }) : [window._compraPapelaoBlankItem()];
   return row;
@@ -4125,7 +4132,7 @@ window._compraPapelaoStatusOptionsHtml = function(selected) {
   }).join('');
 };
 window._compraPapelaoItemFieldsOrder = function() {
-  return ['ped_cliente', 'data_entrega', 'po', 'largura', 'comprimento', 'vinco1', 'vinco2', 'vinco3', 'vinco4', 'quantidade', 'lote_minimo', 'valor_m2', 'observacao', 'ped_fornecedor'];
+  return ['ped_cliente', 'data_entrega', 'nomenclatura', 'largura', 'comprimento', 'vincos', 'quantidade', 'lote_minimo', 'area_m2', 'valor_m2', 'vl_p_mil', 'valor_total', 'observacao'];
 };
 window._compraPapelaoComposeVincos = function(item) {
   var values = [];
@@ -4271,10 +4278,15 @@ window._compraPapelaoEnsureStyles = function() {
     + '#page-compras .ccpx-table-panel{display:grid;gap:12px}'
     + '#page-compras .ccpx-table-panel-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}'
     + '#page-compras .ccpx-table-panel-head .meta{font-size:12px;color:#94a3b8}'
-    + '#page-compras .ccpx-table-clean{width:100%;border-collapse:separate;border-spacing:0;min-width:980px}'
+    + '#page-compras .ccpx-table-clean{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0;min-width:1980px}'
     + '#page-compras .ccpx-table-clean th{position:sticky;top:0;z-index:2;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;padding:12px;border-bottom:1px solid rgba(148,163,184,.18);text-align:left}'
-    + '#page-compras .ccpx-table-clean td{padding:13px 12px;border-bottom:1px solid rgba(148,163,184,.1);font-size:13px;color:#e2e8f0;vertical-align:middle}'
+    + '#page-compras .ccpx-table-clean td{padding:13px 12px;border-bottom:1px solid rgba(148,163,184,.1);font-size:13px;color:#e2e8f0;vertical-align:middle;white-space:nowrap}'
     + '#page-compras .ccpx-table-clean tbody tr:hover td{background:rgba(30,41,59,.46)}'
+    + '#page-compras .ccpx-table-clean .ccpx-sticky-left{position:sticky;left:0;z-index:3;background:#0f172a;box-shadow:8px 0 16px rgba(2,6,23,.22)}'
+    + '#page-compras .ccpx-table-clean td.ccpx-sticky-left{background:rgba(15,23,42,.98)}'
+    + '#page-compras .ccpx-table-clean .ccpx-sticky-right{position:sticky;right:0;z-index:3;background:#0f172a;box-shadow:-8px 0 16px rgba(2,6,23,.22)}'
+    + '#page-compras .ccpx-table-clean td.ccpx-sticky-right{background:rgba(15,23,42,.98)}'
+    + '#page-compras .ccpx-table-clean .ccpx-col-obs{white-space:normal;min-width:220px;max-width:320px}'
     + '#page-compras .ccpx-row-stack{display:grid;gap:4px}'
     + '#page-compras .ccpx-row-stack strong{font-size:13px;color:#f8fafc}'
     + '#page-compras .ccpx-row-stack span{font-size:11px;color:#94a3b8}'
@@ -4336,10 +4348,11 @@ window._compraPapelaoEnsureStyles = function() {
     + '.ccpx-modal-num{color:var(--accent,#60a5fa)!important;font-weight:900;font-family:var(--mono,inherit)}'
     + '.ccpx-modal-items-sheet{display:grid;gap:12px;padding:16px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.6)}'
     + '.ccpx-modal-items-toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}'
-    + '.ccpx-modal-items-sheet table{width:100%;border-collapse:collapse;min-width:1880px}'
+    + '.ccpx-modal-items-sheet table{width:100%;border-collapse:collapse;min-width:1980px}'
     + '.ccpx-modal-items-sheet th{padding:7px 8px;background:var(--s2,#0f172a);border:1px solid rgba(148,163,184,.18);font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#cbd5e1;text-align:left;font-family:var(--mono,inherit);white-space:nowrap}'
     + '.ccpx-modal-items-sheet td{padding:0;border:1px solid rgba(148,163,184,.12);vertical-align:middle;background:rgba(15,23,42,.22)}'
     + '.ccpx-modal-items-sheet input,.ccpx-modal-items-sheet textarea{width:100%;background:transparent;color:#f8fafc;border:none;outline:none;padding:10px 10px;font-size:12px}'
+    + '.ccpx-modal-items-sheet input[data-field="area_m2"],.ccpx-modal-items-sheet input[data-field="vl_p_mil"],.ccpx-modal-items-sheet input[data-field="valor_total"]{background:rgba(255,255,255,.04)}'
     + '.ccpx-modal-items-sheet textarea{min-height:40px;resize:vertical}'
     + '.ccpx-modal-items-sheet .num-read{padding:10px 10px;text-align:right;font-variant-numeric:tabular-nums;font-weight:900;color:#e2e8f0;font-family:var(--mono,inherit)}'
     + '.ccpx-modal-items-sheet .idx-read{padding:10px 10px;text-align:center;font-weight:900;color:#60a5fa;font-family:var(--mono,inherit)}'
@@ -4470,30 +4483,47 @@ window._compraPapelaoRenderBlocksHtml = function() {
   }
   return ''
     + '<div class="ccpx-table-panel">'
-    + '  <div class="ccpx-table-panel-head"><div class="meta">Tabela resumida com totais consolidados por compra.</div><div class="meta">Empresa atual: ' + window._compraPapelaoEsc(window._compraPapelaoEmpresaLabelAtual()) + '</div></div>'
-    + '  <div class="ccpx-block-scroll"><table class="ccpx-table-clean"><thead><tr><th>Nº</th><th>Fornecedor</th><th>Pedido</th><th class="num">Qtd</th><th class="num">Área m²</th><th class="num">Valor</th><th>Ações</th></tr></thead><tbody>'
+    + '  <div class="ccpx-table-panel-head"><div class="meta">Detalhamento completo por item das compras de papelão.</div><div class="meta">Empresa atual: ' + window._compraPapelaoEsc(window._compraPapelaoEmpresaLabelAtual()) + '</div></div>'
+    + '  <div class="ccpx-block-scroll"><table class="ccpx-table-clean"><thead><tr><th class="ccpx-sticky-left">Número da compra</th><th>Nº</th><th>Ped. Cliente</th><th>Data Entrega</th><th>Nomenclatura</th><th class="num">Largura</th><th class="num">Comprimento</th><th>Vincos</th><th class="num">Quantidade</th><th class="num">Lote Mínimo</th><th class="num">Área m²</th><th class="num">Valor m²</th><th class="num">VL P/MIL</th><th class="num">Valor Total</th><th class="ccpx-col-obs">Observação</th><th>Ped. Fornecedor</th><th class="ccpx-sticky-right">Ações</th></tr></thead><tbody>'
     + compras.map(function(compra) {
         var id = String(compra && compra.id || '').trim();
         var pastaNome = (Array.isArray(window._compraPapelaoStateRef().pastas) ? window._compraPapelaoStateRef().pastas : []).find(function(row) {
           return String(row && row.id || '') === String(compra && compra.pasta_id || '') && String(row && row._emp_id_consulta || '') === String(compra && compra._emp_id_consulta || '');
         });
-    var totals = window._compraPapelaoCompraTotals(compra);
-    var dataRef = compra && (compra.data_compra || compra.data || compra.atualizado_em || compra.criado_em || compra.created_at || compra.updated_at);
-    return ''
-          + '<tr data-ccpx-compra="' + window._compraPapelaoAttr(id) + '">'
-          + '  <td><div class="ccpx-row-stack"><strong>' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(compra && compra.numero_compra || '')) + '</strong><span>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(dataRef)) + '</span></div></td>'
-          + '  <td><div class="ccpx-row-stack"><strong>' + window._compraPapelaoEsc(compra && compra.fornecedor || '—') + '</strong><span>' + window._compraPapelaoEsc(compra && compra.status || 'Solicitada') + '</span></div></td>'
-          + '  <td><div class="ccpx-row-stack"><strong>' + window._compraPapelaoEsc(compra && compra.ped_fornecedor || '—') + '</strong><span>' + window._compraPapelaoEsc(pastaNome && pastaNome.nome || 'Sem pasta') + '</span></div></td>'
-          + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.qtd, 0)) + '</td>'
-          + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.area, 4)) + '</td>'
-          + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(totals.valor)) + '</td>'
-          + '  <td><div class="ccpx-actions-compact">'
-          + '    <button type="button" data-ccpx-edit="' + window._compraPapelaoAttr(id) + '" class="primary">Editar</button>'
-          + '    <button type="button" data-ccpx-folder-move="' + window._compraPapelaoAttr(id) + '">Pasta</button>'
-          + '    <button type="button" data-ccpx-print-one="' + window._compraPapelaoAttr(id) + '">Imprimir</button>'
-          + '    <button type="button" data-ccpx-delete="' + window._compraPapelaoAttr(id) + '" class="danger">Excluir</button>'
-          + '  </div></td>'
-          + '</tr>';
+        var dataRef = compra && (compra.data_compra || compra.data || compra.atualizado_em || compra.criado_em || compra.created_at || compra.updated_at);
+        var itens = Array.isArray(compra && compra.itens) && compra.itens.length ? compra.itens : [window._compraPapelaoBlankItem()];
+        return itens.map(function(item, idx) {
+          var d = window._compraPapelaoDeriveItem(item);
+          var areaVal = item && item.area_m2 != null && item.area_m2 !== '' ? item.area_m2 : d.area_m2;
+          var milVal = item && item.vl_p_mil != null && item.vl_p_mil !== '' ? item.vl_p_mil : d.vl_p_mil;
+          var totalVal = item && item.valor_total != null && item.valor_total !== '' ? item.valor_total : d.valor_total;
+          return ''
+            + '<tr data-ccpx-compra="' + window._compraPapelaoAttr(id) + '">'
+            + '  <td class="ccpx-sticky-left"><div class="ccpx-row-stack"><strong>' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(compra && compra.numero_compra || '')) + '</strong><span>' + window._compraPapelaoEsc((compra && compra.fornecedor) || '—') + ' · ' + window._compraPapelaoEsc(pastaNome && pastaNome.nome || 'Sem pasta') + ' · ' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(dataRef)) + '</span></div></td>'
+            + '  <td>' + window._compraPapelaoEsc(String(item && item.seq != null ? item.seq : (idx + 1))) + '</td>'
+            + '  <td>' + window._compraPapelaoEsc(item && item.ped_cliente || '—') + '</td>'
+            + '  <td>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(item && item.data_entrega || '')) + '</td>'
+            + '  <td>' + window._compraPapelaoEsc(item && (item.nomenclatura || item.po) || '—') + '</td>'
+            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.largura || 0, 0)) + '</td>'
+            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.comprimento || 0, 0)) + '</td>'
+            + '  <td>' + window._compraPapelaoEsc(item && item.vincos || '—') + '</td>'
+            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.quantidade || 0, 0)) + '</td>'
+            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.lote_minimo || 0, 0)) + '</td>'
+            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(areaVal, 4)) + '</td>'
+            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.valor_m2 || 0)) + '</td>'
+            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(milVal)) + '</td>'
+            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(totalVal)) + '</td>'
+            + '  <td class="ccpx-col-obs">' + window._compraPapelaoEsc(item && item.observacao || '—') + '</td>'
+            + '  <td>' + window._compraPapelaoEsc(item && item.ped_fornecedor || compra && compra.ped_fornecedor || '—') + '</td>'
+            + '  <td class="ccpx-sticky-right"><div class="ccpx-actions-compact">'
+            + '    <button type="button" data-ccpx-clone="' + window._compraPapelaoAttr(id) + '">Clonar</button>'
+            + '    <button type="button" data-ccpx-folder-move="' + window._compraPapelaoAttr(id) + '">Pasta</button>'
+            + '    <button type="button" data-ccpx-edit="' + window._compraPapelaoAttr(id) + '" class="primary">Editar</button>'
+            + '    <button type="button" data-ccpx-print-one="' + window._compraPapelaoAttr(id) + '">Imprimir</button>'
+            + '    <button type="button" data-ccpx-delete="' + window._compraPapelaoAttr(id) + '" class="danger">Excluir</button>'
+            + '  </div></td>'
+            + '</tr>';
+        }).join('');
       }).join('')
     + '  </tbody></table></div>'
     + '</div>';
@@ -4702,49 +4732,50 @@ window._compraPapelaoCollectModalRows = function(overlay) {
     var item = {
       ped_cliente: String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim(),
       data_entrega: String((row.querySelector('[data-field="data_entrega"]') || {}).value || '').trim(),
-      po: String((row.querySelector('[data-field="po"]') || {}).value || '').trim(),
+      nomenclatura: String((row.querySelector('[data-field="nomenclatura"]') || {}).value || '').trim(),
       largura: String((row.querySelector('[data-field="largura"]') || {}).value || '').trim(),
       comprimento: String((row.querySelector('[data-field="comprimento"]') || {}).value || '').trim(),
-      vinco1: String((row.querySelector('[data-field="vinco1"]') || {}).value || '').trim(),
-      vinco2: String((row.querySelector('[data-field="vinco2"]') || {}).value || '').trim(),
-      vinco3: String((row.querySelector('[data-field="vinco3"]') || {}).value || '').trim(),
-      vinco4: String((row.querySelector('[data-field="vinco4"]') || {}).value || '').trim(),
+      vincos: String((row.querySelector('[data-field="vincos"]') || {}).value || '').trim(),
       quantidade: String((row.querySelector('[data-field="quantidade"]') || {}).value || '').trim(),
       lote_minimo: String((row.querySelector('[data-field="lote_minimo"]') || {}).value || '').trim(),
+      area_m2: String((row.querySelector('[data-field="area_m2"]') || {}).value || '').trim(),
       valor_m2: String((row.querySelector('[data-field="valor_m2"]') || {}).value || '').trim(),
-      observacao: String((row.querySelector('[data-field="observacao"]') || {}).value || '').trim(),
-      ped_fornecedor: String((row.querySelector('[data-field="ped_fornecedor"]') || {}).value || '').trim()
+      vl_p_mil: String((row.querySelector('[data-field="vl_p_mil"]') || {}).value || '').trim(),
+      valor_total: String((row.querySelector('[data-field="valor_total"]') || {}).value || '').trim(),
+      observacao: String((row.querySelector('[data-field="observacao"]') || {}).value || '').trim()
     };
     var d = window._compraPapelaoDeriveItem(item);
-    item.vincos = window._compraPapelaoComposeVincos(item);
-    item.nomenclatura = item.po;
-    item.area_m2 = d.area_m2;
-    item.vl_p_mil = d.vl_p_mil;
-    item.valor_total = d.valor_total;
+    item.po = item.nomenclatura;
+    item.area_m2 = item.area_m2 || d.area_m2;
+    item.vl_p_mil = item.vl_p_mil || d.vl_p_mil;
+    item.valor_total = item.valor_total || d.valor_total;
     return item;
   }).filter(function(item) {
-    return item.ped_cliente || item.data_entrega || item.po || item.largura || item.comprimento || item.vincos || item.quantidade || item.lote_minimo || item.valor_m2 || item.observacao || item.ped_fornecedor;
+    return item.ped_cliente || item.data_entrega || item.nomenclatura || item.largura || item.comprimento || item.vincos || item.quantidade || item.lote_minimo || item.area_m2 || item.valor_m2 || item.vl_p_mil || item.valor_total || item.observacao;
   });
 };
 window._compraPapelaoRenderModalRowsHtml = function(itens) {
   var rows = window._compraPapelaoEnsureVisibleRows(itens, 5);
   return rows.map(function(item, idx) {
     var d = window._compraPapelaoDeriveItem(item);
+    var areaManual = !!(item && item.area_m2 != null && String(item.area_m2).trim() !== '');
+    var milManual = !!(item && item.vl_p_mil != null && String(item.vl_p_mil).trim() !== '');
+    var totalManual = !!(item && item.valor_total != null && String(item.valor_total).trim() !== '');
     return ''
       + '<tr data-ccpx-item-row="' + idx + '">'
       + '  <td><input data-field="ped_cliente" value="' + window._compraPapelaoAttr(item && item.ped_cliente || '') + '"></td>'
       + '  <td><input data-field="data_entrega" type="date" value="' + window._compraPapelaoAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></td>'
-      + '  <td><input data-field="po" value="' + window._compraPapelaoAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></td>'
-      + '  <td><div style="display:grid;grid-template-columns:minmax(88px,1fr) 14px minmax(88px,1fr);align-items:center"><input data-field="largura" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.largura || '') + '" placeholder="L"><span style="color:#64748b;font-weight:900;text-align:center">×</span><input data-field="comprimento" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.comprimento || '') + '" placeholder="C"></div></td>'
-      + '  <td><div style="display:grid;grid-template-columns:repeat(4,minmax(56px,1fr));gap:4px"><input data-field="vinco1" value="' + window._compraPapelaoAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + window._compraPapelaoAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + window._compraPapelaoAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + window._compraPapelaoAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></td>'
+      + '  <td><input data-field="nomenclatura" value="' + window._compraPapelaoAttr(item && (item.nomenclatura || item.po) || '') + '" placeholder="Nomenclatura"></td>'
+      + '  <td><input data-field="largura" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.largura || '') + '" placeholder="Largura"></td>'
+      + '  <td><input data-field="comprimento" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.comprimento || '') + '" placeholder="Comprimento"></td>'
+      + '  <td><input data-field="vincos" value="' + window._compraPapelaoAttr(item && item.vincos || '') + '" placeholder="Ex: 10/20/30"></td>'
       + '  <td><input data-field="quantidade" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.quantidade || '') + '"></td>'
       + '  <td><input data-field="lote_minimo" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.lote_minimo || '') + '"></td>'
-      + '  <td class="num-read" data-ccpx-area>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(d.area_m2, 4)) + '</td>'
+      + '  <td><input data-field="area_m2" data-ccpx-manual="' + (areaManual ? '1' : '0') + '" type="number" min="0" step="0.0001" value="' + window._compraPapelaoAttr(areaManual ? item.area_m2 : String(Math.round((Number(d.area_m2 || 0) || 0) * 10000) / 10000)) + '"></td>'
       + '  <td><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_m2 || '') + '"></td>'
-      + '  <td class="num-read" data-ccpx-mil>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '</td>'
-      + '  <td class="num-read" data-ccpx-total>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(d.valor_total)) + '</td>'
+      + '  <td><input data-field="vl_p_mil" data-ccpx-manual="' + (milManual ? '1' : '0') + '" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(milManual ? item.vl_p_mil : String(Math.round((Number(d.vl_p_mil || 0) || 0) * 100) / 100)) + '"></td>'
+      + '  <td><input data-field="valor_total" data-ccpx-manual="' + (totalManual ? '1' : '0') + '" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(totalManual ? item.valor_total : String(Math.round((Number(d.valor_total || 0) || 0) * 100) / 100)) + '"></td>'
       + '  <td><textarea data-field="observacao" rows="1">' + window._compraPapelaoEsc(item && item.observacao || '') + '</textarea></td>'
-      + '  <td><input data-field="ped_fornecedor" value="' + window._compraPapelaoAttr(item && item.ped_fornecedor || '') + '"></td>'
       + '  <td><div class="ccpx-modal-line-actions"><button type="button" class="dup" data-ccpx-dup-item="' + idx + '" title="Duplicar linha">+</button><button type="button" class="del" data-ccpx-del-item="' + idx + '" title="Remover linha">✕</button></div></td>'
       + '</tr>';
   }).join('');
@@ -4761,15 +4792,27 @@ window._compraPapelaoRefreshModalComputed = function(overlay) {
       valor_m2: (row.querySelector('[data-field="valor_m2"]') || {}).value
     };
     var d = window._compraPapelaoDeriveItem(item);
+    var areaInput = row.querySelector('[data-field="area_m2"]');
+    var milInput = row.querySelector('[data-field="vl_p_mil"]');
+    var totalInput = row.querySelector('[data-field="valor_total"]');
+    var areaVal = window._compraPapelaoNum((areaInput || {}).value);
+    var milVal = window._compraPapelaoNum((milInput || {}).value);
+    var totalVal = window._compraPapelaoNum((totalInput || {}).value);
+    if (areaInput && (areaInput.dataset.ccpxManual !== '1' || !String(areaInput.value || '').trim())) {
+      areaVal = d.area_m2;
+      areaInput.value = String(Math.round((Number(d.area_m2 || 0) || 0) * 10000) / 10000);
+    }
+    if (milInput && (milInput.dataset.ccpxManual !== '1' || !String(milInput.value || '').trim())) {
+      milVal = d.vl_p_mil;
+      milInput.value = String(Math.round((Number(d.vl_p_mil || 0) || 0) * 100) / 100);
+    }
+    if (totalInput && (totalInput.dataset.ccpxManual !== '1' || !String(totalInput.value || '').trim())) {
+      totalVal = d.valor_total;
+      totalInput.value = String(Math.round((Number(d.valor_total || 0) || 0) * 100) / 100);
+    }
     totalQtd += window._compraPapelaoNum(item.quantidade);
-    totalArea += d.area_m2;
-    totalValor += d.valor_total;
-    var a = row.querySelector('[data-ccpx-area]');
-    var m = row.querySelector('[data-ccpx-mil]');
-    var t = row.querySelector('[data-ccpx-total]');
-    if (a) a.textContent = window._compraPapelaoFmtNum(d.area_m2, 4);
-    if (m) m.textContent = window._compraPapelaoFmtMoney(d.vl_p_mil);
-    if (t) t.textContent = window._compraPapelaoFmtMoney(d.valor_total);
+    totalArea += areaVal;
+    totalValor += totalVal;
   });
   var q = overlay.querySelector('#ccpx-sum-qtd');
   var a2 = overlay.querySelector('#ccpx-sum-area');
@@ -4798,11 +4841,11 @@ window._compraPapelaoCompraModalHtml = function(compra) {
     + '    <div class="ccpx-modal-inline-stack"><label>Status</label><select id="ccpx-status">' + window._compraPapelaoStatusOptionsHtml(header.status || 'Solicitada') + '</select></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Previsão de Chegada</label><input id="ccpx-prev-chegada" type="date" value="' + window._compraPapelaoAttr(header.previsao_chegada || '') + '"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>CNPJ Fornecedor</label><input id="ccpx-cnpj-fornecedor" value="' + window._compraPapelaoAttr(header.cnpj_fornecedor || '') + '"></div>'
-    + '    <div class="ccpx-modal-inline-stack full"><label>Observações</label><textarea id="ccpx-obs" rows="2">' + window._compraPapelaoEsc(header.observacao || '') + '</textarea></div>'
+    + '    <div class="ccpx-modal-inline-stack full"><label>Observação da compra</label><textarea id="ccpx-obs" rows="2">' + window._compraPapelaoEsc(header.observacao || '') + '</textarea></div>'
     + '  </div>'
     + '<div class="ccpx-modal-items-sheet" style="margin-top:18px">'
     + '  <div class="ccpx-modal-items-toolbar"><div><div style="font-size:14px;font-weight:900;color:#f8fafc">Itens da Compra</div><div style="font-size:12px;color:#94a3b8">Tab navega entre células; Enter na última célula da última linha cria uma nova linha.</div></div><button type="button" class="btn btn-ghost btn-sm" id="ccpx-add-item">+ Nova Linha</button></div>'
-    + '  <div class="ccpx-modal-items-wrap"><table><thead><tr><th>Pedido Cliente</th><th>Entrega</th><th>PO</th><th>Medidas L × C</th><th>Vincos</th><th>Qtde</th><th>Lote Mínimo</th><th>Área Pedido (m²)</th><th>Valor m²</th><th>Valor p/mil</th><th>Valor Total</th><th>Obs</th><th>Ped. Fornecedor</th><th>Ações</th></tr></thead><tbody id="ccpx-modal-items-body">' + window._compraPapelaoRenderModalRowsHtml(header && header.itens || []) + '</tbody></table></div>'
+    + '  <div class="ccpx-modal-items-wrap"><table><thead><tr><th>Ped. Cliente</th><th>Data Entrega</th><th>Nomenclatura</th><th>Largura</th><th>Comprimento</th><th>Vincos</th><th>Quantidade</th><th>Lote Mínimo</th><th>Área m²</th><th>Valor m²</th><th>VL P/MIL</th><th>Valor Total</th><th>Observação do item</th><th>Ações</th></tr></thead><tbody id="ccpx-modal-items-body">' + window._compraPapelaoRenderModalRowsHtml(header && header.itens || []) + '</tbody></table></div>'
     + '  <div class="ccpx-summary"><div class="ccpx-chip"><div class="lbl">Quantidade</div><div class="val" id="ccpx-sum-qtd">0</div></div><div class="ccpx-chip"><div class="lbl">Área</div><div class="val" id="ccpx-sum-area">0,0000 m²</div></div><div class="ccpx-chip"><div class="lbl">Valor</div><div class="val" id="ccpx-sum-total">R$ 0,00</div></div></div>'
     + '  <div class="ccpx-modal-totalbar"><div class="lbl">Total Geral</div><div class="val" id="ccpx-total-geral">R$ 0,00</div></div>'
     + '</div>'
@@ -4817,8 +4860,6 @@ window._compraPapelaoCollectCompraPayload = function(overlay, compra) {
     current.po = String(current.po || current.nomenclatura || '').trim();
     current.nomenclatura = current.po;
     current.vincos = window._compraPapelaoComposeVincos(current);
-    current.ped_fornecedor = String(current.ped_fornecedor || current.pedido_fornecedor || '').trim();
-    current.pedido_fornecedor = current.ped_fornecedor;
     return current;
   });
   return {
@@ -4854,8 +4895,7 @@ window._compraPapelaoComposeEmailData = function(payload, compra) {
       '   Valor m²: ' + window._compraPapelaoFmtMoney(item && item.valor_m2 || 0),
       '   Valor p/mil: ' + window._compraPapelaoFmtMoney(item && item.vl_p_mil != null ? item.vl_p_mil : d.vl_p_mil),
       '   Valor Total: ' + window._compraPapelaoFmtMoney(item && item.valor_total != null ? item.valor_total : d.valor_total),
-      String(item && item.observacao || '').trim() ? ('   Obs: ' + String(item.observacao || '').trim()) : '',
-      String(item && item.ped_fornecedor || '').trim() ? ('   Ped. Fornecedor: ' + String(item.ped_fornecedor || '').trim()) : ''
+      String(item && item.observacao || '').trim() ? ('   Obs: ' + String(item.observacao || '').trim()) : ''
     ].filter(Boolean).join('\n');
   }).join('\n\n');
   return {
@@ -5109,7 +5149,12 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
           renderRows(rows);
         }
       });
-      tbody.addEventListener('input', function() {
+      tbody.addEventListener('input', function(ev) {
+        var target = ev && ev.target;
+        var field = String(target && target.getAttribute ? target.getAttribute('data-field') || '' : '').trim();
+        if (target && target.dataset && (field === 'area_m2' || field === 'vl_p_mil' || field === 'valor_total')) {
+          target.dataset.ccpxManual = String(target.value || '').trim() ? '1' : '0';
+        }
         window._compraPapelaoRefreshModalComputed(overlay);
       });
       tbody.addEventListener('keydown', function(ev) {
@@ -11753,21 +11798,36 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq.patch-ofmaq-v2 #ofs-por-maquina-container.patch-ofmaq-container{padding:0 !important;border:none !important;background:transparent !important;box-shadow:none !important}'
       + '#page-ofmaq.patch-ofmaq-v2 #patch-ofmaq-titlebar{padding:18px 18px 16px;border-radius:18px}'
       + '#page-ofmaq.patch-ofmaq-v2 #patch-ofmaq-v2-header{display:grid;gap:12px;width:100%}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-headrow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-title{font-size:28px;font-weight:900;color:#f8fafc;letter-spacing:.01em}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-sub{font-size:13px;color:#94a3b8;line-height:1.45}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-days{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-days button{min-height:38px;padding:8px 12px;border-radius:12px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-days button[data-active="1"]{background:linear-gradient(135deg,rgba(37,99,235,.95),rgba(29,78,216,.88));border-color:rgba(96,165,250,.7);color:#eff6ff}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-days button:hover{border-color:rgba(96,165,250,.65)}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-machine{display:inline-flex;align-items:center;gap:8px}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-machine select{min-height:38px;padding:8px 12px;border-radius:12px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:12px;font-weight:900}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-btn{min-height:38px;padding:8px 12px;border-radius:12px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:12px;font-weight:900;cursor:pointer}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-headrow{display:block;width:100%}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-controls{display:grid;gap:12px;width:100%}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-nav{display:grid;grid-template-columns:52px minmax(0,1fr) minmax(220px,280px);gap:12px;align-items:stretch}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-nav-arrow{display:flex;align-items:center;justify-content:center;min-height:84px;border-radius:16px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.38);color:#e2e8f0;font-size:24px;font-weight:900;cursor:pointer}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-week{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-day{display:grid;gap:6px;align-content:start;padding:12px 14px;border-radius:16px;border:1px solid rgba(71,85,105,.55);background:rgba(15,23,42,.62);cursor:pointer;min-height:84px;text-align:left}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-day[data-active="1"]{background:linear-gradient(135deg,rgba(37,99,235,.22),rgba(29,78,216,.18));border-color:rgba(96,165,250,.72);box-shadow:0 0 0 1px rgba(96,165,250,.18) inset}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-day-name{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#cbd5e1;line-height:1.25}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-day-date{font-size:18px;font-weight:900;color:#f8fafc;line-height:1.05}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-day-count{font-size:12px;color:#94a3b8;font-weight:700}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-machine{display:grid;gap:6px;align-content:start;padding:12px 14px;border-radius:16px;border:1px solid rgba(71,85,105,.55);background:rgba(15,23,42,.62)}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-machine label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-machine select{min-height:44px;padding:10px 12px;border-radius:12px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:12px;font-weight:900}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-redistrib{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-radius:14px;border:1px solid rgba(251,191,36,.36);background:rgba(120,53,15,.26);color:#fde68a}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-redistrib strong{display:block;font-size:13px;font-weight:900;color:#fef3c7}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-redistrib span{display:block;margin-top:3px;font-size:12px;line-height:1.45;color:#fde68a}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-redistrib.is-placeholder{border-style:dashed}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-search{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-search-input{display:flex;min-width:0}'
+      + '#page-ofmaq.patch-ofmaq-v2 #ofmaq-busca{flex:1 1 auto !important;min-width:0 !important}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-search button,#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-btn{min-height:42px;padding:9px 14px;border-radius:12px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:12px;font-weight:900;cursor:pointer}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-btn[data-active="1"]{background:rgba(37,99,235,.18);border-color:rgba(96,165,250,.4);color:#bfdbfe}'
-      + '#page-ofmaq.patch-ofmaq-v2 #ofmaq-busca{flex:1 1 460px !important;min-width:320px !important}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-list{display:grid;gap:6px;padding:16px;border-radius:18px;background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(15,23,42,.72));border:1px solid rgba(51,65,85,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row{display:grid;grid-template-columns:86px minmax(120px,160px) minmax(180px,1.2fr) minmax(180px,1.2fr) minmax(140px,180px) minmax(140px,200px) 110px 130px 110px 140px;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:#1e293b;border:1px solid rgba(51,65,85,.75);position:relative;overflow:hidden}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-list{display:grid;gap:0;max-height:calc(100vh - 240px);overflow-y:auto;padding:0 0 4px;border-radius:18px;background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(15,23,42,.72));border:1px solid rgba(51,65,85,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-detailhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px;border-bottom:1px solid rgba(51,65,85,.72);position:sticky;top:0;z-index:3;background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(15,23,42,.94))}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-detailtitle{font-size:18px;font-weight:900;color:#f8fafc;line-height:1.2}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-detailsub{margin-top:4px;font-size:12px;color:#94a3b8}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-overload{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;border:1px solid rgba(248,113,113,.34);background:rgba(127,29,29,.24);color:#fecaca;font-size:12px;font-weight:900}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-tablehead{display:grid;grid-template-columns:86px 92px minmax(100px,120px) minmax(170px,1fr) minmax(210px,1.25fr) 140px 140px 150px 150px 110px 120px;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(51,65,85,.62);position:sticky;top:79px;z-index:2;background:rgba(15,23,42,.96)}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-tablehead span{font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#64748b}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row{display:grid;grid-template-columns:86px 92px minmax(100px,120px) minmax(170px,1fr) minmax(210px,1.25fr) 140px 140px 150px 150px 110px 120px;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(51,65,85,.45);background:#1e293b;position:relative;overflow:hidden}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row:nth-child(even){background:rgba(30,41,59,.82)}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row::before{content:"";position:absolute;inset:0 auto 0 0;width:6px;background:rgba(34,197,94,.85)}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row[data-status-tone="warn"]::before{background:rgba(245,158,11,.9)}'
@@ -11777,14 +11837,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-seq input{width:52px;min-height:34px;padding:6px 8px;border-radius:10px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#f8fafc;font-size:14px;font-weight:900;text-align:center}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-cell strong{display:block;font-size:15px;font-weight:900;color:#f8fafc;line-height:1.1}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-cell span{display:block;margin-top:3px;font-size:12px;color:#94a3b8;line-height:1.25}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-thumb{display:flex;align-items:center;justify-content:center;width:76px;height:56px;border-radius:12px;border:1px solid rgba(71,85,105,.45);background:rgba(15,23,42,.7);overflow:hidden;color:#94a3b8;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-thumb img{width:100%;height:100%;object-fit:cover;display:block}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-colors{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-dot{width:12px;height:12px;border-radius:999px;border:1px solid rgba(15,23,42,.6);box-shadow:0 0 0 2px rgba(2,6,23,.22)}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-color-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid rgba(71,85,105,.45);background:rgba(15,23,42,.58);font-size:11px;font-weight:800;color:#e2e8f0;white-space:nowrap}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-color-chip::before{content:"";width:10px;height:10px;border-radius:999px;background:var(--chip-color,#64748b);box-shadow:0 0 0 1px rgba(255,255,255,.14)}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-badge{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:12px;font-weight:900}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-badge.is-danger{background:rgba(127,29,29,.28);border-color:rgba(248,113,113,.32);color:#fecaca}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-badge.is-warn{background:rgba(120,53,15,.28);border-color:rgba(251,191,36,.32);color:#fde68a}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-actions{display:flex;justify-content:flex-end}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-actions button{min-height:34px;padding:7px 10px;border-radius:12px;border:1px solid rgba(96,165,250,.28);background:rgba(2,6,23,.35);color:#dbeafe;font-size:12px;font-weight:900;cursor:pointer}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-actions button:hover{border-color:rgba(96,165,250,.6)}'
+      + '#page-ofmaq.patch-ofmaq-v2 #ofmaq-search-panel{display:none !important}'
       + '#page-ofmaq .kb-board-ofmaq.patch-ofmaq-board{gap:18px;padding:4px 2px 6px;align-items:stretch}'
       + '#page-ofmaq .kb-col-ofmaq.patch-ofmaq-col{display:flex;flex-direction:column;gap:12px;min-width:340px;max-width:360px;padding:16px;border-radius:16px;background:linear-gradient(135deg,rgba(15,23,42,.98),rgba(30,41,59,.95));border:1px solid rgba(51,65,85,.9);box-shadow:0 22px 44px rgba(2,6,23,.22),inset 0 1px 0 rgba(255,255,255,.04)}'
       + '#page-ofmaq .kb-col-ofmaq.patch-ofmaq-col.kb-col-dragover{border-color:rgba(96,165,250,.88);box-shadow:0 0 0 1px rgba(96,165,250,.26),0 22px 44px rgba(2,6,23,.24),inset 0 1px 0 rgba(255,255,255,.05)}'
@@ -11920,8 +11985,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#patch-ofmaq-redistrib-modal .actions button{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.06);color:var(--text1);cursor:pointer;font-size:12px;font-weight:800}'
       + '#patch-ofmaq-redistrib-modal .actions button.primary{background:var(--accent);border-color:var(--accent);color:#fff}'
       + '#patch-ofmaq-redistrib-modal .foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)}'
-      + '@media (max-width: 1100px){#patch-ofmaq-titlebar{flex-direction:column}.patch-ofmaq-title-stats{justify-content:flex-start}#page-ofmaq .patch-ofmaq-toprow{grid-template-columns:minmax(0,1fr)}#page-ofmaq .kb-col-ofmaq.patch-ofmaq-col{min-width:320px}}'
-      + '@media (max-width: 720px){#page-ofmaq.patch-ofmaq-page{padding:12px}#page-ofmaq .ptoolbar.patch-ofmaq-toolbar{padding:14px}#patch-ofmaq-titlebar{padding:14px}.patch-ofmaq-title-main{font-size:24px}.patch-ofmaq-title-stat{min-width:96px}#page-ofmaq #ofmaq-busca{min-width:220px !important}#page-ofmaq .patch-ofmaq-col-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-col-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#page-ofmaq .patch-ofmaq-summary-meta{grid-template-columns:repeat(2,minmax(0,1fr))}}'
+      + '@media (max-width: 1100px){#patch-ofmaq-titlebar{flex-direction:column}.patch-ofmaq-title-stats{justify-content:flex-start}#page-ofmaq .patch-ofmaq-toprow{grid-template-columns:minmax(0,1fr)}#page-ofmaq .kb-col-ofmaq.patch-ofmaq-col{min-width:320px}#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-nav{grid-template-columns:52px minmax(0,1fr)}#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-machine{grid-column:1 / -1}#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-tablehead,#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-row{min-width:1460px}}'
+      + '@media (max-width: 720px){#page-ofmaq.patch-ofmaq-page{padding:12px}#page-ofmaq .ptoolbar.patch-ofmaq-toolbar{padding:14px}#patch-ofmaq-titlebar{padding:14px}.patch-ofmaq-title-main{font-size:24px}.patch-ofmaq-title-stat{min-width:96px}#page-ofmaq #ofmaq-busca{min-width:220px !important}#page-ofmaq .patch-ofmaq-col-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#ofs-por-maquina-container.patch-ofmaq-single-machine .patch-ofmaq-col-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#page-ofmaq .patch-ofmaq-summary-meta{grid-template-columns:repeat(2,minmax(0,1fr))}#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-nav,#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-search{grid-template-columns:1fr}#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-week{grid-template-columns:repeat(2,minmax(0,1fr))}}'
       + '#hub-inteligencia .patch-hub-intel-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;margin-bottom:8px;border-radius:8px;cursor:pointer;transition:filter 0.15s}'
       + '#hub-inteligencia .patch-hub-intel-item:hover{filter:brightness(1.12)}';
     document.head.appendChild(st);
@@ -13295,30 +13360,37 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var produto = String((of && of.produto) || _ofmaqProdutoLabel(of) || '—').trim() || '—';
     var tamanho = String((of && of.tamanho) || _ofmaqTamanhoLabel(of) || '—').trim() || '—';
     var coresArr = Array.isArray(of && of.cores) ? of.cores : parseColors(of);
-    var coresDots = (Array.isArray(coresArr) ? coresArr : []).slice(0, 8).map(function(c) {
+    var coresDots = (Array.isArray(coresArr) ? coresArr : []).slice(0, 5).map(function(c) {
       var name = String(c || '').trim();
       if (!name) return '';
-      return '<span class="patch-ofmaq-v2-dot" title="' + escAttrLocal(name) + '" style="background:' + escAttrLocal(_hashColor(name)) + '"></span>';
+      return '<span class="patch-ofmaq-v2-color-chip" title="' + escAttrLocal(name) + '" style="--chip-color:' + escAttrLocal(_hashColor(name)) + '">' + escHLocal(name) + '</span>';
     }).join('');
     var quantidade = Number(of && (of.qtd != null ? of.qtd : _getQtdOf(of)) || 0) || 0;
     var entrega = String((of && (of.entregaIso || of.diaIso)) || _ofmaqEntregaIso(of) || '').slice(0, 10);
     var tempoMin = Number(of && (of.tempoMin != null ? of.tempoMin : _ofmaqTempoMinForMachine(of, typeof window.getDadosMaquina === 'function' ? window.getDadosMaquina(maquina) : null)) || 0) || 0;
     var st = _ofmaqV2StatusTone(of && of.of ? of.of : of);
     var badgeCls = st.tone === 'danger' ? ' is-danger' : (st.tone === 'warn' ? ' is-warn' : '');
+    var imgSrc = '';
+    try {
+      var card = of && of.card;
+      var imgEl = card && card.querySelector ? card.querySelector('img') : null;
+      imgSrc = String((imgEl && (imgEl.getAttribute('src') || imgEl.src)) || (of && of.of && (of.of.imagem_url || of.of.foto_url || of.of.imagem || of.of.imagem_of)) || '').trim();
+    } catch (_) {}
     return ''
       + '<div class="patch-ofmaq-v2-row" data-of-id="' + escAttrLocal(id) + '" data-maq="' + escAttrLocal(maquina) + '" data-tempo-min="' + escAttrLocal(String(tempoMin || 0)) + '" data-qtd="' + escAttrLocal(String(quantidade != null ? quantidade : '')) + '" data-urgencia="' + escAttrLocal(st.urg) + '" data-status-tone="' + escAttrLocal(st.tone) + '">'
       + '  <div class="patch-ofmaq-v2-seq">'
       + '    <span class="of-ordem-badge">' + escHLocal(String(idx + 1)) + '</span>'
       + '    <input class="patch-ofmaq-v2-seq-input" type="number" min="1" step="1" inputmode="numeric" value="' + escAttrLocal(String(idx + 1)) + '" data-of-id="' + escAttrLocal(id) + '">'
       + '  </div>'
+      + '  <div class="patch-ofmaq-v2-thumb">' + (imgSrc ? ('<img src="' + escAttrLocal(imgSrc) + '" alt="OF ' + escAttrLocal(numero) + '">') : 'Sem imagem') + '</div>'
       + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(numero) + '</strong><span>' + escHLocal(st.text) + '</span></div>'
       + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(cliente) + '</strong><span>' + escHLocal(String(of && of.status || 'Em aberto')) + '</span></div>'
-      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(produto) + '</strong><span>' + escHLocal(tamanho) + '</span></div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(produto) + '</strong><span>' + escHLocal(entrega ? ('Entrega ' + fmtDateBR(entrega)) : 'Sem prazo') + '</span></div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(_ofmaqFmtInt(quantidade != null ? quantidade : 0)) + '</strong><span>Caixas</span></div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(tamanho) + '</strong><span>' + escHLocal(entrega ? fmtWeekdayDate(entrega) : 'Sem data') + '</span></div>'
       + '  <div class="patch-ofmaq-v2-colors">' + (coresDots || '<span class="patch-ofmaq-v2-badge">Sem cor</span>') + '</div>'
-      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(_ofmaqFmtInt(quantidade != null ? quantidade : 0)) + '</strong><span>Quantidade</span></div>'
-      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</strong><span>' + escHLocal(entrega ? fmtWeekdayDate(entrega) : 'Sem prazo') + '</span></div>'
-      + '  <div><span class="patch-ofmaq-v2-badge' + badgeCls + '">' + escHLocal(_ofmaqFmtTempoValue(tempoMin)) + '</span></div>'
       + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(maquina) + '</strong><span>Máquina</span></div>'
+      + '  <div><span class="patch-ofmaq-v2-badge' + badgeCls + '">' + escHLocal(_ofmaqFmtTempoValue(tempoMin)) + '</span></div>'
       + '  <div class="patch-ofmaq-v2-actions"><button type="button" data-of-id="' + escAttrLocal(id) + '" data-of-num="' + escAttrLocal(String(numero || '')) + '">Ações</button></div>'
       + '</div>';
   }
@@ -13334,10 +13406,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       titlebar.innerHTML = ''
         + '<div id="patch-ofmaq-v2-header">'
         + '  <div class="patch-ofmaq-v2-headrow">'
-        + '    <div>'
-        + '      <div class="patch-ofmaq-v2-title">OFs por Máquina</div>'
-        + '      <div class="patch-ofmaq-v2-sub">Uma máquina por vez, cards horizontais por OF, filtros por semana e sequência editável.</div>'
-        + '    </div>'
         + '    <div class="patch-ofmaq-v2-controls"></div>'
         + '  </div>'
         + '</div>';
@@ -13359,7 +13427,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var titlebar = document.getElementById('patch-ofmaq-titlebar');
     if (!page || !container || !titlebar) return;
     var selectedIso = _ofmaqV2SelectedIso();
-    var weekDays = _ofmaqV2WeekDays(selectedIso);
+    var weekDays = _ofmaqV2WeekDays(selectedIso).slice(0, 5);
     var cardsDom = _ofmaqV2CollectCardsFromDom();
     var domGroups = {};
     cardsDom.forEach(function(item) {
@@ -13370,7 +13438,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     });
     var maquina = _ofmaqV2PickMachine(domGroups);
     if (maquina) _ofmaqV2SetMachine(maquina);
-    var termNorm = _ofmaqNormBusca(String((document.getElementById('ofmaq-busca') || {}).value || '').trim());
+    var searchInput = document.getElementById('ofmaq-busca');
+    var termRaw = String((searchInput || {}).value || '').trim();
+    var termNorm = _ofmaqNormBusca(termRaw);
+    var machineCards = cardsDom.filter(function(item) {
+      return String(item && item.maq || '').trim() === String(maquina || '').trim();
+    });
+    var dayCounts = {};
+    machineCards.forEach(function(item) {
+      var key = String(item && item.diaIso || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
+      dayCounts[key] = (dayCounts[key] || 0) + 1;
+    });
     var list = cardsDom.filter(function(item) {
       if (String(item && item.maq || '').trim() !== String(maquina || '').trim()) return false;
       if (selectedIso && item.diaIso && item.diaIso !== selectedIso) return false;
@@ -13387,24 +13466,54 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (oa != null && ob != null && oa !== ob) return oa - ob;
       return Number(a && a.orderIdx || 0) - Number(b && b.orderIdx || 0);
     });
+    var cargaMin = list.reduce(function(sum, item) {
+      return sum + (Number(item && item.tempoMin || 0) || 0);
+    }, 0);
+    var capRef = _capacidadeDia(selectedIso || new Date());
+    var excessoMin = capRef && Number(capRef.uteis || 0) > 0 ? Math.max(0, cargaMin - Number(capRef.uteis || 0)) : 0;
+    var redistribHtml = '';
+    try {
+      var redState = window.__ofmaqRedistribState || { filter: 'todas', ignored: {}, sugestoes: [] };
+      var sugestoes = _redistribSugestoesAtivas(redState);
+      if (!sugestoes.length && typeof _calcularSugestoesRedistribuicao === 'function') {
+        redState.sugestoes = _calcularSugestoesRedistribuicao();
+        window.__ofmaqRedistribState = redState;
+        sugestoes = _redistribSugestoesAtivas(redState);
+      }
+      if (sugestoes.length) {
+        redistribHtml = '<div class="patch-ofmaq-v2-redistrib"><div><strong>OFs que podem ser redistribuídas</strong><span>' + escHLocal(String(sugestoes.length)) + ' sugestão(ões) encontradas. Exemplos: ' + sugestoes.slice(0, 3).map(function(item) { return _ofmaqNumeroLabel(item && item.of || item) || String(item && item.id || 'OF'); }).filter(Boolean).join(', ') + '.</span></div><button type="button" class="patch-ofmaq-v2-btn" id="patch-ofmaq-v2-open-redistrib">Ver sugestões</button></div>';
+      }
+    } catch (_) {}
+    if (!redistribHtml) {
+      redistribHtml = '<div class="patch-ofmaq-v2-redistrib is-placeholder"><div><strong>OFs que podem ser redistribuídas</strong><span>Espaço reservado para a régua de redistribuição. A regra de negócio dessa faixa ainda precisa ser fechada para exibir sugestões confiáveis.</span></div></div>';
+    }
     try { console.log('[OFMAQ-V2] cards dom:', cardsDom.length, 'maquina:', maquina, 'exibindo:', list.length); } catch (_) {}
 
     var ctrlHost = titlebar.querySelector('.patch-ofmaq-v2-controls');
     if (ctrlHost) {
       var search = document.getElementById('ofmaq-busca');
       ctrlHost.innerHTML = ''
-        + '<div class="patch-ofmaq-v2-days" id="patch-ofmaq-v2-days">'
-        + '  <button type="button" data-shift="-7">← Anterior</button>'
+        + '<div class="patch-ofmaq-v2-nav">'
+        + '  <button type="button" class="patch-ofmaq-v2-nav-arrow" data-shift="-7">◀</button>'
+        + '  <div class="patch-ofmaq-v2-week" id="patch-ofmaq-v2-days">'
         + weekDays.map(function(d) {
-          return '<button type="button" data-date="' + escAttrLocal(d.iso) + '" data-active="' + (d.iso === selectedIso ? '1' : '0') + '">' + escHLocal(d.label) + '</button>';
+          var fullName = String(d.date && d.date.toLocaleDateString ? d.date.toLocaleDateString('pt-BR', { weekday: 'long' }) : '').replace(/\./g, '').toUpperCase();
+          return '<button type="button" class="patch-ofmaq-v2-day" data-date="' + escAttrLocal(d.iso) + '" data-active="' + (d.iso === selectedIso ? '1' : '0') + '"><span class="patch-ofmaq-v2-day-name">' + escHLocal(fullName || d.label) + '</span><span class="patch-ofmaq-v2-day-date">' + escHLocal(fmtWeekdayDate(d.iso)) + '</span><span class="patch-ofmaq-v2-day-count">' + escHLocal(String(dayCounts[d.iso] || 0) + ' ofs') + '</span></button>';
         }).join('')
-        + '  <button type="button" data-shift="7">Próximo →</button>'
+        + '  </div>'
+        + '  <button type="button" class="patch-ofmaq-v2-nav-arrow" data-shift="7">▶</button>'
+        + '  <div class="patch-ofmaq-v2-machine"><label for="patch-ofmaq-v2-machine">Máquina que quer ver</label><select id="patch-ofmaq-v2-machine"></select></div>'
         + '</div>'
-        + '<div class="patch-ofmaq-v2-machine"><select id="patch-ofmaq-v2-machine"></select></div>'
-        + '<button type="button" class="patch-ofmaq-v2-btn" id="patch-ofmaq-v2-agrupar" data-active="' + (_ofmaqV2State().agrupar ? '1' : '0') + '">Agrupar</button>';
-      if (search && search.parentNode !== ctrlHost) ctrlHost.appendChild(search);
+        + redistribHtml
+        + '<div class="patch-ofmaq-v2-search"><div class="patch-ofmaq-v2-search-input" id="patch-ofmaq-v2-search-slot"></div><div style="display:flex;gap:10px;flex-wrap:wrap" id="patch-ofmaq-v2-search-actions"><button type="button" id="patch-ofmaq-v2-search-btn">Buscar</button><button type="button" class="patch-ofmaq-v2-btn" id="patch-ofmaq-v2-agrupar" data-active="' + (_ofmaqV2State().agrupar ? '1' : '0') + '">Agrupar</button></div></div>';
+      var searchSlot = ctrlHost.querySelector('#patch-ofmaq-v2-search-slot');
+      if (search) {
+        search.placeholder = 'Buscar por OF, cliente ou produto';
+        if (search.parentNode !== searchSlot) searchSlot.appendChild(search);
+      }
       var reportBtn = document.getElementById('ofmaq-btn-relatorio');
-      if (reportBtn && reportBtn.parentNode !== ctrlHost) ctrlHost.appendChild(reportBtn);
+      var searchActions = ctrlHost.querySelector('#patch-ofmaq-v2-search-actions');
+      if (reportBtn && searchActions && reportBtn.parentNode !== searchActions) searchActions.appendChild(reportBtn);
       var machineSel = ctrlHost.querySelector('#patch-ofmaq-v2-machine');
       if (machineSel) {
         machineSel.innerHTML = _ofmaqV2MachineOptions().map(function(opt) {
@@ -13422,10 +13531,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           _ofmaqRenderV2();
         };
       }
-      var daysWrap = ctrlHost.querySelector('#patch-ofmaq-v2-days');
-      if (daysWrap && !daysWrap._patchBound) {
-        daysWrap._patchBound = true;
-        daysWrap.onclick = function(ev) {
+      var nav = ctrlHost.querySelector('.patch-ofmaq-v2-nav');
+      if (nav && !nav._patchBound) {
+        nav._patchBound = true;
+        nav.onclick = function(ev) {
           var btn = ev && ev.target && ev.target.closest ? ev.target.closest('button') : null;
           if (!btn) return;
           var date = String(btn.getAttribute('data-date') || '').slice(0, 10);
@@ -13443,6 +13552,29 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           }
         };
       }
+      var searchBtn = ctrlHost.querySelector('#patch-ofmaq-v2-search-btn');
+      if (searchBtn) searchBtn.onclick = function() {
+        try { if (search) _ofmaqApplySearchFilter(String(search.value || '')); } catch (_) {}
+        _ofmaqRenderV2();
+      };
+      if (search && !search._patchOfmaqV2EnterBound) {
+        search._patchOfmaqV2EnterBound = true;
+        search.addEventListener('keydown', function(ev) {
+          if (String(ev && ev.key || '') !== 'Enter') return;
+          try { ev.preventDefault(); } catch (_) {}
+          try { _ofmaqApplySearchFilter(String(search.value || '')); } catch (_) {}
+          _ofmaqRenderV2();
+        });
+      }
+      var redBtn = ctrlHost.querySelector('#patch-ofmaq-v2-open-redistrib');
+      if (redBtn) redBtn.onclick = function() {
+        try {
+          var alvo = Array.prototype.slice.call(document.querySelectorAll('button')).find(function(btn) {
+            return /podem ser redistribu/i.test(String(btn && btn.textContent || ''));
+          });
+          if (alvo && typeof alvo.click === 'function') return alvo.click();
+        } catch (_) {}
+      }
     }
 
     var listEl = container.querySelector('#patch-ofmaq-v2-list') || container.querySelector('.patch-ofmaq-v2-list');
@@ -13451,9 +13583,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       listEl.setAttribute('data-maquina-lista', '1');
       listEl.setAttribute('data-maquina-id', String(maquina || '').trim());
     } catch (_) {}
-    listEl.innerHTML = list.length
-      ? list.map(function(item, idx) { return _ofmaqV2RowHtml(item.of || item, idx, maquina); }).join('')
-      : '<div class="patch-ofmaq-empty">Nenhuma OF encontrada para este filtro.</div>';
+    listEl.innerHTML = ''
+      + '<div class="patch-ofmaq-v2-detailhead">'
+      + '  <div><div class="patch-ofmaq-v2-detailtitle">Detalhamento de OFs por máquina:</div><div class="patch-ofmaq-v2-detailsub">' + escHLocal(String(maquina || 'Sem máquina')) + ' · ' + escHLocal(selectedIso ? fmtDateBR(selectedIso) : 'Semana atual') + ' · ' + escHLocal(String(list.length)) + ' OF(s)</div></div>'
+      + (excessoMin > 0 ? ('<div class="patch-ofmaq-v2-overload">Sobrecarregada por ' + escHLocal(_ofmaqFmtTempoValue(excessoMin)) + '</div>') : '')
+      + '</div>'
+      + '<div class="patch-ofmaq-v2-tablehead"><span>Número da sequência</span><span>Imagem da OF</span><span>OF</span><span>Cliente</span><span>Produto</span><span>Quantidade de caixas</span><span>Tamanhos</span><span>Cores</span><span>Máquina</span><span>Tempo</span><span>Ações</span></div>'
+      + (list.length
+        ? list.map(function(item, idx) { return _ofmaqV2RowHtml(item.of || item, idx, maquina); }).join('')
+        : '<div class="patch-ofmaq-empty">Nenhuma OF encontrada para este filtro.</div>');
 
     Array.prototype.slice.call(listEl.querySelectorAll('.patch-ofmaq-v2-actions button[data-of-id]')).forEach(function(btn) {
       if (btn._patchOfmaqActionBound) return;
@@ -40130,7 +40268,7 @@ function _ocultarGraficoComissoes() {
     }
     return ''
       + '<svg viewBox="0 0 ' + String(width) + ' ' + String(height) + '" width="100%" height="100%" aria-label="Desenho do corte">'
-      + '<rect x="' + String(padX) + '" y="' + String(padY) + '" width="' + String(renderW) + '" height="' + String(renderH) + '" rx="10" fill="#EF9F27" fill-opacity=".34" stroke="#EF9F27" stroke-width="2"></rect>'
+      + '<rect x="' + String(padX) + '" y="' + String(padY) + '" width="' + String(renderW) + '" height="' + String(renderH) + '" rx="10" fill="#DC2626" fill-opacity=".18" stroke="#DC2626" stroke-width="2"></rect>'
       + pieces
       + grid
       + '<line x1="' + String(padX) + '" y1="' + String(padY - 12) + '" x2="' + String(padX + renderW) + '" y2="' + String(padY - 12) + '" stroke="#cbd5e1" stroke-width="1"></line>'
@@ -40144,7 +40282,7 @@ function _ocultarGraficoComissoes() {
       + '<text x="' + String(width / 2) + '" y="' + String(height - 40) + '" fill="#e2e8f0" font-size="12" text-anchor="middle" font-family="Arial, sans-serif">Peça: ' + sEsc(sFmtMm(pieceWidth)) + ' × ' + sEsc(sFmtMm(pieceHeight)) + ' · Orientação: ' + sEsc(row.orientacao_label || '—') + '</text>'
       + '<rect x="' + String(padX) + '" y="' + String(height - 28) + '" width="16" height="16" rx="3" fill="#185FA5"></rect>'
       + '<text x="' + String(padX + 24) + '" y="' + String(height - 15) + '" fill="#e2e8f0" font-size="12" font-family="Arial, sans-serif">Aproveitado ' + sEsc(sFmtPct(row.aproveitamento_pct || 0)) + '</text>'
-      + '<rect x="' + String(padX + 190) + '" y="' + String(height - 28) + '" width="16" height="16" rx="3" fill="#EF9F27" fill-opacity=".45" stroke="#EF9F27"></rect>'
+      + '<rect x="' + String(padX + 190) + '" y="' + String(height - 28) + '" width="16" height="16" rx="3" fill="#DC2626" fill-opacity=".26" stroke="#DC2626"></rect>'
       + '<text x="' + String(padX + 214) + '" y="' + String(height - 15) + '" fill="#e2e8f0" font-size="12" font-family="Arial, sans-serif">Desperdício ' + sEsc(sFmtPct(row.desperdicio_pct || 0)) + '</text>'
       + '</svg>';
   }
@@ -40181,9 +40319,7 @@ function _ocultarGraficoComissoes() {
     var aviso = document.getElementById('simd-aviso');
     var wrap = document.getElementById('simd-tabela-wrap');
     var visual = document.getElementById('simd-visual');
-    var printBtn = document.getElementById('simd-btn-print');
     if (resultado) resultado.style.display = 'block';
-    if (printBtn) printBtn.disabled = !compatibles.length;
     if (info) {
       info.innerHTML = ''
         + '<strong>Peça solicitada:</strong> ' + sEsc(sFmtMm(plan.peca_larg_mm) + ' × ' + sFmtMm(plan.peca_comp_mm))
@@ -40214,32 +40350,36 @@ function _ocultarGraficoComissoes() {
     window.__simdLastIncompatRows = incompatibles.slice();
     window.__simdSelectedRowId = selected ? sRowKey(selected) : '';
     wrap.innerHTML = ''
-      + '<div class="simd-table-shell">'
-      + '  <table class="simd-table">'
-      + '    <thead><tr><th>% Desperdício</th><th>Chapa</th><th>Fornecedor</th><th>Tamanho</th><th>Peças/chapa</th><th>Estoque</th><th>Valor unit.</th><th>' + (plan.qtd_pedido > 0 ? 'Custo' : 'Custo estimado') + '</th></tr></thead>'
-      + '    <tbody>'
+      + '<div class="simd-ranking-head"><div><strong>Chapas candidatas</strong><span>Ordenadas do menor para o maior desperdício.</span></div></div>'
+      + '<div class="simd-ranking-list">'
       + compatibles.map(function(row, idx) {
           var tone = sBadgeTone(row.desperdicio_pct);
           var rowId = sRowKey(row);
           var isSelected = rowId === window.__simdSelectedRowId;
           return ''
-            + '<tr data-simd-row="' + sEsc(rowId) + '"' + (isSelected ? ' class="is-selected"' : '') + '>'
-            + '  <td><span class="simd-badge" style="background:' + tone.bg + ';border-color:' + tone.bd + ';color:' + tone.fg + '">' + sEsc(sFmtPct(row.desperdicio_pct)) + '</span></td>'
-            + '  <td><div class="simd-cell-main">' + sEsc(row.nome || 'Chapa') + '</div><div class="simd-cell-sub">' + sEsc(idx === 0 ? 'Melhor opção' : ('Ranking ' + String(idx + 1))) + '</div></td>'
-            + '  <td><div class="simd-cell-main">' + sEsc(row.fornecedor || '—') + '</div><div class="simd-cell-sub">' + sEsc(row.empresa || '—') + '</div></td>'
-            + '  <td>' + sEsc(row.tamanho || '—') + '</td>'
-            + '  <td class="num">' + sEsc(sFmtNum(row.pecas_por_chapa || 0, 0)) + '</td>'
-            + '  <td class="num">' + sEsc(sFmtNum(row.estoque || 0, 0)) + '</td>'
-            + '  <td class="num">' + sEsc(row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : '—') + '</td>'
-            + '  <td class="num">' + sEsc(plan.qtd_pedido > 0 ? (row.custo_estimado != null ? sFmtMoney(row.custo_estimado) : '—') : (row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : '—')) + '</td>'
-            + '</tr>';
+            + '<article class="simd-result-card' + (isSelected ? ' is-selected' : '') + '" data-simd-row="' + sEsc(rowId) + '">'
+            + '  <div class="simd-result-card-top"><div><div class="simd-cell-main">' + sEsc(row.nome || 'Chapa') + '</div><div class="simd-cell-sub">' + sEsc(idx === 0 ? 'Melhor opção' : ('Ranking ' + String(idx + 1))) + ' · ' + sEsc(row.fornecedor || '—') + '</div></div><span class="simd-badge" style="background:' + tone.bg + ';border-color:' + tone.bd + ';color:' + tone.fg + '">' + sEsc(sFmtPct(row.desperdicio_pct)) + '</span></div>'
+            + '  <div class="simd-result-card-body">'
+            + '    <div><span>Tamanho</span><strong>' + sEsc(row.tamanho || '—') + '</strong></div>'
+            + '    <div><span>Peças/chapa</span><strong>' + sEsc(sFmtNum(row.pecas_por_chapa || 0, 0)) + '</strong></div>'
+            + '    <div><span>Estoque</span><strong>' + sEsc(sFmtNum(row.estoque || 0, 0)) + '</strong></div>'
+            + '    <div><span>' + sEsc(plan.qtd_pedido > 0 ? 'Custo' : 'Valor unit.') + '</span><strong>' + sEsc(plan.qtd_pedido > 0 ? (row.custo_estimado != null ? sFmtMoney(row.custo_estimado) : '—') : (row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : '—')) + '</strong></div>'
+            + '    <div><span>Uso</span><strong>' + sEsc(sFmtPct(row.aproveitamento_pct || 0)) + '</strong></div>'
+            + '    <div><span>Chapas</span><strong>' + sEsc(row.chapas_necessarias != null ? String(row.chapas_necessarias) : '—') + '</strong></div>'
+            + '  </div>'
+            + '  <div class="simd-result-card-actions"><button type="button" class="simd-btn ghost" data-simd-print-row="' + sEsc(rowId) + '">Imprimir relatório</button></div>'
+            + '</article>';
         }).join('')
-      + '    </tbody>'
-      + '  </table>'
+      + '</div>'
+      + '<div class="simd-legend">'
+      + '  <div class="simd-legend-row"><span class="simd-legend-swatch is-blue"></span><strong>Azul:</strong> % que vai ser utilizado</div>'
+      + '  <div class="simd-legend-row"><span class="simd-legend-swatch is-red"></span><strong>Vermelho:</strong> % que vai ser desperdiçado</div>'
+      + '  <div class="simd-legend-row"><span class="simd-legend-swatch is-green"></span><strong>Verde:</strong> quantas chapas vão dar para ser feitas</div>'
+      + '</div>'
       + (incompatibles.length ? ('<details class="simd-incompat"><summary>Não compatíveis (' + sEsc(String(incompatibles.length)) + ')</summary><div class="simd-incompat-list">' + incompatibles.map(function(row) {
           return '<div class="simd-incompat-row"><strong>' + sEsc(row.nome || 'Chapa') + '</strong><span>' + sEsc([row.fornecedor || '—', row.tamanho || 'Sem tamanho', row.motivo || 'Sem encaixe'].join(' · ')) + '</span></div>';
         }).join('') + '</div></details>') : '')
-      + '</div>';
+      + '';
     Array.prototype.slice.call(wrap.querySelectorAll('[data-simd-row]')).forEach(function(rowEl) {
       rowEl.onclick = function() {
         var rowId = String(rowEl.getAttribute('data-simd-row') || '').trim();
@@ -40247,6 +40387,15 @@ function _ocultarGraficoComissoes() {
         if (!found) return;
         window.__simdSelectedRowId = rowId;
         sRenderResults(compatibles, incompatibles, plan);
+      };
+    });
+    Array.prototype.slice.call(wrap.querySelectorAll('[data-simd-print-row]')).forEach(function(btn) {
+      btn.onclick = function(ev) {
+        try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
+        var rowId = String(btn.getAttribute('data-simd-print-row') || '').trim();
+        if (!rowId) return;
+        window.__simdSelectedRowId = rowId;
+        sPrintSelected();
       };
     });
     if (selected) sRenderVisual(selected, plan);
@@ -40515,13 +40664,14 @@ function _ocultarGraficoComissoes() {
 
   function sVerificarCampos() {
     var plan = sGetPlan();
-    var btn = document.getElementById('simd-btn');
-    if (btn) {
-      var ok = plan.peca_larg_mm > 0 && plan.peca_comp_mm > 0;
+    var ok = plan.peca_larg_mm > 0 && plan.peca_comp_mm > 0;
+    ['simd-btn', 'simd-btn-estoque'].forEach(function(id) {
+      var btn = document.getElementById(id);
+      if (!btn) return;
       btn.disabled = !ok;
       btn.style.opacity = ok ? '1' : '0.55';
       btn.style.cursor = ok ? 'pointer' : 'not-allowed';
-    }
+    });
     try { window._simdSaveState(); } catch (_) {}
   }
 
@@ -40535,28 +40685,37 @@ function _ocultarGraficoComissoes() {
       + '#tela-simulador-desperdicio .simd-shell{display:grid;gap:16px}'
       + '#tela-simulador-desperdicio .simd-panel{background:rgba(15,23,42,.68);border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:18px}'
       + '#tela-simulador-desperdicio .simd-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}'
+      + '#tela-simulador-desperdicio .simd-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto;gap:14px;align-items:end}'
       + '#tela-simulador-desperdicio .simd-field{display:grid;gap:6px}'
       + '#tela-simulador-desperdicio .simd-field label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}'
       + '#tela-simulador-desperdicio .simd-field input{width:100%;padding:11px 12px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:12px;color:#f8fafc;font-size:13px}'
-      + '#tela-simulador-desperdicio .simd-inline-tip{padding:12px 14px;border-radius:12px;border:1px dashed rgba(148,163,184,.24);color:#94a3b8;font-size:12px}'
-      + '#tela-simulador-desperdicio .simd-actions{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px}'
-      + '#tela-simulador-desperdicio .simd-actions-left,#tela-simulador-desperdicio .simd-actions-right{display:flex;gap:10px;flex-wrap:wrap;align-items:center}'
+      + '#tela-simulador-desperdicio .simd-field input[readonly]{opacity:.78}'
+      + '#tela-simulador-desperdicio .simd-row-btn{height:44px;align-self:end;min-width:138px}'
       + '#tela-simulador-desperdicio .simd-btn{padding:11px 18px;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:800;cursor:pointer}'
       + '#tela-simulador-desperdicio .simd-btn.primary{background:linear-gradient(135deg,#2563eb,#1d4ed8)}'
       + '#tela-simulador-desperdicio .simd-btn.ghost{background:rgba(15,23,42,.92);border:1px solid rgba(148,163,184,.18);color:#e2e8f0}'
       + '#tela-simulador-desperdicio .simd-btn:disabled{opacity:.55;cursor:not-allowed}'
       + '#tela-simulador-desperdicio .simd-search-wrap{display:grid;gap:10px}'
+      + '#tela-simulador-desperdicio .simd-selected-sheet{display:none;padding:12px 14px;background:rgba(24,95,165,.16);border:1px solid rgba(24,95,165,.36);border-radius:12px}'
       + '#tela-simulador-desperdicio .simd-search-item{display:grid;gap:4px;width:100%;padding:12px 14px;text-align:left;border:0;background:rgba(15,23,42,.94);border-bottom:1px solid rgba(148,163,184,.12);color:#e2e8f0;cursor:pointer}'
       + '#tela-simulador-desperdicio .simd-search-item:last-child{border-bottom:none}'
       + '#tela-simulador-desperdicio .simd-search-item strong{font-size:13px;color:#f8fafc}'
       + '#tela-simulador-desperdicio .simd-search-item span{font-size:12px;color:#94a3b8}'
-      + '#tela-simulador-desperdicio .simd-table-shell{display:grid;gap:14px}'
-      + '#tela-simulador-desperdicio .simd-table{width:100%;border-collapse:separate;border-spacing:0;min-width:980px}'
-      + '#tela-simulador-desperdicio .simd-table th{position:sticky;top:0;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;padding:12px;border-bottom:1px solid rgba(148,163,184,.18);text-align:left}'
-      + '#tela-simulador-desperdicio .simd-table td{padding:12px;border-bottom:1px solid rgba(148,163,184,.12);font-size:12px;color:#e2e8f0;background:rgba(15,23,42,.38)}'
-      + '#tela-simulador-desperdicio .simd-table tbody tr{cursor:pointer}'
-      + '#tela-simulador-desperdicio .simd-table tbody tr.is-selected td{background:rgba(24,95,165,.18)}'
-      + '#tela-simulador-desperdicio .simd-table .num{text-align:right;font-variant-numeric:tabular-nums}'
+      + '#tela-simulador-desperdicio .simd-compare{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr);gap:16px;align-items:start}'
+      + '#tela-simulador-desperdicio .simd-ranking-panel{display:grid;gap:12px;position:sticky;top:18px}'
+      + '#tela-simulador-desperdicio .simd-ranking-head{padding:14px 16px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(148,163,184,.12)}'
+      + '#tela-simulador-desperdicio .simd-ranking-head strong{display:block;font-size:14px;color:#f8fafc}'
+      + '#tela-simulador-desperdicio .simd-ranking-head span{display:block;margin-top:4px;font-size:12px;color:#94a3b8}'
+      + '#tela-simulador-desperdicio .simd-ranking-list{display:grid;gap:10px;max-height:560px;overflow:auto;padding-right:4px}'
+      + '#tela-simulador-desperdicio .simd-result-card{display:grid;gap:12px;padding:14px 16px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(2,6,23,.48);cursor:pointer;transition:border-color .16s ease,transform .16s ease,box-shadow .16s ease}'
+      + '#tela-simulador-desperdicio .simd-result-card:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.42)}'
+      + '#tela-simulador-desperdicio .simd-result-card.is-selected{border-color:rgba(37,99,235,.6);box-shadow:0 0 0 1px rgba(37,99,235,.18),0 18px 32px rgba(2,6,23,.18)}'
+      + '#tela-simulador-desperdicio .simd-result-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}'
+      + '#tela-simulador-desperdicio .simd-result-card-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
+      + '#tela-simulador-desperdicio .simd-result-card-body span{display:block;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px}'
+      + '#tela-simulador-desperdicio .simd-result-card-body strong{font-size:13px;color:#f8fafc}'
+      + '#tela-simulador-desperdicio .simd-result-card-actions{display:flex;justify-content:flex-end}'
+      + '#tela-simulador-desperdicio .simd-result-card-actions .simd-btn{padding:10px 14px}'
       + '#tela-simulador-desperdicio .simd-badge{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;border:1px solid transparent;font-weight:900;font-size:11px}'
       + '#tela-simulador-desperdicio .simd-cell-main{font-weight:800;color:#f8fafc}'
       + '#tela-simulador-desperdicio .simd-cell-sub{font-size:11px;color:#94a3b8;margin-top:4px}'
@@ -40567,42 +40726,48 @@ function _ocultarGraficoComissoes() {
       + '#tela-simulador-desperdicio .simd-incompat-row{display:grid;gap:4px;padding:12px;border-radius:12px;background:rgba(15,23,42,.52);border:1px solid rgba(148,163,184,.12)}'
       + '#tela-simulador-desperdicio .simd-incompat-row strong{color:#f8fafc;font-size:13px}'
       + '#tela-simulador-desperdicio .simd-incompat-row span{color:#94a3b8;font-size:12px}'
-      + '#tela-simulador-desperdicio .simd-visual{display:none;grid-template-columns:1.2fr .8fr;gap:16px;align-items:start;margin-top:18px}'
+      + '#tela-simulador-desperdicio .simd-visual{display:none;gap:14px}'
       + '#tela-simulador-desperdicio .simd-visual-box{background:rgba(15,23,42,.58);border:1px solid rgba(148,163,184,.14);border-radius:14px;padding:14px}'
       + '#tela-simulador-desperdicio .simd-visual-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
       + '#tela-simulador-desperdicio .simd-visual-grid span{display:block;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px}'
       + '#tela-simulador-desperdicio .simd-visual-grid strong{font-size:14px;color:#f8fafc}'
       + '#tela-simulador-desperdicio .simd-visual-notes{display:grid;gap:8px;margin-top:12px;font-size:12px;color:#cbd5e1}'
+      + '#tela-simulador-desperdicio .simd-legend{display:grid;gap:8px;padding:14px 16px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(148,163,184,.12)}'
+      + '#tela-simulador-desperdicio .simd-legend-row{display:flex;gap:10px;align-items:center;font-size:12px;color:#cbd5e1}'
+      + '#tela-simulador-desperdicio .simd-legend-swatch{display:inline-flex;width:14px;height:14px;border-radius:4px;flex:0 0 14px}'
+      + '#tela-simulador-desperdicio .simd-legend-swatch.is-blue{background:#185FA5}'
+      + '#tela-simulador-desperdicio .simd-legend-swatch.is-red{background:#DC2626}'
+      + '#tela-simulador-desperdicio .simd-legend-swatch.is-green{background:#16A34A}'
       + '#tela-simulador-desperdicio #simd-resultado{display:none}'
-      + '#tela-simulador-desperdicio #simd-tabela-wrap{overflow:auto;border:1px solid rgba(148,163,184,.12);border-radius:16px;background:rgba(2,6,23,.35)}'
-      + '@media (max-width:1100px){#tela-simulador-desperdicio .simd-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#tela-simulador-desperdicio .simd-visual{grid-template-columns:1fr}}'
-      + '@media (max-width:760px){#tela-simulador-desperdicio .simd-grid{grid-template-columns:1fr}#tela-simulador-desperdicio .simd-visual-grid{grid-template-columns:1fr}}'
+      + '#tela-simulador-desperdicio #simd-tabela-wrap{display:grid;gap:12px}'
+      + '@media (max-width:1180px){#tela-simulador-desperdicio .simd-row{grid-template-columns:repeat(2,minmax(0,1fr))}#tela-simulador-desperdicio .simd-row-btn{width:100%}#tela-simulador-desperdicio .simd-compare{grid-template-columns:1fr}#tela-simulador-desperdicio .simd-ranking-panel{position:static}}'
+      + '@media (max-width:760px){#tela-simulador-desperdicio .simd-grid{grid-template-columns:1fr}#tela-simulador-desperdicio .simd-row{grid-template-columns:1fr}#tela-simulador-desperdicio .simd-result-card-body{grid-template-columns:1fr}#tela-simulador-desperdicio .simd-visual-grid{grid-template-columns:1fr}}'
       + '</style>'
       + '<div class="simd-shell">'
       + '  <div class="simd-panel">'
       + '    <div style="display:grid;gap:6px;margin-bottom:16px"><div style="font-size:18px;font-weight:800;color:#f8fafc">Simulador de Desperdício de Papelão</div><div style="font-size:13px;color:#94a3b8">Informe apenas a largura e o comprimento da chapa desejada para rankear as chapas reais do estoque do menor para o maior desperdício.</div></div>'
-      + '    <div class="simd-grid">'
-      + '      <div class="simd-field"><label>Largura da Peça (mm)</label><input type="number" min="1" id="simd-larg" placeholder="Ex: 900"></div>'
-      + '      <div class="simd-field"><label>Comprimento da Peça (mm)</label><input type="number" min="1" id="simd-comp" placeholder="Ex: 900"></div>'
-      + '      <div class="simd-field"><label>Quantidade do Pedido (opcional)</label><input type="number" min="0" id="simd-qtd" placeholder="Ex: 1000"></div>'
-      + '      <div class="simd-field"><label>Resumo</label><div class="simd-inline-tip">Rotação 90° é testada automaticamente em cada chapa para escolher o melhor encaixe.</div></div>'
+      + '    <div class="simd-row">'
+      + '      <div class="simd-field"><label>Largura</label><input type="number" min="1" id="simd-larg" placeholder="Ex: 900"></div>'
+      + '      <div class="simd-field"><label>Comprimento</label><input type="number" min="1" id="simd-comp" placeholder="Ex: 1200"></div>'
+      + '      <div class="simd-field"><label>Quantidade</label><input type="number" min="0" id="simd-qtd" placeholder="Ex: 1000"></div>'
+      + '      <button type="button" id="simd-btn" class="simd-btn primary simd-row-btn">Calcular</button>'
       + '    </div>'
-      + '    <div class="simd-grid" style="margin-top:16px">'
-      + '      <div class="simd-field" style="grid-column:span 4"><label>Simular com Chapa Específica (opcional)</label><div class="simd-search-wrap"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="text" id="simd-busca-chapa" placeholder="Digite o nome, fornecedor ou tamanho da chapa..." style="flex:1"><button type="button" class="simd-btn ghost" id="simd-btn-limpar-chapa" style="display:none">Limpar</button></div><div id="simd-busca-resultados" style="display:none;background:#111827;border:1px solid rgba(148,163,184,.14);border-radius:12px;overflow:hidden;max-height:220px;overflow:auto"></div><div id="simd-chapa-selecionada" style="display:none;padding:12px 14px;background:rgba(24,95,165,.16);border:1px solid rgba(24,95,165,.36);border-radius:12px"><div style="font-size:11px;color:#94a3b8;margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em">Chapa selecionada</div><div id="simd-chapa-sel-nome" style="font-size:14px;font-weight:800;color:#f8fafc"></div><div id="simd-chapa-sel-info" style="font-size:12px;color:#cbd5e1;margin-top:4px"></div></div></div></div>'
+      + '    <div class="simd-row" style="margin-top:16px">'
+      + '      <div class="simd-field" style="grid-column:span 3"><label>Chapa específica</label><div class="simd-search-wrap"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="text" id="simd-busca-chapa" placeholder="Fornecedor + nomenclatura + tamanho" style="flex:1"><button type="button" class="simd-btn ghost" id="simd-btn-limpar-chapa" style="display:none">Limpar</button></div><div id="simd-busca-resultados" style="display:none;background:#111827;border:1px solid rgba(148,163,184,.14);border-radius:12px;overflow:hidden;max-height:220px;overflow:auto"></div><div id="simd-chapa-selecionada" class="simd-selected-sheet"><div style="font-size:11px;color:#94a3b8;margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em">Chapa selecionada</div><div id="simd-chapa-sel-nome" style="font-size:14px;font-weight:800;color:#f8fafc"></div><div id="simd-chapa-sel-info" style="font-size:12px;color:#cbd5e1;margin-top:4px"></div></div></div></div>'
+      + '      <button type="button" id="simd-btn-estoque" class="simd-btn ghost simd-row-btn">Calcular</button>'
       + '    </div>'
-      + '    <div class="simd-actions">'
-      + '      <div class="simd-actions-left"><button type="button" id="simd-btn" class="simd-btn primary">Calcular</button><button type="button" id="simd-btn-print" class="simd-btn ghost" disabled>Imprimir Relatório</button></div>'
-      + '      <div class="simd-actions-right"><div style="font-size:12px;color:#64748b">O ranking mostra peças/chapa, estoque, valor unitário e custo estimado quando houver quantidade informada.</div></div>'
-      + '    </div>'
+      + '    <div style="margin-top:14px;font-size:12px;color:#64748b">A lógica continua testando rotação 90° e mantendo o ranking do menor para o maior desperdício.</div>'
       + '  </div>'
       + '  <div id="simd-loading" class="simd-panel" style="display:none;padding:26px;text-align:center;font-size:13px;color:#94a3b8">Calculando ranking de chapas...</div>'
       + '  <div id="simd-resultado" class="simd-panel">'
       + '    <div id="simd-info-planif" style="font-size:13px;color:#cbd5e1;margin-bottom:14px;padding:12px 14px;background:rgba(24,95,165,.12);border-radius:12px;border-left:3px solid #185FA5"></div>'
       + '    <div id="simd-aviso" style="display:none;padding:16px;text-align:center;font-size:13px;color:#fde68a;background:rgba(234,179,8,.1);border-radius:12px;margin-bottom:14px"></div>'
-      + '    <div id="simd-tabela-wrap"></div>'
-      + '    <div id="simd-visual" class="simd-visual">'
-      + '      <div class="simd-visual-box"><div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Desenho do corte</div><div id="simd-svg-container"></div></div>'
-      + '      <div class="simd-visual-box"><div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Chapa selecionada: <span id="simd-visual-titulo" style="color:#9FE1CB"></span></div><div id="simd-visual-dados"></div></div>'
+      + '    <div class="simd-compare">'
+      + '      <div id="simd-visual" class="simd-visual">'
+      + '        <div class="simd-visual-box"><div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Visualização da chapa</div><div id="simd-svg-container"></div></div>'
+      + '        <div class="simd-visual-box"><div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Chapa selecionada: <span id="simd-visual-titulo" style="color:#9FE1CB"></span></div><div id="simd-visual-dados"></div></div>'
+      + '      </div>'
+      + '      <div class="simd-ranking-panel"><div id="simd-tabela-wrap"></div></div>'
       + '    </div>'
       + '  </div>'
       + '</div>';
@@ -40629,6 +40794,12 @@ function _ocultarGraficoComissoes() {
       busca.addEventListener('input', function() {
         window._simdBuscarChapa(String(busca.value || ''));
       });
+      busca.addEventListener('keydown', function(e) {
+        if (!e || e.key !== 'Enter') return;
+        try { e.preventDefault(); } catch (_) {}
+        var btn = document.getElementById('simd-btn-estoque') || document.getElementById('simd-btn');
+        if (btn && !btn.disabled) sCalcular();
+      });
     }
     var clearBtn = document.getElementById('simd-btn-limpar-chapa');
     if (clearBtn && clearBtn.dataset.simdClearBound !== '1') {
@@ -40646,12 +40817,12 @@ function _ocultarGraficoComissoes() {
         return sCalcular();
       };
     }
-    var printBtn = document.getElementById('simd-btn-print');
-    if (printBtn && printBtn.dataset.simdPrintBound !== '1') {
-      printBtn.dataset.simdPrintBound = '1';
-      printBtn.onclick = function(e) {
+    var stockBtn = document.getElementById('simd-btn-estoque');
+    if (stockBtn && stockBtn.dataset.simdCalcBound !== '1') {
+      stockBtn.dataset.simdCalcBound = '1';
+      stockBtn.onclick = function(e) {
         try { if (e) e.preventDefault(); } catch (_) {}
-        return sPrintSelected();
+        return sCalcular();
       };
     }
     if (!document.body.dataset.simdSearchOutsideBound) {

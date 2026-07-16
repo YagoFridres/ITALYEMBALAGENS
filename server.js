@@ -1,4 +1,4 @@
-﻿﻿const express = require('express');
+﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -20443,24 +20443,33 @@ function _comprasChapasBuildItemPayload(raw, compraId, seq) {
   delete item.areaM2;
   delete item.valorTotal;
   delete item.vlPMil;
+  delete item.ped_fornecedor;
+  delete item.pedido_fornecedor;
   const largura = _comprasChapasNum(item.largura ?? item.largura_mm);
   const comprimento = _comprasChapasNum(item.comprimento ?? item.comprimento_mm);
   const quantidade = _comprasChapasNum(item.quantidade);
   const valorM2 = _comprasChapasNum(item.valor_m2 ?? item.valorM2);
-  const areaM2 = ((largura * comprimento) / 1000000) * quantidade;
-  const valorTotal = areaM2 * valorM2;
-  const vlPMil = quantidade > 0 ? (valorTotal / quantidade) * 1000 : 0;
+  const areaM2Calc = ((largura * comprimento) / 1000000) * quantidade;
+  const valorTotalCalc = areaM2Calc * valorM2;
+  const vlPMilCalc = quantidade > 0 ? (valorTotalCalc / quantidade) * 1000 : 0;
+  const areaM2Manual = item.area_m2 != null && String(item.area_m2).trim() !== '' ? _comprasChapasNum(item.area_m2) : null;
+  const valorTotalManual = item.valor_total != null && String(item.valor_total).trim() !== '' ? _comprasChapasNum(item.valor_total) : null;
+  const vlPMilManual = item.vl_p_mil != null && String(item.vl_p_mil).trim() !== '' ? _comprasChapasNum(item.vl_p_mil) : null;
   item.compra_id = compraId;
   item.seq = Math.max(1, Math.trunc(_comprasChapasNum(seq)));
   item.ped_cliente = _comprasChapasStr(item.ped_cliente);
-  item.nomenclatura = _comprasChapasStr(item.nomenclatura);
+  item.data_entrega = _comprasChapasStr(item.data_entrega);
+  item.nomenclatura = _comprasChapasStr(item.nomenclatura ?? item.po);
   item.largura = largura;
   item.comprimento = comprimento;
+  item.vincos = _comprasChapasStr(item.vincos);
   item.quantidade = quantidade;
+  item.lote_minimo = _comprasChapasNum(item.lote_minimo ?? item.loteMinimo);
   item.valor_m2 = valorM2;
-  item.area_m2 = Number(areaM2.toFixed(6));
-  item.valor_total = Number(valorTotal.toFixed(2));
-  item.vl_p_mil = Number(vlPMil.toFixed(2));
+  item.area_m2 = Number((areaM2Manual != null ? areaM2Manual : areaM2Calc).toFixed(6));
+  item.vl_p_mil = Number((vlPMilManual != null ? vlPMilManual : vlPMilCalc).toFixed(2));
+  item.valor_total = Number((valorTotalManual != null ? valorTotalManual : valorTotalCalc).toFixed(2));
+  item.observacao = _comprasChapasStr(item.observacao ?? item.obs);
   return item;
 }
 
