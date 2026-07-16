@@ -12160,18 +12160,30 @@ window.addEventListener('unhandledrejection', function(e) {
     if (state.apiFallbackLoading) return Array.isArray(window._ofmaqOfsCache) ? window._ofmaqOfsCache.slice() : [];
     state.apiFallbackLoading = true;
     try {
-      var resp = await fetch('/api/ofs?limit=500&status=em_producao', {
-        headers: getOfmaqAuthHeaders({
-          Authorization: 'Bearer ' + String(window._authToken || window._token || '').trim()
-        })
-      });
-      var data = null;
-      try { data = await resp.json(); } catch (_) { data = []; }
-      var ofs = extractOfsFromApiPayload(data);
-      ofs = Array.isArray(ofs) ? ofs : [];
-      try {
-        console.log('[OFMAQ-API] ofs recebidas:', ofs.length, 'primeira maq:', JSON.stringify(ofs[0] && ofs[0].maq), 'primeiro dia:', ofs[0] && ofs[0].dia);
-      } catch (_) {}
+      console.log('[OFMAQ-INIT] iniciando...');
+      var urls = ['/api/ofs?limit=300&status=em_producao', '/api/ofs?limit=300'];
+      var token = String(window._authToken || window._token || '').trim();
+      var tentativas = [
+        { headers: token ? { Authorization: 'Bearer ' + token } : {} },
+        { headers: {} }
+      ];
+      var ofs = [];
+      for (var i = 0; i < urls.length && !ofs.length; i += 1) {
+        for (var j = 0; j < tentativas.length && !ofs.length; j += 1) {
+          var resp = null;
+          try {
+            resp = await fetch(urls[i], { headers: tentativas[j].headers || {} });
+            console.log('[OFMAQ-RESP] status:', resp.status);
+            var data = null;
+            try { data = await resp.json(); } catch (_) { data = []; }
+            ofs = extractOfsFromApiPayload(data);
+            ofs = Array.isArray(ofs) ? ofs : [];
+            console.log('[OFMAQ-DATA] ofs:', ofs.length, 'ex maq:', JSON.stringify(ofs[0] && ofs[0].maq));
+          } catch (_) {
+            if (resp && typeof resp.status !== 'undefined') console.log('[OFMAQ-RESP] status:', resp.status);
+          }
+        }
+      }
       window._ofmaqOfsCache = ofs.slice();
       return ofs;
     } catch (_) {
@@ -12199,14 +12211,19 @@ window.addEventListener('unhandledrejection', function(e) {
     var maq = String(window._ofmaqMaqSel || state.selectedMachine || 'IMP 01').trim() || 'IMP 01';
     var diaSel = String(state.selectedDateIso || '').slice(0, 10);
     var filtradas = base.filter(function(of) {
-      return ofTemMaquina(of || {}, maq);
+      return JSON.stringify((of && of.maq) || '').indexOf(maq) >= 0;
     });
     var filtradasDia = filtradas.filter(function(of) {
       var dia = getOfDia(of || {});
       return !diaSel || !dia || dia === diaSel;
     });
     var finalRows = filtradasDia.length ? filtradasDia : filtradas;
-    state.filterWarning = (!filtradasDia.length && filtradas.length) ? 'Sem OFs no dia selecionado para esta máquina — mostrando todas da máquina' : '';
+    if (!finalRows.length && base.length) {
+      finalRows = base.slice();
+      state.filterWarning = 'Sem OFs para a máquina selecionada — mostrando todas sem filtro';
+    } else {
+      state.filterWarning = (!filtradasDia.length && filtradas.length) ? 'Sem OFs no dia selecionado para esta máquina — mostrando todas da máquina' : '';
+    }
     try {
       console.log('[OFMAQ-API-FILTRO] maq:', maq, 'total:', base.length, 'filtradas:', finalRows.length);
     } catch (_) {}
