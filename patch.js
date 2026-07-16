@@ -12989,14 +12989,15 @@ window.addEventListener('unhandledrejection', function(e) {
     window._ofmaqRenderandoAgora = true;
     disconnectDirectObserver();
     try {
+      if (window.OFS && window.OFS[0]) {
+        try { console.log('[OFS-CAMPOS]', Object.keys(window.OFS[0])); } catch (_) {}
+        try { console.log('[COR-DEBUG]', JSON.stringify(window.OFS[0].cores_impressao)); } catch (_) {}
+      }
       var source = await resolveSourceOfs(ofs, opcoes);
       try { console.log('[OFMAQ-FONTES]', getSourceLengths()); } catch (_) {}
       try {
         var dias = getOfDayDistribution(Array.isArray(window.OFS) && window.OFS.length ? window.OFS : source);
         console.log('[OFMAQ-DIAS-DIST]', JSON.stringify(dias));
-      } catch (_) {}
-      try {
-        if (Array.isArray(window.OFS) && window.OFS.length) console.log('[COR-DEBUG]', JSON.stringify(window.OFS[0] && window.OFS[0].cores_impressao));
       } catch (_) {}
       try { window._ofmaqDebugDia(source); } catch (_) {}
       try { runSeqRouteTestOnce(source); } catch (_) {}
