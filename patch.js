@@ -11768,8 +11768,15 @@ window.addEventListener('unhandledrejection', function(e) {
     return '';
   }
 
+  function getOfDiaRawValue(of) {
+    var agendamento = getOfScheduleRawValue(of);
+    if (agendamento) return agendamento;
+    if (of && of.dia != null && of.dia !== '') return of.dia;
+    return '';
+  }
+
   function getOfScheduleDateIso(of) {
-    return normDia(getOfScheduleRawValue(of));
+    return normDia(getOfDiaRawValue(of));
   }
 
   function normDia(v) {
@@ -12196,11 +12203,18 @@ window.addEventListener('unhandledrejection', function(e) {
 
   function buildCounts(rows, machine, startIso) {
     var counts = {};
+    var machineTotal = 0;
+    var machineHasDate = false;
     getWeekDays(startIso).forEach(function(day) { counts[day.iso] = 0; });
     rows.forEach(function(item) {
       if (item.machines.indexOf(machine) < 0) return;
-      if (item.diaIso && Object.prototype.hasOwnProperty.call(counts, item.diaIso)) counts[item.diaIso] += 1;
+      machineTotal += 1;
+      if (item.diaIso && Object.prototype.hasOwnProperty.call(counts, item.diaIso)) {
+        counts[item.diaIso] += 1;
+        machineHasDate = true;
+      }
     });
+    if (!machineHasDate && machineTotal > 0 && counts[state.selectedDateIso] != null) counts[state.selectedDateIso] = machineTotal;
     return counts;
   }
 
@@ -12868,10 +12882,13 @@ window.addEventListener('unhandledrejection', function(e) {
     try { container.style.position = 'relative'; } catch (_) {}
     try {
       if (Array.isArray(window.OFS) && window.OFS[0]) {
-        console.log('[AGENDA-DEBUG]', JSON.stringify({
+        console.log('[AGENDA-CAMPOS]', JSON.stringify({
           data_agendamento: window.OFS[0] && window.OFS[0].data_agendamento,
           agendamento: window.OFS[0] && window.OFS[0].agendamento,
           maquina_agendada: window.OFS[0] && window.OFS[0].maquina_agendada,
+          dia: window.OFS[0] && window.OFS[0].dia,
+          ent: window.OFS[0] && window.OFS[0].ent,
+          data_entrega: window.OFS[0] && window.OFS[0].data_entrega,
           maq: window.OFS[0] && window.OFS[0].maq
         }));
       }
