@@ -11793,14 +11793,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq .patch-ofmaq-toprow{display:grid !important;grid-template-columns:minmax(0,1fr) auto;gap:12px !important;align-items:stretch !important;margin:0 !important;padding:14px 16px;border-radius:16px;background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(30,41,59,.9));border:1px solid rgba(51,65,85,.75);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}'
       + '#page-ofmaq .patch-ofmaq-days-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:56px;padding:10px 12px;border-radius:12px;background:rgba(15,23,42,.55);border:1px solid rgba(51,65,85,.55)}'
       + '#page-ofmaq #ofs-por-maquina-container.patch-ofmaq-container{padding:18px;border-radius:18px;background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(15,23,42,.72));border:1px solid rgba(51,65,85,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}'
-      + '#page-ofmaq.patch-ofmaq-v2 .ofmaq-toprow,#page-ofmaq.patch-ofmaq-v2 #ofmaq-dias-bar,#page-ofmaq.patch-ofmaq-v2 .kb-board-ofmaq,#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-summary-grid,#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-table-wrap{display:none !important}'
+      + '#page-ofmaq.patch-ofmaq-v2 .ofmaq-toprow,#page-ofmaq.patch-ofmaq-v2 #ofmaq-dias-bar,#page-ofmaq.patch-ofmaq-v2 .kb-board,#page-ofmaq.patch-ofmaq-v2 .kb-board-ofmaq,#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-summary-grid,#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-table-wrap{display:none !important}'
       + '#page-ofmaq.patch-ofmaq-v2 .ptoolbar.patch-ofmaq-toolbar > :not(#patch-ofmaq-titlebar){display:none !important}'
       + '#page-ofmaq.patch-ofmaq-v2 #ofs-por-maquina-container.patch-ofmaq-container{padding:0 !important;border:none !important;background:transparent !important;box-shadow:none !important}'
       + '#page-ofmaq.patch-ofmaq-v2 #patch-ofmaq-titlebar{padding:18px 18px 16px;border-radius:18px}'
       + '#page-ofmaq.patch-ofmaq-v2 #patch-ofmaq-v2-header{display:grid;gap:12px;width:100%}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-headrow{display:block;width:100%}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-controls{display:grid;gap:12px;width:100%}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-nav{display:grid;grid-template-columns:52px minmax(0,1fr) minmax(220px,280px);gap:12px;align-items:stretch}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-nav{display:grid;grid-template-columns:52px minmax(0,1fr) minmax(300px,360px);gap:12px;align-items:stretch}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-nav-arrow{display:flex;align-items:center;justify-content:center;min-height:84px;border-radius:16px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.38);color:#e2e8f0;font-size:24px;font-weight:900;cursor:pointer}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-week{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-day{display:grid;gap:6px;align-content:start;padding:12px 14px;border-radius:16px;border:1px solid rgba(71,85,105,.55);background:rgba(15,23,42,.62);cursor:pointer;min-height:84px;text-align:left}'
@@ -11808,9 +11808,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-day-name{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#cbd5e1;line-height:1.25}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-day-date{font-size:18px;font-weight:900;color:#f8fafc;line-height:1.05}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-day-count{font-size:12px;color:#94a3b8;font-weight:700}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-machine{display:grid;gap:6px;align-content:start;padding:12px 14px;border-radius:16px;border:1px solid rgba(71,85,105,.55);background:rgba(15,23,42,.62)}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-machine label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}'
-      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-machine select{min-height:44px;padding:10px 12px;border-radius:12px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:12px;font-weight:900}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-machine{display:flex;align-items:center;gap:12px;align-content:center;padding:12px 14px;border-radius:16px;border:1px solid rgba(71,85,105,.55);background:rgba(15,23,42,.62);min-width:0;overflow:hidden}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-machine label{flex:0 0 auto;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;white-space:nowrap}'
+      + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-machine select{flex:1 1 auto;min-width:0;min-height:44px;padding:10px 12px;border-radius:12px;border:1px solid rgba(71,85,105,.7);background:rgba(2,6,23,.35);color:#e2e8f0;font-size:12px;font-weight:900}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-redistrib{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-radius:14px;border:1px solid rgba(251,191,36,.36);background:rgba(120,53,15,.26);color:#fde68a}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-redistrib strong{display:block;font-size:13px;font-weight:900;color:#fef3c7}'
       + '#page-ofmaq.patch-ofmaq-v2 .patch-ofmaq-v2-redistrib span{display:block;margin-top:3px;font-size:12px;line-height:1.45;color:#fde68a}'
@@ -13147,6 +13147,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var page = document.getElementById('page-ofmaq');
     var toolbar = page && page.querySelector ? page.querySelector('.ptoolbar') : null;
     var titlebar = document.getElementById('patch-ofmaq-titlebar');
+    var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body');
     if (!page || !toolbar || !titlebar) return;
     try {
       page.setAttribute('data-ofmaq-v2-active', '1');
@@ -13180,6 +13181,20 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         child.setAttribute('aria-hidden', 'true');
       } catch (_) {}
     });
+    if (container && container.querySelectorAll) {
+      Array.prototype.slice.call(container.querySelectorAll('.kb-board,.kb-board-ofmaq,.patch-ofmaq-summary-grid,.patch-ofmaq-table-wrap')).forEach(function(node) {
+        if (!node) return;
+        try {
+          node.style.setProperty('display', 'none', 'important');
+          node.style.setProperty('max-height', '0', 'important');
+          node.style.setProperty('overflow', 'hidden', 'important');
+          node.style.setProperty('padding', '0', 'important');
+          node.style.setProperty('margin', '0', 'important');
+          node.style.setProperty('border', 'none', 'important');
+          node.setAttribute('aria-hidden', 'true');
+        } catch (_) {}
+      });
+    }
   }
 
   function _ofmaqV2WeekStart(iso) {
@@ -13204,8 +13219,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   function _ofmaqV2SelectedIso() {
     var inp = document.getElementById('ofmaq-data');
-    var v = String(inp && inp.value || '').slice(0, 10);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+    var v = _ofmaqV2NormalizeDateIso(inp && inp.value || '');
+    if (v) return v;
     return _ofmaqV2IsoFromDate(new Date());
   }
 
@@ -13219,6 +13234,26 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       out.push({ idx: i, label: labels[i] || String(i + 1), iso: _ofmaqV2IsoFromDate(d), date: d });
     }
     return out;
+  }
+
+  function _ofmaqV2NormalizeDateIso(value) {
+    try {
+      if (Object.prototype.toString.call(value) === '[object Date]') {
+        return Number.isFinite(value.getTime()) ? _isoDateOnly(value) : '';
+      }
+      var txt = String(value == null ? '' : value).trim();
+      if (!txt) return '';
+      var br = txt.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\D.*)?$/);
+      if (br) {
+        var dBr = new Date(Number(br[3] || 0), Number(br[2] || 1) - 1, Number(br[1] || 1));
+        return Number.isFinite(dBr.getTime()) ? _isoDateOnly(dBr) : '';
+      }
+      var isoMatch = txt.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (isoMatch && isoMatch[1]) return isoMatch[1];
+      var local = typeof rrDateAtLocal === 'function' ? rrDateAtLocal(txt) : null;
+      if (local) return _isoDateOnly(local);
+    } catch (_) {}
+    return '';
   }
 
   function _ofmaqV2SourceList() {
@@ -13239,20 +13274,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       try { (_maquinasFromOf(of) || []).forEach(addMachine); } catch (_) {}
       addMachine(of && (of.maquina_agendada || of.maquina || of.maquina_atual));
       var maquina = String(machines[0] || '').trim();
-      var diaIso = String(
-        of && (
-          of.data_agendamento ||
-          of.agendamento ||
-          of.dia_programacao ||
-          of.diaProgramacao ||
-          of.data_programada ||
-          of.data_producao ||
-          of.dia ||
-          of.data_entrega ||
-          of.ent
-        ) || ''
-      ).slice(0, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(diaIso)) diaIso = String(_ofmaqEntregaIso(of) || '').slice(0, 10);
+      var rawDateValue = of && (
+        of.data_agendamento ||
+        of.agendamento ||
+        of.dia_programacao ||
+        of.diaProgramacao ||
+        of.data_programada ||
+        of.data_producao ||
+        of.dia ||
+        of.data_entrega ||
+        of.ent
+      );
+      var diaIso = _ofmaqV2NormalizeDateIso(rawDateValue);
+      if (!diaIso) diaIso = _ofmaqV2NormalizeDateIso(_ofmaqEntregaIso(of) || '');
       var maqDados = maquina && typeof window.getDadosMaquina === 'function' ? window.getDadosMaquina(maquina) : null;
       var qtd = Number(_getQtdOf(of) || 0) || 0;
       var tempoMin = Number(_ofmaqTempoMinForMachine(of, maqDados) || 0) || 0;
@@ -13283,6 +13317,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         diaIso: diaIso,
         urgencia: _ofmaqUrgenciaTipo(of),
         status: String(of && of.status || '').trim(),
+        rawDateOriginal: rawDateValue,
         of: of,
         card: null,
         text: text,
@@ -13386,8 +13421,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function _ofmaqV2SetDate(iso) {
-    var v = String(iso || '').slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+    var v = _ofmaqV2NormalizeDateIso(iso);
+    if (!v) return;
     var inp = document.getElementById('ofmaq-data');
     if (!inp) return;
     try {
@@ -13572,6 +13607,21 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     if (!redistribHtml) {
       redistribHtml = '<div class="patch-ofmaq-v2-redistrib is-placeholder"><div><strong>OFs que podem ser redistribuídas</strong><span>Espaço reservado para a régua de redistribuição. A regra de negócio dessa faixa ainda precisa ser fechada para exibir sugestões confiáveis.</span></div></div>';
     }
+    try {
+      console.log('[OFMAQ-V2-DATE-COMPARE]', {
+        selectedIso: selectedIso,
+        samples: cardsDom.slice(0, 3).map(function(item) {
+          var raw = item && item.rawDateOriginal;
+          return {
+            id: String(item && item.id || ''),
+            rawDate: Object.prototype.toString.call(raw) === '[object Date]' ? raw.toISOString() : String(raw == null ? '' : raw),
+            beforeSlice: String(raw == null ? '' : raw).slice(0, 10),
+            normalizedIso: String(item && item.diaIso || ''),
+            entregaIso: String(item && item.entregaIso || '')
+          };
+        })
+      });
+    } catch (_) {}
     try {
       console.log('[OFMAQ-V2-FILTER]', {
         selectedIso: selectedIso,
