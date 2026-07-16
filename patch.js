@@ -13914,11 +13914,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
   #tabelaChapasEstoque tbody tr {
     border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+    min-height: 48px !important;
   }
   #tabelaChapasEstoque td {
-    font-size: 0.75rem !important;
-    padding: 8px 6px !important;
+    font-size: 14px !important;
+    padding: 12px 16px !important;
     white-space: nowrap !important;
+    min-height: 48px !important;
+  }
+  #tabelaChapasEstoque th {
+    font-size: 12px !important;
+    padding: 12px 16px !important;
   }
 
   #painelDetalheChapa {
@@ -15569,8 +15575,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + '.estoque-wire-card-action > *{height:100%}'
           + '.pep-table-estoque-wire{border-collapse:separate;border-spacing:0 8px}'
           + '.pep-table-estoque-wire thead th,.pep-table-estoque-wire tbody td{text-align:center;vertical-align:middle}'
-          + '.pep-table-estoque-wire thead th{padding:14px 14px;font-size:11px;letter-spacing:.08em}'
-          + '.pep-table-estoque-wire tbody td{padding:14px 16px;line-height:1.45}'
+          + '.pep-table-estoque-wire thead th{padding:12px 16px;font-size:12px;letter-spacing:.08em}'
+          + '.pep-table-estoque-wire tbody td{padding:12px 16px;min-height:48px;font-size:14px;line-height:1.45}'
           + '.pep-table-estoque-wire tbody tr[data-chapa-id] > td{border-top:1px solid rgba(30,41,59,.9);border-bottom:1px solid rgba(30,41,59,.9);background:rgba(15,23,42,.42)}'
           + '.pep-table-estoque-wire tbody tr[data-chapa-id] > td:first-child{border-left:1px solid rgba(30,41,59,.9);border-top-left-radius:12px;border-bottom-left-radius:12px;padding-left:18px}'
           + '.pep-table-estoque-wire tbody tr[data-chapa-id] > td:last-child{border-right:1px solid rgba(30,41,59,.9);border-top-right-radius:12px;border-bottom-right-radius:12px;padding-right:18px}'
@@ -15590,8 +15596,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           + '.pep-table-estoque-wire .estoque-row-group-select{min-width:180px;max-width:220px;padding:8px 10px;border-radius:10px;background:#081120;color:#e2e8f0;border:1px solid rgba(148,163,184,.18)}'
           + '.pep-table-estoque-wire .estoque-grupo-col{text-align:left}'
           + '.pep-table-estoque-wire tr.estoque-grupo-separador td{padding:10px 12px;border-bottom:none;background:transparent!important}'
-          + '#tabelaChapasEstoque th{padding:14px 14px!important;line-height:1.35}'
-          + '#tabelaChapasEstoque td{padding:13px 14px!important;line-height:1.45}'
+          + '#tabelaChapasEstoque th{padding:12px 16px!important;font-size:12px!important;line-height:1.35}'
+          + '#tabelaChapasEstoque td{padding:12px 16px!important;min-height:48px!important;font-size:14px!important;line-height:1.45}'
           + '.estoque-grupo-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(8,17,32,.88)}'
           + '.estoque-grupo-head.is-empty{border-color:rgba(148,163,184,.16);box-shadow:inset 4px 0 0 rgba(148,163,184,.28)}'
           + '.estoque-grupo-badge{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;border:1px solid rgba(59,130,246,.28);font-size:11px;font-weight:900;letter-spacing:.04em;text-transform:uppercase}'
