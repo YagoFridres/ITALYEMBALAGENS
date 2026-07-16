@@ -16887,9 +16887,32 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
       };
     }
+    function ensureEstoqueFontFixStyle() {
+      var estStyle = document.getElementById('ofmaq-estoque-font-fix');
+      if (estStyle) return estStyle;
+      estStyle = document.createElement('style');
+      estStyle.id = 'ofmaq-estoque-font-fix';
+      estStyle.textContent = ''
+        + '.estoque-chapas-table td, .chapas-table td, '
+        + '#estoque-chapas-container td, #chapas-estoque-table td, '
+        + '[id*="estoque"] table td, [class*="estoque"] table td {'
+        + 'font-size:14px !important;'
+        + 'padding:12px 16px !important;'
+        + 'line-height:1.5 !important;'
+        + '}'
+        + '.estoque-chapas-table th, .chapas-table th, '
+        + '#estoque-chapas-container th, #chapas-estoque-table th, '
+        + '[id*="estoque"] table th, [class*="estoque"] table th {'
+        + 'font-size:12px !important;'
+        + 'padding:10px 16px !important;'
+        + '}';
+      document.head.appendChild(estStyle);
+      return estStyle;
+    }
     async function renderEstoqueWireframePage() {
       ensureStyles();
       _ensureEstoqueStyle();
+      ensureEstoqueFontFixStyle();
       var page = ensurePage('estoque');
       showOnlyPage('estoque');
       // #region debug-point A:estoque-wireframe-entry
