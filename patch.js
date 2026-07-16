@@ -12115,7 +12115,7 @@ window.addEventListener('unhandledrejection', function(e) {
       + '.ofmaq-direct-load{font-size:12px;font-weight:800;color:#94a3b8;padding:2px 4px}'
       + '.ofmaq-direct-load[data-overload="1"]{color:#ef4444}'
       + '.ofmaq-direct-load[data-overload="0"]{color:#22c55e}'
-      + '.ofmaq-direct-table-wrap{overflow:auto;border:1px solid #1e293b;border-radius:16px;background:#0f172a;box-shadow:0 18px 40px rgba(2,6,23,.24)}'
+      + '.ofmaq-direct-table-wrap{overflow:auto;overflow-y:auto;max-height:calc(100vh - 200px);border:1px solid #1e293b;border-radius:16px;background:#0f172a;box-shadow:0 18px 40px rgba(2,6,23,.24)}'
       + '#ofmaq-tabela{width:100%;min-width:1450px;border-collapse:collapse;table-layout:fixed}'
       + '#ofmaq-tabela thead th{position:sticky;top:0;z-index:2;background:#1e293b;color:#64748b;text-transform:uppercase;font-size:11px;letter-spacing:.08em;padding:10px 12px;text-align:left}'
       + '#ofmaq-tabela thead th button{all:unset;cursor:pointer;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit}'
