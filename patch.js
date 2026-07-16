@@ -1,4 +1,4 @@
-﻿window._comRodando = false;
+window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
 if (!window.__comRodandoWatchdogInstalled) {
@@ -31,6 +31,35 @@ if (!window.__ofmaqDataCheckInstalled) {
       if (window._PAGE_ATUAL === 'ofmaq' && typeof window._ofmaqRenderNovo === 'function') window._ofmaqRenderNovo(ofs);
     } catch (_) {}
   }, 500);
+}
+if (!window.__ofmaqDiag3sInstalled) {
+  window.__ofmaqDiag3sInstalled = true;
+  setTimeout(function() {
+    var fontes = {
+      _ofmaqListaCompleta: (window._ofmaqListaCompleta || []).length,
+      _ofmaqBaseList: (window._ofmaqBaseList || []).length,
+      OFS: (window.OFS || []).length,
+      kbOfs: (window.kbOfs || []).length,
+      _ofmaqLastGroupOfs: window._ofmaqLastGroupOfs ? (Object.keys(window._ofmaqLastGroupOfs).length + ' grupos') : 0
+    };
+    console.log('[OFMAQ-FONTES-3S]', JSON.stringify(fontes));
+    var ofs = window._ofmaqListaCompleta || window._ofmaqBaseList || window.OFS || [];
+    if (ofs.length > 0) {
+      console.log('[OFMAQ-OF-EXEMPLO]', JSON.stringify({
+        dia: ofs[0].dia,
+        maq: ofs[0].maq,
+        cores: ofs[0].cores_impressao,
+        status: ofs[0].status,
+        of: ofs[0].of
+      }));
+    } else {
+      console.log('[OFMAQ-FONTES-3S] TODAS VAZIAS - dados não chegaram ainda');
+      var allKeys = Object.keys(window).filter(function(k) {
+        return k.toLowerCase().includes('of') && Array.isArray(window[k]) && window[k].length > 0;
+      });
+      console.log('[OFMAQ-WINDOW-ARRAYS]', allKeys.slice(0, 10));
+    }
+  }, 3000);
 }
 if (!window._urlValida) {
   window._urlValida = function(url) {
@@ -3943,7 +3972,6 @@ window._compraPapelaoBlankItem = function() {
   return {
     ped_cliente: '',
     data_entrega: '',
-    nomenclatura: '',
     po: '',
     largura: '',
     comprimento: '',
@@ -3954,11 +3982,9 @@ window._compraPapelaoBlankItem = function() {
     vinco4: '',
     quantidade: '',
     lote_minimo: '',
-    area_m2: '',
     valor_m2: '',
-    vl_p_mil: '',
-    valor_total: '',
-    observacao: ''
+    observacao: '',
+    ped_fornecedor: ''
   };
 };
 window._compraPapelaoStatsResumo = function() {
@@ -4015,16 +4041,12 @@ window._compraPapelaoNormalizeCompraHeader = function(compra) {
     var vincosTxt = String(current.vincos || '').trim();
     var partes = vincosTxt ? vincosTxt.split('/').map(function(part) { return String(part || '').trim(); }) : [];
     return Object.assign({}, item || {}, {
-      nomenclatura: String(current.nomenclatura || current.po || '').trim(),
       po: String(current.po || current.nomenclatura || '').trim(),
-      vincos: vincosTxt,
       vinco1: String(current.vinco1 || partes[0] || '').trim(),
       vinco2: String(current.vinco2 || partes[1] || '').trim(),
       vinco3: String(current.vinco3 || partes[2] || '').trim(),
       vinco4: String(current.vinco4 || partes[3] || '').trim(),
-      area_m2: current.area_m2 != null ? current.area_m2 : '',
-      vl_p_mil: current.vl_p_mil != null ? current.vl_p_mil : '',
-      valor_total: current.valor_total != null ? current.valor_total : ''
+      ped_fornecedor: String(item && (item.ped_fornecedor || item.pedido_fornecedor) || '').trim()
     });
   }) : [window._compraPapelaoBlankItem()];
   return row;
@@ -4103,7 +4125,7 @@ window._compraPapelaoStatusOptionsHtml = function(selected) {
   }).join('');
 };
 window._compraPapelaoItemFieldsOrder = function() {
-  return ['ped_cliente', 'data_entrega', 'nomenclatura', 'largura', 'comprimento', 'vincos', 'quantidade', 'lote_minimo', 'area_m2', 'valor_m2', 'vl_p_mil', 'valor_total', 'observacao'];
+  return ['ped_cliente', 'data_entrega', 'po', 'largura', 'comprimento', 'vinco1', 'vinco2', 'vinco3', 'vinco4', 'quantidade', 'lote_minimo', 'valor_m2', 'observacao', 'ped_fornecedor'];
 };
 window._compraPapelaoComposeVincos = function(item) {
   var values = [];
@@ -4249,15 +4271,10 @@ window._compraPapelaoEnsureStyles = function() {
     + '#page-compras .ccpx-table-panel{display:grid;gap:12px}'
     + '#page-compras .ccpx-table-panel-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}'
     + '#page-compras .ccpx-table-panel-head .meta{font-size:12px;color:#94a3b8}'
-    + '#page-compras .ccpx-table-clean{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0;min-width:1980px}'
+    + '#page-compras .ccpx-table-clean{width:100%;border-collapse:separate;border-spacing:0;min-width:980px}'
     + '#page-compras .ccpx-table-clean th{position:sticky;top:0;z-index:2;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;padding:12px;border-bottom:1px solid rgba(148,163,184,.18);text-align:left}'
-    + '#page-compras .ccpx-table-clean td{padding:13px 12px;border-bottom:1px solid rgba(148,163,184,.1);font-size:13px;color:#e2e8f0;vertical-align:middle;white-space:nowrap}'
+    + '#page-compras .ccpx-table-clean td{padding:13px 12px;border-bottom:1px solid rgba(148,163,184,.1);font-size:13px;color:#e2e8f0;vertical-align:middle}'
     + '#page-compras .ccpx-table-clean tbody tr:hover td{background:rgba(30,41,59,.46)}'
-    + '#page-compras .ccpx-table-clean .ccpx-sticky-left{position:sticky;left:0;z-index:3;background:#0f172a;box-shadow:8px 0 16px rgba(2,6,23,.22)}'
-    + '#page-compras .ccpx-table-clean td.ccpx-sticky-left{background:rgba(15,23,42,.98)}'
-    + '#page-compras .ccpx-table-clean .ccpx-sticky-right{position:sticky;right:0;z-index:3;background:#0f172a;box-shadow:-8px 0 16px rgba(2,6,23,.22)}'
-    + '#page-compras .ccpx-table-clean td.ccpx-sticky-right{background:rgba(15,23,42,.98)}'
-    + '#page-compras .ccpx-table-clean .ccpx-col-obs{white-space:normal;min-width:220px;max-width:320px}'
     + '#page-compras .ccpx-row-stack{display:grid;gap:4px}'
     + '#page-compras .ccpx-row-stack strong{font-size:13px;color:#f8fafc}'
     + '#page-compras .ccpx-row-stack span{font-size:11px;color:#94a3b8}'
@@ -4319,11 +4336,10 @@ window._compraPapelaoEnsureStyles = function() {
     + '.ccpx-modal-num{color:var(--accent,#60a5fa)!important;font-weight:900;font-family:var(--mono,inherit)}'
     + '.ccpx-modal-items-sheet{display:grid;gap:12px;padding:16px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.6)}'
     + '.ccpx-modal-items-toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}'
-    + '.ccpx-modal-items-sheet table{width:100%;border-collapse:collapse;min-width:1980px}'
+    + '.ccpx-modal-items-sheet table{width:100%;border-collapse:collapse;min-width:1880px}'
     + '.ccpx-modal-items-sheet th{padding:7px 8px;background:var(--s2,#0f172a);border:1px solid rgba(148,163,184,.18);font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#cbd5e1;text-align:left;font-family:var(--mono,inherit);white-space:nowrap}'
     + '.ccpx-modal-items-sheet td{padding:0;border:1px solid rgba(148,163,184,.12);vertical-align:middle;background:rgba(15,23,42,.22)}'
     + '.ccpx-modal-items-sheet input,.ccpx-modal-items-sheet textarea{width:100%;background:transparent;color:#f8fafc;border:none;outline:none;padding:10px 10px;font-size:12px}'
-    + '.ccpx-modal-items-sheet input[data-field="area_m2"],.ccpx-modal-items-sheet input[data-field="vl_p_mil"],.ccpx-modal-items-sheet input[data-field="valor_total"]{background:rgba(255,255,255,.04)}'
     + '.ccpx-modal-items-sheet textarea{min-height:40px;resize:vertical}'
     + '.ccpx-modal-items-sheet .num-read{padding:10px 10px;text-align:right;font-variant-numeric:tabular-nums;font-weight:900;color:#e2e8f0;font-family:var(--mono,inherit)}'
     + '.ccpx-modal-items-sheet .idx-read{padding:10px 10px;text-align:center;font-weight:900;color:#60a5fa;font-family:var(--mono,inherit)}'
@@ -4454,47 +4470,30 @@ window._compraPapelaoRenderBlocksHtml = function() {
   }
   return ''
     + '<div class="ccpx-table-panel">'
-    + '  <div class="ccpx-table-panel-head"><div class="meta">Detalhamento completo por item das compras de papelão.</div><div class="meta">Empresa atual: ' + window._compraPapelaoEsc(window._compraPapelaoEmpresaLabelAtual()) + '</div></div>'
-    + '  <div class="ccpx-block-scroll"><table class="ccpx-table-clean"><thead><tr><th class="ccpx-sticky-left">Número da compra</th><th>Nº</th><th>Ped. Cliente</th><th>Data Entrega</th><th>Nomenclatura</th><th class="num">Largura</th><th class="num">Comprimento</th><th>Vincos</th><th class="num">Quantidade</th><th class="num">Lote Mínimo</th><th class="num">Área m²</th><th class="num">Valor m²</th><th class="num">VL P/MIL</th><th class="num">Valor Total</th><th class="ccpx-col-obs">Observação</th><th>Ped. Fornecedor</th><th class="ccpx-sticky-right">Ações</th></tr></thead><tbody>'
+    + '  <div class="ccpx-table-panel-head"><div class="meta">Tabela resumida com totais consolidados por compra.</div><div class="meta">Empresa atual: ' + window._compraPapelaoEsc(window._compraPapelaoEmpresaLabelAtual()) + '</div></div>'
+    + '  <div class="ccpx-block-scroll"><table class="ccpx-table-clean"><thead><tr><th>Nº</th><th>Fornecedor</th><th>Pedido</th><th class="num">Qtd</th><th class="num">Área m²</th><th class="num">Valor</th><th>Ações</th></tr></thead><tbody>'
     + compras.map(function(compra) {
         var id = String(compra && compra.id || '').trim();
         var pastaNome = (Array.isArray(window._compraPapelaoStateRef().pastas) ? window._compraPapelaoStateRef().pastas : []).find(function(row) {
           return String(row && row.id || '') === String(compra && compra.pasta_id || '') && String(row && row._emp_id_consulta || '') === String(compra && compra._emp_id_consulta || '');
         });
-        var dataRef = compra && (compra.data_compra || compra.data || compra.atualizado_em || compra.criado_em || compra.created_at || compra.updated_at);
-        var itens = Array.isArray(compra && compra.itens) && compra.itens.length ? compra.itens : [window._compraPapelaoBlankItem()];
-        return itens.map(function(item, idx) {
-          var d = window._compraPapelaoDeriveItem(item);
-          var areaVal = item && item.area_m2 != null && item.area_m2 !== '' ? item.area_m2 : d.area_m2;
-          var milVal = item && item.vl_p_mil != null && item.vl_p_mil !== '' ? item.vl_p_mil : d.vl_p_mil;
-          var totalVal = item && item.valor_total != null && item.valor_total !== '' ? item.valor_total : d.valor_total;
-          return ''
-            + '<tr data-ccpx-compra="' + window._compraPapelaoAttr(id) + '">'
-            + '  <td class="ccpx-sticky-left"><div class="ccpx-row-stack"><strong>' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(compra && compra.numero_compra || '')) + '</strong><span>' + window._compraPapelaoEsc((compra && compra.fornecedor) || '—') + ' · ' + window._compraPapelaoEsc(pastaNome && pastaNome.nome || 'Sem pasta') + ' · ' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(dataRef)) + '</span></div></td>'
-            + '  <td>' + window._compraPapelaoEsc(String(item && item.seq != null ? item.seq : (idx + 1))) + '</td>'
-            + '  <td>' + window._compraPapelaoEsc(item && item.ped_cliente || '—') + '</td>'
-            + '  <td>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(item && item.data_entrega || '')) + '</td>'
-            + '  <td>' + window._compraPapelaoEsc(item && (item.nomenclatura || item.po) || '—') + '</td>'
-            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.largura || 0, 0)) + '</td>'
-            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.comprimento || 0, 0)) + '</td>'
-            + '  <td>' + window._compraPapelaoEsc(item && item.vincos || '—') + '</td>'
-            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.quantidade || 0, 0)) + '</td>'
-            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.lote_minimo || 0, 0)) + '</td>'
-            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(areaVal, 4)) + '</td>'
-            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.valor_m2 || 0)) + '</td>'
-            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(milVal)) + '</td>'
-            + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(totalVal)) + '</td>'
-            + '  <td class="ccpx-col-obs">' + window._compraPapelaoEsc(item && item.observacao || '—') + '</td>'
-            + '  <td>' + window._compraPapelaoEsc(item && item.ped_fornecedor || compra && compra.ped_fornecedor || '—') + '</td>'
-            + '  <td class="ccpx-sticky-right"><div class="ccpx-actions-compact">'
-            + '    <button type="button" data-ccpx-clone="' + window._compraPapelaoAttr(id) + '">Clonar</button>'
-            + '    <button type="button" data-ccpx-folder-move="' + window._compraPapelaoAttr(id) + '">Pasta</button>'
-            + '    <button type="button" data-ccpx-edit="' + window._compraPapelaoAttr(id) + '" class="primary">Editar</button>'
-            + '    <button type="button" data-ccpx-print-one="' + window._compraPapelaoAttr(id) + '">Imprimir</button>'
-            + '    <button type="button" data-ccpx-delete="' + window._compraPapelaoAttr(id) + '" class="danger">Excluir</button>'
-            + '  </div></td>'
-            + '</tr>';
-        }).join('');
+    var totals = window._compraPapelaoCompraTotals(compra);
+    var dataRef = compra && (compra.data_compra || compra.data || compra.atualizado_em || compra.criado_em || compra.created_at || compra.updated_at);
+    return ''
+          + '<tr data-ccpx-compra="' + window._compraPapelaoAttr(id) + '">'
+          + '  <td><div class="ccpx-row-stack"><strong>' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(compra && compra.numero_compra || '')) + '</strong><span>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(dataRef)) + '</span></div></td>'
+          + '  <td><div class="ccpx-row-stack"><strong>' + window._compraPapelaoEsc(compra && compra.fornecedor || '—') + '</strong><span>' + window._compraPapelaoEsc(compra && compra.status || 'Solicitada') + '</span></div></td>'
+          + '  <td><div class="ccpx-row-stack"><strong>' + window._compraPapelaoEsc(compra && compra.ped_fornecedor || '—') + '</strong><span>' + window._compraPapelaoEsc(pastaNome && pastaNome.nome || 'Sem pasta') + '</span></div></td>'
+          + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.qtd, 0)) + '</td>'
+          + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.area, 4)) + '</td>'
+          + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(totals.valor)) + '</td>'
+          + '  <td><div class="ccpx-actions-compact">'
+          + '    <button type="button" data-ccpx-edit="' + window._compraPapelaoAttr(id) + '" class="primary">Editar</button>'
+          + '    <button type="button" data-ccpx-folder-move="' + window._compraPapelaoAttr(id) + '">Pasta</button>'
+          + '    <button type="button" data-ccpx-print-one="' + window._compraPapelaoAttr(id) + '">Imprimir</button>'
+          + '    <button type="button" data-ccpx-delete="' + window._compraPapelaoAttr(id) + '" class="danger">Excluir</button>'
+          + '  </div></td>'
+          + '</tr>';
       }).join('')
     + '  </tbody></table></div>'
     + '</div>';
@@ -4703,50 +4702,49 @@ window._compraPapelaoCollectModalRows = function(overlay) {
     var item = {
       ped_cliente: String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim(),
       data_entrega: String((row.querySelector('[data-field="data_entrega"]') || {}).value || '').trim(),
-      nomenclatura: String((row.querySelector('[data-field="nomenclatura"]') || {}).value || '').trim(),
+      po: String((row.querySelector('[data-field="po"]') || {}).value || '').trim(),
       largura: String((row.querySelector('[data-field="largura"]') || {}).value || '').trim(),
       comprimento: String((row.querySelector('[data-field="comprimento"]') || {}).value || '').trim(),
-      vincos: String((row.querySelector('[data-field="vincos"]') || {}).value || '').trim(),
+      vinco1: String((row.querySelector('[data-field="vinco1"]') || {}).value || '').trim(),
+      vinco2: String((row.querySelector('[data-field="vinco2"]') || {}).value || '').trim(),
+      vinco3: String((row.querySelector('[data-field="vinco3"]') || {}).value || '').trim(),
+      vinco4: String((row.querySelector('[data-field="vinco4"]') || {}).value || '').trim(),
       quantidade: String((row.querySelector('[data-field="quantidade"]') || {}).value || '').trim(),
       lote_minimo: String((row.querySelector('[data-field="lote_minimo"]') || {}).value || '').trim(),
-      area_m2: String((row.querySelector('[data-field="area_m2"]') || {}).value || '').trim(),
       valor_m2: String((row.querySelector('[data-field="valor_m2"]') || {}).value || '').trim(),
-      vl_p_mil: String((row.querySelector('[data-field="vl_p_mil"]') || {}).value || '').trim(),
-      valor_total: String((row.querySelector('[data-field="valor_total"]') || {}).value || '').trim(),
-      observacao: String((row.querySelector('[data-field="observacao"]') || {}).value || '').trim()
+      observacao: String((row.querySelector('[data-field="observacao"]') || {}).value || '').trim(),
+      ped_fornecedor: String((row.querySelector('[data-field="ped_fornecedor"]') || {}).value || '').trim()
     };
     var d = window._compraPapelaoDeriveItem(item);
-    item.po = item.nomenclatura;
-    item.area_m2 = item.area_m2 || d.area_m2;
-    item.vl_p_mil = item.vl_p_mil || d.vl_p_mil;
-    item.valor_total = item.valor_total || d.valor_total;
+    item.vincos = window._compraPapelaoComposeVincos(item);
+    item.nomenclatura = item.po;
+    item.area_m2 = d.area_m2;
+    item.vl_p_mil = d.vl_p_mil;
+    item.valor_total = d.valor_total;
     return item;
   }).filter(function(item) {
-    return item.ped_cliente || item.data_entrega || item.nomenclatura || item.largura || item.comprimento || item.vincos || item.quantidade || item.lote_minimo || item.area_m2 || item.valor_m2 || item.vl_p_mil || item.valor_total || item.observacao;
+    return item.ped_cliente || item.data_entrega || item.po || item.largura || item.comprimento || item.vincos || item.quantidade || item.lote_minimo || item.valor_m2 || item.observacao || item.ped_fornecedor;
   });
 };
 window._compraPapelaoRenderModalRowsHtml = function(itens) {
   var rows = window._compraPapelaoEnsureVisibleRows(itens, 5);
   return rows.map(function(item, idx) {
     var d = window._compraPapelaoDeriveItem(item);
-    var areaManual = !!(item && item.area_m2 != null && String(item.area_m2).trim() !== '');
-    var milManual = !!(item && item.vl_p_mil != null && String(item.vl_p_mil).trim() !== '');
-    var totalManual = !!(item && item.valor_total != null && String(item.valor_total).trim() !== '');
     return ''
       + '<tr data-ccpx-item-row="' + idx + '">'
       + '  <td><input data-field="ped_cliente" value="' + window._compraPapelaoAttr(item && item.ped_cliente || '') + '"></td>'
       + '  <td><input data-field="data_entrega" type="date" value="' + window._compraPapelaoAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></td>'
-      + '  <td><input data-field="nomenclatura" value="' + window._compraPapelaoAttr(item && (item.nomenclatura || item.po) || '') + '" placeholder="Nomenclatura"></td>'
-      + '  <td><input data-field="largura" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.largura || '') + '" placeholder="Largura"></td>'
-      + '  <td><input data-field="comprimento" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.comprimento || '') + '" placeholder="Comprimento"></td>'
-      + '  <td><input data-field="vincos" value="' + window._compraPapelaoAttr(item && item.vincos || '') + '" placeholder="Ex: 10/20/30"></td>'
+      + '  <td><input data-field="po" value="' + window._compraPapelaoAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></td>'
+      + '  <td><div style="display:grid;grid-template-columns:minmax(88px,1fr) 14px minmax(88px,1fr);align-items:center"><input data-field="largura" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.largura || '') + '" placeholder="L"><span style="color:#64748b;font-weight:900;text-align:center">×</span><input data-field="comprimento" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.comprimento || '') + '" placeholder="C"></div></td>'
+      + '  <td><div style="display:grid;grid-template-columns:repeat(4,minmax(56px,1fr));gap:4px"><input data-field="vinco1" value="' + window._compraPapelaoAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + window._compraPapelaoAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + window._compraPapelaoAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + window._compraPapelaoAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></td>'
       + '  <td><input data-field="quantidade" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.quantidade || '') + '"></td>'
       + '  <td><input data-field="lote_minimo" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.lote_minimo || '') + '"></td>'
-      + '  <td><input data-field="area_m2" data-ccpx-manual="' + (areaManual ? '1' : '0') + '" type="number" min="0" step="0.0001" value="' + window._compraPapelaoAttr(areaManual ? item.area_m2 : String(Math.round((Number(d.area_m2 || 0) || 0) * 10000) / 10000)) + '"></td>'
+      + '  <td class="num-read" data-ccpx-area>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(d.area_m2, 4)) + '</td>'
       + '  <td><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_m2 || '') + '"></td>'
-      + '  <td><input data-field="vl_p_mil" data-ccpx-manual="' + (milManual ? '1' : '0') + '" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(milManual ? item.vl_p_mil : String(Math.round((Number(d.vl_p_mil || 0) || 0) * 100) / 100)) + '"></td>'
-      + '  <td><input data-field="valor_total" data-ccpx-manual="' + (totalManual ? '1' : '0') + '" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(totalManual ? item.valor_total : String(Math.round((Number(d.valor_total || 0) || 0) * 100) / 100)) + '"></td>'
+      + '  <td class="num-read" data-ccpx-mil>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '</td>'
+      + '  <td class="num-read" data-ccpx-total>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(d.valor_total)) + '</td>'
       + '  <td><textarea data-field="observacao" rows="1">' + window._compraPapelaoEsc(item && item.observacao || '') + '</textarea></td>'
+      + '  <td><input data-field="ped_fornecedor" value="' + window._compraPapelaoAttr(item && item.ped_fornecedor || '') + '"></td>'
       + '  <td><div class="ccpx-modal-line-actions"><button type="button" class="dup" data-ccpx-dup-item="' + idx + '" title="Duplicar linha">+</button><button type="button" class="del" data-ccpx-del-item="' + idx + '" title="Remover linha">✕</button></div></td>'
       + '</tr>';
   }).join('');
@@ -4763,27 +4761,15 @@ window._compraPapelaoRefreshModalComputed = function(overlay) {
       valor_m2: (row.querySelector('[data-field="valor_m2"]') || {}).value
     };
     var d = window._compraPapelaoDeriveItem(item);
-    var areaInput = row.querySelector('[data-field="area_m2"]');
-    var milInput = row.querySelector('[data-field="vl_p_mil"]');
-    var totalInput = row.querySelector('[data-field="valor_total"]');
-    var areaVal = window._compraPapelaoNum((areaInput || {}).value);
-    var milVal = window._compraPapelaoNum((milInput || {}).value);
-    var totalVal = window._compraPapelaoNum((totalInput || {}).value);
-    if (areaInput && (areaInput.dataset.ccpxManual !== '1' || !String(areaInput.value || '').trim())) {
-      areaVal = d.area_m2;
-      areaInput.value = String(Math.round((Number(d.area_m2 || 0) || 0) * 10000) / 10000);
-    }
-    if (milInput && (milInput.dataset.ccpxManual !== '1' || !String(milInput.value || '').trim())) {
-      milVal = d.vl_p_mil;
-      milInput.value = String(Math.round((Number(d.vl_p_mil || 0) || 0) * 100) / 100);
-    }
-    if (totalInput && (totalInput.dataset.ccpxManual !== '1' || !String(totalInput.value || '').trim())) {
-      totalVal = d.valor_total;
-      totalInput.value = String(Math.round((Number(d.valor_total || 0) || 0) * 100) / 100);
-    }
     totalQtd += window._compraPapelaoNum(item.quantidade);
-    totalArea += areaVal;
-    totalValor += totalVal;
+    totalArea += d.area_m2;
+    totalValor += d.valor_total;
+    var a = row.querySelector('[data-ccpx-area]');
+    var m = row.querySelector('[data-ccpx-mil]');
+    var t = row.querySelector('[data-ccpx-total]');
+    if (a) a.textContent = window._compraPapelaoFmtNum(d.area_m2, 4);
+    if (m) m.textContent = window._compraPapelaoFmtMoney(d.vl_p_mil);
+    if (t) t.textContent = window._compraPapelaoFmtMoney(d.valor_total);
   });
   var q = overlay.querySelector('#ccpx-sum-qtd');
   var a2 = overlay.querySelector('#ccpx-sum-area');
@@ -4812,11 +4798,11 @@ window._compraPapelaoCompraModalHtml = function(compra) {
     + '    <div class="ccpx-modal-inline-stack"><label>Status</label><select id="ccpx-status">' + window._compraPapelaoStatusOptionsHtml(header.status || 'Solicitada') + '</select></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Previsão de Chegada</label><input id="ccpx-prev-chegada" type="date" value="' + window._compraPapelaoAttr(header.previsao_chegada || '') + '"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>CNPJ Fornecedor</label><input id="ccpx-cnpj-fornecedor" value="' + window._compraPapelaoAttr(header.cnpj_fornecedor || '') + '"></div>'
-    + '    <div class="ccpx-modal-inline-stack full"><label>Observação da compra</label><textarea id="ccpx-obs" rows="2">' + window._compraPapelaoEsc(header.observacao || '') + '</textarea></div>'
+    + '    <div class="ccpx-modal-inline-stack full"><label>Observações</label><textarea id="ccpx-obs" rows="2">' + window._compraPapelaoEsc(header.observacao || '') + '</textarea></div>'
     + '  </div>'
     + '<div class="ccpx-modal-items-sheet" style="margin-top:18px">'
     + '  <div class="ccpx-modal-items-toolbar"><div><div style="font-size:14px;font-weight:900;color:#f8fafc">Itens da Compra</div><div style="font-size:12px;color:#94a3b8">Tab navega entre células; Enter na última célula da última linha cria uma nova linha.</div></div><button type="button" class="btn btn-ghost btn-sm" id="ccpx-add-item">+ Nova Linha</button></div>'
-    + '  <div class="ccpx-modal-items-wrap"><table><thead><tr><th>Ped. Cliente</th><th>Data Entrega</th><th>Nomenclatura</th><th>Largura</th><th>Comprimento</th><th>Vincos</th><th>Quantidade</th><th>Lote Mínimo</th><th>Área m²</th><th>Valor m²</th><th>VL P/MIL</th><th>Valor Total</th><th>Observação do item</th><th>Ações</th></tr></thead><tbody id="ccpx-modal-items-body">' + window._compraPapelaoRenderModalRowsHtml(header && header.itens || []) + '</tbody></table></div>'
+    + '  <div class="ccpx-modal-items-wrap"><table><thead><tr><th>Pedido Cliente</th><th>Entrega</th><th>PO</th><th>Medidas L × C</th><th>Vincos</th><th>Qtde</th><th>Lote Mínimo</th><th>Área Pedido (m²)</th><th>Valor m²</th><th>Valor p/mil</th><th>Valor Total</th><th>Obs</th><th>Ped. Fornecedor</th><th>Ações</th></tr></thead><tbody id="ccpx-modal-items-body">' + window._compraPapelaoRenderModalRowsHtml(header && header.itens || []) + '</tbody></table></div>'
     + '  <div class="ccpx-summary"><div class="ccpx-chip"><div class="lbl">Quantidade</div><div class="val" id="ccpx-sum-qtd">0</div></div><div class="ccpx-chip"><div class="lbl">Área</div><div class="val" id="ccpx-sum-area">0,0000 m²</div></div><div class="ccpx-chip"><div class="lbl">Valor</div><div class="val" id="ccpx-sum-total">R$ 0,00</div></div></div>'
     + '  <div class="ccpx-modal-totalbar"><div class="lbl">Total Geral</div><div class="val" id="ccpx-total-geral">R$ 0,00</div></div>'
     + '</div>'
@@ -4831,6 +4817,8 @@ window._compraPapelaoCollectCompraPayload = function(overlay, compra) {
     current.po = String(current.po || current.nomenclatura || '').trim();
     current.nomenclatura = current.po;
     current.vincos = window._compraPapelaoComposeVincos(current);
+    current.ped_fornecedor = String(current.ped_fornecedor || current.pedido_fornecedor || '').trim();
+    current.pedido_fornecedor = current.ped_fornecedor;
     return current;
   });
   return {
@@ -4866,7 +4854,8 @@ window._compraPapelaoComposeEmailData = function(payload, compra) {
       '   Valor m²: ' + window._compraPapelaoFmtMoney(item && item.valor_m2 || 0),
       '   Valor p/mil: ' + window._compraPapelaoFmtMoney(item && item.vl_p_mil != null ? item.vl_p_mil : d.vl_p_mil),
       '   Valor Total: ' + window._compraPapelaoFmtMoney(item && item.valor_total != null ? item.valor_total : d.valor_total),
-      String(item && item.observacao || '').trim() ? ('   Obs: ' + String(item.observacao || '').trim()) : ''
+      String(item && item.observacao || '').trim() ? ('   Obs: ' + String(item.observacao || '').trim()) : '',
+      String(item && item.ped_fornecedor || '').trim() ? ('   Ped. Fornecedor: ' + String(item.ped_fornecedor || '').trim()) : ''
     ].filter(Boolean).join('\n');
   }).join('\n\n');
   return {
@@ -5120,12 +5109,7 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
           renderRows(rows);
         }
       });
-      tbody.addEventListener('input', function(ev) {
-        var target = ev && ev.target;
-        var field = String(target && target.getAttribute ? target.getAttribute('data-field') || '' : '').trim();
-        if (target && target.dataset && (field === 'area_m2' || field === 'vl_p_mil' || field === 'valor_total')) {
-          target.dataset.ccpxManual = String(target.value || '').trim() ? '1' : '0';
-        }
+      tbody.addEventListener('input', function() {
         window._compraPapelaoRefreshModalComputed(overlay);
       });
       tbody.addEventListener('keydown', function(ev) {
@@ -11631,7 +11615,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   function fmtDateBR(iso) {
     var s = String(iso || '').slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return 'ÔÇö';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '—';
     try {
       if (typeof window.fmtD === 'function') return window.fmtD(s);
     } catch (_) {}
@@ -12290,7 +12274,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var largura = Number(of && (of.dim_largura || of.caixa_largura || of.largura || of.larg)) || 0;
       var comprimento = Number(of && (of.dim_comprimento || of.caixa_comprimento || of.comprimento || of.compr)) || 0;
       var altura = Number(of && (of.dim_altura || of.caixa_altura || of.altura)) || 0;
-      if (largura > 0 && comprimento > 0 && altura > 0) return '~' + largura + '├ù' + comprimento + '├ù' + altura + 'mm';
+      if (largura > 0 && comprimento > 0 && altura > 0) return '~' + largura + '×' + comprimento + '×' + altura + 'mm';
       return buildSizeLabel(parseDimensions(of));
     } catch (_) {
       return 'sem medida definida';
@@ -12308,9 +12292,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function _ofmaqQuantidadeLabel(of) {
     try {
       var qtd = _getQtdOf(of);
-      return qtd != null && qtd !== '' ? String(qtd) : 'ÔÇö';
+      return qtd != null && qtd !== '' ? String(qtd) : '—';
     } catch (_) {
-      return 'ÔÇö';
+      return '—';
     }
   }
 
@@ -12437,10 +12421,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return '<div style="padding:14px;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:rgba(15,23,42,.5);color:#94a3b8">Nenhuma OF encontrada para esse filtro.</div>';
     }
     return ofs.map(function(of) {
-      var numero = _ofmaqNumeroLabel(of) || 'ÔÇö';
-      var cliente = _ofmaqClienteLabel(of) || 'ÔÇö';
-      var produto = _ofmaqProdutoLabel(of) || 'ÔÇö';
-      var maquina = String(of && of.__maquina_busca || '').trim() || 'Sem m├íquina';
+      var numero = _ofmaqNumeroLabel(of) || '—';
+      var cliente = _ofmaqClienteLabel(of) || '—';
+      var produto = _ofmaqProdutoLabel(of) || '—';
+      var maquina = String(of && of.__maquina_busca || '').trim() || 'Sem máquina';
       var entrega = String(getOfDelivery(of) || '').trim();
       var tamanho = _ofmaqTamanhoLabel(of);
       var cores = _ofmaqCoresLabel(of);
@@ -12448,15 +12432,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '<div class="ofmaq-busca-card" data-of-id="' + escAttrLocal(String(of && of.id || '')) + '" style="border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:16px;min-height:196px;background:linear-gradient(145deg,rgba(8,17,32,.95),rgba(15,23,42,.95));box-shadow:0 14px 34px rgba(0,0,0,.24)">'
         + '  <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">'
           + '    <div><div style="font-size:16px;font-weight:900;color:#f8fafc">OF #' + escHLocal(numero) + '</div><div style="margin-top:4px;font-size:13px;color:#cbd5e1">' + escHLocal(cliente) + '</div></div>'
-        + '    <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">M├íquina: <b style="color:#e2e8f0">' + escHLocal(maquina) + '</b></div>'
+        + '    <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">Máquina: <b style="color:#e2e8f0">' + escHLocal(maquina) + '</b></div>'
         + '  </div>'
-        + '  <div style="margin-top:12px;font-size:13px;color:#e2e8f0;font-weight:700;line-height:1.45">' + escHLocal(produto || 'ÔÇö') + '</div>'
+        + '  <div style="margin-top:12px;font-size:13px;color:#e2e8f0;font-weight:700;line-height:1.45">' + escHLocal(produto || '—') + '</div>'
         + '  <div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 12px;font-size:12px;color:#94a3b8">'
-        + '    <div><span style="color:#64748b">Entrega:</span> <b style="color:#e2e8f0">' + escHLocal(entrega ? fmtDateBR(entrega) : 'ÔÇö') + '</b></div>'
-        + '    <div><span style="color:#64748b">Quantidade:</span> <b style="color:#e2e8f0">' + escHLocal(String(_getQtdOf(of) != null ? _getQtdOf(of) : 'ÔÇö')) + '</b></div>'
+        + '    <div><span style="color:#64748b">Entrega:</span> <b style="color:#e2e8f0">' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</b></div>'
+        + '    <div><span style="color:#64748b">Quantidade:</span> <b style="color:#e2e8f0">' + escHLocal(String(_getQtdOf(of) != null ? _getQtdOf(of) : '—')) + '</b></div>'
         + '    <div><span style="color:#64748b">Tamanho:</span> <b style="color:#e2e8f0">' + escHLocal(tamanho) + '</b></div>'
         + '    <div><span style="color:#64748b">Cores:</span> <b style="color:#e2e8f0">' + escHLocal(cores) + '</b></div>'
-        + '    <div><span style="color:#64748b">Status:</span> <b style="color:#e2e8f0">' + escHLocal(String(of && of.status || 'ÔÇö')) + '</b></div>'
+        + '    <div><span style="color:#64748b">Status:</span> <b style="color:#e2e8f0">' + escHLocal(String(of && of.status || '—')) + '</b></div>'
         + '  </div>'
         + '  <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
         + '    <button type="button" class="pep-btn primary" data-acao="concluir">Concluir</button>'
@@ -12495,7 +12479,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     if (meta) {
       meta.textContent = state.q
         ? (String(matches.length) + ' OF(s) encontradas para "' + state.q + '"')
-        : (String(ofs.length) + ' OF(s) distribu├¡das nas m├íquinas');
+        : (String(ofs.length) + ' OF(s) distribuídas nas máquinas');
     }
     if (results) {
       if (!state.q) {
@@ -12518,7 +12502,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       root.style.cssText = 'margin:0 0 18px 0;padding:16px 18px;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(8,17,32,.88)';
       root.innerHTML = ''
         + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
-        + '  <input id="ofmaq-search-input" class="pep-input" type="text" placeholder="Buscar OFs por n├║mero, cliente, produto, tamanho, quantidade ou cor..." style="flex:1;min-width:320px">'
+        + '  <input id="ofmaq-search-input" class="pep-input" type="text" placeholder="Buscar OFs por número, cliente, produto, tamanho, quantidade ou cor..." style="flex:1;min-width:320px">'
         + '  <button id="ofmaq-search-clear" type="button" class="pep-btn">Limpar</button>'
         + '</div>'
         + '<div id="ofmaq-search-meta" style="margin-top:10px;font-size:12px;color:#94a3b8"></div>'
@@ -12679,7 +12663,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var cap = _capacidadeDia(hoje);
       Object.keys(groups || {}).forEach(function(maquina) {
         var ofs = Array.isArray(groups[maquina]) ? groups[maquina] : [];
-        if (!ofs.length || String(maquina || '').trim() === 'Sem M├íquina') {
+        if (!ofs.length || String(maquina || '').trim() === 'Sem Máquina') {
           _updateCapacidadeHeader(maquina, '', '');
           return;
         }
@@ -12692,14 +12676,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         }
         if (ocup <= uteis) {
           var pct = Math.round((ocup / uteis) * 100);
-          _updateCapacidadeHeader(maquina, '­ƒƒó ' + pct + '% ocupada', 'ok');
+          _updateCapacidadeHeader(maquina, '🟢 ' + pct + '% ocupada', 'ok');
           return;
         }
         if (ocup > uteis && ocup <= total) {
-          _updateCapacidadeHeader(maquina, '­ƒƒí Sobrecarregada (+' + (ocup - uteis) + ' min)', 'warn');
+          _updateCapacidadeHeader(maquina, '🟡 Sobrecarregada (+' + (ocup - uteis) + ' min)', 'warn');
           return;
         }
-        _updateCapacidadeHeader(maquina, '­ƒö┤ Fora do hor├írio (+' + (ocup - total) + ' min)', 'bad');
+        _updateCapacidadeHeader(maquina, '🔴 Fora do horário (+' + (ocup - total) + ' min)', 'bad');
       });
     } catch (_) {}
   }
@@ -12724,14 +12708,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       btnOrd.id = 'btn-ordenar-prioridade';
       btnOrd.type = 'button';
       btnOrd.style.cssText = 'padding:7px 14px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:13px';
-      btnOrd.textContent = '­ƒÄ» Ordenar por Prioridade Ôû¥';
+      btnOrd.textContent = '🎯 Ordenar por Prioridade ▾';
       var menu = document.createElement('div');
       menu.id = 'patch-menu-prioridade';
       menu.style.cssText = 'display:none;position:absolute;top:calc(100% + 6px);left:0;min-width:220px;background:#0f172a;border:1px solid rgba(148,163,184,.18);border-radius:12px;box-shadow:0 16px 34px rgba(0,0,0,.35);padding:6px;z-index:10080';
       menu.innerHTML = ''
-        + '<button type="button" data-ord-mode="desc" style="width:100%;text-align:left;background:transparent;border:none;color:var(--text1);padding:10px 12px;border-radius:8px;cursor:pointer">Maior ÔåÆ Menor</button>'
-        + '<button type="button" data-ord-mode="asc" style="width:100%;text-align:left;background:transparent;border:none;color:var(--text1);padding:10px 12px;border-radius:8px;cursor:pointer">Menor ÔåÆ Maior</button>'
-        + '<button type="button" data-ord-mode="similar" style="width:100%;text-align:left;background:transparent;border:none;color:var(--text1);padding:10px 12px;border-radius:8px;cursor:pointer">Tamanhos Pr├│ximos</button>';
+        + '<button type="button" data-ord-mode="desc" style="width:100%;text-align:left;background:transparent;border:none;color:var(--text1);padding:10px 12px;border-radius:8px;cursor:pointer">Maior → Menor</button>'
+        + '<button type="button" data-ord-mode="asc" style="width:100%;text-align:left;background:transparent;border:none;color:var(--text1);padding:10px 12px;border-radius:8px;cursor:pointer">Menor → Maior</button>'
+        + '<button type="button" data-ord-mode="similar" style="width:100%;text-align:left;background:transparent;border:none;color:var(--text1);padding:10px 12px;border-radius:8px;cursor:pointer">Tamanhos Próximos</button>';
       btnOrd.onclick = function(ev) {
         try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
         menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
@@ -12753,7 +12737,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var btnAgr = document.createElement('button');
       btnAgr.id = 'btn-agrupar-setup';
       btnAgr.style.cssText = 'padding:7px 14px;border-radius:6px;background:var(--bg2);color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:13px';
-      btnAgr.textContent = '­ƒÄ¿ Agrupar Setup';
+      btnAgr.textContent = '🎨 Agrupar Setup';
       btnAgr.onclick = function() { try { if (typeof window.toggleAgrupamentoSetup === 'function') window.toggleAgrupamentoSetup(); } catch (_) {} };
       wrap.appendChild(btnAgr);
     }
@@ -12798,7 +12782,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var ativo = !!window._agrupamentoSetupAtivo;
     btn.style.background = ativo ? 'var(--accent)' : 'var(--bg2)';
     btn.style.color = ativo ? '#fff' : 'var(--text1)';
-    btn.textContent = ativo ? '­ƒÄ¿ Agrupado por Setup Ô£ô' : '­ƒÄ¿ Agrupar Setup';
+    btn.textContent = ativo ? '🎨 Agrupado por Setup ✓' : '🎨 Agrupar Setup';
     try { btn.setAttribute('data-active', ativo ? '1' : '0'); } catch (_) {}
   }
 
@@ -12969,18 +12953,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '  <div class="patch-ofmaq-summary-item"><span class="patch-ofmaq-control-label">Setup / Janela</span><b>' + escHLocal(String(cap && cap.setups || ofs.length)) + ' setup(s)</b><span class="patch-ofmaq-cell-sub">' + escHLocal(String(cap && cap.horaInicio || '07:00') + ' - ' + String(cap && cap.horaFim || '18:00')) + '</span></div>'
         + '</div>'
         + '<div class="patch-ofmaq-summary-progress"><span style="width:' + escAttrLocal(String(Math.min(Number(cap && cap.pct || 0) || 0, 100))) + '%;background:' + escAttrLocal(String(tone.color || (cap && cap.cor) || '#38bdf8')) + '"></span></div>'
-        + '<div class="patch-ofmaq-col-summary"><span>' + escHLocal(String((cap && cap.label) || tone.label || 'Status')) + '</span><span>' + escHLocal(_ofmaqFmtTempoValue(cap && cap.minTotal || 0)) + ' dispon├¡veis</span>' + ((cap && cap.cxHora) ? ('<span>' + escHLocal(String(cap.cxHora)) + ' cx/h</span>') : '') + '</div>'
+        + '<div class="patch-ofmaq-col-summary"><span>' + escHLocal(String((cap && cap.label) || tone.label || 'Status')) + '</span><span>' + escHLocal(_ofmaqFmtTempoValue(cap && cap.minTotal || 0)) + ' disponíveis</span>' + ((cap && cap.cxHora) ? ('<span>' + escHLocal(String(cap.cxHora)) + ' cx/h</span>') : '') + '</div>'
         + '</div>'
       );
       ofs.forEach(function(of, idx) {
         var id = String(of && of.id || '').trim();
         if (!id) return;
         var urg = _ofmaqUrgenciaTipo(of);
-        var numero = _ofmaqNumeroLabel(of) || 'ÔÇö';
-        var cliente = _ofmaqClienteLabel(of) || 'ÔÇö';
-        var produto = _ofmaqProdutoLabel(of) || 'ÔÇö';
-        var tamanho = _ofmaqTamanhoLabel(of) || 'ÔÇö';
-        var cores = _ofmaqCoresLabel(of) || 'ÔÇö';
+        var numero = _ofmaqNumeroLabel(of) || '—';
+        var cliente = _ofmaqClienteLabel(of) || '—';
+        var produto = _ofmaqProdutoLabel(of) || '—';
+        var tamanho = _ofmaqTamanhoLabel(of) || '—';
+        var cores = _ofmaqCoresLabel(of) || '—';
         var quantidade = _getQtdOf(of);
         var entrega = _ofmaqEntregaIso(of);
         var tempoMin = _ofmaqTempoMinForMachine(of, maqDados);
@@ -12996,7 +12980,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '<td><span class="patch-ofmaq-tag">' + escHLocal(tamanho) + '</span></td>'
           + '<td><span class="patch-ofmaq-tag">' + escHLocal(cores) + '</span></td>'
           + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(_ofmaqFmtInt(quantidade != null ? quantidade : 0)) + '</strong></div></td>'
-          + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(entrega ? fmtDateBR(entrega) : 'ÔÇö') + '</strong><span class="patch-ofmaq-cell-sub">' + (entrega ? escHLocal(fmtWeekdayDate(entrega)) : 'ÔÇö') + '</span></div></td>'
+          + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</strong><span class="patch-ofmaq-cell-sub">' + (entrega ? escHLocal(fmtWeekdayDate(entrega)) : '—') + '</span></div></td>'
           + '<td><span class="patch-ofmaq-tag' + tagClass + '">' + escHLocal(_ofmaqFmtTempoValue(tempoMin)) + '</span></td>'
           + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(maquina) + '</strong></div></td>'
           + '</tr>'
@@ -13004,9 +12988,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       });
     });
     var html = String(alertasHtml || '');
-    html += '<div class="patch-ofmaq-summary-grid">' + (summaries.join('') || '<div class="patch-ofmaq-summary-card"><div class="patch-ofmaq-empty">Nenhuma m├íquina com OFs para este filtro.</div></div>') + '</div>';
+    html += '<div class="patch-ofmaq-summary-grid">' + (summaries.join('') || '<div class="patch-ofmaq-summary-card"><div class="patch-ofmaq-empty">Nenhuma máquina com OFs para este filtro.</div></div>') + '</div>';
     html += '<div class="patch-ofmaq-table-wrap"><table class="patch-ofmaq-table"><thead><tr>'
-      + '<th>Sequ├¬ncia</th><th>N┬║ da OF</th><th>Cliente</th><th>Produto</th><th>Tamanho</th><th>Cores</th><th>Quantidade</th><th>Data de Entrega</th><th>Tempo</th><th>M├íquina</th>'
+      + '<th>Sequência</th><th>Nº da OF</th><th>Cliente</th><th>Produto</th><th>Tamanho</th><th>Cores</th><th>Quantidade</th><th>Data de Entrega</th><th>Tempo</th><th>Máquina</th>'
       + '</tr></thead><tbody>' + (rowsHtml.join('') || '<tr><td colspan="10" class="patch-ofmaq-empty">Nenhuma OF encontrada para este filtro.</td></tr>') + '</tbody></table></div>';
     container.innerHTML = html;
     try { container.setAttribute('data-ofmaq-view-mode', 'table'); } catch (_) {}
@@ -13230,10 +13214,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         qtd: Number(card && card.getAttribute && card.getAttribute('data-qtd') || (of && _getQtdOf(of)) || 0) || 0,
         tempoMin: Number(card && card.getAttribute && card.getAttribute('data-tempo-min') || (of && _ofmaqTempoMinForMachine(of, typeof window.getDadosMaquina === 'function' ? window.getDadosMaquina(maq) : null)) || 0) || 0,
         cxHora: Number(card && card.getAttribute && card.getAttribute('data-cx-hora') || 0) || 0,
-        numero: numero || 'ÔÇö',
-        cliente: cliente || 'ÔÇö',
-        produto: produto || 'ÔÇö',
-        tamanho: of ? (_ofmaqTamanhoLabel(of) || 'ÔÇö') : 'ÔÇö',
+        numero: numero || '—',
+        cliente: cliente || '—',
+        produto: produto || '—',
+        tamanho: of ? (_ofmaqTamanhoLabel(of) || '—') : '—',
         cores: of ? parseColors(of) : ['Sem cor'],
         entregaIso: of ? (_ofmaqEntregaIso(of) || _ofmaqV2CardDateIso(card, of)) : _ofmaqV2CardDateIso(card, null),
         diaIso: _ofmaqV2CardDateIso(card, of),
@@ -13306,10 +13290,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function _ofmaqV2RowHtml(of, idx, maquina) {
     var id = String(of && of.id || '').trim();
     if (!id) return '';
-    var numero = String((of && of.numero) || _ofmaqNumeroLabel(of) || 'ÔÇö').trim() || 'ÔÇö';
-    var cliente = String((of && of.cliente) || _ofmaqClienteLabel(of) || 'ÔÇö').trim() || 'ÔÇö';
-    var produto = String((of && of.produto) || _ofmaqProdutoLabel(of) || 'ÔÇö').trim() || 'ÔÇö';
-    var tamanho = String((of && of.tamanho) || _ofmaqTamanhoLabel(of) || 'ÔÇö').trim() || 'ÔÇö';
+    var numero = String((of && of.numero) || _ofmaqNumeroLabel(of) || '—').trim() || '—';
+    var cliente = String((of && of.cliente) || _ofmaqClienteLabel(of) || '—').trim() || '—';
+    var produto = String((of && of.produto) || _ofmaqProdutoLabel(of) || '—').trim() || '—';
+    var tamanho = String((of && of.tamanho) || _ofmaqTamanhoLabel(of) || '—').trim() || '—';
     var coresArr = Array.isArray(of && of.cores) ? of.cores : parseColors(of);
     var coresDots = (Array.isArray(coresArr) ? coresArr : []).slice(0, 8).map(function(c) {
       var name = String(c || '').trim();
@@ -13332,10 +13316,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(produto) + '</strong><span>' + escHLocal(tamanho) + '</span></div>'
       + '  <div class="patch-ofmaq-v2-colors">' + (coresDots || '<span class="patch-ofmaq-v2-badge">Sem cor</span>') + '</div>'
       + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(_ofmaqFmtInt(quantidade != null ? quantidade : 0)) + '</strong><span>Quantidade</span></div>'
-      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(entrega ? fmtDateBR(entrega) : 'ÔÇö') + '</strong><span>' + escHLocal(entrega ? fmtWeekdayDate(entrega) : 'Sem prazo') + '</span></div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</strong><span>' + escHLocal(entrega ? fmtWeekdayDate(entrega) : 'Sem prazo') + '</span></div>'
       + '  <div><span class="patch-ofmaq-v2-badge' + badgeCls + '">' + escHLocal(_ofmaqFmtTempoValue(tempoMin)) + '</span></div>'
-      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(maquina) + '</strong><span>M├íquina</span></div>'
-      + '  <div class="patch-ofmaq-v2-actions"><button type="button" data-of-id="' + escAttrLocal(id) + '" data-of-num="' + escAttrLocal(String(numero || '')) + '">A├º├Áes</button></div>'
+      + '  <div class="patch-ofmaq-v2-cell"><strong>' + escHLocal(maquina) + '</strong><span>Máquina</span></div>'
+      + '  <div class="patch-ofmaq-v2-actions"><button type="button" data-of-id="' + escAttrLocal(id) + '" data-of-num="' + escAttrLocal(String(numero || '')) + '">Ações</button></div>'
       + '</div>';
   }
 
@@ -13351,8 +13335,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '<div id="patch-ofmaq-v2-header">'
         + '  <div class="patch-ofmaq-v2-headrow">'
         + '    <div>'
-        + '      <div class="patch-ofmaq-v2-title">OFs por M├íquina</div>'
-        + '      <div class="patch-ofmaq-v2-sub">Uma m├íquina por vez, cards horizontais por OF, filtros por semana e sequ├¬ncia edit├ível.</div>'
+        + '      <div class="patch-ofmaq-v2-title">OFs por Máquina</div>'
+        + '      <div class="patch-ofmaq-v2-sub">Uma máquina por vez, cards horizontais por OF, filtros por semana e sequência editável.</div>'
         + '    </div>'
         + '    <div class="patch-ofmaq-v2-controls"></div>'
         + '  </div>'
@@ -13410,11 +13394,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var search = document.getElementById('ofmaq-busca');
       ctrlHost.innerHTML = ''
         + '<div class="patch-ofmaq-v2-days" id="patch-ofmaq-v2-days">'
-        + '  <button type="button" data-shift="-7">ÔåÉ Anterior</button>'
+        + '  <button type="button" data-shift="-7">← Anterior</button>'
         + weekDays.map(function(d) {
           return '<button type="button" data-date="' + escAttrLocal(d.iso) + '" data-active="' + (d.iso === selectedIso ? '1' : '0') + '">' + escHLocal(d.label) + '</button>';
         }).join('')
-        + '  <button type="button" data-shift="7">Pr├│ximo ÔåÆ</button>'
+        + '  <button type="button" data-shift="7">Próximo →</button>'
         + '</div>'
         + '<div class="patch-ofmaq-v2-machine"><select id="patch-ofmaq-v2-machine"></select></div>'
         + '<button type="button" class="patch-ofmaq-v2-btn" id="patch-ofmaq-v2-agrupar" data-active="' + (_ofmaqV2State().agrupar ? '1' : '0') + '">Agrupar</button>';
@@ -13562,18 +13546,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var totalOfs = _ofmaqDomCards(document).length;
       var filtroMaq = _ofmaqMachineFilterValue();
       var foco = _ofmaqIsAllMachinesValue(filtroMaq)
-        ? ('Vis├úo geral de ' + _ofmaqFmtInt(maquinasAtivas.length || 0) + ' m├íquina' + ((maquinasAtivas.length || 0) === 1 ? '' : 's'))
-        : ('Filtro atual: ' + String(filtroMaq || 'M├íquina selecionada'));
+        ? ('Visão geral de ' + _ofmaqFmtInt(maquinasAtivas.length || 0) + ' máquina' + ((maquinasAtivas.length || 0) === 1 ? '' : 's'))
+        : ('Filtro atual: ' + String(filtroMaq || 'Máquina selecionada'));
       title.innerHTML = ''
         + '<div class="patch-ofmaq-title-copy">'
         + '  <span class="patch-ofmaq-title-eyebrow">Planejamento</span>'
-        + '  <div class="patch-ofmaq-title-main">OFs por M├íquina</div>'
-        + '  <div class="patch-ofmaq-title-sub">Painel moderno da fila produtiva com filtros, ocupa├º├úo por m├íquina e cards de OFs refinados no padr├úo escuro do sistema. ' + escH(foco) + '.</div>'
+        + '  <div class="patch-ofmaq-title-main">OFs por Máquina</div>'
+        + '  <div class="patch-ofmaq-title-sub">Painel moderno da fila produtiva com filtros, ocupação por máquina e cards de OFs refinados no padrão escuro do sistema. ' + escH(foco) + '.</div>'
         + '</div>'
         + '<div class="patch-ofmaq-title-stats">'
-        + '  <div class="patch-ofmaq-title-stat"><span class="patch-ofmaq-title-stat-label">OFs Vis├¡veis</span><span class="patch-ofmaq-title-stat-value">' + escH(_ofmaqFmtInt(totalOfs)) + '</span><span class="patch-ofmaq-title-stat-hint">Em tela agora</span></div>'
-        + '  <div class="patch-ofmaq-title-stat"><span class="patch-ofmaq-title-stat-label">M├íquinas</span><span class="patch-ofmaq-title-stat-value">' + escH(_ofmaqFmtInt(maquinasAtivas.length || 0)) + '</span><span class="patch-ofmaq-title-stat-hint">Colunas ativas</span></div>'
-        + '  <div class="patch-ofmaq-title-stat"><span class="patch-ofmaq-title-stat-label">Modo</span><span class="patch-ofmaq-title-stat-value">' + escH(_ofmaqIsSingleMachineFocus() ? '1' : 'N') + '</span><span class="patch-ofmaq-title-stat-hint">' + escH(_ofmaqIsSingleMachineFocus() ? 'Uma m├íquina' : 'M├║ltiplas') + '</span></div>'
+        + '  <div class="patch-ofmaq-title-stat"><span class="patch-ofmaq-title-stat-label">OFs Visíveis</span><span class="patch-ofmaq-title-stat-value">' + escH(_ofmaqFmtInt(totalOfs)) + '</span><span class="patch-ofmaq-title-stat-hint">Em tela agora</span></div>'
+        + '  <div class="patch-ofmaq-title-stat"><span class="patch-ofmaq-title-stat-label">Máquinas</span><span class="patch-ofmaq-title-stat-value">' + escH(_ofmaqFmtInt(maquinasAtivas.length || 0)) + '</span><span class="patch-ofmaq-title-stat-hint">Colunas ativas</span></div>'
+        + '  <div class="patch-ofmaq-title-stat"><span class="patch-ofmaq-title-stat-label">Modo</span><span class="patch-ofmaq-title-stat-value">' + escH(_ofmaqIsSingleMachineFocus() ? '1' : 'N') + '</span><span class="patch-ofmaq-title-stat-hint">' + escH(_ofmaqIsSingleMachineFocus() ? 'Uma máquina' : 'Múltiplas') + '</span></div>'
         + '</div>';
     }
   }
@@ -13628,7 +13612,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       stats.innerHTML = ''
         + '<div class="patch-ofmaq-col-stat"><span class="patch-ofmaq-col-stat-label">OFs</span><span class="patch-ofmaq-col-stat-value">' + escH(_ofmaqFmtInt(metrics.total)) + '</span></div>'
-        + '<div class="patch-ofmaq-col-stat"><span class="patch-ofmaq-col-stat-label">Ocupa├º├úo</span><span class="patch-ofmaq-col-stat-value" data-tone="' + escH(metrics.tone) + '">' + escH(_ofmaqFmtInt(metrics.pct)) + '%</span></div>'
+        + '<div class="patch-ofmaq-col-stat"><span class="patch-ofmaq-col-stat-label">Ocupação</span><span class="patch-ofmaq-col-stat-value" data-tone="' + escH(metrics.tone) + '">' + escH(_ofmaqFmtInt(metrics.pct)) + '%</span></div>'
         + '<div class="patch-ofmaq-col-stat"><span class="patch-ofmaq-col-stat-label">Caixas</span><span class="patch-ofmaq-col-stat-value">' + escH(_ofmaqFmtInt(metrics.qtd)) + '</span></div>'
         + '<div class="patch-ofmaq-col-stat"><span class="patch-ofmaq-col-stat-label">Tempo</span><span class="patch-ofmaq-col-stat-value">' + escH(_ofmaqFmtTempoValue(metrics.tempo)) + '</span></div>';
       var summary = header.querySelector('.patch-ofmaq-col-summary');
@@ -13647,9 +13631,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function getBadgeForDays(diff) {
     if (diff == null) return null;
     if (diff < 0) return { cls: 'darkred', text: 'ATRASADA ' + Math.abs(diff) + ' dia' + (Math.abs(diff) > 1 ? 's' : '') };
-    if (diff <= 1) return { cls: 'red', text: 'URGENTE! ' + diff + ' dia' + (diff === 1 ? ' ├║til' : 's ├║teis') };
-    if (diff <= 4) return { cls: 'yellow', text: diff + ' dias ├║teis ÔÜá´©Å' };
-    return { cls: 'green', text: diff + ' dias ├║teis' };
+    if (diff <= 1) return { cls: 'red', text: 'URGENTE! ' + diff + ' dia' + (diff === 1 ? ' útil' : 's úteis') };
+    if (diff <= 4) return { cls: 'yellow', text: diff + ' dias úteis ⚠️' };
+    return { cls: 'green', text: diff + ' dias úteis' };
   }
 
   function getCardContentEl(card) {
@@ -13665,7 +13649,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   function _ofmaqFmtEntregaLegivel(iso) {
     var s = String(iso || '').slice(0, 10);
-    if (!s) return 'ÔÇö';
+    if (!s) return '—';
     try {
       if (typeof fmtDateBR === 'function') return fmtDateBR(s);
     } catch (_) {}
@@ -13700,9 +13684,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (kbTop) kbTop.classList.add('patch-ofmaq-card-main');
       var tamanhoKb = _ofmaqTamanhoLabel(of);
       var coresKb = _ofmaqCoresLabel(of);
-      var maqKb = String(card.getAttribute('data-maq') || _maqAtualOf(of) || _ofmaqGetMachineName(_ofmaqCardListEl(card)) || '').trim() || 'ÔÇö';
+      var maqKb = String(card.getAttribute('data-maq') || _maqAtualOf(of) || _ofmaqGetMachineName(_ofmaqCardListEl(card)) || '').trim() || '—';
       var entregaKb = _ofmaqFmtEntregaLegivel(getOfDelivery(of));
-      var qtdKb = String(card.getAttribute('data-qtd') || (_getQtdOf(of) != null ? _getQtdOf(of) : '') || '').trim() || 'ÔÇö';
+      var qtdKb = String(card.getAttribute('data-qtd') || (_getQtdOf(of) != null ? _getQtdOf(of) : '') || '').trim() || '—';
       var tempoKb = String(card.getAttribute('data-tempo-min') || '').trim();
       var cxHoraKb = String(card.getAttribute('data-cx-hora') || '').trim();
       var metaKb = card.querySelector('.patch-ofmaq-readable-meta');
@@ -13714,14 +13698,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         else card.appendChild(metaKb);
       }
       metaKb.innerHTML = ''
-        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Cliente</span><span class="patch-ofmaq-meta-value">' + escH(String(of && (of.cliNome || of.cliente || of.cliente_nome || '') || '').trim() || 'ÔÇö') + '</span></div>'
-        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Produto</span><span class="patch-ofmaq-meta-value">' + escH(String(of && (of.prodDesc || of.produto || of.descricao || '') || '').trim() || 'ÔÇö') + '</span></div>'
-        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Tamanho</span><span class="patch-ofmaq-meta-value">' + escH(tamanhoKb || 'ÔÇö') + '</span></div>'
-        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Cores</span><span class="patch-ofmaq-meta-value">' + escH(coresKb || 'ÔÇö') + '</span></div>'
-        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">M├íquina</span><span class="patch-ofmaq-meta-value">' + escH(maqKb) + '</span></div>'
+        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Cliente</span><span class="patch-ofmaq-meta-value">' + escH(String(of && (of.cliNome || of.cliente || of.cliente_nome || '') || '').trim() || '—') + '</span></div>'
+        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Produto</span><span class="patch-ofmaq-meta-value">' + escH(String(of && (of.prodDesc || of.produto || of.descricao || '') || '').trim() || '—') + '</span></div>'
+        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Tamanho</span><span class="patch-ofmaq-meta-value">' + escH(tamanhoKb || '—') + '</span></div>'
+        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Cores</span><span class="patch-ofmaq-meta-value">' + escH(coresKb || '—') + '</span></div>'
+        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Máquina</span><span class="patch-ofmaq-meta-value">' + escH(maqKb) + '</span></div>'
         + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Prazo</span><span class="patch-ofmaq-meta-value">' + escH(entregaKb) + '</span></div>'
         + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Quantidade</span><span class="patch-ofmaq-meta-value">' + escH(qtdKb) + '</span></div>'
-        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Tempo</span><span class="patch-ofmaq-meta-value">' + escH(tempoKb ? (tempoKb + ' min') : 'ÔÇö') + (cxHoraKb ? (' <span style="color:#64748b">| ' + escH(cxHoraKb + ' cx/h') + '</span>') : '') + '</span></div>';
+        + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Tempo</span><span class="patch-ofmaq-meta-value">' + escH(tempoKb ? (tempoKb + ' min') : '—') + (cxHoraKb ? (' <span style="color:#64748b">| ' + escH(cxHoraKb + ' cx/h') + '</span>') : '') + '</span></div>';
       return;
     }
     try {
@@ -13766,9 +13750,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     });
     var tamanho = _ofmaqTamanhoLabel(of);
     var cores = _ofmaqCoresLabel(of);
-    var produto = String(of && (of.prodDesc || of.produto || of.descricao || '') || '').trim() || 'ÔÇö';
-    var cliente = String(of && (of.cliNome || of.cliente || of.cliente_nome || '') || '').trim() || 'ÔÇö';
-    var maquina = String(_maqAtualOf(of) || _ofmaqGetMachineName(_ofmaqCardListEl(card)) || '').trim() || 'ÔÇö';
+    var produto = String(of && (of.prodDesc || of.produto || of.descricao || '') || '').trim() || '—';
+    var cliente = String(of && (of.cliNome || of.cliente || of.cliente_nome || '') || '').trim() || '—';
+    var maquina = String(_maqAtualOf(of) || _ofmaqGetMachineName(_ofmaqCardListEl(card)) || '').trim() || '—';
     var entrega = _ofmaqFmtEntregaLegivel(getOfDelivery(of));
     var meta = textWrap.querySelector('.patch-ofmaq-readable-meta');
     if (!meta) {
@@ -13782,7 +13766,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Produto</span><span class="patch-ofmaq-meta-value">' + escH(produto) + '</span></div>'
       + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Tamanho</span><span class="patch-ofmaq-meta-value">' + escH(tamanho) + '</span></div>'
       + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Cores</span><span class="patch-ofmaq-meta-value">' + escH(cores) + '</span></div>'
-      + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">M├íquina</span><span class="patch-ofmaq-meta-value">' + escH(maquina) + '</span></div>'
+      + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Máquina</span><span class="patch-ofmaq-meta-value">' + escH(maquina) + '</span></div>'
       + '<div class="patch-ofmaq-meta-item"><span class="patch-ofmaq-meta-label">Prazo</span><span class="patch-ofmaq-meta-value">' + escH(entrega) + '</span></div>';
   }
 
@@ -13846,10 +13830,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
       window._ordemMaquinas[maquina] = current.map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
       await savePriorityOrder(maquina, current);
-      try { window.toast('Sequ├¬ncia atualizada para posi├º├úo ' + clamped + '.', 'var(--green)'); } catch (_) {}
+      try { window.toast('Sequência atualizada para posição ' + clamped + '.', 'var(--green)'); } catch (_) {}
       return true;
     } catch (e) {
-      try { window.toast('Erro ao salvar sequ├¬ncia: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+      try { window.toast('Erro ao salvar sequência: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
       return false;
     } finally {
       if (btnEl) btnEl.disabled = false;
@@ -13871,9 +13855,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         kbRow = document.createElement('div');
         kbRow.className = 'patch-ofmaq-seq-row';
         kbRow.innerHTML = ''
-          + '<label>Posi├º├úo</label>'
+          + '<label>Posição</label>'
           + '<input class="patch-ofmaq-seq-input" type="number" min="1" step="1" inputmode="numeric">'
-          + '<button type="button" class="patch-ofmaq-seq-btn">Salvar posi├º├úo</button>';
+          + '<button type="button" class="patch-ofmaq-seq-btn">Salvar posição</button>';
         kbActions.insertBefore(kbRow, kbActions.firstChild || null);
       }
       var kbInput = kbRow.querySelector('.patch-ofmaq-seq-input');
@@ -13904,9 +13888,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       row = document.createElement('div');
       row.className = 'patch-ofmaq-seq-row';
       row.innerHTML = ''
-        + '<label>Posi├º├úo</label>'
+        + '<label>Posição</label>'
         + '<input class="patch-ofmaq-seq-input" type="number" min="1" step="1" inputmode="numeric">'
-        + '<button type="button" class="patch-ofmaq-seq-btn">Salvar posi├º├úo</button>';
+        + '<button type="button" class="patch-ofmaq-seq-btn">Salvar posição</button>';
       textWrap.appendChild(row);
     }
     var input = row.querySelector('.patch-ofmaq-seq-input');
@@ -13934,7 +13918,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var out = {};
     Object.keys(groups || {}).forEach(function(maquina) {
       var ofs = Array.isArray(groups[maquina]) ? groups[maquina] : [];
-      if (!ofs.length || maquina === 'Sem M├íquina') return;
+      if (!ofs.length || maquina === 'Sem Máquina') return;
       var maqDados = null;
       var cap = null;
       try { maqDados = typeof window.getDadosMaquina === 'function' ? window.getDadosMaquina(maquina) : null; } catch (_) {}
@@ -14006,8 +13990,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var btn = document.createElement('button');
         btn.className = 'patch-ofmaq-calendar-btn';
         btn.type = 'button';
-        btn.title = 'Sugest├úo de reagendamento';
-        btn.textContent = '­ƒôà';
+        btn.title = 'Sugestão de reagendamento';
+        btn.textContent = '📅';
         btn.onclick = function(ev) {
           try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
           window.mostrarSugestaoReagendamento(id, window._ofmaqOverloadMap[id].maquina);
@@ -14020,7 +14004,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       pinBtn.setAttribute('data-pin-type', 'of');
       pinBtn.setAttribute('data-pin-id', id);
       pinBtn.title = 'Fixar OF no Hub';
-      pinBtn.textContent = '­ƒôî';
+      pinBtn.textContent = '📌';
       try {
         var pinStyle = window.__patchPinBtnStyleAttr ? window.__patchPinBtnStyleAttr('of', id) : '';
         if (pinStyle) pinBtn.style.cssText += pinStyle;
@@ -14144,7 +14128,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     if (largura > 0 && comprimento > 0) return window._patchNormalizeDimMm(largura, comprimento);
     for (var i = 0; i < candidates.length; i += 1) {
       var s = String(candidates[i] || '');
-      var m = s.match(/(\d{2,4})\s*[x├ù]\s*(\d{2,4})/i);
+      var m = s.match(/(\d{2,4})\s*[x×]\s*(\d{2,4})/i);
       if (m) {
         return window._patchNormalizeDimMm(Number(m[1]) || 0, Number(m[2]) || 0);
       }
@@ -14155,7 +14139,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function buildSizeLabel(dim) {
     var largura = Number(dim && dim.largura || 0) || 0;
     var comprimento = Number(dim && dim.comprimento || 0) || 0;
-    if (largura > 0 && comprimento > 0) return '~' + largura + '├ù' + comprimento + 'mm';
+    if (largura > 0 && comprimento > 0) return '~' + largura + '×' + comprimento + 'mm';
     return 'sem medida definida';
   }
 
@@ -14195,9 +14179,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         }
         target.items.push(of);
       });
-      sections.push({ type: 'color', label: '­ƒÄ¿ ' + colorKey + ' (' + items.length + ' OFs)' });
+      sections.push({ type: 'color', label: '🎨 ' + colorKey + ' (' + items.length + ' OFs)' });
       clusters.forEach(function(cluster) {
-        sections.push({ type: 'size', label: '­ƒôÉ ' + buildSizeLabel(cluster.ref) + ' (' + cluster.items.length + ' OFs)' });
+        sections.push({ type: 'size', label: '📐 ' + buildSizeLabel(cluster.ref) + ' (' + cluster.items.length + ' OFs)' });
         cluster.items.forEach(function(of) {
           ordered.push(of);
           sections.push({ type: 'card', of: of });
@@ -14266,20 +14250,20 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     overlay.innerHTML = ''
       + '<div class="patch-reag-card">'
       + '  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">'
-      + '    <div style="font-size:18px;font-weight:800;color:var(--text1)">­ƒôà Sugest├úo de Reagendamento</div>'
-      + '    <button type="button" id="patch-reag-close" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:20px">Ô£ò</button>'
+      + '    <div style="font-size:18px;font-weight:800;color:var(--text1)">📅 Sugestão de Reagendamento</div>'
+      + '    <button type="button" id="patch-reag-close" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:20px">✕</button>'
       + '  </div>'
-      + '  <div style="margin-top:14px;color:var(--text1);font-weight:700">OF #' + escHLocal(String(of.numero || of.of || 'ÔÇö')) + ' ÔÇö ' + escHLocal(String(of.prodDesc || of.produto || of.descricao || 'Produto')) + '</div>'
+      + '  <div style="margin-top:14px;color:var(--text1);font-weight:700">OF #' + escHLocal(String(of.numero || of.of || '—')) + ' — ' + escHLocal(String(of.prodDesc || of.produto || of.descricao || 'Produto')) + '</div>'
       + '  <div style="margin-top:4px;color:var(--text2);font-size:13px">' + escHLocal(String(of.cliNome || of.cliente || of.cliente_nome || 'Cliente')) + '</div>'
-      + '  <div style="margin-top:12px;color:var(--text2);font-size:13px">Entrega: ' + escHLocal(fmtDateBR(entrega)) + ' (' + escHLocal(String(dias == null ? 0 : dias)) + ' dias ├║teis restantes)</div>'
+      + '  <div style="margin-top:12px;color:var(--text2);font-size:13px">Entrega: ' + escHLocal(fmtDateBR(entrega)) + ' (' + escHLocal(String(dias == null ? 0 : dias)) + ' dias úteis restantes)</div>'
       + '  <div style="margin-top:12px;color:var(--text1);line-height:1.5">'
-      + '    <div>' + escHLocal(String(maquina || 'Esta m├íquina')) + ' est├í sobrecarregada hoje.</div>'
+      + '    <div>' + escHLocal(String(maquina || 'Esta máquina')) + ' está sobrecarregada hoje.</div>'
       + '    <div>Esta OF tem folga para ser movida.</div>'
       + '  </div>'
       + '  <div style="margin-top:14px;color:var(--text2);font-size:12px;font-weight:700">Mover para:</div>'
       + '  <div class="patch-reag-actions">'
-      + '    <button type="button" class="primary" data-date="' + escAttrLocal(nextBusinessDate(1)) + '">­ƒôà Amanh├ú ' + escHLocal(fmtWeekdayDate(nextBusinessDate(1))) + '</button>'
-      + '    <button type="button" data-date="' + escAttrLocal(nextBusinessDate(2)) + '">­ƒôà ' + escHLocal(fmtWeekdayDate(nextBusinessDate(2))) + '</button>'
+      + '    <button type="button" class="primary" data-date="' + escAttrLocal(nextBusinessDate(1)) + '">📅 Amanhã ' + escHLocal(fmtWeekdayDate(nextBusinessDate(1))) + '</button>'
+      + '    <button type="button" data-date="' + escAttrLocal(nextBusinessDate(2)) + '">📅 ' + escHLocal(fmtWeekdayDate(nextBusinessDate(2))) + '</button>'
       + '    <button type="button" data-keep="1">Manter</button>'
       + '  </div>'
       + '</div>';
@@ -14307,7 +14291,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         throw new Error((result.data && (result.data.error || result.data.message)) || 'Falha ao reagendar');
       }
       closeReagendamentoModal();
-      try { window.toast('Ô£ô OF reagendada', 'var(--green)'); } catch (_) {}
+      try { window.toast('✓ OF reagendada', 'var(--green)'); } catch (_) {}
       try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
     } catch (e) {
       try { window.toast('Erro ao reagendar OF: ' + (e && e.message ? e.message : e), 'var(--red)'); } catch (_) {}
@@ -14411,7 +14395,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var overlay = document.getElementById('patch-ofmaq-redistrib-modal');
     try { if (card) card.remove(); } catch (_) {}
     if (listEl && !listEl.querySelector('.card')) {
-      listEl.innerHTML = '<div style="color:var(--text2);padding:14px">Nenhuma sugest├úo para este filtro.</div>';
+      listEl.innerHTML = '<div style="color:var(--text2);padding:14px">Nenhuma sugestão para este filtro.</div>';
     }
     _redistribAtualizarResumo(overlay, st);
   }
@@ -14433,15 +14417,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     if (!id || !/^\d{4}-\d{2}-\d{2}$/.test(dt)) return false;
     try {
       var okk = await _aplicarDataProducao(id, dt, maquinaNova);
-      if (!okk) throw new Error('Falha ao aplicar sugest├úo');
+      if (!okk) throw new Error('Falha ao aplicar sugestão');
       state.ignored[id] = true;
       window.__ofmaqRedistribState = state;
-      try { window.toast('Ô£à Sugest├úo aplicada: ' + fmtDateBR(dt), 'var(--green)'); } catch (_) {}
+      try { window.toast('✅ Sugestão aplicada: ' + fmtDateBR(dt), 'var(--green)'); } catch (_) {}
       _redistribRemoverCard(card || null, state);
       try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
       return true;
     } catch (e) {
-      try { window.toast('Erro ao aplicar sugest├úo: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+      try { window.toast('Erro ao aplicar sugestão: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
       return false;
     }
   };
@@ -14482,7 +14466,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (!entrega) return;
         if (entrega <= hoje) return;
         var maq = _maqAtualOf(of);
-        if (!maq || maq === 'Sem M├íquina') return;
+        if (!maq || maq === 'Sem Máquina') return;
 
         var capHoje = _capacidadeDia(hoje);
         var uteisHoje = Number(capHoje.uteis || 0) || 0;
@@ -14530,8 +14514,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         sugs.push({
           id: String(of.id || '').trim(),
           numero: String(of.numero || of.of || '').trim(),
-          cliente: cliente || 'ÔÇö',
-          produto: produto || 'ÔÇö',
+          cliente: cliente || '—',
+          produto: produto || '—',
           maquina: maq,
           entrega: entregaIso,
           limite: limiteIso,
@@ -14590,8 +14574,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '<div class="box">'
       + '  <div class="top">'
       + '    <div>'
-      + '      <div class="ttl">ÔÜí Sugest├Áes de Redistribui├º├úo</div>'
-      + '      <div class="sub"><span data-red-total="1">' + escHLocal(String(total)) + '</span> OFs identificadas ┬À Sobrecarregadas hoje: <span data-red-sobre="1">' + escHLocal(String(sobre)) + '</span> ┬À Fora do prazo: <span data-red-fora="1">' + escHLocal(String(fora)) + '</span></div>'
+      + '      <div class="ttl">⚡ Sugestões de Redistribuição</div>'
+      + '      <div class="sub"><span data-red-total="1">' + escHLocal(String(total)) + '</span> OFs identificadas · Sobrecarregadas hoje: <span data-red-sobre="1">' + escHLocal(String(sobre)) + '</span> · Fora do prazo: <span data-red-fora="1">' + escHLocal(String(fora)) + '</span></div>'
       + '    </div>'
       + '    <button type="button" class="close" id="patch-red-close">Fechar</button>'
       + '  </div>'
@@ -14603,8 +14587,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '  </div>'
       + '  <div class="list" id="patch-red-list"></div>'
       + '  <div class="foot">'
-      + '    <div style="color:var(--text2);font-size:12px">Ordena├º├úo: urg├¬ncia primeiro, depois proximidade do prazo</div>'
-      + '    <button type="button" class="primary" id="patch-red-applyall">Ô£à Aplicar Todas</button>'
+      + '    <div style="color:var(--text2);font-size:12px">Ordenação: urgência primeiro, depois proximidade do prazo</div>'
+      + '    <button type="button" class="primary" id="patch-red-applyall">✅ Aplicar Todas</button>'
       + '  </div>'
       + '</div>';
 
@@ -14621,28 +14605,28 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var listEl = document.getElementById('patch-red-list');
     if (!listEl) return;
     if (!list.length) {
-      listEl.innerHTML = '<div style="color:var(--text2);padding:14px">Nenhuma sugest├úo para este filtro.</div>';
+      listEl.innerHTML = '<div style="color:var(--text2);padding:14px">Nenhuma sugestão para este filtro.</div>';
       return;
     }
 
     listEl.innerHTML = list.map(function(s) {
-      var titulo = 'OF #' + String(s.numero || 'ÔÇö') + ' ÔÇö ' + String(s.cliente || 'ÔÇö');
-      var subt = String(s.produto || 'ÔÇö');
+      var titulo = 'OF #' + String(s.numero || '—') + ' — ' + String(s.cliente || '—');
+      var subt = String(s.produto || '—');
       var situ = s.foraPrazo
-        ? '­ƒö┤ Fora do prazo (sem capacidade at├® ' + fmtDateBR(s.limite) + ')'
-        : '­ƒƒí Sobrecarregada hoje (+' + String(Math.max(0, (s.ocupHoje || 0) - (s.uteisHoje || 0))) + ' min)';
+        ? '🔴 Fora do prazo (sem capacidade até ' + fmtDateBR(s.limite) + ')'
+        : '🟡 Sobrecarregada hoje (+' + String(Math.max(0, (s.ocupHoje || 0) - (s.uteisHoje || 0))) + ' min)';
       var sug = s.proposta
-        ? ('Ô£à Sugest├úo: ' + String(s.maquina_proposta || s.maquina || 'Sem m├íquina') + ' em ' + fmtDateBR(s.proposta) + ' (' + String(Math.max(0, s.diasAntesPrazo || 0)) + ' dias ├║teis antes do prazo)')
-        : 'ÔÜá´©Å Sem data vi├ível antes do prazo';
+        ? ('✅ Sugestão: ' + String(s.maquina_proposta || s.maquina || 'Sem máquina') + ' em ' + fmtDateBR(s.proposta) + ' (' + String(Math.max(0, s.diasAntesPrazo || 0)) + ' dias úteis antes do prazo)')
+        : '⚠️ Sem data viável antes do prazo';
       return ''
         + '<div class="card" data-id="' + escAttrLocal(String(s.id || '')) + '">'
         + '  <div class="row"><div style="font-weight:900;color:var(--text1);font-size:13px">' + escHLocal(titulo) + '</div><div style="color:var(--text2);font-size:12px">' + escHLocal(String(s.maquina || '')) + '</div></div>'
         + '  <div class="meta" style="color:var(--text2)">' + escHLocal(subt) + '</div>'
-        + '  <div class="meta">­ƒôà Entrega: ' + escHLocal(fmtDateBR(s.entrega)) + ' ┬À ÔÅ▒´©Å Tempo estimado: ' + escHLocal(String(s.minutos || 0)) + ' min</div>'
+        + '  <div class="meta">📅 Entrega: ' + escHLocal(fmtDateBR(s.entrega)) + ' · ⏱️ Tempo estimado: ' + escHLocal(String(s.minutos || 0)) + ' min</div>'
         + '  <div class="meta">' + escHLocal(situ) + '</div>'
         + '  <div class="meta" style="color:var(--text1)">' + escHLocal(sug) + '</div>'
         + '  <div class="actions">'
-        + '    <button type="button" class="primary" data-act="apply" ' + (s.proposta ? ('data-date="' + escAttrLocal(String(s.proposta)) + '" data-machine="' + escAttrLocal(String(s.maquina_proposta || s.maquina || '')) + '"') : 'disabled') + '>Ô£à Aplicar</button>'
+        + '    <button type="button" class="primary" data-act="apply" ' + (s.proposta ? ('data-date="' + escAttrLocal(String(s.proposta)) + '" data-machine="' + escAttrLocal(String(s.maquina_proposta || s.maquina || '')) + '"') : 'disabled') + '>✅ Aplicar</button>'
         + '    <button type="button" data-act="ignore">Ignorar</button>'
         + '  </div>'
         + '</div>';
@@ -14682,7 +14666,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           var okk = await _aplicarDataProducao(s.id, s.proposta, s.maquina_proposta);
           if (okk) state.ignored[s.id] = true;
         }
-        try { window.toast('Ô£à Sugest├Áes aplicadas', 'var(--green)'); } catch (_) {}
+        try { window.toast('✅ Sugestões aplicadas', 'var(--green)'); } catch (_) {}
         try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
         _renderSugestoesRedistribuicaoModal();
       } catch (e) {
@@ -14820,9 +14804,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   function _labelOrdenacaoPrioridade(mode) {
     var key = String(mode || 'desc').trim().toLowerCase();
-    if (key === 'asc') return 'Menor ÔåÆ Maior';
-    if (key === 'similar') return 'Tamanhos Pr├│ximos';
-    return 'Maior ÔåÆ Menor';
+    if (key === 'asc') return 'Menor → Maior';
+    if (key === 'similar') return 'Tamanhos Próximos';
+    return 'Maior → Menor';
   }
 
   function _buildOrderedOfsByMode(ofs, mode) {
@@ -14838,11 +14822,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var dim = parseDimensions(of);
     var largura = Number(dim && dim.largura || 0) || 0;
     var comprimento = Number(dim && dim.comprimento || 0) || 0;
-    var medida = (largura > 0 && comprimento > 0) ? (comprimento + '├ù' + largura + 'mm') : 'sem medida';
+    var medida = (largura > 0 && comprimento > 0) ? (comprimento + '×' + largura + 'mm') : 'sem medida';
     return {
       key: cores,
-      reason: 'Setup: ' + cores + ' ┬À ' + medida,
-      separator: '­ƒÄ¿ Novo setup: ' + cores + ' ┬À ' + medida
+      reason: 'Setup: ' + cores + ' · ' + medida,
+      separator: '🎨 Novo setup: ' + cores + ' · ' + medida
     };
   }
 
@@ -14908,7 +14892,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         window._ordemMaquinas[maq] = ids.slice();
         await savePriorityOrder(maq, ordered);
       }
-      try { window.toast('Ô£à OFs ordenadas: ' + _labelOrdenacaoPrioridade(mode), 'var(--green)'); } catch (_) {}
+      try { window.toast('✅ OFs ordenadas: ' + _labelOrdenacaoPrioridade(mode), 'var(--green)'); } catch (_) {}
       return true;
     } catch (e) {
       try { window.toast('Erro ao ordenar OFs: ' + (e && e.message ? e.message : e), 'var(--red)'); } catch (_) {}
@@ -14963,7 +14947,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       window._agrupamentoSetupAtivo = true;
       updateAgrupamentoButton();
-      try { window.toast('Ô£à ' + totalGrupos + ' grupos de setup identificados', 'var(--green)'); } catch (_) {}
+      try { window.toast('✅ ' + totalGrupos + ' grupos de setup identificados', 'var(--green)'); } catch (_) {}
       return true;
     } catch (e) {
       try { window.toast('Erro ao agrupar OFs: ' + (e && e.message ? e.message : e), 'var(--red)'); } catch (_) {}
@@ -15260,15 +15244,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '<div id="hub-inteligencia" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:24px">'
       + '  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
       + '    <div style="display:flex;align-items:center;gap:10px">'
-      + '      <span style="font-size:20px">­ƒôï</span>'
+      + '      <span style="font-size:20px">📋</span>'
       + '      <div>'
       + '        <div style="font-weight:700;font-size:16px;color:var(--text1)">O que fazer hoje</div>'
       + '        <div style="font-size:12px;color:var(--text2)" id="hub-intel-data"></div>'
       + '      </div>'
       + '    </div>'
-      + '    <button onclick="carregarInteligenciaHub()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:20px" title="Atualizar">Ôå╗</button>'
+      + '    <button onclick="carregarInteligenciaHub()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:20px" title="Atualizar">↻</button>'
       + '  </div>'
-      + '  <div id="hub-intel-lista"><div style="color:var(--text2);font-size:13px">Carregando an├ílise...</div></div>'
+      + '  <div id="hub-intel-lista"><div style="color:var(--text2);font-size:13px">Carregando análise...</div></div>'
       + '</div>';
   }
 
@@ -15323,13 +15307,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
       var r = await fetch('/api/hub/inteligencia', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
       if (!r || !r.ok) {
-        lista.innerHTML = '<div style="color:var(--text2);font-size:12px;padding:8px">Central de intelig├¬ncia indispon├¡vel no momento.</div>';
+        lista.innerHTML = '<div style="color:var(--text2);font-size:12px;padding:8px">Central de inteligência indisponível no momento.</div>';
         return;
       }
       var data = await r.json().catch(function() { return {}; });
       var alertas = Array.isArray(data && data.alertas) ? data.alertas : [];
       if (!alertas.length) {
-        lista.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;color:#10b981"><span style="font-size:20px">Ô£à</span><span>Tudo em ordem! Nenhum alerta no momento.</span></div>';
+        lista.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;color:#10b981"><span style="font-size:20px">✅</span><span>Tudo em ordem! Nenhum alerta no momento.</span></div>';
         return;
       }
       var cores = {
@@ -15343,13 +15327,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         return ''
           + '<div class="patch-hub-intel-item" data-acao="' + acao + '" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;margin-bottom:6px;border-radius:8px;cursor:pointer;background:' + c.bg + ';border:1px solid ' + c.border + '">'
           + '  <div style="display:flex;align-items:center;gap:10px">'
-          + '    <span style="font-size:18px">' + escHLocal(a.icone || 'Ôä╣´©Å') + '</span>'
+          + '    <span style="font-size:18px">' + escHLocal(a.icone || 'ℹ️') + '</span>'
           + '    <div>'
           + '      <div style="font-weight:600;font-size:13px;color:' + c.text + '">' + escHLocal(a.titulo || '') + '</div>'
           + '      <div style="font-size:11px;color:var(--text2)">' + escHLocal(a.subtitulo || '') + '</div>'
           + '    </div>'
           + '  </div>'
-          + '  <span style="font-size:11px;color:' + c.text + ';white-space:nowrap;margin-left:10px">' + escHLocal(a.acao_label || 'ver ÔåÆ') + '</span>'
+          + '  <span style="font-size:11px;color:' + c.text + ';white-space:nowrap;margin-left:10px">' + escHLocal(a.acao_label || 'ver →') + '</span>'
           + '</div>';
       }).join('');
       Array.prototype.slice.call(lista.querySelectorAll('.patch-hub-intel-item[data-acao]')).forEach(function(item) {
@@ -15360,7 +15344,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     } catch (_) {
       try {
         var lista2 = document.getElementById('hub-intel-lista');
-        if (lista2) lista2.innerHTML = '<div style="color:var(--text2);font-size:12px;padding:8px">Central de intelig├¬ncia indispon├¡vel.</div>';
+        if (lista2) lista2.innerHTML = '<div style="color:var(--text2);font-size:12px;padding:8px">Central de inteligência indisponível.</div>';
       } catch (_) {}
     }
   };
@@ -15560,12 +15544,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     function fmtDateBR(iso) {
       var d = parseIsoLocal(iso);
-      return d ? (pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear()) : 'ÔÇö';
+      return d ? (pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear()) : '—';
     }
 
     function fmtDayShort(iso) {
       var d = parseIsoLocal(iso);
-      return d ? (pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1)) : 'ÔÇö';
+      return d ? (pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1)) : '—';
     }
 
     function ensureDefaults() {
@@ -15696,7 +15680,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         toolbar.id = 'ofmaq-toolbar-zero';
         toolbar.className = 'ofmaq-toolbar-zero';
         toolbar.innerHTML = ''
-          + '<h2>OFs por M├íquina</h2>'
+          + '<h2>OFs por Máquina</h2>'
           + '<div class="controls">'
           + '  <div class="days" id="ofmaq-days-zero"></div>'
           + '  <select id="ofmaq-select-maquina-zero"></select>'
@@ -15716,15 +15700,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '    <tr>'
           + '      <th class="col-seq">SEQ</th>'
           + '      <th class="col-img">IMG</th>'
-          + '      <th class="col-of">N┬║ OF</th>'
+          + '      <th class="col-of">Nº OF</th>'
           + '      <th class="col-cliente">CLIENTE</th>'
           + '      <th class="col-produto">PRODUTO</th>'
           + '      <th class="col-tamanho">TAMANHO</th>'
           + '      <th class="col-cores">CORES</th>'
           + '      <th class="col-qtd">QTD</th>'
           + '      <th class="col-prazo">PRAZO</th>'
-          + '      <th class="col-maq">M├üQUINA</th>'
-          + '      <th class="col-acoes">A├ç├òES</th>'
+          + '      <th class="col-maq">MÁQUINA</th>'
+          + '      <th class="col-acoes">AÇÕES</th>'
           + '    </tr>'
           + '  </thead>'
           + '  <tbody id="ofmaq-tbody-zero"></tbody>'
@@ -15759,7 +15743,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (comp0 > 0 && larg0 > 0) return { comprimento: comp0, largura: larg0 };
       }
       var text = String(card && card.innerText || '').trim();
-      var match = text.match(/(\d{2,4}(?:[.,]\d+)?)\s*(?:mm)?\s*[x├ù]\s*(\d{2,4}(?:[.,]\d+)?)/i);
+      var match = text.match(/(\d{2,4}(?:[.,]\d+)?)\s*(?:mm)?\s*[x×]\s*(\d{2,4}(?:[.,]\d+)?)/i);
       if (match) {
         return {
           comprimento: Number(String(match[1]).replace(',', '.')) || 0,
@@ -15771,7 +15755,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     function sizeLabelFromCard(card) {
       var dim = parseDimensionsFromCard(card);
-      return (dim.comprimento > 0 && dim.largura > 0) ? (dim.comprimento + 'x' + dim.largura + ' mm') : 'ÔÇö';
+      return (dim.comprimento > 0 && dim.largura > 0) ? (dim.comprimento + 'x' + dim.largura + ' mm') : '—';
     }
 
     function extractText(card, selectors) {
@@ -15790,7 +15774,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var txt = extractText(card, ['.kb-num', '[data-kb-num]', '.kb-of', '.of-num']);
       if (txt) return txt.replace(/^#/, '').trim();
       var raw = String(card && card.innerText || '').replace(/\s+/g, ' ').trim();
-      var match = raw.match(/(?:^|\s)(?:OF|N[┬║o┬░]?\s*OF)\s*#?\s*([\w/-]+)/i);
+      var match = raw.match(/(?:^|\s)(?:OF|N[ºo°]?\s*OF)\s*#?\s*([\w/-]+)/i);
       return match ? String(match[1] || '').trim() : String(fallbackId || '').trim();
     }
 
@@ -15800,7 +15784,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     function extractProduct(card) {
       var txt = extractText(card, ['.kb-produto', '.kb-product', '[data-kb-produto]', '.of-produto', '.produto', '.kb-info']);
-      return txt.replace(/\b\d{2,4}(?:[.,]\d+)?\s*(?:mm)?\s*[x├ù]\s*\d{2,4}(?:[.,]\d+)?(?:\s*mm)?\b/ig, '').replace(/\s+/g, ' ').trim();
+      return txt.replace(/\b\d{2,4}(?:[.,]\d+)?\s*(?:mm)?\s*[x×]\s*\d{2,4}(?:[.,]\d+)?(?:\s*mm)?\b/ig, '').replace(/\s+/g, ' ').trim();
     }
 
     function extractImage(card) {
@@ -15893,8 +15877,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       );
       if (!maq) maq = 'IMP 01';
       var numero = extractNumber(card, id) || id;
-      var cliente = extractClient(card) || 'ÔÇö';
-      var produto = extractProduct(card) || 'ÔÇö';
+      var cliente = extractClient(card) || '—';
+      var produto = extractProduct(card) || '—';
       var tamanho = sizeLabelFromCard(card);
       var cores = extractColors(card);
       var prazoIso = extractIsoDate(card);
@@ -15933,20 +15917,20 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     function rowHtml(item) {
       var imgCell = item.imagemUrl
         ? ('<button type="button" class="ofmaq-thumb-btn-zero" data-ofmaq-image-zero="' + escAttrLocal(item.id) + '"><span class="ofmaq-thumb-zero"><img src="' + escAttrLocal(item.imagemUrl) + '" alt="Imagem da OF"></span></button>')
-        : '<span class="ofmaq-thumb-fallback-zero">­ƒôª</span>';
+        : '<span class="ofmaq-thumb-fallback-zero">📦</span>';
       return ''
         + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-maq="' + escAttrLocal(item.maquina) + '" data-dia="' + escAttrLocal(item.prazoIso || '') + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-cor-key="' + escAttrLocal(item.corPrincipal || '') + '" data-size-key="' + escAttrLocal(item.tamanhoKey || '') + '" data-search="' + escAttrLocal(item.searchText || '') + '">'
         + '  <td class="col-seq"><input class="ofmaq-seq-input-zero" type="number" min="1" step="1" value="' + escAttrLocal(String(item.order || 1)) + '" data-of-id="' + escAttrLocal(item.id) + '"></td>'
         + '  <td class="col-img">' + imgCell + '</td>'
-        + '  <td class="col-of"><strong>' + escHLocal(item.numero || 'ÔÇö') + '</strong></td>'
-        + '  <td class="col-cliente">' + escHLocal(item.cliente || 'ÔÇö') + '</td>'
-        + '  <td class="col-produto">' + escHLocal(item.produto || 'ÔÇö') + '</td>'
-        + '  <td class="col-tamanho">' + escHLocal(item.tamanho || 'ÔÇö') + '</td>'
+        + '  <td class="col-of"><strong>' + escHLocal(item.numero || '—') + '</strong></td>'
+        + '  <td class="col-cliente">' + escHLocal(item.cliente || '—') + '</td>'
+        + '  <td class="col-produto">' + escHLocal(item.produto || '—') + '</td>'
+        + '  <td class="col-tamanho">' + escHLocal(item.tamanho || '—') + '</td>'
         + '  <td class="col-cores"><div class="ofmaq-cor-wrap-zero">' + colorHtml(item.cores || []) + '</div></td>'
         + '  <td class="col-qtd">' + escHLocal(String(item.quantidade || 0)) + '</td>'
-        + '  <td class="col-prazo">' + escHLocal(item.prazoIso ? fmtDateBR(item.prazoIso) : 'ÔÇö') + '</td>'
-        + '  <td class="col-maq">' + escHLocal(item.maquina || 'ÔÇö') + '</td>'
-        + '  <td class="col-acoes"><button type="button" class="ofmaq-action-btn-zero" data-ofmaq-actions-zero="' + escAttrLocal(item.id) + '">ÔÜí A├º├Áes</button></td>'
+        + '  <td class="col-prazo">' + escHLocal(item.prazoIso ? fmtDateBR(item.prazoIso) : '—') + '</td>'
+        + '  <td class="col-maq">' + escHLocal(item.maquina || '—') + '</td>'
+        + '  <td class="col-acoes"><button type="button" class="ofmaq-action-btn-zero" data-ofmaq-actions-zero="' + escAttrLocal(item.id) + '">⚡ Ações</button></td>'
         + '</tr>';
     }
 
@@ -16044,12 +16028,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var daysWrap = shell.toolbar.querySelector('#ofmaq-days-zero');
       if (daysWrap) {
         daysWrap.innerHTML = ''
-          + '<button type="button" data-week-shift="-7">ÔåÉ</button>'
+          + '<button type="button" data-week-shift="-7">←</button>'
           + weekDays(state.weekStartIso).map(function(day) {
             var count = Number(counts[day.iso] || 0) || 0;
             return '<button type="button" class="day-btn" data-date="' + escAttrLocal(day.iso) + '" data-hot="' + (count > 0 ? '1' : '0') + '" data-active="' + (state.selectedDateIso === day.iso ? '1' : '0') + '">' + escHLocal(day.label + ' ' + fmtDayShort(day.iso) + ' (' + count + ')') + '</button>';
           }).join('')
-          + '<button type="button" data-week-shift="7">ÔåÆ</button>';
+          + '<button type="button" data-week-shift="7">→</button>';
       }
     }
 
@@ -16068,7 +16052,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       modal.className = 'ofmaq-modal-zero';
       modal.setAttribute('data-modal', id);
       modal.innerHTML = ''
-        + '<button type="button" class="close-btn" data-modal-close="' + escAttrLocal(id) + '">Ô£ò</button>'
+        + '<button type="button" class="close-btn" data-modal-close="' + escAttrLocal(id) + '">✕</button>'
         + '<h3>' + escHLocal(title) + '</h3>'
         + '<div class="body">' + bodyHtml + '</div>';
       overlay.onclick = function() { closeModal(id); };
@@ -16104,7 +16088,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (!row || !item) return;
       row.setAttribute('data-dia', dateIso);
       var cell = row.querySelector('.col-prazo');
-      if (cell) cell.textContent = dateIso ? fmtDateBR(dateIso) : 'ÔÇö';
+      if (cell) cell.textContent = dateIso ? fmtDateBR(dateIso) : '—';
       item.prazoIso = dateIso;
       try {
         if (item.cardEl) {
@@ -16163,10 +16147,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     function openActionsModal(id) {
       var item = rowDataById(id);
       if (!item) return;
-      var modal = openModal('ofmaq-actions-zero', 'A├º├Áes da OF #' + String(item.numero || item.id), ''
-        + '<button type="button" id="ofmaq-action-pass-zero">Ô£ô Passou pela m├íquina</button>'
-        + '<button type="button" id="ofmaq-action-move-zero">Ôåö Mover de m├íquina</button>'
-        + '<button type="button" id="ofmaq-action-date-zero">­ƒôà Alterar data</button>');
+      var modal = openModal('ofmaq-actions-zero', 'Ações da OF #' + String(item.numero || item.id), ''
+        + '<button type="button" id="ofmaq-action-pass-zero">✓ Passou pela máquina</button>'
+        + '<button type="button" id="ofmaq-action-move-zero">↔ Mover de máquina</button>'
+        + '<button type="button" id="ofmaq-action-date-zero">📅 Alterar data</button>');
       var passBtn = modal.querySelector('#ofmaq-action-pass-zero');
       var moveBtn = modal.querySelector('#ofmaq-action-move-zero');
       var dateBtn = modal.querySelector('#ofmaq-action-date-zero');
@@ -16197,7 +16181,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     }
 
     function openPrintModal() {
-      var modal = openModal('ofmaq-print-zero', 'Imprimir relat├│rio OFs por M├íquina', ''
+      var modal = openModal('ofmaq-print-zero', 'Imprimir relatório OFs por Máquina', ''
         + '<div class="ofmaq-print-grid-zero">'
         + '  <label><input type="checkbox" data-print-machine-zero="TODAS" checked> Todas</label>'
         + MACHINES.map(function(machine) {
@@ -16206,7 +16190,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '</div>'
         + '<label><input type="radio" name="ofmaq-print-period-zero" value="dia" checked> Dia atual</label>'
         + '<label><input type="radio" name="ofmaq-print-period-zero" value="semana"> Semana atual (Seg-Sex)</label>'
-        + '<button type="button" id="ofmaq-print-run-zero">Gerar relat├│rio</button>');
+        + '<button type="button" id="ofmaq-print-run-zero">Gerar relatório</button>');
       Array.prototype.slice.call(modal.querySelectorAll('input[data-print-machine-zero]')).forEach(function(input) {
         input.onchange = function() {
           var all = modal.querySelector('input[data-print-machine-zero="TODAS"]');
@@ -16252,16 +16236,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '  <h2 style="margin:0 0 8px 0">' + escHLocal(machine) + '</h2>'
           + '  <div style="margin:0 0 10px 0;color:#475569">' + escHLocal(period === 'semana' ? 'Semana atual (Seg-Sex)' : fmtDateBR(state.selectedDateIso)) + '</div>'
           + '  <table style="width:100%;border-collapse:collapse">'
-          + '    <thead><tr><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">N┬║ OF</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Cliente</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Produto</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Tamanho</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Cores</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Qtd</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Prazo</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Status</th></tr></thead>'
+          + '    <thead><tr><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Nº OF</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Cliente</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Produto</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Tamanho</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Cores</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Qtd</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Prazo</th><th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1">Status</th></tr></thead>'
           + '    <tbody>' + rows.map(function(item) {
               return '<tr>'
-                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(item.numero || 'ÔÇö') + '</td>'
-                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(item.cliente || 'ÔÇö') + '</td>'
-                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(item.produto || 'ÔÇö') + '</td>'
-                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(item.tamanho || 'ÔÇö') + '</td>'
+                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(item.numero || '—') + '</td>'
+                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(item.cliente || '—') + '</td>'
+                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(item.produto || '—') + '</td>'
+                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(item.tamanho || '—') + '</td>'
                 + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal((item.cores || []).join(', ')) + '</td>'
                 + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(String(item.quantidade || 0)) + '</td>'
-                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(item.prazoIso ? fmtDateBR(item.prazoIso) : 'ÔÇö') + '</td>'
+                + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">' + escHLocal(item.prazoIso ? fmtDateBR(item.prazoIso) : '—') + '</td>'
                 + '<td style="padding:8px;border-bottom:1px solid #e2e8f0">Em aberto</td>'
                 + '</tr>';
             }).join('') + '</tbody>'
@@ -16270,8 +16254,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '</section>';
       }).join('');
       var html = ''
-        + '<html><head><title>Relat├│rio OFs por M├íquina</title></head><body style="font-family:Arial,sans-serif;padding:24px;background:#fff;color:#0f172a">'
-        + '<h1 style="margin:0 0 18px 0">Relat├│rio OFs por M├íquina</h1>'
+        + '<html><head><title>Relatório OFs por Máquina</title></head><body style="font-family:Arial,sans-serif;padding:24px;background:#fff;color:#0f172a">'
+        + '<h1 style="margin:0 0 18px 0">Relatório OFs por Máquina</h1>'
         + sections
         + '</body></html>';
       if (typeof window._openStyledPrintWindow === 'function') window._openStyledPrintWindow(html);
@@ -16338,7 +16322,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (!row || !id) return;
         try {
           var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { ordem_maquina: value } });
-          if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao salvar sequ├¬ncia');
+          if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao salvar sequência');
           row.setAttribute('data-order', String(value));
           input.value = String(value);
           var item = rowDataById(id);
@@ -16348,7 +16332,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           }
           applyFilters();
         } catch (err) {
-          try { window.toast('Erro ao salvar sequ├¬ncia: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+          try { window.toast('Erro ao salvar sequência: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
         }
       });
       shell.wrap.addEventListener('click', function(ev) {
@@ -40146,7 +40130,7 @@ function _ocultarGraficoComissoes() {
     }
     return ''
       + '<svg viewBox="0 0 ' + String(width) + ' ' + String(height) + '" width="100%" height="100%" aria-label="Desenho do corte">'
-      + '<rect x="' + String(padX) + '" y="' + String(padY) + '" width="' + String(renderW) + '" height="' + String(renderH) + '" rx="10" fill="#DC2626" fill-opacity=".18" stroke="#DC2626" stroke-width="2"></rect>'
+      + '<rect x="' + String(padX) + '" y="' + String(padY) + '" width="' + String(renderW) + '" height="' + String(renderH) + '" rx="10" fill="#EF9F27" fill-opacity=".34" stroke="#EF9F27" stroke-width="2"></rect>'
       + pieces
       + grid
       + '<line x1="' + String(padX) + '" y1="' + String(padY - 12) + '" x2="' + String(padX + renderW) + '" y2="' + String(padY - 12) + '" stroke="#cbd5e1" stroke-width="1"></line>'
@@ -40160,7 +40144,7 @@ function _ocultarGraficoComissoes() {
       + '<text x="' + String(width / 2) + '" y="' + String(height - 40) + '" fill="#e2e8f0" font-size="12" text-anchor="middle" font-family="Arial, sans-serif">Peça: ' + sEsc(sFmtMm(pieceWidth)) + ' × ' + sEsc(sFmtMm(pieceHeight)) + ' · Orientação: ' + sEsc(row.orientacao_label || '—') + '</text>'
       + '<rect x="' + String(padX) + '" y="' + String(height - 28) + '" width="16" height="16" rx="3" fill="#185FA5"></rect>'
       + '<text x="' + String(padX + 24) + '" y="' + String(height - 15) + '" fill="#e2e8f0" font-size="12" font-family="Arial, sans-serif">Aproveitado ' + sEsc(sFmtPct(row.aproveitamento_pct || 0)) + '</text>'
-      + '<rect x="' + String(padX + 190) + '" y="' + String(height - 28) + '" width="16" height="16" rx="3" fill="#DC2626" fill-opacity=".26" stroke="#DC2626"></rect>'
+      + '<rect x="' + String(padX + 190) + '" y="' + String(height - 28) + '" width="16" height="16" rx="3" fill="#EF9F27" fill-opacity=".45" stroke="#EF9F27"></rect>'
       + '<text x="' + String(padX + 214) + '" y="' + String(height - 15) + '" fill="#e2e8f0" font-size="12" font-family="Arial, sans-serif">Desperdício ' + sEsc(sFmtPct(row.desperdicio_pct || 0)) + '</text>'
       + '</svg>';
   }
@@ -40197,7 +40181,9 @@ function _ocultarGraficoComissoes() {
     var aviso = document.getElementById('simd-aviso');
     var wrap = document.getElementById('simd-tabela-wrap');
     var visual = document.getElementById('simd-visual');
+    var printBtn = document.getElementById('simd-btn-print');
     if (resultado) resultado.style.display = 'block';
+    if (printBtn) printBtn.disabled = !compatibles.length;
     if (info) {
       info.innerHTML = ''
         + '<strong>Peça solicitada:</strong> ' + sEsc(sFmtMm(plan.peca_larg_mm) + ' × ' + sFmtMm(plan.peca_comp_mm))
@@ -40228,36 +40214,32 @@ function _ocultarGraficoComissoes() {
     window.__simdLastIncompatRows = incompatibles.slice();
     window.__simdSelectedRowId = selected ? sRowKey(selected) : '';
     wrap.innerHTML = ''
-      + '<div class="simd-ranking-head"><div><strong>Chapas candidatas</strong><span>Ordenadas do menor para o maior desperdício.</span></div></div>'
-      + '<div class="simd-ranking-list">'
+      + '<div class="simd-table-shell">'
+      + '  <table class="simd-table">'
+      + '    <thead><tr><th>% Desperdício</th><th>Chapa</th><th>Fornecedor</th><th>Tamanho</th><th>Peças/chapa</th><th>Estoque</th><th>Valor unit.</th><th>' + (plan.qtd_pedido > 0 ? 'Custo' : 'Custo estimado') + '</th></tr></thead>'
+      + '    <tbody>'
       + compatibles.map(function(row, idx) {
           var tone = sBadgeTone(row.desperdicio_pct);
           var rowId = sRowKey(row);
           var isSelected = rowId === window.__simdSelectedRowId;
           return ''
-            + '<article class="simd-result-card' + (isSelected ? ' is-selected' : '') + '" data-simd-row="' + sEsc(rowId) + '">'
-            + '  <div class="simd-result-card-top"><div><div class="simd-cell-main">' + sEsc(row.nome || 'Chapa') + '</div><div class="simd-cell-sub">' + sEsc(idx === 0 ? 'Melhor opção' : ('Ranking ' + String(idx + 1))) + ' · ' + sEsc(row.fornecedor || '—') + '</div></div><span class="simd-badge" style="background:' + tone.bg + ';border-color:' + tone.bd + ';color:' + tone.fg + '">' + sEsc(sFmtPct(row.desperdicio_pct)) + '</span></div>'
-            + '  <div class="simd-result-card-body">'
-            + '    <div><span>Tamanho</span><strong>' + sEsc(row.tamanho || '—') + '</strong></div>'
-            + '    <div><span>Peças/chapa</span><strong>' + sEsc(sFmtNum(row.pecas_por_chapa || 0, 0)) + '</strong></div>'
-            + '    <div><span>Estoque</span><strong>' + sEsc(sFmtNum(row.estoque || 0, 0)) + '</strong></div>'
-            + '    <div><span>' + sEsc(plan.qtd_pedido > 0 ? 'Custo' : 'Valor unit.') + '</span><strong>' + sEsc(plan.qtd_pedido > 0 ? (row.custo_estimado != null ? sFmtMoney(row.custo_estimado) : '—') : (row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : '—')) + '</strong></div>'
-            + '    <div><span>Uso</span><strong>' + sEsc(sFmtPct(row.aproveitamento_pct || 0)) + '</strong></div>'
-            + '    <div><span>Chapas</span><strong>' + sEsc(row.chapas_necessarias != null ? String(row.chapas_necessarias) : '—') + '</strong></div>'
-            + '  </div>'
-            + '  <div class="simd-result-card-actions"><button type="button" class="simd-btn ghost" data-simd-print-row="' + sEsc(rowId) + '">Imprimir relatório</button></div>'
-            + '</article>';
+            + '<tr data-simd-row="' + sEsc(rowId) + '"' + (isSelected ? ' class="is-selected"' : '') + '>'
+            + '  <td><span class="simd-badge" style="background:' + tone.bg + ';border-color:' + tone.bd + ';color:' + tone.fg + '">' + sEsc(sFmtPct(row.desperdicio_pct)) + '</span></td>'
+            + '  <td><div class="simd-cell-main">' + sEsc(row.nome || 'Chapa') + '</div><div class="simd-cell-sub">' + sEsc(idx === 0 ? 'Melhor opção' : ('Ranking ' + String(idx + 1))) + '</div></td>'
+            + '  <td><div class="simd-cell-main">' + sEsc(row.fornecedor || '—') + '</div><div class="simd-cell-sub">' + sEsc(row.empresa || '—') + '</div></td>'
+            + '  <td>' + sEsc(row.tamanho || '—') + '</td>'
+            + '  <td class="num">' + sEsc(sFmtNum(row.pecas_por_chapa || 0, 0)) + '</td>'
+            + '  <td class="num">' + sEsc(sFmtNum(row.estoque || 0, 0)) + '</td>'
+            + '  <td class="num">' + sEsc(row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : '—') + '</td>'
+            + '  <td class="num">' + sEsc(plan.qtd_pedido > 0 ? (row.custo_estimado != null ? sFmtMoney(row.custo_estimado) : '—') : (row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : '—')) + '</td>'
+            + '</tr>';
         }).join('')
-      + '</div>'
-      + '<div class="simd-legend">'
-      + '  <div class="simd-legend-row"><span class="simd-legend-swatch is-blue"></span><strong>Azul:</strong> % que vai ser utilizado</div>'
-      + '  <div class="simd-legend-row"><span class="simd-legend-swatch is-red"></span><strong>Vermelho:</strong> % que vai ser desperdiçado</div>'
-      + '  <div class="simd-legend-row"><span class="simd-legend-swatch is-green"></span><strong>Verde:</strong> quantas chapas vão dar para ser feitas</div>'
-      + '</div>'
+      + '    </tbody>'
+      + '  </table>'
       + (incompatibles.length ? ('<details class="simd-incompat"><summary>Não compatíveis (' + sEsc(String(incompatibles.length)) + ')</summary><div class="simd-incompat-list">' + incompatibles.map(function(row) {
           return '<div class="simd-incompat-row"><strong>' + sEsc(row.nome || 'Chapa') + '</strong><span>' + sEsc([row.fornecedor || '—', row.tamanho || 'Sem tamanho', row.motivo || 'Sem encaixe'].join(' · ')) + '</span></div>';
         }).join('') + '</div></details>') : '')
-      + '';
+      + '</div>';
     Array.prototype.slice.call(wrap.querySelectorAll('[data-simd-row]')).forEach(function(rowEl) {
       rowEl.onclick = function() {
         var rowId = String(rowEl.getAttribute('data-simd-row') || '').trim();
@@ -40265,15 +40247,6 @@ function _ocultarGraficoComissoes() {
         if (!found) return;
         window.__simdSelectedRowId = rowId;
         sRenderResults(compatibles, incompatibles, plan);
-      };
-    });
-    Array.prototype.slice.call(wrap.querySelectorAll('[data-simd-print-row]')).forEach(function(btn) {
-      btn.onclick = function(ev) {
-        try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
-        var rowId = String(btn.getAttribute('data-simd-print-row') || '').trim();
-        if (!rowId) return;
-        window.__simdSelectedRowId = rowId;
-        sPrintSelected();
       };
     });
     if (selected) sRenderVisual(selected, plan);
@@ -40542,14 +40515,13 @@ function _ocultarGraficoComissoes() {
 
   function sVerificarCampos() {
     var plan = sGetPlan();
-    var ok = plan.peca_larg_mm > 0 && plan.peca_comp_mm > 0;
-    ['simd-btn', 'simd-btn-estoque'].forEach(function(id) {
-      var btn = document.getElementById(id);
-      if (!btn) return;
+    var btn = document.getElementById('simd-btn');
+    if (btn) {
+      var ok = plan.peca_larg_mm > 0 && plan.peca_comp_mm > 0;
       btn.disabled = !ok;
       btn.style.opacity = ok ? '1' : '0.55';
       btn.style.cursor = ok ? 'pointer' : 'not-allowed';
-    });
+    }
     try { window._simdSaveState(); } catch (_) {}
   }
 
@@ -40563,37 +40535,28 @@ function _ocultarGraficoComissoes() {
       + '#tela-simulador-desperdicio .simd-shell{display:grid;gap:16px}'
       + '#tela-simulador-desperdicio .simd-panel{background:rgba(15,23,42,.68);border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:18px}'
       + '#tela-simulador-desperdicio .simd-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}'
-      + '#tela-simulador-desperdicio .simd-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto;gap:14px;align-items:end}'
       + '#tela-simulador-desperdicio .simd-field{display:grid;gap:6px}'
       + '#tela-simulador-desperdicio .simd-field label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}'
       + '#tela-simulador-desperdicio .simd-field input{width:100%;padding:11px 12px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:12px;color:#f8fafc;font-size:13px}'
-      + '#tela-simulador-desperdicio .simd-field input[readonly]{opacity:.78}'
-      + '#tela-simulador-desperdicio .simd-row-btn{height:44px;align-self:end;min-width:138px}'
+      + '#tela-simulador-desperdicio .simd-inline-tip{padding:12px 14px;border-radius:12px;border:1px dashed rgba(148,163,184,.24);color:#94a3b8;font-size:12px}'
+      + '#tela-simulador-desperdicio .simd-actions{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px}'
+      + '#tela-simulador-desperdicio .simd-actions-left,#tela-simulador-desperdicio .simd-actions-right{display:flex;gap:10px;flex-wrap:wrap;align-items:center}'
       + '#tela-simulador-desperdicio .simd-btn{padding:11px 18px;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:800;cursor:pointer}'
       + '#tela-simulador-desperdicio .simd-btn.primary{background:linear-gradient(135deg,#2563eb,#1d4ed8)}'
       + '#tela-simulador-desperdicio .simd-btn.ghost{background:rgba(15,23,42,.92);border:1px solid rgba(148,163,184,.18);color:#e2e8f0}'
       + '#tela-simulador-desperdicio .simd-btn:disabled{opacity:.55;cursor:not-allowed}'
       + '#tela-simulador-desperdicio .simd-search-wrap{display:grid;gap:10px}'
-      + '#tela-simulador-desperdicio .simd-selected-sheet{display:none;padding:12px 14px;background:rgba(24,95,165,.16);border:1px solid rgba(24,95,165,.36);border-radius:12px}'
       + '#tela-simulador-desperdicio .simd-search-item{display:grid;gap:4px;width:100%;padding:12px 14px;text-align:left;border:0;background:rgba(15,23,42,.94);border-bottom:1px solid rgba(148,163,184,.12);color:#e2e8f0;cursor:pointer}'
       + '#tela-simulador-desperdicio .simd-search-item:last-child{border-bottom:none}'
       + '#tela-simulador-desperdicio .simd-search-item strong{font-size:13px;color:#f8fafc}'
       + '#tela-simulador-desperdicio .simd-search-item span{font-size:12px;color:#94a3b8}'
-      + '#tela-simulador-desperdicio .simd-compare{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr);gap:16px;align-items:start}'
-      + '#tela-simulador-desperdicio .simd-ranking-panel{display:grid;gap:12px;position:sticky;top:18px}'
-      + '#tela-simulador-desperdicio .simd-ranking-head{padding:14px 16px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(148,163,184,.12)}'
-      + '#tela-simulador-desperdicio .simd-ranking-head strong{display:block;font-size:14px;color:#f8fafc}'
-      + '#tela-simulador-desperdicio .simd-ranking-head span{display:block;margin-top:4px;font-size:12px;color:#94a3b8}'
-      + '#tela-simulador-desperdicio .simd-ranking-list{display:grid;gap:10px;max-height:560px;overflow:auto;padding-right:4px}'
-      + '#tela-simulador-desperdicio .simd-result-card{display:grid;gap:12px;padding:14px 16px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(2,6,23,.48);cursor:pointer;transition:border-color .16s ease,transform .16s ease,box-shadow .16s ease}'
-      + '#tela-simulador-desperdicio .simd-result-card:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.42)}'
-      + '#tela-simulador-desperdicio .simd-result-card.is-selected{border-color:rgba(37,99,235,.6);box-shadow:0 0 0 1px rgba(37,99,235,.18),0 18px 32px rgba(2,6,23,.18)}'
-      + '#tela-simulador-desperdicio .simd-result-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}'
-      + '#tela-simulador-desperdicio .simd-result-card-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
-      + '#tela-simulador-desperdicio .simd-result-card-body span{display:block;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px}'
-      + '#tela-simulador-desperdicio .simd-result-card-body strong{font-size:13px;color:#f8fafc}'
-      + '#tela-simulador-desperdicio .simd-result-card-actions{display:flex;justify-content:flex-end}'
-      + '#tela-simulador-desperdicio .simd-result-card-actions .simd-btn{padding:10px 14px}'
+      + '#tela-simulador-desperdicio .simd-table-shell{display:grid;gap:14px}'
+      + '#tela-simulador-desperdicio .simd-table{width:100%;border-collapse:separate;border-spacing:0;min-width:980px}'
+      + '#tela-simulador-desperdicio .simd-table th{position:sticky;top:0;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;padding:12px;border-bottom:1px solid rgba(148,163,184,.18);text-align:left}'
+      + '#tela-simulador-desperdicio .simd-table td{padding:12px;border-bottom:1px solid rgba(148,163,184,.12);font-size:12px;color:#e2e8f0;background:rgba(15,23,42,.38)}'
+      + '#tela-simulador-desperdicio .simd-table tbody tr{cursor:pointer}'
+      + '#tela-simulador-desperdicio .simd-table tbody tr.is-selected td{background:rgba(24,95,165,.18)}'
+      + '#tela-simulador-desperdicio .simd-table .num{text-align:right;font-variant-numeric:tabular-nums}'
       + '#tela-simulador-desperdicio .simd-badge{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;border:1px solid transparent;font-weight:900;font-size:11px}'
       + '#tela-simulador-desperdicio .simd-cell-main{font-weight:800;color:#f8fafc}'
       + '#tela-simulador-desperdicio .simd-cell-sub{font-size:11px;color:#94a3b8;margin-top:4px}'
@@ -40604,48 +40567,42 @@ function _ocultarGraficoComissoes() {
       + '#tela-simulador-desperdicio .simd-incompat-row{display:grid;gap:4px;padding:12px;border-radius:12px;background:rgba(15,23,42,.52);border:1px solid rgba(148,163,184,.12)}'
       + '#tela-simulador-desperdicio .simd-incompat-row strong{color:#f8fafc;font-size:13px}'
       + '#tela-simulador-desperdicio .simd-incompat-row span{color:#94a3b8;font-size:12px}'
-      + '#tela-simulador-desperdicio .simd-visual{display:none;gap:14px}'
+      + '#tela-simulador-desperdicio .simd-visual{display:none;grid-template-columns:1.2fr .8fr;gap:16px;align-items:start;margin-top:18px}'
       + '#tela-simulador-desperdicio .simd-visual-box{background:rgba(15,23,42,.58);border:1px solid rgba(148,163,184,.14);border-radius:14px;padding:14px}'
       + '#tela-simulador-desperdicio .simd-visual-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
       + '#tela-simulador-desperdicio .simd-visual-grid span{display:block;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px}'
       + '#tela-simulador-desperdicio .simd-visual-grid strong{font-size:14px;color:#f8fafc}'
       + '#tela-simulador-desperdicio .simd-visual-notes{display:grid;gap:8px;margin-top:12px;font-size:12px;color:#cbd5e1}'
-      + '#tela-simulador-desperdicio .simd-legend{display:grid;gap:8px;padding:14px 16px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(148,163,184,.12)}'
-      + '#tela-simulador-desperdicio .simd-legend-row{display:flex;gap:10px;align-items:center;font-size:12px;color:#cbd5e1}'
-      + '#tela-simulador-desperdicio .simd-legend-swatch{display:inline-flex;width:14px;height:14px;border-radius:4px;flex:0 0 14px}'
-      + '#tela-simulador-desperdicio .simd-legend-swatch.is-blue{background:#185FA5}'
-      + '#tela-simulador-desperdicio .simd-legend-swatch.is-red{background:#DC2626}'
-      + '#tela-simulador-desperdicio .simd-legend-swatch.is-green{background:#16A34A}'
       + '#tela-simulador-desperdicio #simd-resultado{display:none}'
-      + '#tela-simulador-desperdicio #simd-tabela-wrap{display:grid;gap:12px}'
-      + '@media (max-width:1180px){#tela-simulador-desperdicio .simd-row{grid-template-columns:repeat(2,minmax(0,1fr))}#tela-simulador-desperdicio .simd-row-btn{width:100%}#tela-simulador-desperdicio .simd-compare{grid-template-columns:1fr}#tela-simulador-desperdicio .simd-ranking-panel{position:static}}'
-      + '@media (max-width:760px){#tela-simulador-desperdicio .simd-grid{grid-template-columns:1fr}#tela-simulador-desperdicio .simd-row{grid-template-columns:1fr}#tela-simulador-desperdicio .simd-result-card-body{grid-template-columns:1fr}#tela-simulador-desperdicio .simd-visual-grid{grid-template-columns:1fr}}'
+      + '#tela-simulador-desperdicio #simd-tabela-wrap{overflow:auto;border:1px solid rgba(148,163,184,.12);border-radius:16px;background:rgba(2,6,23,.35)}'
+      + '@media (max-width:1100px){#tela-simulador-desperdicio .simd-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#tela-simulador-desperdicio .simd-visual{grid-template-columns:1fr}}'
+      + '@media (max-width:760px){#tela-simulador-desperdicio .simd-grid{grid-template-columns:1fr}#tela-simulador-desperdicio .simd-visual-grid{grid-template-columns:1fr}}'
       + '</style>'
       + '<div class="simd-shell">'
       + '  <div class="simd-panel">'
       + '    <div style="display:grid;gap:6px;margin-bottom:16px"><div style="font-size:18px;font-weight:800;color:#f8fafc">Simulador de Desperdício de Papelão</div><div style="font-size:13px;color:#94a3b8">Informe apenas a largura e o comprimento da chapa desejada para rankear as chapas reais do estoque do menor para o maior desperdício.</div></div>'
-      + '    <div class="simd-row">'
-      + '      <div class="simd-field"><label>Largura</label><input type="number" min="1" id="simd-larg" placeholder="Ex: 900"></div>'
-      + '      <div class="simd-field"><label>Comprimento</label><input type="number" min="1" id="simd-comp" placeholder="Ex: 1200"></div>'
-      + '      <div class="simd-field"><label>Quantidade</label><input type="number" min="0" id="simd-qtd" placeholder="Ex: 1000"></div>'
-      + '      <button type="button" id="simd-btn" class="simd-btn primary simd-row-btn">Calcular</button>'
+      + '    <div class="simd-grid">'
+      + '      <div class="simd-field"><label>Largura da Peça (mm)</label><input type="number" min="1" id="simd-larg" placeholder="Ex: 900"></div>'
+      + '      <div class="simd-field"><label>Comprimento da Peça (mm)</label><input type="number" min="1" id="simd-comp" placeholder="Ex: 900"></div>'
+      + '      <div class="simd-field"><label>Quantidade do Pedido (opcional)</label><input type="number" min="0" id="simd-qtd" placeholder="Ex: 1000"></div>'
+      + '      <div class="simd-field"><label>Resumo</label><div class="simd-inline-tip">Rotação 90° é testada automaticamente em cada chapa para escolher o melhor encaixe.</div></div>'
       + '    </div>'
-      + '    <div class="simd-row" style="margin-top:16px">'
-      + '      <div class="simd-field" style="grid-column:span 3"><label>Chapa específica</label><div class="simd-search-wrap"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="text" id="simd-busca-chapa" placeholder="Fornecedor + nomenclatura + tamanho" style="flex:1"><button type="button" class="simd-btn ghost" id="simd-btn-limpar-chapa" style="display:none">Limpar</button></div><div id="simd-busca-resultados" style="display:none;background:#111827;border:1px solid rgba(148,163,184,.14);border-radius:12px;overflow:hidden;max-height:220px;overflow:auto"></div><div id="simd-chapa-selecionada" class="simd-selected-sheet"><div style="font-size:11px;color:#94a3b8;margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em">Chapa selecionada</div><div id="simd-chapa-sel-nome" style="font-size:14px;font-weight:800;color:#f8fafc"></div><div id="simd-chapa-sel-info" style="font-size:12px;color:#cbd5e1;margin-top:4px"></div></div></div></div>'
-      + '      <button type="button" id="simd-btn-estoque" class="simd-btn ghost simd-row-btn">Calcular</button>'
+      + '    <div class="simd-grid" style="margin-top:16px">'
+      + '      <div class="simd-field" style="grid-column:span 4"><label>Simular com Chapa Específica (opcional)</label><div class="simd-search-wrap"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="text" id="simd-busca-chapa" placeholder="Digite o nome, fornecedor ou tamanho da chapa..." style="flex:1"><button type="button" class="simd-btn ghost" id="simd-btn-limpar-chapa" style="display:none">Limpar</button></div><div id="simd-busca-resultados" style="display:none;background:#111827;border:1px solid rgba(148,163,184,.14);border-radius:12px;overflow:hidden;max-height:220px;overflow:auto"></div><div id="simd-chapa-selecionada" style="display:none;padding:12px 14px;background:rgba(24,95,165,.16);border:1px solid rgba(24,95,165,.36);border-radius:12px"><div style="font-size:11px;color:#94a3b8;margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em">Chapa selecionada</div><div id="simd-chapa-sel-nome" style="font-size:14px;font-weight:800;color:#f8fafc"></div><div id="simd-chapa-sel-info" style="font-size:12px;color:#cbd5e1;margin-top:4px"></div></div></div></div>'
       + '    </div>'
-      + '    <div style="margin-top:14px;font-size:12px;color:#64748b">A lógica continua testando rotação 90° e mantendo o ranking do menor para o maior desperdício.</div>'
+      + '    <div class="simd-actions">'
+      + '      <div class="simd-actions-left"><button type="button" id="simd-btn" class="simd-btn primary">Calcular</button><button type="button" id="simd-btn-print" class="simd-btn ghost" disabled>Imprimir Relatório</button></div>'
+      + '      <div class="simd-actions-right"><div style="font-size:12px;color:#64748b">O ranking mostra peças/chapa, estoque, valor unitário e custo estimado quando houver quantidade informada.</div></div>'
+      + '    </div>'
       + '  </div>'
       + '  <div id="simd-loading" class="simd-panel" style="display:none;padding:26px;text-align:center;font-size:13px;color:#94a3b8">Calculando ranking de chapas...</div>'
       + '  <div id="simd-resultado" class="simd-panel">'
       + '    <div id="simd-info-planif" style="font-size:13px;color:#cbd5e1;margin-bottom:14px;padding:12px 14px;background:rgba(24,95,165,.12);border-radius:12px;border-left:3px solid #185FA5"></div>'
       + '    <div id="simd-aviso" style="display:none;padding:16px;text-align:center;font-size:13px;color:#fde68a;background:rgba(234,179,8,.1);border-radius:12px;margin-bottom:14px"></div>'
-      + '    <div class="simd-compare">'
-      + '      <div id="simd-visual" class="simd-visual">'
-      + '        <div class="simd-visual-box"><div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Visualização da chapa</div><div id="simd-svg-container"></div></div>'
-      + '        <div class="simd-visual-box"><div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Chapa selecionada: <span id="simd-visual-titulo" style="color:#9FE1CB"></span></div><div id="simd-visual-dados"></div></div>'
-      + '      </div>'
-      + '      <div class="simd-ranking-panel"><div id="simd-tabela-wrap"></div></div>'
+      + '    <div id="simd-tabela-wrap"></div>'
+      + '    <div id="simd-visual" class="simd-visual">'
+      + '      <div class="simd-visual-box"><div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Desenho do corte</div><div id="simd-svg-container"></div></div>'
+      + '      <div class="simd-visual-box"><div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Chapa selecionada: <span id="simd-visual-titulo" style="color:#9FE1CB"></span></div><div id="simd-visual-dados"></div></div>'
       + '    </div>'
       + '  </div>'
       + '</div>';
@@ -40672,12 +40629,6 @@ function _ocultarGraficoComissoes() {
       busca.addEventListener('input', function() {
         window._simdBuscarChapa(String(busca.value || ''));
       });
-      busca.addEventListener('keydown', function(e) {
-        if (!e || e.key !== 'Enter') return;
-        try { e.preventDefault(); } catch (_) {}
-        var btn = document.getElementById('simd-btn-estoque') || document.getElementById('simd-btn');
-        if (btn && !btn.disabled) sCalcular();
-      });
     }
     var clearBtn = document.getElementById('simd-btn-limpar-chapa');
     if (clearBtn && clearBtn.dataset.simdClearBound !== '1') {
@@ -40695,12 +40646,12 @@ function _ocultarGraficoComissoes() {
         return sCalcular();
       };
     }
-    var stockBtn = document.getElementById('simd-btn-estoque');
-    if (stockBtn && stockBtn.dataset.simdCalcBound !== '1') {
-      stockBtn.dataset.simdCalcBound = '1';
-      stockBtn.onclick = function(e) {
+    var printBtn = document.getElementById('simd-btn-print');
+    if (printBtn && printBtn.dataset.simdPrintBound !== '1') {
+      printBtn.dataset.simdPrintBound = '1';
+      printBtn.onclick = function(e) {
         try { if (e) e.preventDefault(); } catch (_) {}
-        return sCalcular();
+        return sPrintSelected();
       };
     }
     if (!document.body.dataset.simdSearchOutsideBound) {
@@ -40754,6 +40705,5 @@ function _ocultarGraficoComissoes() {
 })();
 try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(99, 'antes PATCH-FIM'); } catch (_) {}
 console.log('[PATCH-FIM] patch.js executou ate o fim');
-
 
 
