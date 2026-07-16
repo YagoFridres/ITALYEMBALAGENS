@@ -11507,6 +11507,7 @@ window.addEventListener('unhandledrejection', function(e) {
   };
   window.__patchOfmaqDirectState = state;
   window._ofmaqUltimaAssinatura = String(window._ofmaqUltimaAssinatura || '');
+  window._ofmaqSig = String(window._ofmaqSig || '');
   window._ofmaqTabelaJaRenderizada = !!window._ofmaqTabelaJaRenderizada;
   window._ofmaqTabelaAssinatura = String(window._ofmaqTabelaAssinatura || '');
   window.__patchOfmaqObserverConnected = !!window.__patchOfmaqObserverConnected;
@@ -12025,6 +12026,14 @@ window.addEventListener('unhandledrejection', function(e) {
     var dia = String((opcoes && (opcoes.dia || opcoes.data || opcoes.dateIso)) || state.selectedDateIso || '').slice(0, 10);
     var maquina = normalizeMachine((opcoes && (opcoes.maquina || opcoes.machine)) || state.selectedMachine || '');
     return [maquina, dia, list.length].join('|');
+  }
+
+  function buildPollingSignature() {
+    return [
+      normalizeMachine(state.selectedMachine || ''),
+      String(state.selectedDateIso || '').slice(0, 10),
+      String(Array.isArray(window.OFS) ? window.OFS.length : 0)
+    ].join('|');
   }
 
   async function fetchFallbackOfs(machineName) {
@@ -12902,7 +12911,15 @@ window.addEventListener('unhandledrejection', function(e) {
       var _origRenderKanban = window.renderKanbanOfmaq;
       var wrappedKanban = function() {
         var resultado = _origRenderKanban ? _origRenderKanban.apply(this, arguments) : null;
-        try { requestRender(100); } catch (e) { try { console.error('[OFMAQ-NOVO] erro hook renderKanbanOfmaq', e); } catch (_) {} }
+        try {
+          if (isOfmaqActive()) {
+            var hookSig = buildPollingSignature();
+            if (hookSig !== String(window._ofmaqSig || '')) {
+              window._ofmaqSig = hookSig;
+              requestRender(100);
+            }
+          }
+        } catch (e) { try { console.error('[OFMAQ-NOVO] erro hook renderKanbanOfmaq', e); } catch (_) {} }
         return resultado;
       };
       wrappedKanban._patchedOfmaqNovo = true;
@@ -12928,9 +12945,9 @@ window.addEventListener('unhandledrejection', function(e) {
       if (window._ofmaqRenderandoAgora) return;
       try { wrapRenderKanban(); } catch (_) {}
       if (!isOfmaqActive()) return;
-      var currentOfs = getCurrentSourceOfs();
-      var nextSignature = buildRenderSignature(currentOfs, null);
-      if (nextSignature === String(window._ofmaqUltimaAssinatura || '')) return;
+      var nextSignature = buildPollingSignature();
+      if (nextSignature === String(window._ofmaqSig || '')) return;
+      window._ofmaqSig = nextSignature;
       window._ofmaqTabelaJaRenderizada = false;
       requestRender(100);
     }, 2000);
@@ -13006,6 +13023,7 @@ window.addEventListener('unhandledrejection', function(e) {
       }
       clearTimeout(state.retryTimer);
       var rendered = renderDirect(source, maquinas || window._listaMaquinas || window._ofmaqUltimasMaquinas || [], opcoes || {});
+      window._ofmaqSig = buildPollingSignature();
       window._ofmaqUltimaAssinatura = nextSignature;
       return rendered;
     } finally {
