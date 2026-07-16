@@ -2247,7 +2247,7 @@ try {
     { id: 'relatorio-sergio', label: 'Relatório Sérgio', icon: '📝', desc: 'Montagem manual com múltiplos itens, autocomplete de clientes e impressão com fonte ampliada.', run: rrOpenSergioBuilder }
   ];
 
-  (function rrEnsureCustosCard() {
+  function rrEnsureCustosCard() {
     var custoDef = null;
     rrDefs = rrDefs.filter(function(def) {
       var id = String(def && def.id || '').trim();
@@ -2272,7 +2272,7 @@ try {
       run: rrReportCustos
     });
     try { console.log('[RELATORIO-CUSTOS] card adicionado ao rrDefs'); } catch (_) {}
-  })();
+  }
 
   function rrDefsSignature() {
     return rrDefs.map(function(def) {
@@ -2281,6 +2281,7 @@ try {
   }
 
   function rrEnsureFreshPage(force) {
+    rrEnsureCustosCard();
     var current = String(window._PAGE_ATUAL || '').trim();
     var host = document.getElementById('patch-page-body');
     var expected = rrDefsSignature();
@@ -2348,6 +2349,7 @@ try {
   }
 
   function rrRenderPage() {
+    rrEnsureCustosCard();
     rrEnsureStyle();
     var host = rrHost();
     if (!host) return false;
