@@ -12126,6 +12126,40 @@ window.addEventListener('unhandledrejection', function(e) {
     }
   }
 
+  function extractOfsFromApiPayload(data) {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.ofs)) return data.ofs;
+    if (data && Array.isArray(data.data)) return data.data;
+    if (data && data.data && Array.isArray(data.data.ofs)) return data.data.ofs;
+    if (data && data.data && Array.isArray(data.data.data)) return data.data.data;
+    return [];
+  }
+
+  async function fetchOfsApiDirect() {
+    if (state.apiFallbackLoading) return Array.isArray(window._ofmaqOfsCache) ? window._ofmaqOfsCache.slice() : [];
+    state.apiFallbackLoading = true;
+    try {
+      var resp = await fetch('/api/ofs?limit=500&status=em_producao', {
+        headers: getOfmaqAuthHeaders({
+          Authorization: 'Bearer ' + String(window._authToken || window._token || '').trim()
+        })
+      });
+      var data = null;
+      try { data = await resp.json(); } catch (_) { data = []; }
+      var ofs = extractOfsFromApiPayload(data);
+      ofs = Array.isArray(ofs) ? ofs : [];
+      try {
+        console.log('[OFMAQ-API] ofs recebidas:', ofs.length, 'primeira maq:', JSON.stringify(ofs[0] && ofs[0].maq), 'primeiro dia:', ofs[0] && ofs[0].dia);
+      } catch (_) {}
+      window._ofmaqOfsCache = ofs.slice();
+      return ofs;
+    } catch (_) {
+      return Array.isArray(window._ofmaqOfsCache) ? window._ofmaqOfsCache.slice() : [];
+    } finally {
+      state.apiFallbackLoading = false;
+    }
+  }
+
   async function resolveSourceOfs(ofs, opcoes) {
     var source = Array.isArray(ofs) && ofs.length ? ofs.slice() : getCurrentSourceOfs();
     var machineName = normalizeMachine((opcoes && (opcoes.maquina || opcoes.machine)) || state.selectedMachine || '');
@@ -12133,6 +12167,29 @@ window.addEventListener('unhandledrejection', function(e) {
     var fetched = await fetchFallbackOfs(machineName);
     if (fetched.length) return fetched;
     return source;
+  }
+
+  function _ofmaqMontarLinhas(ofs, maquinas, opcoes) {
+    return renderDirect(Array.isArray(ofs) ? ofs : [], maquinas || window._listaMaquinas || window._ofmaqUltimasMaquinas || [], Object.assign({}, opcoes || {}, { __apiSource: true }));
+  }
+
+  function _ofmaqRenderTabela(ofs, maquinas, opcoes) {
+    var base = Array.isArray(ofs) ? ofs.slice() : [];
+    var maq = String(window._ofmaqMaqSel || state.selectedMachine || 'IMP 01').trim() || 'IMP 01';
+    var diaSel = String(state.selectedDateIso || '').slice(0, 10);
+    var filtradas = base.filter(function(of) {
+      return ofTemMaquina(of || {}, maq);
+    });
+    var filtradasDia = filtradas.filter(function(of) {
+      var dia = getOfDia(of || {});
+      return !diaSel || !dia || dia === diaSel;
+    });
+    var finalRows = filtradasDia.length ? filtradasDia : filtradas;
+    state.filterWarning = (!filtradasDia.length && filtradas.length) ? 'Sem OFs no dia selecionado para esta máquina — mostrando todas da máquina' : '';
+    try {
+      console.log('[OFMAQ-API-FILTRO] maq:', maq, 'total:', base.length, 'filtradas:', finalRows.length);
+    } catch (_) {}
+    return _ofmaqMontarLinhas(finalRows, maquinas, opcoes);
   }
 
   function getMachineListFromOfs(ofs) {
@@ -12939,6 +12996,7 @@ window.addEventListener('unhandledrejection', function(e) {
       if (opcoes.maquina || opcoes.machine) state.selectedMachine = normalizeMachine(opcoes.maquina || opcoes.machine);
       if (opcoes.dia || opcoes.data || opcoes.dateIso) state.selectedDateIso = String(opcoes.dia || opcoes.data || opcoes.dateIso || '').slice(0, 10);
     }
+    window._ofmaqMaqSel = state.selectedMachine || 'IMP 01';
     ensureDefaultState();
     hideLegacyOfmaqUi();
     var container = getContainer();
@@ -13090,6 +13148,12 @@ window.addEventListener('unhandledrejection', function(e) {
       try { runSeqRouteTestOnce(source); } catch (_) {}
       var nextSignature = buildRenderSignature(source, opcoes);
       if (!source.length) {
+        if (!(opcoes && opcoes.__apiSource)) {
+          var apiRowsEmpty = Array.isArray(window._ofmaqOfsCache) && window._ofmaqOfsCache.length
+            ? window._ofmaqOfsCache.slice()
+            : await fetchOfsApiDirect();
+          if (apiRowsEmpty.length) return _ofmaqRenderTabela(apiRowsEmpty, maquinas, Object.assign({}, opcoes || {}, { __apiSource: true }));
+        }
         if (!isOfmaqActive()) return null;
         hideLegacyOfmaqUi();
         showLoadingState();
@@ -13111,6 +13175,12 @@ window.addEventListener('unhandledrejection', function(e) {
       }
       clearTimeout(state.retryTimer);
       var rendered = renderDirect(source, maquinas || window._listaMaquinas || window._ofmaqUltimasMaquinas || [], opcoes || {});
+      if (!(opcoes && opcoes.__apiSource) && (!state.lastVisibleCount || !state.currentRows || !state.currentRows.length)) {
+        var apiRows = Array.isArray(window._ofmaqOfsCache) && window._ofmaqOfsCache.length
+          ? window._ofmaqOfsCache.slice()
+          : await fetchOfsApiDirect();
+        if (apiRows.length) return _ofmaqRenderTabela(apiRows, maquinas, Object.assign({}, opcoes || {}, { __apiSource: true }));
+      }
       window._ofmaqSig = buildPollingSignature();
       window._ofmaqUltimaAssinatura = nextSignature;
       return rendered;
