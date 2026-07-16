@@ -1,4 +1,4 @@
-window._comRodando = false;
+﻿window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
 if (!window.__comRodandoWatchdogInstalled) {
@@ -1900,6 +1900,63 @@ try {
     });
   }
 
+  async function rrReportMaioresTamanhosVendidos() {
+    var ref = rrCurrentRange();
+    var empId = rrEmpId();
+    var qs = [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim)
+    ];
+    if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
+    var json = await rrFetchJson('/api/relatorios/maiores-tamanhos-vendidos?' + qs.join('&'));
+    var resumo = json && json.resumo || {};
+    var rows = rrList(json, ['rows', 'data']).map(function(row) {
+      return {
+        largura: rrNum(row && row.largura),
+        comprimento: rrNum(row && row.comprimento),
+        quantidade_total_vendida: rrInt(row && row.quantidade_total_vendida),
+        total_ofs: rrInt(row && row.total_ofs),
+        area_mm2: rrNum(row && row.area_mm2)
+      };
+    });
+    var maior = resumo && resumo.maior_tamanho || null;
+    var maiorLabel = (maior && rrNum(maior.largura) > 0 && rrNum(maior.comprimento) > 0)
+      ? (rrFmtNum(maior.largura, 0) + ' × ' + rrFmtNum(maior.comprimento, 0))
+      : 'Sem dados';
+    return rrOpenPrint({
+      title: 'Relatório de Maiores Tamanhos Vendidos',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Tamanhos distintos', value: rrFmtNum(resumo.total_tamanhos || rows.length, 0), sub: 'Combinações únicas de largura × comprimento' },
+        { label: 'Caixas vendidas', value: rrFmtNum(resumo.total_caixas || rows.reduce(function(s, r) { return s + rrInt(r && r.quantidade_total_vendida); }, 0), 0), sub: 'Somatório do período selecionado' },
+        { label: 'OFs analisadas', value: rrFmtNum(resumo.total_ofs || rows.reduce(function(s, r) { return s + rrInt(r && r.total_ofs); }, 0), 0), sub: 'OFs concluídas agrupadas por tamanho' },
+        { label: 'Maior tamanho', value: maiorLabel, sub: maior && rrNum(maior.area_mm2) > 0 ? (rrFmtNum(rrNum(maior.area_mm2) / 1000000, 4) + ' m²') : 'Sem dados' }
+      ],
+      summaryTitle: 'Ranking dos maiores tamanhos',
+      summaryHeaders: ['Largura', 'Comprimento', 'Quantidade total vendida', 'Nº OFs distintas'],
+      summaryRows: rows.slice(0, 10).map(function(row) {
+        return [
+          rrEsc(rrFmtNum(row.largura || 0, 0)),
+          rrEsc(rrFmtNum(row.comprimento || 0, 0)),
+          rrEsc(rrFmtNum(row.quantidade_total_vendida || 0, 0)),
+          rrEsc(rrFmtNum(row.total_ofs || 0, 0))
+        ];
+      }),
+      detailTitle: 'Detalhamento completo',
+      detailHeaders: ['Largura', 'Comprimento', 'Quantidade total vendida', 'Nº OFs distintas'],
+      detailRows: rows.map(function(row) {
+        return [
+          rrEsc(rrFmtNum(row.largura || 0, 0)),
+          rrEsc(rrFmtNum(row.comprimento || 0, 0)),
+          rrEsc(rrFmtNum(row.quantidade_total_vendida || 0, 0)),
+          rrEsc(rrFmtNum(row.total_ofs || 0, 0))
+        ];
+      }),
+      emptySummaryCols: 4,
+      emptyDetailCols: 4
+    });
+  }
+
   function rrSergioState() {
     var defaultWeekStart = rrDateText(rrStartOfWeek(new Date()));
     if (!window.__rrSergioState || typeof window.__rrSergioState !== 'object') {
@@ -2244,6 +2301,7 @@ try {
     { id: 'ofs-entradas-mes', label: 'Valor de OFs que entraram no mês', icon: '🧮', desc: 'Lista OFs criadas no mês/ano escolhido com valor unitário, total e somatório mensal.', run: rrOpenOfsEntradasMesModal },
     { id: 'tipos-caixa-rel', label: 'Tipos de Caixa', icon: '📦', desc: 'Agrupa OFs concluídas por tipo de caixa e destaca os mais produzidos no período ativo.', run: rrReportTiposCaixa },
     { id: 'cores-tamanhos-rel', label: 'Cores e Tamanhos mais usados', icon: '🎨', desc: 'Conta as cores de impressão e os tamanhos mais frequentes nas OFs concluídas do período ativo.', run: rrReportCoresTamanhos },
+    { id: 'maiores-tamanhos-vendidos', label: 'Maiores Tamanhos Vendidos', icon: '📏', desc: 'Ranking dos tamanhos de caixa mais vendidos, do maior para o menor.', run: rrReportMaioresTamanhosVendidos },
     { id: 'relatorio-sergio', label: 'Relatório Sérgio', icon: '📝', desc: 'Montagem manual com múltiplos itens, autocomplete de clientes e impressão com fonte ampliada.', run: rrOpenSergioBuilder }
   ];
 
@@ -2278,42 +2336,6 @@ try {
     return rrDefs.map(function(def) {
       return String(def && def.id || '').trim();
     }).filter(Boolean).join('|');
-  }
-
-  function rrEnsureCustosCardInDom(host) {
-    var scope = host || rrHost();
-    if (!scope || !scope.querySelector) return;
-    var grid = scope.querySelector('.rr-grid')
-      || scope.querySelector('#relatorios-grid')
-      || scope.querySelector('[class*="rr-grid"]')
-      || scope.querySelector('[id*="relatorio"]');
-    try { console.log('[CUSTOS-GRID] container encontrado:', grid ? (grid.id || grid.className) : ''); } catch (_) {}
-    if (!grid || scope.querySelector('#card-custo-por-of')) return;
-    var cardBase = grid.querySelector('.rr-card');
-    try { console.log('[CUSTOS-GRID] card base:', cardBase ? cardBase.className : ''); } catch (_) {}
-    if (!cardBase) return;
-    var novoCard = cardBase.cloneNode(true);
-    novoCard.id = 'card-custo-por-of';
-    novoCard.setAttribute('data-rr-search', 'custo por of custo por of calculado por area (r$/m²) com total e custo unitario.');
-    novoCard.style.display = '';
-    var tituloEl = novoCard.querySelector('[class*="titulo"],[class*="title"],h3,h4,strong,.rr-label');
-    if (tituloEl) tituloEl.textContent = 'Custo por OF';
-    var descEl = novoCard.querySelector('.rr-desc');
-    if (descEl) descEl.textContent = 'Custo por OF calculado por área (R$/m²) com total e custo unitário.';
-    var iconEl = novoCard.querySelector('.rr-icon');
-    if (iconEl) iconEl.textContent = '🧾';
-    var btn = novoCard.querySelector('button,[class*="btn"]');
-    if (btn) {
-      btn.textContent = 'Abrir Relatório';
-      btn.setAttribute('data-rr-open', 'custo-por-of');
-      btn.onclick = function() {
-        if (typeof window.rrReportCustos === 'function') window.rrReportCustos();
-        else if (typeof rrReportCustos === 'function') rrReportCustos();
-        else alert('Relatório de custos não configurado');
-      };
-    }
-    grid.appendChild(novoCard);
-    try { console.log('[CUSTOS-GRID] card injetado com sucesso'); } catch (_) {}
   }
 
   function rrEnsureFreshPage(force) {
@@ -2416,7 +2438,6 @@ try {
         }).join('')
       + '  </div>'
       + '</div>';
-    rrEnsureCustosCardInDom(host);
     Array.prototype.slice.call(host.querySelectorAll('[data-rr-open]')).forEach(function(btn) {
       btn.onclick = function() {
         var id = String(btn.getAttribute('data-rr-open') || '').trim();
@@ -2439,19 +2460,6 @@ try {
       inp.addEventListener('input', apply);
       apply();
     })();
-    setTimeout(function() {
-      try {
-        rrEnsureCustosCardInDom(host);
-        var btn = host.querySelector('#card-custo-por-of [data-rr-open="custo-por-of"]');
-        if (btn && !btn.__rrBound) {
-          btn.__rrBound = true;
-          btn.onclick = function() {
-            var def = rrDefs.find(function(item) { return String(item && item.id || '').trim() === 'custo-por-of'; }) || null;
-            rrOpen(def);
-          };
-        }
-      } catch (_) {}
-    }, 1500);
     try { host.setAttribute('data-rr-defs-sig', defsSig); } catch (_) {}
     rrBindPeriodControls(host);
     return true;
@@ -26487,6 +26495,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return String(value || '').trim();
   }
 
+  function getEmpIdBoot() {
+    try {
+      return getEmpIdSan(
+        (window.CURRENT_USER && (window.CURRENT_USER.emp_id || window.CURRENT_USER.empId))
+        || window.EMP_FILTRO
+        || (window._usuarioLogado && (window._usuarioLogado.emp_id || window._usuarioLogado.empId))
+        || ''
+      );
+    } catch (_) {
+      return '';
+    }
+  }
+
   function setGlobalColors(rows) {
     try { coresDisponiveis = Array.isArray(rows) ? rows.slice() : []; } catch (_) {}
     try { window.coresDisponiveis = Array.isArray(rows) ? rows.slice() : []; } catch (_) {}
@@ -26553,7 +26574,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var url = '/api/cores-impressao' + (emp ? ('?empId=' + encodeURIComponent(emp)) : '');
     if (typeof window.apiFetch === 'function') {
       var apiResp = await window.apiFetch(url, { method: 'GET' });
+      var apiRaw = apiResp && apiResp.clone ? await apiResp.clone().text().catch(function() { return ''; }) : '';
       var apiJson = apiResp ? await apiResp.json().catch(function() { return null; }) : null;
+      try {
+        window.__ofRapidaCoresLastResponse = {
+          ok: !!(apiResp && apiResp.ok),
+          status: Number(apiResp && apiResp.status || 0) || 0,
+          url: url,
+          empId: emp,
+          body: apiRaw
+        };
+      } catch (_) {}
       if (!(apiResp && apiResp.ok)) throw new Error(apiJson && (apiJson.error || apiJson.message) || 'Falha ao carregar cores');
       if (Array.isArray(apiJson)) return apiJson;
       if (apiJson && Array.isArray(apiJson.data)) return apiJson.data;
@@ -26563,11 +26594,58 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var token = getToken();
     if (token) headers.Authorization = 'Bearer ' + token;
     var resp = await fetch(url, { method: 'GET', headers: headers });
+    var raw = resp && resp.clone ? await resp.clone().text().catch(function() { return ''; }) : '';
     var json = await resp.json().catch(function() { return null; });
+    try {
+      window.__ofRapidaCoresLastResponse = {
+        ok: !!resp.ok,
+        status: Number(resp.status || 0) || 0,
+        url: url,
+        empId: emp,
+        body: raw
+      };
+    } catch (_) {}
     if (!resp.ok) throw new Error(json && (json.error || json.message) || 'Falha ao carregar cores');
     if (Array.isArray(json)) return json;
     if (json && Array.isArray(json.data)) return json.data;
     return [];
+  }
+
+  function scheduleBootPreload() {
+    if (window.__ofRapidaCoresBootTimerInstalled) return;
+    window.__ofRapidaCoresBootTimerInstalled = true;
+    var tries = 0;
+    var timer = setInterval(function() {
+      tries += 1;
+      try {
+        if (!window.carregarCoresImpressao || !window.carregarCoresImpressao._patchWithCache) {
+          if (tries > 120) clearInterval(timer);
+          return;
+        }
+        var empId = getEmpIdBoot();
+        if (!window.CURRENT_USER || !empId) {
+          if (tries > 120) clearInterval(timer);
+          return;
+        }
+        if (window.__ofRapidaCoresBootLoadedEmpId === empId) {
+          clearInterval(timer);
+          return;
+        }
+        window.carregarCoresImpressao(empId, { retryOnce: true }).then(function(rows) {
+          try {
+            window.__ofRapidaCoresBootLoadedEmpId = empId;
+            window.__ofRapidaCoresBootLoadedAt = new Date().toISOString();
+            window.__ofRapidaCoresBootCount = Array.isArray(rows) ? rows.length : 0;
+          } catch (_) {}
+          clearInterval(timer);
+        }).catch(function(err) {
+          try { window.__ofRapidaCoresBootError = String(err && err.message || err || 'Falha ao carregar cores'); } catch (_) {}
+          if (tries > 120) clearInterval(timer);
+        });
+      } catch (_) {
+        if (tries > 120) clearInterval(timer);
+      }
+    }, 500);
   }
 
   function install() {
@@ -26658,7 +26736,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             else delete modal.dataset.ofEditandoId;
           }
           var empSel = document.getElementById('of-r-empresa');
-          var empId = getEmpIdSan((empSel && empSel.value) || window.EMP_FILTRO || 'E1') || 'E1';
+          var empId = getEmpIdSan((empSel && empSel.value) || getEmpIdBoot() || window.EMP_FILTRO || '');
           setRapidaState('loading', '', empId);
           window.carregarCoresImpressao(empId, { retryOnce: true }).then(function() {
             try {
@@ -26672,6 +26750,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return out;
     };
     window.abrirNovaOfRapida._patchWithCache = true;
+    scheduleBootPreload();
     return true;
   }
 
@@ -26684,6 +26763,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
     }, 400);
   }
+  scheduleBootPreload();
 })();
 
 (function patchClienteValidoNovaOf() {

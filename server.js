@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -11235,6 +11235,97 @@ app.get('/api/relatorios/cores-tamanhos', authMiddleware, async (req, res) => {
     });
   } catch (e) {
     console.error('[RELATORIOS][CORES-TAMANHOS]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/relatorios/maiores-tamanhos-vendidos', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    if (!range?.inicio || !range?.fim_exclusivo) {
+      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
+    }
+    let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+    const cols = [
+      'id', 'numero', 'of', 'status', 'data_conclusao', 'empresa_id',
+      'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida',
+      'dim_comprimento', 'dim_largura', 'caixa_comprimento', 'caixa_largura'
+    ].join(',');
+    const sel = await _selectCompatRows('ofs', cols, (q) => {
+      let query = q
+        .ilike('status', '%conclu%')
+        .gte('data_conclusao', range.inicio)
+        .lt('data_conclusao', range.fim_exclusivo)
+        .order('data_conclusao', { ascending: false });
+      if (empresa_id && _isUuid(empresa_id)) query = query.eq('empresa_id', empresa_id);
+      return query.limit(10000);
+    });
+    if (sel?.error) throw sel.error;
+    const ofs = Array.isArray(sel?.data) ? sel.data : [];
+
+    const pickDim = (row, keys) => {
+      for (const key of (Array.isArray(keys) ? keys : [])) {
+        const value = Number(row?.[key] ?? 0) || 0;
+        if (value > 0) return value;
+      }
+      return 0;
+    };
+    const pickQtd = (row) => Math.max(0, Math.trunc(Number(row?.qtd_produzida ?? row?.qtd ?? row?.quantidade ?? row?.qtd_pedida ?? 0) || 0));
+    const groups = new Map();
+
+    ofs.forEach((of) => {
+      const largura = pickDim(of, ['dim_largura', 'caixa_largura']);
+      const comprimento = pickDim(of, ['dim_comprimento', 'caixa_comprimento']);
+      if (!(largura > 0) || !(comprimento > 0)) return;
+      const key = String(Math.trunc(largura)) + 'x' + String(Math.trunc(comprimento));
+      if (!groups.has(key)) {
+        groups.set(key, {
+          largura: Math.trunc(largura),
+          comprimento: Math.trunc(comprimento),
+          area_mm2: Math.trunc(largura) * Math.trunc(comprimento),
+          quantidade_total_vendida: 0,
+          total_ofs: 0
+        });
+      }
+      const item = groups.get(key);
+      item.quantidade_total_vendida += pickQtd(of);
+      item.total_ofs += 1;
+    });
+
+    const rows = Array.from(groups.values()).sort((a, b) => {
+      if (Number(b?.area_mm2 || 0) !== Number(a?.area_mm2 || 0)) return Number(b?.area_mm2 || 0) - Number(a?.area_mm2 || 0);
+      if (Number(b?.largura || 0) !== Number(a?.largura || 0)) return Number(b?.largura || 0) - Number(a?.largura || 0);
+      if (Number(b?.comprimento || 0) !== Number(a?.comprimento || 0)) return Number(b?.comprimento || 0) - Number(a?.comprimento || 0);
+      if (Number(b?.quantidade_total_vendida || 0) !== Number(a?.quantidade_total_vendida || 0)) return Number(b?.quantidade_total_vendida || 0) - Number(a?.quantidade_total_vendida || 0);
+      if (Number(b?.total_ofs || 0) !== Number(a?.total_ofs || 0)) return Number(b?.total_ofs || 0) - Number(a?.total_ofs || 0);
+      return 0;
+    });
+
+    const resumo = rows.reduce((acc, item) => {
+      acc.total_tamanhos += 1;
+      acc.total_caixas += Number(item?.quantidade_total_vendida || 0) || 0;
+      acc.total_ofs += Number(item?.total_ofs || 0) || 0;
+      return acc;
+    }, { total_tamanhos: 0, total_caixas: 0, total_ofs: 0 });
+    resumo.maior_tamanho = rows[0]
+      ? {
+          largura: Number(rows[0].largura || 0) || 0,
+          comprimento: Number(rows[0].comprimento || 0) || 0,
+          area_mm2: Number(rows[0].area_mm2 || 0) || 0
+        }
+      : null;
+
+    return res.json({
+      ok: true,
+      data_inicio: range.inicio,
+      data_fim: range.fim,
+      resumo,
+      rows
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][MAIORES-TAMANHOS-VENDIDOS]', e?.message || e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
