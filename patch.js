@@ -2280,6 +2280,22 @@ try {
     }).filter(Boolean).join('|');
   }
 
+  function rrEnsureCustosCardInDom(host) {
+    var scope = host || rrHost();
+    if (!scope || !scope.querySelector) return;
+    var centralContainer = scope.querySelector('.rr-grid, #central-relatorios-grid, .relatorios-grid, #relatorios-cards, [class*="relatorio"][class*="grid"]');
+    if (!centralContainer || scope.querySelector('#card-custo-por-of')) return;
+    var card = document.createElement('div');
+    card.id = 'card-custo-por-of';
+    card.className = 'rr-card';
+    card.setAttribute('data-rr-search', 'custo por of custo por of calculado por area (r$/m²) com total e custo unitario.');
+    card.innerHTML = ''
+      + '<div class="rr-card-top"><div class="rr-icon">🧾</div></div>'
+      + '<div><div class="rr-label">Custo por OF</div><div class="rr-desc">Custo por OF calculado por área (R$/m²) com total e custo unitário.</div></div>'
+      + '<button type="button" class="rr-btn" data-rr-open="custo-por-of">Abrir Relatório</button>';
+    centralContainer.appendChild(card);
+  }
+
   function rrEnsureFreshPage(force) {
     rrEnsureCustosCard();
     var current = String(window._PAGE_ATUAL || '').trim();
@@ -2379,6 +2395,7 @@ try {
         }).join('')
       + '  </div>'
       + '</div>';
+    rrEnsureCustosCardInDom(host);
     Array.prototype.slice.call(host.querySelectorAll('[data-rr-open]')).forEach(function(btn) {
       btn.onclick = function() {
         var id = String(btn.getAttribute('data-rr-open') || '').trim();
@@ -2401,6 +2418,19 @@ try {
       inp.addEventListener('input', apply);
       apply();
     })();
+    setTimeout(function() {
+      try {
+        rrEnsureCustosCardInDom(host);
+        var btn = host.querySelector('#card-custo-por-of [data-rr-open="custo-por-of"]');
+        if (btn && !btn.__rrBound) {
+          btn.__rrBound = true;
+          btn.onclick = function() {
+            var def = rrDefs.find(function(item) { return String(item && item.id || '').trim() === 'custo-por-of'; }) || null;
+            rrOpen(def);
+          };
+        }
+      } catch (_) {}
+    }, 500);
     try { host.setAttribute('data-rr-defs-sig', defsSig); } catch (_) {}
     rrBindPeriodControls(host);
     return true;
