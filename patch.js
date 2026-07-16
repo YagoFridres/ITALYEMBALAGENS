@@ -11549,6 +11549,7 @@ window.addEventListener('unhandledrejection', function(e) {
     qtySortDirection: '',
     lastMachines: OFMAQ_FIXED_MACHINES.slice(),
     currentRows: [],
+    domSourceAttempts: 0,
     hasScheduleDates: false,
     hasMissingScheduleDates: false,
     filterWarning: '',
@@ -12083,6 +12084,41 @@ window.addEventListener('unhandledrejection', function(e) {
       return;
     }
     container.innerHTML = '<div class="ofmaq-direct-root"><div class="ofmaq-direct-toolbar"><h2>OFs por Maquina</h2></div><div class="ofmaq-direct-table-wrap" style="padding:18px;color:#94a3b8">Carregando OFs...</div></div>';
+  }
+
+  function _ofmaqGetOfsDoDOM() {
+    var cards = document.querySelectorAll('.kb-card.kb-card-ofmaq[data-of-id]');
+    console.log('[OFMAQ-DOM] cards no dom:', cards.length);
+    var ofs = [];
+    Array.prototype.forEach.call(cards, function(card) {
+      if (!card) return;
+      var texto = String(card.innerText || card.textContent || '').trim();
+      var badge = card.querySelector('.kb-badge, strong, b');
+      var clienteEl = card.querySelector('.kb-cliente, .cliente, [data-cli], [data-cliente]');
+      var produtoEl = card.querySelector('.kb-produto, .produto, [data-produto], [data-desc]');
+      var prazoEl = card.querySelector('.kb-prazo, .prazo, [data-prazo], [data-dia], [data-data-agendamento]');
+      var imgEl = card.querySelector('img');
+      ofs.push({
+        id: String(card.dataset.ofId || '').trim(),
+        maq: String(card.dataset.maq || '').trim(),
+        qtd: String(card.dataset.qtd || '0').trim(),
+        quantidade: String(card.dataset.qtd || '0').trim(),
+        tempoMin: String(card.dataset.tempoMin || '0').trim(),
+        tempo_min: String(card.dataset.tempoMin || '0').trim(),
+        urgencia: String(card.dataset.urgencia || '').trim(),
+        texto: texto,
+        of: String((badge && badge.textContent) || card.dataset.ofId || '').trim(),
+        dia: String(card.dataset.dia || card.dataset.dataAgendamento || '').trim(),
+        data_agendamento: String(card.dataset.dataAgendamento || card.dataset.dia || '').trim(),
+        data_entrega: String((prazoEl && prazoEl.textContent) || card.dataset.dia || card.dataset.dataAgendamento || '').trim(),
+        ent: String((prazoEl && prazoEl.textContent) || card.dataset.dia || card.dataset.dataAgendamento || '').trim(),
+        cliente: String((clienteEl && clienteEl.textContent) || '').trim(),
+        descricao: String((produtoEl && produtoEl.textContent) || texto).trim(),
+        imagem_url: String((imgEl && imgEl.getAttribute('src')) || '').trim()
+      });
+    });
+    console.log('[OFMAQ-DOM] extraidas:', ofs.length, 'ex maq:', ofs[0] && ofs[0].maq, 'ex of:', ofs[0] && ofs[0].of);
+    return ofs;
   }
 
   function scheduleRetryRender(ms) {
@@ -13172,6 +13208,20 @@ window.addEventListener('unhandledrejection', function(e) {
     window._ofmaqRenderandoAgora = true;
     disconnectDirectObserver();
     try {
+      var domOfs = _ofmaqGetOfsDoDOM();
+      if (domOfs.length) {
+        state.domSourceAttempts = 0;
+        ofs = domOfs.slice();
+        try { hideLegacyOfmaqUi(); } catch (_) {}
+      } else if (state.domSourceAttempts < 5) {
+        state.domSourceAttempts += 1;
+        if (!isOfmaqActive()) return null;
+        showLoadingState();
+        scheduleRetryRender(500);
+        return null;
+      } else {
+        state.domSourceAttempts = 0;
+      }
       if (window.OFS && window.OFS[0]) {
         try { console.log('[OFS-CAMPOS]', Object.keys(window.OFS[0])); } catch (_) {}
         try { console.log('[COR-DEBUG]', JSON.stringify(window.OFS[0].cores_impressao)); } catch (_) {}
