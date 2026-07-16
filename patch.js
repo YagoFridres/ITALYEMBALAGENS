@@ -11842,24 +11842,27 @@ window.addEventListener('unhandledrejection', function(e) {
     return { rank: 2, text: '🟢 OK', bg: '#14532d', color: '#bbf7d0' };
   }
 
-  function parseColors(raw) {
+  function parseCores(raw) {
     if (!raw) return [];
-    var arr = raw;
+    if (Array.isArray(raw)) {
+      return raw.map(function(x) {
+        return typeof x === 'string' ? x : (x && (x.nome || x.name || x.color) || String(x || ''));
+      }).map(function(item) {
+        return String(item || '').trim();
+      }).filter(Boolean);
+    }
     if (typeof raw === 'string') {
       try {
-        arr = JSON.parse(raw);
+        return parseCores(JSON.parse(raw));
       } catch (_) {
         return String(raw || '').split(',').map(function(s) { return String(s || '').trim(); }).filter(Boolean);
       }
     }
-    if (!Array.isArray(arr)) return [];
-    return arr.map(function(item) {
-      if (typeof item === 'string') return item.trim();
-      if (item && item.nome) return item.nome;
-      if (item && item.name) return item.name;
-      if (item && item.color) return item.color;
-      return String(item || '');
-    }).filter(Boolean);
+    return [];
+  }
+
+  function parseColors(raw) {
+    return parseCores(raw);
   }
 
   function normCor(s) {
@@ -11874,7 +11877,7 @@ window.addEventListener('unhandledrejection', function(e) {
   }
 
   function getOfColors(of) {
-    return parseColors(of && (of.cores_impressao != null ? of.cores_impressao : (of.cores != null ? of.cores : of.cor))).map(normCor).filter(Boolean);
+    return parseCores(of && (of.cores_impressao != null ? of.cores_impressao : (of.cores != null ? of.cores : of.cor))).map(normCor).filter(Boolean);
   }
 
   function resolveColorHex(name) {
@@ -12910,6 +12913,9 @@ window.addEventListener('unhandledrejection', function(e) {
     try {
       var source = await resolveSourceOfs(ofs);
       try { console.log('[OFMAQ-FONTES]', getSourceLengths()); } catch (_) {}
+      try {
+        if (Array.isArray(window.OFS) && window.OFS.length) console.log('[COR-DEBUG]', JSON.stringify(window.OFS[0] && window.OFS[0].cores_impressao));
+      } catch (_) {}
       try { window._ofmaqDebugDia(source); } catch (_) {}
       try { runSeqRouteTestOnce(source); } catch (_) {}
       var nextSignature = buildRenderSignature(source, opcoes);
