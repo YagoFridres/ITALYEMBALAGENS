@@ -2381,13 +2381,22 @@ try {
     if (window.__rrGoWrapped) return;
     var origGo = window.go;
     if (typeof origGo !== 'function') return;
+    function scheduleRelatoriosRefresh() {
+      [0, 120, 400].forEach(function(ms) {
+        setTimeout(function() {
+          try {
+            if (String(window._PAGE_ATUAL || '').trim() === 'relatorios') rrEnsureFreshPage(true);
+          } catch (_) {}
+        }, ms);
+      });
+    }
     window.go = function(id) {
       var pid = String(id || '').trim();
+      var result = origGo.apply(this, arguments);
       if (pid === 'relatorios') {
-        rrEnsureFreshPage(true);
-        return;
+        scheduleRelatoriosRefresh();
       }
-      return origGo.apply(this, arguments);
+      return result;
     };
     window.__rrGoWrapped = true;
   }
@@ -2451,6 +2460,11 @@ try {
           if (String(window._PAGE_ATUAL || '').trim() === 'relatorios') rrEnsureFreshPage(true);
         } catch (_) {}
       }, 120);
+      setTimeout(function() {
+        try {
+          if (String(window._PAGE_ATUAL || '').trim() === 'relatorios') rrEnsureFreshPage(true);
+        } catch (_) {}
+      }, 400);
     } catch (_) {}
   }
 
