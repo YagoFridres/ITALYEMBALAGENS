@@ -1,4 +1,4 @@
-﻿const express = require('express');
+﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -11491,7 +11491,7 @@ app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
     const gramMap = new Map();
     for (let i = 0; i < gramIds.length; i += 200) {
       const chunk = gramIds.slice(i, i + 200);
-      const { data, error } = await supabase.from('gramaturas').select('id,nome,descricao,gramatura,valor_unitario').in('id', chunk);
+      const { data, error } = await supabase.from('gramaturas').select('id,nome,gramatura,valor_unitario,fornecedor_id').in('id', chunk);
       if (error) throw error;
       (Array.isArray(data) ? data : []).forEach((g) => {
         const id = String(g?.id || '').trim();
@@ -11516,7 +11516,7 @@ app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
         descricao: String(of?.descricao || '').trim() || 'â€”',
         comp,
         larg,
-        gramatura: String(gram?.nome || gram?.descricao || of?.gramatura_nome || of?.gramatura || '').trim() || 'â€”',
+        gramatura: String(gram?.nome || of?.gramatura_nome || of?.gramatura || '').trim() || 'â€”',
         valor_unitario_m2: Number(valorUnitM2 || 0),
         custo_unitario: Number(custoUnit || 0),
         qtd_produzida: qtd,
