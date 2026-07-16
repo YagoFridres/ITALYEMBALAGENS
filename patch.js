@@ -11500,6 +11500,7 @@ window.addEventListener('unhandledrejection', function(e) {
     currentRows: [],
     hasScheduleDates: false,
     hasMissingScheduleDates: false,
+    filterWarning: '',
     lastRenderSignature: '',
     lastVisibleCount: 0,
     root: null,
@@ -11718,8 +11719,25 @@ window.addEventListener('unhandledrejection', function(e) {
 
   function getOfMachines(of) {
     var list = parseMachineList(of && (of.maq != null ? of.maq : (of.fluxo_maquinas != null ? of.fluxo_maquinas : (of.maquina || of.maquina_agendada || of.maquina_atual))));
-    if (!list.length && state.selectedMachine) list = [normalizeMachine(state.selectedMachine)];
     return list;
+  }
+
+  function ofTemMaquina(of, maq) {
+    if (!of || !maq || of.maq == null) return false;
+    var arr = of.maq;
+    if (typeof arr === 'string') {
+      try {
+        arr = JSON.parse(arr);
+      } catch (_) {
+        return String(arr || '').indexOf(maq) >= 0;
+      }
+    }
+    if (Array.isArray(arr)) return arr.map(function(item) { return normalizeMachine(item); }).indexOf(normalizeMachine(maq)) >= 0;
+    return false;
+  }
+
+  function getOfDia(of) {
+    return String(getOfDiaRawValue(of) || '').slice(0, 10);
   }
 
   function getOfDateIso(of) {
@@ -12346,8 +12364,10 @@ window.addEventListener('unhandledrejection', function(e) {
     if (agrupar) agrupar.style.background = state.grouped ? '#3b82f6' : '#0f172a';
     var agendaWarning = toolbar.querySelector('#ofmaq-direct-agenda-warning');
     if (agendaWarning) {
-      agendaWarning.textContent = state.hasScheduleDates ? '' : 'OFs sem data de agendamento — mostrando todas';
-      agendaWarning.style.display = state.hasScheduleDates ? 'none' : 'block';
+      var warningText = String(state.filterWarning || '');
+      if (!warningText && !state.hasScheduleDates) warningText = 'OFs sem data de agendamento — mostrando todas';
+      agendaWarning.textContent = warningText;
+      agendaWarning.style.display = warningText ? 'block' : 'none';
     }
   }
 
@@ -12470,7 +12490,9 @@ window.addEventListener('unhandledrejection', function(e) {
   function refilterTable(root) {
     var tbody = root && root.querySelector ? root.querySelector('#ofmaq-tbody') : null;
     if (!tbody) return;
-    Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]')).forEach(function(row) {
+    var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]'));
+    state.filterWarning = '';
+    rows.forEach(function(row) {
       var machineTokens = String(row.getAttribute('data-maq-list') || '').split('|').filter(Boolean);
       var rowDate = String(row.getAttribute('data-day') || '').slice(0, 10);
       var rowDiaSource = String(row.getAttribute('data-dia-source') || '');
@@ -12482,6 +12504,18 @@ window.addEventListener('unhandledrejection', function(e) {
       var machineCell = row.querySelector('.col-maq');
       if (show && machineCell) machineCell.textContent = state.selectedMachine;
     });
+    var visibleCount = rows.filter(function(row) { return row.style.display !== 'none'; }).length;
+    if (!visibleCount) {
+      rows.forEach(function(row) {
+        var machineTokens = String(row.getAttribute('data-maq-list') || '').split('|').filter(Boolean);
+        var hay = String(row.getAttribute('data-search') || '');
+        var show = machineTokens.indexOf(state.selectedMachine) >= 0;
+        if (show && state.searchTerm) show = hay.indexOf(normText(state.searchTerm)) >= 0;
+        row.style.display = show ? 'table-row' : 'none';
+      });
+      visibleCount = rows.filter(function(row) { return row.style.display !== 'none'; }).length;
+      if (visibleCount) state.filterWarning = 'Sem OFs no dia selecionado para esta máquina — mostrando todas da máquina';
+    }
     sortRows(tbody);
     syncSequenceInputs(tbody);
     ensureEmptyRow(tbody);
@@ -12882,6 +12916,7 @@ window.addEventListener('unhandledrejection', function(e) {
     try { container.style.position = 'relative'; } catch (_) {}
     try {
       if (Array.isArray(window.OFS) && window.OFS[0]) {
+        console.log('[OFMAQ-FILTRO]', 'total:', window.OFS && window.OFS.length, 'maq IMP 01:', (window.OFS || []).filter(function(o) { return ofTemMaquina(o, 'IMP 01'); }).length, 'ex maq:', JSON.stringify(window.OFS[0] && window.OFS[0].maq), 'ex dia:', getOfDia(window.OFS[0]));
         console.log('[AGENDA-CAMPOS]', JSON.stringify({
           data_agendamento: window.OFS[0] && window.OFS[0].data_agendamento,
           agendamento: window.OFS[0] && window.OFS[0].agendamento,
