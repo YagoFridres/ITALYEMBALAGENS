@@ -11496,6 +11496,8 @@ window.addEventListener('unhandledrejection', function(e) {
     qtySortDirection: '',
     lastMachines: OFMAQ_FIXED_MACHINES.slice(),
     currentRows: [],
+    hasScheduleDates: false,
+    hasMissingScheduleDates: false,
     lastRenderSignature: '',
     lastVisibleCount: 0,
     root: null,
@@ -11742,6 +11744,31 @@ window.addEventListener('unhandledrejection', function(e) {
     return '';
   }
 
+  function getOfScheduleRawValue(of) {
+    if (!of || typeof of !== 'object') return '';
+    if (of.data_agendamento != null && of.data_agendamento !== '') return of.data_agendamento;
+    if (of.agendamento != null && of.agendamento !== '') {
+      if (typeof of.agendamento === 'object') {
+        if (of.agendamento.data != null && of.agendamento.data !== '') return of.agendamento.data;
+        if (of.agendamento.date != null && of.agendamento.date !== '') return of.agendamento.date;
+        if (of.agendamento.data_agendamento != null && of.agendamento.data_agendamento !== '') return of.agendamento.data_agendamento;
+      }
+      return of.agendamento;
+    }
+    if (of.maquina_agendada != null && of.maquina_agendada !== '') {
+      if (typeof of.maquina_agendada === 'object') {
+        if (of.maquina_agendada.data != null && of.maquina_agendada.data !== '') return of.maquina_agendada.data;
+        if (of.maquina_agendada.date != null && of.maquina_agendada.date !== '') return of.maquina_agendada.date;
+        if (of.maquina_agendada.data_agendamento != null && of.maquina_agendada.data_agendamento !== '') return of.maquina_agendada.data_agendamento;
+      }
+    }
+    return '';
+  }
+
+  function getOfScheduleDateIso(of) {
+    return normDia(getOfScheduleRawValue(of));
+  }
+
   function normDia(v) {
     if (!v) return '';
     if (typeof v === 'string') {
@@ -11767,8 +11794,8 @@ window.addEventListener('unhandledrejection', function(e) {
 
   function ofMatchDia(of, diaSel) {
     if (!diaSel) return true;
-    var d = of && (of.dia || of.data || of.data_pedido || of.created_at || '');
-    var norm = normDia(d);
+    var norm = getOfScheduleDateIso(of);
+    if (!norm) return true;
     return norm === diaSel;
   }
 
@@ -11939,7 +11966,7 @@ window.addEventListener('unhandledrejection', function(e) {
   function getOfDayDistribution(ofs) {
     var dias = {};
     (Array.isArray(ofs) ? ofs : []).forEach(function(of) {
-      var dia = normDia(of && (of.dia || of.data || of.data_pedido || of.created_at)) || '';
+      var dia = getOfScheduleDateIso(of) || '';
       dias[dia] = (dias[dia] || 0) + 1;
     });
     return dias;
@@ -12065,7 +12092,7 @@ window.addEventListener('unhandledrejection', function(e) {
   function getRowData(of, idx) {
     var machines = getOfMachines(of);
     var prazoIso = getOfDateIso(of);
-    var diaIso = normDia(of && (of.dia || of.data || of.data_pedido || of.created_at)) || prazoIso;
+    var diaIso = getOfScheduleDateIso(of);
     var client = getOfClient(of);
     var product = getOfProduct(of);
     var number = getOfNumber(of) || String(of && of.id || '').trim();
@@ -12082,6 +12109,7 @@ window.addEventListener('unhandledrejection', function(e) {
       qty: getOfQty(of),
       prazoIso: prazoIso,
       diaIso: diaIso,
+      scheduleRaw: getOfScheduleRawValue(of),
       tempoMin: getOfTempoMin(of),
       machines: machines,
       imageUrl: String(of && (of.imagem_url || of.imagem || of.img) || '').trim(),
@@ -12291,6 +12319,11 @@ window.addEventListener('unhandledrejection', function(e) {
     if (input && input.value !== String(state.searchTerm || '')) input.value = String(state.searchTerm || '');
     var agrupar = toolbar.querySelector('#ofmaq-direct-agrupar');
     if (agrupar) agrupar.style.background = state.grouped ? '#3b82f6' : '#0f172a';
+    var agendaWarning = toolbar.querySelector('#ofmaq-direct-agenda-warning');
+    if (agendaWarning) {
+      agendaWarning.textContent = state.hasScheduleDates ? '' : 'OFs sem data de agendamento — mostrando todas';
+      agendaWarning.style.display = state.hasScheduleDates ? 'none' : 'block';
+    }
   }
 
   function sortRows(tbody) {
@@ -12417,7 +12450,7 @@ window.addEventListener('unhandledrejection', function(e) {
       var rowDiaSource = String(row.getAttribute('data-dia-source') || '');
       var hay = String(row.getAttribute('data-search') || '');
       var show = machineTokens.indexOf(state.selectedMachine) >= 0;
-      if (show && state.selectedDateIso) show = ofMatchDia({ dia: rowDiaSource || rowDate }, state.selectedDateIso);
+      if (show && state.selectedDateIso && state.hasScheduleDates) show = ofMatchDia({ data_agendamento: rowDiaSource || rowDate }, state.selectedDateIso);
       if (show && state.searchTerm) show = hay.indexOf(normText(state.searchTerm)) >= 0;
       row.style.display = show ? 'table-row' : 'none';
       var machineCell = row.querySelector('.col-maq');
@@ -12633,6 +12666,7 @@ window.addEventListener('unhandledrejection', function(e) {
     root.innerHTML = ''
       + '<div class="ofmaq-direct-toolbar">'
       + '  <h2>OFs por Maquina</h2>'
+      + '  <div id="ofmaq-direct-agenda-warning" style="display:none;font-size:12px;font-weight:800;color:#fbbf24"></div>'
       + '  <div class="ofmaq-direct-controls">'
       + '    <div class="ofmaq-direct-days"></div>'
       + '    <div class="ofmaq-direct-machine-box"><select id="ofmaq-direct-machine" class="ofmaq-direct-select"></select><div id="ofmaq-direct-load" class="ofmaq-direct-load" data-overload="0"></div></div>'
@@ -12665,7 +12699,7 @@ window.addEventListener('unhandledrejection', function(e) {
           ? ('<button type="button" class="ofmaq-direct-thumb-btn" data-img-of-id="' + escAttrLocal(item.id) + '"><span class="ofmaq-direct-thumb"><img src="' + escAttrLocal(item.imageUrl) + '" alt="Imagem da OF"></span></button>')
           : '<span class="ofmaq-direct-thumb-fallback">&#128230;</span>';
         return ''
-          + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-ofmaq-rendered="1" data-maq-list="' + escAttrLocal(item.machines.join('|')) + '" data-day="' + escAttrLocal(item.diaIso || '') + '" data-dia-source="' + escAttrLocal(String(item.of && (item.of.dia || item.of.data || item.of.data_pedido || item.of.created_at) || '')) + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-qtd="' + escAttrLocal(String(item.qty || 0)) + '" data-status-rank="' + escAttrLocal(String(item.statusInfo && item.statusInfo.rank != null ? item.statusInfo.rank : 9)) + '" data-color-key="' + escAttrLocal(item.colorKey || '') + '" data-size-key="' + escAttrLocal(item.sizeKey || '') + '" data-search="' + escAttrLocal(item.search || '') + '" data-of-number="' + escAttrLocal(item.number || '') + '">'
+          + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-ofmaq-rendered="1" data-maq-list="' + escAttrLocal(item.machines.join('|')) + '" data-day="' + escAttrLocal(item.diaIso || '') + '" data-dia-source="' + escAttrLocal(String(item.scheduleRaw || '')) + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-qtd="' + escAttrLocal(String(item.qty || 0)) + '" data-status-rank="' + escAttrLocal(String(item.statusInfo && item.statusInfo.rank != null ? item.statusInfo.rank : 9)) + '" data-color-key="' + escAttrLocal(item.colorKey || '') + '" data-size-key="' + escAttrLocal(item.sizeKey || '') + '" data-search="' + escAttrLocal(item.search || '') + '" data-of-number="' + escAttrLocal(item.number || '') + '">'
           + '  <td class="col-seq"><input class="ofmaq-direct-seq" type="number" min="1" step="1" value="' + escAttrLocal(String(item.order || 1)) + '" data-seq-of-id="' + escAttrLocal(item.id) + '"></td>'
           + '  <td class="col-img">' + imgHtml + '</td>'
           + '  <td class="col-of"><strong>' + escHLocal(item.number || '-') + '</strong></td>'
@@ -12819,13 +12853,18 @@ window.addEventListener('unhandledrejection', function(e) {
     if (!container) return null;
     try { container.style.position = 'relative'; } catch (_) {}
     try {
-      baseOfs.slice(0, 3).forEach(function(of) {
-        var rawDia = of && (of.dia || of.data || of.data_pedido || of.created_at);
-        console.log('[OFMAQ-DIA-DEBUG] of.dia:', rawDia, 'norm:', normDia(rawDia), 'diaSel:', state.selectedDateIso, 'match:', ofMatchDia(of, state.selectedDateIso));
-      });
-      if (baseOfs.length) console.log('[COR-RAW]', JSON.stringify(baseOfs[0] && baseOfs[0].cores_impressao));
+      if (Array.isArray(window.OFS) && window.OFS[0]) {
+        console.log('[AGENDA-DEBUG]', JSON.stringify({
+          data_agendamento: window.OFS[0] && window.OFS[0].data_agendamento,
+          agendamento: window.OFS[0] && window.OFS[0].agendamento,
+          maquina_agendada: window.OFS[0] && window.OFS[0].maquina_agendada,
+          maq: window.OFS[0] && window.OFS[0].maq
+        }));
+      }
     } catch (_) {}
     var rows = baseOfs.map(function(of, idx) { return getRowData(of, idx); }).filter(Boolean);
+    state.hasScheduleDates = rows.some(function(item) { return !!String(item && item.diaIso || '').trim(); });
+    state.hasMissingScheduleDates = rows.some(function(item) { return !String(item && item.diaIso || '').trim(); });
     state.currentRows = rows;
     var nextSignature = [state.selectedMachine, state.selectedDateIso].join('|');
     var root = state.root && state.root.parentElement === container ? state.root : (container.querySelector ? container.querySelector('.ofmaq-direct-root') : null);
