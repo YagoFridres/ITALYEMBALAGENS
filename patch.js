@@ -12341,6 +12341,9 @@ window.addEventListener('unhandledrejection', function(e) {
     var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]'));
     var frag = document.createDocumentFragment();
     rows.sort(function(a, b) {
+      var aHidden = a.style.display === 'none';
+      var bHidden = b.style.display === 'none';
+      if (aHidden !== bHidden) return aHidden ? 1 : -1;
       if (state.qtySortDirection) {
         var qa = Number(a.getAttribute('data-qtd') || 0) || 0;
         var qb = Number(b.getAttribute('data-qtd') || 0) || 0;
@@ -12377,6 +12380,7 @@ window.addEventListener('unhandledrejection', function(e) {
     rows.forEach(function(row, idx) {
       var seq = idx + 1;
       row.setAttribute('data-order', String(seq));
+      row.dataset.ordem = String(seq);
       var input = row.querySelector('[data-seq-of-id]');
       if (input) input.value = String(seq);
       var id = String(row.getAttribute('data-of-id') || '').trim();
@@ -12405,21 +12409,18 @@ window.addEventListener('unhandledrejection', function(e) {
     });
   }
 
-  function reordenarTbody() {
-    var tbody = document.querySelector('#ofmaq-tabela-nova tbody') || document.querySelector('#ofmaq-tabela tbody');
-    if (!tbody) return;
-    var rows = Array.from(tbody.querySelectorAll('tr[data-of-id]'));
-    rows.sort(function(a, b) {
-      return (parseInt(((a.querySelector('input') || {}).value), 10) || 999)
-        - (parseInt(((b.querySelector('input') || {}).value), 10) || 999);
+  function moveRowToSequence(tbody, row, seq) {
+    if (!tbody || !row) return;
+    var visibleRows = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]')).filter(function(item) {
+      return item !== row && item.style.display !== 'none';
     });
-    rows.forEach(function(tr) { tbody.appendChild(tr); });
-    rows.forEach(function(tr) {
-      var input = tr.querySelector('input[type="number"]');
-      var ordem = parseInt(((input || {}).value), 10) || 999;
-      tr.dataset.ordem = String(ordem);
-      tr.setAttribute('data-order', String(ordem));
-    });
+    var targetIndex = Math.max(0, Math.min(visibleRows.length, (Number(seq || 1) || 1) - 1));
+    var firstHidden = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]')).filter(function(item) {
+      return item !== row && item.style.display === 'none';
+    })[0] || null;
+    if (visibleRows[targetIndex]) tbody.insertBefore(row, visibleRows[targetIndex]);
+    else tbody.insertBefore(row, firstHidden || null);
+    syncSequenceInputs(tbody);
   }
 
   function bindRowClickHandlers(root) {
@@ -12468,6 +12469,7 @@ window.addEventListener('unhandledrejection', function(e) {
       if (show && machineCell) machineCell.textContent = state.selectedMachine;
     });
     sortRows(tbody);
+    syncSequenceInputs(tbody);
     ensureEmptyRow(tbody);
     state.lastRenderSignature = [state.selectedMachine, state.selectedDateIso, (state.currentRows || []).length].join('|');
     state.lastVisibleCount = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-of-id]')).filter(function(row) {
@@ -12710,8 +12712,8 @@ window.addEventListener('unhandledrejection', function(e) {
           ? ('<button type="button" class="ofmaq-direct-thumb-btn" data-img-of-id="' + escAttrLocal(item.id) + '"><span class="ofmaq-direct-thumb"><img src="' + escAttrLocal(item.imageUrl) + '" alt="Imagem da OF"></span></button>')
           : '<span class="ofmaq-direct-thumb-fallback">&#128230;</span>';
         return ''
-          + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-ofmaq-rendered="1" data-maq-list="' + escAttrLocal(item.machines.join('|')) + '" data-day="' + escAttrLocal(item.diaIso || '') + '" data-dia-source="' + escAttrLocal(String(item.scheduleRaw || '')) + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-qtd="' + escAttrLocal(String(item.qty || 0)) + '" data-status-rank="' + escAttrLocal(String(item.statusInfo && item.statusInfo.rank != null ? item.statusInfo.rank : 9)) + '" data-color-key="' + escAttrLocal(item.colorKey || '') + '" data-size-key="' + escAttrLocal(item.sizeKey || '') + '" data-search="' + escAttrLocal(item.search || '') + '" data-of-number="' + escAttrLocal(item.number || '') + '">'
-          + '  <td class="col-seq"><input class="ofmaq-direct-seq" type="number" min="1" step="1" value="' + escAttrLocal(String(item.order || 1)) + '" data-seq-of-id="' + escAttrLocal(item.id) + '"></td>'
+          + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-ofmaq-rendered="1" data-maq-list="' + escAttrLocal(item.machines.join('|')) + '" data-day="' + escAttrLocal(item.diaIso || '') + '" data-dia-source="' + escAttrLocal(String(item.scheduleRaw || '')) + '" data-order="' + escAttrLocal(String(idx + 1)) + '" data-qtd="' + escAttrLocal(String(item.qty || 0)) + '" data-status-rank="' + escAttrLocal(String(item.statusInfo && item.statusInfo.rank != null ? item.statusInfo.rank : 9)) + '" data-color-key="' + escAttrLocal(item.colorKey || '') + '" data-size-key="' + escAttrLocal(item.sizeKey || '') + '" data-search="' + escAttrLocal(item.search || '') + '" data-of-number="' + escAttrLocal(item.number || '') + '">'
+          + '  <td class="col-seq"><input class="ofmaq-direct-seq" type="number" min="1" step="1" value="' + escAttrLocal(String(idx + 1)) + '" data-seq-of-id="' + escAttrLocal(item.id) + '"></td>'
           + '  <td class="col-img">' + imgHtml + '</td>'
           + '  <td class="col-of"><strong>' + escHLocal(item.number || '-') + '</strong></td>'
           + '  <td class="col-cliente">' + escHLocal(item.client || '-') + '</td>'
@@ -12727,6 +12729,7 @@ window.addEventListener('unhandledrejection', function(e) {
           + '</tr>';
       }).join('');
       ensureSingleSeqInputPerRow(tbody);
+      syncSequenceInputs(tbody);
       bindRowClickHandlers(root);
     }
     renderQtyHeader(root);
@@ -12807,7 +12810,7 @@ window.addEventListener('unhandledrejection', function(e) {
         row.setAttribute('data-order', String(value));
         row.dataset.ordem = String(value);
         input.value = String(value);
-        if (resp.status === 200 || resp.status === 204) reordenarTbody();
+        if (resp.status === 200 || resp.status === 204) moveRowToSequence(tbody, row, value);
         ensureEmptyRow(tbody);
       } catch (err) {
         try { window.toast('Erro ao salvar sequencia: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
