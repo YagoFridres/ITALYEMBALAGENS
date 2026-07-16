@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -8991,6 +8991,8 @@ function _resolverNomeMaquinaPassagem(row, maquinasMap) {
   tokens.forEach((token) => {
     const raw = String(token || '').trim();
     if (!raw) return;
+    const rawLow = raw.toLowerCase();
+    if (rawLow === 'null' || rawLow === 'undefined' || rawLow === 'sem maquina' || rawLow === 'sem máquina') return;
     if (_isUuid(raw)) {
       const nome = String(mapa.get(raw) || '').trim();
       if (nome) diretos.push(nome);
@@ -9005,7 +9007,7 @@ function _resolverNomeMaquinaPassagem(row, maquinasMap) {
     diretos.push(raw);
   });
   const nomes = Array.from(new Set(diretos.map((nome) => String(nome || '').trim()).filter(Boolean)));
-  return nomes[0] || 'Sem mÃ¡quina';
+  return nomes[0] || 'Sem máquina';
 }
 
 function _normalizarStatusPassagem(v) {
@@ -9014,7 +9016,7 @@ function _normalizarStatusPassagem(v) {
   try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
   const low = s.toLowerCase();
   if (low.includes('despach')) return 'Despachada';
-  if (low.includes('passou')) return 'Passou pela mÃ¡quina';
+  if (low.includes('passou')) return 'Passou pela máquina';
   if (low.includes('conclu')) return 'Despachada';
   return s;
 }
@@ -9022,7 +9024,7 @@ function _normalizarStatusPassagem(v) {
 function _pesoStatusPassagem(v) {
   const s = _normalizarStatusPassagem(v);
   if (s === 'Despachada') return 2;
-  if (s === 'Passou pela mÃ¡quina') return 1;
+  if (s === 'Passou pela máquina') return 1;
   return 0;
 }
 
@@ -9275,7 +9277,7 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
     const qtdOf = (of?.qtd_produzida ?? of?.qtd ?? of?.quantidade);
     const vlUnit = (of?.valor_unitario ?? of?.preco ?? 0);
     const totalOf = _resolverValorTotalPassagem(p, of);
-    const statusOf = String(of?.data_conclusao || '').trim() ? 'ConcluÃ­do' : '';
+    const statusOf = String(of?.data_conclusao || '').trim() ? 'Concluído' : '';
     const respOf = String(of?.operador_conclusao || of?.usuario_conclusao || '').trim();
     const numeroOf = String(of?.numero || '').trim();
     const valorAtual = Number(p?.valor_total ?? p?.total ?? p?.valor_venda ?? 0) || 0;
@@ -9283,7 +9285,7 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
     const maqAtualCanon = _resolverNomeMaquinaPassagem({ maquina_nome: p?.maquina_nome || '', maquina: p?.maquina || '' }, null);
     const precisaHerdarMaquina =
       !String(p?.maquina || p?.maquina_nome || '').trim() ||
-      maqAtualCanon === 'Sem mÃ¡quina' ||
+      maqAtualCanon === 'Sem máquina' ||
       /^[\[{]/.test(String(p?.maquina || p?.maquina_nome || '').trim());
 
     return {
@@ -9451,7 +9453,7 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
     const comp = pickDimMm(row, ['dim_comprimento', 'caixa_comprimento']);
     const larg = pickDimMm(row, ['dim_largura', 'caixa_largura']);
     if (!(comp > 0) || !(larg > 0)) return '';
-    return [comp, larg].map((n) => String(Math.trunc(Number(n || 0) || 0))).join('Ã—');
+    return [comp, larg].map((n) => String(Math.trunc(Number(n || 0) || 0))).join('×');
   };
   const buildTop5 = (mapa, keyName) => Array.from(mapa.entries())
     .map(([nome, total_ofs]) => ({ [keyName]: nome, total_ofs }))
@@ -9480,7 +9482,7 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
   });
 
   const filtradas = filtradasBase.map((row) => {
-    const maqNome = String(_canonMaqNome(row?.maquina_agendada || row?.maq || '') || row?.maquina_agendada || row?.maq || 'Sem mÃ¡quina').trim() || 'Sem mÃ¡quina';
+    const maqNome = String(_canonMaqNome(row?.maquina_agendada || row?.maq || '') || row?.maquina_agendada || row?.maq || 'Sem máquina').trim() || 'Sem máquina';
     return {
       maquina: maqNome,
       maquina_nome: maqNome,

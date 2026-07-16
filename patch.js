@@ -8702,15 +8702,58 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     return _histPassagemQuantidade(row) * _histPassagemValorUnit(row);
   }
 
-  function _histPassagemStatus(row) {
+  function _histPassagemPrimeiraMaquina(row) {
+    var nomes = [];
+    try {
+      var passagens = row && (row.passagens_maquina || row.passagens_por_maquina);
+      if (typeof passagens === 'string') {
+        var txt = String(passagens || '').trim();
+        if (txt && (txt.charAt(0) === '[' || txt.charAt(0) === '{')) passagens = JSON.parse(txt);
+      }
+      if (Array.isArray(passagens)) {
+        nomes = passagens.map(function(item) {
+          return String(item && (item.maquina || item.maquina_nome || item.nome) || '').trim();
+        }).filter(Boolean);
+      }
+    } catch (_) {}
+    if (!nomes.length) {
+      try {
+        if (Array.isArray(row && row.maquinas)) nomes = row.maquinas.slice();
+        else if (Array.isArray(row && row.maquinas_lista)) nomes = row.maquinas_lista.slice();
+      } catch (_) {}
+    }
+    if (!nomes.length) {
+      var unica = String((row && (row.maquina_nome || row.maquina)) || '').trim();
+      if (unica) nomes = [unica];
+    }
+    nomes = nomes.map(function(v) {
+      return String(v || '').trim();
+    }).filter(function(v) {
+      var low = v.toLowerCase();
+      return !!v && low !== 'sem máquina' && low !== 'sem maquina' && low !== 'null' && low !== 'undefined';
+    });
+    return nomes.length ? nomes[0] : '';
+  }
+
+  function _histPassagemConcluidaTotal(row) {
+    if (String((row && row.data_conclusao) || '').trim()) return true;
     var raw = String((row && row.status) || '').trim();
-    if (!raw) return 'Passou pela máquina';
+    if (!raw) return false;
     var norm = raw.toLowerCase();
     try { norm = norm.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
-    if (norm.indexOf('despach') >= 0) return 'Despachada';
-    if (norm.indexOf('passou') >= 0) return 'Passou pela máquina';
-    if (norm.indexOf('conclu') >= 0) return 'Despachada';
-    return raw;
+    return norm.indexOf('despach') >= 0 || norm.indexOf('conclu') >= 0 || norm.indexOf('finaliz') >= 0 || norm === 'feito';
+  }
+
+  function _histPassagemStatus(row) {
+    var raw = String((row && row.status) || '').trim();
+    if (_histPassagemConcluidaTotal(row)) return 'Despachada';
+    var maquina = _histPassagemPrimeiraMaquina(row);
+    if (!raw) return maquina ? ('Passou pela ' + maquina) : 'Passou pela máquina';
+    var norm = raw.toLowerCase();
+    try { norm = norm.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+    if (norm.indexOf('passou') >= 0) return maquina ? ('Passou pela ' + maquina) : 'Passou pela máquina';
+    if (norm.indexOf('despach') >= 0 || norm.indexOf('conclu') >= 0) return 'Despachada';
+    return maquina && !/^passou pela\b/i.test(raw) ? ('Passou pela ' + maquina) : raw;
   }
 
   function _histPassagemStatusBadge(row) {
@@ -8753,7 +8796,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
       if (unica) lista = [unica];
     }
     lista = lista.map(function(v) { return String(v || '').trim(); }).filter(Boolean);
-    return lista.length ? lista.join(', ') : '—';
+    return lista.length ? lista.join(', ') : 'Sem máquina';
   }
 
   function _histFiltrarDetalhamentoRows(rows, termo) {
@@ -8914,7 +8957,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
       + sorted.map(function(row) {
           return ''
             + '<tr>'
-            + '  <td><div style="font-weight:900;color:#f8fafc">' + _histEsc(row.maquina || '—') + '</div><div style="margin-top:4px">' + _histVariationBadge(row.variacao_ofs_pct) + '</div></td>'
+            + '  <td><div style="font-weight:900;color:#f8fafc">' + _histEsc(row.maquina || 'Sem máquina') + '</div><div style="margin-top:4px">' + _histVariationBadge(row.variacao_ofs_pct) + '</div></td>'
             + '  <td class="num">' + _histEsc(_histFmtNum(row.total_ofs || 0)) + '</td>'
             + '  <td class="num">' + _histEsc(_histFmtMoney(row.valor_total_producao || 0)) + '</td>'
             + '  <td class="num">' + _histEsc(_histFmtNum(row.caixas_produzidas || 0)) + '</td>'
