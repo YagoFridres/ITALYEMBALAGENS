@@ -2750,6 +2750,9 @@ try {
       if (typeof window.__simdBoxPlannerFetch === 'function') window._simdCarregarChapas = window.__simdBoxPlannerFetch;
       if (typeof window.__simdBoxPlannerVerify === 'function') window._simdVerificarCampos = window.__simdBoxPlannerVerify;
       if (typeof window.__simdBoxPlannerRestore === 'function') window._simdRestoreState = window.__simdBoxPlannerRestore;
+      if (typeof window.__simdBoxPlannerSearch === 'function') window._simdBuscarChapa = window.__simdBoxPlannerSearch;
+      if (typeof window.__simdBoxPlannerSelect === 'function') window._simdSelecionarChapa = window.__simdBoxPlannerSelect;
+      if (typeof window.__simdBoxPlannerClear === 'function') window._simdLimparChapaSelecionada = window.__simdBoxPlannerClear;
       if (typeof window.__simdBoxPlannerRun === 'function') {
         window._simdCalcularFluxoImpl = window.__simdBoxPlannerRun;
         window._simdCalcularPatchedImpl = window.__simdBoxPlannerRun;
@@ -3195,6 +3198,7 @@ try {
 ;(function() {
   if (window.__simdBoxPlannerPatched) return;
   window.__simdBoxPlannerPatched = true;
+  window.__simdPreferredMode = 'box';
 
   function sLog() {
     try {
@@ -3626,6 +3630,101 @@ try {
     return rows;
   }
 
+  function sRenderSearchResults(lista) {
+    var resultados = document.getElementById('simd-busca-resultados');
+    if (!resultados) return;
+    if (!Array.isArray(lista) || !lista.length) {
+      resultados.style.display = 'block';
+      resultados.innerHTML = '<div class="simd-search-item" style="cursor:default">Nenhuma chapa encontrada.</div>';
+      return;
+    }
+    resultados.style.display = 'block';
+    resultados.innerHTML = lista.map(function(chapa) {
+      var dims = sSheetDims(chapa);
+      var tamanho = dims ? (sFmtNum(dims.comprimento, 0) + ' x ' + sFmtNum(dims.largura, 0) + ' mm') : String(chapa && (chapa.tamanho || chapa.tam || 'Sem tamanho') || 'Sem tamanho');
+      var payload = encodeURIComponent(JSON.stringify(chapa || {}));
+      return '<button type="button" class="simd-search-item" data-simd-chapa="' + payload + '"><strong>' + sEsc(String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim()) + '</strong><span>' + sEsc([String(chapa && (chapa.fornecedor || chapa.forn || '—') || '—').trim() || '—', tamanho, String(sInt(chapa && (chapa.quantidade != null ? chapa.quantidade : (chapa.qtd != null ? chapa.qtd : chapa.quantidade_atual)))) + ' em estoque'].join(' · ')) + '</span></button>';
+    }).join('');
+    Array.prototype.slice.call(resultados.querySelectorAll('[data-simd-chapa]')).forEach(function(btn) {
+      btn.onclick = function() {
+        var raw = String(btn.getAttribute('data-simd-chapa') || '');
+        var chapa = null;
+        try { chapa = JSON.parse(decodeURIComponent(raw)); } catch (_) { chapa = null; }
+        if (chapa && typeof window._simdSelecionarChapa === 'function') window._simdSelecionarChapa(chapa);
+      };
+    });
+  }
+
+  function sSelecionarChapa(chapa) {
+    window._simdChapaSelecionada = chapa || null;
+    var card = document.getElementById('simd-chapa-selecionada');
+    var nome = document.getElementById('simd-chapa-sel-nome');
+    var info = document.getElementById('simd-chapa-sel-info');
+    var input = document.getElementById('simd-busca-chapa');
+    var clearBtn = document.getElementById('simd-btn-limpar-chapa');
+    var resultados = document.getElementById('simd-busca-resultados');
+    if (chapa) {
+      var dims = sSheetDims(chapa);
+      if (card) card.style.display = 'block';
+      if (clearBtn) clearBtn.style.display = 'inline-flex';
+      if (nome) nome.textContent = String(chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa');
+      if (info) info.textContent = [
+        String(chapa.fornecedor || chapa.forn || '—').trim() || '—',
+        dims ? (sFmtNum(dims.comprimento, 0) + ' x ' + sFmtNum(dims.largura, 0) + ' mm') : String(chapa.tamanho || chapa.tam || 'Sem tamanho'),
+        String(sInt(chapa.quantidade != null ? chapa.quantidade : (chapa.qtd != null ? chapa.qtd : chapa.quantidade_atual))) + ' em estoque'
+      ].join(' · ');
+      if (input) input.value = String(chapa.nome_uso || chapa.nome || chapa.nomenclatura || '');
+    } else {
+      if (card) card.style.display = 'none';
+      if (clearBtn) clearBtn.style.display = 'none';
+      if (nome) nome.textContent = '';
+      if (info) info.textContent = '';
+      if (input) input.value = '';
+    }
+    if (resultados) {
+      resultados.style.display = 'none';
+      resultados.innerHTML = '';
+    }
+    try { window._simdSaveState(); } catch (_) {}
+  }
+
+  async function sBuscarChapa(termo) {
+    var term = String(termo || '').trim().toLowerCase();
+    var resultados = document.getElementById('simd-busca-resultados');
+    if (!term) {
+      if (resultados) {
+        resultados.style.display = 'none';
+        resultados.innerHTML = '';
+      }
+      return;
+    }
+    try {
+      var chapas = await sFetchChapas();
+      var filtradas = chapas.filter(function(row) {
+        return [
+          row && row.nome_uso,
+          row && row.nome,
+          row && row.nomenclatura,
+          row && row.fornecedor,
+          row && row.forn,
+          row && row.tamanho,
+          row && row.tam
+        ].join(' ').toLowerCase().includes(term);
+      });
+      sRenderSearchResults(filtradas);
+    } catch (e) {
+      sErr('erro busca chapa', e);
+      if (resultados) {
+        resultados.style.display = 'block';
+        resultados.innerHTML = '<div class="simd-search-item" style="cursor:default">Erro ao buscar chapas.</div>';
+      }
+    }
+  }
+
+  function sLimparChapaSelecionada() {
+    sSelecionarChapa(null);
+  }
+
   function sMailSelected() {
     var rows = Array.isArray(window.__simdLastRows) ? window.__simdLastRows : [];
     if (!rows.length) {
@@ -3897,6 +3996,9 @@ try {
 
   window._simdVerificarCampos = sVerificarCampos;
   window._simdCarregarChapas = sFetchChapas;
+  window._simdBuscarChapa = sBuscarChapa;
+  window._simdSelecionarChapa = sSelecionarChapa;
+  window._simdLimparChapaSelecionada = sLimparChapaSelecionada;
   window._simdCalcularFluxoImpl = sCalcular;
   window._simdCalcularPatchedImpl = sCalcular;
   window.__simdCalcularImpl = sCalcular;
@@ -3904,6 +4006,9 @@ try {
   window.__simdBoxPlannerFetch = sFetchChapas;
   window.__simdBoxPlannerVerify = sVerificarCampos;
   window.__simdBoxPlannerRestore = window._simdRestoreState;
+  window.__simdBoxPlannerSearch = sBuscarChapa;
+  window.__simdBoxPlannerSelect = sSelecionarChapa;
+  window.__simdBoxPlannerClear = sLimparChapaSelecionada;
   window.__simdBoxPlannerApply = sApply;
   window.__simdBoxPlannerRun = sCalcular;
 
@@ -6558,6 +6663,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
 })();
 
 window.__simdCalcularImpl = window.__simdCalcularImpl || null;
+function _simdIsCanonicalBoxUi() {
+  try {
+    var host = document.getElementById('tela-simulador-desperdicio');
+    return !!(host && host.dataset && host.dataset.simdBoxUi === '1' && String(window.__simdPreferredMode || '') === 'box');
+  } catch (_) {
+    return false;
+  }
+}
 window._simdCalcular = function() {
   console.log('[SIMD] entrou');
   var impl = null;
@@ -6578,6 +6691,7 @@ window._simdCalcular = function() {
   return impl.apply(this, arguments);
 };
 window._simdBindBotaoDireto = function() {
+  if (_simdIsCanonicalBoxUi()) return false;
   var btn = null;
   try { btn = document.getElementById('simd-btn'); } catch (_) { btn = null; }
   if (!btn || typeof window._simdCalcular !== 'function') return false;
@@ -6601,6 +6715,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(6, 'antes pat
 (function patchSimuladorFluxoGlobalV2() {
   if (window.__patchSimuladorFluxoGlobalV2) return;
   window.__patchSimuladorFluxoGlobalV2 = true;
+  if (String(window.__simdPreferredMode || '') === 'box') return;
 
   function sNum(v) {
     var n = Number(String(v == null ? '' : v).replace(',', '.'));
@@ -6895,6 +7010,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(6, 'antes pat
       window._simdCalcularFluxoImpl = sRun;
       window.__simdCalcularImpl = sRun;
     } catch (_) {}
+    if (_simdIsCanonicalBoxUi()) return;
     try {
       window._simdCalcular = window._simdCalcular || function() {
         console.log('[SIMD] entrou');
@@ -10649,6 +10765,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
 (function() {
   if (window.__patchSimuladorDesperdicioInstalled) return;
   window.__patchSimuladorDesperdicioInstalled = true;
+  if (String(window.__simdPreferredMode || '') === 'box') return;
 
   function _simdToNum(v) {
     var n = Number(String(v == null ? '' : v).replace(',', '.'));
@@ -11063,6 +11180,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
 
   function _bindSimdPatch() {
     try {
+      if (_simdIsCanonicalBoxUi()) return;
       var btn = document.getElementById('simd-btn');
       if (btn && btn.dataset.patchSimdBound !== '1') {
         btn.dataset.patchSimdBound = '1';
@@ -41339,6 +41457,9 @@ function _ocultarGraficoComissoes() {
       if (typeof window.__simdBoxPlannerFetch === 'function') window._simdCarregarChapas = window.__simdBoxPlannerFetch;
       if (typeof window.__simdBoxPlannerVerify === 'function') window._simdVerificarCampos = window.__simdBoxPlannerVerify;
       if (typeof window.__simdBoxPlannerRestore === 'function') window._simdRestoreState = window.__simdBoxPlannerRestore;
+      if (typeof window.__simdBoxPlannerSearch === 'function') window._simdBuscarChapa = window.__simdBoxPlannerSearch;
+      if (typeof window.__simdBoxPlannerSelect === 'function') window._simdSelecionarChapa = window.__simdBoxPlannerSelect;
+      if (typeof window.__simdBoxPlannerClear === 'function') window._simdLimparChapaSelecionada = window.__simdBoxPlannerClear;
       if (typeof window.__simdBoxPlannerRun === 'function') {
         window._simdCalcularFluxoImpl = window.__simdBoxPlannerRun;
         window._simdCalcularPatchedImpl = window.__simdBoxPlannerRun;
@@ -41356,6 +41477,7 @@ function _ocultarGraficoComissoes() {
   setTimeout(reapply, 1200);
 })();
 ;(function() {
+  if (String(window.__simdPreferredMode || '') === 'box') return;
   if (window.__simdSheetMeasureTailApplied) return;
   window.__simdSheetMeasureTailApplied = true;
 
