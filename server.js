@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -3464,6 +3464,29 @@ function sanitizeOfUpdatePayload(input) {
   return out;
 }
 
+function _canonicalizarStatusOf(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  let norm = raw.toLowerCase();
+  try { norm = norm.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+  norm = norm.replace(/[^a-z0-9]+/g, ' ').trim();
+  if (!norm) return raw;
+  if (norm.includes('pedido') && norm.includes('pronto')) return 'Pedido Pronto';
+  if (norm.includes('conclu')) return 'Concluído';
+  if (norm.includes('cancel')) return 'Cancelada';
+  if (norm.includes('produc')) return 'Em Produção';
+  if (norm.includes('abert')) return 'Aberta';
+  if (norm.includes('despach')) return 'Despachada';
+  if (norm.includes('entreg')) return 'Entregue';
+  if (norm.includes('finaliz')) return 'Finalizada';
+  return raw;
+}
+
+function _isStatusConclusaoOf(value) {
+  const canon = _canonicalizarStatusOf(value);
+  return canon === 'Concluído' || canon === 'Pedido Pronto' || canon === 'Despachada' || canon === 'Entregue' || canon === 'Finalizada';
+}
+
 const CAMPOS_OFS_UPDATE = new Set([
   'of', 'clinome', 'cli_id', 'cliid', 'vendid', 'vendedor', 'vendedor_id',
   'preco', 'total', 'qtd', 'qtd_produzida', 'qtd_perdida', 'qtd_pedida',
@@ -3494,6 +3517,7 @@ function normalizeOfUpdateBody(input) {
   if (out.observacoes !== undefined && out.obs === undefined) out.obs = out.observacoes;
   if (out.cliente_id !== undefined && out.cli_id === undefined) out.cli_id = out.cliente_id;
   if (out.clienteId !== undefined && out.cli_id === undefined) out.cli_id = out.clienteId;
+  if (out.status !== undefined) out.status = _canonicalizarStatusOf(out.status);
   return out;
 }
 
@@ -7576,6 +7600,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
     try { console.log('[PATCH OF] body:', JSON.stringify(req.body || {}).substring(0, 200)); } catch (_) {}
     let stAtualBefore = '';
     let stNovoWanted = '';
+    let vaiConcluirViaPatch = false;
     try {
       const { data: ofAtual } = await supabase
         .from('ofs')
@@ -7695,12 +7720,25 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       stNovoWanted = stNovo;
       const isConcluida = stAtual.includes('conclu') || stAtual === 'pedido pronto' || stAtual === 'entregue' || stAtual === 'despachada' || stAtual === 'finalizada';
       const vaiReabrir = stNovo && !(stNovo.includes('conclu') || stNovo === 'pedido pronto' || stNovo === 'entregue' || stNovo === 'despachada' || stNovo === 'finalizada') && !stNovo.includes('cancel');
+      vaiConcluirViaPatch = !isConcluida && !!stNovo && (stNovo.includes('conclu') || stNovo === 'pedido pronto' || stNovo === 'entregue' || stNovo === 'despachada' || stNovo === 'finalizada');
       const force = String(req.body?._force_status || req.body?.force_status || req.body?.forcar_status || '').trim() === '1';
       if (isConcluida && vaiReabrir && !force) {
         try { console.debug('[OF STATUS GUARD] ignorando reabertura via PATCH', { id, stAtual, stNovo }); } catch (_) {}
         delete payload.status;
       }
     } catch (_) {}
+    if (Object.prototype.hasOwnProperty.call(payload, 'status')) {
+      const statusRaw = String(payload.status || '').trim();
+      const statusCanon = _canonicalizarStatusOf(statusRaw);
+      if (statusCanon) payload.status = statusCanon;
+      if (statusRaw && statusCanon && statusRaw !== statusCanon) {
+        try { console.warn('[PATCH OF] status canonizado', { id, original: statusRaw, canonico: statusCanon }); } catch (_) {}
+      }
+    }
+    if (vaiConcluirViaPatch) {
+      if (!String(payload.data_conclusao || '').trim()) payload.data_conclusao = new Date().toISOString();
+      if (!String(payload.usuario_conclusao || '').trim()) payload.usuario_conclusao = String(req.usuario?.nome || req.usuario?.email || 'sistema').trim() || 'sistema';
+    }
     delete payload.id; delete payload.empresa_id;
     delete payload.numero; delete payload.of; delete payload.of_num; delete payload.seq;
     const upd = await ofsUpdateWithRetry(id, payload);
@@ -9306,6 +9344,9 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
     const statusOf = String(of?.data_conclusao || '').trim() ? 'Concluído' : '';
     const respOf = String(of?.operador_conclusao || of?.usuario_conclusao || '').trim();
     const numeroOf = String(of?.numero || '').trim();
+    const coresOf = of?.cores_impressao ?? null;
+    const compOf = of?.dim_comprimento ?? of?.caixa_comprimento ?? null;
+    const largOf = of?.dim_largura ?? of?.caixa_largura ?? null;
     const valorAtual = Number(p?.valor_total ?? p?.total ?? p?.valor_venda ?? 0) || 0;
     const vlUnitAtual = Number(p?.valor_unitario ?? p?.vunit ?? p?.preco ?? 0) || 0;
     const maqAtualCanon = _resolverNomeMaquinaPassagem({ maquina_nome: p?.maquina_nome || '', maquina: p?.maquina || '' }, null);
@@ -9324,6 +9365,9 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
       ...((vlUnit != null && !(vlUnitAtual > 0)) ? { valor_unitario: vlUnit, preco: vlUnit } : {}),
       ...((totalOf > 0 && !(valorAtual > 0)) ? { total: totalOf, valor_total: totalOf, valor_venda: totalOf } : {}),
       ...(p?.status ? {} : (statusOf ? { status: statusOf } : {})),
+      ...((String(p?.cores_impressao || '').trim()) ? {} : (coresOf != null ? { cores_impressao: coresOf } : {})),
+      ...(((p?.dim_comprimento ?? p?.caixa_comprimento) != null) ? {} : (compOf != null ? { dim_comprimento: compOf, caixa_comprimento: compOf } : {})),
+      ...(((p?.dim_largura ?? p?.caixa_largura) != null) ? {} : (largOf != null ? { dim_largura: largOf, caixa_largura: largOf } : {})),
       ...((p?.operador || p?.operador_nome || p?.responsavel) ? {} : (respOf ? { responsavel: respOf } : {})),
       ...(precisaHerdarMaquina && (of?.maquina_agendada || of?.maq) ? {
         maquina: of?.maquina_agendada || of?.maq || null,
@@ -11172,7 +11216,7 @@ async function _relatoriosLoadClientesDetails(ids) {
   const map = new Map();
   for (let i = 0; i < uniq.length; i += 200) {
     const chunk = uniq.slice(i, i + 200);
-    const { data, error } = await supabase.from('clientes').select('id,nome,ramo,empresa_id,created_at').in('id', chunk);
+    const { data, error } = await supabase.from('clientes').select('id,nome,ramo,empresa_id,created_at,cidade,uf').in('id', chunk);
     if (error) throw error;
     (Array.isArray(data) ? data : []).forEach((row) => {
       const id = String(row?.id || '').trim();
@@ -11759,6 +11803,84 @@ app.get('/api/relatorios/vendas-por-ramo', authMiddleware, async (req, res) => {
     });
   } catch (e) {
     console.error('[RELATORIOS][VENDAS-POR-RAMO]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/relatorios/vendas-por-cidade-estado', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    if (!range?.inicio || !range?.fim_exclusivo) {
+      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
+    }
+    const ofs = await _relatoriosFetchOfsConcluidas(range, {
+      companyIds: _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id)
+    });
+    const clientesMap = await _relatoriosLoadClientesDetails(ofs.map((of) => _assistPickOfClienteId(of)));
+    const grupos = new Map();
+    const clientesUnicos = new Set();
+    const estadosUnicos = new Set();
+    ofs.forEach((of) => {
+      const cliId = _assistPickOfClienteId(of);
+      const cliente = cliId && _isUuid(cliId) ? clientesMap.get(cliId) : null;
+      const cidade = String(cliente?.cidade || '').trim() || 'Sem cidade';
+      const uf = String(cliente?.uf || '').trim().toUpperCase() || 'Sem UF';
+      const key = cidade.toLowerCase() + '|' + uf.toLowerCase();
+      if (!grupos.has(key)) {
+        grupos.set(key, {
+          cidade,
+          estado: uf,
+          uf,
+          valor_vendido: 0,
+          caixas_produzidas: 0,
+          total_ofs: 0,
+          _clientes: new Set()
+        });
+      }
+      const item = grupos.get(key);
+      item.valor_vendido += _relatoriosPickValorOf(of);
+      item.caixas_produzidas += _relatoriosPickQtdOf(of);
+      item.total_ofs += 1;
+      if (cliId && _isUuid(cliId)) {
+        item._clientes.add(cliId);
+        clientesUnicos.add(cliId);
+      }
+      if (uf && uf !== 'Sem UF') estadosUnicos.add(uf);
+    });
+    const rows = Array.from(grupos.values()).map((item) => ({
+      cidade: item.cidade,
+      estado: item.estado,
+      uf: item.uf,
+      valor_total: Number(item.valor_vendido || 0),
+      valor_vendido: Number(item.valor_vendido || 0),
+      total_clientes: item._clientes.size,
+      total_ofs: Number(item.total_ofs || 0) || 0,
+      caixas_produzidas: Number(item.caixas_produzidas || 0) || 0
+    })).sort((a, b) => {
+      if (Number(b.valor_vendido || 0) !== Number(a.valor_vendido || 0)) return Number(b.valor_vendido || 0) - Number(a.valor_vendido || 0);
+      if (String(a.estado || '').localeCompare(String(b.estado || ''), 'pt-BR') !== 0) return String(a.estado || '').localeCompare(String(b.estado || ''), 'pt-BR');
+      return String(a.cidade || '').localeCompare(String(b.cidade || ''), 'pt-BR');
+    });
+    const resumo = rows.reduce((acc, item) => {
+      acc.valor_vendido += Number(item?.valor_vendido || 0) || 0;
+      acc.total_ofs += Number(item?.total_ofs || 0) || 0;
+      acc.caixas_produzidas += Number(item?.caixas_produzidas || 0) || 0;
+      return acc;
+    }, { valor_vendido: 0, total_ofs: 0, caixas_produzidas: 0 });
+    resumo.total_cidades = rows.length;
+    resumo.total_estados = estadosUnicos.size;
+    resumo.total_clientes = clientesUnicos.size;
+    resumo.valor_total = resumo.valor_vendido;
+    return res.json({
+      ok: true,
+      data_inicio: range.inicio,
+      data_fim: range.fim,
+      resumo,
+      rows
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][VENDAS-POR-CIDADE-ESTADO]', e?.message || e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });

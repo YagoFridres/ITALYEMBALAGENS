@@ -1492,6 +1492,47 @@ try {
     });
   }
 
+  async function rrReportVendasPorCidadeEstado() {
+    var ref = rrCurrentRange();
+    var json = await rrFetchJson('/api/relatorios/vendas-por-cidade-estado?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var resumo = json && json.resumo || {};
+    var rows = rrList(json, ['rows', 'data']);
+    return rrOpenPrint({
+      title: 'Relatório de Vendas por Cidade/Estado',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Valor Vendido', value: rrFmtMoney(resumo.valor_vendido || 0), sub: 'Total consolidado do período' },
+        { label: 'Cidades', value: rrFmtNum(resumo.total_cidades || rows.length, 0), sub: 'Cidades com vendas' },
+        { label: 'Estados', value: rrFmtNum(resumo.total_estados || 0, 0), sub: 'UFs com vendas' },
+        { label: 'OFs', value: rrFmtNum(resumo.total_ofs || 0, 0), sub: rrFmtNum(resumo.caixas_produzidas || 0, 0) + ' caixas produzidas' }
+      ],
+      summaryTitle: 'Resumo por cidade/estado',
+      summaryHeaders: ['Cidade', 'Estado', 'Valor Total Vendido', 'Nº de OFs', 'Quantidade de Caixas'],
+      summaryRows: rows.map(function(row) {
+        return [
+          rrEsc(String(row && row.cidade || '—')),
+          rrEsc(String(row && (row.estado || row.uf) || '—')),
+          rrEsc(rrFmtMoney(row && row.valor_vendido || 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtNum(row && row.caixas_produzidas || 0, 0))
+        ];
+      }),
+      detailTitle: 'Detalhamento',
+      detailHeaders: ['Cidade', 'Estado', 'Valor Total Vendido', 'Nº de OFs', 'Quantidade de Caixas'],
+      detailRows: rows.map(function(row) {
+        return [
+          rrEsc(String(row && row.cidade || '—')),
+          rrEsc(String(row && (row.estado || row.uf) || '—')),
+          rrEsc(rrFmtMoney(row && row.valor_vendido || 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtNum(row && row.caixas_produzidas || 0, 0))
+        ];
+      }),
+      emptySummaryCols: 5,
+      emptyDetailCols: 5
+    });
+  }
+
   async function rrReportChapasAbaixo200() {
     var ref = rrCurrentRange();
     var json = await rrFetchJson('/api/relatorios/chapas-abaixo-200?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
@@ -2429,6 +2470,7 @@ try {
     { id: 'comparativo-mensal', label: 'Comparativo Mensal', icon: '📊', desc: 'Compara o período atual com o período imediatamente anterior equivalente.', run: rrReportComparativoMensal },
     { id: 'evolucao-vendas', label: 'Evolução das Vendas', icon: '📈', desc: 'Mostra a evolução mensal das vendas e o consolidado por vendedor.', run: rrReportEvolucaoVendas },
     { id: 'vendas-por-ramo', label: 'Vendas por Ramo de Atividade', icon: '🏷️', desc: 'Agrupa as vendas concluídas por clientes.ramo.', run: rrReportVendasPorRamo },
+    { id: 'vendas-por-cidade-estado', label: 'Vendas por Cidade/Estado', icon: '🗺️', desc: 'Agrupa as vendas concluídas por cidade e UF do cliente.', run: rrReportVendasPorCidadeEstado },
     { id: 'chapas-abaixo-200', label: 'Chapas abaixo de 200 no estoque', icon: '🧾', desc: 'Lista as chapas com necessidade de reposição imediata.', run: rrReportChapasAbaixo200 },
     { id: 'clientes-menos-compraram', label: 'Clientes que menos compraram', icon: '📉', desc: 'Ranking do menor para o maior valor comprado no período.', run: rrReportClientesMenosCompraram },
     { id: 'clientes-inativos', label: 'Clientes inativos', icon: '🕳️', desc: 'Clientes sem OF concluída no período selecionado.', run: rrReportClientesInativos },
@@ -8739,7 +8781,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
       carBtn.dataset.bound = '1';
       carBtn.onclick = async function() {
         await _histFetchRelatorioMensal({ force: true });
-        await _histBuscarHistoricoPassagens(null, false, { force: true });
       };
     }
     var relExpBtn = document.getElementById('hist-rel-exportar');
@@ -9353,6 +9394,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
         window.__histMonthlyLoadedKey = key;
         if (!window.__histMonthlySortState) window.__histMonthlySortState = { key: 'total_ofs', dir: 'desc' };
         _histRenderRelatorioMensal(json);
+        await _histBuscarHistoricoPassagens(null, false, { force: !!opts.force });
         return json;
       } catch (e) {
         if (tableHost) tableHost.innerHTML = '<div style="padding:18px;border:1px solid rgba(239,68,68,.22);border-radius:12px;color:#fca5a5">Falha ao carregar relatório mensal: ' + _histEsc(e && e.message || e) + '</div>';
@@ -9573,7 +9615,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
       var page = _histGetPage();
       if (page && page.offsetParent !== null) {
         _histFetchRelatorioMensal();
-        _histBuscarHistoricoPassagens();
       }
     } catch (_) {}
   }
