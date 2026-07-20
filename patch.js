@@ -3198,7 +3198,8 @@ try {
 ;(function() {
   if (window.__simdBoxPlannerPatched) return;
   window.__simdBoxPlannerPatched = true;
-  window.__simdPreferredMode = 'box';
+  window.__simdPreferredMode = String(window.__simdPreferredMode || 'sheet');
+  if (String(window.__simdPreferredMode || '') !== 'box') return;
 
   function sLog() {
     try {
@@ -6663,10 +6664,32 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
 })();
 
 window.__simdCalcularImpl = window.__simdCalcularImpl || null;
+function _simdPreferredModeValue() {
+  try {
+    return String(window.__simdPreferredMode || '').trim().toLowerCase();
+  } catch (_) {
+    return '';
+  }
+}
 function _simdIsCanonicalBoxUi() {
   try {
     var host = document.getElementById('tela-simulador-desperdicio');
-    return !!(host && host.dataset && host.dataset.simdBoxUi === '1' && String(window.__simdPreferredMode || '') === 'box');
+    return !!(host && host.dataset && host.dataset.simdBoxUi === '1' && _simdPreferredModeValue() === 'box');
+  } catch (_) {
+    return false;
+  }
+}
+function _simdIsCanonicalSheetUi() {
+  try {
+    var host = document.getElementById('tela-simulador-desperdicio');
+    return !!(host && host.dataset && host.dataset.simdSheetUi === '1' && _simdPreferredModeValue() === 'sheet');
+  } catch (_) {
+    return false;
+  }
+}
+function _simdIsCanonicalUi() {
+  try {
+    return _simdIsCanonicalBoxUi() || _simdIsCanonicalSheetUi();
   } catch (_) {
     return false;
   }
@@ -6691,7 +6714,7 @@ window._simdCalcular = function() {
   return impl.apply(this, arguments);
 };
 window._simdBindBotaoDireto = function() {
-  if (_simdIsCanonicalBoxUi()) return false;
+  if (_simdIsCanonicalUi()) return false;
   var btn = null;
   try { btn = document.getElementById('simd-btn'); } catch (_) { btn = null; }
   if (!btn || typeof window._simdCalcular !== 'function') return false;
@@ -6715,7 +6738,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(6, 'antes pat
 (function patchSimuladorFluxoGlobalV2() {
   if (window.__patchSimuladorFluxoGlobalV2) return;
   window.__patchSimuladorFluxoGlobalV2 = true;
-  if (String(window.__simdPreferredMode || '') === 'box') return;
+  if (_simdPreferredModeValue() !== 'legacy') return;
 
   function sNum(v) {
     var n = Number(String(v == null ? '' : v).replace(',', '.'));
@@ -7010,7 +7033,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(6, 'antes pat
       window._simdCalcularFluxoImpl = sRun;
       window.__simdCalcularImpl = sRun;
     } catch (_) {}
-    if (_simdIsCanonicalBoxUi()) return;
+    if (_simdIsCanonicalUi()) return;
     try {
       window._simdCalcular = window._simdCalcular || function() {
         console.log('[SIMD] entrou');
@@ -10765,7 +10788,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
 (function() {
   if (window.__patchSimuladorDesperdicioInstalled) return;
   window.__patchSimuladorDesperdicioInstalled = true;
-  if (String(window.__simdPreferredMode || '') === 'box') return;
+  if (_simdPreferredModeValue() !== 'legacy') return;
 
   function _simdToNum(v) {
     var n = Number(String(v == null ? '' : v).replace(',', '.'));
@@ -11180,7 +11203,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
 
   function _bindSimdPatch() {
     try {
-      if (_simdIsCanonicalBoxUi()) return;
+      if (_simdIsCanonicalUi()) return;
       var btn = document.getElementById('simd-btn');
       if (btn && btn.dataset.patchSimdBound !== '1') {
         btn.dataset.patchSimdBound = '1';
@@ -41477,7 +41500,8 @@ function _ocultarGraficoComissoes() {
   setTimeout(reapply, 1200);
 })();
 ;(function() {
-  if (String(window.__simdPreferredMode || '') === 'box') return;
+  window.__simdPreferredMode = String(window.__simdPreferredMode || 'sheet');
+  if (String(window.__simdPreferredMode || '') !== 'sheet') return;
   if (window.__simdSheetMeasureTailApplied) return;
   window.__simdSheetMeasureTailApplied = true;
 
