@@ -8915,6 +8915,26 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     return Array.isArray(json && json.passagens) ? json.passagens : [];
   }
 
+  async function _histFetchResumoMensalBackend(rangeAtual, rangeAnterior, filtros, ref) {
+    var qs = new URLSearchParams();
+    if (filtros && filtros.cliente) qs.set('cliente', filtros.cliente);
+    if (filtros && filtros.maquina) qs.set('maquina', filtros.maquina);
+    if (ref && ref.mes != null) qs.set('mes', String(ref.mes));
+    if (ref && ref.ano != null) qs.set('ano', String(ref.ano));
+    if (rangeAtual && rangeAtual.data_inicio) qs.set('data_inicio', rangeAtual.data_inicio);
+    if (rangeAtual && rangeAtual.data_fim) qs.set('data_fim', rangeAtual.data_fim);
+    if (rangeAnterior && rangeAnterior.data_inicio) qs.set('anterior_data_inicio', rangeAnterior.data_inicio);
+    if (rangeAnterior && rangeAnterior.data_fim) qs.set('anterior_data_fim', rangeAnterior.data_fim);
+    var token = _histToken();
+    var resp = await fetch('/api/maquinas/relatorio-mensal?' + qs.toString() + '&t=' + Date.now(), {
+      cache: 'no-store',
+      headers: token ? { Authorization: 'Bearer ' + token } : {}
+    });
+    var json = await resp.json().catch(function() { return null; });
+    if (!resp.ok || !json || json.ok === false) throw new Error(String(json && (json.error || json.message) || 'Falha ao carregar resumo mensal'));
+    return json;
+  }
+
   function _histBuildMonthlyDataFromRows(rowsAtual, rowsAnterior, rangeAtual, rangeAnterior, ref) {
     var atual = Array.isArray(rowsAtual) ? rowsAtual.slice() : [];
     var anterior = Array.isArray(rowsAnterior) ? rowsAnterior.slice() : [];
@@ -9328,9 +9348,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     var rangeAnterior = _histPreviousRange(rangeAtual);
     var promise = (async function() {
       try {
-        var atuais = await _histFetchPassagensRange(rangeAtual, filtros, 1000);
-        var anteriores = await _histFetchPassagensRange(rangeAnterior, filtros, 1000);
-        var json = _histBuildMonthlyDataFromRows(atuais, anteriores, rangeAtual, rangeAnterior, ref);
+        var json = await _histFetchResumoMensalBackend(rangeAtual, rangeAnterior, filtros, ref);
         window.__histMonthlyData = json;
         window.__histMonthlyLoadedKey = key;
         if (!window.__histMonthlySortState) window.__histMonthlySortState = { key: 'total_ofs', dir: 'desc' };

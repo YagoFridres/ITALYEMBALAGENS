@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -9387,6 +9387,160 @@ function _countPassagensComValor(rows) {
   }, 0);
 }
 
+function _passagensRangeAnteriorPorPeriodo(range) {
+  const inicio = String(range?.inicio || '').trim();
+  const fim = String(range?.fim || '').trim();
+  if (!inicio || !fim) return null;
+  const ini = new Date(inicio + 'T12:00:00');
+  const end = new Date(fim + 'T12:00:00');
+  if (!Number.isFinite(ini.getTime()) || !Number.isFinite(end.getTime())) return null;
+  const diffDias = Math.max(1, Math.round((end.getTime() - ini.getTime()) / 86400000) + 1);
+  const prevFim = new Date(ini.getTime() - 86400000);
+  const prevIni = new Date(prevFim.getTime() - ((diffDias - 1) * 86400000));
+  return {
+    inicio: prevIni.toISOString().slice(0, 10),
+    fim: prevFim.toISOString().slice(0, 10)
+  };
+}
+
+function _passagensResumoLabel(range) {
+  const inicio = String(range?.inicio || '').trim();
+  const fim = String(range?.fim || '').trim();
+  if (!inicio || !fim) return '';
+  return inicio === fim ? ('Dia ' + inicio) : (inicio + ' até ' + fim);
+}
+
+function _passagensResumoParseCores(value) {
+  const bucket = new Set();
+  const add = (raw) => {
+    const nome = String(
+      raw && typeof raw === 'object'
+        ? (raw.nome ?? raw.name ?? raw.cor ?? raw.color ?? raw.label ?? raw.value ?? '')
+        : (raw ?? '')
+    ).trim();
+    if (nome) bucket.add(nome);
+  };
+  if (Array.isArray(value)) {
+    value.forEach(add);
+    return Array.from(bucket);
+  }
+  const raw = String(value || '').trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      parsed.forEach(add);
+      return Array.from(bucket);
+    }
+    if (parsed && typeof parsed === 'object') {
+      add(parsed);
+      return Array.from(bucket);
+    }
+  } catch (_) {}
+  raw.split(/[,;|/]+/g).forEach(add);
+  return Array.from(bucket);
+}
+
+function _passagensResumoFormatTamanho(row) {
+  const comp = Number(row?.dim_comprimento ?? row?.caixa_comprimento ?? 0) || 0;
+  const larg = Number(row?.dim_largura ?? row?.caixa_largura ?? 0) || 0;
+  if (comp > 0 && larg > 0) return String(Math.trunc(comp)) + '×' + String(Math.trunc(larg));
+  const produto = String(row?.produto || row?.descricao || '').trim();
+  const match = produto.match(/(\d+(?:[.,]\d+)?)\s*[×xX]\s*(\d+(?:[.,]\d+)?)/);
+  if (!match) return '';
+  return String(match[1]).replace(',', '.') + '×' + String(match[2]).replace(',', '.');
+}
+
+function _mergePassagensResumoRows(mapa, rows) {
+  const target = mapa instanceof Map ? mapa : new Map();
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    const current = row && typeof row === 'object' ? { ...row } : {};
+    current.status = _normalizarStatusPassagem(current.status || '');
+    const key = _passagemDedupKey(current);
+    const prev = target.get(key);
+    if (!prev) {
+      target.set(key, current);
+      return;
+    }
+    const prevPeso = _pesoStatusPassagem(prev.status);
+    const curPeso = _pesoStatusPassagem(current.status);
+    if (curPeso > prevPeso) {
+      target.set(key, current);
+      return;
+    }
+    if (curPeso < prevPeso) return;
+    if (_timestampPassagem(current) >= _timestampPassagem(prev)) target.set(key, current);
+  });
+  return target;
+}
+
+function _buildPassagensResumoTop5(rows, extractor, keyName) {
+  const mapa = new Map();
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    (Array.isArray(extractor(row)) ? extractor(row) : []).forEach((nome) => {
+      const chave = String(nome || '').trim();
+      if (!chave) return;
+      mapa.set(chave, (mapa.get(chave) || 0) + 1);
+    });
+  });
+  return Array.from(mapa.entries()).map(([nome, total_ofs]) => ({ [keyName]: nome, total_ofs }))
+    .sort((a, b) => {
+      if ((b.total_ofs || 0) !== (a.total_ofs || 0)) return (b.total_ofs || 0) - (a.total_ofs || 0);
+      return String(a[keyName] || '').localeCompare(String(b[keyName] || ''), 'pt-BR');
+    })
+    .slice(0, 5);
+}
+
+async function _agruparPassagensRelatorioMensalBackend(req, opts) {
+  const cfg = opts && typeof opts === 'object' ? opts : {};
+  const cliente = String(cfg.cliente || '').trim();
+  const maquina = String(cfg.maquina || '').trim();
+  const data_inicio = String(cfg.data_inicio || '').trim();
+  const data_fim = String(cfg.data_fim || '').trim();
+  if (!data_inicio || !data_fim) {
+    return { agg: [], totalRows: 0, rowsComValor: 0, top_cores: [], top_tamanhos: [] };
+  }
+
+  const batchSize = 1000;
+  const dedupeMap = new Map();
+  let offset = 0;
+  let totalBruto = 0;
+
+  while (true) {
+    const pair = await _buscarPassagensHistoricoCompat(req, {
+      cliente,
+      maquina,
+      data_inicio,
+      data_fim,
+      limit: batchSize,
+      offset,
+      count: offset === 0
+    });
+    let rows = Array.isArray(pair?.rows) ? pair.rows : [];
+    if (offset === 0) totalBruto = Number(pair?.count || 0) || rows.length;
+    if (!rows.length) break;
+    try { rows = await _enriquecerPassagensHistoricoComOfs(rows); } catch (_) {}
+    try { rows = await _normalizarMaquinasPassagens(rows); } catch (_) {}
+    _mergePassagensResumoRows(dedupeMap, rows);
+    offset += rows.length;
+    if (rows.length < batchSize) break;
+    if (totalBruto > 0 && offset >= totalBruto) break;
+  }
+
+  const deduped = Array.from(dedupeMap.values()).sort((a, b) => _timestampPassagem(b) - _timestampPassagem(a));
+  return {
+    agg: _agruparPassagensRelatorioMensal(deduped),
+    totalRows: deduped.length,
+    totalRowsBruto: totalBruto,
+    rowsComValor: _countPassagensComValor(deduped),
+    top_cores: _buildPassagensResumoTop5(deduped, (row) => _passagensResumoParseCores(row?.cores_impressao), 'cor'),
+    top_tamanhos: _buildPassagensResumoTop5(deduped, (row) => {
+      const tamanho = _passagensResumoFormatTamanho(row);
+      return tamanho ? [tamanho] : [];
+    }, 'tamanho')
+  };
+}
+
 async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', clienteFiltro = '') {
   const range = ref && typeof ref === 'object' ? ref : null;
   if (!range?.inicio || !range?.fim) return { agg: [], totalRows: 0, rowsComValor: 0 };
@@ -9580,14 +9734,41 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
     const ano = String(req.query.ano || hoje.getFullYear()).trim();
     const maquina = String(req.query.maquina || '').trim();
     const cliente = String(req.query.cliente || '').trim();
+    const dataInicioAtual = String(req.query.data_inicio || '').trim();
+    const dataFimAtual = String(req.query.data_fim || '').trim();
+    const dataInicioAnterior = String(req.query.anterior_data_inicio || '').trim();
+    const dataFimAnterior = String(req.query.anterior_data_fim || '').trim();
 
-    const refAtual = _passagensFiltroMesAnoToRange(mes, ano);
-    if (!refAtual) return res.status(400).json({ ok: false, error: 'Mês/ano inválidos' });
-    const refAnterior = _passagensMesAnterior(refAtual.mes, refAtual.ano);
-    const atualResumo = await _agruparOfsRelatorioMensalFallback(req, refAtual, maquina, cliente);
-    const anteriorResumo = refAnterior
-      ? await _agruparOfsRelatorioMensalFallback(req, refAnterior, maquina, cliente)
-      : { agg: [], totalRows: 0, rowsComValor: 0 };
+    const refAtual = (dataInicioAtual && dataFimAtual)
+      ? {
+          inicio: dataInicioAtual,
+          fim: dataFimAtual,
+          mes: mes ? String(mes).padStart(2, '0') : '',
+          ano: ano || ''
+        }
+      : _passagensFiltroMesAnoToRange(mes, ano);
+    if (!refAtual?.inicio || !refAtual?.fim) return res.status(400).json({ ok: false, error: 'Período inválido' });
+
+    const refAnterior = (dataInicioAnterior && dataFimAnterior)
+      ? { inicio: dataInicioAnterior, fim: dataFimAnterior }
+      : ((dataInicioAtual && dataFimAtual)
+          ? _passagensRangeAnteriorPorPeriodo(refAtual)
+          : _passagensMesAnterior(refAtual.mes, refAtual.ano));
+
+    const atualResumo = await _agruparPassagensRelatorioMensalBackend(req, {
+      cliente,
+      maquina,
+      data_inicio: refAtual.inicio,
+      data_fim: refAtual.fim
+    });
+    const anteriorResumo = refAnterior?.inicio && refAnterior?.fim
+      ? await _agruparPassagensRelatorioMensalBackend(req, {
+          cliente,
+          maquina,
+          data_inicio: refAnterior.inicio,
+          data_fim: refAnterior.fim
+        })
+      : { agg: [], totalRows: 0, rowsComValor: 0, top_cores: [], top_tamanhos: [] };
     const atualAgg = Array.isArray(atualResumo?.agg) ? atualResumo.agg : [];
     const anteriorAgg = Array.isArray(anteriorResumo?.agg) ? anteriorResumo.agg : [];
     // #region debug-point C:relatorio-mensal-resumo
@@ -9601,6 +9782,8 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
         ano: refAtual.ano,
         totalAtualRows: Number(atualResumo?.totalRows || 0) || 0,
         totalAnteriorRows: Number(anteriorResumo?.totalRows || 0) || 0,
+        totalAtualRowsBruto: Number(atualResumo?.totalRowsBruto || 0) || 0,
+        totalAnteriorRowsBruto: Number(anteriorResumo?.totalRowsBruto || 0) || 0,
         atualRowsComValor: Number(atualResumo?.rowsComValor || 0) || 0,
         anteriorRowsComValor: Number(anteriorResumo?.rowsComValor || 0) || 0,
         totalAtualAgg: atualAgg.length,
@@ -9649,13 +9832,15 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
         mes: refAtual.mes,
         ano: refAtual.ano,
         inicio: refAtual.inicio,
-        fim: refAtual.fim
+        fim: refAtual.fim,
+        titulo: _passagensResumoLabel(refAtual)
       },
       referencia_anterior: refAnterior ? {
         mes: refAnterior.mes,
         ano: refAnterior.ano,
         inicio: refAnterior.inicio,
-        fim: refAnterior.fim
+        fim: refAnterior.fim,
+        titulo: _passagensResumoLabel(refAnterior)
       } : null,
       resumo_mes_atual: resumoAtual,
       resumo_mes_anterior: resumoAnterior,
