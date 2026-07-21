@@ -4549,6 +4549,25 @@ window._compraPapelaoDeriveItem = function(item) {
     vl_p_mil: mil
   };
 };
+window._compraPapelaoResolveItemMetrics = function(item) {
+  var base = window._compraPapelaoDeriveItem(item);
+  var areaManual = item && item.area_m2 != null && String(item.area_m2).trim() !== '';
+  var totalManual = item && item.valor_total != null && String(item.valor_total).trim() !== '';
+  var area = areaManual ? window._compraPapelaoNum(item.area_m2) : base.area_m2;
+  var total = totalManual ? window._compraPapelaoNum(item.valor_total) : (area * window._compraPapelaoNum(item && item.valor_m2));
+  var quantidade = window._compraPapelaoNum(item && item.quantidade);
+  var mil = quantidade > 0 ? (total / quantidade) * 1000 : 0;
+  return {
+    area_m2: area,
+    valor_total: total,
+    vl_p_mil: mil,
+    auto_area_m2: base.area_m2,
+    auto_valor_total: base.valor_total,
+    auto_vl_p_mil: base.vl_p_mil,
+    area_manual: areaManual,
+    total_manual: totalManual
+  };
+};
 window._compraPapelaoBlankItem = function() {
   return {
     ped_cliente: '',
@@ -4563,7 +4582,9 @@ window._compraPapelaoBlankItem = function() {
     vinco4: '',
     quantidade: '',
     lote_minimo: '',
+    area_m2: '',
     valor_m2: '',
+    valor_total: '',
     observacao: '',
     ped_fornecedor: ''
   };
@@ -4706,7 +4727,11 @@ window._compraPapelaoStatusOptionsHtml = function(selected) {
   }).join('');
 };
 window._compraPapelaoItemFieldsOrder = function() {
-  return ['ped_cliente', 'data_entrega', 'po', 'largura', 'comprimento', 'vinco1', 'vinco2', 'vinco3', 'vinco4', 'quantidade', 'lote_minimo', 'valor_m2', 'observacao', 'ped_fornecedor'];
+  return ['ped_cliente', 'data_entrega', 'po', 'largura', 'comprimento', 'vinco1', 'vinco2', 'vinco3', 'vinco4', 'quantidade', 'lote_minimo', 'area_m2', 'valor_m2', 'valor_total', 'observacao', 'ped_fornecedor'];
+};
+window._compraPapelaoFornecedorPedidoLabel = function(rawName) {
+  var nome = String(rawName || '').replace(/\s+/g, ' ').trim();
+  return 'Pedido ' + (nome || 'Fornecedor');
 };
 window._compraPapelaoComposeVincos = function(item) {
   var values = [];
@@ -4826,9 +4851,23 @@ window._compraPapelaoEnsureStyles = function() {
   var st = document.createElement('style');
   st.id = 'patch-compra-papelao-style-v3';
   st.textContent = ''
-    + '#page-compras .ccpx-shell{display:grid;gap:16px}'
+    + '#page-compras .ccpx-shell{display:grid;gap:18px}'
+    + '#page-compras .ccpx-hero{position:relative;display:grid;gap:18px;padding:24px;border-radius:24px;background:linear-gradient(135deg,#0b2545 0%,#185fa5 52%,#ef9f27 100%);border:1px solid rgba(125,211,252,.24);box-shadow:0 28px 70px rgba(2,6,23,.36);overflow:hidden}'
+    + '#page-compras .ccpx-hero::after{content:"";position:absolute;inset:auto -80px -120px auto;width:240px;height:240px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.16),rgba(255,255,255,0));pointer-events:none}'
+    + '#page-compras .ccpx-hero-top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap}'
+    + '#page-compras .ccpx-hero-copy{display:grid;gap:10px;max-width:820px}'
+    + '#page-compras .ccpx-hero-badge{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(191,219,254,.18);color:#dbeafe;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}'
+    + '#page-compras .ccpx-hero-title{font-size:26px;font-weight:900;color:#f8fafc;letter-spacing:-.02em}'
+    + '#page-compras .ccpx-hero-sub{font-size:13px;line-height:1.6;color:rgba(226,232,240,.9)}'
+    + '#page-compras .ccpx-hero-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;min-width:min(100%,440px)}'
+    + '#page-compras .ccpx-hero-stat{display:grid;gap:4px;padding:14px 16px;border-radius:16px;background:rgba(2,6,23,.28);border:1px solid rgba(191,219,254,.16);backdrop-filter:blur(6px)}'
+    + '#page-compras .ccpx-hero-stat .lbl{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#bfdbfe}'
+    + '#page-compras .ccpx-hero-stat .val{font-size:22px;font-weight:900;color:#fff}'
+    + '#page-compras .ccpx-hero-stat .sub{font-size:12px;color:rgba(226,232,240,.72)}'
+    + '#page-compras .ccpx-action-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}'
+    + '#page-compras .ccpx-action-grid .estoque-action-btn{height:100%;justify-content:flex-start;padding:15px 17px;border-radius:18px;box-shadow:0 16px 32px rgba(2,6,23,.22);border-color:rgba(255,255,255,.12)}'
     + '#page-compras .ccpx-top-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}'
-    + '#page-compras .ccpx-search{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--card,#0f172a);border:1px solid var(--border,rgba(148,163,184,.18));border-radius:14px;padding:14px 16px;box-shadow:0 10px 28px rgba(2,6,23,.18)}'
+    + '#page-compras .ccpx-search{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(15,23,42,.84));border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:16px 18px;box-shadow:0 14px 34px rgba(2,6,23,.2)}'
     + '#page-compras .ccpx-search input{flex:1;min-width:320px}'
     + '#page-compras .ccpx-search button{white-space:nowrap}'
     + '#page-compras .ccpx-tabs{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin;scrollbar-color:rgba(96,165,250,.48) rgba(15,23,42,.72)}'
@@ -4844,9 +4883,9 @@ window._compraPapelaoEnsureStyles = function() {
     + '#page-compras .ccpx-card-more{position:absolute;top:6px;right:4px;border:none;background:rgba(255,255,255,.06);color:#cbd5e1;border-radius:10px;width:28px;height:28px;cursor:pointer}'
     + '#page-compras .ccpx-card-menu{position:absolute;top:40px;right:0;display:grid;gap:6px;padding:8px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:12px;min-width:130px;z-index:4;box-shadow:0 18px 46px rgba(0,0,0,.38)}'
     + '#page-compras .ccpx-card-menu button{border:1px solid rgba(148,163,184,.16);background:rgba(255,255,255,.04);color:#e2e8f0;border-radius:10px;padding:8px 10px;cursor:pointer;text-align:left}'
-    + '#page-compras .ccpx-section{display:grid;gap:12px;background:var(--card,#0f172a);border:1px solid var(--border,rgba(148,163,184,.16));border-radius:14px;padding:14px;box-shadow:0 10px 28px rgba(2,6,23,.18)}'
+    + '#page-compras .ccpx-section{display:grid;gap:14px;background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(15,23,42,.74));border:1px solid rgba(125,211,252,.14);border-radius:20px;padding:20px;box-shadow:0 18px 42px rgba(2,6,23,.22)}'
     + '#page-compras .ccpx-section-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}'
-    + '#page-compras .ccpx-title{font-size:16px;font-weight:900;color:#f8fafc}'
+    + '#page-compras .ccpx-title{font-size:20px;font-weight:900;color:#f8fafc}'
     + '#page-compras .ccpx-sub{font-size:12px;color:#94a3b8}'
     + '#page-compras .ccpx-empty{padding:22px 8px;text-align:center;color:#94a3b8}'
     + '#page-compras .ccpx-table-panel{display:grid;gap:12px}'
@@ -4910,19 +4949,29 @@ window._compraPapelaoEnsureStyles = function() {
     + '#page-compras .ccpx-inline-warning{padding:12px 14px;border-radius:12px;border:1px solid rgba(245,158,11,.25);background:rgba(120,53,15,.22);color:#fcd34d;font-size:12px;font-weight:700}'
     + '#page-compras .ccpx-breadcrumb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:#94a3b8}'
     + '#page-compras .ccpx-breadcrumb button{border:none;background:transparent;color:#60a5fa;font-weight:800;cursor:pointer;padding:0}'
+    + '.ccpx-modal-headline{display:grid;gap:14px;padding:18px 20px;border-radius:20px;background:linear-gradient(135deg,rgba(11,37,69,.98),rgba(24,95,165,.88),rgba(239,159,39,.18));border:1px solid rgba(125,211,252,.18);box-shadow:0 18px 40px rgba(2,6,23,.22)}'
+    + '.ccpx-modal-step{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(191,219,254,.18);color:#dbeafe;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;width:max-content}'
+    + '.ccpx-modal-headline .ccpx-eyebrow{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#bfdbfe}'
+    + '.ccpx-modal-headline .ccpx-headline-title{font-size:24px;font-weight:900;color:#fff}'
+    + '.ccpx-modal-headline .ccpx-headline-sub{font-size:13px;line-height:1.55;color:rgba(226,232,240,.86)}'
+    + '.ccpx-modal-primary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 16px}'
+    + '.ccpx-modal-secondary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 16px;padding:16px 18px;border-radius:18px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.48)}'
     + '.ccpx-modal-head-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 16px}'
     + '.ccpx-modal-head-grid .full{grid-column:1 / -1}'
     + '.ccpx-modal-inline-stack{display:grid;gap:6px}'
     + '.ccpx-modal-inline-stack input,.ccpx-modal-inline-stack select,.ccpx-modal-inline-stack textarea{width:100%;background:#020617;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:11px 12px;font-size:13px}'
     + '.ccpx-modal-num{color:var(--accent,#60a5fa)!important;font-weight:900;font-family:var(--mono,inherit)}'
-    + '.ccpx-modal-items-sheet{display:grid;gap:12px;padding:16px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.6)}'
+    + '.ccpx-modal-items-sheet{display:grid;gap:12px;padding:18px;border-radius:18px;border:1px solid rgba(125,211,252,.16);background:linear-gradient(180deg,rgba(15,23,42,.78),rgba(15,23,42,.62));box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}'
     + '.ccpx-modal-items-toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}'
+    + '.ccpx-modal-items-toolbar .ttl{font-size:16px;font-weight:900;color:#f8fafc}'
+    + '.ccpx-modal-items-toolbar .sub{font-size:12px;color:#cbd5e1;max-width:680px;line-height:1.55}'
     + '.ccpx-modal-items-sheet table{width:100%;border-collapse:collapse;min-width:1880px}'
     + '.ccpx-modal-items-sheet th{padding:7px 8px;background:var(--s2,#0f172a);border:1px solid rgba(148,163,184,.18);font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#cbd5e1;text-align:left;font-family:var(--mono,inherit);white-space:nowrap}'
     + '.ccpx-modal-items-sheet td{padding:0;border:1px solid rgba(148,163,184,.12);vertical-align:middle;background:rgba(15,23,42,.22)}'
     + '.ccpx-modal-items-sheet input,.ccpx-modal-items-sheet textarea{width:100%;background:transparent;color:#f8fafc;border:none;outline:none;padding:10px 10px;font-size:12px}'
     + '.ccpx-modal-items-sheet textarea{min-height:40px;resize:vertical}'
     + '.ccpx-modal-items-sheet .num-read{padding:10px 10px;text-align:right;font-variant-numeric:tabular-nums;font-weight:900;color:#e2e8f0;font-family:var(--mono,inherit)}'
+    + '.ccpx-modal-editable-num input{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono,inherit)}'
     + '.ccpx-modal-items-sheet .idx-read{padding:10px 10px;text-align:center;font-weight:900;color:#60a5fa;font-family:var(--mono,inherit)}'
     + '.ccpx-modal-line-actions{display:flex;gap:6px;justify-content:center;padding:6px}'
     + '.ccpx-modal-line-actions button{min-width:34px;height:34px;border-radius:10px;border:1px solid rgba(148,163,184,.16);cursor:pointer;font-weight:900}'
@@ -4933,9 +4982,9 @@ window._compraPapelaoEnsureStyles = function() {
     + '.ccpx-modal-totalbar .val{font-size:18px;font-weight:900;color:#22c55e;font-family:var(--mono,inherit)}'
     + '.ccpx-modal-footer-actions{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;width:100%}'
     + '.ccpx-modal-footer-actions .left,.ccpx-modal-footer-actions .right{display:flex;gap:10px;flex-wrap:wrap}'
-    + '@media (max-width:1100px){#page-compras .ccpx-block-top{grid-template-columns:1fr 1fr}#page-compras .ccpx-actions-line{justify-content:flex-start}}'
+    + '@media (max-width:1100px){#page-compras .ccpx-block-top{grid-template-columns:1fr 1fr}#page-compras .ccpx-actions-line{justify-content:flex-start}.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
     + '@media (max-width:980px){.ccpx-modal-head-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
-    + '@media (max-width:760px){.ccpx-modal-grid,.ccpx-modal-head-grid{grid-template-columns:1fr}#page-compras .ccpx-search input{min-width:0}#page-compras .ccpx-block-top{grid-template-columns:1fr}}';
+    + '@media (max-width:760px){.ccpx-modal-grid,.ccpx-modal-head-grid,.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid{grid-template-columns:1fr}#page-compras .ccpx-search input{min-width:0}#page-compras .ccpx-block-top{grid-template-columns:1fr}#page-compras .ccpx-hero{padding:18px}#page-compras .ccpx-hero-title{font-size:22px}}';
   document.head.appendChild(st);
 };
 window._compraPapelaoEnsureToolbar = function() {
@@ -4949,14 +4998,30 @@ window._compraPapelaoEnsureToolbar = function() {
   toolbar.dataset.ccpxActive = '0';
 };
 window._compraPapelaoRenderActionCards = function() {
+  var resumo = window._compraPapelaoStatsResumo();
   return ''
-    + '<div class="estoque-main-actions" id="ccpx-action-cards">'
+    + '<div class="ccpx-hero" id="ccpx-action-cards">'
+    + '  <div class="ccpx-hero-top">'
+    + '    <div class="ccpx-hero-copy">'
+    + '      <div class="ccpx-hero-badge">Compra de Papelão</div>'
+    + '      <div class="ccpx-hero-title">Pedidos organizados por fornecedor, pasta e período</div>'
+    + '      <div class="ccpx-hero-sub">O layout desta área agora prioriza leitura rápida, ação imediata e a mesma hierarquia visual das telas já modernizadas do sistema, sem alterar a lógica de cadastro e impressão existente.</div>'
+    + '    </div>'
+    + '    <div class="ccpx-hero-meta">'
+    + '      <div class="ccpx-hero-stat"><div class="lbl">Compras Visíveis</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumo.total_compras, 0)) + '</div><div class="sub">' + window._compraPapelaoEsc(window._compraPapelaoEmpresaLabelAtual()) + '</div></div>'
+    + '      <div class="ccpx-hero-stat"><div class="lbl">Área Total</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumo.area_total, 2)) + ' m²</div><div class="sub">Área consolidada dos itens</div></div>'
+    + '      <div class="ccpx-hero-stat"><div class="lbl">Valor Total</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(resumo.valor_total)) + '</div><div class="sub">Financeiro do filtro atual</div></div>'
+    + '    </div>'
+    + '  </div>'
+    + '  <div class="ccpx-action-grid">'
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-nova', label: 'Nova Compra', icon: '+', variant: 'green', title: 'Cadastrar nova compra de papelão' }) : '<button type="button" class="btn btn-accent" id="ccpx-body-btn-nova">Nova Compra</button>')
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-pasta', label: 'Nova Pasta', icon: '📁', variant: 'accent', title: 'Criar pasta para organizar compras' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-pasta">Nova Pasta</button>')
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-sugestoes', label: 'Sugestões', icon: '📌', variant: 'teal', title: 'Abrir sugestões de compra fixadas' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-sugestoes">Sugestões</button>')
+    +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-rel-periodo', label: 'Compras no Período', icon: '🗓', variant: 'navy', title: 'Abrir relatório detalhado por período' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-rel-periodo">Compras no Período</button>')
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-rel-forn', label: 'Compras por Fornecedor', icon: '📊', variant: 'navy', title: 'Abrir relatório por fornecedor' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-rel-forn">Compras por Fornecedor</button>')
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-rel-resumo', label: 'Quantidade e Valor Comprado', icon: '💰', variant: 'purple', title: 'Abrir consolidado financeiro' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-rel-resumo">Quantidade e Valor Comprado</button>')
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-print', label: 'Imprimir Relatório', icon: '🖨', variant: 'accent', title: 'Imprimir relatório atual' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-print">Imprimir Relatório</button>')
+    + '  </div>'
     + '</div>';
 };
 window._compraPapelaoRenderCardsHtml = function() {
@@ -5127,12 +5192,14 @@ window._compraPapelaoBindBody = function() {
   var btnNova = host.querySelector('#ccpx-body-btn-nova');
   var btnPasta = host.querySelector('#ccpx-body-btn-pasta');
   var btnSugestoes = host.querySelector('#ccpx-body-btn-sugestoes');
+  var btnRelPeriodo = host.querySelector('#ccpx-body-btn-rel-periodo');
   var btnRelFornecedor = host.querySelector('#ccpx-body-btn-rel-forn');
   var btnRelResumo = host.querySelector('#ccpx-body-btn-rel-resumo');
   var btnPrint = host.querySelector('#ccpx-body-btn-print');
   if (btnNova) btnNova.onclick = function() { window.abrirModalCompra(); };
   if (btnPasta) btnPasta.onclick = function() { window._compraPapelaoOpenFolderModal(); };
   if (btnSugestoes) btnSugestoes.onclick = function() { window._compraPapelaoOpenPinsModal(); };
+  if (btnRelPeriodo) btnRelPeriodo.onclick = function() { window._compraPapelaoOpenReportModal('periodo'); };
   if (btnRelFornecedor) btnRelFornecedor.onclick = function() { window._compraPapelaoOpenReportModal('fornecedor'); };
   if (btnRelResumo) btnRelResumo.onclick = function() { window._compraPapelaoOpenReportModal('resumo'); };
   if (btnPrint) btnPrint.onclick = function() { window._compraPapelaoPrintCurrentReport(); };
@@ -5292,11 +5359,13 @@ window._compraPapelaoCollectModalRows = function(overlay) {
       vinco4: String((row.querySelector('[data-field="vinco4"]') || {}).value || '').trim(),
       quantidade: String((row.querySelector('[data-field="quantidade"]') || {}).value || '').trim(),
       lote_minimo: String((row.querySelector('[data-field="lote_minimo"]') || {}).value || '').trim(),
+      area_m2: String((row.querySelector('[data-field="area_m2"]') || {}).value || '').trim(),
       valor_m2: String((row.querySelector('[data-field="valor_m2"]') || {}).value || '').trim(),
+      valor_total: String((row.querySelector('[data-field="valor_total"]') || {}).value || '').trim(),
       observacao: String((row.querySelector('[data-field="observacao"]') || {}).value || '').trim(),
       ped_fornecedor: String((row.querySelector('[data-field="ped_fornecedor"]') || {}).value || '').trim()
     };
-    var d = window._compraPapelaoDeriveItem(item);
+    var d = window._compraPapelaoResolveItemMetrics(item);
     item.vincos = window._compraPapelaoComposeVincos(item);
     item.nomenclatura = item.po;
     item.area_m2 = d.area_m2;
@@ -5304,13 +5373,15 @@ window._compraPapelaoCollectModalRows = function(overlay) {
     item.valor_total = d.valor_total;
     return item;
   }).filter(function(item) {
-    return item.ped_cliente || item.data_entrega || item.po || item.largura || item.comprimento || item.vincos || item.quantidade || item.lote_minimo || item.valor_m2 || item.observacao || item.ped_fornecedor;
+    return item.ped_cliente || item.data_entrega || item.po || item.largura || item.comprimento || item.vincos || item.quantidade || item.lote_minimo || item.area_m2 || item.valor_m2 || item.valor_total || item.observacao || item.ped_fornecedor;
   });
 };
 window._compraPapelaoRenderModalRowsHtml = function(itens) {
   var rows = window._compraPapelaoEnsureVisibleRows(itens, 5);
   return rows.map(function(item, idx) {
-    var d = window._compraPapelaoDeriveItem(item);
+    var d = window._compraPapelaoResolveItemMetrics(item);
+    var areaManual = d.area_manual && Math.abs(d.area_m2 - d.auto_area_m2) > 0.000001;
+    var totalManual = d.total_manual && Math.abs(d.valor_total - d.auto_valor_total) > 0.000001;
     return ''
       + '<tr data-ccpx-item-row="' + idx + '">'
       + '  <td><input data-field="ped_cliente" value="' + window._compraPapelaoAttr(item && item.ped_cliente || '') + '"></td>'
@@ -5320,15 +5391,26 @@ window._compraPapelaoRenderModalRowsHtml = function(itens) {
       + '  <td><div style="display:grid;grid-template-columns:repeat(4,minmax(56px,1fr));gap:4px"><input data-field="vinco1" value="' + window._compraPapelaoAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + window._compraPapelaoAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + window._compraPapelaoAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + window._compraPapelaoAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></td>'
       + '  <td><input data-field="quantidade" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.quantidade || '') + '"></td>'
       + '  <td><input data-field="lote_minimo" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.lote_minimo || '') + '"></td>'
-      + '  <td class="num-read" data-ccpx-area>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(d.area_m2, 4)) + '</td>'
+      + '  <td class="ccpx-modal-editable-num"><input data-field="area_m2"' + (areaManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + window._compraPapelaoAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : window._compraPapelaoFmtNum(d.area_m2, 4).replace(/\./g, "").replace(",", ".")) + '"></td>'
       + '  <td><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_m2 || '') + '"></td>'
       + '  <td class="num-read" data-ccpx-mil>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '</td>'
-      + '  <td class="num-read" data-ccpx-total>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(d.valor_total)) + '</td>'
+      + '  <td class="ccpx-modal-editable-num"><input data-field="valor_total"' + (totalManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_total != null && String(item.valor_total).trim() !== '' ? item.valor_total : window._compraPapelaoFmtNum(d.valor_total, 2).replace(/\./g, "").replace(",", ".")) + '"></td>'
       + '  <td><textarea data-field="observacao" rows="1">' + window._compraPapelaoEsc(item && item.observacao || '') + '</textarea></td>'
-      + '  <td><input data-field="ped_fornecedor" value="' + window._compraPapelaoAttr(item && item.ped_fornecedor || '') + '"></td>'
+      + '  <td><input data-field="ped_fornecedor" value="' + window._compraPapelaoAttr(item && item.ped_fornecedor || '') + '" placeholder="' + window._compraPapelaoAttr(window._compraPapelaoFornecedorPedidoLabel('')) + '"></td>'
       + '  <td><div class="ccpx-modal-line-actions"><button type="button" class="dup" data-ccpx-dup-item="' + idx + '" title="Duplicar linha">+</button><button type="button" class="del" data-ccpx-del-item="' + idx + '" title="Remover linha">✕</button></div></td>'
       + '</tr>';
   }).join('');
+};
+window._compraPapelaoSyncFornecedorDependentUi = function(overlay) {
+  if (!overlay) return;
+  var fornecedor = String((overlay.querySelector('#ccpx-fornecedor-manual') || {}).value || '').trim();
+  var label = window._compraPapelaoFornecedorPedidoLabel(fornecedor);
+  Array.prototype.slice.call(overlay.querySelectorAll('[data-ccpx-fornecedor-label]')).forEach(function(el) {
+    el.textContent = label;
+  });
+  Array.prototype.slice.call(overlay.querySelectorAll('[data-field="ped_fornecedor"]')).forEach(function(input) {
+    input.placeholder = label;
+  });
 };
 window._compraPapelaoRefreshModalComputed = function(overlay) {
   var totalQtd = 0;
@@ -5339,18 +5421,20 @@ window._compraPapelaoRefreshModalComputed = function(overlay) {
       largura: (row.querySelector('[data-field="largura"]') || {}).value,
       comprimento: (row.querySelector('[data-field="comprimento"]') || {}).value,
       quantidade: (row.querySelector('[data-field="quantidade"]') || {}).value,
-      valor_m2: (row.querySelector('[data-field="valor_m2"]') || {}).value
+      area_m2: (row.querySelector('[data-field="area_m2"]') || {}).value,
+      valor_m2: (row.querySelector('[data-field="valor_m2"]') || {}).value,
+      valor_total: (row.querySelector('[data-field="valor_total"]') || {}).value
     };
-    var d = window._compraPapelaoDeriveItem(item);
+    var d = window._compraPapelaoResolveItemMetrics(item);
     totalQtd += window._compraPapelaoNum(item.quantidade);
     totalArea += d.area_m2;
     totalValor += d.valor_total;
-    var a = row.querySelector('[data-ccpx-area]');
+    var a = row.querySelector('[data-field="area_m2"]');
     var m = row.querySelector('[data-ccpx-mil]');
-    var t = row.querySelector('[data-ccpx-total]');
-    if (a) a.textContent = window._compraPapelaoFmtNum(d.area_m2, 4);
+    var t = row.querySelector('[data-field="valor_total"]');
+    if (a && (a.dataset.ccpxManual !== '1' || !String(a.value || '').trim())) a.value = String(d.area_m2.toFixed(4));
     if (m) m.textContent = window._compraPapelaoFmtMoney(d.vl_p_mil);
-    if (t) t.textContent = window._compraPapelaoFmtMoney(d.valor_total);
+    if (t && (t.dataset.ccpxManual !== '1' || !String(t.value || '').trim())) t.value = String(d.valor_total.toFixed(2));
   });
   var q = overlay.querySelector('#ccpx-sum-qtd');
   var a2 = overlay.querySelector('#ccpx-sum-area');
@@ -5364,26 +5448,30 @@ window._compraPapelaoRefreshModalComputed = function(overlay) {
 window._compraPapelaoCompraModalHtml = function(compra) {
   var empId = String(compra && compra._emp_id_consulta || window._compraPapelaoCurrentEmpId() || window._compraPapelaoEmpresaCriacaoUuid() || '');
   var header = window._compraPapelaoNormalizeCompraHeader(compra);
+  var fornecedorPedidoLabel = window._compraPapelaoFornecedorPedidoLabel(header.fornecedor || '');
   return ''
     + '<div style="display:grid;gap:16px">'
-    + '  <div style="display:grid;gap:6px;padding:14px 16px;border-radius:14px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.82)">'
-    + '    <div style="font-size:18px;font-weight:900;color:#f8fafc">Compra de Papelão</div>'
-    + '    <div style="font-size:12px;color:#94a3b8">Preencha os dados principais da compra e os itens da planilha.</div>'
+    + '  <div class="ccpx-modal-headline">'
+    + '    <div class="ccpx-eyebrow">Pedido de Chapas</div>'
+    + '    <div class="ccpx-modal-step">Etapa 1 · Cabeçalho da Compra</div>'
+    + '    <div class="ccpx-headline-title">Compra de Papelão com leitura de planilha</div>'
+    + '    <div class="ccpx-headline-sub">Os dados do cabeçalho ficam concentrados em Pedido, Data e Fornecedor; abaixo, os itens seguem a mesma ordem operacional usada na planilha de referência.</div>'
     + '  </div>'
-    + '  <div class="ccpx-modal-head-grid">'
+    + '  <div class="ccpx-modal-primary-grid">'
     + '    <div class="ccpx-modal-inline-stack"><label>Nº</label><input id="ccpx-numero" class="ccpx-modal-num" value="' + window._compraPapelaoAttr(window._compraPapelaoNumeroLabel(header.numero_compra)) + '" readonly></div>'
-    + '    <div class="ccpx-modal-inline-stack"><label>Fornecedor</label><input id="ccpx-fornecedor-manual" value="' + window._compraPapelaoAttr(header.fornecedor || '') + '" placeholder="Fornecedor"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Data</label><input id="ccpx-data-compra" type="date" value="' + window._compraPapelaoAttr(header.data_compra || window._compraPapelaoTodayIso()) + '"></div>'
+    + '    <div class="ccpx-modal-inline-stack"><label>Fornecedor</label><input id="ccpx-fornecedor-manual" value="' + window._compraPapelaoAttr(header.fornecedor || '') + '" placeholder="Fornecedor"></div>'
+    + '  </div>'
+    + '  <div class="ccpx-modal-secondary-grid">'
     + '    <div class="ccpx-modal-inline-stack"><label>Pasta</label><select id="ccpx-pasta">' + window._compraPapelaoFolderOptionsHtml(header && header.pasta_id, empId) + '</select></div>'
-    + '    <div class="ccpx-modal-inline-stack"><label>Ped. Fornecedor</label><input id="ccpx-ped-forn" value="' + window._compraPapelaoAttr(header.ped_fornecedor || '') + '"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Status</label><select id="ccpx-status">' + window._compraPapelaoStatusOptionsHtml(header.status || 'Solicitada') + '</select></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Previsão de Chegada</label><input id="ccpx-prev-chegada" type="date" value="' + window._compraPapelaoAttr(header.previsao_chegada || '') + '"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>CNPJ Fornecedor</label><input id="ccpx-cnpj-fornecedor" value="' + window._compraPapelaoAttr(header.cnpj_fornecedor || '') + '"></div>'
     + '    <div class="ccpx-modal-inline-stack full"><label>Observações</label><textarea id="ccpx-obs" rows="2">' + window._compraPapelaoEsc(header.observacao || '') + '</textarea></div>'
     + '  </div>'
     + '<div class="ccpx-modal-items-sheet" style="margin-top:18px">'
-    + '  <div class="ccpx-modal-items-toolbar"><div><div style="font-size:14px;font-weight:900;color:#f8fafc">Itens da Compra</div><div style="font-size:12px;color:#94a3b8">Tab navega entre células; Enter na última célula da última linha cria uma nova linha.</div></div><button type="button" class="btn btn-ghost btn-sm" id="ccpx-add-item">+ Nova Linha</button></div>'
-    + '  <div class="ccpx-modal-items-wrap"><table><thead><tr><th>Pedido Cliente</th><th>Entrega</th><th>PO</th><th>Medidas L × C</th><th>Vincos</th><th>Qtde</th><th>Lote Mínimo</th><th>Área Pedido (m²)</th><th>Valor m²</th><th>Valor p/mil</th><th>Valor Total</th><th>Obs</th><th>Ped. Fornecedor</th><th>Ações</th></tr></thead><tbody id="ccpx-modal-items-body">' + window._compraPapelaoRenderModalRowsHtml(header && header.itens || []) + '</tbody></table></div>'
+    + '  <div class="ccpx-modal-items-toolbar"><div><div class="ccpx-modal-step">Etapa 2 · Itens da Compra</div><div class="ttl">Planilha operacional da compra</div><div class="sub">Preencha Pedido Cliente, Entrega, PO, medidas, vincos, quantidade, lote mínimo, área, valor por m², valor por mil e valor total na mesma sequência da planilha.</div></div><button type="button" class="btn btn-ghost btn-sm" id="ccpx-add-item">+ Nova Linha</button></div>'
+    + '  <div class="ccpx-modal-items-wrap"><table><thead><tr><th>Pedido Cliente</th><th>Entrega</th><th>PO</th><th>Medidas L × C</th><th>Vincos</th><th>Qtde</th><th>Lote Mínimo</th><th>Área Pedido (m²)</th><th>Valor m²</th><th>Valor p/mil</th><th>Valor Total</th><th>Obs</th><th data-ccpx-fornecedor-label>' + window._compraPapelaoEsc(fornecedorPedidoLabel) + '</th><th>Ações</th></tr></thead><tbody id="ccpx-modal-items-body">' + window._compraPapelaoRenderModalRowsHtml(header && header.itens || []) + '</tbody></table></div>'
     + '  <div class="ccpx-summary"><div class="ccpx-chip"><div class="lbl">Quantidade</div><div class="val" id="ccpx-sum-qtd">0</div></div><div class="ccpx-chip"><div class="lbl">Área</div><div class="val" id="ccpx-sum-area">0,0000 m²</div></div><div class="ccpx-chip"><div class="lbl">Valor</div><div class="val" id="ccpx-sum-total">R$ 0,00</div></div></div>'
     + '  <div class="ccpx-modal-totalbar"><div class="lbl">Total Geral</div><div class="val" id="ccpx-total-geral">R$ 0,00</div></div>'
     + '</div>'
@@ -5404,7 +5492,7 @@ window._compraPapelaoCollectCompraPayload = function(overlay, compra) {
   });
   return {
     fornecedor: fornecedor,
-    ped_fornecedor: String((overlay.querySelector('#ccpx-ped-forn') || {}).value || '').trim(),
+    ped_fornecedor: '',
     pasta_id: String((overlay.querySelector('#ccpx-pasta') || {}).value || '').trim() || null,
     observacao: String((overlay.querySelector('#ccpx-obs') || {}).value || '').trim(),
     emp_id: empId,
@@ -5670,8 +5758,12 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
       var value = String(forn && (forn.cnpj || forn.cnpj_fornecedor || forn.documento) || '').trim();
       if (value) cnpjEl.value = value;
     };
-    if (fornManualEl) fornManualEl.onchange = syncFornecedor;
+    if (fornManualEl) fornManualEl.onchange = function() {
+      syncFornecedor();
+      window._compraPapelaoSyncFornecedorDependentUi(overlay);
+    };
     syncFornecedor();
+    window._compraPapelaoSyncFornecedorDependentUi(overlay);
     if (tbody) {
       tbody.addEventListener('click', function(ev) {
         var btnDel = ev && ev.target && (ev.target.closest ? ev.target.closest('[data-ccpx-del-item]') : null);
@@ -5690,8 +5782,13 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
           renderRows(rows);
         }
       });
-      tbody.addEventListener('input', function() {
+      tbody.addEventListener('input', function(ev) {
+        var field = String((ev && ev.target && ev.target.getAttribute && ev.target.getAttribute('data-field')) || '').trim();
+        if (field === 'area_m2' || field === 'valor_total') {
+          ev.target.dataset.ccpxManual = String(ev.target.value || '').trim() ? '1' : '';
+        }
         window._compraPapelaoRefreshModalComputed(overlay);
+        window._compraPapelaoSyncFornecedorDependentUi(overlay);
       });
       tbody.addEventListener('keydown', function(ev) {
         if (!ev || ev.key !== 'Enter') return;
@@ -6052,6 +6149,29 @@ window._compraPapelaoMergeResumoRows = function(rows) {
 window._compraPapelaoFetchReport = async function(kind, dataInicio, dataFim) {
   var ids = window._compraPapelaoEmpresaIdsConsulta();
   if (!ids.length) return kind === 'fornecedor' ? [] : { total_compras: 0, quantidade: 0, area_m2: 0, valor_total: 0 };
+  if (kind === 'periodo') {
+    return (Array.isArray(window._compraPapelaoStateRef().compras) ? window._compraPapelaoStateRef().compras : []).filter(function(compra) {
+      var ref = String(compra && (compra.data_compra || compra.data || compra.criado_em || compra.created_at || '') || '').slice(0, 10);
+      if (!ref) return false;
+      if (dataInicio && ref < dataInicio) return false;
+      if (dataFim && ref > dataFim) return false;
+      return true;
+    }).map(function(compra) {
+      var totals = window._compraPapelaoCompraTotals(compra);
+      return {
+        numero_compra: compra && compra.numero_compra || '',
+        fornecedor: compra && compra.fornecedor || '—',
+        data_compra: compra && (compra.data_compra || compra.data || compra.created_at || '') || '',
+        ped_fornecedor: compra && compra.ped_fornecedor || '',
+        quantidade: totals.qtd,
+        area_m2: totals.area,
+        valor_total: totals.valor,
+        empresa: window._compraPapelaoEmpresaNome(compra && compra._emp_id_consulta)
+      };
+    }).sort(function(a, b) {
+      return String(b && b.data_compra || '').localeCompare(String(a && a.data_compra || ''));
+    });
+  }
   var out = await Promise.all(ids.map(function(empId) {
     var qs = ['emp_id=' + encodeURIComponent(empId)];
     if (dataInicio) qs.push('data_inicio=' + encodeURIComponent(dataInicio));
@@ -6063,7 +6183,7 @@ window._compraPapelaoFetchReport = async function(kind, dataInicio, dataFim) {
 window._compraPapelaoOpenReportModal = function(kind) {
   var overlay = _abrirModalPadrao({
     id: 'ccpx-modal-relatorio',
-    titulo: kind === 'fornecedor' ? 'Compras por Fornecedor' : 'Quantidade e Valor Comprado',
+    titulo: kind === 'fornecedor' ? 'Compras por Fornecedor' : (kind === 'periodo' ? 'Compras de Papelão no Período' : 'Quantidade e Valor Comprado'),
     subtitulo: 'Relatório consolidado da empresa selecionada no topo.',
     largura: '1080px',
     wide: true,
@@ -6106,6 +6226,46 @@ window._compraPapelaoOpenReportModal = function(kind) {
             ];
           }),
           emptyDetailCols: 5
+        };
+      } else if (kind === 'periodo') {
+        var compras = Array.isArray(data) ? data : [];
+        var resumoPeriodo = compras.reduce(function(acc, row) {
+          acc.total_compras += 1;
+          acc.quantidade += window._compraPapelaoNum(row && row.quantidade);
+          acc.area_m2 += window._compraPapelaoNum(row && row.area_m2);
+          acc.valor_total += window._compraPapelaoNum(row && row.valor_total);
+          return acc;
+        }, { total_compras: 0, quantidade: 0, area_m2: 0, valor_total: 0 });
+        if (out) {
+          out.innerHTML = compras.length
+            ? '<div class="ccpx-summary"><div class="ccpx-chip"><div class="lbl">Pedidos</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumoPeriodo.total_compras, 0)) + '</div></div><div class="ccpx-chip"><div class="lbl">Quantidade</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumoPeriodo.quantidade, 0)) + '</div></div><div class="ccpx-chip"><div class="lbl">Área m²</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumoPeriodo.area_m2, 4)) + '</div></div><div class="ccpx-chip"><div class="lbl">Valor Total</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(resumoPeriodo.valor_total)) + '</div></div></div><div class="ccpx-block-scroll" style="margin-top:12px"><table class="ccpx-report-table"><thead><tr><th>Pedido</th><th>Data</th><th>Fornecedor</th><th>Ped. Fornecedor</th><th>Quantidade</th><th>Área m²</th><th>Valor Total</th><th>Empresa</th></tr></thead><tbody>' + compras.map(function(row) {
+                return '<tr><td>' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(row.numero_compra)) + '</td><td>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(row.data_compra)) + '</td><td>' + window._compraPapelaoEsc(row.fornecedor) + '</td><td>' + window._compraPapelaoEsc(row.ped_fornecedor || '—') + '</td><td>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(row.quantidade, 0)) + '</td><td>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(row.area_m2, 4)) + '</td><td>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(row.valor_total)) + '</td><td>' + window._compraPapelaoEsc(row.empresa || '—') + '</td></tr>';
+              }).join('') + '</tbody></table></div>'
+            : '<div class="ccpx-empty">Nenhuma compra encontrada para o período.</div>';
+        }
+        window._compraPapelaoStateRef().report = {
+          title: 'Compras de Papelão no Período',
+          periodo: periodo,
+          cards: [
+            { label: 'Pedidos', value: window._compraPapelaoFmtNum(resumoPeriodo.total_compras, 0), sub: window._compraPapelaoEmpresaLabelAtual() },
+            { label: 'Quantidade', value: window._compraPapelaoFmtNum(resumoPeriodo.quantidade, 0), sub: 'Itens consolidados' },
+            { label: 'Área m²', value: window._compraPapelaoFmtNum(resumoPeriodo.area_m2, 4), sub: 'Área comprada no período' },
+            { label: 'Valor Total', value: window._compraPapelaoFmtMoney(resumoPeriodo.valor_total), sub: 'Financeiro consolidado' }
+          ],
+          detailHeaders: ['Pedido', 'Data', 'Fornecedor', 'Ped. Fornecedor', 'Quantidade', 'Área m²', 'Valor Total', 'Empresa'],
+          detailRows: compras.map(function(row) {
+            return [
+              window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(row.numero_compra)),
+              window._compraPapelaoEsc(window._compraPapelaoFmtDate(row.data_compra)),
+              window._compraPapelaoEsc(row.fornecedor),
+              window._compraPapelaoEsc(row.ped_fornecedor || '—'),
+              window._compraPapelaoEsc(window._compraPapelaoFmtNum(row.quantidade, 0)),
+              window._compraPapelaoEsc(window._compraPapelaoFmtNum(row.area_m2, 4)),
+              window._compraPapelaoEsc(window._compraPapelaoFmtMoney(row.valor_total)),
+              window._compraPapelaoEsc(row.empresa || '—')
+            ];
+          }),
+          emptyDetailCols: 8
         };
       } else {
         var resumo = data || { total_compras: 0, quantidade: 0, area_m2: 0, valor_total: 0 };
@@ -6334,14 +6494,23 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       + '#page-compras .ccp-kpi .lbl{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
       + '#page-compras .ccp-kpi .val{font-size:22px;font-weight:900;color:#f8fafc}'
       + '#page-compras .ccp-kpi .sub{font-size:12px;color:#94a3b8}'
+      + '.ccp-modal-headline{display:grid;gap:12px;padding:18px 20px;border-radius:20px;background:linear-gradient(135deg,rgba(11,37,69,.98),rgba(24,95,165,.88),rgba(239,159,39,.18));border:1px solid rgba(125,211,252,.18);box-shadow:0 18px 40px rgba(2,6,23,.22)}'
+      + '.ccp-modal-step{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(191,219,254,.18);color:#dbeafe;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;width:max-content}'
+      + '.ccp-modal-headline .eyebrow{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#bfdbfe}'
+      + '.ccp-modal-headline .title{font-size:24px;font-weight:900;color:#fff}'
+      + '.ccp-modal-headline .sub{font-size:13px;line-height:1.55;color:rgba(226,232,240,.86)}'
+      + '.ccp-modal-primary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 16px}'
+      + '.ccp-modal-secondary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 16px;padding:16px 18px;border-radius:18px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.48)}'
       + '.ccp-modal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}'
       + '.ccp-modal-field{display:grid;gap:6px}'
       + '.ccp-modal-field.full{grid-column:1 / -1}'
       + '.ccp-modal-field label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
       + '.ccp-modal-field input,.ccp-modal-field select,.ccp-modal-field textarea{width:100%;background:#020617;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:11px 12px;font-size:13px}'
       + '.ccp-modal-field textarea{min-height:88px;resize:vertical}'
-      + '.ccp-modal-items-shell{display:grid;gap:12px;padding:16px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.6)}'
+      + '.ccp-modal-items-shell{display:grid;gap:12px;padding:18px;border-radius:18px;border:1px solid rgba(125,211,252,.16);background:linear-gradient(180deg,rgba(15,23,42,.78),rgba(15,23,42,.62));box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}'
       + '.ccp-modal-items-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}'
+      + '.ccp-modal-items-title{font-size:16px;font-weight:900;color:#f8fafc}'
+      + '.ccp-modal-items-sub{font-size:12px;color:#cbd5e1;max-width:680px;line-height:1.55}'
       + '.ccp-modal-items-title{font-size:14px;font-weight:900;color:#f8fafc}'
       + '.ccp-modal-items-sub{font-size:12px;color:#94a3b8}'
       + '.ccp-modal-items-wrap{overflow:auto;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(2,6,23,.42)}'
@@ -6350,12 +6519,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       + '.ccp-modal-items-table td{padding:10px 12px;border-bottom:1px solid rgba(148,163,184,.12);color:#e2e8f0;font-size:12px}'
       + '.ccp-modal-items-table input{width:100%;background:rgba(255,255,255,.06);color:#f8fafc;border:1px solid rgba(148,163,184,.16);border-radius:10px;padding:9px 10px;font-size:12px}'
       + '.ccp-modal-items-table .num{text-align:right;font-variant-numeric:tabular-nums}'
+      + '.ccp-modal-items-table .editable-num input{text-align:right;font-variant-numeric:tabular-nums}'
       + '.ccp-modal-items-table .danger{background:#7f1d1d;color:#fff;border:1px solid #991b1b;border-radius:10px;padding:8px 10px;cursor:pointer}'
       + '.ccp-modal-summary{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}'
       + '.ccp-modal-summary-chip{display:grid;gap:4px;min-width:150px;padding:12px 14px;border-radius:12px;border:1px solid rgba(148,163,184,.14);background:rgba(2,6,23,.28)}'
       + '.ccp-modal-summary-chip .lbl{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
       + '.ccp-modal-summary-chip .val{font-size:16px;font-weight:900;color:#f8fafc}'
-      + '@media (max-width:900px){.ccp-modal-grid{grid-template-columns:1fr}#page-compras .ccp-search-shell{align-items:stretch}#page-compras .ccp-search-shell button{width:100%}}';
+      + '@media (max-width:900px){.ccp-modal-grid,.ccp-modal-primary-grid,.ccp-modal-secondary-grid{grid-template-columns:1fr}#page-compras .ccp-search-shell{align-items:stretch}#page-compras .ccp-search-shell button{width:100%}}';
     document.head.appendChild(st);
   }
   function cEnsureToolbar() {
@@ -6370,7 +6540,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     toolbar.dataset.ccpActive = '0';
   }
   function cBlankItem() {
-    return { ped_cliente: '', nomenclatura: '', largura: '', comprimento: '', quantidade: '', valor_m2: '' };
+    return { ped_cliente: '', data_entrega: '', po: '', nomenclatura: '', largura: '', comprimento: '', vincos: '', vinco1: '', vinco2: '', vinco3: '', vinco4: '', quantidade: '', lote_minimo: '', area_m2: '', valor_m2: '', valor_total: '', observacao: '', ped_fornecedor: '' };
   }
   function cItemDerived(item) {
     var largura = cNum(item && item.largura);
@@ -6385,6 +6555,48 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       valor_total: total,
       vl_p_mil: mil
     };
+  }
+  function cResolveItemMetrics(item) {
+    var base = cItemDerived(item);
+    var areaManual = item && item.area_m2 != null && String(item.area_m2).trim() !== '';
+    var totalManual = item && item.valor_total != null && String(item.valor_total).trim() !== '';
+    var area = areaManual ? cNum(item.area_m2) : base.area_m2;
+    var total = totalManual ? cNum(item.valor_total) : (area * cNum(item && item.valor_m2));
+    var quantidade = cNum(item && item.quantidade);
+    var mil = quantidade > 0 ? (total / quantidade) * 1000 : 0;
+    return {
+      area_m2: area,
+      valor_total: total,
+      vl_p_mil: mil,
+      auto_area_m2: base.area_m2,
+      auto_valor_total: base.valor_total,
+      area_manual: areaManual,
+      total_manual: totalManual
+    };
+  }
+  function cComposeVincos(item) {
+    var out = [];
+    ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(key) {
+      var val = String(item && item[key] || '').trim();
+      if (val) out.push(val);
+    });
+    if (!out.length) return String(item && item.vincos || '').trim();
+    return out.join('/');
+  }
+  function cFornecedorPedidoLabel(rawName) {
+    var nome = String(rawName || '').replace(/\s+/g, ' ').trim();
+    return 'Pedido ' + (nome || 'Fornecedor');
+  }
+  function cSyncFornecedorDependentUi(overlay) {
+    if (!overlay) return;
+    var fornecedor = String((overlay.querySelector('#ccp-modal-fornecedor') || {}).value || '').trim();
+    var label = cFornecedorPedidoLabel(fornecedor);
+    Array.prototype.slice.call(overlay.querySelectorAll('[data-ccp-fornecedor-label]')).forEach(function(el) {
+      el.textContent = label;
+    });
+    Array.prototype.slice.call(overlay.querySelectorAll('[data-field="ped_fornecedor"]')).forEach(function(input) {
+      input.placeholder = label;
+    });
   }
   function cCompraTotals(compra) {
     return (Array.isArray(compra && compra.itens) ? compra.itens : []).reduce(function(acc, item) {
@@ -6577,34 +6789,45 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
   function cCompraModalRowsHtml(itens) {
     var rows = (Array.isArray(itens) && itens.length ? itens : [cBlankItem()]);
     return rows.map(function(item, idx) {
-      var d = cItemDerived(item);
+      var d = cResolveItemMetrics(item);
+      var areaManual = d.area_manual && Math.abs(d.area_m2 - d.auto_area_m2) > 0.000001;
+      var totalManual = d.total_manual && Math.abs(d.valor_total - d.auto_valor_total) > 0.000001;
       return ''
         + '<tr data-ccp-item-row="' + idx + '">'
         + '  <td><input data-field="ped_cliente" value="' + cAttr(item && item.ped_cliente || '') + '" placeholder="Pedido do cliente"></td>'
-        + '  <td><input data-field="nomenclatura" value="' + cAttr(item && item.nomenclatura || '') + '" placeholder="Nomenclatura"></td>'
-        + '  <td><input data-field="largura" type="number" min="0" step="0.01" value="' + cAttr(item && item.largura || '') + '" placeholder="0"></td>'
-        + '  <td><input data-field="comprimento" type="number" min="0" step="0.01" value="' + cAttr(item && item.comprimento || '') + '" placeholder="0"></td>'
+        + '  <td><input data-field="data_entrega" type="date" value="' + cAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></td>'
+        + '  <td><input data-field="po" value="' + cAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></td>'
+        + '  <td><div style="display:grid;grid-template-columns:minmax(88px,1fr) 14px minmax(88px,1fr);align-items:center"><input data-field="largura" type="number" min="0" step="0.01" value="' + cAttr(item && item.largura || '') + '" placeholder="L"><span style="color:#64748b;font-weight:900;text-align:center">×</span><input data-field="comprimento" type="number" min="0" step="0.01" value="' + cAttr(item && item.comprimento || '') + '" placeholder="C"></div></td>'
+        + '  <td><div style="display:grid;grid-template-columns:repeat(4,minmax(56px,1fr));gap:4px"><input data-field="vinco1" value="' + cAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + cAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + cAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + cAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></td>'
         + '  <td><input data-field="quantidade" type="number" min="0" step="1" value="' + cAttr(item && item.quantidade || '') + '" placeholder="0"></td>'
+        + '  <td><input data-field="lote_minimo" type="number" min="0" step="1" value="' + cAttr(item && item.lote_minimo || '') + '" placeholder="0"></td>'
+        + '  <td class="editable-num"><input data-field="area_m2"' + (areaManual ? ' data-ccp-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + cAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : d.area_m2.toFixed(4)) + '"></td>'
         + '  <td><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + cAttr(item && item.valor_m2 || '') + '" placeholder="0,00"></td>'
-        + '  <td class="num" data-ccp-area>' + cEsc(cFmtNum(d.area_m2, 4)) + '</td>'
-        + '  <td class="num" data-ccp-total>' + cEsc(cFmtRs(d.valor_total)) + '</td>'
         + '  <td class="num" data-ccp-mil>' + cEsc(cFmtRs(d.vl_p_mil)) + '</td>'
+        + '  <td class="editable-num"><input data-field="valor_total"' + (totalManual ? ' data-ccp-manual="1"' : '') + ' type="number" min="0" step="0.01" value="' + cAttr(item && item.valor_total != null && String(item.valor_total).trim() !== '' ? item.valor_total : d.valor_total.toFixed(2)) + '"></td>'
+        + '  <td><textarea data-field="observacao" rows="1" placeholder="Observações">' + cEsc(item && item.observacao || '') + '</textarea></td>'
+        + '  <td><input data-field="ped_fornecedor" value="' + cAttr(item && item.ped_fornecedor || '') + '" placeholder="' + cAttr(cFornecedorPedidoLabel('')) + '"></td>'
         + '  <td><button type="button" class="danger" data-ccp-item-del="' + idx + '">Remover</button></td>'
         + '</tr>';
     }).join('');
   }
   function cCompraModalHtml(compra) {
+    var fornecedorLabel = cFornecedorPedidoLabel(compra && compra.fornecedor || '');
     return ''
-      + '<div class="ccp-modal-grid">'
+      + '<div class="ccp-modal-headline"><div class="eyebrow">Pedido de Chapas</div><div class="ccp-modal-step">Etapa 1 · Cabeçalho da Compra</div><div class="title">Compra de Papelão com planilha na ordem operacional</div><div class="sub">Pedido, data e fornecedor ficam no topo; os itens seguem a sequência da planilha com PO, medidas, vincos, lote mínimo, área, valor por m², valor por mil e total.</div></div>'
+      + '<div class="ccp-modal-primary-grid">'
+      + '  <div class="ccp-modal-field"><label>Pedido</label><input id="ccp-modal-numero" value="' + cAttr(compra && compra.numero_compra || 'Automático') + '" disabled></div>'
+      + '  <div class="ccp-modal-field"><label>Data</label><input id="ccp-modal-data" type="date" value="' + cAttr(String(compra && (compra.data_compra || compra.data || '') || '').slice(0, 10)) + '"></div>'
       + '  <div class="ccp-modal-field"><label>Fornecedor</label><input id="ccp-modal-fornecedor" value="' + cAttr(compra && compra.fornecedor || '') + '" placeholder="Fornecedor"></div>'
-      + '  <div class="ccp-modal-field"><label>Pedido do fornecedor</label><input id="ccp-modal-pedforn" value="' + cAttr(compra && compra.ped_fornecedor || '') + '" placeholder="Pedido do fornecedor"></div>'
+      + '</div>'
+      + '<div class="ccp-modal-secondary-grid">'
       + '  <div class="ccp-modal-field"><label>Pasta</label><select id="ccp-modal-pasta">' + cFolderOptionsHtml(compra && compra.pasta_id, true) + '</select></div>'
-      + '  <div class="ccp-modal-field"><label>Número</label><input id="ccp-modal-numero" value="' + cAttr(compra && compra.numero_compra || 'Automático') + '" disabled></div>'
-      + '  <div class="ccp-modal-field full"><label>Observação</label><textarea id="ccp-modal-obs" placeholder="Observações da compra">' + cEsc(compra && compra.observacao || '') + '</textarea></div>'
+      + '  <div class="ccp-modal-field"><label>Pedido Geral do Fornecedor</label><input id="ccp-modal-pedforn" value="' + cAttr(compra && compra.ped_fornecedor || '') + '" placeholder="Pedido do fornecedor"></div>'
+      + '  <div class="ccp-modal-field"><label>Observação</label><textarea id="ccp-modal-obs" placeholder="Observações da compra">' + cEsc(compra && compra.observacao || '') + '</textarea></div>'
       + '</div>'
       + '<div class="ccp-modal-items-shell" style="margin-top:18px">'
-      + '  <div class="ccp-modal-items-head"><div><div class="ccp-modal-items-title">Itens da Compra</div><div class="ccp-modal-items-sub">Adicione as linhas e acompanhe os cálculos de área, total e valor por mil direto no modal.</div></div><button type="button" class="pep-btn" id="ccp-modal-add-item">＋ Adicionar Item</button></div>'
-      + '  <div class="ccp-modal-items-wrap"><table class="ccp-modal-items-table"><thead><tr><th>Ped. cliente</th><th>Nomenclatura</th><th>Largura</th><th>Comprimento</th><th>Quantidade</th><th>Valor/m²</th><th class="num">Área m²</th><th class="num">Valor total</th><th class="num">R$/mil</th><th>Ação</th></tr></thead><tbody id="ccp-modal-items-body">' + cCompraModalRowsHtml(compra && compra.itens || []) + '</tbody></table></div>'
+      + '  <div class="ccp-modal-items-head"><div><div class="ccp-modal-step">Etapa 2 · Itens da Compra</div><div class="ccp-modal-items-title">Planilha operacional da compra</div><div class="ccp-modal-items-sub">Adicione Pedido Cliente, Entrega, PO, medidas, vincos, quantidade, lote mínimo, área, valor por m², valor por mil e valor total no mesmo modal, sem depender de uma segunda tela.</div></div><button type="button" class="pep-btn" id="ccp-modal-add-item">＋ Adicionar Item</button></div>'
+      + '  <div class="ccp-modal-items-wrap"><table class="ccp-modal-items-table"><thead><tr><th>Pedido Cliente</th><th>Entrega</th><th>PO</th><th>Medidas L × C</th><th>Vincos</th><th>Qtde</th><th>Lote Mínimo</th><th class="num">Área Pedido</th><th>Valor/m²</th><th class="num">Valor p/mil</th><th class="num">Valor Total</th><th>Obs</th><th data-ccp-fornecedor-label>' + cEsc(fornecedorLabel) + '</th><th>Ação</th></tr></thead><tbody id="ccp-modal-items-body">' + cCompraModalRowsHtml(compra && compra.itens || []) + '</tbody></table></div>'
       + '  <div class="ccp-modal-summary">'
       + '    <div class="ccp-modal-summary-chip"><div class="lbl">Quantidade</div><div class="val" id="ccp-modal-sum-qtd">0</div></div>'
       + '    <div class="ccp-modal-summary-chip"><div class="lbl">Área</div><div class="val" id="ccp-modal-sum-area">0,0000 m²</div></div>'
@@ -6614,16 +6837,33 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
   }
   function cCollectModalRows(overlay) {
     return Array.prototype.slice.call(overlay.querySelectorAll('#ccp-modal-items-body tr[data-ccp-item-row]')).map(function(row) {
-      return {
+      var item = {
         ped_cliente: String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim(),
-        nomenclatura: String((row.querySelector('[data-field="nomenclatura"]') || {}).value || '').trim(),
+        data_entrega: String((row.querySelector('[data-field="data_entrega"]') || {}).value || '').trim(),
+        po: String((row.querySelector('[data-field="po"]') || {}).value || '').trim(),
         largura: String((row.querySelector('[data-field="largura"]') || {}).value || '').trim(),
         comprimento: String((row.querySelector('[data-field="comprimento"]') || {}).value || '').trim(),
+        vinco1: String((row.querySelector('[data-field="vinco1"]') || {}).value || '').trim(),
+        vinco2: String((row.querySelector('[data-field="vinco2"]') || {}).value || '').trim(),
+        vinco3: String((row.querySelector('[data-field="vinco3"]') || {}).value || '').trim(),
+        vinco4: String((row.querySelector('[data-field="vinco4"]') || {}).value || '').trim(),
         quantidade: String((row.querySelector('[data-field="quantidade"]') || {}).value || '').trim(),
-        valor_m2: String((row.querySelector('[data-field="valor_m2"]') || {}).value || '').trim()
+        lote_minimo: String((row.querySelector('[data-field="lote_minimo"]') || {}).value || '').trim(),
+        area_m2: String((row.querySelector('[data-field="area_m2"]') || {}).value || '').trim(),
+        valor_m2: String((row.querySelector('[data-field="valor_m2"]') || {}).value || '').trim(),
+        valor_total: String((row.querySelector('[data-field="valor_total"]') || {}).value || '').trim(),
+        observacao: String((row.querySelector('[data-field="observacao"]') || {}).value || '').trim(),
+        ped_fornecedor: String((row.querySelector('[data-field="ped_fornecedor"]') || {}).value || '').trim()
       };
+      var metrics = cResolveItemMetrics(item);
+      item.vincos = cComposeVincos(item);
+      item.nomenclatura = item.po;
+      item.area_m2 = metrics.area_m2;
+      item.valor_total = metrics.valor_total;
+      item.vl_p_mil = metrics.vl_p_mil;
+      return item;
     }).filter(function(item) {
-      return item.ped_cliente || item.nomenclatura || item.largura || item.comprimento || item.quantidade || item.valor_m2;
+      return item.ped_cliente || item.data_entrega || item.po || item.largura || item.comprimento || item.vincos || item.quantidade || item.lote_minimo || item.area_m2 || item.valor_m2 || item.valor_total || item.observacao || item.ped_fornecedor;
     });
   }
   function cRefreshCompraModalComputed(overlay) {
@@ -6636,17 +6876,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
         largura: (row.querySelector('[data-field="largura"]') || {}).value,
         comprimento: (row.querySelector('[data-field="comprimento"]') || {}).value,
         quantidade: (row.querySelector('[data-field="quantidade"]') || {}).value,
-        valor_m2: (row.querySelector('[data-field="valor_m2"]') || {}).value
+        area_m2: (row.querySelector('[data-field="area_m2"]') || {}).value,
+        valor_m2: (row.querySelector('[data-field="valor_m2"]') || {}).value,
+        valor_total: (row.querySelector('[data-field="valor_total"]') || {}).value
       };
-      var d = cItemDerived(item);
+      var d = cResolveItemMetrics(item);
       totalQtd += cNum(item.quantidade);
       totalArea += d.area_m2;
       totalValor += d.valor_total;
-      var areaEl = row.querySelector('[data-ccp-area]');
-      var totalEl = row.querySelector('[data-ccp-total]');
+      var areaEl = row.querySelector('[data-field="area_m2"]');
+      var totalEl = row.querySelector('[data-field="valor_total"]');
       var milEl = row.querySelector('[data-ccp-mil]');
-      if (areaEl) areaEl.textContent = cFmtNum(d.area_m2, 4);
-      if (totalEl) totalEl.textContent = cFmtRs(d.valor_total);
+      if (areaEl && (areaEl.dataset.ccpManual !== '1' || !String(areaEl.value || '').trim())) areaEl.value = d.area_m2.toFixed(4);
+      if (totalEl && (totalEl.dataset.ccpManual !== '1' || !String(totalEl.value || '').trim())) totalEl.value = d.valor_total.toFixed(2);
       if (milEl) milEl.textContent = cFmtRs(d.vl_p_mil);
     });
     var q = overlay.querySelector('#ccp-modal-sum-qtd');
@@ -6661,6 +6903,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     if (!tbody) return;
     tbody.innerHTML = cCompraModalRowsHtml(items);
     cRefreshCompraModalComputed(overlay);
+    cSyncFornecedorDependentUi(overlay);
   }
   function cCollectCompraPayload(overlay) {
     return {
@@ -6668,6 +6911,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       ped_fornecedor: String((overlay.querySelector('#ccp-modal-pedforn') || {}).value || '').trim(),
       pasta_id: String((overlay.querySelector('#ccp-modal-pasta') || {}).value || '').trim() || null,
       observacao: String((overlay.querySelector('#ccp-modal-obs') || {}).value || '').trim(),
+      data_compra: String((overlay.querySelector('#ccp-modal-data') || {}).value || '').trim(),
       emp_id: cEmpId(),
       itens: cCollectModalRows(overlay)
     };
@@ -6724,12 +6968,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       });
       if (!overlay) return;
       cRefreshCompraModalComputed(overlay);
+      cSyncFornecedorDependentUi(overlay);
       var addBtn = overlay.querySelector('#ccp-modal-add-item');
       if (addBtn) addBtn.onclick = function() {
         var itens = cCollectModalRows(overlay);
         itens.push(cBlankItem());
         cRenderCompraModalRows(overlay, itens);
       };
+      var fornecedorEl = overlay.querySelector('#ccp-modal-fornecedor');
+      if (fornecedorEl) {
+        fornecedorEl.addEventListener('input', function() {
+          cSyncFornecedorDependentUi(overlay);
+        });
+      }
       var tbody = overlay.querySelector('#ccp-modal-items-body');
       if (tbody) {
         tbody.addEventListener('click', function(ev) {
@@ -6741,7 +6992,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
           if (!itens.length) itens.push(cBlankItem());
           cRenderCompraModalRows(overlay, itens);
         });
-        tbody.addEventListener('input', function() { cRefreshCompraModalComputed(overlay); });
+        tbody.addEventListener('input', function(ev) {
+          var field = String((ev && ev.target && ev.target.getAttribute && ev.target.getAttribute('data-field')) || '').trim();
+          if (field === 'area_m2' || field === 'valor_total') {
+            ev.target.dataset.ccpManual = String(ev.target.value || '').trim() ? '1' : '';
+          }
+          cRefreshCompraModalComputed(overlay);
+          cSyncFornecedorDependentUi(overlay);
+        });
       }
       var saveBtn = overlay.querySelector('#ccp-modal-save');
       if (saveBtn) saveBtn.onclick = function() { cSalvarCompraModal(compraId || null); };
@@ -7468,7 +7726,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     st.id = 'patch-orc-pastas-style';
     st.textContent = ''
       + '#page-orcamentos #orc-pastas-panel{display:grid;gap:14px;margin:10px 0 16px}'
-      + '#page-orcamentos .orc-search-shell{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:linear-gradient(135deg,rgba(21,128,61,.9),rgba(22,163,74,.82));border:1px solid rgba(134,239,172,.22);border-radius:18px;padding:14px 16px;box-shadow:0 18px 48px rgba(0,0,0,.24)}'
+      + '#page-orcamentos .orc-search-shell{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:linear-gradient(135deg,#064e3b 0%,#047857 46%,#1d4ed8 100%);border:1px solid rgba(110,231,183,.22);border-radius:22px;padding:16px 18px;box-shadow:0 22px 56px rgba(0,0,0,.28)}'
       + '#page-orcamentos .orc-search-shell input{flex:1;min-width:280px;background:rgba(255,255,255,.14);color:#f8fafc;border:1px solid rgba(255,255,255,.24);border-radius:12px;padding:12px 14px;font-size:13px;font-weight:700}'
       + '#page-orcamentos .orc-search-shell input::placeholder{color:rgba(240,253,244,.84)}'
       + '#page-orcamentos .orc-search-shell button{background:#052e16;color:#f0fdf4;border:1px solid rgba(240,253,244,.18);border-radius:12px;padding:12px 18px;font-weight:900;cursor:pointer}'
@@ -7479,7 +7737,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#page-orcamentos .orc-pastas-strip::-webkit-scrollbar-thumb{background:rgba(96,165,250,.48);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
       + '#page-orcamentos .orc-pastas-strip{scrollbar-width:thin;scrollbar-color:rgba(96,165,250,.48) rgba(15,23,42,.72)}'
       + '#page-orcamentos .orc-pastas-grid{display:flex;gap:12px;min-width:max-content}'
-      + '#page-orcamentos .orc-pasta-card{min-width:220px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);border-radius:16px;padding:14px;display:grid;gap:8px;cursor:pointer;transition:.16s ease;flex:0 0 auto;text-align:left}'
+      + '#page-orcamentos .orc-pasta-card{min-width:220px;background:linear-gradient(180deg,rgba(15,23,42,.94),rgba(15,23,42,.76));border:1px solid rgba(110,231,183,.14);border-radius:18px;padding:16px;display:grid;gap:8px;cursor:pointer;transition:.16s ease;flex:0 0 auto;text-align:left;box-shadow:0 14px 32px rgba(2,6,23,.18)}'
       + '#page-orcamentos .orc-pasta-card:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.38)}'
       + '#page-orcamentos .orc-pasta-card.is-active{border-color:rgba(96,165,250,.55);box-shadow:0 0 0 1px rgba(96,165,250,.22) inset}'
       + '#page-orcamentos .orc-pasta-head{display:flex;align-items:center;justify-content:space-between;gap:8px}'
@@ -7489,8 +7747,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#page-orcamentos .orc-folder-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(59,130,246,.14);color:#bfdbfe;border:1px solid rgba(59,130,246,.25);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700}'
       + '#page-orcamentos .orc-folder-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}'
       + '#page-orcamentos .orc-folder-row select{min-width:180px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px}'
-      + '#page-orcamentos .orc-table-shell{display:grid;gap:10px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:14px}'
+      + '#page-orcamentos .orc-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px}'
+      + '#page-orcamentos .orc-summary-card{display:grid;gap:6px;padding:18px;border-radius:18px;background:linear-gradient(180deg,rgba(15,23,42,.94),rgba(15,23,42,.74));border:1px solid rgba(148,163,184,.16);box-shadow:0 18px 38px rgba(2,6,23,.22)}'
+      + '#page-orcamentos .orc-summary-card:nth-child(1){background:linear-gradient(135deg,rgba(6,78,59,.96),rgba(16,185,129,.22));border-color:rgba(110,231,183,.22)}'
+      + '#page-orcamentos .orc-summary-card:nth-child(2){background:linear-gradient(135deg,rgba(30,64,175,.94),rgba(59,130,246,.18));border-color:rgba(147,197,253,.2)}'
+      + '#page-orcamentos .orc-summary-card:nth-child(3){background:linear-gradient(135deg,rgba(88,28,135,.92),rgba(168,85,247,.16));border-color:rgba(216,180,254,.18)}'
+      + '#page-orcamentos .orc-summary-card:nth-child(4){background:linear-gradient(135deg,rgba(120,53,15,.92),rgba(249,115,22,.14));border-color:rgba(253,186,116,.18)}'
+      + '#page-orcamentos .orc-summary-card .lbl{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#86efac}'
+      + '#page-orcamentos .orc-summary-card .val{font-size:24px;font-weight:900;color:#f8fafc}'
+      + '#page-orcamentos .orc-summary-card .sub{font-size:12px;color:#94a3b8}'
+      + '#page-orcamentos .orc-table-shell{display:grid;gap:12px;background:linear-gradient(180deg,rgba(15,23,42,.88),rgba(15,23,42,.74));border:1px solid rgba(110,231,183,.12);border-radius:20px;padding:18px;box-shadow:0 18px 42px rgba(2,6,23,.2)}'
+      + '#page-orcamentos .orc-table-headline{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}'
       + '#page-orcamentos .orc-table-title{font-size:16px;font-weight:900;color:#f8fafc}'
+      + '#page-orcamentos .orc-table-sub{font-size:12px;color:#94a3b8;max-width:760px;line-height:1.5}'
       + '#page-orcamentos .orc-table-wrap{overflow:auto;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(2,6,23,.48)}'
       + '#page-orcamentos .orc-table-wrap::-webkit-scrollbar{width:10px;height:10px}'
       + '#page-orcamentos .orc-table-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72)}'
@@ -7500,6 +7769,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#page-orcamentos .orc-table td{padding:13px 14px;border-bottom:1px solid rgba(148,163,184,.12);font-size:13px;color:#e2e8f0;vertical-align:middle}'
       + '#page-orcamentos .orc-table tbody tr:hover td{background:rgba(148,163,184,.06)}'
       + '#page-orcamentos .orc-table .num{text-align:right;font-variant-numeric:tabular-nums}'
+      + '#page-orcamentos .orc-row-stack{display:grid;gap:4px}'
+      + '#page-orcamentos .orc-row-stack strong{font-size:13px;color:#f8fafc}'
+      + '#page-orcamentos .orc-row-stack span{font-size:11px;color:#94a3b8}'
+      + '#page-orcamentos .orc-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.22);color:#bbf7d0;font-size:11px;font-weight:800}'
+      + '#page-orcamentos .orc-pill.is-muted{background:rgba(148,163,184,.12);border-color:rgba(148,163,184,.18);color:#cbd5e1}'
+      + '#page-orcamentos .orc-chapa-cell{max-width:240px;white-space:normal;line-height:1.45}'
+      + '#page-orcamentos .orc-value-strong{font-size:15px;font-weight:900;color:#f8fafc}'
       + '#page-orcamentos .orc-table-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
       + '#page-orcamentos .orc-table-actions button{padding:6px 10px;border-radius:9px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:700}'
       + '#page-orcamentos .orc-table-actions button.primary{background:var(--accent);color:#fff;border-color:transparent}'
@@ -7508,6 +7784,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#page-orcamentos #calc-pasta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-2px 0 12px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px}'
       + '#page-orcamentos #calc-pasta-row label{font-size:12px;font-weight:800;color:rgba(255,255,255,.72);text-transform:uppercase;letter-spacing:.04em}'
       + '#page-orcamentos #calc-pasta{min-width:240px;flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px}'
+      + '#modal-calc #modal-calculadora{background:linear-gradient(180deg,#0f172a,#111827)!important;border:1px solid rgba(148,163,184,.18)!important;border-radius:22px!important;box-shadow:0 26px 70px rgba(2,6,23,.42)!important}'
+      + '#modal-calc #modal-calculadora h2{font-size:24px!important;font-weight:900!important;color:#f8fafc!important}'
+      + '#modal-calc #modal-calculadora .calc-row-top,#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores,#modal-calc #modal-calculadora #calc-extra-fields,#modal-calc #modal-calculadora .calc-col-dir{padding:14px!important;border-radius:16px!important;border:1px solid rgba(148,163,184,.14)!important;background:rgba(15,23,42,.58)!important}'
+      + '#modal-calc #modal-calculadora .calc-col-dir{display:grid!important;gap:12px!important}'
+      + '#modal-calc #modal-calculadora #wrap-calc-nome-orcamento,#modal-calc #modal-calculadora #wrap-calc-chapa-utilizada,#modal-calc #modal-calculadora #calc-pasta-row{padding:14px 16px!important;border-radius:14px!important;background:rgba(2,6,23,.38)!important;border:1px solid rgba(148,163,184,.14)!important}'
+      + '#modal-calc #modal-calculadora input,#modal-calc #modal-calculadora select,#modal-calc #modal-calculadora textarea{background:#020617!important;border:1px solid rgba(148,163,184,.2)!important;border-radius:12px!important;color:#f8fafc!important}'
+      + '#modal-calc #modal-calculadora .modal-footer.rodape button{border-radius:12px!important;font-weight:900!important}'
       + '#orc-pasta-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100001;align-items:center;justify-content:center;padding:16px}'
       + '#orc-pasta-modal .box{width:min(460px,96vw);background:#0f172a;border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:18px;display:grid;gap:12px}'
       + '#orc-pasta-modal .ttl{font-size:16px;font-weight:900;color:#f8fafc}'
@@ -8143,15 +8426,26 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     renderFoldersPanel(lista);
     lista = lista.filter(filterMatches).filter(matchSearch);
     var filter = currentFilter();
+    var totalValor = lista.reduce(function(sum, orc) {
+      return sum + (Number(orc && (orc.valor_total != null ? orc.valor_total : (orc.vtot != null ? orc.vtot : 0)) || 0) || 0);
+    }, 0);
+    var totalSemPasta = lista.filter(function(orc) { return !folderIdOf(orc); }).length;
+    var totalComChapa = lista.filter(function(orc) { return !!chapaUtilizadaOf(orc); }).length;
+    var summaryHtml = '<div class="orc-summary-grid">'
+      + '<div class="orc-summary-card"><div class="lbl">Orçamentos</div><div class="val">' + esc(String(lista.length)) + '</div><div class="sub">Registros visíveis com os filtros atuais</div></div>'
+      + '<div class="orc-summary-card"><div class="lbl">Valor Total</div><div class="val">' + esc(fmtMoney(totalValor)) + '</div><div class="sub">Somatório dos orçamentos listados</div></div>'
+      + '<div class="orc-summary-card"><div class="lbl">Sem Pasta</div><div class="val">' + esc(String(totalSemPasta)) + '</div><div class="sub">Itens ainda sem organização em pasta</div></div>'
+      + '<div class="orc-summary-card"><div class="lbl">Com Chapa</div><div class="val">' + esc(String(totalComChapa)) + '</div><div class="sub">Orçamentos com chapa interna preenchida</div></div>'
+      + '</div>';
     if (!lista.length) {
       var msg = filter === '__sem_pasta'
         ? 'Nenhum orçamento sem pasta.'
         : (filter.indexOf('id:') === 0 ? 'Nenhum orçamento encontrado nesta pasta.' : 'Nenhum orçamento.');
-      body.innerHTML = '<div class="orc-table-shell"><div class="orc-table-title">Detalhamento de Orçamentos:</div><div class="orc-empty">' + esc(msg) + '</div></div>';
+      body.innerHTML = summaryHtml + '<div class="orc-table-shell"><div class="orc-table-title">Detalhamento de Orçamentos:</div><div class="orc-empty">' + esc(msg) + '</div></div>';
       return;
     }
-    body.innerHTML = '<div class="orc-table-shell">'
-      + '  <div class="orc-table-title">Detalhamento de Orçamentos:</div>'
+    body.innerHTML = summaryHtml + '<div class="orc-table-shell">'
+      + '  <div class="orc-table-headline"><div><div class="orc-table-title">Detalhamento de Orçamentos</div><div class="orc-table-sub">Listagem com foco em leitura rápida, organização por pasta e acesso direto às ações principais sem mudar o fluxo de edição, impressão, versões e exclusão.</div></div></div>'
       + '  <div class="orc-table-wrap">'
       + '    <table class="orc-table">'
       + '      <thead><tr>'
@@ -8181,19 +8475,21 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       var badge = pastaId
         ? '<span class="orc-folder-badge">📁 ' + esc(pastaNome || 'Pasta') + '</span>'
         : '<span class="orc-folder-badge" style="background:rgba(148,163,184,.12);color:#cbd5e1;border-color:rgba(148,163,184,.18)">Sem pasta</span>';
+      var ondaBadge = onda && onda !== '—'
+        ? '<span class="orc-pill">' + esc(onda) + '</span>'
+        : '<span class="orc-pill is-muted">Sem onda</span>';
       return ''
         + '<tr>'
-        + '  <td><strong style="color:#f8fafc">Nº ' + esc(num) + '</strong></td>'
-        + '  <td>' + esc(nome) + '</td>'
-        + '  <td>' + esc(cliente) + '</td>'
-        + '  <td>' + esc(medidas) + '</td>'
-        + '  <td>' + esc(onda) + '</td>'
-        + '  <td>' + esc(chapa) + '</td>'
-        + '  <td class="num">' + esc(String(qtd)) + '</td>'
-        + '  <td class="num">' + esc(fmtMoney(vtot)) + '</td>'
+        + '  <td><div class="orc-row-stack"><strong>Nº ' + esc(num) + '</strong><span>' + esc(id ? ('ID ' + id.slice(0, 8)) : 'Sem ID') + '</span></div></td>'
+        + '  <td><div class="orc-row-stack"><strong>' + esc(nome) + '</strong><span>' + badge + '</span></div></td>'
+        + '  <td><div class="orc-row-stack"><strong>' + esc(cliente) + '</strong><span>Cliente vinculado ao orçamento</span></div></td>'
+        + '  <td><div class="orc-row-stack"><strong>' + esc(medidas) + '</strong><span>Dimensões e descrição de referência</span></div></td>'
+        + '  <td>' + ondaBadge + '</td>'
+        + '  <td><div class="orc-chapa-cell">' + esc(chapa) + '</div></td>'
+        + '  <td class="num"><span class="orc-value-strong">' + esc(String(qtd)) + '</span></td>'
+        + '  <td class="num"><span class="orc-value-strong">' + esc(fmtMoney(vtot)) + '</span></td>'
         + '  <td>'
         + '    <div class="orc-table-actions">'
-        +        badge
         + '      <select onchange="orcMoverParaPasta(\'' + escAttr(id) + '\', this.value)">' + folderOptionsHtml(pastaId) + '</select>'
         + '      <button type="button" class="primary" onclick="abrirCalculadoraComOrc(\'' + escAttr(id) + '\')">✏️ Editar</button>'
         + '      <button type="button" onclick="imprimirOrcamentoId(\'' + escAttr(id) + '\')">🖨 Imprimir</button>'
@@ -18088,13 +18384,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-final-chip[data-tone="danger"]{border-color:rgba(248,113,113,.38);color:#fecaca}'
         + '#page-ofmaq .ofmaq-final-chip[data-tone="warn"]{border-color:rgba(251,191,36,.38);color:#fde68a}'
         + '#page-ofmaq .ofmaq-final-table-wrap{overflow:auto;border-radius:16px;border:1px solid rgba(51,65,85,.85);background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(15,23,42,.88));box-shadow:0 20px 36px rgba(2,6,23,.22)}'
-        + '#page-ofmaq .ofmaq-final-table{width:100%;min-width:1280px;border-collapse:separate;border-spacing:0}'
+        + '#page-ofmaq .ofmaq-final-table{width:100%;min-width:1480px;border-collapse:separate;border-spacing:0}'
         + '#page-ofmaq .ofmaq-final-table thead th{position:sticky;top:0;z-index:2;padding:14px 12px;background:rgba(15,23,42,.98);border-bottom:1px solid rgba(71,85,105,.85);font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#64748b;text-align:left;white-space:nowrap}'
         + '#page-ofmaq .ofmaq-final-table tbody td{padding:12px;border-bottom:1px solid rgba(51,65,85,.45);font-size:13px;line-height:1.4;color:#e2e8f0;vertical-align:middle}'
         + '#page-ofmaq .ofmaq-final-row[data-urgencia="urgente"] td{background-image:linear-gradient(90deg,rgba(127,29,29,.16),transparent)}'
         + '#page-ofmaq .ofmaq-final-row[data-urgencia="atrasada"] td{background-image:linear-gradient(90deg,rgba(120,53,15,.16),transparent)}'
-        + '#page-ofmaq .ofmaq-final-seq{width:64px;max-width:64px;text-align:center}'
-        + '#page-ofmaq .ofmaq-final-seq-badge{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;padding:0 10px;border-radius:12px;background:rgba(37,99,235,.18);border:1px solid rgba(96,165,250,.34);color:#dbeafe;font-size:15px;font-weight:900}'
+        + '#page-ofmaq .ofmaq-final-seq{width:84px;max-width:84px;text-align:center}'
+        + '#page-ofmaq .ofmaq-final-seq-input{width:72px;min-height:40px;padding:6px 10px;text-align:center;border-radius:12px;border:1px solid rgba(96,165,250,.34);background:rgba(37,99,235,.18);color:#dbeafe;font-size:15px;font-weight:900;outline:none;box-shadow:none}'
+        + '#page-ofmaq .ofmaq-final-seq-input:focus{border-color:#93c5fd;background:rgba(37,99,235,.26);box-shadow:0 0 0 3px rgba(59,130,246,.18)}'
+        + '#page-ofmaq .ofmaq-final-status{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:900;letter-spacing:.04em;text-transform:uppercase}'
+        + '#page-ofmaq .ofmaq-final-status[data-tone="ok"]{background:rgba(34,197,94,.14);border:1px solid rgba(74,222,128,.28);color:#bbf7d0}'
+        + '#page-ofmaq .ofmaq-final-status[data-tone="warn"]{background:rgba(245,158,11,.14);border:1px solid rgba(251,191,36,.28);color:#fde68a}'
+        + '#page-ofmaq .ofmaq-final-status[data-tone="danger"]{background:rgba(239,68,68,.14);border:1px solid rgba(248,113,113,.28);color:#fecaca}'
         + '#page-ofmaq .ofmaq-final-thumb,#page-ofmaq .ofmaq-final-thumb-fallback{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:10px;background:#1e293b;overflow:hidden;border:1px solid rgba(148,163,184,.18)}'
         + '#page-ofmaq .ofmaq-final-thumb img{width:42px;height:42px;object-fit:cover;display:block}'
         + '#page-ofmaq .ofmaq-final-cell strong{display:block;font-size:14px;color:#f8fafc}'
@@ -18105,12 +18406,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-final-empty{padding:26px 20px;color:#94a3b8;text-align:center}'
         + '#page-ofmaq .ofmaq-final-actions{display:flex;justify-content:flex-end}'
         + '#page-ofmaq .ofmaq-final-actions button{min-height:34px}'
-        + '.ofmaq-final-modal .body button.ofmaq-final-action-primary{background:#1d4ed8;border-color:#60a5fa;color:#eff6ff}'
-        + '.ofmaq-final-modal .body .ofmaq-final-move-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
+        + '.ofmaq-final-modal .body button{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:46px;padding:12px 14px;border-radius:14px;border:1px solid rgba(71,85,105,.55);background:rgba(15,23,42,.78);color:#f8fafc;font-size:14px;font-weight:800;cursor:pointer}'
+        + '.ofmaq-final-modal .body button span{display:inline-flex;align-items:center;gap:10px}'
+        + '.ofmaq-final-modal .body button small{font-size:11px;font-weight:800;letter-spacing:.04em;color:#94a3b8;text-transform:uppercase}'
+        + '.ofmaq-final-modal .body button.ofmaq-final-action-primary{background:linear-gradient(135deg,#1d4ed8,#2563eb);border-color:#60a5fa;color:#eff6ff}'
+        + '.ofmaq-final-modal .body button.ofmaq-final-action-secondary{background:rgba(30,41,59,.96);border-color:rgba(148,163,184,.22);color:#e2e8f0}'
+        + '.ofmaq-final-modal .body button.ofmaq-final-action-tertiary{background:rgba(15,23,42,.58);border-color:rgba(71,85,105,.4);color:#cbd5e1}'
+        + '.ofmaq-final-modal .body .ofmaq-final-move-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}'
         + '.ofmaq-final-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998}'
-        + '.ofmaq-final-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#1e293b;border-radius:14px;padding:24px;min-width:320px;max-width:min(92vw,720px);color:#f8fafc;box-shadow:0 24px 70px rgba(0,0,0,.35)}'
-        + '.ofmaq-final-modal .body{display:grid;gap:10px;margin-top:14px}'
-        + '.ofmaq-final-modal .close-btn{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:999px}'
+        + '.ofmaq-final-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#1e293b;border-radius:18px;padding:30px;min-width:420px;min-height:280px;max-width:min(92vw,860px);color:#f8fafc;box-shadow:0 30px 80px rgba(0,0,0,.42)}'
+        + '.ofmaq-final-modal h3{margin:0;padding-right:44px;font-size:22px;line-height:1.2}'
+        + '.ofmaq-final-modal .body{display:grid;gap:14px;margin-top:18px}'
+        + '.ofmaq-final-modal .close-btn{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:999px}'
         + '@media (max-width:1200px){#page-ofmaq .ofmaq-final-controls{grid-template-columns:1fr;}}';
       document.head.appendChild(st);
     }
@@ -18193,7 +18500,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '  <div id="ofmaq-final-summary" class="ofmaq-final-summary"></div>'
           + '</div>'
           + '<div id="ofmaq-final-redistribuicao" class="ofmaq-final-redistribuicao"></div>'
-          + '<div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table"><thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Cliente</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead><tbody id="ofmaq-final-tbody"></tbody></table></div>';
+          + '<div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table"><thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Data de Entrega</th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead><tbody id="ofmaq-final-tbody"></tbody></table></div>';
         container.insertBefore(root, container.firstChild || null);
       }
       purgeLegacyViews();
@@ -18292,12 +18599,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var img = item.imagemUrl
         ? ('<button type="button" class="ofmaq-final-thumb" data-ofmaq-final-image="' + escAttr(item.id) + '"><img src="' + escAttr(item.imagemUrl) + '" alt="Imagem da OF"></button>')
         : '<span class="ofmaq-final-thumb-fallback">📦</span>';
+      var statusTone = item.urgencia === 'urgente' ? 'danger' : (item.urgencia === 'atrasada' ? 'warn' : 'ok');
+      var statusText = item.urgencia === 'urgente' ? 'Urgente' : (item.urgencia === 'atrasada' ? 'Atrasada' : 'Normal');
       return ''
         + '<tr class="ofmaq-final-row" data-of-id="' + escAttr(item.id) + '" data-urgencia="' + escAttr(item.urgencia) + '">'
-        + '<td class="ofmaq-final-seq"><span class="ofmaq-final-seq-badge">' + escH(String(item.displaySeq || item.order || 1)) + '</span></td>'
+        + '<td class="ofmaq-final-seq"><input class="ofmaq-final-seq-input" type="number" min="1" step="1" data-ofmaq-final-seq="' + escAttr(item.id) + '" value="' + escAttr(String(item.displaySeq || item.order || 1)) + '"></td>'
         + '<td>' + img + '</td>'
-        + '<td class="ofmaq-final-cell"><strong>' + escH(item.numero) + '</strong><span>' + escH(item.prazoIso ? fmtDateBR(item.prazoIso) : 'Sem data') + '</span></td>'
-        + '<td class="ofmaq-final-cell"><strong>' + escH(item.cliente) + '</strong><span>' + escH(item.urgencia === 'urgente' ? 'Urgente' : (item.urgencia === 'atrasada' ? 'Atrasada' : 'Normal')) + '</span></td>'
+        + '<td class="ofmaq-final-cell"><strong>' + escH(item.numero) + '</strong></td>'
+        + '<td>' + escH(item.prazoIso ? fmtDateBR(item.prazoIso) : 'Sem data') + '</td>'
+        + '<td class="ofmaq-final-cell"><strong>' + escH(item.cliente) + '</strong></td>'
+        + '<td><span class="ofmaq-final-status" data-tone="' + escAttr(statusTone) + '">' + escH(statusText) + '</span></td>'
         + '<td class="ofmaq-final-cell"><strong>' + escH(item.produto) + '</strong></td>'
         + '<td>' + escH(fmtInt(item.quantidade)) + '</td>'
         + '<td>' + escH(item.tamanho) + '</td>'
@@ -18313,7 +18624,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       hideLegacyViews();
       purgeLegacyViews();
       var rows = sortedVisibleRows(currentVisibleRows());
-      shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="11" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
+      shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="13" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
       try { console.log('[OFMAQ-FINAL] maquina=', state.selectedMachine || '—', 'dia=', state.selectedDateIso || '—', 'rows=', rows.length, 'totalCanonico=', state.rowsData.length); } catch (_) {}
     }
 
@@ -18396,6 +18707,26 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var tmp = ordered[idx];
       ordered[idx] = ordered[target];
       ordered[target] = tmp;
+      await persistGroupOrder(ordered);
+      applyDisplaySeqToState();
+      updateToolbar(ensureShell());
+      renderRows(ensureShell());
+    }
+
+    async function moveToPositionWithinDay(id, targetPosition) {
+      var row = rowById(id);
+      if (!row) return;
+      var ordered = rowsForMachineDay(row.maquina, row.prazoIso);
+      var idx = ordered.findIndex(function(item) { return item && item.id === id; });
+      if (idx < 0) return;
+      var target = Math.max(0, Math.min(ordered.length - 1, (Math.trunc(Number(targetPosition || 0) || 0) - 1)));
+      if (target === idx) {
+        applyDisplaySeqToState();
+        renderRows(ensureShell());
+        return;
+      }
+      var picked = ordered.splice(idx, 1)[0];
+      ordered.splice(target, 0, picked);
       await persistGroupOrder(ordered);
       applyDisplaySeqToState();
       updateToolbar(ensureShell());
@@ -18497,12 +18828,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var row = rowById(id);
       if (!row) return;
       var modal = openModal('ofmaq-final-actions', 'Ações da OF #' + String(row.numero || row.id), ''
-        + '<button type="button" data-ofmaq-final-action="pass" class="ofmaq-final-action-primary">✓ Passou pela máquina</button>'
-        + '<button type="button" data-ofmaq-final-action="move">↔ Mover de máquina</button>'
-        + '<button type="button" data-ofmaq-final-action="date">📅 Alterar data</button>'
+        + '<button type="button" data-ofmaq-final-action="pass" class="ofmaq-final-action-primary"><span>✓ Passou pela máquina</span><small>Concluir etapa</small></button>'
+        + '<button type="button" data-ofmaq-final-action="move" class="ofmaq-final-action-secondary"><span>↔ Mover de máquina</span><small>Trocar fila</small></button>'
+        + '<button type="button" data-ofmaq-final-action="date" class="ofmaq-final-action-secondary"><span>📅 Alterar data</span><small>Reagendar</small></button>'
         + '<div class="ofmaq-final-move-grid">'
-        + '  <button type="button" data-ofmaq-final-action="up">↑ Mover para cima</button>'
-        + '  <button type="button" data-ofmaq-final-action="down">↓ Mover para baixo</button>'
+        + '  <button type="button" data-ofmaq-final-action="up" class="ofmaq-final-action-tertiary"><span>↑ Mover para cima</span><small>Priorizar</small></button>'
+        + '  <button type="button" data-ofmaq-final-action="down" class="ofmaq-final-action-tertiary"><span>↓ Mover para baixo</span><small>Adiar</small></button>'
         + '</div>');
       modal.addEventListener('click', async function(ev) {
         var btn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofmaq-final-action]') : null;
@@ -18727,6 +19058,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           state.selectedMachine = normalizeMachine(String(select.value || '').trim());
           updateToolbar(shell);
           renderRows(shell);
+          return;
+        }
+        var seqInput = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofmaq-final-seq]') : null;
+        if (seqInput) {
+          var id = String(seqInput.getAttribute('data-ofmaq-final-seq') || '').trim();
+          var value = Math.max(1, Number(seqInput.value || 0) || 1);
+          if (!id) return;
+          moveToPositionWithinDay(id, value).catch(function(err) {
+            try { console.error('[OFMAQ-FINAL] erro ao mover por digitação', err); } catch (_) {}
+            try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+          });
         }
       });
       shell.root.addEventListener('input', function(ev) {
@@ -18744,10 +19086,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var value = Math.max(1, Number(input.value || 0) || 1);
         if (!id) return;
         try {
-          await updateSeq(id, value);
-          var row = rowById(id);
-          if (row) row.order = value;
-          renderRows(shell);
+          await moveToPositionWithinDay(id, value);
         } catch (err) {
           try { window.toast('Erro ao salvar sequência: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
         }
@@ -43242,6 +43581,70 @@ function _ocultarGraficoComissoes() {
       window.__simdSheetMeasureObs.observe(obsHost, { childList: true, subtree: true });
     }
   } catch (_) {}
+})();
+;(function() {
+  if (window.__pageVisibilitySanitizerInstalled) return;
+  window.__pageVisibilitySanitizerInstalled = true;
+
+  function pageIdFrom(pid) {
+    var txt = String(pid || '').trim();
+    if (!txt) return '';
+    return txt.indexOf('page-') === 0 ? txt : ('page-' + txt);
+  }
+
+  function syncVisiblePage(pid) {
+    try {
+      var targetId = pageIdFrom(pid);
+      var pages = Array.prototype.slice.call(document.querySelectorAll('.page[id]'));
+      if (!pages.length) return;
+      var target = targetId ? document.getElementById(targetId) : null;
+      if (!target) {
+        target = document.querySelector('.page.active') || null;
+        targetId = String((target && target.id) || '').trim();
+      }
+      pages.forEach(function(page) {
+        var isTarget = !!(target && page === target);
+        try {
+          if (isTarget) page.classList.add('active');
+          else page.classList.remove('active');
+        } catch (_) {}
+        try {
+          page.style.display = isTarget ? '' : 'none';
+        } catch (_) {}
+        try {
+          if (isTarget) page.removeAttribute('hidden');
+          else page.setAttribute('hidden', 'hidden');
+        } catch (_) {}
+      });
+      if (targetId) {
+        try { window._PAGE_ATUAL = targetId.replace(/^page-/, ''); } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  function install() {
+    try {
+      var origGo = window.go;
+      if (typeof origGo !== 'function' || origGo.__pageVisibilitySanitized) return;
+      var wrappedGo = function(id) {
+        var out = origGo.apply(this, arguments);
+        var pid = String(id || '').trim();
+        [0, 60, 220].forEach(function(wait) {
+          setTimeout(function() { syncVisiblePage(pid); }, wait);
+        });
+        return out;
+      };
+      wrappedGo.__pageVisibilitySanitized = true;
+      wrappedGo.__origGo = origGo;
+      window.go = wrappedGo;
+      try { go = wrappedGo; } catch (_) {}
+      setTimeout(function() { syncVisiblePage(window._PAGE_ATUAL || ''); }, 0);
+    } catch (_) {}
+  }
+
+  install();
+  setTimeout(install, 0);
+  setTimeout(install, 400);
 })();
 try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(99, 'antes PATCH-FIM'); } catch (_) {}
 console.log('[PATCH-FIM] patch.js executou ate o fim');
