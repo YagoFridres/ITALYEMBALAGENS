@@ -17,6 +17,7 @@ if (!window.__comRodandoWatchdogInstalled) {
 }
 if (!window.__ofmaqDataCheckInstalled) {
   window.__ofmaqDataCheckInstalled = true;
+  window.__ofmaqDesiredPipeline = 'final';
   var _ofmaqDataCheckInterval = setInterval(function() {
     try {
       var ofs = window._ofmaqListaCompleta || window._ofmaqBaseList || window.OFS || window.kbOfs || [];
@@ -28,7 +29,7 @@ if (!window.__ofmaqDataCheckInstalled) {
       console.log('[DIA-RAW-0]', JSON.stringify(ofs[0] && ofs[0].dia));
       console.log('[COR-RAW-0]', JSON.stringify(ofs[0] && ofs[0].cores_impressao));
       clearInterval(_ofmaqDataCheckInterval);
-      if (window._PAGE_ATUAL === 'ofmaq' && typeof window._ofmaqRenderNovo === 'function') window._ofmaqRenderNovo(ofs);
+      if (window.__ofmaqDesiredPipeline !== 'final' && window._PAGE_ATUAL === 'ofmaq' && typeof window._ofmaqRenderNovo === 'function') window._ofmaqRenderNovo(ofs);
     } catch (_) {}
   }, 500);
 }
@@ -1533,6 +1534,256 @@ try {
     });
   }
 
+  function rrControleVendasVendedorPeriodo(mes, ano) {
+    return rrMonthName(mes) + ' / ' + String(ano || '');
+  }
+
+  function rrBuildControleVendasVendedorPrint(json, mes, ano) {
+    var resumo = json && json.resumo || {};
+    var rows = rrList(json, ['vendedores', 'rows', 'data']);
+    return {
+      title: 'Controle de Vendas do Vendedor',
+      periodo: rrControleVendasVendedorPeriodo(mes, ano),
+      cards: [
+        { label: 'Vendedores', value: rrFmtNum(resumo.total_vendedores || rows.length, 0), sub: 'Vendedores com clientes no mês' },
+        { label: 'Clientes', value: rrFmtNum(resumo.total_clientes || 0, 0), sub: rrFmtNum(resumo.total_ofs || 0, 0) + ' OFs concluídas no mês' },
+        { label: 'Novos + Retornos', value: rrFmtNum((resumo.clientes_novos || 0) + (resumo.clientes_retornaram || 0), 0), sub: rrFmtNum(resumo.clientes_novos || 0, 0) + ' novos • ' + rrFmtNum(resumo.clientes_retornaram || 0, 0) + ' retornaram' },
+        { label: 'Valor Vendido', value: rrFmtMoney(resumo.valor_total || 0), sub: rrFmtNum(resumo.clientes_recorrentes || 0, 0) + ' clientes recorrentes' }
+      ],
+      summaryTitle: 'Resumo por vendedor',
+      summaryHeaders: ['Vendedor', 'Clientes', 'Novos', 'Retornaram', 'Recorrentes', 'OFs', 'Valor'],
+      summaryRows: rows.map(function(row) {
+        return [
+          rrEsc(String(row && row.vendedor || 'Sem vendedor')),
+          rrEsc(rrFmtNum(row && row.total_clientes || 0, 0)),
+          rrEsc(rrFmtNum(row && row.clientes_novos || 0, 0)),
+          rrEsc(rrFmtNum(row && row.clientes_retornaram || 0, 0)),
+          rrEsc(rrFmtNum(row && row.clientes_recorrentes || 0, 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.valor_total || 0))
+        ];
+      }),
+      detailSections: rows.map(function(row) {
+        var clientes = Array.isArray(row && row.clientes) ? row.clientes : [];
+        return {
+          title: String(row && row.vendedor || 'Sem vendedor'),
+          headers: ['Cliente', 'Classificação', 'Status do retorno', 'OFs no mês', 'Caixas', 'Valor', 'Primeira compra do mês'],
+          rows: clientes.map(function(cli) {
+            var classificacao = String(cli && cli.classificacao || 'novo');
+            var retorno = classificacao === 'retornou'
+              ? String(cli && cli.retorno_texto || 'Retornou no mês')
+              : (classificacao === 'novo' ? 'Primeira compra no histórico' : 'Comprou também no mês anterior');
+            return [
+              rrEsc(String(cli && cli.cliente_nome || 'Sem cliente')),
+              rrEsc(classificacao === 'retornou' ? 'Retornou' : (classificacao === 'recorrente' ? 'Recorrente' : 'Novo')),
+              rrEsc(retorno),
+              rrEsc(rrFmtNum(cli && cli.total_ofs_mes || 0, 0)),
+              rrEsc(rrFmtNum(cli && cli.caixas_mes || 0, 0)),
+              rrEsc(rrFmtMoney(cli && cli.valor_total_mes || 0)),
+              rrEsc(rrFmtDate(cli && cli.primeira_compra_mes))
+            ];
+          }),
+          emptyCols: 7
+        };
+      }),
+      detailTitle: 'Clientes por vendedor',
+      emptySummaryCols: 7,
+      emptyDetailCols: 7
+    };
+  }
+
+  function rrRenderControleVendasVendedorPreview(host, json) {
+    var rows = rrList(json, ['vendedores', 'rows', 'data']);
+    if (!rows.length) {
+      host.innerHTML = '<div class="rr-period-help" style="margin-top:12px">Nenhum cliente encontrado para o mês selecionado.</div>';
+      return;
+    }
+    host.innerHTML = rows.map(function(row, idx) {
+      var clientes = Array.isArray(row && row.clientes) ? row.clientes : [];
+      return ''
+        + '<details class="rr-preview-card"' + (idx === 0 ? ' open' : '') + ' style="margin-top:12px;border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:12px 14px;background:rgba(15,23,42,.42)">'
+        + '  <summary style="cursor:pointer;display:flex;justify-content:space-between;gap:12px;align-items:center;list-style:none">'
+        + '    <div><strong>' + rrEsc(String(row && row.vendedor || 'Sem vendedor')) + '</strong><div style="margin-top:4px;font-size:12px;color:#94a3b8">' + rrEsc(rrFmtNum(row && row.total_clientes || 0, 0) + ' clientes • ' + rrFmtNum(row && row.total_ofs || 0, 0) + ' OFs • ' + rrFmtMoney(row && row.valor_total || 0)) + '</div></div>'
+        + '    <div style="font-size:12px;color:#cbd5e1;text-align:right">' + rrEsc('Novos: ' + rrFmtNum(row && row.clientes_novos || 0, 0) + ' • Retornaram: ' + rrFmtNum(row && row.clientes_retornaram || 0, 0) + ' • Recorrentes: ' + rrFmtNum(row && row.clientes_recorrentes || 0, 0)) + '</div>'
+        + '  </summary>'
+        + '  <div style="margin-top:12px;display:grid;gap:8px">'
+        + clientes.map(function(cli) {
+            var classificacao = String(cli && cli.classificacao || 'novo');
+            var retorno = classificacao === 'retornou'
+              ? String(cli && cli.retorno_texto || 'Retornou no mês')
+              : (classificacao === 'novo' ? 'Primeira compra no histórico' : 'Comprou também no mês anterior');
+            return '<div style="border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:10px 12px;background:rgba(2,6,23,.28)"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><strong>' + rrEsc(String(cli && cli.cliente_nome || 'Sem cliente')) + '</strong><span style="color:#93c5fd">' + rrEsc(classificacao === 'retornou' ? 'Retornou' : (classificacao === 'recorrente' ? 'Recorrente' : 'Novo')) + '</span></div><div style="margin-top:6px;font-size:12px;color:#94a3b8">' + rrEsc(retorno) + '</div><div style="margin-top:6px;font-size:12px;color:#cbd5e1">' + rrEsc(rrFmtNum(cli && cli.total_ofs_mes || 0, 0) + ' OFs • ' + rrFmtNum(cli && cli.caixas_mes || 0, 0) + ' caixas • ' + rrFmtMoney(cli && cli.valor_total_mes || 0)) + '</div></div>';
+          }).join('')
+        + '  </div>'
+        + '</details>';
+    }).join('');
+  }
+
+  function rrOpenControleVendasVendedorModal() {
+    var ref = rrMonthYearOptions();
+    rrOpenModal({
+      title: 'Controle de Vendas do Vendedor',
+      subtitle: 'Escolha o mês/ano para classificar clientes em novos, retornos e recorrentes.',
+      render: function(body) {
+        body.innerHTML = ''
+          + '<div class="rr-modal-grid">'
+          + '  <div class="rr-modal-field"><label>Mês</label><select id="rr-vendedor-mes">'
+          + Array.from({ length: 12 }).map(function(_, idx) {
+              var mes = idx + 1;
+              return '<option value="' + mes + '"' + (mes === ref.mes ? ' selected' : '') + '>' + rrEsc(rrMonthName(mes)) + '</option>';
+            }).join('')
+          + '  </select></div>'
+          + '  <div class="rr-modal-field"><label>Ano</label><select id="rr-vendedor-ano">'
+          + ref.anos.map(function(ano) { return '<option value="' + ano + '"' + (ano === ref.ano ? ' selected' : '') + '>' + ano + '</option>'; }).join('')
+          + '  </select></div>'
+          + '</div>'
+          + '<div class="rr-modal-actions">'
+          + '  <button type="button" class="rr-btn-ghost" data-rr-close>Cancelar</button>'
+          + '  <button type="button" class="rr-btn-ghost" id="rr-vendedor-preview">Atualizar prévia</button>'
+          + '  <button type="button" class="rr-btn" id="rr-vendedor-print">Imprimir relatório</button>'
+          + '</div>'
+          + '<div id="rr-vendedor-preview-host" style="margin-top:6px"></div>';
+        var previewHost = body.querySelector('#rr-vendedor-preview-host');
+        var lastJson = null;
+        async function loadPreview() {
+          var mes = Number((body.querySelector('#rr-vendedor-mes') || {}).value || ref.mes);
+          var ano = Number((body.querySelector('#rr-vendedor-ano') || {}).value || ref.ano);
+          previewHost.innerHTML = '<div class="rr-period-help" style="margin-top:12px">Carregando prévia...</div>';
+          lastJson = await rrFetchJson('/api/relatorios/controle-vendas-vendedor?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano));
+          rrRenderControleVendasVendedorPreview(previewHost, lastJson);
+          return { mes: mes, ano: ano, json: lastJson };
+        }
+        body.querySelector('#rr-vendedor-preview').onclick = async function() {
+          var btn = this;
+          btn.disabled = true;
+          try {
+            await loadPreview();
+          } catch (e) {
+            previewHost.innerHTML = '<div class="rr-period-help" style="margin-top:12px;color:#fca5a5">Erro ao carregar a prévia: ' + rrEsc(String(e && e.message || e)) + '</div>';
+          } finally {
+            btn.disabled = false;
+          }
+        };
+        body.querySelector('#rr-vendedor-print').onclick = async function() {
+          var btn = this;
+          btn.disabled = true;
+          btn.textContent = 'Gerando...';
+          try {
+            var payload = lastJson ? {
+              mes: Number((body.querySelector('#rr-vendedor-mes') || {}).value || ref.mes),
+              ano: Number((body.querySelector('#rr-vendedor-ano') || {}).value || ref.ano),
+              json: lastJson
+            } : await loadPreview();
+            rrOpenPrint(rrBuildControleVendasVendedorPrint(payload.json, payload.mes, payload.ano));
+            rrRemoveModal();
+          } catch (e) {
+            alert('Erro ao gerar relatório: ' + String(e && e.message || e));
+          } finally {
+            btn.disabled = false;
+            btn.textContent = 'Imprimir relatório';
+          }
+        };
+        loadPreview().catch(function(e) {
+          previewHost.innerHTML = '<div class="rr-period-help" style="margin-top:12px;color:#fca5a5">Erro ao carregar a prévia: ' + rrEsc(String(e && e.message || e)) + '</div>';
+        });
+      }
+    });
+  }
+
+  function rrOpenMaquinasPeriodoModal(opts) {
+    var cfg = opts || {};
+    var preferredPeriod = String(cfg.preferredPeriod || 'dia').trim() || 'dia';
+    var preferredDate = rrClampDateText(cfg.referenceDate) || rrDateText(new Date());
+    var preferredMachines = Array.isArray(cfg.machines) ? cfg.machines.map(function(machine) { return String(machine || '').trim(); }).filter(Boolean) : [];
+    rrOpenModal({
+      title: 'Relatório de Máquinas por Período',
+      subtitle: 'Selecione uma ou várias máquinas e escolha o período para gerar a impressão com as mesmas colunas do OFmaq.',
+      render: function(body) {
+        body.innerHTML = ''
+          + '<div class="rr-modal-grid">'
+          + '  <div class="rr-modal-field"><label>Período</label><select id="rr-maq-period"><option value="dia"' + (preferredPeriod === 'dia' ? ' selected' : '') + '>Dia</option><option value="semana"' + (preferredPeriod === 'semana' ? ' selected' : '') + '>Semana</option><option value="duas-semanas"' + (preferredPeriod === 'duas-semanas' ? ' selected' : '') + '>Duas semanas</option></select></div>'
+          + '  <div class="rr-modal-field"><label>Data de referência</label><input id="rr-maq-date" type="date" value="' + rrEsc(preferredDate) + '"></div>'
+          + '</div>'
+          + '<div class="rr-modal-field" style="margin-top:10px"><label>Máquinas</label><div id="rr-maq-list" class="rr-period-help">Carregando catálogo de máquinas...</div></div>'
+          + '<div class="rr-modal-actions">'
+          + '  <button type="button" class="rr-btn-ghost" data-rr-close>Cancelar</button>'
+          + '  <button type="button" class="rr-btn" id="rr-maq-print">Gerar relatório</button>'
+          + '</div>';
+        var listHost = body.querySelector('#rr-maq-list');
+        var renderMachines = function(catalog) {
+          var list = Array.isArray(catalog) ? catalog.slice() : [];
+          if (!list.length) {
+            listHost.innerHTML = 'Nenhuma máquina ativa encontrada.';
+            return;
+          }
+          var selected = preferredMachines.length ? preferredMachines.slice() : list.slice();
+          listHost.innerHTML = ''
+            + '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="rr-maq-all"' + (selected.length === list.length ? ' checked' : '') + '> Todas as máquinas</label>'
+            + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px">'
+            + list.map(function(machine) {
+                var checked = selected.indexOf(machine) >= 0;
+                return '<label style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:rgba(15,23,42,.32)"><input type="checkbox" data-rr-maq-machine="' + rrEsc(machine) + '"' + (checked ? ' checked' : '') + '> ' + rrEsc(machine) + '</label>';
+              }).join('')
+            + '</div>';
+          var all = body.querySelector('#rr-maq-all');
+          if (all) {
+            all.onchange = function() {
+              Array.prototype.slice.call(body.querySelectorAll('[data-rr-maq-machine]')).forEach(function(input) {
+                input.checked = !!all.checked;
+              });
+            };
+          }
+          Array.prototype.slice.call(body.querySelectorAll('[data-rr-maq-machine]')).forEach(function(input) {
+            input.onchange = function() {
+              var total = body.querySelectorAll('[data-rr-maq-machine]').length;
+              var checked = body.querySelectorAll('[data-rr-maq-machine]:checked').length;
+              if (all) all.checked = total > 0 && total === checked;
+            };
+          });
+        };
+        (async function ensureCatalog() {
+          try {
+            if (typeof window.__ofmaqBuildPeriodReportConfig === 'function') {
+              await window.__ofmaqBuildPeriodReportConfig({ forceReload: true, referenceDate: preferredDate, period: preferredPeriod, machines: preferredMachines });
+            }
+            var catalog = typeof window.__ofmaqGetMachineCatalog === 'function' ? window.__ofmaqGetMachineCatalog() : [];
+            renderMachines(catalog);
+          } catch (e) {
+            listHost.innerHTML = 'Erro ao carregar máquinas: ' + rrEsc(String(e && e.message || e));
+          }
+        })();
+        body.querySelector('#rr-maq-print').onclick = async function() {
+          var btn = this;
+          btn.disabled = true;
+          btn.textContent = 'Gerando...';
+          try {
+            if (typeof window.__ofmaqBuildPeriodReportConfig !== 'function') throw new Error('Builder do OFmaq indisponível');
+            var selected = Array.prototype.slice.call(body.querySelectorAll('[data-rr-maq-machine]:checked')).map(function(input) {
+              return String(input.getAttribute('data-rr-maq-machine') || '').trim();
+            }).filter(Boolean);
+            if (!selected.length) throw new Error('Selecione ao menos uma máquina');
+            var reportCfg = await window.__ofmaqBuildPeriodReportConfig({
+              forceReload: true,
+              period: String((body.querySelector('#rr-maq-period') || {}).value || preferredPeriod),
+              referenceDate: rrClampDateText((body.querySelector('#rr-maq-date') || {}).value) || preferredDate,
+              machines: selected
+            });
+            rrOpenPrint(reportCfg);
+            rrRemoveModal();
+          } catch (e) {
+            alert('Erro ao gerar relatório: ' + String(e && e.message || e));
+          } finally {
+            btn.disabled = false;
+            btn.textContent = 'Gerar relatório';
+          }
+        };
+      }
+    });
+  }
+
+  window.rrOpenControleVendasVendedorModal = rrOpenControleVendasVendedorModal;
+  window.rrOpenMaquinasPeriodoModal = rrOpenMaquinasPeriodoModal;
+
   async function rrReportChapasAbaixo200() {
     var ref = rrCurrentRange();
     var json = await rrFetchJson('/api/relatorios/chapas-abaixo-200?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
@@ -2456,6 +2707,7 @@ try {
   var rrDefs = [
     { id: 'passagens', label: 'Histórico de Passagens', icon: '🕒', desc: 'Passagens registradas nas máquinas com resumo e detalhamento.', run: rrReportPassagens },
     { id: 'comissoes', label: 'Comissões', icon: '💵', desc: 'Resumo por vendedor e detalhamento das OFs comissionadas.', run: rrReportComissoes },
+    { id: 'controle-vendas-vendedor', label: 'Controle de Vendas do Vendedor', icon: '🧑‍💼', desc: 'Classifica clientes por vendedor em novos, retornos e recorrentes por mês/ano.', run: rrOpenControleVendasVendedorModal },
     { id: 'caixas-perdidas', label: 'Caixas Perdidas', icon: '📦', desc: 'Consolidado de perdas com ranking e detalhamento.', run: rrReportCaixasPerdidas },
     { id: 'maior-perda-tipo-caixa', label: 'Maior Perda por Tipo de Caixa', icon: '📉', desc: 'Agrupa perdas por tipo de caixa e ordena do maior prejuízo para o menor.', run: rrReportMaiorPerdaTipoCaixa },
     { id: 'maior-perda-cliente', label: 'Maior Perda por Cliente', icon: '🏢', desc: 'Agrupa perdas por cliente e ordena do maior prejuízo para o menor.', run: rrReportMaiorPerdaCliente },
@@ -2471,6 +2723,7 @@ try {
     { id: 'evolucao-vendas', label: 'Evolução das Vendas', icon: '📈', desc: 'Mostra a evolução mensal das vendas e o consolidado por vendedor.', run: rrReportEvolucaoVendas },
     { id: 'vendas-por-ramo', label: 'Vendas por Ramo de Atividade', icon: '🏷️', desc: 'Agrupa as vendas concluídas por clientes.ramo.', run: rrReportVendasPorRamo },
     { id: 'vendas-por-cidade-estado', label: 'Vendas por Cidade/Estado', icon: '🗺️', desc: 'Agrupa as vendas concluídas por cidade e UF do cliente.', run: rrReportVendasPorCidadeEstado },
+    { id: 'maquinas-periodo', label: 'Relatório de Máquinas por Período', icon: '🖨️', desc: 'Permite selecionar uma ou várias máquinas e gerar o detalhamento por dia, semana ou duas semanas.', run: rrOpenMaquinasPeriodoModal },
     { id: 'chapas-abaixo-200', label: 'Chapas abaixo de 200 no estoque', icon: '🧾', desc: 'Lista as chapas com necessidade de reposição imediata.', run: rrReportChapasAbaixo200 },
     { id: 'clientes-menos-compraram', label: 'Clientes que menos compraram', icon: '📉', desc: 'Ranking do menor para o maior valor comprado no período.', run: rrReportClientesMenosCompraram },
     { id: 'clientes-inativos', label: 'Clientes inativos', icon: '🕳️', desc: 'Clientes sem OF concluída no período selecionado.', run: rrReportClientesInativos },
@@ -2747,6 +3000,7 @@ try {
   window.__simdBoxPlannerTailApplied = true;
   function reapply() {
     try {
+      if (String(window.__simdPreferredMode || '').trim().toLowerCase() !== 'box') return;
       if (typeof window.__simdBoxPlannerFetch === 'function') window._simdCarregarChapas = window.__simdBoxPlannerFetch;
       if (typeof window.__simdBoxPlannerVerify === 'function') window._simdVerificarCampos = window.__simdBoxPlannerVerify;
       if (typeof window.__simdBoxPlannerRestore === 'function') window._simdRestoreState = window.__simdBoxPlannerRestore;
@@ -2842,6 +3096,16 @@ try {
       window._ofmaqBaseList = null;
       window._ofmaqCache = {};
     } catch (_) {}
+    if (window.__ofmaqDesiredPipeline === 'final') {
+      if (typeof window.renderOfmaqFinal === 'function') {
+        try {
+          await window.renderOfmaqFinal({ forceReload: true, reason: reason || 'legacy-refresh-bridge' });
+        } catch (eBridge) {
+          logOfmaq('erro refresh renderOfmaqFinal', String(eBridge && eBridge.message || eBridge));
+        }
+      }
+      return;
+    }
     try {
       if (typeof renderOFsPorMaquina === 'function') await renderOFsPorMaquina();
     } catch (e) {
@@ -3069,6 +3333,12 @@ try {
         window.__ofmaqRenderBuscaUiPatch(term);
         return true;
       }
+      if (window.__ofmaqDesiredPipeline === 'final') {
+        if (typeof window.renderOfmaqFinal === 'function') {
+          window.renderOfmaqFinal({ forceReload: false, reason: 'legacy-search-bridge' });
+        }
+        return true;
+      }
       if (typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina();
     } catch (e2) {
       logOfmaq('erro render busca nativa', String(e2 && e2.message || e2));
@@ -3261,6 +3531,26 @@ try {
 
   function sFmtMm(value) {
     return sFmtNum(Number(value || 0) || 0, 0) + ' mm';
+  }
+
+  function sDelegatedOnce(key, windowMs) {
+    var stamp = Date.now();
+    var lastKey = String(window.__simdSheetDelegatedKey || '');
+    var lastTs = Number(window.__simdSheetDelegatedTs || 0) || 0;
+    if (lastKey === String(key || '') && (stamp - lastTs) < (Number(windowMs || 0) || 180)) return false;
+    window.__simdSheetDelegatedKey = String(key || '');
+    window.__simdSheetDelegatedTs = stamp;
+    return true;
+  }
+
+  function sDelegatedOnce(key, windowMs) {
+    var stamp = Date.now();
+    var lastKey = String(window.__simdSheetDelegatedKey || '');
+    var lastTs = Number(window.__simdSheetDelegatedTs || 0) || 0;
+    if (lastKey === String(key || '') && (stamp - lastTs) < (Number(windowMs || 0) || 180)) return false;
+    window.__simdSheetDelegatedKey = String(key || '');
+    window.__simdSheetDelegatedTs = stamp;
+    return true;
   }
 
   function sStateKey() {
@@ -6714,7 +7004,7 @@ window._simdCalcular = function() {
   return impl.apply(this, arguments);
 };
 window._simdBindBotaoDireto = function() {
-  if (_simdIsCanonicalUi()) return false;
+  if (_simdPreferredModeValue() === 'sheet' || _simdIsCanonicalUi()) return false;
   var btn = null;
   try { btn = document.getElementById('simd-btn'); } catch (_) { btn = null; }
   if (!btn || typeof window._simdCalcular !== 'function') return false;
@@ -7041,7 +7331,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(6, 'antes pat
       };
     } catch (_) {}
     var btn = document.getElementById('simd-btn');
-    if (btn && btn.dataset.simdGlobalBound !== '1') {
+    if (_simdPreferredModeValue() !== 'sheet' && btn && btn.dataset.simdGlobalBound !== '1') {
       btn.dataset.simdGlobalBound = '1';
       try { btn.type = 'button'; } catch (_) {}
       btn.onclick = window._simdCalcular;
@@ -7535,6 +7825,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         out.pasta_id = (r && (r.pasta_id != null ? r.pasta_id : r.pastaId)) ? String(r.pasta_id != null ? r.pasta_id : r.pastaId).trim() : null;
         out.nome = String(r && (r.nome != null ? r.nome : (out && out.nome)) || '').trim();
         out.nome_orcamento = String(r && (r.nome_orcamento != null ? r.nome_orcamento : (out && out.nome_orcamento)) || out.nome || '').trim();
+        out.chapa_utilizada = chapaUtilizadaOf(r || out);
+        out.chapaUtilizada = out.chapa_utilizada;
         if (!out.nome_orcamento && out.nome) out.nome_orcamento = out.nome;
         if (!out.nome && out.nome_orcamento) out.nome = out.nome_orcamento;
       } catch (_) {
@@ -7550,6 +7842,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     next.pasta_id = row.pasta_id != null ? String(row.pasta_id || '').trim() || null : null;
     next.nome = String(next && (next.nome != null ? next.nome : row && row.nome) || '').trim();
     next.nome_orcamento = String(next && (next.nome_orcamento != null ? next.nome_orcamento : row && row.nome_orcamento) || next.nome || '').trim();
+    next.chapa_utilizada = chapaUtilizadaOf(row || next);
+    next.chapaUtilizada = next.chapa_utilizada;
     if (!next.nome_orcamento && next.nome) next.nome_orcamento = next.nome;
     if (!next.nome && next.nome_orcamento) next.nome = next.nome_orcamento;
     var idx = ORCAMENTOS.findIndex(function(item) { return String(item && item.id || '') === String(next.id || ''); });
@@ -7563,6 +7857,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       var m = String(method || '').trim().toUpperCase();
       var u = String(url || '').trim();
       var nomeAtual = calcNomeOrcamentoAtual();
+      var chapaEl = document.getElementById('calc-chapa-utilizada');
+      var chapaAtual = String((chapaEl && chapaEl.value) || '').trim();
       var payload = body;
       if ((m === 'POST' || m === 'PUT' || m === 'PATCH') && /^\/orcamentos(?:\/|$)/.test(u) && body && typeof body === 'object') {
         payload = Object.assign({}, body);
@@ -7570,17 +7866,50 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           payload.nome = nomeAtual;
           payload.nome_orcamento = nomeAtual;
         }
+        if (chapaEl) {
+          var parametros = (payload.parametros && typeof payload.parametros === 'object' && !Array.isArray(payload.parametros))
+            ? Object.assign({}, payload.parametros)
+            : {};
+          if (chapaAtual) {
+            parametros.chapa_utilizada = chapaAtual;
+            parametros.chapaUtilizada = chapaAtual;
+          } else {
+            delete parametros.chapa_utilizada;
+            delete parametros.chapaUtilizada;
+          }
+          payload.parametros = parametros;
+          payload.chapa_utilizada = chapaAtual || null;
+          payload.chapaUtilizada = chapaAtual || null;
+        }
       }
       var result = await originalApi.call(this, method, url, payload);
-      if ((m === 'POST' || m === 'PUT' || m === 'PATCH') && /^\/orcamentos(?:\/|$)/.test(u) && nomeAtual && result && typeof result === 'object') {
+      if ((m === 'POST' || m === 'PUT' || m === 'PATCH') && /^\/orcamentos(?:\/|$)/.test(u) && result && typeof result === 'object') {
         var data = result.data && typeof result.data === 'object' ? Object.assign({}, result.data) : null;
         if (data) {
-          if (!String(data.nome || '').trim()) data.nome = nomeAtual;
-          if (!String(data.nome_orcamento || '').trim()) data.nome_orcamento = nomeAtual;
+          if (nomeAtual && !String(data.nome || '').trim()) data.nome = nomeAtual;
+          if (nomeAtual && !String(data.nome_orcamento || '').trim()) data.nome_orcamento = nomeAtual;
+          if (chapaEl) {
+            data.chapa_utilizada = chapaAtual || null;
+            data.chapaUtilizada = chapaAtual || null;
+            data.parametros = (data.parametros && typeof data.parametros === 'object' && !Array.isArray(data.parametros))
+              ? Object.assign({}, data.parametros)
+              : {};
+            if (chapaAtual) {
+              data.parametros.chapa_utilizada = chapaAtual;
+              data.parametros.chapaUtilizada = chapaAtual;
+            } else {
+              delete data.parametros.chapa_utilizada;
+              delete data.parametros.chapaUtilizada;
+            }
+          }
           result = Object.assign({}, result, { data: data });
         } else {
-          if (!String(result.nome || '').trim()) result.nome = nomeAtual;
-          if (!String(result.nome_orcamento || '').trim()) result.nome_orcamento = nomeAtual;
+          if (nomeAtual && !String(result.nome || '').trim()) result.nome = nomeAtual;
+          if (nomeAtual && !String(result.nome_orcamento || '').trim()) result.nome_orcamento = nomeAtual;
+          if (chapaEl) {
+            result.chapa_utilizada = chapaAtual || null;
+            result.chapaUtilizada = chapaAtual || null;
+          }
         }
       }
       return result;
@@ -7624,6 +7953,100 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       try { toast('Erro ao salvar pasta do orçamento: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
       return false;
     });
+  }
+  function chapaUtilizadaOf(row) {
+    return String(
+      row && (
+        row.chapa_utilizada != null ? row.chapa_utilizada :
+        (row.chapaUtilizada != null ? row.chapaUtilizada :
+        (row.parametros && typeof row.parametros === 'object'
+          ? (row.parametros.chapa_utilizada != null ? row.parametros.chapa_utilizada : row.parametros.chapaUtilizada)
+          : ''))
+      ) || ''
+    ).trim();
+  }
+  function loadCalcChapasCatalog(force) {
+    var now = Date.now();
+    var cache = window.__orcChapasCatalogCache;
+    if (!force && cache && Array.isArray(cache.rows) && cache.rows.length && (now - Number(cache.loadedAt || 0) < 30000)) {
+      return Promise.resolve(cache.rows.slice());
+    }
+    var request = (typeof window._apiAuthFetch === 'function')
+      ? window._apiAuthFetch('/api/chapas_estoque?limit=10000&nocache=1&_t=' + now, { cache: 'no-store' })
+      : fetch('/api/chapas_estoque?limit=10000&nocache=1&_t=' + now, { cache: 'no-store' });
+    return request.then(function(resp) {
+      return resp ? resp.json().catch(function() { return null; }) : null;
+    }).then(function(json) {
+      var rows = Array.isArray(json && (json.data || json.rows || json.items)) ? (json.data || json.rows || json.items) : (Array.isArray(json) ? json : []);
+      var out = [];
+      var seen = {};
+      rows.forEach(function(row) {
+        var nome = String(row && (row.nome_uso || row.nome || row.nomenclatura || row.titulo || '') || '').replace(/\s+/g, ' ').trim();
+        if (!nome || seen[nome]) return;
+        seen[nome] = true;
+        out.push(nome);
+      });
+      out.sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); });
+      window.__orcChapasCatalogCache = { loadedAt: now, rows: out.slice() };
+      return out;
+    }).catch(function() {
+      return Array.isArray(cache && cache.rows) ? cache.rows.slice() : [];
+    });
+  }
+  function ensureCalcChapaUi() {
+    var sel = document.getElementById('calc-cli');
+    if (!sel || !sel.parentNode) return null;
+    var list = document.getElementById('calc-chapa-utilizada-list');
+    if (!list) {
+      list = document.createElement('datalist');
+      list.id = 'calc-chapa-utilizada-list';
+      document.body.appendChild(list);
+    }
+    var input = document.getElementById('calc-chapa-utilizada');
+    if (!input) {
+      var host = document.getElementById('wrap-calc-nome-orcamento') || sel.parentNode;
+      var wrap = document.createElement('div');
+      wrap.id = 'wrap-calc-chapa-utilizada';
+      wrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-bottom:10px';
+      wrap.innerHTML = ''
+        + '<label for="calc-chapa-utilizada" style="font-size:11px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Chapa Utilizada</label>'
+        + '<input id="calc-chapa-utilizada" list="calc-chapa-utilizada-list" type="text" placeholder="Selecione uma chapa do estoque" style="width:100%;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:14px">'
+        + '<small style="color:#94a3b8;font-size:11px">Campo interno. Fica apenas na edição do orçamento e não entra na impressão/PDF.</small>';
+      if (host && host.parentNode) host.insertAdjacentElement('afterend', wrap);
+      else sel.parentNode.insertBefore(wrap, sel);
+      input = wrap.querySelector('#calc-chapa-utilizada');
+    }
+    if (input && input.dataset.patchBound !== '1') {
+      input.dataset.patchBound = '1';
+      input.addEventListener('input', function() {
+        input.dataset.keepValue = String(input.value || '').trim() ? '1' : '';
+      });
+    }
+    loadCalcChapasCatalog(false).then(function(rows) {
+      var target = document.getElementById('calc-chapa-utilizada-list');
+      if (!target) return;
+      target.innerHTML = rows.map(function(nome) {
+        return '<option value="' + escAttr(nome) + '"></option>';
+      }).join('');
+    }).catch(function() { return null; });
+    return input;
+  }
+  function syncCalcChapaUi() {
+    var input = ensureCalcChapaUi();
+    if (!input) return;
+    var current = currentOrcamentoFromState();
+    var currentId = String(current && current.id || '').trim();
+    var value = chapaUtilizadaOf(current);
+    if (!currentId) {
+      if (input.dataset.lastOrcamentoId) input.dataset.lastOrcamentoId = '';
+      if (!input.dataset.keepValue) input.value = '';
+      return;
+    }
+    if (input.dataset.lastOrcamentoId !== currentId) {
+      input.value = value;
+      input.dataset.lastOrcamentoId = currentId;
+    }
+    input.dataset.keepValue = value ? '1' : '';
   }
   function saveFolderFromModal() {
     var modal = document.getElementById('orc-pasta-modal');
@@ -7816,6 +8239,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       setTimeout(function() {
         loadFolders(false).catch(function() { return []; }).finally(function() {
           syncCalcFolderUi();
+          syncCalcChapaUi();
         });
       }, 60);
       return out;
@@ -7828,6 +8252,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       var out = _origCarregarOrcamentoCalc.apply(this, arguments);
       setTimeout(function() {
         syncCalcFolderUi();
+        syncCalcChapaUi();
       }, 30);
       return out;
     };
@@ -7839,10 +8264,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       var out = _origNovoOrcamentoCalc.apply(this, arguments);
       setTimeout(function() {
         ensureCalcFolderUi();
+        var chapaInput = ensureCalcChapaUi();
         var select = document.getElementById('calc-pasta');
         if (select) {
           select.innerHTML = folderOptionsHtml('');
           select.value = '';
+        }
+        if (chapaInput) {
+          chapaInput.value = '';
+          chapaInput.dataset.lastOrcamentoId = '';
+          chapaInput.dataset.keepValue = '';
         }
       }, 30);
       return out;
@@ -7853,12 +8284,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     var _origSalvarOrcamentoCalc = window.salvarOrcamentoCalc;
     window.salvarOrcamentoCalc = async function() {
       var nomeAtual = calcNomeOrcamentoAtual();
+      var chapaAtual = String((document.getElementById('calc-chapa-utilizada') || {}).value || '').trim();
       var ok = await _origSalvarOrcamentoCalc.apply(this, arguments);
       if (!ok) return ok;
       try {
         var current = currentOrcamentoFromState();
-        if (current && nomeAtual) {
-          updateLocalOrcamento(Object.assign({}, current, { nome: nomeAtual, nome_orcamento: nomeAtual }));
+        if (current) {
+          updateLocalOrcamento(Object.assign({}, current, {
+            nome: nomeAtual || current.nome || current.nome_orcamento,
+            nome_orcamento: nomeAtual || current.nome_orcamento || current.nome,
+            chapa_utilizada: chapaAtual || null,
+            chapaUtilizada: chapaAtual || null
+          }));
         }
       } catch (_) {}
       await persistCurrentCalcFolder();
@@ -7869,6 +8306,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
   }
 
   ensureUi();
+  setTimeout(function() {
+    try { ensureCalcChapaUi(); } catch (_) {}
+  }, 120);
   loadFolders(false).catch(function() { return []; });
   setTimeout(function() {
     try {
@@ -11203,7 +11643,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
 
   function _bindSimdPatch() {
     try {
-      if (_simdIsCanonicalUi()) return;
+      if (_simdPreferredModeValue() === 'sheet' || _simdIsCanonicalUi()) return;
       var btn = document.getElementById('simd-btn');
       if (btn && btn.dataset.patchSimdBound !== '1') {
         btn.dataset.patchSimdBound = '1';
@@ -12115,6 +12555,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 (function patchOfmaqAndHubIntelligence() {
   try {
     try { console.log('[OFMAQ-HOOK] patchOfmaq chamado'); } catch (_) {}
+    if (window.__ofmaqDesiredPipeline === 'final') {
+      try {
+        if (window.__ofmaqRenderObserver && typeof window.__ofmaqRenderObserver.disconnect === 'function') {
+          window.__ofmaqRenderObserver.disconnect();
+        }
+      } catch (_) {}
+      try { if (window.__ofmaqRenderPoll) clearInterval(window.__ofmaqRenderPoll); } catch (_) {}
+      try { if (window.__ofmaqAfterRenderDelayTimer) clearTimeout(window.__ofmaqAfterRenderDelayTimer); } catch (_) {}
+      try { console.log('[OFMAQ-HOOK] legado híbrido desativado; pipeline final é o único ativo'); } catch (_) {}
+      return;
+    }
   var originalSortByPriority = (typeof window.ordenarOFsPorPrioridade === 'function')
     ? window.ordenarOFsPorPrioridade
     : null;
@@ -13595,6 +14046,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     if (window.renderKanbanOfmaq._patchedOfmaqTableView) return;
     var original = window.renderKanbanOfmaq;
     var wrapped = function(grupos, maquinasOrdenadas, container, alertasHtml) {
+      if (window.__ofmaqDesiredPipeline === 'final' && String(window._PAGE_ATUAL || '') === 'ofmaq' && typeof window.renderOfmaqFinal === 'function') {
+        return window.renderOfmaqFinal({ forceReload: false, reason: 'legacy-kanban-bridge' });
+      }
       try {
         _ofmaqRenderTableShell(grupos, maquinasOrdenadas, container, alertasHtml);
       } catch (e) {
@@ -13651,6 +14105,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function _ofmaqEnsureTableViewFromDom() {
+    if (window.__ofmaqDesiredPipeline === 'final') return false;
     var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body');
     if (!container) return false;
     if (container.querySelector('.patch-ofmaq-table')) return true;
@@ -13946,6 +14401,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function _ofmaqRenderV2() {
+    if (window.__ofmaqDesiredPipeline === 'final') return;
     var ok = _ofmaqEnsureV2Shell();
     if (!ok) return;
     var page = document.getElementById('page-ofmaq');
@@ -14616,8 +15072,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function parseColors(of) {
-    var raw = of && (of.cores_impressao != null ? of.cores_impressao : of.impressao_cor);
+    var raw = of;
     var arr = [];
+    if (raw && typeof raw === 'object' && !Array.isArray(raw) && (raw.cores != null || raw.cores_impressao != null || raw.impressao_cor != null)) {
+      raw = raw.cores != null ? raw.cores : (raw.cores_impressao != null ? raw.cores_impressao : raw.impressao_cor);
+    }
     try {
       if (Array.isArray(raw)) {
         arr = raw.map(function(x) { return String(x && (x.nome || x.name || x) || '').trim(); });
@@ -14886,7 +15345,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       closeReagendamentoModal();
       try { window.toast('✓ OF reagendada', 'var(--green)'); } catch (_) {}
-      try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
+      try { await refreshOfmaq('reagendamento'); } catch (_) {}
     } catch (e) {
       try { window.toast('Erro ao reagendar OF: ' + (e && e.message ? e.message : e), 'var(--red)'); } catch (_) {}
     }
@@ -15016,7 +15475,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       window.__ofmaqRedistribState = state;
       try { window.toast('✅ Sugestão aplicada: ' + fmtDateBR(dt), 'var(--green)'); } catch (_) {}
       _redistribRemoverCard(card || null, state);
-      try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
+      try { await refreshOfmaq('redistribuicao'); } catch (_) {}
       return true;
     } catch (e) {
       try { window.toast('Erro ao aplicar sugestão: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
@@ -15611,6 +16070,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function _ofmaqRunAfterRender(reason) {
+    if (window.__ofmaqDesiredPipeline === 'final') return false;
     try {
       var host = _ofmaqRootContainer(document);
       if (!host) return false;
@@ -15639,6 +16099,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function _ofmaqScheduleAfterRender(reason, delay) {
+    if (window.__ofmaqDesiredPipeline === 'final') return Promise.resolve(false);
     var wait = Math.max(0, Number(delay || 0) || 0);
     if (wait > 0) {
       try { if (window.__ofmaqAfterRenderDelayTimer) clearTimeout(window.__ofmaqAfterRenderDelayTimer); } catch (_) {}
@@ -15679,6 +16140,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   function _ofmaqEnsureRenderObserver() {
     try {
+      if (window.__ofmaqDesiredPipeline === 'final') {
+        if (window.__ofmaqRenderObserver && typeof window.__ofmaqRenderObserver.disconnect === 'function') {
+          try { window.__ofmaqRenderObserver.disconnect(); } catch (_) {}
+        }
+        window.__ofmaqRenderObserver = null;
+        window.__ofmaqRenderObserverTarget = null;
+        return;
+      }
       if (window.__ofmaqRenderObserver) return;
       var target = document.body || document.documentElement;
       if (!target) return;
@@ -15736,6 +16205,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   window.afterRenderOfmaq = function afterRenderOfmaq() {
+    if (window.__ofmaqDesiredPipeline === 'final' && typeof window.renderOfmaqFinal === 'function') {
+      try { window.renderOfmaqFinal({ forceReload: false, reason: 'legacy-after-render-bridge' }); } catch (_) {}
+      return;
+    }
     try { console.log('[OFMAQ-REDESIGN-ATIVO] versao nova rodando'); } catch (_) {}
     try {
       _ofmaqPauseRenderObserver();
@@ -15761,6 +16234,24 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     try { console.log('[OFMAQ-HOOK] hookRenderOfmaq chamado'); } catch (_) {}
     ensureConfiguracoesAlias();
     hookRenderKanbanOfmaqTable();
+    if (window.__ofmaqDesiredPipeline === 'final') {
+      if (typeof window.renderOFsPorMaquina === 'function' && !window.renderOFsPorMaquina._patchedPriorityHub) {
+        _ofmaqWrapWindowFnOnce('renderOFsPorMaquina', '_patchedPriorityHub', function(orig) {
+          return async function() {
+            if (String(window._PAGE_ATUAL || '') === 'ofmaq' && typeof window.renderOfmaqFinal === 'function') {
+              return window.renderOfmaqFinal({ forceReload: true, reason: 'legacy-render-bridge' });
+            }
+            return orig.apply(this, arguments);
+          };
+        });
+      }
+      try {
+        if (String(window._PAGE_ATUAL || '') === 'ofmaq' && typeof window.renderOfmaqFinal === 'function') {
+          window.renderOfmaqFinal({ forceReload: false, reason: 'hook-final' });
+        }
+      } catch (_) {}
+      return;
+    }
     if (typeof window.normalizeOF === 'function' && !window.normalizeOF._patchedOfmaqDisplay) {
       var origNormalize = window.normalizeOF;
       window.normalizeOF = function(row) {
@@ -16017,6 +16508,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       dourado: '#d97706',
       marrom: '#92400e'
     };
+    if (window.__ofmaqDesiredPipeline === 'final') return;
     var state = window.__patchOfmaqZeroStateV2 || {
       selectedMachine: 'IMP 01',
       selectedDateIso: '',
@@ -17304,13 +17796,35 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     function parseColors(value) {
       var raw = value;
-      if (Array.isArray(raw)) return raw.map(function(item) { return String(item || '').trim(); }).filter(Boolean);
-      if (raw && typeof raw === 'object') return Object.keys(raw).map(function(key) { return String(raw[key] || key || '').trim(); }).filter(Boolean);
+      if (raw && typeof raw === 'object' && !Array.isArray(raw) && (raw.cores != null || raw.cores_impressao != null || raw.impressao_cor != null)) {
+        raw = raw.cores != null ? raw.cores : (raw.cores_impressao != null ? raw.cores_impressao : raw.impressao_cor);
+      }
+      if (Array.isArray(raw)) {
+        return raw.map(function(item) {
+          return String(item && (item.nome || item.name || item.cor || item.color || item) || '').replace(/\s+/g, ' ').trim();
+        }).filter(Boolean).filter(function(item, idx, arr) {
+          return arr.indexOf(item) === idx;
+        });
+      }
+      if (raw && typeof raw === 'object') {
+        return Object.keys(raw).map(function(key) {
+          var val = raw[key];
+          return String(val && (val.nome || val.name || val.cor || val.color || val || key) || '').replace(/\s+/g, ' ').trim();
+        }).filter(Boolean).filter(function(item, idx, arr) {
+          return arr.indexOf(item) === idx;
+        });
+      }
       var txt = String(raw || '').trim();
       if (!txt) return [];
       try {
         var parsed = JSON.parse(txt);
-        if (Array.isArray(parsed)) return parsed.map(function(item) { return String(item && (item.nome || item.cor || item) || '').trim(); }).filter(Boolean);
+        if (Array.isArray(parsed)) {
+          return parsed.map(function(item) {
+            return String(item && (item.nome || item.name || item.cor || item.color || item) || '').replace(/\s+/g, ' ').trim();
+          }).filter(Boolean).filter(function(item, idx, arr) {
+            return arr.indexOf(item) === idx;
+          });
+        }
       } catch (_) {}
       return txt.split(/[,|/+;\n]+/).map(function(item) { return String(item || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean).filter(function(item, idx, arr) {
         return arr.indexOf(item) === idx;
@@ -17381,7 +17895,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var numero = String(of && (of.numero || of.of_num || of.of_numero || of.of || '') || '').trim() || String(of && of.id || '').trim();
       var cliente = String(of && (of.cliente_nome || of.cliente || of.cliNome || of.clinome || of.nome_cliente || '') || '').trim() || '—';
       var produto = String(of && (of.produto || of.descricao || of.prodDesc || of.nome_produto || '') || '').trim() || '—';
-      var cores = parseColors(of && (of.cores || of.cores_impressao || of.impressao_cor || ''));
+      var cores = parseColors(of);
       var quantidade = getQtd(of);
       var size = sizeLabel(of);
       return {
@@ -17405,9 +17919,45 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       };
     }
 
+    function groupKey(item) {
+      return normalizeMachine(item && item.maquina) + '|' + String(item && item.prazoIso || '');
+    }
+
+    function sortRowsByCanonicalOrder(rows) {
+      return (Array.isArray(rows) ? rows.slice() : []).sort(function(a, b) {
+        if (Number(a.order || 0) !== Number(b.order || 0)) return Number(a.order || 0) - Number(b.order || 0);
+        return String(a.numero || '').localeCompare(String(b.numero || ''), 'pt-BR', { numeric: true });
+      });
+    }
+
+    function applyDisplaySeqToRows(rows) {
+      sortRowsByCanonicalOrder(rows).forEach(function(item, idx) {
+        item.order = idx + 1;
+        item.displaySeq = idx + 1;
+      });
+    }
+
+    function applyDisplaySeqToState() {
+      var groups = {};
+      (Array.isArray(state.rowsData) ? state.rowsData : []).forEach(function(item) {
+        var key = groupKey(item);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
+      });
+      Object.keys(groups).forEach(function(key) {
+        applyDisplaySeqToRows(groups[key]);
+      });
+    }
+
+    function rowsForMachineDay(machine, dateIso) {
+      return sortRowsByCanonicalOrder(state.rowsData.filter(function(item) {
+        return normalizeMachine(item && item.maquina) === normalizeMachine(machine) && String(item && item.prazoIso || '') === String(dateIso || '');
+      }));
+    }
+
     function buildRowsFromOfs(ofs) {
       var seen = {};
-      return (Array.isArray(ofs) ? ofs : []).map(activeOfRow).filter(function(item) {
+      var list = (Array.isArray(ofs) ? ofs : []).map(activeOfRow).filter(function(item) {
         if (!item || !item.id || seen[item.id]) return false;
         seen[item.id] = true;
         return true;
@@ -17417,6 +17967,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (Number(a.order || 0) !== Number(b.order || 0)) return Number(a.order || 0) - Number(b.order || 0);
         return String(a.numero || '').localeCompare(String(b.numero || ''), 'pt-BR', { numeric: true });
       });
+      (function applyGroupedDisplaySeq(rows) {
+        var groups = {};
+        rows.forEach(function(item) {
+          var key = groupKey(item);
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(item);
+        });
+        Object.keys(groups).forEach(function(key) {
+          applyDisplaySeqToRows(groups[key]);
+        });
+      })(list);
+      return list;
     }
 
     function machineCatalogFromRows(rows) {
@@ -17522,6 +18084,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-final-row[data-urgencia="urgente"] td{background-image:linear-gradient(90deg,rgba(127,29,29,.16),transparent)}'
         + '#page-ofmaq .ofmaq-final-row[data-urgencia="atrasada"] td{background-image:linear-gradient(90deg,rgba(120,53,15,.16),transparent)}'
         + '#page-ofmaq .ofmaq-final-seq{width:64px;max-width:64px;text-align:center}'
+        + '#page-ofmaq .ofmaq-final-seq-badge{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;padding:0 10px;border-radius:12px;background:rgba(37,99,235,.18);border:1px solid rgba(96,165,250,.34);color:#dbeafe;font-size:15px;font-weight:900}'
         + '#page-ofmaq .ofmaq-final-thumb,#page-ofmaq .ofmaq-final-thumb-fallback{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:10px;background:#1e293b;overflow:hidden;border:1px solid rgba(148,163,184,.18)}'
         + '#page-ofmaq .ofmaq-final-thumb img{width:42px;height:42px;object-fit:cover;display:block}'
         + '#page-ofmaq .ofmaq-final-cell strong{display:block;font-size:14px;color:#f8fafc}'
@@ -17532,24 +18095,58 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-final-empty{padding:26px 20px;color:#94a3b8;text-align:center}'
         + '#page-ofmaq .ofmaq-final-actions{display:flex;justify-content:flex-end}'
         + '#page-ofmaq .ofmaq-final-actions button{min-height:34px}'
-        + '#page-ofmaq .ofmaq-final-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998}'
-        + '#page-ofmaq .ofmaq-final-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#1e293b;border-radius:14px;padding:24px;min-width:320px;max-width:min(92vw,720px);color:#f8fafc;box-shadow:0 24px 70px rgba(0,0,0,.35)}'
-        + '#page-ofmaq .ofmaq-final-modal .body{display:grid;gap:10px;margin-top:14px}'
-        + '#page-ofmaq .ofmaq-final-modal .close-btn{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:999px}'
+        + '.ofmaq-final-modal .body button.ofmaq-final-action-primary{background:#1d4ed8;border-color:#60a5fa;color:#eff6ff}'
+        + '.ofmaq-final-modal .body .ofmaq-final-move-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
+        + '.ofmaq-final-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998}'
+        + '.ofmaq-final-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#1e293b;border-radius:14px;padding:24px;min-width:320px;max-width:min(92vw,720px);color:#f8fafc;box-shadow:0 24px 70px rgba(0,0,0,.35)}'
+        + '.ofmaq-final-modal .body{display:grid;gap:10px;margin-top:14px}'
+        + '.ofmaq-final-modal .close-btn{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:999px}'
         + '@media (max-width:1200px){#page-ofmaq .ofmaq-final-controls{grid-template-columns:1fr;}}';
       document.head.appendChild(st);
     }
 
     function hideLegacyViews() {
       var page = getPage();
+      var container = getContainer();
       if (!page) return;
       Array.prototype.slice.call(page.querySelectorAll(
-        '.kb-board,.kb-board-ofmaq,.patch-ofmaq-table-wrap,#patch-ofmaq-titlebar,.patch-ofmaq-v2-list,[id^="patch-ofmaq-v2"],#ofmaq-toolbar-zero,#ofmaq-wrap-zero,.ptoolbar,.excel-export-bar,.ofmaq-toprow,#ofmaq-dias-bar,#ofsmaq-select-maquina,#ofmaq-busca,#ofmaq-data,#ofmaq-status,#ofmaq-prioridade,#btn-ordenar-prioridade,#btn-agrupar-setup,#ofmaq-btn-todas-ofs,#ofmaq-btn-relatorio,#ofmaq-btn-atualizar'
+        '.kb-board,.kb-board-ofmaq,.patch-ofmaq-summary-grid,.patch-ofmaq-table-wrap,#patch-ofmaq-titlebar,.patch-ofmaq-v2-list,[id^="patch-ofmaq-v2"],#ofmaq-toolbar-zero,#ofmaq-wrap-zero,.ptoolbar,.excel-export-bar,.ofmaq-toprow,#ofmaq-dias-bar,#ofsmaq-select-maquina,#ofmaq-busca,#ofmaq-data,#ofmaq-status,#ofmaq-prioridade,#btn-ordenar-prioridade,#btn-agrupar-setup,#ofmaq-btn-todas-ofs,#ofmaq-btn-relatorio,#ofmaq-btn-atualizar'
       )).forEach(function(el) {
         if (!el) return;
         el.style.display = 'none';
         try { el.setAttribute('aria-hidden', 'true'); } catch (_) {}
       });
+      if (container && container.children && container.children.length) {
+        Array.prototype.slice.call(container.children).forEach(function(el) {
+          if (!el || el.id === 'ofmaq-final-root') return;
+          el.style.display = 'none';
+          try { el.setAttribute('aria-hidden', 'true'); } catch (_) {}
+        });
+      }
+    }
+
+    function purgeLegacyViews() {
+      var page = getPage();
+      var container = getContainer();
+      if (!page) return;
+      Array.prototype.slice.call(page.querySelectorAll(
+        '.patch-ofmaq-summary-grid,.patch-ofmaq-table-wrap,#patch-ofmaq-titlebar,.patch-ofmaq-v2-list,[id^="patch-ofmaq-v2"],#ofmaq-toolbar-zero,#ofmaq-wrap-zero'
+      )).forEach(function(el) {
+        if (!el || el.id === 'ofmaq-final-root') return;
+        try { el.remove(); } catch (_) {
+          el.style.display = 'none';
+          try { el.setAttribute('aria-hidden', 'true'); } catch (__ ) {}
+        }
+      });
+      if (container && container.children && container.children.length) {
+        Array.prototype.slice.call(container.children).forEach(function(el) {
+          if (!el || el.id === 'ofmaq-final-root') return;
+          try { el.remove(); } catch (_) {
+            el.style.display = 'none';
+            try { el.setAttribute('aria-hidden', 'true'); } catch (__ ) {}
+          }
+        });
+      }
     }
 
     function ensureShell() {
@@ -17574,6 +18171,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '    <select id="ofmaq-final-machine"></select>'
           + '    <input id="ofmaq-final-search" type="search" placeholder="Buscar OF, cliente, produto, tamanho ou cor...">'
           + '    <button type="button" id="ofmaq-final-group">Agrupar Setup</button>'
+          + '    <button type="button" id="ofmaq-final-report">Gerar Relatório</button>'
           + '  </div>'
           + '</div>'
           + '<div id="ofmaq-final-summary" class="ofmaq-final-summary"></div>'
@@ -17581,6 +18179,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '<div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table"><thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Cliente</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead><tbody id="ofmaq-final-tbody"></tbody></table></div>';
         container.insertBefore(root, container.firstChild || null);
       }
+      purgeLegacyViews();
       return {
         root: root,
         alert: root.querySelector('#ofmaq-final-alert'),
@@ -17588,6 +18187,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         machine: root.querySelector('#ofmaq-final-machine'),
         search: root.querySelector('#ofmaq-final-search'),
         group: root.querySelector('#ofmaq-final-group'),
+        report: root.querySelector('#ofmaq-final-report'),
         summary: root.querySelector('#ofmaq-final-summary'),
         chips: root.querySelector('#ofmaq-final-redistribuicao'),
         tbody: root.querySelector('#ofmaq-final-tbody')
@@ -17664,11 +18264,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         : '<span class="ofmaq-final-thumb-fallback">📦</span>';
       return ''
         + '<tr class="ofmaq-final-row" data-of-id="' + escAttr(item.id) + '" data-urgencia="' + escAttr(item.urgencia) + '">'
-        + '<td><input class="ofmaq-final-seq" type="number" min="1" step="1" value="' + escAttr(String(item.order || 1)) + '" data-ofmaq-final-seq="' + escAttr(item.id) + '"></td>'
+        + '<td class="ofmaq-final-seq"><span class="ofmaq-final-seq-badge">' + escH(String(item.displaySeq || item.order || 1)) + '</span></td>'
         + '<td>' + img + '</td>'
         + '<td class="ofmaq-final-cell"><strong>' + escH(item.numero) + '</strong><span>' + escH(item.prazoIso ? fmtDateBR(item.prazoIso) : 'Sem data') + '</span></td>'
         + '<td class="ofmaq-final-cell"><strong>' + escH(item.cliente) + '</strong><span>' + escH(item.urgencia === 'urgente' ? 'Urgente' : (item.urgencia === 'atrasada' ? 'Atrasada' : 'Normal')) + '</span></td>'
-        + '<td class="ofmaq-final-cell"><strong>' + escH(item.produto) + '</strong><span>' + escH(item.tamanho) + '</span></td>'
+        + '<td class="ofmaq-final-cell"><strong>' + escH(item.produto) + '</strong></td>'
         + '<td>' + escH(fmtInt(item.quantidade)) + '</td>'
         + '<td>' + escH(item.tamanho) + '</td>'
         + '<td><div class="ofmaq-final-color-wrap">' + colorHtml(item.cores) + '</div></td>'
@@ -17681,6 +18281,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     function renderRows(shell) {
       if (!shell || !shell.tbody) return;
       hideLegacyViews();
+      purgeLegacyViews();
       var rows = sortedVisibleRows(currentVisibleRows());
       shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="11" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
       try { console.log('[OFMAQ-FINAL] maquina=', state.selectedMachine || '—', 'dia=', state.selectedDateIso || '—', 'rows=', rows.length, 'totalCanonico=', state.rowsData.length); } catch (_) {}
@@ -17713,6 +18314,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return state.rowsData.filter(function(item) { return item.id === id; })[0] || null;
     }
 
+    function nextOrderForMachineDay(machine, dateIso, excludeId) {
+      var targetMachine = normalizeMachine(machine);
+      var targetDate = String(dateIso || '').slice(0, 10);
+      var maxOrder = 0;
+      state.rowsData.forEach(function(item) {
+        if (!item || String(item.id || '') === String(excludeId || '')) return;
+        if (normalizeMachine(item.maquina) !== targetMachine) return;
+        if (String(item.prazoIso || '') !== targetDate) return;
+        maxOrder = Math.max(maxOrder, Number(item.order || 0) || 0);
+      });
+      return maxOrder + 1;
+    }
+
     async function updateSeq(id, value) {
       if (window.__OFMAQ_FINAL_MOCK) {
         var local = rowById(id);
@@ -17723,10 +18337,40 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao salvar sequência');
     }
 
+    async function persistGroupOrder(rows) {
+      var ordered = Array.isArray(rows) ? rows.slice() : [];
+      ordered.forEach(function(item, idx) {
+        if (!item) return;
+        item.order = idx + 1;
+        item.displaySeq = idx + 1;
+      });
+      if (window.__OFMAQ_FINAL_MOCK) return;
+      for (var i = 0; i < ordered.length; i += 1) {
+        await updateSeq(ordered[i].id, i + 1);
+      }
+    }
+
+    async function reorderWithinDay(id, direction) {
+      var row = rowById(id);
+      if (!row) return;
+      var ordered = rowsForMachineDay(row.maquina, row.prazoIso);
+      var idx = ordered.findIndex(function(item) { return item && item.id === id; });
+      var target = idx + Number(direction || 0);
+      if (idx < 0 || target < 0 || target >= ordered.length) return;
+      var tmp = ordered[idx];
+      ordered[idx] = ordered[target];
+      ordered[target] = tmp;
+      await persistGroupOrder(ordered);
+      renderRows(ensureShell());
+    }
+
     async function moveRow(id, machine) {
       if (window.__OFMAQ_FINAL_MOCK) {
         var local = rowById(id);
-        if (local) local.maquina = machine;
+        if (local) {
+          local.maquina = machine;
+          local.order = nextOrderForMachineDay(machine, local.prazoIso, local.id);
+        }
         return;
       }
       var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { maq: [machine], maquina: machine, maquina_agendada: machine } });
@@ -17736,7 +18380,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     async function updateDate(id, value) {
       if (window.__OFMAQ_FINAL_MOCK) {
         var local = rowById(id);
-        if (local) local.prazoIso = value;
+        if (local) {
+          local.prazoIso = value;
+          local.order = nextOrderForMachineDay(local.maquina, value, local.id);
+        }
         return;
       }
       var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { data_entrega: value, ent: value } });
@@ -17773,6 +18420,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         try {
           await moveRow(id, machine);
           if (row) row.maquina = machine;
+          if (row) row.order = nextOrderForMachineDay(machine, row.prazoIso, row.id);
+          applyDisplaySeqToState();
           state.machineCatalog = machineCatalogFromRows(state.rowsData);
           updateToolbar(ensureShell());
           renderRows(ensureShell());
@@ -17795,6 +18444,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         try {
           await updateDate(id, value);
           if (row) row.prazoIso = value;
+          if (row) row.order = nextOrderForMachineDay(row.maquina, value, row.id);
+          applyDisplaySeqToState();
           updateToolbar(ensureShell());
           renderRows(ensureShell());
           closeModal('ofmaq-final-date');
@@ -17807,10 +18458,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     function openActionsModal(id) {
       var row = rowById(id);
       if (!row) return;
-      var modal = openModal('ofmaq-final-actions', 'Ações da OF #' + String(row.numero || row.id), '<button type="button" id="ofmaq-final-pass">✓ Passou pela máquina</button><button type="button" id="ofmaq-final-move">↔ Mover de máquina</button><button type="button" id="ofmaq-final-date">📅 Alterar data</button>');
+      var modal = openModal('ofmaq-final-actions', 'Ações da OF #' + String(row.numero || row.id), ''
+        + '<button type="button" id="ofmaq-final-pass" class="ofmaq-final-action-primary">✓ Passou pela máquina</button>'
+        + '<button type="button" id="ofmaq-final-move">↔ Mover de máquina</button>'
+        + '<button type="button" id="ofmaq-final-date">📅 Alterar data</button>'
+        + '<div class="ofmaq-final-move-grid">'
+        + '  <button type="button" id="ofmaq-final-up">↑ Mover para cima</button>'
+        + '  <button type="button" id="ofmaq-final-down">↓ Mover para baixo</button>'
+        + '</div>');
       var passBtn = modal.querySelector('#ofmaq-final-pass');
       var moveBtn = modal.querySelector('#ofmaq-final-move');
       var dateBtn = modal.querySelector('#ofmaq-final-date');
+      var upBtn = modal.querySelector('#ofmaq-final-up');
+      var downBtn = modal.querySelector('#ofmaq-final-down');
       if (passBtn) passBtn.onclick = async function() {
         try {
           await markPassed(id, row.maquina);
@@ -17824,7 +18484,142 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       };
       if (moveBtn) moveBtn.onclick = function() { closeModal('ofmaq-final-actions'); openMoveModal(id); };
       if (dateBtn) dateBtn.onclick = function() { closeModal('ofmaq-final-actions'); openDateModal(id); };
+      if (upBtn) upBtn.onclick = async function() {
+        try {
+          await reorderWithinDay(id, -1);
+          closeModal('ofmaq-final-actions');
+        } catch (err) {
+          try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+        }
+      };
+      if (downBtn) downBtn.onclick = async function() {
+        try {
+          await reorderWithinDay(id, 1);
+          closeModal('ofmaq-final-actions');
+        } catch (err) {
+          try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+        }
+      };
     }
+
+    function reportDaysForPeriod(period, baseDateIso) {
+      var anchor = String(baseDateIso || state.selectedDateIso || '').slice(0, 10) || isoFromDate(currentBusinessDate());
+      var start = parseIso(anchor) || currentBusinessDate();
+      start.setHours(0, 0, 0, 0);
+      if (String(period || '') === 'dia') return [isoFromDate(start)];
+      var weekStart = parseIso(weekStartIso(anchor)) || start;
+      var totalDays = String(period || '') === 'duas-semanas' ? 10 : 5;
+      var out = [];
+      var cursor = new Date(weekStart.getTime());
+      while (out.length < totalDays) {
+        var dow = cursor.getDay();
+        if (dow !== 0 && dow !== 6) out.push(isoFromDate(cursor));
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      return out;
+    }
+
+    function reportPeriodTitle(period, days) {
+      var list = Array.isArray(days) ? days.filter(Boolean) : [];
+      if (!list.length) return 'Sem período';
+      if (String(period || '') === 'dia' || list.length === 1) return fmtDateBR(list[0]);
+      return fmtDateBR(list[0]) + ' a ' + fmtDateBR(list[list.length - 1]);
+    }
+
+    async function buildPeriodReportConfig(params) {
+      var opts = params || {};
+      ensureDefaults();
+      await loadCanonicalRows(!!opts.forceReload);
+      var period = String(opts.period || 'dia').trim();
+      var selectedMachines = (Array.isArray(opts.machines) ? opts.machines : []).map(function(machine) {
+        return normalizeMachine(machine);
+      }).filter(Boolean);
+      if (!selectedMachines.length) selectedMachines = state.selectedMachine ? [state.selectedMachine] : state.machineCatalog.slice();
+      var days = reportDaysForPeriod(period, opts.referenceDate || state.selectedDateIso);
+      var machineSet = {};
+      selectedMachines.forEach(function(machine) { machineSet[machine] = true; });
+      var rows = state.rowsData.filter(function(item) {
+        if (!machineSet[item.maquina]) return false;
+        if (!days.length) return true;
+        return days.indexOf(String(item.prazoIso || '').slice(0, 10)) >= 0;
+      }).sort(function(a, b) {
+        if (a.maquina !== b.maquina) return a.maquina.localeCompare(b.maquina, 'pt-BR');
+        if (String(a.prazoIso || '') !== String(b.prazoIso || '')) return String(a.prazoIso || '').localeCompare(String(b.prazoIso || ''));
+        if (Number(a.displaySeq || a.order || 0) !== Number(b.displaySeq || b.order || 0)) return Number(a.displaySeq || a.order || 0) - Number(b.displaySeq || b.order || 0);
+        return String(a.numero || '').localeCompare(String(b.numero || ''), 'pt-BR', { numeric: true });
+      });
+      var summaryRows = selectedMachines.map(function(machine) {
+        var machineRows = rows.filter(function(item) { return item.maquina === machine; });
+        return {
+          maquina: machine,
+          total_ofs: machineRows.length,
+          caixas: machineRows.reduce(function(sum, item) { return sum + (Number(item.quantidade || 0) || 0); }, 0),
+          tempo: machineRows.reduce(function(sum, item) { return sum + (Number(item.tempoMin || 0) || 0); }, 0)
+        };
+      }).filter(function(item) {
+        return item.total_ofs > 0;
+      });
+      var groups = {};
+      rows.forEach(function(item) {
+        var key = item.maquina + '|' + String(item.prazoIso || '');
+        if (!groups[key]) groups[key] = { maquina: item.maquina, dia: String(item.prazoIso || ''), rows: [] };
+        groups[key].rows.push(item);
+      });
+      var detailSections = Object.keys(groups).sort(function(a, b) {
+        var ga = groups[a];
+        var gb = groups[b];
+        if (ga.maquina !== gb.maquina) return ga.maquina.localeCompare(gb.maquina, 'pt-BR');
+        return String(ga.dia || '').localeCompare(String(gb.dia || ''));
+      }).map(function(key) {
+        var group = groups[key];
+        return {
+          title: group.maquina + ' • ' + fmtDateBR(group.dia),
+          headers: ['SEQ', 'OF', 'Cliente', 'Produto', 'Quantidade', 'Tamanhos', 'Cores', 'Máquina', 'Tempo'],
+          rows: group.rows.map(function(item) {
+            return [
+              String(item.displaySeq || item.order || 0),
+              String(item.numero || '—'),
+              String(item.cliente || '—'),
+              String(item.produto || '—'),
+              fmtInt(item.quantidade || 0),
+              String(item.tamanho || '—'),
+              Array.isArray(item.cores) && item.cores.length ? item.cores.join(', ') : 'Sem cor',
+              String(item.maquina || '—'),
+              fmtTempo(item.tempoMin || 0)
+            ];
+          })
+        };
+      });
+      return {
+        title: 'Relatório de Máquinas por Período',
+        periodo: reportPeriodTitle(period, days),
+        cards: [
+          { label: 'Máquinas', value: fmtInt(summaryRows.length), sub: 'Máquinas com OFs no período' },
+          { label: 'OFs', value: fmtInt(rows.length), sub: 'Linhas filtradas pela base canônica' },
+          { label: 'Caixas', value: fmtInt(rows.reduce(function(sum, item) { return sum + (Number(item.quantidade || 0) || 0); }, 0)), sub: 'Quantidade total no período' },
+          { label: 'Tempo', value: fmtTempo(rows.reduce(function(sum, item) { return sum + (Number(item.tempoMin || 0) || 0); }, 0)), sub: 'Tempo previsto consolidado' }
+        ],
+        summaryTitle: 'Resumo por máquina',
+        summaryHeaders: ['Máquina', 'OFs', 'Caixas', 'Tempo'],
+        summaryRows: summaryRows.map(function(item) {
+          return [item.maquina, fmtInt(item.total_ofs), fmtInt(item.caixas), fmtTempo(item.tempo)];
+        }),
+        detailSections: detailSections,
+        detailTitle: 'Detalhamento',
+        emptySummaryCols: 4,
+        emptyDetailCols: 9,
+        meta: {
+          period: period,
+          referenceDate: String(opts.referenceDate || state.selectedDateIso || '').slice(0, 10),
+          machines: selectedMachines.slice()
+        }
+      };
+    }
+
+    window.__ofmaqBuildPeriodReportConfig = buildPeriodReportConfig;
+    window.__ofmaqGetMachineCatalog = function() {
+      return Array.isArray(state.machineCatalog) ? state.machineCatalog.slice() : [];
+    };
 
     function bindShell(shell) {
       if (!shell || shell.root.getAttribute('data-ofmaq-final-bound') === '1') return;
@@ -17858,6 +18653,20 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           state.grouped = !state.grouped;
           updateToolbar(shell);
           renderRows(shell);
+          return;
+        }
+        var reportBtn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-report') : null;
+        if (reportBtn) {
+          if (typeof window.rrOpenMaquinasPeriodoModal === 'function') {
+            window.rrOpenMaquinasPeriodoModal({
+              source: 'ofmaq',
+              preferredPeriod: 'dia',
+              referenceDate: state.selectedDateIso,
+              machines: state.selectedMachine ? [state.selectedMachine] : state.machineCatalog.slice()
+            });
+          } else {
+            try { window.toast('Relatório de máquinas ainda não inicializado.', 'var(--yellow)'); } catch (_) {}
+          }
           return;
         }
         var imageBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofmaq-final-image]') : null;
@@ -17948,6 +18757,34 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     }
 
     window.renderOfmaqFinal = renderOfmaqFinal;
+    (function bridgeLegacyOfmaqEntrypoints() {
+      [
+        'renderOFsPorMaquina',
+        'renderMaquinas',
+        'renderOfmaq',
+        'renderOFsMaquina',
+        'renderMaq',
+        'carregarOFsMaquina',
+        'loadOFsMaquina',
+        'renderKanbanOfmaq'
+      ].forEach(function(name) {
+        var current = typeof window[name] === 'function' ? window[name] : null;
+        if (current && current.__ofmaqFinalBridge) return;
+        var original = current;
+        var bridged = function() {
+          if (String(window._PAGE_ATUAL || '') === 'ofmaq' && typeof window.renderOfmaqFinal === 'function') {
+            return window.renderOfmaqFinal({ forceReload: true, reason: 'legacy-entrypoint:' + name });
+          }
+          return typeof original === 'function' ? original.apply(this, arguments) : undefined;
+        };
+        bridged.__ofmaqFinalBridge = true;
+        bridged.__patchWrapOriginal = (original && (original.__patchWrapOriginal || original)) || null;
+        bridged._patchedAccordion = !!(original && original._patchedAccordion);
+        bridged._patchedSwipeMaq = !!(original && original._patchedSwipeMaq);
+        bridged._patchedPriorityHub = true;
+        window[name] = bridged;
+      });
+    })();
     window.__ofmaqFinalSetMockData = function(rows) {
       window.__OFMAQ_FINAL_MOCK = Array.isArray(rows) ? rows.slice() : [];
       return renderOfmaqFinal({ forceReload: true, reason: 'mock-data' });
@@ -23213,8 +24050,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var orig = window[nome];
       var wrapped = function() {
         var res = orig.apply(this, arguments);
-        setTimeout(aplicarAccordion, 300);
-        setTimeout(aplicarAccordion, 700);
+        if (!(window.__ofmaqDesiredPipeline === 'final' && String(window._PAGE_ATUAL || '') === 'ofmaq')) {
+          setTimeout(aplicarAccordion, 300);
+          setTimeout(aplicarAccordion, 700);
+        }
         return res;
       };
       wrapped._patchedAccordion = true;
@@ -23553,7 +24392,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
           sel.value = next;
           try{ sel.dispatchEvent(new Event('change', { bubbles:true })); }catch(_){
-            try{ if(typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); }catch(__){}
+            try{
+              if (window.__ofmaqDesiredPipeline === 'final' && typeof window.renderOfmaqFinal === 'function') window.renderOfmaqFinal({ forceReload:true, reason:'swipe-machine-change' });
+              else if(typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina();
+            }catch(__){}
           }
 
           var indicator = document.createElement('div');
@@ -41477,6 +42319,7 @@ function _ocultarGraficoComissoes() {
   window.__simdBoxPlannerTailAtRealEndApplied = true;
   function reapply() {
     try {
+      if (String(window.__simdPreferredMode || '').trim().toLowerCase() !== 'box') return;
       if (typeof window.__simdBoxPlannerFetch === 'function') window._simdCarregarChapas = window.__simdBoxPlannerFetch;
       if (typeof window.__simdBoxPlannerVerify === 'function') window._simdVerificarCampos = window.__simdBoxPlannerVerify;
       if (typeof window.__simdBoxPlannerRestore === 'function') window._simdRestoreState = window.__simdBoxPlannerRestore;
@@ -41982,14 +42825,6 @@ function _ocultarGraficoComissoes() {
       var payload = encodeURIComponent(JSON.stringify(chapa || {}));
       return '<button type="button" class="simd-search-item" data-simd-chapa="' + payload + '"><strong>' + sEsc(String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim()) + '</strong><span>' + sEsc([String(chapa && (chapa.fornecedor || chapa.forn || '—') || '—').trim() || '—', tamanho, 'Estoque: ' + String(sInt(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd))))].join(' · ')) + '</span></button>';
     }).join('');
-    Array.prototype.slice.call(resultados.querySelectorAll('[data-simd-chapa]')).forEach(function(btn) {
-      btn.onclick = function() {
-        var raw = String(btn.getAttribute('data-simd-chapa') || '');
-        var chapa = null;
-        try { chapa = JSON.parse(decodeURIComponent(raw)); } catch (_) { chapa = null; }
-        if (chapa) window._simdSelecionarChapa(chapa);
-      };
-    });
   }
 
   window._simdBuscarChapa = async function(termo) {
@@ -42249,6 +43084,7 @@ function _ocultarGraficoComissoes() {
 
   function sBindShell() {
     if (!sRenderShell()) return false;
+    var host = document.getElementById('tela-simulador-desperdicio');
     ['simd-larg', 'simd-comp', 'simd-qtd'].forEach(function(id) {
       var el = document.getElementById(id);
       if (!el || el.dataset.simdMeasureBound === '1') return;
@@ -42268,12 +43104,32 @@ function _ocultarGraficoComissoes() {
         window._simdBuscarChapa(String(busca.value || ''));
       });
     }
+    var resultados = document.getElementById('simd-busca-resultados');
+    if (resultados && resultados.dataset.simdResultsBound !== '1') {
+      resultados.dataset.simdResultsBound = '1';
+      resultados.addEventListener('click', function(e) {
+        var target = null;
+        var raw = '';
+        var chapa = null;
+        try {
+          target = e && e.target && e.target.closest ? e.target.closest('[data-simd-chapa]') : null;
+        } catch (_) {
+          target = null;
+        }
+        if (!target) return;
+        try { if (e) e.preventDefault(); } catch (_) {}
+        raw = String(target.getAttribute('data-simd-chapa') || '');
+        try { chapa = JSON.parse(decodeURIComponent(raw)); } catch (_) { chapa = null; }
+        if (!chapa) return;
+        try { window._simdSelecionarChapa(chapa); } catch (err) { sErr('selecionar chapa falhou', err); }
+      });
+    }
     var clearBtn = document.getElementById('simd-btn-limpar-chapa');
     if (clearBtn && clearBtn.dataset.simdClearBound !== '1') {
       clearBtn.dataset.simdClearBound = '1';
       clearBtn.onclick = function(e) {
         try { if (e) e.preventDefault(); } catch (_) {}
-        window._simdLimparChapaSelecionada();
+        return window._simdLimparChapaSelecionada();
       };
     }
     var calcBtn = document.getElementById('simd-btn');
@@ -42309,7 +43165,6 @@ function _ocultarGraficoComissoes() {
     try {
       if (!sBindShell()) return;
       sVerificarCampos();
-      try { if (typeof window._simdBindBotaoDireto === 'function') window._simdBindBotaoDireto(); } catch (_) {}
     } catch (e) {
       sErr('apply falhou', e);
     }
@@ -42329,15 +43184,18 @@ function _ocultarGraficoComissoes() {
 
   sApply();
   setTimeout(sApply, 0);
-  setTimeout(sApply, 300);
-  setTimeout(sApply, 1200);
   try {
+    var obsHost = document.getElementById('tela-simulador-desperdicio');
     if (!window.__simdSheetMeasureObs) {
       window.__simdSheetMeasureObs = new MutationObserver(function() {
         try { clearTimeout(window.__simdSheetMeasureObsTimer); } catch (_) {}
         window.__simdSheetMeasureObsTimer = setTimeout(sApply, 80);
       });
-      window.__simdSheetMeasureObs.observe(document.body, { childList: true, subtree: true });
+    }
+    if (obsHost && window.__simdSheetMeasureObsHost !== obsHost) {
+      try { window.__simdSheetMeasureObs.disconnect(); } catch (_) {}
+      window.__simdSheetMeasureObsHost = obsHost;
+      window.__simdSheetMeasureObs.observe(obsHost, { childList: true, subtree: true });
     }
   } catch (_) {}
 })();

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -8428,7 +8428,16 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     try {
       const hoje = nowIso.slice(0, 10);
       const picked = fluxoPickMaquina();
-      const maquinaNome = String(mprodRaw || body.maquina || of.maq || of.maquina || picked.nome || of.passou_maquina_nome || '').trim() || 'Sem máquina';
+      const maquinaNome = String(
+        mprodRaw ||
+        body.maquina ||
+        picked.nome ||
+        of.maquina_agendada ||
+        of.maquina ||
+        of.passou_maquina_nome ||
+        (Array.isArray(of.maq) ? of.maq[0] : of.maq) ||
+        ''
+      ).trim() || 'Sem máquina';
       const upsertResult = await _upsertPassagemMaquinaRegistro({
         of_id: sid,
         of_numero: String(of?.numero || of?.of_num || of?.of || '').trim() || null,
@@ -9799,19 +9808,9 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
           ? _passagensRangeAnteriorPorPeriodo(refAtual)
           : _passagensMesAnterior(refAtual.mes, refAtual.ano));
 
-    const atualResumo = await _agruparPassagensRelatorioMensalBackend(req, {
-      cliente,
-      maquina,
-      data_inicio: refAtual.inicio,
-      data_fim: refAtual.fim
-    });
+    const atualResumo = await _agruparOfsRelatorioMensalFallback(req, refAtual, maquina, cliente);
     const anteriorResumo = refAnterior?.inicio && refAnterior?.fim
-      ? await _agruparPassagensRelatorioMensalBackend(req, {
-          cliente,
-          maquina,
-          data_inicio: refAnterior.inicio,
-          data_fim: refAnterior.fim
-        })
+      ? await _agruparOfsRelatorioMensalFallback(req, refAnterior, maquina, cliente)
       : { agg: [], totalRows: 0, rowsComValor: 0, top_cores: [], top_tamanhos: [] };
     const atualAgg = Array.isArray(atualResumo?.agg) ? atualResumo.agg : [];
     const anteriorAgg = Array.isArray(anteriorResumo?.agg) ? anteriorResumo.agg : [];
@@ -9820,7 +9819,7 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
       runId: 'pre-fix',
       hypothesisId: 'C',
       location: 'server.js:/api/maquinas/relatorio-mensal',
-      msg: '[DEBUG] relatorio mensal agregado',
+      msg: '[DEBUG] relatorio mensal agregado via ofs concluidas',
       data: {
         mes: refAtual.mes,
         ano: refAtual.ano,
@@ -11885,6 +11884,194 @@ app.get('/api/relatorios/vendas-por-cidade-estado', authMiddleware, async (req, 
   }
 });
 
+app.get('/api/relatorios/controle-vendas-vendedor', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    if (!range?.inicio || !range?.fim_exclusivo) {
+      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
+    }
+    let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+    const companyIds = empresa_id ? [empresa_id] : [];
+    const ofsMes = await _relatoriosFetchOfsConcluidas(range, { companyIds });
+    const historyCols = [
+      'id', 'numero', 'of', 'status', 'data_conclusao', 'created_at',
+      'empresa_id', 'cli_id',
+      'valor_total', 'valor_venda', 'total',
+      'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida',
+      'vendedor_id'
+    ].join(',');
+    const historyBefore = [];
+    let offset = 0;
+    const pageSize = 1000;
+    while (true) {
+      let query = supabase
+        .from('ofs')
+        .select(historyCols)
+        .ilike('status', '%conclu%')
+        .lt('data_conclusao', range.inicio)
+        .order('data_conclusao', { ascending: true });
+      if (companyIds.length) query = query.in('empresa_id', companyIds);
+      const { data, error } = await query.range(offset, offset + pageSize - 1);
+      if (error) throw error;
+      const batch = Array.isArray(data) ? data : [];
+      historyBefore.push(...batch);
+      if (batch.length < pageSize) break;
+      offset += batch.length;
+      if (offset > 50000) break;
+    }
+    const clientesMap = await _relatoriosLoadClientesDetails(ofsMes.map((of) => _assistPickOfClienteId(of)));
+    const vendedoresMap = await _relatoriosLoadVendedoresByIds(ofsMes.map((of) => _relatoriosPickVendedorId(of)).filter(Boolean));
+    const byClientHistory = new Map();
+    historyBefore.forEach((of) => {
+      const cliId = _assistPickOfClienteId(of);
+      const data = String(_assistPickOfConclusao(of) || '').slice(0, 10);
+      if (!_isUuid(cliId) || !data) return;
+      if (!byClientHistory.has(cliId)) byClientHistory.set(cliId, []);
+      byClientHistory.get(cliId).push(data);
+    });
+    byClientHistory.forEach((dates) => dates.sort((a, b) => String(a || '').localeCompare(String(b || ''))));
+    const monthStart = new Date(range.inicio + 'T12:00:00');
+    const prevMonthStartDate = new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1, 12, 0, 0);
+    const prevMonthEndDate = new Date(monthStart.getFullYear(), monthStart.getMonth(), 0, 12, 0, 0);
+    const prevMonthStart = prevMonthStartDate.toISOString().slice(0, 10);
+    const prevMonthEnd = prevMonthEndDate.toISOString().slice(0, 10);
+    const currentBySellerClient = new Map();
+    ofsMes.forEach((of) => {
+      const cliId = _assistPickOfClienteId(of);
+      if (!_isUuid(cliId)) return;
+      const vendedorId = _relatoriosPickVendedorId(of);
+      const vendedorNome = _relatoriosPickVendedorNome(of, vendedoresMap);
+      const sellerKey = vendedorId ? ('id:' + vendedorId) : ('nome:' + vendedorNome);
+      const key = sellerKey + '|' + cliId;
+      const dataConclusao = String(_assistPickOfConclusao(of) || '').slice(0, 10);
+      const valor = _relatoriosPickValorOf(of);
+      const qtd = _relatoriosPickQtdOf(of);
+      const cliente = clientesMap.get(cliId) || null;
+      if (!currentBySellerClient.has(key)) {
+        currentBySellerClient.set(key, {
+          sellerKey,
+          vendedor_id: vendedorId || null,
+          vendedor: vendedorNome,
+          cliente_id: cliId,
+          cliente_nome: String(cliente?.nome || of?.cliente_nome || of?.cliNome || of?.clinome || 'Sem cliente').trim() || 'Sem cliente',
+          primeira_compra_mes: dataConclusao,
+          ultima_compra_mes: dataConclusao,
+          total_ofs_mes: 0,
+          valor_total_mes: 0,
+          caixas_mes: 0
+        });
+      }
+      const item = currentBySellerClient.get(key);
+      if (dataConclusao && (!item.primeira_compra_mes || dataConclusao < item.primeira_compra_mes)) item.primeira_compra_mes = dataConclusao;
+      if (dataConclusao && (!item.ultima_compra_mes || dataConclusao > item.ultima_compra_mes)) item.ultima_compra_mes = dataConclusao;
+      item.total_ofs_mes += 1;
+      item.valor_total_mes += valor;
+      item.caixas_mes += qtd;
+    });
+    const vendedores = new Map();
+    currentBySellerClient.forEach((item) => {
+      const cliHistory = Array.isArray(byClientHistory.get(item.cliente_id)) ? byClientHistory.get(item.cliente_id) : [];
+      const ultimaCompraAnterior = cliHistory.length ? cliHistory[cliHistory.length - 1] : '';
+      const comprouMesAnterior = cliHistory.some((data) => String(data || '') >= prevMonthStart && String(data || '') <= prevMonthEnd);
+      let classificacao = 'novo';
+      let diasSemComprar = null;
+      let retornoTexto = '';
+      if (ultimaCompraAnterior) {
+        if (comprouMesAnterior) {
+          classificacao = 'recorrente';
+        } else {
+          classificacao = 'retornou';
+          const diffMs = new Date(item.primeira_compra_mes + 'T12:00:00').getTime() - new Date(ultimaCompraAnterior + 'T12:00:00').getTime();
+          diasSemComprar = Math.max(0, Math.round(diffMs / 86400000));
+          retornoTexto = diasSemComprar + ' dias sem comprar, retornou em ' + item.primeira_compra_mes.split('-').reverse().join('/');
+        }
+      }
+      if (!vendedores.has(item.sellerKey)) {
+        vendedores.set(item.sellerKey, {
+          vendedor_id: item.vendedor_id,
+          vendedor: item.vendedor || 'Sem vendedor',
+          total_clientes: 0,
+          clientes_novos: 0,
+          clientes_retornaram: 0,
+          clientes_recorrentes: 0,
+          total_ofs: 0,
+          valor_total: 0,
+          caixas_total: 0,
+          clientes: []
+        });
+      }
+      const seller = vendedores.get(item.sellerKey);
+      seller.total_clientes += 1;
+      seller.total_ofs += item.total_ofs_mes;
+      seller.valor_total += item.valor_total_mes;
+      seller.caixas_total += item.caixas_mes;
+      if (classificacao === 'novo') seller.clientes_novos += 1;
+      else if (classificacao === 'retornou') seller.clientes_retornaram += 1;
+      else seller.clientes_recorrentes += 1;
+      seller.clientes.push({
+        cliente_id: item.cliente_id,
+        cliente_nome: item.cliente_nome,
+        classificacao,
+        total_ofs_mes: item.total_ofs_mes,
+        valor_total_mes: Number(item.valor_total_mes || 0),
+        caixas_mes: Number(item.caixas_mes || 0),
+        primeira_compra_mes: item.primeira_compra_mes,
+        ultima_compra_mes: item.ultima_compra_mes,
+        ultima_compra_anterior: ultimaCompraAnterior || null,
+        dias_sem_comprar: diasSemComprar,
+        retorno_texto: retornoTexto
+      });
+    });
+    const rows = Array.from(vendedores.values()).map((seller) => {
+      seller.clientes.sort((a, b) => {
+        const order = { retornou: 0, novo: 1, recorrente: 2 };
+        const oa = Object.prototype.hasOwnProperty.call(order, a.classificacao) ? order[a.classificacao] : 9;
+        const ob = Object.prototype.hasOwnProperty.call(order, b.classificacao) ? order[b.classificacao] : 9;
+        if (oa !== ob) return oa - ob;
+        return String(a.cliente_nome || '').localeCompare(String(b.cliente_nome || ''), 'pt-BR');
+      });
+      return seller;
+    }).sort((a, b) => {
+      if (Number(b.total_clientes || 0) !== Number(a.total_clientes || 0)) return Number(b.total_clientes || 0) - Number(a.total_clientes || 0);
+      if (Number(b.valor_total || 0) !== Number(a.valor_total || 0)) return Number(b.valor_total || 0) - Number(a.valor_total || 0);
+      return String(a.vendedor || '').localeCompare(String(b.vendedor || ''), 'pt-BR');
+    });
+    const resumo = rows.reduce((acc, seller) => {
+      acc.total_vendedores += 1;
+      acc.total_clientes += Number(seller?.total_clientes || 0) || 0;
+      acc.clientes_novos += Number(seller?.clientes_novos || 0) || 0;
+      acc.clientes_retornaram += Number(seller?.clientes_retornaram || 0) || 0;
+      acc.clientes_recorrentes += Number(seller?.clientes_recorrentes || 0) || 0;
+      acc.total_ofs += Number(seller?.total_ofs || 0) || 0;
+      acc.valor_total += Number(seller?.valor_total || 0) || 0;
+      return acc;
+    }, {
+      total_vendedores: 0,
+      total_clientes: 0,
+      clientes_novos: 0,
+      clientes_retornaram: 0,
+      clientes_recorrentes: 0,
+      total_ofs: 0,
+      valor_total: 0
+    });
+    const refDate = new Date(range.inicio + 'T12:00:00');
+    return res.json({
+      ok: true,
+      mes: refDate.getMonth() + 1,
+      ano: refDate.getFullYear(),
+      data_inicio: range.inicio,
+      data_fim: range.fim,
+      resumo,
+      vendedores: rows
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][CONTROLE-VENDAS-VENDEDOR]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
@@ -12711,6 +12898,19 @@ app.get('/api/orcamentos/:id', authMiddleware, async (req, res) => {
 app.post('/api/orcamentos', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
+    const chapaUtilizada = String(
+      b.chapa_utilizada ??
+      b.chapaUtilizada ??
+      (b.parametros && typeof b.parametros === 'object' ? (b.parametros.chapa_utilizada ?? b.parametros.chapaUtilizada) : '') ??
+      ''
+    ).trim();
+    const parametros = (b.parametros && typeof b.parametros === 'object' && !Array.isArray(b.parametros))
+      ? { ...b.parametros }
+      : {};
+    if (chapaUtilizada) {
+      parametros.chapa_utilizada = chapaUtilizada;
+      parametros.chapaUtilizada = chapaUtilizada;
+    }
 
     const orderCols = ['criado_em', 'created_at'];
     let ultimo = null;
@@ -12739,13 +12939,14 @@ app.post('/api/orcamentos', authMiddleware, async (req, res) => {
       onda: b.onda || '',
       valor_unitario: b.valor_unitario || 0,
       valor_total: b.valor_total || 0,
-      parametros: b.parametros || {},
+      parametros,
       resultados: b.resultados || [],
       emp_id: b.emp_id || '',
       criado_por: req.usuario?.nome || 'sistema',
       criado_em: new Date().toISOString(),
       status: 'Rascunho',
     };
+    if (chapaUtilizada) payload.chapa_utilizada = chapaUtilizada;
     payload.public_token = crypto.randomBytes(24).toString('hex');
     if (b.cliente_id && String(b.cliente_id).match(/^[0-9a-f-]{36}$/i)) payload.cliente_id = b.cliente_id;
     if (Object.prototype.hasOwnProperty.call(b, 'pasta_id')) {
@@ -12804,6 +13005,15 @@ app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
     const b = req.body || {};
     const updates = {};
     const has = (k) => Object.prototype.hasOwnProperty.call(b, k);
+    const currentParametros = (atual.data?.parametros && typeof atual.data.parametros === 'object' && !Array.isArray(atual.data.parametros))
+      ? { ...atual.data.parametros }
+      : {};
+    const bodyParametros = (b.parametros && typeof b.parametros === 'object' && !Array.isArray(b.parametros))
+      ? { ...b.parametros }
+      : null;
+    const chapaUtilizada = has('chapa_utilizada') || has('chapaUtilizada')
+      ? String(b.chapa_utilizada ?? b.chapaUtilizada ?? '').trim()
+      : '';
     if (has('medidas') || has('titulo')) updates.titulo = b.medidas ?? b.titulo ?? '';
     if (has('nome') || has('nome_orcamento')) updates.nome = b.nome ?? b.nome_orcamento ?? '';
     if (has('cliente_nome') || has('descricao')) {
@@ -12815,10 +13025,23 @@ app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
     if (has('onda')) updates.onda = b.onda ?? '';
     if (has('valor_unitario')) updates.valor_unitario = b.valor_unitario ?? 0;
     if (has('valor_total')) updates.valor_total = b.valor_total ?? 0;
-    if (has('parametros')) updates.parametros = b.parametros ?? {};
+    if (has('parametros') || has('chapa_utilizada') || has('chapaUtilizada')) {
+      const nextParametros = bodyParametros ? bodyParametros : currentParametros;
+      if (has('chapa_utilizada') || has('chapaUtilizada')) {
+        if (chapaUtilizada) {
+          nextParametros.chapa_utilizada = chapaUtilizada;
+          nextParametros.chapaUtilizada = chapaUtilizada;
+        } else {
+          delete nextParametros.chapa_utilizada;
+          delete nextParametros.chapaUtilizada;
+        }
+      }
+      updates.parametros = nextParametros;
+    }
     if (has('resultados')) updates.resultados = b.resultados ?? [];
     if (has('status')) updates.status = b.status ?? atual.data?.status ?? 'Rascunho';
     if (has('pasta_id')) updates.pasta_id = b.pasta_id ? String(b.pasta_id).trim() : null;
+    if (has('chapa_utilizada') || has('chapaUtilizada')) updates.chapa_utilizada = chapaUtilizada || null;
     if (!Object.keys(updates).length) return ok(res, atual.data || null);
     let upd = await supabase.from('orcamentos').update(updates).eq('id', id).select().single();
     if (upd.error) {
