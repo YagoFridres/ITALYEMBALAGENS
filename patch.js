@@ -7495,7 +7495,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#page-orcamentos .orc-table-wrap::-webkit-scrollbar{width:10px;height:10px}'
       + '#page-orcamentos .orc-table-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72)}'
       + '#page-orcamentos .orc-table-wrap::-webkit-scrollbar-thumb{background:rgba(100,116,139,.58);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
-      + '#page-orcamentos .orc-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1220px}'
+      + '#page-orcamentos .orc-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1320px}'
       + '#page-orcamentos .orc-table th{position:sticky;top:0;z-index:2;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.18);text-align:left}'
       + '#page-orcamentos .orc-table td{padding:13px 14px;border-bottom:1px solid rgba(148,163,184,.12);font-size:13px;color:#e2e8f0;vertical-align:middle}'
       + '#page-orcamentos .orc-table tbody tr:hover td{background:rgba(148,163,184,.06)}'
@@ -8160,6 +8160,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '        <th>Cliente</th>'
       + '        <th>Medidas</th>'
       + '        <th>Onda do papelão</th>'
+      + '        <th>Chapa</th>'
       + '        <th class="num">Quantidade</th>'
       + '        <th class="num">Valor total do orçamento</th>'
       + '        <th>Ações</th>'
@@ -8172,6 +8173,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       var medidas = orc.medidas || orc.titulo || '—';
       var qtd = orc.quantidade != null ? orc.quantidade : (orc.qtd != null ? orc.qtd : '—');
       var onda = orc.onda || '—';
+      var chapa = chapaUtilizadaOf(orc) || '—';
       var vtot = orc.valor_total != null ? orc.valor_total : (orc.vtot != null ? orc.vtot : 0);
       var id = String(orc.id || '').trim();
       var pastaId = folderIdOf(orc);
@@ -8186,6 +8188,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         + '  <td>' + esc(cliente) + '</td>'
         + '  <td>' + esc(medidas) + '</td>'
         + '  <td>' + esc(onda) + '</td>'
+        + '  <td>' + esc(chapa) + '</td>'
         + '  <td class="num">' + esc(String(qtd)) + '</td>'
         + '  <td class="num">' + esc(fmtMoney(vtot)) + '</td>'
         + '  <td>'
@@ -8492,7 +8495,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(9, 'antes pat
         comp: _orcPrintPick(row && row.compTitle, row && row.compLabel, row && row.label, onda ? ('Onda ' + onda) : '', '—'),
         onda: onda,
         unitLiq: vlUnit > 0 ? vlUnit : unitLiq,
-        unitFrete: unitFrete,
         total: total,
         idx: idx
       };
@@ -8522,10 +8524,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(9, 'antes pat
         + '  <td>' + _orcPrintEsc(row.comp || '—') + '</td>'
         + '  <td class="center">' + _orcPrintEsc(row.onda || '—') + '</td>'
         + '  <td class="num">' + _orcPrintMoney(row.unitLiq) + '</td>'
-        + '  <td class="num">' + _orcPrintMoney(row.unitFrete) + '</td>'
         + '  <td class="num strong">' + _orcPrintMoney(row.total) + '</td>'
         + '</tr>';
-    }).join('') : '<tr><td>—</td><td class="center">—</td><td class="num">R$ 0,00</td><td class="num">R$ 0,00</td><td class="num strong">R$ 0,00</td></tr>';
+    }).join('') : '<tr><td>—</td><td class="center">—</td><td class="num">R$ 0,00</td><td class="num strong">R$ 0,00</td></tr>';
 
     return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Orçamento Nº ' + _orcPrintEsc(numero) + ' — Italy Embalagens</title>'
       + '<style>'
@@ -8578,9 +8579,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(9, 'antes pat
       + '    <div class="cell"><div class="label">Medidas</div><div class="value">' + _orcPrintEsc(medidas) + '</div></div>'
       + '  </div>'
       + '</div>'
-      + '<div class="block"><table><thead><tr><th>Comp.</th><th class="center">Onda</th><th class="num">VL Unit.</th><th class="num">VL Unit. c/Frete</th><th class="num">Total</th></tr></thead><tbody>'
+      + '<div class="block"><table><thead><tr><th>Comp.</th><th class="center">Onda</th><th class="num">VL Unit.</th><th class="num">Total</th></tr></thead><tbody>'
       + rowsHtml
-      + '<tr class="total-row"><td colspan="4" class="num">Total Geral</td><td class="num">' + _orcPrintMoney(totalGeral) + '</td></tr>'
+      + '<tr class="total-row"><td colspan="3" class="num">Total Geral</td><td class="num">' + _orcPrintMoney(totalGeral) + '</td></tr>'
       + '</tbody></table></div>'
       + '<div class="block"><div class="note">A quantidade pode variar 5% pra mais ou menos, devido ao acerto de maquina.</div></div>'
       + '<div class="block"><div class="footer">' + _orcPrintEsc(vendedor) + ' | ' + _orcPrintEsc(tel1) + ' | ' + _orcPrintEsc(tel2) + ' | ' + _orcPrintEsc(email) + '<br>Italy Embalagens — ' + _orcPrintEsc(_orcPrintAddress()) + '</div></div>'
@@ -17531,6 +17532,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       weekStartIso: '',
       searchTerm: '',
       grouped: false,
+      summaryCollapsed: false,
       rowsData: [],
       machineCatalog: [],
       loading: false,
@@ -18063,7 +18065,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-final-root input[type="search"]{width:100%}'
         + '#page-ofmaq .ofmaq-final-day-btn[data-active="1"]{background:#2563eb;border-color:#60a5fa;color:#eff6ff}'
         + '#page-ofmaq .ofmaq-final-day-btn[data-hot="1"]{box-shadow:inset 0 0 0 1px rgba(248,113,113,.38)}'
+        + '#page-ofmaq .ofmaq-final-summary-shell{display:grid;gap:10px;margin-top:12px}'
+        + '#page-ofmaq .ofmaq-final-summary-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}'
+        + '#page-ofmaq .ofmaq-final-summary-title{font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#cbd5e1}'
+        + '#page-ofmaq .ofmaq-final-summary-toggle{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;border:1px solid rgba(96,165,250,.28);background:rgba(30,41,59,.72);color:#dbeafe;font-size:12px;font-weight:800;cursor:pointer}'
+        + '#page-ofmaq .ofmaq-final-summary-compact{display:none;gap:8px;flex-wrap:wrap;padding:10px 12px;border-radius:14px;background:rgba(15,23,42,.58);border:1px dashed rgba(148,163,184,.2)}'
+        + '#page-ofmaq .ofmaq-final-summary-compact[data-open="1"]{display:flex}'
+        + '#page-ofmaq .ofmaq-final-summary-mini{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(30,41,59,.88);border:1px solid rgba(148,163,184,.16);font-size:11px;font-weight:800;color:#e2e8f0}'
         + '#page-ofmaq .ofmaq-final-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}'
+        + '#page-ofmaq .ofmaq-final-summary[data-collapsed="1"]{display:none}'
         + '#page-ofmaq .ofmaq-final-card{padding:14px;border-radius:16px;background:linear-gradient(135deg,rgba(15,23,42,.98),rgba(30,41,59,.94));border:1px solid rgba(51,65,85,.8)}'
         + '#page-ofmaq .ofmaq-final-card h3{margin:0;font-size:15px;color:#f8fafc}'
         + '#page-ofmaq .ofmaq-final-card small{display:block;margin-top:4px;color:#94a3b8}'
@@ -18174,7 +18184,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '    <button type="button" id="ofmaq-final-report">Gerar Relatório</button>'
           + '  </div>'
           + '</div>'
-          + '<div id="ofmaq-final-summary" class="ofmaq-final-summary"></div>'
+          + '<div class="ofmaq-final-summary-shell">'
+          + '  <div class="ofmaq-final-summary-head">'
+          + '    <div class="ofmaq-final-summary-title">Resumo por máquina</div>'
+          + '    <button type="button" id="ofmaq-final-summary-toggle" class="ofmaq-final-summary-toggle">▾ Recolher cards</button>'
+          + '  </div>'
+          + '  <div id="ofmaq-final-summary-compact" class="ofmaq-final-summary-compact"></div>'
+          + '  <div id="ofmaq-final-summary" class="ofmaq-final-summary"></div>'
+          + '</div>'
           + '<div id="ofmaq-final-redistribuicao" class="ofmaq-final-redistribuicao"></div>'
           + '<div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table"><thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Cliente</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead><tbody id="ofmaq-final-tbody"></tbody></table></div>';
         container.insertBefore(root, container.firstChild || null);
@@ -18188,6 +18205,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         search: root.querySelector('#ofmaq-final-search'),
         group: root.querySelector('#ofmaq-final-group'),
         report: root.querySelector('#ofmaq-final-report'),
+        summaryToggle: root.querySelector('#ofmaq-final-summary-toggle'),
+        summaryCompact: root.querySelector('#ofmaq-final-summary-compact'),
         summary: root.querySelector('#ofmaq-final-summary'),
         chips: root.querySelector('#ofmaq-final-redistribuicao'),
         tbody: root.querySelector('#ofmaq-final-tbody')
@@ -18197,7 +18216,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     function renderSummary(shell) {
       if (!shell || !shell.summary) return;
       var days = weekDays(state.weekStartIso).map(function(day) { return day.iso; });
-      shell.summary.innerHTML = state.machineCatalog.map(function(machine) {
+      var cardsHtml = state.machineCatalog.map(function(machine) {
         var rows = state.rowsData.filter(function(item) { return item.maquina === machine && days.indexOf(item.prazoIso) >= 0; });
         var qtd = rows.reduce(function(sum, item) { return sum + (Number(item.quantidade || 0) || 0); }, 0);
         var tempo = rows.reduce(function(sum, item) { return sum + (Number(item.tempoMin || 0) || 0); }, 0);
@@ -18214,6 +18233,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '<div><span>Urgências</span><b>' + escH(String(rows.filter(function(item) { return item.urgencia !== 'normal'; }).length)) + '</b></div>'
           + '</div><div class="ofmaq-final-progress"><span style="width:' + escAttr(String(Math.min(100, Math.max(0, metric.pct)))) + '%;background:' + escAttr(cor) + '"></span></div></div>';
       }).join('') || '<div class="ofmaq-final-card"><h3>Sem máquinas ativas</h3><small>Nenhuma OF ativa encontrada no período selecionado.</small></div>';
+      var compactHtml = state.machineCatalog.map(function(machine) {
+        var metric = machineMetrics(machine, state.selectedDateIso);
+        return '<button type="button" class="ofmaq-final-summary-mini" data-machine-chip="' + escAttr(machine) + '">' + escH(machine) + ' · ' + escH(String(metric.rows.length)) + '</button>';
+      }).join('') || '<div class="ofmaq-final-empty">Sem máquinas ativas.</div>';
+      shell.summary.innerHTML = cardsHtml;
+      shell.summary.setAttribute('data-collapsed', state.summaryCollapsed ? '1' : '0');
+      if (shell.summaryCompact) {
+        shell.summaryCompact.innerHTML = compactHtml;
+        shell.summaryCompact.setAttribute('data-open', state.summaryCollapsed ? '1' : '0');
+      }
+      if (shell.summaryToggle) shell.summaryToggle.textContent = state.summaryCollapsed ? '▸ Expandir cards' : '▾ Recolher cards';
     }
 
     function renderRedistribuicao(shell) {
@@ -18302,7 +18332,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       modal.className = 'ofmaq-final-modal';
       modal.setAttribute('data-modal', id);
       modal.innerHTML = '<button type="button" class="close-btn" data-modal-close="' + escAttr(id) + '">✕</button><h3>' + escH(title) + '</h3><div class="body">' + bodyHtml + '</div>';
-      overlay.onclick = function() { closeModal(id); };
+      overlay.onclick = function(ev) {
+        if (ev && ev.target !== overlay) return;
+        closeModal(id);
+      };
+      modal.onclick = function(ev) {
+        try { if (ev) ev.stopPropagation(); } catch (_) {}
+      };
       document.body.appendChild(overlay);
       document.body.appendChild(modal);
       var close = modal.querySelector('[data-modal-close="' + id + '"]');
@@ -18361,6 +18397,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       ordered[idx] = ordered[target];
       ordered[target] = tmp;
       await persistGroupOrder(ordered);
+      applyDisplaySeqToState();
+      updateToolbar(ensureShell());
       renderRows(ensureShell());
     }
 
@@ -18459,47 +18497,47 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var row = rowById(id);
       if (!row) return;
       var modal = openModal('ofmaq-final-actions', 'Ações da OF #' + String(row.numero || row.id), ''
-        + '<button type="button" id="ofmaq-final-pass" class="ofmaq-final-action-primary">✓ Passou pela máquina</button>'
-        + '<button type="button" id="ofmaq-final-move">↔ Mover de máquina</button>'
-        + '<button type="button" id="ofmaq-final-date">📅 Alterar data</button>'
+        + '<button type="button" data-ofmaq-final-action="pass" class="ofmaq-final-action-primary">✓ Passou pela máquina</button>'
+        + '<button type="button" data-ofmaq-final-action="move">↔ Mover de máquina</button>'
+        + '<button type="button" data-ofmaq-final-action="date">📅 Alterar data</button>'
         + '<div class="ofmaq-final-move-grid">'
-        + '  <button type="button" id="ofmaq-final-up">↑ Mover para cima</button>'
-        + '  <button type="button" id="ofmaq-final-down">↓ Mover para baixo</button>'
+        + '  <button type="button" data-ofmaq-final-action="up">↑ Mover para cima</button>'
+        + '  <button type="button" data-ofmaq-final-action="down">↓ Mover para baixo</button>'
         + '</div>');
-      var passBtn = modal.querySelector('#ofmaq-final-pass');
-      var moveBtn = modal.querySelector('#ofmaq-final-move');
-      var dateBtn = modal.querySelector('#ofmaq-final-date');
-      var upBtn = modal.querySelector('#ofmaq-final-up');
-      var downBtn = modal.querySelector('#ofmaq-final-down');
-      if (passBtn) passBtn.onclick = async function() {
+      modal.addEventListener('click', async function(ev) {
+        var btn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofmaq-final-action]') : null;
+        if (!btn) return;
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        var action = String(btn.getAttribute('data-ofmaq-final-action') || '').trim();
+        try { console.log('[OFMAQ-FINAL] action-modal click', action, row && row.id); } catch (_) {}
         try {
-          await markPassed(id, row.maquina);
-          closeModal('ofmaq-final-actions');
-          state.machineCatalog = machineCatalogFromRows(state.rowsData);
-          updateToolbar(ensureShell());
-          renderRows(ensureShell());
+          if (action === 'pass') {
+            await markPassed(id, row.maquina);
+            closeModal('ofmaq-final-actions');
+            state.machineCatalog = machineCatalogFromRows(state.rowsData);
+            updateToolbar(ensureShell());
+            renderRows(ensureShell());
+            return;
+          }
+          if (action === 'move') {
+            closeModal('ofmaq-final-actions');
+            openMoveModal(id);
+            return;
+          }
+          if (action === 'date') {
+            closeModal('ofmaq-final-actions');
+            openDateModal(id);
+            return;
+          }
+          if (action === 'up' || action === 'down') {
+            await reorderWithinDay(id, action === 'up' ? -1 : 1);
+            closeModal('ofmaq-final-actions');
+          }
         } catch (err) {
-          try { window.toast('Erro ao registrar passagem: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+          try { console.error('[OFMAQ-FINAL] action-modal error', action, err); } catch (_) {}
+          try { window.toast('Erro na ação da OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
         }
-      };
-      if (moveBtn) moveBtn.onclick = function() { closeModal('ofmaq-final-actions'); openMoveModal(id); };
-      if (dateBtn) dateBtn.onclick = function() { closeModal('ofmaq-final-actions'); openDateModal(id); };
-      if (upBtn) upBtn.onclick = async function() {
-        try {
-          await reorderWithinDay(id, -1);
-          closeModal('ofmaq-final-actions');
-        } catch (err) {
-          try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
-        }
-      };
-      if (downBtn) downBtn.onclick = async function() {
-        try {
-          await reorderWithinDay(id, 1);
-          closeModal('ofmaq-final-actions');
-        } catch (err) {
-          try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
-        }
-      };
+      });
     }
 
     function reportDaysForPeriod(period, baseDateIso) {
@@ -18653,6 +18691,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           state.grouped = !state.grouped;
           updateToolbar(shell);
           renderRows(shell);
+          return;
+        }
+        var summaryToggle = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-summary-toggle') : null;
+        if (summaryToggle) {
+          state.summaryCollapsed = !state.summaryCollapsed;
+          renderSummary(shell);
           return;
         }
         var reportBtn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-report') : null;
