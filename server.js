@@ -9763,11 +9763,11 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     const count = Number(pair?.count || 0) || 0;
     try { passagens = await _enriquecerPassagensHistoricoComOfs(passagens); } catch (_) {}
     try { passagens = await _normalizarMaquinasPassagens(passagens); } catch (_) {}
-    try { passagens = _dedupePassagensMaquinaRows(passagens); } catch (_) {}
+    try { passagens = (Array.isArray(passagens) ? passagens.slice() : []).sort((a, b) => _timestampPassagem(b) - _timestampPassagem(a)); } catch (_) {}
     res.json({
       ok: true,
       passagens: passagens,
-      total: passagens.length || count || 0,
+      total: count || passagens.length || 0,
       page,
       limit,
       offset,
