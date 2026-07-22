@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -3517,6 +3517,13 @@ function normalizeOfUpdateBody(input) {
   if (out.observacoes !== undefined && out.obs === undefined) out.obs = out.observacoes;
   if (out.cliente_id !== undefined && out.cli_id === undefined) out.cli_id = out.cliente_id;
   if (out.clienteId !== undefined && out.cli_id === undefined) out.cli_id = out.clienteId;
+  if (out.urgente !== undefined) {
+    out.urgente = _chapasBool(out.urgente);
+    out.urg = out.urgente;
+  } else if (out.urg !== undefined) {
+    out.urg = _chapasBool(out.urg);
+    out.urgente = out.urg;
+  }
   if (out.status !== undefined) out.status = _canonicalizarStatusOf(out.status);
   return out;
 }
@@ -4678,7 +4685,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         imgs: ofSafe?.imgs ?? of?.imgs,
         total: total || of.total || 0,
         itens_parsed: itensArr,
-        urgente: of.urgente || of.urg || false,
+        urgente: _chapasBool(of.urgente ?? of.urg),
+        urg: _chapasBool(of.urgente ?? of.urg),
         numero: of.numero || of.of_num || of.of || ''
       };
     });
@@ -7806,7 +7814,7 @@ app.patch('/api/ofs/:id/urgente', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    const urgente = !!(req.body && Object.prototype.hasOwnProperty.call(req.body, 'urgente') ? req.body.urgente : false);
+    const urgente = _chapasBool(req.body && Object.prototype.hasOwnProperty.call(req.body, 'urgente') ? req.body.urgente : false);
     const payload = {
       urgente,
       urg: urgente,
@@ -27611,8 +27619,8 @@ async function _sequenciamentoListar({ maquina, empId }){
   const mk = String(maquina||'').trim();
   const filtered = mk ? ofs.filter(o=>String(_ofPickMaqAtualName(o)||'').trim()===mk) : ofs;
   const ord = (a,b)=>{
-    const ua = !!(a?.urg || a?.urgente);
-    const ub = !!(b?.urg || b?.urgente);
+    const ua = _chapasBool(a?.urgente ?? a?.urg);
+    const ub = _chapasBool(b?.urgente ?? b?.urg);
     if(ua !== ub) return ua ? -1 : 1;
     const ea = String(a?.data_entrega ?? a?.ent ?? '9999-99-99').slice(0,10) || '9999-99-99';
     const eb = String(b?.data_entrega ?? b?.ent ?? '9999-99-99').slice(0,10) || '9999-99-99';
@@ -27886,7 +27894,7 @@ app.post('/api/sequenciamento/auto', authMiddleware, async (req, res) => {
     const lista = await _sequenciamentoListar({ maquina, empId: empId || null });
     const keySetup = (o)=> String(o?.tipo_caixa_id || o?.tipo_caixa || o?.onda || '').trim();
     const entrega = (o)=> String(o?.data_entrega ?? o?.ent ?? '9999-99-99').slice(0,10) || '9999-99-99';
-    const urg = (o)=> !!(o?.urg || o?.urgente);
+    const urg = (o)=> _chapasBool(o?.urgente ?? o?.urg);
     const sorted = (lista||[]).slice().sort((a,b)=>{
       const ua = urg(a); const ub = urg(b);
       if(ua !== ub) return ua ? -1 : 1;

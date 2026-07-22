@@ -2998,30 +2998,6 @@ try {
 ;(function() {
   if (window.__simdBoxPlannerTailApplied) return;
   window.__simdBoxPlannerTailApplied = true;
-  function reapply() {
-    try {
-      if (String(window.__simdPreferredMode || '').trim().toLowerCase() !== 'box') return;
-      if (typeof window.__simdBoxPlannerFetch === 'function') window._simdCarregarChapas = window.__simdBoxPlannerFetch;
-      if (typeof window.__simdBoxPlannerVerify === 'function') window._simdVerificarCampos = window.__simdBoxPlannerVerify;
-      if (typeof window.__simdBoxPlannerRestore === 'function') window._simdRestoreState = window.__simdBoxPlannerRestore;
-      if (typeof window.__simdBoxPlannerSearch === 'function') window._simdBuscarChapa = window.__simdBoxPlannerSearch;
-      if (typeof window.__simdBoxPlannerSelect === 'function') window._simdSelecionarChapa = window.__simdBoxPlannerSelect;
-      if (typeof window.__simdBoxPlannerClear === 'function') window._simdLimparChapaSelecionada = window.__simdBoxPlannerClear;
-      if (typeof window.__simdBoxPlannerRun === 'function') {
-        window._simdCalcularFluxoImpl = window.__simdBoxPlannerRun;
-        window._simdCalcularPatchedImpl = window.__simdBoxPlannerRun;
-        window.__simdCalcularImpl = window.__simdBoxPlannerRun;
-        window._simdCalcular = window.__simdBoxPlannerRun;
-      }
-      if (typeof window.__simdBoxPlannerApply === 'function') window.__simdBoxPlannerApply();
-    } catch (e) {
-      try { console.error('[SIMD] tail reapply falhou', e); } catch (_) {}
-    }
-  }
-  reapply();
-  setTimeout(reapply, 0);
-  setTimeout(reapply, 200);
-  setTimeout(reapply, 1200);
 })();
 ;(function() {
   if (window.__ofmaqActionsFixTailApplied) return;
@@ -3162,6 +3138,50 @@ try {
     return (j && (j.data || j)) || payload;
   }
 
+  function showOfmaqCenterConfirm(message, opts) {
+    var cfg = opts && typeof opts === 'object' ? opts : {};
+    var modalId = 'patch-ofmaq-confirm-center';
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('[data-ofmaq-center-confirm="' + modalId + '"]')).forEach(function(node) {
+        try { node.remove(); } catch (_) {}
+      });
+    } catch (_) {}
+    var overlay = document.createElement('div');
+    overlay.setAttribute('data-ofmaq-center-confirm', modalId);
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:100260;background:rgba(2,6,23,.58);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:18px';
+    var card = document.createElement('div');
+    var tone = String(cfg.tone || 'success').trim();
+    var border = tone === 'danger' ? 'rgba(248,113,113,.42)' : (tone === 'warn' ? 'rgba(251,191,36,.42)' : 'rgba(74,222,128,.42)');
+    var accent = tone === 'danger' ? '#fecaca' : (tone === 'warn' ? '#fde68a' : '#bbf7d0');
+    card.style.cssText = 'width:min(520px,92vw);background:linear-gradient(180deg,#0f172a,#111827);border:1px solid ' + border + ';border-radius:22px;box-shadow:0 30px 80px rgba(2,6,23,.5);padding:26px 24px;text-align:center;color:#f8fafc';
+    card.innerHTML = ''
+      + '<div style="width:64px;height:64px;margin:0 auto 14px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);border:1px solid ' + border + ';font-size:28px;color:' + accent + ';">'
+      + (tone === 'danger' ? '!' : (tone === 'warn' ? 'i' : '✓'))
+      + '</div>'
+      + '<div style="font-size:21px;font-weight:900;line-height:1.25">' + sEsc(String(cfg.title || 'Confirmação')) + '</div>'
+      + '<div style="margin-top:10px;font-size:14px;line-height:1.6;color:#cbd5e1">' + sEsc(String(message || '').trim() || 'Operação concluída com sucesso.') + '</div>';
+    overlay.appendChild(card);
+    overlay.onclick = function() {
+      try { overlay.remove(); } catch (_) {}
+    };
+    document.body.appendChild(overlay);
+    setTimeout(function() {
+      try { overlay.remove(); } catch (_) {}
+    }, Math.max(1400, Math.trunc(Number(cfg.duration || 2200)) || 2200));
+  }
+
+  function appendHistPassagemLocal(entry) {
+    var row = entry && typeof entry === 'object' ? Object.assign({}, entry) : null;
+    if (!row) return;
+    var list = Array.isArray(window.__histPassagensDetalhamentoRows) ? window.__histPassagensDetalhamentoRows.slice() : [];
+    list.unshift(row);
+    window.__histPassagensDetalhamentoRows = list;
+    window.__histPassagensRowsVisible = list.slice();
+    try {
+      if (typeof window._histRenderDetalhamentoPassagens === 'function') window._histRenderDetalhamentoPassagens();
+    } catch (_) {}
+  }
+
   async function openAlterarMaquinaPatched(ofId, ofNum) {
     cleanupOfmaqArtifacts();
     var of = getOfmaqById(ofId);
@@ -3216,7 +3236,7 @@ try {
         try { _fecharModalPadrao('patch-ofmaq-altmaq'); } catch (_) {}
         cleanupOfmaqArtifacts();
         await refreshOfmaq('alterar-maquina');
-        try { window.toast('Máquina alterada com sucesso.', 'var(--green)'); } catch (_) {}
+        try { showOfmaqCenterConfirm('OF #' + String(ofNum || of.numero || of.of || '').trim() + ' movida para ' + novaMaq + (alterarData && novaData ? (' com nova entrega em ' + novaData.split('-').reverse().join('/')) : '') + '.', { title: 'Máquina alterada' }); } catch (_) {}
       } catch (e) {
         logOfmaq('erro alterar máquina', String(e && e.message || e));
         saveBtn.disabled = false;
@@ -3264,7 +3284,7 @@ try {
         try { _fecharModalPadrao('patch-ofmaq-altdata'); } catch (_) {}
         cleanupOfmaqArtifacts();
         await refreshOfmaq('alterar-data');
-        try { window.toast('Data de entrega alterada com sucesso.', 'var(--green)'); } catch (_) {}
+        try { showOfmaqCenterConfirm('OF #' + String(ofNum || of.numero || of.of || '').trim() + ' reagendada para ' + novaData.split('-').reverse().join('/') + '.', { title: 'Data alterada' }); } catch (_) {}
       } catch (e) {
         logOfmaq('erro alterar data', String(e && e.message || e));
         saveBtn.disabled = false;
@@ -3303,7 +3323,7 @@ try {
         try { _fecharModalPadrao('patch-ofmaq-tempo'); } catch (_) {}
         cleanupOfmaqArtifacts();
         await refreshOfmaq('registrar-tempo');
-        try { window.toast('Tempo registrado com sucesso.', 'var(--green)'); } catch (_) {}
+        try { showOfmaqCenterConfirm('Tempos de setup e produção atualizados para a OF #' + String(ofNum || of.numero || of.of || '').trim() + '.', { title: 'Tempo registrado' }); } catch (_) {}
       } catch (e) {
         logOfmaq('erro registrar tempo', String(e && e.message || e));
         saveBtn.disabled = false;
@@ -7349,7 +7369,6 @@ function _simdIsCanonicalUi() {
   }
 }
 window._simdCalcular = function() {
-  console.log('[SIMD] entrou');
   var impl = null;
   try {
     impl = typeof window.__simdCalcularImpl === 'function'
@@ -7361,32 +7380,12 @@ window._simdCalcular = function() {
     impl = null;
   }
   if (typeof impl !== 'function') {
-    try { console.error('[SIMD] erro:', new Error('Handler global do simulador não disponível')); } catch (_) {}
     try { alert('Simulador indisponível no momento. Recarregue a página.'); } catch (_) {}
     return false;
   }
   return impl.apply(this, arguments);
 };
-window._simdBindBotaoDireto = function() {
-  if (_simdPreferredModeValue() === 'sheet' || _simdIsCanonicalUi()) return false;
-  var btn = null;
-  try { btn = document.getElementById('simd-btn'); } catch (_) { btn = null; }
-  if (!btn || typeof window._simdCalcular !== 'function') return false;
-  try { btn.type = 'button'; } catch (_) {}
-  try { btn.onclick = window._simdCalcular; } catch (_) {}
-  if (btn.dataset.simdDirectBound !== '1') {
-    btn.dataset.simdDirectBound = '1';
-    btn.addEventListener('click', function(e) {
-      try { if (e) e.preventDefault(); } catch (_) {}
-      return window._simdCalcular.call(this, e);
-    });
-  }
-  return true;
-};
-try { window._simdBindBotaoDireto(); } catch (_) {}
-setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 50);
-setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 300);
-setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 900);
+window._simdBindBotaoDireto = function() { return false; };
 
 try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(6, 'antes patchSimuladorFluxoGlobalV2'); } catch (_) {}
 (function patchSimuladorFluxoGlobalV2() {
@@ -9711,7 +9710,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
       var st = document.createElement('style');
       st.id = 'patch-historico-passagens-style';
       st.textContent = ''
-        + '#page-historico-passagens{min-height:0;max-height:100vh;overflow-y:auto;overflow-x:hidden}'
+        + '#page-historico-passagens{min-height:0;max-height:none!important;overflow:visible!important}'
         + '#hist-filtros .hist-patch-btn,#hist-relatorio-mensal-shell .hist-patch-btn{background:#1e293b;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer}'
         + '#hist-filtros .hist-patch-btn:hover,#hist-relatorio-mensal-shell .hist-patch-btn:hover{filter:brightness(1.06)}'
         + '#hist-filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0;padding:14px 16px;border-radius:14px;background:rgba(15,23,42,.82);border:1px solid rgba(148,163,184,.14)}'
@@ -9740,16 +9739,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
         + '#hist-relatorio-mensal-shell .hist-month-table tbody td.num{text-align:right;font-variant-numeric:tabular-nums}'
         + '#hist-relatorio-mensal-shell .hist-month-table tbody tr:nth-child(even) td{background:rgba(255,255,255,.02)}'
         + '#hist-relatorio-mensal-shell .hist-month-table tbody tr:hover td{background:rgba(30,41,59,.42)}'
-        + '#page-historico-passagens #hist-passagens-resultado{display:grid;gap:10px;min-height:0;grid-template-rows:auto minmax(0,1fr) auto}'
+        + '#page-historico-passagens #hist-passagens-resultado{display:grid;gap:10px;min-height:0;grid-template-rows:auto auto auto;overflow:visible!important}'
         + '#hist-passagens-resultado .hist-passagens-toolbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}'
-        + '#page-historico-passagens #hist-passagens-resultado .hist-passagens-scroll{display:block;min-height:0;max-height:min(58vh,calc(100vh - 360px));overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-right:4px;scrollbar-gutter:stable}'
-        + '#page-historico-passagens #hist-passagens-resultado > #hist-passagens-items.hist-passagens-scroll{display:block !important;min-height:0 !important;max-height:min(58vh,calc(100vh - 360px)) !important;overflow-y:auto !important;overflow-x:hidden !important;overscroll-behavior:contain !important;padding-right:4px !important}'
+        + '#page-historico-passagens #hist-passagens-resultado .hist-passagens-scroll{display:block;min-height:0;max-height:none!important;overflow:visible!important;overscroll-behavior:auto;padding-right:0;scrollbar-gutter:auto}'
+        + '#page-historico-passagens #hist-passagens-resultado > #hist-passagens-items.hist-passagens-scroll{display:block !important;min-height:0 !important;max-height:none!important;overflow:visible!important;overscroll-behavior:auto!important;padding-right:0!important}'
         + '#hist-passagens-resultado .hist-detalhamento-box{display:grid;gap:12px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);border-radius:16px;padding:14px}'
         + '#hist-passagens-resultado .hist-detalhamento-head{display:flex;justify-content:flex-start;gap:12px;flex-wrap:wrap;align-items:center}'
         + '#hist-passagens-resultado .hist-detalhamento-title{font-size:16px;font-weight:900;color:#f8fafc}'
         + '#hist-passagens-resultado .hist-detalhamento-search{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
         + '#hist-passagens-resultado .hist-detalhamento-search input{width:min(520px,100%);min-width:260px;background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:11px 14px;font-size:13px}'
-        + '#hist-passagens-resultado .hist-detalhamento-table-wrap{max-height:min(58vh,calc(100vh - 360px));overflow:auto;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(2,6,23,.55)}'
+        + '#hist-passagens-resultado .hist-detalhamento-table-wrap{max-height:none!important;overflow-x:auto;overflow-y:visible;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(2,6,23,.55)}'
         + '#hist-passagens-resultado .hist-detalhamento-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1240px}'
         + '#hist-passagens-resultado .hist-detalhamento-table thead th{position:sticky;top:0;z-index:2;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.18);text-align:left}'
         + '#hist-passagens-resultado .hist-detalhamento-table tbody td{padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.12);font-size:13px;color:#e2e8f0;vertical-align:top}'
@@ -13666,10 +13665,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function isUrgente(of) {
-    return !!(of && (
-      of.urgente === true || of.urgente === 1 || of.urgente === '1' ||
-      of.urg === true || of.urg === 1 || of.urg === '1'
-    ));
+    var raw = of && (of.urgente != null ? of.urgente : of.urg);
+    if (raw === true || raw === false) return raw;
+    var txt = String(raw == null ? '' : raw).trim().toLowerCase();
+    if (!txt) return false;
+    return txt === '1' || txt === 'true' || txt === 'sim' || txt === 'yes' || txt === 'y';
   }
 
   function sortOfsByPriorityLocal(ofs) {
@@ -18626,6 +18626,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     function sortedVisibleRows(rows) {
       var list = Array.isArray(rows) ? rows.slice() : [];
       list.sort(function(a, b) {
+        if (!state.grouped) {
+          if (a.urgencia !== b.urgencia) {
+            if (a.urgencia === 'urgente') return -1;
+            if (b.urgencia === 'urgente') return 1;
+          }
+        }
         if (state.grouped) {
           var ga = String(a.corPrincipal || '') + '|' + String(a.tamanhoKey || '');
           var gb = String(b.corPrincipal || '') + '|' + String(b.tamanhoKey || '');
@@ -18713,6 +18719,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '.ofmaq-final-modal h3{margin:0;padding-right:44px;font-size:22px;line-height:1.2}'
         + '.ofmaq-final-modal .body{display:grid;gap:14px;margin-top:18px}'
         + '.ofmaq-final-modal .close-btn{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:999px}'
+        + '.ofmaq-center-confirm-overlay{position:fixed;inset:0;z-index:100260;background:rgba(2,6,23,.58);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:18px}'
+        + '.ofmaq-center-confirm-card{width:min(520px,92vw);background:linear-gradient(180deg,#0f172a,#111827);border-radius:22px;box-shadow:0 30px 80px rgba(2,6,23,.5);padding:26px 24px;text-align:center;color:#f8fafc}'
+        + '.ofmaq-center-confirm-card .icon{width:64px;height:64px;margin:0 auto 14px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);font-size:28px}'
         + '@media (max-width:1200px){#page-ofmaq .ofmaq-final-controls{grid-template-columns:1fr;}}';
       document.head.appendChild(st);
     }
@@ -19006,7 +19015,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       applyDisplaySeqToState();
       updateToolbar(ensureShell());
       renderRows(ensureShell());
-      try { window.toast('Sequência alterada', 'var(--green)'); } catch (_) {}
+      try { showOfmaqCenterConfirm('A sequência da OF foi atualizada na fila da máquina.', { title: 'Sequência alterada' }); } catch (_) {}
     }
 
     async function moveToPositionWithinDay(id, targetPosition) {
@@ -19027,7 +19036,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       applyDisplaySeqToState();
       updateToolbar(ensureShell());
       renderRows(ensureShell());
-      try { window.toast('Sequência alterada', 'var(--green)'); } catch (_) {}
+      try { showOfmaqCenterConfirm('A sequência da OF foi atualizada na fila da máquina.', { title: 'Sequência alterada' }); } catch (_) {}
     }
 
     async function moveRow(id, machine) {
@@ -19041,6 +19050,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { maq: [machine], maquina: machine, maquina_agendada: machine } });
       if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF');
+      return result;
     }
 
     async function updateDate(id, value) {
@@ -19054,16 +19064,49 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { data_entrega: value, ent: value } });
       if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao alterar data');
+      return result;
     }
 
     async function markPassed(id, machine) {
+      var row = rowById(id);
       if (window.__OFMAQ_FINAL_MOCK) {
         state.rowsData = state.rowsData.filter(function(item) { return item.id !== id; });
+        if (row) {
+          appendHistPassagemLocal({
+            of_id: row.id,
+            of_numero: row.numero,
+            numero: row.numero,
+            cliente: row.cliente,
+            produto: row.produto,
+            maquina: machine,
+            maquina_nome: machine,
+            data_passagem: isoFromDate(currentBusinessDate()),
+            hora_passagem: new Date().toISOString(),
+            status: 'Passou pela máquina',
+            passagens_maquina: [{ maquina: machine, maquina_nome: machine }]
+          });
+        }
         return;
       }
       var result = await apiJson('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method: 'POST', body: { maquina: machine, maquina_nome: machine } });
       if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao registrar passagem');
+      if (row) {
+        appendHistPassagemLocal({
+          of_id: row.id,
+          of_numero: row.numero,
+          numero: row.numero,
+          cliente: row.cliente,
+          produto: row.produto,
+          maquina: machine,
+          maquina_nome: machine,
+          data_passagem: isoFromDate(currentBusinessDate()),
+          hora_passagem: new Date().toISOString(),
+          status: 'Passou pela máquina',
+          passagens_maquina: [{ maquina: machine, maquina_nome: machine }]
+        });
+      }
       state.rowsData = state.rowsData.filter(function(item) { return item.id !== id; });
+      return result;
     }
 
     function openImage(id) {
@@ -19092,6 +19135,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           updateToolbar(ensureShell());
           renderRows(ensureShell());
           closeModal('ofmaq-final-move');
+          try { showOfmaqCenterConfirm('OF #' + String(row && row.numero || id) + ' movida para ' + machine + ' com sucesso.', { title: 'Máquina alterada' }); } catch (_) {}
         } catch (err) {
           try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
         }
@@ -19115,6 +19159,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           updateToolbar(ensureShell());
           renderRows(ensureShell());
           closeModal('ofmaq-final-date');
+          try { showOfmaqCenterConfirm('OF #' + String(row && row.numero || id) + ' reagendada para ' + fmtDateBR(value) + '.', { title: 'Data alterada' }); } catch (_) {}
         } catch (err) {
           try { window.toast('Erro ao alterar data: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
         }
@@ -19145,6 +19190,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             state.machineCatalog = machineCatalogFromRows(state.rowsData);
             updateToolbar(ensureShell());
             renderRows(ensureShell());
+            try { showOfmaqCenterConfirm('OF #' + String(row.numero || id) + ' passou pela máquina ' + String(row.maquina || '').trim() + ' com sucesso.', { title: 'Passou pela máquina' }); } catch (_) {}
             return;
           }
           if (action === 'move') {
@@ -43111,30 +43157,6 @@ function _ocultarGraficoComissoes() {
 ;(function() {
   if (window.__simdBoxPlannerTailAtRealEndApplied) return;
   window.__simdBoxPlannerTailAtRealEndApplied = true;
-  function reapply() {
-    try {
-      if (String(window.__simdPreferredMode || '').trim().toLowerCase() !== 'box') return;
-      if (typeof window.__simdBoxPlannerFetch === 'function') window._simdCarregarChapas = window.__simdBoxPlannerFetch;
-      if (typeof window.__simdBoxPlannerVerify === 'function') window._simdVerificarCampos = window.__simdBoxPlannerVerify;
-      if (typeof window.__simdBoxPlannerRestore === 'function') window._simdRestoreState = window.__simdBoxPlannerRestore;
-      if (typeof window.__simdBoxPlannerSearch === 'function') window._simdBuscarChapa = window.__simdBoxPlannerSearch;
-      if (typeof window.__simdBoxPlannerSelect === 'function') window._simdSelecionarChapa = window.__simdBoxPlannerSelect;
-      if (typeof window.__simdBoxPlannerClear === 'function') window._simdLimparChapaSelecionada = window.__simdBoxPlannerClear;
-      if (typeof window.__simdBoxPlannerRun === 'function') {
-        window._simdCalcularFluxoImpl = window.__simdBoxPlannerRun;
-        window._simdCalcularPatchedImpl = window.__simdBoxPlannerRun;
-        window.__simdCalcularImpl = window.__simdBoxPlannerRun;
-        window._simdCalcular = window.__simdBoxPlannerRun;
-      }
-      if (typeof window.__simdBoxPlannerApply === 'function') window.__simdBoxPlannerApply();
-    } catch (e) {
-      try { console.error('[SIMD] tail real reapply falhou', e); } catch (_) {}
-    }
-  }
-  reapply();
-  setTimeout(reapply, 0);
-  setTimeout(reapply, 200);
-  setTimeout(reapply, 1200);
 })();
 ;(function() {
   window.__simdPreferredMode = String(window.__simdPreferredMode || 'sheet');
