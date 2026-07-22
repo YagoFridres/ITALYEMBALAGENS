@@ -4994,15 +4994,48 @@ window._compraPapelaoEnsureStyles = function() {
     + '.ccpx-modal-totalbar .val{font-size:18px;font-weight:900;color:#22c55e;font-family:var(--mono,inherit)}'
     + '.ccpx-modal-footer-actions{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;width:100%}'
     + '.ccpx-modal-footer-actions .left,.ccpx-modal-footer-actions .right{display:flex;gap:10px;flex-wrap:wrap}'
+    + '#page-compras.ccpx-modern-active > .ptoolbar button{display:none!important}'
+    + '#page-compras.ccpx-modern-active > .ptoolbar select{min-width:180px}'
+    + '.ccpx-fs-overlay{position:fixed;inset:0;z-index:100120;background:rgba(2,6,23,.76);backdrop-filter:blur(10px);display:flex;align-items:stretch;justify-content:stretch}'
+    + '.ccpx-fs-shell{display:grid;grid-template-rows:auto minmax(0,1fr) auto;width:100vw;height:100vh;background:linear-gradient(180deg,#061120 0%,#0f172a 18%,#111827 100%);color:#e2e8f0}'
+    + '.ccpx-fs-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px;border-bottom:1px solid rgba(148,163,184,.14);background:rgba(3,7,18,.88)}'
+    + '.ccpx-fs-header-main{display:grid;gap:6px;min-width:0}'
+    + '.ccpx-fs-title{font-size:28px;font-weight:900;letter-spacing:-.02em;color:#f8fafc}'
+    + '.ccpx-fs-subtitle{font-size:12px;color:#94a3b8;line-height:1.45}'
+    + '.ccpx-fs-header-side{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}'
+    + '.ccpx-fs-badge{display:grid;gap:4px;padding:12px 16px;border-radius:18px;background:linear-gradient(135deg,rgba(24,95,165,.32),rgba(59,130,246,.16));border:1px solid rgba(125,211,252,.22);min-width:200px}'
+    + '.ccpx-fs-badge .lbl{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#bfdbfe}'
+    + '.ccpx-fs-badge .val{font-size:28px;font-weight:900;color:#fff;font-family:var(--mono,inherit)}'
+    + '.ccpx-fs-close{width:46px;height:46px;border:none;border-radius:14px;background:rgba(15,23,42,.92);color:#f8fafc;font-size:20px;font-weight:900;cursor:pointer}'
+    + '.ccpx-fs-body{min-height:0;overflow:auto;padding:22px 24px 18px;display:grid;gap:18px}'
+    + '.ccpx-fs-section{display:grid;gap:14px;padding:20px;border-radius:22px;border:1px solid rgba(148,163,184,.14);background:linear-gradient(180deg,rgba(15,23,42,.88),rgba(15,23,42,.7));box-shadow:0 20px 46px rgba(2,6,23,.22)}'
+    + '.ccpx-fs-section-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}'
+    + '.ccpx-fs-section-title{font-size:18px;font-weight:900;color:#f8fafc}'
+    + '.ccpx-fs-section-sub{font-size:12px;color:#94a3b8;line-height:1.5;max-width:780px}'
+    + '.ccpx-fs-head-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}'
+    + '.ccpx-fs-head-grid .ccpx-modal-inline-stack.full{grid-column:1 / -1}'
+    + '.ccpx-fs-footer{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:16px 24px;border-top:1px solid rgba(148,163,184,.14);background:rgba(3,7,18,.94)}'
+    + '.ccpx-fs-footer .ccpx-summary{flex:1;min-width:min(100%,420px)}'
+    + '.ccpx-fs-footer-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}'
+    + '.ccpx-fs-footer-actions button{min-height:46px;padding:0 18px;border-radius:14px;font-weight:900;border:1px solid rgba(148,163,184,.18);cursor:pointer}'
+    + '.ccpx-fs-footer-actions .ghost{background:rgba(15,23,42,.86);color:#e2e8f0}'
+    + '.ccpx-fs-footer-actions .print{background:rgba(30,41,59,.92);color:#e0f2fe}'
+    + '.ccpx-fs-footer-actions .primary{background:#2563eb;color:#fff;border-color:#2563eb}'
+    + '.ccpx-item-field.is-readonly input{background:rgba(15,23,42,.72)!important;color:#93c5fd!important;font-weight:900}'
+    + '@media (max-width:1280px){.ccpx-fs-head-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-fs-header{padding:16px 18px}.ccpx-fs-body{padding:18px}.ccpx-fs-footer{padding:14px 18px}}'
     + '@media (max-width:1100px){#page-compras .ccpx-block-top{grid-template-columns:1fr 1fr}#page-compras .ccpx-actions-line{justify-content:flex-start}.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
-    + '@media (max-width:980px){.ccpx-modal-head-grid,.ccpx-item-grid,.ccpx-item-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}'
-    + '@media (max-width:760px){.ccpx-modal-grid,.ccpx-modal-head-grid,.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid,.ccpx-item-grid,.ccpx-item-metrics{grid-template-columns:1fr}#page-compras .ccpx-search input{min-width:0}#page-compras .ccpx-block-top{grid-template-columns:1fr}#page-compras .ccpx-hero{padding:18px}#page-compras .ccpx-hero-title{font-size:22px}.ccpx-item-vincos{grid-template-columns:repeat(2,minmax(0,1fr))}}';
+    + '@media (max-width:980px){.ccpx-modal-head-grid,.ccpx-item-grid,.ccpx-item-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-fs-header{align-items:flex-start}.ccpx-fs-header-side{width:100%;justify-content:space-between}.ccpx-fs-badge{min-width:0;flex:1}}'
+    + '@media (max-width:760px){.ccpx-modal-grid,.ccpx-modal-head-grid,.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid,.ccpx-item-grid,.ccpx-item-metrics,.ccpx-fs-head-grid{grid-template-columns:1fr}#page-compras .ccpx-search input{min-width:0}#page-compras .ccpx-block-top{grid-template-columns:1fr}#page-compras .ccpx-hero{padding:18px}#page-compras .ccpx-hero-title{font-size:22px}.ccpx-item-vincos{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-fs-title{font-size:22px}.ccpx-fs-header{padding:14px 16px}.ccpx-fs-body{padding:14px}.ccpx-fs-footer{padding:12px 16px}.ccpx-fs-footer-actions{width:100%}.ccpx-fs-footer-actions button{flex:1 1 100%}}';
   document.head.appendChild(st);
 };
 window._compraPapelaoEnsureToolbar = function() {
   var page = document.getElementById('page-compras');
   var toolbar = page && page.querySelector ? page.querySelector('.ptoolbar') : null;
   if (!toolbar) return;
+  try {
+    if (window._compraPapelaoIsActive()) page.classList.add('ccpx-modern-active');
+    else page.classList.remove('ccpx-modern-active');
+  } catch (_) {}
   if (!toolbar.dataset.ccpxOrigHtml) toolbar.dataset.ccpxOrigHtml = toolbar.innerHTML;
   if (toolbar.dataset.ccpxActive === '1' || window._compraPapelaoIsActive()) {
     toolbar.innerHTML = toolbar.dataset.ccpxOrigHtml || '';
@@ -5400,12 +5433,14 @@ window._compraPapelaoRenderModalRowsHtml = function(itens, minRows) {
       + '    <div class="ccpx-item-field"><label>Pedido Cliente</label><input data-field="ped_cliente" value="' + window._compraPapelaoAttr(item && item.ped_cliente || '') + '"></div>'
       + '    <div class="ccpx-item-field"><label>Entrega</label><input data-field="data_entrega" type="date" value="' + window._compraPapelaoAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></div>'
       + '    <div class="ccpx-item-field"><label>PO</label><input data-field="po" value="' + window._compraPapelaoAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></div>'
-      + '    <div class="ccpx-item-field"><label>Medidas L × C</label><div class="ccpx-item-inline-pair"><input data-field="largura" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.largura || '') + '" placeholder="Largura"><span class="sep">×</span><input data-field="comprimento" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.comprimento || '') + '" placeholder="Comprimento"></div></div>'
+      + '    <div class="ccpx-item-field"><label>Largura</label><input data-field="largura" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.largura || '') + '" placeholder="Largura"></div>'
+      + '    <div class="ccpx-item-field"><label>Comprimento</label><input data-field="comprimento" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.comprimento || '') + '" placeholder="Comprimento"></div>'
       + '    <div class="ccpx-item-field"><label>Vincos</label><div class="ccpx-item-vincos"><input data-field="vinco1" value="' + window._compraPapelaoAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + window._compraPapelaoAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + window._compraPapelaoAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + window._compraPapelaoAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></div>'
       + '    <div class="ccpx-item-field"><label>Qtde</label><input data-field="quantidade" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.quantidade || '') + '"></div>'
       + '    <div class="ccpx-item-field"><label>Lote Mínimo</label><input data-field="lote_minimo" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.lote_minimo || '') + '"></div>'
       + '    <div class="ccpx-item-field"><label>Área Pedido (m²)</label><input data-field="area_m2"' + (areaManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + window._compraPapelaoAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : window._compraPapelaoFmtNum(d.area_m2, 4).replace(/\./g, "").replace(",", ".")) + '"></div>'
       + '    <div class="ccpx-item-field"><label>Valor m²</label><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_m2 || '') + '"></div>'
+      + '    <div class="ccpx-item-field is-readonly"><label>Valor p/mil</label><input type="text" value="' + window._compraPapelaoAttr(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '" readonly tabindex="-1"></div>'
       + '    <div class="ccpx-item-field"><label>Valor Total</label><input data-field="valor_total"' + (totalManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_total != null && String(item.valor_total).trim() !== '' ? item.valor_total : window._compraPapelaoFmtNum(d.valor_total, 2).replace(/\./g, "").replace(",", ".")) + '"></div>'
       + '    <div class="ccpx-item-field full"><label>Obs</label><textarea data-field="observacao" rows="2">' + window._compraPapelaoEsc(item && item.observacao || '') + '</textarea></div>'
       + '    <div class="ccpx-item-field full"><label data-ccpx-fornecedor-label>' + window._compraPapelaoEsc(window._compraPapelaoFornecedorPedidoLabel('')) + '</label><input data-field="ped_fornecedor" value="' + window._compraPapelaoAttr(item && item.ped_fornecedor || '') + '" placeholder="' + window._compraPapelaoAttr(window._compraPapelaoFornecedorPedidoLabel('')) + '"></div>'
@@ -5470,38 +5505,50 @@ window._compraPapelaoRefreshModalComputed = function(overlay) {
   var tg = overlay.querySelector('#ccpx-total-geral');
   if (tg) tg.textContent = window._compraPapelaoFmtMoney(totalValor);
 };
-window._compraPapelaoCompraModalHtml = function(compra) {
+window._compraPapelaoCloseCompraModal = function() {
+  var overlay = document.getElementById('ccpx-modal-compra-fullscreen');
+  if (overlay && overlay.parentNode) {
+    try { overlay.parentNode.removeChild(overlay); } catch (_) {}
+  }
+  try { document.body.style.overflow = ''; } catch (_) {}
+};
+window._compraPapelaoCompraFullscreenBodyHtml = function(compra) {
   var empId = String(compra && compra._emp_id_consulta || window._compraPapelaoCurrentEmpId() || window._compraPapelaoEmpresaCriacaoUuid() || '');
   var header = window._compraPapelaoNormalizeCompraHeader(compra);
   var fornecedorPedidoLabel = window._compraPapelaoFornecedorPedidoLabel(header.fornecedor || '');
   return ''
-    + '<div style="display:grid;gap:16px">'
-    + '  <div class="ccpx-modal-headline">'
-    + '    <div class="ccpx-eyebrow">Pedido de Chapas</div>'
-    + '    <div class="ccpx-modal-step">Etapa 1 · Cabeçalho da Compra</div>'
-    + '    <div class="ccpx-headline-title">Compra de Papelão com leitura de planilha</div>'
-    + '    <div class="ccpx-headline-sub">Os dados do cabeçalho ficam concentrados em Pedido, Data e Fornecedor; abaixo, os itens seguem a mesma ordem operacional usada na planilha de referência.</div>'
-    + '  </div>'
-    + '  <div class="ccpx-modal-head-grid">'
-    + '    <div class="ccpx-modal-number-card"><div class="lbl">Número da Compra</div><div class="num" id="ccpx-numero-card">' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(header.numero_compra)) + '</div><div class="sub">Este número já é reservado para a compra atual e será mantido na impressão e na listagem principal.</div></div>'
-    + '    <div class="ccpx-modal-inline-stack"><label>Nº</label><input id="ccpx-numero" class="ccpx-modal-num" value="' + window._compraPapelaoAttr(window._compraPapelaoNumeroLabel(header.numero_compra)) + '" readonly></div>'
-    + '    <div class="ccpx-modal-inline-stack"><label>Data</label><input id="ccpx-data-compra" type="date" value="' + window._compraPapelaoAttr(header.data_compra || window._compraPapelaoTodayIso()) + '"></div>'
+    + '<div class="ccpx-fs-section">'
+    + '  <div class="ccpx-fs-section-head"><div><div class="ccpx-fs-section-title">Dados da Compra</div><div class="ccpx-fs-section-sub">Cabeçalho compacto para fornecedor, pasta e referência do pedido. O foco visual fica nos itens da planilha logo abaixo.</div></div></div>'
+    + '  <div class="ccpx-fs-head-grid">'
     + '    <div class="ccpx-modal-inline-stack"><label>Fornecedor</label><input id="ccpx-fornecedor-manual" value="' + window._compraPapelaoAttr(header.fornecedor || '') + '" placeholder="Fornecedor"></div>'
-    + '  </div>'
-    + '  <div class="ccpx-modal-secondary-grid">'
+    + '    <div class="ccpx-modal-inline-stack"><label>Data</label><input id="ccpx-data-compra" type="date" value="' + window._compraPapelaoAttr(header.data_compra || window._compraPapelaoTodayIso()) + '"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Pasta</label><select id="ccpx-pasta">' + window._compraPapelaoFolderOptionsHtml(header && header.pasta_id, empId) + '</select></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Pedido Geral do Fornecedor</label><input id="ccpx-ped-fornecedor-geral" value="' + window._compraPapelaoAttr(header.ped_fornecedor || '') + '" placeholder="' + window._compraPapelaoAttr(fornecedorPedidoLabel) + '"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Status</label><select id="ccpx-status">' + window._compraPapelaoStatusOptionsHtml(header.status || 'Solicitada') + '</select></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Previsão de Chegada</label><input id="ccpx-prev-chegada" type="date" value="' + window._compraPapelaoAttr(header.previsao_chegada || '') + '"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>CNPJ Fornecedor</label><input id="ccpx-cnpj-fornecedor" value="' + window._compraPapelaoAttr(header.cnpj_fornecedor || '') + '"></div>'
-    + '    <div class="ccpx-modal-inline-stack full"><label>Observações</label><textarea id="ccpx-obs" rows="2">' + window._compraPapelaoEsc(header.observacao || '') + '</textarea></div>'
+    + '    <div class="ccpx-modal-inline-stack full"><label>Observação</label><textarea id="ccpx-obs" rows="2">' + window._compraPapelaoEsc(header.observacao || '') + '</textarea></div>'
     + '  </div>'
-    + '<div class="ccpx-modal-items-sheet" style="margin-top:18px">'
-    + '  <div class="ccpx-modal-items-toolbar"><div><div class="ccpx-modal-step">Etapa 2 · Itens da Compra</div><div class="ttl">Itens organizados em cartões verticais</div><div class="sub">Agora todos os campos da planilha ficam visíveis de uma vez, sem scroll lateral. Use + Adicionar Item para criar um novo cartão, ou duplique/remova itens individualmente.</div></div><button type="button" class="btn btn-ghost btn-sm" id="ccpx-add-item">+ Adicionar Item</button></div>'
-    + '  <div class="ccpx-modal-items-wrap"><div class="ccpx-item-cards" id="ccpx-modal-items-body">' + window._compraPapelaoRenderModalRowsHtml(header && header.itens || []) + '</div></div>'
-    + '  <div class="ccpx-summary"><div class="ccpx-chip"><div class="lbl">Quantidade</div><div class="val" id="ccpx-sum-qtd">0</div></div><div class="ccpx-chip"><div class="lbl">Área</div><div class="val" id="ccpx-sum-area">0,0000 m²</div></div><div class="ccpx-chip"><div class="lbl">Valor</div><div class="val" id="ccpx-sum-total">R$ 0,00</div></div></div>'
-    + '  <div class="ccpx-modal-totalbar"><div class="lbl">Total Geral</div><div class="val" id="ccpx-total-geral">R$ 0,00</div></div>'
     + '</div>'
+    + '<div class="ccpx-fs-section">'
+    + '  <div class="ccpx-fs-section-head"><div><div class="ccpx-fs-section-title">Itens da Compra</div><div class="ccpx-fs-section-sub">Cada item fica em cartão próprio, na ordem operacional da planilha e sem qualquer scroll lateral.</div></div><button type="button" class="btn btn-ghost btn-sm" id="ccpx-add-item">+ Adicionar Item</button></div>'
+    + '  <div class="ccpx-modal-items-wrap"><div class="ccpx-item-cards" id="ccpx-modal-items-body">' + window._compraPapelaoRenderModalRowsHtml(header && header.itens || []) + '</div></div>'
+    + '</div>';
+};
+window._compraPapelaoCompraFullscreenShellHtml = function(compra, compraId) {
+  var header = window._compraPapelaoNormalizeCompraHeader(compra);
+  var numero = window._compraPapelaoNumeroLabel(header.numero_compra || window._compraPapelaoNextNumeroPreview());
+  return ''
+    + '<div class="ccpx-fs-shell" role="dialog" aria-modal="true" aria-label="Nova Compra de Papelão">'
+    + '  <div class="ccpx-fs-header">'
+    + '    <div class="ccpx-fs-header-main"><div class="ccpx-fs-title">Nova Compra de Papelão</div><div class="ccpx-fs-subtitle">Modal full-screen com cabeçalho fixo, itens em cartões verticais e rodapé consolidado sempre visível.</div></div>'
+    + '    <div class="ccpx-fs-header-side"><div class="ccpx-fs-badge"><div class="lbl">Número da Compra</div><div class="val" id="ccpx-numero-card">' + window._compraPapelaoEsc(numero) + '</div></div><button type="button" class="ccpx-fs-close" id="ccpx-close-compra" aria-label="Fechar">×</button></div>'
+    + '  </div>'
+    + '  <div class="ccpx-fs-body">' + window._compraPapelaoCompraFullscreenBodyHtml(compra) + '</div>'
+    + '  <div class="ccpx-fs-footer">'
+    + '    <div class="ccpx-summary"><div class="ccpx-chip"><div class="lbl">Quantidade total</div><div class="val" id="ccpx-sum-qtd">0</div></div><div class="ccpx-chip"><div class="lbl">Área total</div><div class="val" id="ccpx-sum-area">0,0000 m²</div></div><div class="ccpx-chip"><div class="lbl">Valor total</div><div class="val" id="ccpx-sum-total">R$ 0,00</div></div><div class="ccpx-chip"><div class="lbl">Total geral</div><div class="val" id="ccpx-total-geral">R$ 0,00</div></div></div>'
+    + '    <div class="ccpx-fs-footer-actions"><button type="button" class="ghost" id="ccpx-cancel-compra">Cancelar</button><button type="button" class="print" id="ccpx-print-compra">Imprimir</button><button type="button" class="primary" id="ccpx-save-compra">' + (compraId ? 'Salvar Compra' : 'Salvar Compra') + '</button></div>'
+    + '  </div>'
     + '</div>';
 };
 window._compraPapelaoCollectCompraPayload = function(overlay, compra) {
@@ -5750,18 +5797,19 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
     };
     if (!compraId && opts.prefill && typeof opts.prefill === 'object') compra = Object.assign({}, compra, opts.prefill);
     compra = window._compraPapelaoNormalizeCompraHeader(compra);
-    var overlay = _abrirModalPadrao({
-      id: 'ccpx-modal-compra',
-      titulo: 'Pedido de Chapas',
-      subtitulo: 'Planilha de pedido com fornecedor, linhas editáveis, totais automáticos e impressão.',
-      largura: 'min(96vw,1780px)',
-      wide: true,
-      hero: '🛒',
-      bodyHtml: window._compraPapelaoCompraModalHtml(compra),
-      footerHtml: '<div class="ccpx-modal-footer-actions"><div class="left"><button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button></div><div class="right"><button type="button" class="estoque-modal-btn estoque-modal-btn-blue" id="ccpx-email-compra">Email</button><button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" id="ccpx-print-compra">Imprimir</button><button type="button" class="estoque-modal-btn" id="ccpx-save-compra" style="background:#185FA5;color:#fff;border-color:#185FA5">' + (compraId ? 'Salvar Alterações' : 'Salvar Pedido') + '</button></div></div>'
-    });
+    window._compraPapelaoCloseCompraModal();
+    var overlay = document.createElement('div');
+    overlay.id = 'ccpx-modal-compra-fullscreen';
+    overlay.className = 'ccpx-fs-overlay';
+    overlay.innerHTML = window._compraPapelaoCompraFullscreenShellHtml(compra, compraId);
+    document.body.appendChild(overlay);
+    try { document.body.style.overflow = 'hidden'; } catch (_) {}
     if (!overlay) return;
     window._compraPapelaoRefreshModalComputed(overlay);
+    var closeBtn = overlay.querySelector('#ccpx-close-compra');
+    var cancelBtn = overlay.querySelector('#ccpx-cancel-compra');
+    if (closeBtn) closeBtn.onclick = window._compraPapelaoCloseCompraModal;
+    if (cancelBtn) cancelBtn.onclick = window._compraPapelaoCloseCompraModal;
     var tbody = overlay.querySelector('#ccpx-modal-items-body');
     overlay.dataset.ccpxVisibleRows = String(Math.max(5, Math.trunc((Array.isArray(compra && compra.itens) ? compra.itens.length : 0)) || 0));
     var renderRows = function(items) {
@@ -5844,13 +5892,6 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
         }, 0);
       });
     }
-    var emailBtn = overlay.querySelector('#ccpx-email-compra');
-    if (emailBtn) emailBtn.onclick = function() {
-      var payloadEmail = window._compraPapelaoCollectCompraPayload(overlay, compra);
-      payloadEmail.numero_compra = compra && compra.numero_compra || window._compraPapelaoNextNumeroPreview();
-      console.log('[COMPRA-PAPELAO] email pedido:', window._compraPapelaoNumeroLabel(payloadEmail.numero_compra), payloadEmail.fornecedor || 'sem-fornecedor');
-      window._compraPapelaoOpenOutlookMail(payloadEmail, compra);
-    };
     var printBtn = overlay.querySelector('#ccpx-print-compra');
     if (printBtn) printBtn.onclick = function() {
       try {
@@ -5877,7 +5918,7 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
         console.log('[COMPRA-PAPELAO] salvar compra:', compraId ? 'edicao' : 'nova', window._compraPapelaoNumeroLabel(payload.numero_compra), 'itens:', payload.itens.length);
         if (compraId) await window._compraPapelaoApi('/api/compras-chapas/' + encodeURIComponent(compraId), { method: 'PUT', body: payload });
         else await window._compraPapelaoApi('/api/compras-chapas', { method: 'POST', body: payload });
-        _fecharModalPadrao('ccpx-modal-compra');
+        window._compraPapelaoCloseCompraModal();
         await window._compraPapelaoRenderPage();
       } catch (e) {
         console.error('[COMPRA-PAPELAO]', e);
@@ -7857,8 +7898,29 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(2){background:rgba(30,41,59,.88)!important;color:#e0f2fe!important}'
       + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(3){background:#2563eb!important;color:#fff!important;border-color:#2563eb!important}'
       + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(4){background:#7c3aed!important;color:#fff!important;border-color:#7c3aed!important}'
-      + '@media (max-width:1280px){#modal-calc #modal-calculadora{width:min(1450px,calc(100vw - 20px))!important}#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .calc-col-dir{min-width:0!important;position:static!important}#modal-calc #modal-calculadora #calc-sheet{table-layout:auto!important}}'
-      + '@media (max-width:920px){#modal-calc{padding:10px!important}#modal-calc #modal-calculadora{width:min(100vw - 12px,100%)!important;max-width:min(100vw - 12px,100%)!important;max-height:96vh!important;padding:16px!important}#modal-calc #modal-calculadora .calc-header-row{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .calc-row-top,#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .modal-footer.rodape{flex-direction:column!important;align-items:stretch!important}#modal-calc #modal-calculadora .modal-footer.rodape button{width:100%!important}}'
+      + '#modal-calc.orc-calc-fs-ready{padding:0!important;align-items:stretch!important;justify-content:stretch!important;background:rgba(2,6,23,.82)!important;backdrop-filter:blur(8px)!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora{width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;padding:0!important;border:none!important;box-shadow:none!important;background:linear-gradient(180deg,#061120 0%,#0f172a 16%,#111827 100%)!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell{display:grid!important;grid-template-rows:auto auto minmax(0,1fr) auto!important;height:100%!important;min-height:0!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-header{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:16px!important;padding:18px 24px!important;border-bottom:1px solid rgba(148,163,184,.14)!important;background:rgba(3,7,18,.88)!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-header h2{margin:0!important;padding:0!important;font-size:28px!important;color:#f8fafc!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-topbar{display:grid!important;grid-template-columns:1.3fr .95fr .95fr .95fr!important;gap:12px!important;padding:14px 24px 16px!important;border-bottom:1px solid rgba(148,163,184,.12)!important;background:rgba(7,16,29,.92)!important;align-items:start!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-header-row,#modal-calc.orc-calc-fs-ready #modal-calculadora #wrap-calc-nome-orcamento,#modal-calc.orc-calc-fs-ready #modal-calculadora #wrap-calc-chapa-utilizada,#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-pasta-row{margin:0!important;padding:12px 14px!important;border-radius:16px!important;background:rgba(15,23,42,.72)!important;border:1px solid rgba(148,163,184,.16)!important;min-height:0!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-header-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:10px!important;align-items:end!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-header-row > label{display:none!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #wrap-calc-cliente{width:100%!important;flex:auto!important;min-width:0!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-cliente-input{min-height:46px!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #orc-numero-display{min-height:46px!important;padding:0 14px!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-main{min-height:0!important;padding:18px 24px!important;overflow:hidden!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{height:100%!important;max-height:none!important;grid-template-columns:minmax(0,1.75fr) minmax(330px,.92fr)!important;gap:18px!important;overflow:hidden!important;padding:0!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-esq{grid-template-rows:auto auto auto auto minmax(0,1fr)!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-tabela-wrap{overflow:hidden!important;display:flex!important;min-height:0!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-sheet{min-width:0!important;table-layout:fixed!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-sheet thead th,#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-sheet tbody td{font-size:11px!important;padding:10px 8px!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{height:100%!important;overflow:auto!important;position:sticky!important;top:0!important;align-content:start!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-footer{padding:14px 24px 16px!important;border-top:1px solid rgba(148,163,184,.14)!important;background:rgba(3,7,18,.94)!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-footer.rodape{margin:0!important;padding:0!important;border-top:none!important;background:transparent!important}'
+      + '@media (max-width:1280px){#modal-calc #modal-calculadora{width:min(1450px,calc(100vw - 20px))!important}#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .calc-col-dir{min-width:0!important;position:static!important}#modal-calc #modal-calculadora #calc-sheet{table-layout:auto!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-topbar{grid-template-columns:repeat(2,minmax(0,1fr))!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{grid-template-columns:1fr!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{position:static!important;max-height:none!important}}'
+      + '@media (max-width:920px){#modal-calc{padding:10px!important}#modal-calc #modal-calculadora{width:min(100vw - 12px,100%)!important;max-width:min(100vw - 12px,100%)!important;max-height:96vh!important;padding:16px!important}#modal-calc #modal-calculadora .calc-header-row{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .calc-row-top,#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .modal-footer.rodape{flex-direction:column!important;align-items:stretch!important}#modal-calc #modal-calculadora .modal-footer.rodape button{width:100%!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-header{padding:14px 16px!important;align-items:flex-start!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-topbar{grid-template-columns:1fr!important;padding:12px 16px!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-main{padding:14px 16px!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-footer{padding:12px 16px!important}}'
       + '#orc-pasta-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100001;align-items:center;justify-content:center;padding:16px}'
       + '#orc-pasta-modal .box{width:min(460px,96vw);background:#0f172a;border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:18px;display:grid;gap:12px}'
       + '#orc-pasta-modal .ttl{font-size:16px;font-weight:900;color:#f8fafc}'
@@ -8399,6 +8461,51 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     }
     input.dataset.keepValue = value ? '1' : '';
   }
+  function ensureCalcFullscreenShell() {
+    var overlay = document.getElementById('modal-calc');
+    var modal = document.getElementById('modal-calculadora');
+    if (!overlay || !modal) return false;
+    try { overlay.classList.add('orc-calc-fs-ready'); } catch (_) {}
+    var shell = modal.querySelector('.orc-calc-shell');
+    if (!shell) {
+      shell = document.createElement('div');
+      shell.className = 'orc-calc-shell';
+      shell.innerHTML = ''
+        + '<div class="orc-calc-shell-header"><div class="orc-calc-shell-title"></div><div class="orc-calc-shell-close"></div></div>'
+        + '<div class="orc-calc-shell-topbar"></div>'
+        + '<div class="orc-calc-shell-main"></div>'
+        + '<div class="orc-calc-shell-footer"></div>';
+      while (modal.firstChild) shell.querySelector('.orc-calc-shell-main').appendChild(modal.firstChild);
+      modal.appendChild(shell);
+    }
+    var titleHost = shell.querySelector('.orc-calc-shell-title');
+    var closeHost = shell.querySelector('.orc-calc-shell-close');
+    var topbar = shell.querySelector('.orc-calc-shell-topbar');
+    var main = shell.querySelector('.orc-calc-shell-main');
+    var footerHost = shell.querySelector('.orc-calc-shell-footer');
+    var title = modal.querySelector(':scope > h2') || main.querySelector(':scope > h2') || modal.querySelector('h2');
+    var closeBtn = modal.querySelector(':scope > .close-btn') || main.querySelector(':scope > .close-btn') || modal.querySelector('.close-btn');
+    var headerRow = modal.querySelector(':scope > .calc-header-row') || main.querySelector(':scope > .calc-header-row') || modal.querySelector('.calc-header-row');
+    var nomeWrap = document.getElementById('wrap-calc-nome-orcamento');
+    var pastaRow = document.getElementById('calc-pasta-row');
+    var chapaWrap = document.getElementById('wrap-calc-chapa-utilizada');
+    var body = modal.querySelector(':scope > .modal-body') || modal.querySelector(':scope > .calc-body') || main.querySelector('.modal-body') || main.querySelector('.calc-body');
+    var footer = modal.querySelector(':scope > .modal-footer.rodape') || main.querySelector('.modal-footer.rodape') || modal.querySelector('.modal-footer.rodape');
+    if (title && title.parentNode !== titleHost) titleHost.appendChild(title);
+    if (closeBtn && closeBtn.parentNode !== closeHost) closeHost.appendChild(closeBtn);
+    [
+      headerRow,
+      nomeWrap,
+      pastaRow,
+      chapaWrap
+    ].forEach(function(node) {
+      if (!node) return;
+      if (node.parentNode !== topbar) topbar.appendChild(node);
+    });
+    if (body && body.parentNode !== main) main.appendChild(body);
+    if (footer && footer.parentNode !== footerHost) footerHost.appendChild(footer);
+    return true;
+  }
   function saveFolderFromModal() {
     var modal = document.getElementById('orc-pasta-modal');
     var input = document.getElementById('orc-pasta-nome');
@@ -8607,8 +8714,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         loadFolders(false).catch(function() { return []; }).finally(function() {
           syncCalcFolderUi();
           syncCalcChapaUi();
+          ensureCalcFullscreenShell();
         });
       }, 60);
+      setTimeout(function() {
+        try { ensureCalcFullscreenShell(); } catch (_) {}
+      }, 180);
       return out;
     };
     window.abrirCalculadora.__patchOrcPastas = true;
@@ -8620,6 +8731,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       setTimeout(function() {
         syncCalcFolderUi();
         syncCalcChapaUi();
+        ensureCalcFullscreenShell();
       }, 30);
       return out;
     };
@@ -12748,6 +12860,15 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
         if (txt.indexOf('total:') === 0 || txt.indexOf('ticket médio:') === 0 || txt.indexOf('ticket medio:') === 0) {
           try { pill.remove(); } catch (_) {}
         }
+      });
+      Array.prototype.slice.call(page.querySelectorAll('*')).forEach(function(node) {
+        if (!node || !node.childNodes || node.childNodes.length !== 1) return;
+        var txt = String(node.textContent || '').trim();
+        var low = txt.toLowerCase();
+        if (!txt) return;
+        if (txt.indexOf('R$') < 0 && low.indexOf('ticket médio') < 0 && low.indexOf('ticket medio') < 0 && low.indexOf('total:') !== 0) return;
+        if (low.indexOf('ofs por dia') >= 0) return;
+        try { node.remove(); } catch (_) {}
       });
       Array.prototype.slice.call(page.querySelectorAll('.card, .hub-row')).forEach(function(node) {
         var label = String(node && node.textContent || '').trim().toLowerCase();
@@ -18779,6 +18900,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       applyDisplaySeqToState();
       updateToolbar(ensureShell());
       renderRows(ensureShell());
+      try { window.toast('Sequência alterada', 'var(--green)'); } catch (_) {}
     }
 
     async function moveToPositionWithinDay(id, targetPosition) {
@@ -18799,6 +18921,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       applyDisplaySeqToState();
       updateToolbar(ensureShell());
       renderRows(ensureShell());
+      try { window.toast('Sequência alterada', 'var(--green)'); } catch (_) {}
     }
 
     async function moveRow(id, machine) {
@@ -19212,6 +19335,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var registry = (window.__ofmaqFinalBridgeRegistry && typeof window.__ofmaqFinalBridgeRegistry === 'object')
         ? window.__ofmaqFinalBridgeRegistry
         : (window.__ofmaqFinalBridgeRegistry = {});
+      function ofmaqDiag(evento, payload) {
+        try {
+          if (!Array.isArray(window.__ofmaqBridgeDiag)) window.__ofmaqBridgeDiag = [];
+          window.__ofmaqBridgeDiag.push({ at: new Date().toISOString(), evento: String(evento || ''), payload: payload || null });
+          if (window.__ofmaqBridgeDiag.length > 300) window.__ofmaqBridgeDiag.splice(0, window.__ofmaqBridgeDiag.length - 300);
+        } catch (_) {}
+        try { console.log('[OFMAQ-DIAG]', evento, payload || null); } catch (_) {}
+      }
       [
         'renderOFsPorMaquina',
         'renderMaquinas',
@@ -19226,20 +19357,37 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var existing = registry && typeof registry[name] === 'function' ? registry[name] : null;
         if (existing) {
           if (current && current !== existing && !current.__ofmaqFinalBridge) {
+            ofmaqDiag('bridge-retarget', {
+              name: name,
+              currentName: String(current && current.name || ''),
+              hasAccordion: !!(current && current._patchedAccordion),
+              hasSwipe: !!(current && current._patchedSwipeMaq),
+              hasPriorityHub: !!(current && current._patchedPriorityHub)
+            });
             existing.__ofmaqFinalBridgeTarget = current;
             try { existing.__patchWrapOriginal = current.__patchWrapOriginal || current; } catch (_) {}
             try { existing._patchedAccordion = !!current._patchedAccordion; } catch (_) {}
             try { existing._patchedSwipeMaq = !!current._patchedSwipeMaq; } catch (_) {}
             try { existing._patchedPriorityHub = !!current._patchedPriorityHub; } catch (_) {}
           }
+          ofmaqDiag('bridge-reuse', { name: name, currentIsExisting: current === existing, currentName: String(current && current.name || '') });
           window[name] = existing;
           return;
         }
         if (current && current.__ofmaqFinalBridge) {
+          ofmaqDiag('bridge-adopt-existing', { name: name, currentName: String(current && current.name || '') });
           registry[name] = current;
           return;
         }
         var bridged = function() {
+          ofmaqDiag('bridge-call', {
+            name: name,
+            page: String(window._PAGE_ATUAL || ''),
+            targetName: String(bridged.__ofmaqFinalBridgeTarget && bridged.__ofmaqFinalBridgeTarget.name || ''),
+            targetAccordion: !!(bridged.__ofmaqFinalBridgeTarget && bridged.__ofmaqFinalBridgeTarget._patchedAccordion),
+            targetSwipe: !!(bridged.__ofmaqFinalBridgeTarget && bridged.__ofmaqFinalBridgeTarget._patchedSwipeMaq),
+            targetPriorityHub: !!(bridged.__ofmaqFinalBridgeTarget && bridged.__ofmaqFinalBridgeTarget._patchedPriorityHub)
+          });
           if (String(window._PAGE_ATUAL || '') === 'ofmaq' && typeof window.renderOfmaqFinal === 'function') {
             return window.renderOfmaqFinal({ forceReload: true, reason: 'legacy-entrypoint:' + name });
           }
@@ -19252,6 +19400,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         bridged._patchedAccordion = !!(current && current._patchedAccordion);
         bridged._patchedSwipeMaq = !!(current && current._patchedSwipeMaq);
         bridged._patchedPriorityHub = true;
+        ofmaqDiag('bridge-create', {
+          name: name,
+          currentName: String(current && current.name || ''),
+          currentAccordion: !!(current && current._patchedAccordion),
+          currentSwipe: !!(current && current._patchedSwipeMaq),
+          currentPriorityHub: !!(current && current._patchedPriorityHub)
+        });
         registry[name] = bridged;
         window[name] = bridged;
       });
@@ -19267,6 +19422,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               var current = typeof window[nome] === 'function' ? window[nome] : null;
               if (current && current.__ofmaqFinalBridge) return;
               if (current && current !== existing) {
+                ofmaqDiag('bridge-watch-retarget', {
+                  name: nome,
+                  currentName: String(current && current.name || ''),
+                  currentAccordion: !!(current && current._patchedAccordion),
+                  currentSwipe: !!(current && current._patchedSwipeMaq),
+                  currentPriorityHub: !!(current && current._patchedPriorityHub)
+                });
                 try { existing.__ofmaqFinalBridgeTarget = current; } catch (_) {}
               }
               if (window[nome] !== existing) window[nome] = existing;
@@ -43306,15 +43468,18 @@ function _ocultarGraficoComissoes() {
 
   async function sFetchChapas() {
     if (Array.isArray(window.__simdAllChapasCache) && window.__simdAllChapasCache.length) {
+      try { console.log('[SIMD-DIAG] fetch chapas cache-hit', { total: window.__simdAllChapasCache.length }); } catch (_) {}
       return window.__simdAllChapasCache.slice();
     }
     var resp = null;
     var url = sPreferredFetchUrl();
+    try { console.log('[SIMD-DIAG] fetch chapas start', { url: url, hasAuthFetch: typeof window._apiAuthFetch === 'function' }); } catch (_) {}
     if (typeof window._apiAuthFetch === 'function') {
       resp = await window._apiAuthFetch(url, { cache: 'no-store' });
     } else {
       resp = await fetch(url, { cache: 'no-store' });
     }
+    try { console.log('[SIMD-DIAG] fetch chapas response', { ok: !!(resp && resp.ok), status: Number(resp && resp.status || 0), url: String(resp && resp.url || url) }); } catch (_) {}
     var data = await resp.json().catch(function() { return null; });
     if (!resp.ok) throw new Error(String(data && (data.error || data.message) || 'Falha ao carregar chapas do estoque'));
     var rows = sExtractRows(data);
@@ -43529,6 +43694,14 @@ function _ocultarGraficoComissoes() {
   function sRenderShell() {
     var host = document.getElementById('tela-simulador-desperdicio');
     if (!host) return false;
+    try {
+      console.log('[SIMD-DIAG] shell boot', {
+        page: String(window._PAGE_ATUAL || ''),
+        hostExists: !!host,
+        sheetUiBefore: String((host.dataset || {}).simdSheetUi || ''),
+        preferredMode: String(typeof _simdPreferredModeValue === 'function' ? _simdPreferredModeValue() : '')
+      });
+    } catch (_) {}
     if (host.dataset.simdSheetUi === '1') return true;
     host.dataset.simdSheetUi = '1';
     host.innerHTML = ''
