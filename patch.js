@@ -4631,9 +4631,6 @@ window._compraPapelaoNormalizeCompraHeader = function(compra) {
   var row = compra && typeof compra === 'object' ? Object.assign({}, compra) : {};
   row.numero_compra = row.numero_compra != null ? row.numero_compra : window._compraPapelaoNextNumeroPreview();
   row.data_compra = String(row.data_compra || row.data || String(row.criado_em || row.created_at || '').slice(0, 10) || window._compraPapelaoTodayIso()).slice(0, 10);
-  row.cnpj_fornecedor = String(row.cnpj_fornecedor || row.cnpj || '').trim();
-  row.previsao_chegada = String(row.previsao_chegada || row.prev || '').slice(0, 10);
-  row.status = String(row.status || 'Solicitada').trim() || 'Solicitada';
   row.ped_fornecedor = String(row.ped_fornecedor || row.pedido_fornecedor || '').trim();
   row.observacao = String(row.observacao || row.obs || '').trim();
   row.fornecedor = String(row.fornecedor || row.forn || '').trim();
@@ -4937,32 +4934,35 @@ window._compraPapelaoEnsureStyles = function() {
     + '.ccpx-modal-field textarea{min-height:88px;resize:vertical}'
     + '.ccpx-modal-items{display:grid;gap:12px;padding:16px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.6)}'
     + '.ccpx-modal-items-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}'
-    + '.ccpx-modal-items-wrap{display:grid;gap:14px;overflow:visible;border:none;border-radius:0;background:transparent}'
-    + '.ccpx-item-cards{display:grid;gap:14px}'
-    + '.ccpx-item-card{display:grid;gap:14px;padding:18px;border-radius:18px;border:1px solid rgba(148,163,184,.16);background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));box-shadow:0 18px 40px rgba(2,6,23,.18)}'
-    + '.ccpx-item-card-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}'
-    + '.ccpx-item-card-title{display:grid;gap:4px}'
-    + '.ccpx-item-card-title .eyebrow{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#93c5fd}'
-    + '.ccpx-item-card-title .title{font-size:18px;font-weight:900;color:#f8fafc}'
-    + '.ccpx-item-card-title .sub{font-size:12px;color:#94a3b8;line-height:1.5}'
+    + '.ccpx-modal-items-wrap{display:grid;gap:12px;overflow:visible;border:none;border-radius:0;background:transparent}'
+    + '.ccpx-item-cards{display:grid;gap:10px}'
+    + '.ccpx-item-sheet-row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:10px;align-items:start;padding:12px 14px;border-radius:16px;border:1px solid rgba(148,163,184,.16);background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.76));box-shadow:0 14px 32px rgba(2,6,23,.16)}'
+    + '.ccpx-item-sheet-index{display:grid;gap:4px;align-content:start;padding-top:2px}'
+    + '.ccpx-item-sheet-index .eyebrow{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#93c5fd}'
+    + '.ccpx-item-sheet-index .title{font-size:16px;font-weight:900;color:#f8fafc;font-family:var(--mono,inherit)}'
+    + '.ccpx-item-sheet-grid{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:8px 10px;align-items:end;min-width:0}'
+    + '.ccpx-item-sheet-actions{display:grid;gap:8px;align-content:start}'
+    + '.ccpx-item-sheet-actions .hint{font-size:10px;line-height:1.4;color:#64748b;text-align:center;max-width:46px}'
     + '.ccpx-item-action-strip{display:flex;gap:8px;flex-wrap:wrap}'
     + '.ccpx-item-action-strip button{min-width:42px;height:40px;border-radius:12px;border:1px solid rgba(148,163,184,.18);cursor:pointer;font-weight:900}'
     + '.ccpx-item-action-strip .dup{background:#0f172a;color:#e2e8f0}'
     + '.ccpx-item-action-strip .del{background:#991b1b;color:#fff;border-color:#991b1b}'
-    + '.ccpx-item-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 16px}'
     + '.ccpx-item-field{display:grid;gap:6px}'
-    + '.ccpx-item-field.full{grid-column:1 / -1}'
-    + '.ccpx-item-field label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}'
-    + '.ccpx-item-field input,.ccpx-item-field textarea{width:100%;background:#020617;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:11px 12px;font-size:13px}'
-    + '.ccpx-item-field textarea{min-height:86px;resize:vertical}'
-    + '.ccpx-item-inline-pair{display:grid;grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr);gap:8px;align-items:center}'
-    + '.ccpx-item-inline-pair .sep{font-size:18px;font-weight:900;color:#60a5fa;text-align:center}'
-    + '.ccpx-item-vincos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}'
-    + '.ccpx-item-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}'
-    + '.ccpx-item-metric{display:grid;gap:4px;padding:12px 14px;border-radius:14px;background:rgba(2,6,23,.34);border:1px solid rgba(148,163,184,.14)}'
-    + '.ccpx-item-metric .lbl{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
-    + '.ccpx-item-metric .val{font-size:16px;font-weight:900;color:#f8fafc;font-family:var(--mono,inherit)}'
-    + '.ccpx-item-footnote{font-size:12px;color:#94a3b8;line-height:1.5}'
+    + '.ccpx-item-field label{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;white-space:nowrap}'
+    + '.ccpx-item-field input,.ccpx-item-field textarea{width:100%;min-width:0;background:#020617;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:10px;padding:9px 10px;font-size:12px;line-height:1.2}'
+    + '.ccpx-item-field textarea{min-height:40px;resize:vertical}'
+    + '.ccpx-item-field.span-1{grid-column:span 1}'
+    + '.ccpx-item-field.span-2{grid-column:span 2}'
+    + '.ccpx-item-field.span-3{grid-column:span 3}'
+    + '.ccpx-item-field.span-4{grid-column:span 4}'
+    + '.ccpx-item-field.span-5{grid-column:span 5}'
+    + '.ccpx-item-field.span-6{grid-column:span 6}'
+    + '.ccpx-item-field.span-7{grid-column:span 7}'
+    + '.ccpx-item-field.span-8{grid-column:span 8}'
+    + '.ccpx-item-field.row-break{grid-column:1 / -1;height:0;min-height:0;padding:0;margin:0}'
+    + '.ccpx-item-field.sep{display:flex;align-items:center;justify-content:center;padding-bottom:8px;font-size:16px;font-weight:900;color:#60a5fa}'
+    + '.ccpx-item-vincos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}'
+    + '.ccpx-item-note-line{grid-column:1 / -1;font-size:11px;color:#94a3b8;line-height:1.45;padding-top:2px}'
     + '.ccpx-modal-number-card{display:grid;gap:10px;padding:18px 20px;border-radius:18px;background:linear-gradient(135deg,rgba(2,6,23,.9),rgba(24,95,165,.45));border:1px solid rgba(125,211,252,.2)}'
     + '.ccpx-modal-number-card .lbl{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#bfdbfe}'
     + '.ccpx-modal-number-card .num{font-size:34px;font-weight:900;color:#fff;font-family:var(--mono,inherit);letter-spacing:.04em}'
@@ -4997,6 +4997,8 @@ window._compraPapelaoEnsureStyles = function() {
     + '#page-compras.ccpx-modern-active > .ptoolbar button{display:none!important}'
     + '#page-compras.ccpx-modern-active > .ptoolbar select{min-width:180px}'
     + '.ccpx-fs-overlay{position:fixed;inset:0;z-index:100120;background:rgba(2,6,23,.76);backdrop-filter:blur(10px);display:flex;align-items:stretch;justify-content:stretch}'
+    + '#ccpx-compra-fullscreen.ccpx-fs-overlay{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:100vw!important;max-height:100vh!important;padding:0!important;margin:0!important;align-items:stretch!important;justify-content:stretch!important;overflow:hidden!important}'
+    + '#ccpx-compra-fullscreen > .ccpx-fs-shell{display:grid!important;grid-template-rows:auto minmax(0,1fr) auto!important;width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;margin:0!important;overflow:hidden!important;background:linear-gradient(180deg,#061120 0%,#0f172a 18%,#111827 100%)!important;color:#e2e8f0!important}'
     + '.ccpx-fs-shell{display:grid;grid-template-rows:auto minmax(0,1fr) auto;width:100vw;height:100vh;background:linear-gradient(180deg,#061120 0%,#0f172a 18%,#111827 100%);color:#e2e8f0}'
     + '.ccpx-fs-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px;border-bottom:1px solid rgba(148,163,184,.14);background:rgba(3,7,18,.88)}'
     + '.ccpx-fs-header-main{display:grid;gap:6px;min-width:0}'
@@ -5024,8 +5026,9 @@ window._compraPapelaoEnsureStyles = function() {
     + '.ccpx-item-field.is-readonly input{background:rgba(15,23,42,.72)!important;color:#93c5fd!important;font-weight:900}'
     + '@media (max-width:1280px){.ccpx-fs-head-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-fs-header{padding:16px 18px}.ccpx-fs-body{padding:18px}.ccpx-fs-footer{padding:14px 18px}}'
     + '@media (max-width:1100px){#page-compras .ccpx-block-top{grid-template-columns:1fr 1fr}#page-compras .ccpx-actions-line{justify-content:flex-start}.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
-    + '@media (max-width:980px){.ccpx-modal-head-grid,.ccpx-item-grid,.ccpx-item-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-fs-header{align-items:flex-start}.ccpx-fs-header-side{width:100%;justify-content:space-between}.ccpx-fs-badge{min-width:0;flex:1}}'
-    + '@media (max-width:760px){.ccpx-modal-grid,.ccpx-modal-head-grid,.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid,.ccpx-item-grid,.ccpx-item-metrics,.ccpx-fs-head-grid{grid-template-columns:1fr}#page-compras .ccpx-search input{min-width:0}#page-compras .ccpx-block-top{grid-template-columns:1fr}#page-compras .ccpx-hero{padding:18px}#page-compras .ccpx-hero-title{font-size:22px}.ccpx-item-vincos{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-fs-title{font-size:22px}.ccpx-fs-header{padding:14px 16px}.ccpx-fs-body{padding:14px}.ccpx-fs-footer{padding:12px 16px}.ccpx-fs-footer-actions{width:100%}.ccpx-fs-footer-actions button{flex:1 1 100%}}';
+    + '@media (max-width:1480px){.ccpx-item-sheet-grid{grid-template-columns:repeat(18,minmax(0,1fr))}.ccpx-item-field.mob-span-6{grid-column:span 6}.ccpx-item-field.mob-span-5{grid-column:span 5}.ccpx-item-field.mob-span-4{grid-column:span 4}.ccpx-item-field.mob-span-3{grid-column:span 3}}'
+    + '@media (max-width:980px){.ccpx-modal-head-grid,.ccpx-fs-head-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-item-sheet-row{grid-template-columns:1fr}.ccpx-item-sheet-actions{grid-auto-flow:column;justify-content:space-between;align-items:center}.ccpx-item-sheet-actions .hint{max-width:none;text-align:left}.ccpx-item-sheet-grid{grid-template-columns:repeat(8,minmax(0,1fr))}.ccpx-item-field.span-8,.ccpx-item-field.span-7,.ccpx-item-field.span-6,.ccpx-item-field.span-5{grid-column:span 8}.ccpx-item-field.span-4{grid-column:span 4}.ccpx-item-field.span-3{grid-column:span 4}.ccpx-item-field.span-2{grid-column:span 4}.ccpx-item-field.span-1{grid-column:span 2}.ccpx-fs-header{align-items:flex-start}.ccpx-fs-header-side{width:100%;justify-content:space-between}.ccpx-fs-badge{min-width:0;flex:1}}'
+    + '@media (max-width:760px){.ccpx-modal-grid,.ccpx-modal-head-grid,.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid,.ccpx-fs-head-grid{grid-template-columns:1fr}#page-compras .ccpx-search input{min-width:0}#page-compras .ccpx-block-top{grid-template-columns:1fr}#page-compras .ccpx-hero{padding:18px}#page-compras .ccpx-hero-title{font-size:22px}.ccpx-item-vincos{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-item-sheet-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.ccpx-item-field,.ccpx-item-field.span-8,.ccpx-item-field.span-7,.ccpx-item-field.span-6,.ccpx-item-field.span-5,.ccpx-item-field.span-4,.ccpx-item-field.span-3,.ccpx-item-field.span-2,.ccpx-item-field.span-1{grid-column:span 4}.ccpx-item-field.sep{display:none}.ccpx-fs-title{font-size:22px}.ccpx-fs-header{padding:14px 16px}.ccpx-fs-body{padding:14px}.ccpx-fs-footer{padding:12px 16px}.ccpx-fs-footer-actions{width:100%}.ccpx-fs-footer-actions button{flex:1 1 100%}}';
   document.head.appendChild(st);
 };
 window._compraPapelaoEnsureToolbar = function() {
@@ -5424,29 +5427,28 @@ window._compraPapelaoRenderModalRowsHtml = function(itens, minRows) {
     var areaManual = d.area_manual && Math.abs(d.area_m2 - d.auto_area_m2) > 0.000001;
     var totalManual = d.total_manual && Math.abs(d.valor_total - d.auto_valor_total) > 0.000001;
     return ''
-      + '<div class="ccpx-item-card" data-ccpx-item-row="' + idx + '">'
-      + '  <div class="ccpx-item-card-head">'
-      + '    <div class="ccpx-item-card-title"><div class="eyebrow">Item ' + window._compraPapelaoEsc(String(idx + 1)) + '</div><div class="title">' + window._compraPapelaoEsc(item && item.ped_cliente || 'Novo item da compra') + '</div><div class="sub">Preencha todos os campos da planilha sem scroll lateral. Área, valor por mil e total continuam automáticos, mas podem ser ajustados manualmente.</div></div>'
-      + '    <div class="ccpx-item-action-strip"><button type="button" class="dup" data-ccpx-dup-item="' + idx + '" title="Duplicar item">+</button><button type="button" class="del" data-ccpx-del-item="' + idx + '" title="Remover item">✕</button></div>'
+      + '<div class="ccpx-item-sheet-row" data-ccpx-item-row="' + idx + '">'
+      + '  <div class="ccpx-item-sheet-index"><div class="eyebrow">Item</div><div class="title">' + window._compraPapelaoEsc(String(idx + 1)) + '</div></div>'
+      + '  <div class="ccpx-item-sheet-grid">'
+      + '    <div class="ccpx-item-field span-4"><label>Pedido Cliente</label><input data-field="ped_cliente" value="' + window._compraPapelaoAttr(item && item.ped_cliente || '') + '"></div>'
+      + '    <div class="ccpx-item-field span-3"><label>Entrega</label><input data-field="data_entrega" type="date" value="' + window._compraPapelaoAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></div>'
+      + '    <div class="ccpx-item-field span-3"><label>PO</label><input data-field="po" value="' + window._compraPapelaoAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></div>'
+      + '    <div class="ccpx-item-field span-2"><label>L</label><input data-field="largura" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.largura || '') + '" placeholder="L"></div>'
+      + '    <div class="ccpx-item-field sep span-1"><span>×</span></div>'
+      + '    <div class="ccpx-item-field span-2"><label>C</label><input data-field="comprimento" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.comprimento || '') + '" placeholder="C"></div>'
+      + '    <div class="ccpx-item-field span-5"><label>Vincos</label><div class="ccpx-item-vincos"><input data-field="vinco1" value="' + window._compraPapelaoAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + window._compraPapelaoAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + window._compraPapelaoAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + window._compraPapelaoAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></div>'
+      + '    <div class="ccpx-item-field span-2"><label>Qtde</label><input data-field="quantidade" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.quantidade || '') + '"></div>'
+      + '    <div class="ccpx-item-field span-2"><label>Lote Mínimo</label><input data-field="lote_minimo" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.lote_minimo || '') + '"></div>'
+      + '    <div class="ccpx-item-field row-break"></div>'
+      + '    <div class="ccpx-item-field span-3"><label>Área Pedido</label><input data-field="area_m2"' + (areaManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + window._compraPapelaoAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : window._compraPapelaoFmtNum(d.area_m2, 4).replace(/\./g, "").replace(",", ".")) + '"></div>'
+      + '    <div class="ccpx-item-field span-3"><label>Valor m²</label><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_m2 || '') + '"></div>'
+      + '    <div class="ccpx-item-field is-readonly span-3"><label>Valor p/mil</label><input type="text" value="' + window._compraPapelaoAttr(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '" readonly tabindex="-1"></div>'
+      + '    <div class="ccpx-item-field span-3"><label>Valor Total</label><input data-field="valor_total"' + (totalManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_total != null && String(item.valor_total).trim() !== '' ? item.valor_total : window._compraPapelaoFmtNum(d.valor_total, 2).replace(/\./g, "").replace(",", ".")) + '"></div>'
+      + '    <div class="ccpx-item-field span-6"><label>Obs</label><textarea data-field="observacao" rows="1">' + window._compraPapelaoEsc(item && item.observacao || '') + '</textarea></div>'
+      + '    <div class="ccpx-item-field span-6"><label data-ccpx-fornecedor-label>' + window._compraPapelaoEsc(window._compraPapelaoFornecedorPedidoLabel('')) + '</label><input data-field="ped_fornecedor" value="' + window._compraPapelaoAttr(item && item.ped_fornecedor || '') + '" placeholder="' + window._compraPapelaoAttr(window._compraPapelaoFornecedorPedidoLabel('')) + '"></div>'
+      + '    <div class="ccpx-item-note-line">Valor p/mil permanece automático e a linha fica compacta para se comportar como planilha sem virar card vertical.</div>'
       + '  </div>'
-      + '  <div class="ccpx-item-grid">'
-      + '    <div class="ccpx-item-field"><label>Pedido Cliente</label><input data-field="ped_cliente" value="' + window._compraPapelaoAttr(item && item.ped_cliente || '') + '"></div>'
-      + '    <div class="ccpx-item-field"><label>Entrega</label><input data-field="data_entrega" type="date" value="' + window._compraPapelaoAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></div>'
-      + '    <div class="ccpx-item-field"><label>PO</label><input data-field="po" value="' + window._compraPapelaoAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></div>'
-      + '    <div class="ccpx-item-field"><label>Largura</label><input data-field="largura" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.largura || '') + '" placeholder="Largura"></div>'
-      + '    <div class="ccpx-item-field"><label>Comprimento</label><input data-field="comprimento" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.comprimento || '') + '" placeholder="Comprimento"></div>'
-      + '    <div class="ccpx-item-field"><label>Vincos</label><div class="ccpx-item-vincos"><input data-field="vinco1" value="' + window._compraPapelaoAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + window._compraPapelaoAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + window._compraPapelaoAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + window._compraPapelaoAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></div>'
-      + '    <div class="ccpx-item-field"><label>Qtde</label><input data-field="quantidade" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.quantidade || '') + '"></div>'
-      + '    <div class="ccpx-item-field"><label>Lote Mínimo</label><input data-field="lote_minimo" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.lote_minimo || '') + '"></div>'
-      + '    <div class="ccpx-item-field"><label>Área Pedido (m²)</label><input data-field="area_m2"' + (areaManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + window._compraPapelaoAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : window._compraPapelaoFmtNum(d.area_m2, 4).replace(/\./g, "").replace(",", ".")) + '"></div>'
-      + '    <div class="ccpx-item-field"><label>Valor m²</label><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_m2 || '') + '"></div>'
-      + '    <div class="ccpx-item-field is-readonly"><label>Valor p/mil</label><input type="text" value="' + window._compraPapelaoAttr(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '" readonly tabindex="-1"></div>'
-      + '    <div class="ccpx-item-field"><label>Valor Total</label><input data-field="valor_total"' + (totalManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_total != null && String(item.valor_total).trim() !== '' ? item.valor_total : window._compraPapelaoFmtNum(d.valor_total, 2).replace(/\./g, "").replace(",", ".")) + '"></div>'
-      + '    <div class="ccpx-item-field full"><label>Obs</label><textarea data-field="observacao" rows="2">' + window._compraPapelaoEsc(item && item.observacao || '') + '</textarea></div>'
-      + '    <div class="ccpx-item-field full"><label data-ccpx-fornecedor-label>' + window._compraPapelaoEsc(window._compraPapelaoFornecedorPedidoLabel('')) + '</label><input data-field="ped_fornecedor" value="' + window._compraPapelaoAttr(item && item.ped_fornecedor || '') + '" placeholder="' + window._compraPapelaoAttr(window._compraPapelaoFornecedorPedidoLabel('')) + '"></div>'
-      + '  </div>'
-      + '  <div class="ccpx-item-metrics"><div class="ccpx-item-metric"><div class="lbl">Valor p/mil</div><div class="val" data-ccpx-mil>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '</div></div><div class="ccpx-item-metric"><div class="lbl">Área automática</div><div class="val" data-ccpx-auto-area>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(d.auto_area_m2, 4)) + ' m²</div></div><div class="ccpx-item-metric"><div class="lbl">Total automático</div><div class="val" data-ccpx-auto-total>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(d.auto_valor_total)) + '</div></div><div class="ccpx-item-metric"><div class="lbl">Vincos consolidados</div><div class="val" data-ccpx-vincos-read>' + window._compraPapelaoEsc(window._compraPapelaoComposeVincos(item) || '—') + '</div></div></div>'
-      + '  <div class="ccpx-item-footnote">O número do pedido do fornecedor pode ser preenchido por item quando a compra precisa ser quebrada internamente, sem perder o cabeçalho geral.</div>'
+      + '  <div class="ccpx-item-sheet-actions"><div class="ccpx-item-action-strip"><button type="button" class="dup" data-ccpx-dup-item="' + idx + '" title="Duplicar item">+</button><button type="button" class="del" data-ccpx-del-item="' + idx + '" title="Remover item">✕</button></div><div class="hint"><span data-ccpx-auto-area>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(d.auto_area_m2, 4)) + ' m²</span><br><span data-ccpx-auto-total>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(d.auto_valor_total)) + '</span><br><span data-ccpx-vincos-read>' + window._compraPapelaoEsc(window._compraPapelaoComposeVincos(item) || '—') + '</span></div></div>'
       + '</div>';
   }).join('');
 };
@@ -5506,11 +5508,47 @@ window._compraPapelaoRefreshModalComputed = function(overlay) {
   if (tg) tg.textContent = window._compraPapelaoFmtMoney(totalValor);
 };
 window._compraPapelaoCloseCompraModal = function() {
-  var overlay = document.getElementById('ccpx-modal-compra-fullscreen');
+  var overlay = document.getElementById('ccpx-compra-fullscreen');
   if (overlay && overlay.parentNode) {
     try { overlay.parentNode.removeChild(overlay); } catch (_) {}
   }
   try { document.body.style.overflow = ''; } catch (_) {}
+};
+window._compraPapelaoForceFullscreenShell = function(overlay) {
+  if (!overlay) return;
+  var shell = overlay.querySelector('.ccpx-fs-shell');
+  var body = shell && shell.querySelector('.ccpx-fs-body');
+  var footer = shell && shell.querySelector('.ccpx-fs-footer');
+  try {
+    overlay.style.setProperty('position', 'fixed', 'important');
+    overlay.style.setProperty('inset', '0', 'important');
+    overlay.style.setProperty('width', '100vw', 'important');
+    overlay.style.setProperty('height', '100vh', 'important');
+    overlay.style.setProperty('max-width', '100vw', 'important');
+    overlay.style.setProperty('max-height', '100vh', 'important');
+    overlay.style.setProperty('padding', '0', 'important');
+    overlay.style.setProperty('margin', '0', 'important');
+    overlay.style.setProperty('display', 'flex', 'important');
+    overlay.style.setProperty('align-items', 'stretch', 'important');
+    overlay.style.setProperty('justify-content', 'stretch', 'important');
+    overlay.style.setProperty('overflow', 'hidden', 'important');
+  } catch (_) {}
+  try {
+    if (shell) {
+      shell.style.setProperty('width', '100vw', 'important');
+      shell.style.setProperty('height', '100vh', 'important');
+      shell.style.setProperty('max-width', '100vw', 'important');
+      shell.style.setProperty('max-height', '100vh', 'important');
+      shell.style.setProperty('border-radius', '0', 'important');
+      shell.style.setProperty('margin', '0', 'important');
+      shell.style.setProperty('overflow', 'hidden', 'important');
+    }
+    if (body) {
+      body.style.setProperty('overflow', 'auto', 'important');
+      body.style.setProperty('min-height', '0', 'important');
+    }
+    if (footer) footer.style.setProperty('flex-wrap', 'wrap', 'important');
+  } catch (_) {}
 };
 window._compraPapelaoCompraFullscreenBodyHtml = function(compra) {
   var empId = String(compra && compra._emp_id_consulta || window._compraPapelaoCurrentEmpId() || window._compraPapelaoEmpresaCriacaoUuid() || '');
@@ -5524,14 +5562,11 @@ window._compraPapelaoCompraFullscreenBodyHtml = function(compra) {
     + '    <div class="ccpx-modal-inline-stack"><label>Data</label><input id="ccpx-data-compra" type="date" value="' + window._compraPapelaoAttr(header.data_compra || window._compraPapelaoTodayIso()) + '"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Pasta</label><select id="ccpx-pasta">' + window._compraPapelaoFolderOptionsHtml(header && header.pasta_id, empId) + '</select></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Pedido Geral do Fornecedor</label><input id="ccpx-ped-fornecedor-geral" value="' + window._compraPapelaoAttr(header.ped_fornecedor || '') + '" placeholder="' + window._compraPapelaoAttr(fornecedorPedidoLabel) + '"></div>'
-    + '    <div class="ccpx-modal-inline-stack"><label>Status</label><select id="ccpx-status">' + window._compraPapelaoStatusOptionsHtml(header.status || 'Solicitada') + '</select></div>'
-    + '    <div class="ccpx-modal-inline-stack"><label>Previsão de Chegada</label><input id="ccpx-prev-chegada" type="date" value="' + window._compraPapelaoAttr(header.previsao_chegada || '') + '"></div>'
-    + '    <div class="ccpx-modal-inline-stack"><label>CNPJ Fornecedor</label><input id="ccpx-cnpj-fornecedor" value="' + window._compraPapelaoAttr(header.cnpj_fornecedor || '') + '"></div>'
     + '    <div class="ccpx-modal-inline-stack full"><label>Observação</label><textarea id="ccpx-obs" rows="2">' + window._compraPapelaoEsc(header.observacao || '') + '</textarea></div>'
     + '  </div>'
     + '</div>'
     + '<div class="ccpx-fs-section">'
-    + '  <div class="ccpx-fs-section-head"><div><div class="ccpx-fs-section-title">Itens da Compra</div><div class="ccpx-fs-section-sub">Cada item fica em cartão próprio, na ordem operacional da planilha e sem qualquer scroll lateral.</div></div><button type="button" class="btn btn-ghost btn-sm" id="ccpx-add-item">+ Adicionar Item</button></div>'
+    + '  <div class="ccpx-fs-section-head"><div><div class="ccpx-fs-section-title">Itens da Compra</div><div class="ccpx-fs-section-sub">Os campos seguem a ordem da planilha e ficam em linhas compactas, preenchendo a largura total do modal sem virar blocos verticais grandes.</div></div><button type="button" class="btn btn-ghost btn-sm" id="ccpx-add-item">+ Adicionar Item</button></div>'
     + '  <div class="ccpx-modal-items-wrap"><div class="ccpx-item-cards" id="ccpx-modal-items-body">' + window._compraPapelaoRenderModalRowsHtml(header && header.itens || []) + '</div></div>'
     + '</div>';
 };
@@ -5541,7 +5576,7 @@ window._compraPapelaoCompraFullscreenShellHtml = function(compra, compraId) {
   return ''
     + '<div class="ccpx-fs-shell" role="dialog" aria-modal="true" aria-label="Nova Compra de Papelão">'
     + '  <div class="ccpx-fs-header">'
-    + '    <div class="ccpx-fs-header-main"><div class="ccpx-fs-title">Nova Compra de Papelão</div><div class="ccpx-fs-subtitle">Modal full-screen com cabeçalho fixo, itens em cartões verticais e rodapé consolidado sempre visível.</div></div>'
+      + '    <div class="ccpx-fs-header-main"><div class="ccpx-fs-title">Nova Compra de Papelão</div><div class="ccpx-fs-subtitle">Shell full-screen real com cabeçalho fixo, corpo ocupando toda a viewport e itens organizados como planilha compacta.</div></div>'
     + '    <div class="ccpx-fs-header-side"><div class="ccpx-fs-badge"><div class="lbl">Número da Compra</div><div class="val" id="ccpx-numero-card">' + window._compraPapelaoEsc(numero) + '</div></div><button type="button" class="ccpx-fs-close" id="ccpx-close-compra" aria-label="Fechar">×</button></div>'
     + '  </div>'
     + '  <div class="ccpx-fs-body">' + window._compraPapelaoCompraFullscreenBodyHtml(compra) + '</div>'
@@ -5571,9 +5606,6 @@ window._compraPapelaoCollectCompraPayload = function(overlay, compra) {
     observacao: String((overlay.querySelector('#ccpx-obs') || {}).value || '').trim(),
     emp_id: empId,
     data_compra: String((overlay.querySelector('#ccpx-data-compra') || {}).value || '').trim(),
-    cnpj_fornecedor: String((overlay.querySelector('#ccpx-cnpj-fornecedor') || {}).value || '').trim(),
-    previsao_chegada: String((overlay.querySelector('#ccpx-prev-chegada') || {}).value || '').trim(),
-    status: String((overlay.querySelector('#ccpx-status') || {}).value || '').trim(),
     itens: itens
   };
 };
@@ -5608,8 +5640,6 @@ window._compraPapelaoComposeEmailData = function(payload, compra) {
       'Fornecedor: ' + fornecedor,
       payload && payload.ped_fornecedor ? ('Ped. Fornecedor: ' + payload.ped_fornecedor) : '',
       payload && payload.data_compra ? ('Data: ' + window._compraPapelaoFmtDate(payload.data_compra)) : '',
-      payload && payload.previsao_chegada ? ('Previsão de Chegada: ' + window._compraPapelaoFmtDate(payload.previsao_chegada)) : '',
-      payload && payload.status ? ('Status: ' + payload.status) : '',
       '',
       'Itens:',
       linhas || 'Sem itens.',
@@ -5687,7 +5717,7 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     + '</style></head><body><div class="sheet">'
     + '<div class="topline"><div><div class="brand">' + window._compraPapelaoEsc(empresa || 'Italy Embalagens') + '</div><div class="title">PEDIDO DE CHAPAS — ' + window._compraPapelaoEsc(data.fornecedor || 'FORNECEDOR') + '</div><div class="subtitle">Gerado em ' + window._compraPapelaoEsc(typeof window._printGeradoEmBr === 'function' ? window._printGeradoEmBr() : new Date().toLocaleString('pt-BR')) + '</div></div>'
     + '<div class="box"><table><tr><td class="label">Pedido</td><td>' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(data.numero_compra)) + '</td></tr><tr><td class="label">Data</td><td>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(data.data_compra || window._compraPapelaoTodayIso())) + '</td></tr><tr><td class="label">Fornecedor</td><td>' + window._compraPapelaoEsc(data.fornecedor || '—') + '</td></tr></table></div></div>'
-    + '<div class="meta"><div class="meta-card"><div class="label">Ped. Fornecedor</div><div class="value">' + window._compraPapelaoEsc(data.ped_fornecedor || '—') + '</div></div><div class="meta-card"><div class="label">CNPJ Fornecedor</div><div class="value">' + window._compraPapelaoEsc(data.cnpj_fornecedor || '—') + '</div></div><div class="meta-card"><div class="label">Previsão de Chegada</div><div class="value">' + window._compraPapelaoEsc(data.previsao_chegada ? window._compraPapelaoFmtDate(data.previsao_chegada) : '—') + '</div></div><div class="meta-card"><div class="label">Status</div><div class="value">' + window._compraPapelaoEsc(data.status || 'Solicitada') + '</div></div></div>'
+    + '<div class="meta"><div class="meta-card"><div class="label">Ped. Fornecedor</div><div class="value">' + window._compraPapelaoEsc(data.ped_fornecedor || '—') + '</div></div><div class="meta-card"><div class="label">Fornecedor</div><div class="value">' + window._compraPapelaoEsc(data.fornecedor || '—') + '</div></div><div class="meta-card"><div class="label">Data</div><div class="value">' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(data.data_compra || window._compraPapelaoTodayIso())) + '</div></div><div class="meta-card"><div class="label">Observação Geral</div><div class="value">' + window._compraPapelaoEsc(data.observacao || '—') + '</div></div></div>'
     + '<table class="planilha"><thead><tr><th style="width:36px">#</th><th style="width:120px">Pedido Cliente</th><th style="width:92px">Entrega</th><th style="width:82px">PO</th><th style="width:108px">Medidas L × C</th><th style="width:98px">Vincos</th><th style="width:64px">Qtde</th><th style="width:76px">Lote Mínimo</th><th style="width:88px">Área Pedido</th><th style="width:88px">Valor m²</th><th style="width:88px">Valor p/mil</th><th style="width:92px">Valor Total</th><th>Obs</th><th style="width:110px">Ped. Fornecedor</th></tr></thead><tbody>'
     + (rowsHtml || '<tr><td colspan="14">Nenhum item informado.</td></tr>')
     + '</tbody></table>'
@@ -5799,10 +5829,11 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
     compra = window._compraPapelaoNormalizeCompraHeader(compra);
     window._compraPapelaoCloseCompraModal();
     var overlay = document.createElement('div');
-    overlay.id = 'ccpx-modal-compra-fullscreen';
+    overlay.id = 'ccpx-compra-fullscreen';
     overlay.className = 'ccpx-fs-overlay';
     overlay.innerHTML = window._compraPapelaoCompraFullscreenShellHtml(compra, compraId);
     document.body.appendChild(overlay);
+    window._compraPapelaoForceFullscreenShell(overlay);
     try { document.body.style.overflow = 'hidden'; } catch (_) {}
     if (!overlay) return;
     window._compraPapelaoRefreshModalComputed(overlay);
@@ -5828,14 +5859,10 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
       var last = tbody && tbody.querySelector('[data-ccpx-item-row]:last-child [data-field="' + window._compraPapelaoItemFieldsOrder()[0] + '"]');
       try { if (last) last.focus(); } catch (_) {}
     };
-    var cnpjEl = overlay.querySelector('#ccpx-cnpj-fornecedor');
     var fornManualEl = overlay.querySelector('#ccpx-fornecedor-manual');
     var syncFornecedor = function() {
       var chosen = String((fornManualEl || {}).value || '').trim();
-      if (!chosen || !cnpjEl || String(cnpjEl.value || '').trim()) return;
-      var forn = window._compraPapelaoFindFornecedor(chosen);
-      var value = String(forn && (forn.cnpj || forn.cnpj_fornecedor || forn.documento) || '').trim();
-      if (value) cnpjEl.value = value;
+      if (!chosen) return;
     };
     if (fornManualEl) fornManualEl.onchange = function() {
       syncFornecedor();
@@ -8504,6 +8531,52 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     });
     if (body && body.parentNode !== main) main.appendChild(body);
     if (footer && footer.parentNode !== footerHost) footerHost.appendChild(footer);
+    try {
+      overlay.style.setProperty('position', 'fixed', 'important');
+      overlay.style.setProperty('inset', '0', 'important');
+      overlay.style.setProperty('width', '100vw', 'important');
+      overlay.style.setProperty('height', '100vh', 'important');
+      overlay.style.setProperty('max-width', '100vw', 'important');
+      overlay.style.setProperty('max-height', '100vh', 'important');
+      overlay.style.setProperty('padding', '0', 'important');
+      overlay.style.setProperty('margin', '0', 'important');
+      overlay.style.setProperty('align-items', 'stretch', 'important');
+      overlay.style.setProperty('justify-content', 'stretch', 'important');
+      overlay.style.setProperty('overflow', 'hidden', 'important');
+      modal.style.setProperty('width', '100vw', 'important');
+      modal.style.setProperty('max-width', '100vw', 'important');
+      modal.style.setProperty('height', '100vh', 'important');
+      modal.style.setProperty('max-height', '100vh', 'important');
+      modal.style.setProperty('border-radius', '0', 'important');
+      modal.style.setProperty('margin', '0', 'important');
+      modal.style.setProperty('padding', '0', 'important');
+      modal.style.setProperty('overflow', 'hidden', 'important');
+      shell.style.setProperty('height', '100%', 'important');
+      shell.style.setProperty('min-height', '0', 'important');
+      topbar.style.setProperty('align-items', 'start', 'important');
+      main.style.setProperty('min-height', '0', 'important');
+      main.style.setProperty('overflow', 'hidden', 'important');
+      if (body) {
+        body.style.setProperty('height', '100%', 'important');
+        body.style.setProperty('max-height', 'none', 'important');
+        body.style.setProperty('overflow', 'hidden', 'important');
+      }
+      var leftCol = modal.querySelector('.calc-col-esq');
+      var rightCol = modal.querySelector('.calc-col-dir');
+      var tableWrap = modal.querySelector('.calc-tabela-wrap');
+      if (leftCol) {
+        leftCol.style.setProperty('min-height', '0', 'important');
+        leftCol.style.setProperty('overflow', 'auto', 'important');
+      }
+      if (rightCol) {
+        rightCol.style.setProperty('min-height', '0', 'important');
+        rightCol.style.setProperty('overflow', 'auto', 'important');
+      }
+      if (tableWrap) {
+        tableWrap.style.setProperty('min-height', '0', 'important');
+        tableWrap.style.setProperty('overflow', 'auto', 'important');
+      }
+    } catch (_) {}
     return true;
   }
   function saveFolderFromModal() {
@@ -9861,6 +9934,33 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
         }, 40);
       }
     }
+    if (!window.__histLegacyPatchObserver) {
+      try {
+        var histTarget = document.getElementById('hist-passagens-resultado');
+        if (histTarget) {
+          window.__histLegacyPatchObserver = new MutationObserver(function() {
+            try { clearTimeout(window.__histLegacyPatchObserverTick); } catch (_) {}
+            window.__histLegacyPatchObserverTick = setTimeout(function() {
+              try {
+                var host = document.getElementById('hist-passagens-resultado');
+                if (!host) return;
+                var legacyFound = !!host.querySelector('#hist-passagens-items, #btnCarregarMaisPassagens');
+                if (!legacyFound) return;
+                var legacyBtn = document.getElementById('btnCarregarMaisPassagens');
+                if (legacyBtn) {
+                  try { legacyBtn.disabled = true; } catch (_) {}
+                  try { legacyBtn.remove(); } catch (_) {}
+                }
+                if (Array.isArray(window.__histPassagensDetalhamentoRows) && window.__histPassagensDetalhamentoRows.length) {
+                  _histRenderDetalhamentoPassagens();
+                }
+              } catch (_) {}
+            }, 40);
+          });
+          window.__histLegacyPatchObserver.observe(histTarget, { childList: true, subtree: true });
+        }
+      } catch (_) {}
+    }
   }
 
   function _histRepairScrollContainer() {
@@ -10507,7 +10607,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
   }
 
   async function _histBuscarLinhasVisiveisExport(st, filtros) {
-    var state = st || window._histPassagensState || {};
+    var state = st || window.__histPassagensPatchState || window._histPassagensState || {};
     var totalLoaded = Math.max(1, (Number(state.page || 0) || 1) * (Number(state.limit || 50) || 50));
     if (totalLoaded > 1000) totalLoaded = 1000;
     var range = _histResolveRange(filtros, _histGetMonthlyRef());
@@ -10538,8 +10638,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     var container = document.getElementById('hist-passagens-resultado');
     if (!container) return;
 
-    var st = window._histPassagensState || { page: 0, limit: 10000, total: 0, key: '', loading: false, filtros: {}, rows: [] };
+    var st = window.__histPassagensPatchState || window._histPassagensState || { page: 0, limit: 10000, total: 0, key: '', loading: false, filtros: {}, rows: [] };
     if (!Array.isArray(st.rows)) st.rows = [];
+    window.__histPassagensPatchState = st;
     window._histPassagensState = st;
 
     var filtros = (arg && typeof arg === 'object' && !Array.isArray(arg)) ? arg : _histGetFilters();
@@ -10590,6 +10691,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
         st.page = 1;
         st.limit = limit;
         st.rows = lista.slice();
+        window.__histPassagensPatchState = st;
+        window._histPassagensState = st;
         window.__histPassagensDetalhamentoRows = st.rows.slice();
         window.__histPassagensLoadedKey = key;
 
@@ -10658,7 +10761,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
 
   function _histCarregarMaisPassagens() {
     try {
-      var st = window._histPassagensState || { page: 0, limit: 50, total: 0, key: '', loading: false, filtros: {} };
+      var st = window.__histPassagensPatchState || window._histPassagensState || { page: 0, limit: 50, total: 0, key: '', loading: false, filtros: {} };
       if (st.loading) return;
       _histBuscarHistoricoPassagens(st.filtros || _histGetFilters(), true);
     } catch (_) {}
@@ -12837,7 +12940,7 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
   function _hubStripMoneyVisuals() {
     try {
       var page = document.getElementById('page-hub');
-      if (!page || page.style.display === 'none') return;
+      if (!page) return;
       var kpis = document.getElementById('hub-kpis');
       if (kpis) {
         var fatCard = _hubFindCardByLabel(kpis, 'Faturamento do mês') || _hubFindCardByLabel(kpis, 'FATURAMENTO DO MÊS');
@@ -12873,6 +12976,9 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       Array.prototype.slice.call(page.querySelectorAll('.card, .hub-row')).forEach(function(node) {
         var label = String(node && node.textContent || '').trim().toLowerCase();
         if (label.indexOf('faturamento do mês') >= 0 && label.indexOf('r$') >= 0) {
+          try { node.remove(); } catch (_) {}
+        }
+        if ((label.indexOf('ticket médio') >= 0 || label.indexOf('ticket medio') >= 0 || label.indexOf('total:') === 0) && label.indexOf('r$') >= 0) {
           try { node.remove(); } catch (_) {}
         }
       });
@@ -24991,6 +25097,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var _orig = window.renderHub;
       var wrappedRenderHub = async function() {
         var res = await _orig.apply(this, arguments);
+        var stripLater = function() {
+          try { _hubStripMoneyVisuals(); } catch (_) {}
+          try { _patchHubTotalCards(); } catch (_) {}
+        };
+        [40, 180, 600, 1200].forEach(function(delay) {
+          setTimeout(stripLater, delay);
+        });
         setTimeout(function() {
           try { window.carregarPassagensHoje(); } catch(_) {}
         }, 400);
