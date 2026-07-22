@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -305,11 +305,32 @@ if (!_supabaseEnvOk) {
 (async () => {
   try {
     if (!supabase) return;
-    const { data: rows, error } = await supabase
+    const { data: baseRows, error: baseErr } = await supabase
       .from('maquinas')
-      .select('id,nome,puxada_min,puxada_max')
-      .eq('nome', 'CORTE VINCO ROTATIVA')
-      .limit(1);
+      .select('id,nome,col,ordem,ativa,puxada_min,puxada_max')
+      .limit(1000);
+    if (baseErr) return;
+    const norm = (v) => String(v || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+    const rowsAll = Array.isArray(baseRows) ? baseRows : [];
+    const known = new Set();
+    rowsAll.forEach((row) => {
+      const n1 = norm(row?.nome);
+      const n2 = norm(row?.col);
+      if (n1) known.add(n1);
+      if (n2) known.add(n2);
+    });
+    const missing = MAQUINAS_CATALOGO_PADRAO.filter((item) => !known.has(norm(item.nome)));
+    if (missing.length) {
+      const payload = missing.map((item) => ({ nome: item.nome, ordem: item.ordem, ativa: true }));
+      const ins = await supabase.from('maquinas').insert(payload).select('id,nome');
+      if (!ins?.error) {
+        try { cacheClear('maquinas'); } catch (_) {}
+        console.log('[MAQUINAS] catálogo canônico complementado:', payload.map((item) => item.nome).join(', '));
+      }
+    }
+
+    const rows = rowsAll.filter((row) => String(row?.nome || '').trim().toUpperCase() === 'CORTE VINCO ROTATIVA');
+    const error = null;
     if (error) return;
     const m = Array.isArray(rows) ? rows[0] : null;
     if (!m) return;
@@ -326,6 +347,46 @@ if (!_supabaseEnvOk) {
     console.error('[MAQUINAS] erro ao corrigir CORTE VINCO ROTATIVA:', String(e?.message || e));
   }
 })();
+
+function _mergeCanonicalMachineRows(rows) {
+  const norm = (v) => {
+    try {
+      return String(v || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+    } catch (_) {
+      return String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+  };
+  const list = Array.isArray(rows) ? rows.slice() : [];
+  const byName = new Map();
+  list.forEach((item) => {
+    const keyNome = norm(item?.nome);
+    const keyCol = norm(item?.col);
+    if (keyNome && !byName.has(keyNome)) byName.set(keyNome, item);
+    if (keyCol && !byName.has(keyCol)) byName.set(keyCol, item);
+  });
+  MAQUINAS_CATALOGO_PADRAO.forEach((item) => {
+    const key = norm(item.nome);
+    if (byName.has(key)) return;
+    list.push({
+      id: 'virtual-maquina-' + key.replace(/\s+/g, '-'),
+      nome: item.nome,
+      col: item.nome,
+      ordem: item.ordem,
+      ativa: true,
+      _virtual: true,
+    });
+  });
+  const ordMap = new Map(MAQUINAS_CATALOGO_PADRAO.map((item) => [norm(item.nome), Number(item.ordem) || 999]));
+  list.sort((a, b) => {
+    const na = String(a?.nome || a?.col || '').trim();
+    const nb = String(b?.nome || b?.col || '').trim();
+    const oa = ordMap.has(norm(na)) ? ordMap.get(norm(na)) : (Number(a?.ordem) || 999);
+    const ob = ordMap.has(norm(nb)) ? ordMap.get(norm(nb)) : (Number(b?.ordem) || 999);
+    if (oa !== ob) return oa - ob;
+    return na.localeCompare(nb, 'pt-BR');
+  });
+  return list;
+}
 
 const OPENAI_API_KEY = String(process.env.OPENAI_API_KEY || '').trim();
 if (OPENAI_API_KEY) {
@@ -1101,9 +1162,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260722144122';
-const SW_RUNTIME_VERSION = '20260722144122';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260722144122';
+const PATCH_RUNTIME_VERSION = '20260722152526';
+const SW_RUNTIME_VERSION = '20260722152526';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260722152526';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -3597,18 +3658,40 @@ function ofPayloadFiltrado(body) {
 }
 
 async function _buscarClienteNomeOF(cliId) {
+  const cli = await _buscarClienteRegistroOF(cliId);
+  return _clienteNomeValido(cli?.nome || cli?.rs || cli?.razao_social || '');
+}
+
+function _clienteNomeValido(v) {
+  const s = String(v || '').trim();
+  if (!s) return '';
+  if (s === '_' || s === '-' || s === '—') return '';
+  if (/^c\d{2,}(?:[_\-\s]*)$/i.test(s)) return '';
+  return s;
+}
+
+async function _buscarClienteRegistroOF(cliId) {
   const id = String(cliId || '').trim();
-  if (!id) return '';
-  try {
-    const { data } = await supabase
-      .from('clientes')
-      .select('nome,rs,razao_social')
-      .eq('id', id)
-      .maybeSingle();
-    return String(data?.nome || data?.rs || data?.razao_social || '').trim();
-  } catch (_) {
-    return '';
+  if (!id || !supabase) return null;
+  const tries = [];
+  if (_isUuid(id)) tries.push({ column: 'id', value: id });
+  tries.push({ column: 'codigo', value: id });
+  if (!_isUuid(id)) tries.push({ column: 'id', value: id });
+  const seen = new Set();
+  for (const attempt of tries) {
+    const key = String(attempt.column || '') + ':' + String(attempt.value || '');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('id,codigo,nome,rs,razao_social,vendedor_id')
+        .eq(attempt.column, attempt.value)
+        .maybeSingle();
+      if (!error && data) return data;
+    } catch (_) {}
   }
+  return null;
 }
 
 async function _buscarVendedorNomeOF(vendedorId) {
@@ -3648,12 +3731,13 @@ async function _preencherCamposCriticosOF(input, opts = {}) {
   };
 
   const cliId = String(out.cli_id ?? out.cliId ?? out.cliente_id ?? out.cliid ?? '').trim();
-  let clinome = String(out.clinome ?? out.cliNome ?? out.cliente_nome ?? out.cliente ?? '').trim();
+  let clinome = _clienteNomeValido(out.clinome ?? out.cliNome ?? out.cliente_nome ?? out.cliente ?? '');
   if (!clinome && cliId) clinome = await _buscarClienteNomeOF(cliId);
   if (clinome) {
     out.clinome = clinome;
     if (out.cliNome === undefined || out.cliNome === '') out.cliNome = clinome;
     if (out.cliente_nome === undefined || out.cliente_nome === '') out.cliente_nome = clinome;
+    if (out.cliente === undefined || out.cliente === '') out.cliente = clinome;
   }
   if (onlyClinome) return out;
 
@@ -3754,18 +3838,39 @@ async function _enriquecerRespostaOFs(listaInput) {
     return pickText(item?.cli_id, item?.cliId, item?.cliente_id, base?.cli_id, base?.cliId, base?.cliente_id);
   }).filter(Boolean)));
   const clienteMap = new Map();
-  for (let i = 0; i < cliIds.length; i += chunkSize) {
-    const chunk = cliIds.slice(i, i + chunkSize);
+  const cliIdsUuid = cliIds.filter((id) => _isUuid(String(id || '').trim()));
+  const cliIdsCodigo = cliIds.filter((id) => !_isUuid(String(id || '').trim()));
+  for (let i = 0; i < cliIdsUuid.length; i += chunkSize) {
+    const chunk = cliIdsUuid.slice(i, i + chunkSize);
     if (!chunk.length) continue;
     try {
       const { data, error } = await supabase
         .from('clientes')
-        .select('id,nome,rs,vendedor_id')
+        .select('id,codigo,nome,rs,razao_social,vendedor_id')
         .in('id', chunk);
       if (error) continue;
       (Array.isArray(data) ? data : []).forEach((cli) => {
         const cliId = String(cli?.id || '').trim();
         if (cliId) clienteMap.set(cliId, cli);
+        const codigo = String(cli?.codigo || '').trim();
+        if (codigo) clienteMap.set(codigo, cli);
+      });
+    } catch (_) {}
+  }
+  for (let i = 0; i < cliIdsCodigo.length; i += chunkSize) {
+    const chunk = cliIdsCodigo.slice(i, i + chunkSize);
+    if (!chunk.length) continue;
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('id,codigo,nome,rs,razao_social,vendedor_id')
+        .in('codigo', chunk);
+      if (error) continue;
+      (Array.isArray(data) ? data : []).forEach((cli) => {
+        const cliId = String(cli?.id || '').trim();
+        const codigo = String(cli?.codigo || '').trim();
+        if (cliId) clienteMap.set(cliId, cli);
+        if (codigo) clienteMap.set(codigo, cli);
       });
     } catch (_) {}
   }
@@ -3816,7 +3921,7 @@ async function _enriquecerRespostaOFs(listaInput) {
       vendedorNome,
       vendedorId
     );
-    const clinome = pickText(
+    const clinome = _clienteNomeValido(pickText(
       item?.clinome,
       item?.cliNome,
       item?.cliente_nome,
@@ -3826,8 +3931,9 @@ async function _enriquecerRespostaOFs(listaInput) {
       base?.cliente_nome,
       base?.cliente,
       cliente?.nome,
-      cliente?.rs
-    );
+      cliente?.rs,
+      cliente?.razao_social
+    ));
     const itens = parseItens(item?.itens ?? base?.itens);
     const qtd = Math.trunc(toNum(item?.qtd ?? item?.quantidade ?? item?.qtd_pedida ?? base?.qtd ?? base?.quantidade ?? base?.qtd_pedida ?? itens?.[0]?.qtd ?? itens?.[0]?.quantidade));
     let preco = toNum(item?.preco ?? item?.valor_unitario ?? base?.preco ?? base?.valor_unitario ?? itens?.[0]?.valor_unitario ?? itens?.[0]?.vunit ?? itens?.[0]?.preco);
@@ -3842,10 +3948,10 @@ async function _enriquecerRespostaOFs(listaInput) {
       cli_id: cliId || null,
       cliId: cliId || null,
       cliente_id: cliId || null,
-      clinome: clinome || '—',
-      cliNome: clinome || '—',
-      cliente_nome: clinome || '—',
-      cliente: clinome || '—',
+      clinome: clinome || 'Cliente não identificado',
+      cliNome: clinome || 'Cliente não identificado',
+      cliente_nome: clinome || 'Cliente não identificado',
+      cliente: clinome || 'Cliente não identificado',
       vendedor_id: vendedorId || null,
       vendId: vendedorId || null,
       vend_id: vendedorId || null,
@@ -4483,6 +4589,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     const after = String(req.query.after || '').trim();
     const afterIso = (after && after !== 'undefined' && after !== 'null' && after !== '[object Object]') ? after : '';
+    const refreshToken = String(req.query.t || req.query.ts || req.query.nocache || req.query.refresh || '').trim();
     const limitRaw = String(req.query.limit || '').trim();
     const limit = Math.min(parseInt(limitRaw, 10) || 500, 1000);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
@@ -4490,7 +4597,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const busca = String(req.query.busca || req.query.search || '').trim();
     const clienteFiltro = String((req.query.cli_id || req.query.cliente_id || '') || '').trim();
     const empresaFiltro = req.query.empresa;
-    const useCache = !afterIso;
+    const useCache = !afterIso && !refreshToken;
     const cacheKey = useCache ? ('ofs_v12_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '')) : '';
     if (useCache) {
       const cached = cacheGet(cacheKey);
@@ -4564,7 +4671,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const count = fetched.count || 0;
 
     const ofsRaw = data || [];
-    const clienteIds = [...new Set(ofsRaw.map(o => o.cli_id).filter(Boolean))];
+    const clienteIds = [...new Set(ofsRaw.map((o) => String(o?.cli_id || o?.cliId || o?.cliente_id || '').trim()).filter(Boolean))];
     const mapaClientes = {};
     if (clienteIds.length > 0) {
       try {
@@ -4621,11 +4728,14 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
 
     let rows = ofsRaw.map((of) => {
-      const cliIdNorm = String(of.cli_id || '').trim();
-      const clienteNome = of.clinome
-        || mapaClientes[cliIdNorm]
-        || mapaClientes[cliIdNorm.toLowerCase()]
-        || mapaClientes[cliIdNorm.toUpperCase()]
+      const cliIdNorm = String(of.cli_id || of.cliId || of.cliente_id || '').trim();
+      const clienteNome = _clienteNomeValido(of.clinome)
+        || _clienteNomeValido(of.cliNome)
+        || _clienteNomeValido(of.cliente_nome)
+        || _clienteNomeValido(of.cliente)
+        || _clienteNomeValido(mapaClientes[cliIdNorm])
+        || _clienteNomeValido(mapaClientes[cliIdNorm.toLowerCase()])
+        || _clienteNomeValido(mapaClientes[cliIdNorm.toUpperCase()])
         || '';
       let maquinaNome = '';
       try {
@@ -4676,8 +4786,10 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
       return {
         ...of,
-        cliente: clienteNome,
-        clinome: clienteNome,
+        cliente: clienteNome || 'Cliente não identificado',
+        clinome: clienteNome || 'Cliente não identificado',
+        cliNome: clienteNome || 'Cliente não identificado',
+        cliente_nome: clienteNome || 'Cliente não identificado',
         maquina: maquinaNome,
         maquina_atual: maquinaNome,
         produto: produtoNome,
@@ -4839,10 +4951,16 @@ function _parseFluxoAny(v){
   return [];
 }
 
-const MAQUINAS_VALIDAS_NOMES = [
-  'CORTE VINCO ROTATIVA',
-  'IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05',
+const MAQUINAS_CATALOGO_PADRAO = [
+  { nome: 'IMP 01', ordem: 1 },
+  { nome: 'IMP 02', ordem: 2 },
+  { nome: 'IMP 03', ordem: 3 },
+  { nome: 'IMP 04', ordem: 4 },
+  { nome: 'IMP 05', ordem: 5 },
+  { nome: 'Riscador', ordem: 6 },
+  { nome: 'CORTE VINCO ROTATIVA', ordem: 7 },
 ];
+const MAQUINAS_VALIDAS_NOMES = MAQUINAS_CATALOGO_PADRAO.map((item) => item.nome);
 
 function _ofPickFluxoNames(of){
   try{
@@ -5458,7 +5576,7 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
     const vendNested = clienteJoin?.vendedor && typeof clienteJoin.vendedor === 'object' ? clienteJoin.vendedor : null;
     const { cliente, ...rest } = data;
 
-    let cliNome = clienteJoin?.nome || data.cliNome || data.clinome || '';
+    let cliNome = _clienteNomeValido(clienteJoin?.nome || data.cliNome || data.clinome || data.cliente_nome || data.cliente || '');
     let vendNome = vendNested?.nome || data.vendNome || data.vendedor_nome || data.vendedor || '';
     let vendedorId = clienteJoin?.vendedor_id || data.vendedor_id || data.vendId || null;
     const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
@@ -5468,16 +5586,10 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
     if (!cliNome || !vendNome) {
       const cliId = String(data.cli_id || data.cliId || data.cliente_id || '').trim();
       if (cliId) {
-        const { data: cli } = await supabase
-          .from('clientes')
-          .select('nome,vendedor_id,vendedor:vendedores!vendedor_id(nome)')
-          .eq('id', cliId)
-          .maybeSingle();
+        const cli = await _buscarClienteRegistroOF(cliId);
         if (cli) {
-          cliNome = cliNome || cli.nome || '';
+          cliNome = cliNome || _clienteNomeValido(cli.nome || cli.rs || cli.razao_social || '');
           vendedorId = vendedorId || cli.vendedor_id || null;
-          const v = cli.vendedor && typeof cli.vendedor === 'object' ? cli.vendedor : null;
-          vendNome = vendNome || v?.nome || '';
         }
       }
     }
@@ -5488,7 +5600,17 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
       } catch (_) {}
     }
     if (vendNome && isUuid(String(vendNome).trim())) vendNome = '';
-    return ok(res, { ...rest, cliNome, vendNome, vendedor_id: vendedorId, vendedor_nome: vendNome });
+    const clienteFinal = cliNome || 'Cliente não identificado';
+    return ok(res, {
+      ...rest,
+      cliNome: clienteFinal,
+      clinome: clienteFinal,
+      cliente_nome: clienteFinal,
+      cliente: clienteFinal,
+      vendNome,
+      vendedor_id: vendedorId,
+      vendedor_nome: vendNome
+    });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
@@ -9920,7 +10042,7 @@ app.get('/api/passagens/graficos', authMiddleware, async (req, res) => {
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
     const inicioMesISO = new Date(inicioMes.getFullYear(), inicioMes.getMonth(), inicioMes.getDate(), 0, 0, 0).toISOString().slice(0, 10);
 
-    const MAQS = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
+    const MAQS = MAQUINAS_CATALOGO_PADRAO.map((item) => item.nome);
 
     const labels = [];
     const labelToIdx = new Map();
@@ -12506,8 +12628,24 @@ app.get('/api/clientes/:id', authMiddleware, async (req, res) => {
     const id = String(req.params.id || '').trim();
     const lite = String(req.query.lite || '').trim() === '1';
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    const { data, error } = await supabase.from('clientes').select('*').eq('id', id).maybeSingle();
-    if (error) throw error;
+    let data = null;
+    let error = null;
+    if (_isUuid(id)) {
+      const byId = await supabase.from('clientes').select('*').eq('id', id).maybeSingle();
+      data = byId?.data || null;
+      error = byId?.error || null;
+    }
+    if (!data) {
+      const byCodigo = await supabase.from('clientes').select('*').eq('codigo', id).maybeSingle();
+      data = byCodigo?.data || null;
+      error = byCodigo?.error || error || null;
+    }
+    if (!data && !_isUuid(id)) {
+      const byLegacyId = await supabase.from('clientes').select('*').eq('id', id).maybeSingle();
+      data = byLegacyId?.data || null;
+      error = byLegacyId?.error || error || null;
+    }
+    if (error && !data) throw error;
     if (!data) return res.status(404).json({ ok: false, error: 'Cliente não encontrado' });
     if (lite) {
       return res.json({
@@ -12520,11 +12658,13 @@ app.get('/api/clientes/:id', authMiddleware, async (req, res) => {
         }
       });
     }
+    const cliFilters = ['cli_id.eq.' + String(data.id || '').trim()];
+    if (String(data.codigo || '').trim()) cliFilters.push('cli_id.eq.' + String(data.codigo || '').trim());
     const { data: ofs, error: errOfs } = await supabase
       .from('ofs')
       .select('id,numero,valor_total,total,status,created_at,data_conclusao,cli_id')
       .is('deleted_at', null)
-      .eq('cli_id', id)
+      .or(cliFilters.join(','))
       .order('created_at', { ascending: false });
     if (errOfs) throw errOfs;
     const ofsLista = Array.isArray(ofs) ? ofs : [];
@@ -13682,7 +13822,7 @@ app.put('/api/operadores/:id', authMiddleware, async (req, res) => {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // M??QUINAS
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const _MAQUINAS_ATIVAS = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
+const _MAQUINAS_ATIVAS = MAQUINAS_CATALOGO_PADRAO.map((item) => item.nome);
 function _normMaqNome(v) {
   try {
     return String(v || '')
@@ -13707,6 +13847,7 @@ function _canonMaqNome(v) {
   if (s.includes('rotat') && (s.includes('vinco') || s.includes('corte'))) return 'CORTE VINCO ROTATIVA';
   if (s === 'cvr') return 'CORTE VINCO ROTATIVA';
   if (s === 'rotativa') return 'CORTE VINCO ROTATIVA';
+  if (s === 'riscador' || s === 'risc' || s === 'riscador 01' || s === 'riscador 1' || s === 'riscador 02' || s === 'riscador 2') return 'Riscador';
   return '';
 }
 function _isUuid(v) {
@@ -14271,6 +14412,7 @@ app.get('/api/maquinas', authMiddleware, async (req, res) => {
       from += pageSize;
     }
 
+    all = _mergeCanonicalMachineRows(all);
     cacheSet(cacheKey, all, 30 * 1000);
     return res.json({ ok: true, data: all, maquinas: all });
   } catch (e) { err(res, e); }

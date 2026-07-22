@@ -13760,6 +13760,202 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     return !norm || /^(todas?|todos|all|geral|\*)$/.test(norm);
   }
 
+  (function patchCatalogoRiscador() {
+    if (window.__patchCatalogoRiscadorApplied) return;
+    window.__patchCatalogoRiscadorApplied = true;
+    var CANONICAL = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA'];
+    var applyTimer = 0;
+    var observerInstalled = false;
+
+    function norm(v) {
+      var s = String(v == null ? '' : v).trim().toLowerCase();
+      try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+      return s.replace(/\s+/g, ' ').trim();
+    }
+
+    function ensureNameList(arr) {
+      var list = Array.isArray(arr) ? arr.slice() : [];
+      if (!list.some(function(item) { return norm(item) === 'riscador'; })) list.push('Riscador');
+      return list;
+    }
+
+    function ensureMachineObjects(arr) {
+      var list = Array.isArray(arr) ? arr.slice() : [];
+      var has = list.some(function(item) {
+        var nome = item && typeof item === 'object' ? (item.nome || item.col || item.codigo || item.id) : item;
+        return norm(nome) === 'riscador';
+      });
+      if (!has) list.push({ id: 'Riscador', nome: 'Riscador', col: 'Riscador', codigo: 'Riscador', ordem: 6, ativa: true });
+      list.sort(function(a, b) {
+        var na = a && typeof a === 'object' ? String(a.nome || a.col || a.codigo || a.id || '').trim() : String(a || '').trim();
+        var nb = b && typeof b === 'object' ? String(b.nome || b.col || b.codigo || b.id || '').trim() : String(b || '').trim();
+        var ia = CANONICAL.indexOf(na);
+        var ib = CANONICAL.indexOf(nb);
+        if (ia !== ib) {
+          if (ia < 0) return 1;
+          if (ib < 0) return -1;
+          return ia - ib;
+        }
+        return na.localeCompare(nb, 'pt-BR');
+      });
+      return list;
+    }
+
+    function syncMachineGlobals() {
+      try {
+        if (Array.isArray(window.MAQUINAS)) window.MAQUINAS = ensureMachineObjects(window.MAQUINAS);
+        if (Array.isArray(window._maquinas)) window._maquinas = ensureMachineObjects(window._maquinas);
+        if (Array.isArray(window.maquinas)) window.maquinas = ensureMachineObjects(window.maquinas);
+        if (Array.isArray(window.listaMaquinas)) window.listaMaquinas = ensureMachineObjects(window.listaMaquinas);
+      } catch (_) {}
+    }
+
+    function ensureSelectHasRiscador(id) {
+      var sel = document.getElementById(id);
+      if (!sel || !sel.options) return;
+      var found = Array.prototype.slice.call(sel.options).some(function(opt) {
+        return norm(opt && (opt.value || opt.textContent || opt.label || '')) === 'riscador';
+      });
+      if (found) return;
+      var opt = document.createElement('option');
+      opt.value = 'Riscador';
+      opt.textContent = 'Riscador';
+      var before = Array.prototype.slice.call(sel.options).find(function(item) {
+        return norm(item && (item.value || item.textContent || '')) === 'corte vinco rotativa';
+      }) || null;
+      try { sel.insertBefore(opt, before); } catch (_) { sel.appendChild(opt); }
+    }
+
+    function patchCheckboxWrap() {
+      var wrap = document.getElementById('inc-maquinas-checkboxes');
+      if (!wrap || wrap.querySelector('input[value="Riscador"]')) return;
+      var label = document.createElement('label');
+      label.style.cssText = 'display:inline-flex;align-items:center;gap:6px;';
+      label.innerHTML = '<input type="checkbox" value="Riscador"> Riscador';
+      wrap.appendChild(label);
+    }
+
+    function patchDomMachineSelects() {
+      ['ofsmaq-select-maquina', 'ofsmaq-filtro-maquina', 'hist-filtro-maquina', 'of-r-maquina', 'inc-maquina', 'mconc-setor-finalizacao'].forEach(ensureSelectHasRiscador);
+      patchCheckboxWrap();
+    }
+
+    function scheduleApplyAll(delay) {
+      var ms = Number(delay) || 0;
+      try { clearTimeout(applyTimer); } catch (_) {}
+      applyTimer = setTimeout(applyAll, ms);
+    }
+
+    function wrapQuickOfMachines() {
+      if (typeof window.carregarMaquinasOfRapida !== 'function' || window.carregarMaquinasOfRapida.__riscadorWrapped) return;
+      var orig = window.carregarMaquinasOfRapida;
+      window.carregarMaquinasOfRapida = async function() {
+        var res = await orig.apply(this, arguments);
+        syncMachineGlobals();
+        patchDomMachineSelects();
+        ensureSelectHasRiscador('of-r-maquina');
+        return res;
+      };
+      window.carregarMaquinasOfRapida.__riscadorWrapped = true;
+    }
+
+    function wrapRenderMaqChks() {
+      if (typeof window.renderMaqChks !== 'function' || window.renderMaqChks.__riscadorWrapped) return;
+      var orig = window.renderMaqChks;
+      window.renderMaqChks = function(sel) {
+        syncMachineGlobals();
+        var res = orig.call(this, Array.isArray(sel) ? ensureNameList(sel) : sel);
+        patchDomMachineSelects();
+        return res;
+      };
+      window.renderMaqChks.__riscadorWrapped = true;
+    }
+
+    function wrapOfmaqCatalog() {
+      if (typeof window.__ofmaqGetMachineCatalog !== 'function' || window.__ofmaqGetMachineCatalog.__riscadorWrapped) return;
+      var orig = window.__ofmaqGetMachineCatalog;
+      window.__ofmaqGetMachineCatalog = function() {
+        return ensureNameList(orig.apply(this, arguments));
+      };
+      window.__ofmaqGetMachineCatalog.__riscadorWrapped = true;
+    }
+
+    function wrapOpenFn(name) {
+      if (typeof window[name] !== 'function' || window[name].__riscadorWrapped) return;
+      var orig = window[name];
+      window[name] = function() {
+        var res = orig.apply(this, arguments);
+        scheduleApplyAll(0);
+        setTimeout(function() {
+          patchDomMachineSelects();
+          ensureSelectHasRiscador('of-r-maquina');
+        }, 60);
+        setTimeout(function() {
+          patchDomMachineSelects();
+          ensureSelectHasRiscador('of-r-maquina');
+        }, 240);
+        setTimeout(function() {
+          patchDomMachineSelects();
+          ensureSelectHasRiscador('of-r-maquina');
+        }, 900);
+        return res;
+      };
+      window[name].__riscadorWrapped = true;
+    }
+
+    function wrapOpeners() {
+      wrapOpenFn('abrirNovaOfRapida');
+      wrapOpenFn('abrirModalOFRapida');
+      wrapOpenFn('abrirModalNovaOF');
+    }
+
+    function installObserver() {
+      if (observerInstalled || typeof MutationObserver !== 'function' || !document || !document.documentElement) return;
+      try {
+        var obs = new MutationObserver(function(mutations) {
+          var touched = false;
+          for (var i = 0; i < mutations.length; i += 1) {
+            var m = mutations[i];
+            if (!m) continue;
+            if (m.type === 'childList' && ((m.addedNodes && m.addedNodes.length) || (m.removedNodes && m.removedNodes.length))) {
+              touched = true;
+              break;
+            }
+            if (m.type === 'attributes') {
+              touched = true;
+              break;
+            }
+          }
+          if (touched) scheduleApplyAll(30);
+        });
+        obs.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'open'] });
+        observerInstalled = true;
+      } catch (_) {}
+    }
+
+    function applyAll() {
+      syncMachineGlobals();
+      wrapQuickOfMachines();
+      wrapRenderMaqChks();
+      wrapOfmaqCatalog();
+      wrapOpeners();
+      patchDomMachineSelects();
+      installObserver();
+    }
+
+    applyAll();
+    setTimeout(applyAll, 0);
+    setTimeout(applyAll, 400);
+    setTimeout(applyAll, 1400);
+    var tries = 0;
+    var lateTimer = setInterval(function() {
+      tries += 1;
+      applyAll();
+      if (tries >= 24) clearInterval(lateTimer);
+    }, 500);
+    try { document.addEventListener('DOMContentLoaded', applyAll, { once: true }); } catch (_) {}
+  })();
+
   function _ofmaqIsSingleMachineFocus() {
     var filterValue = _ofmaqMachineFilterValue();
     if (!_ofmaqIsAllMachinesValue(filterValue)) return true;
@@ -13898,8 +14094,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     return String(of && (of.numero || of.of_num || of.of_numero || of.of || '') || '').trim();
   }
 
+  function _ofmaqNormalizeClienteLabel(value) {
+    var s = String(value || '').trim();
+    if (!s || s === '_' || s === '-' || s === '—') return '';
+    if (/^c\d{2,}(?:[_\-\s]*)$/i.test(s)) return '';
+    return s;
+  }
+
   function _ofmaqClienteLabel(of) {
-    return String(of && (of.cliente_nome || of.cliente || of.cliNome || of.clinome || of.nome_cliente || '') || '').trim();
+    return _ofmaqNormalizeClienteLabel(of && (of.cliente_nome || of.cliente || of.cliNome || of.clinome || of.nome_cliente || '') || '');
   }
 
   function _ofmaqProdutoLabel(of) {
@@ -14787,6 +14990,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         { value: 'IMP 03', label: 'IMP 03' },
         { value: 'IMP 04', label: 'IMP 04' },
         { value: 'IMP 05', label: 'IMP 05' },
+        { value: 'Riscador', label: 'Riscador' },
         { value: 'CORTE VINCO ROTATIVA', label: 'CORTE VINCO ROTATIVA' },
       ];
     }
@@ -17085,7 +17289,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 })();
 (function patchOfmaqRebuildFromZero() {
   try {
-    var MACHINES = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
+    var MACHINES = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA'];
     var DAY_LABELS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
     var COLOR_MAP = {
       azul: '#3b82f6',
@@ -18486,7 +18690,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (isClosedStatus(of && of.status) || isPassedMachine(of)) return null;
       var prazoIso = resolveDisplayDate(of);
       var numero = String(of && (of.numero || of.of_num || of.of_numero || of.of || '') || '').trim() || String(of && of.id || '').trim();
-      var cliente = String(of && (of.cliente_nome || of.cliente || of.cliNome || of.clinome || of.nome_cliente || '') || '').trim() || '—';
+      var clienteRaw = String(of && (of.cliente_nome || of.cliente || of.cliNome || of.clinome || of.nome_cliente || '') || '').trim();
+      if (!clienteRaw || clienteRaw === '_' || clienteRaw === '-' || clienteRaw === '—' || /^c\d{2,}(?:[_\-\s]*)$/i.test(clienteRaw)) clienteRaw = '';
+      var cliente = clienteRaw || 'Cliente não identificado';
       var produto = String(of && (of.produto || of.descricao || of.prodDesc || of.nome_produto || '') || '').trim() || '—';
       var cores = parseColors(of);
       var quantidade = getQtd(of);
@@ -19067,6 +19273,30 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return result;
     }
 
+    async function moveRowAndDate(id, machine, value) {
+      if (window.__OFMAQ_FINAL_MOCK) {
+        var local = rowById(id);
+        if (local) {
+          local.maquina = machine;
+          local.prazoIso = value;
+          local.order = nextOrderForMachineDay(machine, value, local.id);
+        }
+        return;
+      }
+      var result = await apiJson('/api/ofs/' + encodeURIComponent(id), {
+        method: 'PATCH',
+        body: {
+          maq: [machine],
+          maquina: machine,
+          maquina_agendada: machine,
+          data_entrega: value,
+          ent: value
+        }
+      });
+      if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF e alterar data');
+      return result;
+    }
+
     async function markPassed(id, machine) {
       var row = rowById(id);
       if (window.__OFMAQ_FINAL_MOCK) {
@@ -19166,6 +19396,42 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       };
     }
 
+    function openMoveDateModal(id) {
+      var row = rowById(id);
+      if (!row) return;
+      var modal = openModal('ofmaq-final-move-date', 'Mover máquina e data da OF #' + String(row.numero || row.id), ''
+        + '<select id="ofmaq-final-move-date-machine">' + state.machineCatalog.map(function(machine) {
+          return '<option value="' + escAttr(machine) + '"' + (machine === row.maquina ? ' selected' : '') + '>' + escH(machine) + '</option>';
+        }).join('') + '</select>'
+        + '<input id="ofmaq-final-move-date-input" type="date" value="' + escAttr(row.prazoIso || '') + '">'
+        + '<button type="button" id="ofmaq-final-move-date-save">Salvar</button>');
+      var save = modal.querySelector('#ofmaq-final-move-date-save');
+      if (save) save.onclick = async function() {
+        var select = modal.querySelector('#ofmaq-final-move-date-machine');
+        var input = modal.querySelector('#ofmaq-final-move-date-input');
+        var machine = normalizeMachine(String(select && select.value || '').trim());
+        var value = String(input && input.value || '').slice(0, 10);
+        if (!machine) return;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
+        try {
+          await moveRowAndDate(id, machine, value);
+          if (row) {
+            row.maquina = machine;
+            row.prazoIso = value;
+            row.order = nextOrderForMachineDay(machine, value, row.id);
+          }
+          applyDisplaySeqToState();
+          state.machineCatalog = machineCatalogFromRows(state.rowsData);
+          updateToolbar(ensureShell());
+          renderRows(ensureShell());
+          closeModal('ofmaq-final-move-date');
+          try { showOfmaqCenterConfirm('OF #' + String(row && row.numero || id) + ' movida para ' + machine + ' em ' + fmtDateBR(value) + '.', { title: 'Máquina e data alteradas' }); } catch (_) {}
+        } catch (err) {
+          try { window.toast('Erro ao mover OF e alterar data: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+        }
+      };
+    }
+
     function openActionsModal(id) {
       var row = rowById(id);
       if (!row) return;
@@ -19173,6 +19439,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '<button type="button" data-ofmaq-final-action="pass" class="ofmaq-final-action-primary"><span>✓ Passou pela máquina</span><small>Concluir etapa</small></button>'
         + '<button type="button" data-ofmaq-final-action="move" class="ofmaq-final-action-secondary"><span>↔ Mover de máquina</span><small>Trocar fila</small></button>'
         + '<button type="button" data-ofmaq-final-action="date" class="ofmaq-final-action-secondary"><span>📅 Alterar data</span><small>Reagendar</small></button>'
+        + '<button type="button" data-ofmaq-final-action="move-date" class="ofmaq-final-action-secondary"><span>🗓️↔ Mover máquina e data</span><small>Alterar os dois de uma vez</small></button>'
         + '<div class="ofmaq-final-move-grid">'
         + '  <button type="button" data-ofmaq-final-action="up" class="ofmaq-final-action-tertiary"><span>↑ Mover para cima</span><small>Priorizar</small></button>'
         + '  <button type="button" data-ofmaq-final-action="down" class="ofmaq-final-action-tertiary"><span>↓ Mover para baixo</span><small>Adiar</small></button>'
@@ -19201,6 +19468,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           if (action === 'date') {
             closeModal('ofmaq-final-actions');
             openDateModal(id);
+            return;
+          }
+          if (action === 'move-date') {
+            closeModal('ofmaq-final-actions');
+            openMoveDateModal(id);
             return;
           }
           if (action === 'up' || action === 'down') {
@@ -39487,7 +39759,7 @@ function _ocultarGraficoComissoes() {
   }
 
   function _listaMaquinasHistoricoConclusao() {
-    return ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
+    return ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA'];
   }
 
   function _parsePassagensMaquinaConclusao(raw) {
