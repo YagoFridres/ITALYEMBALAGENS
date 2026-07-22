@@ -4937,12 +4937,36 @@ window._compraPapelaoEnsureStyles = function() {
     + '.ccpx-modal-field textarea{min-height:88px;resize:vertical}'
     + '.ccpx-modal-items{display:grid;gap:12px;padding:16px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.6)}'
     + '.ccpx-modal-items-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}'
-    + '.ccpx-modal-items-wrap{overflow:auto;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(2,6,23,.42)}'
-    + '.ccpx-modal-items-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1540px}'
-    + '.ccpx-modal-items-table th{background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;padding:12px;border-bottom:1px solid rgba(148,163,184,.18)}'
-    + '.ccpx-modal-items-table td{padding:10px 12px;border-bottom:1px solid rgba(148,163,184,.12);color:#e2e8f0;font-size:12px}'
-    + '.ccpx-modal-items-table input{width:100%;background:rgba(255,255,255,.06);color:#f8fafc;border:1px solid rgba(148,163,184,.16);border-radius:10px;padding:9px 10px;font-size:12px}'
-    + '.ccpx-modal-items-table .danger{background:#7f1d1d;color:#fff;border:1px solid #991b1b;border-radius:10px;padding:8px 10px;cursor:pointer}'
+    + '.ccpx-modal-items-wrap{display:grid;gap:14px;overflow:visible;border:none;border-radius:0;background:transparent}'
+    + '.ccpx-item-cards{display:grid;gap:14px}'
+    + '.ccpx-item-card{display:grid;gap:14px;padding:18px;border-radius:18px;border:1px solid rgba(148,163,184,.16);background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.72));box-shadow:0 18px 40px rgba(2,6,23,.18)}'
+    + '.ccpx-item-card-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}'
+    + '.ccpx-item-card-title{display:grid;gap:4px}'
+    + '.ccpx-item-card-title .eyebrow{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#93c5fd}'
+    + '.ccpx-item-card-title .title{font-size:18px;font-weight:900;color:#f8fafc}'
+    + '.ccpx-item-card-title .sub{font-size:12px;color:#94a3b8;line-height:1.5}'
+    + '.ccpx-item-action-strip{display:flex;gap:8px;flex-wrap:wrap}'
+    + '.ccpx-item-action-strip button{min-width:42px;height:40px;border-radius:12px;border:1px solid rgba(148,163,184,.18);cursor:pointer;font-weight:900}'
+    + '.ccpx-item-action-strip .dup{background:#0f172a;color:#e2e8f0}'
+    + '.ccpx-item-action-strip .del{background:#991b1b;color:#fff;border-color:#991b1b}'
+    + '.ccpx-item-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 16px}'
+    + '.ccpx-item-field{display:grid;gap:6px}'
+    + '.ccpx-item-field.full{grid-column:1 / -1}'
+    + '.ccpx-item-field label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}'
+    + '.ccpx-item-field input,.ccpx-item-field textarea{width:100%;background:#020617;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:11px 12px;font-size:13px}'
+    + '.ccpx-item-field textarea{min-height:86px;resize:vertical}'
+    + '.ccpx-item-inline-pair{display:grid;grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr);gap:8px;align-items:center}'
+    + '.ccpx-item-inline-pair .sep{font-size:18px;font-weight:900;color:#60a5fa;text-align:center}'
+    + '.ccpx-item-vincos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}'
+    + '.ccpx-item-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}'
+    + '.ccpx-item-metric{display:grid;gap:4px;padding:12px 14px;border-radius:14px;background:rgba(2,6,23,.34);border:1px solid rgba(148,163,184,.14)}'
+    + '.ccpx-item-metric .lbl{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
+    + '.ccpx-item-metric .val{font-size:16px;font-weight:900;color:#f8fafc;font-family:var(--mono,inherit)}'
+    + '.ccpx-item-footnote{font-size:12px;color:#94a3b8;line-height:1.5}'
+    + '.ccpx-modal-number-card{display:grid;gap:10px;padding:18px 20px;border-radius:18px;background:linear-gradient(135deg,rgba(2,6,23,.9),rgba(24,95,165,.45));border:1px solid rgba(125,211,252,.2)}'
+    + '.ccpx-modal-number-card .lbl{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#bfdbfe}'
+    + '.ccpx-modal-number-card .num{font-size:34px;font-weight:900;color:#fff;font-family:var(--mono,inherit);letter-spacing:.04em}'
+    + '.ccpx-modal-number-card .sub{font-size:12px;color:rgba(226,232,240,.82);line-height:1.5}'
     + '.ccpx-report-table{width:100%;border-collapse:separate;border-spacing:0}'
     + '.ccpx-report-table th,.ccpx-report-table td{padding:11px 12px;border-bottom:1px solid rgba(148,163,184,.12);font-size:12px;color:#e2e8f0}'
     + '.ccpx-report-table th{background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;text-align:left}'
@@ -4965,26 +4989,14 @@ window._compraPapelaoEnsureStyles = function() {
     + '.ccpx-modal-items-toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}'
     + '.ccpx-modal-items-toolbar .ttl{font-size:16px;font-weight:900;color:#f8fafc}'
     + '.ccpx-modal-items-toolbar .sub{font-size:12px;color:#cbd5e1;max-width:680px;line-height:1.55}'
-    + '.ccpx-modal-items-sheet table{width:100%;border-collapse:collapse;min-width:1880px}'
-    + '.ccpx-modal-items-sheet th{padding:7px 8px;background:var(--s2,#0f172a);border:1px solid rgba(148,163,184,.18);font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#cbd5e1;text-align:left;font-family:var(--mono,inherit);white-space:nowrap}'
-    + '.ccpx-modal-items-sheet td{padding:0;border:1px solid rgba(148,163,184,.12);vertical-align:middle;background:rgba(15,23,42,.22)}'
-    + '.ccpx-modal-items-sheet input,.ccpx-modal-items-sheet textarea{width:100%;background:transparent;color:#f8fafc;border:none;outline:none;padding:10px 10px;font-size:12px}'
-    + '.ccpx-modal-items-sheet textarea{min-height:40px;resize:vertical}'
-    + '.ccpx-modal-items-sheet .num-read{padding:10px 10px;text-align:right;font-variant-numeric:tabular-nums;font-weight:900;color:#e2e8f0;font-family:var(--mono,inherit)}'
-    + '.ccpx-modal-editable-num input{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono,inherit)}'
-    + '.ccpx-modal-items-sheet .idx-read{padding:10px 10px;text-align:center;font-weight:900;color:#60a5fa;font-family:var(--mono,inherit)}'
-    + '.ccpx-modal-line-actions{display:flex;gap:6px;justify-content:center;padding:6px}'
-    + '.ccpx-modal-line-actions button{min-width:34px;height:34px;border-radius:10px;border:1px solid rgba(148,163,184,.16);cursor:pointer;font-weight:900}'
-    + '.ccpx-modal-line-actions .dup{background:#0f172a;color:#e2e8f0}'
-    + '.ccpx-modal-line-actions .del{background:#991b1b;color:#fff;border-color:#991b1b}'
     + '.ccpx-modal-totalbar{display:flex;justify-content:flex-end;gap:16px;align-items:center;padding:12px 0;border-top:1px solid rgba(148,163,184,.14)}'
     + '.ccpx-modal-totalbar .lbl{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}'
     + '.ccpx-modal-totalbar .val{font-size:18px;font-weight:900;color:#22c55e;font-family:var(--mono,inherit)}'
     + '.ccpx-modal-footer-actions{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;width:100%}'
     + '.ccpx-modal-footer-actions .left,.ccpx-modal-footer-actions .right{display:flex;gap:10px;flex-wrap:wrap}'
     + '@media (max-width:1100px){#page-compras .ccpx-block-top{grid-template-columns:1fr 1fr}#page-compras .ccpx-actions-line{justify-content:flex-start}.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
-    + '@media (max-width:980px){.ccpx-modal-head-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
-    + '@media (max-width:760px){.ccpx-modal-grid,.ccpx-modal-head-grid,.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid{grid-template-columns:1fr}#page-compras .ccpx-search input{min-width:0}#page-compras .ccpx-block-top{grid-template-columns:1fr}#page-compras .ccpx-hero{padding:18px}#page-compras .ccpx-hero-title{font-size:22px}}';
+    + '@media (max-width:980px){.ccpx-modal-head-grid,.ccpx-item-grid,.ccpx-item-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}'
+    + '@media (max-width:760px){.ccpx-modal-grid,.ccpx-modal-head-grid,.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid,.ccpx-item-grid,.ccpx-item-metrics{grid-template-columns:1fr}#page-compras .ccpx-search input{min-width:0}#page-compras .ccpx-block-top{grid-template-columns:1fr}#page-compras .ccpx-hero{padding:18px}#page-compras .ccpx-hero-title{font-size:22px}.ccpx-item-vincos{grid-template-columns:repeat(2,minmax(0,1fr))}}';
   document.head.appendChild(st);
 };
 window._compraPapelaoEnsureToolbar = function() {
@@ -4999,6 +5011,16 @@ window._compraPapelaoEnsureToolbar = function() {
 };
 window._compraPapelaoRenderActionCards = function() {
   var resumo = window._compraPapelaoStatsResumo();
+  var st = window._compraPapelaoStateRef();
+  var breakdown = resumo.breakdown || [];
+  var fornecedorDestaque = 'Todos os fornecedores';
+  if (String(st.filtroCard || '').indexOf('folder:') === 0) {
+    fornecedorDestaque = (breakdown[0] && breakdown[0].nome) || 'Sem destaque';
+  } else if (String(st.busca || '').trim()) {
+    fornecedorDestaque = (breakdown[0] && breakdown[0].nome) || 'Resultado da busca';
+  } else if (breakdown[0] && breakdown[0].nome) {
+    fornecedorDestaque = breakdown[0].nome;
+  }
   return ''
     + '<div class="ccpx-hero" id="ccpx-action-cards">'
     + '  <div class="ccpx-hero-top">'
@@ -5008,16 +5030,17 @@ window._compraPapelaoRenderActionCards = function() {
     + '      <div class="ccpx-hero-sub">O layout desta área agora prioriza leitura rápida, ação imediata e a mesma hierarquia visual das telas já modernizadas do sistema, sem alterar a lógica de cadastro e impressão existente.</div>'
     + '    </div>'
     + '    <div class="ccpx-hero-meta">'
-    + '      <div class="ccpx-hero-stat"><div class="lbl">Compras Visíveis</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumo.total_compras, 0)) + '</div><div class="sub">' + window._compraPapelaoEsc(window._compraPapelaoEmpresaLabelAtual()) + '</div></div>'
-    + '      <div class="ccpx-hero-stat"><div class="lbl">Área Total</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumo.area_total, 2)) + ' m²</div><div class="sub">Área consolidada dos itens</div></div>'
-    + '      <div class="ccpx-hero-stat"><div class="lbl">Valor Total</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(resumo.valor_total)) + '</div><div class="sub">Financeiro do filtro atual</div></div>'
+    + '      <div class="ccpx-hero-stat"><div class="lbl">Total Comprado</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(resumo.valor_total)) + '</div><div class="sub">Financeiro do filtro atual</div></div>'
+    + '      <div class="ccpx-hero-stat"><div class="lbl">Compras no Período</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumo.total_compras, 0)) + '</div><div class="sub">' + window._compraPapelaoEsc(window._compraPapelaoEmpresaLabelAtual()) + '</div></div>'
+    + '      <div class="ccpx-hero-stat"><div class="lbl">Área Total Comprada</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumo.area_total, 4)) + ' m²</div><div class="sub">Área consolidada dos itens</div></div>'
+    + '      <div class="ccpx-hero-stat"><div class="lbl">Fornecedor em Destaque</div><div class="val">' + window._compraPapelaoEsc(fornecedorDestaque) + '</div><div class="sub">Referência principal do filtro atual</div></div>'
     + '    </div>'
     + '  </div>'
     + '  <div class="ccpx-action-grid">'
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-nova', label: 'Nova Compra', icon: '+', variant: 'green', title: 'Cadastrar nova compra de papelão' }) : '<button type="button" class="btn btn-accent" id="ccpx-body-btn-nova">Nova Compra</button>')
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-pasta', label: 'Nova Pasta', icon: '📁', variant: 'accent', title: 'Criar pasta para organizar compras' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-pasta">Nova Pasta</button>')
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-sugestoes', label: 'Sugestões', icon: '📌', variant: 'teal', title: 'Abrir sugestões de compra fixadas' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-sugestoes">Sugestões</button>')
-    +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-rel-periodo', label: 'Compras no Período', icon: '🗓', variant: 'navy', title: 'Abrir relatório detalhado por período' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-rel-periodo">Compras no Período</button>')
+    +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-rel-periodo', label: 'Relatório do Período', icon: '🗓', variant: 'navy', title: 'Abrir relatório detalhado por período' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-rel-periodo">Relatório do Período</button>')
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-rel-forn', label: 'Compras por Fornecedor', icon: '📊', variant: 'navy', title: 'Abrir relatório por fornecedor' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-rel-forn">Compras por Fornecedor</button>')
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-rel-resumo', label: 'Quantidade e Valor Comprado', icon: '💰', variant: 'purple', title: 'Abrir consolidado financeiro' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-rel-resumo">Quantidade e Valor Comprado</button>')
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-print', label: 'Imprimir Relatório', icon: '🖨', variant: 'accent', title: 'Imprimir relatório atual' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-print">Imprimir Relatório</button>')
@@ -5145,22 +5168,7 @@ window._compraPapelaoRenderBlocksHtml = function() {
     + '</div>';
 };
 window._compraPapelaoRenderStatsHtml = function() {
-  var resumo = window._compraPapelaoStatsResumo();
-  var breakdown = resumo.breakdown || [];
-  return '<div class="ccpx-top-grid">'
-    + (typeof _makeCardEstoque === 'function'
-        ? _makeCardEstoque({ label: 'Valor Total Comprado', value: window._compraPapelaoFmtMoney(resumo.valor_total), sub: 'Soma do filtro atual' })
-        : '<div class="ccpx-chip"><div class="lbl">Valor Total Comprado</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(resumo.valor_total)) + '</div></div>')
-    + (typeof _makeCardEstoque === 'function'
-        ? _makeCardEstoque({ label: 'Compras no Período', value: window._compraPapelaoFmtNum(resumo.total_compras, 0), sub: 'Compras carregadas na tela' })
-        : '<div class="ccpx-chip"><div class="lbl">Compras no Período</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumo.total_compras, 0)) + '</div></div>')
-    + (typeof _makeCardEstoque === 'function'
-        ? _makeCardEstoque({ label: 'Área Total Comprada', value: window._compraPapelaoFmtNum(resumo.area_total, 4) + ' m²', sub: 'Soma de área dos itens' })
-        : '<div class="ccpx-chip"><div class="lbl">Área Total Comprada</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumo.area_total, 4) + ' m²') + '</div></div>')
-    + (typeof _cardBreakdownEstoque === 'function'
-        ? _cardBreakdownEstoque('Por Fornecedor', breakdown, window._compraPapelaoFmtMoney)
-        : '<div class="ccpx-chip"><div class="lbl">Por Fornecedor</div><div class="val">' + window._compraPapelaoEsc((breakdown[0] && breakdown[0].nome) || 'Sem dados') + '</div></div>')
-    + '</div>';
+  return '';
 };
 window._compraPapelaoRenderBody = function() {
   var host = document.getElementById('cmp-body');
@@ -5346,7 +5354,7 @@ window._compraPapelaoRenderPage = async function() {
   return null;
 };
 window._compraPapelaoCollectModalRows = function(overlay) {
-  return Array.prototype.slice.call(overlay.querySelectorAll('#ccpx-modal-items-body tr[data-ccpx-item-row]')).map(function(row) {
+  return Array.prototype.slice.call(overlay.querySelectorAll('#ccpx-modal-items-body [data-ccpx-item-row]')).map(function(row) {
     var item = {
       ped_cliente: String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim(),
       data_entrega: String((row.querySelector('[data-field="data_entrega"]') || {}).value || '').trim(),
@@ -5376,29 +5384,35 @@ window._compraPapelaoCollectModalRows = function(overlay) {
     return item.ped_cliente || item.data_entrega || item.po || item.largura || item.comprimento || item.vincos || item.quantidade || item.lote_minimo || item.area_m2 || item.valor_m2 || item.valor_total || item.observacao || item.ped_fornecedor;
   });
 };
-window._compraPapelaoRenderModalRowsHtml = function(itens) {
-  var rows = window._compraPapelaoEnsureVisibleRows(itens, 5);
+window._compraPapelaoRenderModalRowsHtml = function(itens, minRows) {
+  var rows = window._compraPapelaoEnsureVisibleRows(itens, minRows == null ? 5 : minRows);
   return rows.map(function(item, idx) {
     var d = window._compraPapelaoResolveItemMetrics(item);
     var areaManual = d.area_manual && Math.abs(d.area_m2 - d.auto_area_m2) > 0.000001;
     var totalManual = d.total_manual && Math.abs(d.valor_total - d.auto_valor_total) > 0.000001;
     return ''
-      + '<tr data-ccpx-item-row="' + idx + '">'
-      + '  <td><input data-field="ped_cliente" value="' + window._compraPapelaoAttr(item && item.ped_cliente || '') + '"></td>'
-      + '  <td><input data-field="data_entrega" type="date" value="' + window._compraPapelaoAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></td>'
-      + '  <td><input data-field="po" value="' + window._compraPapelaoAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></td>'
-      + '  <td><div style="display:grid;grid-template-columns:minmax(88px,1fr) 14px minmax(88px,1fr);align-items:center"><input data-field="largura" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.largura || '') + '" placeholder="L"><span style="color:#64748b;font-weight:900;text-align:center">×</span><input data-field="comprimento" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.comprimento || '') + '" placeholder="C"></div></td>'
-      + '  <td><div style="display:grid;grid-template-columns:repeat(4,minmax(56px,1fr));gap:4px"><input data-field="vinco1" value="' + window._compraPapelaoAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + window._compraPapelaoAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + window._compraPapelaoAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + window._compraPapelaoAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></td>'
-      + '  <td><input data-field="quantidade" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.quantidade || '') + '"></td>'
-      + '  <td><input data-field="lote_minimo" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.lote_minimo || '') + '"></td>'
-      + '  <td class="ccpx-modal-editable-num"><input data-field="area_m2"' + (areaManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + window._compraPapelaoAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : window._compraPapelaoFmtNum(d.area_m2, 4).replace(/\./g, "").replace(",", ".")) + '"></td>'
-      + '  <td><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_m2 || '') + '"></td>'
-      + '  <td class="num-read" data-ccpx-mil>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '</td>'
-      + '  <td class="ccpx-modal-editable-num"><input data-field="valor_total"' + (totalManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_total != null && String(item.valor_total).trim() !== '' ? item.valor_total : window._compraPapelaoFmtNum(d.valor_total, 2).replace(/\./g, "").replace(",", ".")) + '"></td>'
-      + '  <td><textarea data-field="observacao" rows="1">' + window._compraPapelaoEsc(item && item.observacao || '') + '</textarea></td>'
-      + '  <td><input data-field="ped_fornecedor" value="' + window._compraPapelaoAttr(item && item.ped_fornecedor || '') + '" placeholder="' + window._compraPapelaoAttr(window._compraPapelaoFornecedorPedidoLabel('')) + '"></td>'
-      + '  <td><div class="ccpx-modal-line-actions"><button type="button" class="dup" data-ccpx-dup-item="' + idx + '" title="Duplicar linha">+</button><button type="button" class="del" data-ccpx-del-item="' + idx + '" title="Remover linha">✕</button></div></td>'
-      + '</tr>';
+      + '<div class="ccpx-item-card" data-ccpx-item-row="' + idx + '">'
+      + '  <div class="ccpx-item-card-head">'
+      + '    <div class="ccpx-item-card-title"><div class="eyebrow">Item ' + window._compraPapelaoEsc(String(idx + 1)) + '</div><div class="title">' + window._compraPapelaoEsc(item && item.ped_cliente || 'Novo item da compra') + '</div><div class="sub">Preencha todos os campos da planilha sem scroll lateral. Área, valor por mil e total continuam automáticos, mas podem ser ajustados manualmente.</div></div>'
+      + '    <div class="ccpx-item-action-strip"><button type="button" class="dup" data-ccpx-dup-item="' + idx + '" title="Duplicar item">+</button><button type="button" class="del" data-ccpx-del-item="' + idx + '" title="Remover item">✕</button></div>'
+      + '  </div>'
+      + '  <div class="ccpx-item-grid">'
+      + '    <div class="ccpx-item-field"><label>Pedido Cliente</label><input data-field="ped_cliente" value="' + window._compraPapelaoAttr(item && item.ped_cliente || '') + '"></div>'
+      + '    <div class="ccpx-item-field"><label>Entrega</label><input data-field="data_entrega" type="date" value="' + window._compraPapelaoAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></div>'
+      + '    <div class="ccpx-item-field"><label>PO</label><input data-field="po" value="' + window._compraPapelaoAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></div>'
+      + '    <div class="ccpx-item-field"><label>Medidas L × C</label><div class="ccpx-item-inline-pair"><input data-field="largura" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.largura || '') + '" placeholder="Largura"><span class="sep">×</span><input data-field="comprimento" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.comprimento || '') + '" placeholder="Comprimento"></div></div>'
+      + '    <div class="ccpx-item-field"><label>Vincos</label><div class="ccpx-item-vincos"><input data-field="vinco1" value="' + window._compraPapelaoAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + window._compraPapelaoAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + window._compraPapelaoAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + window._compraPapelaoAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></div>'
+      + '    <div class="ccpx-item-field"><label>Qtde</label><input data-field="quantidade" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.quantidade || '') + '"></div>'
+      + '    <div class="ccpx-item-field"><label>Lote Mínimo</label><input data-field="lote_minimo" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.lote_minimo || '') + '"></div>'
+      + '    <div class="ccpx-item-field"><label>Área Pedido (m²)</label><input data-field="area_m2"' + (areaManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + window._compraPapelaoAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : window._compraPapelaoFmtNum(d.area_m2, 4).replace(/\./g, "").replace(",", ".")) + '"></div>'
+      + '    <div class="ccpx-item-field"><label>Valor m²</label><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_m2 || '') + '"></div>'
+      + '    <div class="ccpx-item-field"><label>Valor Total</label><input data-field="valor_total"' + (totalManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_total != null && String(item.valor_total).trim() !== '' ? item.valor_total : window._compraPapelaoFmtNum(d.valor_total, 2).replace(/\./g, "").replace(",", ".")) + '"></div>'
+      + '    <div class="ccpx-item-field full"><label>Obs</label><textarea data-field="observacao" rows="2">' + window._compraPapelaoEsc(item && item.observacao || '') + '</textarea></div>'
+      + '    <div class="ccpx-item-field full"><label data-ccpx-fornecedor-label>' + window._compraPapelaoEsc(window._compraPapelaoFornecedorPedidoLabel('')) + '</label><input data-field="ped_fornecedor" value="' + window._compraPapelaoAttr(item && item.ped_fornecedor || '') + '" placeholder="' + window._compraPapelaoAttr(window._compraPapelaoFornecedorPedidoLabel('')) + '"></div>'
+      + '  </div>'
+      + '  <div class="ccpx-item-metrics"><div class="ccpx-item-metric"><div class="lbl">Valor p/mil</div><div class="val" data-ccpx-mil>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '</div></div><div class="ccpx-item-metric"><div class="lbl">Área automática</div><div class="val" data-ccpx-auto-area>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(d.auto_area_m2, 4)) + ' m²</div></div><div class="ccpx-item-metric"><div class="lbl">Total automático</div><div class="val" data-ccpx-auto-total>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(d.auto_valor_total)) + '</div></div><div class="ccpx-item-metric"><div class="lbl">Vincos consolidados</div><div class="val" data-ccpx-vincos-read>' + window._compraPapelaoEsc(window._compraPapelaoComposeVincos(item) || '—') + '</div></div></div>'
+      + '  <div class="ccpx-item-footnote">O número do pedido do fornecedor pode ser preenchido por item quando a compra precisa ser quebrada internamente, sem perder o cabeçalho geral.</div>'
+      + '</div>';
   }).join('');
 };
 window._compraPapelaoSyncFornecedorDependentUi = function(overlay) {
@@ -5416,7 +5430,7 @@ window._compraPapelaoRefreshModalComputed = function(overlay) {
   var totalQtd = 0;
   var totalArea = 0;
   var totalValor = 0;
-  Array.prototype.slice.call(overlay.querySelectorAll('#ccpx-modal-items-body tr[data-ccpx-item-row]')).forEach(function(row) {
+  Array.prototype.slice.call(overlay.querySelectorAll('#ccpx-modal-items-body [data-ccpx-item-row]')).forEach(function(row) {
     var item = {
       largura: (row.querySelector('[data-field="largura"]') || {}).value,
       comprimento: (row.querySelector('[data-field="comprimento"]') || {}).value,
@@ -5431,9 +5445,20 @@ window._compraPapelaoRefreshModalComputed = function(overlay) {
     totalValor += d.valor_total;
     var a = row.querySelector('[data-field="area_m2"]');
     var m = row.querySelector('[data-ccpx-mil]');
+    var aa = row.querySelector('[data-ccpx-auto-area]');
+    var at = row.querySelector('[data-ccpx-auto-total]');
+    var vr = row.querySelector('[data-ccpx-vincos-read]');
     var t = row.querySelector('[data-field="valor_total"]');
     if (a && (a.dataset.ccpxManual !== '1' || !String(a.value || '').trim())) a.value = String(d.area_m2.toFixed(4));
     if (m) m.textContent = window._compraPapelaoFmtMoney(d.vl_p_mil);
+    if (aa) aa.textContent = window._compraPapelaoFmtNum(d.auto_area_m2, 4) + ' m²';
+    if (at) at.textContent = window._compraPapelaoFmtMoney(d.auto_valor_total);
+    if (vr) vr.textContent = window._compraPapelaoComposeVincos({
+      vinco1: (row.querySelector('[data-field="vinco1"]') || {}).value,
+      vinco2: (row.querySelector('[data-field="vinco2"]') || {}).value,
+      vinco3: (row.querySelector('[data-field="vinco3"]') || {}).value,
+      vinco4: (row.querySelector('[data-field="vinco4"]') || {}).value
+    }) || '—';
     if (t && (t.dataset.ccpxManual !== '1' || !String(t.value || '').trim())) t.value = String(d.valor_total.toFixed(2));
   });
   var q = overlay.querySelector('#ccpx-sum-qtd');
@@ -5457,21 +5482,23 @@ window._compraPapelaoCompraModalHtml = function(compra) {
     + '    <div class="ccpx-headline-title">Compra de Papelão com leitura de planilha</div>'
     + '    <div class="ccpx-headline-sub">Os dados do cabeçalho ficam concentrados em Pedido, Data e Fornecedor; abaixo, os itens seguem a mesma ordem operacional usada na planilha de referência.</div>'
     + '  </div>'
-    + '  <div class="ccpx-modal-primary-grid">'
+    + '  <div class="ccpx-modal-head-grid">'
+    + '    <div class="ccpx-modal-number-card"><div class="lbl">Número da Compra</div><div class="num" id="ccpx-numero-card">' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(header.numero_compra)) + '</div><div class="sub">Este número já é reservado para a compra atual e será mantido na impressão e na listagem principal.</div></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Nº</label><input id="ccpx-numero" class="ccpx-modal-num" value="' + window._compraPapelaoAttr(window._compraPapelaoNumeroLabel(header.numero_compra)) + '" readonly></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Data</label><input id="ccpx-data-compra" type="date" value="' + window._compraPapelaoAttr(header.data_compra || window._compraPapelaoTodayIso()) + '"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Fornecedor</label><input id="ccpx-fornecedor-manual" value="' + window._compraPapelaoAttr(header.fornecedor || '') + '" placeholder="Fornecedor"></div>'
     + '  </div>'
     + '  <div class="ccpx-modal-secondary-grid">'
     + '    <div class="ccpx-modal-inline-stack"><label>Pasta</label><select id="ccpx-pasta">' + window._compraPapelaoFolderOptionsHtml(header && header.pasta_id, empId) + '</select></div>'
+    + '    <div class="ccpx-modal-inline-stack"><label>Pedido Geral do Fornecedor</label><input id="ccpx-ped-fornecedor-geral" value="' + window._compraPapelaoAttr(header.ped_fornecedor || '') + '" placeholder="' + window._compraPapelaoAttr(fornecedorPedidoLabel) + '"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Status</label><select id="ccpx-status">' + window._compraPapelaoStatusOptionsHtml(header.status || 'Solicitada') + '</select></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Previsão de Chegada</label><input id="ccpx-prev-chegada" type="date" value="' + window._compraPapelaoAttr(header.previsao_chegada || '') + '"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>CNPJ Fornecedor</label><input id="ccpx-cnpj-fornecedor" value="' + window._compraPapelaoAttr(header.cnpj_fornecedor || '') + '"></div>'
     + '    <div class="ccpx-modal-inline-stack full"><label>Observações</label><textarea id="ccpx-obs" rows="2">' + window._compraPapelaoEsc(header.observacao || '') + '</textarea></div>'
     + '  </div>'
     + '<div class="ccpx-modal-items-sheet" style="margin-top:18px">'
-    + '  <div class="ccpx-modal-items-toolbar"><div><div class="ccpx-modal-step">Etapa 2 · Itens da Compra</div><div class="ttl">Planilha operacional da compra</div><div class="sub">Preencha Pedido Cliente, Entrega, PO, medidas, vincos, quantidade, lote mínimo, área, valor por m², valor por mil e valor total na mesma sequência da planilha.</div></div><button type="button" class="btn btn-ghost btn-sm" id="ccpx-add-item">+ Nova Linha</button></div>'
-    + '  <div class="ccpx-modal-items-wrap"><table><thead><tr><th>Pedido Cliente</th><th>Entrega</th><th>PO</th><th>Medidas L × C</th><th>Vincos</th><th>Qtde</th><th>Lote Mínimo</th><th>Área Pedido (m²)</th><th>Valor m²</th><th>Valor p/mil</th><th>Valor Total</th><th>Obs</th><th data-ccpx-fornecedor-label>' + window._compraPapelaoEsc(fornecedorPedidoLabel) + '</th><th>Ações</th></tr></thead><tbody id="ccpx-modal-items-body">' + window._compraPapelaoRenderModalRowsHtml(header && header.itens || []) + '</tbody></table></div>'
+    + '  <div class="ccpx-modal-items-toolbar"><div><div class="ccpx-modal-step">Etapa 2 · Itens da Compra</div><div class="ttl">Itens organizados em cartões verticais</div><div class="sub">Agora todos os campos da planilha ficam visíveis de uma vez, sem scroll lateral. Use + Adicionar Item para criar um novo cartão, ou duplique/remova itens individualmente.</div></div><button type="button" class="btn btn-ghost btn-sm" id="ccpx-add-item">+ Adicionar Item</button></div>'
+    + '  <div class="ccpx-modal-items-wrap"><div class="ccpx-item-cards" id="ccpx-modal-items-body">' + window._compraPapelaoRenderModalRowsHtml(header && header.itens || []) + '</div></div>'
     + '  <div class="ccpx-summary"><div class="ccpx-chip"><div class="lbl">Quantidade</div><div class="val" id="ccpx-sum-qtd">0</div></div><div class="ccpx-chip"><div class="lbl">Área</div><div class="val" id="ccpx-sum-area">0,0000 m²</div></div><div class="ccpx-chip"><div class="lbl">Valor</div><div class="val" id="ccpx-sum-total">R$ 0,00</div></div></div>'
     + '  <div class="ccpx-modal-totalbar"><div class="lbl">Total Geral</div><div class="val" id="ccpx-total-geral">R$ 0,00</div></div>'
     + '</div>'
@@ -5492,7 +5519,7 @@ window._compraPapelaoCollectCompraPayload = function(overlay, compra) {
   });
   return {
     fornecedor: fornecedor,
-    ped_fornecedor: '',
+    ped_fornecedor: String((overlay.querySelector('#ccpx-ped-fornecedor-geral') || {}).value || '').trim(),
     pasta_id: String((overlay.querySelector('#ccpx-pasta') || {}).value || '').trim() || null,
     observacao: String((overlay.querySelector('#ccpx-obs') || {}).value || '').trim(),
     emp_id: empId,
@@ -5727,7 +5754,7 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
       id: 'ccpx-modal-compra',
       titulo: 'Pedido de Chapas',
       subtitulo: 'Planilha de pedido com fornecedor, linhas editáveis, totais automáticos e impressão.',
-      largura: '1640px',
+      largura: 'min(96vw,1780px)',
       wide: true,
       hero: '🛒',
       bodyHtml: window._compraPapelaoCompraModalHtml(compra),
@@ -5736,17 +5763,21 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
     if (!overlay) return;
     window._compraPapelaoRefreshModalComputed(overlay);
     var tbody = overlay.querySelector('#ccpx-modal-items-body');
+    overlay.dataset.ccpxVisibleRows = String(Math.max(5, Math.trunc((Array.isArray(compra && compra.itens) ? compra.itens.length : 0)) || 0));
     var renderRows = function(items) {
       if (!tbody) return;
-      tbody.innerHTML = window._compraPapelaoRenderModalRowsHtml(items);
+      var visibleRows = Math.max(1, Math.trunc(window._compraPapelaoNum(overlay.dataset.ccpxVisibleRows || 5)) || 1);
+      tbody.innerHTML = window._compraPapelaoRenderModalRowsHtml(items, visibleRows);
       window._compraPapelaoRefreshModalComputed(overlay);
+      window._compraPapelaoSyncFornecedorDependentUi(overlay);
     };
     var addBtn = overlay.querySelector('#ccpx-add-item');
     if (addBtn) addBtn.onclick = function() {
       var rows = window._compraPapelaoCollectModalRows(overlay);
+      overlay.dataset.ccpxVisibleRows = String(Math.max(Math.trunc(window._compraPapelaoNum(overlay.dataset.ccpxVisibleRows || 5)) || 0, rows.length) + 1);
       rows.push(window._compraPapelaoBlankItem());
       renderRows(rows);
-      var last = tbody && tbody.querySelector('tr:last-child [data-field="' + window._compraPapelaoItemFieldsOrder()[0] + '"]');
+      var last = tbody && tbody.querySelector('[data-ccpx-item-row]:last-child [data-field="' + window._compraPapelaoItemFieldsOrder()[0] + '"]');
       try { if (last) last.focus(); } catch (_) {}
     };
     var cnpjEl = overlay.querySelector('#ccpx-cnpj-fornecedor');
@@ -5779,6 +5810,7 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
           var idx = Math.max(0, Math.trunc(window._compraPapelaoNum(btnDel.getAttribute('data-ccpx-del-item'))));
           rows.splice(idx, 1);
           if (!rows.length) rows.push(window._compraPapelaoBlankItem());
+          overlay.dataset.ccpxVisibleRows = String(Math.max(1, Math.trunc(window._compraPapelaoNum(overlay.dataset.ccpxVisibleRows || rows.length)) - 1));
           renderRows(rows);
         }
       });
@@ -5796,18 +5828,18 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
         if (!target || !target.getAttribute) return;
         var field = String(target.getAttribute('data-field') || '').trim();
         if (!field) return;
-        var row = target.closest ? target.closest('tr[data-ccpx-item-row]') : null;
+        var row = target.closest ? target.closest('[data-ccpx-item-row]') : null;
         if (!row) return;
         var rowIdx = Math.max(0, Math.trunc(window._compraPapelaoNum(row.getAttribute('data-ccpx-item-row'))));
         var rows = window._compraPapelaoCollectModalRows(overlay);
-        var isLastRow = rowIdx === Array.prototype.slice.call(tbody.querySelectorAll('tr[data-ccpx-item-row]')).length - 1;
+        var isLastRow = rowIdx === Array.prototype.slice.call(tbody.querySelectorAll('[data-ccpx-item-row]')).length - 1;
         var isLastField = field === window._compraPapelaoItemFieldsOrder()[window._compraPapelaoItemFieldsOrder().length - 1];
         if (!(isLastRow && isLastField)) return;
         try { ev.preventDefault(); } catch (_) {}
         rows.push(window._compraPapelaoBlankItem());
         renderRows(rows);
         setTimeout(function() {
-          var next = tbody.querySelector('tr:last-child [data-field="' + window._compraPapelaoItemFieldsOrder()[0] + '"]');
+          var next = tbody.querySelector('[data-ccpx-item-row]:last-child [data-field="' + window._compraPapelaoItemFieldsOrder()[0] + '"]');
           try { if (next) next.focus(); } catch (_) {}
         }, 0);
       });
@@ -5855,7 +5887,7 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
       }
     };
     setTimeout(function() {
-      var firstField = overlay.querySelector('#ccpx-modal-items-body tr[data-ccpx-item-row] [data-field="ped_cliente"]');
+      var firstField = overlay.querySelector('#ccpx-modal-items-body [data-ccpx-item-row] [data-field="ped_cliente"]');
       try { if (firstField) firstField.focus(); } catch (_) {}
     }, 0);
   } catch (e) {
@@ -7187,6 +7219,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       if (origAbrirModalCompra) return origAbrirModalCompra.apply(this, arguments);
       return null;
     }
+    if (typeof window._compraPapelaoOpenCompraModal === 'function') {
+      return window._compraPapelaoOpenCompraModal(id || null);
+    }
     return cAbrirModalCompra(id || null);
   }
   function cRenderWrapper() {
@@ -7194,6 +7229,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       cEnsureToolbar();
       if (origRenderCompras) return origRenderCompras.apply(this, arguments);
       return null;
+    }
+    if (typeof window._compraPapelaoRenderPage === 'function') {
+      return window._compraPapelaoRenderPage();
     }
     return cRenderPage();
   }
@@ -7784,13 +7822,43 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#page-orcamentos #calc-pasta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-2px 0 12px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px}'
       + '#page-orcamentos #calc-pasta-row label{font-size:12px;font-weight:800;color:rgba(255,255,255,.72);text-transform:uppercase;letter-spacing:.04em}'
       + '#page-orcamentos #calc-pasta{min-width:240px;flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px}'
-      + '#modal-calc #modal-calculadora{background:linear-gradient(180deg,#0f172a,#111827)!important;border:1px solid rgba(148,163,184,.18)!important;border-radius:22px!important;box-shadow:0 26px 70px rgba(2,6,23,.42)!important}'
-      + '#modal-calc #modal-calculadora h2{font-size:24px!important;font-weight:900!important;color:#f8fafc!important}'
-      + '#modal-calc #modal-calculadora .calc-row-top,#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores,#modal-calc #modal-calculadora #calc-extra-fields,#modal-calc #modal-calculadora .calc-col-dir{padding:14px!important;border-radius:16px!important;border:1px solid rgba(148,163,184,.14)!important;background:rgba(15,23,42,.58)!important}'
-      + '#modal-calc #modal-calculadora .calc-col-dir{display:grid!important;gap:12px!important}'
-      + '#modal-calc #modal-calculadora #wrap-calc-nome-orcamento,#modal-calc #modal-calculadora #wrap-calc-chapa-utilizada,#modal-calc #modal-calculadora #calc-pasta-row{padding:14px 16px!important;border-radius:14px!important;background:rgba(2,6,23,.38)!important;border:1px solid rgba(148,163,184,.14)!important}'
-      + '#modal-calc #modal-calculadora input,#modal-calc #modal-calculadora select,#modal-calc #modal-calculadora textarea{background:#020617!important;border:1px solid rgba(148,163,184,.2)!important;border-radius:12px!important;color:#f8fafc!important}'
-      + '#modal-calc #modal-calculadora .modal-footer.rodape button{border-radius:12px!important;font-weight:900!important}'
+      + '#modal-calc{align-items:center!important;justify-content:center!important;padding:18px!important;background:rgba(2,6,23,.74)!important;backdrop-filter:blur(6px)!important}'
+      + '#modal-calc #modal-calculadora{width:min(1520px,calc(100vw - 28px))!important;max-width:min(1520px,calc(100vw - 28px))!important;max-height:94vh!important;height:auto!important;background:linear-gradient(180deg,#07111f 0%,#0f172a 20%,#111827 100%)!important;border:1px solid rgba(96,165,250,.18)!important;border-radius:26px!important;box-shadow:0 30px 90px rgba(2,6,23,.48)!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;padding:22px!important}'
+      + '#modal-calc #modal-calculadora h2{margin:0 0 12px!important;padding:0 56px 0 0!important;font-size:28px!important;font-weight:900!important;letter-spacing:-.02em!important;color:#eff6ff!important}'
+      + '#modal-calc #modal-calculadora .close-btn{top:18px!important;right:18px!important;width:42px!important;height:42px!important;border-radius:999px!important;background:rgba(15,23,42,.9)!important;border:1px solid rgba(148,163,184,.2)!important;color:#f8fafc!important}'
+      + '#modal-calc #modal-calculadora .calc-header-row{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;gap:14px!important;align-items:center!important;padding:16px 18px!important;border-radius:18px!important;background:linear-gradient(135deg,rgba(5,150,105,.18),rgba(29,78,216,.18))!important;border:1px solid rgba(125,211,252,.16)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)!important}'
+      + '#modal-calc #modal-calculadora .calc-header-row label{font-size:11px!important;font-weight:900!important;letter-spacing:.08em!important;text-transform:uppercase!important;color:#bfdbfe!important;white-space:nowrap!important}'
+      + '#modal-calc #modal-calculadora #calc-cli{width:100%!important;min-height:48px!important}'
+      + '#modal-calc #modal-calculadora #orc-numero-display{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:46px!important;padding:0 16px!important;border-radius:999px!important;background:rgba(15,23,42,.72)!important;border:1px solid rgba(96,165,250,.26)!important;color:#93c5fd!important;font-size:12px!important;font-weight:900!important;letter-spacing:.08em!important;text-transform:uppercase!important}'
+      + '#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body{display:grid!important;grid-template-columns:minmax(0,1.7fr) minmax(340px,.88fr)!important;gap:18px!important;align-items:start!important;flex:1!important;min-height:0!important;overflow:auto!important;padding:14px 2px 0!important}'
+      + '#modal-calc #modal-calculadora .calc-col-esq{display:grid!important;gap:16px!important;min-width:0!important;padding:0!important;overflow:visible!important}'
+      + '#modal-calc #modal-calculadora .calc-row-top,#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores,#modal-calc #modal-calculadora #calc-extra-fields,#modal-calc #modal-calculadora .calc-col-dir{padding:16px!important;border-radius:18px!important;border:1px solid rgba(148,163,184,.14)!important;background:linear-gradient(180deg,rgba(15,23,42,.84),rgba(15,23,42,.62))!important;box-shadow:0 16px 38px rgba(2,6,23,.18)!important}'
+      + '#modal-calc #modal-calculadora .calc-row-top{display:grid!important;grid-template-columns:1.25fr .95fr .8fr!important;gap:12px!important}'
+      + '#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important}'
+      + '#modal-calc #modal-calculadora #calc-extra-fields{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;gap:12px!important}'
+      + '#modal-calc #modal-calculadora .calc-col-dir{display:grid!important;gap:12px!important;min-width:340px!important;align-self:start!important;position:sticky!important;top:0!important}'
+      + '#modal-calc #modal-calculadora .calc-col-dir > div:first-child{font-size:11px!important;font-weight:900!important;letter-spacing:.08em!important;text-transform:uppercase!important;color:#93c5fd!important;padding-bottom:6px!important;border-bottom:1px solid rgba(148,163,184,.14)!important}'
+      + '#modal-calc #modal-calculadora .param-row{display:grid!important;grid-template-columns:minmax(0,1fr) 120px!important;gap:12px!important;align-items:center!important;padding:10px 12px!important;border-radius:14px!important;background:rgba(2,6,23,.34)!important;border:1px solid rgba(148,163,184,.12)!important}'
+      + '#modal-calc #modal-calculadora .param-label{font-size:12px!important;font-weight:800!important;color:#cbd5e1!important}'
+      + '#modal-calc #modal-calculadora .param-input{text-align:right!important;font-variant-numeric:tabular-nums!important}'
+      + '#modal-calc #modal-calculadora .param-frete-total{display:flex!important;justify-content:space-between!important;align-items:center!important;padding:14px 16px!important;border-radius:16px!important;background:linear-gradient(135deg,rgba(30,64,175,.34),rgba(14,116,144,.22))!important;border:1px solid rgba(147,197,253,.18)!important;color:#eff6ff!important;font-weight:900!important}'
+      + '#modal-calc #modal-calculadora .calc-tabela-wrap{overflow:hidden!important;min-width:0!important;border-radius:18px!important;border:1px solid rgba(148,163,184,.14)!important;background:rgba(2,6,23,.44)!important}'
+      + '#modal-calc #modal-calculadora #calc-sheet{width:100%!important;min-width:0!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:0!important}'
+      + '#modal-calc #modal-calculadora #calc-sheet thead th{position:sticky!important;top:0!important;z-index:2!important;background:#0b1220!important;color:#cbd5e1!important;padding:12px 10px!important;font-size:11px!important;line-height:1.35!important;white-space:normal!important;border-bottom:1px solid rgba(148,163,184,.18)!important}'
+      + '#modal-calc #modal-calculadora #calc-sheet tbody td{padding:12px 10px!important;font-size:12px!important;line-height:1.4!important;color:#e2e8f0!important;border-bottom:1px solid rgba(148,163,184,.1)!important;white-space:normal!important;word-break:break-word!important}'
+      + '#modal-calc #modal-calculadora #calc-sheet tbody tr:hover td{background:rgba(148,163,184,.05)!important}'
+      + '#modal-calc #modal-calculadora #wrap-calc-nome-orcamento,#modal-calc #modal-calculadora #wrap-calc-chapa-utilizada,#modal-calc #modal-calculadora #calc-pasta-row{padding:14px 16px!important;border-radius:16px!important;background:rgba(2,6,23,.42)!important;border:1px solid rgba(148,163,184,.14)!important}'
+      + '#modal-calc #modal-calculadora input,#modal-calc #modal-calculadora select,#modal-calc #modal-calculadora textarea{background:#020617!important;border:1px solid rgba(148,163,184,.22)!important;border-radius:12px!important;color:#f8fafc!important;box-shadow:none!important}'
+      + '#modal-calc #modal-calculadora .mf label,#modal-calc #modal-calculadora #calc-pasta-row label{font-size:11px!important;font-weight:900!important;letter-spacing:.06em!important;text-transform:uppercase!important;color:#94a3b8!important}'
+      + '#modal-calc #modal-calculadora .modal-footer.rodape{display:flex!important;flex-wrap:wrap!important;gap:10px!important;align-items:center!important;justify-content:space-between!important;padding:16px 4px 0!important;margin-top:14px!important;border-top:1px solid rgba(148,163,184,.16)!important}'
+      + '#modal-calc #modal-calculadora .modal-footer.rodape > div:first-child{margin-right:auto!important;padding:10px 14px!important;border-radius:14px!important;background:rgba(2,6,23,.44)!important;border:1px solid rgba(148,163,184,.12)!important}'
+      + '#modal-calc #modal-calculadora .modal-footer.rodape button{border-radius:14px!important;font-weight:900!important;min-height:46px!important;padding:0 18px!important;border:1px solid rgba(148,163,184,.18)!important}'
+      + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(1){background:rgba(15,23,42,.78)!important;color:#e2e8f0!important}'
+      + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(2){background:rgba(30,41,59,.88)!important;color:#e0f2fe!important}'
+      + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(3){background:#2563eb!important;color:#fff!important;border-color:#2563eb!important}'
+      + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(4){background:#7c3aed!important;color:#fff!important;border-color:#7c3aed!important}'
+      + '@media (max-width:1280px){#modal-calc #modal-calculadora{width:min(1450px,calc(100vw - 20px))!important}#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .calc-col-dir{min-width:0!important;position:static!important}#modal-calc #modal-calculadora #calc-sheet{table-layout:auto!important}}'
+      + '@media (max-width:920px){#modal-calc{padding:10px!important}#modal-calc #modal-calculadora{width:min(100vw - 12px,100%)!important;max-width:min(100vw - 12px,100%)!important;max-height:96vh!important;padding:16px!important}#modal-calc #modal-calculadora .calc-header-row{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .calc-row-top,#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .modal-footer.rodape{flex-direction:column!important;align-items:stretch!important}#modal-calc #modal-calculadora .modal-footer.rodape button{width:100%!important}}'
       + '#orc-pasta-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100001;align-items:center;justify-content:center;padding:16px}'
       + '#orc-pasta-modal .box{width:min(460px,96vw);background:#0f172a;border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:18px;display:grid;gap:12px}'
       + '#orc-pasta-modal .ttl{font-size:16px;font-weight:900;color:#f8fafc}'
@@ -19141,6 +19209,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     window.renderOfmaqFinal = renderOfmaqFinal;
     (function bridgeLegacyOfmaqEntrypoints() {
+      var registry = (window.__ofmaqFinalBridgeRegistry && typeof window.__ofmaqFinalBridgeRegistry === 'object')
+        ? window.__ofmaqFinalBridgeRegistry
+        : (window.__ofmaqFinalBridgeRegistry = {});
       [
         'renderOFsPorMaquina',
         'renderMaquinas',
@@ -19152,21 +19223,57 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         'renderKanbanOfmaq'
       ].forEach(function(name) {
         var current = typeof window[name] === 'function' ? window[name] : null;
-        if (current && current.__ofmaqFinalBridge) return;
-        var original = current;
+        var existing = registry && typeof registry[name] === 'function' ? registry[name] : null;
+        if (existing) {
+          if (current && current !== existing && !current.__ofmaqFinalBridge) {
+            existing.__ofmaqFinalBridgeTarget = current;
+            try { existing.__patchWrapOriginal = current.__patchWrapOriginal || current; } catch (_) {}
+            try { existing._patchedAccordion = !!current._patchedAccordion; } catch (_) {}
+            try { existing._patchedSwipeMaq = !!current._patchedSwipeMaq; } catch (_) {}
+            try { existing._patchedPriorityHub = !!current._patchedPriorityHub; } catch (_) {}
+          }
+          window[name] = existing;
+          return;
+        }
+        if (current && current.__ofmaqFinalBridge) {
+          registry[name] = current;
+          return;
+        }
         var bridged = function() {
           if (String(window._PAGE_ATUAL || '') === 'ofmaq' && typeof window.renderOfmaqFinal === 'function') {
             return window.renderOfmaqFinal({ forceReload: true, reason: 'legacy-entrypoint:' + name });
           }
-          return typeof original === 'function' ? original.apply(this, arguments) : undefined;
+          var target = bridged.__ofmaqFinalBridgeTarget;
+          return typeof target === 'function' ? target.apply(this, arguments) : undefined;
         };
         bridged.__ofmaqFinalBridge = true;
-        bridged.__patchWrapOriginal = (original && (original.__patchWrapOriginal || original)) || null;
-        bridged._patchedAccordion = !!(original && original._patchedAccordion);
-        bridged._patchedSwipeMaq = !!(original && original._patchedSwipeMaq);
+        bridged.__ofmaqFinalBridgeTarget = current;
+        bridged.__patchWrapOriginal = (current && (current.__patchWrapOriginal || current)) || null;
+        bridged._patchedAccordion = !!(current && current._patchedAccordion);
+        bridged._patchedSwipeMaq = !!(current && current._patchedSwipeMaq);
         bridged._patchedPriorityHub = true;
+        registry[name] = bridged;
         window[name] = bridged;
       });
+      if (!window.__ofmaqFinalBridgeWatch) {
+        window.__ofmaqFinalBridgeWatch = true;
+        setInterval(function() {
+          try {
+            var reg = window.__ofmaqFinalBridgeRegistry;
+            if (!reg || typeof reg !== 'object') return;
+            Object.keys(reg).forEach(function(nome) {
+              var existing = reg && typeof reg[nome] === 'function' ? reg[nome] : null;
+              if (!existing) return;
+              var current = typeof window[nome] === 'function' ? window[nome] : null;
+              if (current && current.__ofmaqFinalBridge) return;
+              if (current && current !== existing) {
+                try { existing.__ofmaqFinalBridgeTarget = current; } catch (_) {}
+              }
+              if (window[nome] !== existing) window[nome] = existing;
+            });
+          } catch (_) {}
+        }, 1800);
+      }
     })();
     window.__ofmaqFinalSetMockData = function(rows) {
       window.__OFMAQ_FINAL_MOCK = Array.isArray(rows) ? rows.slice() : [];
@@ -20038,35 +20145,36 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   #modal-calc.modal-overlay {
-    align-items: stretch !important;
-    justify-content: stretch !important;
-    padding: 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 10px !important;
   }
   #modal-calc #modal-calculadora {
-    width: 100% !important;
-    max-width: 100% !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
+    width: min(100vw - 12px, 100%) !important;
+    max-width: min(100vw - 12px, 100%) !important;
+    height: auto !important;
+    max-height: calc(100vh - 12px) !important;
     margin: 0 !important;
-    border-radius: 0 !important;
+    border-radius: 20px !important;
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
-    padding: 12px !important;
+    padding: 14px !important;
   }
   #modal-calc #modal-calculadora .close-btn {
-    position: fixed !important;
-    top: 10px !important;
-    right: 10px !important;
+    position: absolute !important;
+    top: 12px !important;
+    right: 12px !important;
     z-index: 10000 !important;
   }
   #modal-calc #modal-calculadora h2 {
     margin-top: 0 !important;
+    margin-bottom: 10px !important;
     padding-right: 56px !important;
   }
   #modal-calc #modal-calculadora .calc-header-row {
-    display: flex !important;
-    flex-direction: column !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
     align-items: stretch !important;
     gap: 10px !important;
   }
@@ -20079,49 +20187,63 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   #modal-calc #modal-calculadora .modal-body,
   #modal-calc #modal-calculadora .calc-body {
-    display: flex !important;
-    flex-direction: column !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
     gap: 12px !important;
-    flex: 1 !important;
-    min-height: 0 !important;
+    flex: 1 1 auto !important;
+    min-height: 220px !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
-    padding: 12px 16px !important;
+    padding: 10px 0 0 !important;
+    max-height: none !important;
+  }
+  #modal-calc #modal-calculadora > .calc-header-row,
+  #modal-calc #modal-calculadora > #calc-pasta-row,
+  #modal-calc #modal-calculadora > #wrap-calc-nome-orcamento,
+  #modal-calc #modal-calculadora > #wrap-calc-chapa-utilizada,
+  #modal-calc #modal-calculadora > .modal-footer.rodape {
+    flex: 0 0 auto !important;
+    overflow: visible !important;
+    max-height: none !important;
   }
 
   #modal-calc #modal-calculadora .calc-col-esq {
-    display: contents !important;
+    display: grid !important;
+    gap: 12px !important;
     padding: 0 !important;
     overflow: visible !important;
   }
   #modal-calc #modal-calculadora .calc-row-top,
   #modal-calc #modal-calculadora .calc-row-dims,
   #modal-calc #modal-calculadora .calc-row-valores {
-    display: flex !important;
-    flex-direction: column !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
     gap: 10px !important;
     align-items: stretch !important;
   }
-  #modal-calc #modal-calculadora .calc-row-top { order: 2 !important; }
-  #modal-calc #modal-calculadora .calc-row-dims { order: 3 !important; }
-  #modal-calc #modal-calculadora .calc-row-valores { order: 4 !important; }
-  #modal-calc #modal-calculadora #calc-extra-fields { order: 5 !important; }
+  #modal-calc #modal-calculadora .calc-row-top { order: initial !important; }
+  #modal-calc #modal-calculadora .calc-row-dims { order: initial !important; }
+  #modal-calc #modal-calculadora .calc-row-valores { order: initial !important; }
+  #modal-calc #modal-calculadora #calc-extra-fields { order: initial !important; display: grid !important; grid-template-columns: 1fr !important; gap: 10px !important; }
 
   #modal-calc #modal-calculadora .calc-col-dir {
-    order: 6 !important;
+    order: initial !important;
     width: 100% !important;
+    min-width: 0 !important;
     border-left: none !important;
-    border-top: 1px solid rgba(255,255,255,0.08) !important;
-    padding: 12px 0 0 0 !important;
+    border-top: none !important;
+    padding: 0 !important;
     background: transparent !important;
     overflow: visible !important;
+    position: static !important;
   }
 
   #modal-calc #modal-calculadora .calc-tabela-wrap {
-    order: 7 !important;
+    order: initial !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
     flex: 0 0 auto !important;
+    min-width: 0 !important;
   }
 
   #modal-calc #modal-calculadora input,
@@ -20133,28 +20255,32 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   #modal-calc #modal-calculadora .modal-footer.rodape {
-    position: sticky !important;
-    bottom: 0 !important;
-    z-index: 20 !important;
-    background: #0f172a !important;
+    position: static !important;
+    bottom: auto !important;
+    z-index: auto !important;
+    background: transparent !important;
     border-top: 1px solid rgba(255,255,255,0.12) !important;
-    padding: 12px 16px !important;
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
+    padding: 12px 0 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
     gap: 8px !important;
     margin-top: 0 !important;
   }
   #modal-calc #modal-calculadora .modal-footer.rodape > div:first-child {
-    grid-column: 1 / -1 !important;
+    grid-column: auto !important;
     margin-right: 0 !important;
+    width: 100% !important;
   }
   #modal-calc #modal-calculadora .modal-footer.rodape button:first-of-type {
-    grid-column: 1 / -1 !important;
+    grid-column: auto !important;
   }
   #modal-calc #modal-calculadora .modal-footer.rodape button {
     width: 100% !important;
     min-height: 44px !important;
     font-size: 0.85rem !important;
+    flex: 1 1 180px !important;
   }
 
   .chapas-table-wrapper,
@@ -27136,6 +27262,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         ov.style.display = 'flex';
         ov.style.pointerEvents = 'auto';
         try { ov.classList.add('open', 'show', 'active'); } catch (_) {}
+        try { ov.removeAttribute('hidden'); } catch (_) {}
+        try { ov.style.opacity = '1'; } catch (_) {}
+        try { ov.style.visibility = 'visible'; } catch (_) {}
         try { ov.style.zIndex = '99999'; } catch (_) {}
       }
     } catch (_) {}
@@ -27144,6 +27273,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (modal) {
         modal.style.display = 'flex';
         modal.style.pointerEvents = 'auto';
+        try { modal.removeAttribute('hidden'); } catch (_) {}
+        try { modal.style.opacity = '1'; } catch (_) {}
+        try { modal.style.visibility = 'visible'; } catch (_) {}
         try { modal.style.zIndex = '100000'; } catch (_) {}
       }
     } catch (_) {}
@@ -27179,18 +27311,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (window.abrirCalculadora._patchCalcOpen) return;
     var orig = window.abrirCalculadora;
     window.abrirCalculadora = function() {
+      var result;
       try {
-        return orig.apply(this, arguments);
+        result = orig.apply(this, arguments);
       } catch (_) {
         try { if (typeof window.abrir === 'function') window.abrir('modal-calc'); } catch (_) {}
         try { openModalDirect(); } catch (_) {}
-        return;
       } finally {
+        try { setTimeout(openModalDirect, 0); } catch (_) {}
+        try { setTimeout(openModalDirect, 120); } catch (_) {}
+        try { setTimeout(openModalDirect, 420); } catch (_) {}
         try {
           var ov = document.getElementById('modal-calc');
           if (ov && String(getComputedStyle(ov).display || '') === 'none') openModalDirect();
         } catch (_) {}
       }
+      return result;
     };
     window.abrirCalculadora._patchCalcOpen = true;
   }
@@ -43325,6 +43461,15 @@ function _ocultarGraficoComissoes() {
 
   async function sCalcular() {
     var plan = sGetPlan();
+    try {
+      console.log('[SIMD-DIAG] Calcular clicado, estado atual=', {
+        plan: plan,
+        chapaSelecionada: window._simdChapaSelecionada || null,
+        btnDisabled: !!((document.getElementById('simd-btn') || {}).disabled),
+        hostSheetUi: String(((document.getElementById('tela-simulador-desperdicio') || {}).dataset || {}).simdSheetUi || ''),
+        resultadosVisiveis: String(((document.getElementById('simd-busca-resultados') || {}).style || {}).display || '')
+      });
+    } catch (_) {}
     var loading = document.getElementById('simd-loading');
     var resultado = document.getElementById('simd-resultado');
     if (!(plan.peca_larg_mm > 0 && plan.peca_comp_mm > 0)) {
@@ -43504,6 +43649,7 @@ function _ocultarGraficoComissoes() {
         raw = String(target.getAttribute('data-simd-chapa') || '');
         try { chapa = JSON.parse(decodeURIComponent(raw)); } catch (_) { chapa = null; }
         if (!chapa) return;
+        try { console.log('[SIMD-DIAG] clique em sugestao', chapa); } catch (_) {}
         try { window._simdSelecionarChapa(chapa); } catch (err) { sErr('selecionar chapa falhou', err); }
       });
     }
@@ -43544,10 +43690,63 @@ function _ocultarGraficoComissoes() {
     return true;
   }
 
+  function sDeactivateLegacyObservers() {
+    try {
+      if (window.__simdGlobalObsV2 && !window.__simdGlobalObsV2Disabled) {
+        window.__simdGlobalObsV2.disconnect();
+        window.__simdGlobalObsV2Disabled = true;
+      }
+    } catch (_) {}
+    try {
+      if (window.__patchSimdObs && !window.__patchSimdObsDisabled) {
+        window.__patchSimdObs.disconnect();
+        window.__patchSimdObsDisabled = true;
+      }
+    } catch (_) {}
+    try {
+      if (window.__simdBoxPlannerObs && !window.__simdBoxPlannerObsDisabled) {
+        window.__simdBoxPlannerObs.disconnect();
+        window.__simdBoxPlannerObsDisabled = true;
+      }
+    } catch (_) {}
+    try { window._simdBindBotaoDireto = function() { return false; }; } catch (_) {}
+  }
+
+  function sEnsureObservers() {
+    try {
+      if (!window.__simdSheetBootObs) {
+        window.__simdSheetBootObs = new MutationObserver(function() {
+          try { clearTimeout(window.__simdSheetBootObsTimer); } catch (_) {}
+          window.__simdSheetBootObsTimer = setTimeout(function() {
+            sDeactivateLegacyObservers();
+            sApply();
+          }, 80);
+        });
+        window.__simdSheetBootObs.observe(document.body, { childList: true, subtree: true });
+      }
+    } catch (_) {}
+    try {
+      var obsHost = document.getElementById('tela-simulador-desperdicio');
+      if (!window.__simdSheetMeasureObs) {
+        window.__simdSheetMeasureObs = new MutationObserver(function() {
+          try { clearTimeout(window.__simdSheetMeasureObsTimer); } catch (_) {}
+          window.__simdSheetMeasureObsTimer = setTimeout(sApply, 80);
+        });
+      }
+      if (obsHost && window.__simdSheetMeasureObsHost !== obsHost) {
+        try { window.__simdSheetMeasureObs.disconnect(); } catch (_) {}
+        window.__simdSheetMeasureObsHost = obsHost;
+        window.__simdSheetMeasureObs.observe(obsHost, { childList: true, subtree: true });
+      }
+    } catch (_) {}
+  }
+
   function sApply() {
     try {
+      sDeactivateLegacyObservers();
       if (!sBindShell()) return;
       sVerificarCampos();
+      sEnsureObservers();
     } catch (e) {
       sErr('apply falhou', e);
     }
@@ -43567,20 +43766,9 @@ function _ocultarGraficoComissoes() {
 
   sApply();
   setTimeout(sApply, 0);
-  try {
-    var obsHost = document.getElementById('tela-simulador-desperdicio');
-    if (!window.__simdSheetMeasureObs) {
-      window.__simdSheetMeasureObs = new MutationObserver(function() {
-        try { clearTimeout(window.__simdSheetMeasureObsTimer); } catch (_) {}
-        window.__simdSheetMeasureObsTimer = setTimeout(sApply, 80);
-      });
-    }
-    if (obsHost && window.__simdSheetMeasureObsHost !== obsHost) {
-      try { window.__simdSheetMeasureObs.disconnect(); } catch (_) {}
-      window.__simdSheetMeasureObsHost = obsHost;
-      window.__simdSheetMeasureObs.observe(obsHost, { childList: true, subtree: true });
-    }
-  } catch (_) {}
+  setTimeout(sApply, 300);
+  setTimeout(sApply, 1200);
+  sEnsureObservers();
 })();
 ;(function() {
   if (window.__pageVisibilitySanitizerInstalled) return;
