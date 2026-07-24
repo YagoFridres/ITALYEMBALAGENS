@@ -51,6 +51,7 @@ async function create(req, res) {
   try {
     const payload = req.body || {};
     if (!payload.numero) return res.status(400).json({ ok: false, error: 'numero_required' });
+    if (!payload.cliente_id) return res.status(400).json({ ok: false, error: 'cliente_required' });
     const { data, error } = await sb(req).from('ofs').insert(payload).select('*').single();
     if (error) return res.status(400).json({ ok: false, error: error.message });
     return res.json({ ok: true, data });

@@ -12981,8 +12981,16 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
           try { node.remove(); } catch (_) {}
         }
       });
+      Array.prototype.slice.call(page.querySelectorAll('.hub-kpi')).forEach(function(card) {
+        var label = String(card.querySelector('.l') && card.querySelector('.l').textContent || '').trim().toLowerCase();
+        var value = String(card.querySelector('.v') && card.querySelector('.v').textContent || '').trim();
+        if (label.indexOf('faturamento') >= 0 || label.indexOf('ticket') >= 0 || value.indexOf('R$') >= 0) {
+          try { card.remove(); } catch (_) {}
+        }
+      });
     } catch (_) {}
   }
+  try { window.__hubStripMoneyVisuals = _hubStripMoneyVisuals; } catch (_) {}
   async function _patchHubTotalCards() {
     try {
       var page = document.getElementById('page-hub');
@@ -13013,6 +13021,7 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       _hubStripMoneyVisuals();
     } catch (_) {}
   }
+  try { window.__patchHubTotalCards = _patchHubTotalCards; } catch (_) {}
 
   try {
     if (!window.__patchHubTotalObs) {
@@ -25416,12 +25425,25 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var wrappedRenderHub = async function() {
         var res = await _orig.apply(this, arguments);
         var stripLater = function() {
-          try { _hubStripMoneyVisuals(); } catch (_) {}
-          try { _patchHubTotalCards(); } catch (_) {}
+          try {
+            var stripMoney = (typeof window.__hubStripMoneyVisuals === 'function') ? window.__hubStripMoneyVisuals : null;
+            if (stripMoney) stripMoney();
+          } catch (_) {}
+          try {
+            var patchTotals = (typeof window.__patchHubTotalCards === 'function') ? window.__patchHubTotalCards : null;
+            if (patchTotals) patchTotals();
+          } catch (_) {}
         };
-        [40, 180, 600, 1200].forEach(function(delay) {
+        [40, 180, 600, 1200, 2500, 4000].forEach(function(delay) {
           setTimeout(stripLater, delay);
         });
+        try {
+          clearTimeout(window.__hubStripMoneyTimer);
+          window.__hubStripMoneyTimer = setTimeout(function rerunHubStrip() {
+            stripLater();
+            window.__hubStripMoneyTimer = setTimeout(rerunHubStrip, 1800);
+          }, 900);
+        } catch (_) {}
         setTimeout(function() {
           try { window.carregarPassagensHoje(); } catch(_) {}
         }, 400);

@@ -341,9 +341,10 @@ export function mountPCP({ root, api }) {
           label: 'Salvar',
           className: 'btn btn-accent',
           onClick: async () => {
+            const clienteId = get(f, 'cliente_id') || null;
             const payload = {
               numero: get(f, 'numero').trim(),
-              cliente_id: get(f, 'cliente_id') || null,
+              cliente_id: clienteId,
               empresa_id: get(f, 'empresa_id') || null,
               maquina_id: get(f, 'maquina_id') || null,
               fluxo_id: get(f, 'fluxo_id') || null,
@@ -358,6 +359,7 @@ export function mountPCP({ root, api }) {
               itens: getItens(f),
             };
             if (!payload.numero) throw new Error('Número é obrigatório');
+            if (!payload.cliente_id) throw new Error('Cliente é obrigatório');
             const r = of
               ? await api(`/api/ofs/${of.id}`, { method: 'PUT', body: payload })
               : await api('/api/ofs', { method: 'POST', body: payload });

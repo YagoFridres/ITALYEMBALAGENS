@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1162,9 +1162,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260722152526';
-const SW_RUNTIME_VERSION = '20260722152526';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260722152526';
+const PATCH_RUNTIME_VERSION = '20260722170032';
+const SW_RUNTIME_VERSION = '20260722170032';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260722170032';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -3431,6 +3431,12 @@ function ofIn(p) {
     if (!out.cli_id) out.cli_id = out.cliente_id;
     delete out.cliente_id;
   }
+  if (out.cliente_id && isUuid(out.cliente_id) && !out.cli_id) {
+    out.cli_id = out.cliente_id;
+  }
+  if (out.cli_id && isUuid(out.cli_id) && !out.cliente_id) {
+    out.cliente_id = out.cli_id;
+  }
 
   const itensArr = Array.isArray(out.itens) ? out.itens : [];
   const primeiroItem = itensArr[0] && typeof itensArr[0] === 'object' ? itensArr[0] : {};
@@ -3692,6 +3698,22 @@ async function _buscarClienteRegistroOF(cliId) {
     } catch (_) {}
   }
   return null;
+}
+
+async function _resolverClienteIdentidadeOF(raw) {
+  const ref = String(raw || '').trim();
+  if (!ref) return null;
+  const cli = await _buscarClienteRegistroOF(ref);
+  if (!cli) return null;
+  const id = String(cli?.id || '').trim();
+  if (!id) return null;
+  const nome = _clienteNomeValido(cli?.nome || cli?.rs || cli?.razao_social || '');
+  return {
+    id,
+    codigo: String(cli?.codigo || '').trim(),
+    nome,
+    vendedor_id: String(cli?.vendedor_id || '').trim() || null,
+  };
 }
 
 async function _buscarVendedorNomeOF(vendedorId) {
@@ -5331,6 +5353,19 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         return [];
       };
       const merged = { ...(body || {}), ...(filtered || {}) };
+      const cliRef = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
+      const cliResolved = cliRef ? await _resolverClienteIdentidadeOF(cliRef) : null;
+      if (cliRef && !cliResolved) {
+        return res.status(400).json({ ok: false, error: 'Cliente inválido. Selecione um cliente válido antes de salvar.', missing: ['cliente'] });
+      }
+      if (cliResolved) {
+        merged.cli_id = cliResolved.id;
+        merged.cliId = cliResolved.id;
+        merged.cliente_id = cliResolved.id;
+        if (!String(merged.clinome ?? '').trim()) merged.clinome = cliResolved.nome || '';
+        if (!String(merged.cliNome ?? '').trim()) merged.cliNome = cliResolved.nome || '';
+        if (!String(merged.cliente_nome ?? '').trim()) merged.cliente_nome = cliResolved.nome || '';
+      }
       const cliId = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
       const vendId = String(merged.vendid ?? merged.vendedor ?? merged.vendedor_id ?? merged.vendedorId ?? merged.vendId ?? merged.vend_id ?? '').trim();
       const qtd = Number(merged.qtd ?? merged.quantidade ?? merged.qtd_pedida ?? 0) || 0;
@@ -5357,6 +5392,15 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       if (missing.length) {
         return res.status(400).json({ ok: false, error: 'Campos obrigatórios: ' + missing.join(', '), missing });
       }
+      filtered = {
+        ...filtered,
+        cli_id: cliId,
+        cliId: cliId,
+        cliente_id: cliId,
+        clinome: String(merged.clinome ?? merged.cliNome ?? merged.cliente_nome ?? '').trim(),
+        cliNome: String(merged.cliNome ?? merged.clinome ?? merged.cliente_nome ?? '').trim(),
+        cliente_nome: String(merged.cliente_nome ?? merged.clinome ?? merged.cliNome ?? '').trim(),
+      };
     }
     console.debug('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
     const createdRes = await ofsInsertWithRetry(ofIn(filtered));
@@ -26945,7 +26989,14 @@ app.post('/api/assistente/acao', authMiddleware, async (req, res) => {
       clone.seq = nextSeq; clone.of = numStr; clone.numero = numStr;
       clone.status = 'Em aberto';
       if (act.novaEntrega) { clone.ent = act.novaEntrega; clone.data_entrega = act.novaEntrega; }
-      if (act.novoCliId) { clone.cli_id = act.novoCliId; clone.cliente_id = act.novoCliId; }
+      const cloneCliRef = String(act.novoCliId || clone.cliente_id || clone.cli_id || '').trim();
+      const cloneCli = cloneCliRef ? await _resolverClienteIdentidadeOF(cloneCliRef) : null;
+      if (!cloneCli?.id) return res.json({ok:false, resposta:`${first}, a clonagem foi bloqueada porque a OF original está sem cliente válido.`});
+      clone.cli_id = cloneCli.id;
+      clone.cliente_id = cloneCli.id;
+      clone.cliNome = cloneCli.nome || clone.cliNome || '';
+      clone.clinome = cloneCli.nome || clone.clinome || '';
+      clone.cliente_nome = cloneCli.nome || clone.cliente_nome || '';
       clone.created_at = new Date().toISOString();
       clone.updated_at = new Date().toISOString();
       const {data:nova, error} = await supabase.from('ofs').insert([clone]).select('id,of,numero').single();
