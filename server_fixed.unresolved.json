@@ -1,0 +1,268 @@
+[
+  {
+    "before": " â€” CONCLUÃDO âœ“",
+    "after": " â€” CONCLUÃDO âœ“",
+    "suspect_before": 3,
+    "suspect_after": 3,
+    "improved": false
+  },
+  {
+    "before": " â€” CONCLUÃDO âœ“",
+    "after": " â€” CONCLUÃDO âœ“",
+    "suspect_before": 3,
+    "suspect_after": 3,
+    "improved": false
+  },
+  {
+    "before": "VocÃª Ã© o JARVIS, assistente de inteligÃªncia artificial da Italy Embalagens.\\r\\nSeu papel Ã© responder perguntas com base nos dados reais do ERP abaixo.\\r\\n\\r\\nUSUÃRIO LOGADO: ",
+    "after": "VocÃª Ã© o JARVIS, assistente de inteligÃªncia artificial da Italy Embalagens.\\r\\nSeu papel Ã© responder perguntas com base nos dados reais do ERP abaixo.\\r\\n\\r\\nUSUÃRIO LOGADO: ",
+    "suspect_before": 5,
+    "suspect_after": 5,
+    "improved": false
+  },
+  {
+    "before": "\\r\\nâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\\r\\n\\r\\nINSTRUÃ‡Ã•ES OBRIGATÃ“RIAS:\\r\\n1. Use APENAS os dados acima para responder â€”",
+    "after": "\\r\\nâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\\r\\n\\r\\nINSTRUÃ‡Ã•ES OBRIGATÃ“RIAS:\\r\\n1. Use APENAS os dados acima para responder â€”",
+    "suspect_before": 28,
+    "suspect_after": 28,
+    "improved": false
+  },
+  {
+    "before": "\\r\\n\\r\\nSintetize as duas anÃ¡lises em UMA resposta Ãºnica, completa e superior.\\r\\nAproveite os pontos fortes de cada anÃ¡lise.\\r\\nResponda em portuguÃªs brasileiro, de forma dire",
+    "after": "\\r\\n\\r\\nSintetize as duas análises em UMA resposta única, completa e superior.\\r\\nAproveite os pontos fortes de cada análise.\\r\\nResponda em português brasileiro, de forma direta e",
+    "suspect_before": 8,
+    "suspect_after": 0,
+    "improved": true
+  },
+  {
+    "before": "âš ï¸ Entendi o pedido, mas nÃ£o encontrei o cliente \"",
+    "after": "âš ï¸ Entendi o pedido, mas nÃ£o encontrei o cliente \"",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "\\nâš ï¸ Alertas (mÃ¡quinas > 2Ã— mÃ©dia geral):\\n",
+    "after": "\\nâš ï¸ Alertas (mÃ¡quinas > 2Ã— mÃ©dia geral):\\n",
+    "suspect_before": 2,
+    "suspect_after": 2,
+    "improved": false
+  },
+  {
+    "before": "ðŸ’¡ Por que sugiro isso: usei as OFs dos Ãºltimos 3 meses e somei valores por cliente; frequÃªncia considera compras no mÃªs atual; â€œquedaâ€ = tinha compra antes e zero neste m",
+    "after": "ðŸ’¡ Por que sugiro isso: usei as OFs dos Ãºltimos 3 meses e somei valores por cliente; frequÃªncia considera compras no mÃªs atual; â€œquedaâ€ = tinha compra antes e zero neste m",
+    "suspect_before": 7,
+    "suspect_after": 7,
+    "improved": false
+  },
+  {
+    "before": "ðŸ· Status: ",
+    "after": "ðŸ· Status: ",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "ðŸ­ MÃ¡quinas: ",
+    "after": "ðŸ­ MÃ¡quinas: ",
+    "suspect_before": 2,
+    "suspect_after": 2,
+    "improved": false
+  },
+  {
+    "before": "ðŸ¢ Empresa: ",
+    "after": "ðŸ¢ Empresa: ",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "ðŸ“ ObservaÃ§Ãµes: ",
+    "after": "ðŸ“ ObservaÃ§Ãµes: ",
+    "suspect_before": 3,
+    "suspect_after": 3,
+    "improved": false
+  },
+  {
+    "before": "âŒ Canceladas: ",
+    "after": "âŒ Canceladas: ",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "âœ… ÃšLTIMAS CONCLUÃDAS:",
+    "after": "âœ… ÃšLTIMAS CONCLUÃDAS:",
+    "suspect_before": 2,
+    "suspect_after": 2,
+    "improved": false
+  },
+  {
+    "before": "- Para comparar OFs: marque 2 checkboxes â†’ botÃ£o \"âš–ï¸ Comparar OFs\"\\n\\n",
+    "after": "- Para comparar OFs: marque 2 checkboxes â†’ botÃ£o \"âš–ï¸ Comparar OFs\"\\n\\n",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "âŒ Cancelar",
+    "after": "âŒ Cancelar",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "âŒ Cancelar",
+    "after": "âŒ Cancelar",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "âŒ Cancelar",
+    "after": "âŒ Cancelar",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "ðŸ·ï¸ Total de tipos de chapas: ",
+    "after": "ðŸ·ï¸ Total de tipos de chapas: ",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "âš ï¸ Abaixo do mÃ­nimo: ",
+    "after": "âš ï¸ Abaixo do mÃ­nimo: ",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "â“ Sem valor cadastrado: ",
+    "after": "â“ Sem valor cadastrado: ",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "âœï¸ Editar OF #",
+    "after": "âœï¸ Editar OF #",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "âš ï¸ Confirmar alteraÃ§Ã£o da entrega da OF #",
+    "after": "âš ï¸ Confirmar alteraÃ§Ã£o da entrega da OF #",
+    "suspect_before": 2,
+    "suspect_after": 2,
+    "improved": false
+  },
+  {
+    "before": "âš ï¸ Confirmar alteraÃ§Ã£o da quantidade da OF #",
+    "after": "âš ï¸ Confirmar alteraÃ§Ã£o da quantidade da OF #",
+    "suspect_before": 2,
+    "suspect_after": 2,
+    "improved": false
+  },
+  {
+    "before": "âš ï¸ Confirmar marcar urgÃªncia na OF #",
+    "after": "âš ï¸ Confirmar marcar urgÃªncia na OF #",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "âš ï¸ Confirmar aÃ§Ã£o na OF #",
+    "after": "âš ï¸ Confirmar aÃ§Ã£o na OF #",
+    "suspect_before": 2,
+    "suspect_after": 2,
+    "improved": false
+  },
+  {
+    "before": "âš ï¸ Confirmar ajuste do estoque mÃ­nimo da chapa \"",
+    "after": "âš ï¸ Confirmar ajuste do estoque mÃ­nimo da chapa \"",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "âš ï¸ Confirmar aÃ§Ã£o?",
+    "after": "âš ï¸ Confirmar aÃ§Ã£o?",
+    "suspect_before": 2,
+    "suspect_after": 2,
+    "improved": false
+  },
+  {
+    "before": "âš ï¸ Confirmar aÃ§Ã£o?",
+    "after": "âš ï¸ Confirmar aÃ§Ã£o?",
+    "suspect_before": 2,
+    "suspect_after": 2,
+    "improved": false
+  },
+  {
+    "before": "âŒ Cancelar",
+    "after": "âŒ Cancelar",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": ", sou o JARVIS â€” IA integrada ao ERP Italy Embalagens. Veja tudo que posso fazer:\\r\\n\\r\\nðŸ“‹ ORDENS DE FABRICAÃ‡ÃƒO\\r\\n- \"imagem da OF 498\" â†’ imagem + dados completos + aÃ§Ãµe",
+    "after": ", sou o JARVIS â€” IA integrada ao ERP Italy Embalagens. Veja tudo que posso fazer:\\r\\n\\r\\nðŸ“‹ ORDENS DE FABRICAÃ‡ÃƒO\\r\\n- \"imagem da OF 498\" â†’ imagem + dados completos + aÃ§Ãµe",
+    "suspect_before": 56,
+    "suspect_after": 56,
+    "improved": false
+  },
+  {
+    "before": "ðŸ¢ ",
+    "after": "ðŸ¢ ",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "ðŸ¢ ",
+    "after": "ðŸ¢ ",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": " âš ï¸ ABAIXO DO MÃNIMO",
+    "after": " âš ï¸ ABAIXO DO MÃNIMO",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "âŒ Cancelar",
+    "after": "âŒ Cancelar",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "âŒ Cancelar",
+    "after": "âŒ Cancelar",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  },
+  {
+    "before": "</title>\\r\\n    <style>\\r\\n      body{font-family:Arial,sans-serif;font-size:12px;color:#222;margin:20px}\\r\\n      h1{font-size:18px;color:#1a1a2e;margin-bottom:4px}\\r\\n      h2{fo",
+    "after": "</title>\\r\\n    <style>\\r\\n      body{font-family:Arial,sans-serif;font-size:12px;color:#222;margin:20px}\\r\\n      h1{font-size:18px;color:#1a1a2e;margin-bottom:4px}\\r\\n      h2{fo",
+    "suspect_before": 3,
+    "suspect_after": 3,
+    "improved": false
+  },
+  {
+    "before": "âš ï¸ Risco ALTO de atraso â€” OF #",
+    "after": "âš ï¸ Risco ALTO de atraso â€” OF #",
+    "suspect_before": 1,
+    "suspect_after": 1,
+    "improved": false
+  }
+]

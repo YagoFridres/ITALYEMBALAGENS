@@ -1,0 +1,314 @@
+diff --git a/patch.js b/patch.js
+--- a/patch.js
++++ b/patch.js
+@@
+ (function patchOfmaqAndHubIntelligence() {
+   try {
+     try { console.log('[OFMAQ-HOOK] patchOfmaq chamado'); } catch (_) {}
++    if (window.__ofmaqDesiredPipeline === 'final') {
++      try {
++        if (window.__ofmaqRenderObserver && typeof window.__ofmaqRenderObserver.disconnect === 'function') {
++          window.__ofmaqRenderObserver.disconnect();
++        }
++      } catch (_) {}
++      try { if (window.__ofmaqRenderPoll) clearInterval(window.__ofmaqRenderPoll); } catch (_) {}
++      try { if (window.__ofmaqAfterRenderDelayTimer) clearTimeout(window.__ofmaqAfterRenderDelayTimer); } catch (_) {}
++      try { console.log('[OFMAQ-HOOK] legado híbrido desativado; pipeline final é o único ativo'); } catch (_) {}
++      return;
++    }
+   var originalSortByPriority = (typeof window.ordenarOFsPorPrioridade === 'function')
+     ? window.ordenarOFsPorPrioridade
+     : null;
+@@
+         + '#page-ofmaq .ofmaq-final-row[data-urgencia="urgente"] td{background-image:linear-gradient(90deg,rgba(127,29,29,.16),transparent)}'
+         + '#page-ofmaq .ofmaq-final-row[data-urgencia="atrasada"] td{background-image:linear-gradient(90deg,rgba(120,53,15,.16),transparent)}'
+         + '#page-ofmaq .ofmaq-final-seq{width:64px;max-width:64px;text-align:center}'
++        + '#page-ofmaq .ofmaq-final-seq-badge{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;padding:0 10px;border-radius:12px;background:rgba(37,99,235,.18);border:1px solid rgba(96,165,250,.34);color:#dbeafe;font-size:15px;font-weight:900}'
+         + '#page-ofmaq .ofmaq-final-thumb,#page-ofmaq .ofmaq-final-thumb-fallback{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:10px;background:#1e293b;overflow:hidden;border:1px solid rgba(148,163,184,.18)}'
+         + '#page-ofmaq .ofmaq-final-thumb img{width:42px;height:42px;object-fit:cover;display:block}'
+         + '#page-ofmaq .ofmaq-final-cell strong{display:block;font-size:14px;color:#f8fafc}'
+         + '#page-ofmaq .ofmaq-final-cell span{display:block;margin-top:3px;font-size:11px;color:#94a3b8}'
+         + '#page-ofmaq .ofmaq-final-color-wrap{display:flex;flex-wrap:wrap;gap:4px}'
+         + '#page-ofmaq .ofmaq-final-color-pill{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;font-size:11px;font-weight:800}'
+         + '#page-ofmaq .ofmaq-final-time{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;border:1px solid rgba(71,85,105,.5);background:rgba(15,23,42,.58);font-size:12px;font-weight:900}'
+         + '#page-ofmaq .ofmaq-final-empty{padding:26px 20px;color:#94a3b8;text-align:center}'
+         + '#page-ofmaq .ofmaq-final-actions{display:flex;justify-content:flex-end}'
+         + '#page-ofmaq .ofmaq-final-actions button{min-height:34px}'
+-        + '#page-ofmaq .ofmaq-final-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998}'
+-        + '#page-ofmaq .ofmaq-final-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#1e293b;border-radius:14px;padding:24px;min-width:320px;max-width:min(92vw,720px);color:#f8fafc;box-shadow:0 24px 70px rgba(0,0,0,.35)}'
+-        + '#page-ofmaq .ofmaq-final-modal .body{display:grid;gap:10px;margin-top:14px}'
+-        + '#page-ofmaq .ofmaq-final-modal .close-btn{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:999px}'
++        + '.ofmaq-final-modal .body button.ofmaq-final-action-primary{background:#1d4ed8;border-color:#60a5fa;color:#eff6ff}'
++        + '.ofmaq-final-modal .body .ofmaq-final-move-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
++        + '.ofmaq-final-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998}'
++        + '.ofmaq-final-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#1e293b;border-radius:14px;padding:24px;min-width:320px;max-width:min(92vw,720px);color:#f8fafc;box-shadow:0 24px 70px rgba(0,0,0,.35)}'
++        + '.ofmaq-final-modal .body{display:grid;gap:10px;margin-top:14px}'
++        + '.ofmaq-final-modal .close-btn{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:999px}'
+         + '@media (max-width:1200px){#page-ofmaq .ofmaq-final-controls{grid-template-columns:1fr;}}';
+       document.head.appendChild(st);
+     }
+@@
+     function hideLegacyViews() {
+       var page = getPage();
++      var container = getContainer();
+       if (!page) return;
+       Array.prototype.slice.call(page.querySelectorAll(
+-        '.kb-board,.kb-board-ofmaq,.patch-ofmaq-table-wrap,#patch-ofmaq-titlebar,.patch-ofmaq-v2-list,[id^="patch-ofmaq-v2"],#ofmaq-toolbar-zero,#ofmaq-wrap-zero,.ptoolbar,.excel-export-bar,.ofmaq-toprow,#ofmaq-dias-bar,#ofsmaq-select-maquina,#ofmaq-busca,#ofmaq-data,#ofmaq-status,#ofmaq-prioridade,#btn-ordenar-prioridade,#btn-agrupar-setup,#ofmaq-btn-todas-ofs,#ofmaq-btn-relatorio,#ofmaq-btn-atualizar'
++        '.kb-board,.kb-board-ofmaq,.patch-ofmaq-summary-grid,.patch-ofmaq-table-wrap,#patch-ofmaq-titlebar,.patch-ofmaq-v2-list,[id^="patch-ofmaq-v2"],#ofmaq-toolbar-zero,#ofmaq-wrap-zero,.ptoolbar,.excel-export-bar,.ofmaq-toprow,#ofmaq-dias-bar,#ofsmaq-select-maquina,#ofmaq-busca,#ofmaq-data,#ofmaq-status,#ofmaq-prioridade,#btn-ordenar-prioridade,#btn-agrupar-setup,#ofmaq-btn-todas-ofs,#ofmaq-btn-relatorio,#ofmaq-btn-atualizar'
+       )).forEach(function(el) {
+         if (!el) return;
+         el.style.display = 'none';
+         try { el.setAttribute('aria-hidden', 'true'); } catch (_) {}
+       });
++      if (container && container.children && container.children.length) {
++        Array.prototype.slice.call(container.children).forEach(function(el) {
++          if (!el || el.id === 'ofmaq-final-root') return;
++          el.style.display = 'none';
++          try { el.setAttribute('aria-hidden', 'true'); } catch (_) {}
++        });
++      }
++    }
++
++    function purgeLegacyViews() {
++      var page = getPage();
++      var container = getContainer();
++      if (!page) return;
++      Array.prototype.slice.call(page.querySelectorAll(
++        '.patch-ofmaq-summary-grid,.patch-ofmaq-table-wrap,#patch-ofmaq-titlebar,.patch-ofmaq-v2-list,[id^="patch-ofmaq-v2"],#ofmaq-toolbar-zero,#ofmaq-wrap-zero'
++      )).forEach(function(el) {
++        if (!el || el.id === 'ofmaq-final-root') return;
++        try { el.remove(); } catch (_) {
++          el.style.display = 'none';
++          try { el.setAttribute('aria-hidden', 'true'); } catch (__ ) {}
++        }
++      });
++      if (container && container.children && container.children.length) {
++        Array.prototype.slice.call(container.children).forEach(function(el) {
++          if (!el || el.id === 'ofmaq-final-root') return;
++          try { el.remove(); } catch (_) {
++            el.style.display = 'none';
++            try { el.setAttribute('aria-hidden', 'true'); } catch (__ ) {}
++          }
++        });
++      }
+     }
+@@
+     function rowHtml(item) {
+       var img = item.imagemUrl
+         ? ('<button type="button" class="ofmaq-final-thumb" data-ofmaq-final-image="' + escAttr(item.id) + '"><img src="' + escAttr(item.imagemUrl) + '" alt="Imagem da OF"></button>')
+         : '<span class="ofmaq-final-thumb-fallback">📦</span>';
+       return ''
+         + '<tr class="ofmaq-final-row" data-of-id="' + escAttr(item.id) + '" data-urgencia="' + escAttr(item.urgencia) + '">'
+-        + '<td><input class="ofmaq-final-seq" type="number" min="1" step="1" value="' + escAttr(String(item.order || 1)) + '" data-ofmaq-final-seq="' + escAttr(item.id) + '"></td>'
++        + '<td class="ofmaq-final-seq"><span class="ofmaq-final-seq-badge">' + escH(String(item.displaySeq || item.order || 1)) + '</span></td>'
+         + '<td>' + img + '</td>'
+         + '<td class="ofmaq-final-cell"><strong>' + escH(item.numero) + '</strong><span>' + escH(item.prazoIso ? fmtDateBR(item.prazoIso) : 'Sem data') + '</span></td>'
+         + '<td class="ofmaq-final-cell"><strong>' + escH(item.cliente) + '</strong><span>' + escH(item.urgencia === 'urgente' ? 'Urgente' : (item.urgencia === 'atrasada' ? 'Atrasada' : 'Normal')) + '</span></td>'
+-        + '<td class="ofmaq-final-cell"><strong>' + escH(item.produto) + '</strong><span>' + escH(item.tamanho) + '</span></td>'
++        + '<td class="ofmaq-final-cell"><strong>' + escH(item.produto) + '</strong></td>'
+         + '<td>' + escH(fmtInt(item.quantidade)) + '</td>'
+         + '<td>' + escH(item.tamanho) + '</td>'
+         + '<td><div class="ofmaq-final-color-wrap">' + colorHtml(item.cores) + '</div></td>'
+@@
+     function renderRows(shell) {
+       if (!shell || !shell.tbody) return;
+       hideLegacyViews();
++      purgeLegacyViews();
+       var rows = sortedVisibleRows(currentVisibleRows());
+       shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="11" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
+       try { console.log('[OFMAQ-FINAL] maquina=', state.selectedMachine || '—', 'dia=', state.selectedDateIso || '—', 'rows=', rows.length, 'totalCanonico=', state.rowsData.length); } catch (_) {}
+@@
+     function rowById(id) {
+       return state.rowsData.filter(function(item) { return item.id === id; })[0] || null;
+     }
++
++    function nextOrderForMachineDay(machine, dateIso, excludeId) {
++      var targetMachine = normalizeMachine(machine);
++      var targetDate = String(dateIso || '').slice(0, 10);
++      var maxOrder = 0;
++      state.rowsData.forEach(function(item) {
++        if (!item || String(item.id || '') === String(excludeId || '')) return;
++        if (normalizeMachine(item.maquina) !== targetMachine) return;
++        if (String(item.prazoIso || '') !== targetDate) return;
++        maxOrder = Math.max(maxOrder, Number(item.order || 0) || 0);
++      });
++      return maxOrder + 1;
++    }
+ 
+     async function updateSeq(id, value) {
+       if (window.__OFMAQ_FINAL_MOCK) {
+         var local = rowById(id);
+@@
+       var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { ordem_maquina: value } });
+       if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao salvar sequência');
+     }
++
++    async function persistGroupOrder(rows) {
++      var ordered = Array.isArray(rows) ? rows.slice() : [];
++      ordered.forEach(function(item, idx) {
++        if (!item) return;
++        item.order = idx + 1;
++        item.displaySeq = idx + 1;
++      });
++      if (window.__OFMAQ_FINAL_MOCK) return;
++      for (var i = 0; i < ordered.length; i += 1) {
++        await updateSeq(ordered[i].id, i + 1);
++      }
++    }
++
++    async function reorderWithinDay(id, direction) {
++      var row = rowById(id);
++      if (!row) return;
++      var ordered = rowsForMachineDay(row.maquina, row.prazoIso);
++      var idx = ordered.findIndex(function(item) { return item && item.id === id; });
++      var target = idx + Number(direction || 0);
++      if (idx < 0 || target < 0 || target >= ordered.length) return;
++      var tmp = ordered[idx];
++      ordered[idx] = ordered[target];
++      ordered[target] = tmp;
++      await persistGroupOrder(ordered);
++      renderRows(ensureShell());
++    }
+ 
+     async function moveRow(id, machine) {
+       if (window.__OFMAQ_FINAL_MOCK) {
+         var local = rowById(id);
+-        if (local) local.maquina = machine;
++        if (local) {
++          local.maquina = machine;
++          local.order = nextOrderForMachineDay(machine, local.prazoIso, local.id);
++        }
+         return;
+       }
+       var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { maq: [machine], maquina: machine, maquina_agendada: machine } });
+@@
+     async function updateDate(id, value) {
+       if (window.__OFMAQ_FINAL_MOCK) {
+         var local = rowById(id);
+-        if (local) local.prazoIso = value;
++        if (local) {
++          local.prazoIso = value;
++          local.order = nextOrderForMachineDay(local.maquina, value, local.id);
++        }
+         return;
+       }
+       var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { data_entrega: value, ent: value } });
+@@
+         try {
+           await moveRow(id, machine);
+           if (row) row.maquina = machine;
++          if (row) row.order = nextOrderForMachineDay(machine, row.prazoIso, row.id);
++          applyDisplaySeqToState();
+           state.machineCatalog = machineCatalogFromRows(state.rowsData);
+           updateToolbar(ensureShell());
+           renderRows(ensureShell());
+@@
+         try {
+           await updateDate(id, value);
+           if (row) row.prazoIso = value;
++          if (row) row.order = nextOrderForMachineDay(row.maquina, value, row.id);
++          applyDisplaySeqToState();
+           updateToolbar(ensureShell());
+           renderRows(ensureShell());
+           closeModal('ofmaq-final-date');
+@@
+     function openActionsModal(id) {
+       var row = rowById(id);
+       if (!row) return;
+-      var modal = openModal('ofmaq-final-actions', 'Ações da OF #' + String(row.numero || row.id), '<button type="button" id="ofmaq-final-pass">✓ Passou pela máquina</button><button type="button" id="ofmaq-final-move">↔ Mover de máquina</button><button type="button" id="ofmaq-final-date">📅 Alterar data</button>');
++      var modal = openModal('ofmaq-final-actions', 'Ações da OF #' + String(row.numero || row.id), ''
++        + '<button type="button" id="ofmaq-final-pass" class="ofmaq-final-action-primary">✓ Passou pela máquina</button>'
++        + '<button type="button" id="ofmaq-final-move">↔ Mover de máquina</button>'
++        + '<button type="button" id="ofmaq-final-date">📅 Alterar data</button>'
++        + '<div class="ofmaq-final-move-grid">'
++        + '  <button type="button" id="ofmaq-final-up">↑ Mover para cima</button>'
++        + '  <button type="button" id="ofmaq-final-down">↓ Mover para baixo</button>'
++        + '</div>');
+       var passBtn = modal.querySelector('#ofmaq-final-pass');
+       var moveBtn = modal.querySelector('#ofmaq-final-move');
+       var dateBtn = modal.querySelector('#ofmaq-final-date');
++      var upBtn = modal.querySelector('#ofmaq-final-up');
++      var downBtn = modal.querySelector('#ofmaq-final-down');
+       if (passBtn) passBtn.onclick = async function() {
+         try {
+           await markPassed(id, row.maquina);
+@@
+         };
+       if (moveBtn) moveBtn.onclick = function() { closeModal('ofmaq-final-actions'); openMoveModal(id); };
+       if (dateBtn) dateBtn.onclick = function() { closeModal('ofmaq-final-actions'); openDateModal(id); };
++      if (upBtn) upBtn.onclick = async function() {
++        try {
++          await reorderWithinDay(id, -1);
++          closeModal('ofmaq-final-actions');
++        } catch (err) {
++          try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
++        }
++      };
++      if (downBtn) downBtn.onclick = async function() {
++        try {
++          await reorderWithinDay(id, 1);
++          closeModal('ofmaq-final-actions');
++        } catch (err) {
++          try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
++        }
++      };
+     }
+@@
+     window.renderOfmaqFinal = renderOfmaqFinal;
++    (function bridgeLegacyOfmaqEntrypoints() {
++      [
++        'renderOFsPorMaquina',
++        'renderMaquinas',
++        'renderOfmaq',
++        'renderOFsMaquina',
++        'renderMaq',
++        'carregarOFsMaquina',
++        'loadOFsMaquina',
++        'renderKanbanOfmaq'
++      ].forEach(function(name) {
++        var current = typeof window[name] === 'function' ? window[name] : null;
++        if (current && current.__ofmaqFinalBridge) return;
++        var original = current;
++        var bridged = function() {
++          if (String(window._PAGE_ATUAL || '') === 'ofmaq' && typeof window.renderOfmaqFinal === 'function') {
++            return window.renderOfmaqFinal({ forceReload: true, reason: 'legacy-entrypoint:' + name });
++          }
++          return typeof original === 'function' ? original.apply(this, arguments) : undefined;
++        };
++        bridged.__ofmaqFinalBridge = true;
++        bridged.__patchWrapOriginal = (original && (original.__patchWrapOriginal || original)) || null;
++        bridged._patchedAccordion = !!(original && original._patchedAccordion);
++        bridged._patchedSwipeMaq = !!(original && original._patchedSwipeMaq);
++        bridged._patchedPriorityHub = true;
++        window[name] = bridged;
++      });
++    })();
+     window.__ofmaqFinalSetMockData = function(rows) {
+       window.__OFMAQ_FINAL_MOCK = Array.isArray(rows) ? rows.slice() : [];
+       return renderOfmaqFinal({ forceReload: true, reason: 'mock-data' });
+@@
+       if (typeof window[nome] === 'function' && !window[nome]._patchedAccordion) {
+         var orig = window[nome];
+         var wrapped = function() {
+           var res = orig.apply(this, arguments);
+-        setTimeout(aplicarAccordion, 300);
+-        setTimeout(aplicarAccordion, 700);
++        if (!(window.__ofmaqDesiredPipeline === 'final' && String(window._PAGE_ATUAL || '') === 'ofmaq')) {
++          setTimeout(aplicarAccordion, 300);
++          setTimeout(aplicarAccordion, 700);
++        }
+           return res;
+         };
+         wrapped._patchedAccordion = true;
+@@
+ 
+             sel.value = next;
+             try{ sel.dispatchEvent(new Event('change', { bubbles:true })); }catch(_){
+-            try{ if(typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); }catch(__){}
++            try{
++              if (window.__ofmaqDesiredPipeline === 'final' && typeof window.renderOfmaqFinal === 'function') window.renderOfmaqFinal({ forceReload:true, reason:'swipe-machine-change' });
++              else if(typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina();
++            }catch(__){}
+             }
+ 
+             var indicator = document.createElement('div');

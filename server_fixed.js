@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -305,32 +305,11 @@ if (!_supabaseEnvOk) {
 (async () => {
   try {
     if (!supabase) return;
-    const { data: baseRows, error: baseErr } = await supabase
+    const { data: rows, error } = await supabase
       .from('maquinas')
-      .select('id,nome,col,ordem,ativa,puxada_min,puxada_max')
-      .limit(1000);
-    if (baseErr) return;
-    const norm = (v) => String(v || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
-    const rowsAll = Array.isArray(baseRows) ? baseRows : [];
-    const known = new Set();
-    rowsAll.forEach((row) => {
-      const n1 = norm(row?.nome);
-      const n2 = norm(row?.col);
-      if (n1) known.add(n1);
-      if (n2) known.add(n2);
-    });
-    const missing = MAQUINAS_CATALOGO_PADRAO.filter((item) => !known.has(norm(item.nome)));
-    if (missing.length) {
-      const payload = missing.map((item) => ({ nome: item.nome, ordem: item.ordem, ativa: true }));
-      const ins = await supabase.from('maquinas').insert(payload).select('id,nome');
-      if (!ins?.error) {
-        try { cacheClear('maquinas'); } catch (_) {}
-        console.log('[MAQUINAS] catálogo canônico complementado:', payload.map((item) => item.nome).join(', '));
-      }
-    }
-
-    const rows = rowsAll.filter((row) => String(row?.nome || '').trim().toUpperCase() === 'CORTE VINCO ROTATIVA');
-    const error = null;
+      .select('id,nome,puxada_min,puxada_max')
+      .eq('nome', 'CORTE VINCO ROTATIVA')
+      .limit(1);
     if (error) return;
     const m = Array.isArray(rows) ? rows[0] : null;
     if (!m) return;
@@ -347,46 +326,6 @@ if (!_supabaseEnvOk) {
     console.error('[MAQUINAS] erro ao corrigir CORTE VINCO ROTATIVA:', String(e?.message || e));
   }
 })();
-
-function _mergeCanonicalMachineRows(rows) {
-  const norm = (v) => {
-    try {
-      return String(v || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
-    } catch (_) {
-      return String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
-    }
-  };
-  const list = Array.isArray(rows) ? rows.slice() : [];
-  const byName = new Map();
-  list.forEach((item) => {
-    const keyNome = norm(item?.nome);
-    const keyCol = norm(item?.col);
-    if (keyNome && !byName.has(keyNome)) byName.set(keyNome, item);
-    if (keyCol && !byName.has(keyCol)) byName.set(keyCol, item);
-  });
-  MAQUINAS_CATALOGO_PADRAO.forEach((item) => {
-    const key = norm(item.nome);
-    if (byName.has(key)) return;
-    list.push({
-      id: 'virtual-maquina-' + key.replace(/\s+/g, '-'),
-      nome: item.nome,
-      col: item.nome,
-      ordem: item.ordem,
-      ativa: true,
-      _virtual: true,
-    });
-  });
-  const ordMap = new Map(MAQUINAS_CATALOGO_PADRAO.map((item) => [norm(item.nome), Number(item.ordem) || 999]));
-  list.sort((a, b) => {
-    const na = String(a?.nome || a?.col || '').trim();
-    const nb = String(b?.nome || b?.col || '').trim();
-    const oa = ordMap.has(norm(na)) ? ordMap.get(norm(na)) : (Number(a?.ordem) || 999);
-    const ob = ordMap.has(norm(nb)) ? ordMap.get(norm(nb)) : (Number(b?.ordem) || 999);
-    if (oa !== ob) return oa - ob;
-    return na.localeCompare(nb, 'pt-BR');
-  });
-  return list;
-}
 
 const OPENAI_API_KEY = String(process.env.OPENAI_API_KEY || '').trim();
 if (OPENAI_API_KEY) {
@@ -1162,9 +1101,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260727202000';
-const SW_RUNTIME_VERSION = '20260727202000';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260727202000';
+const PATCH_RUNTIME_VERSION = '20260716145454';
+const SW_RUNTIME_VERSION = '20260716145454';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260716145454';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -2129,63 +2068,8 @@ app.get('/api/usuarios/lista', authMiddleware, async (req, res) => {
   }
 });
 
-function _comissoesTextoValido(value) {
-  const txt = String(value || '').trim();
-  if (!txt || txt === '—') return '';
-  if (/^cliente nao identificado$/i.test(txt.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))) return '';
-  if (/^sem vendedor$/i.test(txt.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))) return '';
-  return txt;
-}
-
 async function _comissoesEnriquecerLista(baseRows) {
   let todasOFs = Array.isArray(baseRows) ? baseRows.slice() : [];
-  const viewFallbackByKey = new Map();
-  const valorTopoPorId = new Map();
-  const bindViewFallback = (row) => {
-    const cliente = _comissoesTextoValido(row?.cliente_nome) || _comissoesTextoValido(row?.clinome) || _comissoesTextoValido(row?.cliNome) || _comissoesTextoValido(row?.cliente);
-    const vendedor = _comissoesTextoValido(row?.vendedor_nome) || _comissoesTextoValido(row?.vendedor) || _comissoesTextoValido(row?.vendNome);
-    if (!(cliente || vendedor)) return;
-    const keys = [
-      String(row?.id || '').trim(),
-      'numero:' + String(row?.numero || row?.of || '').trim(),
-      'of:' + String(row?.of || row?.numero || '').trim()
-    ].filter(Boolean);
-    keys.forEach((key) => {
-      viewFallbackByKey.set(key, { cliente, vendedor });
-    });
-  };
-  const applyViewFallback = (lista) => {
-    (Array.isArray(lista) ? lista : []).forEach((of) => {
-      const fallback = viewFallbackByKey.get(String(of?.id || '').trim())
-        || viewFallbackByKey.get('numero:' + String(of?.numero || of?.of || '').trim())
-        || viewFallbackByKey.get('of:' + String(of?.of || of?.numero || '').trim());
-      if (!fallback) return;
-      if (fallback.cliente) {
-        of.__cliente_nome_view = fallback.cliente;
-        if (!_comissoesTextoValido(of.clinome)) of.clinome = fallback.cliente;
-        if (!_comissoesTextoValido(of.cliente_nome)) of.cliente_nome = fallback.cliente;
-        if (!_comissoesTextoValido(of.cliNome)) of.cliNome = fallback.cliente;
-        if (!_comissoesTextoValido(of.cliente)) of.cliente = fallback.cliente;
-      }
-      if (fallback.vendedor) {
-        of.__vendedor_nome_view = fallback.vendedor;
-        if (!_comissoesTextoValido(of.vendedor)) of.vendedor = fallback.vendedor;
-        if (!_comissoesTextoValido(of.vendedor_nome)) of.vendedor_nome = fallback.vendedor;
-        if (!_comissoesTextoValido(of.vendNome)) of.vendNome = fallback.vendedor;
-      }
-    });
-  };
-  const applyValoresTopo = (lista) => {
-    (Array.isArray(lista) ? lista : []).forEach((of) => {
-      const row = valorTopoPorId.get(String(of?.id || '').trim());
-      if (!row) return;
-      if (row.valor_total != null) of.valor_total = row.valor_total;
-      if (row.valor_venda != null) of.valor_venda = row.valor_venda;
-      if (row.preco != null) of.preco = row.preco;
-      if (row.total != null) of.total = row.total;
-    });
-  };
-  (Array.isArray(baseRows) ? baseRows : []).forEach(bindViewFallback);
   try {
     const missingQtdIds = todasOFs
       .filter((of) => of && of.id && (of.quantidade == null && of.qtd == null && of.qtd_pedida == null))
@@ -2219,6 +2103,7 @@ async function _comissoesEnriquecerLista(baseRows) {
       .map((of) => String(of && of.id || '').trim())
       .filter(Boolean);
     if (idsValor.length) {
+      const mapaValor = {};
       const chunkSizeValor = 100;
       for (let i = 0; i < idsValor.length; i += chunkSizeValor) {
         const chunk = idsValor.slice(i, i + chunkSizeValor);
@@ -2228,17 +2113,22 @@ async function _comissoesEnriquecerLista(baseRows) {
           .in('id', chunk);
         if (errValor) continue;
         (ofsValor || []).forEach((row) => {
-            valorTopoPorId.set(String(row.id), row);
+          mapaValor[String(row.id)] = row;
         });
       }
-        applyValoresTopo(todasOFs);
+      todasOFs.forEach((of) => {
+        const row = mapaValor[String(of && of.id || '')];
+        if (!row) return;
+        if (row.valor_total != null) of.valor_total = row.valor_total;
+        if (row.valor_venda != null) of.valor_venda = row.valor_venda;
+        if (row.preco != null) of.preco = row.preco;
+        if (row.total != null && of.total == null) of.total = row.total;
+      });
     }
   } catch (_) {}
   try {
     todasOFs = await _enriquecerRespostaOFs(todasOFs);
   } catch (_) {}
-  applyValoresTopo(todasOFs);
-  applyViewFallback(todasOFs);
   return todasOFs;
 }
 
@@ -2268,25 +2158,14 @@ function _comissoesMontarPayload(todasOFs, extra = {}) {
     const comissao_pct = Number(of.comissao_pct || 1);
     const comissao_rs = (of.comissao_rs != null) ? Number(of.comissao_rs || 0) : (valor_total * (comissao_pct / 100));
     const preco = Number(of.preco ?? of.valor_unitario ?? 0) || 0;
-    const clienteNome = _comissoesTextoValido(of.clinome)
-      || _comissoesTextoValido(of.cliente_nome)
-      || _comissoesTextoValido(of.cliNome)
-      || _comissoesTextoValido(of.cliente)
-      || _comissoesTextoValido(of.__cliente_nome_view)
-      || '—';
-    const vendedorNome = _comissoesTextoValido(of.vendedor)
-      || _comissoesTextoValido(of.vendedor_nome)
-      || _comissoesTextoValido(of.vendNome)
-      || _comissoesTextoValido(of.__vendedor_nome_view)
-      || 'Sem Vendedor';
     return {
       id: of.id,
       numero: of.numero || of.of,
       of: of.of || of.numero || null,
       cli_id: of.cli_id || of.cliId || of.cliente_id || of.clienteId || null,
       vendedor_id: of.vendedor_id || of.vendId || of.vend_id || of.vendid || null,
-      cliente: clienteNome,
-      vendedor: vendedorNome,
+      cliente: of.clinome || of.cliente_nome || of.cliNome || of.cliente || '—',
+      vendedor: of.vendedor || of.vendedor_nome || of.vendNome || 'Sem Vendedor',
       quantidade: of.quantidade ?? of.qtd ?? of.qtd_pedida ?? null,
       valor_total,
       total: valor_total,
@@ -2364,85 +2243,6 @@ function _relatoriosResolveDateRange(query, opts = {}) {
   return null;
 }
 
-function _comissoesFrontendDateRef(of) {
-  return String(
-    of?.data_faturamento ||
-    (typeof of?.data_conclusao === 'string' ? of.data_conclusao.slice(0, 10) : of?.data_conclusao) ||
-    of?.dia ||
-    of?.data_pedido ||
-    of?.dataPedido ||
-    of?.created_at ||
-    of?.createdAt ||
-    ''
-  ).slice(0, 10);
-}
-
-function _comissoesFrontendValorRef(of) {
-  if (of?.valor_total !== undefined && of?.valor_total !== null && of?.valor_total !== '') {
-    return { valor: Number(of.valor_total) || 0, campo: 'valor_total' };
-  }
-  if (of?.valor_venda !== undefined && of?.valor_venda !== null && of?.valor_venda !== '') {
-    return { valor: Number(of.valor_venda) || 0, campo: 'valor_venda' };
-  }
-  return { valor: 0, campo: 'zero' };
-}
-
-async function _comissoesListarTotalVendidoFrontend(range, empresaId) {
-  const rows = [];
-  const PAGE = 1000;
-  for (let offset = 0; offset < 50000; offset += PAGE) {
-    let query = supabase
-      .from('ofs')
-      .select('id,of,numero,status,deleted_at,empresa_id,emp_id,data_faturamento,data_conclusao,dia,data_pedido,created_at,valor_total,valor_venda,total')
-      .range(offset, offset + PAGE - 1);
-    if (empresaId) {
-      query = query.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId}`);
-    }
-    const { data, error } = await query;
-    if (error) throw error;
-    if (!(Array.isArray(data) && data.length)) break;
-    rows.push(...data);
-    if (data.length < PAGE) break;
-  }
-
-  const inicio = String(range?.inicio || '').slice(0, 10);
-  const fim = String(range?.fim || '').slice(0, 10);
-  const lista = [];
-  let total = 0;
-
-  for (const of of rows) {
-    const st = String(of?.status || '').toLowerCase().trim();
-    if (st.startsWith('cancel')) continue;
-    if (!(st === 'concluído' || st === 'concluido' || st === 'concluida' || st === 'concluída')) continue;
-    if (of?.deleted_at) continue;
-    const dataRef = _comissoesFrontendDateRef(of);
-    if (!dataRef) continue;
-    if (inicio && dataRef < inicio) continue;
-    if (fim && dataRef > fim) continue;
-    const valorInfo = _comissoesFrontendValorRef(of);
-    const valorUsado = Number(valorInfo?.valor || 0) || 0;
-    total += valorUsado;
-    lista.push({
-      id: of?.id || null,
-      numero: of?.numero || of?.of || null,
-      of: of?.of || of?.numero || null,
-      status: of?.status || null,
-      data_usada: dataRef,
-      valor_usado: valorUsado,
-      campo_valor_usado: valorInfo?.campo || 'zero',
-      valor_total: of?.valor_total ?? null,
-      valor_venda: of?.valor_venda ?? null,
-      total: of?.total ?? null,
-    });
-  }
-
-  return {
-    total_ofs: lista.length,
-    total_vendido: total,
-    ofs: lista.sort((a, b) => String(a?.numero || '').localeCompare(String(b?.numero || ''), 'pt-BR', { numeric: true })),
-  };
-}
-
 app.get('/api/comissoes/relatorio', autenticar, async (req, res) => { 
   try { 
     const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
@@ -2476,39 +2276,6 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
     return res.json({ ok: false, error: e.message }); 
   } 
 }); 
-
-app.get('/api/comissoes/debug-total-vendido', autenticar, async (req, res) => {
-  try {
-    setNoCache(res);
-    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
-    if (!range?.inicio || !range?.fim) return res.status(400).json({ ok: false, error: 'periodo inválido' });
-    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || '').trim();
-    const payload = await _comissoesListarTotalVendidoFrontend(range, empresaId);
-    console.log('[COM-DEBUG-TOTAL-VENDIDO]', JSON.stringify({
-      inicio: range.inicio,
-      fim: range.fim,
-      empresaId: empresaId || null,
-      total_ofs: payload.total_ofs,
-      total_vendido: payload.total_vendido
-    }));
-    return res.json({
-      ok: true,
-      origem: 'frontend-comissoes',
-      criterio_valor: 'Number(of.valor_total ?? of.valor_venda ?? of.valor ?? 0) || 0',
-      criterio_data: 'data_faturamento || data_conclusao || dia || data_pedido || created_at',
-      criterio_status: 'status concluído/concluido/concluida/concluída, exclui canceladas e deleted_at',
-      data_inicio: range.inicio,
-      data_fim: range.fim,
-      empresa_id: empresaId || null,
-      total_ofs: payload.total_ofs,
-      total_vendido: payload.total_vendido,
-      ofs: payload.ofs,
-    });
-  } catch (e) {
-    console.error('[COM-DEBUG-TOTAL-VENDIDO] erro:', String(e?.message || e));
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
-  }
-});
 
 app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
   try {
@@ -3603,12 +3370,6 @@ function ofIn(p) {
     if (!out.cli_id) out.cli_id = out.cliente_id;
     delete out.cliente_id;
   }
-  if (out.cliente_id && isUuid(out.cliente_id) && !out.cli_id) {
-    out.cli_id = out.cliente_id;
-  }
-  if (out.cli_id && isUuid(out.cli_id) && !out.cliente_id) {
-    out.cliente_id = out.cli_id;
-  }
 
   const itensArr = Array.isArray(out.itens) ? out.itens : [];
   const primeiroItem = itensArr[0] && typeof itensArr[0] === 'object' ? itensArr[0] : {};
@@ -3703,35 +3464,8 @@ function sanitizeOfUpdatePayload(input) {
   return out;
 }
 
-function _canonicalizarStatusOf(value) {
-  const raw = String(value || '').trim();
-  if (!raw) return '';
-  let norm = raw.toLowerCase();
-  try { norm = norm.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
-  norm = norm.replace(/[^a-z0-9]+/g, ' ').trim();
-  if (!norm) return raw;
-  if (norm.includes('pedido') && norm.includes('pronto')) return 'Pedido Pronto';
-  if (norm.includes('conclu')) return 'Concluído';
-  if (norm.includes('cancel')) return 'Cancelada';
-  if (norm.includes('produc')) return 'Em Produção';
-  if (norm.includes('abert')) return 'Aberta';
-  if (norm.includes('despach')) return 'Despachada';
-  if (norm.includes('entreg')) return 'Entregue';
-  if (norm.includes('finaliz')) return 'Finalizada';
-  return raw;
-}
-
-function _isStatusConclusaoOf(value) {
-  const canon = _canonicalizarStatusOf(value);
-  return canon === 'Concluído' || canon === 'Pedido Pronto' || canon === 'Despachada' || canon === 'Entregue' || canon === 'Finalizada';
-}
-
 const CAMPOS_OFS_UPDATE = new Set([
-  'of', 'numero',
-  'clinome', 'cliNome', 'cliente_nome', 'cliente',
-  'cli_id', 'cliId', 'cliente_id', 'cliid',
-  'vendid', 'vendId', 'vend_id',
-  'vendedor', 'vendNome', 'vendedor_nome', 'vendedor_id',
+  'of', 'clinome', 'cli_id', 'cliid', 'vendid', 'vendedor', 'vendedor_id',
   'preco', 'total', 'qtd', 'qtd_produzida', 'qtd_perdida', 'qtd_pedida',
   'status', 'ent', 'dia', 'maq', 'obs', 'obs2', 'urgente', 'urg',
   'cores_impressao', 'empresa_id', 'emp_id', 'deleted_at',
@@ -3760,14 +3494,6 @@ function normalizeOfUpdateBody(input) {
   if (out.observacoes !== undefined && out.obs === undefined) out.obs = out.observacoes;
   if (out.cliente_id !== undefined && out.cli_id === undefined) out.cli_id = out.cliente_id;
   if (out.clienteId !== undefined && out.cli_id === undefined) out.cli_id = out.clienteId;
-  if (out.urgente !== undefined) {
-    out.urgente = _chapasBool(out.urgente);
-    out.urg = out.urgente;
-  } else if (out.urg !== undefined) {
-    out.urg = _chapasBool(out.urg);
-    out.urgente = out.urg;
-  }
-  if (out.status !== undefined) out.status = _canonicalizarStatusOf(out.status);
   return out;
 }
 
@@ -3840,63 +3566,18 @@ function ofPayloadFiltrado(body) {
 }
 
 async function _buscarClienteNomeOF(cliId) {
-  const cli = await _buscarClienteRegistroOF(cliId);
-  return _clienteNomeValido(cli?.nome || cli?.rs || cli?.razao_social || cli?.razao || cli?.cliente_nome || '');
-}
-
-function _clienteNomeValido(v) {
-  const s = String(v || '').trim();
-  if (!s) return '';
-  if (s === '_' || s === '-' || s === '—') return '';
-  if (/^c\d{2,}(?:[_\-\s]*)$/i.test(s)) return '';
-  return s;
-}
-
-async function _buscarClienteRegistroOF(cliId) {
   const id = String(cliId || '').trim();
-  if (!id || !supabase) return null;
-  const tries = [];
-  if (_isUuid(id)) tries.push({ column: 'id', value: id });
-  tries.push({ column: 'codigo', value: id });
-  if (!_isUuid(id)) tries.push({ column: 'id', value: id });
-  const seen = new Set();
-  for (const attempt of tries) {
-    const key = String(attempt.column || '') + ':' + String(attempt.value || '');
-    if (seen.has(key)) continue;
-    seen.add(key);
-    try {
-      const { data, error } = await supabase
-        .from('clientes')
-        .select('*')
-        .eq(attempt.column, attempt.value)
-        .maybeSingle();
-      if (!error && data) return data;
-    } catch (_) {}
+  if (!id) return '';
+  try {
+    const { data } = await supabase
+      .from('clientes')
+      .select('nome,rs,razao_social')
+      .eq('id', id)
+      .maybeSingle();
+    return String(data?.nome || data?.rs || data?.razao_social || '').trim();
+  } catch (_) {
+    return '';
   }
-  return null;
-}
-
-async function _resolverClienteIdentidadeOF(raw) {
-  const ref = String(raw || '').trim();
-  if (!ref) return null;
-  const cli = await _buscarClienteRegistroOF(ref);
-  if (!cli) return null;
-  const id = String(cli?.id || '').trim();
-  if (!id) return null;
-  const nome = _clienteNomeValido(
-    cli?.nome ||
-    cli?.rs ||
-    cli?.razao_social ||
-    cli?.razao ||
-    cli?.cliente_nome ||
-    ''
-  );
-  return {
-    id,
-    codigo: String(cli?.codigo || '').trim(),
-    nome,
-    vendedor_id: String(cli?.vendedor_id || cli?.vendId || cli?.vend_id || '').trim() || null,
-  };
 }
 
 async function _buscarVendedorNomeOF(vendedorId) {
@@ -3935,36 +3616,18 @@ async function _preencherCamposCriticosOF(input, opts = {}) {
     return Number.isFinite(n) ? n : 0;
   };
 
-  let cliId = String(out.cli_id ?? out.cliId ?? out.cliente_id ?? out.cliid ?? '').trim();
-  const cliResolved = cliId ? await _resolverClienteIdentidadeOF(cliId) : null;
-  if (cliResolved?.id) {
-    cliId = String(cliResolved.id || '').trim();
-    out.cli_id = cliId;
-    out.cliId = cliId;
-    out.cliente_id = cliId;
-    if (out.cliid === undefined || out.cliid === '') out.cliid = cliId;
-  }
-  let clinome = _clienteNomeValido(
-    cliResolved?.nome ?? out.clinome ?? out.cliNome ?? out.cliente_nome ?? out.cliente ?? ''
-  );
+  const cliId = String(out.cli_id ?? out.cliId ?? out.cliente_id ?? out.cliid ?? '').trim();
+  let clinome = String(out.clinome ?? out.cliNome ?? out.cliente_nome ?? out.cliente ?? '').trim();
   if (!clinome && cliId) clinome = await _buscarClienteNomeOF(cliId);
   if (clinome) {
     out.clinome = clinome;
-    out.cliNome = clinome;
-    out.cliente_nome = clinome;
-    out.cliente = clinome;
+    if (out.cliNome === undefined || out.cliNome === '') out.cliNome = clinome;
+    if (out.cliente_nome === undefined || out.cliente_nome === '') out.cliente_nome = clinome;
   }
   if (onlyClinome) return out;
 
-  let vendedorId = String(out.vendedor_id ?? out.vendId ?? out.vend_id ?? '').trim();
-  if (!vendedorId && cliResolved?.vendedor_id) vendedorId = String(cliResolved.vendedor_id || '').trim();
-  if (vendedorId) {
-    out.vendedor_id = vendedorId;
-    out.vendId = vendedorId;
-    out.vend_id = vendedorId;
-  }
+  const vendedorId = String(out.vendedor_id ?? out.vendId ?? out.vend_id ?? '').trim();
   let vendedor = String(out.vendedor ?? out.vendNome ?? out.vendedor_nome ?? '').trim();
-  if (vendedor && _isUuid(vendedor)) vendedor = '';
   if (!vendedor && vendedorId) vendedor = await _buscarVendedorNomeOF(vendedorId);
   let vendid = String(out.vendid ?? '').trim();
   if (!vendid) vendid = String(out.vendId ?? out.vend_id ?? out.vendedor_id ?? '').trim();
@@ -3972,8 +3635,8 @@ async function _preencherCamposCriticosOF(input, opts = {}) {
   if (!vendedor && vendid) vendedor = vendid;
   if (vendedor) {
     out.vendedor = vendedor;
-    out.vendNome = vendedor;
-    out.vendedor_nome = vendedor;
+    if (out.vendNome === undefined || out.vendNome === '') out.vendNome = vendedor;
+    if (out.vendedor_nome === undefined || out.vendedor_nome === '') out.vendedor_nome = vendedor;
   }
   if (vendid) out.vendid = vendid;
 
@@ -4060,39 +3723,18 @@ async function _enriquecerRespostaOFs(listaInput) {
     return pickText(item?.cli_id, item?.cliId, item?.cliente_id, base?.cli_id, base?.cliId, base?.cliente_id);
   }).filter(Boolean)));
   const clienteMap = new Map();
-  const cliIdsUuid = cliIds.filter((id) => _isUuid(String(id || '').trim()));
-  const cliIdsCodigo = cliIds.filter((id) => !_isUuid(String(id || '').trim()));
-  for (let i = 0; i < cliIdsUuid.length; i += chunkSize) {
-    const chunk = cliIdsUuid.slice(i, i + chunkSize);
+  for (let i = 0; i < cliIds.length; i += chunkSize) {
+    const chunk = cliIds.slice(i, i + chunkSize);
     if (!chunk.length) continue;
     try {
       const { data, error } = await supabase
         .from('clientes')
-        .select('id,codigo,nome,rs,razao_social,vendedor_id')
+        .select('id,nome,rs,vendedor_id')
         .in('id', chunk);
       if (error) continue;
       (Array.isArray(data) ? data : []).forEach((cli) => {
         const cliId = String(cli?.id || '').trim();
         if (cliId) clienteMap.set(cliId, cli);
-        const codigo = String(cli?.codigo || '').trim();
-        if (codigo) clienteMap.set(codigo, cli);
-      });
-    } catch (_) {}
-  }
-  for (let i = 0; i < cliIdsCodigo.length; i += chunkSize) {
-    const chunk = cliIdsCodigo.slice(i, i + chunkSize);
-    if (!chunk.length) continue;
-    try {
-      const { data, error } = await supabase
-        .from('clientes')
-        .select('id,codigo,nome,rs,razao_social,vendedor_id')
-        .in('codigo', chunk);
-      if (error) continue;
-      (Array.isArray(data) ? data : []).forEach((cli) => {
-        const cliId = String(cli?.id || '').trim();
-        const codigo = String(cli?.codigo || '').trim();
-        if (cliId) clienteMap.set(cliId, cli);
-        if (codigo) clienteMap.set(codigo, cli);
       });
     } catch (_) {}
   }
@@ -4143,7 +3785,7 @@ async function _enriquecerRespostaOFs(listaInput) {
       vendedorNome,
       vendedorId
     );
-    const clinome = _clienteNomeValido(pickText(
+    const clinome = pickText(
       item?.clinome,
       item?.cliNome,
       item?.cliente_nome,
@@ -4153,9 +3795,8 @@ async function _enriquecerRespostaOFs(listaInput) {
       base?.cliente_nome,
       base?.cliente,
       cliente?.nome,
-      cliente?.rs,
-      cliente?.razao_social
-    ));
+      cliente?.rs
+    );
     const itens = parseItens(item?.itens ?? base?.itens);
     const qtd = Math.trunc(toNum(item?.qtd ?? item?.quantidade ?? item?.qtd_pedida ?? base?.qtd ?? base?.quantidade ?? base?.qtd_pedida ?? itens?.[0]?.qtd ?? itens?.[0]?.quantidade));
     let preco = toNum(item?.preco ?? item?.valor_unitario ?? base?.preco ?? base?.valor_unitario ?? itens?.[0]?.valor_unitario ?? itens?.[0]?.vunit ?? itens?.[0]?.preco);
@@ -4170,10 +3811,10 @@ async function _enriquecerRespostaOFs(listaInput) {
       cli_id: cliId || null,
       cliId: cliId || null,
       cliente_id: cliId || null,
-      clinome: clinome || 'Cliente não identificado',
-      cliNome: clinome || 'Cliente não identificado',
-      cliente_nome: clinome || 'Cliente não identificado',
-      cliente: clinome || 'Cliente não identificado',
+      clinome: clinome || '—',
+      cliNome: clinome || '—',
+      cliente_nome: clinome || '—',
+      cliente: clinome || '—',
       vendedor_id: vendedorId || null,
       vendId: vendedorId || null,
       vend_id: vendedorId || null,
@@ -4811,7 +4452,6 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     const after = String(req.query.after || '').trim();
     const afterIso = (after && after !== 'undefined' && after !== 'null' && after !== '[object Object]') ? after : '';
-    const refreshToken = String(req.query.t || req.query.ts || req.query.nocache || req.query.refresh || '').trim();
     const limitRaw = String(req.query.limit || '').trim();
     const limit = Math.min(parseInt(limitRaw, 10) || 500, 1000);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
@@ -4819,7 +4459,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const busca = String(req.query.busca || req.query.search || '').trim();
     const clienteFiltro = String((req.query.cli_id || req.query.cliente_id || '') || '').trim();
     const empresaFiltro = req.query.empresa;
-    const useCache = !afterIso && !refreshToken;
+    const useCache = !afterIso;
     const cacheKey = useCache ? ('ofs_v12_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '')) : '';
     if (useCache) {
       const cached = cacheGet(cacheKey);
@@ -4893,7 +4533,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const count = fetched.count || 0;
 
     const ofsRaw = data || [];
-    const clienteIds = [...new Set(ofsRaw.map((o) => String(o?.cli_id || o?.cliId || o?.cliente_id || '').trim()).filter(Boolean))];
+    const clienteIds = [...new Set(ofsRaw.map(o => o.cli_id).filter(Boolean))];
     const mapaClientes = {};
     if (clienteIds.length > 0) {
       try {
@@ -4950,14 +4590,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
 
     let rows = ofsRaw.map((of) => {
-      const cliIdNorm = String(of.cli_id || of.cliId || of.cliente_id || '').trim();
-      const clienteNome = _clienteNomeValido(of.clinome)
-        || _clienteNomeValido(of.cliNome)
-        || _clienteNomeValido(of.cliente_nome)
-        || _clienteNomeValido(of.cliente)
-        || _clienteNomeValido(mapaClientes[cliIdNorm])
-        || _clienteNomeValido(mapaClientes[cliIdNorm.toLowerCase()])
-        || _clienteNomeValido(mapaClientes[cliIdNorm.toUpperCase()])
+      const cliIdNorm = String(of.cli_id || '').trim();
+      const clienteNome = of.clinome
+        || mapaClientes[cliIdNorm]
+        || mapaClientes[cliIdNorm.toLowerCase()]
+        || mapaClientes[cliIdNorm.toUpperCase()]
         || '';
       let maquinaNome = '';
       try {
@@ -5008,10 +4645,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
       return {
         ...of,
-        cliente: clienteNome || 'Cliente não identificado',
-        clinome: clienteNome || 'Cliente não identificado',
-        cliNome: clienteNome || 'Cliente não identificado',
-        cliente_nome: clienteNome || 'Cliente não identificado',
+        cliente: clienteNome,
+        clinome: clienteNome,
         maquina: maquinaNome,
         maquina_atual: maquinaNome,
         produto: produtoNome,
@@ -5019,8 +4654,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         imgs: ofSafe?.imgs ?? of?.imgs,
         total: total || of.total || 0,
         itens_parsed: itensArr,
-        urgente: _chapasBool(of.urgente ?? of.urg),
-        urg: _chapasBool(of.urgente ?? of.urg),
+        urgente: of.urgente || of.urg || false,
         numero: of.numero || of.of_num || of.of || ''
       };
     });
@@ -5173,16 +4807,10 @@ function _parseFluxoAny(v){
   return [];
 }
 
-const MAQUINAS_CATALOGO_PADRAO = [
-  { nome: 'IMP 01', ordem: 1 },
-  { nome: 'IMP 02', ordem: 2 },
-  { nome: 'IMP 03', ordem: 3 },
-  { nome: 'IMP 04', ordem: 4 },
-  { nome: 'IMP 05', ordem: 5 },
-  { nome: 'Riscador', ordem: 6 },
-  { nome: 'CORTE VINCO ROTATIVA', ordem: 7 },
+const MAQUINAS_VALIDAS_NOMES = [
+  'CORTE VINCO ROTATIVA',
+  'IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05',
 ];
-const MAQUINAS_VALIDAS_NOMES = MAQUINAS_CATALOGO_PADRAO.map((item) => item.nome);
 
 function _ofPickFluxoNames(of){
   try{
@@ -5552,28 +5180,9 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         if (typeof v === 'string') { try { const p = JSON.parse(v || '[]'); return Array.isArray(p) ? p : []; } catch (_) { return []; } }
         return [];
       };
-      let merged = { ...(body || {}), ...(filtered || {}) };
-      const cliRef = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
-      const cliResolved = cliRef ? await _resolverClienteIdentidadeOF(cliRef) : null;
-      if (cliRef && !cliResolved) {
-        return res.status(400).json({ ok: false, error: 'Cliente inválido. Selecione um cliente válido antes de salvar.', missing: ['cliente'] });
-      }
-      if (cliResolved) {
-        merged.cli_id = cliResolved.id;
-        merged.cliId = cliResolved.id;
-        merged.cliente_id = cliResolved.id;
-        if (!String(merged.clinome ?? '').trim()) merged.clinome = cliResolved.nome || '';
-        if (!String(merged.cliNome ?? '').trim()) merged.cliNome = cliResolved.nome || '';
-        if (!String(merged.cliente_nome ?? '').trim()) merged.cliente_nome = cliResolved.nome || '';
-        if (!String(merged.vendedor_id ?? merged.vendId ?? merged.vend_id ?? '').trim() && String(cliResolved.vendedor_id || '').trim()) {
-          merged.vendedor_id = cliResolved.vendedor_id;
-          merged.vendId = cliResolved.vendedor_id;
-          merged.vend_id = cliResolved.vendedor_id;
-        }
-      }
-      merged = await _preencherCamposCriticosOF(merged);
+      const merged = { ...(body || {}), ...(filtered || {}) };
       const cliId = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
-      const vendId = String(merged.vendedor_id ?? merged.vendedorId ?? merged.vendId ?? merged.vend_id ?? '').trim();
+      const vendId = String(merged.vendid ?? merged.vendedor ?? merged.vendedor_id ?? merged.vendedorId ?? merged.vendId ?? merged.vend_id ?? '').trim();
       const qtd = Number(merged.qtd ?? merged.quantidade ?? merged.qtd_pedida ?? 0) || 0;
       const ent = String(merged.ent ?? merged.data_entrega ?? '').slice(0, 10);
       const itens = parseItens(merged.itens ?? body.itens);
@@ -5598,21 +5207,6 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       if (missing.length) {
         return res.status(400).json({ ok: false, error: 'Campos obrigatórios: ' + missing.join(', '), missing });
       }
-      filtered = {
-        ...filtered,
-        cli_id: cliId,
-        cliId: cliId,
-        cliente_id: cliId,
-        clinome: String(merged.clinome ?? merged.cliNome ?? merged.cliente_nome ?? '').trim(),
-        cliNome: String(merged.cliNome ?? merged.clinome ?? merged.cliente_nome ?? '').trim(),
-        cliente_nome: String(merged.cliente_nome ?? merged.clinome ?? merged.cliNome ?? '').trim(),
-        vendedor_id: vendId || null,
-        vendId: vendId || null,
-        vend_id: vendId || null,
-        vendid: String(merged.vendid ?? vendId ?? '').trim() || null,
-        vendedor: String(merged.vendedor ?? merged.vendNome ?? merged.vendedor_nome ?? '').trim(),
-        vendNome: String(merged.vendNome ?? merged.vendedor ?? merged.vendedor_nome ?? '').trim(),
-      };
     }
     console.debug('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
     const createdRes = await ofsInsertWithRetry(ofIn(filtered));
@@ -5832,7 +5426,7 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
     const vendNested = clienteJoin?.vendedor && typeof clienteJoin.vendedor === 'object' ? clienteJoin.vendedor : null;
     const { cliente, ...rest } = data;
 
-    let cliNome = _clienteNomeValido(clienteJoin?.nome || data.cliNome || data.clinome || data.cliente_nome || data.cliente || '');
+    let cliNome = clienteJoin?.nome || data.cliNome || data.clinome || '';
     let vendNome = vendNested?.nome || data.vendNome || data.vendedor_nome || data.vendedor || '';
     let vendedorId = clienteJoin?.vendedor_id || data.vendedor_id || data.vendId || null;
     const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
@@ -5842,10 +5436,16 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
     if (!cliNome || !vendNome) {
       const cliId = String(data.cli_id || data.cliId || data.cliente_id || '').trim();
       if (cliId) {
-        const cli = await _buscarClienteRegistroOF(cliId);
+        const { data: cli } = await supabase
+          .from('clientes')
+          .select('nome,vendedor_id,vendedor:vendedores!vendedor_id(nome)')
+          .eq('id', cliId)
+          .maybeSingle();
         if (cli) {
-          cliNome = cliNome || _clienteNomeValido(cli.nome || cli.rs || cli.razao_social || '');
+          cliNome = cliNome || cli.nome || '';
           vendedorId = vendedorId || cli.vendedor_id || null;
+          const v = cli.vendedor && typeof cli.vendedor === 'object' ? cli.vendedor : null;
+          vendNome = vendNome || v?.nome || '';
         }
       }
     }
@@ -5856,17 +5456,7 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
       } catch (_) {}
     }
     if (vendNome && isUuid(String(vendNome).trim())) vendNome = '';
-    const clienteFinal = cliNome || 'Cliente não identificado';
-    return ok(res, {
-      ...rest,
-      cliNome: clienteFinal,
-      clinome: clienteFinal,
-      cliente_nome: clienteFinal,
-      cliente: clienteFinal,
-      vendNome,
-      vendedor_id: vendedorId,
-      vendedor_nome: vendNome
-    });
+    return ok(res, { ...rest, cliNome, vendNome, vendedor_id: vendedorId, vendedor_nome: vendNome });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
@@ -5874,7 +5464,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
     let body = filterOfsUpdateWhitelist(normalizeOfUpdateBody(req.body || {}));
-    body = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(body));
+    body = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(body, { onlyClinome: true }));
     try { console.log('[OF PATCH] payload recebido:', JSON.stringify(req.body || {}).substring(0, 300)); } catch (_) {}
     try { console.log('[OF PATCH] campos após whitelist:', Object.keys(body || {})); } catch (_) {}
     if (body.qtd !== undefined) body.qtd = Number(body.qtd);
@@ -6902,8 +6492,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
     'id', 'of_id', 'of_numero', 'produto', 'cliente', 'valor_unitario', 'qtd_perdida', 'valor_perdido',
     'data', 'mes_referencia', 'emp_id', 'empresa_id', 'usuario', 'usuario_conclusao', 'concluido_por', 'obs', 'created_at',
     'maquina', 'maquina_nome', 'maquina_id', 'maquina_perda', 'quantidade', 'caixas_perdidas',
-    'operadores', 'operadores_conclusao', 'operador', 'operador_nome', 'operador_principal', 'operador_conclusao', 'turno',
-    'tipo_caixa', 'tipo_caixa_id'
+    'operadores', 'operadores_conclusao', 'operador', 'operador_nome', 'operador_principal', 'operador_conclusao', 'turno'
   ].join(',');
   const ofId = String(req.query.of_id || req.query.ofId || '').trim();
   const tabelas = ['caixas_perdidas', 'caixas_perdas', 'perdas_producao'];
@@ -6943,7 +6532,7 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       const lote = ofIds.slice(i, i + 200);
       const { data } = await supabase
         .from('ofs')
-        .select('id,numero,of,cli_id,cliente,descricao,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id,tipo_caixa,tipo_caixa_id')
+        .select('id,numero,of,cli_id,cliente,descricao,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
         .in('id', lote);
       (Array.isArray(data) ? data : []).forEach((of) => {
         const id = String(of?.id || '').trim();
@@ -6966,11 +6555,11 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
         ));
         const { data } = await supabase
         .from('ofs')
-          .select('id,numero,of,cli_id,cliente,descricao,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id,tipo_caixa,tipo_caixa_id')
+          .select('id,numero,of,cli_id,cliente,descricao,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
           .in('numero', numeroVariants);
         const { data: dataByOf } = await supabase
           .from('ofs')
-          .select('id,numero,of,cli_id,cliente,descricao,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id,tipo_caixa,tipo_caixa_id')
+          .select('id,numero,of,cli_id,cliente,descricao,data_conclusao,concluido_por,usuario_conclusao,operador_conclusao,operadores_conclusao,perdas_por_maquina,quantidade,qtd,valor_total,valor_venda,maq,maquina,maquina_atual,maquina_agendada,maquina_id')
           .in('of', numeroVariants);
         (Array.isArray(data) ? data : []).concat(Array.isArray(dataByOf) ? dataByOf : []).forEach((of) => {
         const numero = String(of?.numero || '').trim();
@@ -7064,8 +6653,6 @@ async function _listarCaixasPerdidasEnriquecidas(req) {
       of_numero: String(row?.of_numero || ofData?.numero || '').trim() || '—',
       cliente_nome: clienteNome,
       cliente: clienteNome,
-      tipo_caixa: String(row?.tipo_caixa || ofData?.tipo_caixa || '').trim() || 'Sem tipo',
-      tipo_caixa_id: String(row?.tipo_caixa_id || ofData?.tipo_caixa_id || '').trim() || null,
       produto: String(row?.produto || ofData?.produto || ofData?.descricao || '').trim() || '—',
       maquina: maquinaNome,
       maquina_nome: maquinaNome,
@@ -7246,7 +6833,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     if (ofIds.length) {
       const { data, error } = await supabase
         .from('ofs')
-        .select('id,numero,of,cli_id,valor_total,quantidade,qtd,descricao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,operador_conclusao,maq,maquina_agendada,caixa_comprimento,caixa_largura,dim_comprimento,dim_largura,gramatura_id,gramatura,gramatura_nome,tipo_caixa,tipo_caixa_id')
+        .select('id,numero,of,cli_id,valor_total,quantidade,qtd,descricao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,operador_conclusao,maq,maquina_agendada,caixa_comprimento,caixa_largura,dim_comprimento,dim_largura,gramatura_id,gramatura,gramatura_nome')
         .in('id', ofIds);
       console.log('[OFSMAP-FIX] erro:', error?.message || 'ok', 'linhas:', (data||[]).length);
       ofsRowsError = error || null;
@@ -7264,7 +6851,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       ));
       const { data, error } = await supabase
         .from('ofs')
-        .select('id,numero,of,cli_id,valor_total,quantidade,qtd,descricao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,operador_conclusao,maq,maquina_agendada,caixa_comprimento,caixa_largura,dim_comprimento,dim_largura,gramatura_id,gramatura,gramatura_nome,tipo_caixa,tipo_caixa_id')
+        .select('id,numero,of,cli_id,valor_total,quantidade,qtd,descricao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,operador_conclusao,maq,maquina_agendada,caixa_comprimento,caixa_largura,dim_comprimento,dim_largura,gramatura_id,gramatura,gramatura_nome')
         .in('numero', numeroVariants);
       if (!ofsRowsError) ofsRowsError = error || null;
       (Array.isArray(data) ? data : []).forEach((of) => {
@@ -7273,7 +6860,7 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
       });
       const { data: dataByOf, error: errorByOf } = await supabase
         .from('ofs')
-        .select('id,numero,of,cli_id,valor_total,quantidade,qtd,descricao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,operador_conclusao,maq,maquina_agendada,caixa_comprimento,caixa_largura,dim_comprimento,dim_largura,gramatura_id,gramatura,gramatura_nome,tipo_caixa,tipo_caixa_id')
+        .select('id,numero,of,cli_id,valor_total,quantidade,qtd,descricao,operadores_conclusao,perdas_por_maquina,usuario_conclusao,operador_conclusao,maq,maquina_agendada,caixa_comprimento,caixa_largura,dim_comprimento,dim_largura,gramatura_id,gramatura,gramatura_nome')
         .in('of', numeroVariants);
       if (!ofsRowsError) ofsRowsError = errorByOf || null;
       (Array.isArray(dataByOf) ? dataByOf : []).forEach((of) => {
@@ -7433,8 +7020,6 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
         of_numero: ofData?.numero || r?.of_numero || '—',
         cliente_nome: clienteNome || r?.cliente_nome || r?.cliente || '—',
         cliente: clienteNome || r?.cliente_nome || r?.cliente || '—',
-        tipo_caixa: String(r?.tipo_caixa || ofData?.tipo_caixa || '').trim() || 'Sem tipo',
-        tipo_caixa_id: String(r?.tipo_caixa_id || ofData?.tipo_caixa_id || '').trim() || null,
         produto: ofData?.descricao || r?.produto || '—',
         quantidade_perdida: qtdPerdida,
         valor_perdido: valorPerdido,
@@ -7588,8 +7173,6 @@ async function _insertCaixaPerdidaCompat(input, req) {
     of_id: b.of_id || null,
     of_numero: b.of_numero != null ? String(b.of_numero || '') : undefined,
     produto: String(b.produto || ''),
-    tipo_caixa: b.tipo_caixa != null ? String(b.tipo_caixa || '') : undefined,
-    tipo_caixa_id: b.tipo_caixa_id != null ? String(b.tipo_caixa_id || '') : undefined,
     cliente: String(b.cliente || b.cliente_nome || ''),
     cliente_nome: b.cliente_nome != null ? String(b.cliente_nome || b.cliente || '') : undefined,
     maquina: b.maquina != null ? String(b.maquina || b.maquina_nome || '') : undefined,
@@ -7619,8 +7202,7 @@ async function _insertCaixaPerdidaCompat(input, req) {
   const fallbackCols = [
     'id', 'of_id', 'of_numero', 'produto', 'cliente', 'valor_unitario', 'qtd_perdida', 'valor_perdido',
     'data', 'mes_referencia', 'emp_id', 'usuario', 'obs', 'created_at',
-    'maquina', 'maquina_id', 'maquina_perda', 'toneladas_perdidas', 'operador',
-    'tipo_caixa', 'tipo_caixa_id', 'cliente_nome', 'maquina_nome', 'operadores', 'turno'
+    'maquina', 'maquina_id', 'maquina_perda', 'toneladas_perdidas', 'operador'
   ];
   const colunasReaisSet = new Set(fallbackCols);
   let erroSchema = null;
@@ -7720,32 +7302,14 @@ async function _insertCaixaPerdidaCompat(input, req) {
 app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
   try {
     const result = await _insertCaixaPerdidaCompat(req.body || {}, req);
-    if (result && result.skipped) {
-      return res.status(409).json({
-        ok: false,
-        status: 'skipped',
-        reason: String(result.reason || 'insert_aborted'),
-        error: String(result.error_message || result.reason || 'Registro de perda não confirmado'),
-        ignored_columns_perda: Array.isArray(result.ignored_columns_perda) ? result.ignored_columns_perda : [],
-      });
-    }
-    return ok(res, result.data);
+    return ok(res, result.skipped ? result : result.data);
   } catch (e) { err(res, e); }
 });
 
 app.post('/api/caixas-perdidas', authMiddleware, async (req, res) => {
   try {
     const result = await _insertCaixaPerdidaCompat(req.body || {}, req);
-    if (result && result.skipped) {
-      return res.status(409).json({
-        ok: false,
-        status: 'skipped',
-        reason: String(result.reason || 'insert_aborted'),
-        error: String(result.error_message || result.reason || 'Registro de perda não confirmado'),
-        ignored_columns_perda: Array.isArray(result.ignored_columns_perda) ? result.ignored_columns_perda : [],
-      });
-    }
-    return ok(res, result.data);
+    return ok(res, result.skipped ? result : result.data);
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
@@ -7986,7 +7550,6 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
     try { console.log('[PATCH OF] body:', JSON.stringify(req.body || {}).substring(0, 200)); } catch (_) {}
     let stAtualBefore = '';
     let stNovoWanted = '';
-    let vaiConcluirViaPatch = false;
     try {
       const { data: ofAtual } = await supabase
         .from('ofs')
@@ -8091,7 +7654,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         }
         : bodyIn;
     let payload = filterOfsUpdateWhitelist(sanitizeOfUpdatePayload({ ...ofIn(mapped || {}), updated_at: new Date().toISOString() }));
-    payload = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(payload));
+    payload = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(payload, { onlyClinome: true }));
     try { console.log('[PATCH OF] campos após whitelist:', Object.keys(payload || {})); } catch (_) {}
     try {
       const { data: ofAtual2 } = await supabase.from('ofs').select('status').eq('id', id).maybeSingle();
@@ -8106,25 +7669,12 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       stNovoWanted = stNovo;
       const isConcluida = stAtual.includes('conclu') || stAtual === 'pedido pronto' || stAtual === 'entregue' || stAtual === 'despachada' || stAtual === 'finalizada';
       const vaiReabrir = stNovo && !(stNovo.includes('conclu') || stNovo === 'pedido pronto' || stNovo === 'entregue' || stNovo === 'despachada' || stNovo === 'finalizada') && !stNovo.includes('cancel');
-      vaiConcluirViaPatch = !isConcluida && !!stNovo && (stNovo.includes('conclu') || stNovo === 'pedido pronto' || stNovo === 'entregue' || stNovo === 'despachada' || stNovo === 'finalizada');
       const force = String(req.body?._force_status || req.body?.force_status || req.body?.forcar_status || '').trim() === '1';
       if (isConcluida && vaiReabrir && !force) {
         try { console.debug('[OF STATUS GUARD] ignorando reabertura via PATCH', { id, stAtual, stNovo }); } catch (_) {}
         delete payload.status;
       }
     } catch (_) {}
-    if (Object.prototype.hasOwnProperty.call(payload, 'status')) {
-      const statusRaw = String(payload.status || '').trim();
-      const statusCanon = _canonicalizarStatusOf(statusRaw);
-      if (statusCanon) payload.status = statusCanon;
-      if (statusRaw && statusCanon && statusRaw !== statusCanon) {
-        try { console.warn('[PATCH OF] status canonizado', { id, original: statusRaw, canonico: statusCanon }); } catch (_) {}
-      }
-    }
-    if (vaiConcluirViaPatch) {
-      if (!String(payload.data_conclusao || '').trim()) payload.data_conclusao = new Date().toISOString();
-      if (!String(payload.usuario_conclusao || '').trim()) payload.usuario_conclusao = String(req.usuario?.nome || req.usuario?.email || 'sistema').trim() || 'sistema';
-    }
     delete payload.id; delete payload.empresa_id;
     delete payload.numero; delete payload.of; delete payload.of_num; delete payload.seq;
     const upd = await ofsUpdateWithRetry(id, payload);
@@ -8192,7 +7742,7 @@ app.patch('/api/ofs/:id/urgente', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    const urgente = _chapasBool(req.body && Object.prototype.hasOwnProperty.call(req.body, 'urgente') ? req.body.urgente : false);
+    const urgente = !!(req.body && Object.prototype.hasOwnProperty.call(req.body, 'urgente') ? req.body.urgente : false);
     const payload = {
       urgente,
       urg: urgente,
@@ -8814,16 +8364,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     try {
       const hoje = nowIso.slice(0, 10);
       const picked = fluxoPickMaquina();
-      const maquinaNome = String(
-        mprodRaw ||
-        body.maquina ||
-        picked.nome ||
-        of.maquina_agendada ||
-        of.maquina ||
-        of.passou_maquina_nome ||
-        (Array.isArray(of.maq) ? of.maq[0] : of.maq) ||
-        ''
-      ).trim() || 'Sem máquina';
+      const maquinaNome = String(mprodRaw || body.maquina || of.maq || of.maquina || picked.nome || of.passou_maquina_nome || '').trim() || 'Sem máquina';
       const upsertResult = await _upsertPassagemMaquinaRegistro({
         of_id: sid,
         of_numero: String(of?.numero || of?.of_num || of?.of || '').trim() || null,
@@ -9739,9 +9280,6 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
     const statusOf = String(of?.data_conclusao || '').trim() ? 'Concluído' : '';
     const respOf = String(of?.operador_conclusao || of?.usuario_conclusao || '').trim();
     const numeroOf = String(of?.numero || '').trim();
-    const coresOf = of?.cores_impressao ?? null;
-    const compOf = of?.dim_comprimento ?? of?.caixa_comprimento ?? null;
-    const largOf = of?.dim_largura ?? of?.caixa_largura ?? null;
     const valorAtual = Number(p?.valor_total ?? p?.total ?? p?.valor_venda ?? 0) || 0;
     const vlUnitAtual = Number(p?.valor_unitario ?? p?.vunit ?? p?.preco ?? 0) || 0;
     const maqAtualCanon = _resolverNomeMaquinaPassagem({ maquina_nome: p?.maquina_nome || '', maquina: p?.maquina || '' }, null);
@@ -9760,9 +9298,6 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
       ...((vlUnit != null && !(vlUnitAtual > 0)) ? { valor_unitario: vlUnit, preco: vlUnit } : {}),
       ...((totalOf > 0 && !(valorAtual > 0)) ? { total: totalOf, valor_total: totalOf, valor_venda: totalOf } : {}),
       ...(p?.status ? {} : (statusOf ? { status: statusOf } : {})),
-      ...((String(p?.cores_impressao || '').trim()) ? {} : (coresOf != null ? { cores_impressao: coresOf } : {})),
-      ...(((p?.dim_comprimento ?? p?.caixa_comprimento) != null) ? {} : (compOf != null ? { dim_comprimento: compOf, caixa_comprimento: compOf } : {})),
-      ...(((p?.dim_largura ?? p?.caixa_largura) != null) ? {} : (largOf != null ? { dim_largura: largOf, caixa_largura: largOf } : {})),
       ...((p?.operador || p?.operador_nome || p?.responsavel) ? {} : (respOf ? { responsavel: respOf } : {})),
       ...(precisaHerdarMaquina && (of?.maquina_agendada || of?.maq) ? {
         maquina: of?.maquina_agendada || of?.maq || null,
@@ -9824,160 +9359,6 @@ function _countPassagensComValor(rows) {
   return (Array.isArray(rows) ? rows : []).reduce((acc, row) => {
     return acc + (_resolverValorTotalPassagem(row, null) > 0 ? 1 : 0);
   }, 0);
-}
-
-function _passagensRangeAnteriorPorPeriodo(range) {
-  const inicio = String(range?.inicio || '').trim();
-  const fim = String(range?.fim || '').trim();
-  if (!inicio || !fim) return null;
-  const ini = new Date(inicio + 'T12:00:00');
-  const end = new Date(fim + 'T12:00:00');
-  if (!Number.isFinite(ini.getTime()) || !Number.isFinite(end.getTime())) return null;
-  const diffDias = Math.max(1, Math.round((end.getTime() - ini.getTime()) / 86400000) + 1);
-  const prevFim = new Date(ini.getTime() - 86400000);
-  const prevIni = new Date(prevFim.getTime() - ((diffDias - 1) * 86400000));
-  return {
-    inicio: prevIni.toISOString().slice(0, 10),
-    fim: prevFim.toISOString().slice(0, 10)
-  };
-}
-
-function _passagensResumoLabel(range) {
-  const inicio = String(range?.inicio || '').trim();
-  const fim = String(range?.fim || '').trim();
-  if (!inicio || !fim) return '';
-  return inicio === fim ? ('Dia ' + inicio) : (inicio + ' até ' + fim);
-}
-
-function _passagensResumoParseCores(value) {
-  const bucket = new Set();
-  const add = (raw) => {
-    const nome = String(
-      raw && typeof raw === 'object'
-        ? (raw.nome ?? raw.name ?? raw.cor ?? raw.color ?? raw.label ?? raw.value ?? '')
-        : (raw ?? '')
-    ).trim();
-    if (nome) bucket.add(nome);
-  };
-  if (Array.isArray(value)) {
-    value.forEach(add);
-    return Array.from(bucket);
-  }
-  const raw = String(value || '').trim();
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      parsed.forEach(add);
-      return Array.from(bucket);
-    }
-    if (parsed && typeof parsed === 'object') {
-      add(parsed);
-      return Array.from(bucket);
-    }
-  } catch (_) {}
-  raw.split(/[,;|/]+/g).forEach(add);
-  return Array.from(bucket);
-}
-
-function _passagensResumoFormatTamanho(row) {
-  const comp = Number(row?.dim_comprimento ?? row?.caixa_comprimento ?? 0) || 0;
-  const larg = Number(row?.dim_largura ?? row?.caixa_largura ?? 0) || 0;
-  if (comp > 0 && larg > 0) return String(Math.trunc(comp)) + '×' + String(Math.trunc(larg));
-  const produto = String(row?.produto || row?.descricao || '').trim();
-  const match = produto.match(/(\d+(?:[.,]\d+)?)\s*[×xX]\s*(\d+(?:[.,]\d+)?)/);
-  if (!match) return '';
-  return String(match[1]).replace(',', '.') + '×' + String(match[2]).replace(',', '.');
-}
-
-function _mergePassagensResumoRows(mapa, rows) {
-  const target = mapa instanceof Map ? mapa : new Map();
-  (Array.isArray(rows) ? rows : []).forEach((row) => {
-    const current = row && typeof row === 'object' ? { ...row } : {};
-    current.status = _normalizarStatusPassagem(current.status || '');
-    const key = _passagemDedupKey(current);
-    const prev = target.get(key);
-    if (!prev) {
-      target.set(key, current);
-      return;
-    }
-    const prevPeso = _pesoStatusPassagem(prev.status);
-    const curPeso = _pesoStatusPassagem(current.status);
-    if (curPeso > prevPeso) {
-      target.set(key, current);
-      return;
-    }
-    if (curPeso < prevPeso) return;
-    if (_timestampPassagem(current) >= _timestampPassagem(prev)) target.set(key, current);
-  });
-  return target;
-}
-
-function _buildPassagensResumoTop5(rows, extractor, keyName) {
-  const mapa = new Map();
-  (Array.isArray(rows) ? rows : []).forEach((row) => {
-    (Array.isArray(extractor(row)) ? extractor(row) : []).forEach((nome) => {
-      const chave = String(nome || '').trim();
-      if (!chave) return;
-      mapa.set(chave, (mapa.get(chave) || 0) + 1);
-    });
-  });
-  return Array.from(mapa.entries()).map(([nome, total_ofs]) => ({ [keyName]: nome, total_ofs }))
-    .sort((a, b) => {
-      if ((b.total_ofs || 0) !== (a.total_ofs || 0)) return (b.total_ofs || 0) - (a.total_ofs || 0);
-      return String(a[keyName] || '').localeCompare(String(b[keyName] || ''), 'pt-BR');
-    })
-    .slice(0, 5);
-}
-
-async function _agruparPassagensRelatorioMensalBackend(req, opts) {
-  const cfg = opts && typeof opts === 'object' ? opts : {};
-  const cliente = String(cfg.cliente || '').trim();
-  const maquina = String(cfg.maquina || '').trim();
-  const data_inicio = String(cfg.data_inicio || '').trim();
-  const data_fim = String(cfg.data_fim || '').trim();
-  if (!data_inicio || !data_fim) {
-    return { agg: [], totalRows: 0, rowsComValor: 0, top_cores: [], top_tamanhos: [] };
-  }
-
-  const batchSize = 1000;
-  const dedupeMap = new Map();
-  let offset = 0;
-  let totalBruto = 0;
-
-  while (true) {
-    const pair = await _buscarPassagensHistoricoCompat(req, {
-      cliente,
-      maquina,
-      data_inicio,
-      data_fim,
-      limit: batchSize,
-      offset,
-      count: offset === 0
-    });
-    let rows = Array.isArray(pair?.rows) ? pair.rows : [];
-    if (offset === 0) totalBruto = Number(pair?.count || 0) || rows.length;
-    if (!rows.length) break;
-    try { rows = await _enriquecerPassagensHistoricoComOfs(rows); } catch (_) {}
-    try { rows = await _normalizarMaquinasPassagens(rows); } catch (_) {}
-    _mergePassagensResumoRows(dedupeMap, rows);
-    offset += rows.length;
-    if (rows.length < batchSize) break;
-    if (totalBruto > 0 && offset >= totalBruto) break;
-  }
-
-  const deduped = Array.from(dedupeMap.values()).sort((a, b) => _timestampPassagem(b) - _timestampPassagem(a));
-  return {
-    agg: _agruparPassagensRelatorioMensal(deduped),
-    totalRows: deduped.length,
-    totalRowsBruto: totalBruto,
-    rowsComValor: _countPassagensComValor(deduped),
-    top_cores: _buildPassagensResumoTop5(deduped, (row) => _passagensResumoParseCores(row?.cores_impressao), 'cor'),
-    top_tamanhos: _buildPassagensResumoTop5(deduped, (row) => {
-      const tamanho = _passagensResumoFormatTamanho(row);
-      return tamanho ? [tamanho] : [];
-    }, 'tamanho')
-  };
 }
 
 async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', clienteFiltro = '') {
@@ -10149,11 +9530,11 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     const count = Number(pair?.count || 0) || 0;
     try { passagens = await _enriquecerPassagensHistoricoComOfs(passagens); } catch (_) {}
     try { passagens = await _normalizarMaquinasPassagens(passagens); } catch (_) {}
-    try { passagens = (Array.isArray(passagens) ? passagens.slice() : []).sort((a, b) => _timestampPassagem(b) - _timestampPassagem(a)); } catch (_) {}
+    try { passagens = _dedupePassagensMaquinaRows(passagens); } catch (_) {}
     res.json({
       ok: true,
       passagens: passagens,
-      total: count || passagens.length || 0,
+      total: passagens.length || count || 0,
       page,
       limit,
       offset,
@@ -10173,31 +9554,14 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
     const ano = String(req.query.ano || hoje.getFullYear()).trim();
     const maquina = String(req.query.maquina || '').trim();
     const cliente = String(req.query.cliente || '').trim();
-    const dataInicioAtual = String(req.query.data_inicio || '').trim();
-    const dataFimAtual = String(req.query.data_fim || '').trim();
-    const dataInicioAnterior = String(req.query.anterior_data_inicio || '').trim();
-    const dataFimAnterior = String(req.query.anterior_data_fim || '').trim();
 
-    const refAtual = (dataInicioAtual && dataFimAtual)
-      ? {
-          inicio: dataInicioAtual,
-          fim: dataFimAtual,
-          mes: mes ? String(mes).padStart(2, '0') : '',
-          ano: ano || ''
-        }
-      : _passagensFiltroMesAnoToRange(mes, ano);
-    if (!refAtual?.inicio || !refAtual?.fim) return res.status(400).json({ ok: false, error: 'Período inválido' });
-
-    const refAnterior = (dataInicioAnterior && dataFimAnterior)
-      ? { inicio: dataInicioAnterior, fim: dataFimAnterior }
-      : ((dataInicioAtual && dataFimAtual)
-          ? _passagensRangeAnteriorPorPeriodo(refAtual)
-          : _passagensMesAnterior(refAtual.mes, refAtual.ano));
-
+    const refAtual = _passagensFiltroMesAnoToRange(mes, ano);
+    if (!refAtual) return res.status(400).json({ ok: false, error: 'Mês/ano inválidos' });
+    const refAnterior = _passagensMesAnterior(refAtual.mes, refAtual.ano);
     const atualResumo = await _agruparOfsRelatorioMensalFallback(req, refAtual, maquina, cliente);
-    const anteriorResumo = refAnterior?.inicio && refAnterior?.fim
+    const anteriorResumo = refAnterior
       ? await _agruparOfsRelatorioMensalFallback(req, refAnterior, maquina, cliente)
-      : { agg: [], totalRows: 0, rowsComValor: 0, top_cores: [], top_tamanhos: [] };
+      : { agg: [], totalRows: 0, rowsComValor: 0 };
     const atualAgg = Array.isArray(atualResumo?.agg) ? atualResumo.agg : [];
     const anteriorAgg = Array.isArray(anteriorResumo?.agg) ? anteriorResumo.agg : [];
     // #region debug-point C:relatorio-mensal-resumo
@@ -10205,14 +9569,12 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
       runId: 'pre-fix',
       hypothesisId: 'C',
       location: 'server.js:/api/maquinas/relatorio-mensal',
-      msg: '[DEBUG] relatorio mensal agregado via ofs concluidas',
+      msg: '[DEBUG] relatorio mensal agregado',
       data: {
         mes: refAtual.mes,
         ano: refAtual.ano,
         totalAtualRows: Number(atualResumo?.totalRows || 0) || 0,
         totalAnteriorRows: Number(anteriorResumo?.totalRows || 0) || 0,
-        totalAtualRowsBruto: Number(atualResumo?.totalRowsBruto || 0) || 0,
-        totalAnteriorRowsBruto: Number(anteriorResumo?.totalRowsBruto || 0) || 0,
         atualRowsComValor: Number(atualResumo?.rowsComValor || 0) || 0,
         anteriorRowsComValor: Number(anteriorResumo?.rowsComValor || 0) || 0,
         totalAtualAgg: atualAgg.length,
@@ -10261,15 +9623,13 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
         mes: refAtual.mes,
         ano: refAtual.ano,
         inicio: refAtual.inicio,
-        fim: refAtual.fim,
-        titulo: _passagensResumoLabel(refAtual)
+        fim: refAtual.fim
       },
       referencia_anterior: refAnterior ? {
         mes: refAnterior.mes,
         ano: refAnterior.ano,
         inicio: refAnterior.inicio,
-        fim: refAnterior.fim,
-        titulo: _passagensResumoLabel(refAnterior)
+        fim: refAnterior.fim
       } : null,
       resumo_mes_atual: resumoAtual,
       resumo_mes_anterior: resumoAnterior,
@@ -10298,7 +9658,7 @@ app.get('/api/passagens/graficos', authMiddleware, async (req, res) => {
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
     const inicioMesISO = new Date(inicioMes.getFullYear(), inicioMes.getMonth(), inicioMes.getDate(), 0, 0, 0).toISOString().slice(0, 10);
 
-    const MAQS = MAQUINAS_CATALOGO_PADRAO.map((item) => item.nome);
+    const MAQS = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
 
     const labels = [];
     const labelToIdx = new Map();
@@ -11601,7 +10961,7 @@ async function _relatoriosLoadClientesDetails(ids) {
   const map = new Map();
   for (let i = 0; i < uniq.length; i += 200) {
     const chunk = uniq.slice(i, i + 200);
-    const { data, error } = await supabase.from('clientes').select('id,nome,ramo,empresa_id,created_at,cidade,uf').in('id', chunk);
+    const { data, error } = await supabase.from('clientes').select('id,nome,ramo,empresa_id,created_at').in('id', chunk);
     if (error) throw error;
     (Array.isArray(data) ? data : []).forEach((row) => {
       const id = String(row?.id || '').trim();
@@ -12192,272 +11552,6 @@ app.get('/api/relatorios/vendas-por-ramo', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/relatorios/vendas-por-cidade-estado', authMiddleware, async (req, res) => {
-  try {
-    setNoCache(res);
-    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
-    if (!range?.inicio || !range?.fim_exclusivo) {
-      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
-    }
-    const ofs = await _relatoriosFetchOfsConcluidas(range, {
-      companyIds: _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id)
-    });
-    const clientesMap = await _relatoriosLoadClientesDetails(ofs.map((of) => _assistPickOfClienteId(of)));
-    const grupos = new Map();
-    const clientesUnicos = new Set();
-    const estadosUnicos = new Set();
-    ofs.forEach((of) => {
-      const cliId = _assistPickOfClienteId(of);
-      const cliente = cliId && _isUuid(cliId) ? clientesMap.get(cliId) : null;
-      const cidade = String(cliente?.cidade || '').trim() || 'Sem cidade';
-      const uf = String(cliente?.uf || '').trim().toUpperCase() || 'Sem UF';
-      const key = cidade.toLowerCase() + '|' + uf.toLowerCase();
-      if (!grupos.has(key)) {
-        grupos.set(key, {
-          cidade,
-          estado: uf,
-          uf,
-          valor_vendido: 0,
-          caixas_produzidas: 0,
-          total_ofs: 0,
-          _clientes: new Set()
-        });
-      }
-      const item = grupos.get(key);
-      item.valor_vendido += _relatoriosPickValorOf(of);
-      item.caixas_produzidas += _relatoriosPickQtdOf(of);
-      item.total_ofs += 1;
-      if (cliId && _isUuid(cliId)) {
-        item._clientes.add(cliId);
-        clientesUnicos.add(cliId);
-      }
-      if (uf && uf !== 'Sem UF') estadosUnicos.add(uf);
-    });
-    const rows = Array.from(grupos.values()).map((item) => ({
-      cidade: item.cidade,
-      estado: item.estado,
-      uf: item.uf,
-      valor_total: Number(item.valor_vendido || 0),
-      valor_vendido: Number(item.valor_vendido || 0),
-      total_clientes: item._clientes.size,
-      total_ofs: Number(item.total_ofs || 0) || 0,
-      caixas_produzidas: Number(item.caixas_produzidas || 0) || 0
-    })).sort((a, b) => {
-      if (Number(b.valor_vendido || 0) !== Number(a.valor_vendido || 0)) return Number(b.valor_vendido || 0) - Number(a.valor_vendido || 0);
-      if (String(a.estado || '').localeCompare(String(b.estado || ''), 'pt-BR') !== 0) return String(a.estado || '').localeCompare(String(b.estado || ''), 'pt-BR');
-      return String(a.cidade || '').localeCompare(String(b.cidade || ''), 'pt-BR');
-    });
-    const resumo = rows.reduce((acc, item) => {
-      acc.valor_vendido += Number(item?.valor_vendido || 0) || 0;
-      acc.total_ofs += Number(item?.total_ofs || 0) || 0;
-      acc.caixas_produzidas += Number(item?.caixas_produzidas || 0) || 0;
-      return acc;
-    }, { valor_vendido: 0, total_ofs: 0, caixas_produzidas: 0 });
-    resumo.total_cidades = rows.length;
-    resumo.total_estados = estadosUnicos.size;
-    resumo.total_clientes = clientesUnicos.size;
-    resumo.valor_total = resumo.valor_vendido;
-    return res.json({
-      ok: true,
-      data_inicio: range.inicio,
-      data_fim: range.fim,
-      resumo,
-      rows
-    });
-  } catch (e) {
-    console.error('[RELATORIOS][VENDAS-POR-CIDADE-ESTADO]', e?.message || e);
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
-  }
-});
-
-app.get('/api/relatorios/controle-vendas-vendedor', authMiddleware, async (req, res) => {
-  try {
-    setNoCache(res);
-    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
-    if (!range?.inicio || !range?.fim_exclusivo) {
-      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
-    }
-    let empresa_id = null;
-    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
-    const companyIds = empresa_id ? [empresa_id] : [];
-    const ofsMes = await _relatoriosFetchOfsConcluidas(range, { companyIds });
-    const historyCols = [
-      'id', 'numero', 'of', 'status', 'data_conclusao', 'created_at',
-      'empresa_id', 'cli_id',
-      'valor_total', 'valor_venda', 'total',
-      'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida',
-      'vendedor_id'
-    ].join(',');
-    const historyBefore = [];
-    let offset = 0;
-    const pageSize = 1000;
-    while (true) {
-      let query = supabase
-        .from('ofs')
-        .select(historyCols)
-        .ilike('status', '%conclu%')
-        .lt('data_conclusao', range.inicio)
-        .order('data_conclusao', { ascending: true });
-      if (companyIds.length) query = query.in('empresa_id', companyIds);
-      const { data, error } = await query.range(offset, offset + pageSize - 1);
-      if (error) throw error;
-      const batch = Array.isArray(data) ? data : [];
-      historyBefore.push(...batch);
-      if (batch.length < pageSize) break;
-      offset += batch.length;
-      if (offset > 50000) break;
-    }
-    const clientesMap = await _relatoriosLoadClientesDetails(ofsMes.map((of) => _assistPickOfClienteId(of)));
-    const vendedoresMap = await _relatoriosLoadVendedoresByIds(ofsMes.map((of) => _relatoriosPickVendedorId(of)).filter(Boolean));
-    const byClientHistory = new Map();
-    historyBefore.forEach((of) => {
-      const cliId = _assistPickOfClienteId(of);
-      const data = String(_assistPickOfConclusao(of) || '').slice(0, 10);
-      if (!_isUuid(cliId) || !data) return;
-      if (!byClientHistory.has(cliId)) byClientHistory.set(cliId, []);
-      byClientHistory.get(cliId).push(data);
-    });
-    byClientHistory.forEach((dates) => dates.sort((a, b) => String(a || '').localeCompare(String(b || ''))));
-    const monthStart = new Date(range.inicio + 'T12:00:00');
-    const prevMonthStartDate = new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1, 12, 0, 0);
-    const prevMonthEndDate = new Date(monthStart.getFullYear(), monthStart.getMonth(), 0, 12, 0, 0);
-    const prevMonthStart = prevMonthStartDate.toISOString().slice(0, 10);
-    const prevMonthEnd = prevMonthEndDate.toISOString().slice(0, 10);
-    const currentBySellerClient = new Map();
-    ofsMes.forEach((of) => {
-      const cliId = _assistPickOfClienteId(of);
-      if (!_isUuid(cliId)) return;
-      const vendedorId = _relatoriosPickVendedorId(of);
-      const vendedorNome = _relatoriosPickVendedorNome(of, vendedoresMap);
-      const sellerKey = vendedorId ? ('id:' + vendedorId) : ('nome:' + vendedorNome);
-      const key = sellerKey + '|' + cliId;
-      const dataConclusao = String(_assistPickOfConclusao(of) || '').slice(0, 10);
-      const valor = _relatoriosPickValorOf(of);
-      const qtd = _relatoriosPickQtdOf(of);
-      const cliente = clientesMap.get(cliId) || null;
-      if (!currentBySellerClient.has(key)) {
-        currentBySellerClient.set(key, {
-          sellerKey,
-          vendedor_id: vendedorId || null,
-          vendedor: vendedorNome,
-          cliente_id: cliId,
-          cliente_nome: String(cliente?.nome || of?.cliente_nome || of?.cliNome || of?.clinome || 'Sem cliente').trim() || 'Sem cliente',
-          primeira_compra_mes: dataConclusao,
-          ultima_compra_mes: dataConclusao,
-          total_ofs_mes: 0,
-          valor_total_mes: 0,
-          caixas_mes: 0
-        });
-      }
-      const item = currentBySellerClient.get(key);
-      if (dataConclusao && (!item.primeira_compra_mes || dataConclusao < item.primeira_compra_mes)) item.primeira_compra_mes = dataConclusao;
-      if (dataConclusao && (!item.ultima_compra_mes || dataConclusao > item.ultima_compra_mes)) item.ultima_compra_mes = dataConclusao;
-      item.total_ofs_mes += 1;
-      item.valor_total_mes += valor;
-      item.caixas_mes += qtd;
-    });
-    const vendedores = new Map();
-    currentBySellerClient.forEach((item) => {
-      const cliHistory = Array.isArray(byClientHistory.get(item.cliente_id)) ? byClientHistory.get(item.cliente_id) : [];
-      const ultimaCompraAnterior = cliHistory.length ? cliHistory[cliHistory.length - 1] : '';
-      const comprouMesAnterior = cliHistory.some((data) => String(data || '') >= prevMonthStart && String(data || '') <= prevMonthEnd);
-      let classificacao = 'novo';
-      let diasSemComprar = null;
-      let retornoTexto = '';
-      if (ultimaCompraAnterior) {
-        if (comprouMesAnterior) {
-          classificacao = 'recorrente';
-        } else {
-          classificacao = 'retornou';
-          const diffMs = new Date(item.primeira_compra_mes + 'T12:00:00').getTime() - new Date(ultimaCompraAnterior + 'T12:00:00').getTime();
-          diasSemComprar = Math.max(0, Math.round(diffMs / 86400000));
-          retornoTexto = diasSemComprar + ' dias sem comprar, retornou em ' + item.primeira_compra_mes.split('-').reverse().join('/');
-        }
-      }
-      if (!vendedores.has(item.sellerKey)) {
-        vendedores.set(item.sellerKey, {
-          vendedor_id: item.vendedor_id,
-          vendedor: item.vendedor || 'Sem vendedor',
-          total_clientes: 0,
-          clientes_novos: 0,
-          clientes_retornaram: 0,
-          clientes_recorrentes: 0,
-          total_ofs: 0,
-          valor_total: 0,
-          caixas_total: 0,
-          clientes: []
-        });
-      }
-      const seller = vendedores.get(item.sellerKey);
-      seller.total_clientes += 1;
-      seller.total_ofs += item.total_ofs_mes;
-      seller.valor_total += item.valor_total_mes;
-      seller.caixas_total += item.caixas_mes;
-      if (classificacao === 'novo') seller.clientes_novos += 1;
-      else if (classificacao === 'retornou') seller.clientes_retornaram += 1;
-      else seller.clientes_recorrentes += 1;
-      seller.clientes.push({
-        cliente_id: item.cliente_id,
-        cliente_nome: item.cliente_nome,
-        classificacao,
-        total_ofs_mes: item.total_ofs_mes,
-        valor_total_mes: Number(item.valor_total_mes || 0),
-        caixas_mes: Number(item.caixas_mes || 0),
-        primeira_compra_mes: item.primeira_compra_mes,
-        ultima_compra_mes: item.ultima_compra_mes,
-        ultima_compra_anterior: ultimaCompraAnterior || null,
-        dias_sem_comprar: diasSemComprar,
-        retorno_texto: retornoTexto
-      });
-    });
-    const rows = Array.from(vendedores.values()).map((seller) => {
-      seller.clientes.sort((a, b) => {
-        const order = { retornou: 0, novo: 1, recorrente: 2 };
-        const oa = Object.prototype.hasOwnProperty.call(order, a.classificacao) ? order[a.classificacao] : 9;
-        const ob = Object.prototype.hasOwnProperty.call(order, b.classificacao) ? order[b.classificacao] : 9;
-        if (oa !== ob) return oa - ob;
-        return String(a.cliente_nome || '').localeCompare(String(b.cliente_nome || ''), 'pt-BR');
-      });
-      return seller;
-    }).sort((a, b) => {
-      if (Number(b.total_clientes || 0) !== Number(a.total_clientes || 0)) return Number(b.total_clientes || 0) - Number(a.total_clientes || 0);
-      if (Number(b.valor_total || 0) !== Number(a.valor_total || 0)) return Number(b.valor_total || 0) - Number(a.valor_total || 0);
-      return String(a.vendedor || '').localeCompare(String(b.vendedor || ''), 'pt-BR');
-    });
-    const resumo = rows.reduce((acc, seller) => {
-      acc.total_vendedores += 1;
-      acc.total_clientes += Number(seller?.total_clientes || 0) || 0;
-      acc.clientes_novos += Number(seller?.clientes_novos || 0) || 0;
-      acc.clientes_retornaram += Number(seller?.clientes_retornaram || 0) || 0;
-      acc.clientes_recorrentes += Number(seller?.clientes_recorrentes || 0) || 0;
-      acc.total_ofs += Number(seller?.total_ofs || 0) || 0;
-      acc.valor_total += Number(seller?.valor_total || 0) || 0;
-      return acc;
-    }, {
-      total_vendedores: 0,
-      total_clientes: 0,
-      clientes_novos: 0,
-      clientes_retornaram: 0,
-      clientes_recorrentes: 0,
-      total_ofs: 0,
-      valor_total: 0
-    });
-    const refDate = new Date(range.inicio + 'T12:00:00');
-    return res.json({
-      ok: true,
-      mes: refDate.getMonth() + 1,
-      ano: refDate.getFullYear(),
-      data_inicio: range.inicio,
-      data_fim: range.fim,
-      resumo,
-      vendedores: rows
-    });
-  } catch (e) {
-    console.error('[RELATORIOS][CONTROLE-VENDAS-VENDEDOR]', e?.message || e);
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
-  }
-});
-
 app.get('/api/relatorios/custos', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
@@ -12884,24 +11978,8 @@ app.get('/api/clientes/:id', authMiddleware, async (req, res) => {
     const id = String(req.params.id || '').trim();
     const lite = String(req.query.lite || '').trim() === '1';
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    let data = null;
-    let error = null;
-    if (_isUuid(id)) {
-      const byId = await supabase.from('clientes').select('*').eq('id', id).maybeSingle();
-      data = byId?.data || null;
-      error = byId?.error || null;
-    }
-    if (!data) {
-      const byCodigo = await supabase.from('clientes').select('*').eq('codigo', id).maybeSingle();
-      data = byCodigo?.data || null;
-      error = byCodigo?.error || error || null;
-    }
-    if (!data && !_isUuid(id)) {
-      const byLegacyId = await supabase.from('clientes').select('*').eq('id', id).maybeSingle();
-      data = byLegacyId?.data || null;
-      error = byLegacyId?.error || error || null;
-    }
-    if (error && !data) throw error;
+    const { data, error } = await supabase.from('clientes').select('*').eq('id', id).maybeSingle();
+    if (error) throw error;
     if (!data) return res.status(404).json({ ok: false, error: 'Cliente não encontrado' });
     if (lite) {
       return res.json({
@@ -12914,13 +11992,11 @@ app.get('/api/clientes/:id', authMiddleware, async (req, res) => {
         }
       });
     }
-    const cliFilters = ['cli_id.eq.' + String(data.id || '').trim()];
-    if (String(data.codigo || '').trim()) cliFilters.push('cli_id.eq.' + String(data.codigo || '').trim());
     const { data: ofs, error: errOfs } = await supabase
       .from('ofs')
       .select('id,numero,valor_total,total,status,created_at,data_conclusao,cli_id')
       .is('deleted_at', null)
-      .or(cliFilters.join(','))
+      .eq('cli_id', id)
       .order('created_at', { ascending: false });
     if (errOfs) throw errOfs;
     const ofsLista = Array.isArray(ofs) ? ofs : [];
@@ -13302,19 +12378,6 @@ app.get('/api/orcamentos/:id', authMiddleware, async (req, res) => {
 app.post('/api/orcamentos', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
-    const chapaUtilizada = String(
-      b.chapa_utilizada ??
-      b.chapaUtilizada ??
-      (b.parametros && typeof b.parametros === 'object' ? (b.parametros.chapa_utilizada ?? b.parametros.chapaUtilizada) : '') ??
-      ''
-    ).trim();
-    const parametros = (b.parametros && typeof b.parametros === 'object' && !Array.isArray(b.parametros))
-      ? { ...b.parametros }
-      : {};
-    if (chapaUtilizada) {
-      parametros.chapa_utilizada = chapaUtilizada;
-      parametros.chapaUtilizada = chapaUtilizada;
-    }
 
     const orderCols = ['criado_em', 'created_at'];
     let ultimo = null;
@@ -13343,14 +12406,13 @@ app.post('/api/orcamentos', authMiddleware, async (req, res) => {
       onda: b.onda || '',
       valor_unitario: b.valor_unitario || 0,
       valor_total: b.valor_total || 0,
-      parametros,
+      parametros: b.parametros || {},
       resultados: b.resultados || [],
       emp_id: b.emp_id || '',
       criado_por: req.usuario?.nome || 'sistema',
       criado_em: new Date().toISOString(),
       status: 'Rascunho',
     };
-    if (chapaUtilizada) payload.chapa_utilizada = chapaUtilizada;
     payload.public_token = crypto.randomBytes(24).toString('hex');
     if (b.cliente_id && String(b.cliente_id).match(/^[0-9a-f-]{36}$/i)) payload.cliente_id = b.cliente_id;
     if (Object.prototype.hasOwnProperty.call(b, 'pasta_id')) {
@@ -13409,15 +12471,6 @@ app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
     const b = req.body || {};
     const updates = {};
     const has = (k) => Object.prototype.hasOwnProperty.call(b, k);
-    const currentParametros = (atual.data?.parametros && typeof atual.data.parametros === 'object' && !Array.isArray(atual.data.parametros))
-      ? { ...atual.data.parametros }
-      : {};
-    const bodyParametros = (b.parametros && typeof b.parametros === 'object' && !Array.isArray(b.parametros))
-      ? { ...b.parametros }
-      : null;
-    const chapaUtilizada = has('chapa_utilizada') || has('chapaUtilizada')
-      ? String(b.chapa_utilizada ?? b.chapaUtilizada ?? '').trim()
-      : '';
     if (has('medidas') || has('titulo')) updates.titulo = b.medidas ?? b.titulo ?? '';
     if (has('nome') || has('nome_orcamento')) updates.nome = b.nome ?? b.nome_orcamento ?? '';
     if (has('cliente_nome') || has('descricao')) {
@@ -13429,23 +12482,10 @@ app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
     if (has('onda')) updates.onda = b.onda ?? '';
     if (has('valor_unitario')) updates.valor_unitario = b.valor_unitario ?? 0;
     if (has('valor_total')) updates.valor_total = b.valor_total ?? 0;
-    if (has('parametros') || has('chapa_utilizada') || has('chapaUtilizada')) {
-      const nextParametros = bodyParametros ? bodyParametros : currentParametros;
-      if (has('chapa_utilizada') || has('chapaUtilizada')) {
-        if (chapaUtilizada) {
-          nextParametros.chapa_utilizada = chapaUtilizada;
-          nextParametros.chapaUtilizada = chapaUtilizada;
-        } else {
-          delete nextParametros.chapa_utilizada;
-          delete nextParametros.chapaUtilizada;
-        }
-      }
-      updates.parametros = nextParametros;
-    }
+    if (has('parametros')) updates.parametros = b.parametros ?? {};
     if (has('resultados')) updates.resultados = b.resultados ?? [];
     if (has('status')) updates.status = b.status ?? atual.data?.status ?? 'Rascunho';
     if (has('pasta_id')) updates.pasta_id = b.pasta_id ? String(b.pasta_id).trim() : null;
-    if (has('chapa_utilizada') || has('chapaUtilizada')) updates.chapa_utilizada = chapaUtilizada || null;
     if (!Object.keys(updates).length) return ok(res, atual.data || null);
     let upd = await supabase.from('orcamentos').update(updates).eq('id', id).select().single();
     if (upd.error) {
@@ -14078,7 +13118,7 @@ app.put('/api/operadores/:id', authMiddleware, async (req, res) => {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // M??QUINAS
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const _MAQUINAS_ATIVAS = MAQUINAS_CATALOGO_PADRAO.map((item) => item.nome);
+const _MAQUINAS_ATIVAS = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
 function _normMaqNome(v) {
   try {
     return String(v || '')
@@ -14103,7 +13143,6 @@ function _canonMaqNome(v) {
   if (s.includes('rotat') && (s.includes('vinco') || s.includes('corte'))) return 'CORTE VINCO ROTATIVA';
   if (s === 'cvr') return 'CORTE VINCO ROTATIVA';
   if (s === 'rotativa') return 'CORTE VINCO ROTATIVA';
-  if (s === 'riscador' || s === 'risc' || s === 'riscador 01' || s === 'riscador 1' || s === 'riscador 02' || s === 'riscador 2') return 'Riscador';
   return '';
 }
 function _isUuid(v) {
@@ -14668,7 +13707,6 @@ app.get('/api/maquinas', authMiddleware, async (req, res) => {
       from += pageSize;
     }
 
-    all = _mergeCanonicalMachineRows(all);
     cacheSet(cacheKey, all, 30 * 1000);
     return res.json({ ok: true, data: all, maquinas: all });
   } catch (e) { err(res, e); }
@@ -19621,7 +18659,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
           data: { ...canonCur, _movimento: { tipo, oldQtd, newQtd: oldQtd, delta: 0 } },
           qtd_estoque: Math.trunc(Number(oldQtd) || 0),
           qtd_anterior: Math.trunc(Number(oldQtd) || 0),
-          mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} -> ${Math.trunc(Number(oldQtd) || 0)}`,
+          mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} â†’ ${Math.trunc(Number(oldQtd) || 0)}`,
         });
       }
 
@@ -19675,7 +18713,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
         data: { ...canonUpd, _movimento: { tipo, oldQtd, newQtd: Number(canonUpd.quantidade || newQtd) || newQtd, delta: deltaAbs } },
         qtd_estoque: qtdOut,
         qtd_anterior: Math.trunc(Number(oldQtd) || 0),
-        mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} -> ${qtdOut}`,
+        mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} â†’ ${qtdOut}`,
       });
     }
 
@@ -19785,7 +18823,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
       data: { ...canonUpd, _movimento: { tipo, oldQtd, newQtd, delta: deltaAbs } },
       qtd_estoque: qtdOut,
       qtd_anterior: Math.trunc(Number(oldQtd) || 0),
-      mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} -> ${qtdOut}`,
+      mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} â†’ ${qtdOut}`,
     });
   } catch (e) { err(res, e); }
 });
@@ -20612,7 +19650,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
     console.log('[TONELADAS-CLI2] uuids:', cliIdsUuid.length, 'codigos:', cliIdsCodigo.length, 'retornados:', (clientesRows || []).length);
     const gramaturaIds = [...new Set((Array.isArray(ofs) ? ofs : []).map((o) => pickOfGramaturaId(o)).filter(Boolean))];
     const { data: gramaturasRows } = gramaturaIds.length
-      ? await supabase.from('gramaturas').select('id,fornecedor_id,gramatura').in('id', gramaturaIds)
+      ? await supabase.from('gramaturas').select('id,fornecedor_id').in('id', gramaturaIds)
       : { data: [] };
     const fornecedorIds = [...new Set((Array.isArray(gramaturasRows) ? gramaturasRows : []).map((g) => String(g?.fornecedor_id || '').trim()).filter(Boolean))];
     const { data: fornecedoresRows } = fornecedorIds.length
@@ -20641,7 +19679,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       const gramaturaId = pickOfGramaturaId(of);
       const gramaturaInfo = gramaturasMap.get(gramaturaId) || null;
       const qtd = Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.qtd ?? of?.quantidade ?? 0) || 0));
-      const gramatura = Number(of?.gramatura ?? gramaturaInfo?.gramatura ?? 0) || 0;
+      const gramatura = Number(of?.gramatura || 0) || 0;
       const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
       const custoM2Venda = Number(of?.custo_m2_venda || 0) || 0;
       const valorUnitario = Number(of?.valor_unitario ?? of?.preco ?? 0) || 0;
@@ -23784,7 +22822,7 @@ function _range(period) {
     const dow = x.getDay();
     const diff = (dow === 0) ? 6 : (dow - 1);
     x.setDate(x.getDate() - diff);
-    return { de: x, ate: endOfDay(now), label: `Semana ${_isoDay(x)} -> ${_isoDay(now)}` };
+    return { de: x, ate: endOfDay(now), label: `Semana ${_isoDay(x)} â†’ ${_isoDay(now)}` };
   }
   if (period === 'mes') {
     const de = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
@@ -26046,30 +25084,30 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
           const cNome = String(cliMap.get(cid) || of.cliNome || of.cliente_nome || '—').trim() || '—';
           const nOf = _assistPickOfNumber(of);
           const qtd = Math.trunc(Number(of.qtd_pedida || of.quantidade || of.qtd || 0) || 0);
-          if (act.type === 'of_cancel') resumo = `⚠️ Confirmar cancelamento da OF #${nOf} — ${cNome} — ${qtd} caixas?`;
-          else if (act.type === 'of_upload_image') resumo = `⚠️ Confirmar troca da imagem da OF #${nOf} — ${cNome}?`;
-          else if (act.type === 'of_set_entrega') resumo = `⚠️ Confirmar alteração da entrega da OF #${nOf} — ${cNome} para ${_assistFmtDateBr(act.data)}?`;
-          else if (act.type === 'of_set_qtd') resumo = `⚠️ Confirmar alteração da quantidade da OF #${nOf} — ${cNome} para ${Number(act.qtd).toLocaleString('pt-BR')} caixas?`;
-          else if (act.type === 'of_set_urgente') resumo = `⚠️ Confirmar marcar urgência na OF #${nOf} — ${cNome}?`;
-          else if (act.type === 'of_set_cliente') resumo = `⚠️ Confirmar trocar cliente da OF #${nOf} para "${act.clienteNome}"?`;
-          else if (act.type === 'of_concluir') resumo = `⚠️ Confirmar concluir a OF #${nOf} — ${cNome}${act.qtdProduzida ? ` (produzidas ${Number(act.qtdProduzida).toLocaleString('pt-BR')} cx)` : ''}?`;
-          else resumo = `⚠️ Confirmar ação na OF #${nOf}?`;
+          if (act.type === 'of_cancel') resumo = `âš ï¸ Confirmar cancelamento da OF #${nOf} — ${cNome} — ${qtd} caixas?`;
+          else if (act.type === 'of_upload_image') resumo = `âš ï¸ Confirmar troca da imagem da OF #${nOf} — ${cNome}?`;
+          else if (act.type === 'of_set_entrega') resumo = `âš ï¸ Confirmar alteraÃ§Ã£o da entrega da OF #${nOf} — ${cNome} para ${_assistFmtDateBr(act.data)}?`;
+          else if (act.type === 'of_set_qtd') resumo = `âš ï¸ Confirmar alteraÃ§Ã£o da quantidade da OF #${nOf} — ${cNome} para ${Number(act.qtd).toLocaleString('pt-BR')} caixas?`;
+          else if (act.type === 'of_set_urgente') resumo = `âš ï¸ Confirmar marcar urgÃªncia na OF #${nOf} — ${cNome}?`;
+          else if (act.type === 'of_set_cliente') resumo = `âš ï¸ Confirmar trocar cliente da OF #${nOf} para "${act.clienteNome}"?`;
+          else if (act.type === 'of_concluir') resumo = `âš ï¸ Confirmar concluir a OF #${nOf} — ${cNome}${act.qtdProduzida ? ` (produzidas ${Number(act.qtdProduzida).toLocaleString('pt-BR')} cx)` : ''}?`;
+          else resumo = `âš ï¸ Confirmar aÃ§Ã£o na OF #${nOf}?`;
           act.ofId = String(of.id || '');
         } else if (act.type.startsWith('chapa_')) {
           const ch = await _jarvisFindChapaByNome(act.chapaNome);
           if (!ch) return respond(`${nome}, não encontrei a chapa "${act.chapaNome}".`);
           const nomeCh = String(ch.nomenclatura || ch.nome_uso || ch.nome || '—').trim() || '—';
-          if (act.type === 'chapa_entrada') resumo = `⚠️ Confirmar entrada de ${Number(act.qtd).toLocaleString('pt-BR')} unidade(s) na chapa "${nomeCh}"?`;
-          else if (act.type === 'chapa_set_min') resumo = `⚠️ Confirmar ajuste do estoque mínimo da chapa "${nomeCh}" para ${Number(act.min).toLocaleString('pt-BR')}?`;
+          if (act.type === 'chapa_entrada') resumo = `âš ï¸ Confirmar entrada de ${Number(act.qtd).toLocaleString('pt-BR')} unidade(s) na chapa "${nomeCh}"?`;
+          else if (act.type === 'chapa_set_min') resumo = `âš ï¸ Confirmar ajuste do estoque mÃ­nimo da chapa "${nomeCh}" para ${Number(act.min).toLocaleString('pt-BR')}?`;
           act.chapaId = String(ch.id || '');
         } else if (act.type.startsWith('cliente_')) {
-          if (act.type === 'cliente_create') resumo = `⚠️ Confirmar cadastro do cliente "${act.clienteNome}" com telefone "${act.telefone}"?`;
-          if (act.type === 'cliente_set_tel') resumo = `⚠️ Confirmar atualizar telefone do cliente "${act.clienteNome}" para "${act.telefone}"?`;
+          if (act.type === 'cliente_create') resumo = `âš ï¸ Confirmar cadastro do cliente "${act.clienteNome}" com telefone "${act.telefone}"?`;
+          if (act.type === 'cliente_set_tel') resumo = `âš ï¸ Confirmar atualizar telefone do cliente "${act.clienteNome}" para "${act.telefone}"?`;
         } else {
-          resumo = `⚠️ Confirmar ação?`;
+          resumo = `âš ï¸ Confirmar aÃ§Ã£o?`;
         }
       } catch (_) {
-        resumo = `⚠️ Confirmar ação?`;
+        resumo = `âš ï¸ Confirmar aÃ§Ã£o?`;
       }
       const actionId = _jarvisStoreAction(uid, act);
       return res.json({
@@ -26077,7 +25115,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         resposta: resumo,
         actions: [
           { id: actionId, label: '✅ Confirmar', decision: 'confirm' },
-          { id: actionId, label: '❌ Cancelar', decision: 'cancel' },
+          { id: actionId, label: 'âŒ Cancelar', decision: 'cancel' },
         ],
       });
     }
@@ -26089,57 +25127,57 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       return res.json({
         ok: true,
         resposta:
-`${nome}, sou o JARVIS - IA integrada ao ERP Italy Embalagens. Veja tudo que posso fazer:
+`${nome}, sou o JARVIS â€” IA integrada ao ERP Italy Embalagens. Veja tudo que posso fazer:
 
-📋 ORDENS DE FABRICAÇÃO
-- "imagem da OF 498" -> imagem + dados completos + ações
-- "OF 498" -> todos os dados da OF
-- "OFs do cliente João" -> situação completa com status
+ðŸ“‹ ORDENS DE FABRICAÃ‡ÃƒO
+- "imagem da OF 498" â†’ imagem + dados completos + aÃ§Ãµes
+- "OF 498" â†’ todos os dados da OF
+- "OFs do cliente JoÃ£o" â†’ situaÃ§Ã£o completa com status
 - "OFs atrasadas" / "OFs urgentes" / "OFs de hoje"
-- "concluir OF 498" -> solicito dados e concluo
-- "cancelar OF 498" -> cancelo após confirmação
-- "altere a entrega da OF 498 para 25/05" -> altero após confirmação
-- "programa a OF 498 para amanhã na IMP 03" -> reagendo
-- "clonar OF 498 para cliente X com entrega 30/05" -> cria cópia
-- "mover todas as OFs da IMP 03 para amanhã" -> lote
+- "concluir OF 498" â†’ solicito dados e concluo
+- "cancelar OF 498" â†’ cancelo apÃ³s confirmaÃ§Ã£o
+- "altere a entrega da OF 498 para 25/05" â†’ altero apÃ³s confirmaÃ§Ã£o
+- "programa a OF 498 para amanhÃ£ na IMP 03" â†’ reagendo
+- "clonar OF 498 para cliente X com entrega 30/05" â†’ cria cÃ³pia
+- "mover todas as OFs da IMP 03 para amanhÃ£" â†’ lote
 
-🏭 PRODUÇÃO
-- "como está a produção agora" -> dashboard em tempo real
-- "fila da IMP 02" -> OFs em ordem de prioridade
-- "qual máquina está mais livre" -> ranking de carga
-- "quais OFs vão atrasar essa semana" -> previsão
-- "ranking de produtos mais fabricados" -> top produtos
-- "modo fábrica" -> interface simplificada para operadores
+ðŸ­ PRODUÃ‡ÃƒO
+- "como estÃ¡ a produÃ§Ã£o agora" â†’ dashboard em tempo real
+- "fila da IMP 02" â†’ OFs em ordem de prioridade
+- "qual mÃ¡quina estÃ¡ mais livre" â†’ ranking de carga
+- "quais OFs vÃ£o atrasar essa semana" â†’ previsÃ£o
+- "ranking de produtos mais fabricados" â†’ top produtos
+- "modo fÃ¡brica" â†’ interface simplificada para operadores
 
-👥 CLIENTES
-- "histórico do cliente X" -> OFs, ticket médio, total gasto
-- "abre o cliente Padaria X" -> busca com dados
-- "clientes inativos" -> sem pedido há 30 dias
-- "top clientes do mês" -> maiores compradores
-- "PDF do cliente X" -> relatório para imprimir
-- "compare faturamento de abril com maio" -> comparativo
+ðŸ‘¥ CLIENTES
+- "histÃ³rico do cliente X" â†’ OFs, ticket mÃ©dio, total gasto
+- "abre o cliente Padaria X" â†’ busca com dados
+- "clientes inativos" â†’ sem pedido hÃ¡ 30 dias
+- "top clientes do mÃªs" â†’ maiores compradores
+- "PDF do cliente X" â†’ relatÃ³rio para imprimir
+- "compare faturamento de abril com maio" â†’ comparativo
 
-📦 ESTOQUE
-- "quanto tem de chapa onda B" -> saldo atual
-- "estoque crítico" -> abaixo do mínimo
-- "valor total do estoque" -> inventário completo
-- "o que preciso comprar esta semana" -> sugestão de compra
-- "dar entrada de 100 na chapa X" -> registra após confirmação
-- "última entrada de onda B 1200x900" -> histórico
-- "custo de chapas da OF 498" -> cálculo de custo
+ðŸ“¦ ESTOQUE
+- "quanto tem de chapa onda B" â†’ saldo atual
+- "estoque crÃ­tico" â†’ abaixo do mÃ­nimo
+- "valor total do estoque" â†’ inventÃ¡rio completo
+- "o que preciso comprar esta semana" â†’ sugestÃ£o de compra
+- "dar entrada de 100 na chapa X" â†’ registra apÃ³s confirmaÃ§Ã£o
+- "Ãºltima entrada de onda B 1200x900" â†’ histÃ³rico
+- "custo de chapas da OF 498" â†’ cÃ¡lculo de custo
 
-📊 RELATÓRIOS
-- "faturamento do mês" / "faturamento de abril"
+ðŸ“Š RELATÃ“RIOS
+- "faturamento do mÃªs" / "faturamento de abril"
 - "compare faturamento de abril com maio"
-- "/dashboard" -> gráfico anual
-- "/resumo" -> resumo completo do dia
-- "/atrasadas" -> lista rápida
+- "/dashboard" â†’ grÃ¡fico anual
+- "/resumo" â†’ resumo completo do dia
+- "/atrasadas" â†’ lista rÃ¡pida
 
-💡 DICAS
-- Digite só o número (ex: "498") -> mostro a OF direto
-- Botão 📎 -> enviar imagem para atualizar foto de OF
-- Botão 🎤 -> comando por voz
-- "modo fábrica" -> modo simplificado para chão de fábrica`,
+ðŸ’¡ DICAS
+- Digite sÃ³ o nÃºmero (ex: "498") â†’ mostro a OF direto
+- BotÃ£o ðŸ“Ž â†’ enviar imagem para atualizar foto de OF
+- BotÃ£o ðŸŽ¤ â†’ comando por voz
+- "modo fÃ¡brica" â†’ modo simplificado para chÃ£o de fÃ¡brica`,
         suggestions: ['imagem da OF 498','fila da IMP 02','o que preciso comprar','como está a produção agora','PDF do cliente X']
       });
     }
@@ -26949,10 +25987,10 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
       return res.json({
         ok: true,
-        resposta: `${nome}, confirmar ${tipoLabel} de **${qtd}** unidades na chapa **${nomChapa}**?\nSaldo atual: ${qtdAtual} -> Novo saldo: ${tipo==='entrada'?qtdAtual+qtd:tipo==='saida'?qtdAtual-qtd:qtd}`,
+        resposta: `${nome}, confirmar ${tipoLabel} de **${qtd}** unidades na chapa **${nomChapa}**?\nSaldo atual: ${qtdAtual} â†’ Novo saldo: ${tipo==='entrada'?qtdAtual+qtd:tipo==='saida'?qtdAtual-qtd:qtd}`,
         actions: [
           { id: actionId, label: '✅ Confirmar', decision: 'confirm' },
-          { id: actionId, label: '❌ Cancelar',  decision: 'cancel'  },
+          { id: actionId, label: 'âŒ Cancelar',  decision: 'cancel'  },
         ]
       });
     }
@@ -27201,14 +26239,7 @@ app.post('/api/assistente/acao', authMiddleware, async (req, res) => {
       clone.seq = nextSeq; clone.of = numStr; clone.numero = numStr;
       clone.status = 'Em aberto';
       if (act.novaEntrega) { clone.ent = act.novaEntrega; clone.data_entrega = act.novaEntrega; }
-      const cloneCliRef = String(act.novoCliId || clone.cliente_id || clone.cli_id || '').trim();
-      const cloneCli = cloneCliRef ? await _resolverClienteIdentidadeOF(cloneCliRef) : null;
-      if (!cloneCli?.id) return res.json({ok:false, resposta:`${first}, a clonagem foi bloqueada porque a OF original está sem cliente válido.`});
-      clone.cli_id = cloneCli.id;
-      clone.cliente_id = cloneCli.id;
-      clone.cliNome = cloneCli.nome || clone.cliNome || '';
-      clone.clinome = cloneCli.nome || clone.clinome || '';
-      clone.cliente_nome = cloneCli.nome || clone.cliente_nome || '';
+      if (act.novoCliId) { clone.cli_id = act.novoCliId; clone.cliente_id = act.novoCliId; }
       clone.created_at = new Date().toISOString();
       clone.updated_at = new Date().toISOString();
       const {data:nova, error} = await supabase.from('ofs').insert([clone]).select('id,of,numero').single();
@@ -28024,8 +27055,8 @@ async function _sequenciamentoListar({ maquina, empId }){
   const mk = String(maquina||'').trim();
   const filtered = mk ? ofs.filter(o=>String(_ofPickMaqAtualName(o)||'').trim()===mk) : ofs;
   const ord = (a,b)=>{
-    const ua = _chapasBool(a?.urgente ?? a?.urg);
-    const ub = _chapasBool(b?.urgente ?? b?.urg);
+    const ua = !!(a?.urg || a?.urgente);
+    const ub = !!(b?.urg || b?.urgente);
     if(ua !== ub) return ua ? -1 : 1;
     const ea = String(a?.data_entrega ?? a?.ent ?? '9999-99-99').slice(0,10) || '9999-99-99';
     const eb = String(b?.data_entrega ?? b?.ent ?? '9999-99-99').slice(0,10) || '9999-99-99';
@@ -28185,7 +27216,7 @@ app.get('/api/hub/inteligencia', authMiddleware, async (req, res) => {
           titulo: atrasadas.length + ' OF' + (atrasadas.length > 1 ? 's' : '') + ' atrasada' + (atrasadas.length > 1 ? 's' : ''),
           subtitulo: atrasadas.slice(0, 3).map((o) => '#' + (o?.numero || '?')).join(', '),
           acao: 'pcp',
-          acao_label: 'ver OFs ->'
+          acao_label: 'ver OFs â†’'
         });
       }
     } catch (e) {
@@ -28211,7 +27242,7 @@ app.get('/api/hub/inteligencia', authMiddleware, async (req, res) => {
             titulo: 'Tinta "' + String(t?.nome || '') + '" zerada',
             subtitulo: '0 ' + String(t?.unidade || 'kg'),
             acao: 'estoque-tintas',
-            acao_label: 'repor ->'
+            acao_label: 'repor â†’'
           });
         } else if (q <= (min * 0.5)) {
           alertas.push({
@@ -28221,7 +27252,7 @@ app.get('/api/hub/inteligencia', authMiddleware, async (req, res) => {
             titulo: 'Tinta "' + String(t?.nome || '') + '" crítica',
             subtitulo: String(q) + ' ' + String(t?.unidade || 'kg'),
             acao: 'estoque-tintas',
-            acao_label: 'comprar ->'
+            acao_label: 'comprar â†’'
           });
         }
       });
@@ -28255,10 +27286,10 @@ app.get('/api/hub/inteligencia', authMiddleware, async (req, res) => {
           tipo: 'danger',
           icone: '📦',
           prioridade: 5,
-          titulo: 'Chapa ' + String(c?.tipo || '') + ' ' + String(c?.largura || '') + 'x' + String(c?.comprimento || '') + ' zerada',
+          titulo: 'Chapa ' + String(c?.tipo || '') + ' ' + String(c?.largura || '') + 'Ã—' + String(c?.comprimento || '') + ' zerada',
           subtitulo: 'Estoque zerado',
           acao: 'estoque-chapas',
-          acao_label: 'repor ->'
+          acao_label: 'repor â†’'
         });
       });
     } catch (e) {
@@ -28299,7 +27330,7 @@ app.post('/api/sequenciamento/auto', authMiddleware, async (req, res) => {
     const lista = await _sequenciamentoListar({ maquina, empId: empId || null });
     const keySetup = (o)=> String(o?.tipo_caixa_id || o?.tipo_caixa || o?.onda || '').trim();
     const entrega = (o)=> String(o?.data_entrega ?? o?.ent ?? '9999-99-99').slice(0,10) || '9999-99-99';
-    const urg = (o)=> _chapasBool(o?.urgente ?? o?.urg);
+    const urg = (o)=> !!(o?.urg || o?.urgente);
     const sorted = (lista||[]).slice().sort((a,b)=>{
       const ua = urg(a); const ub = urg(b);
       if(ua !== ub) return ua ? -1 : 1;

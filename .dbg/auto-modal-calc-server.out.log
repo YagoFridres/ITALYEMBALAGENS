@@ -1,0 +1,9 @@
+@@DEBUG_SERVER_INFO
+{
+  "api_url": "http://127.0.0.1:7778/event",
+  "session_id": "auto-modal-calc",
+  "log_dir": "c:\\Users\\Usuario\\PCP PROGRAMA\\ITALYEMBALAGENS\\.dbg",
+  "log_file": "c:\\Users\\Usuario\\PCP PROGRAMA\\ITALYEMBALAGENS\\.dbg\\trae-debug-log-auto-modal-calc.ndjson",
+  "env_file": "c:\\Users\\Usuario\\PCP PROGRAMA\\ITALYEMBALAGENS\\.dbg\\auto-modal-calc.env"
+}
+@@END_DEBUG_SERVER_INFO

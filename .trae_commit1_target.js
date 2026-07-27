@@ -1,4 +1,4 @@
-﻿window._comRodando = false;
+window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
 if (!window.__comRodandoWatchdogInstalled) {
@@ -17,7 +17,6 @@ if (!window.__comRodandoWatchdogInstalled) {
 }
 if (!window.__ofmaqDataCheckInstalled) {
   window.__ofmaqDataCheckInstalled = true;
-  window.__ofmaqDesiredPipeline = 'final';
   var _ofmaqDataCheckInterval = setInterval(function() {
     try {
       var ofs = window._ofmaqListaCompleta || window._ofmaqBaseList || window.OFS || window.kbOfs || [];
@@ -29,7 +28,7 @@ if (!window.__ofmaqDataCheckInstalled) {
       console.log('[DIA-RAW-0]', JSON.stringify(ofs[0] && ofs[0].dia));
       console.log('[COR-RAW-0]', JSON.stringify(ofs[0] && ofs[0].cores_impressao));
       clearInterval(_ofmaqDataCheckInterval);
-      if (window.__ofmaqDesiredPipeline !== 'final' && window._PAGE_ATUAL === 'ofmaq' && typeof window._ofmaqRenderNovo === 'function') window._ofmaqRenderNovo(ofs);
+      if (window._PAGE_ATUAL === 'ofmaq' && typeof window._ofmaqRenderNovo === 'function') window._ofmaqRenderNovo(ofs);
     } catch (_) {}
   }, 500);
 }
@@ -1534,256 +1533,6 @@ try {
     });
   }
 
-  function rrControleVendasVendedorPeriodo(mes, ano) {
-    return rrMonthName(mes) + ' / ' + String(ano || '');
-  }
-
-  function rrBuildControleVendasVendedorPrint(json, mes, ano) {
-    var resumo = json && json.resumo || {};
-    var rows = rrList(json, ['vendedores', 'rows', 'data']);
-    return {
-      title: 'Controle de Vendas do Vendedor',
-      periodo: rrControleVendasVendedorPeriodo(mes, ano),
-      cards: [
-        { label: 'Vendedores', value: rrFmtNum(resumo.total_vendedores || rows.length, 0), sub: 'Vendedores com clientes no mês' },
-        { label: 'Clientes', value: rrFmtNum(resumo.total_clientes || 0, 0), sub: rrFmtNum(resumo.total_ofs || 0, 0) + ' OFs concluídas no mês' },
-        { label: 'Novos + Retornos', value: rrFmtNum((resumo.clientes_novos || 0) + (resumo.clientes_retornaram || 0), 0), sub: rrFmtNum(resumo.clientes_novos || 0, 0) + ' novos • ' + rrFmtNum(resumo.clientes_retornaram || 0, 0) + ' retornaram' },
-        { label: 'Valor Vendido', value: rrFmtMoney(resumo.valor_total || 0), sub: rrFmtNum(resumo.clientes_recorrentes || 0, 0) + ' clientes recorrentes' }
-      ],
-      summaryTitle: 'Resumo por vendedor',
-      summaryHeaders: ['Vendedor', 'Clientes', 'Novos', 'Retornaram', 'Recorrentes', 'OFs', 'Valor'],
-      summaryRows: rows.map(function(row) {
-        return [
-          rrEsc(String(row && row.vendedor || 'Sem vendedor')),
-          rrEsc(rrFmtNum(row && row.total_clientes || 0, 0)),
-          rrEsc(rrFmtNum(row && row.clientes_novos || 0, 0)),
-          rrEsc(rrFmtNum(row && row.clientes_retornaram || 0, 0)),
-          rrEsc(rrFmtNum(row && row.clientes_recorrentes || 0, 0)),
-          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
-          rrEsc(rrFmtMoney(row && row.valor_total || 0))
-        ];
-      }),
-      detailSections: rows.map(function(row) {
-        var clientes = Array.isArray(row && row.clientes) ? row.clientes : [];
-        return {
-          title: String(row && row.vendedor || 'Sem vendedor'),
-          headers: ['Cliente', 'Classificação', 'Status do retorno', 'OFs no mês', 'Caixas', 'Valor', 'Primeira compra do mês'],
-          rows: clientes.map(function(cli) {
-            var classificacao = String(cli && cli.classificacao || 'novo');
-            var retorno = classificacao === 'retornou'
-              ? String(cli && cli.retorno_texto || 'Retornou no mês')
-              : (classificacao === 'novo' ? 'Primeira compra no histórico' : 'Comprou também no mês anterior');
-            return [
-              rrEsc(String(cli && cli.cliente_nome || 'Sem cliente')),
-              rrEsc(classificacao === 'retornou' ? 'Retornou' : (classificacao === 'recorrente' ? 'Recorrente' : 'Novo')),
-              rrEsc(retorno),
-              rrEsc(rrFmtNum(cli && cli.total_ofs_mes || 0, 0)),
-              rrEsc(rrFmtNum(cli && cli.caixas_mes || 0, 0)),
-              rrEsc(rrFmtMoney(cli && cli.valor_total_mes || 0)),
-              rrEsc(rrFmtDate(cli && cli.primeira_compra_mes))
-            ];
-          }),
-          emptyCols: 7
-        };
-      }),
-      detailTitle: 'Clientes por vendedor',
-      emptySummaryCols: 7,
-      emptyDetailCols: 7
-    };
-  }
-
-  function rrRenderControleVendasVendedorPreview(host, json) {
-    var rows = rrList(json, ['vendedores', 'rows', 'data']);
-    if (!rows.length) {
-      host.innerHTML = '<div class="rr-period-help" style="margin-top:12px">Nenhum cliente encontrado para o mês selecionado.</div>';
-      return;
-    }
-    host.innerHTML = rows.map(function(row, idx) {
-      var clientes = Array.isArray(row && row.clientes) ? row.clientes : [];
-      return ''
-        + '<details class="rr-preview-card"' + (idx === 0 ? ' open' : '') + ' style="margin-top:12px;border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:12px 14px;background:rgba(15,23,42,.42)">'
-        + '  <summary style="cursor:pointer;display:flex;justify-content:space-between;gap:12px;align-items:center;list-style:none">'
-        + '    <div><strong>' + rrEsc(String(row && row.vendedor || 'Sem vendedor')) + '</strong><div style="margin-top:4px;font-size:12px;color:#94a3b8">' + rrEsc(rrFmtNum(row && row.total_clientes || 0, 0) + ' clientes • ' + rrFmtNum(row && row.total_ofs || 0, 0) + ' OFs • ' + rrFmtMoney(row && row.valor_total || 0)) + '</div></div>'
-        + '    <div style="font-size:12px;color:#cbd5e1;text-align:right">' + rrEsc('Novos: ' + rrFmtNum(row && row.clientes_novos || 0, 0) + ' • Retornaram: ' + rrFmtNum(row && row.clientes_retornaram || 0, 0) + ' • Recorrentes: ' + rrFmtNum(row && row.clientes_recorrentes || 0, 0)) + '</div>'
-        + '  </summary>'
-        + '  <div style="margin-top:12px;display:grid;gap:8px">'
-        + clientes.map(function(cli) {
-            var classificacao = String(cli && cli.classificacao || 'novo');
-            var retorno = classificacao === 'retornou'
-              ? String(cli && cli.retorno_texto || 'Retornou no mês')
-              : (classificacao === 'novo' ? 'Primeira compra no histórico' : 'Comprou também no mês anterior');
-            return '<div style="border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:10px 12px;background:rgba(2,6,23,.28)"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><strong>' + rrEsc(String(cli && cli.cliente_nome || 'Sem cliente')) + '</strong><span style="color:#93c5fd">' + rrEsc(classificacao === 'retornou' ? 'Retornou' : (classificacao === 'recorrente' ? 'Recorrente' : 'Novo')) + '</span></div><div style="margin-top:6px;font-size:12px;color:#94a3b8">' + rrEsc(retorno) + '</div><div style="margin-top:6px;font-size:12px;color:#cbd5e1">' + rrEsc(rrFmtNum(cli && cli.total_ofs_mes || 0, 0) + ' OFs • ' + rrFmtNum(cli && cli.caixas_mes || 0, 0) + ' caixas • ' + rrFmtMoney(cli && cli.valor_total_mes || 0)) + '</div></div>';
-          }).join('')
-        + '  </div>'
-        + '</details>';
-    }).join('');
-  }
-
-  function rrOpenControleVendasVendedorModal() {
-    var ref = rrMonthYearOptions();
-    rrOpenModal({
-      title: 'Controle de Vendas do Vendedor',
-      subtitle: 'Escolha o mês/ano para classificar clientes em novos, retornos e recorrentes.',
-      render: function(body) {
-        body.innerHTML = ''
-          + '<div class="rr-modal-grid">'
-          + '  <div class="rr-modal-field"><label>Mês</label><select id="rr-vendedor-mes">'
-          + Array.from({ length: 12 }).map(function(_, idx) {
-              var mes = idx + 1;
-              return '<option value="' + mes + '"' + (mes === ref.mes ? ' selected' : '') + '>' + rrEsc(rrMonthName(mes)) + '</option>';
-            }).join('')
-          + '  </select></div>'
-          + '  <div class="rr-modal-field"><label>Ano</label><select id="rr-vendedor-ano">'
-          + ref.anos.map(function(ano) { return '<option value="' + ano + '"' + (ano === ref.ano ? ' selected' : '') + '>' + ano + '</option>'; }).join('')
-          + '  </select></div>'
-          + '</div>'
-          + '<div class="rr-modal-actions">'
-          + '  <button type="button" class="rr-btn-ghost" data-rr-close>Cancelar</button>'
-          + '  <button type="button" class="rr-btn-ghost" id="rr-vendedor-preview">Atualizar prévia</button>'
-          + '  <button type="button" class="rr-btn" id="rr-vendedor-print">Imprimir relatório</button>'
-          + '</div>'
-          + '<div id="rr-vendedor-preview-host" style="margin-top:6px"></div>';
-        var previewHost = body.querySelector('#rr-vendedor-preview-host');
-        var lastJson = null;
-        async function loadPreview() {
-          var mes = Number((body.querySelector('#rr-vendedor-mes') || {}).value || ref.mes);
-          var ano = Number((body.querySelector('#rr-vendedor-ano') || {}).value || ref.ano);
-          previewHost.innerHTML = '<div class="rr-period-help" style="margin-top:12px">Carregando prévia...</div>';
-          lastJson = await rrFetchJson('/api/relatorios/controle-vendas-vendedor?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano));
-          rrRenderControleVendasVendedorPreview(previewHost, lastJson);
-          return { mes: mes, ano: ano, json: lastJson };
-        }
-        body.querySelector('#rr-vendedor-preview').onclick = async function() {
-          var btn = this;
-          btn.disabled = true;
-          try {
-            await loadPreview();
-          } catch (e) {
-            previewHost.innerHTML = '<div class="rr-period-help" style="margin-top:12px;color:#fca5a5">Erro ao carregar a prévia: ' + rrEsc(String(e && e.message || e)) + '</div>';
-          } finally {
-            btn.disabled = false;
-          }
-        };
-        body.querySelector('#rr-vendedor-print').onclick = async function() {
-          var btn = this;
-          btn.disabled = true;
-          btn.textContent = 'Gerando...';
-          try {
-            var payload = lastJson ? {
-              mes: Number((body.querySelector('#rr-vendedor-mes') || {}).value || ref.mes),
-              ano: Number((body.querySelector('#rr-vendedor-ano') || {}).value || ref.ano),
-              json: lastJson
-            } : await loadPreview();
-            rrOpenPrint(rrBuildControleVendasVendedorPrint(payload.json, payload.mes, payload.ano));
-            rrRemoveModal();
-          } catch (e) {
-            alert('Erro ao gerar relatório: ' + String(e && e.message || e));
-          } finally {
-            btn.disabled = false;
-            btn.textContent = 'Imprimir relatório';
-          }
-        };
-        loadPreview().catch(function(e) {
-          previewHost.innerHTML = '<div class="rr-period-help" style="margin-top:12px;color:#fca5a5">Erro ao carregar a prévia: ' + rrEsc(String(e && e.message || e)) + '</div>';
-        });
-      }
-    });
-  }
-
-  function rrOpenMaquinasPeriodoModal(opts) {
-    var cfg = opts || {};
-    var preferredPeriod = String(cfg.preferredPeriod || 'dia').trim() || 'dia';
-    var preferredDate = rrClampDateText(cfg.referenceDate) || rrDateText(new Date());
-    var preferredMachines = Array.isArray(cfg.machines) ? cfg.machines.map(function(machine) { return String(machine || '').trim(); }).filter(Boolean) : [];
-    rrOpenModal({
-      title: 'Relatório de Máquinas por Período',
-      subtitle: 'Selecione uma ou várias máquinas e escolha o período para gerar a impressão com as mesmas colunas do OFmaq.',
-      render: function(body) {
-        body.innerHTML = ''
-          + '<div class="rr-modal-grid">'
-          + '  <div class="rr-modal-field"><label>Período</label><select id="rr-maq-period"><option value="dia"' + (preferredPeriod === 'dia' ? ' selected' : '') + '>Dia</option><option value="semana"' + (preferredPeriod === 'semana' ? ' selected' : '') + '>Semana</option><option value="duas-semanas"' + (preferredPeriod === 'duas-semanas' ? ' selected' : '') + '>Duas semanas</option></select></div>'
-          + '  <div class="rr-modal-field"><label>Data de referência</label><input id="rr-maq-date" type="date" value="' + rrEsc(preferredDate) + '"></div>'
-          + '</div>'
-          + '<div class="rr-modal-field" style="margin-top:10px"><label>Máquinas</label><div id="rr-maq-list" class="rr-period-help">Carregando catálogo de máquinas...</div></div>'
-          + '<div class="rr-modal-actions">'
-          + '  <button type="button" class="rr-btn-ghost" data-rr-close>Cancelar</button>'
-          + '  <button type="button" class="rr-btn" id="rr-maq-print">Gerar relatório</button>'
-          + '</div>';
-        var listHost = body.querySelector('#rr-maq-list');
-        var renderMachines = function(catalog) {
-          var list = Array.isArray(catalog) ? catalog.slice() : [];
-          if (!list.length) {
-            listHost.innerHTML = 'Nenhuma máquina ativa encontrada.';
-            return;
-          }
-          var selected = preferredMachines.length ? preferredMachines.slice() : list.slice();
-          listHost.innerHTML = ''
-            + '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="rr-maq-all"' + (selected.length === list.length ? ' checked' : '') + '> Todas as máquinas</label>'
-            + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px">'
-            + list.map(function(machine) {
-                var checked = selected.indexOf(machine) >= 0;
-                return '<label style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:rgba(15,23,42,.32)"><input type="checkbox" data-rr-maq-machine="' + rrEsc(machine) + '"' + (checked ? ' checked' : '') + '> ' + rrEsc(machine) + '</label>';
-              }).join('')
-            + '</div>';
-          var all = body.querySelector('#rr-maq-all');
-          if (all) {
-            all.onchange = function() {
-              Array.prototype.slice.call(body.querySelectorAll('[data-rr-maq-machine]')).forEach(function(input) {
-                input.checked = !!all.checked;
-              });
-            };
-          }
-          Array.prototype.slice.call(body.querySelectorAll('[data-rr-maq-machine]')).forEach(function(input) {
-            input.onchange = function() {
-              var total = body.querySelectorAll('[data-rr-maq-machine]').length;
-              var checked = body.querySelectorAll('[data-rr-maq-machine]:checked').length;
-              if (all) all.checked = total > 0 && total === checked;
-            };
-          });
-        };
-        (async function ensureCatalog() {
-          try {
-            if (typeof window.__ofmaqBuildPeriodReportConfig === 'function') {
-              await window.__ofmaqBuildPeriodReportConfig({ forceReload: true, referenceDate: preferredDate, period: preferredPeriod, machines: preferredMachines });
-            }
-            var catalog = typeof window.__ofmaqGetMachineCatalog === 'function' ? window.__ofmaqGetMachineCatalog() : [];
-            renderMachines(catalog);
-          } catch (e) {
-            listHost.innerHTML = 'Erro ao carregar máquinas: ' + rrEsc(String(e && e.message || e));
-          }
-        })();
-        body.querySelector('#rr-maq-print').onclick = async function() {
-          var btn = this;
-          btn.disabled = true;
-          btn.textContent = 'Gerando...';
-          try {
-            if (typeof window.__ofmaqBuildPeriodReportConfig !== 'function') throw new Error('Builder do OFmaq indisponível');
-            var selected = Array.prototype.slice.call(body.querySelectorAll('[data-rr-maq-machine]:checked')).map(function(input) {
-              return String(input.getAttribute('data-rr-maq-machine') || '').trim();
-            }).filter(Boolean);
-            if (!selected.length) throw new Error('Selecione ao menos uma máquina');
-            var reportCfg = await window.__ofmaqBuildPeriodReportConfig({
-              forceReload: true,
-              period: String((body.querySelector('#rr-maq-period') || {}).value || preferredPeriod),
-              referenceDate: rrClampDateText((body.querySelector('#rr-maq-date') || {}).value) || preferredDate,
-              machines: selected
-            });
-            rrOpenPrint(reportCfg);
-            rrRemoveModal();
-          } catch (e) {
-            alert('Erro ao gerar relatório: ' + String(e && e.message || e));
-          } finally {
-            btn.disabled = false;
-            btn.textContent = 'Gerar relatório';
-          }
-        };
-      }
-    });
-  }
-
-  window.rrOpenControleVendasVendedorModal = rrOpenControleVendasVendedorModal;
-  window.rrOpenMaquinasPeriodoModal = rrOpenMaquinasPeriodoModal;
-
   async function rrReportChapasAbaixo200() {
     var ref = rrCurrentRange();
     var json = await rrFetchJson('/api/relatorios/chapas-abaixo-200?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
@@ -2707,7 +2456,6 @@ try {
   var rrDefs = [
     { id: 'passagens', label: 'Histórico de Passagens', icon: '🕒', desc: 'Passagens registradas nas máquinas com resumo e detalhamento.', run: rrReportPassagens },
     { id: 'comissoes', label: 'Comissões', icon: '💵', desc: 'Resumo por vendedor e detalhamento das OFs comissionadas.', run: rrReportComissoes },
-    { id: 'controle-vendas-vendedor', label: 'Controle de Vendas do Vendedor', icon: '🧑‍💼', desc: 'Classifica clientes por vendedor em novos, retornos e recorrentes por mês/ano.', run: rrOpenControleVendasVendedorModal },
     { id: 'caixas-perdidas', label: 'Caixas Perdidas', icon: '📦', desc: 'Consolidado de perdas com ranking e detalhamento.', run: rrReportCaixasPerdidas },
     { id: 'maior-perda-tipo-caixa', label: 'Maior Perda por Tipo de Caixa', icon: '📉', desc: 'Agrupa perdas por tipo de caixa e ordena do maior prejuízo para o menor.', run: rrReportMaiorPerdaTipoCaixa },
     { id: 'maior-perda-cliente', label: 'Maior Perda por Cliente', icon: '🏢', desc: 'Agrupa perdas por cliente e ordena do maior prejuízo para o menor.', run: rrReportMaiorPerdaCliente },
@@ -2723,7 +2471,6 @@ try {
     { id: 'evolucao-vendas', label: 'Evolução das Vendas', icon: '📈', desc: 'Mostra a evolução mensal das vendas e o consolidado por vendedor.', run: rrReportEvolucaoVendas },
     { id: 'vendas-por-ramo', label: 'Vendas por Ramo de Atividade', icon: '🏷️', desc: 'Agrupa as vendas concluídas por clientes.ramo.', run: rrReportVendasPorRamo },
     { id: 'vendas-por-cidade-estado', label: 'Vendas por Cidade/Estado', icon: '🗺️', desc: 'Agrupa as vendas concluídas por cidade e UF do cliente.', run: rrReportVendasPorCidadeEstado },
-    { id: 'maquinas-periodo', label: 'Relatório de Máquinas por Período', icon: '🖨️', desc: 'Permite selecionar uma ou várias máquinas e gerar o detalhamento por dia, semana ou duas semanas.', run: rrOpenMaquinasPeriodoModal },
     { id: 'chapas-abaixo-200', label: 'Chapas abaixo de 200 no estoque', icon: '🧾', desc: 'Lista as chapas com necessidade de reposição imediata.', run: rrReportChapasAbaixo200 },
     { id: 'clientes-menos-compraram', label: 'Clientes que menos compraram', icon: '📉', desc: 'Ranking do menor para o maior valor comprado no período.', run: rrReportClientesMenosCompraram },
     { id: 'clientes-inativos', label: 'Clientes inativos', icon: '🕳️', desc: 'Clientes sem OF concluída no período selecionado.', run: rrReportClientesInativos },
@@ -2998,6 +2745,29 @@ try {
 ;(function() {
   if (window.__simdBoxPlannerTailApplied) return;
   window.__simdBoxPlannerTailApplied = true;
+  function reapply() {
+    try {
+      if (typeof window.__simdBoxPlannerFetch === 'function') window._simdCarregarChapas = window.__simdBoxPlannerFetch;
+      if (typeof window.__simdBoxPlannerVerify === 'function') window._simdVerificarCampos = window.__simdBoxPlannerVerify;
+      if (typeof window.__simdBoxPlannerRestore === 'function') window._simdRestoreState = window.__simdBoxPlannerRestore;
+      if (typeof window.__simdBoxPlannerSearch === 'function') window._simdBuscarChapa = window.__simdBoxPlannerSearch;
+      if (typeof window.__simdBoxPlannerSelect === 'function') window._simdSelecionarChapa = window.__simdBoxPlannerSelect;
+      if (typeof window.__simdBoxPlannerClear === 'function') window._simdLimparChapaSelecionada = window.__simdBoxPlannerClear;
+      if (typeof window.__simdBoxPlannerRun === 'function') {
+        window._simdCalcularFluxoImpl = window.__simdBoxPlannerRun;
+        window._simdCalcularPatchedImpl = window.__simdBoxPlannerRun;
+        window.__simdCalcularImpl = window.__simdBoxPlannerRun;
+        window._simdCalcular = window.__simdBoxPlannerRun;
+      }
+      if (typeof window.__simdBoxPlannerApply === 'function') window.__simdBoxPlannerApply();
+    } catch (e) {
+      try { console.error('[SIMD] tail reapply falhou', e); } catch (_) {}
+    }
+  }
+  reapply();
+  setTimeout(reapply, 0);
+  setTimeout(reapply, 200);
+  setTimeout(reapply, 1200);
 })();
 ;(function() {
   if (window.__ofmaqActionsFixTailApplied) return;
@@ -3072,16 +2842,6 @@ try {
       window._ofmaqBaseList = null;
       window._ofmaqCache = {};
     } catch (_) {}
-    if (window.__ofmaqDesiredPipeline === 'final') {
-      if (typeof window.renderOfmaqFinal === 'function') {
-        try {
-          await window.renderOfmaqFinal({ forceReload: true, reason: reason || 'legacy-refresh-bridge' });
-        } catch (eBridge) {
-          logOfmaq('erro refresh renderOfmaqFinal', String(eBridge && eBridge.message || eBridge));
-        }
-      }
-      return;
-    }
     try {
       if (typeof renderOFsPorMaquina === 'function') await renderOFsPorMaquina();
     } catch (e) {
@@ -3138,50 +2898,6 @@ try {
     return (j && (j.data || j)) || payload;
   }
 
-  function showOfmaqCenterConfirm(message, opts) {
-    var cfg = opts && typeof opts === 'object' ? opts : {};
-    var modalId = 'patch-ofmaq-confirm-center';
-    try {
-      Array.prototype.slice.call(document.querySelectorAll('[data-ofmaq-center-confirm="' + modalId + '"]')).forEach(function(node) {
-        try { node.remove(); } catch (_) {}
-      });
-    } catch (_) {}
-    var overlay = document.createElement('div');
-    overlay.setAttribute('data-ofmaq-center-confirm', modalId);
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:100260;background:rgba(2,6,23,.58);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:18px';
-    var card = document.createElement('div');
-    var tone = String(cfg.tone || 'success').trim();
-    var border = tone === 'danger' ? 'rgba(248,113,113,.42)' : (tone === 'warn' ? 'rgba(251,191,36,.42)' : 'rgba(74,222,128,.42)');
-    var accent = tone === 'danger' ? '#fecaca' : (tone === 'warn' ? '#fde68a' : '#bbf7d0');
-    card.style.cssText = 'width:min(520px,92vw);background:linear-gradient(180deg,#0f172a,#111827);border:1px solid ' + border + ';border-radius:22px;box-shadow:0 30px 80px rgba(2,6,23,.5);padding:26px 24px;text-align:center;color:#f8fafc';
-    card.innerHTML = ''
-      + '<div style="width:64px;height:64px;margin:0 auto 14px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);border:1px solid ' + border + ';font-size:28px;color:' + accent + ';">'
-      + (tone === 'danger' ? '!' : (tone === 'warn' ? 'i' : '✓'))
-      + '</div>'
-      + '<div style="font-size:21px;font-weight:900;line-height:1.25">' + sEsc(String(cfg.title || 'Confirmação')) + '</div>'
-      + '<div style="margin-top:10px;font-size:14px;line-height:1.6;color:#cbd5e1">' + sEsc(String(message || '').trim() || 'Operação concluída com sucesso.') + '</div>';
-    overlay.appendChild(card);
-    overlay.onclick = function() {
-      try { overlay.remove(); } catch (_) {}
-    };
-    document.body.appendChild(overlay);
-    setTimeout(function() {
-      try { overlay.remove(); } catch (_) {}
-    }, Math.max(1400, Math.trunc(Number(cfg.duration || 2200)) || 2200));
-  }
-
-  function appendHistPassagemLocal(entry) {
-    var row = entry && typeof entry === 'object' ? Object.assign({}, entry) : null;
-    if (!row) return;
-    var list = Array.isArray(window.__histPassagensDetalhamentoRows) ? window.__histPassagensDetalhamentoRows.slice() : [];
-    list.unshift(row);
-    window.__histPassagensDetalhamentoRows = list;
-    window.__histPassagensRowsVisible = list.slice();
-    try {
-      if (typeof window._histRenderDetalhamentoPassagens === 'function') window._histRenderDetalhamentoPassagens();
-    } catch (_) {}
-  }
-
   async function openAlterarMaquinaPatched(ofId, ofNum) {
     cleanupOfmaqArtifacts();
     var of = getOfmaqById(ofId);
@@ -3236,7 +2952,7 @@ try {
         try { _fecharModalPadrao('patch-ofmaq-altmaq'); } catch (_) {}
         cleanupOfmaqArtifacts();
         await refreshOfmaq('alterar-maquina');
-        try { showOfmaqCenterConfirm('OF #' + String(ofNum || of.numero || of.of || '').trim() + ' movida para ' + novaMaq + (alterarData && novaData ? (' com nova entrega em ' + novaData.split('-').reverse().join('/')) : '') + '.', { title: 'Máquina alterada' }); } catch (_) {}
+        try { window.toast('Máquina alterada com sucesso.', 'var(--green)'); } catch (_) {}
       } catch (e) {
         logOfmaq('erro alterar máquina', String(e && e.message || e));
         saveBtn.disabled = false;
@@ -3284,7 +3000,7 @@ try {
         try { _fecharModalPadrao('patch-ofmaq-altdata'); } catch (_) {}
         cleanupOfmaqArtifacts();
         await refreshOfmaq('alterar-data');
-        try { showOfmaqCenterConfirm('OF #' + String(ofNum || of.numero || of.of || '').trim() + ' reagendada para ' + novaData.split('-').reverse().join('/') + '.', { title: 'Data alterada' }); } catch (_) {}
+        try { window.toast('Data de entrega alterada com sucesso.', 'var(--green)'); } catch (_) {}
       } catch (e) {
         logOfmaq('erro alterar data', String(e && e.message || e));
         saveBtn.disabled = false;
@@ -3323,7 +3039,7 @@ try {
         try { _fecharModalPadrao('patch-ofmaq-tempo'); } catch (_) {}
         cleanupOfmaqArtifacts();
         await refreshOfmaq('registrar-tempo');
-        try { showOfmaqCenterConfirm('Tempos de setup e produção atualizados para a OF #' + String(ofNum || of.numero || of.of || '').trim() + '.', { title: 'Tempo registrado' }); } catch (_) {}
+        try { window.toast('Tempo registrado com sucesso.', 'var(--green)'); } catch (_) {}
       } catch (e) {
         logOfmaq('erro registrar tempo', String(e && e.message || e));
         saveBtn.disabled = false;
@@ -3351,12 +3067,6 @@ try {
     try {
       if (typeof window.__ofmaqRenderBuscaUiPatch === 'function') {
         window.__ofmaqRenderBuscaUiPatch(term);
-        return true;
-      }
-      if (window.__ofmaqDesiredPipeline === 'final') {
-        if (typeof window.renderOfmaqFinal === 'function') {
-          window.renderOfmaqFinal({ forceReload: false, reason: 'legacy-search-bridge' });
-        }
         return true;
       }
       if (typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina();
@@ -3551,26 +3261,6 @@ try {
 
   function sFmtMm(value) {
     return sFmtNum(Number(value || 0) || 0, 0) + ' mm';
-  }
-
-  function sDelegatedOnce(key, windowMs) {
-    var stamp = Date.now();
-    var lastKey = String(window.__simdSheetDelegatedKey || '');
-    var lastTs = Number(window.__simdSheetDelegatedTs || 0) || 0;
-    if (lastKey === String(key || '') && (stamp - lastTs) < (Number(windowMs || 0) || 180)) return false;
-    window.__simdSheetDelegatedKey = String(key || '');
-    window.__simdSheetDelegatedTs = stamp;
-    return true;
-  }
-
-  function sDelegatedOnce(key, windowMs) {
-    var stamp = Date.now();
-    var lastKey = String(window.__simdSheetDelegatedKey || '');
-    var lastTs = Number(window.__simdSheetDelegatedTs || 0) || 0;
-    if (lastKey === String(key || '') && (stamp - lastTs) < (Number(windowMs || 0) || 180)) return false;
-    window.__simdSheetDelegatedKey = String(key || '');
-    window.__simdSheetDelegatedTs = stamp;
-    return true;
   }
 
   function sStateKey() {
@@ -4569,25 +4259,6 @@ window._compraPapelaoDeriveItem = function(item) {
     vl_p_mil: mil
   };
 };
-window._compraPapelaoResolveItemMetrics = function(item) {
-  var base = window._compraPapelaoDeriveItem(item);
-  var areaManual = item && item.area_m2 != null && String(item.area_m2).trim() !== '';
-  var totalManual = item && item.valor_total != null && String(item.valor_total).trim() !== '';
-  var area = areaManual ? window._compraPapelaoNum(item.area_m2) : base.area_m2;
-  var total = totalManual ? window._compraPapelaoNum(item.valor_total) : (area * window._compraPapelaoNum(item && item.valor_m2));
-  var quantidade = window._compraPapelaoNum(item && item.quantidade);
-  var mil = quantidade > 0 ? (total / quantidade) * 1000 : 0;
-  return {
-    area_m2: area,
-    valor_total: total,
-    vl_p_mil: mil,
-    auto_area_m2: base.area_m2,
-    auto_valor_total: base.valor_total,
-    auto_vl_p_mil: base.vl_p_mil,
-    area_manual: areaManual,
-    total_manual: totalManual
-  };
-};
 window._compraPapelaoBlankItem = function() {
   return {
     ped_cliente: '',
@@ -4602,9 +4273,7 @@ window._compraPapelaoBlankItem = function() {
     vinco4: '',
     quantidade: '',
     lote_minimo: '',
-    area_m2: '',
     valor_m2: '',
-    valor_total: '',
     observacao: '',
     ped_fornecedor: ''
   };
@@ -4651,6 +4320,9 @@ window._compraPapelaoNormalizeCompraHeader = function(compra) {
   var row = compra && typeof compra === 'object' ? Object.assign({}, compra) : {};
   row.numero_compra = row.numero_compra != null ? row.numero_compra : window._compraPapelaoNextNumeroPreview();
   row.data_compra = String(row.data_compra || row.data || String(row.criado_em || row.created_at || '').slice(0, 10) || window._compraPapelaoTodayIso()).slice(0, 10);
+  row.cnpj_fornecedor = String(row.cnpj_fornecedor || row.cnpj || '').trim();
+  row.previsao_chegada = String(row.previsao_chegada || row.prev || '').slice(0, 10);
+  row.status = String(row.status || 'Solicitada').trim() || 'Solicitada';
   row.ped_fornecedor = String(row.ped_fornecedor || row.pedido_fornecedor || '').trim();
   row.observacao = String(row.observacao || row.obs || '').trim();
   row.fornecedor = String(row.fornecedor || row.forn || '').trim();
@@ -4744,11 +4416,7 @@ window._compraPapelaoStatusOptionsHtml = function(selected) {
   }).join('');
 };
 window._compraPapelaoItemFieldsOrder = function() {
-  return ['ped_cliente', 'data_entrega', 'po', 'largura', 'comprimento', 'vinco1', 'vinco2', 'vinco3', 'vinco4', 'quantidade', 'lote_minimo', 'area_m2', 'valor_m2', 'valor_total', 'observacao', 'ped_fornecedor'];
-};
-window._compraPapelaoFornecedorPedidoLabel = function(rawName) {
-  var nome = String(rawName || '').replace(/\s+/g, ' ').trim();
-  return 'Pedido ' + (nome || 'Fornecedor');
+  return ['ped_cliente', 'data_entrega', 'po', 'largura', 'comprimento', 'vinco1', 'vinco2', 'vinco3', 'vinco4', 'quantidade', 'lote_minimo', 'valor_m2', 'observacao', 'ped_fornecedor'];
 };
 window._compraPapelaoComposeVincos = function(item) {
   var values = [];
@@ -4868,23 +4536,9 @@ window._compraPapelaoEnsureStyles = function() {
   var st = document.createElement('style');
   st.id = 'patch-compra-papelao-style-v3';
   st.textContent = ''
-    + '#page-compras .ccpx-shell{display:grid;gap:18px}'
-    + '#page-compras .ccpx-hero{position:relative;display:grid;gap:18px;padding:24px;border-radius:24px;background:linear-gradient(135deg,#0b2545 0%,#185fa5 52%,#ef9f27 100%);border:1px solid rgba(125,211,252,.24);box-shadow:0 28px 70px rgba(2,6,23,.36);overflow:hidden}'
-    + '#page-compras .ccpx-hero::after{content:"";position:absolute;inset:auto -80px -120px auto;width:240px;height:240px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.16),rgba(255,255,255,0));pointer-events:none}'
-    + '#page-compras .ccpx-hero-top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap}'
-    + '#page-compras .ccpx-hero-copy{display:grid;gap:10px;max-width:820px}'
-    + '#page-compras .ccpx-hero-badge{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(191,219,254,.18);color:#dbeafe;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}'
-    + '#page-compras .ccpx-hero-title{font-size:26px;font-weight:900;color:#f8fafc;letter-spacing:-.02em}'
-    + '#page-compras .ccpx-hero-sub{font-size:13px;line-height:1.6;color:rgba(226,232,240,.9)}'
-    + '#page-compras .ccpx-hero-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;min-width:min(100%,440px)}'
-    + '#page-compras .ccpx-hero-stat{display:grid;gap:4px;padding:14px 16px;border-radius:16px;background:rgba(2,6,23,.28);border:1px solid rgba(191,219,254,.16);backdrop-filter:blur(6px)}'
-    + '#page-compras .ccpx-hero-stat .lbl{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#bfdbfe}'
-    + '#page-compras .ccpx-hero-stat .val{font-size:22px;font-weight:900;color:#fff}'
-    + '#page-compras .ccpx-hero-stat .sub{font-size:12px;color:rgba(226,232,240,.72)}'
-    + '#page-compras .ccpx-action-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}'
-    + '#page-compras .ccpx-action-grid .estoque-action-btn{height:100%;justify-content:flex-start;padding:15px 17px;border-radius:18px;box-shadow:0 16px 32px rgba(2,6,23,.22);border-color:rgba(255,255,255,.12)}'
+    + '#page-compras .ccpx-shell{display:grid;gap:16px}'
     + '#page-compras .ccpx-top-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}'
-    + '#page-compras .ccpx-search{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(15,23,42,.84));border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:16px 18px;box-shadow:0 14px 34px rgba(2,6,23,.2)}'
+    + '#page-compras .ccpx-search{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--card,#0f172a);border:1px solid var(--border,rgba(148,163,184,.18));border-radius:14px;padding:14px 16px;box-shadow:0 10px 28px rgba(2,6,23,.18)}'
     + '#page-compras .ccpx-search input{flex:1;min-width:320px}'
     + '#page-compras .ccpx-search button{white-space:nowrap}'
     + '#page-compras .ccpx-tabs{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin;scrollbar-color:rgba(96,165,250,.48) rgba(15,23,42,.72)}'
@@ -4900,9 +4554,9 @@ window._compraPapelaoEnsureStyles = function() {
     + '#page-compras .ccpx-card-more{position:absolute;top:6px;right:4px;border:none;background:rgba(255,255,255,.06);color:#cbd5e1;border-radius:10px;width:28px;height:28px;cursor:pointer}'
     + '#page-compras .ccpx-card-menu{position:absolute;top:40px;right:0;display:grid;gap:6px;padding:8px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:12px;min-width:130px;z-index:4;box-shadow:0 18px 46px rgba(0,0,0,.38)}'
     + '#page-compras .ccpx-card-menu button{border:1px solid rgba(148,163,184,.16);background:rgba(255,255,255,.04);color:#e2e8f0;border-radius:10px;padding:8px 10px;cursor:pointer;text-align:left}'
-    + '#page-compras .ccpx-section{display:grid;gap:14px;background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(15,23,42,.74));border:1px solid rgba(125,211,252,.14);border-radius:20px;padding:20px;box-shadow:0 18px 42px rgba(2,6,23,.22)}'
+    + '#page-compras .ccpx-section{display:grid;gap:12px;background:var(--card,#0f172a);border:1px solid var(--border,rgba(148,163,184,.16));border-radius:14px;padding:14px;box-shadow:0 10px 28px rgba(2,6,23,.18)}'
     + '#page-compras .ccpx-section-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}'
-    + '#page-compras .ccpx-title{font-size:20px;font-weight:900;color:#f8fafc}'
+    + '#page-compras .ccpx-title{font-size:16px;font-weight:900;color:#f8fafc}'
     + '#page-compras .ccpx-sub{font-size:12px;color:#94a3b8}'
     + '#page-compras .ccpx-empty{padding:22px 8px;text-align:center;color:#94a3b8}'
     + '#page-compras .ccpx-table-panel{display:grid;gap:12px}'
@@ -4954,111 +4608,50 @@ window._compraPapelaoEnsureStyles = function() {
     + '.ccpx-modal-field textarea{min-height:88px;resize:vertical}'
     + '.ccpx-modal-items{display:grid;gap:12px;padding:16px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.6)}'
     + '.ccpx-modal-items-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}'
-    + '.ccpx-modal-items-wrap{display:grid;gap:12px;overflow:visible;border:none;border-radius:0;background:transparent}'
-    + '.ccpx-item-cards{display:grid;gap:10px}'
-    + '.ccpx-item-sheet-row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:10px;align-items:start;padding:12px 14px;border-radius:16px;border:1px solid rgba(148,163,184,.16);background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.76));box-shadow:0 14px 32px rgba(2,6,23,.16)}'
-    + '.ccpx-item-sheet-index{display:grid;gap:4px;align-content:start;padding-top:2px}'
-    + '.ccpx-item-sheet-index .eyebrow{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#93c5fd}'
-    + '.ccpx-item-sheet-index .title{font-size:16px;font-weight:900;color:#f8fafc;font-family:var(--mono,inherit)}'
-    + '.ccpx-item-sheet-grid{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:8px 10px;align-items:end;min-width:0}'
-    + '.ccpx-item-sheet-actions{display:grid;gap:8px;align-content:start}'
-    + '.ccpx-item-sheet-actions .hint{font-size:10px;line-height:1.4;color:#64748b;text-align:center;max-width:46px}'
-    + '.ccpx-item-action-strip{display:flex;gap:8px;flex-wrap:wrap}'
-    + '.ccpx-item-action-strip button{min-width:42px;height:40px;border-radius:12px;border:1px solid rgba(148,163,184,.18);cursor:pointer;font-weight:900}'
-    + '.ccpx-item-action-strip .dup{background:#0f172a;color:#e2e8f0}'
-    + '.ccpx-item-action-strip .del{background:#991b1b;color:#fff;border-color:#991b1b}'
-    + '.ccpx-item-field{display:grid;gap:6px}'
-    + '.ccpx-item-field label{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;white-space:nowrap}'
-    + '.ccpx-item-field input,.ccpx-item-field textarea{width:100%;min-width:0;background:#020617;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:10px;padding:9px 10px;font-size:12px;line-height:1.2}'
-    + '.ccpx-item-field textarea{min-height:40px;resize:vertical}'
-    + '.ccpx-item-field.span-1{grid-column:span 1}'
-    + '.ccpx-item-field.span-2{grid-column:span 2}'
-    + '.ccpx-item-field.span-3{grid-column:span 3}'
-    + '.ccpx-item-field.span-4{grid-column:span 4}'
-    + '.ccpx-item-field.span-5{grid-column:span 5}'
-    + '.ccpx-item-field.span-6{grid-column:span 6}'
-    + '.ccpx-item-field.span-7{grid-column:span 7}'
-    + '.ccpx-item-field.span-8{grid-column:span 8}'
-    + '.ccpx-item-field.row-break{grid-column:1 / -1;height:0;min-height:0;padding:0;margin:0}'
-    + '.ccpx-item-field.sep{display:flex;align-items:center;justify-content:center;padding-bottom:8px;font-size:16px;font-weight:900;color:#60a5fa}'
-    + '.ccpx-item-vincos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}'
-    + '.ccpx-item-note-line{grid-column:1 / -1;font-size:11px;color:#94a3b8;line-height:1.45;padding-top:2px}'
-    + '.ccpx-modal-number-card{display:grid;gap:10px;padding:18px 20px;border-radius:18px;background:linear-gradient(135deg,rgba(2,6,23,.9),rgba(24,95,165,.45));border:1px solid rgba(125,211,252,.2)}'
-    + '.ccpx-modal-number-card .lbl{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#bfdbfe}'
-    + '.ccpx-modal-number-card .num{font-size:34px;font-weight:900;color:#fff;font-family:var(--mono,inherit);letter-spacing:.04em}'
-    + '.ccpx-modal-number-card .sub{font-size:12px;color:rgba(226,232,240,.82);line-height:1.5}'
+    + '.ccpx-modal-items-wrap{overflow:auto;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(2,6,23,.42)}'
+    + '.ccpx-modal-items-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1540px}'
+    + '.ccpx-modal-items-table th{background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;padding:12px;border-bottom:1px solid rgba(148,163,184,.18)}'
+    + '.ccpx-modal-items-table td{padding:10px 12px;border-bottom:1px solid rgba(148,163,184,.12);color:#e2e8f0;font-size:12px}'
+    + '.ccpx-modal-items-table input{width:100%;background:rgba(255,255,255,.06);color:#f8fafc;border:1px solid rgba(148,163,184,.16);border-radius:10px;padding:9px 10px;font-size:12px}'
+    + '.ccpx-modal-items-table .danger{background:#7f1d1d;color:#fff;border:1px solid #991b1b;border-radius:10px;padding:8px 10px;cursor:pointer}'
     + '.ccpx-report-table{width:100%;border-collapse:separate;border-spacing:0}'
     + '.ccpx-report-table th,.ccpx-report-table td{padding:11px 12px;border-bottom:1px solid rgba(148,163,184,.12);font-size:12px;color:#e2e8f0}'
     + '.ccpx-report-table th{background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;text-align:left}'
     + '#page-compras .ccpx-inline-warning{padding:12px 14px;border-radius:12px;border:1px solid rgba(245,158,11,.25);background:rgba(120,53,15,.22);color:#fcd34d;font-size:12px;font-weight:700}'
     + '#page-compras .ccpx-breadcrumb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:#94a3b8}'
     + '#page-compras .ccpx-breadcrumb button{border:none;background:transparent;color:#60a5fa;font-weight:800;cursor:pointer;padding:0}'
-    + '.ccpx-modal-headline{display:grid;gap:14px;padding:18px 20px;border-radius:20px;background:linear-gradient(135deg,rgba(11,37,69,.98),rgba(24,95,165,.88),rgba(239,159,39,.18));border:1px solid rgba(125,211,252,.18);box-shadow:0 18px 40px rgba(2,6,23,.22)}'
-    + '.ccpx-modal-step{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(191,219,254,.18);color:#dbeafe;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;width:max-content}'
-    + '.ccpx-modal-headline .ccpx-eyebrow{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#bfdbfe}'
-    + '.ccpx-modal-headline .ccpx-headline-title{font-size:24px;font-weight:900;color:#fff}'
-    + '.ccpx-modal-headline .ccpx-headline-sub{font-size:13px;line-height:1.55;color:rgba(226,232,240,.86)}'
-    + '.ccpx-modal-primary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 16px}'
-    + '.ccpx-modal-secondary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 16px;padding:16px 18px;border-radius:18px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.48)}'
     + '.ccpx-modal-head-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 16px}'
     + '.ccpx-modal-head-grid .full{grid-column:1 / -1}'
     + '.ccpx-modal-inline-stack{display:grid;gap:6px}'
     + '.ccpx-modal-inline-stack input,.ccpx-modal-inline-stack select,.ccpx-modal-inline-stack textarea{width:100%;background:#020617;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:11px 12px;font-size:13px}'
     + '.ccpx-modal-num{color:var(--accent,#60a5fa)!important;font-weight:900;font-family:var(--mono,inherit)}'
-    + '.ccpx-modal-items-sheet{display:grid;gap:12px;padding:18px;border-radius:18px;border:1px solid rgba(125,211,252,.16);background:linear-gradient(180deg,rgba(15,23,42,.78),rgba(15,23,42,.62));box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}'
+    + '.ccpx-modal-items-sheet{display:grid;gap:12px;padding:16px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.6)}'
     + '.ccpx-modal-items-toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}'
-    + '.ccpx-modal-items-toolbar .ttl{font-size:16px;font-weight:900;color:#f8fafc}'
-    + '.ccpx-modal-items-toolbar .sub{font-size:12px;color:#cbd5e1;max-width:680px;line-height:1.55}'
+    + '.ccpx-modal-items-sheet table{width:100%;border-collapse:collapse;min-width:1880px}'
+    + '.ccpx-modal-items-sheet th{padding:7px 8px;background:var(--s2,#0f172a);border:1px solid rgba(148,163,184,.18);font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#cbd5e1;text-align:left;font-family:var(--mono,inherit);white-space:nowrap}'
+    + '.ccpx-modal-items-sheet td{padding:0;border:1px solid rgba(148,163,184,.12);vertical-align:middle;background:rgba(15,23,42,.22)}'
+    + '.ccpx-modal-items-sheet input,.ccpx-modal-items-sheet textarea{width:100%;background:transparent;color:#f8fafc;border:none;outline:none;padding:10px 10px;font-size:12px}'
+    + '.ccpx-modal-items-sheet textarea{min-height:40px;resize:vertical}'
+    + '.ccpx-modal-items-sheet .num-read{padding:10px 10px;text-align:right;font-variant-numeric:tabular-nums;font-weight:900;color:#e2e8f0;font-family:var(--mono,inherit)}'
+    + '.ccpx-modal-items-sheet .idx-read{padding:10px 10px;text-align:center;font-weight:900;color:#60a5fa;font-family:var(--mono,inherit)}'
+    + '.ccpx-modal-line-actions{display:flex;gap:6px;justify-content:center;padding:6px}'
+    + '.ccpx-modal-line-actions button{min-width:34px;height:34px;border-radius:10px;border:1px solid rgba(148,163,184,.16);cursor:pointer;font-weight:900}'
+    + '.ccpx-modal-line-actions .dup{background:#0f172a;color:#e2e8f0}'
+    + '.ccpx-modal-line-actions .del{background:#991b1b;color:#fff;border-color:#991b1b}'
     + '.ccpx-modal-totalbar{display:flex;justify-content:flex-end;gap:16px;align-items:center;padding:12px 0;border-top:1px solid rgba(148,163,184,.14)}'
     + '.ccpx-modal-totalbar .lbl{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}'
     + '.ccpx-modal-totalbar .val{font-size:18px;font-weight:900;color:#22c55e;font-family:var(--mono,inherit)}'
     + '.ccpx-modal-footer-actions{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;width:100%}'
     + '.ccpx-modal-footer-actions .left,.ccpx-modal-footer-actions .right{display:flex;gap:10px;flex-wrap:wrap}'
-    + '#page-compras.ccpx-modern-active > .ptoolbar button{display:none!important}'
-    + '#page-compras.ccpx-modern-active > .ptoolbar select{min-width:180px}'
-    + '.ccpx-fs-overlay{position:fixed;inset:0;z-index:100120;background:rgba(2,6,23,.76);backdrop-filter:blur(10px);display:flex;align-items:stretch;justify-content:stretch}'
-    + '#ccpx-compra-fullscreen.ccpx-fs-overlay{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:100vw!important;max-height:100vh!important;padding:0!important;margin:0!important;align-items:stretch!important;justify-content:stretch!important;overflow:hidden!important}'
-    + '#ccpx-compra-fullscreen > .ccpx-fs-shell{display:grid!important;grid-template-rows:auto minmax(0,1fr) auto!important;width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;margin:0!important;overflow:hidden!important;background:linear-gradient(180deg,#061120 0%,#0f172a 18%,#111827 100%)!important;color:#e2e8f0!important}'
-    + '.ccpx-fs-shell{display:grid;grid-template-rows:auto minmax(0,1fr) auto;width:100vw;height:100vh;background:linear-gradient(180deg,#061120 0%,#0f172a 18%,#111827 100%);color:#e2e8f0}'
-    + '.ccpx-fs-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px;border-bottom:1px solid rgba(148,163,184,.14);background:rgba(3,7,18,.88)}'
-    + '.ccpx-fs-header-main{display:grid;gap:6px;min-width:0}'
-    + '.ccpx-fs-title{font-size:28px;font-weight:900;letter-spacing:-.02em;color:#f8fafc}'
-    + '.ccpx-fs-subtitle{font-size:12px;color:#94a3b8;line-height:1.45}'
-    + '.ccpx-fs-header-side{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}'
-    + '.ccpx-fs-badge{display:grid;gap:4px;padding:12px 16px;border-radius:18px;background:linear-gradient(135deg,rgba(24,95,165,.32),rgba(59,130,246,.16));border:1px solid rgba(125,211,252,.22);min-width:200px}'
-    + '.ccpx-fs-badge .lbl{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#bfdbfe}'
-    + '.ccpx-fs-badge .val{font-size:28px;font-weight:900;color:#fff;font-family:var(--mono,inherit)}'
-    + '.ccpx-fs-close{width:46px;height:46px;border:none;border-radius:14px;background:rgba(15,23,42,.92);color:#f8fafc;font-size:20px;font-weight:900;cursor:pointer}'
-    + '.ccpx-fs-body{min-height:0;overflow:auto;padding:22px 24px 18px;display:grid;gap:18px}'
-    + '.ccpx-fs-section{display:grid;gap:14px;padding:20px;border-radius:22px;border:1px solid rgba(148,163,184,.14);background:linear-gradient(180deg,rgba(15,23,42,.88),rgba(15,23,42,.7));box-shadow:0 20px 46px rgba(2,6,23,.22)}'
-    + '.ccpx-fs-section-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}'
-    + '.ccpx-fs-section-title{font-size:18px;font-weight:900;color:#f8fafc}'
-    + '.ccpx-fs-section-sub{font-size:12px;color:#94a3b8;line-height:1.5;max-width:780px}'
-    + '.ccpx-fs-head-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}'
-    + '.ccpx-fs-head-grid .ccpx-modal-inline-stack.full{grid-column:1 / -1}'
-    + '.ccpx-fs-footer{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:16px 24px;border-top:1px solid rgba(148,163,184,.14);background:rgba(3,7,18,.94)}'
-    + '.ccpx-fs-footer .ccpx-summary{flex:1;min-width:min(100%,420px)}'
-    + '.ccpx-fs-footer-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}'
-    + '.ccpx-fs-footer-actions button{min-height:46px;padding:0 18px;border-radius:14px;font-weight:900;border:1px solid rgba(148,163,184,.18);cursor:pointer}'
-    + '.ccpx-fs-footer-actions .ghost{background:rgba(15,23,42,.86);color:#e2e8f0}'
-    + '.ccpx-fs-footer-actions .print{background:rgba(30,41,59,.92);color:#e0f2fe}'
-    + '.ccpx-fs-footer-actions .primary{background:#2563eb;color:#fff;border-color:#2563eb}'
-    + '.ccpx-item-field.is-readonly input{background:rgba(15,23,42,.72)!important;color:#93c5fd!important;font-weight:900}'
-    + '@media (max-width:1280px){.ccpx-fs-head-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-fs-header{padding:16px 18px}.ccpx-fs-body{padding:18px}.ccpx-fs-footer{padding:14px 18px}}'
-    + '@media (max-width:1100px){#page-compras .ccpx-block-top{grid-template-columns:1fr 1fr}#page-compras .ccpx-actions-line{justify-content:flex-start}.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
-    + '@media (max-width:1480px){.ccpx-item-sheet-grid{grid-template-columns:repeat(18,minmax(0,1fr))}.ccpx-item-field.mob-span-6{grid-column:span 6}.ccpx-item-field.mob-span-5{grid-column:span 5}.ccpx-item-field.mob-span-4{grid-column:span 4}.ccpx-item-field.mob-span-3{grid-column:span 3}}'
-    + '@media (max-width:980px){.ccpx-modal-head-grid,.ccpx-fs-head-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-item-sheet-row{grid-template-columns:1fr}.ccpx-item-sheet-actions{grid-auto-flow:column;justify-content:space-between;align-items:center}.ccpx-item-sheet-actions .hint{max-width:none;text-align:left}.ccpx-item-sheet-grid{grid-template-columns:repeat(8,minmax(0,1fr))}.ccpx-item-field.span-8,.ccpx-item-field.span-7,.ccpx-item-field.span-6,.ccpx-item-field.span-5{grid-column:span 8}.ccpx-item-field.span-4{grid-column:span 4}.ccpx-item-field.span-3{grid-column:span 4}.ccpx-item-field.span-2{grid-column:span 4}.ccpx-item-field.span-1{grid-column:span 2}.ccpx-fs-header{align-items:flex-start}.ccpx-fs-header-side{width:100%;justify-content:space-between}.ccpx-fs-badge{min-width:0;flex:1}}'
-    + '@media (max-width:760px){.ccpx-modal-grid,.ccpx-modal-head-grid,.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid,.ccpx-fs-head-grid{grid-template-columns:1fr}#page-compras .ccpx-search input{min-width:0}#page-compras .ccpx-block-top{grid-template-columns:1fr}#page-compras .ccpx-hero{padding:18px}#page-compras .ccpx-hero-title{font-size:22px}.ccpx-item-vincos{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-item-sheet-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.ccpx-item-field,.ccpx-item-field.span-8,.ccpx-item-field.span-7,.ccpx-item-field.span-6,.ccpx-item-field.span-5,.ccpx-item-field.span-4,.ccpx-item-field.span-3,.ccpx-item-field.span-2,.ccpx-item-field.span-1{grid-column:span 4}.ccpx-item-field.sep{display:none}.ccpx-fs-title{font-size:22px}.ccpx-fs-header{padding:14px 16px}.ccpx-fs-body{padding:14px}.ccpx-fs-footer{padding:12px 16px}.ccpx-fs-footer-actions{width:100%}.ccpx-fs-footer-actions button{flex:1 1 100%}}';
+    + '@media (max-width:1100px){#page-compras .ccpx-block-top{grid-template-columns:1fr 1fr}#page-compras .ccpx-actions-line{justify-content:flex-start}}'
+    + '@media (max-width:980px){.ccpx-modal-head-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
+    + '@media (max-width:760px){.ccpx-modal-grid,.ccpx-modal-head-grid{grid-template-columns:1fr}#page-compras .ccpx-search input{min-width:0}#page-compras .ccpx-block-top{grid-template-columns:1fr}}';
   document.head.appendChild(st);
 };
 window._compraPapelaoEnsureToolbar = function() {
   var page = document.getElementById('page-compras');
   var toolbar = page && page.querySelector ? page.querySelector('.ptoolbar') : null;
   if (!toolbar) return;
-  try {
-    if (window._compraPapelaoIsActive()) page.classList.add('ccpx-modern-active');
-    else page.classList.remove('ccpx-modern-active');
-  } catch (_) {}
   if (!toolbar.dataset.ccpxOrigHtml) toolbar.dataset.ccpxOrigHtml = toolbar.innerHTML;
   if (toolbar.dataset.ccpxActive === '1' || window._compraPapelaoIsActive()) {
     toolbar.innerHTML = toolbar.dataset.ccpxOrigHtml || '';
@@ -5066,41 +4659,14 @@ window._compraPapelaoEnsureToolbar = function() {
   toolbar.dataset.ccpxActive = '0';
 };
 window._compraPapelaoRenderActionCards = function() {
-  var resumo = window._compraPapelaoStatsResumo();
-  var st = window._compraPapelaoStateRef();
-  var breakdown = resumo.breakdown || [];
-  var fornecedorDestaque = 'Todos os fornecedores';
-  if (String(st.filtroCard || '').indexOf('folder:') === 0) {
-    fornecedorDestaque = (breakdown[0] && breakdown[0].nome) || 'Sem destaque';
-  } else if (String(st.busca || '').trim()) {
-    fornecedorDestaque = (breakdown[0] && breakdown[0].nome) || 'Resultado da busca';
-  } else if (breakdown[0] && breakdown[0].nome) {
-    fornecedorDestaque = breakdown[0].nome;
-  }
   return ''
-    + '<div class="ccpx-hero" id="ccpx-action-cards">'
-    + '  <div class="ccpx-hero-top">'
-    + '    <div class="ccpx-hero-copy">'
-    + '      <div class="ccpx-hero-badge">Compra de Papelão</div>'
-    + '      <div class="ccpx-hero-title">Pedidos organizados por fornecedor, pasta e período</div>'
-    + '      <div class="ccpx-hero-sub">O layout desta área agora prioriza leitura rápida, ação imediata e a mesma hierarquia visual das telas já modernizadas do sistema, sem alterar a lógica de cadastro e impressão existente.</div>'
-    + '    </div>'
-    + '    <div class="ccpx-hero-meta">'
-    + '      <div class="ccpx-hero-stat"><div class="lbl">Total Comprado</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(resumo.valor_total)) + '</div><div class="sub">Financeiro do filtro atual</div></div>'
-    + '      <div class="ccpx-hero-stat"><div class="lbl">Compras no Período</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumo.total_compras, 0)) + '</div><div class="sub">' + window._compraPapelaoEsc(window._compraPapelaoEmpresaLabelAtual()) + '</div></div>'
-    + '      <div class="ccpx-hero-stat"><div class="lbl">Área Total Comprada</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumo.area_total, 4)) + ' m²</div><div class="sub">Área consolidada dos itens</div></div>'
-    + '      <div class="ccpx-hero-stat"><div class="lbl">Fornecedor em Destaque</div><div class="val">' + window._compraPapelaoEsc(fornecedorDestaque) + '</div><div class="sub">Referência principal do filtro atual</div></div>'
-    + '    </div>'
-    + '  </div>'
-    + '  <div class="ccpx-action-grid">'
+    + '<div class="estoque-main-actions" id="ccpx-action-cards">'
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-nova', label: 'Nova Compra', icon: '+', variant: 'green', title: 'Cadastrar nova compra de papelão' }) : '<button type="button" class="btn btn-accent" id="ccpx-body-btn-nova">Nova Compra</button>')
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-pasta', label: 'Nova Pasta', icon: '📁', variant: 'accent', title: 'Criar pasta para organizar compras' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-pasta">Nova Pasta</button>')
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-sugestoes', label: 'Sugestões', icon: '📌', variant: 'teal', title: 'Abrir sugestões de compra fixadas' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-sugestoes">Sugestões</button>')
-    +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-rel-periodo', label: 'Relatório do Período', icon: '🗓', variant: 'navy', title: 'Abrir relatório detalhado por período' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-rel-periodo">Relatório do Período</button>')
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-rel-forn', label: 'Compras por Fornecedor', icon: '📊', variant: 'navy', title: 'Abrir relatório por fornecedor' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-rel-forn">Compras por Fornecedor</button>')
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-rel-resumo', label: 'Quantidade e Valor Comprado', icon: '💰', variant: 'purple', title: 'Abrir consolidado financeiro' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-rel-resumo">Quantidade e Valor Comprado</button>')
     +    (typeof _botaoAcaoEstoque === 'function' ? _botaoAcaoEstoque({ id: 'ccpx-body-btn-print', label: 'Imprimir Relatório', icon: '🖨', variant: 'accent', title: 'Imprimir relatório atual' }) : '<button type="button" class="btn btn-ghost btn-sm" id="ccpx-body-btn-print">Imprimir Relatório</button>')
-    + '  </div>'
     + '</div>';
 };
 window._compraPapelaoRenderCardsHtml = function() {
@@ -5224,7 +4790,22 @@ window._compraPapelaoRenderBlocksHtml = function() {
     + '</div>';
 };
 window._compraPapelaoRenderStatsHtml = function() {
-  return '';
+  var resumo = window._compraPapelaoStatsResumo();
+  var breakdown = resumo.breakdown || [];
+  return '<div class="ccpx-top-grid">'
+    + (typeof _makeCardEstoque === 'function'
+        ? _makeCardEstoque({ label: 'Valor Total Comprado', value: window._compraPapelaoFmtMoney(resumo.valor_total), sub: 'Soma do filtro atual' })
+        : '<div class="ccpx-chip"><div class="lbl">Valor Total Comprado</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(resumo.valor_total)) + '</div></div>')
+    + (typeof _makeCardEstoque === 'function'
+        ? _makeCardEstoque({ label: 'Compras no Período', value: window._compraPapelaoFmtNum(resumo.total_compras, 0), sub: 'Compras carregadas na tela' })
+        : '<div class="ccpx-chip"><div class="lbl">Compras no Período</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumo.total_compras, 0)) + '</div></div>')
+    + (typeof _makeCardEstoque === 'function'
+        ? _makeCardEstoque({ label: 'Área Total Comprada', value: window._compraPapelaoFmtNum(resumo.area_total, 4) + ' m²', sub: 'Soma de área dos itens' })
+        : '<div class="ccpx-chip"><div class="lbl">Área Total Comprada</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumo.area_total, 4) + ' m²') + '</div></div>')
+    + (typeof _cardBreakdownEstoque === 'function'
+        ? _cardBreakdownEstoque('Por Fornecedor', breakdown, window._compraPapelaoFmtMoney)
+        : '<div class="ccpx-chip"><div class="lbl">Por Fornecedor</div><div class="val">' + window._compraPapelaoEsc((breakdown[0] && breakdown[0].nome) || 'Sem dados') + '</div></div>')
+    + '</div>';
 };
 window._compraPapelaoRenderBody = function() {
   var host = document.getElementById('cmp-body');
@@ -5256,14 +4837,12 @@ window._compraPapelaoBindBody = function() {
   var btnNova = host.querySelector('#ccpx-body-btn-nova');
   var btnPasta = host.querySelector('#ccpx-body-btn-pasta');
   var btnSugestoes = host.querySelector('#ccpx-body-btn-sugestoes');
-  var btnRelPeriodo = host.querySelector('#ccpx-body-btn-rel-periodo');
   var btnRelFornecedor = host.querySelector('#ccpx-body-btn-rel-forn');
   var btnRelResumo = host.querySelector('#ccpx-body-btn-rel-resumo');
   var btnPrint = host.querySelector('#ccpx-body-btn-print');
   if (btnNova) btnNova.onclick = function() { window.abrirModalCompra(); };
   if (btnPasta) btnPasta.onclick = function() { window._compraPapelaoOpenFolderModal(); };
   if (btnSugestoes) btnSugestoes.onclick = function() { window._compraPapelaoOpenPinsModal(); };
-  if (btnRelPeriodo) btnRelPeriodo.onclick = function() { window._compraPapelaoOpenReportModal('periodo'); };
   if (btnRelFornecedor) btnRelFornecedor.onclick = function() { window._compraPapelaoOpenReportModal('fornecedor'); };
   if (btnRelResumo) btnRelResumo.onclick = function() { window._compraPapelaoOpenReportModal('resumo'); };
   if (btnPrint) btnPrint.onclick = function() { window._compraPapelaoPrintCurrentReport(); };
@@ -5410,7 +4989,7 @@ window._compraPapelaoRenderPage = async function() {
   return null;
 };
 window._compraPapelaoCollectModalRows = function(overlay) {
-  return Array.prototype.slice.call(overlay.querySelectorAll('#ccpx-modal-items-body [data-ccpx-item-row]')).map(function(row) {
+  return Array.prototype.slice.call(overlay.querySelectorAll('#ccpx-modal-items-body tr[data-ccpx-item-row]')).map(function(row) {
     var item = {
       ped_cliente: String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim(),
       data_entrega: String((row.querySelector('[data-field="data_entrega"]') || {}).value || '').trim(),
@@ -5423,13 +5002,11 @@ window._compraPapelaoCollectModalRows = function(overlay) {
       vinco4: String((row.querySelector('[data-field="vinco4"]') || {}).value || '').trim(),
       quantidade: String((row.querySelector('[data-field="quantidade"]') || {}).value || '').trim(),
       lote_minimo: String((row.querySelector('[data-field="lote_minimo"]') || {}).value || '').trim(),
-      area_m2: String((row.querySelector('[data-field="area_m2"]') || {}).value || '').trim(),
       valor_m2: String((row.querySelector('[data-field="valor_m2"]') || {}).value || '').trim(),
-      valor_total: String((row.querySelector('[data-field="valor_total"]') || {}).value || '').trim(),
       observacao: String((row.querySelector('[data-field="observacao"]') || {}).value || '').trim(),
       ped_fornecedor: String((row.querySelector('[data-field="ped_fornecedor"]') || {}).value || '').trim()
     };
-    var d = window._compraPapelaoResolveItemMetrics(item);
+    var d = window._compraPapelaoDeriveItem(item);
     item.vincos = window._compraPapelaoComposeVincos(item);
     item.nomenclatura = item.po;
     item.area_m2 = d.area_m2;
@@ -5437,86 +5014,53 @@ window._compraPapelaoCollectModalRows = function(overlay) {
     item.valor_total = d.valor_total;
     return item;
   }).filter(function(item) {
-    return item.ped_cliente || item.data_entrega || item.po || item.largura || item.comprimento || item.vincos || item.quantidade || item.lote_minimo || item.area_m2 || item.valor_m2 || item.valor_total || item.observacao || item.ped_fornecedor;
+    return item.ped_cliente || item.data_entrega || item.po || item.largura || item.comprimento || item.vincos || item.quantidade || item.lote_minimo || item.valor_m2 || item.observacao || item.ped_fornecedor;
   });
 };
-window._compraPapelaoRenderModalRowsHtml = function(itens, minRows) {
-  var rows = window._compraPapelaoEnsureVisibleRows(itens, minRows == null ? 5 : minRows);
+window._compraPapelaoRenderModalRowsHtml = function(itens) {
+  var rows = window._compraPapelaoEnsureVisibleRows(itens, 5);
   return rows.map(function(item, idx) {
-    var d = window._compraPapelaoResolveItemMetrics(item);
-    var areaManual = d.area_manual && Math.abs(d.area_m2 - d.auto_area_m2) > 0.000001;
-    var totalManual = d.total_manual && Math.abs(d.valor_total - d.auto_valor_total) > 0.000001;
+    var d = window._compraPapelaoDeriveItem(item);
     return ''
-      + '<div class="ccpx-item-sheet-row" data-ccpx-item-row="' + idx + '">'
-      + '  <div class="ccpx-item-sheet-index"><div class="eyebrow">Item</div><div class="title">' + window._compraPapelaoEsc(String(idx + 1)) + '</div></div>'
-      + '  <div class="ccpx-item-sheet-grid">'
-      + '    <div class="ccpx-item-field span-4"><label>Pedido Cliente</label><input data-field="ped_cliente" value="' + window._compraPapelaoAttr(item && item.ped_cliente || '') + '"></div>'
-      + '    <div class="ccpx-item-field span-3"><label>Entrega</label><input data-field="data_entrega" type="date" value="' + window._compraPapelaoAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></div>'
-      + '    <div class="ccpx-item-field span-3"><label>PO</label><input data-field="po" value="' + window._compraPapelaoAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></div>'
-      + '    <div class="ccpx-item-field span-2"><label>L</label><input data-field="largura" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.largura || '') + '" placeholder="L"></div>'
-      + '    <div class="ccpx-item-field sep span-1"><span>×</span></div>'
-      + '    <div class="ccpx-item-field span-2"><label>C</label><input data-field="comprimento" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.comprimento || '') + '" placeholder="C"></div>'
-      + '    <div class="ccpx-item-field span-5"><label>Vincos</label><div class="ccpx-item-vincos"><input data-field="vinco1" value="' + window._compraPapelaoAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + window._compraPapelaoAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + window._compraPapelaoAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + window._compraPapelaoAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></div>'
-      + '    <div class="ccpx-item-field span-2"><label>Qtde</label><input data-field="quantidade" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.quantidade || '') + '"></div>'
-      + '    <div class="ccpx-item-field span-2"><label>Lote Mínimo</label><input data-field="lote_minimo" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.lote_minimo || '') + '"></div>'
-      + '    <div class="ccpx-item-field row-break"></div>'
-      + '    <div class="ccpx-item-field span-3"><label>Área Pedido</label><input data-field="area_m2"' + (areaManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + window._compraPapelaoAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : window._compraPapelaoFmtNum(d.area_m2, 4).replace(/\./g, "").replace(",", ".")) + '"></div>'
-      + '    <div class="ccpx-item-field span-3"><label>Valor m²</label><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_m2 || '') + '"></div>'
-      + '    <div class="ccpx-item-field is-readonly span-3"><label>Valor p/mil</label><input type="text" value="' + window._compraPapelaoAttr(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '" readonly tabindex="-1"></div>'
-      + '    <div class="ccpx-item-field span-3"><label>Valor Total</label><input data-field="valor_total"' + (totalManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_total != null && String(item.valor_total).trim() !== '' ? item.valor_total : window._compraPapelaoFmtNum(d.valor_total, 2).replace(/\./g, "").replace(",", ".")) + '"></div>'
-      + '    <div class="ccpx-item-field span-6"><label>Obs</label><textarea data-field="observacao" rows="1">' + window._compraPapelaoEsc(item && item.observacao || '') + '</textarea></div>'
-      + '    <div class="ccpx-item-field span-6"><label data-ccpx-fornecedor-label>' + window._compraPapelaoEsc(window._compraPapelaoFornecedorPedidoLabel('')) + '</label><input data-field="ped_fornecedor" value="' + window._compraPapelaoAttr(item && item.ped_fornecedor || '') + '" placeholder="' + window._compraPapelaoAttr(window._compraPapelaoFornecedorPedidoLabel('')) + '"></div>'
-      + '    <div class="ccpx-item-note-line">Valor p/mil permanece automático e a linha fica compacta para se comportar como planilha sem virar card vertical.</div>'
-      + '  </div>'
-      + '  <div class="ccpx-item-sheet-actions"><div class="ccpx-item-action-strip"><button type="button" class="dup" data-ccpx-dup-item="' + idx + '" title="Duplicar item">+</button><button type="button" class="del" data-ccpx-del-item="' + idx + '" title="Remover item">✕</button></div><div class="hint"><span data-ccpx-auto-area>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(d.auto_area_m2, 4)) + ' m²</span><br><span data-ccpx-auto-total>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(d.auto_valor_total)) + '</span><br><span data-ccpx-vincos-read>' + window._compraPapelaoEsc(window._compraPapelaoComposeVincos(item) || '—') + '</span></div></div>'
-      + '</div>';
+      + '<tr data-ccpx-item-row="' + idx + '">'
+      + '  <td><input data-field="ped_cliente" value="' + window._compraPapelaoAttr(item && item.ped_cliente || '') + '"></td>'
+      + '  <td><input data-field="data_entrega" type="date" value="' + window._compraPapelaoAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></td>'
+      + '  <td><input data-field="po" value="' + window._compraPapelaoAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></td>'
+      + '  <td><div style="display:grid;grid-template-columns:minmax(88px,1fr) 14px minmax(88px,1fr);align-items:center"><input data-field="largura" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.largura || '') + '" placeholder="L"><span style="color:#64748b;font-weight:900;text-align:center">×</span><input data-field="comprimento" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.comprimento || '') + '" placeholder="C"></div></td>'
+      + '  <td><div style="display:grid;grid-template-columns:repeat(4,minmax(56px,1fr));gap:4px"><input data-field="vinco1" value="' + window._compraPapelaoAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + window._compraPapelaoAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + window._compraPapelaoAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + window._compraPapelaoAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></td>'
+      + '  <td><input data-field="quantidade" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.quantidade || '') + '"></td>'
+      + '  <td><input data-field="lote_minimo" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.lote_minimo || '') + '"></td>'
+      + '  <td class="num-read" data-ccpx-area>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(d.area_m2, 4)) + '</td>'
+      + '  <td><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_m2 || '') + '"></td>'
+      + '  <td class="num-read" data-ccpx-mil>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '</td>'
+      + '  <td class="num-read" data-ccpx-total>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(d.valor_total)) + '</td>'
+      + '  <td><textarea data-field="observacao" rows="1">' + window._compraPapelaoEsc(item && item.observacao || '') + '</textarea></td>'
+      + '  <td><input data-field="ped_fornecedor" value="' + window._compraPapelaoAttr(item && item.ped_fornecedor || '') + '"></td>'
+      + '  <td><div class="ccpx-modal-line-actions"><button type="button" class="dup" data-ccpx-dup-item="' + idx + '" title="Duplicar linha">+</button><button type="button" class="del" data-ccpx-del-item="' + idx + '" title="Remover linha">✕</button></div></td>'
+      + '</tr>';
   }).join('');
-};
-window._compraPapelaoSyncFornecedorDependentUi = function(overlay) {
-  if (!overlay) return;
-  var fornecedor = String((overlay.querySelector('#ccpx-fornecedor-manual') || {}).value || '').trim();
-  var label = window._compraPapelaoFornecedorPedidoLabel(fornecedor);
-  Array.prototype.slice.call(overlay.querySelectorAll('[data-ccpx-fornecedor-label]')).forEach(function(el) {
-    el.textContent = label;
-  });
-  Array.prototype.slice.call(overlay.querySelectorAll('[data-field="ped_fornecedor"]')).forEach(function(input) {
-    input.placeholder = label;
-  });
 };
 window._compraPapelaoRefreshModalComputed = function(overlay) {
   var totalQtd = 0;
   var totalArea = 0;
   var totalValor = 0;
-  Array.prototype.slice.call(overlay.querySelectorAll('#ccpx-modal-items-body [data-ccpx-item-row]')).forEach(function(row) {
+  Array.prototype.slice.call(overlay.querySelectorAll('#ccpx-modal-items-body tr[data-ccpx-item-row]')).forEach(function(row) {
     var item = {
       largura: (row.querySelector('[data-field="largura"]') || {}).value,
       comprimento: (row.querySelector('[data-field="comprimento"]') || {}).value,
       quantidade: (row.querySelector('[data-field="quantidade"]') || {}).value,
-      area_m2: (row.querySelector('[data-field="area_m2"]') || {}).value,
-      valor_m2: (row.querySelector('[data-field="valor_m2"]') || {}).value,
-      valor_total: (row.querySelector('[data-field="valor_total"]') || {}).value
+      valor_m2: (row.querySelector('[data-field="valor_m2"]') || {}).value
     };
-    var d = window._compraPapelaoResolveItemMetrics(item);
+    var d = window._compraPapelaoDeriveItem(item);
     totalQtd += window._compraPapelaoNum(item.quantidade);
     totalArea += d.area_m2;
     totalValor += d.valor_total;
-    var a = row.querySelector('[data-field="area_m2"]');
+    var a = row.querySelector('[data-ccpx-area]');
     var m = row.querySelector('[data-ccpx-mil]');
-    var aa = row.querySelector('[data-ccpx-auto-area]');
-    var at = row.querySelector('[data-ccpx-auto-total]');
-    var vr = row.querySelector('[data-ccpx-vincos-read]');
-    var t = row.querySelector('[data-field="valor_total"]');
-    if (a && (a.dataset.ccpxManual !== '1' || !String(a.value || '').trim())) a.value = String(d.area_m2.toFixed(4));
+    var t = row.querySelector('[data-ccpx-total]');
+    if (a) a.textContent = window._compraPapelaoFmtNum(d.area_m2, 4);
     if (m) m.textContent = window._compraPapelaoFmtMoney(d.vl_p_mil);
-    if (aa) aa.textContent = window._compraPapelaoFmtNum(d.auto_area_m2, 4) + ' m²';
-    if (at) at.textContent = window._compraPapelaoFmtMoney(d.auto_valor_total);
-    if (vr) vr.textContent = window._compraPapelaoComposeVincos({
-      vinco1: (row.querySelector('[data-field="vinco1"]') || {}).value,
-      vinco2: (row.querySelector('[data-field="vinco2"]') || {}).value,
-      vinco3: (row.querySelector('[data-field="vinco3"]') || {}).value,
-      vinco4: (row.querySelector('[data-field="vinco4"]') || {}).value
-    }) || '—';
-    if (t && (t.dataset.ccpxManual !== '1' || !String(t.value || '').trim())) t.value = String(d.valor_total.toFixed(2));
+    if (t) t.textContent = window._compraPapelaoFmtMoney(d.valor_total);
   });
   var q = overlay.querySelector('#ccpx-sum-qtd');
   var a2 = overlay.querySelector('#ccpx-sum-area');
@@ -5527,83 +5071,32 @@ window._compraPapelaoRefreshModalComputed = function(overlay) {
   var tg = overlay.querySelector('#ccpx-total-geral');
   if (tg) tg.textContent = window._compraPapelaoFmtMoney(totalValor);
 };
-window._compraPapelaoCloseCompraModal = function() {
-  var overlay = document.getElementById('ccpx-compra-fullscreen');
-  if (overlay && overlay.parentNode) {
-    try { overlay.parentNode.removeChild(overlay); } catch (_) {}
-  }
-  try { document.body.style.overflow = ''; } catch (_) {}
-};
-window._compraPapelaoForceFullscreenShell = function(overlay) {
-  if (!overlay) return;
-  var shell = overlay.querySelector('.ccpx-fs-shell');
-  var body = shell && shell.querySelector('.ccpx-fs-body');
-  var footer = shell && shell.querySelector('.ccpx-fs-footer');
-  try {
-    overlay.style.setProperty('position', 'fixed', 'important');
-    overlay.style.setProperty('inset', '0', 'important');
-    overlay.style.setProperty('width', '100vw', 'important');
-    overlay.style.setProperty('height', '100vh', 'important');
-    overlay.style.setProperty('max-width', '100vw', 'important');
-    overlay.style.setProperty('max-height', '100vh', 'important');
-    overlay.style.setProperty('padding', '0', 'important');
-    overlay.style.setProperty('margin', '0', 'important');
-    overlay.style.setProperty('display', 'flex', 'important');
-    overlay.style.setProperty('align-items', 'stretch', 'important');
-    overlay.style.setProperty('justify-content', 'stretch', 'important');
-    overlay.style.setProperty('overflow', 'hidden', 'important');
-  } catch (_) {}
-  try {
-    if (shell) {
-      shell.style.setProperty('width', '100vw', 'important');
-      shell.style.setProperty('height', '100vh', 'important');
-      shell.style.setProperty('max-width', '100vw', 'important');
-      shell.style.setProperty('max-height', '100vh', 'important');
-      shell.style.setProperty('border-radius', '0', 'important');
-      shell.style.setProperty('margin', '0', 'important');
-      shell.style.setProperty('overflow', 'hidden', 'important');
-    }
-    if (body) {
-      body.style.setProperty('overflow', 'auto', 'important');
-      body.style.setProperty('min-height', '0', 'important');
-    }
-    if (footer) footer.style.setProperty('flex-wrap', 'wrap', 'important');
-  } catch (_) {}
-};
-window._compraPapelaoCompraFullscreenBodyHtml = function(compra) {
+window._compraPapelaoCompraModalHtml = function(compra) {
   var empId = String(compra && compra._emp_id_consulta || window._compraPapelaoCurrentEmpId() || window._compraPapelaoEmpresaCriacaoUuid() || '');
   var header = window._compraPapelaoNormalizeCompraHeader(compra);
-  var fornecedorPedidoLabel = window._compraPapelaoFornecedorPedidoLabel(header.fornecedor || '');
   return ''
-    + '<div class="ccpx-fs-section">'
-    + '  <div class="ccpx-fs-section-head"><div><div class="ccpx-fs-section-title">Dados da Compra</div><div class="ccpx-fs-section-sub">Cabeçalho compacto para fornecedor, pasta e referência do pedido. O foco visual fica nos itens da planilha logo abaixo.</div></div></div>'
-    + '  <div class="ccpx-fs-head-grid">'
+    + '<div style="display:grid;gap:16px">'
+    + '  <div style="display:grid;gap:6px;padding:14px 16px;border-radius:14px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.82)">'
+    + '    <div style="font-size:18px;font-weight:900;color:#f8fafc">Compra de Papelão</div>'
+    + '    <div style="font-size:12px;color:#94a3b8">Preencha os dados principais da compra e os itens da planilha.</div>'
+    + '  </div>'
+    + '  <div class="ccpx-modal-head-grid">'
+    + '    <div class="ccpx-modal-inline-stack"><label>Nº</label><input id="ccpx-numero" class="ccpx-modal-num" value="' + window._compraPapelaoAttr(window._compraPapelaoNumeroLabel(header.numero_compra)) + '" readonly></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Fornecedor</label><input id="ccpx-fornecedor-manual" value="' + window._compraPapelaoAttr(header.fornecedor || '') + '" placeholder="Fornecedor"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Data</label><input id="ccpx-data-compra" type="date" value="' + window._compraPapelaoAttr(header.data_compra || window._compraPapelaoTodayIso()) + '"></div>'
     + '    <div class="ccpx-modal-inline-stack"><label>Pasta</label><select id="ccpx-pasta">' + window._compraPapelaoFolderOptionsHtml(header && header.pasta_id, empId) + '</select></div>'
-    + '    <div class="ccpx-modal-inline-stack"><label>Pedido Geral do Fornecedor</label><input id="ccpx-ped-fornecedor-geral" value="' + window._compraPapelaoAttr(header.ped_fornecedor || '') + '" placeholder="' + window._compraPapelaoAttr(fornecedorPedidoLabel) + '"></div>'
-    + '    <div class="ccpx-modal-inline-stack full"><label>Observação</label><textarea id="ccpx-obs" rows="2">' + window._compraPapelaoEsc(header.observacao || '') + '</textarea></div>'
+    + '    <div class="ccpx-modal-inline-stack"><label>Ped. Fornecedor</label><input id="ccpx-ped-forn" value="' + window._compraPapelaoAttr(header.ped_fornecedor || '') + '"></div>'
+    + '    <div class="ccpx-modal-inline-stack"><label>Status</label><select id="ccpx-status">' + window._compraPapelaoStatusOptionsHtml(header.status || 'Solicitada') + '</select></div>'
+    + '    <div class="ccpx-modal-inline-stack"><label>Previsão de Chegada</label><input id="ccpx-prev-chegada" type="date" value="' + window._compraPapelaoAttr(header.previsao_chegada || '') + '"></div>'
+    + '    <div class="ccpx-modal-inline-stack"><label>CNPJ Fornecedor</label><input id="ccpx-cnpj-fornecedor" value="' + window._compraPapelaoAttr(header.cnpj_fornecedor || '') + '"></div>'
+    + '    <div class="ccpx-modal-inline-stack full"><label>Observações</label><textarea id="ccpx-obs" rows="2">' + window._compraPapelaoEsc(header.observacao || '') + '</textarea></div>'
     + '  </div>'
+    + '<div class="ccpx-modal-items-sheet" style="margin-top:18px">'
+    + '  <div class="ccpx-modal-items-toolbar"><div><div style="font-size:14px;font-weight:900;color:#f8fafc">Itens da Compra</div><div style="font-size:12px;color:#94a3b8">Tab navega entre células; Enter na última célula da última linha cria uma nova linha.</div></div><button type="button" class="btn btn-ghost btn-sm" id="ccpx-add-item">+ Nova Linha</button></div>'
+    + '  <div class="ccpx-modal-items-wrap"><table><thead><tr><th>Pedido Cliente</th><th>Entrega</th><th>PO</th><th>Medidas L × C</th><th>Vincos</th><th>Qtde</th><th>Lote Mínimo</th><th>Área Pedido (m²)</th><th>Valor m²</th><th>Valor p/mil</th><th>Valor Total</th><th>Obs</th><th>Ped. Fornecedor</th><th>Ações</th></tr></thead><tbody id="ccpx-modal-items-body">' + window._compraPapelaoRenderModalRowsHtml(header && header.itens || []) + '</tbody></table></div>'
+    + '  <div class="ccpx-summary"><div class="ccpx-chip"><div class="lbl">Quantidade</div><div class="val" id="ccpx-sum-qtd">0</div></div><div class="ccpx-chip"><div class="lbl">Área</div><div class="val" id="ccpx-sum-area">0,0000 m²</div></div><div class="ccpx-chip"><div class="lbl">Valor</div><div class="val" id="ccpx-sum-total">R$ 0,00</div></div></div>'
+    + '  <div class="ccpx-modal-totalbar"><div class="lbl">Total Geral</div><div class="val" id="ccpx-total-geral">R$ 0,00</div></div>'
     + '</div>'
-    + '<div class="ccpx-fs-section">'
-    + '  <div class="ccpx-fs-section-head"><div><div class="ccpx-fs-section-title">Itens da Compra</div><div class="ccpx-fs-section-sub">Os campos seguem a ordem da planilha e ficam em linhas compactas, preenchendo a largura total do modal sem virar blocos verticais grandes.</div></div><button type="button" class="btn btn-ghost btn-sm" id="ccpx-add-item">+ Adicionar Item</button></div>'
-    + '  <div class="ccpx-modal-items-wrap"><div class="ccpx-item-cards" id="ccpx-modal-items-body">' + window._compraPapelaoRenderModalRowsHtml(header && header.itens || []) + '</div></div>'
-    + '</div>';
-};
-window._compraPapelaoCompraFullscreenShellHtml = function(compra, compraId) {
-  var header = window._compraPapelaoNormalizeCompraHeader(compra);
-  var numero = window._compraPapelaoNumeroLabel(header.numero_compra || window._compraPapelaoNextNumeroPreview());
-  return ''
-    + '<div class="ccpx-fs-shell" role="dialog" aria-modal="true" aria-label="Nova Compra de Papelão">'
-    + '  <div class="ccpx-fs-header">'
-      + '    <div class="ccpx-fs-header-main"><div class="ccpx-fs-title">Nova Compra de Papelão</div><div class="ccpx-fs-subtitle">Shell full-screen real com cabeçalho fixo, corpo ocupando toda a viewport e itens organizados como planilha compacta.</div></div>'
-    + '    <div class="ccpx-fs-header-side"><div class="ccpx-fs-badge"><div class="lbl">Número da Compra</div><div class="val" id="ccpx-numero-card">' + window._compraPapelaoEsc(numero) + '</div></div><button type="button" class="ccpx-fs-close" id="ccpx-close-compra" aria-label="Fechar">×</button></div>'
-    + '  </div>'
-    + '  <div class="ccpx-fs-body">' + window._compraPapelaoCompraFullscreenBodyHtml(compra) + '</div>'
-    + '  <div class="ccpx-fs-footer">'
-    + '    <div class="ccpx-summary"><div class="ccpx-chip"><div class="lbl">Quantidade total</div><div class="val" id="ccpx-sum-qtd">0</div></div><div class="ccpx-chip"><div class="lbl">Área total</div><div class="val" id="ccpx-sum-area">0,0000 m²</div></div><div class="ccpx-chip"><div class="lbl">Valor total</div><div class="val" id="ccpx-sum-total">R$ 0,00</div></div><div class="ccpx-chip"><div class="lbl">Total geral</div><div class="val" id="ccpx-total-geral">R$ 0,00</div></div></div>'
-    + '    <div class="ccpx-fs-footer-actions"><button type="button" class="ghost" id="ccpx-cancel-compra">Cancelar</button><button type="button" class="print" id="ccpx-print-compra">Imprimir</button><button type="button" class="primary" id="ccpx-save-compra">' + (compraId ? 'Salvar Compra' : 'Salvar Compra') + '</button></div>'
-    + '  </div>'
     + '</div>';
 };
 window._compraPapelaoCollectCompraPayload = function(overlay, compra) {
@@ -5621,11 +5114,14 @@ window._compraPapelaoCollectCompraPayload = function(overlay, compra) {
   });
   return {
     fornecedor: fornecedor,
-    ped_fornecedor: String((overlay.querySelector('#ccpx-ped-fornecedor-geral') || {}).value || '').trim(),
+    ped_fornecedor: String((overlay.querySelector('#ccpx-ped-forn') || {}).value || '').trim(),
     pasta_id: String((overlay.querySelector('#ccpx-pasta') || {}).value || '').trim() || null,
     observacao: String((overlay.querySelector('#ccpx-obs') || {}).value || '').trim(),
     emp_id: empId,
     data_compra: String((overlay.querySelector('#ccpx-data-compra') || {}).value || '').trim(),
+    cnpj_fornecedor: String((overlay.querySelector('#ccpx-cnpj-fornecedor') || {}).value || '').trim(),
+    previsao_chegada: String((overlay.querySelector('#ccpx-prev-chegada') || {}).value || '').trim(),
+    status: String((overlay.querySelector('#ccpx-status') || {}).value || '').trim(),
     itens: itens
   };
 };
@@ -5660,6 +5156,8 @@ window._compraPapelaoComposeEmailData = function(payload, compra) {
       'Fornecedor: ' + fornecedor,
       payload && payload.ped_fornecedor ? ('Ped. Fornecedor: ' + payload.ped_fornecedor) : '',
       payload && payload.data_compra ? ('Data: ' + window._compraPapelaoFmtDate(payload.data_compra)) : '',
+      payload && payload.previsao_chegada ? ('Previsão de Chegada: ' + window._compraPapelaoFmtDate(payload.previsao_chegada)) : '',
+      payload && payload.status ? ('Status: ' + payload.status) : '',
       '',
       'Itens:',
       linhas || 'Sem itens.',
@@ -5737,7 +5235,7 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     + '</style></head><body><div class="sheet">'
     + '<div class="topline"><div><div class="brand">' + window._compraPapelaoEsc(empresa || 'Italy Embalagens') + '</div><div class="title">PEDIDO DE CHAPAS — ' + window._compraPapelaoEsc(data.fornecedor || 'FORNECEDOR') + '</div><div class="subtitle">Gerado em ' + window._compraPapelaoEsc(typeof window._printGeradoEmBr === 'function' ? window._printGeradoEmBr() : new Date().toLocaleString('pt-BR')) + '</div></div>'
     + '<div class="box"><table><tr><td class="label">Pedido</td><td>' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(data.numero_compra)) + '</td></tr><tr><td class="label">Data</td><td>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(data.data_compra || window._compraPapelaoTodayIso())) + '</td></tr><tr><td class="label">Fornecedor</td><td>' + window._compraPapelaoEsc(data.fornecedor || '—') + '</td></tr></table></div></div>'
-    + '<div class="meta"><div class="meta-card"><div class="label">Ped. Fornecedor</div><div class="value">' + window._compraPapelaoEsc(data.ped_fornecedor || '—') + '</div></div><div class="meta-card"><div class="label">Fornecedor</div><div class="value">' + window._compraPapelaoEsc(data.fornecedor || '—') + '</div></div><div class="meta-card"><div class="label">Data</div><div class="value">' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(data.data_compra || window._compraPapelaoTodayIso())) + '</div></div><div class="meta-card"><div class="label">Observação Geral</div><div class="value">' + window._compraPapelaoEsc(data.observacao || '—') + '</div></div></div>'
+    + '<div class="meta"><div class="meta-card"><div class="label">Ped. Fornecedor</div><div class="value">' + window._compraPapelaoEsc(data.ped_fornecedor || '—') + '</div></div><div class="meta-card"><div class="label">CNPJ Fornecedor</div><div class="value">' + window._compraPapelaoEsc(data.cnpj_fornecedor || '—') + '</div></div><div class="meta-card"><div class="label">Previsão de Chegada</div><div class="value">' + window._compraPapelaoEsc(data.previsao_chegada ? window._compraPapelaoFmtDate(data.previsao_chegada) : '—') + '</div></div><div class="meta-card"><div class="label">Status</div><div class="value">' + window._compraPapelaoEsc(data.status || 'Solicitada') + '</div></div></div>'
     + '<table class="planilha"><thead><tr><th style="width:36px">#</th><th style="width:120px">Pedido Cliente</th><th style="width:92px">Entrega</th><th style="width:82px">PO</th><th style="width:108px">Medidas L × C</th><th style="width:98px">Vincos</th><th style="width:64px">Qtde</th><th style="width:76px">Lote Mínimo</th><th style="width:88px">Área Pedido</th><th style="width:88px">Valor m²</th><th style="width:88px">Valor p/mil</th><th style="width:92px">Valor Total</th><th>Obs</th><th style="width:110px">Ped. Fornecedor</th></tr></thead><tbody>'
     + (rowsHtml || '<tr><td colspan="14">Nenhum item informado.</td></tr>')
     + '</tbody></table>'
@@ -5847,49 +5345,43 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
     };
     if (!compraId && opts.prefill && typeof opts.prefill === 'object') compra = Object.assign({}, compra, opts.prefill);
     compra = window._compraPapelaoNormalizeCompraHeader(compra);
-    window._compraPapelaoCloseCompraModal();
-    var overlay = document.createElement('div');
-    overlay.id = 'ccpx-compra-fullscreen';
-    overlay.className = 'ccpx-fs-overlay';
-    overlay.innerHTML = window._compraPapelaoCompraFullscreenShellHtml(compra, compraId);
-    document.body.appendChild(overlay);
-    window._compraPapelaoForceFullscreenShell(overlay);
-    try { document.body.style.overflow = 'hidden'; } catch (_) {}
+    var overlay = _abrirModalPadrao({
+      id: 'ccpx-modal-compra',
+      titulo: 'Pedido de Chapas',
+      subtitulo: 'Planilha de pedido com fornecedor, linhas editáveis, totais automáticos e impressão.',
+      largura: '1640px',
+      wide: true,
+      hero: '🛒',
+      bodyHtml: window._compraPapelaoCompraModalHtml(compra),
+      footerHtml: '<div class="ccpx-modal-footer-actions"><div class="left"><button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button></div><div class="right"><button type="button" class="estoque-modal-btn estoque-modal-btn-blue" id="ccpx-email-compra">Email</button><button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" id="ccpx-print-compra">Imprimir</button><button type="button" class="estoque-modal-btn" id="ccpx-save-compra" style="background:#185FA5;color:#fff;border-color:#185FA5">' + (compraId ? 'Salvar Alterações' : 'Salvar Pedido') + '</button></div></div>'
+    });
     if (!overlay) return;
     window._compraPapelaoRefreshModalComputed(overlay);
-    var closeBtn = overlay.querySelector('#ccpx-close-compra');
-    var cancelBtn = overlay.querySelector('#ccpx-cancel-compra');
-    if (closeBtn) closeBtn.onclick = window._compraPapelaoCloseCompraModal;
-    if (cancelBtn) cancelBtn.onclick = window._compraPapelaoCloseCompraModal;
     var tbody = overlay.querySelector('#ccpx-modal-items-body');
-    overlay.dataset.ccpxVisibleRows = String(Math.max(5, Math.trunc((Array.isArray(compra && compra.itens) ? compra.itens.length : 0)) || 0));
     var renderRows = function(items) {
       if (!tbody) return;
-      var visibleRows = Math.max(1, Math.trunc(window._compraPapelaoNum(overlay.dataset.ccpxVisibleRows || 5)) || 1);
-      tbody.innerHTML = window._compraPapelaoRenderModalRowsHtml(items, visibleRows);
+      tbody.innerHTML = window._compraPapelaoRenderModalRowsHtml(items);
       window._compraPapelaoRefreshModalComputed(overlay);
-      window._compraPapelaoSyncFornecedorDependentUi(overlay);
     };
     var addBtn = overlay.querySelector('#ccpx-add-item');
     if (addBtn) addBtn.onclick = function() {
       var rows = window._compraPapelaoCollectModalRows(overlay);
-      overlay.dataset.ccpxVisibleRows = String(Math.max(Math.trunc(window._compraPapelaoNum(overlay.dataset.ccpxVisibleRows || 5)) || 0, rows.length) + 1);
       rows.push(window._compraPapelaoBlankItem());
       renderRows(rows);
-      var last = tbody && tbody.querySelector('[data-ccpx-item-row]:last-child [data-field="' + window._compraPapelaoItemFieldsOrder()[0] + '"]');
+      var last = tbody && tbody.querySelector('tr:last-child [data-field="' + window._compraPapelaoItemFieldsOrder()[0] + '"]');
       try { if (last) last.focus(); } catch (_) {}
     };
+    var cnpjEl = overlay.querySelector('#ccpx-cnpj-fornecedor');
     var fornManualEl = overlay.querySelector('#ccpx-fornecedor-manual');
     var syncFornecedor = function() {
       var chosen = String((fornManualEl || {}).value || '').trim();
-      if (!chosen) return;
+      if (!chosen || !cnpjEl || String(cnpjEl.value || '').trim()) return;
+      var forn = window._compraPapelaoFindFornecedor(chosen);
+      var value = String(forn && (forn.cnpj || forn.cnpj_fornecedor || forn.documento) || '').trim();
+      if (value) cnpjEl.value = value;
     };
-    if (fornManualEl) fornManualEl.onchange = function() {
-      syncFornecedor();
-      window._compraPapelaoSyncFornecedorDependentUi(overlay);
-    };
+    if (fornManualEl) fornManualEl.onchange = syncFornecedor;
     syncFornecedor();
-    window._compraPapelaoSyncFornecedorDependentUi(overlay);
     if (tbody) {
       tbody.addEventListener('click', function(ev) {
         var btnDel = ev && ev.target && (ev.target.closest ? ev.target.closest('[data-ccpx-del-item]') : null);
@@ -5905,17 +5397,11 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
           var idx = Math.max(0, Math.trunc(window._compraPapelaoNum(btnDel.getAttribute('data-ccpx-del-item'))));
           rows.splice(idx, 1);
           if (!rows.length) rows.push(window._compraPapelaoBlankItem());
-          overlay.dataset.ccpxVisibleRows = String(Math.max(1, Math.trunc(window._compraPapelaoNum(overlay.dataset.ccpxVisibleRows || rows.length)) - 1));
           renderRows(rows);
         }
       });
-      tbody.addEventListener('input', function(ev) {
-        var field = String((ev && ev.target && ev.target.getAttribute && ev.target.getAttribute('data-field')) || '').trim();
-        if (field === 'area_m2' || field === 'valor_total') {
-          ev.target.dataset.ccpxManual = String(ev.target.value || '').trim() ? '1' : '';
-        }
+      tbody.addEventListener('input', function() {
         window._compraPapelaoRefreshModalComputed(overlay);
-        window._compraPapelaoSyncFornecedorDependentUi(overlay);
       });
       tbody.addEventListener('keydown', function(ev) {
         if (!ev || ev.key !== 'Enter') return;
@@ -5923,22 +5409,29 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
         if (!target || !target.getAttribute) return;
         var field = String(target.getAttribute('data-field') || '').trim();
         if (!field) return;
-        var row = target.closest ? target.closest('[data-ccpx-item-row]') : null;
+        var row = target.closest ? target.closest('tr[data-ccpx-item-row]') : null;
         if (!row) return;
         var rowIdx = Math.max(0, Math.trunc(window._compraPapelaoNum(row.getAttribute('data-ccpx-item-row'))));
         var rows = window._compraPapelaoCollectModalRows(overlay);
-        var isLastRow = rowIdx === Array.prototype.slice.call(tbody.querySelectorAll('[data-ccpx-item-row]')).length - 1;
+        var isLastRow = rowIdx === Array.prototype.slice.call(tbody.querySelectorAll('tr[data-ccpx-item-row]')).length - 1;
         var isLastField = field === window._compraPapelaoItemFieldsOrder()[window._compraPapelaoItemFieldsOrder().length - 1];
         if (!(isLastRow && isLastField)) return;
         try { ev.preventDefault(); } catch (_) {}
         rows.push(window._compraPapelaoBlankItem());
         renderRows(rows);
         setTimeout(function() {
-          var next = tbody.querySelector('[data-ccpx-item-row]:last-child [data-field="' + window._compraPapelaoItemFieldsOrder()[0] + '"]');
+          var next = tbody.querySelector('tr:last-child [data-field="' + window._compraPapelaoItemFieldsOrder()[0] + '"]');
           try { if (next) next.focus(); } catch (_) {}
         }, 0);
       });
     }
+    var emailBtn = overlay.querySelector('#ccpx-email-compra');
+    if (emailBtn) emailBtn.onclick = function() {
+      var payloadEmail = window._compraPapelaoCollectCompraPayload(overlay, compra);
+      payloadEmail.numero_compra = compra && compra.numero_compra || window._compraPapelaoNextNumeroPreview();
+      console.log('[COMPRA-PAPELAO] email pedido:', window._compraPapelaoNumeroLabel(payloadEmail.numero_compra), payloadEmail.fornecedor || 'sem-fornecedor');
+      window._compraPapelaoOpenOutlookMail(payloadEmail, compra);
+    };
     var printBtn = overlay.querySelector('#ccpx-print-compra');
     if (printBtn) printBtn.onclick = function() {
       try {
@@ -5965,7 +5458,7 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
         console.log('[COMPRA-PAPELAO] salvar compra:', compraId ? 'edicao' : 'nova', window._compraPapelaoNumeroLabel(payload.numero_compra), 'itens:', payload.itens.length);
         if (compraId) await window._compraPapelaoApi('/api/compras-chapas/' + encodeURIComponent(compraId), { method: 'PUT', body: payload });
         else await window._compraPapelaoApi('/api/compras-chapas', { method: 'POST', body: payload });
-        window._compraPapelaoCloseCompraModal();
+        _fecharModalPadrao('ccpx-modal-compra');
         await window._compraPapelaoRenderPage();
       } catch (e) {
         console.error('[COMPRA-PAPELAO]', e);
@@ -5975,7 +5468,7 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
       }
     };
     setTimeout(function() {
-      var firstField = overlay.querySelector('#ccpx-modal-items-body [data-ccpx-item-row] [data-field="ped_cliente"]');
+      var firstField = overlay.querySelector('#ccpx-modal-items-body tr[data-ccpx-item-row] [data-field="ped_cliente"]');
       try { if (firstField) firstField.focus(); } catch (_) {}
     }, 0);
   } catch (e) {
@@ -6269,29 +5762,6 @@ window._compraPapelaoMergeResumoRows = function(rows) {
 window._compraPapelaoFetchReport = async function(kind, dataInicio, dataFim) {
   var ids = window._compraPapelaoEmpresaIdsConsulta();
   if (!ids.length) return kind === 'fornecedor' ? [] : { total_compras: 0, quantidade: 0, area_m2: 0, valor_total: 0 };
-  if (kind === 'periodo') {
-    return (Array.isArray(window._compraPapelaoStateRef().compras) ? window._compraPapelaoStateRef().compras : []).filter(function(compra) {
-      var ref = String(compra && (compra.data_compra || compra.data || compra.criado_em || compra.created_at || '') || '').slice(0, 10);
-      if (!ref) return false;
-      if (dataInicio && ref < dataInicio) return false;
-      if (dataFim && ref > dataFim) return false;
-      return true;
-    }).map(function(compra) {
-      var totals = window._compraPapelaoCompraTotals(compra);
-      return {
-        numero_compra: compra && compra.numero_compra || '',
-        fornecedor: compra && compra.fornecedor || '—',
-        data_compra: compra && (compra.data_compra || compra.data || compra.created_at || '') || '',
-        ped_fornecedor: compra && compra.ped_fornecedor || '',
-        quantidade: totals.qtd,
-        area_m2: totals.area,
-        valor_total: totals.valor,
-        empresa: window._compraPapelaoEmpresaNome(compra && compra._emp_id_consulta)
-      };
-    }).sort(function(a, b) {
-      return String(b && b.data_compra || '').localeCompare(String(a && a.data_compra || ''));
-    });
-  }
   var out = await Promise.all(ids.map(function(empId) {
     var qs = ['emp_id=' + encodeURIComponent(empId)];
     if (dataInicio) qs.push('data_inicio=' + encodeURIComponent(dataInicio));
@@ -6303,7 +5773,7 @@ window._compraPapelaoFetchReport = async function(kind, dataInicio, dataFim) {
 window._compraPapelaoOpenReportModal = function(kind) {
   var overlay = _abrirModalPadrao({
     id: 'ccpx-modal-relatorio',
-    titulo: kind === 'fornecedor' ? 'Compras por Fornecedor' : (kind === 'periodo' ? 'Compras de Papelão no Período' : 'Quantidade e Valor Comprado'),
+    titulo: kind === 'fornecedor' ? 'Compras por Fornecedor' : 'Quantidade e Valor Comprado',
     subtitulo: 'Relatório consolidado da empresa selecionada no topo.',
     largura: '1080px',
     wide: true,
@@ -6346,46 +5816,6 @@ window._compraPapelaoOpenReportModal = function(kind) {
             ];
           }),
           emptyDetailCols: 5
-        };
-      } else if (kind === 'periodo') {
-        var compras = Array.isArray(data) ? data : [];
-        var resumoPeriodo = compras.reduce(function(acc, row) {
-          acc.total_compras += 1;
-          acc.quantidade += window._compraPapelaoNum(row && row.quantidade);
-          acc.area_m2 += window._compraPapelaoNum(row && row.area_m2);
-          acc.valor_total += window._compraPapelaoNum(row && row.valor_total);
-          return acc;
-        }, { total_compras: 0, quantidade: 0, area_m2: 0, valor_total: 0 });
-        if (out) {
-          out.innerHTML = compras.length
-            ? '<div class="ccpx-summary"><div class="ccpx-chip"><div class="lbl">Pedidos</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumoPeriodo.total_compras, 0)) + '</div></div><div class="ccpx-chip"><div class="lbl">Quantidade</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumoPeriodo.quantidade, 0)) + '</div></div><div class="ccpx-chip"><div class="lbl">Área m²</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(resumoPeriodo.area_m2, 4)) + '</div></div><div class="ccpx-chip"><div class="lbl">Valor Total</div><div class="val">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(resumoPeriodo.valor_total)) + '</div></div></div><div class="ccpx-block-scroll" style="margin-top:12px"><table class="ccpx-report-table"><thead><tr><th>Pedido</th><th>Data</th><th>Fornecedor</th><th>Ped. Fornecedor</th><th>Quantidade</th><th>Área m²</th><th>Valor Total</th><th>Empresa</th></tr></thead><tbody>' + compras.map(function(row) {
-                return '<tr><td>' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(row.numero_compra)) + '</td><td>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(row.data_compra)) + '</td><td>' + window._compraPapelaoEsc(row.fornecedor) + '</td><td>' + window._compraPapelaoEsc(row.ped_fornecedor || '—') + '</td><td>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(row.quantidade, 0)) + '</td><td>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(row.area_m2, 4)) + '</td><td>' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(row.valor_total)) + '</td><td>' + window._compraPapelaoEsc(row.empresa || '—') + '</td></tr>';
-              }).join('') + '</tbody></table></div>'
-            : '<div class="ccpx-empty">Nenhuma compra encontrada para o período.</div>';
-        }
-        window._compraPapelaoStateRef().report = {
-          title: 'Compras de Papelão no Período',
-          periodo: periodo,
-          cards: [
-            { label: 'Pedidos', value: window._compraPapelaoFmtNum(resumoPeriodo.total_compras, 0), sub: window._compraPapelaoEmpresaLabelAtual() },
-            { label: 'Quantidade', value: window._compraPapelaoFmtNum(resumoPeriodo.quantidade, 0), sub: 'Itens consolidados' },
-            { label: 'Área m²', value: window._compraPapelaoFmtNum(resumoPeriodo.area_m2, 4), sub: 'Área comprada no período' },
-            { label: 'Valor Total', value: window._compraPapelaoFmtMoney(resumoPeriodo.valor_total), sub: 'Financeiro consolidado' }
-          ],
-          detailHeaders: ['Pedido', 'Data', 'Fornecedor', 'Ped. Fornecedor', 'Quantidade', 'Área m²', 'Valor Total', 'Empresa'],
-          detailRows: compras.map(function(row) {
-            return [
-              window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(row.numero_compra)),
-              window._compraPapelaoEsc(window._compraPapelaoFmtDate(row.data_compra)),
-              window._compraPapelaoEsc(row.fornecedor),
-              window._compraPapelaoEsc(row.ped_fornecedor || '—'),
-              window._compraPapelaoEsc(window._compraPapelaoFmtNum(row.quantidade, 0)),
-              window._compraPapelaoEsc(window._compraPapelaoFmtNum(row.area_m2, 4)),
-              window._compraPapelaoEsc(window._compraPapelaoFmtMoney(row.valor_total)),
-              window._compraPapelaoEsc(row.empresa || '—')
-            ];
-          }),
-          emptyDetailCols: 8
         };
       } else {
         var resumo = data || { total_compras: 0, quantidade: 0, area_m2: 0, valor_total: 0 };
@@ -6614,23 +6044,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       + '#page-compras .ccp-kpi .lbl{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
       + '#page-compras .ccp-kpi .val{font-size:22px;font-weight:900;color:#f8fafc}'
       + '#page-compras .ccp-kpi .sub{font-size:12px;color:#94a3b8}'
-      + '.ccp-modal-headline{display:grid;gap:12px;padding:18px 20px;border-radius:20px;background:linear-gradient(135deg,rgba(11,37,69,.98),rgba(24,95,165,.88),rgba(239,159,39,.18));border:1px solid rgba(125,211,252,.18);box-shadow:0 18px 40px rgba(2,6,23,.22)}'
-      + '.ccp-modal-step{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(191,219,254,.18);color:#dbeafe;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;width:max-content}'
-      + '.ccp-modal-headline .eyebrow{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#bfdbfe}'
-      + '.ccp-modal-headline .title{font-size:24px;font-weight:900;color:#fff}'
-      + '.ccp-modal-headline .sub{font-size:13px;line-height:1.55;color:rgba(226,232,240,.86)}'
-      + '.ccp-modal-primary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 16px}'
-      + '.ccp-modal-secondary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 16px;padding:16px 18px;border-radius:18px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.48)}'
       + '.ccp-modal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}'
       + '.ccp-modal-field{display:grid;gap:6px}'
       + '.ccp-modal-field.full{grid-column:1 / -1}'
       + '.ccp-modal-field label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
       + '.ccp-modal-field input,.ccp-modal-field select,.ccp-modal-field textarea{width:100%;background:#020617;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:11px 12px;font-size:13px}'
       + '.ccp-modal-field textarea{min-height:88px;resize:vertical}'
-      + '.ccp-modal-items-shell{display:grid;gap:12px;padding:18px;border-radius:18px;border:1px solid rgba(125,211,252,.16);background:linear-gradient(180deg,rgba(15,23,42,.78),rgba(15,23,42,.62));box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}'
+      + '.ccp-modal-items-shell{display:grid;gap:12px;padding:16px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.6)}'
       + '.ccp-modal-items-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}'
-      + '.ccp-modal-items-title{font-size:16px;font-weight:900;color:#f8fafc}'
-      + '.ccp-modal-items-sub{font-size:12px;color:#cbd5e1;max-width:680px;line-height:1.55}'
       + '.ccp-modal-items-title{font-size:14px;font-weight:900;color:#f8fafc}'
       + '.ccp-modal-items-sub{font-size:12px;color:#94a3b8}'
       + '.ccp-modal-items-wrap{overflow:auto;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(2,6,23,.42)}'
@@ -6639,18 +6060,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       + '.ccp-modal-items-table td{padding:10px 12px;border-bottom:1px solid rgba(148,163,184,.12);color:#e2e8f0;font-size:12px}'
       + '.ccp-modal-items-table input{width:100%;background:rgba(255,255,255,.06);color:#f8fafc;border:1px solid rgba(148,163,184,.16);border-radius:10px;padding:9px 10px;font-size:12px}'
       + '.ccp-modal-items-table .num{text-align:right;font-variant-numeric:tabular-nums}'
-      + '.ccp-modal-items-table .editable-num input{text-align:right;font-variant-numeric:tabular-nums}'
       + '.ccp-modal-items-table .danger{background:#7f1d1d;color:#fff;border:1px solid #991b1b;border-radius:10px;padding:8px 10px;cursor:pointer}'
       + '.ccp-modal-summary{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}'
       + '.ccp-modal-summary-chip{display:grid;gap:4px;min-width:150px;padding:12px 14px;border-radius:12px;border:1px solid rgba(148,163,184,.14);background:rgba(2,6,23,.28)}'
       + '.ccp-modal-summary-chip .lbl{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
       + '.ccp-modal-summary-chip .val{font-size:16px;font-weight:900;color:#f8fafc}'
-      + '#ccp-modal-compra.estoque-modal-overlay,#ccp-modal-compra.estoque-modal-overlay-padrao{padding:0!important;align-items:stretch!important;justify-content:stretch!important;background:rgba(2,6,23,.88)!important;backdrop-filter:blur(8px)!important}'
-      + '#ccp-modal-compra .estoque-modal-shell,#ccp-modal-compra .estoque-modal-shell-padrao{width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;box-shadow:none!important}'
-      + '#ccp-modal-compra .estoque-modal-header-padrao{padding:18px 24px!important}'
-      + '#ccp-modal-compra .estoque-modal-content-padrao{padding:18px 24px!important;overflow:auto!important;min-height:0!important}'
-      + '#ccp-modal-compra .estoque-modal-footer-padrao{padding:14px 24px 16px!important}'
-      + '@media (max-width:900px){.ccp-modal-grid,.ccp-modal-primary-grid,.ccp-modal-secondary-grid{grid-template-columns:1fr}#page-compras .ccp-search-shell{align-items:stretch}#page-compras .ccp-search-shell button{width:100%}}';
+      + '@media (max-width:900px){.ccp-modal-grid{grid-template-columns:1fr}#page-compras .ccp-search-shell{align-items:stretch}#page-compras .ccp-search-shell button{width:100%}}';
     document.head.appendChild(st);
   }
   function cEnsureToolbar() {
@@ -6665,7 +6080,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     toolbar.dataset.ccpActive = '0';
   }
   function cBlankItem() {
-    return { ped_cliente: '', data_entrega: '', po: '', nomenclatura: '', largura: '', comprimento: '', vincos: '', vinco1: '', vinco2: '', vinco3: '', vinco4: '', quantidade: '', lote_minimo: '', area_m2: '', valor_m2: '', valor_total: '', observacao: '', ped_fornecedor: '' };
+    return { ped_cliente: '', nomenclatura: '', largura: '', comprimento: '', quantidade: '', valor_m2: '' };
   }
   function cItemDerived(item) {
     var largura = cNum(item && item.largura);
@@ -6680,48 +6095,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       valor_total: total,
       vl_p_mil: mil
     };
-  }
-  function cResolveItemMetrics(item) {
-    var base = cItemDerived(item);
-    var areaManual = item && item.area_m2 != null && String(item.area_m2).trim() !== '';
-    var totalManual = item && item.valor_total != null && String(item.valor_total).trim() !== '';
-    var area = areaManual ? cNum(item.area_m2) : base.area_m2;
-    var total = totalManual ? cNum(item.valor_total) : (area * cNum(item && item.valor_m2));
-    var quantidade = cNum(item && item.quantidade);
-    var mil = quantidade > 0 ? (total / quantidade) * 1000 : 0;
-    return {
-      area_m2: area,
-      valor_total: total,
-      vl_p_mil: mil,
-      auto_area_m2: base.area_m2,
-      auto_valor_total: base.valor_total,
-      area_manual: areaManual,
-      total_manual: totalManual
-    };
-  }
-  function cComposeVincos(item) {
-    var out = [];
-    ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(key) {
-      var val = String(item && item[key] || '').trim();
-      if (val) out.push(val);
-    });
-    if (!out.length) return String(item && item.vincos || '').trim();
-    return out.join('/');
-  }
-  function cFornecedorPedidoLabel(rawName) {
-    var nome = String(rawName || '').replace(/\s+/g, ' ').trim();
-    return 'Pedido ' + (nome || 'Fornecedor');
-  }
-  function cSyncFornecedorDependentUi(overlay) {
-    if (!overlay) return;
-    var fornecedor = String((overlay.querySelector('#ccp-modal-fornecedor') || {}).value || '').trim();
-    var label = cFornecedorPedidoLabel(fornecedor);
-    Array.prototype.slice.call(overlay.querySelectorAll('[data-ccp-fornecedor-label]')).forEach(function(el) {
-      el.textContent = label;
-    });
-    Array.prototype.slice.call(overlay.querySelectorAll('[data-field="ped_fornecedor"]')).forEach(function(input) {
-      input.placeholder = label;
-    });
   }
   function cCompraTotals(compra) {
     return (Array.isArray(compra && compra.itens) ? compra.itens : []).reduce(function(acc, item) {
@@ -6914,45 +6287,34 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
   function cCompraModalRowsHtml(itens) {
     var rows = (Array.isArray(itens) && itens.length ? itens : [cBlankItem()]);
     return rows.map(function(item, idx) {
-      var d = cResolveItemMetrics(item);
-      var areaManual = d.area_manual && Math.abs(d.area_m2 - d.auto_area_m2) > 0.000001;
-      var totalManual = d.total_manual && Math.abs(d.valor_total - d.auto_valor_total) > 0.000001;
+      var d = cItemDerived(item);
       return ''
         + '<tr data-ccp-item-row="' + idx + '">'
         + '  <td><input data-field="ped_cliente" value="' + cAttr(item && item.ped_cliente || '') + '" placeholder="Pedido do cliente"></td>'
-        + '  <td><input data-field="data_entrega" type="date" value="' + cAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></td>'
-        + '  <td><input data-field="po" value="' + cAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></td>'
-        + '  <td><div style="display:grid;grid-template-columns:minmax(88px,1fr) 14px minmax(88px,1fr);align-items:center"><input data-field="largura" type="number" min="0" step="0.01" value="' + cAttr(item && item.largura || '') + '" placeholder="L"><span style="color:#64748b;font-weight:900;text-align:center">×</span><input data-field="comprimento" type="number" min="0" step="0.01" value="' + cAttr(item && item.comprimento || '') + '" placeholder="C"></div></td>'
-        + '  <td><div style="display:grid;grid-template-columns:repeat(4,minmax(56px,1fr));gap:4px"><input data-field="vinco1" value="' + cAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + cAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + cAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + cAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></td>'
+        + '  <td><input data-field="nomenclatura" value="' + cAttr(item && item.nomenclatura || '') + '" placeholder="Nomenclatura"></td>'
+        + '  <td><input data-field="largura" type="number" min="0" step="0.01" value="' + cAttr(item && item.largura || '') + '" placeholder="0"></td>'
+        + '  <td><input data-field="comprimento" type="number" min="0" step="0.01" value="' + cAttr(item && item.comprimento || '') + '" placeholder="0"></td>'
         + '  <td><input data-field="quantidade" type="number" min="0" step="1" value="' + cAttr(item && item.quantidade || '') + '" placeholder="0"></td>'
-        + '  <td><input data-field="lote_minimo" type="number" min="0" step="1" value="' + cAttr(item && item.lote_minimo || '') + '" placeholder="0"></td>'
-        + '  <td class="editable-num"><input data-field="area_m2"' + (areaManual ? ' data-ccp-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + cAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : d.area_m2.toFixed(4)) + '"></td>'
         + '  <td><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + cAttr(item && item.valor_m2 || '') + '" placeholder="0,00"></td>'
+        + '  <td class="num" data-ccp-area>' + cEsc(cFmtNum(d.area_m2, 4)) + '</td>'
+        + '  <td class="num" data-ccp-total>' + cEsc(cFmtRs(d.valor_total)) + '</td>'
         + '  <td class="num" data-ccp-mil>' + cEsc(cFmtRs(d.vl_p_mil)) + '</td>'
-        + '  <td class="editable-num"><input data-field="valor_total"' + (totalManual ? ' data-ccp-manual="1"' : '') + ' type="number" min="0" step="0.01" value="' + cAttr(item && item.valor_total != null && String(item.valor_total).trim() !== '' ? item.valor_total : d.valor_total.toFixed(2)) + '"></td>'
-        + '  <td><textarea data-field="observacao" rows="1" placeholder="Observações">' + cEsc(item && item.observacao || '') + '</textarea></td>'
-        + '  <td><input data-field="ped_fornecedor" value="' + cAttr(item && item.ped_fornecedor || '') + '" placeholder="' + cAttr(cFornecedorPedidoLabel('')) + '"></td>'
         + '  <td><button type="button" class="danger" data-ccp-item-del="' + idx + '">Remover</button></td>'
         + '</tr>';
     }).join('');
   }
   function cCompraModalHtml(compra) {
-    var fornecedorLabel = cFornecedorPedidoLabel(compra && compra.fornecedor || '');
     return ''
-      + '<div class="ccp-modal-headline"><div class="eyebrow">Pedido de Chapas</div><div class="ccp-modal-step">Etapa 1 · Cabeçalho da Compra</div><div class="title">Compra de Papelão com planilha na ordem operacional</div><div class="sub">Pedido, data e fornecedor ficam no topo; os itens seguem a sequência da planilha com PO, medidas, vincos, lote mínimo, área, valor por m², valor por mil e total.</div></div>'
-      + '<div class="ccp-modal-primary-grid">'
-      + '  <div class="ccp-modal-field"><label>Pedido</label><input id="ccp-modal-numero" value="' + cAttr(compra && compra.numero_compra || 'Automático') + '" disabled></div>'
-      + '  <div class="ccp-modal-field"><label>Data</label><input id="ccp-modal-data" type="date" value="' + cAttr(String(compra && (compra.data_compra || compra.data || '') || '').slice(0, 10)) + '"></div>'
+      + '<div class="ccp-modal-grid">'
       + '  <div class="ccp-modal-field"><label>Fornecedor</label><input id="ccp-modal-fornecedor" value="' + cAttr(compra && compra.fornecedor || '') + '" placeholder="Fornecedor"></div>'
-      + '</div>'
-      + '<div class="ccp-modal-secondary-grid">'
+      + '  <div class="ccp-modal-field"><label>Pedido do fornecedor</label><input id="ccp-modal-pedforn" value="' + cAttr(compra && compra.ped_fornecedor || '') + '" placeholder="Pedido do fornecedor"></div>'
       + '  <div class="ccp-modal-field"><label>Pasta</label><select id="ccp-modal-pasta">' + cFolderOptionsHtml(compra && compra.pasta_id, true) + '</select></div>'
-      + '  <div class="ccp-modal-field"><label>Pedido Geral do Fornecedor</label><input id="ccp-modal-pedforn" value="' + cAttr(compra && compra.ped_fornecedor || '') + '" placeholder="Pedido do fornecedor"></div>'
-      + '  <div class="ccp-modal-field"><label>Observação</label><textarea id="ccp-modal-obs" placeholder="Observações da compra">' + cEsc(compra && compra.observacao || '') + '</textarea></div>'
+      + '  <div class="ccp-modal-field"><label>Número</label><input id="ccp-modal-numero" value="' + cAttr(compra && compra.numero_compra || 'Automático') + '" disabled></div>'
+      + '  <div class="ccp-modal-field full"><label>Observação</label><textarea id="ccp-modal-obs" placeholder="Observações da compra">' + cEsc(compra && compra.observacao || '') + '</textarea></div>'
       + '</div>'
       + '<div class="ccp-modal-items-shell" style="margin-top:18px">'
-      + '  <div class="ccp-modal-items-head"><div><div class="ccp-modal-step">Etapa 2 · Itens da Compra</div><div class="ccp-modal-items-title">Planilha operacional da compra</div><div class="ccp-modal-items-sub">Adicione Pedido Cliente, Entrega, PO, medidas, vincos, quantidade, lote mínimo, área, valor por m², valor por mil e valor total no mesmo modal, sem depender de uma segunda tela.</div></div><button type="button" class="pep-btn" id="ccp-modal-add-item">＋ Adicionar Item</button></div>'
-      + '  <div class="ccp-modal-items-wrap"><table class="ccp-modal-items-table"><thead><tr><th>Pedido Cliente</th><th>Entrega</th><th>PO</th><th>Medidas L × C</th><th>Vincos</th><th>Qtde</th><th>Lote Mínimo</th><th class="num">Área Pedido</th><th>Valor/m²</th><th class="num">Valor p/mil</th><th class="num">Valor Total</th><th>Obs</th><th data-ccp-fornecedor-label>' + cEsc(fornecedorLabel) + '</th><th>Ação</th></tr></thead><tbody id="ccp-modal-items-body">' + cCompraModalRowsHtml(compra && compra.itens || []) + '</tbody></table></div>'
+      + '  <div class="ccp-modal-items-head"><div><div class="ccp-modal-items-title">Itens da Compra</div><div class="ccp-modal-items-sub">Adicione as linhas e acompanhe os cálculos de área, total e valor por mil direto no modal.</div></div><button type="button" class="pep-btn" id="ccp-modal-add-item">＋ Adicionar Item</button></div>'
+      + '  <div class="ccp-modal-items-wrap"><table class="ccp-modal-items-table"><thead><tr><th>Ped. cliente</th><th>Nomenclatura</th><th>Largura</th><th>Comprimento</th><th>Quantidade</th><th>Valor/m²</th><th class="num">Área m²</th><th class="num">Valor total</th><th class="num">R$/mil</th><th>Ação</th></tr></thead><tbody id="ccp-modal-items-body">' + cCompraModalRowsHtml(compra && compra.itens || []) + '</tbody></table></div>'
       + '  <div class="ccp-modal-summary">'
       + '    <div class="ccp-modal-summary-chip"><div class="lbl">Quantidade</div><div class="val" id="ccp-modal-sum-qtd">0</div></div>'
       + '    <div class="ccp-modal-summary-chip"><div class="lbl">Área</div><div class="val" id="ccp-modal-sum-area">0,0000 m²</div></div>'
@@ -6962,33 +6324,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
   }
   function cCollectModalRows(overlay) {
     return Array.prototype.slice.call(overlay.querySelectorAll('#ccp-modal-items-body tr[data-ccp-item-row]')).map(function(row) {
-      var item = {
+      return {
         ped_cliente: String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim(),
-        data_entrega: String((row.querySelector('[data-field="data_entrega"]') || {}).value || '').trim(),
-        po: String((row.querySelector('[data-field="po"]') || {}).value || '').trim(),
+        nomenclatura: String((row.querySelector('[data-field="nomenclatura"]') || {}).value || '').trim(),
         largura: String((row.querySelector('[data-field="largura"]') || {}).value || '').trim(),
         comprimento: String((row.querySelector('[data-field="comprimento"]') || {}).value || '').trim(),
-        vinco1: String((row.querySelector('[data-field="vinco1"]') || {}).value || '').trim(),
-        vinco2: String((row.querySelector('[data-field="vinco2"]') || {}).value || '').trim(),
-        vinco3: String((row.querySelector('[data-field="vinco3"]') || {}).value || '').trim(),
-        vinco4: String((row.querySelector('[data-field="vinco4"]') || {}).value || '').trim(),
         quantidade: String((row.querySelector('[data-field="quantidade"]') || {}).value || '').trim(),
-        lote_minimo: String((row.querySelector('[data-field="lote_minimo"]') || {}).value || '').trim(),
-        area_m2: String((row.querySelector('[data-field="area_m2"]') || {}).value || '').trim(),
-        valor_m2: String((row.querySelector('[data-field="valor_m2"]') || {}).value || '').trim(),
-        valor_total: String((row.querySelector('[data-field="valor_total"]') || {}).value || '').trim(),
-        observacao: String((row.querySelector('[data-field="observacao"]') || {}).value || '').trim(),
-        ped_fornecedor: String((row.querySelector('[data-field="ped_fornecedor"]') || {}).value || '').trim()
+        valor_m2: String((row.querySelector('[data-field="valor_m2"]') || {}).value || '').trim()
       };
-      var metrics = cResolveItemMetrics(item);
-      item.vincos = cComposeVincos(item);
-      item.nomenclatura = item.po;
-      item.area_m2 = metrics.area_m2;
-      item.valor_total = metrics.valor_total;
-      item.vl_p_mil = metrics.vl_p_mil;
-      return item;
     }).filter(function(item) {
-      return item.ped_cliente || item.data_entrega || item.po || item.largura || item.comprimento || item.vincos || item.quantidade || item.lote_minimo || item.area_m2 || item.valor_m2 || item.valor_total || item.observacao || item.ped_fornecedor;
+      return item.ped_cliente || item.nomenclatura || item.largura || item.comprimento || item.quantidade || item.valor_m2;
     });
   }
   function cRefreshCompraModalComputed(overlay) {
@@ -7001,19 +6346,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
         largura: (row.querySelector('[data-field="largura"]') || {}).value,
         comprimento: (row.querySelector('[data-field="comprimento"]') || {}).value,
         quantidade: (row.querySelector('[data-field="quantidade"]') || {}).value,
-        area_m2: (row.querySelector('[data-field="area_m2"]') || {}).value,
-        valor_m2: (row.querySelector('[data-field="valor_m2"]') || {}).value,
-        valor_total: (row.querySelector('[data-field="valor_total"]') || {}).value
+        valor_m2: (row.querySelector('[data-field="valor_m2"]') || {}).value
       };
-      var d = cResolveItemMetrics(item);
+      var d = cItemDerived(item);
       totalQtd += cNum(item.quantidade);
       totalArea += d.area_m2;
       totalValor += d.valor_total;
-      var areaEl = row.querySelector('[data-field="area_m2"]');
-      var totalEl = row.querySelector('[data-field="valor_total"]');
+      var areaEl = row.querySelector('[data-ccp-area]');
+      var totalEl = row.querySelector('[data-ccp-total]');
       var milEl = row.querySelector('[data-ccp-mil]');
-      if (areaEl && (areaEl.dataset.ccpManual !== '1' || !String(areaEl.value || '').trim())) areaEl.value = d.area_m2.toFixed(4);
-      if (totalEl && (totalEl.dataset.ccpManual !== '1' || !String(totalEl.value || '').trim())) totalEl.value = d.valor_total.toFixed(2);
+      if (areaEl) areaEl.textContent = cFmtNum(d.area_m2, 4);
+      if (totalEl) totalEl.textContent = cFmtRs(d.valor_total);
       if (milEl) milEl.textContent = cFmtRs(d.vl_p_mil);
     });
     var q = overlay.querySelector('#ccp-modal-sum-qtd');
@@ -7028,7 +6371,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     if (!tbody) return;
     tbody.innerHTML = cCompraModalRowsHtml(items);
     cRefreshCompraModalComputed(overlay);
-    cSyncFornecedorDependentUi(overlay);
   }
   function cCollectCompraPayload(overlay) {
     return {
@@ -7036,7 +6378,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       ped_fornecedor: String((overlay.querySelector('#ccp-modal-pedforn') || {}).value || '').trim(),
       pasta_id: String((overlay.querySelector('#ccp-modal-pasta') || {}).value || '').trim() || null,
       observacao: String((overlay.querySelector('#ccp-modal-obs') || {}).value || '').trim(),
-      data_compra: String((overlay.querySelector('#ccp-modal-data') || {}).value || '').trim(),
       emp_id: cEmpId(),
       itens: cCollectModalRows(overlay)
     };
@@ -7093,19 +6434,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       });
       if (!overlay) return;
       cRefreshCompraModalComputed(overlay);
-      cSyncFornecedorDependentUi(overlay);
       var addBtn = overlay.querySelector('#ccp-modal-add-item');
       if (addBtn) addBtn.onclick = function() {
         var itens = cCollectModalRows(overlay);
         itens.push(cBlankItem());
         cRenderCompraModalRows(overlay, itens);
       };
-      var fornecedorEl = overlay.querySelector('#ccp-modal-fornecedor');
-      if (fornecedorEl) {
-        fornecedorEl.addEventListener('input', function() {
-          cSyncFornecedorDependentUi(overlay);
-        });
-      }
       var tbody = overlay.querySelector('#ccp-modal-items-body');
       if (tbody) {
         tbody.addEventListener('click', function(ev) {
@@ -7117,14 +6451,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
           if (!itens.length) itens.push(cBlankItem());
           cRenderCompraModalRows(overlay, itens);
         });
-        tbody.addEventListener('input', function(ev) {
-          var field = String((ev && ev.target && ev.target.getAttribute && ev.target.getAttribute('data-field')) || '').trim();
-          if (field === 'area_m2' || field === 'valor_total') {
-            ev.target.dataset.ccpManual = String(ev.target.value || '').trim() ? '1' : '';
-          }
-          cRefreshCompraModalComputed(overlay);
-          cSyncFornecedorDependentUi(overlay);
-        });
+        tbody.addEventListener('input', function() { cRefreshCompraModalComputed(overlay); });
       }
       var saveBtn = overlay.querySelector('#ccp-modal-save');
       if (saveBtn) saveBtn.onclick = function() { cSalvarCompraModal(compraId || null); };
@@ -7312,9 +6639,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       if (origAbrirModalCompra) return origAbrirModalCompra.apply(this, arguments);
       return null;
     }
-    if (typeof window._compraPapelaoOpenCompraModal === 'function') {
-      return window._compraPapelaoOpenCompraModal(id || null);
-    }
     return cAbrirModalCompra(id || null);
   }
   function cRenderWrapper() {
@@ -7322,9 +6646,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       cEnsureToolbar();
       if (origRenderCompras) return origRenderCompras.apply(this, arguments);
       return null;
-    }
-    if (typeof window._compraPapelaoRenderPage === 'function') {
-      return window._compraPapelaoRenderPage();
     }
     return cRenderPage();
   }
@@ -7374,6 +6695,7 @@ function _simdIsCanonicalUi() {
   }
 }
 window._simdCalcular = function() {
+  console.log('[SIMD] entrou');
   var impl = null;
   try {
     impl = typeof window.__simdCalcularImpl === 'function'
@@ -7385,12 +6707,32 @@ window._simdCalcular = function() {
     impl = null;
   }
   if (typeof impl !== 'function') {
+    try { console.error('[SIMD] erro:', new Error('Handler global do simulador não disponível')); } catch (_) {}
     try { alert('Simulador indisponível no momento. Recarregue a página.'); } catch (_) {}
     return false;
   }
   return impl.apply(this, arguments);
 };
-window._simdBindBotaoDireto = function() { return false; };
+window._simdBindBotaoDireto = function() {
+  if (_simdIsCanonicalUi()) return false;
+  var btn = null;
+  try { btn = document.getElementById('simd-btn'); } catch (_) { btn = null; }
+  if (!btn || typeof window._simdCalcular !== 'function') return false;
+  try { btn.type = 'button'; } catch (_) {}
+  try { btn.onclick = window._simdCalcular; } catch (_) {}
+  if (btn.dataset.simdDirectBound !== '1') {
+    btn.dataset.simdDirectBound = '1';
+    btn.addEventListener('click', function(e) {
+      try { if (e) e.preventDefault(); } catch (_) {}
+      return window._simdCalcular.call(this, e);
+    });
+  }
+  return true;
+};
+try { window._simdBindBotaoDireto(); } catch (_) {}
+setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 50);
+setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 300);
+setTimeout(function() { try { window._simdBindBotaoDireto(); } catch (_) {} }, 900);
 
 try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(6, 'antes patchSimuladorFluxoGlobalV2'); } catch (_) {}
 (function patchSimuladorFluxoGlobalV2() {
@@ -7699,7 +7041,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(6, 'antes pat
       };
     } catch (_) {}
     var btn = document.getElementById('simd-btn');
-    if (_simdPreferredModeValue() !== 'sheet' && btn && btn.dataset.simdGlobalBound !== '1') {
+    if (btn && btn.dataset.simdGlobalBound !== '1') {
       btn.dataset.simdGlobalBound = '1';
       try { btn.type = 'button'; } catch (_) {}
       btn.onclick = window._simdCalcular;
@@ -7836,7 +7178,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     st.id = 'patch-orc-pastas-style';
     st.textContent = ''
       + '#page-orcamentos #orc-pastas-panel{display:grid;gap:14px;margin:10px 0 16px}'
-      + '#page-orcamentos .orc-search-shell{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:linear-gradient(135deg,#064e3b 0%,#047857 46%,#1d4ed8 100%);border:1px solid rgba(110,231,183,.22);border-radius:22px;padding:16px 18px;box-shadow:0 22px 56px rgba(0,0,0,.28)}'
+      + '#page-orcamentos .orc-search-shell{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:linear-gradient(135deg,rgba(21,128,61,.9),rgba(22,163,74,.82));border:1px solid rgba(134,239,172,.22);border-radius:18px;padding:14px 16px;box-shadow:0 18px 48px rgba(0,0,0,.24)}'
       + '#page-orcamentos .orc-search-shell input{flex:1;min-width:280px;background:rgba(255,255,255,.14);color:#f8fafc;border:1px solid rgba(255,255,255,.24);border-radius:12px;padding:12px 14px;font-size:13px;font-weight:700}'
       + '#page-orcamentos .orc-search-shell input::placeholder{color:rgba(240,253,244,.84)}'
       + '#page-orcamentos .orc-search-shell button{background:#052e16;color:#f0fdf4;border:1px solid rgba(240,253,244,.18);border-radius:12px;padding:12px 18px;font-weight:900;cursor:pointer}'
@@ -7847,7 +7189,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#page-orcamentos .orc-pastas-strip::-webkit-scrollbar-thumb{background:rgba(96,165,250,.48);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
       + '#page-orcamentos .orc-pastas-strip{scrollbar-width:thin;scrollbar-color:rgba(96,165,250,.48) rgba(15,23,42,.72)}'
       + '#page-orcamentos .orc-pastas-grid{display:flex;gap:12px;min-width:max-content}'
-      + '#page-orcamentos .orc-pasta-card{min-width:220px;background:linear-gradient(180deg,rgba(15,23,42,.94),rgba(15,23,42,.76));border:1px solid rgba(110,231,183,.14);border-radius:18px;padding:16px;display:grid;gap:8px;cursor:pointer;transition:.16s ease;flex:0 0 auto;text-align:left;box-shadow:0 14px 32px rgba(2,6,23,.18)}'
+      + '#page-orcamentos .orc-pasta-card{min-width:220px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);border-radius:16px;padding:14px;display:grid;gap:8px;cursor:pointer;transition:.16s ease;flex:0 0 auto;text-align:left}'
       + '#page-orcamentos .orc-pasta-card:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.38)}'
       + '#page-orcamentos .orc-pasta-card.is-active{border-color:rgba(96,165,250,.55);box-shadow:0 0 0 1px rgba(96,165,250,.22) inset}'
       + '#page-orcamentos .orc-pasta-head{display:flex;align-items:center;justify-content:space-between;gap:8px}'
@@ -7857,35 +7199,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#page-orcamentos .orc-folder-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(59,130,246,.14);color:#bfdbfe;border:1px solid rgba(59,130,246,.25);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700}'
       + '#page-orcamentos .orc-folder-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}'
       + '#page-orcamentos .orc-folder-row select{min-width:180px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px}'
-      + '#page-orcamentos .orc-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px}'
-      + '#page-orcamentos .orc-summary-card{display:grid;gap:6px;padding:18px;border-radius:18px;background:linear-gradient(180deg,rgba(15,23,42,.94),rgba(15,23,42,.74));border:1px solid rgba(148,163,184,.16);box-shadow:0 18px 38px rgba(2,6,23,.22)}'
-      + '#page-orcamentos .orc-summary-card:nth-child(1){background:linear-gradient(135deg,rgba(6,78,59,.96),rgba(16,185,129,.22));border-color:rgba(110,231,183,.22)}'
-      + '#page-orcamentos .orc-summary-card:nth-child(2){background:linear-gradient(135deg,rgba(30,64,175,.94),rgba(59,130,246,.18));border-color:rgba(147,197,253,.2)}'
-      + '#page-orcamentos .orc-summary-card:nth-child(3){background:linear-gradient(135deg,rgba(88,28,135,.92),rgba(168,85,247,.16));border-color:rgba(216,180,254,.18)}'
-      + '#page-orcamentos .orc-summary-card:nth-child(4){background:linear-gradient(135deg,rgba(120,53,15,.92),rgba(249,115,22,.14));border-color:rgba(253,186,116,.18)}'
-      + '#page-orcamentos .orc-summary-card .lbl{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#86efac}'
-      + '#page-orcamentos .orc-summary-card .val{font-size:24px;font-weight:900;color:#f8fafc}'
-      + '#page-orcamentos .orc-summary-card .sub{font-size:12px;color:#94a3b8}'
-      + '#page-orcamentos .orc-table-shell{display:grid;gap:12px;background:linear-gradient(180deg,rgba(15,23,42,.88),rgba(15,23,42,.74));border:1px solid rgba(110,231,183,.12);border-radius:20px;padding:18px;box-shadow:0 18px 42px rgba(2,6,23,.2)}'
-      + '#page-orcamentos .orc-table-headline{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}'
+      + '#page-orcamentos .orc-table-shell{display:grid;gap:10px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:14px}'
       + '#page-orcamentos .orc-table-title{font-size:16px;font-weight:900;color:#f8fafc}'
-      + '#page-orcamentos .orc-table-sub{font-size:12px;color:#94a3b8;max-width:760px;line-height:1.5}'
       + '#page-orcamentos .orc-table-wrap{overflow:auto;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(2,6,23,.48)}'
       + '#page-orcamentos .orc-table-wrap::-webkit-scrollbar{width:10px;height:10px}'
       + '#page-orcamentos .orc-table-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72)}'
       + '#page-orcamentos .orc-table-wrap::-webkit-scrollbar-thumb{background:rgba(100,116,139,.58);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
-      + '#page-orcamentos .orc-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1320px}'
+      + '#page-orcamentos .orc-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1220px}'
       + '#page-orcamentos .orc-table th{position:sticky;top:0;z-index:2;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.18);text-align:left}'
       + '#page-orcamentos .orc-table td{padding:13px 14px;border-bottom:1px solid rgba(148,163,184,.12);font-size:13px;color:#e2e8f0;vertical-align:middle}'
       + '#page-orcamentos .orc-table tbody tr:hover td{background:rgba(148,163,184,.06)}'
       + '#page-orcamentos .orc-table .num{text-align:right;font-variant-numeric:tabular-nums}'
-      + '#page-orcamentos .orc-row-stack{display:grid;gap:4px}'
-      + '#page-orcamentos .orc-row-stack strong{font-size:13px;color:#f8fafc}'
-      + '#page-orcamentos .orc-row-stack span{font-size:11px;color:#94a3b8}'
-      + '#page-orcamentos .orc-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.22);color:#bbf7d0;font-size:11px;font-weight:800}'
-      + '#page-orcamentos .orc-pill.is-muted{background:rgba(148,163,184,.12);border-color:rgba(148,163,184,.18);color:#cbd5e1}'
-      + '#page-orcamentos .orc-chapa-cell{max-width:240px;white-space:normal;line-height:1.45}'
-      + '#page-orcamentos .orc-value-strong{font-size:15px;font-weight:900;color:#f8fafc}'
       + '#page-orcamentos .orc-table-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
       + '#page-orcamentos .orc-table-actions button{padding:6px 10px;border-radius:9px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:700}'
       + '#page-orcamentos .orc-table-actions button.primary{background:var(--accent);color:#fff;border-color:transparent}'
@@ -7894,64 +7218,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#page-orcamentos #calc-pasta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-2px 0 12px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px}'
       + '#page-orcamentos #calc-pasta-row label{font-size:12px;font-weight:800;color:rgba(255,255,255,.72);text-transform:uppercase;letter-spacing:.04em}'
       + '#page-orcamentos #calc-pasta{min-width:240px;flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px}'
-      + '#modal-calc{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;align-items:stretch!important;justify-content:stretch!important;padding:0!important;background:rgba(2,6,23,.82)!important;backdrop-filter:blur(8px)!important}'
-      + '#modal-calc #modal-calculadora{width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;background:linear-gradient(180deg,#07111f 0%,#0f172a 20%,#111827 100%)!important;border:none!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;padding:22px!important}'
-      + '#modal-calc #modal-calculadora h2{margin:0 0 12px!important;padding:0 56px 0 0!important;font-size:28px!important;font-weight:900!important;letter-spacing:-.02em!important;color:#eff6ff!important}'
-      + '#modal-calc #modal-calculadora .close-btn{top:18px!important;right:18px!important;width:42px!important;height:42px!important;border-radius:999px!important;background:rgba(15,23,42,.9)!important;border:1px solid rgba(148,163,184,.2)!important;color:#f8fafc!important}'
-      + '#modal-calc #modal-calculadora .calc-header-row{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;gap:14px!important;align-items:center!important;padding:16px 18px!important;border-radius:18px!important;background:linear-gradient(135deg,rgba(5,150,105,.18),rgba(29,78,216,.18))!important;border:1px solid rgba(125,211,252,.16)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)!important}'
-      + '#modal-calc #modal-calculadora .calc-header-row label{font-size:11px!important;font-weight:900!important;letter-spacing:.08em!important;text-transform:uppercase!important;color:#bfdbfe!important;white-space:nowrap!important}'
-      + '#modal-calc #modal-calculadora #calc-cli{width:100%!important;min-height:48px!important}'
-      + '#modal-calc #modal-calculadora #orc-numero-display{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:46px!important;padding:0 16px!important;border-radius:999px!important;background:rgba(15,23,42,.72)!important;border:1px solid rgba(96,165,250,.26)!important;color:#93c5fd!important;font-size:12px!important;font-weight:900!important;letter-spacing:.08em!important;text-transform:uppercase!important}'
-      + '#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body{display:grid!important;grid-template-columns:minmax(0,1.7fr) minmax(340px,.88fr)!important;gap:18px!important;align-items:start!important;flex:1!important;min-height:0!important;overflow:auto!important;padding:14px 2px 0!important}'
-      + '#modal-calc #modal-calculadora .calc-col-esq{display:grid!important;gap:16px!important;min-width:0!important;padding:0!important;overflow:visible!important}'
-      + '#modal-calc #modal-calculadora .calc-row-top,#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores,#modal-calc #modal-calculadora #calc-extra-fields,#modal-calc #modal-calculadora .calc-col-dir{padding:16px!important;border-radius:18px!important;border:1px solid rgba(148,163,184,.14)!important;background:linear-gradient(180deg,rgba(15,23,42,.84),rgba(15,23,42,.62))!important;box-shadow:0 16px 38px rgba(2,6,23,.18)!important}'
-      + '#modal-calc #modal-calculadora .calc-row-top{display:grid!important;grid-template-columns:1.25fr .95fr .8fr!important;gap:12px!important}'
-      + '#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important}'
-      + '#modal-calc #modal-calculadora #calc-extra-fields{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;gap:12px!important}'
-      + '#modal-calc #modal-calculadora .calc-col-dir{display:grid!important;gap:12px!important;min-width:340px!important;align-self:start!important;position:sticky!important;top:0!important}'
-      + '#modal-calc #modal-calculadora .calc-col-dir > div:first-child{font-size:11px!important;font-weight:900!important;letter-spacing:.08em!important;text-transform:uppercase!important;color:#93c5fd!important;padding-bottom:6px!important;border-bottom:1px solid rgba(148,163,184,.14)!important}'
-      + '#modal-calc #modal-calculadora .param-row{display:grid!important;grid-template-columns:minmax(0,1fr) 120px!important;gap:12px!important;align-items:center!important;padding:10px 12px!important;border-radius:14px!important;background:rgba(2,6,23,.34)!important;border:1px solid rgba(148,163,184,.12)!important}'
-      + '#modal-calc #modal-calculadora .param-label{font-size:12px!important;font-weight:800!important;color:#cbd5e1!important}'
-      + '#modal-calc #modal-calculadora .param-input{text-align:right!important;font-variant-numeric:tabular-nums!important}'
-      + '#modal-calc #modal-calculadora .param-frete-total{display:flex!important;justify-content:space-between!important;align-items:center!important;padding:14px 16px!important;border-radius:16px!important;background:linear-gradient(135deg,rgba(30,64,175,.34),rgba(14,116,144,.22))!important;border:1px solid rgba(147,197,253,.18)!important;color:#eff6ff!important;font-weight:900!important}'
-      + '#modal-calc #modal-calculadora .calc-tabela-wrap{overflow:hidden!important;min-width:0!important;border-radius:18px!important;border:1px solid rgba(148,163,184,.14)!important;background:rgba(2,6,23,.44)!important}'
-      + '#modal-calc #modal-calculadora #calc-sheet{width:100%!important;min-width:0!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:0!important}'
-      + '#modal-calc #modal-calculadora #calc-sheet thead th{position:sticky!important;top:0!important;z-index:2!important;background:#0b1220!important;color:#cbd5e1!important;padding:12px 10px!important;font-size:11px!important;line-height:1.35!important;white-space:normal!important;border-bottom:1px solid rgba(148,163,184,.18)!important}'
-      + '#modal-calc #modal-calculadora #calc-sheet tbody td{padding:12px 10px!important;font-size:12px!important;line-height:1.4!important;color:#e2e8f0!important;border-bottom:1px solid rgba(148,163,184,.1)!important;white-space:normal!important;word-break:break-word!important}'
-      + '#modal-calc #modal-calculadora #calc-sheet tbody tr:hover td{background:rgba(148,163,184,.05)!important}'
-      + '#modal-calc #modal-calculadora #wrap-calc-nome-orcamento,#modal-calc #modal-calculadora #wrap-calc-chapa-utilizada,#modal-calc #modal-calculadora #calc-pasta-row{padding:14px 16px!important;border-radius:16px!important;background:rgba(2,6,23,.42)!important;border:1px solid rgba(148,163,184,.14)!important}'
-      + '#modal-calc #modal-calculadora input,#modal-calc #modal-calculadora select,#modal-calc #modal-calculadora textarea{background:#020617!important;border:1px solid rgba(148,163,184,.22)!important;border-radius:12px!important;color:#f8fafc!important;box-shadow:none!important}'
-      + '#modal-calc #modal-calculadora .mf label,#modal-calc #modal-calculadora #calc-pasta-row label{font-size:11px!important;font-weight:900!important;letter-spacing:.06em!important;text-transform:uppercase!important;color:#94a3b8!important}'
-      + '#modal-calc #modal-calculadora .modal-footer.rodape{display:flex!important;flex-wrap:wrap!important;gap:10px!important;align-items:center!important;justify-content:space-between!important;padding:16px 4px 0!important;margin-top:14px!important;border-top:1px solid rgba(148,163,184,.16)!important}'
-      + '#modal-calc #modal-calculadora .modal-footer.rodape > div:first-child{margin-right:auto!important;padding:10px 14px!important;border-radius:14px!important;background:rgba(2,6,23,.44)!important;border:1px solid rgba(148,163,184,.12)!important}'
-      + '#modal-calc #modal-calculadora .modal-footer.rodape button{border-radius:14px!important;font-weight:900!important;min-height:46px!important;padding:0 18px!important;border:1px solid rgba(148,163,184,.18)!important}'
-      + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(1){background:rgba(15,23,42,.78)!important;color:#e2e8f0!important}'
-      + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(2){background:rgba(30,41,59,.88)!important;color:#e0f2fe!important}'
-      + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(3){background:#2563eb!important;color:#fff!important;border-color:#2563eb!important}'
-      + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(4){background:#7c3aed!important;color:#fff!important;border-color:#7c3aed!important}'
-      + '#modal-calc.orc-calc-fs-ready{padding:0!important;align-items:stretch!important;justify-content:stretch!important;background:rgba(2,6,23,.82)!important;backdrop-filter:blur(8px)!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora{width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;padding:0!important;border:none!important;box-shadow:none!important;background:linear-gradient(180deg,#061120 0%,#0f172a 16%,#111827 100%)!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell{display:grid!important;grid-template-rows:auto auto minmax(0,1fr) auto!important;height:100%!important;min-height:0!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-header{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:16px!important;padding:18px 24px!important;border-bottom:1px solid rgba(148,163,184,.14)!important;background:rgba(3,7,18,.88)!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-header h2{margin:0!important;padding:0!important;font-size:28px!important;color:#f8fafc!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-topbar{display:grid!important;grid-template-columns:1.3fr .95fr .95fr .95fr!important;gap:12px!important;padding:14px 24px 16px!important;border-bottom:1px solid rgba(148,163,184,.12)!important;background:rgba(7,16,29,.92)!important;align-items:start!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-header-row,#modal-calc.orc-calc-fs-ready #modal-calculadora #wrap-calc-nome-orcamento,#modal-calc.orc-calc-fs-ready #modal-calculadora #wrap-calc-chapa-utilizada,#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-pasta-row{margin:0!important;padding:12px 14px!important;border-radius:16px!important;background:rgba(15,23,42,.72)!important;border:1px solid rgba(148,163,184,.16)!important;min-height:0!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-header-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:10px!important;align-items:end!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-header-row > label{display:none!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #wrap-calc-cliente{width:100%!important;flex:auto!important;min-width:0!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-cliente-input{min-height:46px!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #orc-numero-display{min-height:46px!important;padding:0 14px!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-main{min-height:0!important;padding:18px 24px!important;overflow:hidden!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{height:100%!important;max-height:none!important;grid-template-columns:minmax(0,1.75fr) minmax(330px,.92fr)!important;gap:18px!important;overflow:hidden!important;padding:0!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-esq{grid-template-rows:auto auto auto auto minmax(0,1fr)!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-tabela-wrap{overflow:hidden!important;display:flex!important;min-height:0!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-sheet{min-width:0!important;table-layout:fixed!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-sheet thead th,#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-sheet tbody td{font-size:11px!important;padding:10px 8px!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{height:100%!important;overflow:auto!important;position:sticky!important;top:0!important;align-content:start!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-footer{padding:14px 24px 16px!important;border-top:1px solid rgba(148,163,184,.14)!important;background:rgba(3,7,18,.94)!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-footer.rodape{margin:0!important;padding:0!important;border-top:none!important;background:transparent!important}'
-      + '@media (max-width:1280px){#modal-calc #modal-calculadora{width:min(1450px,calc(100vw - 20px))!important}#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .calc-col-dir{min-width:0!important;position:static!important}#modal-calc #modal-calculadora #calc-sheet{table-layout:auto!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-topbar{grid-template-columns:repeat(2,minmax(0,1fr))!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{grid-template-columns:1fr!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{position:static!important;max-height:none!important}}'
-      + '@media (max-width:920px){#modal-calc{padding:0!important}#modal-calc #modal-calculadora{width:100vw!important;max-width:100vw!important;max-height:100vh!important;padding:16px!important}#modal-calc #modal-calculadora .calc-header-row{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .calc-row-top,#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .modal-footer.rodape{flex-direction:column!important;align-items:stretch!important}#modal-calc #modal-calculadora .modal-footer.rodape button{width:100%!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-header{padding:14px 16px!important;align-items:flex-start!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-topbar{grid-template-columns:1fr!important;padding:12px 16px!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-main{padding:14px 16px!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-footer{padding:12px 16px!important}}'
       + '#orc-pasta-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100001;align-items:center;justify-content:center;padding:16px}'
       + '#orc-pasta-modal .box{width:min(460px,96vw);background:#0f172a;border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:18px;display:grid;gap:12px}'
       + '#orc-pasta-modal .ttl{font-size:16px;font-weight:900;color:#f8fafc}'
@@ -8269,8 +7535,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         out.pasta_id = (r && (r.pasta_id != null ? r.pasta_id : r.pastaId)) ? String(r.pasta_id != null ? r.pasta_id : r.pastaId).trim() : null;
         out.nome = String(r && (r.nome != null ? r.nome : (out && out.nome)) || '').trim();
         out.nome_orcamento = String(r && (r.nome_orcamento != null ? r.nome_orcamento : (out && out.nome_orcamento)) || out.nome || '').trim();
-        out.chapa_utilizada = chapaUtilizadaOf(r || out);
-        out.chapaUtilizada = out.chapa_utilizada;
         if (!out.nome_orcamento && out.nome) out.nome_orcamento = out.nome;
         if (!out.nome && out.nome_orcamento) out.nome = out.nome_orcamento;
       } catch (_) {
@@ -8286,8 +7550,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     next.pasta_id = row.pasta_id != null ? String(row.pasta_id || '').trim() || null : null;
     next.nome = String(next && (next.nome != null ? next.nome : row && row.nome) || '').trim();
     next.nome_orcamento = String(next && (next.nome_orcamento != null ? next.nome_orcamento : row && row.nome_orcamento) || next.nome || '').trim();
-    next.chapa_utilizada = chapaUtilizadaOf(row || next);
-    next.chapaUtilizada = next.chapa_utilizada;
     if (!next.nome_orcamento && next.nome) next.nome_orcamento = next.nome;
     if (!next.nome && next.nome_orcamento) next.nome = next.nome_orcamento;
     var idx = ORCAMENTOS.findIndex(function(item) { return String(item && item.id || '') === String(next.id || ''); });
@@ -8301,8 +7563,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       var m = String(method || '').trim().toUpperCase();
       var u = String(url || '').trim();
       var nomeAtual = calcNomeOrcamentoAtual();
-      var chapaEl = document.getElementById('calc-chapa-utilizada');
-      var chapaAtual = String((chapaEl && chapaEl.value) || '').trim();
       var payload = body;
       if ((m === 'POST' || m === 'PUT' || m === 'PATCH') && /^\/orcamentos(?:\/|$)/.test(u) && body && typeof body === 'object') {
         payload = Object.assign({}, body);
@@ -8310,50 +7570,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           payload.nome = nomeAtual;
           payload.nome_orcamento = nomeAtual;
         }
-        if (chapaEl) {
-          var parametros = (payload.parametros && typeof payload.parametros === 'object' && !Array.isArray(payload.parametros))
-            ? Object.assign({}, payload.parametros)
-            : {};
-          if (chapaAtual) {
-            parametros.chapa_utilizada = chapaAtual;
-            parametros.chapaUtilizada = chapaAtual;
-          } else {
-            delete parametros.chapa_utilizada;
-            delete parametros.chapaUtilizada;
-          }
-          payload.parametros = parametros;
-          payload.chapa_utilizada = chapaAtual || null;
-          payload.chapaUtilizada = chapaAtual || null;
-        }
       }
       var result = await originalApi.call(this, method, url, payload);
-      if ((m === 'POST' || m === 'PUT' || m === 'PATCH') && /^\/orcamentos(?:\/|$)/.test(u) && result && typeof result === 'object') {
+      if ((m === 'POST' || m === 'PUT' || m === 'PATCH') && /^\/orcamentos(?:\/|$)/.test(u) && nomeAtual && result && typeof result === 'object') {
         var data = result.data && typeof result.data === 'object' ? Object.assign({}, result.data) : null;
         if (data) {
-          if (nomeAtual && !String(data.nome || '').trim()) data.nome = nomeAtual;
-          if (nomeAtual && !String(data.nome_orcamento || '').trim()) data.nome_orcamento = nomeAtual;
-          if (chapaEl) {
-            data.chapa_utilizada = chapaAtual || null;
-            data.chapaUtilizada = chapaAtual || null;
-            data.parametros = (data.parametros && typeof data.parametros === 'object' && !Array.isArray(data.parametros))
-              ? Object.assign({}, data.parametros)
-              : {};
-            if (chapaAtual) {
-              data.parametros.chapa_utilizada = chapaAtual;
-              data.parametros.chapaUtilizada = chapaAtual;
-            } else {
-              delete data.parametros.chapa_utilizada;
-              delete data.parametros.chapaUtilizada;
-            }
-          }
+          if (!String(data.nome || '').trim()) data.nome = nomeAtual;
+          if (!String(data.nome_orcamento || '').trim()) data.nome_orcamento = nomeAtual;
           result = Object.assign({}, result, { data: data });
         } else {
-          if (nomeAtual && !String(result.nome || '').trim()) result.nome = nomeAtual;
-          if (nomeAtual && !String(result.nome_orcamento || '').trim()) result.nome_orcamento = nomeAtual;
-          if (chapaEl) {
-            result.chapa_utilizada = chapaAtual || null;
-            result.chapaUtilizada = chapaAtual || null;
-          }
+          if (!String(result.nome || '').trim()) result.nome = nomeAtual;
+          if (!String(result.nome_orcamento || '').trim()) result.nome_orcamento = nomeAtual;
         }
       }
       return result;
@@ -8397,191 +7624,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       try { toast('Erro ao salvar pasta do orçamento: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
       return false;
     });
-  }
-  function chapaUtilizadaOf(row) {
-    return String(
-      row && (
-        row.chapa_utilizada != null ? row.chapa_utilizada :
-        (row.chapaUtilizada != null ? row.chapaUtilizada :
-        (row.parametros && typeof row.parametros === 'object'
-          ? (row.parametros.chapa_utilizada != null ? row.parametros.chapa_utilizada : row.parametros.chapaUtilizada)
-          : ''))
-      ) || ''
-    ).trim();
-  }
-  function loadCalcChapasCatalog(force) {
-    var now = Date.now();
-    var cache = window.__orcChapasCatalogCache;
-    if (!force && cache && Array.isArray(cache.rows) && cache.rows.length && (now - Number(cache.loadedAt || 0) < 30000)) {
-      return Promise.resolve(cache.rows.slice());
-    }
-    var request = (typeof window._apiAuthFetch === 'function')
-      ? window._apiAuthFetch('/api/chapas_estoque?limit=10000&nocache=1&_t=' + now, { cache: 'no-store' })
-      : fetch('/api/chapas_estoque?limit=10000&nocache=1&_t=' + now, { cache: 'no-store' });
-    return request.then(function(resp) {
-      return resp ? resp.json().catch(function() { return null; }) : null;
-    }).then(function(json) {
-      var rows = Array.isArray(json && (json.data || json.rows || json.items)) ? (json.data || json.rows || json.items) : (Array.isArray(json) ? json : []);
-      var out = [];
-      var seen = {};
-      rows.forEach(function(row) {
-        var nome = String(row && (row.nome_uso || row.nome || row.nomenclatura || row.titulo || '') || '').replace(/\s+/g, ' ').trim();
-        if (!nome || seen[nome]) return;
-        seen[nome] = true;
-        out.push(nome);
-      });
-      out.sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); });
-      window.__orcChapasCatalogCache = { loadedAt: now, rows: out.slice() };
-      return out;
-    }).catch(function() {
-      return Array.isArray(cache && cache.rows) ? cache.rows.slice() : [];
-    });
-  }
-  function ensureCalcChapaUi() {
-    var sel = document.getElementById('calc-cli');
-    if (!sel || !sel.parentNode) return null;
-    var list = document.getElementById('calc-chapa-utilizada-list');
-    if (!list) {
-      list = document.createElement('datalist');
-      list.id = 'calc-chapa-utilizada-list';
-      document.body.appendChild(list);
-    }
-    var input = document.getElementById('calc-chapa-utilizada');
-    if (!input) {
-      var host = document.getElementById('wrap-calc-nome-orcamento') || sel.parentNode;
-      var wrap = document.createElement('div');
-      wrap.id = 'wrap-calc-chapa-utilizada';
-      wrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-bottom:10px';
-      wrap.innerHTML = ''
-        + '<label for="calc-chapa-utilizada" style="font-size:11px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Chapa Utilizada</label>'
-        + '<input id="calc-chapa-utilizada" list="calc-chapa-utilizada-list" type="text" placeholder="Selecione uma chapa do estoque" style="width:100%;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:14px">'
-        + '<small style="color:#94a3b8;font-size:11px">Campo interno. Fica apenas na edição do orçamento e não entra na impressão/PDF.</small>';
-      if (host && host.parentNode) host.insertAdjacentElement('afterend', wrap);
-      else sel.parentNode.insertBefore(wrap, sel);
-      input = wrap.querySelector('#calc-chapa-utilizada');
-    }
-    if (input && input.dataset.patchBound !== '1') {
-      input.dataset.patchBound = '1';
-      input.addEventListener('input', function() {
-        input.dataset.keepValue = String(input.value || '').trim() ? '1' : '';
-      });
-    }
-    loadCalcChapasCatalog(false).then(function(rows) {
-      var target = document.getElementById('calc-chapa-utilizada-list');
-      if (!target) return;
-      target.innerHTML = rows.map(function(nome) {
-        return '<option value="' + escAttr(nome) + '"></option>';
-      }).join('');
-    }).catch(function() { return null; });
-    return input;
-  }
-  function syncCalcChapaUi() {
-    var input = ensureCalcChapaUi();
-    if (!input) return;
-    var current = currentOrcamentoFromState();
-    var currentId = String(current && current.id || '').trim();
-    var value = chapaUtilizadaOf(current);
-    if (!currentId) {
-      if (input.dataset.lastOrcamentoId) input.dataset.lastOrcamentoId = '';
-      if (!input.dataset.keepValue) input.value = '';
-      return;
-    }
-    if (input.dataset.lastOrcamentoId !== currentId) {
-      input.value = value;
-      input.dataset.lastOrcamentoId = currentId;
-    }
-    input.dataset.keepValue = value ? '1' : '';
-  }
-  function ensureCalcFullscreenShell() {
-    var overlay = document.getElementById('modal-calc');
-    var modal = document.getElementById('modal-calculadora');
-    if (!overlay || !modal) return false;
-    try { overlay.classList.add('orc-calc-fs-ready'); } catch (_) {}
-    var shell = modal.querySelector('.orc-calc-shell');
-    if (!shell) {
-      shell = document.createElement('div');
-      shell.className = 'orc-calc-shell';
-      shell.innerHTML = ''
-        + '<div class="orc-calc-shell-header"><div class="orc-calc-shell-title"></div><div class="orc-calc-shell-close"></div></div>'
-        + '<div class="orc-calc-shell-topbar"></div>'
-        + '<div class="orc-calc-shell-main"></div>'
-        + '<div class="orc-calc-shell-footer"></div>';
-      while (modal.firstChild) shell.querySelector('.orc-calc-shell-main').appendChild(modal.firstChild);
-      modal.appendChild(shell);
-    }
-    var titleHost = shell.querySelector('.orc-calc-shell-title');
-    var closeHost = shell.querySelector('.orc-calc-shell-close');
-    var topbar = shell.querySelector('.orc-calc-shell-topbar');
-    var main = shell.querySelector('.orc-calc-shell-main');
-    var footerHost = shell.querySelector('.orc-calc-shell-footer');
-    var title = modal.querySelector(':scope > h2') || main.querySelector(':scope > h2') || modal.querySelector('h2');
-    var closeBtn = modal.querySelector(':scope > .close-btn') || main.querySelector(':scope > .close-btn') || modal.querySelector('.close-btn');
-    var headerRow = modal.querySelector(':scope > .calc-header-row') || main.querySelector(':scope > .calc-header-row') || modal.querySelector('.calc-header-row');
-    var nomeWrap = document.getElementById('wrap-calc-nome-orcamento');
-    var pastaRow = document.getElementById('calc-pasta-row');
-    var chapaWrap = document.getElementById('wrap-calc-chapa-utilizada');
-    var body = modal.querySelector(':scope > .modal-body') || modal.querySelector(':scope > .calc-body') || main.querySelector('.modal-body') || main.querySelector('.calc-body');
-    var footer = modal.querySelector(':scope > .modal-footer.rodape') || main.querySelector('.modal-footer.rodape') || modal.querySelector('.modal-footer.rodape');
-    if (title && title.parentNode !== titleHost) titleHost.appendChild(title);
-    if (closeBtn && closeBtn.parentNode !== closeHost) closeHost.appendChild(closeBtn);
-    [
-      headerRow,
-      nomeWrap,
-      pastaRow,
-      chapaWrap
-    ].forEach(function(node) {
-      if (!node) return;
-      if (node.parentNode !== topbar) topbar.appendChild(node);
-    });
-    if (body && body.parentNode !== main) main.appendChild(body);
-    if (footer && footer.parentNode !== footerHost) footerHost.appendChild(footer);
-    try {
-      overlay.style.setProperty('position', 'fixed', 'important');
-      overlay.style.setProperty('inset', '0', 'important');
-      overlay.style.setProperty('width', '100vw', 'important');
-      overlay.style.setProperty('height', '100vh', 'important');
-      overlay.style.setProperty('max-width', '100vw', 'important');
-      overlay.style.setProperty('max-height', '100vh', 'important');
-      overlay.style.setProperty('padding', '0', 'important');
-      overlay.style.setProperty('margin', '0', 'important');
-      overlay.style.setProperty('align-items', 'stretch', 'important');
-      overlay.style.setProperty('justify-content', 'stretch', 'important');
-      overlay.style.setProperty('overflow', 'hidden', 'important');
-      modal.style.setProperty('width', '100vw', 'important');
-      modal.style.setProperty('max-width', '100vw', 'important');
-      modal.style.setProperty('height', '100vh', 'important');
-      modal.style.setProperty('max-height', '100vh', 'important');
-      modal.style.setProperty('border-radius', '0', 'important');
-      modal.style.setProperty('margin', '0', 'important');
-      modal.style.setProperty('padding', '0', 'important');
-      modal.style.setProperty('overflow', 'hidden', 'important');
-      shell.style.setProperty('height', '100%', 'important');
-      shell.style.setProperty('min-height', '0', 'important');
-      topbar.style.setProperty('align-items', 'start', 'important');
-      main.style.setProperty('min-height', '0', 'important');
-      main.style.setProperty('overflow', 'hidden', 'important');
-      if (body) {
-        body.style.setProperty('height', '100%', 'important');
-        body.style.setProperty('max-height', 'none', 'important');
-        body.style.setProperty('overflow', 'hidden', 'important');
-      }
-      var leftCol = modal.querySelector('.calc-col-esq');
-      var rightCol = modal.querySelector('.calc-col-dir');
-      var tableWrap = modal.querySelector('.calc-tabela-wrap');
-      if (leftCol) {
-        leftCol.style.setProperty('min-height', '0', 'important');
-        leftCol.style.setProperty('overflow', 'auto', 'important');
-      }
-      if (rightCol) {
-        rightCol.style.setProperty('min-height', '0', 'important');
-        rightCol.style.setProperty('overflow', 'auto', 'important');
-      }
-      if (tableWrap) {
-        tableWrap.style.setProperty('min-height', '0', 'important');
-        tableWrap.style.setProperty('overflow', 'auto', 'important');
-      }
-    } catch (_) {}
-    return true;
   }
   function saveFolderFromModal() {
     var modal = document.getElementById('orc-pasta-modal');
@@ -8678,26 +7720,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     renderFoldersPanel(lista);
     lista = lista.filter(filterMatches).filter(matchSearch);
     var filter = currentFilter();
-    var totalValor = lista.reduce(function(sum, orc) {
-      return sum + (Number(orc && (orc.valor_total != null ? orc.valor_total : (orc.vtot != null ? orc.vtot : 0)) || 0) || 0);
-    }, 0);
-    var totalSemPasta = lista.filter(function(orc) { return !folderIdOf(orc); }).length;
-    var totalComChapa = lista.filter(function(orc) { return !!chapaUtilizadaOf(orc); }).length;
-    var summaryHtml = '<div class="orc-summary-grid">'
-      + '<div class="orc-summary-card"><div class="lbl">Orçamentos</div><div class="val">' + esc(String(lista.length)) + '</div><div class="sub">Registros visíveis com os filtros atuais</div></div>'
-      + '<div class="orc-summary-card"><div class="lbl">Valor Total</div><div class="val">' + esc(fmtMoney(totalValor)) + '</div><div class="sub">Somatório dos orçamentos listados</div></div>'
-      + '<div class="orc-summary-card"><div class="lbl">Sem Pasta</div><div class="val">' + esc(String(totalSemPasta)) + '</div><div class="sub">Itens ainda sem organização em pasta</div></div>'
-      + '<div class="orc-summary-card"><div class="lbl">Com Chapa</div><div class="val">' + esc(String(totalComChapa)) + '</div><div class="sub">Orçamentos com chapa interna preenchida</div></div>'
-      + '</div>';
     if (!lista.length) {
       var msg = filter === '__sem_pasta'
         ? 'Nenhum orçamento sem pasta.'
         : (filter.indexOf('id:') === 0 ? 'Nenhum orçamento encontrado nesta pasta.' : 'Nenhum orçamento.');
-      body.innerHTML = summaryHtml + '<div class="orc-table-shell"><div class="orc-table-title">Detalhamento de Orçamentos:</div><div class="orc-empty">' + esc(msg) + '</div></div>';
+      body.innerHTML = '<div class="orc-table-shell"><div class="orc-table-title">Detalhamento de Orçamentos:</div><div class="orc-empty">' + esc(msg) + '</div></div>';
       return;
     }
-    body.innerHTML = summaryHtml + '<div class="orc-table-shell">'
-      + '  <div class="orc-table-headline"><div><div class="orc-table-title">Detalhamento de Orçamentos</div><div class="orc-table-sub">Listagem com foco em leitura rápida, organização por pasta e acesso direto às ações principais sem mudar o fluxo de edição, impressão, versões e exclusão.</div></div></div>'
+    body.innerHTML = '<div class="orc-table-shell">'
+      + '  <div class="orc-table-title">Detalhamento de Orçamentos:</div>'
       + '  <div class="orc-table-wrap">'
       + '    <table class="orc-table">'
       + '      <thead><tr>'
@@ -8706,7 +7737,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '        <th>Cliente</th>'
       + '        <th>Medidas</th>'
       + '        <th>Onda do papelão</th>'
-      + '        <th>Chapa</th>'
       + '        <th class="num">Quantidade</th>'
       + '        <th class="num">Valor total do orçamento</th>'
       + '        <th>Ações</th>'
@@ -8719,7 +7749,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       var medidas = orc.medidas || orc.titulo || '—';
       var qtd = orc.quantidade != null ? orc.quantidade : (orc.qtd != null ? orc.qtd : '—');
       var onda = orc.onda || '—';
-      var chapa = chapaUtilizadaOf(orc) || '—';
       var vtot = orc.valor_total != null ? orc.valor_total : (orc.vtot != null ? orc.vtot : 0);
       var id = String(orc.id || '').trim();
       var pastaId = folderIdOf(orc);
@@ -8727,21 +7756,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       var badge = pastaId
         ? '<span class="orc-folder-badge">📁 ' + esc(pastaNome || 'Pasta') + '</span>'
         : '<span class="orc-folder-badge" style="background:rgba(148,163,184,.12);color:#cbd5e1;border-color:rgba(148,163,184,.18)">Sem pasta</span>';
-      var ondaBadge = onda && onda !== '—'
-        ? '<span class="orc-pill">' + esc(onda) + '</span>'
-        : '<span class="orc-pill is-muted">Sem onda</span>';
       return ''
         + '<tr>'
-        + '  <td><div class="orc-row-stack"><strong>Nº ' + esc(num) + '</strong><span>' + esc(id ? ('ID ' + id.slice(0, 8)) : 'Sem ID') + '</span></div></td>'
-        + '  <td><div class="orc-row-stack"><strong>' + esc(nome) + '</strong><span>' + badge + '</span></div></td>'
-        + '  <td><div class="orc-row-stack"><strong>' + esc(cliente) + '</strong><span>Cliente vinculado ao orçamento</span></div></td>'
-        + '  <td><div class="orc-row-stack"><strong>' + esc(medidas) + '</strong><span>Dimensões e descrição de referência</span></div></td>'
-        + '  <td>' + ondaBadge + '</td>'
-        + '  <td><div class="orc-chapa-cell">' + esc(chapa) + '</div></td>'
-        + '  <td class="num"><span class="orc-value-strong">' + esc(String(qtd)) + '</span></td>'
-        + '  <td class="num"><span class="orc-value-strong">' + esc(fmtMoney(vtot)) + '</span></td>'
+        + '  <td><strong style="color:#f8fafc">Nº ' + esc(num) + '</strong></td>'
+        + '  <td>' + esc(nome) + '</td>'
+        + '  <td>' + esc(cliente) + '</td>'
+        + '  <td>' + esc(medidas) + '</td>'
+        + '  <td>' + esc(onda) + '</td>'
+        + '  <td class="num">' + esc(String(qtd)) + '</td>'
+        + '  <td class="num">' + esc(fmtMoney(vtot)) + '</td>'
         + '  <td>'
         + '    <div class="orc-table-actions">'
+        +        badge
         + '      <select onchange="orcMoverParaPasta(\'' + escAttr(id) + '\', this.value)">' + folderOptionsHtml(pastaId) + '</select>'
         + '      <button type="button" class="primary" onclick="abrirCalculadoraComOrc(\'' + escAttr(id) + '\')">✏️ Editar</button>'
         + '      <button type="button" onclick="imprimirOrcamentoId(\'' + escAttr(id) + '\')">🖨 Imprimir</button>'
@@ -8790,13 +7816,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       setTimeout(function() {
         loadFolders(false).catch(function() { return []; }).finally(function() {
           syncCalcFolderUi();
-          syncCalcChapaUi();
-          ensureCalcFullscreenShell();
         });
       }, 60);
-      setTimeout(function() {
-        try { ensureCalcFullscreenShell(); } catch (_) {}
-      }, 180);
       return out;
     };
     window.abrirCalculadora.__patchOrcPastas = true;
@@ -8807,8 +7828,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       var out = _origCarregarOrcamentoCalc.apply(this, arguments);
       setTimeout(function() {
         syncCalcFolderUi();
-        syncCalcChapaUi();
-        ensureCalcFullscreenShell();
       }, 30);
       return out;
     };
@@ -8820,16 +7839,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       var out = _origNovoOrcamentoCalc.apply(this, arguments);
       setTimeout(function() {
         ensureCalcFolderUi();
-        var chapaInput = ensureCalcChapaUi();
         var select = document.getElementById('calc-pasta');
         if (select) {
           select.innerHTML = folderOptionsHtml('');
           select.value = '';
-        }
-        if (chapaInput) {
-          chapaInput.value = '';
-          chapaInput.dataset.lastOrcamentoId = '';
-          chapaInput.dataset.keepValue = '';
         }
       }, 30);
       return out;
@@ -8840,18 +7853,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     var _origSalvarOrcamentoCalc = window.salvarOrcamentoCalc;
     window.salvarOrcamentoCalc = async function() {
       var nomeAtual = calcNomeOrcamentoAtual();
-      var chapaAtual = String((document.getElementById('calc-chapa-utilizada') || {}).value || '').trim();
       var ok = await _origSalvarOrcamentoCalc.apply(this, arguments);
       if (!ok) return ok;
       try {
         var current = currentOrcamentoFromState();
-        if (current) {
-          updateLocalOrcamento(Object.assign({}, current, {
-            nome: nomeAtual || current.nome || current.nome_orcamento,
-            nome_orcamento: nomeAtual || current.nome_orcamento || current.nome,
-            chapa_utilizada: chapaAtual || null,
-            chapaUtilizada: chapaAtual || null
-          }));
+        if (current && nomeAtual) {
+          updateLocalOrcamento(Object.assign({}, current, { nome: nomeAtual, nome_orcamento: nomeAtual }));
         }
       } catch (_) {}
       await persistCurrentCalcFolder();
@@ -8862,9 +7869,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
   }
 
   ensureUi();
-  setTimeout(function() {
-    try { ensureCalcChapaUi(); } catch (_) {}
-  }, 120);
   loadFolders(false).catch(function() { return []; });
   setTimeout(function() {
     try {
@@ -9048,6 +8052,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(9, 'antes pat
         comp: _orcPrintPick(row && row.compTitle, row && row.compLabel, row && row.label, onda ? ('Onda ' + onda) : '', '—'),
         onda: onda,
         unitLiq: vlUnit > 0 ? vlUnit : unitLiq,
+        unitFrete: unitFrete,
         total: total,
         idx: idx
       };
@@ -9077,9 +8082,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(9, 'antes pat
         + '  <td>' + _orcPrintEsc(row.comp || '—') + '</td>'
         + '  <td class="center">' + _orcPrintEsc(row.onda || '—') + '</td>'
         + '  <td class="num">' + _orcPrintMoney(row.unitLiq) + '</td>'
+        + '  <td class="num">' + _orcPrintMoney(row.unitFrete) + '</td>'
         + '  <td class="num strong">' + _orcPrintMoney(row.total) + '</td>'
         + '</tr>';
-    }).join('') : '<tr><td>—</td><td class="center">—</td><td class="num">R$ 0,00</td><td class="num strong">R$ 0,00</td></tr>';
+    }).join('') : '<tr><td>—</td><td class="center">—</td><td class="num">R$ 0,00</td><td class="num">R$ 0,00</td><td class="num strong">R$ 0,00</td></tr>';
 
     return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Orçamento Nº ' + _orcPrintEsc(numero) + ' — Italy Embalagens</title>'
       + '<style>'
@@ -9132,9 +8138,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(9, 'antes pat
       + '    <div class="cell"><div class="label">Medidas</div><div class="value">' + _orcPrintEsc(medidas) + '</div></div>'
       + '  </div>'
       + '</div>'
-      + '<div class="block"><table><thead><tr><th>Comp.</th><th class="center">Onda</th><th class="num">VL Unit.</th><th class="num">Total</th></tr></thead><tbody>'
+      + '<div class="block"><table><thead><tr><th>Comp.</th><th class="center">Onda</th><th class="num">VL Unit.</th><th class="num">VL Unit. c/Frete</th><th class="num">Total</th></tr></thead><tbody>'
       + rowsHtml
-      + '<tr class="total-row"><td colspan="3" class="num">Total Geral</td><td class="num">' + _orcPrintMoney(totalGeral) + '</td></tr>'
+      + '<tr class="total-row"><td colspan="4" class="num">Total Geral</td><td class="num">' + _orcPrintMoney(totalGeral) + '</td></tr>'
       + '</tbody></table></div>'
       + '<div class="block"><div class="note">A quantidade pode variar 5% pra mais ou menos, devido ao acerto de maquina.</div></div>'
       + '<div class="block"><div class="footer">' + _orcPrintEsc(vendedor) + ' | ' + _orcPrintEsc(tel1) + ' | ' + _orcPrintEsc(tel2) + ' | ' + _orcPrintEsc(email) + '<br>Italy Embalagens — ' + _orcPrintEsc(_orcPrintAddress()) + '</div></div>'
@@ -9483,18 +8489,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     try { return document.getElementById('page-historico-passagens'); } catch (_) { return null; }
   }
 
-  function _histIsPageActive() {
-    try {
-      var page = _histGetPage();
-      if (!page) return false;
-      if (page.classList && page.classList.contains('active')) return true;
-      var active = document.querySelector('.page.active');
-      return !!(active && active === page);
-    } catch (_) {
-      return false;
-    }
-  }
-
   function _histGetFilters() {
     if (typeof window.obterFiltrosHistoricoAtivos === 'function') {
       try { return window.obterFiltrosHistoricoAtivos() || {}; } catch (_) {}
@@ -9727,7 +8721,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
       var st = document.createElement('style');
       st.id = 'patch-historico-passagens-style';
       st.textContent = ''
-        + '#page-historico-passagens.active{display:block!important;min-height:100vh!important;height:auto!important;max-height:none!important;overflow-y:auto!important;overflow-x:hidden!important}'
+        + '#page-historico-passagens{min-height:0;max-height:100vh;overflow-y:auto;overflow-x:hidden}'
         + '#hist-filtros .hist-patch-btn,#hist-relatorio-mensal-shell .hist-patch-btn{background:#1e293b;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer}'
         + '#hist-filtros .hist-patch-btn:hover,#hist-relatorio-mensal-shell .hist-patch-btn:hover{filter:brightness(1.06)}'
         + '#hist-filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0;padding:14px 16px;border-radius:14px;background:rgba(15,23,42,.82);border:1px solid rgba(148,163,184,.14)}'
@@ -9756,16 +8750,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
         + '#hist-relatorio-mensal-shell .hist-month-table tbody td.num{text-align:right;font-variant-numeric:tabular-nums}'
         + '#hist-relatorio-mensal-shell .hist-month-table tbody tr:nth-child(even) td{background:rgba(255,255,255,.02)}'
         + '#hist-relatorio-mensal-shell .hist-month-table tbody tr:hover td{background:rgba(30,41,59,.42)}'
-        + '#page-historico-passagens.active #hist-passagens-resultado{display:block!important;gap:10px;min-height:auto!important;height:auto!important;max-height:none!important;overflow:visible!important}'
+        + '#page-historico-passagens #hist-passagens-resultado{display:grid;gap:10px;min-height:0;grid-template-rows:auto minmax(0,1fr) auto}'
         + '#hist-passagens-resultado .hist-passagens-toolbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}'
-        + '#page-historico-passagens.active #hist-passagens-resultado .hist-passagens-scroll{display:block!important;min-height:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;overscroll-behavior:auto;padding-right:0;scrollbar-gutter:auto}'
-        + '#page-historico-passagens.active #hist-passagens-resultado > #hist-passagens-items.hist-passagens-scroll{display:block !important;min-height:auto !important;height:auto!important;max-height:none!important;overflow:visible!important;overscroll-behavior:auto!important;padding-right:0!important}'
-        + '#hist-passagens-resultado .hist-detalhamento-box{display:block!important;gap:12px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);border-radius:16px;padding:14px}'
+        + '#page-historico-passagens #hist-passagens-resultado .hist-passagens-scroll{display:block;min-height:0;max-height:min(58vh,calc(100vh - 360px));overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-right:4px;scrollbar-gutter:stable}'
+        + '#page-historico-passagens #hist-passagens-resultado > #hist-passagens-items.hist-passagens-scroll{display:block !important;min-height:0 !important;max-height:min(58vh,calc(100vh - 360px)) !important;overflow-y:auto !important;overflow-x:hidden !important;overscroll-behavior:contain !important;padding-right:4px !important}'
+        + '#hist-passagens-resultado .hist-detalhamento-box{display:grid;gap:12px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);border-radius:16px;padding:14px}'
         + '#hist-passagens-resultado .hist-detalhamento-head{display:flex;justify-content:flex-start;gap:12px;flex-wrap:wrap;align-items:center}'
         + '#hist-passagens-resultado .hist-detalhamento-title{font-size:16px;font-weight:900;color:#f8fafc}'
         + '#hist-passagens-resultado .hist-detalhamento-search{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
         + '#hist-passagens-resultado .hist-detalhamento-search input{width:min(520px,100%);min-width:260px;background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:11px 14px;font-size:13px}'
-        + '#hist-passagens-resultado .hist-detalhamento-table-wrap{max-height:none!important;overflow-x:auto;overflow-y:visible;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(2,6,23,.55)}'
+        + '#hist-passagens-resultado .hist-detalhamento-table-wrap{max-height:min(58vh,calc(100vh - 360px));overflow:auto;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(2,6,23,.55)}'
         + '#hist-passagens-resultado .hist-detalhamento-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1240px}'
         + '#hist-passagens-resultado .hist-detalhamento-table thead th{position:sticky;top:0;z-index:2;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.18);text-align:left}'
         + '#hist-passagens-resultado .hist-detalhamento-table tbody td{padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.12);font-size:13px;color:#e2e8f0;vertical-align:top}'
@@ -9939,7 +8933,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
       relPrintBtn.onclick = function() { _histPrint('mensal'); };
     }
     var cardsHost = document.getElementById('hist-relatorio-mensal-cards');
-    if (_histIsPageActive() && cardsHost && !String(cardsHost.textContent || '').trim()) {
+    if (page && page.offsetParent !== null && cardsHost && !String(cardsHost.textContent || '').trim()) {
       if (!window.__histResumoCardsEnsureTimer) {
         window.__histResumoCardsEnsureTimer = setTimeout(function() {
           window.__histResumoCardsEnsureTimer = null;
@@ -9949,33 +8943,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
           } catch (_) {}
         }, 40);
       }
-    }
-    if (!window.__histLegacyPatchObserver) {
-      try {
-        var histTarget = document.getElementById('hist-passagens-resultado');
-        if (histTarget) {
-          window.__histLegacyPatchObserver = new MutationObserver(function() {
-            try { clearTimeout(window.__histLegacyPatchObserverTick); } catch (_) {}
-            window.__histLegacyPatchObserverTick = setTimeout(function() {
-              try {
-                var host = document.getElementById('hist-passagens-resultado');
-                if (!host) return;
-                var legacyFound = !!host.querySelector('#hist-passagens-items, #btnCarregarMaisPassagens');
-                if (!legacyFound) return;
-                var legacyBtn = document.getElementById('btnCarregarMaisPassagens');
-                if (legacyBtn) {
-                  try { legacyBtn.disabled = true; } catch (_) {}
-                  try { legacyBtn.remove(); } catch (_) {}
-                }
-                if (Array.isArray(window.__histPassagensDetalhamentoRows) && window.__histPassagensDetalhamentoRows.length) {
-                  _histRenderDetalhamentoPassagens();
-                }
-              } catch (_) {}
-            }, 40);
-          });
-          window.__histLegacyPatchObserver.observe(histTarget, { childList: true, subtree: true });
-        }
-      } catch (_) {}
     }
   }
 
@@ -10623,7 +9590,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
   }
 
   async function _histBuscarLinhasVisiveisExport(st, filtros) {
-    var state = st || window.__histPassagensPatchState || window._histPassagensState || {};
+    var state = st || window._histPassagensState || {};
     var totalLoaded = Math.max(1, (Number(state.page || 0) || 1) * (Number(state.limit || 50) || 50));
     if (totalLoaded > 1000) totalLoaded = 1000;
     var range = _histResolveRange(filtros, _histGetMonthlyRef());
@@ -10654,9 +9621,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     var container = document.getElementById('hist-passagens-resultado');
     if (!container) return;
 
-    var st = window.__histPassagensPatchState || window._histPassagensState || { page: 0, limit: 10000, total: 0, key: '', loading: false, filtros: {}, rows: [] };
+    var st = window._histPassagensState || { page: 0, limit: 10000, total: 0, key: '', loading: false, filtros: {}, rows: [] };
     if (!Array.isArray(st.rows)) st.rows = [];
-    window.__histPassagensPatchState = st;
     window._histPassagensState = st;
 
     var filtros = (arg && typeof arg === 'object' && !Array.isArray(arg)) ? arg : _histGetFilters();
@@ -10707,8 +9673,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
         st.page = 1;
         st.limit = limit;
         st.rows = lista.slice();
-        window.__histPassagensPatchState = st;
-        window._histPassagensState = st;
         window.__histPassagensDetalhamentoRows = st.rows.slice();
         window.__histPassagensLoadedKey = key;
 
@@ -10777,7 +9741,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
 
   function _histCarregarMaisPassagens() {
     try {
-      var st = window.__histPassagensPatchState || window._histPassagensState || { page: 0, limit: 50, total: 0, key: '', loading: false, filtros: {} };
+      var st = window._histPassagensState || { page: 0, limit: 50, total: 0, key: '', loading: false, filtros: {} };
       if (st.loading) return;
       _histBuscarHistoricoPassagens(st.filtros || _histGetFilters(), true);
     } catch (_) {}
@@ -10787,7 +9751,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     try {
       _histEnsureUi();
       _histHideTopWidgets();
-      if (_histIsPageActive()) {
+      var page = _histGetPage();
+      if (page && page.offsetParent !== null) {
         _histFetchRelatorioMensal();
       }
     } catch (_) {}
@@ -12238,7 +11203,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
 
   function _bindSimdPatch() {
     try {
-      if (_simdPreferredModeValue() === 'sheet' || _simdIsCanonicalUi()) return;
+      if (_simdIsCanonicalUi()) return;
       var btn = document.getElementById('simd-btn');
       if (btn && btn.dataset.patchSimdBound !== '1') {
         btn.dataset.patchSimdBound = '1';
@@ -12955,7 +11920,7 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
   function _hubStripMoneyVisuals() {
     try {
       var page = document.getElementById('page-hub');
-      if (!page) return;
+      if (!page || page.style.display === 'none') return;
       var kpis = document.getElementById('hub-kpis');
       if (kpis) {
         var fatCard = _hubFindCardByLabel(kpis, 'Faturamento do mês') || _hubFindCardByLabel(kpis, 'FATURAMENTO DO MÊS');
@@ -12979,34 +11944,14 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
           try { pill.remove(); } catch (_) {}
         }
       });
-      Array.prototype.slice.call(page.querySelectorAll('*')).forEach(function(node) {
-        if (!node || !node.childNodes || node.childNodes.length !== 1) return;
-        var txt = String(node.textContent || '').trim();
-        var low = txt.toLowerCase();
-        if (!txt) return;
-        if (txt.indexOf('R$') < 0 && low.indexOf('ticket médio') < 0 && low.indexOf('ticket medio') < 0 && low.indexOf('total:') !== 0) return;
-        if (low.indexOf('ofs por dia') >= 0) return;
-        try { node.remove(); } catch (_) {}
-      });
       Array.prototype.slice.call(page.querySelectorAll('.card, .hub-row')).forEach(function(node) {
         var label = String(node && node.textContent || '').trim().toLowerCase();
         if (label.indexOf('faturamento do mês') >= 0 && label.indexOf('r$') >= 0) {
           try { node.remove(); } catch (_) {}
         }
-        if ((label.indexOf('ticket médio') >= 0 || label.indexOf('ticket medio') >= 0 || label.indexOf('total:') === 0) && label.indexOf('r$') >= 0) {
-          try { node.remove(); } catch (_) {}
-        }
-      });
-      Array.prototype.slice.call(page.querySelectorAll('.hub-kpi')).forEach(function(card) {
-        var label = String(card.querySelector('.l') && card.querySelector('.l').textContent || '').trim().toLowerCase();
-        var value = String(card.querySelector('.v') && card.querySelector('.v').textContent || '').trim();
-        if (label.indexOf('faturamento') >= 0 || label.indexOf('ticket') >= 0 || value.indexOf('R$') >= 0) {
-          try { card.remove(); } catch (_) {}
-        }
       });
     } catch (_) {}
   }
-  try { window.__hubStripMoneyVisuals = _hubStripMoneyVisuals; } catch (_) {}
   async function _patchHubTotalCards() {
     try {
       var page = document.getElementById('page-hub');
@@ -13037,7 +11982,6 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       _hubStripMoneyVisuals();
     } catch (_) {}
   }
-  try { window.__patchHubTotalCards = _patchHubTotalCards; } catch (_) {}
 
   try {
     if (!window.__patchHubTotalObs) {
@@ -13690,11 +12634,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function isUrgente(of) {
-    var raw = of && (of.urgente != null ? of.urgente : of.urg);
-    if (raw === true || raw === false) return raw;
-    var txt = String(raw == null ? '' : raw).trim().toLowerCase();
-    if (!txt) return false;
-    return txt === '1' || txt === 'true' || txt === 'sim' || txt === 'yes' || txt === 'y';
+    return !!(of && (
+      of.urgente === true || of.urgente === 1 || of.urgente === '1' ||
+      of.urg === true || of.urg === 1 || of.urg === '1'
+    ));
   }
 
   function sortOfsByPriorityLocal(ofs) {
@@ -13784,231 +12727,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var norm = _ofmaqNormBusca(v);
     return !norm || /^(todas?|todos|all|geral|\*)$/.test(norm);
   }
-
-  (function patchCatalogoRiscador() {
-    if (window.__patchCatalogoRiscadorApplied) return;
-    window.__patchCatalogoRiscadorApplied = true;
-    var CANONICAL = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA'];
-    var applyTimer = 0;
-    var observerInstalled = false;
-
-    function norm(v) {
-      var s = String(v == null ? '' : v).trim().toLowerCase();
-      try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
-      return s.replace(/\s+/g, ' ').trim();
-    }
-
-    function ensureNameList(arr) {
-      var list = Array.isArray(arr) ? arr.slice() : [];
-      if (!list.some(function(item) { return norm(item) === 'riscador'; })) list.push('Riscador');
-      return list;
-    }
-
-    function ensureMachineObjects(arr) {
-      var list = Array.isArray(arr) ? arr.slice() : [];
-      var has = list.some(function(item) {
-        var nome = item && typeof item === 'object' ? (item.nome || item.col || item.codigo || item.id) : item;
-        return norm(nome) === 'riscador';
-      });
-      if (!has) list.push({ id: 'Riscador', nome: 'Riscador', col: 'Riscador', codigo: 'Riscador', ordem: 6, ativa: true });
-      list.sort(function(a, b) {
-        var na = a && typeof a === 'object' ? String(a.nome || a.col || a.codigo || a.id || '').trim() : String(a || '').trim();
-        var nb = b && typeof b === 'object' ? String(b.nome || b.col || b.codigo || b.id || '').trim() : String(b || '').trim();
-        var ia = CANONICAL.indexOf(na);
-        var ib = CANONICAL.indexOf(nb);
-        if (ia !== ib) {
-          if (ia < 0) return 1;
-          if (ib < 0) return -1;
-          return ia - ib;
-        }
-        return na.localeCompare(nb, 'pt-BR');
-      });
-      return list;
-    }
-
-    function syncMachineGlobals() {
-      try {
-        if (Array.isArray(window.MAQUINAS)) window.MAQUINAS = ensureMachineObjects(window.MAQUINAS);
-        if (Array.isArray(window._maquinas)) window._maquinas = ensureMachineObjects(window._maquinas);
-        if (Array.isArray(window.maquinas)) window.maquinas = ensureMachineObjects(window.maquinas);
-        if (Array.isArray(window.listaMaquinas)) window.listaMaquinas = ensureMachineObjects(window.listaMaquinas);
-      } catch (_) {}
-    }
-
-    function ensureSelectHasRiscador(id) {
-      var sel = document.getElementById(id);
-      if (!sel || !sel.options) return;
-      var found = Array.prototype.slice.call(sel.options).some(function(opt) {
-        return norm(opt && (opt.value || opt.textContent || opt.label || '')) === 'riscador';
-      });
-      if (found) return;
-      var opt = document.createElement('option');
-      opt.value = 'Riscador';
-      opt.textContent = 'Riscador';
-      var before = Array.prototype.slice.call(sel.options).find(function(item) {
-        return norm(item && (item.value || item.textContent || '')) === 'corte vinco rotativa';
-      }) || null;
-      try { sel.insertBefore(opt, before); } catch (_) { sel.appendChild(opt); }
-    }
-
-    function patchCheckboxWrap() {
-      var wrap = document.getElementById('inc-maquinas-checkboxes');
-      if (!wrap || wrap.querySelector('input[value="Riscador"]')) return;
-      var label = document.createElement('label');
-      label.style.cssText = 'display:inline-flex;align-items:center;gap:6px;';
-      label.innerHTML = '<input type="checkbox" value="Riscador"> Riscador';
-      wrap.appendChild(label);
-    }
-
-    function patchDomMachineSelects() {
-      ['ofsmaq-select-maquina', 'ofsmaq-filtro-maquina', 'hist-filtro-maquina', 'of-r-maquina', 'inc-maquina', 'mconc-setor-finalizacao'].forEach(ensureSelectHasRiscador);
-      patchCheckboxWrap();
-    }
-
-    function scheduleApplyAll(delay) {
-      var ms = Number(delay) || 0;
-      try { clearTimeout(applyTimer); } catch (_) {}
-      applyTimer = setTimeout(applyAll, ms);
-    }
-
-    function wrapQuickOfMachines() {
-      if (typeof window.carregarMaquinasOfRapida !== 'function' || window.carregarMaquinasOfRapida.__riscadorWrapped) return;
-      var orig = window.carregarMaquinasOfRapida;
-      window.carregarMaquinasOfRapida = async function() {
-        var res = await orig.apply(this, arguments);
-        syncMachineGlobals();
-        patchDomMachineSelects();
-        ensureSelectHasRiscador('of-r-maquina');
-        return res;
-      };
-      window.carregarMaquinasOfRapida.__riscadorWrapped = true;
-    }
-
-    function wrapRenderMaqChks() {
-      if (typeof window.renderMaqChks !== 'function' || window.renderMaqChks.__riscadorWrapped) return;
-      var orig = window.renderMaqChks;
-      window.renderMaqChks = function(sel) {
-        syncMachineGlobals();
-        var res = orig.call(this, Array.isArray(sel) ? ensureNameList(sel) : sel);
-        patchDomMachineSelects();
-        return res;
-      };
-      window.renderMaqChks.__riscadorWrapped = true;
-    }
-
-    function wrapOfmaqCatalog() {
-      if (typeof window.__ofmaqGetMachineCatalog !== 'function' || window.__ofmaqGetMachineCatalog.__riscadorWrapped) return;
-      var orig = window.__ofmaqGetMachineCatalog;
-      window.__ofmaqGetMachineCatalog = function() {
-        return ensureNameList(orig.apply(this, arguments));
-      };
-      window.__ofmaqGetMachineCatalog.__riscadorWrapped = true;
-    }
-
-    function wrapRenderFn(name) {
-      if (typeof window[name] !== 'function' || window[name].__riscadorWrapped) return;
-      var orig = window[name];
-      window[name] = function() {
-        var res = orig.apply(this, arguments);
-        scheduleApplyAll(0);
-        setTimeout(function() { patchDomMachineSelects(); }, 60);
-        setTimeout(function() { patchDomMachineSelects(); }, 240);
-        return res;
-      };
-      window[name].__riscadorWrapped = true;
-    }
-
-    function wrapOpenFn(name) {
-      if (typeof window[name] !== 'function' || window[name].__riscadorWrapped) return;
-      var orig = window[name];
-      window[name] = function() {
-        var res = orig.apply(this, arguments);
-        scheduleApplyAll(0);
-        setTimeout(function() {
-          patchDomMachineSelects();
-          ensureSelectHasRiscador('of-r-maquina');
-        }, 60);
-        setTimeout(function() {
-          patchDomMachineSelects();
-          ensureSelectHasRiscador('of-r-maquina');
-        }, 240);
-        setTimeout(function() {
-          patchDomMachineSelects();
-          ensureSelectHasRiscador('of-r-maquina');
-        }, 900);
-        return res;
-      };
-      window[name].__riscadorWrapped = true;
-    }
-
-    function wrapOpeners() {
-      wrapOpenFn('abrirNovaOfRapida');
-      wrapOpenFn('abrirModalOFRapida');
-      wrapOpenFn('abrirModalNovaOF');
-    }
-
-    function wrapModuleRenders() {
-      wrapRenderFn('renderOFsPorMaquina');
-      wrapRenderFn('renderHistoricoPassagens');
-      wrapRenderFn('renderHistoricoPassagensMaquina');
-    }
-
-    function installObserver() {
-      if (observerInstalled || typeof MutationObserver !== 'function' || !document || !document.documentElement) return;
-      try {
-        var obs = new MutationObserver(function(mutations) {
-          var touched = false;
-          for (var i = 0; i < mutations.length; i += 1) {
-            var m = mutations[i];
-            if (!m) continue;
-            if (m.type === 'childList' && ((m.addedNodes && m.addedNodes.length) || (m.removedNodes && m.removedNodes.length))) {
-              touched = true;
-              break;
-            }
-            if (m.type === 'attributes') {
-              touched = true;
-              break;
-            }
-          }
-          if (touched) scheduleApplyAll(30);
-        });
-        obs.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'open'] });
-        observerInstalled = true;
-      } catch (_) {}
-    }
-
-    function applyAll() {
-      syncMachineGlobals();
-      wrapQuickOfMachines();
-      wrapRenderMaqChks();
-      wrapOfmaqCatalog();
-      wrapOpeners();
-      wrapModuleRenders();
-      patchDomMachineSelects();
-      installObserver();
-    }
-
-    applyAll();
-    setTimeout(applyAll, 0);
-    setTimeout(applyAll, 400);
-    setTimeout(applyAll, 1400);
-    var tries = 0;
-    var lateTimer = setInterval(function() {
-      tries += 1;
-      applyAll();
-      if (tries >= 24) clearInterval(lateTimer);
-    }, 500);
-    if (!window.__patchCatalogoRiscadorKeepAlive) {
-      window.__patchCatalogoRiscadorKeepAlive = setInterval(function() {
-        try {
-          var ofmaqSel = document.getElementById('ofsmaq-select-maquina');
-          var histSel = document.getElementById('hist-filtro-maquina');
-          if (ofmaqSel || histSel) patchDomMachineSelects();
-        } catch (_) {}
-      }, 2000);
-    }
-    try { document.addEventListener('DOMContentLoaded', applyAll, { once: true }); } catch (_) {}
-  })();
 
   function _ofmaqIsSingleMachineFocus() {
     var filterValue = _ofmaqMachineFilterValue();
@@ -14148,15 +12866,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     return String(of && (of.numero || of.of_num || of.of_numero || of.of || '') || '').trim();
   }
 
-  function _ofmaqNormalizeClienteLabel(value) {
-    var s = String(value || '').trim();
-    if (!s || s === '_' || s === '-' || s === '—') return '';
-    if (/^c\d{2,}(?:[_\-\s]*)$/i.test(s)) return '';
-    return s;
-  }
-
   function _ofmaqClienteLabel(of) {
-    return _ofmaqNormalizeClienteLabel(of && (of.cliente_nome || of.cliente || of.cliNome || of.clinome || of.nome_cliente || '') || '');
+    return String(of && (of.cliente_nome || of.cliente || of.cliNome || of.clinome || of.nome_cliente || '') || '').trim();
   }
 
   function _ofmaqProdutoLabel(of) {
@@ -14895,9 +13606,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     if (window.renderKanbanOfmaq._patchedOfmaqTableView) return;
     var original = window.renderKanbanOfmaq;
     var wrapped = function(grupos, maquinasOrdenadas, container, alertasHtml) {
-      if (window.__ofmaqDesiredPipeline === 'final' && String(window._PAGE_ATUAL || '') === 'ofmaq' && typeof window.renderOfmaqFinal === 'function') {
-        return window.renderOfmaqFinal({ forceReload: false, reason: 'legacy-kanban-bridge' });
-      }
       try {
         _ofmaqRenderTableShell(grupos, maquinasOrdenadas, container, alertasHtml);
       } catch (e) {
@@ -14954,7 +13662,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function _ofmaqEnsureTableViewFromDom() {
-    if (window.__ofmaqDesiredPipeline === 'final') return false;
     var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body');
     if (!container) return false;
     if (container.querySelector('.patch-ofmaq-table')) return true;
@@ -15044,7 +13751,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         { value: 'IMP 03', label: 'IMP 03' },
         { value: 'IMP 04', label: 'IMP 04' },
         { value: 'IMP 05', label: 'IMP 05' },
-        { value: 'Riscador', label: 'Riscador' },
         { value: 'CORTE VINCO ROTATIVA', label: 'CORTE VINCO ROTATIVA' },
       ];
     }
@@ -15251,7 +13957,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function _ofmaqRenderV2() {
-    if (window.__ofmaqDesiredPipeline === 'final') return;
     var ok = _ofmaqEnsureV2Shell();
     if (!ok) return;
     var page = document.getElementById('page-ofmaq');
@@ -15922,11 +14627,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function parseColors(of) {
-    var raw = of;
+    var raw = of && (of.cores_impressao != null ? of.cores_impressao : of.impressao_cor);
     var arr = [];
-    if (raw && typeof raw === 'object' && !Array.isArray(raw) && (raw.cores != null || raw.cores_impressao != null || raw.impressao_cor != null)) {
-      raw = raw.cores != null ? raw.cores : (raw.cores_impressao != null ? raw.cores_impressao : raw.impressao_cor);
-    }
     try {
       if (Array.isArray(raw)) {
         arr = raw.map(function(x) { return String(x && (x.nome || x.name || x) || '').trim(); });
@@ -16195,7 +14897,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       closeReagendamentoModal();
       try { window.toast('✓ OF reagendada', 'var(--green)'); } catch (_) {}
-      try { await refreshOfmaq('reagendamento'); } catch (_) {}
+      try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
     } catch (e) {
       try { window.toast('Erro ao reagendar OF: ' + (e && e.message ? e.message : e), 'var(--red)'); } catch (_) {}
     }
@@ -16325,7 +15027,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       window.__ofmaqRedistribState = state;
       try { window.toast('✅ Sugestão aplicada: ' + fmtDateBR(dt), 'var(--green)'); } catch (_) {}
       _redistribRemoverCard(card || null, state);
-      try { await refreshOfmaq('redistribuicao'); } catch (_) {}
+      try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
       return true;
     } catch (e) {
       try { window.toast('Erro ao aplicar sugestão: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
@@ -16920,7 +15622,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function _ofmaqRunAfterRender(reason) {
-    if (window.__ofmaqDesiredPipeline === 'final') return false;
     try {
       var host = _ofmaqRootContainer(document);
       if (!host) return false;
@@ -16949,7 +15650,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   function _ofmaqScheduleAfterRender(reason, delay) {
-    if (window.__ofmaqDesiredPipeline === 'final') return Promise.resolve(false);
     var wait = Math.max(0, Number(delay || 0) || 0);
     if (wait > 0) {
       try { if (window.__ofmaqAfterRenderDelayTimer) clearTimeout(window.__ofmaqAfterRenderDelayTimer); } catch (_) {}
@@ -16990,14 +15690,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   function _ofmaqEnsureRenderObserver() {
     try {
-      if (window.__ofmaqDesiredPipeline === 'final') {
-        if (window.__ofmaqRenderObserver && typeof window.__ofmaqRenderObserver.disconnect === 'function') {
-          try { window.__ofmaqRenderObserver.disconnect(); } catch (_) {}
-        }
-        window.__ofmaqRenderObserver = null;
-        window.__ofmaqRenderObserverTarget = null;
-        return;
-      }
       if (window.__ofmaqRenderObserver) return;
       var target = document.body || document.documentElement;
       if (!target) return;
@@ -17055,10 +15747,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   }
 
   window.afterRenderOfmaq = function afterRenderOfmaq() {
-    if (window.__ofmaqDesiredPipeline === 'final' && typeof window.renderOfmaqFinal === 'function') {
-      try { window.renderOfmaqFinal({ forceReload: false, reason: 'legacy-after-render-bridge' }); } catch (_) {}
-      return;
-    }
     try { console.log('[OFMAQ-REDESIGN-ATIVO] versao nova rodando'); } catch (_) {}
     try {
       _ofmaqPauseRenderObserver();
@@ -17084,24 +15772,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     try { console.log('[OFMAQ-HOOK] hookRenderOfmaq chamado'); } catch (_) {}
     ensureConfiguracoesAlias();
     hookRenderKanbanOfmaqTable();
-    if (window.__ofmaqDesiredPipeline === 'final') {
-      if (typeof window.renderOFsPorMaquina === 'function' && !window.renderOFsPorMaquina._patchedPriorityHub) {
-        _ofmaqWrapWindowFnOnce('renderOFsPorMaquina', '_patchedPriorityHub', function(orig) {
-          return async function() {
-            if (String(window._PAGE_ATUAL || '') === 'ofmaq' && typeof window.renderOfmaqFinal === 'function') {
-              return window.renderOfmaqFinal({ forceReload: true, reason: 'legacy-render-bridge' });
-            }
-            return orig.apply(this, arguments);
-          };
-        });
-      }
-      try {
-        if (String(window._PAGE_ATUAL || '') === 'ofmaq' && typeof window.renderOfmaqFinal === 'function') {
-          window.renderOfmaqFinal({ forceReload: false, reason: 'hook-final' });
-        }
-      } catch (_) {}
-      return;
-    }
     if (typeof window.normalizeOF === 'function' && !window.normalizeOF._patchedOfmaqDisplay) {
       var origNormalize = window.normalizeOF;
       window.normalizeOF = function(row) {
@@ -17343,7 +16013,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 })();
 (function patchOfmaqRebuildFromZero() {
   try {
-    var MACHINES = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA'];
+    var MACHINES = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
     var DAY_LABELS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
     var COLOR_MAP = {
       azul: '#3b82f6',
@@ -17358,7 +16028,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       dourado: '#d97706',
       marrom: '#92400e'
     };
-    if (window.__ofmaqDesiredPipeline === 'final') return;
     var state = window.__patchOfmaqZeroStateV2 || {
       selectedMachine: 'IMP 01',
       selectedDateIso: '',
@@ -18036,20 +16705,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       applyFilters();
     }
 
-    function logActionApiResult(scope, action, id, result) {
-      try {
-        console.log('[OFMAQ-ACTION-API]', {
-          scope: scope,
-          action: action,
-          id: id,
-          status: result && result.resp ? result.resp.status : null,
-          ok: !!(result && result.resp && result.resp.ok),
-          body: result ? result.data : null
-        });
-      } catch (_) {}
-      return result;
-    }
-
     function openMoveModal(id) {
       var item = rowDataById(id);
       if (!item) return;
@@ -18062,11 +16717,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           if (!machine) return;
           try {
             var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { maq: [machine], maquina: machine, maquina_agendada: machine } });
-            logActionApiResult('zero', 'move', id, result);
             if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF');
             closeModal('ofmaq-move-zero');
             updateRowMachine(id, machine);
-            try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' movida para ' + machine + ' com sucesso.', { title: 'Máquina alterada' }); } catch (_) {}
           } catch (err) {
             try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
           }
@@ -18086,26 +16739,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
           try {
             var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { data_entrega: value, ent: value } });
-            logActionApiResult('zero', 'date', id, result);
             if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao alterar data');
             closeModal('ofmaq-date-zero');
             updateRowDate(id, value);
-            try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' reagendada para ' + value.split('-').reverse().join('/') + '.', { title: 'Data alterada' }); } catch (_) {}
           } catch (err) {
             try { window.toast('Erro ao alterar data: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
           }
         };
       }
-    }
-
-    async function moveRowAndDateZero(id, machine, value) {
-      var result = await apiJson('/api/ofs/' + encodeURIComponent(id), {
-        method: 'PATCH',
-        body: { maq: [machine], maquina: machine, maquina_agendada: machine, data_entrega: value, ent: value }
-      });
-      logActionApiResult('zero', 'move-date', id, result);
-      if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF e alterar data');
-      return result;
     }
 
     function openActionsModal(id) {
@@ -18114,17 +16755,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var modal = openModal('ofmaq-actions-zero', 'Ações da OF #' + String(item.numero || item.id), ''
         + '<button type="button" id="ofmaq-action-pass-zero">✓ Passou pela máquina</button>'
         + '<button type="button" id="ofmaq-action-move-zero">↔ Mover de máquina</button>'
-        + '<button type="button" id="ofmaq-action-date-zero">📅 Alterar data</button>'
-        + '<button type="button" id="ofmaq-action-move-date-zero">🗓️↔ Mover máquina e data</button>');
+        + '<button type="button" id="ofmaq-action-date-zero">📅 Alterar data</button>');
       var passBtn = modal.querySelector('#ofmaq-action-pass-zero');
       var moveBtn = modal.querySelector('#ofmaq-action-move-zero');
       var dateBtn = modal.querySelector('#ofmaq-action-date-zero');
-      var moveDateBtn = modal.querySelector('#ofmaq-action-move-date-zero');
       if (passBtn) {
         passBtn.onclick = async function() {
           try {
             var result = await apiJson('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method: 'POST', body: { maquina: item.maquina, maquina_nome: item.maquina } });
-            logActionApiResult('zero', 'pass', id, result);
             if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao registrar passagem');
             closeModal('ofmaq-actions-zero');
             try {
@@ -18138,7 +16776,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             if (row) row.remove();
             updateToolbar(ensureShell());
             applyFilters();
-            try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' passou pela máquina ' + String(item.maquina || '').trim() + ' com sucesso.', { title: 'Passou pela máquina' }); } catch (_) {}
           } catch (err) {
             try { window.toast('Erro ao registrar passagem: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
           }
@@ -18146,30 +16783,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       if (moveBtn) moveBtn.onclick = function() { closeModal('ofmaq-actions-zero'); openMoveModal(id); };
       if (dateBtn) dateBtn.onclick = function() { closeModal('ofmaq-actions-zero'); openDateModal(id); };
-      if (moveDateBtn) moveDateBtn.onclick = function() {
-        closeModal('ofmaq-actions-zero');
-        var modal2 = openModal('ofmaq-move-date-zero', 'Mover máquina e data da OF #' + String(item.numero || item.id), ''
-          + '<select id="ofmaq-move-date-machine-zero">' + MACHINES.map(function(machine) { return '<option value="' + escAttrLocal(machine) + '"' + (machine === item.maquina ? ' selected' : '') + '>' + escHLocal(machine) + '</option>'; }).join('') + '</select>'
-          + '<input id="ofmaq-move-date-input-zero" type="date" value="' + escAttrLocal(item.prazoIso || '') + '">'
-          + '<button type="button" id="ofmaq-move-date-save-zero">Salvar</button>');
-        var save = modal2.querySelector('#ofmaq-move-date-save-zero');
-        if (save) save.onclick = async function() {
-          var select = modal2.querySelector('#ofmaq-move-date-machine-zero');
-          var input = modal2.querySelector('#ofmaq-move-date-input-zero');
-          var machine = normalizeMachine(String(select && select.value || '').trim());
-          var value = String(input && input.value || '').slice(0, 10);
-          if (!machine || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
-          try {
-            await moveRowAndDateZero(id, machine, value);
-            closeModal('ofmaq-move-date-zero');
-            updateRowMachine(id, machine);
-            updateRowDate(id, value);
-            try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' movida para ' + machine + ' em ' + value.split('-').reverse().join('/') + '.', { title: 'Máquina e data alteradas' }); } catch (_) {}
-          } catch (err) {
-            try { window.toast('Erro ao mover OF e alterar data: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
-          }
-        };
-      };
     }
 
     function openPrintModal() {
@@ -18437,7 +17050,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       weekStartIso: '',
       searchTerm: '',
       grouped: false,
-      summaryCollapsed: false,
       rowsData: [],
       machineCatalog: [],
       loading: false,
@@ -18703,35 +17315,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     function parseColors(value) {
       var raw = value;
-      if (raw && typeof raw === 'object' && !Array.isArray(raw) && (raw.cores != null || raw.cores_impressao != null || raw.impressao_cor != null)) {
-        raw = raw.cores != null ? raw.cores : (raw.cores_impressao != null ? raw.cores_impressao : raw.impressao_cor);
-      }
-      if (Array.isArray(raw)) {
-        return raw.map(function(item) {
-          return String(item && (item.nome || item.name || item.cor || item.color || item) || '').replace(/\s+/g, ' ').trim();
-        }).filter(Boolean).filter(function(item, idx, arr) {
-          return arr.indexOf(item) === idx;
-        });
-      }
-      if (raw && typeof raw === 'object') {
-        return Object.keys(raw).map(function(key) {
-          var val = raw[key];
-          return String(val && (val.nome || val.name || val.cor || val.color || val || key) || '').replace(/\s+/g, ' ').trim();
-        }).filter(Boolean).filter(function(item, idx, arr) {
-          return arr.indexOf(item) === idx;
-        });
-      }
+      if (Array.isArray(raw)) return raw.map(function(item) { return String(item || '').trim(); }).filter(Boolean);
+      if (raw && typeof raw === 'object') return Object.keys(raw).map(function(key) { return String(raw[key] || key || '').trim(); }).filter(Boolean);
       var txt = String(raw || '').trim();
       if (!txt) return [];
       try {
         var parsed = JSON.parse(txt);
-        if (Array.isArray(parsed)) {
-          return parsed.map(function(item) {
-            return String(item && (item.nome || item.name || item.cor || item.color || item) || '').replace(/\s+/g, ' ').trim();
-          }).filter(Boolean).filter(function(item, idx, arr) {
-            return arr.indexOf(item) === idx;
-          });
-        }
+        if (Array.isArray(parsed)) return parsed.map(function(item) { return String(item && (item.nome || item.cor || item) || '').trim(); }).filter(Boolean);
       } catch (_) {}
       return txt.split(/[,|/+;\n]+/).map(function(item) { return String(item || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean).filter(function(item, idx, arr) {
         return arr.indexOf(item) === idx;
@@ -18800,11 +17390,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (isClosedStatus(of && of.status) || isPassedMachine(of)) return null;
       var prazoIso = resolveDisplayDate(of);
       var numero = String(of && (of.numero || of.of_num || of.of_numero || of.of || '') || '').trim() || String(of && of.id || '').trim();
-      var clienteRaw = String(of && (of.cliente_nome || of.cliente || of.cliNome || of.clinome || of.nome_cliente || '') || '').trim();
-      if (!clienteRaw || clienteRaw === '_' || clienteRaw === '-' || clienteRaw === '—' || /^c\d{2,}(?:[_\-\s]*)$/i.test(clienteRaw)) clienteRaw = '';
-      var cliente = clienteRaw || 'Cliente não identificado';
+      var cliente = String(of && (of.cliente_nome || of.cliente || of.cliNome || of.clinome || of.nome_cliente || '') || '').trim() || '—';
       var produto = String(of && (of.produto || of.descricao || of.prodDesc || of.nome_produto || '') || '').trim() || '—';
-      var cores = parseColors(of);
+      var cores = parseColors(of && (of.cores || of.cores_impressao || of.impressao_cor || ''));
       var quantidade = getQtd(of);
       var size = sizeLabel(of);
       return {
@@ -18828,45 +17416,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       };
     }
 
-    function groupKey(item) {
-      return normalizeMachine(item && item.maquina) + '|' + String(item && item.prazoIso || '');
-    }
-
-    function sortRowsByCanonicalOrder(rows) {
-      return (Array.isArray(rows) ? rows.slice() : []).sort(function(a, b) {
-        if (Number(a.order || 0) !== Number(b.order || 0)) return Number(a.order || 0) - Number(b.order || 0);
-        return String(a.numero || '').localeCompare(String(b.numero || ''), 'pt-BR', { numeric: true });
-      });
-    }
-
-    function applyDisplaySeqToRows(rows) {
-      sortRowsByCanonicalOrder(rows).forEach(function(item, idx) {
-        item.order = idx + 1;
-        item.displaySeq = idx + 1;
-      });
-    }
-
-    function applyDisplaySeqToState() {
-      var groups = {};
-      (Array.isArray(state.rowsData) ? state.rowsData : []).forEach(function(item) {
-        var key = groupKey(item);
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(item);
-      });
-      Object.keys(groups).forEach(function(key) {
-        applyDisplaySeqToRows(groups[key]);
-      });
-    }
-
-    function rowsForMachineDay(machine, dateIso) {
-      return sortRowsByCanonicalOrder(state.rowsData.filter(function(item) {
-        return normalizeMachine(item && item.maquina) === normalizeMachine(machine) && String(item && item.prazoIso || '') === String(dateIso || '');
-      }));
-    }
-
     function buildRowsFromOfs(ofs) {
       var seen = {};
-      var list = (Array.isArray(ofs) ? ofs : []).map(activeOfRow).filter(function(item) {
+      return (Array.isArray(ofs) ? ofs : []).map(activeOfRow).filter(function(item) {
         if (!item || !item.id || seen[item.id]) return false;
         seen[item.id] = true;
         return true;
@@ -18876,32 +17428,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (Number(a.order || 0) !== Number(b.order || 0)) return Number(a.order || 0) - Number(b.order || 0);
         return String(a.numero || '').localeCompare(String(b.numero || ''), 'pt-BR', { numeric: true });
       });
-      (function applyGroupedDisplaySeq(rows) {
-        var groups = {};
-        rows.forEach(function(item) {
-          var key = groupKey(item);
-          if (!groups[key]) groups[key] = [];
-          groups[key].push(item);
-        });
-        Object.keys(groups).forEach(function(key) {
-          applyDisplaySeqToRows(groups[key]);
-        });
-      })(list);
-      return list;
     }
 
     function machineCatalogFromRows(rows) {
-      var baseOrder = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA'];
       var map = {};
       (Array.isArray(rows) ? rows : []).forEach(function(item) {
         var key = normalizeMachine(item && item.maquina);
         if (key) map[key] = key;
       });
-      return baseOrder.slice().concat(
-        Object.keys(map)
-          .filter(function(key) { return baseOrder.indexOf(key) < 0; })
-          .sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); })
-      );
+      return Object.keys(map).sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); });
     }
 
     function capacidadeDia(dateIso) {
@@ -18947,12 +17482,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     function sortedVisibleRows(rows) {
       var list = Array.isArray(rows) ? rows.slice() : [];
       list.sort(function(a, b) {
-        if (!state.grouped) {
-          if (a.urgencia !== b.urgencia) {
-            if (a.urgencia === 'urgente') return -1;
-            if (b.urgencia === 'urgente') return 1;
-          }
-        }
         if (state.grouped) {
           var ga = String(a.corPrincipal || '') + '|' + String(a.tamanhoKey || '');
           var gb = String(b.corPrincipal || '') + '|' + String(b.tamanhoKey || '');
@@ -18983,15 +17512,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-final-root input[type="search"]{width:100%}'
         + '#page-ofmaq .ofmaq-final-day-btn[data-active="1"]{background:#2563eb;border-color:#60a5fa;color:#eff6ff}'
         + '#page-ofmaq .ofmaq-final-day-btn[data-hot="1"]{box-shadow:inset 0 0 0 1px rgba(248,113,113,.38)}'
-        + '#page-ofmaq .ofmaq-final-summary-shell{display:grid;gap:10px;margin-top:12px}'
-        + '#page-ofmaq .ofmaq-final-summary-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}'
-        + '#page-ofmaq .ofmaq-final-summary-title{font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#cbd5e1}'
-        + '#page-ofmaq .ofmaq-final-summary-toggle{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;border:1px solid rgba(96,165,250,.28);background:rgba(30,41,59,.72);color:#dbeafe;font-size:12px;font-weight:800;cursor:pointer}'
-        + '#page-ofmaq .ofmaq-final-summary-compact{display:none;gap:8px;flex-wrap:wrap;padding:10px 12px;border-radius:14px;background:rgba(15,23,42,.58);border:1px dashed rgba(148,163,184,.2)}'
-        + '#page-ofmaq .ofmaq-final-summary-compact[data-open="1"]{display:flex}'
-        + '#page-ofmaq .ofmaq-final-summary-mini{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(30,41,59,.88);border:1px solid rgba(148,163,184,.16);font-size:11px;font-weight:800;color:#e2e8f0}'
         + '#page-ofmaq .ofmaq-final-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}'
-        + '#page-ofmaq .ofmaq-final-summary[data-collapsed="1"]{display:none}'
         + '#page-ofmaq .ofmaq-final-card{padding:14px;border-radius:16px;background:linear-gradient(135deg,rgba(15,23,42,.98),rgba(30,41,59,.94));border:1px solid rgba(51,65,85,.8)}'
         + '#page-ofmaq .ofmaq-final-card h3{margin:0;font-size:15px;color:#f8fafc}'
         + '#page-ofmaq .ofmaq-final-card small{display:block;margin-top:4px;color:#94a3b8}'
@@ -19006,18 +17527,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-final-chip[data-tone="danger"]{border-color:rgba(248,113,113,.38);color:#fecaca}'
         + '#page-ofmaq .ofmaq-final-chip[data-tone="warn"]{border-color:rgba(251,191,36,.38);color:#fde68a}'
         + '#page-ofmaq .ofmaq-final-table-wrap{overflow:auto;border-radius:16px;border:1px solid rgba(51,65,85,.85);background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(15,23,42,.88));box-shadow:0 20px 36px rgba(2,6,23,.22)}'
-        + '#page-ofmaq .ofmaq-final-table{width:100%;min-width:1480px;border-collapse:separate;border-spacing:0}'
+        + '#page-ofmaq .ofmaq-final-table{width:100%;min-width:1280px;border-collapse:separate;border-spacing:0}'
         + '#page-ofmaq .ofmaq-final-table thead th{position:sticky;top:0;z-index:2;padding:14px 12px;background:rgba(15,23,42,.98);border-bottom:1px solid rgba(71,85,105,.85);font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#64748b;text-align:left;white-space:nowrap}'
         + '#page-ofmaq .ofmaq-final-table tbody td{padding:12px;border-bottom:1px solid rgba(51,65,85,.45);font-size:13px;line-height:1.4;color:#e2e8f0;vertical-align:middle}'
         + '#page-ofmaq .ofmaq-final-row[data-urgencia="urgente"] td{background-image:linear-gradient(90deg,rgba(127,29,29,.16),transparent)}'
         + '#page-ofmaq .ofmaq-final-row[data-urgencia="atrasada"] td{background-image:linear-gradient(90deg,rgba(120,53,15,.16),transparent)}'
-        + '#page-ofmaq .ofmaq-final-seq{width:84px;max-width:84px;text-align:center}'
-        + '#page-ofmaq .ofmaq-final-seq-input{width:72px;min-height:40px;padding:6px 10px;text-align:center;border-radius:12px;border:1px solid rgba(96,165,250,.34);background:rgba(37,99,235,.18);color:#dbeafe;font-size:15px;font-weight:900;outline:none;box-shadow:none}'
-        + '#page-ofmaq .ofmaq-final-seq-input:focus{border-color:#93c5fd;background:rgba(37,99,235,.26);box-shadow:0 0 0 3px rgba(59,130,246,.18)}'
-        + '#page-ofmaq .ofmaq-final-status{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:900;letter-spacing:.04em;text-transform:uppercase}'
-        + '#page-ofmaq .ofmaq-final-status[data-tone="ok"]{background:rgba(34,197,94,.14);border:1px solid rgba(74,222,128,.28);color:#bbf7d0}'
-        + '#page-ofmaq .ofmaq-final-status[data-tone="warn"]{background:rgba(245,158,11,.14);border:1px solid rgba(251,191,36,.28);color:#fde68a}'
-        + '#page-ofmaq .ofmaq-final-status[data-tone="danger"]{background:rgba(239,68,68,.14);border:1px solid rgba(248,113,113,.28);color:#fecaca}'
+        + '#page-ofmaq .ofmaq-final-seq{width:64px;max-width:64px;text-align:center}'
+        + '#page-ofmaq .ofmaq-final-seq-badge{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;padding:0 10px;border-radius:12px;background:rgba(37,99,235,.18);border:1px solid rgba(96,165,250,.34);color:#dbeafe;font-size:15px;font-weight:900}'
         + '#page-ofmaq .ofmaq-final-thumb,#page-ofmaq .ofmaq-final-thumb-fallback{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:10px;background:#1e293b;overflow:hidden;border:1px solid rgba(148,163,184,.18)}'
         + '#page-ofmaq .ofmaq-final-thumb img{width:42px;height:42px;object-fit:cover;display:block}'
         + '#page-ofmaq .ofmaq-final-cell strong{display:block;font-size:14px;color:#f8fafc}'
@@ -19028,21 +17544,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-final-empty{padding:26px 20px;color:#94a3b8;text-align:center}'
         + '#page-ofmaq .ofmaq-final-actions{display:flex;justify-content:flex-end}'
         + '#page-ofmaq .ofmaq-final-actions button{min-height:34px}'
-        + '.ofmaq-final-modal .body button{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:46px;padding:12px 14px;border-radius:14px;border:1px solid rgba(71,85,105,.55);background:rgba(15,23,42,.78);color:#f8fafc;font-size:14px;font-weight:800;cursor:pointer}'
-        + '.ofmaq-final-modal .body button span{display:inline-flex;align-items:center;gap:10px}'
-        + '.ofmaq-final-modal .body button small{font-size:11px;font-weight:800;letter-spacing:.04em;color:#94a3b8;text-transform:uppercase}'
-        + '.ofmaq-final-modal .body button.ofmaq-final-action-primary{background:linear-gradient(135deg,#1d4ed8,#2563eb);border-color:#60a5fa;color:#eff6ff}'
-        + '.ofmaq-final-modal .body button.ofmaq-final-action-secondary{background:rgba(30,41,59,.96);border-color:rgba(148,163,184,.22);color:#e2e8f0}'
-        + '.ofmaq-final-modal .body button.ofmaq-final-action-tertiary{background:rgba(15,23,42,.58);border-color:rgba(71,85,105,.4);color:#cbd5e1}'
-        + '.ofmaq-final-modal .body .ofmaq-final-move-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}'
+        + '.ofmaq-final-modal .body button.ofmaq-final-action-primary{background:#1d4ed8;border-color:#60a5fa;color:#eff6ff}'
+        + '.ofmaq-final-modal .body .ofmaq-final-move-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
         + '.ofmaq-final-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998}'
-        + '.ofmaq-final-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#1e293b;border-radius:18px;padding:30px;min-width:420px;min-height:280px;max-width:min(92vw,860px);color:#f8fafc;box-shadow:0 30px 80px rgba(0,0,0,.42)}'
-        + '.ofmaq-final-modal h3{margin:0;padding-right:44px;font-size:22px;line-height:1.2}'
-        + '.ofmaq-final-modal .body{display:grid;gap:14px;margin-top:18px}'
-        + '.ofmaq-final-modal .close-btn{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:999px}'
-        + '.ofmaq-center-confirm-overlay{position:fixed;inset:0;z-index:100260;background:rgba(2,6,23,.58);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:18px}'
-        + '.ofmaq-center-confirm-card{width:min(520px,92vw);background:linear-gradient(180deg,#0f172a,#111827);border-radius:22px;box-shadow:0 30px 80px rgba(2,6,23,.5);padding:26px 24px;text-align:center;color:#f8fafc}'
-        + '.ofmaq-center-confirm-card .icon{width:64px;height:64px;margin:0 auto 14px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);font-size:28px}'
+        + '.ofmaq-final-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#1e293b;border-radius:14px;padding:24px;min-width:320px;max-width:min(92vw,720px);color:#f8fafc;box-shadow:0 24px 70px rgba(0,0,0,.35)}'
+        + '.ofmaq-final-modal .body{display:grid;gap:10px;margin-top:14px}'
+        + '.ofmaq-final-modal .close-btn{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:999px}'
         + '@media (max-width:1200px){#page-ofmaq .ofmaq-final-controls{grid-template-columns:1fr;}}';
       document.head.appendChild(st);
     }
@@ -19090,6 +17597,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         });
       }
     }
+    }
 
     function ensureShell() {
       ensureStyles();
@@ -19113,22 +17621,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '    <select id="ofmaq-final-machine"></select>'
           + '    <input id="ofmaq-final-search" type="search" placeholder="Buscar OF, cliente, produto, tamanho ou cor...">'
           + '    <button type="button" id="ofmaq-final-group">Agrupar Setup</button>'
-          + '    <button type="button" id="ofmaq-final-report">Gerar Relatório</button>'
           + '  </div>'
           + '</div>'
-          + '<div class="ofmaq-final-summary-shell">'
-          + '  <div class="ofmaq-final-summary-head">'
-          + '    <div class="ofmaq-final-summary-title">Resumo por máquina</div>'
-          + '    <button type="button" id="ofmaq-final-summary-toggle" class="ofmaq-final-summary-toggle">▾ Recolher cards</button>'
-          + '  </div>'
-          + '  <div id="ofmaq-final-summary-compact" class="ofmaq-final-summary-compact"></div>'
-          + '  <div id="ofmaq-final-summary" class="ofmaq-final-summary"></div>'
-          + '</div>'
+          + '<div id="ofmaq-final-summary" class="ofmaq-final-summary"></div>'
           + '<div id="ofmaq-final-redistribuicao" class="ofmaq-final-redistribuicao"></div>'
-          + '<div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table"><thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Data de Entrega</th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead><tbody id="ofmaq-final-tbody"></tbody></table></div>';
+          + '<div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table"><thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Cliente</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead><tbody id="ofmaq-final-tbody"></tbody></table></div>';
         container.insertBefore(root, container.firstChild || null);
       }
-      purgeLegacyViews();
       return {
         root: root,
         alert: root.querySelector('#ofmaq-final-alert'),
@@ -19136,9 +17635,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         machine: root.querySelector('#ofmaq-final-machine'),
         search: root.querySelector('#ofmaq-final-search'),
         group: root.querySelector('#ofmaq-final-group'),
-        report: root.querySelector('#ofmaq-final-report'),
-        summaryToggle: root.querySelector('#ofmaq-final-summary-toggle'),
-        summaryCompact: root.querySelector('#ofmaq-final-summary-compact'),
         summary: root.querySelector('#ofmaq-final-summary'),
         chips: root.querySelector('#ofmaq-final-redistribuicao'),
         tbody: root.querySelector('#ofmaq-final-tbody')
@@ -19148,7 +17644,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     function renderSummary(shell) {
       if (!shell || !shell.summary) return;
       var days = weekDays(state.weekStartIso).map(function(day) { return day.iso; });
-      var cardsHtml = state.machineCatalog.map(function(machine) {
+      shell.summary.innerHTML = state.machineCatalog.map(function(machine) {
         var rows = state.rowsData.filter(function(item) { return item.maquina === machine && days.indexOf(item.prazoIso) >= 0; });
         var qtd = rows.reduce(function(sum, item) { return sum + (Number(item.quantidade || 0) || 0); }, 0);
         var tempo = rows.reduce(function(sum, item) { return sum + (Number(item.tempoMin || 0) || 0); }, 0);
@@ -19165,17 +17661,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '<div><span>Urgências</span><b>' + escH(String(rows.filter(function(item) { return item.urgencia !== 'normal'; }).length)) + '</b></div>'
           + '</div><div class="ofmaq-final-progress"><span style="width:' + escAttr(String(Math.min(100, Math.max(0, metric.pct)))) + '%;background:' + escAttr(cor) + '"></span></div></div>';
       }).join('') || '<div class="ofmaq-final-card"><h3>Sem máquinas ativas</h3><small>Nenhuma OF ativa encontrada no período selecionado.</small></div>';
-      var compactHtml = state.machineCatalog.map(function(machine) {
-        var metric = machineMetrics(machine, state.selectedDateIso);
-        return '<button type="button" class="ofmaq-final-summary-mini" data-machine-chip="' + escAttr(machine) + '">' + escH(machine) + ' · ' + escH(String(metric.rows.length)) + '</button>';
-      }).join('') || '<div class="ofmaq-final-empty">Sem máquinas ativas.</div>';
-      shell.summary.innerHTML = cardsHtml;
-      shell.summary.setAttribute('data-collapsed', state.summaryCollapsed ? '1' : '0');
-      if (shell.summaryCompact) {
-        shell.summaryCompact.innerHTML = compactHtml;
-        shell.summaryCompact.setAttribute('data-open', state.summaryCollapsed ? '1' : '0');
-      }
-      if (shell.summaryToggle) shell.summaryToggle.textContent = state.summaryCollapsed ? '▸ Expandir cards' : '▾ Recolher cards';
     }
 
     function renderRedistribuicao(shell) {
@@ -19224,16 +17709,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var img = item.imagemUrl
         ? ('<button type="button" class="ofmaq-final-thumb" data-ofmaq-final-image="' + escAttr(item.id) + '"><img src="' + escAttr(item.imagemUrl) + '" alt="Imagem da OF"></button>')
         : '<span class="ofmaq-final-thumb-fallback">📦</span>';
-      var statusTone = item.urgencia === 'urgente' ? 'danger' : (item.urgencia === 'atrasada' ? 'warn' : 'ok');
-      var statusText = item.urgencia === 'urgente' ? 'Urgente' : (item.urgencia === 'atrasada' ? 'Atrasada' : 'Normal');
       return ''
         + '<tr class="ofmaq-final-row" data-of-id="' + escAttr(item.id) + '" data-urgencia="' + escAttr(item.urgencia) + '">'
-        + '<td class="ofmaq-final-seq"><input class="ofmaq-final-seq-input" type="number" min="1" step="1" data-ofmaq-final-seq="' + escAttr(item.id) + '" value="' + escAttr(String(item.displaySeq || item.order || 1)) + '"></td>'
+        + '<td class="ofmaq-final-seq"><span class="ofmaq-final-seq-badge">' + escH(String(item.displaySeq || item.order || 1)) + '</span></td>'
         + '<td>' + img + '</td>'
-        + '<td class="ofmaq-final-cell"><strong>' + escH(item.numero) + '</strong></td>'
-        + '<td>' + escH(item.prazoIso ? fmtDateBR(item.prazoIso) : 'Sem data') + '</td>'
-        + '<td class="ofmaq-final-cell"><strong>' + escH(item.cliente) + '</strong></td>'
-        + '<td><span class="ofmaq-final-status" data-tone="' + escAttr(statusTone) + '">' + escH(statusText) + '</span></td>'
+        + '<td class="ofmaq-final-cell"><strong>' + escH(item.numero) + '</strong><span>' + escH(item.prazoIso ? fmtDateBR(item.prazoIso) : 'Sem data') + '</span></td>'
+        + '<td class="ofmaq-final-cell"><strong>' + escH(item.cliente) + '</strong><span>' + escH(item.urgencia === 'urgente' ? 'Urgente' : (item.urgencia === 'atrasada' ? 'Atrasada' : 'Normal')) + '</span></td>'
         + '<td class="ofmaq-final-cell"><strong>' + escH(item.produto) + '</strong></td>'
         + '<td>' + escH(fmtInt(item.quantidade)) + '</td>'
         + '<td>' + escH(item.tamanho) + '</td>'
@@ -19249,7 +17730,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       hideLegacyViews();
       purgeLegacyViews();
       var rows = sortedVisibleRows(currentVisibleRows());
-      shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="13" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
+      shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="11" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
       try { console.log('[OFMAQ-FINAL] maquina=', state.selectedMachine || '—', 'dia=', state.selectedDateIso || '—', 'rows=', rows.length, 'totalCanonico=', state.rowsData.length); } catch (_) {}
     }
 
@@ -19268,13 +17749,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       modal.className = 'ofmaq-final-modal';
       modal.setAttribute('data-modal', id);
       modal.innerHTML = '<button type="button" class="close-btn" data-modal-close="' + escAttr(id) + '">✕</button><h3>' + escH(title) + '</h3><div class="body">' + bodyHtml + '</div>';
-      overlay.onclick = function(ev) {
-        if (ev && ev.target !== overlay) return;
-        closeModal(id);
-      };
-      modal.onclick = function(ev) {
-        try { if (ev) ev.stopPropagation(); } catch (_) {}
-      };
+      overlay.onclick = function() { closeModal(id); };
       document.body.appendChild(overlay);
       document.body.appendChild(modal);
       var close = modal.querySelector('[data-modal-close="' + id + '"]');
@@ -19333,31 +17808,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       ordered[idx] = ordered[target];
       ordered[target] = tmp;
       await persistGroupOrder(ordered);
-      applyDisplaySeqToState();
-      updateToolbar(ensureShell());
       renderRows(ensureShell());
-      try { showOfmaqCenterConfirm('A sequência da OF foi atualizada na fila da máquina.', { title: 'Sequência alterada' }); } catch (_) {}
-    }
-
-    async function moveToPositionWithinDay(id, targetPosition) {
-      var row = rowById(id);
-      if (!row) return;
-      var ordered = rowsForMachineDay(row.maquina, row.prazoIso);
-      var idx = ordered.findIndex(function(item) { return item && item.id === id; });
-      if (idx < 0) return;
-      var target = Math.max(0, Math.min(ordered.length - 1, (Math.trunc(Number(targetPosition || 0) || 0) - 1)));
-      if (target === idx) {
-        applyDisplaySeqToState();
-        renderRows(ensureShell());
-        return;
-      }
-      var picked = ordered.splice(idx, 1)[0];
-      ordered.splice(target, 0, picked);
-      await persistGroupOrder(ordered);
-      applyDisplaySeqToState();
-      updateToolbar(ensureShell());
-      renderRows(ensureShell());
-      try { showOfmaqCenterConfirm('A sequência da OF foi atualizada na fila da máquina.', { title: 'Sequência alterada' }); } catch (_) {}
     }
 
     async function moveRow(id, machine) {
@@ -19370,9 +17821,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         return;
       }
       var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { maq: [machine], maquina: machine, maquina_agendada: machine } });
-      try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'move', id: id, status: result && result.resp ? result.resp.status : null, ok: !!(result && result.resp && result.resp.ok), body: result ? result.data : null }); } catch (_) {}
       if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF');
-      return result;
     }
 
     async function updateDate(id, value) {
@@ -19385,77 +17834,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         return;
       }
       var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { data_entrega: value, ent: value } });
-      try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'date', id: id, status: result && result.resp ? result.resp.status : null, ok: !!(result && result.resp && result.resp.ok), body: result ? result.data : null }); } catch (_) {}
       if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao alterar data');
-      return result;
-    }
-
-    async function moveRowAndDate(id, machine, value) {
-      if (window.__OFMAQ_FINAL_MOCK) {
-        var local = rowById(id);
-        if (local) {
-          local.maquina = machine;
-          local.prazoIso = value;
-          local.order = nextOrderForMachineDay(machine, value, local.id);
-        }
-        return;
-      }
-      var result = await apiJson('/api/ofs/' + encodeURIComponent(id), {
-        method: 'PATCH',
-        body: {
-          maq: [machine],
-          maquina: machine,
-          maquina_agendada: machine,
-          data_entrega: value,
-          ent: value
-        }
-      });
-      try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'move-date', id: id, status: result && result.resp ? result.resp.status : null, ok: !!(result && result.resp && result.resp.ok), body: result ? result.data : null }); } catch (_) {}
-      if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF e alterar data');
-      return result;
     }
 
     async function markPassed(id, machine) {
-      var row = rowById(id);
       if (window.__OFMAQ_FINAL_MOCK) {
         state.rowsData = state.rowsData.filter(function(item) { return item.id !== id; });
-        if (row) {
-          appendHistPassagemLocal({
-            of_id: row.id,
-            of_numero: row.numero,
-            numero: row.numero,
-            cliente: row.cliente,
-            produto: row.produto,
-            maquina: machine,
-            maquina_nome: machine,
-            data_passagem: isoFromDate(currentBusinessDate()),
-            hora_passagem: new Date().toISOString(),
-            status: 'Passou pela máquina',
-            passagens_maquina: [{ maquina: machine, maquina_nome: machine }]
-          });
-        }
         return;
       }
       var result = await apiJson('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method: 'POST', body: { maquina: machine, maquina_nome: machine } });
-      try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'pass', id: id, status: result && result.resp ? result.resp.status : null, ok: !!(result && result.resp && result.resp.ok), body: result ? result.data : null }); } catch (_) {}
       if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao registrar passagem');
-      if (row) {
-        appendHistPassagemLocal({
-          of_id: row.id,
-          of_numero: row.numero,
-          numero: row.numero,
-          cliente: row.cliente,
-          produto: row.produto,
-          maquina: machine,
-          maquina_nome: machine,
-          data_passagem: isoFromDate(currentBusinessDate()),
-          hora_passagem: new Date().toISOString(),
-          status: 'Passou pela máquina',
-          passagens_maquina: [{ maquina: machine, maquina_nome: machine }]
-        });
-      }
       state.rowsData = state.rowsData.filter(function(item) { return item.id !== id; });
-      return result;
     }
 
     function openImage(id) {
@@ -19484,7 +17873,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           updateToolbar(ensureShell());
           renderRows(ensureShell());
           closeModal('ofmaq-final-move');
-          try { showOfmaqCenterConfirm('OF #' + String(row && row.numero || id) + ' movida para ' + machine + ' com sucesso.', { title: 'Máquina alterada' }); } catch (_) {}
         } catch (err) {
           try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
         }
@@ -19508,45 +17896,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           updateToolbar(ensureShell());
           renderRows(ensureShell());
           closeModal('ofmaq-final-date');
-          try { showOfmaqCenterConfirm('OF #' + String(row && row.numero || id) + ' reagendada para ' + fmtDateBR(value) + '.', { title: 'Data alterada' }); } catch (_) {}
         } catch (err) {
           try { window.toast('Erro ao alterar data: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
-        }
-      };
-    }
-
-    function openMoveDateModal(id) {
-      var row = rowById(id);
-      if (!row) return;
-      var modal = openModal('ofmaq-final-move-date', 'Mover máquina e data da OF #' + String(row.numero || row.id), ''
-        + '<select id="ofmaq-final-move-date-machine">' + state.machineCatalog.map(function(machine) {
-          return '<option value="' + escAttr(machine) + '"' + (machine === row.maquina ? ' selected' : '') + '>' + escH(machine) + '</option>';
-        }).join('') + '</select>'
-        + '<input id="ofmaq-final-move-date-input" type="date" value="' + escAttr(row.prazoIso || '') + '">'
-        + '<button type="button" id="ofmaq-final-move-date-save">Salvar</button>');
-      var save = modal.querySelector('#ofmaq-final-move-date-save');
-      if (save) save.onclick = async function() {
-        var select = modal.querySelector('#ofmaq-final-move-date-machine');
-        var input = modal.querySelector('#ofmaq-final-move-date-input');
-        var machine = normalizeMachine(String(select && select.value || '').trim());
-        var value = String(input && input.value || '').slice(0, 10);
-        if (!machine) return;
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
-        try {
-          await moveRowAndDate(id, machine, value);
-          if (row) {
-            row.maquina = machine;
-            row.prazoIso = value;
-            row.order = nextOrderForMachineDay(machine, value, row.id);
-          }
-          applyDisplaySeqToState();
-          state.machineCatalog = machineCatalogFromRows(state.rowsData);
-          updateToolbar(ensureShell());
-          renderRows(ensureShell());
-          closeModal('ofmaq-final-move-date');
-          try { showOfmaqCenterConfirm('OF #' + String(row && row.numero || id) + ' movida para ' + machine + ' em ' + fmtDateBR(value) + '.', { title: 'Máquina e data alteradas' }); } catch (_) {}
-        } catch (err) {
-          try { window.toast('Erro ao mover OF e alterar data: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
         }
       };
     }
@@ -19555,174 +17906,48 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var row = rowById(id);
       if (!row) return;
       var modal = openModal('ofmaq-final-actions', 'Ações da OF #' + String(row.numero || row.id), ''
-        + '<button type="button" data-ofmaq-final-action="pass" class="ofmaq-final-action-primary"><span>✓ Passou pela máquina</span><small>Concluir etapa</small></button>'
-        + '<button type="button" data-ofmaq-final-action="move" class="ofmaq-final-action-secondary"><span>↔ Mover de máquina</span><small>Trocar fila</small></button>'
-        + '<button type="button" data-ofmaq-final-action="date" class="ofmaq-final-action-secondary"><span>📅 Alterar data</span><small>Reagendar</small></button>'
-        + '<button type="button" data-ofmaq-final-action="move-date" class="ofmaq-final-action-secondary"><span>🗓️↔ Mover máquina e data</span><small>Alterar os dois de uma vez</small></button>'
+        + '<button type="button" id="ofmaq-final-pass" class="ofmaq-final-action-primary">✓ Passou pela máquina</button>'
+        + '<button type="button" id="ofmaq-final-move">↔ Mover de máquina</button>'
+        + '<button type="button" id="ofmaq-final-date">📅 Alterar data</button>'
         + '<div class="ofmaq-final-move-grid">'
-        + '  <button type="button" data-ofmaq-final-action="up" class="ofmaq-final-action-tertiary"><span>↑ Mover para cima</span><small>Priorizar</small></button>'
-        + '  <button type="button" data-ofmaq-final-action="down" class="ofmaq-final-action-tertiary"><span>↓ Mover para baixo</span><small>Adiar</small></button>'
+        + '  <button type="button" id="ofmaq-final-up">↑ Mover para cima</button>'
+        + '  <button type="button" id="ofmaq-final-down">↓ Mover para baixo</button>'
         + '</div>');
-      modal.addEventListener('click', async function(ev) {
-        var btn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofmaq-final-action]') : null;
-        if (!btn) return;
-        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-        var action = String(btn.getAttribute('data-ofmaq-final-action') || '').trim();
-        try { console.log('[OFMAQ-FINAL] action-modal click', action, row && row.id); } catch (_) {}
+      var passBtn = modal.querySelector('#ofmaq-final-pass');
+      var moveBtn = modal.querySelector('#ofmaq-final-move');
+      var dateBtn = modal.querySelector('#ofmaq-final-date');
+      var upBtn = modal.querySelector('#ofmaq-final-up');
+      var downBtn = modal.querySelector('#ofmaq-final-down');
+      if (passBtn) passBtn.onclick = async function() {
         try {
-          if (action === 'pass') {
-            await markPassed(id, row.maquina);
-            closeModal('ofmaq-final-actions');
-            state.machineCatalog = machineCatalogFromRows(state.rowsData);
-            updateToolbar(ensureShell());
-            renderRows(ensureShell());
-            try { showOfmaqCenterConfirm('OF #' + String(row.numero || id) + ' passou pela máquina ' + String(row.maquina || '').trim() + ' com sucesso.', { title: 'Passou pela máquina' }); } catch (_) {}
-            return;
-          }
-          if (action === 'move') {
-            closeModal('ofmaq-final-actions');
-            openMoveModal(id);
-            return;
-          }
-          if (action === 'date') {
-            closeModal('ofmaq-final-actions');
-            openDateModal(id);
-            return;
-          }
-          if (action === 'move-date') {
-            closeModal('ofmaq-final-actions');
-            openMoveDateModal(id);
-            return;
-          }
-          if (action === 'up' || action === 'down') {
-            await reorderWithinDay(id, action === 'up' ? -1 : 1);
-            closeModal('ofmaq-final-actions');
-          }
+          await markPassed(id, row.maquina);
+          closeModal('ofmaq-final-actions');
+          state.machineCatalog = machineCatalogFromRows(state.rowsData);
+          updateToolbar(ensureShell());
+          renderRows(ensureShell());
         } catch (err) {
-          try { console.error('[OFMAQ-FINAL] action-modal error', action, err); } catch (_) {}
-          try { window.toast('Erro na ação da OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+          try { window.toast('Erro ao registrar passagem: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
         }
-      });
-    }
-
-    function reportDaysForPeriod(period, baseDateIso) {
-      var anchor = String(baseDateIso || state.selectedDateIso || '').slice(0, 10) || isoFromDate(currentBusinessDate());
-      var start = parseIso(anchor) || currentBusinessDate();
-      start.setHours(0, 0, 0, 0);
-      if (String(period || '') === 'dia') return [isoFromDate(start)];
-      var weekStart = parseIso(weekStartIso(anchor)) || start;
-      var totalDays = String(period || '') === 'duas-semanas' ? 10 : 5;
-      var out = [];
-      var cursor = new Date(weekStart.getTime());
-      while (out.length < totalDays) {
-        var dow = cursor.getDay();
-        if (dow !== 0 && dow !== 6) out.push(isoFromDate(cursor));
-        cursor.setDate(cursor.getDate() + 1);
-      }
-      return out;
-    }
-
-    function reportPeriodTitle(period, days) {
-      var list = Array.isArray(days) ? days.filter(Boolean) : [];
-      if (!list.length) return 'Sem período';
-      if (String(period || '') === 'dia' || list.length === 1) return fmtDateBR(list[0]);
-      return fmtDateBR(list[0]) + ' a ' + fmtDateBR(list[list.length - 1]);
-    }
-
-    async function buildPeriodReportConfig(params) {
-      var opts = params || {};
-      ensureDefaults();
-      await loadCanonicalRows(!!opts.forceReload);
-      var period = String(opts.period || 'dia').trim();
-      var selectedMachines = (Array.isArray(opts.machines) ? opts.machines : []).map(function(machine) {
-        return normalizeMachine(machine);
-      }).filter(Boolean);
-      if (!selectedMachines.length) selectedMachines = state.selectedMachine ? [state.selectedMachine] : state.machineCatalog.slice();
-      var days = reportDaysForPeriod(period, opts.referenceDate || state.selectedDateIso);
-      var machineSet = {};
-      selectedMachines.forEach(function(machine) { machineSet[machine] = true; });
-      var rows = state.rowsData.filter(function(item) {
-        if (!machineSet[item.maquina]) return false;
-        if (!days.length) return true;
-        return days.indexOf(String(item.prazoIso || '').slice(0, 10)) >= 0;
-      }).sort(function(a, b) {
-        if (a.maquina !== b.maquina) return a.maquina.localeCompare(b.maquina, 'pt-BR');
-        if (String(a.prazoIso || '') !== String(b.prazoIso || '')) return String(a.prazoIso || '').localeCompare(String(b.prazoIso || ''));
-        if (Number(a.displaySeq || a.order || 0) !== Number(b.displaySeq || b.order || 0)) return Number(a.displaySeq || a.order || 0) - Number(b.displaySeq || b.order || 0);
-        return String(a.numero || '').localeCompare(String(b.numero || ''), 'pt-BR', { numeric: true });
-      });
-      var summaryRows = selectedMachines.map(function(machine) {
-        var machineRows = rows.filter(function(item) { return item.maquina === machine; });
-        return {
-          maquina: machine,
-          total_ofs: machineRows.length,
-          caixas: machineRows.reduce(function(sum, item) { return sum + (Number(item.quantidade || 0) || 0); }, 0),
-          tempo: machineRows.reduce(function(sum, item) { return sum + (Number(item.tempoMin || 0) || 0); }, 0)
-        };
-      }).filter(function(item) {
-        return item.total_ofs > 0;
-      });
-      var groups = {};
-      rows.forEach(function(item) {
-        var key = item.maquina + '|' + String(item.prazoIso || '');
-        if (!groups[key]) groups[key] = { maquina: item.maquina, dia: String(item.prazoIso || ''), rows: [] };
-        groups[key].rows.push(item);
-      });
-      var detailSections = Object.keys(groups).sort(function(a, b) {
-        var ga = groups[a];
-        var gb = groups[b];
-        if (ga.maquina !== gb.maquina) return ga.maquina.localeCompare(gb.maquina, 'pt-BR');
-        return String(ga.dia || '').localeCompare(String(gb.dia || ''));
-      }).map(function(key) {
-        var group = groups[key];
-        return {
-          title: group.maquina + ' • ' + fmtDateBR(group.dia),
-          headers: ['SEQ', 'OF', 'Cliente', 'Produto', 'Quantidade', 'Tamanhos', 'Cores', 'Máquina', 'Tempo'],
-          rows: group.rows.map(function(item) {
-            return [
-              String(item.displaySeq || item.order || 0),
-              String(item.numero || '—'),
-              String(item.cliente || '—'),
-              String(item.produto || '—'),
-              fmtInt(item.quantidade || 0),
-              String(item.tamanho || '—'),
-              Array.isArray(item.cores) && item.cores.length ? item.cores.join(', ') : 'Sem cor',
-              String(item.maquina || '—'),
-              fmtTempo(item.tempoMin || 0)
-            ];
-          })
-        };
-      });
-      return {
-        title: 'Relatório de Máquinas por Período',
-        periodo: reportPeriodTitle(period, days),
-        cards: [
-          { label: 'Máquinas', value: fmtInt(summaryRows.length), sub: 'Máquinas com OFs no período' },
-          { label: 'OFs', value: fmtInt(rows.length), sub: 'Linhas filtradas pela base canônica' },
-          { label: 'Caixas', value: fmtInt(rows.reduce(function(sum, item) { return sum + (Number(item.quantidade || 0) || 0); }, 0)), sub: 'Quantidade total no período' },
-          { label: 'Tempo', value: fmtTempo(rows.reduce(function(sum, item) { return sum + (Number(item.tempoMin || 0) || 0); }, 0)), sub: 'Tempo previsto consolidado' }
-        ],
-        summaryTitle: 'Resumo por máquina',
-        summaryHeaders: ['Máquina', 'OFs', 'Caixas', 'Tempo'],
-        summaryRows: summaryRows.map(function(item) {
-          return [item.maquina, fmtInt(item.total_ofs), fmtInt(item.caixas), fmtTempo(item.tempo)];
-        }),
-        detailSections: detailSections,
-        detailTitle: 'Detalhamento',
-        emptySummaryCols: 4,
-        emptyDetailCols: 9,
-        meta: {
-          period: period,
-          referenceDate: String(opts.referenceDate || state.selectedDateIso || '').slice(0, 10),
-          machines: selectedMachines.slice()
+      };
+      if (moveBtn) moveBtn.onclick = function() { closeModal('ofmaq-final-actions'); openMoveModal(id); };
+      if (dateBtn) dateBtn.onclick = function() { closeModal('ofmaq-final-actions'); openDateModal(id); };
+      if (upBtn) upBtn.onclick = async function() {
+        try {
+          await reorderWithinDay(id, -1);
+          closeModal('ofmaq-final-actions');
+        } catch (err) {
+          try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+        }
+      };
+      if (downBtn) downBtn.onclick = async function() {
+        try {
+          await reorderWithinDay(id, 1);
+          closeModal('ofmaq-final-actions');
+        } catch (err) {
+          try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
         }
       };
     }
-
-    window.__ofmaqBuildPeriodReportConfig = buildPeriodReportConfig;
-    window.__ofmaqGetMachineCatalog = function() {
-      return Array.isArray(state.machineCatalog) ? state.machineCatalog.slice() : [];
-    };
 
     function bindShell(shell) {
       if (!shell || shell.root.getAttribute('data-ofmaq-final-bound') === '1') return;
@@ -19758,26 +17983,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           renderRows(shell);
           return;
         }
-        var summaryToggle = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-summary-toggle') : null;
-        if (summaryToggle) {
-          state.summaryCollapsed = !state.summaryCollapsed;
-          renderSummary(shell);
-          return;
-        }
-        var reportBtn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-report') : null;
-        if (reportBtn) {
-          if (typeof window.rrOpenMaquinasPeriodoModal === 'function') {
-            window.rrOpenMaquinasPeriodoModal({
-              source: 'ofmaq',
-              preferredPeriod: 'dia',
-              referenceDate: state.selectedDateIso,
-              machines: state.selectedMachine ? [state.selectedMachine] : state.machineCatalog.slice()
-            });
-          } else {
-            try { window.toast('Relatório de máquinas ainda não inicializado.', 'var(--yellow)'); } catch (_) {}
-          }
-          return;
-        }
         var imageBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofmaq-final-image]') : null;
         if (imageBtn) {
           openImage(String(imageBtn.getAttribute('data-ofmaq-final-image') || '').trim());
@@ -19792,17 +17997,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           state.selectedMachine = normalizeMachine(String(select.value || '').trim());
           updateToolbar(shell);
           renderRows(shell);
-          return;
-        }
-        var seqInput = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofmaq-final-seq]') : null;
-        if (seqInput) {
-          var id = String(seqInput.getAttribute('data-ofmaq-final-seq') || '').trim();
-          var value = Math.max(1, Number(seqInput.value || 0) || 1);
-          if (!id) return;
-          moveToPositionWithinDay(id, value).catch(function(err) {
-            try { console.error('[OFMAQ-FINAL] erro ao mover por digitação', err); } catch (_) {}
-            try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
-          });
         }
       });
       shell.root.addEventListener('input', function(ev) {
@@ -19820,7 +18014,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var value = Math.max(1, Number(input.value || 0) || 1);
         if (!id) return;
         try {
-          await moveToPositionWithinDay(id, value);
+          await updateSeq(id, value);
+          var row = rowById(id);
+          if (row) row.order = value;
+          renderRows(shell);
         } catch (err) {
           try { window.toast('Erro ao salvar sequência: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
         }
@@ -19875,17 +18072,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     window.renderOfmaqFinal = renderOfmaqFinal;
     (function bridgeLegacyOfmaqEntrypoints() {
-      var registry = (window.__ofmaqFinalBridgeRegistry && typeof window.__ofmaqFinalBridgeRegistry === 'object')
-        ? window.__ofmaqFinalBridgeRegistry
-        : (window.__ofmaqFinalBridgeRegistry = {});
-      function ofmaqDiag(evento, payload) {
-        try {
-          if (!Array.isArray(window.__ofmaqBridgeDiag)) window.__ofmaqBridgeDiag = [];
-          window.__ofmaqBridgeDiag.push({ at: new Date().toISOString(), evento: String(evento || ''), payload: payload || null });
-          if (window.__ofmaqBridgeDiag.length > 300) window.__ofmaqBridgeDiag.splice(0, window.__ofmaqBridgeDiag.length - 300);
-        } catch (_) {}
-        try { console.log('[OFMAQ-DIAG]', evento, payload || null); } catch (_) {}
-      }
       [
         'renderOFsPorMaquina',
         'renderMaquinas',
@@ -19897,88 +18083,21 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         'renderKanbanOfmaq'
       ].forEach(function(name) {
         var current = typeof window[name] === 'function' ? window[name] : null;
-        var existing = registry && typeof registry[name] === 'function' ? registry[name] : null;
-        if (existing) {
-          if (current && current !== existing && !current.__ofmaqFinalBridge) {
-            ofmaqDiag('bridge-retarget', {
-              name: name,
-              currentName: String(current && current.name || ''),
-              hasAccordion: !!(current && current._patchedAccordion),
-              hasSwipe: !!(current && current._patchedSwipeMaq),
-              hasPriorityHub: !!(current && current._patchedPriorityHub)
-            });
-            existing.__ofmaqFinalBridgeTarget = current;
-            try { existing.__patchWrapOriginal = current.__patchWrapOriginal || current; } catch (_) {}
-            try { existing._patchedAccordion = !!current._patchedAccordion; } catch (_) {}
-            try { existing._patchedSwipeMaq = !!current._patchedSwipeMaq; } catch (_) {}
-            try { existing._patchedPriorityHub = !!current._patchedPriorityHub; } catch (_) {}
-          }
-          ofmaqDiag('bridge-reuse', { name: name, currentIsExisting: current === existing, currentName: String(current && current.name || '') });
-          window[name] = existing;
-          return;
-        }
-        if (current && current.__ofmaqFinalBridge) {
-          ofmaqDiag('bridge-adopt-existing', { name: name, currentName: String(current && current.name || '') });
-          registry[name] = current;
-          return;
-        }
+        if (current && current.__ofmaqFinalBridge) return;
+        var original = current;
         var bridged = function() {
-          ofmaqDiag('bridge-call', {
-            name: name,
-            page: String(window._PAGE_ATUAL || ''),
-            targetName: String(bridged.__ofmaqFinalBridgeTarget && bridged.__ofmaqFinalBridgeTarget.name || ''),
-            targetAccordion: !!(bridged.__ofmaqFinalBridgeTarget && bridged.__ofmaqFinalBridgeTarget._patchedAccordion),
-            targetSwipe: !!(bridged.__ofmaqFinalBridgeTarget && bridged.__ofmaqFinalBridgeTarget._patchedSwipeMaq),
-            targetPriorityHub: !!(bridged.__ofmaqFinalBridgeTarget && bridged.__ofmaqFinalBridgeTarget._patchedPriorityHub)
-          });
           if (String(window._PAGE_ATUAL || '') === 'ofmaq' && typeof window.renderOfmaqFinal === 'function') {
             return window.renderOfmaqFinal({ forceReload: true, reason: 'legacy-entrypoint:' + name });
           }
-          var target = bridged.__ofmaqFinalBridgeTarget;
-          return typeof target === 'function' ? target.apply(this, arguments) : undefined;
+          return typeof original === 'function' ? original.apply(this, arguments) : undefined;
         };
         bridged.__ofmaqFinalBridge = true;
-        bridged.__ofmaqFinalBridgeTarget = current;
-        bridged.__patchWrapOriginal = (current && (current.__patchWrapOriginal || current)) || null;
-        bridged._patchedAccordion = !!(current && current._patchedAccordion);
-        bridged._patchedSwipeMaq = !!(current && current._patchedSwipeMaq);
+        bridged.__patchWrapOriginal = (original && (original.__patchWrapOriginal || original)) || null;
+        bridged._patchedAccordion = !!(original && original._patchedAccordion);
+        bridged._patchedSwipeMaq = !!(original && original._patchedSwipeMaq);
         bridged._patchedPriorityHub = true;
-        ofmaqDiag('bridge-create', {
-          name: name,
-          currentName: String(current && current.name || ''),
-          currentAccordion: !!(current && current._patchedAccordion),
-          currentSwipe: !!(current && current._patchedSwipeMaq),
-          currentPriorityHub: !!(current && current._patchedPriorityHub)
-        });
-        registry[name] = bridged;
         window[name] = bridged;
       });
-      if (!window.__ofmaqFinalBridgeWatch) {
-        window.__ofmaqFinalBridgeWatch = true;
-        setInterval(function() {
-          try {
-            var reg = window.__ofmaqFinalBridgeRegistry;
-            if (!reg || typeof reg !== 'object') return;
-            Object.keys(reg).forEach(function(nome) {
-              var existing = reg && typeof reg[nome] === 'function' ? reg[nome] : null;
-              if (!existing) return;
-              var current = typeof window[nome] === 'function' ? window[nome] : null;
-              if (current && current.__ofmaqFinalBridge) return;
-              if (current && current !== existing) {
-                ofmaqDiag('bridge-watch-retarget', {
-                  name: nome,
-                  currentName: String(current && current.name || ''),
-                  currentAccordion: !!(current && current._patchedAccordion),
-                  currentSwipe: !!(current && current._patchedSwipeMaq),
-                  currentPriorityHub: !!(current && current._patchedPriorityHub)
-                });
-                try { existing.__ofmaqFinalBridgeTarget = current; } catch (_) {}
-              }
-              if (window[nome] !== existing) window[nome] = existing;
-            });
-          } catch (_) {}
-        }, 1800);
-      }
     })();
     window.__ofmaqFinalSetMockData = function(rows) {
       window.__OFMAQ_FINAL_MOCK = Array.isArray(rows) ? rows.slice() : [];
@@ -20850,36 +18969,35 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   #modal-calc.modal-overlay {
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 10px !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    padding: 0 !important;
   }
   #modal-calc #modal-calculadora {
-    width: min(100vw - 12px, 100%) !important;
-    max-width: min(100vw - 12px, 100%) !important;
-    height: auto !important;
-    max-height: calc(100vh - 12px) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
     margin: 0 !important;
-    border-radius: 20px !important;
+    border-radius: 0 !important;
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
-    padding: 14px !important;
+    padding: 12px !important;
   }
   #modal-calc #modal-calculadora .close-btn {
-    position: absolute !important;
-    top: 12px !important;
-    right: 12px !important;
+    position: fixed !important;
+    top: 10px !important;
+    right: 10px !important;
     z-index: 10000 !important;
   }
   #modal-calc #modal-calculadora h2 {
     margin-top: 0 !important;
-    margin-bottom: 10px !important;
     padding-right: 56px !important;
   }
   #modal-calc #modal-calculadora .calc-header-row {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
     align-items: stretch !important;
     gap: 10px !important;
   }
@@ -20892,63 +19010,49 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   #modal-calc #modal-calculadora .modal-body,
   #modal-calc #modal-calculadora .calc-body {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
     gap: 12px !important;
-    flex: 1 1 auto !important;
-    min-height: 220px !important;
+    flex: 1 !important;
+    min-height: 0 !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
-    padding: 10px 0 0 !important;
-    max-height: none !important;
-  }
-  #modal-calc #modal-calculadora > .calc-header-row,
-  #modal-calc #modal-calculadora > #calc-pasta-row,
-  #modal-calc #modal-calculadora > #wrap-calc-nome-orcamento,
-  #modal-calc #modal-calculadora > #wrap-calc-chapa-utilizada,
-  #modal-calc #modal-calculadora > .modal-footer.rodape {
-    flex: 0 0 auto !important;
-    overflow: visible !important;
-    max-height: none !important;
+    padding: 12px 16px !important;
   }
 
   #modal-calc #modal-calculadora .calc-col-esq {
-    display: grid !important;
-    gap: 12px !important;
+    display: contents !important;
     padding: 0 !important;
     overflow: visible !important;
   }
   #modal-calc #modal-calculadora .calc-row-top,
   #modal-calc #modal-calculadora .calc-row-dims,
   #modal-calc #modal-calculadora .calc-row-valores {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
     gap: 10px !important;
     align-items: stretch !important;
   }
-  #modal-calc #modal-calculadora .calc-row-top { order: initial !important; }
-  #modal-calc #modal-calculadora .calc-row-dims { order: initial !important; }
-  #modal-calc #modal-calculadora .calc-row-valores { order: initial !important; }
-  #modal-calc #modal-calculadora #calc-extra-fields { order: initial !important; display: grid !important; grid-template-columns: 1fr !important; gap: 10px !important; }
+  #modal-calc #modal-calculadora .calc-row-top { order: 2 !important; }
+  #modal-calc #modal-calculadora .calc-row-dims { order: 3 !important; }
+  #modal-calc #modal-calculadora .calc-row-valores { order: 4 !important; }
+  #modal-calc #modal-calculadora #calc-extra-fields { order: 5 !important; }
 
   #modal-calc #modal-calculadora .calc-col-dir {
-    order: initial !important;
+    order: 6 !important;
     width: 100% !important;
-    min-width: 0 !important;
     border-left: none !important;
-    border-top: none !important;
-    padding: 0 !important;
+    border-top: 1px solid rgba(255,255,255,0.08) !important;
+    padding: 12px 0 0 0 !important;
     background: transparent !important;
     overflow: visible !important;
-    position: static !important;
   }
 
   #modal-calc #modal-calculadora .calc-tabela-wrap {
-    order: initial !important;
+    order: 7 !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
     flex: 0 0 auto !important;
-    min-width: 0 !important;
   }
 
   #modal-calc #modal-calculadora input,
@@ -20960,32 +19064,28 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   #modal-calc #modal-calculadora .modal-footer.rodape {
-    position: static !important;
-    bottom: auto !important;
-    z-index: auto !important;
-    background: transparent !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 20 !important;
+    background: #0f172a !important;
     border-top: 1px solid rgba(255,255,255,0.12) !important;
-    padding: 12px 0 0 !important;
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    align-items: center !important;
+    padding: 12px 16px !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
     gap: 8px !important;
     margin-top: 0 !important;
   }
   #modal-calc #modal-calculadora .modal-footer.rodape > div:first-child {
-    grid-column: auto !important;
+    grid-column: 1 / -1 !important;
     margin-right: 0 !important;
-    width: 100% !important;
   }
   #modal-calc #modal-calculadora .modal-footer.rodape button:first-of-type {
-    grid-column: auto !important;
+    grid-column: 1 / -1 !important;
   }
   #modal-calc #modal-calculadora .modal-footer.rodape button {
     width: 100% !important;
     min-height: 44px !important;
     font-size: 0.85rem !important;
-    flex: 1 1 180px !important;
   }
 
   .chapas-table-wrapper,
@@ -25264,10 +23364,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var orig = window[nome];
       var wrapped = function() {
         var res = orig.apply(this, arguments);
-        if (!(window.__ofmaqDesiredPipeline === 'final' && String(window._PAGE_ATUAL || '') === 'ofmaq')) {
-          setTimeout(aplicarAccordion, 300);
-          setTimeout(aplicarAccordion, 700);
-        }
+          if (!(window.__ofmaqDesiredPipeline === 'final' && String(window._PAGE_ATUAL || '') === 'ofmaq')) {
+            setTimeout(aplicarAccordion, 300);
+            setTimeout(aplicarAccordion, 700);
+          }
         return res;
       };
       wrapped._patchedAccordion = true;
@@ -25534,26 +23634,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var _orig = window.renderHub;
       var wrappedRenderHub = async function() {
         var res = await _orig.apply(this, arguments);
-        var stripLater = function() {
-          try {
-            var stripMoney = (typeof window.__hubStripMoneyVisuals === 'function') ? window.__hubStripMoneyVisuals : null;
-            if (stripMoney) stripMoney();
-          } catch (_) {}
-          try {
-            var patchTotals = (typeof window.__patchHubTotalCards === 'function') ? window.__patchHubTotalCards : null;
-            if (patchTotals) patchTotals();
-          } catch (_) {}
-        };
-        [40, 180, 600, 1200, 2500, 4000].forEach(function(delay) {
-          setTimeout(stripLater, delay);
-        });
-        try {
-          clearTimeout(window.__hubStripMoneyTimer);
-          window.__hubStripMoneyTimer = setTimeout(function rerunHubStrip() {
-            stripLater();
-            window.__hubStripMoneyTimer = setTimeout(rerunHubStrip, 1800);
-          }, 900);
-        } catch (_) {}
         setTimeout(function() {
           try { window.carregarPassagensHoje(); } catch(_) {}
         }, 400);
@@ -27987,9 +26067,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         ov.style.display = 'flex';
         ov.style.pointerEvents = 'auto';
         try { ov.classList.add('open', 'show', 'active'); } catch (_) {}
-        try { ov.removeAttribute('hidden'); } catch (_) {}
-        try { ov.style.opacity = '1'; } catch (_) {}
-        try { ov.style.visibility = 'visible'; } catch (_) {}
         try { ov.style.zIndex = '99999'; } catch (_) {}
       }
     } catch (_) {}
@@ -27998,9 +26075,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (modal) {
         modal.style.display = 'flex';
         modal.style.pointerEvents = 'auto';
-        try { modal.removeAttribute('hidden'); } catch (_) {}
-        try { modal.style.opacity = '1'; } catch (_) {}
-        try { modal.style.visibility = 'visible'; } catch (_) {}
         try { modal.style.zIndex = '100000'; } catch (_) {}
       }
     } catch (_) {}
@@ -28036,22 +26110,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (window.abrirCalculadora._patchCalcOpen) return;
     var orig = window.abrirCalculadora;
     window.abrirCalculadora = function() {
-      var result;
       try {
-        result = orig.apply(this, arguments);
+        return orig.apply(this, arguments);
       } catch (_) {
         try { if (typeof window.abrir === 'function') window.abrir('modal-calc'); } catch (_) {}
         try { openModalDirect(); } catch (_) {}
+        return;
       } finally {
-        try { setTimeout(openModalDirect, 0); } catch (_) {}
-        try { setTimeout(openModalDirect, 120); } catch (_) {}
-        try { setTimeout(openModalDirect, 420); } catch (_) {}
         try {
           var ov = document.getElementById('modal-calc');
           if (ov && String(getComputedStyle(ov).display || '') === 'none') openModalDirect();
         } catch (_) {}
       }
-      return result;
     };
     window.abrirCalculadora._patchCalcOpen = true;
   }
@@ -29114,68 +27184,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return Array.isArray(window.CLIENTES) ? window.CLIENTES : (Array.isArray(window.clientes) ? window.clientes : []);
   }
 
-      function clienteNomePlausivel(txt) {
-        var s = normClienteNome(txt);
-        if (!s) return false;
-        var flat = s.replace(/\s+/g, '');
-        if (!flat || /^\d+$/.test(flat)) return false;
-        if (/^[a-z]{0,6}\d+$/.test(flat)) return false;
-        return s.length >= 3;
-      }
-
-      function clienteLookupVariants(raw) {
-        var src = String(raw || '').replace(/\s+/g, ' ').trim();
-        if (!src) return [];
-        var out = [];
-        var seen = {};
-        function push(txt) {
-          var val = String(txt || '').replace(/\s+/g, ' ').trim();
-          var norm = normClienteNome(val);
-          if (!val || !norm || seen[norm] || !clienteNomePlausivel(val)) return;
-          seen[norm] = true;
-          out.push(val);
-        }
-        push(src.replace(/^[A-Z]{1,6}\d{1,10}\s*[|:-]\s*/i, ''));
-        push(src.replace(/^\d+\s*[|:-]\s*/, ''));
-        var pipeParts = src.split('|').map(function(part) { return String(part || '').trim(); }).filter(Boolean);
-        pipeParts
-          .filter(clienteNomePlausivel)
-          .sort(function(a, b) { return b.length - a.length; })
-          .forEach(push);
-        src.split(/\s[-:]\s/).forEach(push);
-        push(src);
-        pipeParts.forEach(push);
-        return out;
-      }
-
-      function clienteLookupNormSet(raw) {
-        return clienteLookupVariants(raw).map(normClienteNome).filter(Boolean);
-      }
-
   function acharClienteRobusto(nome) {
-        var alvos = clienteLookupNormSet(nome);
-        if (!alvos.length) return null;
+    var alvo = normClienteNome(nome);
+    if (!alvo) return null;
     var lista = clientesRef();
-        for (var a = 0; a < alvos.length; a += 1) {
-          var alvo = alvos[a];
-          for (var i = 0; i < lista.length; i++) {
-            var c = lista[i];
-            var base = c && (c.nome || c.razao_social || c.razao || '');
-            if (normClienteNome(base) === alvo) return c;
-          }
+    for (var i = 0; i < lista.length; i++) {
+      var c = lista[i];
+      var base = c && (c.nome || c.razao_social || c.razao || '');
+      if (normClienteNome(base) === alvo) return c;
     }
-        for (var j = 0; j < lista.length; j++) {
-          var c2 = lista[j];
-          var nome2 = c2 && (c2.nome || c2.razao_social || c2.razao || '');
-          var hay = [nome2, c2 && c2.cnpj, c2 && c2.cidade, c2 && (c2.tel || c2.telefone)]
-            .filter(Boolean)
-            .map(normClienteNome)
-            .join(' | ');
-          var n2 = normClienteNome(nome2);
-          for (var k = 0; k < alvos.length; k += 1) {
-            var alvo2 = alvos[k];
-            if (hay && (hay.indexOf(alvo2) !== -1 || (n2 && alvo2.indexOf(n2) !== -1) || (n2 && n2.indexOf(alvo2) !== -1))) return c2;
-          }
+    for (var j = 0; j < lista.length; j++) {
+      var c2 = lista[j];
+      var nome2 = c2 && (c2.nome || c2.razao_social || c2.razao || '');
+      var hay = [nome2, c2 && c2.cnpj, c2 && c2.cidade, c2 && (c2.tel || c2.telefone)]
+        .filter(Boolean)
+        .map(normClienteNome)
+        .join(' | ');
+      var n2 = normClienteNome(nome2);
+      if (hay && (hay.indexOf(alvo) !== -1 || (n2 && alvo.indexOf(n2) !== -1))) return c2;
     }
     return null;
   }
@@ -29183,96 +27209,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function syncClienteOfRapida(input) {
     var el = input || document.getElementById('of-r-cliente');
     if (!el) return null;
-        var hiddenCliCurrent = null;
-        var prevId = '';
-        var prevNome = '';
-        try { hiddenCliCurrent = document.getElementById('of-r-cliente-id'); } catch (_) {}
-        try { prevId = String((el.dataset && el.dataset.clienteId) || (hiddenCliCurrent && hiddenCliCurrent.value) || '').trim(); } catch (_) {}
-        try { prevNome = String((el.dataset && el.dataset.clienteNome) || el.value || '').trim(); } catch (_) {}
     var cli = acharClienteRobusto(el.value);
     if (cli && cli.id) {
       el.dataset.clienteId = String(cli.id);
       el.dataset.clienteNome = String(cli.nome || cli.razao_social || cli.razao || el.value || '').trim();
-      try {
-            if (hiddenCliCurrent) hiddenCliCurrent.value = String(cli.id || '').trim();
-      } catch (_) {}
       return cli;
     }
-        if (prevId) {
-          var prevNorm = normClienteNome(prevNome);
-          var currentNorms = clienteLookupNormSet(el.value);
-          var keepPrev = !!(prevNorm && currentNorms.some(function(item) {
-            return item === prevNorm || item.indexOf(prevNorm) !== -1 || prevNorm.indexOf(item) !== -1;
-          }));
-          if (keepPrev) {
-            try { el.dataset.clienteId = prevId; } catch (_) {}
-            try { if (prevNome) el.dataset.clienteNome = prevNome; } catch (_) {}
-            try { if (hiddenCliCurrent) hiddenCliCurrent.value = prevId; } catch (_) {}
-            return { id: prevId, nome: prevNome || String(el.value || '').trim() };
-          }
-        }
-    try {
-          if (hiddenCliCurrent) hiddenCliCurrent.value = '';
-    } catch (_) {}
     delete el.dataset.clienteId;
     delete el.dataset.clienteNome;
     return null;
-  }
-
-  function ensureClienteOfRapidaHidden() {
-    var el = document.getElementById('of-r-cliente');
-    if (!el || !el.parentNode) return null;
-    var hidden = document.getElementById('of-r-cliente-id');
-    if (!hidden) {
-      hidden = document.createElement('input');
-      hidden.type = 'hidden';
-      hidden.id = 'of-r-cliente-id';
-      hidden.name = 'cli_id';
-      try { el.parentNode.appendChild(hidden); } catch (_) {}
-    }
-    return hidden;
-  }
-
-  function mirrorClienteOfRapidaOnCache(cliId, nomeCanonico) {
-    var id = String(cliId || '').trim();
-    var nome = String(nomeCanonico || '').trim();
-    if (!id) return;
-    try {
-      window.CLIENTES = Array.isArray(window.CLIENTES) ? window.CLIENTES : [];
-      var lista = window.CLIENTES;
-      var found = null;
-      var hasExactAlias = false;
-      var nomeLower = nome.toLowerCase();
-      for (var i = 0; i < lista.length; i += 1) {
-        var item = lista[i] || null;
-        if (!found && String(item && item.id || '').trim() === id) {
-          found = item;
-        }
-        if (nome) {
-          var itemNome = String(item && (item.nome || item.razao_social || item.razao) || '').trim().toLowerCase();
-          if (itemNome && itemNome === nomeLower) {
-            hasExactAlias = true;
-          }
-        }
-      }
-      if (!found) {
-        found = { id: id, nome: nome, razao_social: nome, razao: nome };
-        lista.push(found);
-      } else if (nome) {
-        if (!String(found.nome || '').trim()) found.nome = nome;
-        if (!String(found.razao_social || '').trim()) found.razao_social = nome;
-        if (!String(found.razao || '').trim()) found.razao = nome;
-        if (!hasExactAlias) {
-          lista.push({
-            id: id,
-            nome: nome,
-            razao_social: nome,
-            razao: nome,
-            _patchOfRapidaAlias: true
-          });
-        }
-      }
-    } catch (_) {}
   }
 
   function getAuthHeader() {
@@ -29282,14 +27227,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function fetchClientePorNome(nome) {
-        var queries = clienteLookupVariants(nome);
-        if (!queries.length) return Promise.resolve(null);
-        var urls = [];
-        queries.forEach(function(q) {
-          urls.push('/api/clientes?q=' + encodeURIComponent(q) + '&limit=5&t=' + Date.now());
-          urls.push('/api/clientes?search=' + encodeURIComponent(q) + '&limit=5&t=' + Date.now());
-          urls.push('/api/clientes?busca=' + encodeURIComponent(q) + '&limit=5&t=' + Date.now());
-        });
+    var q = String(nome || '').trim();
+    if (!q) return Promise.resolve(null);
+    var urls = [
+      '/api/clientes?q=' + encodeURIComponent(q) + '&limit=5&t=' + Date.now(),
+      '/api/clientes?search=' + encodeURIComponent(q) + '&limit=5&t=' + Date.now(),
+      '/api/clientes?busca=' + encodeURIComponent(q) + '&limit=5&t=' + Date.now()
+    ];
     var tryOne = function(i) {
       if (i >= urls.length) return Promise.resolve(null);
       return fetch(urls[i], { headers: getAuthHeader() })
@@ -29327,14 +27271,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   async function ensureClienteId(el) {
     if (!el) return null;
-        try {
-          var hiddenCli = document.getElementById('of-r-cliente-id');
-          var hiddenId = String(hiddenCli && hiddenCli.value || '').trim();
-          if (hiddenId) {
-            try { if (el.dataset) el.dataset.clienteId = hiddenId; } catch (_) {}
-            return { id: hiddenId, nome: String((el.dataset && el.dataset.clienteNome) || el.value || '').trim() };
-          }
-        } catch (_) {}
     try {
       if (el.dataset && el.dataset.clienteId) return { id: String(el.dataset.clienteId || '').trim() };
     } catch (_) {}
@@ -29362,7 +27298,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var el = document.getElementById('of-r-cliente');
     if (!el || el.dataset.patchClienteEspecial === '1') return;
     el.dataset.patchClienteEspecial = '1';
-    ensureClienteOfRapidaHidden();
     ['input', 'change', 'blur'].forEach(function(evt) {
       el.addEventListener(evt, function() { syncClienteOfRapida(el); }, true);
     });
@@ -29425,9 +27360,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
         var nomeCanonico = String((cli && (cli.nome || cli.razao_social || cli.razao)) || el.dataset.clienteNome || el.value || '').trim();
         if (nomeCanonico) el.value = nomeCanonico;
-        mirrorClienteOfRapidaOnCache(cliId, nomeCanonico);
         try {
-          var hiddenCli = ensureClienteOfRapidaHidden() || document.querySelector('#f-cli-id, input[name="cli_id"], input[name="cliId"]');
+          var hiddenCli = document.querySelector('#f-cli-id, input[name="cli_id"], input[name="cliId"]');
           if (hiddenCli) hiddenCli.value = cliId;
         } catch (_) {}
       }, 20);
@@ -29448,9 +27382,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
         var nomeCanonico = String((cli && (cli.nome || cli.razao_social || cli.razao)) || el.dataset.clienteNome || el.value || '').trim();
         if (nomeCanonico) el.value = nomeCanonico;
-        mirrorClienteOfRapidaOnCache(cliId, nomeCanonico);
         try {
-          var hiddenCli = ensureClienteOfRapidaHidden() || document.querySelector('#f-cli-id, input[name="cli_id"], input[name="cliId"]');
+          var hiddenCli = document.querySelector('#f-cli-id, input[name="cli_id"], input[name="cliId"]');
           if (hiddenCli) hiddenCli.value = cliId;
         } catch (_) {}
       }
@@ -40028,7 +37961,7 @@ function _ocultarGraficoComissoes() {
   }
 
   function _listaMaquinasHistoricoConclusao() {
-    return ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA'];
+    return ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
   }
 
   function _parsePassagensMaquinaConclusao(raw) {
@@ -43698,6 +41631,29 @@ function _ocultarGraficoComissoes() {
 ;(function() {
   if (window.__simdBoxPlannerTailAtRealEndApplied) return;
   window.__simdBoxPlannerTailAtRealEndApplied = true;
+  function reapply() {
+    try {
+      if (typeof window.__simdBoxPlannerFetch === 'function') window._simdCarregarChapas = window.__simdBoxPlannerFetch;
+      if (typeof window.__simdBoxPlannerVerify === 'function') window._simdVerificarCampos = window.__simdBoxPlannerVerify;
+      if (typeof window.__simdBoxPlannerRestore === 'function') window._simdRestoreState = window.__simdBoxPlannerRestore;
+      if (typeof window.__simdBoxPlannerSearch === 'function') window._simdBuscarChapa = window.__simdBoxPlannerSearch;
+      if (typeof window.__simdBoxPlannerSelect === 'function') window._simdSelecionarChapa = window.__simdBoxPlannerSelect;
+      if (typeof window.__simdBoxPlannerClear === 'function') window._simdLimparChapaSelecionada = window.__simdBoxPlannerClear;
+      if (typeof window.__simdBoxPlannerRun === 'function') {
+        window._simdCalcularFluxoImpl = window.__simdBoxPlannerRun;
+        window._simdCalcularPatchedImpl = window.__simdBoxPlannerRun;
+        window.__simdCalcularImpl = window.__simdBoxPlannerRun;
+        window._simdCalcular = window.__simdBoxPlannerRun;
+      }
+      if (typeof window.__simdBoxPlannerApply === 'function') window.__simdBoxPlannerApply();
+    } catch (e) {
+      try { console.error('[SIMD] tail real reapply falhou', e); } catch (_) {}
+    }
+  }
+  reapply();
+  setTimeout(reapply, 0);
+  setTimeout(reapply, 200);
+  setTimeout(reapply, 1200);
 })();
 ;(function() {
   window.__simdPreferredMode = String(window.__simdPreferredMode || 'sheet');
@@ -44144,18 +42100,15 @@ function _ocultarGraficoComissoes() {
 
   async function sFetchChapas() {
     if (Array.isArray(window.__simdAllChapasCache) && window.__simdAllChapasCache.length) {
-      try { console.log('[SIMD-DIAG] fetch chapas cache-hit', { total: window.__simdAllChapasCache.length }); } catch (_) {}
       return window.__simdAllChapasCache.slice();
     }
     var resp = null;
     var url = sPreferredFetchUrl();
-    try { console.log('[SIMD-DIAG] fetch chapas start', { url: url, hasAuthFetch: typeof window._apiAuthFetch === 'function' }); } catch (_) {}
     if (typeof window._apiAuthFetch === 'function') {
       resp = await window._apiAuthFetch(url, { cache: 'no-store' });
     } else {
       resp = await fetch(url, { cache: 'no-store' });
     }
-    try { console.log('[SIMD-DIAG] fetch chapas response', { ok: !!(resp && resp.ok), status: Number(resp && resp.status || 0), url: String(resp && resp.url || url) }); } catch (_) {}
     var data = await resp.json().catch(function() { return null; });
     if (!resp.ok) throw new Error(String(data && (data.error || data.message) || 'Falha ao carregar chapas do estoque'));
     var rows = sExtractRows(data);
@@ -44185,6 +42138,14 @@ function _ocultarGraficoComissoes() {
       var payload = encodeURIComponent(JSON.stringify(chapa || {}));
       return '<button type="button" class="simd-search-item" data-simd-chapa="' + payload + '"><strong>' + sEsc(String(chapa && (chapa.nome_uso || chapa.nome || chapa.nomenclatura || 'Chapa') || 'Chapa').trim()) + '</strong><span>' + sEsc([String(chapa && (chapa.fornecedor || chapa.forn || '—') || '—').trim() || '—', tamanho, 'Estoque: ' + String(sInt(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd))))].join(' · ')) + '</span></button>';
     }).join('');
+    Array.prototype.slice.call(resultados.querySelectorAll('[data-simd-chapa]')).forEach(function(btn) {
+      btn.onclick = function() {
+        var raw = String(btn.getAttribute('data-simd-chapa') || '');
+        var chapa = null;
+        try { chapa = JSON.parse(decodeURIComponent(raw)); } catch (_) { chapa = null; }
+        if (chapa) window._simdSelecionarChapa(chapa);
+      };
+    });
   }
 
   window._simdBuscarChapa = async function(termo) {
@@ -44302,15 +42263,6 @@ function _ocultarGraficoComissoes() {
 
   async function sCalcular() {
     var plan = sGetPlan();
-    try {
-      console.log('[SIMD-DIAG] Calcular clicado, estado atual=', {
-        plan: plan,
-        chapaSelecionada: window._simdChapaSelecionada || null,
-        btnDisabled: !!((document.getElementById('simd-btn') || {}).disabled),
-        hostSheetUi: String(((document.getElementById('tela-simulador-desperdicio') || {}).dataset || {}).simdSheetUi || ''),
-        resultadosVisiveis: String(((document.getElementById('simd-busca-resultados') || {}).style || {}).display || '')
-      });
-    } catch (_) {}
     var loading = document.getElementById('simd-loading');
     var resultado = document.getElementById('simd-resultado');
     if (!(plan.peca_larg_mm > 0 && plan.peca_comp_mm > 0)) {
@@ -44370,14 +42322,6 @@ function _ocultarGraficoComissoes() {
   function sRenderShell() {
     var host = document.getElementById('tela-simulador-desperdicio');
     if (!host) return false;
-    try {
-      console.log('[SIMD-DIAG] shell boot', {
-        page: String(window._PAGE_ATUAL || ''),
-        hostExists: !!host,
-        sheetUiBefore: String((host.dataset || {}).simdSheetUi || ''),
-        preferredMode: String(typeof _simdPreferredModeValue === 'function' ? _simdPreferredModeValue() : '')
-      });
-    } catch (_) {}
     if (host.dataset.simdSheetUi === '1') return true;
     host.dataset.simdSheetUi = '1';
     host.innerHTML = ''
@@ -44461,7 +42405,6 @@ function _ocultarGraficoComissoes() {
 
   function sBindShell() {
     if (!sRenderShell()) return false;
-    var host = document.getElementById('tela-simulador-desperdicio');
     ['simd-larg', 'simd-comp', 'simd-qtd'].forEach(function(id) {
       var el = document.getElementById(id);
       if (!el || el.dataset.simdMeasureBound === '1') return;
@@ -44481,33 +42424,12 @@ function _ocultarGraficoComissoes() {
         window._simdBuscarChapa(String(busca.value || ''));
       });
     }
-    var resultados = document.getElementById('simd-busca-resultados');
-    if (resultados && resultados.dataset.simdResultsBound !== '1') {
-      resultados.dataset.simdResultsBound = '1';
-      resultados.addEventListener('click', function(e) {
-        var target = null;
-        var raw = '';
-        var chapa = null;
-        try {
-          target = e && e.target && e.target.closest ? e.target.closest('[data-simd-chapa]') : null;
-        } catch (_) {
-          target = null;
-        }
-        if (!target) return;
-        try { if (e) e.preventDefault(); } catch (_) {}
-        raw = String(target.getAttribute('data-simd-chapa') || '');
-        try { chapa = JSON.parse(decodeURIComponent(raw)); } catch (_) { chapa = null; }
-        if (!chapa) return;
-        try { console.log('[SIMD-DIAG] clique em sugestao', chapa); } catch (_) {}
-        try { window._simdSelecionarChapa(chapa); } catch (err) { sErr('selecionar chapa falhou', err); }
-      });
-    }
     var clearBtn = document.getElementById('simd-btn-limpar-chapa');
     if (clearBtn && clearBtn.dataset.simdClearBound !== '1') {
       clearBtn.dataset.simdClearBound = '1';
       clearBtn.onclick = function(e) {
         try { if (e) e.preventDefault(); } catch (_) {}
-        return window._simdLimparChapaSelecionada();
+        window._simdLimparChapaSelecionada();
       };
     }
     var calcBtn = document.getElementById('simd-btn');
@@ -44539,63 +42461,11 @@ function _ocultarGraficoComissoes() {
     return true;
   }
 
-  function sDeactivateLegacyObservers() {
-    try {
-      if (window.__simdGlobalObsV2 && !window.__simdGlobalObsV2Disabled) {
-        window.__simdGlobalObsV2.disconnect();
-        window.__simdGlobalObsV2Disabled = true;
-      }
-    } catch (_) {}
-    try {
-      if (window.__patchSimdObs && !window.__patchSimdObsDisabled) {
-        window.__patchSimdObs.disconnect();
-        window.__patchSimdObsDisabled = true;
-      }
-    } catch (_) {}
-    try {
-      if (window.__simdBoxPlannerObs && !window.__simdBoxPlannerObsDisabled) {
-        window.__simdBoxPlannerObs.disconnect();
-        window.__simdBoxPlannerObsDisabled = true;
-      }
-    } catch (_) {}
-    try { window._simdBindBotaoDireto = function() { return false; }; } catch (_) {}
-  }
-
-  function sEnsureObservers() {
-    try {
-      if (!window.__simdSheetBootObs) {
-        window.__simdSheetBootObs = new MutationObserver(function() {
-          try { clearTimeout(window.__simdSheetBootObsTimer); } catch (_) {}
-          window.__simdSheetBootObsTimer = setTimeout(function() {
-            sDeactivateLegacyObservers();
-            sApply();
-          }, 80);
-        });
-        window.__simdSheetBootObs.observe(document.body, { childList: true, subtree: true });
-      }
-    } catch (_) {}
-    try {
-      var obsHost = document.getElementById('tela-simulador-desperdicio');
-      if (!window.__simdSheetMeasureObs) {
-        window.__simdSheetMeasureObs = new MutationObserver(function() {
-          try { clearTimeout(window.__simdSheetMeasureObsTimer); } catch (_) {}
-          window.__simdSheetMeasureObsTimer = setTimeout(sApply, 80);
-        });
-      }
-      if (obsHost && window.__simdSheetMeasureObsHost !== obsHost) {
-        try { window.__simdSheetMeasureObs.disconnect(); } catch (_) {}
-        window.__simdSheetMeasureObsHost = obsHost;
-        window.__simdSheetMeasureObs.observe(obsHost, { childList: true, subtree: true });
-      }
-    } catch (_) {}
-  }
-
   function sApply() {
     try {
-      sDeactivateLegacyObservers();
       if (!sBindShell()) return;
       sVerificarCampos();
-      sEnsureObservers();
+      try { if (typeof window._simdBindBotaoDireto === 'function') window._simdBindBotaoDireto(); } catch (_) {}
     } catch (e) {
       sErr('apply falhou', e);
     }
@@ -44617,278 +42487,15 @@ function _ocultarGraficoComissoes() {
   setTimeout(sApply, 0);
   setTimeout(sApply, 300);
   setTimeout(sApply, 1200);
-  sEnsureObservers();
-})();
-;(function() {
-  if (window.__pageVisibilitySanitizerInstalled) return;
-  window.__pageVisibilitySanitizerInstalled = true;
-
-  function pageIdFrom(pid) {
-    var txt = String(pid || '').trim();
-    if (!txt) return '';
-    return txt.indexOf('page-') === 0 ? txt : ('page-' + txt);
-  }
-
-  function syncVisiblePage(pid) {
-    try {
-      var targetId = pageIdFrom(pid);
-      var pages = Array.prototype.slice.call(document.querySelectorAll('.page[id]'));
-      if (!pages.length) return;
-      var target = targetId ? document.getElementById(targetId) : null;
-      if (!target) {
-        target = document.querySelector('.page.active') || null;
-        targetId = String((target && target.id) || '').trim();
-      }
-      pages.forEach(function(page) {
-        var isTarget = !!(target && page === target);
-        try {
-          if (isTarget) page.classList.add('active');
-          else page.classList.remove('active');
-        } catch (_) {}
-        try {
-          page.style.display = isTarget ? '' : 'none';
-        } catch (_) {}
-        try {
-          if (isTarget) page.removeAttribute('hidden');
-          else page.setAttribute('hidden', 'hidden');
-        } catch (_) {}
-      });
-      if (targetId) {
-        try { window._PAGE_ATUAL = targetId.replace(/^page-/, ''); } catch (_) {}
-      }
-    } catch (_) {}
-  }
-
-  function install() {
-    try {
-      var origGo = window.go;
-      if (typeof origGo !== 'function' || origGo.__pageVisibilitySanitized) return;
-      var wrappedGo = function(id) {
-        var out = origGo.apply(this, arguments);
-        var pid = String(id || '').trim();
-        [0, 60, 220].forEach(function(wait) {
-          setTimeout(function() { syncVisiblePage(pid); }, wait);
-        });
-        return out;
-      };
-      wrappedGo.__pageVisibilitySanitized = true;
-      wrappedGo.__origGo = origGo;
-      window.go = wrappedGo;
-      try { go = wrappedGo; } catch (_) {}
-      setTimeout(function() { syncVisiblePage(window._PAGE_ATUAL || ''); }, 0);
-    } catch (_) {}
-  }
-
-  install();
-  setTimeout(install, 0);
-  setTimeout(install, 400);
-})();
-;(function() {
-  if (window.__patchRuntimeFinalFixesInstalled) return;
-  window.__patchRuntimeFinalFixesInstalled = true;
-
-  function ensureRenderConfiguracoesFallback() {
-    try {
-      if (typeof window.renderConfiguracoes === 'function') return;
-      window.renderConfiguracoes = function() {
-        if (typeof window.renderSistema === 'function') return window.renderSistema.apply(this, arguments);
-        if (typeof window.go === 'function') return window.go('configuracoes');
-        return undefined;
-      };
-      try { renderConfiguracoes = window.renderConfiguracoes; } catch (_) {}
-    } catch (_) {}
-  }
-
-  function ensureLateFullscreenStyles() {
-    if (document.getElementById('patch-final-fullscreen-fixes')) return;
-    var st = document.createElement('style');
-    st.id = 'patch-final-fullscreen-fixes';
-    st.textContent = ''
-      + '#modal-calc,#modal-calc.modal-overlay{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:100vw!important;max-height:100vh!important;padding:0!important;margin:0!important;align-items:stretch!important;justify-content:stretch!important;overflow:hidden!important;background:rgba(2,6,23,.82)!important}'
-      + '#modal-calc #modal-calculadora,#modal-calc.orc-calc-fs-ready #modal-calculadora{position:relative!important;inset:0!important;width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;margin:0!important;border-radius:0!important;overflow:hidden!important;box-shadow:none!important}'
-      + '#ccpx-compra-fullscreen,#ccpx-compra-fullscreen.ccpx-fs-overlay{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:100vw!important;max-height:100vh!important;padding:0!important;margin:0!important;display:flex!important;align-items:stretch!important;justify-content:stretch!important;overflow:hidden!important}'
-      + '#ccpx-compra-fullscreen > .ccpx-fs-shell{width:100vw!important;height:100vh!important;max-width:100vw!important;max-height:100vh!important;border-radius:0!important;margin:0!important;overflow:hidden!important}';
-    document.head.appendChild(st);
-  }
-
-  function applyCalcFullscreenNow() {
-    var overlay = document.getElementById('modal-calc');
-    var modal = document.getElementById('modal-calculadora');
-    if (!overlay || !modal) return;
-    try { overlay.classList.add('orc-calc-fs-ready'); } catch (_) {}
-    try {
-      overlay.style.setProperty('position', 'fixed', 'important');
-      overlay.style.setProperty('inset', '0', 'important');
-      overlay.style.setProperty('width', '100vw', 'important');
-      overlay.style.setProperty('height', '100vh', 'important');
-      overlay.style.setProperty('max-width', '100vw', 'important');
-      overlay.style.setProperty('max-height', '100vh', 'important');
-      overlay.style.setProperty('padding', '0', 'important');
-      overlay.style.setProperty('margin', '0', 'important');
-      overlay.style.setProperty('align-items', 'stretch', 'important');
-      overlay.style.setProperty('justify-content', 'stretch', 'important');
-    } catch (_) {}
-    try {
-      modal.style.setProperty('width', '100vw', 'important');
-      modal.style.setProperty('height', '100vh', 'important');
-      modal.style.setProperty('max-width', '100vw', 'important');
-      modal.style.setProperty('max-height', '100vh', 'important');
-      modal.style.setProperty('margin', '0', 'important');
-      modal.style.setProperty('border-radius', '0', 'important');
-    } catch (_) {}
-  }
-
-  function applyCompraFullscreenNow() {
-    var overlay = document.getElementById('ccpx-compra-fullscreen');
-    if (!overlay || typeof window._compraPapelaoForceFullscreenShell !== 'function') return;
-    try { window._compraPapelaoForceFullscreenShell(overlay); } catch (_) {}
-  }
-
-  function simdNum(v) {
-    var n = Number(String(v == null ? '' : v).replace(',', '.'));
-    return Number.isFinite(n) ? n : 0;
-  }
-
-  function simdFmtRs(v) {
-    try { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return 'R$ 0,00'; }
-  }
-
-  async function simdLoadChapasUniversal() {
-    try {
-      if (typeof window._simdCarregarChapas === 'function') {
-        var fromPatch = await window._simdCarregarChapas();
-        if (Array.isArray(fromPatch) && fromPatch.length) return fromPatch;
-      }
-    } catch (_) {}
-    var url = '/api/chapas_estoque?limit=10000&nocache=1&_t=' + Date.now();
-    var resp = null;
-    if (typeof window._apiAuthFetch === 'function') resp = await window._apiAuthFetch(url, { cache: 'no-store' });
-    else resp = await fetch(url, { cache: 'no-store' });
-    var json = await resp.json().catch(function() { return null; });
-    if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao carregar chapas'));
-    return Array.isArray(json) ? json : (Array.isArray(json && json.data) ? json.data : (Array.isArray(json && json.chapas) ? json.chapas : []));
-  }
-
-  function simdRenderUniversalRows(rows, larg, comp, qtdPedido) {
-    var resultado = document.getElementById('simd-resultado');
-    var wrap = document.getElementById('simd-tabela-wrap');
-    var linhas = document.getElementById('simd-linhas');
-    var aviso = document.getElementById('simd-aviso');
-    var info = document.getElementById('simd-info-planif');
-    if (resultado) resultado.style.display = 'block';
-    if (info) {
-      info.innerHTML = 'Peça informada: <strong style="color:rgba(255,255,255,0.88)">' + String(comp) + ' x ' + String(larg) + ' mm</strong>'
-        + ' · Área unitária: <strong style="color:rgba(255,255,255,0.88)">' + ((larg * comp) / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' m²</strong>'
-        + (qtdPedido > 0 ? (' · Quantidade: <strong style="color:rgba(255,255,255,0.88)">' + String(qtdPedido) + '</strong>') : '');
-    }
-    if (aviso) {
-      aviso.style.display = rows.length ? 'none' : 'block';
-      aviso.textContent = 'Nenhuma chapa em estoque é compatível com estas medidas. Verifique se há chapas cadastradas ou ajuste as medidas.';
-    }
-    if (!wrap) return;
-    wrap.style.display = 'block';
-    if (!rows.length) {
-      wrap.innerHTML = '<div style="padding:22px;text-align:center;color:rgba(255,255,255,0.55)">Nenhuma chapa do estoque comporta essa peça.</div>';
-      return;
-    }
-    var cardsHtml = rows.map(function(row, idx) {
-      var key = String(row && (row.id || row.chapa_id || row.codigo || row.tamanho || idx) || idx).trim();
-      var desperdicio = Number(row && (row.desperdicio_pct != null ? row.desperdicio_pct : row.desperdicio) || 0) || 0;
-      var pecas = Number(row && (row.pecas_por_chapa != null ? row.pecas_por_chapa : row.caixas_por_chapa) || 0) || 0;
-      var estoque = Number(row && (row.quantidade_atual != null ? row.quantidade_atual : (row.quantidade != null ? row.quantidade : row.qtd)) || 0) || 0;
-      var custo = Number(row && (row.custo_estimado != null ? row.custo_estimado : row.custo_total) || 0) || 0;
-      return ''
-        + '<div data-simd-universal-row="' + key.replace(/"/g, '&quot;') + '" style="display:grid;grid-template-columns:90px minmax(220px,1.3fr) minmax(120px,.8fr) minmax(100px,.7fr) minmax(100px,.7fr) minmax(130px,.9fr);gap:10px;padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.12);align-items:center;cursor:pointer">'
-        + '  <div style="font-weight:900;color:#f8fafc">' + desperdicio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%</div>'
-        + '  <div><div style="font-weight:800;color:#f8fafc">' + String(row && (row.nome_uso || row.nome || row.nomenclatura || row.chapa || row.tamanho) || 'Chapa') + '</div><div style="font-size:12px;color:#94a3b8">' + String(row && (row.fornecedor || row.forn || 'Fornecedor não informado') || 'Fornecedor não informado') + ' · ' + String(row && (row.tamanho || row.tam || 'Sem tamanho') || 'Sem tamanho') + '</div></div>'
-        + '  <div style="text-align:center;color:#cbd5e1">' + String(pecas) + '</div>'
-        + '  <div style="text-align:right;color:#cbd5e1">' + String(estoque) + '</div>'
-        + '  <div style="text-align:right;color:#f8fafc">' + simdFmtRs(row && (row.valor_unitario != null ? row.valor_unitario : row.val) || 0) + '</div>'
-        + '  <div style="text-align:right;color:#86efac;font-weight:800">' + (custo > 0 ? simdFmtRs(custo) : '—') + '</div>'
-        + '</div>';
-    }).join('');
-    if (linhas) linhas.innerHTML = cardsHtml;
-    else {
-      wrap.innerHTML = ''
-        + '<div style="display:grid;grid-template-columns:90px minmax(220px,1.3fr) minmax(120px,.8fr) minmax(100px,.7fr) minmax(100px,.7fr) minmax(130px,.9fr);gap:10px;padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(148,163,184,.12);font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8">'
-        + '  <div>Desp.</div><div>Chapa</div><div style="text-align:center">Peças/chapa</div><div style="text-align:right">Estoque</div><div style="text-align:right">Valor</div><div style="text-align:right">Custo</div>'
-        + '</div>'
-        + cardsHtml;
-    }
-    try {
-      var top = rows[0];
-      if (top && typeof window._simdGerarVisual === 'function') window._simdGerarVisual(top, { desenvolvimento_comprimento: comp, desenvolvimento_largura: larg, area_caixa_mm2: larg * comp });
-      else if (top && typeof window._simdRenderVisual === 'function') window._simdRenderVisual(top, { peca_larg_mm: larg, peca_comp_mm: comp, qtd_pedido: qtdPedido });
-    } catch (_) {}
-  }
-
-  async function simdCalcularUniversal(ev) {
-    try { if (ev) ev.preventDefault(); } catch (_) {}
-    try { if (ev) ev.stopPropagation(); } catch (_) {}
-    var larg = simdNum((document.getElementById('simd-larg') || {}).value);
-    var comp = simdNum((document.getElementById('simd-comp') || {}).value);
-    var qtdPedido = Math.max(0, Math.trunc(simdNum((document.getElementById('simd-qtd') || {}).value)));
-    var loading = document.getElementById('simd-loading');
-    var resultado = document.getElementById('simd-resultado');
-    if (!(larg > 0 && comp > 0)) {
-      try { alert('Preencha largura e comprimento necessários.'); } catch (_) {}
-      return false;
-    }
-    if (loading) loading.style.display = 'block';
-    if (resultado) resultado.style.display = 'none';
-    try {
-      var base = window._simdChapaSelecionada ? [window._simdChapaSelecionada] : await simdLoadChapasUniversal();
-      var rows = (Array.isArray(base) ? base : []).map(function(chapa) {
-        if (typeof window._simdCalcularUmaChapa === 'function') return window._simdCalcularUmaChapa(chapa, larg, comp, qtdPedido);
-        return null;
-      }).filter(Boolean).sort(function(a, b) {
-        var da = Number(a && (a.desperdicio_pct != null ? a.desperdicio_pct : a.desperdicio) || 0) || 0;
-        var db = Number(b && (b.desperdicio_pct != null ? b.desperdicio_pct : b.desperdicio) || 0) || 0;
-        if (da !== db) return da - db;
-        var pa = Number(a && (a.pecas_por_chapa != null ? a.pecas_por_chapa : a.caixas_por_chapa) || 0) || 0;
-        var pb = Number(b && (b.pecas_por_chapa != null ? b.pecas_por_chapa : b.caixas_por_chapa) || 0) || 0;
-        if (pa !== pb) return pb - pa;
-        return (Number(a && (a.retalho_area_mm2 || a.areaRetalho) || 0) || 0) - (Number(b && (b.retalho_area_mm2 || b.areaRetalho) || 0) || 0);
-      });
-      simdRenderUniversalRows(rows, larg, comp, qtdPedido);
-    } catch (e) {
-      simdRenderUniversalRows([], larg, comp, qtdPedido);
-      try { console.error('[SIMD UNIVERSAL]', e); } catch (_) {}
-      try { alert('Erro ao calcular desperdício: ' + String(e && e.message || e)); } catch (_) {}
-    } finally {
-      if (loading) loading.style.display = 'none';
-      if (resultado) resultado.style.display = 'block';
-    }
-    return false;
-  }
-
-  function bindUniversalSimd() {
-    var btn = document.getElementById('simd-btn');
-    if (!btn || btn.dataset.simdUniversalBound === '1') return;
-    btn.dataset.simdUniversalBound = '1';
-    try { btn.type = 'button'; } catch (_) {}
-    btn.onclick = simdCalcularUniversal;
-  }
-
-  function tick() {
-    ensureRenderConfiguracoesFallback();
-    ensureLateFullscreenStyles();
-    applyCalcFullscreenNow();
-    applyCompraFullscreenNow();
-    bindUniversalSimd();
-    try { window._simdCalcular = simdCalcularUniversal; } catch (_) {}
-  }
-
-  tick();
-  setTimeout(tick, 0);
-  setTimeout(tick, 300);
-  setTimeout(tick, 1200);
   try {
-    var obs = new MutationObserver(function() { tick(); });
-    obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
+    if (!window.__simdSheetMeasureObs) {
+      window.__simdSheetMeasureObs = new MutationObserver(function() {
+        try { clearTimeout(window.__simdSheetMeasureObsTimer); } catch (_) {}
+        window.__simdSheetMeasureObsTimer = setTimeout(sApply, 80);
+      });
+      window.__simdSheetMeasureObs.observe(document.body, { childList: true, subtree: true });
+    }
   } catch (_) {}
 })();
 try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(99, 'antes PATCH-FIM'); } catch (_) {}
 console.log('[PATCH-FIM] patch.js executou ate o fim');
-
-
