@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -3555,7 +3555,11 @@ function _isStatusConclusaoOf(value) {
 }
 
 const CAMPOS_OFS_UPDATE = new Set([
-  'of', 'clinome', 'cli_id', 'cliid', 'vendid', 'vendedor', 'vendedor_id',
+  'of', 'numero',
+  'clinome', 'cliNome', 'cliente_nome', 'cliente',
+  'cli_id', 'cliId', 'cliente_id', 'cliid',
+  'vendid', 'vendId', 'vend_id',
+  'vendedor', 'vendNome', 'vendedor_nome', 'vendedor_id',
   'preco', 'total', 'qtd', 'qtd_produzida', 'qtd_perdida', 'qtd_pedida',
   'status', 'ent', 'dia', 'maq', 'obs', 'obs2', 'urgente', 'urg',
   'cores_impressao', 'empresa_id', 'emp_id', 'deleted_at',
@@ -3752,19 +3756,36 @@ async function _preencherCamposCriticosOF(input, opts = {}) {
     return Number.isFinite(n) ? n : 0;
   };
 
-  const cliId = String(out.cli_id ?? out.cliId ?? out.cliente_id ?? out.cliid ?? '').trim();
-  let clinome = _clienteNomeValido(out.clinome ?? out.cliNome ?? out.cliente_nome ?? out.cliente ?? '');
+  let cliId = String(out.cli_id ?? out.cliId ?? out.cliente_id ?? out.cliid ?? '').trim();
+  const cliResolved = cliId ? await _resolverClienteIdentidadeOF(cliId) : null;
+  if (cliResolved?.id) {
+    cliId = String(cliResolved.id || '').trim();
+    out.cli_id = cliId;
+    out.cliId = cliId;
+    out.cliente_id = cliId;
+    if (out.cliid === undefined || out.cliid === '') out.cliid = cliId;
+  }
+  let clinome = _clienteNomeValido(
+    cliResolved?.nome ?? out.clinome ?? out.cliNome ?? out.cliente_nome ?? out.cliente ?? ''
+  );
   if (!clinome && cliId) clinome = await _buscarClienteNomeOF(cliId);
   if (clinome) {
     out.clinome = clinome;
-    if (out.cliNome === undefined || out.cliNome === '') out.cliNome = clinome;
-    if (out.cliente_nome === undefined || out.cliente_nome === '') out.cliente_nome = clinome;
-    if (out.cliente === undefined || out.cliente === '') out.cliente = clinome;
+    out.cliNome = clinome;
+    out.cliente_nome = clinome;
+    out.cliente = clinome;
   }
   if (onlyClinome) return out;
 
-  const vendedorId = String(out.vendedor_id ?? out.vendId ?? out.vend_id ?? '').trim();
+  let vendedorId = String(out.vendedor_id ?? out.vendId ?? out.vend_id ?? '').trim();
+  if (!vendedorId && cliResolved?.vendedor_id) vendedorId = String(cliResolved.vendedor_id || '').trim();
+  if (vendedorId) {
+    out.vendedor_id = vendedorId;
+    out.vendId = vendedorId;
+    out.vend_id = vendedorId;
+  }
   let vendedor = String(out.vendedor ?? out.vendNome ?? out.vendedor_nome ?? '').trim();
+  if (vendedor && _isUuid(vendedor)) vendedor = '';
   if (!vendedor && vendedorId) vendedor = await _buscarVendedorNomeOF(vendedorId);
   let vendid = String(out.vendid ?? '').trim();
   if (!vendid) vendid = String(out.vendId ?? out.vend_id ?? out.vendedor_id ?? '').trim();
@@ -3772,8 +3793,8 @@ async function _preencherCamposCriticosOF(input, opts = {}) {
   if (!vendedor && vendid) vendedor = vendid;
   if (vendedor) {
     out.vendedor = vendedor;
-    if (out.vendNome === undefined || out.vendNome === '') out.vendNome = vendedor;
-    if (out.vendedor_nome === undefined || out.vendedor_nome === '') out.vendedor_nome = vendedor;
+    out.vendNome = vendedor;
+    out.vendedor_nome = vendedor;
   }
   if (vendid) out.vendid = vendid;
 
@@ -5352,7 +5373,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         if (typeof v === 'string') { try { const p = JSON.parse(v || '[]'); return Array.isArray(p) ? p : []; } catch (_) { return []; } }
         return [];
       };
-      const merged = { ...(body || {}), ...(filtered || {}) };
+      let merged = { ...(body || {}), ...(filtered || {}) };
       const cliRef = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
       const cliResolved = cliRef ? await _resolverClienteIdentidadeOF(cliRef) : null;
       if (cliRef && !cliResolved) {
@@ -5365,9 +5386,15 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         if (!String(merged.clinome ?? '').trim()) merged.clinome = cliResolved.nome || '';
         if (!String(merged.cliNome ?? '').trim()) merged.cliNome = cliResolved.nome || '';
         if (!String(merged.cliente_nome ?? '').trim()) merged.cliente_nome = cliResolved.nome || '';
+        if (!String(merged.vendedor_id ?? merged.vendId ?? merged.vend_id ?? '').trim() && String(cliResolved.vendedor_id || '').trim()) {
+          merged.vendedor_id = cliResolved.vendedor_id;
+          merged.vendId = cliResolved.vendedor_id;
+          merged.vend_id = cliResolved.vendedor_id;
+        }
       }
+      merged = await _preencherCamposCriticosOF(merged);
       const cliId = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
-      const vendId = String(merged.vendid ?? merged.vendedor ?? merged.vendedor_id ?? merged.vendedorId ?? merged.vendId ?? merged.vend_id ?? '').trim();
+      const vendId = String(merged.vendedor_id ?? merged.vendedorId ?? merged.vendId ?? merged.vend_id ?? '').trim();
       const qtd = Number(merged.qtd ?? merged.quantidade ?? merged.qtd_pedida ?? 0) || 0;
       const ent = String(merged.ent ?? merged.data_entrega ?? '').slice(0, 10);
       const itens = parseItens(merged.itens ?? body.itens);
@@ -5400,6 +5427,12 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         clinome: String(merged.clinome ?? merged.cliNome ?? merged.cliente_nome ?? '').trim(),
         cliNome: String(merged.cliNome ?? merged.clinome ?? merged.cliente_nome ?? '').trim(),
         cliente_nome: String(merged.cliente_nome ?? merged.clinome ?? merged.cliNome ?? '').trim(),
+        vendedor_id: vendId || null,
+        vendId: vendId || null,
+        vend_id: vendId || null,
+        vendid: String(merged.vendid ?? vendId ?? '').trim() || null,
+        vendedor: String(merged.vendedor ?? merged.vendNome ?? merged.vendedor_nome ?? '').trim(),
+        vendNome: String(merged.vendNome ?? merged.vendedor ?? merged.vendedor_nome ?? '').trim(),
       };
     }
     console.debug('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
@@ -5662,7 +5695,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
     let body = filterOfsUpdateWhitelist(normalizeOfUpdateBody(req.body || {}));
-    body = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(body, { onlyClinome: true }));
+    body = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(body));
     try { console.log('[OF PATCH] payload recebido:', JSON.stringify(req.body || {}).substring(0, 300)); } catch (_) {}
     try { console.log('[OF PATCH] campos após whitelist:', Object.keys(body || {})); } catch (_) {}
     if (body.qtd !== undefined) body.qtd = Number(body.qtd);
@@ -7879,7 +7912,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         }
         : bodyIn;
     let payload = filterOfsUpdateWhitelist(sanitizeOfUpdatePayload({ ...ofIn(mapped || {}), updated_at: new Date().toISOString() }));
-    payload = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(payload, { onlyClinome: true }));
+    payload = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(payload));
     try { console.log('[PATCH OF] campos após whitelist:', Object.keys(payload || {})); } catch (_) {}
     try {
       const { data: ofAtual2 } = await supabase.from('ofs').select('status').eq('id', id).maybeSingle();

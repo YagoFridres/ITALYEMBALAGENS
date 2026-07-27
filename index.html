@@ -2673,6 +2673,7 @@ const MAQUINAS_ATIVAS = [
   'IMP 03',
   'IMP 04',
   'IMP 05',
+  'Riscador',
   'CORTE VINCO ROTATIVA',
 ];
 
@@ -2720,6 +2721,7 @@ function maqAtivaFromNome(nome){
   if(s.includes('rotat') && (s.includes('vinco') || s.includes('corte'))) return 'CORTE VINCO ROTATIVA';
   if(s === 'cvr') return 'CORTE VINCO ROTATIVA';
   if(s === 'rotativa') return 'CORTE VINCO ROTATIVA';
+  if(s === 'riscador' || s === 'risc' || s === 'riscador 01' || s === 'riscador 02' || s === 'risc01' || s === 'risc02') return 'Riscador';
   return '';
 }
 
@@ -2731,6 +2733,7 @@ const MAQUINAS_FLUXO = [
   'IMP 03',
   'IMP 04',
   'IMP 05',
+  'Riscador',
   'CORTE VINCO ROTATIVA',
 ];
 
@@ -3054,8 +3057,8 @@ async function excluirCorImpressao(id){
 }
 
 const MAQ_CODIGO_PARA_NOME = {
-  'RISC01': 'Riscador 01',
-  'RISC02': 'Riscador 02',
+  'RISC01': 'Riscador',
+  'RISC02': 'Riscador',
   'IMP01': 'IMP 01',
   'IMP02': 'IMP 02',
   'IMP03': 'IMP 03',
@@ -3743,8 +3746,7 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
           onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
           <option value="">-- Selecionar setor --</option>
           <option value="Acabamento">Acabamento</option>
-          <option value="Riscador 01">Riscador 01</option>
-          <option value="Riscador 02">Riscador 02</option>
+          <option value="Riscador">Riscador</option>
           <option value="Corte Plana">Corte Plana</option>
           <option value="Coladeira 01">Coladeira 01</option>
           <option value="Coladeira 02">Coladeira 02</option>
@@ -4504,7 +4506,8 @@ window.carregarMaquinasOfRapida = async function(){
     { nome: 'IMP 02' },
     { nome: 'IMP 03' },
     { nome: 'IMP 04' },
-    { nome: 'IMP 05' }
+    { nome: 'IMP 05' },
+    { nome: 'Riscador' }
   ];
 
   var token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
@@ -10945,7 +10948,7 @@ const MAQUINAS_PERMITIDAS = [
 function maquinaPermitida(nomeMaq) {
   if (!nomeMaq) return false;
   const n = String(nomeMaq).toUpperCase().trim();
-  return MAQUINAS_PERMITIDAS.some((p) => n.includes(p) || p.includes(n)) || /^IMP\s*0?[1-5]$/i.test(n) || /CORTE.*VINCO/i.test(n);
+  return MAQUINAS_PERMITIDAS.some((p) => n.includes(p) || p.includes(n)) || /^IMP\s*0?[1-5]$/i.test(n) || /RISCADOR/i.test(n) || /CORTE.*VINCO/i.test(n);
 }
 
 function ofmaqToggleMaquina(maqId){
@@ -11752,7 +11755,7 @@ var TODAS_MAQUINAS = [
   'Corte Vinco Rotativa',
   'IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05',
   'Acabamento',
-  'Riscador 01', 'Riscador 02',
+  'Riscador',
   'Corte Plana',
   'Coladeira 01', 'Coladeira 02'
 ];
@@ -29292,7 +29295,7 @@ function baixarRiscadorPorOF(ofNum){
     const ch=getCh(v.chpId);
     if(ch){
       ch.qtd-=v.qtd;
-      HIST_EST.unshift({tipo:'saida',chp:v.chpId,qtd:v.qtd,of:ofNum,data:today(),obs:'Baixa automática — Riscador 01'});
+      HIST_EST.unshift({tipo:'saida',chp:v.chpId,qtd:v.qtd,of:ofNum,data:today(),obs:'Baixa automática — Riscador'});
     }
     v.baixado=true;
   });
@@ -44830,6 +44833,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         <option value="IMP 03">IMP 03</option>
         <option value="IMP 04">IMP 04</option>
         <option value="IMP 05">IMP 05</option>
+        <option value="Riscador">Riscador</option>
       </select>
     </div>
     <div id="ofs-por-maquina-container"></div>
@@ -44868,7 +44872,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <option>IMP 01</option><option>IMP 02</option>
       <option>IMP 03</option><option>IMP 04</option><option>IMP 05</option>
       <option>Acabamento</option>
-      <option>Riscador 01</option><option>Riscador 02</option>
+      <option>Riscador</option>
       <option>Corte Plana</option>
       <option>Coladeira 01</option><option>Coladeira 02</option>
     </select>
@@ -46598,7 +46602,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           <option>Corte Vinco Rotativa</option>
           <option>IMP 01</option><option>IMP 02</option>
           <option>IMP 03</option><option>IMP 04</option><option>IMP 05</option>
-          <option>Acabamento</option><option>Riscador 01</option><option>Riscador 02</option>
+          <option>Acabamento</option><option>Riscador</option>
           <option>Corte Plana</option><option>Coladeira 01</option><option>Coladeira 02</option>
         </select>
       </div>
