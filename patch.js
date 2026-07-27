@@ -6645,6 +6645,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       + '.ccp-modal-summary-chip{display:grid;gap:4px;min-width:150px;padding:12px 14px;border-radius:12px;border:1px solid rgba(148,163,184,.14);background:rgba(2,6,23,.28)}'
       + '.ccp-modal-summary-chip .lbl{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
       + '.ccp-modal-summary-chip .val{font-size:16px;font-weight:900;color:#f8fafc}'
+      + '#ccp-modal-compra.estoque-modal-overlay,#ccp-modal-compra.estoque-modal-overlay-padrao{padding:0!important;align-items:stretch!important;justify-content:stretch!important;background:rgba(2,6,23,.88)!important;backdrop-filter:blur(8px)!important}'
+      + '#ccp-modal-compra .estoque-modal-shell,#ccp-modal-compra .estoque-modal-shell-padrao{width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;box-shadow:none!important}'
+      + '#ccp-modal-compra .estoque-modal-header-padrao{padding:18px 24px!important}'
+      + '#ccp-modal-compra .estoque-modal-content-padrao{padding:18px 24px!important;overflow:auto!important;min-height:0!important}'
+      + '#ccp-modal-compra .estoque-modal-footer-padrao{padding:14px 24px 16px!important}'
       + '@media (max-width:900px){.ccp-modal-grid,.ccp-modal-primary-grid,.ccp-modal-secondary-grid{grid-template-columns:1fr}#page-compras .ccp-search-shell{align-items:stretch}#page-compras .ccp-search-shell button{width:100%}}';
     document.head.appendChild(st);
   }
@@ -7889,8 +7894,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#page-orcamentos #calc-pasta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-2px 0 12px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px}'
       + '#page-orcamentos #calc-pasta-row label{font-size:12px;font-weight:800;color:rgba(255,255,255,.72);text-transform:uppercase;letter-spacing:.04em}'
       + '#page-orcamentos #calc-pasta{min-width:240px;flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px}'
-      + '#modal-calc{align-items:center!important;justify-content:center!important;padding:18px!important;background:rgba(2,6,23,.74)!important;backdrop-filter:blur(6px)!important}'
-      + '#modal-calc #modal-calculadora{width:min(1520px,calc(100vw - 28px))!important;max-width:min(1520px,calc(100vw - 28px))!important;max-height:94vh!important;height:auto!important;background:linear-gradient(180deg,#07111f 0%,#0f172a 20%,#111827 100%)!important;border:1px solid rgba(96,165,250,.18)!important;border-radius:26px!important;box-shadow:0 30px 90px rgba(2,6,23,.48)!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;padding:22px!important}'
+      + '#modal-calc{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;align-items:stretch!important;justify-content:stretch!important;padding:0!important;background:rgba(2,6,23,.82)!important;backdrop-filter:blur(8px)!important}'
+      + '#modal-calc #modal-calculadora{width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;background:linear-gradient(180deg,#07111f 0%,#0f172a 20%,#111827 100%)!important;border:none!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;padding:22px!important}'
       + '#modal-calc #modal-calculadora h2{margin:0 0 12px!important;padding:0 56px 0 0!important;font-size:28px!important;font-weight:900!important;letter-spacing:-.02em!important;color:#eff6ff!important}'
       + '#modal-calc #modal-calculadora .close-btn{top:18px!important;right:18px!important;width:42px!important;height:42px!important;border-radius:999px!important;background:rgba(15,23,42,.9)!important;border:1px solid rgba(148,163,184,.2)!important;color:#f8fafc!important}'
       + '#modal-calc #modal-calculadora .calc-header-row{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;gap:14px!important;align-items:center!important;padding:16px 18px!important;border-radius:18px!important;background:linear-gradient(135deg,rgba(5,150,105,.18),rgba(29,78,216,.18))!important;border:1px solid rgba(125,211,252,.16)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)!important}'
@@ -7946,7 +7951,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-footer{padding:14px 24px 16px!important;border-top:1px solid rgba(148,163,184,.14)!important;background:rgba(3,7,18,.94)!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-footer.rodape{margin:0!important;padding:0!important;border-top:none!important;background:transparent!important}'
       + '@media (max-width:1280px){#modal-calc #modal-calculadora{width:min(1450px,calc(100vw - 20px))!important}#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .calc-col-dir{min-width:0!important;position:static!important}#modal-calc #modal-calculadora #calc-sheet{table-layout:auto!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-topbar{grid-template-columns:repeat(2,minmax(0,1fr))!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{grid-template-columns:1fr!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{position:static!important;max-height:none!important}}'
-      + '@media (max-width:920px){#modal-calc{padding:10px!important}#modal-calc #modal-calculadora{width:min(100vw - 12px,100%)!important;max-width:min(100vw - 12px,100%)!important;max-height:96vh!important;padding:16px!important}#modal-calc #modal-calculadora .calc-header-row{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .calc-row-top,#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .modal-footer.rodape{flex-direction:column!important;align-items:stretch!important}#modal-calc #modal-calculadora .modal-footer.rodape button{width:100%!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-header{padding:14px 16px!important;align-items:flex-start!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-topbar{grid-template-columns:1fr!important;padding:12px 16px!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-main{padding:14px 16px!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-footer{padding:12px 16px!important}}'
+      + '@media (max-width:920px){#modal-calc{padding:0!important}#modal-calc #modal-calculadora{width:100vw!important;max-width:100vw!important;max-height:100vh!important;padding:16px!important}#modal-calc #modal-calculadora .calc-header-row{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .calc-row-top,#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .modal-footer.rodape{flex-direction:column!important;align-items:stretch!important}#modal-calc #modal-calculadora .modal-footer.rodape button{width:100%!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-header{padding:14px 16px!important;align-items:flex-start!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-topbar{grid-template-columns:1fr!important;padding:12px 16px!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-main{padding:14px 16px!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-footer{padding:12px 16px!important}}'
       + '#orc-pasta-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100001;align-items:center;justify-content:center;padding:16px}'
       + '#orc-pasta-modal .box{width:min(460px,96vw);background:#0f172a;border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:18px;display:grid;gap:12px}'
       + '#orc-pasta-modal .ttl{font-size:16px;font-weight:900;color:#f8fafc}'
@@ -29033,11 +29038,58 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (cli && cli.id) {
       el.dataset.clienteId = String(cli.id);
       el.dataset.clienteNome = String(cli.nome || cli.razao_social || cli.razao || el.value || '').trim();
+      try {
+        var hiddenCli = document.getElementById('of-r-cliente-id');
+        if (hiddenCli) hiddenCli.value = String(cli.id || '').trim();
+      } catch (_) {}
       return cli;
     }
+    try {
+      var hiddenCliReset = document.getElementById('of-r-cliente-id');
+      if (hiddenCliReset) hiddenCliReset.value = '';
+    } catch (_) {}
     delete el.dataset.clienteId;
     delete el.dataset.clienteNome;
     return null;
+  }
+
+  function ensureClienteOfRapidaHidden() {
+    var el = document.getElementById('of-r-cliente');
+    if (!el || !el.parentNode) return null;
+    var hidden = document.getElementById('of-r-cliente-id');
+    if (!hidden) {
+      hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.id = 'of-r-cliente-id';
+      hidden.name = 'cli_id';
+      try { el.parentNode.appendChild(hidden); } catch (_) {}
+    }
+    return hidden;
+  }
+
+  function mirrorClienteOfRapidaOnCache(cliId, nomeCanonico) {
+    var id = String(cliId || '').trim();
+    var nome = String(nomeCanonico || '').trim();
+    if (!id) return;
+    try {
+      window.CLIENTES = Array.isArray(window.CLIENTES) ? window.CLIENTES : [];
+      var lista = window.CLIENTES;
+      var found = null;
+      for (var i = 0; i < lista.length; i += 1) {
+        if (String(lista[i] && lista[i].id || '').trim() === id) {
+          found = lista[i];
+          break;
+        }
+      }
+      if (!found) {
+        found = { id: id, nome: nome };
+        lista.push(found);
+      } else if (nome) {
+        if (!String(found.nome || '').trim()) found.nome = nome;
+        if (!String(found.razao_social || '').trim()) found.razao_social = nome;
+        if (!String(found.razao || '').trim()) found.razao = nome;
+      }
+    } catch (_) {}
   }
 
   function getAuthHeader() {
@@ -29118,6 +29170,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var el = document.getElementById('of-r-cliente');
     if (!el || el.dataset.patchClienteEspecial === '1') return;
     el.dataset.patchClienteEspecial = '1';
+    ensureClienteOfRapidaHidden();
     ['input', 'change', 'blur'].forEach(function(evt) {
       el.addEventListener(evt, function() { syncClienteOfRapida(el); }, true);
     });
@@ -29180,8 +29233,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
         var nomeCanonico = String((cli && (cli.nome || cli.razao_social || cli.razao)) || el.dataset.clienteNome || el.value || '').trim();
         if (nomeCanonico) el.value = nomeCanonico;
+        mirrorClienteOfRapidaOnCache(cliId, nomeCanonico);
         try {
-          var hiddenCli = document.querySelector('#f-cli-id, input[name="cli_id"], input[name="cliId"]');
+          var hiddenCli = ensureClienteOfRapidaHidden() || document.querySelector('#f-cli-id, input[name="cli_id"], input[name="cliId"]');
           if (hiddenCli) hiddenCli.value = cliId;
         } catch (_) {}
       }, 20);
@@ -29202,8 +29256,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
         var nomeCanonico = String((cli && (cli.nome || cli.razao_social || cli.razao)) || el.dataset.clienteNome || el.value || '').trim();
         if (nomeCanonico) el.value = nomeCanonico;
+        mirrorClienteOfRapidaOnCache(cliId, nomeCanonico);
         try {
-          var hiddenCli = document.querySelector('#f-cli-id, input[name="cli_id"], input[name="cliId"]');
+          var hiddenCli = ensureClienteOfRapidaHidden() || document.querySelector('#f-cli-id, input[name="cli_id"], input[name="cliId"]');
           if (hiddenCli) hiddenCli.value = cliId;
         } catch (_) {}
       }

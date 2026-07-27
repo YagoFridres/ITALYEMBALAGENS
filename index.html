@@ -5828,7 +5828,7 @@ function renderPCP(){
     const selMulti = Array.isArray(window.OF_MULTI_SEL) && window.OF_MULTI_SEL.includes(o.of);
     const fluxoNames = ofFluxoGetNames(o);
     const fluxoAtivas = (fluxoNames||[]).map(maqAtivaFromNome).filter(Boolean);
-    const colsMaq = ['CORTE VINCO ROTATIVA','IMP 01','IMP 02','IMP 03','IMP 04','IMP 05'];
+    const colsMaq = ['CORTE VINCO ROTATIVA','IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','Riscador'];
     const idToNome = new Map((Array.isArray(MAQUINAS)?MAQUINAS:[]).map(m=>[String(m?.id||'').trim(), String(m?.col||m?.nome||'').trim()]).filter(([k,v])=>k&&v));
     const setMaq = new Set();
     fluxoAtivas.forEach((n)=>{ if(n) setMaq.add(n); });
@@ -5842,7 +5842,7 @@ function renderPCP(){
       });
     }
     const abreviar = (nome)=>{
-      const mapa = { 'CORTE VINCO ROTATIVA':'CVR','IMP 01':'I01','IMP 02':'I02','IMP 03':'I03','IMP 04':'I04','IMP 05':'I05' };
+      const mapa = { 'CORTE VINCO ROTATIVA':'CVR','IMP 01':'I01','IMP 02':'I02','IMP 03':'I03','IMP 04':'I04','IMP 05':'I05','Riscador':'RIS' };
       return mapa[nome] || nome;
     };
     const mCells = colsMaq.map((col)=>{
@@ -12459,14 +12459,15 @@ async function carregarGraficosPassagens(){
     const labels = Array.isArray(d?.semana?.labels) ? d.semana.labels : [];
     const porMaquina = d?.semana?.porMaquina && typeof d.semana.porMaquina === 'object' ? d.semana.porMaquina : {};
     const mes = d?.mes && typeof d.mes === 'object' ? d.mes : {};
-    const maqs = ['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','CORTE VINCO ROTATIVA'];
+    const maqs = ['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','CORTE VINCO ROTATIVA','Riscador'];
     const colors = {
       'IMP 01':'#38bdf8',
       'IMP 02':'#22c55e',
       'IMP 03':'#f59e0b',
       'IMP 04':'#a78bfa',
       'IMP 05':'#fb7185',
-      'CORTE VINCO ROTATIVA':'#94a3b8'
+      'CORTE VINCO ROTATIVA':'#94a3b8',
+      'Riscador':'#f97316'
     };
 
     try{ if(window._histChartSemana){ window._histChartSemana.destroy(); window._histChartSemana = null; } }catch(e){}
@@ -44766,7 +44767,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
             <th>DIA PEDIDO</th><th>ENTREGA</th><th>Nº OF</th><th>IMG</th>
             <th>CLIENTE</th><th>VENDEDOR</th><th>QUANTIDADE</th><th>VL. UNIT.</th><th>TOTAL</th>
             <th>CORTE VINCO ROTATIVA</th>
-            <th>IMP 01</th><th>IMP 02</th><th>IMP 03</th><th>IMP 04</th><th>IMP 05</th>
+            <th>IMP 01</th><th>IMP 02</th><th>IMP 03</th><th>IMP 04</th><th>IMP 05</th><th>Riscador</th>
             <th>STATUS</th><th>AÇÕES</th>
           </tr></thead>
           <tbody id="pcp-tbody"></tbody>
