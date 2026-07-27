@@ -12121,6 +12121,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
       chapas_necessarias: chapasNec
     };
   }
+  try { window._simdCalcularUmaChapa = _simdCalcularLinha; } catch (_) {}
 
   function _simdRenderResultadosPatched(rows, plan) {
     var wrap = document.getElementById('simd-tabela-wrap');
@@ -14917,6 +14918,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         window.renderConfiguracoes = function() {
           return window.renderSistema.apply(this, arguments);
         };
+        try { renderConfiguracoes = window.renderConfiguracoes; } catch (_) {}
       }
     } catch (_) {}
   }
@@ -38413,8 +38415,8 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
       totaisPorVendedor[nome] = { count: 0, vendas: 0, comissao: 0 };
     }
     totaisPorVendedor[nome].count += 1;
-    totaisPorVendedor[nome].vendas += Number(of && (of.valor_total || of.valor_venda || 0) || 0) || 0;
-    totaisPorVendedor[nome].comissao += (Number(of && (of.valor_total || of.valor_venda || 0) || 0) || 0)
+    totaisPorVendedor[nome].vendas += _comResolverValorTotal(of);
+    totaisPorVendedor[nome].comissao += _comResolverValorTotal(of)
       * ((Number(of && (of.comissao_pct || 1) || 1) || 1) / 100);
   });
 
@@ -38431,7 +38433,7 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
   var vendedorAtual = null;
   listaOFs.forEach(function(of, idx) {
     var quantidade = Number(of && (of.quantidade ?? of.qtd ?? 0) || 0) || 0;
-    var valorTotal = Number(of && (of.valor_total ?? of.valor_venda ?? 0) || 0) || 0;
+    var valorTotal = _comResolverValorTotal(of);
     var vu = Number(of && of.valor_unitario || 0) || 0;
     if (!vu && valorTotal && quantidade > 0) vu = valorTotal / quantidade;
     var comPct = Number(of && (of.comissao_pct || 1) || 1) || 1;
@@ -38442,7 +38444,7 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
     var cHead = coresHeader[(idxVend >= 0 ? idxVend : 0) % coresHeader.length];
     var data = '—';
     try { data = of && of.data_conclusao ? new Date(of.data_conclusao).toLocaleDateString('pt-BR') : '—'; } catch (_) {}
-    var nomeCliente = String(of && (of.cliente_nome || of._cliente_nome || of.cliente) || '...') || '...';
+    var nomeCliente = _comResolverClienteNome(of);
     if (nomeVend !== vendedorAtual) {
       vendedorAtual = nomeVend;
       var t = totaisPorVendedor[nomeVend] || {};
@@ -38511,13 +38513,13 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
           if (!lista.length) return;
           var lines = [['OF', 'CLIENTE', 'VENDEDOR', 'QTD', 'VALOR TOTAL', 'PRECO UNITARIO', 'COMISSAO %', 'COMISSAO R$', 'DATA']].concat(lista.map(function(of) {
             var qtd = Number(of && (of.quantidade ?? of.qtd ?? 0) || 0) || 0;
-            var valor = Number(of && (of.valor_total ?? of.valor_venda ?? 0) || 0) || 0;
+            var valor = _comResolverValorTotal(of);
             var vu = Number(of && (of.valor_unitario ?? 0) || 0) || (qtd > 0 ? (valor / qtd) : 0);
             var pct = Number(of && (of.comissao_pct ?? 1) || 1) || 1;
             var rs = valor * (pct / 100);
             return [
               String(of && (of.numero || of.of_numero) || ''),
-              String(of && (of.cliente_nome || of._cliente_nome || of.cliente) || ''),
+              _comResolverClienteNome(of),
               String(getNomeVend(of) || ''),
               qtd,
               valor,
@@ -41815,6 +41817,41 @@ function _ocultarGraficoComissoes() {
       _aplicarFiltroLocalDetalhamentoComissao(termoTxt, []);
     }
   }
+  function _comTextoValido(value) {
+    var txt = String(value == null ? '' : value).trim();
+    if (!txt || txt === '—') return '';
+    var flat = '';
+    try {
+      flat = txt.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    } catch (_) {
+      flat = txt.toLowerCase();
+    }
+    if (flat === 'cliente nao identificado') return '';
+    if (flat === 'sem vendedor') return '';
+    return txt;
+  }
+  function _comResolverClienteNome(of) {
+    return _comTextoValido(of && of.cliente)
+      || _comTextoValido(of && of.cliente_nome)
+      || _comTextoValido(of && of.clinome)
+      || _comTextoValido(of && of.cliNome)
+      || _comTextoValido(of && of.cliente_name)
+      || _comTextoValido(of && of.__cliente_nome_view)
+      || _comTextoValido(of && of._cliente_nome)
+      || '—';
+  }
+  function _comResolverVendedorNome(of, vendedorFallback) {
+    return _comTextoValido(of && of.vendedor)
+      || _comTextoValido(of && of.vendedor_nome)
+      || _comTextoValido(of && of.vendNome)
+      || _comTextoValido(of && of.__vendedor_nome_view)
+      || _comTextoValido(vendedorFallback)
+      || 'Sem vendedor';
+  }
+  function _comResolverValorTotal(of) {
+    var bruto = of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : (of.valor_venda != null ? of.valor_venda : of.valor)));
+    return Number(bruto || 0) || 0;
+  }
   function _renderizarFiltroLocalDetalhamentoComissao() {
     try {
       var detalhe = document.getElementById('_com_detalhe');
@@ -41847,7 +41884,7 @@ function _ocultarGraficoComissoes() {
 
   function _normalizarOFComissao(of, vendedorFallback) {
     var qtd = Number(of && (of.quantidade != null ? of.quantidade : (of.qtd != null ? of.qtd : of.quant)) || 0) || 0;
-    var valorTotal = Number(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : (of.valor != null ? of.valor : of.valor_venda))) || 0) || 0;
+    var valorTotal = _comResolverValorTotal(of);
     var vendidVal = String(
       of && (
         of.vendid ||
@@ -41873,8 +41910,8 @@ function _ocultarGraficoComissoes() {
       raw: of || {},
       id: String(of && of.id || '').trim(),
       numero: String(of && (of.numero != null ? of.numero : (of.numero_of || of.num_of || of.of_num || of.of || of.id)) || '—').trim() || '—',
-      cliente: String(of && (of.cliente || of.cliente_nome || of.clinome || of.cliNome) || '—').trim() || '—',
-      vendedor: String(of && (of.vendedor || of.vendid || of.vendedor_nome || of.vendNome) || vendedorFallback || 'Sem vendedor').trim() || 'Sem vendedor',
+      cliente: _comResolverClienteNome(of),
+      vendedor: _comResolverVendedorNome(of, vendedorFallback || vendidVal),
       vendid: vendidVal,
       qtd: qtd,
       valor_total: valorTotal,
@@ -41890,27 +41927,14 @@ function _ocultarGraficoComissoes() {
     var ofNorm = _normalizarOFComissao(of, _comBuscaVendedor(of) || '—');
     var concluida = _comStatusConcluida(of);
     var status = String(ofNorm && ofNorm.status || 'Pendente');
-    var vendidVal = String(
-      of && (
-        of.vendid ||
-        of.vendedor ||
-        of.vendNome ||
-        of.vendedor_nome ||
-        ofNorm.vendid ||
-        ofNorm.vendedor
-      ) || ''
-    ).trim();
-    var percComissao = Number(window._obterPercComissao(vendidVal) || 0) || 0;
-    var totalVal = parseFloat(of && (of.valor_total != null ? of.valor_total : (of.total != null ? of.total : ofNorm.valor_total)) || 0) || 0;
-    var comissaoVal = totalVal * percComissao / 100;
     try {
       console.log('[DEBUG COMISSAO]', {
         vendid: of && of.vendid,
         vendedor: of && of.vendedor,
         valor_total: of && of.valor_total,
         total_legado: of && of.total,
-        perc: window._obterPercComissao((of && (of.vendid || of.vendedor)) || ''),
-        comissao_calculada: totalVal * window._obterPercComissao((of && (of.vendid || of.vendedor)) || '') / 100
+        perc: ofNorm && ofNorm.comissao_pct,
+        comissao_calculada: ofNorm && ofNorm.comissao_valor
       });
     } catch (_) {}
     return ''
@@ -41924,7 +41948,7 @@ function _ocultarGraficoComissoes() {
       + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Qtd</div><div style="color:#f1f5f9;font-weight:600">' + String(ofNorm.qtd) + '</div></div>'
       + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Valor Total</div><div style="color:#f1f5f9;font-weight:600">' + _escHtmlCom(window._fmtRs(ofNorm.valor_total)) + '</div></div>'
       + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Preço Unit.</div><div style="color:#94a3b8">' + _escHtmlCom(window._fmtRs(ofNorm.preco_unit)) + '</div></div>'
-      + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Comissão</div><div style="color:#22c55e;font-weight:600">' + _escHtmlCom(window._fmtRs(comissaoVal)) + '</div></div>'
+      + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Comissão</div><div style="color:#22c55e;font-weight:600">' + _escHtmlCom(window._fmtRs(ofNorm.comissao_valor)) + '</div></div>'
       + '<div style="text-align:center"><div style="color:#64748b;font-size:11px;text-transform:uppercase">Data</div><div style="color:#94a3b8">' + _escHtmlCom(_fmtDataComDetalhamento(ofNorm.data)) + '</div></div>'
       + '</div>'
       + '<div style="display:flex;gap:8px;align-items:center">'
@@ -42030,11 +42054,11 @@ function _ocultarGraficoComissoes() {
     return String(v || '').replace(/[^\d]/g, '');
   }
   function _comBuscaCliente(of) {
-    return String(of && (of.clinome || of.cliNome || of.cliente_nome || of.cliente || '') || '').trim();
+    return _comResolverClienteNome(of);
   }
   function _comBuscaVendedor(of) {
     try {
-      var nome = String(of && (of._vendedor_resolvido || of.vendedor_nome || of.vendNome || of.vendedor || '') || '').trim();
+      var nome = _comResolverVendedorNome(of, '');
       if (nome && nome !== '—') return nome;
       if (typeof _resolverVendedor === 'function') {
         nome = String(_resolverVendedor(of) || '').trim();
@@ -44890,5 +44914,879 @@ function _ocultarGraficoComissoes() {
 })();
 try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(99, 'antes PATCH-FIM'); } catch (_) {}
 console.log('[PATCH-FIM] patch.js executou ate o fim');
+
+(function patchComprasOrcamentosRedesignAndCalc() {
+  function escHtml(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+  function escAttr(v) { return escHtml(v); }
+  function fmtMoney(v) {
+    try {
+      if (typeof window._fmtRs === 'function') return String(window._fmtRs(v || 0));
+    } catch (_) {}
+    try {
+      return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    } catch (_) {
+      return 'R$ 0,00';
+    }
+  }
+  function fmtNum(v, digits) {
+    try {
+      return Number(v || 0).toLocaleString('pt-BR', {
+        minimumFractionDigits: digits || 0,
+        maximumFractionDigits: digits || 0
+      });
+    } catch (_) {
+      return String(v || 0);
+    }
+  }
+  function fmtDate(value) {
+    try {
+      if (!value) return '—';
+      return new Date(value).toLocaleDateString('pt-BR');
+    } catch (_) {
+      return '—';
+    }
+  }
+  function ensureRedesignStyle() {
+    if (document.getElementById('patch-redesign-compras-orcamentos-v1')) return;
+    var st = document.createElement('style');
+    st.id = 'patch-redesign-compras-orcamentos-v1';
+    st.textContent = ''
+      + '#cmp-body .cmpx-wrap,#orc-body .orx-wrap{display:grid;gap:16px}'
+      + '#cmp-body .cmpx-head,#orc-body .orx-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}'
+      + '#cmp-body .cmpx-head-copy,#orc-body .orx-head-copy{display:grid;gap:6px}'
+      + '#cmp-body .cmpx-title,#orc-body .orx-title{font-size:24px;font-weight:900;color:#f8fafc;letter-spacing:-.02em}'
+      + '#cmp-body .cmpx-sub,#orc-body .orx-sub{font-size:13px;line-height:1.55;color:#94a3b8;max-width:860px}'
+      + '#cmp-body .cmpx-actions,#orc-body .orx-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
+      + '#cmp-body .cmpx-filter-panel,#orc-body .orx-filter-panel{display:grid;gap:12px}'
+      + '#cmp-body .cmpx-filter-row,#orc-body .orx-filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}'
+      + '#cmp-body .cmpx-filter-row .pep-input,#orc-body .orx-filter-row .pep-input{flex:1;min-width:260px}'
+      + '#cmp-body .cmpx-folder-strip,#orc-body .orx-folder-strip{display:flex;gap:10px;overflow:auto;padding-bottom:4px;scrollbar-width:thin}'
+      + '#cmp-body .cmpx-folder-strip::-webkit-scrollbar,#orc-body .orx-folder-strip::-webkit-scrollbar{height:8px}'
+      + '#cmp-body .cmpx-folder-pill,#orc-body .orx-folder-pill{display:grid;gap:6px;min-width:220px;padding:14px 16px;border-radius:16px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.72);color:#e2e8f0;text-align:left;cursor:pointer;position:relative}'
+      + '#cmp-body .cmpx-folder-pill.is-active,#orc-body .orx-folder-pill.is-active{border-color:rgba(96,165,250,.48);box-shadow:0 0 0 1px rgba(96,165,250,.22) inset;background:linear-gradient(135deg,rgba(30,64,175,.26),rgba(15,23,42,.82))}'
+      + '#cmp-body .cmpx-folder-pill .name,#orc-body .orx-folder-pill .name{font-size:13px;font-weight:900;color:#f8fafc;padding-right:72px}'
+      + '#cmp-body .cmpx-folder-pill .meta,#orc-body .orx-folder-pill .meta{font-size:11px;color:#94a3b8}'
+      + '#cmp-body .cmpx-folder-pill .count,#orc-body .orx-folder-pill .count{font-size:20px;font-weight:900;color:#93c5fd}'
+      + '#cmp-body .cmpx-folder-actions,#orc-body .orx-folder-actions{position:absolute;top:10px;right:10px;display:flex;gap:6px}'
+      + '#cmp-body .cmpx-folder-actions button,#orc-body .orx-folder-actions button{width:28px;height:28px;border-radius:10px;border:1px solid rgba(148,163,184,.18);background:#020617;color:#cbd5e1;cursor:pointer;font-size:12px}'
+      + '#cmp-body .cmpx-folder-actions button.danger,#orc-body .orx-folder-actions button.danger{border-color:rgba(248,113,113,.28);color:#fca5a5}'
+      + '#cmp-body .cmpx-table-head,#orc-body .orx-table-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px}'
+      + '#cmp-body .cmpx-table-title,#orc-body .orx-table-title{font-size:18px;font-weight:900;color:#f8fafc}'
+      + '#cmp-body .cmpx-table-sub,#orc-body .orx-table-sub{font-size:12px;color:#94a3b8;line-height:1.5;max-width:860px}'
+      + '#cmp-body .cmpx-table-wrap,#orc-body .orx-table-wrap{overflow:auto;border:1px solid rgba(148,163,184,.14);border-radius:16px;background:rgba(2,6,23,.38)}'
+      + '#cmp-body .cmpx-table,#orc-body .orx-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1240px}'
+      + '#cmp-body .cmpx-table th,#orc-body .orx-table th{position:sticky;top:0;z-index:2;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;padding:12px;text-align:left;border-bottom:1px solid rgba(148,163,184,.18)}'
+      + '#cmp-body .cmpx-table td,#orc-body .orx-table td{padding:12px;border-bottom:1px solid rgba(148,163,184,.1);font-size:13px;color:#e2e8f0;vertical-align:top}'
+      + '#cmp-body .cmpx-table tbody tr:hover td,#orc-body .orx-table tbody tr:hover td{background:rgba(148,163,184,.05)}'
+      + '#cmp-body .cmpx-stack,#orc-body .orx-stack{display:grid;gap:4px}'
+      + '#cmp-body .cmpx-stack strong,#orc-body .orx-stack strong{font-size:13px;color:#f8fafc}'
+      + '#cmp-body .cmpx-stack span,#orc-body .orx-stack span{font-size:11px;color:#94a3b8;line-height:1.45}'
+      + '#cmp-body .cmpx-num,#orc-body .orx-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+      + '#cmp-body .cmpx-actions-row,#orc-body .orx-actions-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
+      + '#cmp-body .cmpx-actions-row button,#cmp-body .cmpx-actions-row select,#orc-body .orx-actions-row button,#orc-body .orx-actions-row select{min-height:36px;border-radius:10px;border:1px solid rgba(148,163,184,.18);background:#020617;color:#e2e8f0;padding:0 10px;font-size:12px}'
+      + '#cmp-body .cmpx-actions-row button.primary,#orc-body .orx-actions-row button.primary{background:#2563eb;border-color:#2563eb;color:#fff}'
+      + '#cmp-body .cmpx-actions-row button.danger,#orc-body .orx-actions-row button.danger{background:#7f1d1d;border-color:#991b1b;color:#fff}'
+      + '#cmp-body .cmpx-empty,#orc-body .orx-empty{padding:22px;text-align:center;color:#94a3b8}'
+      + '#page-orcamentos .ptoolbar{display:none!important}'
+      + '#ccpx-compra-fullscreen .ccpx-item-vincos{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:8px}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-chip{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:6px;align-items:center}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-chip button{height:42px;border-radius:12px;border:1px solid rgba(148,163,184,.18);background:#0f172a;color:#e2e8f0;cursor:pointer;font-weight:900}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar button{min-height:36px;padding:0 12px;border-radius:10px;border:1px dashed rgba(96,165,250,.42);background:rgba(30,64,175,.14);color:#bfdbfe;font-size:12px;font-weight:800;cursor:pointer}'
+      + '#modal-calc .calc-wave-panels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}'
+      + '#modal-calc .calc-wave-card{display:grid;gap:10px;padding:14px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:linear-gradient(180deg,rgba(15,23,42,.82),rgba(15,23,42,.66));box-shadow:0 14px 30px rgba(2,6,23,.18)}'
+      + '#modal-calc .calc-wave-card.best{border-color:rgba(34,197,94,.34);box-shadow:0 0 0 1px rgba(34,197,94,.18) inset,0 14px 30px rgba(2,6,23,.18)}'
+      + '#modal-calc .calc-wave-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}'
+      + '#modal-calc .calc-wave-title{font-size:16px;font-weight:900;color:#f8fafc}'
+      + '#modal-calc .calc-wave-badge{display:inline-flex;align-items:center;justify-content:center;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:900;background:rgba(59,130,246,.16);border:1px solid rgba(96,165,250,.28);color:#bfdbfe}'
+      + '#modal-calc .calc-wave-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
+      + '#modal-calc .calc-wave-metric{padding:10px 12px;border-radius:12px;background:rgba(2,6,23,.44);border:1px solid rgba(148,163,184,.12)}'
+      + '#modal-calc .calc-wave-metric span{display:block;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px}'
+      + '#modal-calc .calc-wave-metric strong{font-size:14px;color:#f8fafc}'
+      + '#modal-calc .calc-wave-card button{min-height:40px;border-radius:12px;border:1px solid rgba(37,99,235,.24);background:#2563eb;color:#fff;font-weight:800;cursor:pointer}'
+      + '@media (max-width:1100px){#modal-calc .calc-wave-panels{grid-template-columns:1fr}}'
+      + '@media (max-width:900px){#cmp-body .cmpx-head,#orc-body .orx-head{align-items:stretch}#cmp-body .cmpx-actions,#orc-body .orx-actions{width:100%}#cmp-body .cmpx-actions .pep-btn,#orc-body .orx-actions .pep-btn{flex:1 1 180px}#cmp-body .cmpx-folder-pill,#orc-body .orx-folder-pill{min-width:200px}}'
+      + '@media (max-width:760px){#cmp-body .cmpx-title,#orc-body .orx-title{font-size:21px}#cmp-body .cmpx-filter-row,#orc-body .orx-filter-row{align-items:stretch}#cmp-body .cmpx-filter-row .pep-input,#orc-body .orx-filter-row .pep-input{min-width:0}#cmp-body .cmpx-actions-row,#orc-body .orx-actions-row{flex-direction:column;align-items:stretch}#cmp-body .cmpx-actions-row button,#cmp-body .cmpx-actions-row select,#orc-body .orx-actions-row button,#orc-body .orx-actions-row select{width:100%}}';
+    document.head.appendChild(st);
+  }
+
+  function compraAllVincos(item) {
+    var raw = [];
+    var legacy = String(item && item.vincos || '').trim();
+    if (legacy) {
+      legacy.split('/').forEach(function(part) {
+        var txt = String(part || '').trim();
+        if (txt) raw.push(txt);
+      });
+    }
+    ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(key) {
+      var txt = String(item && item[key] || '').trim();
+      if (txt) raw.push(txt);
+    });
+    var extra = Array.isArray(item && item.vincos_extra) ? item.vincos_extra : (Array.isArray(item && item.vincos_lista) ? item.vincos_lista : []);
+    extra.forEach(function(part) {
+      var txt = String(part || '').trim();
+      if (txt) raw.push(txt);
+    });
+    var out = [];
+    raw.forEach(function(txt) {
+      if (!txt) return;
+      if (out.indexOf(txt) === -1) out.push(txt);
+    });
+    return out;
+  }
+  function compraRenderVincosInputs(item) {
+    var values = compraAllVincos(item);
+    if (!values.length) values = ['', '', '', ''];
+    while (values.length < 4) values.push('');
+    return values.map(function(val, idx) {
+      return ''
+        + '<div class="ccpx-vinco-chip" data-ccpx-vinco-chip="' + idx + '">'
+        + '  <input data-ccpx-vinco="' + idx + '" value="' + escAttr(val) + '" placeholder="V' + String(idx + 1) + '">'
+        + '  <button type="button" data-ccpx-del-vinco="' + idx + '" title="Remover vinco">−</button>'
+        + '</div>';
+    }).join('') + '<div class="ccpx-vinco-toolbar"><button type="button" data-ccpx-add-vinco="1">+ Adicionar Vinco</button></div>';
+  }
+  function compraCollectRowVincos(row) {
+    return Array.prototype.slice.call((row || document).querySelectorAll('[data-ccpx-vinco]')).map(function(input) {
+      return String((input && input.value) || '').trim();
+    }).filter(Boolean);
+  }
+  function compraAppendVinco(row, value) {
+    var host = row && row.querySelector ? row.querySelector('.ccpx-item-vincos') : null;
+    if (!host) return;
+    var chips = Array.prototype.slice.call(host.querySelectorAll('[data-ccpx-vinco-chip]'));
+    var idx = chips.length;
+    var wrap = document.createElement('div');
+    wrap.className = 'ccpx-vinco-chip';
+    wrap.setAttribute('data-ccpx-vinco-chip', String(idx));
+    wrap.innerHTML = '<input data-ccpx-vinco="' + idx + '" value="' + escAttr(value || '') + '" placeholder="V' + String(idx + 1) + '"><button type="button" data-ccpx-del-vinco="' + idx + '" title="Remover vinco">−</button>';
+    var toolbar = host.querySelector('.ccpx-vinco-toolbar');
+    host.insertBefore(wrap, toolbar || null);
+  }
+  function compraRenumberVincos(row) {
+    Array.prototype.slice.call((row || document).querySelectorAll('[data-ccpx-vinco-chip]')).forEach(function(chip, idx) {
+      chip.setAttribute('data-ccpx-vinco-chip', String(idx));
+      var input = chip.querySelector('[data-ccpx-vinco]');
+      var del = chip.querySelector('[data-ccpx-del-vinco]');
+      if (input) {
+        input.setAttribute('data-ccpx-vinco', String(idx));
+        input.placeholder = 'V' + String(idx + 1);
+      }
+      if (del) del.setAttribute('data-ccpx-del-vinco', String(idx));
+    });
+  }
+  function bindCompraVincoActions(overlay) {
+    if (!overlay || overlay.dataset.ccpxVincosBound === '1') return;
+    overlay.dataset.ccpxVincosBound = '1';
+    overlay.addEventListener('click', function(ev) {
+      var addBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ccpx-add-vinco]') : null;
+      var delBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ccpx-del-vinco]') : null;
+      if (!addBtn && !delBtn) return;
+      var row = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ccpx-item-row]') : null;
+      if (!row) return;
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      if (addBtn) {
+        compraAppendVinco(row, '');
+        compraRenumberVincos(row);
+        var inputs = row.querySelectorAll('[data-ccpx-vinco]');
+        var last = inputs && inputs.length ? inputs[inputs.length - 1] : null;
+        try { if (last) last.focus(); } catch (_) {}
+      } else if (delBtn) {
+        var chip = delBtn.closest ? delBtn.closest('[data-ccpx-vinco-chip]') : null;
+        var chips = row.querySelectorAll('[data-ccpx-vinco-chip]');
+        if (chip && chips.length > 1) chip.remove();
+        else {
+          var input = chip && chip.querySelector ? chip.querySelector('[data-ccpx-vinco]') : null;
+          if (input) input.value = '';
+        }
+        compraRenumberVincos(row);
+      }
+      try { if (typeof window._compraPapelaoRefreshModalComputed === 'function') window._compraPapelaoRefreshModalComputed(overlay); } catch (_) {}
+    });
+  }
+
+  var origBlankItem = window._compraPapelaoBlankItem;
+  window._compraPapelaoBlankItem = function() {
+    var base = typeof origBlankItem === 'function' ? origBlankItem() : {};
+    base.vincos_extra = Array.isArray(base.vincos_extra) ? base.vincos_extra : [];
+    return base;
+  };
+  var origNormalizeCompraHeader = window._compraPapelaoNormalizeCompraHeader;
+  window._compraPapelaoNormalizeCompraHeader = function(compra) {
+    var row = typeof origNormalizeCompraHeader === 'function' ? origNormalizeCompraHeader(compra) : (compra || {});
+    row.itens = (Array.isArray(row && row.itens) ? row.itens : []).map(function(item) {
+      var lista = compraAllVincos(item);
+      var next = Object.assign({}, item || {});
+      next.vinco1 = String(lista[0] || '').trim();
+      next.vinco2 = String(lista[1] || '').trim();
+      next.vinco3 = String(lista[2] || '').trim();
+      next.vinco4 = String(lista[3] || '').trim();
+      next.vincos_extra = lista.slice(4);
+      next.vincos = lista.join('/');
+      return next;
+    });
+    if (!row.itens.length) row.itens = [window._compraPapelaoBlankItem()];
+    return row;
+  };
+  window._compraPapelaoComposeVincos = function(item) {
+    return compraAllVincos(item).join('/');
+  };
+  window._compraPapelaoRenderModalRowsHtml = function(itens, minRows) {
+    var rows = window._compraPapelaoEnsureVisibleRows(itens, minRows == null ? 5 : minRows);
+    return rows.map(function(item, idx) {
+      var d = window._compraPapelaoResolveItemMetrics(item);
+      var areaManual = d.area_manual && Math.abs(d.area_m2 - d.auto_area_m2) > 0.000001;
+      var totalManual = d.total_manual && Math.abs(d.valor_total - d.auto_valor_total) > 0.000001;
+      return ''
+        + '<div class="ccpx-item-sheet-row" data-ccpx-item-row="' + idx + '">'
+        + '  <div class="ccpx-item-sheet-index"><div class="eyebrow">Item</div><div class="title">' + escHtml(String(idx + 1)) + '</div></div>'
+        + '  <div class="ccpx-item-sheet-grid">'
+        + '    <div class="ccpx-item-field span-4"><label>Pedido Cliente</label><input data-field="ped_cliente" value="' + escAttr(item && item.ped_cliente || '') + '"></div>'
+        + '    <div class="ccpx-item-field span-3"><label>Entrega</label><input data-field="data_entrega" type="date" value="' + escAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></div>'
+        + '    <div class="ccpx-item-field span-3"><label>PO</label><input data-field="po" value="' + escAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></div>'
+        + '    <div class="ccpx-item-field span-2"><label>L</label><input data-field="largura" type="number" min="0" step="0.01" value="' + escAttr(item && item.largura || '') + '" placeholder="L"></div>'
+        + '    <div class="ccpx-item-field sep span-1"><span>×</span></div>'
+        + '    <div class="ccpx-item-field span-2"><label>C</label><input data-field="comprimento" type="number" min="0" step="0.01" value="' + escAttr(item && item.comprimento || '') + '" placeholder="C"></div>'
+        + '    <div class="ccpx-item-field span-5"><label>Vincos</label><div class="ccpx-item-vincos">' + compraRenderVincosInputs(item) + '</div></div>'
+        + '    <div class="ccpx-item-field span-2"><label>Qtde</label><input data-field="quantidade" type="number" min="0" step="1" value="' + escAttr(item && item.quantidade || '') + '"></div>'
+        + '    <div class="ccpx-item-field span-2"><label>Lote Mínimo</label><input data-field="lote_minimo" type="number" min="0" step="1" value="' + escAttr(item && item.lote_minimo || '') + '"></div>'
+        + '    <div class="ccpx-item-field row-break"></div>'
+        + '    <div class="ccpx-item-field span-3"><label>Área Pedido</label><input data-field="area_m2"' + (areaManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + escAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : String(d.area_m2.toFixed(4))) + '"></div>'
+        + '    <div class="ccpx-item-field span-3"><label>Valor m²</label><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + escAttr(item && item.valor_m2 || '') + '"></div>'
+        + '    <div class="ccpx-item-field is-readonly span-3"><label>Valor p/mil</label><input type="text" value="' + escAttr(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '" readonly tabindex="-1"></div>'
+        + '    <div class="ccpx-item-field span-3"><label>Valor Total</label><input data-field="valor_total"' + (totalManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.01" value="' + escAttr(item && item.valor_total != null && String(item.valor_total).trim() !== '' ? item.valor_total : String(d.valor_total.toFixed(2))) + '"></div>'
+        + '    <div class="ccpx-item-field span-6"><label>Obs</label><textarea data-field="observacao" rows="1">' + escHtml(item && item.observacao || '') + '</textarea></div>'
+        + '    <div class="ccpx-item-field span-6"><label data-ccpx-fornecedor-label>' + escHtml(window._compraPapelaoFornecedorPedidoLabel('')) + '</label><input data-field="ped_fornecedor" value="' + escAttr(item && item.ped_fornecedor || '') + '" placeholder="' + escAttr(window._compraPapelaoFornecedorPedidoLabel('')) + '"></div>'
+        + '    <div class="ccpx-item-note-line">Agora voce pode adicionar quantos vincos forem necessarios em cada item, sem ficar limitado aos campos V1-V4.</div>'
+        + '  </div>'
+        + '  <div class="ccpx-item-sheet-actions"><div class="ccpx-item-action-strip"><button type="button" class="dup" data-ccpx-dup-item="' + idx + '" title="Duplicar item">+</button><button type="button" class="del" data-ccpx-del-item="' + idx + '" title="Remover item">✕</button></div><div class="hint"><span data-ccpx-auto-area>' + escHtml(window._compraPapelaoFmtNum(d.auto_area_m2, 4)) + ' m²</span><br><span data-ccpx-auto-total>' + escHtml(window._compraPapelaoFmtMoney(d.auto_valor_total)) + '</span><br><span data-ccpx-vincos-read>' + escHtml(window._compraPapelaoComposeVincos(item) || '—') + '</span></div></div>'
+        + '</div>';
+    }).join('');
+  };
+  window._compraPapelaoCollectModalRows = function(overlay) {
+    return Array.prototype.slice.call(overlay.querySelectorAll('#ccpx-modal-items-body [data-ccpx-item-row]')).map(function(row) {
+      var vincosLista = compraCollectRowVincos(row);
+      var item = {
+        ped_cliente: String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim(),
+        data_entrega: String((row.querySelector('[data-field="data_entrega"]') || {}).value || '').trim(),
+        po: String((row.querySelector('[data-field="po"]') || {}).value || '').trim(),
+        largura: String((row.querySelector('[data-field="largura"]') || {}).value || '').trim(),
+        comprimento: String((row.querySelector('[data-field="comprimento"]') || {}).value || '').trim(),
+        vinco1: String(vincosLista[0] || '').trim(),
+        vinco2: String(vincosLista[1] || '').trim(),
+        vinco3: String(vincosLista[2] || '').trim(),
+        vinco4: String(vincosLista[3] || '').trim(),
+        vincos_extra: vincosLista.slice(4),
+        quantidade: String((row.querySelector('[data-field="quantidade"]') || {}).value || '').trim(),
+        lote_minimo: String((row.querySelector('[data-field="lote_minimo"]') || {}).value || '').trim(),
+        area_m2: String((row.querySelector('[data-field="area_m2"]') || {}).value || '').trim(),
+        valor_m2: String((row.querySelector('[data-field="valor_m2"]') || {}).value || '').trim(),
+        valor_total: String((row.querySelector('[data-field="valor_total"]') || {}).value || '').trim(),
+        observacao: String((row.querySelector('[data-field="observacao"]') || {}).value || '').trim(),
+        ped_fornecedor: String((row.querySelector('[data-field="ped_fornecedor"]') || {}).value || '').trim()
+      };
+      var d = window._compraPapelaoResolveItemMetrics(item);
+      item.vincos = vincosLista.join('/');
+      item.nomenclatura = item.po;
+      item.area_m2 = d.area_m2;
+      item.vl_p_mil = d.vl_p_mil;
+      item.valor_total = d.valor_total;
+      return item;
+    }).filter(function(item) {
+      return item.ped_cliente || item.data_entrega || item.po || item.largura || item.comprimento || item.vincos || item.quantidade || item.lote_minimo || item.area_m2 || item.valor_m2 || item.valor_total || item.observacao || item.ped_fornecedor;
+    });
+  };
+  window._compraPapelaoRefreshModalComputed = function(overlay) {
+    var totalQtd = 0;
+    var totalArea = 0;
+    var totalValor = 0;
+    Array.prototype.slice.call(overlay.querySelectorAll('#ccpx-modal-items-body [data-ccpx-item-row]')).forEach(function(row) {
+      var vincosLista = compraCollectRowVincos(row);
+      var item = {
+        largura: (row.querySelector('[data-field="largura"]') || {}).value,
+        comprimento: (row.querySelector('[data-field="comprimento"]') || {}).value,
+        quantidade: (row.querySelector('[data-field="quantidade"]') || {}).value,
+        area_m2: (row.querySelector('[data-field="area_m2"]') || {}).value,
+        valor_m2: (row.querySelector('[data-field="valor_m2"]') || {}).value,
+        valor_total: (row.querySelector('[data-field="valor_total"]') || {}).value,
+        vinco1: vincosLista[0] || '',
+        vinco2: vincosLista[1] || '',
+        vinco3: vincosLista[2] || '',
+        vinco4: vincosLista[3] || '',
+        vincos_extra: vincosLista.slice(4)
+      };
+      var d = window._compraPapelaoResolveItemMetrics(item);
+      totalQtd += window._compraPapelaoNum(item.quantidade);
+      totalArea += d.area_m2;
+      totalValor += d.valor_total;
+      var areaEl = row.querySelector('[data-field="area_m2"]');
+      var totalEl = row.querySelector('[data-field="valor_total"]');
+      var areaAuto = row.querySelector('[data-ccpx-auto-area]');
+      var totalAuto = row.querySelector('[data-ccpx-auto-total]');
+      var vincosRead = row.querySelector('[data-ccpx-vincos-read]');
+      if (areaEl && (areaEl.dataset.ccpxManual !== '1' || !String(areaEl.value || '').trim())) areaEl.value = String(d.area_m2.toFixed(4));
+      if (totalEl && (totalEl.dataset.ccpxManual !== '1' || !String(totalEl.value || '').trim())) totalEl.value = String(d.valor_total.toFixed(2));
+      if (areaAuto) areaAuto.textContent = window._compraPapelaoFmtNum(d.auto_area_m2, 4) + ' m²';
+      if (totalAuto) totalAuto.textContent = window._compraPapelaoFmtMoney(d.auto_valor_total);
+      if (vincosRead) vincosRead.textContent = vincosLista.join('/') || '—';
+    });
+    var qtdEl = overlay.querySelector('#ccpx-sum-qtd');
+    var areaSumEl = overlay.querySelector('#ccpx-sum-area');
+    var totalSumEl = overlay.querySelector('#ccpx-sum-total');
+    var totalGeralEl = overlay.querySelector('#ccpx-total-geral');
+    if (qtdEl) qtdEl.textContent = window._compraPapelaoFmtNum(totalQtd, 0);
+    if (areaSumEl) areaSumEl.textContent = window._compraPapelaoFmtNum(totalArea, 4) + ' m²';
+    if (totalSumEl) totalSumEl.textContent = window._compraPapelaoFmtMoney(totalValor);
+    if (totalGeralEl) totalGeralEl.textContent = window._compraPapelaoFmtMoney(totalValor);
+  };
+  if (typeof window._compraPapelaoOpenCompraModal === 'function' && !window._compraPapelaoOpenCompraModal.__patchDynamicVincos) {
+    var origOpenCompraModal = window._compraPapelaoOpenCompraModal;
+    window._compraPapelaoOpenCompraModal = async function() {
+      var out = await origOpenCompraModal.apply(this, arguments);
+      try {
+        var overlay = document.getElementById('ccpx-compra-fullscreen');
+        if (overlay) bindCompraVincoActions(overlay);
+      } catch (_) {}
+      return out;
+    };
+    window._compraPapelaoOpenCompraModal.__patchDynamicVincos = true;
+  }
+
+  function compraVisibleRows() {
+    var st = window._compraPapelaoStateRef ? window._compraPapelaoStateRef() : { compras: [] };
+    var filtro = String(st && st.filtroCard || 'all');
+    var busca = String(st && st.busca || '').trim().toLowerCase();
+    var pastas = Array.isArray(st && st.pastas) ? st.pastas : [];
+    var rows = Array.isArray(st && st.compras) ? st.compras.slice() : [];
+    rows = rows.filter(function(compra) {
+      if (filtro === 'nopasta') return !String(compra && compra.pasta_id || '').trim();
+      if (String(filtro).indexOf('folder:') === 0) {
+        var parts = String(filtro).split(':');
+        return String(compra && compra._emp_id_consulta || '') === String(parts[1] || '') && String(compra && compra.pasta_id || '') === String(parts[2] || '');
+      }
+      return true;
+    });
+    if (!busca) return rows;
+    return rows.filter(function(compra) {
+      var pastaNome = '';
+      for (var i = 0; i < pastas.length; i += 1) {
+        var pasta = pastas[i];
+        if (String(pasta && pasta.id || '') === String(compra && compra.pasta_id || '') && String(pasta && pasta._emp_id_consulta || '') === String(compra && compra._emp_id_consulta || '')) {
+          pastaNome = String(pasta && pasta.nome || '').trim();
+          break;
+        }
+      }
+      var itensTxt = (Array.isArray(compra && compra.itens) ? compra.itens : []).map(function(item) {
+        return [
+          item && item.ped_cliente,
+          item && item.po,
+          item && item.observacao,
+          item && item.ped_fornecedor,
+          item && item.vincos
+        ].join(' ');
+      }).join(' ');
+      var txt = [
+        compra && compra.numero_compra,
+        compra && compra.fornecedor,
+        compra && compra.ped_fornecedor,
+        compra && compra.observacao,
+        pastaNome,
+        itensTxt
+      ].join(' ').toLowerCase();
+      return txt.indexOf(busca) >= 0;
+    });
+  }
+  function compraFolderCount(key) {
+    var st = window._compraPapelaoStateRef ? window._compraPapelaoStateRef() : { compras: [] };
+    var rows = Array.isArray(st && st.compras) ? st.compras : [];
+    if (key === 'all') return rows.length;
+    if (key === 'nopasta') return rows.filter(function(row) { return !String(row && row.pasta_id || '').trim(); }).length;
+    if (String(key || '').indexOf('folder:') === 0) {
+      var parts = String(key).split(':');
+      return rows.filter(function(row) {
+        return String(row && row._emp_id_consulta || '') === String(parts[1] || '') && String(row && row.pasta_id || '') === String(parts[2] || '');
+      }).length;
+    }
+    return 0;
+  }
+  function compraFolderName(compra) {
+    var st = window._compraPapelaoStateRef ? window._compraPapelaoStateRef() : { pastas: [] };
+    var pastas = Array.isArray(st && st.pastas) ? st.pastas : [];
+    for (var i = 0; i < pastas.length; i += 1) {
+      var row = pastas[i];
+      if (String(row && row.id || '') === String(compra && compra.pasta_id || '') && String(row && row._emp_id_consulta || '') === String(compra && compra._emp_id_consulta || '')) {
+        return String(row && row.nome || '').trim();
+      }
+    }
+    return '';
+  }
+  window._compraPapelaoBindBody = function() {
+    var host = document.getElementById('cmp-body');
+    if (!host) return;
+    var st = window._compraPapelaoStateRef();
+    var buscaEl = host.querySelector('#cmpx-busca');
+    var bindClick = function(sel, fn) {
+      var el = host.querySelector(sel);
+      if (el) el.onclick = fn;
+    };
+    bindClick('#cmpx-btn-nova', function() { window.abrirModalCompra(); });
+    bindClick('#cmpx-btn-pasta', function() { window._compraPapelaoOpenFolderModal(); });
+    bindClick('#cmpx-btn-sugestoes', function() { window._compraPapelaoOpenPinsModal(); });
+    bindClick('#cmpx-btn-rel-periodo', function() { window._compraPapelaoOpenReportModal('periodo'); });
+    bindClick('#cmpx-btn-rel-forn', function() { window._compraPapelaoOpenReportModal('fornecedor'); });
+    bindClick('#cmpx-btn-rel-resumo', function() { window._compraPapelaoOpenReportModal('resumo'); });
+    bindClick('#cmpx-btn-print', function() { window._compraPapelaoPrintCurrentReport(); });
+    bindClick('#cmpx-btn-buscar', function() {
+      st.busca = String((buscaEl || {}).value || '').trim();
+      window._compraPapelaoRenderPage();
+    });
+    if (buscaEl && buscaEl.dataset.enterBound !== '1') {
+      buscaEl.dataset.enterBound = '1';
+      buscaEl.addEventListener('keydown', function(ev) {
+        if (!ev || ev.key !== 'Enter') return;
+        try { ev.preventDefault(); } catch (_) {}
+        st.busca = String(buscaEl.value || '').trim();
+        window._compraPapelaoRenderPage();
+      });
+    }
+    Array.prototype.slice.call(host.querySelectorAll('[data-cmpx-filter]')).forEach(function(btn) {
+      btn.onclick = function(ev) {
+        var stop = ev && ev.target && ev.target.closest ? ev.target.closest('[data-cmpx-folder-rename],[data-cmpx-folder-delete]') : null;
+        if (stop) return;
+        st.filtroCard = String(btn.getAttribute('data-cmpx-filter') || 'all');
+        window._compraPapelaoRenderPage();
+      };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-cmpx-folder-rename]')).forEach(function(btn) {
+      btn.onclick = function(ev) {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        window._compraPapelaoRenameFolder(String(btn.getAttribute('data-cmpx-folder-rename') || ''));
+      };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-cmpx-folder-delete]')).forEach(function(btn) {
+      btn.onclick = function(ev) {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        window._compraPapelaoDeleteFolder(String(btn.getAttribute('data-cmpx-folder-delete') || ''));
+      };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-cmpx-edit]')).forEach(function(btn) {
+      btn.onclick = function() { window.abrirModalCompra(String(btn.getAttribute('data-cmpx-edit') || '')); };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-cmpx-print]')).forEach(function(btn) {
+      btn.onclick = function() { window._compraPapelaoPrintCompra(String(btn.getAttribute('data-cmpx-print') || '')); };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-cmpx-folder-move]')).forEach(function(btn) {
+      btn.onclick = function() { window._compraPapelaoOpenMoveFolderModal(String(btn.getAttribute('data-cmpx-folder-move') || '')); };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-cmpx-clone]')).forEach(function(btn) {
+      btn.onclick = function() { window._compraPapelaoCloneCompra(String(btn.getAttribute('data-cmpx-clone') || '')); };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-cmpx-delete]')).forEach(function(btn) {
+      btn.onclick = function() { window._compraPapelaoDeleteCompra(String(btn.getAttribute('data-cmpx-delete') || '')); };
+    });
+  };
+  window._compraPapelaoRenderBody = function() {
+    ensureRedesignStyle();
+    var host = document.getElementById('cmp-body');
+    if (!host) return;
+    var st = window._compraPapelaoStateRef();
+    var resumo = window._compraPapelaoStatsResumo ? window._compraPapelaoStatsResumo() : { valor_total: 0, area_total: 0, total_compras: 0, breakdown: [] };
+    var visible = compraVisibleRows();
+    var breakdown = Array.isArray(resumo.breakdown) ? resumo.breakdown : [];
+    var fornTop = breakdown[0] && breakdown[0].nome ? breakdown[0].nome : 'Sem fornecedor';
+    var totalItens = visible.reduce(function(acc, compra) { return acc + (Array.isArray(compra && compra.itens) ? compra.itens.length : 0); }, 0);
+    var totalSemPasta = compraFolderCount('nopasta');
+    var filtersHtml = ''
+      + '<button type="button" class="cmpx-folder-pill' + (String(st.filtroCard || 'all') === 'all' ? ' is-active' : '') + '" data-cmpx-filter="all"><span class="name">Todas as Compras</span><span class="meta">Base consolidada da empresa atual</span><span class="count">' + escHtml(String(compraFolderCount('all'))) + '</span></button>'
+      + '<button type="button" class="cmpx-folder-pill' + (String(st.filtroCard || '') === 'nopasta' ? ' is-active' : '') + '" data-cmpx-filter="nopasta"><span class="name">Sem Pasta</span><span class="meta">Compras ainda sem organização</span><span class="count">' + escHtml(String(totalSemPasta)) + '</span></button>'
+      + (Array.isArray(st.pastas) ? st.pastas : []).map(function(pasta) {
+        var key = window._compraPapelaoCardKey('folder', pasta);
+        return ''
+          + '<button type="button" class="cmpx-folder-pill' + (String(st.filtroCard || '') === key ? ' is-active' : '') + '" data-cmpx-filter="' + escAttr(key) + '">'
+          + '  <span class="name">' + escHtml(pasta && pasta.nome || 'Pasta') + '</span>'
+          + '  <span class="meta">' + escHtml(window._compraPapelaoEmpresaNome(pasta && pasta._emp_id_consulta) || 'Organização de compras') + '</span>'
+          + '  <span class="count">' + escHtml(String(compraFolderCount(key))) + '</span>'
+          + '  <span class="cmpx-folder-actions"><button type="button" data-cmpx-folder-rename="' + escAttr(key) + '" title="Renomear pasta">✎</button><button type="button" class="danger" data-cmpx-folder-delete="' + escAttr(key) + '" title="Excluir pasta">🗑</button></span>'
+          + '</button>';
+      }).join('');
+    var tableRows = visible.map(function(compra) {
+      var totals = window._compraPapelaoCompraTotals(compra);
+      var id = String(compra && compra.id || '').trim();
+      var dataRef = compra && (compra.data_compra || compra.data || compra.atualizado_em || compra.criado_em || compra.created_at || compra.updated_at);
+      return ''
+        + '<tr>'
+        + '  <td><div class="cmpx-stack"><strong>' + escHtml(window._compraPapelaoNumeroLabel(compra && compra.numero_compra || '')) + '</strong><span>' + escHtml(fmtDate(dataRef)) + '</span></div></td>'
+        + '  <td><div class="cmpx-stack"><strong>' + escHtml(compra && compra.fornecedor || '—') + '</strong><span>' + escHtml(compra && compra.status || 'Solicitada') + '</span></div></td>'
+        + '  <td><div class="cmpx-stack"><strong>' + escHtml(compraFolderName(compra) || 'Sem pasta') + '</strong><span>' + escHtml(window._compraPapelaoEmpresaNome(compra && compra._emp_id_consulta) || 'Empresa') + '</span></div></td>'
+        + '  <td><div class="cmpx-stack"><strong>' + escHtml(compra && compra.ped_fornecedor || '—') + '</strong><span>' + escHtml((Array.isArray(compra && compra.itens) ? compra.itens.length : 0) + ' item(ns)') + '</span></div></td>'
+        + '  <td><div class="cmpx-stack"><strong>' + escHtml(((Array.isArray(compra && compra.itens) ? compra.itens[0] : [])[0] || {}).ped_cliente || '—') + '</strong><span>' + escHtml(((Array.isArray(compra && compra.itens) ? compra.itens[0] : [])[0] || {}).po || 'PO não informada') + '</span></div></td>'
+        + '  <td class="cmpx-num">' + escHtml(fmtNum(totals.qtd, 0)) + '</td>'
+        + '  <td class="cmpx-num">' + escHtml(fmtNum(totals.area, 4)) + ' m²</td>'
+        + '  <td class="cmpx-num">' + escHtml(fmtMoney(totals.valor)) + '</td>'
+        + '  <td><div class="cmpx-actions-row"><button type="button" class="primary" data-cmpx-edit="' + escAttr(id) + '">Editar</button><button type="button" data-cmpx-folder-move="' + escAttr(id) + '">Pasta</button><button type="button" data-cmpx-print="' + escAttr(id) + '">Imprimir</button><button type="button" data-cmpx-clone="' + escAttr(id) + '">Clonar</button><button type="button" class="danger" data-cmpx-delete="' + escAttr(id) + '">Excluir</button></div></td>'
+        + '</tr>';
+    }).join('');
+    host.innerHTML = ''
+      + '<div class="pep-wrap cmpx-wrap">'
+      + '  <div class="pep-cards">'
+      + '    <div class="pep-card"><div class="pep-card-label">Valor Total Comprado</div><div class="pep-card-val">' + escHtml(fmtMoney(resumo.valor_total)) + '</div><div class="pep-card-sub">Somatório das compras carregadas</div></div>'
+      + '    <div class="pep-card"><div class="pep-card-label">Compras Visíveis</div><div class="pep-card-val">' + escHtml(String(visible.length)) + '</div><div class="pep-card-sub">Registros após filtros e busca</div></div>'
+      + '    <div class="pep-card"><div class="pep-card-label">Itens na Tela</div><div class="pep-card-val">' + escHtml(String(totalItens)) + '</div><div class="pep-card-sub">Linhas de pedido atualmente visíveis</div></div>'
+      + '    <div class="pep-card"><div class="pep-card-label">Área Total Comprada</div><div class="pep-card-val">' + escHtml(fmtNum(resumo.area_total, 4)) + ' m²</div><div class="pep-card-sub">Área consolidada de todos os itens</div></div>'
+      + '    <div class="pep-card"><div class="pep-card-label">Fornecedor em Destaque</div><div class="pep-card-val">' + escHtml(fornTop) + '</div><div class="pep-card-sub">Maior volume financeiro no conjunto</div></div>'
+      + '  </div>'
+      + '  <div class="pep-head cmpx-head"><div class="cmpx-head-copy"><div class="cmpx-title">Compra de Papelão</div><div class="cmpx-sub">Página refeita no padrão visual das telas de Estoques: resumo forte no topo, filtros claros no meio e tabela detalhada abaixo, com foco em leitura rápida, toque confortável no mobile e operação diária sem poluição visual.</div></div><div class="cmpx-actions"><button type="button" class="pep-btn primary" id="cmpx-btn-nova">Nova Compra</button><button type="button" class="pep-btn" id="cmpx-btn-pasta">Nova Pasta</button><button type="button" class="pep-btn" id="cmpx-btn-sugestoes">Sugestões</button><button type="button" class="pep-btn" id="cmpx-btn-rel-periodo">Relatório do Período</button><button type="button" class="pep-btn" id="cmpx-btn-rel-forn">Compras por Fornecedor</button><button type="button" class="pep-btn" id="cmpx-btn-rel-resumo">Quantidade e Valor</button><button type="button" class="pep-btn" id="cmpx-btn-print">Imprimir</button></div></div>'
+      + '  <div class="pep-panel cmpx-filter-panel">'
+      + '    <div class="cmpx-filter-row"><input class="pep-input" id="cmpx-busca" type="text" placeholder="Buscar por fornecedor, pedido, número da compra, pasta, PO ou observação..." value="' + escAttr(st.busca || '') + '"><button type="button" class="pep-btn primary" id="cmpx-btn-buscar">Buscar</button></div>'
+      + '    <div class="cmpx-folder-strip">' + filtersHtml + '</div>'
+      + '  </div>'
+      + '  <div class="pep-panel">'
+      + '    <div class="cmpx-table-head"><div><div class="cmpx-table-title">Tabela Detalhada de Compras</div><div class="cmpx-table-sub">Cada linha resume a compra inteira e preserva as ações principais no mesmo contexto, como nas áreas de Estoques. O modal full-screen continua sendo o ponto central de criação e edição.</div></div></div>'
+      + '    <div class="cmpx-table-wrap"><table class="cmpx-table"><thead><tr><th>Compra</th><th>Fornecedor</th><th>Pasta</th><th>Pedido do Fornecedor</th><th>Primeiro Item</th><th>Qtd</th><th>Área</th><th>Valor</th><th>Ações</th></tr></thead><tbody>'
+      + (tableRows || '<tr><td colspan="9"><div class="cmpx-empty">Nenhuma compra encontrada com os filtros atuais.</div></td></tr>')
+      + '    </tbody></table></div>'
+      + '  </div>'
+      + '</div>';
+    window._compraPapelaoBindBody();
+  };
+
+  function currentOrcEmpId() {
+    try {
+      return String(
+        ((document.getElementById('orc-fil-emp') || {}).value) ||
+        window.EMP_FILTRO ||
+        window.CURRENT_USER?.emp_id ||
+        window.CURRENT_USER?.empId ||
+        window.CURRENT_USER?.sigla ||
+        ''
+      ).trim();
+    } catch (_) {
+      return '';
+    }
+  }
+  function orcFolderId(item) {
+    return String(item && (item.pasta_id != null ? item.pasta_id : item.pastaId) || '').trim();
+  }
+  function orcFolderNameById(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return '';
+    var list = Array.isArray(window.__orcPastasData) ? window.__orcPastasData : [];
+    for (var i = 0; i < list.length; i += 1) {
+      if (String(list[i] && list[i].id || '') === sid) return String(list[i] && list[i].nome || '').trim();
+    }
+    return '';
+  }
+  function orcFilterValue() { return String(window.__orcPastaFiltro || '__all'); }
+  function orcSearchValue() { return String(window.__orcBuscaTexto || '').trim(); }
+  function orcApplyBaseFilter(item, filter) {
+    var pastaId = orcFolderId(item);
+    if (filter === '__all') return true;
+    if (filter === '__sem_pasta') return !pastaId;
+    if (String(filter || '').indexOf('id:') === 0) return pastaId === String(filter).slice(3);
+    return true;
+  }
+  function orcFilteredRows() {
+    var empId = currentOrcEmpId();
+    var filter = orcFilterValue();
+    var search = orcSearchValue().toLowerCase();
+    var lista = Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS.slice() : [];
+    if (empId) {
+      lista = lista.filter(function(item) {
+        return String(item && (item.empId || item.emp_id || '') || '').trim() === empId;
+      });
+    }
+    lista = lista.filter(function(item) { return orcApplyBaseFilter(item, filter); });
+    if (!search) return lista;
+    return lista.filter(function(item) {
+      var txt = [
+        item && item.numero_orcamento,
+        item && item.nome,
+        item && item.nome_orcamento,
+        item && item.cliente_nome,
+        item && item.descricao,
+        item && item.medidas,
+        item && item.titulo,
+        item && item.onda,
+        item && item.chapa_utilizada,
+        item && item.chapaUtilizada,
+        orcFolderNameById(orcFolderId(item))
+      ].join(' ').toLowerCase();
+      return txt.indexOf(search) >= 0;
+    });
+  }
+  function orcCountByFilter(filter) {
+    var empId = currentOrcEmpId();
+    var lista = Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS.slice() : [];
+    if (empId) {
+      lista = lista.filter(function(item) {
+        return String(item && (item.empId || item.emp_id || '') || '').trim() === empId;
+      });
+    }
+    return lista.filter(function(item) { return orcApplyBaseFilter(item, filter); }).length;
+  }
+  function orcRequestJson(path, opts) {
+    var options = opts || {};
+    if (typeof window.apiFetch === 'function') {
+      return window.apiFetch(path, options).then(function(resp) {
+        return resp.json().catch(function() { return null; }).then(function(json) {
+          if (!resp.ok || (json && json.ok === false)) throw new Error(String(json && (json.error || json.message) || ('Falha em ' + path)));
+          return Object.prototype.hasOwnProperty.call(json || {}, 'data') ? json.data : json;
+        });
+      });
+    }
+    var headers = Object.assign({}, options.headers || {});
+    var token = '';
+    try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || window._token || '').trim(); } catch (_) {}
+    if (token) headers.Authorization = 'Bearer ' + token;
+    var body = options.body;
+    if (body && typeof body === 'object' && !(body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+      body = JSON.stringify(body);
+    }
+    return fetch(path, Object.assign({}, options, { headers: headers, body: body })).then(function(resp) {
+      return resp.json().catch(function() { return null; }).then(function(json) {
+        if (!resp.ok || (json && json.ok === false)) throw new Error(String(json && (json.error || json.message) || ('Falha em ' + path)));
+        return Object.prototype.hasOwnProperty.call(json || {}, 'data') ? json.data : json;
+      });
+    });
+  }
+  function orcEnsureFoldersLoaded() {
+    if (window.__orcRedesignFoldersLoading) return window.__orcRedesignFoldersLoading;
+    var list = Array.isArray(window.__orcPastasData) ? window.__orcPastasData : [];
+    if (list.length) return Promise.resolve(list);
+    var url = '/api/orcamentos_pastas';
+    var empId = currentOrcEmpId();
+    if (empId) url += '?empresa_id=' + encodeURIComponent(empId);
+    window.__orcRedesignFoldersLoading = orcRequestJson(url, { method: 'GET' }).then(function(rows) {
+      window.__orcPastasData = (Array.isArray(rows) ? rows : []).map(function(item) {
+        return {
+          id: String(item && item.id || '').trim(),
+          nome: String(item && item.nome || '').trim(),
+          empresa_id: String(item && item.empresa_id || '').trim() || null
+        };
+      });
+      return window.__orcPastasData;
+    }).catch(function() {
+      window.__orcPastasData = [];
+      return [];
+    }).finally(function() {
+      window.__orcRedesignFoldersLoading = null;
+    });
+    return window.__orcRedesignFoldersLoading;
+  }
+  function renderCalcWavePanels() {
+    var modal = document.getElementById('modal-calculadora');
+    var tableWrap = modal && modal.querySelector ? modal.querySelector('.calc-tabela-wrap') : null;
+    if (!modal || !tableWrap) return;
+    var panel = document.getElementById('calc-wave-panels');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'calc-wave-panels';
+      panel.className = 'calc-wave-panels';
+      tableWrap.insertAdjacentElement('afterend', panel);
+    }
+    var results = Array.isArray(window.calcLastResult && window.calcLastResult.allResults) ? window.calcLastResult.allResults.slice() : [];
+    if (!results.length) {
+      panel.innerHTML = '';
+      return;
+    }
+    var bestValue = results.reduce(function(lowest, row) {
+      var current = Number(row && (row.vunit != null ? row.vunit : row.liquida) || 0) || 0;
+      return current > 0 && (lowest == null || current < lowest) ? current : lowest;
+    }, null);
+    panel.innerHTML = results.map(function(row) {
+      var currentValue = Number(row && (row.vunit != null ? row.vunit : row.liquida) || 0) || 0;
+      var isBest = bestValue != null && currentValue === bestValue;
+      return ''
+        + '<div class="calc-wave-card' + (isBest ? ' best' : '') + '">'
+        + '  <div class="calc-wave-head"><div><div class="calc-wave-title">' + escHtml(row && row.compTitle || ('Onda ' + (row && row.onda || '—'))) + '</div><div style="font-size:12px;color:#94a3b8;margin-top:4px">Comparação direta da compensação para esta onda.</div></div><span class="calc-wave-badge">Onda ' + escHtml(row && row.onda || '—') + '</span></div>'
+        + '  <div class="calc-wave-grid">'
+        + '    <div class="calc-wave-metric"><span>Largura</span><strong>' + escHtml(String(row && row.largura || '—')) + ' mm</strong></div>'
+        + '    <div class="calc-wave-metric"><span>Comprimento</span><strong>' + escHtml(String(row && row.comprimento || '—')) + ' mm</strong></div>'
+        + '    <div class="calc-wave-metric"><span>Área</span><strong>' + escHtml(fmtNum(row && row.area || 0, 6)) + ' m²</strong></div>'
+        + '    <div class="calc-wave-metric"><span>Valor Bruto</span><strong>' + escHtml(fmtMoney(row && row.bruto || 0)) + '</strong></div>'
+        + '    <div class="calc-wave-metric"><span>Venda Líquida</span><strong>' + escHtml(fmtMoney(row && row.liquida || 0)) + '</strong></div>'
+        + '    <div class="calc-wave-metric"><span>Valor Unitário</span><strong>' + escHtml(fmtMoney(row && row.vunit || 0)) + '</strong></div>'
+        + '  </div>'
+        + '  <button type="button" onclick="calcUsarOpcao(' + Number(row && row.compIdx || 0) + ', \'' + escAttr(row && row.onda || 'B') + '\')">Usar no Orçamento</button>'
+        + '</div>';
+    }).join('');
+  }
+  if (typeof window.calcRecalc === 'function' && !window.calcRecalc.__patchWavePanels) {
+    var origCalcRecalc = window.calcRecalc;
+    window.calcRecalc = function() {
+      var out = origCalcRecalc.apply(this, arguments);
+      try { renderCalcWavePanels(); } catch (_) {}
+      return out;
+    };
+    window.calcRecalc.__patchWavePanels = true;
+  }
+  if (typeof window.abrirCalculadora === 'function' && !window.abrirCalculadora.__patchWavePanels) {
+    var origAbrirCalculadoraWave = window.abrirCalculadora;
+    window.abrirCalculadora = function() {
+      var out = origAbrirCalculadoraWave.apply(this, arguments);
+      setTimeout(function() { try { renderCalcWavePanels(); } catch (_) {} }, 50);
+      setTimeout(function() { try { renderCalcWavePanels(); } catch (_) {} }, 300);
+      return out;
+    };
+    window.abrirCalculadora.__patchWavePanels = true;
+  }
+
+  window.renderOrcamentos = function renderOrcamentosRedesenhados() {
+    ensureRedesignStyle();
+    orcEnsureFoldersLoaded().catch(function() { return []; });
+    var body = document.getElementById('orc-body');
+    if (!body) return;
+    var lista = orcFilteredRows();
+    var totalValor = lista.reduce(function(sum, orc) {
+      return sum + (Number(orc && (orc.valor_total != null ? orc.valor_total : (orc.vtot != null ? orc.vtot : 0)) || 0) || 0);
+    }, 0);
+    var totalSemPasta = orcCountByFilter('__sem_pasta');
+    var totalComChapa = lista.filter(function(orc) {
+      return !!String(
+        orc && (
+          orc.chapa_utilizada != null ? orc.chapa_utilizada :
+          (orc.chapaUtilizada != null ? orc.chapaUtilizada :
+          (orc.parametros && typeof orc.parametros === 'object'
+            ? (orc.parametros.chapa_utilizada != null ? orc.parametros.chapa_utilizada : orc.parametros.chapaUtilizada)
+            : ''))
+        ) || ''
+      ).trim();
+    }).length;
+    var totalClientes = {};
+    lista.forEach(function(orc) {
+      var nome = String(orc && (orc.cliente_nome || orc.descricao || '') || '').trim();
+      if (nome) totalClientes[nome] = true;
+    });
+    var filtersHtml = ''
+      + '<button type="button" class="orx-folder-pill' + (orcFilterValue() === '__all' ? ' is-active' : '') + '" data-orx-filter="__all"><span class="name">Todos os Orçamentos</span><span class="meta">Base completa do filtro atual</span><span class="count">' + escHtml(String(orcCountByFilter('__all'))) + '</span></button>'
+      + '<button type="button" class="orx-folder-pill' + (orcFilterValue() === '__sem_pasta' ? ' is-active' : '') + '" data-orx-filter="__sem_pasta"><span class="name">Sem Pasta</span><span class="meta">Orçamentos ainda sem organização</span><span class="count">' + escHtml(String(totalSemPasta)) + '</span></button>'
+      + (Array.isArray(window.__orcPastasData) ? window.__orcPastasData : []).map(function(folder) {
+        var filter = 'id:' + String(folder && folder.id || '').trim();
+        return ''
+          + '<button type="button" class="orx-folder-pill' + (orcFilterValue() === filter ? ' is-active' : '') + '" data-orx-filter="' + escAttr(filter) + '">'
+          + '  <span class="name">' + escHtml(folder && folder.nome || 'Pasta') + '</span>'
+          + '  <span class="meta">Organização visual igual às áreas de Estoques</span>'
+          + '  <span class="count">' + escHtml(String(orcCountByFilter(filter))) + '</span>'
+          + '  <span class="orx-folder-actions"><button type="button" class="danger" data-orx-folder-delete="' + escAttr(String(folder && folder.id || '')) + '" title="Excluir pasta">🗑</button></span>'
+          + '</button>';
+      }).join('');
+    var rowsHtml = lista.map(function(orc) {
+      var id = String(orc && orc.id || '').trim();
+      var num = orc && orc.numero_orcamento ? orc.numero_orcamento : (id ? id.slice(0, 8) : '—');
+      var nome = orc && (orc.nome || orc.nome_orcamento) ? (orc.nome || orc.nome_orcamento) : '—';
+      var cliente = orc && (orc.cliente_nome || orc.descricao) ? (orc.cliente_nome || orc.descricao) : '—';
+      var medidas = orc && (orc.medidas || orc.titulo) ? (orc.medidas || orc.titulo) : '—';
+      var qtd = orc && (orc.quantidade != null ? orc.quantidade : (orc.qtd != null ? orc.qtd : '—'));
+      var onda = orc && orc.onda ? orc.onda : '—';
+      var chapa = String(
+        orc && (
+          orc.chapa_utilizada != null ? orc.chapa_utilizada :
+          (orc.chapaUtilizada != null ? orc.chapaUtilizada :
+          (orc.parametros && typeof orc.parametros === 'object'
+            ? (orc.parametros.chapa_utilizada != null ? orc.parametros.chapa_utilizada : orc.parametros.chapaUtilizada)
+            : ''))
+        ) || ''
+      ).trim() || '—';
+      var vtot = orc && (orc.valor_total != null ? orc.valor_total : (orc.vtot != null ? orc.vtot : 0));
+      var pastaId = orcFolderId(orc);
+      return ''
+        + '<tr>'
+        + '  <td><div class="orx-stack"><strong>Nº ' + escHtml(String(num)) + '</strong><span>' + escHtml(id ? ('ID ' + id.slice(0, 8)) : 'Sem ID') + '</span></div></td>'
+        + '  <td><div class="orx-stack"><strong>' + escHtml(nome) + '</strong><span>' + escHtml(orcFolderNameById(pastaId) || 'Sem pasta') + '</span></div></td>'
+        + '  <td><div class="orx-stack"><strong>' + escHtml(cliente) + '</strong><span>Cliente do orçamento</span></div></td>'
+        + '  <td><div class="orx-stack"><strong>' + escHtml(medidas) + '</strong><span>Dimensões e descrição</span></div></td>'
+        + '  <td><div class="orx-stack"><strong>' + escHtml(onda) + '</strong><span>' + escHtml(chapa) + '</span></div></td>'
+        + '  <td class="orx-num">' + escHtml(String(qtd)) + '</td>'
+        + '  <td class="orx-num">' + escHtml(fmtMoney(vtot)) + '</td>'
+        + '  <td><div class="orx-actions-row"><select onchange="orcMoverParaPasta(\'' + escAttr(id) + '\', this.value)"><option value="">Sem pasta</option>' + (Array.isArray(window.__orcPastasData) ? window.__orcPastasData.map(function(folder) {
+            var sid = String(folder && folder.id || '').trim();
+            return '<option value="' + escAttr(sid) + '"' + (sid === pastaId ? ' selected' : '') + '>' + escHtml(folder && folder.nome || '') + '</option>';
+          }).join('') : '') + '</select><button type="button" class="primary" onclick="abrirCalculadoraComOrc(\'' + escAttr(id) + '\')">Editar</button><button type="button" onclick="imprimirOrcamentoId(\'' + escAttr(id) + '\')">Imprimir</button><button type="button" onclick="abrirVersoesOrcamento(\'' + escAttr(id) + '\')">Versões</button><button type="button" class="danger" onclick="excluirOrcamento(\'' + escAttr(id) + '\')">Excluir</button></div></td>'
+        + '</tr>';
+    }).join('');
+    body.innerHTML = ''
+      + '<div class="pep-wrap orx-wrap">'
+      + '  <div class="pep-cards">'
+      + '    <div class="pep-card"><div class="pep-card-label">Orçamentos Visíveis</div><div class="pep-card-val">' + escHtml(String(lista.length)) + '</div><div class="pep-card-sub">Registros após busca e pasta</div></div>'
+      + '    <div class="pep-card"><div class="pep-card-label">Valor Total</div><div class="pep-card-val">' + escHtml(fmtMoney(totalValor)) + '</div><div class="pep-card-sub">Somatório dos orçamentos filtrados</div></div>'
+      + '    <div class="pep-card"><div class="pep-card-label">Sem Pasta</div><div class="pep-card-val">' + escHtml(String(totalSemPasta)) + '</div><div class="pep-card-sub">Itens ainda sem organização</div></div>'
+      + '    <div class="pep-card"><div class="pep-card-label">Com Chapa Vinculada</div><div class="pep-card-val">' + escHtml(String(totalComChapa)) + '</div><div class="pep-card-sub">Orçamentos com chapa interna preenchida</div></div>'
+      + '    <div class="pep-card"><div class="pep-card-label">Clientes na Tela</div><div class="pep-card-val">' + escHtml(String(Object.keys(totalClientes).length)) + '</div><div class="pep-card-sub">Carteira visível após filtros</div></div>'
+      + '  </div>'
+      + '  <div class="pep-head orx-head"><div class="orx-head-copy"><div class="orx-title">Orçamentos</div><div class="orx-sub">Área refeita com a mesma hierarquia das telas de Estoques: cards-resumo no topo, filtros claros no meio e tabela detalhada abaixo. A Calculadora continua como núcleo de criação, mas a listagem agora ficou mais legível e preparada para uso real no mobile.</div></div><div class="orx-actions"><button type="button" class="pep-btn primary" id="orx-btn-novo">Novo Orçamento</button><button type="button" class="pep-btn" id="orx-btn-pasta">Nova Pasta</button><button type="button" class="pep-btn" id="orx-btn-recarregar">Recarregar</button></div></div>'
+      + '  <div class="pep-panel orx-filter-panel">'
+      + '    <div class="orx-filter-row"><input class="pep-input" id="orx-busca" type="text" placeholder="Buscar por número, nome, cliente, medidas, onda, chapa ou pasta..." value="' + escAttr(orcSearchValue()) + '"><button type="button" class="pep-btn primary" id="orx-btn-buscar">Buscar</button></div>'
+      + '    <div class="orx-folder-strip">' + filtersHtml + '</div>'
+      + '  </div>'
+      + '  <div class="pep-panel">'
+      + '    <div class="orx-table-head"><div><div class="orx-table-title">Tabela Detalhada de Orçamentos</div><div class="orx-table-sub">Listagem refeita para leitura rápida: número, nome, cliente, medidas, onda, valor total e ações principais no mesmo contexto, como nas páginas do menu Estoques.</div></div></div>'
+      + '    <div class="orx-table-wrap"><table class="orx-table"><thead><tr><th>Número</th><th>Orçamento</th><th>Cliente</th><th>Medidas</th><th>Onda / Chapa</th><th>Qtd</th><th>Valor Total</th><th>Ações</th></tr></thead><tbody>'
+      + (rowsHtml || '<tr><td colspan="8"><div class="orx-empty">Nenhum orçamento encontrado com os filtros atuais.</div></td></tr>')
+      + '    </tbody></table></div>'
+      + '  </div>'
+      + '</div>';
+    var buscaEl = document.getElementById('orx-busca');
+    var applySearch = function() {
+      window.__orcBuscaTexto = String((buscaEl || {}).value || '').trim();
+      window.renderOrcamentos();
+    };
+    var bind = function(id, fn) {
+      var el = document.getElementById(id);
+      if (el) el.onclick = fn;
+    };
+    bind('orx-btn-buscar', applySearch);
+    bind('orx-btn-pasta', function() { if (typeof window.orcAbrirModalPasta === 'function') window.orcAbrirModalPasta(''); });
+    bind('orx-btn-novo', function() { if (typeof window.abrirCalculadora === 'function') window.abrirCalculadora(); });
+    bind('orx-btn-recarregar', function() {
+      window.__orcPastasData = null;
+      Promise.resolve(typeof window.carregarOrcamentos === 'function' ? window.carregarOrcamentos() : null).finally(function() {
+        orcEnsureFoldersLoaded().finally(function() { window.renderOrcamentos(); });
+      });
+    });
+    if (buscaEl && buscaEl.dataset.bound !== '1') {
+      buscaEl.dataset.bound = '1';
+      buscaEl.addEventListener('keydown', function(ev) {
+        if (!ev || ev.key !== 'Enter') return;
+        try { ev.preventDefault(); } catch (_) {}
+        applySearch();
+      });
+    }
+    Array.prototype.slice.call(document.querySelectorAll('[data-orx-filter]')).forEach(function(btn) {
+      btn.onclick = function(ev) {
+        var safe = ev && ev.target && ev.target.closest ? ev.target.closest('[data-orx-folder-delete]') : null;
+        if (safe) return;
+        window.__orcPastaFiltro = String(btn.getAttribute('data-orx-filter') || '__all');
+        window.renderOrcamentos();
+      };
+    });
+    Array.prototype.slice.call(document.querySelectorAll('[data-orx-folder-delete]')).forEach(function(btn) {
+      btn.onclick = function(ev) {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        if (typeof window.orcExcluirPasta === 'function') window.orcExcluirPasta(String(btn.getAttribute('data-orx-folder-delete') || ''));
+      };
+    });
+  };
+
+  function tick() {
+    ensureRedesignStyle();
+    try { renderCalcWavePanels(); } catch (_) {}
+    try {
+      var overlay = document.getElementById('ccpx-compra-fullscreen');
+      if (overlay) bindCompraVincoActions(overlay);
+    } catch (_) {}
+  }
+  tick();
+  setTimeout(tick, 120);
+  setTimeout(tick, 600);
+})();
 
 
