@@ -9483,6 +9483,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     try { return document.getElementById('page-historico-passagens'); } catch (_) { return null; }
   }
 
+  function _histIsPageActive() {
+    try {
+      var page = _histGetPage();
+      if (!page) return false;
+      if (page.classList && page.classList.contains('active')) return true;
+      var active = document.querySelector('.page.active');
+      return !!(active && active === page);
+    } catch (_) {
+      return false;
+    }
+  }
+
   function _histGetFilters() {
     if (typeof window.obterFiltrosHistoricoAtivos === 'function') {
       try { return window.obterFiltrosHistoricoAtivos() || {}; } catch (_) {}
@@ -9715,7 +9727,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
       var st = document.createElement('style');
       st.id = 'patch-historico-passagens-style';
       st.textContent = ''
-        + '#page-historico-passagens{display:block!important;min-height:100vh!important;height:auto!important;max-height:none!important;overflow-y:auto!important;overflow-x:hidden!important}'
+        + '#page-historico-passagens.active{display:block!important;min-height:100vh!important;height:auto!important;max-height:none!important;overflow-y:auto!important;overflow-x:hidden!important}'
         + '#hist-filtros .hist-patch-btn,#hist-relatorio-mensal-shell .hist-patch-btn{background:#1e293b;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer}'
         + '#hist-filtros .hist-patch-btn:hover,#hist-relatorio-mensal-shell .hist-patch-btn:hover{filter:brightness(1.06)}'
         + '#hist-filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0;padding:14px 16px;border-radius:14px;background:rgba(15,23,42,.82);border:1px solid rgba(148,163,184,.14)}'
@@ -9744,10 +9756,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
         + '#hist-relatorio-mensal-shell .hist-month-table tbody td.num{text-align:right;font-variant-numeric:tabular-nums}'
         + '#hist-relatorio-mensal-shell .hist-month-table tbody tr:nth-child(even) td{background:rgba(255,255,255,.02)}'
         + '#hist-relatorio-mensal-shell .hist-month-table tbody tr:hover td{background:rgba(30,41,59,.42)}'
-        + '#page-historico-passagens #hist-passagens-resultado{display:block!important;gap:10px;min-height:auto!important;height:auto!important;max-height:none!important;overflow:visible!important}'
+        + '#page-historico-passagens.active #hist-passagens-resultado{display:block!important;gap:10px;min-height:auto!important;height:auto!important;max-height:none!important;overflow:visible!important}'
         + '#hist-passagens-resultado .hist-passagens-toolbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}'
-        + '#page-historico-passagens #hist-passagens-resultado .hist-passagens-scroll{display:block!important;min-height:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;overscroll-behavior:auto;padding-right:0;scrollbar-gutter:auto}'
-        + '#page-historico-passagens #hist-passagens-resultado > #hist-passagens-items.hist-passagens-scroll{display:block !important;min-height:auto !important;height:auto!important;max-height:none!important;overflow:visible!important;overscroll-behavior:auto!important;padding-right:0!important}'
+        + '#page-historico-passagens.active #hist-passagens-resultado .hist-passagens-scroll{display:block!important;min-height:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;overscroll-behavior:auto;padding-right:0;scrollbar-gutter:auto}'
+        + '#page-historico-passagens.active #hist-passagens-resultado > #hist-passagens-items.hist-passagens-scroll{display:block !important;min-height:auto !important;height:auto!important;max-height:none!important;overflow:visible!important;overscroll-behavior:auto!important;padding-right:0!important}'
         + '#hist-passagens-resultado .hist-detalhamento-box{display:block!important;gap:12px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);border-radius:16px;padding:14px}'
         + '#hist-passagens-resultado .hist-detalhamento-head{display:flex;justify-content:flex-start;gap:12px;flex-wrap:wrap;align-items:center}'
         + '#hist-passagens-resultado .hist-detalhamento-title{font-size:16px;font-weight:900;color:#f8fafc}'
@@ -9927,7 +9939,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
       relPrintBtn.onclick = function() { _histPrint('mensal'); };
     }
     var cardsHost = document.getElementById('hist-relatorio-mensal-cards');
-    if (page && page.offsetParent !== null && cardsHost && !String(cardsHost.textContent || '').trim()) {
+    if (_histIsPageActive() && cardsHost && !String(cardsHost.textContent || '').trim()) {
       if (!window.__histResumoCardsEnsureTimer) {
         window.__histResumoCardsEnsureTimer = setTimeout(function() {
           window.__histResumoCardsEnsureTimer = null;
@@ -10775,8 +10787,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     try {
       _histEnsureUi();
       _histHideTopWidgets();
-      var page = _histGetPage();
-      if (page && page.offsetParent !== null) {
+      if (_histIsPageActive()) {
         _histFetchRelatorioMensal();
       }
     } catch (_) {}
