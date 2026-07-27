@@ -29241,19 +29241,36 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       window.CLIENTES = Array.isArray(window.CLIENTES) ? window.CLIENTES : [];
       var lista = window.CLIENTES;
       var found = null;
+      var hasExactAlias = false;
+      var nomeLower = nome.toLowerCase();
       for (var i = 0; i < lista.length; i += 1) {
-        if (String(lista[i] && lista[i].id || '').trim() === id) {
-          found = lista[i];
-          break;
+        var item = lista[i] || null;
+        if (!found && String(item && item.id || '').trim() === id) {
+          found = item;
+        }
+        if (nome) {
+          var itemNome = String(item && (item.nome || item.razao_social || item.razao) || '').trim().toLowerCase();
+          if (itemNome && itemNome === nomeLower) {
+            hasExactAlias = true;
+          }
         }
       }
       if (!found) {
-        found = { id: id, nome: nome };
+        found = { id: id, nome: nome, razao_social: nome, razao: nome };
         lista.push(found);
       } else if (nome) {
         if (!String(found.nome || '').trim()) found.nome = nome;
         if (!String(found.razao_social || '').trim()) found.razao_social = nome;
         if (!String(found.razao || '').trim()) found.razao = nome;
+        if (!hasExactAlias) {
+          lista.push({
+            id: id,
+            nome: nome,
+            razao_social: nome,
+            razao: nome,
+            _patchOfRapidaAlias: true
+          });
+        }
       }
     } catch (_) {}
   }

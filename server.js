@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1162,9 +1162,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260727173500';
-const SW_RUNTIME_VERSION = '20260727173500';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260727173500';
+const PATCH_RUNTIME_VERSION = '20260727175100';
+const SW_RUNTIME_VERSION = '20260727175100';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260727175100';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -3841,7 +3841,7 @@ function ofPayloadFiltrado(body) {
 
 async function _buscarClienteNomeOF(cliId) {
   const cli = await _buscarClienteRegistroOF(cliId);
-  return _clienteNomeValido(cli?.nome || cli?.rs || cli?.razao_social || '');
+  return _clienteNomeValido(cli?.nome || cli?.rs || cli?.razao_social || cli?.razao || cli?.cliente_nome || '');
 }
 
 function _clienteNomeValido(v) {
@@ -3867,7 +3867,7 @@ async function _buscarClienteRegistroOF(cliId) {
     try {
       const { data, error } = await supabase
         .from('clientes')
-        .select('id,codigo,nome,rs,razao_social,vendedor_id')
+        .select('*')
         .eq(attempt.column, attempt.value)
         .maybeSingle();
       if (!error && data) return data;
@@ -3883,12 +3883,19 @@ async function _resolverClienteIdentidadeOF(raw) {
   if (!cli) return null;
   const id = String(cli?.id || '').trim();
   if (!id) return null;
-  const nome = _clienteNomeValido(cli?.nome || cli?.rs || cli?.razao_social || '');
+  const nome = _clienteNomeValido(
+    cli?.nome ||
+    cli?.rs ||
+    cli?.razao_social ||
+    cli?.razao ||
+    cli?.cliente_nome ||
+    ''
+  );
   return {
     id,
     codigo: String(cli?.codigo || '').trim(),
     nome,
-    vendedor_id: String(cli?.vendedor_id || '').trim() || null,
+    vendedor_id: String(cli?.vendedor_id || cli?.vendId || cli?.vend_id || '').trim() || null,
   };
 }
 
