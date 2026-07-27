@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1162,9 +1162,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260727141000';
-const SW_RUNTIME_VERSION = '20260727141000';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260727141000';
+const PATCH_RUNTIME_VERSION = '20260727173500';
+const SW_RUNTIME_VERSION = '20260727173500';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260727173500';
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -2129,8 +2129,63 @@ app.get('/api/usuarios/lista', authMiddleware, async (req, res) => {
   }
 });
 
+function _comissoesTextoValido(value) {
+  const txt = String(value || '').trim();
+  if (!txt || txt === '—') return '';
+  if (/^cliente nao identificado$/i.test(txt.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))) return '';
+  if (/^sem vendedor$/i.test(txt.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))) return '';
+  return txt;
+}
+
 async function _comissoesEnriquecerLista(baseRows) {
   let todasOFs = Array.isArray(baseRows) ? baseRows.slice() : [];
+  const viewFallbackByKey = new Map();
+  const valorTopoPorId = new Map();
+  const bindViewFallback = (row) => {
+    const cliente = _comissoesTextoValido(row?.cliente_nome) || _comissoesTextoValido(row?.clinome) || _comissoesTextoValido(row?.cliNome) || _comissoesTextoValido(row?.cliente);
+    const vendedor = _comissoesTextoValido(row?.vendedor_nome) || _comissoesTextoValido(row?.vendedor) || _comissoesTextoValido(row?.vendNome);
+    if (!(cliente || vendedor)) return;
+    const keys = [
+      String(row?.id || '').trim(),
+      'numero:' + String(row?.numero || row?.of || '').trim(),
+      'of:' + String(row?.of || row?.numero || '').trim()
+    ].filter(Boolean);
+    keys.forEach((key) => {
+      viewFallbackByKey.set(key, { cliente, vendedor });
+    });
+  };
+  const applyViewFallback = (lista) => {
+    (Array.isArray(lista) ? lista : []).forEach((of) => {
+      const fallback = viewFallbackByKey.get(String(of?.id || '').trim())
+        || viewFallbackByKey.get('numero:' + String(of?.numero || of?.of || '').trim())
+        || viewFallbackByKey.get('of:' + String(of?.of || of?.numero || '').trim());
+      if (!fallback) return;
+      if (fallback.cliente) {
+        of.__cliente_nome_view = fallback.cliente;
+        if (!_comissoesTextoValido(of.clinome)) of.clinome = fallback.cliente;
+        if (!_comissoesTextoValido(of.cliente_nome)) of.cliente_nome = fallback.cliente;
+        if (!_comissoesTextoValido(of.cliNome)) of.cliNome = fallback.cliente;
+        if (!_comissoesTextoValido(of.cliente)) of.cliente = fallback.cliente;
+      }
+      if (fallback.vendedor) {
+        of.__vendedor_nome_view = fallback.vendedor;
+        if (!_comissoesTextoValido(of.vendedor)) of.vendedor = fallback.vendedor;
+        if (!_comissoesTextoValido(of.vendedor_nome)) of.vendedor_nome = fallback.vendedor;
+        if (!_comissoesTextoValido(of.vendNome)) of.vendNome = fallback.vendedor;
+      }
+    });
+  };
+  const applyValoresTopo = (lista) => {
+    (Array.isArray(lista) ? lista : []).forEach((of) => {
+      const row = valorTopoPorId.get(String(of?.id || '').trim());
+      if (!row) return;
+      if (row.valor_total != null) of.valor_total = row.valor_total;
+      if (row.valor_venda != null) of.valor_venda = row.valor_venda;
+      if (row.preco != null) of.preco = row.preco;
+      if (row.total != null) of.total = row.total;
+    });
+  };
+  (Array.isArray(baseRows) ? baseRows : []).forEach(bindViewFallback);
   try {
     const missingQtdIds = todasOFs
       .filter((of) => of && of.id && (of.quantidade == null && of.qtd == null && of.qtd_pedida == null))
@@ -2164,7 +2219,6 @@ async function _comissoesEnriquecerLista(baseRows) {
       .map((of) => String(of && of.id || '').trim())
       .filter(Boolean);
     if (idsValor.length) {
-      const mapaValor = {};
       const chunkSizeValor = 100;
       for (let i = 0; i < idsValor.length; i += chunkSizeValor) {
         const chunk = idsValor.slice(i, i + chunkSizeValor);
@@ -2174,22 +2228,17 @@ async function _comissoesEnriquecerLista(baseRows) {
           .in('id', chunk);
         if (errValor) continue;
         (ofsValor || []).forEach((row) => {
-          mapaValor[String(row.id)] = row;
+            valorTopoPorId.set(String(row.id), row);
         });
       }
-      todasOFs.forEach((of) => {
-        const row = mapaValor[String(of && of.id || '')];
-        if (!row) return;
-        if (row.valor_total != null) of.valor_total = row.valor_total;
-        if (row.valor_venda != null) of.valor_venda = row.valor_venda;
-        if (row.preco != null) of.preco = row.preco;
-        if (row.total != null && of.total == null) of.total = row.total;
-      });
+        applyValoresTopo(todasOFs);
     }
   } catch (_) {}
   try {
     todasOFs = await _enriquecerRespostaOFs(todasOFs);
   } catch (_) {}
+  applyValoresTopo(todasOFs);
+  applyViewFallback(todasOFs);
   return todasOFs;
 }
 
@@ -2219,14 +2268,25 @@ function _comissoesMontarPayload(todasOFs, extra = {}) {
     const comissao_pct = Number(of.comissao_pct || 1);
     const comissao_rs = (of.comissao_rs != null) ? Number(of.comissao_rs || 0) : (valor_total * (comissao_pct / 100));
     const preco = Number(of.preco ?? of.valor_unitario ?? 0) || 0;
+    const clienteNome = _comissoesTextoValido(of.clinome)
+      || _comissoesTextoValido(of.cliente_nome)
+      || _comissoesTextoValido(of.cliNome)
+      || _comissoesTextoValido(of.cliente)
+      || _comissoesTextoValido(of.__cliente_nome_view)
+      || '—';
+    const vendedorNome = _comissoesTextoValido(of.vendedor)
+      || _comissoesTextoValido(of.vendedor_nome)
+      || _comissoesTextoValido(of.vendNome)
+      || _comissoesTextoValido(of.__vendedor_nome_view)
+      || 'Sem Vendedor';
     return {
       id: of.id,
       numero: of.numero || of.of,
       of: of.of || of.numero || null,
       cli_id: of.cli_id || of.cliId || of.cliente_id || of.clienteId || null,
       vendedor_id: of.vendedor_id || of.vendId || of.vend_id || of.vendid || null,
-      cliente: of.clinome || of.cliente_nome || of.cliNome || of.cliente || '—',
-      vendedor: of.vendedor || of.vendedor_nome || of.vendNome || 'Sem Vendedor',
+      cliente: clienteNome,
+      vendedor: vendedorNome,
       quantidade: of.quantidade ?? of.qtd ?? of.qtd_pedida ?? null,
       valor_total,
       total: valor_total,

@@ -18891,12 +18891,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     }
 
     function machineCatalogFromRows(rows) {
+      var baseOrder = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA'];
       var map = {};
       (Array.isArray(rows) ? rows : []).forEach(function(item) {
         var key = normalizeMachine(item && item.maquina);
         if (key) map[key] = key;
       });
-      return Object.keys(map).sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); });
+      return baseOrder.slice().concat(
+        Object.keys(map)
+          .filter(function(key) { return baseOrder.indexOf(key) < 0; })
+          .sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); })
+      );
     }
 
     function capacidadeDia(dateIso) {
@@ -29109,24 +29114,68 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return Array.isArray(window.CLIENTES) ? window.CLIENTES : (Array.isArray(window.clientes) ? window.clientes : []);
   }
 
+      function clienteNomePlausivel(txt) {
+        var s = normClienteNome(txt);
+        if (!s) return false;
+        var flat = s.replace(/\s+/g, '');
+        if (!flat || /^\d+$/.test(flat)) return false;
+        if (/^[a-z]{0,6}\d+$/.test(flat)) return false;
+        return s.length >= 3;
+      }
+
+      function clienteLookupVariants(raw) {
+        var src = String(raw || '').replace(/\s+/g, ' ').trim();
+        if (!src) return [];
+        var out = [];
+        var seen = {};
+        function push(txt) {
+          var val = String(txt || '').replace(/\s+/g, ' ').trim();
+          var norm = normClienteNome(val);
+          if (!val || !norm || seen[norm] || !clienteNomePlausivel(val)) return;
+          seen[norm] = true;
+          out.push(val);
+        }
+        push(src.replace(/^[A-Z]{1,6}\d{1,10}\s*[|:-]\s*/i, ''));
+        push(src.replace(/^\d+\s*[|:-]\s*/, ''));
+        var pipeParts = src.split('|').map(function(part) { return String(part || '').trim(); }).filter(Boolean);
+        pipeParts
+          .filter(clienteNomePlausivel)
+          .sort(function(a, b) { return b.length - a.length; })
+          .forEach(push);
+        src.split(/\s[-:]\s/).forEach(push);
+        push(src);
+        pipeParts.forEach(push);
+        return out;
+      }
+
+      function clienteLookupNormSet(raw) {
+        return clienteLookupVariants(raw).map(normClienteNome).filter(Boolean);
+      }
+
   function acharClienteRobusto(nome) {
-    var alvo = normClienteNome(nome);
-    if (!alvo) return null;
+        var alvos = clienteLookupNormSet(nome);
+        if (!alvos.length) return null;
     var lista = clientesRef();
-    for (var i = 0; i < lista.length; i++) {
-      var c = lista[i];
-      var base = c && (c.nome || c.razao_social || c.razao || '');
-      if (normClienteNome(base) === alvo) return c;
+        for (var a = 0; a < alvos.length; a += 1) {
+          var alvo = alvos[a];
+          for (var i = 0; i < lista.length; i++) {
+            var c = lista[i];
+            var base = c && (c.nome || c.razao_social || c.razao || '');
+            if (normClienteNome(base) === alvo) return c;
+          }
     }
-    for (var j = 0; j < lista.length; j++) {
-      var c2 = lista[j];
-      var nome2 = c2 && (c2.nome || c2.razao_social || c2.razao || '');
-      var hay = [nome2, c2 && c2.cnpj, c2 && c2.cidade, c2 && (c2.tel || c2.telefone)]
-        .filter(Boolean)
-        .map(normClienteNome)
-        .join(' | ');
-      var n2 = normClienteNome(nome2);
-      if (hay && (hay.indexOf(alvo) !== -1 || (n2 && alvo.indexOf(n2) !== -1))) return c2;
+        for (var j = 0; j < lista.length; j++) {
+          var c2 = lista[j];
+          var nome2 = c2 && (c2.nome || c2.razao_social || c2.razao || '');
+          var hay = [nome2, c2 && c2.cnpj, c2 && c2.cidade, c2 && (c2.tel || c2.telefone)]
+            .filter(Boolean)
+            .map(normClienteNome)
+            .join(' | ');
+          var n2 = normClienteNome(nome2);
+          for (var k = 0; k < alvos.length; k += 1) {
+            var alvo2 = alvos[k];
+            if (hay && (hay.indexOf(alvo2) !== -1 || (n2 && alvo2.indexOf(n2) !== -1) || (n2 && n2.indexOf(alvo2) !== -1))) return c2;
+          }
     }
     return null;
   }
@@ -29134,19 +29183,36 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function syncClienteOfRapida(input) {
     var el = input || document.getElementById('of-r-cliente');
     if (!el) return null;
+        var hiddenCliCurrent = null;
+        var prevId = '';
+        var prevNome = '';
+        try { hiddenCliCurrent = document.getElementById('of-r-cliente-id'); } catch (_) {}
+        try { prevId = String((el.dataset && el.dataset.clienteId) || (hiddenCliCurrent && hiddenCliCurrent.value) || '').trim(); } catch (_) {}
+        try { prevNome = String((el.dataset && el.dataset.clienteNome) || el.value || '').trim(); } catch (_) {}
     var cli = acharClienteRobusto(el.value);
     if (cli && cli.id) {
       el.dataset.clienteId = String(cli.id);
       el.dataset.clienteNome = String(cli.nome || cli.razao_social || cli.razao || el.value || '').trim();
       try {
-        var hiddenCli = document.getElementById('of-r-cliente-id');
-        if (hiddenCli) hiddenCli.value = String(cli.id || '').trim();
+            if (hiddenCliCurrent) hiddenCliCurrent.value = String(cli.id || '').trim();
       } catch (_) {}
       return cli;
     }
+        if (prevId) {
+          var prevNorm = normClienteNome(prevNome);
+          var currentNorms = clienteLookupNormSet(el.value);
+          var keepPrev = !!(prevNorm && currentNorms.some(function(item) {
+            return item === prevNorm || item.indexOf(prevNorm) !== -1 || prevNorm.indexOf(item) !== -1;
+          }));
+          if (keepPrev) {
+            try { el.dataset.clienteId = prevId; } catch (_) {}
+            try { if (prevNome) el.dataset.clienteNome = prevNome; } catch (_) {}
+            try { if (hiddenCliCurrent) hiddenCliCurrent.value = prevId; } catch (_) {}
+            return { id: prevId, nome: prevNome || String(el.value || '').trim() };
+          }
+        }
     try {
-      var hiddenCliReset = document.getElementById('of-r-cliente-id');
-      if (hiddenCliReset) hiddenCliReset.value = '';
+          if (hiddenCliCurrent) hiddenCliCurrent.value = '';
     } catch (_) {}
     delete el.dataset.clienteId;
     delete el.dataset.clienteNome;
@@ -29199,13 +29265,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function fetchClientePorNome(nome) {
-    var q = String(nome || '').trim();
-    if (!q) return Promise.resolve(null);
-    var urls = [
-      '/api/clientes?q=' + encodeURIComponent(q) + '&limit=5&t=' + Date.now(),
-      '/api/clientes?search=' + encodeURIComponent(q) + '&limit=5&t=' + Date.now(),
-      '/api/clientes?busca=' + encodeURIComponent(q) + '&limit=5&t=' + Date.now()
-    ];
+        var queries = clienteLookupVariants(nome);
+        if (!queries.length) return Promise.resolve(null);
+        var urls = [];
+        queries.forEach(function(q) {
+          urls.push('/api/clientes?q=' + encodeURIComponent(q) + '&limit=5&t=' + Date.now());
+          urls.push('/api/clientes?search=' + encodeURIComponent(q) + '&limit=5&t=' + Date.now());
+          urls.push('/api/clientes?busca=' + encodeURIComponent(q) + '&limit=5&t=' + Date.now());
+        });
     var tryOne = function(i) {
       if (i >= urls.length) return Promise.resolve(null);
       return fetch(urls[i], { headers: getAuthHeader() })
@@ -29243,6 +29310,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   async function ensureClienteId(el) {
     if (!el) return null;
+        try {
+          var hiddenCli = document.getElementById('of-r-cliente-id');
+          var hiddenId = String(hiddenCli && hiddenCli.value || '').trim();
+          if (hiddenId) {
+            try { if (el.dataset) el.dataset.clienteId = hiddenId; } catch (_) {}
+            return { id: hiddenId, nome: String((el.dataset && el.dataset.clienteNome) || el.value || '').trim() };
+          }
+        } catch (_) {}
     try {
       if (el.dataset && el.dataset.clienteId) return { id: String(el.dataset.clienteId || '').trim() };
     } catch (_) {}
@@ -44590,6 +44665,212 @@ function _ocultarGraficoComissoes() {
   install();
   setTimeout(install, 0);
   setTimeout(install, 400);
+})();
+;(function() {
+  if (window.__patchRuntimeFinalFixesInstalled) return;
+  window.__patchRuntimeFinalFixesInstalled = true;
+
+  function ensureRenderConfiguracoesFallback() {
+    try {
+      if (typeof window.renderConfiguracoes === 'function') return;
+      window.renderConfiguracoes = function() {
+        if (typeof window.renderSistema === 'function') return window.renderSistema.apply(this, arguments);
+        if (typeof window.go === 'function') return window.go('configuracoes');
+        return undefined;
+      };
+      try { renderConfiguracoes = window.renderConfiguracoes; } catch (_) {}
+    } catch (_) {}
+  }
+
+  function ensureLateFullscreenStyles() {
+    if (document.getElementById('patch-final-fullscreen-fixes')) return;
+    var st = document.createElement('style');
+    st.id = 'patch-final-fullscreen-fixes';
+    st.textContent = ''
+      + '#modal-calc,#modal-calc.modal-overlay{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:100vw!important;max-height:100vh!important;padding:0!important;margin:0!important;display:flex!important;align-items:stretch!important;justify-content:stretch!important;overflow:hidden!important;background:rgba(2,6,23,.82)!important}'
+      + '#modal-calc #modal-calculadora,#modal-calc.orc-calc-fs-ready #modal-calculadora{position:relative!important;inset:0!important;width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;margin:0!important;border-radius:0!important;overflow:hidden!important;box-shadow:none!important}'
+      + '#ccpx-compra-fullscreen,#ccpx-compra-fullscreen.ccpx-fs-overlay{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:100vw!important;max-height:100vh!important;padding:0!important;margin:0!important;display:flex!important;align-items:stretch!important;justify-content:stretch!important;overflow:hidden!important}'
+      + '#ccpx-compra-fullscreen > .ccpx-fs-shell{width:100vw!important;height:100vh!important;max-width:100vw!important;max-height:100vh!important;border-radius:0!important;margin:0!important;overflow:hidden!important}';
+    document.head.appendChild(st);
+  }
+
+  function applyCalcFullscreenNow() {
+    var overlay = document.getElementById('modal-calc');
+    var modal = document.getElementById('modal-calculadora');
+    if (!overlay || !modal) return;
+    try { overlay.classList.add('orc-calc-fs-ready'); } catch (_) {}
+    try {
+      overlay.style.setProperty('position', 'fixed', 'important');
+      overlay.style.setProperty('inset', '0', 'important');
+      overlay.style.setProperty('width', '100vw', 'important');
+      overlay.style.setProperty('height', '100vh', 'important');
+      overlay.style.setProperty('max-width', '100vw', 'important');
+      overlay.style.setProperty('max-height', '100vh', 'important');
+      overlay.style.setProperty('padding', '0', 'important');
+      overlay.style.setProperty('margin', '0', 'important');
+      overlay.style.setProperty('display', 'flex', 'important');
+      overlay.style.setProperty('align-items', 'stretch', 'important');
+      overlay.style.setProperty('justify-content', 'stretch', 'important');
+    } catch (_) {}
+    try {
+      modal.style.setProperty('width', '100vw', 'important');
+      modal.style.setProperty('height', '100vh', 'important');
+      modal.style.setProperty('max-width', '100vw', 'important');
+      modal.style.setProperty('max-height', '100vh', 'important');
+      modal.style.setProperty('margin', '0', 'important');
+      modal.style.setProperty('border-radius', '0', 'important');
+    } catch (_) {}
+  }
+
+  function applyCompraFullscreenNow() {
+    var overlay = document.getElementById('ccpx-compra-fullscreen');
+    if (!overlay || typeof window._compraPapelaoForceFullscreenShell !== 'function') return;
+    try { window._compraPapelaoForceFullscreenShell(overlay); } catch (_) {}
+  }
+
+  function simdNum(v) {
+    var n = Number(String(v == null ? '' : v).replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function simdFmtRs(v) {
+    try { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return 'R$ 0,00'; }
+  }
+
+  async function simdLoadChapasUniversal() {
+    try {
+      if (typeof window._simdCarregarChapas === 'function') {
+        var fromPatch = await window._simdCarregarChapas();
+        if (Array.isArray(fromPatch) && fromPatch.length) return fromPatch;
+      }
+    } catch (_) {}
+    var url = '/api/chapas_estoque?limit=10000&nocache=1&_t=' + Date.now();
+    var resp = null;
+    if (typeof window._apiAuthFetch === 'function') resp = await window._apiAuthFetch(url, { cache: 'no-store' });
+    else resp = await fetch(url, { cache: 'no-store' });
+    var json = await resp.json().catch(function() { return null; });
+    if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao carregar chapas'));
+    return Array.isArray(json) ? json : (Array.isArray(json && json.data) ? json.data : (Array.isArray(json && json.chapas) ? json.chapas : []));
+  }
+
+  function simdRenderUniversalRows(rows, larg, comp, qtdPedido) {
+    var resultado = document.getElementById('simd-resultado');
+    var wrap = document.getElementById('simd-tabela-wrap');
+    var linhas = document.getElementById('simd-linhas');
+    var aviso = document.getElementById('simd-aviso');
+    var info = document.getElementById('simd-info-planif');
+    if (resultado) resultado.style.display = 'block';
+    if (info) {
+      info.innerHTML = 'Peça informada: <strong style="color:rgba(255,255,255,0.88)">' + String(comp) + ' x ' + String(larg) + ' mm</strong>'
+        + ' · Área unitária: <strong style="color:rgba(255,255,255,0.88)">' + ((larg * comp) / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' m²</strong>'
+        + (qtdPedido > 0 ? (' · Quantidade: <strong style="color:rgba(255,255,255,0.88)">' + String(qtdPedido) + '</strong>') : '');
+    }
+    if (aviso) {
+      aviso.style.display = rows.length ? 'none' : 'block';
+      aviso.textContent = 'Nenhuma chapa em estoque é compatível com estas medidas. Verifique se há chapas cadastradas ou ajuste as medidas.';
+    }
+    if (!wrap) return;
+    wrap.style.display = 'block';
+    if (!rows.length) {
+      wrap.innerHTML = '<div style="padding:22px;text-align:center;color:rgba(255,255,255,0.55)">Nenhuma chapa do estoque comporta essa peça.</div>';
+      return;
+    }
+    var cardsHtml = rows.map(function(row, idx) {
+      var key = String(row && (row.id || row.chapa_id || row.codigo || row.tamanho || idx) || idx).trim();
+      var desperdicio = Number(row && (row.desperdicio_pct != null ? row.desperdicio_pct : row.desperdicio) || 0) || 0;
+      var pecas = Number(row && (row.pecas_por_chapa != null ? row.pecas_por_chapa : row.caixas_por_chapa) || 0) || 0;
+      var estoque = Number(row && (row.quantidade_atual != null ? row.quantidade_atual : (row.quantidade != null ? row.quantidade : row.qtd)) || 0) || 0;
+      var custo = Number(row && (row.custo_estimado != null ? row.custo_estimado : row.custo_total) || 0) || 0;
+      return ''
+        + '<div data-simd-universal-row="' + key.replace(/"/g, '&quot;') + '" style="display:grid;grid-template-columns:90px minmax(220px,1.3fr) minmax(120px,.8fr) minmax(100px,.7fr) minmax(100px,.7fr) minmax(130px,.9fr);gap:10px;padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.12);align-items:center;cursor:pointer">'
+        + '  <div style="font-weight:900;color:#f8fafc">' + desperdicio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%</div>'
+        + '  <div><div style="font-weight:800;color:#f8fafc">' + String(row && (row.nome_uso || row.nome || row.nomenclatura || row.chapa || row.tamanho) || 'Chapa') + '</div><div style="font-size:12px;color:#94a3b8">' + String(row && (row.fornecedor || row.forn || 'Fornecedor não informado') || 'Fornecedor não informado') + ' · ' + String(row && (row.tamanho || row.tam || 'Sem tamanho') || 'Sem tamanho') + '</div></div>'
+        + '  <div style="text-align:center;color:#cbd5e1">' + String(pecas) + '</div>'
+        + '  <div style="text-align:right;color:#cbd5e1">' + String(estoque) + '</div>'
+        + '  <div style="text-align:right;color:#f8fafc">' + simdFmtRs(row && (row.valor_unitario != null ? row.valor_unitario : row.val) || 0) + '</div>'
+        + '  <div style="text-align:right;color:#86efac;font-weight:800">' + (custo > 0 ? simdFmtRs(custo) : '—') + '</div>'
+        + '</div>';
+    }).join('');
+    if (linhas) linhas.innerHTML = cardsHtml;
+    else {
+      wrap.innerHTML = ''
+        + '<div style="display:grid;grid-template-columns:90px minmax(220px,1.3fr) minmax(120px,.8fr) minmax(100px,.7fr) minmax(100px,.7fr) minmax(130px,.9fr);gap:10px;padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(148,163,184,.12);font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8">'
+        + '  <div>Desp.</div><div>Chapa</div><div style="text-align:center">Peças/chapa</div><div style="text-align:right">Estoque</div><div style="text-align:right">Valor</div><div style="text-align:right">Custo</div>'
+        + '</div>'
+        + cardsHtml;
+    }
+    try {
+      var top = rows[0];
+      if (top && typeof window._simdGerarVisual === 'function') window._simdGerarVisual(top, { desenvolvimento_comprimento: comp, desenvolvimento_largura: larg, area_caixa_mm2: larg * comp });
+      else if (top && typeof window._simdRenderVisual === 'function') window._simdRenderVisual(top, { peca_larg_mm: larg, peca_comp_mm: comp, qtd_pedido: qtdPedido });
+    } catch (_) {}
+  }
+
+  async function simdCalcularUniversal(ev) {
+    try { if (ev) ev.preventDefault(); } catch (_) {}
+    try { if (ev) ev.stopPropagation(); } catch (_) {}
+    var larg = simdNum((document.getElementById('simd-larg') || {}).value);
+    var comp = simdNum((document.getElementById('simd-comp') || {}).value);
+    var qtdPedido = Math.max(0, Math.trunc(simdNum((document.getElementById('simd-qtd') || {}).value)));
+    var loading = document.getElementById('simd-loading');
+    var resultado = document.getElementById('simd-resultado');
+    if (!(larg > 0 && comp > 0)) {
+      try { alert('Preencha largura e comprimento necessários.'); } catch (_) {}
+      return false;
+    }
+    if (loading) loading.style.display = 'block';
+    if (resultado) resultado.style.display = 'none';
+    try {
+      var base = window._simdChapaSelecionada ? [window._simdChapaSelecionada] : await simdLoadChapasUniversal();
+      var rows = (Array.isArray(base) ? base : []).map(function(chapa) {
+        if (typeof window._simdCalcularUmaChapa === 'function') return window._simdCalcularUmaChapa(chapa, larg, comp, qtdPedido);
+        return null;
+      }).filter(Boolean).sort(function(a, b) {
+        var da = Number(a && (a.desperdicio_pct != null ? a.desperdicio_pct : a.desperdicio) || 0) || 0;
+        var db = Number(b && (b.desperdicio_pct != null ? b.desperdicio_pct : b.desperdicio) || 0) || 0;
+        if (da !== db) return da - db;
+        var pa = Number(a && (a.pecas_por_chapa != null ? a.pecas_por_chapa : a.caixas_por_chapa) || 0) || 0;
+        var pb = Number(b && (b.pecas_por_chapa != null ? b.pecas_por_chapa : b.caixas_por_chapa) || 0) || 0;
+        if (pa !== pb) return pb - pa;
+        return (Number(a && (a.retalho_area_mm2 || a.areaRetalho) || 0) || 0) - (Number(b && (b.retalho_area_mm2 || b.areaRetalho) || 0) || 0);
+      });
+      simdRenderUniversalRows(rows, larg, comp, qtdPedido);
+    } catch (e) {
+      simdRenderUniversalRows([], larg, comp, qtdPedido);
+      try { console.error('[SIMD UNIVERSAL]', e); } catch (_) {}
+      try { alert('Erro ao calcular desperdício: ' + String(e && e.message || e)); } catch (_) {}
+    } finally {
+      if (loading) loading.style.display = 'none';
+      if (resultado) resultado.style.display = 'block';
+    }
+    return false;
+  }
+
+  function bindUniversalSimd() {
+    var btn = document.getElementById('simd-btn');
+    if (!btn || btn.dataset.simdUniversalBound === '1') return;
+    btn.dataset.simdUniversalBound = '1';
+    try { btn.type = 'button'; } catch (_) {}
+    btn.onclick = simdCalcularUniversal;
+  }
+
+  function tick() {
+    ensureRenderConfiguracoesFallback();
+    ensureLateFullscreenStyles();
+    applyCalcFullscreenNow();
+    applyCompraFullscreenNow();
+    bindUniversalSimd();
+    try { window._simdCalcular = simdCalcularUniversal; } catch (_) {}
+  }
+
+  tick();
+  setTimeout(tick, 0);
+  setTimeout(tick, 300);
+  setTimeout(tick, 1200);
+  try {
+    var obs = new MutationObserver(function() { tick(); });
+    obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
+  } catch (_) {}
 })();
 try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(99, 'antes PATCH-FIM'); } catch (_) {}
 console.log('[PATCH-FIM] patch.js executou ate o fim');
