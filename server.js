@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -2304,6 +2304,85 @@ function _relatoriosResolveDateRange(query, opts = {}) {
   return null;
 }
 
+function _comissoesFrontendDateRef(of) {
+  return String(
+    of?.data_faturamento ||
+    (typeof of?.data_conclusao === 'string' ? of.data_conclusao.slice(0, 10) : of?.data_conclusao) ||
+    of?.dia ||
+    of?.data_pedido ||
+    of?.dataPedido ||
+    of?.created_at ||
+    of?.createdAt ||
+    ''
+  ).slice(0, 10);
+}
+
+function _comissoesFrontendValorRef(of) {
+  if (of?.valor_total !== undefined && of?.valor_total !== null && of?.valor_total !== '') {
+    return { valor: Number(of.valor_total) || 0, campo: 'valor_total' };
+  }
+  if (of?.valor_venda !== undefined && of?.valor_venda !== null && of?.valor_venda !== '') {
+    return { valor: Number(of.valor_venda) || 0, campo: 'valor_venda' };
+  }
+  return { valor: 0, campo: 'zero' };
+}
+
+async function _comissoesListarTotalVendidoFrontend(range, empresaId) {
+  const rows = [];
+  const PAGE = 1000;
+  for (let offset = 0; offset < 50000; offset += PAGE) {
+    let query = supabase
+      .from('ofs')
+      .select('id,of,numero,status,deleted_at,empresa_id,emp_id,data_faturamento,data_conclusao,dia,data_pedido,created_at,valor_total,valor_venda,total')
+      .range(offset, offset + PAGE - 1);
+    if (empresaId) {
+      query = query.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId}`);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!(Array.isArray(data) && data.length)) break;
+    rows.push(...data);
+    if (data.length < PAGE) break;
+  }
+
+  const inicio = String(range?.inicio || '').slice(0, 10);
+  const fim = String(range?.fim || '').slice(0, 10);
+  const lista = [];
+  let total = 0;
+
+  for (const of of rows) {
+    const st = String(of?.status || '').toLowerCase().trim();
+    if (st.startsWith('cancel')) continue;
+    if (!(st === 'concluído' || st === 'concluido' || st === 'concluida' || st === 'concluída')) continue;
+    if (of?.deleted_at) continue;
+    const dataRef = _comissoesFrontendDateRef(of);
+    if (!dataRef) continue;
+    if (inicio && dataRef < inicio) continue;
+    if (fim && dataRef > fim) continue;
+    const valorInfo = _comissoesFrontendValorRef(of);
+    const valorUsado = Number(valorInfo?.valor || 0) || 0;
+    total += valorUsado;
+    lista.push({
+      id: of?.id || null,
+      numero: of?.numero || of?.of || null,
+      of: of?.of || of?.numero || null,
+      status: of?.status || null,
+      data_usada: dataRef,
+      valor_usado: valorUsado,
+      campo_valor_usado: valorInfo?.campo || 'zero',
+      valor_total: of?.valor_total ?? null,
+      valor_venda: of?.valor_venda ?? null,
+      total: of?.total ?? null,
+    });
+  }
+
+  return {
+    total_ofs: lista.length,
+    total_vendido: total,
+    ofs: lista.sort((a, b) => String(a?.numero || '').localeCompare(String(b?.numero || ''), 'pt-BR', { numeric: true })),
+  };
+}
+
 app.get('/api/comissoes/relatorio', autenticar, async (req, res) => { 
   try { 
     const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
@@ -2337,6 +2416,39 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
     return res.json({ ok: false, error: e.message }); 
   } 
 }); 
+
+app.get('/api/comissoes/debug-total-vendido', autenticar, async (req, res) => {
+  try {
+    setNoCache(res);
+    const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    if (!range?.inicio || !range?.fim) return res.status(400).json({ ok: false, error: 'periodo inválido' });
+    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || '').trim();
+    const payload = await _comissoesListarTotalVendidoFrontend(range, empresaId);
+    console.log('[COM-DEBUG-TOTAL-VENDIDO]', JSON.stringify({
+      inicio: range.inicio,
+      fim: range.fim,
+      empresaId: empresaId || null,
+      total_ofs: payload.total_ofs,
+      total_vendido: payload.total_vendido
+    }));
+    return res.json({
+      ok: true,
+      origem: 'frontend-comissoes',
+      criterio_valor: 'Number(of.valor_total ?? of.valor_venda ?? of.valor ?? 0) || 0',
+      criterio_data: 'data_faturamento || data_conclusao || dia || data_pedido || created_at',
+      criterio_status: 'status concluído/concluido/concluida/concluída, exclui canceladas e deleted_at',
+      data_inicio: range.inicio,
+      data_fim: range.fim,
+      empresa_id: empresaId || null,
+      total_ofs: payload.total_ofs,
+      total_vendido: payload.total_vendido,
+      ofs: payload.ofs,
+    });
+  } catch (e) {
+    console.error('[COM-DEBUG-TOTAL-VENDIDO] erro:', String(e?.message || e));
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
 
 app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
   try {

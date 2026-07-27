@@ -9715,7 +9715,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
       var st = document.createElement('style');
       st.id = 'patch-historico-passagens-style';
       st.textContent = ''
-        + '#page-historico-passagens{min-height:0;max-height:none!important;overflow:visible!important}'
+        + '#page-historico-passagens{display:block!important;min-height:100vh!important;height:auto!important;max-height:none!important;overflow-y:auto!important;overflow-x:hidden!important}'
         + '#hist-filtros .hist-patch-btn,#hist-relatorio-mensal-shell .hist-patch-btn{background:#1e293b;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer}'
         + '#hist-filtros .hist-patch-btn:hover,#hist-relatorio-mensal-shell .hist-patch-btn:hover{filter:brightness(1.06)}'
         + '#hist-filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0;padding:14px 16px;border-radius:14px;background:rgba(15,23,42,.82);border:1px solid rgba(148,163,184,.14)}'
@@ -9744,11 +9744,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
         + '#hist-relatorio-mensal-shell .hist-month-table tbody td.num{text-align:right;font-variant-numeric:tabular-nums}'
         + '#hist-relatorio-mensal-shell .hist-month-table tbody tr:nth-child(even) td{background:rgba(255,255,255,.02)}'
         + '#hist-relatorio-mensal-shell .hist-month-table tbody tr:hover td{background:rgba(30,41,59,.42)}'
-        + '#page-historico-passagens #hist-passagens-resultado{display:grid;gap:10px;min-height:0;grid-template-rows:auto auto auto;overflow:visible!important}'
+        + '#page-historico-passagens #hist-passagens-resultado{display:block!important;gap:10px;min-height:auto!important;height:auto!important;max-height:none!important;overflow:visible!important}'
         + '#hist-passagens-resultado .hist-passagens-toolbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}'
-        + '#page-historico-passagens #hist-passagens-resultado .hist-passagens-scroll{display:block;min-height:0;max-height:none!important;overflow:visible!important;overscroll-behavior:auto;padding-right:0;scrollbar-gutter:auto}'
-        + '#page-historico-passagens #hist-passagens-resultado > #hist-passagens-items.hist-passagens-scroll{display:block !important;min-height:0 !important;max-height:none!important;overflow:visible!important;overscroll-behavior:auto!important;padding-right:0!important}'
-        + '#hist-passagens-resultado .hist-detalhamento-box{display:grid;gap:12px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);border-radius:16px;padding:14px}'
+        + '#page-historico-passagens #hist-passagens-resultado .hist-passagens-scroll{display:block!important;min-height:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;overscroll-behavior:auto;padding-right:0;scrollbar-gutter:auto}'
+        + '#page-historico-passagens #hist-passagens-resultado > #hist-passagens-items.hist-passagens-scroll{display:block !important;min-height:auto !important;height:auto!important;max-height:none!important;overflow:visible!important;overscroll-behavior:auto!important;padding-right:0!important}'
+        + '#hist-passagens-resultado .hist-detalhamento-box{display:block!important;gap:12px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);border-radius:16px;padding:14px}'
         + '#hist-passagens-resultado .hist-detalhamento-head{display:flex;justify-content:flex-start;gap:12px;flex-wrap:wrap;align-items:center}'
         + '#hist-passagens-resultado .hist-detalhamento-title{font-size:16px;font-weight:900;color:#f8fafc}'
         + '#hist-passagens-resultado .hist-detalhamento-search{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
@@ -13894,6 +13894,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       window.__ofmaqGetMachineCatalog.__riscadorWrapped = true;
     }
 
+    function wrapRenderFn(name) {
+      if (typeof window[name] !== 'function' || window[name].__riscadorWrapped) return;
+      var orig = window[name];
+      window[name] = function() {
+        var res = orig.apply(this, arguments);
+        scheduleApplyAll(0);
+        setTimeout(function() { patchDomMachineSelects(); }, 60);
+        setTimeout(function() { patchDomMachineSelects(); }, 240);
+        return res;
+      };
+      window[name].__riscadorWrapped = true;
+    }
+
     function wrapOpenFn(name) {
       if (typeof window[name] !== 'function' || window[name].__riscadorWrapped) return;
       var orig = window[name];
@@ -13921,6 +13934,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       wrapOpenFn('abrirNovaOfRapida');
       wrapOpenFn('abrirModalOFRapida');
       wrapOpenFn('abrirModalNovaOF');
+    }
+
+    function wrapModuleRenders() {
+      wrapRenderFn('renderOFsPorMaquina');
+      wrapRenderFn('renderHistoricoPassagens');
+      wrapRenderFn('renderHistoricoPassagensMaquina');
     }
 
     function installObserver() {
@@ -13953,6 +13972,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       wrapRenderMaqChks();
       wrapOfmaqCatalog();
       wrapOpeners();
+      wrapModuleRenders();
       patchDomMachineSelects();
       installObserver();
     }
@@ -13967,6 +13987,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       applyAll();
       if (tries >= 24) clearInterval(lateTimer);
     }, 500);
+    if (!window.__patchCatalogoRiscadorKeepAlive) {
+      window.__patchCatalogoRiscadorKeepAlive = setInterval(function() {
+        try {
+          var ofmaqSel = document.getElementById('ofsmaq-select-maquina');
+          var histSel = document.getElementById('hist-filtro-maquina');
+          if (ofmaqSel || histSel) patchDomMachineSelects();
+        } catch (_) {}
+      }, 2000);
+    }
     try { document.addEventListener('DOMContentLoaded', applyAll, { once: true }); } catch (_) {}
   })();
 
@@ -17996,6 +18025,20 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       applyFilters();
     }
 
+    function logActionApiResult(scope, action, id, result) {
+      try {
+        console.log('[OFMAQ-ACTION-API]', {
+          scope: scope,
+          action: action,
+          id: id,
+          status: result && result.resp ? result.resp.status : null,
+          ok: !!(result && result.resp && result.resp.ok),
+          body: result ? result.data : null
+        });
+      } catch (_) {}
+      return result;
+    }
+
     function openMoveModal(id) {
       var item = rowDataById(id);
       if (!item) return;
@@ -18008,9 +18051,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           if (!machine) return;
           try {
             var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { maq: [machine], maquina: machine, maquina_agendada: machine } });
+            logActionApiResult('zero', 'move', id, result);
             if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF');
             closeModal('ofmaq-move-zero');
             updateRowMachine(id, machine);
+            try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' movida para ' + machine + ' com sucesso.', { title: 'Máquina alterada' }); } catch (_) {}
           } catch (err) {
             try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
           }
@@ -18030,14 +18075,26 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
           try {
             var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { data_entrega: value, ent: value } });
+            logActionApiResult('zero', 'date', id, result);
             if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao alterar data');
             closeModal('ofmaq-date-zero');
             updateRowDate(id, value);
+            try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' reagendada para ' + value.split('-').reverse().join('/') + '.', { title: 'Data alterada' }); } catch (_) {}
           } catch (err) {
             try { window.toast('Erro ao alterar data: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
           }
         };
       }
+    }
+
+    async function moveRowAndDateZero(id, machine, value) {
+      var result = await apiJson('/api/ofs/' + encodeURIComponent(id), {
+        method: 'PATCH',
+        body: { maq: [machine], maquina: machine, maquina_agendada: machine, data_entrega: value, ent: value }
+      });
+      logActionApiResult('zero', 'move-date', id, result);
+      if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF e alterar data');
+      return result;
     }
 
     function openActionsModal(id) {
@@ -18046,14 +18103,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var modal = openModal('ofmaq-actions-zero', 'Ações da OF #' + String(item.numero || item.id), ''
         + '<button type="button" id="ofmaq-action-pass-zero">✓ Passou pela máquina</button>'
         + '<button type="button" id="ofmaq-action-move-zero">↔ Mover de máquina</button>'
-        + '<button type="button" id="ofmaq-action-date-zero">📅 Alterar data</button>');
+        + '<button type="button" id="ofmaq-action-date-zero">📅 Alterar data</button>'
+        + '<button type="button" id="ofmaq-action-move-date-zero">🗓️↔ Mover máquina e data</button>');
       var passBtn = modal.querySelector('#ofmaq-action-pass-zero');
       var moveBtn = modal.querySelector('#ofmaq-action-move-zero');
       var dateBtn = modal.querySelector('#ofmaq-action-date-zero');
+      var moveDateBtn = modal.querySelector('#ofmaq-action-move-date-zero');
       if (passBtn) {
         passBtn.onclick = async function() {
           try {
             var result = await apiJson('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method: 'POST', body: { maquina: item.maquina, maquina_nome: item.maquina } });
+            logActionApiResult('zero', 'pass', id, result);
             if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao registrar passagem');
             closeModal('ofmaq-actions-zero');
             try {
@@ -18067,6 +18127,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             if (row) row.remove();
             updateToolbar(ensureShell());
             applyFilters();
+            try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' passou pela máquina ' + String(item.maquina || '').trim() + ' com sucesso.', { title: 'Passou pela máquina' }); } catch (_) {}
           } catch (err) {
             try { window.toast('Erro ao registrar passagem: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
           }
@@ -18074,6 +18135,30 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }
       if (moveBtn) moveBtn.onclick = function() { closeModal('ofmaq-actions-zero'); openMoveModal(id); };
       if (dateBtn) dateBtn.onclick = function() { closeModal('ofmaq-actions-zero'); openDateModal(id); };
+      if (moveDateBtn) moveDateBtn.onclick = function() {
+        closeModal('ofmaq-actions-zero');
+        var modal2 = openModal('ofmaq-move-date-zero', 'Mover máquina e data da OF #' + String(item.numero || item.id), ''
+          + '<select id="ofmaq-move-date-machine-zero">' + MACHINES.map(function(machine) { return '<option value="' + escAttrLocal(machine) + '"' + (machine === item.maquina ? ' selected' : '') + '>' + escHLocal(machine) + '</option>'; }).join('') + '</select>'
+          + '<input id="ofmaq-move-date-input-zero" type="date" value="' + escAttrLocal(item.prazoIso || '') + '">'
+          + '<button type="button" id="ofmaq-move-date-save-zero">Salvar</button>');
+        var save = modal2.querySelector('#ofmaq-move-date-save-zero');
+        if (save) save.onclick = async function() {
+          var select = modal2.querySelector('#ofmaq-move-date-machine-zero');
+          var input = modal2.querySelector('#ofmaq-move-date-input-zero');
+          var machine = normalizeMachine(String(select && select.value || '').trim());
+          var value = String(input && input.value || '').slice(0, 10);
+          if (!machine || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
+          try {
+            await moveRowAndDateZero(id, machine, value);
+            closeModal('ofmaq-move-date-zero');
+            updateRowMachine(id, machine);
+            updateRowDate(id, value);
+            try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' movida para ' + machine + ' em ' + value.split('-').reverse().join('/') + '.', { title: 'Máquina e data alteradas' }); } catch (_) {}
+          } catch (err) {
+            try { window.toast('Erro ao mover OF e alterar data: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+          }
+        };
+      };
     }
 
     function openPrintModal() {
@@ -19269,6 +19354,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         return;
       }
       var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { maq: [machine], maquina: machine, maquina_agendada: machine } });
+      try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'move', id: id, status: result && result.resp ? result.resp.status : null, ok: !!(result && result.resp && result.resp.ok), body: result ? result.data : null }); } catch (_) {}
       if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF');
       return result;
     }
@@ -19283,6 +19369,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         return;
       }
       var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { data_entrega: value, ent: value } });
+      try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'date', id: id, status: result && result.resp ? result.resp.status : null, ok: !!(result && result.resp && result.resp.ok), body: result ? result.data : null }); } catch (_) {}
       if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao alterar data');
       return result;
     }
@@ -19307,6 +19394,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           ent: value
         }
       });
+      try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'move-date', id: id, status: result && result.resp ? result.resp.status : null, ok: !!(result && result.resp && result.resp.ok), body: result ? result.data : null }); } catch (_) {}
       if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF e alterar data');
       return result;
     }
@@ -19333,6 +19421,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         return;
       }
       var result = await apiJson('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method: 'POST', body: { maquina: machine, maquina_nome: machine } });
+      try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'pass', id: id, status: result && result.resp ? result.resp.status : null, ok: !!(result && result.resp && result.resp.ok), body: result ? result.data : null }); } catch (_) {}
       if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao registrar passagem');
       if (row) {
         appendHistPassagemLocal({
