@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -2137,13 +2137,46 @@ function _comissoesTextoValido(value) {
   return txt;
 }
 
+function _pickCanonicalValorTotal(row) {
+  const direto = Number(
+    row?.valor_total ??
+    row?.valor_venda ??
+    row?.total ??
+    row?.vl_total ??
+    row?.vlTotal ??
+    row?.valor ??
+    0
+  ) || 0;
+  return direto > 0 ? direto : 0;
+}
+
+function _comissoesPriorizarViewRow(row) {
+  const base = row && typeof row === 'object' ? { ...row } : {};
+  const clienteView = _comissoesTextoValido(base.__cliente_nome_view) || _comissoesTextoValido(base.cliente_nome) || _comissoesTextoValido(base.clinome) || _comissoesTextoValido(base.cliNome) || _comissoesTextoValido(base.cliente);
+  const vendedorView = _comissoesTextoValido(base.__vendedor_nome_view) || _comissoesTextoValido(base.vendedor_nome) || _comissoesTextoValido(base.vendedor) || _comissoesTextoValido(base.vendNome);
+  if (clienteView) {
+    base.__cliente_nome_view = clienteView;
+    base.cliente_nome = clienteView;
+    base.clinome = clienteView;
+    base.cliNome = clienteView;
+    base.cliente = clienteView;
+  }
+  if (vendedorView) {
+    base.__vendedor_nome_view = vendedorView;
+    base.vendedor_nome = vendedorView;
+    base.vendedor = vendedorView;
+    base.vendNome = vendedorView;
+  }
+  return base;
+}
+
 async function _comissoesEnriquecerLista(baseRows) {
   let todasOFs = Array.isArray(baseRows) ? baseRows.slice() : [];
   const viewFallbackByKey = new Map();
   const valorTopoPorId = new Map();
   const bindViewFallback = (row) => {
-    const cliente = _comissoesTextoValido(row?.cliente_nome) || _comissoesTextoValido(row?.clinome) || _comissoesTextoValido(row?.cliNome) || _comissoesTextoValido(row?.cliente);
-    const vendedor = _comissoesTextoValido(row?.vendedor_nome) || _comissoesTextoValido(row?.vendedor) || _comissoesTextoValido(row?.vendNome);
+    const cliente = _comissoesTextoValido(row?.__cliente_nome_view) || _comissoesTextoValido(row?.cliente_nome) || _comissoesTextoValido(row?.clinome) || _comissoesTextoValido(row?.cliNome) || _comissoesTextoValido(row?.cliente);
+    const vendedor = _comissoesTextoValido(row?.__vendedor_nome_view) || _comissoesTextoValido(row?.vendedor_nome) || _comissoesTextoValido(row?.vendedor) || _comissoesTextoValido(row?.vendNome);
     if (!(cliente || vendedor)) return;
     const keys = [
       String(row?.id || '').trim(),
@@ -2600,7 +2633,7 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
       if (viewError) {
         console.error('[COM] busca-of erro vw_comissoes por id:', String(viewError.message || viewError), 'ids:', JSON.stringify(ids.slice(0, 20)));
       } else {
-        pushRows(viewRowsById);
+        pushRows((Array.isArray(viewRowsById) ? viewRowsById : []).map(_comissoesPriorizarViewRow));
       }
     }
 
@@ -2615,7 +2648,7 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
       if (viewNumeroError) {
         console.error('[COM] busca-of erro vw_comissoes por numero:', String(viewNumeroError.message || viewNumeroError), 'filtros:', filtrosView);
       } else {
-        pushRows(viewRowsByNumero);
+        pushRows((Array.isArray(viewRowsByNumero) ? viewRowsByNumero : []).map(_comissoesPriorizarViewRow));
       }
     }
 
@@ -4127,6 +4160,7 @@ async function _enriquecerRespostaOFs(listaInput) {
     const cliente = clienteMap.get(cliId) || {};
     const vendedorId = pickText(item?.vendedor_id, item?.vendId, item?.vend_id, base?.vendedor_id, base?.vendId, base?.vend_id, cliente?.vendedor_id);
     const vendedorNome = pickText(
+      item?.__vendedor_nome_view,
       item?.vendedor,
       item?.vendedor_nome,
       item?.vendNome,
@@ -4144,6 +4178,7 @@ async function _enriquecerRespostaOFs(listaInput) {
       vendedorId
     );
     const clinome = _clienteNomeValido(pickText(
+      item?.__cliente_nome_view,
       item?.clinome,
       item?.cliNome,
       item?.cliente_nome,
@@ -4989,7 +5024,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           itensArr = typeof of.itens === 'string' ? JSON.parse(of.itens) : of.itens;
           if (Array.isArray(itensArr) && itensArr[0]) {
             produtoNome = itensArr[0].descricao || itensArr[0].produto || of.descricao || '';
-            total = itensArr.reduce((s, it) => s + Number(it.total || it.valor_total || 0), 0);
+            total = itensArr.reduce((s, it) => s + Number(it?.valor_total ?? it?.total ?? 0), 0);
           }
         }
       } catch (e) {}
@@ -5006,6 +5041,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const iuRaw = String(ofSafe?.imagem_url || '').trim();
       const imagemUrl = _urlValidaImagem(iuRaw) ? iuRaw : (_urlValidaImagem(primeiraImagem) ? primeiraImagem : null);
 
+      const totalCanonico = _pickCanonicalValorTotal(of) || total || 0;
       return {
         ...of,
         cliente: clienteNome || 'Cliente não identificado',
@@ -5017,7 +5053,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         produto: produtoNome,
         imagem_url: imagemUrl,
         imgs: ofSafe?.imgs ?? of?.imgs,
-        total: total || of.total || 0,
+        total: totalCanonico,
+        valor_total: totalCanonico,
+        valor_venda: Number(of?.valor_venda ?? totalCanonico) || totalCanonico,
         itens_parsed: itensArr,
         urgente: _chapasBool(of.urgente ?? of.urg),
         urg: _chapasBool(of.urgente ?? of.urg),
@@ -9341,28 +9379,10 @@ async function _buscarPassagensHistoricoCompat(req, opts) {
 }
 
 function _resolverValorTotalPassagem(row, ofData) {
-  const direto = Number(
-    row?.valor_total ??
-    row?.total ??
-    row?.valor_venda ??
-    row?.valor ??
-    row?.vl_total ??
-    row?.valor_producao ??
-    row?.preco_total ??
-    0
-  ) || 0;
+  const direto = _pickCanonicalValorTotal(row) || Number(row?.valor_producao ?? row?.preco_total ?? 0) || 0;
   if (direto > 0) return direto;
 
-  const valorOf = Number(
-    ofData?.valor_total ??
-    ofData?.total ??
-    ofData?.valor_venda ??
-    ofData?.vl_total ??
-    ofData?.valor ??
-    ofData?.valor_producao ??
-    ofData?.preco_total ??
-    0
-  ) || 0;
+  const valorOf = _pickCanonicalValorTotal(ofData) || Number(ofData?.valor_producao ?? ofData?.preco_total ?? 0) || 0;
   if (valorOf > 0) return valorOf;
 
   const qtd = Number(
@@ -10107,9 +10127,9 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
       maquina_nome: maqNome,
       cliente_nome: clientesMap.get(String(row?.cli_id || '').trim()) || '—',
       qtd_produzida: row?.qtd_produzida ?? row?.qtd ?? row?.quantidade ?? 0,
-      valor_total: row?.valor_total ?? row?.total ?? row?.valor_venda ?? row?.valor ?? row?.valor_producao ?? row?.vl_total ?? 0,
-      total: row?.total ?? row?.valor_total ?? 0,
-      valor_venda: row?.valor_venda ?? row?.valor_total ?? 0,
+      valor_total: _pickCanonicalValorTotal(row) || Number(row?.valor_producao ?? 0) || 0,
+      total: _pickCanonicalValorTotal(row),
+      valor_venda: Number(row?.valor_venda ?? row?.valor_total ?? row?.total ?? 0) || 0,
       numero: row?.numero ?? row?.of ?? null,
       of: row?.of ?? row?.numero ?? null,
       data_conclusao: row?.data_conclusao || null
@@ -11048,7 +11068,7 @@ app.get('/api/clientes/analise', authMiddleware, async (req, res) => {
     };
 
     const pickValor = (of) => {
-      const direto = parseFloat(of?.total ?? of?.vl_total ?? of?.valor_total ?? of?.valor_venda ?? of?.valor ?? 0) || 0;
+      const direto = _pickCanonicalValorTotal(of);
       if (direto > 0) return direto;
       const qtd = parseFloat(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0;
       const unit = parseFloat(of?.valor_unitario ?? of?.valor_unit ?? of?.vlUnit ?? of?.valorUnit ?? 0) || 0;
@@ -11253,7 +11273,7 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
       const s = norm(st);
       return s.includes('cancel');
     };
-    const pickTotal = (o) => Number(o?.total ?? o?.valor_total ?? o?.valor_venda ?? o?.vl_total ?? o?.vlTotal ?? 0) || 0;
+    const pickTotal = (o) => _pickCanonicalValorTotal(o);
     const pickProduto = (o) => String(o?.produto ?? o?.descricao ?? 'Sem produto').trim() || 'Sem produto';
 
     const abertas = todas.filter((o) => !isFinal(o?.status) && !isCancel(o?.status));
@@ -13263,9 +13283,20 @@ app.get('/api/empresas', async (req, res) => {
 app.get('/api/orcamentos', authMiddleware, async (req, res) => {
   try {
     let q = supabase.from('orcamentos').select('*').order('criado_em', { ascending: false });
+    const empFiltro = String(req.query.empId || req.query.empresa_id || req.query.empresaId || req.query.empresa || '').trim();
     if (req.query.numero) q = q.eq('numero_orcamento', String(req.query.numero));
     if (req.query.cliente) q = q.ilike('cliente_nome', `%${String(req.query.cliente)}%`);
-    if (req.query.empId) q = q.eq('emp_id', String(req.query.empId));
+    if (empFiltro) {
+      const safe = empFiltro.replace(/,/g, '').replace(/\./g, '').trim();
+      if (safe) {
+        q = q.or([
+          `emp_id.eq.${safe}`,
+          `empresa_id.eq.${safe}`,
+          `empresa.eq.${safe}`,
+          `sigla.eq.${safe}`
+        ].join(','));
+      }
+    }
     const { data, error } = await q.limit(50);
     if (error) {
       console.error('[ORCAMENTOS] error:', error.message);
