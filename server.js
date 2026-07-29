@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -25,6 +25,38 @@ process.on('unhandledRejection', (e) => {
 
 const PINS_STORE_FILE = path.join(__dirname, 'pins_store.json');
 let _pinsStorageMode = null;
+
+const PROD_BLOCKERS_DEBUG_ENV = path.join(__dirname, '.dbg', 'prod-blockers-regressions.env');
+
+// #region debug-point A:prod-blockers-reporter
+function _reportProdBlockersDebug(hypothesisId, location, msg, data, runId) {
+  try {
+    let url = 'http://127.0.0.1:7788/event';
+    let sessionId = 'prod-blockers-regressions';
+    try {
+      const envRaw = fs.readFileSync(PROD_BLOCKERS_DEBUG_ENV, 'utf8');
+      const urlMatch = envRaw.match(/^DEBUG_SERVER_URL=(.+)$/m);
+      const sessionMatch = envRaw.match(/^DEBUG_SESSION_ID=(.+)$/m);
+      if (urlMatch && String(urlMatch[1] || '').trim()) url = String(urlMatch[1] || '').trim();
+      if (sessionMatch && String(sessionMatch[1] || '').trim()) sessionId = String(sessionMatch[1] || '').trim();
+    } catch (_) {}
+    if (typeof fetch !== 'function') return;
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId,
+        runId: String(runId || 'pre-fix'),
+        hypothesisId: String(hypothesisId || 'A'),
+        location: String(location || 'server.js'),
+        msg: String(msg || '[DEBUG] event'),
+        data: data && typeof data === 'object' ? data : {},
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+  } catch (_) {}
+}
+// #endregion
 
 function _pinsCreateSql() {
   return (
@@ -1162,9 +1194,9 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260727174413';
-const SW_RUNTIME_VERSION = '20260727174413';
-const SW_RUNTIME_CACHE_NAME = 'italy-erp-v20260727174413';
+const PATCH_RUNTIME_VERSION = '20260729102030';
+const SW_RUNTIME_VERSION = '20260729102030';
+const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -2275,11 +2307,80 @@ async function _comissoesEnriquecerLista(baseRows) {
   return todasOFs;
 }
 
+function _comissoesAplicarFallbackBaseOf(lista, baseRows) {
+  const baseByKey = new Map();
+  (Array.isArray(baseRows) ? baseRows : []).forEach((row) => {
+    if (!row || typeof row !== 'object') return;
+    const keys = [
+      String(row?.id || '').trim(),
+      'numero:' + String(row?.numero || row?.of || '').trim(),
+      'of:' + String(row?.of || row?.numero || '').trim(),
+    ].filter(Boolean);
+    keys.forEach((key) => baseByKey.set(key, row));
+  });
+
+  return (Array.isArray(lista) ? lista : []).map((of) => {
+    const base = baseByKey.get(String(of?.id || '').trim())
+      || baseByKey.get('numero:' + String(of?.numero || of?.of || '').trim())
+      || baseByKey.get('of:' + String(of?.of || of?.numero || '').trim());
+    if (!base) return of;
+
+    const out = of && typeof of === 'object' ? { ...of } : {};
+    const clienteBase = _clienteNomeValido(
+      base?.clinome ?? base?.cliNome ?? base?.cliente_nome ?? base?.cliente ?? base?.cli_nome ?? base?.nome_cliente ?? ''
+    );
+    let vendedorBase = _comissoesTextoValido(
+      base?.vendedor ?? base?.vendedor_nome ?? base?.vendNome ?? base?.vend_nome ?? base?.nome_vendedor ?? ''
+    );
+    if (!vendedorBase) {
+      const vendidTxt = String(base?.vendid || '').trim();
+      if (vendidTxt && !_isUuid(vendidTxt)) vendedorBase = vendidTxt;
+    }
+    const vendedorIdBase = String(base?.vendedor_id ?? base?.vendId ?? base?.vend_id ?? '').trim();
+    const cliIdBase = String(base?.cli_id ?? base?.cliId ?? base?.cliente_id ?? '').trim();
+
+    if (cliIdBase) {
+      if (!String(out.cli_id || '').trim()) out.cli_id = cliIdBase;
+      if (!String(out.cliId || '').trim()) out.cliId = cliIdBase;
+      if (!String(out.cliente_id || '').trim()) out.cliente_id = cliIdBase;
+    }
+    if (clienteBase) {
+      if (!_clienteNomeValido(out.clinome)) out.clinome = clienteBase;
+      if (!_clienteNomeValido(out.cliNome)) out.cliNome = clienteBase;
+      if (!_clienteNomeValido(out.cliente_nome)) out.cliente_nome = clienteBase;
+      if (!_clienteNomeValido(out.cliente)) out.cliente = clienteBase;
+      if (!_comissoesTextoValido(out.__cliente_nome_view)) out.__cliente_nome_view = clienteBase;
+    }
+    if (vendedorIdBase) {
+      if (!String(out.vendedor_id || '').trim()) out.vendedor_id = vendedorIdBase;
+      if (!String(out.vendId || '').trim()) out.vendId = vendedorIdBase;
+      if (!String(out.vend_id || '').trim()) out.vend_id = vendedorIdBase;
+    }
+    if (vendedorBase) {
+      if (!_comissoesTextoValido(out.vendedor)) out.vendedor = vendedorBase;
+      if (!_comissoesTextoValido(out.vendedor_nome)) out.vendedor_nome = vendedorBase;
+      if (!_comissoesTextoValido(out.vendNome)) out.vendNome = vendedorBase;
+      if (!_comissoesTextoValido(out.__vendedor_nome_view)) out.__vendedor_nome_view = vendedorBase;
+      if (!_comissoesTextoValido(out.vendid)) out.vendid = vendedorBase;
+    }
+
+    const qtdAtual = Number(out.quantidade ?? out.qtd ?? out.qtd_pedida ?? 0) || 0;
+    const qtdBase = Number(base?.quantidade ?? base?.qtd ?? base?.qtd_pedida ?? 0) || 0;
+    if (!(qtdAtual > 0) && qtdBase > 0) {
+      if (out.quantidade == null) out.quantidade = qtdBase;
+      if (out.qtd == null) out.qtd = qtdBase;
+      if (out.qtd_pedida == null) out.qtd_pedida = qtdBase;
+    }
+
+    return out;
+  });
+}
+
 function _comissoesMontarPayload(todasOFs, extra = {}) {
   const porVend = {};
   let totalGeral = 0;
   (Array.isArray(todasOFs) ? todasOFs : []).forEach((of) => {
-    const val = Number(of.valor_total ?? of.total ?? of.valor_venda ?? 0) || 0;
+    const val = _vendasOficialValor(of);
     if (!val) return;
     totalGeral += val;
     const vid = of.vendedor_id || of.vendId || of.vend_id || of.vendid || '__sem__';
@@ -2297,7 +2398,7 @@ function _comissoesMontarPayload(todasOFs, extra = {}) {
     .map((v) => ({ ...v, comissao_rs: v.total * (v.comissao_pct / 100) }));
 
   const ofsDetalhadas = (Array.isArray(todasOFs) ? todasOFs : []).map((of) => {
-    const valor_total = Number(of.valor_total ?? of.total ?? of.valor_venda ?? 0) || 0;
+    const valor_total = _vendasOficialValor(of);
     const comissao_pct = Number(of.comissao_pct || 1);
     const comissao_rs = (of.comissao_rs != null) ? Number(of.comissao_rs || 0) : (valor_total * (comissao_pct / 100));
     const preco = Number(of.preco ?? of.valor_unitario ?? 0) || 0;
@@ -2397,25 +2498,80 @@ function _relatoriosResolveDateRange(query, opts = {}) {
   return null;
 }
 
+function _vendasOficialStatusConcluido(status) {
+  const txt = String(status || '').trim().toLowerCase();
+  if (!txt) return false;
+  if (txt.includes('cancel')) return false;
+  return txt.includes('conclu');
+}
+
+function _vendasOficialDataRef(of) {
+  return _relatoriosIsoDateOnly(of?.data_conclusao);
+}
+
+function _vendasOficialValor(of) {
+  return Number(of?.valor_total || 0) || 0;
+}
+
+async function _listarOfsVendasOficiais(range = {}, empresaId = '') {
+  const inicio = _relatoriosIsoDateOnly(range?.inicio);
+  const fim = _relatoriosIsoDateOnly(range?.fim);
+  const fimExclusivo = _relatoriosIsoDateOnly(range?.fim_exclusivo);
+  const rows = [];
+  const PAGE = 1000;
+  for (let offset = 0; offset < 50000; offset += PAGE) {
+    let query = supabase
+      .from('ofs')
+      .select('id,numero,of,status,deleted_at,empresa_id,emp_id,data_conclusao,valor_total')
+      .is('deleted_at', null)
+      .not('data_conclusao', 'is', null)
+      .order('data_conclusao', { ascending: true })
+      .range(offset, offset + PAGE - 1);
+    if (inicio) query = query.gte('data_conclusao', inicio);
+    if (fimExclusivo) query = query.lt('data_conclusao', fimExclusivo);
+    else if (fim) query = query.lte('data_conclusao', fim);
+    if (empresaId) {
+      query = query.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId},empresa_id.is.null`);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!(Array.isArray(data) && data.length)) break;
+    rows.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return rows.filter((row) => {
+    if (!_vendasOficialStatusConcluido(row?.status)) return false;
+    return !!_vendasOficialDataRef(row);
+  });
+}
+
+async function _resumirVendasOficiais(range = {}, empresaId = '') {
+  const ofs = await _listarOfsVendasOficiais(range, empresaId);
+  const lista = ofs.map((of) => ({
+    id: of?.id || null,
+    numero: of?.numero || of?.of || null,
+    of: of?.of || of?.numero || null,
+    status: of?.status || null,
+    data_usada: _vendasOficialDataRef(of),
+    valor_usado: _vendasOficialValor(of),
+    campo_valor_usado: 'valor_total',
+    valor_total: of?.valor_total ?? null,
+  }));
+  const total = lista.reduce((sum, item) => sum + (Number(item?.valor_usado || 0) || 0), 0);
+  return {
+    total_ofs: lista.length,
+    total_vendido: total,
+    ofs: lista.sort((a, b) => String(a?.numero || '').localeCompare(String(b?.numero || ''), 'pt-BR', { numeric: true })),
+  };
+}
+
 function _comissoesFrontendDateRef(of) {
-  return String(
-    of?.data_faturamento ||
-    (typeof of?.data_conclusao === 'string' ? of.data_conclusao.slice(0, 10) : of?.data_conclusao) ||
-    of?.dia ||
-    of?.data_pedido ||
-    of?.dataPedido ||
-    of?.created_at ||
-    of?.createdAt ||
-    ''
-  ).slice(0, 10);
+  return _vendasOficialDataRef(of);
 }
 
 function _comissoesFrontendValorRef(of) {
   if (of?.valor_total !== undefined && of?.valor_total !== null && of?.valor_total !== '') {
-    return { valor: Number(of.valor_total) || 0, campo: 'valor_total' };
-  }
-  if (of?.valor_venda !== undefined && of?.valor_venda !== null && of?.valor_venda !== '') {
-    return { valor: Number(of.valor_venda) || 0, campo: 'valor_venda' };
+    return { valor: _vendasOficialValor(of), campo: 'valor_total' };
   }
   return { valor: 0, campo: 'zero' };
 }
@@ -2480,6 +2636,7 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
   try { 
     const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
     if (!range?.inicio || !range?.fim_exclusivo) return res.json({ ok: false, error: 'periodo inválido' }); 
+    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || '').trim();
 
     console.log('[COM] buscando', range.inicio, 'ate', range.fim_exclusivo); 
 
@@ -2502,6 +2659,9 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
       data_inicio: range.inicio,
       data_fim: range.fim
     });
+    const resumoOficial = await _resumirVendasOficiais(range, empresaId);
+    payload.total_ofs = resumoOficial.total_ofs;
+    payload.total_vendido = resumoOficial.total_vendido;
     console.log('[COM] FINAL ofs:', todasOFs.length, 'total:', payload.total_vendido); 
     return res.json(payload); 
   } catch(e) { 
@@ -2527,8 +2687,8 @@ app.get('/api/comissoes/debug-total-vendido', autenticar, async (req, res) => {
     return res.json({
       ok: true,
       origem: 'frontend-comissoes',
-      criterio_valor: 'Number(of.valor_total ?? of.valor_venda ?? of.valor ?? 0) || 0',
-      criterio_data: 'data_faturamento || data_conclusao || dia || data_pedido || created_at',
+      criterio_valor: 'Number(of.valor_total || 0) || 0',
+      criterio_data: 'data_conclusao',
       criterio_status: 'status concluído/concluido/concluida/concluída, exclui canceladas e deleted_at',
       data_inicio: range.inicio,
       data_fim: range.fim,
@@ -2658,6 +2818,7 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
     if (!rowsMap.size && fallbackOfs.length) pushRows(fallbackOfs);
 
     let todasOFs = await _comissoesEnriquecerLista(Array.from(rowsMap.values()));
+    todasOFs = _comissoesAplicarFallbackBaseOf(todasOFs, hitsBase);
     const ordem = Object.fromEntries(ids.map((id, idx) => [id, idx]));
     const ordemNumero = Object.fromEntries(numeroVariants.map((numero, idx) => [String(numero || '').trim(), idx]));
     todasOFs = (Array.isArray(todasOFs) ? todasOFs : []).slice().sort((a, b) => {
@@ -5527,6 +5688,19 @@ async function _autoSugerirMaquinaParaOF(body, created){
 }
 
 app.post('/api/ofs', authMiddleware, async (req, res) => {
+  // #region debug-point B:ofs-post-state
+  let _dbgOfStage = 'start';
+  let _dbgCreated = null;
+  try {
+    _reportProdBlockersDebug('B', 'server.js:/api/ofs:entry', '[DEBUG] /api/ofs request received', {
+      rid: String(req._rid || ''),
+      bodyKeys: Object.keys(req.body || {}),
+      hasItens: Array.isArray(req.body?.itens),
+      itensLen: Array.isArray(req.body?.itens) ? req.body.itens.length : 0,
+      numero: String(req.body?.numero || req.body?.of || ''),
+    });
+  } catch (_) {}
+  // #endregion
   try {
     setNoCache(res);
     const empId = await resolverEmpresaId(req);
@@ -5653,12 +5827,38 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       };
     }
     console.debug('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
+    // #region debug-point B:ofs-post-before-insert
+    _dbgOfStage = 'before-insert';
+    try {
+      _reportProdBlockersDebug('B', 'server.js:/api/ofs:before-insert', '[DEBUG] /api/ofs validated payload', {
+        rid: String(req._rid || ''),
+        empresa_id: String(filtered?.empresa_id || ''),
+        numero: String(filtered?.numero || filtered?.of || ''),
+        cliente_id: String(filtered?.cli_id || filtered?.cliente_id || ''),
+        vendedor_id: String(filtered?.vendedor_id || filtered?.vendId || ''),
+      });
+    } catch (_) {}
+    // #endregion
     const createdRes = await ofsInsertWithRetry(ofIn(filtered));
     if (createdRes.error) throw createdRes.error;
     let created = createdRes.data;
+    _dbgCreated = created;
+    // #region debug-point B:ofs-post-after-insert
+    _dbgOfStage = 'after-insert';
+    try {
+      _reportProdBlockersDebug('B', 'server.js:/api/ofs:after-insert', '[DEBUG] /api/ofs insert succeeded', {
+        rid: String(req._rid || ''),
+        id: String(created?.id || ''),
+        numero: String(created?.numero || created?.of || ''),
+      });
+    } catch (_) {}
+    // #endregion
     await logAuditoria('ofs', 'INSERT', created?.id, null, created, req);
+    _dbgOfStage = 'after-auditoria';
     await _maybeRegistrarComissaoOF(req, body, created);
+    _dbgOfStage = 'after-comissao';
     await _maybeBaixaAutomaticaChapasOF(req, body, created);
+    _dbgOfStage = 'after-baixa-automatica';
     try {
       const cliId = String(body?.cli_id || body?.cliId || created?.cli_id || created?.cliId || created?.cliente_id || '').trim();
       const vendId = String(
@@ -5694,12 +5894,36 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       const sug = await _autoSugerirMaquinaParaOF(body, created);
       if(sug && sug.ok && sug.updated) created = sug.updated;
     }catch(_){}
+    _dbgOfStage = 'before-response';
     const warnings = (createdRes && Array.isArray(createdRes.ignoredColumns) && createdRes.ignoredColumns.length)
       ? { ignored_columns: createdRes.ignoredColumns.slice() }
       : null;
     _clearOfsCaches();
+    // #region debug-point B:ofs-post-success
+    try {
+      _reportProdBlockersDebug('B', 'server.js:/api/ofs:success', '[DEBUG] /api/ofs response ok', {
+        rid: String(req._rid || ''),
+        stage: _dbgOfStage,
+        id: String(created?.id || ''),
+        numero: String(created?.numero || created?.of || ''),
+        warnings: warnings ? Object.keys(warnings) : [],
+      });
+    } catch (_) {}
+    // #endregion
     return res.json({ ok: true, data: created, ...(warnings ? { warnings } : {}) });
   } catch (e) {
+    // #region debug-point B:ofs-post-error
+    try {
+      _reportProdBlockersDebug('B', 'server.js:/api/ofs:error', '[DEBUG] /api/ofs failed', {
+        rid: String(req._rid || ''),
+        stage: _dbgOfStage,
+        createdId: String(_dbgCreated?.id || ''),
+        createdNumero: String(_dbgCreated?.numero || _dbgCreated?.of || ''),
+        message: String(e?.message || e || ''),
+        stack: String(e?.stack || '').split('\n').slice(0, 8).join(' | '),
+      });
+    } catch (_) {}
+    // #endregion
     _logApiError('OFS POST', req, e, { bodyKeys: Object.keys(req.body || {}), bodySize: _safeJson(req.body || {}).length });
     return res.status(500).json({ ok: false, error: String(e?.message || e), rid: req._rid || null });
   }
@@ -10148,6 +10372,19 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
 app.get('/api/passagens/historico', authMiddleware, async (req, res) => { 
   try { 
     const { cliente, maquina, data_inicio, data_fim, mes, ano } = req.query; 
+    // #region debug-point C:passagens-historico-entry
+    try {
+      _reportProdBlockersDebug('C', 'server.js:/api/passagens/historico:entry', '[DEBUG] /api/passagens/historico request received', {
+        rid: String(req._rid || ''),
+        cliente: String(cliente || '').slice(0, 80),
+        maquina: String(maquina || '').slice(0, 80),
+        data_inicio: String(data_inicio || ''),
+        data_fim: String(data_fim || ''),
+        mes: String(mes || ''),
+        ano: String(ano || ''),
+      });
+    } catch (_) {}
+    // #endregion
     const limit = Math.min(1000, Math.max(1, parseInt(String(req.query.limit || ''), 10) || 50)); 
     const offsetReq = parseInt(String(req.query.offset || ''), 10); 
     const pageReq = Math.max(1, parseInt(String(req.query.page || ''), 10) || 1); 
@@ -10170,6 +10407,17 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     try { passagens = await _enriquecerPassagensHistoricoComOfs(passagens); } catch (_) {}
     try { passagens = await _normalizarMaquinasPassagens(passagens); } catch (_) {}
     try { passagens = (Array.isArray(passagens) ? passagens.slice() : []).sort((a, b) => _timestampPassagem(b) - _timestampPassagem(a)); } catch (_) {}
+    // #region debug-point C:passagens-historico-success
+    try {
+      _reportProdBlockersDebug('C', 'server.js:/api/passagens/historico:success', '[DEBUG] /api/passagens/historico response ok', {
+        rid: String(req._rid || ''),
+        total: Number(count || passagens.length || 0) || 0,
+        page,
+        limit,
+        offset,
+      });
+    } catch (_) {}
+    // #endregion
     res.json({
       ok: true,
       passagens: passagens,
@@ -10181,6 +10429,15 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
       data_fim: _relatoriosIsoDateOnly(data_fim)
     }); 
   } catch(e) { 
+    // #region debug-point C:passagens-historico-error
+    try {
+      _reportProdBlockersDebug('C', 'server.js:/api/passagens/historico:error', '[DEBUG] /api/passagens/historico failed', {
+        rid: String(req._rid || ''),
+        message: String(e?.message || e || ''),
+        stack: String(e?.stack || '').split('\n').slice(0, 8).join(' | '),
+      });
+    } catch (_) {}
+    // #endregion
     console.error('[passagens/historico]', e.message); 
     res.json({ ok: true, passagens: [], total: 0, page: 1, erro: e.message }); 
   } 
@@ -13282,25 +13539,38 @@ app.get('/api/empresas', async (req, res) => {
 
 app.get('/api/orcamentos', authMiddleware, async (req, res) => {
   try {
-    let q = supabase.from('orcamentos').select('*').order('criado_em', { ascending: false });
     const empFiltro = String(req.query.empId || req.query.empresa_id || req.query.empresaId || req.query.empresa || '').trim();
-    if (req.query.numero) q = q.eq('numero_orcamento', String(req.query.numero));
-    if (req.query.cliente) q = q.ilike('cliente_nome', `%${String(req.query.cliente)}%`);
-    if (empFiltro) {
-      const safe = empFiltro.replace(/,/g, '').replace(/\./g, '').trim();
-      if (safe) {
-        q = q.or([
-          `emp_id.eq.${safe}`,
-          `empresa_id.eq.${safe}`,
-          `empresa.eq.${safe}`,
-          `sigla.eq.${safe}`
-        ].join(','));
+    const buildQuery = (applyEmpFilter) => {
+      let q = supabase.from('orcamentos').select('*').order('criado_em', { ascending: false });
+      if (req.query.numero) q = q.eq('numero_orcamento', String(req.query.numero));
+      if (req.query.cliente) q = q.ilike('cliente_nome', `%${String(req.query.cliente)}%`);
+      if (applyEmpFilter && empFiltro) {
+        const safe = empFiltro.replace(/,/g, '').replace(/\./g, '').trim();
+        if (safe) {
+          q = q.or([
+            `emp_id.eq.${safe}`,
+            `empresa_id.eq.${safe}`,
+            `empresa.eq.${safe}`,
+            `sigla.eq.${safe}`,
+            'emp_id.is.null',
+            'empresa_id.is.null'
+          ].join(','));
+        }
       }
-    }
-    const { data, error } = await q.limit(50);
+      return q.limit(50);
+    };
+
+    let { data, error } = await buildQuery(true);
     if (error) {
       console.error('[ORCAMENTOS] error:', error.message);
       return ok(res, []);
+    }
+    if (empFiltro && !(Array.isArray(data) && data.length)) {
+      const fallback = await buildQuery(false);
+      if (!fallback.error && Array.isArray(fallback.data) && fallback.data.length) {
+        console.log('[ORCAMENTOS] fallback sem filtro de empresa ativado para evitar lista vazia');
+        data = fallback.data;
+      }
     }
     try {
       const rows = Array.isArray(data) ? data : [];
@@ -17138,11 +17408,41 @@ app.post('/api/pins', authMiddleware, async (req, res) => {
     const tipo = String(req.body?.tipo || '').trim().toLowerCase();
     const referencia_id = String(req.body?.referencia_id || '').trim();
     const observacao = String(req.body?.observacao || '').trim();
+    // #region debug-point B:pins-post-entry
+    try {
+      _reportProdBlockersDebug('B', 'server.js:/api/pins:entry', '[DEBUG] /api/pins request received', {
+        rid: String(req._rid || ''),
+        empresa_id: String(empresa_id || ''),
+        tipo,
+        referencia_id,
+        observacao_len: observacao.length,
+      });
+    } catch (_) {}
+    // #endregion
     if (!tipo || !referencia_id) return res.status(400).json({ ok: false, error: 'tipo e referencia_id obrigatórios' });
     const criado_por = String(req.usuario?.email || req.user?.email || req.usuario?.nome || 'sistema').trim();
     const created = await _pinsInsert({ tipo, referencia_id, observacao, criado_por, criado_em: new Date().toISOString(), empresa_id });
+    // #region debug-point B:pins-post-success
+    try {
+      _reportProdBlockersDebug('B', 'server.js:/api/pins:success', '[DEBUG] /api/pins response ok', {
+        rid: String(req._rid || ''),
+        id: String(created?.id || ''),
+        tipo: String(created?.tipo || tipo || ''),
+        referencia_id: String(created?.referencia_id || referencia_id || ''),
+      });
+    } catch (_) {}
+    // #endregion
     return res.json({ ok: true, data: created });
   } catch (e) {
+    // #region debug-point B:pins-post-error
+    try {
+      _reportProdBlockersDebug('B', 'server.js:/api/pins:error', '[DEBUG] /api/pins failed', {
+        rid: String(req._rid || ''),
+        message: String(e?.message || e || ''),
+        stack: String(e?.stack || '').split('\n').slice(0, 8).join(' | '),
+      });
+    } catch (_) {}
+    // #endregion
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
@@ -29330,29 +29630,15 @@ app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) =>
     const hoje = new Date();
     const dataInicio = new Date();
     dataInicio.setFullYear(hoje.getFullYear() - 3);
-
-    const { data: ofs, error: ofErr } = await supabase
-      .from('ofs')
-      .select('created_at,vl_total,valor_total,valor_venda,total,quantidade,qtd,qtd_pedida,valor_unitario,vl_unitario,status,data_conclusao,data_entrega')
-      .gte('created_at', dataInicio.toISOString())
-      .order('created_at', { ascending: true });
-
-    if (ofErr) throw ofErr;
+    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || '').trim();
+    const ofs = await _listarOfsVendasOficiais({ inicio: dataInicio.toISOString().slice(0, 10) }, empresaId);
 
     const grupos = {};
     (ofs || []).forEach((of) => {
-      const valor =
-        parseFloat(of?.vl_total) ||
-        parseFloat(of?.valor_total) ||
-        parseFloat(of?.valor_venda) ||
-        parseFloat(of?.total) ||
-        ((parseFloat(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0) *
-          (parseFloat(of?.valor_unitario ?? of?.vl_unitario ?? 0) || 0)) ||
-        0;
-
+      const valor = _vendasOficialValor(of);
       if (!valor || valor <= 0) return;
 
-      const dt = new Date(of?.data_conclusao || of?.data_entrega || of?.created_at);
+      const dt = new Date(of?.data_conclusao);
       if (isNaN(dt.getTime())) return;
 
       const k = dt.getFullYear() + '-' + (dt.getMonth() + 1);
@@ -29360,22 +29646,6 @@ app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) =>
       grupos[k].valor += valor;
       grupos[k].valor_of += valor;
       grupos[k].ofs += 1;
-    });
-
-    const { data: manuais, error: manErr } = await supabase.from('faturamento_manual').select('*');
-    if (manErr) throw manErr;
-
-    (manuais || []).forEach((m) => {
-      const ano = parseInt(m?.ano, 10);
-      const mes = parseInt(m?.mes, 10);
-      if (!ano || !mes) return;
-      const k = ano + '-' + mes;
-      const v = parseFloat(m?.valor ?? 0) || 0;
-      if (!grupos[k]) grupos[k] = { ano, mes, valor: 0, valor_of: 0, valor_manual: null, fonte: 'manual', ofs: 0, obs: m?.observacao ?? null };
-      grupos[k].valor_manual = v;
-      grupos[k].obs = m?.observacao ?? grupos[k].obs ?? null;
-      grupos[k].fonte = 'manual';
-      grupos[k].valor = v;
     });
 
     const dados = Object.values(grupos).sort((a, b) => (a.ano * 100 + a.mes) - (b.ano * 100 + b.mes));
@@ -29416,7 +29686,7 @@ app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) =>
       futuros,
       crescimento_pct: Math.round(crescimento * 10000) / 100,
       base_meses: comDados.length,
-      debug: { totalOfs: (ofs || []).length, mesesComDados: Object.keys(grupos).length },
+      debug: { totalOfs: (ofs || []).length, mesesComDados: Object.keys(grupos).length, criterio: 'ofs_concluidas_valor_total_data_conclusao' },
     };
     cacheSet(cacheKey, resultado, 5 * 60 * 1000);
     res.json(resultado);
@@ -29429,45 +29699,16 @@ app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) =>
 app.get('/api/dashboard/total-geral', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-
-    const buscarValoresPaginados = async (builder) => {
-      let from = 0;
-      const pageSize = 1000;
-      let rows = [];
-      while (true) {
-        let q = builder();
-        const { data, error } = await q.range(from, from + pageSize - 1);
-        if (error) throw error;
-        const lote = Array.isArray(data) ? data : [];
-        if (!lote.length) break;
-        rows = rows.concat(lote);
-        if (lote.length < pageSize) break;
-        from += pageSize;
-      }
-      return rows;
-    };
-
+    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || '').trim();
     const agora = new Date();
-    const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
-
-    const totHist = await buscarValoresPaginados(() =>
-      supabase
-        .from('ofs')
-        .select('valor_total')
-        .not('valor_total', 'is', null)
-    );
-    const total_historico = (totHist || []).reduce((s, r) => s + (Number(r?.valor_total || 0) || 0), 0) || 0;
-    const count_historico = (totHist || []).length || 0;
-
-    const totMes = await buscarValoresPaginados(() =>
-      supabase
-        .from('ofs')
-        .select('valor_total')
-        .gte('created_at', inicioMes)
-        .not('valor_total', 'is', null)
-    );
-    const total_mes_atual = (totMes || []).reduce((s, r) => s + (Number(r?.valor_total || 0) || 0), 0) || 0;
-    const count_mes_atual = (totMes || []).length || 0;
+    const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString().slice(0, 10);
+    const fimMesExclusivo = new Date(agora.getFullYear(), agora.getMonth() + 1, 1).toISOString().slice(0, 10);
+    const historico = await _resumirVendasOficiais({}, empresaId);
+    const mesAtual = await _resumirVendasOficiais({ inicio: inicioMes, fim_exclusivo: fimMesExclusivo }, empresaId);
+    const total_historico = historico.total_vendido;
+    const count_historico = historico.total_ofs;
+    const total_mes_atual = mesAtual.total_vendido;
+    const count_mes_atual = mesAtual.total_ofs;
 
     return res.json({ ok: true, total_historico, count_historico, total_mes_atual, count_mes_atual });
   } catch (e) {

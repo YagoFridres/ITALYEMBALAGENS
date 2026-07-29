@@ -6676,12 +6676,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       + '.ccp-modal-summary-chip{display:grid;gap:4px;min-width:150px;padding:12px 14px;border-radius:12px;border:1px solid rgba(148,163,184,.14);background:rgba(2,6,23,.28)}'
       + '.ccp-modal-summary-chip .lbl{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
       + '.ccp-modal-summary-chip .val{font-size:16px;font-weight:900;color:#f8fafc}'
-      + '#ccp-modal-compra.estoque-modal-overlay,#ccp-modal-compra.estoque-modal-overlay-padrao{padding:0!important;align-items:stretch!important;justify-content:stretch!important;background:rgba(2,6,23,.88)!important;backdrop-filter:blur(8px)!important}'
-      + '#ccp-modal-compra .estoque-modal-shell,#ccp-modal-compra .estoque-modal-shell-padrao{width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;box-shadow:none!important}'
+      + '#ccp-modal-compra.estoque-modal-overlay,#ccp-modal-compra.estoque-modal-overlay-padrao{padding:20px!important;align-items:center!important;justify-content:center!important;background:rgba(2,6,23,.88)!important;backdrop-filter:blur(8px)!important}'
+      + '#ccp-modal-compra .estoque-modal-shell,#ccp-modal-compra .estoque-modal-shell-padrao{width:min(1380px,calc(100vw - 40px))!important;max-width:1380px!important;height:auto!important;max-height:94vh!important;border-radius:24px!important;border:1px solid rgba(148,163,184,.16)!important;box-shadow:0 28px 80px rgba(2,6,23,.42)!important}'
       + '#ccp-modal-compra .estoque-modal-header-padrao{padding:18px 24px!important}'
-      + '#ccp-modal-compra .estoque-modal-content-padrao{padding:18px 24px!important;overflow:auto!important;min-height:0!important}'
+      + '#ccp-modal-compra .estoque-modal-content-padrao{padding:18px 24px!important;overflow:auto!important;min-height:0!important;max-height:calc(94vh - 156px)!important}'
       + '#ccp-modal-compra .estoque-modal-footer-padrao{padding:14px 24px 16px!important}'
-      + '@media (max-width:900px){.ccp-modal-grid,.ccp-modal-primary-grid,.ccp-modal-secondary-grid{grid-template-columns:1fr}#page-compras .ccp-search-shell{align-items:stretch}#page-compras .ccp-search-shell button{width:100%}}';
+      + '@media (max-width:900px){.ccp-modal-grid,.ccp-modal-primary-grid,.ccp-modal-secondary-grid{grid-template-columns:1fr}#page-compras .ccp-search-shell{align-items:stretch}#page-compras .ccp-search-shell button{width:100%}#ccp-modal-compra.estoque-modal-overlay,#ccp-modal-compra.estoque-modal-overlay-padrao{padding:0!important;align-items:stretch!important;justify-content:stretch!important}#ccp-modal-compra .estoque-modal-shell,#ccp-modal-compra .estoque-modal-shell-padrao{width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;box-shadow:none!important}#ccp-modal-compra .estoque-modal-content-padrao{max-height:none!important}}';
     document.head.appendChild(st);
   }
   function cEnsureToolbar() {
@@ -7925,9 +7925,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#page-orcamentos #calc-pasta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-2px 0 12px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px}'
       + '#page-orcamentos #calc-pasta-row label{font-size:12px;font-weight:800;color:rgba(255,255,255,.72);text-transform:uppercase;letter-spacing:.04em}'
       + '#page-orcamentos #calc-pasta{min-width:240px;flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px}'
-      + '#modal-calc{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;display:none!important;pointer-events:none!important;opacity:0!important;visibility:hidden!important;align-items:stretch!important;justify-content:stretch!important;padding:0!important;background:rgba(2,6,23,.82)!important;backdrop-filter:blur(8px)!important}'
+      + '#modal-calc{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;display:none!important;pointer-events:none!important;opacity:0!important;visibility:hidden!important;align-items:center!important;justify-content:center!important;padding:16px!important;background:rgba(2,6,23,.82)!important;backdrop-filter:blur(8px)!important}'
       + '#modal-calc.open,#modal-calc.show,#modal-calc.active{display:flex!important;pointer-events:auto!important;opacity:1!important;visibility:visible!important}'
-      + '#modal-calc #modal-calculadora{width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;background:linear-gradient(180deg,#07111f 0%,#0f172a 20%,#111827 100%)!important;border:none!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;padding:22px!important}'
+      + '#modal-calc #modal-calculadora{width:min(1720px,calc(100vw - 32px))!important;max-width:1720px!important;height:min(96vh,1220px)!important;max-height:96vh!important;background:linear-gradient(180deg,#07111f 0%,#0f172a 20%,#111827 100%)!important;border:1px solid rgba(148,163,184,.16)!important;border-radius:24px!important;box-shadow:0 30px 80px rgba(2,6,23,.45)!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;padding:22px!important}'
       + '#modal-calc #modal-calculadora h2{margin:0 0 12px!important;padding:0 56px 0 0!important;font-size:28px!important;font-weight:900!important;letter-spacing:-.02em!important;color:#eff6ff!important}'
       + '#modal-calc #modal-calculadora .close-btn{top:18px!important;right:18px!important;width:42px!important;height:42px!important;border-radius:999px!important;background:rgba(15,23,42,.9)!important;border:1px solid rgba(148,163,184,.2)!important;color:#f8fafc!important}'
       + '#modal-calc #modal-calculadora .calc-header-row{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;gap:14px!important;align-items:center!important;padding:16px 18px!important;border-radius:18px!important;background:linear-gradient(135deg,rgba(5,150,105,.18),rgba(29,78,216,.18))!important;border:1px solid rgba(125,211,252,.16)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)!important}'
@@ -7961,8 +7961,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(2){background:rgba(30,41,59,.88)!important;color:#e0f2fe!important}'
       + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(3){background:#2563eb!important;color:#fff!important;border-color:#2563eb!important}'
       + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(4){background:#7c3aed!important;color:#fff!important;border-color:#7c3aed!important}'
-      + '#modal-calc.orc-calc-fs-ready{padding:0!important;align-items:stretch!important;justify-content:stretch!important;background:rgba(2,6,23,.82)!important;backdrop-filter:blur(8px)!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora{width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;padding:0!important;border:none!important;box-shadow:none!important;background:linear-gradient(180deg,#061120 0%,#0f172a 16%,#111827 100%)!important}'
+      + '#modal-calc.orc-calc-fs-ready{padding:16px!important;align-items:center!important;justify-content:center!important;background:rgba(2,6,23,.82)!important;backdrop-filter:blur(8px)!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora{width:min(1720px,calc(100vw - 32px))!important;max-width:1720px!important;height:min(96vh,1220px)!important;max-height:96vh!important;border-radius:24px!important;padding:0!important;border:1px solid rgba(148,163,184,.16)!important;box-shadow:0 30px 80px rgba(2,6,23,.45)!important;background:linear-gradient(180deg,#061120 0%,#0f172a 16%,#111827 100%)!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell{display:grid!important;grid-template-rows:auto auto minmax(0,1fr) auto!important;height:100%!important;min-height:0!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-header{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:16px!important;padding:18px 24px!important;border-bottom:1px solid rgba(148,163,184,.14)!important;background:rgba(3,7,18,.88)!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-header h2{margin:0!important;padding:0!important;font-size:28px!important;color:#f8fafc!important}'
@@ -8577,17 +8577,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       overlay.style.setProperty('height', '100vh', 'important');
       overlay.style.setProperty('max-width', '100vw', 'important');
       overlay.style.setProperty('max-height', '100vh', 'important');
-      overlay.style.setProperty('padding', '0', 'important');
+      overlay.style.setProperty('padding', window.innerWidth <= 920 ? '0' : '16px', 'important');
       overlay.style.setProperty('margin', '0', 'important');
-      overlay.style.setProperty('align-items', 'stretch', 'important');
-      overlay.style.setProperty('justify-content', 'stretch', 'important');
+      overlay.style.setProperty('align-items', window.innerWidth <= 920 ? 'stretch' : 'center', 'important');
+      overlay.style.setProperty('justify-content', window.innerWidth <= 920 ? 'stretch' : 'center', 'important');
       overlay.style.setProperty('overflow', 'hidden', 'important');
-      modal.style.setProperty('width', '100vw', 'important');
-      modal.style.setProperty('max-width', '100vw', 'important');
-      modal.style.setProperty('height', '100vh', 'important');
-      modal.style.setProperty('max-height', '100vh', 'important');
-      modal.style.setProperty('border-radius', '0', 'important');
-      modal.style.setProperty('margin', '0', 'important');
+      modal.style.setProperty('width', window.innerWidth <= 920 ? '100vw' : 'min(1720px, calc(100vw - 32px))', 'important');
+      modal.style.setProperty('max-width', window.innerWidth <= 920 ? '100vw' : '1720px', 'important');
+      modal.style.setProperty('height', window.innerWidth <= 920 ? '100vh' : 'min(96vh, 1220px)', 'important');
+      modal.style.setProperty('max-height', window.innerWidth <= 920 ? '100vh' : '96vh', 'important');
+      modal.style.setProperty('border-radius', window.innerWidth <= 920 ? '0' : '24px', 'important');
+      modal.style.setProperty('margin', window.innerWidth <= 920 ? '0' : '0 auto', 'important');
       modal.style.setProperty('padding', '0', 'important');
       modal.style.setProperty('overflow', 'hidden', 'important');
       shell.style.setProperty('height', '100%', 'important');
@@ -9422,8 +9422,25 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
 (function patchRuntimeDebugBridge() {
   if (window.__patchRuntimeDebugBridgeInstalled) return;
   window.__patchRuntimeDebugBridgeInstalled = true;
-  function send() { return null; }
-  try { window.__erpRuntimeDebugDisabled = true; } catch (_) {}
+  function send(hypothesisId, msg, data, location) {
+    try {
+      fetch('http://127.0.0.1:7788/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'prod-blockers-regressions',
+          runId: 'pre-fix',
+          hypothesisId: String(hypothesisId || 'A'),
+          location: String(location || 'patch.js'),
+          msg: String(msg || '[DEBUG] frontend event'),
+          data: data && typeof data === 'object' ? data : {},
+          ts: Date.now()
+        })
+      }).catch(function() {});
+    } catch (_) {}
+    return null;
+  }
+  try { window.__erpRuntimeDebugDisabled = false; } catch (_) {}
   try { window.__erpRuntimeDebug = send; } catch (_) {}
 })();
 
@@ -9470,6 +9487,23 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
 
   function _histPad2(v) {
     return String(v == null ? '' : v).padStart(2, '0');
+  }
+
+  function _histFmtDate(value) {
+    if (value == null || value === '') return '—';
+    if (value instanceof Date && !isNaN(value.getTime())) {
+      return _histPad2(value.getDate()) + '/' + _histPad2(value.getMonth() + 1) + '/' + value.getFullYear();
+    }
+    var raw = String(value || '').trim();
+    if (!raw) return '—';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      return raw.slice(8, 10) + '/' + raw.slice(5, 7) + '/' + raw.slice(0, 4);
+    }
+    var dt = new Date(raw);
+    if (!isNaN(dt.getTime())) {
+      return _histPad2(dt.getDate()) + '/' + _histPad2(dt.getMonth() + 1) + '/' + dt.getFullYear();
+    }
+    return raw;
   }
 
   function _histMonthName(mes) {
@@ -10163,11 +10197,34 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     if (range && range.data_inicio) qs.set('data_inicio', range.data_inicio);
     if (range && range.data_fim) qs.set('data_fim', range.data_fim);
     var token = _histToken();
+    // #region debug-point C:hist-fetch-passagens-entry
+    try {
+      if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', '[DEBUG] historico fetch passagens iniciado', {
+        data_inicio: String(range && range.data_inicio || ''),
+        data_fim: String(range && range.data_fim || ''),
+        cliente: String(filtros && filtros.cliente || '').slice(0, 80),
+        maquina: String(filtros && filtros.maquina || '').slice(0, 80),
+        limit: Number(limit || 1000) || 1000
+      }, 'patch.js:_histFetchPassagensRange:entry');
+    } catch (_) {}
+    // #endregion
     var resp = await fetch('/api/passagens/historico?' + qs.toString() + '&t=' + Date.now(), {
       cache: 'no-store',
       headers: token ? { Authorization: 'Bearer ' + token } : {}
     });
     var json = await resp.json().catch(function() { return null; });
+    // #region debug-point C:hist-fetch-passagens-response
+    try {
+      if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', '[DEBUG] historico fetch passagens respondeu', {
+        status: resp && resp.status ? Number(resp.status) : 0,
+        ok: !!(resp && resp.ok),
+        apiOk: !!(json && json.ok !== false),
+        total: Number(json && json.total || 0) || 0,
+        rows: Array.isArray(json && json.passagens) ? json.passagens.length : 0,
+        error: String(json && (json.error || json.erro || json.message) || '')
+      }, 'patch.js:_histFetchPassagensRange:response');
+    } catch (_) {}
+    // #endregion
     if (!resp.ok || !json || json.ok === false) throw new Error(String(json && (json.error || json.message) || 'Falha ao carregar histórico'));
     return Array.isArray(json && json.passagens) ? json.passagens : [];
   }
@@ -10528,6 +10585,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
             + '</div>';
         }).join('');
 
+    // #region debug-point C:hist-detalhamento-render
+    try {
+      if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', '[DEBUG] historico render detalhamento header', {
+        hasFmtDate: typeof _histFmtDate === 'function',
+        data_inicio: String(rangeInfo && rangeInfo.data_inicio || ''),
+        data_fim: String(rangeInfo && rangeInfo.data_fim || ''),
+        groups: orderedGroups.length
+      }, 'patch.js:hist-detalhamento:header');
+    } catch (_) {}
+    // #endregion
     container.innerHTML = ''
       + '<div class="hist-detalhamento-box">'
       + '  <div class="hist-detalhamento-head">'
@@ -45885,7 +45952,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var args = Array.prototype.slice.call(arguments);
       var m = String(method || '').toUpperCase();
       var rawPath = String(path || '');
-      if (m === 'GET' && /^\/orcamentos(?:\?|$)/.test(rawPath) && rawPath.indexOf('empId=') >= 0) {
+      if (m === 'GET' && /^\/(?:api\/)?orcamentos(?:\?|$)/.test(rawPath) && /(empId|empresa_id|empresaId)=/.test(rawPath)) {
         try {
           var url = new URL(rawPath, window.location.origin);
           url.searchParams.delete('empId');
