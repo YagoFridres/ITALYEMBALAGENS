@@ -45462,10 +45462,6 @@ function _ocultarGraficoComissoes() {
     var overlay = document.getElementById('modal-calc');
     var modal = document.getElementById('modal-calculadora');
     if (!overlay || !modal) return;
-    calcDebugEvent('applyCalcFullscreenNow:start', {
-      className: String(overlay.className || ''),
-      display: String(((window.getComputedStyle && getComputedStyle(overlay)) || {}).display || '')
-    });
     var isMobile = false;
     try { isMobile = window.matchMedia && window.matchMedia('(max-width: 920px)').matches; } catch (_) {}
     try { overlay.classList.add('orc-calc-fs-ready'); } catch (_) {}
