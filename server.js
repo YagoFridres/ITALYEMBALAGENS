@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1194,8 +1194,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260729102030';
-const SW_RUNTIME_VERSION = '20260729102030';
+const PATCH_RUNTIME_VERSION = '20260729173500';
+const SW_RUNTIME_VERSION = '20260729173500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
@@ -2737,7 +2737,7 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
       }))).join(',');
     };
 
-    const selectCols = 'id,of,numero,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,cliente,vendedor,vendedor_nome,vendNome,vend_id,vendId,vendedor_id,vendid,preco,valor_unitario,valor_venda,valor_total,total,qtd,quantidade,qtd_pedida,itens,data_conclusao,created_at,status,descricao';
+    const selectCols = 'id,of,numero,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,vendedor,vendedor_nome,vendNome,vend_id,vendId,vendedor_id,vendid,preco,valor_unitario,valor_venda,valor_total,total,qtd,quantidade,qtd_pedida,itens,data_conclusao,created_at,status,descricao';
     let queryBase = supabase.from('ofs').select(selectCols).limit(50);
     if (empresaId) {
       try { queryBase = queryBase.eq('empresa_id', empresaId); } catch (_) {}
@@ -6324,8 +6324,32 @@ app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
 app.patch('/api/ofs/:id/restore', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id_obrigatorio' });
     const now = new Date().toISOString();
-    const payload = { deleted_at: null, updated_at: now };
+    const { data: atual, error: atualError } = await supabase.from('ofs').select('*').eq('id', id).maybeSingle();
+    if (atualError) throw atualError;
+    if (!atual) return res.status(404).json({ ok: false, error: 'of_nao_encontrada' });
+    const statusAnterior = [
+      atual?.status_anterior,
+      atual?.status_prev,
+      atual?.status_previo,
+      atual?.status_antes_cancelamento,
+      atual?.ultimo_status,
+      atual?.ultimo_status_ativo,
+      req.body?.status_anterior,
+      req.body?.status_prev,
+      req.body?.status_previo
+    ].map((v) => String(v || '').trim()).find((v) => {
+      const norm = String(v || '').trim().toLowerCase();
+      return !!norm && !norm.includes('cancel');
+    });
+    const statusAtual = String(atual?.status || '').trim();
+    const statusRestaurado = statusAnterior || (/cancel/i.test(statusAtual) ? 'Em aberto' : (statusAtual || 'Em aberto'));
+    const payload = {
+      deleted_at: null,
+      status: statusRestaurado,
+      updated_at: now
+    };
     const { data, error } = await supabase.from('ofs').update(payload).eq('id', id).select('*').maybeSingle();
     if (error) throw error;
     _clearOfsCaches();
@@ -12184,6 +12208,301 @@ app.get('/api/relatorios/ofs-entradas-mes', authMiddleware, async (req, res) => 
     });
   } catch (e) {
     console.error('[RELATORIOS][OFS-ENTRADAS-MES]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+function _relatoriosIsEmAberto(of) {
+  const st = _assistNorm(of?.status || '');
+  return !!st && st.includes('em aberto') && !_assistIsCancelada(of) && !_assistIsConcluida(of);
+}
+
+function _relatoriosPickMaquinaAberta(of) {
+  const pickText = (value) => {
+    const txt = String(value || '').trim();
+    return txt && txt !== 'null' && txt !== 'undefined' ? txt : '';
+  };
+  const direct = pickText(of?.maquina_atual) || pickText(of?.maquina_agendada) || pickText(of?.maquina);
+  if (direct) return direct;
+  const parseList = (raw) => {
+    if (raw == null || raw === '') return [];
+    let current = raw;
+    if (typeof current === 'string') {
+      try { current = JSON.parse(current); } catch (_) { current = String(raw || '').split(/[;,|]/g); }
+    }
+    if (!Array.isArray(current)) current = [current];
+    return current.map((item) => {
+      if (item && typeof item === 'object') return String(item.nome || item.maquina || item.name || item.id || '').trim();
+      return String(item || '').trim();
+    }).filter(Boolean);
+  };
+  const fluxo = parseList(of?.fluxo_maquinas);
+  const maq = parseList(of?.maq);
+  const lista = fluxo.length ? fluxo : maq;
+  if (lista.length) {
+    const idx = Math.max(0, Math.trunc(Number(of?.maquina_atual_index || 0) || 0));
+    return String(lista[idx] || lista[0] || '').trim() || 'Sem máquina';
+  }
+  return 'Sem máquina';
+}
+
+async function _relatoriosFetchClienteOfs(clienteId, empresaId, clienteNome) {
+  const cols = [
+    'id', 'numero', 'of', 'status', 'deleted_at', 'empresa_id', 'emp_id',
+    'cli_id', 'cliId', 'cliente_id', 'clienteId',
+    'cliente', 'cliente_nome', 'cliNome', 'clinome',
+    'descricao', 'qtd', 'quantidade', 'qtd_pedida',
+    'data_entrega', 'ent', 'dia', 'created_at', 'data_conclusao',
+    'valor_total', 'valor_venda', 'total',
+    'vendedor_id', 'vend_id', 'vendId', 'vendedor', 'vendedor_nome', 'vendNome',
+    'maq', 'maquina', 'maquina_atual', 'maquina_agendada', 'fluxo_maquinas', 'maquina_atual_index'
+  ].join(',');
+  const byId = new Map();
+  const mergeRows = (rows) => {
+    (Array.isArray(rows) ? rows : []).forEach((row) => {
+      const key = String(row?.id || row?.numero || row?.of || Math.random()).trim();
+      if (key) byId.set(key, row);
+    });
+  };
+  for (const col of ['cli_id', 'cliId', 'cliente_id']) {
+    const result = await _selectCompatRows('ofs', cols, (q) => {
+      let query = q.eq(col, clienteId).order('created_at', { ascending: false });
+      if (empresaId) query = query.eq('empresa_id', empresaId);
+      return query.limit(1000);
+    });
+    if (!result?.error) mergeRows(result?.data);
+  }
+  if (!byId.size && clienteNome) {
+    const nome = String(clienteNome || '').trim();
+    for (const col of ['cliente_nome', 'cliNome', 'clinome', 'cliente']) {
+      const result = await _selectCompatRows('ofs', cols, (q) => {
+        let query = q.ilike(col, '%' + nome + '%').order('created_at', { ascending: false });
+        if (empresaId) query = query.eq('empresa_id', empresaId);
+        return query.limit(1000);
+      });
+      if (!result?.error) mergeRows(result?.data);
+    }
+  }
+  return Array.from(byId.values());
+}
+
+async function _relatoriosFetchClienteOrcamentos(clienteId, clienteNome, empresaId) {
+  try {
+    let query = supabase
+      .from('orcamentos')
+      .select('id,numero_orcamento,nome,titulo,descricao,cliente_id,cliente_nome,valor_total,quantidade,onda,medidas,status,criado_em,emp_id')
+      .order('criado_em', { ascending: false })
+      .limit(5000);
+    if (empresaId) {
+      try { query = query.eq('emp_id', empresaId); } catch (_) {}
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    const nomeNorm = _assistNorm(clienteNome || '');
+    return (Array.isArray(data) ? data : []).filter((row) => {
+      const rowCliId = String(row?.cliente_id || '').trim();
+      const rowCliNome = _assistNorm(row?.cliente_nome || row?.descricao || '');
+      return (clienteId && rowCliId === clienteId) || (!!nomeNorm && rowCliNome === nomeNorm);
+    });
+  } catch (_) {
+    return [];
+  }
+}
+
+app.get('/api/relatorios/ofs-em-aberto', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const filtroEmpresa = String(req.query.emp_id || req.query.empId || req.query.empresa_id || '').trim();
+    let empresaAtual = null;
+    try { empresaAtual = await _resolveEmpresaUuid(req); } catch (_) { empresaAtual = null; }
+    const companyIds = (filtroEmpresa && filtroEmpresa !== 'all' && filtroEmpresa !== 'todas')
+      ? [filtroEmpresa]
+      : (empresaAtual ? [empresaAtual] : []);
+    const cols = [
+      'id', 'numero', 'of', 'status', 'deleted_at', 'empresa_id', 'emp_id',
+      'cli_id', 'cliId', 'cliente_id', 'clienteId', 'cliente', 'cliente_nome', 'cliNome', 'clinome',
+      'descricao', 'qtd', 'quantidade', 'qtd_pedida',
+      'data_entrega', 'ent', 'dia', 'created_at',
+      'valor_total', 'valor_venda', 'total',
+      'vendedor_id', 'vend_id', 'vendId', 'vendedor', 'vendedor_nome', 'vendNome',
+      'maq', 'maquina', 'maquina_atual', 'maquina_agendada', 'fluxo_maquinas', 'maquina_atual_index'
+    ].join(',');
+    const result = await _selectCompatRows('ofs', cols, (q) => {
+      let query = q.is('deleted_at', null).order('data_entrega', { ascending: true }).order('created_at', { ascending: false });
+      if (companyIds.length) query = query.in('empresa_id', companyIds);
+      return query.limit(10000);
+    });
+    if (result?.error) throw result.error;
+    const ofs = (Array.isArray(result?.data) ? result.data : []).filter((row) => _relatoriosIsEmAberto(row));
+    const clientesMap = await _relatoriosLoadClientesDetails(ofs.map((of) => _assistPickOfClienteId(of)));
+    const vendedoresMap = await _relatoriosLoadVendedoresByIds(ofs.map((of) => _relatoriosPickVendedorId(of)).filter(Boolean));
+    const rows = ofs.map((of) => {
+      const clienteId = _assistPickOfClienteId(of);
+      const clienteRef = clientesMap.get(clienteId) || null;
+      const quantidade = Math.max(0, Math.trunc(Number(of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
+      const valorTotal = Number(of?.valor_total ?? of?.valor_venda ?? of?.total ?? 0) || 0;
+      const empresaId = String(of?.empresa_id || of?.emp_id || '').trim();
+      return {
+        id: of?.id || null,
+        numero: _assistPickOfNumber(of),
+        status: String(of?.status || 'Em aberto').trim() || 'Em aberto',
+        cliente: String(of?.cliente_nome || of?.cliNome || of?.clinome || of?.cliente || clienteRef?.nome || 'Sem cliente').trim() || 'Sem cliente',
+        produto: String(of?.descricao || '—').trim() || '—',
+        quantidade,
+        data_entrega: _assistPickOfEntrega(of),
+        maquina: _relatoriosPickMaquinaAberta(of),
+        vendedor: String(of?.vendedor || of?.vendedor_nome || of?.vendNome || vendedoresMap.get(_relatoriosPickVendedorId(of)) || 'Sem vendedor').trim() || 'Sem vendedor',
+        valor_total: valorTotal,
+        empresa_id: empresaId || null,
+        empresa_nome: empresaId ? _relatoriosEmpresaNome(empresaId) : 'Sem empresa'
+      };
+    }).sort((a, b) => {
+      const da = String(a?.data_entrega || '');
+      const db = String(b?.data_entrega || '');
+      if (da !== db) {
+        if (!da) return 1;
+        if (!db) return -1;
+        return da.localeCompare(db, 'pt-BR');
+      }
+      return String(a?.numero || '').localeCompare(String(b?.numero || ''), 'pt-BR', { numeric: true });
+    });
+    const resumo = rows.reduce((acc, row) => {
+      acc.total_ofs += 1;
+      acc.quantidade_total += Number(row?.quantidade || 0) || 0;
+      acc.valor_total += Number(row?.valor_total || 0) || 0;
+      if (row?.empresa_nome) acc.empresas.add(row.empresa_nome);
+      return acc;
+    }, { total_ofs: 0, quantidade_total: 0, valor_total: 0, empresas: new Set() });
+    return res.json({
+      ok: true,
+      filtro_empresa: companyIds.length ? companyIds[0] : 'todas',
+      resumo: {
+        total_ofs: resumo.total_ofs,
+        quantidade_total: resumo.quantidade_total,
+        valor_total: resumo.valor_total,
+        total_empresas: resumo.empresas.size
+      },
+      rows
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][OFS-EM-ABERTO]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/relatorios/cliente-ficha', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const clienteId = String(req.query.cliente_id || req.query.clienteId || req.query.id || '').trim();
+    if (!clienteId) return res.status(400).json({ ok: false, error: 'cliente_id_obrigatorio' });
+    let empresaAtual = null;
+    try { empresaAtual = await _resolveEmpresaUuid(req); } catch (_) { empresaAtual = null; }
+    let cliente = null;
+    try {
+      let q = supabase.from('clientes').select('*').eq('id', clienteId).maybeSingle();
+      if (empresaAtual) {
+        try { q = q.eq('empresa_id', empresaAtual); } catch (_) {}
+      }
+      const { data, error } = await q;
+      if (!error) cliente = data || null;
+    } catch (_) {}
+    if (!cliente) {
+      const { data, error } = await supabase.from('clientes').select('*').eq('id', clienteId).maybeSingle();
+      if (error) throw error;
+      cliente = data || null;
+    }
+    if (!cliente) return res.status(404).json({ ok: false, error: 'cliente_nao_encontrado' });
+
+    const clienteNome = String(cliente?.nome || cliente?.rs || cliente?.razao_social || '').trim();
+    const ofs = await _relatoriosFetchClienteOfs(clienteId, empresaAtual, clienteNome);
+    const orcamentos = await _relatoriosFetchClienteOrcamentos(clienteId, clienteNome, empresaAtual);
+    const vendedorIds = []
+      .concat(String(cliente?.vendedor_id || '').trim())
+      .concat(ofs.map((of) => _relatoriosPickVendedorId(of)).filter(Boolean));
+    const vendedoresMap = await _relatoriosLoadVendedoresByIds(vendedorIds.filter(Boolean));
+    const vendedorNome = String(
+      vendedoresMap.get(String(cliente?.vendedor_id || '').trim()) ||
+      ofs.map((of) => String(of?.vendedor || of?.vendedor_nome || of?.vendNome || vendedoresMap.get(_relatoriosPickVendedorId(of)) || '').trim()).find(Boolean) ||
+      'Sem vendedor'
+    ).trim() || 'Sem vendedor';
+    const historico = ofs.map((of) => {
+      const quantidade = Math.max(0, Math.trunc(Number(of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
+      const valorTotal = Number(of?.valor_total ?? of?.valor_venda ?? of?.total ?? 0) || 0;
+      return {
+        id: of?.id || null,
+        numero: _assistPickOfNumber(of),
+        status: String(of?.status || '').trim() || '—',
+        produto: String(of?.descricao || '—').trim() || '—',
+        quantidade,
+        valor_total: valorTotal,
+        data_entrada: String(of?.created_at || of?.dia || '').slice(0, 10),
+        data_entrega: _assistPickOfEntrega(of),
+        data_conclusao: _assistPickOfConclusao(of),
+        maquina: _relatoriosPickMaquinaAberta(of),
+        vendedor: String(of?.vendedor || of?.vendedor_nome || of?.vendNome || vendedoresMap.get(_relatoriosPickVendedorId(of)) || vendedorNome).trim() || vendedorNome
+      };
+    }).sort((a, b) => {
+      const da = String(b?.data_conclusao || b?.data_entrada || '');
+      const db = String(a?.data_conclusao || a?.data_entrada || '');
+      if (da !== db) return da.localeCompare(db, 'pt-BR');
+      return String(b?.numero || '').localeCompare(String(a?.numero || ''), 'pt-BR', { numeric: true });
+    });
+    const abertas = historico.filter((of) => !_assistIsCancelada(of) && !_assistIsConcluida(of));
+    const totalComprado = historico.reduce((sum, of) => sum + (Number(of?.valor_total || 0) || 0), 0);
+    const produtosMap = new Map();
+    historico.forEach((of) => {
+      const key = String(of?.produto || 'Produto não informado').trim() || 'Produto não informado';
+      const cur = produtosMap.get(key) || { produto: key, total_ofs: 0, quantidade_total: 0, valor_total: 0 };
+      cur.total_ofs += 1;
+      cur.quantidade_total += Number(of?.quantidade || 0) || 0;
+      cur.valor_total += Number(of?.valor_total || 0) || 0;
+      produtosMap.set(key, cur);
+    });
+    const produtosMaisPedidos = Array.from(produtosMap.values()).sort((a, b) => {
+      if ((b.total_ofs || 0) !== (a.total_ofs || 0)) return (b.total_ofs || 0) - (a.total_ofs || 0);
+      return (b.valor_total || 0) - (a.valor_total || 0);
+    }).slice(0, 10);
+    const orcamentosRows = (Array.isArray(orcamentos) ? orcamentos : []).map((row) => ({
+      id: row?.id || null,
+      numero: String(row?.numero_orcamento || row?.id || '—').trim() || '—',
+      nome: String(row?.nome || row?.titulo || 'Orçamento').trim() || 'Orçamento',
+      medidas: String(row?.medidas || row?.titulo || '—').trim() || '—',
+      onda: String(row?.onda || '—').trim() || '—',
+      quantidade: Math.max(0, Math.trunc(Number(row?.quantidade || 0) || 0)),
+      valor_total: Number(row?.valor_total || 0) || 0,
+      status: String(row?.status || '—').trim() || '—',
+      criado_em: String(row?.criado_em || '').slice(0, 10)
+    }));
+    const totalOrcamentos = orcamentosRows.reduce((sum, row) => sum + (Number(row?.valor_total || 0) || 0), 0);
+    return res.json({
+      ok: true,
+      cliente: {
+        id: cliente?.id || null,
+        nome: clienteNome || 'Sem nome',
+        razao_social: String(cliente?.razao_social || cliente?.rs || '').trim() || null,
+        cnpj: String(cliente?.cnpj || '').trim() || null,
+        telefone: String(cliente?.tel || cliente?.telefone || '').trim() || null,
+        email: String(cliente?.email || '').trim() || null,
+        contato: String(cliente?.contato || '').trim() || null,
+        cidade: String(cliente?.cidade || '').trim() || null,
+        uf: String(cliente?.uf || '').trim() || null,
+        endereco: String(cliente?.endereco || '').trim() || null,
+        ramo: String(cliente?.ramo || '').trim() || null,
+        vendedor_nome: vendedorNome
+      },
+      resumo: {
+        total_ofs: historico.length,
+        ofs_abertas: abertas.length,
+        total_comprado: totalComprado,
+        total_orcamentos: orcamentosRows.length,
+        valor_orcamentos: totalOrcamentos
+      },
+      produtos_mais_pedidos: produtosMaisPedidos,
+      historico_ofs: historico.slice(0, 120),
+      orcamentos: orcamentosRows.slice(0, 120)
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][CLIENTE-FICHA]', e?.message || e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
