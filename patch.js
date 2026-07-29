@@ -2168,10 +2168,26 @@ try {
     var json = await rrFetchJson('/api/relatorios/cliente-ficha?cliente_id=' + encodeURIComponent(String(clienteId || '').trim()));
     var cliente = json && json.cliente || {};
     var resumo = json && json.resumo || {};
+    var insights = json && json.insights || {};
     var produtos = rrList(json, ['produtos_mais_pedidos']);
     var historico = rrList(json, ['historico_ofs']);
     var orcamentos = rrList(json, ['orcamentos']);
     var ticketMedio = Number(resumo && resumo.total_ofs || 0) > 0 ? ((Number(resumo && resumo.total_comprado || 0) || 0) / Number(resumo.total_ofs || 1)) : 0;
+    var topTxt = function(item, key) {
+      var nome = String(item && item[key] || '').trim();
+      if (!nome) return '—';
+      var total = Number(item && item.total_ofs || 0) || 0;
+      return total > 0 ? (nome + ' (' + rrFmtNum(total, 0) + ' OFs)') : nome;
+    };
+    var topListTxt = function(list, key) {
+      return rrList({ value: list }, ['value']).map(function(item) {
+        return topTxt(item, key);
+      }).filter(function(txt) {
+        return txt && txt !== '—';
+      }).slice(0, 5).join(', ') || '—';
+    };
+    var freqTxt = resumo && resumo.frequencia_media_dias != null ? (rrFmtNum(resumo.frequencia_media_dias, 1) + ' dias') : '—';
+    var mediaCaixasMesTxt = resumo && resumo.media_caixas_mes != null ? rrFmtNum(resumo.media_caixas_mes, 1) : '—';
     return rrOpenPrint({
       title: 'Ficha Técnica do Cliente',
       periodo: String(cliente && cliente.nome || 'Cliente'),
@@ -2180,7 +2196,8 @@ try {
         { label: 'Total de OFs', value: rrFmtNum(resumo.total_ofs || 0, 0), sub: 'Histórico localizado para o cliente' },
         { label: 'OFs em Aberto', value: rrFmtNum(resumo.ofs_abertas || 0, 0), sub: 'Pedidos ainda em produção/abertos' },
         { label: 'Orçamentos', value: rrFmtNum(resumo.total_orcamentos || 0, 0), sub: 'Orçamentos vinculados ao cliente' },
-        { label: 'Ticket Médio', value: rrFmtMoney(ticketMedio), sub: 'Total comprado ÷ total de OFs' }
+        { label: 'Frequência Média', value: freqTxt, sub: 'Intervalo médio entre pedidos do cliente' },
+        { label: 'Média Caixas/Mês', value: mediaCaixasMesTxt, sub: 'Quantidade média de caixas pedidas por mês' }
       ],
       summaryTitle: 'Cadastro e indicadores',
       summaryHeaders: ['Campo', 'Valor'],
@@ -2194,7 +2211,14 @@ try {
         [rrEsc('Cidade / UF'), rrEsc(((cliente && cliente.cidade) ? String(cliente.cidade) : '—') + ' / ' + ((cliente && cliente.uf) ? String(cliente.uf) : '—'))],
         [rrEsc('Ramo'), rrEsc(String(cliente && (cliente.ramo || '—') || '—'))],
         [rrEsc('Vendedor responsável'), rrEsc(String(cliente && (cliente.vendedor_nome || '—') || '—'))],
-        [rrEsc('Valor total em orçamentos'), rrEsc(rrFmtMoney(resumo && resumo.valor_orcamentos || 0))]
+        [rrEsc('Valor total em orçamentos'), rrEsc(rrFmtMoney(resumo && resumo.valor_orcamentos || 0))],
+        [rrEsc('Ticket médio'), rrEsc(rrFmtMoney(ticketMedio))],
+        [rrEsc('Gramatura mais utilizada'), rrEsc(topTxt(insights && insights.gramatura_mais_utilizada, 'gramatura'))],
+        [rrEsc('Tipo de caixa mais pedido'), rrEsc(topTxt(insights && insights.tipo_caixa_mais_pedido, 'tipo_caixa'))],
+        [rrEsc('Frequência média entre pedidos'), rrEsc(freqTxt)],
+        [rrEsc('Quantidade média de caixas por mês'), rrEsc(mediaCaixasMesTxt)],
+        [rrEsc('Cores mais utilizadas'), rrEsc(topListTxt(insights && insights.cores_mais_utilizadas, 'cor'))],
+        [rrEsc('Tamanhos mais utilizados'), rrEsc(topListTxt(insights && insights.tamanhos_mais_utilizados, 'tamanho'))]
       ],
       detailSections: [
         {
@@ -2209,6 +2233,17 @@ try {
             ];
           }),
           emptyCols: 4
+        },
+        {
+          title: 'Preferências do Cliente',
+          headers: ['Indicador', 'Principal', 'Ranking complementar'],
+          rows: [
+            [rrEsc('Gramatura'), rrEsc(topTxt(insights && insights.gramatura_mais_utilizada, 'gramatura')), rrEsc(topListTxt(insights && insights.gramaturas_mais_utilizadas, 'gramatura'))],
+            [rrEsc('Tipo de caixa'), rrEsc(topTxt(insights && insights.tipo_caixa_mais_pedido, 'tipo_caixa')), rrEsc(topListTxt(insights && insights.tipos_caixa_mais_pedidos, 'tipo_caixa'))],
+            [rrEsc('Cores'), rrEsc(topListTxt(insights && insights.cores_mais_utilizadas, 'cor')), rrEsc('Frequência média: ' + freqTxt)],
+            [rrEsc('Tamanhos'), rrEsc(topListTxt(insights && insights.tamanhos_mais_utilizados, 'tamanho')), rrEsc('Média de caixas/mês: ' + mediaCaixasMesTxt)]
+          ],
+          emptyCols: 3
         },
         {
           title: 'Orçamentos Vinculados',
@@ -3437,6 +3472,14 @@ try {
       if (typeof window._histRenderDetalhamentoPassagens === 'function') window._histRenderDetalhamentoPassagens();
     } catch (_) {}
   }
+  try { window.appendHistPassagemLocal = appendHistPassagemLocal; } catch (_) {}
+
+  function getAppendHistPassagemLocal() {
+    try {
+      if (typeof window.appendHistPassagemLocal === 'function') return window.appendHistPassagemLocal;
+    } catch (_) {}
+    return (typeof appendHistPassagemLocal === 'function') ? appendHistPassagemLocal : null;
+  }
 
   async function openAlterarMaquinaPatched(ofId, ofNum) {
     cleanupOfmaqArtifacts();
@@ -3593,12 +3636,28 @@ try {
     var of = getOfmaqById(ofId);
     var id = String(ofId || '').trim();
     var machine = String(nomeMaquina || (of && (of.maquina || of.maquina_nome || of.maq)) || '').trim();
+    var appendHist = getAppendHistPassagemLocal();
     if (!id || !of) throw new Error('OF não localizada');
     if (!machine) throw new Error('Máquina não identificada');
     logOfmaq('POST /api/ofs/:id/passou-maquina', { id: id, maquina: machine });
     var r = await window.apiFetch('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method: 'POST', body: { maquina: machine, maquina_nome: machine } });
     var j = r ? await r.json().catch(function() { return null; }) : null;
     if (!r || !r.ok || (j && j.ok === false)) throw new Error(j && (j.error || j.message) || 'Falha ao registrar passagem');
+    if (of && typeof appendHist === 'function') {
+      appendHist({
+        of_id: of.id,
+        of_numero: of.numero || of.of,
+        numero: of.numero || of.of,
+        cliente: of.cliente || of.cliente_nome || of.cliNome || of.clinome || '',
+        produto: of.produto || of.descricao || '',
+        maquina: machine,
+        maquina_nome: machine,
+        data_passagem: isoFromDate(currentBusinessDate()),
+        hora_passagem: new Date().toISOString(),
+        status: 'Passou pela máquina',
+        passagens_maquina: [{ maquina: machine, maquina_nome: machine }]
+      });
+    }
     await refreshOfmaq('passou-maquina');
     try { showOfmaqCenterConfirm('OF #' + String(ofNum || of.numero || of.of || '').trim() + ' — Passou pela máquina ' + machine + ' registrado com sucesso.', { title: 'Passagem registrada' }); } catch (_) {}
     return j;
@@ -10924,6 +10983,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     var buscaInput = document.getElementById('hist-filtro-cliente');
     var busca = String((buscaInput && buscaInput.value) || window.__histPassagensDetalhamentoBusca || '').trim();
     window.__histPassagensDetalhamentoBusca = busca;
+    var filtros = _histGetFilters();
+    var rangeInfo = _histResolveRange(filtros, _histGetMonthlyRef());
     var rows = _histFiltrarDetalhamentoRows(allRows, busca).sort(function(a, b) {
       var maqA = _histPassagemMaquinas(a);
       var maqB = _histPassagemMaquinas(b);
@@ -10934,7 +10995,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
       return String(a && (a.of_numero || a.numero) || '').localeCompare(String(b && (b.of_numero || b.numero) || ''), 'pt-BR', { numeric: true });
     });
     window.__histPassagensRowsVisible = rows.slice();
-    var rangeInfo = _histDetalhamentoWeekRange();
     var groups = {};
     rows.forEach(function(row) {
       var maquina = _histPassagemMaquinas(row);
@@ -10948,7 +11008,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
       return String(b.iso || '').localeCompare(String(a.iso || ''));
     });
     var tableHtml = !rows.length
-      ? '<div class="hist-detalhamento-empty">Nenhuma passagem encontrada nas duas últimas semanas.</div>'
+      ? '<div class="hist-detalhamento-empty">Nenhuma passagem encontrada no período selecionado.</div>'
       : orderedGroups.map(function(group) {
           return ''
             + '<div class="hist-detalhamento-box" style="margin-top:16px">'
@@ -10998,7 +11058,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     container.innerHTML = ''
       + '<div class="hist-detalhamento-box">'
       + '  <div class="hist-detalhamento-head">'
-      + '    <div><div class="hist-detalhamento-title">Detalhamento de passagens</div><div style="margin-top:4px;color:#94a3b8;font-size:12px">Período automático: ' + _histEsc(_histFmtDate(rangeInfo.data_inicio)) + ' até ' + _histEsc(_histFmtDate(rangeInfo.data_fim)) + ' • busca por cliente, OF ou produto</div></div>'
+      + '    <div><div class="hist-detalhamento-title">Detalhamento de passagens</div><div style="margin-top:4px;color:#94a3b8;font-size:12px">Período selecionado: ' + _histEsc(_histFmtDate(rangeInfo.data_inicio)) + ' até ' + _histEsc(_histFmtDate(rangeInfo.data_fim)) + ' • agrupado por máquina e dia</div></div>'
       + '  </div>'
       + tableHtml
       + '</div>';
@@ -11232,7 +11292,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
 
     var filtros = (arg && typeof arg === 'object' && !Array.isArray(arg)) ? arg : _histGetFilters();
     append = false;
-    var range = _histDetalhamentoWeekRange();
+    var range = _histResolveRange(filtros, _histGetMonthlyRef());
     var key = JSON.stringify({
       cliente: String(filtros && filtros.cliente || '').trim(),
       maquina: String(filtros && filtros.maquina || '').trim(),
@@ -11264,6 +11324,20 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     if (filtros.maquina) qs.set('maquina', filtros.maquina);
     if (range.data_inicio) qs.set('data_inicio', range.data_inicio);
     if (range.data_fim) qs.set('data_fim', range.data_fim);
+
+    // #region debug-point C:hist-detalhamento-range
+    try {
+      if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', '[DEBUG] historico detalhamento resolveu range e filtros', {
+        append: !!append,
+        cliente: String(filtros && filtros.cliente || '').slice(0, 80),
+        maquina: String(filtros && filtros.maquina || '').slice(0, 80),
+        data_inicio: String(range && range.data_inicio || ''),
+        data_fim: String(range && range.data_fim || ''),
+        limit: Number(limit || 0) || 0,
+        offset: Number(offset || 0) || 0
+      }, 'patch.js:_histBuscarHistoricoPassagens:range');
+    } catch (_) {}
+    // #endregion
 
     var token = _histToken();
 
@@ -12618,6 +12692,92 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     }
   }
 
+  async function _simdBuscarRankingBackend(larg, comp, qtdPedido) {
+    var empId = '';
+    try {
+      empId = String(
+        ((document.getElementById('simd-emp') || {}).value) ||
+        window.EMP_FILTRO ||
+        window.CURRENT_USER?.emp_id ||
+        window.CURRENT_USER?.empId ||
+        ''
+      ).trim();
+    } catch (_) {
+      empId = '';
+    }
+    var payload = {
+      modo: 'planificacao_direta',
+      largura_mm: larg,
+      comprimento_mm: comp,
+      qtd_pedido: qtdPedido
+    };
+    if (empId) {
+      payload.emp_id = empId;
+      payload.empId = empId;
+    }
+    var headers = { 'Content-Type': 'application/json' };
+    var resp = null;
+    if (typeof window._apiAuthFetch === 'function') {
+      resp = await window._apiAuthFetch('/api/chapas_estoque/sugerir_menor_desperdicio', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload)
+      });
+    } else {
+      var token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || '').trim();
+      if (token) headers.Authorization = 'Bearer ' + token;
+      resp = await fetch('/api/chapas_estoque/sugerir_menor_desperdicio', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload)
+      });
+    }
+    var json = await resp.json().catch(function() { return null; });
+    if (!resp || !resp.ok || !json || json.ok === false) {
+      throw new Error(String(json && (json.error || json.message) || 'Falha ao calcular ranking de chapas'));
+    }
+    var rows = (Array.isArray(json && json.chapas) ? json.chapas : []).map(function(row, idx) {
+      var chapaComp = Number(row && (row.chapa_comprimento_mm != null ? row.chapa_comprimento_mm : row.dim1) || 0) || 0;
+      var chapaLarg = Number(row && (row.chapa_largura_mm != null ? row.chapa_largura_mm : row.dim2) || 0) || 0;
+      var areaChapa = Number(row && row.area_chapa_mm2 || 0) || ((chapaComp > 0 && chapaLarg > 0) ? (chapaComp * chapaLarg) : 0);
+      var retalho = Number(row && row.retalho_area_mm2 || 0) || 0;
+      var areaUsada = Number(row && row.area_usada_mm2 || 0) || Math.max(0, areaChapa - retalho);
+      var sentido = String(row && (row.sentido || row.orientacao || 'A') || 'A').trim() || 'A';
+      var orientComp = Number(row && row.orient_comp_mm || 0) || comp;
+      var orientLarg = Number(row && row.orient_larg_mm || 0) || larg;
+      var pecas = Number(row && (row.pecas_por_chapa != null ? row.pecas_por_chapa : row.caixas_por_chapa) || 0) || 0;
+      return Object.assign({}, row, {
+        __row_key: String(row && (row.id || row.__row_key || row.nome || row.tamanho || ('rank-' + idx)) || ('rank-' + idx)).trim(),
+        peca_comp_mm: comp,
+        peca_larg_mm: larg,
+        chapa_comprimento_mm: chapaComp,
+        chapa_largura_mm: chapaLarg,
+        area_chapa_mm2: areaChapa,
+        area_usada_mm2: areaUsada,
+        retalho_area_mm2: retalho,
+        quantidade: Math.max(0, Math.trunc(Number(row && row.quantidade || 0) || 0)),
+        pecas_por_chapa: pecas,
+        caixas_por_chapa: pecas,
+        desperdicio_pct: Number(row && (row.desperdicio_pct != null ? row.desperdicio_pct : row.desperdicio_real_pct) || 0) || 0,
+        desperdicio_real_pct: Number(row && (row.desperdicio_real_pct != null ? row.desperdicio_real_pct : row.desperdicio_pct) || 0) || 0,
+        orientacao: sentido,
+        orient_comp_mm: orientComp,
+        orient_larg_mm: orientLarg,
+        orientacao_label: sentido === 'B'
+          ? ('Peça rotacionada ' + orientLarg + ' x ' + orientComp + ' mm')
+          : ('Peça ' + orientComp + ' x ' + orientLarg + ' mm')
+      });
+    });
+    return {
+      rows: rows,
+      plan: {
+        peca_larg_mm: larg,
+        peca_comp_mm: comp,
+        qtd_pedido: qtdPedido
+      }
+    };
+  }
+
   function _simdCalcularLinha(chapa, pecaLarg, pecaComp, qtdPedido) {
     var dims = _simdParseDimensoes(chapa);
     if (!dims) return null;
@@ -12777,26 +12937,23 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
       info.innerHTML = 'Peça informada: <strong style="color:rgba(255,255,255,0.88)">' + String(comp) + ' x ' + String(larg) + ' mm</strong> · Área unitária: <strong style="color:rgba(255,255,255,0.88)">' + _simdFmtArea(comp * larg) + '</strong>';
     }
     try {
-      var baseRows = window._simdChapaSelecionada ? [window._simdChapaSelecionada] : await _simdCarregarChapasPatched();
-      try { console.log('[SIMULADOR] chapas carregadas:', Array.isArray(baseRows) ? baseRows.length : 0); } catch (_) {}
-      var rows = (Array.isArray(baseRows) ? baseRows : []).map(function(chapa) {
-        return _simdCalcularLinha(chapa, larg, comp, qtdPedido);
-      }).filter(Boolean);
-      rows.sort(function(a, b) {
-        var da = Number(a && a.desperdicio_pct || 0);
-        var db = Number(b && b.desperdicio_pct || 0);
-        if (da !== db) return da - db;
-        if (Number(b && b.pecas_por_chapa || 0) !== Number(a && a.pecas_por_chapa || 0)) return Number(b && b.pecas_por_chapa || 0) - Number(a && a.pecas_por_chapa || 0);
-        return Number(a && a.retalho_area_mm2 || 0) - Number(b && b.retalho_area_mm2 || 0);
-      });
-      if (loading) loading.style.display = 'none';
-      if (resultado) resultado.style.display = 'block';
-      try { console.log('[SIMULADOR] resultados:', rows.length); } catch (_) {}
-      _simdRenderResultadosPatched(rows, {
+      var plan = {
         peca_larg_mm: larg,
         peca_comp_mm: comp,
         qtd_pedido: qtdPedido
-      });
+      };
+      var rows = [];
+      if (window._simdChapaSelecionada) {
+        rows = [_simdCalcularLinha(window._simdChapaSelecionada, larg, comp, qtdPedido)].filter(Boolean);
+      } else {
+        var ranking = await _simdBuscarRankingBackend(larg, comp, qtdPedido);
+        rows = Array.isArray(ranking && ranking.rows) ? ranking.rows : [];
+        if (ranking && ranking.plan) plan = ranking.plan;
+      }
+      if (loading) loading.style.display = 'none';
+      if (resultado) resultado.style.display = 'block';
+      try { console.log('[SIMULADOR] resultados:', rows.length); } catch (_) {}
+      _simdRenderResultadosPatched(rows, plan);
     } catch (e) {
       if (loading) loading.style.display = 'none';
       if (resultado) resultado.style.display = 'block';
@@ -14414,18 +14571,47 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return list;
     }
 
-    function syncMachineGlobals() {
+    function looksLikeMachineSelect(sel) {
+      if (!sel) return false;
+      var labelHints = '';
       try {
-        if (Array.isArray(window.MAQUINAS)) window.MAQUINAS = ensureMachineObjects(window.MAQUINAS);
-        if (Array.isArray(window._maquinas)) window._maquinas = ensureMachineObjects(window._maquinas);
-        if (Array.isArray(window.maquinas)) window.maquinas = ensureMachineObjects(window.maquinas);
-        if (Array.isArray(window.listaMaquinas)) window.listaMaquinas = ensureMachineObjects(window.listaMaquinas);
-      } catch (_) {}
+        var nearLabel = null;
+        if (sel.closest) {
+          var fieldWrap = sel.closest('.ofr-item-card, [data-item-idx], [data-item-index], .item-adicional, .item-of, .of-item, .field, .form-group, td, div');
+          if (fieldWrap && fieldWrap.querySelector) nearLabel = fieldWrap.querySelector('label, .label, .lbl, .field-label, strong, span');
+        }
+        labelHints = [
+          sel.getAttribute && sel.getAttribute('aria-label'),
+          sel.getAttribute && sel.getAttribute('title'),
+          sel.previousElementSibling && sel.previousElementSibling.textContent,
+          nearLabel && nearLabel.textContent
+        ].join(' ');
+      } catch (_) {
+        labelHints = '';
+      }
+      var hints = [
+        sel.id,
+        sel.name,
+        sel.className,
+        sel.getAttribute && sel.getAttribute('data-field'),
+        sel.getAttribute && sel.getAttribute('data-campo'),
+        labelHints
+      ].join(' ');
+      if (/(^|[\s_-])(maq|maquina|machine)([\s_-]|$)/i.test(String(hints || ''))) return true;
+      try {
+        return Array.prototype.slice.call(sel.options || []).some(function(opt) {
+          var txt = norm(opt && (opt.value || opt.textContent || opt.label || ''));
+          return txt === 'riscador'
+            || txt === 'corte vinco rotativa'
+            || /^imp 0[1-5]$/.test(txt);
+        });
+      } catch (_) {
+        return false;
+      }
     }
 
-    function ensureSelectHasRiscador(id) {
-      var sel = document.getElementById(id);
-      if (!sel || !sel.options) return;
+    function ensureSelectNodeHasRiscador(sel) {
+      if (!sel || !sel.options || !looksLikeMachineSelect(sel)) return;
       var found = Array.prototype.slice.call(sel.options).some(function(opt) {
         return norm(opt && (opt.value || opt.textContent || opt.label || '')) === 'riscador';
       });
@@ -14439,6 +14625,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       try { sel.insertBefore(opt, before); } catch (_) { sel.appendChild(opt); }
     }
 
+    function syncMachineGlobals() {
+      try {
+        if (Array.isArray(window.MAQUINAS)) window.MAQUINAS = ensureMachineObjects(window.MAQUINAS);
+        if (Array.isArray(window._maquinas)) window._maquinas = ensureMachineObjects(window._maquinas);
+        if (Array.isArray(window.maquinas)) window.maquinas = ensureMachineObjects(window.maquinas);
+        if (Array.isArray(window.listaMaquinas)) window.listaMaquinas = ensureMachineObjects(window.listaMaquinas);
+      } catch (_) {}
+    }
+
+    function ensureSelectHasRiscador(id) {
+      ensureSelectNodeHasRiscador(document.getElementById(id));
+    }
+
     function patchCheckboxWrap() {
       var wrap = document.getElementById('inc-maquinas-checkboxes');
       if (!wrap || wrap.querySelector('input[value="Riscador"]')) return;
@@ -14450,6 +14649,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     function patchDomMachineSelects() {
       ['ofsmaq-select-maquina', 'ofsmaq-filtro-maquina', 'hist-filtro-maquina', 'of-r-maquina', 'inc-maquina', 'mconc-setor-finalizacao'].forEach(ensureSelectHasRiscador);
+      Array.prototype.slice.call(document.querySelectorAll('.item-maquina, select[data-field="maquina"], select[name="maquina"], select[name="maquina_agendada"], #painel-mais-itens select, #modal-of-rapida select, #modal-of-rapida-ov select, .ofr-item-card select, [data-item-idx] select, [data-item-index] select, .item-adicional select, .item-of select, .of-item select')).forEach(ensureSelectNodeHasRiscador);
       patchCheckboxWrap();
     }
 
@@ -14575,6 +14775,25 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       wrapOpeners();
       wrapModuleRenders();
       patchDomMachineSelects();
+      // #region debug-point C:riscador-apply-all
+      try {
+        if (typeof window.__erpRuntimeDebug === 'function') {
+          var itemSelects = Array.prototype.slice.call(document.querySelectorAll('.item-maquina'));
+          window.__erpRuntimeDebug('C', '[DEBUG] patch riscador reaplicado', {
+            ofRapidaSelectPresent: !!document.getElementById('of-r-maquina'),
+            ofRapidaHasRiscador: !!Array.prototype.slice.call(((document.getElementById('of-r-maquina') || {}).options) || []).find(function(opt) {
+              return norm(opt && (opt.value || opt.textContent || '')) === 'riscador';
+            }),
+            itemSelects: itemSelects.length,
+            itemSelectsWithRiscador: itemSelects.filter(function(sel) {
+              return !!Array.prototype.slice.call((sel && sel.options) || []).find(function(opt) {
+                return norm(opt && (opt.value || opt.textContent || '')) === 'riscador';
+              });
+            }).length
+          });
+        }
+      } catch (_) {}
+      // #endregion
       installObserver();
     }
 
@@ -20008,10 +20227,22 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     async function markPassed(id, machine) {
       var row = rowById(id);
+      var appendHist = getAppendHistPassagemLocal();
       if (window.__OFMAQ_FINAL_MOCK) {
+        // #region debug-point B:of-action-mark-passed-mock
+        try {
+          if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', '[DEBUG] markPassed em modo mock', {
+            id: String(id || ''),
+            machine: String(machine || ''),
+            helperType: typeof appendHist,
+            windowHelperType: typeof window.appendHistPassagemLocal,
+            rowFound: !!row
+          });
+        } catch (_) {}
+        // #endregion
         state.rowsData = state.rowsData.filter(function(item) { return item.id !== id; });
-        if (row) {
-          appendHistPassagemLocal({
+        if (row && typeof appendHist === 'function') {
+          appendHist({
             of_id: row.id,
             of_numero: row.numero,
             numero: row.numero,
@@ -20027,11 +20258,24 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         }
         return;
       }
+      // #region debug-point B:of-action-mark-passed-entry
+      try {
+        if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('B', '[DEBUG] markPassed acionado', {
+          id: String(id || ''),
+          machine: String(machine || ''),
+          helperType: typeof appendHist,
+          windowHelperType: typeof window.appendHistPassagemLocal,
+          rowFound: !!row,
+          rowNumero: String(row && row.numero || ''),
+          histRowsBefore: Array.isArray(window.__histPassagensDetalhamentoRows) ? window.__histPassagensDetalhamentoRows.length : 0
+        });
+      } catch (_) {}
+      // #endregion
       var result = await apiJson('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method: 'POST', body: { maquina: machine, maquina_nome: machine } });
       try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'pass', id: id, status: result && result.resp ? result.resp.status : null, ok: !!(result && result.resp && result.resp.ok), body: result ? result.data : null }); } catch (_) {}
       if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao registrar passagem');
-      if (row) {
-        appendHistPassagemLocal({
+      if (row && typeof appendHist === 'function') {
+        appendHist({
           of_id: row.id,
           of_numero: row.numero,
           numero: row.numero,
@@ -28092,9 +28336,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { var el = document.getElementById(id); if (el) el.textContent = String(txt); } catch (_) {}
   }
   function renderPainel(json) {
-    var totalPedidos = Number(json && json.total_pedidos || 0) || 0;
-    var totalFaturado = Number(json && json.total_faturado || 0) || 0;
-    var ofsAbertas = Number(json && json.ofs_abertas || 0) || 0;
+    var resumo = json && json.resumo || {};
+    var insights = json && json.insights || {};
+    var totalPedidos = Number(
+      (json && (json.total_ofs != null ? json.total_ofs : json.total_pedidos))
+      || resumo.total_ofs
+      || 0
+    ) || 0;
+    var totalFaturado = Number(
+      (json && (json.total_comprado != null ? json.total_comprado : json.total_faturado))
+      || resumo.total_comprado
+      || resumo.total_faturado
+      || 0
+    ) || 0;
+    var ofsAbertas = Number(
+      (json && json.ofs_abertas)
+      || resumo.ofs_abertas
+      || 0
+    ) || 0;
     setTxt('pcTotalPedidos', totalPedidos);
     setTxt('pcTotalFaturado', fmtMoneyLocal(totalFaturado));
     setTxt('pcOfsAbertas', ofsAbertas);
@@ -28150,7 +28409,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       } else {
         topEl.innerHTML = prods.map(function(p, i) {
           var nome = String(p && p.produto || 'Sem produto').trim() || 'Sem produto';
-          var vezes = Number(p && p.vezes || 0) || 0;
+          var vezes = Number(p && (p.total_ofs != null ? p.total_ofs : p.vezes) || 0) || 0;
           return (
             '<div style="display:flex;justify-content:space-between;gap:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px">' +
               '<div style="min-width:0;color:#e2e8f0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (i + 1) + '. ' + escHLocal(nome) + '</div>' +
@@ -28162,7 +28421,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
 
     var histEl = document.getElementById('pcHistorico');
-    var hist = (json && Array.isArray(json.historico)) ? json.historico : [];
+    var hist = (json && Array.isArray(json.historico_ofs)) ? json.historico_ofs : ((json && Array.isArray(json.historico)) ? json.historico : []);
     if (histEl) {
       if (!hist.length) {
         histEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Nenhum pedido encontrado.</div>';
@@ -28184,10 +28443,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               hist.map(function(r) {
                 var num = String(r && r.numero || '—').trim() || '—';
                 var prod = String(r && r.produto || '—').trim() || '—';
-                var dt = String(r && (r.data_entrega || r.created_at) || '').slice(0, 10);
+                var dt = String(r && (r.data_conclusao || r.data_entrega || r.data_entrada || r.created_at) || '').slice(0, 10);
                 var qtd = (r && r.quantidade != null) ? (Number(r.quantidade) || 0) : 0;
                 var stt = String(r && r.status || '—').trim() || '—';
-                var valor = Number(r && r.total || 0) || 0;
+                var valor = Number(r && (r.valor_total != null ? r.valor_total : r.total) || 0) || 0;
                 return (
                   '<tr>' +
                     '<td style=\"' + td + ';font-family:var(--mono)\">' + escHLocal(dt ? fmtDataLocal(dt) : '—') + '</td>' +
@@ -28214,6 +28473,26 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             };
           });
         } catch (_) {}
+      }
+    }
+    if (topEl && insights && (insights.gramatura_mais_utilizada || insights.tipo_caixa_mais_pedido || (Array.isArray(insights.cores_mais_utilizadas) && insights.cores_mais_utilizadas.length))) {
+      var extra = document.getElementById('pcTopProdutosInsights');
+      if (!extra) {
+        extra = document.createElement('div');
+        extra.id = 'pcTopProdutosInsights';
+        extra.style.cssText = 'display:grid;gap:8px;margin-top:10px';
+        try { topEl.parentNode && topEl.parentNode.appendChild(extra); } catch (_) {}
+      }
+      if (extra) {
+        var gramatura = String(insights && insights.gramatura_mais_utilizada && insights.gramatura_mais_utilizada.gramatura || '—').trim() || '—';
+        var tipoCaixa = String(insights && insights.tipo_caixa_mais_pedido && insights.tipo_caixa_mais_pedido.tipo_caixa || '—').trim() || '—';
+        var corTop = String(((insights && insights.cores_mais_utilizadas && insights.cores_mais_utilizadas[0]) || {}).cor || '—').trim() || '—';
+        extra.innerHTML = ''
+          + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px">'
+          + '  <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:900">Gramatura</div><div style="margin-top:6px;color:#e2e8f0;font-weight:800">' + escHLocal(gramatura) + '</div></div>'
+          + '  <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:900">Tipo de Caixa</div><div style="margin-top:6px;color:#e2e8f0;font-weight:800">' + escHLocal(tipoCaixa) + '</div></div>'
+          + '  <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:900">Cor Mais Usada</div><div style="margin-top:6px;color:#e2e8f0;font-weight:800">' + escHLocal(corTop) + '</div></div>'
+          + '</div>';
       }
     }
   }
@@ -45498,13 +45777,84 @@ function _ocultarGraficoComissoes() {
   function applyCompraFullscreenNow() {
     var overlay = document.getElementById('ccpx-compra-fullscreen');
     if (!overlay || typeof window._compraPapelaoForceFullscreenShell !== 'function') return;
+    var isMobile = false;
+    try { isMobile = window.matchMedia && window.matchMedia('(max-width: 920px)').matches; } catch (_) {}
     try { window._compraPapelaoForceFullscreenShell(overlay); } catch (_) {}
     try {
       overlay.style.setProperty('display', 'flex', 'important');
       overlay.style.setProperty('align-items', 'center', 'important');
       overlay.style.setProperty('justify-content', 'center', 'important');
       overlay.style.setProperty('overflow', 'hidden', 'important');
-      overlay.style.setProperty('padding', (window.matchMedia && window.matchMedia('(max-width: 920px)').matches) ? '0' : '18px', 'important');
+      overlay.style.setProperty('padding', isMobile ? '0' : '18px', 'important');
+    } catch (_) {}
+    try {
+      var shell = overlay.querySelector('.ccpx-fs-shell');
+      if (shell) {
+        shell.style.setProperty('width', isMobile ? '100vw' : 'min(1680px, calc(100vw - 36px))', 'important');
+        shell.style.setProperty('height', isMobile ? '100vh' : 'min(94vh, 1180px)', 'important');
+        shell.style.setProperty('max-width', isMobile ? '100vw' : '1680px', 'important');
+        shell.style.setProperty('max-height', isMobile ? '100vh' : '94vh', 'important');
+        shell.style.setProperty('margin', isMobile ? '0' : '0 auto', 'important');
+        shell.style.setProperty('border-radius', isMobile ? '0' : '24px', 'important');
+      }
+    } catch (_) {}
+  }
+
+  function applyLegacyCompraModalNow() {
+    var overlay = document.getElementById('ccp-modal-compra');
+    if (!overlay) return;
+    var isMobile = false;
+    try { isMobile = window.matchMedia && window.matchMedia('(max-width: 920px)').matches; } catch (_) {}
+    try {
+      overlay.style.setProperty('position', 'fixed', 'important');
+      overlay.style.setProperty('inset', '0', 'important');
+      overlay.style.setProperty('width', '100vw', 'important');
+      overlay.style.setProperty('height', '100vh', 'important');
+      overlay.style.setProperty('display', 'flex', 'important');
+      overlay.style.setProperty('align-items', isMobile ? 'stretch' : 'center', 'important');
+      overlay.style.setProperty('justify-content', isMobile ? 'stretch' : 'center', 'important');
+      overlay.style.setProperty('overflow', 'hidden', 'important');
+      overlay.style.setProperty('padding', isMobile ? '0' : '18px', 'important');
+    } catch (_) {}
+    try {
+      var shell = overlay.querySelector('.estoque-modal-shell, .estoque-modal-shell-padrao');
+      if (shell) {
+        shell.style.setProperty('height', isMobile ? '100vh' : 'auto', 'important');
+        shell.style.setProperty('width', isMobile ? '100vw' : 'min(1380px, calc(100vw - 36px))', 'important');
+        shell.style.setProperty('max-width', isMobile ? '100vw' : '1380px', 'important');
+        shell.style.setProperty('max-height', isMobile ? '100vh' : '94vh', 'important');
+        shell.style.setProperty('margin', isMobile ? '0' : '0 auto', 'important');
+        shell.style.setProperty('border-radius', isMobile ? '0' : '24px', 'important');
+      }
+    } catch (_) {}
+  }
+
+  function applyOrcamentoModalNow() {
+    var overlay = document.getElementById('modal-orcamento-calc');
+    if (!overlay) return;
+    var isMobile = false;
+    try { isMobile = window.matchMedia && window.matchMedia('(max-width: 920px)').matches; } catch (_) {}
+    try {
+      overlay.style.setProperty('position', 'fixed', 'important');
+      overlay.style.setProperty('inset', '0', 'important');
+      overlay.style.setProperty('width', '100vw', 'important');
+      overlay.style.setProperty('height', '100vh', 'important');
+      overlay.style.setProperty('display', 'flex', 'important');
+      overlay.style.setProperty('align-items', isMobile ? 'stretch' : 'center', 'important');
+      overlay.style.setProperty('justify-content', isMobile ? 'stretch' : 'center', 'important');
+      overlay.style.setProperty('padding', isMobile ? '0' : '18px', 'important');
+      overlay.style.setProperty('background', 'rgba(2,6,23,.82)', 'important');
+      overlay.style.setProperty('overflow', 'hidden', 'important');
+    } catch (_) {}
+    try {
+      var shell = overlay.firstElementChild || overlay.querySelector('.modal-content, [class*="modal-content"], .box');
+      if (shell) {
+        shell.style.setProperty('width', isMobile ? '100vw' : 'min(1680px, calc(100vw - 36px))', 'important');
+        shell.style.setProperty('max-width', isMobile ? '100vw' : '1680px', 'important');
+        shell.style.setProperty('max-height', isMobile ? '100vh' : '94vh', 'important');
+        shell.style.setProperty('margin', isMobile ? '0' : '0 auto', 'important');
+        shell.style.setProperty('border-radius', isMobile ? '0' : '24px', 'important');
+      }
     } catch (_) {}
   }
 
@@ -45601,19 +45951,15 @@ function _ocultarGraficoComissoes() {
     if (loading) loading.style.display = 'block';
     if (resultado) resultado.style.display = 'none';
     try {
-      var base = window._simdChapaSelecionada ? [window._simdChapaSelecionada] : await simdLoadChapasUniversal();
-      var rows = (Array.isArray(base) ? base : []).map(function(chapa) {
-        if (typeof window._simdCalcularUmaChapa === 'function') return window._simdCalcularUmaChapa(chapa, larg, comp, qtdPedido);
-        return null;
-      }).filter(Boolean).sort(function(a, b) {
-        var da = Number(a && (a.desperdicio_pct != null ? a.desperdicio_pct : a.desperdicio) || 0) || 0;
-        var db = Number(b && (b.desperdicio_pct != null ? b.desperdicio_pct : b.desperdicio) || 0) || 0;
-        if (da !== db) return da - db;
-        var pa = Number(a && (a.pecas_por_chapa != null ? a.pecas_por_chapa : a.caixas_por_chapa) || 0) || 0;
-        var pb = Number(b && (b.pecas_por_chapa != null ? b.pecas_por_chapa : b.caixas_por_chapa) || 0) || 0;
-        if (pa !== pb) return pb - pa;
-        return (Number(a && (a.retalho_area_mm2 || a.areaRetalho) || 0) || 0) - (Number(b && (b.retalho_area_mm2 || b.areaRetalho) || 0) || 0);
-      });
+      var rows = [];
+      if (window._simdChapaSelecionada) {
+        rows = (typeof window._simdCalcularUmaChapa === 'function')
+          ? [window._simdCalcularUmaChapa(window._simdChapaSelecionada, larg, comp, qtdPedido)].filter(Boolean)
+          : [];
+      } else {
+        var ranking = await _simdBuscarRankingBackend(larg, comp, qtdPedido);
+        rows = Array.isArray(ranking && ranking.rows) ? ranking.rows : [];
+      }
       simdRenderUniversalRows(rows, larg, comp, qtdPedido);
     } catch (e) {
       simdRenderUniversalRows([], larg, comp, qtdPedido);
@@ -45646,6 +45992,8 @@ function _ocultarGraficoComissoes() {
     ensureLateFullscreenStyles();
     applyCalcFullscreenNow();
     applyCompraFullscreenNow();
+    applyLegacyCompraModalNow();
+    applyOrcamentoModalNow();
     bindUniversalSimd();
     try {
       window._simdCalcular = (typeof window.__simdCalcularImpl === 'function' && window.__simdCalcularImpl !== simdCalcularUniversal)
@@ -45722,7 +46070,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '#cmp-body .cmpx-head-copy,#orc-body .orx-head-copy{display:grid;gap:6px}'
       + '#cmp-body .cmpx-title,#orc-body .orx-title{font-size:24px;font-weight:900;color:#f8fafc;letter-spacing:-.02em}'
       + '#cmp-body .cmpx-sub,#orc-body .orx-sub{font-size:13px;line-height:1.55;color:#94a3b8;max-width:860px}'
-      + '#cmp-body .cmpx-actions,#orc-body .orx-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
+      + '#cmp-body .cmpx-actions,#orc-body .orx-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}'
+      + '#cmp-body .cmpx-actions .pep-btn,#orc-body .orx-actions .pep-btn{min-height:46px;padding:0 16px;border-radius:14px;border:1px solid rgba(148,163,184,.18);background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(15,23,42,.82));color:#e2e8f0;font-size:12px;font-weight:900;letter-spacing:.02em;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 16px 32px rgba(2,6,23,.22);transition:transform .15s ease,filter .15s ease,box-shadow .15s ease,border-color .15s ease}'
+      + '#cmp-body .cmpx-actions .pep-btn.primary,#orc-body .orx-actions .pep-btn.primary{padding:0 20px;background:linear-gradient(135deg,#16a34a,#2563eb);border-color:rgba(167,243,208,.3);color:#fff;box-shadow:0 18px 36px rgba(37,99,235,.28),inset 0 1px 0 rgba(255,255,255,.16)}'
+      + '#cmp-body .cmpx-actions .pep-btn.is-main,#orc-body .orx-actions .pep-btn.is-main{min-height:52px;padding:0 24px;background:linear-gradient(135deg,#16a34a,#2563eb)!important;border-color:rgba(191,219,254,.34)!important;color:#fff!important;box-shadow:0 24px 48px rgba(37,99,235,.34),inset 0 1px 0 rgba(255,255,255,.18)!important}'
       + '#cmp-body .cmpx-filter-panel,#orc-body .orx-filter-panel{display:grid;gap:12px}'
       + '#cmp-body .cmpx-filter-row,#orc-body .orx-filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}'
       + '#cmp-body .cmpx-filter-row .pep-input,#orc-body .orx-filter-row .pep-input{flex:1;min-width:260px}'
@@ -45749,16 +46100,26 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '#cmp-body .cmpx-stack span,#orc-body .orx-stack span{font-size:11px;color:#94a3b8;line-height:1.45}'
       + '#cmp-body .cmpx-num,#orc-body .orx-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
       + '#cmp-body .cmpx-actions-row,#orc-body .orx-actions-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
-      + '#cmp-body .cmpx-actions-row button,#cmp-body .cmpx-actions-row select,#orc-body .orx-actions-row button,#orc-body .orx-actions-row select{min-height:38px;border-radius:12px;border:1px solid rgba(148,163,184,.18);background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(15,23,42,.82));color:#e2e8f0;padding:0 12px;font-size:12px;font-weight:800;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 10px 24px rgba(2,6,23,.18)}'
-      + '#cmp-body .cmpx-actions-row button.primary,#orc-body .orx-actions-row button.primary{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:rgba(96,165,250,.4);color:#fff}'
+      + '#cmp-body .cmpx-actions-row button,#cmp-body .cmpx-actions-row select,#orc-body .orx-actions-row button,#orc-body .orx-actions-row select{min-height:40px;border-radius:12px;border:1px solid rgba(148,163,184,.18);background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(15,23,42,.82));color:#e2e8f0;padding:0 12px;font-size:12px;font-weight:800;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 10px 24px rgba(2,6,23,.18);transition:transform .15s ease,filter .15s ease,box-shadow .15s ease,border-color .15s ease}'
+      + '#cmp-body .cmpx-actions-row button:not(.primary):not(.danger),#orc-body .orx-actions-row button:not(.primary):not(.danger){background:linear-gradient(180deg,rgba(30,41,59,.98),rgba(15,23,42,.88));border-color:rgba(96,165,250,.16)}'
+      + '#cmp-body .cmpx-actions-row button.primary,#orc-body .orx-actions-row button.primary{background:linear-gradient(135deg,#0f766e,#2563eb);border-color:rgba(110,231,183,.28);color:#fff}'
       + '#cmp-body .cmpx-actions-row button.danger,#orc-body .orx-actions-row button.danger{background:linear-gradient(135deg,#991b1b,#7f1d1d);border-color:rgba(248,113,113,.28);color:#fff}'
+      + '#cmp-body .cmpx-actions-row .is-edit,#orc-body .orx-actions-row .is-edit{background:linear-gradient(135deg,#0f766e,#2563eb)!important;border-color:rgba(125,211,252,.28)!important;color:#fff!important}'
+      + '#cmp-body .cmpx-actions-row .is-folder,#orc-body .orx-actions-row .is-folder{background:linear-gradient(135deg,#1e293b,#0f172a)!important;border-color:rgba(148,163,184,.22)!important;color:#e2e8f0!important}'
+      + '#cmp-body .cmpx-actions-row .is-print,#orc-body .orx-actions-row .is-print{background:linear-gradient(135deg,#7c3aed,#2563eb)!important;border-color:rgba(196,181,253,.26)!important;color:#fff!important}'
+      + '#cmp-body .cmpx-actions-row .is-copy,#orc-body .orx-actions-row .is-copy{background:linear-gradient(135deg,#0f766e,#0891b2)!important;border-color:rgba(153,246,228,.24)!important;color:#fff!important}'
+      + '#cmp-body .cmpx-actions-row .is-versions,#orc-body .orx-actions-row .is-versions{background:linear-gradient(135deg,#4338ca,#1d4ed8)!important;border-color:rgba(165,180,252,.24)!important;color:#fff!important}'
+      + '#cmp-body .cmpx-actions .pep-btn:hover,#orc-body .orx-actions .pep-btn:hover,#cmp-body .cmpx-actions-row button:hover,#orc-body .orx-actions-row button:hover{transform:translateY(-1px);filter:brightness(1.04)}'
       + '#cmp-body .cmpx-empty,#orc-body .orx-empty{padding:22px;text-align:center;color:#94a3b8}'
       + '#page-orcamentos .ptoolbar{display:none!important}'
-      + '#ccpx-compra-fullscreen .ccpx-item-vincos{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:8px}'
-      + '#ccpx-compra-fullscreen .ccpx-vinco-chip{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:6px;align-items:center}'
+      + '#ccpx-compra-fullscreen .ccpx-item-vincos{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;align-items:stretch}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-chip{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:6px;align-items:center;min-height:42px}'
       + '#ccpx-compra-fullscreen .ccpx-vinco-chip button{height:42px;border-radius:12px;border:1px solid rgba(148,163,184,.18);background:#0f172a;color:#e2e8f0;cursor:pointer;font-weight:900}'
-      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}'
-      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar button{min-height:36px;padding:0 12px;border-radius:10px;border:1px dashed rgba(96,165,250,.42);background:rgba(30,64,175,.14);color:#bfdbfe;font-size:12px;font-weight:800;cursor:pointer}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar{display:block;align-self:stretch;margin-top:0;min-height:42px}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar button{display:flex;align-items:center;justify-content:center;width:100%;height:42px;padding:0 12px;border-radius:12px;border:1px dashed rgba(96,165,250,.42);background:rgba(30,64,175,.14);color:#bfdbfe;font-size:12px;font-weight:800;cursor:pointer}'
+      + '#modal-orcamento-calc{position:fixed!important;inset:0!important;padding:18px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:rgba(2,6,23,.82)!important;overflow:hidden!important}'
+      + '#modal-orcamento-calc > div,#modal-orcamento-calc .modal-content,#modal-orcamento-calc [class*="modal-content"]{width:min(1680px,calc(100vw - 36px))!important;max-width:1680px!important;max-height:94vh!important;margin:0 auto!important;border-radius:24px!important;overflow:auto!important}'
+      + '#ccp-modal-compra.estoque-modal-overlay,#ccp-modal-compra.estoque-modal-overlay-padrao,#ccpx-compra-fullscreen,#modal-calc,#modal-orcamento-calc{align-items:center!important;justify-content:center!important}'
       + '#modal-calc .calc-wave-panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;margin-top:18px}'
       + '#modal-calc .calc-wave-card{display:grid;gap:16px;padding:22px;border-radius:20px;border:1px solid rgba(148,163,184,.14);background:linear-gradient(180deg,rgba(15,23,42,.88),rgba(15,23,42,.72));box-shadow:0 18px 38px rgba(2,6,23,.22)}'
       + '#modal-calc .calc-wave-card.best{border-color:rgba(34,197,94,.34);box-shadow:0 0 0 1px rgba(34,197,94,.18) inset,0 14px 30px rgba(2,6,23,.18)}'
@@ -45772,7 +46133,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '#modal-calc .calc-wave-metric.is-wide strong{font-size:clamp(16px,1.28vw,22px)}'
       + '#modal-calc .calc-tabela-wrap.calc-wave-table-hidden{display:none!important}'
       + '@media (max-width:1100px){#modal-calc .calc-wave-panels,.pep-cards{grid-template-columns:1fr}}'
-      + '@media (max-width:900px){#cmp-body .cmpx-head,#orc-body .orx-head{align-items:stretch}#cmp-body .cmpx-actions,#orc-body .orx-actions{width:100%}#cmp-body .cmpx-actions .pep-btn,#orc-body .orx-actions .pep-btn{flex:1 1 180px}#cmp-body .cmpx-folder-pill,#orc-body .orx-folder-pill{min-width:200px}}'
+      + '@media (max-width:900px){#cmp-body .cmpx-head,#orc-body .orx-head{align-items:stretch}#cmp-body .cmpx-actions,#orc-body .orx-actions{width:100%}#cmp-body .cmpx-actions .pep-btn,#orc-body .orx-actions .pep-btn{flex:1 1 180px}#cmp-body .cmpx-folder-pill,#orc-body .orx-folder-pill{min-width:200px}#modal-orcamento-calc{padding:0!important;align-items:stretch!important;justify-content:stretch!important}#modal-orcamento-calc > div,#modal-orcamento-calc .modal-content,#modal-orcamento-calc [class*="modal-content"]{width:100vw!important;max-width:100vw!important;max-height:100vh!important;border-radius:0!important}}'
       + '@media (max-width:760px){#cmp-body .cmpx-title,#orc-body .orx-title{font-size:21px}#cmp-body .cmpx-filter-row,#orc-body .orx-filter-row{align-items:stretch}#cmp-body .cmpx-filter-row .pep-input,#orc-body .orx-filter-row .pep-input{min-width:0}#cmp-body .cmpx-actions-row,#orc-body .orx-actions-row{flex-direction:column;align-items:stretch}#cmp-body .cmpx-actions-row button,#cmp-body .cmpx-actions-row select,#orc-body .orx-actions-row button,#orc-body .orx-actions-row select{width:100%}.pep-cards{grid-template-columns:1fr}}';
     document.head.appendChild(st);
   }
@@ -46191,7 +46552,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '  <td class="cmpx-num">' + escHtml(fmtNum(totals.qtd, 0)) + '</td>'
         + '  <td class="cmpx-num">' + escHtml(fmtNum(totals.area, 4)) + ' m²</td>'
         + '  <td class="cmpx-num">' + escHtml(fmtMoney(totals.valor)) + '</td>'
-        + '  <td><div class="cmpx-actions-row"><button type="button" class="primary" data-cmpx-edit="' + escAttr(id) + '">Editar</button><button type="button" data-cmpx-folder-move="' + escAttr(id) + '">Pasta</button><button type="button" data-cmpx-print="' + escAttr(id) + '">Imprimir</button><button type="button" data-cmpx-clone="' + escAttr(id) + '">Clonar</button><button type="button" class="danger" data-cmpx-delete="' + escAttr(id) + '">Excluir</button></div></td>'
+        + '  <td><div class="cmpx-actions-row"><button type="button" class="primary is-edit" data-cmpx-edit="' + escAttr(id) + '">✏ Editar</button><button type="button" class="is-folder" data-cmpx-folder-move="' + escAttr(id) + '">🗂 Pasta</button><button type="button" class="is-print" data-cmpx-print="' + escAttr(id) + '">🖨 Imprimir</button><button type="button" class="is-copy" data-cmpx-clone="' + escAttr(id) + '">⧉ Clonar</button><button type="button" class="danger" data-cmpx-delete="' + escAttr(id) + '">🗑 Excluir</button></div></td>'
         + '</tr>';
     }).join('');
     host.innerHTML = ''
@@ -46203,7 +46564,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '    <div class="pep-card"><div class="pep-card-label">Área Total Comprada</div><div class="pep-card-val">' + escHtml(fmtNum(resumo.area_total, 4)) + ' m²</div><div class="pep-card-sub">Área consolidada de todos os itens</div></div>'
       + '    <div class="pep-card"><div class="pep-card-label">Fornecedor em Destaque</div><div class="pep-card-val">' + escHtml(fornTop) + '</div><div class="pep-card-sub">Maior volume financeiro no conjunto</div></div>'
       + '  </div>'
-      + '  <div class="pep-head cmpx-head"><div class="cmpx-head-copy"><div class="cmpx-title">Compra de Papelão</div><div class="cmpx-sub">Página refeita no padrão visual das telas de Estoques: resumo forte no topo, filtros claros no meio e tabela detalhada abaixo, com foco em leitura rápida, toque confortável no mobile e operação diária sem poluição visual.</div></div><div class="cmpx-actions"><button type="button" class="pep-btn primary" id="cmpx-btn-nova">Nova Compra</button><button type="button" class="pep-btn" id="cmpx-btn-pasta">Nova Pasta</button><button type="button" class="pep-btn" id="cmpx-btn-sugestoes">Sugestões</button><button type="button" class="pep-btn" id="cmpx-btn-rel-periodo">Relatório do Período</button><button type="button" class="pep-btn" id="cmpx-btn-rel-forn">Compras por Fornecedor</button><button type="button" class="pep-btn" id="cmpx-btn-rel-resumo">Quantidade e Valor</button><button type="button" class="pep-btn" id="cmpx-btn-print">Imprimir</button></div></div>'
+      + '  <div class="pep-head cmpx-head"><div class="cmpx-head-copy"><div class="cmpx-title">Compra de Papelão</div><div class="cmpx-sub">Página refeita no padrão visual das telas de Estoques: resumo forte no topo, filtros claros no meio e tabela detalhada abaixo, com foco em leitura rápida, toque confortável no mobile e operação diária sem poluição visual.</div></div><div class="cmpx-actions"><button type="button" class="pep-btn primary is-main" id="cmpx-btn-nova">＋ Nova Compra</button><button type="button" class="pep-btn" id="cmpx-btn-pasta">🗂 Nova Pasta</button><button type="button" class="pep-btn" id="cmpx-btn-sugestoes">💡 Sugestões</button><button type="button" class="pep-btn" id="cmpx-btn-rel-periodo">📅 Relatório do Período</button><button type="button" class="pep-btn" id="cmpx-btn-rel-forn">🏷 Compras por Fornecedor</button><button type="button" class="pep-btn" id="cmpx-btn-rel-resumo">📊 Quantidade e Valor</button><button type="button" class="pep-btn" id="cmpx-btn-print">🖨 Imprimir</button></div></div>'
       + '  <div class="pep-panel cmpx-filter-panel">'
       + '    <div class="cmpx-filter-row"><input class="pep-input" id="cmpx-busca" type="text" placeholder="Buscar por fornecedor, pedido, número da compra, pasta, PO ou observação..." value="' + escAttr(st.busca || '') + '"><button type="button" class="pep-btn primary" id="cmpx-btn-buscar">Buscar</button></div>'
       + '    <div class="cmpx-folder-strip">' + filtersHtml + '</div>'
@@ -46625,10 +46986,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '  <td><div class="orx-stack"><strong>' + escHtml(onda) + '</strong><span>' + escHtml(chapa) + '</span></div></td>'
         + '  <td class="orx-num">' + escHtml(String(qtd)) + '</td>'
         + '  <td class="orx-num">' + escHtml(fmtMoney(vtot)) + '</td>'
-        + '  <td><div class="orx-actions-row"><select onchange="orcMoverParaPasta(\'' + escAttr(id) + '\', this.value)"><option value="">Sem pasta</option>' + (Array.isArray(window.__orcPastasData) ? window.__orcPastasData.map(function(folder) {
+        + '  <td><div class="orx-actions-row"><select class="is-folder" onchange="orcMoverParaPasta(\'' + escAttr(id) + '\', this.value)"><option value="">Sem pasta</option>' + (Array.isArray(window.__orcPastasData) ? window.__orcPastasData.map(function(folder) {
             var sid = String(folder && folder.id || '').trim();
             return '<option value="' + escAttr(sid) + '"' + (sid === pastaId ? ' selected' : '') + '>' + escHtml(folder && folder.nome || '') + '</option>';
-          }).join('') : '') + '</select><button type="button" class="primary" onclick="abrirCalculadoraComOrc(\'' + escAttr(id) + '\')">Editar</button><button type="button" onclick="imprimirOrcamentoId(\'' + escAttr(id) + '\')">Imprimir</button><button type="button" onclick="abrirVersoesOrcamento(\'' + escAttr(id) + '\')">Versões</button><button type="button" class="danger" onclick="excluirOrcamento(\'' + escAttr(id) + '\')">Excluir</button></div></td>'
+          }).join('') : '') + '</select><button type="button" class="primary is-edit" onclick="abrirCalculadoraComOrc(\'' + escAttr(id) + '\')">✏ Editar</button><button type="button" class="is-print" onclick="imprimirOrcamentoId(\'' + escAttr(id) + '\')">🖨 Imprimir</button><button type="button" class="is-versions" onclick="abrirVersoesOrcamento(\'' + escAttr(id) + '\')">🕘 Versões</button><button type="button" class="danger" onclick="excluirOrcamento(\'' + escAttr(id) + '\')">🗑 Excluir</button></div></td>'
         + '</tr>';
     }).join('');
     body.innerHTML = ''
@@ -46640,7 +47001,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '    <div class="pep-card"><div class="pep-card-label">Com Chapa Vinculada</div><div class="pep-card-val">' + escHtml(String(totalComChapa)) + '</div><div class="pep-card-sub">Orçamentos com chapa interna preenchida</div></div>'
       + '    <div class="pep-card"><div class="pep-card-label">Clientes na Tela</div><div class="pep-card-val">' + escHtml(String(Object.keys(totalClientes).length)) + '</div><div class="pep-card-sub">Carteira visível após filtros</div></div>'
       + '  </div>'
-      + '  <div class="pep-head orx-head"><div class="orx-head-copy"><div class="orx-title">Orçamentos</div><div class="orx-sub">Área refeita com a mesma hierarquia das telas de Estoques: cards-resumo no topo, filtros claros no meio e tabela detalhada abaixo. A Calculadora continua como núcleo de criação, mas a listagem agora ficou mais legível e preparada para uso real no mobile.</div></div><div class="orx-actions"><button type="button" class="pep-btn primary" id="orx-btn-novo">Novo Orçamento</button><button type="button" class="pep-btn" id="orx-btn-pasta">Nova Pasta</button><button type="button" class="pep-btn" id="orx-btn-recarregar">Recarregar</button></div></div>'
+      + '  <div class="pep-head orx-head"><div class="orx-head-copy"><div class="orx-title">Orçamentos</div><div class="orx-sub">Área refeita com a mesma hierarquia das telas de Estoques: cards-resumo no topo, filtros claros no meio e tabela detalhada abaixo. A Calculadora continua como núcleo de criação, mas a listagem agora ficou mais legível e preparada para uso real no mobile.</div></div><div class="orx-actions"><button type="button" class="pep-btn primary is-main" id="orx-btn-novo">＋ Novo Orçamento</button><button type="button" class="pep-btn" id="orx-btn-pasta">🗂 Nova Pasta</button><button type="button" class="pep-btn" id="orx-btn-recarregar">↻ Recarregar</button></div></div>'
       + '  <div class="pep-panel orx-filter-panel">'
       + '    <div class="orx-filter-row"><input class="pep-input" id="orx-busca" type="text" placeholder="Buscar por número, nome, cliente, medidas, onda, chapa ou pasta..." value="' + escAttr(orcSearchValue()) + '"><button type="button" class="pep-btn primary" id="orx-btn-buscar">Buscar</button></div>'
       + '    <div class="orx-folder-strip">' + filtersHtml + '</div>'

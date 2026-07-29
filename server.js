@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1194,8 +1194,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260729190000';
-const SW_RUNTIME_VERSION = '20260729190000';
+const PATCH_RUNTIME_VERSION = '20260729203000';
+const SW_RUNTIME_VERSION = '20260729203000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
@@ -2307,6 +2307,16 @@ async function _comissoesEnriquecerLista(baseRows) {
   return todasOFs;
 }
 
+function _pickOfVendedorIdCompat() {
+  for (let i = 0; i < arguments.length; i += 1) {
+    const src = arguments[i];
+    if (!src || typeof src !== 'object') continue;
+    const txt = String(src?.vendedor_id ?? src?.vendId ?? src?.vendid ?? '').trim();
+    if (txt && txt !== 'null' && txt !== 'undefined') return txt;
+  }
+  return '';
+}
+
 function _comissoesAplicarFallbackBaseOf(lista, baseRows) {
   const baseByKey = new Map();
   (Array.isArray(baseRows) ? baseRows : []).forEach((row) => {
@@ -2336,7 +2346,7 @@ function _comissoesAplicarFallbackBaseOf(lista, baseRows) {
       const vendidTxt = String(base?.vendid || '').trim();
       if (vendidTxt && !_isUuid(vendidTxt)) vendedorBase = vendidTxt;
     }
-    const vendedorIdBase = String(base?.vendedor_id ?? base?.vendId ?? base?.vend_id ?? '').trim();
+    const vendedorIdBase = _pickOfVendedorIdCompat(base);
     const cliIdBase = String(base?.cli_id ?? base?.cliId ?? base?.cliente_id ?? '').trim();
 
     if (cliIdBase) {
@@ -2354,7 +2364,6 @@ function _comissoesAplicarFallbackBaseOf(lista, baseRows) {
     if (vendedorIdBase) {
       if (!String(out.vendedor_id || '').trim()) out.vendedor_id = vendedorIdBase;
       if (!String(out.vendId || '').trim()) out.vendId = vendedorIdBase;
-      if (!String(out.vend_id || '').trim()) out.vend_id = vendedorIdBase;
     }
     if (vendedorBase) {
       if (!_comissoesTextoValido(out.vendedor)) out.vendedor = vendedorBase;
@@ -2383,7 +2392,7 @@ function _comissoesMontarPayload(todasOFs, extra = {}) {
     const val = _vendasOficialValor(of);
     if (!val) return;
     totalGeral += val;
-    const vid = of.vendedor_id || of.vendId || of.vend_id || of.vendid || '__sem__';
+    const vid = _pickOfVendedorIdCompat(of) || '__sem__';
     const nome = of.vendedor_nome || of.vendedor || of.vendNome || 'Sem Vendedor';
     const pct = Number(of.comissao_pct || 1);
     if (!porVend[vid]) {
@@ -2418,7 +2427,7 @@ function _comissoesMontarPayload(todasOFs, extra = {}) {
       numero: of.numero || of.of,
       of: of.of || of.numero || null,
       cli_id: of.cli_id || of.cliId || of.cliente_id || of.clienteId || null,
-      vendedor_id: of.vendedor_id || of.vendId || of.vend_id || of.vendid || null,
+      vendedor_id: _pickOfVendedorIdCompat(of) || null,
       cliente: clienteNome,
       vendedor: vendedorNome,
       quantidade: of.quantidade ?? of.qtd ?? of.qtd_pedida ?? null,
@@ -2737,27 +2746,55 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
       }))).join(',');
     };
 
-    const selectCols = 'id,of,numero,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,vendedor,vendNome,vend_id,vendId,vendedor_id,vendid,preco,valor_unitario,valor_venda,valor_total,total,qtd,quantidade,qtd_pedida,itens,data_conclusao,created_at,status,descricao';
-    let queryBase = supabase.from('ofs').select(selectCols).limit(50);
-    if (empresaId) {
-      try { queryBase = queryBase.eq('empresa_id', empresaId); } catch (_) {}
-    }
-
-    const filtros = montarFiltrosBuscaOf(termoVariants);
-    let hitsBase = null;
-    let hitsError = null;
+    const selectCols = 'id,of,numero,cli_id,cliId,cliente_id,cliid,clinome,cliNome,cliente_nome,vendedor,vendNome,vendId,vendedor_id,vendid,preco,valor_unitario,valor_venda,valor_total,total,qtd,quantidade,qtd_pedida,itens,data_conclusao,created_at,status,descricao';
+    // #region debug-point A:comissoes-busca-of-entry
     try {
-      const r = await queryBase.or(filtros);
-      hitsBase = r?.data || [];
-      hitsError = r?.error || null;
-    } catch (e) {
-      hitsError = e;
-      hitsBase = [];
-    }
+      _reportProdBlockersDebug('A', 'server.js:/api/comissoes/busca-of:entry', '[DEBUG] busca-of preparando select em ofs', {
+        q,
+        empresaId: empresaId || null,
+        termos,
+        termoVariants: termoVariants.slice(0, 12),
+        selectCols
+      }, 'pre-fix');
+    } catch (_) {}
+    // #endregion
+    const filtros = montarFiltrosBuscaOf(termoVariants);
+    const selectResult = await _selectCompatRows('ofs', selectCols, (query) => {
+      let qx = query.limit(50);
+      if (empresaId) {
+        try { qx = qx.eq('empresa_id', empresaId); } catch (_) {}
+      }
+      if (filtros) qx = qx.or(filtros);
+      return qx;
+    });
+    let hitsBase = Array.isArray(selectResult?.data) ? selectResult.data : [];
+    let hitsError = selectResult?.error || null;
     if (hitsError) {
+      // #region debug-point A:comissoes-busca-of-error
+      try {
+        _reportProdBlockersDebug('A', 'server.js:/api/comissoes/busca-of:error', '[DEBUG] busca-of falhou ao consultar ofs', {
+          q,
+          empresaId: empresaId || null,
+          filtros,
+          selectCols,
+          error: String(hitsError?.message || hitsError || '')
+        }, 'pre-fix');
+      } catch (_) {}
+      // #endregion
       console.error('[COM] busca-of erro base:', String(hitsError?.message || hitsError));
       return res.status(500).json({ ok: false, error: String(hitsError.message || hitsError) });
     }
+    // #region debug-point A:comissoes-busca-of-base-hits
+    try {
+      _reportProdBlockersDebug('A', 'server.js:/api/comissoes/busca-of:base-hits', '[DEBUG] busca-of retornou linhas base de ofs', {
+        q,
+        empresaId: empresaId || null,
+        filtros,
+        hits: Array.isArray(hitsBase) ? hitsBase.length : 0,
+        sampleKeys: hitsBase && hitsBase[0] && typeof hitsBase[0] === 'object' ? Object.keys(hitsBase[0]).slice(0, 24) : []
+      }, 'pre-fix');
+    } catch (_) {}
+    // #endregion
 
     const ids = Array.from(new Set((hitsBase || []).map((row) => String(row?.id || '').trim()).filter(Boolean)));
     const numeroVariants = Array.from(new Set(
@@ -2827,7 +2864,30 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
       const bn = ordemNumero[String(b?.numero || b?.of || '').trim()] ?? ordemNumero[_normalizarNumeroOfRef(b?.numero || b?.of)] ?? ordemNumero[_normalizarNumeroOfDigits(b?.numero || b?.of)];
       return (an == null ? 999999 : an) - (bn == null ? 999999 : bn);
     });
-    return res.json(_comissoesMontarPayload(todasOFs, { busca: q }));
+    const payloadBusca = _comissoesMontarPayload(todasOFs, { busca: q });
+    // #region debug-point A:comissoes-busca-of-final
+    try {
+      _reportProdBlockersDebug('A', 'server.js:/api/comissoes/busca-of:final', '[DEBUG] busca-of montou payload final', {
+        q,
+        empresaId: empresaId || null,
+        total_ofs: Number(payloadBusca?.total_ofs || 0) || 0,
+        total_vendido: Number(payloadBusca?.total_vendido || 0) || 0,
+        sampleOfKeys: Array.isArray(payloadBusca?.ofs) && payloadBusca.ofs[0] && typeof payloadBusca.ofs[0] === 'object'
+          ? Object.keys(payloadBusca.ofs[0]).slice(0, 24)
+          : [],
+        sampleOf: Array.isArray(payloadBusca?.ofs) && payloadBusca.ofs[0] && typeof payloadBusca.ofs[0] === 'object'
+          ? {
+              id: payloadBusca.ofs[0].id || null,
+              numero: payloadBusca.ofs[0].numero || payloadBusca.ofs[0].of || null,
+              cliente: payloadBusca.ofs[0].cliente || null,
+              vendedor_id: payloadBusca.ofs[0].vendedor_id || null,
+              vendedor: payloadBusca.ofs[0].vendedor || null
+            }
+          : null
+      }, 'pre-fix');
+    } catch (_) {}
+    // #endregion
+    return res.json(payloadBusca);
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -3922,7 +3982,7 @@ const CAMPOS_OFS_UPDATE = new Set([
   'of', 'numero',
   'clinome', 'cliNome', 'cliente_nome', 'cliente',
   'cli_id', 'cliId', 'cliente_id', 'cliid',
-  'vendid', 'vendId', 'vend_id',
+  'vendid', 'vendId',
   'vendedor', 'vendNome', 'vendedor_nome', 'vendedor_id',
   'preco', 'total', 'qtd', 'qtd_produzida', 'qtd_perdida', 'qtd_pedida',
   'status', 'ent', 'dia', 'maq', 'obs', 'obs2', 'urgente', 'urg',
@@ -3945,6 +4005,11 @@ const CAMPOS_OFS_UPDATE = new Set([
 
 function normalizeOfUpdateBody(input) {
   const out = sanitizeOfUpdatePayload(input || {});
+  if (out.vend_id !== undefined) {
+    if (out.vendedor_id === undefined) out.vendedor_id = out.vend_id;
+    if (out.vendId === undefined) out.vendId = out.vend_id;
+    delete out.vend_id;
+  }
   if (out.quantidade !== undefined && out.qtd === undefined) out.qtd = out.quantidade;
   if (out.valor_unitario !== undefined && out.preco === undefined) out.preco = out.valor_unitario;
   if (out.vendedor !== undefined && out.vendid === undefined) out.vendid = out.vendedor;
@@ -4148,18 +4213,22 @@ async function _preencherCamposCriticosOF(input, opts = {}) {
   }
   if (onlyClinome) return out;
 
-  let vendedorId = String(out.vendedor_id ?? out.vendId ?? out.vend_id ?? '').trim();
+  if (out.vend_id !== undefined) {
+    if (!String(out.vendedor_id ?? '').trim()) out.vendedor_id = out.vend_id;
+    if (!String(out.vendId ?? '').trim()) out.vendId = out.vend_id;
+    delete out.vend_id;
+  }
+  let vendedorId = String(out.vendedor_id ?? out.vendId ?? '').trim();
   if (!vendedorId && cliResolved?.vendedor_id) vendedorId = String(cliResolved.vendedor_id || '').trim();
   if (vendedorId) {
     out.vendedor_id = vendedorId;
     out.vendId = vendedorId;
-    out.vend_id = vendedorId;
   }
   let vendedor = String(out.vendedor ?? out.vendNome ?? out.vendedor_nome ?? '').trim();
   if (vendedor && _isUuid(vendedor)) vendedor = '';
   if (!vendedor && vendedorId) vendedor = await _buscarVendedorNomeOF(vendedorId);
   let vendid = String(out.vendid ?? '').trim();
-  if (!vendid) vendid = String(out.vendId ?? out.vend_id ?? out.vendedor_id ?? '').trim();
+  if (!vendid) vendid = String(out.vendId ?? out.vendedor_id ?? '').trim();
   if (!vendid) vendid = vendedor;
   if (!vendedor && vendid) vendedor = vendid;
   if (vendedor) {
@@ -4293,7 +4362,7 @@ async function _enriquecerRespostaOFs(listaInput) {
     const base = baseMap.get(String(item?.id || '').trim()) || {};
     const cliId = pickText(item?.cli_id, item?.cliId, item?.cliente_id, base?.cli_id, base?.cliId, base?.cliente_id);
     const cli = clienteMap.get(cliId) || {};
-    return pickText(item?.vendedor_id, item?.vendId, item?.vend_id, base?.vendedor_id, base?.vendId, base?.vend_id, cli?.vendedor_id);
+    return _pickOfVendedorIdCompat(item, base, cli);
   }).filter(Boolean).filter((id) => isUuid(id))));
   const vendedorMap = new Map();
   for (let i = 0; i < vendedorIds.length; i += chunkSize) {
@@ -4317,7 +4386,7 @@ async function _enriquecerRespostaOFs(listaInput) {
     const base = baseMap.get(rowId) || {};
     const cliId = pickText(item?.cli_id, item?.cliId, item?.cliente_id, base?.cli_id, base?.cliId, base?.cliente_id);
     const cliente = clienteMap.get(cliId) || {};
-    const vendedorId = pickText(item?.vendedor_id, item?.vendId, item?.vend_id, base?.vendedor_id, base?.vendId, base?.vend_id, cliente?.vendedor_id);
+    const vendedorId = _pickOfVendedorIdCompat(item, base, cliente);
     const vendedorNome = pickText(
       item?.__vendedor_nome_view,
       item?.vendedor,
@@ -4370,7 +4439,6 @@ async function _enriquecerRespostaOFs(listaInput) {
       cliente: clinome || 'Cliente não identificado',
       vendedor_id: vendedorId || null,
       vendId: vendedorId || null,
-      vend_id: vendedorId || null,
       vendedor: vendedorNome || '—',
       vendedor_nome: vendedorNome || '—',
       vendNome: vendedorNome || '—',
@@ -5404,7 +5472,7 @@ app.get('/api/ofs/recorrentes', authMiddleware, async (req, res) => {
 });
 async function _maybeRegistrarComissaoOF(req, body, ofRow) {
   try {
-    const vendedorId = String(body?.vendedor_id ?? body?.vend_id ?? body?.vendId ?? ofRow?.vendedor_id ?? ofRow?.vend_id ?? ofRow?.vendId ?? '').trim();
+    const vendedorId = String(body?.vendedor_id ?? body?.vendId ?? body?.vend_id ?? ofRow?.vendedor_id ?? ofRow?.vendId ?? '').trim();
     const valorOf = Number(body?.valor_total ?? body?.valor_venda ?? ofRow?.valor_total ?? ofRow?.valor_venda ?? 0);
     console.log('[COMISSAO] vendedorId:', vendedorId, 'valorOf:', valorOf);
     if (!vendedorId || !(valorOf > 0)) return;
@@ -5890,6 +5958,11 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       if (cliRef && !cliResolved) {
         return res.status(400).json({ ok: false, error: 'Cliente inválido. Selecione um cliente válido antes de salvar.', missing: ['cliente'] });
       }
+      if (merged.vend_id !== undefined) {
+        if (!String(merged.vendedor_id ?? '').trim()) merged.vendedor_id = merged.vend_id;
+        if (!String(merged.vendId ?? '').trim()) merged.vendId = merged.vend_id;
+        delete merged.vend_id;
+      }
       if (cliResolved) {
         merged.cli_id = cliResolved.id;
         merged.cliId = cliResolved.id;
@@ -5897,15 +5970,14 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         if (!String(merged.clinome ?? '').trim()) merged.clinome = cliResolved.nome || '';
         if (!String(merged.cliNome ?? '').trim()) merged.cliNome = cliResolved.nome || '';
         if (!String(merged.cliente_nome ?? '').trim()) merged.cliente_nome = cliResolved.nome || '';
-        if (!String(merged.vendedor_id ?? merged.vendId ?? merged.vend_id ?? '').trim() && String(cliResolved.vendedor_id || '').trim()) {
+        if (!String(merged.vendedor_id ?? merged.vendId ?? '').trim() && String(cliResolved.vendedor_id || '').trim()) {
           merged.vendedor_id = cliResolved.vendedor_id;
           merged.vendId = cliResolved.vendedor_id;
-          merged.vend_id = cliResolved.vendedor_id;
         }
       }
       merged = await _preencherCamposCriticosOF(merged);
       const cliId = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
-      const vendId = String(merged.vendedor_id ?? merged.vendedorId ?? merged.vendId ?? merged.vend_id ?? '').trim();
+      const vendId = String(merged.vendedor_id ?? merged.vendedorId ?? merged.vendId ?? '').trim();
       const qtd = Number(merged.qtd ?? merged.quantidade ?? merged.qtd_pedida ?? 0) || 0;
       const ent = String(merged.ent ?? merged.data_entrega ?? '').slice(0, 10);
       const itens = parseItens(merged.itens ?? body.itens);
@@ -5940,7 +6012,6 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         cliente_nome: String(merged.cliente_nome ?? merged.clinome ?? merged.cliNome ?? '').trim(),
         vendedor_id: vendId || null,
         vendId: vendId || null,
-        vend_id: vendId || null,
         vendid: String(merged.vendid ?? vendId ?? '').trim() || null,
         vendedor: String(merged.vendedor ?? merged.vendNome ?? merged.vendedor_nome ?? '').trim(),
         vendNome: String(merged.vendNome ?? merged.vendedor ?? merged.vendedor_nome ?? '').trim(),
@@ -5983,7 +6054,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       const cliId = String(body?.cli_id || body?.cliId || created?.cli_id || created?.cliId || created?.cliente_id || '').trim();
       const vendId = String(
         body?.vendedor_id || body?.vendId || body?.vend_id ||
-        created?.vendedor_id || created?.vendId || created?.vend_id || ''
+        created?.vendedor_id || created?.vendId || ''
       ).trim();
       if (cliId && vendId) {
         await supabase
@@ -6701,7 +6772,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       'id', 'of', 'numero', 'status', 'dia', 'created_at',
       'cli_id',
       'vendedor_id',
-      'vendId', 'vend_id', 'vendedorId',
+      'vendId', 'vendedorId',
       'vendedor', 'vendedor_nome', 'vendNome',
       'cliente_id',
       'valor_total', 'valor_venda',
@@ -6745,7 +6816,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
         'id', 'of', 'numero', 'status', 'dia', 'created_at',
         'cli_id',
         'vendedor_id',
-        'vendId', 'vend_id', 'vendedorId',
+        'vendId', 'vendedorId',
         'vendedor', 'vendedor_nome', 'vendNome',
         'cliente_id',
         'valor_total', 'valor_venda',
@@ -6772,7 +6843,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
     console.log('[RELATORIO VENDEDOR] OFs após filtro:', ofs.length);
     console.log('[COMISSAO DEBUG]', {
       totalOfs: ofs?.length,
-      semVendedor: ofs?.filter((o) => !o.vendedor_id && !o.vendId && !o.vend_id).length,
+      semVendedor: ofs?.filter((o) => !o.vendedor_id && !o.vendId).length,
       camposVendedor: ofs?.[0] ? Object.keys(ofs[0]).filter((k) => String(k || '').toLowerCase().includes('vend')) : [],
     });
 
@@ -6781,15 +6852,13 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
     const cliVendMap = new Map();
     if (cliIds.length) {
       try {
-        const { data: clis, error: ec } = await supabase
-          .from('clientes')
-          .select('id,nome,vendedor_id,vendId,vend_id')
-          .in('id', cliIds)
-          .limit(2000);
-        if (!ec) {
-          (clis || []).forEach((c) => {
+        const cliSelect = await _selectCompatRows('clientes', 'id,nome,vendedor_id,vendId', (query) => {
+          return query.in('id', cliIds).limit(2000);
+        });
+        if (!cliSelect?.error) {
+          (cliSelect.data || []).forEach((c) => {
             if (c && c.id) mapCli[String(c.id)] = c.nome || '';
-            const vid = String(c?.vendedor_id || c?.vendId || c?.vend_id || '').trim();
+            const vid = String(c?.vendedor_id || c?.vendId || '').trim();
             if (c?.id && vid) cliVendMap.set(String(c.id), vid);
           });
         }
@@ -6808,7 +6877,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
     console.log('[RELATORIO VENDEDOR] vendedores:', Object.keys(mapVend).length);
 
     const getVendedorId = (of) => {
-      return String(of?.vendedor_id || of?.vendId || of?.vend_id || of?.vendedorId || '').trim();
+      return String(of?.vendedor_id || of?.vendId || of?.vendedorId || '').trim();
     };
     const getVendedorNome = (of, vendMap) => {
       const vid = getVendedorId(of);
@@ -11692,8 +11761,105 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
     });
     const produtosMaisPedidos = Object.entries(contProd)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([produto, vezes]) => ({ produto, vezes }));
+      .slice(0, 10)
+      .map(([produto, vezes]) => ({ produto, vezes, total_ofs: vezes }));
+
+    const pushCount = (map, key, inc = 1) => {
+      const txt = String(key || '').trim();
+      if (!txt) return;
+      map.set(txt, (Number(map.get(txt) || 0) || 0) + (Number(inc || 0) || 0));
+    };
+    const toTopList = (map, keyName) => Array.from(map.entries()).map(([nome, total_ofs]) => ({ [keyName]: nome, total_ofs }))
+      .sort((a, b) => {
+        if ((b.total_ofs || 0) !== (a.total_ofs || 0)) return (b.total_ofs || 0) - (a.total_ofs || 0);
+        return String(a[keyName] || '').localeCompare(String(b[keyName] || ''), 'pt-BR');
+      })
+      .slice(0, 5);
+    const parseColors = (value) => {
+      const bucket = [];
+      const add = (raw) => {
+        const nome = String(
+          raw && typeof raw === 'object'
+            ? (raw.nome ?? raw.name ?? raw.cor ?? raw.color ?? raw.label ?? raw.value ?? '')
+            : (raw ?? '')
+        ).trim();
+        if (nome) bucket.push(nome);
+      };
+      if (Array.isArray(value)) {
+        value.forEach(add);
+        return bucket;
+      }
+      const raw = String(value || '').trim();
+      if (!raw) return bucket;
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(add);
+          return bucket;
+        }
+        if (parsed && typeof parsed === 'object') {
+          add(parsed);
+          return bucket;
+        }
+      } catch (_) {}
+      raw.split(/[,;|/]+/g).forEach(add);
+      return bucket;
+    };
+    const pickSize = (row) => {
+      const comp = Number(row?.dim_comprimento ?? row?.caixa_comprimento ?? row?.comprimento_mm ?? 0) || 0;
+      const larg = Number(row?.dim_largura ?? row?.caixa_largura ?? row?.largura_mm ?? 0) || 0;
+      const alt = Number(row?.dim_altura ?? row?.caixa_altura ?? row?.altura_mm ?? 0) || 0;
+      if (comp > 0 && larg > 0 && alt > 0) return [comp, larg, alt].map((n) => Math.trunc(n)).join('×');
+      if (comp > 0 && larg > 0) return [comp, larg].map((n) => Math.trunc(n)).join('×');
+      return '';
+    };
+    const gramaturasMap = new Map();
+    const tiposCaixaMap = new Map();
+    const coresMap = new Map();
+    const tamanhosMap = new Map();
+    const mesesComPedidos = new Set();
+    const datasPedidos = [];
+    let quantidadeTotalHistorico = 0;
+    let totalComprado = 0;
+    todas.forEach((of) => {
+      const gramaturaNome = String(of?.gramatura_nome || '').trim();
+      const gramaturaValor = Number(of?.gramatura || 0) || 0;
+      const gramaturaKey = gramaturaNome || (gramaturaValor > 0 ? `${Math.trunc(gramaturaValor)} g/m²` : '');
+      if (gramaturaKey) pushCount(gramaturasMap, gramaturaKey);
+      const tipoCaixa = String(of?.tipo_caixa || '').trim();
+      if (tipoCaixa) pushCount(tiposCaixaMap, tipoCaixa);
+      parseColors(of?.cores_impressao).forEach((cor) => pushCount(coresMap, cor));
+      const tamanho = pickSize(of);
+      if (tamanho) pushCount(tamanhosMap, tamanho);
+      const quantidade = Math.max(0, Math.trunc(Number(of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
+      quantidadeTotalHistorico += quantidade;
+      totalComprado += pickTotal(of);
+      const dataRef = String(of?.data_conclusao || of?.created_at || of?.dia || '').slice(0, 10);
+      if (dataRef) {
+        datasPedidos.push(dataRef);
+        mesesComPedidos.add(dataRef.slice(0, 7));
+      }
+    });
+    const datasOrdenadas = datasPedidos
+      .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')))
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const intervalosDias = [];
+    for (let i = 1; i < datasOrdenadas.length; i += 1) {
+      const anterior = new Date(datasOrdenadas[i - 1] + 'T12:00:00');
+      const atual = new Date(datasOrdenadas[i] + 'T12:00:00');
+      const diff = Math.round((atual.getTime() - anterior.getTime()) / 86400000);
+      if (Number.isFinite(diff) && diff >= 0) intervalosDias.push(diff);
+    }
+    const frequenciaMediaDias = intervalosDias.length
+      ? Math.round(((intervalosDias.reduce((sum, value) => sum + value, 0) / intervalosDias.length) + Number.EPSILON) * 10) / 10
+      : null;
+    const mediaCaixasMes = mesesComPedidos.size
+      ? Math.round(((quantidadeTotalHistorico / mesesComPedidos.size) + Number.EPSILON) * 10) / 10
+      : null;
+    const gramaturasTop = toTopList(gramaturasMap, 'gramatura');
+    const tiposCaixaTop = toTopList(tiposCaixaMap, 'tipo_caixa');
+    const coresTop = toTopList(coresMap, 'cor');
+    const tamanhosTop = toTopList(tamanhosMap, 'tamanho');
 
     const mapOf = (o) => ({
       id: o?.id ?? null,
@@ -11701,21 +11867,47 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
       produto: o?.produto ?? o?.descricao ?? null,
       quantidade: o?.quantidade ?? o?.qtd ?? o?.qtd_pedida ?? null,
       data_entrega: o?.data_entrega ?? o?.ent ?? null,
+      data_entrada: String(o?.created_at || o?.dia || '').slice(0, 10) || null,
+      data_conclusao: String(o?.data_conclusao || '').slice(0, 10) || null,
       status: o?.status ?? null,
       maquina: o?.maq ?? o?.maquina ?? null,
       total: pickTotal(o),
+      valor_total: pickTotal(o),
       created_at: o?.created_at ?? null,
     });
 
+    const historicoRows = todas.slice(0, 120).map(mapOf);
+    const abertasRows = abertas.slice(0, 25).map(mapOf);
     return res.json({
       ok: true,
       cliente: cliente,
       total_pedidos: todas.length,
+      total_ofs: todas.length,
       total_faturado: totalFaturado,
+      total_comprado: totalComprado,
       ofs_abertas: abertas.length,
-      ofs_em_aberto: abertas.slice(0, 10).map(mapOf),
+      ofs_em_aberto: abertasRows,
       produtos_mais_pedidos: produtosMaisPedidos,
-      historico: todas.slice(0, 20).map(mapOf),
+      historico: historicoRows,
+      historico_ofs: historicoRows,
+      resumo: {
+        total_ofs: todas.length,
+        ofs_abertas: abertas.length,
+        total_comprado: totalComprado,
+        total_faturado: totalFaturado,
+        frequencia_media_dias: frequenciaMediaDias,
+        media_caixas_mes: mediaCaixasMes
+      },
+      insights: {
+        gramatura_mais_utilizada: gramaturasTop[0] || null,
+        gramaturas_mais_utilizadas: gramaturasTop,
+        tipo_caixa_mais_pedido: tiposCaixaTop[0] || null,
+        tipos_caixa_mais_pedidos: tiposCaixaTop,
+        frequencia_media_dias: frequenciaMediaDias,
+        quantidade_media_caixas_mes: mediaCaixasMes,
+        cores_mais_utilizadas: coresTop,
+        tamanhos_mais_utilizados: tamanhosTop
+      }
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message || String(e) });
@@ -12003,7 +12195,7 @@ function _relatoriosPickTonOf(of) {
 }
 
 function _relatoriosPickVendedorId(of) {
-  return String(of?.vendedor_id ?? of?.vend_id ?? of?.vendId ?? of?.vendid ?? '').trim();
+  return _pickOfVendedorIdCompat(of);
 }
 
 function _relatoriosApplyEmpresaFilter(query, empresaId) {
@@ -12262,8 +12454,14 @@ async function _relatoriosFetchClienteOfs(clienteId, empresaId, clienteNome) {
     'descricao', 'qtd', 'quantidade', 'qtd_pedida',
     'data_entrega', 'ent', 'dia', 'created_at', 'data_conclusao',
     'valor_total', 'valor_venda', 'total',
-    'vendedor_id', 'vend_id', 'vendId', 'vendid', 'vendedor', 'vendNome',
-    'maq', 'maquina', 'maquina_atual', 'maquina_agendada', 'fluxo_maquinas', 'maquina_atual_index'
+    'vendedor_id', 'vendId', 'vendid', 'vendedor', 'vendNome',
+    'maq', 'maquina', 'maquina_atual', 'maquina_agendada', 'fluxo_maquinas', 'maquina_atual_index',
+    'tipo_caixa', 'tipo_caixa_id',
+    'gramatura_id', 'gramatura_nome', 'gramatura',
+    'cores_impressao',
+    'caixa_comprimento', 'caixa_largura', 'caixa_altura',
+    'dim_comprimento', 'dim_largura', 'dim_altura',
+    'comprimento_mm', 'largura_mm', 'altura_mm'
   ].join(',');
   const byId = new Map();
   const mergeRows = (rows) => {
@@ -12332,7 +12530,7 @@ app.get('/api/relatorios/ofs-em-aberto', authMiddleware, async (req, res) => {
       'descricao', 'qtd', 'quantidade', 'qtd_pedida',
       'data_entrega', 'ent', 'dia', 'created_at',
       'valor_total', 'valor_venda', 'total',
-      'vendedor_id', 'vend_id', 'vendId', 'vendid', 'vendedor', 'vendNome',
+      'vendedor_id', 'vendId', 'vendid', 'vendedor', 'vendNome',
       'maq', 'maquina', 'maquina_atual', 'maquina_agendada', 'fluxo_maquinas', 'maquina_atual_index'
     ].join(',');
     const result = await _selectCompatRows('ofs', cols, (q) => {
@@ -12483,6 +12681,100 @@ app.get('/api/relatorios/cliente-ficha', authMiddleware, async (req, res) => {
       criado_em: String(row?.criado_em || '').slice(0, 10)
     }));
     const totalOrcamentos = orcamentosRows.reduce((sum, row) => sum + (Number(row?.valor_total || 0) || 0), 0);
+    const pushCount = (map, key, inc = 1) => {
+      const txt = String(key || '').trim();
+      if (!txt) return;
+      map.set(txt, (Number(map.get(txt) || 0) || 0) + (Number(inc || 0) || 0));
+    };
+    const toTopList = (map, keyName) => Array.from(map.entries()).map(([nome, total_ofs]) => ({ [keyName]: nome, total_ofs }))
+      .sort((a, b) => {
+        if ((b.total_ofs || 0) !== (a.total_ofs || 0)) return (b.total_ofs || 0) - (a.total_ofs || 0);
+        return String(a[keyName] || '').localeCompare(String(b[keyName] || ''), 'pt-BR');
+      })
+      .slice(0, 5);
+    const parseColors = (value) => {
+      const bucket = [];
+      const add = (raw) => {
+        const nome = String(
+          raw && typeof raw === 'object'
+            ? (raw.nome ?? raw.name ?? raw.cor ?? raw.color ?? raw.label ?? raw.value ?? '')
+            : (raw ?? '')
+        ).trim();
+        if (nome) bucket.push(nome);
+      };
+      if (Array.isArray(value)) {
+        value.forEach(add);
+        return bucket;
+      }
+      const raw = String(value || '').trim();
+      if (!raw) return bucket;
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(add);
+          return bucket;
+        }
+        if (parsed && typeof parsed === 'object') {
+          add(parsed);
+          return bucket;
+        }
+      } catch (_) {}
+      raw.split(/[,;|/]+/g).forEach(add);
+      return bucket;
+    };
+    const pickSize = (row) => {
+      const comp = Number(row?.dim_comprimento ?? row?.caixa_comprimento ?? row?.comprimento_mm ?? 0) || 0;
+      const larg = Number(row?.dim_largura ?? row?.caixa_largura ?? row?.largura_mm ?? 0) || 0;
+      const alt = Number(row?.dim_altura ?? row?.caixa_altura ?? row?.altura_mm ?? 0) || 0;
+      if (comp > 0 && larg > 0 && alt > 0) return [comp, larg, alt].map((n) => Math.trunc(n)).join('×');
+      if (comp > 0 && larg > 0) return [comp, larg].map((n) => Math.trunc(n)).join('×');
+      return '';
+    };
+    const gramaturasMap = new Map();
+    const tiposCaixaMap = new Map();
+    const coresMap = new Map();
+    const tamanhosMap = new Map();
+    const mesesComPedidos = new Set();
+    const datasPedidos = [];
+    let quantidadeTotalHistorico = 0;
+    (Array.isArray(ofs) ? ofs : []).forEach((of) => {
+      const gramaturaNome = String(of?.gramatura_nome || '').trim();
+      const gramaturaValor = Number(of?.gramatura || 0) || 0;
+      const gramaturaKey = gramaturaNome || (gramaturaValor > 0 ? `${Math.trunc(gramaturaValor)} g/m²` : '');
+      if (gramaturaKey) pushCount(gramaturasMap, gramaturaKey);
+      const tipoCaixa = String(of?.tipo_caixa || '').trim();
+      if (tipoCaixa) pushCount(tiposCaixaMap, tipoCaixa);
+      parseColors(of?.cores_impressao).forEach((cor) => pushCount(coresMap, cor, 1));
+      const tamanho = pickSize(of);
+      if (tamanho) pushCount(tamanhosMap, tamanho, 1);
+      const quantidade = Math.max(0, Math.trunc(Number(of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
+      quantidadeTotalHistorico += quantidade;
+      const dataRef = String(of?.data_conclusao || of?.created_at || of?.dia || '').slice(0, 10);
+      if (dataRef) {
+        datasPedidos.push(dataRef);
+        mesesComPedidos.add(dataRef.slice(0, 7));
+      }
+    });
+    const datasOrdenadas = datasPedidos
+      .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')))
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const intervalosDias = [];
+    for (let i = 1; i < datasOrdenadas.length; i += 1) {
+      const anterior = new Date(datasOrdenadas[i - 1] + 'T12:00:00');
+      const atual = new Date(datasOrdenadas[i] + 'T12:00:00');
+      const diff = Math.round((atual.getTime() - anterior.getTime()) / 86400000);
+      if (Number.isFinite(diff) && diff >= 0) intervalosDias.push(diff);
+    }
+    const frequenciaMediaDias = intervalosDias.length
+      ? Math.round(((intervalosDias.reduce((sum, value) => sum + value, 0) / intervalosDias.length) + Number.EPSILON) * 10) / 10
+      : null;
+    const mediaCaixasMes = mesesComPedidos.size
+      ? Math.round(((quantidadeTotalHistorico / mesesComPedidos.size) + Number.EPSILON) * 10) / 10
+      : null;
+    const gramaturasTop = toTopList(gramaturasMap, 'gramatura');
+    const tiposCaixaTop = toTopList(tiposCaixaMap, 'tipo_caixa');
+    const coresTop = toTopList(coresMap, 'cor');
+    const tamanhosTop = toTopList(tamanhosMap, 'tamanho');
     return res.json({
       ok: true,
       cliente: {
@@ -12504,7 +12796,19 @@ app.get('/api/relatorios/cliente-ficha', authMiddleware, async (req, res) => {
         ofs_abertas: abertas.length,
         total_comprado: totalComprado,
         total_orcamentos: orcamentosRows.length,
-        valor_orcamentos: totalOrcamentos
+        valor_orcamentos: totalOrcamentos,
+        frequencia_media_dias: frequenciaMediaDias,
+        media_caixas_mes: mediaCaixasMes
+      },
+      insights: {
+        gramatura_mais_utilizada: gramaturasTop[0] || null,
+        gramaturas_mais_utilizadas: gramaturasTop,
+        tipo_caixa_mais_pedido: tiposCaixaTop[0] || null,
+        tipos_caixa_mais_pedidos: tiposCaixaTop,
+        frequencia_media_dias: frequenciaMediaDias,
+        quantidade_media_caixas_mes: mediaCaixasMes,
+        cores_mais_utilizadas: coresTop,
+        tamanhos_mais_utilizados: tamanhosTop
       },
       produtos_mais_pedidos: produtosMaisPedidos,
       historico_ofs: historico.slice(0, 120),
@@ -13310,14 +13614,13 @@ app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    const { data: cli, error: e1 } = await supabase
-      .from('clientes')
-      .select('id,nome,vendedor_id,vendId,vend_id')
-      .eq('id', id)
-      .maybeSingle();
-    if (e1) throw e1;
+    const cliSelect = await _selectCompatRows('clientes', 'id,nome,vendedor_id,vendId', (query) => {
+      return query.eq('id', id).limit(1);
+    });
+    if (cliSelect?.error) throw cliSelect.error;
+    const cli = Array.isArray(cliSelect?.data) ? (cliSelect.data[0] || null) : null;
     if (!cli) return res.status(404).json({ ok: false, error: 'Cliente não encontrado' });
-    const vendedorId = String(cli.vendedor_id || cli.vendId || cli.vend_id || '').trim();
+    const vendedorId = String(cli.vendedor_id || cli.vendId || '').trim();
     if (!vendedorId) return res.json({ vendedor_id: null, vendedor_nome: null, comissao_pct: 0 });
     const { data: vend, error: e2 } = await supabase
       .from('vendedores')
@@ -23646,6 +23949,21 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
     }
 
     const areaPlanif = planifLarg * planifComp;
+    // #region debug-point D:simd-entry
+    try {
+      _reportProdBlockersDebug('D', 'server.js:/api/chapas_estoque/sugerir_menor_desperdicio:entry', '[DEBUG] simulador iniciou cálculo de ranking', {
+        modo: modo || null,
+        empId: empId || null,
+        planifLarg,
+        planifComp,
+        areaPlanif,
+        largura_mm: Number(req.body?.largura_mm || 0) || 0,
+        comprimento_mm: Number(req.body?.comprimento_mm || 0) || 0,
+        altura_mm: Number(req.body?.altura_mm || 0) || 0,
+        qtd_pedido: Number(req.body?.qtd_pedido || 0) || 0
+      }, 'pre-fix');
+    } catch (_) {}
+    // #endregion
     const toNum = (v) => {
       const n = Number(String(v == null ? '' : v).replace(',', '.'));
       return Number.isFinite(n) ? n : 0;
@@ -23691,6 +24009,24 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
     const chapas = (Array.isArray(chapasRaw) ? chapasRaw : [])
       .map(r => _chapasCanonicalFromAny(r, table))
       .filter(c => (Number(c.quantidade || c.qtd || 0) || 0) > 0);
+    // #region debug-point D:simd-chapas-loaded
+    try {
+      _reportProdBlockersDebug('D', 'server.js:/api/chapas_estoque/sugerir_menor_desperdicio:chapas', '[DEBUG] simulador carregou chapas do estoque', {
+        table,
+        empId: empId || null,
+        rawCount: Array.isArray(chapasRaw) ? chapasRaw.length : 0,
+        usableCount: chapas.length,
+        sample: chapas[0] ? {
+          id: chapas[0].id || null,
+          nome: chapas[0].nome || chapas[0].nome_uso || chapas[0].nomenclatura || null,
+          tamanho: chapas[0].tamanho || chapas[0].tam || null,
+          largura: chapas[0].largura || chapas[0].largura_mm || null,
+          comprimento: chapas[0].comprimento || chapas[0].comprimento_mm || null,
+          quantidade: chapas[0].quantidade || chapas[0].qtd || 0
+        } : null
+      }, 'pre-fix');
+    } catch (_) {}
+    // #endregion
 
     const resultados = [];
 
@@ -23768,6 +24104,17 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
     }
 
     if (!resultados.length) {
+      // #region debug-point D:simd-no-results
+      try {
+        _reportProdBlockersDebug('D', 'server.js:/api/chapas_estoque/sugerir_menor_desperdicio:no-results', '[DEBUG] simulador nao encontrou chapas compativeis', {
+          modo: modo || null,
+          empId: empId || null,
+          planifLarg,
+          planifComp,
+          usableCount: chapas.length
+        }, 'pre-fix');
+      } catch (_) {}
+      // #endregion
       return res.json({
         ok: true,
         chapas: [],
@@ -23778,6 +24125,21 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
 
     resultados.sort((a, b) => a.desperdicio_real_pct - b.desperdicio_real_pct);
     const piorPct = resultados[resultados.length - 1].desperdicio_real_pct;
+    // #region debug-point D:simd-results
+    try {
+      _reportProdBlockersDebug('D', 'server.js:/api/chapas_estoque/sugerir_menor_desperdicio:results', '[DEBUG] simulador montou ranking de chapas', {
+        total: resultados.length,
+        melhor: resultados[0] ? {
+          id: resultados[0].id || null,
+          nome: resultados[0].nome || null,
+          tamanho: resultados[0].tamanho || null,
+          desperdicio_real_pct: resultados[0].desperdicio_real_pct,
+          caixas_por_chapa: resultados[0].caixas_por_chapa
+        } : null,
+        piorPct
+      }, 'pre-fix');
+    } catch (_) {}
+    // #endregion
     resultados.forEach(r => { r.economia_vs_pior = piorPct - r.desperdicio_real_pct; });
 
     return res.json({
@@ -24242,8 +24604,8 @@ app.post('/api/relatorios/lancar_of', async (req, res) => {
       mes_referencia: mesRef,
       data: dt || null,
       maquina: String(maqId || ''),
-      vendedor: String(of.vendedor || of.vend || of.vend_id || ''),
-      cliente: String(of.cliente || of.cli || of.cli_id || ''),
+      vendedor: String(of.vendedor || of.vendNome || of.vendid || of.vendId || ''),
+      cliente: String(of.cliente || of.cliente_nome || of.clinome || of.cliNome || of.cli_id || ''),
       tipo_papel: String(of.tipo_papel || of.chp || of.nomenclatura || ''),
       gramatura: of.gramatura != null ? of.gramatura : null,
       comprimento_mm: of.comprimento_mm ?? of.comp ?? null,
