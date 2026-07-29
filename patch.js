@@ -46474,10 +46474,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var results = Array.isArray(window.calcLastResult && window.calcLastResult.allResults) ? window.calcLastResult.allResults.slice() : [];
     if (!results.length) {
       try { tableWrap.classList.add('calc-wave-table-hidden'); } catch (_) {}
+      try { tableWrap.style.setProperty('display', 'none', 'important'); } catch (_) {}
       panel.innerHTML = '<div class="calc-wave-card"><div class="calc-wave-title">Nenhuma comparacao disponivel</div><div style="font-size:16px;color:#94a3b8;line-height:1.5">Preencha as medidas para ver a comparacao das ondas em cards.</div></div>';
       return;
     }
     try { tableWrap.classList.add('calc-wave-table-hidden'); } catch (_) {}
+    try { tableWrap.style.setProperty('display', 'none', 'important'); } catch (_) {}
     var bestValue = results.reduce(function(lowest, row) {
       var current = Number(row && (row.vunit != null ? row.vunit : row.liquida) || 0) || 0;
       return current > 0 && (lowest == null || current < lowest) ? current : lowest;
