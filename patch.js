@@ -28620,36 +28620,69 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
   }
 
-  function openModalDirect(force) {
-    if (!force && !hasRecentCalcOpenIntent()) return false;
+  function calcDebugEvent(tag, extra) {
+    try {
+      var queue = window.__calcModalDebug = Array.isArray(window.__calcModalDebug) ? window.__calcModalDebug : [];
+      queue.push({
+        ts: Date.now(),
+        tag: String(tag || ''),
+        intentAt: Number(window.__patchCalcOpenIntentAt || 0) || 0,
+        page: String(((document.querySelector && document.querySelector('.page.active')) || {}).id || ''),
+        open: calcOverlayOpenState(),
+        extra: extra || null
+      });
+      if (queue.length > 120) queue.splice(0, queue.length - 120);
+    } catch (_) {}
+  }
+
+  function calcSetModalVisibility(isOpen, reason) {
+    // IMPORTANTE: nao alterar a condicao de abertura aqui sem testar navegacao sem cliques.
     try {
       var ov = document.getElementById('modal-calc') || document.getElementById('overlay-calculadora') || document.getElementById('modal-bg-calculadora');
-      if (ov) {
+      var modal = document.getElementById('modal-calculadora') || document.getElementById('modal-orcamento-calc') || document.querySelector('.modal-calculadora');
+      if (!ov || !modal) return false;
+      if (isOpen) {
         ov.style.display = 'flex';
         ov.style.pointerEvents = 'auto';
+        ov.style.opacity = '1';
+        ov.style.visibility = 'visible';
         try { ov.classList.add('open', 'show', 'active'); } catch (_) {}
         try { ov.removeAttribute('hidden'); } catch (_) {}
-        try { ov.style.opacity = '1'; } catch (_) {}
-        try { ov.style.visibility = 'visible'; } catch (_) {}
-        try { ov.style.zIndex = '99999'; } catch (_) {}
-      }
-    } catch (_) {}
-    try {
-      var modal = document.getElementById('modal-calculadora') || document.getElementById('modal-orcamento-calc') || document.querySelector('.modal-calculadora');
-      if (modal) {
         modal.style.display = 'flex';
         modal.style.pointerEvents = 'auto';
+        modal.style.opacity = '1';
+        modal.style.visibility = 'visible';
         try { modal.removeAttribute('hidden'); } catch (_) {}
-        try { modal.style.opacity = '1'; } catch (_) {}
-        try { modal.style.visibility = 'visible'; } catch (_) {}
-        try { modal.style.zIndex = '100000'; } catch (_) {}
+        try { document.body && (document.body.style.overflow = 'hidden'); } catch (_) {}
+      } else {
+        try { ov.classList.remove('open', 'show', 'active'); } catch (_) {}
+        ov.style.display = 'none';
+        ov.style.pointerEvents = 'none';
+        ov.style.opacity = '0';
+        ov.style.visibility = 'hidden';
+        modal.style.display = 'none';
+        modal.style.pointerEvents = 'none';
+        modal.style.opacity = '0';
+        modal.style.visibility = 'hidden';
+        try { document.body && (document.body.style.overflow = ''); } catch (_) {}
       }
-    } catch (_) {}
-    try { document.body && (document.body.style.overflow = 'hidden'); } catch (_) {}
+      calcDebugEvent('calcSetModalVisibility', { open: !!isOpen, reason: String(reason || '') });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function openModalDirect(force) {
+    calcDebugEvent('openModalDirect:start', { force: !!force });
+    if (!force && !hasRecentCalcOpenIntent()) return false;
+    if (!calcSetModalVisibility(true, force ? 'openModalDirect:force' : 'openModalDirect:intent')) return false;
+    calcDebugEvent('openModalDirect:end', { force: !!force });
     return true;
   }
 
   function ensureCalcModalOpenFallback() {
+    calcDebugEvent('ensureCalcModalOpenFallback:start');
     if (!hasRecentCalcOpenIntent()) return false;
     try {
       if (typeof window.abrir === 'function') window.abrir('modal-calc');
@@ -28660,26 +28693,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function abrirCalcFallback() {
     markCalcOpenIntent();
+    calcDebugEvent('abrirCalcFallback:start');
     try {
       if (typeof window.abrirCalculadoraCaixas === 'function') { window.abrirCalculadoraCaixas(); return; }
     } catch (_) {}
     try {
       if (typeof window.abrirCalculadora === 'function') { window.abrirCalculadora(); return; }
     } catch (_) {}
-    try {
-      var modal = document.getElementById('modal-calc') || document.getElementById('modal-calculadora') || document.getElementById('modal-calc-orcamento') || document.getElementById('modal-orcamento-calc');
-      if (modal) {
-        modal.style.display = 'flex';
-        try { modal.classList.add('open', 'show', 'active'); } catch (_) {}
-        return;
-      }
-    } catch (_) {}
+    calcSetModalVisibility(true, 'abrirCalcFallback');
   }
 
   function ensureFn() {
     if (typeof window.abrirCalculadora !== 'function') {
       window.abrirCalculadora = function() {
         markCalcOpenIntent();
+        calcDebugEvent('abrirCalculadora:created-wrapper');
         try { if (typeof window.abrir === 'function') window.abrir('modal-calc'); } catch (_) {}
         if (!calcOverlayOpenState()) ensureCalcModalOpenFallback();
       };
@@ -28690,6 +28718,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var orig = window.abrirCalculadora;
     window.abrirCalculadora = function() {
       var explicitIntent = inferCalcOpenIntent();
+      calcDebugEvent('abrirCalculadora:wrapped:start', { explicitIntent: !!explicitIntent });
       var result;
       try {
         result = orig.apply(this, arguments);
@@ -28703,6 +28732,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           try { setTimeout(function() { try { if (!calcOverlayOpenState()) ensureCalcModalOpenFallback(); } catch (_) {} }, 260); } catch (_) {}
         }
       }
+      calcDebugEvent('abrirCalculadora:wrapped:end', { explicitIntent: !!explicitIntent });
       return result;
     };
     window.abrirCalculadora._patchCalcOpen = true;
@@ -28733,6 +28763,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function tick() {
     ensureFn();
     bindBtn();
+    if (calcOverlayOpenState() && !hasRecentCalcOpenIntent()) calcDebugEvent('tick:overlay-open-without-intent');
   }
 
   function startTickCalc() {
@@ -45431,6 +45462,10 @@ function _ocultarGraficoComissoes() {
     var overlay = document.getElementById('modal-calc');
     var modal = document.getElementById('modal-calculadora');
     if (!overlay || !modal) return;
+    calcDebugEvent('applyCalcFullscreenNow:start', {
+      className: String(overlay.className || ''),
+      display: String(((window.getComputedStyle && getComputedStyle(overlay)) || {}).display || '')
+    });
     var isMobile = false;
     try { isMobile = window.matchMedia && window.matchMedia('(max-width: 920px)').matches; } catch (_) {}
     try { overlay.classList.add('orc-calc-fs-ready'); } catch (_) {}
@@ -45441,16 +45476,12 @@ function _ocultarGraficoComissoes() {
       overlay.style.setProperty('height', '100vh', 'important');
       overlay.style.setProperty('max-width', '100vw', 'important');
       overlay.style.setProperty('max-height', '100vh', 'important');
-      overlay.style.setProperty('display', 'flex', 'important');
       overlay.style.setProperty('padding', isMobile ? '0' : '18px', 'important');
       overlay.style.setProperty('margin', '0', 'important');
       overlay.style.setProperty('align-items', isMobile ? 'stretch' : 'center', 'important');
       overlay.style.setProperty('justify-content', isMobile ? 'stretch' : 'center', 'important');
       overlay.style.setProperty('overflow', 'hidden', 'important');
       overlay.style.setProperty('background', 'rgba(2,6,23,.82)', 'important');
-      overlay.style.setProperty('pointer-events', 'auto', 'important');
-      overlay.style.setProperty('opacity', '1', 'important');
-      overlay.style.setProperty('visibility', 'visible', 'important');
     } catch (_) {}
     try {
       modal.style.setProperty('position', 'relative', 'important');
@@ -45732,17 +45763,18 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '#ccpx-compra-fullscreen .ccpx-vinco-chip button{height:42px;border-radius:12px;border:1px solid rgba(148,163,184,.18);background:#0f172a;color:#e2e8f0;cursor:pointer;font-weight:900}'
       + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}'
       + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar button{min-height:36px;padding:0 12px;border-radius:10px;border:1px dashed rgba(96,165,250,.42);background:rgba(30,64,175,.14);color:#bfdbfe;font-size:12px;font-weight:800;cursor:pointer}'
-      + '#modal-calc .calc-wave-panels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}'
-      + '#modal-calc .calc-wave-card{display:grid;gap:10px;padding:14px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:linear-gradient(180deg,rgba(15,23,42,.82),rgba(15,23,42,.66));box-shadow:0 14px 30px rgba(2,6,23,.18)}'
+      + '#modal-calc .calc-wave-panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;margin-top:18px}'
+      + '#modal-calc .calc-wave-card{display:grid;gap:16px;padding:22px;border-radius:20px;border:1px solid rgba(148,163,184,.14);background:linear-gradient(180deg,rgba(15,23,42,.88),rgba(15,23,42,.72));box-shadow:0 18px 38px rgba(2,6,23,.22)}'
       + '#modal-calc .calc-wave-card.best{border-color:rgba(34,197,94,.34);box-shadow:0 0 0 1px rgba(34,197,94,.18) inset,0 14px 30px rgba(2,6,23,.18)}'
       + '#modal-calc .calc-wave-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}'
-      + '#modal-calc .calc-wave-title{font-size:16px;font-weight:900;color:#f8fafc}'
-      + '#modal-calc .calc-wave-badge{display:inline-flex;align-items:center;justify-content:center;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:900;background:rgba(59,130,246,.16);border:1px solid rgba(96,165,250,.28);color:#bfdbfe}'
-      + '#modal-calc .calc-wave-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
-      + '#modal-calc .calc-wave-metric{padding:10px 12px;border-radius:12px;background:rgba(2,6,23,.44);border:1px solid rgba(148,163,184,.12)}'
-      + '#modal-calc .calc-wave-metric span{display:block;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px}'
-      + '#modal-calc .calc-wave-metric strong{display:block;font-size:clamp(12px,1.02vw,14px);color:#f8fafc;line-height:1.35;white-space:normal;overflow-wrap:anywhere;word-break:break-word}'
-      + '#modal-calc .calc-wave-metric.is-wide strong{font-size:12px}'
+      + '#modal-calc .calc-wave-title{font-size:24px;font-weight:900;color:#f8fafc;line-height:1.15}'
+      + '#modal-calc .calc-wave-badge{display:inline-flex;align-items:center;justify-content:center;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:900;background:rgba(59,130,246,.16);border:1px solid rgba(96,165,250,.28);color:#bfdbfe}'
+      + '#modal-calc .calc-wave-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}'
+      + '#modal-calc .calc-wave-metric{padding:16px 18px;border-radius:16px;background:rgba(2,6,23,.44);border:1px solid rgba(148,163,184,.12)}'
+      + '#modal-calc .calc-wave-metric span{display:block;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:8px}'
+      + '#modal-calc .calc-wave-metric strong{display:block;font-size:clamp(18px,1.5vw,28px);color:#f8fafc;line-height:1.35;white-space:normal;overflow-wrap:anywhere;word-break:break-word}'
+      + '#modal-calc .calc-wave-metric.is-wide strong{font-size:clamp(16px,1.28vw,22px)}'
+      + '#modal-calc .calc-tabela-wrap.calc-wave-table-hidden{display:none!important}'
       + '@media (max-width:1100px){#modal-calc .calc-wave-panels,.pep-cards{grid-template-columns:1fr}}'
       + '@media (max-width:900px){#cmp-body .cmpx-head,#orc-body .orx-head{align-items:stretch}#cmp-body .cmpx-actions,#orc-body .orx-actions{width:100%}#cmp-body .cmpx-actions .pep-btn,#orc-body .orx-actions .pep-btn{flex:1 1 180px}#cmp-body .cmpx-folder-pill,#orc-body .orx-folder-pill{min-width:200px}}'
       + '@media (max-width:760px){#cmp-body .cmpx-title,#orc-body .orx-title{font-size:21px}#cmp-body .cmpx-filter-row,#orc-body .orx-filter-row{align-items:stretch}#cmp-body .cmpx-filter-row .pep-input,#orc-body .orx-filter-row .pep-input{min-width:0}#cmp-body .cmpx-actions-row,#orc-body .orx-actions-row{flex-direction:column;align-items:stretch}#cmp-body .cmpx-actions-row button,#cmp-body .cmpx-actions-row select,#orc-body .orx-actions-row button,#orc-body .orx-actions-row select{width:100%}.pep-cards{grid-template-columns:1fr}}';
@@ -46436,7 +46468,6 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var modal = document.getElementById('modal-calculadora');
     var tableWrap = modal && modal.querySelector ? modal.querySelector('.calc-tabela-wrap') : null;
     if (!modal || !tableWrap) return;
-    try { ensureCalcWaveTableRows(); } catch (_) {}
     var panel = document.getElementById('calc-wave-panels');
     if (!panel) {
       panel = document.createElement('div');
@@ -46446,9 +46477,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     }
     var results = Array.isArray(window.calcLastResult && window.calcLastResult.allResults) ? window.calcLastResult.allResults.slice() : [];
     if (!results.length) {
-      panel.innerHTML = '';
+      try { tableWrap.classList.add('calc-wave-table-hidden'); } catch (_) {}
+      panel.innerHTML = '<div class="calc-wave-card"><div class="calc-wave-title">Nenhuma comparacao disponivel</div><div style="font-size:16px;color:#94a3b8;line-height:1.5">Preencha as medidas para ver a comparacao das ondas em cards.</div></div>';
       return;
     }
+    try { tableWrap.classList.add('calc-wave-table-hidden'); } catch (_) {}
     var bestValue = results.reduce(function(lowest, row) {
       var current = Number(row && (row.vunit != null ? row.vunit : row.liquida) || 0) || 0;
       return current > 0 && (lowest == null || current < lowest) ? current : lowest;
@@ -46462,7 +46495,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var comprimentoCls = comprimentoTxt.length > 18 ? ' is-wide' : '';
       return ''
         + '<div class="calc-wave-card' + (isBest ? ' best' : '') + '">'
-        + '  <div class="calc-wave-head"><div><div class="calc-wave-title">' + escHtml(row && row.compTitle || ('Onda ' + (row && row.onda || '—'))) + '</div><div style="font-size:12px;color:#94a3b8;margin-top:4px">Comparação direta da compensação para esta onda.</div></div><span class="calc-wave-badge">Onda ' + escHtml(row && row.onda || '—') + '</span></div>'
+        + '  <div class="calc-wave-head"><div><div class="calc-wave-title">' + escHtml(row && row.compTitle || ('Onda ' + (row && row.onda || '—'))) + '</div><div style="font-size:16px;color:#94a3b8;margin-top:6px;line-height:1.45">Comparacao direta da compensacao para esta onda.</div></div><span class="calc-wave-badge">Onda ' + escHtml(row && row.onda || '—') + '</span></div>'
         + '  <div class="calc-wave-grid">'
         + '    <div class="calc-wave-metric' + larguraCls + '"><span>Largura</span><strong title="' + escAttr(larguraTxt + ' mm') + '">' + escHtml(larguraTxt) + ' mm</strong></div>'
         + '    <div class="calc-wave-metric' + comprimentoCls + '"><span>Comprimento</span><strong title="' + escAttr(comprimentoTxt + ' mm') + '">' + escHtml(comprimentoTxt) + ' mm</strong></div>'
