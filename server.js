@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1194,8 +1194,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260729173500';
-const SW_RUNTIME_VERSION = '20260729173500';
+const PATCH_RUNTIME_VERSION = '20260729182500';
+const SW_RUNTIME_VERSION = '20260729182500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
@@ -2737,7 +2737,7 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
       }))).join(',');
     };
 
-    const selectCols = 'id,of,numero,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,vendedor,vendedor_nome,vendNome,vend_id,vendId,vendedor_id,vendid,preco,valor_unitario,valor_venda,valor_total,total,qtd,quantidade,qtd_pedida,itens,data_conclusao,created_at,status,descricao';
+    const selectCols = 'id,of,numero,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,vendedor,vendNome,vend_id,vendId,vendedor_id,vendid,preco,valor_unitario,valor_venda,valor_total,total,qtd,quantidade,qtd_pedida,itens,data_conclusao,created_at,status,descricao';
     let queryBase = supabase.from('ofs').select(selectCols).limit(50);
     if (empresaId) {
       try { queryBase = queryBase.eq('empresa_id', empresaId); } catch (_) {}
@@ -7057,7 +7057,8 @@ async function _selectCompatRows(table, columns, applyQuery) {
     const msg = String(error.message || error || '');
     const m1 = msg.match(/Could not find the '([^']+)' column/i);
     const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
-    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+    const m3 = msg.match(/column\s+([a-z0-9_.]+)\s+does not exist/i);
+    const col = String((m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]) || '').trim().split('.').pop();
     if (!col) return { data: null, error, columns: cur };
     const parts = cur.split(',').map((s) => String(s || '').trim()).filter(Boolean);
     const next = parts.filter((c) => c !== col);
@@ -12002,7 +12003,14 @@ function _relatoriosPickTonOf(of) {
 }
 
 function _relatoriosPickVendedorId(of) {
-  return String(of?.vendedor_id ?? '').trim();
+  return String(of?.vendedor_id ?? of?.vend_id ?? of?.vendId ?? of?.vendid ?? '').trim();
+}
+
+function _relatoriosApplyEmpresaFilter(query, empresaId) {
+  if (!empresaId) return query;
+  try { return query.or('empresa_id.eq.' + empresaId + ',emp_id.eq.' + empresaId); } catch (_) {}
+  try { return query.eq('empresa_id', empresaId); } catch (_) {}
+  return query;
 }
 
 async function _relatoriosLoadVendedoresByIds(ids) {
@@ -12254,7 +12262,7 @@ async function _relatoriosFetchClienteOfs(clienteId, empresaId, clienteNome) {
     'descricao', 'qtd', 'quantidade', 'qtd_pedida',
     'data_entrega', 'ent', 'dia', 'created_at', 'data_conclusao',
     'valor_total', 'valor_venda', 'total',
-    'vendedor_id', 'vend_id', 'vendId', 'vendedor', 'vendedor_nome', 'vendNome',
+    'vendedor_id', 'vend_id', 'vendId', 'vendid', 'vendedor', 'vendNome',
     'maq', 'maquina', 'maquina_atual', 'maquina_agendada', 'fluxo_maquinas', 'maquina_atual_index'
   ].join(',');
   const byId = new Map();
@@ -12267,7 +12275,7 @@ async function _relatoriosFetchClienteOfs(clienteId, empresaId, clienteNome) {
   for (const col of ['cli_id', 'cliId', 'cliente_id']) {
     const result = await _selectCompatRows('ofs', cols, (q) => {
       let query = q.eq(col, clienteId).order('created_at', { ascending: false });
-      if (empresaId) query = query.eq('empresa_id', empresaId);
+      query = _relatoriosApplyEmpresaFilter(query, empresaId);
       return query.limit(1000);
     });
     if (!result?.error) mergeRows(result?.data);
@@ -12277,7 +12285,7 @@ async function _relatoriosFetchClienteOfs(clienteId, empresaId, clienteNome) {
     for (const col of ['cliente_nome', 'cliNome', 'clinome', 'cliente']) {
       const result = await _selectCompatRows('ofs', cols, (q) => {
         let query = q.ilike(col, '%' + nome + '%').order('created_at', { ascending: false });
-        if (empresaId) query = query.eq('empresa_id', empresaId);
+        query = _relatoriosApplyEmpresaFilter(query, empresaId);
         return query.limit(1000);
       });
       if (!result?.error) mergeRows(result?.data);
@@ -12324,12 +12332,13 @@ app.get('/api/relatorios/ofs-em-aberto', authMiddleware, async (req, res) => {
       'descricao', 'qtd', 'quantidade', 'qtd_pedida',
       'data_entrega', 'ent', 'dia', 'created_at',
       'valor_total', 'valor_venda', 'total',
-      'vendedor_id', 'vend_id', 'vendId', 'vendedor', 'vendedor_nome', 'vendNome',
+      'vendedor_id', 'vend_id', 'vendId', 'vendid', 'vendedor', 'vendNome',
       'maq', 'maquina', 'maquina_atual', 'maquina_agendada', 'fluxo_maquinas', 'maquina_atual_index'
     ].join(',');
     const result = await _selectCompatRows('ofs', cols, (q) => {
       let query = q.is('deleted_at', null).order('data_entrega', { ascending: true }).order('created_at', { ascending: false });
-      if (companyIds.length) query = query.in('empresa_id', companyIds);
+      if (companyIds.length === 1) query = _relatoriosApplyEmpresaFilter(query, companyIds[0]);
+      else if (companyIds.length > 1) query = query.in('empresa_id', companyIds);
       return query.limit(10000);
     });
     if (result?.error) throw result.error;
