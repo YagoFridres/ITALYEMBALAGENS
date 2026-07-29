@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -2737,7 +2737,7 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
       }))).join(',');
     };
 
-    const selectCols = 'id,of,numero,cli_id,preco,valor_unitario,valor_venda,valor_total,qtd,quantidade,qtd_pedida,itens,data_conclusao,descricao';
+    const selectCols = 'id,of,numero,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,cliente,vendedor,vendedor_nome,vendNome,vend_id,vendId,vendedor_id,vendid,preco,valor_unitario,valor_venda,valor_total,total,qtd,quantidade,qtd_pedida,itens,data_conclusao,created_at,status,descricao';
     let queryBase = supabase.from('ofs').select(selectCols).limit(50);
     if (empresaId) {
       try { queryBase = queryBase.eq('empresa_id', empresaId); } catch (_) {}
@@ -2788,8 +2788,7 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
       const { data: viewRowsById, error: viewError } = await supabase
         .from('vw_comissoes')
         .select('*')
-        .in('id', ids)
-        .ilike('status', '%conclu%');
+        .in('id', ids);
       if (viewError) {
         console.error('[COM] busca-of erro vw_comissoes por id:', String(viewError.message || viewError), 'ids:', JSON.stringify(ids.slice(0, 20)));
       } else {
@@ -2803,7 +2802,6 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
         .from('vw_comissoes')
         .select('*')
         .or(filtrosView)
-        .ilike('status', '%conclu%')
         .limit(50);
       if (viewNumeroError) {
         console.error('[COM] busca-of erro vw_comissoes por numero:', String(viewNumeroError.message || viewNumeroError), 'filtros:', filtrosView);
@@ -4450,12 +4448,120 @@ async function ofsInsertWithRetry(row) {
     return out;
   }
 
+  function erroTexto(err) {
+    if (!err) return '';
+    if (typeof err === 'string') return err;
+    if (err instanceof Error) return String(err.message || err).trim();
+    const primary = String(err?.message || err?.details || err?.hint || err?.code || '').trim();
+    if (primary && primary !== '[object Object]') return primary;
+    const raw = _safeJson(err);
+    return raw && raw !== '"[unserializable]"' ? raw : String(err);
+  }
+
+  function erroDuplicado(err) {
+    const msg = erroTexto(err).toLowerCase();
+    return msg.includes('duplicate key')
+      || msg.includes('unique constraint')
+      || msg.includes('already exists');
+  }
+
+  function erroDuplicadoNumero(err) {
+    const msg = erroTexto(err).toLowerCase();
+    return msg.includes(' numero')
+      || msg.includes('(numero)')
+      || msg.includes('numero_key')
+      || msg.includes(' ofs_of_key')
+      || msg.includes('(of)')
+      || msg.includes(' of_key');
+  }
+
+  function erroTransiente(err) {
+    const msg = erroTexto(err).toLowerCase();
+    if (!msg || msg === '[object object]' || msg === '{}') return true;
+    return msg.includes('timeout')
+      || msg.includes('timed out')
+      || msg.includes('econnreset')
+      || msg.includes('connection')
+      || msg.includes('socket')
+      || msg.includes('network')
+      || msg.includes('fetch failed')
+      || msg.includes('temporar')
+      || msg.includes('service unavailable')
+      || msg.includes('gateway')
+      || msg.includes('pgrst')
+      || msg.includes('unexpected');
+  }
+
+  async function localizarNumeroExistente(payload) {
+    const empresaId = String(payload?.empresa_id || '').trim();
+    const numero = String(payload?.numero || payload?.of || '').trim();
+    if (!empresaId || !numero) return null;
+    try {
+      const { data, error } = await supabase
+        .from('ofs')
+        .select('*')
+        .eq('empresa_id', empresaId)
+        .eq('numero', numero)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!error && data) return data;
+    } catch (_) {}
+    return null;
+  }
+
+  async function recalcularIdentificadores(payload, refreshNumero) {
+    const next = { ...(payload || {}) };
+    try {
+      const { data: lastSeq } = await supabase
+        .from('ofs')
+        .select('seq')
+        .order('seq', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const seq = Math.trunc(Number(lastSeq?.seq || 0) || 0);
+      if (seq > 0) next.seq = seq + 1;
+    } catch (_) {}
+    if (!refreshNumero) return next;
+    const empresaId = String(next?.empresa_id || '').trim();
+    if (!empresaId) return next;
+    try {
+      const { data, error } = await supabase
+        .from('ofs')
+        .select('numero')
+        .eq('empresa_id', empresaId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) return next;
+      let maior = 0;
+      (Array.isArray(data) ? data : []).forEach((item) => {
+        const n = parseInt(String(item?.numero || '').replace(/\D/g, ''), 10) || 0;
+        if (n > maior) maior = n;
+      });
+      for (let i = 1; i <= 20; i += 1) {
+        const cand = String(maior + i);
+        const { data: exists, error: existsErr } = await supabase
+          .from('ofs')
+          .select('id')
+          .eq('empresa_id', empresaId)
+          .eq('numero', cand)
+          .limit(1);
+        if (existsErr) break;
+        if (Array.isArray(exists) && exists.length) continue;
+        next.numero = cand;
+        next.of = cand;
+        break;
+      }
+    } catch (_) {}
+    return next;
+  }
+
   let p = sanitizarPayloadOF({ ...(row || {}) });
   const ignoredColumns = [];
   for (let tentativa = 0; tentativa < 5; tentativa++) {
     const r = await supabase.from('ofs').insert([p]).select('*').single();
     if (!r.error) return r;
-    const msg = String(r.error.message || r.error);
+    const msg = erroTexto(r.error);
     const m1 = msg.match(/Could not find the '([^']+)' column/i);
     const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
     const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
@@ -4465,6 +4571,20 @@ async function ofsInsertWithRetry(row) {
       delete p[col];
       continue;
     }
+    if (erroDuplicado(r.error)) {
+      p = await recalcularIdentificadores(p, erroDuplicadoNumero(r.error));
+      try { console.warn('[OFS INSERT] retry por conflito:', msg); } catch (_) {}
+      continue;
+    }
+    if (erroTransiente(r.error)) {
+      const existente = await localizarNumeroExistente(p);
+      if (existente) {
+        return { data: existente, error: null, ignoredColumns };
+      }
+      try { console.warn('[OFS INSERT] retry por falha transiente:', msg); } catch (_) {}
+      continue;
+    }
+    if (r.error && typeof r.error === 'object' && !r.error.message) r.error.message = msg;
     r.ignoredColumns = ignoredColumns;
     return r;
   }
@@ -5925,7 +6045,10 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     } catch (_) {}
     // #endregion
     _logApiError('OFS POST', req, e, { bodyKeys: Object.keys(req.body || {}), bodySize: _safeJson(req.body || {}).length });
-    return res.status(500).json({ ok: false, error: String(e?.message || e), rid: req._rid || null });
+    const errorText = (e && typeof e === 'object' && String(e?.message || '').trim())
+      ? String(e.message).trim()
+      : (_safeJson(e) || String(e));
+    return res.status(500).json({ ok: false, error: errorText === '"[unserializable]"' ? 'Falha interna ao criar OF' : errorText, rid: req._rid || null });
   }
 });
 

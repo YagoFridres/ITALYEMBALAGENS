@@ -6561,12 +6561,26 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     return String(window._comprasTipoFiltro || '').trim().toLowerCase() === 'chapas';
   }
   function cEmpId() {
-    return String(
+    var current = String(
       (window.__comprasChapasEmpIdManual || '') ||
       (window.EMP_FILTRO || '') ||
       (window.CURRENT_USER && (window.CURRENT_USER.emp_id || window.CURRENT_USER.empId) || '') ||
       ''
     ).trim();
+    if (current) return current;
+    try {
+      if (typeof window._compraPapelaoCurrentEmpId === 'function') {
+        current = String(window._compraPapelaoCurrentEmpId() || '').trim();
+        if (current) return current;
+      }
+    } catch (_) {}
+    try {
+      if (typeof window._compraPapelaoEmpresaCriacaoUuid === 'function') {
+        current = String(window._compraPapelaoEmpresaCriacaoUuid() || '').trim();
+        if (current) return current;
+      }
+    } catch (_) {}
+    return String(window._compraPapelaoEmpresaPadraoUuid && window._compraPapelaoEmpresaPadraoUuid() || '').trim();
   }
   function cState() {
     if (!window.__comprasChapasState) {
@@ -9505,6 +9519,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     }
     return raw;
   }
+  try { window._histFmtDate = _histFmtDate; } catch (_) {}
 
   function _histMonthName(mes) {
     var meses = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -9528,6 +9543,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
     }
     return '—';
   }
+  try { window._histFmtDateTime = _histFmtDateTime; } catch (_) {}
 
   function _histParseMonthValue(v) {
     var s = String(v || '').trim();
@@ -46045,6 +46061,29 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     }).join('');
   }
   try { patchApiOrcamentosEmpFallback(); } catch (_) {}
+  function orcEnsureDataLoaded() {
+    var lista = Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : [];
+    if (lista.length) return Promise.resolve(lista);
+    if (window.__orcDataLoadingPromise) return window.__orcDataLoadingPromise;
+    var loadPromise = Promise.resolve(
+      typeof window.carregarOrcamentos === 'function'
+        ? window.carregarOrcamentos()
+        : orcRequestJson('/api/orcamentos', { method: 'GET' }).then(function(rows) {
+            window.ORCAMENTOS = Array.isArray(rows) ? rows : [];
+            return { ok: true, data: window.ORCAMENTOS };
+          })
+    ).then(function(result) {
+      var rows = Array.isArray(result && result.data) ? result.data : (Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : []);
+      window.ORCAMENTOS = rows;
+      return rows;
+    }).catch(function() {
+      return Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : [];
+    }).finally(function() {
+      window.__orcDataLoadingPromise = null;
+    });
+    window.__orcDataLoadingPromise = loadPromise;
+    return loadPromise;
+  }
   if (typeof window.calcRecalc === 'function' && !window.calcRecalc.__patchWavePanels) {
     var origCalcRecalc = window.calcRecalc;
     window.calcRecalc = function() {
@@ -46071,6 +46110,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     orcEnsureFoldersLoaded().catch(function() { return []; });
     var body = document.getElementById('orc-body');
     if (!body) return;
+    var currentRows = Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : [];
+    if (!currentRows.length) {
+      body.innerHTML = '<div class="orx-empty" style="padding:18px">Carregando orçamentos...</div>';
+      orcEnsureDataLoaded().then(function() {
+        try { window.renderOrcamentos(); } catch (_) {}
+      });
+      return;
+    }
     var lista = orcFilteredRows();
     var totalValor = lista.reduce(function(sum, orc) {
       return sum + (Number(orc && (orc.valor_total != null ? orc.valor_total : (orc.vtot != null ? orc.vtot : 0)) || 0) || 0);
