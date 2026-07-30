@@ -12724,6 +12724,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
 
   async function _simdBuscarRankingBackend(larg, comp, qtdPedido) {
     var empId = '';
+    var empresaId = '';
     try {
       empId = String(
         ((document.getElementById('simd-emp') || {}).value) ||
@@ -12735,6 +12736,15 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     } catch (_) {
       empId = '';
     }
+    try {
+      empresaId = String(
+        window.CURRENT_USER?.empresa_id ||
+        window.CURRENT_USER?.empresaId ||
+        ''
+      ).trim();
+    } catch (_) {
+      empresaId = '';
+    }
     var payload = {
       modo: 'planificacao_direta',
       largura_mm: larg,
@@ -12744,6 +12754,10 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     if (empId) {
       payload.emp_id = empId;
       payload.empId = empId;
+    }
+    if (empresaId) {
+      payload.empresa_id = empresaId;
+      payload.empresaId = empresaId;
     }
     var headers = { 'Content-Type': 'application/json' };
     var resp = null;
@@ -14679,7 +14693,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     function patchDomMachineSelects() {
       ['ofsmaq-select-maquina', 'ofsmaq-filtro-maquina', 'hist-filtro-maquina', 'of-r-maquina', 'inc-maquina', 'mconc-setor-finalizacao'].forEach(ensureSelectHasRiscador);
-      Array.prototype.slice.call(document.querySelectorAll('.item-maquina, select[data-field="maquina"], select[name="maquina"], select[name="maquina_agendada"], #painel-mais-itens select, #modal-of-rapida select, #modal-of-rapida-ov select, .ofr-item-card select, [data-item-idx] select, [data-item-index] select, .item-adicional select, .item-of select, .of-item select')).forEach(ensureSelectNodeHasRiscador);
+      Array.prototype.slice.call(document.querySelectorAll('.item-maquina, select[data-field="maquina"], select[name="maquina"], select[name="maquina_agendada"], select[data-item-maquina], select[data-item-maq], select[data-item-maquina-sel], #painel-mais-itens select, #modal-of-rapida select, #modal-of-rapida-ov select, .ofr-item-card select, [data-item-idx] select, [data-item-index] select, .item-adicional select, .item-of select, .of-item select')).forEach(ensureSelectNodeHasRiscador);
       patchCheckboxWrap();
     }
 
@@ -14763,6 +14777,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       wrapOpenFn('abrirNovaOfRapida');
       wrapOpenFn('abrirOFRapida');
       wrapOpenFn('abrirOfRapida');
+      wrapOpenFn('abrirMaisItensOfRapida');
       wrapOpenFn('abrirModalOFRapida');
       wrapOpenFn('abrirModalNovaOF');
     }
@@ -14805,25 +14820,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       wrapOpeners();
       wrapModuleRenders();
       patchDomMachineSelects();
-      // #region debug-point C:riscador-apply-all
-      try {
-        if (typeof window.__erpRuntimeDebug === 'function') {
-          var itemSelects = Array.prototype.slice.call(document.querySelectorAll('.item-maquina'));
-          window.__erpRuntimeDebug('C', '[DEBUG] patch riscador reaplicado', {
-            ofRapidaSelectPresent: !!document.getElementById('of-r-maquina'),
-            ofRapidaHasRiscador: !!Array.prototype.slice.call(((document.getElementById('of-r-maquina') || {}).options) || []).find(function(opt) {
-              return norm(opt && (opt.value || opt.textContent || '')) === 'riscador';
-            }),
-            itemSelects: itemSelects.length,
-            itemSelectsWithRiscador: itemSelects.filter(function(sel) {
-              return !!Array.prototype.slice.call((sel && sel.options) || []).find(function(opt) {
-                return norm(opt && (opt.value || opt.textContent || '')) === 'riscador';
-              });
-            }).length
-          });
-        }
-      } catch (_) {}
-      // #endregion
       installObserver();
     }
 

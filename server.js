@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -23906,6 +23906,8 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
   try {
     const modo = String(req.body?.modo || '').trim();
     const empId = String(req.body?.emp_id || req.body?.empId || '').trim();
+    let empresaUuid = '';
+    try { empresaUuid = String(req.body?.empresa_id || req.body?.empresaId || await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { empresaUuid = ''; }
 
     let planifLarg = 0;
     let planifComp = 0;
@@ -23929,21 +23931,6 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
     }
 
     const areaPlanif = planifLarg * planifComp;
-    // #region debug-point D:simd-entry
-    try {
-      _reportProdBlockersDebug('D', 'server.js:/api/chapas_estoque/sugerir_menor_desperdicio:entry', '[DEBUG] simulador iniciou cálculo de ranking', {
-        modo: modo || null,
-        empId: empId || null,
-        planifLarg,
-        planifComp,
-        areaPlanif,
-        largura_mm: Number(req.body?.largura_mm || 0) || 0,
-        comprimento_mm: Number(req.body?.comprimento_mm || 0) || 0,
-        altura_mm: Number(req.body?.altura_mm || 0) || 0,
-        qtd_pedido: Number(req.body?.qtd_pedido || 0) || 0
-      }, 'pre-fix');
-    } catch (_) {}
-    // #endregion
     const toNum = (v) => {
       const n = Number(String(v == null ? '' : v).replace(',', '.'));
       return Number.isFinite(n) ? n : 0;
@@ -23982,31 +23969,33 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
 
     const table = await _chapasPreferV2Table();
     let q = supabase.from(table).select('*');
-    if (empId) q = q.eq('emp_id', empId);
-    const { data: chapasRaw, error } = await q.limit(500);
+    if (empId && empresaUuid) {
+      try { q = q.or(`emp_id.eq.${empId},empresa_id.eq.${empresaUuid}`); }
+      catch (_) {
+        try { q = q.eq('emp_id', empId); }
+        catch (_) {
+          if (empresaUuid) q = q.eq('empresa_id', empresaUuid);
+        }
+      }
+    } else if (empresaUuid) {
+      try { q = q.eq('empresa_id', empresaUuid); }
+      catch (_) {
+        if (empId) q = q.eq('emp_id', empId);
+      }
+    } else if (empId) {
+      try { q = q.or(`emp_id.eq.${empId},empresa_id.eq.${empId}`); }
+      catch (_) { q = q.eq('emp_id', empId); }
+    }
+    let { data: chapasRaw, error } = await q.limit(500);
     if (error) throw error;
+    if ((empId || empresaUuid) && !(Array.isArray(chapasRaw) && chapasRaw.length)) {
+      const retry = await supabase.from(table).select('*').limit(500);
+      if (!retry.error && Array.isArray(retry.data) && retry.data.length) chapasRaw = retry.data;
+    }
 
     const chapas = (Array.isArray(chapasRaw) ? chapasRaw : [])
       .map(r => _chapasCanonicalFromAny(r, table))
       .filter(c => (Number(c.quantidade || c.qtd || 0) || 0) > 0);
-    // #region debug-point D:simd-chapas-loaded
-    try {
-      _reportProdBlockersDebug('D', 'server.js:/api/chapas_estoque/sugerir_menor_desperdicio:chapas', '[DEBUG] simulador carregou chapas do estoque', {
-        table,
-        empId: empId || null,
-        rawCount: Array.isArray(chapasRaw) ? chapasRaw.length : 0,
-        usableCount: chapas.length,
-        sample: chapas[0] ? {
-          id: chapas[0].id || null,
-          nome: chapas[0].nome || chapas[0].nome_uso || chapas[0].nomenclatura || null,
-          tamanho: chapas[0].tamanho || chapas[0].tam || null,
-          largura: chapas[0].largura || chapas[0].largura_mm || null,
-          comprimento: chapas[0].comprimento || chapas[0].comprimento_mm || null,
-          quantidade: chapas[0].quantidade || chapas[0].qtd || 0
-        } : null
-      }, 'pre-fix');
-    } catch (_) {}
-    // #endregion
 
     const resultados = [];
 
@@ -24084,17 +24073,6 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
     }
 
     if (!resultados.length) {
-      // #region debug-point D:simd-no-results
-      try {
-        _reportProdBlockersDebug('D', 'server.js:/api/chapas_estoque/sugerir_menor_desperdicio:no-results', '[DEBUG] simulador nao encontrou chapas compativeis', {
-          modo: modo || null,
-          empId: empId || null,
-          planifLarg,
-          planifComp,
-          usableCount: chapas.length
-        }, 'pre-fix');
-      } catch (_) {}
-      // #endregion
       return res.json({
         ok: true,
         chapas: [],
@@ -24105,21 +24083,6 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
 
     resultados.sort((a, b) => a.desperdicio_real_pct - b.desperdicio_real_pct);
     const piorPct = resultados[resultados.length - 1].desperdicio_real_pct;
-    // #region debug-point D:simd-results
-    try {
-      _reportProdBlockersDebug('D', 'server.js:/api/chapas_estoque/sugerir_menor_desperdicio:results', '[DEBUG] simulador montou ranking de chapas', {
-        total: resultados.length,
-        melhor: resultados[0] ? {
-          id: resultados[0].id || null,
-          nome: resultados[0].nome || null,
-          tamanho: resultados[0].tamanho || null,
-          desperdicio_real_pct: resultados[0].desperdicio_real_pct,
-          caixas_por_chapa: resultados[0].caixas_por_chapa
-        } : null,
-        piorPct
-      }, 'pre-fix');
-    } catch (_) {}
-    // #endregion
     resultados.forEach(r => { r.economia_vs_pior = piorPct - r.desperdicio_real_pct; });
 
     return res.json({
