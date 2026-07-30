@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -14327,6 +14327,15 @@ app.get('/api/orcamentos/:id', authMiddleware, async (req, res) => {
 app.post('/api/orcamentos', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
+    let empresaUuid = '';
+    try { empresaUuid = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { empresaUuid = ''; }
+    const empLegacy = String(
+      b.emp_id ?? b.empId ??
+      req.usuario?.emp_id ?? req.usuario?.empId ??
+      req.user?.emp_id ?? req.user?.empId ??
+      req.usuario?.sigla ?? req.user?.sigla ??
+      ''
+    ).trim();
     const chapaUtilizada = String(
       b.chapa_utilizada ??
       b.chapaUtilizada ??
@@ -14370,7 +14379,8 @@ app.post('/api/orcamentos', authMiddleware, async (req, res) => {
       valor_total: b.valor_total || 0,
       parametros,
       resultados: b.resultados || [],
-      emp_id: b.emp_id || '',
+      emp_id: empLegacy || '',
+      empresa_id: empresaUuid || null,
       criado_por: req.usuario?.nome || 'sistema',
       criado_em: new Date().toISOString(),
       status: 'Rascunho',

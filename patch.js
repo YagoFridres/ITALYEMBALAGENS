@@ -8718,12 +8718,32 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       var nomeAtual = calcNomeOrcamentoAtual();
       var chapaEl = document.getElementById('calc-chapa-utilizada');
       var chapaAtual = String((chapaEl && chapaEl.value) || '').trim();
+      var empAtual = '';
+      var empresaUuidAtual = '';
+      try { empAtual = String(currentOrcEmpId() || '').trim(); } catch (_) { empAtual = ''; }
+      try {
+        empresaUuidAtual = String(
+          window.CURRENT_USER?.empresa_id ||
+          window.CURRENT_USER?.empresaId ||
+          ''
+        ).trim();
+      } catch (_) {
+        empresaUuidAtual = '';
+      }
       var payload = body;
       if ((m === 'POST' || m === 'PUT' || m === 'PATCH') && /^\/orcamentos(?:\/|$)/.test(u) && body && typeof body === 'object') {
         payload = Object.assign({}, body);
         if (nomeAtual) {
           payload.nome = nomeAtual;
           payload.nome_orcamento = nomeAtual;
+        }
+        if (empAtual) {
+          payload.emp_id = String(payload.emp_id || payload.empId || empAtual).trim() || empAtual;
+          payload.empId = payload.emp_id;
+        }
+        if (empresaUuidAtual) {
+          payload.empresa_id = String(payload.empresa_id || payload.empresaId || empresaUuidAtual).trim() || empresaUuidAtual;
+          payload.empresaId = payload.empresa_id;
         }
         if (chapaEl) {
           var parametros = (payload.parametros && typeof payload.parametros === 'object' && !Array.isArray(payload.parametros))
@@ -8747,6 +8767,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         if (data) {
           if (nomeAtual && !String(data.nome || '').trim()) data.nome = nomeAtual;
           if (nomeAtual && !String(data.nome_orcamento || '').trim()) data.nome_orcamento = nomeAtual;
+          if (empAtual && !String(data.emp_id || data.empId || '').trim()) {
+            data.emp_id = empAtual;
+            data.empId = empAtual;
+          }
+          if (empresaUuidAtual && !String(data.empresa_id || data.empresaId || '').trim()) {
+            data.empresa_id = empresaUuidAtual;
+            data.empresaId = empresaUuidAtual;
+          }
           if (chapaEl) {
             data.chapa_utilizada = chapaAtual || null;
             data.chapaUtilizada = chapaAtual || null;
@@ -8765,6 +8793,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         } else {
           if (nomeAtual && !String(result.nome || '').trim()) result.nome = nomeAtual;
           if (nomeAtual && !String(result.nome_orcamento || '').trim()) result.nome_orcamento = nomeAtual;
+          if (empAtual && !String(result.emp_id || result.empId || '').trim()) {
+            result.emp_id = empAtual;
+            result.empId = empAtual;
+          }
+          if (empresaUuidAtual && !String(result.empresa_id || result.empresaId || '').trim()) {
+            result.empresa_id = empresaUuidAtual;
+            result.empresaId = empresaUuidAtual;
+          }
           if (chapaEl) {
             result.chapa_utilizada = chapaAtual || null;
             result.chapaUtilizada = chapaAtual || null;
@@ -9278,8 +9314,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           }));
         }
       } catch (_) {}
+      try {
+        if (typeof carregarOrcamentos === 'function') await carregarOrcamentos();
+      } catch (_) {}
       await persistCurrentCalcFolder();
-      try { if (activePageIsOrcamentos() && typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
+      try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
       return ok;
     };
     window.salvarOrcamentoCalc.__patchOrcPastas = true;
