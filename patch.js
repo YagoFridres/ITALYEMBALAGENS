@@ -5818,7 +5818,7 @@ window._compraPapelaoRenderModalRowsHtml = function(itens, minRows) {
       + '    <div class="ccpx-item-field row-break"></div>'
       + '    <div class="ccpx-item-field span-3"><label>Área Pedido</label><input data-field="area_m2"' + (areaManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + window._compraPapelaoAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : window._compraPapelaoFmtNum(d.area_m2, 4).replace(/\./g, "").replace(",", ".")) + '"></div>'
       + '    <div class="ccpx-item-field span-3"><label>Valor m²</label><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_m2 || '') + '"></div>'
-      + '    <div class="ccpx-item-field is-readonly span-3"><label>Valor p/mil</label><input type="text" value="' + window._compraPapelaoAttr(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '" readonly tabindex="-1"></div>'
+      + '    <div class="ccpx-item-field is-readonly span-3"><label>Valor p/mil</label><input data-ccpx-mil type="text" value="' + window._compraPapelaoAttr(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '" readonly tabindex="-1"></div>'
       + '    <div class="ccpx-item-field span-3"><label>Valor Total</label><input data-field="valor_total"' + (totalManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.valor_total != null && String(item.valor_total).trim() !== '' ? item.valor_total : window._compraPapelaoFmtNum(d.valor_total, 2).replace(/\./g, "").replace(",", ".")) + '"></div>'
       + '    <div class="ccpx-item-field span-6"><label>Obs</label><textarea data-field="observacao" rows="1">' + window._compraPapelaoEsc(item && item.observacao || '') + '</textarea></div>'
       + '    <div class="ccpx-item-field span-6"><label data-ccpx-fornecedor-label>' + window._compraPapelaoEsc(window._compraPapelaoFornecedorPedidoLabel('')) + '</label><input data-field="ped_fornecedor" value="' + window._compraPapelaoAttr(item && item.ped_fornecedor || '') + '" placeholder="' + window._compraPapelaoAttr(window._compraPapelaoFornecedorPedidoLabel('')) + '"></div>'
@@ -5863,7 +5863,10 @@ window._compraPapelaoRefreshModalComputed = function(overlay) {
     var vr = row.querySelector('[data-ccpx-vincos-read]');
     var t = row.querySelector('[data-field="valor_total"]');
     if (a && (a.dataset.ccpxManual !== '1' || !String(a.value || '').trim())) a.value = String(d.area_m2.toFixed(4));
-    if (m) m.textContent = window._compraPapelaoFmtMoney(d.vl_p_mil);
+    if (m) {
+      if (String(m.tagName || '').toUpperCase() === 'INPUT') m.value = window._compraPapelaoFmtMoney(d.vl_p_mil);
+      else m.textContent = window._compraPapelaoFmtMoney(d.vl_p_mil);
+    }
     if (aa) aa.textContent = window._compraPapelaoFmtNum(d.auto_area_m2, 4) + ' m²';
     if (at) at.textContent = window._compraPapelaoFmtMoney(d.auto_valor_total);
     if (vr) vr.textContent = window._compraPapelaoComposeVincos({
@@ -35345,6 +35348,61 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     })).join('');
   }
 
+  function _entradaEstoqueBuscaNorm(raw) {
+    var txt = String(raw || '').trim().toLowerCase();
+    try { txt = txt.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+    return txt.replace(/\s+/g, ' ').trim();
+  }
+
+  function _entradaEstoqueBuscaTexto(chapa) {
+    return _entradaEstoqueBuscaNorm([
+      chapa && chapa.gramatura != null ? String(chapa.gramatura) : '',
+      String(chapa && (chapa.nomenclatura || chapa.nom) || '').trim(),
+      String(chapa && (chapa.tamanho || chapa.tam) || '').trim(),
+      String(chapa && (chapa.nome_uso || chapa.nome) || '').trim(),
+      String(chapa && (chapa.fornecedor || chapa.forn) || '').trim()
+    ].filter(Boolean).join(' '));
+  }
+
+  function _entradaEstoqueOptionsFiltradas(chapas, busca, selectedId) {
+    var lista = Array.isArray(chapas) ? chapas.slice() : [];
+    var termo = _entradaEstoqueBuscaNorm(busca);
+    var selected = String(selectedId || '').trim();
+    if (termo) {
+      lista = lista.filter(function(chapa) {
+        return _entradaEstoqueBuscaTexto(chapa).indexOf(termo) >= 0;
+      });
+    }
+    if (selected) {
+      var jaTemSelecionada = lista.some(function(chapa) { return String(chapa && chapa.id || '').trim() === selected; });
+      if (!jaTemSelecionada) {
+        var fallback = _entradaEstoqueFindChapa(chapas, selected);
+        if (fallback) lista.unshift(fallback);
+      }
+    }
+    return {
+      html: _entradaEstoqueOptions(lista),
+      lista: lista
+    };
+  }
+
+  function _entradaEstoqueAplicarBusca(tr, chapas) {
+    if (!tr) return;
+    var searchEl = tr.querySelector('.est-ent-search');
+    var chapaEl = tr.querySelector('.est-ent-chapa');
+    if (!chapaEl) return;
+    var atual = String(chapaEl.value || '').trim();
+    var out = _entradaEstoqueOptionsFiltradas(chapas, searchEl && searchEl.value, atual);
+    chapaEl.innerHTML = out.html;
+    if (atual && chapaEl.querySelector('option[value="' + atual.replace(/"/g, '&quot;') + '"]')) {
+      chapaEl.value = atual;
+    } else if (out.lista.length) {
+      chapaEl.value = String(out.lista[0] && out.lista[0].id || '').trim();
+    } else {
+      chapaEl.value = '';
+    }
+  }
+
   function _entradaEstoqueFindChapa(chapas, id) {
     var sid = String(id || '').trim();
     if (!sid) return null;
@@ -35442,6 +35500,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function _entradaEstoqueAtualizarLinha(tr, chapas) {
     if (!tr) return;
     var modoEl = tr.querySelector('.est-ent-modo');
+    var searchEl = tr.querySelector('.est-ent-search');
     var chapaEl = tr.querySelector('.est-ent-chapa');
     var gramEl = tr.querySelector('.est-ent-gramatura');
     var nomEl = tr.querySelector('.est-ent-nomenclatura');
@@ -35452,11 +35511,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var totalEl = tr.querySelector('.est-ent-total');
     var btnNovaEl = tr.querySelector('.est-ent-criar-completa');
     var modo = modoEl && String(modoEl.value || '') === 'nova' ? 'nova' : 'existente';
+    _entradaEstoqueAplicarBusca(tr, chapas);
     var chapa = _entradaEstoqueFindChapa(chapas, chapaEl && chapaEl.value);
 
     if (chapaEl) {
       chapaEl.disabled = (modo !== 'existente');
       chapaEl.style.opacity = (modo !== 'existente') ? '0.7' : '1';
+    }
+    if (searchEl) {
+      searchEl.disabled = (modo !== 'existente');
+      searchEl.style.opacity = (modo !== 'existente') ? '0.7' : '1';
+      searchEl.style.cursor = (modo !== 'existente') ? 'not-allowed' : '';
     }
 
     if (modo === 'existente') {
@@ -35502,7 +35567,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '  </select>'
       + '</td>'
       + '<td style="padding:8px;border-bottom:1px solid var(--border);min-width:240px">'
-      + '  <select class="est-ent-chapa estoque-modal-select" style="width:100%">' + _entradaEstoqueOptions(chapas) + '</select>'
+      + '  <div style="display:grid;gap:6px">'
+      + '    <input class="est-ent-search estoque-modal-input" type="text" placeholder="Buscar por gramatura, nomenclatura, tamanho ou nome" style="width:100%">'
+      + '    <select class="est-ent-chapa estoque-modal-select" style="width:100%">' + _entradaEstoqueOptions(chapas) + '</select>'
+      + '  </div>'
       + '</td>'
       + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-gramatura estoque-modal-input" type="number" min="0" step="0.001" placeholder="g/m2" style="width:95px;text-align:right"></td>'
       + '<td style="padding:8px;border-bottom:1px solid var(--border)"><input class="est-ent-nomenclatura estoque-modal-input" type="text" placeholder="Nomenclatura" style="width:180px"></td>'
@@ -35515,7 +35583,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     tbody.appendChild(tr);
 
     var sync = function() { _entradaEstoqueAtualizarLinha(tr, chapas); };
-    ['.est-ent-modo', '.est-ent-chapa', '.est-ent-gramatura', '.est-ent-nomenclatura', '.est-ent-tamanho', '.est-ent-nome', '.est-ent-qtd', '.est-ent-vu'].forEach(function(sel) {
+    ['.est-ent-modo', '.est-ent-search', '.est-ent-chapa', '.est-ent-gramatura', '.est-ent-nomenclatura', '.est-ent-tamanho', '.est-ent-nome', '.est-ent-qtd', '.est-ent-vu'].forEach(function(sel) {
       var el = tr.querySelector(sel);
       if (!el) return;
       el.addEventListener('change', sync);
@@ -46488,7 +46556,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '    <div class="ccpx-item-field row-break"></div>'
         + '    <div class="ccpx-item-field span-3"><label>Área Pedido</label><input data-field="area_m2"' + (areaManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + escAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : String(d.area_m2.toFixed(4))) + '"></div>'
         + '    <div class="ccpx-item-field span-3"><label>Valor m²</label><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + escAttr(item && item.valor_m2 || '') + '"></div>'
-        + '    <div class="ccpx-item-field is-readonly span-3"><label>Valor p/mil</label><input type="text" value="' + escAttr(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '" readonly tabindex="-1"></div>'
+        + '    <div class="ccpx-item-field is-readonly span-3"><label>Valor p/mil</label><input data-ccpx-mil type="text" value="' + escAttr(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '" readonly tabindex="-1"></div>'
         + '    <div class="ccpx-item-field span-3"><label>Valor Total</label><input data-field="valor_total"' + (totalManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.01" value="' + escAttr(item && item.valor_total != null && String(item.valor_total).trim() !== '' ? item.valor_total : String(d.valor_total.toFixed(2))) + '"></div>'
         + '    <div class="ccpx-item-field span-6"><label>Obs</label><textarea data-field="observacao" rows="1">' + escHtml(item && item.observacao || '') + '</textarea></div>'
         + '    <div class="ccpx-item-field span-6"><label data-ccpx-fornecedor-label>' + escHtml(window._compraPapelaoFornecedorPedidoLabel('')) + '</label><input data-field="ped_fornecedor" value="' + escAttr(item && item.ped_fornecedor || '') + '" placeholder="' + escAttr(window._compraPapelaoFornecedorPedidoLabel('')) + '"></div>'
@@ -46555,11 +46623,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       totalArea += d.area_m2;
       totalValor += d.valor_total;
       var areaEl = row.querySelector('[data-field="area_m2"]');
+      var milEl = row.querySelector('[data-ccpx-mil]');
       var totalEl = row.querySelector('[data-field="valor_total"]');
       var areaAuto = row.querySelector('[data-ccpx-auto-area]');
       var totalAuto = row.querySelector('[data-ccpx-auto-total]');
       var vincosRead = row.querySelector('[data-ccpx-vincos-read]');
       if (areaEl && (areaEl.dataset.ccpxManual !== '1' || !String(areaEl.value || '').trim())) areaEl.value = String(d.area_m2.toFixed(4));
+      if (milEl) milEl.value = window._compraPapelaoFmtMoney(d.vl_p_mil);
       if (totalEl && (totalEl.dataset.ccpxManual !== '1' || !String(totalEl.value || '').trim())) totalEl.value = String(d.valor_total.toFixed(2));
       if (areaAuto) areaAuto.textContent = window._compraPapelaoFmtNum(d.auto_area_m2, 4) + ' m²';
       if (totalAuto) totalAuto.textContent = window._compraPapelaoFmtMoney(d.auto_valor_total);

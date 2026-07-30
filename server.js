@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260730133600';
-const SW_RUNTIME_VERSION = '20260730133600';
+const PATCH_RUNTIME_VERSION = '20260730153000';
+const SW_RUNTIME_VERSION = '20260730153000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
@@ -8246,7 +8246,17 @@ app.delete('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
 app.get('/api/amostras', authMiddleware, async (req, res) => {
   try {
     let q = supabase.from('amostras').select('*').order('created_at', { ascending: false });
-    if (req.query.empId) q = q.eq('emp_id', req.query.empId);
+    const empresaCtx = await _resolveEmpresaMutationContext(req, req.query || {});
+    const empFiltroRaw = String(req.query.empId ?? req.query.emp_id ?? '').trim();
+    if (empFiltroRaw) {
+      q = q.or('emp_id.eq.' + empFiltroRaw + ',empresa_id.eq.' + empFiltroRaw);
+    } else if (empresaCtx.empresa_id && empresaCtx.emp_id) {
+      q = q.or('empresa_id.eq.' + empresaCtx.empresa_id + ',emp_id.eq.' + empresaCtx.emp_id);
+    } else if (empresaCtx.empresa_id) {
+      q = q.eq('empresa_id', empresaCtx.empresa_id);
+    } else if (empresaCtx.emp_id) {
+      q = q.eq('emp_id', empresaCtx.emp_id);
+    }
     if (req.query.status) q = q.eq('status', req.query.status);
     if (req.query.cliente_id) q = q.eq('cliente_id', req.query.cliente_id);
     const { data, error } = await q;
@@ -8261,6 +8271,7 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
 app.post('/api/amostras', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
+    const empresaCtx = await _resolveEmpresaMutationContext(req, b);
     const payload = {
       cliente_id: b.cliente_id || null,
       cliente_nome: String(b.cliente_nome || b.cliente || ''),
@@ -8272,7 +8283,8 @@ app.post('/api/amostras', authMiddleware, async (req, res) => {
       data_entrega: b.data_entrega || null,
       data_aprovacao: b.data_aprovacao || null,
       imagem_url: String(b.imagem_url || b.foto || ''),
-      emp_id: String(b.emp_id || b.empId || 'E1'),
+      emp_id: empresaCtx.emp_id,
+      empresa_id: empresaCtx.empresa_id,
       criado_por: req.usuario?.nome || 'sistema',
     };
     const { data, error } = await supabase
@@ -15550,6 +15562,51 @@ async function _empresaUuidSafe(req) {
   return '';
 }
 
+async function _resolveEmpresaMutationContext(req, body) {
+  const b = body || {};
+  let empresa_id = '';
+  try {
+    empresa_id = String(
+      b.empresa_id ??
+      b.empresaId ??
+      await _resolveEmpresaUuid(req) ??
+      ''
+    ).trim();
+  } catch (_) {
+    empresa_id = String(b.empresa_id ?? b.empresaId ?? '').trim();
+  }
+
+  let emp_id = String(
+    b.emp_id ??
+    b.empId ??
+    req?.query?.emp_id ??
+    req?.query?.empId ??
+    req?.usuario?.emp_id ??
+    req?.usuario?.empId ??
+    req?.usuario?.sigla ??
+    req?.user?.emp_id ??
+    req?.user?.empId ??
+    req?.user?.sigla ??
+    ''
+  ).trim();
+
+  if (!emp_id && empresa_id && supabase) {
+    try {
+      const { data: empRow, error } = await supabase
+        .from('empresas')
+        .select('sigla')
+        .eq('id', empresa_id)
+        .maybeSingle();
+      if (!error && empRow?.sigla) emp_id = String(empRow.sigla || '').trim();
+    } catch (_) {}
+  }
+
+  return {
+    empresa_id: empresa_id || null,
+    emp_id: emp_id || null,
+  };
+}
+
 function _gramaturaTexto(v) {
   if (v === undefined || v === null) return null;
   const s = String(v || '').trim();
@@ -16117,13 +16174,14 @@ app.get('/api/tipos-caixa', authMiddleware, _handleGetTiposCaixa);
 app.post('/api/tipos_caixa', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
-    const emp = String(b.emp_id ?? b.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? 'E1').trim() || 'E1';
+    const empresaCtx = await _resolveEmpresaMutationContext(req, b);
     const payload = {
       nome: String(b.nome ?? '').trim(),
       setup_min: b.setup_min != null ? Math.trunc(Number(b.setup_min) || 0) : (b.setup != null ? Math.trunc(Number(b.setup) || 0) : undefined),
       producao_hora: b.producao_hora != null ? Math.trunc(Number(b.producao_hora) || 0) : (b.producao != null ? Math.trunc(Number(b.producao) || 0) : undefined),
       observacoes: String(b.observacoes ?? b.obs ?? '').trim() || null,
-      emp_id: emp,
+      emp_id: empresaCtx.emp_id || String(b.emp_id ?? b.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? 'E1').trim() || 'E1',
+      empresa_id: empresaCtx.empresa_id,
     };
     if (!payload.nome) return res.status(400).json({ ok: false, error: 'nome_obrigatorio' });
     Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
@@ -16332,6 +16390,7 @@ app.get('/api/cotacoes', authMiddleware, async (req, res) => {
 app.post('/api/cotacoes', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
+    const empresaCtx = await _resolveEmpresaMutationContext(req, b);
     const item = String(b.item || '').trim();
     if (!item) return res.status(400).json({ ok: false, error: 'item obrigatório' });
     const quantidade = (b.quantidade == null) ? null : Math.trunc(Number(b.quantidade));
@@ -16340,7 +16399,8 @@ app.post('/api/cotacoes', authMiddleware, async (req, res) => {
     const payload = {
       item,
       quantidade: Number.isFinite(quantidade) ? quantidade : null,
-      emp_id: String(b.emp_id || b.empId || req.query.empId || ''),
+      emp_id: empresaCtx.emp_id || String(b.emp_id || b.empId || req.query.empId || ''),
+      empresa_id: empresaCtx.empresa_id,
       fornecedor_ids: fornecedor_ids || null,
       propostas: propostas || null,
       escolhido_fornecedor_id: b.escolhido_fornecedor_id || null,
@@ -18372,6 +18432,7 @@ app.get('/api/facas_estoque', authMiddleware, async (req, res) => {
 app.post('/api/facas_estoque', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
+    const empresaCtx = await _resolveEmpresaMutationContext(req, b);
     const parseArr = (v) => {
       if (!v) return [];
       let arr = v;
@@ -18389,7 +18450,8 @@ app.post('/api/facas_estoque', authMiddleware, async (req, res) => {
       categoria: b.categoria || b.cat || '',
       quantidade: Number(b.quantidade ?? b.qtd ?? 0) || 0,
       cliente: b.cliente || '',
-      emp_id: b.emp_id || b.empId || 'E1',
+      emp_id: empresaCtx.emp_id || b.emp_id || b.empId || 'E1',
+      empresa_id: empresaCtx.empresa_id,
       medidas: b.medidas || '',
       valor: Number(b.valor ?? b.valor_unitario ?? 0) || 0,
       observacoes: b.observacoes || b.obs || '',
@@ -18419,6 +18481,7 @@ app.post('/api/facas_estoque', authMiddleware, async (req, res) => {
 app.put('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
   try {
     const b = { ...req.body }; delete b.id;
+    const empresaCtx = await _resolveEmpresaMutationContext(req, b);
     const parseArr = (v) => {
       if (!v) return [];
       let arr = v;
@@ -18436,7 +18499,8 @@ app.put('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
       categoria: b.categoria || b.cat,
       quantidade: b.quantidade ?? b.qtd,
       cliente: b.cliente,
-      emp_id: b.emp_id || b.empId,
+      emp_id: b.emp_id !== undefined || b.empId !== undefined ? (b.emp_id || b.empId) : empresaCtx.emp_id,
+      empresa_id: b.empresa_id !== undefined || b.empresaId !== undefined ? (b.empresa_id || b.empresaId) : empresaCtx.empresa_id,
       medidas: b.medidas,
       valor: b.valor ?? b.valor_unitario,
       observacoes: b.observacoes || b.obs,
@@ -18563,6 +18627,7 @@ app.get('/api/cliches', authMiddleware, async (req, res) => {
 app.post('/api/cliches_estoque', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
+    const empresaCtx = await _resolveEmpresaMutationContext(req, b);
     const parseArr = (v) => {
       if (!v) return [];
       let arr = v;
@@ -18578,7 +18643,8 @@ app.post('/api/cliches_estoque', authMiddleware, async (req, res) => {
       descricao: b.descricao || b.nome || '',
       quantidade: Number(b.quantidade ?? b.qtd ?? 0) || 0,
       cliente: b.cliente || '',
-      emp_id: b.emp_id || b.empId || 'E1',
+      emp_id: empresaCtx.emp_id || b.emp_id || b.empId || 'E1',
+      empresa_id: empresaCtx.empresa_id,
       medidas: b.medidas || '',
       valor: Number(b.valor ?? b.valor_unitario ?? 0) || 0,
       observacoes: b.observacoes || b.obs || '',
@@ -18608,6 +18674,7 @@ app.post('/api/cliches_estoque', authMiddleware, async (req, res) => {
 app.put('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
   try {
     const b = { ...req.body }; delete b.id;
+    const empresaCtx = await _resolveEmpresaMutationContext(req, b);
     const parseArr = (v) => {
       if (!v) return [];
       let arr = v;
@@ -18623,7 +18690,8 @@ app.put('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
       descricao: b.descricao || b.nome,
       quantidade: b.quantidade ?? b.qtd,
       cliente: b.cliente,
-      emp_id: b.emp_id || b.empId,
+      emp_id: b.emp_id !== undefined || b.empId !== undefined ? (b.emp_id || b.empId) : empresaCtx.emp_id,
+      empresa_id: b.empresa_id !== undefined || b.empresaId !== undefined ? (b.empresa_id || b.empresaId) : empresaCtx.empresa_id,
       medidas: b.medidas,
       valor: b.valor ?? b.valor_unitario,
       observacoes: b.observacoes || b.obs,
@@ -20237,6 +20305,7 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
     try { await _chapasEnsureColorColumn(); } catch (_) {}
     const table = await _chapasPreferV2Table();
     const b = req.body || {};
+    const empresaCtx = await _resolveEmpresaMutationContext(req, b);
 
     if (table === 'chapas_estoque_v2') {
       const fornecedor = String(b.fornecedor ?? b.forn ?? b.fabricante ?? '').trim();
@@ -20249,6 +20318,8 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
       if (!nomeUso) return res.status(400).json({ ok: false, error: 'Campo obrigatório: nome_uso (ou nome)' });
 
       const payload = _chapasPayloadV2FromBody({ ...b, fornecedor, nomenclatura, tamanho, nome_uso: nomeUso, nome: nomeUso }, req, false);
+      if (empresaCtx.empresa_id && !String(payload.empresa_id || '').trim()) payload.empresa_id = empresaCtx.empresa_id;
+      if (empresaCtx.emp_id && !String(payload.emp_id || '').trim()) payload.emp_id = empresaCtx.emp_id;
       const qtdInicial = Math.trunc(Number(payload.quantidade ?? 0) || 0);
       if (qtdInicial > 0) payload.quantidade = 0;
       let { data, error } = await supabase.from('chapas_estoque_v2').insert([payload]).select().single();
@@ -20321,7 +20392,8 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
       vincos: String(b.vincos ?? '').trim(),
       observacao: _chapasObsWithColor(String(b.observacao ?? b.obs ?? b.observacoes ?? '').trim(), b.cor ?? b.cor_linha ?? b.linha_cor ?? ''),
       data_entrada: b.data_entrada ?? b.dataEntrada ?? b.entrada_de_dados ?? null,
-      emp_id: String(b.emp_id ?? b.empId ?? 'E1').trim(),
+      emp_id: empresaCtx.emp_id || String(b.emp_id ?? b.empId ?? 'E1').trim(),
+      empresa_id: empresaCtx.empresa_id,
       categoria: String(b.categoria ?? 'Estoque Simples').trim(),
     };
     let insPayload = { ...payload };
@@ -29900,6 +29972,7 @@ app.post('/api/pedidos_recorrentes', authMiddleware, async (req, res) => {
   try{
     if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
     const b = req.body || {};
+    const empresaCtx = await _resolveEmpresaMutationContext(req, b);
     const row = {
       cliente_id: b.cliente_id || null,
       descricao: String(b.descricao||''),
@@ -29911,7 +29984,8 @@ app.post('/api/pedidos_recorrentes', authMiddleware, async (req, res) => {
       dia_do_mes: Math.max(1, Math.min(31, Math.trunc(Number(b.dia_do_mes||1)||1))),
       ativo: b.ativo == null ? true : !!b.ativo,
       antecedencia_dias: b.antecedencia_dias == null ? 3 : Math.max(0, Math.min(31, Math.trunc(Number(b.antecedencia_dias||3)||3))),
-      emp_id: String(b.emp_id || b.empId || 'E1').trim(),
+      emp_id: empresaCtx.emp_id || String(b.emp_id || b.empId || 'E1').trim(),
+      empresa_id: empresaCtx.empresa_id,
       criado_por: String(b.criado_por || req?.usuario?.id || '').trim() || null,
       created_at: new Date().toISOString(),
       ultima_geracao: b.ultima_geracao || null,
