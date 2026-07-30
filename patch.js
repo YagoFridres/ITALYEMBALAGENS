@@ -25227,7 +25227,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     async function renderFacasWireframePage() {
       ensureStyles();
       if (typeof window.carregarFacas === 'function' && !(Array.isArray(window.FACAS) && window.FACAS.length)) {
-        try { await window.carregarFacas(); } catch (_) {}
+        try {
+          var outFacas = await window.carregarFacas();
+          var rowsFacas = Array.isArray(outFacas) ? outFacas : ((outFacas && (outFacas.data || outFacas.facas)) || []);
+          if (Array.isArray(rowsFacas) && rowsFacas.length) {
+            window.FACAS = rowsFacas.map(function(row) {
+              try {
+                if (typeof window.normalizeFaca === 'function') return window.normalizeFaca(row);
+              } catch (_) {}
+              return row;
+            });
+          }
+        } catch (_) {}
       }
       var page = ensurePage('facas1');
       showOnlyPage('facas1');
@@ -25700,20 +25711,31 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
     }
 
+    function facasPageAlias(pageId) {
+      var pid = String(pageId || '').trim().toLowerCase();
+      if (pid === 'facas' || pid === 'facas1') return 'facas1';
+      return String(pageId || '').trim();
+    }
+
     function openCustomPage(pageId) {
-      if (pageId === 'checklist-recebimento') { renderChecklistPage().catch(function() {}); return true; }
-      if (pageId === 'gramaturas') { renderGramaturasPage().catch(function() {}); return true; }
-      if (pageId === 'facas1') { Promise.resolve(renderFacasWireframePage()).catch(function() {}); return true; }
-      if (pageId === 'toneladas-vendidas') { renderToneladasPage().catch(function() {}); return true; }
-      if (pageId === 'entradas-estoque') { _renderEntradasEstoque(getMainPatchHost('entradas-estoque', '📥 Entradas')); return true; }
-      if (pageId === 'saidas-estoque') { _renderSaidasEstoque(getMainPatchHost('saidas-estoque', '📤 Saídas')); return true; }
+      var pid = facasPageAlias(pageId);
+      if (pid === 'checklist-recebimento') { renderChecklistPage().catch(function() {}); return true; }
+      if (pid === 'gramaturas') { renderGramaturasPage().catch(function() {}); return true; }
+      if (pid === 'facas1') {
+        try { window._PAGE_ATUAL = 'facas1'; } catch (_) {}
+        Promise.resolve(renderFacasWireframePage()).catch(function() {});
+        return true;
+      }
+      if (pid === 'toneladas-vendidas') { renderToneladasPage().catch(function() {}); return true; }
+      if (pid === 'entradas-estoque') { _renderEntradasEstoque(getMainPatchHost('entradas-estoque', '📥 Entradas')); return true; }
+      if (pid === 'saidas-estoque') { _renderSaidasEstoque(getMainPatchHost('saidas-estoque', '📤 Saídas')); return true; }
       return false;
     }
     try {
       var origGo = window.go;
       if (typeof origGo === 'function' && !origGo._patchExtrasCustom) {
         window.go = function(id) {
-          var pid = String(id || '').trim();
+          var pid = facasPageAlias(id);
           if (openCustomPage(pid)) return;
           return origGo.apply(this, arguments);
         };
@@ -25723,6 +25745,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { window.renderEstoqueWireframePage = renderEstoqueWireframePage; } catch (_) {}
     try { window.renderChecklistRecebimento = renderChecklistPage; } catch (_) {}
     try { window.renderFacasWireframePage = renderFacasWireframePage; } catch (_) {}
+    try { window.renderFacas1 = renderFacasWireframePage; } catch (_) {}
+    try { renderFacas1 = window.renderFacas1; } catch (_) {}
     try { window.renderGramaturas = renderGramaturasPage; } catch (_) {}
     try { window.carregarGramaturas = renderGramaturasPage; } catch (_) {}
     try { window.renderToneladasVendidas = renderToneladasPage; } catch (_) {}
@@ -32260,9 +32284,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var origFetch = window.fetch;
     if (typeof origFetch !== 'function' || origFetch._patchFacasNumeroCategoria) return;
     var wrapped = function(url, opts) {
+      var u = '';
+      var m = 'GET';
+      var shouldRefreshFacas = false;
       try {
-        var u = String(url || '');
-        var m = String((opts && opts.method) || 'GET').toUpperCase();
+        u = String(url || '');
+        m = String((opts && opts.method) || 'GET').toUpperCase();
+        shouldRefreshFacas = u.indexOf('/facas_estoque') !== -1 && (m === 'POST' || m === 'PUT' || m === 'DELETE');
         if ((m === 'POST' || m === 'PUT') && u.indexOf('/facas_estoque') !== -1 && opts && opts.body && typeof opts.body === 'string') {
           try {
             var o = JSON.parse(opts.body);
@@ -32276,7 +32304,26 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           } catch (_) {}
         }
       } catch (_) {}
-      return origFetch.apply(this, arguments);
+      var req = origFetch.apply(this, arguments);
+      if (!shouldRefreshFacas || !req || typeof req.then !== 'function') return req;
+      return req.then(function(resp) {
+        try {
+          if (resp && resp.ok) {
+            setTimeout(function() {
+              try {
+                if (typeof window.carregarFacas === 'function') {
+                  Promise.resolve(window.carregarFacas()).finally(function() {
+                    try { if (typeof window.renderFacasWireframePage === 'function') window.renderFacasWireframePage(); } catch (_) {}
+                  });
+                } else if (typeof window.renderFacasWireframePage === 'function') {
+                  window.renderFacasWireframePage();
+                }
+              } catch (_) {}
+            }, 120);
+          }
+        } catch (_) {}
+        return resp;
+      });
     };
     wrapped._patchFacasNumeroCategoria = true;
     window.fetch = wrapped;

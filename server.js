@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260730153000';
-const SW_RUNTIME_VERSION = '20260730153000';
+const PATCH_RUNTIME_VERSION = '20260730162000';
+const SW_RUNTIME_VERSION = '20260730162000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
@@ -14522,7 +14522,8 @@ app.get('/api/orcamentos_pastas', authMiddleware, async (req, res) => {
     const schemaOk = await _ensureOrcamentosPastasSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_orcamentos_pastas_missing', sql: _ORCAMENTOS_PASTAS_SCHEMA_SQL });
     let q = supabase.from('orcamentos_pastas').select('*').order('nome', { ascending: true });
-    const empresaId = String(req.query.empresa_id || req.query.emp_id || '').trim();
+    const empresaCtx = await _resolveEmpresaMutationContext(req, req.query || {});
+    const empresaId = String(req.query.empresa_id || req.query.emp_id || empresaCtx.empresa_id || '').trim();
     if (empresaId) q = q.eq('empresa_id', empresaId);
     const { data, error } = await q;
     if (error) return res.status(500).json({ ok: false, error: error.message });
@@ -14535,7 +14536,8 @@ app.post('/api/orcamentos_pastas', authMiddleware, async (req, res) => {
     const schemaOk = await _ensureOrcamentosPastasSchema();
     if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_orcamentos_pastas_missing', sql: _ORCAMENTOS_PASTAS_SCHEMA_SQL });
     const nome = String(req.body?.nome || '').trim();
-    const empresaId = String(req.body?.empresa_id || req.body?.emp_id || '').trim() || null;
+    const empresaCtx = await _resolveEmpresaMutationContext(req, req.body || {});
+    const empresaId = String(req.body?.empresa_id || req.body?.emp_id || empresaCtx.empresa_id || '').trim() || null;
     if (!nome) return res.status(400).json({ ok: false, error: 'nome obrigatório' });
 
     let dupQ = supabase.from('orcamentos_pastas').select('*').eq('nome', nome).limit(1);
@@ -22613,6 +22615,7 @@ function _comprasChapasBuildHeaderPayload(body, req, opts = {}) {
   b.observacao = _comprasChapasStr(b.observacao ?? b.obs);
   b.pasta_id = b.pasta_id ? _comprasChapasStr(b.pasta_id) : null;
   b.emp_id = _comprasChapasStr(opts.empId || b.emp_id || b.empId);
+  b.empresa_id = _comprasChapasStr(opts.empresaId || b.empresa_id || b.empresaId || b.emp_id || b.empId) || null;
   const nowIso = new Date().toISOString();
   const usuario = _comprasChapasUser(req);
   if (opts.isInsert) {
@@ -22793,7 +22796,7 @@ app.post('/api/compras-chapas/pastas', authMiddleware, async (req, res) => {
     const dup = await supabase.from('compras_pastas').select('*').eq('emp_id', empId).eq('nome', nome).maybeSingle();
     if (dup.error) return res.status(500).json({ ok: false, error: dup.error.message });
     if (dup.data) return ok(res, dup.data);
-    const ins = await _comprasChapasInsertCompat('compras_pastas', [{ nome, emp_id: empId }], '*');
+    const ins = await _comprasChapasInsertCompat('compras_pastas', [{ nome, emp_id: empId, empresa_id: empId }], '*');
     if (ins.error) return res.status(500).json({ ok: false, error: String(ins.error.message || ins.error) });
     const data = Array.isArray(ins.data) ? ins.data[0] : ins.data;
     return ok(res, { ...data, total_compras: 0 });
@@ -22939,6 +22942,7 @@ app.post('/api/compras-chapas', authMiddleware, async (req, res) => {
     const headerPayload = _comprasChapasBuildHeaderPayload({ ...body, pasta_id: pastaId }, req, {
       isInsert: true,
       empId,
+      empresaId: empId,
       numeroCompra,
     });
     const insHeader = await _comprasChapasInsertCompat('compras_chapas', [headerPayload], '*');
@@ -22975,10 +22979,12 @@ app.post('/api/compras-chapas/:id/clonar', authMiddleware, async (req, res) => {
       ped_fornecedor: atual.ped_fornecedor,
       pasta_id: atual.pasta_id,
       emp_id: empId,
+      empresa_id: atual.empresa_id || empId,
       observacao: atual.observacao,
     }, req, {
       isInsert: true,
       empId,
+      empresaId: atual.empresa_id || empId,
       numeroCompra,
     });
     const insHeader = await _comprasChapasInsertCompat('compras_chapas', [headerPayload], '*');
