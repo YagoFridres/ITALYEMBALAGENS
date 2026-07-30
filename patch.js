@@ -4871,6 +4871,81 @@ window._compraPapelaoCurrentEmpId = function() {
     return String(window._compraPapelaoEmpresaCriacaoUuid() || '').trim();
   }
 };
+window.__patchFriendlyInfraMessage = function(fallbackMsg) {
+  var generic = 'Não foi possível carregar os dados agora. Tente novamente em instantes.';
+  var msg = String(fallbackMsg || '').trim();
+  if (!msg) return generic;
+  var low = msg.toLowerCase();
+  if (low.indexOf('não foi possível') >= 0 || low.indexOf('tente novamente') >= 0) return msg;
+  return generic;
+};
+window.__patchNormalizeUiErrorMessage = function(error, fallbackMsg) {
+  var generic = window.__patchFriendlyInfraMessage(fallbackMsg);
+  var msg = String(
+    (error && (error.errorMessage || error.message || error.error || error.statusText)) ||
+    error ||
+    ''
+  ).trim();
+  if (!msg) return generic;
+  var low = msg.toLowerCase();
+  var htmlLike = (
+    low.indexOf('<html') >= 0 ||
+    low.indexOf('<!doctype') >= 0 ||
+    low.indexOf('<body') >= 0 ||
+    low.indexOf('cloudflare') >= 0 ||
+    low.indexOf('web server is down') >= 0 ||
+    low.indexOf('error 521') >= 0
+  );
+  var infraLike = htmlLike ||
+    low.indexOf('timeout') >= 0 ||
+    low.indexOf('timed out') >= 0 ||
+    low.indexOf('failed to fetch') >= 0 ||
+    low.indexOf('networkerror') >= 0 ||
+    low.indexOf('load failed') >= 0 ||
+    low.indexOf('502') >= 0 ||
+    low.indexOf('503') >= 0 ||
+    low.indexOf('504') >= 0 ||
+    low.indexOf('521') >= 0 ||
+    low.indexOf('522') >= 0 ||
+    low.indexOf('523') >= 0 ||
+    low.indexOf('524') >= 0;
+  return infraLike ? generic : msg;
+};
+window.__patchReadJsonResponse = async function(resp, fallbackMsg) {
+  var generic = window.__patchFriendlyInfraMessage(fallbackMsg);
+  if (!resp) {
+    return { ok: false, json: null, text: '', status: 0, errorMessage: generic, infra: true };
+  }
+  var status = Number(resp.status || 0) || 0;
+  var text = '';
+  try { text = await resp.text(); } catch (_) { text = ''; }
+  var json = null;
+  if (String(text || '').trim()) {
+    try { json = JSON.parse(text); } catch (_) { json = null; }
+  }
+  var textNorm = String(text || '').trim().toLowerCase();
+  var isHtmlLike = !json && (
+    textNorm.indexOf('<html') >= 0 ||
+    textNorm.indexOf('<!doctype') >= 0 ||
+    textNorm.indexOf('<body') >= 0 ||
+    textNorm.indexOf('cloudflare') >= 0 ||
+    textNorm.indexOf('web server is down') >= 0 ||
+    textNorm.indexOf('error 521') >= 0
+  );
+  var infra = isHtmlLike || status === 0 || status >= 500 || status === 408 || status === 429 || status === 502 || status === 503 || status === 504 || status === 521 || status === 522 || status === 523 || status === 524;
+  var message = infra
+    ? generic
+    : String((json && (json.error || json.message)) || fallbackMsg || generic).trim() || generic;
+  var ok = !!resp.ok && !(json && json.ok === false);
+  return {
+    ok: ok,
+    json: json,
+    text: text,
+    status: status,
+    errorMessage: message,
+    infra: infra
+  };
+};
 window._compraPapelaoApi = async function(path, opts) {
   var cfg = opts || {};
   var headers = Object.assign({}, cfg.headers || {});
@@ -4882,9 +4957,12 @@ window._compraPapelaoApi = async function(path, opts) {
   var resp = typeof window._apiAuthFetch === 'function'
     ? await window._apiAuthFetch(path, Object.assign({}, cfg, { headers: headers, body: body }))
     : await fetch(path, Object.assign({}, cfg, { headers: headers, body: body }));
-  var json = await resp.json().catch(function() { return null; });
-  if (!resp.ok || (json && json.ok === false)) {
-    throw new Error(String(json && (json.error || json.message) || ('Falha em ' + path)));
+  var parsed = window.__patchReadJsonResponse
+        ? await window.__patchReadJsonResponse(resp, 'Não foi possível carregar os dados agora. Tente novamente em instantes.')
+        : { ok: false, json: null, errorMessage: 'Não foi possível carregar os dados agora. Tente novamente em instantes.' };
+  var json = parsed && parsed.json;
+  if (!parsed || !parsed.ok || (json && json.ok === false)) {
+    throw new Error(String(parsed && parsed.errorMessage || ('Falha em ' + path)));
   }
   return json && Object.prototype.hasOwnProperty.call(json, 'data') ? json.data : json;
 };
@@ -4916,9 +4994,10 @@ window._compraPapelaoDeriveItem = function(item) {
   var comprimento = window._compraPapelaoNum(item && item.comprimento);
   var quantidade = window._compraPapelaoNum(item && item.quantidade);
   var valorM2 = window._compraPapelaoNum(item && item.valor_m2);
-  var area = ((largura * comprimento) / 1000000) * quantidade;
-  var total = area * valorM2;
-  var mil = quantidade > 0 ? (total / quantidade) * 1000 : 0;
+  var area = (largura > 0 && comprimento > 0) ? ((largura * comprimento) / 1000000) : 0;
+  var totalUnit = area * valorM2;
+  var total = totalUnit * Math.max(quantidade, 0);
+  var mil = totalUnit * 1000;
   return {
     area_m2: area,
     valor_total: total,
@@ -4930,9 +5009,11 @@ window._compraPapelaoResolveItemMetrics = function(item) {
   var areaManual = item && item.area_m2 != null && String(item.area_m2).trim() !== '';
   var totalManual = item && item.valor_total != null && String(item.valor_total).trim() !== '';
   var area = areaManual ? window._compraPapelaoNum(item.area_m2) : base.area_m2;
-  var total = totalManual ? window._compraPapelaoNum(item.valor_total) : (area * window._compraPapelaoNum(item && item.valor_m2));
   var quantidade = window._compraPapelaoNum(item && item.quantidade);
-  var mil = quantidade > 0 ? (total / quantidade) * 1000 : 0;
+  var totalUnit = area * window._compraPapelaoNum(item && item.valor_m2);
+  var total = totalManual ? window._compraPapelaoNum(item.valor_total) : (totalUnit * Math.max(quantidade, 0));
+  var quantidade = window._compraPapelaoNum(item && item.quantidade);
+  var mil = quantidade > 0 ? (total / quantidade) * 1000 : (totalUnit * 1000);
   return {
     area_m2: area,
     valor_total: total,
@@ -6613,7 +6694,7 @@ window._compraPapelaoOpenPinsModal = function() {
         window._compraPapelaoOpenPinsModal();
       } catch (e) {
         console.error('[COMPRA-PAPELAO]', e);
-        alert('Erro ao aceitar sugestão: ' + String(e && e.message || e));
+        try { window.toast(window.__patchNormalizeUiErrorMessage ? window.__patchNormalizeUiErrorMessage(e, 'Não foi possível carregar os dados agora. Tente novamente em instantes.') : String(e && e.message || e), 'var(--red)'); } catch (_) {}
       }
     };
   });
@@ -6631,7 +6712,7 @@ window._compraPapelaoOpenPinsModal = function() {
         window._compraPapelaoOpenPinsModal();
       } catch (e) {
         console.error('[COMPRA-PAPELAO]', e);
-        alert('Erro ao ignorar sugestão: ' + String(e && e.message || e));
+        try { window.toast(window.__patchNormalizeUiErrorMessage ? window.__patchNormalizeUiErrorMessage(e, 'Não foi possível carregar os dados agora. Tente novamente em instantes.') : String(e && e.message || e), 'var(--red)'); } catch (_) {}
       }
     };
   });
@@ -7079,9 +7160,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     var comprimento = cNum(item && item.comprimento);
     var quantidade = cNum(item && item.quantidade);
     var valorM2 = cNum(item && item.valor_m2);
-    var area = ((largura * comprimento) / 1000000) * quantidade;
-    var total = area * valorM2;
-    var mil = quantidade > 0 ? (total / quantidade) * 1000 : 0;
+    var area = (largura > 0 && comprimento > 0) ? ((largura * comprimento) / 1000000) : 0;
+    var totalUnit = area * valorM2;
+    var total = totalUnit * Math.max(quantidade, 0);
+    var mil = totalUnit * 1000;
     return {
       area_m2: area,
       valor_total: total,
@@ -7093,9 +7175,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     var areaManual = item && item.area_m2 != null && String(item.area_m2).trim() !== '';
     var totalManual = item && item.valor_total != null && String(item.valor_total).trim() !== '';
     var area = areaManual ? cNum(item.area_m2) : base.area_m2;
-    var total = totalManual ? cNum(item.valor_total) : (area * cNum(item && item.valor_m2));
     var quantidade = cNum(item && item.quantidade);
-    var mil = quantidade > 0 ? (total / quantidade) * 1000 : 0;
+    var totalUnit = area * cNum(item && item.valor_m2);
+    var total = totalManual ? cNum(item.valor_total) : (totalUnit * Math.max(quantidade, 0));
+    var quantidade = cNum(item && item.quantidade);
+    var mil = quantidade > 0 ? (total / quantidade) * 1000 : (totalUnit * 1000);
     return {
       area_m2: area,
       valor_total: total,
@@ -8689,6 +8773,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         out.nome_orcamento = String(r && (r.nome_orcamento != null ? r.nome_orcamento : (out && out.nome_orcamento)) || out.nome || '').trim();
         out.chapa_utilizada = chapaUtilizadaOf(r || out);
         out.chapaUtilizada = out.chapa_utilizada;
+        out.itens = typeof window.__patchOrcParseItens === 'function' ? window.__patchOrcParseItens(r || out) : [];
         if (!out.nome_orcamento && out.nome) out.nome_orcamento = out.nome;
         if (!out.nome && out.nome_orcamento) out.nome = out.nome_orcamento;
       } catch (_) {
@@ -8723,8 +8808,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       ? window._apiAuthFetch(url, { cache: 'no-store' })
       : fetch(url, { cache: 'no-store' });
     return request.then(function(resp) {
-      return resp ? resp.json().catch(function() { return null; }) : null;
-    }).then(function(json) {
+      if (!resp) return null;
+      return window.__patchReadJsonResponse
+        ? window.__patchReadJsonResponse(resp, 'Não foi possível carregar os dados agora. Tente novamente em instantes.')
+        : resp.json().catch(function() { return null; }).then(function(json) { return { ok: !!resp.ok, json: json }; });
+    }).then(function(parsed) {
+      var json = parsed && parsed.json;
       var rows = Array.isArray(json && json.data) ? json.data : (Array.isArray(json) ? json : []);
       if (!Array.isArray(rows) || !rows.length) return Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : [];
       window.ORCAMENTOS = rows.map(function(row) {
@@ -9295,13 +9384,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       var out = _origAbrirCalculadora.apply(this, arguments);
       setTimeout(function() {
         loadFolders(false).catch(function() { return []; }).finally(function() {
+          try { if (typeof window.__patchOrcDraftLoadFromState === 'function') window.__patchOrcDraftLoadFromState(true); } catch (_) {}
           syncCalcFolderUi();
           syncCalcChapaUi();
           ensureCalcFullscreenShell();
+          try { if (typeof window.__patchEnsureCalcItensUi === 'function') window.__patchEnsureCalcItensUi(); } catch (_) {}
         });
       }, 60);
       setTimeout(function() {
         try { ensureCalcFullscreenShell(); } catch (_) {}
+        try { if (typeof window.__patchEnsureCalcItensUi === 'function') window.__patchEnsureCalcItensUi(); } catch (_) {}
       }, 180);
       return out;
     };
@@ -9312,9 +9404,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     window.carregarOrcamentoCalc = function() {
       var out = _origCarregarOrcamentoCalc.apply(this, arguments);
       setTimeout(function() {
+        try { if (typeof window.__patchOrcDraftLoadFromState === 'function') window.__patchOrcDraftLoadFromState(true); } catch (_) {}
         syncCalcFolderUi();
         syncCalcChapaUi();
         ensureCalcFullscreenShell();
+        try { if (typeof window.__patchEnsureCalcItensUi === 'function') window.__patchEnsureCalcItensUi(); } catch (_) {}
       }, 30);
       return out;
     };
@@ -9325,6 +9419,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     window.novoOrcamentoCalc = function() {
       var out = _origNovoOrcamentoCalc.apply(this, arguments);
       setTimeout(function() {
+        window.__orcDraftItems = [];
+        window.__orcDraftItemsSourceId = '';
+        window.__orcDraftEditingIndex = null;
         ensureCalcFolderUi();
         var chapaInput = ensureCalcChapaUi();
         var select = document.getElementById('calc-pasta');
@@ -9337,6 +9434,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           chapaInput.dataset.lastOrcamentoId = '';
           chapaInput.dataset.keepValue = '';
         }
+        try { if (typeof window.__patchEnsureCalcItensUi === 'function') window.__patchEnsureCalcItensUi(); } catch (_) {}
       }, 30);
       return out;
     };
@@ -9364,6 +9462,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         await reloadOrcamentosFreshFromApi();
       } catch (_) {}
       await persistCurrentCalcFolder();
+      try { if (typeof window.__patchOrcDraftLoadFromState === 'function') window.__patchOrcDraftLoadFromState(true); } catch (_) {}
       try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
       try { closeCalcModalAfterSave(); } catch (_) {}
       return ok;
@@ -10250,6 +10349,8 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     }
 
     var listRows = Array.isArray(window.__histPassagensRowsVisible) ? window.__histPassagensRowsVisible : [];
+    var totalOficial = Number(window.__histPassagensOfficialTotal || 0) || 0;
+    var totalOfsOficial = Number(window.__histPassagensOfficialCount || 0) || 0;
     var colorMap = Object.create(null);
     var sizeMap = Object.create(null);
     listRows.forEach(function(row) {
@@ -10274,8 +10375,8 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       title: 'Relatório de Histórico de Passagens',
       periodo: periodo,
       cards: [
-        { label: 'Passagens Visíveis', value: _histFmtNum(listRows.length), sub: 'Linhas filtradas' },
-        { label: 'Valor de Produção', value: _histFmtMoney(listRows.reduce(function(acc, row) { return acc + _histPassagemValorTotal(row); }, 0)), sub: 'Somatório visível' },
+        { label: 'Passagens Visíveis', value: _histFmtNum(listRows.length), sub: 'Linhas filtradas por máquina/dia' },
+        { label: 'Valor de Produção', value: _histFmtMoney(totalOficial), sub: 'Fórmula oficial das OFs concluídas (' + _histFmtNum(totalOfsOficial) + ' OFs)' },
         { label: 'Caixas Produzidas', value: _histFmtNum(listRows.reduce(function(acc, row) { return acc + _histPassagemQuantidade(row); }, 0)), sub: 'Volume visível' },
         { label: 'Máquinas', value: _histFmtNum(Array.from(new Set(listRows.map(function(row) { return _histPassagemMaquinas(row); }).filter(Boolean))).length), sub: 'Máquinas listadas' },
         { label: 'Cores Mais Usadas', value: topCoresLista[0] && topCoresLista[0].cor || 'Sem dados', sub: _histRankingResumoHtml(topCoresLista, 'cor') },
@@ -11350,6 +11451,8 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       });
       var json = await resp.json().catch(function() { return null; });
       window.__histPassagensRowsVisible = Array.isArray(json && json.passagens) ? json.passagens.slice() : [];
+      window.__histPassagensOfficialTotal = Number(json && json.total_vendido_oficial || 0) || 0;
+      window.__histPassagensOfficialCount = Number(json && json.total_ofs_oficial || 0) || 0;
     } catch (_) {
       window.__histPassagensRowsVisible = Array.isArray(state.rows) ? state.rows.slice() : [];
     }
@@ -11436,6 +11539,8 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
         window._histPassagensState = st;
         window.__histPassagensDetalhamentoRows = st.rows.slice();
         window.__histPassagensLoadedKey = key;
+        window.__histPassagensOfficialTotal = Number(data && data.total_vendido_oficial || 0) || 0;
+        window.__histPassagensOfficialCount = Number(data && data.total_ofs_oficial || 0) || 0;
 
         try {
           container.style.display = 'grid';
@@ -20864,11 +20969,77 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao carregar OFs');
         rawRows = (result.data && (result.data.data || result.data.ofs || result.data.rows)) || [];
       }
+      try { window.__OFMAQ_FINAL_LAST_RAW_ROWS = Array.isArray(rawRows) ? rawRows.slice() : []; } catch (_) {}
       state.rowsData = buildRowsFromOfs(rawRows);
       state.machineCatalog = machineCatalogFromRows(state.rowsData);
       state.lastFetchAt = now;
       if (state.machineCatalog.length && state.machineCatalog.indexOf(state.selectedMachine) < 0) state.selectedMachine = state.machineCatalog[0];
       return state.rowsData;
+    }
+
+    function renderOfmaqEmergency(shell, err) {
+      if (!shell || !shell.tbody) return false;
+      var rawRows = Array.isArray(window.__OFMAQ_FINAL_LAST_RAW_ROWS) ? window.__OFMAQ_FINAL_LAST_RAW_ROWS.slice() : [];
+      var normMachine = function(row) {
+        var raw = row && (row.maquina_atual || row.maquina_agendada || row.maquina || row.maq || row.machine || '');
+        if (Array.isArray(raw)) raw = raw[0] || '';
+        return normalizeMachine(String(raw || '').trim()) || 'Sem Máquina';
+      };
+      var rows = rawRows.filter(function(row) {
+        if (!row || _isClosedOfmaqStatus(row.status)) return false;
+        if (state.selectedMachine && state.selectedMachine !== 'Todas' && normMachine(row) !== state.selectedMachine) return false;
+        var q = String(state.searchTerm || '').trim().toLowerCase();
+        if (!q) return true;
+        var hay = [
+          row.of, row.numero, row.cliNome, row.cliente_nome, row.clinome, row.descricao, row.produto,
+          row.nome, row.tamanho, row.medidas, row.obs
+        ].join(' ').toLowerCase();
+        return hay.indexOf(q) >= 0;
+      }).sort(function(a, b) {
+        return String(a && (a.numero || a.of || '') || '').localeCompare(String(b && (b.numero || b.of || '') || ''), 'pt-BR', { numeric: true });
+      });
+      var catalog = Array.from(new Set(rawRows.map(normMachine).filter(Boolean))).sort(function(a, b) {
+        return String(a || '').localeCompare(String(b || ''), 'pt-BR');
+      });
+      state.machineCatalog = catalog.slice();
+      if (catalog.length && catalog.indexOf(state.selectedMachine) < 0) state.selectedMachine = catalog[0];
+      try {
+        var machineSelect = shell.root && shell.root.querySelector ? shell.root.querySelector('#ofmaq-final-machine') : null;
+        if (machineSelect) {
+          machineSelect.innerHTML = ['<option value="">Todas as máquinas</option>'].concat(catalog.map(function(name) {
+            return '<option value="' + escAttrLocal(name) + '">' + escHLocal(name) + '</option>';
+          })).join('');
+          machineSelect.value = state.selectedMachine || '';
+        }
+      } catch (_) {}
+      shell.tbody.innerHTML = rows.length
+        ? rows.map(function(row, idx) {
+            var id = String(row && row.id || '').trim();
+            var numero = String(row && (row.numero || row.of) || '—').trim() || '—';
+            var cliente = String(row && (row.cliente_nome || row.cliNome || row.clinome || row.cliente) || '—').trim() || '—';
+            var produto = String(row && (row.descricao || row.produto || row.nome) || '—').trim() || '—';
+            var qtd = Number(row && (row.quantidade != null ? row.quantidade : (row.qtd != null ? row.qtd : row.qtd_pedida)) || 0) || 0;
+            var entrega = String(row && (row.data_entrega || row.ent || row.dia_programacao || row.dia || row.data_producao || '') || '').slice(0, 10);
+            var maquina = normMachine(row);
+            return ''
+              + '<tr class="ofmaq-final-row ofmaq-final-row-emergency">'
+              + '  <td>' + escHLocal(String(idx + 1)) + '</td>'
+              + '  <td><strong>' + escHLocal(numero) + '</strong></td>'
+              + '  <td>' + escHLocal(cliente) + '</td>'
+              + '  <td>' + escHLocal(produto) + '</td>'
+              + '  <td>' + escHLocal(String(qtd)) + '</td>'
+              + '  <td>' + escHLocal(maquina) + '</td>'
+              + '  <td>' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</td>'
+              + '  <td colspan="4" style="text-align:right"><button type="button" class="pep-btn" data-ofmaq-final-actions="' + escAttrLocal(id) + '">Ações</button></td>'
+              + '</tr>';
+          }).join('')
+        : '<tr><td colspan="11" class="ofmaq-final-empty">Nenhuma OF encontrada na visualização de contingência.</td></tr>';
+      try {
+        var meta = shell.root && shell.root.querySelector ? shell.root.querySelector('[data-ofmaq-final-meta]') : null;
+        if (meta) meta.textContent = 'Visualização de contingência ativa';
+      } catch (_) {}
+      try { console.error('[OFMAQ-FINAL-FALLBACK]', err); } catch (_) {}
+      return true;
     }
 
     async function renderOfmaqFinal(opts) {
@@ -20888,7 +21059,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         renderRows(shell);
       } catch (err) {
         var shellErr = ensureShell();
-        if (shellErr && shellErr.tbody) shellErr.tbody.innerHTML = '<tr><td colspan="11" class="ofmaq-final-empty">Falha ao carregar OFs por Máquina: ' + escH(err && err.message || err) + '</td></tr>';
+        if (!renderOfmaqEmergency(shellErr, err) && shellErr && shellErr.tbody) shellErr.tbody.innerHTML = '<tr><td colspan="11" class="ofmaq-final-empty">Falha ao carregar OFs por Máquina: ' + escH(err && err.message || err) + '</td></tr>';
         try { console.error('[OFMAQ-FINAL-ERRO]', err); } catch (_) {}
       } finally {
         state.loading = false;
@@ -24190,8 +24361,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       window.__estoqueSugestoesCompraPromise[modeKey] = window._apiAuthFetch('/api/sugestoes-compra?' + qs.join('&'), {
         cache: 'no-store'
       }).then(function(resp) {
-        return resp.json().catch(function() { return null; }).then(function(json) {
-          if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao carregar sugestões de compra'));
+        return (window.__patchReadJsonResponse ? window.__patchReadJsonResponse(resp, 'Não foi possível carregar os dados agora. Tente novamente em instantes.') : resp.json().catch(function() { return null; }).then(function(json) { return { ok: !!resp.ok, json: json, errorMessage: 'Falha ao carregar sugestões de compra' }; })).then(function(parsed) {
+          var json = parsed && parsed.json;
+          if (!parsed || !parsed.ok) throw new Error(String(parsed && parsed.errorMessage || 'Falha ao carregar sugestões de compra'));
           var data = Array.isArray(json && json.data) ? json.data : [];
           var byChapa = Object.create(null);
           var byPin = Object.create(null);
@@ -24269,8 +24441,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'aceita' })
       });
-      var json = await resp.json().catch(function() { return null; });
-      if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao aceitar sugestão'));
+      var parsed = window.__patchReadJsonResponse
+        ? await window.__patchReadJsonResponse(resp, 'Não foi possível carregar os dados agora. Tente novamente em instantes.')
+        : { ok: !!(resp && resp.ok), json: await resp.json().catch(function() { return null; }), errorMessage: 'Falha ao aceitar sugestão' };
+      var json = parsed && parsed.json;
+      if (!parsed || !parsed.ok) throw new Error(String(parsed && parsed.errorMessage || 'Falha ao aceitar sugestão'));
       try { window.toast('Sugestão marcada como aceita', 'var(--green)'); } catch (_) {}
       await _estoqueRefreshAfterSugestaoCompra();
       return json && (json.data || json);
@@ -24286,8 +24461,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'ignorada', motivo_ignorado: motivo })
       });
-      var json = await resp.json().catch(function() { return null; });
-      if (!resp.ok) throw new Error(String(json && (json.error || json.message) || 'Falha ao ignorar sugestão'));
+      var parsed = window.__patchReadJsonResponse
+        ? await window.__patchReadJsonResponse(resp, 'Não foi possível carregar os dados agora. Tente novamente em instantes.')
+        : { ok: !!(resp && resp.ok), json: await resp.json().catch(function() { return null; }), errorMessage: 'Falha ao ignorar sugestão' };
+      var json = parsed && parsed.json;
+      if (!parsed || !parsed.ok) throw new Error(String(parsed && parsed.errorMessage || 'Falha ao ignorar sugestão'));
       try { window.toast('Sugestão ignorada', 'var(--green)'); } catch (_) {}
       await _estoqueRefreshAfterSugestaoCompra();
       return json && (json.data || json);
@@ -24348,7 +24526,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       _estoqueFetchSugestoesCompra(true, { all: true }).then(function(lista) {
         if (bodyEl) bodyEl.innerHTML = renderBody(lista);
       }).catch(function(err) {
-        if (bodyEl) bodyEl.innerHTML = '<div style="padding:18px;border:1px solid rgba(239,68,68,.25);border-radius:14px;background:rgba(127,29,29,.22);color:#fecaca">Erro ao carregar sugestões: ' + esc(String(err && err.message || err)) + '</div>';
+        var msg = window.__patchNormalizeUiErrorMessage
+          ? window.__patchNormalizeUiErrorMessage(err, 'Não foi possível carregar os dados agora. Tente novamente em instantes.')
+          : String(err && err.message || err);
+        if (bodyEl) bodyEl.innerHTML = '<div style="padding:18px;border:1px solid rgba(239,68,68,.25);border-radius:14px;background:rgba(127,29,29,.22);color:#fecaca">' + esc(msg) + '</div>';
       });
     }
     function _estoqueAbrirModalPinCompra(chapa) {
@@ -24414,8 +24595,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             emp_id: _estoqueCurrentEmpId()
           })
         });
-        var jsonAdd = await respAdd.json().catch(function() { return null; });
-        if (!respAdd.ok) throw new Error(String(jsonAdd && (jsonAdd.error || jsonAdd.message) || 'Falha ao criar sugestão'));
+        var parsedAdd = window.__patchReadJsonResponse
+          ? await window.__patchReadJsonResponse(respAdd, 'Não foi possível carregar os dados agora. Tente novamente em instantes.')
+          : { ok: !!(respAdd && respAdd.ok), json: await respAdd.json().catch(function() { return null; }), errorMessage: 'Falha ao criar sugestão' };
+        if (!parsedAdd || !parsedAdd.ok) throw new Error(String(parsedAdd && parsedAdd.errorMessage || 'Falha ao criar sugestão'));
         try { window.toast('Sugestão fixada para compra', 'var(--green)'); } catch (_) {}
       } else {
         var motivo = String(window.prompt('Motivo para ignorar a sugestão:', '') || '').trim();
@@ -24425,8 +24608,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'ignorada', motivo_ignorado: motivo })
         });
-        var jsonUpd = await respUpd.json().catch(function() { return null; });
-        if (!respUpd.ok) throw new Error(String(jsonUpd && (jsonUpd.error || jsonUpd.message) || 'Falha ao ignorar sugestão'));
+        var parsedUpd = window.__patchReadJsonResponse
+          ? await window.__patchReadJsonResponse(respUpd, 'Não foi possível carregar os dados agora. Tente novamente em instantes.')
+          : { ok: !!(respUpd && respUpd.ok), json: await respUpd.json().catch(function() { return null; }), errorMessage: 'Falha ao ignorar sugestão' };
+        if (!parsedUpd || !parsedUpd.ok) throw new Error(String(parsedUpd && parsedUpd.errorMessage || 'Falha ao ignorar sugestão'));
         try { window.toast('Sugestão marcada como ignorada', 'var(--green)'); } catch (_) {}
       }
       await _estoqueRefreshAfterSugestaoCompra();
@@ -25062,7 +25247,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
         + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF ou CNPJ" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
         + '    <button class="pep-btn primary" id="estoque-wire-buscar">Buscar</button>'
-        + '    <button class="pep-btn" id="estoque-wire-sugestoes">Sugestões</button>'
+        + '    <button class="pep-btn" id="estoque-wire-sugestoes">Sugestões ' + patchBadgeHtml((Array.isArray(sugestoesCompra) ? sugestoesCompra.length : 0)) + '</button>'
         + '    <button class="pep-btn" id="estoque-wire-imprimir">Imprimir Relatório</button>'
         + '  </div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px">'
         + '    <span style="font-size:12px;color:#94a3b8;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Filtros rápidos</span>'
@@ -35441,6 +35626,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var atual = String(chapaEl.value || '').trim();
     var out = _entradaEstoqueOptionsFiltradas(chapas, searchEl && searchEl.value, atual);
     chapaEl.innerHTML = out.html;
+    var termo = _entradaEstoqueBuscaNorm(searchEl && searchEl.value);
     if (atual && chapaEl.querySelector('option[value="' + atual.replace(/"/g, '&quot;') + '"]')) {
       chapaEl.value = atual;
     } else if (out.lista.length) {
@@ -35448,6 +35634,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } else {
       chapaEl.value = '';
     }
+    try {
+      chapaEl.size = termo ? Math.max(2, Math.min(8, out.lista.length + 1)) : 1;
+      chapaEl.style.minHeight = termo ? '96px' : '';
+    } catch (_) {}
+    chapaEl.title = termo && !out.lista.length ? 'Nenhuma chapa encontrada para este filtro.' : '';
   }
 
   function _entradaEstoqueFindChapa(chapas, id) {
@@ -40263,8 +40454,9 @@ function _ocultarGraficoComissoes() {
       var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(String(parseInt(mesNum, 10))) + '&ano=' + encodeURIComponent(String(anoNum)), {
         headers: token ? { Authorization: 'Bearer ' + token } : {}
       });
-      var json = await resp.json().catch(function() { return null; });
-      if (!json || !json.ok) return null;
+      var parsed = window.__patchReadJsonResponse ? await window.__patchReadJsonResponse(resp, 'Não foi possível carregar os dados agora. Tente novamente em instantes.') : { ok: false, json: null };
+      var json = parsed && parsed.json;
+      if (!parsed || !parsed.ok || !json || json.ok === false) return null;
       return json;
     } catch (_) { return null; }
   }
@@ -43105,7 +43297,7 @@ function _ocultarGraficoComissoes() {
       _renderizarResultadosBuscaComissao(resultados, termoTxt);
       _aplicarFiltroLocalDetalhamentoComissao(termoTxt, resultados);
     } catch (e) {
-      if (resultDiv) resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Erro na busca: ' + _escHtmlCom(e && e.message || e) + '</p>';
+      if (resultDiv) resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">' + _escHtmlCom(window.__patchNormalizeUiErrorMessage ? window.__patchNormalizeUiErrorMessage(e, 'Não foi possível carregar os dados agora. Tente novamente em instantes.') : (e && e.message || e)) + '</p>';
       _aplicarFiltroLocalDetalhamentoComissao(termoTxt, []);
     }
   }
@@ -43458,9 +43650,10 @@ function _ocultarGraficoComissoes() {
     var resp = await fetch('/api/comissoes/busca-of?' + qs.toString(), {
       headers: token ? { Authorization: 'Bearer ' + token } : {}
     });
-    var json = await resp.json().catch(function() { return null; });
-    if (!resp.ok || (json && json.ok === false)) {
-      throw new Error(String(json && (json.error || json.message) || 'Falha ao buscar OF em Comissões'));
+    var parsed = window.__patchReadJsonResponse ? await window.__patchReadJsonResponse(resp, 'Não foi possível carregar os dados agora. Tente novamente em instantes.') : { ok: false, json: null, errorMessage: 'Não foi possível carregar os dados agora. Tente novamente em instantes.' };
+    var json = parsed && parsed.json;
+    if (!parsed || !parsed.ok || (json && json.ok === false)) {
+      throw new Error(String(parsed && parsed.errorMessage || 'Não foi possível carregar os dados agora. Tente novamente em instantes.'));
     }
     return _comBuscaDedup(Array.isArray(json && json.ofs) ? json.ofs : []);
   }
@@ -43579,7 +43772,7 @@ function _ocultarGraficoComissoes() {
       var encontradas = await _buscarOFsDetalhamento(termo);
       _renderizarResultadosBuscaComissao(encontradas, termo);
     } catch (e) {
-      resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">Erro na busca: ' + _escHtmlCom(e && e.message || e) + '</p>';
+      resultDiv.innerHTML = '<p style="color:#f87171;padding:12px">' + _escHtmlCom(window.__patchNormalizeUiErrorMessage ? window.__patchNormalizeUiErrorMessage(e, 'Não foi possível carregar os dados agora. Tente novamente em instantes.') : (e && e.message || e)) + '</p>';
     }
   };
 
@@ -43704,8 +43897,13 @@ function _ocultarGraficoComissoes() {
       var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano), {
         headers: token ? { Authorization: 'Bearer ' + token } : {}
       });
-      var data = await resp.json().catch(function() { return null; });
-      if (!resp.ok || !data || data.ok === false) throw new Error((data && data.error) || ('HTTP ' + resp.status));
+      var parsed = window.__patchReadJsonResponse
+        ? await window.__patchReadJsonResponse(resp, 'Não foi possível carregar os dados agora. Tente novamente em instantes.')
+        : { ok: false, json: null, errorMessage: 'Não foi possível carregar os dados agora. Tente novamente em instantes.' };
+      var data = parsed && parsed.json;
+      if (!parsed || !parsed.ok || !data || data.ok === false) {
+        throw new Error(String(parsed && parsed.errorMessage || 'Não foi possível carregar os dados agora. Tente novamente em instantes.'));
+      }
 
       var vendedores = Array.isArray(data && data.vendedores) ? data.vendedores : [];
       var todasOfsRaw = Array.isArray(data && data.ofs) ? data.ofs : [];
@@ -43906,7 +44104,17 @@ function _ocultarGraficoComissoes() {
     } catch (e) {
       try { console.error('[COM PATCH] erro:', e); } catch (_) {}
       var topoErro = document.getElementById('_com_topo');
-      if (topoErro) topoErro.innerHTML = '<p style="color:#f87171;padding:20px">Erro ao carregar comissões: ' + _escHtmlCom(e && e.message || e) + '</p>';
+      var msgErroCom = window.__patchNormalizeUiErrorMessage
+        ? window.__patchNormalizeUiErrorMessage(e, 'Não foi possível carregar os dados agora. Tente novamente em instantes.')
+        : (String(e && e.message || e || '').trim() || 'Não foi possível carregar os dados agora. Tente novamente em instantes.');
+      if (topoErro) {
+        topoErro.innerHTML = ''
+          + '<div style="padding:20px;border:1px solid rgba(248,113,113,.18);border-radius:16px;background:rgba(127,29,29,.18);color:#fecaca">'
+          + '  <div style="font-size:16px;font-weight:900;color:#fca5a5">Não foi possível carregar os dados agora.</div>'
+          + '  <div style="font-size:13px;line-height:1.55;margin-top:8px;color:#fecaca">' + _escHtmlCom(msgErroCom) + '</div>'
+          + '  <div style="font-size:12px;line-height:1.45;margin-top:8px;color:#fca5a5">Tente novamente em instantes.</div>'
+          + '</div>';
+      }
     } finally {
       clearTimeout(_comTimeout);
       window._comRodando = false;
@@ -46432,12 +46640,39 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '#cmp-body .cmpx-actions-row .is-versions,#orc-body .orx-actions-row .is-versions{background:linear-gradient(135deg,#4338ca,#1d4ed8)!important;border-color:rgba(165,180,252,.24)!important;color:#fff!important}'
       + '#cmp-body .cmpx-actions .pep-btn:hover,#orc-body .orx-actions .pep-btn:hover,#cmp-body .cmpx-actions-row button:hover,#orc-body .orx-actions-row button:hover{transform:translateY(-1px);filter:brightness(1.04)}'
       + '#cmp-body .cmpx-empty,#orc-body .orx-empty{padding:22px;text-align:center;color:#94a3b8}'
+      + '#cmp-body .patch-btn-badge,#orc-body .patch-btn-badge,#page-estoque .patch-btn-badge,#modal-calc .patch-btn-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#dc2626;color:#fff;font-size:11px;font-weight:900;line-height:1;box-shadow:0 0 0 2px rgba(2,6,23,.72)}'
+      + '#cmp-body .cmpx-detail-row td,#orc-body .orx-detail-row td{background:rgba(15,23,42,.58)!important}'
+      + '#cmp-body .cmpx-detail-card,#orc-body .orx-detail-card{display:grid;gap:12px;padding:14px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(2,6,23,.42)}'
+      + '#cmp-body .cmpx-detail-head,#orc-body .orx-detail-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}'
+      + '#cmp-body .cmpx-detail-title,#orc-body .orx-detail-title{font-size:13px;font-weight:900;color:#f8fafc}'
+      + '#cmp-body .cmpx-detail-sub,#orc-body .orx-detail-sub{font-size:11px;color:#94a3b8}'
+      + '#cmp-body .cmpx-detail-table,#orc-body .orx-detail-table{width:100%;border-collapse:collapse}'
+      + '#cmp-body .cmpx-detail-table th,#orc-body .orx-detail-table th{padding:9px 10px;background:rgba(15,23,42,.88);border-bottom:1px solid rgba(148,163,184,.16);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;text-align:left;position:static}'
+      + '#cmp-body .cmpx-detail-table td,#orc-body .orx-detail-table td{padding:10px;border-bottom:1px solid rgba(148,163,184,.08);font-size:12px;color:#e2e8f0;background:transparent!important}'
+      + '#cmp-body .cmpx-detail-table td.num,#orc-body .orx-detail-table td.num{text-align:right;font-variant-numeric:tabular-nums}'
+      + '#cmp-body .cmpx-toggle-btn,#orc-body .orx-toggle-btn{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:0 12px;border-radius:12px;border:1px solid rgba(96,165,250,.24);background:linear-gradient(135deg,rgba(30,64,175,.16),rgba(15,23,42,.88));color:#dbeafe;font-size:12px;font-weight:900;cursor:pointer}'
+      + '#modal-calc .calc-itens-shell{display:grid;gap:12px;padding:14px 16px;border-radius:18px;border:1px solid rgba(148,163,184,.16);background:rgba(2,6,23,.46)}'
+      + '#modal-calc .calc-itens-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}'
+      + '#modal-calc .calc-itens-title{font-size:14px;font-weight:900;color:#f8fafc}'
+      + '#modal-calc .calc-itens-sub{font-size:11px;color:#94a3b8;line-height:1.5}'
+      + '#modal-calc .calc-itens-actions{display:flex;gap:8px;flex-wrap:wrap}'
+      + '#modal-calc .calc-itens-actions button{min-height:38px;padding:0 12px;border-radius:12px;border:1px solid rgba(96,165,250,.24);background:linear-gradient(135deg,rgba(15,118,110,.22),rgba(37,99,235,.22));color:#fff;font-size:12px;font-weight:900;cursor:pointer}'
+      + '#modal-calc .calc-itens-list{display:grid;gap:10px}'
+      + '#modal-calc .calc-item-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.72)}'
+      + '#modal-calc .calc-item-card.is-editing{border-color:rgba(96,165,250,.42);box-shadow:0 0 0 1px rgba(96,165,250,.22) inset}'
+      + '#modal-calc .calc-item-main{display:grid;gap:4px}'
+      + '#modal-calc .calc-item-title{font-size:13px;font-weight:900;color:#f8fafc}'
+      + '#modal-calc .calc-item-meta{font-size:11px;color:#94a3b8;line-height:1.45}'
+      + '#modal-calc .calc-item-side{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}'
+      + '#modal-calc .calc-item-side button{min-height:34px;padding:0 10px;border-radius:10px;border:1px solid rgba(148,163,184,.18);background:#0f172a;color:#e2e8f0;font-size:11px;font-weight:900;cursor:pointer}'
+      + '#modal-calc .calc-item-side button.danger{border-color:rgba(248,113,113,.28);background:rgba(127,29,29,.62);color:#fff}'
       + '#page-orcamentos .ptoolbar{display:none!important}'
-      + '#ccpx-compra-fullscreen .ccpx-item-vincos{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;align-items:stretch}'
+      + '#ccpx-compra-fullscreen .ccpx-item-vincos{display:flex;flex-wrap:nowrap;gap:8px;align-items:stretch;overflow-x:auto;padding-bottom:2px}'
       + '#ccpx-compra-fullscreen .ccpx-vinco-chip{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:6px;align-items:center;min-height:42px}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-chip{flex:0 0 150px}'
       + '#ccpx-compra-fullscreen .ccpx-vinco-chip button{height:42px;border-radius:12px;border:1px solid rgba(148,163,184,.18);background:#0f172a;color:#e2e8f0;cursor:pointer;font-weight:900}'
-      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar{display:block;align-self:stretch;margin-top:0;min-height:42px}'
-      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar button{display:flex;align-items:center;justify-content:center;width:100%;height:42px;padding:0 12px;border-radius:12px;border:1px dashed rgba(96,165,250,.42);background:rgba(30,64,175,.14);color:#bfdbfe;font-size:12px;font-weight:800;cursor:pointer}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar{display:block;align-self:stretch;margin-top:0;min-height:42px;flex:0 0 168px}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar button{display:flex;align-items:center;justify-content:center;width:100%;height:42px;padding:0 12px;border-radius:12px;border:1px dashed rgba(96,165,250,.42);background:rgba(30,64,175,.14);color:#bfdbfe;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}'
       + '#modal-orcamento-calc{position:fixed!important;inset:0!important;padding:18px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:rgba(2,6,23,.82)!important;overflow:hidden!important}'
       + '#modal-orcamento-calc > div,#modal-orcamento-calc .modal-content,#modal-orcamento-calc [class*="modal-content"]{width:min(1680px,calc(100vw - 36px))!important;max-width:1680px!important;max-height:94vh!important;margin:0 auto!important;border-radius:24px!important;overflow:auto!important}'
       + '#ccp-modal-compra.estoque-modal-overlay,#ccp-modal-compra.estoque-modal-overlay-padrao,#ccpx-compra-fullscreen,#modal-calc,#modal-orcamento-calc{align-items:center!important;justify-content:center!important}'
@@ -46772,6 +47007,259 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     }
     return '';
   }
+  function patchBadgeHtml(count) {
+    var total = Math.max(0, Math.trunc(Number(count || 0) || 0));
+    if (!total) return '';
+    return '<span class="patch-btn-badge">' + escHtml(String(total > 99 ? '99+' : total)) + '</span>';
+  }
+  function orcParseItensRow(row) {
+    var itens = [];
+    if (Array.isArray(row && row.itens)) itens = row.itens.slice();
+    else if (typeof (row && row.itens) === 'string') {
+      try { itens = JSON.parse(row.itens || '[]'); } catch (_) { itens = []; }
+    }
+    itens = itens.filter(function(item) { return item && typeof item === 'object'; }).map(function(item, idx) {
+      var qtd = Number(item && (item.quantidade != null ? item.quantidade : item.qtd) || 0) || 0;
+      var total = Number(item && (item.valor_total != null ? item.valor_total : item.total) || 0) || 0;
+      var unit = Number(item && (item.valor_unitario != null ? item.valor_unitario : item.vunit) || 0) || (qtd > 0 ? (total / qtd) : 0);
+      var medidas = String(item && (item.medidas || [item.comp, item.larg, item.alt].filter(function(v) { return v != null && String(v).trim() !== ''; }).join(' x ')) || '').trim();
+      return Object.assign({}, item, {
+        _idx: idx,
+        quantidade: qtd,
+        valor_total: total,
+        valor_unitario: unit,
+        medidas: medidas,
+        onda: String(item && item.onda || '').trim()
+      });
+    });
+    if (itens.length) return itens;
+    if (!row) return [];
+    return [{
+      _idx: 0,
+      descricao: String(row.nome || row.nome_orcamento || 'Item principal').trim() || 'Item principal',
+      cliente_nome: String(row.cliente_nome || row.descricao || '').trim(),
+      medidas: String(row.medidas || row.titulo || '').trim(),
+      onda: String(row.onda || '').trim(),
+      quantidade: Number(row.quantidade || row.qtd || 0) || 0,
+      valor_unitario: Number(row.valor_unitario || row.vunit || 0) || 0,
+      valor_total: Number(row.valor_total || row.vtot || 0) || 0,
+      chapa_utilizada: String(chapaUtilizadaOf(row) || '').trim()
+    }];
+  }
+  function orcDraftItemsState() {
+    if (!Array.isArray(window.__orcDraftItems)) window.__orcDraftItems = [];
+    return window.__orcDraftItems;
+  }
+  function orcDraftCurrentItem() {
+    if (!window.calcLastResult || !Array.isArray(window.calcLastResult.allResults) || !window.calcLastResult.allResults.length) return null;
+    var calcCli = document.getElementById('calc-cli');
+    var clienteId = String((calcCli || {}).value || '').trim();
+    var clienteNome = '';
+    try {
+      clienteNome = (calcCli && calcCli.options && calcCli.selectedIndex >= 0)
+        ? String(calcCli.options[calcCli.selectedIndex].textContent || '').trim()
+        : '';
+    } catch (_) { clienteNome = ''; }
+    var qtd = parseInt(String((document.getElementById('calc-qtd') || {}).value || '0'), 10) || 0;
+    var comp = String(((document.getElementById('calc-c') || document.getElementById('calc-comp') || {}).value) || '').trim();
+    var larg = String(((document.getElementById('calc-l') || document.getElementById('calc-larg') || {}).value) || '').trim();
+    var alt = String(((document.getElementById('calc-a') || document.getElementById('calc-alt') || {}).value) || '').trim();
+    var medidas = [comp, larg, alt].filter(function(v) { return v; }).join(' x ');
+    var nomeAtual = calcNomeOrcamentoAtual();
+    var sel = window._calcOpcaoSelecionada || { compIdx: 0, onda: 'B' };
+    var opt = (window.calcLastResult.allResults || []).find(function(r) {
+      return r && r.compIdx === sel.compIdx && String(r.onda || '') === String(sel.onda || '');
+    }) || window.calcLastResult.allResults[0];
+    if (!opt) return null;
+    var total = Number(opt.comFrete || opt.total || 0) || 0;
+    var unit = qtd > 0 ? (total / qtd) : (Number(opt.vUnit || opt.valor_unitario || 0) || 0);
+    return {
+      descricao: nomeAtual || ('Item ' + String(orcDraftItemsState().length + 1)),
+      cliente_id: clienteId || '',
+      cliente_nome: clienteNome || '',
+      medidas: medidas,
+      comp: comp,
+      larg: larg,
+      alt: alt,
+      quantidade: qtd,
+      onda: String(opt.onda || '').trim(),
+      valor_unitario: unit,
+      valor_total: total,
+      tipo: String((document.getElementById('calc-tipo') || {}).value || '').trim(),
+      chapa_utilizada: String((document.getElementById('calc-chapa-utilizada') || {}).value || '').trim(),
+      resultados: Array.isArray(window.calcLastResult.allResults) ? window.calcLastResult.allResults.slice() : []
+    };
+  }
+  function orcDraftPayloadItems() {
+    var items = orcDraftItemsState().slice();
+    var current = orcDraftCurrentItem();
+    var editingIndex = Math.trunc(Number(window.__orcDraftEditingIndex));
+    if (current && Number.isInteger(editingIndex) && editingIndex >= 0 && editingIndex < items.length) items[editingIndex] = current;
+    if (!items.length && current) items = [current];
+    return items.map(function(item) {
+      return Object.assign({}, item, {
+        quantidade: Number(item && item.quantidade || 0) || 0,
+        valor_unitario: Number(item && item.valor_unitario || 0) || 0,
+        valor_total: Number(item && item.valor_total || 0) || 0
+      });
+    }).filter(function(item) {
+      return item && (item.medidas || item.quantidade || item.valor_total || item.onda || item.descricao);
+    });
+  }
+  function orcDraftTotals(items) {
+    return (Array.isArray(items) ? items : []).reduce(function(acc, item) {
+      acc.qtd += Number(item && item.quantidade || 0) || 0;
+      acc.valor += Number(item && item.valor_total || 0) || 0;
+      return acc;
+    }, { qtd: 0, valor: 0 });
+  }
+  function orcDraftLoadFromState(force) {
+    var current = currentOrcamentoFromState();
+    var currentId = String(current && current.id || '').trim();
+    if (!force && String(window.__orcDraftItemsSourceId || '') === currentId) return;
+    window.__orcDraftItemsSourceId = currentId;
+    window.__orcDraftEditingIndex = null;
+    window.__orcDraftItems = current ? orcParseItensRow(current) : [];
+  }
+  function orcLoadItemIntoCalc(item) {
+    if (!item) return;
+    function setValue(ids, value) {
+      ids.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = value;
+      });
+    }
+    setValue(['calc-c', 'calc-comp'], item.comp != null && String(item.comp).trim() !== '' ? item.comp : String((item.medidas || '').split('x')[0] || '').trim());
+    setValue(['calc-l', 'calc-larg'], item.larg != null && String(item.larg).trim() !== '' ? item.larg : String((item.medidas || '').split('x')[1] || '').trim());
+    setValue(['calc-a', 'calc-alt'], item.alt != null && String(item.alt).trim() !== '' ? item.alt : String((item.medidas || '').split('x')[2] || '').trim());
+    setValue(['calc-qtd'], item.quantidade || '');
+    setValue(['calc-nome-orcamento'], item.descricao || '');
+    setValue(['calc-chapa-utilizada'], item.chapa_utilizada || '');
+    try {
+      var calcCli = document.getElementById('calc-cli');
+      if (calcCli && item.cliente_id) calcCli.value = item.cliente_id;
+    } catch (_) {}
+    if (item.tipo) setValue(['calc-tipo'], item.tipo);
+    if (item.onda) window._calcOpcaoSelecionada = { compIdx: ({ B: 0, C: 1, BC: 2 })[String(item.onda).toUpperCase()] || 0, onda: String(item.onda).toUpperCase() };
+    try { if (typeof calcRecalc === 'function') calcRecalc(); } catch (_) {}
+  }
+  function orcRenderCalcItensUi() {
+    var host = document.getElementById('calc-itens-shell');
+    if (!host) return;
+    var items = orcDraftItemsState();
+    var editingIndex = Math.trunc(Number(window.__orcDraftEditingIndex));
+    host.innerHTML = ''
+      + '<div class="calc-itens-head">'
+      + '  <div><div class="calc-itens-title">Itens do Orçamento</div><div class="calc-itens-sub">Adicione cada item calculado antes de salvar. A listagem final passa a mostrar todos os itens e o salvamento envia o conjunto inteiro.</div></div>'
+      + '  <div class="calc-itens-actions"><button type="button" id="calc-item-upsert">' + (Number.isInteger(editingIndex) && editingIndex >= 0 ? 'Atualizar item atual' : '+ Adicionar item atual') + '</button>' + (Number.isInteger(editingIndex) && editingIndex >= 0 ? '<button type="button" id="calc-item-cancel">Cancelar edição</button>' : '') + '</div>'
+      + '</div>'
+      + '<div class="calc-itens-list">' + (items.length ? items.map(function(item, idx) {
+        var qtd = Number(item && item.quantidade || 0) || 0;
+        var total = Number(item && item.valor_total || 0) || 0;
+        return ''
+          + '<div class="calc-item-card' + (idx === editingIndex ? ' is-editing' : '') + '">'
+          + '  <div class="calc-item-main"><div class="calc-item-title">' + escHtml(String(item && item.descricao || ('Item ' + (idx + 1))) || ('Item ' + (idx + 1))) + '</div><div class="calc-item-meta">' + escHtml(String(item && item.medidas || 'Sem medidas')) + ' · ' + escHtml(String(item && item.onda || 'Sem onda')) + ' · ' + escHtml(fmtNum(qtd, 0)) + ' cx · ' + escHtml(fmtMoney(total)) + '</div></div>'
+          + '  <div class="calc-item-side"><button type="button" data-orc-draft-edit="' + idx + '">Usar</button><button type="button" class="danger" data-orc-draft-del="' + idx + '">Excluir</button></div>'
+          + '</div>';
+      }).join('') : '<div class="calc-item-card"><div class="calc-item-main"><div class="calc-item-title">Nenhum item adicionado ainda</div><div class="calc-item-meta">Se você salvar agora sem adicionar manualmente, o orçamento ainda usa o item atual calculado como antes.</div></div></div>') + '</div>';
+    var upsertBtn = host.querySelector('#calc-item-upsert');
+    if (upsertBtn) upsertBtn.onclick = function() {
+      var item = orcDraftCurrentItem();
+      if (!item) {
+        try { window.toast('Calcule o item atual antes de adicioná-lo ao orçamento.', 'var(--yellow)'); } catch (_) {}
+        return;
+      }
+      var list = orcDraftItemsState();
+      if (Number.isInteger(editingIndex) && editingIndex >= 0 && editingIndex < list.length) list[editingIndex] = item;
+      else list.push(item);
+      window.__orcDraftEditingIndex = null;
+      orcRenderCalcItensUi();
+      try { window.toast('Item do orçamento atualizado na lista.', 'var(--green)'); } catch (_) {}
+    };
+    var cancelBtn = host.querySelector('#calc-item-cancel');
+    if (cancelBtn) cancelBtn.onclick = function() {
+      window.__orcDraftEditingIndex = null;
+      orcRenderCalcItensUi();
+    };
+    Array.prototype.slice.call(host.querySelectorAll('[data-orc-draft-edit]')).forEach(function(btn) {
+      btn.onclick = function() {
+        var idx = Math.trunc(Number(btn.getAttribute('data-orc-draft-edit')));
+        var item = orcDraftItemsState()[idx] || null;
+        if (!item) return;
+        window.__orcDraftEditingIndex = idx;
+        orcLoadItemIntoCalc(item);
+        orcRenderCalcItensUi();
+      };
+    });
+    Array.prototype.slice.call(host.querySelectorAll('[data-orc-draft-del]')).forEach(function(btn) {
+      btn.onclick = function() {
+        var idx = Math.trunc(Number(btn.getAttribute('data-orc-draft-del')));
+        var list = orcDraftItemsState();
+        if (!(idx >= 0 && idx < list.length)) return;
+        list.splice(idx, 1);
+        if (window.__orcDraftEditingIndex === idx) window.__orcDraftEditingIndex = null;
+        orcRenderCalcItensUi();
+      };
+    });
+  }
+  function ensureCalcItensUi() {
+    var shellMain = document.querySelector('#modal-calculadora .orc-calc-shell-main');
+    var body = document.querySelector('#modal-calculadora .modal-body') || document.querySelector('#modal-calculadora .calc-body');
+    var parent = shellMain || body;
+    if (!parent) return;
+    var host = document.getElementById('calc-itens-shell');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'calc-itens-shell';
+      host.className = 'calc-itens-shell';
+      if (parent.firstChild) parent.insertBefore(host, parent.firstChild);
+      else parent.appendChild(host);
+    }
+    orcDraftLoadFromState(false);
+    orcRenderCalcItensUi();
+  }
+  function orcToggleItemExpansion(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return;
+    if (!window.__orcExpandedItems || typeof window.__orcExpandedItems !== 'object') window.__orcExpandedItems = {};
+    window.__orcExpandedItems[sid] = !window.__orcExpandedItems[sid];
+    try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
+  }
+  function compraToggleItemExpansion(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return;
+    if (!window.__cmpxExpandedItems || typeof window.__cmpxExpandedItems !== 'object') window.__cmpxExpandedItems = {};
+    window.__cmpxExpandedItems[sid] = !window.__cmpxExpandedItems[sid];
+    try { if (typeof window._compraPapelaoRenderPage === 'function') window._compraPapelaoRenderPage(); else if (typeof window._compraPapelaoRenderBody === 'function') window._compraPapelaoRenderBody(); } catch (_) {}
+  }
+  try { window.orcToggleItensRow = orcToggleItemExpansion; } catch (_) {}
+  try { window._compraPapelaoToggleItens = compraToggleItemExpansion; } catch (_) {}
+  function compraItensExpansaoHtml(compra) {
+    var itens = Array.isArray(compra && compra.itens) ? compra.itens : [];
+    if (!itens.length) return '<div class="cmpx-detail-card"><div class="cmpx-detail-sub">Nenhum item cadastrado nesta compra.</div></div>';
+    return ''
+      + '<div class="cmpx-detail-card"><div class="cmpx-detail-head"><div><div class="cmpx-detail-title">Itens da Compra</div><div class="cmpx-detail-sub">' + escHtml(String(itens.length)) + ' item(ns) vinculados a esta compra.</div></div></div>'
+      + '<table class="cmpx-detail-table"><thead><tr><th>#</th><th>Pedido Cliente</th><th>PO</th><th>Medidas</th><th class="num">Qtd</th><th class="num">Área m²</th><th class="num">Valor</th></tr></thead><tbody>'
+      + itens.map(function(item, idx) {
+        var d = window._compraPapelaoDeriveItem ? window._compraPapelaoDeriveItem(item) : { area_m2: item && item.area_m2, valor_total: item && item.valor_total };
+        return '<tr><td>' + escHtml(String(idx + 1)) + '</td><td>' + escHtml(String(item && item.ped_cliente || '—')) + '</td><td>' + escHtml(String(item && item.po || '—')) + '</td><td>' + escHtml([item && item.largura, item && item.comprimento].filter(function(v) { return v != null && String(v).trim() !== ''; }).join(' x ') || '—') + '</td><td class="num">' + escHtml(fmtNum(item && item.quantidade || 0, 0)) + '</td><td class="num">' + escHtml(fmtNum(d && d.area_m2 || 0, 4)) + '</td><td class="num">' + escHtml(fmtMoney(d && d.valor_total || 0)) + '</td></tr>';
+      }).join('')
+      + '</tbody></table></div>';
+  }
+  function orcItensExpansaoHtml(orc) {
+    var itens = orcParseItensRow(orc);
+    if (!itens.length) return '<div class="orx-detail-card"><div class="orx-detail-sub">Nenhum item cadastrado neste orçamento.</div></div>';
+    return ''
+      + '<div class="orx-detail-card"><div class="orx-detail-head"><div><div class="orx-detail-title">Itens do Orçamento</div><div class="orx-detail-sub">' + escHtml(String(itens.length)) + ' item(ns) salvos neste orçamento.</div></div></div>'
+      + '<table class="orx-detail-table"><thead><tr><th>#</th><th>Descrição</th><th>Medidas</th><th>Onda</th><th class="num">Qtd</th><th class="num">Valor Unit.</th><th class="num">Valor Total</th></tr></thead><tbody>'
+      + itens.map(function(item, idx) {
+        return '<tr><td>' + escHtml(String(idx + 1)) + '</td><td>' + escHtml(String(item && item.descricao || 'Item')) + '</td><td>' + escHtml(String(item && item.medidas || '—')) + '</td><td>' + escHtml(String(item && item.onda || '—')) + '</td><td class="num">' + escHtml(fmtNum(item && item.quantidade || 0, 0)) + '</td><td class="num">' + escHtml(fmtMoney(item && item.valor_unitario || 0)) + '</td><td class="num">' + escHtml(fmtMoney(item && item.valor_total || 0)) + '</td></tr>';
+      }).join('')
+      + '</tbody></table></div>';
+  }
+  try { window.__patchOrcParseItens = orcParseItensRow; } catch (_) {}
+  try { window.__patchOrcDraftLoadFromState = orcDraftLoadFromState; } catch (_) {}
+  try { window.__patchEnsureCalcItensUi = ensureCalcItensUi; } catch (_) {}
   window._compraPapelaoBindBody = function() {
     var host = document.getElementById('cmp-body');
     if (!host) return;
@@ -46836,6 +47324,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     Array.prototype.slice.call(host.querySelectorAll('[data-cmpx-delete]')).forEach(function(btn) {
       btn.onclick = function() { window._compraPapelaoDeleteCompra(String(btn.getAttribute('data-cmpx-delete') || '')); };
     });
+    Array.prototype.slice.call(host.querySelectorAll('[data-cmpx-toggle-items]')).forEach(function(btn) {
+      btn.onclick = function() { compraToggleItemExpansion(String(btn.getAttribute('data-cmpx-toggle-items') || '')); };
+    });
   };
   window._compraPapelaoRenderBody = function() {
     ensureRedesignStyle();
@@ -46864,6 +47355,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var tableRows = visible.map(function(compra) {
       var totals = window._compraPapelaoCompraTotals(compra);
       var id = String(compra && compra.id || '').trim();
+      var itens = Array.isArray(compra && compra.itens) ? compra.itens : [];
+      var expanded = !!((window.__cmpxExpandedItems || {})[id]);
       var dataRef = compra && (compra.data_compra || compra.data || compra.atualizado_em || compra.criado_em || compra.created_at || compra.updated_at);
       return ''
         + '<tr>'
@@ -46872,11 +47365,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '  <td><div class="cmpx-stack"><strong>' + escHtml(compraFolderName(compra) || 'Sem pasta') + '</strong><span>' + escHtml(window._compraPapelaoEmpresaNome(compra && compra._emp_id_consulta) || 'Empresa') + '</span></div></td>'
         + '  <td><div class="cmpx-stack"><strong>' + escHtml(compra && compra.ped_fornecedor || '—') + '</strong><span>' + escHtml((Array.isArray(compra && compra.itens) ? compra.itens.length : 0) + ' item(ns)') + '</span></div></td>'
         + '  <td><div class="cmpx-stack"><strong>' + escHtml(((Array.isArray(compra && compra.itens) ? compra.itens[0] : [])[0] || {}).ped_cliente || '—') + '</strong><span>' + escHtml(((Array.isArray(compra && compra.itens) ? compra.itens[0] : [])[0] || {}).po || 'PO não informada') + '</span></div></td>'
+        + '  <td><button type="button" class="cmpx-toggle-btn" data-cmpx-toggle-items="' + escAttr(id) + '">' + (expanded ? '▾' : '▸') + ' Itens <span class="patch-btn-badge">' + escHtml(String(itens.length || 0)) + '</span></button></td>'
         + '  <td class="cmpx-num">' + escHtml(fmtNum(totals.qtd, 0)) + '</td>'
         + '  <td class="cmpx-num">' + escHtml(fmtNum(totals.area, 4)) + ' m²</td>'
         + '  <td class="cmpx-num">' + escHtml(fmtMoney(totals.valor)) + '</td>'
         + '  <td><div class="cmpx-actions-row"><button type="button" class="primary is-edit" data-cmpx-edit="' + escAttr(id) + '">✏ Editar</button><button type="button" class="is-folder" data-cmpx-folder-move="' + escAttr(id) + '">🗂 Pasta</button><button type="button" class="is-print" data-cmpx-print="' + escAttr(id) + '">🖨 Imprimir</button><button type="button" class="is-copy" data-cmpx-clone="' + escAttr(id) + '">⧉ Clonar</button><button type="button" class="danger" data-cmpx-delete="' + escAttr(id) + '">🗑 Excluir</button></div></td>'
-        + '</tr>';
+        + '</tr>'
+        + (expanded ? '<tr class="cmpx-detail-row"><td colspan="10">' + compraItensExpansaoHtml(compra) + '</td></tr>' : '');
     }).join('');
     host.innerHTML = ''
       + '<div class="pep-wrap cmpx-wrap">'
@@ -46887,15 +47382,15 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '    <div class="pep-card"><div class="pep-card-label">Área Total Comprada</div><div class="pep-card-val">' + escHtml(fmtNum(resumo.area_total, 4)) + ' m²</div><div class="pep-card-sub">Área consolidada de todos os itens</div></div>'
       + '    <div class="pep-card"><div class="pep-card-label">Fornecedor em Destaque</div><div class="pep-card-val">' + escHtml(fornTop) + '</div><div class="pep-card-sub">Maior volume financeiro no conjunto</div></div>'
       + '  </div>'
-      + '  <div class="pep-head cmpx-head"><div class="cmpx-head-copy"><div class="cmpx-title">Compra de Papelão</div><div class="cmpx-sub">Página refeita no padrão visual das telas de Estoques: resumo forte no topo, filtros claros no meio e tabela detalhada abaixo, com foco em leitura rápida, toque confortável no mobile e operação diária sem poluição visual.</div></div><div class="cmpx-actions"><button type="button" class="pep-btn primary is-main" id="cmpx-btn-nova">＋ Nova Compra</button><button type="button" class="pep-btn" id="cmpx-btn-pasta">🗂 Nova Pasta</button><button type="button" class="pep-btn" id="cmpx-btn-sugestoes">💡 Sugestões</button><button type="button" class="pep-btn" id="cmpx-btn-rel-periodo">📅 Relatório do Período</button><button type="button" class="pep-btn" id="cmpx-btn-rel-forn">🏷 Compras por Fornecedor</button><button type="button" class="pep-btn" id="cmpx-btn-rel-resumo">📊 Quantidade e Valor</button><button type="button" class="pep-btn" id="cmpx-btn-print">🖨 Imprimir</button></div></div>'
+      + '  <div class="pep-head cmpx-head"><div class="cmpx-head-copy"><div class="cmpx-title">Compra de Papelão</div><div class="cmpx-sub">Página refeita no padrão visual das telas de Estoques: resumo forte no topo, filtros claros no meio e tabela detalhada abaixo, com foco em leitura rápida, toque confortável no mobile e operação diária sem poluição visual.</div></div><div class="cmpx-actions"><button type="button" class="pep-btn primary is-main" id="cmpx-btn-nova">＋ Nova Compra</button><button type="button" class="pep-btn" id="cmpx-btn-pasta">🗂 Nova Pasta</button><button type="button" class="pep-btn" id="cmpx-btn-sugestoes">💡 Sugestões ' + patchBadgeHtml(Array.isArray(st.pins) ? st.pins.length : 0) + '</button><button type="button" class="pep-btn" id="cmpx-btn-rel-periodo">📅 Relatório do Período</button><button type="button" class="pep-btn" id="cmpx-btn-rel-forn">🏷 Compras por Fornecedor</button><button type="button" class="pep-btn" id="cmpx-btn-rel-resumo">📊 Quantidade e Valor</button><button type="button" class="pep-btn" id="cmpx-btn-print">🖨 Imprimir</button></div></div>'
       + '  <div class="pep-panel cmpx-filter-panel">'
       + '    <div class="cmpx-filter-row"><input class="pep-input" id="cmpx-busca" type="text" placeholder="Buscar por fornecedor, pedido, número da compra, pasta, PO ou observação..." value="' + escAttr(st.busca || '') + '"><button type="button" class="pep-btn primary" id="cmpx-btn-buscar">Buscar</button></div>'
       + '    <div class="cmpx-folder-strip">' + filtersHtml + '</div>'
       + '  </div>'
       + '  <div class="pep-panel">'
       + '    <div class="cmpx-table-head"><div><div class="cmpx-table-title">Tabela Detalhada de Compras</div><div class="cmpx-table-sub">Cada linha resume a compra inteira e preserva as ações principais no mesmo contexto, como nas áreas de Estoques. O modal full-screen continua sendo o ponto central de criação e edição.</div></div></div>'
-      + '    <div class="cmpx-table-wrap"><table class="cmpx-table"><thead><tr><th>Compra</th><th>Fornecedor</th><th>Pasta</th><th>Pedido do Fornecedor</th><th>Primeiro Item</th><th>Qtd</th><th>Área</th><th>Valor</th><th>Ações</th></tr></thead><tbody>'
-      + (tableRows || '<tr><td colspan="9"><div class="cmpx-empty">Nenhuma compra encontrada com os filtros atuais.</div></td></tr>')
+      + '    <div class="cmpx-table-wrap"><table class="cmpx-table"><thead><tr><th>Compra</th><th>Fornecedor</th><th>Pasta</th><th>Pedido do Fornecedor</th><th>Primeiro Item</th><th>Itens</th><th>Qtd</th><th>Área</th><th>Valor</th><th>Ações</th></tr></thead><tbody>'
+      + (tableRows || '<tr><td colspan="10"><div class="cmpx-empty">Nenhuma compra encontrada com os filtros atuais.</div></td></tr>')
       + '    </tbody></table></div>'
       + '  </div>'
       + '</div>';
@@ -47038,8 +47533,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var options = opts || {};
     if (typeof window.apiFetch === 'function') {
       return window.apiFetch(path, options).then(function(resp) {
-        return resp.json().catch(function() { return null; }).then(function(json) {
-          if (!resp.ok || (json && json.ok === false)) throw new Error(String(json && (json.error || json.message) || ('Falha em ' + path)));
+        return (window.__patchReadJsonResponse ? window.__patchReadJsonResponse(resp, 'Não foi possível carregar os dados agora. Tente novamente em instantes.') : Promise.resolve({ ok: false, json: null, errorMessage: 'Não foi possível carregar os dados agora. Tente novamente em instantes.' })).then(function(parsed) {
+          var json = parsed && parsed.json;
+          if (!parsed || !parsed.ok || (json && json.ok === false)) throw new Error(String(parsed && parsed.errorMessage || ('Falha em ' + path)));
           return Object.prototype.hasOwnProperty.call(json || {}, 'data') ? json.data : json;
         });
       });
@@ -47054,8 +47550,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       body = JSON.stringify(body);
     }
     return fetch(path, Object.assign({}, options, { headers: headers, body: body })).then(function(resp) {
-      return resp.json().catch(function() { return null; }).then(function(json) {
-        if (!resp.ok || (json && json.ok === false)) throw new Error(String(json && (json.error || json.message) || ('Falha em ' + path)));
+      return (window.__patchReadJsonResponse ? window.__patchReadJsonResponse(resp, 'Não foi possível carregar os dados agora. Tente novamente em instantes.') : Promise.resolve({ ok: false, json: null, errorMessage: 'Não foi possível carregar os dados agora. Tente novamente em instantes.' })).then(function(parsed) {
+        var json = parsed && parsed.json;
+        if (!parsed || !parsed.ok || (json && json.ok === false)) throw new Error(String(parsed && parsed.errorMessage || ('Falha em ' + path)));
         return Object.prototype.hasOwnProperty.call(json || {}, 'data') ? json.data : json;
       });
     });
@@ -47109,6 +47606,38 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     window.api = wrapped;
     try { api = wrapped; } catch (_) {}
   }
+  function patchApiOrcamentoItens() {
+    var orig = window.api;
+    if (typeof orig !== 'function' || orig.__patchOrcItens) return;
+    var wrapped = async function(method, path, body) {
+      var m = String(method || '').toUpperCase();
+      var u = String(path || '');
+      var payload = body;
+      if ((m === 'POST' || m === 'PUT' || m === 'PATCH') && /^\/(?:api\/)?orcamentos(?:\/|$)/.test(u) && body && typeof body === 'object') {
+        payload = Object.assign({}, body);
+        var itens = orcDraftPayloadItems();
+        if (itens.length) {
+          var totals = orcDraftTotals(itens);
+          var first = itens[0] || {};
+          var ondas = itens.map(function(item) { return String(item && item.onda || '').trim().toUpperCase(); }).filter(Boolean).filter(function(value, idx, arr) { return arr.indexOf(value) === idx; });
+          payload.itens = itens;
+          payload.quantidade = totals.qtd;
+          payload.valor_total = totals.valor;
+          payload.valor_unitario = totals.qtd > 0 ? (totals.valor / totals.qtd) : (Number(first && first.valor_unitario || 0) || 0);
+          if (!String(payload.medidas || '').trim()) payload.medidas = String(first && first.medidas || '').trim();
+          if (!String(payload.titulo || '').trim()) payload.titulo = String(payload.medidas || '').trim();
+          if (!String(payload.onda || '').trim()) payload.onda = ondas.join(' / ');
+          if (!Array.isArray(payload.resultados) || !payload.resultados.length) payload.resultados = Array.isArray(first && first.resultados) ? first.resultados.slice() : [];
+        }
+      }
+      return orig.call(this, method, path, payload);
+    };
+    wrapped.__patchOrcItens = true;
+    wrapped.__orig = orig;
+    window.api = wrapped;
+    try { api = wrapped; } catch (_) {}
+  }
+  patchApiOrcamentoItens();
   function ensureCalcWaveTableRows() {
     var table = document.getElementById('calc-sheet');
     var tbody = table && table.querySelector ? table.querySelector('tbody') : null;
@@ -47284,6 +47813,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var rowsHtml = lista.map(function(orc) {
       var id = String(orc && orc.id || '').trim();
       var num = orc && orc.numero_orcamento ? orc.numero_orcamento : (id ? id.slice(0, 8) : '—');
+      var itens = orcParseItensRow(orc);
+      var expanded = !!((window.__orcExpandedItems || {})[id]);
       var nome = orc && (orc.nome || orc.nome_orcamento) ? (orc.nome || orc.nome_orcamento) : '—';
       var cliente = orc && (orc.cliente_nome || orc.descricao) ? (orc.cliente_nome || orc.descricao) : '—';
       var medidas = orc && (orc.medidas || orc.titulo) ? (orc.medidas || orc.titulo) : '—';
@@ -47307,13 +47838,15 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '  <td><div class="orx-stack"><strong>' + escHtml(cliente) + '</strong><span>Cliente do orçamento</span></div></td>'
         + '  <td><div class="orx-stack"><strong>' + escHtml(medidas) + '</strong><span>Dimensões e descrição</span></div></td>'
         + '  <td><div class="orx-stack"><strong>' + escHtml(onda) + '</strong><span>' + escHtml(chapa) + '</span></div></td>'
+        + '  <td><button type="button" class="orx-toggle-btn" onclick="orcToggleItensRow(\'' + escAttr(id) + '\')">' + (expanded ? '▾' : '▸') + ' Itens <span class="patch-btn-badge">' + escHtml(String(itens.length || 0)) + '</span></button></td>'
         + '  <td class="orx-num">' + escHtml(String(qtd)) + '</td>'
         + '  <td class="orx-num">' + escHtml(fmtMoney(vtot)) + '</td>'
         + '  <td><div class="orx-actions-row"><select class="is-folder" onchange="orcMoverParaPasta(\'' + escAttr(id) + '\', this.value)"><option value="">Sem pasta</option>' + (Array.isArray(window.__orcPastasData) ? window.__orcPastasData.map(function(folder) {
             var sid = String(folder && folder.id || '').trim();
             return '<option value="' + escAttr(sid) + '"' + (sid === pastaId ? ' selected' : '') + '>' + escHtml(folder && folder.nome || '') + '</option>';
           }).join('') : '') + '</select><button type="button" class="primary is-edit" onclick="abrirCalculadoraComOrc(\'' + escAttr(id) + '\')">✏ Editar</button><button type="button" class="is-print" onclick="imprimirOrcamentoId(\'' + escAttr(id) + '\')">🖨 Imprimir</button><button type="button" class="is-versions" onclick="abrirVersoesOrcamento(\'' + escAttr(id) + '\')">🕘 Versões</button><button type="button" class="danger" onclick="excluirOrcamento(\'' + escAttr(id) + '\')">🗑 Excluir</button></div></td>'
-        + '</tr>';
+        + '</tr>'
+        + (expanded ? '<tr class="orx-detail-row"><td colspan="9">' + orcItensExpansaoHtml(orc) + '</td></tr>' : '');
     }).join('');
     body.innerHTML = ''
       + '<div class="pep-wrap orx-wrap">'
@@ -47330,9 +47863,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '    <div class="orx-folder-strip">' + filtersHtml + '</div>'
       + '  </div>'
       + '  <div class="pep-panel">'
-      + '    <div class="orx-table-head"><div><div class="orx-table-title">Tabela Detalhada de Orçamentos</div><div class="orx-table-sub">Listagem refeita para leitura rápida: número, nome, cliente, medidas, onda, valor total e ações principais no mesmo contexto, como nas páginas do menu Estoques.</div></div></div>'
-      + '    <div class="orx-table-wrap"><table class="orx-table"><thead><tr><th>Número</th><th>Orçamento</th><th>Cliente</th><th>Medidas</th><th>Onda / Chapa</th><th>Qtd</th><th>Valor Total</th><th>Ações</th></tr></thead><tbody>'
-      + (rowsHtml || '<tr><td colspan="8"><div class="orx-empty">Nenhum orçamento encontrado com os filtros atuais.</div></td></tr>')
+      + '    <div class="orx-table-head"><div><div class="orx-table-title">Tabela Detalhada de Orçamentos</div><div class="orx-table-sub">Listagem refeita para leitura rápida: número, nome, cliente, medidas, itens, onda, valor total e ações principais no mesmo contexto, como nas páginas do menu Estoques.</div></div></div>'
+      + '    <div class="orx-table-wrap"><table class="orx-table"><thead><tr><th>Número</th><th>Orçamento</th><th>Cliente</th><th>Medidas</th><th>Onda / Chapa</th><th>Itens</th><th>Qtd</th><th>Valor Total</th><th>Ações</th></tr></thead><tbody>'
+      + (rowsHtml || '<tr><td colspan="9"><div class="orx-empty">Nenhum orçamento encontrado com os filtros atuais.</div></td></tr>')
       + '    </tbody></table></div>'
       + '  </div>'
       + '</div>';
@@ -47381,6 +47914,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function tick() {
     ensureRedesignStyle();
     try { renderCalcWavePanels(); } catch (_) {}
+    try { ensureCalcItensUi(); } catch (_) {}
     try {
       var overlay = document.getElementById('ccpx-compra-fullscreen');
       if (overlay) bindCompraVincoActions(overlay);

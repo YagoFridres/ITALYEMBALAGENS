@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260730162000';
-const SW_RUNTIME_VERSION = '20260730162000';
+const PATCH_RUNTIME_VERSION = '20260730193000';
+const SW_RUNTIME_VERSION = '20260730193000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
@@ -2484,31 +2484,51 @@ function _vendasOficialStatusConcluido(status) {
   return txt.includes('conclu');
 }
 
+function _vendasOficialDateObj(of) {
+  const raw = (
+    of?.data_faturamento ??
+    of?.data_conclusao ??
+    of?.dia ??
+    of?.created_at ??
+    ''
+  );
+  const iso = _relatoriosIsoDateOnly(raw);
+  if (!iso) return null;
+  const dt = new Date(`${iso}T12:00:00`);
+  return Number.isFinite(dt.getTime()) ? dt : null;
+}
+
 function _vendasOficialDataRef(of) {
-  return _relatoriosIsoDateOnly(of?.data_conclusao);
+  const dt = _vendasOficialDateObj(of);
+  return dt ? dt.toISOString().slice(0, 10) : '';
 }
 
 function _vendasOficialValor(of) {
   return Number(of?.valor_total || 0) || 0;
 }
 
-async function _listarOfsVendasOficiais(range = {}, empresaId = '') {
+function _vendasOficialDentroDoPeriodo(of, range = {}) {
+  const dataRef = _vendasOficialDataRef(of);
+  if (!dataRef) return false;
   const inicio = _relatoriosIsoDateOnly(range?.inicio);
   const fim = _relatoriosIsoDateOnly(range?.fim);
   const fimExclusivo = _relatoriosIsoDateOnly(range?.fim_exclusivo);
+  if (inicio && dataRef < inicio) return false;
+  if (fimExclusivo && dataRef >= fimExclusivo) return false;
+  if (!fimExclusivo && fim && dataRef > fim) return false;
+  return true;
+}
+
+async function _listarOfsVendasOficiais(range = {}, empresaId = '') {
   const rows = [];
   const PAGE = 1000;
   for (let offset = 0; offset < 50000; offset += PAGE) {
     let query = supabase
       .from('ofs')
-      .select('id,numero,of,status,deleted_at,empresa_id,emp_id,data_conclusao,valor_total')
+      .select('id,numero,of,status,deleted_at,empresa_id,emp_id,data_faturamento,data_conclusao,dia,created_at,valor_total')
       .is('deleted_at', null)
-      .not('data_conclusao', 'is', null)
-      .order('data_conclusao', { ascending: true })
+      .order('created_at', { ascending: true })
       .range(offset, offset + PAGE - 1);
-    if (inicio) query = query.gte('data_conclusao', inicio);
-    if (fimExclusivo) query = query.lt('data_conclusao', fimExclusivo);
-    else if (fim) query = query.lte('data_conclusao', fim);
     if (empresaId) {
       query = query.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId},empresa_id.is.null`);
     }
@@ -2520,7 +2540,7 @@ async function _listarOfsVendasOficiais(range = {}, empresaId = '') {
   }
   return rows.filter((row) => {
     if (!_vendasOficialStatusConcluido(row?.status)) return false;
-    return !!_vendasOficialDataRef(row);
+    return _vendasOficialDentroDoPeriodo(row, range);
   });
 }
 
@@ -2667,7 +2687,7 @@ app.get('/api/comissoes/debug-total-vendido', autenticar, async (req, res) => {
       ok: true,
       origem: 'frontend-comissoes',
       criterio_valor: 'Number(of.valor_total || 0) || 0',
-      criterio_data: 'data_conclusao',
+      criterio_data: 'COALESCE(data_faturamento, data_conclusao, dia, created_at)',
       criterio_status: 'status concluído/concluido/concluida/concluída, exclui canceladas e deleted_at',
       data_inicio: range.inicio,
       data_fim: range.fim,
@@ -10437,19 +10457,15 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
     'operadores_conclusao', 'perdas_por_maquina', 'usuario_conclusao', 'operador_conclusao', 'maq',
     'maquina_agendada', 'caixa_comprimento', 'caixa_largura', 'dim_comprimento', 'dim_largura',
     'gramatura_id', 'gramatura', 'gramatura_nome', 'tonelada_vendida', 'custo_m2_venda', 'preco',
-    'valor_unitario', 'valor_venda', 'data_conclusao', 'cores_impressao'
+    'valor_unitario', 'valor_venda', 'data_faturamento', 'data_conclusao', 'dia', 'created_at',
+    'status', 'deleted_at', 'empresa_id', 'emp_id', 'cores_impressao'
   ];
 
   let rows = [];
   {
     const selectExpr = Array.from(new Set(selectedCols)).join(',');
     let q = supabase.from('ofs').select(selectExpr);
-    q = q
-      .not('data_conclusao', 'is', null)
-      .gte('data_conclusao', range.inicio)
-      .lte('data_conclusao', range.fim)
-      .order('data_conclusao', { ascending: false })
-      .limit(10000);
+    q = q.order('created_at', { ascending: false }).limit(10000);
     if (empId) q = q.or('emp_id.eq.' + empId + ',empresa_id.eq.' + empId + ',empresa_id.is.null');
     else if (empresaUuid) q = q.or('empresa_id.eq.' + empresaUuid + ',empresa_id.is.null');
     const { data, error } = await q;
@@ -10526,6 +10542,9 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
     .slice(0, 5);
 
   const filtradasBase = rows.filter((row) => {
+    if (row?.deleted_at) return false;
+    if (!_vendasOficialStatusConcluido(row?.status)) return false;
+    if (!_vendasOficialDentroDoPeriodo(row, { inicio: range.inicio, fim: range.fim })) return false;
     const clienteNome = String(clientesMap.get(String(row?.cli_id || '').trim()) || '').trim().toLowerCase();
     if (clienteNeedle && !clienteNome.includes(clienteNeedle)) return false;
     const maqNome = String(_canonMaqNome(row?.maquina_agendada || row?.maq || '') || '').trim();
@@ -10555,7 +10574,10 @@ async function _agruparOfsRelatorioMensalFallback(req, ref, maquinaFiltro = '', 
       valor_venda: Number(row?.valor_venda ?? row?.valor_total ?? row?.total ?? 0) || 0,
       numero: row?.numero ?? row?.of ?? null,
       of: row?.of ?? row?.numero ?? null,
-      data_conclusao: row?.data_conclusao || null
+      data_faturamento: row?.data_faturamento || null,
+      data_conclusao: row?.data_conclusao || null,
+      dia: row?.dia || null,
+      created_at: row?.created_at || null
     };
   });
 
@@ -10603,6 +10625,11 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
 
     let passagens = Array.isArray(pair?.rows) ? pair.rows : [];
     const count = Number(pair?.count || 0) || 0;
+    const range = _relatoriosResolveDateRange(req.query || {}, {});
+    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || req.usuario?.emp_id || req.usuario?.empId || '').trim();
+    const resumoOficial = (range && range.inicio)
+      ? await _resumirVendasOficiais(range, empresaId)
+      : { total_vendido: 0, total_ofs: 0 };
     try { passagens = await _enriquecerPassagensHistoricoComOfs(passagens); } catch (_) {}
     try { passagens = await _normalizarMaquinasPassagens(passagens); } catch (_) {}
     try { passagens = (Array.isArray(passagens) ? passagens.slice() : []).sort((a, b) => _timestampPassagem(b) - _timestampPassagem(a)); } catch (_) {}
@@ -10625,7 +10652,9 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
       limit,
       offset,
       data_inicio: _relatoriosIsoDateOnly(data_inicio),
-      data_fim: _relatoriosIsoDateOnly(data_fim)
+      data_fim: _relatoriosIsoDateOnly(data_fim),
+      total_vendido_oficial: Number(resumoOficial?.total_vendido || 0) || 0,
+      total_ofs_oficial: Number(resumoOficial?.total_ofs || 0) || 0
     }); 
   } catch(e) { 
     // #region debug-point C:passagens-historico-error
@@ -14276,8 +14305,9 @@ app.get('/api/empresas', async (req, res) => {
 app.get('/api/orcamentos', authMiddleware, async (req, res) => {
   try {
     const empFiltro = String(req.query.empId || req.query.empresa_id || req.query.empresaId || req.query.empresa || '').trim();
-    const buildQuery = (applyEmpFilter) => {
+    const buildQuery = (applyEmpFilter, applyDeletedFilter) => {
       let q = supabase.from('orcamentos').select('*').order('criado_em', { ascending: false });
+      if (applyDeletedFilter) q = q.is('deleted_at', null);
       if (req.query.numero) q = q.eq('numero_orcamento', String(req.query.numero));
       if (req.query.cliente) q = q.ilike('cliente_nome', `%${String(req.query.cliente)}%`);
       if (applyEmpFilter && empFiltro) {
@@ -14296,13 +14326,21 @@ app.get('/api/orcamentos', authMiddleware, async (req, res) => {
       return q.limit(50);
     };
 
-    let { data, error } = await buildQuery(true);
+    let { data, error } = await buildQuery(true, true);
+    if (error) {
+      const msg = String(error.message || error || '');
+      if (msg.includes('deleted_at') && (msg.includes('column') || msg.includes('Could not find'))) {
+        const retry = await buildQuery(true, false);
+        data = retry.data;
+        error = retry.error;
+      }
+    }
     if (error) {
       console.error('[ORCAMENTOS] error:', error.message);
       return ok(res, []);
     }
     if (empFiltro && !(Array.isArray(data) && data.length)) {
-      const fallback = await buildQuery(false);
+      const fallback = await buildQuery(false, false);
       if (!fallback.error && Array.isArray(fallback.data) && fallback.data.length) {
         console.log('[ORCAMENTOS] fallback sem filtro de empresa ativado para evitar lista vazia');
         data = fallback.data;
@@ -14391,6 +14429,7 @@ app.post('/api/orcamentos', authMiddleware, async (req, res) => {
       valor_total: b.valor_total || 0,
       parametros,
       resultados: b.resultados || [],
+      itens: Array.isArray(b.itens) ? b.itens : [],
       emp_id: empLegacy || '',
       empresa_id: empresaUuid || null,
       criado_por: req.usuario?.nome || 'sistema',
@@ -14490,6 +14529,7 @@ app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
       updates.parametros = nextParametros;
     }
     if (has('resultados')) updates.resultados = b.resultados ?? [];
+    if (has('itens')) updates.itens = Array.isArray(b.itens) ? b.itens : [];
     if (has('status')) updates.status = b.status ?? atual.data?.status ?? 'Rascunho';
     if (has('pasta_id')) updates.pasta_id = b.pasta_id ? String(b.pasta_id).trim() : null;
     if (has('chapa_utilizada') || has('chapaUtilizada')) updates.chapa_utilizada = chapaUtilizada || null;
@@ -14509,10 +14549,44 @@ app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
     return ok(res, upd.data);
   } catch (e) { return res.status(500).json({ error: String(e.message || e) }); }
 });
-app.delete('/api/orcamentos/:id', async (req, res) => {
+app.delete('/api/orcamentos/:id', authMiddleware, async (req, res) => {
   try {
-    const { error } = await supabase.from('orcamentos').delete().eq('id', req.params.id);
-    if (error) throw error;
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const empresaCtx = await _resolveEmpresaMutationContext(req, req.body || {});
+    const empresaUuid = String(empresaCtx?.empresa_id || '').trim();
+    const empresaLegacy = String(empresaCtx?.emp_id || req.usuario?.emp_id || req.usuario?.empId || '').trim();
+    const applyEmpresaScope = (query) => {
+      let q = query;
+      if (empresaUuid) q = q.or(`empresa_id.eq.${empresaUuid},empresa_id.is.null`);
+      if (empresaLegacy) q = q.or(`emp_id.eq.${empresaLegacy},empresa_id.eq.${empresaLegacy},emp_id.is.null`);
+      return q;
+    };
+
+    let upd = await applyEmpresaScope(
+      supabase
+        .from('orcamentos')
+        .update({ deleted_at: new Date().toISOString(), status: 'Excluído' })
+        .eq('id', id)
+    ).select('id').maybeSingle();
+
+    if (upd.error) {
+      const msg = String(upd.error.message || upd.error || '');
+      if (msg.includes('deleted_at') && (msg.includes('column') || msg.includes('Could not find'))) {
+        const del = await applyEmpresaScope(
+          supabase
+            .from('orcamentos')
+            .delete()
+            .eq('id', id)
+        ).select('id').maybeSingle();
+        if (del.error) throw del.error;
+        if (!del.data) return res.status(404).json({ ok: false, error: 'Orçamento não encontrado' });
+        return ok(res, true);
+      }
+      throw upd.error;
+    }
+
+    if (!upd.data) return res.status(404).json({ ok: false, error: 'Orçamento não encontrado' });
     return ok(res, true);
   } catch (e) { return err(res, e); }
 });
@@ -30474,8 +30548,8 @@ app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) =>
       const valor = _vendasOficialValor(of);
       if (!valor || valor <= 0) return;
 
-      const dt = new Date(of?.data_conclusao);
-      if (isNaN(dt.getTime())) return;
+      const dt = _vendasOficialDateObj(of);
+      if (!(dt && Number.isFinite(dt.getTime()))) return;
 
       const k = dt.getFullYear() + '-' + (dt.getMonth() + 1);
       if (!grupos[k]) grupos[k] = { ano: dt.getFullYear(), mes: dt.getMonth() + 1, valor: 0, valor_of: 0, valor_manual: null, fonte: 'of', ofs: 0 };
