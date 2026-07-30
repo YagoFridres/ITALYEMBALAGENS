@@ -47274,4 +47274,113 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   setTimeout(tick, 600);
 })();
 
+(function patchQuickOfRiscadorGlobalFallback() {
+  if (window.__quickOfRiscadorGlobalFallbackApplied) return;
+  window.__quickOfRiscadorGlobalFallbackApplied = true;
+
+  function normQuickOfMachine(v) {
+    var s = String(v == null ? '' : v).trim().toLowerCase();
+    try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+    return s.replace(/\s+/g, ' ').trim();
+  }
+
+  function ensureQuickOfRiscadorOption(sel) {
+    if (!sel || !sel.options) return;
+    var hasMachineShape = false;
+    try {
+      hasMachineShape = Array.prototype.slice.call(sel.options).some(function(opt) {
+        var txt = normQuickOfMachine(opt && (opt.value || opt.textContent || opt.label || ''));
+        return txt === 'riscador'
+          || txt === 'corte vinco rotativa'
+          || /^imp 0[1-5]$/.test(txt);
+      });
+    } catch (_) {
+      hasMachineShape = false;
+    }
+    if (!hasMachineShape) return;
+
+    var hasRiscador = false;
+    try {
+      hasRiscador = Array.prototype.slice.call(sel.options).some(function(opt) {
+        return normQuickOfMachine(opt && (opt.value || opt.textContent || opt.label || '')) === 'riscador';
+      });
+    } catch (_) {
+      hasRiscador = false;
+    }
+    if (hasRiscador) return;
+
+    var opt = document.createElement('option');
+    opt.value = 'Riscador';
+    opt.textContent = 'Riscador';
+    var before = null;
+    try {
+      before = Array.prototype.slice.call(sel.options).find(function(item) {
+        return normQuickOfMachine(item && (item.value || item.textContent || item.label || '')) === 'corte vinco rotativa';
+      }) || null;
+    } catch (_) {
+      before = null;
+    }
+    try { sel.insertBefore(opt, before); } catch (_) { try { sel.appendChild(opt); } catch (_) {} }
+  }
+
+  function patchQuickOfRiscadorGlobalNow() {
+    try { ensureQuickOfRiscadorOption(document.getElementById('of-r-maquina')); } catch (_) {}
+    Array.prototype.slice.call(document.querySelectorAll('#painel-mais-itens .item-maquina, #painel-mais-itens select, #modal-of-rapida .item-maquina, #modal-of-rapida .ofr-item-card select')).forEach(function(sel) {
+      try { ensureQuickOfRiscadorOption(sel); } catch (_) {}
+    });
+  }
+
+  function scheduleQuickOfRiscadorGlobal() {
+    patchQuickOfRiscadorGlobalNow();
+    setTimeout(patchQuickOfRiscadorGlobalNow, 50);
+    setTimeout(patchQuickOfRiscadorGlobalNow, 180);
+    setTimeout(patchQuickOfRiscadorGlobalNow, 700);
+    setTimeout(patchQuickOfRiscadorGlobalNow, 1500);
+  }
+
+  function wrapQuickOfGlobal(name) {
+    if (typeof window[name] !== 'function' || window[name].__quickOfRiscadorGlobalWrapped) return;
+    var orig = window[name];
+    window[name] = function() {
+      var res = orig.apply(this, arguments);
+      scheduleQuickOfRiscadorGlobal();
+      return res;
+    };
+    window[name].__quickOfRiscadorGlobalWrapped = true;
+  }
+
+  function installQuickOfGlobalObserver() {
+    if (window.__quickOfRiscadorGlobalObserver || typeof MutationObserver !== 'function' || !document || !document.body) return;
+    try {
+      var obs = new MutationObserver(function(mutations) {
+        var touched = false;
+        for (var i = 0; i < mutations.length; i += 1) {
+          var m = mutations[i];
+          if (!m) continue;
+          if (m.type === 'childList' && m.addedNodes && m.addedNodes.length) {
+            touched = true;
+            break;
+          }
+          if (m.type === 'attributes') {
+            touched = true;
+            break;
+          }
+        }
+        if (touched) scheduleQuickOfRiscadorGlobal();
+      });
+      obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'open'] });
+      window.__quickOfRiscadorGlobalObserver = obs;
+    } catch (_) {}
+  }
+
+  wrapQuickOfGlobal('abrirNovaOfRapida');
+  wrapQuickOfGlobal('abrirOfRapida');
+  wrapQuickOfGlobal('abrirOFRapida');
+  wrapQuickOfGlobal('abrirMaisItensOfRapida');
+  installQuickOfGlobalObserver();
+  scheduleQuickOfRiscadorGlobal();
+  setTimeout(scheduleQuickOfRiscadorGlobal, 120);
+  setTimeout(scheduleQuickOfRiscadorGlobal, 900);
+})();
+
 
