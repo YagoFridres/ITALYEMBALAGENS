@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -26,37 +26,7 @@ process.on('unhandledRejection', (e) => {
 const PINS_STORE_FILE = path.join(__dirname, 'pins_store.json');
 let _pinsStorageMode = null;
 
-const PROD_BLOCKERS_DEBUG_ENV = path.join(__dirname, '.dbg', 'prod-blockers-regressions.env');
-
-// #region debug-point A:prod-blockers-reporter
-function _reportProdBlockersDebug(hypothesisId, location, msg, data, runId) {
-  try {
-    let url = 'http://127.0.0.1:7788/event';
-    let sessionId = 'prod-blockers-regressions';
-    try {
-      const envRaw = fs.readFileSync(PROD_BLOCKERS_DEBUG_ENV, 'utf8');
-      const urlMatch = envRaw.match(/^DEBUG_SERVER_URL=(.+)$/m);
-      const sessionMatch = envRaw.match(/^DEBUG_SESSION_ID=(.+)$/m);
-      if (urlMatch && String(urlMatch[1] || '').trim()) url = String(urlMatch[1] || '').trim();
-      if (sessionMatch && String(sessionMatch[1] || '').trim()) sessionId = String(sessionMatch[1] || '').trim();
-    } catch (_) {}
-    if (typeof fetch !== 'function') return;
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId,
-        runId: String(runId || 'pre-fix'),
-        hypothesisId: String(hypothesisId || 'A'),
-        location: String(location || 'server.js'),
-        msg: String(msg || '[DEBUG] event'),
-        data: data && typeof data === 'object' ? data : {},
-        ts: Date.now(),
-      }),
-    }).catch(() => {});
-  } catch (_) {}
-}
-// #endregion
+function _reportProdBlockersDebug() { return; }
 
 function _pinsCreateSql() {
   return (

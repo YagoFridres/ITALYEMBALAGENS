@@ -95,10 +95,20 @@ window._printEscText = function(s) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 };
+if (typeof window._fmtDateEstoque !== 'function') {
+  window._fmtDateEstoque = function(v) {
+    var s = String(v || '').trim();
+    if (!s) return '—';
+    try {
+      var d = new Date(s);
+      if (!Number.isFinite(d.getTime())) return '—';
+      return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    } catch (_) {
+      return '—';
+    }
+  };
+}
 function _fecharModalPadrao(id) {
-  // #region debug-point A:shared-modal-close
-  try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'fechar modal padrao acionado', { id: String(id || ''), totalOpenBefore: document.querySelectorAll('.estoque-modal-overlay[data-modal-padrao="1"]').length }); } catch (_) {}
-  // #endregion
   try {
     if (id) {
       var el = document.getElementById(String(id || '').trim());
@@ -135,9 +145,6 @@ if (typeof window._apiAuthFetch !== 'function') {
   };
 }
 function _abrirModalPadrao(opts) {
-  // #region debug-point A:shared-modal-open
-  try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('A', 'abrir modal padrao acionado', { id: String(opts && opts.id || ''), title: String(opts && (opts.titulo || opts.title) || ''), wide: !!(opts && opts.wide) }); } catch (_) {}
-  // #endregion
   opts = opts || {};
   try {
     if (typeof _ensureEstoqueStyle === 'function') _ensureEstoqueStyle();
@@ -2744,12 +2751,18 @@ try {
     var rows = (Array.isArray(items) ? items : []).filter(function(item) {
       return [item && item.cliente, item && item.modelo, item && item.pedido, item && item.data_prevista, item && item.data_entrega, item && item.cidade].some(Boolean);
     });
-    if (!rows.length) throw new Error('Adicione pelo menos um item antes de gerar o relatório.');
+    if (!rows.length) {
+      try { if (typeof window.toast === 'function') window.toast('Adicione pelo menos um item antes de gerar o relatório.', 'var(--red)'); } catch (_) {}
+      try { alert('Adicione pelo menos um item antes de gerar o relatório.'); } catch (_) {}
+      return null;
+    }
     if (cfg.weekly_mode) {
       var week = rrSergioBuildWeekData(rows, cfg);
       var dayGroups = week.groups.filter(function(group) { return group.items.length; });
       if (!dayGroups.length) {
-        throw new Error('Nenhum item da semana selecionada possui ' + rrSergioDateFieldLabel(week.baseField).toLowerCase() + ' válida.');
+        try { if (typeof window.toast === 'function') window.toast('Nenhum item da semana selecionada possui ' + rrSergioDateFieldLabel(week.baseField).toLowerCase() + ' válida.', 'var(--red)'); } catch (_) {}
+        try { alert('Nenhum item da semana selecionada possui ' + rrSergioDateFieldLabel(week.baseField).toLowerCase() + ' válida.'); } catch (_) {}
+        return null;
       }
       return rrOpenPrint({
         title: 'Relatório Sérgio',
@@ -9876,30 +9889,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(11, 'antes pa
   else install();
 })();
 
-(function patchRuntimeDebugBridge() {
-  if (window.__patchRuntimeDebugBridgeInstalled) return;
-  window.__patchRuntimeDebugBridgeInstalled = true;
-  function send(hypothesisId, msg, data, location) {
-    try {
-      fetch('http://127.0.0.1:7788/event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: 'prod-blockers-regressions',
-          runId: 'pre-fix',
-          hypothesisId: String(hypothesisId || 'A'),
-          location: String(location || 'patch.js'),
-          msg: String(msg || '[DEBUG] frontend event'),
-          data: data && typeof data === 'object' ? data : {},
-          ts: Date.now()
-        })
-      }).catch(function() {});
-    } catch (_) {}
-    return null;
-  }
-  try { window.__erpRuntimeDebugDisabled = false; } catch (_) {}
-  try { window.__erpRuntimeDebug = send; } catch (_) {}
-})();
+try { delete window.__erpRuntimeDebug; } catch (_) {}
+try { window.__erpRuntimeDebug = undefined; } catch (_) {}
 
 (function() {
   if (window.__patchHistoricoPassagensMensal) return;
@@ -24135,7 +24126,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                   + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + ';color:#cbd5e1;line-height:1.45">' + esc(String(item && item.texto || item && item.descricao_compra || '').trim() || 'Sem texto') + '</td>'
                   + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + '">' + _estoqueStatusSugestaoCompraBadgeHtml(item && item.status) + '</td>'
                   + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + ';color:#cbd5e1">' + esc(String(item && item.motivo_ignorado || '').trim() || '—') + '</td>'
-                  + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + ';color:#cbd5e1;font-family:var(--mono,inherit)">' + esc(_fmtDateEstoque(item && item.criado_em || item && item.decidido_em || '')) + '</td>'
+                  + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + ';color:#cbd5e1;font-family:var(--mono,inherit)">' + esc(window._fmtDateEstoque(item && item.criado_em || item && item.decidido_em || '')) + '</td>'
                   + '</tr>';
               }).join('') + '</tbody>'
           + '    </table>'
