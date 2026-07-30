@@ -8995,6 +8995,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       ) || ''
     ).trim();
   }
+  try { window.__patchChapaUtilizadaOf = chapaUtilizadaOf; } catch (_) {}
+  try { window.chapaUtilizadaOf = chapaUtilizadaOf; } catch (_) {}
   function loadCalcChapasCatalog(force) {
     var now = Date.now();
     var cache = window.__orcChapasCatalogCache;
@@ -35622,6 +35624,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!tr) return;
     var searchEl = tr.querySelector('.est-ent-search');
     var chapaEl = tr.querySelector('.est-ent-chapa');
+    var pickerWrap = tr.querySelector('.est-ent-picker-wrap');
     if (!chapaEl) return;
     var atual = String(chapaEl.value || '').trim();
     var out = _entradaEstoqueOptionsFiltradas(chapas, searchEl && searchEl.value, atual);
@@ -35637,6 +35640,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try {
       chapaEl.size = termo ? Math.max(2, Math.min(8, out.lista.length + 1)) : 1;
       chapaEl.style.minHeight = termo ? '96px' : '';
+      chapaEl.style.position = termo ? 'absolute' : 'static';
+      chapaEl.style.left = termo ? '0' : '';
+      chapaEl.style.bottom = termo ? 'calc(100% + 6px)' : '';
+      chapaEl.style.zIndex = termo ? '60' : '';
+      chapaEl.style.width = termo ? 'min(720px, calc(100vw - 180px))' : '100%';
+      chapaEl.style.maxWidth = termo ? 'none' : '100%';
+      chapaEl.style.boxShadow = termo ? '0 18px 36px rgba(2,6,23,.38)' : '';
+      chapaEl.style.whiteSpace = 'normal';
+      chapaEl.style.overflow = 'auto';
+      chapaEl.style.textOverflow = 'clip';
+      chapaEl.style.display = '';
+      if (pickerWrap) {
+        pickerWrap.style.paddingTop = termo ? '0' : '';
+        pickerWrap.style.paddingBottom = termo ? '0' : '';
+        pickerWrap.style.overflow = 'visible';
+      }
     } catch (_) {}
     chapaEl.title = termo && !out.lista.length ? 'Nenhuma chapa encontrada para este filtro.' : '';
   }
@@ -35805,7 +35824,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '  </select>'
       + '</td>'
       + '<td style="padding:8px;border-bottom:1px solid var(--border);min-width:240px">'
-      + '  <div style="display:grid;gap:6px">'
+      + '  <div class="est-ent-picker-wrap" style="display:grid;gap:6px;position:relative;overflow:visible">'
       + '    <input class="est-ent-search estoque-modal-input" type="text" placeholder="Buscar por gramatura, nomenclatura, tamanho ou nome" style="width:100%">'
       + '    <select class="est-ent-chapa estoque-modal-select" style="width:100%">' + _entradaEstoqueOptions(chapas) + '</select>'
       + '  </div>'
@@ -46667,12 +46686,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '#modal-calc .calc-item-side button{min-height:34px;padding:0 10px;border-radius:10px;border:1px solid rgba(148,163,184,.18);background:#0f172a;color:#e2e8f0;font-size:11px;font-weight:900;cursor:pointer}'
       + '#modal-calc .calc-item-side button.danger{border-color:rgba(248,113,113,.28);background:rgba(127,29,29,.62);color:#fff}'
       + '#page-orcamentos .ptoolbar{display:none!important}'
-      + '#ccpx-compra-fullscreen .ccpx-item-vincos{display:flex;flex-wrap:nowrap;gap:8px;align-items:stretch;overflow-x:auto;padding-bottom:2px}'
-      + '#ccpx-compra-fullscreen .ccpx-vinco-chip{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:6px;align-items:center;min-height:42px}'
-      + '#ccpx-compra-fullscreen .ccpx-vinco-chip{flex:0 0 150px}'
-      + '#ccpx-compra-fullscreen .ccpx-vinco-chip button{height:42px;border-radius:12px;border:1px solid rgba(148,163,184,.18);background:#0f172a;color:#e2e8f0;cursor:pointer;font-weight:900}'
-      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar{display:block;align-self:stretch;margin-top:0;min-height:42px;flex:0 0 168px}'
-      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar button{display:flex;align-items:center;justify-content:center;width:100%;height:42px;padding:0 12px;border-radius:12px;border:1px dashed rgba(96,165,250,.42);background:rgba(30,64,175,.14);color:#bfdbfe;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}'
+      + '#ccpx-compra-fullscreen .ccpx-item-vincos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(112px,.9fr);gap:6px;align-items:stretch;overflow:visible}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-chip{position:relative;display:block;min-height:42px}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-chip input{width:100%;height:42px;padding-right:20px;font-size:11px}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-chip button{position:absolute;top:6px;right:6px;width:14px;height:14px;border-radius:999px;border:1px solid rgba(148,163,184,.22);background:rgba(15,23,42,.92);color:#e2e8f0;cursor:pointer;font-weight:900;font-size:10px;line-height:1;padding:0}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar{display:block;align-self:stretch;margin-top:0;min-height:42px}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar button{display:flex;align-items:center;justify-content:center;width:100%;height:42px;padding:0 8px;border-radius:12px;border:1px dashed rgba(96,165,250,.42);background:rgba(30,64,175,.14);color:#bfdbfe;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}'
       + '#modal-orcamento-calc{position:fixed!important;inset:0!important;padding:18px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:rgba(2,6,23,.82)!important;overflow:hidden!important}'
       + '#modal-orcamento-calc > div,#modal-orcamento-calc .modal-content,#modal-orcamento-calc [class*="modal-content"]{width:min(1680px,calc(100vw - 36px))!important;max-width:1680px!important;max-height:94vh!important;margin:0 auto!important;border-radius:24px!important;overflow:auto!important}'
       + '#ccp-modal-compra.estoque-modal-overlay,#ccp-modal-compra.estoque-modal-overlay-padrao,#ccpx-compra-fullscreen,#modal-calc,#modal-orcamento-calc{align-items:center!important;justify-content:center!important}'
@@ -46787,6 +46806,34 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         compraRenumberVincos(row);
       }
       try { if (typeof window._compraPapelaoRefreshModalComputed === 'function') window._compraPapelaoRefreshModalComputed(overlay); } catch (_) {}
+    });
+  }
+  function bindCompraRealtimeInputs(overlay) {
+    if (!overlay || overlay.dataset.ccpxRealtimeBound === '1') return;
+    overlay.dataset.ccpxRealtimeBound = '1';
+    var sync = function(ev) {
+      var target = ev && ev.target;
+      if (!target || !target.getAttribute) return;
+      var field = String(target.getAttribute('data-field') || '').trim();
+      var isVinco = target.hasAttribute && target.hasAttribute('data-ccpx-vinco');
+      if (!field && !isVinco) return;
+      if (field === 'area_m2' || field === 'valor_total') {
+        target.dataset.ccpxManual = String(target.value || '').trim() ? '1' : '';
+      }
+      if (field === 'largura' || field === 'comprimento' || field === 'quantidade' || field === 'valor_m2') {
+        var row = target.closest ? target.closest('[data-ccpx-item-row]') : null;
+        if (row) {
+          var areaEl = row.querySelector('[data-field="area_m2"]');
+          var totalEl = row.querySelector('[data-field="valor_total"]');
+          if (areaEl && areaEl.dataset.ccpxManual !== '1') areaEl.value = '';
+          if (totalEl && totalEl.dataset.ccpxManual !== '1') totalEl.value = '';
+        }
+      }
+      try { if (typeof window._compraPapelaoRefreshModalComputed === 'function') window._compraPapelaoRefreshModalComputed(overlay); } catch (_) {}
+      try { if (typeof window._compraPapelaoSyncFornecedorDependentUi === 'function') window._compraPapelaoSyncFornecedorDependentUi(overlay); } catch (_) {}
+    };
+    ['input', 'change', 'keyup', 'blur'].forEach(function(evtName) {
+      overlay.addEventListener(evtName, sync, true);
     });
   }
 
@@ -46932,7 +46979,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var out = await origOpenCompraModal.apply(this, arguments);
       try {
         var overlay = document.getElementById('ccpx-compra-fullscreen');
-        if (overlay) bindCompraVincoActions(overlay);
+        if (overlay) {
+          bindCompraVincoActions(overlay);
+          bindCompraRealtimeInputs(overlay);
+          if (typeof window._compraPapelaoRefreshModalComputed === 'function') window._compraPapelaoRefreshModalComputed(overlay);
+        }
       } catch (_) {}
       return out;
     };
@@ -47013,6 +47064,19 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     return '<span class="patch-btn-badge">' + escHtml(String(total > 99 ? '99+' : total)) + '</span>';
   }
   function orcParseItensRow(row) {
+    var resolveChapa = (typeof window.__patchChapaUtilizadaOf === 'function')
+      ? window.__patchChapaUtilizadaOf
+      : function(entry) {
+          return String(
+            entry && (
+              entry.chapa_utilizada != null ? entry.chapa_utilizada :
+              (entry.chapaUtilizada != null ? entry.chapaUtilizada :
+              (entry.parametros && typeof entry.parametros === 'object'
+                ? (entry.parametros.chapa_utilizada != null ? entry.parametros.chapa_utilizada : entry.parametros.chapaUtilizada)
+                : ''))
+            ) || ''
+          ).trim();
+        };
     var itens = [];
     if (Array.isArray(row && row.itens)) itens = row.itens.slice();
     else if (typeof (row && row.itens) === 'string') {
@@ -47043,7 +47107,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       quantidade: Number(row.quantidade || row.qtd || 0) || 0,
       valor_unitario: Number(row.valor_unitario || row.vunit || 0) || 0,
       valor_total: Number(row.valor_total || row.vtot || 0) || 0,
-      chapa_utilizada: String(chapaUtilizadaOf(row) || '').trim()
+      chapa_utilizada: String(resolveChapa(row) || '').trim()
     }];
   }
   function orcDraftItemsState() {
