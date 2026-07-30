@@ -18195,6 +18195,115 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     try { window.__patchHubIntelObs = null; } catch (_) {}
   }
 
+  (function patchQuickOfRiscadorFallback() {
+    if (window.__quickOfRiscadorFallbackApplied) return;
+    window.__quickOfRiscadorFallbackApplied = true;
+
+    function normMachine(v) {
+      var s = String(v == null ? '' : v).trim().toLowerCase();
+      try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+      return s.replace(/\s+/g, ' ').trim();
+    }
+
+    function ensureRiscadorOption(sel) {
+      if (!sel || !sel.options) return;
+      var hasRelevantOptions = false;
+      try {
+        hasRelevantOptions = Array.prototype.slice.call(sel.options).some(function(opt) {
+          var txt = normMachine(opt && (opt.value || opt.textContent || opt.label || ''));
+          return txt === 'riscador'
+            || txt === 'corte vinco rotativa'
+            || /^imp 0[1-5]$/.test(txt);
+        });
+      } catch (_) {
+        hasRelevantOptions = false;
+      }
+      if (!hasRelevantOptions) return;
+
+      var hasRiscador = false;
+      try {
+        hasRiscador = Array.prototype.slice.call(sel.options).some(function(opt) {
+          return normMachine(opt && (opt.value || opt.textContent || opt.label || '')) === 'riscador';
+        });
+      } catch (_) {
+        hasRiscador = false;
+      }
+      if (hasRiscador) return;
+
+      var opt = document.createElement('option');
+      opt.value = 'Riscador';
+      opt.textContent = 'Riscador';
+      var before = null;
+      try {
+        before = Array.prototype.slice.call(sel.options).find(function(item) {
+          return normMachine(item && (item.value || item.textContent || item.label || '')) === 'corte vinco rotativa';
+        }) || null;
+      } catch (_) {
+        before = null;
+      }
+      try { sel.insertBefore(opt, before); } catch (_) { try { sel.appendChild(opt); } catch (_) {} }
+    }
+
+    function patchQuickOfRiscadorNow() {
+      try { ensureRiscadorOption(document.getElementById('of-r-maquina')); } catch (_) {}
+      Array.prototype.slice.call(document.querySelectorAll('#painel-mais-itens .item-maquina, #painel-mais-itens select, #modal-of-rapida .item-maquina, #modal-of-rapida .ofr-item-card select')).forEach(function(sel) {
+        try { ensureRiscadorOption(sel); } catch (_) {}
+      });
+    }
+
+    function scheduleQuickOfRiscadorPasses() {
+      patchQuickOfRiscadorNow();
+      setTimeout(patchQuickOfRiscadorNow, 40);
+      setTimeout(patchQuickOfRiscadorNow, 160);
+      setTimeout(patchQuickOfRiscadorNow, 500);
+      setTimeout(patchQuickOfRiscadorNow, 1200);
+    }
+
+    function wrapQuickOfOpener(name) {
+      if (typeof window[name] !== 'function' || window[name].__quickOfRiscadorFallbackWrapped) return;
+      var orig = window[name];
+      window[name] = function() {
+        var res = orig.apply(this, arguments);
+        scheduleQuickOfRiscadorPasses();
+        return res;
+      };
+      window[name].__quickOfRiscadorFallbackWrapped = true;
+    }
+
+    function installQuickOfObserver() {
+      if (window.__quickOfRiscadorFallbackObserver || typeof MutationObserver !== 'function' || !document || !document.body) return;
+      try {
+        var obs = new MutationObserver(function(mutations) {
+          var touched = false;
+          for (var i = 0; i < mutations.length; i += 1) {
+            var m = mutations[i];
+            if (!m) continue;
+            if (m.type === 'childList' && m.addedNodes && m.addedNodes.length) {
+              touched = true;
+              break;
+            }
+            if (m.type === 'attributes') {
+              touched = true;
+              break;
+            }
+          }
+          if (touched) scheduleQuickOfRiscadorPasses();
+        });
+        obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'open'] });
+        window.__quickOfRiscadorFallbackObserver = obs;
+      } catch (_) {}
+    }
+
+    wrapQuickOfOpener('abrirNovaOfRapida');
+    wrapQuickOfOpener('abrirOfRapida');
+    wrapQuickOfOpener('abrirOFRapida');
+    wrapQuickOfOpener('abrirMaisItensOfRapida');
+    installQuickOfObserver();
+    scheduleQuickOfRiscadorPasses();
+    setTimeout(scheduleQuickOfRiscadorPasses, 120);
+    setTimeout(scheduleQuickOfRiscadorPasses, 800);
+  })();
+
   function tick() {
     ensureStyles();
     ensureConfiguracoesAlias();
