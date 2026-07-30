@@ -8709,6 +8709,49 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     if (idx >= 0) ORCAMENTOS[idx] = Object.assign({}, ORCAMENTOS[idx], next);
     else ORCAMENTOS.unshift(next);
   }
+  function reloadOrcamentosFreshFromApi() {
+    var empAtual = '';
+    try { empAtual = String(currentOrcEmpId() || window.EMP_FILTRO || '').trim(); } catch (_) { empAtual = ''; }
+    var query = [];
+    if (empAtual) query.push('empId=' + encodeURIComponent(empAtual));
+    query.push('_t=' + Date.now());
+    var url = '/api/orcamentos' + (query.length ? ('?' + query.join('&')) : '');
+    var request = (typeof window._apiAuthFetch === 'function')
+      ? window._apiAuthFetch(url, { cache: 'no-store' })
+      : fetch(url, { cache: 'no-store' });
+    return request.then(function(resp) {
+      return resp ? resp.json().catch(function() { return null; }) : null;
+    }).then(function(json) {
+      var rows = Array.isArray(json && json.data) ? json.data : (Array.isArray(json) ? json : []);
+      if (!Array.isArray(rows) || !rows.length) return Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : [];
+      window.ORCAMENTOS = rows.map(function(row) {
+        return (typeof normalizeOrc === 'function') ? normalizeOrc(row) : row;
+      });
+      return window.ORCAMENTOS;
+    }).catch(function() {
+      return Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : [];
+    });
+  }
+  function closeCalcModalAfterSave() {
+    var overlay = null;
+    var modal = null;
+    try { overlay = document.getElementById('modal-calc'); } catch (_) {}
+    try { modal = document.getElementById('modal-calculadora'); } catch (_) {}
+    try {
+      if (typeof fecharCalculadora === 'function') fecharCalculadora();
+      else if (typeof fecharCalc === 'function') fecharCalc();
+    } catch (_) {}
+    try {
+      if (modal) {
+        modal.style.setProperty('display', 'none', 'important');
+        modal.classList.remove('active', 'show', 'visible', 'open');
+      }
+      if (overlay) {
+        overlay.style.setProperty('display', 'none', 'important');
+        overlay.classList.remove('active', 'show', 'visible', 'open');
+      }
+    } catch (_) {}
+  }
   function patchApiOrcamentoNome() {
     if (typeof window.api !== 'function' || window.api.__patchOrcNome) return;
     var originalApi = window.api;
@@ -9315,10 +9358,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         }
       } catch (_) {}
       try {
-        if (typeof carregarOrcamentos === 'function') await carregarOrcamentos();
+        await reloadOrcamentosFreshFromApi();
       } catch (_) {}
       await persistCurrentCalcFolder();
       try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
+      try { closeCalcModalAfterSave(); } catch (_) {}
       return ok;
     };
     window.salvarOrcamentoCalc.__patchOrcPastas = true;
@@ -14697,6 +14741,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       patchCheckboxWrap();
     }
 
+    function patchQuickOfExtraItems() {
+      Array.prototype.slice.call(document.querySelectorAll('#painel-mais-itens .item-maquina, #painel-mais-itens .ofr-item-card select, #painel-mais-itens [data-item-idx] select, #painel-mais-itens [data-item-index] select')).forEach(function(sel) {
+        try { ensureSelectNodeHasRiscador(sel); } catch (_) {}
+      });
+    }
+
     function scheduleApplyAll(delay) {
       var ms = Number(delay) || 0;
       try { clearTimeout(applyTimer); } catch (_) {}
@@ -14758,14 +14808,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         scheduleApplyAll(0);
         setTimeout(function() {
           patchDomMachineSelects();
+          patchQuickOfExtraItems();
           ensureSelectHasRiscador('of-r-maquina');
         }, 60);
         setTimeout(function() {
           patchDomMachineSelects();
+          patchQuickOfExtraItems();
           ensureSelectHasRiscador('of-r-maquina');
         }, 240);
         setTimeout(function() {
           patchDomMachineSelects();
+          patchQuickOfExtraItems();
           ensureSelectHasRiscador('of-r-maquina');
         }, 900);
         return res;
@@ -45998,19 +46051,37 @@ function _ocultarGraficoComissoes() {
     return false;
   }
 
+  function runUniversalSimd(ev) {
+    var stamp = Date.now();
+    if (Number(window.__simdDelegatedTs || 0) && (stamp - Number(window.__simdDelegatedTs || 0) < 180)) return false;
+    window.__simdDelegatedTs = stamp;
+    var canonical = (typeof window.__simdCalcularImpl === 'function' && window.__simdCalcularImpl !== simdCalcularUniversal)
+      ? window.__simdCalcularImpl
+      : ((typeof window._simdCalcularPatchedImpl === 'function' && window._simdCalcularPatchedImpl !== simdCalcularUniversal)
+          ? window._simdCalcularPatchedImpl
+          : simdCalcularUniversal);
+    return canonical.call(this, ev);
+  }
+
   function bindUniversalSimd() {
     var btn = document.getElementById('simd-btn');
     if (!btn) return;
     btn.dataset.simdUniversalBound = '1';
     try { btn.type = 'button'; } catch (_) {}
     btn.onclick = function(ev) {
-      var canonical = (typeof window.__simdCalcularImpl === 'function' && window.__simdCalcularImpl !== simdCalcularUniversal)
-        ? window.__simdCalcularImpl
-        : ((typeof window._simdCalcularPatchedImpl === 'function' && window._simdCalcularPatchedImpl !== simdCalcularUniversal)
-            ? window._simdCalcularPatchedImpl
-            : null);
-      return (canonical || simdCalcularUniversal).call(this, ev);
+      return runUniversalSimd.call(this, ev);
     };
+    if (!document.body.dataset.simdUniversalDelegatedClick) {
+      document.body.dataset.simdUniversalDelegatedClick = '1';
+      document.addEventListener('click', function(ev) {
+        var target = ev && ev.target && ev.target.closest ? ev.target.closest('#simd-btn') : null;
+        if (!target) return;
+        try { ev.preventDefault(); } catch (_) {}
+        try { ev.stopPropagation(); } catch (_) {}
+        try { if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation(); } catch (_) {}
+        runUniversalSimd.call(target, ev);
+      }, true);
+    }
   }
 
   function tick() {
