@@ -4994,11 +4994,13 @@ window._compraPapelaoDeriveItem = function(item) {
   var comprimento = window._compraPapelaoNum(item && item.comprimento);
   var quantidade = window._compraPapelaoNum(item && item.quantidade);
   var valorM2 = window._compraPapelaoNum(item && item.valor_m2);
-  var area = (largura > 0 && comprimento > 0) ? ((largura * comprimento) / 1000000) : 0;
+  var areaPedidoMm2 = (largura > 0 && comprimento > 0) ? (largura * comprimento) : 0;
+  var area = areaPedidoMm2 > 0 ? (areaPedidoMm2 / 1000000) : 0;
   var totalUnit = area * valorM2;
   var total = totalUnit * Math.max(quantidade, 0);
   var mil = totalUnit * 1000;
   return {
+    area_pedido_mm2: areaPedidoMm2,
     area_m2: area,
     valor_total: total,
     vl_p_mil: mil
@@ -5006,15 +5008,19 @@ window._compraPapelaoDeriveItem = function(item) {
 };
 window._compraPapelaoResolveItemMetrics = function(item) {
   var base = window._compraPapelaoDeriveItem(item);
-  var areaManual = item && item.area_m2 != null && String(item.area_m2).trim() !== '';
-  var totalManual = item && item.valor_total != null && String(item.valor_total).trim() !== '';
+  var areaManual = item && Object.prototype.hasOwnProperty.call(item, 'area_manual')
+    ? !!item.area_manual
+    : (item && item.area_m2 != null && String(item.area_m2).trim() !== '');
+  var totalManual = item && Object.prototype.hasOwnProperty.call(item, 'total_manual')
+    ? !!item.total_manual
+    : (item && item.valor_total != null && String(item.valor_total).trim() !== '');
   var area = areaManual ? window._compraPapelaoNum(item.area_m2) : base.area_m2;
   var quantidade = window._compraPapelaoNum(item && item.quantidade);
   var totalUnit = area * window._compraPapelaoNum(item && item.valor_m2);
   var total = totalManual ? window._compraPapelaoNum(item.valor_total) : (totalUnit * Math.max(quantidade, 0));
-  var quantidade = window._compraPapelaoNum(item && item.quantidade);
   var mil = quantidade > 0 ? (total / quantidade) * 1000 : (totalUnit * 1000);
   return {
+    area_pedido_mm2: base.area_pedido_mm2,
     area_m2: area,
     valor_total: total,
     vl_p_mil: mil,
@@ -7172,13 +7178,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
   }
   function cResolveItemMetrics(item) {
     var base = cItemDerived(item);
-    var areaManual = item && item.area_m2 != null && String(item.area_m2).trim() !== '';
-    var totalManual = item && item.valor_total != null && String(item.valor_total).trim() !== '';
+    var areaManual = item && Object.prototype.hasOwnProperty.call(item, 'area_manual')
+      ? !!item.area_manual
+      : (item && item.area_m2 != null && String(item.area_m2).trim() !== '');
+    var totalManual = item && Object.prototype.hasOwnProperty.call(item, 'total_manual')
+      ? !!item.total_manual
+      : (item && item.valor_total != null && String(item.valor_total).trim() !== '');
     var area = areaManual ? cNum(item.area_m2) : base.area_m2;
     var quantidade = cNum(item && item.quantidade);
     var totalUnit = area * cNum(item && item.valor_m2);
     var total = totalManual ? cNum(item.valor_total) : (totalUnit * Math.max(quantidade, 0));
-    var quantidade = cNum(item && item.quantidade);
     var mil = quantidade > 0 ? (total / quantidade) * 1000 : (totalUnit * 1000);
     return {
       area_m2: area,
@@ -7421,7 +7430,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
         + '  <td><input data-field="data_entrega" type="date" value="' + cAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></td>'
         + '  <td><input data-field="po" value="' + cAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></td>'
         + '  <td><div style="display:grid;grid-template-columns:minmax(88px,1fr) 14px minmax(88px,1fr);align-items:center"><input data-field="largura" type="number" min="0" step="0.01" value="' + cAttr(item && item.largura || '') + '" placeholder="L"><span style="color:#64748b;font-weight:900;text-align:center">×</span><input data-field="comprimento" type="number" min="0" step="0.01" value="' + cAttr(item && item.comprimento || '') + '" placeholder="C"></div></td>'
-        + '  <td><div style="display:grid;grid-template-columns:repeat(4,minmax(56px,1fr));gap:4px"><input data-field="vinco1" value="' + cAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + cAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + cAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + cAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></td>'
+        + '  <td><div style="display:grid;grid-template-columns:repeat(4,minmax(86px,1fr));gap:6px"><input data-field="vinco1" value="' + cAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + cAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + cAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + cAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></td>'
         + '  <td><input data-field="quantidade" type="number" min="0" step="1" value="' + cAttr(item && item.quantidade || '') + '" placeholder="0"></td>'
         + '  <td><input data-field="lote_minimo" type="number" min="0" step="1" value="' + cAttr(item && item.lote_minimo || '') + '" placeholder="0"></td>'
         + '  <td class="editable-num"><input data-field="area_m2"' + (areaManual ? ' data-ccp-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + cAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : d.area_m2.toFixed(4)) + '"></td>'
@@ -7500,8 +7509,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
         comprimento: (row.querySelector('[data-field="comprimento"]') || {}).value,
         quantidade: (row.querySelector('[data-field="quantidade"]') || {}).value,
         area_m2: (row.querySelector('[data-field="area_m2"]') || {}).value,
+        area_manual: String((((row.querySelector('[data-field="area_m2"]') || {}).dataset || {}).ccpManual) || '') === '1',
         valor_m2: (row.querySelector('[data-field="valor_m2"]') || {}).value,
-        valor_total: (row.querySelector('[data-field="valor_total"]') || {}).value
+        valor_total: (row.querySelector('[data-field="valor_total"]') || {}).value,
+        total_manual: String((((row.querySelector('[data-field="valor_total"]') || {}).dataset || {}).ccpManual) || '') === '1'
       };
       var d = cResolveItemMetrics(item);
       totalQtd += cNum(item.quantidade);
@@ -7619,6 +7630,21 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
           var field = String((ev && ev.target && ev.target.getAttribute && ev.target.getAttribute('data-field')) || '').trim();
           if (field === 'area_m2' || field === 'valor_total') {
             ev.target.dataset.ccpManual = String(ev.target.value || '').trim() ? '1' : '';
+          }
+          if (field === 'largura' || field === 'comprimento' || field === 'quantidade' || field === 'valor_m2') {
+            var row = ev && ev.target && ev.target.closest ? ev.target.closest('tr[data-ccp-item-row]') : null;
+            if (row) {
+              var areaEl = row.querySelector('[data-field="area_m2"]');
+              var totalEl = row.querySelector('[data-field="valor_total"]');
+              if (areaEl) {
+                areaEl.dataset.ccpManual = '';
+                areaEl.value = '';
+              }
+              if (totalEl) {
+                totalEl.dataset.ccpManual = '';
+                totalEl.value = '';
+              }
+            }
           }
           cRefreshCompraModalComputed(overlay);
           cSyncFornecedorDependentUi(overlay);
@@ -8491,8 +8517,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     modal.id = 'orc-pasta-modal';
     modal.innerHTML = ''
       + '<div class="box">'
-      + '  <div class="ttl">📁 Nova Pasta</div>'
-      + '  <div class="sub">Crie uma pasta nomeada para arquivar e revisar orçamentos depois.</div>'
+      + '  <div class="ttl">📁 Pasta de Orçamentos</div>'
+      + '  <div class="sub">Crie ou renomeie a pasta sem perder os orçamentos vinculados.</div>'
       + '  <input id="orc-pasta-nome" type="text" placeholder="Ex: Cliente XPTO, Revisão Julho, Aguardando retorno">'
       + '  <div class="actions">'
       + '    <button type="button" id="orc-pasta-cancelar">Cancelar</button>'
@@ -8521,9 +8547,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     var options = opts || {};
     if (typeof apiFetch === 'function') {
       return apiFetch(url, options).then(function(resp) {
-        return resp.json().catch(function() { return null; }).then(function(json) {
-          if (!resp.ok || (json && json.ok === false)) {
-            throw new Error(String(json && (json.error || json.message) || ('Falha em ' + url)));
+        return (window.__patchReadJsonResponse ? window.__patchReadJsonResponse(resp, 'Não foi possível carregar os dados agora. Tente novamente em instantes.') : resp.json().catch(function() { return null; }).then(function(json) { return { ok: !!resp.ok, json: json, errorMessage: 'Falha em ' + url }; })).then(function(parsed) {
+          var json = parsed && parsed.json;
+          if (!parsed || !parsed.ok || (json && json.ok === false)) {
+            throw new Error(String(parsed && parsed.errorMessage || (json && (json.error || json.message)) || ('Falha em ' + url)));
           }
           return json && Object.prototype.hasOwnProperty.call(json, 'data') ? json.data : json;
         });
@@ -8538,9 +8565,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       body = JSON.stringify(body);
     }
     return fetch(url, Object.assign({}, options, { headers: headers, body: body })).then(function(resp) {
-      return resp.json().catch(function() { return null; }).then(function(json) {
-        if (!resp.ok || (json && json.ok === false)) {
-          throw new Error(String(json && (json.error || json.message) || ('Falha em ' + url)));
+      return (window.__patchReadJsonResponse ? window.__patchReadJsonResponse(resp, 'Não foi possível carregar os dados agora. Tente novamente em instantes.') : resp.json().catch(function() { return null; }).then(function(json) { return { ok: !!resp.ok, json: json, errorMessage: 'Falha em ' + url }; })).then(function(parsed) {
+        var json = parsed && parsed.json;
+        if (!parsed || !parsed.ok || (json && json.ok === false)) {
+          throw new Error(String(parsed && parsed.errorMessage || (json && (json.error || json.message)) || ('Falha em ' + url)));
         }
         return json && Object.prototype.hasOwnProperty.call(json, 'data') ? json.data : json;
       });
@@ -8663,12 +8691,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '<div class="orc-pastas-strip-wrap">'
       + '  <div class="orc-pastas-strip"><div class="orc-pastas-grid">' + cards.map(function(card) {
       var active = filter === String(card.id || '');
-      var removeBtn = card.rawId
-        ? '<button class="orc-pasta-del" type="button" onclick="event.stopPropagation();orcExcluirPasta(\'' + escAttr(card.rawId) + '\')">Excluir</button>'
+      var actionBtns = card.rawId
+        ? '<span style="display:flex;gap:6px;align-items:center">'
+          + '<button class="orc-pasta-del" type="button" style="border-color:rgba(96,165,250,.35);color:#bfdbfe" onclick="event.stopPropagation();orcEditarPasta(\'' + escAttr(card.rawId) + '\')">Editar</button>'
+          + '<button class="orc-pasta-del" type="button" onclick="event.stopPropagation();orcExcluirPasta(\'' + escAttr(card.rawId) + '\')">Excluir</button>'
+          + '</span>'
         : '';
       return ''
         + '<button type="button" class="orc-pasta-card' + (active ? ' is-active' : '') + '" onclick="orcSelecionarPastaFiltro(\'' + escAttr(card.id) + '\')">'
-        + '  <div class="orc-pasta-head"><div class="orc-pasta-title">📁 ' + esc(card.nome || '') + '</div>' + removeBtn + '</div>'
+        + '  <div class="orc-pasta-head"><div class="orc-pasta-title">📁 ' + esc(card.nome || '') + '</div>' + actionBtns + '</div>'
         + '  <div class="orc-pasta-sub">' + esc(String(card.qtd)) + ' orçamento(s)</div>'
         + '</button>';
     }).join('') + '</div></div>'
@@ -8762,47 +8793,82 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     select.innerHTML = folderOptionsHtml(selected);
     select.value = selected;
   }
+  function enrichOrcamentoRow(row, base) {
+    var source = (row && typeof row === 'object') ? row : {};
+    var out = (base && typeof base === 'object') ? base : Object.assign({}, source);
+    try {
+      out.pasta_id = (source.pasta_id != null ? source.pasta_id : source.pastaId) ? String(source.pasta_id != null ? source.pasta_id : source.pastaId).trim() : null;
+      out.nome = String(source.nome != null ? source.nome : (out && out.nome) || '').trim();
+      out.nome_orcamento = String(source.nome_orcamento != null ? source.nome_orcamento : (out && out.nome_orcamento) || out.nome || '').trim();
+      out.emp_id = String(source.emp_id != null ? source.emp_id : (source.empId != null ? source.empId : (out.emp_id != null ? out.emp_id : out.empId)) || '').trim();
+      out.empId = out.emp_id;
+      out.empresa_id = String(source.empresa_id != null ? source.empresa_id : (source.empresaId != null ? source.empresaId : (out.empresa_id != null ? out.empresa_id : out.empresaId)) || '').trim();
+      out.empresaId = out.empresa_id;
+      out.chapa_utilizada = chapaUtilizadaOf(source || out);
+      out.chapaUtilizada = out.chapa_utilizada;
+      out.itens = typeof window.__patchOrcParseItens === 'function' ? window.__patchOrcParseItens(source || out) : (Array.isArray(out.itens) ? out.itens : []);
+      if (!out.nome_orcamento && out.nome) out.nome_orcamento = out.nome;
+      if (!out.nome && out.nome_orcamento) out.nome = out.nome_orcamento;
+    } catch (_) {
+      out.pasta_id = null;
+    }
+    return out;
+  }
+  function normalizeOrcamentoRow(row) {
+    var source = (row && typeof row === 'object') ? row : {};
+    if (typeof normalizeOrc === 'function') {
+      try {
+        return enrichOrcamentoRow(source, normalizeOrc(source));
+      } catch (_) {}
+    }
+    return enrichOrcamentoRow(source, Object.assign({}, source));
+  }
+  function isOrcamentoDeleted(row) {
+    if (!row || typeof row !== 'object') return false;
+    if (row.deleted_at != null && String(row.deleted_at || '').trim()) return true;
+    var status = String(row.status || '').trim().toLowerCase();
+    return status === 'excluido' || status === 'excluído';
+  }
+  function replaceLocalOrcamentos(rows) {
+    var mapped = (Array.isArray(rows) ? rows : []).filter(function(row) {
+      return !isOrcamentoDeleted(row);
+    }).map(function(row) {
+      return normalizeOrcamentoRow(row);
+    });
+    window.ORCAMENTOS = mapped;
+    return mapped;
+  }
   function patchNormalizeOrc() {
     if (typeof window.normalizeOrc !== 'function' || window.normalizeOrc.__patchPastas) return;
     var original = window.normalizeOrc;
     window.normalizeOrc = function(r) {
-      var out = original(r);
-      try {
-        out.pasta_id = (r && (r.pasta_id != null ? r.pasta_id : r.pastaId)) ? String(r.pasta_id != null ? r.pasta_id : r.pastaId).trim() : null;
-        out.nome = String(r && (r.nome != null ? r.nome : (out && out.nome)) || '').trim();
-        out.nome_orcamento = String(r && (r.nome_orcamento != null ? r.nome_orcamento : (out && out.nome_orcamento)) || out.nome || '').trim();
-        out.chapa_utilizada = chapaUtilizadaOf(r || out);
-        out.chapaUtilizada = out.chapa_utilizada;
-        out.itens = typeof window.__patchOrcParseItens === 'function' ? window.__patchOrcParseItens(r || out) : [];
-        if (!out.nome_orcamento && out.nome) out.nome_orcamento = out.nome;
-        if (!out.nome && out.nome_orcamento) out.nome = out.nome_orcamento;
-      } catch (_) {
-        out.pasta_id = null;
-      }
-      return out;
+      return enrichOrcamentoRow(r, original(r));
     };
     window.normalizeOrc.__patchPastas = true;
   }
+  function patchCarregarOrcamentosFreshState() {
+    if (typeof window.carregarOrcamentos !== 'function' || window.carregarOrcamentos.__patchFreshState) return;
+    var original = window.carregarOrcamentos;
+    window.carregarOrcamentos = async function() {
+      var result = await original.apply(this, arguments);
+      if (result && result.ok) {
+        var mapped = replaceLocalOrcamentos(Array.isArray(result.data) ? result.data : []);
+        try { result.data = mapped; } catch (_) {}
+      }
+      return result;
+    };
+    window.carregarOrcamentos.__patchFreshState = true;
+  }
   function updateLocalOrcamento(row) {
-    if (!row || !row.id || !Array.isArray(ORCAMENTOS)) return;
-    var next = (typeof normalizeOrc === 'function') ? normalizeOrc(row) : row;
-    next.pasta_id = row.pasta_id != null ? String(row.pasta_id || '').trim() || null : null;
-    next.nome = String(next && (next.nome != null ? next.nome : row && row.nome) || '').trim();
-    next.nome_orcamento = String(next && (next.nome_orcamento != null ? next.nome_orcamento : row && row.nome_orcamento) || next.nome || '').trim();
-    next.chapa_utilizada = chapaUtilizadaOf(row || next);
-    next.chapaUtilizada = next.chapa_utilizada;
-    if (!next.nome_orcamento && next.nome) next.nome_orcamento = next.nome;
-    if (!next.nome && next.nome_orcamento) next.nome = next.nome_orcamento;
+    if (!row || !row.id) return;
+    if (!Array.isArray(window.ORCAMENTOS)) window.ORCAMENTOS = [];
+    var next = normalizeOrcamentoRow(row);
     var idx = ORCAMENTOS.findIndex(function(item) { return String(item && item.id || '') === String(next.id || ''); });
     if (idx >= 0) ORCAMENTOS[idx] = Object.assign({}, ORCAMENTOS[idx], next);
     else ORCAMENTOS.unshift(next);
   }
   function reloadOrcamentosFreshFromApi() {
-    var empAtual = '';
-    try { empAtual = String(currentOrcEmpId() || window.EMP_FILTRO || '').trim(); } catch (_) { empAtual = ''; }
-    var query = [];
-    if (empAtual) query.push('empId=' + encodeURIComponent(empAtual));
-    query.push('_t=' + Date.now());
+    var query = ['_t=' + Date.now()];
     var url = '/api/orcamentos' + (query.length ? ('?' + query.join('&')) : '');
     var request = (typeof window._apiAuthFetch === 'function')
       ? window._apiAuthFetch(url, { cache: 'no-store' })
@@ -8813,13 +8879,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         ? window.__patchReadJsonResponse(resp, 'Não foi possível carregar os dados agora. Tente novamente em instantes.')
         : resp.json().catch(function() { return null; }).then(function(json) { return { ok: !!resp.ok, json: json }; });
     }).then(function(parsed) {
+      if (!parsed || !parsed.ok || (parsed.json && parsed.json.ok === false)) {
+        throw new Error(String(parsed && parsed.errorMessage || 'Falha ao recarregar orçamentos'));
+      }
       var json = parsed && parsed.json;
       var rows = Array.isArray(json && json.data) ? json.data : (Array.isArray(json) ? json : []);
-      if (!Array.isArray(rows) || !rows.length) return Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : [];
-      window.ORCAMENTOS = rows.map(function(row) {
-        return (typeof normalizeOrc === 'function') ? normalizeOrc(row) : row;
-      });
-      return window.ORCAMENTOS;
+      return replaceLocalOrcamentos(rows);
     }).catch(function() {
       return Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : [];
     });
@@ -8850,7 +8915,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     window.api = async function(method, url, body) {
       var m = String(method || '').trim().toUpperCase();
       var u = String(url || '').trim();
-      var nomeAtual = calcNomeOrcamentoAtual();
+      var nomeAtual = (typeof calcNomeOrcamentoAtual === 'function')
+        ? calcNomeOrcamentoAtual()
+        : String((document.getElementById('calc-nome-orcamento') || {}).value || '').trim();
       var chapaEl = document.getElementById('calc-chapa-utilizada');
       var chapaAtual = String((chapaEl && chapaEl.value) || '').trim();
       var empAtual = '';
@@ -9184,12 +9251,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     var modal = document.getElementById('orc-pasta-modal');
     var input = document.getElementById('orc-pasta-nome');
     var nome = String((input && input.value) || '').trim();
+    var editId = String((modal && modal.dataset && modal.dataset.editId) || '').trim();
     if (!nome) {
       try { toast('Informe um nome para a pasta', 'var(--yellow)'); } catch (_) {}
       return;
     }
-    requestJson('/api/orcamentos_pastas', {
-      method: 'POST',
+    requestJson('/api/orcamentos_pastas' + (editId ? ('/' + encodeURIComponent(editId)) : ''), {
+      method: editId ? 'PUT' : 'POST',
       body: {
         nome: nome,
         empresa_id: currentEmpId() || null
@@ -9197,6 +9265,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     }).then(function(folder) {
       mergeFolderIntoCache(folder);
       if (modal) modal.style.display = 'none';
+      if (modal) modal.dataset.editId = '';
       var targetSelectId = String((modal && modal.dataset && modal.dataset.targetSelect) || '').trim();
       if (targetSelectId) {
         var select = document.getElementById(targetSelectId);
@@ -9207,24 +9276,37 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       }
       try { syncCalcFolderUi(); } catch (_) {}
       try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
-      try { toast('Pasta criada ✓', 'var(--green)'); } catch (_) {}
+      try { toast(editId ? 'Pasta renomeada ✓' : 'Pasta criada ✓', 'var(--green)'); } catch (_) {}
     }).catch(function(err) {
-      try { toast('Erro ao criar pasta: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+      try { toast((editId ? 'Erro ao renomear pasta: ' : 'Erro ao criar pasta: ') + String(err && err.message || err), 'var(--red)'); } catch (_) {}
     });
   }
-  window.orcAbrirModalPasta = function(targetSelectId) {
+  window.orcAbrirModalPasta = function(targetSelectId, folder) {
     ensureUi();
     loadFolders(false).catch(function() { return []; }).finally(function() {
       var modal = document.getElementById('orc-pasta-modal');
       var input = document.getElementById('orc-pasta-nome');
+      var ttl = modal && modal.querySelector ? modal.querySelector('.ttl') : null;
+      var sub = modal && modal.querySelector ? modal.querySelector('.sub') : null;
+      var current = folder && typeof folder === 'object'
+        ? folder
+        : (Array.isArray(window.__orcPastasData) ? window.__orcPastasData.find(function(item) { return String(item && item.id || '') === String(folder || '').trim(); }) : null);
       if (!modal || !input) return;
       modal.dataset.targetSelect = String(targetSelectId || '').trim();
-      input.value = '';
+      modal.dataset.editId = String(current && current.id || '').trim();
+      input.value = String(current && current.nome || '').trim();
+      if (ttl) ttl.textContent = current ? '📁 Editar Pasta' : '📁 Nova Pasta';
+      if (sub) sub.textContent = current ? 'Atualize o nome da pasta sem mexer nos orçamentos já vinculados.' : 'Crie uma pasta nomeada para arquivar e revisar orçamentos depois.';
       modal.style.display = 'flex';
       setTimeout(function() {
         try { input.focus(); } catch (_) {}
       }, 30);
     });
+  };
+  window.orcEditarPasta = function(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return;
+    window.orcAbrirModalPasta('', sid);
   };
   window.orcSelecionarPastaFiltro = function(filter) {
     setCurrentFilter(filter);
@@ -9234,7 +9316,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     var sid = String(id || '').trim();
     if (!sid) return;
     if (!confirm('Excluir esta pasta? Os orçamentos serão mantidos e ficarão sem pasta.')) return;
-    requestJson('/api/orcamentos_pastas/' + encodeURIComponent(sid), { method: 'DELETE' }).then(function() {
+    requestJson('/api/orcamentos_pastas/' + encodeURIComponent(sid), { method: 'DELETE' }).then(async function() {
       window.__orcPastasData = (Array.isArray(window.__orcPastasData) ? window.__orcPastasData : []).filter(function(item) {
         return String(item && item.id || '') !== sid;
       });
@@ -9243,6 +9325,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           if (folderIdOf(item) === sid) item.pasta_id = null;
         });
       } catch (_) {}
+      try { await reloadOrcamentosFreshFromApi(); } catch (_) {}
       if (currentFilter() === ('id:' + sid)) setCurrentFilter('__all');
       try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
       try { syncCalcFolderUi(); } catch (_) {}
@@ -9251,6 +9334,55 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       try { toast('Erro ao excluir pasta: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
     });
   };
+  window.orcClonar = function(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return;
+    requestJson('/api/orcamentos/' + encodeURIComponent(sid) + '/clonar', { method: 'POST', body: {} }).then(function(row) {
+      try { updateLocalOrcamento(row); } catch (_) {}
+      return reloadOrcamentosFreshFromApi();
+    }).then(function() {
+      try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
+      try { toast('Orçamento clonado ✓', 'var(--green)'); } catch (_) {}
+    }).catch(function(err) {
+      try { toast('Erro ao clonar orçamento: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+    });
+  };
+  window.excluirOrcamento = async function(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return;
+    var atual = (Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : []).find(function(item) {
+      return String(item && item.id || '') === sid;
+    });
+    if (!atual) {
+      try { await reloadOrcamentosFreshFromApi(); } catch (_) {}
+      atual = (Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : []).find(function(item) {
+        return String(item && item.id || '') === sid;
+      });
+    }
+    if (!atual) {
+      try { toast('Orçamento não encontrado para exclusão.', 'var(--yellow)'); } catch (_) {}
+      return;
+    }
+    var numero = String(atual && (atual.numero_orcamento || atual.numero || sid) || sid).trim();
+    if (!confirm('Excluir orçamento Nº ' + numero + '?\n\nEsta ação remove o orçamento da lista imediatamente.')) return;
+    try {
+      await requestJson('/api/orcamentos/' + encodeURIComponent(sid), { method: 'DELETE' });
+      window.ORCAMENTOS = (Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : []).filter(function(item) {
+        return String(item && item.id || '') !== sid;
+      });
+      try { await reloadOrcamentosFreshFromApi(); } catch (_) {}
+      var aindaExiste = (Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : []).some(function(item) {
+        return String(item && item.id || '') === sid;
+      });
+      if (aindaExiste) {
+        throw new Error('O orçamento ainda aparece na listagem após a exclusão.');
+      }
+      try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
+      try { toast('Orçamento excluído ✓', 'var(--orange)'); } catch (_) {}
+    } catch (err) {
+      try { toast('Erro ao excluir orçamento: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+    }
+  };
   window.orcMoverParaPasta = function(id, pastaId) {
     moveToFolder(id, pastaId).catch(function(err) {
       try { toast('Erro ao mover orçamento: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
@@ -9258,6 +9390,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
   };
 
   patchNormalizeOrc();
+  patchCarregarOrcamentosFreshState();
   patchApiOrcamentoNome();
 
   window.renderOrcamentos = function renderOrcamentosPatched() {
@@ -9445,6 +9578,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
   if (typeof window.salvarOrcamentoCalc === 'function' && !window.salvarOrcamentoCalc.__patchOrcPastas) {
     var _origSalvarOrcamentoCalc = window.salvarOrcamentoCalc;
     window.salvarOrcamentoCalc = async function() {
+      var ondasSelecionadas = (typeof window.__orcSelectedSaveWaves === 'function')
+        ? window.__orcSelectedSaveWaves()
+        : [];
+      if (!ondasSelecionadas.length) {
+        try { toast('Selecione pelo menos uma onda para salvar o orçamento.', 'var(--yellow)'); } catch (_) {}
+        return false;
+      }
       var nomeAtual = calcNomeOrcamentoAtual();
       var chapaAtual = String((document.getElementById('calc-chapa-utilizada') || {}).value || '').trim();
       var ok = await _origSalvarOrcamentoCalc.apply(this, arguments);
@@ -9463,7 +9603,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       try {
         await reloadOrcamentosFreshFromApi();
       } catch (_) {}
-      await persistCurrentCalcFolder();
+      try {
+        if (typeof persistCurrentCalcFolder === 'function') await persistCurrentCalcFolder();
+      } catch (_) {}
       try { if (typeof window.__patchOrcDraftLoadFromState === 'function') window.__patchOrcDraftLoadFromState(true); } catch (_) {}
       try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
       try { closeCalcModalAfterSave(); } catch (_) {}
@@ -31420,6 +31562,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var obs = getV('#ofr-obs', '#of-r-obs', 'textarea[name="observacoes"]', 'textarea[name="obs"]');
     var cliId = getV('#ofr-cliente-id', '#of-r-cliente-id', 'input[name="cli_id"]');
     var vendId = getV('#of-r-vendedor', '#ofr-vendedor', 'select[name="vendedor_id"]');
+    var empId = getV('#of-r-empresa', '#ofr-empresa', 'select[name="emp_id"]', 'select[name="empresa"]');
 
     if (maquina) {
       body.maquina = maquina;
@@ -31473,6 +31616,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       body.vendedor_id = vendId;
       body.vendId = vendId;
       body.vend_id = vendId;
+    }
+    if (empId) {
+      body.emp_id = String(empId).trim();
+      body.empId = String(empId).trim();
     }
     if ((body.vl_unit || body.valor_unitario) && (body.quantidade || body.qtd)) {
       var qty = Number(body.quantidade || body.qtd || 0) || 0;
@@ -31580,6 +31727,84 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     setTimeout(tick, 300);
     setInterval(tick, 1200);
   }
+})();
+
+
+(function patchRecursionGuards() {
+  if (window.__patchRecursionGuardsInstalled) return;
+  window.__patchRecursionGuardsInstalled = true;
+
+  function resolveFnBase(fn) {
+    var current = typeof fn === 'function' ? fn : null;
+    var seen = [];
+    while (current && seen.indexOf(current) === -1) {
+      seen.push(current);
+      var next = null;
+      try {
+        next = current.__patchWrapOriginal
+          || current.__patchEstoqueOrig
+          || current.__patchChapaColorNormalizeOrig
+          || current.__patchChapaColorApiFetchOrig
+          || current.__patchUnifiedAuthOrig
+          || current.__ofmaqFinalBridgeTarget
+          || null;
+      } catch (_) {
+        next = null;
+      }
+      if (typeof next !== 'function' || next === current) break;
+      current = next;
+    }
+    return current;
+  }
+
+  function guardFn(name, limit) {
+    var current = typeof window[name] === 'function' ? window[name] : null;
+    if (!current || current.__patchRecursionGuard) return;
+    var base = resolveFnBase(current);
+    var maxDepth = Number(limit || 12) || 12;
+    var wrapped = function() {
+      if (!window.__patchRecursionDepth) window.__patchRecursionDepth = {};
+      var depth = Number(window.__patchRecursionDepth[name] || 0) || 0;
+      depth += 1;
+      window.__patchRecursionDepth[name] = depth;
+      try {
+        if (depth > maxDepth) {
+          try { console.warn('[PATCH][RECURSION-GUARD] profundidade excessiva em', name, 'depth=', depth); } catch (_) {}
+          if (typeof base === 'function' && base !== current && base !== wrapped) {
+            return base.apply(this, arguments);
+          }
+          return undefined;
+        }
+        return current.apply(this, arguments);
+      } finally {
+        try {
+          var nextDepth = (Number(window.__patchRecursionDepth[name] || 1) || 1) - 1;
+          if (nextDepth > 0) window.__patchRecursionDepth[name] = nextDepth;
+          else delete window.__patchRecursionDepth[name];
+        } catch (_) {}
+      }
+    };
+    try { wrapped.__patchWrapOriginal = base && base !== wrapped ? base : (current.__patchWrapOriginal || current); } catch (_) {}
+    try { wrapped.__patchRecursionGuard = true; } catch (_) {}
+    window[name] = wrapped;
+  }
+
+  [
+    'abrirNovaOfRapida',
+    'abrirOfRapida',
+    'abrirOFRapida',
+    'abrirMaisItensOfRapida',
+    'salvarOfRapida',
+    'renderOFsPorMaquina',
+    'renderMaquinas',
+    'renderOfmaq',
+    'renderOFsMaquina',
+    'renderKanbanOfmaq',
+    'carregarOFsMaquina',
+    'loadOFsMaquina'
+  ].forEach(function(name) {
+    try { guardFn(name, 10); } catch (_) {}
+  });
 })();
 
 (function patchOfRapidaCoresLoadingAndCache() {
@@ -35571,15 +35796,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var lista = Array.isArray(chapas) ? chapas : [];
     return ['<option value="">Selecione...</option>'].concat(lista.map(function(chapa) {
       var id = String(chapa && chapa.id || '').trim();
-      var label = [
-        String(chapa && (chapa.nomenclatura || chapa.nom) || '').trim(),
-        String(chapa && (chapa.tamanho || chapa.tam) || '').trim(),
-        String(chapa && (chapa.nome_uso || chapa.nome) || '').trim(),
-        String(chapa && (chapa.fornecedor || chapa.forn) || '').trim(),
-        'saldo ' + _fmtNumEstoque(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)))
-      ].filter(Boolean).join(' · ');
+      var label = _entradaEstoqueChapaLabel(chapa);
       return '<option value="' + _escapeHtmlLite(id) + '">' + _escapeHtmlLite(label) + '</option>';
     })).join('');
+  }
+
+  function _entradaEstoqueChapaLabel(chapa) {
+    return [
+      String(chapa && (chapa.nomenclatura || chapa.nom) || '').trim(),
+      String(chapa && (chapa.tamanho || chapa.tam) || '').trim(),
+      String(chapa && (chapa.nome_uso || chapa.nome) || '').trim(),
+      String(chapa && (chapa.fornecedor || chapa.forn) || '').trim(),
+      'saldo ' + _fmtNumEstoque(chapa && (chapa.quantidade_atual != null ? chapa.quantidade_atual : (chapa.quantidade != null ? chapa.quantidade : chapa.qtd)))
+    ].filter(Boolean).join(' · ');
   }
 
   function _entradaEstoqueBuscaNorm(raw) {
@@ -35620,11 +35849,107 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     };
   }
 
+  function _entradaEstoqueEnsureBuscaResultados(tr) {
+    if (!tr || !tr.querySelector) return null;
+    var pickerWrap = tr.querySelector('.est-ent-picker-wrap');
+    if (!pickerWrap) return null;
+    var host = pickerWrap.querySelector('.est-ent-results');
+    if (!host) {
+      host = document.createElement('div');
+      host.className = 'est-ent-results';
+      host.style.display = 'none';
+      host.style.position = 'absolute';
+      host.style.left = '0';
+      host.style.right = 'auto';
+      host.style.bottom = 'calc(100% + 6px)';
+      host.style.zIndex = '65';
+      host.style.width = 'clamp(520px, 72vw, 1120px)';
+      host.style.minWidth = 'max(100%, 520px)';
+      host.style.maxWidth = 'min(1120px, calc(100vw - 24px))';
+      host.style.maxHeight = '280px';
+      host.style.overflow = 'auto';
+      host.style.border = '1px solid rgba(96,165,250,.28)';
+      host.style.borderRadius = '14px';
+      host.style.background = 'rgba(15,23,42,.98)';
+      host.style.boxShadow = '0 18px 36px rgba(2,6,23,.38)';
+      host.style.padding = '6px';
+      pickerWrap.appendChild(host);
+    }
+    return host;
+  }
+
+  function _entradaEstoqueSelecionarBusca(tr, chapas, chapaId) {
+    if (!tr) return;
+    var chapa = _entradaEstoqueFindChapa(chapas, chapaId);
+    if (!chapa) return;
+    var chapaEl = tr.querySelector('.est-ent-chapa');
+    var searchEl = tr.querySelector('.est-ent-search');
+    var resultHost = _entradaEstoqueEnsureBuscaResultados(tr);
+    var label = _entradaEstoqueChapaLabel(chapa);
+    if (chapaEl) chapaEl.value = String(chapa.id || '').trim();
+    if (searchEl) {
+      searchEl.value = label;
+      searchEl.dataset.selectedId = String(chapa.id || '').trim();
+      searchEl.dataset.selectedLabel = label;
+      searchEl.dataset.activeId = String(chapa.id || '').trim();
+    }
+    if (resultHost) {
+      resultHost.innerHTML = '';
+      resultHost.style.display = 'none';
+    }
+    _entradaEstoqueAtualizarLinha(tr, chapas);
+  }
+
+  function _entradaEstoqueRenderBuscaResultados(tr, chapas, lista, termo) {
+    var host = _entradaEstoqueEnsureBuscaResultados(tr);
+    if (!host) return;
+    var rows = Array.isArray(lista) ? lista : [];
+    var searchEl = tr.querySelector('.est-ent-search');
+    var chapaEl = tr.querySelector('.est-ent-chapa');
+    if (!termo) {
+      host.innerHTML = '';
+      host.style.display = 'none';
+      if (chapaEl) chapaEl.style.display = '';
+      return;
+    }
+    if (chapaEl) chapaEl.style.display = 'none';
+    if (!rows.length) {
+      host.innerHTML = '<div class="est-ent-result-empty" style="padding:12px 14px;color:#cbd5e1;font-size:13px">Nenhuma chapa encontrada para este filtro.</div>';
+      host.style.display = '';
+      return;
+    }
+    var activeId = searchEl ? String(searchEl.dataset.activeId || rows[0].id || '').trim() : String(rows[0].id || '').trim();
+    if (!rows.some(function(item) { return String(item && item.id || '').trim() === activeId; })) activeId = String(rows[0] && rows[0].id || '').trim();
+    if (searchEl) searchEl.dataset.activeId = activeId;
+    host.innerHTML = rows.map(function(chapa, idx) {
+      var chapaId = String(chapa && chapa.id || '').trim();
+      var active = chapaId === activeId;
+      return ''
+        + '<button type="button" class="est-ent-result-item' + (active ? ' is-active' : '') + '"'
+        + ' data-est-ent-result="' + _escapeHtmlLite(chapaId) + '"'
+        + ' style="display:grid;gap:4px;width:100%;min-width:0;text-align:left;border:1px solid ' + (active ? 'rgba(96,165,250,.38)' : 'rgba(148,163,184,.1)') + ';background:' + (active ? 'rgba(30,64,175,.24)' : 'rgba(15,23,42,.92)') + ';color:#e2e8f0;border-radius:12px;padding:10px 12px;margin:0 0 6px 0;cursor:pointer;overflow:visible">'
+        + '  <span style="font-size:13px;font-weight:800;line-height:1.45;white-space:normal;word-break:normal;overflow-wrap:anywhere">' + _escapeHtmlLite(_entradaEstoqueChapaLabel(chapa)) + '</span>'
+        + '  <span style="font-size:11px;color:#94a3b8">Resultado ' + _escapeHtmlLite(String(idx + 1)) + ' de ' + _escapeHtmlLite(String(rows.length)) + '</span>'
+        + '</button>';
+    }).join('');
+    host.style.display = '';
+    Array.prototype.slice.call(host.querySelectorAll('[data-est-ent-result]')).forEach(function(btn) {
+      var selectCurrent = function(ev) {
+        try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
+        _entradaEstoqueSelecionarBusca(tr, chapas, String(btn.getAttribute('data-est-ent-result') || '').trim());
+      };
+      btn.addEventListener('pointerdown', selectCurrent);
+      btn.addEventListener('mousedown', selectCurrent);
+      btn.addEventListener('click', selectCurrent);
+    });
+  }
+
   function _entradaEstoqueAplicarBusca(tr, chapas) {
     if (!tr) return;
     var searchEl = tr.querySelector('.est-ent-search');
     var chapaEl = tr.querySelector('.est-ent-chapa');
     var pickerWrap = tr.querySelector('.est-ent-picker-wrap');
+    var resultHost = _entradaEstoqueEnsureBuscaResultados(tr);
     if (!chapaEl) return;
     var atual = String(chapaEl.value || '').trim();
     var out = _entradaEstoqueOptionsFiltradas(chapas, searchEl && searchEl.value, atual);
@@ -35638,25 +35963,30 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       chapaEl.value = '';
     }
     try {
-      chapaEl.size = termo ? Math.max(2, Math.min(8, out.lista.length + 1)) : 1;
-      chapaEl.style.minHeight = termo ? '96px' : '';
-      chapaEl.style.position = termo ? 'absolute' : 'static';
-      chapaEl.style.left = termo ? '0' : '';
-      chapaEl.style.bottom = termo ? 'calc(100% + 6px)' : '';
-      chapaEl.style.zIndex = termo ? '60' : '';
-      chapaEl.style.width = termo ? 'min(720px, calc(100vw - 180px))' : '100%';
-      chapaEl.style.maxWidth = termo ? 'none' : '100%';
-      chapaEl.style.boxShadow = termo ? '0 18px 36px rgba(2,6,23,.38)' : '';
+      chapaEl.size = 1;
+      chapaEl.style.minHeight = '';
+      chapaEl.style.position = 'static';
+      chapaEl.style.left = '';
+      chapaEl.style.bottom = '';
+      chapaEl.style.zIndex = '';
+      chapaEl.style.width = '100%';
+      chapaEl.style.maxWidth = '100%';
+      chapaEl.style.boxShadow = '';
       chapaEl.style.whiteSpace = 'normal';
-      chapaEl.style.overflow = 'auto';
-      chapaEl.style.textOverflow = 'clip';
-      chapaEl.style.display = '';
+      chapaEl.style.overflow = 'hidden';
+      chapaEl.style.textOverflow = 'ellipsis';
+      chapaEl.style.display = termo ? 'none' : '';
       if (pickerWrap) {
         pickerWrap.style.paddingTop = termo ? '0' : '';
         pickerWrap.style.paddingBottom = termo ? '0' : '';
         pickerWrap.style.overflow = 'visible';
       }
     } catch (_) {}
+    _entradaEstoqueRenderBuscaResultados(tr, chapas, out.lista, termo);
+    if (!termo && resultHost) {
+      resultHost.innerHTML = '';
+      resultHost.style.display = 'none';
+    }
     chapaEl.title = termo && !out.lista.length ? 'Nenhuma chapa encontrada para este filtro.' : '';
   }
 
@@ -35782,6 +36112,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
 
     if (modo === 'existente') {
+      if (searchEl && chapa) {
+        searchEl.dataset.selectedId = String(chapa.id || '').trim();
+        searchEl.dataset.selectedLabel = _entradaEstoqueChapaLabel(chapa);
+      }
       if (!chapa && chapaEl && !chapaEl.value && Array.isArray(chapas) && chapas.length) {
         chapaEl.value = String(chapas[0] && chapas[0].id || '').trim();
         chapa = _entradaEstoqueFindChapa(chapas, chapaEl.value);
@@ -35849,10 +36183,59 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var btnRem = tr.querySelector('.est-ent-remover');
     var btnNova = tr.querySelector('.est-ent-criar-completa');
     var modoEl = tr.querySelector('.est-ent-modo');
+    var searchEl = tr.querySelector('.est-ent-search');
+    var chapaEl = tr.querySelector('.est-ent-chapa');
     if (btnNova) btnNova.onclick = function() { _entradaEstoqueAbrirCriacaoCompleta(tr, chapas); };
     if (modoEl) modoEl.addEventListener('change', function() {
       if (String(modoEl.value || '') === 'nova') _entradaEstoqueAbrirCriacaoCompleta(tr, chapas);
     });
+    if (searchEl) {
+      searchEl.addEventListener('keydown', function(ev) {
+        var termo = _entradaEstoqueBuscaNorm(searchEl.value);
+        if (!termo) return;
+        var out = _entradaEstoqueOptionsFiltradas(chapas, searchEl.value, chapaEl && chapaEl.value);
+        var activeId = String(searchEl.dataset.activeId || (out.lista[0] && out.lista[0].id) || '').trim();
+        var idxAtual = out.lista.findIndex(function(item) { return String(item && item.id || '').trim() === activeId; });
+        if ((ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && out.lista.length) {
+          try { ev.preventDefault(); } catch (_) {}
+          idxAtual = idxAtual >= 0 ? idxAtual : 0;
+          idxAtual += ev.key === 'ArrowDown' ? 1 : -1;
+          if (idxAtual < 0) idxAtual = out.lista.length - 1;
+          if (idxAtual >= out.lista.length) idxAtual = 0;
+          searchEl.dataset.activeId = String(out.lista[idxAtual] && out.lista[idxAtual].id || '').trim();
+          _entradaEstoqueRenderBuscaResultados(tr, chapas, out.lista, termo);
+          return;
+        }
+        if (ev.key === 'Enter') {
+          try { ev.preventDefault(); } catch (_) {}
+          var chosen = idxAtual >= 0 ? out.lista[idxAtual] : out.lista[0];
+          if (chosen) {
+            searchEl.dataset.activeId = String(chosen.id || '').trim();
+            _entradaEstoqueSelecionarBusca(tr, chapas, String(chosen.id || '').trim());
+          }
+          return;
+        }
+        if (ev.key === 'Escape') {
+          try { ev.preventDefault(); } catch (_) {}
+          searchEl.value = String(searchEl.dataset.selectedLabel || '').trim();
+          searchEl.dataset.activeId = '';
+          _entradaEstoqueAplicarBusca(tr, chapas);
+        }
+      });
+      searchEl.addEventListener('focus', function() {
+        if (_entradaEstoqueBuscaNorm(searchEl.value)) _entradaEstoqueAplicarBusca(tr, chapas);
+      });
+    }
+    if (chapaEl) {
+      chapaEl.addEventListener('change', function() {
+        var chosen = _entradaEstoqueFindChapa(chapas, chapaEl.value);
+        if (searchEl && chosen) {
+          searchEl.dataset.selectedId = String(chosen.id || '').trim();
+          searchEl.dataset.selectedLabel = _entradaEstoqueChapaLabel(chosen);
+        }
+        sync();
+      });
+    }
     if (btnRem) btnRem.onclick = function() {
       try { tr.remove(); } catch (_) {}
       if (!tbody.children.length) _entradaEstoqueAdicionarLinha(tbody, chapas);
@@ -46686,11 +47069,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '#modal-calc .calc-item-side button{min-height:34px;padding:0 10px;border-radius:10px;border:1px solid rgba(148,163,184,.18);background:#0f172a;color:#e2e8f0;font-size:11px;font-weight:900;cursor:pointer}'
       + '#modal-calc .calc-item-side button.danger{border-color:rgba(248,113,113,.28);background:rgba(127,29,29,.62);color:#fff}'
       + '#page-orcamentos .ptoolbar{display:none!important}'
-      + '#ccpx-compra-fullscreen .ccpx-item-vincos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(112px,.9fr);gap:6px;align-items:stretch;overflow:visible}'
+      + '#ccpx-compra-fullscreen .ccpx-item-vincos{display:grid;grid-template-columns:repeat(4,minmax(96px,1fr));gap:8px;align-items:stretch;overflow:visible}'
       + '#ccpx-compra-fullscreen .ccpx-vinco-chip{position:relative;display:block;min-height:42px}'
-      + '#ccpx-compra-fullscreen .ccpx-vinco-chip input{width:100%;height:42px;padding-right:20px;font-size:11px}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-chip input{width:100%;min-width:0;height:42px;padding:0 24px 0 12px;font-size:15px;font-variant-numeric:tabular-nums}'
       + '#ccpx-compra-fullscreen .ccpx-vinco-chip button{position:absolute;top:6px;right:6px;width:14px;height:14px;border-radius:999px;border:1px solid rgba(148,163,184,.22);background:rgba(15,23,42,.92);color:#e2e8f0;cursor:pointer;font-weight:900;font-size:10px;line-height:1;padding:0}'
-      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar{display:block;align-self:stretch;margin-top:0;min-height:42px}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar{display:block;align-self:stretch;margin-top:0;min-height:42px;grid-column:1 / -1}'
       + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar button{display:flex;align-items:center;justify-content:center;width:100%;height:42px;padding:0 8px;border-radius:12px;border:1px dashed rgba(96,165,250,.42);background:rgba(30,64,175,.14);color:#bfdbfe;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}'
       + '#modal-orcamento-calc{position:fixed!important;inset:0!important;padding:18px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:rgba(2,6,23,.82)!important;overflow:hidden!important}'
       + '#modal-orcamento-calc > div,#modal-orcamento-calc .modal-content,#modal-orcamento-calc [class*="modal-content"]{width:min(1680px,calc(100vw - 36px))!important;max-width:1680px!important;max-height:94vh!important;margin:0 auto!important;border-radius:24px!important;overflow:auto!important}'
@@ -46706,6 +47089,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '#modal-calc .calc-wave-metric span{display:block;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:8px}'
       + '#modal-calc .calc-wave-metric strong{display:block;font-size:clamp(18px,1.5vw,28px);color:#f8fafc;line-height:1.35;white-space:normal;overflow-wrap:anywhere;word-break:break-word}'
       + '#modal-calc .calc-wave-metric.is-wide strong{font-size:clamp(16px,1.28vw,22px)}'
+      + '#modal-calc #modal-calculadora .calc-col-dir{grid-template-columns:1fr!important}'
+      + '#modal-calc #modal-calculadora .param-row{grid-template-columns:minmax(220px,1.85fr) minmax(170px,1fr)!important;min-height:86px!important;gap:16px!important}'
+      + '#modal-calc #modal-calculadora .param-label{font-size:14px!important;line-height:1.45!important;white-space:normal!important;word-break:normal!important;overflow-wrap:anywhere!important;hyphens:none!important}'
+      + '#modal-calc #modal-calculadora .param-input{min-height:50px!important;font-size:18px!important;font-weight:900!important}'
       + '#modal-calc .calc-tabela-wrap.calc-wave-table-hidden{display:none!important}'
       + '@media (max-width:1100px){#modal-calc .calc-wave-panels,.pep-cards{grid-template-columns:1fr}}'
       + '@media (max-width:900px){#cmp-body .cmpx-head,#orc-body .orx-head{align-items:stretch}#cmp-body .cmpx-actions,#orc-body .orx-actions{width:100%}#cmp-body .cmpx-actions .pep-btn,#orc-body .orx-actions .pep-btn{flex:1 1 180px}#cmp-body .cmpx-folder-pill,#orc-body .orx-folder-pill{min-width:200px}#modal-orcamento-calc{padding:0!important;align-items:stretch!important;justify-content:stretch!important}#modal-orcamento-calc > div,#modal-orcamento-calc .modal-content,#modal-orcamento-calc [class*="modal-content"]{width:100vw!important;max-width:100vw!important;max-height:100vh!important;border-radius:0!important}}'
@@ -46825,8 +47212,14 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         if (row) {
           var areaEl = row.querySelector('[data-field="area_m2"]');
           var totalEl = row.querySelector('[data-field="valor_total"]');
-          if (areaEl && areaEl.dataset.ccpxManual !== '1') areaEl.value = '';
-          if (totalEl && totalEl.dataset.ccpxManual !== '1') totalEl.value = '';
+          if (areaEl) {
+            areaEl.dataset.ccpxManual = '';
+            areaEl.value = '';
+          }
+          if (totalEl) {
+            totalEl.dataset.ccpxManual = '';
+            totalEl.value = '';
+          }
         }
       }
       try { if (typeof window._compraPapelaoRefreshModalComputed === 'function') window._compraPapelaoRefreshModalComputed(overlay); } catch (_) {}
@@ -46883,10 +47276,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '    <div class="ccpx-item-field span-2"><label>Qtde</label><input data-field="quantidade" type="number" min="0" step="1" value="' + escAttr(item && item.quantidade || '') + '"></div>'
         + '    <div class="ccpx-item-field span-2"><label>Lote Mínimo</label><input data-field="lote_minimo" type="number" min="0" step="1" value="' + escAttr(item && item.lote_minimo || '') + '"></div>'
         + '    <div class="ccpx-item-field row-break"></div>'
-        + '    <div class="ccpx-item-field span-3"><label>Área Pedido</label><input data-field="area_m2"' + (areaManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + escAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : String(d.area_m2.toFixed(4))) + '"></div>'
-        + '    <div class="ccpx-item-field span-3"><label>Valor m²</label><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + escAttr(item && item.valor_m2 || '') + '"></div>'
-        + '    <div class="ccpx-item-field is-readonly span-3"><label>Valor p/mil</label><input data-ccpx-mil type="text" value="' + escAttr(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '" readonly tabindex="-1"></div>'
-        + '    <div class="ccpx-item-field span-3"><label>Valor Total</label><input data-field="valor_total"' + (totalManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.01" value="' + escAttr(item && item.valor_total != null && String(item.valor_total).trim() !== '' ? item.valor_total : String(d.valor_total.toFixed(2))) + '"></div>'
+      + '    <div class="ccpx-item-field is-readonly span-3"><label>Área Pedido</label><input data-ccpx-area-pedido type="text" value="' + escAttr(window._compraPapelaoFmtNum(d.area_pedido_mm2, 0) + ' mm²') + '" readonly tabindex="-1"></div>'
+      + '    <div class="ccpx-item-field span-2"><label>M²</label><input data-field="area_m2"' + (areaManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + escAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : String(d.area_m2.toFixed(4))) + '"></div>'
+      + '    <div class="ccpx-item-field span-2"><label>Valor m²</label><input data-field="valor_m2" type="number" min="0" step="0.01" value="' + escAttr(item && item.valor_m2 || '') + '"></div>'
+      + '    <div class="ccpx-item-field is-readonly span-2"><label>Valor p/mil</label><input data-ccpx-mil type="text" value="' + escAttr(window._compraPapelaoFmtMoney(d.vl_p_mil)) + '" readonly tabindex="-1"></div>'
+      + '    <div class="ccpx-item-field span-3"><label>Valor Total</label><input data-field="valor_total"' + (totalManual ? ' data-ccpx-manual="1"' : '') + ' type="number" min="0" step="0.01" value="' + escAttr(item && item.valor_total != null && String(item.valor_total).trim() !== '' ? item.valor_total : String(d.valor_total.toFixed(2))) + '"></div>'
         + '    <div class="ccpx-item-field span-6"><label>Obs</label><textarea data-field="observacao" rows="1">' + escHtml(item && item.observacao || '') + '</textarea></div>'
         + '    <div class="ccpx-item-field span-6"><label data-ccpx-fornecedor-label>' + escHtml(window._compraPapelaoFornecedorPedidoLabel('')) + '</label><input data-field="ped_fornecedor" value="' + escAttr(item && item.ped_fornecedor || '') + '" placeholder="' + escAttr(window._compraPapelaoFornecedorPedidoLabel('')) + '"></div>'
         + '    <div class="ccpx-item-note-line">Agora voce pode adicionar quantos vincos forem necessarios em cada item, sem ficar limitado aos campos V1-V4.</div>'
@@ -46912,8 +47306,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         quantidade: String((row.querySelector('[data-field="quantidade"]') || {}).value || '').trim(),
         lote_minimo: String((row.querySelector('[data-field="lote_minimo"]') || {}).value || '').trim(),
         area_m2: String((row.querySelector('[data-field="area_m2"]') || {}).value || '').trim(),
+        area_manual: String((((row.querySelector('[data-field="area_m2"]') || {}).dataset || {}).ccpxManual) || '') === '1',
         valor_m2: String((row.querySelector('[data-field="valor_m2"]') || {}).value || '').trim(),
         valor_total: String((row.querySelector('[data-field="valor_total"]') || {}).value || '').trim(),
+        total_manual: String((((row.querySelector('[data-field="valor_total"]') || {}).dataset || {}).ccpxManual) || '') === '1',
         observacao: String((row.querySelector('[data-field="observacao"]') || {}).value || '').trim(),
         ped_fornecedor: String((row.querySelector('[data-field="ped_fornecedor"]') || {}).value || '').trim()
       };
@@ -46939,8 +47335,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         comprimento: (row.querySelector('[data-field="comprimento"]') || {}).value,
         quantidade: (row.querySelector('[data-field="quantidade"]') || {}).value,
         area_m2: (row.querySelector('[data-field="area_m2"]') || {}).value,
+        area_manual: String((((row.querySelector('[data-field="area_m2"]') || {}).dataset || {}).ccpxManual) || '') === '1',
         valor_m2: (row.querySelector('[data-field="valor_m2"]') || {}).value,
         valor_total: (row.querySelector('[data-field="valor_total"]') || {}).value,
+        total_manual: String((((row.querySelector('[data-field="valor_total"]') || {}).dataset || {}).ccpxManual) || '') === '1',
         vinco1: vincosLista[0] || '',
         vinco2: vincosLista[1] || '',
         vinco3: vincosLista[2] || '',
@@ -46953,10 +47351,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       totalValor += d.valor_total;
       var areaEl = row.querySelector('[data-field="area_m2"]');
       var milEl = row.querySelector('[data-ccpx-mil]');
+      var areaPedidoEl = row.querySelector('[data-ccpx-area-pedido]');
       var totalEl = row.querySelector('[data-field="valor_total"]');
       var areaAuto = row.querySelector('[data-ccpx-auto-area]');
       var totalAuto = row.querySelector('[data-ccpx-auto-total]');
       var vincosRead = row.querySelector('[data-ccpx-vincos-read]');
+      if (areaPedidoEl) areaPedidoEl.value = window._compraPapelaoFmtNum(d.area_pedido_mm2, 0) + ' mm²';
       if (areaEl && (areaEl.dataset.ccpxManual !== '1' || !String(areaEl.value || '').trim())) areaEl.value = String(d.area_m2.toFixed(4));
       if (milEl) milEl.value = window._compraPapelaoFmtMoney(d.vl_p_mil);
       if (totalEl && (totalEl.dataset.ccpxManual !== '1' || !String(totalEl.value || '').trim())) totalEl.value = String(d.valor_total.toFixed(2));
@@ -47114,6 +47514,18 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (!Array.isArray(window.__orcDraftItems)) window.__orcDraftItems = [];
     return window.__orcDraftItems;
   }
+  function orcSelectedSaveWaves() {
+    var ids = [
+      { id: 'calc-print-b', onda: 'B' },
+      { id: 'calc-print-c', onda: 'C' },
+      { id: 'calc-print-bc', onda: 'BC' }
+    ];
+    return ids.filter(function(entry) {
+      var el = document.getElementById(entry.id);
+      return !!(el && el.checked);
+    }).map(function(entry) { return entry.onda; });
+  }
+  try { window.__orcSelectedSaveWaves = orcSelectedSaveWaves; } catch (_) {}
   function orcDraftCurrentItem() {
     if (!window.calcLastResult || !Array.isArray(window.calcLastResult.allResults) || !window.calcLastResult.allResults.length) return null;
     var calcCli = document.getElementById('calc-cli');
@@ -47129,11 +47541,18 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var larg = String(((document.getElementById('calc-l') || document.getElementById('calc-larg') || {}).value) || '').trim();
     var alt = String(((document.getElementById('calc-a') || document.getElementById('calc-alt') || {}).value) || '').trim();
     var medidas = [comp, larg, alt].filter(function(v) { return v; }).join(' x ');
-    var nomeAtual = calcNomeOrcamentoAtual();
+    var nomeAtual = (typeof calcNomeOrcamentoAtual === 'function')
+      ? calcNomeOrcamentoAtual()
+      : String((document.getElementById('calc-nome-orcamento') || {}).value || '').trim();
+    var ondasSelecionadas = orcSelectedSaveWaves();
+    var resultadosSelecionados = (window.calcLastResult.allResults || []).filter(function(row) {
+      var onda = String(row && row.onda || '').trim().toUpperCase();
+      return !ondasSelecionadas.length || ondasSelecionadas.indexOf(onda) >= 0;
+    });
     var sel = window._calcOpcaoSelecionada || { compIdx: 0, onda: 'B' };
-    var opt = (window.calcLastResult.allResults || []).find(function(r) {
+    var opt = resultadosSelecionados.find(function(r) {
       return r && r.compIdx === sel.compIdx && String(r.onda || '') === String(sel.onda || '');
-    }) || window.calcLastResult.allResults[0];
+    }) || resultadosSelecionados[0] || window.calcLastResult.allResults[0];
     if (!opt) return null;
     var total = Number(opt.comFrete || opt.total || 0) || 0;
     var unit = qtd > 0 ? (total / qtd) : (Number(opt.vUnit || opt.valor_unitario || 0) || 0);
@@ -47146,12 +47565,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       larg: larg,
       alt: alt,
       quantidade: qtd,
-      onda: String(opt.onda || '').trim(),
+      onda: (ondasSelecionadas.length ? ondasSelecionadas.join(' / ') : String(opt.onda || '').trim()),
       valor_unitario: unit,
       valor_total: total,
       tipo: String((document.getElementById('calc-tipo') || {}).value || '').trim(),
       chapa_utilizada: String((document.getElementById('calc-chapa-utilizada') || {}).value || '').trim(),
-      resultados: Array.isArray(window.calcLastResult.allResults) ? window.calcLastResult.allResults.slice() : []
+      resultados: resultadosSelecionados.length ? resultadosSelecionados.slice() : (Array.isArray(window.calcLastResult.allResults) ? window.calcLastResult.allResults.slice() : [])
     };
   }
   function orcDraftPayloadItems() {
@@ -47303,10 +47722,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (!itens.length) return '<div class="cmpx-detail-card"><div class="cmpx-detail-sub">Nenhum item cadastrado nesta compra.</div></div>';
     return ''
       + '<div class="cmpx-detail-card"><div class="cmpx-detail-head"><div><div class="cmpx-detail-title">Itens da Compra</div><div class="cmpx-detail-sub">' + escHtml(String(itens.length)) + ' item(ns) vinculados a esta compra.</div></div></div>'
-      + '<table class="cmpx-detail-table"><thead><tr><th>#</th><th>Pedido Cliente</th><th>PO</th><th>Medidas</th><th class="num">Qtd</th><th class="num">Área m²</th><th class="num">Valor</th></tr></thead><tbody>'
+      + '<table class="cmpx-detail-table"><thead><tr><th>#</th><th>Pedido Cliente</th><th>Entrega</th><th>PO</th><th>Vincos</th><th>Medidas</th><th class="num">Qtd</th><th class="num">Lote</th><th class="num">Área m²</th><th class="num">Valor m²</th><th class="num">Valor p/mil</th><th class="num">Valor Total</th><th>Obs</th></tr></thead><tbody>'
       + itens.map(function(item, idx) {
-        var d = window._compraPapelaoDeriveItem ? window._compraPapelaoDeriveItem(item) : { area_m2: item && item.area_m2, valor_total: item && item.valor_total };
-        return '<tr><td>' + escHtml(String(idx + 1)) + '</td><td>' + escHtml(String(item && item.ped_cliente || '—')) + '</td><td>' + escHtml(String(item && item.po || '—')) + '</td><td>' + escHtml([item && item.largura, item && item.comprimento].filter(function(v) { return v != null && String(v).trim() !== ''; }).join(' x ') || '—') + '</td><td class="num">' + escHtml(fmtNum(item && item.quantidade || 0, 0)) + '</td><td class="num">' + escHtml(fmtNum(d && d.area_m2 || 0, 4)) + '</td><td class="num">' + escHtml(fmtMoney(d && d.valor_total || 0)) + '</td></tr>';
+        var d = window._compraPapelaoResolveItemMetrics ? window._compraPapelaoResolveItemMetrics(item) : { area_m2: item && item.area_m2, valor_total: item && item.valor_total, vl_p_mil: item && item.vl_p_mil };
+        return '<tr><td>' + escHtml(String(idx + 1)) + '</td><td>' + escHtml(String(item && item.ped_cliente || '—')) + '</td><td>' + escHtml(String(item && item.data_entrega || '—')) + '</td><td>' + escHtml(String(item && item.po || '—')) + '</td><td>' + escHtml(String(window._compraPapelaoComposeVincos ? window._compraPapelaoComposeVincos(item) : item && item.vincos || '—')) + '</td><td>' + escHtml([item && item.largura, item && item.comprimento].filter(function(v) { return v != null && String(v).trim() !== ''; }).join(' x ') || '—') + '</td><td class="num">' + escHtml(fmtNum(item && item.quantidade || 0, 0)) + '</td><td class="num">' + escHtml(fmtNum(item && item.lote_minimo || 0, 0)) + '</td><td class="num">' + escHtml(fmtNum(d && d.area_m2 || 0, 4)) + '</td><td class="num">' + escHtml(fmtMoney(item && item.valor_m2 || 0)) + '</td><td class="num">' + escHtml(fmtMoney(d && d.vl_p_mil || 0)) + '</td><td class="num">' + escHtml(fmtMoney(d && d.valor_total || 0)) + '</td><td>' + escHtml(String(item && item.observacao || '—')) + '</td></tr>';
       }).join('')
       + '</tbody></table></div>';
   }
@@ -47315,9 +47734,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (!itens.length) return '<div class="orx-detail-card"><div class="orx-detail-sub">Nenhum item cadastrado neste orçamento.</div></div>';
     return ''
       + '<div class="orx-detail-card"><div class="orx-detail-head"><div><div class="orx-detail-title">Itens do Orçamento</div><div class="orx-detail-sub">' + escHtml(String(itens.length)) + ' item(ns) salvos neste orçamento.</div></div></div>'
-      + '<table class="orx-detail-table"><thead><tr><th>#</th><th>Descrição</th><th>Medidas</th><th>Onda</th><th class="num">Qtd</th><th class="num">Valor Unit.</th><th class="num">Valor Total</th></tr></thead><tbody>'
+      + '<table class="orx-detail-table"><thead><tr><th>#</th><th>Descrição</th><th>Cliente</th><th>Medidas</th><th>Onda</th><th>Chapa</th><th class="num">Qtd</th><th class="num">Valor Unit.</th><th class="num">Valor Total</th></tr></thead><tbody>'
       + itens.map(function(item, idx) {
-        return '<tr><td>' + escHtml(String(idx + 1)) + '</td><td>' + escHtml(String(item && item.descricao || 'Item')) + '</td><td>' + escHtml(String(item && item.medidas || '—')) + '</td><td>' + escHtml(String(item && item.onda || '—')) + '</td><td class="num">' + escHtml(fmtNum(item && item.quantidade || 0, 0)) + '</td><td class="num">' + escHtml(fmtMoney(item && item.valor_unitario || 0)) + '</td><td class="num">' + escHtml(fmtMoney(item && item.valor_total || 0)) + '</td></tr>';
+        return '<tr><td>' + escHtml(String(idx + 1)) + '</td><td>' + escHtml(String(item && item.descricao || 'Item')) + '</td><td>' + escHtml(String(item && item.cliente_nome || '—')) + '</td><td>' + escHtml(String(item && item.medidas || '—')) + '</td><td>' + escHtml(String(item && item.onda || '—')) + '</td><td>' + escHtml(String(item && item.chapa_utilizada || '—')) + '</td><td class="num">' + escHtml(fmtNum(item && item.quantidade || 0, 0)) + '</td><td class="num">' + escHtml(fmtMoney(item && item.valor_unitario || 0)) + '</td><td class="num">' + escHtml(fmtMoney(item && item.valor_total || 0)) + '</td></tr>';
       }).join('')
       + '</tbody></table></div>';
   }
@@ -47684,14 +48103,25 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           var totals = orcDraftTotals(itens);
           var first = itens[0] || {};
           var ondas = itens.map(function(item) { return String(item && item.onda || '').trim().toUpperCase(); }).filter(Boolean).filter(function(value, idx, arr) { return arr.indexOf(value) === idx; });
+          var resultadosFiltrados = [];
+          itens.forEach(function(item) {
+            (Array.isArray(item && item.resultados) ? item.resultados : []).forEach(function(row) {
+              var key = String(row && row.compIdx || '') + '|' + String(row && row.onda || '').trim().toUpperCase();
+              if (!resultadosFiltrados.some(function(existing) {
+                return String(existing && existing.compIdx || '') + '|' + String(existing && existing.onda || '').trim().toUpperCase() === key;
+              })) {
+                resultadosFiltrados.push(row);
+              }
+            });
+          });
           payload.itens = itens;
           payload.quantidade = totals.qtd;
           payload.valor_total = totals.valor;
           payload.valor_unitario = totals.qtd > 0 ? (totals.valor / totals.qtd) : (Number(first && first.valor_unitario || 0) || 0);
           if (!String(payload.medidas || '').trim()) payload.medidas = String(first && first.medidas || '').trim();
           if (!String(payload.titulo || '').trim()) payload.titulo = String(payload.medidas || '').trim();
-          if (!String(payload.onda || '').trim()) payload.onda = ondas.join(' / ');
-          if (!Array.isArray(payload.resultados) || !payload.resultados.length) payload.resultados = Array.isArray(first && first.resultados) ? first.resultados.slice() : [];
+          payload.onda = ondas.join(' / ') || String(payload.onda || '').trim();
+          payload.resultados = resultadosFiltrados.length ? resultadosFiltrados : (Array.isArray(first && first.resultados) ? first.resultados.slice() : []);
         }
       }
       return orig.call(this, method, path, payload);
@@ -47748,39 +48178,98 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       panel.className = 'calc-wave-panels';
       tableWrap.insertAdjacentElement('afterend', panel);
     }
+    function restoreCalcWaveTable() {
+      // A decisão de esconder/mostrar a comparação mora aqui.
+      // Mudanças de layout não devem mexer nestas condições sem validar a renderização real.
+      try { tableWrap.classList.remove('calc-wave-table-hidden'); } catch (_) {}
+      try { tableWrap.style.removeProperty('display'); } catch (_) {}
+      panel.innerHTML = '';
+      panel.style.display = 'none';
+    }
+    function parseCalcNumber(raw) {
+      var txt = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+      if (!txt) return 0;
+      txt = txt.replace(/[^\d,.-]/g, '');
+      if (txt.indexOf(',') >= 0) txt = txt.replace(/\./g, '').replace(',', '.');
+      var num = Number(txt);
+      return Number.isFinite(num) ? num : 0;
+    }
+    function resultsFromTableDom() {
+      var tbody = tableWrap && tableWrap.querySelector ? tableWrap.querySelector('tbody') : null;
+      var rows = tbody ? Array.prototype.slice.call(tbody.querySelectorAll('tr')) : [];
+      return rows.map(function(tr) {
+        var cells = Array.prototype.slice.call(tr.querySelectorAll('td'));
+        if (cells.length < 10) return null;
+        var title = String(cells[0] && cells[0].textContent || '').replace(/\s+/g, ' ').trim();
+        var ondaMatch = title.match(/onda\s*(bc|b|c)/i);
+        return {
+          compTitle: title || 'Onda —',
+          onda: ondaMatch ? String(ondaMatch[1] || '').toUpperCase() : '',
+          largura: String(cells[3] && cells[3].textContent || '').replace(/\s+/g, ' ').trim(),
+          comprimento: String(cells[4] && cells[4].textContent || '').replace(/\s+/g, ' ').trim(),
+          area: parseCalcNumber(cells[6] && cells[6].textContent),
+          bruto: parseCalcNumber(cells[7] && cells[7].textContent),
+          liquida: parseCalcNumber(cells[8] && cells[8].textContent),
+          comFrete: parseCalcNumber(cells[9] && cells[9].textContent),
+          vunit: parseCalcNumber(cells[10] && cells[10].textContent)
+        };
+      }).filter(Boolean);
+    }
     var results = Array.isArray(window.calcLastResult && window.calcLastResult.allResults) ? window.calcLastResult.allResults.slice() : [];
+    if (!results.length) results = resultsFromTableDom();
+    var safeEsc = (typeof escHtml === 'function') ? escHtml : function(v) { return String(v == null ? '' : v); };
+    var safeAttr = (typeof escAttr === 'function') ? escAttr : function(v) { return safeEsc(v); };
+    var safeMoney = (typeof fmtMoney === 'function') ? fmtMoney : function(v) { return 'R$ ' + (Number(v || 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    var safeNum = (typeof fmtNum === 'function') ? fmtNum : function(v, d) { return (Number(v || 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); };
+    if (results.length < 3) {
+      var domFallback = resultsFromTableDom();
+      if (domFallback.length > results.length) results = domFallback;
+    }
     if (!results.length) {
-      try { tableWrap.classList.add('calc-wave-table-hidden'); } catch (_) {}
-      try { tableWrap.style.setProperty('display', 'none', 'important'); } catch (_) {}
-      panel.innerHTML = '<div class="calc-wave-card"><div class="calc-wave-title">Nenhuma comparacao disponivel</div><div style="font-size:16px;color:#94a3b8;line-height:1.5">Preencha as medidas para ver a comparacao das ondas em cards.</div></div>';
+      restoreCalcWaveTable();
+      return;
+    }
+    var html = '';
+    try {
+      var bestValue = results.reduce(function(lowest, row) {
+        var current = Number(row && (row.vunit != null ? row.vunit : row.liquida) || 0) || 0;
+        return current > 0 && (lowest == null || current < lowest) ? current : lowest;
+      }, null);
+      html = results.map(function(row) {
+        var currentValue = Number(row && (row.vunit != null ? row.vunit : row.liquida) || 0) || 0;
+        var isBest = bestValue != null && currentValue === bestValue;
+        var larguraTxt = String(row && row.largura || '—');
+        var comprimentoTxt = String(row && row.comprimento || '—');
+        var larguraCls = larguraTxt.length > 18 ? ' is-wide' : '';
+        var comprimentoCls = comprimentoTxt.length > 18 ? ' is-wide' : '';
+        return ''
+          + '<div class="calc-wave-card' + (isBest ? ' best' : '') + '">'
+          + '  <div class="calc-wave-head"><div><div class="calc-wave-title">' + safeEsc(row && row.compTitle || ('Onda ' + (row && row.onda || '—'))) + '</div><div style="font-size:16px;color:#94a3b8;margin-top:6px;line-height:1.45">Comparação direta da compensação para esta onda.</div></div><span class="calc-wave-badge">Onda ' + safeEsc(row && row.onda || '—') + '</span></div>'
+          + '  <div class="calc-wave-grid">'
+          + '    <div class="calc-wave-metric' + larguraCls + '"><span>Largura</span><strong title="' + safeAttr(larguraTxt + ' mm') + '">' + safeEsc(larguraTxt) + ' mm</strong></div>'
+          + '    <div class="calc-wave-metric' + comprimentoCls + '"><span>Comprimento</span><strong title="' + safeAttr(comprimentoTxt + ' mm') + '">' + safeEsc(comprimentoTxt) + ' mm</strong></div>'
+          + '    <div class="calc-wave-metric"><span>Área</span><strong>' + safeEsc(safeNum(row && row.area || 0, 6)) + ' m²</strong></div>'
+          + '    <div class="calc-wave-metric"><span>Valor Bruto</span><strong>' + safeEsc(safeMoney(row && row.bruto || 0)) + '</strong></div>'
+          + '    <div class="calc-wave-metric"><span>Venda Líquida</span><strong>' + safeEsc(safeMoney(row && row.liquida || 0)) + '</strong></div>'
+          + '    <div class="calc-wave-metric"><span>Valor Unitário</span><strong>' + safeEsc(safeMoney(row && row.vunit || 0)) + '</strong></div>'
+          + '  </div>'
+          + '</div>';
+      }).join('');
+    } catch (err) {
+      html = '<div class="calc-wave-card"><div class="calc-wave-title">Falha ao montar os cards</div><div style="font-size:16px;color:#94a3b8;line-height:1.5">' + safeEsc(String(err && err.message || err || 'Erro desconhecido')) + '</div></div>';
+    }
+    if (!String(html || '').trim()) {
+      restoreCalcWaveTable();
+      return;
+    }
+    panel.style.display = '';
+    panel.innerHTML = html;
+    if (!panel.querySelector('.calc-wave-card')) {
+      restoreCalcWaveTable();
       return;
     }
     try { tableWrap.classList.add('calc-wave-table-hidden'); } catch (_) {}
     try { tableWrap.style.setProperty('display', 'none', 'important'); } catch (_) {}
-    var bestValue = results.reduce(function(lowest, row) {
-      var current = Number(row && (row.vunit != null ? row.vunit : row.liquida) || 0) || 0;
-      return current > 0 && (lowest == null || current < lowest) ? current : lowest;
-    }, null);
-    panel.innerHTML = results.map(function(row) {
-      var currentValue = Number(row && (row.vunit != null ? row.vunit : row.liquida) || 0) || 0;
-      var isBest = bestValue != null && currentValue === bestValue;
-      var larguraTxt = String(row && row.largura || '—');
-      var comprimentoTxt = String(row && row.comprimento || '—');
-      var larguraCls = larguraTxt.length > 18 ? ' is-wide' : '';
-      var comprimentoCls = comprimentoTxt.length > 18 ? ' is-wide' : '';
-      return ''
-        + '<div class="calc-wave-card' + (isBest ? ' best' : '') + '">'
-        + '  <div class="calc-wave-head"><div><div class="calc-wave-title">' + escHtml(row && row.compTitle || ('Onda ' + (row && row.onda || '—'))) + '</div><div style="font-size:16px;color:#94a3b8;margin-top:6px;line-height:1.45">Comparacao direta da compensacao para esta onda.</div></div><span class="calc-wave-badge">Onda ' + escHtml(row && row.onda || '—') + '</span></div>'
-        + '  <div class="calc-wave-grid">'
-        + '    <div class="calc-wave-metric' + larguraCls + '"><span>Largura</span><strong title="' + escAttr(larguraTxt + ' mm') + '">' + escHtml(larguraTxt) + ' mm</strong></div>'
-        + '    <div class="calc-wave-metric' + comprimentoCls + '"><span>Comprimento</span><strong title="' + escAttr(comprimentoTxt + ' mm') + '">' + escHtml(comprimentoTxt) + ' mm</strong></div>'
-        + '    <div class="calc-wave-metric"><span>Área</span><strong>' + escHtml(fmtNum(row && row.area || 0, 6)) + ' m²</strong></div>'
-        + '    <div class="calc-wave-metric"><span>Valor Bruto</span><strong>' + escHtml(fmtMoney(row && row.bruto || 0)) + '</strong></div>'
-        + '    <div class="calc-wave-metric"><span>Venda Líquida</span><strong>' + escHtml(fmtMoney(row && row.liquida || 0)) + '</strong></div>'
-        + '    <div class="calc-wave-metric"><span>Valor Unitário</span><strong>' + escHtml(fmtMoney(row && row.vunit || 0)) + '</strong></div>'
-        + '  </div>'
-        + '</div>';
-    }).join('');
   }
   try { patchApiOrcamentosEmpFallback(); } catch (_) {}
   function orcEnsureDataLoaded() {
@@ -47871,7 +48360,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           + '  <span class="name">' + escHtml(folder && folder.nome || 'Pasta') + '</span>'
           + '  <span class="meta">Organização visual igual às áreas de Estoques</span>'
           + '  <span class="count">' + escHtml(String(orcCountByFilter(filter))) + '</span>'
-          + '  <span class="orx-folder-actions"><button type="button" class="danger" data-orx-folder-delete="' + escAttr(String(folder && folder.id || '')) + '" title="Excluir pasta">🗑</button></span>'
+          + '  <span class="orx-folder-actions"><button type="button" data-orx-folder-edit="' + escAttr(String(folder && folder.id || '')) + '" title="Editar pasta">✎</button><button type="button" class="danger" data-orx-folder-delete="' + escAttr(String(folder && folder.id || '')) + '" title="Excluir pasta">🗑</button></span>'
           + '</button>';
       }).join('');
     var rowsHtml = lista.map(function(orc) {
@@ -47908,7 +48397,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '  <td><div class="orx-actions-row"><select class="is-folder" onchange="orcMoverParaPasta(\'' + escAttr(id) + '\', this.value)"><option value="">Sem pasta</option>' + (Array.isArray(window.__orcPastasData) ? window.__orcPastasData.map(function(folder) {
             var sid = String(folder && folder.id || '').trim();
             return '<option value="' + escAttr(sid) + '"' + (sid === pastaId ? ' selected' : '') + '>' + escHtml(folder && folder.nome || '') + '</option>';
-          }).join('') : '') + '</select><button type="button" class="primary is-edit" onclick="abrirCalculadoraComOrc(\'' + escAttr(id) + '\')">✏ Editar</button><button type="button" class="is-print" onclick="imprimirOrcamentoId(\'' + escAttr(id) + '\')">🖨 Imprimir</button><button type="button" class="is-versions" onclick="abrirVersoesOrcamento(\'' + escAttr(id) + '\')">🕘 Versões</button><button type="button" class="danger" onclick="excluirOrcamento(\'' + escAttr(id) + '\')">🗑 Excluir</button></div></td>'
+          }).join('') : '') + '</select><button type="button" class="primary is-edit" onclick="abrirCalculadoraComOrc(\'' + escAttr(id) + '\')">✏ Editar</button><button type="button" class="is-copy" onclick="orcClonar(\'' + escAttr(id) + '\')">⧉ Clonar</button><button type="button" class="is-print" onclick="imprimirOrcamentoId(\'' + escAttr(id) + '\')">🖨 Imprimir</button><button type="button" class="is-versions" onclick="abrirVersoesOrcamento(\'' + escAttr(id) + '\')">🕘 Versões</button><button type="button" class="danger" onclick="excluirOrcamento(\'' + escAttr(id) + '\')">🗑 Excluir</button></div></td>'
         + '</tr>'
         + (expanded ? '<tr class="orx-detail-row"><td colspan="9">' + orcItensExpansaoHtml(orc) + '</td></tr>' : '');
     }).join('');
@@ -47971,6 +48460,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       btn.onclick = function(ev) {
         try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
         if (typeof window.orcExcluirPasta === 'function') window.orcExcluirPasta(String(btn.getAttribute('data-orx-folder-delete') || ''));
+      };
+    });
+    Array.prototype.slice.call(document.querySelectorAll('[data-orx-folder-edit]')).forEach(function(btn) {
+      btn.onclick = function(ev) {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        if (typeof window.orcEditarPasta === 'function') window.orcEditarPasta(String(btn.getAttribute('data-orx-folder-edit') || ''));
       };
     });
   };
@@ -48096,6 +48591,100 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   scheduleQuickOfRiscadorGlobal();
   setTimeout(scheduleQuickOfRiscadorGlobal, 120);
   setTimeout(scheduleQuickOfRiscadorGlobal, 900);
+})();
+
+(function patchFinalReentryGuards() {
+  if (window.__patchFinalReentryGuardsInstalled) return;
+  window.__patchFinalReentryGuardsInstalled = true;
+
+  function resolveFnBase(fn) {
+    var current = typeof fn === 'function' ? fn : null;
+    var seen = [];
+    while (current && seen.indexOf(current) === -1) {
+      seen.push(current);
+      var next = null;
+      try {
+        next = current.__patchWrapOriginal
+          || current.__patchEstoqueOrig
+          || current.__patchChapaColorNormalizeOrig
+          || current.__patchChapaColorApiFetchOrig
+          || current.__patchUnifiedAuthOrig
+          || current.__ofmaqFinalBridgeTarget
+          || null;
+      } catch (_) {
+        next = null;
+      }
+      if (typeof next !== 'function' || next === current) break;
+      current = next;
+    }
+    return current;
+  }
+
+  function ensureGuard(name) {
+    var current = typeof window[name] === 'function' ? window[name] : null;
+    if (!current || current.__patchFinalReentryGuard) return;
+    var stateKey = '__patchReentryState__' + name;
+    var wrapped = function() {
+      var state = window[stateKey];
+      if (!state) {
+        state = { active: false, inFlight: null, hits: 0 };
+        window[stateKey] = state;
+      }
+      if (state.active) {
+        state.hits += 1;
+        try { console.warn('[PATCH][REENTRY-BLOCKED]', name, 'hits=', state.hits); } catch (_) {}
+        return state.inFlight || undefined;
+      }
+      state.active = true;
+      state.hits = 0;
+      var result;
+      var isPromise = false;
+      var finish = function() {
+        state.active = false;
+        state.inFlight = null;
+      };
+      try {
+        result = current.apply(this, arguments);
+        isPromise = !!(result && typeof result.then === 'function');
+        if (isPromise) {
+          state.inFlight = Promise.resolve(result).finally(finish);
+          return state.inFlight;
+        }
+        state.inFlight = result;
+        return result;
+      } finally {
+        if (!isPromise) finish();
+      }
+    };
+    try { wrapped.__patchWrapOriginal = resolveFnBase(current) || current; } catch (_) {}
+    try { wrapped.__patchFinalReentryGuard = true; } catch (_) {}
+    try { wrapped.__patchRecursionGuard = true; } catch (_) {}
+    window[name] = wrapped;
+  }
+
+  function install() {
+    [
+      'abrirNovaOfRapida',
+      'abrirOfRapida',
+      'abrirOFRapida',
+      'abrirMaisItensOfRapida',
+      'salvarOfRapida',
+      'renderOFsPorMaquina',
+      'renderMaquinas',
+      'renderOfmaq',
+      'renderOFsMaquina',
+      'renderKanbanOfmaq',
+      'carregarOFsMaquina',
+      'loadOFsMaquina'
+    ].forEach(function(name) {
+      try { ensureGuard(name); } catch (_) {}
+    });
+  }
+
+  install();
+  setTimeout(install, 0);
+  setTimeout(install, 250);
+  setTimeout(install, 1200);
 })();
 
 

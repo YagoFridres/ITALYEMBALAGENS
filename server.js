@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -5881,16 +5881,18 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
   // #endregion
   try {
     setNoCache(res);
-    const empId = await resolverEmpresaId(req);
-    if (!empId) return res.status(400).json({ ok: false, error: 'Empresa não identificada' });
     const body = req.body || {};
+    const empresaCtx = await _resolveEmpresaMutationContext(req, body);
+    const empresaUuid = String(empresaCtx?.empresa_id || '').trim();
+    const empLegacy = String(empresaCtx?.emp_id || '').trim();
+    if (!empresaUuid) return res.status(400).json({ ok: false, error: 'Empresa não identificada' });
     let filtered = ofPayloadFiltrado(body);
-    filtered.empresa_id = empId;
-    if (filtered.emp_id === undefined || filtered.emp_id === '') filtered.emp_id = empId;
+    filtered.empresa_id = empresaUuid;
+    if (filtered.emp_id === undefined || filtered.emp_id === '') filtered.emp_id = empLegacy || null;
     filtered = await _preencherCamposCriticosOF({ ...(body || {}), ...(filtered || {}) });
     filtered = ofPayloadFiltrado(filtered);
-    filtered.empresa_id = empId;
-    if (filtered.emp_id === undefined || filtered.emp_id === '') filtered.emp_id = empId;
+    filtered.empresa_id = empresaUuid;
+    if (filtered.emp_id === undefined || filtered.emp_id === '') filtered.emp_id = empLegacy || null;
     delete filtered.id;
     if ((filtered.of == null || String(filtered.of || '').trim() === '') && (filtered.numero == null || String(filtered.numero || '').trim() === '')) {
       try {
@@ -5920,13 +5922,13 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         const nextSeq = lastSeq > 0 ? (lastSeq + 1) : 1;
         filtered.seq = nextSeq;
         let numeroEmpresa = null;
-        try { numeroEmpresa = await proximoNumeroOF(empId); } catch (_) { numeroEmpresa = null; }
+        try { numeroEmpresa = await proximoNumeroOF(empresaUuid); } catch (_) { numeroEmpresa = null; }
         for (let i = 0; i < 5; i += 1) {
           const cand = String((numeroEmpresa != null ? numeroEmpresa : nextSeq) + i);
           const { data: exists } = await supabase
             .from('ofs')
             .select('id')
-            .eq('empresa_id', empId)
+            .eq('empresa_id', empresaUuid)
             .eq('numero', cand)
             .limit(1);
           if (Array.isArray(exists) && exists.length) continue;
@@ -6321,6 +6323,12 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     setNoCache(res);
     let body = filterOfsUpdateWhitelist(normalizeOfUpdateBody(req.body || {}));
     body = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(body));
+    const hasEmpresaOverride = ['empresa_id', 'empresaId', 'emp_id', 'empId'].some((key) => Object.prototype.hasOwnProperty.call(req.body || {}, key));
+    if (hasEmpresaOverride) {
+      const empresaCtx = await _resolveEmpresaMutationContext(req, req.body || {});
+      if (empresaCtx?.empresa_id) body.empresa_id = empresaCtx.empresa_id;
+      if (empresaCtx?.emp_id) body.emp_id = empresaCtx.emp_id;
+    }
     try { console.log('[OF PATCH] payload recebido:', JSON.stringify(req.body || {}).substring(0, 300)); } catch (_) {}
     try { console.log('[OF PATCH] campos após whitelist:', Object.keys(body || {})); } catch (_) {}
     if (body.qtd !== undefined) body.qtd = Number(body.qtd);
@@ -8573,6 +8581,12 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         : bodyIn;
     let payload = filterOfsUpdateWhitelist(sanitizeOfUpdatePayload({ ...ofIn(mapped || {}), updated_at: new Date().toISOString() }));
     payload = filterOfsUpdateWhitelist(await _preencherCamposCriticosOF(payload));
+    const hasEmpresaOverride = ['empresa_id', 'empresaId', 'emp_id', 'empId'].some((key) => Object.prototype.hasOwnProperty.call(req.body || {}, key));
+    if (hasEmpresaOverride) {
+      const empresaCtx = await _resolveEmpresaMutationContext(req, req.body || {});
+      if (empresaCtx?.empresa_id) payload.empresa_id = empresaCtx.empresa_id;
+      if (empresaCtx?.emp_id) payload.emp_id = empresaCtx.emp_id;
+    }
     try { console.log('[PATCH OF] campos após whitelist:', Object.keys(payload || {})); } catch (_) {}
     try {
       const { data: ofAtual2 } = await supabase.from('ofs').select('status').eq('id', id).maybeSingle();
@@ -8606,7 +8620,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       if (!String(payload.data_conclusao || '').trim()) payload.data_conclusao = new Date().toISOString();
       if (!String(payload.usuario_conclusao || '').trim()) payload.usuario_conclusao = String(req.usuario?.nome || req.usuario?.email || 'sistema').trim() || 'sistema';
     }
-    delete payload.id; delete payload.empresa_id;
+    delete payload.id;
     delete payload.numero; delete payload.of; delete payload.of_num; delete payload.seq;
     const upd = await ofsUpdateWithRetry(id, payload);
     if (upd.error) {
@@ -12185,8 +12199,33 @@ function _relatoriosEmpresaNome(empId) {
   return found?.nome || (id ? id : 'Sem empresa');
 }
 
+function _relatoriosLegacyEmpresaUuid(raw) {
+  const txt = String(raw || '').trim().toUpperCase();
+  if (!txt) return '';
+  const map = {
+    E1: 'df5f7672-0a6b-402d-ae65-296554236c31',
+    ITALY: 'df5f7672-0a6b-402d-ae65-296554236c31',
+    'ITALY EMBALAGENS': 'df5f7672-0a6b-402d-ae65-296554236c31',
+    E2: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+    CARTO: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+    CARTOESTE: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+    E3: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+    OESTE: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+    OESTEPACK: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+  };
+  return String(map[txt] || '').trim();
+}
+
 function _relatoriosPickEmpresaId(of) {
-  return String(of?.empresa_id || '').trim();
+  const uuid = String(of?.empresa_id || '').trim();
+  if (_isUuid(uuid)) return uuid;
+  return _relatoriosLegacyEmpresaUuid(
+    of?.emp_id ??
+    of?.empId ??
+    of?.empresa ??
+    of?.empresa_nome ??
+    ''
+  );
 }
 
 function _relatoriosPickValorOf(of) {
@@ -12311,8 +12350,9 @@ function _relatoriosSummarizeOfs(ofs, opts = {}) {
 
 async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
   const columns = [
-    'id', 'numero', 'of', 'status', 'data_conclusao', 'created_at',
-    'empresa_id', 'cli_id',
+    'id', 'numero', 'of', 'status', 'deleted_at',
+    'data_faturamento', 'data_conclusao', 'dia', 'created_at',
+    'empresa_id', 'emp_id', 'cli_id',
     'valor_total', 'valor_venda', 'total',
     'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida',
     'qtd_perdida', 'caixas_perdidas',
@@ -12320,17 +12360,28 @@ async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
     'vendedor_id'
   ].join(',');
   const companyIds = Array.isArray(opts.companyIds) ? opts.companyIds.map((v) => String(v || '').trim()).filter(Boolean) : [];
-  const result = await _selectCompatRows('ofs', columns, (q) => {
-    let query = q
-      .ilike('status', '%conclu%')
-      .gte('data_conclusao', range.inicio)
-      .lt('data_conclusao', range.fim_exclusivo)
-      .order('data_conclusao', { ascending: true });
-    if (companyIds.length) query = query.in('empresa_id', companyIds);
-    return query.limit(10000);
+  const rows = [];
+  const pageSize = 1000;
+  for (let offset = 0; offset < 50000; offset += pageSize) {
+    const result = await _selectCompatRows('ofs', columns, (q) => (
+      q
+        .ilike('status', '%conclu%')
+        .order('created_at', { ascending: true })
+        .range(offset, offset + pageSize - 1)
+    ));
+    if (result?.error) throw result.error;
+    const chunk = Array.isArray(result?.data) ? result.data : [];
+    if (!chunk.length) break;
+    rows.push(...chunk);
+    if (chunk.length < pageSize) break;
+  }
+  return rows.filter((row) => {
+    if (row?.deleted_at) return false;
+    if (!_vendasOficialStatusConcluido(row?.status)) return false;
+    if (!_vendasOficialDentroDoPeriodo(row, range)) return false;
+    if (!companyIds.length) return true;
+    return companyIds.includes(_relatoriosPickEmpresaId(row));
   });
-  if (result?.error) throw result.error;
-  return Array.isArray(result?.data) ? result.data : [];
 }
 
 async function _relatoriosFetchOfsCriadas(range, opts = {}) {
@@ -14305,6 +14356,10 @@ app.get('/api/empresas', async (req, res) => {
 app.get('/api/orcamentos', authMiddleware, async (req, res) => {
   try {
     const empFiltro = String(req.query.empId || req.query.empresa_id || req.query.empresaId || req.query.empresa || '').trim();
+    const isDeletedStatus = (row) => {
+      const status = String(row?.status || '').trim().toLowerCase();
+      return status === 'excluido' || status === 'excluído';
+    };
     const buildQuery = (applyEmpFilter, applyDeletedFilter) => {
       let q = supabase.from('orcamentos').select('*').order('criado_em', { ascending: false });
       if (applyDeletedFilter) q = q.is('deleted_at', null);
@@ -14339,11 +14394,18 @@ app.get('/api/orcamentos', authMiddleware, async (req, res) => {
       console.error('[ORCAMENTOS] error:', error.message);
       return ok(res, []);
     }
+    data = (Array.isArray(data) ? data : []).filter((row) => !row?.deleted_at && !isDeletedStatus(row));
     if (empFiltro && !(Array.isArray(data) && data.length)) {
-      const fallback = await buildQuery(false, false);
+      let fallback = await buildQuery(false, true);
+      if (fallback.error) {
+        const msg = String(fallback.error.message || fallback.error || '');
+        if (msg.includes('deleted_at') && (msg.includes('column') || msg.includes('Could not find'))) {
+          fallback = await buildQuery(false, false);
+        }
+      }
       if (!fallback.error && Array.isArray(fallback.data) && fallback.data.length) {
         console.log('[ORCAMENTOS] fallback sem filtro de empresa ativado para evitar lista vazia');
-        data = fallback.data;
+        data = fallback.data.filter((row) => !row?.deleted_at && !isDeletedStatus(row));
       }
     }
     try {
@@ -14443,17 +14505,7 @@ app.post('/api/orcamentos', authMiddleware, async (req, res) => {
       payload.pasta_id = b.pasta_id ? String(b.pasta_id).trim() : null;
     }
 
-    let inserted = await supabase.from('orcamentos').insert([payload]).select().single();
-    if (inserted.error) {
-      const msg = String(inserted.error.message || inserted.error);
-      const m1 = msg.match(/Could not find the '([^']+)' column/i);
-      const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
-      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
-      if (col && Object.prototype.hasOwnProperty.call(payload, col)) {
-        delete payload[col];
-        inserted = await supabase.from('orcamentos').insert([payload]).select().single();
-      }
-    }
+    let inserted = await _insertCompatTable('orcamentos', payload);
     if (inserted.error) return res.status(500).json({ error: inserted.error.message });
     return ok(res, inserted.data);
   } catch (e) { return res.status(500).json({ error: String(e.message || e) }); }
@@ -14553,41 +14605,39 @@ app.delete('/api/orcamentos/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    const empresaCtx = await _resolveEmpresaMutationContext(req, req.body || {});
-    const empresaUuid = String(empresaCtx?.empresa_id || '').trim();
-    const empresaLegacy = String(empresaCtx?.emp_id || req.usuario?.emp_id || req.usuario?.empId || '').trim();
-    const applyEmpresaScope = (query) => {
-      let q = query;
-      if (empresaUuid) q = q.or(`empresa_id.eq.${empresaUuid},empresa_id.is.null`);
-      if (empresaLegacy) q = q.or(`emp_id.eq.${empresaLegacy},empresa_id.eq.${empresaLegacy},emp_id.is.null`);
-      return q;
-    };
+    const atual = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
+    if (atual.error) return res.status(500).json({ ok: false, error: atual.error.message });
+    if (!atual.data) return res.status(404).json({ ok: false, error: 'Orçamento não encontrado' });
 
-    let upd = await applyEmpresaScope(
-      supabase
-        .from('orcamentos')
-        .update({ deleted_at: new Date().toISOString(), status: 'Excluído' })
-        .eq('id', id)
-    ).select('id').maybeSingle();
-
-    if (upd.error) {
-      const msg = String(upd.error.message || upd.error || '');
-      if (msg.includes('deleted_at') && (msg.includes('column') || msg.includes('Could not find'))) {
-        const del = await applyEmpresaScope(
-          supabase
-            .from('orcamentos')
-            .delete()
-            .eq('id', id)
-        ).select('id').maybeSingle();
-        if (del.error) throw del.error;
-        if (!del.data) return res.status(404).json({ ok: false, error: 'Orçamento não encontrado' });
-        return ok(res, true);
+    const del = await supabase.from('orcamentos').delete().eq('id', id).select('id');
+    if (del.error) {
+      const msg = String(del.error.message || del.error || '');
+      if (
+        msg.includes('foreign key') ||
+        msg.includes('constraint') ||
+        msg.includes('violates')
+      ) {
+        const upd = await supabase
+          .from('orcamentos')
+          .update({ deleted_at: new Date().toISOString(), status: 'Excluído' })
+          .eq('id', id)
+          .select('id,deleted_at,status')
+          .maybeSingle();
+        if (upd.error) throw upd.error;
+        const verSoft = await supabase.from('orcamentos').select('id,deleted_at,status').eq('id', id).maybeSingle();
+        if (verSoft.error) return res.status(500).json({ ok: false, error: verSoft.error.message });
+        if (!verSoft.data || !verSoft.data.deleted_at) {
+          return res.status(500).json({ ok: false, error: 'Falha ao excluir orçamento' });
+        }
+        return ok(res, { mode: 'logical', id });
       }
-      throw upd.error;
+      throw del.error;
     }
 
-    if (!upd.data) return res.status(404).json({ ok: false, error: 'Orçamento não encontrado' });
-    return ok(res, true);
+    const ver = await supabase.from('orcamentos').select('id').eq('id', id).maybeSingle();
+    if (ver.error) return res.status(500).json({ ok: false, error: ver.error.message });
+    if (ver.data) return res.status(500).json({ ok: false, error: 'Falha ao excluir orçamento' });
+    return ok(res, { mode: 'physical', id });
   } catch (e) { return err(res, e); }
 });
 
@@ -14629,6 +14679,23 @@ app.post('/api/orcamentos_pastas', authMiddleware, async (req, res) => {
   } catch (e) { return err(res, e); }
 });
 
+app.put('/api/orcamentos_pastas/:id', authMiddleware, async (req, res) => {
+  try {
+    const schemaOk = await _ensureOrcamentosPastasSchema();
+    if (!schemaOk) return res.status(500).json({ ok: false, error: 'schema_orcamentos_pastas_missing', sql: _ORCAMENTOS_PASTAS_SCHEMA_SQL });
+    const id = String(req.params.id || '').trim();
+    const nome = String(req.body?.nome || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!nome) return res.status(400).json({ ok: false, error: 'nome obrigatório' });
+    const atual = await supabase.from('orcamentos_pastas').select('*').eq('id', id).maybeSingle();
+    if (atual.error) return res.status(500).json({ ok: false, error: atual.error.message });
+    if (!atual.data) return res.status(404).json({ ok: false, error: 'Pasta não encontrada' });
+    const upd = await supabase.from('orcamentos_pastas').update({ nome }).eq('id', id).select().single();
+    if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message });
+    return ok(res, upd.data);
+  } catch (e) { return err(res, e); }
+});
+
 app.delete('/api/orcamentos_pastas/:id', authMiddleware, async (req, res) => {
   try {
     const schemaOk = await _ensureOrcamentosPastasSchema();
@@ -14636,12 +14703,88 @@ app.delete('/api/orcamentos_pastas/:id', authMiddleware, async (req, res) => {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
 
-    const clear = await supabase.from('orcamentos').update({ pasta_id: null }).eq('pasta_id', id);
-    if (clear.error) return res.status(500).json({ ok: false, error: clear.error.message });
+    const vinculados = await supabase
+      .from('orcamentos')
+      .select('id,numero_orcamento,pasta_id,deleted_at')
+      .eq('pasta_id', id);
+    if (vinculados.error) return res.status(500).json({ ok: false, error: vinculados.error.message });
+
+    const ids = (Array.isArray(vinculados.data) ? vinculados.data : [])
+      .map((row) => String(row?.id || '').trim())
+      .filter(Boolean);
+
+    if (ids.length) {
+      const clear = await supabase.from('orcamentos').update({ pasta_id: null }).in('id', ids);
+      if (clear.error) return res.status(500).json({ ok: false, error: clear.error.message });
+
+      const verificados = await supabase.from('orcamentos').select('id,pasta_id,deleted_at').in('id', ids);
+      if (verificados.error) return res.status(500).json({ ok: false, error: verificados.error.message });
+      const mapa = new Map((Array.isArray(verificados.data) ? verificados.data : []).map((row) => [String(row?.id || '').trim(), row]));
+      const sumidos = ids.filter((rowId) => !mapa.has(rowId));
+      if (sumidos.length) {
+        return res.status(500).json({
+          ok: false,
+          error: 'Falha ao manter os orçamentos vinculados após remover a pasta',
+          missing_ids: sumidos
+        });
+      }
+      const aindaVinculados = ids.filter((rowId) => {
+        const row = mapa.get(rowId);
+        return !!String(row?.pasta_id || '').trim();
+      });
+      if (aindaVinculados.length) {
+        return res.status(500).json({
+          ok: false,
+          error: 'Falha ao desvincular todos os orçamentos da pasta',
+          pending_ids: aindaVinculados
+        });
+      }
+    }
 
     const del = await supabase.from('orcamentos_pastas').delete().eq('id', id);
     if (del.error) return res.status(500).json({ ok: false, error: del.error.message });
-    return ok(res, true);
+    return ok(res, { removed_folder_id: id, released_orcamentos: ids.length });
+  } catch (e) { return err(res, e); }
+});
+
+app.post('/api/orcamentos/:id/clonar', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const atual = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
+    if (atual.error) return res.status(500).json({ ok: false, error: atual.error.message });
+    if (!atual.data) return res.status(404).json({ ok: false, error: 'Orçamento não encontrado' });
+
+    const origem = atual.data || {};
+    const empresaCtx = await _resolveEmpresaMutationContext(req, origem || {});
+    const empresaUuid = String(empresaCtx?.empresa_id || origem.empresa_id || '').trim() || null;
+    const empLegacy = String(empresaCtx?.emp_id || origem.emp_id || req.usuario?.emp_id || req.usuario?.empId || '').trim();
+
+    const ultimo = await supabase.from('orcamentos').select('numero_orcamento').order('criado_em', { ascending: false }).limit(1);
+    if (ultimo.error) return res.status(500).json({ ok: false, error: ultimo.error.message });
+    const ultimoNum = parseInt(String(ultimo.data?.[0]?.numero_orcamento || '0').replace(/\D/g, ''), 10) || 0;
+    const novoNum = String(ultimoNum + 1).padStart(4, '0');
+
+    const payload = { ...origem };
+    delete payload.id;
+    delete payload.created_at;
+    delete payload.updated_at;
+    delete payload.deleted_at;
+    delete payload.public_token;
+
+    payload.numero_orcamento = novoNum;
+    payload.status = 'Rascunho';
+    payload.criado_em = new Date().toISOString();
+    payload.criado_por = req.usuario?.nome || 'sistema';
+    payload.public_token = crypto.randomBytes(24).toString('hex');
+    payload.emp_id = empLegacy || '';
+    payload.empresa_id = empresaUuid;
+    if (payload.nome) payload.nome = String(payload.nome).trim();
+    if (payload.nome_orcamento) payload.nome_orcamento = String(payload.nome_orcamento).trim();
+
+    let ins = await _insertCompatTable('orcamentos', payload);
+    if (ins.error) return res.status(500).json({ ok: false, error: ins.error.message });
+    return ok(res, ins.data);
   } catch (e) { return err(res, e); }
 });
 
@@ -14765,17 +14908,7 @@ app.post('/api/orcamentos/:id/restaurar', authMiddleware, async (req, res) => {
     };
     if (s.cliente_id && String(s.cliente_id).match(/^[0-9a-f-]{36}$/i)) payload.cliente_id = s.cliente_id;
     if (Object.prototype.hasOwnProperty.call(s, 'pasta_id')) payload.pasta_id = s.pasta_id ? String(s.pasta_id).trim() : null;
-    let ins = await supabase.from('orcamentos').insert([payload]).select().single();
-    if (ins.error) {
-      const msg = String(ins.error.message || ins.error);
-      const m1 = msg.match(/Could not find the '([^']+)' column/i);
-      const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
-      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
-      if (col && Object.prototype.hasOwnProperty.call(payload, col)) {
-        delete payload[col];
-        ins = await supabase.from('orcamentos').insert([payload]).select().single();
-      }
-    }
+    let ins = await _insertCompatTable('orcamentos', payload);
     if (ins.error) return res.status(500).json({ ok: false, error: ins.error.message });
     return ok(res, ins.data);
   } catch (e) { return err(res, e); }
@@ -15233,17 +15366,10 @@ function _isUuid(v) {
   return typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 }
 async function _resolveEmpresaUuid(req) {
-  try {
-    const resolved = await resolverEmpresaId(req);
-    const resolvedId = String(resolved || '').trim();
-    if (_isUuid(resolvedId)) return resolvedId;
-  } catch (_) {}
   const bEmp = String(req?.body?.empresa_id || req?.body?.empresaId || '').trim();
   const qEmp = String(req?.query?.empresa_id || req?.query?.empresaId || '').trim();
   const uEmp = String(req?.usuario?.empresa_id || req?.usuario?.empresaId || '').trim();
   const userEmp = String(req?.user?.empresa_id || req?.user?.empresaId || '').trim();
-  if (_isUuid(uEmp)) return uEmp;
-  if (_isUuid(userEmp)) return userEmp;
   if (_isUuid(bEmp)) return bEmp;
   if (_isUuid(qEmp)) return qEmp;
   const usuarioId = String(req?.usuario?.id || req?.user?.id || '').trim();
@@ -15287,6 +15413,15 @@ async function _resolveEmpresaUuid(req) {
       const id2 = String(data2?.id || '').trim();
       if (!error2 && _isUuid(id2)) return id2;
     }
+
+    if (_isUuid(uEmp)) return uEmp;
+    if (_isUuid(userEmp)) return userEmp;
+
+    try {
+      const resolved = await resolverEmpresaId(req);
+      const resolvedId = String(resolved || '').trim();
+      if (_isUuid(resolvedId)) return resolvedId;
+    } catch (_) {}
 
     if (usuarioId) {
       const { data: usr, error: usrErr } = await supabase
