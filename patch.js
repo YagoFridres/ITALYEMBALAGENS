@@ -4767,13 +4767,13 @@ window._compraPapelaoEmpresaUuidFallbackMap = function() {
   return {
     E1: 'df5f7672-0a6b-402d-ae65-296554236c31',
     E2: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-    E3: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+    E3: 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a',
     'ITALY EMBALAGENS': 'df5f7672-0a6b-402d-ae65-296554236c31',
     ITALY: 'df5f7672-0a6b-402d-ae65-296554236c31',
     CARTOESTE: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
     CARTO: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-    OESTEPACK: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
-    OESTE: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667'
+    OESTEPACK: 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a',
+    OESTE: 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a'
   };
 };
 window._compraPapelaoEmpresaPadraoUuid = function() {
