@@ -34166,6 +34166,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               if (!(data && data.ok && data.data)) return;
               var novoCliente = data.data;
               console.log('[NOVO CLIENTE]', novoCliente.nome, novoCliente.id);
+              try { salvarCatalogoRamosCliente(novoCliente && novoCliente.ramo); } catch (_) {}
 
               if (typeof carregarClientes === 'function') {
                 try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
@@ -34197,6 +34198,90 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     window.fetch = wrapped;
   }
 
+  function getCatalogoRamosCliente() {
+    var lista = [];
+    var vistos = Object.create(null);
+    var add = function(valor) {
+      var txt = String(valor || '').trim();
+      if (!txt) return;
+      var key = txt.toLocaleLowerCase('pt-BR');
+      if (vistos[key]) return;
+      vistos[key] = true;
+      lista.push(txt);
+    };
+
+    ['Alimentício', 'Moveleiro', 'Calçados', 'Laticínios', 'Agronegócio', 'Comércio', 'Indústria', 'Serviços'].forEach(add);
+
+    try {
+      getClientesListaAtual().forEach(function(cliente) {
+        add(cliente && cliente.ramo);
+      });
+    } catch (_) {}
+
+    try {
+      Array.prototype.forEach.call((document.getElementById('cli-ramo') || {}).options || [], function(opt) {
+        add(opt && opt.value);
+      });
+    } catch (_) {}
+
+    try {
+      (Array.isArray(window.RAMOS) ? window.RAMOS : []).forEach(add);
+    } catch (_) {}
+
+    try {
+      var raw = localStorage.getItem('ramos_atividade');
+      var parsed = JSON.parse(raw || 'null');
+      if (Array.isArray(parsed)) parsed.forEach(add);
+    } catch (_) {}
+
+    try { lista.sort(function(a, b) { return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }); }); } catch (_) {}
+    return lista;
+  }
+
+  function salvarCatalogoRamosCliente(extraValor) {
+    var lista = getCatalogoRamosCliente();
+    var extra = String(extraValor || '').trim();
+    if (extra && lista.indexOf(extra) === -1) {
+      lista.push(extra);
+      try { lista.sort(function(a, b) { return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }); }); } catch (_) {}
+    }
+    try { window.RAMOS = lista.slice(); } catch (_) {}
+    try { localStorage.setItem('ramos_atividade', JSON.stringify(lista)); } catch (_) {}
+    return lista;
+  }
+
+  function escapeRamoHtml(text) {
+    return String(text == null ? '' : text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function renderNovoClienteRamoInput(valorAtual) {
+    var lista = salvarCatalogoRamosCliente(valorAtual);
+    return '<input id="novo-cli-ramo" list="novo-cli-ramo-list" value="' + escapeRamoHtml(valorAtual || '') + '" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)" placeholder="Ex.: Alimentício">' +
+      '<datalist id="novo-cli-ramo-list">' +
+        lista.map(function(item) { return '<option value="' + escapeRamoHtml(item) + '"></option>'; }).join('') +
+      '</datalist>';
+  }
+
+  function syncClienteRamoModalNativo() {
+    try {
+      var select = document.getElementById('cliente-ramo');
+      if (!select) return;
+      var atual = String(select.value || '').trim();
+      var lista = salvarCatalogoRamosCliente(atual);
+      var html = '<option value="">—</option>' + lista.map(function(item) {
+        var safe = escapeRamoHtml(item);
+        return '<option value="' + safe + '">' + safe + '</option>';
+      }).join('');
+      if (select.innerHTML !== html) select.innerHTML = html;
+      if (atual) select.value = atual;
+    } catch (_) {}
+  }
+
   function abrirModalNovoCliente() {
     try {
       var existente = document.getElementById('modal-novo-cliente-overlay');
@@ -34223,6 +34308,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">E-mail</label><input id="novo-cli-email" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
             '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Cidade</label><input id="novo-cli-cidade" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
           '</div>' +
+          '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Ramo de atividade</label>' + renderNovoClienteRamoInput('') + '</div>' +
           '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Observações</label><textarea id="novo-cli-obs" rows="3" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc);resize:vertical"></textarea></div>' +
         '</div>' +
         '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px">' +
@@ -34254,6 +34340,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var tel = String((document.getElementById('novo-cli-tel') || {}).value || '').trim();
       var email = String((document.getElementById('novo-cli-email') || {}).value || '').trim();
       var cidade = String((document.getElementById('novo-cli-cidade') || {}).value || '').trim();
+      var ramo = String((document.getElementById('novo-cli-ramo') || {}).value || '').trim();
       var observacoes = String((document.getElementById('novo-cli-obs') || {}).value || '').trim();
 
       if (!nome && !rs) {
@@ -34275,6 +34362,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         tel: tel || '',
         email: email || '',
         cidade: cidade || '',
+        ramo: ramo || '',
         observacoes: observacoes || ''
       };
 
@@ -34286,6 +34374,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         alert(msg);
         return;
       }
+
+      if (ramo) salvarCatalogoRamosCliente(ramo);
 
       try {
         var overlay = document.getElementById('modal-novo-cliente-overlay');
@@ -34418,6 +34508,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function tick() {
     try { injectCss(); } catch (_) {}
     try { patchClickSalvar(); } catch (_) {}
+    try { syncClienteRamoModalNativo(); } catch (_) {}
     try { ensureBtnVerTodos(); } catch (_) {}
     try { ensureBtnMesclarClientes(); } catch (_) {}
     try { ensureBtnNovoCliente(); } catch (_) {}
