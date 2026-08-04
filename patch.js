@@ -1276,7 +1276,7 @@ try {
       ],
       summaryTitle: 'Top clientes',
       summaryHeaders: ['Cliente', 'Valor Total', 'Caixas Compradas', 'Nº Pedidos', 'Ticket Médio'],
-      summaryRows: rows.slice(0, 10).map(function(row) {
+      summaryRows: rows.map(function(row) {
         return [
           rrEsc(String(row && row.cliente_nome || '—')),
           rrEsc(rrFmtMoney(row && row.valor_total || 0)),

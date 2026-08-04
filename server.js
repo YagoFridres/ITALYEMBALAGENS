@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -12444,34 +12444,45 @@ app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, r
       companyIds: empresa_id ? [empresa_id] : []
     });
 
+    const cliIds = Array.from(new Set(
+      elegiveis.map((of) => String(_assistPickOfClienteId(of) || '').trim()).filter(_isUuid)
+    ));
+    const clientesMap = cliIds.length ? await _assistLoadClientesByIds(cliIds) : new Map();
+
     const grupos = new Map();
+    // Ranking oficial: soma de valor_total apenas para OFs concluídas, não deletadas,
+    // dentro do período canônico via COALESCE(data_faturamento, data_conclusao, dia, created_at),
+    // consolidando por nome de cliente para evitar fragmentação por IDs legados.
     elegiveis.forEach((of) => {
       const cliId = String(_assistPickOfClienteId(of) || '').trim();
-      const key = cliId || 'sem-cliente';
+      const clienteNome = _relatoriosPickClienteNomeOf(of, clientesMap) || cliId || 'Sem cliente';
+      const keyNome = _assistNorm(clienteNome);
+      const key = keyNome ? ('nome:' + keyNome) : (cliId ? ('id:' + cliId) : 'sem-cliente');
       if (!grupos.has(key)) {
         grupos.set(key, {
-          cli_id: cliId || null,
+          cli_ids: new Set(),
+          cliente_nome: clienteNome,
           valor_total: 0,
           caixas_compradas: 0,
           total_ofs: 0
         });
       }
       const atual = grupos.get(key);
+      if (cliId) atual.cli_ids.add(cliId);
+      if (_clienteNomeValido(clienteNome) && (!_clienteNomeValido(atual.cliente_nome) || String(clienteNome).length > String(atual.cliente_nome || '').length)) {
+        atual.cliente_nome = clienteNome;
+      }
       atual.valor_total += _assistPickOfValor(of);
       atual.caixas_compradas += _relatoriosPickQtdOf(of);
       atual.total_ofs += 1;
     });
 
-    const cliIds = Array.from(new Set(Array.from(grupos.values()).map((item) => String(item?.cli_id || '').trim()).filter(_isUuid)));
-    const clientesMap = cliIds.length ? await _assistLoadClientesByIds(cliIds) : new Map();
-
     const rowsOut = Array.from(grupos.values()).map((item) => {
-      const cliId = String(item?.cli_id || '').trim();
-      const nome = clientesMap.get(cliId) || cliId || 'Sem cliente';
       const ticketMedio = item.total_ofs > 0 ? (item.valor_total / item.total_ofs) : 0;
+      const cliIdsAgrupados = item?.cli_ids instanceof Set ? Array.from(item.cli_ids).filter(_isUuid) : [];
       return {
-        cliente_id: item.cli_id || null,
-        cliente_nome: nome,
+        cliente_id: cliIdsAgrupados.length === 1 ? cliIdsAgrupados[0] : null,
+        cliente_nome: _clienteNomeValido(item?.cliente_nome) || 'Sem cliente',
         valor_total: Number(item.valor_total || 0),
         caixas_compradas: Math.max(0, Math.trunc(Number(item.caixas_compradas || 0) || 0)),
         total_ofs: Math.max(0, Math.trunc(Number(item.total_ofs || 0) || 0)),
@@ -12504,6 +12515,8 @@ app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, r
       data_inicio: range.inicio,
       data_fim: range.fim,
       ordem,
+      criterio_total_vendido: 'SUM(valor_total) com status Concluído, deleted_at IS NULL e data via COALESCE(data_faturamento, data_conclusao, dia, created_at)',
+      criterio_agrupamento: 'cliente_nome canônico (clinome/cliente_nome com fallback do cadastro)',
       resumo,
       rows: rowsOut
     });
@@ -12560,6 +12573,16 @@ function _relatoriosPickValorOf(of) {
 
 function _relatoriosPickQtdOf(of) {
   return Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.qtd ?? of?.quantidade ?? of?.qtd_pedida ?? 0) || 0));
+}
+
+function _relatoriosPickClienteNomeOf(of, clientesMap) {
+  const cliId = String(_assistPickOfClienteId(of) || '').trim();
+  const nomeOf = _clienteNomeValido(
+    of?.clinome ?? of?.cliNome ?? of?.cliente_nome ?? of?.cliente ?? of?.cli_nome ?? of?.nome_cliente ?? ''
+  );
+  if (nomeOf) return nomeOf;
+  if (cliId && clientesMap instanceof Map) return _clienteNomeValido(clientesMap.get(cliId));
+  return '';
 }
 
 function _relatoriosPickPerdaOf(of) {
@@ -12678,7 +12701,8 @@ async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
   const columns = [
     'id', 'numero', 'of', 'status', 'deleted_at',
     'data_faturamento', 'data_conclusao', 'dia', 'created_at',
-    'empresa_id', 'emp_id', 'cli_id',
+    'empresa_id', 'emp_id', 'cli_id', 'cliId', 'cliente_id',
+    'clinome', 'cliNome', 'cliente_nome', 'cliente',
     'valor_total', 'valor_venda', 'total',
     'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida',
     'qtd_perdida', 'caixas_perdidas',
