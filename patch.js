@@ -18996,6 +18996,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq #ofmaq-tabela-nova th.col-tamanho,#page-ofmaq #ofmaq-tabela-nova td.col-tamanho{width:100px}'
         + '#page-ofmaq #ofmaq-tabela-nova th.col-cores,#page-ofmaq #ofmaq-tabela-nova td.col-cores{width:15%}'
         + '#page-ofmaq #ofmaq-tabela-nova th.col-qtd,#page-ofmaq #ofmaq-tabela-nova td.col-qtd{width:60px}'
+        + '#page-ofmaq #ofmaq-tabela-nova th.col-facas,#page-ofmaq #ofmaq-tabela-nova td.col-facas{width:170px}'
         + '#page-ofmaq #ofmaq-tabela-nova th.col-prazo,#page-ofmaq #ofmaq-tabela-nova td.col-prazo{width:90px}'
         + '#page-ofmaq #ofmaq-tabela-nova th.col-maq,#page-ofmaq #ofmaq-tabela-nova td.col-maq{width:100px}'
         + '#page-ofmaq #ofmaq-tabela-nova th.col-acoes,#page-ofmaq #ofmaq-tabela-nova td.col-acoes{width:110px}'
@@ -19057,6 +19058,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '      <th class="col-tamanho">TAMANHO</th>'
           + '      <th class="col-cores">CORES</th>'
           + '      <th class="col-qtd">QTD</th>'
+          + '      <th class="col-facas">FACAS</th>'
           + '      <th class="col-prazo">PRAZO</th>'
           + '      <th class="col-maq">MÁQUINA</th>'
           + '      <th class="col-acoes">AÇÕES</th>'
@@ -19244,6 +19246,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         tamanho: tamanho,
         tamanhoKey: normText(tamanho),
         cores: cores,
+        facasResumo: (typeof window._ofKnifeSummaryFromOf === 'function' ? window._ofKnifeSummaryFromOf(card) : ''),
         corPrincipal: normText(cores[0] || 'sem-cor'),
         quantidade: qtd,
         prazoIso: prazoIso,
@@ -19251,7 +19254,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         order: order,
         sourceIndex: idx,
         cardEl: card,
-        searchText: normText([numero, cliente, produto].join(' '))
+        searchText: normText([numero, cliente, produto, (typeof window._ofKnifeSummaryFromOf === 'function' ? window._ofKnifeSummaryFromOf(card) : '')].join(' '))
       };
     }
 
@@ -19279,6 +19282,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '  <td class="col-tamanho">' + escHLocal(item.tamanho || '—') + '</td>'
         + '  <td class="col-cores"><div class="ofmaq-cor-wrap-zero">' + colorHtml(item.cores || []) + '</div></td>'
         + '  <td class="col-qtd">' + escHLocal(String(item.quantidade || 0)) + '</td>'
+        + '  <td class="col-facas">' + escHLocal(item.facasResumo || '—') + '</td>'
         + '  <td class="col-prazo">' + escHLocal(item.prazoIso ? fmtDateBR(item.prazoIso) : '—') + '</td>'
         + '  <td class="col-maq">' + escHLocal(item.maquina || '—') + '</td>'
         + '  <td class="col-acoes"><button type="button" class="ofmaq-action-btn-zero" data-ofmaq-actions-zero="' + escAttrLocal(item.id) + '">⚡ Ações</button></td>'
@@ -20233,13 +20237,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         tamanho: size,
         tamanhoKey: normText(size),
         cores: cores,
+        facasResumo: (typeof window._ofKnifeSummaryFromOf === 'function' ? window._ofKnifeSummaryFromOf(of) : ''),
         corPrincipal: normText(cores[0] || 'sem-cor'),
         maquina: machine,
         prazoIso: prazoIso,
         imagemUrl: pickImage(of),
         tempoMin: calcTempo(of, machine),
         urgencia: urgenciaTipo(of, prazoIso),
-        searchText: normText([numero, cliente, produto, size, cores.join(' '), machine, quantidade].join(' '))
+        searchText: normText([numero, cliente, produto, size, cores.join(' '), (typeof window._ofKnifeSummaryFromOf === 'function' ? window._ofKnifeSummaryFromOf(of) : ''), machine, quantidade].join(' '))
       };
     }
 
@@ -20540,7 +20545,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '  <div id="ofmaq-final-summary" class="ofmaq-final-summary"></div>'
           + '</div>'
           + '<div id="ofmaq-final-redistribuicao" class="ofmaq-final-redistribuicao"></div>'
-          + '<div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table"><thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Data de Entrega</th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead><tbody id="ofmaq-final-tbody"></tbody></table></div>';
+          + '<div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table"><thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Data de Entrega</th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead><tbody id="ofmaq-final-tbody"></tbody></table></div>';
         container.insertBefore(root, container.firstChild || null);
       }
       purgeLegacyViews();
@@ -20653,6 +20658,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '<td>' + escH(fmtInt(item.quantidade)) + '</td>'
         + '<td>' + escH(item.tamanho) + '</td>'
         + '<td><div class="ofmaq-final-color-wrap">' + colorHtml(item.cores) + '</div></td>'
+        + '<td class="ofmaq-final-cell"><strong>' + escH(item.facasResumo || '—') + '</strong></td>'
         + '<td>' + escH(item.maquina) + '</td>'
         + '<td><span class="ofmaq-final-time">' + escH(fmtTempo(item.tempoMin)) + '</span></td>'
         + '<td class="ofmaq-final-actions"><button type="button" data-ofmaq-final-actions="' + escAttr(item.id) + '">Ações</button></td>'
@@ -20664,7 +20670,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       hideLegacyViews();
       purgeLegacyViews();
       var rows = sortedVisibleRows(currentVisibleRows());
-      shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="13" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
+      shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="14" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
       try { console.log('[OFMAQ-FINAL] maquina=', state.selectedMachine || '—', 'dia=', state.selectedDateIso || '—', 'rows=', rows.length, 'totalCanonico=', state.rowsData.length); } catch (_) {}
     }
 
@@ -25789,6 +25795,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  </div>'
         + '  <div class="pep-panel" style="margin-top:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
         + '    <input class="pep-input" id="facas-wire-busca" placeholder="Buscador" value="' + esc(window.__facasWireBusca || '') + '" style="flex:1;min-width:280px">'
+        + '    <button class="pep-btn" id="facas-wire-relatorio">Facas Mais Utilizadas</button>'
         + '    <button class="pep-btn" id="facas-wire-alterar">Alterar</button>'
         + '    <button class="pep-btn primary" id="facas-wire-criar">Criar Facas</button>'
         + '  </div></div>'
@@ -25805,6 +25812,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       document.getElementById('facas-wire-busca').oninput = function() {
         window.__facasWireBusca = String(this.value || '');
         renderFacasWireframePage();
+      };
+      document.getElementById('facas-wire-relatorio').onclick = function() {
+        try {
+          if (typeof window.openFacasMaisUtilizadasReport === 'function') window.openFacasMaisUtilizadasReport();
+        } catch (_) {}
       };
       document.getElementById('facas-wire-alterar').onclick = function() {
         openFacaSelector(function(id) { try { openFacaModalSafe(id); } catch (_) {} });
@@ -45825,6 +45837,562 @@ function _ocultarGraficoComissoes() {
     if (erro) return null;
     return itens;
   };
+})();
+
+(function patchOfRapidaFacasAndFacasReport() {
+  if (window.__patchOfRapidaFacasAndFacasReport) return;
+  window.__patchOfRapidaFacasAndFacasReport = true;
+
+  function escHtml(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function normText(v) {
+    var s = String(v == null ? '' : v).trim().toLowerCase();
+    try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+    return s.replace(/\s+/g, ' ').trim();
+  }
+
+  function tokenHeaders() {
+    var token = '';
+    try {
+      token = String(
+        (typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '')
+        || window._token
+        || localStorage.getItem('token')
+        || localStorage.getItem('access_token')
+        || sessionStorage.getItem('token')
+        || ''
+      ).trim();
+    } catch (_) {}
+    return token ? { Authorization: 'Bearer ' + token } : {};
+  }
+
+  function parseList(value) {
+    if (Array.isArray(value)) return value.slice();
+    if (typeof value === 'string') {
+      var txt = String(value || '').trim();
+      if (!txt) return [];
+      try {
+        var parsed = JSON.parse(txt);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (_) {
+        return txt.split(/[,;|]+/g).map(function(item) { return String(item || '').trim(); }).filter(Boolean);
+      }
+    }
+    return [];
+  }
+
+  function getModal() {
+    return document.getElementById('modal-of-rapida')
+      || document.getElementById('modal-nova-of-rapida')
+      || document.getElementById('modal-of-rapida-ov');
+  }
+
+  function modalOpen(modal) {
+    var el = modal || getModal();
+    if (!el) return false;
+    if (el.hidden) return false;
+    if (el.style && el.style.display === 'none') return false;
+    return true;
+  }
+
+  function knifeKey(row) {
+    var id = String(row && row.id || '').trim();
+    if (id) return id;
+    return 'nome:' + normText(row && (row.nome || row.descricao || row.numero || row.codigo) || '');
+  }
+
+  function normalizeKnifeRow(row) {
+    var src = row && typeof row === 'object' ? row : {};
+    return {
+      id: String(src.id || '').trim(),
+      nome: String(src.nome || src.descricao || src.codigo || src.numero || 'Faca').trim(),
+      numero: String(src.numero || src.codigo || '').trim(),
+      medidas: String(src.medidas || '').trim(),
+      valor: Number(src.valor ?? src.valor_unitario ?? 0) || 0,
+      categoria: String(src.categoria || '').trim(),
+      clientes: Array.isArray(src.clientes) ? src.clientes.slice() : [],
+      maquinas: Array.isArray(src.maquinas) ? src.maquinas.slice() : []
+    };
+  }
+
+  function getKnifeCache() {
+    if (!window.__ofKnifeCache) {
+      window.__ofKnifeCache = { list: [], byKey: {}, byName: {}, loaded: false, loading: null };
+    }
+    return window.__ofKnifeCache;
+  }
+
+  function hydrateKnifeCache(rows) {
+    var cache = getKnifeCache();
+    cache.list = (Array.isArray(rows) ? rows : []).map(normalizeKnifeRow).filter(function(row) {
+      return !!String(row && row.nome || '').trim();
+    });
+    cache.byKey = {};
+    cache.byName = {};
+    cache.list.forEach(function(row) {
+      var key = knifeKey(row);
+      if (key) cache.byKey[key] = row;
+      var nomeKey = normText([row.nome, row.numero, row.medidas].join(' '));
+      if (nomeKey && !cache.byName[nomeKey]) cache.byName[nomeKey] = row;
+      var numeroKey = normText(row.numero || '');
+      if (numeroKey && !cache.byName[numeroKey]) cache.byName[numeroKey] = row;
+    });
+    cache.loaded = true;
+    return cache.list.slice();
+  }
+
+  async function loadKnives(force) {
+    var cache = getKnifeCache();
+    if (!force && cache.loaded && Array.isArray(cache.list) && cache.list.length) return cache.list.slice();
+    if (!force && cache.loading) return cache.loading;
+    cache.loading = fetch('/api/facas_estoque', { headers: tokenHeaders() })
+      .then(function(r) { return r.json(); })
+      .then(function(j) {
+        var rows = Array.isArray(j && j.data) ? j.data : (Array.isArray(j) ? j : []);
+        return hydrateKnifeCache(rows);
+      })
+      .catch(function() {
+        var fallback = Array.isArray(window.FACAS) ? window.FACAS : [];
+        return hydrateKnifeCache(fallback);
+      })
+      .finally(function() {
+        try { cache.loading = null; } catch (_) {}
+      });
+    return cache.loading;
+  }
+
+  function resolveKnife(ref) {
+    var cache = getKnifeCache();
+    var entry = ref && typeof ref === 'object' ? ref : { id: String(ref || '').trim() };
+    var key = knifeKey(entry);
+    if (key && cache.byKey[key]) return cache.byKey[key];
+    var nameKey = normText([entry.nome || '', entry.numero || '', entry.descricao || ''].join(' '));
+    if (nameKey && cache.byName[nameKey]) return cache.byName[nameKey];
+    return normalizeKnifeRow(entry);
+  }
+
+  function ownerKnifeIds(owner) {
+    if (!owner) return [];
+    var raw = '';
+    try { raw = String(owner.dataset && owner.dataset.ofKnifeIds || owner.__ofKnifeIds || '').trim(); } catch (_) { raw = ''; }
+    if (!raw) return [];
+    try {
+      var parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.map(function(v) { return String(v || '').trim(); }).filter(Boolean);
+    } catch (_) {}
+    return [];
+  }
+
+  function setOwnerKnifeIds(owner, ids) {
+    if (!owner) return [];
+    var clean = (Array.isArray(ids) ? ids : []).map(function(v) { return String(v || '').trim(); }).filter(Boolean).filter(function(v, idx, arr) {
+      return arr.indexOf(v) === idx;
+    });
+    var raw = JSON.stringify(clean);
+    try { owner.__ofKnifeIds = raw; } catch (_) {}
+    try {
+      if (owner.dataset) owner.dataset.ofKnifeIds = raw;
+      else owner.setAttribute('data-of-knife-ids', raw);
+    } catch (_) {}
+    return clean;
+  }
+
+  function knifeSummaryFromIds(ids) {
+    var labels = (Array.isArray(ids) ? ids : []).map(function(id) {
+      var row = resolveKnife({ id: id });
+      return String(row && row.nome || row && row.numero || '').trim();
+    }).filter(Boolean);
+    if (!labels.length) return '';
+    if (labels.length <= 2) return labels.join(', ');
+    return labels.slice(0, 2).join(', ') + ' +' + String(labels.length - 2);
+  }
+
+  function knifeEntriesFromItem(item) {
+    var items = [];
+    function pushRow(src) {
+      if (src == null) return;
+      if (typeof src === 'string') items.push(resolveKnife({ nome: src }));
+      else if (src && typeof src === 'object') items.push(resolveKnife(src));
+    }
+    parseList(item && item.facas).forEach(pushRow);
+    parseList(item && item.facas_vinculadas).forEach(pushRow);
+    parseList(item && item.faca_ids).forEach(function(id) { pushRow({ id: String(id || '').trim() }); });
+    parseList(item && item.facas_ids).forEach(function(id) { pushRow({ id: String(id || '').trim() }); });
+    if (item && item.faca_id) pushRow({ id: String(item.faca_id || '').trim() });
+    var dedup = {};
+    return items.filter(function(row) {
+      var key = knifeKey(row);
+      if (!key || dedup[key]) return false;
+      dedup[key] = true;
+      return true;
+    });
+  }
+
+  function snapshotMainKnifeIds(snapshot) {
+    var itens = parseList(snapshot && snapshot.itens);
+    var main = itens.find(function(item) {
+      return !!(item && (item.principal === true || item.item_tipo === 'principal'));
+    }) || (itens.length === 1 ? itens[0] : null);
+    return knifeEntriesFromItem(main).map(function(row) { return knifeKey(row); }).filter(Boolean);
+  }
+
+  function snapshotItemKnifeIds(snapshot) {
+    var itens = parseList(snapshot && snapshot.itens).filter(function(item) {
+      return !(item && (item.principal === true || item.item_tipo === 'principal'));
+    });
+    return itens.map(function(item) {
+      return knifeEntriesFromItem(item).map(function(row) { return knifeKey(row); }).filter(Boolean);
+    });
+  }
+
+  function currentOfRawById(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return null;
+    var pools = [window._ofmaqListaCompleta, window._ofmaqBaseList, window.OFS, window.kbOfs];
+    for (var i = 0; i < pools.length; i += 1) {
+      var pool = Array.isArray(pools[i]) ? pools[i] : [];
+      for (var j = 0; j < pool.length; j += 1) {
+        if (String(pool[j] && pool[j].id || '').trim() === sid) return pool[j];
+      }
+    }
+    return null;
+  }
+
+  window._ofKnifeSummaryFromOf = function(of) {
+    var source = of;
+    try {
+      if (source && source.nodeType === 1) {
+        var id = String(source.getAttribute('data-of-id') || '').trim();
+        source = currentOfRawById(id) || source;
+      }
+    } catch (_) {}
+    var itens = parseList(source && source.itens);
+    var labels = [];
+    itens.forEach(function(item) {
+      knifeEntriesFromItem(item).forEach(function(row) {
+        var nome = String(row && row.nome || row && row.numero || '').trim();
+        if (nome && labels.indexOf(nome) < 0) labels.push(nome);
+      });
+    });
+    if (!labels.length) return '';
+    if (labels.length <= 2) return labels.join(', ');
+    return labels.slice(0, 2).join(', ') + ' +' + String(labels.length - 2);
+  };
+
+  function panelHtml(title, subtitle, compact) {
+    return ''
+      + '<div class="ofknife-panel-head"><div><div class="ofknife-title">' + escHtml(title) + '</div><div class="ofknife-sub">' + escHtml(subtitle) + '</div></div></div>'
+      + '<input type="search" class="ofknife-search" placeholder="Buscar faca por nome, medidas ou numero...">'
+      + '<div class="ofknife-selected"></div>'
+      + '<div class="ofknife-results' + (compact ? ' compact' : '') + '"></div>';
+  }
+
+  function ensureStyles() {
+    if (document.getElementById('patch-ofknife-styles')) return;
+    var st = document.createElement('style');
+    st.id = 'patch-ofknife-styles';
+    st.textContent = ''
+      + '.ofknife-panel{margin-top:14px;padding:14px;border:1px solid rgba(148,163,184,.18);border-radius:16px;background:rgba(15,23,42,.72);display:grid;gap:10px}'
+      + '.ofknife-title{font-size:13px;font-weight:900;color:#f8fafc;letter-spacing:.04em;text-transform:uppercase}'
+      + '.ofknife-sub{font-size:11px;color:#94a3b8;margin-top:2px}'
+      + '.ofknife-search{width:100%;min-height:38px;border-radius:10px;border:1px solid rgba(148,163,184,.18);background:#020617;color:#f8fafc;padding:10px 12px}'
+      + '.ofknife-selected{display:flex;flex-wrap:wrap;gap:8px}'
+      + '.ofknife-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;background:rgba(37,99,235,.16);border:1px solid rgba(96,165,250,.32);color:#dbeafe;font-size:12px;font-weight:700}'
+      + '.ofknife-chip button{border:none;background:transparent;color:#bfdbfe;cursor:pointer;font-size:14px;line-height:1}'
+      + '.ofknife-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;max-height:220px;overflow:auto}'
+      + '.ofknife-results.compact{grid-template-columns:1fr}'
+      + '.ofknife-result{display:grid;gap:4px;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.9);color:#e2e8f0;cursor:pointer}'
+      + '.ofknife-result strong{font-size:13px;color:#f8fafc}'
+      + '.ofknife-result small{font-size:11px;color:#94a3b8}'
+      + '.ofknife-empty{padding:10px 12px;border-radius:12px;border:1px dashed rgba(148,163,184,.18);color:#94a3b8;font-size:12px;text-align:center}'
+      + '#painel-mais-itens .ofknife-panel{margin-top:10px;padding:12px;border-radius:14px}';
+    document.head.appendChild(st);
+  }
+
+  function paintPanel(panel, owner, compact) {
+    if (!panel || !owner) return;
+    var selectedIds = ownerKnifeIds(owner);
+    var selectedHost = panel.querySelector('.ofknife-selected');
+    var resultsHost = panel.querySelector('.ofknife-results');
+    var input = panel.querySelector('.ofknife-search');
+    if (selectedHost) {
+      selectedHost.innerHTML = selectedIds.length
+        ? selectedIds.map(function(id) {
+            var row = resolveKnife({ id: id });
+            return '<span class="ofknife-chip" data-ofknife-chip="' + escHtml(id) + '">' + escHtml(String(row && row.nome || row && row.numero || 'Faca')) + '<button type="button" data-ofknife-remove="' + escHtml(id) + '">×</button></span>';
+          }).join('')
+        : '<div class="ofknife-empty">Nenhuma faca vinculada.</div>';
+    }
+    if (resultsHost) {
+      var term = normText(input && input.value || '');
+      var list = (getKnifeCache().list || []).filter(function(row) {
+        if (!term) return true;
+        var hay = normText([row.nome, row.numero, row.medidas, (row.clientes || []).join(' '), (row.maquinas || []).join(' ')].join(' '));
+        return hay.indexOf(term) >= 0;
+      }).slice(0, compact ? 6 : 8);
+      resultsHost.innerHTML = list.length
+        ? list.map(function(row) {
+            var key = knifeKey(row);
+            var active = selectedIds.indexOf(key) >= 0;
+            return '<button type="button" class="ofknife-result" data-ofknife-pick="' + escHtml(key) + '" style="' + (active ? 'border-color:#60a5fa;background:rgba(30,64,175,.28)' : '') + '"><strong>' + escHtml(row.nome) + '</strong><small>' + escHtml([row.numero || 'Sem numero', row.medidas || 'Sem medidas'].join(' · ')) + '</small></button>';
+          }).join('')
+        : '<div class="ofknife-empty">Nenhuma faca encontrada.</div>';
+    }
+  }
+
+  function bindPanel(panel, owner, compact) {
+    if (!panel || panel.getAttribute('data-ofknife-bound') === '1') return;
+    panel.setAttribute('data-ofknife-bound', '1');
+    panel.addEventListener('input', function(ev) {
+      if (ev && ev.target && ev.target.classList && ev.target.classList.contains('ofknife-search')) {
+        paintPanel(panel, owner, compact);
+      }
+    });
+    panel.addEventListener('click', function(ev) {
+      var removeBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofknife-remove]') : null;
+      if (removeBtn) {
+        var removeId = String(removeBtn.getAttribute('data-ofknife-remove') || '').trim();
+        setOwnerKnifeIds(owner, ownerKnifeIds(owner).filter(function(id) { return id !== removeId; }));
+        paintPanel(panel, owner, compact);
+        return;
+      }
+      var pickBtn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-ofknife-pick]') : null;
+      if (pickBtn) {
+        var pickId = String(pickBtn.getAttribute('data-ofknife-pick') || '').trim();
+        var ids = ownerKnifeIds(owner);
+        if (ids.indexOf(pickId) >= 0) ids = ids.filter(function(id) { return id !== pickId; });
+        else ids.push(pickId);
+        setOwnerKnifeIds(owner, ids);
+        paintPanel(panel, owner, compact);
+      }
+    });
+  }
+
+  function ensureMainPanel(modal) {
+    if (!modal) return null;
+    var panel = modal.querySelector('[data-ofknife-main="1"]');
+    if (!panel) {
+      var anchor = modal.querySelector('.modal-body')
+        || modal.querySelector('.modal-content')
+        || modal.querySelector('#painel-mais-itens')
+        || modal;
+      panel = document.createElement('div');
+      panel.className = 'ofknife-panel';
+      panel.setAttribute('data-ofknife-main', '1');
+      panel.innerHTML = panelHtml('Facas da OF', 'Campo opcional com busca por texto para vincular uma ou mais facas na OF Rápida.', false);
+      if (anchor && anchor.parentNode && anchor.id === 'painel-mais-itens') anchor.parentNode.insertBefore(panel, anchor);
+      else if (anchor && anchor.appendChild) anchor.appendChild(panel);
+    }
+    bindPanel(panel, modal, false);
+    paintPanel(panel, modal, false);
+    return panel;
+  }
+
+  function ensureItemPanels(modal) {
+    if (!modal) return;
+    var cards = Array.prototype.slice.call(modal.querySelectorAll('#painel-mais-itens .ofr-item-card, #painel-mais-itens [data-item-idx], #painel-mais-itens [data-item-index], #painel-mais-itens .item-adicional'));
+    cards.forEach(function(card, idx) {
+      try {
+        if (!card.getAttribute('data-item-idx')) card.setAttribute('data-item-idx', String(idx));
+      } catch (_) {}
+      var panel = card.querySelector('[data-ofknife-item="1"]');
+      if (!panel) {
+        panel = document.createElement('div');
+        panel.className = 'ofknife-panel';
+        panel.setAttribute('data-ofknife-item', '1');
+        panel.innerHTML = panelHtml('Facas do item adicional', 'Busca por texto para vincular facas especificas deste item.', true);
+        card.appendChild(panel);
+      }
+      bindPanel(panel, card, true);
+      paintPanel(panel, card, true);
+    });
+  }
+
+  async function ensureEditSnapshot(modal) {
+    if (!modal) return null;
+    var editId = String(modal.dataset && (modal.dataset.ofEditandoId || modal.dataset.ofId) || window._ofRapidaEditandoId || '').trim();
+    if (!editId) return null;
+    var current = window.__ofRapidaFacasEditSnapshot || null;
+    if (current && String(current.id || '').trim() === editId) return current;
+    try {
+      var r = await fetch('/api/ofs/' + encodeURIComponent(editId), { headers: tokenHeaders() });
+      var j = await r.json().catch(function() { return null; });
+      current = j && j.data ? j.data : j;
+      if (current && !current.error) {
+        window.__ofRapidaFacasEditSnapshot = current;
+        return current;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  function applySnapshotSelections(modal, snapshot) {
+    if (!modal || !snapshot) return;
+    if (String(modal.dataset && modal.dataset.ofKnifeSnapshotApplied || '') === String(snapshot && snapshot.id || '')) return;
+    if (!ownerKnifeIds(modal).length) setOwnerKnifeIds(modal, snapshotMainKnifeIds(snapshot));
+    var itemIds = snapshotItemKnifeIds(snapshot);
+    var cards = Array.prototype.slice.call(modal.querySelectorAll('#painel-mais-itens .ofr-item-card, #painel-mais-itens [data-item-idx], #painel-mais-itens [data-item-index], #painel-mais-itens .item-adicional'));
+    cards.forEach(function(card, idx) {
+      if (!ownerKnifeIds(card).length && Array.isArray(itemIds[idx]) && itemIds[idx].length) setOwnerKnifeIds(card, itemIds[idx]);
+    });
+    try { modal.dataset.ofKnifeSnapshotApplied = String(snapshot && snapshot.id || ''); } catch (_) {}
+  }
+
+  function mergeKnifeFields(item, ids) {
+    var selected = (Array.isArray(ids) ? ids : []).map(function(id) { return resolveKnife({ id: id }); }).filter(function(row) {
+      return !!String(row && row.nome || row && row.numero || '').trim();
+    });
+    if (!selected.length) return item;
+    item.faca_ids = selected.map(function(row) { return String(knifeKey(row) || '').trim(); });
+    item.facas_ids = item.faca_ids.slice();
+    item.faca_id = selected.length === 1 ? item.faca_ids[0] : null;
+    item.facas = selected.map(function(row) {
+      return { id: row.id || null, nome: row.nome, numero: row.numero || '', valor: row.valor || 0, medidas: row.medidas || '' };
+    });
+    item.facas_vinculadas = item.facas.slice();
+    item.faca_resumo = knifeSummaryFromIds(item.faca_ids);
+    return item;
+  }
+
+  function buildPrincipalItem(body, snapshot) {
+    var base = {};
+    var snapItens = parseList(snapshot && snapshot.itens);
+    base = snapItens.find(function(item) {
+      return !!(item && (item.principal === true || item.item_tipo === 'principal'));
+    }) || {};
+    return Object.assign({}, base, {
+      principal: true,
+      item_tipo: 'principal',
+      desc: String(body && (body.produto || body.descricao || body.prodDesc || base.desc || base.descricao || 'Item principal') || 'Item principal').trim(),
+      descricao: String(body && (body.descricao || body.produto || base.descricao || base.desc || 'Item principal') || 'Item principal').trim(),
+      quantidade: Number(body && (body.quantidade ?? body.qtd ?? base.quantidade ?? base.qtd ?? 0) || 0) || 0,
+      qtd: Number(body && (body.qtd ?? body.quantidade ?? base.qtd ?? base.quantidade ?? 0) || 0) || 0,
+      valor_unitario: Number(body && (body.valor_unitario ?? body.preco ?? base.valor_unitario ?? base.vunit ?? 0) || 0) || 0,
+      valor_total: Number(body && (body.valor_total ?? body.valor_venda ?? body.total ?? base.valor_total ?? 0) || 0) || 0
+    });
+  }
+
+  function augmentOfPayload(body) {
+    var modal = getModal();
+    if (!modal || !modalOpen(modal)) return body;
+    var snapshot = window.__ofRapidaFacasEditSnapshot || null;
+    var items = parseList(body && body.itens);
+    if (!items.length && snapshot) items = parseList(snapshot.itens);
+
+    var cards = Array.prototype.slice.call(modal.querySelectorAll('#painel-mais-itens .ofr-item-card, #painel-mais-itens [data-item-idx], #painel-mais-itens [data-item-index], #painel-mais-itens .item-adicional'));
+    cards.forEach(function(card, idx) {
+      var ids = ownerKnifeIds(card);
+      if (!ids.length && snapshot) {
+        var snapshotItems = snapshotItemKnifeIds(snapshot);
+        ids = Array.isArray(snapshotItems[idx]) ? snapshotItems[idx].slice() : [];
+      }
+      if (!ids.length) return;
+      if (!items[idx] || typeof items[idx] !== 'object') items[idx] = { item_tipo: 'adicional', ordem_item: idx + 1 };
+      mergeKnifeFields(items[idx], ids);
+    });
+
+    var mainIds = ownerKnifeIds(modal);
+    if (!mainIds.length && snapshot) mainIds = snapshotMainKnifeIds(snapshot);
+    if (mainIds.length) {
+      var principalIdx = items.findIndex(function(item) {
+        return !!(item && (item.principal === true || item.item_tipo === 'principal'));
+      });
+      var principal = principalIdx >= 0 ? items.splice(principalIdx, 1)[0] : buildPrincipalItem(body, snapshot);
+      mergeKnifeFields(principal, mainIds);
+      items.unshift(principal);
+    }
+
+    if (items.length) body.itens = items;
+    return body;
+  }
+
+  function wrapFetch() {
+    if (window.fetch && window.fetch.__patchOfKnifeWrapped) return;
+    var origFetch = window.fetch;
+    if (typeof origFetch !== 'function') return;
+    var wrapped = function(input, init) {
+      var req = init || {};
+      var method = String(req.method || (input && input.method) || 'GET').toUpperCase();
+      var url = typeof input === 'string' ? input : String(input && input.url || '');
+      if (modalOpen() && (method === 'POST' || method === 'PATCH') && /\/api\/ofs(?:\/[^\/\?#]+)?(?:\?.*)?$/i.test(url) && req.body && typeof req.body === 'string') {
+        try {
+          var payload = JSON.parse(req.body || '{}');
+          req = Object.assign({}, req, { body: JSON.stringify(augmentOfPayload(payload)) });
+        } catch (_) {}
+      }
+      return origFetch.call(this, input, req);
+    };
+    wrapped.__patchOfKnifeWrapped = true;
+    window.fetch = wrapped;
+  }
+
+  window.openFacasMaisUtilizadasReport = async function() {
+    try {
+      var r = await fetch('/api/relatorios/facas-mais-utilizadas', { headers: tokenHeaders() });
+      var j = await r.json().catch(function() { return {}; });
+      var rows = Array.isArray(j && j.data) ? j.data : [];
+      var html = ''
+        + '<html><head><title>Facas mais utilizadas</title></head><body style="font-family:Arial,sans-serif;padding:24px;background:#fff;color:#0f172a">'
+        + '<h1 style="margin:0 0 18px 0">Relatório de Facas Mais Utilizadas</h1>'
+        + '<div style="margin:0 0 14px 0;color:#475569">Ranking consolidado a partir das OFs com facas vinculadas.</div>'
+        + '<table style="width:100%;border-collapse:collapse">'
+        + '<thead><tr>'
+        + '<th style="text-align:left;padding:10px;border-bottom:1px solid #cbd5e1">Faca</th>'
+        + '<th style="text-align:left;padding:10px;border-bottom:1px solid #cbd5e1">Quantidade</th>'
+        + '<th style="text-align:left;padding:10px;border-bottom:1px solid #cbd5e1">Valor</th>'
+        + '<th style="text-align:left;padding:10px;border-bottom:1px solid #cbd5e1">Cliente que mais usa</th>'
+        + '</tr></thead><tbody>'
+        + (rows.length ? rows.map(function(row) {
+            return '<tr>'
+              + '<td style="padding:10px;border-bottom:1px solid #e2e8f0"><strong>' + escHtml(String(row && row.nome || '—')) + '</strong><div style="font-size:12px;color:#64748b">' + escHtml([row && row.numero || 'Sem numero', row && row.medidas || 'Sem medidas'].join(' · ')) + '</div></td>'
+              + '<td style="padding:10px;border-bottom:1px solid #e2e8f0">' + escHtml(String(row && row.quantidade || 0)) + '</td>'
+              + '<td style="padding:10px;border-bottom:1px solid #e2e8f0">R$ ' + escHtml(String(Number(row && row.valor || 0).toFixed(2)).replace('.', ',')) + '</td>'
+              + '<td style="padding:10px;border-bottom:1px solid #e2e8f0">' + escHtml(String(row && row.cliente_top || '—')) + '<div style="font-size:12px;color:#64748b">' + escHtml(String(row && row.cliente_top_usos || 0)) + ' uso(s)</div></td>'
+              + '</tr>';
+          }).join('') : '<tr><td colspan="4" style="padding:16px;text-align:center;color:#64748b">Nenhuma faca vinculada em OFs até o momento.</td></tr>')
+        + '</tbody></table></body></html>';
+      if (typeof window._openStyledPrintWindow === 'function') window._openStyledPrintWindow(html);
+      else {
+        var win = window.open('', '_blank');
+        if (win && win.document) {
+          win.document.open();
+          win.document.write(html);
+          win.document.close();
+        }
+      }
+    } catch (err) {
+      try { if (typeof window.toast === 'function') window.toast('Erro ao gerar relatório de facas: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+    }
+  };
+
+  async function tick() {
+    ensureStyles();
+    wrapFetch();
+    loadKnives(false).catch(function() {});
+    var modal = getModal();
+    if (!modalOpen(modal)) return;
+    ensureMainPanel(modal);
+    ensureItemPanels(modal);
+    var snapshot = await ensureEditSnapshot(modal);
+    if (snapshot) applySnapshotSelections(modal, snapshot);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(function() { tick().catch(function() {}); }, 300);
+      setInterval(function() { tick().catch(function() {}); }, 900);
+    });
+  } else {
+    setTimeout(function() { tick().catch(function() {}); }, 300);
+    setInterval(function() { tick().catch(function() {}); }, 900);
+  }
 })();
 ;(function() {
   if (window.__simdBoxPlannerTailAtRealEndApplied) return;

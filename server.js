@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260804152000';
-const SW_RUNTIME_VERSION = '20260804152000';
+const PATCH_RUNTIME_VERSION = '20260804165000';
+const SW_RUNTIME_VERSION = '20260804165000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
@@ -18810,6 +18810,157 @@ app.get('/api/facas', authMiddleware, async (req, res) => {
     if (error) throw error;
     return res.json({ ok: true, data: data || [] });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+function _ofKnifeNormText(value) {
+  let s = String(value == null ? '' : value).trim().toLowerCase();
+  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+function _ofKnifeParseList(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    const txt = String(value || '').trim();
+    if (!txt) return [];
+    try {
+      const parsed = JSON.parse(txt);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return txt.split(/[,;|]+/g).map((item) => String(item || '').trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+function _ofKnifeEntriesFromItem(item) {
+  const rows = [];
+  const pushEntry = (source) => {
+    if (source == null) return;
+    let id = '';
+    let nome = '';
+    let numero = '';
+    let valor = 0;
+    if (typeof source === 'string') {
+      nome = String(source || '').trim();
+    } else if (source && typeof source === 'object') {
+      id = String(source.id || source.faca_id || '').trim();
+      nome = String(source.nome || source.descricao || source.label || source.codigo || source.numero || '').trim();
+      numero = String(source.numero || source.codigo || '').trim();
+      valor = Number(source.valor ?? source.valor_unitario ?? 0) || 0;
+    }
+    const key = id || ('nome:' + _ofKnifeNormText(nome || numero));
+    if (!key || key === 'nome:') return;
+    rows.push({ key, id: id || null, nome, numero, valor });
+  };
+
+  _ofKnifeParseList(item && item.facas).forEach(pushEntry);
+  _ofKnifeParseList(item && item.facas_vinculadas).forEach(pushEntry);
+  _ofKnifeParseList(item && item.faca_ids).forEach((id) => pushEntry({ id: String(id || '').trim() }));
+  _ofKnifeParseList(item && item.facas_ids).forEach((id) => pushEntry({ id: String(id || '').trim() }));
+  if (item && item.faca_id) pushEntry({ id: String(item.faca_id || '').trim() });
+  if (item && item.faca) pushEntry(item.faca);
+
+  const dedup = new Map();
+  rows.forEach((entry) => {
+    if (!entry || !entry.key) return;
+    if (!dedup.has(entry.key)) dedup.set(entry.key, entry);
+  });
+  return Array.from(dedup.values());
+}
+
+app.get('/api/relatorios/facas-mais-utilizadas', authMiddleware, async (req, res) => {
+  try {
+    const empresaId = await resolverEmpresaId(req);
+    if (!empresaId) return res.json({ ok: true, data: [] });
+
+    const { data: facasRows, error: facasError } = await supabase
+      .from('facas_estoque')
+      .select('*')
+      .order('nome');
+    if (facasError) throw facasError;
+
+    const facaById = new Map();
+    const facaByNome = new Map();
+    (facasRows || []).forEach((row) => {
+      const id = String(row && row.id || '').trim();
+      const nome = _ofKnifeNormText(row && (row.nome || row.descricao || row.codigo || row.numero) || '');
+      const numero = _ofKnifeNormText(row && (row.numero || row.codigo || '') || '');
+      if (id) facaById.set(id, row);
+      if (nome) facaByNome.set(nome, row);
+      if (numero && !facaByNome.has(numero)) facaByNome.set(numero, row);
+    });
+
+    const { data: ofsRows, error: ofsError } = await supabase
+      .from('ofs')
+      .select('id,numero,cliente,cliente_nome,clinome,cliNome,status,quantidade,qtd,valor_total,valor_venda,itens,empresa_id,deleted_at')
+      .or('empresa_id.eq.' + empresaId + ',empresa_id.is.null')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(5000);
+    if (ofsError) throw ofsError;
+
+    const ranking = new Map();
+    (ofsRows || []).forEach((ofRow) => {
+      const statusNorm = _ofKnifeNormText(ofRow && ofRow.status);
+      if (statusNorm.indexOf('cancel') >= 0) return;
+      const cliente = String(ofRow && (ofRow.cliente_nome || ofRow.cliente || ofRow.clinome || ofRow.cliNome) || '').trim() || 'Cliente não identificado';
+      const itens = _ofKnifeParseList(ofRow && ofRow.itens);
+      itens.forEach((item) => {
+        const itemQtd = Math.max(1, Number(item && (item.quantidade ?? item.qtd ?? ofRow?.quantidade ?? ofRow?.qtd ?? 1)) || 1);
+        const knives = _ofKnifeEntriesFromItem(item);
+        knives.forEach((entry) => {
+          const facaMeta = (entry.id && facaById.get(entry.id)) || facaByNome.get(_ofKnifeNormText(entry.nome || entry.numero)) || null;
+          const key = String(entry.id || facaMeta?.id || entry.key || '').trim();
+          if (!key) return;
+          const current = ranking.get(key) || {
+            id: String(entry.id || facaMeta?.id || '').trim() || null,
+            numero: String(facaMeta?.numero || entry.numero || facaMeta?.codigo || '').trim(),
+            nome: String(facaMeta?.nome || entry.nome || facaMeta?.descricao || 'Faca sem nome').trim(),
+            categoria: String(facaMeta?.categoria || '').trim(),
+            medidas: String(facaMeta?.medidas || '').trim(),
+            valor: Number(facaMeta?.valor ?? entry.valor ?? 0) || 0,
+            quantidade_uso: 0,
+            quantidade_caixas: 0,
+            cliente_top: '',
+            cliente_top_usos: 0,
+            clientes_map: {},
+          };
+          current.quantidade_uso += 1;
+          current.quantidade_caixas += itemQtd;
+          current.clientes_map[cliente] = (Number(current.clientes_map[cliente] || 0) || 0) + 1;
+          ranking.set(key, current);
+        });
+      });
+    });
+
+    const data = Array.from(ranking.values()).map((row) => {
+      const topCliente = Object.entries(row.clientes_map || {}).sort((a, b) => {
+        return (Number(b[1] || 0) - Number(a[1] || 0)) || String(a[0] || '').localeCompare(String(b[0] || ''), 'pt-BR');
+      })[0] || ['', 0];
+      return {
+        id: row.id,
+        numero: row.numero,
+        nome: row.nome,
+        categoria: row.categoria,
+        medidas: row.medidas,
+        valor: row.valor,
+        quantidade: row.quantidade_uso,
+        quantidade_caixas: row.quantidade_caixas,
+        valor_total_estimado: (Number(row.valor || 0) || 0) * (Number(row.quantidade_uso || 0) || 0),
+        cliente_top: String(topCliente[0] || '').trim() || '—',
+        cliente_top_usos: Number(topCliente[1] || 0) || 0,
+      };
+    }).sort((a, b) => {
+      return (Number(b.quantidade || 0) - Number(a.quantidade || 0))
+        || (Number(b.valor_total_estimado || 0) - Number(a.valor_total_estimado || 0))
+        || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+    });
+
+    return res.json({ ok: true, data });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.get('/api/cliches', authMiddleware, async (req, res) => {
