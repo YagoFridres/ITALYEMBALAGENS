@@ -13680,6 +13680,13 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
   try { if (!window.__overlayTimestamps) window.__overlayTimestamps = {}; } catch (_) {}
   function removerOrfaos() {
     var removed = 0;
+    var protectedKeys = {
+      'assist-overlay': true,
+      'assist-panel': true,
+      'assist-fab': true,
+      'assist-mini': true,
+      'hub-inteligencia-wrap-overlay': true
+    };
     try {
       document.querySelectorAll('div').forEach(function(el) {
         try {
@@ -13697,6 +13704,7 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
           var key = '';
           try { key = String(el.id || el.className || '').trim(); } catch (_) { key = ''; }
           if (!key) return;
+          if (protectedKeys[key]) return;
           try {
             if (!window.__overlayTimestamps[key]) {
               window.__overlayTimestamps[key] = Date.now();
@@ -13715,7 +13723,7 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
     } catch (_) {}
 
     try {
-      ['hub-inteligencia-wrap-overlay', 'modal-overlay', 'backdrop', '_modal-backdrop'].forEach(function(id) {
+      ['modal-overlay', 'backdrop', '_modal-backdrop'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) {
           try {
@@ -13775,6 +13783,99 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       } catch (_) {}
     }, true);
   }
+})();
+
+(function patchJarvisOverlayAndReports() {
+  if (window.__patchJarvisOverlayAndReports) return;
+  window.__patchJarvisOverlayAndReports = true;
+
+  function openReportHtml(htmlContent) {
+    try {
+      var html = String(htmlContent || '').trim();
+      if (!html) return false;
+      var w = window.open('', '_blank');
+      if (!w) return false;
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function readJarvisHistory(key) {
+    try {
+      var raw = localStorage.getItem(String(key || ''));
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function messageReportHtml(msg) {
+    if (!msg || typeof msg !== 'object') return '';
+    if (typeof msg.html_relatorio === 'string' && String(msg.html_relatorio || '').trim()) return String(msg.html_relatorio || '');
+    if (typeof msg.html === 'string' && String(msg.html || '').trim()) return String(msg.html || '');
+    return '';
+  }
+
+  window._jarvisAbrirRelatorio = function(htmlContent) {
+    return openReportHtml(htmlContent);
+  };
+
+  window._jarvisAbrirRelatorioIdx = function(idx) {
+    try {
+      var i = Number(idx);
+      if (!Number.isFinite(i) || i < 0) return false;
+      var hist = readJarvisHistory('italy_jarvis_history_v1');
+      return openReportHtml(messageReportHtml(hist[i] || null));
+    } catch (_) {
+      return false;
+    }
+  };
+
+  window._jarvisAbrirRelatorioMobileIdx = function(idx) {
+    try {
+      var i = Number(idx);
+      if (!Number.isFinite(i) || i < 0) return false;
+      var hist = readJarvisHistory('italy_mobile_jarvis_hist_v1');
+      return openReportHtml(messageReportHtml(hist[i] || null));
+    } catch (_) {
+      return false;
+    }
+  };
+
+  function keepJarvisOpen(ev) {
+    try {
+      if (!ev || ev.target !== this) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
+      var overlay = document.getElementById('assist-overlay');
+      var panel = document.getElementById('assist-panel');
+      if (overlay) overlay.style.display = 'block';
+      if (panel && panel.classList) panel.classList.add('open');
+    } catch (_) {}
+  }
+
+  function bindJarvisOverlayGuard() {
+    try {
+      var overlay = document.getElementById('assist-overlay');
+      if (!overlay || overlay.dataset.patchJarvisOverlayBound === '1') return;
+      overlay.dataset.patchJarvisOverlayBound = '1';
+      try { overlay.onclick = null; } catch (_) {}
+      overlay.addEventListener('click', keepJarvisOpen, true);
+    } catch (_) {}
+  }
+
+  try { bindJarvisOverlayGuard(); } catch (_) {}
+  [200, 900, 1800, 3200].forEach(function(delay) {
+    setTimeout(function() {
+      try { bindJarvisOverlayGuard(); } catch (_) {}
+    }, delay);
+  });
 })();
 
 (function() {
