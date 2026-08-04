@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1167,6 +1167,24 @@ app.get('/manifest.json', (req, res) => {
 const PATCH_RUNTIME_VERSION = '20260804174500';
 const SW_RUNTIME_VERSION = '20260804174500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
+const APP_GIT_COMMIT_SHA = String(
+  process.env.RAILWAY_GIT_COMMIT_SHA ||
+  process.env.GITHUB_SHA ||
+  process.env.RENDER_GIT_COMMIT ||
+  ''
+).trim();
+const APP_GIT_BRANCH = String(
+  process.env.RAILWAY_GIT_BRANCH ||
+  process.env.GITHUB_REF_NAME ||
+  process.env.RENDER_GIT_BRANCH ||
+  ''
+).trim();
+const APP_DEPLOY_ID = String(
+  process.env.RAILWAY_DEPLOYMENT_ID ||
+  process.env.RAILWAY_DEPLOYMENT_TRIGGER ||
+  process.env.RENDER_SERVICE_ID ||
+  ''
+).trim();
 
 app.get('/sw.js', (req, res) => {
   try {
@@ -1254,6 +1272,27 @@ app.get('/api/health', (req, res) => {
       keySource: supabaseKeySource,
       missing: _supabaseMissing,
     },
+  });
+});
+
+app.get('/api/version', (req, res) => {
+  setNoCache(res);
+  return res.json({
+    ok: true,
+    runtime: {
+      patch: PATCH_RUNTIME_VERSION,
+      sw: SW_RUNTIME_VERSION,
+      sw_cache_name: SW_RUNTIME_CACHE_NAME,
+    },
+    git: {
+      commit: APP_GIT_COMMIT_SHA || null,
+      branch: APP_GIT_BRANCH || null,
+    },
+    deploy: {
+      id: APP_DEPLOY_ID || null,
+      provider: 'railway',
+    },
+    now: new Date().toISOString(),
   });
 });
 
