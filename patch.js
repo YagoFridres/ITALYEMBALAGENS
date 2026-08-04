@@ -10521,12 +10521,34 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     if (typeof window.obterFiltrosHistoricoAtivos === 'function') {
       try { return window.obterFiltrosHistoricoAtivos() || {}; } catch (_) {}
     }
+    var maquinaDetalhe = String((document.getElementById('hist-detalhe-maquina') || {}).value || '').trim();
     return {
       cliente: String((document.getElementById('hist-filtro-cliente') || {}).value || '').trim(),
-      maquina: String((document.getElementById('hist-filtro-maquina') || {}).value || '').trim(),
-      data_inicio: String((document.getElementById('hist-filtro-data-ini') || {}).value || '').trim(),
-      data_fim: String((document.getElementById('hist-filtro-data-fim') || {}).value || '').trim()
+      maquina: maquinaDetalhe || String((document.getElementById('hist-filtro-maquina') || {}).value || '').trim(),
+      data_inicio: '',
+      data_fim: ''
     };
+  }
+
+  function _histCanonicalMachineOptions() {
+    return [
+      { value: 'IMP 01', label: 'IMP 01' },
+      { value: 'IMP 02', label: 'IMP 02' },
+      { value: 'IMP 03', label: 'IMP 03' },
+      { value: 'IMP 04', label: 'IMP 04' },
+      { value: 'IMP 05', label: 'IMP 05' },
+      { value: 'CORTE VINCO ROTATIVA', label: 'CORTE VINCO ROTATIVA' },
+      { value: 'Riscador', label: 'RISCADOR' }
+    ];
+  }
+
+  function _histCanonicalMachineOptionsHtml(selectedValue) {
+    var selected = String(selectedValue || '').trim();
+    return ['<option value="">Todas as máquinas</option>'].concat(_histCanonicalMachineOptions().map(function(item) {
+      var value = String(item && item.value || '').trim();
+      var label = String(item && item.label || value).trim();
+      return '<option value="' + value.replace(/"/g, '&quot;') + '"' + (value === selected ? ' selected' : '') + '>' + label + '</option>';
+    })).join('');
   }
 
   function _histTodayIso() {
@@ -10926,7 +10948,23 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       filtrosWrap.dataset.patchDetalhamentoReady = '1';
       try {
         var buscaInput = document.getElementById('hist-filtro-cliente');
+        var legacyMachine = document.getElementById('hist-filtro-maquina');
+        var legacyStart = document.getElementById('hist-filtro-data-ini');
+        var legacyEnd = document.getElementById('hist-filtro-data-fim');
         var btnBuscar = filtrosWrap.querySelector('button');
+        if (legacyMachine) {
+          legacyMachine.innerHTML = _histCanonicalMachineOptionsHtml('');
+          legacyMachine.value = '';
+          legacyMachine.style.display = 'none';
+        }
+        if (legacyStart) {
+          legacyStart.value = '';
+          legacyStart.style.display = 'none';
+        }
+        if (legacyEnd) {
+          legacyEnd.value = '';
+          legacyEnd.style.display = 'none';
+        }
         if (buscaInput) {
           buscaInput.placeholder = 'Buscar por OF, cliente, produto ou máquina';
           buscaInput.style.minWidth = '320px';
@@ -10947,6 +10985,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
               _histBuscarHistoricoPassagens(_histGetDetailFilters(), false, { force: true });
             } catch (_) {}
           };
+          btnBuscar.style.display = 'none';
         }
         var toolbar = document.getElementById('hist-detalhe-toolbar');
         if (!toolbar) {
@@ -10959,16 +10998,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
             + '  <option value="semana">Semana</option>'
             + '</select>'
             + '<span id="hist-detalhe-dia-wrap"><input type="date" id="hist-detalhe-dia"></span>'
-            + '<select id="hist-detalhe-maquina">'
-            + '  <option value="">Todas as máquinas</option>'
-            + '  <option value="IMP 01">IMP 01</option>'
-            + '  <option value="IMP 02">IMP 02</option>'
-            + '  <option value="IMP 03">IMP 03</option>'
-            + '  <option value="IMP 04">IMP 04</option>'
-            + '  <option value="IMP 05">IMP 05</option>'
-            + '  <option value="CORTE VINCO ROTATIVA">CORTE VINCO ROTATIVA</option>'
-            + '  <option value="Riscador">RISCADOR</option>'
-            + '</select>'
+            + '<select id="hist-detalhe-maquina">' + _histCanonicalMachineOptionsHtml('') + '</select>'
             + '<button type="button" class="hist-patch-btn" id="hist-detalhe-aplicar">Aplicar filtros</button>';
           filtrosWrap.appendChild(toolbar);
         }
@@ -10999,6 +11029,9 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
         if (maquinaSel2 && !maquinaSel2.dataset.bound) {
           maquinaSel2.dataset.bound = '1';
           maquinaSel2.onchange = function() {
+            try {
+              if (legacyMachine) legacyMachine.value = String(maquinaSel2.value || '').trim();
+            } catch (_) {}
             _histBuscarHistoricoPassagens(_histGetDetailFilters(), false, { force: true });
           };
         }
@@ -13870,10 +13903,90 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
     } catch (_) {}
   }
 
+  function cleanupJarvisFullscreenOverlay() {
+    try {
+      var fullscreen = document.getElementById('painel-jarvis-grande');
+      if (fullscreen && fullscreen.remove) fullscreen.remove();
+    } catch (_) {}
+    try {
+      var panel = document.getElementById('assist-panel');
+      if (panel && panel.dataset && panel.dataset.prevCssTextJarvis != null) {
+        panel.style.cssText = panel.dataset.prevCssTextJarvis;
+        delete panel.dataset.prevCssTextJarvis;
+      }
+    } catch (_) {}
+  }
+
+  function wrapJarvisClose() {
+    try {
+      if (typeof window._jarvisFechar !== 'function' || window._jarvisFechar.__patchFullscreenSafe === true) return;
+      var originalClose = window._jarvisFechar;
+      var wrappedClose = function() {
+        cleanupJarvisFullscreenOverlay();
+        return originalClose.apply(this, arguments);
+      };
+      wrappedClose.__patchFullscreenSafe = true;
+      wrappedClose.__patchOriginal = originalClose;
+      window._jarvisFechar = wrappedClose;
+      try { if (window.abrirPainelJarvis && window.abrirPainelJarvis.__patchCloseAware !== true) window.abrirPainelJarvis.__patchCloseAware = true; } catch (_) {}
+    } catch (_) {}
+  }
+
+  function bindJarvisCloseButtons() {
+    try {
+      var closeFn = typeof window._jarvisFechar === 'function' ? window._jarvisFechar : null;
+      if (!closeFn) return;
+      ['assist-close', 'assist-min'].forEach(function(id) {
+        try {
+          var btn = document.getElementById(id);
+          if (!btn || btn.dataset.patchJarvisCloseBound === '1') return;
+          btn.dataset.patchJarvisCloseBound = '1';
+          btn.onclick = function(ev) {
+            try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
+            cleanupJarvisFullscreenOverlay();
+            return closeFn();
+          };
+        } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  function wrapJarvisOpeners() {
+    ['_jarvisAbrir', 'abrirJarvis'].forEach(function(name) {
+      try {
+        if (typeof window[name] !== 'function' || window[name].__patchFullscreenSafe === true) return;
+        var originalOpen = window[name];
+        var wrappedOpen = function() {
+          try {
+            var panel = document.getElementById('assist-panel');
+            var fullscreen = document.getElementById('painel-jarvis-grande');
+            var panelAberto = !!(panel && panel.classList && panel.classList.contains('open'));
+            if (fullscreen && !panelAberto) cleanupJarvisFullscreenOverlay();
+          } catch (_) {}
+          var result = originalOpen.apply(this, arguments);
+          setTimeout(function() {
+            try { wrapJarvisClose(); } catch (_) {}
+            try { bindJarvisCloseButtons(); } catch (_) {}
+          }, 20);
+          return result;
+        };
+        wrappedOpen.__patchFullscreenSafe = true;
+        wrappedOpen.__patchOriginal = originalOpen;
+        window[name] = wrappedOpen;
+      } catch (_) {}
+    });
+  }
+
   try { bindJarvisOverlayGuard(); } catch (_) {}
+  try { wrapJarvisClose(); } catch (_) {}
+  try { bindJarvisCloseButtons(); } catch (_) {}
+  try { wrapJarvisOpeners(); } catch (_) {}
   [200, 900, 1800, 3200].forEach(function(delay) {
     setTimeout(function() {
       try { bindJarvisOverlayGuard(); } catch (_) {}
+      try { wrapJarvisClose(); } catch (_) {}
+      try { bindJarvisCloseButtons(); } catch (_) {}
+      try { wrapJarvisOpeners(); } catch (_) {}
     }, delay);
   });
 })();
@@ -25804,7 +25917,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (!lista) throw lastErr || new Error('Falha ao carregar chapas do estoque');
         lista = Array.isArray(lista) ? lista : [];
         window.__estoqueWireLimit = limiteUsado || limiteAtual;
-        try { await _estoqueFetchSugestoesCompra(false); } catch (_) {}
+        var sugestoesCompra = [];
+        try { sugestoesCompra = await _estoqueFetchSugestoesCompra(false); } catch (_) { sugestoesCompra = []; }
         var filtroRapido = String(window.__estoqueWireFiltroRapido || '').trim().toLowerCase();
         if (filtroRapido !== 'baixo200' && filtroRapido !== 'zeradas') filtroRapido = '';
         var busca = String(window.__estoqueWireBusca || '').trim().toLowerCase();
@@ -30267,6 +30381,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (json && json.resumo && json.resumo.total_ofs != null) return Number(json.resumo.total_ofs || 0) || 0;
     return 0;
   }
+
+  try { window._comAuditPickTotalVendido = _comAuditPickTotalVendido; } catch (_) {}
+  try { window._comAuditPickTotalOfs = _comAuditPickTotalOfs; } catch (_) {}
 
   function setTextMany(selectors, value) {
     selectors.forEach(function(sel) {
@@ -44687,6 +44804,33 @@ function _ocultarGraficoComissoes() {
 
   window._filtrarComissaoOFs = window._buscarOFsComissao;
 
+  function _comAuditPickTotalVendidoCompat(json) {
+    try {
+      if (typeof _comAuditPickTotalVendido === 'function') return _comAuditPickTotalVendido(json);
+    } catch (_) {}
+    try {
+      if (typeof window._comAuditPickTotalVendido === 'function') return window._comAuditPickTotalVendido(json);
+    } catch (_) {}
+    if (json && json.total_vendido_oficial != null) return Number(json.total_vendido_oficial || 0) || 0;
+    if (json && json.total_geral_vendas != null) return Number(json.total_geral_vendas || 0) || 0;
+    if (json && json.total_vendido != null) return Number(json.total_vendido || 0) || 0;
+    if (json && json.resumo && json.resumo.valor_vendido != null) return Number(json.resumo.valor_vendido || 0) || 0;
+    return 0;
+  }
+
+  function _comAuditPickTotalOfsCompat(json) {
+    try {
+      if (typeof _comAuditPickTotalOfs === 'function') return _comAuditPickTotalOfs(json);
+    } catch (_) {}
+    try {
+      if (typeof window._comAuditPickTotalOfs === 'function') return window._comAuditPickTotalOfs(json);
+    } catch (_) {}
+    if (json && json.total_ofs_oficial != null) return Number(json.total_ofs_oficial || 0) || 0;
+    if (json && json.total_ofs != null) return Number(json.total_ofs || 0) || 0;
+    if (json && json.resumo && json.resumo.total_ofs != null) return Number(json.resumo.total_ofs || 0) || 0;
+    return 0;
+  }
+
   async function _renderComissoesPatch() {
     if (window._comRodando) {
       try { console.log('[COM PATCH] já rodando, ignorando'); } catch (_) {}
@@ -44817,8 +44961,8 @@ function _ocultarGraficoComissoes() {
       var vendedores = Array.isArray(data && data.vendedores) ? data.vendedores : [];
       var todasOfsRaw = Array.isArray(data && data.ofs) ? data.ofs : [];
       window._comOfsData = todasOfsRaw;
-      var totalGeral = _comAuditPickTotalVendido(data);
-      var totalOFs = _comAuditPickTotalOfs(data);
+      var totalGeral = _comAuditPickTotalVendidoCompat(data);
+      var totalOFs = _comAuditPickTotalOfsCompat(data);
       var totalComissoes = Number(data && data.total_comissao || 0) || 0;
 
       var grupos = (vendedores || []).map(function(v) {
@@ -44866,7 +45010,7 @@ function _ocultarGraficoComissoes() {
         window.__comissoesPrevData = prev ? await _fetchComissoes(prev.mesNum, prev.anoNum) : null;
       } catch (_) { window.__comissoesPrevData = null; }
 
-      var prevTotal = _comAuditPickTotalVendido(window.__comissoesPrevData);
+      var prevTotal = _comAuditPickTotalVendidoCompat(window.__comissoesPrevData);
       var deltaTxt = '—';
       if (prevTotal > 0) {
         var deltaPct = ((totalGeral - prevTotal) / prevTotal) * 100;

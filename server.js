@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260804194000';
-const SW_RUNTIME_VERSION = '20260804194000';
+const PATCH_RUNTIME_VERSION = '20260804150500';
+const SW_RUNTIME_VERSION = '20260804150500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
@@ -10245,7 +10245,8 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
       ...(p?.qtd_produzida != null ? {} : ((qtdOf != null) ? { qtd_produzida: qtdOf } : {})),
       ...((vlUnit != null && !(vlUnitAtual > 0)) ? { valor_unitario: vlUnit, preco: vlUnit } : {}),
       ...((totalOf > 0 && !(valorAtual > 0)) ? { total: totalOf, valor_total: totalOf, valor_venda: totalOf } : {}),
-      ...(p?.status ? {} : (statusOf ? { status: statusOf } : {})),
+      ...(statusOf ? { status: statusOf } : {}),
+      ...((String(p?.data_conclusao || '').trim()) ? {} : (String(of?.data_conclusao || '').trim() ? { data_conclusao: of.data_conclusao } : {})),
       ...((String(p?.cores_impressao || '').trim()) ? {} : (coresOf != null ? { cores_impressao: coresOf } : {})),
       ...(((p?.dim_comprimento ?? p?.caixa_comprimento) != null) ? {} : (compOf != null ? { dim_comprimento: compOf, caixa_comprimento: compOf } : {})),
       ...(((p?.dim_largura ?? p?.caixa_largura) != null) ? {} : (largOf != null ? { dim_largura: largOf, caixa_largura: largOf } : {})),
@@ -10647,7 +10648,6 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     });
 
     let passagens = Array.isArray(pair?.rows) ? pair.rows : [];
-    const count = Number(pair?.count || 0) || 0;
     const range = _relatoriosResolveDateRange(req.query || {}, {});
     const empresaId = String(req.query?.empresa_id || req.query?.empresaId || req.usuario?.emp_id || req.usuario?.empId || '').trim();
     const resumoOficial = (range && range.inicio)
@@ -10655,7 +10655,9 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
       : { total_vendido: 0, total_ofs: 0 };
     try { passagens = await _enriquecerPassagensHistoricoComOfs(passagens); } catch (_) {}
     try { passagens = await _normalizarMaquinasPassagens(passagens); } catch (_) {}
+    try { passagens = _dedupePassagensMaquinaRows(passagens); } catch (_) {}
     try { passagens = (Array.isArray(passagens) ? passagens.slice() : []).sort((a, b) => _timestampPassagem(b) - _timestampPassagem(a)); } catch (_) {}
+    const count = Number((Array.isArray(passagens) ? passagens.length : 0) || 0) || 0;
     // #region debug-point C:passagens-historico-success
     try {
       _reportProdBlockersDebug('C', 'server.js:/api/passagens/historico:success', '[DEBUG] /api/passagens/historico response ok', {
@@ -10722,9 +10724,19 @@ app.get('/api/maquinas/relatorio-mensal', authMiddleware, async (req, res) => {
           ? _passagensRangeAnteriorPorPeriodo(refAtual)
           : _passagensMesAnterior(refAtual.mes, refAtual.ano));
 
-    const atualResumo = await _agruparOfsRelatorioMensalFallback(req, refAtual, maquina, cliente);
+    const atualResumo = await _agruparPassagensRelatorioMensalBackend(req, {
+      cliente,
+      maquina,
+      data_inicio: refAtual.inicio,
+      data_fim: refAtual.fim
+    });
     const anteriorResumo = refAnterior?.inicio && refAnterior?.fim
-      ? await _agruparOfsRelatorioMensalFallback(req, refAnterior, maquina, cliente)
+      ? await _agruparPassagensRelatorioMensalBackend(req, {
+          cliente,
+          maquina,
+          data_inicio: refAnterior.inicio,
+          data_fim: refAnterior.fim
+        })
       : { agg: [], totalRows: 0, rowsComValor: 0, top_cores: [], top_tamanhos: [] };
     const atualAgg = Array.isArray(atualResumo?.agg) ? atualResumo.agg : [];
     const anteriorAgg = Array.isArray(anteriorResumo?.agg) ? anteriorResumo.agg : [];
