@@ -24948,6 +24948,26 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var map = cache && cache.byChapa ? cache.byChapa : Object.create(null);
       return map[String(chapaId || '').trim()] || null;
     }
+    function _estoqueSugestaoCompraByChapaAny(chapa) {
+      var chapaId = String(chapa && chapa.id || chapa || '').trim();
+      if (!chapaId) return null;
+      var cacheAll = window.__estoqueSugestoesCompraCache || {};
+      var allMap = cacheAll.all && cacheAll.all.byChapa ? cacheAll.all.byChapa : null;
+      var pendingMap = cacheAll.pending && cacheAll.pending.byChapa ? cacheAll.pending.byChapa : null;
+      var found = (allMap && allMap[chapaId]) || (pendingMap && pendingMap[chapaId]) || null;
+      if (found) return found;
+      var status = String(chapa && (chapa.pinned_status || chapa.status_sugestao_compra || '') || '').trim().toLowerCase();
+      if (!status && !(chapa && chapa.pinned_compra)) return null;
+      return {
+        id: '',
+        chapa_id: chapaId,
+        status: status || 'pendente',
+        pinned_status: status || 'pendente',
+        motivo_ignorado: String(chapa && chapa.motivo_ignorado || '').trim(),
+        criado_em: chapa && (chapa.pinned_em || chapa.updated_at || chapa.created_at) || null,
+        chapa: chapa && typeof chapa === 'object' ? chapa : null
+      };
+    }
     async function _estoqueRefreshAfterSugestaoCompra() {
       _estoqueInvalidateSugestoesCompra();
       try { if (typeof chapasForcarReload === 'function') chapasForcarReload(); } catch (_) {}
@@ -25062,7 +25082,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                   + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + ';color:#cbd5e1;line-height:1.45">' + esc(String(item && item.texto || item && item.descricao_compra || '').trim() || 'Sem texto') + '</td>'
                   + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + '">' + _estoqueStatusSugestaoCompraBadgeHtml(item && item.status) + '</td>'
                   + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + ';color:#cbd5e1">' + esc(String(item && item.motivo_ignorado || '').trim() || '—') + '</td>'
-                  + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + ';color:#cbd5e1;font-family:var(--mono,inherit)">' + esc(window._fmtDateEstoque(item && item.criado_em || item && item.decidido_em || '')) + '</td>'
+                  + '<td style="padding:12px;border-top:' + (idx ? '1px solid rgba(148,163,184,.1)' : 'none') + ';color:#cbd5e1;font-family:var(--mono,inherit)">' + esc(window._fmtDateEstoque(item && item.decidido_em || item && item.criado_em || '')) + '</td>'
                   + '</tr>';
               }).join('') + '</tbody>'
           + '    </table>'
@@ -25176,11 +25196,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     function _estoquePinBtnHtml(chapa) {
       var chapaId = String(chapa && chapa.id || '').trim();
-      var pinned = !!_estoqueSugestaoCompraByChapa(chapaId);
-      var style = pinned
-        ? 'background:#f59e0b;color:#111827;border:1px solid #f59e0b;font-weight:900'
-        : 'background:#0f172a;color:#f8fafc;border:1px solid rgba(255,255,255,.14)';
-      return '<button class="pep-btn" data-est-pin="' + esc(chapaId) + '" title="' + esc(pinned ? 'Remover sugestão de compra' : 'Fixar como sugestão de compra') + '" style="' + style + '">📌</button>';
+      var sugestao = _estoqueSugestaoCompraByChapaAny(chapa);
+      var status = String(sugestao && (sugestao.status || sugestao.pinned_status) || '').trim().toLowerCase();
+      var style = 'background:#0f172a;color:#f8fafc;border:1px solid rgba(255,255,255,.14)';
+      var title = 'Fixar como sugestão de compra';
+      if (status === 'pendente') {
+        style = 'background:#f59e0b;color:#111827;border:1px solid #f59e0b;font-weight:900';
+        title = 'Sugestão pendente para compra';
+      } else if (status === 'aceita') {
+        style = 'background:rgba(34,197,94,.18);color:#dcfce7;border:1px solid rgba(34,197,94,.5);font-weight:900';
+        title = 'Sugestão já aceita e persistida';
+      } else if (status === 'ignorada' || status === 'ignorado') {
+        style = 'background:rgba(239,68,68,.16);color:#fecaca;border:1px solid rgba(239,68,68,.42);font-weight:900';
+        title = 'Sugestão ignorada e persistida';
+      }
+      return '<button class="pep-btn" data-est-pin="' + esc(chapaId) + '" title="' + esc(title) + '" style="' + style + '">📌</button>';
     }
     async function _estoqueSalvarCorLinha(chapa, cor) {
       var chapaId = String(chapa && chapa.id || '').trim();
