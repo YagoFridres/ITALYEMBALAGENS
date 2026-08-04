@@ -34166,7 +34166,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               if (!(data && data.ok && data.data)) return;
               var novoCliente = data.data;
               console.log('[NOVO CLIENTE]', novoCliente.nome, novoCliente.id);
-              try { registrarRamoCliente(novoCliente && novoCliente.ramo); } catch (_) {}
 
               if (typeof carregarClientes === 'function') {
                 try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
@@ -34224,7 +34223,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">E-mail</label><input id="novo-cli-email" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
             '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Cidade</label><input id="novo-cli-cidade" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
           '</div>' +
-          '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Ramo de atividade</label>' + buildRamoDatalistHtml('novo-cli-ramo-list', '') + '</div>' +
           '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Observações</label><textarea id="novo-cli-obs" rows="3" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc);resize:vertical"></textarea></div>' +
         '</div>' +
         '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px">' +
@@ -34256,7 +34254,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var tel = String((document.getElementById('novo-cli-tel') || {}).value || '').trim();
       var email = String((document.getElementById('novo-cli-email') || {}).value || '').trim();
       var cidade = String((document.getElementById('novo-cli-cidade') || {}).value || '').trim();
-      var ramo = String((document.getElementById('novo-cli-ramo') || {}).value || '').trim();
       var observacoes = String((document.getElementById('novo-cli-obs') || {}).value || '').trim();
 
       if (!nome && !rs) {
@@ -34278,7 +34275,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         tel: tel || '',
         email: email || '',
         cidade: cidade || '',
-        ramo: ramo || '',
         observacoes: observacoes || ''
       };
 
@@ -34290,8 +34286,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         alert(msg);
         return;
       }
-
-      if (ramo) registrarRamoCliente(ramo);
 
       try {
         var overlay = document.getElementById('modal-novo-cliente-overlay');
@@ -34424,7 +34418,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function tick() {
     try { injectCss(); } catch (_) {}
     try { patchClickSalvar(); } catch (_) {}
-    try { preencherRamoModalCliente(); } catch (_) {}
     try { ensureBtnVerTodos(); } catch (_) {}
     try { ensureBtnMesclarClientes(); } catch (_) {}
     try { ensureBtnNovoCliente(); } catch (_) {}
@@ -34891,113 +34884,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (Array.isArray(obj && obj[keys[i]])) return obj[keys[i]];
     }
     return [];
-  }
-
-  function _escapeClienteRamoHtml(text) {
-    return String(text == null ? '' : text)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
-  function _normalizarListaRamos(lista) {
-    var vistos = Object.create(null);
-    return (Array.isArray(lista) ? lista : [])
-      .map(function(item) { return String(item || '').trim(); })
-      .filter(Boolean)
-      .filter(function(item) {
-        var key = item.toLocaleLowerCase('pt-BR');
-        if (vistos[key]) return false;
-        vistos[key] = true;
-        return true;
-      })
-      .sort(function(a, b) { return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }); });
-  }
-
-  function getCatalogoRamosClientes() {
-    var lista = [];
-    var add = function(valor) {
-      var txt = String(valor || '').trim();
-      if (txt) lista.push(txt);
-    };
-
-    [
-      'Alimentício',
-      'Moveleiro',
-      'Calçados',
-      'Laticínios',
-      'Agronegócio',
-      'Comércio',
-      'Indústria',
-      'Serviços'
-    ].forEach(add);
-
-    try {
-      var clientes = getClientesListaAtual();
-      clientes.forEach(function(cliente) { add(cliente && cliente.ramo); });
-    } catch (_) {}
-
-    try {
-      Array.prototype.forEach.call((document.getElementById('cli-ramo') || {}).options || [], function(opt) {
-        var valor = String(opt && opt.value || '').trim();
-        if (valor) add(valor);
-      });
-    } catch (_) {}
-
-    try {
-      (Array.isArray(window.RAMOS) ? window.RAMOS : []).forEach(add);
-    } catch (_) {}
-
-    try {
-      var raw = localStorage.getItem('ramos_atividade');
-      var parsed = JSON.parse(raw || 'null');
-      if (Array.isArray(parsed)) parsed.forEach(add);
-    } catch (_) {}
-
-    return _normalizarListaRamos(lista);
-  }
-
-  function syncCatalogoRamosClientes() {
-    var ramos = getCatalogoRamosClientes();
-    try { window.RAMOS = ramos.slice(); } catch (_) {}
-    try { localStorage.setItem('ramos_atividade', JSON.stringify(ramos)); } catch (_) {}
-    return ramos;
-  }
-
-  function registrarRamoCliente(valor) {
-    var ramo = String(valor || '').trim();
-    if (!ramo) return syncCatalogoRamosClientes();
-    var ramos = _normalizarListaRamos(getCatalogoRamosClientes().concat([ramo]));
-    try { window.RAMOS = ramos.slice(); } catch (_) {}
-    try { localStorage.setItem('ramos_atividade', JSON.stringify(ramos)); } catch (_) {}
-    return ramos;
-  }
-
-  function preencherRamoModalCliente() {
-    try {
-      var select = document.getElementById('cliente-ramo');
-      if (!select) return;
-      var atual = String(select.value || '').trim();
-      var ramos = syncCatalogoRamosClientes();
-      if (atual && ramos.indexOf(atual) === -1) ramos = _normalizarListaRamos(ramos.concat([atual]));
-      var html = '<option value="">—</option>' + ramos.map(function(ramo) {
-        var safe = _escapeClienteRamoHtml(ramo);
-        return '<option value="' + safe + '">' + safe + '</option>';
-      }).join('');
-      if (select.innerHTML !== html) select.innerHTML = html;
-      if (atual) select.value = atual;
-    } catch (_) {}
-  }
-
-  function buildRamoDatalistHtml(datalistId, valorAtual) {
-    var ramos = syncCatalogoRamosClientes();
-    if (valorAtual && ramos.indexOf(valorAtual) === -1) ramos = _normalizarListaRamos(ramos.concat([valorAtual]));
-    return '<input id="novo-cli-ramo" list="' + datalistId + '" value="' + _escapeClienteRamoHtml(valorAtual || '') + '" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)" placeholder="Ex.: Alimentício">' +
-      '<datalist id="' + datalistId + '">' +
-        ramos.map(function(ramo) { return '<option value="' + _escapeClienteRamoHtml(ramo) + '"></option>'; }).join('') +
-      '</datalist>';
   }
 
   function _normalizeChapaRowColor(v) {
