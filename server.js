@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260804164000';
-const SW_RUNTIME_VERSION = '20260804164000';
+const PATCH_RUNTIME_VERSION = '20260804171000';
+const SW_RUNTIME_VERSION = '20260804171000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
@@ -9861,6 +9861,26 @@ function _passagensIsoTsFromAny(v) {
   return '';
 }
 
+function _passagensHistoricoOfDataRef(of) {
+  return _passagensIsoDateFromAny(
+    of?.data_faturamento ??
+    of?.data_conclusao ??
+    of?.dia ??
+    of?.created_at ??
+    ''
+  );
+}
+
+function _passagensHistoricoOfTsRef(of) {
+  return _passagensIsoTsFromAny(
+    of?.data_faturamento ??
+    of?.data_conclusao ??
+    of?.dia ??
+    of?.created_at ??
+    ''
+  );
+}
+
 function _parseMaybeJsonArray(v) {
   if (Array.isArray(v)) return v;
   if (!v) return [];
@@ -9906,11 +9926,10 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
     'descricao', 'produto', 'quantidade', 'qtd', 'qtd_produzida', 'valor_total', 'valor_venda',
     'valor_unitario', 'preco', 'cores_impressao', 'dim_comprimento', 'dim_largura',
     'caixa_comprimento', 'caixa_largura', 'maq', 'maquina_agendada', 'maquina', 'maquina_atual',
-    'fluxo_maquinas', 'passagens_maquina', 'passagens_por_maquina', 'data_conclusao', 'created_at', 'updated_at',
+    'fluxo_maquinas', 'passagens_maquina', 'passagens_por_maquina', 'data_faturamento', 'data_conclusao', 'dia', 'created_at', 'updated_at',
     'status', 'empresa_id', 'emp_id'
   ];
 
-  const fimTs = range.fim + 'T23:59:59.999Z';
   const batchSize = 1200;
   let offset = 0;
   const ofs = [];
@@ -9921,9 +9940,7 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
         .from('ofs')
         .select(selectCols.join(','))
         .not('passagens_maquina', 'is', null)
-        .gte('updated_at', range.inicio)
-        .lte('updated_at', fimTs)
-        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .range(offset, offset + batchSize - 1);
       if (withEmpresaFilter) {
         if (empId) q = q.or('emp_id.eq.' + empId + ',empresa_id.eq.' + empId + ',empresa_id.is.null');
@@ -9973,8 +9990,10 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
     const qtdOf = (of?.qtd_produzida ?? of?.qtd ?? of?.quantidade);
     const valorTotal = Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0;
     const valorUnit = Number(of?.valor_unitario ?? of?.preco ?? 0) || 0;
+    const dataRefDia = _passagensHistoricoOfDataRef(of);
+    if (!dataRefDia || dataRefDia < inicioIso || dataRefDia > fimIso) return;
+    const dataRefTs = _passagensHistoricoOfTsRef(of);
     const dataConclusaoIso = _passagensIsoTsFromAny(of?.data_conclusao);
-    const dataConclusaoDia = dataConclusaoIso ? dataConclusaoIso.slice(0, 10) : '';
 
     const fluxo = _parseMaybeJsonArray(of?.fluxo_maquinas);
     const fluxoMap = new Map();
@@ -9996,12 +10015,12 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
       if (maquinaNeedle && maquinaCanon !== maquinaNeedle) return;
 
       const ts =
-        _passagensIsoTsFromAny(p?.hora_passagem || p?.passou_em || p?.saiu_em || p?.data_passagem || p?.data || p?.created_at || '')
+        _passagensIsoTsFromAny(p?.hora_passagem || p?.passou_em || p?.saiu_em || p?.created_at || '')
         || String(fluxoMap.get(maquinaCanon) || '')
+        || dataRefTs
         || dataConclusaoIso
         || _passagensIsoTsFromAny(of?.updated_at || of?.created_at || '');
-      const dia = _passagensIsoDateFromAny(p?.data_passagem || p?.data || '') || (ts ? ts.slice(0, 10) : '') || dataConclusaoDia;
-      if (dia && (dia < inicioIso || dia > fimIso)) return;
+      const dia = dataRefDia;
 
       rows.push({
         of_id: ofId,
