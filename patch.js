@@ -10570,11 +10570,15 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
   function _histGetDetailFilters() {
     var cliente = String((document.getElementById('hist-filtro-cliente') || {}).value || '').trim();
     var maquina = String((document.getElementById('hist-detalhe-maquina') || {}).value || '').trim();
-    var periodo = String((document.getElementById('hist-detalhe-periodo') || {}).value || 'hoje').trim() || 'hoje';
+    var periodo = String((document.getElementById('hist-detalhe-periodo') || {}).value || 'mes').trim() || 'mes';
     var dia = String((document.getElementById('hist-detalhe-dia') || {}).value || '').trim() || _histTodayIso();
     var range = { data_inicio: '', data_fim: '' };
-    if (periodo === 'semana') range = _histCurrentWeekIsoRange();
-    else {
+    if (periodo === 'mes') {
+      var ref = _histGetMonthlyRef();
+      range = _histResolveRange({}, ref);
+    } else if (periodo === 'semana') {
+      range = _histCurrentWeekIsoRange();
+    } else {
       range.data_inicio = dia;
       range.data_fim = dia;
     }
@@ -10993,6 +10997,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
           toolbar.id = 'hist-detalhe-toolbar';
           toolbar.innerHTML = ''
             + '<select id="hist-detalhe-periodo">'
+            + '  <option value="mes">Mês selecionado</option>'
             + '  <option value="hoje">Dia atual</option>'
             + '  <option value="dia">Dia específico</option>'
             + '  <option value="semana">Semana</option>'
@@ -11008,12 +11013,12 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
         var applyBtn = document.getElementById('hist-detalhe-aplicar');
         if (diaInput && !diaInput.value) diaInput.value = _histTodayIso();
         var syncToolbar = function() {
-          var periodo = String((periodoSel && periodoSel.value) || 'hoje').trim();
-          if (diaWrap) diaWrap.style.display = periodo === 'semana' ? 'none' : 'flex';
+          var periodo = String((periodoSel && periodoSel.value) || 'mes').trim();
+          if (diaWrap) diaWrap.style.display = periodo === 'dia' ? 'flex' : 'none';
         };
         if (periodoSel && !periodoSel.dataset.bound) {
           periodoSel.dataset.bound = '1';
-          periodoSel.value = 'hoje';
+          periodoSel.value = 'mes';
           periodoSel.onchange = function() {
             syncToolbar();
             _histBuscarHistoricoPassagens(_histGetDetailFilters(), false, { force: true });
