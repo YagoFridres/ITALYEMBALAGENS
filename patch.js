@@ -20541,13 +20541,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-final-time{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;border:1px solid rgba(71,85,105,.5);background:rgba(15,23,42,.58);font-size:12px;font-weight:900}'
         + '#page-ofmaq .ofmaq-final-empty{padding:26px 20px;color:#94a3b8;text-align:center}'
         + '#page-ofmaq .ofmaq-final-actions{display:flex;justify-content:flex-end}'
-        + '#page-ofmaq .ofmaq-final-actions button{min-height:34px}'
+        + '#page-ofmaq .ofmaq-final-actions .ofmaq-final-actions-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:38px;padding:8px 14px;border-radius:12px;border:1px solid rgba(96,165,250,.46);background:linear-gradient(135deg,rgba(30,64,175,.98),rgba(37,99,235,.94));color:#eff6ff;font-size:12px;font-weight:900;letter-spacing:.02em;box-shadow:0 12px 24px rgba(30,64,175,.24)}'
+        + '#page-ofmaq .ofmaq-final-actions .ofmaq-final-actions-btn[data-urgente="1"]{border-color:rgba(248,113,113,.52);background:linear-gradient(135deg,rgba(153,27,27,.98),rgba(220,38,38,.92));box-shadow:0 12px 26px rgba(153,27,27,.28)}'
         + '.ofmaq-final-modal .body button{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:46px;padding:12px 14px;border-radius:14px;border:1px solid rgba(71,85,105,.55);background:rgba(15,23,42,.78);color:#f8fafc;font-size:14px;font-weight:800;cursor:pointer}'
         + '.ofmaq-final-modal .body button span{display:inline-flex;align-items:center;gap:10px}'
         + '.ofmaq-final-modal .body button small{font-size:11px;font-weight:800;letter-spacing:.04em;color:#94a3b8;text-transform:uppercase}'
         + '.ofmaq-final-modal .body button.ofmaq-final-action-primary{background:linear-gradient(135deg,#1d4ed8,#2563eb);border-color:#60a5fa;color:#eff6ff}'
         + '.ofmaq-final-modal .body button.ofmaq-final-action-secondary{background:rgba(30,41,59,.96);border-color:rgba(148,163,184,.22);color:#e2e8f0}'
         + '.ofmaq-final-modal .body button.ofmaq-final-action-tertiary{background:rgba(15,23,42,.58);border-color:rgba(71,85,105,.4);color:#cbd5e1}'
+        + '.ofmaq-final-modal .body button.ofmaq-final-action-danger{background:linear-gradient(135deg,rgba(153,27,27,.98),rgba(220,38,38,.92));border-color:rgba(248,113,113,.48);color:#fff1f2}'
+        + '.ofmaq-final-modal .body button.ofmaq-final-action-danger[data-active="1"]{background:linear-gradient(135deg,rgba(12,74,110,.98),rgba(3,105,161,.92));border-color:rgba(125,211,252,.46);color:#ecfeff}'
+        + '.ofmaq-final-modal .body .ofmaq-final-urgency-state{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid rgba(71,85,105,.45);background:rgba(15,23,42,.5);color:#e2e8f0;font-size:13px}'
+        + '.ofmaq-final-modal .body .ofmaq-final-urgency-state strong{display:block;font-size:14px;color:#f8fafc}'
+        + '.ofmaq-final-modal .body .ofmaq-final-urgency-state span{display:block;margin-top:4px;font-size:11px;color:#94a3b8}'
         + '.ofmaq-final-modal .body .ofmaq-final-move-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}'
         + '.ofmaq-final-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998}'
         + '.ofmaq-final-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#1e293b;border-radius:18px;padding:30px;min-width:420px;min-height:280px;max-width:min(92vw,860px);color:#f8fafc;box-shadow:0 30px 80px rgba(0,0,0,.42)}'
@@ -20755,7 +20761,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '<td class="ofmaq-final-cell"><strong>' + escH(item.facasResumo || '—') + '</strong></td>'
         + '<td>' + escH(item.maquina) + '</td>'
         + '<td><span class="ofmaq-final-time">' + escH(fmtTempo(item.tempoMin)) + '</span></td>'
-        + '<td class="ofmaq-final-actions"><button type="button" data-ofmaq-final-actions="' + escAttr(item.id) + '">Ações</button></td>'
+        + '<td class="ofmaq-final-actions"><button type="button" class="ofmaq-final-actions-btn" data-urgente="' + (item.urgencia === 'urgente' ? '1' : '0') + '" data-ofmaq-final-actions="' + escAttr(item.id) + '">' + (item.urgencia === 'urgente' ? '🚨 ' : '⚡ ') + 'Ações</button></td>'
         + '</tr>';
     }
 
@@ -20930,6 +20936,34 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return result;
     }
 
+    async function setUrgency(id, urgent) {
+      var row = rowById(id);
+      if (window.__OFMAQ_FINAL_MOCK) {
+        if (row) {
+          if (row.ofRaw) {
+            row.ofRaw.urg = !!urgent;
+            row.ofRaw.urgente = !!urgent;
+          }
+          row.urgencia = urgenciaTipo(row.ofRaw || row, row.prazoIso);
+        }
+        return;
+      }
+      var result = await apiJson('/api/ofs/' + encodeURIComponent(id) + '/urgente', {
+        method: 'PATCH',
+        body: { urgente: !!urgent }
+      });
+      try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'urgency', id: id, urgente: !!urgent, status: result && result.resp ? result.resp.status : null, ok: !!(result && result.resp && result.resp.ok), body: result ? result.data : null }); } catch (_) {}
+      if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao atualizar urgência');
+      if (row) {
+        if (row.ofRaw) {
+          row.ofRaw.urg = !!urgent;
+          row.ofRaw.urgente = !!urgent;
+        }
+        row.urgencia = urgenciaTipo(row.ofRaw || row, row.prazoIso);
+      }
+      return result;
+    }
+
     async function markPassed(id, machine) {
       var row = rowById(id);
       var appendHist = getAppendHistPassagemLocal();
@@ -21094,8 +21128,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     function openActionsModal(id) {
       var row = rowById(id);
       if (!row) return;
+      var urgActive = row.urgencia === 'urgente';
+      var urgTitle = urgActive ? 'Urgência ativa' : (row.urgencia === 'atrasada' ? 'OF atrasada' : 'Sem urgência');
+      var urgSub = urgActive ? 'Essa OF está priorizada na fila e destacada na grade.' : (row.urgencia === 'atrasada' ? 'Ela não está marcada manualmente, mas já está fora do prazo.' : 'Você pode marcar urgência sem sair do modal de ações.');
       var modal = openModal('ofmaq-final-actions', 'Ações da OF #' + String(row.numero || row.id), ''
+        + '<div class="ofmaq-final-urgency-state"><div><strong>' + escH(urgTitle) + '</strong><span>' + escH(urgSub) + '</span></div><span class="ofmaq-final-status" data-tone="' + escAttr(urgActive ? 'danger' : (row.urgencia === 'atrasada' ? 'warn' : 'ok')) + '">' + escH(urgActive ? 'URGENTE' : (row.urgencia === 'atrasada' ? 'ATRASADA' : 'NORMAL')) + '</span></div>'
         + '<button type="button" data-ofmaq-final-action="pass" class="ofmaq-final-action-primary"><span>✓ Passou pela máquina</span><small>Concluir etapa</small></button>'
+        + '<button type="button" data-ofmaq-final-action="toggle-urgency" data-urgente="' + (urgActive ? '1' : '0') + '" class="ofmaq-final-action-danger" data-active="' + (urgActive ? '1' : '0') + '"><span>' + (urgActive ? '✓ Remover urgência' : '🚨 Marcar como urgente') + '</span><small>' + (urgActive ? 'Voltar ao fluxo normal' : 'Priorizar na produção') + '</small></button>'
         + '<button type="button" data-ofmaq-final-action="move" class="ofmaq-final-action-secondary"><span>↔ Mover de máquina</span><small>Trocar fila</small></button>'
         + '<button type="button" data-ofmaq-final-action="date" class="ofmaq-final-action-secondary"><span>📅 Alterar data</span><small>Reagendar</small></button>'
         + '<button type="button" data-ofmaq-final-action="move-date" class="ofmaq-final-action-secondary"><span>🗓️↔ Mover máquina e data</span><small>Alterar os dois de uma vez</small></button>'
@@ -21122,6 +21161,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           if (action === 'move') {
             closeModal('ofmaq-final-actions');
             openMoveModal(id);
+            return;
+          }
+          if (action === 'toggle-urgency') {
+            var nextUrgent = !(row && row.urgencia === 'urgente');
+            await setUrgency(id, nextUrgent);
+            closeModal('ofmaq-final-actions');
+            updateToolbar(ensureShell());
+            renderRows(ensureShell());
+            try { showOfmaqCenterConfirm('OF #' + String(row.numero || id) + (nextUrgent ? ' marcada como urgente.' : ' voltou ao fluxo normal.') , { title: nextUrgent ? 'Urgência ativada' : 'Urgência removida' }); } catch (_) {}
             return;
           }
           if (action === 'date') {
@@ -21439,7 +21487,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               + '  <td>' + escHLocal(String(qtd)) + '</td>'
               + '  <td>' + escHLocal(maquina) + '</td>'
               + '  <td>' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</td>'
-              + '  <td colspan="4" style="text-align:right"><button type="button" class="pep-btn" data-ofmaq-final-actions="' + escAttrLocal(id) + '">Ações</button></td>'
+              + '  <td colspan="4" style="text-align:right"><button type="button" class="ofmaq-final-actions-btn" data-urgente="' + (((row && (row.urg || row.urgente)) ? '1' : '0')) + '" data-ofmaq-final-actions="' + escAttrLocal(id) + '">⚡ Ações</button></td>'
               + '</tr>';
           }).join('')
         : '<tr><td colspan="11" class="ofmaq-final-empty">Nenhuma OF encontrada na visualização de contingência.</td></tr>';
