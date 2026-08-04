@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260804191000';
-const SW_RUNTIME_VERSION = '20260804191000';
+const PATCH_RUNTIME_VERSION = '20260804194000';
+const SW_RUNTIME_VERSION = '20260804194000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
@@ -2661,6 +2661,11 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
     const resumoOficial = await _resumirVendasOficiais(range, empresaId);
     payload.total_ofs = resumoOficial.total_ofs;
     payload.total_vendido = resumoOficial.total_vendido;
+    payload.total_ofs_oficial = resumoOficial.total_ofs;
+    payload.total_vendido_oficial = resumoOficial.total_vendido;
+    payload.total_geral_vendas = resumoOficial.total_vendido;
+    payload.criterio_total_vendido = 'SUM(valor_total) com status Concluído e COALESCE(data_faturamento, data_conclusao, dia, created_at)';
+    payload.perdas_descontam_total_vendido = false;
     console.log('[COM] FINAL ofs:', todasOFs.length, 'total:', payload.total_vendido); 
     return res.json(payload); 
   } catch(e) { 
@@ -2689,11 +2694,15 @@ app.get('/api/comissoes/debug-total-vendido', autenticar, async (req, res) => {
       criterio_valor: 'Number(of.valor_total || 0) || 0',
       criterio_data: 'COALESCE(data_faturamento, data_conclusao, dia, created_at)',
       criterio_status: 'status concluído/concluido/concluida/concluída, exclui canceladas e deleted_at',
+      criterio_total_vendido: 'SUM(valor_total) com status Concluído e COALESCE(data_faturamento, data_conclusao, dia, created_at)',
+      perdas_descontam_total_vendido: false,
       data_inicio: range.inicio,
       data_fim: range.fim,
       empresa_id: empresaId || null,
       total_ofs: payload.total_ofs,
+      total_ofs_oficial: payload.total_ofs,
       total_vendido: payload.total_vendido,
+      total_vendido_oficial: payload.total_vendido,
       ofs: payload.ofs,
     });
   } catch (e) {

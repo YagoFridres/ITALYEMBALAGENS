@@ -30253,6 +30253,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { return d ? new Date(d).toLocaleDateString('pt-BR') : '—'; } catch (_) { return '—'; }
   }
 
+  function _comAuditPickTotalVendido(json) {
+    if (json && json.total_vendido_oficial != null) return Number(json.total_vendido_oficial || 0) || 0;
+    if (json && json.total_geral_vendas != null) return Number(json.total_geral_vendas || 0) || 0;
+    if (json && json.total_vendido != null) return Number(json.total_vendido || 0) || 0;
+    if (json && json.resumo && json.resumo.valor_vendido != null) return Number(json.resumo.valor_vendido || 0) || 0;
+    return 0;
+  }
+
+  function _comAuditPickTotalOfs(json) {
+    if (json && json.total_ofs_oficial != null) return Number(json.total_ofs_oficial || 0) || 0;
+    if (json && json.total_ofs != null) return Number(json.total_ofs || 0) || 0;
+    if (json && json.resumo && json.resumo.total_ofs != null) return Number(json.resumo.total_ofs || 0) || 0;
+    return 0;
+  }
+
   function setTextMany(selectors, value) {
     selectors.forEach(function(sel) {
       try {
@@ -30264,6 +30279,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function _forcarRenderComissoes(json) {
     if (!json) return;
+    var totalVendido = _comAuditPickTotalVendido(json);
+    var totalOfs = _comAuditPickTotalOfs(json);
 
     try {
       var cardsHost = document.querySelector('#page-comissoes #com-cards, #com-cards');
@@ -30282,7 +30299,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         '#page-comissoes [data-field="total_vendido"]',
         '#page-comissoes .cv-g',
         '.com-total-vendido'
-      ], fmt(json.total_vendido));
+      ], fmt(totalVendido));
       setTextMany([
         '#page-comissoes .com-total-comissao',
         '#page-comissoes [data-com="total_comissao"]',
@@ -30295,7 +30312,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         '#page-comissoes [data-com="total_ofs"]',
         '#page-comissoes [data-field="total_ofs"]',
         '.com-total-ofs'
-      ], String(json.total_ofs || 0));
+      ], String(totalOfs || 0));
     } catch (_) {}
   }
 
@@ -30352,8 +30369,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }).join('') + ''
       + '<tr style="font-weight:700;border-top:2px solid var(--border,#333)">'
       + '<td style="padding:10px 14px">TOTAL</td>'
-      + '<td style="text-align:center;padding:10px 14px">' + String(json.total_ofs || 0) + '</td>'
-      + '<td style="text-align:right;padding:10px 14px">' + fmt(json.total_vendido) + '</td>'
+      + '<td style="text-align:center;padding:10px 14px">' + String(_comAuditPickTotalOfs(json) || 0) + '</td>'
+      + '<td style="text-align:right;padding:10px 14px">' + fmt(_comAuditPickTotalVendido(json)) + '</td>'
       + '<td></td>'
       + '<td style="text-align:right;padding:10px 14px;color:#4ade80">' + fmt(json.total_comissao) + '</td>'
       + '<td></td>'
@@ -30475,9 +30492,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         '[COM] resposta API:',
         json && json.ok,
         'OFs:',
-        json && json.total_ofs,
+        _comAuditPickTotalOfs(json),
         'Total:',
-        json && json.total_vendido
+        _comAuditPickTotalVendido(json)
       );
     } catch (_) {}
 
@@ -30489,9 +30506,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
     window._comissoesSqlData = json;
     window._comissoesData = {
-      totalGeral: Number(json.total_vendido || 0) || 0,
+      totalGeral: _comAuditPickTotalVendido(json),
       totalComissao: Number(json.total_comissao || 0) || 0,
-      totalPedidos: Number(json.total_ofs || 0) || 0,
+      totalPedidos: _comAuditPickTotalOfs(json),
       vendedores: (json.vendedores || []).map(function(v) {
         var total = Number(v && v.total || 0) || 0;
         var pct = Number(v && v.comissao_pct || 0) || 0;
@@ -30831,9 +30848,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '<h1>Relatório de Comissões — ' + nomeMes + '/' + ano + '</h1>'
       + '<h2>Italy Embalagens · Gerado em ' + agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR') + '</h2>'
       + '<div class="cards">'
-      + '<div class="card"><div class="lbl">Total Vendido</div><div class="val">' + fmtLocal(data.total_vendido) + '</div></div>'
+      + '<div class="card"><div class="lbl">Total Vendido</div><div class="val">' + fmtLocal(_comAuditPickTotalVendido(data)) + '</div></div>'
       + '<div class="card"><div class="lbl">Total Comissão</div><div class="val green">' + fmtLocal(data.total_comissao) + '</div></div>'
-      + '<div class="card"><div class="lbl">Total OFs</div><div class="val">' + String(data.total_ofs || 0) + '</div></div>'
+      + '<div class="card"><div class="lbl">Total OFs</div><div class="val">' + String(_comAuditPickTotalOfs(data) || 0) + '</div></div>'
       + '</div>'
       + '<h3 style="margin-bottom:8px;font-size:13px">Resumo por Vendedor</h3>'
       + '<table><thead><tr><th>Vendedor</th><th>OFs</th><th style="text-align:right">Total Vendido</th><th style="text-align:center">%</th><th style="text-align:right">Comissão R$</th></tr></thead><tbody>'
@@ -40628,8 +40645,8 @@ function _renderTabelaVendedores(json) {
     }).join('') + ''
       + '<tr data-com-total="1" style="font-weight:700;border-top:2px solid #334155">'
       + '<td style="padding:10px 14px 10px 16px;text-align:left">TOTAL</td>'
-      + '<td style="text-align:center;padding:10px 14px">' + String(json.total_ofs || 0) + '</td>'
-      + '<td style="text-align:center;padding:10px 14px">' + fmt(json.total_vendido) + '</td>'
+      + '<td style="text-align:center;padding:10px 14px">' + String(_comAuditPickTotalOfs(json) || 0) + '</td>'
+      + '<td style="text-align:center;padding:10px 14px">' + fmt(_comAuditPickTotalVendido(json)) + '</td>'
       + '<td style="text-align:center;padding:10px 14px"></td>'
       + '<td style="text-align:center;padding:10px 14px;color:#4ade80">' + fmt(json.total_comissao) + '</td>'
       + '<td></td>'
@@ -41436,7 +41453,7 @@ function _ocultarGraficoComissoes() {
   function _adicionarTopoComissoes(json, prevJson, periodoLabel) {
     try {
       var existente = document.getElementById('_com_topo_v3');
-      var hashAtual = JSON.stringify(Number(json && (json.total_geral_vendas != null ? json.total_geral_vendas : json.total_vendido) || 0) || 0);
+      var hashAtual = JSON.stringify(_comAuditPickTotalVendido(json));
       if (existente) {
         if (existente.dataset && existente.dataset.hash === hashAtual && String(existente.innerHTML || '').trim()) return;
         _renderDashboard(json, prevJson, periodoLabel);
@@ -41599,11 +41616,11 @@ function _ocultarGraficoComissoes() {
       var table = tbody.closest ? tbody.closest('table') : null;
       if (!table) return;
 
-      var totalV = Number(json && json.total_vendido || 0) || 0;
-      var totalOfs = Number(json && json.total_ofs || 0) || 0;
+      var totalV = _comAuditPickTotalVendido(json);
+      var totalOfs = _comAuditPickTotalOfs(json);
       var totalCom = Number(json && json.total_comissao || 0) || 0;
 
-      var prevV = prevJson ? (Number(prevJson.total_vendido || 0) || 0) : null;
+      var prevV = prevJson ? _comAuditPickTotalVendido(prevJson) : null;
       var deltaPct = null;
       if (prevV != null && prevV > 0) deltaPct = ((totalV - prevV) / prevV) * 100;
 
@@ -44800,8 +44817,8 @@ function _ocultarGraficoComissoes() {
       var vendedores = Array.isArray(data && data.vendedores) ? data.vendedores : [];
       var todasOfsRaw = Array.isArray(data && data.ofs) ? data.ofs : [];
       window._comOfsData = todasOfsRaw;
-      var totalGeral = Number(data && data.total_vendido || 0) || 0;
-      var totalOFs = Number(data && data.total_ofs || 0) || 0;
+      var totalGeral = _comAuditPickTotalVendido(data);
+      var totalOFs = _comAuditPickTotalOfs(data);
       var totalComissoes = Number(data && data.total_comissao || 0) || 0;
 
       var grupos = (vendedores || []).map(function(v) {
@@ -44849,7 +44866,7 @@ function _ocultarGraficoComissoes() {
         window.__comissoesPrevData = prev ? await _fetchComissoes(prev.mesNum, prev.anoNum) : null;
       } catch (_) { window.__comissoesPrevData = null; }
 
-      var prevTotal = Number(window.__comissoesPrevData && (window.__comissoesPrevData.total_geral_vendas != null ? window.__comissoesPrevData.total_geral_vendas : window.__comissoesPrevData.total_vendido) || 0) || 0;
+      var prevTotal = _comAuditPickTotalVendido(window.__comissoesPrevData);
       var deltaTxt = '—';
       if (prevTotal > 0) {
         var deltaPct = ((totalGeral - prevTotal) / prevTotal) * 100;
