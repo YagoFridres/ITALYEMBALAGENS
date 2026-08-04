@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260804150500';
-const SW_RUNTIME_VERSION = '20260804150500';
+const PATCH_RUNTIME_VERSION = '20260804161000';
+const SW_RUNTIME_VERSION = '20260804161000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
@@ -9844,6 +9844,175 @@ async function _buscarPassagensHistoricoCompat(req, opts) {
   };
 }
 
+function _passagensIsoDateFromAny(v) {
+  const raw = String(v || '').trim();
+  if (!raw) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const dt = new Date(raw);
+  if (!isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
+  return '';
+}
+
+function _passagensIsoTsFromAny(v) {
+  const raw = String(v || '').trim();
+  if (!raw) return '';
+  const dt = new Date(raw);
+  if (!isNaN(dt.getTime())) return dt.toISOString();
+  return '';
+}
+
+function _parseMaybeJsonArray(v) {
+  if (Array.isArray(v)) return v;
+  if (!v) return [];
+  if (typeof v === 'string') {
+    const txt = String(v || '').trim();
+    if (!txt) return [];
+    try {
+      const parsed = JSON.parse(txt);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  }
+  return [];
+}
+
+function _passagensResolveRangeForOfs(opts) {
+  const cfg = opts && typeof opts === 'object' ? opts : {};
+  const dataInicio = String(cfg.data_inicio || '').trim();
+  const dataFim = String(cfg.data_fim || '').trim();
+  const mes = String(cfg.mes || '').trim();
+  const ano = String(cfg.ano || '').trim();
+  if (dataInicio && dataFim) return { inicio: dataInicio, fim: dataFim };
+  const rangeMes = _passagensFiltroMesAnoToRange(mes, ano);
+  if (rangeMes) return { inicio: rangeMes.inicio, fim: rangeMes.fim };
+  return null;
+}
+
+async function _buscarPassagensHistoricoFromOfs(req, opts) {
+  const cfg = opts && typeof opts === 'object' ? opts : {};
+  const clienteNeedle = String(cfg.cliente || '').trim().toLowerCase();
+  const maquinaNeedleRaw = String(cfg.maquina || '').trim();
+  const maquinaNeedle = _canonMaqNome(maquinaNeedleRaw) || String(maquinaNeedleRaw || '').trim();
+  const range = _passagensResolveRangeForOfs(cfg);
+  const empId = String(cfg.emp_id ?? cfg.empId ?? req.query.emp_id ?? req.query.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? '').trim();
+  let empresaUuid = '';
+  try { empresaUuid = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { empresaUuid = ''; }
+
+  if (!range?.inicio || !range?.fim) return { rows: [], count: 0 };
+
+  const cols = [
+    'id', 'numero', 'of', 'cli_id', 'cliente_nome', 'cliente', 'cliNome', 'clinome',
+    'descricao', 'produto', 'quantidade', 'qtd', 'qtd_produzida', 'valor_total', 'valor_venda',
+    'valor_unitario', 'preco', 'cores_impressao', 'dim_comprimento', 'dim_largura',
+    'caixa_comprimento', 'caixa_largura', 'maq', 'maquina_agendada', 'maquina', 'maquina_atual',
+    'fluxo_maquinas', 'passagens_maquina', 'passagens_por_maquina', 'data_conclusao', 'created_at', 'updated_at',
+    'status', 'empresa_id', 'emp_id'
+  ];
+  const selectExpr = cols.join(',');
+
+  const fimTs = range.fim + 'T23:59:59.999Z';
+  const batchSize = 1200;
+  let offset = 0;
+  const ofs = [];
+
+  while (true) {
+    let q = supabase.from('ofs').select(selectExpr).gte('data_conclusao', range.inicio).lte('data_conclusao', fimTs).order('data_conclusao', { ascending: false });
+    if (empId) q = q.or('emp_id.eq.' + empId + ',empresa_id.eq.' + empId + ',empresa_id.is.null');
+    else if (empresaUuid) q = q.or('empresa_id.eq.' + empresaUuid + ',empresa_id.is.null');
+    q = q.range(offset, offset + batchSize - 1);
+
+    const r = await q;
+    if (r?.error) throw r.error;
+    const chunk = Array.isArray(r?.data) ? r.data : [];
+    if (!chunk.length) break;
+    chunk.forEach((row) => ofs.push(row));
+    offset += chunk.length;
+    if (chunk.length < batchSize) break;
+    if (offset > 12000) break;
+  }
+
+  const inicioIso = String(range.inicio || '').slice(0, 10);
+  const fimIso = String(range.fim || '').slice(0, 10);
+
+  const rows = [];
+  ofs.forEach((of) => {
+    const ofId = String(of?.id || '').trim();
+    if (!ofId) return;
+    const ofNumero = String(of?.numero ?? of?.of ?? '').trim();
+
+    const clienteRaw = String(of?.cliente_nome || of?.cliente || of?.cliNome || of?.clinome || '').trim();
+    const clienteLow = clienteRaw.toLowerCase();
+    if (clienteNeedle && !clienteLow.includes(clienteNeedle)) return;
+
+    const prodOf = String(of?.produto || of?.descricao || '').trim();
+    const qtdOf = (of?.qtd_produzida ?? of?.qtd ?? of?.quantidade);
+    const valorTotal = Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0;
+    const valorUnit = Number(of?.valor_unitario ?? of?.preco ?? 0) || 0;
+    const dataConclusaoIso = _passagensIsoTsFromAny(of?.data_conclusao);
+    const dataConclusaoDia = dataConclusaoIso ? dataConclusaoIso.slice(0, 10) : '';
+
+    const fluxo = _parseMaybeJsonArray(of?.fluxo_maquinas);
+    const fluxoMap = new Map();
+    fluxo.forEach((m) => {
+      const nome = String(m && typeof m === 'object' ? (m.nome ?? m.maquina ?? m.name ?? m.id ?? '') : (m ?? '')).trim();
+      const canon = _canonMaqNome(nome) || nome;
+      if (!canon) return;
+      const dt = _passagensIsoTsFromAny(m?.data_baixa || m?.hora_fim_producao || m?.updated_at || '');
+      if (dt) fluxoMap.set(canon, dt);
+    });
+
+    const passagens = _parseMaybeJsonArray(of?.passagens_maquina).concat(_parseMaybeJsonArray(of?.passagens_por_maquina));
+    passagens.forEach((p) => {
+      const maquinaRaw = String(p && typeof p === 'object'
+        ? (p.maquina_nome ?? p.maquina ?? p.nome ?? p.name ?? p.id ?? '')
+        : (p ?? '')).trim();
+      const maquinaCanon = _canonMaqNome(maquinaRaw) || maquinaRaw;
+      if (!maquinaCanon) return;
+      if (maquinaNeedle && maquinaCanon !== maquinaNeedle) return;
+
+      const ts =
+        _passagensIsoTsFromAny(p?.hora_passagem || p?.passou_em || p?.saiu_em || p?.data_passagem || p?.data || p?.created_at || '')
+        || String(fluxoMap.get(maquinaCanon) || '')
+        || dataConclusaoIso
+        || _passagensIsoTsFromAny(of?.updated_at || of?.created_at || '');
+      const dia = _passagensIsoDateFromAny(p?.data_passagem || p?.data || '') || (ts ? ts.slice(0, 10) : '') || dataConclusaoDia;
+      if (dia && (dia < inicioIso || dia > fimIso)) return;
+
+      rows.push({
+        of_id: ofId,
+        of_numero: ofNumero,
+        numero: ofNumero,
+        of: ofNumero,
+        cliente: clienteRaw,
+        cliente_nome: clienteRaw,
+        nome_cliente: clienteRaw,
+        produto: prodOf,
+        quantidade: qtdOf,
+        qtd_produzida: qtdOf,
+        valor_total: valorTotal,
+        valor_venda: valorTotal,
+        total: valorTotal,
+        valor_unitario: valorUnit,
+        preco: valorUnit,
+        cores_impressao: of?.cores_impressao ?? null,
+        dim_comprimento: of?.dim_comprimento ?? of?.caixa_comprimento ?? null,
+        dim_largura: of?.dim_largura ?? of?.caixa_largura ?? null,
+        caixa_comprimento: of?.caixa_comprimento ?? of?.dim_comprimento ?? null,
+        caixa_largura: of?.caixa_largura ?? of?.dim_largura ?? null,
+        maquina: maquinaCanon,
+        maquina_nome: maquinaCanon,
+        data_passagem: dia || null,
+        hora_passagem: ts || null,
+        status: dataConclusaoIso ? 'Concluído' : String(p?.status || 'Passou pela máquina'),
+        data_conclusao: dataConclusaoIso || null,
+      });
+    });
+  });
+
+  return { rows, count: rows.length };
+}
+
 function _resolverValorTotalPassagem(row, ofData) {
   const direto = _pickCanonicalValorTotal(row) || Number(row?.valor_producao ?? row?.preco_total ?? 0) || 0;
   if (direto > 0) return direto;
@@ -10640,7 +10809,7 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     const pageReq = Math.max(1, parseInt(String(req.query.page || ''), 10) || 1); 
     const offset = Number.isFinite(offsetReq) ? Math.max(0, offsetReq) : ((pageReq - 1) * limit); 
     const page = Math.max(1, Math.floor(offset / limit) + 1);
-    const pair = await _buscarPassagensHistoricoCompat(req, {
+    const pair = await _buscarPassagensHistoricoFromOfs(req, {
       cliente,
       maquina,
       data_inicio,
@@ -10651,6 +10820,54 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
       offset,
       count: true
     });
+    // #region debug-point A:hist-source-passagens-table
+    try {
+      (() => {
+        const fs = require('fs');
+        const http = require('http');
+        const https = require('https');
+        const envPath = '.dbg/historico-ofs-passagens.env';
+        let serverUrl = '';
+        let sessionId = 'historico-ofs-passagens';
+        try {
+          const raw = fs.readFileSync(envPath, 'utf8');
+          serverUrl = String(raw.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || '').trim();
+          sessionId = String(raw.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || sessionId).trim();
+        } catch (_) {}
+        if (!serverUrl) return;
+        const u = new URL(serverUrl);
+        const payload = JSON.stringify({
+          sessionId,
+          runId: 'pre-fix',
+          hypothesisId: 'A',
+          location: 'server.js:/api/passagens/historico',
+          msg: '[DEBUG] historico fonte atual: ofs.passagens_maquina (coluna JSON)',
+          data: {
+            mes: String(mes || ''),
+            ano: String(ano || ''),
+            data_inicio: String(data_inicio || ''),
+            data_fim: String(data_fim || ''),
+            cliente: String(cliente || '').slice(0, 120),
+            maquina: String(maquina || '').slice(0, 120),
+            rawRows: Array.isArray(pair?.rows) ? pair.rows.length : -1,
+            rawCount: Number(pair?.count || 0) || 0,
+          },
+          ts: Date.now()
+        });
+        const mod = u.protocol === 'https:' ? https : http;
+        const req2 = mod.request({
+          method: 'POST',
+          hostname: u.hostname,
+          port: u.port || (u.protocol === 'https:' ? 443 : 80),
+          path: u.pathname || '/event',
+          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+        });
+        req2.on('error', () => {});
+        req2.write(payload);
+        req2.end();
+      })();
+    } catch (_) {}
+    // #endregion
 
     let passagens = Array.isArray(pair?.rows) ? pair.rows : [];
     const range = _relatoriosResolveDateRange(req.query || {}, {});
@@ -10662,12 +10879,13 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     try { passagens = await _normalizarMaquinasPassagens(passagens); } catch (_) {}
     try { passagens = _dedupePassagensMaquinaRows(passagens); } catch (_) {}
     try { passagens = (Array.isArray(passagens) ? passagens.slice() : []).sort((a, b) => _timestampPassagem(b) - _timestampPassagem(a)); } catch (_) {}
-    const count = Number((Array.isArray(passagens) ? passagens.length : 0) || 0) || 0;
+    const totalFull = Number((Array.isArray(passagens) ? passagens.length : 0) || 0) || 0;
+    const paged = (Array.isArray(passagens) ? passagens.slice(offset, offset + limit) : []);
     // #region debug-point C:passagens-historico-success
     try {
       _reportProdBlockersDebug('C', 'server.js:/api/passagens/historico:success', '[DEBUG] /api/passagens/historico response ok', {
         rid: String(req._rid || ''),
-        total: Number(count || passagens.length || 0) || 0,
+        total: Number(totalFull || 0) || 0,
         page,
         limit,
         offset,
@@ -10676,8 +10894,8 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     // #endregion
     res.json({
       ok: true,
-      passagens: passagens,
-      total: count || passagens.length || 0,
+      passagens: paged,
+      total: totalFull || 0,
       page,
       limit,
       offset,
