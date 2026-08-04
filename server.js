@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260804161000';
-const SW_RUNTIME_VERSION = '20260804161000';
+const PATCH_RUNTIME_VERSION = '20260804162000';
+const SW_RUNTIME_VERSION = '20260804162000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
@@ -9901,15 +9901,14 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
 
   if (!range?.inicio || !range?.fim) return { rows: [], count: 0 };
 
-  const cols = [
-    'id', 'numero', 'of', 'cli_id', 'cliente_nome', 'cliente', 'cliNome', 'clinome',
+  let selectCols = [
+    'id', 'numero', 'of', 'cli_id', 'cliente_nome', 'cliNome', 'clinome', 'nome_cliente',
     'descricao', 'produto', 'quantidade', 'qtd', 'qtd_produzida', 'valor_total', 'valor_venda',
     'valor_unitario', 'preco', 'cores_impressao', 'dim_comprimento', 'dim_largura',
     'caixa_comprimento', 'caixa_largura', 'maq', 'maquina_agendada', 'maquina', 'maquina_atual',
     'fluxo_maquinas', 'passagens_maquina', 'passagens_por_maquina', 'data_conclusao', 'created_at', 'updated_at',
     'status', 'empresa_id', 'emp_id'
   ];
-  const selectExpr = cols.join(',');
 
   const fimTs = range.fim + 'T23:59:59.999Z';
   const batchSize = 1200;
@@ -9917,13 +9916,37 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
   const ofs = [];
 
   while (true) {
-    let q = supabase.from('ofs').select(selectExpr).gte('data_conclusao', range.inicio).lte('data_conclusao', fimTs).order('data_conclusao', { ascending: false });
-    if (empId) q = q.or('emp_id.eq.' + empId + ',empresa_id.eq.' + empId + ',empresa_id.is.null');
-    else if (empresaUuid) q = q.or('empresa_id.eq.' + empresaUuid + ',empresa_id.is.null');
-    q = q.range(offset, offset + batchSize - 1);
+    const execBatch = async (withEmpresaFilter) => {
+      let q = supabase
+        .from('ofs')
+        .select(selectCols.join(','))
+        .gte('data_conclusao', range.inicio)
+        .lte('data_conclusao', fimTs)
+        .order('data_conclusao', { ascending: false })
+        .range(offset, offset + batchSize - 1);
+      if (withEmpresaFilter) {
+        if (empId) q = q.or('emp_id.eq.' + empId + ',empresa_id.eq.' + empId + ',empresa_id.is.null');
+        else if (empresaUuid) q = q.or('empresa_id.eq.' + empresaUuid + ',empresa_id.is.null');
+      }
+      return await q;
+    };
 
-    const r = await q;
+    let r = await execBatch(true);
+    if (r?.error) {
+      const msg = String(r.error.message || r.error || '');
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+(?:ofs\.)?\"?([a-z0-9_]+)\"?\s+does not exist/i);
+      const missingCol = (m1 && m1[1]) || (m2 && m2[1]) || '';
+      if (missingCol && selectCols.includes(missingCol)) {
+        selectCols = selectCols.filter((c) => c !== missingCol);
+        continue;
+      }
+      if ((msg.includes('does not exist') || msg.includes('Could not find') || msg.includes('column')) && (msg.includes('emp_id') || msg.includes('empresa_id'))) {
+        r = await execBatch(false);
+      }
+    }
     if (r?.error) throw r.error;
+
     const chunk = Array.isArray(r?.data) ? r.data : [];
     if (!chunk.length) break;
     chunk.forEach((row) => ofs.push(row));
@@ -9941,7 +9964,7 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
     if (!ofId) return;
     const ofNumero = String(of?.numero ?? of?.of ?? '').trim();
 
-    const clienteRaw = String(of?.cliente_nome || of?.cliente || of?.cliNome || of?.clinome || '').trim();
+    const clienteRaw = String(of?.cliente_nome || of?.cliNome || of?.clinome || of?.nome_cliente || '').trim();
     const clienteLow = clienteRaw.toLowerCase();
     if (clienteNeedle && !clienteLow.includes(clienteNeedle)) return;
 
