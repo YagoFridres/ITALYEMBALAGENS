@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -10215,7 +10215,11 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
       || (numeroRef ? (byNumero.get(numeroRef) || null) : null)
       || (numeroRef ? (byNumero.get(_normalizarNumeroOfRef(numeroRef)) || null) : null)
       || (numeroRef ? (byNumero.get(_normalizarNumeroOfDigits(numeroRef)) || null) : null);
-    if (!of) return p;
+    if (!of) {
+      // Descarta passagens órfãs para manter o Histórico preso à OF canônica atual.
+      if (oid || numeroRef) return null;
+      return p;
+    }
 
     const clienteOf = clientesMap.get(String(of?.cli_id || '').trim()) || '';
     const prodOf = String(of?.descricao || '').trim();
@@ -10238,6 +10242,7 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
 
     return {
       ...p,
+      ...(oid ? {} : (String(of?.id || '').trim() ? { of_id: String(of.id).trim() } : {})),
       ...(p?.of_numero ? {} : (numeroOf ? { of_numero: numeroOf } : {})),
       ...((String(p?.cliente || p?.cliente_nome || '').trim()) ? {} : (clienteOf ? { cliente: clienteOf, cliente_nome: clienteOf, nome_cliente: clienteOf } : {})),
       ...(p?.produto ? {} : (prodOf ? { produto: prodOf } : {})),
@@ -10246,7 +10251,7 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
       ...((vlUnit != null && !(vlUnitAtual > 0)) ? { valor_unitario: vlUnit, preco: vlUnit } : {}),
       ...((totalOf > 0 && !(valorAtual > 0)) ? { total: totalOf, valor_total: totalOf, valor_venda: totalOf } : {}),
       ...(statusOf ? { status: statusOf } : {}),
-      ...((String(p?.data_conclusao || '').trim()) ? {} : (String(of?.data_conclusao || '').trim() ? { data_conclusao: of.data_conclusao } : {})),
+      ...(String(of?.data_conclusao || '').trim() ? { data_conclusao: of.data_conclusao } : {}),
       ...((String(p?.cores_impressao || '').trim()) ? {} : (coresOf != null ? { cores_impressao: coresOf } : {})),
       ...(((p?.dim_comprimento ?? p?.caixa_comprimento) != null) ? {} : (compOf != null ? { dim_comprimento: compOf, caixa_comprimento: compOf } : {})),
       ...(((p?.dim_largura ?? p?.caixa_largura) != null) ? {} : (largOf != null ? { dim_largura: largOf, caixa_largura: largOf } : {})),
@@ -10256,7 +10261,7 @@ async function _enriquecerPassagensHistoricoComOfs(passagens) {
         maquina_nome: of?.maquina_agendada || of?.maq || null,
       } : {})
     };
-  });
+  }).filter(Boolean);
 
   // #region debug-point C:passagens-enriquecimento-done
   _debugRuntimeWrite({
