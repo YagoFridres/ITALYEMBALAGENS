@@ -25472,6 +25472,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }, {})).sort(function(a, b) {
           return (b.valor - a.valor) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
         });
+        var sugestoesCount = (Array.isArray(sugestoesCompra) ? sugestoesCompra.length : 0);
+        var badgeSugestoes = '';
+        try {
+          if (typeof patchBadgeHtml === 'function') badgeSugestoes = patchBadgeHtml(sugestoesCount);
+          else if (typeof window.patchBadgeHtml === 'function') badgeSugestoes = window.patchBadgeHtml(sugestoesCount);
+          else if (sugestoesCount) badgeSugestoes = ' <span class="patch-btn-badge">' + esc(String(sugestoesCount)) + '</span>';
+        } catch (_) {
+          if (sugestoesCount) badgeSugestoes = ' <span class="patch-btn-badge">' + esc(String(sugestoesCount)) + '</span>';
+        }
         page.innerHTML = ''
         + '<div class="pep-wrap">'
         + '  <div class="pep-cards estoque-wire-cards">'
@@ -25484,7 +25493,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF ou CNPJ" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
         + '    <button class="pep-btn primary" id="estoque-wire-buscar">Buscar</button>'
         + '    <button class="pep-btn" id="estoque-wire-mais">Carregar mais</button>'
-        + '    <button class="pep-btn" id="estoque-wire-sugestoes">Sugestões ' + patchBadgeHtml((Array.isArray(sugestoesCompra) ? sugestoesCompra.length : 0)) + '</button>'
+        + '    <button class="pep-btn" id="estoque-wire-sugestoes">Sugestões ' + badgeSugestoes + '</button>'
         + '    <button class="pep-btn" id="estoque-wire-imprimir">Imprimir Relatório</button>'
         + '  </div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px">'
         + '    <span style="font-size:12px;color:#94a3b8;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Filtros rápidos</span>'
