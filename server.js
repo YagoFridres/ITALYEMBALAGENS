@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260804173000';
-const SW_RUNTIME_VERSION = '20260804173000';
+const PATCH_RUNTIME_VERSION = '20260804174500';
+const SW_RUNTIME_VERSION = '20260804174500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
@@ -9925,7 +9925,7 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
     'descricao', 'produto', 'quantidade', 'qtd', 'qtd_produzida', 'valor_total', 'valor_venda',
     'valor_unitario', 'preco', 'cores_impressao', 'dim_comprimento', 'dim_largura',
     'caixa_comprimento', 'caixa_largura', 'maq', 'maquina_agendada', 'maquina', 'maquina_atual',
-    'fluxo_maquinas', 'passagens_maquina', 'passagens_por_maquina', 'data_faturamento', 'data_conclusao', 'dia', 'created_at', 'updated_at',
+    'fluxo_maquinas', 'passagens_maquina', 'passagens_por_maquina', 'data_faturamento', 'data_conclusao', 'dia', 'created_at', 'updated_at', 'deleted_at',
     'status', 'empresa_id', 'emp_id'
   ];
 
@@ -9939,6 +9939,7 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
         .from('ofs')
         .select(selectCols.join(','))
         .not('passagens_maquina', 'is', null)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .range(offset, offset + batchSize - 1);
       if (withEmpresaFilter) {
