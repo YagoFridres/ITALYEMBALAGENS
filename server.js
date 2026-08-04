@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260804171000';
-const SW_RUNTIME_VERSION = '20260804171000';
+const PATCH_RUNTIME_VERSION = '20260804173000';
+const SW_RUNTIME_VERSION = '20260804173000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
@@ -9915,9 +9915,8 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
   const maquinaNeedleRaw = String(cfg.maquina || '').trim();
   const maquinaNeedle = _canonMaqNome(maquinaNeedleRaw) || String(maquinaNeedleRaw || '').trim();
   const range = _passagensResolveRangeForOfs(cfg);
-  const empId = String(cfg.emp_id ?? cfg.empId ?? req.query.emp_id ?? req.query.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? '').trim();
-  let empresaUuid = '';
-  try { empresaUuid = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { empresaUuid = ''; }
+  const empId = String(cfg.emp_id ?? cfg.empId ?? req.query.emp_id ?? req.query.empId ?? req.query.empresa_id ?? req.query.empresaId ?? '').trim();
+  const empresaUuid = _isUuid(empId) ? empId : '';
 
   if (!range?.inicio || !range?.fim) return { rows: [], count: 0 };
 
@@ -9943,8 +9942,8 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
         .order('created_at', { ascending: false })
         .range(offset, offset + batchSize - 1);
       if (withEmpresaFilter) {
-        if (empId) q = q.or('emp_id.eq.' + empId + ',empresa_id.eq.' + empId + ',empresa_id.is.null');
-        else if (empresaUuid) q = q.or('empresa_id.eq.' + empresaUuid + ',empresa_id.is.null');
+        if (empId && !empresaUuid) q = q.or('emp_id.eq.' + empId + ',empresa_id.eq.' + empId);
+        else if (empresaUuid) q = q.eq('empresa_id', empresaUuid);
       }
       return await q;
     };
