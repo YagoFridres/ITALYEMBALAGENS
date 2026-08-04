@@ -25342,8 +25342,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       } catch (_) {}
       // #endregion
       try {
-        var lista = await _estoqueFetchChapasList(10000);
+        var limiteAtual = Math.max(1, Math.trunc(Number(window.__estoqueWireLimit || 0) || 2000));
+        var tentativas = [limiteAtual, 5000, 2000, 800, 500].filter(function(v, idx, arr) { return v > 0 && arr.indexOf(v) === idx; });
+        var lista = null;
+        var limiteUsado = 0;
+        var lastErr = null;
+        for (var ti = 0; ti < tentativas.length; ti += 1) {
+          try {
+            limiteUsado = tentativas[ti];
+            lista = await _estoqueFetchChapasList(limiteUsado);
+            break;
+          } catch (e) {
+            lastErr = e;
+            try { _resetChapasCaches(); } catch (_) {}
+          }
+        }
+        if (!lista) throw lastErr || new Error('Falha ao carregar chapas do estoque');
         lista = Array.isArray(lista) ? lista : [];
+        window.__estoqueWireLimit = limiteUsado || limiteAtual;
         try { await _estoqueFetchSugestoesCompra(false); } catch (_) {}
         var filtroRapido = String(window.__estoqueWireFiltroRapido || '').trim().toLowerCase();
         if (filtroRapido !== 'baixo200' && filtroRapido !== 'zeradas') filtroRapido = '';
@@ -25391,6 +25407,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
         + '    <input class="pep-input" id="estoque-wire-busca" placeholder="Buscar por fornecedor, gramatura, nomenclatura, tamanho, nome, NF ou CNPJ" value="' + esc(window.__estoqueWireBusca || '') + '" style="flex:1;min-width:320px">'
         + '    <button class="pep-btn primary" id="estoque-wire-buscar">Buscar</button>'
+        + '    <button class="pep-btn" id="estoque-wire-mais">Carregar mais</button>'
         + '    <button class="pep-btn" id="estoque-wire-sugestoes">Sugestões ' + patchBadgeHtml((Array.isArray(sugestoesCompra) ? sugestoesCompra.length : 0)) + '</button>'
         + '    <button class="pep-btn" id="estoque-wire-imprimir">Imprimir Relatório</button>'
         + '  </div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px">'
@@ -25431,6 +25448,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       // #endregion
       document.getElementById('estoque-wire-buscar').onclick = function() {
         window.__estoqueWireBusca = String((document.getElementById('estoque-wire-busca') || {}).value || '').trim();
+        renderEstoqueWireframePage();
+      };
+      var btnMaisEstoque = document.getElementById('estoque-wire-mais');
+      if (btnMaisEstoque) btnMaisEstoque.onclick = function() {
+        var atual = Math.max(1, Math.trunc(Number(window.__estoqueWireLimit || 0) || 2000));
+        window.__estoqueWireLimit = Math.min(10000, atual + 1000);
         renderEstoqueWireframePage();
       };
       var btnSugestoesEstoque = document.getElementById('estoque-wire-sugestoes');
@@ -34304,7 +34327,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         return (Array.isArray(lista) ? lista : []).slice(0, requested);
       });
     }
-    var fetchLimit = Math.max(requested, 10000);
+    var fetchLimit = Math.max(requested, 500);
+    fetchLimit = Math.min(fetchLimit, 5000);
     var qs = new URLSearchParams();
     qs.set('limit', String(fetchLimit));
     if (empId) qs.set('empId', empId);
@@ -35868,6 +35892,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       host.style.maxWidth = 'min(1120px, calc(100vw - 24px))';
       host.style.maxHeight = '280px';
       host.style.overflow = 'auto';
+      host.style.pointerEvents = 'auto';
       host.style.border = '1px solid rgba(96,165,250,.28)';
       host.style.borderRadius = '14px';
       host.style.background = 'rgba(15,23,42,.98)';
@@ -35897,6 +35922,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       resultHost.innerHTML = '';
       resultHost.style.display = 'none';
     }
+    try {
+      if (chapaEl) chapaEl.dispatchEvent(new Event('change', { bubbles: true }));
+      if (searchEl) searchEl.dispatchEvent(new Event('input', { bubbles: true }));
+    } catch (_) {}
     _entradaEstoqueAtualizarLinha(tr, chapas);
   }
 
@@ -35927,7 +35956,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return ''
         + '<button type="button" class="est-ent-result-item' + (active ? ' is-active' : '') + '"'
         + ' data-est-ent-result="' + _escapeHtmlLite(chapaId) + '"'
-        + ' style="display:grid;gap:4px;width:100%;min-width:0;text-align:left;border:1px solid ' + (active ? 'rgba(96,165,250,.38)' : 'rgba(148,163,184,.1)') + ';background:' + (active ? 'rgba(30,64,175,.24)' : 'rgba(15,23,42,.92)') + ';color:#e2e8f0;border-radius:12px;padding:10px 12px;margin:0 0 6px 0;cursor:pointer;overflow:visible">'
+        + ' style="display:grid;gap:4px;width:100%;min-width:0;text-align:left;min-height:62px;border:1px solid ' + (active ? 'rgba(96,165,250,.38)' : 'rgba(148,163,184,.1)') + ';background:' + (active ? 'rgba(30,64,175,.24)' : 'rgba(15,23,42,.92)') + ';color:#e2e8f0;border-radius:12px;padding:10px 12px;margin:0 0 6px 0;cursor:pointer;overflow:visible">'
         + '  <span style="font-size:13px;font-weight:800;line-height:1.45;white-space:normal;word-break:normal;overflow-wrap:anywhere">' + _escapeHtmlLite(_entradaEstoqueChapaLabel(chapa)) + '</span>'
         + '  <span style="font-size:11px;color:#94a3b8">Resultado ' + _escapeHtmlLite(String(idx + 1)) + ' de ' + _escapeHtmlLite(String(rows.length)) + '</span>'
         + '</button>';
@@ -35939,7 +35968,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         _entradaEstoqueSelecionarBusca(tr, chapas, String(btn.getAttribute('data-est-ent-result') || '').trim());
       };
       btn.addEventListener('pointerdown', selectCurrent);
+      btn.addEventListener('pointerup', selectCurrent);
       btn.addEventListener('mousedown', selectCurrent);
+      btn.addEventListener('mouseup', selectCurrent);
       btn.addEventListener('click', selectCurrent);
     });
   }
