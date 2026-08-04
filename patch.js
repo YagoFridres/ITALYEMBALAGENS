@@ -32346,6 +32346,1190 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 })();
 
 
+(function patchFinalRoundAug20260804() {
+  if (window.__patchFinalRoundAug20260804) return;
+  window.__patchFinalRoundAug20260804 = true;
+
+  function esc(v) {
+    try {
+      return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    } catch (_) {
+      return '';
+    }
+  }
+  function escAttr2(v) {
+    return esc(v).replace(/'/g, '&#39;');
+  }
+  function num(v) {
+    return Number(v || 0) || 0;
+  }
+  function int(v) {
+    return Math.trunc(num(v));
+  }
+  function fmtNumPt(v, d) {
+    return num(v).toLocaleString('pt-BR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 });
+  }
+  function fmtMoneyPt(v) {
+    return 'R$ ' + fmtNumPt(v, 2);
+  }
+  function fmtDatePt(v) {
+    var raw = String(v || '').slice(0, 10);
+    if (!raw) return '—';
+    var p = raw.split('-');
+    return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : raw;
+  }
+  function text(v, fallback) {
+    var out = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+    return out || (fallback || '');
+  }
+  function lower(v) {
+    return text(v).toLowerCase();
+  }
+  function pickClientKey(row) {
+    return text(row && (row.cliente_id || row.cli_id || row.id || row.cliente_nome || row.cliente), '').toLowerCase();
+  }
+  function reportRefOrDefaultJuly() {
+    try {
+      if (typeof rrCurrentRange === 'function') {
+        var current = rrCurrentRange();
+        if (current && current.data_inicio && current.data_fim) return current;
+      }
+    } catch (_) {}
+    return { data_inicio: '2026-07-01', data_fim: '2026-07-31', titulo: '01/07/2026 a 31/07/2026' };
+  }
+  function monthRefFromRange(ref) {
+    var base = String(ref && ref.data_inicio || '2026-07-01').slice(0, 7);
+    return /^\d{4}-\d{2}$/.test(base) ? base : '2026-07';
+  }
+  function listJson(json, paths) {
+    var arr = [];
+    try {
+      if (typeof rrList === 'function') return rrList(json, paths);
+    } catch (_) {}
+    (Array.isArray(paths) ? paths : []).some(function(key) {
+      if (Array.isArray(json && json[key])) {
+        arr = json[key];
+        return true;
+      }
+      return false;
+    });
+    return arr;
+  }
+  function getTokenCompat() {
+    try {
+      return String(
+        (typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '')
+        || localStorage.getItem('token')
+        || localStorage.getItem('access_token')
+        || sessionStorage.getItem('token')
+        || ''
+      ).trim();
+    } catch (_) {
+      return '';
+    }
+  }
+  function authHeadersCompat(extra) {
+    var token = getTokenCompat();
+    return Object.assign({}, extra || {}, token ? { Authorization: 'Bearer ' + token } : {});
+  }
+  function fetchJsonCompat(url, opts) {
+    if (typeof rrFetchJson === 'function' && (!opts || !opts.method || String(opts.method).toUpperCase() === 'GET')) {
+      return rrFetchJson(url);
+    }
+    return fetch(url, Object.assign({}, opts || {}, { headers: authHeadersCompat((opts && opts.headers) || {}) }))
+      .then(function(resp) { return resp.json(); });
+  }
+  function upsertReportCard(def, afterId) {
+    try {
+      if (typeof rrDefs === 'undefined' || !Array.isArray(rrDefs)) return;
+      var id = String(def && def.id || '').trim();
+      if (!id) return;
+      var existing = rrDefs.findIndex(function(item) { return String(item && item.id || '').trim() === id; });
+      if (existing >= 0) {
+        rrDefs[existing] = Object.assign({}, rrDefs[existing], def);
+        return;
+      }
+      var idx = rrDefs.findIndex(function(item) { return String(item && item.id || '').trim() === String(afterId || '').trim(); });
+      if (idx >= 0) rrDefs.splice(idx + 1, 0, def);
+      else rrDefs.push(def);
+    } catch (_) {}
+  }
+
+  async function rrReportClientesMaisCompraramFinal() {
+    var ref = reportRefOrDefaultJuly();
+    var json = await fetchJsonCompat('/api/relatorios/clientes-mais-compraram?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var resumo = json && json.resumo || {};
+    var rows = listJson(json, ['rows', 'data', 'clientes']);
+    return rrOpenPrint({
+      title: 'Relatório de Clientes que Mais Compraram',
+      periodo: ref.titulo,
+      introHtml: '<div style="font-size:12px;color:#cbd5e1;line-height:1.6">Fórmula oficial aplicada: <strong>SUM(valor_total)</strong> com status <strong>Concluído</strong>, <strong>deleted_at IS NULL</strong>, agrupamento por <strong>clinome</strong> e data via <strong>COALESCE(data_faturamento, data_conclusao, dia, created_at)</strong>.</div>',
+      cards: [
+        { label: 'Clientes', value: rrFmtNum(resumo.total_clientes || rows.length, 0), sub: 'Base completa do período' },
+        { label: 'Valor Total', value: rrFmtMoney(resumo.valor_total || rows.reduce(function(s, r) { return s + num(r && r.valor_total); }, 0)), sub: 'Total oficial consolidado' },
+        { label: 'Ticket Médio Geral', value: rrFmtMoney(resumo.ticket_medio_geral || 0), sub: 'Valor total dividido por OFs concluídas' },
+        { label: 'Caixas Compradas', value: rrFmtNum(resumo.total_caixas || rows.reduce(function(s, r) { return s + int(r && r.caixas_compradas); }, 0), 0), sub: 'Caixas vendidas no período' }
+      ],
+      summaryTitle: 'Ranking completo',
+      summaryHeaders: ['Cliente', 'Valor Total', 'Caixas Compradas', 'Nº Pedidos', 'Ticket Médio'],
+      summaryRows: rows.map(function(row) {
+        return [
+          rrEsc(text(row && row.cliente_nome, '—')),
+          rrEsc(rrFmtMoney(row && row.valor_total || 0)),
+          rrEsc(rrFmtNum(row && row.caixas_compradas || 0, 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.ticket_medio || 0))
+        ];
+      }),
+      detailTitle: 'Base completa',
+      detailHeaders: ['Cliente', 'Valor Total', 'Caixas Compradas', 'Nº Pedidos', 'Ticket Médio'],
+      detailRows: rows.map(function(row) {
+        return [
+          rrEsc(text(row && row.cliente_nome, '—')),
+          rrEsc(rrFmtMoney(row && row.valor_total || 0)),
+          rrEsc(rrFmtNum(row && row.caixas_compradas || 0, 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.ticket_medio || 0))
+        ];
+      }),
+      emptySummaryCols: 5,
+      emptyDetailCols: 5
+    });
+  }
+
+  async function rrReportClientesMenosCompraramFinal() {
+    var ref = reportRefOrDefaultJuly();
+    var json = await fetchJsonCompat('/api/relatorios/clientes-mais-compraram?ordem=asc&data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var resumo = json && json.resumo || {};
+    var rows = listJson(json, ['rows', 'data', 'clientes']);
+    return rrOpenPrint({
+      title: 'Relatório de Clientes que Menos Compraram',
+      periodo: ref.titulo,
+      introHtml: '<div style="font-size:12px;color:#cbd5e1;line-height:1.6">Mesmo critério oficial do ranking principal, apenas ordenado do menor para o maior faturamento.</div>',
+      cards: [
+        { label: 'Clientes', value: rrFmtNum(resumo.total_clientes || rows.length, 0), sub: 'Base completa do período' },
+        { label: 'Valor Total', value: rrFmtMoney(resumo.valor_total || rows.reduce(function(s, r) { return s + num(r && r.valor_total); }, 0)), sub: 'Total oficial consolidado' },
+        { label: 'Ticket Médio Geral', value: rrFmtMoney(resumo.ticket_medio_geral || 0), sub: 'Valor total dividido por OFs concluídas' },
+        { label: 'Caixas Compradas', value: rrFmtNum(resumo.total_caixas || rows.reduce(function(s, r) { return s + int(r && r.caixas_compradas); }, 0), 0), sub: 'Caixas vendidas no período' }
+      ],
+      summaryTitle: 'Ranking completo',
+      summaryHeaders: ['Cliente', 'Valor Total', 'Caixas Compradas', 'Nº Pedidos', 'Ticket Médio'],
+      summaryRows: rows.map(function(row) {
+        return [
+          rrEsc(text(row && row.cliente_nome, '—')),
+          rrEsc(rrFmtMoney(row && row.valor_total || 0)),
+          rrEsc(rrFmtNum(row && row.caixas_compradas || 0, 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.ticket_medio || 0))
+        ];
+      }),
+      detailTitle: 'Base completa',
+      detailHeaders: ['Cliente', 'Valor Total', 'Caixas Compradas', 'Nº Pedidos', 'Ticket Médio'],
+      detailRows: rows.map(function(row) {
+        return [
+          rrEsc(text(row && row.cliente_nome, '—')),
+          rrEsc(rrFmtMoney(row && row.valor_total || 0)),
+          rrEsc(rrFmtNum(row && row.caixas_compradas || 0, 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.ticket_medio || 0))
+        ];
+      }),
+      emptySummaryCols: 5,
+      emptyDetailCols: 5
+    });
+  }
+
+  async function rrReportLucratividadePorMaquina() {
+    var ref = reportRefOrDefaultJuly();
+    var json = await fetchJsonCompat('/api/relatorios/lucratividade-por-maquina?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var rows = listJson(json, ['rows', 'data']);
+    return rrOpenPrint({
+      title: 'Lucratividade por Máquina',
+      periodo: ref.titulo,
+      introHtml: '<div style="font-size:12px;color:#cbd5e1;line-height:1.6">Fonte canônica: <strong>ofs.passagens_maquina</strong>. Data do período: <strong>COALESCE(data_faturamento, data_conclusao, dia, created_at)</strong>. Custos: <strong>custo_m2_venda × área total da OF</strong>.</div>',
+      cards: [
+        { label: 'Máquinas', value: rrFmtNum(rows.length, 0), sub: 'Catálogo produtivo auditado' },
+        { label: 'Venda Gerada', value: rrFmtMoney(rows.reduce(function(s, r) { return s + num(r && r.valor_venda_gerado); }, 0)), sub: 'Somatório das passagens válidas' },
+        { label: 'Custos Totais', value: rrFmtMoney(rows.reduce(function(s, r) { return s + num(r && r.custos_totais); }, 0)), sub: 'Custo por área consolidado' },
+        { label: 'Valor Perdido', value: rrFmtMoney(rows.reduce(function(s, r) { return s + num(r && r.valor_perdido); }, 0)), sub: 'Perdas por máquina no período' }
+      ],
+      summaryTitle: 'Resumo por máquina',
+      summaryHeaders: ['Máquina', 'Venda Gerada', 'Caixas Produzidas', 'Caixas Perdidas', 'Custos Totais', 'Cliente Principal'],
+      summaryRows: rows.map(function(row) {
+        var principal = row && row.cliente_principal;
+        return [
+          rrEsc(text(row && row.maquina, '—')),
+          rrEsc(rrFmtMoney(row && row.valor_venda_gerado || 0)),
+          rrEsc(rrFmtNum(row && row.quantidade_caixas_produzidas || 0, 0)),
+          rrEsc(rrFmtNum(row && row.quantidade_caixas_perdidas || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.custos_totais || 0)),
+          rrEsc(principal ? (text(principal.cliente_nome, '—') + ' (' + rrFmtNum(principal.total || 0, 0) + ')') : '—')
+        ];
+      }),
+      detailTitle: 'Detalhamento analítico',
+      detailHeaders: ['Máquina', 'OFs', 'Passagens', 'Ton. Produzidas', 'Ton. Perdidas', 'Valor Perdido', 'Tipo Caixa', 'Cores Mais Usadas', 'Clientes Mais Frequentes'],
+      detailRows: rows.map(function(row) {
+        var coresTop = Array.isArray(row && row.cores_top) ? row.cores_top : [];
+        var clientesTop = Array.isArray(row && row.clientes_top) ? row.clientes_top : [];
+        return [
+          rrEsc(text(row && row.maquina, '—')),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtNum(row && row.total_passagens || 0, 0)),
+          rrEsc(rrFmtNum(row && row.toneladas_produzidas || 0, 3) + ' t'),
+          rrEsc(rrFmtNum(row && row.toneladas_perdidas || 0, 3) + ' t'),
+          rrEsc(rrFmtMoney(row && row.valor_perdido || 0)),
+          rrEsc(text(row && row.tipo_caixa_principal && row.tipo_caixa_principal.tipo_caixa, '—')),
+          rrEsc(coresTop.length ? coresTop.map(function(item) { return text(item && item.cor, '—') + ' (' + rrFmtNum(item && item.total || 0, 0) + ')'; }).join(' • ') : '—'),
+          rrEsc(clientesTop.length ? clientesTop.map(function(item) { return text(item && item.cliente_nome, '—') + ' (' + rrFmtNum(item && item.total || 0, 0) + ')'; }).join(' • ') : '—')
+        ];
+      }),
+      emptySummaryCols: 6,
+      emptyDetailCols: 9
+    });
+  }
+
+  async function rrReportChecklistRecebimentoCentral() {
+    var ref = reportRefOrDefaultJuly();
+    var mes = monthRefFromRange(ref);
+    var json = await fetchJsonCompat('/api/recebimento_insumos?mes=' + encodeURIComponent(mes));
+    var rows = listJson(json, ['data', 'rows']);
+    rows = rows.filter(function(row) {
+      var d = String(row && row.data_recebimento || '').slice(0, 10);
+      return !ref.data_inicio || !ref.data_fim || (!d ? true : (d >= ref.data_inicio && d <= ref.data_fim));
+    });
+    var devolucoes = rows.filter(function(row) { return !!(row && row.devolucao); }).length;
+    var fornecedores = {};
+    rows.forEach(function(row) { fornecedores[text(row && row.fornecedor)] = true; });
+    return rrOpenPrint({
+      title: 'Checklist de Recebimento',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Checklist(s)', value: rrFmtNum(rows.length, 0), sub: 'Recebimentos encontrados' },
+        { label: 'Quantidade Recebida', value: rrFmtNum(rows.reduce(function(s, r) { return s + int(r && r.quantidade); }, 0), 0), sub: 'Itens conferidos no período' },
+        { label: 'Fornecedores', value: rrFmtNum(Object.keys(fornecedores).filter(Boolean).length, 0), sub: 'Base impressa para conferência' },
+        { label: 'Devoluções', value: rrFmtNum(devolucoes, 0), sub: 'Registros marcados com devolução' }
+      ],
+      summaryTitle: 'Resumo imprimível',
+      summaryHeaders: ['Data', 'NF', 'Produto', 'Fornecedor', 'Quantidade', 'Cliente'],
+      summaryRows: rows.map(function(row) {
+        return [
+          rrEsc(fmtDatePt(row && row.data_recebimento)),
+          rrEsc(text(row && row.nota_fiscal, '—')),
+          rrEsc(text(row && row.produto, '—')),
+          rrEsc(text(row && row.fornecedor, '—')),
+          rrEsc(rrFmtNum(row && row.quantidade || 0, 0)),
+          rrEsc(text(row && row.cliente, '—'))
+        ];
+      }),
+      detailTitle: 'Checklist completo',
+      detailHeaders: ['Data', 'Placa', 'NF', 'Produto', 'Fornecedor', 'Quantidade', 'OC', 'Validade', 'Responsável', 'Devolução', 'Cliente'],
+      detailRows: rows.map(function(row) {
+        return [
+          rrEsc(fmtDatePt(row && row.data_recebimento)),
+          rrEsc(text(row && row.placa_veiculo, '—')),
+          rrEsc(text(row && row.nota_fiscal, '—')),
+          rrEsc(text(row && row.produto, '—')),
+          rrEsc(text(row && row.fornecedor, '—')),
+          rrEsc(rrFmtNum(row && row.quantidade || 0, 0)),
+          rrEsc(text(row && row.ordem_compra, '—')),
+          rrEsc(fmtDatePt(row && row.data_validade)),
+          rrEsc(text(row && row.responsavel, '—')),
+          rrEsc(row && row.devolucao ? 'Sim' : 'Não'),
+          rrEsc(text(row && row.cliente, '—'))
+        ];
+      }),
+      emptySummaryCols: 6,
+      emptyDetailCols: 11
+    });
+  }
+
+  async function rrReportComprasFornecedorCentral() {
+    var ref = reportRefOrDefaultJuly();
+    var rows = typeof window._compraPapelaoFetchReport === 'function'
+      ? await window._compraPapelaoFetchReport('fornecedor', ref.data_inicio, ref.data_fim)
+      : [];
+    return rrOpenPrint({
+      title: 'Compras por Fornecedor',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Fornecedores', value: rrFmtNum(rows.length, 0), sub: 'Consolidação do período' },
+        { label: 'Compras', value: rrFmtNum(rows.reduce(function(s, r) { return s + int(r && r.total_compras); }, 0), 0), sub: 'Pedidos consolidados' },
+        { label: 'Quantidade', value: rrFmtNum(rows.reduce(function(s, r) { return s + num(r && r.quantidade); }, 0), 0), sub: 'Quantidade comprada' },
+        { label: 'Valor Total', value: rrFmtMoney(rows.reduce(function(s, r) { return s + num(r && r.valor_total); }, 0)), sub: 'Financeiro consolidado' }
+      ],
+      summaryTitle: 'Resumo por fornecedor',
+      summaryHeaders: ['Fornecedor', 'Compras', 'Quantidade', 'Área m²', 'Valor Total'],
+      summaryRows: rows.map(function(row) {
+        return [
+          rrEsc(text(row && row.fornecedor, '—')),
+          rrEsc(rrFmtNum(row && row.total_compras || 0, 0)),
+          rrEsc(rrFmtNum(row && row.quantidade || 0, 0)),
+          rrEsc(rrFmtNum(row && row.area_m2 || 0, 4)),
+          rrEsc(rrFmtMoney(row && row.valor_total || 0))
+        ];
+      }),
+      detailTitle: 'Base completa',
+      detailHeaders: ['Fornecedor', 'Compras', 'Quantidade', 'Área m²', 'Valor Total'],
+      detailRows: rows.map(function(row) {
+        return [
+          rrEsc(text(row && row.fornecedor, '—')),
+          rrEsc(rrFmtNum(row && row.total_compras || 0, 0)),
+          rrEsc(rrFmtNum(row && row.quantidade || 0, 0)),
+          rrEsc(rrFmtNum(row && row.area_m2 || 0, 4)),
+          rrEsc(rrFmtMoney(row && row.valor_total || 0))
+        ];
+      }),
+      emptySummaryCols: 5,
+      emptyDetailCols: 5
+    });
+  }
+
+  async function rrReportComprasResumoCentral() {
+    var ref = reportRefOrDefaultJuly();
+    var resumo = typeof window._compraPapelaoFetchReport === 'function'
+      ? await window._compraPapelaoFetchReport('resumo', ref.data_inicio, ref.data_fim)
+      : { total_compras: 0, quantidade: 0, area_m2: 0, valor_total: 0 };
+    resumo = resumo || { total_compras: 0, quantidade: 0, area_m2: 0, valor_total: 0 };
+    return rrOpenPrint({
+      title: 'Quantidade e Valor Comprado',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Compras', value: rrFmtNum(resumo.total_compras || 0, 0), sub: 'Pedidos de compra no período' },
+        { label: 'Quantidade', value: rrFmtNum(resumo.quantidade || 0, 0), sub: 'Quantidade consolidada' },
+        { label: 'Área m²', value: rrFmtNum(resumo.area_m2 || 0, 4), sub: 'Área total comprada' },
+        { label: 'Valor Total', value: rrFmtMoney(resumo.valor_total || 0), sub: 'Financeiro consolidado' }
+      ],
+      summaryTitle: 'Resumo consolidado',
+      summaryHeaders: ['Métrica', 'Valor'],
+      summaryRows: [
+        ['Compras', rrFmtNum(resumo.total_compras || 0, 0)],
+        ['Quantidade', rrFmtNum(resumo.quantidade || 0, 0)],
+        ['Área m²', rrFmtNum(resumo.area_m2 || 0, 4)],
+        ['Valor Total', rrFmtMoney(resumo.valor_total || 0)]
+      ].map(function(row) { return row.map(rrEsc); }),
+      detailTitle: 'Resumo consolidado',
+      detailHeaders: ['Métrica', 'Valor'],
+      detailRows: [
+        ['Compras', rrFmtNum(resumo.total_compras || 0, 0)],
+        ['Quantidade', rrFmtNum(resumo.quantidade || 0, 0)],
+        ['Área m²', rrFmtNum(resumo.area_m2 || 0, 4)],
+        ['Valor Total', rrFmtMoney(resumo.valor_total || 0)]
+      ].map(function(row) { return row.map(rrEsc); }),
+      emptySummaryCols: 2,
+      emptyDetailCols: 2
+    });
+  }
+
+  async function rrReportComissoesByClient() {
+    var ref = reportRefOrDefaultJuly();
+    var json = await fetchJsonCompat('/api/comissoes/relatorio?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var grupos = listJson(json, ['clientes', 'grupos', 'vendedores']);
+    var ofs = listJson(json, ['ofs']);
+    return rrOpenPrint({
+      title: 'Relatório de Comissões por Cliente',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'Total Vendido', value: rrFmtMoney(json && json.total_vendido || 0), sub: 'Período selecionado' },
+        { label: 'Total Comissão', value: rrFmtMoney(json && json.total_comissao || 0), sub: 'Comissões calculadas' },
+        { label: 'OFs', value: rrFmtNum(json && json.total_ofs || 0, 0), sub: 'Pedidos concluídos' },
+        { label: 'Clientes', value: rrFmtNum(grupos.length, 0), sub: 'Clientes agrupados no período' }
+      ],
+      summaryTitle: 'Resumo por cliente',
+      summaryHeaders: ['Cliente', 'OFs', 'Total Vendido', '% Médio', 'Comissão'],
+      summaryRows: grupos.map(function(v) {
+        return [
+          rrEsc(text(v && (v.nome || v.cliente_nome), '—')),
+          rrEsc(rrFmtNum(v && v.ofs || 0, 0)),
+          rrEsc(rrFmtMoney(v && v.total || 0)),
+          rrEsc(rrFmtNum(v && v.comissao_pct || 0, 2) + '%'),
+          rrEsc(rrFmtMoney(v && v.comissao_rs || 0))
+        ];
+      }),
+      detailTitle: 'Detalhamento das OFs',
+      detailHeaders: ['OF', 'Cliente', 'Vendedor', 'Valor Total', '%', 'Comissão', 'Data Conclusão', 'Status'],
+      detailRows: ofs.map(function(of) {
+        return [
+          rrEsc(String(of && (of.numero || of.of_numero || of.of) || '—')),
+          rrEsc(text(of && (of.cliente_nome || of.cliente), '—')),
+          rrEsc(text(of && of.vendedor, '—')),
+          rrEsc(rrFmtMoney(of && of.valor_total || 0)),
+          rrEsc(rrFmtNum(of && of.comissao_pct || 0, 2) + '%'),
+          rrEsc(rrFmtMoney(of && of.comissao_rs || 0)),
+          rrEsc(rrFmtDate(of && (of.data_conclusao || of.created_at))),
+          rrEsc(text(of && of.status, '—'))
+        ];
+      }),
+      emptySummaryCols: 5,
+      emptyDetailCols: 8
+    });
+  }
+
+  async function renderComissoesByClientPatch() {
+    if (window._comRodando) return;
+    window._comRodando = true;
+    try {
+      if (typeof _ensureComissoesStyle === 'function') _ensureComissoesStyle();
+      if (typeof _comBindActionDelegation === 'function') _comBindActionDelegation();
+      if (typeof _ensurePeriodoSelects === 'function') _ensurePeriodoSelects();
+      if (typeof _bindTrocarClick === 'function') _bindTrocarClick();
+      var paginaCom = (typeof _acharPaginaComissoesPatch === 'function') ? _acharPaginaComissoesPatch() : document.getElementById('page-comissoes');
+      if (!paginaCom) return;
+      Array.prototype.slice.call(paginaCom.children || []).forEach(function(child) {
+        try {
+          if (!child || child.id === '_com_topo' || child.id === '_com_detalhe') return;
+          var manterToolbar = !!(child.querySelector && child.querySelector('#com-mes, #com-ano, [name="mes-comissao"], [name="ano-comissao"], input[type="month"], button'));
+          if (!manterToolbar) child.style.display = 'none';
+        } catch (_) {}
+      });
+      var divTopo = document.getElementById('_com_topo');
+      if (!divTopo) {
+        divTopo = document.createElement('div');
+        divTopo.id = '_com_topo';
+        divTopo.style.cssText = 'padding:12px 16px 0;box-sizing:border-box;';
+        paginaCom.insertBefore(divTopo, paginaCom.firstChild || null);
+      }
+      var divDetalhe = document.getElementById('_com_detalhe');
+      if (!divDetalhe) {
+        divDetalhe = document.createElement('div');
+        divDetalhe.id = '_com_detalhe';
+        divDetalhe.style.cssText = 'padding:0 16px 24px;box-sizing:border-box;overflow-y:auto;max-height:72vh;pointer-events:auto;min-height:140px;';
+        paginaCom.appendChild(divDetalhe);
+      }
+      divTopo.innerHTML = '<p style="color:#94a3b8;padding:20px 4px">[COM] Carregando comissões por cliente...</p>';
+      divDetalhe.innerHTML = '';
+      var ref = (typeof _getPeriodoSelecionado === 'function') ? _getPeriodoSelecionado() : {};
+      var mes = String(ref.mesNum || '').trim() || String(new Date().getMonth() + 1);
+      var ano = String(ref.anoNum || '').trim() || String(new Date().getFullYear());
+      var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano), { headers: authHeadersCompat() });
+      var data = await resp.json();
+      if (!resp.ok || !data || data.ok === false) throw new Error(String(data && (data.error || data.message) || 'Falha ao carregar comissões'));
+      var gruposBase = listJson(data, ['clientes', 'grupos', 'vendedores']);
+      var todasOfsRaw = listJson(data, ['ofs']);
+      var mapa = new Map();
+      gruposBase.forEach(function(row) {
+        var key = pickClientKey(row);
+        if (!key) key = lower(row && (row.nome || row.cliente_nome)) || ('cliente-' + mapa.size);
+        mapa.set(key, {
+          id: text(row && (row.cliente_id || row.cli_id || row.id)),
+          cliente: text(row && (row.nome || row.cliente_nome), 'Sem cliente'),
+          comissao_pct: num(row && row.comissao_pct),
+          total_vendas: num(row && row.total),
+          comissao_total: num(row && row.comissao_rs),
+          ofs_count: int(row && row.ofs),
+          ofs: []
+        });
+      });
+      (todasOfsRaw || []).forEach(function(of) {
+        var key = pickClientKey(of);
+        if (!key) key = lower(of && (of.cliente_nome || of.cliente)) || ('cliente-' + mapa.size);
+        if (!mapa.has(key)) {
+          mapa.set(key, {
+            id: text(of && (of.cliente_id || of.cli_id || of.id)),
+            cliente: text(of && (of.cliente_nome || of.cliente), 'Sem cliente'),
+            comissao_pct: 0,
+            total_vendas: 0,
+            comissao_total: 0,
+            ofs_count: 0,
+            ofs: []
+          });
+        }
+        var grupo = mapa.get(key);
+        var valorTotal = num(of && (of.valor_total || of.total));
+        var comissaoPct = num(of && of.comissao_pct);
+        var comissaoRs = num(of && of.comissao_rs);
+        grupo.total_vendas += valorTotal;
+        grupo.comissao_total += comissaoRs;
+        grupo.ofs_count += 1;
+        grupo.ofs.push({
+          id: text(of && of.id),
+          numero: text(of && (of.numero || of.of_numero || of.of), '—'),
+          cliente: text(of && (of.cliente_nome || of.cliente), grupo.cliente),
+          vendedor: text(of && of.vendedor, '—'),
+          qtd: int(of && (of.quantidade || of.qtd)),
+          valor_total: valorTotal,
+          preco_unit: num(of && (of.valor_unitario || of.preco)),
+          comissao_pct: comissaoPct,
+          comissao_valor: comissaoRs,
+          data: text(of && (of.data_conclusao || of.created_at)),
+          status: text(of && of.status, '—')
+        });
+      });
+      var grupos = Array.from(mapa.values()).map(function(grupo) {
+        if (!(grupo.comissao_pct > 0) && grupo.ofs.length) {
+          grupo.comissao_pct = grupo.ofs.reduce(function(s, of) { return s + num(of && of.comissao_pct); }, 0) / grupo.ofs.length;
+        }
+        grupo.ofs.sort(function(a, b) {
+          return String(a && a.numero || '').localeCompare(String(b && b.numero || ''), 'pt-BR', { numeric: true });
+        });
+        return grupo;
+      }).sort(function(a, b) {
+        return num(b && b.total_vendas) - num(a && a.total_vendas);
+      });
+      window._comOfsData = todasOfsRaw.slice();
+      window._comissaoOFs = todasOfsRaw.slice();
+      window._comissoesSqlData = data;
+      window._comissoesData = {
+        totalGeral: num(data && data.total_vendido),
+        totalComissao: num(data && data.total_comissao),
+        totalPedidos: int(data && data.total_ofs),
+        clientes: grupos.slice()
+      };
+      var top3 = grupos.slice(0, 3);
+      var topBase = num(top3[0] && top3[0].total_vendas) || 1;
+      divTopo.innerHTML = ''
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;padding:4px 0 16px">'
+        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Total Vendido</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + esc(fmtMoneyPt(data && data.total_vendido || 0)) + '</div></div>'
+        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">OFs Concluídas</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + esc(String(int(data && data.total_ofs))) + '</div></div>'
+        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Total Comissões</div><div style="color:#22c55e;font-size:22px;font-weight:700">' + esc(fmtMoneyPt(data && data.total_comissao || 0)) + '</div></div>'
+        + '  <div style="background:#1e293b;border-radius:10px;padding:16px 20px"><div style="color:#64748b;font-size:12px;text-transform:uppercase">Clientes</div><div style="color:#f1f5f9;font-size:22px;font-weight:700">' + esc(String(grupos.length)) + '</div><div style="color:#94a3b8;font-size:12px;margin-top:6px">Agrupamento único por cliente</div></div>'
+        + '</div>'
+        + (top3.length ? '<div style="display:flex;gap:16px;flex-wrap:wrap;padding:0 0 16px">' + top3.map(function(g, idx) {
+            var medals = ['🥇', '🥈', '🥉'];
+            var pctBar = Math.max(4, Math.min(100, (num(g && g.total_vendas) / topBase) * 100));
+            return ''
+              + '<div style="flex:1 1 240px;min-width:240px;background:#111827;border:1px solid #2a3f5f;border-radius:12px;padding:14px 16px;color:#fff">'
+              + '<div style="display:flex;justify-content:space-between;gap:12px;font-weight:700;font-size:14px;align-items:center"><div><span style="font-size:1.4em;margin-right:6px">' + medals[idx] + '</span><span style="font-size:16px;font-weight:800">' + esc(g && g.cliente || '—') + '</span></div><div>' + esc(fmtMoneyPt(g && g.total_vendas || 0)) + '</div></div>'
+              + '<div style="height:8px;border-radius:999px;background:rgba(255,255,255,0.10);overflow:hidden;margin-top:10px"><div style="height:100%;width:' + pctBar.toFixed(0) + '%;background:#6366f1;border-radius:999px"></div></div>'
+              + '<div style="margin-top:8px;color:#94a3b8;font-size:12px">' + String(g && g.ofs_count || 0) + ' OFs · Comissão ' + esc(fmtMoneyPt(g && g.comissao_total || 0)) + '</div>'
+              + '</div>';
+          }).join('') + '</div>' : '')
+        + '<div style="overflow:auto;border:1px solid #1e293b;border-radius:12px;background:#0f172a">'
+        + '<table style="width:100%;border-collapse:collapse">'
+        + '<thead><tr style="background:#111827;color:#64748b;font-size:12px;text-transform:uppercase">'
+        + '<th style="padding:10px 12px;text-align:left">Cliente</th>'
+        + '<th style="padding:10px 12px;text-align:right">OFs</th>'
+        + '<th style="padding:10px 12px;text-align:right">Valor Total</th>'
+        + '<th style="padding:10px 12px;text-align:right">% Médio</th>'
+        + '<th style="padding:10px 12px;text-align:right">Comissão (R$)</th>'
+        + '</tr></thead><tbody>'
+        + grupos.map(function(g) {
+            return '<tr style="background:#132033;border-bottom:1px solid #1f2f45"><td style="padding:10px 12px;color:#f1f5f9;font-weight:600">' + esc(g && g.cliente || '—') + '</td><td style="padding:10px 12px;text-align:right;color:#cbd5e1">' + esc(String(int(g && g.ofs_count))) + '</td><td style="padding:10px 12px;text-align:right;color:#f1f5f9">' + esc(fmtMoneyPt(g && g.total_vendas || 0)) + '</td><td style="padding:10px 12px;text-align:right;color:#cbd5e1">' + esc(fmtNumPt(g && g.comissao_pct || 0, 2)) + '%</td><td style="padding:10px 12px;text-align:right;color:#22c55e;font-weight:700">' + esc(fmtMoneyPt(g && g.comissao_total || 0)) + '</td></tr>';
+          }).join('')
+        + '</tbody></table></div>';
+      divDetalhe.innerHTML = ''
+        + '<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px"><h3 style="color:#f1f5f9;margin:0">📋 Detalhamento das OFs por cliente</h3><input id="_com_busca_cliente" type="text" placeholder="Buscar por cliente, OF ou vendedor..." style="min-width:260px;flex:1;max-width:420px;background:#111827;border:1px solid #334155;border-radius:10px;padding:10px 12px;color:#f8fafc"></div>'
+        + grupos.map(function(g, gi) {
+            return ''
+              + '<details data-com-cli-group="1" data-search="' + escAttr2(lower((g && g.cliente) + ' ' + (g && g.ofs || []).map(function(of) { return [of && of.numero, of && of.vendedor].join(' '); }).join(' '))) + '"' + (gi < 2 ? ' open' : '') + ' style="margin-top:14px;border:1px solid #1e293b;border-radius:12px;overflow:hidden;background:#0f172a">'
+              + '<summary style="list-style:none;cursor:pointer;background:#17263d;padding:12px 14px;color:#f8fafc;font-weight:700">👤 ' + esc(g && g.cliente || '—') + ' — ' + esc(String(int(g && g.ofs_count))) + ' OFs — Total: ' + esc(fmtMoneyPt(g && g.total_vendas || 0)) + ' — Comissão: ' + esc(fmtMoneyPt(g && g.comissao_total || 0)) + '</summary>'
+              + '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;background:#0f172a"><thead><tr style="background:#1e293b;color:#64748b;font-size:11px;text-transform:uppercase"><th style="padding:8px 10px;text-align:left">OF</th><th style="padding:8px 10px;text-align:left">Cliente</th><th style="padding:8px 10px;text-align:left">Vendedor</th><th style="padding:8px 10px;text-align:right">Qtd</th><th style="padding:8px 10px;text-align:right">Valor Total</th><th style="padding:8px 10px;text-align:right">Preço Unit.</th><th style="padding:8px 10px;text-align:right">% Comissão</th><th style="padding:8px 10px;text-align:right">Comissão (R$)</th><th style="padding:8px 10px;text-align:left">Data</th><th style="padding:8px 10px;text-align:left">Status</th><th style="padding:8px 10px;text-align:center">Ações</th></tr></thead><tbody>'
+              + g.ofs.map(function(of) {
+                  var concluida = lower(of && of.status).indexOf('conclu') >= 0 || lower(of && of.status).indexOf('cancel') >= 0;
+                  var searchTxt = lower([of && of.numero, of && of.cliente, of && of.vendedor].join(' '));
+                  var dataStr = fmtDatePt(of && of.data);
+                  return ''
+                    + '<tr data-of-row="1" data-search="' + escAttr2(searchTxt) + '" style="border-bottom:1px solid #1e293b">'
+                    + '<td style="padding:7px 10px;color:#60a5fa">#' + esc(of && of.numero || '—') + '</td>'
+                    + '<td style="padding:7px 10px;color:#f1f5f9">' + esc(of && of.cliente || '—') + '</td>'
+                    + '<td style="padding:7px 10px;color:#94a3b8">' + esc(of && of.vendedor || '—') + '</td>'
+                    + '<td style="padding:7px 10px;text-align:right;color:#94a3b8">' + esc(String(int(of && of.qtd))) + '</td>'
+                    + '<td style="padding:7px 10px;text-align:right;color:#f1f5f9">' + esc(fmtMoneyPt(of && of.valor_total || 0)) + '</td>'
+                    + '<td style="padding:7px 10px;text-align:right;color:#94a3b8">' + esc(fmtMoneyPt(of && of.preco_unit || 0)) + '</td>'
+                    + '<td style="padding:7px 10px;text-align:right;color:#94a3b8">' + esc(fmtNumPt(of && of.comissao_pct || 0, 2)) + '%</td>'
+                    + '<td style="padding:7px 10px;text-align:right;color:#22c55e;font-weight:600">' + esc(fmtMoneyPt(of && of.comissao_valor || 0)) + '</td>'
+                    + '<td style="padding:7px 10px;color:#94a3b8">' + esc(dataStr) + '</td>'
+                    + '<td style="padding:7px 10px"><span style="background:' + (concluida ? '#166534' : '#92400e') + ';color:' + (concluida ? '#4ade80' : '#fbbf24') + ';padding:2px 8px;border-radius:4px;font-size:11px">' + esc(of && of.status || '—') + '</span></td>'
+                    + '<td style="padding:7px 10px;text-align:center">' + (concluida ? '' : '<button type="button" data-acao="concluir-of-comissao" data-of-id="' + escAttr2(of && of.id || '') + '" style="background:#16a34a;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px;margin-right:6px">✔ Concluir</button>') + '<button type="button" data-acao="editar-of-comissao" data-com-trocar="1" data-of-id="' + escAttr2(of && of.id || '') + '" style="background:#2a5298;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px">✏️ Editar</button></td>'
+                    + '</tr>';
+                }).join('')
+              + '</tbody></table></div></details>';
+          }).join('');
+      var busca = document.getElementById('_com_busca_cliente');
+      if (busca) {
+        busca.oninput = function() {
+          var q = lower(busca.value);
+          Array.prototype.slice.call(divDetalhe.querySelectorAll('[data-com-cli-group]')).forEach(function(box) {
+            var matchGroup = lower(box.getAttribute('data-search')).indexOf(q) >= 0;
+            var rowsHit = 0;
+            Array.prototype.slice.call(box.querySelectorAll('[data-of-row]')).forEach(function(row) {
+              var hit = !q || lower(row.getAttribute('data-search')).indexOf(q) >= 0 || matchGroup;
+              row.style.display = hit ? '' : 'none';
+              if (hit) rowsHit += 1;
+            });
+            box.style.display = (!q || matchGroup || rowsHit > 0) ? '' : 'none';
+          });
+        };
+      }
+    } catch (e) {
+      var topoErro = document.getElementById('_com_topo');
+      if (topoErro) topoErro.innerHTML = '<div style="padding:20px;border:1px solid rgba(248,113,113,.18);border-radius:16px;background:rgba(127,29,29,.18);color:#fecaca">Não foi possível carregar as comissões por cliente: ' + esc(String(e && e.message || e)) + '</div>';
+    } finally {
+      window._comRodando = false;
+    }
+  }
+
+  function patchAmostrasNoImplicitCompany() {
+    window.AMOSTRAS_UI = window.AMOSTRAS_UI || { status: '', emp: '', busca: '' };
+    if (typeof window.carregarAmostras === 'function') {
+      window.carregarAmostras = async function(opts) {
+        opts = opts || {};
+        var ttl = 2 * 60 * 1000;
+        if (!opts.forcar && Array.isArray(window.AMOSTRAS) && (Date.now() - Number(window._amostrasLastLoad || 0)) < ttl) return window.AMOSTRAS;
+        var params = new URLSearchParams();
+        var empId = text(window.AMOSTRAS_UI && window.AMOSTRAS_UI.emp);
+        var status = text(window.AMOSTRAS_UI && window.AMOSTRAS_UI.status);
+        if (empId) params.set('empId', empId);
+        if (status) params.set('status', status);
+        var r = await api('GET', '/amostras?' + params.toString());
+        window.AMOSTRAS = (r && r.ok && Array.isArray(r.data)) ? (r.data || []) : [];
+        window._amostrasLastLoad = Date.now();
+        try { await window.atualizarBadgeAmostras(true); } catch (_) {}
+        return window.AMOSTRAS;
+      };
+    }
+    if (typeof window.atualizarBadgeAmostras === 'function') {
+      window.atualizarBadgeAmostras = async function(forcar) {
+        var badge = document.getElementById('amostras-badge');
+        if (!badge) return;
+        var ttl = 2 * 60 * 1000;
+        if (!forcar && (Date.now() - Number(window._amostrasPendTs || 0)) < ttl) {
+          var cached = int(window._amostrasPendCount);
+          badge.textContent = String(cached);
+          badge.style.display = cached > 0 ? '' : 'none';
+          return;
+        }
+        var params = new URLSearchParams();
+        var empId = text(window.AMOSTRAS_UI && window.AMOSTRAS_UI.emp);
+        if (empId) params.set('empId', empId);
+        params.set('status', 'Pendente');
+        var r = await api('GET', '/amostras?' + params.toString());
+        var total = (r && r.ok && Array.isArray(r.data)) ? r.data.length : 0;
+        window._amostrasPendCount = total;
+        window._amostrasPendTs = Date.now();
+        badge.textContent = String(total);
+        badge.style.display = total > 0 ? '' : 'none';
+      };
+    }
+  }
+
+  function compraFindById(id) {
+    var st = (typeof window._compraPapelaoStateRef === 'function') ? window._compraPapelaoStateRef() : null;
+    var rows = Array.isArray(st && st.compras) ? st.compras : [];
+    return rows.find(function(row) { return text(row && row.id) === text(id); }) || null;
+  }
+  window._compraPapelaoExportCompraExcel = async function(id) {
+    try {
+      var compra = compraFindById(id);
+      if (!compra) throw new Error('Compra não encontrada na listagem atual.');
+      if (typeof XLSX === 'undefined' || !XLSX || !XLSX.utils) throw new Error('SheetJS (XLSX) não carregado.');
+      var itens = Array.isArray(compra && compra.itens) ? compra.itens : [];
+      var totals = (typeof window._compraPapelaoCompraTotals === 'function') ? window._compraPapelaoCompraTotals(compra) : {
+        qtd: itens.reduce(function(s, item) { return s + num(item && item.quantidade); }, 0),
+        area: itens.reduce(function(s, item) { return s + num(item && item.area_m2); }, 0),
+        valor: itens.reduce(function(s, item) { return s + num(item && item.valor_total); }, 0)
+      };
+      var resumoRows = [
+        ['Compra', text(compra && (compra.numero_compra || compra.id), '—')],
+        ['Fornecedor', text(compra && compra.fornecedor, '—')],
+        ['Status', text(compra && compra.status, 'Solicitada')],
+        ['Data', fmtDatePt(compra && (compra.data_compra || compra.data || compra.created_at))],
+        ['Pasta', text((typeof compraFolderName === 'function') ? compraFolderName(compra) : '', 'Sem pasta')],
+        ['Pedido do Fornecedor', text(compra && compra.ped_fornecedor, '—')],
+        ['Observação', text(compra && compra.observacao, '—')],
+        ['Itens', int(itens.length)],
+        ['Quantidade Total', num(totals && totals.qtd)],
+        ['Área Total (m²)', num(totals && totals.area)],
+        ['Valor Total', num(totals && totals.valor)]
+      ];
+      var itensRows = itens.map(function(item, idx) {
+        var d = (typeof window._compraPapelaoResolveItemMetrics === 'function') ? window._compraPapelaoResolveItemMetrics(item) : item;
+        var vincos = (typeof window._compraPapelaoComposeVincos === 'function') ? window._compraPapelaoComposeVincos(item) : text(item && item.vincos);
+        return {
+          Item: idx + 1,
+          'Pedido Cliente': text(item && item.ped_cliente),
+          Entrega: text(item && item.data_entrega),
+          PO: text(item && item.po),
+          Largura: num(item && item.largura),
+          Comprimento: num(item && item.comprimento),
+          Vincos: vincos,
+          Quantidade: num(item && item.quantidade),
+          'Lote Mínimo': num(item && item.lote_minimo),
+          'Área m²': num(d && d.area_m2),
+          'Valor m²': num(item && item.valor_m2),
+          'Valor p/mil': num(d && d.vl_p_mil),
+          'Valor Total': num(d && d.valor_total),
+          Observação: text(item && item.observacao),
+          'Pedido Fornecedor': text(item && item.ped_fornecedor)
+        };
+      });
+      var wb = XLSX.utils.book_new();
+      var wsResumo = XLSX.utils.aoa_to_sheet(resumoRows);
+      var wsItens = XLSX.utils.json_to_sheet(itensRows.length ? itensRows : [{ Item: 'Sem itens cadastrados' }]);
+      XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo');
+      XLSX.utils.book_append_sheet(wb, wsItens, 'Itens');
+      var name = 'compra_papelao_' + text(compra && (compra.numero_compra || compra.id), 'sem-numero').replace(/[^a-zA-Z0-9_-]+/g, '_') + '.xlsx';
+      XLSX.writeFile(wb, name);
+      try { if (typeof window.toast === 'function') window.toast('Excel da compra gerado com sucesso.', 'var(--green)'); } catch (_) {}
+    } catch (e) {
+      try { if (typeof window.toast === 'function') window.toast(String(e && e.message || e || 'Falha ao gerar Excel da compra'), 'var(--red)'); } catch (_) {}
+    }
+  };
+  function enhanceCompraRowButtons() {
+    var host = document.getElementById('cmp-body');
+    if (!host) return;
+    Array.prototype.slice.call(host.querySelectorAll('.cmpx-actions-row')).forEach(function(row) {
+      var cloneBtn = row.querySelector('[data-cmpx-clone]');
+      var delBtn = row.querySelector('[data-cmpx-delete]');
+      if (!cloneBtn || !delBtn) return;
+      var id = text(cloneBtn.getAttribute('data-cmpx-clone'));
+      if (!id || row.querySelector('[data-cmpx-excel]')) return;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'is-excel';
+      btn.textContent = 'Excel';
+      btn.setAttribute('data-cmpx-excel', id);
+      btn.onclick = function() { window._compraPapelaoExportCompraExcel(id); };
+      row.insertBefore(btn, delBtn);
+    });
+  }
+  if (typeof window._compraPapelaoRenderBody === 'function' && !window._compraPapelaoRenderBody.__patchExcelRound) {
+    var prevCompraRenderBody = window._compraPapelaoRenderBody;
+    window._compraPapelaoRenderBody = function() {
+      var out = prevCompraRenderBody.apply(this, arguments);
+      setTimeout(enhanceCompraRowButtons, 0);
+      return out;
+    };
+    window._compraPapelaoRenderBody.__patchExcelRound = true;
+  }
+
+  function ensureFinalRoundStyle() {
+    if (document.getElementById('patch-final-round-style')) return;
+    var st = document.createElement('style');
+    st.id = 'patch-final-round-style';
+    st.textContent = ''
+      + '#modal-calc #modal-calculadora,#modal-calc.orc-calc-fs-ready #modal-calculadora{width:min(1780px,calc(100vw - 20px))!important;max-width:1780px!important;height:min(97vh,1280px)!important;max-height:97vh!important;overflow:hidden!important}'
+      + '#modal-calc #modal-calculadora .orc-calc-shell,#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell{display:grid!important;grid-template-rows:auto auto minmax(0,1fr) auto!important;height:100%!important;min-height:0!important}'
+      + '#modal-calc #modal-calculadora .orc-calc-shell-main,#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-main{display:flex!important;flex-direction:column!important;min-height:0!important;overflow:hidden!important;padding:18px 22px!important}'
+      + '#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{display:grid!important;grid-template-columns:minmax(0,1.65fr) minmax(520px,1fr)!important;gap:20px!important;min-height:0!important;height:100%!important;overflow:hidden!important;padding:0!important}'
+      + '#modal-calc #modal-calculadora .calc-col-esq,#modal-calc #modal-calculadora .calc-col-dir{min-height:0!important;overflow:auto!important;align-content:start!important;scrollbar-gutter:stable both-edges!important}'
+      + '#modal-calc #modal-calculadora .calc-col-esq{padding-right:8px!important}'
+      + '#modal-calc #modal-calculadora .calc-col-dir{display:grid!important;grid-template-columns:1fr!important;gap:14px!important;padding-right:8px!important}'
+      + '#modal-calc #modal-calculadora .calc-row-top{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:14px!important}'
+      + '#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:14px!important}'
+      + '#modal-calc #modal-calculadora #calc-extra-fields{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;gap:14px!important}'
+      + '#modal-calc #modal-calculadora .param-row{display:grid!important;grid-template-columns:minmax(260px,1.8fr) minmax(170px,1fr)!important;gap:16px!important;align-items:center!important;min-height:88px!important;padding:16px 18px!important}'
+      + '#modal-calc #modal-calculadora .param-label{font-size:14px!important;line-height:1.45!important;white-space:normal!important;overflow-wrap:anywhere!important}'
+      + '#modal-calc #modal-calculadora .param-input{min-height:52px!important;font-size:18px!important;font-weight:900!important}'
+      + '#modal-calc #modal-calculadora input,#modal-calc #modal-calculadora select,#modal-calc #modal-calculadora textarea{min-height:50px!important;font-size:16px!important;line-height:1.35!important}'
+      + '#modal-calc #modal-calculadora textarea{min-height:88px!important}'
+      + '#modal-calc #modal-calculadora .calc-tabela-wrap{display:block!important;min-height:340px!important;max-height:clamp(340px,48vh,620px)!important;overflow:auto!important}'
+      + '#modal-calc #modal-calculadora #calc-sheet{min-width:1240px!important;table-layout:auto!important}'
+      + '#modal-calc #modal-calculadora #calc-sheet thead th{font-size:12px!important;padding:12px 10px!important;line-height:1.35!important;white-space:normal!important}'
+      + '#modal-calc #modal-calculadora #calc-sheet tbody td{font-size:13px!important;padding:12px 10px!important;line-height:1.45!important;white-space:normal!important;word-break:break-word!important}'
+      + '#modal-calc .calc-itens-shell{display:grid!important;gap:12px!important;padding:16px 18px!important;border-radius:18px!important;border:1px solid rgba(148,163,184,.16)!important;background:rgba(2,6,23,.48)!important;margin:0 0 18px 0!important}'
+      + '#ccpx-compra-fullscreen .ccpx-item-sheet-grid{display:grid!important;grid-template-columns:repeat(12,minmax(0,1fr))!important;gap:12px!important;min-width:0!important}'
+      + '#ccpx-compra-fullscreen .ccpx-item-vincos{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(138px,1fr))!important;gap:10px!important;align-items:stretch!important;overflow:visible!important;min-width:0!important}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-chip{display:grid!important;grid-template-columns:minmax(0,1fr) 40px!important;gap:8px!important;align-items:center!important;min-width:0!important;background:rgba(15,23,42,.58)!important;border:1px solid rgba(148,163,184,.16)!important;border-radius:12px!important;padding:8px!important}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-chip input{min-width:0!important;width:100%!important}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-chip button{width:40px!important;min-width:40px!important;height:40px!important;border-radius:10px!important}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar{grid-column:1 / -1!important;display:flex!important;justify-content:flex-start!important}'
+      + '#ccpx-compra-fullscreen .ccpx-item-field.span-5{grid-column:span 5!important;min-width:0!important}'
+      + '#cmp-body .cmpx-actions-row .is-excel{background:rgba(30,64,175,.18)!important;border:1px solid rgba(96,165,250,.32)!important;color:#bfdbfe!important}'
+      + '#page-mapa-clientes .mapcad-wrap{display:grid;gap:16px;padding:16px}'
+      + '#page-mapa-clientes .mapcad-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}'
+      + '#page-mapa-clientes .mapcad-card{border:1px solid rgba(148,163,184,.16);border-radius:16px;padding:16px;background:rgba(15,23,42,.46)}'
+      + '#page-mapa-clientes .mapcad-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}'
+      + '#page-mapa-clientes .mapcad-panel{border:1px solid rgba(148,163,184,.16);border-radius:18px;background:rgba(15,23,42,.42);overflow:hidden}'
+      + '#page-mapa-clientes .mapcad-head{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(148,163,184,.12)}'
+      + '#page-mapa-clientes .mapcad-body{padding:14px 16px}'
+      + '#page-mapa-clientes .mapcad-table{width:100%;border-collapse:collapse}'
+      + '#page-mapa-clientes .mapcad-table th,#page-mapa-clientes .mapcad-table td{padding:10px 8px;border-bottom:1px solid rgba(148,163,184,.10);text-align:left;font-size:13px;vertical-align:top}'
+      + '#page-mapa-clientes .mapcad-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}'
+      + '#page-mapa-clientes .mapcad-toolbar input,#page-mapa-clientes .mapcad-toolbar select{min-height:42px;padding:0 12px;border-radius:12px;background:#020617;border:1px solid rgba(148,163,184,.18);color:#f8fafc}'
+      + '#page-mapa-clientes .mapcad-btn{min-height:40px;padding:0 14px;border-radius:12px;border:1px solid rgba(148,163,184,.18);background:#132033;color:#e2e8f0;cursor:pointer}'
+      + '#page-mapa-clientes .mapcad-btn.primary{background:#1d4ed8;border-color:#1d4ed8;color:#fff}'
+      + '#page-mapa-clientes .mapcad-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(30,41,59,.72);color:#cbd5e1;font-size:12px}'
+      + '@media (max-width:1280px){#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body{grid-template-columns:1fr!important}#page-mapa-clientes .mapcad-grid{grid-template-columns:1fr!important}}'
+      + '@media (max-width:920px){#modal-calc,#modal-calc.modal-overlay,#ccpx-compra-fullscreen{padding:0!important}#modal-calc #modal-calculadora,#ccpx-compra-fullscreen > .ccpx-fs-shell{width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;border-radius:0!important}#modal-calc #modal-calculadora .calc-row-top,#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .calc-col-dir{padding-right:0!important}#ccpx-compra-fullscreen .ccpx-item-sheet-grid{grid-template-columns:repeat(6,minmax(0,1fr))!important}#ccpx-compra-fullscreen .ccpx-item-field.span-5{grid-column:1 / -1!important}#ccpx-compra-fullscreen .ccpx-item-vincos{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))!important}}';
+    document.head.appendChild(st);
+  }
+
+  function mapcadState() {
+    if (!window.__mapCadState || typeof window.__mapCadState !== 'object') {
+      window.__mapCadState = { q: '', onlyPending: false, emp: text(window.EMP_FILTRO) };
+    }
+    return window.__mapCadState;
+  }
+  function mapcadLoadCityCatalog() {
+    try {
+      var raw = localStorage.getItem('mapcad_cidades_uf_v1');
+      var arr = JSON.parse(raw || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch (_) {
+      return [];
+    }
+  }
+  function mapcadSaveCityCatalog(rows) {
+    try { localStorage.setItem('mapcad_cidades_uf_v1', JSON.stringify(Array.isArray(rows) ? rows : [])); } catch (_) {}
+  }
+  function mapcadLoadRamos() {
+    try {
+      var raw = localStorage.getItem('ramos_atividade');
+      var arr = JSON.parse(raw || '[]');
+      return Array.isArray(arr) ? arr.map(function(item) { return text(item); }).filter(Boolean) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+  function mapcadSaveRamos(rows) {
+    try { localStorage.setItem('ramos_atividade', JSON.stringify(Array.isArray(rows) ? rows : [])); } catch (_) {}
+  }
+  async function mapcadFetchClientes(force) {
+    var st = mapcadState();
+    var cache = window.__mapCadClientesCache || {};
+    var cacheKey = text(st.emp || window.EMP_FILTRO, '__all');
+    if (!force && Array.isArray(cache[cacheKey])) return cache[cacheKey];
+    var url = '/api/clientes?limit=1000&lite=1';
+    if (st.emp) url += '&empId=' + encodeURIComponent(st.emp);
+    var json = await fetchJsonCompat(url);
+    var rows = listJson(json, ['data', 'clientes']);
+    rows = (Array.isArray(rows) ? rows : []).map(function(row) {
+      return {
+        id: text(row && row.id),
+        nome: text(row && (row.nome || row.rs), 'Sem cliente'),
+        cidade: text(row && row.cidade),
+        uf: text(row && (row.uf || row.estado)).toUpperCase(),
+        ramo: text(row && row.ramo),
+        telefone: text(row && (row.tel || row.telefone)),
+        email: text(row && row.email),
+        vendedor: text(row && (row.vendedor_nome || row.vendedor)),
+        emp_id: text(row && (row.emp_id || row.empId || row.empresa_id))
+      };
+    });
+    window.__mapCadClientesCache = window.__mapCadClientesCache || {};
+    window.__mapCadClientesCache[cacheKey] = rows;
+    return rows;
+  }
+  function mapcadEnsureCatalogsFromClients(clientes) {
+    var cityCatalog = mapcadLoadCityCatalog();
+    var ramoCatalog = mapcadLoadRamos();
+    var seenCities = {};
+    cityCatalog.forEach(function(item) {
+      seenCities[lower((item && item.cidade) + '|' + (item && item.uf))] = true;
+    });
+    (Array.isArray(clientes) ? clientes : []).forEach(function(cli) {
+      var city = text(cli && cli.cidade);
+      var uf = text(cli && cli.uf).toUpperCase();
+      if (city || uf) {
+        var key = lower(city + '|' + uf);
+        if (!seenCities[key]) {
+          cityCatalog.push({ cidade: city, uf: uf });
+          seenCities[key] = true;
+        }
+      }
+      var ramo = text(cli && cli.ramo);
+      if (ramo && ramoCatalog.indexOf(ramo) < 0) ramoCatalog.push(ramo);
+    });
+    cityCatalog.sort(function(a, b) {
+      return text(a && a.cidade).localeCompare(text(b && b.cidade), 'pt-BR');
+    });
+    ramoCatalog.sort(function(a, b) {
+      return text(a).localeCompare(text(b), 'pt-BR');
+    });
+    mapcadSaveCityCatalog(cityCatalog);
+    mapcadSaveRamos(ramoCatalog);
+    return { cidades: cityCatalog, ramos: ramoCatalog };
+  }
+  async function mapcadOpenClienteModal(id) {
+    try {
+      var clientes = await mapcadFetchClientes(false);
+      var cli = (clientes || []).find(function(item) { return text(item && item.id) === text(id); }) || null;
+      if (!cli) throw new Error('Cliente não encontrado.');
+      var catalogs = mapcadEnsureCatalogsFromClients(clientes);
+      if (typeof _abrirModalPadrao !== 'function') {
+        var cidade = prompt('Cidade:', cli.cidade || '');
+        if (cidade == null) return;
+        var uf = prompt('UF:', cli.uf || '');
+        if (uf == null) return;
+        var ramo = prompt('Ramo:', cli.ramo || '');
+        if (ramo == null) return;
+        await fetchJsonCompat('/api/clientes/' + encodeURIComponent(cli.id), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cidade: cidade, uf: uf, ramo: ramo })
+        });
+        window.__mapCadClientesCache = {};
+        renderMapaClientes(true);
+        return;
+      }
+      var datalistCities = catalogs.cidades.map(function(item) {
+        return '<option value="' + escAttr2(text(item && item.cidade)) + '"></option>';
+      }).join('');
+      var ramoOptions = ['<option value="">Sem ramo</option>'].concat(catalogs.ramos.map(function(item) {
+        return '<option value="' + escAttr2(item) + '"' + (item === cli.ramo ? ' selected' : '') + '>' + esc(item) + '</option>';
+      })).join('');
+      var wrap = _abrirModalPadrao({
+        id: 'mapcad-cliente-modal',
+        titulo: 'Editar Cadastro do Cliente',
+        subtitulo: 'Cidade, UF e ramo passam a ser a base operacional desta área.',
+        largura: '760px',
+        wide: true,
+        hero: '🏙️',
+        accent: 'blue',
+        corpoHTML: ''
+          + '<div class="pep-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">'
+          + '  <div style="grid-column:1/-1"><div class="pep-sub">Cliente</div><div class="mapcad-badge">' + esc(cli.nome) + '</div></div>'
+          + '  <div><div class="pep-sub">Cidade</div><input class="pep-input" id="mapcad-cli-cidade" list="mapcad-city-dl" value="' + escAttr2(cli.cidade || '') + '"><datalist id="mapcad-city-dl">' + datalistCities + '</datalist></div>'
+          + '  <div><div class="pep-sub">UF</div><input class="pep-input" id="mapcad-cli-uf" maxlength="2" value="' + escAttr2(cli.uf || '') + '"></div>'
+          + '  <div><div class="pep-sub">Ramo</div><select class="pep-input" id="mapcad-cli-ramo">' + ramoOptions + '</select></div>'
+          + '  <div><div class="pep-sub">Novo ramo rápido (opcional)</div><input class="pep-input" id="mapcad-cli-ramo-extra" placeholder="Cadastrar e aplicar novo ramo"></div>'
+          + '</div>',
+        footerHtml: '<button class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button class="estoque-modal-btn estoque-modal-btn-blue" id="mapcad-cli-save">Salvar Cadastro</button>'
+      });
+      if (!wrap) return;
+      wrap.querySelector('#mapcad-cli-save').onclick = async function() {
+        try {
+          var cidade = text(document.getElementById('mapcad-cli-cidade').value);
+          var uf = text(document.getElementById('mapcad-cli-uf').value).toUpperCase();
+          var ramoBase = text(document.getElementById('mapcad-cli-ramo').value);
+          var ramoExtra = text(document.getElementById('mapcad-cli-ramo-extra').value);
+          var ramoFinal = ramoExtra || ramoBase;
+          await fetchJsonCompat('/api/clientes/' + encodeURIComponent(cli.id), {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cidade: cidade || null, uf: uf || null, ramo: ramoFinal || null })
+          });
+          var cityCatalog = mapcadLoadCityCatalog();
+          if ((cidade || uf) && !cityCatalog.some(function(item) { return lower(text(item && item.cidade) + '|' + text(item && item.uf)) === lower(cidade + '|' + uf); })) {
+            cityCatalog.push({ cidade: cidade, uf: uf });
+            mapcadSaveCityCatalog(cityCatalog);
+          }
+          if (ramoFinal) {
+            var ramos = mapcadLoadRamos();
+            if (ramos.indexOf(ramoFinal) < 0) {
+              ramos.push(ramoFinal);
+              ramos.sort(function(a, b) { return text(a).localeCompare(text(b), 'pt-BR'); });
+              mapcadSaveRamos(ramos);
+            }
+          }
+          window.__mapCadClientesCache = {};
+          try { _fecharModalPadrao('mapcad-cliente-modal'); } catch (_) {}
+          renderMapaClientes(true);
+        } catch (e) {
+          alert('Falha ao salvar cliente: ' + String(e && e.message || e));
+        }
+      };
+    } catch (e) {
+      try { if (typeof toast === 'function') toast(String(e && e.message || e), 'var(--red)'); } catch (_) {}
+    }
+  }
+  function mapcadRenderPage(clientes) {
+    var page = document.getElementById('page-mapa-clientes');
+    if (!page) return;
+    var st = mapcadState();
+    var catalogs = mapcadEnsureCatalogsFromClients(clientes);
+    var q = lower(st.q);
+    var filtered = (Array.isArray(clientes) ? clientes : []).filter(function(cli) {
+      var pending = !text(cli && cli.cidade) || !text(cli && cli.uf) || !text(cli && cli.ramo);
+      if (st.onlyPending && !pending) return false;
+      if (!q) return true;
+      return lower([cli && cli.nome, cli && cli.cidade, cli && cli.uf, cli && cli.ramo, cli && cli.telefone].join(' ')).indexOf(q) >= 0;
+    });
+    var missingCity = filtered.filter(function(cli) { return !text(cli && cli.cidade) || !text(cli && cli.uf); }).length;
+    var missingRamo = filtered.filter(function(cli) { return !text(cli && cli.ramo); }).length;
+    var cityAgg = {};
+    filtered.forEach(function(cli) {
+      var city = text(cli && cli.cidade, 'Sem cidade');
+      var uf = text(cli && cli.uf, '—');
+      var key = lower(city + '|' + uf);
+      if (!cityAgg[key]) cityAgg[key] = { cidade: city, uf: uf, total: 0 };
+      cityAgg[key].total += 1;
+    });
+    var ramoAgg = {};
+    filtered.forEach(function(cli) {
+      var ramo = text(cli && cli.ramo, 'Sem ramo');
+      ramoAgg[ramo] = (ramoAgg[ramo] || 0) + 1;
+    });
+    var empOptions = ['<option value="">Todas as empresas</option>'].concat((Array.isArray(window.EMPRESAS) ? window.EMPRESAS : []).map(function(emp) {
+      var id = text(emp && emp.id);
+      return '<option value="' + escAttr2(id) + '"' + (id === text(st.emp) ? ' selected' : '') + '>' + esc(text(emp && emp.nome, id || 'Empresa')) + '</option>';
+    })).join('');
+    page.innerHTML = ''
+      + '<div class="mapcad-wrap">'
+      + '  <div class="mapcad-toolbar">'
+      + '    <button type="button" class="mapcad-btn primary" id="mapcad-refresh">↻ Atualizar</button>'
+      + '    <button type="button" class="mapcad-btn" id="mapcad-new-city">＋ Cidade / UF</button>'
+      + '    <button type="button" class="mapcad-btn" id="mapcad-new-ramo">＋ Ramo</button>'
+      + '    <input id="mapcad-search" type="text" placeholder="Buscar cliente, cidade, UF ou ramo..." value="' + escAttr2(st.q || '') + '" style="flex:1;min-width:260px">'
+      + '    <select id="mapcad-emp" style="min-width:220px">' + empOptions + '</select>'
+      + '    <label class="mapcad-badge"><input type="checkbox" id="mapcad-only-pending"' + (st.onlyPending ? ' checked' : '') + '> Apenas pendências</label>'
+      + '  </div>'
+      + '  <div class="mapcad-cards">'
+      + '    <div class="mapcad-card"><div style="color:#94a3b8;font-size:12px;text-transform:uppercase">Clientes</div><div style="font-size:28px;font-weight:900;color:#f8fafc">' + esc(String(filtered.length)) + '</div><div style="color:#cbd5e1;font-size:12px;margin-top:6px">Base operacional filtrada</div></div>'
+      + '    <div class="mapcad-card"><div style="color:#94a3b8;font-size:12px;text-transform:uppercase">Cidades / UF</div><div style="font-size:28px;font-weight:900;color:#f8fafc">' + esc(String(Object.keys(cityAgg).length)) + '</div><div style="color:#cbd5e1;font-size:12px;margin-top:6px">Cadastros distintos em uso</div></div>'
+      + '    <div class="mapcad-card"><div style="color:#94a3b8;font-size:12px;text-transform:uppercase">Ramos</div><div style="font-size:28px;font-weight:900;color:#f8fafc">' + esc(String(Object.keys(ramoAgg).length)) + '</div><div style="color:#cbd5e1;font-size:12px;margin-top:6px">Ramos distintos em uso</div></div>'
+      + '    <div class="mapcad-card"><div style="color:#94a3b8;font-size:12px;text-transform:uppercase">Pendências</div><div style="font-size:28px;font-weight:900;color:#f8fafc">' + esc(String(missingCity + missingRamo)) + '</div><div style="color:#cbd5e1;font-size:12px;margin-top:6px">' + esc(String(missingCity)) + ' sem cidade/UF • ' + esc(String(missingRamo)) + ' sem ramo</div></div>'
+      + '  </div>'
+      + '  <div class="mapcad-grid">'
+      + '    <div class="mapcad-panel"><div class="mapcad-head"><div><strong>Cidades e Estados</strong><div style="font-size:12px;color:#94a3b8;margin-top:4px">Catálogo usado nos cadastros de clientes.</div></div><span class="mapcad-badge">' + esc(String(catalogs.cidades.length)) + ' cadastrados</span></div><div class="mapcad-body"><table class="mapcad-table"><thead><tr><th>Cidade</th><th>UF</th><th>Clientes</th></tr></thead><tbody>'
+      + (Object.keys(cityAgg).length ? Object.keys(cityAgg).map(function(key) {
+          var row = cityAgg[key];
+          return '<tr><td>' + esc(row && row.cidade || '—') + '</td><td>' + esc(row && row.uf || '—') + '</td><td>' + esc(String(int(row && row.total))) + '</td></tr>';
+        }).join('') : '<tr><td colspan="3" style="color:#94a3b8">Nenhum cadastro encontrado.</td></tr>')
+      + '</tbody></table></div></div>'
+      + '    <div class="mapcad-panel"><div class="mapcad-head"><div><strong>Ramos de Atividade</strong><div style="font-size:12px;color:#94a3b8;margin-top:4px">Base central usada pelos clientes e relatórios.</div></div><span class="mapcad-badge">' + esc(String(catalogs.ramos.length)) + ' cadastrados</span></div><div class="mapcad-body"><table class="mapcad-table"><thead><tr><th>Ramo</th><th>Clientes</th></tr></thead><tbody>'
+      + (Object.keys(ramoAgg).length ? Object.keys(ramoAgg).sort(function(a, b) { return text(a).localeCompare(text(b), 'pt-BR'); }).map(function(key) {
+          return '<tr><td>' + esc(key || 'Sem ramo') + '</td><td>' + esc(String(int(ramoAgg[key]))) + '</td></tr>';
+        }).join('') : '<tr><td colspan="2" style="color:#94a3b8">Nenhum ramo encontrado.</td></tr>')
+      + '</tbody></table></div></div>'
+      + '  </div>'
+      + '  <div class="mapcad-panel"><div class="mapcad-head"><div><strong>Clientes para Padronizar</strong><div style="font-size:12px;color:#94a3b8;margin-top:4px">Edite cidade, UF e ramo direto daqui. Este é o novo foco operacional da antiga área de mapa.</div></div><span class="mapcad-badge">' + esc(String(filtered.length)) + ' listados</span></div><div class="mapcad-body"><table class="mapcad-table"><thead><tr><th>Cliente</th><th>Cidade</th><th>UF</th><th>Ramo</th><th>Contato</th><th>Ação</th></tr></thead><tbody>'
+      + (filtered.length ? filtered.map(function(cli) {
+          return '<tr><td><strong>' + esc(cli && cli.nome || '—') + '</strong><div style="font-size:12px;color:#94a3b8;margin-top:4px">' + esc(cli && cli.vendedor || 'Sem vendedor') + '</div></td><td>' + esc(cli && cli.cidade || '—') + '</td><td>' + esc(cli && cli.uf || '—') + '</td><td>' + esc(cli && cli.ramo || '—') + '</td><td>' + esc(cli && (cli.telefone || cli.email) || '—') + '</td><td><button type="button" class="mapcad-btn" data-mapcad-edit="' + escAttr2(cli && cli.id || '') + '">Editar Cadastro</button></td></tr>';
+        }).join('') : '<tr><td colspan="6" style="color:#94a3b8">Nenhum cliente encontrado para os filtros atuais.</td></tr>')
+      + '</tbody></table></div></div>'
+      + '</div>';
+    var search = document.getElementById('mapcad-search');
+    if (search) search.oninput = function() { st.q = String(search.value || ''); mapcadRenderPage(clientes); };
+    var pending = document.getElementById('mapcad-only-pending');
+    if (pending) pending.onchange = function() { st.onlyPending = !!pending.checked; mapcadRenderPage(clientes); };
+    var empSel = document.getElementById('mapcad-emp');
+    if (empSel) empSel.onchange = function() { st.emp = text(empSel.value); renderMapaClientes(true); };
+    var refresh = document.getElementById('mapcad-refresh');
+    if (refresh) refresh.onclick = function() { renderMapaClientes(true); };
+    var addCity = document.getElementById('mapcad-new-city');
+    if (addCity) addCity.onclick = function() {
+      var cidade = prompt('Cidade:', '');
+      if (cidade == null) return;
+      var uf = prompt('UF:', '');
+      if (uf == null) return;
+      var list = mapcadLoadCityCatalog();
+      if (!list.some(function(item) { return lower(text(item && item.cidade) + '|' + text(item && item.uf)) === lower(cidade + '|' + String(uf || '').toUpperCase()); })) {
+        list.push({ cidade: text(cidade), uf: text(uf).toUpperCase() });
+        list.sort(function(a, b) { return text(a && a.cidade).localeCompare(text(b && b.cidade), 'pt-BR'); });
+        mapcadSaveCityCatalog(list);
+      }
+      mapcadRenderPage(clientes);
+    };
+    var addRamo = document.getElementById('mapcad-new-ramo');
+    if (addRamo) addRamo.onclick = function() {
+      var ramo = prompt('Novo ramo de atividade:', '');
+      if (ramo == null || !text(ramo)) return;
+      var list = mapcadLoadRamos();
+      if (list.indexOf(text(ramo)) < 0) {
+        list.push(text(ramo));
+        list.sort(function(a, b) { return text(a).localeCompare(text(b), 'pt-BR'); });
+        mapcadSaveRamos(list);
+      }
+      mapcadRenderPage(clientes);
+    };
+    Array.prototype.slice.call(page.querySelectorAll('[data-mapcad-edit]')).forEach(function(btn) {
+      btn.onclick = function() { mapcadOpenClienteModal(text(btn.getAttribute('data-mapcad-edit'))); };
+    });
+  }
+  window.renderMapaClientes = async function(force) {
+    ensureFinalRoundStyle();
+    try {
+      var clientes = await mapcadFetchClientes(!!force);
+      mapcadRenderPage(clientes);
+    } catch (e) {
+      var page = document.getElementById('page-mapa-clientes');
+      if (page) page.innerHTML = '<div class="mapcad-wrap"><div class="mapcad-panel"><div class="mapcad-body" style="color:#fca5a5">Falha ao carregar a central de cidades/UF e ramos: ' + esc(String(e && e.message || e)) + '</div></div></div>';
+    }
+  };
+  window._mapaClientes_init = function() { window.renderMapaClientes(true); };
+  window._mapaClientes_carregarDados = function() { window.renderMapaClientes(true); };
+
+  function enhanceOfmaqAllMachinesButton() {
+    var select = document.querySelector('#ofmaq-final-machine');
+    if (!select || select.parentNode == null) return;
+    if (select.parentNode.querySelector('[data-ofmaq-show-all]')) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mapcad-btn';
+    btn.textContent = 'Ver todas as máquinas';
+    btn.setAttribute('data-ofmaq-show-all', '1');
+    btn.style.marginLeft = '8px';
+    btn.onclick = function() {
+      try {
+        select.value = '';
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch (_) {}
+    };
+    select.parentNode.appendChild(btn);
+  }
+  ['renderOFsPorMaquina', 'renderOfmaq', 'renderOFsMaquina', 'renderMaquinas'].forEach(function(name) {
+    try {
+      if (typeof window[name] === 'function' && !window[name].__patchAllMachineButton) {
+        var orig = window[name];
+        window[name] = function() {
+          var out = orig.apply(this, arguments);
+          setTimeout(enhanceOfmaqAllMachinesButton, 0);
+          setTimeout(enhanceOfmaqAllMachinesButton, 300);
+          return out;
+        };
+        window[name].__patchAllMachineButton = true;
+      }
+    } catch (_) {}
+  });
+
+  function enhanceLancamentoCancelButtons() {
+    Array.prototype.slice.call(document.querySelectorAll('button[onclick*="lancAbrirDetalhes"]')).forEach(function(btnVer) {
+      var row = btnVer.closest ? btnVer.closest('tr') : null;
+      var cell = btnVer.parentElement;
+      if (!row || !cell || cell.querySelector('[data-lanc-cancel-inline]')) return;
+      var rowTxt = lower(row.textContent || '');
+      if (rowTxt.indexOf('cancelad') >= 0 || rowTxt.indexOf('conclu') >= 0 || rowTxt.indexOf('[exc]') >= 0) return;
+      var onclick = String(btnVer.getAttribute('onclick') || '');
+      var match = onclick.match(/'([^']+)'/);
+      var id = match ? text(match[1]) : '';
+      var numero = text((row.children[1] && row.children[1].textContent || '').replace('#', ''));
+      if (!id) return;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-orange btn-sm';
+      btn.textContent = '✕ Cancelar';
+      btn.setAttribute('data-lanc-cancel-inline', id);
+      btn.style.marginLeft = '4px';
+      btn.onclick = function(ev) {
+        try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
+        if (typeof window.cancelarOF === 'function') window.cancelarOF(id, numero || id);
+      };
+      cell.appendChild(btn);
+    });
+  }
+  if (typeof window.renderLancamento === 'function' && !window.renderLancamento.__patchInlineCancel) {
+    var prevRenderLancamento = window.renderLancamento;
+    window.renderLancamento = function() {
+      var out = prevRenderLancamento.apply(this, arguments);
+      setTimeout(enhanceLancamentoCancelButtons, 0);
+      return out;
+    };
+    window.renderLancamento.__patchInlineCancel = true;
+  }
+
+  try { rrReportClientesMaisCompraram = rrReportClientesMaisCompraramFinal; } catch (_) {}
+  try { rrReportClientesMenosCompraram = rrReportClientesMenosCompraramFinal; } catch (_) {}
+  try { rrReportComissoes = rrReportComissoesByClient; } catch (_) {}
+  try { window.rrReportClientesMaisCompraram = rrReportClientesMaisCompraramFinal; } catch (_) {}
+  try { window.rrReportClientesMenosCompraram = rrReportClientesMenosCompraramFinal; } catch (_) {}
+  try { window.rrReportComissoes = rrReportComissoesByClient; } catch (_) {}
+  try { window.rrReportLucratividadePorMaquina = rrReportLucratividadePorMaquina; } catch (_) {}
+  try { window.rrReportChecklistRecebimentoCentral = rrReportChecklistRecebimentoCentral; } catch (_) {}
+  try { window.rrReportComprasFornecedorCentral = rrReportComprasFornecedorCentral; } catch (_) {}
+  try { window.rrReportComprasResumoCentral = rrReportComprasResumoCentral; } catch (_) {}
+  try { window._renderComissoesPatch = renderComissoesByClientPatch; } catch (_) {}
+  try { window.__comissoesPatchCalcular = renderComissoesByClientPatch; } catch (_) {}
+  try { window._executarCalculoComissoes = renderComissoesByClientPatch; } catch (_) {}
+
+  patchAmostrasNoImplicitCompany();
+  ensureFinalRoundStyle();
+  upsertReportCard({ id: 'comissoes', label: 'Comissões', icon: '💵', desc: 'Resumo agrupado por cliente com detalhamento das OFs comissionadas.', run: rrReportComissoesByClient }, 'ficha-tecnica-cliente');
+  upsertReportCard({ id: 'lucratividade-por-maquina', label: 'Lucratividade por Máquina', icon: '🏭', desc: 'Cruza passagens canônicas, perdas, custos e mix produtivo por máquina.', run: rrReportLucratividadePorMaquina }, 'passagens');
+  upsertReportCard({ id: 'papelao-checklist', label: 'Checklist de Recebimento', icon: '📋', desc: 'Versão imprimível do checklist de recebimento de papelão.', run: rrReportChecklistRecebimentoCentral }, 'estoque-chapas');
+  upsertReportCard({ id: 'papelao-fornecedor', label: 'Compras por Fornecedor', icon: '🏷️', desc: 'Consolida compras de papelão por fornecedor no período selecionado.', run: rrReportComprasFornecedorCentral }, 'papelao-checklist');
+  upsertReportCard({ id: 'papelao-resumo', label: 'Quantidade e Valor Comprado', icon: '📊', desc: 'Resumo financeiro e físico das compras de papelão no período.', run: rrReportComprasResumoCentral }, 'papelao-fornecedor');
+  try { if (typeof rrEnsureFreshPage === 'function') rrEnsureFreshPage(true); } catch (_) {}
+  setTimeout(function() {
+    try { enhanceCompraRowButtons(); } catch (_) {}
+    try { enhanceOfmaqAllMachinesButton(); } catch (_) {}
+    try { enhanceLancamentoCancelButtons(); } catch (_) {}
+  }, 0);
+})();
 (function patchRecursionGuards() {
   if (window.__patchRecursionGuardsInstalled) return;
   window.__patchRecursionGuardsInstalled = true;

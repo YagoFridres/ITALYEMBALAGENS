@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260804174500';
-const SW_RUNTIME_VERSION = '20260804174500';
+const PATCH_RUNTIME_VERSION = '20260804200000';
+const SW_RUNTIME_VERSION = '20260804200000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 
 app.get('/sw.js', (req, res) => {
@@ -2355,48 +2355,58 @@ function _comissoesAplicarFallbackBaseOf(lista, baseRows) {
   });
 }
 
+function _comissoesPickClienteNome(of) {
+  return _comissoesTextoValido(of?.clinome)
+    || _comissoesTextoValido(of?.cliente_nome)
+    || _comissoesTextoValido(of?.cliNome)
+    || _comissoesTextoValido(of?.cliente)
+    || _comissoesTextoValido(of?.__cliente_nome_view)
+    || 'Sem cliente';
+}
+
+function _comissoesPickClienteId(of) {
+  return String(of?.cli_id ?? of?.cliId ?? of?.cliente_id ?? of?.clienteId ?? '').trim();
+}
+
 function _comissoesMontarPayload(todasOFs, extra = {}) {
-  const porVend = {};
-  let totalGeral = 0;
-  (Array.isArray(todasOFs) ? todasOFs : []).forEach((of) => {
-    const val = _vendasOficialValor(of);
-    if (!val) return;
-    totalGeral += val;
-    const vid = _pickOfVendedorIdCompat(of) || '__sem__';
-    const nome = of.vendedor_nome || of.vendedor || of.vendNome || 'Sem Vendedor';
-    const pct = Number(of.comissao_pct || 1);
-    if (!porVend[vid]) {
-      porVend[vid] = { id: vid, nome, comissao_pct: pct, ofs: 0, total: 0 };
-    }
-    porVend[vid].ofs++;
-    porVend[vid].total += val;
-  });
-
-  const vendedoresResult = Object.values(porVend)
-    .sort((a, b) => b.total - a.total)
-    .map((v) => ({ ...v, comissao_rs: v.total * (v.comissao_pct / 100) }));
-
+  const porCliente = new Map();
   const ofsDetalhadas = (Array.isArray(todasOFs) ? todasOFs : []).map((of) => {
     const valor_total = _vendasOficialValor(of);
     const comissao_pct = Number(of.comissao_pct || 1);
     const comissao_rs = (of.comissao_rs != null) ? Number(of.comissao_rs || 0) : (valor_total * (comissao_pct / 100));
     const preco = Number(of.preco ?? of.valor_unitario ?? 0) || 0;
-    const clienteNome = _comissoesTextoValido(of.clinome)
-      || _comissoesTextoValido(of.cliente_nome)
-      || _comissoesTextoValido(of.cliNome)
-      || _comissoesTextoValido(of.cliente)
-      || _comissoesTextoValido(of.__cliente_nome_view)
-      || '—';
+    const clienteNome = _comissoesPickClienteNome(of);
     const vendedorNome = _comissoesTextoValido(of.vendedor)
       || _comissoesTextoValido(of.vendedor_nome)
       || _comissoesTextoValido(of.vendNome)
       || _comissoesTextoValido(of.__vendedor_nome_view)
       || 'Sem Vendedor';
+    const clienteId = _comissoesPickClienteId(of) || null;
+    const grupoKey = String(clienteId || clienteNome).trim().toLowerCase() || 'sem-cliente';
+    const grupoAtual = porCliente.get(grupoKey) || {
+      id: clienteId || grupoKey,
+      cliente_id: clienteId,
+      nome: clienteNome,
+      cliente_nome: clienteNome,
+      ofs: 0,
+      total: 0,
+      total_comissao: 0,
+      _pct_sum: 0,
+      _pct_count: 0,
+    };
+    grupoAtual.ofs += 1;
+    grupoAtual.total += valor_total;
+    grupoAtual.total_comissao += comissao_rs;
+    grupoAtual._pct_sum += comissao_pct;
+    grupoAtual._pct_count += 1;
+    porCliente.set(grupoKey, grupoAtual);
     return {
       id: of.id,
       numero: of.numero || of.of,
       of: of.of || of.numero || null,
-      cli_id: of.cli_id || of.cliId || of.cliente_id || of.clienteId || null,
+      cli_id: clienteId,
+      cliente_id: clienteId,
+      cliente_nome: clienteNome,
       vendedor_id: _pickOfVendedorIdCompat(of) || null,
       cliente: clienteNome,
       vendedor: vendedorNome,
@@ -2413,13 +2423,28 @@ function _comissoesMontarPayload(todasOFs, extra = {}) {
     };
   });
 
-  const totalComissao = vendedoresResult.reduce((s, v) => s + v.comissao_rs, 0);
+  const clientesResult = Array.from(porCliente.values())
+    .map((item) => ({
+      id: item.id,
+      cliente_id: item.cliente_id || null,
+      nome: item.nome,
+      cliente_nome: item.cliente_nome,
+      ofs: item.ofs,
+      total: item.total,
+      comissao_rs: item.total_comissao,
+      comissao_pct: item._pct_count ? (item._pct_sum / item._pct_count) : 0,
+    }))
+    .sort((a, b) => (Number(b.total || 0) - Number(a.total || 0)) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+  const totalGeral = clientesResult.reduce((s, item) => s + (Number(item.total || 0) || 0), 0);
+  const totalComissao = clientesResult.reduce((s, item) => s + (Number(item.comissao_rs || 0) || 0), 0);
   return {
     ok: true,
     total_ofs: (Array.isArray(todasOFs) ? todasOFs.length : 0),
     total_vendido: totalGeral,
     total_comissao: totalComissao,
-    vendedores: vendedoresResult,
+    clientes: clientesResult,
+    grupos: clientesResult,
+    vendedores: clientesResult,
     ofs: ofsDetalhadas,
     ...extra,
   };
@@ -8283,16 +8308,9 @@ app.delete('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
 app.get('/api/amostras', authMiddleware, async (req, res) => {
   try {
     let q = supabase.from('amostras').select('*').order('created_at', { ascending: false });
-    const empresaCtx = await _resolveEmpresaMutationContext(req, req.query || {});
     const empFiltroRaw = String(req.query.empId ?? req.query.emp_id ?? '').trim();
     if (empFiltroRaw) {
       q = q.or('emp_id.eq.' + empFiltroRaw + ',empresa_id.eq.' + empFiltroRaw);
-    } else if (empresaCtx.empresa_id && empresaCtx.emp_id) {
-      q = q.or('empresa_id.eq.' + empresaCtx.empresa_id + ',emp_id.eq.' + empresaCtx.emp_id);
-    } else if (empresaCtx.empresa_id) {
-      q = q.eq('empresa_id', empresaCtx.empresa_id);
-    } else if (empresaCtx.emp_id) {
-      q = q.eq('emp_id', empresaCtx.emp_id);
     }
     if (req.query.status) q = q.eq('status', req.query.status);
     if (req.query.cliente_id) q = q.eq('cliente_id', req.query.cliente_id);
@@ -12408,10 +12426,13 @@ app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, r
     const grupos = new Map();
     elegiveis.forEach((of) => {
       const cliId = String(_assistPickOfClienteId(of) || '').trim();
-      const key = cliId || 'sem-cliente';
+      const nomeBruto = String(of?.clinome ?? of?.cliente_nome ?? of?.cliNome ?? of?.cliente ?? '').replace(/\s+/g, ' ').trim();
+      const nome = nomeBruto || 'Sem cliente';
+      const key = nome.toLowerCase();
       if (!grupos.has(key)) {
         grupos.set(key, {
           cli_id: cliId || null,
+          cliente_nome: nome,
           valor_total: 0,
           caixas_compradas: 0,
           total_ofs: 0
@@ -12423,16 +12444,11 @@ app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, r
       atual.total_ofs += 1;
     });
 
-    const cliIds = Array.from(new Set(Array.from(grupos.values()).map((item) => String(item?.cli_id || '').trim()).filter(_isUuid)));
-    const clientesMap = cliIds.length ? await _assistLoadClientesByIds(cliIds) : new Map();
-
     const rowsOut = Array.from(grupos.values()).map((item) => {
-      const cliId = String(item?.cli_id || '').trim();
-      const nome = clientesMap.get(cliId) || cliId || 'Sem cliente';
       const ticketMedio = item.total_ofs > 0 ? (item.valor_total / item.total_ofs) : 0;
       return {
         cliente_id: item.cli_id || null,
-        cliente_nome: nome,
+        cliente_nome: item.cliente_nome || 'Sem cliente',
         valor_total: Number(item.valor_total || 0),
         caixas_compradas: Math.max(0, Math.trunc(Number(item.caixas_compradas || 0) || 0)),
         total_ofs: Math.max(0, Math.trunc(Number(item.total_ofs || 0) || 0)),
@@ -12465,11 +12481,214 @@ app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, r
       data_inicio: range.inicio,
       data_fim: range.fim,
       ordem,
-      resumo,
+      resumo: {
+        ...resumo,
+        criterio: 'SUM(valor_total) com status Concluído, deleted_at IS NULL, agrupado por clinome e data via COALESCE(data_faturamento, data_conclusao, dia, created_at)'
+      },
       rows: rowsOut
     });
   } catch (e) {
     console.error('[RELATORIOS][CLIENTES-MAIS-COMPRARAM]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const range = _relatoriosResolveDateRange(req.query, { mes: 7, ano: 2026 });
+    if (!range?.inicio || !range?.fim_exclusivo) {
+      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
+    }
+
+    const maquinasCanonicas = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA', 'RISCADOR'];
+    const buckets = new Map(maquinasCanonicas.map((maquina) => [maquina, {
+      maquina,
+      valor_venda_gerado: 0,
+      quantidade_caixas_produzidas: 0,
+      toneladas_produzidas: 0,
+      quantidade_caixas_perdidas: 0,
+      valor_perdido: 0,
+      toneladas_perdidas: 0,
+      custos_totais: 0,
+      total_passagens: 0,
+      total_ofs_set: new Set(),
+      clientes_map: new Map(),
+      tipos_map: new Map(),
+      cores_map: new Map(),
+    }]));
+    const sumCount = (map, key, inc = 1) => {
+      const txt = String(key || '').trim();
+      if (!txt) return;
+      map.set(txt, (Number(map.get(txt) || 0) || 0) + (Number(inc || 0) || 0));
+    };
+    const topList = (map, keyName) => Array.from(map.entries())
+      .map(([nome, total]) => ({ [keyName]: nome, total: Number(total || 0) || 0 }))
+      .sort((a, b) => (Number(b.total || 0) - Number(a.total || 0)) || String(a[keyName] || '').localeCompare(String(b[keyName] || ''), 'pt-BR'))
+      .slice(0, 5);
+    const parseColors = (value) => {
+      const out = [];
+      const add = (raw) => {
+        const txt = String(
+          raw && typeof raw === 'object'
+            ? (raw.nome ?? raw.name ?? raw.cor ?? raw.color ?? raw.label ?? raw.value ?? '')
+            : (raw ?? '')
+        ).trim();
+        if (txt) out.push(txt);
+      };
+      if (Array.isArray(value)) {
+        value.forEach(add);
+        return out;
+      }
+      const raw = String(value || '').trim();
+      if (!raw) return out;
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(add);
+          return out;
+        }
+        if (parsed && typeof parsed === 'object') {
+          add(parsed);
+          return out;
+        }
+      } catch (_) {}
+      raw.split(/[,;|/]+/g).forEach(add);
+      return out;
+    };
+    const calcAreaTotalM2 = (of) => {
+      const qtd = Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.qtd ?? of?.quantidade ?? 0) || 0));
+      const compMm = Number(of?.dim_comprimento ?? of?.caixa_comprimento ?? 0) || 0;
+      const largMm = Number(of?.dim_largura ?? of?.caixa_largura ?? 0) || 0;
+      if (!(qtd > 0) || !(compMm > 0) || !(largMm > 0)) return 0;
+      return (compMm / 1000) * (largMm / 1000) * qtd;
+    };
+
+    let empresaId = null;
+    try { empresaId = await _resolveEmpresaUuid(req); } catch (_) { empresaId = null; }
+    let selectCols = [
+      'id', 'numero', 'of', 'status', 'deleted_at', 'data_faturamento', 'data_conclusao', 'dia', 'created_at',
+      'empresa_id', 'emp_id', 'cli_id', 'clinome', 'cliente_nome', 'cliNome', 'cliente',
+      'valor_total', 'valor_venda', 'qtd', 'quantidade', 'qtd_produzida',
+      'passagens_maquina', 'perdas_por_maquina', 'tonelada_vendida', 'toneladas_utilizadas', 'custo_m2_venda',
+      'tipo_caixa', 'cores_impressao', 'dim_comprimento', 'dim_largura', 'caixa_comprimento', 'caixa_largura'
+    ];
+    const rows = [];
+    const batchSize = 1000;
+    let offset = 0;
+    while (true) {
+      let q = supabase
+        .from('ofs')
+        .select(selectCols.join(','))
+        .not('passagens_maquina', 'is', null)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + batchSize - 1);
+      if (empresaId) q = q.or('empresa_id.eq.' + empresaId + ',emp_id.eq.' + empresaId);
+      const r = await q;
+      if (r?.error) {
+        const msg = String(r.error.message || r.error || '');
+        const m1 = msg.match(/Could not find the '([^']+)' column/i);
+        const m2 = msg.match(/column\s+(?:ofs\.)?\"?([a-z0-9_]+)\"?\s+does not exist/i);
+        const missingCol = (m1 && m1[1]) || (m2 && m2[1]) || '';
+        if (missingCol && selectCols.includes(missingCol)) {
+          selectCols = selectCols.filter((col) => col !== missingCol);
+          continue;
+        }
+        throw r.error;
+      }
+      const chunk = Array.isArray(r?.data) ? r.data : [];
+      if (!chunk.length) break;
+      rows.push(...chunk);
+      offset += chunk.length;
+      if (chunk.length < batchSize || offset > 50000) break;
+    }
+
+    // Regra de cálculo documentada:
+    // 1) o período sempre usa a data canônica da OF: data_faturamento -> data_conclusao -> dia -> created_at
+    // 2) a fonte das máquinas é exclusivamente ofs.passagens_maquina, igual ao relatório OFs por Máquina
+    // 3) custos totais usam custo_m2_venda * área total produzida da OF
+    rows
+      .filter((of) => _vendasOficialStatusConcluido(of?.status) && _vendasOficialDentroDoPeriodo(of, range))
+      .forEach((of) => {
+        const passagens = _normalizarPassagensMaquinaPayload(of?.passagens_maquina);
+        if (!passagens.length) return;
+        const valorVenda = Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0;
+        const qtdOf = Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.qtd ?? of?.quantidade ?? 0) || 0));
+        const toneladasOf = Number(of?.toneladas_utilizadas ?? of?.tonelada_vendida ?? 0) || 0;
+        const custoM2 = Number(of?.custo_m2_venda || 0) || 0;
+        const custoTotal = calcAreaTotalM2(of) * custoM2;
+        const clienteNome = String(of?.clinome ?? of?.cliente_nome ?? of?.cliNome ?? of?.cliente ?? 'Sem cliente').trim() || 'Sem cliente';
+        const tipoCaixa = String(of?.tipo_caixa || '').trim() || 'Sem tipo';
+        const perdas = _caixasParsePerdasPorMaquina(of?.perdas_por_maquina);
+
+        passagens.forEach((passagem) => {
+          const maquinaCanon = _canonMaqNome(passagem?.maquina_nome || passagem?.maquina || passagem?.nome || '');
+          if (!maquinaCanon || !buckets.has(maquinaCanon)) return;
+          const bucket = buckets.get(maquinaCanon);
+          const qtdPassagem = Math.max(0, Math.trunc(Number(passagem?.qtd_caixas ?? passagem?.quantidade ?? qtdOf) || 0));
+          bucket.valor_venda_gerado += valorVenda;
+          bucket.quantidade_caixas_produzidas += qtdPassagem;
+          bucket.toneladas_produzidas += toneladasOf;
+          bucket.custos_totais += custoTotal;
+          bucket.total_passagens += 1;
+          bucket.total_ofs_set.add(String(of?.id || of?.numero || of?.of || '').trim());
+          sumCount(bucket.clientes_map, clienteNome, 1);
+          sumCount(bucket.tipos_map, tipoCaixa, qtdPassagem > 0 ? qtdPassagem : 1);
+          parseColors(of?.cores_impressao).forEach((cor) => sumCount(bucket.cores_map, cor, 1));
+
+          perdas.forEach((perda) => {
+            const maqPerda = _canonMaqNome(perda?.maquina || perda?.maquina_perda || perda?.maquina_nome || perda?.nome_maquina || '');
+            if (maqPerda !== maquinaCanon) return;
+            const qtdPerdida = Math.max(0, Math.trunc(Number(perda?.qtd_perdida ?? perda?.quantidade ?? perda?.caixas_perdidas ?? 0) || 0));
+            const valorPerdido = Number(perda?.valor_perdido || 0) || 0;
+            let toneladasPerdidas = Number(perda?.toneladas_perdidas ?? perda?.tonelada_perdida ?? 0) || 0;
+            if (!(toneladasPerdidas > 0) && qtdPerdida > 0 && toneladasOf > 0 && qtdOf > 0) {
+              toneladasPerdidas = (toneladasOf / qtdOf) * qtdPerdida;
+            }
+            bucket.quantidade_caixas_perdidas += qtdPerdida;
+            bucket.valor_perdido += valorPerdido;
+            bucket.toneladas_perdidas += toneladasPerdidas;
+          });
+        });
+      });
+
+    const rowsOut = maquinasCanonicas.map((maquina) => {
+      const item = buckets.get(maquina);
+      const clientesTop = topList(item.clientes_map, 'cliente_nome');
+      const tiposTop = topList(item.tipos_map, 'tipo_caixa');
+      const coresTop = topList(item.cores_map, 'cor');
+      return {
+        maquina,
+        valor_venda_gerado: Number(item.valor_venda_gerado.toFixed(2)),
+        quantidade_caixas_produzidas: Math.trunc(Number(item.quantidade_caixas_produzidas || 0) || 0),
+        toneladas_produzidas: Number(item.toneladas_produzidas.toFixed(6)),
+        quantidade_caixas_perdidas: Math.trunc(Number(item.quantidade_caixas_perdidas || 0) || 0),
+        valor_perdido: Number(item.valor_perdido.toFixed(2)),
+        toneladas_perdidas: Number(item.toneladas_perdidas.toFixed(6)),
+        custos_totais: Number(item.custos_totais.toFixed(2)),
+        total_passagens: Math.trunc(Number(item.total_passagens || 0) || 0),
+        total_ofs: item.total_ofs_set.size,
+        clientes_top: clientesTop,
+        cliente_principal: clientesTop[0] || null,
+        tipos_caixa_top: tiposTop,
+        tipo_caixa_principal: tiposTop[0] || null,
+        cores_top: coresTop,
+        cor_principal: coresTop[0] || null,
+      };
+    });
+
+    return res.json({
+      ok: true,
+      periodo: { inicio: range.inicio, fim: range.fim },
+      criterio_data: 'COALESCE(data_faturamento, data_conclusao, dia, created_at)',
+      criterio_fonte_passagens: 'ofs.passagens_maquina',
+      criterio_custos: 'custo_total = custo_m2_venda * area_total_m2 da OF',
+      rows: rowsOut,
+      data: rowsOut,
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][LUCRATIVIDADE-MAQUINA]', e?.message || e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
@@ -14003,6 +14222,7 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
       email: String(b.email || '').trim() || null,
       cidade: String(b.cidade || '').trim() || null,
       uf: String(b.uf || b.estado || '').trim() || null,
+      ramo: String(b.ramo || '').trim() || null,
       endereco: String(b.endereco || '').trim() || null,
       observacoes: String(b.observacoes || b.obs || '').trim() || null,
       ativo: true,
@@ -23462,9 +23682,16 @@ app.delete('/api/compras-chapas/pastas/:id', authMiddleware, async (req, res) =>
   try {
     const id = _comprasChapasStr(req.params.id);
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const vinculadas = await supabase.from('compras_chapas').select('id,pasta_id').eq('pasta_id', id);
+    if (vinculadas.error) return res.status(500).json({ ok: false, error: vinculadas.error.message });
+    const idsCompras = (Array.isArray(vinculadas.data) ? vinculadas.data : []).map((row) => _comprasChapasStr(row?.id)).filter(Boolean);
+    if (idsCompras.length) {
+      const clear = await supabase.from('compras_chapas').update({ pasta_id: null }).in('id', idsCompras);
+      if (clear.error) return res.status(500).json({ ok: false, error: clear.error.message });
+    }
     const del = await supabase.from('compras_pastas').delete().eq('id', id);
     if (del.error) return res.status(500).json({ ok: false, error: del.error.message });
-    return ok(res, true);
+    return ok(res, { removed_folder_id: id, released_compras: idsCompras.length });
   } catch (e) {
     _comprasChapasLog('DELETE /api/compras-chapas/pastas/:id', e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
