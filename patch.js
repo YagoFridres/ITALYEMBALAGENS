@@ -5010,10 +5010,10 @@ window._compraPapelaoResolveItemMetrics = function(item) {
   var base = window._compraPapelaoDeriveItem(item);
   var areaManual = item && Object.prototype.hasOwnProperty.call(item, 'area_manual')
     ? !!item.area_manual
-    : (item && item.area_m2 != null && String(item.area_m2).trim() !== '');
+    : false;
   var totalManual = item && Object.prototype.hasOwnProperty.call(item, 'total_manual')
     ? !!item.total_manual
-    : (item && item.valor_total != null && String(item.valor_total).trim() !== '');
+    : false;
   var area = areaManual ? window._compraPapelaoNum(item.area_m2) : base.area_m2;
   var quantidade = window._compraPapelaoNum(item && item.quantidade);
   var totalUnit = area * window._compraPapelaoNum(item && item.valor_m2);
@@ -5355,6 +5355,7 @@ window._compraPapelaoEnsureStyles = function() {
     + '#page-compras .ccpx-table-clean th{position:sticky;top:0;z-index:2;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;padding:12px;border-bottom:1px solid rgba(148,163,184,.18);text-align:left}'
     + '#page-compras .ccpx-table-clean td{padding:13px 12px;border-bottom:1px solid rgba(148,163,184,.1);font-size:13px;color:#e2e8f0;vertical-align:middle}'
     + '#page-compras .ccpx-table-clean tbody tr:hover td{background:rgba(30,41,59,.46)}'
+    + '#page-compras .ccpx-detail-row td{background:rgba(15,23,42,.58)!important}'
     + '#page-compras .ccpx-row-stack{display:grid;gap:4px}'
     + '#page-compras .ccpx-row-stack strong{font-size:13px;color:#f8fafc}'
     + '#page-compras .ccpx-row-stack span{font-size:11px;color:#94a3b8}'
@@ -5626,6 +5627,7 @@ window._compraPapelaoRenderItemRowsHtml = function(compra) {
       + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.vl_p_mil != null ? item.vl_p_mil : d.vl_p_mil)) + '</td>'
       + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.valor_total != null ? item.valor_total : d.valor_total)) + '</td>'
       + '  <td>' + window._compraPapelaoEsc(item && item.observacao || '—') + '</td>'
+      + '  <td>' + window._compraPapelaoEsc(item && item.ped_fornecedor || '—') + '</td>'
       + '</tr>';
   }).join('');
 };
@@ -5647,6 +5649,7 @@ window._compraPapelaoRenderBlocksHtml = function() {
         });
     var totals = window._compraPapelaoCompraTotals(compra);
     var dataRef = compra && (compra.data_compra || compra.data || compra.atualizado_em || compra.criado_em || compra.created_at || compra.updated_at);
+    var expanded = !!(window._compraPapelaoStateRef().expanded && window._compraPapelaoStateRef().expanded[id]);
     return ''
           + '<tr data-ccpx-compra="' + window._compraPapelaoAttr(id) + '">'
           + '  <td><div class="ccpx-row-stack"><strong>' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(compra && compra.numero_compra || '')) + '</strong><span>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(dataRef)) + '</span></div></td>'
@@ -5656,12 +5659,30 @@ window._compraPapelaoRenderBlocksHtml = function() {
           + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.area, 4)) + '</td>'
           + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(totals.valor)) + '</td>'
           + '  <td><div class="ccpx-actions-compact">'
+          + '    <button type="button" data-ccpx-toggle="' + window._compraPapelaoAttr(id) + '">' + (expanded ? 'Ocultar Itens' : 'Itens') + '</button>'
           + '    <button type="button" data-ccpx-edit="' + window._compraPapelaoAttr(id) + '" class="primary">Editar</button>'
           + '    <button type="button" data-ccpx-folder-move="' + window._compraPapelaoAttr(id) + '">Pasta</button>'
+          + '    <button type="button" data-ccpx-clone="' + window._compraPapelaoAttr(id) + '">Clonar</button>'
           + '    <button type="button" data-ccpx-print-one="' + window._compraPapelaoAttr(id) + '">Imprimir</button>'
           + '    <button type="button" data-ccpx-delete="' + window._compraPapelaoAttr(id) + '" class="danger">Excluir</button>'
           + '  </div></td>'
           + '</tr>';
+        }).join('')
+    + compras.map(function(compra) {
+        var id = String(compra && compra.id || '').trim();
+        var expanded = !!(window._compraPapelaoStateRef().expanded && window._compraPapelaoStateRef().expanded[id]);
+        if (!expanded) return '';
+        return ''
+          + '<tr class="ccpx-detail-row"><td colspan="7">'
+          + '  <div style="display:grid;gap:12px;padding:12px 6px">'
+          + '    <div class="ccpx-block-scroll"><table class="ccpx-table"><thead><tr>'
+          + '      <th>SEQ</th><th>CLIENTE</th><th>ENTREGA</th><th>PO</th><th>TAMANHO</th><th>VINCOS</th>'
+          + '      <th class="num">QTD</th><th class="num">LOTE</th><th class="num">ÁREA m²</th><th class="num">R$/m²</th><th class="num">R$/MIL</th><th class="num">TOTAL</th><th>OBS</th><th>PED FORN</th>'
+          + '    </tr></thead><tbody>'
+          + window._compraPapelaoRenderItemRowsHtml(compra)
+          + '    </tbody></table></div>'
+          + '  </div>'
+          + '</td></tr>';
       }).join('')
     + '  </tbody></table></div>'
     + '</div>';
@@ -5867,8 +5888,10 @@ window._compraPapelaoCollectModalRows = function(overlay) {
       quantidade: String((row.querySelector('[data-field="quantidade"]') || {}).value || '').trim(),
       lote_minimo: String((row.querySelector('[data-field="lote_minimo"]') || {}).value || '').trim(),
       area_m2: String((row.querySelector('[data-field="area_m2"]') || {}).value || '').trim(),
+      area_manual: String((((row.querySelector('[data-field="area_m2"]') || {}).dataset || {}).ccpxManual) || '') === '1',
       valor_m2: String((row.querySelector('[data-field="valor_m2"]') || {}).value || '').trim(),
       valor_total: String((row.querySelector('[data-field="valor_total"]') || {}).value || '').trim(),
+      total_manual: String((((row.querySelector('[data-field="valor_total"]') || {}).dataset || {}).ccpxManual) || '') === '1',
       observacao: String((row.querySelector('[data-field="observacao"]') || {}).value || '').trim(),
       ped_fornecedor: String((row.querySelector('[data-field="ped_fornecedor"]') || {}).value || '').trim()
     };
@@ -5936,8 +5959,10 @@ window._compraPapelaoRefreshModalComputed = function(overlay) {
       comprimento: (row.querySelector('[data-field="comprimento"]') || {}).value,
       quantidade: (row.querySelector('[data-field="quantidade"]') || {}).value,
       area_m2: (row.querySelector('[data-field="area_m2"]') || {}).value,
+      area_manual: String((((row.querySelector('[data-field="area_m2"]') || {}).dataset || {}).ccpxManual) || '') === '1',
       valor_m2: (row.querySelector('[data-field="valor_m2"]') || {}).value,
       valor_total: (row.querySelector('[data-field="valor_total"]') || {}).value
+      ,total_manual: String((((row.querySelector('[data-field="valor_total"]') || {}).dataset || {}).ccpxManual) || '') === '1'
     };
     var d = window._compraPapelaoResolveItemMetrics(item);
     totalQtd += window._compraPapelaoNum(item.quantidade);
@@ -7038,6 +7063,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
         pastaFiltro: '__all',
         pastas: [],
         compras: [],
+        expanded: {},
         loading: false,
         lastEmpId: ''
       };
@@ -7103,6 +7129,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       + '#page-compras .ccp-actions button.primary{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border-color:rgba(96,165,250,.45)}'
       + '#page-compras .ccp-actions button.danger{background:linear-gradient(135deg,#991b1b,#7f1d1d);color:#fff;border-color:rgba(248,113,113,.28)}'
       + '#page-compras .ccp-empty{padding:22px 8px;text-align:center;color:#94a3b8}'
+      + '#page-compras .ccp-detail-row td{background:rgba(15,23,42,.58)!important}'
+      + '#page-compras .ccp-detail-row:hover td{background:rgba(15,23,42,.58)!important}'
       + '#page-compras .ccp-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}'
       + '#page-compras .ccp-kpi{display:grid;gap:6px;padding:14px;border-radius:14px;border:1px solid rgba(148,163,184,.14);background:rgba(2,6,23,.28)}'
       + '#page-compras .ccp-kpi .lbl{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
@@ -7180,10 +7208,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     var base = cItemDerived(item);
     var areaManual = item && Object.prototype.hasOwnProperty.call(item, 'area_manual')
       ? !!item.area_manual
-      : (item && item.area_m2 != null && String(item.area_m2).trim() !== '');
+      : false;
     var totalManual = item && Object.prototype.hasOwnProperty.call(item, 'total_manual')
       ? !!item.total_manual
-      : (item && item.valor_total != null && String(item.valor_total).trim() !== '');
+      : false;
     var area = areaManual ? cNum(item.area_m2) : base.area_m2;
     var quantidade = cNum(item && item.quantidade);
     var totalUnit = area * cNum(item && item.valor_m2);
@@ -7293,7 +7321,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       totalArea += totals.area;
       totalValor += totals.total;
       var id = String(compra && compra.id || '').trim();
-      return ''
+      var itens = Array.isArray(compra && compra.itens) ? compra.itens : [];
+      var expanded = !!(state.expanded && state.expanded[id]);
+      var baseRow = ''
         + '<tr>'
         + '  <td><div class="ccp-row-main"><div class="ccp-row-title">#' + cEsc(String(compra && compra.numero_compra || '—')) + '</div><div class="ccp-row-sub">' + cEsc(String((compra && compra.itens && compra.itens.length) || 0)) + ' item(ns)</div></div></td>'
         + '  <td><div class="ccp-row-main"><div class="ccp-row-title">' + cEsc(compra && compra.fornecedor || '—') + '</div><div class="ccp-row-sub">' + cEsc(compra && compra.observacao || 'Sem observação') + '</div></div></td>'
@@ -7302,6 +7332,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
         + '  <td class="num">' + cEsc(cFmtNum(totals.area, 4)) + '</td>'
         + '  <td class="num">' + cEsc(cFmtRs(totals.total)) + '</td>'
         + '  <td><div class="ccp-actions">'
+        + '    <button type="button" data-ccp-toggle-items="' + cAttr(id) + '">' + (expanded ? 'Ocultar Itens' : 'Itens') + '</button>'
         + '    <select data-ccp-move="' + cAttr(id) + '">' + cFolderOptionsHtml(compra && compra.pasta_id, true) + '</select>'
         + '    <button type="button" data-ccp-edit="' + cAttr(id) + '">Editar</button>'
         + '    <button type="button" data-ccp-print="' + cAttr(id) + '">Imprimir</button>'
@@ -7309,6 +7340,40 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
         + '    <button type="button" class="danger" data-ccp-del="' + cAttr(id) + '">Excluir</button>'
         + '  </div></td>'
         + '</tr>';
+      if (!expanded) return baseRow;
+      var itensHtml = itens.length ? itens.map(function(item, idx) {
+        var metrics = cResolveItemMetrics(item || {});
+        var size = cFmtNum(item && item.largura || 0, 0) + ' × ' + cFmtNum(item && item.comprimento || 0, 0);
+        return ''
+          + '<tr>'
+          + '  <td>' + cEsc(String(item && item.seq != null ? item.seq : (idx + 1))) + '</td>'
+          + '  <td>' + cEsc(item && item.ped_cliente || '—') + '</td>'
+          + '  <td>' + cEsc(String(item && item.data_entrega || '').slice(0, 10) || '—') + '</td>'
+          + '  <td>' + cEsc(item && (item.po || item.nomenclatura) || '—') + '</td>'
+          + '  <td>' + cEsc(size) + '</td>'
+          + '  <td>' + cEsc(cComposeVincos(item) || item && item.vincos || '—') + '</td>'
+          + '  <td class="num">' + cEsc(cFmtNum(item && item.quantidade || 0, 0)) + '</td>'
+          + '  <td class="num">' + cEsc(cFmtNum(item && item.lote_minimo || 0, 0)) + '</td>'
+          + '  <td class="num">' + cEsc(cFmtNum(item && item.area_m2 != null ? item.area_m2 : metrics.area_m2, 4)) + '</td>'
+          + '  <td class="num">' + cEsc(cFmtRs(item && item.valor_m2 || 0)) + '</td>'
+          + '  <td class="num">' + cEsc(cFmtRs(item && item.vl_p_mil != null ? item.vl_p_mil : metrics.vl_p_mil)) + '</td>'
+          + '  <td class="num">' + cEsc(cFmtRs(item && item.valor_total != null ? item.valor_total : metrics.valor_total)) + '</td>'
+          + '  <td>' + cEsc(item && item.observacao || '—') + '</td>'
+          + '  <td>' + cEsc(item && item.ped_fornecedor || '—') + '</td>'
+          + '</tr>';
+      }).join('') : '<tr><td colspan="14"><div class="ccp-empty">Nenhum item cadastrado nesta compra.</div></td></tr>';
+      var detailRow = ''
+        + '<tr class="ccp-detail-row"><td colspan="7">'
+        + '  <div class="ccp-table-wrap" style="margin:10px 0 4px;max-height:420px">'
+        + '    <table class="ccp-table" style="min-width:1320px"><thead><tr>'
+        + '      <th>SEQ</th><th>CLIENTE</th><th>ENTREGA</th><th>PO</th><th>TAMANHO</th><th>VINCOS</th>'
+        + '      <th class="num">QTD</th><th class="num">LOTE</th><th class="num">ÁREA m²</th><th class="num">R$/m²</th><th class="num">R$/MIL</th><th class="num">TOTAL</th><th>OBS</th><th>PED FORN</th>'
+        + '    </tr></thead><tbody>'
+        + itensHtml
+        + '    </tbody></table>'
+        + '  </div>'
+        + '</td></tr>';
+      return baseRow + detailRow;
     }).join('');
     var bodyHtml = compras.length ? rowsHtml : '<tr><td colspan="7"><div class="ccp-empty">Nenhuma compra encontrada com os filtros atuais.</div></td></tr>';
     return ''
@@ -7409,6 +7474,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     Array.prototype.slice.call(host.querySelectorAll('[data-ccp-clone]')).forEach(function(btn) {
       btn.onclick = function() { cClonarCompra(String(btn.getAttribute('data-ccp-clone') || '').trim()); };
     });
+    Array.prototype.slice.call(host.querySelectorAll('[data-ccp-toggle-items]')).forEach(function(btn) {
+      btn.onclick = function() {
+        var id = String(btn.getAttribute('data-ccp-toggle-items') || '').trim();
+        if (!id) return;
+        if (!cState().expanded) cState().expanded = {};
+        cState().expanded[id] = !cState().expanded[id];
+        cRenderBody();
+      };
+    });
     Array.prototype.slice.call(host.querySelectorAll('[data-ccp-del]')).forEach(function(btn) {
       btn.onclick = function() { cExcluirCompra(String(btn.getAttribute('data-ccp-del') || '').trim()); };
     });
@@ -7482,8 +7556,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
         quantidade: String((row.querySelector('[data-field="quantidade"]') || {}).value || '').trim(),
         lote_minimo: String((row.querySelector('[data-field="lote_minimo"]') || {}).value || '').trim(),
         area_m2: String((row.querySelector('[data-field="area_m2"]') || {}).value || '').trim(),
+        area_manual: String((((row.querySelector('[data-field="area_m2"]') || {}).dataset || {}).ccpManual) || '') === '1',
         valor_m2: String((row.querySelector('[data-field="valor_m2"]') || {}).value || '').trim(),
         valor_total: String((row.querySelector('[data-field="valor_total"]') || {}).value || '').trim(),
+        total_manual: String((((row.querySelector('[data-field="valor_total"]') || {}).dataset || {}).ccpManual) || '') === '1',
         observacao: String((row.querySelector('[data-field="observacao"]') || {}).value || '').trim(),
         ped_fornecedor: String((row.querySelector('[data-field="ped_fornecedor"]') || {}).value || '').trim()
       };
@@ -47100,11 +47176,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '#modal-calc .calc-item-side button{min-height:34px;padding:0 10px;border-radius:10px;border:1px solid rgba(148,163,184,.18);background:#0f172a;color:#e2e8f0;font-size:11px;font-weight:900;cursor:pointer}'
       + '#modal-calc .calc-item-side button.danger{border-color:rgba(248,113,113,.28);background:rgba(127,29,29,.62);color:#fff}'
       + '#page-orcamentos .ptoolbar{display:none!important}'
-      + '#ccpx-compra-fullscreen .ccpx-item-vincos{display:grid;grid-template-columns:repeat(4,minmax(96px,1fr));gap:8px;align-items:stretch;overflow:visible}'
+      + '#ccpx-compra-fullscreen .ccpx-item-vincos{display:grid;grid-template-columns:repeat(5,minmax(112px,1fr));gap:8px;align-items:stretch;overflow:visible}'
       + '#ccpx-compra-fullscreen .ccpx-vinco-chip{position:relative;display:block;min-height:42px}'
       + '#ccpx-compra-fullscreen .ccpx-vinco-chip input{width:100%;min-width:0;height:42px;padding:0 24px 0 12px;font-size:15px;font-variant-numeric:tabular-nums}'
       + '#ccpx-compra-fullscreen .ccpx-vinco-chip button{position:absolute;top:6px;right:6px;width:14px;height:14px;border-radius:999px;border:1px solid rgba(148,163,184,.22);background:rgba(15,23,42,.92);color:#e2e8f0;cursor:pointer;font-weight:900;font-size:10px;line-height:1;padding:0}'
-      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar{display:block;align-self:stretch;margin-top:0;min-height:42px;grid-column:1 / -1}'
+      + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar{display:block;align-self:stretch;margin-top:0;min-height:42px;grid-column:auto}'
       + '#ccpx-compra-fullscreen .ccpx-vinco-toolbar button{display:flex;align-items:center;justify-content:center;width:100%;height:42px;padding:0 8px;border-radius:12px;border:1px dashed rgba(96,165,250,.42);background:rgba(30,64,175,.14);color:#bfdbfe;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}'
       + '#modal-orcamento-calc{position:fixed!important;inset:0!important;padding:18px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:rgba(2,6,23,.82)!important;overflow:hidden!important}'
       + '#modal-orcamento-calc > div,#modal-orcamento-calc .modal-content,#modal-orcamento-calc [class*="modal-content"]{width:min(1680px,calc(100vw - 36px))!important;max-width:1680px!important;max-height:94vh!important;margin:0 auto!important;border-radius:24px!important;overflow:auto!important}'
