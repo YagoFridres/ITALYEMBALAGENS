@@ -9453,6 +9453,21 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       if (aindaExiste) {
         throw new Error('O orçamento ainda aparece na listagem após a exclusão.');
       }
+      try {
+        var urlCheck = '/api/orcamentos/' + encodeURIComponent(sid);
+        var respCheck = (typeof window._apiAuthFetch === 'function')
+          ? await window._apiAuthFetch(urlCheck, { method: 'GET' })
+          : await fetch(urlCheck, { method: 'GET' });
+        if (respCheck && respCheck.status !== 404) {
+          var jsCheck = await respCheck.json().catch(function() { return null; });
+          if (respCheck.ok && (jsCheck && (jsCheck.data || jsCheck.ok))) {
+            throw new Error('Exclusão não foi física (orçamento ainda existe no backend).');
+          }
+        }
+      } catch (e2) {
+        var msg2 = String(e2 && e2.message || e2 || '');
+        if (msg2 && msg2.indexOf('ainda existe no backend') >= 0) throw e2;
+      }
       try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
       try { toast('Orçamento excluído ✓', 'var(--orange)'); } catch (_) {}
     } catch (err) {
@@ -9653,14 +9668,72 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
   }
   if (typeof window.salvarOrcamentoCalc === 'function' && !window.salvarOrcamentoCalc.__patchOrcPastas) {
     var _origSalvarOrcamentoCalc = window.salvarOrcamentoCalc;
+    async function orcPromptOndasSalvar(defaultOndas) {
+      var current = Array.isArray(defaultOndas) ? defaultOndas.map(function(v) { return String(v || '').trim().toUpperCase(); }).filter(Boolean) : [];
+      if (typeof window._abrirModalPadrao !== 'function' || typeof window._fecharModalPadrao !== 'function') {
+        if (!current.length) {
+          try { toast('Selecione pelo menos uma onda para salvar o orçamento.', 'var(--yellow)'); } catch (_) {}
+        }
+        return current;
+      }
+      return await new Promise(function(resolve) {
+        var modalId = 'orc-modal-salvar-ondas';
+        try { window._fecharModalPadrao(modalId); } catch (_) {}
+        var overlay = window._abrirModalPadrao({
+          id: modalId,
+          titulo: 'Salvar Orçamento',
+          subtitulo: 'Escolha quais ondas (B, C, BC) gravar antes de salvar.',
+          largura: '520px',
+          hero: 'Salvar',
+          bodyHtml: ''
+            + '<div style="display:grid;gap:12px">'
+            + '  <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="' + modalId + '-b"' + (current.indexOf('B') >= 0 ? ' checked' : '') + '> <span>Onda B</span></label>'
+            + '  <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="' + modalId + '-c"' + (current.indexOf('C') >= 0 ? ' checked' : '') + '> <span>Onda C</span></label>'
+            + '  <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="' + modalId + '-bc"' + (current.indexOf('BC') >= 0 ? ' checked' : '') + '> <span>Onda BC</span></label>'
+            + '</div>',
+          footerHtml: ''
+            + '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button>'
+            + '<button type="button" class="estoque-modal-btn estoque-modal-btn-blue" id="' + modalId + '-save">Salvar</button>'
+        });
+        if (!overlay) return resolve(current);
+        var btn = overlay.querySelector('#' + modalId + '-save');
+        if (btn) btn.onclick = function() {
+          var out = [];
+          try { if ((document.getElementById(modalId + '-b') || {}).checked) out.push('B'); } catch (_) {}
+          try { if ((document.getElementById(modalId + '-c') || {}).checked) out.push('C'); } catch (_) {}
+          try { if ((document.getElementById(modalId + '-bc') || {}).checked) out.push('BC'); } catch (_) {}
+          try { window._fecharModalPadrao(modalId); } catch (_) {}
+          resolve(out);
+        };
+        try {
+          overlay.addEventListener('click', function(ev) {
+            if (ev && ev.target && ev.target.closest && ev.target.closest('[data-modal-close]')) {
+              try { window._fecharModalPadrao(modalId); } catch (_) {}
+              resolve([]);
+            }
+          });
+        } catch (_) {}
+      });
+    }
     window.salvarOrcamentoCalc = async function() {
       var ondasSelecionadas = (typeof window.__orcSelectedSaveWaves === 'function')
         ? window.__orcSelectedSaveWaves()
         : [];
-      if (!ondasSelecionadas.length) {
-        try { toast('Selecione pelo menos uma onda para salvar o orçamento.', 'var(--yellow)'); } catch (_) {}
-        return false;
-      }
+      ondasSelecionadas = await orcPromptOndasSalvar(ondasSelecionadas);
+      if (!ondasSelecionadas.length) return false;
+      try {
+        var ids = [
+          { id: 'calc-print-b', onda: 'B' },
+          { id: 'calc-print-c', onda: 'C' },
+          { id: 'calc-print-bc', onda: 'BC' }
+        ];
+        ids.forEach(function(entry) {
+          var el = document.getElementById(entry.id);
+          if (!el) return;
+          el.checked = ondasSelecionadas.indexOf(entry.onda) >= 0;
+          try { el.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+        });
+      } catch (_) {}
       var nomeAtual = calcNomeOrcamentoAtual();
       var chapaAtual = String((document.getElementById('calc-chapa-utilizada') || {}).value || '').trim();
       var ok = await _origSalvarOrcamentoCalc.apply(this, arguments);

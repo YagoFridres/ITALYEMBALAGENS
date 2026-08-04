@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -14609,29 +14609,19 @@ app.delete('/api/orcamentos/:id', authMiddleware, async (req, res) => {
     if (atual.error) return res.status(500).json({ ok: false, error: atual.error.message });
     if (!atual.data) return res.status(404).json({ ok: false, error: 'Orçamento não encontrado' });
 
+    try {
+      const delVersoes = await supabase.from('orcamentos_versoes').delete().eq('orcamento_id', id);
+      if (delVersoes?.error) {
+        const msg = String(delVersoes.error.message || delVersoes.error || '').toLowerCase();
+        if (!(msg.includes('does not exist') || msg.includes('relation') || msg.includes('schema cache'))) {
+          throw delVersoes.error;
+        }
+      }
+    } catch (_) {}
+
     const del = await supabase.from('orcamentos').delete().eq('id', id).select('id');
     if (del.error) {
-      const msg = String(del.error.message || del.error || '');
-      if (
-        msg.includes('foreign key') ||
-        msg.includes('constraint') ||
-        msg.includes('violates')
-      ) {
-        const upd = await supabase
-          .from('orcamentos')
-          .update({ deleted_at: new Date().toISOString(), status: 'Excluído' })
-          .eq('id', id)
-          .select('id,deleted_at,status')
-          .maybeSingle();
-        if (upd.error) throw upd.error;
-        const verSoft = await supabase.from('orcamentos').select('id,deleted_at,status').eq('id', id).maybeSingle();
-        if (verSoft.error) return res.status(500).json({ ok: false, error: verSoft.error.message });
-        if (!verSoft.data || !verSoft.data.deleted_at) {
-          return res.status(500).json({ ok: false, error: 'Falha ao excluir orçamento' });
-        }
-        return ok(res, { mode: 'logical', id });
-      }
-      throw del.error;
+      return res.status(409).json({ ok: false, error: String(del.error.message || del.error || 'delete_failed') });
     }
 
     const ver = await supabase.from('orcamentos').select('id').eq('id', id).maybeSingle();
