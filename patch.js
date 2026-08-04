@@ -47091,6 +47091,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '#modal-calc .calc-wave-metric.is-wide strong{font-size:clamp(16px,1.28vw,22px)}'
       + '#modal-calc #modal-calculadora .calc-col-dir{grid-template-columns:1fr!important}'
       + '#modal-calc #modal-calculadora .param-row{grid-template-columns:minmax(220px,1.85fr) minmax(170px,1fr)!important;min-height:86px!important;gap:16px!important}'
+      + '#modal-calc #modal-calculadora .param-row{padding:16px 18px!important;border-radius:18px!important;border:1px solid rgba(148,163,184,.14)!important;background:linear-gradient(180deg,rgba(15,23,42,.78),rgba(15,23,42,.62))!important;box-shadow:0 14px 30px rgba(2,6,23,.16)!important}'
       + '#modal-calc #modal-calculadora .param-label{font-size:14px!important;line-height:1.45!important;white-space:normal!important;word-break:normal!important;overflow-wrap:anywhere!important;hyphens:none!important}'
       + '#modal-calc #modal-calculadora .param-input{min-height:50px!important;font-size:18px!important;font-weight:900!important}'
       + '#modal-calc .calc-tabela-wrap.calc-wave-table-hidden{display:none!important}'
@@ -48170,19 +48171,24 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   function renderCalcWavePanels() {
     var modal = document.getElementById('modal-calculadora');
     var tableWrap = modal && modal.querySelector ? modal.querySelector('.calc-tabela-wrap') : null;
-    if (!modal || !tableWrap) return;
+    if (!modal) return;
+    var anchor = tableWrap
+      || (modal.querySelector ? modal.querySelector('.calc-col-dir') : null)
+      || (modal.querySelector ? modal.querySelector('.modal-content') : null)
+      || modal;
     var panel = document.getElementById('calc-wave-panels');
     if (!panel) {
       panel = document.createElement('div');
       panel.id = 'calc-wave-panels';
       panel.className = 'calc-wave-panels';
-      tableWrap.insertAdjacentElement('afterend', panel);
+      if (tableWrap && tableWrap.insertAdjacentElement) tableWrap.insertAdjacentElement('afterend', panel);
+      else if (anchor && anchor.appendChild) anchor.appendChild(panel);
     }
     function restoreCalcWaveTable() {
       // A decisão de esconder/mostrar a comparação mora aqui.
       // Mudanças de layout não devem mexer nestas condições sem validar a renderização real.
-      try { tableWrap.classList.remove('calc-wave-table-hidden'); } catch (_) {}
-      try { tableWrap.style.removeProperty('display'); } catch (_) {}
+      try { if (tableWrap) tableWrap.classList.remove('calc-wave-table-hidden'); } catch (_) {}
+      try { if (tableWrap) tableWrap.style.removeProperty('display'); } catch (_) {}
       panel.innerHTML = '';
       panel.style.display = 'none';
     }
@@ -48242,9 +48248,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         var comprimentoTxt = String(row && row.comprimento || '—');
         var larguraCls = larguraTxt.length > 18 ? ' is-wide' : '';
         var comprimentoCls = comprimentoTxt.length > 18 ? ' is-wide' : '';
+        var compTitle = String(row && row.compTitle || '').trim() || ('Onda ' + String(row && row.onda || '—'));
         return ''
           + '<div class="calc-wave-card' + (isBest ? ' best' : '') + '">'
-          + '  <div class="calc-wave-head"><div><div class="calc-wave-title">' + safeEsc(row && row.compTitle || ('Onda ' + (row && row.onda || '—'))) + '</div><div style="font-size:16px;color:#94a3b8;margin-top:6px;line-height:1.45">Comparação direta da compensação para esta onda.</div></div><span class="calc-wave-badge">Onda ' + safeEsc(row && row.onda || '—') + '</span></div>'
+          + '  <div class="calc-wave-head"><div><div class="calc-wave-title">' + safeEsc(compTitle) + '</div><div style="font-size:16px;color:#94a3b8;margin-top:6px;line-height:1.45">Comparação direta da compensação para esta onda.</div></div><span class="calc-wave-badge">Onda ' + safeEsc(row && row.onda || '—') + '</span></div>'
           + '  <div class="calc-wave-grid">'
           + '    <div class="calc-wave-metric' + larguraCls + '"><span>Largura</span><strong title="' + safeAttr(larguraTxt + ' mm') + '">' + safeEsc(larguraTxt) + ' mm</strong></div>'
           + '    <div class="calc-wave-metric' + comprimentoCls + '"><span>Comprimento</span><strong title="' + safeAttr(comprimentoTxt + ' mm') + '">' + safeEsc(comprimentoTxt) + ' mm</strong></div>'
@@ -48268,8 +48275,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       restoreCalcWaveTable();
       return;
     }
-    try { tableWrap.classList.add('calc-wave-table-hidden'); } catch (_) {}
-    try { tableWrap.style.setProperty('display', 'none', 'important'); } catch (_) {}
+    try { if (tableWrap) tableWrap.classList.add('calc-wave-table-hidden'); } catch (_) {}
+    try { if (tableWrap) tableWrap.style.setProperty('display', 'none', 'important'); } catch (_) {}
   }
   try { patchApiOrcamentosEmpFallback(); } catch (_) {}
   function orcEnsureDataLoaded() {
