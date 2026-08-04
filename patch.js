@@ -10529,6 +10529,43 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     };
   }
 
+  function _histTodayIso() {
+    try { return new Date().toISOString().slice(0, 10); } catch (_) { return ''; }
+  }
+
+  function _histCurrentWeekIsoRange() {
+    var now = new Date();
+    var day = now.getDay();
+    var diff = day === 0 ? -6 : (1 - day);
+    var start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff, 12, 0, 0, 0);
+    var end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 4, 12, 0, 0, 0);
+    return {
+      data_inicio: start.toISOString().slice(0, 10),
+      data_fim: end.toISOString().slice(0, 10)
+    };
+  }
+
+  function _histGetDetailFilters() {
+    var cliente = String((document.getElementById('hist-filtro-cliente') || {}).value || '').trim();
+    var maquina = String((document.getElementById('hist-detalhe-maquina') || {}).value || '').trim();
+    var periodo = String((document.getElementById('hist-detalhe-periodo') || {}).value || 'hoje').trim() || 'hoje';
+    var dia = String((document.getElementById('hist-detalhe-dia') || {}).value || '').trim() || _histTodayIso();
+    var range = { data_inicio: '', data_fim: '' };
+    if (periodo === 'semana') range = _histCurrentWeekIsoRange();
+    else {
+      range.data_inicio = dia;
+      range.data_fim = dia;
+    }
+    return {
+      cliente: cliente,
+      maquina: maquina,
+      periodo: periodo,
+      dia: dia,
+      data_inicio: String(range.data_inicio || '').trim(),
+      data_fim: String(range.data_fim || '').trim()
+    };
+  }
+
   function _histExportCsv(filename, columns, rows) {
     try {
       var lines = [columns.map(function(col) {
@@ -10573,7 +10610,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       var ref = _histGetMonthlyRef();
       return _histMonthName(ref.mes) + '/' + ref.ano;
     }
-    var filtros = _histGetFilters();
+    var filtros = _histGetDetailFilters();
     if (filtros.data_inicio && filtros.data_fim && filtros.data_inicio === filtros.data_fim) {
       return 'Dia ' + String(filtros.data_inicio);
     }
@@ -10756,6 +10793,9 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
         + '#hist-filtros .hist-patch-btn:hover,#hist-relatorio-mensal-shell .hist-patch-btn:hover{filter:brightness(1.06)}'
         + '#hist-filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0;padding:14px 16px;border-radius:14px;background:rgba(15,23,42,.82);border:1px solid rgba(148,163,184,.14)}'
         + '#hist-filtros input[type="text"]{flex:1;min-width:320px;background:#0b1220;color:#e2e8f0;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:11px 14px;font-size:13px}'
+        + '#hist-detalhe-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;width:100%}'
+        + '#hist-detalhe-toolbar select,#hist-detalhe-toolbar input[type="date"]{min-height:40px;background:#0b1220;color:#e2e8f0;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:9px 12px;font-size:13px}'
+        + '#hist-detalhe-dia-wrap{display:flex;gap:8px;align-items:center}'
         + '#hist-relatorio-mensal-shell{display:grid;gap:12px;margin:16px 0;padding:14px;border-radius:14px;background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.8));border:1px solid rgba(148,163,184,.14)}'
         + '#hist-relatorio-mensal-shell .hist-month-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}'
         + '#hist-relatorio-mensal-shell .hist-month-toolbar-left{display:flex;gap:10px;flex-wrap:wrap;align-items:center}'
@@ -10886,9 +10926,6 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       filtrosWrap.dataset.patchDetalhamentoReady = '1';
       try {
         var buscaInput = document.getElementById('hist-filtro-cliente');
-        var maquinaSel = document.getElementById('hist-filtro-maquina');
-        var dataIni = document.getElementById('hist-filtro-data-ini');
-        var dataFim = document.getElementById('hist-filtro-data-fim');
         var btnBuscar = filtrosWrap.querySelector('button');
         if (buscaInput) {
           buscaInput.placeholder = 'Buscar por OF, cliente, produto ou máquina';
@@ -10907,15 +10944,71 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
           btnBuscar.onclick = function() {
             try {
               window.__histPassagensDetalhamentoBusca = String((buscaInput || {}).value || '').trim();
-              _histRenderDetalhamentoPassagens();
+              _histBuscarHistoricoPassagens(_histGetDetailFilters(), false, { force: true });
             } catch (_) {}
           };
         }
-        [maquinaSel, dataIni, dataFim].forEach(function(el) {
-          if (!el) return;
-          try { el.value = ''; } catch (_) {}
-          try { el.style.display = 'none'; } catch (_) {}
-        });
+        var toolbar = document.getElementById('hist-detalhe-toolbar');
+        if (!toolbar) {
+          toolbar = document.createElement('div');
+          toolbar.id = 'hist-detalhe-toolbar';
+          toolbar.innerHTML = ''
+            + '<select id="hist-detalhe-periodo">'
+            + '  <option value="hoje">Dia atual</option>'
+            + '  <option value="dia">Dia específico</option>'
+            + '  <option value="semana">Semana</option>'
+            + '</select>'
+            + '<span id="hist-detalhe-dia-wrap"><input type="date" id="hist-detalhe-dia"></span>'
+            + '<select id="hist-detalhe-maquina">'
+            + '  <option value="">Todas as máquinas</option>'
+            + '  <option value="IMP 01">IMP 01</option>'
+            + '  <option value="IMP 02">IMP 02</option>'
+            + '  <option value="IMP 03">IMP 03</option>'
+            + '  <option value="IMP 04">IMP 04</option>'
+            + '  <option value="IMP 05">IMP 05</option>'
+            + '  <option value="CORTE VINCO ROTATIVA">CORTE VINCO ROTATIVA</option>'
+            + '  <option value="Riscador">RISCADOR</option>'
+            + '</select>'
+            + '<button type="button" class="hist-patch-btn" id="hist-detalhe-aplicar">Aplicar filtros</button>';
+          filtrosWrap.appendChild(toolbar);
+        }
+        var periodoSel = document.getElementById('hist-detalhe-periodo');
+        var diaInput = document.getElementById('hist-detalhe-dia');
+        var diaWrap = document.getElementById('hist-detalhe-dia-wrap');
+        var applyBtn = document.getElementById('hist-detalhe-aplicar');
+        if (diaInput && !diaInput.value) diaInput.value = _histTodayIso();
+        var syncToolbar = function() {
+          var periodo = String((periodoSel && periodoSel.value) || 'hoje').trim();
+          if (diaWrap) diaWrap.style.display = periodo === 'semana' ? 'none' : 'flex';
+        };
+        if (periodoSel && !periodoSel.dataset.bound) {
+          periodoSel.dataset.bound = '1';
+          periodoSel.value = 'hoje';
+          periodoSel.onchange = function() {
+            syncToolbar();
+            _histBuscarHistoricoPassagens(_histGetDetailFilters(), false, { force: true });
+          };
+        }
+        if (diaInput && !diaInput.dataset.bound) {
+          diaInput.dataset.bound = '1';
+          diaInput.onchange = function() {
+            if (String((periodoSel && periodoSel.value) || '') === 'dia') _histBuscarHistoricoPassagens(_histGetDetailFilters(), false, { force: true });
+          };
+        }
+        var maquinaSel2 = document.getElementById('hist-detalhe-maquina');
+        if (maquinaSel2 && !maquinaSel2.dataset.bound) {
+          maquinaSel2.dataset.bound = '1';
+          maquinaSel2.onchange = function() {
+            _histBuscarHistoricoPassagens(_histGetDetailFilters(), false, { force: true });
+          };
+        }
+        if (applyBtn && !applyBtn.dataset.bound) {
+          applyBtn.dataset.bound = '1';
+          applyBtn.onclick = function() {
+            _histBuscarHistoricoPassagens(_histGetDetailFilters(), false, { force: true });
+          };
+        }
+        syncToolbar();
       } catch (_) {}
     }
 
@@ -11721,7 +11814,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       try { if (typeof window.toast === 'function') window.toast('Nenhuma passagem visível para exportar', 'var(--red)'); } catch (_) {}
       return;
     }
-    var filtros = _histGetFilters();
+    var filtros = _histGetDetailFilters();
     var dia = (filtros.data_inicio && filtros.data_fim && filtros.data_inicio === filtros.data_fim) ? filtros.data_inicio : 'lista-filtrada';
     _histExportCsv(
       'passagens-maquina-' + dia + '.csv',
@@ -11744,12 +11837,13 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     var state = st || window.__histPassagensPatchState || window._histPassagensState || {};
     var totalLoaded = Math.max(1, (Number(state.page || 0) || 1) * (Number(state.limit || 50) || 50));
     if (totalLoaded > 1000) totalLoaded = 1000;
-    var range = _histResolveRange(filtros, _histGetMonthlyRef());
+    var activeFiltros = filtros && typeof filtros === 'object' ? filtros : _histGetDetailFilters();
+    var range = { data_inicio: activeFiltros.data_inicio, data_fim: activeFiltros.data_fim };
     var qs = new URLSearchParams();
     qs.set('limit', String(totalLoaded));
     qs.set('offset', '0');
-    if (filtros.cliente) qs.set('cliente', filtros.cliente);
-    if (filtros.maquina) qs.set('maquina', filtros.maquina);
+    if (activeFiltros.cliente) qs.set('cliente', activeFiltros.cliente);
+    if (activeFiltros.maquina) qs.set('maquina', activeFiltros.maquina);
     if (range.data_inicio) qs.set('data_inicio', range.data_inicio);
     if (range.data_fim) qs.set('data_fim', range.data_fim);
     var token = _histToken();
@@ -11779,9 +11873,9 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     window.__histPassagensPatchState = st;
     window._histPassagensState = st;
 
-    var filtros = (arg && typeof arg === 'object' && !Array.isArray(arg)) ? arg : _histGetFilters();
+    var filtros = (arg && typeof arg === 'object' && !Array.isArray(arg)) ? arg : _histGetDetailFilters();
     append = false;
-    var range = _histResolveRange(filtros, _histGetMonthlyRef());
+    var range = { data_inicio: filtros.data_inicio, data_fim: filtros.data_fim };
     var key = JSON.stringify({
       cliente: String(filtros && filtros.cliente || '').trim(),
       maquina: String(filtros && filtros.maquina || '').trim(),
