@@ -9444,6 +9444,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     var overlay = document.getElementById('modal-calc');
     var modal = document.getElementById('modal-calculadora');
     if (!overlay || !modal) return false;
+    var isCompactCalc = window.innerWidth <= 920;
     try { overlay.classList.add('orc-calc-fs-ready'); } catch (_) {}
     var shell = modal.querySelector('.orc-calc-shell');
     if (!shell) {
@@ -9503,45 +9504,48 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       modal.style.setProperty('margin', window.innerWidth <= 920 ? '0' : '0 auto', 'important');
       modal.style.setProperty('padding', '0', 'important');
       modal.style.setProperty('overflow', 'hidden', 'important');
-      shell.style.setProperty('display', 'grid', 'important');
-      shell.style.setProperty('grid-template-rows', 'auto auto minmax(0,1fr) auto', 'important');
-      shell.style.setProperty('height', '100%', 'important');
-      shell.style.setProperty('min-height', '0', 'important');
+      shell.style.setProperty('display', isCompactCalc ? 'block' : 'grid', 'important');
+      shell.style.setProperty('grid-template-rows', isCompactCalc ? 'none' : 'auto auto minmax(0,1fr) auto', 'important');
+      shell.style.setProperty('height', isCompactCalc ? 'auto' : '100%', 'important');
+      shell.style.setProperty('min-height', isCompactCalc ? '100%' : '0', 'important');
+      shell.style.setProperty('overflow', isCompactCalc ? 'visible' : 'hidden', 'important');
       topbar.style.setProperty('align-items', 'start', 'important');
-      main.style.setProperty('display', 'flex', 'important');
+      main.style.setProperty('display', isCompactCalc ? 'block' : 'flex', 'important');
       main.style.setProperty('flex-direction', 'column', 'important');
-      main.style.setProperty('min-height', '0', 'important');
-      main.style.setProperty('overflow', 'hidden', 'important');
+      main.style.setProperty('min-height', isCompactCalc ? 'auto' : '0', 'important');
+      main.style.setProperty('overflow', isCompactCalc ? 'visible' : 'hidden', 'important');
       footerHost.style.setProperty('flex', '0 0 auto', 'important');
       footerHost.style.setProperty('min-height', '0', 'important');
+      footerHost.style.setProperty('overflow', 'visible', 'important');
       if (body) {
         body.style.setProperty('display', 'grid', 'important');
-        body.style.setProperty('grid-template-columns', window.innerWidth <= 1280 ? '1fr' : 'minmax(0,1.5fr) minmax(420px,1fr)', 'important');
+        body.style.setProperty('grid-template-columns', isCompactCalc ? '1fr' : (window.innerWidth <= 1280 ? '1fr' : 'minmax(0,1.5fr) minmax(420px,1fr)'), 'important');
         body.style.setProperty('gap', '18px', 'important');
-        body.style.setProperty('height', '100%', 'important');
-        body.style.setProperty('min-height', '0', 'important');
-        body.style.setProperty('flex', '1 1 auto', 'important');
+        body.style.setProperty('height', isCompactCalc ? 'auto' : '100%', 'important');
+        body.style.setProperty('min-height', isCompactCalc ? 'auto' : '0', 'important');
+        body.style.setProperty('flex', isCompactCalc ? '0 0 auto' : '1 1 auto', 'important');
         body.style.setProperty('max-height', 'none', 'important');
-        body.style.setProperty('overflow', 'hidden', 'important');
+        body.style.setProperty('overflow', isCompactCalc ? 'visible' : 'hidden', 'important');
       }
       var leftCol = modal.querySelector('.calc-col-esq');
       var rightCol = modal.querySelector('.calc-col-dir');
       var tableWrap = modal.querySelector('.calc-tabela-wrap');
       if (leftCol) {
         leftCol.style.setProperty('min-height', '0', 'important');
-        leftCol.style.setProperty('height', '100%', 'important');
+        leftCol.style.setProperty('height', isCompactCalc ? 'auto' : '100%', 'important');
         leftCol.style.setProperty('align-content', 'start', 'important');
-        leftCol.style.setProperty('overflow', 'auto', 'important');
-        leftCol.style.setProperty('padding-right', '6px', 'important');
+        leftCol.style.setProperty('overflow', isCompactCalc ? 'visible' : 'auto', 'important');
+        leftCol.style.setProperty('padding-right', isCompactCalc ? '0' : '6px', 'important');
         leftCol.style.setProperty('scrollbar-gutter', 'stable both-edges', 'important');
       }
       if (rightCol) {
         rightCol.style.setProperty('min-height', '0', 'important');
-        rightCol.style.setProperty('height', '100%', 'important');
+        rightCol.style.setProperty('height', isCompactCalc ? 'auto' : '100%', 'important');
         rightCol.style.setProperty('align-content', 'start', 'important');
         rightCol.style.setProperty('grid-auto-rows', 'minmax(0,auto)', 'important');
-        rightCol.style.setProperty('overflow', 'auto', 'important');
-        rightCol.style.setProperty('padding-right', '6px', 'important');
+        rightCol.style.setProperty('overflow', isCompactCalc ? 'visible' : 'auto', 'important');
+        rightCol.style.setProperty('padding-right', isCompactCalc ? '0' : '6px', 'important');
+        rightCol.style.setProperty('grid-template-columns', isCompactCalc ? '1fr' : 'repeat(2,minmax(0,1fr))', 'important');
         rightCol.style.setProperty('scrollbar-gutter', 'stable both-edges', 'important');
       }
       if (tableWrap) {
@@ -9550,7 +9554,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         tableWrap.style.setProperty('height', 'auto', 'important');
         tableWrap.style.setProperty('overflow', 'auto', 'important');
         tableWrap.style.setProperty('flex', '0 0 auto', 'important');
-        tableWrap.style.setProperty('max-height', 'clamp(320px, 46vh, 600px)', 'important');
+        tableWrap.style.setProperty('max-height', isCompactCalc ? 'none' : 'clamp(320px, 46vh, 600px)', 'important');
         tableWrap.style.setProperty('scrollbar-gutter', 'stable both-edges', 'important');
       }
     } catch (_) {}
@@ -48201,7 +48205,7 @@ function _ocultarGraficoComissoes() {
       modal.style.setProperty('width', isMobile ? '100vw' : 'min(1600px, calc(100vw - 36px))', 'important');
       modal.style.setProperty('height', isMobile ? '100vh' : 'min(94vh, 1120px)', 'important');
       modal.style.setProperty('max-width', isMobile ? '100vw' : '1600px', 'important');
-      modal.style.setProperty('max-height', '94vh', 'important');
+      modal.style.setProperty('max-height', isMobile ? '100vh' : '94vh', 'important');
       modal.style.setProperty('margin', isMobile ? '0' : '0 auto', 'important');
       modal.style.setProperty('border-radius', isMobile ? '0' : '24px', 'important');
     } catch (_) {}
@@ -50031,7 +50035,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-tabela-wrap{display:block!important;min-height:320px!important;max-height:clamp(320px,46vh,600px)!important;overflow:auto!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-footer.rodape{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:10px!important;flex:0 0 auto!important}'
       + '@media (max-width:1280px){#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{grid-template-columns:1fr!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{grid-template-columns:1fr!important;min-width:0!important}}'
-      + '@media (max-width:920px){#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-esq,#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{height:auto!important;overflow:visible!important;padding-right:0!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-tabela-wrap{max-height:none!important}}';
+      + '@media (max-width:920px){#modal-calc.orc-calc-fs-ready #modal-calculadora{overflow:auto!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell{display:block!important;height:auto!important;min-height:100%!important;overflow:visible!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-main{display:block!important;min-height:auto!important;overflow:visible!important;padding:14px 16px!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{display:grid!important;grid-template-columns:1fr!important;height:auto!important;min-height:auto!important;overflow:visible!important;padding:0!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-esq,#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{height:auto!important;overflow:visible!important;padding-right:0!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{display:grid!important;grid-template-columns:1fr!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-tabela-wrap{max-height:none!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-footer.rodape{display:flex!important;flex-direction:column!important;align-items:stretch!important}}';
     document.head.appendChild(st);
   } catch (_) {}
 })();
