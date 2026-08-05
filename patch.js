@@ -500,7 +500,8 @@ try {
         data_referencia: today,
         data_inicio: today,
         data_fim: today,
-        auto_periodo_atual: true
+        auto_periodo_atual: true,
+        empresa: 'todas'
       };
     }
     return window.__relatoriosCentralState;
@@ -1060,9 +1061,7 @@ try {
 
   async function rrReportCustos() {
     var ref = rrCurrentRange();
-    var qs = [];
-    var empId = rrEmpId();
-    if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
+    var qs = rrEmpresaQueryParts().slice();
     qs.push('data_inicio=' + encodeURIComponent(ref.data_inicio));
     qs.push('data_fim=' + encodeURIComponent(ref.data_fim));
     var json = await rrFetchJson('/api/relatorios/custos?' + qs.join('&'));
@@ -1282,7 +1281,10 @@ try {
 
   async function rrReportClientesMaisCompraram() {
     var ref = rrCurrentRange();
-    var json = await rrFetchJson('/api/relatorios/clientes-mais-compraram?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var qs = rrEmpresaQueryParts().slice();
+    qs.push('data_inicio=' + encodeURIComponent(ref.data_inicio));
+    qs.push('data_fim=' + encodeURIComponent(ref.data_fim));
+    var json = await rrFetchJson('/api/relatorios/clientes-mais-compraram?' + qs.join('&'));
     var resumo = json && json.resumo || {};
     var rows = rrList(json, ['rows', 'data', 'clientes']);
     return rrOpenPrint({
@@ -1323,12 +1325,9 @@ try {
 
   async function rrReportLucratividadeMaquina(rangeOverride) {
     var ref = rangeOverride || rrCurrentRange();
-    var qs = [
-      'data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio),
-      'data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim)
-    ];
-    var empId = rrEmpId();
-    if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
+    var qs = rrEmpresaQueryParts().slice();
+    qs.push('data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio));
+    qs.push('data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim));
     var json = await rrFetchJson('/api/relatorios/lucratividade-por-maquina?' + qs.join('&'));
     var resumo = json && json.resumo || {};
     var rows = rrList(json, ['rows', 'maquinas']);
@@ -1449,10 +1448,9 @@ try {
 
   async function rrReportPapelaoChecklistRecebimento(rangeOverride) {
     var ref = rangeOverride || rrCurrentRange();
-    var qs = [
-      'data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio),
-      'data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim)
-    ];
+    var qs = rrEmpresaQueryParts().slice();
+    qs.push('data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio));
+    qs.push('data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim));
     var empId = rrEmpId();
     if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
     var json = await rrFetchJson('/api/compras-chapas/relatorios/checklist-recebimento?' + qs.join('&'));
@@ -1535,12 +1533,9 @@ try {
 
   async function rrReportPapelaoFornecedor(rangeOverride) {
     var ref = rangeOverride || rrCurrentRange();
-    var qs = [
-      'data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio),
-      'data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim)
-    ];
-    var empId = rrEmpId();
-    if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
+    var qs = rrEmpresaQueryParts().slice();
+    qs.push('data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio));
+    qs.push('data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim));
     var json = await rrFetchJson('/api/compras-chapas/relatorios/fornecedor?' + qs.join('&'));
     var rows = Array.isArray(json) ? json : [];
     var resumo = rows.reduce(function(acc, r) {
@@ -1583,12 +1578,9 @@ try {
 
   async function rrReportPapelaoResumoMes(rangeOverride) {
     var ref = rangeOverride || rrCurrentRange();
-    var qs = [
-      'data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio),
-      'data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim)
-    ];
-    var empId = rrEmpId();
-    if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
+    var qs = rrEmpresaQueryParts().slice();
+    qs.push('data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio));
+    qs.push('data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim));
     var json = await rrFetchJson('/api/compras-chapas/relatorios/resumo?' + qs.join('&'));
     var resumo = json && typeof json === 'object' ? json : {};
     return rrOpenPrint({
@@ -2390,6 +2382,15 @@ try {
     } catch (_) {
       return '';
     }
+  }
+
+  function rrEmpresaQueryParts() {
+    var st = rrState();
+    var val = String(st && st.empresa || 'todas').trim().toLowerCase() || 'todas';
+    if (val === 'todas' || val === 'all' || val === '*' || val === '') {
+      return ['todas_empresas=1'];
+    }
+    return ['emp_id=' + encodeURIComponent(val)];
   }
 
   function rrFetchClientesLite(term) {
@@ -3424,6 +3425,10 @@ try {
   function rrPeriodHtml(ref) {
     var st = rrState();
     var personalizado = st.periodo === 'personalizado';
+    var empSel = String(st.empresa || 'todas').trim() || 'todas';
+    function empOpt(val, label, sel) {
+      return '<option value="' + rrEsc(val) + '"' + (sel ? ' selected' : '') + '>' + rrEsc(label) + '</option>';
+    }
     return ''
       + '<div class="rr-period">'
       + '  <div class="rr-period-grid">'
@@ -3431,6 +3436,12 @@ try {
       + '    <div class="rr-field" id="rr-ref-wrap"' + (personalizado ? ' style="display:none"' : '') + '><label>Data de Referência</label><input id="rr-ref-date" type="date" value="' + rrEsc(st.data_referencia || ref.data_referencia || ref.data_inicio) + '"></div>'
       + '    <div class="rr-field" id="rr-inicio-wrap"' + (!personalizado ? ' style="display:none"' : '') + '><label>Data Início</label><input id="rr-data-inicio" type="date" value="' + rrEsc(st.data_inicio || ref.data_inicio) + '"></div>'
       + '    <div class="rr-field" id="rr-fim-wrap"' + (!personalizado ? ' style="display:none"' : '') + '><label>Data Fim</label><input id="rr-data-fim" type="date" value="' + rrEsc(st.data_fim || ref.data_fim) + '"></div>'
+      + '    <div class="rr-field"><label>Empresa</label><select id="rr-empresa">'
+      +        empOpt('todas', 'Todas as empresas', empSel === 'todas')
+      +        empOpt('E1', 'Italy Embalagens (E1)', empSel === 'E1')
+      +        empOpt('E2', 'Cartoeste (E2)', empSel === 'E2')
+      +        empOpt('E3', 'Oestepack (E3)', empSel === 'E3')
+      + '    </select></div>'
       + '    <div class="rr-field"><label>Aplicação</label><div class="rr-period-help">Período ativo: <strong>' + rrEsc(ref.titulo) + '</strong>. O filtro é usado em todos os relatórios da central.</div></div>'
       + '  </div>'
       + '</div>';
@@ -3440,12 +3451,17 @@ try {
     if (!host) return;
     var st = rrState();
     var periodoEl = host.querySelector('#rr-periodo');
+    var empresaEl = host.querySelector('#rr-empresa');
     var refEl = host.querySelector('#rr-ref-date');
     var iniEl = host.querySelector('#rr-data-inicio');
     var fimEl = host.querySelector('#rr-data-fim');
     function sync() {
       rrRenderPage();
     }
+    if (empresaEl) empresaEl.onchange = function() {
+      st.empresa = String(empresaEl.value || 'todas').trim() || 'todas';
+      sync();
+    };
     if (periodoEl) periodoEl.onchange = function() {
       st.periodo = String(periodoEl.value || 'mes').trim() || 'mes';
       if (st.periodo === 'personalizado') {
