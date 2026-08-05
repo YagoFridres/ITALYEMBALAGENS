@@ -1301,6 +1301,129 @@ try {
     });
   }
 
+  async function rrReportLucratividadeMaquina(rangeOverride) {
+    var ref = rangeOverride || { data_inicio: '2026-07-01', data_fim: '2026-07-31', titulo: 'Julho/2026' };
+    var qs = [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio || '2026-07-01'),
+      'data_fim=' + encodeURIComponent(ref.data_fim || '2026-07-31')
+    ];
+    var empId = rrEmpId();
+    if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
+    var json = await rrFetchJson('/api/relatorios/lucratividade-por-maquina?' + qs.join('&'));
+    var resumo = json && json.resumo || {};
+    var rows = rrList(json, ['rows', 'maquinas']);
+    var details = rrList(json, ['detail_rows', 'detalhamento']);
+    var fmtTon = function(v) { return rrFmtNum(v || 0, 3) + ' t'; };
+    var topClientesTxt = function(row) {
+      var list = Array.isArray(row && row.top_clientes) ? row.top_clientes : [];
+      if (!list.length) return '—';
+      return list.slice(0, 3).map(function(item) {
+        return String(item && item.cliente_nome || '—') + ' (' + rrFmtNum(item && item.total_passagens || 0, 0) + ')';
+      }).join(' | ');
+    };
+    var topTipoTxt = function(row) {
+      var top = row && row.tipo_caixa_mais_produzido;
+      if (!top) return '—';
+      return String(top.tipo_caixa || '—') + ' (' + rrFmtNum(top.total_caixas || 0, 0) + ' cx)';
+    };
+    var topCoresTxt = function(row) {
+      var list = Array.isArray(row && row.cores_mais_usadas) ? row.cores_mais_usadas : [];
+      if (!list.length) return '—';
+      return list.slice(0, 3).map(function(item) {
+        return String(item && item.cor || '—') + ' (' + rrFmtNum(item && item.total_ofs || 0, 0) + ')';
+      }).join(' | ');
+    };
+    return rrOpenPrint({
+      title: 'Lucratividade por Máquina',
+      periodo: ref.titulo || (String(json && json.data_inicio || '') + ' a ' + String(json && json.data_fim || '')),
+      cards: [
+        { label: 'Máquinas com movimento', value: rrFmtNum(resumo.maquinas_com_movimento || 0, 0), sub: rrFmtNum(resumo.total_maquinas || rows.length, 0) + ' máquinas no catálogo' },
+        { label: 'Passagens', value: rrFmtNum(resumo.total_passagens || 0, 0), sub: rrFmtNum(resumo.total_ofs_distintas || 0, 0) + ' OFs distintas' },
+        { label: 'Valor Vendido', value: rrFmtMoney(resumo.valor_vendido || 0), sub: 'Somado por máquina via ofs.passagens_maquina' },
+        { label: 'Caixas Produzidas', value: rrFmtNum(resumo.caixas_produzidas || 0, 0), sub: fmtTon(resumo.toneladas_produzidas || 0) },
+        { label: 'Perdas', value: rrFmtNum(resumo.caixas_perdidas || 0, 0) + ' cx', sub: rrFmtMoney(resumo.valor_perdido || 0) + ' | ' + fmtTon(resumo.toneladas_perdidas || 0) },
+        { label: 'Custos Totais', value: rrFmtMoney(resumo.custos_totais || 0), sub: 'Campo custo_m2_venda ou equivalente disponível' }
+      ],
+      summaryTitle: 'Resumo por máquina',
+      summaryHeaders: ['Máquina', 'Passagens', 'OFs', 'Venda', 'Caixas', 'Toneladas', 'Cx Perdidas', 'Valor Perdido', 'Custos', 'Cliente Top', 'Tipo Top', 'Cores Top'],
+      summaryRows: rows.map(function(row) {
+        return [
+          rrEsc(String(row && row.maquina || '—')),
+          rrEsc(rrFmtNum(row && row.total_passagens || 0, 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.valor_vendido || 0)),
+          rrEsc(rrFmtNum(row && row.caixas_produzidas || 0, 0)),
+          rrEsc(fmtTon(row && row.toneladas_produzidas || 0)),
+          rrEsc(rrFmtNum(row && row.caixas_perdidas || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.valor_perdido || 0)),
+          rrEsc(rrFmtMoney(row && row.custos_totais || 0)),
+          rrEsc(topClientesTxt(row)),
+          rrEsc(topTipoTxt(row)),
+          rrEsc(topCoresTxt(row))
+        ];
+      }),
+      detailTitle: 'Detalhamento por passagem',
+      detailHeaders: ['Máquina', 'OF', 'Cliente', 'Data', 'Tipo', 'Caixas', 'Venda', 'Toneladas', 'Custo', 'Cx Perdidas', 'Valor Perdido', 'Cores'],
+      detailRows: details.map(function(row) {
+        return [
+          rrEsc(String(row && row.maquina || '—')),
+          rrEsc(String(row && row.of || '—')),
+          rrEsc(String(row && row.cliente_nome || '—')),
+          rrEsc(rrFmtDate(row && row.data_ref)),
+          rrEsc(String(row && row.tipo_caixa || '—')),
+          rrEsc(rrFmtNum(row && row.caixas_produzidas || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.valor_vendido || 0)),
+          rrEsc(fmtTon(row && row.toneladas_produzidas || 0)),
+          rrEsc(rrFmtMoney(row && row.custos_totais || 0)),
+          rrEsc(rrFmtNum(row && row.caixas_perdidas || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.valor_perdido || 0)),
+          rrEsc((Array.isArray(row && row.cores_impressao) ? row.cores_impressao : []).join(', ') || '—')
+        ];
+      }),
+      emptySummaryCols: 12,
+      emptyDetailCols: 12
+    });
+  }
+
+  function rrOpenLucratividadeMaquinaModal() {
+    rrOpenModal({
+      title: 'Lucratividade por Máquina',
+      subtitle: 'O filtro abre com julho/2026 como padrão e consolida venda, produção, perdas, custos, clientes, tipos e cores por máquina.',
+      render: function(body) {
+        body.innerHTML = ''
+          + '<div class="rr-modal-grid">'
+          + '  <div class="rr-modal-field"><label>Data inicial</label><input id="rr-lmq-inicio" type="date" value="2026-07-01"></div>'
+          + '  <div class="rr-modal-field"><label>Data final</label><input id="rr-lmq-fim" type="date" value="2026-07-31"></div>'
+          + '</div>'
+          + '<div class="rr-period-help" style="margin-top:10px">Fonte canônica: <strong>ofs.passagens_maquina</strong>, com perdas cruzadas em <strong>ofs.perdas_por_maquina</strong>.</div>'
+          + '<div class="rr-modal-actions">'
+          + '  <button type="button" class="rr-btn-ghost" data-rr-close>Cancelar</button>'
+          + '  <button type="button" class="rr-btn" id="rr-lmq-run">Gerar relatório</button>'
+          + '</div>';
+        body.querySelector('#rr-lmq-run').onclick = async function() {
+          var btn = this;
+          var inicio = String((body.querySelector('#rr-lmq-inicio') || {}).value || '2026-07-01').trim() || '2026-07-01';
+          var fim = String((body.querySelector('#rr-lmq-fim') || {}).value || '2026-07-31').trim() || '2026-07-31';
+          btn.disabled = true;
+          btn.textContent = 'Gerando...';
+          try {
+            await rrReportLucratividadeMaquina({
+              data_inicio: inicio,
+              data_fim: fim,
+              titulo: rrFmtDate(inicio) + ' a ' + rrFmtDate(fim)
+            });
+            rrRemoveModal();
+          } catch (e) {
+            alert('Erro ao gerar relatório: ' + String(e && e.message || e));
+          } finally {
+            btn.disabled = false;
+            btn.textContent = 'Gerar relatório';
+          }
+        };
+      }
+    });
+  }
+
   async function rrReportVendasPorEmpresa() {
     var ref = rrCurrentRange();
     var json = await rrFetchJson('/api/relatorios/vendas-por-empresa?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
@@ -3022,6 +3145,7 @@ try {
     { id: 'entradas', label: 'Entradas', icon: '📥', desc: 'Movimentações de entrada no estoque de chapas.', run: function() { return rrReportMovimentos('entrada'); } },
     { id: 'saidas', label: 'Saídas', icon: '📤', desc: 'Movimentações de saída no estoque de chapas.', run: function() { return rrReportMovimentos('saida'); } },
     { id: 'clientes-mais-compraram', label: 'Clientes que mais compraram', icon: '🏆', desc: 'Ranking por valor comprado com ticket médio e caixas vendidas.', run: rrReportClientesMaisCompraram },
+    { id: 'lucratividade-por-maquina', label: 'Lucratividade por Máquina', icon: '🏭', desc: 'Consolida venda, produção, perdas, custos, clientes, tipos e cores por máquina usando ofs.passagens_maquina.', run: rrOpenLucratividadeMaquinaModal },
     { id: 'vendas-por-empresa', label: 'Vendas por Empresa', icon: '🏢', desc: 'Consolidado de Italy, Cartoeste e Oestepack no período selecionado.', run: rrReportVendasPorEmpresa },
     { id: 'comparativo-mensal', label: 'Comparativo Mensal', icon: '📊', desc: 'Compara o período atual com o período imediatamente anterior equivalente.', run: rrReportComparativoMensal },
     { id: 'evolucao-vendas', label: 'Evolução das Vendas', icon: '📈', desc: 'Mostra a evolução mensal das vendas e o consolidado por vendedor.', run: rrReportEvolucaoVendas },

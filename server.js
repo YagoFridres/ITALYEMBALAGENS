@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260805114600';
-const SW_RUNTIME_VERSION = '20260805114600';
+const PATCH_RUNTIME_VERSION = '20260805120600';
+const SW_RUNTIME_VERSION = '20260805120600';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -12633,6 +12633,305 @@ async function _relatoriosLoadClientesDetails(ids) {
   }
   return map;
 }
+
+app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const range = _relatoriosResolveDateRange(req.query, { mes: 7, ano: 2026 });
+    if (!range?.inicio || !range?.fim_exclusivo) {
+      return res.status(400).json({ ok: false, error: 'periodo_invalido' });
+    }
+
+    let empresaId = String(req.query.emp_id || req.query.empId || '').trim();
+    if (!empresaId) {
+      try { empresaId = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { empresaId = ''; }
+    }
+
+    const machineOrder = new Map(MAQUINAS_CATALOGO_PADRAO.map((item, idx) => [String(item?.nome || '').trim(), idx]));
+    const machineNames = new Set(Array.from(machineOrder.keys()));
+    const canonicalColors = (value) => {
+      const out = [];
+      const seen = new Set();
+      const add = (raw) => {
+        const nome = String(
+          raw && typeof raw === 'object'
+            ? (raw.nome ?? raw.name ?? raw.cor ?? raw.color ?? raw.label ?? raw.value ?? '')
+            : (raw ?? '')
+        ).trim();
+        if (!nome) return;
+        const key = _assistNorm(nome);
+        if (seen.has(key)) return;
+        seen.add(key);
+        out.push(nome);
+      };
+      if (Array.isArray(value)) {
+        value.forEach(add);
+        return out;
+      }
+      const raw = String(value || '').trim();
+      if (!raw) return out;
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(add);
+          return out;
+        }
+        if (parsed && typeof parsed === 'object') {
+          add(parsed);
+          return out;
+        }
+      } catch (_) {}
+      raw.split(/[,;|/]+/g).forEach(add);
+      return out;
+    };
+    const buildLossForMachine = (ofData, machineName, qtdOf, tonOf, valorOf) => {
+      const parsed = _caixasParsePerdasPorMaquina(ofData?.perdas_por_maquina);
+      let caixasPerdidas = 0;
+      let valorPerdido = 0;
+      let toneladasPerdidas = 0;
+      parsed.forEach((item) => {
+        const canon = _canonMaqNome(item?.maquina_nome || item?.maquina || item?.nome || item?.id || '') || String(item?.maquina_nome || item?.maquina || '').trim();
+        if (canon !== machineName) return;
+        const qtdItem = Math.max(0, Math.trunc(Number(
+          item?.qtd_perdida ??
+          item?.caixas_perdidas ??
+          item?.quantidade ??
+          item?.qtd ??
+          0
+        ) || 0));
+        const valorItem = Number(item?.valor_perdido ?? item?.valor_total ?? item?.valor ?? 0) || 0;
+        const tonItem = Number(item?.toneladas_perdidas ?? item?.tonelada_perdida ?? item?.toneladas ?? 0) || 0;
+        caixasPerdidas += qtdItem;
+        valorPerdido += valorItem > 0 ? valorItem : ((qtdItem > 0 && qtdOf > 0 && valorOf > 0) ? ((valorOf / qtdOf) * qtdItem) : 0);
+        toneladasPerdidas += tonItem > 0 ? tonItem : ((qtdItem > 0 && qtdOf > 0 && tonOf > 0) ? ((tonOf / qtdOf) * qtdItem) : 0);
+      });
+      return {
+        caixas_perdidas: caixasPerdidas,
+        valor_perdido: valorPerdido,
+        toneladas_perdidas: toneladasPerdidas,
+      };
+    };
+
+    const passagensPayload = await _buscarPassagensHistoricoFromOfs(req, {
+      data_inicio: range.inicio,
+      data_fim: range.fim,
+      emp_id: empresaId,
+    });
+    const passagensRows = (Array.isArray(passagensPayload?.rows) ? passagensPayload.rows : []).filter((row) => {
+      const canon = _canonMaqNome(row?.maquina_nome || row?.maquina || '') || String(row?.maquina_nome || row?.maquina || '').trim();
+      return !!canon && machineNames.has(canon);
+    });
+
+    const ofIds = Array.from(new Set(passagensRows.map((row) => String(row?.of_id || '').trim()).filter(_isUuid)));
+    const ofsMap = new Map();
+    const selectCols = [
+      'id', 'numero', 'of', 'status', 'deleted_at', 'empresa_id', 'emp_id',
+      'cli_id', 'cliente', 'cliente_nome', 'cliNome', 'clinome', 'nome_cliente',
+      'descricao', 'produto', 'qtd_produzida', 'qtd', 'quantidade', 'qtd_pedida',
+      'valor_total', 'valor_venda', 'total',
+      'toneladas_utilizadas', 'tonelada_vendida', 'custo_m2_venda',
+      'tipo_caixa', 'cores_impressao', 'perdas_por_maquina', 'passagens_maquina',
+      'data_faturamento', 'data_conclusao', 'dia', 'created_at'
+    ].join(',');
+    for (let i = 0; i < ofIds.length; i += 200) {
+      const chunk = ofIds.slice(i, i + 200);
+      const { data, error } = await supabase.from('ofs').select(selectCols).in('id', chunk);
+      if (error) throw error;
+      (Array.isArray(data) ? data : []).forEach((of) => {
+        const id = String(of?.id || '').trim();
+        if (id) ofsMap.set(id, of);
+      });
+    }
+
+    const clientesMap = await _relatoriosLoadClientesDetails(Array.from(ofsMap.values()).map((of) => _assistPickOfClienteId(of)));
+    const buckets = new Map();
+    MAQUINAS_CATALOGO_PADRAO.forEach((machine) => {
+      const nome = String(machine?.nome || '').trim();
+      buckets.set(nome, {
+        maquina: nome,
+        total_passagens: 0,
+        valor_vendido: 0,
+        caixas_produzidas: 0,
+        toneladas_produzidas: 0,
+        caixas_perdidas: 0,
+        valor_perdido: 0,
+        toneladas_perdidas: 0,
+        custos_totais: 0,
+        _ofs: new Set(),
+        _clientes: new Map(),
+        _tipos: new Map(),
+        _cores: new Map(),
+      });
+    });
+
+    const detalhamento = [];
+    const totalOfsDistintas = new Set();
+
+    // Regras canônicas do relatório:
+    // 1) cada máquina recebe a OF inteira sempre que ela aparece em ofs.passagens_maquina,
+    //    igual ao Histórico/OFs por Máquina baseado na coluna JSON;
+    // 2) perdas só entram quando a mesma máquina também aparece em ofs.perdas_por_maquina;
+    // 3) quando a perda legada não traz valor/tonelada persistidos, fazemos fallback proporcional
+    //    pela quantidade produzida da OF para não zerar métricas historicamente válidas.
+    passagensRows.forEach((row) => {
+      const machineName = _canonMaqNome(row?.maquina_nome || row?.maquina || '') || String(row?.maquina_nome || row?.maquina || '').trim();
+      if (!machineName || !buckets.has(machineName)) return;
+      const ofData = ofsMap.get(String(row?.of_id || '').trim()) || null;
+      if (!ofData || ofData?.deleted_at || _assistIsCancelada(ofData)) return;
+      const bucket = buckets.get(machineName);
+      const qtdOf = _relatoriosPickQtdOf(ofData) || Math.max(0, Math.trunc(Number(row?.qtd_produzida ?? row?.quantidade ?? 0) || 0));
+      const valorOf = _relatoriosPickValorOf(ofData) || Number(row?.valor_total || row?.valor_venda || 0) || 0;
+      const tonOf = Number(ofData?.toneladas_utilizadas ?? ofData?.tonelada_vendida ?? 0) || 0;
+      const custoOf = Number(ofData?.custo_m2_venda ?? 0) || 0;
+      const clienteNome = _relatoriosPickClienteNomeOf(ofData, clientesMap) || String(row?.cliente_nome || row?.cliente || 'Sem cliente').trim() || 'Sem cliente';
+      const tipoCaixa = String(ofData?.tipo_caixa || 'Sem tipo').trim() || 'Sem tipo';
+      const cores = canonicalColors(ofData?.cores_impressao);
+      const perdas = buildLossForMachine(ofData, machineName, qtdOf, tonOf, valorOf);
+      const ofNumero = _assistPickOfNumber(ofData) || String(row?.of_numero || row?.numero || row?.of || '—').trim() || '—';
+      const dataRef = _vendasOficialDataRef(ofData) || String(row?.data_passagem || row?.data_conclusao || '').slice(0, 10) || '';
+
+      bucket.total_passagens += 1;
+      bucket.valor_vendido += valorOf;
+      bucket.caixas_produzidas += qtdOf;
+      bucket.toneladas_produzidas += tonOf;
+      bucket.caixas_perdidas += perdas.caixas_perdidas;
+      bucket.valor_perdido += perdas.valor_perdido;
+      bucket.toneladas_perdidas += perdas.toneladas_perdidas;
+      bucket.custos_totais += custoOf;
+      bucket._ofs.add(String(ofData?.id || '').trim());
+      totalOfsDistintas.add(String(ofData?.id || '').trim());
+
+      if (!bucket._clientes.has(clienteNome)) {
+        bucket._clientes.set(clienteNome, { cliente_nome: clienteNome, total_passagens: 0, total_caixas: 0, valor_vendido: 0, _ofs: new Set() });
+      }
+      const clienteBucket = bucket._clientes.get(clienteNome);
+      clienteBucket.total_passagens += 1;
+      clienteBucket.total_caixas += qtdOf;
+      clienteBucket.valor_vendido += valorOf;
+      clienteBucket._ofs.add(String(ofData?.id || '').trim());
+
+      if (!bucket._tipos.has(tipoCaixa)) bucket._tipos.set(tipoCaixa, { tipo_caixa: tipoCaixa, total_caixas: 0, total_ofs: 0 });
+      const tipoBucket = bucket._tipos.get(tipoCaixa);
+      tipoBucket.total_caixas += qtdOf;
+      tipoBucket.total_ofs += 1;
+
+      cores.forEach((cor) => {
+        bucket._cores.set(cor, (Number(bucket._cores.get(cor) || 0) || 0) + 1);
+      });
+
+      detalhamento.push({
+        maquina: machineName,
+        of: ofNumero,
+        cliente_nome: clienteNome,
+        data_ref: dataRef || null,
+        tipo_caixa: tipoCaixa,
+        cores_impressao: cores,
+        caixas_produzidas: qtdOf,
+        valor_vendido: valorOf,
+        toneladas_produzidas: tonOf,
+        custos_totais: custoOf,
+        caixas_perdidas: perdas.caixas_perdidas,
+        valor_perdido: perdas.valor_perdido,
+        toneladas_perdidas: perdas.toneladas_perdidas,
+      });
+    });
+
+    const rows = MAQUINAS_CATALOGO_PADRAO.map((machine) => {
+      const nome = String(machine?.nome || '').trim();
+      const bucket = buckets.get(nome);
+      const topClientes = Array.from(bucket._clientes.values()).map((item) => ({
+        cliente_nome: item.cliente_nome,
+        total_passagens: item.total_passagens,
+        total_caixas: item.total_caixas,
+        valor_vendido: item.valor_vendido,
+        total_ofs: item._ofs.size,
+      })).sort((a, b) => {
+        if ((b.total_passagens || 0) !== (a.total_passagens || 0)) return (b.total_passagens || 0) - (a.total_passagens || 0);
+        if ((b.total_caixas || 0) !== (a.total_caixas || 0)) return (b.total_caixas || 0) - (a.total_caixas || 0);
+        return String(a.cliente_nome || '').localeCompare(String(b.cliente_nome || ''), 'pt-BR');
+      }).slice(0, 5);
+      const tipos = Array.from(bucket._tipos.values()).sort((a, b) => {
+        if ((b.total_caixas || 0) !== (a.total_caixas || 0)) return (b.total_caixas || 0) - (a.total_caixas || 0);
+        if ((b.total_ofs || 0) !== (a.total_ofs || 0)) return (b.total_ofs || 0) - (a.total_ofs || 0);
+        return String(a.tipo_caixa || '').localeCompare(String(b.tipo_caixa || ''), 'pt-BR');
+      });
+      const cores = Array.from(bucket._cores.entries()).map(([cor, total]) => ({ cor, total_ofs: total }))
+        .sort((a, b) => {
+          if ((b.total_ofs || 0) !== (a.total_ofs || 0)) return (b.total_ofs || 0) - (a.total_ofs || 0);
+          return String(a.cor || '').localeCompare(String(b.cor || ''), 'pt-BR');
+        })
+        .slice(0, 5);
+      return {
+        maquina: nome,
+        total_passagens: bucket.total_passagens,
+        total_ofs: bucket._ofs.size,
+        valor_vendido: bucket.valor_vendido,
+        caixas_produzidas: bucket.caixas_produzidas,
+        toneladas_produzidas: bucket.toneladas_produzidas,
+        caixas_perdidas: bucket.caixas_perdidas,
+        valor_perdido: bucket.valor_perdido,
+        toneladas_perdidas: bucket.toneladas_perdidas,
+        custos_totais: bucket.custos_totais,
+        top_clientes: topClientes,
+        tipo_caixa_mais_produzido: tipos[0] || null,
+        tipos_caixa_mais_produzidos: tipos.slice(0, 5),
+        cores_mais_usadas: cores,
+      };
+    });
+
+    const resumo = rows.reduce((acc, row) => {
+      acc.total_maquinas += 1;
+      if ((row?.total_passagens || 0) > 0) acc.maquinas_com_movimento += 1;
+      acc.total_passagens += Number(row?.total_passagens || 0) || 0;
+      acc.valor_vendido += Number(row?.valor_vendido || 0) || 0;
+      acc.caixas_produzidas += Number(row?.caixas_produzidas || 0) || 0;
+      acc.toneladas_produzidas += Number(row?.toneladas_produzidas || 0) || 0;
+      acc.caixas_perdidas += Number(row?.caixas_perdidas || 0) || 0;
+      acc.valor_perdido += Number(row?.valor_perdido || 0) || 0;
+      acc.toneladas_perdidas += Number(row?.toneladas_perdidas || 0) || 0;
+      acc.custos_totais += Number(row?.custos_totais || 0) || 0;
+      return acc;
+    }, {
+      total_maquinas: 0,
+      maquinas_com_movimento: 0,
+      total_passagens: 0,
+      total_ofs_distintas: totalOfsDistintas.size,
+      valor_vendido: 0,
+      caixas_produzidas: 0,
+      toneladas_produzidas: 0,
+      caixas_perdidas: 0,
+      valor_perdido: 0,
+      toneladas_perdidas: 0,
+      custos_totais: 0,
+    });
+
+    detalhamento.sort((a, b) => {
+      const ordemA = machineOrder.get(String(a?.maquina || '').trim());
+      const ordemB = machineOrder.get(String(b?.maquina || '').trim());
+      if (ordemA !== ordemB) return (ordemA ?? 999) - (ordemB ?? 999);
+      const da = String(a?.data_ref || '');
+      const db = String(b?.data_ref || '');
+      if (da !== db) return da.localeCompare(db, 'pt-BR');
+      return String(a?.of || '').localeCompare(String(b?.of || ''), 'pt-BR', { numeric: true });
+    });
+
+    return res.json({
+      ok: true,
+      data_inicio: range.inicio,
+      data_fim: range.fim,
+      empresa_id_aplicada: empresaId || null,
+      fonte_passagens: 'ofs.passagens_maquina',
+      fonte_perdas: 'ofs.perdas_por_maquina',
+      logica_data: 'COALESCE(data_faturamento, data_conclusao, dia, created_at)',
+      resumo,
+      rows,
+      detail_rows: detalhamento,
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][LUCRATIVIDADE-MAQUINA]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
 
 function _relatoriosPickVendedorNome(of, vendedoresMap) {
   const vendedorId = _relatoriosPickVendedorId(of);
