@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -2476,6 +2476,38 @@ function _relatoriosAddDaysIso(dateStr, days) {
   if (!Number.isFinite(dt.getTime())) return '';
   dt.setDate(dt.getDate() + Number(days || 0));
   return dt.toISOString().slice(0, 10);
+}
+
+function _relatoriosIsAllCompaniesSentinel(v) {
+  const s = String(v == null ? '' : v).trim().toLowerCase();
+  if (!s) return false;
+  return s === 'todas' || s === 'all' || s === '*' || s === 'todas_empresas' || s === 'todas-empresas';
+}
+
+async function _relatoriosResolveEmpresaFilter(req) {
+  const q = req?.query || {};
+  const b = req?.body || {};
+  const todasEmpresas = String(q.todas_empresas || q.todasEmpresas || b.todas_empresas || b.todasEmpresas || '').trim();
+  const empIdRawFromUser = String(
+    q.emp_id ?? q.empId ?? q.empresa_id ?? q.empresaId ??
+    b.emp_id ?? b.empId ?? b.empresa_id ?? b.empresaId ??
+    ''
+  ).trim();
+  if (todasEmpresas === '1' || todasEmpresas === 'true' || todasEmpresas === 'sim') {
+    return { todas: true, uuid: null };
+  }
+  if (_relatoriosIsAllCompaniesSentinel(empIdRawFromUser)) {
+    return { todas: true, uuid: null };
+  }
+  const explicitFromQuery = q && ('emp_id' in q || 'empId' in q || 'empresa_id' in q || 'empresaId' in q);
+  const explicitFromBody = b && ('emp_id' in b || 'empId' in b || 'empresa_id' in b || 'empresaId' in b);
+  if ((explicitFromQuery || explicitFromBody) && empIdRawFromUser === '') {
+    return { todas: true, uuid: null };
+  }
+  let resolved = '';
+  try { resolved = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { resolved = ''; }
+  if (_isUuid(resolved)) return { todas: false, uuid: resolved };
+  return { todas: true, uuid: null };
 }
 
 function _relatoriosResolveDateRange(query, opts = {}) {
@@ -12439,10 +12471,10 @@ app.get('/api/relatorios/clientes-mais-compraram', authMiddleware, async (req, r
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
 
-    let empresa_id = null;
-    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+    let empresaFilter;
+    try { empresaFilter = await _relatoriosResolveEmpresaFilter(req); } catch (_) { empresaFilter = { todas: true, uuid: null }; }
     const elegiveis = await _relatoriosFetchOfsConcluidas(range, {
-      companyIds: empresa_id ? [empresa_id] : []
+      companyIds: empresaFilter && !empresaFilter.todas && empresaFilter.uuid ? [empresaFilter.uuid] : []
     });
 
     const cliIds = Array.from(new Set(
@@ -12643,10 +12675,9 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       return res.status(400).json({ ok: false, error: 'periodo_invalido' });
     }
 
-    let empresaId = String(req.query.emp_id || req.query.empId || '').trim();
-    if (!empresaId) {
-      try { empresaId = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { empresaId = ''; }
-    }
+    let empresaFilter;
+    try { empresaFilter = await _relatoriosResolveEmpresaFilter(req); } catch (_) { empresaFilter = { todas: true, uuid: null }; }
+    let empresaId = empresaFilter && !empresaFilter.todas && empresaFilter.uuid ? String(empresaFilter.uuid || '').trim() : '';
 
     const machineOrder = new Map(MAQUINAS_CATALOGO_PADRAO.map((item, idx) => [String(item?.nome || '').trim(), idx]));
     const machineNames = new Set(Array.from(machineOrder.keys()));
