@@ -6687,72 +6687,6 @@ window._compraPapelaoPrintCompra = async function(id) {
     alert('Erro ao imprimir compra: ' + String(e && e.message || e));
   }
 };
-window._compraPapelaoExportCompraExcel = async function(id) {
-  try {
-    if (typeof XLSX === 'undefined' || !XLSX || !XLSX.utils) throw new Error('SheetJS (XLSX) não carregado');
-    var compra = await window._compraPapelaoApi('/api/compras-chapas/' + encodeURIComponent(id), { method: 'GET' });
-    var inState = (Array.isArray(window._compraPapelaoStateRef().compras) ? window._compraPapelaoStateRef().compras : []).find(function(row) { return String(row && row.id || '') === String(id || ''); }) || null;
-    if (inState && !compra._emp_id_consulta) compra._emp_id_consulta = inState._emp_id_consulta;
-    var totals = window._compraPapelaoCompraTotals(compra);
-    var itens = Array.isArray(compra && compra.itens) ? compra.itens : [];
-    var dataRef = String(compra && (compra.data_compra || compra.data || compra.atualizado_em || compra.criado_em || compra.created_at || '') || '').slice(0, 10);
-    var resumo = [
-      ['Campo', 'Valor'],
-      ['Compra', window._compraPapelaoNumeroLabel(compra && compra.numero_compra || '')],
-      ['Fornecedor', String(compra && compra.fornecedor || '—')],
-      ['Status', String(compra && compra.status || 'Solicitada')],
-      ['Data', dataRef || '—'],
-      ['Pedido do fornecedor', String(compra && compra.ped_fornecedor || '—')],
-      ['Pasta', compraFolderName(compra) || 'Sem pasta'],
-      ['Empresa', window._compraPapelaoEmpresaNome(compra && compra._emp_id_consulta) || '—'],
-      ['Observação', String(compra && compra.observacao || '—')],
-      ['Itens', itens.length],
-      ['Quantidade total', totals.qtd],
-      ['Área total (m²)', totals.area],
-      ['Valor total', totals.valor]
-    ];
-    var linhasItens = [['Seq', 'Pedido Cliente', 'Entrega', 'PO', 'Largura', 'Comprimento', 'Vincos', 'Quantidade', 'Lote Mínimo', 'Área m²', 'Valor/m²', 'Valor p/mil', 'Valor Total', 'Observação', 'Pedido Fornecedor']];
-    itens.forEach(function(item, idx) {
-      var calc = window._compraPapelaoResolveItemMetrics ? window._compraPapelaoResolveItemMetrics(item || {}) : {
-        area_m2: Number(item && item.area_m2 || 0) || 0,
-        vl_p_mil: Number(item && item.vl_p_mil || 0) || 0,
-        valor_total: Number(item && item.valor_total || 0) || 0
-      };
-      linhasItens.push([
-        idx + 1,
-        String(item && item.ped_cliente || ''),
-        String(item && item.data_entrega || '').slice(0, 10),
-        String(item && (item.po || item.nomenclatura) || ''),
-        Number(item && item.largura || 0) || 0,
-        Number(item && item.comprimento || 0) || 0,
-        String(window._compraPapelaoComposeVincos ? window._compraPapelaoComposeVincos(item) : item && item.vincos || ''),
-        Number(item && item.quantidade || 0) || 0,
-        Number(item && item.lote_minimo || 0) || 0,
-        Number(item && item.area_m2 != null ? item.area_m2 : calc.area_m2) || 0,
-        Number(item && item.valor_m2 || 0) || 0,
-        Number(item && item.vl_p_mil != null ? item.vl_p_mil : calc.vl_p_mil) || 0,
-        Number(item && item.valor_total != null ? item.valor_total : calc.valor_total) || 0,
-        String(item && item.observacao || ''),
-        String(item && item.ped_fornecedor || '')
-      ]);
-    });
-    var wb = XLSX.utils.book_new();
-    var wsResumo = XLSX.utils.aoa_to_sheet(resumo);
-    var wsItens = XLSX.utils.aoa_to_sheet(linhasItens);
-    wsResumo['!cols'] = [{ wch: 24 }, { wch: 48 }];
-    wsItens['!cols'] = [{ wch: 8 }, { wch: 20 }, { wch: 12 }, { wch: 18 }, { wch: 10 }, { wch: 12 }, { wch: 18 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 30 }, { wch: 18 }];
-    XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo');
-    XLSX.utils.book_append_sheet(wb, wsItens, 'Itens');
-    var numero = window._compraPapelaoNumeroLabel(compra && compra.numero_compra || '').replace(/[^a-z0-9_-]+/gi, '_');
-    var arquivo = 'compra_papelao_' + (numero || String(id || 'sem_numero')) + '_' + (dataRef || today()) + '.xlsx';
-    XLSX.writeFile(wb, arquivo);
-    try { if (typeof window.toast === 'function') window.toast('Excel da compra exportado com sucesso', 'var(--green)'); } catch (_) {}
-  } catch (e) {
-    console.error('[COMPRA-PAPELAO]', e);
-    try { if (typeof window.toast === 'function') window.toast('Erro ao exportar Excel da compra: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
-    alert('Erro ao exportar Excel da compra: ' + String(e && e.message || e));
-  }
-};
 window._compraPapelaoOpenPinsModal = function() {
   var pins = Array.isArray(window._compraPapelaoStateRef().pins) ? window._compraPapelaoStateRef().pins : [];
   var body = !pins.length
@@ -7402,7 +7336,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
         + '    <select data-ccp-move="' + cAttr(id) + '">' + cFolderOptionsHtml(compra && compra.pasta_id, true) + '</select>'
         + '    <button type="button" data-ccp-edit="' + cAttr(id) + '">Editar</button>'
         + '    <button type="button" data-ccp-print="' + cAttr(id) + '">Imprimir</button>'
-        + '    <button type="button" data-ccp-excel="' + cAttr(id) + '">Excel</button>'
         + '    <button type="button" data-ccp-clone="' + cAttr(id) + '">Clonar</button>'
         + '    <button type="button" class="danger" data-ccp-del="' + cAttr(id) + '">Excluir</button>'
         + '  </div></td>'
@@ -7537,13 +7470,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     });
     Array.prototype.slice.call(host.querySelectorAll('[data-ccp-print]')).forEach(function(btn) {
       btn.onclick = function() { cImprimirCompra(String(btn.getAttribute('data-ccp-print') || '').trim()); };
-    });
-    Array.prototype.slice.call(host.querySelectorAll('[data-ccp-excel]')).forEach(function(btn) {
-      btn.onclick = function() {
-        if (typeof window._compraPapelaoExportCompraExcel === 'function') {
-          window._compraPapelaoExportCompraExcel(String(btn.getAttribute('data-ccp-excel') || '').trim());
-        }
-      };
     });
     Array.prototype.slice.call(host.querySelectorAll('[data-ccp-clone]')).forEach(function(btn) {
       btn.onclick = function() { cClonarCompra(String(btn.getAttribute('data-ccp-clone') || '').trim()); };
@@ -49176,9 +49102,6 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     Array.prototype.slice.call(host.querySelectorAll('[data-cmpx-print]')).forEach(function(btn) {
       btn.onclick = function() { window._compraPapelaoPrintCompra(String(btn.getAttribute('data-cmpx-print') || '')); };
     });
-    Array.prototype.slice.call(host.querySelectorAll('[data-cmpx-excel]')).forEach(function(btn) {
-      btn.onclick = function() { window._compraPapelaoExportCompraExcel(String(btn.getAttribute('data-cmpx-excel') || '')); };
-    });
     Array.prototype.slice.call(host.querySelectorAll('[data-cmpx-folder-move]')).forEach(function(btn) {
       btn.onclick = function() { window._compraPapelaoOpenMoveFolderModal(String(btn.getAttribute('data-cmpx-folder-move') || '')); };
     });
@@ -49233,7 +49156,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '  <td class="cmpx-num">' + escHtml(fmtNum(totals.qtd, 0)) + '</td>'
         + '  <td class="cmpx-num">' + escHtml(fmtNum(totals.area, 4)) + ' m²</td>'
         + '  <td class="cmpx-num">' + escHtml(fmtMoney(totals.valor)) + '</td>'
-        + '  <td><div class="cmpx-actions-row"><button type="button" class="primary is-edit" data-cmpx-edit="' + escAttr(id) + '">✏ Editar</button><button type="button" class="is-folder" data-cmpx-folder-move="' + escAttr(id) + '">🗂 Pasta</button><button type="button" class="is-print" data-cmpx-print="' + escAttr(id) + '">🖨 Imprimir</button><button type="button" class="is-folder" data-cmpx-excel="' + escAttr(id) + '">📥 Excel</button><button type="button" class="is-copy" data-cmpx-clone="' + escAttr(id) + '">⧉ Clonar</button><button type="button" class="danger" data-cmpx-delete="' + escAttr(id) + '">🗑 Excluir</button></div></td>'
+        + '  <td><div class="cmpx-actions-row"><button type="button" class="primary is-edit" data-cmpx-edit="' + escAttr(id) + '">✏ Editar</button><button type="button" class="is-folder" data-cmpx-folder-move="' + escAttr(id) + '">🗂 Pasta</button><button type="button" class="is-print" data-cmpx-print="' + escAttr(id) + '">🖨 Imprimir</button><button type="button" class="is-copy" data-cmpx-clone="' + escAttr(id) + '">⧉ Clonar</button><button type="button" class="danger" data-cmpx-delete="' + escAttr(id) + '">🗑 Excluir</button></div></td>'
         + '</tr>'
         + (expanded ? '<tr class="cmpx-detail-row"><td colspan="10">' + compraItensExpansaoHtml(compra) + '</td></tr>' : '');
     }).join('');
