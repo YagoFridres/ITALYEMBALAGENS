@@ -499,7 +499,8 @@ try {
         periodo: 'mes',
         data_referencia: today,
         data_inicio: today,
-        data_fim: today
+        data_fim: today,
+        auto_periodo_atual: true
       };
     }
     return window.__relatoriosCentralState;
@@ -510,9 +511,28 @@ try {
     return /^\d{4}-\d{2}-\d{2}$/.test(txt) ? txt : '';
   }
 
-  function rrCurrentRange() {
+  function rrTodayIso() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function rrSyncAutoPeriodState() {
     var st = rrState();
-    var refTxt = rrClampDateText(st.data_referencia) || new Date().toISOString().slice(0, 10);
+    if (st.auto_periodo_atual === false) return st;
+    var today = rrTodayIso();
+    if (st.periodo === 'personalizado') {
+      if (!rrClampDateText(st.data_inicio)) st.data_inicio = today;
+      if (!rrClampDateText(st.data_fim)) st.data_fim = st.data_inicio || today;
+      return st;
+    }
+    st.data_referencia = today;
+    if (!rrClampDateText(st.data_inicio)) st.data_inicio = today;
+    if (!rrClampDateText(st.data_fim)) st.data_fim = today;
+    return st;
+  }
+
+  function rrCurrentRange() {
+    var st = rrSyncAutoPeriodState();
+    var refTxt = rrClampDateText(st.data_referencia) || rrTodayIso();
     var refDate = new Date(refTxt + 'T12:00:00');
     if (!Number.isFinite(refDate.getTime())) refDate = new Date();
     var ini = null;
@@ -3254,16 +3274,34 @@ try {
     var iniEl = host.querySelector('#rr-data-inicio');
     var fimEl = host.querySelector('#rr-data-fim');
     function sync() {
-      if (periodoEl) st.periodo = String(periodoEl.value || 'mes').trim() || 'mes';
-      if (refEl) st.data_referencia = rrClampDateText(refEl.value) || st.data_referencia;
-      if (iniEl) st.data_inicio = rrClampDateText(iniEl.value) || st.data_inicio;
-      if (fimEl) st.data_fim = rrClampDateText(fimEl.value) || st.data_fim;
       rrRenderPage();
     }
-    if (periodoEl) periodoEl.onchange = sync;
-    if (refEl) refEl.onchange = sync;
-    if (iniEl) iniEl.onchange = sync;
-    if (fimEl) fimEl.onchange = sync;
+    if (periodoEl) periodoEl.onchange = function() {
+      st.periodo = String(periodoEl.value || 'mes').trim() || 'mes';
+      if (st.periodo === 'personalizado') {
+        st.auto_periodo_atual = false;
+        st.data_inicio = rrClampDateText(st.data_inicio) || rrClampDateText(st.data_referencia) || rrTodayIso();
+        st.data_fim = rrClampDateText(st.data_fim) || st.data_inicio;
+      } else if (st.auto_periodo_atual !== false) {
+        st.data_referencia = rrTodayIso();
+      }
+      sync();
+    };
+    if (refEl) refEl.onchange = function() {
+      st.data_referencia = rrClampDateText(refEl.value) || st.data_referencia;
+      st.auto_periodo_atual = st.data_referencia === rrTodayIso();
+      sync();
+    };
+    if (iniEl) iniEl.onchange = function() {
+      st.data_inicio = rrClampDateText(iniEl.value) || st.data_inicio;
+      st.auto_periodo_atual = false;
+      sync();
+    };
+    if (fimEl) fimEl.onchange = function() {
+      st.data_fim = rrClampDateText(fimEl.value) || st.data_fim;
+      st.auto_periodo_atual = false;
+      sync();
+    };
   }
 
   function rrRenderPage() {
