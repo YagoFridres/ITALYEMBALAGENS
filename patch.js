@@ -9675,6 +9675,147 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     }
     input.dataset.keepValue = value ? '1' : '';
   }
+
+  function ensureCalcDomStructure() {
+    try {
+      if (document.getElementById('modal-calc') && document.getElementById('modal-calculadora')) return true;
+      if (document.getElementById('calc-cli') || document.getElementById('calc-comp')) return true;
+      if (!document.body) return false;
+      if (document.getElementById('patch-calc-dom-injected')) return false;
+      var wrap = document.createElement('div');
+      wrap.id = 'patch-calc-dom-injected';
+      wrap.style.display = 'contents';
+      wrap.innerHTML = '' +
+        '<div class="modal-overlay" id="modal-calc" style="display:none">' +
+        '<div class="modal modal-calculadora" id="modal-calculadora" style="max-width:min(1100px,95vw);width:95vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;padding:18px">' +
+        '  <button class="close-btn" onclick="try { if(typeof fecharCalculadora===\'function\')fecharCalculadora(); else if(typeof fechar===\'function\')fechar(\'modal-calc\'); } catch(_){}">✕</button>' +
+        '  <h2 style="margin-bottom:8px">🧮 Calculadora de Compensação — Fórmulas Garcia</h2>' +
+        '  <div class="calc-header-row" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">' +
+        '    <label style="white-space:nowrap">CLIENTE DO ORÇAMENTO</label>' +
+        '    <select id="calc-cli" style="flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px"><option value="">— Selecione o cliente —</option></select>' +
+        '    <span id="orc-numero-display" style="font-size:.65rem;color:var(--accent);font-family:var(--mono);font-weight:800"></span>' +
+        '  </div>' +
+        '  <div class="modal-body calc-body">' +
+        '    <div class="calc-col-esq">' +
+        '    <div class="calc-row-top" style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px;align-items:end">' +
+        '      <div class="mf"><label>TIPO</label><select id="calc-tipo" onchange="try{if(typeof calcTipoChange===\'function\')calcTipoChange();}catch(_){}">' +
+        '        <optgroup label="Normal">' +
+        '          <option value="200">200 — Meia Caixa</option>' +
+        '          <option value="201" selected>201 — Normal 8 Tampas</option>' +
+        '          <option value="202">202 — Semi-Sobrep.</option>' +
+        '          <option value="203">203 — Sobrep. Total</option>' +
+        '          <option value="205">205 — Internas Iguais</option>' +
+        '          <option value="209">209 — Abas Curtas</option>' +
+        '        </optgroup>' +
+        '        <optgroup label="Telescópica">' +
+        '          <option value="300">300 — Telesc. Tampo</option>' +
+        '          <option value="301">301 — Telesc. Fundo</option>' +
+        '          <option value="320">320 — Tampo+Fundo</option>' +
+        '          <option value="325">325 — Total Tampo</option>' +
+        '          <option value="326">326 — Total Fundo</option>' +
+        '          <option value="340">340 — Testeiras Tampo</option>' +
+        '          <option value="341">341 — Testeiras Fundo</option>' +
+        '          <option value="360">360 — Laterais Tampo</option>' +
+        '          <option value="361">361 — Laterais Fundo</option>' +
+        '        </optgroup>' +
+        '        <optgroup label="Envoltório">' +
+        '          <option value="402">402 — Env. Fundo Int.</option>' +
+        '          <option value="409">409 — Env. 5 Painéis</option>' +
+        '          <option value="415">415 — Env. Abas Seg.</option>' +
+        '          <option value="417">417 — Env. Abas Sobr.</option>' +
+        '        </optgroup>' +
+        '      </select></div>' +
+        '      <div class="mf"><label>VL. ONDA B (R$/m²)</label><input id="calc-vb2" type="number" step="0.0001" value="2.47" oninput="try{if(typeof syncVb===\'function\')syncVb();}catch(_){}"></div>' +
+        '      <div class="mf"><label>QUANTIDADE</label><input id="calc-qtd" type="number" value="1000" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '    </div>' +
+        '    <div class="calc-row-dims" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end">' +
+        '      <div class="mf"><label>COMPRIMENTO (mm)</label><input id="calc-comp" type="number" value="300" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="mf"><label>LARGURA (mm)</label><input id="calc-larg" type="number" value="200" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="mf"><label>ALTURA (mm)</label><input id="calc-alt" type="number" value="100" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="mf" style="display:none"><label style="font-size:.6rem">ONDA</label>' +
+        '        <select id="calc-onda" onchange="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}" style="font-size:.82rem"><option value="B" selected>B</option><option value="C">C</option><option value="BC">BC</option></select>' +
+        '      </div>' +
+        '    </div>' +
+        '    <div class="calc-row-valores" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end">' +
+        '      <div class="mf"><label>VALOR ONDA B (R$/m²)</label><input id="calc-vb" type="number" step="0.0001" value="2.47" oninput="try{if(typeof syncVb===\'function\')syncVb();}catch(_){}try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="mf"><label>VALOR ONDA C (R$/m²)</label><input id="calc-vc" type="number" step="0.0001" value="3.29" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="mf"><label>VALOR ONDA BC (R$/m²)</label><input id="calc-vbc" type="number" step="0.0001" value="4.46" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '    </div>' +
+        '    <div id="calc-extra-fields" style="display:flex;gap:10px;flex-wrap:wrap"></div>' +
+        '    <div class="calc-tabela-wrap" style="overflow-x:auto;flex:1;min-height:0;border:1px solid rgba(255,255,255,0.08);border-radius:10px;margin-top:12px">' +
+        '      <table id="calc-sheet" style="border-collapse:collapse;width:100%;min-width:900px"><thead><tr>' +
+        '        <th style="text-align:left;font-family:var(--mono)">Tabela para compensação</th>' +
+        '        <th colspan="2" style="text-align:center;font-family:var(--mono);color:var(--accent)" id="calc-tipo-label">—</th>' +
+        '        <th style="text-align:center;font-family:var(--mono)">Largura (mm)</th>' +
+        '        <th style="text-align:center;font-family:var(--mono)">Comprimento (mm)</th>' +
+        '        <th style="text-align:center;font-family:var(--mono)">Total (mm)</th>' +
+        '        <th style="text-align:center;font-family:var(--mono)">m²</th>' +
+        '        <th style="text-align:center;font-family:var(--mono)">Val. total bruto</th>' +
+        '        <th style="text-align:center;font-family:var(--mono)">Vl. venda líquida</th>' +
+        '        <th style="text-align:center;font-family:var(--mono)">c/ frete</th>' +
+        '        <th style="text-align:center;font-family:var(--mono)">Vl. unit. (R$/un)</th>' +
+        '      </tr></thead><tbody id="calc-tbody"><tr><td colspan="11" style="padding:20px;text-align:center;color:var(--text3)">Preencha os dados acima para calcular</td></tr></tbody></table>' +
+        '    </div>' +
+        '    </div>' +
+        '    <div class="calc-col-dir">' +
+        '      <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,0.65);text-transform:uppercase">Parâmetros Comerciais <span id="calc-w3-display" style="color:#81c784"></span></div>' +
+        '      <div class="param-row"><span class="param-label">Custo Merc. (%)</span><input id="calc-cm" class="param-input" type="number" value="49" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="param-row"><span class="param-label">Custo Fixo (%)</span><input id="calc-cf" class="param-input" type="number" value="15" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="param-row"><span class="param-label">Margem (%)</span><input id="calc-mg" class="param-input" type="number" value="25" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="param-row"><span class="param-label">Comissão (%)</span><input id="calc-cv" class="param-input" type="number" value="1" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="param-row"><span class="param-label">Impostos (%)</span><input id="calc-imp" class="param-input" type="number" value="10" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="param-row"><span class="param-label">Vl. KM Frete (R$)</span><input id="calc-vkm" class="param-input" type="number" step="0.01" value="1.15" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="param-row"><span class="param-label">KM Entrega</span><input id="calc-km" class="param-input" type="number" value="50" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="param-frete-total"><span>Frete Total</span><span id="calc-frete-display">—</span></div>' +
+        '    </div>' +
+        '  </div>' +
+        '  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;padding-top:12px;border-top:1px solid #334155">' +
+        '    <div style="display:flex;gap:12px;align-items:center;margin-right:auto;flex-wrap:wrap">' +
+        '      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700"><input type="checkbox" id="calc-print-b" checked style="width:16px;height:16px"> Onda B</label>' +
+        '      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700"><input type="checkbox" id="calc-print-c" checked style="width:16px;height:16px"> Onda C</label>' +
+        '      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700"><input type="checkbox" id="calc-print-bc" checked style="width:16px;height:16px"> Onda BC</label>' +
+        '    </div>' +
+        '    <button onclick="try { if(typeof fecharCalculadora===\'function\')fecharCalculadora(); else if(typeof fechar===\'function\')fechar(\'modal-calc\'); } catch(_){}" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">Fechar</button>' +
+        '    <button onclick="try { if(typeof imprimirOrcamentoCalc===\'function\')imprimirOrcamentoCalc(); } catch(_){}" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">🖨 Imprimir</button>' +
+        '    <button onclick="try { if(typeof salvarOrcamentoCalc===\'function\')salvarOrcamentoCalc(); } catch(_){}" style="padding:10px 14px;border-radius:8px;background:#4A90D9;color:#fff;border:none;cursor:pointer;font-weight:700">💾 Salvar Orçamento</button>' +
+        '    <button onclick="try { if(typeof enviarOrcamentoPorEmail===\'function\')enviarOrcamentoPorEmail(); } catch(_){}" style="padding:10px 14px;border-radius:8px;background:#7B68EE;color:#fff;border:none;cursor:pointer;font-weight:700">✉ Enviar por Email</button>' +
+        '  </div>' +
+        '</div></div>';
+      document.body.appendChild(wrap);
+      try {
+        if (typeof window.fecharCalculadora !== 'function') {
+          window.fecharCalculadora = function() {
+            try { if (typeof window.fechar === 'function') window.fechar('modal-calc'); } catch (_) {}
+            try {
+              var ov = document.getElementById('modal-calc');
+              if (ov) { ov.style.display = 'none'; ov.style.opacity = '0'; ov.style.pointerEvents = 'none'; }
+              var md = document.getElementById('modal-calculadora');
+              if (md) { md.style.display = 'none'; md.style.opacity = '0'; md.style.pointerEvents = 'none'; }
+            } catch (_) {}
+            try { document.body && (document.body.style.overflow = ''); } catch (_) {}
+          };
+        }
+      } catch (_) {}
+      try {
+        if (typeof window.syncVb !== 'function') {
+          window.syncVb = function() {
+            try {
+              var vb = document.getElementById('calc-vb');
+              var vb2 = document.getElementById('calc-vb2');
+              var v = (vb && vb.value) || (vb2 && vb2.value) || '';
+              if (vb && String(vb.value) !== String(v)) vb.value = v;
+              if (vb2 && String(vb2.value) !== String(v)) vb2.value = v;
+            } catch (_) {}
+          };
+        }
+      } catch (_) {}
+      try { if (typeof window.calcRecalc === 'function') window.calcRecalc(); } catch (_) {}
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function ensureCalcFullscreenShell() {
     var overlay = document.getElementById('modal-calc');
     var modal = document.getElementById('modal-calculadora');
@@ -10079,6 +10220,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
   if (typeof window.abrirCalculadora === 'function' && !window.abrirCalculadora.__patchOrcPastas) {
     var _origAbrirCalculadora = window.abrirCalculadora;
     window.abrirCalculadora = function() {
+      try { ensureCalcDomStructure(); } catch (_) {}
       var out = _origAbrirCalculadora.apply(this, arguments);
       setTimeout(function() {
         loadFolders(false).catch(function() { return []; }).finally(function() {
@@ -10100,6 +10242,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
   if (typeof window.carregarOrcamentoCalc === 'function' && !window.carregarOrcamentoCalc.__patchOrcPastas) {
     var _origCarregarOrcamentoCalc = window.carregarOrcamentoCalc;
     window.carregarOrcamentoCalc = function() {
+      try { ensureCalcDomStructure(); } catch (_) {}
       var out = _origCarregarOrcamentoCalc.apply(this, arguments);
       setTimeout(function() {
         try { if (typeof window.__patchOrcDraftLoadFromState === 'function') window.__patchOrcDraftLoadFromState(true); } catch (_) {}
@@ -10115,6 +10258,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
   if (typeof window.novoOrcamentoCalc === 'function' && !window.novoOrcamentoCalc.__patchOrcPastas) {
     var _origNovoOrcamentoCalc = window.novoOrcamentoCalc;
     window.novoOrcamentoCalc = function() {
+      try { ensureCalcDomStructure(); } catch (_) {}
       var out = _origNovoOrcamentoCalc.apply(this, arguments);
       setTimeout(function() {
         window.__orcDraftItems = [];
@@ -10188,6 +10332,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       });
     }
     window.salvarOrcamentoCalc = async function() {
+      try { ensureCalcDomStructure(); } catch (_) {}
       var ondasSelecionadas = (typeof window.__orcSelectedSaveWaves === 'function')
         ? window.__orcSelectedSaveWaves()
         : [];
@@ -30585,10 +30730,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function ensureFn() {
+    try { ensureCalcDomStructure(); } catch (_) {}
     if (typeof window.abrirCalculadora !== 'function') {
       window.abrirCalculadora = function() {
         markCalcOpenIntent();
         calcDebugEvent('abrirCalculadora:created-wrapper');
+        try { ensureCalcDomStructure(); } catch (_) {}
         try { if (typeof window.abrir === 'function') window.abrir('modal-calc'); } catch (_) {}
         if (!calcOverlayOpenState()) ensureCalcModalOpenFallback();
       };
@@ -30601,6 +30748,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var explicitIntent = inferCalcOpenIntent();
       calcDebugEvent('abrirCalculadora:wrapped:start', { explicitIntent: !!explicitIntent });
       var result;
+      try { ensureCalcDomStructure(); } catch (_) {}
       try {
         result = orig.apply(this, arguments);
       } catch (_) {
@@ -30642,6 +30790,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function tick() {
+    try { ensureCalcDomStructure(); } catch (_) {}
     ensureFn();
     bindBtn();
     if (calcOverlayOpenState() && !hasRecentCalcOpenIntent()) calcDebugEvent('tick:overlay-open-without-intent');
