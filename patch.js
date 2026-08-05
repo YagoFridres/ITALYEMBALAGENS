@@ -1362,7 +1362,7 @@ try {
         { label: 'Valor Vendido', value: rrFmtMoney(resumo.valor_vendido || 0), sub: 'Somado por máquina via ofs.passagens_maquina' },
         { label: 'Caixas Produzidas', value: rrFmtNum(resumo.caixas_produzidas || 0, 0), sub: fmtTon(resumo.toneladas_produzidas || 0) },
         { label: 'Perdas', value: rrFmtNum(resumo.caixas_perdidas || 0, 0) + ' cx', sub: rrFmtMoney(resumo.valor_perdido || 0) + ' | ' + fmtTon(resumo.toneladas_perdidas || 0) },
-        { label: 'Custos Totais', value: rrFmtMoney(resumo.custos_totais || 0), sub: 'Campo custo_m2_venda ou equivalente disponível' }
+        { label: 'Custos Totais', value: rrFmtMoney(resumo.custos_totais || 0), sub: 'Custo estimado = custo_m2_venda × area_total_m2; zera se área faltar' }
       ],
       summaryTitle: 'Resumo por máquina',
       summaryHeaders: ['Máquina', 'Passagens', 'OFs', 'Venda', 'Caixas', 'Toneladas', 'Cx Perdidas', 'Valor Perdido', 'Custos', 'Cliente Top', 'Tipo Top', 'Cores Top'],
@@ -1444,6 +1444,173 @@ try {
           }
         };
       }
+    });
+  }
+
+  async function rrReportPapelaoChecklistRecebimento(rangeOverride) {
+    var ref = rangeOverride || rrCurrentRange();
+    var qs = [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim)
+    ];
+    var empId = rrEmpId();
+    if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
+    var json = await rrFetchJson('/api/compras-chapas/relatorios/checklist-recebimento?' + qs.join('&'));
+    var resumo = json && json.resumo || {};
+    var rows = rrList(json, ['rows']);
+    var itensFlat = [];
+    rows.forEach(function(r) {
+      var arr = Array.isArray(r && r.itens) ? r.itens : [];
+      arr.forEach(function(it) {
+        itensFlat.push({
+          compra_numero: r && r.numero_compra || '—',
+          fornecedor: r && r.fornecedor || '—',
+          data_compra: r && r.data_compra || '',
+          data_recebimento: r && r.data_recebimento || '',
+          nota_fiscal: r && r.nota_fiscal || '',
+          status_recebimento: r && r.status_recebimento || '',
+          seq: it && it.seq || 0,
+          descricao: it && it.descricao || 'Item',
+          largura_mm: it && it.largura_mm || 0,
+          comprimento_mm: it && it.comprimento_mm || 0,
+          gramatura: it && it.gramatura || 0,
+          quantidade: it && it.quantidade || 0,
+          area_m2: it && it.area_m2 || 0,
+          valor_total: it && it.valor_total || 0,
+          qtd_recebida: it && it.qtd_recebida || 0,
+          recebido: it && it.recebido,
+          obs: it && it.obs || ''
+        });
+      });
+    });
+    return rrOpenPrint({
+      title: 'Checklist de Recebimento de Papelão',
+      periodo: ref.titulo || (String(json && json.data_inicio || '') + ' a ' + String(json && json.data_fim || '')),
+      cards: [
+        { label: 'Compras no período', value: rrFmtNum(resumo.total_compras || 0, 0) },
+        { label: 'Total de Itens', value: rrFmtNum(resumo.total_itens || 0, 0) },
+        { label: 'Quantidade Total (chapas)', value: rrFmtNum(resumo.qtd_total || 0, 3) },
+        { label: 'Área Total (m²)', value: rrFmtNum(resumo.area_total_m2 || 0, 4) + ' m²' },
+        { label: 'Valor Total', value: rrFmtMoney(resumo.valor_total || 0) }
+      ],
+      summaryTitle: 'Resumo por Compra',
+      summaryHeaders: ['Nº Compra', 'Fornecedor', 'Dt. Compra', 'Dt. Receb.', 'NF', 'Status', 'Itens', 'Valor Total', 'Recebedor', 'Obs'],
+      summaryRows: rows.map(function(r) {
+        return [
+          rrEsc(String(r && r.numero_compra || '—')),
+          rrEsc(String(r && r.fornecedor || '—')),
+          rrEsc(rrFmtDate(r && r.data_compra)),
+          rrEsc(rrFmtDate(r && r.data_recebimento)),
+          rrEsc(String(r && r.nota_fiscal || '—')),
+          rrEsc(String(r && r.status_recebimento || '—')),
+          rrEsc(rrFmtNum(Array.isArray(r && r.itens) ? r.itens.length : 0, 0)),
+          rrEsc(rrFmtMoney(r && r.valor_total || 0)),
+          rrEsc(String(r && r.recebedor || '—')),
+          rrEsc(String(r && r.obs || ''))
+        ];
+      }),
+      detailTitle: 'Itens para conferência (checklist)',
+      detailHeaders: ['Compra', 'Fornecedor', 'Seq', 'Item / Descrição', 'Larg (mm)', 'Comp (mm)', 'Gram.', 'Qtd Pedida', 'Qtd Receb.', 'Área (m²)', 'Valor', 'Status', 'Obs'],
+      detailRows: itensFlat.map(function(it) {
+        return [
+          rrEsc(String(it.compra_numero || '—')),
+          rrEsc(String(it.fornecedor || '—')),
+          rrEsc(rrFmtNum(it.seq || 0, 0)),
+          rrEsc(String(it.descricao || '—')),
+          rrEsc(rrFmtNum(it.largura_mm || 0, 0)),
+          rrEsc(rrFmtNum(it.comprimento_mm || 0, 0)),
+          rrEsc(rrFmtNum(it.gramatura || 0, 0)),
+          rrEsc(rrFmtNum(it.quantidade || 0, 3)),
+          rrEsc(rrFmtNum(it.qtd_recebida || it.quantidade || 0, 3)),
+          rrEsc(rrFmtNum(it.area_m2 || 0, 4)),
+          rrEsc(rrFmtMoney(it.valor_total || 0)),
+          rrEsc(it.recebido === true ? '✅ Recebido' : (it.recebido === false ? '❌ Pendente' : '—')),
+          rrEsc(String(it.obs || ''))
+        ];
+      }),
+      emptySummaryCols: 10,
+      emptyDetailCols: 13
+    });
+  }
+
+  async function rrReportPapelaoFornecedor(rangeOverride) {
+    var ref = rangeOverride || rrCurrentRange();
+    var qs = [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim)
+    ];
+    var empId = rrEmpId();
+    if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
+    var json = await rrFetchJson('/api/compras-chapas/relatorios/fornecedor?' + qs.join('&'));
+    var rows = Array.isArray(json) ? json : [];
+    var resumo = rows.reduce(function(acc, r) {
+      acc.total_fornecedores += 1;
+      acc.total_compras += Number(r && r.total_compras || 0) || 0;
+      acc.quantidade += Number(r && r.quantidade || 0) || 0;
+      acc.area_m2 += Number(r && r.area_m2 || 0) || 0;
+      acc.valor_total += Number(r && r.valor_total || 0) || 0;
+      return acc;
+    }, { total_fornecedores: 0, total_compras: 0, quantidade: 0, area_m2: 0, valor_total: 0 });
+    return rrOpenPrint({
+      title: 'Compras de Papelão por Fornecedor',
+      periodo: ref.titulo || (String(ref && ref.data_inicio || '') + ' a ' + String(ref && ref.data_fim || '')),
+      cards: [
+        { label: 'Fornecedores', value: rrFmtNum(resumo.total_fornecedores || 0, 0) },
+        { label: 'Compras', value: rrFmtNum(resumo.total_compras || 0, 0) },
+        { label: 'Quantidade (chapas)', value: rrFmtNum(resumo.quantidade || 0, 3) },
+        { label: 'Área (m²)', value: rrFmtNum(resumo.area_m2 || 0, 4) + ' m²' },
+        { label: 'Valor Total', value: rrFmtMoney(resumo.valor_total || 0) }
+      ],
+      summaryTitle: 'Consolidado por fornecedor',
+      summaryHeaders: ['Fornecedor', 'Nº de Compras', 'Qtd (chapas)', 'Área (m²)', 'Valor Total', 'Ticket Médio'],
+      summaryRows: rows.sort(function(a, b) { return Number(b && b.valor_total || 0) - Number(a && a.valor_total || 0); }).map(function(r) {
+        var compras = Number(r && r.total_compras || 0) || 0;
+        var valor = Number(r && r.valor_total || 0) || 0;
+        var ticket = compras > 0 ? (valor / compras) : 0;
+        return [
+          rrEsc(String(r && r.fornecedor || '—')),
+          rrEsc(rrFmtNum(compras, 0)),
+          rrEsc(rrFmtNum(Number(r && r.quantidade || 0) || 0, 3)),
+          rrEsc(rrFmtNum(Number(r && r.area_m2 || 0) || 0, 4)),
+          rrEsc(rrFmtMoney(valor)),
+          rrEsc(rrFmtMoney(ticket))
+        ];
+      }),
+      emptySummaryCols: 6,
+      hideDetails: true
+    });
+  }
+
+  async function rrReportPapelaoResumoMes(rangeOverride) {
+    var ref = rangeOverride || rrCurrentRange();
+    var qs = [
+      'data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim)
+    ];
+    var empId = rrEmpId();
+    if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
+    var json = await rrFetchJson('/api/compras-chapas/relatorios/resumo?' + qs.join('&'));
+    var resumo = json && typeof json === 'object' ? json : {};
+    return rrOpenPrint({
+      title: 'Papelão — Quantidade e Valor Comprado no Período',
+      periodo: ref.titulo || (String(ref && ref.data_inicio || '') + ' a ' + String(ref && ref.data_fim || '')),
+      cards: [
+        { label: 'Total de Compras', value: rrFmtNum(Number(resumo.total_compras || 0) || 0, 0) },
+        { label: 'Quantidade Total (chapas)', value: rrFmtNum(Number(resumo.quantidade || 0) || 0, 3) },
+        { label: 'Área Total (m²)', value: rrFmtNum(Number(resumo.area_m2 || 0) || 0, 4) + ' m²' },
+        { label: 'Valor Total Comprado', value: rrFmtMoney(Number(resumo.valor_total || 0) || 0), sub: 'Soma de todos os itens de compras de chapas no período' }
+      ],
+      summaryTitle: 'Resumo do período',
+      summaryHeaders: ['Métrica', 'Valor'],
+      summaryRows: [
+        ['Compras efetuadas', rrFmtNum(Number(resumo.total_compras || 0) || 0, 0) + ' compras'],
+        ['Quantidade total (chapas)', rrFmtNum(Number(resumo.quantidade || 0) || 0, 3)],
+        ['Área total comprada (m²)', rrFmtNum(Number(resumo.area_m2 || 0) || 0, 4) + ' m²'],
+        ['Valor financeiro total', rrFmtMoney(Number(resumo.valor_total || 0) || 0)],
+        ['Valor médio por compra', rrFmtMoney(Number(resumo.total_compras || 0) > 0 ? ((Number(resumo.valor_total || 0) || 0) / Number(resumo.total_compras)) : 0)]
+      ].map(function(r) { return [rrEsc(String(r[0])), rrEsc(String(r[1]))]; }),
+      emptySummaryCols: 2,
+      hideDetails: true
     });
   }
 
@@ -3167,6 +3334,9 @@ try {
     { id: 'estoque-chapas', label: 'Estoque de Chapas', icon: '🟦', desc: 'Snapshot do estoque com resumo por fornecedor.', run: rrReportEstoque },
     { id: 'entradas', label: 'Entradas', icon: '📥', desc: 'Movimentações de entrada no estoque de chapas.', run: function() { return rrReportMovimentos('entrada'); } },
     { id: 'saidas', label: 'Saídas', icon: '📤', desc: 'Movimentações de saída no estoque de chapas.', run: function() { return rrReportMovimentos('saida'); } },
+    { id: 'papelao-checklist-recebimento', label: 'Papelão: Checklist de Recebimento', icon: '✅', desc: 'Relatório imprimível para conferência física de itens recebidos por compra.', run: rrReportPapelaoChecklistRecebimento },
+    { id: 'papelao-por-fornecedor', label: 'Papelão: Compras por Fornecedor', icon: '🏭', desc: 'Consolida quantidade, área e valor comprado por fornecedor no período com ticket médio.', run: rrReportPapelaoFornecedor },
+    { id: 'papelao-resumo-mes', label: 'Papelão: Quantidade e Valor do Mês', icon: '📊', desc: 'Resumo consolidado do período com total de compras, quantidade em chapas, área e valor financeiro.', run: rrReportPapelaoResumoMes },
     { id: 'clientes-mais-compraram', label: 'Clientes que mais compraram', icon: '🏆', desc: 'Ranking por valor comprado com ticket médio e caixas vendidas.', run: rrReportClientesMaisCompraram },
     { id: 'lucratividade-por-maquina', label: 'Lucratividade por Máquina', icon: '🏭', desc: 'Consolida venda, produção, perdas, custos, clientes, tipos e cores por máquina usando ofs.passagens_maquina.', run: rrOpenLucratividadeMaquinaModal },
     { id: 'vendas-por-empresa', label: 'Vendas por Empresa', icon: '🏢', desc: 'Consolidado de Italy, Cartoeste e Oestepack no período selecionado.', run: rrReportVendasPorEmpresa },
@@ -10808,7 +10978,8 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       { value: 'IMP 04', label: 'IMP 04' },
       { value: 'IMP 05', label: 'IMP 05' },
       { value: 'CORTE VINCO ROTATIVA', label: 'CORTE VINCO ROTATIVA' },
-      { value: 'Riscador', label: 'RISCADOR' }
+      { value: 'Riscador', label: 'RISCADOR' },
+      { value: 'Acabamento', label: 'ACABAMENTO' }
     ];
   }
 
@@ -15621,7 +15792,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   (function patchCatalogoRiscador() {
     if (window.__patchCatalogoRiscadorApplied) return;
     window.__patchCatalogoRiscadorApplied = true;
-    var CANONICAL = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA'];
+    var CANONICAL = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA', 'Acabamento'];
     var applyTimer = 0;
     var observerInstalled = false;
 

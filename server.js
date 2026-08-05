@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -5606,6 +5606,7 @@ const MAQUINAS_CATALOGO_PADRAO = [
   { nome: 'IMP 05', ordem: 5 },
   { nome: 'Riscador', ordem: 6 },
   { nome: 'CORTE VINCO ROTATIVA', ordem: 7 },
+  { nome: 'Acabamento', ordem: 8 },
 ];
 const MAQUINAS_VALIDAS_NOMES = MAQUINAS_CATALOGO_PADRAO.map((item) => item.nome);
 
@@ -12731,7 +12732,8 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       'valor_total', 'valor_venda', 'total',
       'toneladas_utilizadas', 'tonelada_vendida', 'custo_m2_venda',
       'tipo_caixa', 'cores_impressao', 'perdas_por_maquina', 'passagens_maquina',
-      'data_faturamento', 'data_conclusao', 'dia', 'created_at'
+      'data_faturamento', 'data_conclusao', 'dia', 'created_at',
+      'area_total_m2',
     ].join(',');
     for (let i = 0; i < ofIds.length; i += 200) {
       const chunk = ofIds.slice(i, i + 200);
@@ -12782,7 +12784,9 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       const qtdOf = _relatoriosPickQtdOf(ofData) || Math.max(0, Math.trunc(Number(row?.qtd_produzida ?? row?.quantidade ?? 0) || 0));
       const valorOf = _relatoriosPickValorOf(ofData) || Number(row?.valor_total || row?.valor_venda || 0) || 0;
       const tonOf = Number(ofData?.toneladas_utilizadas ?? ofData?.tonelada_vendida ?? 0) || 0;
-      const custoOf = Number(ofData?.custo_m2_venda ?? 0) || 0;
+      const custoM2 = Number(ofData?.custo_m2_venda ?? 0) || 0;
+      const areaM2 = Number(ofData?.area_total_m2 ?? 0) || 0;
+      const custoOf = (custoM2 > 0 && areaM2 > 0) ? Math.round(custoM2 * areaM2 * 100) / 100 : 0;
       const clienteNome = _relatoriosPickClienteNomeOf(ofData, clientesMap)
         || String(row?.cliente_nome || row?.clinome || row?.cliNome || 'Sem cliente').trim()
         || 'Sem cliente';
@@ -16001,6 +16005,7 @@ function _canonMaqNome(v) {
   if (s === 'cvr') return 'CORTE VINCO ROTATIVA';
   if (s === 'rotativa') return 'CORTE VINCO ROTATIVA';
   if (s === 'riscador' || s === 'risc' || s === 'riscador 01' || s === 'riscador 1' || s === 'riscador 02' || s === 'riscador 2') return 'Riscador';
+  if (s.includes('acabamento') || s === 'acab' || s === 'acabamentos') return 'Acabamento';
   return '';
 }
 function _isUuid(v) {
@@ -23906,6 +23911,87 @@ app.get('/api/compras-chapas/relatorios/resumo', authMiddleware, async (req, res
   }
 });
 
+app.get('/api/compras-chapas/relatorios/checklist-recebimento', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const empInfo = await _comprasChapasResolveEmpId(req);
+    const empId = empInfo.empId;
+    const dataInicio = _comprasChapasStr(req.query?.data_inicio);
+    const dataFim = _comprasChapasStr(req.query?.data_fim);
+    const compraId = _comprasChapasStr(req.query?.compra_id);
+    if (!empId) return res.status(400).json({ ok: false, error: 'emp_id inválido para compras-chapas: ' + _comprasChapasStr(empInfo.raw || req.query?.emp_id || req.query?.empId) });
+
+    let compras;
+    if (compraId) {
+      const single = await _comprasChapasLoadById(compraId);
+      compras = single ? [single] : [];
+    } else {
+      compras = await _comprasChapasFetchNested({ empId });
+      compras = compras.filter((row) => _comprasChapasInPeriod(row, dataInicio, dataFim));
+    }
+
+    const rows = compras
+      .sort((a, b) => String(a?.data_recebimento || a?.created_at || a?.data_compra || '').localeCompare(String(b?.data_recebimento || b?.created_at || b?.data_compra || ''), 'pt-BR'))
+      .map((c) => ({
+        id: c?.id || null,
+        numero_compra: c?.numero_compra || c?.numero || c?.id || '—',
+        fornecedor: _comprasChapasStr(c?.fornecedor) || 'Sem fornecedor',
+        data_compra: String(c?.data_compra || c?.created_at || '').slice(0, 10) || null,
+        data_recebimento: String(c?.data_recebimento || c?.recebido_em || '').slice(0, 10) || null,
+        nota_fiscal: _comprasChapasStr(c?.nota_fiscal || c?.nf || c?.numero_nf) || null,
+        status_recebimento: _comprasChapasStr(c?.status_recebimento || c?.status) || 'Pendente',
+        valor_total: Number(Number(c?.valor_total || (Array.isArray(c?.itens) ? c.itens.reduce((s, it) => s + (_comprasChapasNum(it?.valor_total) || 0), 0) : 0) || 0).toFixed(2)),
+        itens: (Array.isArray(c?.itens) ? c.itens : []).map((it, idx) => ({
+          seq: idx + 1,
+          descricao: _comprasChapasStr(it?.descricao || it?.nome || it?.resumo || it?.chapa_nome || 'Item ' + (idx + 1)),
+          largura_mm: _comprasChapasNum(it?.largura_mm || it?.largura),
+          comprimento_mm: _comprasChapasNum(it?.comprimento_mm || it?.comprimento),
+          gramatura: _comprasChapasNum(it?.gramatura || it?.peso_m2),
+          quantidade: _comprasChapasNum(it?.quantidade),
+          area_m2: Number((_comprasChapasNum(it?.area_m2) || 0).toFixed(6)),
+          valor_unitario: Number((_comprasChapasNum(it?.valor_unitario) || 0).toFixed(4)),
+          valor_total: Number((_comprasChapasNum(it?.valor_total) || 0).toFixed(2)),
+          recebido: it?.recebido != null ? Boolean(it.recebido) : null,
+          qtd_recebida: _comprasChapasNum(it?.qtd_recebida || it?.quantidade_recebida),
+          obs: _comprasChapasStr(it?.obs || it?.observacao) || null,
+        })),
+        recebedor: _comprasChapasStr(c?.recebedor || c?.usuario_recebimento || '') || null,
+        obs: _comprasChapasStr(c?.obs || c?.observacao) || null,
+      }));
+
+    const resumo = rows.reduce((acc, r) => {
+      acc.total_compras += 1;
+      acc.valor_total += Number(r.valor_total || 0) || 0;
+      const itensArr = Array.isArray(r.itens) ? r.itens : [];
+      acc.total_itens += itensArr.length;
+      acc.qtd_total += itensArr.reduce((s, it) => s + (Number(it.quantidade || 0) || 0), 0);
+      acc.area_total_m2 += itensArr.reduce((s, it) => s + (Number(it.area_m2 || 0) || 0), 0);
+      return acc;
+    }, {
+      total_compras: 0,
+      total_itens: 0,
+      qtd_total: 0,
+      area_total_m2: 0,
+      valor_total: 0,
+    });
+    resumo.qtd_total = Number(resumo.qtd_total.toFixed(3));
+    resumo.area_total_m2 = Number(resumo.area_total_m2.toFixed(6));
+    resumo.valor_total = Number(resumo.valor_total.toFixed(2));
+
+    return res.json({
+      ok: true,
+      data_inicio: dataInicio || null,
+      data_fim: dataFim || null,
+      empresa_id: empId,
+      resumo,
+      rows,
+    });
+  } catch (e) {
+    _comprasChapasLog('GET /api/compras-chapas/relatorios/checklist-recebimento', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/compras-chapas', authMiddleware, async (req, res) => {
   try {
     const empInfo = await _comprasChapasResolveEmpId(req);
@@ -30499,7 +30585,7 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
     };
     const hasLat = await hasColCli('lat');
     const hasLng = await hasColCli('lng');
-    const cliSel = 'id,nome,cidade,uf,tel,telefone,vendedor_id,emp_id'
+    const cliSel = 'id,nome,cidade,uf,tel,telefone,vendedor_id,emp_id,ramo'
       + ((hasLat && hasLng) ? ',lat,lng' : '');
 
     let qCli = supabase.from('clientes').select(cliSel).limit(5000);
@@ -30592,6 +30678,7 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
         cidade: String(c?.cidade||'').trim() || null,
         estado: String(c?.estado||'').trim() || null,
         uf: String(c?.uf||'').trim() || null,
+        ramo: String(c?.ramo||'').trim() || null,
         tel: String(c?.tel || c?.telefone || '').trim() || null,
         ultima_of: a.ultima_of || null,
         total_ofs_mes: mesOfs,
