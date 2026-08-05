@@ -10219,6 +10219,117 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
 
   // ===================== CADASTRO AUXILIAR: CIDADES / ESTADOS / RAMOS (w4e) =====================
   try {
+      // ---------- FALLBACKS LOCAIS: independem do escopo externo ----------
+      var _cad_esc = (typeof esc !== 'undefined') ? esc : (function(){
+        function _e(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]||c;});}
+        return _e;
+      })();
+      function __cad_esc(v){return _cad_esc(v);}
+      var _cad_escAttr = (typeof escAttr !== 'undefined') ? escAttr : (function(){
+        function _e(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]||c;});}
+        return _e;
+      })();
+      var _cad_num = (typeof num !== 'undefined') ? num : (function(){
+        function _n(v,d){try{return Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:d||0,maximumFractionDigits:d||0});}catch(_){return String(v||0);}}
+        return _n;
+      })();
+      var _cad_money = (typeof money !== 'undefined') ? money : (function(){
+        function _m(v){try{return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}catch(_){return 'R$ 0,00';}}
+        return _m;
+      })();
+      var _cad_apiJson = (typeof apiJson !== 'undefined') ? apiJson : (function(){
+        async function _aj(url, opts){
+          opts = opts || {};
+          opts.headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {});
+          opts.credentials = 'include';
+          if (opts.body && typeof opts.body !== 'string') opts.body = JSON.stringify(opts.body);
+          var r = await fetch(url, opts);
+          try { return await r.json(); } catch(_) { return null; }
+        }
+        return _aj;
+      })();
+      var _cad_apiFetch = (typeof apiFetch !== 'undefined') ? apiFetch : (function(){
+        async function _af(url, opts){ opts = opts||{}; opts.credentials='include'; if(opts.body && typeof opts.body!=='string') opts.body=JSON.stringify(opts.body); return fetch(url, opts); }
+        return _af;
+      })();
+      var _cad_ensureStyles = (typeof ensureStyles !== 'undefined') ? ensureStyles : (function(){
+        var installed = false;
+        function _es(){
+          if (installed) return;
+          installed = true;
+          if (document.getElementById('cad-styles-fallback')) return;
+          var st = document.createElement('style');
+          st.id = 'cad-styles-fallback';
+          st.textContent = ''
+            + '.pep-wrap{max-width:1400px;margin:0 auto;padding:14px 16px 28px}'
+            + '.pep-head{display:flex;align-items:start;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}'
+            + '.pep-title{font-size:20px;font-weight:800;color:#f8fafc;letter-spacing:-.01em}'
+            + '.pep-sub{color:#94a3b8;font-size:12px;margin-top:4px}'
+            + '.pep-panel{background:rgba(15,23,42,.45);border:1px solid rgba(148,163,184,.15);border-radius:14px;padding:14px;margin-bottom:12px;backdrop-filter:blur(6px)}'
+            + '.pep-input,.pep-select{width:100%;background:#0b1220;border:1px solid rgba(148,163,184,.2);color:#e5e7eb;padding:10px 12px;border-radius:10px;font-size:14px;outline:none;transition:border-color .15s,box-shadow .15s;font-family:inherit}'
+            + '.pep-input:focus,.pep-select:focus{border-color:rgba(99,102,241,.8);box-shadow:0 0 0 3px rgba(99,102,241,.18)}'
+            + '.pep-btn{display:inline-flex;align-items:center;gap:6px;background:#1e293b;border:1px solid rgba(148,163,184,.18);color:#e5e7eb;padding:8px 14px;border-radius:10px;font-size:13px;cursor:pointer;font-weight:600;transition:transform .08s,background .15s,border-color .15s;font-family:inherit;white-space:nowrap}'
+            + '.pep-btn:hover{background:#334155;border-color:rgba(148,163,184,.35)}'
+            + '.pep-btn.primary{background:linear-gradient(135deg,#6366f1,#0ea5e9);border-color:transparent;color:#fff}'
+            + '.pep-btn.primary:hover{filter:brightness(1.08)}'
+            + '.pep-btn.danger{background:#7f1d1d;border-color:rgba(248,113,113,.35);color:#fecaca}'
+            + '.pep-btn.danger:hover{background:#991b1b}'
+            + '.pep-table{width:100%;border-collapse:separate;border-spacing:0}'
+            + '.pep-table th{position:sticky;top:0;z-index:2;background:#0f172a;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:10px 8px;text-align:left;border-bottom:1px solid #1e293b}'
+            + '.pep-table td{padding:10px 8px;border-bottom:1px solid #1e293b;font-size:12px;color:#e5e7eb;vertical-align:top}'
+            + '.pep-table tbody tr:nth-child(even){background:rgba(15,23,42,.28)}'
+            + '.pep-table tbody tr:hover{background:#1e293b}'
+            + '.pep-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100200}'
+            + '.pep-modal-box{width:min(620px,92vw);background:#0b1220;border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:18px}'
+            + '.pep-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}'
+            + '.pep-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}'
+            + '.pep-sub{font-size:11px;color:#94a3b8;margin-bottom:6px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}'
+            + '@media (max-width:960px){.pep-grid{grid-template-columns:1fr}}';
+          document.head.appendChild(st);
+        }
+        return _es;
+      })();
+      var _cad_ensurePage = (typeof ensurePage !== 'undefined') ? ensurePage : (function(){
+        function _pagesParent(){
+          var first = document.querySelector('[id^="page-"], [data-page]');
+          return first && first.parentNode ? first.parentNode : document.body;
+        }
+        function _ep(pageId){
+          var page = document.getElementById('page-'+pageId) || document.querySelector('[data-page="'+pageId+'"]');
+          if (page) return page;
+          var base = document.querySelector('[id^="page-"], [data-page]');
+          page = document.createElement('div');
+          page.id = 'page-'+pageId;
+          page.setAttribute('data-page', pageId);
+          page.className = base && base.className ? base.className : 'page';
+          page.style.display = 'none';
+          _pagesParent().appendChild(page);
+          return page;
+        }
+        return _ep;
+      })();
+      var _cad_showOnlyPage = (typeof showOnlyPage !== 'undefined') ? showOnlyPage : (function(){
+        function _sop(pageId){
+          Array.prototype.slice.call(document.querySelectorAll('[id^="page-"], [data-page]')).forEach(function(pg){
+            try {
+              var id = String((pg.getAttribute&&pg.getAttribute('data-page')) || pg.id || '').replace(/^page-/,'');
+              var ativo = id === String(pageId);
+              pg.style.display = ativo ? '' : 'none';
+              if (pg.classList && typeof pg.classList.toggle === 'function') pg.classList.toggle('active', ativo);
+              if (ativo) pg.removeAttribute('hidden'); else pg.setAttribute('hidden','hidden');
+            } catch(_){}
+          });
+          try {
+            Array.prototype.slice.call(document.querySelectorAll('.nav-item')).forEach(function(nav){
+              var onClick = String((nav.getAttribute&&nav.getAttribute('onclick')) || '');
+              var dataPage = String((nav.getAttribute&&nav.getAttribute('data-page')) || '');
+              var ativo = onClick.indexOf("go('"+pageId+"')")>=0 || dataPage===String(pageId);
+              if (nav.classList && typeof nav.classList.toggle==='function') nav.classList.toggle('active', ativo);
+            });
+          } catch(_){}
+        }
+        return _sop;
+      })();
       function _cadLocal(key, defValue) {
         try {
           var raw = localStorage.getItem(key);
@@ -10301,12 +10412,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           + '<div class="pep-modal-box">'
           + '  <div class="pep-head" style="margin-bottom:12px"><div class="pep-title" style="font-size:18px">' + (it.id ? 'Editar Cidade' : 'Nova Cidade') + '</div></div>'
           + '  <div class="pep-grid">'
-          + '    <div style="grid-column: 1 / -1"><div class="pep-sub">Nome da Cidade</div><input class="pep-input" id="ccid-nome" placeholder="Ex.: Itajaí" value="' + esc(it.nome || '') + '"></div>'
+          + '    <div style="grid-column: 1 / -1"><div class="pep-sub">Nome da Cidade</div><input class="pep-input" id="ccid-nome" placeholder="Ex.: Itajaí" value="' + _cad_esc(it.nome || '') + '"></div>'
           + '    <div><div class="pep-sub">UF (Estado)</div><select class="pep-select" id="ccid-uf">'
           +        '<option value="">Selecione</option>'
-          +        estados.map(function(e) { return '<option value="' + esc(e.uf) + '"' + (String(it.uf || '') === String(e.uf) ? ' selected' : '') + '>' + esc(e.uf + ' — ' + e.nome) + '</option>'; }).join('')
+          +        estados.map(function(e) { return '<option value="' + _cad_esc(e.uf) + '"' + (String(it.uf || '') === String(e.uf) ? ' selected' : '') + '>' + _cad_esc(e.uf + ' — ' + e.nome) + '</option>'; }).join('')
           +      '</select></div>'
-          + '    <div><div class="pep-sub">Código IBGE (opcional)</div><input class="pep-input" id="ccid-ibge" placeholder="7 dígitos" value="' + esc(it.ibge || '') + '"></div>'
+          + '    <div><div class="pep-sub">Código IBGE (opcional)</div><input class="pep-input" id="ccid-ibge" placeholder="7 dígitos" value="' + _cad_esc(it.ibge || '') + '"></div>'
           + '  </div>'
           + '  <div class="pep-actions"><button class="pep-btn" id="ccid-cancel">Cancelar</button><button class="pep-btn primary" id="ccid-save">Salvar</button></div>'
           + '</div>';
@@ -10328,9 +10439,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         };
       }
       function renderCidadesPage() {
-        try { ensureStyles(); } catch (_) {}
-        var page = ensurePage('cidades');
-        showOnlyPage('cidades');
+        try { _cad_ensureStyles(); } catch (_) {}
+        var page = _cad_ensurePage('cidades');
+        _cad_showOnlyPage('cidades');
         var busca = String(window.__cadCidBusca || '').toLowerCase();
         var lista = loadCidades();
         if (busca) lista = lista.filter(function(c) {
@@ -10341,13 +10452,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           + '  <div class="pep-head"><div><div class="pep-title">🏙️ Cidades</div><div class="pep-sub">Base de cidades usada em clientes, roteiro de entrega e relatórios.</div></div>'
           + '    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pep-btn" id="cidades-voltar-clientes" title="Voltar para Clientes">← Clientes</button><button class="pep-btn primary" id="cidade-nova">＋ Nova Cidade</button></div></div>'
           + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
-          + '    <input class="pep-input" id="cid-busca" placeholder="🔍 Buscar por nome, UF ou IBGE" value="' + esc(window.__cadCidBusca || '') + '" style="min-width:320px;flex:1">'
+          + '    <input class="pep-input" id="cid-busca" placeholder="🔍 Buscar por nome, UF ou IBGE" value="' + _cad_esc(window.__cadCidBusca || '') + '" style="min-width:320px;flex:1">'
           + '    <button class="pep-btn" id="cid-buscar">Buscar</button>'
           + '  </div></div>'
           + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-cidades"><table class="pep-table"><thead><tr><th style="width:52%">Nome</th><th style="width:14%">UF</th><th>IBGE</th><th style="width:20%">Ações</th></tr></thead><tbody>'
           + (lista.length ? lista.map(function(c) {
-              return '<tr data-cid="' + esc(c.id) + '"><td><strong>' + esc(c.nome || '—') + '</strong></td><td>' + esc(c.uf || '—') + '</td><td>' + esc(c.ibge || '—') + '</td>'
-                   + '<td><button class="pep-btn" data-cedit="' + esc(c.id) + '">Editar</button> <button class="pep-btn danger" data-cdel="' + esc(c.id) + '">Excluir</button></td></tr>';
+              return '<tr data-cid="' + _cad_esc(c.id) + '"><td><strong>' + _cad_esc(c.nome || '—') + '</strong></td><td>' + _cad_esc(c.uf || '—') + '</td><td>' + _cad_esc(c.ibge || '—') + '</td>'
+                   + '<td><button class="pep-btn" data-cedit="' + _cad_esc(c.id) + '">Editar</button> <button class="pep-btn danger" data-cdel="' + _cad_esc(c.id) + '">Excluir</button></td></tr>';
             }).join('') : '<tr><td colspan="4" style="text-align:center;color:#94a3b8">Nenhuma cidade encontrada. Clique em "＋ Nova Cidade".</td></tr>')
           + '  </tbody></table></div></div>'
           + '</div>';
@@ -10417,9 +10528,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           + '<div class="pep-modal-box">'
           + '  <div class="pep-head" style="margin-bottom:12px"><div class="pep-title" style="font-size:18px">' + (it.id ? 'Editar Estado' : 'Novo Estado') + '</div></div>'
           + '  <div class="pep-grid">'
-          + '    <div><div class="pep-sub">UF (2 letras)</div><input class="pep-input" id="cest-uf" maxlength="2" placeholder="SC/PR/RS..." value="' + esc(it.uf || '') + '"></div>'
-          + '    <div><div class="pep-sub">Alíquota ICMS (%)</div><input class="pep-input" id="cest-icms" type="number" step="0.01" min="0" value="' + esc(it.aliq_icms || '') + '" placeholder="17"></div>'
-          + '    <div style="grid-column: 1 / -1"><div class="pep-sub">Nome do Estado</div><input class="pep-input" id="cest-nome" value="' + esc(it.nome || '') + '" placeholder="Ex.: Santa Catarina"></div>'
+          + '    <div><div class="pep-sub">UF (2 letras)</div><input class="pep-input" id="cest-uf" maxlength="2" placeholder="SC/PR/RS..." value="' + _cad_esc(it.uf || '') + '"></div>'
+          + '    <div><div class="pep-sub">Alíquota ICMS (%)</div><input class="pep-input" id="cest-icms" type="number" step="0.01" min="0" value="' + _cad_esc(it.aliq_icms || '') + '" placeholder="17"></div>'
+          + '    <div style="grid-column: 1 / -1"><div class="pep-sub">Nome do Estado</div><input class="pep-input" id="cest-nome" value="' + _cad_esc(it.nome || '') + '" placeholder="Ex.: Santa Catarina"></div>'
           + '  </div>'
           + '  <div class="pep-actions"><button class="pep-btn" id="cest-cancel">Cancelar</button><button class="pep-btn primary" id="cest-save">Salvar</button></div>'
           + '</div>';
@@ -10441,9 +10552,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         };
       }
       function renderEstadosPage() {
-        try { ensureStyles(); } catch (_) {}
-        var page = ensurePage('estados');
-        showOnlyPage('estados');
+        try { _cad_ensureStyles(); } catch (_) {}
+        var page = _cad_ensurePage('estados');
+        _cad_showOnlyPage('estados');
         var busca = String(window.__cadEstBusca || '').toLowerCase();
         var lista = loadEstados();
         if (busca) lista = lista.filter(function(e) {
@@ -10454,13 +10565,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           + '  <div class="pep-head"><div><div class="pep-title">🗺️ Estados (UF)</div><div class="pep-sub">Unidades federativas com alíquotas de ICMS usadas em notas fiscais e frete.</div></div>'
           + '    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pep-btn" id="estados-voltar-clientes">← Clientes</button><button class="pep-btn primary" id="estado-novo">＋ Novo Estado</button></div></div>'
           + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
-          + '    <input class="pep-input" id="est-busca" placeholder="🔍 Buscar por UF ou nome" value="' + esc(window.__cadEstBusca || '') + '" style="min-width:320px;flex:1">'
+          + '    <input class="pep-input" id="est-busca" placeholder="🔍 Buscar por UF ou nome" value="' + _cad_esc(window.__cadEstBusca || '') + '" style="min-width:320px;flex:1">'
           + '    <button class="pep-btn" id="est-buscar">Buscar</button>'
           + '  </div></div>'
           + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-estados"><table class="pep-table"><thead><tr><th>UF</th><th>Nome</th><th style="width:18%">ICMS %</th><th style="width:22%">Ações</th></tr></thead><tbody>'
           + (lista.length ? lista.map(function(e) {
-              return '<tr data-est="' + esc(e.id) + '"><td><strong>' + esc(e.uf || '—') + '</strong></td><td>' + esc(e.nome || '—') + '</td><td>' + num(e.aliq_icms || 0, 2) + '</td>'
-                   + '<td><button class="pep-btn" data-eedit="' + esc(e.id) + '">Editar</button> <button class="pep-btn danger" data-edel="' + esc(e.id) + '">Excluir</button></td></tr>';
+              return '<tr data-est="' + _cad_esc(e.id) + '"><td><strong>' + _cad_esc(e.uf || '—') + '</strong></td><td>' + _cad_esc(e.nome || '—') + '</td><td>' + _cad_num(e.aliq_icms || 0, 2) + '</td>'
+                   + '<td><button class="pep-btn" data-eedit="' + _cad_esc(e.id) + '">Editar</button> <button class="pep-btn danger" data-edel="' + _cad_esc(e.id) + '">Excluir</button></td></tr>';
             }).join('') : '<tr><td colspan="4" style="text-align:center;color:#94a3b8">Nenhum estado encontrado.</td></tr>')
           + '  </tbody></table></div></div>'
           + '</div>';
@@ -10527,8 +10638,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           + '<div class="pep-modal-box">'
           + '  <div class="pep-head" style="margin-bottom:12px"><div class="pep-title" style="font-size:18px">' + (it.id ? 'Editar Ramo' : 'Novo Ramo') + '</div></div>'
           + '  <div class="pep-grid">'
-          + '    <div style="grid-column: 1 / -1"><div class="pep-sub">Nome do Ramo</div><input class="pep-input" id="cram-nome" value="' + esc(it.nome || '') + '" placeholder="Ex.: Alimentos / E-commerce"></div>'
-          + '    <div style="grid-column: 1 / -1"><div class="pep-sub">Descrição (opcional)</div><textarea class="pep-input" id="cram-desc" rows="3" placeholder="Público alvo, embalagens típicas...">' + esc(it.descricao || '') + '</textarea></div>'
+          + '    <div style="grid-column: 1 / -1"><div class="pep-sub">Nome do Ramo</div><input class="pep-input" id="cram-nome" value="' + _cad_esc(it.nome || '') + '" placeholder="Ex.: Alimentos / E-commerce"></div>'
+          + '    <div style="grid-column: 1 / -1"><div class="pep-sub">Descrição (opcional)</div><textarea class="pep-input" id="cram-desc" rows="3" placeholder="Público alvo, embalagens típicas...">' + _cad_esc(it.descricao || '') + '</textarea></div>'
           + '  </div>'
           + '  <div class="pep-actions"><button class="pep-btn" id="cram-cancel">Cancelar</button><button class="pep-btn primary" id="cram-save">Salvar</button></div>'
           + '</div>';
@@ -10549,9 +10660,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         };
       }
       function renderRamosPage() {
-        try { ensureStyles(); } catch (_) {}
-        var page = ensurePage('ramos');
-        showOnlyPage('ramos');
+        try { _cad_ensureStyles(); } catch (_) {}
+        var page = _cad_ensurePage('ramos');
+        _cad_showOnlyPage('ramos');
         var busca = String(window.__cadRamBusca || '').toLowerCase();
         var lista = loadRamos();
         if (busca) lista = lista.filter(function(r) {
@@ -10562,13 +10673,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           + '  <div class="pep-head"><div><div class="pep-title">🏷️ Ramos de Atividade</div><div class="pep-sub">Classificação comercial de clientes: usada em filtros, Mapa de Clientes e relatórios.</div></div>'
           + '    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pep-btn" id="ramos-voltar-clientes">← Clientes</button><button class="pep-btn primary" id="ramo-novo">＋ Novo Ramo</button></div></div>'
           + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
-          + '    <input class="pep-input" id="ram-busca" placeholder="🔍 Buscar por nome ou descrição" value="' + esc(window.__cadRamBusca || '') + '" style="min-width:320px;flex:1">'
+          + '    <input class="pep-input" id="ram-busca" placeholder="🔍 Buscar por nome ou descrição" value="' + _cad_esc(window.__cadRamBusca || '') + '" style="min-width:320px;flex:1">'
           + '    <button class="pep-btn" id="ram-buscar">Buscar</button>'
           + '  </div></div>'
           + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-ramos"><table class="pep-table"><thead><tr><th style="width:30%">Ramo</th><th>Descrição</th><th style="width:22%">Ações</th></tr></thead><tbody>'
           + (lista.length ? lista.map(function(r) {
-              return '<tr data-ram="' + esc(r.id) + '"><td><strong>' + esc(r.nome || '—') + '</strong></td><td>' + esc(r.descricao || '—') + '</td>'
-                   + '<td><button class="pep-btn" data-redit="' + esc(r.id) + '">Editar</button> <button class="pep-btn danger" data-rdel="' + esc(r.id) + '">Excluir</button></td></tr>';
+              return '<tr data-ram="' + _cad_esc(r.id) + '"><td><strong>' + _cad_esc(r.nome || '—') + '</strong></td><td>' + _cad_esc(r.descricao || '—') + '</td>'
+                   + '<td><button class="pep-btn" data-redit="' + _cad_esc(r.id) + '">Editar</button> <button class="pep-btn danger" data-rdel="' + _cad_esc(r.id) + '">Excluir</button></td></tr>';
             }).join('') : '<tr><td colspan="3" style="text-align:center;color:#94a3b8">Nenhum ramo encontrado. Clique em "＋ Novo Ramo".</td></tr>')
           + '  </tbody></table></div></div>'
           + '</div>';
@@ -10607,7 +10718,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           var dlCid = document.getElementById('cad-cidades-datalist') || (function() {
             var d = document.createElement('datalist'); d.id = 'cad-cidades-datalist'; document.body.appendChild(d); return d;
           })();
-          dlCid.innerHTML = cidades.map(function(c) { return '<option value="' + escAttr(c.nome + (c.uf ? ' / ' + c.uf : '')) + '">'; }).join('');
+          dlCid.innerHTML = cidades.map(function(c) { return '<option value="' + _cad_escAttr(c.nome + (c.uf ? ' / ' + c.uf : '')) + '">'; }).join('');
           ['cl-cidade','cli-cidade'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el && !el.getAttribute('list')) { try { el.setAttribute('list', 'cad-cidades-datalist'); } catch (_) {} }
@@ -10616,14 +10727,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           var dlRam = document.getElementById('cad-ramos-datalist') || (function() {
             var d = document.createElement('datalist'); d.id = 'cad-ramos-datalist'; document.body.appendChild(d); return d;
           })();
-          dlRam.innerHTML = ramos.map(function(r) { return '<option value="' + escAttr(r.nome) + '">'; }).join('');
+          dlRam.innerHTML = ramos.map(function(r) { return '<option value="' + _cad_escAttr(r.nome) + '">'; }).join('');
           ['cliente-ramo','cli-ramo','cl-ramo'].forEach(function(id) {
             var el = document.getElementById(id);
             if (!el) return;
             if (el.tagName && el.tagName.toLowerCase() === 'select') {
               try {
                 var prev = el.value || '';
-                var opts = '<option value="">— Ramo —</option>' + ramos.map(function(r) { return '<option value="' + escAttr(r.nome) + '"' + (prev === r.nome ? ' selected' : '') + '>' + esc(r.nome) + '</option>'; }).join('');
+                var opts = '<option value="">— Ramo —</option>' + ramos.map(function(r) { return '<option value="' + _cad_escAttr(r.nome) + '"' + (prev === r.nome ? ' selected' : '') + '>' + _cad_esc(r.nome) + '</option>'; }).join('');
                 var h = String(el.innerHTML || '');
                 if (h.indexOf('cad-ramo-opt') < 0) { el.innerHTML = opts; }
               } catch (_) {}
@@ -10635,7 +10746,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           var dlEst = document.getElementById('cad-estados-datalist') || (function() {
             var d = document.createElement('datalist'); d.id = 'cad-estados-datalist'; document.body.appendChild(d); return d;
           })();
-          dlEst.innerHTML = estados.map(function(e) { return '<option value="' + escAttr(e.uf) + '">'; }).join('');
+          dlEst.innerHTML = estados.map(function(e) { return '<option value="' + _cad_escAttr(e.uf) + '">'; }).join('');
           ['cl-uf','cli-uf'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el && !el.getAttribute('list')) { try { el.setAttribute('list', 'cad-estados-datalist'); } catch (_) {} }
@@ -10648,11 +10759,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       function ensureCadastroAuxPagesInstalled() {
         if (_cadInstalled) { try { _cadAtualizarDatalists(); } catch (_) {} return; }
         _cadInstalled = true;
-        try { ensureStyles(); } catch (_) {}
+        try { _cad_ensureStyles(); } catch (_) {}
         // Criar páginas DOM
-        ensurePage('cidades');
-        ensurePage('estados');
-        ensurePage('ramos');
+        _cad_ensurePage('cidades');
+        _cad_ensurePage('estados');
+        _cad_ensurePage('ramos');
         // Expõe funções no window
         window.renderCidadesPage = renderCidadesPage;
         window.renderEstadosPage = renderEstadosPage;
@@ -10693,7 +10804,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
               if (r === 'cidades') return renderCidadesPage();
               if (r === 'estados') return renderEstadosPage();
               if (r === 'ramos')   return renderRamosPage();
-              showOnlyPage(r);
+              _cad_showOnlyPage(r);
             };
           }
         } catch (_) {}
