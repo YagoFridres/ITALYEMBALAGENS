@@ -4890,6 +4890,14 @@ window._compraPapelaoStateRef = function() {
 window._compraPapelaoIsActive = function() {
   return String(window._comprasTipoFiltro || '').trim().toLowerCase() === 'chapas';
 };
+window._compraPapelaoShouldUseModernModal = function() {
+  if (window._compraPapelaoIsActive()) return true;
+  try {
+    var page = document.getElementById('page-compras');
+    if (page && page.classList && page.classList.contains('active')) return true;
+  } catch (_) {}
+  return false;
+};
 window._compraPapelaoEmpresaUuidFallbackMap = function() {
   return {
     E1: 'df5f7672-0a6b-402d-ae65-296554236c31',
@@ -7182,10 +7190,11 @@ window.papelaoAbrirComprasChapas = function() {
   return null;
 };
 window.abrirModalCompra = function(id) {
-  if (!window._compraPapelaoIsActive()) {
+  if (!window._compraPapelaoShouldUseModernModal()) {
     if (window.__compraPapelaoOrigAbrirModalCompra) return window.__compraPapelaoOrigAbrirModalCompra.apply(this, arguments);
     return null;
   }
+  try { window._comprasTipoFiltro = 'chapas'; } catch (_) {}
   return window._compraPapelaoOpenCompraModal(id || null);
 };
 window.renderCompras = function() {
@@ -8125,10 +8134,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     setTimeout(function() { try { cInstallOverrides(); window.renderCompras(); } catch (_) {} }, 250);
   }
   function cAbrirModalWrapper(id) {
-    if (!cIsChapas()) {
+    if (!(cIsChapas() || (typeof window._compraPapelaoShouldUseModernModal === 'function' && window._compraPapelaoShouldUseModernModal()))) {
       if (origAbrirModalCompra) return origAbrirModalCompra.apply(this, arguments);
       return null;
     }
+    try { window._comprasTipoFiltro = 'chapas'; } catch (_) {}
     if (typeof window._compraPapelaoOpenCompraModal === 'function') {
       return window._compraPapelaoOpenCompraModal(id || null);
     }
@@ -8566,10 +8576,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(7, 'antes ins
         return null;
       };
       window.abrirModalCompra = function(id) {
-        if (!window._compraPapelaoIsActive()) {
+        if (!window._compraPapelaoShouldUseModernModal()) {
           if (window.__compraPapelaoOrigAbrirModalCompra) return window.__compraPapelaoOrigAbrirModalCompra.apply(this, arguments);
           return null;
         }
+        try { window._comprasTipoFiltro = 'chapas'; } catch (_) {}
         return window._compraPapelaoOpenCompraModal(id || null);
       };
       window.renderCompras = function() {
@@ -46316,10 +46327,11 @@ function _ocultarGraficoComissoes() {
         return window._compraPapelaoRenderPage();
       };
       var abrirModalFn = function(id) {
-        if (!window._compraPapelaoIsActive()) {
+        if (!window._compraPapelaoShouldUseModernModal()) {
           if (window.__compraPapelaoOrigAbrirModalCompra) return window.__compraPapelaoOrigAbrirModalCompra.apply(this, arguments);
           return null;
         }
+        try { window._comprasTipoFiltro = 'chapas'; } catch (_) {}
         return window._compraPapelaoOpenCompraModal(id || null);
       };
       window.papelaoAbrirComprasChapas = abrirTelaCompraPapelaoPatched;
