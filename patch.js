@@ -1302,10 +1302,10 @@ try {
   }
 
   async function rrReportLucratividadeMaquina(rangeOverride) {
-    var ref = rangeOverride || { data_inicio: '2026-07-01', data_fim: '2026-07-31', titulo: 'Julho/2026' };
+    var ref = rangeOverride || rrCurrentRange();
     var qs = [
-      'data_inicio=' + encodeURIComponent(ref.data_inicio || '2026-07-01'),
-      'data_fim=' + encodeURIComponent(ref.data_fim || '2026-07-31')
+      'data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio),
+      'data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim)
     ];
     var empId = rrEmpId();
     if (empId) qs.push('emp_id=' + encodeURIComponent(empId));
@@ -1386,14 +1386,17 @@ try {
   }
 
   function rrOpenLucratividadeMaquinaModal() {
+    var refAtual = rrCurrentRange();
+    var dataInicioPadrao = String(refAtual && refAtual.data_inicio || '').trim() || new Date().toISOString().slice(0, 10);
+    var dataFimPadrao = String(refAtual && refAtual.data_fim || '').trim() || dataInicioPadrao;
     rrOpenModal({
       title: 'Lucratividade por Máquina',
-      subtitle: 'O filtro abre com julho/2026 como padrão e consolida venda, produção, perdas, custos, clientes, tipos e cores por máquina.',
+      subtitle: 'O filtro abre com o período ativo atual e consolida venda, produção, perdas, custos, clientes, tipos e cores por máquina.',
       render: function(body) {
         body.innerHTML = ''
           + '<div class="rr-modal-grid">'
-          + '  <div class="rr-modal-field"><label>Data inicial</label><input id="rr-lmq-inicio" type="date" value="2026-07-01"></div>'
-          + '  <div class="rr-modal-field"><label>Data final</label><input id="rr-lmq-fim" type="date" value="2026-07-31"></div>'
+          + '  <div class="rr-modal-field"><label>Data inicial</label><input id="rr-lmq-inicio" type="date" value="' + rrEsc(dataInicioPadrao) + '"></div>'
+          + '  <div class="rr-modal-field"><label>Data final</label><input id="rr-lmq-fim" type="date" value="' + rrEsc(dataFimPadrao) + '"></div>'
           + '</div>'
           + '<div class="rr-period-help" style="margin-top:10px">Fonte canônica: <strong>ofs.passagens_maquina</strong>, com perdas cruzadas em <strong>ofs.perdas_por_maquina</strong>.</div>'
           + '<div class="rr-modal-actions">'
@@ -1402,8 +1405,8 @@ try {
           + '</div>';
         body.querySelector('#rr-lmq-run').onclick = async function() {
           var btn = this;
-          var inicio = String((body.querySelector('#rr-lmq-inicio') || {}).value || '2026-07-01').trim() || '2026-07-01';
-          var fim = String((body.querySelector('#rr-lmq-fim') || {}).value || '2026-07-31').trim() || '2026-07-31';
+          var inicio = String((body.querySelector('#rr-lmq-inicio') || {}).value || dataInicioPadrao).trim() || dataInicioPadrao;
+          var fim = String((body.querySelector('#rr-lmq-fim') || {}).value || dataFimPadrao).trim() || dataFimPadrao;
           btn.disabled = true;
           btn.textContent = 'Gerando...';
           try {
