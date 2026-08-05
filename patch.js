@@ -10217,6 +10217,520 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     window.restaurarVersaoOrcamento.__patchOrcVersaoNova = true;
   }
 
+  // ===================== CADASTRO AUXILIAR: CIDADES / ESTADOS / RAMOS (w4e) =====================
+  (function() {
+    try {
+      function _cadLocal(key, defValue) {
+        try {
+          var raw = localStorage.getItem(key);
+          if (!raw) {
+            localStorage.setItem(key, JSON.stringify(defValue));
+            return defValue;
+          }
+          var parsed; try { parsed = JSON.parse(raw); } catch (_) { parsed = defValue; }
+          return parsed;
+        } catch (_) { return defValue; }
+      }
+      function _cadSaveLocal(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (_) {} }
+      function _cadUid(prefix) { return (prefix || 'id') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8); }
+      function _cadCleanStr(v) { return String(v == null ? '' : v).trim(); }
+      function _cadUfUpper(v) { return _cadCleanStr(v).toUpperCase().slice(0, 2); }
+      var LS_CIDADES = 'erp_cad_cidades_v1';
+      var LS_ESTADOS = 'erp_cad_estados_v1';
+      var LS_RAMOS   = 'erp_cad_ramos_v1';
+      // Inicializar com alguns valores padrão se vazio
+      _cadLocal(LS_ESTADOS, [
+        { id: _cadUid('est'), uf: 'SC', nome: 'Santa Catarina', aliq_icms: 17, padrao: true },
+        { id: _cadUid('est'), uf: 'PR', nome: 'Paraná',       aliq_icms: 19.5, padrao: true },
+        { id: _cadUid('est'), uf: 'RS', nome: 'Rio Grande do Sul', aliq_icms: 17, padrao: true },
+        { id: _cadUid('est'), uf: 'SP', nome: 'São Paulo',    aliq_icms: 18, padrao: true }
+      ]);
+      _cadLocal(LS_RAMOS, [
+        { id: _cadUid('ram'), nome: 'Alimentos',  descricao: '' },
+        { id: _cadUid('ram'), nome: 'Vestuário',  descricao: '' },
+        { id: _cadUid('ram'), nome: 'Eletrônicos', descricao: '' },
+        { id: _cadUid('ram'), nome: 'Farmacêutico', descricao: '' },
+        { id: _cadUid('ram'), nome: 'E-commerce', descricao: '' }
+      ]);
+      _cadLocal(LS_CIDADES, [
+        { id: _cadUid('cid'), nome: 'Itajaí',     uf: 'SC', ibge: '' },
+        { id: _cadUid('cid'), nome: 'Balneário Camboriú', uf: 'SC', ibge: '' },
+        { id: _cadUid('cid'), nome: 'Blumenau',   uf: 'SC', ibge: '' },
+        { id: _cadUid('cid'), nome: 'Florianópolis', uf: 'SC', ibge: '' },
+        { id: _cadUid('cid'), nome: 'Curitiba',   uf: 'PR', ibge: '' },
+        { id: _cadUid('cid'), nome: 'Porto Alegre', uf: 'RS', ibge: '' }
+      ]);
+
+      // ---------- CIDADES ----------
+      function loadCidades() {
+        var arr = _cadLocal(LS_CIDADES, []);
+        return Array.isArray(arr) ? arr.map(function(r) { return Object.assign({}, r, {
+          id: _cadCleanStr(r.id || _cadUid('cid')),
+          nome: _cadCleanStr(r.nome || 'Nova cidade'),
+          uf: _cadUfUpper(r.uf || ''),
+          ibge: _cadCleanStr(r.ibge || '')
+        }); }) : [];
+      }
+      async function saveCidade(item) {
+        var arr = loadCidades();
+        var it = Object.assign({}, item || {});
+        it.nome = _cadCleanStr(it.nome || '');
+        it.uf   = _cadUfUpper(it.uf || '');
+        if (!it.nome) throw new Error('Informe o nome da cidade.');
+        if (!it.uf || it.uf.length !== 2) throw new Error('Informe a UF da cidade (2 letras).');
+        if (it.id && String(it.id).slice(0, 3) !== 'cid') it.id = _cadUid('cid');
+        if (!it.id) it.id = _cadUid('cid');
+        var existe = -1;
+        arr.forEach(function(x, idx) { if (String(x.id) === String(it.id)) existe = idx; });
+        if (existe >= 0) arr[existe] = it; else arr.push(it);
+        _cadSaveLocal(LS_CIDADES, arr);
+        return it;
+      }
+      async function deleteCidade(id) {
+        var arr = loadCidades().filter(function(x) { return String(x.id) !== String(id); });
+        _cadSaveLocal(LS_CIDADES, arr);
+      }
+      function openCidadeModal(item, done) {
+        var old = document.getElementById('cad-cidade-modal');
+        if (old) old.remove();
+        var it = item || {};
+        var estados = loadEstados();
+        var wrap = document.createElement('div');
+        wrap.id = 'cad-cidade-modal';
+        wrap.className = 'pep-modal';
+        wrap.innerHTML = ''
+          + '<div class="pep-modal-box">'
+          + '  <div class="pep-head" style="margin-bottom:12px"><div class="pep-title" style="font-size:18px">' + (it.id ? 'Editar Cidade' : 'Nova Cidade') + '</div></div>'
+          + '  <div class="pep-grid">'
+          + '    <div style="grid-column: 1 / -1"><div class="pep-sub">Nome da Cidade</div><input class="pep-input" id="ccid-nome" placeholder="Ex.: Itajaí" value="' + esc(it.nome || '') + '"></div>'
+          + '    <div><div class="pep-sub">UF (Estado)</div><select class="pep-select" id="ccid-uf">'
+          +        '<option value="">Selecione</option>'
+          +        estados.map(function(e) { return '<option value="' + esc(e.uf) + '"' + (String(it.uf || '') === String(e.uf) ? ' selected' : '') + '>' + esc(e.uf + ' — ' + e.nome) + '</option>'; }).join('')
+          +      '</select></div>'
+          + '    <div><div class="pep-sub">Código IBGE (opcional)</div><input class="pep-input" id="ccid-ibge" placeholder="7 dígitos" value="' + esc(it.ibge || '') + '"></div>'
+          + '  </div>'
+          + '  <div class="pep-actions"><button class="pep-btn" id="ccid-cancel">Cancelar</button><button class="pep-btn primary" id="ccid-save">Salvar</button></div>'
+          + '</div>';
+        wrap.addEventListener('click', function(e) { if (e.target === wrap) wrap.remove(); });
+        document.body.appendChild(wrap);
+        document.getElementById('ccid-cancel').onclick = function() { wrap.remove(); };
+        document.getElementById('ccid-save').onclick = async function() {
+          try {
+            var payload = Object.assign({}, it, {
+              id: it.id || null,
+              nome: document.getElementById('ccid-nome').value || '',
+              uf: document.getElementById('ccid-uf').value || '',
+              ibge: document.getElementById('ccid-ibge').value || ''
+            });
+            await saveCidade(payload);
+            wrap.remove();
+            if (typeof done === 'function') done();
+          } catch (e) { alert(String(e && e.message || e)); }
+        };
+      }
+      function renderCidadesPage() {
+        try { ensureStyles(); } catch (_) {}
+        var page = ensurePage('cidades');
+        showOnlyPage('cidades');
+        var busca = String(window.__cadCidBusca || '').toLowerCase();
+        var lista = loadCidades();
+        if (busca) lista = lista.filter(function(c) {
+          return (c.nome + ' ' + c.uf + ' ' + c.ibge).toLowerCase().indexOf(busca) >= 0;
+        });
+        page.innerHTML = ''
+          + '<div class="pep-wrap">'
+          + '  <div class="pep-head"><div><div class="pep-title">🏙️ Cidades</div><div class="pep-sub">Base de cidades usada em clientes, roteiro de entrega e relatórios.</div></div>'
+          + '    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pep-btn" id="cidades-voltar-clientes" title="Voltar para Clientes">← Clientes</button><button class="pep-btn primary" id="cidade-nova">＋ Nova Cidade</button></div></div>'
+          + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+          + '    <input class="pep-input" id="cid-busca" placeholder="🔍 Buscar por nome, UF ou IBGE" value="' + esc(window.__cadCidBusca || '') + '" style="min-width:320px;flex:1">'
+          + '    <button class="pep-btn" id="cid-buscar">Buscar</button>'
+          + '  </div></div>'
+          + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-cidades"><table class="pep-table"><thead><tr><th style="width:52%">Nome</th><th style="width:14%">UF</th><th>IBGE</th><th style="width:20%">Ações</th></tr></thead><tbody>'
+          + (lista.length ? lista.map(function(c) {
+              return '<tr data-cid="' + esc(c.id) + '"><td><strong>' + esc(c.nome || '—') + '</strong></td><td>' + esc(c.uf || '—') + '</td><td>' + esc(c.ibge || '—') + '</td>'
+                   + '<td><button class="pep-btn" data-cedit="' + esc(c.id) + '">Editar</button> <button class="pep-btn danger" data-cdel="' + esc(c.id) + '">Excluir</button></td></tr>';
+            }).join('') : '<tr><td colspan="4" style="text-align:center;color:#94a3b8">Nenhuma cidade encontrada. Clique em "＋ Nova Cidade".</td></tr>')
+          + '  </tbody></table></div></div>'
+          + '</div>';
+        document.getElementById('cidade-nova').onclick = function() { openCidadeModal(null, renderCidadesPage); };
+        var vol = document.getElementById('cidades-voltar-clientes');
+        if (vol) vol.onclick = function() { try { if (typeof window.go === 'function') window.go('clientes'); } catch (_) {} };
+        var elB = document.getElementById('cid-busca');
+        var btnB = document.getElementById('cid-buscar');
+        if (btnB) btnB.onclick = function() { window.__cadCidBusca = String(elB && elB.value || '').trim(); renderCidadesPage(); };
+        if (elB) elB.onkeydown = function(ev) { if ((ev && ev.key || '') === 'Enter') { ev.preventDefault(); window.__cadCidBusca = String(elB.value || '').trim(); renderCidadesPage(); } };
+        Array.prototype.slice.call(page.querySelectorAll('[data-cedit]')).forEach(function(b) {
+          b.onclick = function() {
+            var id = String(b.getAttribute('data-cedit') || '');
+            var it = loadCidades().find(function(x) { return String(x.id) === id; }) || null;
+            openCidadeModal(it, renderCidadesPage);
+          };
+        });
+        Array.prototype.slice.call(page.querySelectorAll('[data-cdel]')).forEach(function(b) {
+          b.onclick = function() {
+            var id = String(b.getAttribute('data-cdel') || '');
+            var it = loadCidades().find(function(x) { return String(x.id) === id; });
+            if (!it) return;
+            if (!confirm('Excluir cidade "' + (it.nome || '?') + '"?')) return;
+            deleteCidade(id).then(function() { renderCidadesPage(); }).catch(function(e) { alert(String(e.message || e)); });
+          };
+        });
+      }
+
+      // ---------- ESTADOS ----------
+      function loadEstados() {
+        var arr = _cadLocal(LS_ESTADOS, []);
+        return Array.isArray(arr) ? arr.map(function(r) { return Object.assign({}, r, {
+          id: _cadCleanStr(r.id || _cadUid('est')),
+          uf: _cadUfUpper(r.uf || ''),
+          nome: _cadCleanStr(r.nome || 'Novo estado'),
+          aliq_icms: Number(r.aliq_icms || 0) || 0
+        }); }) : [];
+      }
+      async function saveEstado(item) {
+        var arr = loadEstados();
+        var it = Object.assign({}, item || {});
+        it.nome = _cadCleanStr(it.nome || '');
+        it.uf   = _cadUfUpper(it.uf || '');
+        it.aliq_icms = Number(it.aliq_icms || 0) || 0;
+        if (!it.uf || it.uf.length !== 2) throw new Error('Informe a UF (2 letras).');
+        if (!it.nome) throw new Error('Informe o nome do estado.');
+        if (arr.some(function(x) { return String(x.id) !== String(it.id) && x.uf === it.uf; })) throw new Error('Já existe um estado com a UF ' + it.uf + '.');
+        if (!it.id) it.id = _cadUid('est');
+        var existe = -1;
+        arr.forEach(function(x, idx) { if (String(x.id) === String(it.id)) existe = idx; });
+        if (existe >= 0) arr[existe] = it; else arr.push(it);
+        _cadSaveLocal(LS_ESTADOS, arr);
+        return it;
+      }
+      async function deleteEstado(id) {
+        var arr = loadEstados().filter(function(x) { return String(x.id) !== String(id); });
+        _cadSaveLocal(LS_ESTADOS, arr);
+      }
+      function openEstadoModal(item, done) {
+        var old = document.getElementById('cad-estado-modal');
+        if (old) old.remove();
+        var it = item || {};
+        var wrap = document.createElement('div');
+        wrap.id = 'cad-estado-modal';
+        wrap.className = 'pep-modal';
+        wrap.innerHTML = ''
+          + '<div class="pep-modal-box">'
+          + '  <div class="pep-head" style="margin-bottom:12px"><div class="pep-title" style="font-size:18px">' + (it.id ? 'Editar Estado' : 'Novo Estado') + '</div></div>'
+          + '  <div class="pep-grid">'
+          + '    <div><div class="pep-sub">UF (2 letras)</div><input class="pep-input" id="cest-uf" maxlength="2" placeholder="SC/PR/RS..." value="' + esc(it.uf || '') + '"></div>'
+          + '    <div><div class="pep-sub">Alíquota ICMS (%)</div><input class="pep-input" id="cest-icms" type="number" step="0.01" min="0" value="' + esc(it.aliq_icms || '') + '" placeholder="17"></div>'
+          + '    <div style="grid-column: 1 / -1"><div class="pep-sub">Nome do Estado</div><input class="pep-input" id="cest-nome" value="' + esc(it.nome || '') + '" placeholder="Ex.: Santa Catarina"></div>'
+          + '  </div>'
+          + '  <div class="pep-actions"><button class="pep-btn" id="cest-cancel">Cancelar</button><button class="pep-btn primary" id="cest-save">Salvar</button></div>'
+          + '</div>';
+        wrap.addEventListener('click', function(e) { if (e.target === wrap) wrap.remove(); });
+        document.body.appendChild(wrap);
+        document.getElementById('cest-cancel').onclick = function() { wrap.remove(); };
+        document.getElementById('cest-save').onclick = async function() {
+          try {
+            var payload = Object.assign({}, it, {
+              id: it.id || null,
+              uf: document.getElementById('cest-uf').value || '',
+              nome: document.getElementById('cest-nome').value || '',
+              aliq_icms: Number(document.getElementById('cest-icms').value || 0) || 0
+            });
+            await saveEstado(payload);
+            wrap.remove();
+            if (typeof done === 'function') done();
+          } catch (e) { alert(String(e && e.message || e)); }
+        };
+      }
+      function renderEstadosPage() {
+        try { ensureStyles(); } catch (_) {}
+        var page = ensurePage('estados');
+        showOnlyPage('estados');
+        var busca = String(window.__cadEstBusca || '').toLowerCase();
+        var lista = loadEstados();
+        if (busca) lista = lista.filter(function(e) {
+          return (e.uf + ' ' + e.nome).toLowerCase().indexOf(busca) >= 0;
+        });
+        page.innerHTML = ''
+          + '<div class="pep-wrap">'
+          + '  <div class="pep-head"><div><div class="pep-title">🗺️ Estados (UF)</div><div class="pep-sub">Unidades federativas com alíquotas de ICMS usadas em notas fiscais e frete.</div></div>'
+          + '    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pep-btn" id="estados-voltar-clientes">← Clientes</button><button class="pep-btn primary" id="estado-novo">＋ Novo Estado</button></div></div>'
+          + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+          + '    <input class="pep-input" id="est-busca" placeholder="🔍 Buscar por UF ou nome" value="' + esc(window.__cadEstBusca || '') + '" style="min-width:320px;flex:1">'
+          + '    <button class="pep-btn" id="est-buscar">Buscar</button>'
+          + '  </div></div>'
+          + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-estados"><table class="pep-table"><thead><tr><th>UF</th><th>Nome</th><th style="width:18%">ICMS %</th><th style="width:22%">Ações</th></tr></thead><tbody>'
+          + (lista.length ? lista.map(function(e) {
+              return '<tr data-est="' + esc(e.id) + '"><td><strong>' + esc(e.uf || '—') + '</strong></td><td>' + esc(e.nome || '—') + '</td><td>' + num(e.aliq_icms || 0, 2) + '</td>'
+                   + '<td><button class="pep-btn" data-eedit="' + esc(e.id) + '">Editar</button> <button class="pep-btn danger" data-edel="' + esc(e.id) + '">Excluir</button></td></tr>';
+            }).join('') : '<tr><td colspan="4" style="text-align:center;color:#94a3b8">Nenhum estado encontrado.</td></tr>')
+          + '  </tbody></table></div></div>'
+          + '</div>';
+        document.getElementById('estado-novo').onclick = function() { openEstadoModal(null, renderEstadosPage); };
+        var vol = document.getElementById('estados-voltar-clientes');
+        if (vol) vol.onclick = function() { try { if (typeof window.go === 'function') window.go('clientes'); } catch (_) {} };
+        var elB = document.getElementById('est-busca');
+        var btnB = document.getElementById('est-buscar');
+        if (btnB) btnB.onclick = function() { window.__cadEstBusca = String(elB && elB.value || '').trim(); renderEstadosPage(); };
+        if (elB) elB.onkeydown = function(ev) { if ((ev && ev.key || '') === 'Enter') { ev.preventDefault(); window.__cadEstBusca = String(elB.value || '').trim(); renderEstadosPage(); } };
+        Array.prototype.slice.call(page.querySelectorAll('[data-eedit]')).forEach(function(b) {
+          b.onclick = function() {
+            var id = String(b.getAttribute('data-eedit') || '');
+            var it = loadEstados().find(function(x) { return String(x.id) === id; }) || null;
+            openEstadoModal(it, renderEstadosPage);
+          };
+        });
+        Array.prototype.slice.call(page.querySelectorAll('[data-edel]')).forEach(function(b) {
+          b.onclick = function() {
+            var id = String(b.getAttribute('data-edel') || '');
+            var it = loadEstados().find(function(x) { return String(x.id) === id; });
+            if (!it) return;
+            if (!confirm('Excluir estado UF ' + (it.uf || '?') + '?')) return;
+            deleteEstado(id).then(function() { renderEstadosPage(); }).catch(function(e) { alert(String(e.message || e)); });
+          };
+        });
+      }
+
+      // ---------- RAMOS ----------
+      function loadRamos() {
+        var arr = _cadLocal(LS_RAMOS, []);
+        return Array.isArray(arr) ? arr.map(function(r) { return Object.assign({}, r, {
+          id: _cadCleanStr(r.id || _cadUid('ram')),
+          nome: _cadCleanStr(r.nome || 'Novo ramo'),
+          descricao: _cadCleanStr(r.descricao || '')
+        }); }) : [];
+      }
+      async function saveRamo(item) {
+        var arr = loadRamos();
+        var it = Object.assign({}, item || {});
+        it.nome = _cadCleanStr(it.nome || '');
+        it.descricao = _cadCleanStr(it.descricao || '');
+        if (!it.nome) throw new Error('Informe o nome do ramo.');
+        if (arr.some(function(x) { return String(x.id) !== String(it.id) && String(x.nome).toLowerCase() === String(it.nome).toLowerCase(); })) throw new Error('Já existe um ramo com este nome.');
+        if (!it.id) it.id = _cadUid('ram');
+        var existe = -1;
+        arr.forEach(function(x, idx) { if (String(x.id) === String(it.id)) existe = idx; });
+        if (existe >= 0) arr[existe] = it; else arr.push(it);
+        _cadSaveLocal(LS_RAMOS, arr);
+        return it;
+      }
+      async function deleteRamo(id) {
+        var arr = loadRamos().filter(function(x) { return String(x.id) !== String(id); });
+        _cadSaveLocal(LS_RAMOS, arr);
+      }
+      function openRamoModal(item, done) {
+        var old = document.getElementById('cad-ramo-modal');
+        if (old) old.remove();
+        var it = item || {};
+        var wrap = document.createElement('div');
+        wrap.id = 'cad-ramo-modal';
+        wrap.className = 'pep-modal';
+        wrap.innerHTML = ''
+          + '<div class="pep-modal-box">'
+          + '  <div class="pep-head" style="margin-bottom:12px"><div class="pep-title" style="font-size:18px">' + (it.id ? 'Editar Ramo' : 'Novo Ramo') + '</div></div>'
+          + '  <div class="pep-grid">'
+          + '    <div style="grid-column: 1 / -1"><div class="pep-sub">Nome do Ramo</div><input class="pep-input" id="cram-nome" value="' + esc(it.nome || '') + '" placeholder="Ex.: Alimentos / E-commerce"></div>'
+          + '    <div style="grid-column: 1 / -1"><div class="pep-sub">Descrição (opcional)</div><textarea class="pep-input" id="cram-desc" rows="3" placeholder="Público alvo, embalagens típicas...">' + esc(it.descricao || '') + '</textarea></div>'
+          + '  </div>'
+          + '  <div class="pep-actions"><button class="pep-btn" id="cram-cancel">Cancelar</button><button class="pep-btn primary" id="cram-save">Salvar</button></div>'
+          + '</div>';
+        wrap.addEventListener('click', function(e) { if (e.target === wrap) wrap.remove(); });
+        document.body.appendChild(wrap);
+        document.getElementById('cram-cancel').onclick = function() { wrap.remove(); };
+        document.getElementById('cram-save').onclick = async function() {
+          try {
+            var payload = Object.assign({}, it, {
+              id: it.id || null,
+              nome: document.getElementById('cram-nome').value || '',
+              descricao: document.getElementById('cram-desc').value || ''
+            });
+            await saveRamo(payload);
+            wrap.remove();
+            if (typeof done === 'function') done();
+          } catch (e) { alert(String(e && e.message || e)); }
+        };
+      }
+      function renderRamosPage() {
+        try { ensureStyles(); } catch (_) {}
+        var page = ensurePage('ramos');
+        showOnlyPage('ramos');
+        var busca = String(window.__cadRamBusca || '').toLowerCase();
+        var lista = loadRamos();
+        if (busca) lista = lista.filter(function(r) {
+          return (r.nome + ' ' + r.descricao).toLowerCase().indexOf(busca) >= 0;
+        });
+        page.innerHTML = ''
+          + '<div class="pep-wrap">'
+          + '  <div class="pep-head"><div><div class="pep-title">🏷️ Ramos de Atividade</div><div class="pep-sub">Classificação comercial de clientes: usada em filtros, Mapa de Clientes e relatórios.</div></div>'
+          + '    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pep-btn" id="ramos-voltar-clientes">← Clientes</button><button class="pep-btn primary" id="ramo-novo">＋ Novo Ramo</button></div></div>'
+          + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+          + '    <input class="pep-input" id="ram-busca" placeholder="🔍 Buscar por nome ou descrição" value="' + esc(window.__cadRamBusca || '') + '" style="min-width:320px;flex:1">'
+          + '    <button class="pep-btn" id="ram-buscar">Buscar</button>'
+          + '  </div></div>'
+          + '  <div class="pep-panel"><div class="pep-table-wrap pep-table-wrap-ramos"><table class="pep-table"><thead><tr><th style="width:30%">Ramo</th><th>Descrição</th><th style="width:22%">Ações</th></tr></thead><tbody>'
+          + (lista.length ? lista.map(function(r) {
+              return '<tr data-ram="' + esc(r.id) + '"><td><strong>' + esc(r.nome || '—') + '</strong></td><td>' + esc(r.descricao || '—') + '</td>'
+                   + '<td><button class="pep-btn" data-redit="' + esc(r.id) + '">Editar</button> <button class="pep-btn danger" data-rdel="' + esc(r.id) + '">Excluir</button></td></tr>';
+            }).join('') : '<tr><td colspan="3" style="text-align:center;color:#94a3b8">Nenhum ramo encontrado. Clique em "＋ Novo Ramo".</td></tr>')
+          + '  </tbody></table></div></div>'
+          + '</div>';
+        document.getElementById('ramo-novo').onclick = function() { openRamoModal(null, renderRamosPage); };
+        var vol = document.getElementById('ramos-voltar-clientes');
+        if (vol) vol.onclick = function() { try { if (typeof window.go === 'function') window.go('clientes'); } catch (_) {} };
+        var elB = document.getElementById('ram-busca');
+        var btnB = document.getElementById('ram-buscar');
+        if (btnB) btnB.onclick = function() { window.__cadRamBusca = String(elB && elB.value || '').trim(); renderRamosPage(); };
+        if (elB) elB.onkeydown = function(ev) { if ((ev && ev.key || '') === 'Enter') { ev.preventDefault(); window.__cadRamBusca = String(elB.value || '').trim(); renderRamosPage(); } };
+        Array.prototype.slice.call(page.querySelectorAll('[data-redit]')).forEach(function(b) {
+          b.onclick = function() {
+            var id = String(b.getAttribute('data-redit') || '');
+            var it = loadRamos().find(function(x) { return String(x.id) === id; }) || null;
+            openRamoModal(it, renderRamosPage);
+          };
+        });
+        Array.prototype.slice.call(page.querySelectorAll('[data-rdel]')).forEach(function(b) {
+          b.onclick = function() {
+            var id = String(b.getAttribute('data-rdel') || '');
+            var it = loadRamos().find(function(x) { return String(x.id) === id; });
+            if (!it) return;
+            if (!confirm('Excluir ramo "' + (it.nome || '?') + '"?')) return;
+            deleteRamo(id).then(function() { renderRamosPage(); }).catch(function(e) { alert(String(e.message || e)); });
+          };
+        });
+      }
+
+      // ---------- Integração CLI: datalist para cli-cidade / options para cli-ramo / cl-uf ----------
+      function _cadAtualizarDatalists() {
+        try {
+          var cidades = loadCidades();
+          var ramos = loadRamos();
+          var estados = loadEstados();
+          // Datalist cidades
+          var dlCid = document.getElementById('cad-cidades-datalist') || (function() {
+            var d = document.createElement('datalist'); d.id = 'cad-cidades-datalist'; document.body.appendChild(d); return d;
+          })();
+          dlCid.innerHTML = cidades.map(function(c) { return '<option value="' + escAttr(c.nome + (c.uf ? ' / ' + c.uf : '')) + '">'; }).join('');
+          ['cl-cidade','cli-cidade'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && !el.getAttribute('list')) { try { el.setAttribute('list', 'cad-cidades-datalist'); } catch (_) {} }
+          });
+          // Datalist ramos
+          var dlRam = document.getElementById('cad-ramos-datalist') || (function() {
+            var d = document.createElement('datalist'); d.id = 'cad-ramos-datalist'; document.body.appendChild(d); return d;
+          })();
+          dlRam.innerHTML = ramos.map(function(r) { return '<option value="' + escAttr(r.nome) + '">'; }).join('');
+          ['cliente-ramo','cli-ramo','cl-ramo'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            if (el.tagName && el.tagName.toLowerCase() === 'select') {
+              try {
+                var prev = el.value || '';
+                var opts = '<option value="">— Ramo —</option>' + ramos.map(function(r) { return '<option value="' + escAttr(r.nome) + '"' + (prev === r.nome ? ' selected' : '') + '>' + esc(r.nome) + '</option>'; }).join('');
+                var h = String(el.innerHTML || '');
+                if (h.indexOf('cad-ramo-opt') < 0) { el.innerHTML = opts; }
+              } catch (_) {}
+            } else if (!el.getAttribute('list')) {
+              try { el.setAttribute('list', 'cad-ramos-datalist'); } catch (_) {}
+            }
+          });
+          // Datalist estados (UF)
+          var dlEst = document.getElementById('cad-estados-datalist') || (function() {
+            var d = document.createElement('datalist'); d.id = 'cad-estados-datalist'; document.body.appendChild(d); return d;
+          })();
+          dlEst.innerHTML = estados.map(function(e) { return '<option value="' + escAttr(e.uf) + '">'; }).join('');
+          ['cl-uf','cli-uf'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && !el.getAttribute('list')) { try { el.setAttribute('list', 'cad-estados-datalist'); } catch (_) {} }
+          });
+        } catch (_) {}
+      }
+
+      // ---------- Instalação + patch router ----------
+      var _cadInstalled = false;
+      function ensureCadastroAuxPagesInstalled() {
+        if (_cadInstalled) { try { _cadAtualizarDatalists(); } catch (_) {} return; }
+        _cadInstalled = true;
+        try { ensureStyles(); } catch (_) {}
+        // Criar páginas DOM
+        ensurePage('cidades');
+        ensurePage('estados');
+        ensurePage('ramos');
+        // Expõe funções no window
+        window.renderCidadesPage = renderCidadesPage;
+        window.renderEstadosPage = renderEstadosPage;
+        window.renderRamosPage   = renderRamosPage;
+        window.loadCidades  = loadCidades;
+        window.loadEstados  = loadEstados;
+        window.loadRamos    = loadRamos;
+        window.openCidadeModal = openCidadeModal;
+        window.openEstadoModal = openEstadoModal;
+        window.openRamoModal   = openRamoModal;
+        // Patch window.go() para renderizar automaticamente estas páginas
+        try {
+          if (typeof window.go === 'function' && !window.go.__cadAuxPatched) {
+            var _origGo = window.go;
+            window.go = function(rota) {
+              var r = String(rota || '').trim().toLowerCase();
+              try { _cadAtualizarDatalists(); } catch (_) {}
+              if (r === 'cidades')  { try { renderCidadesPage(); return; } catch (_) {} }
+              if (r === 'estados')  { try { renderEstadosPage(); return; } catch (_) {} }
+              if (r === 'ramos')    { try { renderRamosPage();   return; } catch (_) {} }
+              return _origGo.apply(this, arguments);
+            };
+            window.go.__cadAuxPatched = true;
+            // Se estivermos numa rota correspondente no momento, renderizar imediatamente
+            try {
+              var ativo = (document.querySelector('.page.active') || {}).id || '';
+              if (/page-(cidades|estados|ramos)/.test(ativo)) {
+                var qual = ativo.replace('page-', '');
+                if (qual === 'cidades') renderCidadesPage();
+                else if (qual === 'estados') renderEstadosPage();
+                else if (qual === 'ramos') renderRamosPage();
+              }
+            } catch (_) {}
+          } else if (typeof window.go !== 'function') {
+            window.go = function(rota) {
+              var r = String(rota || '').trim().toLowerCase();
+              try { _cadAtualizarDatalists(); } catch (_) {}
+              if (r === 'cidades') return renderCidadesPage();
+              if (r === 'estados') return renderEstadosPage();
+              if (r === 'ramos')   return renderRamosPage();
+              showOnlyPage(r);
+            };
+          }
+        } catch (_) {}
+        // Tenta injetar itens no menu (se existir .nav-items / .sidebar)
+        try {
+          var menuHost = document.querySelector('.nav-items, .sidebar ul, .menu-list, nav ul, [data-menu-items]');
+          if (menuHost) {
+            var htmlMenu = ''
+              + '<li class="nav-item" data-page="cidades" style="margin:0"><button class="nav-link" style="width:100%;background:transparent;border:0;color:#cbd5e1;padding:10px 14px;cursor:pointer;text-align:left;font-size:14px" onclick="try{window.go(\'cidades\')}catch(_){}">🏙️ Cidades</button></li>'
+              + '<li class="nav-item" data-page="estados" style="margin:0"><button class="nav-link" style="width:100%;background:transparent;border:0;color:#cbd5e1;padding:10px 14px;cursor:pointer;text-align:left;font-size:14px" onclick="try{window.go(\'estados\')}catch(_){}">🗺️ Estados</button></li>'
+              + '<li class="nav-item" data-page="ramos" style="margin:0"><button class="nav-link" style="width:100%;background:transparent;border:0;color:#cbd5e1;padding:10px 14px;cursor:pointer;text-align:left;font-size:14px" onclick="try{window.go(\'ramos\')}catch(_){}">🏷️ Ramos</button></li>';
+            try { menuHost.insertAdjacentHTML('beforeend', htmlMenu); } catch (_) {}
+          }
+        } catch (_) {}
+        try { _cadAtualizarDatalists(); } catch (_) {}
+      }
+
+      // Chamar instalação (idempotente)
+      try {
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function() { setTimeout(ensureCadastroAuxPagesInstalled, 0); });
+        } else {
+          setTimeout(ensureCadastroAuxPagesInstalled, 0);
+        }
+      } catch (_) {}
+      // Hook no tick geral (se existir startTickCalc)
+      try {
+        var _tickOrig = typeof window.__cadAuxTickOnce;
+        if (!window.__cadAuxTickOnce) {
+          window.__cadAuxTickOnce = true;
+          setInterval(function() { try { ensureCadastroAuxPagesInstalled(); } catch (_) {} }, 5000);
+        }
+      } catch (_) {}
+    } catch (_) {}
+  })();
+
   if (typeof window.abrirCalculadora === 'function' && !window.abrirCalculadora.__patchOrcPastas) {
     var _origAbrirCalculadora = window.abrirCalculadora;
     window.abrirCalculadora = function() {
