@@ -10218,8 +10218,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
   }
 
   // ===================== CADASTRO AUXILIAR: CIDADES / ESTADOS / RAMOS (w4e) =====================
-  (function() {
-    try {
+  try {
       function _cadLocal(key, defValue) {
         try {
           var raw = localStorage.getItem(key);
@@ -10728,8 +10727,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           setInterval(function() { try { ensureCadastroAuxPagesInstalled(); } catch (_) {} }, 5000);
         }
       } catch (_) {}
-    } catch (_) {}
-  })();
+  } catch (_) {}
 
   if (typeof window.abrirCalculadora === 'function' && !window.abrirCalculadora.__patchOrcPastas) {
     var _origAbrirCalculadora = window.abrirCalculadora;
