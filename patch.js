@@ -1,4 +1,4 @@
-﻿window._comRodando = false;
+window._comRodando = false;
 window.__comUltimaExecucao = 0;
 window.__comEntradaTs = 0;
 if (!window.__comRodandoWatchdogInstalled) {
@@ -5793,9 +5793,19 @@ window._compraPapelaoEnsureStyles = function() {
     + '.ccpx-item-field.span-6{grid-column:span 6}'
     + '.ccpx-item-field.span-7{grid-column:span 7}'
     + '.ccpx-item-field.span-8{grid-column:span 8}'
+    + '.ccpx-item-field.span-9{grid-column:span 9}'
+    + '.ccpx-item-field.span-10{grid-column:span 10}'
     + '.ccpx-item-field.row-break{grid-column:1 / -1;height:0;min-height:0;padding:0;margin:0}'
     + '.ccpx-item-field.sep{display:flex;align-items:center;justify-content:center;padding-bottom:8px;font-size:16px;font-weight:900;color:#60a5fa}'
-    + '.ccpx-item-vincos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}'
+    + '.ccpx-item-vincos{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;align-items:start}'
+    + '.ccpx-vinco-chip{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 26px;gap:4px;align-items:center}'
+    + '.ccpx-vinco-chip input{min-width:0}'
+    + '.ccpx-vinco-chip button{min-width:26px;width:26px;height:28px;border-radius:8px;border:1px solid rgba(148,163,184,.22);background:#0f172a;color:#cbd5e1;font-weight:900;cursor:pointer;padding:0}'
+    + '.ccpx-vinco-toolbar{position:relative;grid-column:1 / -1;display:flex;justify-content:flex-start;align-items:center;margin-top:2px;padding-top:4px}'
+    + '.ccpx-vinco-toolbar button{position:relative;min-height:30px;padding:0 12px;border-radius:10px;border:1px dashed rgba(96,165,250,.48);background:rgba(37,99,235,.1);color:#93c5fd;font-weight:800;font-size:11px;cursor:pointer;z-index:2}'
+    + '.ccpx-vinco-toolbar button:hover{background:rgba(37,99,235,.22);border-style:solid}'
+    + '.ccpx-vinco-toolbar button[title]:hover::after{content:attr(title);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);white-space:nowrap;z-index:9999;padding:6px 10px;border-radius:8px;background:rgba(2,6,23,.96);color:#e2e8f0;font-size:11px;font-weight:700;border:1px solid rgba(125,211,252,.3);box-shadow:0 10px 24px rgba(2,6,23,.36);pointer-events:none;letter-spacing:.02em}'
+    + '.ccpx-vinco-toolbar button[title]:hover::before{content:"";position:absolute;bottom:calc(100% + 1px);left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:rgba(2,6,23,.96);z-index:9999;pointer-events:none}'
     + '.ccpx-item-note-line{grid-column:1 / -1;font-size:11px;color:#94a3b8;line-height:1.45;padding-top:2px}'
     + '.ccpx-modal-number-card{display:grid;gap:10px;padding:18px 20px;border-radius:18px;background:linear-gradient(135deg,rgba(2,6,23,.9),rgba(24,95,165,.45));border:1px solid rgba(125,211,252,.2)}'
     + '.ccpx-modal-number-card .lbl{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#bfdbfe}'
@@ -5843,7 +5853,7 @@ window._compraPapelaoEnsureStyles = function() {
     + '.ccpx-fs-badge .lbl{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#bfdbfe}'
     + '.ccpx-fs-badge .val{font-size:28px;font-weight:900;color:#fff;font-family:var(--mono,inherit)}'
     + '.ccpx-fs-close{width:46px;height:46px;border:none;border-radius:14px;background:rgba(15,23,42,.92);color:#f8fafc;font-size:20px;font-weight:900;cursor:pointer}'
-    + '.ccpx-fs-body{min-height:0;overflow:auto;padding:22px 24px 18px;display:grid;gap:18px}'
+    + '.ccpx-fs-body{min-height:0;overflow:auto;padding:22px 24px 18px;display:grid;gap:18px;scrollbar-gutter:stable both-edges}'
     + '.ccpx-fs-section{display:grid;gap:14px;padding:20px;border-radius:22px;border:1px solid rgba(148,163,184,.14);background:linear-gradient(180deg,rgba(15,23,42,.88),rgba(15,23,42,.7));box-shadow:0 20px 46px rgba(2,6,23,.22)}'
     + '.ccpx-fs-section-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}'
     + '.ccpx-fs-section-title{font-size:18px;font-weight:900;color:#f8fafc}'
@@ -9681,10 +9691,25 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
 
   function ensureCalcDomStructure() {
     try {
-      if (document.getElementById('modal-calc') && document.getElementById('modal-calculadora')) return true;
-      if (document.getElementById('calc-cli') || document.getElementById('calc-comp')) return true;
       if (!document.body) return false;
-      if (document.getElementById('patch-calc-dom-injected')) return false;
+      var _domOk = false;
+      try {
+        var _rc = document.querySelector('.calc-col-dir');
+        var _paramOk = !!(_rc && _rc.querySelector('.param-grid'));
+        var _tbOk = !!document.querySelector('.calc-tabela-wrap');
+        var _bodyOk = !!document.querySelector('.calc-body.modal-body');
+        _domOk = _paramOk && _tbOk && _bodyOk;
+      } catch (_eDom) { _domOk = false; }
+      if (_domOk && document.getElementById('modal-calc') && document.getElementById('modal-calculadora')) return true;
+      if (document.getElementById('patch-calc-dom-injected') && _domOk) return true;
+      var _oldInj = document.getElementById('patch-calc-dom-injected');
+      if (_oldInj) try { _oldInj.parentNode && _oldInj.parentNode.removeChild(_oldInj); } catch (_rem1){}
+      if (!_domOk) {
+        var _oldOv = document.getElementById('modal-calc');
+        var _oldMd = document.getElementById('modal-calculadora');
+        if (_oldMd && _oldMd.parentNode) try { _oldMd.parentNode.removeChild(_oldMd); } catch (_rem2){}
+        if (_oldOv && _oldOv.parentNode) try { _oldOv.parentNode.removeChild(_oldOv); } catch (_rem3){}
+      }
       var wrap = document.createElement('div');
       wrap.id = 'patch-calc-dom-injected';
       wrap.style.display = 'contents';
@@ -9760,16 +9785,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         '      </tr></thead><tbody id="calc-tbody"><tr><td colspan="11" style="padding:20px;text-align:center;color:var(--text3)">Preencha os dados acima para calcular</td></tr></tbody></table>' +
         '    </div>' +
         '    </div>' +
-        '    <div class="calc-col-dir">' +
+        '    <div class="calc-col-dir" style="padding:4px 2px;display:grid;grid-auto-rows:minmax(0,auto);gap:12px;align-content:start">' +
         '      <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,0.65);text-transform:uppercase">Parâmetros Comerciais <span id="calc-w3-display" style="color:#81c784"></span></div>' +
-        '      <div class="param-row"><span class="param-label">Custo Merc. (%)</span><input id="calc-cm" class="param-input" type="number" value="49" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '      <div class="param-row"><span class="param-label">Custo Fixo (%)</span><input id="calc-cf" class="param-input" type="number" value="15" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '      <div class="param-row"><span class="param-label">Margem (%)</span><input id="calc-mg" class="param-input" type="number" value="25" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '      <div class="param-row"><span class="param-label">Comissão (%)</span><input id="calc-cv" class="param-input" type="number" value="1" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '      <div class="param-row"><span class="param-label">Impostos (%)</span><input id="calc-imp" class="param-input" type="number" value="10" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '      <div class="param-row"><span class="param-label">Vl. KM Frete (R$)</span><input id="calc-vkm" class="param-input" type="number" step="0.01" value="1.15" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '      <div class="param-row"><span class="param-label">KM Entrega</span><input id="calc-km" class="param-input" type="number" value="50" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '      <div class="param-frete-total"><span>Frete Total</span><span id="calc-frete-display">—</span></div>' +
+        '      <div class="param-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;align-items:end">' +
+        '        <div class="param-row" style="display:grid;gap:6px"><span class="param-label" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Custo Merc. (%)</span><input id="calc-cm" class="param-input" type="number" value="49" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '        <div class="param-row" style="display:grid;gap:6px"><span class="param-label" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Custo Fixo (%)</span><input id="calc-cf" class="param-input" type="number" value="15" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '        <div class="param-row" style="display:grid;gap:6px"><span class="param-label" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Margem (%)</span><input id="calc-mg" class="param-input" type="number" value="25" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '        <div class="param-row" style="display:grid;gap:6px"><span class="param-label" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Comissão (%)</span><input id="calc-cv" class="param-input" type="number" value="1" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '        <div class="param-row" style="display:grid;gap:6px"><span class="param-label" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Impostos (%)</span><input id="calc-imp" class="param-input" type="number" value="10" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '        <div class="param-row" style="display:grid;gap:6px"><span class="param-label" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Vl. KM Frete (R$)</span><input id="calc-vkm" class="param-input" type="number" step="0.01" value="1.15" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '        <div class="param-row" style="display:grid;gap:6px"><span class="param-label" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">KM Entrega</span><input id="calc-km" class="param-input" type="number" value="50" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '        <div class="param-frete-total" style="display:grid;gap:6px;grid-column:1 / -1;padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,rgba(24,95,165,.32),rgba(59,130,246,.18));border:1px solid rgba(125,211,252,.26)"><span style="font-size:11px;font-weight:800;color:#bfdbfe;text-transform:uppercase;letter-spacing:.06em">Frete Total</span><span id="calc-frete-display" style="font-size:18px;font-weight:900;color:#fff;font-family:var(--mono,inherit)">—</span></div>' +
+        '      </div>' +
         '    </div>' +
         '  </div>' +
         '  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;padding-top:12px;border-top:1px solid #334155">' +
@@ -9823,7 +9850,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     var overlay = document.getElementById('modal-calc');
     var modal = document.getElementById('modal-calculadora');
     if (!overlay || !modal) return false;
-    var isCompactCalc = window.innerWidth <= 920;
+    var isCompactCalc = window.innerWidth <= 620;
+    var isDualCol = window.innerWidth >= 1100 && !isCompactCalc;
     try { overlay.classList.add('orc-calc-fs-ready'); } catch (_) {}
     var shell = modal.querySelector('.orc-calc-shell');
     if (!shell) {
@@ -9852,15 +9880,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     var footer = modal.querySelector(':scope > .modal-footer.rodape') || main.querySelector('.modal-footer.rodape') || modal.querySelector('.modal-footer.rodape');
     if (title && title.parentNode !== titleHost) titleHost.appendChild(title);
     if (closeBtn && closeBtn.parentNode !== closeHost) closeHost.appendChild(closeBtn);
-    [
-      headerRow,
-      nomeWrap,
-      pastaRow,
-      chapaWrap
-    ].forEach(function(node) {
+    [headerRow].forEach(function(node) {
       if (!node) return;
       if (node.parentNode !== topbar) topbar.appendChild(node);
     });
+    // Mover nomeWrap / pastaRow / chapaWrap para COMEÇO do body (não topbar)
+    if (body) {
+      [nomeWrap, pastaRow, chapaWrap].forEach(function(node) {
+        if (!node) return;
+        if (node.parentNode !== body) body.insertBefore(node, body.firstChild);
+      });
+    }
     if (body && body.parentNode !== main) main.appendChild(body);
     if (footer && footer.parentNode !== footerHost) footerHost.appendChild(footer);
     try {
@@ -9870,71 +9900,338 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       overlay.style.setProperty('height', '100vh', 'important');
       overlay.style.setProperty('max-width', '100vw', 'important');
       overlay.style.setProperty('max-height', '100vh', 'important');
-      overlay.style.setProperty('padding', window.innerWidth <= 920 ? '0' : '16px', 'important');
+      overlay.style.setProperty('padding', isCompactCalc ? '0' : '14px', 'important');
       overlay.style.setProperty('margin', '0', 'important');
-      overlay.style.setProperty('align-items', window.innerWidth <= 920 ? 'stretch' : 'center', 'important');
-      overlay.style.setProperty('justify-content', window.innerWidth <= 920 ? 'stretch' : 'center', 'important');
+      overlay.style.setProperty('align-items', isCompactCalc ? 'stretch' : 'center', 'important');
+      overlay.style.setProperty('justify-content', isCompactCalc ? 'stretch' : 'center', 'important');
       overlay.style.setProperty('overflow', 'hidden', 'important');
-      modal.style.setProperty('width', window.innerWidth <= 920 ? '100vw' : 'min(1720px, calc(100vw - 32px))', 'important');
-      modal.style.setProperty('max-width', window.innerWidth <= 920 ? '100vw' : '1720px', 'important');
-      modal.style.setProperty('height', window.innerWidth <= 920 ? '100vh' : 'min(96vh, 1220px)', 'important');
-      modal.style.setProperty('max-height', window.innerWidth <= 920 ? '100vh' : '96vh', 'important');
-      modal.style.setProperty('border-radius', window.innerWidth <= 920 ? '0' : '24px', 'important');
-      modal.style.setProperty('margin', window.innerWidth <= 920 ? '0' : '0 auto', 'important');
+      modal.style.setProperty('width', isCompactCalc ? '100vw' : 'min(1720px, calc(100vw - 28px))', 'important');
+      modal.style.setProperty('max-width', isCompactCalc ? '100vw' : '1720px', 'important');
+      modal.style.setProperty('height', isCompactCalc ? '100vh' : 'min(96vh, 1220px)', 'important');
+      modal.style.setProperty('max-height', isCompactCalc ? '100vh' : '96vh', 'important');
+      modal.style.setProperty('border-radius', isCompactCalc ? '0' : '22px', 'important');
+      modal.style.setProperty('margin', isCompactCalc ? '0' : '0 auto', 'important');
       modal.style.setProperty('padding', '0', 'important');
       modal.style.setProperty('overflow', 'hidden', 'important');
-      shell.style.setProperty('display', isCompactCalc ? 'block' : 'grid', 'important');
-      shell.style.setProperty('grid-template-rows', isCompactCalc ? 'none' : 'auto auto minmax(0,1fr) auto', 'important');
-      shell.style.setProperty('height', isCompactCalc ? 'auto' : '100%', 'important');
-      shell.style.setProperty('min-height', isCompactCalc ? '100%' : '0', 'important');
-      shell.style.setProperty('overflow', isCompactCalc ? 'visible' : 'hidden', 'important');
+      shell.style.setProperty('display', 'grid', 'important');
+      shell.style.setProperty('grid-template-rows', 'auto auto minmax(0,1fr) auto', 'important');
+      shell.style.setProperty('height', '100%', 'important');
+      shell.style.setProperty('min-height', '0', 'important');
+      shell.style.setProperty('overflow', 'hidden', 'important');
+      shell.style.setProperty('box-sizing', 'border-box', 'important');
       topbar.style.setProperty('align-items', 'start', 'important');
-      main.style.setProperty('display', isCompactCalc ? 'block' : 'flex', 'important');
+      topbar.style.setProperty('padding', '10px 16px 4px', 'important');
+      topbar.style.setProperty('flex', '0 0 auto', 'important');
+      topbar.style.setProperty('box-sizing', 'border-box', 'important');
+      main.style.setProperty('display', 'flex', 'important');
       main.style.setProperty('flex-direction', 'column', 'important');
-      main.style.setProperty('min-height', isCompactCalc ? 'auto' : '0', 'important');
-      main.style.setProperty('overflow', isCompactCalc ? 'visible' : 'hidden', 'important');
+      main.style.setProperty('min-height', '0', 'important');
+      main.style.setProperty('overflow', 'hidden', 'important');
+      main.style.setProperty('box-sizing', 'border-box', 'important');
       footerHost.style.setProperty('flex', '0 0 auto', 'important');
       footerHost.style.setProperty('min-height', '0', 'important');
       footerHost.style.setProperty('overflow', 'visible', 'important');
-      if (body) {
-        body.style.setProperty('display', 'grid', 'important');
-        body.style.setProperty('grid-template-columns', isCompactCalc ? '1fr' : (window.innerWidth <= 1280 ? '1fr' : 'minmax(0,1.5fr) minmax(420px,1fr)'), 'important');
-        body.style.setProperty('gap', '18px', 'important');
-        body.style.setProperty('height', isCompactCalc ? 'auto' : '100%', 'important');
-        body.style.setProperty('min-height', isCompactCalc ? 'auto' : '0', 'important');
-        body.style.setProperty('flex', isCompactCalc ? '0 0 auto' : '1 1 auto', 'important');
-        body.style.setProperty('max-height', 'none', 'important');
-        body.style.setProperty('overflow', isCompactCalc ? 'visible' : 'hidden', 'important');
+      footerHost.style.setProperty('padding', '10px 16px 14px', 'important');
+      footerHost.style.setProperty('box-sizing', 'border-box', 'important');
+      if (footer) {
+        footer.style.setProperty('padding', '0', 'important');
+        footer.style.setProperty('border', 'none', 'important');
+        footer.style.setProperty('gap', '8px 12px', 'important');
+        footer.style.setProperty('margin', '0', 'important');
+        footer.style.setProperty('max-height', '140px', 'important');
+        footer.style.setProperty('overflow', 'auto', 'important');
+        footer.style.setProperty('display', 'grid', 'important');
+        footer.style.setProperty('grid-template-columns', '1fr', 'important');
+        footer.style.setProperty('align-items', 'center', 'important');
+        footer.style.setProperty('justify-items', 'stretch', 'important');
+        // Primeiro filho (div de ondas B/C/BC): transformar em grid compacto
+        var wavesChips = footer.firstElementChild;
+        if (wavesChips) {
+          wavesChips.style.setProperty('display','grid','important');
+          wavesChips.style.setProperty('grid-template-columns','repeat(3, minmax(0,1fr))','important');
+          wavesChips.style.setProperty('gap','4px 8px','important');
+          wavesChips.style.setProperty('padding','2px 0','important');
+          wavesChips.style.setProperty('margin','0 0 4px 0','important');
+          wavesChips.style.setProperty('box-sizing','border-box','important');
+          wavesChips.style.setProperty('width','100%','important');
+          wavesChips.querySelectorAll('label').forEach(function(lbl){
+            lbl.style.setProperty('display','flex','important');
+            lbl.style.setProperty('align-items','center','important');
+            lbl.style.setProperty('gap','5px','important');
+            lbl.style.setProperty('margin','0','important');
+            lbl.style.setProperty('padding','4px 8px','important');
+            lbl.style.setProperty('min-height','30px','important');
+            lbl.style.setProperty('height','32px','important');
+            lbl.style.setProperty('border-radius','9px','important');
+            lbl.style.setProperty('background','rgba(2,6,23,.22)','important');
+            lbl.style.setProperty('border','1px solid rgba(148,163,184,.15)','important');
+            lbl.style.setProperty('box-sizing','border-box','important');
+            lbl.style.setProperty('min-width','0','important');
+            lbl.style.setProperty('max-width','100%','important');
+            lbl.style.setProperty('font-size','11px','important');
+            lbl.style.setProperty('line-height','1','important');
+            var cb = lbl.querySelector('input[type="checkbox"]');
+            if (cb) { cb.style.setProperty('width','14px','important'); cb.style.setProperty('height','14px','important'); cb.style.setProperty('flex','0 0 auto','important'); }
+          });
+        }
+        var btnsWrap = document.createElement('div');
+        btnsWrap.style.setProperty('display','flex','important');
+        btnsWrap.style.setProperty('gap','8px','important');
+        btnsWrap.style.setProperty('flex-wrap','wrap','important');
+        btnsWrap.style.setProperty('justify-content','flex-end','important');
+        btnsWrap.style.setProperty('align-items','center','important');
+        btnsWrap.style.setProperty('box-sizing','border-box','important');
+        // Mover botões para dentro do btnsWrap
+        var allChildren = Array.prototype.slice.call(footer.children);
+        allChildren.forEach(function(ch){
+          if (ch === wavesChips) return;
+          if (ch.tagName === 'BUTTON' || ch.querySelector && ch.querySelector('button')) {
+            btnsWrap.appendChild(ch);
+          }
+        });
+        if (btnsWrap.children.length > 0) footer.appendChild(btnsWrap);
+        footer.querySelectorAll('button').forEach(function(b){
+          b.style.setProperty('flex','0 0 auto','important');
+          b.style.setProperty('width','auto','important');
+          b.style.setProperty('min-width','max-content','important');
+          b.style.setProperty('height','40px','important');
+          b.style.setProperty('padding','0 14px','important');
+          b.style.setProperty('max-width','100%','important');
+          b.style.setProperty('box-sizing','border-box','important');
+          b.style.setProperty('margin','0','important');
+        });
       }
+      var shellHeader = shell.querySelector('.orc-calc-shell-header');
+      if (shellHeader) {
+        shellHeader.style.setProperty('padding', '12px 18px 6px', 'important');
+        shellHeader.style.setProperty('display', 'flex', 'important');
+        shellHeader.style.setProperty('align-items', 'center', 'important');
+        shellHeader.style.setProperty('justify-content', 'space-between', 'important');
+        shellHeader.style.setProperty('gap', '14px', 'important');
+        shellHeader.style.setProperty('box-sizing', 'border-box', 'important');
+        if (title) { title.style.setProperty('margin','0','important'); title.style.setProperty('font-size','16px','important'); title.style.setProperty('line-height','1.2','important'); }
+        if (closeBtn) { closeBtn.style.setProperty('flex','0 0 auto','important'); closeBtn.style.setProperty('width','36px','important'); closeBtn.style.setProperty('height','36px','important'); closeBtn.style.setProperty('border-radius','50%','important'); }
+      }
+      if (body) {
+        if (isDualCol) {
+          body.style.setProperty('display', 'grid', 'important');
+          body.style.setProperty('grid-template-columns', 'minmax(0,1.4fr) minmax(540px,1fr)', 'important');
+          body.style.setProperty('gap', '16px 18px', 'important');
+          body.style.setProperty('height', '100%', 'important');
+          body.style.setProperty('min-height', '0', 'important');
+          body.style.setProperty('flex', '1 1 auto', 'important');
+          body.style.setProperty('max-height', 'none', 'important');
+          body.style.setProperty('overflow-y', 'auto', 'important');
+          body.style.setProperty('overflow-x', 'hidden', 'important');
+          body.style.setProperty('padding', '4px 18px 8px', 'important');
+          body.style.setProperty('box-sizing', 'border-box', 'important');
+          body.style.setProperty('align-content', 'start', 'important');
+          body.style.setProperty('scrollbar-gutter', 'stable both-edges', 'important');
+          body.style.setProperty('grid-template-rows', 'none', 'important');
+          body.style.setProperty('grid-auto-rows', 'minmax(0,auto)', 'important');
+          body.style.setProperty('align-items', 'stretch', 'important');
+          body.style.setProperty('justify-items', 'stretch', 'important');
+        } else {
+          body.style.setProperty('display', 'grid', 'important');
+          body.style.setProperty('grid-template-columns', '1fr', 'important');
+          body.style.setProperty('gap', '12px 0', 'important');
+          body.style.setProperty('height', 'auto', 'important');
+          body.style.setProperty('min-height', '0', 'important');
+          body.style.setProperty('flex', '1 1 auto', 'important');
+          body.style.setProperty('max-height', 'none', 'important');
+          body.style.setProperty('overflow-y', 'visible', 'important');
+          body.style.setProperty('overflow-x', 'hidden', 'important');
+          body.style.setProperty('padding', '4px 16px 8px', 'important');
+          body.style.setProperty('box-sizing', 'border-box', 'important');
+          body.style.setProperty('align-content', 'start', 'important');
+          body.style.setProperty('grid-template-rows', 'none', 'important');
+          body.style.setProperty('grid-auto-rows', 'minmax(0,auto)', 'important');
+          body.style.setProperty('align-items', 'start', 'important');
+          body.style.setProperty('justify-items', 'stretch', 'important');
+          // Todos filhos ocupam largura total
+          try {
+            Array.prototype.forEach.call(body.children, function(ch){
+              if (!ch) return;
+              ch.style.setProperty('grid-column','1 / -1','important');
+              ch.style.setProperty('grid-row','auto','important');
+              ch.style.setProperty('height','auto','important');
+              ch.style.setProperty('max-height','none','important');
+              ch.style.setProperty('min-height','0','important');
+              ch.style.setProperty('align-self','start','important');
+              ch.style.setProperty('justify-self','stretch','important');
+              ch.style.setProperty('box-sizing','border-box','important');
+              ch.style.setProperty('width','100%','important');
+              ch.style.setProperty('max-width','100%','important');
+              ch.style.setProperty('min-width','0','important');
+            });
+          } catch (_chEach){}
+        }
+      }
+      // Main: overflow-y auto sempre (conteúdo maior que viewport em 1 col; scroll individual em 2 col)
+      try {
+        if (main) {
+          main.style.setProperty('overflow-y','auto','important');
+          main.style.setProperty('overflow-x','hidden','important');
+          main.style.setProperty('scrollbar-gutter','stable both-edges','important');
+          main.style.setProperty('display','block','important');
+          main.style.setProperty('min-height','0','important');
+          main.style.setProperty('max-height','none','important');
+        }
+      } catch (_mainErr){}
       var leftCol = modal.querySelector('.calc-col-esq');
       var rightCol = modal.querySelector('.calc-col-dir');
       var tableWrap = modal.querySelector('.calc-tabela-wrap');
+      var paramGrid = modal.querySelector('.param-grid');
       if (leftCol) {
-        leftCol.style.setProperty('min-height', '0', 'important');
-        leftCol.style.setProperty('height', isCompactCalc ? 'auto' : '100%', 'important');
-        leftCol.style.setProperty('align-content', 'start', 'important');
-        leftCol.style.setProperty('overflow', isCompactCalc ? 'visible' : 'auto', 'important');
-        leftCol.style.setProperty('padding-right', isCompactCalc ? '0' : '6px', 'important');
-        leftCol.style.setProperty('scrollbar-gutter', 'stable both-edges', 'important');
+        if (isDualCol) {
+          leftCol.style.setProperty('min-height', '0', 'important');
+          leftCol.style.setProperty('height', '100%', 'important');
+          leftCol.style.setProperty('max-height', 'none', 'important');
+          leftCol.style.setProperty('align-content', 'start', 'important');
+          leftCol.style.setProperty('overflow-y', 'auto', 'important');
+          leftCol.style.setProperty('overflow-x', 'hidden', 'important');
+          leftCol.style.setProperty('padding-right', '8px', 'important');
+          leftCol.style.setProperty('scrollbar-gutter', 'stable both-edges', 'important');
+          leftCol.style.setProperty('display', 'block', 'important');
+          leftCol.style.setProperty('box-sizing', 'border-box', 'important');
+          leftCol.style.setProperty('width', '100%', 'important');
+          leftCol.style.setProperty('min-width', '0', 'important');
+          leftCol.style.setProperty('max-width', '100%', 'important');
+        } else {
+          leftCol.style.setProperty('min-height', '0', 'important');
+          leftCol.style.setProperty('height', 'auto', 'important');
+          leftCol.style.setProperty('max-height', 'none', 'important');
+          leftCol.style.setProperty('align-content', 'start', 'important');
+          leftCol.style.setProperty('overflow-y', 'visible', 'important');
+          leftCol.style.setProperty('overflow-x', 'hidden', 'important');
+          leftCol.style.setProperty('padding-right', '0', 'important');
+          leftCol.style.setProperty('scrollbar-gutter', 'stable both-edges', 'important');
+          leftCol.style.setProperty('display', 'block', 'important');
+          leftCol.style.setProperty('box-sizing', 'border-box', 'important');
+          leftCol.style.setProperty('width', '100%', 'important');
+          leftCol.style.setProperty('min-width', '0', 'important');
+          leftCol.style.setProperty('max-width', '100%', 'important');
+        }
       }
       if (rightCol) {
-        rightCol.style.setProperty('min-height', '0', 'important');
-        rightCol.style.setProperty('height', isCompactCalc ? 'auto' : '100%', 'important');
-        rightCol.style.setProperty('align-content', 'start', 'important');
-        rightCol.style.setProperty('grid-auto-rows', 'minmax(0,auto)', 'important');
-        rightCol.style.setProperty('overflow', isCompactCalc ? 'visible' : 'auto', 'important');
-        rightCol.style.setProperty('padding-right', isCompactCalc ? '0' : '6px', 'important');
-        rightCol.style.setProperty('grid-template-columns', isCompactCalc ? '1fr' : 'repeat(2,minmax(0,1fr))', 'important');
-        rightCol.style.setProperty('scrollbar-gutter', 'stable both-edges', 'important');
+        if (isDualCol) {
+          rightCol.style.setProperty('display', 'block', 'important');
+          rightCol.style.setProperty('min-height', '0', 'important');
+          rightCol.style.setProperty('height', '100%', 'important');
+          rightCol.style.setProperty('max-height', 'none', 'important');
+          rightCol.style.setProperty('overflow-y', 'auto', 'important');
+          rightCol.style.setProperty('overflow-x', 'visible', 'important');
+          rightCol.style.setProperty('padding', '4px 8px 4px 4px', 'important');
+          rightCol.style.setProperty('scrollbar-gutter', 'stable both-edges', 'important');
+          rightCol.style.setProperty('box-sizing', 'border-box', 'important');
+          rightCol.style.setProperty('width', '100%', 'important');
+          rightCol.style.setProperty('max-width', '100%', 'important');
+          rightCol.style.setProperty('min-width', '0', 'important');
+        } else {
+          rightCol.style.setProperty('display', 'block', 'important');
+          rightCol.style.setProperty('min-height', '0', 'important');
+          rightCol.style.setProperty('height', 'auto', 'important');
+          rightCol.style.setProperty('max-height', 'none', 'important');
+          rightCol.style.setProperty('overflow-y', 'visible', 'important');
+          rightCol.style.setProperty('overflow-x', 'visible', 'important');
+          rightCol.style.setProperty('padding', '2px 0 4px 0', 'important');
+          rightCol.style.setProperty('scrollbar-gutter', 'stable both-edges', 'important');
+          rightCol.style.setProperty('box-sizing', 'border-box', 'important');
+          rightCol.style.setProperty('width', '100%', 'important');
+          rightCol.style.setProperty('max-width', '100%', 'important');
+          rightCol.style.setProperty('min-width', '0', 'important');
+        }
+        var titleParam = rightCol.firstElementChild;
+        if (titleParam) { titleParam.style.setProperty('box-sizing','border-box','important'); titleParam.style.setProperty('max-width','100%','important'); titleParam.style.setProperty('min-width','0','important'); titleParam.style.setProperty('margin-bottom','6px'); }
+      }
+      if (paramGrid) {
+        paramGrid.style.setProperty('display', 'grid', 'important');
+        paramGrid.style.setProperty('grid-template-columns', 'repeat(auto-fit,minmax(200px,1fr))', 'important');
+        paramGrid.style.setProperty('gap', '8px 12px', 'important');
+        paramGrid.style.setProperty('align-items', 'end', 'important');
+        paramGrid.style.setProperty('box-sizing', 'border-box', 'important');
+        paramGrid.style.setProperty('width', '100%', 'important');
+        paramGrid.style.setProperty('max-width', '100%', 'important');
+        paramGrid.style.setProperty('min-width', '0', 'important');
+        paramGrid.style.setProperty('margin-top', '2px', 'important');
+        paramGrid.style.setProperty('overflow-x','hidden','important');
+        paramGrid.style.setProperty('overflow-y','visible','important');
+        var rows = paramGrid.querySelectorAll('.param-row');
+        rows.forEach(function(r){
+          r.style.setProperty('box-sizing','border-box','important');
+          r.style.setProperty('max-width','100%','important');
+          r.style.setProperty('min-width','0','important');
+          r.style.setProperty('width','100%','important');
+          r.style.setProperty('display','grid','important');
+          r.style.setProperty('gap','3px','important');
+          r.style.setProperty('overflow','hidden','important');
+          var inp = r.querySelector('.param-input,input,select,textarea');
+          if (inp) {
+            inp.style.setProperty('box-sizing','border-box','important');
+            inp.style.setProperty('width','100%','important');
+            inp.style.setProperty('max-width','100%','important');
+            inp.style.setProperty('min-width','0','important');
+            inp.style.setProperty('padding','9px 10px','important');
+            inp.style.setProperty('margin-left','0','important');
+            inp.style.setProperty('margin-right','0','important');
+          }
+          var lab = r.querySelector('.param-label,label,span');
+          if (lab && /^param-label$/.test(lab.className)) { lab.style.setProperty('font-size','10px','important'); lab.style.setProperty('line-height','1.1','important'); }
+        });
+        var frete = paramGrid.querySelector('.param-frete-total');
+        if (frete) { frete.style.setProperty('grid-column','1 / -1','important'); frete.style.setProperty('box-sizing','border-box','important'); frete.style.setProperty('width','100%','important'); frete.style.setProperty('max-width','100%','important'); frete.style.setProperty('min-width','0','important'); frete.style.setProperty('margin-top','4px','important'); frete.style.setProperty('padding','9px 11px','important'); frete.style.setProperty('overflow','hidden','important'); }
       }
       if (tableWrap) {
-        tableWrap.style.setProperty('display', 'block', 'important');
+        try { tableWrap.classList.remove('calc-wave-table-hidden'); } catch (_rmCls){}
+        var tb = tableWrap.querySelector('table');
+        if (tb) {
+          try { tb.classList.remove('calc-wave-table-hidden'); } catch (_rmTbl){}
+          tb.style.setProperty('display','table','important');
+          tb.style.setProperty('visibility','visible','important');
+          tb.style.setProperty('width','100%','important');
+        }
+        var tbody = tableWrap.querySelector('#calc-tbody, tbody');
+        if (tbody) {
+          tbody.style.setProperty('display','table-row-group','important');
+          tbody.style.setProperty('visibility','visible','important');
+          var rowsN = tbody.querySelectorAll('tr');
+          if (!(rowsN.length === 1 && /Preencha os dados|n.o foi poss|calculando/i.test((rowsN[0].textContent||'').trim())) && rowsN.length > 0) {
+            rowsN.forEach(function(r){ r.style.setProperty('display','table-row','important'); });
+          }
+        }
+        // Deixar tabela/fluxo normal: decidir se exibe ou não pela lógica de renderCalcWavePanels
+        // (mas SEMPRE garantir que wrapper tenha min-height para não ficar 0)
         tableWrap.style.setProperty('min-height', '0', 'important');
         tableWrap.style.setProperty('height', 'auto', 'important');
         tableWrap.style.setProperty('overflow', 'auto', 'important');
-        tableWrap.style.setProperty('flex', '0 0 auto', 'important');
-        tableWrap.style.setProperty('max-height', isCompactCalc ? 'none' : 'clamp(320px, 46vh, 600px)', 'important');
+        tableWrap.style.setProperty('flex', '1 1 auto', 'important');
+        tableWrap.style.setProperty('max-height', isDualCol ? 'clamp(360px, 52vh, 720px)' : 'none', 'important');
         tableWrap.style.setProperty('scrollbar-gutter', 'stable both-edges', 'important');
+        tableWrap.style.setProperty('box-sizing', 'border-box', 'important');
+        tableWrap.style.setProperty('width', '100%', 'important');
+        tableWrap.style.setProperty('min-width', '0', 'important');
+        tableWrap.style.setProperty('max-width', '100%', 'important');
+        tableWrap.style.setProperty('margin-top', '12px', 'important');
+        tableWrap.style.setProperty('margin-bottom', '8px', 'important');
+      }
+      var wavePanels = document.getElementById('calc-wave-panels');
+      if (wavePanels) {
+        wavePanels.style.setProperty('box-sizing','border-box','important');
+        wavePanels.style.setProperty('width','100%','important');
+        wavePanels.style.setProperty('max-width','100%','important');
+        wavePanels.style.setProperty('min-width','0','important');
+        wavePanels.style.setProperty('margin-top','12px','important');
+        wavePanels.style.setProperty('display','grid','important');
+        wavePanels.style.setProperty('gap','12px','important');
+        wavePanels.style.setProperty('grid-template-columns','repeat(auto-fit,minmax(260px,1fr))','important');
+        var cards = wavePanels.querySelectorAll('.calc-wave-card');
+        if (cards.length) {
+          cards.forEach(function(c){
+            c.style.setProperty('box-sizing','border-box','important');
+            c.style.setProperty('min-width','0','important');
+            c.style.setProperty('max-width','100%','important');
+          });
+        }
       }
     } catch (_) {}
     return true;
@@ -49672,7 +49969,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '  <input data-ccpx-vinco="' + idx + '" value="' + escAttr(val) + '" placeholder="V' + String(idx + 1) + '">'
         + '  <button type="button" data-ccpx-del-vinco="' + idx + '" title="Remover vinco">−</button>'
         + '</div>';
-    }).join('') + '<div class="ccpx-vinco-toolbar"><button type="button" data-ccpx-add-vinco="1">+ Adicionar Vinco</button></div>';
+    }).join('') + '<div class="ccpx-vinco-toolbar"><button type="button" data-ccpx-add-vinco="1" title="Adicionar Vinco">+ Adicionar Vinco</button></div>';
   }
   function compraCollectRowVincos(row) {
     return Array.prototype.slice.call((row || document).querySelectorAll('[data-ccpx-vinco]')).map(function(input) {
