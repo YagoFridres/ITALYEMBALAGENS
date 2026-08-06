@@ -21899,6 +21899,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       searchTerm: '',
       grouped: false,
       summaryCollapsed: false,
+      showAllMachines: false,
       rowsData: [],
       machineCatalog: [],
       loading: false,
@@ -22399,7 +22400,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     function currentVisibleRows() {
       return state.rowsData.filter(function(item) {
-        if (state.selectedMachine && item.maquina !== state.selectedMachine) return false;
+        if (!state.showAllMachines && state.selectedMachine && item.maquina !== state.selectedMachine) return false;
         if (state.selectedDateIso && item.prazoIso !== state.selectedDateIso) return false;
         if (state.searchTerm && String(item.searchText || '').indexOf(normText(state.searchTerm)) < 0) return false;
         return true;
@@ -22439,12 +22440,24 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-final-alert{padding:10px 14px;border-radius:12px;border:1px solid rgba(96,165,250,.28);background:rgba(15,23,42,.58);font-size:12px;font-weight:800;color:#dbeafe}'
         + '#page-ofmaq .ofmaq-final-alert[data-tone="warn"]{background:rgba(120,53,15,.22);border-color:rgba(251,191,36,.35);color:#fde68a}'
         + '#page-ofmaq .ofmaq-final-alert[data-tone="danger"]{background:rgba(127,29,29,.22);border-color:rgba(248,113,113,.35);color:#fecaca}'
-        + '#page-ofmaq .ofmaq-final-controls{display:grid;grid-template-columns:minmax(0,1.4fr) 240px minmax(260px,1fr) auto;gap:10px;align-items:center}'
+        + '#page-ofmaq .ofmaq-final-controls{display:grid;grid-template-columns:minmax(0,1.4fr) 240px auto minmax(260px,1fr) auto;gap:10px;align-items:center}'
         + '#page-ofmaq .ofmaq-final-days{display:flex;align-items:center;gap:8px;flex-wrap:wrap}'
         + '#page-ofmaq .ofmaq-final-root button,#page-ofmaq .ofmaq-final-root select,#page-ofmaq .ofmaq-final-root input{min-height:38px;border-radius:12px;border:1px solid rgba(71,85,105,.75);background:#0f172a;color:#f1f5f9;padding:8px 12px;font-weight:800}'
         + '#page-ofmaq .ofmaq-final-root input[type="search"]{width:100%}'
         + '#page-ofmaq .ofmaq-final-day-btn[data-active="1"]{background:#2563eb;border-color:#60a5fa;color:#eff6ff}'
         + '#page-ofmaq .ofmaq-final-day-btn[data-hot="1"]{box-shadow:inset 0 0 0 1px rgba(248,113,113,.38)}'
+        + '#page-ofmaq .ofmaq-final-machine-blocks{display:grid;gap:16px;margin-top:16px}'
+        + '#page-ofmaq .ofmaq-final-machine-block{display:grid;gap:10px;padding:14px 16px;border-radius:18px;background:linear-gradient(180deg,rgba(15,23,42,.96),rgba(15,23,42,.86));border:1px solid rgba(51,65,85,.75)}'
+        + '#page-ofmaq .ofmaq-final-machine-block-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}'
+        + '#page-ofmaq .ofmaq-final-machine-block-head h3{margin:0;font-size:18px;color:#f8fafc}'
+        + '#page-ofmaq .ofmaq-final-machine-block-pills{display:flex;gap:8px;flex-wrap:wrap}'
+        + '#page-ofmaq .ofmaq-final-machine-block-pills span{padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(30,41,59,.85);border:1px solid rgba(71,85,105,.55);color:#e2e8f0}'
+        + '#page-ofmaq .ofmaq-final-machine-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 18px;background:linear-gradient(90deg,rgba(30,64,175,.38),rgba(37,99,235,.18));border-bottom:1px solid rgba(59,130,246,.28)}'
+        + '#page-ofmaq .ofmaq-final-machine-header h3{margin:0;font-size:18px;line-height:1.15;font-weight:900;color:#eff6ff;letter-spacing:.01em}'
+        + '#page-ofmaq .ofmaq-final-machine-header small{display:block;margin-top:4px;color:#93c5fd;font-size:12px;font-weight:800;letter-spacing:.04em}'
+        + '#page-ofmaq .ofmaq-final-machine-stats{display:flex;align-items:center;gap:10px;flex-wrap:wrap}'
+        + '#page-ofmaq .ofmaq-final-machine-stat{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(15,23,42,.68);border:1px solid rgba(96,165,250,.22);font-size:11px;font-weight:900;color:#dbeafe;letter-spacing:.03em;text-transform:uppercase}'
+        + '#page-ofmaq .ofmaq-final-machine-stat b{color:#f8fafc;font-size:13px;letter-spacing:0}'
         + '#page-ofmaq .ofmaq-final-summary-shell{display:grid;gap:10px;margin-top:12px}'
         + '#page-ofmaq .ofmaq-final-summary-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}'
         + '#page-ofmaq .ofmaq-final-summary-title{font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#cbd5e1}'
@@ -22579,6 +22592,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '  <div class="ofmaq-final-controls">'
           + '    <div id="ofmaq-final-days" class="ofmaq-final-days"></div>'
           + '    <select id="ofmaq-final-machine"></select>'
+          + '    <button type="button" id="ofmaq-final-show-all">Ver Todas as Máquinas</button>'
           + '    <input id="ofmaq-final-search" type="search" placeholder="Buscar OF, cliente, produto, tamanho ou cor...">'
           + '    <button type="button" id="ofmaq-final-group">Agrupar Setup</button>'
           + '    <button type="button" id="ofmaq-final-report">Gerar Relatório</button>'
@@ -22602,6 +22616,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         alert: root.querySelector('#ofmaq-final-alert'),
         days: root.querySelector('#ofmaq-final-days'),
         machine: root.querySelector('#ofmaq-final-machine'),
+        showAll: root.querySelector('#ofmaq-final-show-all'),
         search: root.querySelector('#ofmaq-final-search'),
         group: root.querySelector('#ofmaq-final-group'),
         report: root.querySelector('#ofmaq-final-report'),
@@ -22673,7 +22688,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (!shell) return;
       hideLegacyViews();
       if (state.machineCatalog.length && state.machineCatalog.indexOf(state.selectedMachine) < 0) state.selectedMachine = state.machineCatalog[0];
-      var counts = countsByDay(state.selectedMachine);
+      var counts = state.showAllMachines ? countsByDay(null) : countsByDay(state.selectedMachine);
       shell.days.innerHTML = '<button type="button" data-week-shift="-7">◀</button>' + weekDays(state.weekStartIso).map(function(day) {
         var count = Number(counts[day.iso] || 0) || 0;
         return '<button type="button" class="ofmaq-final-day-btn" data-date="' + escAttr(day.iso) + '" data-hot="' + (count > 0 ? '1' : '0') + '" data-active="' + (state.selectedDateIso === day.iso ? '1' : '0') + '">' + escH(day.label + ' ' + fmtDayShort(day.iso) + ' (' + count + ')') + '</button>';
@@ -22681,6 +22696,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       shell.machine.innerHTML = state.machineCatalog.map(function(machine) {
         return '<option value="' + escAttr(machine) + '"' + (machine === state.selectedMachine ? ' selected' : '') + '>' + escH(machine) + '</option>';
       }).join('') || '<option value="">Sem máquina</option>';
+      shell.machine.disabled = !!state.showAllMachines;
+      shell.machine.style.opacity = state.showAllMachines ? '0.55' : '1';
+      shell.machine.style.pointerEvents = state.showAllMachines ? 'none' : 'auto';
+      if (shell.showAll) {
+        shell.showAll.textContent = state.showAllMachines ? '✓ Ver Todas Ativado' : 'Ver Todas as Máquinas';
+        shell.showAll.style.background = state.showAllMachines ? '#1d4ed8' : '';
+        shell.showAll.style.borderColor = state.showAllMachines ? '#3b82f6' : '';
+        shell.showAll.style.color = state.showAllMachines ? '#eff6ff' : '';
+      }
       if (shell.search.value !== String(state.searchTerm || '')) shell.search.value = String(state.searchTerm || '');
       shell.group.textContent = state.grouped ? 'Agrupado por Setup ✓' : 'Agrupar Setup';
       renderAlert(shell);
@@ -22714,12 +22738,77 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     }
 
     function renderRows(shell) {
-      if (!shell || !shell.tbody) return;
+      if (!shell) return;
       hideLegacyViews();
       purgeLegacyViews();
+      var rootEl = shell.root || getContainer();
+      if (!rootEl) return;
+      Array.prototype.slice.call(rootEl.querySelectorAll('.ofmaq-final-machine-blocks')).forEach(function(b) { try { b.remove(); } catch (_) {} });
+      var oldWrap = rootEl.querySelector('.ofmaq-final-table-wrap');
       var rows = sortedVisibleRows(currentVisibleRows());
-      shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="14" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
-      try { console.log('[OFMAQ-FINAL] maquina=', state.selectedMachine || '—', 'dia=', state.selectedDateIso || '—', 'rows=', rows.length, 'totalCanonico=', state.rowsData.length); } catch (_) {}
+      var theadFixed = '<thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Data de Entrega</th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead>';
+      if (!state.showAllMachines) {
+        if (!oldWrap) {
+          oldWrap = document.createElement('div');
+          oldWrap.className = 'ofmaq-final-table-wrap';
+          oldWrap.innerHTML = '<table class="ofmaq-final-table">' + theadFixed + '<tbody id="ofmaq-final-tbody"></tbody></table>';
+          var chipsEl = rootEl.querySelector('#ofmaq-final-redistribuicao, .ofmaq-final-redistribuicao');
+          if (chipsEl && chipsEl.parentNode) chipsEl.parentNode.insertBefore(oldWrap, chipsEl.nextSibling);
+          else rootEl.appendChild(oldWrap);
+        }
+        shell.tbody = oldWrap.querySelector('#ofmaq-final-tbody') || oldWrap.querySelector('tbody');
+        if (shell.tbody) shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="14" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
+      } else {
+        var grouped = {};
+        var order = [];
+        rows.forEach(function(row) {
+          var m = String(row.maquina || 'Sem máquina').trim();
+          if (!grouped[m]) { grouped[m] = []; order.push(m); }
+          grouped[m].push(row);
+        });
+        if (state.machineCatalog && state.machineCatalog.length) {
+          var orderedSet = {};
+          state.machineCatalog.forEach(function(m) { if (grouped[m]) orderedSet[m] = grouped[m]; });
+          order.forEach(function(m) { if (!orderedSet[m]) orderedSet[m] = grouped[m]; });
+          grouped = orderedSet;
+          order = Object.keys(orderedSet);
+        }
+        var blocks = document.createElement('div');
+        blocks.className = 'ofmaq-final-machine-blocks';
+        if (!order.length) {
+          blocks.innerHTML = '<div class="ofmaq-final-machine-block"><div class="ofmaq-final-machine-header"><div><h3>Sem dados</h3><small>Nenhuma OF encontrada para os filtros selecionados.</small></div></div><div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table">' + theadFixed + '<tbody><tr><td colspan="14" class="ofmaq-final-empty">Nenhuma OF encontrada.</td></tr></tbody></table></div></div>';
+        } else {
+          blocks.innerHTML = order.map(function(maq) {
+            var list = grouped[maq] || [];
+            var qtd = list.reduce(function(s, r) { return s + (Number(r.quantidade || 0) || 0); }, 0);
+            var tempo = list.reduce(function(s, r) { return s + (Number(r.tempoMin || 0) || 0); }, 0);
+            var urg = list.filter(function(r) { return r.urgencia === 'urgente'; }).length;
+            return ''
+              + '<section class="ofmaq-final-machine-block" data-maquina-bloco="' + escAttr(maq) + '">'
+              + '  <div class="ofmaq-final-machine-header">'
+              + '    <div><h3>' + escH(maq) + '</h3><small>Fila da máquina em ' + escH(fmtDateBR(state.selectedDateIso || state.weekStartIso) + ' · sequência ajustável por OF') + '</small></div>'
+              + '    <div class="ofmaq-final-machine-stats">'
+              + '      <span class="ofmaq-final-machine-stat">OFs: <b>' + escH(String(list.length)) + '</b></span>'
+              + '      <span class="ofmaq-final-machine-stat">Caixas: <b>' + escH(fmtInt(qtd)) + '</b></span>'
+              + '      <span class="ofmaq-final-machine-stat">Tempo: <b>' + escH(fmtTempo(tempo)) + '</b></span>'
+              + (urg > 0 ? '<span class="ofmaq-final-machine-stat" style="border-color:rgba(248,113,113,.38);color:#fecaca">Urgentes: <b style="color:#fff1f2">' + escH(String(urg)) + '</b></span>' : '')
+              + '    </div>'
+              + '  </div>'
+              + '  <div class="ofmaq-final-table-wrap">'
+              + '    <table class="ofmaq-final-table">' + theadFixed
+              + '      <tbody>' + (list.length ? list.map(rowHtml).join('') : '<tr><td colspan="14" class="ofmaq-final-empty">Sem OFs para esta máquina.</td></tr>') + '</tbody>'
+              + '    </table>'
+              + '  </div>'
+              + '</section>';
+          }).join('');
+        }
+        if (oldWrap) try { oldWrap.remove(); } catch (_) {}
+        var chipsEl2 = rootEl.querySelector('#ofmaq-final-redistribuicao, .ofmaq-final-redistribuicao');
+        if (chipsEl2 && chipsEl2.parentNode) chipsEl2.parentNode.insertBefore(blocks, chipsEl2.nextSibling);
+        else rootEl.appendChild(blocks);
+        shell.tbody = null;
+      }
+      try { console.log('[OFMAQ-FINAL] showAll=', !!state.showAllMachines, 'maquina=', state.selectedMachine || '—', 'dia=', state.selectedDateIso || '—', 'rows=', rows.length, 'totalCanonico=', state.rowsData.length); } catch (_) {}
     }
 
     function closeModal(id) {
@@ -23287,6 +23376,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           renderRows(shell);
           return;
         }
+        var showAllBtn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-show-all') : null;
+        if (showAllBtn) {
+          state.showAllMachines = !state.showAllMachines;
+          if (!state.showAllMachines && !state.selectedMachine && state.machineCatalog.length) state.selectedMachine = state.machineCatalog[0];
+          updateToolbar(shell);
+          renderRows(shell);
+          return;
+        }
         var groupBtn = ev && ev.target && ev.target.closest ? ev.target.closest('#ofmaq-final-group') : null;
         if (groupBtn) {
           state.grouped = !state.grouped;
@@ -23307,7 +23404,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               source: 'ofmaq',
               preferredPeriod: 'dia',
               referenceDate: state.selectedDateIso,
-              machines: state.selectedMachine ? [state.selectedMachine] : state.machineCatalog.slice()
+              machines: (state.showAllMachines || !state.selectedMachine) ? state.machineCatalog.slice() : [state.selectedMachine]
             });
           } else {
             try { window.toast('Relatório de máquinas ainda não inicializado.', 'var(--yellow)'); } catch (_) {}
