@@ -5529,6 +5529,56 @@ window._compraPapelaoGetGramaturasNomes = async function() {
     return [];
   }
 };
+window._compraPapelaoGetClientesLista = async function() {
+  try {
+    if (typeof window.carregarClientes === 'function') {
+      try { await window.carregarClientes(); } catch (_) {}
+    }
+  } catch (_) {}
+  var raw = null;
+  try { if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) raw = CLIENTES; } catch (_) {}
+  if (!raw) try { if (Array.isArray(window.CLIENTES)) raw = window.CLIENTES; } catch (_) {}
+  if (!raw) try { if (Array.isArray(window.clientes)) raw = window.clientes; } catch (_) {}
+  if (!raw) try { if (Array.isArray(window._CLIENTES)) raw = window._CLIENTES; } catch (_) {}
+  if (!raw) {
+    try {
+      var j = await window._compraPapelaoApi('/api/clientes?limit=2000&order=created_at&dir=desc', { method: 'GET' });
+      raw = Array.isArray(j) ? j : ((j && (j.data || j.clientes)) || []);
+    } catch (_) { raw = []; }
+  }
+  var nomes = [];
+  var seen = {};
+  (Array.isArray(raw) ? raw : []).forEach(function(c) {
+    var n = String(c && (c.nome || c.nome_fantasia || c.razao_social || c.descricao || '') || '').trim();
+    if (!n) return;
+    var key = n.toLowerCase();
+    if (seen[key]) return;
+    seen[key] = true;
+    nomes.push(n);
+  });
+  nomes.sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); });
+  return { lista: raw || [], nomes: nomes };
+};
+window._compraPapelaoLookupClientePorNome = function(rawName) {
+  var nome = String(rawName || '').trim();
+  if (!nome) return null;
+  var key = nome.toLowerCase();
+  try {
+    if (window._compraPapelaoClientesLookup && window._compraPapelaoClientesLookup[key]) return window._compraPapelaoClientesLookup[key] || null;
+  } catch (_) {}
+  var raw = null;
+  try { if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) raw = CLIENTES; } catch (_) {}
+  if (!raw) try { if (Array.isArray(window.CLIENTES)) raw = window.CLIENTES; } catch (_) {}
+  if (!raw) try { if (Array.isArray(window.clientes)) raw = window.clientes; } catch (_) {}
+  if (!raw) try { if (Array.isArray(window._CLIENTES)) raw = window._CLIENTES; } catch (_) {}
+  var list = Array.isArray(raw) ? raw : [];
+  for (var i = 0; i < list.length; i += 1) {
+    var row = list[i];
+    var n = String(row && (row.nome || row.nome_fantasia || row.razao_social || row.descricao || '') || '').trim();
+    if (n.toLowerCase() === key) return row || null;
+  }
+  return null;
+};
 window._compraPapelaoEnsureDatalists = async function(scope) {
   var host = scope || document.body;
   if (!host) return;
@@ -5545,6 +5595,25 @@ window._compraPapelaoEnsureDatalists = async function(scope) {
       var nomes = await window._compraPapelaoGetGramaturasNomes();
       dlPo.innerHTML = nomes.map(function(n) { return '<option value="' + window._compraPapelaoAttr(n) + '">'; }).join('');
       dlPo.setAttribute('data-ccpx-loaded', '1');
+    }
+    var dlCli = document.getElementById('ccpx-ped-cliente-datalist');
+    if (!dlCli) {
+      dlCli = document.createElement('datalist');
+      dlCli.id = 'ccpx-ped-cliente-datalist';
+      document.body.appendChild(dlCli);
+    }
+    if (!dlCli.getAttribute('data-ccpx-loaded')) {
+      var res = await window._compraPapelaoGetClientesLista();
+      dlCli.innerHTML = res.nomes.map(function(n) { return '<option value="' + window._compraPapelaoAttr(n) + '">'; }).join('');
+      try {
+        window._compraPapelaoClientesLookup = {};
+        (res.lista || []).forEach(function(c) {
+          var n = String(c && (c.nome || c.nome_fantasia || c.razao_social || c.descricao || '') || '').trim();
+          if (!n) return;
+          window._compraPapelaoClientesLookup[n.toLowerCase()] = c;
+        });
+      } catch (_) {}
+      dlCli.setAttribute('data-ccpx-loaded', '1');
     }
   } catch (_) {}
 };
@@ -6311,8 +6380,11 @@ window._compraPapelaoRenderPage = async function() {
 };
 window._compraPapelaoCollectModalRows = function(overlay) {
   return Array.prototype.slice.call(overlay.querySelectorAll('#ccpx-modal-items-body [data-ccpx-item-row]')).map(function(row) {
+    var pedClienteNome = String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim();
+    var clienteRef = pedClienteNome ? window._compraPapelaoLookupClientePorNome(pedClienteNome) : null;
     var item = {
-      ped_cliente: String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim(),
+      ped_cliente: pedClienteNome,
+      ped_cliente_id: String(clienteRef && clienteRef.id || ''),
       data_entrega: String((row.querySelector('[data-field="data_entrega"]') || {}).value || '').trim(),
       po: String((row.querySelector('[data-field="po"]') || {}).value || '').trim(),
       largura: String((row.querySelector('[data-field="largura"]') || {}).value || '').trim(),
@@ -6352,7 +6424,7 @@ window._compraPapelaoRenderModalRowsHtml = function(itens, minRows) {
       + '<div class="ccpx-item-sheet-row" data-ccpx-item-row="' + idx + '">'
       + '  <div class="ccpx-item-sheet-index"><div class="eyebrow">Item</div><div class="title">' + window._compraPapelaoEsc(String(idx + 1)) + '</div></div>'
       + '  <div class="ccpx-item-sheet-grid">'
-      + '    <div class="ccpx-item-field span-4"><label>Pedido Cliente</label><input data-field="ped_cliente" value="' + window._compraPapelaoAttr(item && item.ped_cliente || '') + '"></div>'
+      + '    <div class="ccpx-item-field span-4"><label>Pedido Cliente</label><input data-field="ped_cliente" list="ccpx-ped-cliente-datalist" autocomplete="off" value="' + window._compraPapelaoAttr(item && item.ped_cliente || '') + '"></div>'
       + '    <div class="ccpx-item-field span-3"><label>Entrega</label><input data-field="data_entrega" type="date" value="' + window._compraPapelaoAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></div>'
       + '    <div class="ccpx-item-field span-3"><label>PO</label><input data-field="po" list="ccpx-po-gramatura-datalist" autocomplete="off" value="' + window._compraPapelaoAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></div>'
       + '    <div class="ccpx-item-field span-2"><label>L</label><input data-field="largura" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.largura || '') + '" placeholder="L"></div>'
@@ -6549,8 +6621,7 @@ window._compraPapelaoComposeEmailData = function(payload, compra) {
   var linhas = itens.map(function(item, idx) {
     var d = window._compraPapelaoDeriveItem(item);
     return [
-      (idx + 1) + '. Pedido Cliente: ' + (String(item && item.ped_cliente || '').trim() || '—'),
-      '   Entrega: ' + (item && item.data_entrega ? window._compraPapelaoFmtDate(item.data_entrega) : '—'),
+      (idx + 1) + '. Entrega: ' + (item && item.data_entrega ? window._compraPapelaoFmtDate(item.data_entrega) : '—'),
       '   PO: ' + (String(item && item.po || item && item.nomenclatura || '').trim() || '—'),
       '   Medidas: ' + window._compraPapelaoFmtNum(item && item.largura || 0, 0) + ' x ' + window._compraPapelaoFmtNum(item && item.comprimento || 0, 0) + ' mm',
       '   Vincos: ' + (String(item && item.vincos || '').trim() || '—'),
@@ -6624,7 +6695,6 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     return ''
       + '<tr>'
       + '<td>' + window._compraPapelaoEsc(String(item && item.seq != null ? item.seq : (idx + 1))) + '</td>'
-      + '<td>' + window._compraPapelaoEsc(String(item && item.ped_cliente || '—')) + '</td>'
       + '<td>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(item && item.data_entrega || '')) + '</td>'
       + '<td>' + window._compraPapelaoEsc(String(item && item.po || item && item.nomenclatura || '—')) + '</td>'
       + '<td>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.largura || 0, 0)) + ' × ' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.comprimento || 0, 0)) + '</td>'
@@ -6670,8 +6740,8 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     + '<div class="topline"><div><div class="brand">' + window._compraPapelaoEsc(empresa || 'Italy Embalagens') + '</div><div class="title">PEDIDO DE CHAPAS — ' + window._compraPapelaoEsc(data.fornecedor || 'FORNECEDOR') + '</div><div class="subtitle">Gerado em ' + window._compraPapelaoEsc(typeof window._printGeradoEmBr === 'function' ? window._printGeradoEmBr() : new Date().toLocaleString('pt-BR')) + '</div></div>'
     + '<div class="box"><table><tr><td class="label">Pedido</td><td>' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(data.numero_compra)) + '</td></tr><tr><td class="label">Data</td><td>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(data.data_compra || window._compraPapelaoTodayIso())) + '</td></tr><tr><td class="label">Fornecedor</td><td>' + window._compraPapelaoEsc(data.fornecedor || '—') + '</td></tr></table></div></div>'
     + '<div class="meta"><div class="meta-card"><div class="label">Ped. Fornecedor</div><div class="value">' + window._compraPapelaoEsc(data.ped_fornecedor || '—') + '</div></div><div class="meta-card"><div class="label">Fornecedor</div><div class="value">' + window._compraPapelaoEsc(data.fornecedor || '—') + '</div></div><div class="meta-card"><div class="label">Data</div><div class="value">' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(data.data_compra || window._compraPapelaoTodayIso())) + '</div></div><div class="meta-card"><div class="label">Observação Geral</div><div class="value">' + window._compraPapelaoEsc(data.observacao || '—') + '</div></div></div>'
-    + '<table class="planilha"><thead><tr><th style="width:36px">#</th><th style="width:120px">Pedido Cliente</th><th style="width:92px">Entrega</th><th style="width:82px">PO</th><th style="width:108px">Medidas L × C</th><th style="width:98px">Vincos</th><th style="width:64px">Qtde</th><th style="width:76px">Lote Mínimo</th><th style="width:88px">Área Pedido</th><th style="width:88px">Valor m²</th><th style="width:88px">Valor p/mil</th><th style="width:92px">Valor Total</th><th>Obs</th><th style="width:110px">Ped. Fornecedor</th></tr></thead><tbody>'
-    + (rowsHtml || '<tr><td colspan="14">Nenhum item informado.</td></tr>')
+    + '<table class="planilha"><thead><tr><th style="width:36px">#</th><th style="width:92px">Entrega</th><th style="width:82px">PO</th><th style="width:108px">Medidas L × C</th><th style="width:98px">Vincos</th><th style="width:64px">Qtde</th><th style="width:76px">Lote Mínimo</th><th style="width:88px">Área Pedido</th><th style="width:88px">Valor m²</th><th style="width:88px">Valor p/mil</th><th style="width:92px">Valor Total</th><th>Obs</th><th style="width:110px">Ped. Fornecedor</th></tr></thead><tbody>'
+    + (rowsHtml || '<tr><td colspan="13">Nenhum item informado.</td></tr>')
     + '</tbody></table>'
     + '<div class="totais"><div class="total-chip"><div class="label">Quantidade Total</div><div class="value">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.qtd, 0)) + '</div></div><div class="total-chip"><div class="label">Área Total</div><div class="value">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.area, 4)) + ' m²</div></div><div class="total-chip"><div class="label">Valor Total</div><div class="value">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(totals.valor)) + '</div></div></div>'
     + '<div><div class="brand">Observações</div><div class="obs">' + window._compraPapelaoEsc(data.observacao || 'Sem observações.') + '</div></div>'
@@ -8365,11 +8435,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
         cEsc(String(compra && compra.pasta_id || 'Sem pasta'))
       ]],
       detailTitle: 'Itens da compra',
-      detailHeaders: ['Ped. cliente', 'Nomenclatura', 'Largura', 'Comprimento', 'Quantidade', 'Valor/m²', 'Área m²', 'Valor total', 'R$/mil'],
+      detailHeaders: ['Nomenclatura', 'Largura', 'Comprimento', 'Quantidade', 'Valor/m²', 'Área m²', 'Valor total', 'R$/mil'],
       detailRows: (Array.isArray(compra && compra.itens) ? compra.itens : []).map(function(item) {
         var d = cItemDerived(item);
         return [
-          cEsc(String(item && item.ped_cliente || '—')),
           cEsc(String(item && item.nomenclatura || '—')),
           cEsc(cFmtNum(item && item.largura || 0, 0)),
           cEsc(cFmtNum(item && item.comprimento || 0, 0)),
@@ -8381,7 +8450,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
         ];
       }),
       emptySummaryCols: 3,
-      emptyDetailCols: 9
+      emptyDetailCols: 8
     });
   }
   async function cImprimirCompra(id) {
@@ -50151,7 +50220,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '<div class="ccpx-item-sheet-row" data-ccpx-item-row="' + idx + '">'
         + '  <div class="ccpx-item-sheet-index"><div class="eyebrow">Item</div><div class="title">' + escHtml(String(idx + 1)) + '</div></div>'
         + '  <div class="ccpx-item-sheet-grid">'
-        + '    <div class="ccpx-item-field span-6"><label>Pedido Cliente</label><input data-field="ped_cliente" value="' + escAttr(item && item.ped_cliente || '') + '"></div>'
+        + '    <div class="ccpx-item-field span-6"><label>Pedido Cliente</label><input data-field="ped_cliente" list="ccpx-ped-cliente-datalist" autocomplete="off" value="' + escAttr(item && item.ped_cliente || '') + '"></div>'
         + '    <div class="ccpx-item-field span-3"><label>Entrega</label><input data-field="data_entrega" type="date" value="' + escAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></div>'
         + '    <div class="ccpx-item-field span-3"><label>PO</label><input data-field="po" list="ccpx-po-gramatura-datalist" autocomplete="off" value="' + escAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></div>'
         + '    <div class="ccpx-item-field span-2"><label>L</label><input data-field="largura" type="number" min="0" step="0.01" value="' + escAttr(item && item.largura || '') + '" placeholder="L"></div>'
@@ -50177,8 +50246,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   window._compraPapelaoCollectModalRows = function(overlay) {
     return Array.prototype.slice.call(overlay.querySelectorAll('#ccpx-modal-items-body [data-ccpx-item-row]')).map(function(row) {
       var vincosLista = compraCollectRowVincos(row);
+      var pedClienteNome = String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim();
+      var clienteRef = pedClienteNome ? window._compraPapelaoLookupClientePorNome(pedClienteNome) : null;
       var item = {
-        ped_cliente: String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim(),
+        ped_cliente: pedClienteNome,
+        ped_cliente_id: String(clienteRef && clienteRef.id || ''),
         data_entrega: String((row.querySelector('[data-field="data_entrega"]') || {}).value || '').trim(),
         po: String((row.querySelector('[data-field="po"]') || {}).value || '').trim(),
         largura: String((row.querySelector('[data-field="largura"]') || {}).value || '').trim(),
