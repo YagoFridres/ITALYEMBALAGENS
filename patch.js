@@ -35663,6 +35663,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function ensureBtnVerTodos() {
     try {
+      if (true) return;
       var bar = document.querySelector('#page-clientes .ptoolbar');
       if (!bar) return;
       if (document.getElementById('patch-cli-ver-todos')) return;
@@ -35724,6 +35725,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function ensureClientesQuickFiltersNoTopo() {
     try {
+      if (true) return;
       var toolbar = document.querySelector('#page-clientes .ptoolbar');
       var widget = document.querySelector('#page-clientes #widget-analise-clientes > div:first-child');
       if (!toolbar || !widget) return;
@@ -36336,6 +36338,23 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function tick() {
+    try {
+      (function patchClientesSimplificarBarra() {
+        try {
+          if (!document.getElementById('patch-clientes-simplificado-style')) {
+            var st = document.createElement('style');
+            st.id = 'patch-clientes-simplificado-style';
+            st.textContent =
+              '#page-clientes .ptoolbar #patch-cli-ver-todos{display:none!important;visibility:hidden!important;width:0!important;height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important}' +
+              '#page-clientes .ptoolbar #patch-cli-quick-filters{display:none!important;visibility:hidden!important;width:0!important;height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important}' +
+              '#page-clientes #cli-busca{display:block!important;visibility:visible!important;width:100%!important;min-width:220px!important}';
+            document.head.appendChild(st);
+          }
+          try { var vt = document.getElementById('patch-cli-ver-todos'); if (vt && vt.parentNode) vt.parentNode.removeChild(vt); } catch (_) {}
+          try { var qf = document.getElementById('patch-cli-quick-filters'); if (qf && qf.parentNode) qf.parentNode.removeChild(qf); } catch (_) {}
+        } catch (_) {}
+      })();
+    } catch (_) {}
     try { injectCss(); } catch (_) {}
     try { patchClickSalvar(); } catch (_) {}
     try { syncClienteRamoModalNativo(); } catch (_) {}
