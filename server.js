@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -12042,7 +12042,7 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
           .select('*')
           .eq(col, clienteId)
           .order('created_at', { ascending: false })
-          .limit(200);
+          .limit(1000);
         if (empresa_id) {
           try { q = q.eq('empresa_id', empresa_id); } catch (_) {}
         }
@@ -12059,7 +12059,7 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
           .select('*')
           .ilike(col, pattern)
           .order('created_at', { ascending: false })
-          .limit(200);
+          .limit(1000);
         if (empresa_id) {
           try { q = q.eq('empresa_id', empresa_id); } catch (_) {}
         }
@@ -12068,6 +12068,18 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
         return { data: null, error: e };
       }
     };
+
+    function ofId(o) {
+      if (o == null) return JSON.stringify(null);
+      try {
+        if (o.id != null) return String(o.id);
+        if (o.of_id != null) return String(o.of_id);
+        if (o.codigo != null) return String(o.codigo);
+        if (o.numero != null) return String(o.numero);
+        if (o.n_of != null) return String(o.n_of);
+      } catch (_) {}
+      try { return JSON.stringify(o || null); } catch (_) { return String(o || ''); }
+    }
 
     let cliente = null;
     try {
@@ -12079,44 +12091,72 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
       if (!rc?.error) cliente = rc?.data || null;
     } catch (_) {}
 
-    let ofs = null;
+    const mergedMap = new Map();
     let lastErr = null;
+
     for (const col of ['cli_id', 'cliId', 'cliente_id']) {
       const { data, error } = await tryQueryEq(col);
-      if (!error) { ofs = data || []; lastErr = null; break; }
-      lastErr = error;
-      if (isMissingColumnErr(error)) continue;
-      throw error;
-    }
-    if (lastErr && ofs == null) throw lastErr;
-    let todas = Array.isArray(ofs) ? ofs : [];
-
-    if (todas.length === 0) {
-      for (const col of ['cli_id', 'cliId', 'cliente_id']) {
-        const { data, error } = await tryQueryIlike(col, clienteId);
-        if (!error) { todas = Array.isArray(data) ? data : []; lastErr = null; break; }
+      if (!error) {
+        lastErr = null;
+        const arr = Array.isArray(data) ? data : [];
+        for (const o of arr) {
+          try { mergedMap.set(ofId(o), o); } catch (_) {}
+        }
+      } else {
         lastErr = error;
         if (isMissingColumnErr(error)) continue;
         throw error;
       }
     }
 
-    if (todas.length === 0 && cliente) {
-      const nomeClienteRaw = String(cliente?.nome || cliente?.rs || cliente?.razao_social || cliente?.razao || cliente?.cliente_nome || '').trim();
-      const nomeCliente = nomeClienteRaw.replace(/\s+/g, ' ').trim();
-      if (nomeCliente && nomeCliente.length >= 4) {
-        const pattern = '%' + nomeCliente + '%';
-        for (const col of ['cliente', 'cli_nome', 'cliente_nome', 'cliNome']) {
-          const { data, error } = await tryQueryIlike(col, pattern);
-          if (!error) {
-            const arr = Array.isArray(data) ? data : [];
-            if (arr.length) { todas = arr; break; }
-          } else {
-            if (isMissingColumnErr(error)) continue;
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const clientePareceUuid = clienteId && UUID_RE.test(String(clienteId || '').trim());
+    if (!clientePareceUuid) {
+      for (const col of ['cli_id', 'cliId', 'cliente_id']) {
+        const { data, error } = await tryQueryIlike(col, clienteId);
+        if (!error) {
+          lastErr = null;
+          const arr = Array.isArray(data) ? data : [];
+          for (const o of arr) {
+            try { mergedMap.set(ofId(o), o); } catch (_) {}
           }
+        } else {
+          lastErr = error;
+          if (isMissingColumnErr(error)) continue;
+          throw error;
         }
       }
     }
+
+    const nomeClienteRaw = cliente
+      ? String(cliente?.nome || cliente?.rs || cliente?.razao_social || cliente?.razao || cliente?.cliente_nome || '').trim()
+      : '';
+    const nomeCliente = nomeClienteRaw.replace(/\s+/g, ' ').trim();
+    if (nomeCliente && nomeCliente.length >= 3) {
+      const pattern = '%' + nomeCliente + '%';
+      for (const col of ['cliente', 'cli_nome', 'cliente_nome', 'cliNome']) {
+        const { data, error } = await tryQueryIlike(col, pattern);
+        if (!error) {
+          lastErr = null;
+          const arr = Array.isArray(data) ? data : [];
+          for (const o of arr) {
+            try { mergedMap.set(ofId(o), o); } catch (_) {}
+          }
+        } else {
+          if (isMissingColumnErr(error)) continue;
+          lastErr = error;
+        }
+      }
+    }
+
+    let todas = Array.from(mergedMap.values()).sort((a, b) => {
+      try {
+        const ta = a?.created_at?.time ? a.created_at.time : (new Date(String(a?.created_at || 0)).getTime() || 0);
+        const tb = b?.created_at?.time ? b.created_at.time : (new Date(String(b?.created_at || 0)).getTime() || 0);
+        return tb - ta;
+      } catch (_) { return 0; }
+    });
+    if (lastErr && todas.length === 0) throw lastErr;
 
     const norm = (s) => {
       let v = String(s || '').trim().toLowerCase();
