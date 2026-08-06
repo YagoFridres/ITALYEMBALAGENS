@@ -12499,7 +12499,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       valorProducao += vlr;
       var qtd = Number(row && (row.qtd_produzida != null ? row.qtd_produzida : (row.quantidade != null ? row.quantidade : (row.caixas_produzidas != null ? row.caixas_produzidas : _histPassagemQuantidade(row)))) || 0) || 0;
       caixas += qtd;
-      var coresArr = _histParseCoresResumo(row && (row.cores || row.cor || row.especificacao_cores));
+      var coresArr = _histParseCoresResumo(row && (row.cor_impressao || row.cores_impressao || row.cores_of || row.especificacao_cores || row.impressao || row.tinta || row.cores || row.cor || row.especificacao));
       coresArr.forEach(function(c) {
         var key = String(c || '').trim().toUpperCase();
         if (!key) return;
