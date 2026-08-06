@@ -5499,6 +5499,55 @@ window._compraPapelaoGetFornecedores = async function(force) {
     return [];
   }
 };
+window._compraPapelaoGetGramaturasNomes = async function() {
+  try {
+    if (window._compraPapelaoGramaturasCache && Array.isArray(window._compraPapelaoGramaturasCache)) {
+      return window._compraPapelaoGramaturasCache.slice();
+    }
+  } catch (_) {}
+  try {
+    await window._compraPapelaoApi('/api/gramaturas/init', { method: 'POST' }).catch(function() { return null; });
+  } catch (_) {}
+  try {
+    var j = await window._compraPapelaoApi('/api/gramaturas', { method: 'GET' });
+    var lista = Array.isArray(j) ? j : ((j && (j.data || j.gramaturas)) || []);
+    var nomes = [];
+    var seen = {};
+    (Array.isArray(lista) ? lista : []).forEach(function(src) {
+      var item = src || {};
+      var nome = String(item.nome || item.descricao || item.codigo || '').trim();
+      if (!nome) return;
+      var key = nome.toLowerCase();
+      if (seen[key]) return;
+      seen[key] = true;
+      nomes.push(nome);
+    });
+    nomes.sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); });
+    try { window._compraPapelaoGramaturasCache = nomes.slice(); } catch (_) {}
+    return nomes;
+  } catch (_) {
+    return [];
+  }
+};
+window._compraPapelaoEnsureDatalists = async function(scope) {
+  var host = scope || document.body;
+  if (!host) return;
+  try {
+    var hostEl = typeof host === 'string' ? (document.getElementById(host) || document.querySelector(host)) : host;
+    if (!hostEl) hostEl = document.body;
+    var dlPo = document.getElementById('ccpx-po-gramatura-datalist');
+    if (!dlPo) {
+      dlPo = document.createElement('datalist');
+      dlPo.id = 'ccpx-po-gramatura-datalist';
+      document.body.appendChild(dlPo);
+    }
+    if (!dlPo.getAttribute('data-ccpx-loaded')) {
+      var nomes = await window._compraPapelaoGetGramaturasNomes();
+      dlPo.innerHTML = nomes.map(function(n) { return '<option value="' + window._compraPapelaoAttr(n) + '">'; }).join('');
+      dlPo.setAttribute('data-ccpx-loaded', '1');
+    }
+  } catch (_) {}
+};
 window._compraPapelaoFindFornecedor = function(rawName) {
   var nome = String(rawName || '').trim().toLowerCase();
   if (!nome) return null;
@@ -6305,7 +6354,7 @@ window._compraPapelaoRenderModalRowsHtml = function(itens, minRows) {
       + '  <div class="ccpx-item-sheet-grid">'
       + '    <div class="ccpx-item-field span-4"><label>Pedido Cliente</label><input data-field="ped_cliente" value="' + window._compraPapelaoAttr(item && item.ped_cliente || '') + '"></div>'
       + '    <div class="ccpx-item-field span-3"><label>Entrega</label><input data-field="data_entrega" type="date" value="' + window._compraPapelaoAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></div>'
-      + '    <div class="ccpx-item-field span-3"><label>PO</label><input data-field="po" value="' + window._compraPapelaoAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></div>'
+      + '    <div class="ccpx-item-field span-3"><label>PO</label><input data-field="po" list="ccpx-po-gramatura-datalist" autocomplete="off" value="' + window._compraPapelaoAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></div>'
       + '    <div class="ccpx-item-field span-2"><label>L</label><input data-field="largura" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.largura || '') + '" placeholder="L"></div>'
       + '    <div class="ccpx-item-field sep span-1"><span>×</span></div>'
       + '    <div class="ccpx-item-field span-2"><label>C</label><input data-field="comprimento" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.comprimento || '') + '" placeholder="C"></div>'
@@ -6739,6 +6788,7 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
     window._compraPapelaoForceFullscreenShell(overlay);
     try { document.body.style.overflow = 'hidden'; } catch (_) {}
     if (!overlay) return;
+    window._compraPapelaoEnsureDatalists(overlay).catch(function() {});
     window._compraPapelaoRefreshModalComputed(overlay);
     var closeBtn = overlay.querySelector('#ccpx-close-compra');
     var cancelBtn = overlay.querySelector('#ccpx-cancel-compra');
@@ -6759,6 +6809,7 @@ window._compraPapelaoOpenCompraModal = async function(compraId) {
       if (!tbody) return;
       var visibleRows = Math.max(1, Math.trunc(window._compraPapelaoNum(overlay.dataset.ccpxVisibleRows || 5)) || 1);
       tbody.innerHTML = window._compraPapelaoRenderModalRowsHtml(items, visibleRows);
+      window._compraPapelaoEnsureDatalists(overlay).catch(function() {});
       window._compraPapelaoRefreshModalComputed(overlay);
       window._compraPapelaoSyncFornecedorDependentUi(overlay);
     };
@@ -50102,7 +50153,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         + '  <div class="ccpx-item-sheet-grid">'
         + '    <div class="ccpx-item-field span-6"><label>Pedido Cliente</label><input data-field="ped_cliente" value="' + escAttr(item && item.ped_cliente || '') + '"></div>'
         + '    <div class="ccpx-item-field span-3"><label>Entrega</label><input data-field="data_entrega" type="date" value="' + escAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></div>'
-        + '    <div class="ccpx-item-field span-3"><label>PO</label><input data-field="po" value="' + escAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></div>'
+        + '    <div class="ccpx-item-field span-3"><label>PO</label><input data-field="po" list="ccpx-po-gramatura-datalist" autocomplete="off" value="' + escAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></div>'
         + '    <div class="ccpx-item-field span-2"><label>L</label><input data-field="largura" type="number" min="0" step="0.01" value="' + escAttr(item && item.largura || '') + '" placeholder="L"></div>'
         + '    <div class="ccpx-item-field sep span-1"><span>×</span></div>'
         + '    <div class="ccpx-item-field span-2"><label>C</label><input data-field="comprimento" type="number" min="0" step="0.01" value="' + escAttr(item && item.comprimento || '') + '" placeholder="C"></div>'
@@ -50216,6 +50267,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         if (overlay) {
           bindCompraVincoActions(overlay);
           bindCompraRealtimeInputs(overlay);
+          try { window._compraPapelaoEnsureDatalists(overlay).catch(function() {}); } catch (_) {}
           if (typeof window._compraPapelaoRefreshModalComputed === 'function') window._compraPapelaoRefreshModalComputed(overlay);
         }
       } catch (_) {}
