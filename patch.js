@@ -11204,6 +11204,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
               if (r === 'cidades')  { try { renderCidadesPage(); return; } catch (_) {} }
               if (r === 'estados')  { try { renderEstadosPage(); return; } catch (_) {} }
               if (r === 'ramos')    { try { renderRamosPage();   return; } catch (_) {} }
+              if (r === 'mapa-clientes' || r === 'mapaclientes' || r === 'mapa') { try { if (typeof renderMapaClientes === 'function') renderMapaClientes(); return; } catch (_) {} }
               return _origGo.apply(this, arguments);
             };
             window.go.__cadAuxPatched = true;
@@ -11224,6 +11225,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
               if (r === 'cidades') return renderCidadesPage();
               if (r === 'estados') return renderEstadosPage();
               if (r === 'ramos')   return renderRamosPage();
+              if (r === 'mapa-clientes' || r === 'mapaclientes' || r === 'mapa') { try { if (typeof renderMapaClientes === 'function') renderMapaClientes(); return; } catch (_) {} }
               _cad_showOnlyPage(r);
             };
           }
@@ -11259,6 +11261,333 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         }
       } catch (_) {}
   } catch (_) {}
+
+  (function _p11MapaClientesEFormSelects() {
+    try {
+      if (window.__p11MapaInstalled) { try { if (typeof window._patchCliFormularioSelects === 'function') window._patchCliFormularioSelects(); } catch (_) {} return; }
+      window.__p11MapaInstalled = true;
+
+      function _p11Esc(s) { try { return window.escH ? window.escH(s) : String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); } catch(_) { return String(s == null ? '' : s); } }
+      function _p11UfUpper(s) { return String(s || '').toUpperCase().replace(/[^A-Z]/g,'').slice(0,2); }
+
+      function renderMapaClientes() {
+        try {
+          var root = document.getElementById('page-mapa-clientes') || document.getElementById('page-mapa') || null;
+          if (!root) {
+            var q = document.querySelector('[id^="page-mapa"]');
+            if (!q) {
+              var host = document.querySelector('#pages, .pages, main, #app, [data-pages]');
+              if (!host) return;
+              root = document.createElement('div');
+              root.id = 'page-mapa-clientes';
+              root.className = 'page';
+              try { host.appendChild(root); } catch (_) {}
+            } else {
+              root = q;
+            }
+          }
+          document.querySelectorAll('[id^="page-"]').forEach(function(p){ try { p.classList.remove('active'); } catch(_) {} });
+          try { root.classList.add('active'); } catch (_) {}
+          try { location.hash = 'mapa-clientes'; } catch (_) {}
+
+          var nEst = 0, nCid = 0, nRam = 0;
+          try { nEst = Array.isArray(window.loadEstados) ? (window.loadEstados() || []).length : 0; } catch (_) {}
+          try { nCid = Array.isArray(window.loadCidades) ? (window.loadCidades() || []).length : 0; } catch (_) {}
+          try { nRam = Array.isArray(window.loadRamos) ? (window.loadRamos() || []).length : 0; } catch (_) {}
+
+          root.innerHTML = ''
+            + '<div class="pep-wrap" style="max-width:1280px;margin:0 auto;padding:18px">'
+            + '  <div class="pep-head" style="margin-bottom:16px"><div>'
+            + '    <div class="pep-title" style="font-size:22px">🗺️ Mapa de Clientes — Cadastros Auxiliares</div>'
+            + '    <div class="pep-sub">Cadastre e gerencie Estados, Cidades e Ramos de atividade usados em todo o ERP (Clientes, OFs, Entregas).</div>'
+            + '  </div><div style="display:flex;gap:8px;flex-wrap:wrap">'
+            + '    <button class="pep-btn" id="p11-voltar-clientes">← Voltar para Clientes</button>'
+            + '  </div></div>'
+            + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px">'
+            + '    <div style="border-radius:18px;border:1px solid rgba(148,163,184,.16);background:linear-gradient(135deg,rgba(37,99,235,.22),rgba(59,130,246,.08));padding:18px;cursor:pointer" data-p11-goto="estados">'
+            + '      <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:30px">🗺️</div><div style="font-size:22px;font-weight:900;color:#e2e8f0">' + nEst + '</div></div>'
+            + '      <div style="font-weight:900;font-size:16px;color:#f8fafc;margin-top:8px">Estados</div>'
+            + '      <div style="font-size:12px;color:#cbd5e1;margin-top:4px">Cadastro de UF, nome e alíquotas ICMS.</div>'
+            + '      <div style="margin-top:14px"><button class="pep-btn primary" style="width:100%">Abrir cadastro →</button></div>'
+            + '    </div>'
+            + '    <div style="border-radius:18px;border:1px solid rgba(148,163,184,.16);background:linear-gradient(135deg,rgba(14,165,233,.22),rgba(56,189,248,.08));padding:18px;cursor:pointer" data-p11-goto="cidades">'
+            + '      <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:30px">🏙️</div><div style="font-size:22px;font-weight:900;color:#e2e8f0">' + nCid + '</div></div>'
+            + '      <div style="font-weight:900;font-size:16px;color:#f8fafc;margin-top:8px">Cidades</div>'
+            + '      <div style="font-size:12px;color:#cbd5e1;margin-top:4px">Vinculadas a um Estado; usadas em clientes e rotas.</div>'
+            + '      <div style="margin-top:14px"><button class="pep-btn primary" style="width:100%">Abrir cadastro →</button></div>'
+            + '    </div>'
+            + '    <div style="border-radius:18px;border:1px solid rgba(148,163,184,.16);background:linear-gradient(135deg,rgba(168,85,247,.22),rgba(192,132,252,.08));padding:18px;cursor:pointer" data-p11-goto="ramos">'
+            + '      <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:30px">🏷️</div><div style="font-size:22px;font-weight:900;color:#e2e8f0">' + nRam + '</div></div>'
+            + '      <div style="font-weight:900;font-size:16px;color:#f8fafc;margin-top:8px">Ramos de Atividade</div>'
+            + '      <div style="font-size:12px;color:#cbd5e1;margin-top:4px">Classificação dos clientes (Alimentos, Farmácia, etc.).</div>'
+            + '      <div style="margin-top:14px"><button class="pep-btn primary" style="width:100%">Abrir cadastro →</button></div>'
+            + '    </div>'
+            + '  </div>'
+            + '  <div class="pep-panel" style="padding:16px 18px;border-radius:18px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.62)">'
+            + '    <div style="font-weight:900;color:#e2e8f0;margin-bottom:8px">Como usar</div>'
+            + '    <ol style="color:#cbd5e1;font-size:13px;line-height:1.7;margin:0;padding-left:18px">'
+            + '      <li>Cadastre primeiro os <strong>Estados</strong> (UF + nome + alíquota).</li>'
+            + '      <li>Depois cadastre as <strong>Cidades</strong>, cada uma vinculada a um Estado existente.</li>'
+            + '      <li>Cadastre os <strong>Ramos de atividade</strong> usados por seus clientes.</li>'
+            + '      <li>Ao abrir o formulário de Cliente (Novo / Editar / Modal nativo), os campos <strong>Estado / Cidade / Ramo</strong> virarão <em>selects</em> preenchidos automaticamente com estes cadastros. Cidade é filtrada por Estado.</li>'
+            + '    </ol>'
+            + '  </div>'
+            + '</div>';
+
+          try {
+            var vc = document.getElementById('p11-voltar-clientes');
+            if (vc) vc.onclick = function() { try { if (typeof window.go === 'function') window.go('clientes'); } catch (_) {} };
+            Array.prototype.forEach.call(root.querySelectorAll('[data-p11-goto]'), function(el) {
+              var dest = el.getAttribute('data-p11-goto') || '';
+              var fn = function() { try { if (typeof window.go === 'function') window.go(dest); } catch (_) {} };
+              el.onclick = fn;
+              var b = el.querySelector('button');
+              if (b) b.onclick = function(ev) { try { ev && ev.stopPropagation && ev.stopPropagation(); } catch (_) {} fn(); };
+            });
+          } catch (_) {}
+        } catch (_) {}
+      }
+      window.renderMapaClientes = renderMapaClientes;
+
+      function _p11InputToSelect(elSelKey, extra) {
+        try {
+          var el = document.querySelector(elSelKey);
+          if (!el) return null;
+          if (el.dataset && el.dataset.p11Patched === '1') return el;
+          if (el.tagName === 'SELECT') {
+            try { if (el.dataset) el.dataset.p11Patched = '1'; } catch (_) {}
+            return el;
+          }
+          var val = String(el.value || '');
+          var sel = document.createElement('select');
+          for (var i = 0; i < el.attributes.length; i++) {
+            try {
+              var nm = el.attributes[i].nodeName;
+              if (nm && nm.toLowerCase() !== 'type' && nm.toLowerCase() !== 'list' && nm.toLowerCase() !== 'pattern') {
+                try { sel.setAttribute(nm, el.attributes[i].nodeValue); } catch (_) {}
+              }
+            } catch (_) {}
+          }
+          sel.value = val;
+          if (extra && extra.addClass) sel.className += ' ' + extra.addClass;
+          try { if (sel.dataset) sel.dataset.p11Patched = '1'; } catch (_) {}
+          try { el.parentNode.replaceChild(sel, el); }
+          catch (_) {
+            try { el.insertAdjacentElement('afterend', sel); el.remove(); } catch(_) {}
+          }
+          return sel;
+        } catch (_) { return null; }
+      }
+
+      function _p11FillUfOptions(sel, preencherComEscolha) {
+        try {
+          if (!sel) return;
+          var ufs = Array.isArray(window.loadEstados) ? (window.loadEstados() || []) : [];
+          var cur = String(sel.value || '').toUpperCase();
+          var opts = ['<option value="">— Selecione a UF —</option>'];
+          ufs.sort(function(a,b){ return (a.uf||'').localeCompare(b.uf||''); }).forEach(function(e){
+            opts.push('<option value="' + _p11Esc(e.uf||'') + '">' + _p11Esc(e.uf||'') + ' — ' + _p11Esc(e.nome||'') + '</option>');
+          });
+          sel.innerHTML = opts.join('');
+          if (preencherComEscolha && cur) {
+            sel.value = cur;
+            if (!sel.value) sel.value = _p11UfUpper(cur);
+          }
+        } catch (_) {}
+      }
+
+      function _p11FillCidadeOptions(selCid, selUf, preencherComEscolha) {
+        try {
+          if (!selCid) return;
+          var cids = Array.isArray(window.loadCidades) ? (window.loadCidades() || []) : [];
+          var curCid = String(selCid.value || '').trim();
+          var ufValue = selUf ? String(selUf.value || '').toUpperCase() : '';
+          if (ufValue) cids = cids.filter(function(c){ return String(c.uf||'').toUpperCase() === ufValue; });
+          cids.sort(function(a,b){ return (a.nome||'').localeCompare(b.nome||'','pt-BR'); });
+          var opts = ['<option value="">' + (ufValue ? '— Cidades de ' + _p11Esc(ufValue) + ' —' : '— Selecione a cidade —') + '</option>'];
+          var seen = {};
+          cids.forEach(function(c){
+            var k = String(c.nome||'').trim().toLowerCase();
+            if (seen[k]) return;
+            seen[k] = 1;
+            opts.push('<option value="' + _p11Esc(c.nome||'') + '" data-uf="' + _p11Esc(c.uf||'') + '">' + _p11Esc(c.nome||'') + (c.uf ? ' (' + _p11Esc(c.uf||'') + ')' : '') + '</option>');
+          });
+          selCid.innerHTML = opts.join('');
+          if (preencherComEscolha && curCid) {
+            selCid.value = curCid;
+            if (!selCid.value) {
+              var fnd = Array.prototype.filter.call(selCid.options, function(o){ return String(o.value||'').toLowerCase() === String(curCid||'').toLowerCase(); });
+              if (fnd && fnd[0]) selCid.value = fnd[0].value;
+            }
+          }
+        } catch (_) {}
+      }
+
+      function _p11FillRamoOptions(sel, preencherComEscolha) {
+        try {
+          if (!sel) return;
+          var ramos = Array.isArray(window.loadRamos) ? (window.loadRamos() || []) : [];
+          var cur = String(sel.value || '').trim();
+          var opts = ['<option value="">— Selecione o ramo —</option>'];
+          var seen = {};
+          ramos.forEach(function(r){
+            var nm = String(r.nome != null ? r.nome : r).trim();
+            var k = nm.toLowerCase();
+            if (!nm || seen[k]) return;
+            seen[k] = 1;
+            opts.push('<option value="' + _p11Esc(nm) + '">' + _p11Esc(nm) + '</option>');
+          });
+          sel.innerHTML = opts.join('');
+          if (preencherComEscolha && cur) {
+            sel.value = cur;
+            if (!sel.value) {
+              var fnd = Array.prototype.filter.call(sel.options, function(o){ return String(o.value||'').toLowerCase() === String(cur||'').toLowerCase(); });
+              if (fnd && fnd[0]) sel.value = fnd[0].value;
+            }
+          }
+        } catch (_) {}
+      }
+
+      function _p11BindUfCidPair(selUf, selCid) {
+        try {
+          if (!selUf || !selCid || selUf.dataset.p11Bound === '1') return;
+          selUf.dataset.p11Bound = '1';
+          selUf.addEventListener('change', function(){ _p11FillCidadeOptions(selCid, selUf, false); try { selCid.dispatchEvent(new Event('change',{bubbles:true})); } catch(_) {} }, true);
+        } catch (_) {}
+      }
+
+      function _p11AdicionarUfFaltante(modalHost, beforeSel, novoId, labelText) {
+        try {
+          if (!modalHost) return;
+          if (document.getElementById(novoId)) return document.getElementById(novoId);
+          var wrap = document.createElement('div');
+          wrap.style.cssText = 'display:grid;gap:4px';
+          var lbl = document.createElement('label');
+          lbl.style.cssText = 'font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b';
+          lbl.textContent = labelText || 'Estado / UF';
+          var sel = document.createElement('select');
+          sel.id = novoId;
+          sel.className = (beforeSel && beforeSel.className) || '';
+          sel.style.cssText = 'padding:11px 12px;background:#020617;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:12px;font-size:13px';
+          wrap.appendChild(lbl);
+          wrap.appendChild(sel);
+          try { beforeSel.parentNode.insertBefore(wrap, beforeSel); }
+          catch (_) { try { modalHost.insertBefore(wrap, beforeSel); } catch(__) { try { modalHost.appendChild(wrap); } catch(___) {} } }
+          return sel;
+        } catch (_) { return null; }
+      }
+
+      function _p11AdicionarRamoFaltante(modalHost, beforeEl, novoId, labelText) {
+        try {
+          if (!modalHost) return;
+          if (document.getElementById(novoId)) return document.getElementById(novoId);
+          var wrap = document.createElement('div');
+          wrap.style.cssText = 'display:grid;gap:4px';
+          var lbl = document.createElement('label');
+          lbl.style.cssText = 'font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b';
+          lbl.textContent = labelText || 'Ramo de Atividade';
+          var sel = document.createElement('select');
+          sel.id = novoId;
+          sel.className = (beforeEl && beforeEl.className) || '';
+          sel.style.cssText = 'padding:11px 12px;background:#020617;color:#e2e8f0;border:1px solid rgba(148,163,184,.22);border-radius:12px;font-size:13px';
+          wrap.appendChild(lbl);
+          wrap.appendChild(sel);
+          try { beforeEl.parentNode.insertBefore(wrap, beforeEl.nextSibling ? beforeEl.nextSibling : null); }
+          catch (_) { try { modalHost.insertBefore(wrap, beforeEl ? beforeEl.nextSibling : null); } catch(__) { try { modalHost.appendChild(wrap); } catch(___) {} } }
+          return sel;
+        } catch (_) { return null; }
+      }
+
+      function _patchCliFormularioSelects() {
+        try {
+          var modalNativo = document.querySelector('.modal, .modal-dialog, [class*="modal"][class*="cliente"], [aria-modal="true"]');
+          var modalNovo = document.getElementById('modal-novo-cliente') || document.getElementById('modal-novo-cliente-overlay') || document.getElementById('novo-cli-nome') && document.getElementById('novo-cli-nome').closest('.modal, .overlay, [id*="modal"]') || null;
+          var modalEditar = document.getElementById('patch-modal-editar-cli') || (document.getElementById('ec-nome') && document.getElementById('ec-nome').closest('.modal, .overlay, [id*="modal"]')) || null;
+
+          // ---------- MODAL NATIVO (cl-uf / cli-uf / f-estado)
+          var ufsNativo = null, cidNativo = null, ramNativo = null;
+          try {
+            ['#cl-uf', '#cli-uf', '#f-estado', 'input[name="estado"]', 'input[name="uf"]'].forEach(function(sel){
+              var res = _p11InputToSelect(sel);
+              if (res && !ufsNativo) ufsNativo = res;
+              if (res) _p11FillUfOptions(res, true);
+            });
+          } catch (_) {}
+          try {
+            ['#cl-cidade', '#cli-cidade', '#f-cidade', 'input[name="cidade"]'].forEach(function(sel){
+              var res = _p11InputToSelect(sel);
+              if (res && !cidNativo) cidNativo = res;
+              if (res) _p11FillCidadeOptions(res, ufsNativo, true);
+            });
+          } catch (_) {}
+          try {
+            ['#cliente-ramo', '#cli-ramo', '#cl-ramo', 'select[name="ramo"]', 'input[name="ramo"]'].forEach(function(sel){
+              var res = _p11InputToSelect(sel);
+              if (res && !ramNativo) ramNativo = res;
+              if (res) _p11FillRamoOptions(res, true);
+            });
+          } catch (_) {}
+          _p11BindUfCidPair(ufsNativo, cidNativo);
+
+          // ---------- MODAL "NOVO CLIENTE" (patch) — adicionar UF faltante + converter cidade/ramo
+          try {
+            var ncNome = document.getElementById('novo-cli-nome');
+            var hostNovo = modalNovo || (ncNome && ncNome.closest('.modal, .overlay, [id*="modal"], form, [id*="novo-cli"]')) || document.body;
+            if (ncNome) {
+              var nUf = document.getElementById('novo-cli-uf');
+              if (!nUf) {
+                var nCidade = document.getElementById('novo-cli-cidade');
+                nUf = _p11AdicionarUfFaltante(hostNovo, nCidade || ncNome, 'novo-cli-uf', 'Estado / UF');
+              } else if (nUf.tagName !== 'SELECT') {
+                var conv = _p11InputToSelect('#novo-cli-uf');
+                if (conv) nUf = conv;
+              }
+              if (nUf) _p11FillUfOptions(nUf, true);
+
+              var nCidadeSel = _p11InputToSelect('#novo-cli-cidade');
+              if (nCidadeSel) _p11FillCidadeOptions(nCidadeSel, nUf, true);
+              _p11BindUfCidPair(nUf, nCidadeSel);
+
+              var nRamoSel = _p11InputToSelect('#novo-cli-ramo');
+              if (!nRamoSel && nCidadeSel) {
+                nRamoSel = _p11AdicionarRamoFaltante(hostNovo, nCidadeSel, 'novo-cli-ramo', 'Ramo de Atividade');
+              }
+              if (nRamoSel) _p11FillRamoOptions(nRamoSel, true);
+            }
+          } catch (_) {}
+
+          // ---------- MODAL EDITAR CLIENTE (patch) - converter cidade + adicionar ramo faltante
+          try {
+            var ecNome = document.getElementById('ec-nome');
+            var hostEdit = modalEditar || (ecNome && ecNome.closest('.modal, .overlay, [id*="modal"], form')) || document.body;
+            if (ecNome) {
+              var eUf = document.getElementById('ec-uf');
+              if (eUf && eUf.tagName !== 'SELECT') {
+                var eUfSel = _p11InputToSelect('#ec-uf');
+                if (eUfSel) { _p11FillUfOptions(eUfSel, true); eUf = eUfSel; }
+              } else if (eUf && eUf.tagName === 'SELECT') {
+                _p11FillUfOptions(eUf, true);
+              }
+
+              var eCidSel = _p11InputToSelect('#ec-cidade');
+              if (eCidSel) _p11FillCidadeOptions(eCidSel, eUf, true);
+              _p11BindUfCidPair(eUf, eCidSel);
+
+              var eRamo = document.getElementById('ec-ramo');
+              if (!eRamo && eCidSel) {
+                eRamo = _p11AdicionarRamoFaltante(hostEdit, eCidSel, 'ec-ramo', 'Ramo de Atividade');
+              } else if (eRamo && eRamo.tagName !== 'SELECT') {
+                var convR = _p11InputToSelect('#ec-ramo');
+                if (convR) eRamo = convR;
+              }
+              if (eRamo) _p11FillRamoOptions(eRamo, true);
+            }
+          } catch (_) {}
+        } catch (_) {}
+      }
+      window._patchCliFormularioSelects = _patchCliFormularioSelects;
+    } catch (_) {}
+  })();
 
   if (typeof window.abrirCalculadora === 'function' && !window.abrirCalculadora.__patchOrcPastas) {
     var _origAbrirCalculadora = window.abrirCalculadora;
