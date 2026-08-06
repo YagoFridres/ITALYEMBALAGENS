@@ -36451,10 +36451,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function renderNovoClienteRamoInput(valorAtual) {
     var lista = salvarCatalogoRamosCliente(valorAtual);
-    return '<input id="novo-cli-ramo" list="novo-cli-ramo-list" value="' + escapeRamoHtml(valorAtual || '') + '" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)" placeholder="Ex.: Alimentício">' +
-      '<datalist id="novo-cli-ramo-list">' +
-        lista.map(function(item) { return '<option value="' + escapeRamoHtml(item) + '"></option>'; }).join('') +
-      '</datalist>';
+    var valAtual = String(valorAtual || '').trim();
+    var opts = lista.map(function(item) {
+      var safe = escapeRamoHtml(item);
+      var sel = (valAtual && safe.toUpperCase() === valAtual.toUpperCase()) ? ' selected' : '';
+      return '<option value="' + safe + '"' + sel + '>' + safe + '</option>';
+    }).join('');
+    return '<select id="novo-cli-ramo" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)">' +
+      '<option value="">— Selecione o ramo —</option>' +
+      opts +
+      '</select>';
   }
 
   function syncClienteRamoModalNativo() {
@@ -36496,9 +36502,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           '</div>' +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
             '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">E-mail</label><input id="novo-cli-email" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
-            '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Cidade</label><input id="novo-cli-cidade" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
+            '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Estado / UF</label><select id="novo-cli-uf" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"><option value="">— Selecione a UF —</option></select></div>' +
           '</div>' +
-          '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Ramo de atividade</label>' + renderNovoClienteRamoInput('') + '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+            '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Cidade</label><select id="novo-cli-cidade" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"><option value="">— Selecione primeiro a UF —</option></select></div>' +
+            '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Ramo de atividade</label>' + renderNovoClienteRamoInput('') + '</div>' +
+          '</div>' +
           '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Observações</label><textarea id="novo-cli-obs" rows="3" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc);resize:vertical"></textarea></div>' +
         '</div>' +
         '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px">' +
@@ -36508,6 +36517,109 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '</div>';
 
     document.body.appendChild(overlay);
+
+    try {
+      (function patchModalRapidoSelects() {
+        try {
+          if (overlay.dataset && overlay.dataset.patchedModalRapidoNovoCli === '1') return;
+          if (overlay.dataset) overlay.dataset.patchedModalRapidoNovoCli = '1';
+          var ufSel = document.getElementById('novo-cli-uf');
+          var cidSel = document.getElementById('novo-cli-cidade');
+          var ramoSel = document.getElementById('novo-cli-ramo');
+          var hasP11Uf = typeof window._p11FillUfOptions === 'function';
+          var hasP11Cid = typeof window._p11FillCidadeOptions === 'function';
+          var hasP11Bind = typeof window._p11BindUfCidPair === 'function';
+          var hasP11Ramo = typeof window._p11FillRamoOptions === 'function';
+          if (ufSel && hasP11Uf) {
+            try { window._p11FillUfOptions(ufSel); } catch (_) {}
+          }
+          if (cidSel && ufSel && hasP11Bind) {
+            try { window._p11BindUfCidPair(ufSel, cidSel); } catch (_) {}
+          }
+          if (ramoSel && hasP11Ramo) {
+            try {
+              window._p11FillRamoOptions(ramoSel, { placeholder: '— Selecione o ramo —' });
+            } catch (_) {}
+          }
+          if (ufSel && !hasP11Uf) {
+            (function fallbackUfCidInline() {
+              try {
+                var seenUfKey = '__p21_modalRapido_seenUf';
+                var carregaUfs = function() {
+                  try {
+                    var ests = (typeof window.loadEstados === 'function') ? (window.loadEstados() || []) : [];
+                    if (!Array.isArray(ests) || !ests.length) { ests = window.ESTADOS || window.ESTADOS_BR || window.UFS || []; }
+                    if (!Array.isArray(ests) || !ests.length) {
+                      ests = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(function(uf){ return {sigla:uf}; });
+                    }
+                    ufSel.innerHTML = '<option value="">— Selecione a UF —</option>' + ests.map(function(e){
+                      var sig = String((e && e.sigla) ? e.sigla : (typeof e === 'string' ? e : '')).trim().toUpperCase();
+                      if (!sig) return '';
+                      var nome = String((e && e.nome) ? e.nome : sig).trim();
+                      return '<option value="'+sig+'">'+sig+' — '+nome+'</option>';
+                    }).filter(Boolean).join('');
+                    try {
+                      if (cidSel) cidSel.innerHTML = '<option value="">— Selecione primeiro a UF —</option>';
+                    } catch (_) {}
+                  } catch (_) {}
+                };
+                var carregaCidadesPorUf = function(uf) {
+                  try {
+                    var ufOk = String(uf || '').trim().toUpperCase();
+                    if (!cidSel) return;
+                    if (!ufOk) { cidSel.innerHTML = '<option value="">— Selecione primeiro a UF —</option>'; return; }
+                    var cids = (typeof window.loadCidades === 'function') ? (window.loadCidades(ufOk) || []) : [];
+                    if (!Array.isArray(cids) || !cids.length) {
+                      cids = (window.CIDADES || window.CIDADES_BR || []).filter(function(c){
+                        var cu = String((c && c.uf) ? c.uf : (c && c.estado ? c.estado : '')).trim().toUpperCase();
+                        return cu === ufOk;
+                      });
+                    }
+                    var arr = cids.map(function(c){
+                      var nome = String((c && c.nome) ? c.nome : (typeof c === 'string' ? c : '')).trim();
+                      if (!nome) return '';
+                      return '<option value="'+nome.replace(/"/g,'&quot;')+'">'+nome+'</option>';
+                    }).filter(Boolean);
+                    cidSel.innerHTML = '<option value="">— Selecione a cidade —</option>' + arr.join('');
+                  } catch (_) {}
+                };
+                if (!window[seenUfKey]) { try { carregaUfs(); } catch (_) {} try { window[seenUfKey] = true; } catch (_) {} }
+                try { carregaUfs(); } catch (_) {}
+                try {
+                  if (ufSel && !ufSel.dataset.__p21BoundInline) {
+                    ufSel.addEventListener('change', function() { try { carregaCidadesPorUf(ufSel.value); } catch (_) {} });
+                    ufSel.dataset.__p21BoundInline = '1';
+                  }
+                } catch (_) {}
+                try { ufSel.dispatchEvent && ufSel.dispatchEvent(new Event('change')); } catch (_) {}
+              } catch (_) {}
+            })();
+          }
+          if (ramoSel && !hasP11Ramo) {
+            try {
+              var carregaRamos = function() {
+                try {
+                  var arr = (typeof window.loadRamos === 'function') ? (window.loadRamos() || []) : (window.RAMOS || []);
+                  if (!Array.isArray(arr)) return;
+                  var opts = arr.map(function(r){
+                    var nome = String((r && r.nome) ? r.nome : (typeof r === 'string' ? r : '')).trim();
+                    if (!nome) return '';
+                    return '<option value="'+nome.replace(/"/g,'&quot;')+'">'+nome+'</option>';
+                  }).filter(Boolean);
+                  var cur = String(ramoSel.value || '').trim();
+                  ramoSel.innerHTML = '<option value="">— Selecione o ramo —</option>' + opts.join('');
+                  if (cur) {
+                    try { ramoSel.value = cur; } catch (_) {}
+                  }
+                } catch (_) {}
+              };
+              carregaRamos();
+              setTimeout(carregaRamos, 120);
+            } catch (_) {}
+          }
+        } catch (_) {}
+      })();
+    } catch (_) {}
 
     function fechar() {
       try { overlay.remove(); } catch (_) {}
@@ -36529,6 +36641,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var cnpj = String((document.getElementById('novo-cli-cnpj') || {}).value || '').trim();
       var tel = String((document.getElementById('novo-cli-tel') || {}).value || '').trim();
       var email = String((document.getElementById('novo-cli-email') || {}).value || '').trim();
+      var uf = String((document.getElementById('novo-cli-uf') || {}).value || '').trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
       var cidade = String((document.getElementById('novo-cli-cidade') || {}).value || '').trim();
       var ramo = String((document.getElementById('novo-cli-ramo') || {}).value || '').trim();
       var observacoes = String((document.getElementById('novo-cli-obs') || {}).value || '').trim();
@@ -36551,6 +36664,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         telefone: tel || '',
         tel: tel || '',
         email: email || '',
+        uf: uf || '',
+        estado: uf || '',
         cidade: cidade || '',
         ramo: ramo || '',
         observacoes: observacoes || ''
