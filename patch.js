@@ -12100,22 +12100,74 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
   }
 
   function _histFmtDateTime(row) {
-    var horaPassagem = String(row && row.hora_passagem || '').trim();
-    if (horaPassagem) {
-      var dt = new Date(horaPassagem);
+    var candidates = [
+      row && (row.hora_despacho || row.data_despacho || row.timestamp_despacho),
+      row && (row.hora_conclusao || row.data_conclusao),
+      row && row.hora_passagem,
+      row && row.concluido_em,
+      row && row.despachado_em,
+      row && row.updated_at,
+      row && row.created_at
+    ];
+    for (var i = 0; i < candidates.length; i++) {
+      var raw = String(candidates[i] || '').trim();
+      if (!raw) continue;
+      var dt = new Date(raw);
       if (!isNaN(dt.getTime())) {
         return dt.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
       }
     }
-    var data = String(row && row.data_passagem || '').trim();
-    if (data) {
-      var p = data.split('-');
+    var dataFallback = String(row && row.data_passagem || row && row.data || '').trim();
+    if (dataFallback) {
+      var p = dataFallback.split('-');
       if (p.length === 3) return p[2] + '/' + p[1] + '/' + p[0];
-      return data;
+      return dataFallback;
     }
     return '—';
   }
   try { window._histFmtDateTime = _histFmtDateTime; } catch (_) {}
+
+  function _histComputeResumoFromRows(rows) {
+    var list = Array.isArray(rows) ? rows : [];
+    var ofsSet = new Set();
+    var valorProducao = 0;
+    var caixas = 0;
+    var coresMap = new Map();
+    var tamanhosMap = new Map();
+    list.forEach(function(row) {
+      var ofNum = String(row && (row.of_numero || row.numero || row.of) || '').trim();
+      if (ofNum) ofsSet.add(ofNum);
+      var vlr = Number(row && (row.valor_total_producao != null ? row.valor_total_producao : (row.valor_total != null ? row.valor_total : _histPassagemValorTotal(row))) || 0) || 0;
+      valorProducao += vlr;
+      var qtd = Number(row && (row.qtd_produzida != null ? row.qtd_produzida : (row.quantidade != null ? row.quantidade : (row.caixas_produzidas != null ? row.caixas_produzidas : _histPassagemQuantidade(row)))) || 0) || 0;
+      caixas += qtd;
+      var coresArr = _histParseCoresResumo(row && (row.cores || row.cor || row.especificacao_cores));
+      coresArr.forEach(function(c) {
+        var key = String(c || '').trim().toUpperCase();
+        if (!key) return;
+        coresMap.set(key, (Number(coresMap.get(key)) || 0) + 1);
+      });
+      var tam = _histFormatTamanhoResumo(row);
+      if (tam) {
+        tamanhosMap.set(tam, (Number(tamanhosMap.get(tam)) || 0) + 1);
+      }
+    });
+    var topCores = Array.from(coresMap.entries())
+      .map(function(e) { return { cor: String(e[0] || '').trim(), total_ofs: Number(e[1] || 0) }; })
+      .sort(function(a, b) { return (b.total_ofs - a.total_ofs) || String(a.cor || '').localeCompare(String(b.cor || ''), 'pt-BR'); });
+    var topTamanhos = Array.from(tamanhosMap.entries())
+      .map(function(e) { return { tamanho: String(e[0] || '').trim(), total_ofs: Number(e[1] || 0) }; })
+      .sort(function(a, b) { return (b.total_ofs - a.total_ofs) || String(a.tamanho || '').localeCompare(String(b.tamanho || ''), 'pt-BR'); });
+    return {
+      total_ofs: ofsSet.size || list.length,
+      valor_total_producao: Number(valorProducao) || 0,
+      caixas_produzidas: Number(caixas) || 0,
+      total_passagens: list.length,
+      _top_cores: topCores,
+      _top_tamanhos: topTamanhos
+    };
+  }
+  try { window._histComputeResumoFromRows = _histComputeResumoFromRows; } catch (_) {}
 
   function _histParseMonthValue(v) {
     var s = String(v || '').trim();
@@ -13373,6 +13425,32 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     var sorted = _histSortMonthlyRows(rows);
     window.__histMonthlyRowsSorted = sorted.slice();
 
+    var detalhamentoRows = Array.isArray(window.__histPassagensDetalhamentoRows) ? window.__histPassagensDetalhamentoRows : [];
+    if (detalhamentoRows.length) {
+      var computed = _histComputeResumoFromRows(detalhamentoRows);
+      resumo = {
+        total_ofs: Number(computed.total_ofs) || Number(resumo.total_ofs) || 0,
+        valor_total_producao: Number(computed.valor_total_producao) != null ? Number(computed.valor_total_producao) : (Number(resumo.valor_total_producao) || 0),
+        caixas_produzidas: Number(computed.caixas_produzidas) || Number(resumo.caixas_produzidas) || 0,
+        total_passagens: Number(computed.total_passagens) || Number(resumo.total_passagens) || detalhamentoRows.length
+      };
+      if (Array.isArray(computed._top_cores) && computed._top_cores.length) {
+        data = data || {};
+        data.top_cores = computed._top_cores.slice();
+      }
+      if (Array.isArray(computed._top_tamanhos) && computed._top_tamanhos.length) {
+        data = data || {};
+        data.top_tamanhos = computed._top_tamanhos.slice();
+      }
+      try {
+        if (window.__histMonthlyData && typeof window.__histMonthlyData === 'object') {
+          window.__histMonthlyData.resumo_mes_atual = Object.assign({}, window.__histMonthlyData.resumo_mes_atual || {}, resumo);
+          if (data && data.top_cores) window.__histMonthlyData.top_cores = data.top_cores;
+          if (data && data.top_tamanhos) window.__histMonthlyData.top_tamanhos = data.top_tamanhos;
+        }
+      } catch (_) {}
+    }
+
     var varOfs = Number(anterior.total_ofs || 0) > 0 ? (((Number(resumo.total_ofs || 0) - Number(anterior.total_ofs || 0)) / Number(anterior.total_ofs || 0)) * 100) : null;
     var varValor = Number(anterior.valor_total_producao || 0) > 0 ? (((Number(resumo.valor_total_producao || 0) - Number(anterior.valor_total_producao || 0)) / Number(anterior.valor_total_producao || 0)) * 100) : null;
     var varCx = Number(anterior.caixas_produzidas || 0) > 0 ? (((Number(resumo.caixas_produzidas || 0) - Number(anterior.caixas_produzidas || 0)) / Number(anterior.caixas_produzidas || 0)) * 100) : null;
@@ -13650,6 +13728,12 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
           }
         } catch (_) {}
         _histRenderDetalhamentoPassagens();
+        try {
+          if (window.__histMonthlyData && typeof _histRenderRelatorioMensal === 'function') {
+            var monthlyCards = document.getElementById('hist-relatorio-mensal-cards');
+            if (monthlyCards) _histRenderRelatorioMensal(window.__histMonthlyData);
+          }
+        } catch (_) {}
         _histRepairScrollContainer();
         // #region debug-point D:hist-scroll-metrics
         try {
