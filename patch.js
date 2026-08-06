@@ -48286,7 +48286,8 @@ function _ocultarGraficoComissoes() {
       + '.ofknife-selected{display:flex;flex-wrap:wrap;gap:8px}'
       + '.ofknife-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;background:rgba(37,99,235,.16);border:1px solid rgba(96,165,250,.32);color:#dbeafe;font-size:12px;font-weight:700}'
       + '.ofknife-chip button{border:none;background:transparent;color:#bfdbfe;cursor:pointer;font-size:14px;line-height:1}'
-      + '.ofknife-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;max-height:220px;overflow:auto}'
+      + '.ofknife-results{display:none;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;max-height:220px;overflow:auto}'
+      + '.ofknife-results.open{display:grid}'
       + '.ofknife-results.compact{grid-template-columns:1fr}'
       + '.ofknife-result{display:grid;gap:4px;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.9);color:#e2e8f0;cursor:pointer}'
       + '.ofknife-result strong{font-size:13px;color:#f8fafc}'
@@ -48330,9 +48331,18 @@ function _ocultarGraficoComissoes() {
   function bindPanel(panel, owner, compact) {
     if (!panel || panel.getAttribute('data-ofknife-bound') === '1') return;
     panel.setAttribute('data-ofknife-bound', '1');
+    var searchField = panel.querySelector('.ofknife-search');
+    var resultsBox = panel.querySelector('.ofknife-results');
+    if (searchField) {
+      searchField.addEventListener('focus', function() {
+        paintPanel(panel, owner, compact);
+        if (resultsBox) resultsBox.classList.add('open');
+      });
+    }
     panel.addEventListener('input', function(ev) {
       if (ev && ev.target && ev.target.classList && ev.target.classList.contains('ofknife-search')) {
         paintPanel(panel, owner, compact);
+        if (resultsBox) resultsBox.classList.add('open');
       }
     });
     panel.addEventListener('click', function(ev) {
@@ -48351,7 +48361,14 @@ function _ocultarGraficoComissoes() {
         else ids.push(pickId);
         setOwnerKnifeIds(owner, ids);
         paintPanel(panel, owner, compact);
+        if (resultsBox) resultsBox.classList.remove('open');
       }
+    });
+    document.addEventListener('click', function(ev) {
+      if (!panel) return;
+      var target = ev && ev.target;
+      var inside = target && (target === panel || (target.closest && target.closest('.ofknife-panel') === panel));
+      if (!inside && resultsBox) resultsBox.classList.remove('open');
     });
   }
 
@@ -48359,6 +48376,13 @@ function _ocultarGraficoComissoes() {
     if (!modal) return null;
     var panel = modal.querySelector('[data-ofknife-main="1"]');
     if (!panel) {
+      var urgentEl = modal.querySelector('#of-r-urgente');
+      var urgentBlock = urgentEl
+        ? (urgentEl.closest && (urgentEl.closest('.form-group') || urgentEl.closest('.form-row') || urgentEl.closest('.field') || urgentEl.closest('[class*="urgent"]') || urgentEl.closest('div')))
+        : null;
+      if (!urgentBlock || !urgentBlock.parentNode) {
+        try { if (urgentEl && urgentEl.parentNode) urgentBlock = urgentEl.parentNode; } catch (_) {}
+      }
       var anchor = modal.querySelector('.modal-body')
         || modal.querySelector('.modal-content')
         || modal.querySelector('#painel-mais-itens')
@@ -48367,8 +48391,13 @@ function _ocultarGraficoComissoes() {
       panel.className = 'ofknife-panel';
       panel.setAttribute('data-ofknife-main', '1');
       panel.innerHTML = panelHtml('Facas da OF', 'Campo opcional com busca por texto para vincular uma ou mais facas na OF Rápida.', false);
-      if (anchor && anchor.parentNode && anchor.id === 'painel-mais-itens') anchor.parentNode.insertBefore(panel, anchor);
-      else if (anchor && anchor.appendChild) anchor.appendChild(panel);
+      if (urgentBlock && urgentBlock.parentNode) {
+        urgentBlock.parentNode.insertBefore(panel, urgentBlock);
+      } else if (anchor && anchor.parentNode && anchor.id === 'painel-mais-itens') {
+        anchor.parentNode.insertBefore(panel, anchor);
+      } else if (anchor && anchor.appendChild) {
+        anchor.appendChild(panel);
+      }
     }
     bindPanel(panel, modal, false);
     paintPanel(panel, modal, false);
