@@ -4195,7 +4195,34 @@ try {
 ;(function() {
   if (window.__simdBoxPlannerPatched) return;
   window.__simdBoxPlannerPatched = true;
-  window.__simdPreferredMode = String(window.__simdPreferredMode || 'sheet');
+  window.__simdPreferredMode = String(window.__simdPreferredMode || 'box');
+
+  function renderSimuladorPage() {
+    try {
+      var idHost = 'tela-simulador-desperdicio';
+      var idPage = 'page-simulador-desperdicio';
+      var page = document.getElementById(idPage);
+      if (!page) {
+        page = document.createElement('div');
+        page.id = idPage;
+        page.className = 'page-wrapper page-simulador-desperdicio';
+        page.setAttribute('role', 'region');
+        page.setAttribute('aria-label', 'Simulador de Desperdicio');
+        page.style.cssText = 'max-width:1500px;margin:0 auto;padding:18px 16px 120px;color:#e2e8f0;';
+        document.body.appendChild(page);
+      }
+      if (!document.getElementById(idHost)) {
+        var host = document.createElement('div');
+        host.id = idHost;
+        page.appendChild(host);
+      }
+      try { if (typeof window.sRenderShell === 'function') window.sRenderShell(); } catch(_) {}
+      try { if (typeof window.sBindDom === 'function') window.sBindDom(); } catch(_) {}
+      try { if (typeof window.sRefreshFromState === 'function') window.sRefreshFromState(); } catch(_) {}
+    } catch (_) {}
+  }
+  window.renderSimuladorPage = renderSimuladorPage;
+
   if (String(window.__simdPreferredMode || '') !== 'box') return;
 
   function sLog() {
@@ -11205,6 +11232,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
               if (r === 'estados')  { try { renderEstadosPage(); return; } catch (_) {} }
               if (r === 'ramos')    { try { renderRamosPage();   return; } catch (_) {} }
               if (r === 'mapa-clientes' || r === 'mapaclientes' || r === 'mapa') { try { if (typeof renderMapaClientes === 'function') renderMapaClientes(); return; } catch (_) {} }
+              if (r === 'simulador' || r === 'simd' || r === 'desperdicio' || r === 'simulador-desperdicio') { try { if (typeof window.renderSimuladorPage === 'function') window.renderSimuladorPage(); return; } catch (_) {} }
               return _origGo.apply(this, arguments);
             };
             window.go.__cadAuxPatched = true;
@@ -11226,6 +11254,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
               if (r === 'estados') return renderEstadosPage();
               if (r === 'ramos')   return renderRamosPage();
               if (r === 'mapa-clientes' || r === 'mapaclientes' || r === 'mapa') { try { if (typeof renderMapaClientes === 'function') renderMapaClientes(); return; } catch (_) {} }
+              if (r === 'simulador' || r === 'simd' || r === 'desperdicio' || r === 'simulador-desperdicio') { try { if (typeof window.renderSimuladorPage === 'function') window.renderSimuladorPage(); return; } catch (_) {} }
               _cad_showOnlyPage(r);
             };
           }
