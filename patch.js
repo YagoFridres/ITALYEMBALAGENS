@@ -2493,6 +2493,7 @@ try {
     var produtos = rrList(json, ['produtos_mais_pedidos']);
     var historico = rrList(json, ['historico_ofs']);
     var orcamentos = rrList(json, ['orcamentos']);
+    var faturamentoMensal = rrList(json, ['faturamento_mensal']);
     var ticketMedio = Number(resumo && resumo.total_ofs || 0) > 0 ? ((Number(resumo && resumo.total_comprado || 0) || 0) / Number(resumo.total_ofs || 1)) : 0;
     var topTxt = function(item, key) {
       var nome = String(item && item[key] || '').trim();
@@ -2582,6 +2583,28 @@ try {
             ];
           }),
           emptyCols: 8
+        },
+        {
+          title: 'Faturamento por Mês',
+          headers: ['Mês/Ano', 'Qtd de OFs', 'Valor Total'],
+          rows: faturamentoMensal.map(function(row) {
+            var raw = String(row && row.mes_ano || '').trim();
+            var meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+            var label = raw;
+            try {
+              var m = /^(\d{4})-(\d{2})$/.exec(raw);
+              if (m) {
+                var mesIdx = parseInt(m[2], 10) - 1;
+                if (mesIdx >= 0 && mesIdx <= 11) label = meses[mesIdx] + ' / ' + m[1];
+              }
+            } catch (_) {}
+            return [
+              rrEsc(label),
+              rrEsc(rrFmtNum(row && row.qtd_ofs || 0, 0)),
+              rrEsc(rrFmtMoney(row && row.valor_total || 0))
+            ];
+          }),
+          emptyCols: 3
         },
         {
           title: 'Histórico de OFs',

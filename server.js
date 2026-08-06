@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -13559,6 +13559,23 @@ app.get('/api/relatorios/cliente-ficha', authMiddleware, async (req, res) => {
     const mediaCaixasMes = mesesComPedidos.size
       ? Math.round(((quantidadeTotalHistorico / mesesComPedidos.size) + Number.EPSILON) * 10) / 10
       : null;
+
+    const faturamentoMensalMap = new Map();
+    historico.forEach(function(of) {
+      try {
+        const dataRef = String(of?.data_conclusao || of?.data_entrada || of?.data_prevista || of?.data_despacho || of?.created_at || of?.dia || '').slice(0, 7);
+        if (!/^\d{4}-\d{2}$/.test(dataRef)) return;
+        const cur = faturamentoMensalMap.get(dataRef) || { mes_ano: dataRef, qtd_ofs: 0, valor_total: 0 };
+        cur.qtd_ofs += 1;
+        try {
+          const v = Number(of?.valor_total ?? of?.valor ?? of?.valor_liquido ?? of?.total ?? of?.preco_total ?? 0) || 0;
+          if (Number.isFinite(v) && v >= 0) cur.valor_total += v;
+        } catch (_) {}
+        faturamentoMensalMap.set(dataRef, cur);
+      } catch (_) {}
+    });
+    const faturamento_mensal = Array.from(faturamentoMensalMap.values()).sort((a, b) => String(b?.mes_ano || '').localeCompare(String(a?.mes_ano || ''), 'pt-BR'));
+
     const gramaturasTop = toTopList(gramaturasMap, 'gramatura');
     const tiposCaixaTop = toTopList(tiposCaixaMap, 'tipo_caixa');
     const coresTop = toTopList(coresMap, 'cor');
@@ -13599,6 +13616,7 @@ app.get('/api/relatorios/cliente-ficha', authMiddleware, async (req, res) => {
         tamanhos_mais_utilizados: tamanhosTop
       },
       produtos_mais_pedidos: produtosMaisPedidos,
+      faturamento_mensal: faturamento_mensal,
       historico_ofs: historico.slice(0, 120),
       orcamentos: orcamentosRows.slice(0, 120)
     });
