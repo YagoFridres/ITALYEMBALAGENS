@@ -823,7 +823,15 @@ try {
       }),
       detailTitle: 'Detalhamento',
       detailHeaders: ['OF', 'Cliente', 'Vendedor', 'Valor Total', '%', 'Comissão', 'Data Conclusão', 'Status'],
-      detailRows: ofs.map(function(of) {
+      detailRows: ofs.slice().sort(function(a, b) {
+        var ca = String(a && a.cliente || '').trim().toLowerCase();
+        var cb = String(b && b.cliente || '').trim().toLowerCase();
+        if (ca !== cb) return ca.localeCompare(cb, 'pt-BR');
+        var da = (a && a.data_conclusao) ? String(a.data_conclusao) : '';
+        var db = (b && b.data_conclusao) ? String(b.data_conclusao) : '';
+        if (da && db) return db.localeCompare(da);
+        return 0;
+      }).map(function(of) {
         return [
           rrEsc(String(of && (of.numero || of.of_numero || of.of) || '—')),
           rrEsc(String(of && of.cliente || '—')),
