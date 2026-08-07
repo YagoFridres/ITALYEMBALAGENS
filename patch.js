@@ -17905,7 +17905,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     try {
       return parseColors(of).filter(Boolean).join(' + ');
     } catch (_) {
-      return 'Sem cor';
+      return 'Sem Impressão';
     }
   }
 
@@ -19672,7 +19672,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       arr = [];
     }
     arr = arr.filter(Boolean);
-    return arr.length ? arr : ['Sem cor'];
+    return arr.length ? arr : ['Sem Impressão'];
   }
 
   function _hashColor(s) {
@@ -22604,7 +22604,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return (Array.isArray(colors) ? colors : []).slice(0, 8).map(function(name) {
         var bg = colorHex(name);
         return '<span class="ofmaq-final-color-pill" style="background:' + escAttr(bg) + ';color:' + escAttr(textColor(bg)) + '">' + escH(name) + '</span>';
-      }).join('') || '<span style="color:#94a3b8">Sem cor</span>';
+      }).join('') || '<span style="color:#94a3b8">Sem Impressão</span>';
     }
 
     function pickImage(of) {
