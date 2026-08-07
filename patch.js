@@ -10757,11 +10757,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
             + '.pep-table td{padding:10px 8px;border-bottom:1px solid #1e293b;font-size:12px;color:#e5e7eb;vertical-align:top}'
             + '.pep-table tbody tr:nth-child(even){background:rgba(15,23,42,.28)}'
             + '.pep-table tbody tr:hover{background:#1e293b}'
-            + '.pep-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100200}'
-            + '.pep-modal-box{width:min(620px,92vw);background:#0b1220;border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:18px}'
+            + '.pep-modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:100200;padding:16px;backdrop-filter:blur(4px)}'
+            + '.pep-modal-box{width:min(620px,92vw);background:#0b1220;border:1px solid rgba(148,163,184,.22);border-radius:18px;padding:20px;box-shadow:0 30px 80px -15px rgba(0,0,0,.75),0 10px 30px -10px rgba(99,102,241,.25);animation:pepModalIn .18s ease-out}'
+            + '@keyframes pepModalIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}'
             + '.pep-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}'
             + '.pep-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}'
             + '.pep-sub{font-size:11px;color:#94a3b8;margin-bottom:6px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}'
+            + '.p11-card{border-radius:18px;border:1px solid rgba(148,163,184,.16);padding:18px;cursor:pointer;transition:transform .15s ease,box-shadow .18s ease,border-color .15s ease}'
+            + '.p11-card:hover{transform:translateY(-3px);box-shadow:0 18px 40px -15px rgba(0,0,0,.55);border-color:rgba(99,102,241,.35)}'
             + '@media (max-width:960px){.pep-grid{grid-template-columns:1fr}}';
           document.head.appendChild(st);
         }
@@ -10900,8 +10903,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           + '  <div class="pep-actions"><button class="pep-btn" id="ccid-cancel">Cancelar</button><button class="pep-btn primary" id="ccid-save">Salvar</button></div>'
           + '</div>';
         wrap.addEventListener('click', function(e) { if (e.target === wrap) wrap.remove(); });
+        var _escCid = function(ev) { if ((ev && ev.key || '') === 'Escape') { try { wrap.remove(); } catch (_) {} document.removeEventListener('keydown', _escCid); } };
+        document.addEventListener('keydown', _escCid);
         document.body.appendChild(wrap);
-        document.getElementById('ccid-cancel').onclick = function() { wrap.remove(); };
+        document.getElementById('ccid-cancel').onclick = function() { document.removeEventListener('keydown', _escCid); wrap.remove(); };
         document.getElementById('ccid-save').onclick = async function() {
           try {
             var payload = Object.assign({}, it, {
@@ -10911,6 +10916,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
               ibge: document.getElementById('ccid-ibge').value || ''
             });
             await saveCidade(payload);
+            document.removeEventListener('keydown', _escCid);
             wrap.remove();
             if (typeof done === 'function') done();
           } catch (e) { alert(String(e && e.message || e)); }
@@ -11013,8 +11019,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           + '  <div class="pep-actions"><button class="pep-btn" id="cest-cancel">Cancelar</button><button class="pep-btn primary" id="cest-save">Salvar</button></div>'
           + '</div>';
         wrap.addEventListener('click', function(e) { if (e.target === wrap) wrap.remove(); });
+        var _escEst = function(ev) { if ((ev && ev.key || '') === 'Escape') { try { wrap.remove(); } catch (_) {} document.removeEventListener('keydown', _escEst); } };
+        document.addEventListener('keydown', _escEst);
         document.body.appendChild(wrap);
-        document.getElementById('cest-cancel').onclick = function() { wrap.remove(); };
+        document.getElementById('cest-cancel').onclick = function() { document.removeEventListener('keydown', _escEst); wrap.remove(); };
         document.getElementById('cest-save').onclick = async function() {
           try {
             var payload = Object.assign({}, it, {
@@ -11024,6 +11032,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
               aliq_icms: Number(document.getElementById('cest-icms').value || 0) || 0
             });
             await saveEstado(payload);
+            document.removeEventListener('keydown', _escEst);
             wrap.remove();
             if (typeof done === 'function') done();
           } catch (e) { alert(String(e && e.message || e)); }
@@ -11122,8 +11131,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           + '  <div class="pep-actions"><button class="pep-btn" id="cram-cancel">Cancelar</button><button class="pep-btn primary" id="cram-save">Salvar</button></div>'
           + '</div>';
         wrap.addEventListener('click', function(e) { if (e.target === wrap) wrap.remove(); });
+        var _escRam = function(ev) { if ((ev && ev.key || '') === 'Escape') { try { wrap.remove(); } catch (_) {} document.removeEventListener('keydown', _escRam); } };
+        document.addEventListener('keydown', _escRam);
         document.body.appendChild(wrap);
-        document.getElementById('cram-cancel').onclick = function() { wrap.remove(); };
+        document.getElementById('cram-cancel').onclick = function() { document.removeEventListener('keydown', _escRam); wrap.remove(); };
         document.getElementById('cram-save').onclick = async function() {
           try {
             var payload = Object.assign({}, it, {
@@ -11132,6 +11143,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
               descricao: document.getElementById('cram-desc').value || ''
             });
             await saveRamo(payload);
+            document.removeEventListener('keydown', _escRam);
             wrap.remove();
             if (typeof done === 'function') done();
           } catch (e) { alert(String(e && e.message || e)); }
@@ -11364,19 +11376,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
             + '    <button class="pep-btn" id="p11-voltar-clientes">← Voltar para Clientes</button>'
             + '  </div></div>'
             + '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px">'
-            + '    <div style="border-radius:18px;border:1px solid rgba(148,163,184,.16);background:linear-gradient(135deg,rgba(37,99,235,.22),rgba(59,130,246,.08));padding:18px;cursor:pointer" data-p11-goto="estados">'
+            + '    <div class="p11-card" style="background:linear-gradient(135deg,rgba(37,99,235,.22),rgba(59,130,246,.08))" data-p11-goto="estados">'
             + '      <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:30px">🗺️</div><div style="font-size:22px;font-weight:900;color:#e2e8f0">' + nEst + '</div></div>'
             + '      <div style="font-weight:900;font-size:16px;color:#f8fafc;margin-top:8px">Estados</div>'
             + '      <div style="font-size:12px;color:#cbd5e1;margin-top:4px">Cadastro de UF, nome e alíquotas ICMS.</div>'
             + '      <div style="margin-top:14px"><button class="pep-btn primary" style="width:100%">Abrir cadastro →</button></div>'
             + '    </div>'
-            + '    <div style="border-radius:18px;border:1px solid rgba(148,163,184,.16);background:linear-gradient(135deg,rgba(14,165,233,.22),rgba(56,189,248,.08));padding:18px;cursor:pointer" data-p11-goto="cidades">'
+            + '    <div class="p11-card" style="background:linear-gradient(135deg,rgba(14,165,233,.22),rgba(56,189,248,.08))" data-p11-goto="cidades">'
             + '      <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:30px">🏙️</div><div style="font-size:22px;font-weight:900;color:#e2e8f0">' + nCid + '</div></div>'
             + '      <div style="font-weight:900;font-size:16px;color:#f8fafc;margin-top:8px">Cidades</div>'
             + '      <div style="font-size:12px;color:#cbd5e1;margin-top:4px">Vinculadas a um Estado; usadas em clientes e rotas.</div>'
             + '      <div style="margin-top:14px"><button class="pep-btn primary" style="width:100%">Abrir cadastro →</button></div>'
             + '    </div>'
-            + '    <div style="border-radius:18px;border:1px solid rgba(148,163,184,.16);background:linear-gradient(135deg,rgba(168,85,247,.22),rgba(192,132,252,.08));padding:18px;cursor:pointer" data-p11-goto="ramos">'
+            + '    <div class="p11-card" style="background:linear-gradient(135deg,rgba(168,85,247,.22),rgba(192,132,252,.08))" data-p11-goto="ramos">'
             + '      <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:30px">🏷️</div><div style="font-size:22px;font-weight:900;color:#e2e8f0">' + nRam + '</div></div>'
             + '      <div style="font-weight:900;font-size:16px;color:#f8fafc;margin-top:8px">Ramos de Atividade</div>'
             + '      <div style="font-size:12px;color:#cbd5e1;margin-top:4px">Classificação dos clientes (Alimentos, Farmácia, etc.).</div>'
@@ -26038,8 +26050,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '.pep-rank-item{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-bottom:12px}'
         + '.pep-track{height:8px;border-radius:4px;background:#1e293b;overflow:hidden;margin-top:6px}'
         + '.pep-bar{height:8px;border-radius:4px;background:linear-gradient(90deg,#6366f1,#22c55e)}'
-        + '.pep-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100200}'
-        + '.pep-modal-box{width:min(620px,92vw);background:#0b1220;border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:18px}'
+        + '.pep-modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:100200;padding:16px;backdrop-filter:blur(4px)}'
+        + '.pep-modal-box{width:min(620px,92vw);background:#0b1220;border:1px solid rgba(148,163,184,.22);border-radius:18px;padding:20px;box-shadow:0 30px 80px -15px rgba(0,0,0,.75),0 10px 30px -10px rgba(99,102,241,.25);animation:pepModalIn .18s ease-out}'
+        + '@keyframes pepModalIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}'
+        + '.p11-card{border-radius:18px;border:1px solid rgba(148,163,184,.16);padding:18px;cursor:pointer;transition:transform .15s ease,box-shadow .18s ease,border-color .15s ease}'
+        + '.p11-card:hover{transform:translateY(-3px);box-shadow:0 18px 40px -15px rgba(0,0,0,.55);border-color:rgba(99,102,241,.35)}'
         + '.pep-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}'
         + '.pep-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}'
         + '@media (max-width:960px){.pep-cards,.estoque-wire-cards{grid-template-columns:1fr 1fr}.pep-grid{grid-template-columns:1fr}}'
