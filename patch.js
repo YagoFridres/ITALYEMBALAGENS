@@ -32188,20 +32188,56 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
   function startEnsureCalcCliente() {
     try { ensure(); } catch (_) {}
-    if (window.__patchCalcClienteInterval) return;
-    window.__patchCalcClienteInterval = setInterval(function() {
+    if (window.__patchCalcClienteStarted) return;
+    window.__patchCalcClienteStarted = true;
+    [50, 300, 800, 1600, 3200].forEach(function(t) {
+      setTimeout(function() {
+        try { ensure(); } catch (_) {}
+        try {
+          var sel = document.getElementById('calc-cli');
+          if (sel && sel.dataset.patchAutocomplete === '1' && window.__patchCalcClienteFallback) {
+            clearInterval(window.__patchCalcClienteFallback);
+            window.__patchCalcClienteFallback = null;
+          }
+        } catch (_) {}
+      }, t);
+    });
+    try {
+      if (window.MutationObserver && !window.__patchCalcClienteMo) {
+        var _appliedP = false;
+        var check = function() {
+          if (_appliedP) return;
+          try {
+            var selP = document.getElementById('calc-cli');
+            if (selP) { ensure(); if (selP.dataset.patchAutocomplete === '1') _appliedP = true; }
+          } catch (_) {}
+        };
+        var mo = new MutationObserver(check);
+        mo.observe(document.body, { childList: true, subtree: true });
+        window.__patchCalcClienteMo = mo;
+      }
+    } catch (_) {}
+    if (window.__patchCalcClienteFallback) return;
+    var _triesP = 0;
+    window.__patchCalcClienteFallback = setInterval(function() {
       try { ensure(); } catch (_) {}
       try {
         var sel = document.getElementById('calc-cli');
-        if (sel && sel.dataset.patchAutocomplete === '1' && window.__patchCalcClienteInterval) {
-          clearInterval(window.__patchCalcClienteInterval);
-          window.__patchCalcClienteInterval = null;
+        if (sel && sel.dataset.patchAutocomplete === '1') {
+          clearInterval(window.__patchCalcClienteFallback);
+          window.__patchCalcClienteFallback = null;
+          return;
+        }
+        _triesP += 1;
+        if (_triesP >= 120) {
+          clearInterval(window.__patchCalcClienteFallback);
+          window.__patchCalcClienteFallback = null;
         }
       } catch (_) {}
-    }, 1500);
+    }, 1000);
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(startEnsureCalcCliente, 500); });
-  else { setTimeout(startEnsureCalcCliente, 500); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { startEnsureCalcCliente(); });
+  else { startEnsureCalcCliente(); }
 })();
 
 (function patchBotaoCalculadoraAbrir() {
