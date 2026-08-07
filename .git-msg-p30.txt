@@ -1,0 +1,12 @@
+P30 Simulador Desperdício: simplifica UI 2D - remove Altura e Onda
+- sPlanFromDom: fórmula 3D caixa → 2D peça (Comp=Comp; larg=larg)
+- sRenderShell: grid 4col→2col, remove campos Altura/Onda, atualiza labels/ajuda para Peça 2D
+- sFillComputed: resumo 3cards→2cards (remove Onda), texto ajuda atualizado
+- sRenderVisual: 6 grid→5 (remove Onda), label Planificação→Peça
+- sRenderResults info-planif: remove Onda, label Planificação automática→Peça
+- sBuildMailBody + sMailSelected subject+body: remove Altura/Onda
+- sPrintSelected: cards 4→3, caixa 3dims→2dims
+- sCalcular alerta: "comprimento, largura e altura" → "comprimento e largura"
+- sBindShell bindings: remove simd-caixa-alt / simd-onda
+- sSaveState / sRestoreState: remove caixa_alt_mm / onda do storage
+- sw.js bump CACHE_NAME 161100→161200
