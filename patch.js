@@ -10316,7 +10316,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       }
       if (paramGrid) {
         paramGrid.style.setProperty('display', 'grid', 'important');
-        paramGrid.style.setProperty('grid-template-columns', 'repeat(auto-fit,minmax(200px,1fr))', 'important');
         paramGrid.style.setProperty('gap', '8px 12px', 'important');
         paramGrid.style.setProperty('align-items', 'end', 'important');
         paramGrid.style.setProperty('box-sizing', 'border-box', 'important');
@@ -10340,7 +10339,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
             inp.style.setProperty('box-sizing','border-box','important');
             inp.style.setProperty('width','100%','important');
             inp.style.setProperty('max-width','100%','important');
-            inp.style.setProperty('min-width','0','important');
             inp.style.setProperty('padding','9px 10px','important');
             inp.style.setProperty('margin-left','0','important');
             inp.style.setProperty('margin-right','0','important');
