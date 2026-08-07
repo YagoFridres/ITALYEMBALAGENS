@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -12081,6 +12081,21 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
       try { return JSON.stringify(o || null); } catch (_) { return String(o || ''); }
     }
 
+    function mergePreserveNonNull(a, b) {
+      if (!a || typeof a !== 'object') return b;
+      if (!b || typeof b !== 'object') return a || b;
+      const out = Array.isArray(a) ? a.slice() : Object.assign({}, a);
+      for (const k of Object.keys(b)) {
+        const v = b[k];
+        if (!(k in out) || out[k] === null || out[k] === undefined || out[k] === '') {
+          out[k] = v;
+        } else if (v && typeof v === 'object' && !Array.isArray(v) && out[k] && typeof out[k] === 'object' && !Array.isArray(out[k])) {
+          out[k] = mergePreserveNonNull(out[k], v);
+        }
+      }
+      return out;
+    }
+
     let cliente = null;
     try {
       let qc = supabase.from('clientes').select('id,nome,rs,razao_social,razao,cliente_nome').eq('id', clienteId).maybeSingle();
@@ -12100,7 +12115,11 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
         lastErr = null;
         const arr = Array.isArray(data) ? data : [];
         for (const o of arr) {
-          try { mergedMap.set(ofId(o), o); } catch (_) {}
+          try {
+            const key = ofId(o);
+            const existing = mergedMap.get(key);
+            mergedMap.set(key, existing ? mergePreserveNonNull(existing, o) : o);
+          } catch (_) {}
         }
       } else {
         lastErr = error;
@@ -12118,7 +12137,11 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
           lastErr = null;
           const arr = Array.isArray(data) ? data : [];
           for (const o of arr) {
-            try { mergedMap.set(ofId(o), o); } catch (_) {}
+            try {
+              const key = ofId(o);
+              const existing = mergedMap.get(key);
+              mergedMap.set(key, existing ? mergePreserveNonNull(existing, o) : o);
+            } catch (_) {}
           }
         } else {
           lastErr = error;
@@ -12140,7 +12163,11 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
           lastErr = null;
           const arr = Array.isArray(data) ? data : [];
           for (const o of arr) {
-            try { mergedMap.set(ofId(o), o); } catch (_) {}
+            try {
+              const key = ofId(o);
+              const existing = mergedMap.get(key);
+              mergedMap.set(key, existing ? mergePreserveNonNull(existing, o) : o);
+            } catch (_) {}
           }
         } else {
           if (isMissingColumnErr(error)) continue;
@@ -12300,8 +12327,8 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
       created_at: o?.created_at ?? null,
     });
 
-    const historicoRows = todas.slice(0, 120).map(mapOf);
-    const abertasRows = abertas.slice(0, 25).map(mapOf);
+    const historicoRows = todas.map(mapOf);
+    const abertasRows = abertas.map(mapOf);
     return res.json({
       ok: true,
       cliente: cliente,
@@ -13251,11 +13278,41 @@ async function _relatoriosFetchClienteOfs(clienteId, empresaId, clienteNome) {
     'dim_comprimento', 'dim_largura', 'dim_altura',
     'comprimento_mm', 'largura_mm', 'altura_mm'
   ].join(',');
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  function ofId(o) {
+    const cand = [
+      o?.id, o?.of_id, o?.codigo, o?.numero, o?.n_of,
+      o?.of, o?.nro_of, o?.num_of, o?.codigo_of
+    ];
+    for (const c of cand) {
+      if (c === null || c === undefined) continue;
+      const s = String(c).trim();
+      if (s && s.length > 0) return s;
+    }
+    try { return JSON.stringify(o || {}).slice(0, 200); } catch (_) { return String(Math.random()); }
+  }
+  function mergePreserveNonNull(a, b) {
+    if (!a || typeof a !== 'object') return b;
+    if (!b || typeof b !== 'object') return a || b;
+    const out = Array.isArray(a) ? a.slice() : Object.assign({}, a);
+    for (const k of Object.keys(b)) {
+      const v = b[k];
+      if (!(k in out) || out[k] === null || out[k] === undefined || out[k] === '') {
+        out[k] = v;
+      } else if (v && typeof v === 'object' && !Array.isArray(v) && out[k] && typeof out[k] === 'object' && !Array.isArray(out[k])) {
+        out[k] = mergePreserveNonNull(out[k], v);
+      }
+    }
+    return out;
+  }
   const byId = new Map();
   const mergeRows = (rows) => {
     (Array.isArray(rows) ? rows : []).forEach((row) => {
-      const key = String(row?.id || row?.numero || row?.of || Math.random()).trim();
-      if (key) byId.set(key, row);
+      const key = ofId(row);
+      if (key) {
+        const existing = byId.get(key);
+        byId.set(key, existing ? mergePreserveNonNull(existing, row) : row);
+      }
     });
   };
   for (const col of ['cli_id', 'cliId', 'cliente_id']) {
@@ -13266,7 +13323,19 @@ async function _relatoriosFetchClienteOfs(clienteId, empresaId, clienteNome) {
     });
     if (!result?.error) mergeRows(result?.data);
   }
-  if (!byId.size && clienteNome) {
+  const clientePareceUuid = clienteId && UUID_RE.test(String(clienteId || '').trim());
+  if (!clientePareceUuid && clienteId) {
+    const idPattern = '%' + String(clienteId || '').trim() + '%';
+    for (const col of ['cli_id', 'cliId', 'cliente_id']) {
+      const result = await _selectCompatRows('ofs', cols, (q) => {
+        let query = q.ilike(col, idPattern).order('created_at', { ascending: false });
+        query = _relatoriosApplyEmpresaFilter(query, empresaId);
+        return query.limit(1000);
+      });
+      if (!result?.error) mergeRows(result?.data);
+    }
+  }
+  if (clienteNome) {
     const nome = String(clienteNome || '').trim();
     for (const col of ['cliente_nome', 'cliNome', 'clinome', 'cliente']) {
       const result = await _selectCompatRows('ofs', cols, (q) => {
@@ -13617,8 +13686,8 @@ app.get('/api/relatorios/cliente-ficha', authMiddleware, async (req, res) => {
       },
       produtos_mais_pedidos: produtosMaisPedidos,
       faturamento_mensal: faturamento_mensal,
-      historico_ofs: historico.slice(0, 120),
-      orcamentos: orcamentosRows.slice(0, 120)
+      historico_ofs: historico,
+      orcamentos: orcamentosRows
     });
   } catch (e) {
     console.error('[RELATORIOS][CLIENTE-FICHA]', e?.message || e);
