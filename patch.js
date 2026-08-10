@@ -4337,12 +4337,16 @@ try {
   function sPlanFromDom() {
     var caixaComp = sNum((document.getElementById('simd-caixa-comp') || {}).value);
     var caixaLarg = sNum((document.getElementById('simd-caixa-larg') || {}).value);
+    var caixaAlt = sNum((document.getElementById('simd-caixa-alt') || {}).value);
+    var onda = String((document.getElementById('simd-onda') || {}).value || '').trim() || 'B';
     var qtdPedido = sInt((document.getElementById('simd-qtd') || {}).value);
-    var pecaLarg = caixaLarg > 0 ? caixaLarg : 0;
-    var pecaComp = caixaComp > 0 ? caixaComp : 0;
+    var pecaLarg = caixaLarg > 0 && caixaAlt > 0 ? (caixaLarg + (caixaAlt * 2) + 15) : 0;
+    var pecaComp = caixaComp > 0 && caixaLarg > 0 ? (((caixaComp + caixaLarg) * 2) + 20) : 0;
     return {
       caixa_comp_mm: caixaComp,
       caixa_larg_mm: caixaLarg,
+      caixa_alt_mm: caixaAlt,
+      onda: onda,
       qtd_pedido: qtdPedido,
       peca_larg_mm: pecaLarg,
       peca_comp_mm: pecaComp,
@@ -4360,9 +4364,10 @@ try {
       if (plan && plan.peca_larg_mm > 0 && plan.peca_comp_mm > 0) {
         resumo.innerHTML = ''
           + '<div class="simd-meta-card"><span>Planificação</span><strong>' + sEsc(sFmtMm(plan.peca_comp_mm) + ' x ' + sFmtMm(plan.peca_larg_mm)) + '</strong></div>'
-          + '<div class="simd-meta-card"><span>Área unitária</span><strong>' + sEsc(sFmtAreaMm2(plan.area_planificacao_mm2)) + '</strong></div>';
+          + '<div class="simd-meta-card"><span>Área unitária</span><strong>' + sEsc(sFmtAreaMm2(plan.area_planificacao_mm2)) + '</strong></div>'
+          + '<div class="simd-meta-card"><span>Onda</span><strong>' + sEsc(plan.onda || '—') + '</strong></div>';
       } else {
-        resumo.innerHTML = '<div class="simd-inline-tip">Preencha comprimento e largura da peça para verificar o encaixe na chapa.</div>';
+        resumo.innerHTML = '<div class="simd-inline-tip">Preencha comprimento, largura e altura da caixa para calcular a planificação automaticamente.</div>';
       }
     }
   }
@@ -4523,7 +4528,8 @@ try {
       + '  <div><span>Peças por chapa</span><strong>' + sEsc(String(row.caixas_por_chapa || 0)) + '</strong></div>'
       + '  <div><span>Desperdício</span><strong>' + sEsc(sFmtPct(row.desperdicio_pct || 0)) + '</strong></div>'
       + '  <div><span>Estoque</span><strong>' + sEsc(String(row.estoque || 0)) + '</strong></div>'
-      + '  <div><span>Peça</span><strong>' + sEsc(sFmtMm(plan && plan.peca_comp_mm || 0) + ' x ' + sFmtMm(plan && plan.peca_larg_mm || 0)) + '</strong></div>'
+      + '  <div><span>Planificação</span><strong>' + sEsc(sFmtMm(plan && plan.peca_comp_mm || 0) + ' x ' + sFmtMm(plan && plan.peca_larg_mm || 0)) + '</strong></div>'
+      + '  <div><span>Onda</span><strong>' + sEsc(plan && plan.onda || '—') + '</strong></div>'
       + '</div>'
       + '<div class="simd-visual-notes">'
       + '  <div><strong>Orientação:</strong> ' + sEsc(row.orientacao_label || '—') + ' · ' + sEsc(String(row.cols || 0)) + ' x ' + sEsc(String(row.rows || 0)) + '</div>'
@@ -4542,8 +4548,9 @@ try {
     if (resultado) resultado.style.display = 'block';
     if (info) {
       info.innerHTML = ''
-        + '<strong>Peça:</strong> ' + sEsc(sFmtMm(plan.peca_comp_mm) + ' x ' + sFmtMm(plan.peca_larg_mm))
+        + '<strong>Planificação automática:</strong> ' + sEsc(sFmtMm(plan.peca_comp_mm) + ' x ' + sFmtMm(plan.peca_larg_mm))
         + ' · <strong>Área:</strong> ' + sEsc(sFmtAreaMm2(plan.area_planificacao_mm2))
+        + ' · <strong>Onda:</strong> ' + sEsc(plan.onda || '—')
         + (plan.qtd_pedido > 0 ? (' · <strong>Quantidade:</strong> ' + sEsc(String(plan.qtd_pedido))) : '');
     }
     if (!wrap) return;
@@ -4608,7 +4615,8 @@ try {
 
   function sBuildMailBody(row, plan) {
     return [
-      'Peça ' + sFmtMm(plan.caixa_comp_mm) + ' x ' + sFmtMm(plan.caixa_larg_mm),
+      'Pedido sugerido para caixa ' + sFmtMm(plan.caixa_comp_mm) + ' x ' + sFmtMm(plan.caixa_larg_mm) + ' x ' + sFmtMm(plan.caixa_alt_mm),
+      'Onda: ' + (plan.onda || '—'),
       'Planificação: ' + sFmtMm(plan.peca_comp_mm) + ' x ' + sFmtMm(plan.peca_larg_mm),
       'Chapa: ' + (row.nome || 'Chapa') + ' - ' + (row.tamanho || '—'),
       'Fornecedor: ' + (row.fornecedor || '—'),
@@ -4630,13 +4638,14 @@ try {
     var selected = rows.find(function(row) { return sRowKey(row) === String(window.__simdSelectedRowId || '').trim(); }) || rows[0];
     var plan = window.__simdLastPlan || {};
     var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Simulador de Desperdício</title>'
-      + '<style>' + (typeof window._printCssPadraoComissoes === 'function' ? window._printCssPadraoComissoes() : 'body{font-family:Arial,sans-serif;padding:24px;color:#0f172a}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}.card{border:1px solid #cbd5e1;border-radius:12px;padding:12px}.lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.08em}.val{font-size:20px;font-weight:700;margin-top:6px}') + '</style>'
+      + '<style>' + (typeof window._printCssPadraoComissoes === 'function' ? window._printCssPadraoComissoes() : 'body{font-family:Arial,sans-serif;padding:24px;color:#0f172a}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.card{border:1px solid #cbd5e1;border-radius:12px;padding:12px}.lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.08em}.val{font-size:20px;font-weight:700;margin-top:6px}') + '</style>'
       + '</head><body>'
       + '<div class="brandline">Italy Embalagens</div>'
       + '<h1>Simulador de Desperdício</h1>'
       + '<h2>Gerado em ' + sEsc(typeof window._printGeradoEmBr === 'function' ? window._printGeradoEmBr() : new Date().toLocaleString('pt-BR')) + '</h2>'
       + '<div class="cards">'
-      + '<div class="card"><div class="lbl">Peça</div><div class="val">' + sEsc(sFmtMm(plan.caixa_comp_mm) + ' x ' + sFmtMm(plan.caixa_larg_mm)) + '</div></div>'
+      + '<div class="card"><div class="lbl">Caixa</div><div class="val">' + sEsc(sFmtMm(plan.caixa_comp_mm) + ' x ' + sFmtMm(plan.caixa_larg_mm) + ' x ' + sFmtMm(plan.caixa_alt_mm)) + '</div></div>'
+      + '<div class="card"><div class="lbl">Onda</div><div class="val">' + sEsc(plan.onda || '—') + '</div></div>'
       + '<div class="card"><div class="lbl">Planificação</div><div class="val">' + sEsc(sFmtMm(plan.peca_comp_mm) + ' x ' + sFmtMm(plan.peca_larg_mm)) + '</div></div>'
       + '<div class="card"><div class="lbl">Melhor chapa</div><div class="val">' + sEsc(selected.nome || 'Chapa') + '</div></div>'
       + '</div>'
@@ -4792,7 +4801,7 @@ try {
     }
     var selected = rows.find(function(row) { return sRowKey(row) === String(window.__simdSelectedRowId || '').trim(); }) || rows[0];
     var plan = window.__simdLastPlan || {};
-    var subject = encodeURIComponent('Simulacao de chapa - peca ' + sFmtMm(plan.caixa_comp_mm) + ' x ' + sFmtMm(plan.caixa_larg_mm));
+    var subject = encodeURIComponent('Simulacao de chapa - caixa ' + sFmtMm(plan.caixa_comp_mm) + ' x ' + sFmtMm(plan.caixa_larg_mm) + ' x ' + sFmtMm(plan.caixa_alt_mm));
     var body = encodeURIComponent(sBuildMailBody(selected, plan));
     try { window.location.href = 'mailto:?subject=' + subject + '&body=' + body; } catch (_) {}
   }
@@ -4803,7 +4812,7 @@ try {
     var resultado = document.getElementById('simd-resultado');
     if (!(plan.peca_larg_mm > 0 && plan.peca_comp_mm > 0)) {
       sLog('calcular bloqueado: medidas insuficientes', plan);
-      try { alert('Preencha comprimento e largura da peça para calcular o encaixe.'); } catch (_) {}
+      try { alert('Preencha comprimento, largura e altura da caixa para calcular a planificação.'); } catch (_) {}
       return;
     }
     window._simdSaveState();
@@ -4872,13 +4881,13 @@ try {
       + '<style>'
       + '#tela-simulador-desperdicio .simd-shell{display:grid;gap:16px}'
       + '#tela-simulador-desperdicio .simd-panel{background:rgba(15,23,42,.68);border:1px solid rgba(148,163,184,.16);border-radius:18px;padding:18px}'
-      + '#tela-simulador-desperdicio .simd-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}'
+      + '#tela-simulador-desperdicio .simd-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}'
       + '#tela-simulador-desperdicio .simd-field{display:grid;gap:6px}'
       + '#tela-simulador-desperdicio .simd-field label{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}'
       + '#tela-simulador-desperdicio .simd-field input,#tela-simulador-desperdicio .simd-field select{width:100%;padding:11px 12px;background:#020617;border:1px solid rgba(148,163,184,.18);border-radius:12px;color:#f8fafc;font-size:13px}'
       + '#tela-simulador-desperdicio .simd-field input[readonly]{background:rgba(15,23,42,.9);color:#cbd5e1}'
       + '#tela-simulador-desperdicio .simd-plan-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}'
-      + '#tela-simulador-desperdicio .simd-plan-resumo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
+      + '#tela-simulador-desperdicio .simd-plan-resumo{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}'
       + '#tela-simulador-desperdicio .simd-meta-card{display:grid;gap:4px;padding:12px 14px;border-radius:14px;border:1px solid rgba(59,130,246,.2);background:rgba(30,41,59,.65)}'
       + '#tela-simulador-desperdicio .simd-meta-card span{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
       + '#tela-simulador-desperdicio .simd-meta-card strong{font-size:15px;color:#f8fafc}'
@@ -4918,18 +4927,20 @@ try {
       + '</style>'
       + '<div class="simd-shell">'
       + '  <div class="simd-panel">'
-      + '    <div style="display:grid;gap:6px;margin-bottom:16px"><div style="font-size:18px;font-weight:800;color:#f8fafc">Simulador de Desperdício de Papelão</div><div style="font-size:13px;color:#94a3b8">Informe as medidas da peça (planificação 2D), veja o encaixe automático e rankeie as chapas reais do estoque do menor para o maior desperdício.</div></div>'
+      + '    <div style="display:grid;gap:6px;margin-bottom:16px"><div style="font-size:18px;font-weight:800;color:#f8fafc">Simulador de Desperdício de Papelão</div><div style="font-size:13px;color:#94a3b8">Informe as medidas da caixa, veja a planificação automática e rankeie as chapas reais do estoque do menor para o maior desperdício.</div></div>'
       + '    <div class="simd-grid">'
-      + '      <div class="simd-field"><label>Comprimento da Peça (mm)</label><input type="number" min="1" id="simd-caixa-comp" placeholder="Ex: 800"></div>'
-      + '      <div class="simd-field"><label>Largura da Peça (mm)</label><input type="number" min="1" id="simd-caixa-larg" placeholder="Ex: 600"></div>'
+      + '      <div class="simd-field"><label>Comprimento da Caixa (mm)</label><input type="number" min="1" id="simd-caixa-comp" placeholder="Ex: 400"></div>'
+      + '      <div class="simd-field"><label>Largura da Caixa (mm)</label><input type="number" min="1" id="simd-caixa-larg" placeholder="Ex: 300"></div>'
+      + '      <div class="simd-field"><label>Altura da Caixa (mm)</label><input type="number" min="1" id="simd-caixa-alt" placeholder="Ex: 200"></div>'
+      + '      <div class="simd-field"><label>Tipo de Onda</label><select id="simd-onda"><option value="B">B</option><option value="C">C</option><option value="BC">BC</option><option value="E">E</option></select></div>'
       + '    </div>'
       + '    <div class="simd-plan-grid" style="margin-top:16px">'
-      + '      <div class="simd-field"><label>Largura (mm)</label><input type="number" id="simd-larg" readonly><div style="font-size:11px;color:#64748b">Medida horizontal da peça (igual a entrada)</div></div>'
-      + '      <div class="simd-field"><label>Comprimento (mm)</label><input type="number" id="simd-comp" readonly><div style="font-size:11px;color:#64748b">Medida vertical da peça (igual a entrada)</div></div>'
+      + '      <div class="simd-field"><label>Largura Necessária (mm)</label><input type="number" id="simd-larg" readonly><div style="font-size:11px;color:#64748b">Fórmula: largura + (altura × 2) + 15</div></div>'
+      + '      <div class="simd-field"><label>Comprimento Necessário (mm)</label><input type="number" id="simd-comp" readonly><div style="font-size:11px;color:#64748b">Fórmula: (comprimento + largura) × 2 + 20</div></div>'
       + '    </div>'
       + '    <div class="simd-grid" style="margin-top:16px">'
       + '      <div class="simd-field"><label>Quantidade do Pedido (opcional)</label><input type="number" min="0" id="simd-qtd" placeholder="Ex: 1000"></div>'
-      + '      <div class="simd-field"><label>Simular com Chapa Específica (opcional)</label><div class="simd-search-wrap"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="text" id="simd-busca-chapa" placeholder="Digite o nome ou fornecedor da chapa..." style="flex:1"><button type="button" class="simd-btn ghost" id="simd-btn-limpar-chapa" style="display:none">Limpar</button></div><div id="simd-busca-resultados" style="display:none;background:#111827;border:1px solid rgba(148,163,184,.14);border-radius:12px;overflow:hidden;max-height:220px;overflow:auto"></div><div id="simd-chapa-selecionada" style="display:none;padding:12px 14px;background:rgba(24,95,165,.16);border:1px solid rgba(24,95,165,.36);border-radius:12px"><div style="font-size:11px;color:#94a3b8;margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em">Chapa selecionada</div><div id="simd-chapa-sel-nome" style="font-size:14px;font-weight:800;color:#f8fafc"></div><div id="simd-chapa-sel-info" style="font-size:12px;color:#cbd5e1;margin-top:4px"></div></div></div></div>'
+      + '      <div class="simd-field" style="grid-column:span 3"><label>Simular com Chapa Específica (opcional)</label><div class="simd-search-wrap"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="text" id="simd-busca-chapa" placeholder="Digite o nome ou fornecedor da chapa..." style="flex:1"><button type="button" class="simd-btn ghost" id="simd-btn-limpar-chapa" style="display:none">Limpar</button></div><div id="simd-busca-resultados" style="display:none;background:#111827;border:1px solid rgba(148,163,184,.14);border-radius:12px;overflow:hidden;max-height:220px;overflow:auto"></div><div id="simd-chapa-selecionada" style="display:none;padding:12px 14px;background:rgba(24,95,165,.16);border:1px solid rgba(24,95,165,.36);border-radius:12px"><div style="font-size:11px;color:#94a3b8;margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em">Chapa selecionada</div><div id="simd-chapa-sel-nome" style="font-size:14px;font-weight:800;color:#f8fafc"></div><div id="simd-chapa-sel-info" style="font-size:12px;color:#cbd5e1;margin-top:4px"></div></div></div></div>'
       + '    </div>'
       + '    <div id="simd-plan-resumo" class="simd-plan-resumo" style="margin-top:16px"></div>'
       + '    <div class="simd-actions">'
@@ -4953,7 +4964,7 @@ try {
 
   function sBindShell() {
     if (!sRenderShell()) return false;
-    ['simd-caixa-comp', 'simd-caixa-larg', 'simd-qtd'].forEach(function(id) {
+    ['simd-caixa-comp', 'simd-caixa-larg', 'simd-caixa-alt', 'simd-onda', 'simd-qtd'].forEach(function(id) {
       var el = document.getElementById(id);
       if (!el || el.dataset.simdBoxBound === '1') return;
       el.dataset.simdBoxBound = '1';
@@ -5000,6 +5011,8 @@ try {
       localStorage.setItem(sStateKey(), JSON.stringify({
         caixa_comp_mm: plan.caixa_comp_mm,
         caixa_larg_mm: plan.caixa_larg_mm,
+        caixa_alt_mm: plan.caixa_alt_mm,
+        onda: plan.onda,
         qtd_pedido: plan.qtd_pedido,
         chapa: chapa ? {
           id: chapa.id,
@@ -5030,6 +5043,8 @@ try {
       }
       setVal('simd-caixa-comp', st.caixa_comp_mm);
       setVal('simd-caixa-larg', st.caixa_larg_mm);
+      setVal('simd-caixa-alt', st.caixa_alt_mm);
+      setVal('simd-onda', st.onda || 'B');
       setVal('simd-qtd', st.qtd_pedido);
       sVerificarCampos();
       if (st.chapa && st.chapa.id && typeof window._simdCarregarChapas === 'function') {
