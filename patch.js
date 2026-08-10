@@ -10192,13 +10192,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       if (body) {
         if (isDualCol) {
           body.style.setProperty('display', 'grid', 'important');
-          body.style.setProperty('grid-template-columns', 'minmax(0,1.4fr) minmax(540px,1fr)', 'important');
-          body.style.setProperty('gap', '16px 18px', 'important');
-          body.style.setProperty('height', '100%', 'important');
+          body.style.setProperty('grid-template-columns', 'minmax(0,1fr)', 'important');
+          body.style.setProperty('gap', '16px 0', 'important');
+          body.style.setProperty('height', 'auto', 'important');
           body.style.setProperty('min-height', '0', 'important');
           body.style.setProperty('flex', '1 1 auto', 'important');
           body.style.setProperty('max-height', 'none', 'important');
-          body.style.setProperty('overflow-y', 'auto', 'important');
+          body.style.setProperty('overflow-y', 'visible', 'important');
           body.style.setProperty('overflow-x', 'hidden', 'important');
           body.style.setProperty('padding', '4px 18px 8px', 'important');
           body.style.setProperty('box-sizing', 'border-box', 'important');
@@ -10262,14 +10262,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       if (leftCol) {
         if (isDualCol) {
           leftCol.style.setProperty('min-height', '0', 'important');
-          leftCol.style.setProperty('height', '100%', 'important');
+          leftCol.style.setProperty('height', 'auto', 'important');
           leftCol.style.setProperty('max-height', 'none', 'important');
           leftCol.style.setProperty('align-content', 'start', 'important');
-          leftCol.style.setProperty('overflow-y', 'auto', 'important');
+          leftCol.style.setProperty('overflow-y', 'visible', 'important');
           leftCol.style.setProperty('overflow-x', 'hidden', 'important');
-          leftCol.style.setProperty('padding-right', '8px', 'important');
+          leftCol.style.setProperty('padding-right', '0', 'important');
           leftCol.style.setProperty('scrollbar-gutter', 'stable both-edges', 'important');
-          leftCol.style.setProperty('display', 'block', 'important');
+          leftCol.style.setProperty('display', 'grid', 'important');
           leftCol.style.setProperty('box-sizing', 'border-box', 'important');
           leftCol.style.setProperty('width', '100%', 'important');
           leftCol.style.setProperty('min-width', '0', 'important');
@@ -10292,13 +10292,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       }
       if (rightCol) {
         if (isDualCol) {
-          rightCol.style.setProperty('display', 'block', 'important');
+          rightCol.style.setProperty('display', 'grid', 'important');
           rightCol.style.setProperty('min-height', '0', 'important');
-          rightCol.style.setProperty('height', '100%', 'important');
+          rightCol.style.setProperty('height', 'auto', 'important');
           rightCol.style.setProperty('max-height', 'none', 'important');
-          rightCol.style.setProperty('overflow-y', 'auto', 'important');
+          rightCol.style.setProperty('overflow-y', 'visible', 'important');
           rightCol.style.setProperty('overflow-x', 'visible', 'important');
-          rightCol.style.setProperty('padding', '4px 8px 4px 4px', 'important');
+          rightCol.style.setProperty('padding', '2px 0 4px 0', 'important');
           rightCol.style.setProperty('scrollbar-gutter', 'stable both-edges', 'important');
           rightCol.style.setProperty('box-sizing', 'border-box', 'important');
           rightCol.style.setProperty('width', '100%', 'important');
@@ -10378,9 +10378,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         // (mas SEMPRE garantir que wrapper tenha min-height para não ficar 0)
         tableWrap.style.setProperty('min-height', '0', 'important');
         tableWrap.style.setProperty('height', 'auto', 'important');
-        tableWrap.style.setProperty('overflow', 'auto', 'important');
+        tableWrap.style.setProperty('overflow-x', 'auto', 'important');
+        tableWrap.style.setProperty('overflow-y', 'visible', 'important');
         tableWrap.style.setProperty('flex', '1 1 auto', 'important');
-        tableWrap.style.setProperty('max-height', isDualCol ? 'clamp(360px, 52vh, 720px)' : 'none', 'important');
+        tableWrap.style.setProperty('max-height', 'none', 'important');
         tableWrap.style.setProperty('scrollbar-gutter', 'stable both-edges', 'important');
         tableWrap.style.setProperty('box-sizing', 'border-box', 'important');
         tableWrap.style.setProperty('width', '100%', 'important');
@@ -50373,16 +50374,16 @@ function _ocultarGraficoComissoes() {
       + '#modal-calc #modal-calculadora,#modal-calc.orc-calc-fs-ready #modal-calculadora{position:relative!important;inset:auto!important;width:min(1720px,calc(100vw - 24px))!important;max-width:1720px!important;height:min(96vh,1220px)!important;max-height:96vh!important;margin:0 auto!important;border-radius:24px!important;overflow:hidden!important;box-shadow:0 30px 80px rgba(2,6,23,.45)!important}'
       + '#ccpx-compra-fullscreen,#ccpx-compra-fullscreen.ccpx-fs-overlay{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:100vw!important;max-height:100vh!important;padding:18px!important;margin:0!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important}'
       + '#ccpx-compra-fullscreen > .ccpx-fs-shell{width:min(1680px,calc(100vw - 36px))!important;height:min(94vh,1180px)!important;max-width:1680px!important;max-height:94vh!important;border-radius:24px!important;margin:0 auto!important;overflow:hidden!important;box-shadow:0 30px 80px rgba(2,6,23,.45)!important}'
-      + '#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body{grid-template-columns:minmax(0,1.5fr) minmax(420px,1fr)!important;align-items:stretch!important;overflow:hidden!important;padding:0!important}'
-      + '#modal-calc #modal-calculadora .calc-col-esq{min-height:0!important;overflow:auto!important;padding-right:6px!important;scrollbar-gutter:stable both-edges!important;scrollbar-width:auto!important;scrollbar-color:rgba(100,116,139,.68) rgba(15,23,42,.72)!important}'
-      + '#modal-calc #modal-calculadora .calc-col-dir{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;min-width:420px!important;min-height:0!important;overflow:auto!important;align-content:start!important;padding-right:6px!important;scrollbar-gutter:stable both-edges!important;scrollbar-width:auto!important;scrollbar-color:rgba(100,116,139,.68) rgba(15,23,42,.72)!important}'
+      + '#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:16px 0!important;align-items:stretch!important;overflow:visible!important;max-height:none!important;height:auto!important;min-height:0!important;padding:0!important}'
+      + '#modal-calc #modal-calculadora .calc-col-esq{min-height:0!important;height:auto!important;max-height:none!important;overflow:visible!important;padding-right:0!important;align-content:start!important;min-width:0!important;width:100%!important;display:grid!important;gap:14px!important;box-sizing:border-box!important}'
+      + '#modal-calc #modal-calculadora .calc-col-dir{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-auto-rows:minmax(0,auto)!important;gap:14px!important;min-width:0!important;min-height:0!important;height:auto!important;max-height:none!important;overflow:visible!important;align-content:start!important;padding-right:0!important;position:static!important;width:100%!important;box-sizing:border-box!important;padding:16px!important}'
       + '#modal-calc #modal-calculadora .calc-col-dir > div:first-child,#modal-calc #modal-calculadora .param-frete-total{grid-column:1 / -1!important}'
-      + '#modal-calc #modal-calculadora .param-row{min-height:72px!important}'
-      + '#modal-calc #modal-calculadora .calc-tabela-wrap{display:block!important;flex:0 0 auto!important;height:auto!important;min-height:320px!important;max-height:clamp(320px,46vh,600px)!important;overflow:auto!important;scrollbar-gutter:stable both-edges!important;scrollbar-width:auto!important;scrollbar-color:rgba(100,116,139,.68) rgba(15,23,42,.72)!important}'
+      + '#modal-calc #modal-calculadora .param-row{min-height:auto!important;max-height:none!important;overflow:visible!important}'
+      + '#modal-calc #modal-calculadora .calc-tabela-wrap{display:block!important;flex:0 0 auto!important;height:auto!important;min-height:260px!important;max-height:none!important;overflow-x:auto!important;overflow-y:visible!important;scrollbar-gutter:stable both-edges!important;scrollbar-width:auto!important;scrollbar-color:rgba(100,116,139,.68) rgba(15,23,42,.72)!important}'
       + '#modal-calc #modal-calculadora #calc-sheet{min-width:1160px!important;table-layout:auto!important}'
-      + '#modal-calc #modal-calculadora .calc-col-esq::-webkit-scrollbar,#modal-calc #modal-calculadora .calc-col-dir::-webkit-scrollbar,#modal-calc #modal-calculadora .calc-tabela-wrap::-webkit-scrollbar{width:12px;height:12px}'
-      + '#modal-calc #modal-calculadora .calc-col-esq::-webkit-scrollbar-track,#modal-calc #modal-calculadora .calc-col-dir::-webkit-scrollbar-track,#modal-calc #modal-calculadora .calc-tabela-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72);border-radius:999px}'
-      + '#modal-calc #modal-calculadora .calc-col-esq::-webkit-scrollbar-thumb,#modal-calc #modal-calculadora .calc-col-dir::-webkit-scrollbar-thumb,#modal-calc #modal-calculadora .calc-tabela-wrap::-webkit-scrollbar-thumb{background:rgba(100,116,139,.68);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
+      + '#modal-calc #modal-calculadora .calc-tabela-wrap::-webkit-scrollbar{width:12px;height:12px}'
+      + '#modal-calc #modal-calculadora .calc-tabela-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72);border-radius:999px}'
+      + '#modal-calc #modal-calculadora .calc-tabela-wrap::-webkit-scrollbar-thumb{background:rgba(100,116,139,.68);border-radius:999px;border:2px solid rgba(15,23,42,.72)}'
       + '@media (max-width:1280px){#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body{grid-template-columns:1fr!important}#modal-calc #modal-calculadora .calc-col-dir{grid-template-columns:1fr!important;min-width:0!important;position:static!important;max-height:none!important}}'
       + '@media (max-width:920px){#modal-calc,#modal-calc.modal-overlay,#ccpx-compra-fullscreen,#ccpx-compra-fullscreen.ccpx-fs-overlay{padding:0!important;align-items:stretch!important;justify-content:stretch!important}#modal-calc #modal-calculadora,#modal-calc.orc-calc-fs-ready #modal-calculadora,#ccpx-compra-fullscreen > .ccpx-fs-shell{width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;box-shadow:none!important}#modal-calc #modal-calculadora .calc-col-dir{grid-template-columns:1fr!important;min-width:0!important;padding-right:0!important}#modal-calc #modal-calculadora .calc-tabela-wrap{max-height:none!important}}';
     document.head.appendChild(st);
@@ -52784,12 +52785,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     st.textContent = ''
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora{overflow:hidden!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell{display:grid!important;grid-template-rows:auto auto minmax(0,1fr) auto!important;height:100%!important;min-height:0!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-main{display:flex!important;flex-direction:column!important;min-height:0!important;overflow:hidden!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{display:grid!important;grid-template-columns:minmax(0,1.5fr) minmax(420px,1fr)!important;gap:18px!important;height:100%!important;min-height:0!important;overflow:hidden!important;padding:0!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-esq,#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{height:100%!important;min-height:0!important;overflow:auto!important;align-content:start!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-esq{padding-right:6px!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-auto-rows:minmax(0,auto)!important;gap:12px!important;padding-right:6px!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-tabela-wrap{display:block!important;min-height:320px!important;max-height:clamp(320px,46vh,600px)!important;overflow:auto!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-main{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto!important;gap:16px 0!important;align-items:start!important;min-height:0!important;padding:16px 22px 18px!important;overflow:auto!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:16px!important;height:auto!important;max-height:none!important;min-height:0!important;overflow:visible!important;padding:0!important;grid-column:1 / -1!important;align-items:stretch!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-esq{display:grid!important;gap:14px!important;grid-template-rows:auto!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;padding-right:0!important;align-content:start!important;align-items:start!important;min-width:0!important;width:100%!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto!important;gap:14px!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;padding:16px!important;align-content:start!important;align-items:start!important;position:static!important;min-width:0!important;width:100%!important;box-sizing:border-box!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-tabela-wrap{display:block!important;overflow-x:auto!important;overflow-y:visible!important;flex:0 0 auto!important;height:auto!important;min-height:260px!important;max-height:none!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-wave-panels{grid-column:1 / -1!important;margin-top:0!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-footer.rodape{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:10px!important;flex:0 0 auto!important}'
       + '@media (max-width:1280px){#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{grid-template-columns:1fr!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{grid-template-columns:1fr!important;min-width:0!important}}'
       + '@media (max-width:920px){#modal-calc.orc-calc-fs-ready #modal-calculadora{overflow:auto!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell{display:block!important;height:auto!important;min-height:100%!important;overflow:visible!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-main{display:block!important;min-height:auto!important;overflow:visible!important;padding:14px 16px!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{display:grid!important;grid-template-columns:1fr!important;height:auto!important;min-height:auto!important;overflow:visible!important;padding:0!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-esq,#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{height:auto!important;overflow:visible!important;padding-right:0!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{display:grid!important;grid-template-columns:1fr!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-tabela-wrap{max-height:none!important}#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-footer.rodape{display:flex!important;flex-direction:column!important;align-items:stretch!important}}';
