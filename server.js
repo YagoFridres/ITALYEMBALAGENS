@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -8359,16 +8359,36 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
     const empresaCtx = await _resolveEmpresaMutationContext(req, req.query || {});
     const empFiltroRaw = String(req.query.empId ?? req.query.emp_id ?? '').trim();
     const empLegacy = String(empresaCtx?.emp_id || '').trim();
+    const filtroStatus = String(req.query.status || '').trim();
+    const filtroCliente = String(req.query.cliente_id || '').trim();
+    let filtroEmpAplicado = false;
+    let qFiltro = q;
     if (empFiltroRaw) {
-      q = q.eq('emp_id', empFiltroRaw);
+      qFiltro = qFiltro.eq('emp_id', empFiltroRaw);
+      filtroEmpAplicado = true;
     } else if (empLegacy) {
-      q = q.eq('emp_id', empLegacy);
+      qFiltro = qFiltro.eq('emp_id', empLegacy);
+      filtroEmpAplicado = true;
     }
-    if (req.query.status) q = q.eq('status', req.query.status);
-    if (req.query.cliente_id) q = q.eq('cliente_id', req.query.cliente_id);
-    const { data, error } = await q;
+    if (filtroStatus) qFiltro = qFiltro.eq('status', filtroStatus);
+    if (filtroCliente) qFiltro = qFiltro.eq('cliente_id', filtroCliente);
+    let { data, error } = await qFiltro;
     if (error) {
-      console.error('[AMOSTRAS] query error:', String(error?.message || error));
+      console.error('[AMOSTRAS] query com filtro error:', String(error?.message || error));
+    } else if (!Array.isArray(data) || data.length === 0) {
+      if (filtroEmpAplicado && !filtroStatus && !filtroCliente) {
+        let qFallback = q;
+        if (filtroStatus) qFallback = qFallback.eq('status', filtroStatus);
+        if (filtroCliente) qFallback = qFallback.eq('cliente_id', filtroCliente);
+        const { data: data2, error: err2 } = await qFallback;
+        if (!err2 && Array.isArray(data2) && data2.length > 0) {
+          console.log('[AMOSTRAS] fallback sem filtro empresa:', data2.length, 'amostras (contexto emp_id=' + empLegacy + ' nao encontrou nada)');
+          return ok(res, data2);
+        }
+      }
+    }
+    if (error) {
+      console.error('[AMOSTRAS] final error:', String(error?.message || error));
       return ok(res, []);
     }
     return ok(res, data || []);
@@ -8377,7 +8397,6 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
     return ok(res, []);
   }
 });
-
 app.get('/api/debug/amostras', async (req, res) => {
   try {
     setNoCache(res);
