@@ -11198,265 +11198,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         });
       }
 
-      // ---------- AMOSTRAS ----------
-      function _fmtAmostraData(v) {
-        if (!v) return '—';
-        try {
-          var d = (v instanceof Date) ? v : new Date(v);
-          if (!d || isNaN(d.getTime())) return String(v || '—').slice(0, 10);
-          var dd = String(d.getDate()).padStart(2,'0');
-          var mm = String(d.getMonth()+1).padStart(2,'0');
-          var yy = d.getFullYear();
-          return dd+'/'+mm+'/'+yy;
-        } catch (_) { return String(v || '—').slice(0, 10); }
-      }
-      function _stsAmostraBadge(st) {
-        var s = String(st || 'Pendente').trim() || 'Pendente';
-        var sl = s.toLowerCase();
-        if (sl === 'feita' || sl === 'aprovada' || sl === 'concluída' || sl === 'concluida' || sl === 'entregue') {
-          return '<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(34,197,94,.18);color:#86efac;border:1px solid rgba(34,197,94,.35);font-size:11px;font-weight:800;letter-spacing:.04em">✓ '+_cad_esc(s)+'</span>';
-        }
-        if (sl === 'rejeitada' || sl === 'cancelada' || sl === 'cancelado') {
-          return '<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(239,68,68,.18);color:#fca5a5;border:1px solid rgba(239,68,68,.35);font-size:11px;font-weight:800;letter-spacing:.04em">✗ '+_cad_esc(s)+'</span>';
-        }
-        if (sl === 'em andamento' || sl === 'andamento' || sl === 'produção' || sl === 'producao') {
-          return '<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(234,179,8,.18);color:#fde68a;border:1px solid rgba(234,179,8,.35);font-size:11px;font-weight:800;letter-spacing:.04em">◷ '+_cad_esc(s)+'</span>';
-        }
-        return '<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(59,130,246,.18);color:#93c5fd;border:1px solid rgba(59,130,246,.35);font-size:11px;font-weight:800;letter-spacing:.04em">◌ '+_cad_esc(s)+'</span>';
-      }
-      function _amoToken() {
-        try { return String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { return ''; }
-      }
-      async function _amoFetch(url, opts) {
-        opts = opts || {};
-        var tok = _amoToken();
-        opts.headers = Object.assign({ 'Content-Type': 'application/json' }, tok ? { Authorization: 'Bearer ' + tok } : {}, opts.headers || {});
-        if (opts.body && typeof opts.body !== 'string') opts.body = JSON.stringify(opts.body);
-        opts.credentials = opts.credentials || 'include';
-        var r = await fetch(url, opts);
-        var j = await r.json().catch(function(){ return null; });
-        if (!r.ok || !j || j.ok === false) throw new Error(String(j && j.error || j && j.message || ('HTTP '+r.status)));
-        return j && j.data != null ? j.data : (j || null);
-      }
-      function _amoHojeMesAno() {
-        var d = new Date();
-        return { mes: d.getMonth()+1, ano: d.getFullYear() };
-      }
-      function _amoStatusOptions(valAtual) {
-        var opts = ['Pendente','Em Andamento','Feita','Aprovada','Rejeitada','Cancelada'];
-        return opts.map(function(o){ return '<option value="'+_cad_escAttr(o)+'"'+(String(valAtual||'').trim().toLowerCase()===o.toLowerCase()?' selected':'')+'>'+_cad_esc(o)+'</option>'; }).join('');
-      }
-      async function _amoSalvarRegistro(payload, idEditar) {
-        if (idEditar) {
-          return _amoFetch('/api/amostras/' + encodeURIComponent(idEditar), { method: 'PUT', body: payload });
-        }
-        return _amoFetch('/api/amostras', { method: 'POST', body: payload });
-      }
-      function openAmostraModal(item, done) {
-        try { _cad_ensureStyles(); } catch (_) {}
-        var old = document.getElementById('cad-amostra-modal');
-        if (old) old.remove();
-        var it = item || {};
-        var wrap = document.createElement('div');
-        wrap.id = 'cad-amostra-modal';
-        wrap.className = 'pep-modal';
-        wrap.innerHTML = ''
-          + '<div class="pep-modal-box" style="width:min(720px,96vw)">'
-          + '  <div class="pep-head" style="margin-bottom:12px"><div class="pep-title" style="font-size:18px">🔬 ' + (it.id ? 'Editar Amostra' : 'Nova Amostra') + '</div></div>'
-          + '  <div class="pep-grid">'
-          + '    <div style="grid-column:1 / -1"><div class="pep-sub">Nome do Cliente</div><input class="pep-input" id="cam-cli-nome" placeholder="Ex: Supermercado Garcia" value="'+_cad_esc(it.cliente_nome || it.cliente || '')+'"></div>'
-          + '    <div style="grid-column:1 / -1"><div class="pep-sub">Produto / Descrição da Amostra</div><input class="pep-input" id="cam-produto" placeholder="Ex: Caixa Pizza Média 30cm" value="'+_cad_esc(it.produto || '')+'"></div>'
-          + '    <div><div class="pep-sub">Status</div><select class="pep-select" id="cam-status">' + _amoStatusOptions(it.status || 'Pendente') + '</select></div>'
-          + '    <div><div class="pep-sub">Data do Pedido</div><input class="pep-input" id="cam-dpedido" type="date" value="'+_cad_esc(String(it.data_pedido || new Date().toISOString().slice(0,10)))+'"></div>'
-          + '    <div><div class="pep-sub">Previsão de Entrega</div><input class="pep-input" id="cam-dentrega" type="date" value="'+_cad_esc(String(it.data_entrega || '').slice(0,10))+'"></div>'
-          + '    <div><div class="pep-sub">Data de Aprovação / Feitura</div><input class="pep-input" id="cam-daprov" type="date" value="'+_cad_esc(String(it.data_aprovacao || '').slice(0,10))+'"></div>'
-          + '    <div style="grid-column:1 / -1"><div class="pep-sub">Observações</div><textarea class="pep-input" id="cam-obs" rows="3" placeholder="Tamanhos, cores, cliente aprovou, ajustes necessários...">'+_cad_esc(it.observacoes || it.descricao || '')+'</textarea></div>'
-          + '  </div>'
-          + '  <div class="pep-actions"><button class="pep-btn" id="cam-cancel">Cancelar</button><button class="pep-btn primary" id="cam-save">Salvar</button></div>'
-          + '</div>';
-        wrap.addEventListener('click', function(e){ if(e.target===wrap) wrap.remove(); });
-        var _esc = function(ev){ if ((ev && ev.key || '') === 'Escape') { try { wrap.remove(); } catch(_){} document.removeEventListener('keydown', _esc); } };
-        document.addEventListener('keydown', _esc);
-        document.body.appendChild(wrap);
-        document.getElementById('cam-cancel').onclick = function(){ document.removeEventListener('keydown', _esc); wrap.remove(); };
-        document.getElementById('cam-save').onclick = async function(){
-          try {
-            var payload = {
-              cliente_nome: String(document.getElementById('cam-cli-nome').value || '').trim(),
-              produto: String(document.getElementById('cam-produto').value || '').trim(),
-              status: String(document.getElementById('cam-status').value || 'Pendente').trim(),
-              data_pedido: String(document.getElementById('cam-dpedido').value || '').trim() || null,
-              data_entrega: String(document.getElementById('cam-dentrega').value || '').trim() || null,
-              data_aprovacao: String(document.getElementById('cam-daprov').value || '').trim() || null,
-              observacoes: String(document.getElementById('cam-obs').value || '').trim(),
-            };
-            if (!payload.cliente_nome) throw new Error('Informe o nome do cliente.');
-            if (!payload.produto) throw new Error('Informe o produto/descrição da amostra.');
-            await _amoSalvarRegistro(payload, it.id || null);
-            document.removeEventListener('keydown', _esc);
-            wrap.remove();
-            if (typeof done === 'function') done();
-          } catch (e) { alert(String(e && e.message || e)); }
-        };
-      }
-      function _amoDefaultMesAno() {
-        var ch = String(window.__amoRef || '').split('-');
-        if (ch.length === 2) {
-          var m = Number(ch[0]); var a = Number(ch[1]);
-          if (m>=1&&m<=12 && a>=1900&&a<=2999) return { mes: m, ano: a };
-        }
-        return _amoHojeMesAno();
-      }
-      function _amoMesAnoOptions(ref) {
-        var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-        var mesHtml = meses.map(function(n, i){ return '<option value="'+(i+1)+'"'+(ref.mes===(i+1)?' selected':'')+'>'+_cad_esc(String(i+1).padStart(2,'0')+' - '+n)+'</option>'; }).join('');
-        var anoAtual = new Date().getFullYear();
-        var anos = [];
-        for (var y = anoAtual - 2; y <= anoAtual + 1; y++) anos.push(y);
-        var anoHtml = anos.map(function(y){ return '<option value="'+y+'"'+(ref.ano===y?' selected':'')+'>'+y+'</option>'; }).join('');
-        return { mes: mesHtml, ano: anoHtml };
-      }
-      async function renderAmostrasPage() {
-        try { _cad_ensureStyles(); } catch (_) {}
-        var page = _cad_ensurePage('amostras');
-        _cad_showOnlyPage('amostras');
-        try { location.hash = 'amostras'; } catch (_) {}
-        var ref = _amoDefaultMesAno();
-        var opts = _amoMesAnoOptions(ref);
-        page.innerHTML = ''
-          + '<div class="pep-wrap">'
-          + '  <div class="pep-head" style="margin-bottom:16px"><div>'
-          + '    <div class="pep-title" style="font-size:22px">🔬 Amostras</div>'
-          + '    <div class="pep-sub">Cadastro e relatório mensal de amostras de embalagens entregues / aprovadas para clientes.</div>'
-          + '  </div><div style="display:flex;gap:8px;flex-wrap:wrap">'
-          + '    <button class="pep-btn" id="amo-voltar">← Voltar para PCP</button>'
-          + '    <button class="pep-btn primary" id="amo-nova">＋ Nova Amostra</button>'
-          + '  </div></div>'
-          + '  <div class="pep-panel" style="margin-bottom:12px"><div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">'
-          + '    <div><div class="pep-sub">Mês de referência</div><select class="pep-select" id="amo-mes" style="min-width:200px">' + opts.mes + '</select></div>'
-          + '    <div><div class="pep-sub">Ano</div><select class="pep-select" id="amo-ano">' + opts.ano + '</select></div>'
-          + '    <div style="flex:1;min-width:200px"><div class="pep-sub">Filtrar por status</div><select class="pep-select" id="amo-status">'
-          +      '<option value="">Todos</option>'
-          +      _amoStatusOptions(window.__amoStatusFiltro || '')
-          +    '</select></div>'
-          + '    <button class="pep-btn primary" id="amo-buscar">🔍 Atualizar</button>'
-          + '  </div></div>'
-          + '  <div id="amo-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px">'
-          + '    <div class="pep-panel" style="padding:14px"><div class="pep-sub">Total no mês</div><div style="font-size:26px;font-weight:900;color:#f8fafc;margin-top:4px" id="amo-total">...</div></div>'
-          + '    <div class="pep-panel" style="padding:14px;background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.35)"><div class="pep-sub">Pendentes</div><div style="font-size:26px;font-weight:900;color:#93c5fd;margin-top:4px" id="amo-pend">...</div></div>'
-          + '    <div class="pep-panel" style="padding:14px;background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35)"><div class="pep-sub">Feitas / Aprovadas</div><div style="font-size:26px;font-weight:900;color:#86efac;margin-top:4px" id="amo-feitas">...</div></div>'
-          + '    <div class="pep-panel" style="padding:14px;background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.35)"><div class="pep-sub">Em Andamento</div><div style="font-size:26px;font-weight:900;color:#fde68a;margin-top:4px" id="amo-and">...</div></div>'
-          + '  </div>'
-          + '  <div class="pep-panel" style="padding:0;overflow:hidden">'
-          + '    <div style="padding:10px 14px;border-bottom:1px solid rgba(148,163,184,.15);font-weight:800;color:#e2e8f0">📋 Lista de Amostras — ' + _cad_esc(String(ref.mes).padStart(2,'0')) + '/' + _cad_esc(String(ref.ano)) + '</div>'
-          + '    <div class="pep-table-wrap pep-table-wrap-amostras"><table class="pep-table">'
-          + '      <thead><tr>'
-          + '        <th>Cliente</th><th>Produto / Descrição</th><th style="width:14%">Status</th>'
-          + '        <th style="width:13%">Pedido</th><th style="width:13%">Entrega</th><th style="width:13%">Aprovação</th>'
-          + '        <th style="width:22%">Ações</th>'
-          + '      </tr></thead>'
-          + '      <tbody id="amo-tbody">'
-          + '        <tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px">Carregando amostras...</td></tr>'
-          + '      </tbody>'
-          + '    </table></div>'
-          + '  </div>'
-          + '</div>';
-
-        function _atualizar() {
-          var m = Number(document.getElementById('amo-mes').value);
-          var a = Number(document.getElementById('amo-ano').value);
-          var st = String(document.getElementById('amo-status').value || '').trim();
-          window.__amoRef = m + '-' + a;
-          window.__amoStatusFiltro = st;
-          var qs = 'mes=' + encodeURIComponent(m) + '&ano=' + encodeURIComponent(a);
-          if (st) qs += '&status=' + encodeURIComponent(st);
-          qs += '&data_field=created_at';
-          var tb = document.getElementById('amo-tbody');
-          if (tb) tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px">Buscando...</td></tr>';
-          _amoFetch('/api/amostras?' + qs, { method: 'GET' }).then(function(lista) {
-            var arr = Array.isArray(lista) ? lista : [];
-            try {
-              var totalEl = document.getElementById('amo-total');
-              var pendEl  = document.getElementById('amo-pend');
-              var feitEl  = document.getElementById('amo-feitas');
-              var andEl   = document.getElementById('amo-and');
-              function conta(re) { return arr.filter(function(o){ return re.test(String(o.status || '').toLowerCase()); }).length; }
-              if (totalEl) totalEl.textContent = String(arr.length);
-              if (pendEl)  pendEl.textContent  = String(conta(/^pendente|^aguardando|^aberto/));
-              if (feitEl)  feitEl.textContent  = String(conta(/feita|aprovada|conclu[ií]da|entregue/));
-              if (andEl)   andEl.textContent   = String(conta(/andamento|produ[cç][aã]o|fabrica/));
-            } catch (_) {}
-            var body = document.getElementById('amo-tbody');
-            if (!body) return;
-            if (!arr.length) {
-              body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px">Nenhuma amostra encontrada no mês selecionado.</td></tr>';
-              return;
-            }
-            body.innerHTML = arr.map(function(o) {
-              return '<tr data-amoid="'+_cad_esc(String(o.id || ''))+'">'
-                + '<td><div style="font-weight:800;color:#f1f5f9">'+_cad_esc(o.cliente_nome || o.cliente || '—')+'</div></td>'
-                + '<td><div style="color:#e2e8f0">'+_cad_esc(o.produto || o.descricao || '—')+'</div>' + (o.observacoes ? '<div style="color:#94a3b8;font-size:11px;margin-top:4px;line-height:1.45">'+_cad_esc(String(o.observacoes).slice(0,120))+'</div>' : '') + '</td>'
-                + '<td>' + _stsAmostraBadge(o.status) + '</td>'
-                + '<td style="color:#cbd5e1;font-size:12px">'+_fmtAmostraData(o.data_pedido || o.created_at)+'</td>'
-                + '<td style="color:#cbd5e1;font-size:12px">'+_fmtAmostraData(o.data_entrega)+'</td>'
-                + '<td style="color:#cbd5e1;font-size:12px">'+_fmtAmostraData(o.data_aprovacao)+'</td>'
-                + '<td style="display:flex;gap:4px;flex-wrap:wrap">'
-                +   '<button class="pep-btn" data-amoid-edit="'+_cad_esc(String(o.id || ''))+'">Editar</button>'
-                +   '<button class="pep-btn" style="background:rgba(34,197,94,.2);border-color:rgba(34,197,94,.4);color:#bbf7d0" data-amoid-feita="'+_cad_esc(String(o.id || ''))+'">Marcar Feita</button>'
-                +   '<button class="pep-btn danger" data-amoid-del="'+_cad_esc(String(o.id || ''))+'">Excluir</button>'
-                + '</td>'
-                + '</tr>';
-            }).join('');
-            Array.prototype.slice.call(body.querySelectorAll('[data-amoid-edit]')).forEach(function(b){
-              b.onclick = function(){
-                var id = String(b.getAttribute('data-amoid-edit') || '');
-                var it = arr.find(function(x){ return String(x && x.id || '') === id; }) || { id: id };
-                openAmostraModal(it, renderAmostrasPage);
-              };
-            });
-            Array.prototype.slice.call(body.querySelectorAll('[data-amoid-feita]')).forEach(function(b){
-              b.onclick = function(){
-                var id = String(b.getAttribute('data-amoid-feita') || '');
-                var it = arr.find(function(x){ return String(x && x.id || '') === id; }) || null;
-                var cliNome = it && (it.cliente_nome || it.cliente) ? String(it.cliente_nome || it.cliente) : '';
-                var prod = it && it.produto ? String(it.produto) : '';
-                var msg = 'Marcar amostra como FEITA / APROVADA?\n\n';
-                if (cliNome) msg += 'Cliente: ' + cliNome + '\n';
-                if (prod)    msg += 'Produto: ' + prod + '\n';
-                if (!confirm(msg)) return;
-                _amoFetch('/api/amostras/' + encodeURIComponent(id), { method: 'PUT', body: { status: 'Feita', data_aprovacao: new Date().toISOString().slice(0,10) } }).then(function() {
-                  try { if (typeof toast === 'function') toast('Amostra marcada como Feita.', 'var(--green)'); } catch (_) {}
-                  _atualizar();
-                }).catch(function(e){ alert('Erro: ' + String(e && e.message || e)); });
-              };
-            });
-            Array.prototype.slice.call(body.querySelectorAll('[data-amoid-del]')).forEach(function(b){
-              b.onclick = function(){
-                var id = String(b.getAttribute('data-amoid-del') || '');
-                var it = arr.find(function(x){ return String(x && x.id || '') === id; }) || null;
-                var cliNome = it && (it.cliente_nome || it.cliente) ? String(it.cliente_nome || it.cliente) : '';
-                if (!confirm('Excluir amostra' + (cliNome ? ' de '+cliNome : '') + '?\n\nAção irreversível.')) return;
-                _amoFetch('/api/amostras/' + encodeURIComponent(id), { method: 'DELETE' }).then(function() {
-                  try { if (typeof toast === 'function') toast('Amostra excluída.', 'var(--red)'); } catch (_) {}
-                  _atualizar();
-                }).catch(function(e){ alert('Erro: ' + String(e && e.message || e)); });
-              };
-            });
-          }).catch(function(e) {
-            var body = document.getElementById('amo-tbody');
-            if (body) body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#fca5a5;padding:18px">Erro ao carregar: ' + _cad_esc(String(e && e.message || e)) + '</td></tr>';
-          });
-        }
-
-        try { document.getElementById('amo-nova').onclick = function(){ openAmostraModal(null, renderAmostrasPage); }; } catch (_) {}
-        try { document.getElementById('amo-buscar').onclick = _atualizar; } catch (_) {}
-        try { document.getElementById('amo-mes').onchange = _atualizar; } catch (_) {}
-        try { document.getElementById('amo-ano').onchange = _atualizar; } catch (_) {}
-        try { document.getElementById('amo-status').onchange = _atualizar; } catch (_) {}
-        try { document.getElementById('amo-voltar').onclick = function(){ try { if (typeof window.go === 'function') window.go('pcp'); } catch (_) {} }; } catch (_) {}
-        setTimeout(_atualizar, 10);
-      }
-
       // ---------- Integração CLI: datalist para cli-cidade / options para cli-ramo / cl-uf ----------
       function _cadAtualizarDatalists() {
         try {
@@ -11513,12 +11254,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         _cad_ensurePage('cidades');
         _cad_ensurePage('estados');
         _cad_ensurePage('ramos');
-        _cad_ensurePage('amostras');
         // Expõe funções no window
         window.renderCidadesPage = renderCidadesPage;
         window.renderEstadosPage = renderEstadosPage;
         window.renderRamosPage   = renderRamosPage;
-        window.renderAmostrasPage = renderAmostrasPage;
         window.loadCidades  = loadCidades;
         window.loadEstados  = loadEstados;
         window.loadRamos    = loadRamos;
@@ -11535,7 +11274,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
               if (r === 'cidades')  { try { renderCidadesPage(); return; } catch (_) {} }
               if (r === 'estados')  { try { renderEstadosPage(); return; } catch (_) {} }
               if (r === 'ramos')    { try { renderRamosPage();   return; } catch (_) {} }
-              if (r === 'amostras' || r === 'amostra') { try { renderAmostrasPage(); return; } catch (_) {} }
               if (r === 'mapa-clientes' || r === 'mapaclientes' || r === 'mapa') { try { if (typeof renderMapaClientes === 'function') renderMapaClientes(); return; } catch (_) {} }
               if (r === 'simulador' || r === 'simd' || r === 'desperdicio' || r === 'simulador-desperdicio') { try { if (typeof window.renderSimuladorPage === 'function') window.renderSimuladorPage(); return; } catch (_) {} }
               return _origGo.apply(this, arguments);
@@ -11544,12 +11282,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
             // Se estivermos numa rota correspondente no momento, renderizar imediatamente
             try {
               var ativo = (document.querySelector('.page.active') || {}).id || '';
-              if (/page-(cidades|estados|ramos|amostras)/.test(ativo)) {
+              if (/page-(cidades|estados|ramos)/.test(ativo)) {
                 var qual = ativo.replace('page-', '');
                 if (qual === 'cidades') renderCidadesPage();
                 else if (qual === 'estados') renderEstadosPage();
                 else if (qual === 'ramos') renderRamosPage();
-                else if (qual === 'amostras') renderAmostrasPage();
               }
             } catch (_) {}
           } else if (typeof window.go !== 'function') {
@@ -11559,7 +11296,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
               if (r === 'cidades') return renderCidadesPage();
               if (r === 'estados') return renderEstadosPage();
               if (r === 'ramos')   return renderRamosPage();
-              if (r === 'amostras' || r === 'amostra') return renderAmostrasPage();
               if (r === 'mapa-clientes' || r === 'mapaclientes' || r === 'mapa') { try { if (typeof renderMapaClientes === 'function') renderMapaClientes(); return; } catch (_) {} }
               if (r === 'simulador' || r === 'simd' || r === 'desperdicio' || r === 'simulador-desperdicio') { try { if (typeof window.renderSimuladorPage === 'function') window.renderSimuladorPage(); return; } catch (_) {} }
               _cad_showOnlyPage(r);

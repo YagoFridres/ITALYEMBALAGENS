@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -8366,25 +8366,8 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
     } else if (empresaCtx.emp_id) {
       q = q.eq('emp_id', empresaCtx.emp_id);
     }
-    if (req.query.status) q = q.eq('status', String(req.query.status));
+    if (req.query.status) q = q.eq('status', req.query.status);
     if (req.query.cliente_id) q = q.eq('cliente_id', req.query.cliente_id);
-    const mesRaw = Number(req.query.mes || 0);
-    const anoRaw = Number(req.query.ano || 0);
-    const field = String(req.query.data_field || 'created_at').trim() || 'created_at';
-    const validFields = ['created_at', 'updated_at', 'data_pedido', 'data_entrega', 'data_aprovacao'];
-    const dataField = validFields.indexOf(field) >= 0 ? field : 'created_at';
-    if ((mesRaw >= 1 && mesRaw <= 12) || (anoRaw >= 1900 && anoRaw <= 2999)) {
-      var mes = (mesRaw >= 1 && mesRaw <= 12) ? mesRaw : 1;
-      var ano = (anoRaw >= 1900 && anoRaw <= 2999) ? anoRaw : new Date().getFullYear();
-      var mesSeg = mes + 1;
-      var anoSeg = ano;
-      if (mesSeg > 12) { mesSeg = 1; anoSeg += 1; }
-      var mesStr = String(mes).padStart(2, '0');
-      var mesSegStr = String(mesSeg).padStart(2, '0');
-      var gte = ano + '-' + mesStr + '-01T00:00:00.000Z';
-      var lt  = anoSeg + '-' + mesSegStr + '-01T00:00:00.000Z';
-      q = q.gte(dataField, gte).lt(dataField, lt);
-    }
     const { data, error } = await q;
     if (error) throw error;
     return ok(res, data || []);
