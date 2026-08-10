@@ -9138,7 +9138,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#modal-calc #modal-calculadora .calc-header-row label{font-size:11px!important;font-weight:900!important;letter-spacing:.08em!important;text-transform:uppercase!important;color:#bfdbfe!important;white-space:nowrap!important}'
       + '#modal-calc #modal-calculadora #calc-cli{width:100%!important;min-height:48px!important}'
       + '#modal-calc #modal-calculadora #orc-numero-display{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:46px!important;padding:0 16px!important;border-radius:999px!important;background:rgba(15,23,42,.72)!important;border:1px solid rgba(96,165,250,.26)!important;color:#93c5fd!important;font-size:12px!important;font-weight:900!important;letter-spacing:.08em!important;text-transform:uppercase!important}'
-      + '#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body{display:grid!important;grid-template-columns:minmax(0,1.55fr) minmax(420px,1fr)!important;gap:18px!important;align-items:stretch!important;flex:1!important;min-height:0!important;overflow:visible!important;padding:14px 0 0!important}'
+      + '#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body{display:grid!important;grid-template-columns:minmax(0,1.12fr) minmax(540px,1fr)!important;gap:20px!important;align-items:stretch!important;flex:1!important;min-height:0!important;overflow:visible!important;padding:0!important}'
       + '#modal-calc #modal-calculadora .calc-col-esq{display:grid!important;gap:16px!important;min-width:0!important;min-height:0!important;padding:0 6px 0 0!important;overflow:visible!important}'
       + '#modal-calc #modal-calculadora .calc-row-top,#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores,#modal-calc #modal-calculadora #calc-extra-fields,#modal-calc #modal-calculadora .calc-col-dir{padding:16px!important;border-radius:18px!important;border:1px solid rgba(148,163,184,.14)!important;background:linear-gradient(180deg,rgba(15,23,42,.84),rgba(15,23,42,.62))!important;box-shadow:0 16px 38px rgba(2,6,23,.18)!important}'
       + '#modal-calc #modal-calculadora .calc-row-top{display:grid!important;grid-template-columns:1.25fr .95fr .8fr!important;gap:12px!important}'
@@ -9166,25 +9166,27 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(3){background:#2563eb!important;color:#fff!important;border-color:#2563eb!important}'
       + '#modal-calc #modal-calculadora .modal-footer.rodape button:nth-of-type(4){background:#7c3aed!important;color:#fff!important;border-color:#7c3aed!important}'
       + '#modal-calc.orc-calc-fs-ready{padding:16px!important;align-items:center!important;justify-content:center!important;background:rgba(2,6,23,.82)!important;backdrop-filter:blur(8px)!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora{width:min(1720px,calc(100vw - 32px))!important;max-width:1720px!important;height:min(96vh,1220px)!important;max-height:96vh!important;border-radius:24px!important;padding:0!important;border:1px solid rgba(148,163,184,.16)!important;box-shadow:0 30px 80px rgba(2,6,23,.45)!important;background:linear-gradient(180deg,#061120 0%,#0f172a 16%,#111827 100%)!important;overflow:auto!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora{width:min(1780px,calc(100vw - 32px))!important;max-width:1780px!important;height:min(97.5vh,1580px)!important;max-height:97.5vh!important;border-radius:24px!important;padding:0!important;border:1px solid rgba(148,163,184,.16)!important;box-shadow:0 30px 80px rgba(2,6,23,.45)!important;background:linear-gradient(180deg,#061120 0%,#0f172a 16%,#111827 100%)!important;overflow:auto!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell{display:grid!important;grid-template-rows:auto auto minmax(0,1fr) auto!important;height:100%!important;min-height:0!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-header{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:16px!important;padding:18px 24px!important;border-bottom:1px solid rgba(148,163,184,.14)!important;background:rgba(3,7,18,.88)!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-header h2{margin:0!important;padding:0!important;font-size:28px!important;color:#f8fafc!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-topbar{display:grid!important;grid-template-columns:1.3fr .95fr .95fr .95fr!important;gap:12px!important;padding:14px 24px 16px!important;border-bottom:1px solid rgba(148,163,184,.12)!important;background:rgba(7,16,29,.92)!important;align-items:start!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-header-row,#modal-calc.orc-calc-fs-ready #modal-calculadora #wrap-calc-nome-orcamento,#modal-calc.orc-calc-fs-ready #modal-calculadora #wrap-calc-chapa-utilizada,#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-pasta-row{margin:0!important;padding:12px 14px!important;border-radius:16px!important;background:rgba(15,23,42,.72)!important;border:1px solid rgba(148,163,184,.16)!important;min-height:0!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-header{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:16px!important;padding:16px 22px!important;border-bottom:1px solid rgba(148,163,184,.14)!important;background:rgba(3,7,18,.88)!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-header h2{margin:0!important;padding:0!important;font-size:24px!important;color:#f8fafc!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-topbar{display:grid!important;grid-template-columns:1.3fr .95fr .95fr .95fr!important;gap:12px!important;padding:12px 22px 14px!important;border-bottom:1px solid rgba(148,163,184,.12)!important;background:rgba(7,16,29,.92)!important;align-items:start!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-header-row,#modal-calc.orc-calc-fs-ready #modal-calculadora #wrap-calc-nome-orcamento,#modal-calc.orc-calc-fs-ready #modal-calculadora #wrap-calc-chapa-utilizada,#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-pasta-row{margin:0!important;padding:10px 12px!important;border-radius:16px!important;background:rgba(15,23,42,.72)!important;border:1px solid rgba(148,163,184,.16)!important;min-height:0!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-header-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:10px!important;align-items:end!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-header-row > label{display:none!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora #wrap-calc-cliente{width:100%!important;flex:auto!important;min-width:0!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-cliente-input{min-height:46px!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #orc-numero-display{min-height:46px!important;padding:0 14px!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-main{min-height:0!important;padding:18px 24px!important;overflow:visible!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{height:100%!important;max-height:none!important;grid-template-columns:minmax(0,1.52fr) minmax(420px,1fr)!important;gap:18px!important;overflow:visible!important;padding:0!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-esq{grid-template-rows:auto auto auto auto auto!important;overflow:visible!important;padding-right:6px!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-tabela-wrap{display:block!important;overflow:auto!important;flex:0 0 auto!important;height:auto!important;min-height:320px!important;max-height:clamp(320px,46vh,600px)!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-sheet{min-width:1160px!important;table-layout:auto!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-sheet thead th,#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-sheet tbody td{font-size:11px!important;padding:10px 8px!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{height:100%!important;overflow:visible!important;position:static!important;align-content:start!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;padding-right:6px!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-footer{padding:14px 24px 16px!important;border-top:1px solid rgba(148,163,184,.14)!important;background:rgba(3,7,18,.94)!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-cliente-input{min-height:44px!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #orc-numero-display{min-height:44px!important;padding:0 14px!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-main{min-height:0!important;padding:16px 22px 18px!important;overflow:auto!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto auto!important;gap:18px 0!important;align-items:start!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{height:auto!important;max-height:none!important;grid-template-columns:minmax(0,1.12fr) minmax(540px,1fr)!important;gap:20px!important;overflow:visible!important;padding:0!important;grid-column:1 / -1!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-esq{display:grid!important;gap:14px!important;grid-template-rows:auto auto auto auto auto auto!important;overflow:visible!important;padding-right:0!important;align-content:start!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-tabela-wrap{display:block!important;overflow:auto!important;flex:0 0 auto!important;height:auto!important;min-height:180px!important;max-height:clamp(180px,28vh,320px)!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-sheet{min-width:1080px!important;table-layout:auto!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-sheet thead th,#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-sheet tbody td{font-size:11px!important;padding:8px 7px!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{height:auto!important;max-height:none!important;overflow:visible!important;position:static!important;align-content:start!important;display:grid!important;grid-template-columns:1fr!important;grid-template-rows:auto auto!important;gap:14px!important;padding:0!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir .param-grid{grid-template-columns:1fr!important;display:grid!important;gap:12px!important;align-items:stretch!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-wave-panels{grid-column:1 / -1!important;margin-top:0!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-footer{padding:14px 22px 16px!important;border-top:1px solid rgba(148,163,184,.14)!important;background:rgba(3,7,18,.94)!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-footer.rodape{margin:0!important;padding:0!important;border-top:none!important;background:transparent!important}'
       + '#modal-calc #modal-calculadora .calc-col-esq::-webkit-scrollbar,#modal-calc #modal-calculadora .calc-col-dir::-webkit-scrollbar,#modal-calc #modal-calculadora .calc-tabela-wrap::-webkit-scrollbar{width:12px;height:12px}'
       + '#modal-calc #modal-calculadora .calc-col-esq::-webkit-scrollbar-track,#modal-calc #modal-calculadora .calc-col-dir::-webkit-scrollbar-track,#modal-calc #modal-calculadora .calc-tabela-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72);border-radius:999px}'
@@ -51429,16 +51431,23 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   function ensureCalcItensUi() {
     var shellMain = document.querySelector('#modal-calculadora .orc-calc-shell-main');
+    var colEsq = document.querySelector('#modal-calculadora .calc-col-esq');
     var body = document.querySelector('#modal-calculadora .modal-body') || document.querySelector('#modal-calculadora .calc-body');
-    var parent = shellMain || body;
+    var parent = colEsq || shellMain || body;
     if (!parent) return;
     var host = document.getElementById('calc-itens-shell');
     if (!host) {
       host = document.createElement('div');
       host.id = 'calc-itens-shell';
       host.className = 'calc-itens-shell';
-      if (parent.firstChild) parent.insertBefore(host, parent.firstChild);
+      if (colEsq && colEsq.firstChild) colEsq.insertBefore(host, colEsq.firstChild);
+      else if (parent.firstChild) parent.insertBefore(host, parent.firstChild);
       else parent.appendChild(host);
+    } else if (colEsq && host.parentNode !== colEsq) {
+      try {
+        if (colEsq.firstChild) colEsq.insertBefore(host, colEsq.firstChild);
+        else colEsq.appendChild(host);
+      } catch (_) {}
     }
     orcDraftLoadFromState(false);
     orcRenderCalcItensUi();
@@ -52068,10 +52077,22 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       || (modal.querySelector ? modal.querySelector('.modal-content') : null)
       || modal;
     var panel = document.getElementById('calc-wave-panels');
+    var shellMain = (modal && modal.querySelector) ? modal.querySelector('.orc-calc-shell-main') : null;
     if (!panel) {
       panel = document.createElement('div');
       panel.id = 'calc-wave-panels';
       panel.className = 'calc-wave-panels';
+    }
+    if (shellMain && panel.parentNode !== shellMain) {
+      try {
+        var bodyEl = shellMain.querySelector('.calc-body') || shellMain.querySelector('.modal-body');
+        if (bodyEl && bodyEl.nextSibling) shellMain.insertBefore(panel, bodyEl.nextSibling);
+        else shellMain.appendChild(panel);
+      } catch (_) {
+        if (tableWrap && tableWrap.insertAdjacentElement) tableWrap.insertAdjacentElement('afterend', panel);
+        else if (anchor && anchor.appendChild) anchor.appendChild(panel);
+      }
+    } else if (!shellMain) {
       if (tableWrap && tableWrap.insertAdjacentElement) tableWrap.insertAdjacentElement('afterend', panel);
       else if (anchor && anchor.appendChild) anchor.appendChild(panel);
     }
