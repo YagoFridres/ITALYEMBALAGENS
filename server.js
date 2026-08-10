@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1457,6 +1457,7 @@ app.use((req, res, next) => {
     '/api/auth/login',
     '/api/auth/refresh',
     '/api/auth/me',
+    '/api/debug/amostras',
   ];
   const isPublic = publicRoutes.some((r) => fullPath === r || fullPath.startsWith(r + '/') || path === r || path.startsWith(r + '/'));
   if (isPublic) return next();
@@ -8374,6 +8375,48 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
   } catch (e) {
     console.error('[AMOSTRAS] catch:', String(e?.message || e));
     return ok(res, []);
+  }
+});
+
+app.get('/api/debug/amostras', async (req, res) => {
+  try {
+    setNoCache(res);
+    if (!supabase) return res.status(500).json({ ok: false, error: 'supabase client null (env missing locally)' });
+    const { count: totalCount, error: errTotal } = await supabase
+      .from('amostras').select('*', { count: 'exact', head: true });
+    const { count: semEmpCount, error: errSemEmp } = await supabase
+      .from('amostras').select('*', { count: 'exact', head: true })
+      .is('emp_id', null).is('empresa_id', null);
+    const { count: comEmpCount, error: errComEmp } = await supabase
+      .from('amostras').select('*', { count: 'exact', head: true })
+      .or('emp_id.not.is.null,empresa_id.not.is.null');
+    const { data: antigas5, error: errAntigas } = await supabase
+      .from('amostras').select('id,status,produto,cliente_nome,emp_id,empresa_id,created_at')
+      .is('emp_id', null).is('empresa_id', null)
+      .order('created_at', { ascending: false }).limit(5);
+    const { data: ultimas5, error: errUlt } = await supabase
+      .from('amostras').select('id,status,produto,cliente_nome,emp_id,empresa_id,created_at')
+      .order('created_at', { ascending: false }).limit(5);
+    return res.json({
+      ok: true,
+      counts: {
+        total: Number(totalCount || 0),
+        sem_empresa: Number(semEmpCount || 0),
+        com_empresa: Number(comEmpCount || 0),
+      },
+      errors: {
+        total: errTotal?.message || null,
+        sem_empresa: errSemEmp?.message || null,
+        com_empresa: errComEmp?.message || null,
+        antigas: errAntigas?.message || null,
+        ultimas: errUlt?.message || null,
+      },
+      amostras_antigas_sem_empresa: antigas5 || [],
+      amostras_ultimas_geral: ultimas5 || [],
+    });
+  } catch (e) {
+    console.error('[DEBUG AMOSTRAS] catch:', String(e?.message || e));
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
