@@ -1,7 +1,7 @@
 /* sw.js — Italy Embalagens ERP
    Service Worker atualizado: API sempre vai para a rede, nunca para cache */
 
-var CACHE_NAME = 'italy-erp-v20260810121000';
+var CACHE_NAME = 'italy-erp-v20260810122000';
 
 var CACHE_PREFIX = 'italy-erp-v';
 var STATIC_ASSET_RE = /\.(?:png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|otf|eot)$/i;
@@ -20,8 +20,9 @@ function isStaticAsset(url) {
 
 self.addEventListener('install', function(event) {
   console.log('[SW] instalando cache:', CACHE_NAME);
-  event.waitUntil(Promise.resolve());
-  self.skipWaiting();
+  event.waitUntil(Promise.resolve().then(function() {
+    self.skipWaiting();
+  }));
 });
 
 self.addEventListener('activate', function(event) {
