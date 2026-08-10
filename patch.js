@@ -9138,19 +9138,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#modal-calc #modal-calculadora .calc-header-row label{font-size:11px!important;font-weight:900!important;letter-spacing:.08em!important;text-transform:uppercase!important;color:#bfdbfe!important;white-space:nowrap!important}'
       + '#modal-calc #modal-calculadora #calc-cli{width:100%!important;min-height:48px!important}'
       + '#modal-calc #modal-calculadora #orc-numero-display{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:46px!important;padding:0 16px!important;border-radius:999px!important;background:rgba(15,23,42,.72)!important;border:1px solid rgba(96,165,250,.26)!important;color:#93c5fd!important;font-size:12px!important;font-weight:900!important;letter-spacing:.08em!important;text-transform:uppercase!important}'
-      + '#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body{display:grid!important;grid-template-columns:minmax(0,1.12fr) minmax(540px,1fr)!important;gap:20px!important;align-items:stretch!important;flex:1!important;min-height:0!important;overflow:visible!important;padding:0!important}'
-      + '#modal-calc #modal-calculadora .calc-col-esq{display:grid!important;gap:16px!important;min-width:0!important;min-height:0!important;padding:0 6px 0 0!important;overflow:visible!important}'
-      + '#modal-calc #modal-calculadora .calc-row-top,#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores,#modal-calc #modal-calculadora #calc-extra-fields,#modal-calc #modal-calculadora .calc-col-dir{padding:16px!important;border-radius:18px!important;border:1px solid rgba(148,163,184,.14)!important;background:linear-gradient(180deg,rgba(15,23,42,.84),rgba(15,23,42,.62))!important;box-shadow:0 16px 38px rgba(2,6,23,.18)!important}'
-      + '#modal-calc #modal-calculadora .calc-row-top{display:grid!important;grid-template-columns:1.25fr .95fr .8fr!important;gap:12px!important}'
+      + '#modal-calc #modal-calculadora .calc-body,#modal-calc #modal-calculadora .modal-body{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:16px!important;align-items:stretch!important;flex:1!important;min-height:0!important;max-height:none!important;height:auto!important;overflow:visible!important;padding:0!important}'
+      + '#modal-calc #modal-calculadora .calc-col-esq{display:grid!important;gap:14px!important;min-width:0!important;min-height:0!important;max-height:none!important;height:auto!important;padding:0!important;overflow:visible!important}'
+      + '#modal-calc #modal-calculadora .calc-row-top,#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores,#modal-calc #modal-calculadora #calc-extra-fields,#modal-calc #modal-calculadora .calc-col-dir{padding:16px!important;border-radius:18px!important;border:1px solid rgba(148,163,184,.14)!important;background:linear-gradient(180deg,rgba(15,23,42,.84),rgba(15,23,42,.62))!important;box-shadow:0 16px 38px rgba(2,6,23,.18)!important;max-height:none!important;overflow:visible!important}'
+      + '#modal-calc #modal-calculadora .calc-row-top{display:grid!important;grid-template-columns:minmax(0,1.25fr) minmax(0,.95fr) minmax(0,.8fr)!important;gap:12px!important}'
       + '#modal-calc #modal-calculadora .calc-row-dims,#modal-calc #modal-calculadora .calc-row-valores{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important}'
       + '#modal-calc #modal-calculadora #calc-extra-fields{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;gap:12px!important}'
-      + '#modal-calc #modal-calculadora .calc-col-dir{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;min-width:420px!important;min-height:0!important;max-height:100%!important;align-self:stretch!important;position:static!important;overflow:visible!important;padding:0 6px 0 0!important}'
+      + '#modal-calc #modal-calculadora .calc-col-dir{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:12px!important;min-width:0!important;width:100%!important;min-height:0!important;max-height:none!important;height:auto!important;align-self:stretch!important;position:static!important;overflow:visible!important;padding:16px!important}'
       + '#modal-calc #modal-calculadora .calc-col-dir > div:first-child{grid-column:1 / -1!important;font-size:11px!important;font-weight:900!important;letter-spacing:.08em!important;text-transform:uppercase!important;color:#93c5fd!important;padding-bottom:6px!important;border-bottom:1px solid rgba(148,163,184,.14)!important}'
-      + '#modal-calc #modal-calculadora .param-row{display:grid!important;grid-template-columns:minmax(0,1fr) 180px!important;gap:10px!important;align-items:center!important;justify-items:start!important;min-height:72px!important;padding:10px 12px!important;border-radius:14px!important;background:rgba(2,6,23,.34)!important;border:1px solid rgba(148,163,184,.12)!important}'
+      + '#modal-calc #modal-calculadora .param-row{display:grid!important;grid-template-columns:minmax(0,1fr) 200px!important;gap:12px!important;align-items:center!important;justify-items:start!important;min-height:72px!important;padding:12px 14px!important;border-radius:14px!important;background:rgba(2,6,23,.34)!important;border:1px solid rgba(148,163,184,.12)!important}'
       + '#modal-calc #modal-calculadora .param-label{font-size:12px!important;font-weight:800!important;color:#cbd5e1!important;justify-self:start!important}'
-      + '#modal-calc #modal-calculadora .param-input{min-width:180px!important;width:100%!important;max-width:180px!important;justify-self:start!important;text-align:center!important;padding-left:14px!important;padding-right:14px!important;font-variant-numeric:tabular-nums!important}'
+      + '#modal-calc #modal-calculadora .param-input{min-width:180px!important;width:100%!important;max-width:200px!important;justify-self:start!important;text-align:center!important;padding-left:14px!important;padding-right:14px!important;font-variant-numeric:tabular-nums!important}'
       + '#modal-calc #modal-calculadora .param-frete-total{grid-column:1 / -1!important;display:flex!important;justify-content:space-between!important;align-items:center!important;padding:14px 16px!important;border-radius:16px!important;background:linear-gradient(135deg,rgba(30,64,175,.34),rgba(14,116,144,.22))!important;border:1px solid rgba(147,197,253,.18)!important;color:#eff6ff!important;font-weight:900!important}'
-      + '#modal-calc #modal-calculadora .calc-tabela-wrap{display:block!important;overflow:auto!important;flex:0 0 auto!important;height:auto!important;min-width:0!important;min-height:320px!important;max-height:clamp(320px,44vh,560px)!important;border-radius:18px!important;border:1px solid rgba(148,163,184,.14)!important;background:rgba(2,6,23,.44)!important;scrollbar-gutter:stable both-edges!important;scrollbar-width:auto!important;scrollbar-color:rgba(100,116,139,.68) rgba(15,23,42,.72)!important}'
+      + '#modal-calc #modal-calculadora .calc-tabela-wrap{display:block!important;overflow-x:auto!important;overflow-y:visible!important;flex:0 0 auto!important;height:auto!important;min-width:0!important;min-height:260px!important;max-height:none!important;border-radius:18px!important;border:1px solid rgba(148,163,184,.14)!important;background:rgba(2,6,23,.44)!important;scrollbar-gutter:stable!important;scrollbar-width:auto!important;scrollbar-color:rgba(100,116,139,.68) rgba(15,23,42,.72)!important}'
       + '#modal-calc #modal-calculadora #calc-sheet{width:100%!important;min-width:1160px!important;table-layout:auto!important;border-collapse:separate!important;border-spacing:0!important}'
       + '#modal-calc #modal-calculadora #calc-sheet thead th{position:sticky!important;top:0!important;z-index:2!important;background:#0b1220!important;color:#cbd5e1!important;padding:12px 10px!important;font-size:11px!important;line-height:1.35!important;white-space:normal!important;border-bottom:1px solid rgba(148,163,184,.18)!important}'
       + '#modal-calc #modal-calculadora #calc-sheet tbody td{padding:12px 10px!important;font-size:12px!important;line-height:1.4!important;color:#e2e8f0!important;border-bottom:1px solid rgba(148,163,184,.1)!important;white-space:normal!important;word-break:break-word!important}'
@@ -9177,13 +9177,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora #wrap-calc-cliente{width:100%!important;flex:auto!important;min-width:0!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-cliente-input{min-height:44px!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora #orc-numero-display{min-height:44px!important;padding:0 14px!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-main{min-height:0!important;padding:16px 22px 18px!important;overflow:auto!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto auto!important;gap:18px 0!important;align-items:start!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{height:auto!important;max-height:none!important;grid-template-columns:minmax(0,1.12fr) minmax(540px,1fr)!important;gap:20px!important;overflow:visible!important;padding:0!important;grid-column:1 / -1!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-esq{display:grid!important;gap:14px!important;grid-template-rows:auto auto auto auto auto auto!important;overflow:visible!important;padding-right:0!important;align-content:start!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-tabela-wrap{display:block!important;overflow:auto!important;flex:0 0 auto!important;height:auto!important;min-height:180px!important;max-height:clamp(180px,28vh,320px)!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-main{min-height:0!important;padding:16px 22px 18px!important;overflow:auto!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto!important;gap:16px 0!important;align-items:start!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-body,#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-body{height:auto!important;max-height:none!important;grid-template-columns:minmax(0,1fr)!important;gap:16px!important;overflow:visible!important;padding:0!important;grid-column:1 / -1!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-esq{display:grid!important;gap:14px!important;grid-template-rows:auto!important;overflow:visible!important;padding-right:0!important;align-content:start!important;max-height:none!important;height:auto!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-tabela-wrap{display:block!important;overflow-x:auto!important;overflow-y:visible!important;flex:0 0 auto!important;height:auto!important;min-height:260px!important;max-height:none!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-sheet{min-width:1080px!important;table-layout:auto!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-sheet thead th,#modal-calc.orc-calc-fs-ready #modal-calculadora #calc-sheet tbody td{font-size:11px!important;padding:8px 7px!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{height:auto!important;max-height:none!important;overflow:visible!important;position:static!important;align-content:start!important;display:grid!important;grid-template-columns:1fr!important;grid-template-rows:auto auto!important;gap:14px!important;padding:0!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{height:auto!important;max-height:none!important;overflow:visible!important;position:static!important;align-content:start!important;display:grid!important;grid-template-columns:1fr!important;grid-template-rows:auto!important;gap:14px!important;padding:16px!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir .param-grid{grid-template-columns:1fr!important;display:grid!important;gap:12px!important;align-items:stretch!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-wave-panels{grid-column:1 / -1!important;margin-top:0!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-footer{padding:14px 22px 16px!important;border-top:1px solid rgba(148,163,184,.14)!important;background:rgba(3,7,18,.94)!important}'
@@ -50806,6 +50806,25 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '#modal-calc .calc-item-side{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}'
       + '#modal-calc .calc-item-side button{min-height:34px;padding:0 10px;border-radius:10px;border:1px solid rgba(148,163,184,.18);background:#0f172a;color:#e2e8f0;font-size:11px;font-weight:900;cursor:pointer}'
       + '#modal-calc .calc-item-side button.danger{border-color:rgba(248,113,113,.28);background:rgba(127,29,29,.62);color:#fff}'
+      + '#modal-calc .calc-item-card.is-expanded{grid-template-columns:minmax(0,1fr)!important;gap:14px!important;padding:16px!important;border-radius:18px!important}'
+      + '#modal-calc .calc-item-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}'
+      + '#modal-calc .calc-item-head-copy{display:flex;gap:10px;align-items:center;flex-wrap:wrap}'
+      + '#modal-calc .calc-item-badge{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;padding:0 8px;border-radius:10px;background:linear-gradient(135deg,rgba(34,197,94,.22),rgba(37,99,235,.22));border:1px solid rgba(96,165,250,.28);color:#bfdbfe;font-size:12px;font-weight:900;letter-spacing:.04em}'
+      + '#modal-calc .calc-item-head-title{font-size:14px;font-weight:900;color:#f8fafc}'
+      + '#modal-calc .calc-item-head-sub{font-size:11px;color:#94a3b8}'
+      + '#modal-calc .calc-item-head-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
+      + '#modal-calc .calc-item-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;padding:14px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(2,6,23,.48)}'
+      + '#modal-calc .calc-item-field{display:grid;gap:6px;align-content:start;min-width:0}'
+      + '#modal-calc .calc-item-field label{font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8}'
+      + '#modal-calc .calc-item-field input,#modal-calc .calc-item-field select{min-height:44px;padding:10px 12px;border-radius:12px;background:#020617;border:1px solid rgba(148,163,184,.22);color:#f8fafc;font-size:13px;font-weight:700;box-sizing:border-box;width:100%;min-width:0}'
+      + '#modal-calc .calc-item-field select{cursor:pointer}'
+      + '#modal-calc .calc-item-footer{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;padding-top:4px;border-top:1px solid rgba(148,163,184,.12)}'
+      + '#modal-calc .calc-item-summary{display:flex;gap:10px;flex-wrap:wrap;align-items:center}'
+      + '#modal-calc .calc-item-summary span{padding:5px 10px;border-radius:999px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.14);color:#cbd5e1;font-size:11px;font-weight:800}'
+      + '#modal-calc .calc-item-summary strong{color:#f8fafc;font-weight:900;margin-left:3px}'
+      + '#modal-calc .calc-itens-actions button{min-height:40px;padding:0 14px;font-size:12px!important}'
+      + '#modal-calc .calc-itens-actions button.primary{background:linear-gradient(135deg,#16a34a,#2563eb)!important;border-color:rgba(167,243,208,.32)!important}'
+      + '#modal-calc .calc-itens-actions button.ghost{background:transparent!important;border:1px dashed rgba(96,165,250,.36)!important;color:#bfdbfe!important}'
       + '#page-orcamentos .ptoolbar{display:none!important}'
       + '#ccpx-compra-fullscreen .ccpx-item-vincos{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;align-items:stretch;overflow:visible;min-width:0}'
       + '#ccpx-compra-fullscreen .ccpx-vinco-chip{position:relative;display:block;min-height:42px;min-width:0;max-width:100%;box-sizing:border-box}'
@@ -51370,25 +51389,366 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (item.onda) window._calcOpcaoSelecionada = { compIdx: ({ B: 0, C: 1, BC: 2 })[String(item.onda).toUpperCase()] || 0, onda: String(item.onda).toUpperCase() };
     try { if (typeof calcRecalc === 'function') calcRecalc(); } catch (_) {}
   }
+  function orcGetTipoOptions() {
+    try {
+      var sel = document.getElementById('calc-tipo');
+      if (!sel || !sel.options || !sel.options.length) return null;
+      return Array.prototype.slice.call(sel.options).map(function(o) {
+        return { value: String(o.value || '').trim(), label: String(o.textContent || o.label || o.value || '').trim() };
+      }).filter(function(o) { return o.value !== '' || o.label !== ''; });
+    } catch (_) { return null; }
+  }
+  function orcBuildTipoSelectOptions(selectedValue) {
+    var sel = selectedValue != null ? String(selectedValue).trim() : '';
+    var custom = orcGetTipoOptions();
+    var list = Array.isArray(custom) && custom.length ? custom : [
+      { value: '201', label: '201 - Padrão' },
+      { value: '202', label: '202 - Fundo fechado' },
+      { value: '301', label: '301 - Auto-montável' },
+      { value: '302', label: '302 - Tampa e fundo' },
+      { value: '401', label: '401 - Micro' },
+      { value: '501', label: '501 - Maleta' }
+    ];
+    var out = '';
+    var found = false;
+    list.forEach(function(o) {
+      var v = String(o.value || '').trim();
+      if (sel !== '' && v === sel) found = true;
+      out += '<option value="' + escAttr(v) + '"' + (sel !== '' && v === sel ? ' selected' : '') + '>' + escHtml(String(o.label || v || '')) + '</option>';
+    });
+    if (sel !== '' && !found) {
+      out = '<option value="' + escAttr(sel) + '" selected>' + escHtml(sel) + '</option>' + out;
+    }
+    return out;
+  }
+  function orcBuildOndaSelectOptions(selectedValue) {
+    var sel = selectedValue != null ? String(selectedValue).trim().toUpperCase() : '';
+    if (!sel) sel = 'B';
+    var opts = [
+      { value: 'B', label: 'Onda B' },
+      { value: 'C', label: 'Onda C' },
+      { value: 'BC', label: 'Onda BC' }
+    ];
+    var out = '';
+    var found = false;
+    opts.forEach(function(o) {
+      if (o.value === sel) found = true;
+      out += '<option value="' + o.value + '"' + (o.value === sel ? ' selected' : '') + '>' + o.label + '</option>';
+    });
+    if (!found) {
+      out = '<option value="' + escAttr(sel) + '" selected>' + escHtml('Onda ' + sel) + '</option>' + out;
+    }
+    return out;
+  }
+  function orcDefaultBlankItem(seqNumber) {
+    var seq = Number(seqNumber || 0) || 0;
+    var cli = currentOrcamentoFromState() || {};
+    var cliId = String(cli.cliente_id || cli.cli_id || '').trim();
+    var cliNome = String(cli.cliente_nome || cli.clienteNome || cli.descricao || '').trim();
+    try {
+      var cliEl = document.getElementById('calc-cli');
+      if (!cliId && cliEl && cliEl.options && cliEl.selectedIndex != null && cliEl.selectedIndex >= 0) {
+        var so = cliEl.options[cliEl.selectedIndex];
+        if (so) {
+          cliId = String(so.value || '').trim();
+          cliNome = String(so.textContent || so.label || cliNome || '').trim();
+        }
+      }
+    } catch (_) {}
+    return {
+      descricao: 'Item ' + String(seq),
+      cliente_id: cliId,
+      cliente_nome: cliNome,
+      medidas: '',
+      comp: '',
+      larg: '',
+      alt: '',
+      quantidade: 0,
+      onda: 'B',
+      valor_unitario: 0,
+      valor_total: 0,
+      tipo: '201',
+      chapa_utilizada: '',
+      resultados: []
+    };
+  }
+  function orcAddNBlankItems(n) {
+    var qtd = Math.max(0, Math.trunc(Number(n) || 0));
+    if (!qtd) return 0;
+    var list = orcDraftItemsState();
+    var startAt = list.length;
+    for (var i = 0; i < qtd; i++) {
+      list.push(orcDefaultBlankItem(startAt + i + 1));
+    }
+    orcRenderCalcItensUi();
+    try { window.toast('Adicionado(s) ' + String(qtd) + ' item(ns) em branco. Preencha os campos abaixo.', 'var(--green)'); } catch (_) {}
+    return qtd;
+  }
+  function orcAbrirModalMaisItens() {
+    var abrirFn = (typeof window._abrirModalPadrao === 'function') ? window._abrirModalPadrao : (typeof _abrirModalPadrao === 'function' ? _abrirModalPadrao : null);
+    if (!abrirFn) {
+      var raw = window.prompt('Quantos itens adicionais deseja adicionar? (1 a 20)', '1');
+      if (raw == null) return;
+      var n = Math.max(0, Math.min(20, Math.trunc(Number(raw) || 0)));
+      if (!n) { try { window.toast('Nenhum item adicionado.', 'var(--yellow)'); } catch (_) {} return; }
+      orcAddNBlankItems(n);
+      return;
+    }
+    var modalId = 'calc-modal-mais-itens-' + Date.now();
+    var overlay = abrirFn({
+      id: modalId,
+      title: 'Adicionar itens em branco',
+      subtitle: 'Defina quantos blocos de item você quer criar abaixo. Cada item terá seus próprios campos (Nome, Chapa, Tipo, Dimensões, Qtd, Onda).',
+      width: '520px',
+      hero: '➕',
+      accent: 'blue',
+      bodyHtml: ''
+        + '<div style="display:grid;gap:12px;">'
+        + '  <div style="display:grid;gap:6px;">'
+        + '    <label for="calc-qtd-itens-input" style="font-size:12px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;">Quantos itens adicionais?</label>'
+        + '    <input id="calc-qtd-itens-input" type="number" min="1" max="20" step="1" value="1" style="min-height:52px;padding:12px 14px;border-radius:14px;background:#020617;border:1px solid rgba(148,163,184,.24);color:#f8fafc;font-size:18px;font-weight:900;text-align:center;">'
+        + '    <div style="font-size:11px;color:#64748b;line-height:1.5;">Máximo de 20 itens por vez. O campo Cliente é compartilhado para o orçamento inteiro (não se repete nos itens).</div>'
+        + '  </div>'
+        + '</div>',
+      footerHtml: ''
+        + '<div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">'
+        + '  <button type="button" id="calc-mais-itens-cancel" style="min-height:44px;padding:0 16px;border-radius:12px;border:1px solid rgba(148,163,184,.22);background:#0f172a;color:#e2e8f0;font-weight:900;cursor:pointer;">Cancelar</button>'
+        + '  <button type="button" id="calc-mais-itens-confirm" style="min-height:44px;padding:0 18px;border-radius:12px;border:1px solid rgba(167,243,208,.32);background:linear-gradient(135deg,#16a34a,#2563eb);color:#fff;font-weight:900;cursor:pointer;">Criar itens</button>'
+        + '</div>'
+    });
+    if (!overlay) return;
+    setTimeout(function() {
+      try {
+        var inp = overlay.querySelector('#calc-qtd-itens-input');
+        if (inp) { inp.focus(); try { inp.select(); } catch (_) {} }
+      } catch (_) {}
+      var cancelBtn = overlay.querySelector('#calc-mais-itens-cancel');
+      var okBtn = overlay.querySelector('#calc-mais-itens-confirm');
+      var close = function() {
+        try {
+          var f = (typeof window._fecharModalPadrao === 'function') ? window._fecharModalPadrao : (typeof _fecharModalPadrao === 'function' ? _fecharModalPadrao : null);
+          if (f) f(modalId);
+          else if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        } catch (_) { if (overlay && overlay.parentNode) { try { overlay.parentNode.removeChild(overlay); } catch (_e2) {} } }
+      };
+      var confirmar = function() {
+        var val = 1;
+        try {
+          var el = overlay.querySelector('#calc-qtd-itens-input');
+          if (el) val = Math.max(1, Math.min(20, Math.trunc(Number(el.value) || 1)));
+        } catch (_) { val = 1; }
+        close();
+        orcAddNBlankItems(val);
+      };
+      if (cancelBtn) cancelBtn.onclick = close;
+      if (okBtn) okBtn.onclick = confirmar;
+      try {
+        overlay.querySelectorAll('[data-modal-close="1"]').forEach(function(b) { b.addEventListener('click', function() { try { close(); } catch (_) {} }); });
+      } catch (_) {}
+      try {
+        var inp2 = overlay.querySelector('#calc-qtd-itens-input');
+        if (inp2) inp2.addEventListener('keydown', function(e) {
+          if (!e) return;
+          if (e.key === 'Enter') { try { e.preventDefault(); confirmar(); } catch (_) {} }
+          else if (e.key === 'Escape') { try { e.preventDefault(); close(); } catch (_) {} }
+        });
+      } catch (_) {}
+    }, 10);
+  }
+  function orcSyncItemFieldFromDom(idx, field, rawValue) {
+    var list = orcDraftItemsState();
+    if (!(idx >= 0 && idx < list.length)) return;
+    var item = list[idx];
+    if (!item || typeof item !== 'object') return;
+    var val = rawValue != null ? rawValue : '';
+    var numFields = ['quantidade', 'valor_unitario', 'valor_total'];
+    var isCompLargAlt = (field === 'comp' || field === 'larg' || field === 'alt');
+    if (numFields.indexOf(field) !== -1) {
+      val = Number(val) || 0;
+    } else if (isCompLargAlt) {
+      val = String(val).trim();
+    } else {
+      val = String(val != null ? val : '').trim();
+    }
+    item[field] = val;
+    if (field === 'comp' || field === 'larg' || field === 'alt') {
+      var c = String(item.comp != null ? item.comp : '').trim();
+      var l = String(item.larg != null ? item.larg : '').trim();
+      var a = String(item.alt != null ? item.alt : '').trim();
+      var parts = [c, l, a].filter(function(p) { return p !== ''; });
+      item.medidas = parts.join('x');
+    }
+  }
   function orcRenderCalcItensUi() {
     var host = document.getElementById('calc-itens-shell');
     if (!host) return;
     var items = orcDraftItemsState();
     var editingIndex = Math.trunc(Number(window.__orcDraftEditingIndex));
+    var emptyMsg = items.length
+      ? ''
+      : '<div class="calc-item-card"><div class="calc-item-main"><div class="calc-item-title">Nenhum item adicionado ainda</div><div class="calc-item-meta">Use "+ Mais Itens" abaixo para criar blocos vazios e preencher os campos de cada item individualmente, ou "+ Adicionar item atual" para reaproveitar o cálculo do formulário principal. Ao salvar, todos itens vão juntos no mesmo orçamento.</div></div></div>';
+    var itemsHtml = items.map(function(item, idx) {
+      var qtd = Number(item && item.quantidade || 0) || 0;
+      var total = Number(item && item.valor_total || 0) || 0;
+      var comp = String(item && item.comp != null ? item.comp : '').trim();
+      var larg = String(item && item.larg != null ? item.larg : '').trim();
+      var alt = String(item && item.alt != null ? item.alt : '').trim();
+      var medidasStr = [comp, larg, alt].filter(Boolean).join(' x ') || 'Sem medidas';
+      var ondaStr = String(item && item.onda || '').trim().toUpperCase() || 'Sem onda';
+      var nomeItem = String(item && item.descricao || ('Item ' + (idx + 1))) || ('Item ' + (idx + 1));
+      var chapaStr = String(item && item.chapa_utilizada || '').trim() || 'Sem chapa';
+      var tipoStr = String(item && item.tipo || '').trim() || '—';
+      return ''
+        + '<div class="calc-item-card is-expanded' + (idx === editingIndex ? ' is-editing' : '') + '">'
+        + '  <div class="calc-item-head">'
+        + '    <div class="calc-item-head-copy">'
+        + '      <span class="calc-item-badge">' + escHtml(String(idx + 1)) + '</span>'
+        + '      <div>'
+        + '        <div class="calc-item-head-title">' + escHtml(nomeItem) + '</div>'
+        + '        <div class="calc-item-head-sub">Preencha os campos de cada item. Cliente é único e compartilhado para o orçamento inteiro.</div>'
+        + '      </div>'
+        + '    </div>'
+        + '    <div class="calc-item-head-actions">'
+        + '      <button type="button" data-orc-draft-edit="' + idx + '">↑ Carregar no cálculo</button>'
+        + '      <button type="button" class="danger" data-orc-draft-del="' + idx + '">Excluir item</button>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div class="calc-item-form">'
+        + '    <div class="calc-item-field"><label for="orci-' + idx + '-descricao">Nome do Item</label><input id="orci-' + idx + '-descricao" type="text" data-orc-item-field="' + idx + '|descricao" value="' + escAttr(nomeItem) + '" placeholder="Ex: Caixa para transporte"></div>'
+        + '    <div class="calc-item-field"><label for="orci-' + idx + '-chapa">Chapa Utilizada</label><input id="orci-' + idx + '-chapa" type="text" data-orc-item-field="' + idx + '|chapa_utilizada" value="' + escAttr(String(item && item.chapa_utilizada || '')) + '" placeholder="Ex: OI 180 B"></div>'
+        + '    <div class="calc-item-field"><label for="orci-' + idx + '-tipo">Tipo</label><select id="orci-' + idx + '-tipo" data-orc-item-field="' + idx + '|tipo">' + orcBuildTipoSelectOptions(item && item.tipo) + '</select></div>'
+        + '    <div class="calc-item-field"><label for="orci-' + idx + '-qtd">Quantidade (cx)</label><input id="orci-' + idx + '-qtd" type="number" min="0" step="1" data-orc-item-field="' + idx + '|quantidade" value="' + escAttr(String(qtd || '')) + '" placeholder="0"></div>'
+        + '    <div class="calc-item-field"><label for="orci-' + idx + '-comp">Comprimento (mm)</label><input id="orci-' + idx + '-comp" type="text" inputmode="decimal" data-orc-item-field="' + idx + '|comp" value="' + escAttr(comp) + '" placeholder="Ex: 400"></div>'
+        + '    <div class="calc-item-field"><label for="orci-' + idx + '-larg">Largura (mm)</label><input id="orci-' + idx + '-larg" type="text" inputmode="decimal" data-orc-item-field="' + idx + '|larg" value="' + escAttr(larg) + '" placeholder="Ex: 300"></div>'
+        + '    <div class="calc-item-field"><label for="orci-' + idx + '-alt">Altura (mm)</label><input id="orci-' + idx + '-alt" type="text" inputmode="decimal" data-orc-item-field="' + idx + '|alt" value="' + escAttr(alt) + '" placeholder="Ex: 200"></div>'
+        + '    <div class="calc-item-field"><label for="orci-' + idx + '-onda">Onda</label><select id="orci-' + idx + '-onda" data-orc-item-field="' + idx + '|onda">' + orcBuildOndaSelectOptions(item && item.onda) + '</select></div>'
+        + '  </div>'
+        + '  <div class="calc-item-footer">'
+        + '    <div class="calc-item-summary">'
+        + '      <span>Medidas: <strong>' + escHtml(medidasStr) + '</strong></span>'
+        + '      <span>Onda: <strong>' + escHtml(ondaStr) + '</strong></span>'
+        + '      <span>Tipo: <strong>' + escHtml(tipoStr) + '</strong></span>'
+        + '      <span>Chapa: <strong>' + escHtml(chapaStr) + '</strong></span>'
+        + '      <span>Qtd: <strong>' + escHtml(fmtNum(qtd, 0)) + ' cx</strong></span>'
+        + '      <span>Total: <strong>' + escHtml(fmtMoney(total)) + '</strong></span>'
+        + '    </div>'
+        + '  </div>'
+        + '</div>';
+    }).join('');
     host.innerHTML = ''
       + '<div class="calc-itens-head">'
-      + '  <div><div class="calc-itens-title">Itens do Orçamento</div><div class="calc-itens-sub">Adicione cada item calculado antes de salvar. A listagem final passa a mostrar todos os itens e o salvamento envia o conjunto inteiro.</div></div>'
-      + '  <div class="calc-itens-actions"><button type="button" id="calc-item-upsert">' + (Number.isInteger(editingIndex) && editingIndex >= 0 ? 'Atualizar item atual' : '+ Adicionar item atual') + '</button>' + (Number.isInteger(editingIndex) && editingIndex >= 0 ? '<button type="button" id="calc-item-cancel">Cancelar edição</button>' : '') + '</div>'
+      + '  <div>'
+      + '    <div class="calc-itens-title">Itens do Orçamento (' + escHtml(String(items.length)) + ')</div>'
+      + '    <div class="calc-itens-sub">Cada item abaixo tem seus próprios campos. Use "+ Mais Itens" para criar vários blocos vazios de uma vez. O Cliente é único (compartilhado por todo o orçamento).</div>'
+      + '  </div>'
+      + '  <div class="calc-itens-actions">'
+      + '    <button type="button" class="primary" id="calc-add-n-itens-btn">➕ Mais Itens</button>'
+      + '    <button type="button" id="calc-item-upsert">' + (Number.isInteger(editingIndex) && editingIndex >= 0 ? 'Atualizar com cálculo atual' : '+ Adicionar item atual') + '</button>'
+      + (Number.isInteger(editingIndex) && editingIndex >= 0 ? '<button type="button" class="ghost" id="calc-item-cancel">Cancelar edição</button>' : '')
+      + '  </div>'
       + '</div>'
-      + '<div class="calc-itens-list">' + (items.length ? items.map(function(item, idx) {
-        var qtd = Number(item && item.quantidade || 0) || 0;
-        var total = Number(item && item.valor_total || 0) || 0;
-        return ''
-          + '<div class="calc-item-card' + (idx === editingIndex ? ' is-editing' : '') + '">'
-          + '  <div class="calc-item-main"><div class="calc-item-title">' + escHtml(String(item && item.descricao || ('Item ' + (idx + 1))) || ('Item ' + (idx + 1))) + '</div><div class="calc-item-meta">' + escHtml(String(item && item.medidas || 'Sem medidas')) + ' · ' + escHtml(String(item && item.onda || 'Sem onda')) + ' · ' + escHtml(fmtNum(qtd, 0)) + ' cx · ' + escHtml(fmtMoney(total)) + '</div></div>'
-          + '  <div class="calc-item-side"><button type="button" data-orc-draft-edit="' + idx + '">Usar</button><button type="button" class="danger" data-orc-draft-del="' + idx + '">Excluir</button></div>'
-          + '</div>';
-      }).join('') : '<div class="calc-item-card"><div class="calc-item-main"><div class="calc-item-title">Nenhum item adicionado ainda</div><div class="calc-item-meta">Se você salvar agora sem adicionar manualmente, o orçamento ainda usa o item atual calculado como antes.</div></div></div>') + '</div>';
+      + '<div class="calc-itens-list">' + (emptyMsg || itemsHtml) + '</div>';
+    if (host.dataset.orcItensBound !== '1') {
+      host.dataset.orcItensBound = '1';
+      host.addEventListener('input', function orcItemInputHandler(ev) {
+        try {
+          var t = ev && ev.target;
+          if (!t || !t.getAttribute) return;
+          var attr = String(t.getAttribute('data-orc-item-field') || '').trim();
+          if (!attr) return;
+          var parts = attr.split('|');
+          if (parts.length < 2) return;
+          var idx = Math.trunc(Number(parts[0]));
+          var field = String(parts[1] || '').trim();
+          if (!(idx >= 0) || !field) return;
+          var val = (t.type && (t.type === 'checkbox' || t.type === 'radio')) ? (t.checked ? t.value : '') : (t.value != null ? t.value : '');
+          orcSyncItemFieldFromDom(idx, field, val);
+          if (field === 'descricao' || field === 'chapa_utilizada' || field === 'quantidade' || field === 'comp' || field === 'larg' || field === 'alt' || field === 'tipo' || field === 'onda') {
+            try {
+              var itCards = host.querySelectorAll('.calc-item-card.is-expanded');
+              var card = itCards && itCards[idx];
+              if (card) {
+                var curItem = orcDraftItemsState()[idx] || {};
+                var qtdV = Number(curItem.quantidade || 0) || 0;
+                var totalV = Number(curItem.valor_total || 0) || 0;
+                var cV = String(curItem.comp || '').trim();
+                var lV = String(curItem.larg || '').trim();
+                var aV = String(curItem.alt || '').trim();
+                var medStr = [cV, lV, aV].filter(Boolean).join(' x ') || 'Sem medidas';
+                var onStr = String(curItem.onda || '').trim().toUpperCase() || 'Sem onda';
+                var nomeV = String(curItem.descricao || ('Item ' + (idx + 1))) || ('Item ' + (idx + 1));
+                var chapaV = String(curItem.chapa_utilizada || '').trim() || 'Sem chapa';
+                var tipoV = String(curItem.tipo || '').trim() || '—';
+                var headTitle = card.querySelector('.calc-item-head-title');
+                if (headTitle) headTitle.textContent = nomeV;
+                var sum = card.querySelector('.calc-item-summary');
+                if (sum) {
+                  sum.innerHTML = ''
+                    + '<span>Medidas: <strong>' + escHtml(medStr) + '</strong></span>'
+                    + '<span>Onda: <strong>' + escHtml(onStr) + '</strong></span>'
+                    + '<span>Tipo: <strong>' + escHtml(tipoV) + '</strong></span>'
+                    + '<span>Chapa: <strong>' + escHtml(chapaV) + '</strong></span>'
+                    + '<span>Qtd: <strong>' + escHtml(fmtNum(qtdV, 0)) + ' cx</strong></span>'
+                    + '<span>Total: <strong>' + escHtml(fmtMoney(totalV)) + '</strong></span>';
+                }
+              }
+              var titleShell = host.querySelector('.calc-itens-title');
+              if (titleShell) titleShell.textContent = 'Itens do Orçamento (' + String(orcDraftItemsState().length) + ')';
+            } catch (_) {}
+          }
+        } catch (_) {}
+      }, false);
+      host.addEventListener('change', function orcItemChangeHandler(ev) {
+        try {
+          var t = ev && ev.target;
+          if (!t || !t.getAttribute) return;
+          var attr = String(t.getAttribute('data-orc-item-field') || '').trim();
+          if (!attr) return;
+          var parts = attr.split('|');
+          if (parts.length < 2) return;
+          var idx = Math.trunc(Number(parts[0]));
+          var field = String(parts[1] || '').trim();
+          if (!(idx >= 0) || !field) return;
+          var val = (t.type && (t.type === 'checkbox' || t.type === 'radio')) ? (t.checked ? t.value : '') : (t.value != null ? t.value : '');
+          orcSyncItemFieldFromDom(idx, field, val);
+          if (field === 'descricao' || field === 'chapa_utilizada' || field === 'quantidade' || field === 'comp' || field === 'larg' || field === 'alt' || field === 'tipo' || field === 'onda') {
+            try {
+              var itCards = host.querySelectorAll('.calc-item-card.is-expanded');
+              var card = itCards && itCards[idx];
+              if (card) {
+                var curItem = orcDraftItemsState()[idx] || {};
+                var qtdV = Number(curItem.quantidade || 0) || 0;
+                var totalV = Number(curItem.valor_total || 0) || 0;
+                var cV = String(curItem.comp || '').trim();
+                var lV = String(curItem.larg || '').trim();
+                var aV = String(curItem.alt || '').trim();
+                var medStr = [cV, lV, aV].filter(Boolean).join(' x ') || 'Sem medidas';
+                var onStr = String(curItem.onda || '').trim().toUpperCase() || 'Sem onda';
+                var nomeV = String(curItem.descricao || ('Item ' + (idx + 1))) || ('Item ' + (idx + 1));
+                var chapaV = String(curItem.chapa_utilizada || '').trim() || 'Sem chapa';
+                var tipoV = String(curItem.tipo || '').trim() || '—';
+                var headTitle = card.querySelector('.calc-item-head-title');
+                if (headTitle) headTitle.textContent = nomeV;
+                var sum = card.querySelector('.calc-item-summary');
+                if (sum) {
+                  sum.innerHTML = ''
+                    + '<span>Medidas: <strong>' + escHtml(medStr) + '</strong></span>'
+                    + '<span>Onda: <strong>' + escHtml(onStr) + '</strong></span>'
+                    + '<span>Tipo: <strong>' + escHtml(tipoV) + '</strong></span>'
+                    + '<span>Chapa: <strong>' + escHtml(chapaV) + '</strong></span>'
+                    + '<span>Qtd: <strong>' + escHtml(fmtNum(qtdV, 0)) + ' cx</strong></span>'
+                    + '<span>Total: <strong>' + escHtml(fmtMoney(totalV)) + '</strong></span>';
+                }
+              }
+              var titleShell = host.querySelector('.calc-itens-title');
+              if (titleShell) titleShell.textContent = 'Itens do Orçamento (' + String(orcDraftItemsState().length) + ')';
+            } catch (_) {}
+          }
+        } catch (_) {}
+      }, false);
+    }
+    var addNBtn = host.querySelector('#calc-add-n-itens-btn');
+    if (addNBtn) addNBtn.onclick = function() { orcAbrirModalMaisItens(); };
     var upsertBtn = host.querySelector('#calc-item-upsert');
     if (upsertBtn) upsertBtn.onclick = function() {
       var item = orcDraftCurrentItem();
@@ -51416,6 +51776,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         window.__orcDraftEditingIndex = idx;
         orcLoadItemIntoCalc(item);
         orcRenderCalcItensUi();
+        try { window.toast('Item ' + String(idx + 1) + ' carregado no formulário principal para cálculo/edição.', 'var(--green)'); } catch (_) {}
       };
     });
     Array.prototype.slice.call(host.querySelectorAll('[data-orc-draft-del]')).forEach(function(btn) {
@@ -51425,28 +51786,39 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         if (!(idx >= 0 && idx < list.length)) return;
         list.splice(idx, 1);
         if (window.__orcDraftEditingIndex === idx) window.__orcDraftEditingIndex = null;
+        else if (window.__orcDraftEditingIndex != null && window.__orcDraftEditingIndex > idx) window.__orcDraftEditingIndex--;
         orcRenderCalcItensUi();
+        try { window.toast('Item removido da lista.', 'var(--green)'); } catch (_) {}
       };
     });
   }
   function ensureCalcItensUi() {
     var shellMain = document.querySelector('#modal-calculadora .orc-calc-shell-main');
-    var colEsq = document.querySelector('#modal-calculadora .calc-col-esq');
+    var wavePanels = document.getElementById('calc-wave-panels');
     var body = document.querySelector('#modal-calculadora .modal-body') || document.querySelector('#modal-calculadora .calc-body');
-    var parent = colEsq || shellMain || body;
-    if (!parent) return;
+    var targetParent = shellMain;
+    var beforeRef = null;
+    if (targetParent && wavePanels && wavePanels.parentNode === targetParent) {
+      beforeRef = wavePanels.nextSibling || null;
+    } else if (!targetParent) {
+      targetParent = body;
+    }
+    if (!targetParent) return;
     var host = document.getElementById('calc-itens-shell');
     if (!host) {
       host = document.createElement('div');
       host.id = 'calc-itens-shell';
       host.className = 'calc-itens-shell';
-      if (colEsq && colEsq.firstChild) colEsq.insertBefore(host, colEsq.firstChild);
-      else if (parent.firstChild) parent.insertBefore(host, parent.firstChild);
-      else parent.appendChild(host);
-    } else if (colEsq && host.parentNode !== colEsq) {
       try {
-        if (colEsq.firstChild) colEsq.insertBefore(host, colEsq.firstChild);
-        else colEsq.appendChild(host);
+        if (beforeRef != null) targetParent.insertBefore(host, beforeRef);
+        else targetParent.appendChild(host);
+      } catch (_) {
+        try { targetParent.appendChild(host); } catch (_e2) {}
+      }
+    } else if (host.parentNode !== targetParent || (beforeRef != null && host.nextSibling !== beforeRef)) {
+      try {
+        if (beforeRef != null) targetParent.insertBefore(host, beforeRef);
+        else targetParent.appendChild(host);
       } catch (_) {}
     }
     orcDraftLoadFromState(false);
