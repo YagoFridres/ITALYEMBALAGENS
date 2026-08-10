@@ -13929,20 +13929,6 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     return norm.indexOf('despach') >= 0 || norm.indexOf('conclu') >= 0 || norm.indexOf('finaliz') >= 0 || norm === 'feito';
   }
 
-  function _histPassagemEhAmostra(row) {
-    try {
-      var hay = [
-        row && (row.tipo_caixa || row.tipoCaixa || ''),
-        row && (row.descricao || row.produto || row.prodDesc || ''),
-        row && (row.cliente || row.cliente_nome || row.cliNome || ''),
-        row && (row.observacoes || row.obs || ''),
-      ].join(' ').toLowerCase();
-      return hay.indexOf('amostra') >= 0 || hay.indexOf('amostras') >= 0;
-    } catch (_) {
-      return false;
-    }
-  }
-
   function _histPassagemStatus(row) {
     var raw = String((row && row.status) || '').trim();
     if (_histPassagemConcluidaTotal(row)) return 'Despachada';
@@ -13958,28 +13944,10 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
   function _histPassagemStatusBadge(row) {
     var status = _histPassagemStatus(row);
     var isDespachada = status === 'Despachada';
-    var ehAmostra = _histPassagemEhAmostra(row);
-    var bg, bd, fg, badgeExtra = '';
-    if (ehAmostra && isDespachada) {
-      bg  = 'rgba(139, 92, 246, .14)';
-      bd  = 'rgba(139, 92, 246, .34)';
-      fg  = '#c4b5fd';
-      badgeExtra = '<span style="display:inline-flex;align-items:center;justify-content:center;padding:5px 10px;border-radius:999px;border:1px solid rgba(139,92,246,.38);background:rgba(139,92,246,.18);color:#c4b5fd;font-size:11px;font-weight:900;letter-spacing:.03em;white-space:nowrap;margin-right:6px">🧪 Amostra Pronta</span>';
-    } else if (ehAmostra) {
-      bg  = 'rgba(96, 165, 250, .14)';
-      bd  = 'rgba(96, 165, 250, .32)';
-      fg  = '#93c5fd';
-      badgeExtra = '<span style="display:inline-flex;align-items:center;justify-content:center;padding:5px 10px;border-radius:999px;border:1px solid rgba(96,165,250,.36);background:rgba(96,165,250,.16);color:#bfdbfe;font-size:11px;font-weight:900;letter-spacing:.03em;white-space:nowrap;margin-right:6px">🧪 Amostra</span>';
-    } else if (isDespachada) {
-      bg = 'rgba(16,185,129,.14)';
-      bd = 'rgba(16,185,129,.34)';
-      fg = '#34d399';
-    } else {
-      bg = 'rgba(59,130,246,.14)';
-      bd = 'rgba(250,204,21,.32)';
-      fg = '#93c5fd';
-    }
-    return badgeExtra + '<span style="display:inline-flex;align-items:center;justify-content:center;padding:5px 10px;border-radius:999px;border:1px solid ' + bd + ';background:' + bg + ';color:' + fg + ';font-size:11px;font-weight:900;letter-spacing:.03em;white-space:nowrap">' + _histEsc(status) + '</span>';
+    var bg = isDespachada ? 'rgba(16,185,129,.14)' : 'rgba(59,130,246,.14)';
+    var bd = isDespachada ? 'rgba(16,185,129,.34)' : 'rgba(250,204,21,.32)';
+    var fg = isDespachada ? '#34d399' : '#93c5fd';
+    return '<span style="display:inline-flex;align-items:center;justify-content:center;padding:5px 10px;border-radius:999px;border:1px solid ' + bd + ';background:' + bg + ';color:' + fg + ';font-size:11px;font-weight:900;letter-spacing:.03em;white-space:nowrap">' + _histEsc(status) + '</span>';
   }
 
   function _histPassagemMaquinas(row) {
