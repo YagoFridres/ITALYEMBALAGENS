@@ -12766,79 +12766,6 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       .replace(/'/g, '&#39;');
   }
 
-  function _histMoneyMasked(val) {
-    var raw = Number(val != null ? val : 0) || 0;
-    var formatted = _histFmtMoney(raw);
-    var unlocked = false;
-    try { unlocked = String(localStorage.getItem('__histValorProducaoUnlocked') || sessionStorage.getItem('__histValorProducaoUnlocked') || '') === '1'; } catch (_) {}
-    if (unlocked) {
-      return '<span class="hist-sens-val" data-hist-sens-real="' + _histAttr(formatted) + '">' + _histEsc(formatted) + '</span>';
-    }
-    return '<span class="hist-sens-val hist-sens-locked" data-hist-sens-real="' + _histAttr(formatted) + '" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:8px;background:#111827;border:1px solid rgba(248,113,113,.35);color:#fecaca;font-weight:700;letter-spacing:.05em" title="Valor protegido — clique para desbloquear com senha">🔒&nbsp;••••••</span>';
-  }
-
-  (function _histInstallSensitiveClick() {
-    if (window.__histSensitiveClickInstalled) return;
-    window.__histSensitiveClickInstalled = true;
-    function _handler(ev) {
-      try {
-        if (!ev || !ev.target) return;
-        var sp = (ev.target.closest && ev.target.closest('.hist-sens-val'));
-        if (!sp) return;
-        var real = String(sp.getAttribute && sp.getAttribute('data-hist-sens-real') || '').trim();
-        if (!real) return;
-        if (sp.classList.contains('hist-sens-locked')) {
-          var pwd = '';
-          try { pwd = String(window.prompt('Digite a senha para revelar o Valor de Produção:\n\n(dica: 1234)', '') || '').trim(); } catch (_) { pwd = ''; }
-          if (pwd !== '1234') {
-            if (pwd) try { alert('Senha incorreta. Tente novamente.'); } catch (_) {}
-            return;
-          }
-          try { localStorage.setItem('__histValorProducaoUnlocked', '1'); } catch (_) { try { sessionStorage.setItem('__histValorProducaoUnlocked', '1'); } catch (_) {} }
-          var list = document.querySelectorAll('.hist-sens-val.hist-sens-locked');
-          Array.prototype.forEach.call(list, function(el) {
-            var r = String(el.getAttribute && el.getAttribute('data-hist-sens-real') || '').trim();
-            if (!r) return;
-            el.classList.remove('hist-sens-locked');
-            el.removeAttribute('style');
-            el.innerHTML = '';
-            try { el.textContent = r; } catch (_) { if (el.firstChild) el.firstChild.nodeValue = r; }
-          });
-          try { if (typeof toast === 'function') toast('Valor de Produção desbloqueado nesta sessão.', 'var(--green)'); } catch (_) {}
-          return;
-        }
-      } catch (_) {}
-    }
-    function _install() {
-      try {
-        document.addEventListener('click', _handler, true);
-        document.addEventListener('keydown', function(e) {
-          try {
-            if (!e || !e.ctrlKey || (e.key || '').toLowerCase() !== 'l') return;
-            if (!e.shiftKey) return;
-            e.preventDefault();
-            try {
-              localStorage.removeItem('__histValorProducaoUnlocked');
-              sessionStorage.removeItem('__histValorProducaoUnlocked');
-            } catch (_) {}
-            var arr = document.querySelectorAll('.hist-sens-val');
-            Array.prototype.forEach.call(arr, function(el) {
-              var r = String(el.getAttribute && el.getAttribute('data-hist-sens-real') || '').trim();
-              if (!r) return;
-              el.classList.add('hist-sens-locked');
-              el.setAttribute('style', 'cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:8px;background:#111827;border:1px solid rgba(248,113,113,.35);color:#fecaca;font-weight:700;letter-spacing:.05em');
-              el.title = 'Valor protegido — clique para desbloquear com senha';
-              try { el.textContent = '🔒 ••••••'; } catch (_) {}
-            });
-            try { if (typeof toast === 'function') toast('Valor de Produção bloqueado novamente (Ctrl+Shift+L).', 'var(--red)'); } catch (_) {}
-          } catch (_) {}
-        }, true);
-      } catch (_) {}
-    }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _install);
-    else { _install(); setTimeout(_install, 300); }
-  })();
-
   function _histBuildPrintHtml(kind) {
     var periodo = _histPrintPeriodo(kind);
     if (typeof window._buildStyledPrintHtml !== 'function') return '';
@@ -12856,7 +12783,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
         periodo: periodo,
         cards: [
           { label: 'Total de OFs', value: _histFmtNum(resumo.total_ofs || 0), sub: 'OFs no período' },
-          { label: 'Valor de Produção', value: _histMoneyMasked(resumo.valor_total_producao || 0), sub: 'Soma de produção' },
+          { label: 'Valor de Produção', value: _histFmtMoney(resumo.valor_total_producao || 0), sub: 'Soma de produção' },
           { label: 'Caixas Produzidas', value: _histFmtNum(resumo.caixas_produzidas || 0), sub: 'Volume consolidado' },
           { label: 'Resumo por Máquina', value: _histFmtNum(resumo.total_maquinas || 0), sub: 'Máquinas no período' },
           { label: 'Cores Mais Usadas', value: corTop && corTop.cor || 'Sem dados', sub: _histRankingResumoHtml(topCores, 'cor') },
@@ -12868,7 +12795,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
           return [
             _histPrintEsc(row && row.maquina || '—'),
             _histPrintEsc(_histFmtNum(row && row.total_ofs || 0)),
-            _histPrintEsc(_histMoneyMasked(row && row.valor_total_producao || 0)),
+            _histPrintEsc(_histFmtMoney(row && row.valor_total_producao || 0)),
             _histPrintEsc(_histFmtNum(row && row.caixas_produzidas || 0))
           ];
         }),
@@ -12919,7 +12846,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       periodo: periodo,
       cards: [
         { label: 'Passagens Visíveis', value: _histFmtNum(listRows.length), sub: 'Linhas filtradas por máquina/dia' },
-        { label: 'Valor de Produção', value: _histMoneyMasked(totalOficial), sub: 'Fórmula oficial das OFs concluídas (' + _histFmtNum(totalOfsOficial) + ' OFs)' },
+        { label: 'Valor de Produção', value: _histFmtMoney(totalOficial), sub: 'Fórmula oficial das OFs concluídas (' + _histFmtNum(totalOfsOficial) + ' OFs)' },
         { label: 'Caixas Produzidas', value: _histFmtNum(listRows.reduce(function(acc, row) { return acc + _histPassagemQuantidade(row); }, 0)), sub: 'Volume visível' },
         { label: 'Máquinas', value: _histFmtNum(Array.from(new Set(listRows.map(function(row) { return _histPassagemMaquinas(row); }).filter(Boolean))).length), sub: 'Máquinas listadas' },
         { label: 'Cores Mais Usadas', value: topCoresLista[0] && topCoresLista[0].cor || 'Sem dados', sub: _histRankingResumoHtml(topCoresLista, 'cor') },
@@ -13938,7 +13865,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     cards.innerHTML = ''
       + '<div class="hist-month-card"><div class="lab">' + _histEsc(refTitle) + '</div><div class="val">' + _histEsc(refLabel) + '</div><div class="sub">Base: passagens individuais por máquina</div></div>'
       + '<div class="hist-month-card"><div class="lab">Total de OFs</div><div class="val">' + _histEsc(_histFmtNum(resumo.total_ofs || 0)) + '</div><div class="sub">' + _histVariationBadge(varOfs) + '</div></div>'
-      + '<div class="hist-month-card"><div class="lab">Valor de Produção</div><div class="val">' + _histMoneyMasked(resumo.valor_total_producao || 0) + '</div><div class="sub">' + _histVariationBadge(varValor) + '</div></div>'
+      + '<div class="hist-month-card"><div class="lab">Valor de Produção</div><div class="val">' + _histEsc(_histFmtMoney(resumo.valor_total_producao || 0)) + '</div><div class="sub">' + _histVariationBadge(varValor) + '</div></div>'
       + '<div class="hist-month-card"><div class="lab">Caixas Produzidas</div><div class="val">' + _histEsc(_histFmtNum(resumo.caixas_produzidas || 0)) + '</div><div class="sub">' + _histVariationBadge(varCx) + '</div></div>'
       + '<div class="hist-month-card"><div class="lab">Cores Mais Usadas</div><div class="val" style="font-size:18px">' + _histEsc(corTop && corTop.cor || 'Sem dados') + '</div><div class="sub">' + _histRankingResumoHtml(topCores, 'cor') + '</div></div>'
       + '<div class="hist-month-card"><div class="lab">Tamanhos Mais Usados</div><div class="val" style="font-size:18px">' + _histEsc(tamanhoTop && tamanhoTop.tamanho || 'Sem dados') + '</div><div class="sub">' + _histRankingResumoHtml(topTamanhos, 'tamanho') + '</div></div>';
@@ -13971,7 +13898,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
             + '<tr>'
             + '  <td><div style="font-weight:900;color:#f8fafc">' + _histEsc(row.maquina || 'Sem máquina') + '</div><div style="margin-top:4px">' + _histVariationBadge(row.variacao_ofs_pct) + '</div></td>'
             + '  <td class="num">' + _histEsc(_histFmtNum(row.total_ofs || 0)) + '</td>'
-            + '  <td class="num">' + _histMoneyMasked(row.valor_total_producao || 0) + '</td>'
+            + '  <td class="num">' + _histEsc(_histFmtMoney(row.valor_total_producao || 0)) + '</td>'
             + '  <td class="num">' + _histEsc(_histFmtNum(row.caixas_produzidas || 0)) + '</td>'
             + '</tr>';
         }).join('')
