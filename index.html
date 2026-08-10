@@ -8696,7 +8696,11 @@ function abrirAcoesPc(ofId, ofNum){
   pop.innerHTML = `<div style="font-weight:900;margin-bottom:8px">Ações ▾ — OF #${escH(ofNum||'')}</div>` +
     acts.map((a,i)=>`<button data-i="${i}" style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 10px;margin:0 0 6px;background:var(--s2);border:1px solid var(--border);border-radius:10px;color:var(--text);cursor:pointer;font-weight:800;font-size:.82rem;text-align:left">
       <span style="font-size:1rem">${a.icon}</span> ${escH(a.label)}
-    </button>`).join('');
+    </button>`).join('')
+    + `<div style="height:1px;background:var(--border);margin:6px 0"></div>`
+    + `<button data-cancelof style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 10px;margin:0 0 6px;background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.4);border-radius:10px;color:#ef4444;cursor:pointer;font-weight:900;font-size:.82rem;text-align:left">
+      <span style="font-size:1rem">🚫</span> Cancelar OF
+    </button>`;
 
   document.body.appendChild(ov);
   document.body.appendChild(pop);
@@ -8718,6 +8722,14 @@ function abrirAcoesPc(ofId, ofNum){
       try{ ov.remove(); }catch(e){}
     });
   });
+  try{
+    const bCancel = pop.querySelector('[data-cancelof]');
+    if(bCancel) bCancel.addEventListener('click', ()=>{
+      try{ pop.remove(); }catch(e){}
+      try{ ov.remove(); }catch(e){}
+      try{ cancelarOF(id, numCall); }catch(e){}
+    });
+  }catch(e){}
 }
 
 function _ensureOfmaqAcoesSheet(){
@@ -9188,7 +9200,11 @@ function ofmaqAbrirAcoesSheet(ofId, maqCtx){
   ];
   body.innerHTML = acts.map((a,i)=>`<button data-i="${i}" class="btn btn-ghost" style="width:100%;justify-content:flex-start;gap:10px;min-height:44px;font-weight:900">
     <span style="width:24px;text-align:center">${a.icon}</span> ${escH(a.label)}
-  </button>`).join('');
+  </button>`).join('')
+    + `<div style="height:1px;background:var(--border);margin:8px 0"></div>`
+    + `<button data-cancelof class="btn" style="width:100%;justify-content:flex-start;gap:10px;min-height:44px;font-weight:900;background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.4);color:#ef4444">
+      <span style="width:24px;text-align:center">🚫</span> Cancelar OF
+    </button>`;
   body.querySelectorAll('button[data-i]').forEach((b)=>{
     b.addEventListener('click', ()=>{
       const i = Number(b.getAttribute('data-i')||0);
@@ -9196,6 +9212,13 @@ function ofmaqAbrirAcoesSheet(ofId, maqCtx){
       try{ acts[i]?.on(); }catch(e){}
     });
   });
+  try{
+    const bCancel = body.querySelector('[data-cancelof]');
+    if(bCancel) bCancel.addEventListener('click', ()=>{
+      fecharOfmaqAcoesSheet();
+      try{ cancelarOF(id, numDigits || num); }catch(e){}
+    });
+  }catch(e){}
 
   const ov = document.getElementById('ofmaq-acoes-ov');
   const sheet = document.getElementById('ofmaq-acoes-sheet');
@@ -55596,6 +55619,7 @@ window.atualizarChapas = async function(){
           <button class="bottom-sheet-btn" data-act="down">⬇️ Mover para baixo</button>
           <button class="bottom-sheet-btn" data-act="maq">🔄 Mudar de máquina</button>
           <button class="bottom-sheet-btn" data-act="conc">✅ Concluir OF</button>
+          <button class="bottom-sheet-btn" data-act="cancel" style="background:#7f1d1d;color:#fecaca;border-color:#b91c1c">🚫 Cancelar OF</button>
           <button class="bottom-sheet-btn" data-act="close">❌ Fechar</button>
         `, `OF #${esc(num)} — ${esc(cli)}`);
 
@@ -55875,6 +55899,7 @@ window.atualizarChapas = async function(){
             if(act === 'down') return actMove('down');
             if(act === 'maq') return actMaq();
             if(act === 'conc') return actConcluir();
+            if(act === 'cancel'){ closeBottomSheet(); try{ return cancelarOF(id, num); }catch(e){} }
           });
         });
       });
@@ -59399,6 +59424,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260810150000"></script>
+<script src="/patch.js?v=20260810180000"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
