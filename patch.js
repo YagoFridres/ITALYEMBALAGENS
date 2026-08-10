@@ -9568,6 +9568,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         var mapped = replaceLocalOrcamentos(Array.isArray(result.data) ? result.data : []);
         try { result.data = mapped; } catch (_) {}
       }
+      window.__orcDadosCarregados = true;
       return result;
     };
     window.carregarOrcamentos.__patchFreshState = true;
@@ -52578,8 +52579,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     ).then(function(result) {
       var rows = Array.isArray(result && result.data) ? result.data : (Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : []);
       window.ORCAMENTOS = rows;
+      window.__orcDadosCarregados = true;
       return rows;
     }).catch(function() {
+      window.__orcDadosCarregados = true;
       return Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : [];
     }).finally(function() {
       window.__orcDataLoadingPromise = null;
@@ -52614,7 +52617,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var body = document.getElementById('orc-body');
     if (!body) return;
     var currentRows = Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : [];
-    if (!currentRows.length) {
+    if (!window.__orcDadosCarregados && !currentRows.length) {
       body.innerHTML = '<div class="orx-empty" style="padding:18px">Carregando orçamentos...</div>';
       orcEnsureDataLoaded().then(function() {
         try { window.renderOrcamentos(); } catch (_) {}
@@ -52728,6 +52731,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     bind('orx-btn-novo', function() { if (typeof window.abrirCalculadora === 'function') window.abrirCalculadora(); });
     bind('orx-btn-recarregar', function() {
       window.__orcPastasData = null;
+      window.__orcDadosCarregados = false;
       Promise.resolve(typeof window.carregarOrcamentos === 'function' ? window.carregarOrcamentos() : null).finally(function() {
         orcEnsureFoldersLoaded().finally(function() { window.renderOrcamentos(); });
       });
