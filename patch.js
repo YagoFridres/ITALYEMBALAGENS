@@ -9146,9 +9146,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#modal-calc #modal-calculadora #calc-extra-fields{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;gap:12px!important}'
       + '#modal-calc #modal-calculadora .calc-col-dir{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;min-width:420px!important;min-height:0!important;max-height:100%!important;align-self:stretch!important;position:static!important;overflow:visible!important;padding:0 6px 0 0!important}'
       + '#modal-calc #modal-calculadora .calc-col-dir > div:first-child{grid-column:1 / -1!important;font-size:11px!important;font-weight:900!important;letter-spacing:.08em!important;text-transform:uppercase!important;color:#93c5fd!important;padding-bottom:6px!important;border-bottom:1px solid rgba(148,163,184,.14)!important}'
-      + '#modal-calc #modal-calculadora .param-row{display:grid!important;grid-template-columns:minmax(0,1.6fr) minmax(220px,1fr)!important;gap:12px!important;align-items:center!important;min-height:72px!important;padding:10px 12px!important;border-radius:14px!important;background:rgba(2,6,23,.34)!important;border:1px solid rgba(148,163,184,.12)!important}'
-      + '#modal-calc #modal-calculadora .param-label{font-size:12px!important;font-weight:800!important;color:#cbd5e1!important}'
-      + '#modal-calc #modal-calculadora .param-input{min-width:220px!important;text-align:right!important;font-variant-numeric:tabular-nums!important}'
+      + '#modal-calc #modal-calculadora .param-row{display:grid!important;grid-template-columns:minmax(0,1fr) 180px!important;gap:10px!important;align-items:center!important;justify-items:start!important;min-height:72px!important;padding:10px 12px!important;border-radius:14px!important;background:rgba(2,6,23,.34)!important;border:1px solid rgba(148,163,184,.12)!important}'
+      + '#modal-calc #modal-calculadora .param-label{font-size:12px!important;font-weight:800!important;color:#cbd5e1!important;justify-self:start!important}'
+      + '#modal-calc #modal-calculadora .param-input{min-width:180px!important;width:100%!important;max-width:180px!important;justify-self:start!important;text-align:center!important;padding-left:14px!important;padding-right:14px!important;font-variant-numeric:tabular-nums!important}'
       + '#modal-calc #modal-calculadora .param-frete-total{grid-column:1 / -1!important;display:flex!important;justify-content:space-between!important;align-items:center!important;padding:14px 16px!important;border-radius:16px!important;background:linear-gradient(135deg,rgba(30,64,175,.34),rgba(14,116,144,.22))!important;border:1px solid rgba(147,197,253,.18)!important;color:#eff6ff!important;font-weight:900!important}'
       + '#modal-calc #modal-calculadora .calc-tabela-wrap{display:block!important;overflow:auto!important;flex:0 0 auto!important;height:auto!important;min-width:0!important;min-height:320px!important;max-height:clamp(320px,44vh,560px)!important;border-radius:18px!important;border:1px solid rgba(148,163,184,.14)!important;background:rgba(2,6,23,.44)!important;scrollbar-gutter:stable both-edges!important;scrollbar-width:auto!important;scrollbar-color:rgba(100,116,139,.68) rgba(15,23,42,.72)!important}'
       + '#modal-calc #modal-calculadora #calc-sheet{width:100%!important;min-width:1160px!important;table-layout:auto!important;border-collapse:separate!important;border-spacing:0!important}'
@@ -9982,6 +9982,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         '  </div>' +
         '</div></div>';
       document.body.appendChild(wrap);
+      try {
+        if (typeof window.__patchAutocompleteCalcClienteEnsure === 'function') {
+          try { window.__patchAutocompleteCalcClienteEnsure(); } catch (_) {}
+        }
+      } catch (_) {}
       try {
         if (typeof window.fecharCalculadora !== 'function') {
           window.fecharCalculadora = function() {
@@ -11796,6 +11801,31 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       } catch (_) {}
       try { if (typeof window.__patchOrcDraftLoadFromState === 'function') window.__patchOrcDraftLoadFromState(true); } catch (_) {}
       try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
+      try {
+        var _cur = currentOrcamentoFromState();
+        var _n = String(_cur && (_cur.numero_orcamento || _cur.numero) || '—').trim();
+        var _cli = String(_cur && (_cur.cliente_nome || _cur.clienteNome || _cur.descricao) || '—').trim();
+        var _ch = String(chapaAtual || '').trim() || (_cur && (_cur.chapa_utilizada || _cur.chapaUtilizada) ? String(_cur.chapa_utilizada || _cur.chapaUtilizada || '').trim() : '') || '—';
+        var _ondas = Array.isArray(ondasSelecionadas) && ondasSelecionadas.length ? ondasSelecionadas.join(' / ') : (_cur && String(_cur.onda || '') ? String(_cur.onda) : '—');
+        if (typeof window._abrirModalPadrao === 'function') {
+          try {
+            var _popupId = 'orc-salvo-sucesso-' + Date.now();
+            window._abrirModalPadrao({
+              id: _popupId,
+              titulo: '✓ Orçamento Salvo com Sucesso',
+              subtitulo: 'Os dados do orçamento foram gravados.',
+              largura: '560px',
+              hero: 'Sucesso',
+              bodyHtml: ''
+                + '<div style="padding:6px 2px 10px;display:grid;gap:10px">'
+                + '  <div style="font-size:15px;font-weight:800;color:#f8fafc;line-height:1.5">Orçamento nº ' + escHtml(_n) + ' do cliente ' + escHtml(_cli) + ' — Chapa ' + escHtml(_ch) + ' — Onda ' + escHtml(_ondas) + ' foi salvo com sucesso.</div>'
+                + '</div>',
+              footerHtml: ''
+                + '<button type="button" class="estoque-modal-btn estoque-modal-btn-blue" data-modal-close="1">OK, Fechar</button>'
+            });
+          } catch (_) {}
+        }
+      } catch (_) {}
       try { closeCalcModalAfterSave(); } catch (_) {}
       return ok;
     };
@@ -12120,13 +12150,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(9, 'antes pat
   };
 
   window.imprimirOrcamentoCalc = async function() {
-    var ok = true;
-    try {
-      if (typeof window.salvarOrcamentoCalc === 'function') ok = await window.salvarOrcamentoCalc();
-    } catch (_) {
-      ok = false;
-    }
-    if (!ok) return;
     var orc = await _orcPrintLoadById(window._orcIdAtual);
     if (!orc) orc = _orcPrintCollectCurrentDraft();
     _orcPrintOpen(orc, _orcPrintSelectedOndas());
@@ -32238,6 +32261,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { startEnsureCalcCliente(); });
   else { startEnsureCalcCliente(); }
+  try { window.__patchAutocompleteCalcClienteEnsure = ensure; } catch (_) {}
 })();
 
 (function patchBotaoCalculadoraAbrir() {
@@ -50803,10 +50827,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       + '#modal-calc .calc-wave-metric.is-wide strong{font-size:clamp(16px,1.28vw,22px)}'
       + '#modal-calc #modal-calculadora .calc-col-dir{grid-template-columns:1fr!important}'
       + '#modal-calc #modal-calculadora .calc-col-dir .param-grid{grid-template-columns:1fr!important}'
-      + '#modal-calc #modal-calculadora .param-row{grid-template-columns:minmax(220px,1.85fr) minmax(170px,1fr)!important;min-height:86px!important;gap:16px!important}'
+      + '#modal-calc #modal-calculadora .param-row{grid-template-columns:minmax(0,1fr) 180px!important;min-height:86px!important;gap:10px!important;justify-items:start!important;align-items:center!important}'
       + '#modal-calc #modal-calculadora .param-row{padding:16px 18px!important;border-radius:18px!important;border:1px solid rgba(148,163,184,.14)!important;background:linear-gradient(180deg,rgba(15,23,42,.78),rgba(15,23,42,.62))!important;box-shadow:0 14px 30px rgba(2,6,23,.16)!important}'
       + '#modal-calc #modal-calculadora .param-label{font-size:14px!important;line-height:1.45!important;white-space:normal!important;word-break:normal!important;overflow-wrap:anywhere!important;hyphens:none!important}'
-      + '#modal-calc #modal-calculadora .param-input{min-height:50px!important;font-size:18px!important;font-weight:900!important}'
+      + '#modal-calc #modal-calculadora .param-input{min-height:50px!important;font-size:18px!important;font-weight:900!important;min-width:180px!important;width:100%!important;max-width:180px!important;justify-self:start!important;text-align:center!important;padding-left:14px!important;padding-right:14px!important}'
       + '#modal-calc .calc-tabela-wrap.calc-wave-table-hidden{display:none!important}'
       + '@media (max-width:1100px){#modal-calc .calc-wave-panels,.pep-cards{grid-template-columns:1fr}}'
       + '@media (max-width:900px){#cmp-body .cmpx-head,#orc-body .orx-head{align-items:stretch}#cmp-body .cmpx-actions,#orc-body .orx-actions{width:100%}#cmp-body .cmpx-actions .pep-btn,#orc-body .orx-actions .pep-btn{flex:1 1 180px}#cmp-body .cmpx-folder-pill,#orc-body .orx-folder-pill{min-width:200px}#modal-orcamento-calc{padding:0!important;align-items:stretch!important;justify-content:stretch!important}#modal-orcamento-calc > div,#modal-orcamento-calc .modal-content,#modal-orcamento-calc [class*="modal-content"]{width:100vw!important;max-width:100vw!important;max-height:100vh!important;border-radius:0!important}}'
@@ -51461,6 +51485,153 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   try { window.__patchOrcParseItens = orcParseItensRow; } catch (_) {}
   try { window.__patchOrcDraftLoadFromState = orcDraftLoadFromState; } catch (_) {}
   try { window.__patchEnsureCalcItensUi = ensureCalcItensUi; } catch (_) {}
+  try { window.orcParseItensRow = orcParseItensRow; } catch (_) {}
+  try { window.orcLoadItemIntoCalc = orcLoadItemIntoCalc; } catch (_) {}
+  (function installAbrirCalculadoraComOrc() {
+    if (window.__patchAbrirCalculadoraComOrcInstalled) return;
+    window.__patchAbrirCalculadoraComOrcInstalled = true;
+    window.abrirCalculadoraComOrc = async function(id) {
+      try {
+        var sid = String(id || '').trim();
+        if (!sid) return;
+        var orc = null;
+        if (Array.isArray(window.ORCAMENTOS)) {
+          orc = window.ORCAMENTOS.find(function(o) { return String(o && o.id || '') === sid; }) || null;
+        }
+        if (!orc && typeof window.carregarOrcamentos === 'function') {
+          try { await window.carregarOrcamentos(); } catch (_) {}
+          if (Array.isArray(window.ORCAMENTOS)) {
+            orc = window.ORCAMENTOS.find(function(o) { return String(o && o.id || '') === sid; }) || null;
+          }
+        }
+        if (!orc) {
+          try { toast('Orçamento não encontrado para edição.', 'var(--red)'); } catch (_) {}
+          return;
+        }
+        window._orcIdAtual = sid;
+        try { window._orcNumeroAtual = String(orc.numero_orcamento || orc.numero || '').trim(); } catch (_) {}
+        if (typeof window.abrirCalculadora !== 'function') {
+          try { toast('Calculadora indisponível no momento.', 'var(--yellow)'); } catch (_) {}
+          return;
+        }
+        try { window.abrirCalculadora(); } catch (_) {}
+        function preencherCampoParam(ids, valueRaw) {
+          try {
+            var val = valueRaw != null && String(valueRaw).trim() !== '' ? String(valueRaw) : '';
+            if (!val) return;
+            ids.forEach(function(i) {
+              var el = document.getElementById(i);
+              if (el) el.value = val;
+            });
+          } catch (_) {}
+        }
+        function preencherOrc() {
+          try {
+            var p = Object.assign({}, (orc.parametros && typeof orc.parametros === 'object' && !Array.isArray(orc.parametros)) ? orc.parametros : {});
+            var itens = Array.isArray(window.orcParseItensRow) ? window.orcParseItensRow(orc) : (Array.isArray(orc.itens) ? orc.itens : []);
+            var cliId = String(orc.cliente_id || orc.cli_id || p.cliente_id || p.cli_id || '').trim();
+            var cliNome = String(orc.cliente_nome || orc.clienteNome || orc.descricao || p.cliente_nome || p.clienteNome || '').trim();
+            if (typeof window.selecionarClienteOrcamento === 'function') {
+              try { window.selecionarClienteOrcamento(cliId, cliNome); } catch (_) {}
+            } else {
+              var calcCli = document.getElementById('calc-cli');
+              if (calcCli && cliId) try { calcCli.value = cliId; } catch (_) {}
+            }
+            var nomeOrc = String(orc.nome_orcamento || orc.nome || p.nome_orcamento || p.nome || '').trim();
+            preencherCampoParam(['calc-nome-orcamento'], nomeOrc);
+            var chapaU = String(orc.chapa_utilizada || orc.chapaUtilizada || p.chapa_utilizada || p.chapaUtilizada || '').trim();
+            preencherCampoParam(['calc-chapa-utilizada'], chapaU);
+            var primeiroItem = Array.isArray(itens) && itens.length ? itens[0] : {
+              comp: String(orc.comp || p.comp || '').trim(),
+              larg: String(orc.larg || p.larg || '').trim(),
+              alt: String(orc.alt || p.alt || '').trim(),
+              medidas: String(orc.medidas || p.medidas || orc.titulo || '').trim(),
+              quantidade: Number(orc.quantidade || orc.qtd || p.quantidade || p.qtd || 0) || 0,
+              tipo: String(orc.tipo || p.tipo || orc.tipo_caixa || '').trim(),
+              onda: String(orc.onda || p.onda || 'B').trim(),
+              descricao: nomeOrc,
+              chapa_utilizada: chapaU,
+              cliente_id: cliId
+            };
+            if (typeof window.orcLoadItemIntoCalc === 'function') {
+              try { window.orcLoadItemIntoCalc(primeiroItem); } catch (_) {}
+            } else if (typeof orcLoadItemIntoCalc === 'function') {
+              try { orcLoadItemIntoCalc(primeiroItem); } catch (_) {}
+            } else {
+              function setVal(ids, v) {
+                if (v == null || String(v).trim() === '') return;
+                ids.forEach(function(i) { var el = document.getElementById(i); if (el) el.value = String(v).trim(); });
+              }
+              setVal(['calc-c', 'calc-comp'], primeiroItem.comp || String((primeiroItem.medidas || '').split('x')[0] || '').trim());
+              setVal(['calc-l', 'calc-larg'], primeiroItem.larg || String((primeiroItem.medidas || '').split('x')[1] || '').trim());
+              setVal(['calc-a', 'calc-alt'], primeiroItem.alt || String((primeiroItem.medidas || '').split('x')[2] || '').trim());
+              setVal(['calc-qtd'], primeiroItem.quantidade || '');
+              setVal(['calc-tipo'], primeiroItem.tipo || '');
+            }
+            function resolveParam(keyCandidates) {
+              for (var i = 0; i < keyCandidates.length; i++) {
+                var k = keyCandidates[i];
+                if (k in orc && orc[k] != null && String(orc[k]).trim() !== '') return orc[k];
+                if (p[k] != null && String(p[k]).trim() !== '') return p[k];
+              }
+              return null;
+            }
+            var cmVal = resolveParam(['cm', 'calc_cm', 'custo_merc', 'custoMerc', 'custo_merc_pct', 'custoMercPct', 'custoMercadoria', 'custo_mercadoria']);
+            var cfVal = resolveParam(['cf', 'calc_cf', 'custo_fixo', 'custoFixo', 'custo_fixo_pct', 'custoFixoPct']);
+            var mgVal = resolveParam(['mg', 'calc_mg', 'margem', 'margem_pct', 'margemPct']);
+            var cvVal = resolveParam(['cv', 'calc_cv', 'comissao', 'comissao_pct', 'comissaoPct', 'comissao_venda', 'cv_venda']);
+            var impVal = resolveParam(['imp', 'calc_imp', 'impostos', 'impostos_pct', 'impostosPct', 'imposto']);
+            var vkmVal = resolveParam(['vkm', 'calc_vkm', 'vl_km', 'vl_km_frete', 'valorKm', 'valor_km', 'vl_km_entrega']);
+            var kmVal = resolveParam(['km', 'calc_km', 'km_entrega', 'kmEntrega', 'distancia', 'distancia_entrega']);
+            var vbVal = resolveParam(['vb', 'calc_vb', 'vl_onda_b', 'valor_onda_b', 'vlOndaB']);
+            var vcVal = resolveParam(['vc', 'calc_vc', 'vl_onda_c', 'valor_onda_c', 'vlOndaC']);
+            var vbcVal = resolveParam(['vbc', 'calc_vbc', 'vl_onda_bc', 'valor_onda_bc', 'vlOndaBc', 'vb2']);
+            var vb2Val = resolveParam(['vb2', 'calc_vb2']);
+            preencherCampoParam(['calc-cm'], cmVal);
+            preencherCampoParam(['calc-cf'], cfVal);
+            preencherCampoParam(['calc-mg'], mgVal);
+            preencherCampoParam(['calc-cv'], cvVal);
+            preencherCampoParam(['calc-imp'], impVal);
+            preencherCampoParam(['calc-vkm'], vkmVal);
+            preencherCampoParam(['calc-km'], kmVal);
+            preencherCampoParam(['calc-vb'], vbVal);
+            preencherCampoParam(['calc-vb2'], vb2Val != null ? vb2Val : vbVal);
+            preencherCampoParam(['calc-vc'], vcVal);
+            preencherCampoParam(['calc-vbc'], vbcVal);
+            var ondasOrcRaw = String(orc.onda || p.onda || 'B C BC').trim().toUpperCase();
+            var ondasMarcadas = {};
+            if (Array.isArray(orc.resultados) && orc.resultados.length) {
+              orc.resultados.forEach(function(r) { var o = String(r && r.onda || '').toUpperCase(); if (o) ondasMarcadas[o] = true; });
+            } else {
+              ['B','C','BC'].forEach(function(o) { if (ondasOrcRaw.indexOf(o) !== -1) ondasMarcadas[o] = true; });
+            }
+            var bEl = document.getElementById('calc-print-b');
+            var cEl = document.getElementById('calc-print-c');
+            var bcEl = document.getElementById('calc-print-bc');
+            if (bEl) bEl.checked = !!ondasMarcadas.B;
+            if (cEl) cEl.checked = !!ondasMarcadas.C;
+            if (bcEl) bcEl.checked = !!ondasMarcadas.BC;
+            if (typeof window.syncVb === 'function') { try { window.syncVb(); } catch (_) {} }
+            if (typeof window.calcRecalc === 'function') { try { window.calcRecalc(); } catch (_) {} }
+            try { if (typeof calcRecalc === 'function') calcRecalc(); } catch (_) {}
+            try { if (typeof window.syncCalcFolderUi === 'function') window.syncCalcFolderUi(); else if (typeof syncCalcFolderUi === 'function') syncCalcFolderUi(); } catch (_) {}
+            try { if (typeof window.syncCalcChapaUi === 'function') window.syncCalcChapaUi(); else if (typeof syncCalcChapaUi === 'function') syncCalcChapaUi(); } catch (_) {}
+            try { if (typeof window.__patchOrcDraftLoadFromState === 'function') window.__patchOrcDraftLoadFromState(true); else if (typeof orcDraftLoadFromState === 'function') orcDraftLoadFromState(true); } catch (_) {}
+            try { if (typeof window.__patchEnsureCalcItensUi === 'function') window.__patchEnsureCalcItensUi(); else if (typeof ensureCalcItensUi === 'function') ensureCalcItensUi(); } catch (_) {}
+          } catch (_e) {
+            try { console.error('[abrirCalculadoraComOrc] Erro ao preencher campos:', _e); } catch (_) {}
+          }
+        }
+        setTimeout(preencherOrc, 50);
+        setTimeout(preencherOrc, 180);
+        setTimeout(preencherOrc, 380);
+        setTimeout(preencherOrc, 650);
+      } catch (_e) {
+        try { console.error('[abrirCalculadoraComOrc] Erro fatal:', _e); } catch (_) {}
+        try { toast('Erro ao abrir orçamento para edição.', 'var(--red)'); } catch (_) {}
+      }
+    };
+  })();
   window._compraPapelaoBindBody = function() {
     var host = document.getElementById('cmp-body');
     if (!host) return;
