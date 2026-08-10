@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -8358,19 +8358,19 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
     let q = supabase.from('amostras').select('*').order('created_at', { ascending: false });
     const empresaCtx = await _resolveEmpresaMutationContext(req, req.query || {});
     const empFiltroRaw = String(req.query.empId ?? req.query.emp_id ?? '').trim();
+    const empLegacy = String(empresaCtx?.emp_id || '').trim();
     if (empFiltroRaw) {
-      q = q.or('emp_id.eq.' + empFiltroRaw + ',empresa_id.eq.' + empFiltroRaw);
-    } else if (empresaCtx.empresa_id && empresaCtx.emp_id) {
-      q = q.or('empresa_id.eq.' + empresaCtx.empresa_id + ',emp_id.eq.' + empresaCtx.emp_id);
-    } else if (empresaCtx.empresa_id) {
-      q = q.eq('empresa_id', empresaCtx.empresa_id);
-    } else if (empresaCtx.emp_id) {
-      q = q.eq('emp_id', empresaCtx.emp_id);
+      q = q.eq('emp_id', empFiltroRaw);
+    } else if (empLegacy) {
+      q = q.eq('emp_id', empLegacy);
     }
     if (req.query.status) q = q.eq('status', req.query.status);
     if (req.query.cliente_id) q = q.eq('cliente_id', req.query.cliente_id);
     const { data, error } = await q;
-    if (error) throw error;
+    if (error) {
+      console.error('[AMOSTRAS] query error:', String(error?.message || error));
+      return ok(res, []);
+    }
     return ok(res, data || []);
   } catch (e) {
     console.error('[AMOSTRAS] catch:', String(e?.message || e));
@@ -8384,35 +8384,29 @@ app.get('/api/debug/amostras', async (req, res) => {
     if (!supabase) return res.status(500).json({ ok: false, error: 'supabase client null (env missing locally)' });
     const { count: totalCount, error: errTotal } = await supabase
       .from('amostras').select('*', { count: 'exact', head: true });
-    const { count: semEmpCount, error: errSemEmp } = await supabase
+    const { count: semEmpIdCount, error: errSemEmp } = await supabase
       .from('amostras').select('*', { count: 'exact', head: true })
-      .is('emp_id', null).is('empresa_id', null);
-    const { count: comEmpCount, error: errComEmp } = await supabase
+      .is('emp_id', null);
+    const { count: comEmpIdCount, error: errComEmp } = await supabase
       .from('amostras').select('*', { count: 'exact', head: true })
-      .or('emp_id.not.is.null,empresa_id.not.is.null');
-    const { data: antigas5, error: errAntigas } = await supabase
-      .from('amostras').select('id,status,produto,cliente_nome,emp_id,empresa_id,created_at')
-      .is('emp_id', null).is('empresa_id', null)
-      .order('created_at', { ascending: false }).limit(5);
-    const { data: ultimas5, error: errUlt } = await supabase
-      .from('amostras').select('id,status,produto,cliente_nome,emp_id,empresa_id,created_at')
-      .order('created_at', { ascending: false }).limit(5);
+      .not('emp_id', 'is', null);
+    const { data: allRows, error: errAll } = await supabase
+      .from('amostras').select('*').order('created_at', { ascending: false }).limit(20);
     return res.json({
       ok: true,
       counts: {
         total: Number(totalCount || 0),
-        sem_empresa: Number(semEmpCount || 0),
-        com_empresa: Number(comEmpCount || 0),
+        sem_emp_id: Number(semEmpIdCount || 0),
+        com_emp_id: Number(comEmpIdCount || 0),
       },
       errors: {
         total: errTotal?.message || null,
-        sem_empresa: errSemEmp?.message || null,
-        com_empresa: errComEmp?.message || null,
-        antigas: errAntigas?.message || null,
-        ultimas: errUlt?.message || null,
+        sem_emp_id: errSemEmp?.message || null,
+        com_emp_id: errComEmp?.message || null,
+        all: errAll?.message || null,
       },
-      amostras_antigas_sem_empresa: antigas5 || [],
-      amostras_ultimas_geral: ultimas5 || [],
+      colunas_detectadas: (allRows && allRows.length) ? Object.keys(allRows[0]).sort() : [],
+      todas_amostras: allRows || [],
     });
   } catch (e) {
     console.error('[DEBUG AMOSTRAS] catch:', String(e?.message || e));
@@ -8436,7 +8430,6 @@ app.post('/api/amostras', authMiddleware, async (req, res) => {
       data_aprovacao: b.data_aprovacao || null,
       imagem_url: String(b.imagem_url || b.foto || ''),
       emp_id: empresaCtx.emp_id,
-      empresa_id: empresaCtx.empresa_id,
       criado_por: req.usuario?.nome || 'sistema',
     };
     const { data, error } = await supabase
@@ -8450,6 +8443,7 @@ app.put('/api/amostras/:id', authMiddleware, async (req, res) => {
   try {
     const payload = { ...(req.body || {}) };
     delete payload.id;
+    delete payload.empresa_id;
     payload.updated_at = new Date().toISOString();
     const { data, error } = await supabase
       .from('amostras').update(payload)
