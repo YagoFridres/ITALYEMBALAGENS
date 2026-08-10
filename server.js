@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -9080,21 +9080,8 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       }
       return 0;
     };
-    const parseDimCmAware = (src, keysCmAware) => {
-      const arr = Array.isArray(keysCmAware) ? keysCmAware : [];
-      const keysCm = new Set(['caixa_comprimento', 'dim_comprimento', 'caixa_largura', 'dim_largura']);
-      for (const key of arr) {
-        if (!src || !Object.prototype.hasOwnProperty.call(src, key)) continue;
-        const v = Number(src[key] || 0) || 0;
-        if (v > 0) {
-          if (keysCm.has(key) && v >= 10 && v <= 200) return Math.round(v * 10);
-          return v;
-        }
-      }
-      return 0;
-    };
-    let comprimentoMm = parseDimCmAware(of, ['comprimento_mm', 'caixa_comprimento', 'dim_comprimento', 'comprimento']);
-    let larguraMm = parseDimCmAware(of, ['largura_mm', 'caixa_largura', 'dim_largura', 'largura']);
+    let comprimentoMm = parseDimMm(of, ['comprimento_mm', 'caixa_comprimento', 'dim_comprimento', 'comprimento']);
+    let larguraMm = parseDimMm(of, ['largura_mm', 'caixa_largura', 'dim_largura', 'largura']);
     if (!(comprimentoMm > 0 && larguraMm > 0)) {
       const desc = String(of?.descricao || of?.produto || '').trim();
       const match = desc.match(/(\d+(?:[.,]\d+)?)\s*[Ã—xX]\s*(\d+(?:[.,]\d+)?)/);
@@ -9254,9 +9241,6 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     };
     const pesoUtilizadoKg = Number(body.peso_utilizado_kg || body.peso_utilizado || pesoUtilizadoKgCalc || 0) || 0;
     const toneladasUtilizadas = Number(body.toneladas_utilizadas || body.tonelada_vendida || toneladaVendidaCalc || 0) || 0;
-    const toneladaVendidaPersist = Math.round((toneladasUtilizadas * 1000000)) / 1000000;
-    updateData.tonelada_vendida = toneladaVendidaPersist;
-    updateData.toneladas_utilizadas = toneladaVendidaPersist;
     const areaTotalM2 = Number(body.area_total_m2 || areaTotalM2Calc || 0) || 0;
     const consumoChapasEstimado = Number(body.consumo_chapas_estimado || 0) || 0;
     if (Object.prototype.hasOwnProperty.call(body, 'gramatura_id')) updateData.gramatura_id = gramaturaConclusaoId || null;
@@ -12772,7 +12756,7 @@ function _relatoriosPickPerdaOf(of) {
 }
 
 function _relatoriosPickTonOf(of) {
-  return Number(of?.toneladas_utilizadas ?? of?.tonelada_vendida ?? 0) || 0;
+  return Number(of?.tonelada_vendida || 0) || 0;
 }
 
 function _relatoriosPickVendedorId(of) {
@@ -23019,7 +23003,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
     const rows = (Array.isArray(ofs) ? ofs : []).filter((of) => {
       const gramaturaInfo = gramaturasMap.get(pickOfGramaturaId(of)) || null;
       const gramatura = Number(of?.gramatura || gramaturaInfo?.gramatura || 0) || 0;
-      const tonPersistida = Number(of?.toneladas_utilizadas ?? of?.tonelada_vendida ?? 0) || 0;
+      const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
       return !!String(of?.data_conclusao || '').trim() && (tonPersistida > 0 || gramatura > 0);
     }).map((of) => {
       const cliId = pickOfCliId(of);
@@ -23027,29 +23011,19 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       const gramaturaInfo = gramaturasMap.get(gramaturaId) || null;
       const qtd = Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.qtd ?? of?.quantidade ?? 0) || 0));
       const gramatura = Number(of?.gramatura ?? gramaturaInfo?.gramatura ?? 0) || 0;
-      const tonPersistida = Number(of?.toneladas_utilizadas ?? of?.tonelada_vendida ?? 0) || 0;
+      const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
       const custoM2Venda = Number(of?.custo_m2_venda || 0) || 0;
       const valorUnitario = Number(of?.valor_unitario ?? of?.preco ?? 0) || 0;
       let areaUnitM2 = 0;
-      let compCm = 0;
-      let largCm = 0;
-      const compCmSrc = Number(of?.dim_comprimento ?? of?.caixa_comprimento ?? 0) || 0;
-      const largCmSrc = Number(of?.dim_largura ?? of?.caixa_largura ?? 0) || 0;
-      if (compCmSrc > 0 && largCmSrc > 0) {
-        compCm = compCmSrc;
-        largCm = largCmSrc;
-        if (compCm >= 10 && compCm <= 200 && largCm >= 10 && largCm <= 200) {
-          areaUnitM2 = (compCm / 100) * (largCm / 100);
-        } else {
-          areaUnitM2 = (compCm / 1000) * (largCm / 1000);
-        }
-      }
+      const compMm = Number(of?.dim_comprimento ?? of?.caixa_comprimento ?? 0) || 0;
+      const largMm = Number(of?.dim_largura ?? of?.caixa_largura ?? 0) || 0;
+      if (compMm > 0 && largMm > 0) areaUnitM2 = (compMm / 1000) * (largMm / 1000);
       if (!(areaUnitM2 > 0)) {
         const desc = String(of?.descricao || '').trim();
         const match = desc.match(/(\d+(?:[.,]\d+)?)\s*[Ã—xX]\s*(\d+(?:[.,]\d+)?)/);
-        const compRe = match ? parseFloat(String(match[1] || '').replace(',', '.')) : 0;
-        const largRe = match ? parseFloat(String(match[2] || '').replace(',', '.')) : 0;
-        if (compRe > 0 && largRe > 0) areaUnitM2 = (compRe / 100) * (largRe / 100);
+        const compCm = match ? parseFloat(String(match[1] || '').replace(',', '.')) : 0;
+        const largCm = match ? parseFloat(String(match[2] || '').replace(',', '.')) : 0;
+        if (compCm > 0 && largCm > 0) areaUnitM2 = (compCm / 100) * (largCm / 100);
       }
       const areaTotalM2 = areaUnitM2 > 0 ? (areaUnitM2 * qtd) : 0;
       const toneladas = tonPersistida > 0 ? tonPersistida : (areaTotalM2 > 0 ? ((areaTotalM2 * gramatura) / 1000000) : 0);
