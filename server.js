@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260810180000';
-const SW_RUNTIME_VERSION = '20260810180000';
+const PATCH_RUNTIME_VERSION = '20260810181000';
+const SW_RUNTIME_VERSION = '20260810181000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -1457,7 +1457,6 @@ app.use((req, res, next) => {
     '/api/auth/login',
     '/api/auth/refresh',
     '/api/auth/me',
-    '/api/debug/amostras',
   ];
   const isPublic = publicRoutes.some((r) => fullPath === r || fullPath.startsWith(r + '/') || path === r || path.startsWith(r + '/'));
   if (isPublic) return next();
@@ -8395,41 +8394,6 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
   } catch (e) {
     console.error('[AMOSTRAS] catch:', String(e?.message || e));
     return ok(res, []);
-  }
-});
-app.get('/api/debug/amostras', async (req, res) => {
-  try {
-    setNoCache(res);
-    if (!supabase) return res.status(500).json({ ok: false, error: 'supabase client null (env missing locally)' });
-    const { count: totalCount, error: errTotal } = await supabase
-      .from('amostras').select('*', { count: 'exact', head: true });
-    const { count: semEmpIdCount, error: errSemEmp } = await supabase
-      .from('amostras').select('*', { count: 'exact', head: true })
-      .is('emp_id', null);
-    const { count: comEmpIdCount, error: errComEmp } = await supabase
-      .from('amostras').select('*', { count: 'exact', head: true })
-      .not('emp_id', 'is', null);
-    const { data: allRows, error: errAll } = await supabase
-      .from('amostras').select('*').order('created_at', { ascending: false }).limit(20);
-    return res.json({
-      ok: true,
-      counts: {
-        total: Number(totalCount || 0),
-        sem_emp_id: Number(semEmpIdCount || 0),
-        com_emp_id: Number(comEmpIdCount || 0),
-      },
-      errors: {
-        total: errTotal?.message || null,
-        sem_emp_id: errSemEmp?.message || null,
-        com_emp_id: errComEmp?.message || null,
-        all: errAll?.message || null,
-      },
-      colunas_detectadas: (allRows && allRows.length) ? Object.keys(allRows[0]).sort() : [],
-      todas_amostras: allRows || [],
-    });
-  } catch (e) {
-    console.error('[DEBUG AMOSTRAS] catch:', String(e?.message || e));
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
