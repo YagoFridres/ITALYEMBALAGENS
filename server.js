@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -9635,55 +9635,6 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       caixas_perdidas_erro: updateData.__caixas_perdidas_erro || null,
       mensagem: `OF concluída.${excedente > 0 ? (' ' + excedente + ' caixas excedentes.') : ''}`,
     });
-  } catch (e) {
-    const msg = String(e?.message || e);
-    return res.status(500).json({ ok: false, error: msg });
-  }
-});
-
-app.post('/api/ofs/:id/cancelar', authMiddleware, async (req, res) => {
-  try {
-    const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    const body = req.body || {};
-    const motivo = String(body.motivo || body.justificativa || '').trim();
-
-    const { data: ofAtual, error: errOf } = await supabase
-      .from('ofs')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-    if (errOf) return res.status(400).json({ ok: false, error: String(errOf.message || errOf) });
-    if (!ofAtual) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
-
-    const st = String(ofAtual.status || '').trim().toLowerCase();
-    if (st === 'concluído' || st === 'concluida' || st === 'concluida') {
-      return res.status(400).json({ ok: false, error: 'Não é possível cancelar uma OF já concluída.' });
-    }
-    if (st === 'cancelada' || st === 'cancelado') {
-      return res.status(400).json({ ok: false, error: 'Esta OF já está cancelada.' });
-    }
-
-    const now = new Date().toISOString();
-    const updateData = { status: 'Cancelada', updated_at: now };
-    if (_ofsTableHas('cancelado_em')) updateData.cancelado_em = now;
-    if (_ofsTableHas('data_cancelamento')) updateData.data_cancelamento = now;
-    if (_ofsTableHas('motivo_cancelamento') && motivo) updateData.motivo_cancelamento = motivo;
-
-    const filteredUpdate = {};
-    Object.keys(updateData).forEach(k => { if (OFS_TABLE_COLS_SET.has(k)) filteredUpdate[k] = updateData[k]; });
-
-    try {
-      await logAuditoria('ofs', 'CANCELAMENTO', id, { status: ofAtual.status || null, cancelado_em: ofAtual.cancelado_em || null }, { status: 'Cancelada', cancelado_em: now, motivo: motivo || null }, req);
-    } catch (_) {}
-
-    const { data: updated, error: errUpd } = await supabase.from('ofs').update(filteredUpdate).eq('id', id).select('*').maybeSingle();
-    if (errUpd) return res.status(400).json({ ok: false, error: String(errUpd.message || errUpd) });
-
-    try {
-      if (typeof window !== 'undefined') try { if (typeof window.carregarOFs === 'function') window.carregarOFs(true); } catch (_) {}
-    } catch (_) {}
-    return ok(res, updated || { id, status: 'Cancelada' });
   } catch (e) {
     const msg = String(e?.message || e);
     return res.status(500).json({ ok: false, error: msg });
