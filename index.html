@@ -14526,11 +14526,12 @@ function _simdRenderResultados(data, qtdPedido) {
         const nome = c.nome || c.tamanho;
         const fornecedor = c.fornecedor || '—';
         const valorUnit = Number(c.valor_unitario || 0) || 0;
+        const selId = 'simd-sel-' + (c.id || ('idx'+i));
         return `
-          <div onclick="_simdGerarVisual(JSON.parse(this.dataset.chapa), JSON.parse(this.dataset.dados))" class="simd-grid"
+          <div id="${selId}" onclick="_simdGerarVisual(JSON.parse(this.dataset.chapa), JSON.parse(this.dataset.dados))" class="simd-grid"
                data-chapa="${chapaJson}"
                data-dados="${dadosJsonBase}"
-               style="display:grid;grid-template-columns:60px 1fr 160px 120px 80px 90px 90px 100px;padding:11px 16px;gap:8px;align-items:center;background:${bg};cursor:pointer;border-bottom:0.5px solid rgba(255,255,255,0.05);transition:background 0.1s"
+               style="display:grid;grid-template-columns:60px 1fr 160px 120px 80px 90px 90px 100px 110px;padding:11px 16px;gap:8px;align-items:center;background:${bg};cursor:pointer;border-bottom:0.5px solid rgba(255,255,255,0.05);transition:background 0.1s"
                onmouseover="this.style.background='rgba(255,255,255,0.05)'"
                onmouseout="this.style.background='${bg}'">
             <div style="text-align:center">
@@ -14548,6 +14549,9 @@ function _simdRenderResultados(data, qtdPedido) {
             <div style="text-align:right">
               ${Number(c.economia_vs_pior || 0) > 0 ? '<span style=\"font-size:12px;font-weight:600;color:#97C459\">' + escH(String(c.economia_vs_pior)) + '% menos</span>' : '<span style=\"font-size:11px;color:rgba(255,255,255,0.25)\">referência</span>'}
             </div>
+            <div style="text-align:center" onclick="(function(e){e.stopPropagation();return true;})(event)">
+              <button onclick="_simdSelecionarChapa('${selId}', this)" style="padding:6px 12px;background:#185FA5;border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Selecionar</button>
+            </div>
           </div>`;
       }).join('');
 
@@ -14563,6 +14567,51 @@ function _simdRenderResultados(data, qtdPedido) {
       if (linhas) linhas.innerHTML = '<div style="padding:20px;text-align:center;font-size:13px;color:#F09595">Erro ao renderizar. Tente novamente.</div>';
     } catch (_) {}
   }
+}
+
+function _simdSelecionarChapa(linhaId, btn) {
+  try {
+    const linha = document.getElementById(linhaId);
+    if (!linha) return;
+    try {
+      const todas = document.querySelectorAll('.simd-grid[id^="simd-sel-"]');
+      (todas||[]).forEach(el => {
+        el.style.borderLeft = '';
+        el.style.background = el.dataset.bgBackup || '';
+        if (btn) {
+          const b = el.querySelector('button');
+          if (b) { b.textContent = 'Selecionar'; b.style.background = '#185FA5'; }
+        }
+      });
+    } catch (_) {}
+    linha.dataset.bgBackup = linha.style.background || '';
+    linha.style.borderLeft = '3px solid #185FA5';
+    linha.style.background = 'rgba(24,95,165,0.12)';
+    if (btn) { btn.textContent = 'Selecionado'; btn.style.background = '#116E3B'; }
+    try {
+      const chapaStr = linha.dataset.chapa;
+      if (chapaStr) {
+        const c = JSON.parse(chapaStr);
+        window._simdChapaSelecionada = c;
+        const card = document.getElementById('simd-chapa-selecionada');
+        const nomeEl = document.getElementById('simd-chapa-sel-nome');
+        const infoEl = document.getElementById('simd-chapa-sel-info');
+        if (card) card.style.display = 'block';
+        if (nomeEl) nomeEl.textContent = c.nome || c.tamanho || 'Chapa';
+        if (infoEl) infoEl.textContent = (c.fornecedor ? c.fornecedor + ' · ' : '') + (c.tamanho || '') + (c.quantidade != null ? ' · ' + c.quantidade + ' em estoque' : '');
+        const limpBtn = document.getElementById('simd-btn-limpar-chapa');
+        if (limpBtn) limpBtn.style.display = 'inline-block';
+      }
+    } catch (_) {}
+    try {
+      const dadosStr = linha.dataset.dados;
+      if (dadosStr && chapaStr) {
+        const dados = JSON.parse(dadosStr);
+        const chapa = JSON.parse(linha.dataset.chapa);
+        _simdGerarVisual(chapa, dados);
+      }
+    } catch (_) {}
+  } catch(e) {}
 }
 
 async function _simdCalcular(){
@@ -24605,18 +24654,6 @@ async function mostrarResultadoChapa(codigo) {
             '<div><div style="color:#64748b;font-size:11px">Vl/un</div><div style="color:#e2e8f0;font-size:14px;font-weight:600">R$ ' + escH((Number(vunit||0)||0).toFixed(2)) + '</div></div>' +
           '</div>' +
         '</div>' +
-
-        '<div style="margin-bottom:14px">' +
-          '<div style="color:#94a3b8;font-size:13px;font-weight:600;margin-bottom:10px">📐 Simular para qual caixa?</div>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">' +
-            '<div><label style="color:#64748b;font-size:11px;display:block;margin-bottom:3px">Comp (mm)</label><input id="sim-comp" type="number" placeholder="ex: 300" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;font-size:14px;box-sizing:border-box"></div>' +
-            '<div><label style="color:#64748b;font-size:11px;display:block;margin-bottom:3px">Larg (mm)</label><input id="sim-larg" type="number" placeholder="ex: 200" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;font-size:14px;box-sizing:border-box"></div>' +
-            '<div><label style="color:#64748b;font-size:11px;display:block;margin-bottom:3px">Alt (mm)</label><input id="sim-alt" type="number" placeholder="ex: 150" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;font-size:14px;box-sizing:border-box"></div>' +
-          '</div>' +
-          '<button id="btn-simular-chapa" style="width:100%;background:#4A90D9;color:#fff;border:none;border-radius:8px;padding:12px;cursor:pointer;font-size:14px;font-weight:600">▶ Simular Desperdício</button>' +
-          '<div id="sim-resultado" style="margin-top:10px"></div>' +
-        '</div>' +
-
         (similares.length > 0 ?
           '<div>' +
             '<div style="color:#94a3b8;font-size:13px;font-weight:600;margin-bottom:10px">Outras chapas disponíveis</div>' +
@@ -45603,20 +45640,18 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div id="tela-simulador-desperdicio" style="padding:20px">
       <div style="margin-bottom:20px">
         <h2 style="font-size:18px;font-weight:600;color:rgba(255,255,255,0.9);margin:0 0 4px">Simulador de desperdício de papelão</h2>
-        <p style="font-size:13px;color:rgba(255,255,255,0.4);margin:0">Informe a planificação necessária em mm e veja quais chapas do estoque desperdiçam menos papelão para este pedido</p>
+        <p style="font-size:13px;color:rgba(255,255,255,0.4);margin:0">Informe as dimensões da peça (planificação) em mm e veja quais chapas de estoque são compatíveis (sentido A e B), ordenadas por menor desperdício</p>
       </div>
       <div style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:20px;margin-bottom:20px">
-        <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:14px">Planificação (mm)</div>
+        <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:14px">Dimensões da Peça (mm)</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
           <div>
-            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Largura necessária (mm)</label>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Largura da Peça (mm)</label>
             <input type="number" id="simd-larg" placeholder="ex: 715" min="1" oninput="_simdVerificarCampos()" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
-            <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px">largura + (altura × 2) + 15mm</div>
           </div>
           <div>
-            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Comprimento necessário (mm)</label>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Comprimento da Peça (mm)</label>
             <input type="number" id="simd-comp" placeholder="ex: 1420" min="1" oninput="_simdVerificarCampos()" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
-            <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px">(comprimento + altura) × 2 + 20mm</div>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px;margin-bottom:8px">
@@ -45660,7 +45695,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         <div id="simd-info-planif" style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:7px;border-left:3px solid #185FA5"></div>
         <div id="simd-aviso" style="display:none;padding:16px;text-align:center;font-size:13px;color:#EF9F27;background:rgba(239,159,39,0.1);border-radius:8px;margin-bottom:14px">Nenhuma chapa em estoque é compatível com estas medidas. Verifique se há chapas cadastradas ou ajuste as medidas.</div>
         <div id="simd-tabela-wrap" style="background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden">
-          <div class="simd-grid" style="display:grid;grid-template-columns:60px 1fr 160px 120px 80px 90px 90px 100px;padding:10px 16px;background:rgba(255,255,255,0.04);border-bottom:0.5px solid rgba(255,255,255,0.08);font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.04em;gap:8px">
+          <div class="simd-grid" style="display:grid;grid-template-columns:60px 1fr 160px 120px 80px 90px 90px 100px 110px;padding:10px 16px;background:rgba(255,255,255,0.04);border-bottom:0.5px solid rgba(255,255,255,0.08);font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.04em;gap:8px">
             <div>Desp.</div>
             <div>Chapa</div>
             <div class="simd-col-nomenclatura">Nomenclatura</div>
@@ -45669,6 +45704,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
             <div style="text-align:center">Cx/chapa</div>
             <div style="text-align:right">Estoque</div>
             <div style="text-align:right">Economia</div>
+            <div style="text-align:center">Ação</div>
           </div>
           <div id="simd-linhas"></div>
         </div>
@@ -59403,6 +59439,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260811204500"></script>
+<script src="/patch.js?v=20260811213000"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
