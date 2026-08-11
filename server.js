@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260811200000';
-const SW_RUNTIME_VERSION = '20260811200000';
+const PATCH_RUNTIME_VERSION = '20260811201500';
+const SW_RUNTIME_VERSION = '20260811201500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -12199,16 +12199,13 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
 
     const tryQueryEq = async (col) => {
       try {
-        let q = supabase
+        const q = supabase
           .from('ofs')
           .select('*')
           .eq(col, clienteId)
           .is('deleted_at', null)
           .order('created_at', { ascending: false })
           .limit(1000);
-        if (empresa_id) {
-          try { q = q.eq('empresa_id', empresa_id); } catch (_) {}
-        }
         return await q;
       } catch (e) {
         return { data: null, error: e };
@@ -12217,16 +12214,13 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
 
     const tryQueryIlike = async (col, pattern) => {
       try {
-        let q = supabase
+        const q = supabase
           .from('ofs')
           .select('*')
           .ilike(col, pattern)
           .is('deleted_at', null)
           .order('created_at', { ascending: false })
           .limit(1000);
-        if (empresa_id) {
-          try { q = q.eq('empresa_id', empresa_id); } catch (_) {}
-        }
         return await q;
       } catch (e) {
         return { data: null, error: e };
@@ -12235,10 +12229,7 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
 
     let cliente = null;
     try {
-      let qc = supabase.from('clientes').select('id,nome,rs,razao_social,razao,cliente_nome').eq('id', clienteId).maybeSingle();
-      if (empresa_id) {
-        try { qc = qc.eq('empresa_id', empresa_id); } catch (_) {}
-      }
+      const qc = supabase.from('clientes').select('id,nome,rs,razao_social,razao,cliente_nome').eq('id', clienteId).maybeSingle();
       const rc = await qc;
       if (!rc?.error) cliente = rc?.data || null;
     } catch (_) {}
