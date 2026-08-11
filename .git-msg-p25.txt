@@ -1,0 +1,23 @@
+P25: 2 fixes Calculadora Compensacao Formula Garcia - grid CSS
+
+1) BUG 1 - campos parametros comerciais como caixas pretas minusculas:
+   .calc-col-dir foi reduzido para 1 coluna (grid-template-columns:1fr)
+   mas o .param-grid interno continuava repeat(2,minmax(0,1fr)).
+   Resultado: cada .param-row recebia ~210px mas exigia min 406px
+   (220px label + 170px input + 16px gap), overflowando e cortando.
+   Fix: adicionado regra CSS
+   #modal-calc #modal-calculadora .calc-col-dir .param-grid
+   {grid-template-columns:1fr!important}
+   → 1 param-row por linha, ocupando toda a largura disponivel (~420px).
+
+2) BUG 2 - texto de onda B/C/BC sobreposto "102+106+102=310mm":
+   cards onda usavam .calc-wave-grid sem grid-auto-rows, e
+   .calc-wave-metric sem min-height. Quando strong quebrava em 2 linhas
+   (texto longo formula), container vizinho calculava altura errada
+   baseada em 1 linha → sobreposicao do conteudo.
+   Fix: adicionado grid-auto-rows:minmax(0,1fr) no .calc-wave-grid
+   (força todas as linhas terem pelo menos a mesma altura do maior
+   conteudo na grade) E min-height:90px no .calc-wave-metric
+   (garante espaço suficiente para 2 linhas).
+
+Bump CACHE_NAME 160700 → 160800 (sw.js). Sem push, aguardar aprovacao.

@@ -1,0 +1,10 @@
+P29 OFMAQ: badge "Sem Impressão" para OFs sem cor cadastrada (fallbacks)
+
+- 3 locais onde cor ausente/vazia retorna "Sem cor" → trocado para "Sem Impressão":
+  1. parseColors() L19675: fallback array ['Sem cor'] → ['Sem Impressão']
+  2. _ofmaqCoresLabel() L17908: catch retorna 'Sem cor' → 'Sem Impressão'
+  3. colorHtml() L22607: fallback span text "Sem cor" → "Sem Impressão"
+- Bug generalizado (não só Italy/Cartoeste/Oestepack): nenhuma OF com campo cor NULL/""
+  mostrava "Sem Impressão" — label existia apenas no colorMap para relatório RR digitado manual
+- Fallback uniforme para TODAS as empresas igualmente, sem filtro por empresa_id
+- CACHE_NAME bump 160900 → 161000

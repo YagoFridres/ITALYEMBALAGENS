@@ -1,0 +1,22 @@
+P24: 3 fixes OFs faltando no Painel Cliente + Ficha Tecnica
+
+1) Aplicar P22 no helper _relatoriosFetchClienteOfs do endpoint /api/relatorios/cliente-ficha:
+   - ILIKE por nome SEMPRE, nao apenas quando byId === 0
+   - ILIKE nas 3 colunas de ID quando clienteId nao e UUID
+   - Funcao ofId() robusta com 9 campos fallback + JSON.stringify ao inves de Math.random()
+
+2) Remover slices silenciosos no backend:
+   - /api/clientes/:id/painel historicoRows.slice(0,120) -> historico completo
+   - /api/clientes/:id/painel abertasRows.slice(0,25) -> abertas completo
+   - /api/relatorios/cliente-ficha historico.slice(0,120) -> historico completo
+   - /api/relatorios/cliente-ficha orcamentosRows.slice(0,120) -> orcamentos completo
+   (se precisar paginar, fazer no frontend via scroll/carregar mais)
+
+3) Merge raso -> merge profundo (preserva nao-nulos):
+   - Nova funcao mergePreserveNonNull(a,b): sobscreve apenas destino com null/undefined/""
+   - Aplicada em TODOS os loops de merge do Map nos 2 endpoints
+   - Evita perder campos (status, data_conclusao, etc.) quando a mesma OF aparece
+     em multiplas colunas (cli_id vs cliente_id) com valores diferentes
+   - Tambem aplicada no helper mergeRows do cliente-ficha
+
+Bump CACHE_NAME 160600 -> 160700 (sw.js). Sem push, aguardar aprovacao do teste.

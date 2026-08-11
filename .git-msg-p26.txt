@@ -1,0 +1,10 @@
+P26 Calculadora: remove inline !important que sobrescrevia grid/min-width dos parâmetros comerciais
+
+- ensureCalcFullscreenShell: removeu 2 propriedades nocivas de runtime
+  1. paramGrid.style.setProperty('grid-template-columns','repeat(auto-fit,minmax(200px,1fr))','important')
+     - causava grid de colunas 200px/linha que empurrava os inputs para overflow:hidden
+  2. inp.style.setProperty('min-width','0','important')
+     - sobrescrevia P7 min-width:220px com especificidade inline !important > CSS classe
+- Com a remoção, os fixes CSS estáticos de P7 e P25 passam a valer
+- Prova runtime via browser: antes = 7 inputs com rectWidth 170px (cortados); depois = 23 inputs com rectWidth 616px (largura total correta)
+- CACHE_NAME bump 160800 → 160900

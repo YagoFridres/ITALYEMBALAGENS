@@ -1,0 +1,11 @@
+P27 Calculadora: ajuste timing autocomplete cliente (MutationObserver + retries)
+
+- Polling simples de 1.5s tinha race condition (morria cedo às vezes sem aplicar)
+  pois startEnsureCalcCliente rodava antes que #calc-cli existisse no DOM
+- Substituído por estratégia híbrida 3 camadas:
+  1. Timeouts rápidos imediatos: 50ms, 300ms, 800ms, 1600ms, 3200ms (pós DOMContentLoaded)
+  2. MutationObserver em document.body (childList + subtree) → detecta inserção do modal
+  3. Fallback setInterval 1s por no máximo 120 tentativas (2 min) antes de desistir
+- Guard __patchCalcClienteStarted previne re-execução múltipla
+- Mantém 100% compat: patchAutocompleteCalcCliente (busca, dropdown, seleção) já existente
+- CACHE_NAME bump 161000 → 161100

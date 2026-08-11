@@ -1,0 +1,23 @@
+P33 Cancelar OF: endpoint POST /api/ofs/:id/cancelar + botão por OF no Armazenamento/PCP + confirmação
+
+Server.js (após endpoint concluir L9644):
+- app.post('/api/ofs/:id/cancelar', authMiddleware):
+  - Valida id existe e status atual NÃO é Concluída/Cancelada
+  - Atualiza status="Cancelada" + updated_at + cancelado_em /
+    data_cancelamento / motivo_cancelamento (se colunas existirem)
+  - Auditoria: logAuditoria('ofs','CANCELAMENTO', ...) com status antigo→novo
+  - Retorno: usa ok(res, updated) ou fallback {id, status:'Cancelada'}
+
+Patch.js (final L52464, IIFE _p33CancelarOfEndpoints):
+- window.cancelarOf(id, opts): função global (compatível com _mobCancelar fallback L41563)
+  - confirm() com número OF + Cliente + Produto + aviso de irreversível
+  - POST /api/ofs/:id/cancelar com Bearer token
+  - Sucesso: toast _notificacaoOF + reload renderPCP/renderArmazenamento + carregarOFs
+  - Erro: toast msg do backend
+- MutationObserver em #pages/document.body com scan agressivo:
+  - Seletor: tr[data-id], tr[of-id], #page-armazenamento tr, #page-pcp tr
+  - Extrai id do data-id ou via regex em onclick de botões nativos
+  - Pula linhas já canceladas/concluídas (evita dupla ação)
+  - dataset.p33CancelBtnAdded='1' garante idempotência
+  - Botão "Cancelar" (vermelho gradiente) na última <td> de ações
+- sw.js bump CACHE_NAME 161400 → 161500

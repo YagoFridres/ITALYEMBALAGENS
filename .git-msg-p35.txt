@@ -1,0 +1,25 @@
+P35 Histórico Passagens: Valor de Produção oculto •••••• por padrão + senha 1234 para desbloquear
+
+- _histMoneyMasked(val) helper (L12769):
+  - retorna span.hist-sens-val.hist-sens-locked com 🔒•••••• por padrão (estilo
+    inline vermelho claro, padding, borda)
+  - se localStorage/sessionStorage __histValorProducaoUnlocked === '1' → retorna
+    span com valor formatado (sem bloqueio)
+  - armazena valor real em data-hist-sens-real para recuperação
+
+- _histInstallSensitiveClick IIFE (L12780):
+  - event delegation CLICK em .hist-sens-val.hist-sens-locked
+    → prompt() pedindo senha, se '1234' desbloqueia TODOS os spans da tela
+    (não precisa clicar um por um)
+    → set __histValorProducaoUnlocked = '1'
+  - atalho Ctrl+Shift+L: re-bloqueia todos os spans de volta (remove chave)
+  - usa toast verde/vermelho para feedback
+
+- Substituções de _histFmtMoney(…valor_total_producao) → _histMoneyMasked em:
+  - Impressão mensal cards L12859
+  - Impressão mensal summaryRows (valor por máquina) L12871
+  - Impressão lista cards L12922
+  - Cards tela HTML L13941
+  - Tabela mensal por máquina L13974
+
+- sw.js bump CACHE_NAME 161500 → 161600

@@ -1,0 +1,14 @@
+P32 Mapa Clientes: modais centralizados com ESC + cards moderno + box-shadow animação
+
+- _cad_ensureStyles (2 locais L10760-68 e L26044-48):
+  - .pep-modal: backdrop-filter blur(4px), padding 16px, bg rgba(0,0,0,.72)
+  - .pep-modal-box: border-radius 18px, padding 20px, box-shadow duplo +
+    animação entrada @keyframes pepModalIn (translateY 10px -> 0 + fade)
+  - nova classe .p11-card: transition hover transform translateY(-3px)
+    com sombra e borda roxa clara
+- openCidadeModal / openEstadoModal / openRamoModal:
+  - keydown listener ESC (Escape) para fechar wrap
+  - cleanup listener em CANCELAR e SALVAR (não deixa listener solto)
+- renderMapaClientes 3 cards: aplica classe .p11-card removendo estilos
+  inline de border-radius/padding/cursor (mantém só gradient)
+- sw.js bump CACHE_NAME: 161300 → 161400
