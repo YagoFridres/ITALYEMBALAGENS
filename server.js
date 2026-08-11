@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260811201500';
-const SW_RUNTIME_VERSION = '20260811201500';
+const PATCH_RUNTIME_VERSION = '20260811203000';
+const SW_RUNTIME_VERSION = '20260811203000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -11860,6 +11860,125 @@ async function _contarOfsUnicoClienteComOfs(clienteId, clienteObj, ofsTodas) {
   }
   return Array.from(mergedMap.values());
 }
+let _cacheContadorOfsPorCliente = Object.create(null);
+const _CACHE_CONTADOR_OFS_TTL_MS = 3 * 60 * 1000;
+async function _sharedBuscarOfsCompleta(clienteId, clienteObj, options) {
+  try {
+    const selectMode = options?.selectMode || 'count';
+    const cols = (selectMode === 'count')
+      ? 'id,of_id,codigo,numero,n_of,cli_id,cliId,cliente_id,cliente,cli_nome,cliente_nome,cliNome,deleted_at'
+      : '*';
+    const limiteOfs = Number(options?.limite || 1000);
+    const tryQueryEq = async (col) => {
+      try {
+        return await supabase
+          .from('ofs')
+          .select(cols)
+          .eq(col, clienteId)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(limiteOfs);
+      } catch (e) { return { data: null, error: e }; }
+    };
+    const tryQueryIlike = async (col, pattern) => {
+      try {
+        return await supabase
+          .from('ofs')
+          .select(cols)
+          .ilike(col, pattern)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(limiteOfs);
+      } catch (e) { return { data: null, error: e }; }
+    };
+    const mergedMap = new Map();
+    for (const col of COLUNAS_ID_OF) {
+      const { data, error } = await tryQueryEq(col);
+      if (error) { if (isMissingColumnErrClientes(error)) continue; throw error; }
+      const arr = Array.isArray(data) ? data : [];
+      for (const o of arr) {
+        try {
+          const key = ofIdClientes(o);
+          const existing = mergedMap.get(key);
+          mergedMap.set(key, existing ? mergePreserveNonNullClientes(existing, o) : o);
+        } catch (_) {}
+      }
+    }
+    const clientePareceUuid = clienteId && UUID_RE_CLIENTES.test(String(clienteId || '').trim());
+    if (!clientePareceUuid) {
+      for (const col of COLUNAS_ID_OF) {
+        const { data, error } = await tryQueryIlike(col, clienteId);
+        if (error) { if (isMissingColumnErrClientes(error)) continue; throw error; }
+        const arr = Array.isArray(data) ? data : [];
+        for (const o of arr) {
+          try {
+            const key = ofIdClientes(o);
+            const existing = mergedMap.get(key);
+            mergedMap.set(key, existing ? mergePreserveNonNullClientes(existing, o) : o);
+          } catch (_) {}
+        }
+      }
+    }
+    const nomeClienteRaw = clienteObj
+      ? String(clienteObj?.nome || clienteObj?.rs || clienteObj?.razao_social || clienteObj?.razao || clienteObj?.cliente_nome || '').trim()
+      : '';
+    const nomeCliente = nomeClienteRaw.replace(/\s+/g, ' ').trim();
+    if (nomeCliente && nomeCliente.length >= 3) {
+      const pattern = '%' + nomeCliente + '%';
+      for (const col of COLUNAS_NOME_OF) {
+        const { data, error } = await tryQueryIlike(col, pattern);
+        if (error) { if (isMissingColumnErrClientes(error)) continue; }
+        const arr = Array.isArray(data) ? data : [];
+        for (const o of arr) {
+          try {
+            const key = ofIdClientes(o);
+            const existing = mergedMap.get(key);
+            mergedMap.set(key, existing ? mergePreserveNonNullClientes(existing, o) : o);
+          } catch (_) {}
+        }
+      }
+    }
+    return mergedMap;
+  } catch (e) {
+    console.error('[SHARED OFS CLIENTE ERRO]', String(e?.message || e));
+    return new Map();
+  }
+}
+async function _sharedContarOfsClienteCached(cliente) {
+  try {
+    const id = String(cliente?.id || '').trim();
+    if (!id) return 0;
+    const agora = Date.now();
+    const cacheKey = 'cnt_ofs_' + id;
+    if (_cacheContadorOfsPorCliente?.[cacheKey] && (agora - _cacheContadorOfsPorCliente[cacheKey].ts) < _CACHE_CONTADOR_OFS_TTL_MS) {
+      return Number(_cacheContadorOfsPorCliente[cacheKey].n || 0);
+    }
+    const mergedMap = await _sharedBuscarOfsCompleta(id, cliente, { selectMode: 'count', limite: 1000 });
+    const n = Number(mergedMap?.size || 0);
+    try { _cacheContadorOfsPorCliente[cacheKey] = { ts: Date.now(), n }; } catch (_) {}
+    return n;
+  } catch (_) { return 0; }
+}
+async function _sharedProcessarListaComConcorrenciaLimitada(clientes, concorrencia) {
+  const base = Array.isArray(clientes) ? clientes : [];
+  if (!base.length) return base;
+  const maxConcurrent = Math.max(1, Math.min(Number(concorrencia || 8), 16));
+  const out = new Array(base.length);
+  let idx = 0;
+  const worker = async () => {
+    while (true) {
+      const i = idx++;
+      if (i >= base.length) return;
+      const c = base[i];
+      const n = await _sharedContarOfsClienteCached(c);
+      out[i] = { ...c, total_ofs: Number(n || 0) };
+    }
+  };
+  const workers = [];
+  for (let w = 0; w < maxConcurrent; w++) workers.push(worker());
+  await Promise.all(workers);
+  return out;
+}
 /* =========================================================================
  * FIM HELPERS COMPARTILHADOS
  * ========================================================================= */
@@ -11908,12 +12027,9 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const enrichClientesWithOfs = async (rows) => {
       const base = Array.isArray(rows) ? rows.map((r) => ({ ...r })) : [];
       if (!base.length) return base;
-      const mapa = await _contarOfsParaClientesLote(base);
-      console.debug('[CLIENTES] total:', base.length, 'clientes com OFs calculados em lote');
-      const withCounts = base.map((c) => ({
-        ...c,
-        total_ofs: Number((mapa.get(_normIdCli(c?.id)) || {}).total_ofs || 0)
-      }));
+      const conc = base.length <= 30 ? 8 : (base.length <= 200 ? 6 : 4);
+      console.debug('[CLIENTES] total:', base.length, 'clientes | concorrencia workers para contar OFs:', conc);
+      const withCounts = await _sharedProcessarListaComConcorrenciaLimitada(base, conc);
       withCounts.sort((a, b) => {
         const diff = Number(b?.total_ofs || 0) - Number(a?.total_ofs || 0);
         if (diff) return diff;
@@ -12194,39 +12310,6 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
     const clienteId = String(req.params.id || '').trim();
     if (!clienteId) return res.status(400).json({ ok: false, error: 'cliente_id_obrigatorio' });
 
-    let empresa_id = null;
-    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) {}
-
-    const tryQueryEq = async (col) => {
-      try {
-        const q = supabase
-          .from('ofs')
-          .select('*')
-          .eq(col, clienteId)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(1000);
-        return await q;
-      } catch (e) {
-        return { data: null, error: e };
-      }
-    };
-
-    const tryQueryIlike = async (col, pattern) => {
-      try {
-        const q = supabase
-          .from('ofs')
-          .select('*')
-          .ilike(col, pattern)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(1000);
-        return await q;
-      } catch (e) {
-        return { data: null, error: e };
-      }
-    };
-
     let cliente = null;
     try {
       const qc = supabase.from('clientes').select('id,nome,rs,razao_social,razao,cliente_nome').eq('id', clienteId).maybeSingle();
@@ -12234,75 +12317,7 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
       if (!rc?.error) cliente = rc?.data || null;
     } catch (_) {}
 
-    const mergedMap = new Map();
-    let lastErr = null;
-
-    for (const col of COLUNAS_ID_OF) {
-      const { data, error } = await tryQueryEq(col);
-      if (!error) {
-        lastErr = null;
-        const arr = Array.isArray(data) ? data : [];
-        for (const o of arr) {
-          try {
-            const key = ofIdClientes(o);
-            const existing = mergedMap.get(key);
-            mergedMap.set(key, existing ? mergePreserveNonNullClientes(existing, o) : o);
-          } catch (_) {}
-        }
-      } else {
-        lastErr = error;
-        if (isMissingColumnErrClientes(error)) continue;
-        throw error;
-      }
-    }
-
-    const clientePareceUuid = clienteId && UUID_RE_CLIENTES.test(String(clienteId || '').trim());
-    if (!clientePareceUuid) {
-      for (const col of COLUNAS_ID_OF) {
-        const { data, error } = await tryQueryIlike(col, clienteId);
-        if (!error) {
-          lastErr = null;
-          const arr = Array.isArray(data) ? data : [];
-          for (const o of arr) {
-            try {
-              const key = ofIdClientes(o);
-              const existing = mergedMap.get(key);
-              mergedMap.set(key, existing ? mergePreserveNonNullClientes(existing, o) : o);
-            } catch (_) {}
-          }
-        } else {
-          lastErr = error;
-          if (isMissingColumnErrClientes(error)) continue;
-          throw error;
-        }
-      }
-    }
-
-    const nomeClienteRaw = cliente
-      ? String(cliente?.nome || cliente?.rs || cliente?.razao_social || cliente?.razao || cliente?.cliente_nome || '').trim()
-      : '';
-    const nomeCliente = nomeClienteRaw.replace(/\s+/g, ' ').trim();
-    if (nomeCliente && nomeCliente.length >= 3) {
-      const pattern = '%' + nomeCliente + '%';
-      for (const col of COLUNAS_NOME_OF) {
-        const { data, error } = await tryQueryIlike(col, pattern);
-        if (!error) {
-          lastErr = null;
-          const arr = Array.isArray(data) ? data : [];
-          for (const o of arr) {
-            try {
-              const key = ofIdClientes(o);
-              const existing = mergedMap.get(key);
-              mergedMap.set(key, existing ? mergePreserveNonNullClientes(existing, o) : o);
-            } catch (_) {}
-          }
-        } else {
-          if (isMissingColumnErrClientes(error)) continue;
-          lastErr = error;
-        }
-      }
-    }
-
+    const mergedMap = await _sharedBuscarOfsCompleta(clienteId, cliente, { selectMode: 'full', limite: 1000 });
     let todas = Array.from(mergedMap.values()).sort((a, b) => {
       try {
         const ta = a?.created_at?.time ? a.created_at.time : (new Date(String(a?.created_at || 0)).getTime() || 0);
@@ -12310,7 +12325,6 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
         return tb - ta;
       } catch (_) { return 0; }
     });
-    if (lastErr && todas.length === 0) throw lastErr;
 
     const norm = (s) => {
       let v = String(s || '').trim().toLowerCase();
