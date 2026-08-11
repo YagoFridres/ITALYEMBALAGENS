@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260811193000';
-const SW_RUNTIME_VERSION = '20260811193000';
+const PATCH_RUNTIME_VERSION = '20260811200000';
+const SW_RUNTIME_VERSION = '20260811200000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -11698,6 +11698,172 @@ app.get('/api/cnpj/:cnpj', authMiddleware, async (req, res) => {
   try { return await _cnpjLookupHandler(req, res); } catch (e) { return err(res, e); }
 });
 
+/* =========================================================================
+ * HELPERS COMPARTILHADOS: Contagem de OFs por Cliente (Listagem + Painel)
+ * Usados por GET /api/clientes E GET /api/clientes/:id/painel
+ * Objetivo: mesma lógica do painel, sem duplicação, 1 query em lote.
+ * ========================================================================= */
+const UUID_RE_CLIENTES = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const COLUNAS_ID_OF = ['cli_id', 'cliId', 'cliente_id'];
+const COLUNAS_NOME_OF = ['cliente', 'cli_nome', 'cliente_nome', 'cliNome'];
+function ofIdClientes(o) {
+  if (o == null) return JSON.stringify(null);
+  try {
+    if (o.id != null) return String(o.id);
+    if (o.of_id != null) return String(o.of_id);
+    if (o.codigo != null) return String(o.codigo);
+    if (o.numero != null) return String(o.numero);
+    if (o.n_of != null) return String(o.n_of);
+  } catch (_) {}
+  try { return JSON.stringify(o || null); } catch (_) { return String(o || ''); }
+}
+function mergePreserveNonNullClientes(a, b) {
+  if (!a || typeof a !== 'object') return b;
+  if (!b || typeof b !== 'object') return a || b;
+  const out = Array.isArray(a) ? a.slice() : Object.assign({}, a);
+  for (const k of Object.keys(b)) {
+    const v = b[k];
+    if (!(k in out) || out[k] === null || out[k] === undefined || out[k] === '') {
+      out[k] = v;
+    } else if (v && typeof v === 'object' && !Array.isArray(v) && out[k] && typeof out[k] === 'object' && !Array.isArray(out[k])) {
+      out[k] = mergePreserveNonNullClientes(out[k], v);
+    }
+  }
+  return out;
+}
+function isMissingColumnErrClientes(error) {
+  const msg = String(error?.message || error || '').toLowerCase();
+  return msg.includes('column') || msg.includes('could not find');
+}
+function _normIdCli(v) { return String(v || '').trim().toLowerCase(); }
+function _normStrCli(s) {
+  let v = String(s || '').trim().toLowerCase();
+  try { v = v.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+  v = v.replace(/\s+/g, ' ').trim();
+  return v;
+}
+let _cacheOfsTodasRaw = { ts: 0, data: null };
+const _CACHE_OFS_TTL_MS = 3 * 60 * 1000;
+async function _carregarTodasOfsNaoDeletadasParaClientes() {
+  const agora = Date.now();
+  if (_cacheOfsTodasRaw && _cacheOfsTodasRaw.data && (agora - _cacheOfsTodasRaw.ts) < _CACHE_OFS_TTL_MS) {
+    return _cacheOfsTodasRaw.data;
+  }
+  const cols = ['id','of_id','codigo','numero','n_of', ...COLUNAS_ID_OF, ...COLUNAS_NOME_OF, 'deleted_at'].join(',');
+  try {
+    let from = 0;
+    const pageSize = 5000;
+    const todos = [];
+    while (true) {
+      const q = supabase.from('ofs').select(cols).is('deleted_at', null).range(from, from + pageSize - 1);
+      const { data, error } = await q;
+      if (error) {
+        if (isMissingColumnErrClientes(error)) {
+          const qSemCol = supabase.from('ofs').select('*').is('deleted_at', null).range(from, from + pageSize - 1);
+          const r2 = await qSemCol;
+          if (r2.error) return [];
+          const page = Array.isArray(r2.data) ? r2.data : [];
+          todos.push(...page);
+          if (page.length < pageSize) break;
+          from += pageSize;
+          continue;
+        }
+        return [];
+      }
+      const page = Array.isArray(data) ? data : [];
+      todos.push(...page);
+      if (page.length < pageSize) break;
+      from += pageSize;
+    }
+    _cacheOfsTodasRaw = { ts: Date.now(), data: todos };
+    return todos;
+  } catch (_) { return []; }
+}
+function _matchesOfToCliente(of, cliente, outOfIdsDedup) {
+  const cId = _normIdCli(cliente?.id);
+  const pareceUuid = UUID_RE_CLIENTES.test(cId);
+  const cNome = _normStrCli(cliente?.nome || cliente?.rs || cliente?.razao_social || cliente?.razao || cliente?.cliente_nome || '');
+  const ofKey = ofIdClientes(of);
+  if (outOfIdsDedup && outOfIdsDedup.has(ofKey)) return false;
+  let match = false;
+  for (const col of COLUNAS_ID_OF) {
+    const v = _normIdCli(of?.[col]);
+    if (!v) continue;
+    if (v === cId) { match = true; break; }
+    if (!pareceUuid && v.includes(cId) && cId && cId.length >= 2) { match = true; break; }
+  }
+  if (!match && cNome && cNome.length >= 3) {
+    for (const col of COLUNAS_NOME_OF) {
+      const v = _normStrCli(of?.[col]);
+      if (!v) continue;
+      if (v.includes(cNome) || cNome.includes(v)) { match = true; break; }
+    }
+  }
+  if (match && outOfIdsDedup) outOfIdsDedup.add(ofKey);
+  return match;
+}
+async function _contarOfsParaClientesLote(clientes) {
+  const base = Array.isArray(clientes) ? clientes : [];
+  const out = new Map();
+  base.forEach((c) => {
+    out.set(_normIdCli(c?.id), { cliente: c, total_ofs: 0, ofsIds: new Set() });
+  });
+  if (!base.length) return out;
+  const ofsTodas = await _carregarTodasOfsNaoDeletadasParaClientes();
+  const ofsArr = Array.isArray(ofsTodas) ? ofsTodas : [];
+  for (const ofRec of ofsArr) {
+    for (const [, bucket] of out) {
+      if (_matchesOfToCliente(ofRec, bucket.cliente, bucket.ofsIds)) {
+        bucket.total_ofs = bucket.ofsIds.size;
+      }
+    }
+  }
+  return out;
+}
+async function _contarOfsUnicoClienteComOfs(clienteId, clienteObj, ofsTodas) {
+  const mergedMap = new Map();
+  if (!ofsTodas) ofsTodas = await _carregarTodasOfsNaoDeletadasParaClientes();
+  if (!clienteObj && clienteId) {
+    try {
+      const rc = await supabase.from('clientes').select('id,nome,rs,razao_social,razao,cliente_nome').eq('id', clienteId).maybeSingle();
+      if (!rc?.error) clienteObj = rc?.data || null;
+    } catch (_) { clienteObj = null; }
+  }
+  const cId = _normIdCli(clienteId || clienteObj?.id || '');
+  const pareceUuid = UUID_RE_CLIENTES.test(cId);
+  const cNome = clienteObj
+    ? _normStrCli(clienteObj?.nome || clienteObj?.rs || clienteObj?.razao_social || clienteObj?.razao || clienteObj?.cliente_nome || '')
+    : '';
+  const ofsArr2 = Array.isArray(ofsTodas) ? ofsTodas : [];
+  for (const ofRec of ofsArr2) {
+    let bate = false;
+    for (const col of COLUNAS_ID_OF) {
+      const v = _normIdCli(ofRec?.[col]);
+      if (!v) continue;
+      if (v === cId) { bate = true; break; }
+      if (cId && !pareceUuid && v.includes(cId) && cId.length >= 2) { bate = true; break; }
+    }
+    if (!bate && cNome && cNome.length >= 3) {
+      for (const col of COLUNAS_NOME_OF) {
+        const v = _normStrCli(ofRec?.[col]);
+        if (!v) continue;
+        if (v.includes(cNome) || cNome.includes(v)) { bate = true; break; }
+      }
+    }
+    if (bate) {
+      try {
+        const key = ofIdClientes(ofRec);
+        const existing = mergedMap.get(key);
+        mergedMap.set(key, existing ? mergePreserveNonNullClientes(existing, ofRec) : ofRec);
+      } catch (_) {}
+    }
+  }
+  return Array.from(mergedMap.values());
+}
+/* =========================================================================
+ * FIM HELPERS COMPARTILHADOS
+ * ========================================================================= */
+
 app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
@@ -11742,28 +11908,11 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const enrichClientesWithOfs = async (rows) => {
       const base = Array.isArray(rows) ? rows.map((r) => ({ ...r })) : [];
       if (!base.length) return base;
-      const mapaOfs = Object.create(null);
-      const normId = (v) => String(v || '').trim().toLowerCase();
-      const specs = [
-        { select: 'cli_id', col: 'cli_id', key: 'cli_id' },
-        { select: 'cliId', col: 'cliId', key: 'cliId' },
-        { select: 'cliente_id', col: 'cliente_id', key: 'cliente_id' },
-      ];
-      for (const spec of specs) {
-        try {
-          const { data, error } = await supabase.from('ofs').select(spec.select).not(spec.col, 'is', null);
-          if (error) continue;
-          (Array.isArray(data) ? data : []).forEach((of) => {
-            const cliId = normId(of?.[spec.key]);
-            if (!cliId) return;
-            mapaOfs[cliId] = (mapaOfs[cliId] || 0) + 1;
-          });
-        } catch (_) {}
-      }
-      console.debug('[CLIENTES] total:', base.length, 'clientes com OFs:', Object.keys(mapaOfs).length);
+      const mapa = await _contarOfsParaClientesLote(base);
+      console.debug('[CLIENTES] total:', base.length, 'clientes com OFs calculados em lote');
       const withCounts = base.map((c) => ({
         ...c,
-        total_ofs: mapaOfs[normId(c?.id)] || 0
+        total_ofs: Number((mapa.get(_normIdCli(c?.id)) || {}).total_ofs || 0)
       }));
       withCounts.sort((a, b) => {
         const diff = Number(b?.total_ofs || 0) - Number(a?.total_ofs || 0);
@@ -12048,17 +12197,13 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
     let empresa_id = null;
     try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) {}
 
-    const isMissingColumnErr = (error) => {
-      const msg = String(error?.message || error || '').toLowerCase();
-      return msg.includes('column') || msg.includes('could not find');
-    };
-
     const tryQueryEq = async (col) => {
       try {
         let q = supabase
           .from('ofs')
           .select('*')
           .eq(col, clienteId)
+          .is('deleted_at', null)
           .order('created_at', { ascending: false })
           .limit(1000);
         if (empresa_id) {
@@ -12076,6 +12221,7 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
           .from('ofs')
           .select('*')
           .ilike(col, pattern)
+          .is('deleted_at', null)
           .order('created_at', { ascending: false })
           .limit(1000);
         if (empresa_id) {
@@ -12086,33 +12232,6 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
         return { data: null, error: e };
       }
     };
-
-    function ofId(o) {
-      if (o == null) return JSON.stringify(null);
-      try {
-        if (o.id != null) return String(o.id);
-        if (o.of_id != null) return String(o.of_id);
-        if (o.codigo != null) return String(o.codigo);
-        if (o.numero != null) return String(o.numero);
-        if (o.n_of != null) return String(o.n_of);
-      } catch (_) {}
-      try { return JSON.stringify(o || null); } catch (_) { return String(o || ''); }
-    }
-
-    function mergePreserveNonNull(a, b) {
-      if (!a || typeof a !== 'object') return b;
-      if (!b || typeof b !== 'object') return a || b;
-      const out = Array.isArray(a) ? a.slice() : Object.assign({}, a);
-      for (const k of Object.keys(b)) {
-        const v = b[k];
-        if (!(k in out) || out[k] === null || out[k] === undefined || out[k] === '') {
-          out[k] = v;
-        } else if (v && typeof v === 'object' && !Array.isArray(v) && out[k] && typeof out[k] === 'object' && !Array.isArray(out[k])) {
-          out[k] = mergePreserveNonNull(out[k], v);
-        }
-      }
-      return out;
-    }
 
     let cliente = null;
     try {
@@ -12127,43 +12246,42 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
     const mergedMap = new Map();
     let lastErr = null;
 
-    for (const col of ['cli_id', 'cliId', 'cliente_id']) {
+    for (const col of COLUNAS_ID_OF) {
       const { data, error } = await tryQueryEq(col);
       if (!error) {
         lastErr = null;
         const arr = Array.isArray(data) ? data : [];
         for (const o of arr) {
           try {
-            const key = ofId(o);
+            const key = ofIdClientes(o);
             const existing = mergedMap.get(key);
-            mergedMap.set(key, existing ? mergePreserveNonNull(existing, o) : o);
+            mergedMap.set(key, existing ? mergePreserveNonNullClientes(existing, o) : o);
           } catch (_) {}
         }
       } else {
         lastErr = error;
-        if (isMissingColumnErr(error)) continue;
+        if (isMissingColumnErrClientes(error)) continue;
         throw error;
       }
     }
 
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    const clientePareceUuid = clienteId && UUID_RE.test(String(clienteId || '').trim());
+    const clientePareceUuid = clienteId && UUID_RE_CLIENTES.test(String(clienteId || '').trim());
     if (!clientePareceUuid) {
-      for (const col of ['cli_id', 'cliId', 'cliente_id']) {
+      for (const col of COLUNAS_ID_OF) {
         const { data, error } = await tryQueryIlike(col, clienteId);
         if (!error) {
           lastErr = null;
           const arr = Array.isArray(data) ? data : [];
           for (const o of arr) {
             try {
-              const key = ofId(o);
+              const key = ofIdClientes(o);
               const existing = mergedMap.get(key);
-              mergedMap.set(key, existing ? mergePreserveNonNull(existing, o) : o);
+              mergedMap.set(key, existing ? mergePreserveNonNullClientes(existing, o) : o);
             } catch (_) {}
           }
         } else {
           lastErr = error;
-          if (isMissingColumnErr(error)) continue;
+          if (isMissingColumnErrClientes(error)) continue;
           throw error;
         }
       }
@@ -12175,20 +12293,20 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
     const nomeCliente = nomeClienteRaw.replace(/\s+/g, ' ').trim();
     if (nomeCliente && nomeCliente.length >= 3) {
       const pattern = '%' + nomeCliente + '%';
-      for (const col of ['cliente', 'cli_nome', 'cliente_nome', 'cliNome']) {
+      for (const col of COLUNAS_NOME_OF) {
         const { data, error } = await tryQueryIlike(col, pattern);
         if (!error) {
           lastErr = null;
           const arr = Array.isArray(data) ? data : [];
           for (const o of arr) {
             try {
-              const key = ofId(o);
+              const key = ofIdClientes(o);
               const existing = mergedMap.get(key);
-              mergedMap.set(key, existing ? mergePreserveNonNull(existing, o) : o);
+              mergedMap.set(key, existing ? mergePreserveNonNullClientes(existing, o) : o);
             } catch (_) {}
           }
         } else {
-          if (isMissingColumnErr(error)) continue;
+          if (isMissingColumnErrClientes(error)) continue;
           lastErr = error;
         }
       }
