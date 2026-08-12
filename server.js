@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260812143620';
-const SW_RUNTIME_VERSION = '20260812143620';
+const PATCH_RUNTIME_VERSION = '20260812143955';
+const SW_RUNTIME_VERSION = '20260812143955';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4202,7 +4202,6 @@ async function _buscarClienteRegistroOF(cliId, opts = {}) {
               .select('*')
               .eq(attempt.column, attempt.value)
               .eq(col, empId)
-              .is('deleted_at', null)
               .maybeSingle();
             if (!error && data) return { registro: data, modo: attempt.modo };
           } catch (_) {}
@@ -4212,7 +4211,6 @@ async function _buscarClienteRegistroOF(cliId, opts = {}) {
       const { data, error } = await supabase.from('clientes')
         .select('*')
         .eq(attempt.column, attempt.value)
-        .is('deleted_at', null)
         .maybeSingle();
       if (!error && data) return { registro: data, modo: attempt.modo };
     } catch (_) {}
@@ -4227,7 +4225,6 @@ async function _buscarClienteRegistroOF(cliId, opts = {}) {
             const { data: cand, err } = await supabase.from('clientes')
               .select('*')
               .eq(col, empId)
-              .is('deleted_at', null)
               .order('nome', { ascending: true })
               .limit(2000);
             if (!err && Array.isArray(cand) && cand.length) { rows = cand; break; }
@@ -4236,7 +4233,6 @@ async function _buscarClienteRegistroOF(cliId, opts = {}) {
       } else {
         const { data: cand, err } = await supabase.from('clientes')
           .select('*')
-          .is('deleted_at', null)
           .order('nome', { ascending: true })
           .limit(2000);
         if (!err && Array.isArray(cand)) rows = cand;
@@ -5614,7 +5610,7 @@ app.post('/api/_oneshot_limpar_ofs_orfas_100k', [authMiddleware, requireAdmin], 
     const agora = new Date().toISOString();
     const q = supabase
       .from('ofs')
-      .select('id,numero,of,clinome,descricao,produto,empresa_id,deleted_at,created_at')
+      .select('id,numero,of,clinome,descricao,empresa_id,deleted_at,created_at')
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(1000);
@@ -5628,7 +5624,6 @@ app.post('/api/_oneshot_limpar_ofs_orfas_100k', [authMiddleware, requireAdmin], 
       const temZZZ = /ZZZ_TESTE/i.test(
         String(o?.clinome || '') + ' ' +
         String(o?.descricao || '') + ' ' +
-        String(o?.produto || '') + ' ' +
         numStr
       );
       const orfa = !temEmpresa;
@@ -5659,7 +5654,7 @@ app.post('/api/_oneshot_limpar_ofs_orfas_100k', [authMiddleware, requireAdmin], 
       ids_marcados: ids,
       detalhes: alvos.map(o => ({
         id: o.id, numero: o.numero || o.of, clinome: String(o.clinome || '').slice(0,40),
-        desc: String(o.descricao || o.produto || '').slice(0,50), empresa_id: o.empresa_id,
+        desc: String(o.descricao || '').slice(0,50), empresa_id: o.empresa_id,
         criado: String(o.created_at || '').slice(0,16)
       }))
     });
