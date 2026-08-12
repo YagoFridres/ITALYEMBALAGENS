@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260812120000';
-const SW_RUNTIME_VERSION = '20260812120000';
+const PATCH_RUNTIME_VERSION = '20260812143620';
+const SW_RUNTIME_VERSION = '20260812143620';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4202,6 +4202,7 @@ async function _buscarClienteRegistroOF(cliId, opts = {}) {
               .select('*')
               .eq(attempt.column, attempt.value)
               .eq(col, empId)
+              .is('deleted_at', null)
               .maybeSingle();
             if (!error && data) return { registro: data, modo: attempt.modo };
           } catch (_) {}
@@ -4211,6 +4212,7 @@ async function _buscarClienteRegistroOF(cliId, opts = {}) {
       const { data, error } = await supabase.from('clientes')
         .select('*')
         .eq(attempt.column, attempt.value)
+        .is('deleted_at', null)
         .maybeSingle();
       if (!error && data) return { registro: data, modo: attempt.modo };
     } catch (_) {}
@@ -4225,14 +4227,18 @@ async function _buscarClienteRegistroOF(cliId, opts = {}) {
             const { data: cand, err } = await supabase.from('clientes')
               .select('*')
               .eq(col, empId)
-              .limit(400);
+              .is('deleted_at', null)
+              .order('nome', { ascending: true })
+              .limit(2000);
             if (!err && Array.isArray(cand) && cand.length) { rows = cand; break; }
           } catch (_) {}
         }
       } else {
         const { data: cand, err } = await supabase.from('clientes')
           .select('*')
-          .limit(400);
+          .is('deleted_at', null)
+          .order('nome', { ascending: true })
+          .limit(2000);
         if (!err && Array.isArray(cand)) rows = cand;
       }
       if (rows && rows.length) {
@@ -5577,10 +5583,9 @@ app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
       .select('numero, of_num, of, id, created_at, deleted_at')
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
-      .limit(200);
-    if (empId) q = q.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
+      .limit(500);
+    if (empId) q = q.eq('empresa_id', empId);
     const { data, error } = await q;
-
     if (error) throw error;
 
     let maior = 0;
@@ -5598,6 +5603,68 @@ app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
     return res.json({ ok: true, proximo, maior });
   } catch (e) {
     return res.json({ ok: true, proximo: '001', maior: 0, erro: String(e?.message || e) });
+  }
+});
+
+app.post('/api/_oneshot_limpar_ofs_orfas_100k', [authMiddleware, requireAdmin], async (req, res) => {
+  try {
+    if (!req.usuario || String(req.usuario?.perfil || '').toLowerCase() !== 'admin') {
+      return res.status(403).json({ ok: false, error: 'Permissão negada' });
+    }
+    const agora = new Date().toISOString();
+    const q = supabase
+      .from('ofs')
+      .select('id,numero,of,clinome,descricao,produto,empresa_id,deleted_at,created_at')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1000);
+    const { data: todas, error: errTodas } = await q;
+    if (errTodas) throw errTodas;
+    const alvos = [];
+    (todas || []).forEach((o) => {
+      const temEmpresa = !!String(o?.empresa_id || '').trim();
+      const numStr = String(o?.numero || o?.of || '0');
+      const numInt = parseInt(numStr.replace(/\D/g, ''), 10) || 0;
+      const temZZZ = /ZZZ_TESTE/i.test(
+        String(o?.clinome || '') + ' ' +
+        String(o?.descricao || '') + ' ' +
+        String(o?.produto || '') + ' ' +
+        numStr
+      );
+      const orfa = !temEmpresa;
+      const alto = numInt >= 100000;
+      if (orfa && (alto || temZZZ)) alvos.push(o);
+      else if (temZZZ && numInt >= 2600) alvos.push(o);
+    });
+    const ids = alvos.map(o => o.id).filter(Boolean);
+    let atualizados = 0;
+    let falhas = 0;
+    for (const id of ids) {
+      try {
+        const { error: errU } = await supabase
+          .from('ofs')
+          .update({ deleted_at: agora, updated_at: agora })
+          .eq('id', id);
+        if (errU) falhas += 1;
+        else atualizados += 1;
+      } catch (_) { falhas += 1; }
+    }
+    _clearOfsCaches();
+    return res.json({
+      ok: true,
+      total_analisado: (todas || []).length,
+      total_alvos: alvos.length,
+      atualizados,
+      falhas,
+      ids_marcados: ids,
+      detalhes: alvos.map(o => ({
+        id: o.id, numero: o.numero || o.of, clinome: String(o.clinome || '').slice(0,40),
+        desc: String(o.descricao || o.produto || '').slice(0,50), empresa_id: o.empresa_id,
+        criado: String(o.created_at || '').slice(0,16)
+      }))
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
