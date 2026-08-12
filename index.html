@@ -34590,7 +34590,13 @@ function normalizeCli(r){
     obs:r.obs||'',
     vendId:r.vendedor_id||r.vend_id||r.vendedorId||r.vendId||'',
     vendedor:r.vendedor||r.vendedor_nome||r.vendedorNome||'',
-    empId:r.emp_id||r.empId||r.emp_id||r.empId||r.empresa_id||r.empresaId||''
+    empId:r.emp_id||r.empId||r.emp_id||r.empId||r.empresa_id||r.empresaId||'',
+    total_ofs:r.total_ofs != null ? Number(r.total_ofs||0) : (r.totalOfs != null ? Number(r.totalOfs||0) : null),
+    totalOfs:r.totalOfs != null ? Number(r.totalOfs||0) : (r.total_ofs != null ? Number(r.total_ofs||0) : null),
+    total_valor:r.total_valor != null ? Number(r.total_valor||0) : (r.totalValor != null ? Number(r.totalValor||0) : null),
+    totalValor:r.totalValor != null ? Number(r.totalValor||0) : (r.total_valor != null ? Number(r.total_valor||0) : null),
+    created_at:r.created_at ?? r.createdAt ?? null,
+    ativo: r.ativo !== undefined ? (r.ativo === true || String(r.ativo) === '1' || String(r.ativo).toLowerCase() === 'true') : true
   };
 }
 function normalizeVend(r){
@@ -59576,6 +59582,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260813020000"></script>
+<script src="/patch.js?v=20260813023000"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
