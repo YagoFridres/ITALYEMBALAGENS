@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260811213000';
-const SW_RUNTIME_VERSION = '20260811213000';
+const PATCH_RUNTIME_VERSION = '20260812093200';
+const SW_RUNTIME_VERSION = '20260812093200';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -32038,6 +32038,68 @@ app.delete('/api/agenda/:id', authMiddleware, async (req, res) => {
     if (error) throw error;
     res.json({ ok:true });
   } catch(e) { res.status(500).json({ ok:false, error:e.message }); }
+});
+
+app.get('/api/_oneshot_fix_cores_sem_impressao', authMiddleware, async (req, res) => {
+  try {
+    const isAdm = await new Promise((resolve) => {
+      let rejeitado = false;
+      const resProbe = new Proxy(res, {
+        get(t, k) {
+          if (k === 'status') {
+            return function(code) {
+              if (code !== 200) rejeitado = true;
+              const r = t.status.bind(t)(code);
+              return r;
+            };
+          }
+          const v = Reflect.get(t, k);
+          return typeof v === 'function' ? v.bind(t) : v;
+        }
+      });
+      requireAdmin(req, resProbe, () => { resolve(!rejeitado); });
+    });
+    if (!isAdm) {
+      if (!res.headersSent) return res.status(403).json({ ok:false, error:'Admin necessário' });
+      return;
+    }
+    const out = { modo: 'ONESHOOT-INSERIR-SEM-IMPRESSAO-E2-E3', executado_em: new Date().toISOString(), passos: [] };
+    const mapa = { E2: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e', E3: 'a6e5f5d8-4743-4ebe-885e-c2f0741a667a' };
+    for (const sigla of ['E2','E3']) {
+      const empresa_id = mapa[sigla];
+      try {
+        const { data: jaExiste } = await supabase
+          .from('cores_impressao')
+          .select('id,nome,empresa_id,ativo,hex,codigo,ordem')
+          .eq('empresa_id', empresa_id)
+          .ilike('nome','%Sem Impress%')
+          .limit(1)
+          .maybeSingle();
+        if (jaExiste?.id) {
+          out.passos.push({ sigla, empresa_id, ok:true, acao:'JA_EXISTIA', registro: jaExiste });
+          continue;
+        }
+        const row = {
+          empresa_id,
+          nome: 'Sem Impressão',
+          ativo: true,
+          hex: null,
+          codigo: null,
+          ordem: null,
+        };
+        const { data: novo, error } = await supabase
+          .from('cores_impressao')
+          .insert(row)
+          .select('id,nome,empresa_id,ativo,hex,codigo,ordem')
+          .maybeSingle();
+        if (error) throw error;
+        out.passos.push({ sigla, empresa_id, ok:true, acao:'INSERIDO', registro: novo||null });
+      } catch (e) {
+        out.passos.push({ sigla, empresa_id, ok:false, erro: String(e?.message||e) });
+      }
+    }
+    return res.json({ ok:true, ...out });
+  } catch (e) { return res.status(500).json({ ok:false, error: String(e?.message||e) }); }
 });
 
 app.use((e, req, res, next) => {
