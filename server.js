@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260812235000';
-const SW_RUNTIME_VERSION = '20260812235000';
+const PATCH_RUNTIME_VERSION = '20260813000500';
+const SW_RUNTIME_VERSION = '20260813000500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4838,10 +4838,12 @@ async function ofsInsertWithRetry(row) {
 
   let p = sanitizarPayloadOF({ ...(row || {}) });
   const ignoredColumns = [];
+  let lastErroReal = null;
   for (let tentativa = 0; tentativa < 5; tentativa++) {
     const r = await supabase.from('ofs').insert([p]).select('*').single();
     if (!r.error) return r;
     const msg = erroTexto(r.error);
+    lastErroReal = r.error;
     const m1 = msg.match(/Could not find the '([^']+)' column/i);
     const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
     const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
@@ -4853,7 +4855,7 @@ async function ofsInsertWithRetry(row) {
     }
     if (erroDuplicado(r.error)) {
       p = await recalcularIdentificadores(p, erroDuplicadoNumero(r.error));
-      try { console.warn('[OFS INSERT] retry por conflito:', msg); } catch (_) {}
+      try { console.warn('[OFS INSERT] retry por conflito (tent', tentativa, '):', msg); } catch (_) {}
       continue;
     }
     if (erroTransiente(r.error)) {
@@ -4861,14 +4863,24 @@ async function ofsInsertWithRetry(row) {
       if (existente) {
         return { data: existente, error: null, ignoredColumns };
       }
-      try { console.warn('[OFS INSERT] retry por falha transiente:', msg); } catch (_) {}
+      try { console.warn('[OFS INSERT] retry por falha transiente (tent', tentativa, '):', msg); } catch (_) {}
       continue;
     }
     if (r.error && typeof r.error === 'object' && !r.error.message) r.error.message = msg;
     r.ignoredColumns = ignoredColumns;
     return r;
   }
-  return { data: null, error: { message: 'Falha ao inserir OF após tentativas' }, ignoredColumns };
+  const errFinal = { message: 'Falha ao inserir OF após tentativas' };
+  if (lastErroReal) {
+    errFinal.lastErro = typeof lastErroReal === 'string' ? lastErroReal : (lastErroReal.message || lastErroReal.details || String(lastErroReal));
+    if (typeof lastErroReal === 'object') {
+      if (lastErroReal.code) errFinal.lastCode = lastErroReal.code;
+      if (lastErroReal.hint) errFinal.lastHint = lastErroReal.hint;
+      if (lastErroReal.details) errFinal.lastDetails = lastErroReal.details;
+    }
+  }
+  errFinal.ignoredColumns = ignoredColumns;
+  return { data: null, error: errFinal, ignoredColumns };
 }
 
 async function ofsUpdateWithRetry(id, row) {
