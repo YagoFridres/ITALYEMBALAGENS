@@ -3958,6 +3958,7 @@ async function proximoNumeroOf() {
   const cache = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : [];
   if (cache.length) {
     const numeros = cache
+      .filter(o => !o?.deleted_at && !String(o?.status || '').toLowerCase().includes('exclu'))
       .map(o => parseInt(o?.numero || o?.of_num || o?.of || '0', 10))
       .filter(n => !isNaN(n) && n > 0);
     if (numeros.length) {
@@ -3969,15 +3970,15 @@ async function proximoNumeroOf() {
   return '001';
 }
 
-function abrirNovaOfRapida(){
+async function abrirNovaOfRapida(){
   try{ document.getElementById('modal-of-rapida')?.remove(); }catch(e){}
   try{ document.getElementById('modal-of-rapida-ov')?.remove(); }catch(e){}
 
   try{
     const needsApi = _apiConectado && CURRENT_USER;
     if(needsApi){
-      if((!Array.isArray(CLIENTES) || CLIENTES.length===0) && typeof carregarClientes === 'function') carregarClientes(false).catch(()=>null);
-      if((!Array.isArray(VENDEDORES) || VENDEDORES.length===0) && typeof carregarVendedores === 'function') carregarVendedores(false).catch(()=>null);
+      if((!Array.isArray(CLIENTES) || CLIENTES.length===0) && typeof carregarClientes === 'function'){ try{ await carregarClientes(false); }catch(_e){} }
+      if((!Array.isArray(VENDEDORES) || VENDEDORES.length===0) && typeof carregarVendedores === 'function'){ try{ await carregarVendedores(false); }catch(_e){} }
     }
   }catch(e){}
 
@@ -3994,7 +3995,7 @@ function abrirNovaOfRapida(){
   }
 
   const clientes = (Array.isArray(CLIENTES) ? CLIENTES : [])
-    .map(c => String(c.nome || c.razao_social || c.razao || c.cliente_nome || '').trim())
+    .map(c => String(c.nome || c.razao_social || c.razao || c.rs || c.cliente_nome || '').trim())
     .filter(Boolean)
     .sort((a,b)=>a.localeCompare(b,'pt-BR'));
 
@@ -4006,6 +4007,9 @@ function abrirNovaOfRapida(){
   const hoje = new Date().toISOString().split('T')[0];
   const em3 = new Date(Date.now() + 3*864e5).toISOString().split('T')[0];
   const em5 = new Date(Date.now() + 5*864e5).toISOString().split('T')[0];
+
+  window._ofRapidaCliId = '';
+  window._ofRapidaCliNome = '';
 
   modal.innerHTML = `
     <div style="width:34px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:12px auto 0"></div>
@@ -4021,10 +4025,11 @@ function abrirNovaOfRapida(){
     <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
       <div>
         <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Cliente *</label>
-        <input id="of-r-cliente" list="of-r-clientes-list" placeholder="Nome do cliente..." autocomplete="off"
+        <input id="of-r-cliente" list="of-r-clientes-list" placeholder="Digite e selecione um cliente da lista..." autocomplete="off"
           style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 13px;color:#e8f0fe;font-size:14px;outline:none;transition:border 0.2s;font-family:inherit"
-          onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+          onfocus="window._ofRapidaClienteOnFocus(this)" onblur="window._ofRapidaClienteOnBlur(this)" oninput="window._ofRapidaClienteOnInput(this)">
         <datalist id="of-r-clientes-list">${clientes.map(c=>`<option value="${escAttr(c)}"></option>`).join('')}</datalist>
+        <div id="of-r-cliente-feedback" style="margin-top:6px;min-height:18px;font-size:12px;color:rgba(239,68,68,0.9)">Selecione um cliente válido da lista para prosseguir.</div>
       </div>
 
       <div>
@@ -4584,10 +4589,139 @@ window.verificarDisponibilidadeMaquinaOfRapida = async function(){
   }
 };
 
+window._normalizarNomeCliente = function _normalizarNomeCliente(s) {
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').replace(/[^a-z0-9 \-]/g, ' ').trim();
+};
+window._resolverClienteOFRapida = function _resolverClienteOFRapida(textoDigitado, empresaLegado) {
+  const texto = String(textoDigitado || '').trim();
+  const out = { ok: false, cliente: null, id: '', nome: '', mensagem: '', ambiguidade: 0, prioridade: null };
+  if (!texto) { out.mensagem = 'Selecione um cliente válido da lista para prosseguir.'; return out; }
+  const arr = (Array.isArray(CLIENTES) ? CLIENTES : []);
+  if (!arr.length) { out.mensagem = 'Lista de clientes ainda carregando... tente novamente em 1s.'; return out; }
+  const empLeg = String(empresaLegado || window.EMPRESA_ID || (typeof EMP_ID_ATUAL !== 'undefined' ? EMP_ID_ATUAL : '') || 'E1').trim().toUpperCase();
+  const filtraEmp = (c) => {
+    if (!empLeg) return true;
+    const e1 = String(c?.emp_id || c?.empId || c?.empresa_id || c?.empresa || 'E1').trim().toUpperCase();
+    const e2 = String(c?.empresaLegado || '').trim().toUpperCase();
+    if (!e1 && !e2) return true;
+    return (e1 === empLeg) || (e2 === empLeg);
+  };
+  const nomeC = (c) => String(c?.nome || c?.razao_social || c?.razao || c?.rs || c?.cliente_nome || '').trim();
+  const tgt = window._normalizarNomeCliente(texto);
+  const exatos = [];
+  const starts = [];
+  const incls = [];
+  for (const c of arr) {
+    try { if (!filtraEmp(c)) continue; } catch (_e) {}
+    const n = window._normalizarNomeCliente(nomeC(c));
+    if (!n) continue;
+    if (n === tgt) exatos.push(c);
+    else if (n.startsWith(tgt)) starts.push(c);
+    else if (n.indexOf(tgt) >= 0) incls.push(c);
+  }
+  if (exatos.length === 1) {
+    out.ok = true; out.cliente = exatos[0]; out.id = String(exatos[0].id || '').trim(); out.nome = nomeC(exatos[0]); out.prioridade = 'exato'; return out;
+  }
+  if (starts.length === 1) {
+    out.ok = true; out.cliente = starts[0]; out.id = String(starts[0].id || '').trim(); out.nome = nomeC(starts[0]); out.prioridade = 'inicio'; return out;
+  }
+  if (exatos.length > 1 || starts.length > 1) {
+    const qtd = (exatos.length || starts.length);
+    out.ambiguidade = qtd; out.mensagem = 'Digite mais caracteres — ' + qtd + ' clientes corresponderam (selecione um da lista).';
+    return out;
+  }
+  if (incls.length === 1) {
+    out.ok = true; out.cliente = incls[0]; out.id = String(incls[0].id || '').trim(); out.nome = nomeC(incls[0]); out.prioridade = 'contem'; return out;
+  }
+  if (incls.length > 1) {
+    out.ambiguidade = incls.length; out.mensagem = `Digite mais caracteres — ${incls.length} clientes corresponderam parcialmente (selecione um da lista).`;
+    return out;
+  }
+  out.mensagem = `Nenhum cliente encontrado para "${texto}". Digite e selecione um cliente da lista de sugestões.`;
+  return out;
+};
+window._ofRapidaClienteFeedback = function _ofRapidaClienteFeedback(cor, mensagem, inputEl) {
+  const fb = document.getElementById('of-r-cliente-feedback');
+  if (fb) {
+    fb.style.color = (cor === 'verde') ? 'rgba(16,185,129,0.95)' : (cor === 'amarelo') ? 'rgba(245,158,11,0.95)' : 'rgba(239,68,68,0.95)';
+    fb.textContent = String(mensagem || '');
+  }
+  if (inputEl) {
+    const borda = (cor === 'verde') ? '1px solid rgba(16,185,129,0.6)' :
+                  (cor === 'amarelo') ? '1px solid rgba(245,158,11,0.55)' :
+                  '1px solid rgba(239,68,68,0.6)';
+    inputEl.style.borderColor = '';
+    try { inputEl.style.border = borda; } catch (_e) {}
+  }
+};
+window._ofRapidaClienteOnFocus = function(inputEl){
+  if (!inputEl) return;
+  inputEl.style.border = '';
+  inputEl.style.borderColor = '#0ea5e9';
+};
+window._ofRapidaClienteOnInput = function(inputEl){
+  if (!inputEl) return;
+  const texto = String(inputEl.value || '').trim();
+  if (!texto) {
+    window._ofRapidaCliId = '';
+    window._ofRapidaCliNome = '';
+    window._ofRapidaClienteFeedback('vermelho', 'Selecione um cliente válido da lista para prosseguir.', inputEl);
+    return;
+  }
+  const res = window._resolverClienteOFRapida(texto);
+  if (res.ok) {
+    window._ofRapidaCliId = res.id;
+    window._ofRapidaCliNome = res.nome;
+    const extra = res.prioridade === 'contem' ? ' (atenção: correspondência parcial)' : (res.prioridade === 'inicio' ? ' (correspondência por início)' : '');
+    window._ofRapidaClienteFeedback('verde', 'Cliente confirmado: ' + res.nome + extra, inputEl);
+  } else if (res.ambiguidade > 0) {
+    window._ofRapidaCliId = '';
+    window._ofRapidaCliNome = '';
+    window._ofRapidaClienteFeedback('amarelo', res.mensagem || 'Múltiplos clientes — selecione da lista.', inputEl);
+  } else {
+    window._ofRapidaCliId = '';
+    window._ofRapidaCliNome = '';
+    window._ofRapidaClienteFeedback('vermelho', res.mensagem || 'Cliente inválido — selecione da lista.', inputEl);
+  }
+};
+window._ofRapidaClienteOnBlur = function(inputEl){
+  if (!inputEl) return;
+  inputEl.style.border = '';
+  inputEl.style.borderColor = 'rgba(255,255,255,0.1)';
+  const res = window._resolverClienteOFRapida(String(inputEl.value || ''));
+  if (res.ok) {
+    window._ofRapidaCliId = res.id;
+    window._ofRapidaCliNome = res.nome;
+    const extra = res.prioridade === 'contem' ? ' (contém)' : (res.prioridade === 'inicio' ? ' (início)' : '');
+    window._ofRapidaClienteFeedback('verde', 'Cliente confirmado: ' + res.nome + extra, inputEl);
+    if (res.nome && String(inputEl.value || '').trim() !== res.nome) {
+      try { inputEl.value = res.nome; } catch (_e) {}
+    }
+  } else if (res.ambiguidade > 0) {
+    window._ofRapidaCliId = '';
+    window._ofRapidaClienteFeedback('amarelo', res.mensagem || 'Ambiguidade — selecione um da lista.', inputEl);
+    inputEl.focus();
+  } else {
+    window._ofRapidaCliId = '';
+    window._ofRapidaClienteFeedback('vermelho', res.mensagem || 'Selecione um cliente válido da lista.', inputEl);
+  }
+};
+
 window.salvarOfRapida = async function(){
-  const clienteNome = String(document.getElementById('of-r-cliente')?.value || '').trim();
+  const clienteNomeRaw = String(document.getElementById('of-r-cliente')?.value || '').trim();
   const produto = String(document.getElementById('of-r-produto')?.value || '').trim();
   const empId = String(document.getElementById('of-r-empresa')?.value || 'E1').trim() || 'E1';
+  const cliRes = window._resolverClienteOFRapida(clienteNomeRaw, empId);
+  if (cliRes.ok && cliRes.id) {
+    window._ofRapidaCliId = cliRes.id;
+    window._ofRapidaCliNome = cliRes.nome;
+  } else {
+    window._ofRapidaCliId = '';
+    window._ofRapidaCliNome = '';
+  }
+  const clienteNome = clienteNomeRaw;
+  const clienteId = String(window._ofRapidaCliId || cliRes.id || '').trim();
+  const clienteNomeConfirmado = String(window._ofRapidaCliNome || cliRes.nome || '').trim();
   const vendId = String(document.getElementById('of-r-vendedor')?.value || '').trim();
   const qtd = Math.trunc(Number(document.getElementById('of-r-qtd')?.value || 0) || 0);
   const vlunit = parseFloat(String(document.getElementById('of-r-vlunit')?.value || '0').replace(',','.')) || 0;
@@ -4617,7 +4751,7 @@ window.salvarOfRapida = async function(){
     || '001';
 
   const erros = [];
-  if(!clienteNome) erros.push('Cliente');
+  if(!clienteId) erros.push('Cliente (selecione um válido da lista)');
   if(!produto) erros.push('Produto');
   if(!(qtd > 0)) erros.push('Quantidade');
   if(!(vlunit > 0)) erros.push('Valor Unit.');
@@ -4628,6 +4762,11 @@ window.salvarOfRapida = async function(){
   const coresPayload = (typeof coresPayloadFromSelecionadas === 'function') ? coresPayloadFromSelecionadas(coresSelecionadasOFRapida) : [];
   if(!coresPayload.length) erros.push('Cores de Impressão');
   if(!entrega) erros.push('Data de Entrega');
+  if(!clienteId){
+    const cliInput = document.getElementById('of-r-cliente');
+    window._ofRapidaClienteFeedback((cliRes?.ambiguidade > 0 ? 'amarelo' : 'vermelho'), cliRes?.mensagem || 'Selecione um cliente válido da lista para prosseguir.', cliInput);
+    try{ if(cliInput) cliInput.focus(); }catch(e){}
+  }
   if(erros.length){
     alert('Preencha: ' + erros.join(', '));
     return;
@@ -4635,18 +4774,6 @@ window.salvarOfRapida = async function(){
 
   const btn = document.getElementById('btn-salvar-of-rapida');
   try{ if(btn){ btn.textContent='Salvando...'; btn.disabled=true; } }catch(e){}
-
-  const cli = (Array.isArray(CLIENTES)?CLIENTES:[]).find(c=>{
-    const n = String(c?.nome || c?.razao_social || c?.razao || '').trim();
-    if(!n) return false;
-    return n.toLowerCase() === clienteNome.toLowerCase();
-  }) || null;
-  const cliId = String(cli?.id || '').trim();
-  if(!cliId){
-    alert('Selecione um cliente válido da lista.');
-    try{ if(btn){ btn.textContent='⚡ Salvar OF'; btn.disabled=false; } }catch(e){}
-    return;
-  }
 
   let imgUrl = '';
   try{
@@ -4682,9 +4809,12 @@ window.salvarOfRapida = async function(){
     numero: numeroOf,
     of_num: numeroOf,
     of: numeroOf,
-    cli_id: cliId,
-    cliId: cliId,
-    cliente_id: cliId,
+    cli_id: clienteId,
+    cliId: clienteId,
+    cliente_id: clienteId,
+    clinome: clienteNomeConfirmado || clienteNome || '',
+    cliNome: clienteNomeConfirmado || clienteNome || '',
+    cliente_nome: clienteNomeConfirmado || clienteNome || '',
     vendedor_id: vendId,
     vendId: vendId,
     vend_id: vendId,
@@ -59439,6 +59569,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260812103000"></script>
+<script src="/patch.js?v=20260812105000"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>

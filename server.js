@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260812103000';
-const SW_RUNTIME_VERSION = '20260812103000';
+const PATCH_RUNTIME_VERSION = '20260812105000';
+const SW_RUNTIME_VERSION = '20260812105000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4179,35 +4179,67 @@ function _clienteNomeValido(v) {
   return s;
 }
 
-async function _buscarClienteRegistroOF(cliId) {
+async function _buscarClienteRegistroOF(cliId, opts = {}) {
   const id = String(cliId || '').trim();
   if (!id || !supabase) return null;
+  const empId = String(opts.empresa_id || opts.empId || '').trim();
+  const filterCol = opts._empresaFilterCol || null;
   const tries = [];
-  if (_isUuid(id)) tries.push({ column: 'id', value: id });
-  tries.push({ column: 'codigo', value: id });
-  if (!_isUuid(id)) tries.push({ column: 'id', value: id });
+  if (_isUuid(id)) tries.push({ column: 'id', value: id, modo: 'uuid' });
+  tries.push({ column: 'codigo', value: id, modo: 'codigo' });
+  if (!_isUuid(id)) tries.push({ column: 'id', value: id, modo: 'legacy_text_id' });
   const seen = new Set();
   for (const attempt of tries) {
     const key = String(attempt.column || '') + ':' + String(attempt.value || '');
     if (seen.has(key)) continue;
     seen.add(key);
     try {
-      const { data, error } = await supabase
-        .from('clientes')
-        .select('*')
-        .eq(attempt.column, attempt.value)
-        .maybeSingle();
-      if (!error && data) return data;
+      let q = supabase.from('clientes').select('*').eq(attempt.column, attempt.value);
+      if (empId) {
+        if (filterCol) q = q.eq(filterCol, empId);
+        else q = q.or(`emp_id.eq.${empId},empresa_id.eq.${empId},empId.eq.${empId}`);
+      }
+      const { data, error } = await q.maybeSingle();
+      if (!error && data) return { registro: data, modo: attempt.modo };
+    } catch (_) {}
+  }
+  const refNorm = id;
+  if (refNorm.length >= 2) {
+    try {
+      let q = supabase.from('clientes').select('id,nome,codigo,emp_id,empresa_id,empId,rs,razao_social,vendedor_id,vendId,ativo,created_at').limit(400);
+      if (empId) q = q.or(`emp_id.eq.${empId},empresa_id.eq.${empId},empId.eq.${empId}`);
+      const { data: candidatos, error: errCand } = await q;
+      if (!errCand && Array.isArray(candidatos) && candidatos.length) {
+        const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+        const tgt = norm(refNorm);
+        let exato = null;
+        let start = null;
+        const inclui = [];
+        for (const c of candidatos) {
+          const n = norm(c?.nome || c?.rs || c?.razao_social || '');
+          if (!n) continue;
+          if (n === tgt) { if (!exato) exato = c; continue; }
+          if (n.startsWith(tgt)) { if (!start) start = c; continue; }
+          if (n.indexOf(tgt) >= 0) inclui.push(c);
+        }
+        if (exato) return { registro: exato, modo: 'nome_exato' };
+        if (start) return { registro: start, modo: 'nome_startswith' };
+        if (inclui.length === 1) return { registro: inclui[0], modo: 'nome_includes_unico' };
+        if (inclui.length > 1) return { ambiguo: true, qtd: inclui.length, candidatos: inclui.slice(0, 10), modo: 'nome_ambiguo' };
+        return null;
+      }
     } catch (_) {}
   }
   return null;
 }
 
-async function _resolverClienteIdentidadeOF(raw) {
+async function _resolverClienteIdentidadeOF(raw, opts = {}) {
   const ref = String(raw || '').trim();
   if (!ref) return null;
-  const cli = await _buscarClienteRegistroOF(ref);
-  if (!cli) return null;
+  const found = await _buscarClienteRegistroOF(ref, opts || {});
+  if (!found) return null;
+  if (found.ambiguo) return { ambiguo: true, qtd: found.qtd, candidatos: (found.candidatos || []).map(c => ({ id: c.id, nome: c.nome, empresa: c.empresa_id || c.emp_id || null })), ref };
+  const cli = found.registro || found;
   const id = String(cli?.id || '').trim();
   if (!id) return null;
   const nome = _clienteNomeValido(
@@ -4223,6 +4255,8 @@ async function _resolverClienteIdentidadeOF(raw) {
     codigo: String(cli?.codigo || '').trim(),
     nome,
     vendedor_id: String(cli?.vendedor_id || cli?.vendId || cli?.vend_id || '').trim() || null,
+    empresa_id: String(cli?.empresa_id || cli?.empId || cli?.emp_id || '').trim() || null,
+    modo_resolvido: String(found?.modo || 'direto'),
   };
 }
 
@@ -5283,10 +5317,12 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
 
     const buildQuery = () => {
-      let query = supabase
+      const querySemDeleted = supabase
         .from('ofs')
         .select('*', { count: 'exact' })
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
+      let query = querySemDeleted;
 
       if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') {
         query = query.eq('empresa_id', empresaFiltro);
@@ -5328,6 +5364,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         let query = supabase
           .from('ofs')
           .select('*', { count: 'exact' })
+          .is('deleted_at', null)
           .order('created_at', { ascending: false });
         if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') query = query.eq('empresa_id', empresaFiltro);
         else query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
@@ -5507,16 +5544,21 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 // Rota dedicada para próximo número de OF
 app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const empId = await resolverEmpresaId(req);
+    let q = supabase
       .from('ofs')
-      .select('numero, of_num, of, id, created_at')
+      .select('numero, of_num, of, id, created_at, deleted_at')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(200);
+    if (empId) q = q.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
+    const { data, error } = await q;
 
     if (error) throw error;
 
     let maior = 0;
     (data || []).forEach((of) => {
+      if (of?.deleted_at) return;
       ['numero', 'of_num', 'numero_of', 'of'].forEach((campo) => {
         const v = of?.[campo];
         if (v === null || v === undefined || v === '') return;
@@ -5982,6 +6024,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
             .from('ofs')
             .select('numero')
             .eq('empresa_id', empresa_id)
+            .is('deleted_at', null)
             .order('created_at', { ascending: false })
             .limit(200);
           if (error) throw error;
@@ -6027,9 +6070,14 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       };
       let merged = { ...(body || {}), ...(filtered || {}) };
       const cliRef = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
-      const cliResolved = cliRef ? await _resolverClienteIdentidadeOF(cliRef) : null;
+      const empRef = String(empresaUuid || merged.empresa_id || merged.empId || merged.emp_id || '').trim() || null;
+      const cliResolved = cliRef ? await _resolverClienteIdentidadeOF(cliRef, { empresa_id: empRef }) : null;
       if (cliRef && !cliResolved) {
-        return res.status(400).json({ ok: false, error: 'Cliente inválido. Selecione um cliente válido antes de salvar.', missing: ['cliente'] });
+        return res.status(400).json({ ok: false, error: `Cliente inválido: não encontramos nenhum cliente correspondente a "${cliRef}". Digite e selecione um cliente válido da lista de sugestões.`, missing: ['cliente'], ref: cliRef });
+      }
+      if (cliRef && cliResolved && cliResolved.ambiguo) {
+        const candidatos = (cliResolved.candidatos || []).map(c => c?.nome || '').filter(Boolean).slice(0, 6).join(' | ');
+        return res.status(400).json({ ok: false, error: `Cliente ambíguo: ${cliResolved.qtd} clientes corresponderam a "${cliRef}". Selecione exatamente um cliente da lista de sugestões.${candidatos ? ' Opções: ' + candidatos : ''}`, missing: ['cliente'], ref: cliRef, qtd: cliResolved.qtd, candidatos: cliResolved.candidatos || [] });
       }
       if (merged.vend_id !== undefined) {
         if (!String(merged.vendedor_id ?? '').trim()) merged.vendedor_id = merged.vend_id;
