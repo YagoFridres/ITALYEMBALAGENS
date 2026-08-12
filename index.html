@@ -4010,6 +4010,7 @@ async function abrirNovaOfRapida(){
 
   window._ofRapidaCliId = '';
   window._ofRapidaCliNome = '';
+  window._ofRapidaValidouCliente = false;
 
   modal.innerHTML = `
     <div style="width:34px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:12px auto 0"></div>
@@ -4029,7 +4030,7 @@ async function abrirNovaOfRapida(){
           style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 13px;color:#e8f0fe;font-size:14px;outline:none;transition:border 0.2s;font-family:inherit"
           onfocus="window._ofRapidaClienteOnFocus(this)" onblur="window._ofRapidaClienteOnBlur(this)" oninput="window._ofRapidaClienteOnInput(this)">
         <datalist id="of-r-clientes-list">${clientes.map(c=>`<option value="${escAttr(c)}"></option>`).join('')}</datalist>
-        <div id="of-r-cliente-feedback" style="margin-top:6px;min-height:18px;font-size:12px;color:rgba(239,68,68,0.9)">Selecione um cliente válido da lista para prosseguir.</div>
+        <div id="of-r-cliente-feedback" style="margin-top:6px;min-height:18px;font-size:12px;color:rgba(148,163,184,0.5)"></div>
       </div>
 
       <div>
@@ -4661,6 +4662,7 @@ window._ofRapidaClienteOnFocus = function(inputEl){
 };
 window._ofRapidaClienteOnInput = function(inputEl){
   if (!inputEl) return;
+  window._ofRapidaValidouCliente = true;
   const texto = String(inputEl.value || '').trim();
   if (!texto) {
     window._ofRapidaCliId = '';
@@ -4688,7 +4690,10 @@ window._ofRapidaClienteOnBlur = function(inputEl){
   if (!inputEl) return;
   inputEl.style.border = '';
   inputEl.style.borderColor = 'rgba(255,255,255,0.1)';
-  const res = window._resolverClienteOFRapida(String(inputEl.value || ''));
+  if (!window._ofRapidaValidouCliente) return;
+  const texto = String(inputEl.value || '').trim();
+  if (!texto) return;
+  const res = window._resolverClienteOFRapida(texto);
   if (res.ok) {
     window._ofRapidaCliId = res.id;
     window._ofRapidaCliNome = res.nome;
@@ -4700,7 +4705,6 @@ window._ofRapidaClienteOnBlur = function(inputEl){
   } else if (res.ambiguidade > 0) {
     window._ofRapidaCliId = '';
     window._ofRapidaClienteFeedback('amarelo', res.mensagem || 'Ambiguidade — selecione um da lista.', inputEl);
-    inputEl.focus();
   } else {
     window._ofRapidaCliId = '';
     window._ofRapidaClienteFeedback('vermelho', res.mensagem || 'Selecione um cliente válido da lista.', inputEl);
@@ -20815,8 +20819,11 @@ function renderClientes(){
   if(sit === 'inativos') lista = lista.filter(c=>situacao(c.id).inativo);
   renderEmpBar();
   document.getElementById('cli-grid').innerHTML=lista.map(c=>{
-    const ofs=OFs.filter(o=>o.cliId===c.id);
-    const total=ofs.reduce((s,o)=>s+(o.val||0),0);
+    const ofsLocal=OFs.filter(o=>(String(o?.cliId ?? o?.cli_id ?? o?.cliente_id ?? '').trim())===(String(c?.id||'').trim()));
+    const totalLocal=ofsLocal.reduce((s,o)=>s+(Number(o?.val ?? o?.valor ?? o?.valor_total ?? 0)||0),0);
+    const totalOfs = Math.max(Number(c?.total_ofs ?? c?.totalOfs ?? 0)||0, ofsLocal.length);
+    const total = (Number(c?.total_valor ?? c?.totalValor ?? 0)||0) > 0 ? (Number(c.total_valor ?? c.totalValor ?? 0)||0) : totalLocal;
+    const ticket = totalOfs ? (total / totalOfs) : 0;
     const emp=getEmp(c.empId);
     const st = situacao(c.id);
     const badgeInativo = (st.diasSem != null && st.inativo)
@@ -20837,9 +20844,9 @@ function renderClientes(){
       <div class="cli-sub">${c.cidade||''}${c.uf?'/'+c.uf:''} · ${c.tel||''}</div>
       <div class="cli-sub">${c.email||''}</div>
       <div class="cli-stats">
-        <div class="cli-stat"><b>${ofs.length}</b> pedidos</div>
+        <div class="cli-stat"><b>${totalOfs}</b> pedidos</div>
         <div class="cli-stat"><b>${fmtR(total)}</b> total</div>
-        <div class="cli-stat"><b>${fmtR(ofs.length?total/ofs.length:0)}</b> ticket</div>
+        <div class="cli-stat"><b>${fmtR(ticket)}</b> ticket</div>
       </div>
       <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirPainelCliente('${c.id}')" style="font-size:.68rem;">👤 Painel</button>
@@ -59569,6 +59576,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260813011500"></script>
+<script src="/patch.js?v=20260813013000"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
