@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260812105000';
-const SW_RUNTIME_VERSION = '20260812105000';
+const PATCH_RUNTIME_VERSION = '20260812110000';
+const SW_RUNTIME_VERSION = '20260812110000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4189,33 +4189,59 @@ async function _buscarClienteRegistroOF(cliId, opts = {}) {
   tries.push({ column: 'codigo', value: id, modo: 'codigo' });
   if (!_isUuid(id)) tries.push({ column: 'id', value: id, modo: 'legacy_text_id' });
   const seen = new Set();
+  const empCols = filterCol ? [filterCol] : ['empresa_id', 'emp_id', 'empId'];
   for (const attempt of tries) {
     const key = String(attempt.column || '') + ':' + String(attempt.value || '');
     if (seen.has(key)) continue;
     seen.add(key);
     try {
-      let q = supabase.from('clientes').select('*').eq(attempt.column, attempt.value);
       if (empId) {
-        if (filterCol) q = q.eq(filterCol, empId);
-        else q = q.or(`emp_id.eq.${empId},empresa_id.eq.${empId},empId.eq.${empId}`);
+        for (const col of empCols) {
+          try {
+            const { data, error } = await supabase.from('clientes')
+              .select('*')
+              .eq(attempt.column, attempt.value)
+              .eq(col, empId)
+              .maybeSingle();
+            if (!error && data) return { registro: data, modo: attempt.modo };
+          } catch (_) {}
+        }
+        continue;
       }
-      const { data, error } = await q.maybeSingle();
+      const { data, error } = await supabase.from('clientes')
+        .select('*')
+        .eq(attempt.column, attempt.value)
+        .maybeSingle();
       if (!error && data) return { registro: data, modo: attempt.modo };
     } catch (_) {}
   }
   const refNorm = id;
   if (refNorm.length >= 2) {
     try {
-      let q = supabase.from('clientes').select('id,nome,codigo,emp_id,empresa_id,empId,rs,razao_social,vendedor_id,vendId,ativo,created_at').limit(400);
-      if (empId) q = q.or(`emp_id.eq.${empId},empresa_id.eq.${empId},empId.eq.${empId}`);
-      const { data: candidatos, error: errCand } = await q;
-      if (!errCand && Array.isArray(candidatos) && candidatos.length) {
+      let rows = null;
+      if (empId) {
+        for (const col of empCols) {
+          try {
+            const { data: cand, err } = await supabase.from('clientes')
+              .select('id,nome,codigo,emp_id,empresa_id,empId,rs,razao_social,vendedor_id,vendId,ativo,created_at')
+              .eq(col, empId)
+              .limit(400);
+            if (!err && Array.isArray(cand) && cand.length) { rows = cand; break; }
+          } catch (_) {}
+        }
+      } else {
+        const { data: cand, err } = await supabase.from('clientes')
+          .select('id,nome,codigo,emp_id,empresa_id,empId,rs,razao_social,vendedor_id,vendId,ativo,created_at')
+          .limit(400);
+        if (!err && Array.isArray(cand)) rows = cand;
+      }
+      if (rows && rows.length) {
         const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
         const tgt = norm(refNorm);
         let exato = null;
         let start = null;
         const inclui = [];
-        for (const c of candidatos) {
+        for (const c of rows) {
           const n = norm(c?.nome || c?.rs || c?.razao_social || '');
           if (!n) continue;
           if (n === tgt) { if (!exato) exato = c; continue; }
@@ -4297,7 +4323,8 @@ async function _preencherCamposCriticosOF(input, opts = {}) {
   };
 
   let cliId = String(out.cli_id ?? out.cliId ?? out.cliente_id ?? out.cliid ?? '').trim();
-  const cliResolved = cliId ? await _resolverClienteIdentidadeOF(cliId) : null;
+  const resolverEmpOpts = { empresa_id: String(out.empresa_id ?? out.empId ?? out.emp_id ?? '') };
+  const cliResolved = cliId ? await _resolverClienteIdentidadeOF(cliId, resolverEmpOpts) : null;
   if (cliResolved?.id) {
     cliId = String(cliResolved.id || '').trim();
     out.cli_id = cliId;
@@ -12119,6 +12146,10 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         const { data, error } = await fetchClientesPages(localSelect, col, localOrder, localAsc);
         if (!error) {
           const rows = await enrichClientesWithOfs(data || []);
+          // FIX: se tinha filtro de empresa, retorno 0 rows sem erro, e ainda há outras colunas de empresa para tentar → não retorna ainda, tenta próxima coluna
+          const qtdRows = Array.isArray(rows) ? rows.length : 0;
+          const temOutrasColunasEmpresa = Array.isArray(cols) && cols.length > 1 && cols[cols.length - 1] !== col;
+          if (empId && col != null && qtdRows === 0 && temOutrasColunasEmpresa) break;
           const rowsOut = applyClientSlice(rows);
           logClientes(rows);
           if (!lite) {
