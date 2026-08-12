@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260812172500';
-const SW_RUNTIME_VERSION = '20260812172500';
+const PATCH_RUNTIME_VERSION = '20260812181500';
+const SW_RUNTIME_VERSION = '20260812181500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5605,11 +5605,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 });
 
 // Rota dedicada para próximo número de OF
-async function _calcularProximoNumeroOF(empId) {
+async function _calcularProximoNumeroOF(empId, diag) {
   try {
     let q = supabase
       .from('ofs')
-      .select('numero, of_num, of, id, created_at, deleted_at')
+      .select('numero, of_num, of, id, created_at, deleted_at, empresa_id, emp_id')
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(500);
@@ -5617,21 +5617,40 @@ async function _calcularProximoNumeroOF(empId) {
     const { data, error } = await q;
     if (error) throw error;
     let maior = 0;
+    const topNums = [];
     (data || []).forEach((of) => {
       if (of?.deleted_at) return;
+      let linhaMaior = 0;
       ['numero', 'of_num', 'numero_of', 'of'].forEach((campo) => {
         const v = of?.[campo];
         if (v === null || v === undefined || v === '') return;
         const n = parseInt(String(v).replace(/\D/g, ''), 10);
+        if (!isNaN(n) && n > linhaMaior) linhaMaior = n;
         if (!isNaN(n) && n > maior) maior = n;
       });
+      if (linhaMaior >= 2600) topNums.push({ n: linhaMaior, id: of?.id, numero: of?.numero, of_num: of?.of_num, of: of?.of, criado: String(of?.created_at || '').slice(0, 16), emp_id: of?.emp_id });
     });
+    topNums.sort((a, b) => Number(b.n || 0) - Number(a.n || 0));
     const proximo = String(maior + 1);
-    return { ok: true, proximo, maior };
+    const base = { ok: true, proximo, maior, qtd: (data || []).length, empId: empId || null };
+    if (diag) base.top15 = topNums.slice(0, 15);
+    return base;
   } catch (e) {
     return { ok: false, proximo: '001', maior: 0, erro: String(e?.message || e) };
   }
 }
+app.get('/api/_diag_proxnum', [authMiddleware, requireAdmin], async (req, res) => {
+  try {
+    const emp1 = await resolverEmpresaId(req);
+    const empCtx = await _resolveEmpresaMutationContext(req, req.query || {});
+    const emp2 = String(empCtx?.empresa_id || '').trim() || null;
+    const r1 = await _calcularProximoNumeroOF(emp1, true);
+    const r2 = await _calcularProximoNumeroOF(emp2, true);
+    return res.json({ ok: true, emp_por_resolver: emp1, emp_por_ctx: emp2, iguais: (emp1 === emp2), res_por_resolver: r1, res_por_ctx: r2 });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
 app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
   try {
     const empId = await resolverEmpresaId(req);
