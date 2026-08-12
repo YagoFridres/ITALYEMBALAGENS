@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260813002000';
-const SW_RUNTIME_VERSION = '20260813002000';
+const PATCH_RUNTIME_VERSION = '20260813003500';
+const SW_RUNTIME_VERSION = '20260813003500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4803,28 +4803,22 @@ async function ofsInsertWithRetry(row) {
         baseProximo = Math.trunc(Number(lastSeq2?.seq || 0) || 0) + 100;
       } catch (_) { baseProximo = 999000 + Math.floor(Math.random() * 999); }
     }
-    for (let i = 0; i < 120; i += 1) {
+    for (let i = 0; i < 240; i += 1) {
       const cand = String(baseProximo + i);
       try {
-        let qc = supabase
+        const { data: ex, error } = await supabase
           .from('ofs')
-          .select('id,numero,of,of_num,empresa_id,emp_id,deleted_at')
-          .is('deleted_at', null);
-        if (siglaLegadaEmp) qc = qc.or(`empresa_id.eq.${empresaId},emp_id.eq.${siglaLegadaEmp}`);
-        else qc = qc.eq('empresa_id', empresaId);
-        qc = qc.or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand}`).limit(5);
-        const { data: ex, error } = await qc;
+          .select('id,numero,of,of_num,numero_of,deleted_at')
+          .is('deleted_at', null)
+          .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},numero_of.eq.${cand}`)
+          .limit(5);
         if (error) continue;
-        const conflitaDentroEmpresa = (Array.isArray(ex) ? ex : []).some((r) => {
+        const conflitaGlobal = (Array.isArray(ex) ? ex : []).some((r) => {
           if (r?.deleted_at) return false;
-          if (siglaLegadaEmp) {
-            const okEmp = String(r?.empresa_id || '') === String(empresaId) || String(r?.emp_id || '') === String(siglaLegadaEmp);
-            if (!okEmp) return false;
-          } else { if (String(r?.empresa_id || '') !== String(empresaId)) return false; }
           const nums = [String(r?.numero ?? ''), String(r?.of ?? ''), String(r?.of_num ?? ''), String(r?.numero_of ?? '')];
           return nums.includes(String(cand));
         });
-        if (conflitaDentroEmpresa) continue;
+        if (conflitaGlobal) continue;
       } catch (_) { continue; }
       next.numero = cand;
       next.of = cand;
@@ -5662,34 +5656,21 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 });
 
 // Rota dedicada para próximo número de OF
-async function _calcularProximoNumeroOF(empId, diag) {
+// NUMERAÇÃO É GLOBAL (unique(of) + unique(numero) GLOBAL no Supabase).
+// Não é por empresa. Então helper NÃO FILTRA empresa nenhuma, e conflito é global também.
+async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
   try {
-    let siglaLegada = null;
-    if (empId && empId === 'df5f7672-0a6b-402d-ae65-296554236c31') siglaLegada = 'E1';
-    else if (empId) {
-      try {
-        const { data: empRow } = await supabase.from('empresas').select('id,codigo,sigla').eq('id', empId).limit(1).maybeSingle();
-        if (empRow?.codigo) siglaLegada = empRow.codigo;
-        else if (empRow?.sigla) siglaLegada = empRow.sigla;
-      } catch (_) {}
-    }
     let q = supabase
       .from('ofs')
-      .select('numero, of_num, of, id, created_at, deleted_at, empresa_id, emp_id')
-      .is('deleted_at', null);
-    if (empId && siglaLegada) q = q.or(`empresa_id.eq.${empId},emp_id.eq.${siglaLegada}`);
-    else if (empId) q = q.eq('empresa_id', empId);
-    q = q.order('id', { ascending: false }).limit(8000);
+      .select('numero, of_num, of, numero_of, id, created_at, deleted_at, empresa_id, emp_id')
+      .is('deleted_at', null)
+      .order('id', { ascending: false })
+      .limit(16000);
     const { data, error } = await q;
     if (error) throw error;
     const nums = [];
     (data || []).forEach((of) => {
       if (of?.deleted_at) return;
-      if (empId) {
-        const matchUuid = String(of?.empresa_id || '') === String(empId);
-        const matchSigla = siglaLegada && String(of?.emp_id || '') === String(siglaLegada);
-        if (!matchUuid && !matchSigla) return;
-      }
       let linhaMaior = 0;
       ['numero', 'of_num', 'numero_of', 'of'].forEach((campo) => {
         const v = of?.[campo];
@@ -5702,7 +5683,7 @@ async function _calcularProximoNumeroOF(empId, diag) {
     nums.sort((a, b) => Number(b.n || 0) - Number(a.n || 0));
     const maior = nums.length ? Number(nums[0].n || 0) : 0;
     const proximo = String(maior + 1);
-    const base = { ok: true, proximo, maior, qtd: (data || []).length, qtdNumeros: nums.length, empId: empId || null, siglaLegada: siglaLegada || null };
+    const base = { ok: true, proximo, maior, qtd: (data || []).length, qtdNumeros: nums.length, numeracaoGlobal: true };
     if (diag) base.top15 = nums.slice(0, 15);
     return base;
   } catch (e) {
@@ -5753,33 +5734,30 @@ app.post('/api/_dbg_full_post_ofs', [authMiddleware, requireAdmin], async (req, 
           const cand = String((DEBUG.numeroEmpresa != null ? DEBUG.numeroEmpresa : DEBUG.nextSeq) + i);
           const log = { i, cand };
           try {
-            let qc = supabase.from('ofs').select('id,numero,of,of_num,empresa_id,emp_id,deleted_at').is('deleted_at', null);
-            if (DEBUG.siglaLegadaEmp) qc = qc.or(`empresa_id.eq.${empresaUuid},emp_id.eq.${DEBUG.siglaLegadaEmp}`);
-            else qc = qc.eq('empresa_id', empresaUuid);
-            qc = qc.or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand}`).limit(5);
             const t0 = Date.now();
-            const { data: ex, error } = await qc;
+            const { data: ex, error } = await supabase
+              .from('ofs')
+              .select('id,numero,of,of_num,numero_of,empresa_id,emp_id,deleted_at')
+              .is('deleted_at', null)
+              .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},numero_of.eq.${cand}`)
+              .limit(5);
             log.qMs = Date.now() - t0;
             if (error) log.qErr = String(error.message || error).slice(0, 200);
             log.qEx = (ex || []).map(r => ({ id: String(r?.id || '').slice(0, 10), n: r?.numero, of: r?.of, ofn: r?.of_num, eid: String(r?.empresa_id || '').slice(0, 10), emp: r?.emp_id || '' }));
-            const conflita = (Array.isArray(ex) ? ex : []).some((r) => {
+            const conflitaGlobal = (Array.isArray(ex) ? ex : []).some((r) => {
               if (r?.deleted_at) return false;
-              if (DEBUG.siglaLegadaEmp) {
-                const okEmp = String(r?.empresa_id || '') === String(empresaUuid) || String(r?.emp_id || '') === String(DEBUG.siglaLegadaEmp);
-                if (!okEmp) return false;
-              } else { if (String(r?.empresa_id || '') !== String(empresaUuid)) return false; }
               const nums = [String(r?.numero ?? ''), String(r?.of ?? ''), String(r?.of_num ?? ''), String(r?.numero_of ?? '')];
               return nums.includes(String(cand));
             });
-            log.conflita = conflita;
+            log.conflita = conflitaGlobal;
             DEBUG.conflitoLog.push(log);
-            if (!conflita) { DEBUG.escolhido = cand; DEBUG.escolhidoIdx = i; break; }
+            if (!conflitaGlobal) { DEBUG.escolhido = cand; DEBUG.escolhidoIdx = i; break; }
           } catch (e) {
             log.err = String(e?.message || e).slice(0, 300);
             DEBUG.conflitoLog.push(log);
           }
         }
-        if (DEBUG.escolhido) { filtered.of = DEBUG.escolhido; filtered.numero = DEBUG.escolhido; }
+        if (DEBUG.escolhido) { filtered.of = DEBUG.escolhido; filtered.numero = DEBUG.escolhido; filtered.of_num = DEBUG.escolhido; filtered.numero_of = DEBUG.escolhido; }
       } catch (e) { DEBUG.blocoErro = String(e?.message || e); }
     } else DEBUG.blocoEntrou = false;
     DEBUG.filteredFinal = { of: filtered.of, numero: filtered.numero, of_num: filtered.of_num, seq: filtered.seq, empresa_id: filtered.empresa_id, emp_id: filtered.emp_id, clinome: filtered.clinome, cli_id: filtered.cli_id };
@@ -5809,25 +5787,22 @@ app.post('/api/_dbg_proxnum_inline_post', [authMiddleware, requireAdmin], async 
     let escolhido = null;
     for (let i = 0; i < 12; i++) {
       const cand = String((numeroEmpresa != null ? numeroEmpresa : info.nextSeq) + i);
-      const ten = { i, cand, qEx: null, conflito: null, emp_matches: [] };
+      const ten = { i, cand, qEx: null, conflito: null, matches: [] };
       try {
-        let qc = supabase.from('ofs').select('id,numero,of,of_num,empresa_id,emp_id,deleted_at').is('deleted_at', null);
-        if (siglaLegadaEmp) qc = qc.or(`empresa_id.eq.${empresaUuid},emp_id.eq.${siglaLegadaEmp}`);
-        else qc = qc.eq('empresa_id', empresaUuid);
-        qc = qc.or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand}`).limit(3);
-        const { data: ex } = await qc;
+        const { data: ex } = await supabase
+          .from('ofs')
+          .select('id,numero,of,of_num,numero_of,empresa_id,emp_id,deleted_at')
+          .is('deleted_at', null)
+          .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},numero_of.eq.${cand}`)
+          .limit(3);
         ten.qEx = Array.isArray(ex) ? ex.length : null;
-        const conflitaDentroEmpresa = (Array.isArray(ex) ? ex : []).some((r) => {
+        const conflitaGlobal = (Array.isArray(ex) ? ex : []).some((r) => {
           if (r?.deleted_at) return false;
-          if (siglaLegadaEmp) {
-            const okEmp = String(r?.empresa_id || '') === String(empresaUuid) || String(r?.emp_id || '') === String(siglaLegadaEmp);
-            if (!okEmp) return false;
-          } else { if (String(r?.empresa_id || '') !== String(empresaUuid)) return false; }
           const nums = [String(r?.numero ?? ''), String(r?.of ?? ''), String(r?.of_num ?? ''), String(r?.numero_of ?? '')];
           return nums.includes(String(cand));
         });
-        ten.conflito = conflitaDentroEmpresa;
-        ten.emp_matches = (ex || []).map(r => ({ id: String(r?.id || '').slice(0, 10), n: r?.numero, empresa_id: String(r?.empresa_id || '').slice(0, 10), emp_id: r?.emp_id || '' }));
+        ten.conflito = conflitaGlobal;
+        ten.matches = (ex || []).map(r => ({ id: String(r?.id || '').slice(0, 10), n: r?.numero, of: r?.of, ofn: r?.of_num, empresa_id: String(r?.empresa_id || '').slice(0, 10), emp_id: r?.emp_id || '' }));
       } catch (e) { ten.err = String(e?.message || e).slice(0, 200); }
       info.tentativas.push(ten);
       if (!ten.conflito && escolhido === null) { escolhido = cand; break; }
@@ -6449,29 +6424,23 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         for (let i = 0; i < 120; i += 1) {
           const cand = String((numeroEmpresa != null ? numeroEmpresa : nextSeq) + i);
           try {
-            let qc = supabase
+            const { data: ex } = await supabase
               .from('ofs')
-              .select('id,numero,of,of_num,empresa_id,emp_id,deleted_at')
-              .is('deleted_at', null);
-            if (siglaLegadaEmp) qc = qc.or(`empresa_id.eq.${empresaUuid},emp_id.eq.${siglaLegadaEmp}`);
-            else qc = qc.eq('empresa_id', empresaUuid);
-            qc = qc.or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand}`).limit(3);
-            const { data: ex } = await qc;
-            const conflitaDentroEmpresa = (Array.isArray(ex) ? ex : []).some((r) => {
+              .select('id,numero,of,of_num,numero_of,empresa_id,emp_id,deleted_at')
+              .is('deleted_at', null)
+              .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},numero_of.eq.${cand}`)
+              .limit(3);
+            const conflitaGlobal = (Array.isArray(ex) ? ex : []).some((r) => {
               if (r?.deleted_at) return false;
-              if (siglaLegadaEmp) {
-                const okEmp = String(r?.empresa_id || '') === String(empresaUuid) || String(r?.emp_id || '') === String(siglaLegadaEmp);
-                if (!okEmp) return false;
-              } else {
-                if (String(r?.empresa_id || '') !== String(empresaUuid)) return false;
-              }
               const nums = [String(r?.numero ?? ''), String(r?.of ?? ''), String(r?.of_num ?? ''), String(r?.numero_of ?? '')];
               return nums.includes(String(cand));
             });
-            if (conflitaDentroEmpresa) continue;
+            if (conflitaGlobal) continue;
           } catch (_) {}
           filtered.of = cand;
           filtered.numero = cand;
+          filtered.of_num = cand;
+          if (filtered.numero_of === undefined || filtered.numero_of === '' || filtered.numero_of == null) filtered.numero_of = cand;
           break;
         }
       } catch (_) {}
