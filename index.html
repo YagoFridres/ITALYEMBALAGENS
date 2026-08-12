@@ -34294,7 +34294,7 @@ async function autoSaveLoad(){
   _apiConectado = true;
   try {
     const [ofs, clis, vends, orcs, est, aps, maq, ops0, cmp, forn, nfs, inc0] = await Promise.all([
-      api('GET','/ofs'), api('GET','/clientes'), api('GET','/vendedores'),
+      api('GET','/ofs'), api('GET','/clientes?lite=1'), api('GET','/vendedores'),
       api('GET','/orcamentos'), api('GET','/estoque'), api('GET','/apontamentos'),
       api('GET','/maquinas'), api('GET','/operadores'), api('GET','/compras'),
       api('GET','/fornecedores'), api('GET','/notas_fiscais'), api('GET','/inconformidades')
@@ -35318,8 +35318,9 @@ async function carregarClientes(forcar=false){
     }
   }catch(e){}
   if(!forcar && (now - _ultimaCargaClientes) < CACHE_TTL && Array.isArray(CLIENTES) && CLIENTES.length > 0) { _clientesCarregados = true; return { ok:true, cached:true, data:CLIENTES }; }
-  const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
-  const r = await api('GET','/clientes'+empParam);
+  let url = '/clientes?lite=1';
+  if(EMP_FILTRO) url += '&empId='+encodeURIComponent(EMP_FILTRO);
+  const r = await api('GET', url);
   if(r && r.ok && r.data && r.data.length) {
     CLIENTES = r.data.map(normalizeCli);
     CLIENTES = (CLIENTES || []).filter((c, idx, arr) =>
@@ -59582,6 +59583,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260813023000"></script>
+<script src="/patch.js?v=20260813030000"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
