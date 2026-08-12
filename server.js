@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260812143955';
-const SW_RUNTIME_VERSION = '20260812143955';
+const PATCH_RUNTIME_VERSION = '20260812144428';
+const SW_RUNTIME_VERSION = '20260812144428';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4206,6 +4206,23 @@ async function _buscarClienteRegistroOF(cliId, opts = {}) {
             if (!error && data) return { registro: data, modo: attempt.modo };
           } catch (_) {}
         }
+        // Fallback: sem filtro empresa, busca direto e valida em JS
+        try {
+          const { data, error } = await supabase.from('clientes')
+            .select('*')
+            .eq(attempt.column, attempt.value)
+            .limit(5);
+          if (!error && Array.isArray(data)) {
+            const normEmp = (x) => String(x || '').trim().toLowerCase();
+            const eIdNorm = normEmp(empId);
+            const match = data.find(c =>
+              normEmp(c?.empresa_id) === eIdNorm ||
+              normEmp(c?.emp_id) === eIdNorm ||
+              normEmp(c?.empId) === eIdNorm
+            ) || (data.length === 1 ? data[0] : null);
+            if (match) return { registro: match, modo: attempt.modo + '_fallback_sem_filtro_emp' };
+          }
+        } catch (_) {}
         continue;
       }
       const { data, error } = await supabase.from('clientes')
@@ -4219,7 +4236,9 @@ async function _buscarClienteRegistroOF(cliId, opts = {}) {
   if (refNorm.length >= 2) {
     try {
       let rows = null;
+      let tentouComFiltro = false;
       if (empId) {
+        tentouComFiltro = true;
         for (const col of empCols) {
           try {
             const { data: cand, err } = await supabase.from('clientes')
@@ -4230,12 +4249,26 @@ async function _buscarClienteRegistroOF(cliId, opts = {}) {
             if (!err && Array.isArray(cand) && cand.length) { rows = cand; break; }
           } catch (_) {}
         }
-      } else {
+      }
+      if (!rows || !rows.length) {
         const { data: cand, err } = await supabase.from('clientes')
           .select('*')
           .order('nome', { ascending: true })
           .limit(2000);
-        if (!err && Array.isArray(cand)) rows = cand;
+        if (!err && Array.isArray(cand)) {
+          if (tentouComFiltro && empId) {
+            const normEmp = (x) => String(x || '').trim().toLowerCase();
+            const eIdNorm = normEmp(empId);
+            rows = cand.filter(c =>
+              normEmp(c?.empresa_id) === eIdNorm ||
+              normEmp(c?.emp_id) === eIdNorm ||
+              normEmp(c?.empId) === eIdNorm ||
+              !String(c?.empresa_id || c?.emp_id || c?.empId || '').trim()
+            );
+          } else {
+            rows = cand;
+          }
+        }
       }
       if (rows && rows.length) {
         const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
