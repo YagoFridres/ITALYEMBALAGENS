@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260812150500';
-const SW_RUNTIME_VERSION = '20260812150500';
+const PATCH_RUNTIME_VERSION = '20260812154000';
+const SW_RUNTIME_VERSION = '20260812154000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5690,6 +5690,79 @@ app.post('/api/_oneshot_limpar_ofs_orfas_100k', [authMiddleware, requireAdmin], 
         id: o.id, numero: o.numero || o.of, clinome: String(o.clinome || '').slice(0,40),
         desc: String(o.descricao || '').slice(0,50), empresa_id: o.empresa_id,
         criado: String(o.created_at || '').slice(0,16)
+      }))
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post('/api/_oneshot_limpar_ofs_italy_testes', [authMiddleware, requireAdmin], async (req, res) => {
+  try {
+    if (!req.usuario || String(req.usuario?.perfil || '').toLowerCase() !== 'admin') {
+      return res.status(403).json({ ok: false, error: 'Permissão negada' });
+    }
+    const agora = new Date().toISOString();
+    const empIdsItalia = new Set();
+    try {
+      const { data: emps } = await supabase.from('empresas').select('id,codigo,sigla,nome').limit(50);
+      (emps || []).forEach(e => {
+        const cod = String(e.codigo || e.sigla || '').trim().toUpperCase();
+        const nm = String(e.nome || '').toLowerCase();
+        if (cod === 'E1' || nm.includes('italy')) empIdsItalia.add(String(e.id || '').trim());
+      });
+    } catch (_) {}
+    const q = supabase
+      .from('ofs')
+      .select('id,numero,of,clinome,descricao,empresa_id,emp_id,deleted_at,created_at')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(2000);
+    const { data: todas, error: errTodas } = await q;
+    if (errTodas) throw errTodas;
+    const alvos = [];
+    const empIdArr = Array.from(empIdsItalia).filter(Boolean);
+    (todas || []).forEach((o) => {
+      const numStr = String(o?.numero || o?.of || '0');
+      const numInt = parseInt(numStr.replace(/\D/g, ''), 10) || 0;
+      const temZZZ = /ZZZ_TESTE/i.test(
+        String(o?.clinome || '') + ' ' +
+        String(o?.descricao || '') + ' ' +
+        numStr
+      );
+      const empEmp = String(o?.empresa_id || '').trim();
+      const empLeg = String(o?.emp_id || '').trim().toUpperCase();
+      const pertenceItaly = (empEmp && empIdsItalia.has(empEmp)) || empLeg === 'E1';
+      if (!pertenceItaly) return;
+      if (numInt >= 100000) alvos.push(o);
+      else if (temZZZ) alvos.push(o);
+    });
+    const ids = alvos.map(o => o.id).filter(Boolean);
+    let atualizados = 0;
+    let falhas = 0;
+    for (const id of ids) {
+      try {
+        const { error: errU } = await supabase
+          .from('ofs')
+          .update({ deleted_at: agora, updated_at: agora })
+          .eq('id', id);
+        if (errU) falhas += 1;
+        else atualizados += 1;
+      } catch (_) { falhas += 1; }
+    }
+    _clearOfsCaches();
+    return res.json({
+      ok: true,
+      italy_emp_ids: empIdArr,
+      total_analisado: (todas || []).length,
+      total_alvos: alvos.length,
+      atualizados,
+      falhas,
+      ids_marcados: ids,
+      detalhes: alvos.map(o => ({
+        id: o.id, numero: o.numero || o.of, clinome: String(o.clinome || '').slice(0, 40),
+        desc: String(o.descricao || '').slice(0, 60), empresa_id: o.empresa_id, emp_id: o.emp_id,
+        criado: String(o.created_at || '').slice(0, 16)
       }))
     });
   } catch (e) {
