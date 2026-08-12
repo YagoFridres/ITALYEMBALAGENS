@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260812161000';
-const SW_RUNTIME_VERSION = '20260812161000';
+const PATCH_RUNTIME_VERSION = '20260812172500';
+const SW_RUNTIME_VERSION = '20260812172500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5605,9 +5605,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 });
 
 // Rota dedicada para próximo número de OF
-app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
+async function _calcularProximoNumeroOF(empId) {
   try {
-    const empId = await resolverEmpresaId(req);
     let q = supabase
       .from('ofs')
       .select('numero, of_num, of, id, created_at, deleted_at')
@@ -5617,7 +5616,6 @@ app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
     if (empId) q = q.eq('empresa_id', empId);
     const { data, error } = await q;
     if (error) throw error;
-
     let maior = 0;
     (data || []).forEach((of) => {
       if (of?.deleted_at) return;
@@ -5628,9 +5626,18 @@ app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
         if (!isNaN(n) && n > maior) maior = n;
       });
     });
-
-    const proximo = String(maior + 1).padStart(String(maior).length >= 3 ? String(maior).length : 3, '0');
-    return res.json({ ok: true, proximo, maior });
+    const proximo = String(maior + 1);
+    return { ok: true, proximo, maior };
+  } catch (e) {
+    return { ok: false, proximo: '001', maior: 0, erro: String(e?.message || e) };
+  }
+}
+app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
+  try {
+    const empId = await resolverEmpresaId(req);
+    const r = await _calcularProximoNumeroOF(empId);
+    const proximoPadded = String(r.proximo).padStart(String(r.maior || 0).length >= 3 ? String(r.maior).length : 3, '0');
+    return res.json({ ok: true, proximo: proximoPadded, maior: r.maior });
   } catch (e) {
     return res.json({ ok: true, proximo: '001', maior: 0, erro: String(e?.message || e) });
   }
@@ -6213,23 +6220,6 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     delete filtered.id;
     if ((filtered.of == null || String(filtered.of || '').trim() === '') && (filtered.numero == null || String(filtered.numero || '').trim() === '')) {
       try {
-        const proximoNumeroOF = async (empresa_id) => {
-          const { data, error } = await supabase
-            .from('ofs')
-            .select('numero')
-            .eq('empresa_id', empresa_id)
-            .is('deleted_at', null)
-            .order('created_at', { ascending: false })
-            .limit(500);
-          if (error) throw error;
-          let maior = 0;
-          (data || []).forEach((o) => {
-            const n = parseInt(String(o?.numero || '').replace(/\D/g, ''), 10) || 0;
-            if (n > maior) maior = n;
-          });
-          return maior + 1;
-        };
-
         const { data: last } = await supabase
           .from('ofs')
           .select('seq,of,numero')
@@ -6240,7 +6230,10 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         const nextSeq = lastSeq > 0 ? (lastSeq + 1) : 1;
         filtered.seq = nextSeq;
         let numeroEmpresa = null;
-        try { numeroEmpresa = await proximoNumeroOF(empresaUuid); } catch (_) { numeroEmpresa = null; }
+        try {
+          const calcR = await _calcularProximoNumeroOF(empresaUuid);
+          numeroEmpresa = calcR?.ok ? (parseInt(String(calcR.proximo || '0'), 10) || null) : null;
+        } catch (_) { numeroEmpresa = null; }
         for (let i = 0; i < 5; i += 1) {
           const cand = String((numeroEmpresa != null ? numeroEmpresa : nextSeq) + i);
           const { data: exists } = await supabase
