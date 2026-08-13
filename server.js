@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260813080700';
-const SW_RUNTIME_VERSION = '20260813080700';
+const PATCH_RUNTIME_VERSION = '20260813080600';
+const SW_RUNTIME_VERSION = '20260813080600';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5771,62 +5771,31 @@ app.get('/api/_diag_public_v0804', async (req, res) => {
   const out = { ok: true, startedAt: new Date().toISOString(), patch: PATCH_RUNTIME_VERSION, commit: APP_GIT_COMMIT_SHA, probes: {} };
   const secKey = String(req.query.key || '').trim();
   if (secKey !== 'ITALY_PROBE_2026_08_13_V0804') return res.status(403).json({ ok: false, error: 'key_invalid' });
-  const ripkeUuid = 'be617df1-441a-4f11-918e-d813a5ac854c';
-  const runs = [];
   try {
     const t0 = Date.now();
     const rNum = await _calcularProximoNumeroOF(null, true);
     out.probes.proximo_numero = { ...rNum, ms: Date.now() - t0 };
-    runs.push('proximo_numero_ms=' + (Date.now() - t0));
   } catch (e) { out.probes.proximo_numero = { err: String(e?.message || e).slice(0, 500) }; }
   try {
+    const empIdDefault = 'df5f7672-0a6b-402d-ae65-296554236c31';
+    const ripkeUuid = 'be617df1-441a-4f11-918e-d813a5ac854c';
     const t0 = Date.now();
     let rc = null;
     try {
-      const { data, error } = await supabase.from('clientes').select('id,nome,rs,razao_social,razao,cliente_nome').eq('id', ripkeUuid).limit(1).maybeSingle();
+      const { data, error } = await supabase.from('clientes').select('id,nome,rs,razao_social,razao,cliente_nome').eq('id', ripkeUuid).maybeSingle();
       if (!error) rc = data || null;
     } catch (_) {}
-    out.probes.cliente_ripke_obj = { encontrou: !!rc, nome: (rc?.nome || rc?.rs || '').slice(0,60), ms: Date.now() - t0 };
-  } catch (e) { out.probes.cliente_ripke_obj = { err: String(e?.message || e).slice(0,300) }; }
-  try {
-    const t0 = Date.now();
-    let countPorId = 0;
+    let ofsArr = [];
+    try { ofsArr = await _carregarTodasOfsNaoDeletadasParaClientes(); } catch (_) {}
+    out.probes.carregar_todas_ofs_count = { qtd: Array.isArray(ofsArr) ? ofsArr.length : 0, tem_ripke_obj: !!rc, ms: Date.now() - t0 };
+    let arrContado = [];
+    try { arrContado = await _contarOfsUnicoClienteComOfs(ripkeUuid, rc, ofsArr); } catch (_) {}
+    out.probes.ripke_contarOfsUnicoClienteComOfs = { total_ofs: arrContado.length, ids_exemplo: arrContado.slice(0,5).map(o => ({ id: String(o?.id||'').slice(0,10), numero: o?.numero || o?.of_num || o?.of, clinome: (o?.clinome||o?.cliNome||'').slice(0,40), criado: String(o?.created_at||'').slice(0,16) })) };
     try {
-      const { count, error } = await supabase.from('ofs').select('*', { count: 'exact', head: true }).is('deleted_at', null).eq('cli_id', ripkeUuid);
-      if (!error) countPorId = Number(count || 0);
-    } catch (_) { countPorId = -1; }
-    out.probes.ripke_count_cli_id_exact = { count: countPorId, ms: Date.now() - t0 };
-  } catch (e) { out.probes.ripke_count_cli_id_exact = { err: String(e?.message || e).slice(0,300) }; }
-  try {
-    const t0 = Date.now();
-    const outIdCols = {};
-    const outNomeCols = {};
-    for (const col of COLUNAS_ID_OF) {
-      try {
-        const { count, error } = await supabase.from('ofs').select('*', { count: 'exact', head: true }).is('deleted_at', null).eq(col, ripkeUuid);
-        if (!error) outIdCols[col] = Number(count || 0); else outIdCols[col] = 'ERR:' + String(error?.message||error).slice(0,100);
-      } catch (e) { outIdCols[col] = 'EXC:' + String(e?.message||e).slice(0,100); }
-    }
-    for (const col of COLUNAS_NOME_OF) {
-      try {
-        const { count, error } = await supabase.from('ofs').select('*', { count: 'exact', head: true }).is('deleted_at', null).ilike(col, '%RIPKE%');
-        if (!error) outNomeCols[col] = Number(count || 0); else outNomeCols[col] = 'ERR:' + String(error?.message||error).slice(0,100);
-      } catch (e) { outNomeCols[col] = 'EXC:' + String(e?.message||e).slice(0,100); }
-    }
-    out.probes.ripke_por_coluna_IDs = outIdCols;
-    out.probes.ripke_por_coluna_NOMES = outNomeCols;
-    out.probes.ripke_por_coluna_ms = Date.now() - t0;
-  } catch (e) { out.probes.ripke_por_coluna = { err: String(e?.message || e).slice(0,500) }; }
-  try {
-    const t0 = Date.now();
-    let ofs = [];
-    try {
-      const q = supabase.from('ofs').select('id,numero,of_num,clinome,descricao,created_at').is('deleted_at', null).order('created_at', { ascending: false }).range(0, 49);
-      const r = await q;
-      if (!r.error) ofs = Array.isArray(r.data) ? r.data : [];
-    } catch (_) {}
-    out.probes.ofs_limit50_rapido = { qtd: ofs.length, ms: Date.now() - t0, top6: ofs.slice(0,6).map(o=>({id:String(o.id).slice(0,10),numero:o.numero,of_num:o.of_num,clinome:String(o.clinome||'').slice(0,40),criado:String(o.created_at||'').slice(0,16)})) };
-  } catch (e) { out.probes.ofs_limit50_rapido = { err: String(e?.message || e).slice(0, 500) }; }
+      const shared = await _sharedBuscarOfsCompleta(ripkeUuid, rc, { selectMode: 'count', limite: 500 });
+      out.probes.ripke_sharedBuscarOfsCompleta = { total_ofs: (shared?.data || shared) ? (Array.isArray(shared?.data) ? shared.data.length : (Array.isArray(shared) ? shared.length : (typeof shared?.total === 'number' ? shared.total : (typeof shared?.count === 'number' ? shared.count : 0)))) : 0, total_raw_type: typeof shared, total_raw_keys: shared ? Object.keys(shared).slice(0,10) : [] };
+    } catch (e) { out.probes.ripke_sharedBuscarOfsCompleta = { err: String(e?.message || e).slice(0, 500) }; }
+  } catch (e) { out.ripke_err = String(e?.message || e).slice(0, 500); }
   try {
     const q1 = await supabase.from('ofs').select('id,numero,of,of_num,clinome,descricao,deleted_at,created_at').or('descricao.ilike.%ZZZ_TESTE_APAGAR%,clinome.ilike.%ZZZ_TESTE_APAGAR%').order('created_at', { ascending: false }).limit(100);
     const q2 = await supabase.from('ofs').select('id,numero,of,of_num,clinome,descricao,deleted_at,created_at').in('numero', ['768','769','770','771']).order('created_at', { ascending: false }).limit(50);
@@ -5835,6 +5804,16 @@ app.get('/api/_diag_public_v0804', async (req, res) => {
       porNumero768_771: { count: Array.isArray(q2?.data) ? q2.data.length : 0, error: q2?.error ? String(q2.error.message||q2.error).slice(0,300) : null, rows: (q2?.data||[]).map(r=>({id:String(r.id).slice(0,10),numero:r.numero,of_num:r.of_num,of:r.of,clinome:String(r.clinome||'').slice(0,40),desc:String(r.descricao||'').slice(0,80),deleted: !!r.deleted_at, deletadoEm: String(r.deleted_at||'').slice(0,16)})) },
     };
   } catch (e) { out.probes.zzz_teste = { err: String(e?.message || e).slice(0, 500) }; }
+  try {
+    const t0 = Date.now();
+    let ofs = [];
+    try {
+      const q = supabase.from('ofs').select('id,numero,of_num,clinome,descricao,created_at').is('deleted_at', null).order('created_at', { ascending: false }).range(0, 49);
+      const r = await q;
+      if (!r.error) ofs = Array.isArray(r.data) ? r.data : [];
+    } catch (_) {}
+    out.probes.ofs_limit50_rapido = { qtd: ofs.length, ms: Date.now() - t0, top10: ofs.slice(0,10).map(o=>({id:String(o.id).slice(0,10),numero:o.numero,of_num:o.of_num,clinome:String(o.clinome||'').slice(0,40),desc:String(o.descricao||'').slice(0,60),criado:String(o.created_at||'').slice(0,16)})) };
+  } catch (e) { out.probes.ofs_limit50_rapido = { err: String(e?.message || e).slice(0, 500) }; }
   out.finishedAt = new Date().toISOString();
   return res.json(out);
 });
