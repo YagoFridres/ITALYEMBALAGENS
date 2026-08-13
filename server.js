@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260812231000';
-const SW_RUNTIME_VERSION = '20260812231000';
+const PATCH_RUNTIME_VERSION = '20260812223000';
+const SW_RUNTIME_VERSION = '20260812223000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5688,71 +5688,6 @@ app.get('/api/_diag_proxnum', [authMiddleware, requireAdmin], async (req, res) =
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
-});
-app.post('/api/_dbg_full_post_ofs', [authMiddleware, requireAdmin], async (req, res) => {
-  try {
-    const body = req.body || {};
-    const empresaCtx = await _resolveEmpresaMutationContext(req, body);
-    const empresaUuid = String(empresaCtx?.empresa_id || '').trim();
-    const empLegacy = String(empresaCtx?.emp_id || '').trim();
-    let filtered = ofPayloadFiltrado(body);
-    filtered.empresa_id = empresaUuid;
-    if (filtered.emp_id === undefined || filtered.emp_id === '') filtered.emp_id = empLegacy || null;
-    filtered = await _preencherCamposCriticosOF({ ...(body || {}), ...(filtered || {}) });
-    filtered = ofPayloadFiltrado(filtered);
-    filtered.empresa_id = empresaUuid;
-    if (filtered.emp_id === undefined || filtered.emp_id === '') filtered.emp_id = empLegacy || null;
-    delete filtered.id;
-    const DEBUG = { empresaCtx, empresaUuid, empLegacy, filteredBeforeOf: { of: filtered.of, numero: filtered.numero, of_num: filtered.of_num, seq: filtered.seq }, blocoEntrou: null, lastSeq: null, nextSeq: null, calcR: null, numeroEmpresa: null, siglaLegadaEmp: null, conflitoLog: [], escolhido: null, escolhidoIdx: null };
-    if ((filtered.of == null || String(filtered.of || '').trim() === '') && (filtered.numero == null || String(filtered.numero || '').trim() === '')) {
-      DEBUG.blocoEntrou = true;
-      try {
-        const { data: last } = await supabase.from('ofs').select('seq,of,numero').order('seq', { ascending: false }).limit(1).maybeSingle();
-        DEBUG.lastSeq = last?.seq || null;
-        DEBUG.nextSeq = Math.trunc(Number(last?.seq || 0) || 0) + 1;
-        filtered.seq = DEBUG.nextSeq;
-        try {
-          DEBUG.calcR = await _calcularProximoNumeroOF(empresaUuid);
-          DEBUG.numeroEmpresa = DEBUG.calcR?.ok ? (parseInt(String(DEBUG.calcR.proximo || '0'), 10) || null) : null;
-        } catch (e) { DEBUG.calcRErr = String(e?.message || e); }
-        if (empresaUuid === 'df5f7672-0a6b-402d-ae65-296554236c31') DEBUG.siglaLegadaEmp = 'E1';
-        else if (empresaUuid) try { const { data: rr } = await supabase.from('empresas').select('id,codigo,sigla').eq('id', empresaUuid).limit(1).maybeSingle(); if (rr?.codigo) DEBUG.siglaLegadaEmp = rr.codigo; else if (rr?.sigla) DEBUG.siglaLegadaEmp = rr.sigla; } catch (_) {}
-        for (let i = 0; i < 12; i++) {
-          const cand = String((DEBUG.numeroEmpresa != null ? DEBUG.numeroEmpresa : DEBUG.nextSeq) + i);
-          const log = { i, cand };
-          try {
-            let qc = supabase.from('ofs').select('id,numero,of,of_num,empresa_id,emp_id,deleted_at').is('deleted_at', null);
-            if (DEBUG.siglaLegadaEmp) qc = qc.or(`empresa_id.eq.${empresaUuid},emp_id.eq.${DEBUG.siglaLegadaEmp}`);
-            else qc = qc.eq('empresa_id', empresaUuid);
-            qc = qc.or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand}`).limit(5);
-            const t0 = Date.now();
-            const { data: ex, error } = await qc;
-            log.qMs = Date.now() - t0;
-            if (error) log.qErr = String(error.message || error).slice(0, 200);
-            log.qEx = (ex || []).map(r => ({ id: String(r?.id || '').slice(0, 10), n: r?.numero, of: r?.of, ofn: r?.of_num, eid: String(r?.empresa_id || '').slice(0, 10), emp: r?.emp_id || '' }));
-            const conflita = (Array.isArray(ex) ? ex : []).some((r) => {
-              if (r?.deleted_at) return false;
-              if (DEBUG.siglaLegadaEmp) {
-                const okEmp = String(r?.empresa_id || '') === String(empresaUuid) || String(r?.emp_id || '') === String(DEBUG.siglaLegadaEmp);
-                if (!okEmp) return false;
-              } else { if (String(r?.empresa_id || '') !== String(empresaUuid)) return false; }
-              const nums = [String(r?.numero ?? ''), String(r?.of ?? ''), String(r?.of_num ?? ''), String(r?.numero_of ?? '')];
-              return nums.includes(String(cand));
-            });
-            log.conflita = conflita;
-            DEBUG.conflitoLog.push(log);
-            if (!conflita) { DEBUG.escolhido = cand; DEBUG.escolhidoIdx = i; break; }
-          } catch (e) {
-            log.err = String(e?.message || e).slice(0, 300);
-            DEBUG.conflitoLog.push(log);
-          }
-        }
-        if (DEBUG.escolhido) { filtered.of = DEBUG.escolhido; filtered.numero = DEBUG.escolhido; }
-      } catch (e) { DEBUG.blocoErro = String(e?.message || e); }
-    } else DEBUG.blocoEntrou = false;
-    DEBUG.filteredFinal = { of: filtered.of, numero: filtered.numero, of_num: filtered.of_num, seq: filtered.seq, empresa_id: filtered.empresa_id, emp_id: filtered.emp_id, clinome: filtered.clinome, cli_id: filtered.cli_id };
-    return res.json({ ok: true, DEBUG });
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e), stk: String(e?.stack || '').split('\n').slice(0, 10) }); }
 });
 app.post('/api/_dbg_proxnum_inline_post', [authMiddleware, requireAdmin], async (req, res) => {
   try {
