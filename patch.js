@@ -33797,23 +33797,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return currentTotal;
     }
     console.log('[OF] carregando CLIENTES antes de abrir...');
-    var _carregarClientesTimeoutLocal = function(forceFlag) {
-      var args = []; if (typeof forceFlag !== 'undefined') args.push(forceFlag);
-      return Promise.race([
-        (function() {
-          try {
-            if (typeof carregarClientes !== 'function') return Promise.resolve();
-            var r = carregarClientes.apply(null, args);
-            if (r && typeof r.then === 'function') return r;
-            return Promise.resolve(r);
-          } catch (e) { return Promise.reject(e); }
-        })(),
-        new Promise(function(resolve) { setTimeout(function() { resolve({ __patchTimedOut: true, waited: 10000 }); }, 10000); })
-      ]).then(function(v) { return v; }).catch(function() { return { __patchErr: true }; });
-    };
     try {
       if (typeof carregarClientes === 'function') {
-        try { await _carregarClientesTimeoutLocal(true); } catch (_) { try { await _carregarClientesTimeoutLocal(); } catch (_) {} }
+        try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
       }
     } catch (_) {}
     try { currentTotal = getClientesCount(); } catch (_) { currentTotal = 0; }
@@ -33827,10 +33813,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var maxPages = 5;
     var all = [];
     var empId = '';
-    try {
-      empId = String(typeof EMP_FILTRO !== 'undefined' ? EMP_FILTRO : (typeof window.EMPRESA_ID !== 'undefined' ? window.EMPRESA_ID : (typeof EMP_ID_ATUAL !== 'undefined' ? EMP_ID_ATUAL : (typeof CURRENT_USER_EMP_ID !== 'undefined' ? CURRENT_USER_EMP_ID : '')) || '')).trim();
-      if (empId === 'null' || empId === 'undefined' || empId.length === 0) empId = '';
-    } catch (_) { empId = ''; }
+    try { empId = String(typeof EMP_FILTRO !== 'undefined' ? EMP_FILTRO : (typeof window.EMPRESA_ID !== 'undefined' ? window.EMPRESA_ID : (typeof EMP_ID_ATUAL !== 'undefined' ? EMP_ID_ATUAL : (typeof CURRENT_USER_EMP_ID !== 'undefined' ? CURRENT_USER_EMP_ID : '')) || '')).trim(); } catch (_) {}
     for (var page = 0; page < maxPages; page++) {
       var url = '/api/clientes?lite=1&limit=' + chunkLimit + '&offset=' + (page * chunkLimit) + '&nocache=1&order=created_at&dir=desc' + (empId ? ('&empId=' + encodeURIComponent(empId)) : '') + '&t=' + Date.now() + '_' + page;
       var resp = null;
