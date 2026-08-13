@@ -33790,23 +33790,59 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   async function ensureClientesCarregadosAbertura() {
-    if (getClientesCount() >= 5) return getClientesCount();
+    var currentTotal = 0;
+    try { currentTotal = getClientesCount(); } catch (_) { currentTotal = 0; }
+    if (currentTotal >= 1000) {
+      console.log('[OF] CLIENTES ja carregados total=' + currentTotal + ', skip ensureClientesCarregadosAbertura.');
+      return currentTotal;
+    }
     console.log('[OF] carregando CLIENTES antes de abrir...');
     try {
       if (typeof carregarClientes === 'function') {
         try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
       }
     } catch (_) {}
-    if (getClientesCount() >= 5) return getClientesCount();
+    try { currentTotal = getClientesCount(); } catch (_) { currentTotal = 0; }
+    if (currentTotal >= 1000) {
+      console.log('[OF] CLIENTES prontos (carregarClientes) total=' + currentTotal + ', skip fallback.');
+      return currentTotal;
+    }
     var token = '';
     try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
-    try {
-      var r = await fetch('/api/clientes?limit=2000&order=created_at&dir=desc&t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
-      var j = await r.json().catch(function() { return null; });
-      if (j && j.ok && Array.isArray(j.data)) setClientesLista(j.data);
-    } catch (_) {}
-    console.log('[OF] CLIENTES prontos:', getClientesCount());
-    return getClientesCount();
+    var chunkLimit = 500;
+    var maxPages = 5;
+    var all = [];
+    var empId = '';
+    try { empId = String(typeof EMP_FILTRO !== 'undefined' ? EMP_FILTRO : (typeof window.EMPRESA_ID !== 'undefined' ? window.EMPRESA_ID : (typeof EMP_ID_ATUAL !== 'undefined' ? EMP_ID_ATUAL : (typeof CURRENT_USER_EMP_ID !== 'undefined' ? CURRENT_USER_EMP_ID : '')) || '')).trim(); } catch (_) {}
+    for (var page = 0; page < maxPages; page++) {
+      var url = '/api/clientes?lite=1&limit=' + chunkLimit + '&offset=' + (page * chunkLimit) + '&nocache=1&order=created_at&dir=desc' + (empId ? ('&empId=' + encodeURIComponent(empId)) : '') + '&t=' + Date.now() + '_' + page;
+      var resp = null;
+      try { resp = await fetch(url, { headers: token ? { Authorization: 'Bearer ' + token } : {} }); } catch (_) { resp = null; }
+      var json = resp ? (await resp.json().catch(function() { return null; })) : null;
+      var arr = json && json.ok && Array.isArray(json.data) ? json.data : (Array.isArray(json && json.data) ? json.data : []);
+      if (arr && arr.length) {
+        for (var j = 0; j < arr.length; j++) { all.push(arr[j]); }
+      }
+      if (!arr || arr.length < chunkLimit) { break; }
+    }
+    if (all && all.length) {
+      try { if (typeof normalizeCli === 'function') all = all.map(function(c) { return normalizeCli(c); }); } catch (_) {}
+      try {
+        all = all.filter(function(c, idx, arr) {
+          try {
+            var cid = String(c && c.id || '').trim();
+            if (!cid) return true;
+            return arr.findIndex(function(x) { return String(x && x.id || '').trim() === cid; }) === idx;
+          } catch (_) { return true; }
+        });
+      } catch (_) {}
+      setClientesLista(all);
+      console.log('[OF] CLIENTES prontos (fallback paginado):', all.length);
+      return all.length;
+    } else {
+      console.log('[OF] fallback paginado retornou vazio, mantendo CLIENTES atual length=' + currentTotal);
+      return currentTotal;
+    }
   }
 
   async function ensureClienteId(el) {
