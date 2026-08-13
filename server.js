@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260813081300';
-const SW_RUNTIME_VERSION = '20260813081300';
+const PATCH_RUNTIME_VERSION = '20260813080800';
+const SW_RUNTIME_VERSION = '20260813080800';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -1483,6 +1483,8 @@ app.use((req, res, next) => {
     '/api/auth/refresh',
     '/api/auth/me',
     '/api/version',
+    '/api/_diag_public_v0804',
+    '/api/_oneshot_hard_delete_zzz_teste_768_771',
   ];
   const isPublic = publicRoutes.some((r) => fullPath === r || fullPath.startsWith(r + '/') || path === r || path.startsWith(r + '/'));
   if (isPublic) return next();
@@ -5784,7 +5786,111 @@ app.get('/api/_diag_proxnum', [authMiddleware, requireAdmin], async (req, res) =
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
-
+app.get('/api/_diag_public_v0804', async (req, res) => {
+  const out = { ok: true, startedAt: new Date().toISOString(), patch: PATCH_RUNTIME_VERSION, commit: APP_GIT_COMMIT_SHA, probes: {} };
+  const secKey = String(req.query.key || '').trim();
+  if (secKey !== 'ITALY_PROBE_2026_08_13_V0804') return res.status(403).json({ ok: false, error: 'key_invalid' });
+  const ripkeUuid = 'be617df1-441a-4f11-918e-d813a5ac854c';
+  try {
+    const t0 = Date.now();
+    const rNum = await _calcularProximoNumeroOF(null, true);
+    out.probes.proximo_numero = { ...rNum, ms: Date.now() - t0 };
+  } catch (e) { out.probes.proximo_numero = { err: String(e?.message || e).slice(0, 500) }; }
+  try {
+    const t0 = Date.now();
+    let rc = null, rcLow = null, rcUp = null, rcLike = null;
+    try {
+      const u = ripkeUuid;
+      const [r1, r2, r3, r4] = await Promise.allSettled([
+        supabase.from('clientes').select('*').eq('id', u).maybeSingle(),
+        supabase.from('clientes').select('*').eq('id', u.toLowerCase()).maybeSingle(),
+        supabase.from('clientes').select('*').eq('id', u.toUpperCase()).maybeSingle(),
+        supabase.from('clientes').select('*').ilike('nome', '%RIPKE%').limit(3),
+      ]);
+      const pick = (r) => (r && r.status === 'fulfilled' && r.value && !r.value.error) ? r.value.data || null : null;
+      rc = pick(r1);
+      rcLow = pick(r2);
+      rcUp = pick(r3);
+      rcLike = pick(r4);
+    } catch (_) {}
+    const rcList = [rc, (Array.isArray(rcLike) ? rcLike[0] : rcLike), rcLow, rcUp].filter(Boolean);
+    const clienteFinal = rcList[0] || null;
+    out.probes.cliente_ripke_busca = {
+      por_uuid_exact: rc ? { id: rc.id, nome: String(rc.nome||rc.rs||'').slice(0,60), ativo: rc.ativo, total_ofs: typeof rc.total_ofs === 'number' ? rc.total_ofs : null } : null,
+      por_nome_ilike_ripke: Array.isArray(rcLike) ? rcLike.map(c=>({id:c.id,nome:String(c.nome||c.rs||'').slice(0,60), ativo:c.ativo, total_ofs: typeof c.total_ofs==='number'?c.total_ofs:null})) : null,
+      por_uuid_lowercase: rcLow ? true : false,
+      por_uuid_uppercase: rcUp ? true : false,
+      encontrado_final: !!clienteFinal,
+      cliente_final: clienteFinal ? { id: clienteFinal.id, nome: String(clienteFinal.nome||clienteFinal.rs||'').slice(0,80), ativo: clienteFinal.ativo } : null,
+      ms: Date.now() - t0,
+    };
+    if (clienteFinal) {
+      try {
+        const t1 = Date.now();
+        const mapa = await _contarOfsParaClientesLote([clienteFinal]);
+        const chave = _normIdCli(clienteFinal.id || '');
+        const bucket = mapa.get(chave);
+        out.probes.contarOfsParaClientesLote = {
+          mapa_size: mapa.size,
+          bucket_chave: chave,
+          bucket_encontrado: !!bucket,
+          total_ofs_lote: bucket ? bucket.total_ofs : -1,
+          idsExemplo: bucket ? Array.from(bucket.ofsIds || []).slice(0,5).map(s=>String(s).slice(0,12)) : [],
+          ms: Date.now() - t1,
+        };
+      } catch (e) { out.probes.contarOfsParaClientesLote = { err: String(e?.message || e).slice(0,600) }; }
+    }
+  } catch (e) { out.probes.cliente_ripke_busca = { err: String(e?.message || e).slice(0,300) }; }
+  try {
+    const t0 = Date.now();
+    let countPorId = 0;
+    try {
+      const { count, error } = await supabase.from('ofs').select('*', { count: 'exact', head: true }).is('deleted_at', null).eq('cli_id', ripkeUuid);
+      if (!error) countPorId = Number(count || 0);
+    } catch (_) { countPorId = -1; }
+    out.probes.ripke_count_cli_id_exact = { count: countPorId, ms: Date.now() - t0 };
+  } catch (e) { out.probes.ripke_count_cli_id_exact = { err: String(e?.message || e).slice(0,300) }; }
+  try {
+    const t0 = Date.now();
+    const outIdCols = {};
+    const outNomeCols = {};
+    for (const col of COLUNAS_ID_OF) {
+      try {
+        const { count, error } = await supabase.from('ofs').select('*', { count: 'exact', head: true }).is('deleted_at', null).eq(col, ripkeUuid);
+        if (!error) outIdCols[col] = Number(count || 0); else outIdCols[col] = 'ERR:' + String(error?.message||error).slice(0,100);
+      } catch (e) { outIdCols[col] = 'EXC:' + String(e?.message||e).slice(0,100); }
+    }
+    for (const col of COLUNAS_NOME_OF) {
+      try {
+        const { count, error } = await supabase.from('ofs').select('*', { count: 'exact', head: true }).is('deleted_at', null).ilike(col, '%RIPKE%');
+        if (!error) outNomeCols[col] = Number(count || 0); else outNomeCols[col] = 'ERR:' + String(error?.message||error).slice(0,100);
+      } catch (e) { outNomeCols[col] = 'EXC:' + String(e?.message||e).slice(0,100); }
+    }
+    out.probes.ripke_por_coluna_IDs = outIdCols;
+    out.probes.ripke_por_coluna_NOMES = outNomeCols;
+    out.probes.ripke_por_coluna_ms = Date.now() - t0;
+  } catch (e) { out.probes.ripke_por_coluna = { err: String(e?.message || e).slice(0,500) }; }
+  try {
+    const t0 = Date.now();
+    let ofs = [];
+    try {
+      const q = supabase.from('ofs').select('id,numero,of_num,clinome,descricao,created_at').is('deleted_at', null).order('created_at', { ascending: false }).range(0, 49);
+      const r = await q;
+      if (!r.error) ofs = Array.isArray(r.data) ? r.data : [];
+    } catch (_) {}
+    out.probes.ofs_limit50_rapido = { qtd: ofs.length, ms: Date.now() - t0, top6: ofs.slice(0,6).map(o=>({id:String(o.id).slice(0,10),numero:o.numero,of_num:o.of_num,clinome:String(o.clinome||'').slice(0,40),criado:String(o.created_at||'').slice(0,16)})) };
+  } catch (e) { out.probes.ofs_limit50_rapido = { err: String(e?.message || e).slice(0, 500) }; }
+  try {
+    const q1 = await supabase.from('ofs').select('id,numero,of,of_num,clinome,descricao,deleted_at,created_at').or('descricao.ilike.%ZZZ_TESTE_APAGAR%,clinome.ilike.%ZZZ_TESTE_APAGAR%').order('created_at', { ascending: false }).limit(100);
+    const q2 = await supabase.from('ofs').select('id,numero,of,of_num,clinome,descricao,deleted_at,created_at').in('numero', ['768','769','770','771']).order('created_at', { ascending: false }).limit(50);
+    out.probes.zzz_teste = {
+      porDescricao: { count: Array.isArray(q1?.data) ? q1.data.length : 0, error: q1?.error ? String(q1.error.message||q1.error).slice(0,300) : null, rows: (q1?.data||[]).map(r=>({id:String(r.id).slice(0,10),numero:r.numero,of_num:r.of_num,of:r.of,clinome:String(r.clinome||'').slice(0,40),desc:String(r.descricao||'').slice(0,80),deleted: !!r.deleted_at, deletadoEm: String(r.deleted_at||'').slice(0,16)})) },
+      porNumero768_771: { count: Array.isArray(q2?.data) ? q2.data.length : 0, error: q2?.error ? String(q2.error.message||q2.error).slice(0,300) : null, rows: (q2?.data||[]).map(r=>({id:String(r.id).slice(0,10),numero:r.numero,of_num:r.of_num,of:r.of,clinome:String(r.clinome||'').slice(0,40),desc:String(r.descricao||'').slice(0,80),deleted: !!r.deleted_at, deletadoEm: String(r.deleted_at||'').slice(0,16)})) },
+    };
+  } catch (e) { out.probes.zzz_teste = { err: String(e?.message || e).slice(0, 500) }; }
+  out.finishedAt = new Date().toISOString();
+  return res.json(out);
+});
 app.post('/api/_dbg_full_post_ofs', [authMiddleware, requireAdmin], async (req, res) => {
   try {
     const body = req.body || {};
@@ -6035,7 +6141,36 @@ app.post('/api/_oneshot_limpar_ofs_italy_testes', [authMiddleware, requireAdmin]
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
-
+app.post('/api/_oneshot_hard_delete_zzz_teste_768_771', async (req, res) => {
+  try {
+    const key = String((req.body && req.body.key) || req.query.key || '').trim();
+    if (key !== 'ITALY_PROBE_2026_08_13_V0804') return res.status(403).json({ ok: false, error: 'key_invalid' });
+    const idsNumeros = ['768','769','770','771'];
+    const idsZzz = /ZZZ_TESTE_APAGAR/i;
+    const qFind = supabase
+      .from('ofs')
+      .select('id,numero,of,of_num,clinome,descricao,deleted_at,created_at')
+      .or(`numero.in.(${idsNumeros.join(',')}),of.in.(${idsNumeros.join(',')}),of_num.in.(${idsNumeros.join(',')}),descricao.ilike.%ZZZ_TESTE_APAGAR%,clinome.ilike.%ZZZ_TESTE_APAGAR%`)
+      .order('created_at', { ascending: false })
+      .limit(200);
+    const { data: found, error: fErr } = await qFind;
+    if (fErr) throw fErr;
+    const rows = Array.isArray(found) ? found : [];
+    const picked = rows.filter(r => (r && idsNumeros.includes(String(r.numero || ''))) || (r && idsZzz.test(String(r.clinome || '') + ' ' + String(r.descricao || ''))));
+    const uniqueIds = [...new Set((picked || []).map(r => String(r.id || '').trim()).filter(Boolean))];
+    let delOk = 0, delFail = 0;
+    for (const id of uniqueIds) {
+      try {
+        const { error: dErr } = await supabase.from('ofs').delete().eq('id', id);
+        if (dErr) delFail += 1; else delOk += 1;
+      } catch (_) { delFail += 1; }
+    }
+    _clearOfsCaches();
+    return res.json({ ok: true, query_count: rows.length, picked: picked.length, unique_ids: uniqueIds.length, deleted: delOk, failures: delFail, detalhes: (picked || []).map(r => ({ id: String(r.id||'').slice(0,10), numero: r.numero, of: r.of, of_num: r.of_num, clinome: String(r.clinome||'').slice(0,40), desc: String(r.descricao||'').slice(0,80), deleted_at: String(r.deleted_at||'').slice(0,16), created_at: String(r.created_at||'').slice(0,16) })) });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
 
 app.get('/api/ofs/recorrentes', authMiddleware, async (req, res) => {
   try {
