@@ -35584,30 +35584,11 @@ function normalizeCliche(r){
     empId:r.emp_id||r.empId||''
   };
 }
-let _FACAS_LOADING = null;
-let _ULTIMA_CARGA_FACAS = 0;
-const CACHE_TTL_FACAS = 45000;
-async function carregarFacas(forcar=false){
+async function carregarFacas(){
   const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
-  const now = Date.now();
-  if(!forcar && !_FACAS_LOADING && (now - _ULTIMA_CARGA_FACAS) < CACHE_TTL_FACAS && Array.isArray(FACAS) && FACAS.length > 0) {
-    return { ok:true, cached:true, data: FACAS };
-  }
-  if(_FACAS_LOADING) return _FACAS_LOADING;
-  if(!window.CURRENT_USER && !localStorage.getItem('token')) {
-    return { ok:false, status:401, error:'Sem sessão ativa' };
-  }
-  _FACAS_LOADING = (async () => {
-    try {
-      const r = await api('GET','/facas_estoque'+empParam);
-      if(r && r.ok && r.data && r.data.length) FACAS = r.data.map(normalizeFaca);
-      _ULTIMA_CARGA_FACAS = Date.now();
-      return r;
-    } finally {
-      _FACAS_LOADING = null;
-    }
-  })();
-  return _FACAS_LOADING;
+  const r = await api('GET','/facas_estoque'+empParam);
+  if(r && r.ok && r.data && r.data.length) FACAS = r.data.map(normalizeFaca);
+  return r;
 }
 async function carregarCliches(){
   const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
@@ -58024,7 +58005,6 @@ function _hubStartPolling(){
   window.__HUB_POLL = setInterval(()=>{
     try{
       if(String(window._PAGE_ATUAL||'') !== 'hub') return;
-      if(window.__RENDER_HUB_IN_PROGRESS) return;
       renderHub(false);
     }catch(e){}
   }, 30000);
@@ -58041,30 +58021,15 @@ async function carregarPassagensHoje(opts = {}){
   const cntEl = document.getElementById('passagens-count') || null;
   if(!container) return;
 
-  if(window.__PASSAGENS_HOJE_LOADING) return;
-  window.__PASSAGENS_HOJE_LOADING = true;
   container.innerHTML = '<p style="color:#64748b;text-align:center;padding:16px;font-size:13px">Carregando...</p>';
 
   const params = new URLSearchParams({ periodo });
   if(maquina) params.set('maquina', maquina);
   if(cliente) params.set('cliente', cliente);
 
-  const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-  const timeoutMs = 15000;
-  let toHandle = null;
-  try {
+  try{
     const base = (window.location && window.location.protocol === 'file:') ? (window.API_BASE || '') : '';
-    let reqPromise;
-    if(controller){
-      toHandle = setTimeout(() => { try { controller.abort(); } catch (_) {} }, timeoutMs);
-      reqPromise = fetch(base + '/api/passagens/hoje?' + params.toString() + '&t=' + Date.now(), { headers: h, signal: controller.signal });
-    } else {
-      reqPromise = fetch(base + '/api/passagens/hoje?' + params.toString() + '&t=' + Date.now(), { headers: h });
-    }
-    const r = await Promise.race([
-      reqPromise,
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout ' + timeoutMs + 'ms')), timeoutMs + 500))
-    ]);
+    const r = await fetch(base + '/api/passagens/hoje?' + params.toString() + '&t=' + Date.now(), { headers: h });
     if(!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
     const lista = d.passagens || [];
@@ -58106,15 +58071,10 @@ async function carregarPassagensHoje(opts = {}){
   }catch(e){
     container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:16px;font-size:13px">Erro ao carregar passagens.</p>';
     try{ console.error('[PASSAGENS HOJE]', e); }catch(_){}
-  } finally {
-    window.__PASSAGENS_HOJE_LOADING = false;
-    if(toHandle) try { clearTimeout(toHandle); } catch (_) {}
   }
 }
 window.carregarPassagensHoje = carregarPassagensHoje;
 async function renderHub(forcar=false){
-  if(window.__RENDER_HUB_IN_PROGRESS) return;
-  window.__RENDER_HUB_IN_PROGRESS = true;
   try{
     const greet = document.getElementById('hub-greet');
     const sub = document.getElementById('hub-sub');
@@ -58131,9 +58091,7 @@ async function renderHub(forcar=false){
     const passagensLista = document.getElementById('passagens-lista');
     const passagensCount = document.getElementById('passagens-count');
 
-    if(!greet || !kpis || !recent || !warns || !updated || !verEl || !lastEl || !chart || !chartSum || !quick) {
-      return;
-    }
+    if(!greet || !kpis || !recent || !warns || !updated || !verEl || !lastEl || !chart || !chartSum || !quick) return;
 
     _hubBindSearch();
     _hubStartPolling();
@@ -58404,28 +58362,7 @@ async function renderHub(forcar=false){
       `<span class="hub-pill">Qtd OFs: <b>${escH(String(conclPeriodo.length))}</b></span>`,
       `<span class="hub-pill">Atualização: <b>30s</b></span>`,
     ].join('');
-  }catch(e){
-    try {
-      const kpis = document.getElementById('hub-kpis');
-      const recent = document.getElementById('hub-recent');
-      const warns = document.getElementById('hub-warnings');
-      const quick = document.getElementById('hub-quick');
-      if(kpis && kpis.querySelectorAll && kpis.querySelectorAll('.hub-skel').length){
-        kpis.innerHTML = '<div class="hub-kpi"><div class="l">Erro ao carregar</div><div class="v" style="color:#f43f5e">—</div><div class="s">Tente novamente em alguns segundos.</div></div>';
-      }
-      if(recent && recent.querySelectorAll && recent.querySelectorAll('.hub-skel').length){
-        recent.innerHTML = '<div class="hub-item"><div><div class="t" style="color:#f43f5e">Erro ao carregar atividades.</div></div></div>';
-      }
-      if(warns && warns.querySelectorAll && warns.querySelectorAll('.hub-skel').length){
-        warns.innerHTML = '<div class="hub-item"><div><div class="t" style="color:#f43f5e">Erro ao carregar avisos.</div></div></div>';
-      }
-      if(quick && quick.querySelectorAll && quick.querySelectorAll('.hub-skel').length){
-        quick.innerHTML = '<button class="hub-qbtn primary" onclick="abrirModalOF(\'\')">＋ Nova OF</button><button class="hub-qbtn primary" onclick="abrirNovaOfRapida()">⚡ OF Rápida</button><button class="hub-qbtn" onclick="abrirModalAmostra()">＋ Nova Amostra</button>';
-      }
-    } catch(_) {}
-  } finally {
-    window.__RENDER_HUB_IN_PROGRESS = false;
-  }
+  }catch(e){}
 }
 
 var _kbDragEl = null, _kbDragSrcCol = null;
