@@ -33482,7 +33482,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260813180000';
+      const swVersion = '20260813190000';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -39178,6 +39178,9 @@ async function salvarOrcamentoCalc(){
   const vcVal = (document.getElementById('calc-vc')||{}).value || (document.getElementById('calc-vc2')||{}).value || '';
   const vbcVal = (document.getElementById('calc-vbc')||{}).value || (document.getElementById('calc-vbc2')||{}).value || '';
 
+  const itens = calcCollectItens();
+  if (!itens) return false;
+
   const payload={
     cliente_id: clienteId,
     cliente_nome: clienteNome||'—',
@@ -39190,6 +39193,7 @@ async function salvarOrcamentoCalc(){
     onda: String(opt.onda||''),
     valor_unitario: valorUnitario,
     valor_total: valorTotal,
+    itens: itens,
     parametros:{
       cm:(document.getElementById('calc-cm')||{}).value,
       cf:(document.getElementById('calc-cf')||{}).value,
@@ -39207,6 +39211,7 @@ async function salvarOrcamentoCalc(){
       comp: C,
       larg: L,
       alt: A,
+      itens: itens,
     },
     resultados: calcLastResult.allResults,
     emp_id: EMP_FILTRO || '',
@@ -39297,8 +39302,76 @@ function carregarOrcamentoCalc(orc){
   const ondas=['B','C','BC'];
   const oi=ondas.indexOf(String(orc.onda||''));
   if(oi>=0) _calcOpcaoSelecionada = { compIdx: oi, onda: ondas[oi] };
+  calcRenderItens(orc.itens || orc.parametros?.itens || []);
   toast('Orçamento Nº '+(_orcNumeroAtual||'')+' carregado ✓','var(--green)');
   if(typeof calcRecalc==='function') calcRecalc();
+}
+
+let _calcItensSeq = 0;
+function calcAddItem(nome, chapa) {
+  _calcItensSeq++;
+  const idx = _calcItensSeq;
+  const container = document.getElementById('calc-itens-container');
+  if (!container) return;
+  const row = document.createElement('div');
+  row.className = 'calc-item-row';
+  row.dataset.idx = idx;
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-bottom:10px';
+  row.innerHTML = `
+    <div class="mf" style="margin:0">
+      <label>Nome do Item *</label>
+      <input type="text" id="calc-item-${idx}-nome" placeholder="Ex: Caixa Pizza Grande, Salgadinho, Kit Presente..." value="${String(nome||'').replace(/"/g,'&quot;')}" />
+    </div>
+    <div class="mf" style="margin:0">
+      <label>Chapa Utilizada <span style="color:var(--text3);font-weight:400">(uso interno, não imprime)</span></label>
+      <input type="text" id="calc-item-${idx}-chapa" placeholder="Ex: AB21, FCM03, Chapa 2,5mm..." value="${String(chapa||'').replace(/"/g,'&quot;')}" />
+    </div>
+    <button type="button" onclick="calcRemoveItem(${idx})" title="Remover item" style="padding:10px 14px;border-radius:8px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#ef4444;font-weight:700;cursor:pointer">✕</button>
+  `;
+  container.appendChild(row);
+}
+function calcRemoveItem(idx) {
+  const rows = document.querySelectorAll('#calc-itens-container .calc-item-row');
+  if (rows.length <= 1) { toast('Mantenha ao menos 1 item','var(--yellow)'); return; }
+  const row = document.querySelector(`#calc-itens-container .calc-item-row[data-idx="${idx}"]`);
+  if (row) row.remove();
+}
+function calcRenderItens(lista) {
+  const container = document.getElementById('calc-itens-container');
+  if (!container) return;
+  container.innerHTML = '';
+  _calcItensSeq = 0;
+  const it = Array.isArray(lista) && lista.length ? lista : [{ nome:'', chapa_utilizada:'' }];
+  it.forEach(x => calcAddItem(x.nome || x.nome_item || x.nomeItem || '', x.chapa_utilizada || x.chapaUtilizada || x.chapa || ''));
+}
+function calcCollectItens() {
+  const rows = document.querySelectorAll('#calc-itens-container .calc-item-row');
+  const list = [];
+  let erros = 0;
+  rows.forEach((row, i) => {
+    const idx = row.dataset.idx;
+    const inpNome = document.getElementById(`calc-item-${idx}-nome`);
+    const inpChapa = document.getElementById(`calc-item-${idx}-chapa`);
+    const nome = (inpNome ? String(inpNome.value||'').trim() : '');
+    const chapa = (inpChapa ? String(inpChapa.value||'').trim() : '');
+    if (!nome) {
+      erros++;
+      if (inpNome) inpNome.style.outline = '2px solid #ef4444';
+    } else if (inpNome) {
+      inpNome.style.outline = '';
+    }
+    list.push({
+      indice: i+1,
+      nome,
+      chapa_utilizada: chapa,
+      chapaUtilizada: chapa
+    });
+  });
+  if (erros>0) {
+    toast(`Informe o Nome do Item em ${erros} linha(s) (obrigatório)`, 'var(--red)');
+    return null;
+  }
+  return list;
 }
 
 async function enviarOrcamentoPorEmail(){
@@ -39333,6 +39406,7 @@ async function enviarOrcamentoPorEmail(){
 }
 
 function abrirCalculadora(){
+  if (!_orcIdAtual) calcRenderItens([]);
   // Populate client dropdown from CLIENTES array
   var calcCliEl=document.getElementById('calc-cli');
   if(calcCliEl&&typeof CLIENTES!=='undefined'){
@@ -39829,6 +39903,23 @@ function imprimirCalculadora(ondasSelecionadas) {
     };
   });
 
+  const _itensCalc = calcCollectItens() || [];
+  const itensCalcHtml = _itensCalc.length ? `<div style="margin:14px 0 10px 0;border:1px solid #d1e7dd;border-radius:10px;padding:12px 14px;background:#f0fdf4">
+    <h3 style="margin:0 0 10px 0;font-size:12px;color:#166534;text-transform:uppercase;letter-spacing:.08em">📦 Itens do Orçamento</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr>
+        <th style="background:#166534;color:#fff;padding:7px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;width:60px">#</th>
+        <th style="background:#166534;color:#fff;padding:7px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Nome do Item</th>
+      </tr></thead>
+      <tbody>
+        ${_itensCalc.map((it, i) => `<tr>
+          <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-weight:800">${i+1}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb">${escH(String(it.nome||'—'))}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>` : '';
+
   const linhasHtml = resultados.map(r => `
     <tr>
       <td style="font-weight:800">${escH(r.label || '—')}</td>
@@ -39895,6 +39986,8 @@ function imprimirCalculadora(ondasSelecionadas) {
     <div class="box"><div class="lbl">Quantidade</div><div class="val">${escH(String(qtd || '—'))}</div></div>
     <div class="box"><div class="lbl">Data</div><div class="val">${dataHoje}</div></div>
   </div>
+
+  ${itensCalcHtml}
 
   <div class="tblwrap">
     <table>
@@ -40599,6 +40692,24 @@ function imprimirOrcData(orc) {
     resultados && resultados.length ? Number(resultados[0].total || ((resultados[0].vUnit||0)*Number(qtd||0))) : 0
   );
 
+  const _itensOrcRaw = Array.isArray(orc.itens) ? orc.itens : (Array.isArray(orc.parametros?.itens) ? orc.parametros.itens : []);
+  const _itensOrc = Array.isArray(_itensOrcRaw) ? _itensOrcRaw : [];
+  const itensOrcHtml = _itensOrc.length ? `<div style="margin:14px 0 10px 0;border:1px solid #d1e7dd;border-radius:10px;padding:12px 14px;background:#f0fdf4">
+    <h3 style="margin:0 0 10px 0;font-size:12px;color:#166534;text-transform:uppercase;letter-spacing:.08em">📦 Itens do Orçamento</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr>
+        <th style="background:#166534;color:#fff;padding:7px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;width:60px">#</th>
+        <th style="background:#166534;color:#fff;padding:7px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Nome do Item</th>
+      </tr></thead>
+      <tbody>
+        ${_itensOrc.map((it, i) => `<tr>
+          <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-weight:800">${i+1}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb">${escH(String(it.nome||it.nome_item||it.nomeItem||'—'))}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>` : '';
+
   const empNome = (getEmp(orc.empId||orc.emp_id||EMP_FILTRO)||{nome:'Italy Embalagens'}).nome||'Italy Embalagens';
   const comp = String(orc.comp || orc.parametros?.comp || '').trim();
   const larg = String(orc.larg || orc.parametros?.larg || '').trim();
@@ -40661,6 +40772,8 @@ function imprimirOrcData(orc) {
     <div class="box"><div class="lbl">Quantidade</div><div class="val">${escH(String(qtd || '—'))}</div></div>
     <div class="box"><div class="lbl">Medidas</div><div class="val">${escH(String(medidas || '—'))}</div></div>
   </div>
+
+  ${itensOrcHtml}
 
   <div class="tblwrap">
     <table>
@@ -48072,6 +48185,14 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf"><label>VALOR ONDA BC (R$/m²)</label><input id="calc-vbc" type="number" step="0.0001" value="4.46" oninput="calcRecalc()"></div>
   </div>
   <div id="calc-extra-fields" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+
+  <div class="calc-itens-section" style="margin:14px 0 8px 0;border:1px dashed rgba(74,144,217,.35);border-radius:10px;padding:12px 14px;background:rgba(74,144,217,.04)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0;font-size:.85rem;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">📦 Itens do Orçamento</h3>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="calcAddItem()" style="padding:6px 10px;font-size:.75rem">＋ Mais Itens</button>
+    </div>
+    <div id="calc-itens-container"></div>
+  </div>
 
   <div class="calc-tabela-wrap" style="overflow-x:auto;flex:1;min-height:0;border:1px solid rgba(255,255,255,0.08);border-radius:10px">
     <table id="calc-sheet" style="border-collapse:collapse;width:100%;min-width:900px">
@@ -59407,6 +59528,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260813180000"></script>
+<script src="/patch.js?v=20260813190000"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
