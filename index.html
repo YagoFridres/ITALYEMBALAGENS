@@ -20636,7 +20636,11 @@ function renderClientes(){
   if(sit === 'inativos') lista = lista.filter(c=>situacao(c.id).inativo);
   renderEmpBar();
   document.getElementById('cli-grid').innerHTML=lista.map(c=>{
-    const ofs=OFs.filter(o=>o.cliId===c.id);
+    const ofs=OFs.filter(o=>{
+      if(o.deleted_at) return false;
+      const cid = String(o.cliId ?? o.cli_id ?? o.cliente_id ?? '').trim();
+      return cid === String(c.id||'').trim();
+    });
     const total=ofs.reduce((s,o)=>s+(o.val||0),0);
     const emp=getEmp(c.empId);
     const st = situacao(c.id);
@@ -33478,7 +33482,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260813161200';
+      const swVersion = '20260813170000';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
