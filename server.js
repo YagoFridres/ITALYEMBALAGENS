@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260813080100';
-const SW_RUNTIME_VERSION = '20260813080100';
+const PATCH_RUNTIME_VERSION = '20260813080200';
+const SW_RUNTIME_VERSION = '20260813080200';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5701,30 +5701,59 @@ async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
     let maxSql = 0;
     let sqlOk = false;
     try {
-      const [mn, mf, mo] = await Promise.allSettled([
-        supabase.from('ofs').select('numero').not('numero', 'is', null).is('deleted_at', null).order('numero', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('ofs').select('of_num').not('of_num', 'is', null).is('deleted_at', null).order('of_num', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('ofs').select('of').not('of', 'is', null).is('deleted_at', null).order('of', { ascending: false }).limit(1).maybeSingle()
-      ]);
+      const mfn = await supabase
+        .from('ofs')
+        .select('of_num')
+        .not('of_num', 'is', null)
+        .is('deleted_at', null)
+        .order('of_num', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       const parseCand = (r, key) => {
-        if (r?.status !== 'fulfilled') return 0;
-        const v = r?.value?.data?.[key];
+        if (!r || !r.data) return 0;
+        const v = r.data[key];
         if (v === null || v === undefined || v === '') return 0;
         const n = parseInt(String(v).replace(/\D/g, ''), 10);
         return Number.isFinite(n) && n > 0 ? n : 0;
       };
-      maxSql = Math.max(parseCand(mn, 'numero'), parseCand(mf, 'of_num'), parseCand(mo, 'of'), 0);
+      maxSql = parseCand(mfn, 'of_num');
       if (maxSql > 0) sqlOk = true;
     } catch (_) { sqlOk = false; maxSql = 0; }
 
-    let q = supabase
+    const baseQuery = () => supabase
       .from('ofs')
       .select('numero, of_num, of, id, created_at, deleted_at, empresa_id, emp_id')
       .is('deleted_at', null)
-      .order('id', { ascending: false })
-      .limit(50000);
-    const { data, error } = await q;
-    if (error && !sqlOk) throw error;
+      .order('of_num', { ascending: false });
+
+    const pages = [];
+    try {
+      const r1 = await baseQuery().range(0, 999);
+      if (r1?.data?.length) pages.push(...r1.data);
+      if (r1?.data && r1.data.length === 1000) {
+        const r2 = await baseQuery().range(1000, 1999);
+        if (r2?.data?.length) pages.push(...r2.data);
+        if (r2?.data && r2.data.length === 1000) {
+          const r3 = await baseQuery().range(2000, 2999);
+          if (r3?.data?.length) pages.push(...r3.data);
+          if (r3?.data && r3.data.length === 1000) {
+            const r4 = await baseQuery().range(3000, 3999);
+            if (r4?.data?.length) pages.push(...r4.data);
+            if (r4?.data && r4.data.length === 1000) {
+              const r5 = await baseQuery().range(4000, 4999);
+              if (r5?.data?.length) pages.push(...r5.data);
+              if (r5?.data && r5.data.length === 1000) {
+                const r6 = await baseQuery().range(5000, 5999);
+                if (r6?.data?.length) pages.push(...r6.data);
+              }
+            }
+          }
+        }
+      }
+    } catch (scanErr) {
+      if (!sqlOk) throw scanErr;
+    }
+    const data = pages;
     const nums = [];
     (data || []).forEach((of) => {
       if (of?.deleted_at) return;
