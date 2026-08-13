@@ -16692,10 +16692,10 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
   }
   try { window.__hubStripMoneyVisuals = _hubStripMoneyVisuals; } catch (_) {}
   async function _patchHubTotalCards() {
+    var page = document.getElementById('page-hub');
+    var kpis = document.getElementById('hub-kpis');
+    if (!page || !kpis) return;
     try {
-      var page = document.getElementById('page-hub');
-      var kpis = document.getElementById('hub-kpis');
-      if (!page || !kpis) return;
       try {
         kpis.style.transition = 'opacity .18s ease';
         kpis.style.opacity = '0';
@@ -16708,10 +16708,6 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
         _hubRemoveCardByLabel(kpis, 'FATURAMENTO DO MÊS');
         _hubRemoveCardByLabel(kpis, 'TOTAL EM OFs (HISTÓRICO)');
         _hubStripMoneyVisuals();
-        try {
-          kpis.style.opacity = '1';
-          kpis.dataset.patchHubLoading = '0';
-        } catch (_) {}
         return;
       }
 
@@ -16728,11 +16724,20 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
       _hubRemoveCardByLabel(kpis, 'FATURAMENTO DO MÊS');
       _hubRemoveCardByLabel(kpis, 'TOTAL EM OFs (HISTÓRICO)');
       _hubStripMoneyVisuals();
+    } catch (_) {
+      try {
+        _hubUpsertCard(kpis, 'Qtd OFs', 'Erro', 'Não foi possível carregar os totais', '#f43f5e');
+        _hubRemoveCardByLabel(kpis, 'Faturamento do mês');
+        _hubRemoveCardByLabel(kpis, 'FATURAMENTO DO MÊS');
+        _hubRemoveCardByLabel(kpis, 'TOTAL EM OFs (HISTÓRICO)');
+        _hubStripMoneyVisuals();
+      } catch (__) {}
+    } finally {
       try {
         kpis.style.opacity = '1';
         kpis.dataset.patchHubLoading = '0';
       } catch (_) {}
-    } catch (_) {}
+    }
   }
   try { window.__patchHubTotalCards = _patchHubTotalCards; } catch (_) {}
 
@@ -49341,9 +49346,16 @@ function _ocultarGraficoComissoes() {
   async function tick() {
     ensureStyles();
     wrapFetch();
-    loadKnives(false).catch(function() {});
+    var hasUser = !!(window.CURRENT_USER && (window.CURRENT_USER.id || window.CURRENT_USER.uid || window.CURRENT_USER.email));
+    var kcache = getKnifeCache();
+    var hasToken = false;
+    try { hasToken = !!String(localStorage.getItem('token') || sessionStorage.getItem('token') || window._token || '').trim(); } catch (_) {}
     var modal = getModal();
-    if (!modalOpen(modal)) return;
+    var mOpen = modalOpen(modal);
+    if (hasUser && hasToken && (mOpen || !kcache.loaded) && !kcache.loading) {
+      try { loadKnives(false).catch(function() {}); } catch (_) {}
+    }
+    if (!mOpen) return;
     ensureMainPanel(modal);
     ensureItemPanels(modal);
     var snapshot = await ensureEditSnapshot(modal);
@@ -49352,12 +49364,12 @@ function _ocultarGraficoComissoes() {
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
-      setTimeout(function() { tick().catch(function() {}); }, 300);
-      setInterval(function() { tick().catch(function() {}); }, 900);
+      setTimeout(function() { tick().catch(function() {}); }, 800);
+      setInterval(function() { tick().catch(function() {}); }, 5000);
     });
   } else {
-    setTimeout(function() { tick().catch(function() {}); }, 300);
-    setInterval(function() { tick().catch(function() {}); }, 900);
+    setTimeout(function() { tick().catch(function() {}); }, 800);
+    setInterval(function() { tick().catch(function() {}); }, 5000);
   }
 })();
 ;(function() {
