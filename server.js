@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260813013000';
-const SW_RUNTIME_VERSION = '20260813013000';
+const PATCH_RUNTIME_VERSION = '20260813011500';
+const SW_RUNTIME_VERSION = '20260813011500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5697,9 +5697,9 @@ async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
     let sqlOk = false;
     try {
       const [mn, mf, mo] = await Promise.allSettled([
-        supabase.from('ofs').select('numero').not('numero', 'is', null).order('numero', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('ofs').select('of_num').not('of_num', 'is', null).order('of_num', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('ofs').select('of').not('of', 'is', null).order('of', { ascending: false }).limit(1).maybeSingle()
+        supabase.from('ofs').select('numero').is('deleted_at', null).not('numero', 'is', null).order('numero', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('ofs').select('of_num').is('deleted_at', null).not('of_num', 'is', null).order('of_num', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('ofs').select('of').is('deleted_at', null).not('of', 'is', null).order('of', { ascending: false }).limit(1).maybeSingle()
       ]);
       const parseCand = (r, key) => {
         if (r?.status !== 'fulfilled') return 0;
@@ -5715,12 +5715,14 @@ async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
     let q = supabase
       .from('ofs')
       .select('numero, of_num, of, id, created_at, deleted_at, empresa_id, emp_id')
+      .is('deleted_at', null)
       .order('id', { ascending: false })
-      .limit(24000);
+      .limit(16000);
     const { data, error } = await q;
     if (error && !sqlOk) throw error;
     const nums = [];
     (data || []).forEach((of) => {
+      if (of?.deleted_at) return;
       let linhaMaior = 0;
       ['numero', 'of_num', 'of'].forEach((campo) => {
         const v = of?.[campo];
@@ -5728,13 +5730,13 @@ async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
         const n = parseInt(String(v).replace(/\D/g, ''), 10);
         if (!isNaN(n) && n > linhaMaior) linhaMaior = n;
       });
-      if (linhaMaior > 0) nums.push({ n: linhaMaior, id: of?.id, numero: of?.numero, of_num: of?.of_num, of: of?.of, criado: String(of?.created_at || '').slice(0, 16), emp_id: of?.emp_id, empresa_id: String(of?.empresa_id || '').slice(0, 10), deletado: !!of?.deleted_at });
+      if (linhaMaior > 0) nums.push({ n: linhaMaior, id: of?.id, numero: of?.numero, of_num: of?.of_num, of: of?.of, criado: String(of?.created_at || '').slice(0, 16), emp_id: of?.emp_id, empresa_id: String(of?.empresa_id || '').slice(0, 10) });
     });
     nums.sort((a, b) => Number(b.n || 0) - Number(a.n || 0));
     const maiorScan = nums.length ? Number(nums[0].n || 0) : 0;
     const maior = Math.max(maiorScan, maxSql, 0);
     const proximo = String(maior + 1);
-    const base = { ok: true, proximo, maior, qtd: (data || []).length, qtdNumeros: nums.length, numeracaoGlobal: true, incluiDeletadosNoMaximo: true };
+    const base = { ok: true, proximo, maior, qtd: (data || []).length, qtdNumeros: nums.length, numeracaoGlobal: true };
     if (diag) {
       base.top15 = nums.slice(0, 15);
       base.maxSql = maxSql;
@@ -5743,7 +5745,7 @@ async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
     }
     return base;
   } catch (e) {
-    return { ok: false, proximo: '001', maior: 0, erro: String(e?.message || e), numeracaoGlobal: true, incluiDeletadosNoMaximo: true };
+    return { ok: false, proximo: '001', maior: 0, erro: String(e?.message || e), numeracaoGlobal: true };
   }
 }
 app.get('/api/_diag_proxnum', [authMiddleware, requireAdmin], async (req, res) => {
