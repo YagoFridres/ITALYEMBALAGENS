@@ -3958,7 +3958,6 @@ async function proximoNumeroOf() {
   const cache = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : [];
   if (cache.length) {
     const numeros = cache
-      .filter(o => !o?.deleted_at && !String(o?.status || '').toLowerCase().includes('exclu'))
       .map(o => parseInt(o?.numero || o?.of_num || o?.of || '0', 10))
       .filter(n => !isNaN(n) && n > 0);
     if (numeros.length) {
@@ -3970,15 +3969,15 @@ async function proximoNumeroOf() {
   return '001';
 }
 
-async function abrirNovaOfRapida(){
+function abrirNovaOfRapida(){
   try{ document.getElementById('modal-of-rapida')?.remove(); }catch(e){}
   try{ document.getElementById('modal-of-rapida-ov')?.remove(); }catch(e){}
 
   try{
     const needsApi = _apiConectado && CURRENT_USER;
     if(needsApi){
-      if((!Array.isArray(CLIENTES) || CLIENTES.length===0) && typeof carregarClientes === 'function'){ try{ await carregarClientes(false); }catch(_e){} }
-      if((!Array.isArray(VENDEDORES) || VENDEDORES.length===0) && typeof carregarVendedores === 'function'){ try{ await carregarVendedores(false); }catch(_e){} }
+      if((!Array.isArray(CLIENTES) || CLIENTES.length===0) && typeof carregarClientes === 'function') carregarClientes(false).catch(()=>null);
+      if((!Array.isArray(VENDEDORES) || VENDEDORES.length===0) && typeof carregarVendedores === 'function') carregarVendedores(false).catch(()=>null);
     }
   }catch(e){}
 
@@ -3995,7 +3994,7 @@ async function abrirNovaOfRapida(){
   }
 
   const clientes = (Array.isArray(CLIENTES) ? CLIENTES : [])
-    .map(c => String(c.nome || c.razao_social || c.razao || c.rs || c.cliente_nome || '').trim())
+    .map(c => String(c.nome || c.razao_social || c.razao || c.cliente_nome || '').trim())
     .filter(Boolean)
     .sort((a,b)=>a.localeCompare(b,'pt-BR'));
 
@@ -4007,9 +4006,6 @@ async function abrirNovaOfRapida(){
   const hoje = new Date().toISOString().split('T')[0];
   const em3 = new Date(Date.now() + 3*864e5).toISOString().split('T')[0];
   const em5 = new Date(Date.now() + 5*864e5).toISOString().split('T')[0];
-
-  window._ofRapidaCliId = '';
-  window._ofRapidaCliNome = '';
 
   modal.innerHTML = `
     <div style="width:34px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:12px auto 0"></div>
@@ -4025,11 +4021,10 @@ async function abrirNovaOfRapida(){
     <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
       <div>
         <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Cliente *</label>
-        <input id="of-r-cliente" list="of-r-clientes-list" placeholder="Digite e selecione um cliente da lista..." autocomplete="off"
+        <input id="of-r-cliente" list="of-r-clientes-list" placeholder="Nome do cliente..." autocomplete="off"
           style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 13px;color:#e8f0fe;font-size:14px;outline:none;transition:border 0.2s;font-family:inherit"
-          onfocus="window._ofRapidaClienteOnFocus(this)" onblur="window._ofRapidaClienteOnBlur(this)" oninput="window._ofRapidaClienteOnInput(this)">
+          onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
         <datalist id="of-r-clientes-list">${clientes.map(c=>`<option value="${escAttr(c)}"></option>`).join('')}</datalist>
-        <div id="of-r-cliente-feedback" style="margin-top:6px;min-height:18px;font-size:12px;color:rgba(239,68,68,0.9)">Selecione um cliente válido da lista para prosseguir.</div>
       </div>
 
       <div>
@@ -4589,139 +4584,10 @@ window.verificarDisponibilidadeMaquinaOfRapida = async function(){
   }
 };
 
-window._normalizarNomeCliente = function _normalizarNomeCliente(s) {
-  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').replace(/[^a-z0-9 \-]/g, ' ').trim();
-};
-window._resolverClienteOFRapida = function _resolverClienteOFRapida(textoDigitado, empresaLegado) {
-  const texto = String(textoDigitado || '').trim();
-  const out = { ok: false, cliente: null, id: '', nome: '', mensagem: '', ambiguidade: 0, prioridade: null };
-  if (!texto) { out.mensagem = 'Selecione um cliente válido da lista para prosseguir.'; return out; }
-  const arr = (Array.isArray(CLIENTES) ? CLIENTES : []);
-  if (!arr.length) { out.mensagem = 'Lista de clientes ainda carregando... tente novamente em 1s.'; return out; }
-  const empLeg = String(empresaLegado || window.EMPRESA_ID || (typeof EMP_ID_ATUAL !== 'undefined' ? EMP_ID_ATUAL : '') || 'E1').trim().toUpperCase();
-  const filtraEmp = (c) => {
-    if (!empLeg) return true;
-    const e1 = String(c?.emp_id || c?.empId || c?.empresa_id || c?.empresa || 'E1').trim().toUpperCase();
-    const e2 = String(c?.empresaLegado || '').trim().toUpperCase();
-    if (!e1 && !e2) return true;
-    return (e1 === empLeg) || (e2 === empLeg);
-  };
-  const nomeC = (c) => String(c?.nome || c?.razao_social || c?.razao || c?.rs || c?.cliente_nome || '').trim();
-  const tgt = window._normalizarNomeCliente(texto);
-  const exatos = [];
-  const starts = [];
-  const incls = [];
-  for (const c of arr) {
-    try { if (!filtraEmp(c)) continue; } catch (_e) {}
-    const n = window._normalizarNomeCliente(nomeC(c));
-    if (!n) continue;
-    if (n === tgt) exatos.push(c);
-    else if (n.startsWith(tgt)) starts.push(c);
-    else if (n.indexOf(tgt) >= 0) incls.push(c);
-  }
-  if (exatos.length === 1) {
-    out.ok = true; out.cliente = exatos[0]; out.id = String(exatos[0].id || '').trim(); out.nome = nomeC(exatos[0]); out.prioridade = 'exato'; return out;
-  }
-  if (starts.length === 1) {
-    out.ok = true; out.cliente = starts[0]; out.id = String(starts[0].id || '').trim(); out.nome = nomeC(starts[0]); out.prioridade = 'inicio'; return out;
-  }
-  if (exatos.length > 1 || starts.length > 1) {
-    const qtd = (exatos.length || starts.length);
-    out.ambiguidade = qtd; out.mensagem = 'Digite mais caracteres — ' + qtd + ' clientes corresponderam (selecione um da lista).';
-    return out;
-  }
-  if (incls.length === 1) {
-    out.ok = true; out.cliente = incls[0]; out.id = String(incls[0].id || '').trim(); out.nome = nomeC(incls[0]); out.prioridade = 'contem'; return out;
-  }
-  if (incls.length > 1) {
-    out.ambiguidade = incls.length; out.mensagem = `Digite mais caracteres — ${incls.length} clientes corresponderam parcialmente (selecione um da lista).`;
-    return out;
-  }
-  out.mensagem = `Nenhum cliente encontrado para "${texto}". Digite e selecione um cliente da lista de sugestões.`;
-  return out;
-};
-window._ofRapidaClienteFeedback = function _ofRapidaClienteFeedback(cor, mensagem, inputEl) {
-  const fb = document.getElementById('of-r-cliente-feedback');
-  if (fb) {
-    fb.style.color = (cor === 'verde') ? 'rgba(16,185,129,0.95)' : (cor === 'amarelo') ? 'rgba(245,158,11,0.95)' : 'rgba(239,68,68,0.95)';
-    fb.textContent = String(mensagem || '');
-  }
-  if (inputEl) {
-    const borda = (cor === 'verde') ? '1px solid rgba(16,185,129,0.6)' :
-                  (cor === 'amarelo') ? '1px solid rgba(245,158,11,0.55)' :
-                  '1px solid rgba(239,68,68,0.6)';
-    inputEl.style.borderColor = '';
-    try { inputEl.style.border = borda; } catch (_e) {}
-  }
-};
-window._ofRapidaClienteOnFocus = function(inputEl){
-  if (!inputEl) return;
-  inputEl.style.border = '';
-  inputEl.style.borderColor = '#0ea5e9';
-};
-window._ofRapidaClienteOnInput = function(inputEl){
-  if (!inputEl) return;
-  const texto = String(inputEl.value || '').trim();
-  if (!texto) {
-    window._ofRapidaCliId = '';
-    window._ofRapidaCliNome = '';
-    window._ofRapidaClienteFeedback('vermelho', 'Selecione um cliente válido da lista para prosseguir.', inputEl);
-    return;
-  }
-  const res = window._resolverClienteOFRapida(texto);
-  if (res.ok) {
-    window._ofRapidaCliId = res.id;
-    window._ofRapidaCliNome = res.nome;
-    const extra = res.prioridade === 'contem' ? ' (atenção: correspondência parcial)' : (res.prioridade === 'inicio' ? ' (correspondência por início)' : '');
-    window._ofRapidaClienteFeedback('verde', 'Cliente confirmado: ' + res.nome + extra, inputEl);
-  } else if (res.ambiguidade > 0) {
-    window._ofRapidaCliId = '';
-    window._ofRapidaCliNome = '';
-    window._ofRapidaClienteFeedback('amarelo', res.mensagem || 'Múltiplos clientes — selecione da lista.', inputEl);
-  } else {
-    window._ofRapidaCliId = '';
-    window._ofRapidaCliNome = '';
-    window._ofRapidaClienteFeedback('vermelho', res.mensagem || 'Cliente inválido — selecione da lista.', inputEl);
-  }
-};
-window._ofRapidaClienteOnBlur = function(inputEl){
-  if (!inputEl) return;
-  inputEl.style.border = '';
-  inputEl.style.borderColor = 'rgba(255,255,255,0.1)';
-  const res = window._resolverClienteOFRapida(String(inputEl.value || ''));
-  if (res.ok) {
-    window._ofRapidaCliId = res.id;
-    window._ofRapidaCliNome = res.nome;
-    const extra = res.prioridade === 'contem' ? ' (contém)' : (res.prioridade === 'inicio' ? ' (início)' : '');
-    window._ofRapidaClienteFeedback('verde', 'Cliente confirmado: ' + res.nome + extra, inputEl);
-    if (res.nome && String(inputEl.value || '').trim() !== res.nome) {
-      try { inputEl.value = res.nome; } catch (_e) {}
-    }
-  } else if (res.ambiguidade > 0) {
-    window._ofRapidaCliId = '';
-    window._ofRapidaClienteFeedback('amarelo', res.mensagem || 'Ambiguidade — selecione um da lista.', inputEl);
-    inputEl.focus();
-  } else {
-    window._ofRapidaCliId = '';
-    window._ofRapidaClienteFeedback('vermelho', res.mensagem || 'Selecione um cliente válido da lista.', inputEl);
-  }
-};
-
 window.salvarOfRapida = async function(){
-  const clienteNomeRaw = String(document.getElementById('of-r-cliente')?.value || '').trim();
+  const clienteNome = String(document.getElementById('of-r-cliente')?.value || '').trim();
   const produto = String(document.getElementById('of-r-produto')?.value || '').trim();
   const empId = String(document.getElementById('of-r-empresa')?.value || 'E1').trim() || 'E1';
-  const cliRes = window._resolverClienteOFRapida(clienteNomeRaw, empId);
-  if (cliRes.ok && cliRes.id) {
-    window._ofRapidaCliId = cliRes.id;
-    window._ofRapidaCliNome = cliRes.nome;
-  } else {
-    window._ofRapidaCliId = '';
-    window._ofRapidaCliNome = '';
-  }
-  const clienteNome = clienteNomeRaw;
-  const clienteId = String(window._ofRapidaCliId || cliRes.id || '').trim();
-  const clienteNomeConfirmado = String(window._ofRapidaCliNome || cliRes.nome || '').trim();
   const vendId = String(document.getElementById('of-r-vendedor')?.value || '').trim();
   const qtd = Math.trunc(Number(document.getElementById('of-r-qtd')?.value || 0) || 0);
   const vlunit = parseFloat(String(document.getElementById('of-r-vlunit')?.value || '0').replace(',','.')) || 0;
@@ -4751,7 +4617,7 @@ window.salvarOfRapida = async function(){
     || '001';
 
   const erros = [];
-  if(!clienteId) erros.push('Cliente (selecione um válido da lista)');
+  if(!clienteNome) erros.push('Cliente');
   if(!produto) erros.push('Produto');
   if(!(qtd > 0)) erros.push('Quantidade');
   if(!(vlunit > 0)) erros.push('Valor Unit.');
@@ -4762,11 +4628,6 @@ window.salvarOfRapida = async function(){
   const coresPayload = (typeof coresPayloadFromSelecionadas === 'function') ? coresPayloadFromSelecionadas(coresSelecionadasOFRapida) : [];
   if(!coresPayload.length) erros.push('Cores de Impressão');
   if(!entrega) erros.push('Data de Entrega');
-  if(!clienteId){
-    const cliInput = document.getElementById('of-r-cliente');
-    window._ofRapidaClienteFeedback((cliRes?.ambiguidade > 0 ? 'amarelo' : 'vermelho'), cliRes?.mensagem || 'Selecione um cliente válido da lista para prosseguir.', cliInput);
-    try{ if(cliInput) cliInput.focus(); }catch(e){}
-  }
   if(erros.length){
     alert('Preencha: ' + erros.join(', '));
     return;
@@ -4774,6 +4635,18 @@ window.salvarOfRapida = async function(){
 
   const btn = document.getElementById('btn-salvar-of-rapida');
   try{ if(btn){ btn.textContent='Salvando...'; btn.disabled=true; } }catch(e){}
+
+  const cli = (Array.isArray(CLIENTES)?CLIENTES:[]).find(c=>{
+    const n = String(c?.nome || c?.razao_social || c?.razao || '').trim();
+    if(!n) return false;
+    return n.toLowerCase() === clienteNome.toLowerCase();
+  }) || null;
+  const cliId = String(cli?.id || '').trim();
+  if(!cliId){
+    alert('Selecione um cliente válido da lista.');
+    try{ if(btn){ btn.textContent='⚡ Salvar OF'; btn.disabled=false; } }catch(e){}
+    return;
+  }
 
   let imgUrl = '';
   try{
@@ -4809,12 +4682,9 @@ window.salvarOfRapida = async function(){
     numero: numeroOf,
     of_num: numeroOf,
     of: numeroOf,
-    cli_id: clienteId,
-    cliId: clienteId,
-    cliente_id: clienteId,
-    clinome: clienteNomeConfirmado || clienteNome || '',
-    cliNome: clienteNomeConfirmado || clienteNome || '',
-    cliente_nome: clienteNomeConfirmado || clienteNome || '',
+    cli_id: cliId,
+    cliId: cliId,
+    cliente_id: cliId,
     vendedor_id: vendId,
     vendId: vendId,
     vend_id: vendId,
@@ -14656,12 +14526,11 @@ function _simdRenderResultados(data, qtdPedido) {
         const nome = c.nome || c.tamanho;
         const fornecedor = c.fornecedor || '—';
         const valorUnit = Number(c.valor_unitario || 0) || 0;
-        const selId = 'simd-sel-' + (c.id || ('idx'+i));
         return `
-          <div id="${selId}" onclick="_simdGerarVisual(JSON.parse(this.dataset.chapa), JSON.parse(this.dataset.dados))" class="simd-grid"
+          <div onclick="_simdGerarVisual(JSON.parse(this.dataset.chapa), JSON.parse(this.dataset.dados))" class="simd-grid"
                data-chapa="${chapaJson}"
                data-dados="${dadosJsonBase}"
-               style="display:grid;grid-template-columns:60px 1fr 160px 120px 80px 90px 90px 100px 110px;padding:11px 16px;gap:8px;align-items:center;background:${bg};cursor:pointer;border-bottom:0.5px solid rgba(255,255,255,0.05);transition:background 0.1s"
+               style="display:grid;grid-template-columns:60px 1fr 160px 120px 80px 90px 90px 100px;padding:11px 16px;gap:8px;align-items:center;background:${bg};cursor:pointer;border-bottom:0.5px solid rgba(255,255,255,0.05);transition:background 0.1s"
                onmouseover="this.style.background='rgba(255,255,255,0.05)'"
                onmouseout="this.style.background='${bg}'">
             <div style="text-align:center">
@@ -14679,9 +14548,6 @@ function _simdRenderResultados(data, qtdPedido) {
             <div style="text-align:right">
               ${Number(c.economia_vs_pior || 0) > 0 ? '<span style=\"font-size:12px;font-weight:600;color:#97C459\">' + escH(String(c.economia_vs_pior)) + '% menos</span>' : '<span style=\"font-size:11px;color:rgba(255,255,255,0.25)\">referência</span>'}
             </div>
-            <div style="text-align:center" onclick="(function(e){e.stopPropagation();return true;})(event)">
-              <button onclick="_simdSelecionarChapa('${selId}', this)" style="padding:6px 12px;background:#185FA5;border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Selecionar</button>
-            </div>
           </div>`;
       }).join('');
 
@@ -14697,51 +14563,6 @@ function _simdRenderResultados(data, qtdPedido) {
       if (linhas) linhas.innerHTML = '<div style="padding:20px;text-align:center;font-size:13px;color:#F09595">Erro ao renderizar. Tente novamente.</div>';
     } catch (_) {}
   }
-}
-
-function _simdSelecionarChapa(linhaId, btn) {
-  try {
-    const linha = document.getElementById(linhaId);
-    if (!linha) return;
-    try {
-      const todas = document.querySelectorAll('.simd-grid[id^="simd-sel-"]');
-      (todas||[]).forEach(el => {
-        el.style.borderLeft = '';
-        el.style.background = el.dataset.bgBackup || '';
-        if (btn) {
-          const b = el.querySelector('button');
-          if (b) { b.textContent = 'Selecionar'; b.style.background = '#185FA5'; }
-        }
-      });
-    } catch (_) {}
-    linha.dataset.bgBackup = linha.style.background || '';
-    linha.style.borderLeft = '3px solid #185FA5';
-    linha.style.background = 'rgba(24,95,165,0.12)';
-    if (btn) { btn.textContent = 'Selecionado'; btn.style.background = '#116E3B'; }
-    try {
-      const chapaStr = linha.dataset.chapa;
-      if (chapaStr) {
-        const c = JSON.parse(chapaStr);
-        window._simdChapaSelecionada = c;
-        const card = document.getElementById('simd-chapa-selecionada');
-        const nomeEl = document.getElementById('simd-chapa-sel-nome');
-        const infoEl = document.getElementById('simd-chapa-sel-info');
-        if (card) card.style.display = 'block';
-        if (nomeEl) nomeEl.textContent = c.nome || c.tamanho || 'Chapa';
-        if (infoEl) infoEl.textContent = (c.fornecedor ? c.fornecedor + ' · ' : '') + (c.tamanho || '') + (c.quantidade != null ? ' · ' + c.quantidade + ' em estoque' : '');
-        const limpBtn = document.getElementById('simd-btn-limpar-chapa');
-        if (limpBtn) limpBtn.style.display = 'inline-block';
-      }
-    } catch (_) {}
-    try {
-      const dadosStr = linha.dataset.dados;
-      if (dadosStr && chapaStr) {
-        const dados = JSON.parse(dadosStr);
-        const chapa = JSON.parse(linha.dataset.chapa);
-        _simdGerarVisual(chapa, dados);
-      }
-    } catch (_) {}
-  } catch(e) {}
 }
 
 async function _simdCalcular(){
@@ -24784,6 +24605,18 @@ async function mostrarResultadoChapa(codigo) {
             '<div><div style="color:#64748b;font-size:11px">Vl/un</div><div style="color:#e2e8f0;font-size:14px;font-weight:600">R$ ' + escH((Number(vunit||0)||0).toFixed(2)) + '</div></div>' +
           '</div>' +
         '</div>' +
+
+        '<div style="margin-bottom:14px">' +
+          '<div style="color:#94a3b8;font-size:13px;font-weight:600;margin-bottom:10px">📐 Simular para qual caixa?</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">' +
+            '<div><label style="color:#64748b;font-size:11px;display:block;margin-bottom:3px">Comp (mm)</label><input id="sim-comp" type="number" placeholder="ex: 300" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;font-size:14px;box-sizing:border-box"></div>' +
+            '<div><label style="color:#64748b;font-size:11px;display:block;margin-bottom:3px">Larg (mm)</label><input id="sim-larg" type="number" placeholder="ex: 200" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;font-size:14px;box-sizing:border-box"></div>' +
+            '<div><label style="color:#64748b;font-size:11px;display:block;margin-bottom:3px">Alt (mm)</label><input id="sim-alt" type="number" placeholder="ex: 150" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;font-size:14px;box-sizing:border-box"></div>' +
+          '</div>' +
+          '<button id="btn-simular-chapa" style="width:100%;background:#4A90D9;color:#fff;border:none;border-radius:8px;padding:12px;cursor:pointer;font-size:14px;font-weight:600">▶ Simular Desperdício</button>' +
+          '<div id="sim-resultado" style="margin-top:10px"></div>' +
+        '</div>' +
+
         (similares.length > 0 ?
           '<div>' +
             '<div style="color:#94a3b8;font-size:13px;font-weight:600;margin-bottom:10px">Outras chapas disponíveis</div>' +
@@ -45770,18 +45603,20 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div id="tela-simulador-desperdicio" style="padding:20px">
       <div style="margin-bottom:20px">
         <h2 style="font-size:18px;font-weight:600;color:rgba(255,255,255,0.9);margin:0 0 4px">Simulador de desperdício de papelão</h2>
-        <p style="font-size:13px;color:rgba(255,255,255,0.4);margin:0">Informe as dimensões da peça (planificação) em mm e veja quais chapas de estoque são compatíveis (sentido A e B), ordenadas por menor desperdício</p>
+        <p style="font-size:13px;color:rgba(255,255,255,0.4);margin:0">Informe a planificação necessária em mm e veja quais chapas do estoque desperdiçam menos papelão para este pedido</p>
       </div>
       <div style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:20px;margin-bottom:20px">
-        <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:14px">Dimensões da Peça (mm)</div>
+        <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:14px">Planificação (mm)</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
           <div>
-            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Largura da Peça (mm)</label>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Largura necessária (mm)</label>
             <input type="number" id="simd-larg" placeholder="ex: 715" min="1" oninput="_simdVerificarCampos()" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
+            <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px">largura + (altura × 2) + 15mm</div>
           </div>
           <div>
-            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Comprimento da Peça (mm)</label>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Comprimento necessário (mm)</label>
             <input type="number" id="simd-comp" placeholder="ex: 1420" min="1" oninput="_simdVerificarCampos()" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
+            <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px">(comprimento + altura) × 2 + 20mm</div>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px;margin-bottom:8px">
@@ -45825,7 +45660,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         <div id="simd-info-planif" style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:7px;border-left:3px solid #185FA5"></div>
         <div id="simd-aviso" style="display:none;padding:16px;text-align:center;font-size:13px;color:#EF9F27;background:rgba(239,159,39,0.1);border-radius:8px;margin-bottom:14px">Nenhuma chapa em estoque é compatível com estas medidas. Verifique se há chapas cadastradas ou ajuste as medidas.</div>
         <div id="simd-tabela-wrap" style="background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden">
-          <div class="simd-grid" style="display:grid;grid-template-columns:60px 1fr 160px 120px 80px 90px 90px 100px 110px;padding:10px 16px;background:rgba(255,255,255,0.04);border-bottom:0.5px solid rgba(255,255,255,0.08);font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.04em;gap:8px">
+          <div class="simd-grid" style="display:grid;grid-template-columns:60px 1fr 160px 120px 80px 90px 90px 100px;padding:10px 16px;background:rgba(255,255,255,0.04);border-bottom:0.5px solid rgba(255,255,255,0.08);font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.04em;gap:8px">
             <div>Desp.</div>
             <div>Chapa</div>
             <div class="simd-col-nomenclatura">Nomenclatura</div>
@@ -45834,7 +45669,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
             <div style="text-align:center">Cx/chapa</div>
             <div style="text-align:right">Estoque</div>
             <div style="text-align:right">Economia</div>
-            <div style="text-align:center">Ação</div>
           </div>
           <div id="simd-linhas"></div>
         </div>
@@ -59569,6 +59403,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260812190000"></script>
+<script src="/patch.js?v=20260811193000"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>

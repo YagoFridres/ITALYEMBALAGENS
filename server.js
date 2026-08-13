@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -928,31 +928,6 @@ function _clearOfsCaches() {
   try { cacheClearPrefix('ofs_'); } catch (_) {}
 }
 async function resolverEmpresaId(req) {
-  try {
-    const qEmp = String(req?.query?.empresa_id || req?.query?.empId || '').trim();
-    if (_isUuid(qEmp)) return qEmp;
-  } catch (_) {}
-  try {
-    const uEmp = String(req?.usuario?.empresa_id || req?.user?.empresa_id || '').trim();
-    if (_isUuid(uEmp)) return uEmp;
-  } catch (_) {}
-  const siglaRaw = String(
-    req?.usuario?.emp_id || req?.usuario?.sigla ||
-    req?.user?.emp_id || req?.user?.sigla || ''
-  ).trim();
-  if (siglaRaw) {
-    try {
-      const baseUp = siglaRaw.toUpperCase();
-      const sigEff = baseUp === 'E1' ? 'ITALY' : baseUp === 'E2' ? 'CARTO' : baseUp === 'E3' ? 'OESTE' : baseUp;
-      const { data } = await supabase
-        .from('empresas')
-        .select('id')
-        .or(`sigla.ilike.${sigEff},codigo.eq.${baseUp}`)
-        .limit(1)
-        .maybeSingle();
-      if (_isUuid(String(data?.id || '').trim())) return String(data.id).trim();
-    } catch (_) {}
-  }
   const emailRaw = String(
     req?.user?.email ||
     req?.user?.username ||
@@ -1189,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260812190000';
-const SW_RUNTIME_VERSION = '20260812190000';
+const PATCH_RUNTIME_VERSION = '20260811193000';
+const SW_RUNTIME_VERSION = '20260811193000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4204,129 +4179,35 @@ function _clienteNomeValido(v) {
   return s;
 }
 
-async function _buscarClienteRegistroOF(cliId, opts = {}) {
+async function _buscarClienteRegistroOF(cliId) {
   const id = String(cliId || '').trim();
   if (!id || !supabase) return null;
-  const empId = String(opts.empresa_id || opts.empId || '').trim();
-  const filterCol = opts._empresaFilterCol || null;
   const tries = [];
-  if (_isUuid(id)) tries.push({ column: 'id', value: id, modo: 'uuid' });
-  tries.push({ column: 'codigo', value: id, modo: 'codigo' });
-  if (!_isUuid(id)) tries.push({ column: 'id', value: id, modo: 'legacy_text_id' });
+  if (_isUuid(id)) tries.push({ column: 'id', value: id });
+  tries.push({ column: 'codigo', value: id });
+  if (!_isUuid(id)) tries.push({ column: 'id', value: id });
   const seen = new Set();
-  const empCols = filterCol ? [filterCol] : ['empresa_id', 'emp_id', 'empId'];
   for (const attempt of tries) {
     const key = String(attempt.column || '') + ':' + String(attempt.value || '');
     if (seen.has(key)) continue;
     seen.add(key);
     try {
-      if (empId) {
-        for (const col of empCols) {
-          try {
-            const { data, error } = await supabase.from('clientes')
-              .select('*')
-              .eq(attempt.column, attempt.value)
-              .eq(col, empId)
-              .maybeSingle();
-            if (!error && data) return { registro: data, modo: attempt.modo };
-          } catch (_) {}
-        }
-        // Fallback: sem filtro empresa, busca direto e valida em JS
-        try {
-          const { data, error } = await supabase.from('clientes')
-            .select('*')
-            .eq(attempt.column, attempt.value)
-            .limit(5);
-          if (!error && Array.isArray(data)) {
-            const normEmp = (x) => String(x || '').trim().toLowerCase();
-            const eIdNorm = normEmp(empId);
-            const match = data.find(c =>
-              normEmp(c?.empresa_id) === eIdNorm ||
-              normEmp(c?.emp_id) === eIdNorm ||
-              normEmp(c?.empId) === eIdNorm
-            ) || (data.length === 1 ? data[0] : null);
-            if (match) return { registro: match, modo: attempt.modo + '_fallback_sem_filtro_emp' };
-          }
-        } catch (_) {}
-        continue;
-      }
-      const { data, error } = await supabase.from('clientes')
+      const { data, error } = await supabase
+        .from('clientes')
         .select('*')
         .eq(attempt.column, attempt.value)
         .maybeSingle();
-      if (!error && data) return { registro: data, modo: attempt.modo };
-    } catch (_) {}
-  }
-  const refNorm = id;
-  if (refNorm.length >= 2) {
-    try {
-      let rows = null;
-      let tentouComFiltro = false;
-      if (empId) {
-        tentouComFiltro = true;
-        for (const col of empCols) {
-          try {
-            const { data: cand, err } = await supabase.from('clientes')
-              .select('*')
-              .eq(col, empId)
-              .order('nome', { ascending: true })
-              .limit(2000);
-            if (!err && Array.isArray(cand) && cand.length) { rows = cand; break; }
-          } catch (_) {}
-        }
-      }
-      if (!rows || !rows.length) {
-        const { data: cand, err } = await supabase.from('clientes')
-          .select('*')
-          .order('nome', { ascending: true })
-          .limit(2000);
-        if (!err && Array.isArray(cand)) {
-          if (tentouComFiltro && empId) {
-            const normEmp = (x) => String(x || '').trim().toLowerCase();
-            const eIdNorm = normEmp(empId);
-            rows = cand.filter(c =>
-              normEmp(c?.empresa_id) === eIdNorm ||
-              normEmp(c?.emp_id) === eIdNorm ||
-              normEmp(c?.empId) === eIdNorm ||
-              !String(c?.empresa_id || c?.emp_id || c?.empId || '').trim()
-            );
-          } else {
-            rows = cand;
-          }
-        }
-      }
-      if (rows && rows.length) {
-        const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
-        const tgt = norm(refNorm);
-        let exato = null;
-        const starts = [];
-        const inclui = [];
-        for (const c of rows) {
-          const n = norm(c?.nome || c?.rs || c?.razao_social || '');
-          if (!n) continue;
-          if (n === tgt) { if (!exato) exato = c; continue; }
-          if (n.startsWith(tgt)) { starts.push(c); continue; }
-          if (n.indexOf(tgt) >= 0) inclui.push(c);
-        }
-        if (exato) return { registro: exato, modo: 'nome_exato' };
-        if (starts.length === 1) return { registro: starts[0], modo: 'nome_startswith_unico' };
-        if (starts.length > 1) return { ambiguo: true, qtd: starts.length, candidatos: starts.slice(0, 10), modo: 'nome_startswith_ambiguo' };
-        if (inclui.length === 1) return { registro: inclui[0], modo: 'nome_includes_unico' };
-        if (inclui.length > 1) return { ambiguo: true, qtd: inclui.length, candidatos: inclui.slice(0, 10), modo: 'nome_ambiguo' };
-        return null;
-      }
+      if (!error && data) return data;
     } catch (_) {}
   }
   return null;
 }
 
-async function _resolverClienteIdentidadeOF(raw, opts = {}) {
+async function _resolverClienteIdentidadeOF(raw) {
   const ref = String(raw || '').trim();
   if (!ref) return null;
-  const found = await _buscarClienteRegistroOF(ref, opts || {});
-  if (!found) return null;
-  if (found.ambiguo) return { ambiguo: true, qtd: found.qtd, candidatos: (found.candidatos || []).map(c => ({ id: c.id, nome: c.nome, empresa: c.empresa_id || c.emp_id || null })), ref };
-  const cli = found.registro || found;
+  const cli = await _buscarClienteRegistroOF(ref);
+  if (!cli) return null;
   const id = String(cli?.id || '').trim();
   if (!id) return null;
   const nome = _clienteNomeValido(
@@ -4342,8 +4223,6 @@ async function _resolverClienteIdentidadeOF(raw, opts = {}) {
     codigo: String(cli?.codigo || '').trim(),
     nome,
     vendedor_id: String(cli?.vendedor_id || cli?.vendId || cli?.vend_id || '').trim() || null,
-    empresa_id: String(cli?.empresa_id || cli?.empId || cli?.emp_id || '').trim() || null,
-    modo_resolvido: String(found?.modo || 'direto'),
   };
 }
 
@@ -4384,8 +4263,7 @@ async function _preencherCamposCriticosOF(input, opts = {}) {
   };
 
   let cliId = String(out.cli_id ?? out.cliId ?? out.cliente_id ?? out.cliid ?? '').trim();
-  const resolverEmpOpts = { empresa_id: String(out.empresa_id ?? out.empId ?? out.emp_id ?? '') };
-  const cliResolved = cliId ? await _resolverClienteIdentidadeOF(cliId, resolverEmpOpts) : null;
+  const cliResolved = cliId ? await _resolverClienteIdentidadeOF(cliId) : null;
   if (cliResolved?.id) {
     cliId = String(cliResolved.id || '').trim();
     out.cli_id = cliId;
@@ -5405,12 +5283,10 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
 
     const buildQuery = () => {
-      const querySemDeleted = supabase
+      let query = supabase
         .from('ofs')
         .select('*', { count: 'exact' })
-        .is('deleted_at', null)
         .order('created_at', { ascending: false });
-      let query = querySemDeleted;
 
       if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') {
         query = query.eq('empresa_id', empresaFiltro);
@@ -5452,7 +5328,6 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         let query = supabase
           .from('ofs')
           .select('*', { count: 'exact' })
-          .is('deleted_at', null)
           .order('created_at', { ascending: false });
         if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') query = query.eq('empresa_id', empresaFiltro);
         else query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
@@ -5630,192 +5505,30 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 });
 
 // Rota dedicada para próximo número de OF
-async function _calcularProximoNumeroOF(empId, diag) {
+app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
   try {
-    let q = supabase
+    const { data, error } = await supabase
       .from('ofs')
-      .select('numero, of_num, of, id, created_at, deleted_at, empresa_id, emp_id')
-      .is('deleted_at', null)
+      .select('numero, of_num, of, id, created_at')
       .order('created_at', { ascending: false })
-      .limit(500);
-    if (empId) q = q.eq('empresa_id', empId);
-    const { data, error } = await q;
+      .limit(200);
+
     if (error) throw error;
+
     let maior = 0;
-    const topNums = [];
     (data || []).forEach((of) => {
-      if (of?.deleted_at) return;
-      let linhaMaior = 0;
       ['numero', 'of_num', 'numero_of', 'of'].forEach((campo) => {
         const v = of?.[campo];
         if (v === null || v === undefined || v === '') return;
         const n = parseInt(String(v).replace(/\D/g, ''), 10);
-        if (!isNaN(n) && n > linhaMaior) linhaMaior = n;
         if (!isNaN(n) && n > maior) maior = n;
       });
-      if (linhaMaior >= 2600) topNums.push({ n: linhaMaior, id: of?.id, numero: of?.numero, of_num: of?.of_num, of: of?.of, criado: String(of?.created_at || '').slice(0, 16), emp_id: of?.emp_id });
     });
-    topNums.sort((a, b) => Number(b.n || 0) - Number(a.n || 0));
-    const proximo = String(maior + 1);
-    const base = { ok: true, proximo, maior, qtd: (data || []).length, empId: empId || null };
-    if (diag) base.top15 = topNums.slice(0, 15);
-    return base;
-  } catch (e) {
-    return { ok: false, proximo: '001', maior: 0, erro: String(e?.message || e) };
-  }
-}
-app.get('/api/_diag_proxnum', [authMiddleware, requireAdmin], async (req, res) => {
-  try {
-    const emp1 = await resolverEmpresaId(req);
-    const empCtx = await _resolveEmpresaMutationContext(req, req.query || {});
-    const emp2 = String(empCtx?.empresa_id || '').trim() || null;
-    const r1 = await _calcularProximoNumeroOF(emp1, true);
-    const r2 = await _calcularProximoNumeroOF(emp2, true);
-    return res.json({ ok: true, emp_por_resolver: emp1, emp_por_ctx: emp2, iguais: (emp1 === emp2), res_por_resolver: r1, res_por_ctx: r2 });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
-  }
-});
-app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
-  try {
-    const empId = await resolverEmpresaId(req);
-    const r = await _calcularProximoNumeroOF(empId);
-    const proximoPadded = String(r.proximo).padStart(String(r.maior || 0).length >= 3 ? String(r.maior).length : 3, '0');
-    return res.json({ ok: true, proximo: proximoPadded, maior: r.maior });
+
+    const proximo = String(maior + 1).padStart(String(maior).length >= 3 ? String(maior).length : 3, '0');
+    return res.json({ ok: true, proximo, maior });
   } catch (e) {
     return res.json({ ok: true, proximo: '001', maior: 0, erro: String(e?.message || e) });
-  }
-});
-
-app.post('/api/_oneshot_limpar_ofs_orfas_100k', [authMiddleware, requireAdmin], async (req, res) => {
-  try {
-    if (!req.usuario || String(req.usuario?.perfil || '').toLowerCase() !== 'admin') {
-      return res.status(403).json({ ok: false, error: 'Permissão negada' });
-    }
-    const agora = new Date().toISOString();
-    const q = supabase
-      .from('ofs')
-      .select('id,numero,of,clinome,descricao,empresa_id,deleted_at,created_at')
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
-    const { data: todas, error: errTodas } = await q;
-    if (errTodas) throw errTodas;
-    const alvos = [];
-    (todas || []).forEach((o) => {
-      const temEmpresa = !!String(o?.empresa_id || '').trim();
-      const numStr = String(o?.numero || o?.of || '0');
-      const numInt = parseInt(numStr.replace(/\D/g, ''), 10) || 0;
-      const temZZZ = /ZZZ_TESTE/i.test(
-        String(o?.clinome || '') + ' ' +
-        String(o?.descricao || '') + ' ' +
-        numStr
-      );
-      const orfa = !temEmpresa;
-      const alto = numInt >= 100000;
-      if (orfa && (alto || temZZZ)) alvos.push(o);
-      else if (temZZZ && numInt >= 2600) alvos.push(o);
-    });
-    const ids = alvos.map(o => o.id).filter(Boolean);
-    let atualizados = 0;
-    let falhas = 0;
-    for (const id of ids) {
-      try {
-        const { error: errU } = await supabase
-          .from('ofs')
-          .update({ deleted_at: agora, updated_at: agora })
-          .eq('id', id);
-        if (errU) falhas += 1;
-        else atualizados += 1;
-      } catch (_) { falhas += 1; }
-    }
-    _clearOfsCaches();
-    return res.json({
-      ok: true,
-      total_analisado: (todas || []).length,
-      total_alvos: alvos.length,
-      atualizados,
-      falhas,
-      ids_marcados: ids,
-      detalhes: alvos.map(o => ({
-        id: o.id, numero: o.numero || o.of, clinome: String(o.clinome || '').slice(0,40),
-        desc: String(o.descricao || '').slice(0,50), empresa_id: o.empresa_id,
-        criado: String(o.created_at || '').slice(0,16)
-      }))
-    });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
-  }
-});
-
-app.post('/api/_oneshot_limpar_ofs_italy_testes', [authMiddleware, requireAdmin], async (req, res) => {
-  try {
-    if (!req.usuario || String(req.usuario?.perfil || '').toLowerCase() !== 'admin') {
-      return res.status(403).json({ ok: false, error: 'Permissão negada' });
-    }
-    const agora = new Date().toISOString();
-    const empIdsItalia = new Set();
-    try {
-      const { data: emps } = await supabase.from('empresas').select('id,codigo,sigla,nome').limit(50);
-      (emps || []).forEach(e => {
-        const cod = String(e.codigo || e.sigla || '').trim().toUpperCase();
-        const nm = String(e.nome || '').toLowerCase();
-        if (cod === 'E1' || nm.includes('italy')) empIdsItalia.add(String(e.id || '').trim());
-      });
-    } catch (_) {}
-    const q = supabase
-      .from('ofs')
-      .select('id,numero,of,clinome,descricao,empresa_id,emp_id,deleted_at,created_at')
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
-    const { data: todas, error: errTodas } = await q;
-    if (errTodas) throw errTodas;
-    const alvos = [];
-    const empIdArr = Array.from(empIdsItalia).filter(Boolean);
-    (todas || []).forEach((o) => {
-      const numStr = String(o?.numero || o?.of || '0');
-      const numInt = parseInt(numStr.replace(/\D/g, ''), 10) || 0;
-      const temZZZ = /ZZZ_TESTE/i.test(
-        String(o?.clinome || '') + ' ' +
-        String(o?.descricao || '') + ' ' +
-        numStr
-      );
-      const empEmp = String(o?.empresa_id || '').trim();
-      const empLeg = String(o?.emp_id || '').trim().toUpperCase();
-      const pertenceItaly = (empEmp && empIdsItalia.has(empEmp)) || empLeg === 'E1';
-      if (!pertenceItaly) return;
-      if (numInt >= 100000) alvos.push(o);
-      else if (temZZZ) alvos.push(o);
-    });
-    const ids = alvos.map(o => o.id).filter(Boolean);
-    let atualizados = 0;
-    let falhas = 0;
-    for (const id of ids) {
-      try {
-        const { error: errU } = await supabase
-          .from('ofs')
-          .update({ deleted_at: agora, updated_at: agora })
-          .eq('id', id);
-        if (errU) falhas += 1;
-        else atualizados += 1;
-      } catch (_) { falhas += 1; }
-    }
-    _clearOfsCaches();
-    return res.json({
-      ok: true,
-      italy_emp_ids: empIdArr,
-      total_analisado: (todas || []).length,
-      total_alvos: alvos.length,
-      atualizados,
-      falhas,
-      ids_marcados: ids,
-      detalhes: alvos.map(o => ({
-        id: o.id, numero: o.numero || o.of, clinome: String(o.clinome || '').slice(0, 40),
-        desc: String(o.descricao || '').slice(0, 60), empresa_id: o.empresa_id, emp_id: o.emp_id,
-        criado: String(o.created_at || '').slice(0, 16)
-      }))
-    });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
@@ -6264,6 +5977,22 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     delete filtered.id;
     if ((filtered.of == null || String(filtered.of || '').trim() === '') && (filtered.numero == null || String(filtered.numero || '').trim() === '')) {
       try {
+        const proximoNumeroOF = async (empresa_id) => {
+          const { data, error } = await supabase
+            .from('ofs')
+            .select('numero')
+            .eq('empresa_id', empresa_id)
+            .order('created_at', { ascending: false })
+            .limit(200);
+          if (error) throw error;
+          let maior = 0;
+          (data || []).forEach((o) => {
+            const n = parseInt(String(o?.numero || '').replace(/\D/g, ''), 10) || 0;
+            if (n > maior) maior = n;
+          });
+          return maior + 1;
+        };
+
         const { data: last } = await supabase
           .from('ofs')
           .select('seq,of,numero')
@@ -6274,10 +6003,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         const nextSeq = lastSeq > 0 ? (lastSeq + 1) : 1;
         filtered.seq = nextSeq;
         let numeroEmpresa = null;
-        try {
-          const calcR = await _calcularProximoNumeroOF(empresaUuid);
-          numeroEmpresa = calcR?.ok ? (parseInt(String(calcR.proximo || '0'), 10) || null) : null;
-        } catch (_) { numeroEmpresa = null; }
+        try { numeroEmpresa = await proximoNumeroOF(empresaUuid); } catch (_) { numeroEmpresa = null; }
         for (let i = 0; i < 5; i += 1) {
           const cand = String((numeroEmpresa != null ? numeroEmpresa : nextSeq) + i);
           const { data: exists } = await supabase
@@ -6301,14 +6027,9 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       };
       let merged = { ...(body || {}), ...(filtered || {}) };
       const cliRef = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
-      const empRef = String(empresaUuid || merged.empresa_id || merged.empId || merged.emp_id || '').trim() || null;
-      const cliResolved = cliRef ? await _resolverClienteIdentidadeOF(cliRef, { empresa_id: empRef }) : null;
+      const cliResolved = cliRef ? await _resolverClienteIdentidadeOF(cliRef) : null;
       if (cliRef && !cliResolved) {
-        return res.status(400).json({ ok: false, error: `Cliente inválido: não encontramos nenhum cliente correspondente a "${cliRef}". Digite e selecione um cliente válido da lista de sugestões.`, missing: ['cliente'], ref: cliRef });
-      }
-      if (cliRef && cliResolved && cliResolved.ambiguo) {
-        const candidatos = (cliResolved.candidatos || []).map(c => c?.nome || '').filter(Boolean).slice(0, 6).join(' | ');
-        return res.status(400).json({ ok: false, error: `Cliente ambíguo: ${cliResolved.qtd} clientes corresponderam a "${cliRef}". Selecione exatamente um cliente da lista de sugestões.${candidatos ? ' Opções: ' + candidatos : ''}`, missing: ['cliente'], ref: cliRef, qtd: cliResolved.qtd, candidatos: cliResolved.candidatos || [] });
+        return res.status(400).json({ ok: false, error: 'Cliente inválido. Selecione um cliente válido antes de salvar.', missing: ['cliente'] });
       }
       if (merged.vend_id !== undefined) {
         if (!String(merged.vendedor_id ?? '').trim()) merged.vendedor_id = merged.vend_id;
@@ -11977,289 +11698,6 @@ app.get('/api/cnpj/:cnpj', authMiddleware, async (req, res) => {
   try { return await _cnpjLookupHandler(req, res); } catch (e) { return err(res, e); }
 });
 
-/* =========================================================================
- * HELPERS COMPARTILHADOS: Contagem de OFs por Cliente (Listagem + Painel)
- * Usados por GET /api/clientes E GET /api/clientes/:id/painel
- * Objetivo: mesma lógica do painel, sem duplicação, 1 query em lote.
- * ========================================================================= */
-const UUID_RE_CLIENTES = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const COLUNAS_ID_OF = ['cli_id', 'cliId', 'cliente_id'];
-const COLUNAS_NOME_OF = ['cliente', 'cli_nome', 'cliente_nome', 'cliNome'];
-function ofIdClientes(o) {
-  if (o == null) return JSON.stringify(null);
-  try {
-    if (o.id != null) return String(o.id);
-    if (o.of_id != null) return String(o.of_id);
-    if (o.codigo != null) return String(o.codigo);
-    if (o.numero != null) return String(o.numero);
-    if (o.n_of != null) return String(o.n_of);
-  } catch (_) {}
-  try { return JSON.stringify(o || null); } catch (_) { return String(o || ''); }
-}
-function mergePreserveNonNullClientes(a, b) {
-  if (!a || typeof a !== 'object') return b;
-  if (!b || typeof b !== 'object') return a || b;
-  const out = Array.isArray(a) ? a.slice() : Object.assign({}, a);
-  for (const k of Object.keys(b)) {
-    const v = b[k];
-    if (!(k in out) || out[k] === null || out[k] === undefined || out[k] === '') {
-      out[k] = v;
-    } else if (v && typeof v === 'object' && !Array.isArray(v) && out[k] && typeof out[k] === 'object' && !Array.isArray(out[k])) {
-      out[k] = mergePreserveNonNullClientes(out[k], v);
-    }
-  }
-  return out;
-}
-function isMissingColumnErrClientes(error) {
-  const msg = String(error?.message || error || '').toLowerCase();
-  return msg.includes('column') || msg.includes('could not find');
-}
-function _normIdCli(v) { return String(v || '').trim().toLowerCase(); }
-function _normStrCli(s) {
-  let v = String(s || '').trim().toLowerCase();
-  try { v = v.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
-  v = v.replace(/\s+/g, ' ').trim();
-  return v;
-}
-let _cacheOfsTodasRaw = { ts: 0, data: null };
-const _CACHE_OFS_TTL_MS = 3 * 60 * 1000;
-async function _carregarTodasOfsNaoDeletadasParaClientes() {
-  const agora = Date.now();
-  if (_cacheOfsTodasRaw && _cacheOfsTodasRaw.data && (agora - _cacheOfsTodasRaw.ts) < _CACHE_OFS_TTL_MS) {
-    return _cacheOfsTodasRaw.data;
-  }
-  const cols = ['id','of_id','codigo','numero','n_of', ...COLUNAS_ID_OF, ...COLUNAS_NOME_OF, 'deleted_at'].join(',');
-  try {
-    let from = 0;
-    const pageSize = 5000;
-    const todos = [];
-    while (true) {
-      const q = supabase.from('ofs').select(cols).is('deleted_at', null).range(from, from + pageSize - 1);
-      const { data, error } = await q;
-      if (error) {
-        if (isMissingColumnErrClientes(error)) {
-          const qSemCol = supabase.from('ofs').select('*').is('deleted_at', null).range(from, from + pageSize - 1);
-          const r2 = await qSemCol;
-          if (r2.error) return [];
-          const page = Array.isArray(r2.data) ? r2.data : [];
-          todos.push(...page);
-          if (page.length < pageSize) break;
-          from += pageSize;
-          continue;
-        }
-        return [];
-      }
-      const page = Array.isArray(data) ? data : [];
-      todos.push(...page);
-      if (page.length < pageSize) break;
-      from += pageSize;
-    }
-    _cacheOfsTodasRaw = { ts: Date.now(), data: todos };
-    return todos;
-  } catch (_) { return []; }
-}
-function _matchesOfToCliente(of, cliente, outOfIdsDedup) {
-  const cId = _normIdCli(cliente?.id);
-  const pareceUuid = UUID_RE_CLIENTES.test(cId);
-  const cNome = _normStrCli(cliente?.nome || cliente?.rs || cliente?.razao_social || cliente?.razao || cliente?.cliente_nome || '');
-  const ofKey = ofIdClientes(of);
-  if (outOfIdsDedup && outOfIdsDedup.has(ofKey)) return false;
-  let match = false;
-  for (const col of COLUNAS_ID_OF) {
-    const v = _normIdCli(of?.[col]);
-    if (!v) continue;
-    if (v === cId) { match = true; break; }
-    if (!pareceUuid && v.includes(cId) && cId && cId.length >= 2) { match = true; break; }
-  }
-  if (!match && cNome && cNome.length >= 3) {
-    for (const col of COLUNAS_NOME_OF) {
-      const v = _normStrCli(of?.[col]);
-      if (!v) continue;
-      if (v.includes(cNome) || cNome.includes(v)) { match = true; break; }
-    }
-  }
-  if (match && outOfIdsDedup) outOfIdsDedup.add(ofKey);
-  return match;
-}
-async function _contarOfsParaClientesLote(clientes) {
-  const base = Array.isArray(clientes) ? clientes : [];
-  const out = new Map();
-  base.forEach((c) => {
-    out.set(_normIdCli(c?.id), { cliente: c, total_ofs: 0, ofsIds: new Set() });
-  });
-  if (!base.length) return out;
-  const ofsTodas = await _carregarTodasOfsNaoDeletadasParaClientes();
-  const ofsArr = Array.isArray(ofsTodas) ? ofsTodas : [];
-  for (const ofRec of ofsArr) {
-    for (const [, bucket] of out) {
-      if (_matchesOfToCliente(ofRec, bucket.cliente, bucket.ofsIds)) {
-        bucket.total_ofs = bucket.ofsIds.size;
-      }
-    }
-  }
-  return out;
-}
-async function _contarOfsUnicoClienteComOfs(clienteId, clienteObj, ofsTodas) {
-  const mergedMap = new Map();
-  if (!ofsTodas) ofsTodas = await _carregarTodasOfsNaoDeletadasParaClientes();
-  if (!clienteObj && clienteId) {
-    try {
-      const rc = await supabase.from('clientes').select('id,nome,rs,razao_social,razao,cliente_nome').eq('id', clienteId).maybeSingle();
-      if (!rc?.error) clienteObj = rc?.data || null;
-    } catch (_) { clienteObj = null; }
-  }
-  const cId = _normIdCli(clienteId || clienteObj?.id || '');
-  const pareceUuid = UUID_RE_CLIENTES.test(cId);
-  const cNome = clienteObj
-    ? _normStrCli(clienteObj?.nome || clienteObj?.rs || clienteObj?.razao_social || clienteObj?.razao || clienteObj?.cliente_nome || '')
-    : '';
-  const ofsArr2 = Array.isArray(ofsTodas) ? ofsTodas : [];
-  for (const ofRec of ofsArr2) {
-    let bate = false;
-    for (const col of COLUNAS_ID_OF) {
-      const v = _normIdCli(ofRec?.[col]);
-      if (!v) continue;
-      if (v === cId) { bate = true; break; }
-      if (cId && !pareceUuid && v.includes(cId) && cId.length >= 2) { bate = true; break; }
-    }
-    if (!bate && cNome && cNome.length >= 3) {
-      for (const col of COLUNAS_NOME_OF) {
-        const v = _normStrCli(ofRec?.[col]);
-        if (!v) continue;
-        if (v.includes(cNome) || cNome.includes(v)) { bate = true; break; }
-      }
-    }
-    if (bate) {
-      try {
-        const key = ofIdClientes(ofRec);
-        const existing = mergedMap.get(key);
-        mergedMap.set(key, existing ? mergePreserveNonNullClientes(existing, ofRec) : ofRec);
-      } catch (_) {}
-    }
-  }
-  return Array.from(mergedMap.values());
-}
-let _cacheContadorOfsPorCliente = Object.create(null);
-const _CACHE_CONTADOR_OFS_TTL_MS = 3 * 60 * 1000;
-async function _sharedBuscarOfsCompleta(clienteId, clienteObj, options) {
-  try {
-    const selectMode = options?.selectMode || 'count';
-    const cols = '*';
-    const limiteOfs = Number(options?.limite || 1000);
-    const tryQueryEq = async (col) => {
-      try {
-        return await supabase
-          .from('ofs')
-          .select(cols)
-          .eq(col, clienteId)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(limiteOfs);
-      } catch (e) { return { data: null, error: e }; }
-    };
-    const tryQueryIlike = async (col, pattern) => {
-      try {
-        return await supabase
-          .from('ofs')
-          .select(cols)
-          .ilike(col, pattern)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(limiteOfs);
-      } catch (e) { return { data: null, error: e }; }
-    };
-    const mergedMap = new Map();
-    for (const col of COLUNAS_ID_OF) {
-      const { data, error } = await tryQueryEq(col);
-      if (error) { if (isMissingColumnErrClientes(error)) continue; throw error; }
-      const arr = Array.isArray(data) ? data : [];
-      for (const o of arr) {
-        try {
-          const key = ofIdClientes(o);
-          const existing = mergedMap.get(key);
-          mergedMap.set(key, existing ? mergePreserveNonNullClientes(existing, o) : o);
-        } catch (_) {}
-      }
-    }
-    const clientePareceUuid = clienteId && UUID_RE_CLIENTES.test(String(clienteId || '').trim());
-    if (!clientePareceUuid) {
-      for (const col of COLUNAS_ID_OF) {
-        const { data, error } = await tryQueryIlike(col, clienteId);
-        if (error) { if (isMissingColumnErrClientes(error)) continue; throw error; }
-        const arr = Array.isArray(data) ? data : [];
-        for (const o of arr) {
-          try {
-            const key = ofIdClientes(o);
-            const existing = mergedMap.get(key);
-            mergedMap.set(key, existing ? mergePreserveNonNullClientes(existing, o) : o);
-          } catch (_) {}
-        }
-      }
-    }
-    const nomeClienteRaw = clienteObj
-      ? String(clienteObj?.nome || clienteObj?.rs || clienteObj?.razao_social || clienteObj?.razao || clienteObj?.cliente_nome || '').trim()
-      : '';
-    const nomeCliente = nomeClienteRaw.replace(/\s+/g, ' ').trim();
-    if (nomeCliente && nomeCliente.length >= 3) {
-      const pattern = '%' + nomeCliente + '%';
-      for (const col of COLUNAS_NOME_OF) {
-        const { data, error } = await tryQueryIlike(col, pattern);
-        if (error) { if (isMissingColumnErrClientes(error)) continue; }
-        const arr = Array.isArray(data) ? data : [];
-        for (const o of arr) {
-          try {
-            const key = ofIdClientes(o);
-            const existing = mergedMap.get(key);
-            mergedMap.set(key, existing ? mergePreserveNonNullClientes(existing, o) : o);
-          } catch (_) {}
-        }
-      }
-    }
-    return mergedMap;
-  } catch (e) {
-    console.error('[SHARED OFS CLIENTE ERRO]', String(e?.message || e));
-    return new Map();
-  }
-}
-async function _sharedContarOfsClienteCached(cliente) {
-  try {
-    const id = String(cliente?.id || '').trim();
-    if (!id) return 0;
-    const agora = Date.now();
-    const cacheKey = 'cnt_ofs_' + id;
-    if (_cacheContadorOfsPorCliente?.[cacheKey] && (agora - _cacheContadorOfsPorCliente[cacheKey].ts) < _CACHE_CONTADOR_OFS_TTL_MS) {
-      return Number(_cacheContadorOfsPorCliente[cacheKey].n || 0);
-    }
-    const mergedMap = await _sharedBuscarOfsCompleta(id, cliente, { selectMode: 'count', limite: 1000 });
-    const n = Number(mergedMap?.size || 0);
-    try { _cacheContadorOfsPorCliente[cacheKey] = { ts: Date.now(), n }; } catch (_) {}
-    return n;
-  } catch (_) { return 0; }
-}
-async function _sharedProcessarListaComConcorrenciaLimitada(clientes, concorrencia) {
-  const base = Array.isArray(clientes) ? clientes : [];
-  if (!base.length) return base;
-  const maxConcurrent = Math.max(1, Math.min(Number(concorrencia || 8), 16));
-  const out = new Array(base.length);
-  let idx = 0;
-  const worker = async () => {
-    while (true) {
-      const i = idx++;
-      if (i >= base.length) return;
-      const c = base[i];
-      const n = await _sharedContarOfsClienteCached(c);
-      out[i] = { ...c, total_ofs: Number(n || 0) };
-    }
-  };
-  const workers = [];
-  for (let w = 0; w < maxConcurrent; w++) workers.push(worker());
-  await Promise.all(workers);
-  return out;
-}
-/* =========================================================================
- * FIM HELPERS COMPARTILHADOS
- * ========================================================================= */
-
 app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
@@ -12304,9 +11742,29 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const enrichClientesWithOfs = async (rows) => {
       const base = Array.isArray(rows) ? rows.map((r) => ({ ...r })) : [];
       if (!base.length) return base;
-      const conc = base.length <= 30 ? 8 : (base.length <= 200 ? 6 : 4);
-      console.debug('[CLIENTES] total:', base.length, 'clientes | concorrencia workers para contar OFs:', conc);
-      const withCounts = await _sharedProcessarListaComConcorrenciaLimitada(base, conc);
+      const mapaOfs = Object.create(null);
+      const normId = (v) => String(v || '').trim().toLowerCase();
+      const specs = [
+        { select: 'cli_id', col: 'cli_id', key: 'cli_id' },
+        { select: 'cliId', col: 'cliId', key: 'cliId' },
+        { select: 'cliente_id', col: 'cliente_id', key: 'cliente_id' },
+      ];
+      for (const spec of specs) {
+        try {
+          const { data, error } = await supabase.from('ofs').select(spec.select).not(spec.col, 'is', null);
+          if (error) continue;
+          (Array.isArray(data) ? data : []).forEach((of) => {
+            const cliId = normId(of?.[spec.key]);
+            if (!cliId) return;
+            mapaOfs[cliId] = (mapaOfs[cliId] || 0) + 1;
+          });
+        } catch (_) {}
+      }
+      console.debug('[CLIENTES] total:', base.length, 'clientes com OFs:', Object.keys(mapaOfs).length);
+      const withCounts = base.map((c) => ({
+        ...c,
+        total_ofs: mapaOfs[normId(c?.id)] || 0
+      }));
       withCounts.sort((a, b) => {
         const diff = Number(b?.total_ofs || 0) - Number(a?.total_ofs || 0);
         if (diff) return diff;
@@ -12350,10 +11808,6 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         const { data, error } = await fetchClientesPages(localSelect, col, localOrder, localAsc);
         if (!error) {
           const rows = await enrichClientesWithOfs(data || []);
-          // FIX: se tinha filtro de empresa, retorno 0 rows sem erro, e ainda há outras colunas de empresa para tentar → não retorna ainda, tenta próxima coluna
-          const qtdRows = Array.isArray(rows) ? rows.length : 0;
-          const temOutrasColunasEmpresa = Array.isArray(cols) && cols.length > 1 && cols[cols.length - 1] !== col;
-          if (empId && col != null && qtdRows === 0 && temOutrasColunasEmpresa) break;
           const rowsOut = applyClientSlice(rows);
           logClientes(rows);
           if (!lite) {
@@ -12591,14 +12045,155 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
     const clienteId = String(req.params.id || '').trim();
     if (!clienteId) return res.status(400).json({ ok: false, error: 'cliente_id_obrigatorio' });
 
+    let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) {}
+
+    const isMissingColumnErr = (error) => {
+      const msg = String(error?.message || error || '').toLowerCase();
+      return msg.includes('column') || msg.includes('could not find');
+    };
+
+    const tryQueryEq = async (col) => {
+      try {
+        let q = supabase
+          .from('ofs')
+          .select('*')
+          .eq(col, clienteId)
+          .order('created_at', { ascending: false })
+          .limit(1000);
+        if (empresa_id) {
+          try { q = q.eq('empresa_id', empresa_id); } catch (_) {}
+        }
+        return await q;
+      } catch (e) {
+        return { data: null, error: e };
+      }
+    };
+
+    const tryQueryIlike = async (col, pattern) => {
+      try {
+        let q = supabase
+          .from('ofs')
+          .select('*')
+          .ilike(col, pattern)
+          .order('created_at', { ascending: false })
+          .limit(1000);
+        if (empresa_id) {
+          try { q = q.eq('empresa_id', empresa_id); } catch (_) {}
+        }
+        return await q;
+      } catch (e) {
+        return { data: null, error: e };
+      }
+    };
+
+    function ofId(o) {
+      if (o == null) return JSON.stringify(null);
+      try {
+        if (o.id != null) return String(o.id);
+        if (o.of_id != null) return String(o.of_id);
+        if (o.codigo != null) return String(o.codigo);
+        if (o.numero != null) return String(o.numero);
+        if (o.n_of != null) return String(o.n_of);
+      } catch (_) {}
+      try { return JSON.stringify(o || null); } catch (_) { return String(o || ''); }
+    }
+
+    function mergePreserveNonNull(a, b) {
+      if (!a || typeof a !== 'object') return b;
+      if (!b || typeof b !== 'object') return a || b;
+      const out = Array.isArray(a) ? a.slice() : Object.assign({}, a);
+      for (const k of Object.keys(b)) {
+        const v = b[k];
+        if (!(k in out) || out[k] === null || out[k] === undefined || out[k] === '') {
+          out[k] = v;
+        } else if (v && typeof v === 'object' && !Array.isArray(v) && out[k] && typeof out[k] === 'object' && !Array.isArray(out[k])) {
+          out[k] = mergePreserveNonNull(out[k], v);
+        }
+      }
+      return out;
+    }
+
     let cliente = null;
     try {
-      const qc = supabase.from('clientes').select('id,nome,rs,razao_social,razao,cliente_nome').eq('id', clienteId).maybeSingle();
+      let qc = supabase.from('clientes').select('id,nome,rs,razao_social,razao,cliente_nome').eq('id', clienteId).maybeSingle();
+      if (empresa_id) {
+        try { qc = qc.eq('empresa_id', empresa_id); } catch (_) {}
+      }
       const rc = await qc;
       if (!rc?.error) cliente = rc?.data || null;
     } catch (_) {}
 
-    const mergedMap = await _sharedBuscarOfsCompleta(clienteId, cliente, { selectMode: 'full', limite: 1000 });
+    const mergedMap = new Map();
+    let lastErr = null;
+
+    for (const col of ['cli_id', 'cliId', 'cliente_id']) {
+      const { data, error } = await tryQueryEq(col);
+      if (!error) {
+        lastErr = null;
+        const arr = Array.isArray(data) ? data : [];
+        for (const o of arr) {
+          try {
+            const key = ofId(o);
+            const existing = mergedMap.get(key);
+            mergedMap.set(key, existing ? mergePreserveNonNull(existing, o) : o);
+          } catch (_) {}
+        }
+      } else {
+        lastErr = error;
+        if (isMissingColumnErr(error)) continue;
+        throw error;
+      }
+    }
+
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const clientePareceUuid = clienteId && UUID_RE.test(String(clienteId || '').trim());
+    if (!clientePareceUuid) {
+      for (const col of ['cli_id', 'cliId', 'cliente_id']) {
+        const { data, error } = await tryQueryIlike(col, clienteId);
+        if (!error) {
+          lastErr = null;
+          const arr = Array.isArray(data) ? data : [];
+          for (const o of arr) {
+            try {
+              const key = ofId(o);
+              const existing = mergedMap.get(key);
+              mergedMap.set(key, existing ? mergePreserveNonNull(existing, o) : o);
+            } catch (_) {}
+          }
+        } else {
+          lastErr = error;
+          if (isMissingColumnErr(error)) continue;
+          throw error;
+        }
+      }
+    }
+
+    const nomeClienteRaw = cliente
+      ? String(cliente?.nome || cliente?.rs || cliente?.razao_social || cliente?.razao || cliente?.cliente_nome || '').trim()
+      : '';
+    const nomeCliente = nomeClienteRaw.replace(/\s+/g, ' ').trim();
+    if (nomeCliente && nomeCliente.length >= 3) {
+      const pattern = '%' + nomeCliente + '%';
+      for (const col of ['cliente', 'cli_nome', 'cliente_nome', 'cliNome']) {
+        const { data, error } = await tryQueryIlike(col, pattern);
+        if (!error) {
+          lastErr = null;
+          const arr = Array.isArray(data) ? data : [];
+          for (const o of arr) {
+            try {
+              const key = ofId(o);
+              const existing = mergedMap.get(key);
+              mergedMap.set(key, existing ? mergePreserveNonNull(existing, o) : o);
+            } catch (_) {}
+          }
+        } else {
+          if (isMissingColumnErr(error)) continue;
+          lastErr = error;
+        }
+      }
+    }
+
     let todas = Array.from(mergedMap.values()).sort((a, b) => {
       try {
         const ta = a?.created_at?.time ? a.created_at.time : (new Date(String(a?.created_at || 0)).getTime() || 0);
@@ -12606,6 +12201,7 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
         return tb - ta;
       } catch (_) { return 0; }
     });
+    if (lastErr && todas.length === 0) throw lastErr;
 
     const norm = (s) => {
       let v = String(s || '').trim().toLowerCase();
