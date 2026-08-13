@@ -35423,37 +35423,20 @@ async function carregarClientes(forcar=false){
     }
   }catch(e){}
   if(!forcar && (now - _ultimaCargaClientes) < CACHE_TTL && Array.isArray(CLIENTES) && CLIENTES.length > 0) { _clientesCarregados = true; return { ok:true, cached:true, data:CLIENTES }; }
-  const empId = String(typeof EMP_FILTRO !== 'undefined' ? (EMP_FILTRO || '') : '').trim();
-  const all = [];
-  let r = null;
-  const chunkLimit = 500;
-  const maxPages = 5;
-  for(let page=0; page<maxPages; page++){
-    const url = '/clientes?lite=1&limit=' + chunkLimit + '&offset=' + (page*chunkLimit) + '&nocache=1&order=created_at&dir=desc' + (empId ? ('&empId='+encodeURIComponent(empId)) : '');
-    const cur = await api('GET', url);
-    if (cur && (cur.ok || Array.isArray(cur) || Array.isArray(cur?.data))) {
-      const arr = Array.isArray(cur) ? cur : (Array.isArray(cur?.data) ? cur.data : []);
-      if (Array.isArray(arr) && arr.length) all.push(...arr);
-      r = cur || { ok:true };
-      if (!Array.isArray(arr) || arr.length < chunkLimit) break;
-      continue;
-    }
-    if (cur) r = cur;
-    if (!cur || !cur.ok) break;
-  }
-  if(all.length > 0){
-    CLIENTES = all.map(normalizeCli).filter((c, idx, arr) =>
+  let url = '/clientes?lite=1';
+  if(EMP_FILTRO) url += '&empId='+encodeURIComponent(EMP_FILTRO);
+  const r = await api('GET', url);
+  if(r && r.ok && r.data && r.data.length) {
+    CLIENTES = r.data.map(normalizeCli);
+    CLIENTES = (CLIENTES || []).filter((c, idx, arr) =>
       arr.findIndex(x => String(x.id||'') === String(c.id||'')) === idx
     );
     _clientesCarregados = true;
     try{ _fireListLoaded('clientes'); }catch(e){}
-    try{ console.log('[carregarClientes] paginado total:', CLIENTES.length, 'páginas carregadas:', all.length ? Math.ceil(all.length/chunkLimit) : 0); }catch(_){}
-    _ultimaCargaClientes = Date.now();
-  } else if (r && r.ok && !forcar) {
-    try{ console.warn('[carregarClientes] retorno vazio da API, usando fallback existente:', CLIENTES?.length || 0); }catch(_){}
   }
+  if(r && r.ok) _ultimaCargaClientes = Date.now();
   try{ window._CLIENTES = CLIENTES; }catch(e){}
-  return r || { ok:true, data:CLIENTES };
+  return r;
 }
 async function carregarOperadores(){
   const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';

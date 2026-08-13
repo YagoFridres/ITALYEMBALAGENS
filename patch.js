@@ -16588,54 +16588,17 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
   async function _hubFetchTotalGeral() {
     try {
       if (window.__hubTotalFetchErro) return null;
-      if (window.__hubTotalFetchInFlight) return window.__hubTotalFetchInFlight;
       var cache = window._hubTotalGeralCache || null;
       if (cache && cache.done && cache.data) return cache.data;
       var token = _hubToken();
-      var controller = null;
-      var timeoutId = null;
-      try {
-        if (typeof AbortController === 'function') {
-          controller = new AbortController();
-          timeoutId = setTimeout(function() {
-            try { controller.abort(); } catch (_) {}
-          }, 20000);
-        }
-      } catch (_) {}
-      var reqPromise = fetch('/api/dashboard/total-geral', {
-        headers: token ? { Authorization: 'Bearer ' + token } : {},
-        signal: controller ? controller.signal : undefined
-      });
-      var timeoutPromise = new Promise(function(_, reject) {
-        setTimeout(function() { reject(new Error('hub_total_timeout')); }, 20500);
-      });
-      window.__hubTotalFetchInFlight = (async function() {
-        try {
-          var resp;
-          try {
-            resp = await Promise.race([reqPromise, timeoutPromise]);
-          } catch (raceErr) {
-            window.__hubTotalFetchErro = true;
-            return null;
-          } finally {
-            try { clearTimeout(timeoutId); } catch (_) {}
-          }
-          var json = await resp.json().catch(function() { return null; });
-          if (!resp.ok || !json || json.ok === false) {
-            window.__hubTotalFetchErro = true;
-            return null;
-          }
-          window._hubTotalGeralCache = { ts: Date.now(), data: json, done: true };
-          try { window.__hubTotalFetchSucesso = true; } catch (_) {}
-          return json;
-        } catch (_) {
-          window.__hubTotalFetchErro = true;
-          return null;
-        } finally {
-          try { delete window.__hubTotalFetchInFlight; } catch (_) { window.__hubTotalFetchInFlight = null; }
-        }
-      })();
-      return window.__hubTotalFetchInFlight;
+      var resp = await fetch('/api/dashboard/total-geral', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var json = await resp.json().catch(function() { return null; });
+      if (!resp.ok || !json || json.ok === false) {
+        window.__hubTotalFetchErro = true;
+        return null;
+      }
+      window._hubTotalGeralCache = { ts: Date.now(), data: json, done: true };
+      return json;
     } catch (_) {
       window.__hubTotalFetchErro = true;
       return null;
@@ -25444,104 +25407,65 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (!window.__salvarOfRapida_BASE__) return false;
       if (!window.__salvarOfRapida_final_definida__) {
         var finalFn = async function() {
-          if (window.__SALVAR_OF_RAPIDA_IN_PROGRESS) return;
-          window.__SALVAR_OF_RAPIDA_IN_PROGRESS = true;
-          try {
-            var btnEl = document.getElementById('btn-salvar-of-rapida');
+          var hooks = Array.isArray(window.__salvarOfRapida_hooks__) ? window.__salvarOfRapida_hooks__.slice() : [];
+          hooks.sort(function(a, b) {
+            var ao = Number(a && a.order || 0) || 0;
+            var bo = Number(b && b.order || 0) || 0;
+            if (ao !== bo) return ao - bo;
+            return String(a && a.id || '').localeCompare(String(b && b.id || ''));
+          });
+          var args = Array.prototype.slice.call(arguments);
+          var meta = {
+            args: args,
+            context: this,
+            editandoIdAntes: (typeof window.__getOfRapidaEditingId === 'function')
+              ? window.__getOfRapidaEditingId()
+              : String(window._ofRapidaEditandoId || '').trim(),
+            ts: Date.now(),
+          };
+          var result;
+          var handled = false;
+          for (var i = 0; i < hooks.length; i += 1) {
+            var hook = hooks[i];
+            if (!hook || hook.phase !== 'override' || typeof hook.fn !== 'function') continue;
             try {
-              if (btnEl) {
-                btnEl.disabled = true;
-                btnEl.setAttribute('data-original-text', String(btnEl.textContent || '⚡ Salvar OF'));
-                btnEl.style.opacity = '0.7';
-                btnEl.style.cursor = 'not-allowed';
-                btnEl.textContent = 'Salvando...';
+              var overrideResult = await hook.fn.call(this, meta);
+              if (overrideResult && overrideResult.__salvarOfRapidaHandled__) {
+                result = overrideResult.result;
+                handled = true;
+                break;
               }
-            } catch (_) {}
-            var hooks = Array.isArray(window.__salvarOfRapida_hooks__) ? window.__salvarOfRapida_hooks__.slice() : [];
-            hooks.sort(function(a, b) {
-              var ao = Number(a && a.order || 0) || 0;
-              var bo = Number(b && b.order || 0) || 0;
-              if (ao !== bo) return ao - bo;
-              return String(a && a.id || '').localeCompare(String(b && b.id || ''));
-            });
-            var args = Array.prototype.slice.call(arguments);
-            var meta = {
-              args: args,
-              context: this,
-              editandoIdAntes: (typeof window.__getOfRapidaEditingId === 'function')
-                ? window.__getOfRapidaEditingId()
-                : String(window._ofRapidaEditandoId || '').trim(),
-              ts: Date.now(),
-            };
-            var result;
-            var handled = false;
-            for (var i = 0; i < hooks.length; i += 1) {
-              var hook = hooks[i];
-              if (!hook || hook.phase !== 'override' || typeof hook.fn !== 'function') continue;
-              try {
-                var overrideResult = await hook.fn.call(this, meta);
-                if (overrideResult && overrideResult.__salvarOfRapidaHandled__) {
-                  result = overrideResult.result;
-                  handled = true;
-                  break;
-                }
-              } catch (e) {
-                try { console.error('[salvarOfRapida][override hook]', hook.id, e); } catch (_) {}
-              }
+            } catch (e) {
+              try { console.error('[salvarOfRapida][override hook]', hook.id, e); } catch (_) {}
             }
-            if (!handled) {
-              var shouldAbortEarly = false;
-              for (var j = 0; j < hooks.length; j += 1) {
-                var beforeHook = hooks[j];
-                if (!beforeHook || beforeHook.phase !== 'before' || typeof beforeHook.fn !== 'function') continue;
-                try {
-                  var beforeResult = await beforeHook.fn.call(this, meta);
-                  if (beforeResult && beforeResult.__salvarOfRapidaHandled__) {
-                    shouldAbortEarly = true;
-                    result = beforeResult.result;
-                    break;
-                  }
-                } catch (e) {
-                  try { console.error('[salvarOfRapida][before hook]', beforeHook.id, e); } catch (_) {}
-                }
-              }
-              if (!shouldAbortEarly) {
-                result = await window.__salvarOfRapida_BASE__.apply(this, args);
-              }
-            }
-            meta.result = result;
-            meta.handled = handled;
-            for (var k = 0; k < hooks.length; k += 1) {
-              var afterHook = hooks[k];
-              if (!afterHook || afterHook.phase !== 'after' || typeof afterHook.fn !== 'function') continue;
-              try {
-                await afterHook.fn.call(this, meta);
-              } catch (e) {
-                try { console.error('[salvarOfRapida][after hook]', afterHook.id, e); } catch (_) {}
-              }
-            }
-            return result;
-          } catch (outerErr) {
-            try { console.error('[salvarOfRapida][dispatcher]', outerErr && (outerErr.stack || outerErr.message) || outerErr); } catch (_) {}
-            throw outerErr;
-          } finally {
-            try {
-              if (btnEl) {
-                btnEl.disabled = false;
-                btnEl.style.opacity = '';
-                btnEl.style.cursor = '';
-                try {
-                  if (btnEl.getAttribute('data-original-text')) {
-                    btnEl.textContent = btnEl.getAttribute('data-original-text') || '⚡ Salvar OF';
-                  } else if (btnEl.textContent === 'Salvando...') {
-                    btnEl.textContent = '⚡ Salvar OF';
-                  }
-                } catch (_) {}
-                try { btnEl.removeAttribute('data-original-text'); } catch (_) {}
-              }
-            } catch (_) {}
-            try { delete window.__SALVAR_OF_RAPIDA_IN_PROGRESS; } catch (_) { window.__SALVAR_OF_RAPIDA_IN_PROGRESS = false; }
           }
+          if (!handled) {
+            for (var j = 0; j < hooks.length; j += 1) {
+              var beforeHook = hooks[j];
+              if (!beforeHook || beforeHook.phase !== 'before' || typeof beforeHook.fn !== 'function') continue;
+              try {
+                var beforeResult = await beforeHook.fn.call(this, meta);
+                if (beforeResult && beforeResult.__salvarOfRapidaHandled__) {
+                  return beforeResult.result;
+                }
+              } catch (e) {
+                try { console.error('[salvarOfRapida][before hook]', beforeHook.id, e); } catch (_) {}
+              }
+            }
+            result = await window.__salvarOfRapida_BASE__.apply(this, args);
+          }
+          meta.result = result;
+          meta.handled = handled;
+          for (var k = 0; k < hooks.length; k += 1) {
+            var afterHook = hooks[k];
+            if (!afterHook || afterHook.phase !== 'after' || typeof afterHook.fn !== 'function') continue;
+            try {
+              await afterHook.fn.call(this, meta);
+            } catch (e) {
+              try { console.error('[salvarOfRapida][after hook]', afterHook.id, e); } catch (_) {}
+            }
+          }
+          return result;
         };
         finalFn.__salvarOfRapidaDispatcher = true;
         window.__salvarOfRapida_final_fn__ = finalFn;
