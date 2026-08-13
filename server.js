@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260812223000';
-const SW_RUNTIME_VERSION = '20260812223000';
+const PATCH_RUNTIME_VERSION = '20260812215000';
+const SW_RUNTIME_VERSION = '20260812215000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5688,55 +5688,6 @@ app.get('/api/_diag_proxnum', [authMiddleware, requireAdmin], async (req, res) =
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
-});
-app.post('/api/_dbg_proxnum_inline_post', [authMiddleware, requireAdmin], async (req, res) => {
-  try {
-    const empresaCtx = await _resolveEmpresaMutationContext(req, req.body || {});
-    const empresaUuid = String(empresaCtx?.empresa_id || '').trim();
-    const empLegacy = String(empresaCtx?.emp_id || '').trim();
-    const info = { empresaUuid, empLegacy, calc_ok: false, calc_val: null, calc_raw: null, calc_err: null, seq_last: null, nextSeq: null, siglaLegadaEmp: null, tentativas: [] };
-    if (!empresaUuid) return res.status(400).json({ ok: false, error: 'Empresa inválida' });
-    const { data: last } = await supabase.from('ofs').select('seq,of,numero').order('seq', { ascending: false }).limit(1).maybeSingle();
-    info.seq_last = last?.seq || null;
-    info.nextSeq = Math.trunc(Number(last?.seq || 0) || 0) + 1;
-    let numeroEmpresa = null;
-    try {
-      const calcR = await _calcularProximoNumeroOF(empresaUuid, true);
-      info.calc_raw = calcR;
-      if (calcR?.ok) { numeroEmpresa = parseInt(String(calcR.proximo || '0'), 10) || null; info.calc_ok = true; info.calc_val = numeroEmpresa; } else { info.calc_err = calcR?.erro || 'N_OK'; }
-    } catch (e) { info.calc_err = String(e?.message || e); }
-    let siglaLegadaEmp = null;
-    if (empresaUuid === 'df5f7672-0a6b-402d-ae65-296554236c31') siglaLegadaEmp = 'E1';
-    else if (empresaUuid) try { const { data: rr } = await supabase.from('empresas').select('id,codigo,sigla').eq('id', empresaUuid).limit(1).maybeSingle(); if (rr?.codigo) siglaLegadaEmp = rr.codigo; else if (rr?.sigla) siglaLegadaEmp = rr.sigla; } catch (_) {}
-    info.siglaLegadaEmp = siglaLegadaEmp;
-    let escolhido = null;
-    for (let i = 0; i < 12; i++) {
-      const cand = String((numeroEmpresa != null ? numeroEmpresa : info.nextSeq) + i);
-      const ten = { i, cand, qEx: null, conflito: null, emp_matches: [] };
-      try {
-        let qc = supabase.from('ofs').select('id,numero,of,of_num,empresa_id,emp_id,deleted_at').is('deleted_at', null);
-        if (siglaLegadaEmp) qc = qc.or(`empresa_id.eq.${empresaUuid},emp_id.eq.${siglaLegadaEmp}`);
-        else qc = qc.eq('empresa_id', empresaUuid);
-        qc = qc.or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand}`).limit(3);
-        const { data: ex } = await qc;
-        ten.qEx = Array.isArray(ex) ? ex.length : null;
-        const conflitaDentroEmpresa = (Array.isArray(ex) ? ex : []).some((r) => {
-          if (r?.deleted_at) return false;
-          if (siglaLegadaEmp) {
-            const okEmp = String(r?.empresa_id || '') === String(empresaUuid) || String(r?.emp_id || '') === String(siglaLegadaEmp);
-            if (!okEmp) return false;
-          } else { if (String(r?.empresa_id || '') !== String(empresaUuid)) return false; }
-          const nums = [String(r?.numero ?? ''), String(r?.of ?? ''), String(r?.of_num ?? ''), String(r?.numero_of ?? '')];
-          return nums.includes(String(cand));
-        });
-        ten.conflito = conflitaDentroEmpresa;
-        ten.emp_matches = (ex || []).map(r => ({ id: String(r?.id || '').slice(0, 10), n: r?.numero, empresa_id: String(r?.empresa_id || '').slice(0, 10), emp_id: r?.emp_id || '' }));
-      } catch (e) { ten.err = String(e?.message || e).slice(0, 200); }
-      info.tentativas.push(ten);
-      if (!ten.conflito && escolhido === null) { escolhido = cand; break; }
-    }
-    return res.json({ ok: true, info, escolhido });
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
   try {
