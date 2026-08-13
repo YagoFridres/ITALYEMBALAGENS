@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260812195000';
-const SW_RUNTIME_VERSION = '20260812195000';
+const PATCH_RUNTIME_VERSION = '20260812190000';
+const SW_RUNTIME_VERSION = '20260812190000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5637,7 +5637,7 @@ async function _calcularProximoNumeroOF(empId, diag) {
       .select('numero, of_num, of, id, created_at, deleted_at, empresa_id, emp_id')
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
-      .limit(3000);
+      .limit(500);
     if (empId) q = q.eq('empresa_id', empId);
     const { data, error } = await q;
     if (error) throw error;
@@ -5653,7 +5653,7 @@ async function _calcularProximoNumeroOF(empId, diag) {
         if (!isNaN(n) && n > linhaMaior) linhaMaior = n;
         if (!isNaN(n) && n > maior) maior = n;
       });
-      if (linhaMaior >= 2500) topNums.push({ n: linhaMaior, id: of?.id, numero: of?.numero, of_num: of?.of_num, of: of?.of, criado: String(of?.created_at || '').slice(0, 16), emp_id: of?.emp_id });
+      if (linhaMaior >= 2600) topNums.push({ n: linhaMaior, id: of?.id, numero: of?.numero, of_num: of?.of_num, of: of?.of, criado: String(of?.created_at || '').slice(0, 16), emp_id: of?.emp_id });
     });
     topNums.sort((a, b) => Number(b.n || 0) - Number(a.n || 0));
     const proximo = String(maior + 1);
@@ -6278,13 +6278,13 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
           const calcR = await _calcularProximoNumeroOF(empresaUuid);
           numeroEmpresa = calcR?.ok ? (parseInt(String(calcR.proximo || '0'), 10) || null) : null;
         } catch (_) { numeroEmpresa = null; }
-        for (let i = 0; i < 50; i += 1) {
+        for (let i = 0; i < 5; i += 1) {
           const cand = String((numeroEmpresa != null ? numeroEmpresa : nextSeq) + i);
           const { data: exists } = await supabase
             .from('ofs')
-            .select('id,numero,of,of_num')
+            .select('id')
             .eq('empresa_id', empresaUuid)
-            .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand}`)
+            .eq('numero', cand)
             .limit(1);
           if (Array.isArray(exists) && exists.length) continue;
           filtered.of = cand;
