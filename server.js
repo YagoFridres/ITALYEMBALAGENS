@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260813011500';
-const SW_RUNTIME_VERSION = '20260813011500';
+const PATCH_RUNTIME_VERSION = '20260813010000';
+const SW_RUNTIME_VERSION = '20260813010000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4282,45 +4282,14 @@ async function _buscarClienteRegistroOF(cliId, opts = {}) {
           .limit(2000);
         if (!err && Array.isArray(cand)) {
           if (tentouComFiltro && empId) {
-            let empIdsPermitidas = new Set();
-            empIdsPermitidas.add(String(empId || '').trim().toLowerCase());
-            try {
-              const { data: todasEmp } = await supabase.from('empresas').select('id,codigo,sigla').limit(50);
-              if (Array.isArray(todasEmp)) {
-                for (const em of todasEmp) {
-                  const emIdUu = String(em.id || '').trim().toLowerCase();
-                  const emCd = String(em.codigo || '').trim().toUpperCase();
-                  const emSg = String(em.sigla || '').trim().toUpperCase();
-                  const eNorm = String(empId || '').trim();
-                  const eNormUp = eNorm.toUpperCase();
-                  const eNormLow = eNorm.toLowerCase();
-                  if (emIdUu === eNormLow) {
-                    if (emCd) empIdsPermitidas.add(emCd.toLowerCase());
-                    if (emSg) empIdsPermitidas.add(emSg.toLowerCase());
-                    if (emCd) empIdsPermitidas.add(emCd.toUpperCase());
-                    if (emSg) empIdsPermitidas.add(emSg.toUpperCase());
-                  } else if (emCd === eNormUp || emSg === eNormUp || emCd === eNorm || emSg === eNorm) {
-                    empIdsPermitidas.add(emIdUu);
-                    empIdsPermitidas.add(emCd.toLowerCase());
-                    empIdsPermitidas.add(emSg.toLowerCase());
-                    empIdsPermitidas.add(emCd);
-                    empIdsPermitidas.add(emSg);
-                  }
-                }
-              }
-            } catch (_) {}
             const normEmp = (x) => String(x || '').trim().toLowerCase();
-            const normEmp2 = (x) => String(x || '').trim();
-            rows = cand.filter(c => {
-              const vals = [
-                normEmp(c?.empresa_id), normEmp2(c?.empresa_id),
-                normEmp(c?.emp_id), normEmp2(c?.emp_id),
-                normEmp(c?.empId), normEmp2(c?.empId),
-              ].filter(Boolean);
-              if (!vals.length) return true;
-              return vals.some(v => empIdsPermitidas.has(v));
-            });
-            if (!rows || !rows.length) rows = cand.slice();
+            const eIdNorm = normEmp(empId);
+            rows = cand.filter(c =>
+              normEmp(c?.empresa_id) === eIdNorm ||
+              normEmp(c?.emp_id) === eIdNorm ||
+              normEmp(c?.empId) === eIdNorm ||
+              !String(c?.empresa_id || c?.emp_id || c?.empId || '').trim()
+            );
           } else {
             rows = cand;
           }
@@ -4822,10 +4791,7 @@ async function ofsInsertWithRetry(row) {
     else if (empresaId) try { const { data: rr } = await supabase.from('empresas').select('id,codigo,sigla').eq('id', empresaId).limit(1).maybeSingle(); if (rr?.codigo) siglaLegadaEmp = rr.codigo; else if (rr?.sigla) siglaLegadaEmp = rr.sigla; } catch (_) {}
     const calcR = await _calcularProximoNumeroOF(empresaId);
     let baseProximo = null;
-    if (calcR?.ok) {
-      const p = parseInt(String(calcR.proximo || '0'), 10) || 0;
-      if (p > 0) baseProximo = Math.max(1, p - 3);
-    }
+    if (calcR?.ok) baseProximo = parseInt(String(calcR.proximo || '0'), 10) || null;
     if (baseProximo == null) {
       try {
         const { data: lastSeq2 } = await supabase
@@ -5693,25 +5659,6 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 // Não é por empresa. Então helper NÃO FILTRA empresa nenhuma, e conflito é global também.
 async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
   try {
-    let maxSql = 0;
-    let sqlOk = false;
-    try {
-      const [mn, mf, mo] = await Promise.allSettled([
-        supabase.from('ofs').select('numero').is('deleted_at', null).not('numero', 'is', null).order('numero', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('ofs').select('of_num').is('deleted_at', null).not('of_num', 'is', null).order('of_num', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('ofs').select('of').is('deleted_at', null).not('of', 'is', null).order('of', { ascending: false }).limit(1).maybeSingle()
-      ]);
-      const parseCand = (r, key) => {
-        if (r?.status !== 'fulfilled') return 0;
-        const v = r?.value?.data?.[key];
-        if (v === null || v === undefined || v === '') return 0;
-        const n = parseInt(String(v).replace(/\D/g, ''), 10);
-        return Number.isFinite(n) && n > 0 ? n : 0;
-      };
-      maxSql = Math.max(parseCand(mn, 'numero'), parseCand(mf, 'of_num'), parseCand(mo, 'of'), 0);
-      if (maxSql > 0) sqlOk = true;
-    } catch (_) { sqlOk = false; maxSql = 0; }
-
     let q = supabase
       .from('ofs')
       .select('numero, of_num, of, id, created_at, deleted_at, empresa_id, emp_id')
@@ -5719,7 +5666,7 @@ async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
       .order('id', { ascending: false })
       .limit(16000);
     const { data, error } = await q;
-    if (error && !sqlOk) throw error;
+    if (error) throw error;
     const nums = [];
     (data || []).forEach((of) => {
       if (of?.deleted_at) return;
@@ -5733,19 +5680,13 @@ async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
       if (linhaMaior > 0) nums.push({ n: linhaMaior, id: of?.id, numero: of?.numero, of_num: of?.of_num, of: of?.of, criado: String(of?.created_at || '').slice(0, 16), emp_id: of?.emp_id, empresa_id: String(of?.empresa_id || '').slice(0, 10) });
     });
     nums.sort((a, b) => Number(b.n || 0) - Number(a.n || 0));
-    const maiorScan = nums.length ? Number(nums[0].n || 0) : 0;
-    const maior = Math.max(maiorScan, maxSql, 0);
+    const maior = nums.length ? Number(nums[0].n || 0) : 0;
     const proximo = String(maior + 1);
     const base = { ok: true, proximo, maior, qtd: (data || []).length, qtdNumeros: nums.length, numeracaoGlobal: true };
-    if (diag) {
-      base.top15 = nums.slice(0, 15);
-      base.maxSql = maxSql;
-      base.sqlOk = sqlOk;
-      base.maiorScan = maiorScan;
-    }
+    if (diag) base.top15 = nums.slice(0, 15);
     return base;
   } catch (e) {
-    return { ok: false, proximo: '001', maior: 0, erro: String(e?.message || e), numeracaoGlobal: true };
+    return { ok: false, proximo: '001', maior: 0, erro: String(e?.message || e) };
   }
 }
 app.get('/api/_diag_proxnum', [authMiddleware, requireAdmin], async (req, res) => {
