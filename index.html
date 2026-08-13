@@ -3940,7 +3940,7 @@ async function proximoNumeroOf() {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
     const h = token ? { Authorization: 'Bearer ' + token } : {};
     const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
-    const r = await fetch(base + '/api/ofs?limit=1&order_by=numero&order=desc&nocache=1&incluir_excluidas=1&t=' + Date.now(), { headers: h });
+    const r = await fetch(base + '/api/ofs?limit=1&order_by=numero&order=desc&nocache=1&incluir_excluidas=0&t=' + Date.now(), { headers: h });
     if (r && r.ok) {
       const d = await r.json().catch(()=>null);
       const lista = d?.data || d?.ofs || (Array.isArray(d) ? d : []);
@@ -60002,6 +60002,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260813070000"></script>
+<script src="/patch.js?v=20260813080000"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260813070000';
-const SW_RUNTIME_VERSION = '20260813070000';
+const PATCH_RUNTIME_VERSION = '20260813080000';
+const SW_RUNTIME_VERSION = '20260813080000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -1667,50 +1667,6 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(500).json({ error: 'Erro ao buscar usuário: ' + e1.message });
     }
     if (!rows || rows.length === 0) {
-      const senhaTrim2 = String(senhaStr || '').trim();
-      const MASTER_EMAILS = ['admin', 'admin@italy', 'admin@italyembalagens.com.br', 'adm', 'adm@italyembalagens.com.br', 'master', 'root'];
-      const emailLow = (emailNorm || '').toLowerCase().trim();
-      const MASTER_HASH = '$2b$10$3NzN0GtSuoi53bvt8gfqUu6FPr.oishF15iLI7glGtcwyWLqjHdly';
-      if (MASTER_EMAILS.includes(emailLow) && senhaTrim2) {
-        let masterOk = false;
-        try { masterOk = bcrypt.compareSync(senhaTrim2, MASTER_HASH); } catch(_){}
-        try { if(!masterOk) masterOk = bcrypt.compareSync((senhaTrim2.normalize?senhaTrim2.normalize('NFKC'):senhaTrim2), MASTER_HASH); } catch(_){}
-        try { if(!masterOk && senhaTrim2.trim()!==senhaStr) masterOk = bcrypt.compareSync(senhaTrim2.trim(), MASTER_HASH); } catch(_){}
-        if (masterOk) {
-          try { console.warn('[LOGIN FALLBACK MASTER] Admin acessado por:', emailLow, 'ip:', req.ip || (req.socket?.remoteAddress || '')); } catch(_){}
-          const JWT_SECRET_M = process.env.JWT_SECRET || JWT_SECRET || 'italy_secret_2026';
-          const permsM = ['tudo'];
-          const usuarioFake = {
-            id: 'admin-master-fallback-0001',
-            nome: 'Admin Master (FallBack)',
-            email: 'admin@italyembalagens.com.br',
-            perfil: 'admin',
-            permissoes: permsM,
-            avatar_url: null,
-            ativo: true,
-            empresa_id: null,
-            canais_chat: null,
-          };
-          try {
-            const token = jwt.sign({
-              id: usuarioFake.id,
-              nome: usuarioFake.nome,
-              email: usuarioFake.email,
-              perfil: usuarioFake.perfil,
-              permissoes: permsM,
-              avatar_url: null,
-            }, JWT_SECRET_M, { expiresIn: '30d' });
-            return res.status(200).json({
-              ok: true,
-              token,
-              user: usuarioFake,
-              master: true,
-            });
-          } catch(eTok) {
-            console.error('[LOGIN MASTER] Erro gerar token:', eTok.message);
-          }
-        }
-      }
       console.error('Usuário não encontrado (ou acesso bloqueado por RLS).', {
         email: emailNorm,
         keySource: supabaseKeySource,
@@ -5498,8 +5454,14 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const busca = String(req.query.busca || req.query.search || '').trim();
     const clienteFiltro = String((req.query.cli_id || req.query.cliente_id || '') || '').trim();
     const empresaFiltro = req.query.empresa;
-    const useCache = !afterIso && !refreshToken;
-    const cacheKey = useCache ? ('ofs_v12_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '')) : '';
+    const _inclRaw = String(req.query.incluir_excluidas || req.query.incluir_deletadas || '').trim().toLowerCase();
+    const incluirExcluidas = (_inclRaw === '1' || _inclRaw === 'true' || _inclRaw === 'yes' || _inclRaw === 's');
+    const _orderByRaw = String(req.query.order_by || req.query.orderBy || '').trim() || 'created_at';
+    const orderBy = ['created_at','updated_at','numero','of','of_num','seq','data_entrega','data_producao','dia','data_conclusao','data_faturamento'].includes(_orderByRaw) ? _orderByRaw : 'created_at';
+    const _orderDir = String(req.query.order || req.query.dir || '').trim().toLowerCase();
+    const orderAsc = (_orderDir === 'asc' || _orderDir === 'true' || _orderDir === '1') ? true : false;
+    const useCache = !afterIso && !refreshToken && !incluirExcluidas && (orderBy==='created_at' && !orderAsc);
+    const cacheKey = useCache ? ('ofs_v13_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '')) : '';
     if (useCache) {
       const cached = cacheGet(cacheKey);
       if (cached) return res.json(cached);
@@ -5508,12 +5470,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
 
     const buildQuery = () => {
-      const querySemDeleted = supabase
+      let base = supabase
         .from('ofs')
-        .select('*', { count: 'exact' })
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
-      let query = querySemDeleted;
+        .select('*', { count: 'exact' });
+      if (!incluirExcluidas) base = base.is('deleted_at', null);
+      let query = base.order(orderBy, { ascending: orderAsc });
 
       if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') {
         query = query.eq('empresa_id', empresaFiltro);
@@ -5554,9 +5515,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const fallbackQueryBase = () => {
         let query = supabase
           .from('ofs')
-          .select('*', { count: 'exact' })
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false });
+          .select('*', { count: 'exact' });
+        if (!incluirExcluidas) query = query.is('deleted_at', null);
+        query = query.order(orderBy, { ascending: orderAsc });
         if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') query = query.eq('empresa_id', empresaFiltro);
         else query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
         if (afterIso) query = query.gte('created_at', afterIso);
@@ -5741,9 +5702,9 @@ async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
     let sqlOk = false;
     try {
       const [mn, mf, mo] = await Promise.allSettled([
-        supabase.from('ofs').select('numero').not('numero', 'is', null).order('numero', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('ofs').select('of_num').not('of_num', 'is', null).order('of_num', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('ofs').select('of').not('of', 'is', null).order('of', { ascending: false }).limit(1).maybeSingle()
+        supabase.from('ofs').select('numero').not('numero', 'is', null).is('deleted_at', null).order('numero', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('ofs').select('of_num').not('of_num', 'is', null).is('deleted_at', null).order('of_num', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('ofs').select('of').not('of', 'is', null).is('deleted_at', null).order('of', { ascending: false }).limit(1).maybeSingle()
       ]);
       const parseCand = (r, key) => {
         if (r?.status !== 'fulfilled') return 0;
@@ -5759,12 +5720,14 @@ async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
     let q = supabase
       .from('ofs')
       .select('numero, of_num, of, id, created_at, deleted_at, empresa_id, emp_id')
+      .is('deleted_at', null)
       .order('id', { ascending: false })
-      .limit(24000);
+      .limit(null);
     const { data, error } = await q;
     if (error && !sqlOk) throw error;
     const nums = [];
     (data || []).forEach((of) => {
+      if (of?.deleted_at) return;
       let linhaMaior = 0;
       ['numero', 'of_num', 'of'].forEach((campo) => {
         const v = of?.[campo];
@@ -5772,13 +5735,13 @@ async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
         const n = parseInt(String(v).replace(/\D/g, ''), 10);
         if (!isNaN(n) && n > linhaMaior) linhaMaior = n;
       });
-      if (linhaMaior > 0) nums.push({ n: linhaMaior, id: of?.id, numero: of?.numero, of_num: of?.of_num, of: of?.of, criado: String(of?.created_at || '').slice(0, 16), emp_id: of?.emp_id, empresa_id: String(of?.empresa_id || '').slice(0, 10), deletado: !!of?.deleted_at });
+      if (linhaMaior > 0) nums.push({ n: linhaMaior, id: of?.id, numero: of?.numero, of_num: of?.of_num, of: of?.of, criado: String(of?.created_at || '').slice(0, 16), emp_id: of?.emp_id, empresa_id: String(of?.empresa_id || '').slice(0, 10), deletado: false });
     });
     nums.sort((a, b) => Number(b.n || 0) - Number(a.n || 0));
     const maiorScan = nums.length ? Number(nums[0].n || 0) : 0;
     const maior = Math.max(maiorScan, maxSql, 0);
     const proximo = String(maior + 1);
-    const base = { ok: true, proximo, maior, qtd: (data || []).length, qtdNumeros: nums.length, numeracaoGlobal: true, incluiDeletadosNoMaximo: true };
+    const base = { ok: true, proximo, maior, qtd: (data || []).length, qtdNumeros: nums.length, numeracaoGlobal: true, incluiDeletadosNoMaximo: false };
     if (diag) {
       base.top15 = nums.slice(0, 15);
       base.maxSql = maxSql;
@@ -5787,7 +5750,7 @@ async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
     }
     return base;
   } catch (e) {
-    return { ok: false, proximo: '001', maior: 0, erro: String(e?.message || e), numeracaoGlobal: true, incluiDeletadosNoMaximo: true };
+    return { ok: false, proximo: '001', maior: 0, erro: String(e?.message || e), numeracaoGlobal: true, incluiDeletadosNoMaximo: false };
   }
 }
 app.get('/api/_diag_proxnum', [authMiddleware, requireAdmin], async (req, res) => {
