@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260813004500';
-const SW_RUNTIME_VERSION = '20260813004500';
+const PATCH_RUNTIME_VERSION = '20260813003500';
+const SW_RUNTIME_VERSION = '20260813003500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4808,14 +4808,14 @@ async function ofsInsertWithRetry(row) {
       try {
         const { data: ex, error } = await supabase
           .from('ofs')
-          .select('id,numero,of,of_num,deleted_at')
+          .select('id,numero,of,of_num,numero_of,deleted_at')
           .is('deleted_at', null)
-          .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand}`)
+          .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},numero_of.eq.${cand}`)
           .limit(5);
         if (error) continue;
         const conflitaGlobal = (Array.isArray(ex) ? ex : []).some((r) => {
           if (r?.deleted_at) return false;
-          const nums = [String(r?.numero ?? ''), String(r?.of ?? ''), String(r?.of_num ?? '')];
+          const nums = [String(r?.numero ?? ''), String(r?.of ?? ''), String(r?.of_num ?? ''), String(r?.numero_of ?? '')];
           return nums.includes(String(cand));
         });
         if (conflitaGlobal) continue;
@@ -5662,7 +5662,7 @@ async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
   try {
     let q = supabase
       .from('ofs')
-      .select('numero, of_num, of, id, created_at, deleted_at, empresa_id, emp_id')
+      .select('numero, of_num, of, numero_of, id, created_at, deleted_at, empresa_id, emp_id')
       .is('deleted_at', null)
       .order('id', { ascending: false })
       .limit(16000);
@@ -5672,7 +5672,7 @@ async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
     (data || []).forEach((of) => {
       if (of?.deleted_at) return;
       let linhaMaior = 0;
-      ['numero', 'of_num', 'of'].forEach((campo) => {
+      ['numero', 'of_num', 'numero_of', 'of'].forEach((campo) => {
         const v = of?.[campo];
         if (v === null || v === undefined || v === '') return;
         const n = parseInt(String(v).replace(/\D/g, ''), 10);
@@ -5737,16 +5737,16 @@ app.post('/api/_dbg_full_post_ofs', [authMiddleware, requireAdmin], async (req, 
             const t0 = Date.now();
             const { data: ex, error } = await supabase
               .from('ofs')
-              .select('id,numero,of,of_num,empresa_id,emp_id,deleted_at')
+              .select('id,numero,of,of_num,numero_of,empresa_id,emp_id,deleted_at')
               .is('deleted_at', null)
-              .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand}`)
+              .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},numero_of.eq.${cand}`)
               .limit(5);
             log.qMs = Date.now() - t0;
             if (error) log.qErr = String(error.message || error).slice(0, 200);
             log.qEx = (ex || []).map(r => ({ id: String(r?.id || '').slice(0, 10), n: r?.numero, of: r?.of, ofn: r?.of_num, eid: String(r?.empresa_id || '').slice(0, 10), emp: r?.emp_id || '' }));
             const conflitaGlobal = (Array.isArray(ex) ? ex : []).some((r) => {
               if (r?.deleted_at) return false;
-              const nums = [String(r?.numero ?? ''), String(r?.of ?? ''), String(r?.of_num ?? '')];
+              const nums = [String(r?.numero ?? ''), String(r?.of ?? ''), String(r?.of_num ?? ''), String(r?.numero_of ?? '')];
               return nums.includes(String(cand));
             });
             log.conflita = conflitaGlobal;
@@ -5791,14 +5791,14 @@ app.post('/api/_dbg_proxnum_inline_post', [authMiddleware, requireAdmin], async 
       try {
         const { data: ex } = await supabase
           .from('ofs')
-          .select('id,numero,of,of_num,empresa_id,emp_id,deleted_at')
+          .select('id,numero,of,of_num,numero_of,empresa_id,emp_id,deleted_at')
           .is('deleted_at', null)
-          .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand}`)
+          .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},numero_of.eq.${cand}`)
           .limit(3);
         ten.qEx = Array.isArray(ex) ? ex.length : null;
         const conflitaGlobal = (Array.isArray(ex) ? ex : []).some((r) => {
           if (r?.deleted_at) return false;
-          const nums = [String(r?.numero ?? ''), String(r?.of ?? ''), String(r?.of_num ?? '')];
+          const nums = [String(r?.numero ?? ''), String(r?.of ?? ''), String(r?.of_num ?? ''), String(r?.numero_of ?? '')];
           return nums.includes(String(cand));
         });
         ten.conflito = conflitaGlobal;
@@ -6426,13 +6426,13 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
           try {
             const { data: ex } = await supabase
               .from('ofs')
-              .select('id,numero,of,of_num,deleted_at')
+              .select('id,numero,of,of_num,numero_of,empresa_id,emp_id,deleted_at')
               .is('deleted_at', null)
-              .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand}`)
+              .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand},numero_of.eq.${cand}`)
               .limit(3);
             const conflitaGlobal = (Array.isArray(ex) ? ex : []).some((r) => {
               if (r?.deleted_at) return false;
-              const nums = [String(r?.numero ?? ''), String(r?.of ?? ''), String(r?.of_num ?? '')];
+              const nums = [String(r?.numero ?? ''), String(r?.of ?? ''), String(r?.of_num ?? ''), String(r?.numero_of ?? '')];
               return nums.includes(String(cand));
             });
             if (conflitaGlobal) continue;
