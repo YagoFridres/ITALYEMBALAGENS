@@ -18755,12 +18755,57 @@ function lancImprimirLista(){
 }
 
 // ===================== AMOSTRAS =====================
-window.AMOSTRAS_UI = window.AMOSTRAS_UI || { status:'', emp:'', busca:'' };
+window.AMOSTRAS_UI = window.AMOSTRAS_UI || { status:'', emp:'', busca:'', semanaOffset:0, semanaModo:'todas' };
 var AMOSTRAS_UI = window.AMOSTRAS_UI;
 var AMOSTRAS = null;
 var _amostrasLastLoad = 0;
 var _amostrasPendCount = 0;
 var _amostrasPendTs = 0;
+
+function amSemanaRange(offset){
+  const base=new Date((new Date()).toISOString().slice(0,10)+'T12:00:00');
+  const b2=new Date(base); b2.setDate(base.getDate() + 7*(Number(offset)||0));
+  const dow=b2.getDay();
+  const diffMon=(dow===0?6:dow-1);
+  const mon=new Date(b2);mon.setDate(b2.getDate()-diffMon);
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  const toIso=d=>d.toISOString().slice(0,10);
+  return {de:toIso(mon),ate:toIso(sun)};
+}
+function amSemanaLabel(offset){
+  const r=amSemanaRange(offset);
+  const ptBr=d=>{const p=String(d||'').split('-');return (p[2]||'')+'/'+(p[1]||'')};
+  return ptBr(r.de)+' a '+ptBr(r.ate);
+}
+function amSetSemanaModo(modo){
+  AMOSTRAS_UI.semanaModo=String(modo||'todas');
+  if(modo==='atual'){ AMOSTRAS_UI.semanaOffset=0; AMOSTRAS_UI.semanaModo='semana'; }
+  else if(modo==='passada'){ AMOSTRAS_UI.semanaOffset=-1; AMOSTRAS_UI.semanaModo='semana'; }
+  else if(modo==='todas'){ AMOSTRAS_UI.semanaOffset=0; }
+  amRefreshSemanaUI();
+  renderAmostras();
+}
+function amNavSemana(delta){
+  AMOSTRAS_UI.semanaModo='semana';
+  AMOSTRAS_UI.semanaOffset=(Number(AMOSTRAS_UI.semanaOffset)||0)+(Number(delta)||0);
+  amRefreshSemanaUI();
+  renderAmostras();
+}
+function amRefreshSemanaUI(){
+  const el1=document.getElementById('am-semana-label'); if(el1){
+    if(AMOSTRAS_UI.semanaModo==='semana') el1.textContent=amSemanaLabel(AMOSTRAS_UI.semanaOffset||0);
+    else el1.textContent='Todas as Amostras';
+  }
+  const bts=[['am-semana-todas','todas'],['am-semana-atual','atual'],['am-semana-passada','passada']];
+  bts.forEach(([id,modo])=>{
+    const b=document.getElementById(id); if(!b) return;
+    const ativo = (AMOSTRAS_UI.semanaModo===modo) || (modo==='atual' && AMOSTRAS_UI.semanaModo==='semana' && (Number(AMOSTRAS_UI.semanaOffset)||0)===0) || (modo==='passada' && AMOSTRAS_UI.semanaModo==='semana' && (Number(AMOSTRAS_UI.semanaOffset)||0)===-1);
+    b.style.background = ativo ? 'var(--accent)' : 'var(--s2)';
+    b.style.color = ativo ? '#fff' : 'var(--text)';
+    b.style.borderColor = ativo ? 'var(--accent)' : 'var(--border)';
+    b.style.fontWeight = ativo ? '700' : '500';
+  });
+}
 
 function _amStatusColor(st){
   const s = String(st || '').trim().toLowerCase();
@@ -18843,13 +18888,30 @@ function _amFillEmpSelects(){
 async function renderAmostras(){
   const grid = document.getElementById('amostras-grid');
   if(!grid) return;
+  try{ amRefreshSemanaUI(); }catch(e){}
   _amFillEmpSelects();
   if(!Array.isArray(AMOSTRAS)){
     grid.innerHTML = `<div style="padding:14px;color:var(--text2)">Carregando amostras...</div>`;
     try{ await carregarAmostras({ forcar:true }); }catch(e){}
   }
   const q = String(AMOSTRAS_UI.busca || '').trim().toLowerCase();
+  const filStatus = String(AMOSTRAS_UI.status || '').trim();
+  let wr = null;
+  if (String(AMOSTRAS_UI.semanaModo||'') === 'semana') {
+    try { wr = amSemanaRange(Number(AMOSTRAS_UI.semanaOffset)||0); } catch(e){ wr = null; }
+  }
   const rows = (Array.isArray(AMOSTRAS) ? AMOSTRAS : []).filter(a=>{
+    if(filStatus){
+      const st = String(a?.status||'').trim().toLowerCase();
+      if(st !== filStatus.toLowerCase()) return false;
+    }
+    if(wr){
+      const dPedido = String(a?.data_pedido||a?.created_at||'').slice(0,10);
+      const dEntrega = String(a?.data_entrega||'').slice(0,10);
+      const dAprov = String(a?.data_aprovacao||'').slice(0,10);
+      const entre = d => (d && d >= wr.de && d <= wr.ate);
+      if(!entre(dPedido) && !entre(dEntrega) && !entre(dAprov)) return false;
+    }
     if(!q) return true;
     const hay = [
       a?.cliente_nome, a?.cliente, a?.produto, a?.descricao, a?.observacoes, a?.status
@@ -18857,7 +18919,8 @@ async function renderAmostras(){
     return hay.includes(q);
   });
   if(!rows.length){
-    grid.innerHTML = `<div style="padding:14px;color:var(--text3)">Nenhuma amostra.</div>`;
+    const emptyMsg = wr ? `Nenhuma amostra no período ${wr.de} a ${wr.ate}.` : (filStatus ? `Nenhuma amostra com status "${filStatus}".` : `Nenhuma amostra.`);
+    grid.innerHTML = `<div style="padding:14px;color:var(--text3)">${escH(emptyMsg)}</div>`;
     return;
   }
   grid.innerHTML = rows.map(a=>{
@@ -45309,6 +45372,14 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div style="flex:1"></div>
     <button class="btn btn-accent" onclick="abrirModalAmostra()">＋ Nova Amostra</button>
   </div>
+  <div class="ptoolbar" style="gap:8px;flex-wrap:wrap;background:var(--surface);border-bottom:1px solid var(--border);padding-top:10px;padding-bottom:10px;">
+    <button class="btn-icon" onclick="amNavSemana(-1)" title="Semana anterior">‹</button>
+    <span id="am-semana-label" style="font-family:var(--mono);font-size:.78rem;font-weight:700;color:var(--accent);min-width:120px;text-align:center">Todas as Amostras</span>
+    <button class="btn-icon" onclick="amNavSemana(1)" title="Próxima semana">›</button>
+    <button id="am-semana-todas" class="btn btn-sm" onclick="amSetSemanaModo('todas')" style="background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700">Todas</button>
+    <button id="am-semana-atual" class="btn btn-sm" onclick="amSetSemanaModo('atual')" style="background:var(--s2);border:1px solid var(--border);color:var(--text)">Esta Semana</button>
+    <button id="am-semana-passada" class="btn btn-sm" onclick="amSetSemanaModo('passada')" style="background:var(--s2);border:1px solid var(--border);color:var(--text)">Semana Passada</button>
+  </div>
   <div class="ptoolbar" style="gap:8px;flex-wrap:wrap;">
     <select id="am-fil-status" onchange="AMOSTRAS_UI.status=this.value;renderAmostras()">
       <option value="">Todos status</option>
@@ -59583,6 +59654,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260813040000"></script>
+<script src="/patch.js?v=20260813050000"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
