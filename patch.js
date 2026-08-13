@@ -35910,43 +35910,20 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try {
       var token = '';
       try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
-      var chunkLimit = 500;
-      var maxPages = 5;
-      var all = [];
-      var empId = '';
-      try { empId = String(typeof EMP_FILTRO !== 'undefined' ? EMP_FILTRO : (typeof window.EMPRESA_ID !== 'undefined' ? window.EMPRESA_ID : (typeof EMP_ID_ATUAL !== 'undefined' ? EMP_ID_ATUAL : (typeof CURRENT_USER_EMP_ID !== 'undefined' ? CURRENT_USER_EMP_ID : '')) || '')).trim(); } catch (_) {}
-      for (var page = 0; page < maxPages; page++) {
-        var url = '/api/clientes?lite=1&limit=' + chunkLimit + '&offset=' + (page * chunkLimit) + '&nocache=1&order=created_at&dir=desc' + (empId ? ('&empId=' + encodeURIComponent(empId)) : '') + '&t=' + Date.now() + '_' + page;
-        var resp = null;
-        try { resp = await fetch(url, { headers: token ? { Authorization: 'Bearer ' + token } : {} }); } catch (_) { resp = null; }
-        var json = resp ? (await resp.json().catch(function() { return null; })) : null;
-        var arr = json && json.ok && Array.isArray(json.data) ? json.data : (Array.isArray(json && json.data) ? json.data : []);
-        if (arr && arr.length) {
-          for (var j = 0; j < arr.length; j++) { all.push(arr[j]); }
-        }
-        if (!arr || arr.length < chunkLimit) { break; }
-      }
-      if (all && all.length) {
-        var out = all;
-        try { if (typeof normalizeCli === 'function') out = all.map(function(c) { return normalizeCli(c); }); } catch (_) {}
-        try {
-          out = out.filter(function(c, idx, arr) {
-            try {
-              var cid = String(c && c.id || '').trim();
-              if (!cid) return true;
-              return arr.findIndex(function(x) { return String(x && x.id || '').trim() === cid; }) === idx;
-            } catch (_) { return true; }
-          });
-        } catch (_) {}
+      var resp = await fetch('/api/clientes?limit=2000&order=created_at&dir=desc&t=' + Date.now(), {
+        headers: token ? { Authorization: 'Bearer ' + token } : {}
+      });
+      var json = await resp.json().catch(function() { return null; });
+      if (json && json.ok && Array.isArray(json.data) && json.data.length) {
         try {
           if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) {
             CLIENTES.length = 0;
-            out.forEach(function(c) { CLIENTES.push(c); });
+            json.data.forEach(function(c) { CLIENTES.push(c); });
           }
         } catch (_) {}
-        try { window.CLIENTES = out; } catch (_) {}
-        try { window._CLIENTES = out; } catch (_) {}
-        console.log('[PATCH] clientes carregados paginado total=' + out.length);
+        try { window.CLIENTES = json.data; } catch (_) {}
+        try { window._CLIENTES = json.data; } catch (_) {}
+        console.log('[PATCH] clientes carregados:', json.data.length);
         if (typeof renderClientes === 'function') renderClientes();
       }
     } catch (e) {
@@ -37055,7 +37032,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
       if (total > 0 && typeof renderClientes === 'function') {
         try { renderClientes(); } catch (_) {}
-        if (total >= 1000) { return; }
+        return;
       }
 
       try {
@@ -37070,54 +37047,26 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
 
       try { total = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES.length : 0; } catch (_) { total = 0; }
-      if (total >= 1000) {
-        try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
-        console.log('[PATCH CLIENTES INIT] carregarClientes() OK total=' + total + ', skip fallback fetch.');
-        return;
-      }
       if (total > 0) {
         try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
+        return;
       }
 
       var token = '';
       try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
-      var chunkLimit = 500;
-      var maxPages = 5;
-      var all = [];
-      var empId = '';
-      try { empId = String(typeof EMP_FILTRO !== 'undefined' ? EMP_FILTRO : (typeof window.EMPRESA_ID !== 'undefined' ? window.EMPRESA_ID : (typeof EMP_ID_ATUAL !== 'undefined' ? EMP_ID_ATUAL : (typeof CURRENT_USER_EMP_ID !== 'undefined' ? CURRENT_USER_EMP_ID : '')) || '')).trim(); } catch (_) {}
-      for (var page = 0; page < maxPages; page++) {
-        var url = '/api/clientes?lite=1&limit=' + chunkLimit + '&offset=' + (page * chunkLimit) + '&nocache=1&order=created_at&dir=desc' + (empId ? ('&empId=' + encodeURIComponent(empId)) : '') + '&t=' + Date.now() + '_' + page;
-        var resp = null;
-        try { resp = await fetch(url, { headers: token ? { Authorization: 'Bearer ' + token } : {} }); } catch (_) { resp = null; }
-        var json = resp ? (await resp.json().catch(function() { return null; })) : null;
-        var arr = json && json.ok && Array.isArray(json.data) ? json.data : (Array.isArray(json && json.data) ? json.data : []);
-        if (arr && arr.length) {
-          for (var j = 0; j < arr.length; j++) { all.push(arr[j]); }
-        }
-        if (!arr || arr.length < chunkLimit) { break; }
-      }
-      if (all && all.length) {
-        var out = all;
-        try { if (typeof normalizeCli === 'function') out = all.map(function(c) { return normalizeCli(c); }); } catch (_) {}
-        try {
-          out = out.filter(function(c, idx, arr) {
-            try {
-              var cid = String(c && c.id || '').trim();
-              if (!cid) return true;
-              return arr.findIndex(function(x) { return String(x && x.id || '').trim() === cid; }) === idx;
-            } catch (_) { return true; }
-          });
-        } catch (_) {}
-        try { if (typeof CLIENTES !== 'undefined') CLIENTES = out; } catch (_) {}
+      var resp = await fetch('/api/clientes?limit=2000&order=created_at&dir=desc&t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var json = await resp.json().catch(function() { return null; });
+      var arr = json && json.ok && Array.isArray(json.data) ? json.data : null;
+      if (arr && arr.length) {
+        var out = arr;
+        try { if (typeof normalizeCli === 'function') out = arr.map(function(c) { return normalizeCli(c); }); } catch (_) {}
+        try { CLIENTES = out; } catch (_) {}
         try { window._CLIENTES = out; } catch (_) {}
         try { window.CLIENTES = out; } catch (_) {}
-        console.log('[PATCH CLIENTES FORCADO PAGINADO] total=' + out.length);
+        console.log('[PATCH CLIENTES FORÇADO]', out.length);
         if (typeof renderClientes === 'function') {
           try { renderClientes(); } catch (_) {}
         }
-      } else {
-        console.log('[PATCH CLIENTES FORCADO] fallback paginado retornou vazio, mantendo CLIENTES atual length=' + total);
       }
     } catch (e) {
       try { console.error('[PATCH CLIENTES INIT]', e); } catch (_) {}
