@@ -30411,38 +30411,6 @@ function _renderDashboardBase(){
 
   const ofs = ofsAll.filter(o=>!isCanceledOrDeleted(o)).filter(inEmpresa).filter(inRange);
 
-  // ===== P5a: Toneladas Vendidas no Período =====
-  const _calcKgOf = (o)=>{
-    if(!o) return 0;
-    const qtd = Math.round(Number(o?.qtd ?? o?.quantidade ?? 0) || 0);
-    if(!(qtd>0)) return 0;
-    const pesoKgUn = Number(o?.peso_kg_unidade ?? o?.peso_unitario ?? o?.kg_un ?? 0) || 0;
-    if(pesoKgUn>0) return qtd * pesoKgUn;
-    let larg = Number(o?.largura_mm ?? o?.largura ?? o?.larg ?? 0) || 0;
-    let comp = Number(o?.comprimento_mm ?? o?.comprimento ?? o?.comp ?? 0) || 0;
-    let gram = Number(o?.gramatura ?? o?.espessura_mm ?? o?.gram ?? 0) || 0;
-    if(!(larg>0 && comp>0 && gram>0)){
-      const tam = String(o?.tamanho ?? o?.tam ?? o?.medidas ?? '').trim();
-      const nums = tam.replace(/,/g,'.').match(/(\d+(?:\.\d+)?)/g) || [];
-      if(nums.length>=3){ larg = Number(nums[0])||0; comp = Number(nums[1])||0; gram = Number(nums[2])||0; }
-    }
-    if(!(larg>0 && comp>0 && gram>0)) return 0;
-    const areaM2 = (larg/1000) * (comp/1000);
-    return areaM2 * (gram/1000) * qtd;
-  };
-  let _tonVendKg = 0; let _ofsComPeso = 0;
-  ofs.forEach(o=>{
-    if(!_hubIsConcl(_hubOfStatus(o))) return;
-    const kg = _calcKgOf(o);
-    if(kg>0){ _tonVendKg += kg; _ofsComPeso += 1; }
-  });
-  const _tonVendTotal = _tonVendKg / 1000;
-  const _fmtTon = (v)=>{
-    const n = Number(v||0);
-    if(n >= 1) return n.toLocaleString('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3}) + ' t';
-    return (n*1000).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + ' kg';
-  };
-
   const tiposMes = (()=>{
     const tipos = Array.isArray(TIPOS_CAIXA) ? TIPOS_CAIXA : [];
     const mesIni = startOfMonth(now);
@@ -30702,14 +30670,6 @@ function _renderDashboardBase(){
     });
     const vCur = ofsCur.reduce((s,o)=>s+sumVal(o),0);
     const vPrev = ofsPrev.reduce((s,o)=>s+sumVal(o),0);
-    const kgOfMonth = (arr) => arr.reduce((s2,o)=>{
-      if(!_hubIsConcl(_hubOfStatus(o))) return s2;
-      return s2 + (_calcKgOf(o)||0);
-    }, 0);
-    const kgCur = kgOfMonth(ofsCur);
-    const kgPrev = kgOfMonth(ofsPrev);
-    const tonCur = kgCur/1000;
-    const tonPrev = kgPrev/1000;
     const dAbs = vCur - vPrev;
     const dPct = (vPrev > 0) ? ((dAbs / vPrev) * 100) : (vCur > 0 ? 100 : 0);
     const cor = dAbs >= 0 ? 'var(--green)' : 'var(--red)';
@@ -30722,8 +30682,6 @@ function _renderDashboardBase(){
         <div class="card"><div class="card-lbl">Vendas (mês anterior)</div><div class="card-val" style="font-size:1.1rem;color:var(--text)">${fmtR(vPrev)}</div><div class="card-sub">${escH(prevLab)}</div></div>
         <div class="card"><div class="card-lbl">Δ M/M</div><div class="card-val" style="font-size:1.1rem">${badge}</div><div class="card-sub">${dAbs>=0?'crescimento':'queda'} (${fmtR(dAbs)})</div></div>
         <div class="card"><div class="card-lbl">Pedidos (mês)</div><div class="card-val cv-a">${fmtN(ofsCur.length)}</div><div class="card-sub">${fmtN(ofsPrev.length)} no mês anterior</div></div>
-        <div class="card"><div class="card-lbl">Toneladas Vendidas (mês)</div><div class="card-val cv-p" style="font-size:1.1rem">${_fmtTon(tonCur)}</div><div class="card-sub">${_fmtTon(tonPrev)} no mês anterior</div></div>
-        <div class="card"><div class="card-lbl">Toneladas Vendidas (período)</div><div class="card-val cv-p" style="font-size:1.1rem">${_fmtTon(_tonVendTotal)}</div><div class="card-sub">${fmtN(_ofsComPeso)} OFs · ${escH(range.label)}</div></div>
       </div>`
     };
   })();
@@ -60002,6 +59960,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260813070000"></script>
+<script src="/patch.js?v=20260813060000"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
