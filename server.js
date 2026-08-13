@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260812211000';
-const SW_RUNTIME_VERSION = '20260812211000';
+const PATCH_RUNTIME_VERSION = '20260812203000';
+const SW_RUNTIME_VERSION = '20260812203000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5632,32 +5632,18 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 // Rota dedicada para próximo número de OF
 async function _calcularProximoNumeroOF(empId, diag) {
   try {
-    let siglaLegada = null;
-    if (empId && empId === 'df5f7672-0a6b-402d-ae65-296554236c31') siglaLegada = 'E1';
-    else if (empId) {
-      try {
-        const { data: empRow } = await supabase.from('empresas').select('id,codigo,sigla').eq('id', empId).limit(1).maybeSingle();
-        if (empRow?.codigo) siglaLegada = empRow.codigo;
-        else if (empRow?.sigla) siglaLegada = empRow.sigla;
-      } catch (_) {}
-    }
     let q = supabase
       .from('ofs')
       .select('numero, of_num, of, id, created_at, deleted_at, empresa_id, emp_id')
-      .is('deleted_at', null);
-    if (empId && siglaLegada) q = q.or(`empresa_id.eq.${empId},emp_id.eq.${siglaLegada}`);
-    else if (empId) q = q.eq('empresa_id', empId);
-    q = q.order('id', { ascending: false }).limit(8000);
+      .is('deleted_at', null)
+      .order('id', { ascending: false })
+      .limit(8000);
+    if (empId) q = q.eq('empresa_id', empId);
     const { data, error } = await q;
     if (error) throw error;
     const nums = [];
     (data || []).forEach((of) => {
       if (of?.deleted_at) return;
-      if (empId) {
-        const matchUuid = String(of?.empresa_id || '') === String(empId);
-        const matchSigla = siglaLegada && String(of?.emp_id || '') === String(siglaLegada);
-        if (!matchUuid && !matchSigla) return;
-      }
       let linhaMaior = 0;
       ['numero', 'of_num', 'numero_of', 'of'].forEach((campo) => {
         const v = of?.[campo];
@@ -5665,12 +5651,12 @@ async function _calcularProximoNumeroOF(empId, diag) {
         const n = parseInt(String(v).replace(/\D/g, ''), 10);
         if (!isNaN(n) && n > linhaMaior) linhaMaior = n;
       });
-      if (linhaMaior > 0) nums.push({ n: linhaMaior, id: of?.id, numero: of?.numero, of_num: of?.of_num, of: of?.of, criado: String(of?.created_at || '').slice(0, 16), emp_id: of?.emp_id, empresa_id: String(of?.empresa_id || '').slice(0, 10) });
+      if (linhaMaior > 0) nums.push({ n: linhaMaior, id: of?.id, numero: of?.numero, of_num: of?.of_num, of: of?.of, criado: String(of?.created_at || '').slice(0, 16), emp_id: of?.emp_id });
     });
     nums.sort((a, b) => Number(b.n || 0) - Number(a.n || 0));
     const maior = nums.length ? Number(nums[0].n || 0) : 0;
     const proximo = String(maior + 1);
-    const base = { ok: true, proximo, maior, qtd: (data || []).length, qtdNumeros: nums.length, empId: empId || null, siglaLegada: siglaLegada || null };
+    const base = { ok: true, proximo, maior, qtd: (data || []).length, qtdNumeros: nums.length, empId: empId || null };
     if (diag) base.top15 = nums.slice(0, 15);
     return base;
   } catch (e) {
@@ -6291,30 +6277,15 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
           const calcR = await _calcularProximoNumeroOF(empresaUuid);
           numeroEmpresa = calcR?.ok ? (parseInt(String(calcR.proximo || '0'), 10) || null) : null;
         } catch (_) { numeroEmpresa = null; }
-        let siglaLegadaEmp = null;
-        if (empresaUuid === 'df5f7672-0a6b-402d-ae65-296554236c31') siglaLegadaEmp = 'E1';
-        else if (empresaUuid) {
-          try {
-            const { data: rr } = await supabase.from('empresas').select('id,codigo,sigla').eq('id', empresaUuid).limit(1).maybeSingle();
-            if (rr?.codigo) siglaLegadaEmp = rr.codigo;
-            else if (rr?.sigla) siglaLegadaEmp = rr.sigla;
-          } catch (_) {}
-        }
         for (let i = 0; i < 50; i += 1) {
           const cand = String((numeroEmpresa != null ? numeroEmpresa : nextSeq) + i);
-          let eq = supabase
+          const { data: exists } = await supabase
             .from('ofs')
-            .select('id,numero,of,of_num,empresa_id,emp_id')
+            .select('id,numero,of,of_num')
+            .eq('empresa_id', empresaUuid)
             .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand}`)
-            .limit(20);
-          if (siglaLegadaEmp) eq = eq.or(`empresa_id.eq.${empresaUuid},emp_id.eq.${siglaLegadaEmp}`);
-          else eq = eq.eq('empresa_id', empresaUuid);
-          const { data: exists } = await eq;
-          const hit = (Array.isArray(exists) ? exists : []).find((r) => {
-            if (siglaLegadaEmp) return String(r?.empresa_id || '') === String(empresaUuid) || String(r?.emp_id || '') === String(siglaLegadaEmp);
-            return String(r?.empresa_id || '') === String(empresaUuid);
-          });
-          if (hit) continue;
+            .limit(1);
+          if (Array.isArray(exists) && exists.length) continue;
           filtered.of = cand;
           filtered.numero = cand;
           break;
