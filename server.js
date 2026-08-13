@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260813080400';
-const SW_RUNTIME_VERSION = '20260813080400';
+const PATCH_RUNTIME_VERSION = '20260813080300';
+const SW_RUNTIME_VERSION = '20260813080300';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5499,7 +5499,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       return query;
     };
 
-    const shouldFetchAll = false;
+    const shouldFetchAll = !afterIso && !offset && (!limitRaw || limitRaw === 'all' || limitRaw === '0');
     let fetched = null;
     try {
       fetched = shouldFetchAll
@@ -5698,55 +5698,84 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 // Não é por empresa. Então helper NÃO FILTRA empresa nenhuma, e conflito é global também.
 async function _calcularProximoNumeroOF(_empIdIgnorado, diag) {
   try {
-    const PAGE_TOP = 80;
-    const colunas = [
-      { key: 'numero', col: 'numero' },
-      { key: 'of_num', col: 'of_num' },
-      { key: 'of',     col: 'of' },
-    ];
-    const resps = await Promise.allSettled(colunas.map(c => {
-      return supabase
+    let maxSql = 0;
+    let sqlOk = false;
+    try {
+      const mfn = await supabase
         .from('ofs')
-        .select(`${c.col},id,deleted_at`)
-        .not(c.col, 'is', null)
+        .select('of_num')
+        .not('of_num', 'is', null)
         .is('deleted_at', null)
-        .order(c.col, { ascending: false })
-        .limit(PAGE_TOP);
-    }));
-    let maior = 0;
-    const todosNumeros = [];
-    const parseCandRaw = (v) => {
-      if (v === null || v === undefined || v === '') return 0;
-      const s = String(v).replace(/\D/g, '');
-      const n = parseInt(s, 10);
-      return Number.isFinite(n) && n > 0 ? n : 0;
-    };
-    for (let i = 0; i < colunas.length; i++) {
-      const r = resps[i];
-      if (r?.status !== 'fulfilled') continue;
-      const arr = Array.isArray(r?.value?.data) ? r.value.data : [];
-      for (const o of arr) {
-        if (o?.deleted_at) continue;
-        const v = o?.[colunas[i].col];
-        const n = parseCandRaw(v);
-        if (n <= 0) continue;
-        if (n > maior) maior = n;
-        if (diag && todosNumeros.length < 50) {
-          todosNumeros.push({ n, col: colunas[i].col, val: String(v).slice(0, 32), id: String(o?.id || '').slice(0, 10), deletado: false });
+        .order('of_num', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const parseCand = (r, key) => {
+        if (!r || !r.data) return 0;
+        const v = r.data[key];
+        if (v === null || v === undefined || v === '') return 0;
+        const n = parseInt(String(v).replace(/\D/g, ''), 10);
+        return Number.isFinite(n) && n > 0 ? n : 0;
+      };
+      maxSql = parseCand(mfn, 'of_num');
+      if (maxSql > 0) sqlOk = true;
+    } catch (_) { sqlOk = false; maxSql = 0; }
+
+    const baseQuery = () => supabase
+      .from('ofs')
+      .select('numero, of_num, of, id, created_at, deleted_at, empresa_id, emp_id')
+      .is('deleted_at', null)
+      .order('of_num', { ascending: false });
+
+    const pages = [];
+    try {
+      const r1 = await baseQuery().range(0, 999);
+      if (r1?.data?.length) pages.push(...r1.data);
+      if (r1?.data && r1.data.length === 1000) {
+        const r2 = await baseQuery().range(1000, 1999);
+        if (r2?.data?.length) pages.push(...r2.data);
+        if (r2?.data && r2.data.length === 1000) {
+          const r3 = await baseQuery().range(2000, 2999);
+          if (r3?.data?.length) pages.push(...r3.data);
+          if (r3?.data && r3.data.length === 1000) {
+            const r4 = await baseQuery().range(3000, 3999);
+            if (r4?.data?.length) pages.push(...r4.data);
+            if (r4?.data && r4.data.length === 1000) {
+              const r5 = await baseQuery().range(4000, 4999);
+              if (r5?.data?.length) pages.push(...r5.data);
+              if (r5?.data && r5.data.length === 1000) {
+                const r6 = await baseQuery().range(5000, 5999);
+                if (r6?.data?.length) pages.push(...r6.data);
+              }
+            }
+          }
         }
       }
+    } catch (scanErr) {
+      if (!sqlOk) throw scanErr;
     }
+    const data = pages;
+    const nums = [];
+    (data || []).forEach((of) => {
+      if (of?.deleted_at) return;
+      let linhaMaior = 0;
+      ['numero', 'of_num', 'of'].forEach((campo) => {
+        const v = of?.[campo];
+        if (v === null || v === undefined || v === '') return;
+        const n = parseInt(String(v).replace(/\D/g, ''), 10);
+        if (!isNaN(n) && n > linhaMaior) linhaMaior = n;
+      });
+      if (linhaMaior > 0) nums.push({ n: linhaMaior, id: of?.id, numero: of?.numero, of_num: of?.of_num, of: of?.of, criado: String(of?.created_at || '').slice(0, 16), emp_id: of?.emp_id, empresa_id: String(of?.empresa_id || '').slice(0, 10), deletado: false });
+    });
+    nums.sort((a, b) => Number(b.n || 0) - Number(a.n || 0));
+    const maiorScan = nums.length ? Number(nums[0].n || 0) : 0;
+    const maior = Math.max(maiorScan, maxSql, 0);
+    const proximo = String(maior + 1);
+    const base = { ok: true, proximo, maior, qtd: (data || []).length, qtdNumeros: nums.length, numeracaoGlobal: true, incluiDeletadosNoMaximo: false };
     if (diag) {
-      todosNumeros.sort((a, b) => Number(b.n || 0) - Number(a.n || 0));
-    }
-    const maiorSafe = Number(maior || 0);
-    const proximo = String(maiorSafe + 1);
-    const base = { ok: true, proximo, maior: maiorSafe, qtd: todosNumeros.length || 0, qtdNumeros: todosNumeros.length || 0, numeracaoGlobal: true, incluiDeletadosNoMaximo: false };
-    if (diag) {
-      base.top15 = todosNumeros.slice(0, 15);
-      base.maxSql = maiorSafe;
-      base.sqlOk = (maiorSafe > 0);
-      base.maiorScan = maiorSafe;
+      base.top15 = nums.slice(0, 15);
+      base.maxSql = maxSql;
+      base.sqlOk = sqlOk;
+      base.maiorScan = maiorScan;
     }
     return base;
   } catch (e) {
@@ -12253,24 +12282,23 @@ async function _carregarTodasOfsNaoDeletadasParaClientes() {
   const cols = ['id','of_id','codigo','numero','n_of', ...COLUNAS_ID_OF, ...COLUNAS_NOME_OF, 'deleted_at'].join(',');
   try {
     let from = 0;
-    const pageSize = 1000;
-    const MAX_PAGES = 3;
+    const pageSize = 5000;
     const todos = [];
-    for (let p = 0; p < MAX_PAGES; p++) {
-      const q = supabase.from('ofs').select(cols).is('deleted_at', null).order('created_at', { ascending: false }).range(from, from + pageSize - 1);
+    while (true) {
+      const q = supabase.from('ofs').select(cols).is('deleted_at', null).range(from, from + pageSize - 1);
       const { data, error } = await q;
       if (error) {
         if (isMissingColumnErrClientes(error)) {
-          const qSemCol = supabase.from('ofs').select('*').is('deleted_at', null).order('created_at', { ascending: false }).range(from, from + pageSize - 1);
+          const qSemCol = supabase.from('ofs').select('*').is('deleted_at', null).range(from, from + pageSize - 1);
           const r2 = await qSemCol;
-          if (r2.error) break;
+          if (r2.error) return [];
           const page = Array.isArray(r2.data) ? r2.data : [];
           todos.push(...page);
           if (page.length < pageSize) break;
           from += pageSize;
           continue;
         }
-        break;
+        return [];
       }
       const page = Array.isArray(data) ? data : [];
       todos.push(...page);
@@ -12368,9 +12396,9 @@ async function _sharedBuscarOfsCompleta(clienteId, clienteObj, options) {
   try {
     const selectMode = options?.selectMode || 'count';
     const cols = '*';
-    const limiteOfs = Number(options?.limite || 500);
-    const MAX_PAGES = 1;
-    const PAGE_SIZE = 500;
+    const limiteOfs = Number(options?.limite || 6000);
+    const MAX_PAGES = 6;
+    const PAGE_SIZE = 1000;
     const tryQueryEq = async (col) => {
       try {
         const merged = [];
@@ -12519,7 +12547,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
     const cacheKey = [
-      'clientes_v3_',
+      'clientes_v2_',
       empId || 'all',
       qBusca || '',
       lite ? 'lite1' : 'lite0',
