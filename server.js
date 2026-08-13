@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260813080200';
-const SW_RUNTIME_VERSION = '20260813080200';
+const PATCH_RUNTIME_VERSION = '20260813080300';
+const SW_RUNTIME_VERSION = '20260813080300';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -12234,8 +12234,8 @@ app.get('/api/cnpj/:cnpj', authMiddleware, async (req, res) => {
  * Objetivo: mesma lógica do painel, sem duplicação, 1 query em lote.
  * ========================================================================= */
 const UUID_RE_CLIENTES = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const COLUNAS_ID_OF = ['cli_id', 'cliId', 'cliente_id'];
-const COLUNAS_NOME_OF = ['cliente', 'cli_nome', 'cliente_nome', 'cliNome'];
+const COLUNAS_ID_OF = ['cli_id', 'cliId', 'cliid', 'cliente_id', 'clienteId'];
+const COLUNAS_NOME_OF = ['cliente', 'cli_nome', 'cliente_nome', 'cliNome', 'clinome'];
 function ofIdClientes(o) {
   if (o == null) return JSON.stringify(null);
   try {
@@ -12396,27 +12396,53 @@ async function _sharedBuscarOfsCompleta(clienteId, clienteObj, options) {
   try {
     const selectMode = options?.selectMode || 'count';
     const cols = '*';
-    const limiteOfs = Number(options?.limite || 1000);
+    const limiteOfs = Number(options?.limite || 6000);
+    const MAX_PAGES = 6;
+    const PAGE_SIZE = 1000;
     const tryQueryEq = async (col) => {
       try {
-        return await supabase
-          .from('ofs')
-          .select(cols)
-          .eq(col, clienteId)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(limiteOfs);
+        const merged = [];
+        for (let p = 0; p < MAX_PAGES; p++) {
+          const from = p * PAGE_SIZE;
+          const to = (p + 1) * PAGE_SIZE - 1;
+          const q = supabase
+            .from('ofs')
+            .select(cols)
+            .eq(col, clienteId)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false })
+            .range(from, to);
+          const res = await q;
+          if (res.error) return { data: null, error: res.error };
+          const arr = Array.isArray(res.data) ? res.data : [];
+          merged.push(...arr);
+          if (arr.length < PAGE_SIZE) break;
+          if (merged.length >= limiteOfs) break;
+        }
+        return { data: merged, error: null };
       } catch (e) { return { data: null, error: e }; }
     };
     const tryQueryIlike = async (col, pattern) => {
       try {
-        return await supabase
-          .from('ofs')
-          .select(cols)
-          .ilike(col, pattern)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(limiteOfs);
+        const merged = [];
+        for (let p = 0; p < MAX_PAGES; p++) {
+          const from = p * PAGE_SIZE;
+          const to = (p + 1) * PAGE_SIZE - 1;
+          const q = supabase
+            .from('ofs')
+            .select(cols)
+            .ilike(col, pattern)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false })
+            .range(from, to);
+          const res = await q;
+          if (res.error) return { data: null, error: res.error };
+          const arr = Array.isArray(res.data) ? res.data : [];
+          merged.push(...arr);
+          if (arr.length < PAGE_SIZE) break;
+          if (merged.length >= limiteOfs) break;
+        }
+        return { data: merged, error: null };
       } catch (e) { return { data: null, error: e }; }
     };
     const mergedMap = new Map();
@@ -12521,7 +12547,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
     const cacheKey = [
-      'clientes_',
+      'clientes_v2_',
       empId || 'all',
       qBusca || '',
       lite ? 'lite1' : 'lite0',
