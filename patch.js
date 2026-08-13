@@ -5415,8 +5415,9 @@ window._compraPapelaoDeriveItem = function(item) {
   var quantidade = window._compraPapelaoNum(item && item.quantidade);
   var valorM2 = window._compraPapelaoNum(item && item.valor_m2);
   var areaPedidoMm2 = (largura > 0 && comprimento > 0) ? (largura * comprimento) : 0;
-  var area = areaPedidoMm2 > 0 ? (areaPedidoMm2 / 1000000) : 0;
-  var totalUnit = area * valorM2;
+  var areaUnit = areaPedidoMm2 > 0 ? (areaPedidoMm2 / 1000000) : 0;
+  var area = areaUnit * Math.max(quantidade, 0);
+  var totalUnit = areaUnit * valorM2;
   var total = totalUnit * Math.max(quantidade, 0);
   var mil = totalUnit * 1000;
   return {
@@ -5736,6 +5737,11 @@ window._compraPapelaoComposeVincos = function(item) {
   ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(key) {
     var val = String(item && item[key] || '').trim();
     if (val) values.push(val);
+  });
+  var extra = Array.isArray(item && item.vincos_extra) ? item.vincos_extra : (Array.isArray(item && item.vincos_lista) ? item.vincos_lista : []);
+  extra.forEach(function(v) {
+    var t = String(v || '').trim();
+    if (t) values.push(t);
   });
   if (!values.length) {
     var legado = String(item && item.vincos || '').trim();
@@ -50881,7 +50887,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var out = [];
     raw.forEach(function(txt) {
       if (!txt) return;
-      if (out.indexOf(txt) === -1) out.push(txt);
+      out.push(txt);
     });
     return out;
   }
