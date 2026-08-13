@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1189,8 +1189,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260812215000';
-const SW_RUNTIME_VERSION = '20260812215000';
+const PATCH_RUNTIME_VERSION = '20260812211000';
+const SW_RUNTIME_VERSION = '20260812211000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -6300,30 +6300,21 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
             else if (rr?.sigla) siglaLegadaEmp = rr.sigla;
           } catch (_) {}
         }
-        for (let i = 0; i < 120; i += 1) {
+        for (let i = 0; i < 50; i += 1) {
           const cand = String((numeroEmpresa != null ? numeroEmpresa : nextSeq) + i);
-          try {
-            let qc = supabase
-              .from('ofs')
-              .select('id,numero,of,of_num,empresa_id,emp_id,deleted_at')
-              .is('deleted_at', null);
-            if (siglaLegadaEmp) qc = qc.or(`empresa_id.eq.${empresaUuid},emp_id.eq.${siglaLegadaEmp}`);
-            else qc = qc.eq('empresa_id', empresaUuid);
-            qc = qc.or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand}`).limit(3);
-            const { data: ex } = await qc;
-            const conflitaDentroEmpresa = (Array.isArray(ex) ? ex : []).some((r) => {
-              if (r?.deleted_at) return false;
-              if (siglaLegadaEmp) {
-                const okEmp = String(r?.empresa_id || '') === String(empresaUuid) || String(r?.emp_id || '') === String(siglaLegadaEmp);
-                if (!okEmp) return false;
-              } else {
-                if (String(r?.empresa_id || '') !== String(empresaUuid)) return false;
-              }
-              const nums = [String(r?.numero ?? ''), String(r?.of ?? ''), String(r?.of_num ?? ''), String(r?.numero_of ?? '')];
-              return nums.includes(String(cand));
-            });
-            if (conflitaDentroEmpresa) continue;
-          } catch (_) {}
+          let eq = supabase
+            .from('ofs')
+            .select('id,numero,of,of_num,empresa_id,emp_id')
+            .or(`numero.eq.${cand},of.eq.${cand},of_num.eq.${cand}`)
+            .limit(20);
+          if (siglaLegadaEmp) eq = eq.or(`empresa_id.eq.${empresaUuid},emp_id.eq.${siglaLegadaEmp}`);
+          else eq = eq.eq('empresa_id', empresaUuid);
+          const { data: exists } = await eq;
+          const hit = (Array.isArray(exists) ? exists : []).find((r) => {
+            if (siglaLegadaEmp) return String(r?.empresa_id || '') === String(empresaUuid) || String(r?.emp_id || '') === String(siglaLegadaEmp);
+            return String(r?.empresa_id || '') === String(empresaUuid);
+          });
+          if (hit) continue;
           filtered.of = cand;
           filtered.numero = cand;
           break;
