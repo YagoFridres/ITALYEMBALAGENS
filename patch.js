@@ -6176,7 +6176,7 @@ window._compraPapelaoRenderItemRowsHtml = function(compra) {
       + '  <td>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(item && item.data_entrega || '')) + '</td>'
       + '  <td>' + window._compraPapelaoEsc(item && (item.po || item.nomenclatura) || '—') + '</td>'
       + '  <td>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.largura || 0, 0) + ' × ' + window._compraPapelaoFmtNum(item && item.comprimento || 0, 0)) + '</td>'
-      + '  <td>' + window._compraPapelaoEsc(item && item.vincos || '—') + '</td>'
+      + '  <td>' + window._compraPapelaoEsc((function(){ var v=(typeof compraAllVincos==='function'?compraAllVincos(item):[]); if(!v.length)v=String(item&&item.vincos||'').split('/').map(function(s){return String(s||'').trim()}).filter(Boolean); return v.join('/')||'—'; })()) + '</td>'
       + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.quantidade || 0, 0)) + '</td>'
       + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.lote_minimo || 0, 0)) + '</td>'
       + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.area_m2 != null ? item.area_m2 : d.area_m2, 4)) + '</td>'
@@ -6680,7 +6680,7 @@ window._compraPapelaoComposeEmailData = function(payload, compra) {
       (idx + 1) + '. Entrega: ' + (item && item.data_entrega ? window._compraPapelaoFmtDate(item.data_entrega) : '—'),
       '   PO: ' + (String(item && item.po || item && item.nomenclatura || '').trim() || '—'),
       '   Medidas: ' + window._compraPapelaoFmtNum(item && item.largura || 0, 0) + ' x ' + window._compraPapelaoFmtNum(item && item.comprimento || 0, 0) + ' mm',
-      '   Vincos: ' + (String(item && item.vincos || '').trim() || '—'),
+      '   Vincos: ' + (function(){ var v=(typeof compraAllVincos==='function'?compraAllVincos(item):[]); if(!v.length)v=String(item&&item.vincos||'').split('/').map(function(s){return String(s||'').trim()}).filter(Boolean); return v.join('/')||'—'; })(),
       '   Qtde: ' + window._compraPapelaoFmtNum(item && item.quantidade || 0, 0),
       '   Lote Mínimo: ' + window._compraPapelaoFmtNum(item && item.lote_minimo || 0, 0),
       '   Valor m²: ' + window._compraPapelaoFmtMoney(item && item.valor_m2 || 0),
@@ -6754,7 +6754,7 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
       + '<td>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(item && item.data_entrega || '')) + '</td>'
       + '<td>' + window._compraPapelaoEsc(String(item && item.po || item && item.nomenclatura || '—')) + '</td>'
       + '<td>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.largura || 0, 0)) + ' × ' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.comprimento || 0, 0)) + '</td>'
-      + '<td>' + window._compraPapelaoEsc(String(item && item.vincos || '—')) + '</td>'
+      + '<td>' + window._compraPapelaoEsc((function(){ var v=(typeof compraAllVincos==='function'?compraAllVincos(item):[]); if(!v.length)v=String(item&&item.vincos||'').split('/').map(function(s){return String(s||'').trim()}).filter(Boolean); return v.join('/')||'—'; })()) + '</td>'
       + '<td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.quantidade || 0, 0)) + '</td>'
       + '<td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.lote_minimo || 0, 0)) + '</td>'
       + '<td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.area_m2 != null ? item.area_m2 : d.area_m2, 4)) + '</td>'
@@ -7860,12 +7860,25 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     };
   }
   function cComposeVincos(item) {
-    var out = [];
+    var raw = [];
+    var legacy = String(item && item.vincos || '').trim();
+    if (legacy) {
+      legacy.split('/').forEach(function(part) {
+        var txt = String(part || '').trim();
+        if (txt) raw.push(txt);
+      });
+    }
     ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(key) {
       var val = String(item && item[key] || '').trim();
-      if (val) out.push(val);
+      if (val) raw.push(val);
     });
-    if (!out.length) return String(item && item.vincos || '').trim();
+    var extra = Array.isArray(item && item.vincos_extra) ? item.vincos_extra : (Array.isArray(item && item.vincos_lista) ? item.vincos_lista : []);
+    extra.forEach(function(part) {
+      var txt = String(part || '').trim();
+      if (txt) raw.push(txt);
+    });
+    var out = [];
+    raw.forEach(function(txt) { if (txt) out.push(txt); });
     return out.join('/');
   }
   function cFornecedorPedidoLabel(rawName) {
@@ -9877,7 +9890,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         var _paramOk = !!(_rc && _rc.querySelector('.param-grid'));
         var _tbOk = !!document.querySelector('.calc-tabela-wrap');
         var _bodyOk = !!document.querySelector('.calc-body.modal-body');
-        _domOk = _paramOk && _tbOk && _bodyOk;
+        var _extraOk = !!document.getElementById('calc-extra-blocks');
+        _domOk = _paramOk && _tbOk && _bodyOk && _extraOk;
       } catch (_eDom) { _domOk = false; }
       if (_domOk && document.getElementById('modal-calc') && document.getElementById('modal-calculadora')) return true;
       if (document.getElementById('patch-calc-dom-injected') && _domOk) return true;
@@ -9894,18 +9908,23 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       wrap.style.display = 'contents';
       wrap.innerHTML = '' +
         '<div class="modal-overlay" id="modal-calc" style="display:none">' +
-        '<div class="modal modal-calculadora" id="modal-calculadora" style="max-width:min(1100px,95vw);width:95vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;padding:18px">' +
+        '<div class="modal modal-calculadora" id="modal-calculadora" style="max-width:min(1200px,97vw);width:97vw;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;padding:18px">' +
         '  <button class="close-btn" onclick="try { if(typeof fecharCalculadora===\'function\')fecharCalculadora(); else if(typeof fechar===\'function\')fechar(\'modal-calc\'); } catch(_){}">✕</button>' +
         '  <h2 style="margin-bottom:8px">🧮 Calculadora de Compensação — Fórmulas Garcia</h2>' +
         '  <div class="calc-header-row" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">' +
-        '    <label style="white-space:nowrap">CLIENTE DO ORÇAMENTO</label>' +
+        '    <label style="white-space:nowrap">CLIENTE DO ORÇAMENTO (valendo para TODOS os itens)</label>' +
         '    <select id="calc-cli" style="flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px"><option value="">— Selecione o cliente —</option></select>' +
         '    <span id="orc-numero-display" style="font-size:.65rem;color:var(--accent);font-family:var(--mono);font-weight:800"></span>' +
         '  </div>' +
-        '  <div class="modal-body calc-body">' +
-        '    <div class="calc-col-esq">' +
-        '    <div class="calc-row-top" style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px;align-items:end">' +
-        '      <div class="mf"><label>TIPO</label><select id="calc-tipo" onchange="try{if(typeof calcTipoChange===\'function\')calcTipoChange();}catch(_){}">' +
+        '  <div class="modal-body calc-body" style="overflow-y:auto;min-height:0;padding-right:6px">' +
+        '    <div data-calc-block="0" style="position:relative;margin-bottom:10px;border:2px solid rgba(124,58,237,.28);border-radius:14px;padding:14px;background:rgba(124,58,237,.05)">' +
+        '      <div style="position:absolute;top:10px;right:12px;font-size:.62rem;color:#a78bfa;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:rgba(124,58,237,.12);border:1px solid rgba(167,139,250,.25)">ITEM PRINCIPAL (bloco 0)</div>' +
+        '      <div class="mf" style="max-width:480px;margin-bottom:12px">' +
+        '        <label style="font-weight:800;color:#a78bfa">NOME DO ITEM PRINCIPAL * (obrigatório — aparece no orçamento/impressão)</label>' +
+        '        <input data-calc-field="nome_item" type="text" value="Item Principal" placeholder="Ex: Caixa Padrão Cliente X, Embalagem Kit Presente..." style="width:100%;background:#0f172a;color:#e2e8f0;border:1px solid rgba(167,139,250,.3);border-radius:10px;padding:11px 13px;font-size:14px;font-weight:700">' +
+        '      </div>' +
+        '    <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:end;margin-bottom:10px">' +
+        '      <div class="mf"><label>TIPO</label><select id="calc-tipo" data-calc-field="tipo" onchange="try{if(typeof calcTipoChange===\'function\')calcTipoChange();}catch(_){}">' +
         '        <optgroup label="Normal">' +
         '          <option value="200">200 — Meia Caixa</option>' +
         '          <option value="201" selected>201 — Normal 8 Tampas</option>' +
@@ -9931,34 +9950,28 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         '          <option value="417">417 — Env. Abas Sobr.</option>' +
         '        </optgroup>' +
         '      </select></div>' +
-        '      <div class="mf"><label>VL. ONDA B (R$/m²)</label><input id="calc-vb2" type="number" step="0.0001" value="2.47" oninput="try{if(typeof syncVb===\'function\')syncVb();}catch(_){}"></div>' +
-        '      <div class="mf"><label>QUANTIDADE</label><input id="calc-qtd" type="number" value="1000" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="mf"><label>VL. ONDA B (R$/m²)</label><input id="calc-vb2" data-calc-field="vb2" type="number" step="0.0001" value="2.47" oninput="try{if(typeof syncVb===\'function\')syncVb();}catch(_){}"></div>' +
+        '      <div class="mf"><label>QUANTIDADE</label><input id="calc-qtd" data-calc-field="qtd" type="number" value="1000" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
         '    </div>' +
-        '    <div class="calc-row-dims" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end">' +
-        '      <div class="mf"><label>COMPRIMENTO (mm)</label><input id="calc-comp" type="number" value="300" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '      <div class="mf"><label>LARGURA (mm)</label><input id="calc-larg" type="number" value="200" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '      <div class="mf"><label>ALTURA (mm)</label><input id="calc-alt" type="number" value="100" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;margin-bottom:10px">' +
+        '      <div class="mf"><label>COMPRIMENTO (mm)</label><input id="calc-comp" data-calc-field="comp" type="number" value="300" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="mf"><label>LARGURA (mm)</label><input id="calc-larg" data-calc-field="larg" type="number" value="200" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="mf"><label>ALTURA (mm)</label><input id="calc-alt" data-calc-field="alt" type="number" value="100" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
         '      <div class="mf" style="display:none"><label style="font-size:.6rem">ONDA</label>' +
         '        <select id="calc-onda" onchange="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}" style="font-size:.82rem"><option value="B" selected>B</option><option value="C">C</option><option value="BC">BC</option></select>' +
         '      </div>' +
         '    </div>' +
-        '    <div class="calc-row-valores" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end">' +
-        '      <div class="mf"><label>VALOR ONDA B (R$/m²)</label><input id="calc-vb" type="number" step="0.0001" value="2.47" oninput="try{if(typeof syncVb===\'function\')syncVb();}catch(_){}try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '      <div class="mf"><label>VALOR ONDA C (R$/m²)</label><input id="calc-vc" type="number" step="0.0001" value="3.29" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '      <div class="mf"><label>VALOR ONDA BC (R$/m²)</label><input id="calc-vbc" type="number" step="0.0001" value="4.46" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;margin-bottom:10px">' +
+        '      <div class="mf"><label>VALOR ONDA B (R$/m²)</label><input id="calc-vb" data-calc-field="vb" type="number" step="0.0001" value="2.47" oninput="try{if(typeof syncVb===\'function\')syncVb();}catch(_){}try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="mf"><label>VALOR ONDA C (R$/m²)</label><input id="calc-vc" data-calc-field="vc" type="number" step="0.0001" value="3.29" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '      <div class="mf"><label>VALOR ONDA BC (R$/m²)</label><input id="calc-vbc" data-calc-field="vbc" type="number" step="0.0001" value="4.46" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
         '    </div>' +
-        '    <div id="calc-extra-fields" style="display:flex;gap:10px;flex-wrap:wrap"></div>' +
-        '    <div class="calc-itens-section" style="margin:14px 0 8px 0;border:1px dashed rgba(74,144,217,.35);border-radius:10px;padding:12px 14px;background:rgba(74,144,217,.04)">' +
-        '      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
-        '        <h3 style="margin:0;font-size:.85rem;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">📦 Itens do Orçamento</h3>' +
-        '        <button class="btn btn-ghost btn-sm" type="button" onclick="try{if(typeof calcAddItem===\'function\')calcAddItem();}catch(_){}" style="padding:6px 10px;font-size:.75rem">＋ Mais Itens</button>' +
-        '      </div>' +
-        '      <div id="calc-itens-container"></div>' +
-        '    </div>' +
-        '    <div class="calc-tabela-wrap" style="overflow-x:auto;flex:1;min-height:0;border:1px solid rgba(255,255,255,0.08);border-radius:10px;margin-top:12px">' +
+        '    <div id="calc-extra-fields" data-calc-field="extra-fields-wrap" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px"></div>' +
+        '    <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start">' +
+        '    <div class="calc-tabela-wrap" style="overflow-x:auto;border:1px solid rgba(255,255,255,0.08);border-radius:10px">' +
         '      <table id="calc-sheet" style="border-collapse:collapse;width:100%;min-width:900px"><thead><tr>' +
         '        <th style="text-align:left;font-family:var(--mono)">Tabela para compensação</th>' +
-        '        <th colspan="2" style="text-align:center;font-family:var(--mono);color:var(--accent)" id="calc-tipo-label">—</th>' +
+        '        <th colspan="2" style="text-align:center;font-family:var(--mono);color:var(--accent)" id="calc-tipo-label" data-calc-field="tipolabel">—</th>' +
         '        <th style="text-align:center;font-family:var(--mono)">Largura (mm)</th>' +
         '        <th style="text-align:center;font-family:var(--mono)">Comprimento (mm)</th>' +
         '        <th style="text-align:center;font-family:var(--mono)">Total (mm)</th>' +
@@ -9967,25 +9980,28 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         '        <th style="text-align:center;font-family:var(--mono)">Vl. venda líquida</th>' +
         '        <th style="text-align:center;font-family:var(--mono)">c/ frete</th>' +
         '        <th style="text-align:center;font-family:var(--mono)">Vl. unit. (R$/un)</th>' +
-        '      </tr></thead><tbody id="calc-tbody"><tr><td colspan="11" style="padding:20px;text-align:center;color:var(--text3)">Preencha os dados acima para calcular</td></tr></tbody></table>' +
+        '      </tr></thead><tbody id="calc-tbody" data-calc-field="tbody"><tr><td colspan="11" style="padding:20px;text-align:center;color:var(--text3)">Preencha os dados acima para calcular</td></tr></tbody></table>' +
         '    </div>' +
-        '    </div>' +
-        '    <div class="calc-col-dir" style="padding:4px 2px;display:grid;grid-auto-rows:minmax(0,auto);gap:12px;align-content:start">' +
-        '      <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,0.65);text-transform:uppercase">Parâmetros Comerciais <span id="calc-w3-display" style="color:#81c784"></span></div>' +
+        '    <div class="calc-col-dir" style="padding:2px;display:grid;grid-auto-rows:minmax(0,auto);gap:10px;align-content:start">' +
+        '      <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,0.65);text-transform:uppercase">Parâmetros Comerciais <span id="calc-w3-display" data-calc-field="w3display" style="color:#81c784"></span></div>' +
         '      <div class="param-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;align-items:end">' +
-        '        <div class="param-row" style="display:grid;gap:6px"><span class="param-label" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Custo Merc. (%)</span><input id="calc-cm" class="param-input" type="number" value="49" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '        <div class="param-row" style="display:grid;gap:6px"><span class="param-label" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Custo Fixo (%)</span><input id="calc-cf" class="param-input" type="number" value="15" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '        <div class="param-row" style="display:grid;gap:6px"><span class="param-label" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Margem (%)</span><input id="calc-mg" class="param-input" type="number" value="25" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '        <div class="param-row" style="display:grid;gap:6px"><span class="param-label" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Comissão (%)</span><input id="calc-cv" class="param-input" type="number" value="1" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '        <div class="param-row" style="display:grid;gap:6px"><span class="param-label" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Impostos (%)</span><input id="calc-imp" class="param-input" type="number" value="10" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '        <div class="param-row" style="display:grid;gap:6px"><span class="param-label" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Vl. KM Frete (R$)</span><input id="calc-vkm" class="param-input" type="number" step="0.01" value="1.15" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '        <div class="param-row" style="display:grid;gap:6px"><span class="param-label" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">KM Entrega</span><input id="calc-km" class="param-input" type="number" value="50" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
-        '        <div class="param-frete-total" style="display:grid;gap:6px;grid-column:1 / -1;padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,rgba(24,95,165,.32),rgba(59,130,246,.18));border:1px solid rgba(125,211,252,.26)"><span style="font-size:11px;font-weight:800;color:#bfdbfe;text-transform:uppercase;letter-spacing:.06em">Frete Total</span><span id="calc-frete-display" style="font-size:18px;font-weight:900;color:#fff;font-family:var(--mono,inherit)">—</span></div>' +
+        '        <div style="display:grid;gap:6px"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Custo Merc. (%)</span><input id="calc-cm" class="param-input" data-calc-field="cm" type="number" value="49" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '        <div style="display:grid;gap:6px"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Custo Fixo (%)</span><input id="calc-cf" class="param-input" data-calc-field="cf" type="number" value="15" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '        <div style="display:grid;gap:6px"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Margem (%)</span><input id="calc-mg" class="param-input" data-calc-field="mg" type="number" value="25" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '        <div style="display:grid;gap:6px"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Comissão (%)</span><input id="calc-cv" class="param-input" data-calc-field="cvend" type="number" value="1" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '        <div style="display:grid;gap:6px"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Impostos (%)</span><input id="calc-imp" class="param-input" data-calc-field="imp" type="number" value="10" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '        <div style="display:grid;gap:6px"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Vl. KM Frete (R$)</span><input id="calc-vkm" class="param-input" data-calc-field="vkm" type="number" step="0.01" value="1.15" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '        <div style="display:grid;gap:6px"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">KM Entrega</span><input id="calc-km" class="param-input" data-calc-field="km" type="number" value="50" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px;width:100%;min-width:0" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
+        '        <div style="display:grid;gap:6px;grid-column:1 / -1;padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,rgba(24,95,165,.32),rgba(59,130,246,.18));border:1px solid rgba(125,211,252,.26)"><span style="font-size:11px;font-weight:800;color:#bfdbfe;text-transform:uppercase;letter-spacing:.06em">Frete Total</span><span id="calc-frete-display" data-calc-field="fretedisplay" style="font-size:18px;font-weight:900;color:#fff;font-family:var(--mono,inherit)">—</span></div>' +
         '      </div>' +
         '    </div>' +
+        '    </div>' +
+        '    </div>' +
+        '    <div id="calc-extra-blocks"></div>' +
         '  </div>' +
         '  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;padding-top:12px;border-top:1px solid #334155">' +
-        '    <div style="display:flex;gap:12px;align-items:center;margin-right:auto;flex-wrap:wrap">' +
+        '    <button type="button" onclick="try { if(typeof calcPromptAddMoreItems===\'function\')calcPromptAddMoreItems(); } catch(_){console.error(_)}" style="margin-right:auto;padding:11px 16px;border-radius:10px;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:13px;box-shadow:0 4px 12px rgba(14,165,233,.25)">➕ Adicionar Mais Itens (bloco completo)</button>' +
+        '    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">' +
         '      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700"><input type="checkbox" id="calc-print-b" checked style="width:16px;height:16px"> Onda B</label>' +
         '      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700"><input type="checkbox" id="calc-print-c" checked style="width:16px;height:16px"> Onda C</label>' +
         '      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700"><input type="checkbox" id="calc-print-bc" checked style="width:16px;height:16px"> Onda BC</label>' +

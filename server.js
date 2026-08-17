@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260817120000';
-const SW_RUNTIME_VERSION = '20260817120000';
+const PATCH_RUNTIME_VERSION = '20260817160000';
+const SW_RUNTIME_VERSION = '20260817160000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -19795,6 +19795,210 @@ app.get('/api/relatorios/facas-mais-utilizadas', authMiddleware, async (req, res
   }
 });
 
+app.get('/api/relatorios/amostras-mes', authMiddleware, async (req, res) => {
+  try {
+    const empresaId = await resolverEmpresaId(req);
+    const mesRaw = String(req.query.mes || req.query.month || '').trim();
+    const agora = new Date();
+    let anoRef = agora.getFullYear();
+    let mesRef = agora.getMonth() + 1;
+    if (/^\d{4}-\d{2}$/.test(mesRaw)) {
+      const partes = mesRaw.split('-');
+      anoRef = parseInt(partes[0], 10) || anoRef;
+      mesRef = parseInt(partes[1], 10) || mesRef;
+    } else if (/^\d{4}$/.test(mesRaw)) {
+      anoRef = parseInt(mesRaw, 10);
+      mesRef = 0;
+    }
+    const mesRefStr = mesRef ? String(mesRef).padStart(2, '0') : null;
+    const yyyy = String(anoRef);
+    const dtInicio = mesRefStr ? `${yyyy}-${mesRefStr}-01T00:00:00.000Z` : `${yyyy}-01-01T00:00:00.000Z`;
+    const dtFim = mesRefStr
+      ? new Date(anoRef, mesRef, 1).toISOString()
+      : new Date(anoRef + 1, 0, 1).toISOString();
+
+    const empFiltroRaw = String(req.query.empId ?? req.query.emp_id ?? '').trim();
+    let q = supabase.from('amostras').select('*').gte('created_at', dtInicio).lt('created_at', dtFim);
+    if (empresaId) q = q.or('emp_id.eq.' + empresaId + ',emp_id.is.null');
+    else if (empFiltroRaw) q = q.eq('emp_id', empFiltroRaw);
+    const { data: rows, error } = await q;
+    if (error) throw error;
+
+    const lista = Array.isArray(rows) ? rows : [];
+    const total_pedidas = lista.length;
+    const statusFeitos = new Set(['feita','feita e entregue','entregue','aprovada','aprovado','concluida','concluída','concluido','concluído','feito','realizada','enviada']);
+    const total_feitas = lista.filter(a => {
+      const s = String(a?.status || '').toLowerCase().trim();
+      return statusFeitos.has(s) || (a && (a.data_entrega || a.data_aprovacao));
+    }).length;
+
+    const clientes = new Map();
+    lista.forEach(a => {
+      const id = String(a?.cliente_id ?? '').trim();
+      const nome = String(a?.cliente_nome ?? a?.cliente ?? '').trim() || 'Cliente não identificado';
+      const key = id || nome;
+      const feito = (function(){
+        const s = String(a?.status || '').toLowerCase().trim();
+        return statusFeitos.has(s) || (a && (a.data_entrega || a.data_aprovacao));
+      })();
+      const cur = clientes.get(key) || { cliente_id: id, cliente_nome: nome, pedidas: 0, feitas: 0, ultimo_pedido: '' };
+      cur.pedidas += 1;
+      if (feito) cur.feitas += 1;
+      const dtc = String(a?.created_at || a?.data_pedido || '').slice(0, 10);
+      if (dtc && (!cur.ultimo_pedido || dtc > cur.ultimo_pedido)) cur.ultimo_pedido = dtc;
+      clientes.set(key, cur);
+    });
+
+    const ranking = Array.from(clientes.values()).sort((a, b) => {
+      return (Number(b.pedidas || 0) - Number(a.pedidas || 0))
+        || (Number(b.feitas || 0) - Number(a.feitas || 0))
+        || String(a.cliente_nome || '').localeCompare(String(b.cliente_nome || ''), 'pt-BR');
+    });
+
+    return res.json({
+      ok: true,
+      data: {
+        periodo: mesRefStr ? `${yyyy}-${mesRefStr}` : String(anoRef),
+        ano: anoRef,
+        mes: mesRef || null,
+        total_pedidas,
+        total_feitas,
+        taxa_conclusao: total_pedidas > 0 ? Math.round((total_feitas / total_pedidas) * 10000) / 100 : 0,
+        clientes_unicos: ranking.length,
+        ranking
+      }
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/relatorios/projecao-vendas', authMiddleware, async (req, res) => {
+  try {
+    const empresaId = await resolverEmpresaId(req);
+    const estenderProximoAno = String(req.query.proximo_ano || req.query.nextYear || '').trim() === '1';
+    const agora = new Date();
+    const anoAtual = agora.getFullYear();
+    const mesAtual = agora.getMonth() + 1;
+
+    const dtInicio = new Date(anoAtual - 1, 0, 1).toISOString();
+    const anoFimFiltro = estenderProximoAno ? anoAtual + 2 : anoAtual + 1;
+    const dtFimFiltro = new Date(anoFimFiltro, 0, 1).toISOString();
+
+    let q = supabase
+      .from('ofs')
+      .select('id,numero,status,quantidade,qtd,valor_total,valor_venda,created_at,data_conclusao,concluido_em,empresa_id,deleted_at')
+      .gte('created_at', dtInicio)
+      .lt('created_at', dtFimFiltro);
+    if (empresaId) q = q.or('empresa_id.eq.' + empresaId + ',empresa_id.is.null');
+    q = q.is('deleted_at', null);
+    const { data: rows, error } = await q;
+    if (error) throw error;
+
+    const cancelRe = /cancel|anul|exclu|rejeit|inativo/i;
+    const concluidoRe = /concl|entreg|fatur|fech|pronto|finaliz|ok/i;
+    const historicoMap = new Map();
+    (rows || []).forEach(of => {
+      const statusNorm = String(of?.status || '').trim();
+      if (cancelRe.test(statusNorm)) return;
+      const dataRef = of?.concluido_em || of?.data_conclusao || of?.created_at || null;
+      if (!dataRef) return;
+      const d = new Date(dataRef);
+      const chave = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      const statusOk = concluidoRe.test(statusNorm);
+      const valor = Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0;
+      const qtd = Number(of?.quantidade ?? of?.qtd ?? 0) || 0;
+      const cur = historicoMap.get(chave) || { mes: chave, valor: 0, ofs: 0, qtd_caixas: 0, ofs_concluidas: 0, valor_concluido: 0 };
+      cur.ofs += 1;
+      cur.qtd_caixas += qtd;
+      cur.valor += valor;
+      if (statusOk) {
+        cur.ofs_concluidas += 1;
+        cur.valor_concluido += valor;
+      }
+      historicoMap.set(chave, cur);
+    });
+
+    const mesesOrdenados = Array.from(historicoMap.values()).sort((a, b) => String(a.mes).localeCompare(String(b.mes)));
+
+    const serieConcluido = mesesOrdenados.map(m => Number(m.valor_concluido || m.valor || 0) || 0);
+    const n = serieConcluido.length;
+    let projecaoBaseMes = 0;
+    if (n >= 3) {
+      const ult3 = serieConcluido.slice(-3);
+      projecaoBaseMes = ult3.reduce((s, v) => s + v, 0) / ult3.length;
+    } else if (n > 0) {
+      projecaoBaseMes = serieConcluido.reduce((s, v) => s + v, 0) / n;
+    }
+    let slope = 0;
+    if (n >= 2) {
+      const xs = serieConcluido.map((_, i) => i + 1);
+      const mediaX = xs.reduce((s, x) => s + x, 0) / n;
+      const mediaY = serieConcluido.reduce((s, y) => s + y, 0) / n;
+      let num = 0, den = 0;
+      for (let i = 0; i < n; i++) {
+        num += (xs[i] - mediaX) * (serieConcluido[i] - mediaY);
+        den += (xs[i] - mediaX) ** 2;
+      }
+      slope = den > 0 ? (num / den) : 0;
+    }
+    const projecaoTendenciaMes = Math.max(0, projecaoBaseMes + slope);
+
+    const mesesProjetados = [];
+    const ultimoMesKey = mesesOrdenados.length ? mesesOrdenados[mesesOrdenados.length - 1].mes : `${anoAtual}-${String(mesAtual).padStart(2,'0')}`;
+    const partesUlt = ultimoMesKey.split('-');
+    let prAno = parseInt(partesUlt[0], 10);
+    let prMes = parseInt(partesUlt[1], 10);
+    if (prMes >= 12) { prAno += 1; prMes = 1; } else { prMes += 1; }
+    const anoLimiteProj = estenderProximoAno ? (anoAtual + 1) : anoAtual;
+    let guard = 0;
+    while ((prAno < anoLimiteProj) || (prAno === anoLimiteProj && prMes <= 12)) {
+      if (++guard > 36) break;
+      const chave = prAno + '-' + String(prMes).padStart(2, '0');
+      mesesProjetados.push({
+        mes: chave,
+        projecao_media: Math.round(projecaoBaseMes * 100) / 100,
+        projecao_tendencia: Math.round(projecaoTendenciaMes * 100) / 100
+      });
+      if (prMes >= 12) { prAno += 1; prMes = 1; } else { prMes += 1; }
+    }
+
+    const totalHistorico12 = mesesOrdenados.filter(m => {
+      const pa = m.mes.split('-').map(Number);
+      const diff = (anoAtual - pa[0]) * 12 + (mesAtual - pa[1]);
+      return diff >= 0 && diff < 12;
+    }).reduce((s, m) => s + Number(m.valor_concluido || m.valor || 0), 0);
+
+    const mediaMensal12 = mesesOrdenados.length ? (totalHistorico12 / Math.min(12, Math.max(1, mesesOrdenados.length))) : 0;
+
+    return res.json({
+      ok: true,
+      data: {
+        periodo: { ano_atual: anoAtual, mes_atual: mesAtual, estender_proximo_ano: estenderProximoAno },
+        historico: mesesOrdenados.map(m => ({
+          mes: m.mes,
+          ofs_total: Number(m.ofs || 0),
+          ofs_concluidas: Number(m.ofs_concluidas || 0),
+          qtd_caixas: Number(m.qtd_caixas || 0),
+          valor_total: Math.round(Number(m.valor || 0) * 100) / 100,
+          valor_concluido: Math.round(Number(m.valor_concluido || 0) * 100) / 100
+        })),
+        projecao_meses: mesesProjetados,
+        resumo: {
+          total_12m_concluido: Math.round(totalHistorico12 * 100) / 100,
+          media_mensal_12m: Math.round(mediaMensal12 * 100) / 100,
+          projecao_media_mensal: Math.round(projecaoBaseMes * 100) / 100,
+          projecao_tendencia_mensal: Math.round(projecaoTendenciaMes * 100) / 100,
+          meses_projetados: mesesProjetados.length,
+          slope_tendencia: Math.round(slope * 100) / 100
+        }
+      }
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/cliches', authMiddleware, async (req, res) => {
   try {
     const search = String(req.query.search || req.query.q || '').trim();
@@ -22884,7 +23088,7 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       'id', 'numero', 'of', 'cli_id', 'valor_total', 'quantidade', 'qtd', 'qtd_produzida', 'descricao',
       'operadores_conclusao', 'perdas_por_maquina', 'usuario_conclusao', 'operador_conclusao',
       'maq', 'maquina_agendada', 'caixa_comprimento', 'caixa_largura', 'dim_comprimento', 'dim_largura',
-      'gramatura_id', 'gramatura', 'gramatura_nome', 'tonelada_vendida', 'custo_m2_venda',
+      'gramatura_id', 'gramatura', 'gramatura_nome', 'tonelada_vendida', 'toneladas_utilizadas', 'custo_m2_venda',
       'preco', 'valor_unitario', 'valor_venda', 'data_conclusao'
     ];
     let ofs = [];
@@ -22956,29 +23160,43 @@ app.get('/api/analises/toneladas-vendidas', authMiddleware, async (req, res) => 
       const gramaturaInfo = gramaturasMap.get(pickOfGramaturaId(of)) || null;
       const gramatura = Number(of?.gramatura || gramaturaInfo?.gramatura || 0) || 0;
       const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
-      return !!String(of?.data_conclusao || '').trim() && (tonPersistida > 0 || gramatura > 0);
+      const tonUtilizada = Number(of?.toneladas_utilizadas || 0) || 0;
+      return !!String(of?.data_conclusao || '').trim() && (tonPersistida > 0 || tonUtilizada > 0 || gramatura > 0);
     }).map((of) => {
       const cliId = pickOfCliId(of);
       const gramaturaId = pickOfGramaturaId(of);
       const gramaturaInfo = gramaturasMap.get(gramaturaId) || null;
       const qtd = Math.max(0, Math.trunc(Number(of?.qtd_produzida ?? of?.qtd ?? of?.quantidade ?? 0) || 0));
       const gramatura = Number(of?.gramatura ?? gramaturaInfo?.gramatura ?? 0) || 0;
+      const tonUtilizada = Number(of?.toneladas_utilizadas || 0) || 0;
       const tonPersistida = Number(of?.tonelada_vendida || 0) || 0;
       const custoM2Venda = Number(of?.custo_m2_venda || 0) || 0;
       const valorUnitario = Number(of?.valor_unitario ?? of?.preco ?? 0) || 0;
+      const desc = String(of?.descricao || '').trim();
+      const match = desc.match(/(\d+(?:[.,]\d+)?)\s*[Ã—xX]\s*(\d+(?:[.,]\d+)?)/);
+      const compCmFromDesc = match ? parseFloat(String(match[1] || '').replace(',', '.')) : 0;
+      const largCmFromDesc = match ? parseFloat(String(match[2] || '').replace(',', '.')) : 0;
       let areaUnitM2 = 0;
-      const compMm = Number(of?.dim_comprimento ?? of?.caixa_comprimento ?? 0) || 0;
-      const largMm = Number(of?.dim_largura ?? of?.caixa_largura ?? 0) || 0;
-      if (compMm > 0 && largMm > 0) areaUnitM2 = (compMm / 1000) * (largMm / 1000);
-      if (!(areaUnitM2 > 0)) {
-        const desc = String(of?.descricao || '').trim();
-        const match = desc.match(/(\d+(?:[.,]\d+)?)\s*[Ã—xX]\s*(\d+(?:[.,]\d+)?)/);
-        const compCm = match ? parseFloat(String(match[1] || '').replace(',', '.')) : 0;
-        const largCm = match ? parseFloat(String(match[2] || '').replace(',', '.')) : 0;
-        if (compCm > 0 && largCm > 0) areaUnitM2 = (compCm / 100) * (largCm / 100);
+      const compRaw = Number(of?.dim_comprimento ?? of?.caixa_comprimento ?? 0) || 0;
+      const largRaw = Number(of?.dim_largura ?? of?.caixa_largura ?? 0) || 0;
+      if (compRaw > 0 && largRaw > 0) {
+        let areaMm = (compRaw / 1000) * (largRaw / 1000);
+        let areaCm = (compRaw / 100) * (largRaw / 100);
+        const areaFromDesc = (compCmFromDesc > 0 && largCmFromDesc > 0) ? ((compCmFromDesc / 100) * (largCmFromDesc / 100)) : 0;
+        if (areaFromDesc > 0 && Math.abs(areaCm - areaFromDesc) < Math.abs(areaMm - areaFromDesc) * 0.5) {
+          areaUnitM2 = areaCm;
+        } else if (areaMm < 0.005 && areaCm >= 0.01) {
+          areaUnitM2 = areaCm;
+        } else {
+          areaUnitM2 = areaMm;
+        }
+      }
+      if (!(areaUnitM2 > 0) && compCmFromDesc > 0 && largCmFromDesc > 0) {
+        areaUnitM2 = (compCmFromDesc / 100) * (largCmFromDesc / 100);
       }
       const areaTotalM2 = areaUnitM2 > 0 ? (areaUnitM2 * qtd) : 0;
-      const toneladas = tonPersistida > 0 ? tonPersistida : (areaTotalM2 > 0 ? ((areaTotalM2 * gramatura) / 1000000) : 0);
+      const tonRecalc = areaTotalM2 > 0 ? ((areaTotalM2 * gramatura) / 1000000) : 0;
+      const toneladas = tonUtilizada > 0 ? tonUtilizada : (tonPersistida > 0 ? tonPersistida : tonRecalc);
       const valorTotalBase = Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0;
       const valorTotal = valorTotalBase > 0 ? valorTotalBase : ((qtd > 0 && valorUnitario > 0) ? (qtd * valorUnitario) : 0);
       const clienteNome = clientesMap.get(cliId) || '—';

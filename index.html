@@ -33482,7 +33482,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260817120000';
+      const swVersion = '20260817160000';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -39156,64 +39156,307 @@ function calcUsarOpcaoSelecionada(){
   return calcUsarOpcao(_calcOpcaoSelecionada.compIdx||0, _calcOpcaoSelecionada.onda||'B');
 }
 
+let _calcBlockSeq = 0;
+const _calcBlockDefaults = {
+  tipo: '201', qtd: '1000',
+  vb: '2.47', vc: '3.29', vbc: '4.46',
+  comp: '300', larg: '200', alt: '100',
+  cm: '49', cf: '15', mg: '25', cvend: '1', imp: '10', vkm: '1.15', km: '50',
+  sob: '0', enc: '0'
+};
+function calcFieldName(key) {
+  return {
+    tipo:'calc-tipo', vb2:'calc-vb2', qtd:'calc-qtd',
+    comp:'calc-comp', larg:'calc-larg', alt:'calc-alt',
+    vb:'calc-vb', vc:'calc-vc', vbc:'calc-vbc',
+    sob:'calc-sob', enc:'calc-enc',
+    cm:'calc-cm', cf:'calc-cf', mg:'calc-mg', cvend:'calc-cv', imp:'calc-imp', vkm:'calc-vkm', km:'calc-km',
+    w3display:'calc-w3-display', fretedisplay:'calc-frete-display',
+    tipolabel:'calc-tipo-label', tbody:'calc-tbody'
+  }[key] || ('calc-'+key);
+}
+function calcGetBlockRoot(blockIdx) {
+  if (!blockIdx) return document.getElementById('modal-calc');
+  return document.querySelector('[data-calc-block="'+blockIdx+'"]');
+}
+function calcFieldEl(blockIdx, key) {
+  var root = calcGetBlockRoot(blockIdx);
+  if (!root) return null;
+  if (!blockIdx) {
+    var el = document.getElementById(calcFieldName(key));
+    if (el) return el;
+  }
+  var sel = '[data-calc-field="'+key+'"]';
+  var found = root.querySelector(sel);
+  if (found) return found;
+  if (blockIdx) {
+    var byId = document.getElementById('calc-blk'+blockIdx+'-'+key);
+    if (byId) return byId;
+  }
+  return null;
+}
+function calcBuildExtraBlockHtml(blockIdx, initialData) {
+  var d = Object.assign({}, _calcBlockDefaults, initialData || {});
+  var nomeItem = String(d.nome_item || d.nomeItem || '').trim();
+  var html = ''
+    + '<div class="calc-extra-block" data-calc-block="'+blockIdx+'" style="margin-top:16px;border:2px solid rgba(74,144,217,.35);border-radius:14px;padding:14px;background:rgba(15,23,42,.55);position:relative">'
+    + '  <button type="button" data-calc-block-del="'+blockIdx+'" title="Remover este item" style="position:absolute;top:10px;right:10px;padding:8px 12px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:#ef4444;font-weight:800;cursor:pointer;font-size:13px">✕ Remover Item</button>'
+    + '  <div class="mf" style="max-width:480px;margin-bottom:12px">'
+    + '    <label style="font-weight:800;color:#60a5fa">NOME DO ITEM * (obrigatório, diferencia no orçamento e impressão)</label>'
+    + '    <input type="text" data-calc-field="nome_item" value="'+nomeItem.replace(/"/g,'&quot;')+'" placeholder="Ex: Caixa Pizza 35cm, Kit Salgadinho, Presente Aniversário..." style="width:100%;background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.3);border-radius:10px;padding:11px 13px;font-size:14px;font-weight:700">'
+    + '  </div>'
+    + '  <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:end;margin-bottom:10px">'
+    + '    <div class="mf"><label>TIPO</label><select data-calc-field="tipo" onchange="calcRecalcFromScope('+blockIdx+')">'
+    + '      <optgroup label="Normal"><option value="200">200 — Meia Caixa</option><option value="201" '+(d.tipo==='201'?'selected':'')+'>201 — Normal 8 Tampas</option><option value="202">202 — Semi-Sobrep.</option><option value="203">203 — Sobrep. Total</option><option value="205">205 — Internas Iguais</option><option value="209">209 — Abas Curtas</option></optgroup>'
+    + '      <optgroup label="Telescópica"><option value="300">300 — Telesc. Tampo</option><option value="301">301 — Telesc. Fundo</option><option value="325">325 — Total Tampo</option><option value="326">326 — Total Fundo</option><option value="340">340 — Testeiras Tampo</option><option value="341">341 — Testeiras Fundo</option><option value="360">360 — Laterais Tampo</option><option value="361">361 — Laterais Fundo</option></optgroup>'
+    + '      <optgroup label="Envoltório"><option value="402">402 — Env. Fundo Int.</option><option value="409">409 — Env. 5 Painéis</option><option value="415">415 — Env. Abas Seg.</option><option value="417">417 — Env. Abas Sobr.</option></optgroup>'
+    + '    </select></div>'
+    + '    <div class="mf"><label>VL. ONDA B (R$/m²)</label><input data-calc-field="vb2" type="number" step="0.0001" value="'+d.vb+'" oninput="calcSyncBlockVb('+blockIdx+');calcRecalcFromScope('+blockIdx+')"></div>'
+    + '    <div class="mf"><label>QUANTIDADE</label><input data-calc-field="qtd" type="number" value="'+d.qtd+'" oninput="calcRecalcFromScope('+blockIdx+')"></div>'
+    + '  </div>'
+    + '  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;margin-bottom:10px">'
+    + '    <div class="mf"><label>COMPRIMENTO (mm)</label><input data-calc-field="comp" type="number" value="'+d.comp+'" oninput="calcRecalcFromScope('+blockIdx+')"></div>'
+    + '    <div class="mf"><label>LARGURA (mm)</label><input data-calc-field="larg" type="number" value="'+d.larg+'" oninput="calcRecalcFromScope('+blockIdx+')"></div>'
+    + '    <div class="mf"><label>ALTURA (mm)</label><input data-calc-field="alt" type="number" value="'+d.alt+'" oninput="calcRecalcFromScope('+blockIdx+')"></div>'
+    + '  </div>'
+    + '  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;margin-bottom:10px">'
+    + '    <div class="mf"><label>VALOR ONDA B (R$/m²)</label><input data-calc-field="vb" type="number" step="0.0001" value="'+d.vb+'" oninput="calcSyncBlockVb('+blockIdx+');calcRecalcFromScope('+blockIdx+')"></div>'
+    + '    <div class="mf"><label>VALOR ONDA C (R$/m²)</label><input data-calc-field="vc" type="number" step="0.0001" value="'+d.vc+'" oninput="calcRecalcFromScope('+blockIdx+')"></div>'
+    + '    <div class="mf"><label>VALOR ONDA BC (R$/m²)</label><input data-calc-field="vbc" type="number" step="0.0001" value="'+d.vbc+'" oninput="calcRecalcFromScope('+blockIdx+')"></div>'
+    + '  </div>'
+    + '  <div data-calc-field="extra-fields-wrap" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px"></div>'
+    + '  <div class="calc-tabela-wrap" style="overflow-x:auto;border:1px solid rgba(255,255,255,.08);border-radius:10px;margin-bottom:14px">'
+    + '    <table style="border-collapse:collapse;width:100%;min-width:900px"><thead><tr>'
+    + '      <th style="text-align:left;font-family:var(--mono)">Item '+blockIdx+' — Tabela compensação</th>'
+    + '      <th colspan="2" style="text-align:center;font-family:var(--mono);color:var(--accent)" data-calc-field="tipo-label">—</th>'
+    + '      <th style="text-align:center;font-family:var(--mono)">Largura (mm)</th><th style="text-align:center;font-family:var(--mono)">Comprimento (mm)</th><th style="text-align:center;font-family:var(--mono)">Total (mm)</th>'
+    + '      <th style="text-align:center;font-family:var(--mono)">m²</th><th style="text-align:center;font-family:var(--mono)">Val. total bruto</th><th style="text-align:center;font-family:var(--mono)">Vl. venda líquida</th><th style="text-align:center;font-family:var(--mono)">c/ frete</th><th style="text-align:center;font-family:var(--mono)">Vl. unit. (R$/un)</th>'
+    + '    </tr></thead><tbody data-calc-field="tbody"><tr><td colspan="11" style="padding:20px;text-align:center;color:var(--text3)">Calcular para gerar resultados</td></tr></tbody></table>'
+    + '  </div>'
+    + '  <div>'
+    + '    <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,.65);text-transform:uppercase;margin-bottom:8px">Parâmetros Comerciais <span data-calc-field="w3-display" style="color:#81c784"></span></div>'
+    + '    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;align-items:end">'
+    + '      <div style="display:grid;gap:6px"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Custo Merc. (%)</span><input data-calc-field="cm" type="number" value="'+d.cm+'" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px" oninput="calcRecalcFromScope('+blockIdx+')"></div>'
+    + '      <div style="display:grid;gap:6px"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Custo Fixo (%)</span><input data-calc-field="cf" type="number" value="'+d.cf+'" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px" oninput="calcRecalcFromScope('+blockIdx+')"></div>'
+    + '      <div style="display:grid;gap:6px"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Margem (%)</span><input data-calc-field="mg" type="number" value="'+d.mg+'" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px" oninput="calcRecalcFromScope('+blockIdx+')"></div>'
+    + '      <div style="display:grid;gap:6px"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Comissão (%)</span><input data-calc-field="cvend" type="number" value="'+d.cvend+'" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px" oninput="calcRecalcFromScope('+blockIdx+')"></div>'
+    + '      <div style="display:grid;gap:6px"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Impostos (%)</span><input data-calc-field="imp" type="number" value="'+d.imp+'" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px" oninput="calcRecalcFromScope('+blockIdx+')"></div>'
+    + '      <div style="display:grid;gap:6px"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">Vl. KM Frete (R$)</span><input data-calc-field="vkm" type="number" step="0.01" value="'+d.vkm+'" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px" oninput="calcRecalcFromScope('+blockIdx+')"></div>'
+    + '      <div style="display:grid;gap:6px"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em">KM Entrega</span><input data-calc-field="km" type="number" value="'+d.km+'" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,.24);border-radius:10px;padding:10px 11px;font-size:13px" oninput="calcRecalcFromScope('+blockIdx+')"></div>'
+    + '      <div style="display:grid;gap:6px;grid-column:1 / -1;padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,rgba(24,95,165,.32),rgba(59,130,246,.18));border:1px solid rgba(125,211,252,.26)"><span style="font-size:11px;font-weight:800;color:#bfdbfe;text-transform:uppercase;letter-spacing:.06em">Frete Total</span><span data-calc-field="frete-display" style="font-size:18px;font-weight:900;color:#fff;font-family:var(--mono,inherit)">—</span></div>'
+    + '    </div>'
+    + '  </div>'
+    + '</div>';
+  return html;
+}
+function calcSyncBlockVb(blockIdx) {
+  var vb = calcFieldEl(blockIdx,'vb');
+  var vb2 = calcFieldEl(blockIdx,'vb2');
+  if (!vb || !vb2) return;
+  var active = document.activeElement;
+  if (active === vb2) vb.value = vb2.value;
+  else if (active === vb) vb2.value = vb.value;
+}
+function calcRecalcFromScope(blockIdx) {
+  blockIdx = Number(blockIdx) || 0;
+  var tipoSel = calcFieldEl(blockIdx,'tipo');
+  var tipo = tipoSel ? parseInt(tipoSel.value) : 201;
+  var getF = function(k,def){ var el=calcFieldEl(blockIdx,k); var v=el?parseFloat(el.value):(def!=null?def:NaN); return isNaN(v)?0:v; };
+  var getStr = function(k,def){ var el=calcFieldEl(blockIdx,k); return el?String(el.value||''):(def||''); };
+  var C = getF('comp'); var L = getF('larg'); var A = getF('alt');
+  var vb = getF('vb',2.47); var vc = getF('vc',3.29); var vbc = getF('vbc',4.46);
+  var qtd = getF('qtd',1000);
+  var cm = getF('cm',49); var cf = getF('cf',15); var mg = getF('mg',25); var cvend = getF('cvend',1); var imp = getF('imp',10); var vkm = getF('vkm',1.15); var km = getF('km');
+  var sob = getF('sob'); var enc = getF('enc');
+  var extraWrap = calcFieldEl(blockIdx,'extra-fields-wrap');
+  if (extraWrap) {
+    extraWrap.innerHTML = '';
+    if (tipo===202 || tipo===203) {
+      extraWrap.innerHTML = '<div class="fgrp">SOBREPOSIÇÃO</div><div class="mf" style="margin-bottom:10px"><label>SOBREPOSIÇÃO (mm)</label><input data-calc-field="sob" type="number" value="'+Number(sob||0)+'" oninput="calcRecalcFromScope('+blockIdx+')" placeholder="mm"></div>';
+    } else if (tipo===209) {
+      extraWrap.innerHTML = '<div class="fgrp">ENCURTAMENTO</div><div class="mf" style="margin-bottom:10px"><label>ENCURTAR ABA (mm)</label><input data-calc-field="enc" type="number" value="'+Number(enc||0)+'" oninput="calcRecalcFromScope('+blockIdx+')" placeholder="mm"></div>';
+    }
+  }
+  var w3 = 100 - cf - mg - cvend - imp;
+  var w3el = calcFieldEl(blockIdx,'w3-display'); if (w3el) w3el.textContent = 'Custo Mercadoria = '+w3.toFixed(1)+'%';
+  var frete = vkm * km; var fretel = calcFieldEl(blockIdx,'frete-display'); if (fretel) fretel.textContent = fmtR(frete);
+  var tipoNome = (tipoSel && tipoSel.options && tipoSel.selectedIndex>=0) ? (tipoSel.options[tipoSel.selectedIndex].text||'') : String(tipo||'');
+  var tipoLbl = calcFieldEl(blockIdx,'tipolabel'); if (tipoLbl) tipoLbl.textContent = tipoNome;
+  var extra = {sob:sob,enc:enc};
+  var compensacoes = calcCompensacao(tipo,C,L,A,extra);
+  var tbody = calcFieldEl(blockIdx,'tbody');
+  if (!tbody) {
+    if (!blockIdx && typeof calcLastResult !== 'undefined') return calcRecalc();
+    return;
+  }
+  if (!compensacoes || !compensacoes.length) {
+    tbody.innerHTML = '<tr><td colspan="11" style="padding:20px;text-align:center;color:var(--text3)">Tipo sem fórmulas disponíveis</td></tr>';
+    return;
+  }
+  var rowLabels=['1','2','3']; var rowTitles=['Onda B','Onda C','Onda BC']; var ondasNomes=['B','C','BC'];
+  var rowColors=['var(--s2)','var(--surface)','var(--s3)'];
+  var rows=''; var allResults=[];
+  compensacoes.forEach(function(opt,i){
+    var isBest=i===1; var bg=rowColors[i]; var bold=isBest?'font-weight:800;':'';
+    var td='padding:10px 10px;white-space:nowrap;';
+    var rowOutline=isBest?';outline:2px solid var(--green)':'';
+    var od=ondasNomes[i]||'B';
+    var preco=calcPreco(opt.area,od,vb,vc,vbc,qtd,cm,cf,mg,cvend,imp,vkm,km);
+    var vUnit = qtd>0 ? (preco.liquida/qtd) : 0;
+    var compTitle=rowTitles[i]||('Comp. '+rowLabels[i]);
+    rows += '<tr style="background:'+bg+rowOutline+';border-top:1px solid var(--border)">';
+    rows += '<td style="'+td+bold+'color:var(--accent);font-family:var(--mono)">'+compTitle+'</td>';
+    rows += '<td colspan="2" style="'+td+'font-size:.65rem;color:var(--text2)">'+C+' x '+L+' x '+A+' mm</td>';
+    rows += '<td style="'+td+bold+'text-align:center;font-family:var(--mono);color:var(--teal)">'+opt.largura+'</td>';
+    rows += '<td style="'+td+bold+'text-align:center;font-family:var(--mono);color:var(--teal)">'+opt.comprimento+'</td>';
+    rows += '<td style="'+td+'text-align:center;font-family:var(--mono)">--</td>';
+    rows += '<td style="'+td+bold+'text-align:right;font-family:var(--mono);color:var(--teal)">'+opt.area.toFixed(6)+'</td>';
+    rows += '<td style="'+td+'text-align:right;font-family:var(--mono);color:var(--yellow)">'+fmtR(preco.bruto)+'</td>';
+    rows += '<td style="'+td+'text-align:right;font-family:var(--mono);color:var(--green)">'+fmtR(preco.liquida)+'</td>';
+    rows += '<td style="'+td+'text-align:right;font-family:var(--mono)">'+fmtR(preco.comFrete)+'</td>';
+    rows += '<td style="'+td+'text-align:right;font-family:var(--mono)">'+fmtR(vUnit)+'</td>';
+    rows += '</tr>';
+    allResults.push({compLabel:rowLabels[i],compTitle:compTitle,compIdx:i,onda:od,largura:opt.largura,comprimento:opt.comprimento,area:opt.area,bruto:preco.bruto,liquida:preco.liquida,comFrete:preco.comFrete,vunit:vUnit});
+  });
+  tbody.innerHTML = rows;
+  var blockResult = {tipo:tipoNome,comp:C,larg:L,alt:A,qtd:qtd,allResults:allResults,
+    compensacoes:compensacoes.map(function(opt,i){
+      var od=ondasNomes[i]||'B';
+      var preco=calcPreco(opt.area,od,vb,vc,vbc,qtd,cm,cf,mg,cvend,imp,vkm,km);
+      return {label:rowLabels[i],compTitle:rowTitles[i]||('Comp. '+rowLabels[i]),largura:opt.largura,comprimento:opt.comprimento,area:opt.area,bruto:preco.bruto,liquida:preco.liquida,comFrete:preco.comFrete,vunit:preco.liquida/Math.max(1,qtd),onda:od};
+    }),
+    parametros:{tipo:String(tipo),comp:C,larg:L,alt:A,qtd:qtd,vb:vb,vc:vc,vbc:vbc,cm:cm,cf:cf,mg:mg,cvend:cvend,imp:imp,vkm:vkm,km:km,sob:sob,enc:enc},
+    nome_item: getStr('nome_item')
+  };
+  if (!blockIdx) calcLastResult = blockResult;
+  if (!window._calcBlockResults) window._calcBlockResults = {};
+  window._calcBlockResults[blockIdx] = blockResult;
+  return blockResult;
+}
+function calcPromptAddMoreItems() {
+  var raw = prompt('Quantos itens adicionais deseja criar? (1 a 50 itens de uma vez)','1');
+  if (raw===null) return;
+  var n = parseInt(raw,10); if (!isFinite(n)) { toast('Digite um número válido','var(--red)'); return; }
+  if (n<1 || n>50) { toast('Escolha entre 1 e 50 itens de uma vez','var(--yellow)'); return; }
+  var container = document.getElementById('calc-extra-blocks');
+  if (!container) { toast('Container não encontrado','var(--red)'); return; }
+  for (var i=0;i<n;i++) {
+    _calcBlockSeq++;
+    var idx = _calcBlockSeq;
+    var wrap = document.createElement('div');
+    wrap.innerHTML = calcBuildExtraBlockHtml(idx);
+    var node = wrap.firstChild;
+    container.appendChild(node);
+  }
+  var all = document.querySelectorAll('[data-calc-block]');
+  all.forEach(function(node) {
+    var idx = Number(node.getAttribute('data-calc-block'))||0;
+    if (!idx) return;
+    calcRecalcFromScope(idx);
+  });
+  toast('Adicionado(s) '+n+' item(ns) extras. Calcularam automaticamente ✓','var(--green)');
+}
+document.addEventListener('click', function(ev) {
+  var btn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-calc-block-del]') : null;
+  if (!btn) return;
+  ev.preventDefault && ev.preventDefault();
+  var idx = btn.getAttribute('data-calc-block-del');
+  if (!idx) return;
+  var el = document.querySelector('[data-calc-block="'+idx+'"]');
+  if (!el) return;
+  var extrasCount = document.querySelectorAll('[data-calc-block]').length - 1;
+  if (extrasCount <= 0) { toast('Nada para remover','var(--yellow)'); return; }
+  if (!confirm('Remover este item do orçamento?')) return;
+  el.parentNode && el.parentNode.removeChild(el);
+  if (window._calcBlockResults) delete window._calcBlockResults[idx];
+  toast('Item removido','var(--orange)');
+});
+function calcListAllBlocks() {
+  var result = calcRecalcFromScope(0);
+  var list = [{ idx:0, result: result || calcLastResult }];
+  var extras = document.querySelectorAll('[data-calc-block]');
+  extras.forEach(function(node) {
+    var idx = Number(node.getAttribute('data-calc-block'))||0;
+    if (!idx) return;
+    var r = calcRecalcFromScope(idx);
+    list.push({ idx: idx, result: r, el: node });
+  });
+  return list;
+}
+function calcCollectAllBlocksForSave() {
+  var blocks = calcListAllBlocks();
+  var itens = []; var erros = 0;
+  blocks.forEach(function(b, slotIdx) {
+    var r = b && b.result;
+    if (!r || !r.allResults || !r.allResults.length) { erros++; return; }
+    var nomeItem = String(r.nome_item || '').trim();
+    if (!nomeItem) nomeItem = 'Item ' + (slotIdx+1);
+    var params = r.parametros || {};
+    var sel = _calcOpcaoSelecionada || {compIdx:0,onda:'B'};
+    var opt = r.allResults.find(function(x){return x && x.compIdx===sel.compIdx && String(x.onda||'')===String(sel.onda||'');}) || r.allResults[0] || {};
+    var qtd = Number(r.qtd || params.qtd || 0) || 0;
+    var vunit = qtd>0 ? (Number(opt.comFrete||0)/qtd) : 0;
+    itens.push({
+      indice: slotIdx+1,
+      nome_item: nomeItem,
+      nome: nomeItem,
+      tipo: params.tipo || r.tipo || '',
+      comp: params.comp,
+      larg: params.larg,
+      alt: params.alt,
+      medidas: (params.comp||'')+'x'+(params.larg||'')+'x'+(params.alt||''),
+      quantidade: qtd,
+      parametros: Object.assign({}, params),
+      resultados: r.allResults,
+      compensacoes: r.compensacoes,
+      onda_selecionada: String(opt.onda||sel.onda||'B'),
+      valor_unitario: vunit,
+      valor_total: Number(opt.comFrete||0)||0,
+      area: Number(opt.area||0),
+      bruto: Number(opt.bruto||0),
+      liquida: Number(opt.liquida||0),
+      comFrete: Number(opt.comFrete||0)
+    });
+  });
+  if (erros>0) { toast('Existem '+erros+' bloco(s) sem calcular — aguarde o cálculo','var(--red)'); return null; }
+  return itens;
+}
+
 async function salvarOrcamentoCalc(){
+  try { if(typeof calcRecalcFromScope==='function') calcRecalcFromScope(0); }catch(_){}
   if(!calcLastResult || !Array.isArray(calcLastResult.allResults) || calcLastResult.allResults.length===0){
     toast('Calcule primeiro antes de salvar','var(--red)');return false;
   }
   const calcCli=document.getElementById('calc-cli');
   const clienteId=String((calcCli||{}).value||'');
   const clienteNome=(calcCli && calcCli.options && calcCli.selectedIndex>=0) ? (calcCli.options[calcCli.selectedIndex].textContent||'').trim() : (clienteId||'—');
-  const qtd=parseInt(String((document.getElementById('calc-qtd')||{}).value||'0'),10)||0;
-  const C=String((document.getElementById('calc-c')||document.getElementById('calc-comp')||{}).value||'');
-  const L=String((document.getElementById('calc-l')||document.getElementById('calc-larg')||{}).value||'');
-  const A=String((document.getElementById('calc-a')||document.getElementById('calc-alt')||{}).value||'');
-  const medidas=C+'x'+L+'x'+A;
 
+  const itens = typeof calcCollectAllBlocksForSave === 'function' ? calcCollectAllBlocksForSave() : null;
+  if (!itens || !itens.length) { toast('Nenhum item coletado','var(--red)'); return false; }
+  const primeiro = itens[0] || {};
   const sel=_calcOpcaoSelecionada || {compIdx:0,onda:'B'};
-  const opt=calcLastResult.allResults.find(r=>r && r.compIdx===sel.compIdx && String(r.onda||'')===String(sel.onda||'')) || calcLastResult.allResults[0];
-  const valorUnitario = qtd>0 ? (Number(opt.comFrete)||0)/qtd : 0;
-  const valorTotal = Number(opt.comFrete)||0;
-  const tipoVal = (document.getElementById('calc-tipo')||{}).value || '';
-  const vbVal = (document.getElementById('calc-vb')||{}).value || (document.getElementById('calc-vb2')||{}).value || '';
-  const vcVal = (document.getElementById('calc-vc')||{}).value || (document.getElementById('calc-vc2')||{}).value || '';
-  const vbcVal = (document.getElementById('calc-vbc')||{}).value || (document.getElementById('calc-vbc2')||{}).value || '';
-
-  const itens = calcCollectItens();
-  if (!itens) return false;
+  const opt = (primeiro.resultados || []).find(r=>r && r.compIdx===sel.compIdx && String(r.onda||'')===String(sel.onda||'')) || (primeiro.resultados||[])[0] || {};
+  const valorTotal = itens.reduce(function(a,b){ return a + Number(b.valor_total||0); },0);
+  const qtdTotal = itens.reduce(function(a,b){ return a + Number(b.quantidade||0); },0);
+  const valorUnitario = qtdTotal>0 ? (valorTotal/qtdTotal) : Number(primeiro.valor_unitario||0);
 
   const payload={
     cliente_id: clienteId,
     cliente_nome: clienteNome||'—',
-    medidas,
-    tipo: tipoVal,
-    comp: C,
-    larg: L,
-    alt: A,
-    quantidade: qtd,
-    onda: String(opt.onda||''),
+    medidas: primeiro.medidas || '',
+    tipo: primeiro.tipo || '',
+    comp: primeiro.comp,
+    larg: primeiro.larg,
+    alt: primeiro.alt,
+    quantidade: Number(primeiro.quantidade||0),
+    onda: String(opt.onda||sel.onda||'B'),
     valor_unitario: valorUnitario,
     valor_total: valorTotal,
     itens: itens,
-    parametros:{
-      cm:(document.getElementById('calc-cm')||{}).value,
-      cf:(document.getElementById('calc-cf')||{}).value,
-      mg:(document.getElementById('calc-mg')||{}).value,
-      cvend:(document.getElementById('calc-cv')||{}).value,
-      imp:(document.getElementById('calc-imp')||{}).value,
-      vkm:(document.getElementById('calc-vkm')||{}).value,
-      km:(document.getElementById('calc-km')||{}).value,
-      vb: vbVal,
-      vc: vcVal,
-      vbc: vbcVal,
-      sob:(document.getElementById('calc-sob')||{}).value,
-      enc:(document.getElementById('calc-enc')||{}).value,
-      tipo: tipoVal,
-      comp: C,
-      larg: L,
-      alt: A,
-      itens: itens,
-    },
-    resultados: calcLastResult.allResults,
+    parametros: Object.assign({}, primeiro.parametros || {}, {
+      itens: itens
+    }),
+    resultados: primeiro.resultados || calcLastResult.allResults,
     emp_id: EMP_FILTRO || '',
   };
 
@@ -39237,7 +39480,7 @@ async function salvarOrcamentoCalc(){
       window.__mobAfterOrcSave();
     }
   }catch(e){}
-  toast('Orçamento Nº '+(_orcNumeroAtual||'')+' salvo ✓','var(--green)');
+  toast('Orçamento Nº '+(_orcNumeroAtual||'')+' salvo ✓ ('+itens.length+' item(ns))','var(--green)');
   const numEl=document.getElementById('orc-numero-display');
   if(numEl) numEl.textContent = _orcNumeroAtual ? ('Orçamento Nº '+_orcNumeroAtual) : '';
   return true;
@@ -39270,6 +39513,29 @@ async function buscarOrcamento(){
   if(orc) carregarOrcamentoCalc(orc);
 }
 
+function calcPopulateBlockFromItem(blockIdx, item) {
+  if (!item) return;
+  var nmEl = calcFieldEl(blockIdx,'nome_item');
+  if (nmEl) nmEl.value = String(item.nome_item || item.nomeItem || item.nome || (blockIdx===0 ? 'Item Principal' : 'Item '+(blockIdx+1))).trim();
+  var p = item.parametros || {};
+  var pop = function(key, valRaw) {
+    var el = calcFieldEl(blockIdx, key);
+    if (!el || valRaw === undefined || valRaw === null) return;
+    el.value = String(valRaw);
+  };
+  pop('tipo', item.tipo || p.tipo);
+  pop('comp', item.comp != null ? item.comp : p.comp);
+  pop('larg', item.larg != null ? item.larg : p.larg);
+  pop('alt', item.alt != null ? item.alt : p.alt);
+  pop('qtd', item.quantidade != null ? item.quantidade : p.qtd);
+  ['vb','vc','vbc','cm','cf','mg','cvend','imp','vkm','km','sob','enc'].forEach(function(k){
+    if (p[k] !== undefined) pop(k, p[k]);
+    else if (item[k] !== undefined) pop(k, item[k]);
+  });
+  var vb = calcFieldEl(blockIdx,'vb'); var vb2 = calcFieldEl(blockIdx,'vb2');
+  if (vb && vb2) vb2.value = vb.value;
+  try { if(typeof calcRecalcFromScope==='function') calcRecalcFromScope(blockIdx); } catch(_) {}
+}
 function carregarOrcamentoCalc(orc){
   if(!orc) return;
   _orcIdAtual = orc.id;
@@ -39277,102 +39543,63 @@ function carregarOrcamentoCalc(orc){
   const numEl=document.getElementById('orc-numero-display');
   if(numEl) numEl.textContent = _orcNumeroAtual ? ('Orçamento Nº '+_orcNumeroAtual) : '';
 
-  if(orc.medidas){
-    const parts=String(orc.medidas).split('x');
-    if(document.getElementById('calc-comp')) document.getElementById('calc-comp').value = parts[0]||'';
-    if(document.getElementById('calc-larg')) document.getElementById('calc-larg').value = parts[1]||'';
-    if(document.getElementById('calc-alt')) document.getElementById('calc-alt').value = parts[2]||'';
-  }
-  if(orc.quantidade!=null && document.getElementById('calc-qtd')) document.getElementById('calc-qtd').value = orc.quantidade;
-  if(orc.parametros){
-    const p=orc.parametros||{};
-    const map={cm:'calc-cm',cf:'calc-cf',mg:'calc-mg',cvend:'calc-cv',imp:'calc-imp',vkm:'calc-vkm',km:'calc-km',vb:'calc-vb',vc:'calc-vc',vbc:'calc-vbc',sob:'calc-sob',enc:'calc-enc',tipo:'calc-tipo'};
-    Object.keys(map).forEach(k=>{
-      const el=document.getElementById(map[k]);
-      if(el && p[k]!==undefined && p[k]!==null) el.value = p[k];
-    });
-    const vb2=document.getElementById('calc-vb2'); const vb=document.getElementById('calc-vb');
-    if(vb2 && vb) vb2.value = vb.value;
-  }
+  var listaSalva = Array.isArray(orc.itens) ? orc.itens : (Array.isArray(orc.parametros?.itens) ? orc.parametros.itens : []);
+  var temBlocos = listaSalva.length > 1 || (listaSalva.length === 1 && (listaSalva[0].parametros || listaSalva[0].resultados));
+
+  var extrContainer = document.getElementById('calc-extra-blocks');
+  if (extrContainer) extrContainer.innerHTML = '';
+  _calcBlockSeq = 0;
+  if (window._calcBlockResults) window._calcBlockResults = {};
+
   if(orc.cliente_id){
     const calcCli=document.getElementById('calc-cli');
     if(calcCli) calcCli.value = orc.cliente_id;
   }
 
+  if (temBlocos && listaSalva.length) {
+    var primeiro = listaSalva[0];
+    calcPopulateBlockFromItem(0, primeiro);
+    for (var i = 1; i < listaSalva.length; i++) {
+      if (typeof calcBuildExtraBlockHtml !== 'function') break;
+      _calcBlockSeq++;
+      var idx = _calcBlockSeq;
+      var wrap = document.createElement('div');
+      wrap.innerHTML = calcBuildExtraBlockHtml(idx, listaSalva[i] || {});
+      var node = wrap.firstChild;
+      if (extrContainer) extrContainer.appendChild(node);
+      calcPopulateBlockFromItem(idx, listaSalva[i] || {});
+    }
+  } else {
+    if(orc.medidas){
+      const parts=String(orc.medidas).split('x');
+      if(document.getElementById('calc-comp')) document.getElementById('calc-comp').value = parts[0]||'';
+      if(document.getElementById('calc-larg')) document.getElementById('calc-larg').value = parts[1]||'';
+      if(document.getElementById('calc-alt')) document.getElementById('calc-alt').value = parts[2]||'';
+    }
+    if(orc.quantidade!=null && document.getElementById('calc-qtd')) document.getElementById('calc-qtd').value = orc.quantidade;
+    if(orc.parametros){
+      const p=orc.parametros||{};
+      const map={cm:'calc-cm',cf:'calc-cf',mg:'calc-mg',cvend:'calc-cv',imp:'calc-imp',vkm:'calc-vkm',km:'calc-km',vb:'calc-vb',vc:'calc-vc',vbc:'calc-vbc',sob:'calc-sob',enc:'calc-enc',tipo:'calc-tipo'};
+      Object.keys(map).forEach(k=>{
+        const el=document.getElementById(map[k]);
+        if(el && p[k]!==undefined && p[k]!==null) el.value = p[k];
+      });
+      const vb2=document.getElementById('calc-vb2'); const vb=document.getElementById('calc-vb');
+      if(vb2 && vb) vb2.value = vb.value;
+    }
+    var nm = document.querySelector('[data-calc-block="0"] [data-calc-field="nome_item"]');
+    if (nm) nm.value = 'Item Principal';
+    try { if(typeof calcRecalcFromScope==='function') calcRecalcFromScope(0); } catch(_) {}
+  }
+
   const ondas=['B','C','BC'];
   const oi=ondas.indexOf(String(orc.onda||''));
   if(oi>=0) _calcOpcaoSelecionada = { compIdx: oi, onda: ondas[oi] };
-  calcRenderItens(orc.itens || orc.parametros?.itens || []);
-  toast('Orçamento Nº '+(_orcNumeroAtual||'')+' carregado ✓','var(--green)');
-  if(typeof calcRecalc==='function') calcRecalc();
+  try { if(typeof calcRecalc==='function') calcRecalc(); } catch(_) {}
+  toast('Orçamento Nº '+(_orcNumeroAtual||'')+' carregado ✓ ('+(temBlocos?listaSalva.length:1)+' item(ns))','var(--green)');
 }
 
-let _calcItensSeq = 0;
-function calcAddItem(nome, chapa) {
-  _calcItensSeq++;
-  const idx = _calcItensSeq;
-  const container = document.getElementById('calc-itens-container');
-  if (!container) return;
-  const row = document.createElement('div');
-  row.className = 'calc-item-row';
-  row.dataset.idx = idx;
-  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-bottom:10px';
-  row.innerHTML = `
-    <div class="mf" style="margin:0">
-      <label>Nome do Item *</label>
-      <input type="text" id="calc-item-${idx}-nome" placeholder="Ex: Caixa Pizza Grande, Salgadinho, Kit Presente..." value="${String(nome||'').replace(/"/g,'&quot;')}" />
-    </div>
-    <div class="mf" style="margin:0">
-      <label>Chapa Utilizada <span style="color:var(--text3);font-weight:400">(uso interno, não imprime)</span></label>
-      <input type="text" id="calc-item-${idx}-chapa" placeholder="Ex: AB21, FCM03, Chapa 2,5mm..." value="${String(chapa||'').replace(/"/g,'&quot;')}" />
-    </div>
-    <button type="button" onclick="calcRemoveItem(${idx})" title="Remover item" style="padding:10px 14px;border-radius:8px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#ef4444;font-weight:700;cursor:pointer">✕</button>
-  `;
-  container.appendChild(row);
-}
-function calcRemoveItem(idx) {
-  const rows = document.querySelectorAll('#calc-itens-container .calc-item-row');
-  if (rows.length <= 1) { toast('Mantenha ao menos 1 item','var(--yellow)'); return; }
-  const row = document.querySelector(`#calc-itens-container .calc-item-row[data-idx="${idx}"]`);
-  if (row) row.remove();
-}
-function calcRenderItens(lista) {
-  const container = document.getElementById('calc-itens-container');
-  if (!container) return;
-  container.innerHTML = '';
-  _calcItensSeq = 0;
-  const it = Array.isArray(lista) && lista.length ? lista : [{ nome:'', chapa_utilizada:'' }];
-  it.forEach(x => calcAddItem(x.nome || x.nome_item || x.nomeItem || '', x.chapa_utilizada || x.chapaUtilizada || x.chapa || ''));
-}
-function calcCollectItens() {
-  const rows = document.querySelectorAll('#calc-itens-container .calc-item-row');
-  const list = [];
-  let erros = 0;
-  rows.forEach((row, i) => {
-    const idx = row.dataset.idx;
-    const inpNome = document.getElementById(`calc-item-${idx}-nome`);
-    const inpChapa = document.getElementById(`calc-item-${idx}-chapa`);
-    const nome = (inpNome ? String(inpNome.value||'').trim() : '');
-    const chapa = (inpChapa ? String(inpChapa.value||'').trim() : '');
-    if (!nome) {
-      erros++;
-      if (inpNome) inpNome.style.outline = '2px solid #ef4444';
-    } else if (inpNome) {
-      inpNome.style.outline = '';
-    }
-    list.push({
-      indice: i+1,
-      nome,
-      chapa_utilizada: chapa,
-      chapaUtilizada: chapa
-    });
-  });
-  if (erros>0) {
-    toast(`Informe o Nome do Item em ${erros} linha(s) (obrigatório)`, 'var(--red)');
-    return null;
-  }
-  return list;
-}
+/* Funções antigas de itens simplificados REMOVIDAS — substituídas por calcBuildExtraBlockHtml/calcRecalcFromScope. */
 
 async function enviarOrcamentoPorEmail(){
   const email = prompt('Digite o e-mail do destinatário:');
@@ -39406,7 +39633,13 @@ async function enviarOrcamentoPorEmail(){
 }
 
 function abrirCalculadora(){
-  if (!_orcIdAtual) calcRenderItens([]);
+  if (!_orcIdAtual) {
+    var cnt = document.getElementById('calc-extra-blocks'); if (cnt) cnt.innerHTML = '';
+    _calcBlockSeq = 0;
+    var nm = document.querySelector('[data-calc-block="0"] [data-calc-field="nome_item"]');
+    if (nm) nm.value = 'Item Principal';
+    if (window._calcBlockResults) window._calcBlockResults = {};
+  }
   // Populate client dropdown from CLIENTES array
   var calcCliEl=document.getElementById('calc-cli');
   if(calcCliEl&&typeof CLIENTES!=='undefined'){
@@ -39750,31 +39983,63 @@ function calcUsarNoOrcamento(){
 }
 
 function calcImprimir(){
-  if (!calcLastResult || !calcLastResult.allResults) {
-    toast('Nada para imprimir', 'var(--red)'); return;
-  }
+  const todos = typeof calcCollectAllBlocksForSave==='function' ? (calcCollectAllBlocksForSave()||[]) : [];
+  if (!todos.length) { toast('Nada para imprimir', 'var(--red)'); return; }
+
   const calcCli = document.getElementById('calc-cli');
   const clienteNome = (calcCli && calcCli.options && calcCli.selectedIndex >= 0) ? (calcCli.options[calcCli.selectedIndex].textContent || '—') : '—';
-  const medidas = (document.getElementById('calc-comp')?.value||'') + ' × ' +
-                  (document.getElementById('calc-larg')?.value||'') + ' × ' +
-                  (document.getElementById('calc-alt')?.value||'') + ' mm';
-  const qtd = document.getElementById('calc-qtd')?.value || '—';
   const numOrc = _orcNumeroAtual ? 'Nº ' + _orcNumeroAtual : '';
-  const tipo = document.getElementById('calc-tipo')?.options?.[document.getElementById('calc-tipo')?.selectedIndex]?.text || '';
 
-  const linhasHtml = (calcLastResult.allResults||[]).map(r => {
-    const vLiq = (Number(r.liquida)||0) / (Number(calcLastResult.qtd)||1);
-    const vFre = (Number(r.comFrete)||0) / (Number(calcLastResult.qtd)||1);
+  var itensHtml = todos.map(function(item, idx) {
+    var nm = String(item.nome_item || item.nomeItem || item.nome || ('Item '+(idx+1))).trim() || ('Item '+(idx+1));
+    var p = item.parametros || {};
+    var medidas = (p.comp||'') + ' × ' + (p.larg||'') + ' × ' + (p.alt||'') + ' mm';
+    var qtd = String(item.quantidade || p.qtd || '—');
+    var tipo = String(item.tipo_desc || p.tipo_desc || item.tipo || p.tipo || '—');
+    var results = Array.isArray(item.resultados) ? item.resultados : (Array.isArray(item.compensacoes) ? item.compensacoes : []);
+    var qtdN = Number(item.quantidade || p.qtd || 0) || 0;
+    var linhas = results.map(function(r){
+      var vLiq = qtdN ? (Number(r.liquida||0) / qtdN) : 0;
+      var vFre = qtdN ? (Number(r.comFrete||0) / qtdN) : 0;
+      return `
+        <tr>
+          <td>${escH(r.compTitle||r.compLabel||'')}</td>
+          <td>${escH(medidas)}</td>
+          <td style="text-align:center">${escH(qtd)}</td>
+          <td style="text-align:right">R$ ${Number(vLiq||0).toFixed(4)}</td>
+          <td style="text-align:right"><b>R$ ${Number(vFre||0).toFixed(4)}</b></td>
+        </tr>
+      `;
+    }).join('');
     return `
-      <tr>
-        <td>${escH(r.compTitle||r.compLabel||'')}</td>
-        <td>${escH(medidas)}</td>
-        <td style="text-align:center">${escH(String(calcLastResult.qtd||qtd||''))}</td>
-        <td style="text-align:right">R$ ${vLiq.toFixed(4)}</td>
-        <td style="text-align:right"><b>R$ ${vFre.toFixed(4)}</b></td>
-      </tr>
+      <div style="margin-bottom:18px;border:1px solid #ddd;border-radius:8px;padding:12px;background:#fff">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #eee">
+          <h3 style="font-size:14px;color:#333">📦 ${escH(nm)}</h3>
+          <div style="font-size:11px;color:#666">${escH(tipo)}</div>
+        </div>
+        <div class="info-box" style="background:#f5f5f5;padding:10px 14px;border-radius:6px;margin-bottom:12px">
+          <p style="margin-bottom:4px"><b>Medidas:</b> ${escH(medidas)} &nbsp;&nbsp; <b>Quantidade:</b> ${escH(qtd)}</p>
+          ${ p.cm!=null || p.cf!=null || p.mg!=null ? `<p style="margin-bottom:4px"><b>Custo Merc.:</b> R$ ${Number(p.cm||0).toFixed(4)} &nbsp; <b>Custo Fixo:</b> R$ ${Number(p.cf||0).toFixed(4)} &nbsp; <b>Margem:</b> ${Number(p.mg||0).toFixed(2)}% &nbsp; <b>Comissão:</b> ${Number(p.cvend||p.cv||0).toFixed(2)}% &nbsp; <b>Impostos:</b> ${Number(p.imp||0).toFixed(2)}%</p>` : '' }
+          ${ p.vkm!=null || p.km!=null ? `<p style="margin-bottom:0"><b>Frete KM:</b> R$ ${Number(p.vkm||0).toFixed(4)} &nbsp; <b>KM:</b> ${Number(p.km||0).toFixed(0)}</p>` : '' }
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px">
+          <thead>
+            <tr>
+              <th style="background:#333;color:#fff;padding:8px 10px;text-align:left;font-size:11px">TIPO DE ONDA</th>
+              <th style="background:#333;color:#fff;padding:8px 10px;text-align:left;font-size:11px">MEDIDAS</th>
+              <th style="background:#333;color:#fff;padding:8px 10px;text-align:center;font-size:11px">QUANTIDADE</th>
+              <th style="background:#333;color:#fff;padding:8px 10px;text-align:right;font-size:11px">VL. UNIT. LÍQUIDO</th>
+              <th style="background:#333;color:#fff;padding:8px 10px;text-align:right;font-size:11px">VL. UNIT. C/ FRETE</th>
+            </tr>
+          </thead>
+          <tbody>${linhas || '<tr><td colspan="5" style="padding:10px;text-align:center;color:#999">Sem resultados</td></tr>'}</tbody>
+        </table>
+      </div>
     `;
   }).join('');
+
+  var valorTotalGeral = todos.reduce(function(s,x){ return s + Number(x.valor_total||0); }, 0);
+  var qtdTotalGeral = todos.reduce(function(s,x){ return s + Number(x.quantidade||(x.parametros||{}).qtd||0); }, 0);
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -39793,6 +40058,7 @@ function calcImprimir(){
     th { background:#333; color:#fff; padding:8px 10px; text-align:left; font-size:11px; }
     td { padding:8px 10px; border-bottom:1px solid #ddd; font-size:12px; }
     tr:nth-child(even) td { background:#f9f9f9; }
+    .tot-geral { border:2px solid #2a7a5e; background:#ecfdf5; padding:12px 16px; border-radius:8px; margin-bottom:18px; }
     .rodape { margin-top:24px; padding-top:16px; border-top:1px solid #ccc; font-size:11px; color:#333; line-height:1.8; }
     .rodape .empresa { font-weight:bold; font-size:12px; margin-bottom:8px; }
     @media print {
@@ -39805,31 +40071,25 @@ function calcImprimir(){
   <div class="header">
     <div>
       <h1>Italy Embalagens</h1>
-      <div class="num">${numOrc ? 'Orçamento ' + escH(numOrc) : 'Orçamento'}</div>
+      <div class="num">${numOrc ? 'Orçamento ' + escH(numOrc) : 'Orçamento'} &nbsp; • &nbsp; ${todos.length} ${todos.length===1?'item':'itens'}</div>
     </div>
     <div style="text-align:right;font-size:11px;color:#666">
       <div>Data: ${new Date().toLocaleDateString('pt-BR')}</div>
-      <div>Tipo: ${escH(tipo)}</div>
     </div>
   </div>
 
   <div class="info-box">
-    <p><b>Cliente:</b> ${escH(clienteNome)}</p>
-    <p><b>Medidas:</b> ${escH(medidas)} &nbsp;&nbsp; <b>Quantidade:</b> ${escH(String(qtd))}</p>
+    <p style="margin-bottom:4px"><b>Cliente:</b> ${escH(clienteNome)}</p>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>TIPO DE ONDA</th>
-        <th>MEDIDAS</th>
-        <th style="text-align:center">QUANTIDADE</th>
-        <th style="text-align:right">VL. UNIT. LÍQUIDO</th>
-        <th style="text-align:right">VL. UNIT. C/ FRETE</th>
-      </tr>
-    </thead>
-    <tbody>${linhasHtml}</tbody>
-  </table>
+  <div class="tot-geral">
+    <div style="display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap">
+      <div><b>Qtd Total:</b> ${Number(qtdTotalGeral||0).toLocaleString('pt-BR')}</div>
+      <div><b>Valor Total Geral:</b> R$ ${Number(valorTotalGeral||0).toFixed(2).replace('.',',')}</div>
+    </div>
+  </div>
+
+  ${itensHtml}
 
   <div class="rodape">
     <div class="empresa">Italy Embalagens</div>
@@ -39859,24 +40119,13 @@ function calcImprimir(){
 }
 
 function imprimirCalculadora(ondasSelecionadas) {
-  if (!calcLastResult || !Array.isArray(calcLastResult.allResults) || calcLastResult.allResults.length === 0) {
-    toast('Calcule primeiro', 'var(--yellow)'); return;
-  }
+  const todos = typeof calcCollectAllBlocksForSave==='function' ? (calcCollectAllBlocksForSave()||[]) : [];
+  if (!todos.length) { toast('Calcule primeiro', 'var(--yellow)'); return; }
 
   const calcCli = document.getElementById('calc-cli');
   const clienteNome = (calcCli && calcCli.options && calcCli.selectedIndex >= 0)
     ? String(calcCli.options[calcCli.selectedIndex].textContent || '').trim()
     : '';
-
-  const tipoEl = document.getElementById('calc-tipo');
-  const tipo = (tipoEl && tipoEl.options && tipoEl.selectedIndex >= 0)
-    ? String(tipoEl.options[tipoEl.selectedIndex].textContent || '').trim()
-    : String((tipoEl||{}).value || '').trim();
-
-  const comp = String((document.getElementById('calc-c')||document.getElementById('calc-comp')||{}).value || '').trim();
-  const larg = String((document.getElementById('calc-l')||document.getElementById('calc-larg')||{}).value || '').trim();
-  const alt  = String((document.getElementById('calc-a')||document.getElementById('calc-alt')||{}).value || '').trim();
-  const qtd  = parseInt(String((document.getElementById('calc-qtd')||{}).value||'0'),10) || 0;
 
   const dataHoje = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
   const horaAgora = new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
@@ -39885,50 +40134,77 @@ function imprimirCalculadora(ondasSelecionadas) {
     ? new Set(ondasSelecionadas.map(x=>String(x||'').trim().toUpperCase()).filter(Boolean))
     : null;
 
-  const resultados = (calcLastResult.allResults||[]).filter(r=>{
-    if(!setOndas) return true;
-    const o = String(r?.onda || '').trim().toUpperCase();
-    return setOndas.has(o);
-  }).map(r => {
-    const q = Number(qtd || calcLastResult.qtd || 0) || 0;
-    const vLiq = q ? (Number(r.liquida||0) / q) : 0;
-    const vFre = q ? (Number(r.comFrete||0) / q) : 0;
-    const tot  = Number(r.comFrete||0) || 0;
-    return {
-      label: String(r.compTitle||r.compLabel||'').trim(),
-      onda: String(r.onda||'').trim(),
-      vLiq,
-      vFre,
-      tot
-    };
-  });
+  var itensHtml = todos.map(function(item, idx) {
+    var nm = String(item.nome_item || item.nomeItem || item.nome || ('Item '+(idx+1))).trim() || ('Item '+(idx+1));
+    var p = item.parametros || {};
+    var tipo = String(item.tipo_desc || p.tipo_desc || item.tipo || p.tipo || '—');
+    var comp = String(p.comp || item.comp || '').trim();
+    var larg = String(p.larg || item.larg || '').trim();
+    var alt  = String(p.alt  || item.alt  || '').trim();
+    var qtd  = parseInt(String(item.quantidade || p.qtd || '0'),10) || 0;
 
-  const _itensCalc = calcCollectItens() || [];
-  const itensCalcHtml = _itensCalc.length ? `<div style="margin:14px 0 10px 0;border:1px solid #d1e7dd;border-radius:10px;padding:12px 14px;background:#f0fdf4">
-    <h3 style="margin:0 0 10px 0;font-size:12px;color:#166534;text-transform:uppercase;letter-spacing:.08em">📦 Itens do Orçamento</h3>
-    <table style="width:100%;border-collapse:collapse;font-size:11px">
-      <thead><tr>
-        <th style="background:#166534;color:#fff;padding:7px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;width:60px">#</th>
-        <th style="background:#166534;color:#fff;padding:7px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Nome do Item</th>
-      </tr></thead>
-      <tbody>
-        ${_itensCalc.map((it, i) => `<tr>
-          <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-weight:800">${i+1}</td>
-          <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb">${escH(String(it.nome||'—'))}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>
-  </div>` : '';
+    var resultsRaw = Array.isArray(item.resultados) ? item.resultados : (Array.isArray(item.compensacoes) ? item.compensacoes : []);
+    var results = resultsRaw.filter(function(r){
+      if(!setOndas) return true;
+      var o = String(r?.onda || '').trim().toUpperCase();
+      return setOndas.has(o);
+    }).map(function(r){
+      var qN = Number(qtd || item.quantidade || p.qtd || 0) || 0;
+      var vLiq = qN ? (Number(r.liquida||0) / qN) : 0;
+      var vFre = qN ? (Number(r.comFrete||0) / qN) : 0;
+      var tot  = Number(r.comFrete||0) || 0;
+      return {
+        label: String(r.compTitle||r.compLabel||'').trim(),
+        onda: String(r.onda||'').trim(),
+        vLiq: vLiq,
+        vFre: vFre,
+        tot: tot
+      };
+    });
 
-  const linhasHtml = resultados.map(r => `
-    <tr>
-      <td style="font-weight:800">${escH(r.label || '—')}</td>
-      <td style="text-align:center">${escH(r.onda || '—')}</td>
-      <td style="text-align:right">R$ ${Number(r.vLiq||0).toFixed(4)}</td>
-      <td style="text-align:right"><b>R$ ${Number(r.vFre||0).toFixed(4)}</b></td>
-      <td style="text-align:right"><b>R$ ${Number(r.tot||0).toFixed(2).replace('.',',')}</b></td>
-    </tr>
-  `).join('');
+    var linhasHtml = results.map(function(r){ return `
+      <tr>
+        <td style="font-weight:800">${escH(r.label || '—')}</td>
+        <td style="text-align:center">${escH(r.onda || '—')}</td>
+        <td style="text-align:right">R$ ${Number(r.vLiq||0).toFixed(4)}</td>
+        <td style="text-align:right"><b>R$ ${Number(r.vFre||0).toFixed(4)}</b></td>
+        <td style="text-align:right"><b>R$ ${Number(r.tot||0).toFixed(2).replace('.',',')}</b></td>
+      </tr>
+    `; }).join('');
+
+    var totItem = results.reduce(function(s,r){ return s + Number(r.tot||0); }, 0);
+
+    return `
+      <div style="margin:14px 0 10px 0;border:1px solid #d1d5db;border-radius:10px;padding:12px 14px;background:#fff">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #e5e7eb">
+          <h3 style="margin:0;font-size:13px;color:#2a7a5e;text-transform:uppercase;letter-spacing:.08em">📦 ${escH(nm)}</h3>
+          <div style="font-size:11px;color:#666">${escH(tipo)}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0">
+          <div class="box" style="border:1px solid #e5e7eb;border-radius:8px;padding:8px;background:#f9fafb"><div class="lbl" style="font-size:9px;color:#666;text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin-bottom:3px">Comprimento (mm)</div><div class="val" style="font-size:12px;font-weight:800">${escH(comp || '—')}</div></div>
+          <div class="box" style="border:1px solid #e5e7eb;border-radius:8px;padding:8px;background:#f9fafb"><div class="lbl" style="font-size:9px;color:#666;text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin-bottom:3px">Largura (mm)</div><div class="val" style="font-size:12px;font-weight:800">${escH(larg || '—')}</div></div>
+          <div class="box" style="border:1px solid #e5e7eb;border-radius:8px;padding:8px;background:#f9fafb"><div class="lbl" style="font-size:9px;color:#666;text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin-bottom:3px">Altura (mm)</div><div class="val" style="font-size:12px;font-weight:800">${escH(alt || '—')}</div></div>
+          <div class="box" style="grid-column:1 / 3;border:1px solid #e5e7eb;border-radius:8px;padding:8px;background:#f9fafb"><div class="lbl" style="font-size:9px;color:#666;text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin-bottom:3px">Quantidade</div><div class="val" style="font-size:12px;font-weight:800">${escH(String(qtd || '—'))}</div></div>
+          <div class="box" style="border:1px solid #e5e7eb;border-radius:8px;padding:8px;background:#fef3c7"><div class="lbl" style="font-size:9px;color:#92400e;text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin-bottom:3px">Subtotal Item</div><div class="val" style="font-size:12px;font-weight:800;color:#92400e">R$ ${Number(totItem||0).toFixed(2).replace('.',',')}</div></div>
+        </div>
+        <div class="tblwrap" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse;font-size:11px">
+            <thead><tr>
+              <th style="background:#2a7a5e;color:#fff;padding:7px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Comp.</th>
+              <th style="background:#2a7a5e;color:#fff;padding:7px 10px;text-align:center;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Onda</th>
+              <th style="background:#2a7a5e;color:#fff;padding:7px 10px;text-align:right;font-size:10px;letter-spacing:.06em;text-transform:uppercase">VL Unit. Líquido</th>
+              <th style="background:#2a7a5e;color:#fff;padding:7px 10px;text-align:right;font-size:10px;letter-spacing:.06em;text-transform:uppercase">VL Unit. c/ Frete</th>
+              <th style="background:#2a7a5e;color:#fff;padding:7px 10px;text-align:right;font-size:10px;letter-spacing:.06em;text-transform:uppercase">Total</th>
+            </tr></thead>
+            <tbody>${linhasHtml || '<tr><td colspan="5" style="padding:10px;text-align:center;color:#999">—</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  var valorTotalGeral = todos.reduce(function(s,x){ return s + Number(x.valor_total||0); }, 0);
+  var qtdTotalGeral = todos.reduce(function(s,x){ return s + Number(x.quantidade||(x.parametros||{}).qtd||0); }, 0);
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
 <title>Orçamento — Italy Embalagens</title>
@@ -39948,6 +40224,7 @@ function imprimirCalculadora(ondasSelecionadas) {
   .lbl{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin-bottom:4px}
   .val{font-size:13px;font-weight:800;color:#111}
   .cliente{grid-column:1 / -1}
+  .tot-geral{border:2px solid #2a7a5e;background:#ecfdf5;border-radius:10px;padding:12px 16px;margin:12px 0}
   .tblwrap{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
   table{width:100%;border-collapse:collapse;font-size:11px}
   thead th{background:#2a7a5e;color:#fff;padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase}
@@ -39963,7 +40240,7 @@ function imprimirCalculadora(ondasSelecionadas) {
       <img src="${ITALY_LOGO_B64}" alt="Italy Embalagens">
       <div class="brand">
         <div class="nome">ITALY EMBALAGENS</div>
-        <div class="sub">Orçamento gerado pela calculadora</div>
+        <div class="sub">Orçamento gerado pela calculadora · ${todos.length} ${todos.length===1?'item':'itens'}</div>
       </div>
     </div>
     <div class="addr">
@@ -39979,28 +40256,18 @@ function imprimirCalculadora(ondasSelecionadas) {
       <div class="lbl">Cliente do orçamento</div>
       <div class="val">${escH(clienteNome || '—')}</div>
     </div>
-    <div class="box"><div class="lbl">Tipo</div><div class="val">${escH(tipo || '—')}</div></div>
-    <div class="box"><div class="lbl">Comprimento (mm)</div><div class="val">${escH(comp || '—')}</div></div>
-    <div class="box"><div class="lbl">Largura (mm)</div><div class="val">${escH(larg || '—')}</div></div>
-    <div class="box"><div class="lbl">Altura (mm)</div><div class="val">${escH(alt || '—')}</div></div>
-    <div class="box"><div class="lbl">Quantidade</div><div class="val">${escH(String(qtd || '—'))}</div></div>
+    <div class="box"><div class="lbl">Qtd Total</div><div class="val">${Number(qtdTotalGeral||0).toLocaleString('pt-BR')}</div></div>
     <div class="box"><div class="lbl">Data</div><div class="val">${dataHoje}</div></div>
   </div>
 
-  ${itensCalcHtml}
-
-  <div class="tblwrap">
-    <table>
-      <thead><tr>
-        <th>Comp.</th>
-        <th style="text-align:center">Onda</th>
-        <th style="text-align:right">VL Unit. Líquido</th>
-        <th style="text-align:right">VL Unit. c/ Frete</th>
-        <th style="text-align:right">Total</th>
-      </tr></thead>
-      <tbody>${linhasHtml || '<tr><td colspan="5">—</td></tr>'}</tbody>
-    </table>
+  <div class="tot-geral">
+    <div style="display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:center">
+      <div style="font-size:12px;color:#065f46"><b>💼 Resumo Geral</b></div>
+      <div style="font-size:15px;font-weight:900;color:#065f46">💰 Valor Total Geral: R$ ${Number(valorTotalGeral||0).toFixed(2).replace('.',',')}</div>
+    </div>
   </div>
+
+  ${itensHtml}
 
   <div style="margin-top:10px;font-size:11px;color:#333;font-style:italic">
     A quantidade pode variar 5% pra mais ou menos, devido ao acerto de máquina.
@@ -42831,6 +43098,339 @@ function renderRelatorio() {
       setTimeout(function(){ try{ carregarClientesInativos(); }catch(e){} }, 0);
     }
   }
+  if (tipo === 'facas-mais-utilizadas') {
+    const wrap = document.getElementById('rel-content');
+    if(wrap){
+      wrap.innerHTML = `<div class="sbox">
+        <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <span>🗡 Facas Mais Utilizadas — Ranking por Uso, Valor e Cliente</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input id="rel-facas-busca" placeholder="🔍 Buscar faca, nº, categoria..." oninput="renderRelatorioFacasResult(window.__lastRelFacasData)" style="width:240px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-size:.75rem;font-family:var(--font)">
+            <button class="btn btn-accent btn-sm" onclick="carregarRelatorioFacas()">Gerar Ranking</button>
+          </div>
+        </div>
+        <div class="sbox-b"><div id="rm-facas-wrap"></div></div>
+      </div>`;
+      setTimeout(function(){ try{ carregarRelatorioFacas(); }catch(e){} }, 0);
+    }
+  }
+  if (tipo === 'amostras-mes') {
+    const wrap = document.getElementById('rel-content');
+    const hoje = new Date();
+    const mesAtual = String(hoje.getMonth()+1).padStart(2,'0');
+    const anoAtual = hoje.getFullYear();
+    if(wrap){
+      wrap.innerHTML = `<div class="sbox">
+        <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <span>🧪 Amostras do Mês</span>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:.7rem;color:var(--text2)">Mês/Ano:</span>
+            <select id="rel-amostras-mes" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-size:.75rem;font-family:var(--font)">
+              ${['01','02','03','04','05','06','07','08','09','10','11','12'].map(m=>`<option value="${m}" ${m===mesAtual?'selected':''}>${m}</option>`).join('')}
+            </select>
+            <select id="rel-amostras-ano" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-size:.75rem;font-family:var(--font)">
+              ${[anoAtual-2,anoAtual-1,anoAtual,anoAtual+1].map(a=>`<option value="${a}" ${a===anoAtual?'selected':''}>${a}</option>`).join('')}
+            </select>
+            <button class="btn btn-accent btn-sm" onclick="carregarRelatorioAmostrasMes()">Atualizar</button>
+          </div>
+        </div>
+        <div class="sbox-b"><div id="rm-amostras-wrap"></div></div>
+      </div>`;
+      setTimeout(function(){ try{ carregarRelatorioAmostrasMes(); }catch(e){} }, 0);
+    }
+  }
+  if (tipo === 'projecao-vendas') {
+    const wrap = document.getElementById('rel-content');
+    if(wrap){
+      wrap.innerHTML = `<div class="sbox">
+        <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <span>📈 Projeção de Vendas — Média Móvel + Tendência Linear</span>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <label style="font-size:.72rem;color:var(--text2);display:flex;align-items:center;gap:5px">
+              <input type="checkbox" id="rel-proj-nextyear" onchange="carregarRelatorioProjecaoVendas()"> Estender para o próximo ano
+            </label>
+            <button class="btn btn-accent btn-sm" onclick="carregarRelatorioProjecaoVendas()">Atualizar</button>
+          </div>
+        </div>
+        <div class="sbox-b"><div id="rm-proj-wrap"></div></div>
+      </div>`;
+      setTimeout(function(){ try{ carregarRelatorioProjecaoVendas(); }catch(e){} }, 0);
+    }
+  }
+}
+
+async function carregarRelatorioFacas() {
+  const div = document.getElementById('rm-facas-wrap');
+  if (div) div.innerHTML = '<p style="color:#64748b">Carregando ranking de facas...</p>';
+  try {
+    const empId = EMP_FILTRO || '';
+    const params = empId ? '?empId=' + encodeURIComponent(empId) : '';
+    const r = await api('GET', '/relatorios/facas-mais-utilizadas' + params);
+    const data = r && r.ok && Array.isArray(r.data) ? r.data : [];
+    window.__lastRelFacasData = data;
+    renderRelatorioFacasResult(data);
+  } catch (e) {
+    if (div) div.innerHTML = '<p style="color:#ef4444">Erro ao carregar ranking de facas.</p>';
+  }
+}
+function renderRelatorioFacasResult(raw) {
+  const div = document.getElementById('rm-facas-wrap');
+  if (!div) return;
+  const busca = String((document.getElementById('rel-facas-busca')||{}).value||'').toLowerCase().trim();
+  const lista = (Array.isArray(raw) ? raw : (window.__lastRelFacasData || []));
+  const filtrada = busca ? lista.filter(function(f){
+    const hay = [f.nome,f.numero,f.categoria,f.cliente_top,f.medidas].map(x=>String(x||'').toLowerCase()).join(' | ');
+    return hay.indexOf(busca) >= 0;
+  }) : lista;
+  const totalFacas = lista.length;
+  const totalUsos = lista.reduce((s,x)=>s+Number(x.quantidade||0),0);
+  const totalCaixas = lista.reduce((s,x)=>s+Number(x.quantidade_caixas||0),0);
+  const valorTotal = lista.reduce((s,x)=>s+Number(x.valor_total_estimado||0),0);
+  div.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px">
+      <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:22px;font-weight:bold;color:var(--accent)">${Number(totalFacas||0).toLocaleString('pt-BR')}</div>
+        <div style="font-size:12px;color:var(--text2)">Facas distintas usadas</div>
+      </div>
+      <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:22px;font-weight:bold;color:#4CAF50">${Number(totalUsos||0).toLocaleString('pt-BR')}</div>
+        <div style="font-size:12px;color:var(--text2)">Total de usos</div>
+      </div>
+      <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:22px;font-weight:bold;color:#60A5FA">${Number(totalCaixas||0).toLocaleString('pt-BR')}</div>
+        <div style="font-size:12px;color:var(--text2)">Caixas produzidas</div>
+      </div>
+      <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:22px;font-weight:bold;color:#F59E0B">${fmtR(valorTotal||0)}</div>
+        <div style="font-size:12px;color:var(--text2)">Valor total estimado</div>
+      </div>
+    </div>
+    <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:0.78rem">
+        <thead>
+          <tr style="background:var(--s3)">
+            <th style="padding:10px 12px;text-align:left;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">#</th>
+            <th style="padding:10px 12px;text-align:left;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Nº / Código</th>
+            <th style="padding:10px 12px;text-align:left;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Faca</th>
+            <th style="padding:10px 12px;text-align:left;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Categoria</th>
+            <th style="padding:10px 12px;text-align:left;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Medidas</th>
+            <th style="padding:10px 12px;text-align:right;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Usos</th>
+            <th style="padding:10px 12px;text-align:right;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Caixas</th>
+            <th style="padding:10px 12px;text-align:right;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Valor Est.</th>
+            <th style="padding:10px 12px;text-align:left;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Cliente que mais usa</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtrada.length ? filtrada.map(function(f,i){
+            return `<tr style="border-top:1px solid rgba(255,255,255,.04)">
+              <td style="padding:9px 12px;color:var(--text3)">${i+1}</td>
+              <td style="padding:9px 12px;font-weight:700;color:var(--text1)">${escH(f.numero||'—')}</td>
+              <td style="padding:9px 12px;color:var(--text1)">${escH(f.nome||'—')}</td>
+              <td style="padding:9px 12px;color:var(--text2)">${escH(f.categoria||'—')}</td>
+              <td style="padding:9px 12px;color:var(--text2);font-family:var(--mono)">${escH(f.medidas||'—')}</td>
+              <td style="padding:9px 12px;text-align:right;color:var(--accent);font-weight:700">${Number(f.quantidade||0).toLocaleString('pt-BR')}</td>
+              <td style="padding:9px 12px;text-align:right;color:#60A5FA">${Number(f.quantidade_caixas||0).toLocaleString('pt-BR')}</td>
+              <td style="padding:9px 12px;text-align:right;color:#F59E0B;font-weight:600">${fmtR(f.valor_total_estimado||0)}</td>
+              <td style="padding:9px 12px;color:var(--text1)">${escH(f.cliente_top||'—')} <span style="color:var(--text3)">(${Number(f.cliente_top_usos||0)})</span></td>
+            </tr>`;
+          }).join('') : `<tr><td colspan="9" style="padding:20px;text-align:center;color:#64748b">Nenhuma faca encontrada.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function carregarRelatorioAmostrasMes() {
+  const div = document.getElementById('rm-amostras-wrap');
+  if (div) div.innerHTML = '<p style="color:#64748b">Carregando amostras...</p>';
+  try {
+    const mes = (document.getElementById('rel-amostras-mes')||{}).value || '';
+    const ano = (document.getElementById('rel-amostras-ano')||{}).value || '';
+    const empId = EMP_FILTRO || '';
+    const sp = new URLSearchParams();
+    if (ano && mes) sp.set('mes', ano + '-' + String(mes).padStart(2,'0'));
+    else if (ano) sp.set('mes', ano);
+    if (empId) sp.set('empId', empId);
+    const r = await api('GET', '/relatorios/amostras-mes' + (sp.toString() ? ('?'+sp.toString()) : ''));
+    const d = r && r.ok && r.data ? r.data : null;
+    renderRelatorioAmostrasResult(d);
+  } catch (e) {
+    if (div) div.innerHTML = '<p style="color:#ef4444">Erro ao carregar amostras do mês.</p>';
+  }
+}
+function renderRelatorioAmostrasResult(d) {
+  const div = document.getElementById('rm-amostras-wrap');
+  if (!div) return;
+  if (!d) { div.innerHTML='<p style="color:#64748b">Sem dados.</p>'; return; }
+  const totalPedidas = Number(d.total_pedidas||0);
+  const totalFeitas = Number(d.total_feitas||0);
+  const taxa = Number(d.taxa_conclusao||0);
+  const clientesUnicos = Number(d.clientes_unicos||0);
+  const rk = Array.isArray(d.ranking) ? d.ranking : [];
+  div.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px">
+      <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:22px;font-weight:bold;color:var(--accent)">${Number(totalPedidas||0).toLocaleString('pt-BR')}</div>
+        <div style="font-size:12px;color:var(--text2)">Amostras pedidas</div>
+      </div>
+      <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:22px;font-weight:bold;color:#4CAF50">${Number(totalFeitas||0).toLocaleString('pt-BR')}</div>
+        <div style="font-size:12px;color:var(--text2)">Amostras feitas / entregues</div>
+      </div>
+      <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:22px;font-weight:bold;color:${taxa>=70?'#10B981':taxa>=40?'#F59E0B':'#EF4444'}">${Number(taxa||0).toFixed(1)}%</div>
+        <div style="font-size:12px;color:var(--text2)">Taxa de conclusão</div>
+      </div>
+      <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:22px;font-weight:bold;color:#60A5FA">${Number(clientesUnicos||0).toLocaleString('pt-BR')}</div>
+        <div style="font-size:12px;color:var(--text2)">Clientes únicos</div>
+      </div>
+    </div>
+    <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:0.78rem">
+        <thead>
+          <tr style="background:var(--s3)">
+            <th style="padding:10px 12px;text-align:left;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">#</th>
+            <th style="padding:10px 12px;text-align:left;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Cliente</th>
+            <th style="padding:10px 12px;text-align:right;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Pedidas</th>
+            <th style="padding:10px 12px;text-align:right;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Feitas</th>
+            <th style="padding:10px 12px;text-align:right;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">%</th>
+            <th style="padding:10px 12px;text-align:left;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Último pedido</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rk.length ? rk.map(function(c,i){
+            const pc = c.pedidas>0 ? Math.round((c.feitas/c.pedidas)*1000)/10 : 0;
+            const cor = pc>=70?'#10B981':pc>=40?'#F59E0B':'#EF4444';
+            return `<tr style="border-top:1px solid rgba(255,255,255,.04)">
+              <td style="padding:9px 12px;color:var(--text3)">${i+1}</td>
+              <td style="padding:9px 12px;font-weight:600;color:var(--text1)">${escH(c.cliente_nome||'—')}</td>
+              <td style="padding:9px 12px;text-align:right;color:var(--accent);font-weight:700">${Number(c.pedidas||0)}</td>
+              <td style="padding:9px 12px;text-align:right;color:#4CAF50;font-weight:600">${Number(c.feitas||0)}</td>
+              <td style="padding:9px 12px;text-align:right;color:${cor};font-weight:700">${Number(pc||0).toFixed(1)}%</td>
+              <td style="padding:9px 12px;color:var(--text2);font-family:var(--mono);font-size:0.72rem">${escH(c.ultimo_pedido||'—')}</td>
+            </tr>`;
+          }).join('') : `<tr><td colspan="6" style="padding:20px;text-align:center;color:#64748b">Nenhuma amostra no período selecionado.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function carregarRelatorioProjecaoVendas() {
+  const div = document.getElementById('rm-proj-wrap');
+  if (div) div.innerHTML = '<p style="color:#64748b">Carregando projeção de vendas...</p>';
+  try {
+    const proxAno = document.getElementById('rel-proj-nextyear')?.checked ? '1' : '';
+    const empId = EMP_FILTRO || '';
+    const sp = new URLSearchParams();
+    if (proxAno) sp.set('proximo_ano', '1');
+    if (empId) sp.set('empId', empId);
+    const r = await api('GET', '/relatorios/projecao-vendas' + (sp.toString() ? ('?'+sp.toString()) : ''));
+    const d = r && r.ok && r.data ? r.data : null;
+    renderRelatorioProjecaoResult(d);
+  } catch (e) {
+    if (div) div.innerHTML = '<p style="color:#ef4444">Erro ao carregar projeção.</p>';
+  }
+}
+function renderRelatorioProjecaoResult(d) {
+  const div = document.getElementById('rm-proj-wrap');
+  if (!div) return;
+  if (!d) { div.innerHTML='<p style="color:#64748b">Sem dados.</p>'; return; }
+  const res = d.resumo || {};
+  const hist = Array.isArray(d.historico) ? d.historico : [];
+  const proj = Array.isArray(d.projecao_meses) ? d.projecao_meses : [];
+  const total12 = Number(res.total_12m_concluido||0);
+  const med12 = Number(res.media_mensal_12m||0);
+  const pMedia = Number(res.projecao_media_mensal||0);
+  const pTend = Number(res.projecao_tendencia_mensal||0);
+  const slope = Number(res.slope_tendencia||0);
+  const mesesRestantes = Number(res.meses_projetados||0);
+  const totalProjetadoMedia = pMedia * mesesRestantes;
+  const totalProjetadoTend = pTend * mesesRestantes;
+  const meses = [];
+  hist.forEach(h => meses.push({
+    mes: h.mes, tipo: 'histórico',
+    ofs: Number(h.ofs_total||0), ofs_concl: Number(h.ofs_concluidas||0),
+    qtd: Number(h.qtd_caixas||0),
+    valor_total: Number(h.valor_total||0),
+    valor_concl: Number(h.valor_concluido||0)
+  }));
+  proj.forEach(p => meses.push({
+    mes: p.mes, tipo: 'projeção',
+    proj_media: Number(p.projecao_media||0),
+    proj_tendencia: Number(p.projecao_tendencia||0)
+  }));
+  meses.sort((a,b)=>String(a.mes).localeCompare(String(b.mes)));
+  div.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px">
+      <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:22px;font-weight:bold;color:var(--accent)">${fmtR(total12)}</div>
+        <div style="font-size:12px;color:var(--text2)">Total concluído últimos 12m</div>
+      </div>
+      <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:22px;font-weight:bold;color:#60A5FA">${fmtR(med12)}</div>
+        <div style="font-size:12px;color:var(--text2)">Média mensal (12m)</div>
+      </div>
+      <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:22px;font-weight:bold;color:#F59E0B">${fmtR(pMedia)}</div>
+        <div style="font-size:12px;color:var(--text2)">Projeção média mensal</div>
+      </div>
+      <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:22px;font-weight:bold;color:#10B981">${fmtR(pTend)}</div>
+        <div style="font-size:12px;color:var(--text2)">Projeção tendência (Δ/mês ${slope>=0?'+':''}${fmtR(slope)})</div>
+      </div>
+    </div>
+    <div style="margin-bottom:20px;padding:14px 18px;border:2px dashed var(--accent);border-radius:10px;background:rgba(255,255,255,.02);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+      <div>
+        <div style="font-size:.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:.08em">Projeção para os próximos <b style="color:var(--text1)">${mesesRestantes}</b> meses</div>
+        <div style="margin-top:4px">
+          <span style="color:#F59E0B;font-weight:800">Média Móvel: ${fmtR(totalProjetadoMedia)}</span>
+          <span style="margin:0 10px;color:var(--text3)">•</span>
+          <span style="color:#10B981;font-weight:800">Tendência Linear: ${fmtR(totalProjetadoTend)}</span>
+        </div>
+      </div>
+      <div style="font-size:.68rem;color:var(--text3);max-width:340px;text-align:right">
+        Histórico ${hist.length} meses • OFs concluídas consideradas (status: concluído / entregue / faturado / fechado)
+      </div>
+    </div>
+    <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:0.78rem">
+        <thead>
+          <tr style="background:var(--s3)">
+            <th style="padding:10px 12px;text-align:left;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Mês</th>
+            <th style="padding:10px 12px;text-align:left;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Tipo</th>
+            <th style="padding:10px 12px;text-align:right;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">OFs Total</th>
+            <th style="padding:10px 12px;text-align:right;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">OFs Concl.</th>
+            <th style="padding:10px 12px;text-align:right;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Caixas</th>
+            <th style="padding:10px 12px;text-align:right;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Valor Total</th>
+            <th style="padding:10px 12px;text-align:right;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Valor Concluído</th>
+            <th style="padding:10px 12px;text-align:right;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Proj. Média</th>
+            <th style="padding:10px 12px;text-align:right;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Proj. Tendência</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${meses.length ? meses.map(function(m){
+            const bg = m.tipo==='projeção' ? 'rgba(16,185,129,.06)' : 'transparent';
+            const badge = m.tipo==='projeção'
+              ? '<span style="padding:2px 8px;border-radius:999px;background:rgba(16,185,129,.12);color:#10B981;font-weight:700;font-size:.62rem">PROJEÇÃO</span>'
+              : '<span style="padding:2px 8px;border-radius:999px;background:rgba(96,165,250,.12);color:#60A5FA;font-weight:700;font-size:.62rem">HISTÓRICO</span>';
+            return `<tr style="border-top:1px solid rgba(255,255,255,.04);background:${bg}">
+              <td style="padding:9px 12px;font-family:var(--mono);color:var(--text1);font-weight:700">${escH(m.mes)}</td>
+              <td style="padding:9px 12px">${badge}</td>
+              <td style="padding:9px 12px;text-align:right;color:var(--text2)">${m.tipo==='histórico'?Number(m.ofs||0).toLocaleString('pt-BR'):'—'}</td>
+              <td style="padding:9px 12px;text-align:right;color:var(--text2)">${m.tipo==='histórico'?Number(m.ofs_concl||0).toLocaleString('pt-BR'):'—'}</td>
+              <td style="padding:9px 12px;text-align:right;color:var(--text2)">${m.tipo==='histórico'?Number(m.qtd||0).toLocaleString('pt-BR'):'—'}</td>
+              <td style="padding:9px 12px;text-align:right;color:var(--text2)">${m.tipo==='histórico'?fmtR(m.valor_total||0):'—'}</td>
+              <td style="padding:9px 12px;text-align:right;color:#60A5FA;font-weight:600">${m.tipo==='histórico'?fmtR(m.valor_concl||0):'—'}</td>
+              <td style="padding:9px 12px;text-align:right;color:#F59E0B;font-weight:700">${m.tipo==='projeção'?fmtR(m.proj_media||0):'—'}</td>
+              <td style="padding:9px 12px;text-align:right;color:#10B981;font-weight:700">${m.tipo==='projeção'?fmtR(m.proj_tendencia||0):'—'}</td>
+            </tr>`;
+          }).join('') : `<tr><td colspan="9" style="padding:20px;text-align:center;color:#64748b">Sem dados de vendas para gerar projeção.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 async function carregarClientesInativos() {
@@ -46545,6 +47145,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <option value="producao-empilhada">📊 Produção Empilhada (por Máquina)</option>
       <option value="resultado-empresas">📊 Resultado por Empresa</option>
       <option value="vendas-por-vendedor">📊 Vendas por Vendedor no Mês</option>
+      <option value="facas-mais-utilizadas">🗡 Facas Mais Utilizadas</option>
+      <option value="amostras-mes">🧪 Amostras do Mês</option>
+      <option value="projecao-vendas">📈 Projeção de Vendas</option>
       <option value="clientes-inativos">👥 Clientes Inativos</option>
       <option value="vendas-mensal-comissao">Vendas Mensais + Comissão</option>
       <option value="pedidos-aberto">Pedidos em Aberto</option>
@@ -59528,6 +60131,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260813190000"></script>
+<script src="/patch.js?v=20260817160000"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
