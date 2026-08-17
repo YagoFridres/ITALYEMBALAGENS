@@ -9948,6 +9948,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         '      <div class="mf"><label>VALOR ONDA BC (R$/m²)</label><input id="calc-vbc" type="number" step="0.0001" value="4.46" oninput="try{if(typeof calcRecalc===\'function\')calcRecalc();}catch(_){}"></div>' +
         '    </div>' +
         '    <div id="calc-extra-fields" style="display:flex;gap:10px;flex-wrap:wrap"></div>' +
+        '    <div class="calc-itens-section" style="margin:14px 0 8px 0;border:1px dashed rgba(74,144,217,.35);border-radius:10px;padding:12px 14px;background:rgba(74,144,217,.04)">' +
+        '      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+        '        <h3 style="margin:0;font-size:.85rem;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">📦 Itens do Orçamento</h3>' +
+        '        <button class="btn btn-ghost btn-sm" type="button" onclick="try{if(typeof calcAddItem===\'function\')calcAddItem();}catch(_){}" style="padding:6px 10px;font-size:.75rem">＋ Mais Itens</button>' +
+        '      </div>' +
+        '      <div id="calc-itens-container"></div>' +
+        '    </div>' +
         '    <div class="calc-tabela-wrap" style="overflow-x:auto;flex:1;min-height:0;border:1px solid rgba(255,255,255,0.08);border-radius:10px;margin-top:12px">' +
         '      <table id="calc-sheet" style="border-collapse:collapse;width:100%;min-width:900px"><thead><tr>' +
         '        <th style="text-align:left;font-family:var(--mono)">Tabela para compensação</th>' +
