@@ -51964,22 +51964,33 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     });
   }
   function ensureCalcItensUi() {
-    var shellMain = document.querySelector('#modal-calculadora .orc-calc-shell-main');
-    var wavePanels = document.getElementById('calc-wave-panels');
-    var body = document.querySelector('#modal-calculadora .modal-body') || document.querySelector('#modal-calculadora .calc-body');
+    var modal = document.getElementById('modal-calculadora');
+    var shellMain = modal && modal.querySelector ? modal.querySelector('.orc-calc-shell-main') : null;
+    var body = modal && modal.querySelector ? (modal.querySelector('.modal-body') || modal.querySelector('.calc-body')) : null;
+    var content = modal && modal.querySelector ? (modal.querySelector('.modal-content') || modal.querySelector('.content')) : null;
     var targetParent = shellMain;
-    var beforeRef = null;
-    if (targetParent && wavePanels && wavePanels.parentNode === targetParent) {
-      beforeRef = wavePanels.nextSibling || null;
-    } else if (!targetParent) {
-      targetParent = body;
+    var parentFallbackUsed = '';
+    if (!targetParent) { targetParent = body; parentFallbackUsed = shellMain ? '' : '.orc-calc-shell-main → body'; }
+    if (!targetParent) { targetParent = content; parentFallbackUsed += ' → .modal-content/.content'; }
+    if (!targetParent && modal) { targetParent = modal; parentFallbackUsed += ' → #modal-calculadora'; }
+    if (!targetParent) {
+      try { console.warn('[calc-itens] nenhum container valido encontrado para inserir host de itens extras (shell-main, .modal-body, .modal-content).'); } catch (_) {}
+      return;
     }
-    if (!targetParent) return;
+    if (parentFallbackUsed) {
+      try { console.warn('[calc-itens] usando container fallback para itens extras: ' + parentFallbackUsed); } catch (_) {}
+    }
+    var wavePanels = document.getElementById('calc-wave-panels');
+    var beforeRef = null;
+    if (targetParent === shellMain && wavePanels && wavePanels.parentNode === targetParent) {
+      beforeRef = wavePanels.nextSibling || null;
+    }
     var host = document.getElementById('calc-itens-shell');
     if (!host) {
       host = document.createElement('div');
       host.id = 'calc-itens-shell';
       host.className = 'calc-itens-shell';
+      host.setAttribute('data-orc-calc-itens-host', '1');
       try {
         if (beforeRef != null) targetParent.insertBefore(host, beforeRef);
         else targetParent.appendChild(host);
@@ -51991,6 +52002,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
         if (beforeRef != null) targetParent.insertBefore(host, beforeRef);
         else targetParent.appendChild(host);
       } catch (_) {}
+    }
+    if (!host.getAttribute('data-orc-calc-itens-host')) {
+      host.setAttribute('data-orc-calc-itens-host', '1');
     }
     orcDraftLoadFromState(false);
     orcRenderCalcItensUi();
