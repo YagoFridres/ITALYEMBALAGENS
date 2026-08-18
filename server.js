@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260818144000';
-const SW_RUNTIME_VERSION = '20260818144000';
+const PATCH_RUNTIME_VERSION = '20260818144500';
+const SW_RUNTIME_VERSION = '20260818144500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -8402,14 +8402,28 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
           dataFb = r4.data || []; errFb = r4.error || null;
         }
         if (!errFb && Array.isArray(dataFb) && dataFb.length > 0) {
-          console.log('[AMOSTRAS] fallback sem filtro empresa:', dataFb.length, 'amostras (contexto emp_id=' + empLegacy + ' nao encontrou nada)');
-          return ok(res, dataFb);
+          if (!incluirCanceladas) {
+            dataFb = dataFb.filter(a => {
+              const s = String(a && a.status || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+              return s !== 'cancelada' && s !== 'cancelado' && s !== 'excluida' && s !== 'excluido';
+            });
+          }
+          if (dataFb.length > 0) {
+            console.log('[AMOSTRAS] fallback sem filtro empresa:', dataFb.length, 'amostras (contexto emp_id=' + empLegacy + ' nao encontrou nada)');
+            return ok(res, dataFb);
+          }
         }
       }
     }
     if (error) {
       console.error('[AMOSTRAS] final error:', String(error?.message || error));
       return ok(res, []);
+    }
+    if (!incluirCanceladas && Array.isArray(data)) {
+      data = data.filter(a => {
+        const s = String(a && a.status || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return s !== 'cancelada' && s !== 'cancelado' && s !== 'excluida' && s !== 'excluido';
+      });
     }
     console.log('[AMOSTRAS] retornando', data ? data.length : 0, 'registros | filtros aplicados: emp=' + (filtroEmpAplicado ? empFiltroRaw : '(nenhum)') + ' | status=' + (filtroStatus || '(todos)') + ' | cliente=' + (filtroCliente || '(todos)') + ' | empLegacy_contexto=' + empLegacy + ' | incluirCanceladas=' + incluirCanceladas);
     return ok(res, data || []);
