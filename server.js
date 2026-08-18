@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260818143500';
-const SW_RUNTIME_VERSION = '20260818143500';
+const PATCH_RUNTIME_VERSION = '20260818144000';
+const SW_RUNTIME_VERSION = '20260818144000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -8375,7 +8375,9 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
     let { data, error } = await _aplicarFiltros(q, true);
     const errMsg = String(error?.message || error || '').toLowerCase();
     const errCode = String(error?.code || '').trim();
-    const colunaFaltando = (errCode === '42703') || (errMsg.includes('column') && errMsg.includes('does not exist') && errMsg.includes('deleted_at'));
+    const colunaFaltando = (errCode === '42703') ||
+      (errMsg.includes('column') && errMsg.includes('does not exist') && errMsg.includes('deleted_at')) ||
+      (errMsg.includes('column') && (errMsg.includes('schema cache') || errMsg.includes('could not find the')));
     if (colunaFaltando) {
       const r2 = await _aplicarFiltros(supabase.from('amostras').select('*').order('created_at', { ascending: false }), false);
       data = r2.data || []; error = r2.error || null;
@@ -8393,7 +8395,9 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
         let dataFb = r3.data || [];
         const errFbMsg = String(errFb?.message || errFb || '').toLowerCase();
         const errFbCode = String(errFb?.code || '').trim();
-        if ((errFbCode === '42703') || (errFbMsg.includes('column') && errFbMsg.includes('does not exist') && errFbMsg.includes('deleted_at'))) {
+        if ((errFbCode === '42703') ||
+          (errFbMsg.includes('column') && errFbMsg.includes('does not exist') && errFbMsg.includes('deleted_at')) ||
+          (errFbMsg.includes('column') && (errFbMsg.includes('schema cache') || errFbMsg.includes('could not find the')))) {
           const r4 = await _aplicarFiltros(qFallback, false);
           dataFb = r4.data || []; errFb = r4.error || null;
         }
@@ -8454,7 +8458,10 @@ app.post('/api/amostras', authMiddleware, async (req, res) => {
     } catch (eInsert) {
       const msgIns = String(eInsert?.message || eInsert || '').toLowerCase();
       const codeIns = String(eInsert?.code || '').trim();
-      const colFaltNum = (codeIns === '42703') || (msgIns.includes('column') && msgIns.includes('does not exist') && msgIns.includes('numero_amostra'));
+      const colFaltNum = (codeIns === '42703') ||
+        (msgIns.includes('column') && msgIns.includes('does not exist') && msgIns.includes('numero_amostra')) ||
+        (msgIns.includes('numero_amostra') && msgIns.includes('column') && (msgIns.includes('schema cache') || msgIns.includes('could not find the'))) ||
+        (msgIns.includes('column') && (msgIns.includes('schema cache') || msgIns.includes('could not find the')));
       if (colFaltNum) {
         const payloadSemNum = { ...payload };
         delete payloadSemNum.numero_amostra;
@@ -8499,13 +8506,17 @@ app.put('/api/amostras/:id', authMiddleware, async (req, res) => {
     } catch (eUpd) {
       const msgUpd = String(eUpd?.message || eUpd || '').toLowerCase();
       const codeUpd = String(eUpd?.code || '').trim();
-      const colFalt = (codeUpd === '42703') || (msgUpd.includes('column') && msgUpd.includes('does not exist'));
+      const colFalt = (codeUpd === '42703') ||
+        (msgUpd.includes('column') && msgUpd.includes('does not exist')) ||
+        (msgUpd.includes('column') && (msgUpd.includes('schema cache') || msgUpd.includes('could not find the')));
       if (colFalt) {
         const pLimpo = { ...payload };
         delete pLimpo.numero_amostra;
         delete pLimpo.data_conclusao;
+        delete pLimpo.data_feita;
         delete pLimpo.deleted_at;
         delete pLimpo.usuario_cancelamento;
+        delete pLimpo.usuario_feita;
         const r2 = await supabase.from('amostras').update(pLimpo).eq('id', req.params.id).select().single();
         if (r2.error) throw r2.error;
         rAtualiza = r2;
@@ -8532,7 +8543,9 @@ app.delete('/api/amostras/:id', authMiddleware, async (req, res) => {
     } catch (eSoft) {
       const msgSoft = String(eSoft?.message || eSoft || '').toLowerCase();
       const codeSoft = String(eSoft?.code || '').trim();
-      const colFaltDel = (codeSoft === '42703') || (msgSoft.includes('column') && msgSoft.includes('does not exist'));
+      const colFaltDel = (codeSoft === '42703') ||
+        (msgSoft.includes('column') && msgSoft.includes('does not exist')) ||
+        (msgSoft.includes('column') && (msgSoft.includes('schema cache') || msgSoft.includes('could not find the')));
       if (colFaltDel) {
         const rDel = await supabase.from('amostras').delete().eq('id', req.params.id);
         if (rDel.error) throw rDel.error;
