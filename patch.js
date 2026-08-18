@@ -9997,10 +9997,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         '    </div>' +
         '    </div>' +
         '    </div>' +
+        '    <button type="button" onclick="try { if(typeof calcPromptAddMoreItems===\'function\')calcPromptAddMoreItems(); } catch(_){console.error(_)}" style="display:block;width:100%;margin:14px 0 18px 0;padding:11px 16px;border-radius:10px;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:13px;box-shadow:0 4px 12px rgba(14,165,233,.25)">➕ Adicionar Mais Itens (bloco completo)</button>' +
         '    <div id="calc-extra-blocks"></div>' +
         '  </div>' +
         '  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;padding-top:12px;border-top:1px solid #334155">' +
-        '    <button type="button" onclick="try { if(typeof calcPromptAddMoreItems===\'function\')calcPromptAddMoreItems(); } catch(_){console.error(_)}" style="margin-right:auto;padding:11px 16px;border-radius:10px;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:13px;box-shadow:0 4px 12px rgba(14,165,233,.25)">➕ Adicionar Mais Itens (bloco completo)</button>' +
         '    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">' +
         '      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700"><input type="checkbox" id="calc-print-b" checked style="width:16px;height:16px"> Onda B</label>' +
         '      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700"><input type="checkbox" id="calc-print-c" checked style="width:16px;height:16px"> Onda C</label>' +
