@@ -1,0 +1,298 @@
+{
+  "feito_em": "2026-08-12T14:04:02.124Z",
+  "deploy": {
+    "t1": {
+      "rodada": 1,
+      "ms": 634,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t2": {
+      "rodada": 2,
+      "ms": 166,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t3": {
+      "rodada": 3,
+      "ms": 165,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t4": {
+      "rodada": 4,
+      "ms": 171,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t5": {
+      "rodada": 5,
+      "ms": 169,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t6": {
+      "rodada": 6,
+      "ms": 164,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t7": {
+      "rodada": 7,
+      "ms": 172,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t8": {
+      "rodada": 8,
+      "ms": 165,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t9": {
+      "rodada": 9,
+      "ms": 165,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t10": {
+      "rodada": 10,
+      "ms": 172,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t11": {
+      "rodada": 11,
+      "ms": 197,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t12": {
+      "rodada": 12,
+      "ms": 164,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t13": {
+      "rodada": 13,
+      "ms": 191,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t14": {
+      "rodada": 14,
+      "ms": 164,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t15": {
+      "rodada": 15,
+      "ms": 332,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t16": {
+      "rodada": 16,
+      "ms": 172,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t17": {
+      "rodada": 17,
+      "ms": 192,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t18": {
+      "rodada": 18,
+      "ms": 169,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t19": {
+      "rodada": 19,
+      "ms": 167,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t20": {
+      "rodada": 20,
+      "ms": 170,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t21": {
+      "rodada": 21,
+      "ms": 170,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t22": {
+      "rodada": 22,
+      "ms": 170,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t23": {
+      "rodada": 23,
+      "ms": 163,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t24": {
+      "rodada": 24,
+      "ms": 173,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t25": {
+      "rodada": 25,
+      "ms": 170,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t26": {
+      "rodada": 26,
+      "ms": 189,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t27": {
+      "rodada": 27,
+      "ms": 164,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t28": {
+      "rodada": 28,
+      "ms": 165,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t29": {
+      "rodada": 29,
+      "ms": 174,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    },
+    "t30": {
+      "rodada": 30,
+      "ms": 166,
+      "status": 200,
+      "patch": "",
+      "sw": "",
+      "commit": ""
+    }
+  },
+  "prox_num": {
+    "status": 200,
+    "ms": 302,
+    "maior": 99999,
+    "proximo": "100000",
+    "erro": null,
+    "ok": true
+  },
+  "casos": {
+    "A_com_acento_MOVEIS_RIPKE": {
+      "status": 400,
+      "ms": 1376,
+      "id": "",
+      "clinome": null,
+      "modo": null,
+      "erro": "Cliente inválido. Selecione um cliente válido antes de salvar.",
+      "ref": null,
+      "ambiguo": null,
+      "opcoes": []
+    },
+    "B_SEM_acento_moveis_ripke": {
+      "status": 400,
+      "ms": 1348,
+      "id": "",
+      "clinome": null,
+      "modo": null,
+      "erro": "Cliente inválido. Selecione um cliente válido antes de salvar.",
+      "ref": null,
+      "ambiguo": null,
+      "opcoes": []
+    },
+    "C_inexistente": {
+      "status": 400,
+      "ms": 1351,
+      "id": "",
+      "erro": "Cliente inválido. Selecione um cliente válido antes de salvar.",
+      "ref": null,
+      "missing": [
+        "cliente"
+      ]
+    },
+    "D_ambiguidade": {
+      "status": 400,
+      "ms": 1348,
+      "id": "",
+      "clinome": null,
+      "erro": "Cliente inválido. Selecione um cliente válido antes de salvar.",
+      "ref": null,
+      "ambiguo": null,
+      "opcoes": []
+    }
+  },
+  "deletes": {}
+}

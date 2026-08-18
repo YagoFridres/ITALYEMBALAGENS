@@ -1,0 +1,48 @@
+[
+  {
+    "t": "DEP",
+    "i": 1,
+    "s": 200,
+    "pv": "20260812120000",
+    "cm": "3049359",
+    "ok": true
+  },
+  {
+    "t": "PROX0",
+    "proximo": "100005",
+    "maior": 100004,
+    "ok": false
+  },
+  {
+    "t": "BASE",
+    "s": 200,
+    "cid": "be617df1-441a-",
+    "nome": "MOVEIS RIPKE",
+    "modo": "",
+    "del": {
+      "s": 200,
+      "ok": true
+    },
+    "ok": true
+  },
+  {
+    "t": "EXATO",
+    "s": 400,
+    "cid": "",
+    "nome": "",
+    "modo": "",
+    "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"MOVEIS RIPKE\". Digite e selecione um cliente válido da lista de sugestões.",
+    "ref": "MOVEIS RIPKE",
+    "del": {
+      "ok": true,
+      "s": null
+    },
+    "ok": false
+  },
+  {
+    "t": "PROXN",
+    "proximo": "100005",
+    "maior": 100004,
+    "ok": false
+  }
+]

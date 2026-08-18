@@ -1,0 +1,10 @@
+{"t":"START"}
+{"t":"EMPS","qtd":3,"data":[{"id":"e9b734dc-c7d5-4b04-8...","sigla":"CARTO","codigo":"E2","nome":"Cartoeste"},{"id":"df5f7672-0a6b-402d-a...","sigla":"ITALY","codigo":"E1","nome":"Italy Embalagens"},{"id":"a6e5f5d8-4743-4ebe-8...","sigla":"OESTE","codigo":"E3","nome":"Oestepack"}]}
+{"t":"PROXN_EMP","sigla":"CARTO","cod":"E2","resp":{"ok":true,"proximo":"100005","maior":100004},"s":200}
+{"t":"PROXN_EMP","sigla":"ITALY","cod":"E1","resp":{"ok":true,"proximo":"100005","maior":100004},"s":200}
+{"t":"PROXN_EMP","sigla":"OESTE","cod":"E3","resp":{"ok":true,"proximo":"100005","maior":100004},"s":200}
+{"t":"PROXN_SEM_EMP","resp":{"ok":true,"proximo":"100005","maior":100004},"s":200}
+{"t":"OFS","path":"/api/ofs?limit=30&order=numero.desc","qtd":0,"top15":[],"respStatus":200}
+{"t":"OFS","path":"/api/ofs?limit=30&order=created_at.desc&empId=","qtd":0,"top15":[],"respStatus":200}
+{"t":"OFS","path":"/api/ofs?limit=30&order=numero.desc&_tudo=1","qtd":0,"top15":[],"respStatus":200}
+{"t":"FIM"}

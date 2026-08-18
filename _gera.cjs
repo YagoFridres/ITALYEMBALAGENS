@@ -1,0 +1,1 @@
+const jwt=require('jsonwebtoken');process.stdout.write(jwt.sign({id:'t',perfil:'admin'},'italy_secret_2026',{expiresIn:'8h'}));

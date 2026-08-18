@@ -1,0 +1,51 @@
+{
+  "feito_em": "2026-08-12T13:37:30.441Z",
+  "caso1_cliId_nome_texto": {
+    "ms": 1769,
+    "s": 400,
+    "j": {
+      "ok": false,
+      "error": "Cliente inválido. Selecione um cliente válido antes de salvar.",
+      "missing": [
+        "cliente"
+      ]
+    },
+    "raw": "{\"ok\":false,\"error\":\"Cliente inválido. Selecione um cliente válido antes de salvar.\",\"missing\":[\"cliente\"]}"
+  },
+  "caso2_cliId_texto_codigo_invalido": {
+    "ms": 1286,
+    "s": 400,
+    "j": {
+      "ok": false,
+      "error": "Cliente inválido. Selecione um cliente válido antes de salvar.",
+      "missing": [
+        "cliente"
+      ]
+    },
+    "raw": "{\"ok\":false,\"error\":\"Cliente inválido. Selecione um cliente válido antes de salvar.\",\"missing\":[\"cliente\"]}"
+  },
+  "caso3_cliId_uuid_invalido_formato": {
+    "ms": 1311,
+    "s": 400,
+    "j": {
+      "ok": false,
+      "error": "Cliente inválido. Selecione um cliente válido antes de salvar.",
+      "missing": [
+        "cliente"
+      ]
+    },
+    "raw": "{\"ok\":false,\"error\":\"Cliente inválido. Selecione um cliente válido antes de salvar.\",\"missing\":[\"cliente\"]}"
+  },
+  "caso4_cliId_vazio_vendId_ok": {
+    "ms": 443,
+    "s": 400,
+    "j": {
+      "ok": false,
+      "error": "Campos obrigatórios: cliente",
+      "missing": [
+        "cliente"
+      ]
+    },
+    "raw": "{\"ok\":false,\"error\":\"Campos obrigatórios: cliente\",\"missing\":[\"cliente\"]}"
+  }
+}

@@ -1,0 +1,1 @@
+﻿{"ok":true,"runtime":{"patch":"20260813123000","sw":"20260813123000","sw_cache_name":"italy-erp-v20260813123000"},"git":{"commit":"e82911b975b3f246653e720b8927a579ab0f22f8","branch":"main"},"deploy":{"id":"be397bd9-2cf4-4b17-8afb-15f91d76438f","provider":"railway"},"now":"2026-08-13T18:07:04.694Z"}

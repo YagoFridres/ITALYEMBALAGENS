@@ -1,0 +1,13 @@
+﻿
+=== VALIDACAO PROMPT 1 - PowerShell Invoke-RestMethod - 2026-08-11T17:20:46.9652605-03:00 ===
+
+[RIPKE] ERRO: O servidor remoto retornou um erro: (401) Não Autorizado.
+[RUIZ] ERRO: O servidor remoto retornou um erro: (401) Não Autorizado.
+[ROTOPLAST] ERRO: O servidor remoto retornou um erro: (401) Não Autorizado.
+[DKADI] ERRO: O servidor remoto retornou um erro: (401) Não Autorizado.
+[ITACIR] ERRO: O servidor remoto retornou um erro: (401) Não Autorizado.
+
+=== FINAL ===
+PASSARAM: 0 / 5  FALHA
+TODOS_PASSARAM: False
+JSON: c:\Users\Usuario\PCP PROGRAMA\ITALYEMBALAGENS\_validacao_p1_final_ps.json

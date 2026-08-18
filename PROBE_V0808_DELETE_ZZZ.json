@@ -1,0 +1,13 @@
+{
+  "del_ms": 352,
+  "del_status": 200,
+  "result": {
+    "ok": true,
+    "query_count": 0,
+    "picked": 0,
+    "unique_ids": 0,
+    "deleted": 0,
+    "failures": 0,
+    "detalhes": []
+  }
+}

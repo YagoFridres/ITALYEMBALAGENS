@@ -1,0 +1,22 @@
+﻿{
+  "http": 400,
+  "b": "{\"ok\":false,\"error\":\"Cliente invÃ¡lido: nÃ£o encontramos nenhum cliente correspondente a \\\"MOVEIS RIPKE\\\". Digite e selecione um cliente vÃ¡lido da lista de sugestÃµes.\",\"missing\":[\"cliente\"],\"ref\":\"MOVEIS RIPKE\"}",
+  "parsed": {
+    "ok": false,
+    "error": "Cliente invÃ¡lido: nÃ£o encontramos nenhum cliente correspondente a \"MOVEIS RIPKE\". Digite e selecione um cliente vÃ¡lido da lista de sugestÃµes.",
+    "missing": [
+      "cliente"
+    ],
+    "ref": "MOVEIS RIPKE"
+  },
+  "cli_id": "",
+  "clinome": "",
+  "modo": "",
+  "erro": "Cliente invÃ¡lido: nÃ£o encontramos nenhum cliente correspondente a \"MOVEIS RIPKE\". Digite e selecione um cliente vÃ¡lido da lista de sugestÃµes.",
+  "ref": "MOVEIS RIPKE",
+  "qtd": null,
+  "opcoes": [],
+  "created_id": "",
+  "del_status": null,
+  "del_ok": true
+}

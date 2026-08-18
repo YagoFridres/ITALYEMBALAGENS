@@ -1,0 +1,124 @@
+{
+  "feito_em": "2026-08-12T13:21:44.636Z",
+  "deploy": {
+    "patch": "20260812103000",
+    "sw": "20260812103000",
+    "commit": "185299a2c9fd6b727e047a90411009e1483becc8",
+    "deploy_id": "f7a0f547-a8f5-4f4d-a720-1c19d45459e7",
+    "ok": true
+  },
+  "health": {
+    "cores_total": 42,
+    "sem_impressao_total": 3,
+    "sem_impressao_list": [
+      {
+        "id": "a92182d3-81cf-40de-b423-b6497ed364e2",
+        "empresa": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+        "nome": "Sem Impressão",
+        "hex": null,
+        "ativo": true,
+        "created_at": "2026-08-12T13:18:37.512818+00:00"
+      },
+      {
+        "id": "26c119b2-daad-4222-afac-dbb1bc3f67be",
+        "empresa": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+        "nome": "Sem Impressão",
+        "hex": null,
+        "ativo": true,
+        "created_at": "2026-08-12T13:18:37.05897+00:00"
+      },
+      {
+        "id": "da82ed3b-1a9a-435e-bf92-cbca9ef6e850",
+        "empresa": "df5f7672-0a6b-402d-ae65-296554236c31",
+        "nome": "Sem Impressão",
+        "hex": null,
+        "ativo": true,
+        "created_at": "2026-06-05T11:16:32.163603+00:00"
+      }
+    ]
+  },
+  "bateria_emerg2_contagem_0_ofs": {
+    "total_clientes_emp": 3,
+    "qtd_checados": 5,
+    "qtd_que_eram_0_OFS": 5,
+    "qtd_que_tem_OFS": 0,
+    "qtd_ERRO_na_busca": 5,
+    "detalhe": [
+      {
+        "i": 0,
+        "label": "RIPKE",
+        "nomeBusca": "moveis ripke",
+        "busca_s": 500,
+        "busca_ne": null,
+        "busca_err": "invalid input syntax for type uuid: \"buscar\"",
+        "ofs_qtd": 0,
+        "qtd_vazia": "SIM_0_OFs",
+        "ofs_nao_vazios_confirm": null,
+        "ofs_erro": "BUSCA_FALHOU s=500 r={\"ok\":false,\"error\":\"invalid input syntax for type uuid: \\\"buscar\\\"\"}",
+        "amostra_numeros": "",
+        "ms": 475
+      },
+      {
+        "i": 1,
+        "label": "RUIZ",
+        "nomeBusca": "ruiz",
+        "busca_s": 500,
+        "busca_ne": null,
+        "busca_err": "invalid input syntax for type uuid: \"buscar\"",
+        "ofs_qtd": 0,
+        "qtd_vazia": "SIM_0_OFs",
+        "ofs_nao_vazios_confirm": null,
+        "ofs_erro": "BUSCA_FALHOU s=500 r={\"ok\":false,\"error\":\"invalid input syntax for type uuid: \\\"buscar\\\"\"}",
+        "amostra_numeros": "",
+        "ms": 461
+      },
+      {
+        "i": 2,
+        "label": "ROTOPLAST",
+        "nomeBusca": "rotoplast",
+        "busca_s": 500,
+        "busca_ne": null,
+        "busca_err": "invalid input syntax for type uuid: \"buscar\"",
+        "ofs_qtd": 0,
+        "qtd_vazia": "SIM_0_OFs",
+        "ofs_nao_vazios_confirm": null,
+        "ofs_erro": "BUSCA_FALHOU s=500 r={\"ok\":false,\"error\":\"invalid input syntax for type uuid: \\\"buscar\\\"\"}",
+        "amostra_numeros": "",
+        "ms": 467
+      },
+      {
+        "i": 3,
+        "label": "DKADI",
+        "nomeBusca": "dkadi",
+        "busca_s": 500,
+        "busca_ne": null,
+        "busca_err": "invalid input syntax for type uuid: \"buscar\"",
+        "ofs_qtd": 0,
+        "qtd_vazia": "SIM_0_OFs",
+        "ofs_nao_vazios_confirm": null,
+        "ofs_erro": "BUSCA_FALHOU s=500 r={\"ok\":false,\"error\":\"invalid input syntax for type uuid: \\\"buscar\\\"\"}",
+        "amostra_numeros": "",
+        "ms": 692
+      },
+      {
+        "i": 4,
+        "label": "ITACIR",
+        "nomeBusca": "itacir",
+        "busca_s": 500,
+        "busca_ne": null,
+        "busca_err": "invalid input syntax for type uuid: \"buscar\"",
+        "ofs_qtd": 0,
+        "qtd_vazia": "SIM_0_OFs",
+        "ofs_nao_vazios_confirm": null,
+        "ofs_erro": "BUSCA_FALHOU s=500 r={\"ok\":false,\"error\":\"invalid input syntax for type uuid: \\\"buscar\\\"\"}",
+        "amostra_numeros": "",
+        "ms": 724
+      }
+    ]
+  },
+  "sw_cache": {
+    "found_it": true,
+    "timestamp_extraido": "20260812103000",
+    "match_target": true
+  }
+}

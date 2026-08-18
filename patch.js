@@ -6169,22 +6169,54 @@ window._compraPapelaoRenderItemRowsHtml = function(compra) {
   }
   return itens.map(function(item, idx) {
     var d = window._compraPapelaoDeriveItem(item);
+    var vincosRaw = [];
+    ['vinco1','vinco2','vinco3','vinco4'].forEach(function(k){
+      var v = String(item && item[k] || '').trim();
+      if (v) vincosRaw.push(v);
+    });
+    var extra = Array.isArray(item && item.vincos_extra) ? item.vincos_extra : (Array.isArray(item && item.vincos_lista) ? item.vincos_lista : []);
+    extra.forEach(function(part){ var v = String(part || '').trim(); if (v) vincosRaw.push(v); });
+    if (!vincosRaw.length && Array.isArray(item && item.vincos)) {
+      item.vincos.forEach(function(part){ var v = String(part || '').trim(); if (v) vincosRaw.push(v); });
+    }
+    if (!vincosRaw.length) {
+      var legacyStr = String(item && item.vincos || '').trim();
+      if (legacyStr) legacyStr.split(/[,;\/]+/).forEach(function(part){ var v = String(part || '').trim(); if (v) vincosRaw.push(v); });
+    }
+    if (!vincosRaw.length && typeof compraAllVincos === 'function') {
+      vincosRaw = (compraAllVincos(item) || []).slice().map(function(s){ return String(s||'').trim(); }).filter(Boolean);
+    }
+    if (!vincosRaw.length) vincosRaw = ['—'];
+    var seq = window._compraPapelaoEsc(String(item && item.seq != null ? item.seq : (idx + 1)));
+    var pedCli = window._compraPapelaoEsc(item && item.ped_cliente || '—');
+    var entrega = window._compraPapelaoEsc(window._compraPapelaoFmtDate(item && item.data_entrega || ''));
+    var po = window._compraPapelaoEsc(item && (item.po || item.nomenclatura) || '—');
+    var medidas = window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.largura || 0, 0) + ' × ' + window._compraPapelaoFmtNum(item && item.comprimento || 0, 0));
+    var qtd = window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.quantidade || 0, 0));
+    var lote = window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.lote_minimo || 0, 0));
+    var area = window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.area_m2 != null ? item.area_m2 : d.area_m2, 4));
+    var vrm2 = window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.valor_m2 || 0));
+    var vlmil = window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.vl_p_mil != null ? item.vl_p_mil : d.vl_p_mil));
+    var vtotal = window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.valor_total != null ? item.valor_total : d.valor_total));
+    var obs = window._compraPapelaoEsc(item && item.observacao || '—');
+    var pedForn = window._compraPapelaoEsc(item && item.ped_fornecedor || '—');
+    var vincoCell = vincosRaw.map(function(v) { return v === '—' ? '—' : ('Vinco ' + window._compraPapelaoEsc(String(v)) + 'mm'); }).join('<br>');
     return ''
-      + '<tr>'
-      + '  <td>' + window._compraPapelaoEsc(String(item && item.seq != null ? item.seq : (idx + 1))) + '</td>'
-      + '  <td>' + window._compraPapelaoEsc(item && item.ped_cliente || '—') + '</td>'
-      + '  <td>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(item && item.data_entrega || '')) + '</td>'
-      + '  <td>' + window._compraPapelaoEsc(item && (item.po || item.nomenclatura) || '—') + '</td>'
-      + '  <td>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.largura || 0, 0) + ' × ' + window._compraPapelaoFmtNum(item && item.comprimento || 0, 0)) + '</td>'
-      + '  <td>' + window._compraPapelaoEsc((function(){ var v=(typeof compraAllVincos==='function'?compraAllVincos(item):[]); if(!v.length)v=String(item&&item.vincos||'').split('/').map(function(s){return String(s||'').trim()}).filter(Boolean); return v.join('/')||'—'; })()) + '</td>'
-      + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.quantidade || 0, 0)) + '</td>'
-      + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.lote_minimo || 0, 0)) + '</td>'
-      + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.area_m2 != null ? item.area_m2 : d.area_m2, 4)) + '</td>'
-      + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.valor_m2 || 0)) + '</td>'
-      + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.vl_p_mil != null ? item.vl_p_mil : d.vl_p_mil)) + '</td>'
-      + '  <td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.valor_total != null ? item.valor_total : d.valor_total)) + '</td>'
-      + '  <td>' + window._compraPapelaoEsc(item && item.observacao || '—') + '</td>'
-      + '  <td>' + window._compraPapelaoEsc(item && item.ped_fornecedor || '—') + '</td>'
+      + '<tr style=\"display:table-row!important\">'
+      + '  <td style=\"display:table-cell!important;font-weight:800;text-align:center\">' + seq + '</td>'
+      + '  <td style=\"display:table-cell!important\">' + pedCli + '</td>'
+      + '  <td style=\"display:table-cell!important;text-align:center\">' + entrega + '</td>'
+      + '  <td style=\"display:table-cell!important\">' + po + '</td>'
+      + '  <td style=\"display:table-cell!important;text-align:right;white-space:nowrap\">' + medidas + '</td>'
+      + '  <td style=\"display:table-cell!important;font-weight:700;line-height:1.45;vertical-align:top\">' + vincoCell + '</td>'
+      + '  <td style=\"display:table-cell!important\" class=\"num\">' + qtd + '</td>'
+      + '  <td style=\"display:table-cell!important\" class=\"num\">' + lote + '</td>'
+      + '  <td style=\"display:table-cell!important\" class=\"num\">' + area + '</td>'
+      + '  <td style=\"display:table-cell!important\" class=\"num\">' + vrm2 + '</td>'
+      + '  <td style=\"display:table-cell!important\" class=\"num\">' + vlmil + '</td>'
+      + '  <td style=\"display:table-cell!important;font-weight:800\" class=\"num\">' + vtotal + '</td>'
+      + '  <td style=\"display:table-cell!important;vertical-align:top\">' + obs + '</td>'
+      + '  <td style=\"display:table-cell!important\">' + pedForn + '</td>'
       + '</tr>';
   }).join('');
 };
@@ -6748,21 +6780,52 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
   var empresa = window._compraPapelaoEmpresaNome(data && data._emp_id_consulta || '');
   var rowsHtml = (Array.isArray(data.itens) ? data.itens : []).map(function(item, idx) {
     var d = window._compraPapelaoDeriveItem(item);
+    var vincosRaw = [];
+    ['vinco1','vinco2','vinco3','vinco4'].forEach(function(k){
+      var v = String(item && item[k] || '').trim();
+      if (v) vincosRaw.push(v);
+    });
+    var extra = Array.isArray(item && item.vincos_extra) ? item.vincos_extra : (Array.isArray(item && item.vincos_lista) ? item.vincos_lista : []);
+    extra.forEach(function(part){ var v = String(part || '').trim(); if (v) vincosRaw.push(v); });
+    if (!vincosRaw.length && Array.isArray(item && item.vincos)) {
+      item.vincos.forEach(function(part){ var v = String(part || '').trim(); if (v) vincosRaw.push(v); });
+    }
+    if (!vincosRaw.length) {
+      var legacyStr = String(item && item.vincos || '').trim();
+      if (legacyStr) legacyStr.split(/[,;\/]+/).forEach(function(part){ var v = String(part || '').trim(); if (v) vincosRaw.push(v); });
+    }
+    if (!vincosRaw.length && typeof compraAllVincos === 'function') {
+      vincosRaw = (compraAllVincos(item) || []).slice().map(function(s){ return String(s||'').trim(); }).filter(Boolean);
+    }
+    if (!vincosRaw.length) vincosRaw = ['—'];
+    var seq = window._compraPapelaoEsc(String(item && item.seq != null ? item.seq : (idx + 1)));
+    var entrega = window._compraPapelaoEsc(window._compraPapelaoFmtDate(item && item.data_entrega || ''));
+    var po = window._compraPapelaoEsc(String(item && item.po || item && item.nomenclatura || '—'));
+    var medidas = window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.largura || 0, 0)) + ' × ' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.comprimento || 0, 0));
+    var qtd = window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.quantidade || 0, 0));
+    var lote = window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.lote_minimo || 0, 0));
+    var area = window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.area_m2 != null ? item.area_m2 : d.area_m2, 4));
+    var vrm2 = window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.valor_m2 || 0));
+    var vlmil = window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.vl_p_mil != null ? item.vl_p_mil : d.vl_p_mil));
+    var vtotal = window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.valor_total != null ? item.valor_total : d.valor_total));
+    var obs = window._compraPapelaoEsc(String(item && item.observacao || '—'));
+    var pedForn = window._compraPapelaoEsc(String(item && item.ped_fornecedor || '—'));
+    var vincoCell = vincosRaw.map(function(v) { return v === '—' ? '—' : ('Vinco ' + window._compraPapelaoEsc(String(v)) + 'mm'); }).join('<br>');
     return ''
-      + '<tr>'
-      + '<td>' + window._compraPapelaoEsc(String(item && item.seq != null ? item.seq : (idx + 1))) + '</td>'
-      + '<td>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(item && item.data_entrega || '')) + '</td>'
-      + '<td>' + window._compraPapelaoEsc(String(item && item.po || item && item.nomenclatura || '—')) + '</td>'
-      + '<td>' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.largura || 0, 0)) + ' × ' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.comprimento || 0, 0)) + '</td>'
-      + '<td>' + window._compraPapelaoEsc((function(){ var v=(typeof compraAllVincos==='function'?compraAllVincos(item):[]); if(!v.length)v=String(item&&item.vincos||'').split('/').map(function(s){return String(s||'').trim()}).filter(Boolean); return v.join('/')||'—'; })()) + '</td>'
-      + '<td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.quantidade || 0, 0)) + '</td>'
-      + '<td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.lote_minimo || 0, 0)) + '</td>'
-      + '<td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(item && item.area_m2 != null ? item.area_m2 : d.area_m2, 4)) + '</td>'
-      + '<td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.valor_m2 || 0)) + '</td>'
-      + '<td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.vl_p_mil != null ? item.vl_p_mil : d.vl_p_mil)) + '</td>'
-      + '<td class="num">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(item && item.valor_total != null ? item.valor_total : d.valor_total)) + '</td>'
-      + '<td>' + window._compraPapelaoEsc(String(item && item.observacao || '—')) + '</td>'
-      + '<td>' + window._compraPapelaoEsc(String(item && item.ped_fornecedor || '—')) + '</td>'
+      + '<tr style=\"display:table-row!important\">'
+      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;font-weight:800;text-align:center;background:#fff\">' + seq + '</td>'
+      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:center;background:#fff\">' + entrega + '</td>'
+      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:left;background:#fff\">' + po + '</td>'
+      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff;white-space:nowrap\">' + medidas + '</td>'
+      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;font-weight:700;text-align:left;background:#fff;line-height:1.45;vertical-align:top\">' + vincoCell + '</td>'
+      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff\" class=\"num\">' + qtd + '</td>'
+      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff\" class=\"num\">' + lote + '</td>'
+      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff\" class=\"num\">' + area + '</td>'
+      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff\" class=\"num\">' + vrm2 + '</td>'
+      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff\" class=\"num\">' + vlmil + '</td>'
+      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff;font-weight:800\" class=\"num\">' + vtotal + '</td>'
+      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:left;background:#fff;vertical-align:top\">' + obs + '</td>'
+      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:left;background:#fff\">' + pedForn + '</td>'
       + '</tr>';
   }).join('');
   return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Pedido de Chapas ' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(data.numero_compra)) + '</title>'
@@ -7863,7 +7926,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     var raw = [];
     var legacy = String(item && item.vincos || '').trim();
     if (legacy) {
-      legacy.split('/').forEach(function(part) {
+      legacy.split(/[,;\/]+/).forEach(function(part) {
         var txt = String(part || '').trim();
         if (txt) raw.push(txt);
       });
@@ -50890,10 +50953,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
 
   function compraAllVincos(item) {
+    if (Array.isArray(item && item.vincos)) {
+      return item.vincos.slice().map(function(s) {
+        var txt = String(s || '').trim();
+        return txt;
+      }).filter(Boolean);
+    }
     var raw = [];
     var legacy = String(item && item.vincos || '').trim();
     if (legacy) {
-      legacy.split('/').forEach(function(part) {
+      legacy.split(/[,;\/]+/).forEach(function(part) {
         var txt = String(part || '').trim();
         if (txt) raw.push(txt);
       });

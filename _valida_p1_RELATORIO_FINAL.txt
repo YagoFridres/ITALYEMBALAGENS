@@ -1,0 +1,14 @@
+=== INICIO VALIDACAO PROMPT 1 HOTFIX 2 (c601dce) ===
+Data: 2026-08-11T20:18:21.651Z
+
+[RIPKE] MOVEIS RIPKE | id=be617df1 | total_ofs=422 | esperado=422 | PASSOU ✅ | tempo=11273ms | filtrados=1
+[RUIZ] NÃO ENCONTRADO | id=? | total_ofs=NULL | esperado=275 | FALHOU ❌ | tempo=96113ms | filtrados=0
+[ROTOPLAST] ROTOPLAST INDÚSTRIA DE CLIMATIZADORES | id=74ce7e67 | total_ofs=28 | esperado=28 | PASSOU ✅ | tempo=105707ms | filtrados=2
+[DKADI] DKADI DECOR | id=99c17e9d | total_ofs=23 | esperado=23 | PASSOU ✅ | tempo=26109ms | filtrados=1
+[ITACIR] ITACIR PEROSA | id=0bc5da45 | total_ofs=14 | esperado=14 | PASSOU ✅ | tempo=10401ms | filtrados=1
+
+=== FINAL VALIDACAO PROMPT 1 ===
+PASSARAM: 4 / 5
+TODOS_PASSARAM: false
+JSON: C:\Users\Usuario\PCP PROGRAMA\ITALYEMBALAGENS\_valida_p1_RELATORIO_FINAL.json
+EXIT_CODE: 1

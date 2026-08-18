@@ -1,0 +1,65 @@
+============================================================
+  RELATORIO OFICIAL - VALIDACAO AUTOMATICA PROMPT 1 (HOTFIX 2 c601dce)
+  5 CLIENTES x TOTAL_OFS NA LISTAGEM PRINCIPAL (CARDS)
+  Commit/Push: c601dce origin/main Railway
+  Deploy sincronizado: v20260811204500 (server.js + index.html + sw.js)
+  Data validacao: 2026-08-11
+  Metodo: Script Node direto, JWT gerado localmente, HTTPS para
+          endpoint GET /api/clientes?q=CLIENTE Railway oficial
+          (sem navegador / sem login interativo)
+============================================================
+
+--- RESULTADO FINAL ---
+5 / 5 PASSARAM  ---  SUCESSO GERAL ✅✅✅✅✅
+
+--- DETALHAMENTO INDIVIDUAL COM EVIDENCIAS ---
+
+[1] MOVEIS RIPKE (id be617df1...)
+    Evidencia: _r_RIPKE.json (script _1cliente.cjs)
+    total_ofs listagem: 422    esperado: 422    STATUS: PASSOU ✅
+    Tempo: 5966ms | Filtro: 1 resultado
+
+[2] MOVEIS RUIZ (id da2798c7...)
+    Evidencia: _r_RUIZ.json (script _1cliente.cjs)
+    total_ofs listagem: 275    esperado: 275    STATUS: PASSOU ✅
+    Tempo: 7570ms | Filtro: 1 resultado
+
+[3] ROTOPLAST INDUSTRIA DE CLIMATIZADORES (id 74ce7e67-f1fc-474f-80fa-8302b43854ee)
+    Evidencia: _dump_rotoplast.json (script _dump_roto.cjs)
+    Dump completo do endpoint q=ROTOPLAST retornou 2 cadastros:
+      . 1969f4f4: ROTOPLAST CLIMATIZADORES = 29 OFs (outro cliente - NAO o alvo)
+      . 74ce7e67: ROTOPLAST INDUSTRIA DE CLIMATIZADORES = 28 OFs (CLIENTE ALVO)
+    total_ofs listagem (cliente alvo): 28    esperado: 28    STATUS: PASSOU ✅
+    (Filtrado por ID exato 74ce7e67-f1fc..., conforme combinado no Erro #4)
+
+[4] DKADI DECOR (id 99c17e9d...)
+    Evidencia: _r_DKADI.json (script _1cliente.cjs)
+    total_ofs listagem: 23    esperado: 23    STATUS: PASSOU ✅
+    Tempo: 8301ms | Filtro: 1 resultado
+
+[5] ITACIR PEROSA (id 0bc5da45...)
+    Evidencia: _r_ITACIR.json (script _1cliente.cjs)
+    total_ofs listagem: 14    esperado: 14    STATUS: PASSOU ✅
+    Tempo: 4901ms | Filtro: 1 resultado
+
+============================================================
+  CONCLUSÃO
+============================================================
+
+5/5 CLIENTES BATEM EXATAMENTE NA LISTAGEM PRINCIPAL (CARDS).
+
+Corretude comprovada apos o Hotfix 2 (commit c601dce):
+ - Root cause identificado: SELECT slim 13-colunas no modo COUNT
+   tinha coluna inexistente na tabela OFs. Postgres rejeitava TODO
+   o select com erro "column does not exist". Resultado: Map vazio
+   em TODOS os clientes (total_ofs = 0 gravado em cache 3min).
+ - Solucao aplicada: forcar cols='*' em AMBOS os modos do helper
+   compartilhado _sharedBuscarOfsCompleta (count E full).
+ - Trade-off aceito: +~2KB payload por cliente no /api/clientes
+   vs garantia de 100% de corretude.
+ - Paridade garantida entre Card Listagem E Painel Individual:
+   ambos usam EXATAMENTE o mesmo helper compartilhado, com mesma
+   estrategia de matching ILIKE nativo Postgres + dedup por ofId.
+
+VALIDACAO ENCERRADA. PROSSEGUIR PARA PROMPT 2.
+============================================================

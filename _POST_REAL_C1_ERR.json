@@ -1,0 +1,16 @@
+{
+  "s": 500,
+  "j": {
+    "ok": false,
+    "error": "Falha ao inserir OF após tentativas",
+    "rid": "ed8c8a19abc28d12",
+    "lastErro": "duplicate key value violates unique constraint \"ofs_numero_key\"",
+    "lastCode": "23505",
+    "lastDetails": "Key (numero)=(2590) already exists.",
+    "ignoredColumns": [
+      "numero_of",
+      "numero_of"
+    ]
+  },
+  "raw0": "{\"ok\":false,\"error\":\"Falha ao inserir OF após tentativas\",\"rid\":\"ed8c8a19abc28d12\",\"lastErro\":\"duplicate key value violates unique constraint \\\"ofs_numero_key\\\"\",\"lastCode\":\"23505\",\"lastDetails\":\"Key (numero)=(2590) already exists.\",\"ignoredColumns\":[\"numero_of\",\"numero_of\"]}"
+}

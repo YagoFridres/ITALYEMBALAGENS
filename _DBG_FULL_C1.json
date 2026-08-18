@@ -1,0 +1,50 @@
+{
+  "s": 200,
+  "j": {
+    "ok": true,
+    "DEBUG": {
+      "empresaCtx": {
+        "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+        "emp_id": "E1"
+      },
+      "empresaUuid": "df5f7672-0a6b-402d-ae65-296554236c31",
+      "empLegacy": "E1",
+      "filteredBeforeOf": {},
+      "blocoEntrou": true,
+      "lastSeq": 767,
+      "nextSeq": 768,
+      "calcR": {
+        "ok": true,
+        "proximo": "2590",
+        "maior": 2589,
+        "qtd": 1000,
+        "qtdNumeros": 1000,
+        "empId": "df5f7672-0a6b-402d-ae65-296554236c31",
+        "siglaLegada": "E1"
+      },
+      "numeroEmpresa": 2590,
+      "siglaLegadaEmp": "E1",
+      "conflitoLog": [
+        {
+          "i": 0,
+          "cand": "2590",
+          "qMs": 170,
+          "qEx": [],
+          "conflita": false
+        }
+      ],
+      "escolhido": "2590",
+      "escolhidoIdx": 0,
+      "filteredFinal": {
+        "of": "2590",
+        "numero": "2590",
+        "seq": 768,
+        "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+        "emp_id": "E1",
+        "clinome": "MOVEIS RIPKE",
+        "cli_id": "be617df1-441a-4f11-918e-d813a5ac854c"
+      }
+    }
+  },
+  "raw0": "{\"ok\":true,\"DEBUG\":{\"empresaCtx\":{\"empresa_id\":\"df5f7672-0a6b-402d-ae65-296554236c31\",\"emp_id\":\"E1\"},\"empresaUuid\":\"df5f7672-0a6b-402d-ae65-296554236c31\",\"empLegacy\":\"E1\",\"filteredBeforeOf\":{},\"blocoEntrou\":true,\"lastSeq\":767,\"nextSeq\":768,\"calcR\":{\"ok\":true,\"proximo\":\"2590\",\"maior\":2589,\"qtd\":1000,\"qtdNumeros\":1000,\"empId\":\"df5f7672-0a6b-402d-ae65-296554236c31\",\"siglaLegada\":\"E1\"},\"numeroEmpresa\":2590,\"siglaLegadaEmp\":\"E1\",\"conflitoLog\":[{\"i\":0,\"cand\":\"2590\",\"qMs\":170,\"qEx\":[],\"conflita\":false}],\"escolhido\":\"2590\",\"escolhidoIdx\":0,\"filteredFinal\":{\"of\":\"2590\",\"numero\":\"2590\",\"seq\":768,\"empresa_id\":\"df5f7672-0a6b-402d-ae65-296554236c31\",\"emp_id\":\"E1\",\"clinome\":\"MOVEIS RIPKE\",\"cli_id\":\"be617df1-441a-4f11-918e-d813a5ac854c\"}}}"
+}

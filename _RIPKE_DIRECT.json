@@ -1,0 +1,27 @@
+﻿{
+    "ok":  true,
+    "data":  [
+                 {
+                     "id":  "be617df1-441a-4f11-918e-d813a5ac854c",
+                     "nome":  "MOVEIS RIPKE",
+                     "cnpj":  null,
+                     "tel":  null,
+                     "email":  "xml@moveisripke.com.br",
+                     "cidade":  "Pinhalzinho",
+                     "vendedor_id":  "b362b262-0b8f-40e3-865f-7eb5bfe226c8",
+                     "emp_id":  "E1",
+                     "ativo":  true,
+                     "rs":  null,
+                     "ie":  null,
+                     "uf":  null,
+                     "endereco":  null,
+                     "ramo":  "Moveleiro",
+                     "pagto":  null,
+                     "rep":  null,
+                     "observacoes":  null,
+                     "empresa_id":  "df5f7672-0a6b-402d-ae65-296554236c31",
+                     "created_at":  "2026-04-06T13:53:38.594269+00:00",
+                     "total_ofs":  430
+                 }
+             ]
+}

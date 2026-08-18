@@ -1,0 +1,1 @@
+FIM bateria=5 0ofs=5 comofs=0

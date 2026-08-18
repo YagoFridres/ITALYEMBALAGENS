@@ -1,0 +1,47 @@
+{
+  "status": 200,
+  "r1": {
+    "ok": true,
+    "proximo": "2605",
+    "maior": 2604,
+    "maiorScan": 2604,
+    "maxSql": 981,
+    "sqlOk": true,
+    "qtd": 2546,
+    "qtdNumeros": 2546,
+    "incluiDeletados": false,
+    "top5": [
+      {
+        "id": "3100fdd2-6d75-49c5-a3ce-18fe3a58e0f0",
+        "n": 2604,
+        "of_num": "2604",
+        "deletado": false
+      },
+      {
+        "id": "0a49f941-426a-4f35-ab81-118ad57423b4",
+        "n": 2603,
+        "of_num": "2603",
+        "deletado": false
+      },
+      {
+        "id": "c5478e8b-c98c-40de-98de-65477363bc26",
+        "n": 2602,
+        "of_num": "2602",
+        "deletado": false
+      },
+      {
+        "id": "afea1a07-acb8-4967-8a1e-fa16ecc8da1b",
+        "n": 2601,
+        "of_num": "2601",
+        "deletado": false
+      },
+      {
+        "id": "c4db942d-7024-401a-a330-56a7faed344a",
+        "n": 2600,
+        "of_num": "2600",
+        "deletado": false
+      }
+    ]
+  },
+  "ok": true
+}

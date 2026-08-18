@@ -1,0 +1,49 @@
+{
+  "ms": 320,
+  "s": 200,
+  "j": {
+    "ok": true,
+    "data": [
+      {
+        "id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+        "nome": "Cartoeste",
+        "ativo": true,
+        "created_at": "2026-03-30T14:12:58.886493+00:00",
+        "sigla": "CARTO",
+        "cor": "carto",
+        "cnpj": "",
+        "cidade": "São Miguel do Oeste",
+        "uf": "SC",
+        "codigo": "E2",
+        "updated_at": "2026-03-30T14:12:58.886493+00:00"
+      },
+      {
+        "id": "df5f7672-0a6b-402d-ae65-296554236c31",
+        "nome": "Italy Embalagens",
+        "ativo": true,
+        "created_at": "2026-03-30T14:12:58.886493+00:00",
+        "sigla": "ITALY",
+        "cor": "italy",
+        "cnpj": "",
+        "cidade": "São Miguel do Oeste",
+        "uf": "SC",
+        "codigo": "E1",
+        "updated_at": "2026-03-30T14:12:58.886493+00:00"
+      },
+      {
+        "id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+        "nome": "Oestepack",
+        "ativo": true,
+        "created_at": "2026-03-30T14:12:58.886493+00:00",
+        "sigla": "OESTE",
+        "cor": "oeste",
+        "cnpj": "",
+        "cidade": "São Miguel do Oeste",
+        "uf": "SC",
+        "codigo": "E3",
+        "updated_at": "2026-03-30T14:12:58.886493+00:00"
+      }
+    ]
+  },
+  "raw": "{\"ok\":true,\"data\":[{\"id\":\"e9b734dc-c7d5-4b04-898d-1ec7affa721e\",\"nome\":\"Cartoeste\",\"ativo\":true,\"created_at\":\"2026-03-30T14:12:58.886493+00:00\",\"sigla\":\"CARTO\",\"cor\":\"carto\",\"cnpj\":\"\",\"cidade\":\"São Miguel do Oeste\",\"uf\":\"SC\",\"codigo\":\"E2\",\"updated_at\":\"2026-03-30T14:12:58.886493+00:00\"},{\"id\":\"df5f7672-0a6b-402d-ae65-296554236c31\",\"nome\":\"Italy Embalagens\",\"ativo\":true,\"created_at\":\"2026-03-30T14:12:58.886493+00:00\",\"sigla\":\"ITALY\",\"cor\":\"italy\",\"cnpj\":\"\",\"cidade\":\"São Miguel do Oeste\",\"uf\":\"SC\",\"codigo\":\"E1\",\"updated_at\":\"2026-03-30T14:12:58.886493+00:00\"},{\"id\":\"a6e5f5d8-4743-4ebe-885e-c2f0741a667a\",\"nome\":\"Oestepack\",\"ativo\":true,\"created_at\":\"2026-03-30T14:12:58.886493+00:00\",\"sigla\":\"OESTE\",\"cor\":\"oeste\",\"cnpj\":\"\",\"cidade\":\"São Miguel do Oeste\",\"uf\":\"SC\",\"codigo\":\"E3\",\"updated_at\":\"2026-03-30T14:12:58.886493+00:00\"}]}"
+}

@@ -1,0 +1,22 @@
+{
+  "http": 400,
+  "b": "{\"ok\":false,\"error\":\"Cliente inválido: não encontramos nenhum cliente correspondente a \\\"moveis ripke\\\". Digite e selecione um cliente válido da lista de sugestões.\",\"missing\":[\"cliente\"],\"ref\":\"moveis ripke\"}",
+  "parsed": {
+    "ok": false,
+    "error": "Cliente inválido: não encontramos nenhum cliente correspondente a \"moveis ripke\". Digite e selecione um cliente válido da lista de sugestões.",
+    "missing": [
+      "cliente"
+    ],
+    "ref": "moveis ripke"
+  },
+  "cli_id": "",
+  "clinome": "",
+  "modo": "",
+  "erro": "Cliente inválido: não encontramos nenhum cliente correspondente a \"moveis ripke\". Digite e selecione um cliente válido da lista de sugestões.",
+  "ref": "moveis ripke",
+  "qtd": null,
+  "opcoes": [],
+  "created_id": "",
+  "del_status": null,
+  "del_ok": true
+}

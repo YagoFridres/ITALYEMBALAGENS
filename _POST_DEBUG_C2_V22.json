@@ -1,0 +1,11 @@
+{
+  "raw": "{\"ok\":false,\"error\":\"Campos obrigatórios: cliente\",\"missing\":[\"cliente\"]}",
+  "s": 400,
+  "j": {
+    "ok": false,
+    "error": "Campos obrigatórios: cliente",
+    "missing": [
+      "cliente"
+    ]
+  }
+}

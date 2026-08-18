@@ -1,0 +1,5 @@
+{"t":"EMPRESAS","qtd":3,"ITALY_UUID_REAL":"df5f7672-0a6b-402d-ae65-296554236c31"}
+{"t":"ONESHOT_ITALY","s":200,"total_analisado":1000,"total_alvos":0,"atualizados":0,"detalhes":[]}
+{"t":"ONESHOT_ORFAS","s":200,"total_analisado":1000,"total_alvos":0,"atualizados":0}
+{"t":"PROXN_2605_ANTES","ok":true,"resp":{"ok":true,"proximo":"2605","maior":2604}}
+{"t":"ERR","msg":"ReferenceError: esperava_200 is not defined","st":"ReferenceError: esperava_200 is not defined\n    at runCaso (C:\\Users\\Usuario\\PCP PROGRAMA\\ITALYEMBALAGENS\\_v10_final.cjs:49:30)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async C:\\Users\\Usuario\\PCP PROGRAMA\\ITALYEMBALAGENS\\_v10_final.cjs:63:5"}

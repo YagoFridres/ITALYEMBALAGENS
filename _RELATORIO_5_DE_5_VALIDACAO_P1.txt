@@ -1,0 +1,16 @@
+============================================================
+  RELATORIO OFICIAL - VALIDACAO PROMPT 1 (HOTFIX 2 c601dce)
+  5 CLIENTES ALVO x TOTAL_OFS NA LISTAGEM PRINCIPAL CARDS
+  Deploy Railway: v20260811204500
+  Data: 2026-08-11T20:27:35.822Z
+============================================================
+
+  [RIPKE     ] MOVEIS RIPKE                              total_ofs= 422  esperado= 422  ✅ PASSOU  15063ms
+  [RUIZ      ] MOVEIS RUIZ                               total_ofs= 275  esperado= 275  ✅ PASSOU  17070ms
+  [ROTOPLAST ] ROTOPLAST INDÚSTRIA DE CLIMATIZADORES     total_ofs=  28  esperado=  28  ✅ PASSOU  5346ms
+  [DKADI     ] DKADI DECOR                               total_ofs=  23  esperado=  23  ✅ PASSOU  29577ms
+  [ITACIR    ] ITACIR PEROSA                             total_ofs=  14  esperado=  14  ✅ PASSOU  24626ms
+
+============================================================
+  RESULTADO FINAL: 5 / 5 PASSARAM   SUCESSO 5/5 ✅✅✅✅✅
+============================================================

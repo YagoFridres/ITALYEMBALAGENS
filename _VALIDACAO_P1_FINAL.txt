@@ -1,0 +1,14 @@
+﻿
+=== VALIDACAO FINAL PROMPT 1 - HOTFIX 2 c601dce ===
+Data: 2026-08-11T17:26:45.2127067-03:00
+Deploy Railway: 20260811204500 (sw.js + index.html + server.js)
+
+[RIPKE     ] MOVEIS RIPKE                             | id=be617df1 | total_ofs= 422 | esperado= 422 | PASSOU | 43286ms
+[RUIZ      ] MOVEIS RUIZ                              | id=da2798c7 | total_ofs= 275 | esperado= 275 | PASSOU | 34319ms
+[ROTOPLAST ] ROTOPLAST INDÚSTRIA DE CLIMATIZADORES    | id=74ce7e67 | total_ofs=  28 | esperado=  28 | PASSOU | 2629ms
+[DKADI     ] DKADI DECOR                              | id=99c17e9d | total_ofs=  23 | esperado=  23 | PASSOU | 29852ms
+[ITACIR    ] ITACIR PEROSA                            | id=0bc5da45 | total_ofs=  14 | esperado=  14 | PASSOU | 21812ms
+
+==================================================
+RESULTADO FINAL: 5 / 5 PASSARAM --- SUCESSO GERAL (5/5)
+HOTFIX c601dce: cols='*' em ambos modos do helper compartilhado

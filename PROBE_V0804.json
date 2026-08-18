@@ -1,0 +1,63 @@
+token gerado len=435
+{
+  "A_proximo_numero": {
+    "status": 401,
+    "ms": 595,
+    "bodyText": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}",
+    "bodyJson": {
+      "ok": false,
+      "error": "token_invalid",
+      "redirect": "/login"
+    }
+  },
+  "B_diag_proxnum": {
+    "status": 401,
+    "ms": 559,
+    "bodyText": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}",
+    "bodyJson": {
+      "ok": false,
+      "error": "token_invalid",
+      "redirect": "/login"
+    }
+  },
+  "C_ripke_clientes": {
+    "status": 401,
+    "ms": 160,
+    "bodyText": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}",
+    "bodyJson": {
+      "ok": false,
+      "error": "token_invalid",
+      "redirect": "/login"
+    }
+  },
+  "D_ripke_unico_ofs": {
+    "status": 401,
+    "ms": 160,
+    "bodyText": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}",
+    "bodyJson": {
+      "ok": false,
+      "error": "token_invalid",
+      "redirect": "/login"
+    }
+  },
+  "E_ofs_limit50": {
+    "status": 401,
+    "ms": 160,
+    "bodyText": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}",
+    "bodyJson": {
+      "ok": false,
+      "error": "token_invalid",
+      "redirect": "/login"
+    }
+  },
+  "F_zzz_768_771": {
+    "status": 401,
+    "ms": 159,
+    "bodyText": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}",
+    "bodyJson": {
+      "ok": false,
+      "error": "token_invalid",
+      "redirect": "/login"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "esperado": "20260812093200",
+  "tentativas": [
+    {
+      "n": 1,
+      "status": 200,
+      "patch_obtido": "20260811213000",
+      "match": false,
+      "netErr": null,
+      "parseErr": null
+    },
+    {
+      "n": 2,
+      "status": 200,
+      "patch_obtido": "20260811213000",
+      "match": false,
+      "netErr": null,
+      "parseErr": null
+    },
+    {
+      "n": 3,
+      "status": 200,
+      "patch_obtido": "20260812093200",
+      "match": true,
+      "netErr": null,
+      "parseErr": null
+    }
+  ],
+  "deploy_ok": true,
+  "versao_final": {
+    "ok": true,
+    "runtime": {
+      "patch": "20260812093200",
+      "sw": "20260812093200",
+      "sw_cache_name": "italy-erp-v20260812093200"
+    },
+    "git": {
+      "commit": "b0f9dea2781201c48f5e18297ad7d067f6f1c3ea",
+      "branch": "main"
+    },
+    "deploy": {
+      "id": "151d0335-8b25-4707-b736-b79fa7142b77",
+      "provider": "railway"
+    },
+    "now": "2026-08-12T12:38:41.499Z"
+  }
+}

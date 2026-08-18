@@ -1,0 +1,11 @@
+const fs=require('fs');
+const B64=b=>Buffer.from(b,'base64').toString('utf8');
+const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const casoA = B64('TcOTVkVJUyBSSVBLRQ==');
+const casoB = B64('bW92ZWlzIHJpcGtl');
+const exato  = B64('TU9WRUlTIFJJUEtF');
+const r = { casoA, norm_a:norm(casoA), bytes_a:[...Buffer.from(casoA,'utf8')].map(x=>x.toString(16).padStart(2,'0')).join(' '), casoB, norm_b:norm(casoB), exato, norm_e:norm(exato) };
+r.OK = (r.norm_a==='moveis ripke' && r.norm_b==='moveis ripke' && r.norm_e==='moveis ripke' && r.bytes_a==='4d c3 93 56 45 49 53 20 52 49 50 4b 45');
+fs.writeFileSync('_B64_CHECK.json',JSON.stringify(r,null,2));
+console.log(JSON.stringify(r,null,2));
+process.exit(r.OK?0:1);

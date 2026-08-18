@@ -1,0 +1,12 @@
+{
+  "key": "ROTOPLAST",
+  "found": true,
+  "status_http": 200,
+  "nome": "ROTOPLAST INDÚSTRIA DE CLIMATIZADORES",
+  "id": "74ce7e67-f1fc-474f-80fa-8302b43854ee",
+  "total_ofs": 28,
+  "esperado": 28,
+  "match": true,
+  "total_filtrado": 2,
+  "tempo_ms": 32740
+}

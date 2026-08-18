@@ -1,0 +1,102 @@
+{
+  "modo": "VERIFICACAO-OFs-8-IDs-EXATOS (F5 simulado Railway AO VIVO)",
+  "objetivo": "Confirmar que 8 OFs (vazadas em Emerg3) aparecem agora com MOVEIS RIPKE na listagem (alteracao manual do usuario)",
+  "gerado_em": "2026-08-12T12:29:56.421Z",
+  "ofs": [
+    {
+      "ofs_id": "c4db942d-7024-401a-a330-56a7faed344a",
+      "numero": "2600",
+      "status": "Em aberto",
+      "cli_id": "be617df1-441a-4f11-918e-d813a5ac854c",
+      "cliente_nome_tela": "MOVEIS RIPKE",
+      "nome_match_ripke": true,
+      "descricao": "RIPKE Nº 01",
+      "data_entrega": "2026-08-20",
+      "deleted_at": null
+    },
+    {
+      "ofs_id": "afea1a07-acb8-4967-8a1e-fa16ecc8da1b",
+      "numero": "2601",
+      "status": "Em aberto",
+      "cli_id": "be617df1-441a-4f11-918e-d813a5ac854c",
+      "cliente_nome_tela": "MOVEIS RIPKE",
+      "nome_match_ripke": true,
+      "descricao": "RIPKE TIRA 01",
+      "data_entrega": "2026-08-20",
+      "deleted_at": null
+    },
+    {
+      "ofs_id": "c5478e8b-c98c-40de-98de-65477363bc26",
+      "numero": "2602",
+      "status": "Em aberto",
+      "cli_id": "be617df1-441a-4f11-918e-d813a5ac854c",
+      "cliente_nome_tela": "MOVEIS RIPKE",
+      "nome_match_ripke": true,
+      "descricao": "RIPKE Nº 02",
+      "data_entrega": "2026-08-20",
+      "deleted_at": null
+    },
+    {
+      "ofs_id": "0a49f941-426a-4f35-ab81-118ad57423b4",
+      "numero": "2603",
+      "status": "Em aberto",
+      "cli_id": "be617df1-441a-4f11-918e-d813a5ac854c",
+      "cliente_nome_tela": "MOVEIS RIPKE",
+      "nome_match_ripke": true,
+      "descricao": "RIPKE TIRA Nº 02",
+      "data_entrega": "2026-08-20",
+      "deleted_at": null
+    },
+    {
+      "ofs_id": "3100fdd2-6d75-49c5-a3ce-18fe3a58e0f0",
+      "numero": "2604",
+      "status": "Em aberto",
+      "cli_id": "be617df1-441a-4f11-918e-d813a5ac854c",
+      "cliente_nome_tela": "MOVEIS RIPKE",
+      "nome_match_ripke": true,
+      "descricao": "RIPKE Nº 03",
+      "data_entrega": "2026-08-20",
+      "deleted_at": null
+    },
+    {
+      "ofs_id": "b2886f39-c729-4592-ba55-3a7cc37713c3",
+      "numero": "2597",
+      "status": "Em aberto",
+      "cli_id": "be617df1-441a-4f11-918e-d813a5ac854c",
+      "cliente_nome_tela": "MOVEIS RIPKE",
+      "nome_match_ripke": true,
+      "descricao": "RIPKE Nº 03",
+      "data_entrega": "2026-08-20",
+      "deleted_at": null
+    },
+    {
+      "ofs_id": "15ce6411-1e9a-40cf-80af-c5e6ebda1247",
+      "numero": "2599",
+      "status": "Em aberto",
+      "cli_id": "be617df1-441a-4f11-918e-d813a5ac854c",
+      "cliente_nome_tela": "MOVEIS RIPKE",
+      "nome_match_ripke": true,
+      "descricao": "RIPKE N º 01",
+      "data_entrega": "2026-08-20",
+      "deleted_at": null
+    },
+    {
+      "ofs_id": "c2f83ddc-1b71-45c3-86f5-163638bde440",
+      "numero": "2598",
+      "status": "Em aberto",
+      "cli_id": "be617df1-441a-4f11-918e-d813a5ac854c",
+      "cliente_nome_tela": "MOVEIS RIPKE",
+      "nome_match_ripke": true,
+      "descricao": "RIPKE Nº 02",
+      "data_entrega": "2026-08-20",
+      "deleted_at": null
+    }
+  ],
+  "consolidado": {
+    "qtd_ofs": 8,
+    "qtd_encontrados": 8,
+    "qtd_nome_contem_RIPKE": 8,
+    "qtd_NOME_REAL_AQUI": 0,
+    "todos_RIPKE": true
+  }
+}

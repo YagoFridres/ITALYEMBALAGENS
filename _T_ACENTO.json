@@ -1,0 +1,13 @@
+{
+  "http": 400,
+  "ok": false,
+  "id": "",
+  "cid": "",
+  "nome": "",
+  "modo": "",
+  "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"MÓVEIS RIPKE\". Digite e selecione um cliente válido da lista de sugestões.",
+  "ref": "MÓVEIS RIPKE",
+  "qtd": null,
+  "ops": [],
+  "del": null
+}

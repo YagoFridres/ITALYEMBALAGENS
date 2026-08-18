@@ -1,0 +1,8 @@
+DEP i=1 ok=true sw=true ix=true pt=true
+LIMPEZA round=0 italy={"ok":true,"italy_emp_ids":["df5f7672-0a6b-402d-ae65-296554236c31"],"total_analisado":1000,"total_alvos":0,"atualizados":0,"falhas":0,"ids_marcados":[ orfas={"ok":true,"total_analisado":1000,"total_alvos":0,"atualizados":0,"falhas":0,"ids_marcados":[],"detalhes":[]}
+LIMPEZA round=1 italy={"ok":true,"italy_emp_ids":["df5f7672-0a6b-402d-ae65-296554236c31"],"total_analisado":1000,"total_alvos":0,"atualizados":0,"falhas":0,"ids_marcados":[ orfas={"ok":true,"total_analisado":1000,"total_alvos":0,"atualizados":0,"falhas":0,"ids_marcados":[],"detalhes":[]}
+LIMPEZA round=2 italy={"ok":true,"italy_emp_ids":["df5f7672-0a6b-402d-ae65-296554236c31"],"total_analisado":1000,"total_alvos":0,"atualizados":0,"falhas":0,"ids_marcados":[ orfas={"ok":true,"total_analisado":1000,"total_alvos":0,"atualizados":0,"falhas":0,"ids_marcados":[],"detalhes":[]}
+DIAG_PROXN MAIOR_RESOLVER=2589 PROXN=2590
+DBG escolhido=2590 calc_ok=true calc_val=2590 calc_err= nextSeq=766 sigla=E1
+  tent i=0 cand=2590 conflito=false qEx=0 err= matches=[]
+POST_C1 s=200 numero=100077 of=100077 id=405158e7-138c-48 err=

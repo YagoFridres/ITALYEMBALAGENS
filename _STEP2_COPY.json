@@ -1,0 +1,22 @@
+﻿{
+  "http": 400,
+  "b": "{\"ok\":false,\"error\":\"Cliente invÃ¡lido: nÃ£o encontramos nenhum cliente correspondente a \\\"be617df1-441a-4f11-918e-d813a5ac854c\\\". Digite e selecione um cliente vÃ¡lido da lista de sugestÃµes.\",\"missing\":[\"cliente\"],\"ref\":\"be617df1-441a-4f11-918e-d813a5ac854c\"}",
+  "parsed": {
+    "ok": false,
+    "error": "Cliente invÃ¡lido: nÃ£o encontramos nenhum cliente correspondente a \"be617df1-441a-4f11-918e-d813a5ac854c\". Digite e selecione um cliente vÃ¡lido da lista de sugestÃµes.",
+    "missing": [
+      "cliente"
+    ],
+    "ref": "be617df1-441a-4f11-918e-d813a5ac854c"
+  },
+  "cli_id": "",
+  "clinome": "",
+  "modo": "",
+  "erro": "Cliente invÃ¡lido: nÃ£o encontramos nenhum cliente correspondente a \"be617df1-441a-4f11-918e-d813a5ac854c\". Digite e selecione um cliente vÃ¡lido da lista de sugestÃµes.",
+  "ref": "be617df1-441a-4f11-918e-d813a5ac854c",
+  "qtd": null,
+  "opcoes": [],
+  "created_id": "",
+  "del_status": null,
+  "del_ok": true
+}

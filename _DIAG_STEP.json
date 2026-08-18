@@ -1,0 +1,24 @@
+{
+  "searchRipkeEmp": {
+    "ok": true,
+    "data": []
+  },
+  "ripkeObjFull": null,
+  "step2_UUID": {
+    "status": 400,
+    "erro": "Cliente inválido: não encontramos nenhum cliente correspondente a \"be617df1-0000-0000-0000-000000000000\". Digite e selecione um cliente válido da lista de sugestões."
+  },
+  "step3_NOME_EXATO": {
+    "status": 400,
+    "erro": "Campos obrigatórios: cliente",
+    "ref": null,
+    "qtd": null,
+    "nomeEnviado": ""
+  },
+  "step4_MIN": {
+    "status": 400,
+    "erro": "Campos obrigatórios: cliente",
+    "ref": null,
+    "nomeEnviado": ""
+  }
+}

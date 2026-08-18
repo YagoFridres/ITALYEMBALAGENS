@@ -1,0 +1,90 @@
+{
+  "feito": "2026-08-12T14:19:34.278Z",
+  "casos": [
+    {
+      "tag": "Baseline_UUID_Cliente",
+      "s": 400,
+      "id": "",
+      "cid": "",
+      "clinome": "",
+      "modo": "",
+      "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"be617df1-441a-4f11-918e-d813a5ac854c\". Digite e selecione um cliente válido da lista de sugestões.",
+      "ref": "be617df1-441a-4f11-918e-d813a5ac854c",
+      "qtd": null,
+      "ops": [],
+      "ok": false,
+      "del_s": null,
+      "del_ok": true
+    },
+    {
+      "tag": "CasoA_MOVEIS_RIPKE_COM_ACENTO",
+      "s": 400,
+      "id": "",
+      "cid": "",
+      "clinome": "",
+      "modo": "",
+      "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"MÓVEIS RIPKE\". Digite e selecione um cliente válido da lista de sugestões.",
+      "ref": "MÓVEIS RIPKE",
+      "qtd": null,
+      "ops": [],
+      "ok": false,
+      "del_s": null,
+      "del_ok": true
+    },
+    {
+      "tag": "CasoB_moveis_ripke_SEM_ACENTO_MIN",
+      "s": 400,
+      "id": "",
+      "cid": "",
+      "clinome": "",
+      "modo": "",
+      "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"moveis ripke\". Digite e selecione um cliente válido da lista de sugestões.",
+      "ref": "moveis ripke",
+      "qtd": null,
+      "ops": [],
+      "ok": false,
+      "del_s": null,
+      "del_ok": true
+    },
+    {
+      "tag": "CasoC_Inexistente",
+      "s": 400,
+      "id": "",
+      "cid": "",
+      "clinome": "",
+      "modo": "",
+      "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"Cliente Inexistente Xablau 9999123\". Digite e selecione um cliente válido da lista de sugestões.",
+      "ref": "Cliente Inexistente Xablau 9999123",
+      "qtd": null,
+      "ops": [],
+      "ok": true,
+      "del_s": null,
+      "del_ok": true
+    },
+    {
+      "tag": "CasoD_Ambiguo_moveis",
+      "s": 400,
+      "id": "",
+      "cid": "",
+      "clinome": "",
+      "modo": "",
+      "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"moveis\". Digite e selecione um cliente válido da lista de sugestões.",
+      "ref": "moveis",
+      "qtd": null,
+      "ops": [],
+      "ok": false,
+      "del_s": null,
+      "del_ok": true
+    }
+  ],
+  "resumo": {
+    "passou": 1,
+    "total": 5,
+    "todos_passaram": false
+  },
+  "proximo_numero": {
+    "ok": true,
+    "proximo": "2605",
+    "maior": 2604
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "feito_em": "2026-08-12T13:28:43.730Z",
+  "ofs_test": {
+    "ms": 791,
+    "s": 200,
+    "j": {
+      "ok": true,
+      "data": [
+        {
+          "id": "954b58ad-39eb-4b61-9089-7e4431a06229",
+          "numero": "1847",
+          "status": "Concluído",
+          "created_at": "2026-07-13T14:10:00.36173+00:00"
+        },
+        {
+          "id": "33e51ba8-075e-4770-b555-0642d3adeb83",
+          "numero": "2041",
+          "status": "Concluído",
+          "created_at": "2026-07-20T10:53:56.214741+00:00"
+        },
+        {
+          "id": "925815f0-5960-413b-9690-15bf07028bce",
+          "numero": "1895",
+          "status": "Concluído",
+          "created_at": "2026-07-14T14:16:24.198957+00:00"
+        }
+      ],
+      "error": null
+    },
+    "raw": "{\"ok\":true,\"data\":[{\"id\":\"954b58ad-39eb-4b61-9089-7e4431a06229\",\"numero\":\"1847\",\"status\":\"Concluído\",\"created_at\":\"2026-07-13T14:10:00.36173+00:00\"},{\"id\":\"33e51ba8-075e-4770-b555-0642d3adeb83\",\"numero\":\"2041\",\"status\":\"Concluído\",\"created_at\":\"2026-07-20T10:53:56.214741+00:00\"},{\"id\":\"925815f0-5960-413b-9690-15bf07028bce\",\"numero\":\"1895\",\"status\":\"Concluído\",\"created_at\":\"2026-07-14T14:16:24.198957+00:00\"}],\"error\":null}"
+  },
+  "empresas": {
+    "ms": 170,
+    "s": 401,
+    "j": {
+      "ok": false,
+      "error": "token_missing",
+      "redirect": "/login"
+    },
+    "raw": "{\"ok\":false,\"error\":\"token_missing\",\"redirect\":\"/login\"}"
+  }
+}

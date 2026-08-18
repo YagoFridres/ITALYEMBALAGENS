@@ -1,0 +1,10 @@
+const https=require('https');const fs=require('fs');const path=require('path');const p=__dirname;
+const u='/api/ofs_test';
+const t0=Date.now();
+const o={host:'adm.italyembalagens.com.br',path:u,method:'GET',headers:{Accept:'application/json','Cache-Control':'no-cache'},timeout:35000};
+let stage='request_created';
+fs.writeFileSync(path.join(p,'_DBTEST_step0.txt'),'t0='+t0);
+const rq=https.request(o,r=>{let b='';stage='headers s='+r.statusCode;fs.writeFileSync(path.join(p,'_DBTEST_step1.txt'),stage+' ms='+(Date.now()-t0));r.on('data',d=>b+=d);r.on('end',()=>{const ms=Date.now()-t0;let obj;try{obj=JSON.parse(b)}catch(e){obj={parseErr:e.message,r:b.slice(0,2000)}}const out={stage,lat_ms:ms,status:r.statusCode,body:obj,raw:b.slice(0,2000)};fs.writeFileSync(path.join(p,'_DBTEST_FINAL.json'),JSON.stringify(out,null,2));process.exit(r.statusCode===200?0:1)});});
+rq.setTimeout(35000,()=>{stage='TIMEOUT';fs.writeFileSync(path.join(p,'_DBTEST_timeout.txt'),'MS='+(Date.now()-t0));rq.destroy(new Error('to'))});
+rq.on('error',e=>{stage='ERR='+String(e?.message||e);const ms=Date.now()-t0;fs.writeFileSync(path.join(p,'_DBTEST_error.json'),JSON.stringify({stage,lat_ms:ms,err:e.message},null,2));process.exit(2)});
+rq.end();

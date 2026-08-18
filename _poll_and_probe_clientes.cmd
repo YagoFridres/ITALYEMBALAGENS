@@ -1,0 +1,4 @@
+@echo off
+cd /d "c:\Users\Usuario\PCP PROGRAMA\ITALYEMBALAGENS"
+node -e "const https=require('https');const fs=require('fs');const MAX=80;let i=0;function p(){i++;const req=https.get('https://adm.italyembalagens.com.br/api/version',{timeout:10000,headers:{'User-Agent':'poll4/1.0'}},(res)=>{let d='';res.on('data',c=>d+=c);res.on('end',()=>{try{const j=JSON.parse(d||'{}');const patch=String(((j||{}).runtime?.patch||'');const ok=patch.includes('20260813080300');console.log('['+String(i).padStart(2,'0')+'/'+MAX+'] HTTP='+res.statusCode+' patch='+patch+' ok='+ok);if(ok&&res.statusCode===200){process.exit(0)}}catch(e){console.log('err');}if(i>=MAX)process.exit(1);setTimeout(p,2500);});});req.on('error',e=>{console.log('err2');if(i>=MAX)process.exit(1);setTimeout(p,2500);});}p();" > _poll4_stdout.txt 2>&1
+echo P4EXIT=%ERRORLEVEL% >> _poll4_stdout.txt

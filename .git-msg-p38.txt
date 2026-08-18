@@ -1,0 +1,13 @@
+fix(emerg4): remove endpoint oneshot apos aplicar 2 inserts Sem Impressao + bump v20260812103000
+
+- Remove GET /api/_oneshot_fix_cores_sem_impressao (admin-only) do server.js
+  completamente, ja que cumpriu sua funcao (2 INSERIDOS confirmados no
+  banco Railway ao vivo via deploy 69d6898):
+  * E2 Cartoeste (e9b734dc) → id 26c119b2 hex=null ativo=true criado 13:18:37
+  * E3 Oestepack (a6e5f5d8) → id a92182d3 hex=null ativo=true criado 13:18:37
+  * Italy ja possuia linha desde 05/06 (id da82ed3b), totalizando 3x
+- Endpoint nao deve permanecer disponivel em producao apos cumprir funcao
+- Bump sincronizado timestamp 20260812103000 (3 arquivos):
+  * server.js PATCH_RUNTIME_VERSION / SW_RUNTIME_VERSION
+  * sw.js CACHE_NAME italy-erp-v20260812103000
+  * index.html <script src="/patch.js?v=20260812103000">

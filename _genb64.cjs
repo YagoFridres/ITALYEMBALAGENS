@@ -1,0 +1,1 @@
+const STRS=['MOVEIS RIPKE','MÓVEIS RIPKE','moveis ripke','cliente xablau 9999','moveis'];for(const s of STRS){const b=Buffer.from(s,'utf8');console.log(JSON.stringify({str:s,bytes:[...b].map(x=>x.toString(16).padStart(2,'0')).join(' '),b64:b.toString('base64'),utf8_correto:b.toString('utf8')===s}));}process.exit(0);

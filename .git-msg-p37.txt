@@ -1,0 +1,14 @@
+fix(emerg4): remove colunas codigo/ordem nao existentes de cores_impressao no oneshot + bump v20260812102200
+
+- Schema real da tabela cores_impressao NAO possui colunas 'codigo' nem 'ordem'
+  (erro PostgREST: Could not find the 'codigo' column in the schema cache)
+- Ajusta /api/_oneshot_fix_cores_sem_impressao:
+  * SELECT checagem: apenas id,nome,empresa_id,ativo,hex
+  * INSERT row: apenas empresa_id, nome='Sem Impressão', ativo=true, hex=NULL
+  * SELECT retorno: idem 5 colunas validas
+- Bump sincronizado timestamp 20260812102200 (3 arquivos):
+  * server.js PATCH_RUNTIME_VERSION / SW_RUNTIME_VERSION
+  * sw.js CACHE_NAME italy-erp-v20260812102200
+  * index.html patch.js?v=20260812102200
+
+Pos-kill Supabase pool validado: 4 endpoints ao vivo 200 (<2s).

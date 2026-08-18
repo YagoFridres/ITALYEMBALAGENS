@@ -1,0 +1,16 @@
+fix(emerg): limpa endpoints temp admin + oneshot insert Sem Impressao E2/E3 + bump v20260812093200
+
+- Remove endpoints /api/_admin_cleanup/* (selecionar + aplicar) e consts OFS_LIMPAR/CLI_LIMPAR
+  (usuario resolveu trocar 8 OFs para MOVEIS RIPKE manualmente no banco; 2 clientes placeholder
+   mantidos intocados conforme solicitado)
+- Adiciona GET /api/_oneshot_fix_cores_sem_impressao (admin-only, idempotente):
+  * Carrega UUIDs conhecidos de Cartoeste (E2) e Oestepack (E3)
+  * Verifica existencia previa por ilike %Sem Impress% + eq empresa_id
+  * Insere (nome='Sem Impressão', ativo=true, hex=NULL, codigo=NULL, ordem=NULL)
+  * Retorna 'JA_EXISTIA' ou 'INSERIDO' por empresa
+- Bump sincronizado timestamp 20260812093200:
+  * server.js: PATCH_RUNTIME_VERSION e SW_RUNTIME_VERSION
+  * sw.js: CACHE_NAME italy-erp-v20260812093200
+  * index.html: <script src="/patch.js?v=20260812093200">
+
+Verificacao F5 simulado Railway ao vivo: 8/8 OFs 2597-2604 = MOVEIS RIPKE 100%

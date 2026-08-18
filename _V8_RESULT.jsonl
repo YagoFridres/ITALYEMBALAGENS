@@ -1,0 +1,15 @@
+{"t":"EMPRESAS","qtd":3,"ITALY_UUID_REAL":"df5f7672-0a6b-402d-ae65-296554236c31","ITALY_sigla":"ITALY","ITALY_codigo":"E1"}
+{"t":"ONESHOT_ITALY","s":200,"total_alvos":0,"atualizados":0,"detalhes":[]}
+{"t":"ONESHOT_ORFAS","s":200,"total_alvos":0,"atualizados":0}
+{"t":"PROXN_2605_ANTES","ok":true,"resp":{"ok":true,"proximo":"2605","maior":2604}}
+{"t":"C1_BASELINE_UUID","esperava_200":true,"salvou":true,"passou":true,"s":200,"numero":"100020","clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11..."}
+{"t":"C2_EXATO_NOME","esperava_200":true,"salvou":true,"passou":true,"s":200,"numero":"100021","clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11..."}
+{"t":"C3_COM_ACENTO","esperava_200":true,"salvou":true,"passou":true,"s":200,"numero":"100022","clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11..."}
+{"t":"C4_MIN_SEMACENTO","esperava_200":true,"salvou":true,"passou":true,"s":200,"numero":"100023","clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11..."}
+{"t":"C5_PARCIAL_AMBIGUO","esperava_200":false,"salvou":false,"passou":true,"s":400,"err":"Cliente ambíguo: 12 clientes corresponderam a \"moveis\". Selecione exatamente um cliente da lista de sugestões. Opções: MOVEIS ADENAU | MOVEIS ADENAU (MRA) | MOVEIS ARTESANAIS TAMBO EIRELI EPP | MOVEIS E DECORAÇÃO AJS LTD","ref":"moveis","qtd":12}
+{"t":"C6_INEXISTENTE","esperava_200":false,"salvou":false,"passou":true,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"xablau cliente 9999 nao existe zzz\". Digite e selecione um cliente válido da lista de sugestões.","ref":"xablau cliente 9999 nao existe zzz","qtd":null}
+{"t":"C7_CLINOME_NORMAL","esperava_200":true,"salvou":false,"passou":false,"s":400,"err":"Campos obrigatórios: cliente","ref":null,"qtd":null}
+{"t":"LIMPEZA_FINAL_TESTES","qtd":4,"dels":[{"id":"61007cc6-b0cc-452c","s":200,"ok":true},{"id":"9c419b83-0408-45b8","s":200,"ok":true},{"id":"d7ce1af3-2708-4d81","s":200,"ok":true},{"id":"77f39e04-31f3-44cc","s":200,"ok":true}]}
+{"t":"ONESHOT_ITALY_POS","s":200,"alvos":0,"atualizados":0}
+{"t":"PROXN_FINAL_2605","ok":true,"resp":{"ok":true,"proximo":"2605","maior":2604}}
+{"t":"RESUMO","total":7,"passaram":6,"pct":"86%","lista":[{"nome":"C1_BASELINE_UUID","passou":true},{"nome":"C2_EXATO_NOME","passou":true},{"nome":"C3_COM_ACENTO","passou":true},{"nome":"C4_MIN_SEMACENTO","passou":true},{"nome":"C5_PARCIAL_AMBIGUO","passou":true},{"nome":"C6_INEXISTENTE","passou":true},{"nome":"C7_CLINOME_NORMAL","passou":false}]}

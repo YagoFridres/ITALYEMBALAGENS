@@ -1,0 +1,434 @@
+{
+  "feito_em": "2026-08-12T13:15:42.717Z",
+  "R": [
+    {
+      "ms": 820,
+      "s": 200,
+      "j": {
+        "ok": true,
+        "data": [
+          {
+            "id": "954b58ad-39eb-4b61-9089-7e4431a06229",
+            "numero": "1847",
+            "status": "Concluído",
+            "created_at": "2026-07-13T14:10:00.36173+00:00"
+          },
+          {
+            "id": "33e51ba8-075e-4770-b555-0642d3adeb83",
+            "numero": "2041",
+            "status": "Concluído",
+            "created_at": "2026-07-20T10:53:56.214741+00:00"
+          },
+          {
+            "id": "925815f0-5960-413b-9690-15bf07028bce",
+            "numero": "1895",
+            "status": "Concluído",
+            "created_at": "2026-07-14T14:16:24.198957+00:00"
+          }
+        ],
+        "error": null
+      },
+      "raw": "{\"ok\":true,\"data\":[{\"id\":\"954b58ad-39eb-4b61-9089-7e4431a06229\",\"numero\":\"1847\",\"status\":\"Concluído\",\"created_at\":\"2026-07-13T14:10:00.36173+00:00\"},{\"id\":\"33e51ba8-075e-4770-b555-0642d3adeb83\",\"numero\":\"2041\",\"status\":\"Concluído\",\"created_at\":\"2026-07-20T10:53:56.214741+00:00\"},{\"id\":\"925815f0-5960-413b-9690-15bf07028bce\",\"numero\":\"1895\",\"status\":\"Concluído\",\"created_at\":\"2026-07-14T14:16:24.198957+00:00\"}],\"error\":null}"
+    },
+    {
+      "ms": 320,
+      "s": 200,
+      "j": {
+        "ok": true,
+        "data": [
+          {
+            "id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+            "nome": "Cartoeste",
+            "ativo": true,
+            "created_at": "2026-03-30T14:12:58.886493+00:00",
+            "sigla": "CARTO",
+            "cor": "carto",
+            "cnpj": "",
+            "cidade": "São Miguel do Oeste",
+            "uf": "SC",
+            "codigo": "E2",
+            "updated_at": "2026-03-30T14:12:58.886493+00:00"
+          },
+          {
+            "id": "df5f7672-0a6b-402d-ae65-296554236c31",
+            "nome": "Italy Embalagens",
+            "ativo": true,
+            "created_at": "2026-03-30T14:12:58.886493+00:00",
+            "sigla": "ITALY",
+            "cor": "italy",
+            "cnpj": "",
+            "cidade": "São Miguel do Oeste",
+            "uf": "SC",
+            "codigo": "E1",
+            "updated_at": "2026-03-30T14:12:58.886493+00:00"
+          },
+          {
+            "id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+            "nome": "Oestepack",
+            "ativo": true,
+            "created_at": "2026-03-30T14:12:58.886493+00:00",
+            "sigla": "OESTE",
+            "cor": "oeste",
+            "cnpj": "",
+            "cidade": "São Miguel do Oeste",
+            "uf": "SC",
+            "codigo": "E3",
+            "updated_at": "2026-03-30T14:12:58.886493+00:00"
+          }
+        ]
+      },
+      "raw": "{\"ok\":true,\"data\":[{\"id\":\"e9b734dc-c7d5-4b04-898d-1ec7affa721e\",\"nome\":\"Cartoeste\",\"ativo\":true,\"created_at\":\"2026-03-30T14:12:58.886493+00:00\",\"sigla\":\"CARTO\",\"cor\":\"carto\",\"cnpj\":\"\",\"cidade\":\"São Miguel do Oeste\",\"uf\":\"SC\",\"codigo\":\"E2\",\"updated_at\":\"2026-03-30T14:12:58.886493+00:00\"},{\"id\":\"df5f7672-0a6b-402d-ae65-296554236c31\",\"nome\":\"Italy Embalagens\",\"ativo\":true,\"created_at\":\"2026-03-30T14:12:58.886493+00:00\",\"sigla\":\"ITALY\",\"cor\":\"italy\",\"cnpj\":\"\",\"cidade\":\"São Miguel do Oeste\",\"uf\":\"SC\",\"codigo\":\"E1\",\"updated_at\":\"2026-03-30T14:12:58.886493+00:00\"},{\"id\":\"a6e5f5d8-4743-4ebe-885e-c2f0741a667a\",\"nome\":\"Oestepack\",\"ativo\":true,\"created_at\":\"2026-03-30T14:12:58.886493+00:00\",\"sigla\":\"OESTE\",\"cor\":\"oeste\",\"cnpj\":\"\",\"cidade\":\"São Miguel do Oeste\",\"uf\":\"SC\",\"codigo\":\"E3\",\"updated_at\":\"2026-03-30T14:12:58.886493+00:00\"}]}"
+    },
+    {
+      "ms": 1273,
+      "s": 200,
+      "j": {
+        "ok": true,
+        "modo": "ONESHOOT-INSERIR-SEM-IMPRESSAO-E2-E3",
+        "executado_em": "2026-08-12T13:15:54.955Z",
+        "passos": [
+          {
+            "sigla": "E2",
+            "empresa_id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+            "ok": false,
+            "erro": "Could not find the 'codigo' column of 'cores_impressao' in the schema cache"
+          },
+          {
+            "sigla": "E3",
+            "empresa_id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+            "ok": false,
+            "erro": "Could not find the 'codigo' column of 'cores_impressao' in the schema cache"
+          }
+        ]
+      },
+      "raw": "{\"ok\":true,\"modo\":\"ONESHOOT-INSERIR-SEM-IMPRESSAO-E2-E3\",\"executado_em\":\"2026-08-12T13:15:54.955Z\",\"passos\":[{\"sigla\":\"E2\",\"empresa_id\":\"e9b734dc-c7d5-4b04-898d-1ec7affa721e\",\"ok\":false,\"erro\":\"Could not find the 'codigo' column of 'cores_impressao' in the schema cache\"},{\"sigla\":\"E3\",\"empresa_id\":\"a6e5f5d8-4743-4ebe-885e-c2f0741a667a\",\"ok\":false,\"erro\":\"Could not find the 'codigo' column of 'cores_impressao' in the schema cache\"}]}"
+    },
+    {
+      "ms": 470,
+      "s": 200,
+      "j": [
+        {
+          "id": "965bc504-74f7-4ecb-95a5-d13f98de6c01",
+          "empresa_id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+          "nome": "Amarelo",
+          "hex": "#eab308",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "b84cb0b2-25d0-414b-8a7b-10009e305502",
+          "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+          "nome": "Amarelo",
+          "hex": "#eab308",
+          "ativo": true,
+          "created_at": "2026-06-03T18:56:20.278263+00:00"
+        },
+        {
+          "id": "fc5b7a82-ace0-4883-843e-565928db7ca4",
+          "empresa_id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+          "nome": "Amarelo",
+          "hex": "#eab308",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "fce17a66-8106-46d7-8924-880b1b5957d4",
+          "empresa_id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+          "nome": "Azul Claro",
+          "hex": "#3b82f6",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "5e765240-366b-4c5a-8d3b-be051ce66b80",
+          "empresa_id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+          "nome": "Azul Claro",
+          "hex": "#3b82f6",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "1e1dff24-a295-4016-84ef-4cbc81d43c90",
+          "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+          "nome": "Azul Claro",
+          "hex": "#3b82f6",
+          "ativo": true,
+          "created_at": "2026-06-03T18:56:20.278263+00:00"
+        },
+        {
+          "id": "8bfbc80b-8634-4e1e-8cd8-36edefa14c7a",
+          "empresa_id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+          "nome": "Azul Escuro",
+          "hex": "#1e3a8a",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "54ab4e7d-d0a4-49d6-a705-61bae9c96339",
+          "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+          "nome": "Azul Escuro",
+          "hex": "#1e3a8a",
+          "ativo": true,
+          "created_at": "2026-06-03T18:56:20.278263+00:00"
+        },
+        {
+          "id": "df0b4f4e-d0fe-4967-a81a-2f78127afab3",
+          "empresa_id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+          "nome": "Azul Escuro",
+          "hex": "#1e3a8a",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "df817885-b5a8-4f51-89af-1feea9efa9f6",
+          "empresa_id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+          "nome": "Branco",
+          "hex": "#f8fafc",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "8fcbf596-e5de-47eb-88ac-a25f5e96fbd8",
+          "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+          "nome": "Branco",
+          "hex": "#f8fafc",
+          "ativo": true,
+          "created_at": "2026-06-03T18:56:20.278263+00:00"
+        },
+        {
+          "id": "1fce1b8b-003d-4407-a62f-ce3740a12286",
+          "empresa_id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+          "nome": "Branco",
+          "hex": "#f8fafc",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "4d825dbe-cd7a-4ae9-8676-81a202b272e0",
+          "empresa_id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+          "nome": "Dourado",
+          "hex": "#d97706",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "b242fdac-762b-43eb-a08e-1b214a07b28a",
+          "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+          "nome": "Dourado",
+          "hex": "#d97706",
+          "ativo": true,
+          "created_at": "2026-06-03T18:56:20.278263+00:00"
+        },
+        {
+          "id": "4094cec2-d922-4088-a654-1ed591e68932",
+          "empresa_id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+          "nome": "Dourado",
+          "hex": "#d97706",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "c08281d5-5d21-48c8-bf2b-e28188a15ab4",
+          "empresa_id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+          "nome": "Laranja",
+          "hex": "#ea580c",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "84ee562f-eabf-4b1f-9572-b292ec561c7d",
+          "empresa_id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+          "nome": "Laranja",
+          "hex": "#ea580c",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "a691bd03-edcc-44f9-b25f-950728df8a4a",
+          "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+          "nome": "Laranja",
+          "hex": "#ea580c",
+          "ativo": true,
+          "created_at": "2026-06-03T18:56:20.278263+00:00"
+        },
+        {
+          "id": "704e59cd-7c1f-450c-b164-82802903597a",
+          "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+          "nome": "Marrom",
+          "hex": "#92400e",
+          "ativo": true,
+          "created_at": "2026-06-03T18:56:20.278263+00:00"
+        },
+        {
+          "id": "0fffc326-c7d3-49c4-878a-fb80ce24c6b1",
+          "empresa_id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+          "nome": "Marrom",
+          "hex": "#92400e",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "d0557c9c-7d50-4d57-9e23-a9dac13e7999",
+          "empresa_id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+          "nome": "Marrom",
+          "hex": "#92400e",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "22b40691-0524-4a36-bd78-8099353236db",
+          "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+          "nome": "Preto",
+          "hex": "#1a1a1a",
+          "ativo": true,
+          "created_at": "2026-06-03T18:56:20.278263+00:00"
+        },
+        {
+          "id": "567a1d1c-2918-4d23-a6ad-f47f044feeca",
+          "empresa_id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+          "nome": "Preto",
+          "hex": "#1a1a1a",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "de928532-7509-4e76-9ccf-fa1302ca9338",
+          "empresa_id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+          "nome": "Preto",
+          "hex": "#1a1a1a",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "b2d70176-6245-4f82-b479-1d238e882c32",
+          "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+          "nome": "Rosa",
+          "hex": "#ec4899",
+          "ativo": true,
+          "created_at": "2026-06-03T18:56:20.278263+00:00"
+        },
+        {
+          "id": "a0243e99-d1cc-4d28-b9ea-426c09eec6b6",
+          "empresa_id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+          "nome": "Rosa",
+          "hex": "#ec4899",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "74400ee3-69b1-4756-ab9b-25a7b866cb12",
+          "empresa_id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+          "nome": "Rosa",
+          "hex": "#ec4899",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "2a5437b9-edcc-4956-aa79-ed69bdeafdb6",
+          "empresa_id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+          "nome": "Roxo",
+          "hex": "#7c3aed",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "74238945-05f1-46bb-9066-bd6af032dc66",
+          "empresa_id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+          "nome": "Roxo",
+          "hex": "#7c3aed",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "965aafba-77b7-446f-b4a8-c5a6c2bb83a0",
+          "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+          "nome": "Roxo",
+          "hex": "#7c3aed",
+          "ativo": true,
+          "created_at": "2026-06-03T18:56:20.278263+00:00"
+        },
+        {
+          "id": "da82ed3b-1a9a-435e-bf92-cbca9ef6e850",
+          "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+          "nome": "Sem Impressão",
+          "hex": null,
+          "ativo": true,
+          "created_at": "2026-06-05T11:16:32.163603+00:00"
+        },
+        {
+          "id": "1f009f86-3b71-47b5-8c01-511d9328559d",
+          "empresa_id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+          "nome": "Verde",
+          "hex": "#16a34a",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "8a77bd30-adce-489e-8160-8f9fd49f0e73",
+          "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+          "nome": "Verde",
+          "hex": "#16a34a",
+          "ativo": true,
+          "created_at": "2026-06-03T18:56:20.278263+00:00"
+        },
+        {
+          "id": "45031df2-a39a-47df-9717-f93b173ba31a",
+          "empresa_id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+          "nome": "Verde",
+          "hex": "#16a34a",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "4714934d-d0e2-4814-a7d7-6962bc4cd03a",
+          "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+          "nome": "Verde Limão",
+          "hex": "#84cc16",
+          "ativo": true,
+          "created_at": "2026-06-03T18:56:20.278263+00:00"
+        },
+        {
+          "id": "a4845aed-c5e9-4b2f-bc23-1f305875f023",
+          "empresa_id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+          "nome": "Verde Limão",
+          "hex": "#84cc16",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "9ba4f8a5-1361-4600-bc58-7d3765e33235",
+          "empresa_id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+          "nome": "Verde Limão",
+          "hex": "#84cc16",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "8ec51db6-268e-40f3-997a-4f91f81d1c81",
+          "empresa_id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+          "nome": "Vermelho",
+          "hex": "#dc2626",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        },
+        {
+          "id": "c1568482-353d-460c-9011-d7fd2d4eb676",
+          "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+          "nome": "Vermelho",
+          "hex": "#dc2626",
+          "ativo": true,
+          "created_at": "2026-06-03T18:56:20.278263+00:00"
+        },
+        {
+          "id": "7b001002-abc4-4297-9604-dab8301265d8",
+          "empresa_id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+          "nome": "Vermelho",
+          "hex": "#dc2626",
+          "ativo": true,
+          "created_at": "2026-06-03T20:45:06.456185+00:00"
+        }
+      ],
+      "raw": "[{\"id\":\"965bc504-74f7-4ecb-95a5-d13f98de6c01\",\"empresa_id\":\"e9b734dc-c7d5-4b04-898d-1ec7affa721e\",\"nome\":\"Amarelo\",\"hex\":\"#eab308\",\"ativo\":true,\"created_at\":\"2026-06-03T20:45:06.456185+00:00\"},{\"id\":\"b84cb0b2-25d0-414b-8a7b-10009e305502\",\"empresa_id\":\"df5f7672-0a6b-402d-ae65-296554236c31\",\"nome\":\"Amarelo\",\"hex\":\"#eab308\",\"ativo\":true,\"created_at\":\"2026-06-03T18:56:20.278263+00:00\"},{\"id\":\"fc5b7a82-ace0-4883-843e-565928db7ca4\",\"empresa_id\":\"a6e5f5d8-4743-4ebe-885e-c2f0741a667a\",\"nome\":\"Amarelo\",\"hex\":\"#eab308\",\"ativo\":true,\"created_at\":\"2026-06-03T20:45:06.456185+00:00\"},{\"id\":\"fce17a66-8106-46d7-8924-880b1b5957d4\",\"empresa_id\":\"e9b734dc-c7d5-4b04-898d-1ec7affa721e\",\"nome\":\"Azul Claro\",\"hex\":\"#3b82f6\",\"ativo\":true,\"created_at\":\"2026-06-03T20:45:06.456185+00:00\"},{\"id\":\"5e765240-366b-4c5a-8d3b-be051ce66b80\",\"empresa_id\":\"a6e5f5d8-4743-4ebe-885e-c2f0741a667a\",\"nome\":\"Azul Claro\",\"hex\":\"#3b82f6\",\"ativo\":true,\"created_at\":\"2026-06-03T20:45:06.456185+00:00\"},{\"id\":\"1e1dff24-a295-4016-84ef-4cbc81d43c90\",\"empresa_id\":\"df5f7672-0a6b-402d-ae65-296554236c31\",\"nome\":\"Azul Claro\",\"hex\":\"#3b82f6\",\"ativo\":true,\"created_at\":\"2026-06-03T18:56:20.278263+00:00\"},{\"id\":\"8bfbc80b-8634-4e1e-8cd8-36edefa14c7a\",\"empresa_id\":\"a6e5f5d8-4743-4ebe-885e-c2f0741a667a\",\"nome\":\"Azul Escuro\",\"hex\":\"#1e3a8a\",\"ativo\":true,\"created_at\":\"2026-06-03T20:45:06.456185+00:00\"},{\"id\":\"54ab4e7d-d0a4-49d6-a705-61bae9c96339\",\"empresa_id\":\"df5f7672-0a6b-402d-ae65-296554236c31\",\"nome\":\"Azul Escuro\",\"hex\":\"#1e3a8a\",\"ativo\":true,\"created_at\":\"2026-06-03T18:56:20.278263+00:00\"},{\"id\":\"df0b4f4e-d0fe-4967-a81a-2f78127afab3\",\"empresa_id\":\"e9b734dc-c7d5-4b04-898d-1ec7affa721e\",\"nome\":\"Azul Escuro\",\"hex\":\"#1e3a8a\",\"ativo\":true,\"created_at\":\"2026-06-03T20:45:06.456185+00:00\"},{\"id\":\"df817885-b5a8-4f51-89af-1feea9efa9f6\",\"empresa_id\":\"e9b734dc-c7d5-4b04-898d-1ec7affa721e\",\"nome\":\"Branco\",\"hex\":\"#f8fafc\",\"ativo\":true,\"created_at\":\"2026-06-03T20:45:06.456185+00:00\"},{\"id\":\"8fcbf596-e5de-47eb-88ac-a25f5e96fbd8\",\"empresa_id\":\""
+    }
+  ]
+}

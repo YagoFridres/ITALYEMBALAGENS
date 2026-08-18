@@ -1,0 +1,24 @@
+{
+  "ms": 1273,
+  "s": 200,
+  "j": {
+    "ok": true,
+    "modo": "ONESHOOT-INSERIR-SEM-IMPRESSAO-E2-E3",
+    "executado_em": "2026-08-12T13:15:54.955Z",
+    "passos": [
+      {
+        "sigla": "E2",
+        "empresa_id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+        "ok": false,
+        "erro": "Could not find the 'codigo' column of 'cores_impressao' in the schema cache"
+      },
+      {
+        "sigla": "E3",
+        "empresa_id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+        "ok": false,
+        "erro": "Could not find the 'codigo' column of 'cores_impressao' in the schema cache"
+      }
+    ]
+  },
+  "raw": "{\"ok\":true,\"modo\":\"ONESHOOT-INSERIR-SEM-IMPRESSAO-E2-E3\",\"executado_em\":\"2026-08-12T13:15:54.955Z\",\"passos\":[{\"sigla\":\"E2\",\"empresa_id\":\"e9b734dc-c7d5-4b04-898d-1ec7affa721e\",\"ok\":false,\"erro\":\"Could not find the 'codigo' column of 'cores_impressao' in the schema cache\"},{\"sigla\":\"E3\",\"empresa_id\":\"a6e5f5d8-4743-4ebe-885e-c2f0741a667a\",\"ok\":false,\"erro\":\"Could not find the 'codigo' column of 'cores_impressao' in the schema cache\"}]}"
+}

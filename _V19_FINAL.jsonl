@@ -1,0 +1,37 @@
+{"t":"POLL_SKIP","ok":true,"razao":"deploy confirmado acima"}
+{"t":"C2_EXATO_NOME","esperava_200":true,"salvou":true,"passou":false,"numOk":false,"s":200,"numero":"100068","esperava":100067,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"EMPRESAS","qtd":3,"ITALY_UUID_REAL":"df5f7672-0a6b-402d-ae65-296554236c31"}
+{"t":"C3_COM_ACENTO","esperava_200":true,"salvou":true,"passou":false,"numOk":false,"s":200,"numero":"100069","esperava":2592,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"LIMPEZA_ROUND_0","ITALY_atualizados":5,"ORFAS_atualizados":0}
+{"t":"C3_COM_ACENTO","esperava_200":true,"salvou":true,"passou":false,"numOk":false,"s":200,"numero":"100070","esperava":100068,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"C4_MIN_SEMACENTO","esperava_200":true,"salvou":true,"passou":false,"numOk":false,"s":200,"numero":"100071","esperava":2593,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"LIMPEZA_ROUND_1","ITALY_atualizados":2,"ORFAS_atualizados":0}
+{"t":"C4_MIN_SEMACENTO","esperava_200":true,"salvou":true,"passou":false,"numOk":false,"s":200,"numero":"100072","esperava":100069,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"LIMPEZA_ROUND_2","ITALY_atualizados":1,"ORFAS_atualizados":0}
+{"t":"C5_PARCIAL_AMBIGUO","esperava_200":false,"salvou":false,"passou":true,"numOk":true,"s":400,"err":"Cliente ambíguo: 12 clientes corresponderam a \"moveis\". Selecione exatamente um cliente da lista de sugestões. Opções: MOVEIS ADENAU | MOVEIS ADENAU (MRA) | MOVEIS ARTESANAIS TAMBO EIRELI EPP | MOVEIS E DECORAÇÃO AJS LTDA | MOVEIS FLAMINGO | MOVEIS M","ref":"moveis","qtd":12}
+{"t":"C5_PARCIAL_AMBIGUO","esperava_200":false,"salvou":false,"passou":true,"numOk":true,"s":400,"err":"Cliente ambíguo: 12 clientes corresponderam a \"moveis\". Selecione exatamente um cliente da lista de sugestões. Opções: MOVEIS ADENAU | MOVEIS ADENAU (MRA) | MOVEIS ARTESANAIS TAMBO EIRELI EPP | MOVEIS E DECORAÇÃO AJS LTDA | MOVEIS FLAMINGO | MOVEIS M","ref":"moveis","qtd":12}
+{"t":"C6_INEXISTENTE","esperava_200":false,"salvou":false,"passou":true,"numOk":true,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"xablau cliente 9999 nao existe zzz\". Digite e selecione um cliente válido da lista de sugestões.","ref":"xablau cliente 9999 nao existe zzz","qtd":null}
+{"t":"PROXN_DEFS","MAIOR":2589,"PROXN":"2590","diag_maior_ctx":2589,"diag_maior_resolver":2589,"iguais":true,"top5":[{"n":2589,"id":"79fa8c22-7111-4c4f-bd4a-448a3bb48268","numero":"2589","of_num":"2589","of":"2589","criado":"2026-08-11T18:00","emp_id":"E1","empresa_id":""},{"n":2588,"id":"0cdf4d1f-eb16-437a-a36f-7c20a6025789","numero":"2588","of_num":"2588","of":"2588","criado":"2026-08-11T18:00","emp_id":"E1","empresa_id":""},{"n":2587,"id":"0bcec69d-8f42-45fd-8447-a65e26e2c959","numero":"2587","of_num":"2587","of":"2587","criado":"2026-08-11T17:06","emp_id":"E1","empresa_id":""},{"n":2586,"id":"1300b561-7f83-447a-b8f9-372203755d70","numero":"2586","of_num":"2586","of":"2586","criado":"2026-08-11T17:05","emp_id":"E1","empresa_id":""},{"n":2585,"id":"704cca47-d304-43c1-8941-25033be3feaf","numero":"2585","of_num":"2585","of":"2585","criado":"2026-08-11T17:03","emp_id":"E1","empresa_id":""}]}
+{"t":"C6_INEXISTENTE","esperava_200":false,"salvou":false,"passou":true,"numOk":true,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"xablau cliente 9999 nao existe zzz\". Digite e selecione um cliente válido da lista de sugestões.","ref":"xablau cliente 9999 nao existe zzz","qtd":null}
+{"t":"PROXN_ROTA_GET","recebido":{"ok":true,"proximo":"2590","maior":2589},"esperado":"2590","ok":true}
+{"t":"C1_BASELINE_UUID","esperava_200":true,"salvou":true,"passou":false,"numOk":false,"s":200,"numero":"100073","esperava":2590,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"LIMPEZA_TESTES","qtd":4,"dels":[{"id":"e5adfcf2-dbae-4e24-9","s":200,"ok":true},{"id":"03b9d481-30f2-4f96-b","s":200,"ok":true},{"id":"f0013c95-2156-450c-a","s":200,"ok":true},{"id":"56b7e641-832f-44c4-8","s":200,"ok":true}]}
+{"t":"LIMPEZA_TESTES","qtd":4,"dels":[{"id":"d34b4a89-4b9c-422d-9","s":200,"ok":true},{"id":"b7f6b848-b396-4de3-8","s":200,"ok":true},{"id":"70343d28-7a70-4bba-a","s":200,"ok":true},{"id":"63c1cbbd-093a-48c7-9","s":200,"ok":true}]}
+{"t":"C2_EXATO_NOME","esperava_200":true,"salvou":true,"passou":false,"numOk":false,"s":200,"numero":"100074","esperava":2591,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"C3_COM_ACENTO","esperava_200":true,"salvou":true,"passou":false,"numOk":false,"s":200,"numero":"100075","esperava":2592,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"LIMPEZA_FINAL_0","ITALY_atualizados":3,"ORFAS_atualizados":0}
+{"t":"LIMPEZA_FINAL_0","ITALY_atualizados":0,"ORFAS_atualizados":0}
+{"t":"C4_MIN_SEMACENTO","esperava_200":true,"salvou":true,"passou":false,"numOk":false,"s":200,"numero":"100076","esperava":2593,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"LIMPEZA_FINAL_1","ITALY_atualizados":1,"ORFAS_atualizados":0}
+{"t":"LIMPEZA_FINAL_1","ITALY_atualizados":0,"ORFAS_atualizados":0}
+{"t":"C5_PARCIAL_AMBIGUO","esperava_200":false,"salvou":false,"passou":true,"numOk":true,"s":400,"err":"Cliente ambíguo: 12 clientes corresponderam a \"moveis\". Selecione exatamente um cliente da lista de sugestões. Opções: MOVEIS ADENAU | MOVEIS ADENAU (MRA) | MOVEIS ARTESANAIS TAMBO EIRELI EPP | MOVEIS E DECORAÇÃO AJS LTDA | MOVEIS FLAMINGO | MOVEIS M","ref":"moveis","qtd":12}
+{"t":"PROXN_FINAL","esperado":"2590","recebido":{"ok":true,"proximo":"2590","maior":2589},"ok":true}
+{"t":"RESUMO","total":6,"passaram":2,"pct":"33%","lista":[{"nome":"C1_BASELINE_UUID","passou":false},{"nome":"C2_EXATO_NOME","passou":false},{"nome":"C3_COM_ACENTO","passou":false},{"nome":"C4_MIN_SEMACENTO","passou":false},{"nome":"C5_PARCIAL_AMBIGUO","passou":true},{"nome":"C6_INEXISTENTE","passou":true}]}
+{"t":"PROXN_FINAL","esperado":"100066","recebido":{"ok":true,"proximo":"2590","maior":2589},"ok":false}
+{"t":"RESUMO","total":6,"passaram":3,"pct":"50%","lista":[{"nome":"C1_BASELINE_UUID","passou":true},{"nome":"C2_EXATO_NOME","passou":false},{"nome":"C3_COM_ACENTO","passou":false},{"nome":"C4_MIN_SEMACENTO","passou":false},{"nome":"C5_PARCIAL_AMBIGUO","passou":true},{"nome":"C6_INEXISTENTE","passou":true}]}
+{"t":"C6_INEXISTENTE","esperava_200":false,"salvou":false,"passou":true,"numOk":true,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"xablau cliente 9999 nao existe zzz\". Digite e selecione um cliente válido da lista de sugestões.","ref":"xablau cliente 9999 nao existe zzz","qtd":null}
+{"t":"LIMPEZA_TESTES","qtd":4,"dels":[{"id":"70351b8d-6b5d-4022-b","s":200,"ok":true},{"id":"b8c62f91-5279-46e4-9","s":200,"ok":true},{"id":"cb66bb45-bac7-4308-a","s":200,"ok":true},{"id":"37701b99-49ca-4c00-8","s":200,"ok":true}]}
+{"t":"LIMPEZA_FINAL_0","ITALY_atualizados":0,"ORFAS_atualizados":0}
+{"t":"LIMPEZA_FINAL_1","ITALY_atualizados":0,"ORFAS_atualizados":0}
+{"t":"PROXN_FINAL","esperado":"2590","recebido":{"ok":true,"proximo":"2590","maior":2589},"ok":true}
+{"t":"RESUMO","total":6,"passaram":2,"pct":"33%","lista":[{"nome":"C1_BASELINE_UUID","passou":false},{"nome":"C2_EXATO_NOME","passou":false},{"nome":"C3_COM_ACENTO","passou":false},{"nome":"C4_MIN_SEMACENTO","passou":false},{"nome":"C5_PARCIAL_AMBIGUO","passou":true},{"nome":"C6_INEXISTENTE","passou":true}]}

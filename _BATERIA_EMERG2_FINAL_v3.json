@@ -1,0 +1,87 @@
+{
+  "feito_em": "2026-08-12T13:25:46.859Z",
+  "version_antes": {
+    "ms": 649,
+    "s": 200,
+    "j": {
+      "ok": true,
+      "runtime": {
+        "patch": "20260812103000",
+        "sw": "20260812103000",
+        "sw_cache_name": "italy-erp-v20260812103000"
+      },
+      "git": {
+        "commit": "185299a2c9fd6b727e047a90411009e1483becc8",
+        "branch": "main"
+      },
+      "deploy": {
+        "id": "f7a0f547-a8f5-4f4d-a720-1c19d45459e7",
+        "provider": "railway"
+      },
+      "now": "2026-08-12T13:26:01.359Z"
+    },
+    "raw": "{\"ok\":true,\"runtime\":{\"patch\":\"20260812103000\",\"sw\":\"20260812103000\",\"sw_cache_name\":\"italy-erp-v20260812103000\"},\"git\":{\"commit\":\"185299a2c9fd6b727e047a90411009e1483becc8\",\"branch\":\"main\"},\"deploy\":{\"id\":\"f7a0f547-a8f5-4f4d-a720-1c19d45459e7\",\"provider\":\"railway\"},\"now\":\"2026-08-12T13:26:01.359Z\"}"
+  },
+  "ver": {
+    "ms": 641,
+    "s": 200,
+    "j": {
+      "ok": true,
+      "runtime": {
+        "patch": "20260812103000",
+        "sw": "20260812103000",
+        "sw_cache_name": "italy-erp-v20260812103000"
+      },
+      "git": {
+        "commit": "185299a2c9fd6b727e047a90411009e1483becc8",
+        "branch": "main"
+      },
+      "deploy": {
+        "id": "f7a0f547-a8f5-4f4d-a720-1c19d45459e7",
+        "provider": "railway"
+      },
+      "now": "2026-08-12T13:26:01.361Z"
+    },
+    "raw": "{\"ok\":true,\"runtime\":{\"patch\":\"20260812103000\",\"sw\":\"20260812103000\",\"sw_cache_name\":\"italy-erp-v20260812103000\"},\"git\":{\"commit\":\"185299a2c9fd6b727e047a90411009e1483becc8\",\"branch\":\"main\"},\"deploy\":{\"id\":\"f7a0f547-a8f5-4f4d-a720-1c19d45459e7\",\"provider\":\"railway\"},\"now\":\"2026-08-12T13:26:01.361Z\"}"
+  },
+  "clientes": {
+    "ne": "to"
+  },
+  "clientes_total": 0,
+  "bateria": [
+    {
+      "chave": "ripke",
+      "sub": "moveis ripke",
+      "erro": "CLIENTE_NAO_ENCONTRADO",
+      "total_clientes": 0
+    },
+    {
+      "chave": "ruiz",
+      "sub": "ruiz",
+      "erro": "CLIENTE_NAO_ENCONTRADO",
+      "total_clientes": 0
+    },
+    {
+      "chave": "rotoplast",
+      "sub": "rotoplast",
+      "erro": "CLIENTE_NAO_ENCONTRADO",
+      "total_clientes": 0
+    },
+    {
+      "chave": "dkadi",
+      "sub": "dkadi",
+      "erro": "CLIENTE_NAO_ENCONTRADO",
+      "total_clientes": 0
+    },
+    {
+      "chave": "itacir",
+      "sub": "itacir",
+      "erro": "CLIENTE_NAO_ENCONTRADO",
+      "total_clientes": 0
+    }
+  ],
+  "summary": {
+    "tem_zero_ofs_em_algum": false,
+    "nao_encontrou_algum": true
+  }
+}

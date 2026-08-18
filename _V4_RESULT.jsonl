@@ -1,0 +1,10 @@
+{"t":"CHECK_RIPKE_EXISTE","s":200,"qtd":0,"ripke":null,"e":null}
+{"t":"PROXN_2605","ok":true,"resp":{"ok":true,"proximo":"2605","maior":2604}}
+{"t":"ONESHOT","s":0,"ok":false,"err":null}
+{"t":"C1_BASELINE_UUID","esperava_200":true,"salvou":false,"passou":false,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"be617df1-441a-470b-b9f3-f681b8d0a9e6\". Digite e selecione um cliente válido da lista de sugestões.","ref":"be617df1-441a-470b-b9f3-f681b8d0a9e6","qtd":null}
+{"t":"C2_EXATO_NOME","esperava_200":true,"salvou":false,"passou":false,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"MOVEIS RIPKE\". Digite e selecione um cliente válido da lista de sugestões.","ref":"MOVEIS RIPKE","qtd":null}
+{"t":"C3_COM_ACENTO","esperava_200":true,"salvou":false,"passou":false,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"MÓVEIS RIPKE\". Digite e selecione um cliente válido da lista de sugestões.","ref":"MÓVEIS RIPKE","qtd":null}
+{"t":"C4_MINUS_SEMACENTO","esperava_200":true,"salvou":false,"passou":false,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"moveis ripke\". Digite e selecione um cliente válido da lista de sugestões.","ref":"moveis ripke","qtd":null}
+{"t":"C5_PARCIAL_AMBIGUO","esperava_200":false,"salvou":false,"passou":true,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"moveis\". Digite e selecione um cliente válido da lista de sugestões.","ref":"moveis","qtd":null}
+{"t":"C6_INEXISTENTE","esperava_200":false,"salvou":false,"passou":true,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"xablau cliente inexistente 9999 zzz\". Digite e selecione um cliente válido da lista de sugestões.","ref":"xablau cliente inexistente 9999 zzz","qtd":null}
+{"t":"LIMPEZA_SOFT_DEL","qtd":0,"dels":[]}

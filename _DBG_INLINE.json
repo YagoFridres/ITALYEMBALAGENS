@@ -1,0 +1,514 @@
+{
+  "dbg": {
+    "ok": true,
+    "info": {
+      "empresaUuid": "df5f7672-0a6b-402d-ae65-296554236c31",
+      "empLegacy": "E1",
+      "calc_ok": true,
+      "calc_val": 2590,
+      "calc_raw": {
+        "ok": true,
+        "proximo": "2590",
+        "maior": 2589,
+        "qtd": 1000,
+        "qtdNumeros": 1000,
+        "empId": "df5f7672-0a6b-402d-ae65-296554236c31",
+        "siglaLegada": "E1",
+        "top15": [
+          {
+            "n": 2589,
+            "id": "79fa8c22-7111-4c4f-bd4a-448a3bb48268",
+            "numero": "2589",
+            "of_num": "2589",
+            "of": "2589",
+            "criado": "2026-08-11T18:00",
+            "emp_id": "E1",
+            "empresa_id": ""
+          },
+          {
+            "n": 2588,
+            "id": "0cdf4d1f-eb16-437a-a36f-7c20a6025789",
+            "numero": "2588",
+            "of_num": "2588",
+            "of": "2588",
+            "criado": "2026-08-11T18:00",
+            "emp_id": "E1",
+            "empresa_id": ""
+          },
+          {
+            "n": 2587,
+            "id": "0bcec69d-8f42-45fd-8447-a65e26e2c959",
+            "numero": "2587",
+            "of_num": "2587",
+            "of": "2587",
+            "criado": "2026-08-11T17:06",
+            "emp_id": "E1",
+            "empresa_id": ""
+          },
+          {
+            "n": 2586,
+            "id": "1300b561-7f83-447a-b8f9-372203755d70",
+            "numero": "2586",
+            "of_num": "2586",
+            "of": "2586",
+            "criado": "2026-08-11T17:05",
+            "emp_id": "E1",
+            "empresa_id": ""
+          },
+          {
+            "n": 2585,
+            "id": "704cca47-d304-43c1-8941-25033be3feaf",
+            "numero": "2585",
+            "of_num": "2585",
+            "of": "2585",
+            "criado": "2026-08-11T17:03",
+            "emp_id": "E1",
+            "empresa_id": ""
+          },
+          {
+            "n": 2584,
+            "id": "4b4b2455-c2ef-4c0a-9258-f95a3b10de3b",
+            "numero": "2584",
+            "of_num": "2584",
+            "of": "2584",
+            "criado": "2026-08-11T17:01",
+            "emp_id": "E1",
+            "empresa_id": ""
+          },
+          {
+            "n": 2580,
+            "id": "5cf5acf5-8605-49ec-a801-89256119fa0c",
+            "numero": "2580",
+            "of_num": "2580",
+            "of": "2580",
+            "criado": "2026-08-11T11:51",
+            "emp_id": "E1",
+            "empresa_id": ""
+          },
+          {
+            "n": 2544,
+            "id": "66490194-8a86-46cb-8234-b408aec83bf0",
+            "numero": "2544",
+            "of_num": "2544",
+            "of": "2544",
+            "criado": "2026-08-10T14:14",
+            "emp_id": "E1",
+            "empresa_id": ""
+          },
+          {
+            "n": 2543,
+            "id": "a919f3f8-076b-4980-8d8d-7c8485611716",
+            "numero": "2543",
+            "of_num": "2543",
+            "of": "2543",
+            "criado": "2026-08-10T14:14",
+            "emp_id": "E1",
+            "empresa_id": ""
+          },
+          {
+            "n": 2542,
+            "id": "9b51dc45-3a91-4698-9c62-d7932090891d",
+            "numero": "2542",
+            "of_num": "2542",
+            "of": "2542",
+            "criado": "2026-08-10T14:10",
+            "emp_id": "E1",
+            "empresa_id": ""
+          },
+          {
+            "n": 2541,
+            "id": "2e0ef92f-e69b-447f-bef1-95a62286e7d8",
+            "numero": "2541",
+            "of_num": "2541",
+            "of": "2541",
+            "criado": "2026-08-10T14:06",
+            "emp_id": "E1",
+            "empresa_id": ""
+          },
+          {
+            "n": 2540,
+            "id": "4f214644-6ee1-4818-9eb3-72d8f986814a",
+            "numero": "2540",
+            "of_num": "2540",
+            "of": "2540",
+            "criado": "2026-08-10T14:06",
+            "emp_id": "E1",
+            "empresa_id": ""
+          },
+          {
+            "n": 2539,
+            "id": "89829be1-a4e8-474a-8c44-b2afe57f3857",
+            "numero": "2539",
+            "of_num": "2539",
+            "of": "2539",
+            "criado": "2026-08-10T14:06",
+            "emp_id": "E1",
+            "empresa_id": ""
+          },
+          {
+            "n": 2538,
+            "id": "4b369620-5ff9-4eb4-a9fa-7bc81d7a0ae9",
+            "numero": "2538",
+            "of_num": "2538",
+            "of": "2538",
+            "criado": "2026-08-10T14:06",
+            "emp_id": "E1",
+            "empresa_id": ""
+          },
+          {
+            "n": 2531,
+            "id": "215dcefb-e4bf-4482-adac-2a11be57f317",
+            "numero": "2531",
+            "of_num": "2531",
+            "of": "2531",
+            "criado": "2026-08-10T12:20",
+            "emp_id": "E1",
+            "empresa_id": ""
+          }
+        ]
+      },
+      "calc_err": null,
+      "seq_last": 765,
+      "nextSeq": 766,
+      "siglaLegadaEmp": "E1",
+      "tentativas": [
+        {
+          "i": 0,
+          "cand": "2590",
+          "qEx": 0,
+          "conflito": false,
+          "emp_matches": []
+        }
+      ]
+    },
+    "escolhido": "2590"
+  },
+  "diag": {
+    "ok": true,
+    "emp_por_resolver": "df5f7672-0a6b-402d-ae65-296554236c31",
+    "emp_por_ctx": "df5f7672-0a6b-402d-ae65-296554236c31",
+    "iguais": true,
+    "res_por_resolver": {
+      "ok": true,
+      "proximo": "2590",
+      "maior": 2589,
+      "qtd": 1000,
+      "qtdNumeros": 1000,
+      "empId": "df5f7672-0a6b-402d-ae65-296554236c31",
+      "siglaLegada": "E1",
+      "top15": [
+        {
+          "n": 2589,
+          "id": "79fa8c22-7111-4c4f-bd4a-448a3bb48268",
+          "numero": "2589",
+          "of_num": "2589",
+          "of": "2589",
+          "criado": "2026-08-11T18:00",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2588,
+          "id": "0cdf4d1f-eb16-437a-a36f-7c20a6025789",
+          "numero": "2588",
+          "of_num": "2588",
+          "of": "2588",
+          "criado": "2026-08-11T18:00",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2587,
+          "id": "0bcec69d-8f42-45fd-8447-a65e26e2c959",
+          "numero": "2587",
+          "of_num": "2587",
+          "of": "2587",
+          "criado": "2026-08-11T17:06",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2586,
+          "id": "1300b561-7f83-447a-b8f9-372203755d70",
+          "numero": "2586",
+          "of_num": "2586",
+          "of": "2586",
+          "criado": "2026-08-11T17:05",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2585,
+          "id": "704cca47-d304-43c1-8941-25033be3feaf",
+          "numero": "2585",
+          "of_num": "2585",
+          "of": "2585",
+          "criado": "2026-08-11T17:03",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2584,
+          "id": "4b4b2455-c2ef-4c0a-9258-f95a3b10de3b",
+          "numero": "2584",
+          "of_num": "2584",
+          "of": "2584",
+          "criado": "2026-08-11T17:01",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2580,
+          "id": "5cf5acf5-8605-49ec-a801-89256119fa0c",
+          "numero": "2580",
+          "of_num": "2580",
+          "of": "2580",
+          "criado": "2026-08-11T11:51",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2544,
+          "id": "66490194-8a86-46cb-8234-b408aec83bf0",
+          "numero": "2544",
+          "of_num": "2544",
+          "of": "2544",
+          "criado": "2026-08-10T14:14",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2543,
+          "id": "a919f3f8-076b-4980-8d8d-7c8485611716",
+          "numero": "2543",
+          "of_num": "2543",
+          "of": "2543",
+          "criado": "2026-08-10T14:14",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2542,
+          "id": "9b51dc45-3a91-4698-9c62-d7932090891d",
+          "numero": "2542",
+          "of_num": "2542",
+          "of": "2542",
+          "criado": "2026-08-10T14:10",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2541,
+          "id": "2e0ef92f-e69b-447f-bef1-95a62286e7d8",
+          "numero": "2541",
+          "of_num": "2541",
+          "of": "2541",
+          "criado": "2026-08-10T14:06",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2540,
+          "id": "4f214644-6ee1-4818-9eb3-72d8f986814a",
+          "numero": "2540",
+          "of_num": "2540",
+          "of": "2540",
+          "criado": "2026-08-10T14:06",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2539,
+          "id": "89829be1-a4e8-474a-8c44-b2afe57f3857",
+          "numero": "2539",
+          "of_num": "2539",
+          "of": "2539",
+          "criado": "2026-08-10T14:06",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2538,
+          "id": "4b369620-5ff9-4eb4-a9fa-7bc81d7a0ae9",
+          "numero": "2538",
+          "of_num": "2538",
+          "of": "2538",
+          "criado": "2026-08-10T14:06",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2531,
+          "id": "215dcefb-e4bf-4482-adac-2a11be57f317",
+          "numero": "2531",
+          "of_num": "2531",
+          "of": "2531",
+          "criado": "2026-08-10T12:20",
+          "emp_id": "E1",
+          "empresa_id": ""
+        }
+      ]
+    },
+    "res_por_ctx": {
+      "ok": true,
+      "proximo": "2590",
+      "maior": 2589,
+      "qtd": 1000,
+      "qtdNumeros": 1000,
+      "empId": "df5f7672-0a6b-402d-ae65-296554236c31",
+      "siglaLegada": "E1",
+      "top15": [
+        {
+          "n": 2589,
+          "id": "79fa8c22-7111-4c4f-bd4a-448a3bb48268",
+          "numero": "2589",
+          "of_num": "2589",
+          "of": "2589",
+          "criado": "2026-08-11T18:00",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2588,
+          "id": "0cdf4d1f-eb16-437a-a36f-7c20a6025789",
+          "numero": "2588",
+          "of_num": "2588",
+          "of": "2588",
+          "criado": "2026-08-11T18:00",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2587,
+          "id": "0bcec69d-8f42-45fd-8447-a65e26e2c959",
+          "numero": "2587",
+          "of_num": "2587",
+          "of": "2587",
+          "criado": "2026-08-11T17:06",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2586,
+          "id": "1300b561-7f83-447a-b8f9-372203755d70",
+          "numero": "2586",
+          "of_num": "2586",
+          "of": "2586",
+          "criado": "2026-08-11T17:05",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2585,
+          "id": "704cca47-d304-43c1-8941-25033be3feaf",
+          "numero": "2585",
+          "of_num": "2585",
+          "of": "2585",
+          "criado": "2026-08-11T17:03",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2584,
+          "id": "4b4b2455-c2ef-4c0a-9258-f95a3b10de3b",
+          "numero": "2584",
+          "of_num": "2584",
+          "of": "2584",
+          "criado": "2026-08-11T17:01",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2580,
+          "id": "5cf5acf5-8605-49ec-a801-89256119fa0c",
+          "numero": "2580",
+          "of_num": "2580",
+          "of": "2580",
+          "criado": "2026-08-11T11:51",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2544,
+          "id": "66490194-8a86-46cb-8234-b408aec83bf0",
+          "numero": "2544",
+          "of_num": "2544",
+          "of": "2544",
+          "criado": "2026-08-10T14:14",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2543,
+          "id": "a919f3f8-076b-4980-8d8d-7c8485611716",
+          "numero": "2543",
+          "of_num": "2543",
+          "of": "2543",
+          "criado": "2026-08-10T14:14",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2542,
+          "id": "9b51dc45-3a91-4698-9c62-d7932090891d",
+          "numero": "2542",
+          "of_num": "2542",
+          "of": "2542",
+          "criado": "2026-08-10T14:10",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2541,
+          "id": "2e0ef92f-e69b-447f-bef1-95a62286e7d8",
+          "numero": "2541",
+          "of_num": "2541",
+          "of": "2541",
+          "criado": "2026-08-10T14:06",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2540,
+          "id": "4f214644-6ee1-4818-9eb3-72d8f986814a",
+          "numero": "2540",
+          "of_num": "2540",
+          "of": "2540",
+          "criado": "2026-08-10T14:06",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2539,
+          "id": "89829be1-a4e8-474a-8c44-b2afe57f3857",
+          "numero": "2539",
+          "of_num": "2539",
+          "of": "2539",
+          "criado": "2026-08-10T14:06",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2538,
+          "id": "4b369620-5ff9-4eb4-a9fa-7bc81d7a0ae9",
+          "numero": "2538",
+          "of_num": "2538",
+          "of": "2538",
+          "criado": "2026-08-10T14:06",
+          "emp_id": "E1",
+          "empresa_id": ""
+        },
+        {
+          "n": 2531,
+          "id": "215dcefb-e4bf-4482-adac-2a11be57f317",
+          "numero": "2531",
+          "of_num": "2531",
+          "of": "2531",
+          "criado": "2026-08-10T12:20",
+          "emp_id": "E1",
+          "empresa_id": ""
+        }
+      ]
+    }
+  }
+}

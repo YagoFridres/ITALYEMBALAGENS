@@ -1,0 +1,1 @@
+[44/64] FALHA no revert de 3372edf (exit=1). Ultima saida salva em _revert_last_stdout.txt. PARANDO IMEDIATAMENTE, EXECUTE git revert --abort para desfazer e me avise.

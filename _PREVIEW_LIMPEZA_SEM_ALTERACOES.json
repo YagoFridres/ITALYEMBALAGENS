@@ -1,0 +1,128 @@
+{
+  "modo": "PREVIEW-SELECT-SEM-ALTERACOES-DEPLOY-ATUAL-77c4ed3",
+  "gerado_em": "2026-08-12T12:14:44.086Z",
+  "oofs_alvo_8": {
+    "tentativas": 8,
+    "encontrados": 0,
+    "nao_encontrados": [
+      {
+        "id": "c4db942d-7024-401a-a330-56a7faed344a",
+        "status": 200,
+        "http_body_preview": "{\"ok\":true,\"data\":{\"id\":\"c4db942d-7024-401a-a330-56a7faed344a\",\"numero\":\"2600\",\"cliente_id\":\"3f11ccd8-00b2-4eda-b1fd-c8b660367a50\",\"status\":\"Em aberto\",\"data_entrega\":\"2026-08-20\",\"data_producao\":null"
+      },
+      {
+        "id": "afea1a07-acb8-4967-8a1e-fa16ecc8da1b",
+        "status": 200,
+        "http_body_preview": "{\"ok\":true,\"data\":{\"id\":\"afea1a07-acb8-4967-8a1e-fa16ecc8da1b\",\"numero\":\"2601\",\"cliente_id\":\"3f11ccd8-00b2-4eda-b1fd-c8b660367a50\",\"status\":\"Em aberto\",\"data_entrega\":\"2026-08-20\",\"data_producao\":null"
+      },
+      {
+        "id": "c5478e8b-c98c-40de-98de-65477363bc26",
+        "status": 200,
+        "http_body_preview": "{\"ok\":true,\"data\":{\"id\":\"c5478e8b-c98c-40de-98de-65477363bc26\",\"numero\":\"2602\",\"cliente_id\":\"3f11ccd8-00b2-4eda-b1fd-c8b660367a50\",\"status\":\"Em aberto\",\"data_entrega\":\"2026-08-20\",\"data_producao\":null"
+      },
+      {
+        "id": "0a49f941-426a-4f35-ab81-118ad57423b4",
+        "status": 200,
+        "http_body_preview": "{\"ok\":true,\"data\":{\"id\":\"0a49f941-426a-4f35-ab81-118ad57423b4\",\"numero\":\"2603\",\"cliente_id\":\"3f11ccd8-00b2-4eda-b1fd-c8b660367a50\",\"status\":\"Em aberto\",\"data_entrega\":\"2026-08-20\",\"data_producao\":null"
+      },
+      {
+        "id": "3100fdd2-6d75-49c5-a3ce-18fe3a58e0f0",
+        "status": 200,
+        "http_body_preview": "{\"ok\":true,\"data\":{\"id\":\"3100fdd2-6d75-49c5-a3ce-18fe3a58e0f0\",\"numero\":\"2604\",\"cliente_id\":\"3f11ccd8-00b2-4eda-b1fd-c8b660367a50\",\"status\":\"Em aberto\",\"data_entrega\":\"2026-08-20\",\"data_producao\":null"
+      },
+      {
+        "id": "b2886f39-c729-4592-ba55-3a7cc37713c3",
+        "status": 200,
+        "http_body_preview": "{\"ok\":true,\"data\":{\"id\":\"b2886f39-c729-4592-ba55-3a7cc37713c3\",\"numero\":\"2597\",\"cliente_id\":\"3f11ccd8-00b2-4eda-b1fd-c8b660367a50\",\"status\":\"Em aberto\",\"data_entrega\":\"2026-08-20\",\"data_producao\":\"202"
+      },
+      {
+        "id": "15ce6411-1e9a-40cf-80af-c5e6ebda1247",
+        "status": 200,
+        "http_body_preview": "{\"ok\":true,\"data\":{\"id\":\"15ce6411-1e9a-40cf-80af-c5e6ebda1247\",\"numero\":\"2599\",\"cliente_id\":\"3f11ccd8-00b2-4eda-b1fd-c8b660367a50\",\"status\":\"Em aberto\",\"data_entrega\":\"2026-08-20\",\"data_producao\":\"202"
+      },
+      {
+        "id": "c2f83ddc-1b71-45c3-86f5-163638bde440",
+        "status": 200,
+        "http_body_preview": "{\"ok\":true,\"data\":{\"id\":\"c2f83ddc-1b71-45c3-86f5-163638bde440\",\"numero\":\"2598\",\"cliente_id\":\"3f11ccd8-00b2-4eda-b1fd-c8b660367a50\",\"status\":\"Em aberto\",\"data_entrega\":\"2026-08-20\",\"data_producao\":\"202"
+      }
+    ],
+    "registros": []
+  },
+  "clientes_alvo_2": {
+    "encontrados": 2,
+    "registros": [
+      {
+        "id": "cef7e8c5-e6d2-49a8-984b-8c44a687e278",
+        "nome": "NOME REAL AQUI",
+        "rs": null,
+        "codigo": null,
+        "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+        "created_at": "2026-07-24T11:18:52",
+        "deleted_at": null,
+        "total_ofs_listagem": 8
+      },
+      {
+        "id": "3f11ccd8-00b2-4eda-b1fd-c8b660367a50",
+        "nome": "NOME REAL AQUI",
+        "rs": null,
+        "codigo": null,
+        "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+        "created_at": "2026-07-24T11:18:52",
+        "deleted_at": null,
+        "total_ofs_listagem": 8
+      }
+    ],
+    "ids_buscados": [
+      "cef7e8c5-e6d2-49a8-984b-8c44a687e278",
+      "3f11ccd8-00b2-4eda-b1fd-c8b660367a50"
+    ]
+  },
+  "empresas_todas": {
+    "qtd": 3,
+    "registros": [
+      {
+        "id": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+        "nome": "Cartoeste",
+        "emp_id": "E2",
+        "apelido": null,
+        "created_at": "2026-03-30T14:12:58"
+      },
+      {
+        "id": "df5f7672-0a6b-402d-ae65-296554236c31",
+        "nome": "Italy Embalagens",
+        "emp_id": "E1",
+        "apelido": null,
+        "created_at": "2026-03-30T14:12:58"
+      },
+      {
+        "id": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a",
+        "nome": "Oestepack",
+        "emp_id": "E3",
+        "apelido": null,
+        "created_at": "2026-03-30T14:12:58"
+      }
+    ],
+    "uuid_italy": "df5f7672-0a6b-402d-ae65-296554236c31",
+    "uuid_cartoeste": "e9b734dc-c7d5-4b04-898d-1ec7affa721e",
+    "uuid_oestepack": "a6e5f5d8-4743-4ebe-885e-c2f0741a667a"
+  },
+  "cores_sem_impressao_existentes": {
+    "qtd": 1,
+    "registros": [
+      {
+        "id": "da82ed3b-1a9a-435e-bf92-cbca9ef6e850",
+        "nome": "Sem Impressão",
+        "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+        "codigo": null,
+        "hex": null,
+        "ativo": true,
+        "ordem": null
+      }
+    ]
+  },
+  "cores_sem_impressao_por_empresa": {
+    "italy_tem": true,
+    "cartoeste_tem": false,
+    "oestepack_tem": false
+  }
+}

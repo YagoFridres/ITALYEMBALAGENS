@@ -1,0 +1,15 @@
+{"t":"EMPRESAS","qtd":3,"ITALY_UUID_REAL":"df5f7672-0a6b-402d-ae65-296554236c31"}
+{"t":"ONESHOT_ITALY","total_analisado":1000,"total_alvos":0,"atualizados":0,"detalhes5":[]}
+{"t":"ONESHOT_ORFAS","atualizados":0}
+{"t":"PROXN_ANTES","esperado":"2528","recebido_prox":"2528","recebido_maior":2527,"diag_resolverEmp":"df5f7672-0a6b-402d-ae65-296554236c31","igual":true,"ctx_maior":2527,"res_maior":2527}
+{"t":"C1_BASELINE_UUID","esperava_200":true,"salvou":true,"passou":true,"numOk":false,"s":200,"numero":"100037","esperava":2528,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"C2_EXATO_NOME","esperava_200":true,"salvou":true,"passou":true,"numOk":false,"s":200,"numero":"100038","esperava":2529,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"C3_COM_ACENTO","esperava_200":true,"salvou":true,"passou":true,"numOk":false,"s":200,"numero":"100039","esperava":2530,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"C4_MIN_SEMACENTO","esperava_200":true,"salvou":true,"passou":true,"numOk":false,"s":200,"numero":"100040","esperava":2531,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"C5_PARCIAL_AMBIGUO","esperava_200":false,"salvou":false,"passou":true,"numOk":true,"s":400,"err":"Cliente ambíguo: 12 clientes corresponderam a \"moveis\". Selecione exatamente um cliente da lista de sugestões. Opções: MOVEIS ADENAU | MOVEIS ADENAU (MRA) | MOVEIS ARTESANAIS TAMBO EIRELI EPP | MOVEIS E DECORAÇÃO AJS LTDA | MOVEIS FLAMINGO | MOVEIS M","ref":"moveis","qtd":12}
+{"t":"C6_INEXISTENTE","esperava_200":false,"salvou":false,"passou":true,"numOk":true,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"xablau cliente 9999 nao existe zzz\". Digite e selecione um cliente válido da lista de sugestões.","ref":"xablau cliente 9999 nao existe zzz","qtd":null}
+{"t":"LIMPEZA_FINAL_TESTES","qtd":4,"dels":[{"id":"a53b326a-6ae7-418e-b","s":200,"ok":true},{"id":"63beadde-8baa-4979-9","s":200,"ok":true},{"id":"c9f1fc96-6c66-42b3-8","s":200,"ok":true},{"id":"fb6c728f-707a-4cfc-9","s":200,"ok":true}]}
+{"t":"ONESHOT_ITALY_FINAL","atualizados":0}
+{"t":"ONESHOT_ORFAS_FINAL","atualizados":0}
+{"t":"PROXN_FINAL","esperado":"2528","recebido":{"ok":true,"proximo":"2528","maior":2527},"ok":true}
+{"t":"RESUMO","total":6,"passaram":2,"pct":"33%","lista":[{"nome":"C1_BASELINE_UUID","passou":false},{"nome":"C2_EXATO_NOME","passou":false},{"nome":"C3_COM_ACENTO","passou":false},{"nome":"C4_MIN_SEMACENTO","passou":false},{"nome":"C5_PARCIAL_AMBIGUO","passou":true},{"nome":"C6_INEXISTENTE","passou":true}]}

@@ -1,0 +1,72 @@
+[
+  {
+    "t": "HEALTH",
+    "s": 200,
+    "b": {
+      "ok": true,
+      "supabase": {
+        "configured": true,
+        "url": true,
+        "hasServiceRoleKey": true,
+        "hasKey": true,
+        "hasAnonKey": false,
+        "hasIndexHtmlFallback": false,
+        "keySource": "SUPABASE_SERVICE_ROLE_KEY",
+        "missing": []
+      }
+    }
+  },
+  {
+    "t": "VERSION",
+    "patch_v": null,
+    "html_len": 1000
+  },
+  {
+    "t": "PROX_NUM_DEDICADO",
+    "s": 200,
+    "b": {
+      "ok": true,
+      "proximo": "100005",
+      "maior": 100004
+    }
+  },
+  {
+    "t": "TOP10_OFS",
+    "s": 200,
+    "qtd": 0,
+    "ofs": []
+  },
+  {
+    "t": "CLIENTES_SEARCH_RIPKE",
+    "s": 200,
+    "qtd": 0,
+    "primeiro": null
+  },
+  {
+    "t": "BASELINE_UUID",
+    "s": 400,
+    "ok": false,
+    "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"be617df1-441a-470b-b9f3-f681b8d0a9e6\". Digite e selecione um cliente válido da lista de sugestões."
+  },
+  {
+    "t": "EXATO_NOME",
+    "s": 400,
+    "ok": false,
+    "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"MOVEIS RIPKE\". Digite e selecione um cliente válido da lista de sugestões.",
+    "ref": "MOVEIS RIPKE"
+  },
+  {
+    "t": "PROX_NUM_DEPOIS",
+    "s": 200,
+    "b": {
+      "ok": true,
+      "proximo": "100005",
+      "maior": 100004
+    }
+  },
+  {
+    "t": "OFS_ZZZ_OU_100K",
+    "qtd": 0,
+    "ofs": []
+  }
+]

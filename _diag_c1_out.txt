@@ -1,0 +1,5 @@
+﻿ITALY=df5f7672-0a6b-402d-ae65-296554236c31
+
+TEST_C1_POST s=400 ok=false err=Cliente inv├ílido: n├úo encontramos nenhum cliente correspondente a "be617df1-441a-4f11-918e-f681b8d0a9e6". Digite e selecione um cliente v├ílido da lista de sugest├Áes. cliSalvo=
+
+RIPKE_by_endpoint_id GET s=404 existe=true id= nome= cod= emp_id= empresa_id=

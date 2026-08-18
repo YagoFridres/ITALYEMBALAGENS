@@ -1,0 +1,166 @@
+{
+  "r1": {
+    "s": 200,
+    "qtd": 1,
+    "clientes": [
+      {
+        "id": "be617df1-441",
+        "nome": "MOVEIS RIPKE",
+        "emp_id": "E1",
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      }
+    ]
+  },
+  "r2": {
+    "s": 200,
+    "qtd": 20,
+    "clientes": [
+      {
+        "id": "be617df1-441",
+        "nome": "MOVEIS RIPKE",
+        "emp_id": "E1",
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "da2798c7-bf6",
+        "nome": "MOVEIS RUIZ",
+        "emp_id": "E1",
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "3d72c187-e10",
+        "nome": "MOVEIS ADENAU",
+        "emp_id": "E1",
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "915c029c-d61",
+        "nome": "SAMI INDUSTRIA E COMERCIO DE MOVEIS LTDA",
+        "emp_id": "E1",
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "de4634d9-b5f",
+        "nome": "TABULAE INDUSTRIA DE MOVEIS LTDA",
+        "emp_id": "E1",
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "a087b35b-f51",
+        "nome": "MOVEIS ADENAU (MRA)",
+        "emp_id": "E1",
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "2bb1f8c9-a41",
+        "nome": "MOVEIS PERASSOLI",
+        "emp_id": "E1",
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "3a32cb15-470",
+        "nome": "4I INDUSTRIA DE MOVEIS LTDA",
+        "emp_id": "E1",
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "a1918f1b-641",
+        "nome": "JP MOVEIS",
+        "emp_id": "E1",
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "3fea39e5-0ef",
+        "nome": "MOVEIS MATTE",
+        "emp_id": "E1",
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "382a5b5c-d14",
+        "nome": "ADE MOVEIS LTDA",
+        "emp_id": null,
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "c3e43049-465",
+        "nome": "B E B INDUSTRIA DE MOVEIS LTDA",
+        "emp_id": null,
+        "empresa_id": "df5f7672-0",
+        "ativo": false
+      },
+      {
+        "id": "b06eba8a-070",
+        "nome": "CIMMA INDÚSTRIA E COMERCIO DE MOVEIS",
+        "emp_id": null,
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "b28d5f67-98a",
+        "nome": "D MADEIRA MOVEIS EIRELI",
+        "emp_id": null,
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "86c0cd47-cbc",
+        "nome": "D.V INDUSTRIA DE MOVEIS LTDA",
+        "emp_id": null,
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "4fe634c1-926",
+        "nome": "DESSAN INDUSTRIA E COMÉRCIO DE MOVEIS",
+        "emp_id": null,
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "e75e57d5-e5f",
+        "nome": "DISA MOVEIS INDUSTRIA E COM. LTDA - EPP",
+        "emp_id": null,
+        "empresa_id": "df5f7672-0",
+        "ativo": false
+      },
+      {
+        "id": "09f2929e-9a2",
+        "nome": "ESPACIO MOVEIS BAR LTDA",
+        "emp_id": null,
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "10c3d134-95b",
+        "nome": "FERPA INDUSTRIA E COMERCIO DE MOVEIS",
+        "emp_id": null,
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      },
+      {
+        "id": "9f77a2a0-fd3",
+        "nome": "INDUSTRIA DE MOVEIS FERRARI LTDA",
+        "emp_id": null,
+        "empresa_id": "df5f7672-0",
+        "ativo": true
+      }
+    ]
+  },
+  "r3": {
+    "s": 200,
+    "qtd": 0,
+    "clientes": []
+  }
+}

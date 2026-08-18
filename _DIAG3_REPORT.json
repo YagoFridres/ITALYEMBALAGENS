@@ -1,0 +1,19 @@
+{
+  "feito_em": "2026-08-12T13:34:29.257Z",
+  "testes": [
+    "2026-08-12T13:34:21.812Z BOOT Railway AO VIVO",
+    "2026-08-12T13:34:22.479Z version s=200 patch=20260812103000 commit=185299a2c9fd6b727e047a90411009e1483becc8",
+    "2026-08-12T13:34:22.656Z GET /api/ofs?limit=3 #1 s=200 ms=176 len=68 ne=",
+    "2026-08-12T13:34:22.829Z GET /api/ofs?limit=3 #2 s=200 ms=172 len=68 ne=",
+    "2026-08-12T13:34:23.001Z GET /api/ofs?limit=3 #3 s=200 ms=172 len=68 ne=",
+    "2026-08-12T13:34:23.639Z GET /api/maquinas #1 s=200 ms=637 len=24433 ne=",
+    "2026-08-12T13:34:23.996Z GET /api/maquinas #2 s=200 ms=357 len=24433 ne=",
+    "2026-08-12T13:34:24.363Z GET /api/maquinas #3 s=200 ms=366 len=24433 ne=",
+    "2026-08-12T13:34:24.820Z GET /api/cores-impressao #1 s=200 ms=456 len=8067 ne=",
+    "2026-08-12T13:34:25.293Z GET /api/cores-impressao #2 s=200 ms=472 len=8067 ne=",
+    "2026-08-12T13:34:25.771Z GET /api/cores-impressao #3 s=200 ms=476 len=8067 ne=",
+    "2026-08-12T13:34:27.706Z POST /api/ofs VALIDO (Ripke uuid) s=200 ms=1934 j={\"ok\":true,\"data\":{\"id\":\"2485ce9d-a0be-4d76-9935-76f12695a0b9\",\"numero\":\"99999\",\"cliente_id\":\"be617df1-441a-4f11-918e-d813a5ac854c\",\"status\":\"Em aberto\",\"data_entrega\":\"2026-12-31\",\"data_producao\":null,\"urgente\":false,\"quantidade\":1,\"descricao\":\"ZZZ_TESTE_APAGAR_P1\",\"obs\":null,\"itens\":[{\"qtd\":1,\"ref\":\"\",\"desc\":\"ZZZ_TESTE_APAGAR_P1\",\"vunit\":10,\"maquina\":\"\",\"descricao\":\"ZZZ_TESTE_APAGAR_P1\",\"maquina_id\":null,\"quantidade\":1,\"valor_total\":10,\"maquina_nome\":\"\",\"valor_unitario\":10}],\"created_at\":\"2026-08-12T13:34:40.860083+00:00\",\"updated_at\":\"2026-08-12T13:34:40.275+00:00\",\"seq\":0,\"chp\":null,\"maq\":null,\"cli_id\":\"be617df1-441a-4f11-918e-d813a5ac854c\",\"vendedor\":\"RONI VENDA CHEIA\",\"fluxo\":null,\"qtd_chapas\":0,\"cond_pagamento\":null,\"empresa_id\":\"df5f7672-0a6b-402d-ae65-296554236c31\",\"of_num\":null,\"imgs\":\"[]\",\"urg\":false,\"dia\":null,\"of\":null,\"cliid\":\"be617df1-441a-4f11-918e-d813a5ac854c\",\"clinome\":\"MOVEIS RIPKE\",\"obs2\":null,\"vendid\":\"b362b262-0b8f-40e3-865f-7eb5bfe226c8\",\"ramo\":null,\"pagto\":null,\"ent\":null,\"qtd\":1,\"preco\":10,\"total\":10,\"smp_id\":null,\"emp_id\":\"E1\",\"vendedor_id\":\"b362b262-0b8f-40e3-865f-7eb5bfe226c8\",\"cliente_nome\":\"MOVEIS RIPKE\",\"of_seq\":0,\"vendId\":\"b362b262-0b8f-40e3-865f-7eb5bfe226c8\",\"cliId\":\"be617df1-441a-4f11-918e-d813a5ac854c\",\"cliNome\":\"MOVEIS RIPKE\",\"vendNome\":\"RONI VENDA CHEIA\",\"empId\":\"E1\",\"empNome\":null,\"fluxo_maquinas\":[],\"maquina_atual_index\":0,\"data_conclusao\":null,\"imagem_url\":null,\"cidade_entrega\":null,\"modo_programacao\":\"manual\",\"dia_programacao\":null,\"",
+    "2026-08-12T13:34:28.020Z POST /api/ofs CLI_ID_VAZIO s=400 ms=314 jerr=Campos obrigatórios: cliente, vendedor",
+    "2026-08-12T13:34:29.256Z POST /api/ofs UUID_INEXISTENTE s=400 ms=1235 jerr=Cliente inválido. Selecione um cliente válido antes de salvar."
+  ]
+}

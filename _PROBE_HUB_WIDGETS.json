@@ -1,0 +1,275 @@
+{
+  "total_ms": 4896,
+  "results": [
+    {
+      "path": "/api/hub/inteligencia",
+      "status": 401,
+      "ms": 596,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/dashboard/total-geral",
+      "status": 401,
+      "ms": 164,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/dashboard/faturamento-mensal",
+      "status": 401,
+      "ms": 163,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/hub/atividades-recentes",
+      "status": 401,
+      "ms": 163,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/atividades/recentes",
+      "status": 401,
+      "ms": 163,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/hub/atividades",
+      "status": 401,
+      "ms": 173,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/atividades",
+      "status": 401,
+      "ms": 166,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/historico_acoes",
+      "status": 401,
+      "ms": 173,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/hub/passagens-hoje",
+      "status": 401,
+      "ms": 164,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/passagens/hoje",
+      "status": 401,
+      "ms": 164,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/passagens/historico?data_inicio=2026-08-13&data_fim=2026-08-13&limit=50",
+      "status": 401,
+      "ms": 163,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/hub/ofs-por-dia",
+      "status": 401,
+      "ms": 167,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/ofs/por-dia",
+      "status": 401,
+      "ms": 165,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/ofs/por-dia/hoje",
+      "status": 401,
+      "ms": 167,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/hub/ofs-hoje",
+      "status": 401,
+      "ms": 163,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/ofs/hoje",
+      "status": 401,
+      "ms": 164,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/hub/avisos-pendencias",
+      "status": 401,
+      "ms": 163,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/hub/pendencias",
+      "status": 401,
+      "ms": 163,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/hub/avisos",
+      "status": 401,
+      "ms": 162,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/pendencias",
+      "status": 401,
+      "ms": 168,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/hub/widgets",
+      "status": 401,
+      "ms": 164,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/widgets/hub",
+      "status": 401,
+      "ms": 166,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/hub/resumo",
+      "status": 401,
+      "ms": 164,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/hub/summary",
+      "status": 401,
+      "ms": 165,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/hub/detalhe",
+      "status": 401,
+      "ms": 163,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/dashboard/hoje",
+      "status": 401,
+      "ms": 165,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    },
+    {
+      "path": "/api/hub/kpis-originais",
+      "status": 401,
+      "ms": 170,
+      "bodySize": 56,
+      "ok": false,
+      "alertas": null,
+      "keys": "ok,error,redirect",
+      "sample": "{\"ok\":false,\"error\":\"token_invalid\",\"redirect\":\"/login\"}"
+    }
+  ]
+}

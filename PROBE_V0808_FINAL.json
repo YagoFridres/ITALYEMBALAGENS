@@ -1,0 +1,251 @@
+{
+  "probe_ms": 3524,
+  "probe_status": 200,
+  "result": {
+    "ok": true,
+    "startedAt": "2026-08-13T12:44:02.887Z",
+    "patch": "20260813080800",
+    "commit": "817b7e036c24859a4bf75d3ceff9386519ce9b57",
+    "probes": {
+      "proximo_numero": {
+        "ok": true,
+        "proximo": "2605",
+        "maior": 2604,
+        "qtd": 80,
+        "qtdNumeros": 80,
+        "numeracaoGlobal": true,
+        "incluiDeletadosNoMaximo": false,
+        "top15": [
+          {
+            "n": 2604,
+            "col": "numero",
+            "val": "2604",
+            "id": "3100fdd2-6",
+            "deletado": false
+          },
+          {
+            "n": 2603,
+            "col": "numero",
+            "val": "2603",
+            "id": "0a49f941-4",
+            "deletado": false
+          },
+          {
+            "n": 2602,
+            "col": "numero",
+            "val": "2602",
+            "id": "c5478e8b-c",
+            "deletado": false
+          },
+          {
+            "n": 2601,
+            "col": "numero",
+            "val": "2601",
+            "id": "afea1a07-a",
+            "deletado": false
+          },
+          {
+            "n": 2600,
+            "col": "numero",
+            "val": "2600",
+            "id": "c4db942d-7",
+            "deletado": false
+          },
+          {
+            "n": 2599,
+            "col": "numero",
+            "val": "2599",
+            "id": "15ce6411-1",
+            "deletado": false
+          },
+          {
+            "n": 2598,
+            "col": "numero",
+            "val": "2598",
+            "id": "c2f83ddc-1",
+            "deletado": false
+          },
+          {
+            "n": 2597,
+            "col": "numero",
+            "val": "2597",
+            "id": "b2886f39-c",
+            "deletado": false
+          },
+          {
+            "n": 2596,
+            "col": "numero",
+            "val": "2596",
+            "id": "60e3031a-e",
+            "deletado": false
+          },
+          {
+            "n": 2595,
+            "col": "numero",
+            "val": "2595",
+            "id": "2cc2fbc2-4",
+            "deletado": false
+          },
+          {
+            "n": 2594,
+            "col": "numero",
+            "val": "2594",
+            "id": "91e19b1b-f",
+            "deletado": false
+          },
+          {
+            "n": 2593,
+            "col": "numero",
+            "val": "2593",
+            "id": "4eca3650-c",
+            "deletado": false
+          },
+          {
+            "n": 2592,
+            "col": "numero",
+            "val": "2592",
+            "id": "1e7ff358-7",
+            "deletado": false
+          },
+          {
+            "n": 2591,
+            "col": "numero",
+            "val": "2591",
+            "id": "ddd9ce76-4",
+            "deletado": false
+          },
+          {
+            "n": 2590,
+            "col": "numero",
+            "val": "2590",
+            "id": "9da15473-8",
+            "deletado": false
+          }
+        ],
+        "maxSql": 2604,
+        "sqlOk": true,
+        "maiorScan": 2604,
+        "ms": 328
+      },
+      "cliente_ripke_busca": {
+        "por_uuid_exact": {
+          "id": "be617df1-441a-4f11-918e-d813a5ac854c",
+          "nome": "MOVEIS RIPKE",
+          "ativo": true,
+          "total_ofs": null
+        },
+        "por_nome_ilike_ripke": [
+          {
+            "id": "be617df1-441a-4f11-918e-d813a5ac854c",
+            "nome": "MOVEIS RIPKE",
+            "ativo": true,
+            "total_ofs": null
+          }
+        ],
+        "por_uuid_lowercase": true,
+        "por_uuid_uppercase": true,
+        "encontrado_final": true,
+        "cliente_final": {
+          "id": "be617df1-441a-4f11-918e-d813a5ac854c",
+          "nome": "MOVEIS RIPKE",
+          "ativo": true
+        },
+        "ms": 165
+      },
+      "contarOfsParaClientesLote": {
+        "mapa_size": 1,
+        "bucket_chave": "be617df1-441a-4f11-918e-d813a5ac854c",
+        "bucket_encontrado": true,
+        "total_ofs_lote": 430,
+        "idsExemplo": [
+          "3100fdd2-6d7",
+          "0a49f941-426",
+          "c5478e8b-c98",
+          "afea1a07-acb",
+          "c4db942d-702"
+        ],
+        "ms": 9
+      },
+      "ripke_count_cli_id_exact": {
+        "count": 422,
+        "ms": 153
+      },
+      "ripke_por_coluna_IDs": {
+        "cli_id": 422,
+        "cliId": 373,
+        "cliid": 88,
+        "cliente_id": 430,
+        "clienteId": "ERR:[object Object]"
+      },
+      "ripke_por_coluna_NOMES": {
+        "cliente": "ERR:[object Object]",
+        "cli_nome": "ERR:[object Object]",
+        "cliente_nome": 422,
+        "cliNome": 422,
+        "clinome": 422
+      },
+      "ripke_por_coluna_ms": 1735,
+      "ofs_limit50_rapido": {
+        "qtd": 50,
+        "ms": 171,
+        "top6": [
+          {
+            "id": "3100fdd2-6",
+            "numero": "2604",
+            "of_num": "2604",
+            "clinome": "MOVEIS RIPKE",
+            "criado": "2026-08-12T11:08"
+          },
+          {
+            "id": "0a49f941-4",
+            "numero": "2603",
+            "of_num": "2603",
+            "clinome": "MOVEIS RIPKE",
+            "criado": "2026-08-12T11:04"
+          },
+          {
+            "id": "c5478e8b-c",
+            "numero": "2602",
+            "of_num": "2602",
+            "clinome": "MOVEIS RIPKE",
+            "criado": "2026-08-12T11:04"
+          },
+          {
+            "id": "afea1a07-a",
+            "numero": "2601",
+            "of_num": "2601",
+            "clinome": "MOVEIS RIPKE",
+            "criado": "2026-08-12T11:00"
+          },
+          {
+            "id": "c4db942d-7",
+            "numero": "2600",
+            "of_num": "2600",
+            "clinome": "MOVEIS RIPKE",
+            "criado": "2026-08-12T10:59"
+          },
+          {
+            "id": "15ce6411-1",
+            "numero": "2599",
+            "of_num": "2599",
+            "clinome": "MOVEIS RIPKE",
+            "criado": "2026-08-11T18:46"
+          }
+        ]
+      },
+      "zzz_teste": {
+        "porDescricao": {
+          "count": 0,
+          "error": null,
+          "rows": []
+        },
+        "porNumero768_771": {
+          "count": 0,
+          "error": null,
+          "rows": []
+        }
+      }
+    },
+    "finishedAt": "2026-08-13T12:44:05.788Z"
+  }
+}

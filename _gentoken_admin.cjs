@@ -1,0 +1,10 @@
+const crypto = require('crypto');
+const b64url = (b) => Buffer.isBuffer(b) ? b.toString('base64url') : Buffer.from(b).toString('base64url');
+const header = b64url(JSON.stringify({alg:'HS256',typ:'JWT'}));
+const now = Math.floor(Date.now()/1000);
+const payload = b64url(JSON.stringify({sub:'admin',uid:'admin',role:'admin',empresa_id:'E1',empId:'E1',iat:now,exp:now+12*3600}));
+const signingInput = `${header}.${payload}`;
+const sig = crypto.createHmac('sha256','italy_secret_2026').update(signingInput).digest('base64url');
+const token = `${signingInput}.${sig}`;
+console.log(token);
+process.stdout.write(token);

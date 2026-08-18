@@ -1,0 +1,9 @@
+{
+  "s": 500,
+  "j": {
+    "ok": false,
+    "error": "Falha ao inserir OF após tentativas",
+    "rid": "99c396f7bda719b0"
+  },
+  "raw0": "{\"ok\":false,\"error\":\"Falha ao inserir OF após tentativas\",\"rid\":\"99c396f7bda719b0\"}"
+}

@@ -1,0 +1,81 @@
+{
+  "raw": {
+    "caso1_payload_vazio": {
+      "status": 400,
+      "body": {
+        "ok": false,
+        "error": "Empresa não identificada"
+      },
+      "raw": "{\"ok\":false,\"error\":\"Empresa não identificada\"}"
+    },
+    "caso2_sem_cliente": {
+      "status": 400,
+      "body": {
+        "ok": false,
+        "error": "Campos obrigatórios: cliente",
+        "missing": [
+          "cliente"
+        ]
+      },
+      "raw": "{\"ok\":false,\"error\":\"Campos obrigatórios: cliente\",\"missing\":[\"cliente\"]}"
+    },
+    "caso3_cliente_invalido": {
+      "status": 400,
+      "body": {
+        "ok": false,
+        "error": "Cliente inválido. Selecione um cliente válido antes de salvar.",
+        "missing": [
+          "cliente"
+        ]
+      },
+      "raw": "{\"ok\":false,\"error\":\"Cliente inválido. Selecione um cliente válido antes de salvar.\",\"missing\":[\"cliente\"]}"
+    },
+    "caso4_cliente_nome_real_aqui": {
+      "status": 500,
+      "body": {
+        "ok": false,
+        "error": "Falha ao inserir OF após tentativas",
+        "rid": "935e18c54ab84bb1"
+      },
+      "raw": "{\"ok\":false,\"error\":\"Falha ao inserir OF após tentativas\",\"rid\":\"935e18c54ab84bb1\"}"
+    }
+  },
+  "resumo": {
+    "caso1_payload_vazio": {
+      "status_http": 400,
+      "netErr": null,
+      "ok": false,
+      "error": "Empresa não identificada",
+      "missing": null,
+      "id_gerado": null
+    },
+    "caso2_sem_cliente": {
+      "status_http": 400,
+      "netErr": null,
+      "ok": false,
+      "error": "Campos obrigatórios: cliente",
+      "missing": [
+        "cliente"
+      ],
+      "id_gerado": null
+    },
+    "caso3_cliente_invalido": {
+      "status_http": 400,
+      "netErr": null,
+      "ok": false,
+      "error": "Cliente inválido. Selecione um cliente válido antes de salvar.",
+      "missing": [
+        "cliente"
+      ],
+      "id_gerado": null
+    },
+    "caso4_cliente_nome_real_aqui": {
+      "status_http": 500,
+      "netErr": null,
+      "ok": false,
+      "error": "Falha ao inserir OF após tentativas",
+      "missing": null,
+      "id_gerado": null
+    }
+  }
+}

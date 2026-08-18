@@ -1,0 +1,44 @@
+{
+  "feito_em": "2026-08-12T13:48:38.616Z",
+  "testes": {
+    "caso_A_moveis_ripke_com_acento": {
+      "status": 400,
+      "ms": 1990,
+      "id": "",
+      "clinome": "",
+      "modo": "",
+      "erro": "Cliente inválido. Selecione um cliente válido antes de salvar.",
+      "qtd_ambiguo": null
+    },
+    "caso_B_moveis_ripke_SEM_acento": {
+      "status": 400,
+      "ms": 1359,
+      "id": "",
+      "clinome": "",
+      "modo": "",
+      "erro": "Cliente inválido. Selecione um cliente válido antes de salvar.",
+      "qtd_ambiguo": null
+    },
+    "caso_C_inexistente_msg_detalhada": {
+      "status": 400,
+      "ms": 1302,
+      "id": "",
+      "erro": "Cliente inválido. Selecione um cliente válido antes de salvar.",
+      "missing": [
+        "cliente"
+      ],
+      "ref": null
+    },
+    "caso_D_ripke_parcial_ambiguidade": {
+      "status": 400,
+      "ms": 1332,
+      "id": "",
+      "clinome": "",
+      "modo": "",
+      "erro": "Cliente inválido. Selecione um cliente válido antes de salvar.",
+      "qtd_ambiguo": null,
+      "opcoes": []
+    }
+  },
+  "soft_deletes": {}
+}

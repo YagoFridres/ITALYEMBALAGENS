@@ -1,0 +1,66 @@
+{
+  "feito_em": "2026-08-12T13:52:44.871Z",
+  "mock_qtd": 6,
+  "casos": {
+    "CASO_A": {
+      "backend": {
+        "id": "be617df1-1111-1111-1111-111111111111",
+        "nome": "MÓVEIS RIPKE",
+        "modo": "nome_exato"
+      },
+      "frontend": {
+        "ok": true,
+        "id": "be617df1-1111-1111-1111-111111111111",
+        "nome": "MÓVEIS RIPKE",
+        "prioridade": "exato",
+        "ambiguidade": 0,
+        "mensagem": ""
+      }
+    },
+    "CASO_B": {
+      "backend": {
+        "id": "be617df1-1111-1111-1111-111111111111",
+        "nome": "MÓVEIS RIPKE",
+        "modo": "nome_exato"
+      },
+      "frontend": {
+        "ok": true,
+        "id": "be617df1-1111-1111-1111-111111111111",
+        "nome": "MÓVEIS RIPKE",
+        "prioridade": "exato",
+        "ambiguidade": 0,
+        "mensagem": ""
+      }
+    },
+    "CASO_C": {
+      "backend": {
+        "ambiguo": true,
+        "qtd": 5,
+        "nomes": "MÓVEIS RIPKE | RIPKE DISTRIBUIDORA | RIPKE SERVIÇOS | ROTOPLAST | RUIZ"
+      },
+      "frontend": {
+        "ok": false,
+        "id": "",
+        "nome": "",
+        "prioridade": null,
+        "ambiguidade": 0,
+        "mensagem": "Nenhum cliente para \"moveis ripke xablau\""
+      }
+    },
+    "CASO_D": {
+      "backend": {
+        "id": "00000000-2222-2222-2222-222222222222",
+        "nome": "RIPKE DISTRIBUIDORA",
+        "modo": "nome_start"
+      },
+      "frontend": {
+        "ok": false,
+        "id": "",
+        "nome": "",
+        "prioridade": null,
+        "ambiguidade": 2,
+        "mensagem": "Ambiguidade 2"
+      }
+    }
+  }
+}

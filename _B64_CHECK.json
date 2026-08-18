@@ -1,0 +1,10 @@
+{
+  "casoA": "MÓVEIS RIPKE",
+  "norm_a": "moveis ripke",
+  "bytes_a": "4d c3 93 56 45 49 53 20 52 49 50 4b 45",
+  "casoB": "moveis ripke",
+  "norm_b": "moveis ripke",
+  "exato": "MOVEIS RIPKE",
+  "norm_e": "moveis ripke",
+  "OK": true
+}

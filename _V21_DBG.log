@@ -1,0 +1,17 @@
+DEP i=1 ok=false sw=false ix=false pt=false
+DEP i=2 ok=true sw=true ix=true pt=true
+LIMPEZA round=0 italy={"ok":true,"italy_emp_ids":["df5f7672-0a6b-402d-ae65-296554236c31"],"total_analisado":1000,"total_alvos":0,"atualizados" orfas={"ok":true,"total_analisado":1000,"total_alvos":0,"atualizados":0,"falhas":0,"ids_marcados":[],"detalhes":[]}
+LIMPEZA round=1 italy={"ok":true,"italy_emp_ids":["df5f7672-0a6b-402d-ae65-296554236c31"],"total_analisado":1000,"total_alvos":0,"atualizados" orfas={"ok":true,"total_analisado":1000,"total_alvos":0,"atualizados":0,"falhas":0,"ids_marcados":[],"detalhes":[]}
+LIMPEZA round=2 italy={"ok":true,"italy_emp_ids":["df5f7672-0a6b-402d-ae65-296554236c31"],"total_analisado":1000,"total_alvos":0,"atualizados" orfas={"ok":true,"total_analisado":1000,"total_alvos":0,"atualizados":0,"falhas":0,"ids_marcados":[],"detalhes":[]}
+DBG_FULL: blocoEntrou=true nextSeq=767 numeroEmpresa=2590 sigla=E1 escolhido=2590 idx=0 calc_ok=true calc_prox=2590 calc_maior=2589 calc_err= calcRErr= blocoErro=
+DBG_FULL filteredBeforeOf: {}
+  tent i=0 cand=2590 ms=200 qErr= err= conflita=false qRows=0
+DBG_FULL filteredFinal: {"of":"2590","numero":"2590","seq":767,"empresa_id":"df5f7672-0a6b-402d-ae65-296554236c31","emp_id":"E1","clinome":"MOVEIS RIPKE","cli_id":"be617df1-441a-4f11-918e-d813a5ac854c"}
+POST_C1: s=200 numero=100078 of=100078 of_num=null seq=767 id=14be4c36-9632-4a err=
+POST_C2: s=400 numero=undefined of=undefined err=Campos obrigatórios: cliente
+POST_C3: s=400 numero=undefined of=undefined err=Campos obrigatórios: cliente
+POST_C4: s=400 numero=undefined of=undefined err=Campos obrigatórios: cliente
+POST_C5: s=400 esperava=400 msg=Campos obrigatórios: cliente
+POST_C6: s=400 esperava=400 msg=Campos obrigatórios: cliente
+PROXN_FINAL MAIOR=2589 PROXN=2590
+--- V21 OK ---

@@ -1,0 +1,90 @@
+﻿{
+    "casos":  [
+                  {
+                      "CASO":  "A_EXATO_BANCO",
+                      "CLI_ENTRADA":  "MOVEIS RIPKE",
+                      "ok":  false,
+                      "status":  400,
+                      "error":  null,
+                      "ref":  null,
+                      "missing":  [
+                                      null
+                                  ],
+                      "qtd":  null,
+                      "candidatos":  [
+
+                                     ],
+                      "DEL":  "N/A (nÃ£o criou)"
+                  },
+                  {
+                      "CASO":  "A_ACENTO",
+                      "CLI_ENTRADA":  "MÃ“VEIS RIPKE",
+                      "ok":  false,
+                      "status":  400,
+                      "error":  null,
+                      "ref":  null,
+                      "missing":  [
+                                      null
+                                  ],
+                      "qtd":  null,
+                      "candidatos":  [
+
+                                     ],
+                      "DEL":  "N/A (nÃ£o criou)"
+                  },
+                  {
+                      "CASO":  "B_SEMACENTO_MINUSC",
+                      "CLI_ENTRADA":  "moveis ripke",
+                      "ok":  false,
+                      "status":  400,
+                      "error":  null,
+                      "ref":  null,
+                      "missing":  [
+                                      null
+                                  ],
+                      "qtd":  null,
+                      "candidatos":  [
+
+                                     ],
+                      "DEL":  "N/A (nÃ£o criou)"
+                  },
+                  {
+                      "CASO":  "C_INEXISTENTE",
+                      "CLI_ENTRADA":  "cliente xablau 8888 inexistente",
+                      "ok":  false,
+                      "status":  400,
+                      "error":  null,
+                      "ref":  null,
+                      "missing":  [
+                                      null
+                                  ],
+                      "qtd":  null,
+                      "candidatos":  [
+
+                                     ],
+                      "DEL":  "N/A (nÃ£o criou)"
+                  },
+                  {
+                      "CASO":  "D_AMBIGUO",
+                      "CLI_ENTRADA":  "moveis",
+                      "ok":  false,
+                      "status":  400,
+                      "error":  null,
+                      "ref":  null,
+                      "missing":  [
+                                      null
+                                  ],
+                      "qtd":  null,
+                      "candidatos":  [
+
+                                     ],
+                      "DEL":  "N/A (nÃ£o criou)"
+                  }
+              ],
+    "prox_num_final":  {
+                           "ok":  true,
+                           "proximo":  "2605",
+                           "maior":  2604
+                       },
+    "timestamp":  "2026-08-12 11:31:51"
+}

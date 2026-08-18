@@ -1,0 +1,64 @@
+{
+  "feito_em": "2026-08-12T13:27:50.477Z",
+  "deploy_patch": "20260812103000",
+  "deploy_commit": "185299a2c9fd6b727e047a90411009e1483becc8",
+  "deploy_id": "f7a0f547-a8f5-4f4d-a720-1c19d45459e7",
+  "bateria": {
+    "total": 5,
+    "qtd_tem_ofs": 5,
+    "qtd_zero_ofs": 0,
+    "qtd_erro": 0,
+    "detalhe": [
+      {
+        "tag": "RIPKE",
+        "id": "be617df1-441a-4f11-918e-d813a5ac854c",
+        "nome": "MOVEIS RIPKE",
+        "total_ofs": 430,
+        "uf": null,
+        "cidade": "Pinhalzinho",
+        "emp_id": "E1",
+        "status": "TEM_OFS"
+      },
+      {
+        "tag": "RUIZ",
+        "id": "da2798c7-bf61-434f-bf3f-fbfd0877599d",
+        "nome": "MOVEIS RUIZ",
+        "total_ofs": 275,
+        "uf": null,
+        "cidade": null,
+        "emp_id": "E1",
+        "status": "TEM_OFS"
+      },
+      {
+        "tag": "ROTOPLAST",
+        "id": "1969f4f4-7095-44c8-9de3-7d28b2243687",
+        "nome": "ROTOPLAST CLIMATIZADORES",
+        "total_ofs": 29,
+        "uf": null,
+        "cidade": null,
+        "emp_id": "E1",
+        "status": "TEM_OFS"
+      },
+      {
+        "tag": "DKADI",
+        "id": "99c17e9d-336d-4e93-9b74-102433c95a17",
+        "nome": "DKADI DECOR",
+        "total_ofs": 23,
+        "uf": null,
+        "cidade": "São Miguel Do Oeste",
+        "emp_id": "E1",
+        "status": "TEM_OFS"
+      },
+      {
+        "tag": "ITACIR",
+        "id": "0bc5da45-16d1-4b18-aa79-14a0c2364f5d",
+        "nome": "ITACIR PEROSA",
+        "total_ofs": 14,
+        "uf": null,
+        "cidade": "SÃO MIGUEL DO OESTE",
+        "emp_id": "E1",
+        "status": "TEM_OFS"
+      }
+    ]
+  }
+}

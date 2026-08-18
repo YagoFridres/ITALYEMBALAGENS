@@ -1,0 +1,76 @@
+{
+  "status": 200,
+  "body_len": 5747,
+  "body_preview": "{\"ok\":true,\"emp_por_resolver\":\"df5f7672-0a6b-402d-ae65-296554236c31\",\"emp_por_ctx\":\"df5f7672-0a6b-402d-ae65-296554236c31\",\"iguais\":true,\"res_por_resolver\":{\"ok\":true,\"proximo\":\"2603\",\"maior\":2602,\"qtd\":1000,\"qtdNumeros\":1000,\"numeracaoGlobal\":true,\"incluiDeletadosNoMaximo\":false,\"top15\":[{\"n\":2602,\"id\":\"c5478e8b-c98c-40de-98de-65477363bc26\",\"numero\":\"2602\",\"of_num\":\"2602\",\"of\":\"2602\",\"criado\":\"202",
+  "summary": {
+    "ok": true,
+    "proximo": "2603",
+    "maior": 2602,
+    "maiorScan": 2602,
+    "maxSql": 981,
+    "sqlOk": true,
+    "qtd": 1000,
+    "qtdNumeros": 1000,
+    "incluiDeletados": false,
+    "top5": [
+      {
+        "n": 2602,
+        "id": "c5478e8b-c98c-40de-98de-65477363bc26",
+        "numero": "2602",
+        "of_num": "2602",
+        "of": "2602",
+        "criado": "2026-08-12T11:04",
+        "emp_id": "E2",
+        "empresa_id": "",
+        "deletado": false
+      },
+      {
+        "n": 2601,
+        "id": "afea1a07-acb8-4967-8a1e-fa16ecc8da1b",
+        "numero": "2601",
+        "of_num": "2601",
+        "of": "2601",
+        "criado": "2026-08-12T11:00",
+        "emp_id": "E2",
+        "empresa_id": "",
+        "deletado": false
+      },
+      {
+        "n": 2600,
+        "id": "c4db942d-7024-401a-a330-56a7faed344a",
+        "numero": "2600",
+        "of_num": "2600",
+        "of": "2600",
+        "criado": "2026-08-12T10:59",
+        "emp_id": "E2",
+        "empresa_id": "",
+        "deletado": false
+      },
+      {
+        "n": 2598,
+        "id": "c2f83ddc-1b71-45c3-86f5-163638bde440",
+        "numero": "2598",
+        "of_num": "2598",
+        "of": "2598",
+        "criado": "2026-08-11T18:45",
+        "emp_id": "E2",
+        "empresa_id": "",
+        "deletado": false
+      },
+      {
+        "n": 2597,
+        "id": "b2886f39-c729-4592-ba55-3a7cc37713c3",
+        "numero": "2597",
+        "of_num": "2597",
+        "of": "2597",
+        "criado": "2026-08-11T18:44",
+        "emp_id": "E2",
+        "empresa_id": "",
+        "deletado": false
+      }
+    ]
+  },
+  "emp_iguais": true,
+  "emp_resolver": "df5f7672-0a6b-402d-ae65-296554236c31",
+  "emp_ctx": "df5f7672-0a6b-402d-ae65-296554236c31"
+}

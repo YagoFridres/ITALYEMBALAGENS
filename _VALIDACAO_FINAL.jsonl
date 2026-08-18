@@ -1,0 +1,21 @@
+{"t":"START","target":"20260812143955"}
+{"t":"POLL_DEPLOY","i":1,"patch":"20260812143620","ok":false}
+{"t":"POLL_DEPLOY","i":2,"patch":"20260812143620","ok":false}
+{"t":"POLL_DEPLOY","i":3,"patch":"20260812143620","ok":false}
+{"t":"POLL_DEPLOY","i":4,"patch":"20260812143620","ok":false}
+{"t":"POLL_DEPLOY","i":5,"patch":"20260812143620","ok":false}
+{"t":"POLL_DEPLOY","i":6,"patch":"20260812143955","ok":true}
+{"t":"ONESHOT_LIMPEZA","s":200,"ok":true,"resumido":{"total_analisado":1000,"total_alvos":1,"atualizados":1,"falhas":0},"detalhe":[{"id":"b939d1cb-3202-43fc-9ca3-f81a710f2f26","numero":"100004","clinome":"MOVEIS RIPKE","desc":"ZZZ_TESTE_APAGAR_PS_BASELINE2","empresa_id":"df5f7672-0a6b-402d-ae65-296554236c31","criado":"2026-08-12T14:43"}]}
+{"t":"PROXN_EMP","sigla":"CARTO","cod":"E2","resp":{"ok":true,"proximo":"2605","maior":2604},"s":200}
+{"t":"PROXN_EMP","sigla":"ITALY","cod":"E1","resp":{"ok":true,"proximo":"2605","maior":2604},"s":200}
+{"t":"PROXN_EMP","sigla":"OESTE","cod":"E3","resp":{"ok":true,"proximo":"2605","maior":2604},"s":200}
+{"t":"PROXN_ITALY_2605","esperado":2605,"resposta":{"ok":true,"proximo":"2605","maior":2604},"ok":true}
+{"t":"C1_BASELINE_UUID","s":400,"ok":false,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"be617df1-441a-470b-b9f3-f681b8d0a9e6\". Digite e selecione um cliente válido da lista de sugestões.","modo":null,"ref":"be617df1-441a-470b-b9f3-f681b8d0a9e6"}
+{"t":"C2_EXATO_NOME","s":400,"ok":false,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"MOVEIS RIPKE\". Digite e selecione um cliente válido da lista de sugestões.","modo":null,"ref":"MOVEIS RIPKE"}
+{"t":"C3_COM_ACENTO","s":400,"ok":false,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"MÓVEIS RIPKE\". Digite e selecione um cliente válido da lista de sugestões.","modo":null,"ref":"MÓVEIS RIPKE"}
+{"t":"C4_MIN_SEM_ACENTO","s":400,"ok":false,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"moveis ripke\". Digite e selecione um cliente válido da lista de sugestões.","modo":null,"ref":"moveis ripke"}
+{"t":"C5_PARCIAL_AMBIGUO","s":400,"ok":false,"salvou":false,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"moveis\". Digite e selecione um cliente válido da lista de sugestões.","ref":"moveis","qtd":0,"cand":[]}
+{"t":"C6_INEXISTENTE","s":400,"ok":true,"salvou":false,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"xablau cliente inexistente 9999\". Digite e selecione um cliente válido da lista de sugestões.","ref":"xablau cliente inexistente 9999","contem_ref_no_erro":true}
+{"t":"LIMPEZA_SOFT_DEL","total":0,"dels":[]}
+{"t":"PROXN_FINAL_DEPOIS_TESTES","resp":{"ok":true,"proximo":"2605","maior":2604},"ok":true}
+{"t":"FINAL","total":6,"passaram":1,"porcentagem":"17%"}

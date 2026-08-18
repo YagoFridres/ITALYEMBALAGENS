@@ -1,0 +1,50 @@
+{"t":"POLL_SKIP","ok":true,"razao":"deploy confirmado acima"}
+{"t":"EMPRESAS","qtd":3,"ITALY_UUID_REAL":"df5f7672-0a6b-402d-ae65-296554236c31"}
+{"t":"POLL","i":5,"ok":false}
+{"t":"LIMPEZA_ROUND_0","ITALY_atualizados":0,"ORFAS_atualizados":0}
+{"t":"POLL","i":13,"ok":false}
+{"t":"LIMPEZA_ROUND_1","ITALY_atualizados":0,"ORFAS_atualizados":0}
+{"t":"POLL","i":6,"ok":false}
+{"t":"LIMPEZA_ROUND_2","ITALY_atualizados":0,"ORFAS_atualizados":0}
+{"t":"POLL","i":14,"ok":false}
+{"t":"POLL","i":7,"ok":false}
+{"t":"PROXN_DEFS","MAIOR":2527,"PROXN":"2528","diag_maior_ctx":2527,"diag_maior_resolver":2527,"iguais":true,"top5":[{"n":2527,"id":"db348ab1-b023-4bda-8da6-86972350516a","numero":"2527","of_num":"2527","of":"2527","criado":"2026-08-10T12:11","emp_id":"E1"}]}
+{"t":"PROXN_ROTA_GET","recebido":{"ok":true,"proximo":"2528","maior":2527},"esperado":"2528","ok":true}
+{"t":"POLL","i":15,"ok":false}
+{"t":"C1_BASELINE_UUID","esperava_200":true,"salvou":true,"passou":false,"numOk":false,"s":200,"numero":"100045","esperava":2528,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"POLL","i":8,"ok":false}
+{"t":"C2_EXATO_NOME","esperava_200":true,"salvou":true,"passou":false,"numOk":false,"s":200,"numero":"100046","esperava":2529,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"C3_COM_ACENTO","esperava_200":true,"salvou":true,"passou":false,"numOk":false,"s":200,"numero":"100047","esperava":2530,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"POLL","i":16,"ok":false}
+{"t":"C4_MIN_SEMACENTO","esperava_200":true,"salvou":true,"passou":false,"numOk":false,"s":200,"numero":"100048","esperava":2531,"clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"POLL","i":9,"ok":false}
+{"t":"POLL","i":17,"ok":false}
+{"t":"C5_PARCIAL_AMBIGUO","esperava_200":false,"salvou":false,"passou":true,"numOk":true,"s":400,"err":"Cliente ambíguo: 12 clientes corresponderam a \"moveis\". Selecione exatamente um cliente da lista de sugestões. Opções: MOVEIS ADENAU | MOVEIS ADENAU (MRA) | MOVEIS ARTESANAIS TAMBO EIRELI EPP | MOVEIS E DECORAÇÃO AJS LTDA | MOVEIS FLAMINGO | MOVEIS M","ref":"moveis","qtd":12}
+{"t":"POLL","i":10,"ok":false}
+{"t":"C6_INEXISTENTE","esperava_200":false,"salvou":false,"passou":true,"numOk":true,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"xablau cliente 9999 nao existe zzz\". Digite e selecione um cliente válido da lista de sugestões.","ref":"xablau cliente 9999 nao existe zzz","qtd":null}
+{"t":"POLL","i":18,"ok":false}
+{"t":"POLL","i":11,"ok":false}
+{"t":"LIMPEZA_TESTES","qtd":4,"dels":[{"id":"72ca9e09-e303-4632-a","s":200,"ok":true},{"id":"eb4a3ebf-03fc-49d3-8","s":200,"ok":true},{"id":"07e7c6ae-0899-4b66-9","s":200,"ok":true},{"id":"41933f60-e837-46a0-8","s":200,"ok":true}]}
+{"t":"POLL","i":19,"ok":false}
+{"t":"POLL","i":12,"ok":false}
+{"t":"LIMPEZA_FINAL_0","ITALY_atualizados":0,"ORFAS_atualizados":0}
+{"t":"POLL","i":20,"ok":false}
+{"t":"LIMPEZA_FINAL_1","ITALY_atualizados":0,"ORFAS_atualizados":0}
+{"t":"POLL","i":13,"ok":false}
+{"t":"POLL","i":21,"ok":false}
+{"t":"PROXN_FINAL","esperado":"2528","recebido":{"ok":true,"proximo":"2528","maior":2527},"ok":true}
+{"t":"RESUMO","total":6,"passaram":2,"pct":"33%","lista":[{"nome":"C1_BASELINE_UUID","passou":false},{"nome":"C2_EXATO_NOME","passou":false},{"nome":"C3_COM_ACENTO","passou":false},{"nome":"C4_MIN_SEMACENTO","passou":false},{"nome":"C5_PARCIAL_AMBIGUO","passou":true},{"nome":"C6_INEXISTENTE","passou":true}]}
+{"t":"POLL","i":14,"ok":false}
+{"t":"POLL","i":22,"ok":false}
+{"t":"POLL","i":15,"ok":false}
+{"t":"POLL","i":23,"ok":false}
+{"t":"POLL","i":16,"ok":false}
+{"t":"DEPLOY_FALHOU"}
+{"t":"POLL","i":17,"ok":false}
+{"t":"POLL","i":18,"ok":false}
+{"t":"POLL","i":19,"ok":false}
+{"t":"POLL","i":20,"ok":false}
+{"t":"POLL","i":21,"ok":false}
+{"t":"POLL","i":22,"ok":false}
+{"t":"POLL","i":23,"ok":false}
+{"t":"DEPLOY_FALHOU"}

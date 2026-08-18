@@ -1,0 +1,24 @@
+{
+  "deploy": {
+    "tentativas": [
+      {
+        "i": 1,
+        "s": 200,
+        "pv": "20260812110000",
+        "cm": "ca7a301"
+      }
+    ],
+    "encontrado": true,
+    "ultimo": {
+      "i": 1,
+      "s": 200,
+      "pv": "20260812110000",
+      "cm": "ca7a301"
+    }
+  },
+  "prox_num": {
+    "ok": true,
+    "proximo": "2605",
+    "maior": 2604
+  }
+}

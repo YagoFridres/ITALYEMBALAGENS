@@ -1,0 +1,11 @@
+{"t":"EMPRESAS","qtd":3,"ITALY_UUID_REAL":"df5f7672-0a6b-402d-ae65-296554236c31"}
+{"t":"PROXN_2605_ANTES","ok":true,"resp":{"ok":true,"proximo":"2605","maior":2604}}
+{"t":"C1_BASELINE_UUID","esperava_200":true,"salvou":true,"passou":true,"s":200,"numero":"100029","clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"C2_EXATO_NOME","esperava_200":true,"salvou":true,"passou":true,"s":200,"numero":"100030","clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"C3_COM_ACENTO","esperava_200":true,"salvou":true,"passou":true,"s":200,"numero":"100031","clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"C4_MIN_SEMACENTO","esperava_200":true,"salvou":true,"passou":true,"s":200,"numero":"100032","clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"C5_PARCIAL_AMBIGUO","esperava_200":false,"salvou":false,"passou":true,"s":400,"err":"Cliente ambíguo: 12 clientes corresponderam a \"moveis\". Selecione exatamente um cliente da lista de sugestões. Opções: MOVEIS ADENAU | MOVEIS ADENAU (MRA) | MOVEIS ARTESANAIS TAMBO EIRELI EPP | MOVEIS E DECORAÇÃO AJS LTD","ref":"moveis","qtd":12}
+{"t":"C6_INEXISTENTE","esperava_200":false,"salvou":false,"passou":true,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"xablau cliente 9999 nao existe zzz\". Digite e selecione um cliente válido da lista de sugestões.","ref":"xablau cliente 9999 nao existe zzz","qtd":null}
+{"t":"LIMPEZA_FINAL_TESTES","qtd":4,"dels":[{"id":"5eb76a48-da92-4549-a","s":200,"ok":true},{"id":"28f6183a-c663-4895-9","s":200,"ok":true},{"id":"d1250689-90b1-4963-b","s":200,"ok":true},{"id":"a2a1af40-8672-4752-a","s":200,"ok":true}]}
+{"t":"PROXN_FINAL_2605","ok":true,"resp":{"ok":true,"proximo":"2605","maior":2604}}
+{"t":"RESUMO","total":6,"passaram":6,"pct":"100%","lista":[{"nome":"C1_BASELINE_UUID","passou":true},{"nome":"C2_EXATO_NOME","passou":true},{"nome":"C3_COM_ACENTO","passou":true},{"nome":"C4_MIN_SEMACENTO","passou":true},{"nome":"C5_PARCIAL_AMBIGUO","passou":true},{"nome":"C6_INEXISTENTE","passou":true}]}

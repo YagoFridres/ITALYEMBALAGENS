@@ -1,0 +1,53 @@
+{
+  "feito_em": "2026-08-12T13:51:39.996Z",
+  "fetch_clientes": {
+    "erro": null
+  },
+  "qtd_clientes": 0,
+  "casos": {
+    "CASO_A_M_VEIS_RIPKE": {
+      "backend": "NULL_INEXISTENTE",
+      "frontend": {
+        "ok": false,
+        "id": null,
+        "nome": null,
+        "prioridade": null,
+        "ambiguidade": 0,
+        "mensagem": "Lista de clientes ainda carregando..."
+      }
+    },
+    "CASO_B_moveis_ripke": {
+      "backend": "NULL_INEXISTENTE",
+      "frontend": {
+        "ok": false,
+        "id": null,
+        "nome": null,
+        "prioridade": null,
+        "ambiguidade": 0,
+        "mensagem": "Lista de clientes ainda carregando..."
+      }
+    },
+    "CASO_C_moveis_ripke_xablau_inexistente_123987": {
+      "backend": "NULL_INEXISTENTE",
+      "frontend": {
+        "ok": false,
+        "id": null,
+        "nome": null,
+        "prioridade": null,
+        "ambiguidade": 0,
+        "mensagem": "Lista de clientes ainda carregando..."
+      }
+    },
+    "CASO_D_RIPKE": {
+      "backend": "NULL_INEXISTENTE",
+      "frontend": {
+        "ok": false,
+        "id": null,
+        "nome": null,
+        "prioridade": null,
+        "ambiguidade": 0,
+        "mensagem": "Lista de clientes ainda carregando..."
+      }
+    }
+  }
+}

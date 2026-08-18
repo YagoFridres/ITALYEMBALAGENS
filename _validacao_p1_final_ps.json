@@ -1,0 +1,27 @@
+﻿[
+    {
+        "match":  false,
+        "key":  "RIPKE",
+        "erro":  "O servidor remoto retornou um erro: (401) Não Autorizado."
+    },
+    {
+        "match":  false,
+        "key":  "RUIZ",
+        "erro":  "O servidor remoto retornou um erro: (401) Não Autorizado."
+    },
+    {
+        "match":  false,
+        "key":  "ROTOPLAST",
+        "erro":  "O servidor remoto retornou um erro: (401) Não Autorizado."
+    },
+    {
+        "match":  false,
+        "key":  "DKADI",
+        "erro":  "O servidor remoto retornou um erro: (401) Não Autorizado."
+    },
+    {
+        "match":  false,
+        "key":  "ITACIR",
+        "erro":  "O servidor remoto retornou um erro: (401) Não Autorizado."
+    }
+]

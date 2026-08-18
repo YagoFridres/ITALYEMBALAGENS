@@ -1,0 +1,1 @@
+cores_s=200 total=42 qtd_sem_impress=3

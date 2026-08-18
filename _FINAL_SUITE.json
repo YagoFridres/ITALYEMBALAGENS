@@ -1,0 +1,258 @@
+[
+  {
+    "t": "POLL_DEPLOY",
+    "i": 1,
+    "s": 200,
+    "pv": "20260812110000",
+    "cm": "ca7a301",
+    "deploy": false
+  },
+  {
+    "t": "POLL_DEPLOY",
+    "i": 2,
+    "s": 200,
+    "pv": "20260812110000",
+    "cm": "ca7a301",
+    "deploy": false
+  },
+  {
+    "t": "POLL_DEPLOY",
+    "i": 3,
+    "s": 200,
+    "pv": "20260812110000",
+    "cm": "ca7a301",
+    "deploy": false
+  },
+  {
+    "t": "POLL_DEPLOY",
+    "i": 4,
+    "s": 200,
+    "pv": "20260812110000",
+    "cm": "ca7a301",
+    "deploy": false
+  },
+  {
+    "t": "POLL_DEPLOY",
+    "i": 5,
+    "s": 200,
+    "pv": "20260812110000",
+    "cm": "ca7a301",
+    "deploy": false
+  },
+  {
+    "t": "POLL_DEPLOY",
+    "i": 6,
+    "s": 200,
+    "pv": "20260812110000",
+    "cm": "ca7a301",
+    "deploy": false
+  },
+  {
+    "t": "POLL_DEPLOY",
+    "i": 7,
+    "s": 200,
+    "pv": "20260812110000",
+    "cm": "ca7a301",
+    "deploy": false
+  },
+  {
+    "t": "POLL_DEPLOY",
+    "i": 8,
+    "s": 200,
+    "pv": "20260812110000",
+    "cm": "ca7a301",
+    "deploy": false
+  },
+  {
+    "t": "POLL_DEPLOY",
+    "i": 9,
+    "s": 200,
+    "pv": "20260812110000",
+    "cm": "ca7a301",
+    "deploy": false
+  },
+  {
+    "t": "POLL_DEPLOY",
+    "i": 10,
+    "s": 200,
+    "pv": "20260812110000",
+    "cm": "ca7a301",
+    "deploy": false
+  },
+  {
+    "t": "POLL_DEPLOY",
+    "i": 11,
+    "s": 200,
+    "pv": "20260812110000",
+    "cm": "ca7a301",
+    "deploy": false
+  },
+  {
+    "t": "POLL_DEPLOY",
+    "i": 12,
+    "s": 200,
+    "pv": "20260812110000",
+    "cm": "ca7a301",
+    "deploy": false
+  },
+  {
+    "t": "POLL_DEPLOY",
+    "i": 13,
+    "s": 200,
+    "pv": "20260812110000",
+    "cm": "ca7a301",
+    "deploy": false
+  },
+  {
+    "t": "POLL_DEPLOY",
+    "i": 14,
+    "s": 200,
+    "pv": "20260812110000",
+    "cm": "ca7a301",
+    "deploy": false
+  },
+  {
+    "t": "POLL_DEPLOY",
+    "i": 15,
+    "s": 200,
+    "pv": "20260812110000",
+    "cm": "ca7a301",
+    "deploy": false
+  },
+  {
+    "t": "POLL_DEPLOY",
+    "i": 16,
+    "s": 200,
+    "pv": "20260812120000",
+    "cm": "3049359",
+    "deploy": true
+  },
+  {
+    "t": "PROX_ANTES",
+    "s": 200,
+    "proximo": "100005",
+    "maior": 100004,
+    "ok": false
+  },
+  {
+    "t": "BASELINE_UUID",
+    "s": 200,
+    "cli_in": "be617df1-441a-4f11-918e-d813a5ac854c",
+    "id": "b748f86a-d20b-",
+    "cid": "be617df1-441a-",
+    "clinome": "MOVEIS RIPKE",
+    "modo": "",
+    "err": null,
+    "ref": null,
+    "qtd": null,
+    "ops": [],
+    "del": {
+      "s": 200,
+      "ok": true
+    },
+    "ok": true
+  },
+  {
+    "t": "EXATO_BANCO_SEMACENTO",
+    "s": 400,
+    "cli_in": "MOVEIS RIPKE",
+    "id": "",
+    "cid": "",
+    "clinome": "",
+    "modo": "",
+    "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"MOVEIS RIPKE\". Digite e selecione um cliente válido da lista de sugestões.",
+    "ref": "MOVEIS RIPKE",
+    "qtd": null,
+    "ops": [],
+    "del": {
+      "s": null,
+      "ok": true
+    },
+    "ok": false
+  },
+  {
+    "t": "CASOA_COM_ACENTO_MAIUSC",
+    "s": 400,
+    "cli_in": "MÓVEIS RIPKE",
+    "id": "",
+    "cid": "",
+    "clinome": "",
+    "modo": "",
+    "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"MÓVEIS RIPKE\". Digite e selecione um cliente válido da lista de sugestões.",
+    "ref": "MÓVEIS RIPKE",
+    "qtd": null,
+    "ops": [],
+    "del": {
+      "s": null,
+      "ok": true
+    },
+    "ok": false
+  },
+  {
+    "t": "CASOB_SEMACENTO_MINUSC",
+    "s": 400,
+    "cli_in": "moveis ripke",
+    "id": "",
+    "cid": "",
+    "clinome": "",
+    "modo": "",
+    "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"moveis ripke\". Digite e selecione um cliente válido da lista de sugestões.",
+    "ref": "moveis ripke",
+    "qtd": null,
+    "ops": [],
+    "del": {
+      "s": null,
+      "ok": true
+    },
+    "ok": false
+  },
+  {
+    "t": "CASOC_INEXISTENTE",
+    "s": 400,
+    "cli_in": "cliente xablau 9999",
+    "id": "",
+    "cid": "",
+    "clinome": "",
+    "modo": "",
+    "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"cliente xablau 9999\". Digite e selecione um cliente válido da lista de sugestões.",
+    "ref": "cliente xablau 9999",
+    "qtd": null,
+    "ops": [],
+    "del": {
+      "s": null,
+      "ok": true
+    },
+    "ok": true
+  },
+  {
+    "t": "CASOD_AMBIGUO",
+    "s": 200,
+    "cli_in": "moveis",
+    "id": "ab366a57-f4cd-",
+    "cid": "2bb1f8c9-a41f-",
+    "clinome": "MOVEIS PERASSOLI",
+    "modo": "",
+    "err": null,
+    "ref": null,
+    "qtd": null,
+    "ops": [],
+    "del": {
+      "s": 200,
+      "ok": true
+    },
+    "ok": true
+  },
+  {
+    "t": "PROX_DEPOIS",
+    "s": 200,
+    "proximo": "100005",
+    "maior": 100004,
+    "ok": false
+  },
+  {
+    "t": "RESUMO_FINAL",
+    "passou": 3,
+    "total": 8,
+    "tudo": false
+  }
+]

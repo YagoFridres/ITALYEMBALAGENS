@@ -1,0 +1,6 @@
+{"tentativa":"/api/ofs?limit=1000&empId=df5f7672-0a6b-402d-ae65-296554236c","qtd_total":0,"qtd_100k_ativas":0,"qtd_ZZZ":0,"exemplos":[]}
+{"tentativa":"/api/ofs?limit=1000&emp_id=E1","qtd_total":0,"qtd_100k_ativas":0,"qtd_ZZZ":0,"exemplos":[]}
+{"tentativa":"/api/ofs?limit=1000&empresa_id=df5f7672-0a6b-402d-ae65-29655","qtd_total":0,"qtd_100k_ativas":0,"qtd_ZZZ":0,"exemplos":[]}
+{"tentativa":"/api/ofs?limit=1000","qtd_total":0,"qtd_100k_ativas":0,"qtd_ZZZ":0,"exemplos":[]}
+{"apagou_manual":{"qtdOk":0,"qtdFail":0,"delOk":[],"delFail":[]}}
+{"proxnum":{"ok":true,"proximo":"2605","maior":2604}}

@@ -1,0 +1,60 @@
+{
+  "todos_passaram": false,
+  "resultados": [
+    {
+      "key": "RIPKE",
+      "q": "RIPKE",
+      "nome": "MOVEIS RIPKE",
+      "id": "be617df1-441a-4f11-918e-d813a5ac854c",
+      "total_ofs": 0,
+      "esperado": 422,
+      "match": false,
+      "total_clientes_filtrados": 1,
+      "tempo_ms": 596
+    },
+    {
+      "key": "RUIZ",
+      "q": "RUIZ",
+      "nome": "MOVEIS RUIZ",
+      "id": "da2798c7-bf61-434f-bf3f-fbfd0877599d",
+      "total_ofs": 0,
+      "esperado": 275,
+      "match": false,
+      "total_clientes_filtrados": 1,
+      "tempo_ms": 426
+    },
+    {
+      "key": "ROTOPLAST",
+      "q": "ROTOPLAST",
+      "nome": "ROTOPLAST CLIMATIZADORES",
+      "id": "1969f4f4-7095-44c8-9de3-7d28b2243687",
+      "total_ofs": 0,
+      "esperado": 28,
+      "match": false,
+      "total_clientes_filtrados": 2,
+      "tempo_ms": 188
+    },
+    {
+      "key": "DKADI",
+      "q": "DKADI",
+      "nome": "DKADI DECOR",
+      "id": "99c17e9d-336d-4e93-9b74-102433c95a17",
+      "total_ofs": 0,
+      "esperado": 23,
+      "match": false,
+      "total_clientes_filtrados": 1,
+      "tempo_ms": 244
+    },
+    {
+      "key": "ITACIR",
+      "q": "ITACIR",
+      "nome": null,
+      "id": null,
+      "total_ofs": null,
+      "esperado": 14,
+      "match": false,
+      "total_clientes_filtrados": 0,
+      "tempo_ms": 2168
+    }
+  ]
+}

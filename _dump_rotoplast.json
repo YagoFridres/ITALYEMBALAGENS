@@ -1,0 +1,16 @@
+{
+  "statusCode": 200,
+  "count": 2,
+  "items": [
+    {
+      "id": "1969f4f4-7095-44c8-9de3-7d28b2243687",
+      "nome": "ROTOPLAST CLIMATIZADORES",
+      "total_ofs": 29
+    },
+    {
+      "id": "74ce7e67-f1fc-474f-80fa-8302b43854ee",
+      "nome": "ROTOPLAST INDÚSTRIA DE CLIMATIZADORES",
+      "total_ofs": 28
+    }
+  ]
+}

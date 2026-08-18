@@ -1,0 +1,115 @@
+{
+  "st": 1786544778638,
+  "deploy": [
+    {
+      "i": 1,
+      "s": 200,
+      "pv": "20260812110000",
+      "cm": "ca7a301"
+    }
+  ],
+  "deployOk": 1,
+  "prox_num": {
+    "ok": true,
+    "proximo": "2605",
+    "maior": 2604
+  },
+  "cases": [
+    {
+      "t": "Baseline_UUID",
+      "s": 200,
+      "id": "cd70b0a9-5951-",
+      "cid": "be617df1-441",
+      "clinome": "MOVEIS RIPKE",
+      "modo": "",
+      "err": null,
+      "ref": null,
+      "qtd": null,
+      "ops": [],
+      "del": {
+        "s": 200,
+        "ok": true
+      },
+      "ok": true
+    },
+    {
+      "t": "CasoA_ACENTO",
+      "s": 400,
+      "id": "",
+      "cid": "",
+      "clinome": "",
+      "modo": "",
+      "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"MÓVEIS RIPKE\". Digite e selecione um cliente válido da lista de sugestões.",
+      "ref": "MÓVEIS RIPKE",
+      "qtd": null,
+      "ops": [],
+      "del": {
+        "ok": true,
+        "s": null
+      },
+      "ok": false
+    },
+    {
+      "t": "CasoB_SEM_ACENTO_MINUSC",
+      "s": 400,
+      "id": "",
+      "cid": "",
+      "clinome": "",
+      "modo": "",
+      "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"moveis ripke\". Digite e selecione um cliente válido da lista de sugestões.",
+      "ref": "moveis ripke",
+      "qtd": null,
+      "ops": [],
+      "del": {
+        "ok": true,
+        "s": null
+      },
+      "ok": false
+    },
+    {
+      "t": "CasoC_INEXISTENTE",
+      "s": 400,
+      "id": "",
+      "cid": "",
+      "clinome": "",
+      "modo": "",
+      "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"cliente xablau 8888 inexistente\". Digite e selecione um cliente válido da lista de sugestões.",
+      "ref": "cliente xablau 8888 inexistente",
+      "qtd": null,
+      "ops": [],
+      "del": {
+        "ok": true,
+        "s": null
+      },
+      "ok": true
+    },
+    {
+      "t": "CasoD_AMBIGUO",
+      "s": 400,
+      "id": "",
+      "cid": "",
+      "clinome": "",
+      "modo": "",
+      "err": "Cliente inválido: não encontramos nenhum cliente correspondente a \"moveis\". Digite e selecione um cliente válido da lista de sugestões.",
+      "ref": "moveis",
+      "qtd": null,
+      "ops": [],
+      "del": {
+        "ok": true,
+        "s": null
+      },
+      "ok": false
+    }
+  ],
+  "prox_num_pos": {
+    "ok": true,
+    "proximo": "2605",
+    "maior": 2604
+  },
+  "res": {
+    "passou": 2,
+    "total": 5,
+    "todo": false
+  },
+  "elapsed": "18.7s"
+}

@@ -1,0 +1,12 @@
+{"t":"EMPRESAS","qtd":3,"ITALY_UUID_REAL":"df5f7672-0a6b-402d-ae65-296554236c31","ITALY_sigla":"ITALY","ITALY_codigo":"E1"}
+{"t":"RIPKE_COM_EMP_REAL","s":200,"qtd":1,"ripke":{"id":"be617df1-441a-4f11-918","nome":"MOVEIS RIPKE","emp_id":"E1","empresa_id":"df5f7672-0a6b-402d-ae6"}}
+{"t":"PROXN_2605","ok":true,"resp":{"ok":true,"proximo":"2605","maior":2604}}
+{"t":"C1_BASELINE_UUID","esperava_200":true,"salvou":false,"passou":false,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"be617df1-441a-470b-b9f3-f681b8d0a9e6\". Digite e selecione um cliente válido da lista de sugestões.","ref":"be617df1-441a-470b-b9f3-f681b8d0a9e6","qtd":null}
+{"t":"C2_EXATO_NOME","esperava_200":true,"salvou":true,"passou":true,"s":200,"numero":"100007","clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4..."}
+{"t":"C3_COM_ACENTO","esperava_200":true,"salvou":true,"passou":true,"s":200,"numero":"100008","clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4..."}
+{"t":"C4_MIN_SEMACENTO","esperava_200":true,"salvou":true,"passou":true,"s":200,"numero":"100009","clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4..."}
+{"t":"C5_PARCIAL_AMBIGUO","esperava_200":false,"salvou":true,"passou":false,"s":200,"numero":"100010","clinome":"MOVEIS ADENAU","cli":"3d72c187-e100-4..."}
+{"t":"C6_INEXISTENTE","esperava_200":false,"salvou":false,"passou":true,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"xablau cliente 9999 nao existe zzz\". Digite e selecione um cliente válido da lista de sugestões.","ref":"xablau cliente 9999 nao existe zzz","qtd":null}
+{"t":"LIMPEZA","qtd":4,"dels":[{"s":200,"ok":true,"dset":true},{"s":200,"ok":true,"dset":true},{"s":200,"ok":true,"dset":true},{"s":200,"ok":true,"dset":true}]}
+{"t":"PROXN_FINAL_2605","ok":true,"resp":{"ok":true,"proximo":"2605","maior":2604}}
+{"t":"RESUMO","total":6,"passaram":4,"pct":"67%","lista":[{"nome":"C1_BASELINE_UUID","passou":false},{"nome":"C2_EXATO_NOME","passou":true},{"nome":"C3_COM_ACENTO","passou":true},{"nome":"C4_MIN_SEMACENTO","passou":true},{"nome":"C5_PARCIAL_AMBIGUO","passou":false},{"nome":"C6_INEXISTENTE","passou":true}]}

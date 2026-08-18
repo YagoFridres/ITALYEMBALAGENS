@@ -1,0 +1,47 @@
+{"t":"POLL","i":0,"iOk":false,"sOk":true}
+{"t":"POLL","i":7,"iOk":false,"sOk":true}
+{"t":"POLL","i":12,"iOk":false,"sOk":true}
+{"t":"POLL","i":1,"iOk":false,"sOk":true}
+{"t":"POLL","i":8,"iOk":false,"sOk":true}
+{"t":"POLL","i":13,"iOk":false,"sOk":true}
+{"t":"POLL","i":2,"iOk":false,"sOk":true}
+{"t":"POLL","i":9,"iOk":false,"sOk":true}
+{"t":"POLL","i":14,"iOk":false,"sOk":true}
+{"t":"POLL","i":3,"iOk":false,"sOk":true}
+{"t":"POLL","i":10,"iOk":false,"sOk":true}
+{"t":"POLL","i":4,"iOk":false,"sOk":true}
+{"t":"POLL","i":11,"iOk":false,"sOk":true}
+{"t":"POLL","i":5,"iOk":false,"sOk":true}
+{"t":"POLL","i":12,"iOk":false,"sOk":true}
+{"t":"POLL","i":6,"iOk":false,"sOk":true}
+{"t":"POLL","i":13,"iOk":false,"sOk":true}
+{"t":"POLL","i":7,"iOk":false,"sOk":true}
+{"t":"POLL","i":14,"iOk":false,"sOk":true}
+{"t":"POLL","i":8,"iOk":false,"sOk":true}
+{"t":"POLL","i":15,"iOk":false,"sOk":true}
+{"t":"POLL","i":9,"iOk":false,"sOk":true}
+{"t":"POLL","i":16,"iOk":false,"sOk":true}
+{"t":"POLL","i":17,"iOk":false,"sOk":true}
+{"t":"POLL","i":10,"iOk":false,"sOk":true}
+{"t":"POLL","i":11,"iOk":false,"sOk":true}
+{"t":"POLL","i":12,"iOk":false,"sOk":true}
+{"t":"POLL","i":13,"iOk":false,"sOk":true}
+{"t":"POLL","i":14,"iOk":false,"sOk":true}
+{"t":"POLL","i":15,"iOk":false,"sOk":true}
+{"t":"POLL","i":16,"iOk":false,"sOk":true}
+{"t":"POLL","i":17,"iOk":false,"sOk":true}
+{"t":"EMPRESAS","qtd":3,"ITALY_UUID_REAL":"df5f7672-0a6b-402d-ae65-296554236c31"}
+{"t":"ONESHOT_ITALY","total_analisado":1000,"total_alvos":0,"atualizados":0,"detalhes5":[]}
+{"t":"ONESHOT_ORFAS","atualizados":0}
+{"t":"PROXN_ANTES","esperado_proximo":"2528","esperado_maior":2527,"recebido":{"ok":true,"proximo":"2528","maior":2527},"ok":true}
+{"t":"C1_BASELINE_UUID","esperava_200":true,"salvou":true,"passou":true,"s":200,"numero":"100041","clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"C2_EXATO_NOME","esperava_200":true,"salvou":true,"passou":true,"s":200,"numero":"100042","clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"C3_COM_ACENTO","esperava_200":true,"salvou":true,"passou":true,"s":200,"numero":"100043","clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"C4_MIN_SEMACENTO","esperava_200":true,"salvou":true,"passou":true,"s":200,"numero":"100044","clinome":"MOVEIS RIPKE","cli":"be617df1-441a-4f11-9..."}
+{"t":"C5_PARCIAL_AMBIGUO","esperava_200":false,"salvou":false,"passou":true,"s":400,"err":"Cliente ambíguo: 12 clientes corresponderam a \"moveis\". Selecione exatamente um cliente da lista de sugestões. Opções: MOVEIS ADENAU | MOVEIS ADENAU (MRA) | MOVEIS ARTESANAIS TAMBO EIRELI EPP | MOVEIS E DECORAÇÃO AJS LTDA | MOVEIS FLAMINGO | MOVEIS M","ref":"moveis","qtd":12}
+{"t":"C6_INEXISTENTE","esperava_200":false,"salvou":false,"passou":true,"s":400,"err":"Cliente inválido: não encontramos nenhum cliente correspondente a \"xablau cliente 9999 nao existe zzz\". Digite e selecione um cliente válido da lista de sugestões.","ref":"xablau cliente 9999 nao existe zzz","qtd":null}
+{"t":"LIMPEZA_FINAL_TESTES","qtd":4,"dels":[{"id":"2bd10978-191b-4556-b","s":200,"ok":true},{"id":"68fe1f8c-24a6-4a1d-9","s":200,"ok":true},{"id":"a65ba2a8-4d25-467e-9","s":200,"ok":true},{"id":"a0958705-73ac-4afd-9","s":200,"ok":true}]}
+{"t":"ONESHOT_ITALY_FINAL","atualizados":0}
+{"t":"ONESHOT_ORFAS_FINAL","atualizados":0}
+{"t":"PROXN_FINAL","esperado_proximo":"2528","recebido":{"ok":true,"proximo":"2528","maior":2527},"ok":true}
+{"t":"RESUMO","total":6,"passaram":6,"pct":"100%","lista":[{"nome":"C1_BASELINE_UUID","passou":true},{"nome":"C2_EXATO_NOME","passou":true},{"nome":"C3_COM_ACENTO","passou":true},{"nome":"C4_MIN_SEMACENTO","passou":true},{"nome":"C5_PARCIAL_AMBIGUO","passou":true},{"nome":"C6_INEXISTENTE","passou":true}]}

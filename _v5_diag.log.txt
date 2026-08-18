@@ -1,0 +1,3 @@
+﻿ZZZ encontrados=0
+ONESHOT s=200 j= {"ok":true,"total_analisado":1000,"total_alvos":0,"atualizados":0,"falhas":0,"ids_marcados":[],"detalhes":[]}
+PROXN s=200 j= {"ok":true,"proximo":"2605","maior":2604}

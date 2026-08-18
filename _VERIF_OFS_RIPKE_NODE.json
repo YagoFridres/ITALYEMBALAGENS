@@ -1,0 +1,68 @@
+{
+  "modo": "VERIFICACAO-OFs-2597-a-2604-DEVE-SER-MOVEIS-RIPKE (F5 simulado Railway AO VIVO)",
+  "gerado_em": "2026-08-12T12:27:55.062Z",
+  "ofs": [
+    {
+      "numero": 2597,
+      "nao_encontrado": true,
+      "ultimo_raw_status": 400,
+      "ultimo_raw_parseErr": null,
+      "ultimo_raw_preview": "{\"ok\":false,\"error\":\"numero obrigatório\"}"
+    },
+    {
+      "numero": 2598,
+      "nao_encontrado": true,
+      "ultimo_raw_status": 400,
+      "ultimo_raw_parseErr": null,
+      "ultimo_raw_preview": "{\"ok\":false,\"error\":\"numero obrigatório\"}"
+    },
+    {
+      "numero": 2599,
+      "nao_encontrado": true,
+      "ultimo_raw_status": 400,
+      "ultimo_raw_parseErr": null,
+      "ultimo_raw_preview": "{\"ok\":false,\"error\":\"numero obrigatório\"}"
+    },
+    {
+      "numero": 2600,
+      "nao_encontrado": true,
+      "ultimo_raw_status": 400,
+      "ultimo_raw_parseErr": null,
+      "ultimo_raw_preview": "{\"ok\":false,\"error\":\"numero obrigatório\"}"
+    },
+    {
+      "numero": 2601,
+      "nao_encontrado": true,
+      "ultimo_raw_status": 400,
+      "ultimo_raw_parseErr": null,
+      "ultimo_raw_preview": "{\"ok\":false,\"error\":\"numero obrigatório\"}"
+    },
+    {
+      "numero": 2602,
+      "nao_encontrado": true,
+      "ultimo_raw_status": 400,
+      "ultimo_raw_parseErr": null,
+      "ultimo_raw_preview": "{\"ok\":false,\"error\":\"numero obrigatório\"}"
+    },
+    {
+      "numero": 2603,
+      "nao_encontrado": true,
+      "ultimo_raw_status": 400,
+      "ultimo_raw_parseErr": null,
+      "ultimo_raw_preview": "{\"ok\":false,\"error\":\"numero obrigatório\"}"
+    },
+    {
+      "numero": 2604,
+      "nao_encontrado": true,
+      "ultimo_raw_status": 400,
+      "ultimo_raw_parseErr": null,
+      "ultimo_raw_preview": "{\"ok\":false,\"error\":\"numero obrigatório\"}"
+    }
+  ],
+  "consolidado": {
+    "qtd_ofs": 8,
+    "todos_com_nome_ripke": false,
+    "qtd_falhas_ripke": 8,
+    "qtd_nao_encontradas": 8
+  }
+}

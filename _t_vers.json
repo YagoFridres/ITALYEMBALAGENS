@@ -1,0 +1,21 @@
+{
+  "s": 200,
+  "j": {
+    "ok": true,
+    "runtime": {
+      "patch": "20260812093200",
+      "sw": "20260812093200",
+      "sw_cache_name": "italy-erp-v20260812093200"
+    },
+    "git": {
+      "commit": "b0f9dea2781201c48f5e18297ad7d067f6f1c3ea",
+      "branch": "main"
+    },
+    "deploy": {
+      "id": "151d0335-8b25-4707-b736-b79fa7142b77",
+      "provider": "railway"
+    },
+    "now": "2026-08-12T12:44:55.205Z"
+  },
+  "r": "{\"ok\":true,\"runtime\":{\"patch\":\"20260812093200\",\"sw\":\"20260812093200\",\"sw_cache_name\":\"italy-erp-v20260812093200\"},\"git\":{\"commit\":\"b0f9dea2781201c48f5e18297ad7d067f6f1c3ea\",\"branch\":\"main\"},\"deploy\":{\"id\":\"151d0335-8b25-4707-b736-b79fa7142b77\",\"provider\":\"railway\"},\"now\":\"2026-08-12T12:44:55.205Z\"}"
+}

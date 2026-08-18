@@ -1,0 +1,61 @@
+{
+  "feito_em": "2026-08-12T14:08:20.795Z",
+  "casos": {
+    "A_com_acento": {
+      "status": 400,
+      "ms": 2455,
+      "id": "",
+      "cli_id": "",
+      "clinome": "",
+      "modo": null,
+      "ok": false,
+      "erro": "Cliente inválido: não encontramos nenhum cliente correspondente a \"MÓVEIS RIPKE\". Digite e selecione um cliente válido da lista de sugestões.",
+      "ref": "MÓVEIS RIPKE",
+      "qtd": null,
+      "opcoes": []
+    },
+    "B_sem_acento_normaliza": {
+      "status": 400,
+      "ms": 1748,
+      "id": "",
+      "cli_id": "",
+      "clinome": "",
+      "modo": null,
+      "ok": false,
+      "erro": "Cliente inválido: não encontramos nenhum cliente correspondente a \"moveis ripke\". Digite e selecione um cliente válido da lista de sugestões.",
+      "ref": "moveis ripke",
+      "qtd": null,
+      "opcoes": []
+    },
+    "C_inexistente": {
+      "status": 400,
+      "ms": 1789,
+      "id": "",
+      "erro": "Cliente inválido: não encontramos nenhum cliente correspondente a \"moveis ripke xablau inexistente 888123\". Digite e selecione um cliente válido da lista de sugestões.",
+      "ref": "moveis ripke xablau inexistente 888123",
+      "missing": [
+        "cliente"
+      ],
+      "ok": true
+    },
+    "D_ambiguidade": {
+      "status": 400,
+      "ms": 1727,
+      "id": "",
+      "cli_id": "",
+      "clinome": "",
+      "qtd": 0,
+      "erro": "Cliente inválido: não encontramos nenhum cliente correspondente a \"RIPKE\". Digite e selecione um cliente válido da lista de sugestões.",
+      "ref": "RIPKE",
+      "opcoes": [],
+      "ok": false
+    }
+  },
+  "deletes": {},
+  "pos_prox_num": {
+    "ok": true,
+    "proximo": "2605",
+    "maior": 2604
+  },
+  "geral_passou": false
+}

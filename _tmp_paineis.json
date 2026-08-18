@@ -1,0 +1,45 @@
+{
+  "todos_passaram": false,
+  "resultados": [
+    {
+      "nome": "MOVEIS RIPKE",
+      "id": "be617df1-441a-4f11-918e-d813a5ac854c",
+      "total_ofs_painel": 422,
+      "esperado": 422,
+      "match": true,
+      "tempo_ms": 7891
+    },
+    {
+      "nome": "MOVEIS RUIZ",
+      "id": "da2798c7-bf61-434f-bf3f-fbfd0877599d",
+      "total_ofs_painel": 275,
+      "esperado": 275,
+      "match": true,
+      "tempo_ms": 4895
+    },
+    {
+      "nome": "ROTOPLAST 1969f4f4",
+      "id": "1969f4f4-7095-44c8-9de3-7d28b2243687",
+      "total_ofs_painel": 29,
+      "esperado": 0,
+      "match": false,
+      "tempo_ms": 3045
+    },
+    {
+      "nome": "ROTOPLAST 74ce7e67",
+      "id": "74ce7e67-f1fc-474f-80fa-8302b43854ee",
+      "total_ofs_painel": 28,
+      "esperado": 28,
+      "match": true,
+      "tempo_ms": 1761
+    },
+    {
+      "nome": "DKADI",
+      "id": "99c17e9d-336d-4e93-9b74-102433c95a17",
+      "total_ofs_painel": 23,
+      "esperado": 23,
+      "match": true,
+      "tempo_ms": 2957
+    }
+  ]
+}

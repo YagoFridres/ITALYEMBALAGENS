@@ -1,0 +1,38 @@
+{
+  "busca_nome_real_aqui_status": 200,
+  "busca_nome_real_aqui_qtd": 2,
+  "busca_nome_real_aqui_resultados": [
+    {
+      "id": "cef7e8c5-e6d2-49a8-984b-8c44a687e278",
+      "nome": "NOME REAL AQUI",
+      "rs": null,
+      "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+      "created_at": "2026-07-24T11:18:52"
+    },
+    {
+      "id": "3f11ccd8-00b2-4eda-b1fd-c8b660367a50",
+      "nome": "NOME REAL AQUI",
+      "rs": null,
+      "empresa_id": "df5f7672-0a6b-402d-ae65-296554236c31",
+      "created_at": "2026-07-24T11:18:52"
+    }
+  ],
+  "busca_nome_real_parcial_qtd": 2,
+  "busca_nome_real_parcial_resultados": [
+    {
+      "id": "cef7e8c5-e6d2-49a8-984b-8c44a687e278",
+      "nome": "NOME REAL AQUI",
+      "rs": null
+    },
+    {
+      "id": "3f11ccd8-00b2-4eda-b1fd-c8b660367a50",
+      "nome": "NOME REAL AQUI",
+      "rs": null
+    }
+  ],
+  "ofs_recentes_status": 200,
+  "ofs_recentes_qtd": 0,
+  "ofs_suspeitos_qtd": 0,
+  "ofs_suspeitos": [],
+  "ofs_nomes_clientes_unicos_primeiros60": []
+}

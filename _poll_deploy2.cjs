@@ -1,0 +1,3 @@
+const https=require('https');const jwt=require('jsonwebtoken');const TOKEN=jwt.sign({id:'t',perfil:'admin'},'italy_secret_2026',{expiresIn:'10h'});
+function R(path){return new Promise(res=>{const r=https.request({hostname:'adm.italyembalagens.com.br',path:path,port:443,timeout:15000,headers:{'Authorization':'Bearer '+TOKEN}},res2=>{let d='';res2.on('data',c=>d+=c);res2.on('end',()=>{res({s:res2.statusCode,raw:d.slice(0,1000)})})});r.on('error',e=>res({err:e.message}));r.on('timeout',()=>{r.destroy();res({timeout:true})});r.end()});}
+(async()=>{const r=await R('/patch.js');const m=r.raw.match(/PATCH_RUNTIME_VERSION\s*=\s*['"](\d+)['"]/i)||r.raw.match(/['"]?(\d{14})['"]?/)||null;const v=m&&m[1]?m[1]:null;console.log('s='+r.s+' patchV='+v);})();

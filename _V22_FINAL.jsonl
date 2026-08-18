@@ -1,0 +1,19 @@
+{"t":"PROXN_FINAL","PROXN_FINAL":"2603","MAIOR_FINAL":2602,"esperado":"2603","okNumero":true}
+{"t":"RESUMO_V22","target":"20260813011500","casos":6,"passaramNumero":2,"passaramLogica":1,"todosNumerosOk":false,"todosErrosOk":false,"PROXN_INICIAL":"2603","PROXN_FINAL":"2603","IGUAL":true,"OK_GERAL":false}
+{"t":"PROBE_VER","k":0,"ok":true,"sw":"ok","idx":"ok","pjs":"ok"}
+{"t":"EMPRESAS","qtd":3,"ITALY_UUID_REAL":"df5f7672-0a6b-402d-ae65-296554236c31"}
+{"t":"LIMPEZA_ROUND_0","ITALY_atualizados":0,"ORFAS_atualizados":0}
+{"t":"LIMPEZA_ROUND_1","ITALY_atualizados":0,"ORFAS_atualizados":0}
+{"t":"LIMPEZA_ROUND_2","ITALY_atualizados":0,"ORFAS_atualizados":0}
+{"t":"PROXN_DEFS","MAIOR":2602,"PROXN":"2603","diag_maior_ctx":2602,"iguais":true,"top5":[{"n":2602,"id":"c5478e8b-c98c-4","numero":"2602","of_num":"2602","of":"2602","criado":"2026-08-12T11:04","emp_id":"E2"},{"n":2601,"id":"afea1a07-acb8-4","numero":"2601","of_num":"2601","of":"2601","criado":"2026-08-12T11:00","emp_id":"E2"},{"n":2600,"id":"c4db942d-7024-4","numero":"2600","of_num":"2600","of":"2600","criado":"2026-08-12T10:59","emp_id":"E2"},{"n":2598,"id":"c2f83ddc-1b71-4","numero":"2598","of_num":"2598","of":"2598","criado":"2026-08-11T18:45","emp_id":"E2"},{"n":2597,"id":"b2886f39-c729-4","numero":"2597","of_num":"2597","of":"2597","criado":"2026-08-11T18:44","emp_id":"E2"}],"erro":null}
+{"t":"PROXN_ROTA_GET","recebido":{"ok":true,"proximo":"2603","maior":2602},"esperado":"2603","ok":true}
+{"t":"C1_BASELINE_UUID","esperava_200":true,"salvou":false,"passou":false,"numOk":false,"s":500,"numero":"","esperava":2603,"clinome":"","cli":"","err":"Falha ao inserir OF após tentativas","lastErro":"duplicate key value violates unique constraint \"ofs_numero_key\"","lastCode":"23505","lastDetails":"Key (numero)=(2605) already exists.","ref":null,"qtd":null}
+{"t":"C2_EXATO_NOME","esperava_200":true,"salvou":false,"passou":false,"numOk":false,"s":400,"numero":"","esperava":2604,"clinome":"","cli":"","err":"Campos obrigatórios: cliente","lastErro":null,"lastCode":null,"lastDetails":null,"ref":null,"qtd":null}
+{"t":"C3_COM_ACENTO","esperava_200":true,"salvou":false,"passou":false,"numOk":false,"s":400,"numero":"","esperava":2605,"clinome":"","cli":"","err":"Campos obrigatórios: cliente","lastErro":null,"lastCode":null,"lastDetails":null,"ref":null,"qtd":null}
+{"t":"C4_MIN_SEMACENTO","esperava_200":true,"salvou":false,"passou":false,"numOk":false,"s":400,"numero":"","esperava":2606,"clinome":"","cli":"","err":"Campos obrigatórios: cliente","lastErro":null,"lastCode":null,"lastDetails":null,"ref":null,"qtd":null}
+{"t":"C5_PARCIAL_AMBIGUO","esperava_200":false,"salvou":false,"passou":false,"numOk":true,"s":400,"numero":null,"esperava":null,"clinome":null,"cli":null,"err":"Campos obrigatórios: cliente","lastErro":null,"lastCode":null,"lastDetails":null,"ref":"moveis","qtd":null}
+{"t":"C6_INEXISTENTE","esperava_200":false,"salvou":false,"passou":true,"numOk":true,"s":400,"numero":null,"esperava":null,"clinome":null,"cli":null,"err":"Campos obrigatórios: cliente","lastErro":null,"lastCode":null,"lastDetails":null,"ref":"xablau cliente 9999 nao existe zzz","qtd":null}
+{"t":"LIMPEZA_POS_TESTES_ROUND_0"}
+{"t":"LIMPEZA_POS_TESTES_ROUND_1"}
+{"t":"PROXN_FINAL","PROXN_FINAL":"2603","MAIOR_FINAL":2602,"esperado":"2603","okNumero":true}
+{"t":"RESUMO_V22","target":"20260813011500","casos":6,"passaramNumero":2,"passaramLogica":1,"todosNumerosOk":false,"todosErrosOk":false,"PROXN_INICIAL":"2603","PROXN_FINAL":"2603","IGUAL":true,"OK_GERAL":false}
