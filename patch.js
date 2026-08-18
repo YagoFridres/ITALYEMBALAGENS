@@ -51615,13 +51615,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var total = Number(item && (item.valor_total != null ? item.valor_total : item.total) || 0) || 0;
       var unit = Number(item && (item.valor_unitario != null ? item.valor_unitario : item.vunit) || 0) || (qtd > 0 ? (total / qtd) : 0);
       var medidas = String(item && (item.medidas || [item.comp, item.larg, item.alt].filter(function(v) { return v != null && String(v).trim() !== ''; }).join(' x ')) || '').trim();
+      var chapaRaw = String(item && (item.chapa_utilizada != null ? item.chapa_utilizada : (item.chapaUtilizada != null ? item.chapaUtilizada : (item && item.parametros && typeof item.parametros === 'object' ? (item.parametros.chapa_utilizada != null ? item.parametros.chapa_utilizada : item.parametros.chapaUtilizada) : ''))) || '').trim();
       return Object.assign({}, item, {
         _idx: idx,
         quantidade: qtd,
         valor_total: total,
         valor_unitario: unit,
         medidas: medidas,
-        onda: String(item && item.onda || '').trim()
+        onda: String(item && item.onda || '').trim(),
+        chapa_utilizada: chapaRaw,
+        chapaUtilizada: chapaRaw
       });
     });
     if (itens.length) return itens;
