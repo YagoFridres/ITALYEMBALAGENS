@@ -5733,21 +5733,8 @@ window._compraPapelaoFornecedorPedidoLabel = function(rawName) {
   return 'Pedido ' + (nome || 'Fornecedor');
 };
 window._compraPapelaoComposeVincos = function(item) {
-  var values = [];
-  ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(key) {
-    var val = String(item && item[key] || '').trim();
-    if (val) values.push(val);
-  });
-  var extra = Array.isArray(item && item.vincos_extra) ? item.vincos_extra : (Array.isArray(item && item.vincos_lista) ? item.vincos_lista : []);
-  extra.forEach(function(v) {
-    var t = String(v || '').trim();
-    if (t) values.push(t);
-  });
-  if (!values.length) {
-    var legado = String(item && item.vincos || '').trim();
-    if (legado) return legado;
-  }
-  return values.join('/');
+  var arr = (typeof compraAllVincos === 'function') ? compraAllVincos(item) : [];
+  return arr.join('/');
 };
 window._compraPapelaoEnsureVisibleRows = function(itens, minRows) {
   var rows = Array.isArray(itens) ? itens.slice() : [];
@@ -6169,23 +6156,8 @@ window._compraPapelaoRenderItemRowsHtml = function(compra) {
   }
   return itens.map(function(item, idx) {
     var d = window._compraPapelaoDeriveItem(item);
-    var vincosRaw = [];
-    ['vinco1','vinco2','vinco3','vinco4'].forEach(function(k){
-      var v = String(item && item[k] || '').trim();
-      if (v) vincosRaw.push(v);
-    });
-    var extra = Array.isArray(item && item.vincos_extra) ? item.vincos_extra : (Array.isArray(item && item.vincos_lista) ? item.vincos_lista : []);
-    extra.forEach(function(part){ var v = String(part || '').trim(); if (v) vincosRaw.push(v); });
-    if (!vincosRaw.length && Array.isArray(item && item.vincos)) {
-      item.vincos.forEach(function(part){ var v = String(part || '').trim(); if (v) vincosRaw.push(v); });
-    }
-    if (!vincosRaw.length) {
-      var legacyStr = String(item && item.vincos || '').trim();
-      if (legacyStr) legacyStr.split(/[,;\/]+/).forEach(function(part){ var v = String(part || '').trim(); if (v) vincosRaw.push(v); });
-    }
-    if (!vincosRaw.length && typeof compraAllVincos === 'function') {
-      vincosRaw = (compraAllVincos(item) || []).slice().map(function(s){ return String(s||'').trim(); }).filter(Boolean);
-    }
+    var vincosRaw = (typeof compraAllVincos === 'function') ? compraAllVincos(item) : [];
+    vincosRaw = (vincosRaw || []).map(function(s){ return String(s||'').trim(); }).filter(Boolean);
     if (!vincosRaw.length) vincosRaw = ['—'];
     var seq = window._compraPapelaoEsc(String(item && item.seq != null ? item.seq : (idx + 1)));
     var pedCli = window._compraPapelaoEsc(item && item.ped_cliente || '—');
@@ -6780,23 +6752,8 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
   var empresa = window._compraPapelaoEmpresaNome(data && data._emp_id_consulta || '');
   var rowsHtml = (Array.isArray(data.itens) ? data.itens : []).map(function(item, idx) {
     var d = window._compraPapelaoDeriveItem(item);
-    var vincosRaw = [];
-    ['vinco1','vinco2','vinco3','vinco4'].forEach(function(k){
-      var v = String(item && item[k] || '').trim();
-      if (v) vincosRaw.push(v);
-    });
-    var extra = Array.isArray(item && item.vincos_extra) ? item.vincos_extra : (Array.isArray(item && item.vincos_lista) ? item.vincos_lista : []);
-    extra.forEach(function(part){ var v = String(part || '').trim(); if (v) vincosRaw.push(v); });
-    if (!vincosRaw.length && Array.isArray(item && item.vincos)) {
-      item.vincos.forEach(function(part){ var v = String(part || '').trim(); if (v) vincosRaw.push(v); });
-    }
-    if (!vincosRaw.length) {
-      var legacyStr = String(item && item.vincos || '').trim();
-      if (legacyStr) legacyStr.split(/[,;\/]+/).forEach(function(part){ var v = String(part || '').trim(); if (v) vincosRaw.push(v); });
-    }
-    if (!vincosRaw.length && typeof compraAllVincos === 'function') {
-      vincosRaw = (compraAllVincos(item) || []).slice().map(function(s){ return String(s||'').trim(); }).filter(Boolean);
-    }
+    var vincosRaw = (typeof compraAllVincos === 'function') ? compraAllVincos(item) : [];
+    vincosRaw = (vincosRaw || []).map(function(s){ return String(s||'').trim(); }).filter(Boolean);
     if (!vincosRaw.length) vincosRaw = ['—'];
     var seq = window._compraPapelaoEsc(String(item && item.seq != null ? item.seq : (idx + 1)));
     var entrega = window._compraPapelaoEsc(window._compraPapelaoFmtDate(item && item.data_entrega || ''));
@@ -7923,26 +7880,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     };
   }
   function cComposeVincos(item) {
-    var raw = [];
-    var legacy = String(item && item.vincos || '').trim();
-    if (legacy) {
-      legacy.split(/[,;\/]+/).forEach(function(part) {
-        var txt = String(part || '').trim();
-        if (txt) raw.push(txt);
-      });
-    }
-    ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(key) {
-      var val = String(item && item[key] || '').trim();
-      if (val) raw.push(val);
-    });
-    var extra = Array.isArray(item && item.vincos_extra) ? item.vincos_extra : (Array.isArray(item && item.vincos_lista) ? item.vincos_lista : []);
-    extra.forEach(function(part) {
-      var txt = String(part || '').trim();
-      if (txt) raw.push(txt);
-    });
-    var out = [];
-    raw.forEach(function(txt) { if (txt) out.push(txt); });
-    return out.join('/');
+    var arr = (typeof compraAllVincos === 'function') ? compraAllVincos(item) : [];
+    return arr.join('/');
   }
   function cFornecedorPedidoLabel(rawName) {
     var nome = String(rawName || '').replace(/\s+/g, ' ').trim();
@@ -51083,34 +51022,37 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
 
   function compraAllVincos(item) {
-    if (Array.isArray(item && item.vincos)) {
-      return item.vincos.slice().map(function(s) {
-        var txt = String(s || '').trim();
-        return txt;
-      }).filter(Boolean);
-    }
-    var raw = [];
-    var legacy = String(item && item.vincos || '').trim();
-    if (legacy) {
-      legacy.split(/[,;\/]+/).forEach(function(part) {
-        var txt = String(part || '').trim();
-        if (txt) raw.push(txt);
-      });
-    }
-    ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(key) {
-      var txt = String(item && item[key] || '').trim();
-      if (txt) raw.push(txt);
-    });
-    var extra = Array.isArray(item && item.vincos_extra) ? item.vincos_extra : (Array.isArray(item && item.vincos_lista) ? item.vincos_lista : []);
-    extra.forEach(function(part) {
-      var txt = String(part || '').trim();
-      if (txt) raw.push(txt);
-    });
     var out = [];
-    raw.forEach(function(txt) {
-      if (!txt) return;
-      out.push(txt);
+    var pushClean = function(v) {
+      var t = String(v == null ? '' : v).trim();
+      if (t) out.push(t);
+    };
+    if (Array.isArray(item && item.vincos)) {
+      item.vincos.forEach(pushClean);
+      return out;
+    }
+    if (Array.isArray(item && item.vincos_extra) && item.vincos_extra.length) {
+      item.vincos_extra.forEach(pushClean);
+      return out;
+    }
+    if (Array.isArray(item && item.vincos_lista) && item.vincos_lista.length) {
+      item.vincos_lista.forEach(pushClean);
+      return out;
+    }
+    var v14 = [];
+    ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) {
+      var val = item && item[k] != null ? String(item[k]) : '';
+      val = val.trim();
+      if (val) v14.push(val);
     });
+    if (v14.length) {
+      v14.forEach(function(v) { out.push(v); });
+      return out;
+    }
+    var legacy = String(item && item.vincos ? item.vincos : (item && item.vincos_texto ? item.vincos_texto : '')).trim();
+    if (legacy) {
+      legacy.split(/[,;\/]+/).forEach(pushClean);
+    }
     return out;
   }
   function compraRenderVincosInputs(item) {
