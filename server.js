@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260818100000';
-const SW_RUNTIME_VERSION = '20260818100000';
+const PATCH_RUNTIME_VERSION = '20260818140000';
+const SW_RUNTIME_VERSION = '20260818140000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -8426,6 +8426,14 @@ app.put('/api/amostras/:id', authMiddleware, async (req, res) => {
     delete payload.id;
     delete payload.empresa_id;
     payload.updated_at = new Date().toISOString();
+    const novoStatus = String(payload.status || '').trim();
+    const statusNorm = novoStatus.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const marcandoFeita = (statusNorm === 'feita' || statusNorm === 'feito' || statusNorm === 'concluida' || statusNorm === 'concluido' || statusNorm === 'pronta' || statusNorm === 'pronto');
+    if (marcandoFeita) {
+      payload.status = 'Feita';
+      if (!payload.data_feita) payload.data_feita = new Date().toISOString();
+      if (!payload.usuario_feita) payload.usuario_feita = req.usuario?.nome || 'sistema';
+    }
     const { data, error } = await supabase
       .from('amostras').update(payload)
       .eq('id', req.params.id).select().single();
@@ -10142,6 +10150,84 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
       });
     });
   });
+
+  try {
+    const inicioAmostras = String(range.inicio || '').slice(0, 10);
+    const fimAmostras = String(range.fim || '').slice(0, 10);
+    if (inicioAmostras && fimAmostras) {
+      const { data: amostrasFeitas, error: errAmostras } = await supabase
+        .from('amostras')
+        .select('*')
+        .in('status', ['Feita','Feito','Concluída','Concluido','Pronta','Pronto','Concluída','Concluido'])
+        .not('data_feita', 'is', null)
+        .gte('data_feita', inicioAmostras + 'T00:00:00')
+        .lte('data_feita', fimAmostras + 'T23:59:59.999')
+        .order('data_feita', { ascending: false })
+        .limit(800);
+      if (!errAmostras && Array.isArray(amostrasFeitas) && amostrasFeitas.length) {
+        amostrasFeitas.forEach((am) => {
+          const rawEmpId = String(am?.emp_id || am?.empresa_id || '').trim();
+          if (empId && rawEmpId) {
+            if (empresaUuid) {
+              if (rawEmpId !== empresaUuid && rawEmpId !== String(req.usuario?.emp_id || '').trim() && rawEmpId !== String(req.query?.emp_id || '').trim()) return;
+            } else {
+              if (rawEmpId !== empId && rawEmpId !== String(req.usuario?.emp_id || '').trim() && rawEmpId !== String(req.query?.emp_id || '').trim()) return;
+            }
+          } else if (empId && !rawEmpId) {
+            // sem emp_id registrado → mantem (amostra historica)
+          }
+          const clienteLow = String(am?.cliente_nome || am?.cliente || '').trim().toLowerCase();
+          if (clienteNeedle && !clienteLow.includes(clienteNeedle)) return;
+          const refData = String(am?.data_feita || am?.updated_at || am?.created_at || '').slice(0, 10);
+          if (!refData || refData < inicioAmostras || refData > fimAmostras) return;
+          const ts = _passagensIsoTsFromAny(am?.data_feita || am?.updated_at || am?.created_at || '') || refData + 'T12:00:00';
+          const maqAmostraCanon = (maquinaNeedle && /^imp|corte|riscad/i.test(maquinaNeedle)) ? maquinaNeedle : 'Amostras';
+          if (maquinaNeedle) {
+            const mn = maquinaNeedle.toLowerCase();
+            if (mn !== 'amostras' && !/amostra|amostras/i.test(maquinaNeedle)) {
+              // se filtro maquina nao for amostras → ignora amostra neste filtro
+            }
+          }
+          const numeroAmostra = String(am?.id || '').trim().slice(0, 8).toUpperCase();
+          rows.push({
+            tipo_registro: 'amostra',
+            origem: 'amostra',
+            amostra_id: String(am?.id || '').trim(),
+            of_id: 'AMOSTRA-' + String(am?.id || '').trim(),
+            of_numero: 'AM-' + numeroAmostra,
+            numero: 'AM-' + numeroAmostra,
+            of: 'AM-' + numeroAmostra,
+            cliente: String(am?.cliente_nome || am?.cliente || 'Amostra').trim(),
+            cliente_nome: String(am?.cliente_nome || am?.cliente || 'Amostra').trim(),
+            nome_cliente: String(am?.cliente_nome || am?.cliente || 'Amostra').trim(),
+            produto: String(am?.produto || am?.descricao || 'Amostra').trim(),
+            quantidade: Number(am?.quantidade || 1) || 1,
+            qtd_produzida: Number(am?.quantidade || 1) || 1,
+            valor_total: Number(am?.valor || am?.valor_total || 0) || 0,
+            valor_venda: Number(am?.valor || am?.valor_total || 0) || 0,
+            total: Number(am?.valor || am?.valor_total || 0) || 0,
+            valor_unitario: Number(am?.valor_unitario || 0) || 0,
+            preco: Number(am?.valor_unitario || 0) || 0,
+            cores_impressao: null,
+            dim_comprimento: null,
+            dim_largura: null,
+            caixa_comprimento: null,
+            caixa_largura: null,
+            maquina: 'Amostras',
+            maquina_nome: 'Amostras',
+            data_passagem: refData,
+            hora_passagem: ts,
+            status: 'Amostra Pronta',
+            data_conclusao: ts,
+            data_feita_amostra: String(am?.data_feita || '').trim(),
+            usuario_feita: String(am?.usuario_feita || 'sistema').trim(),
+            amostra_observacoes: String(am?.observacoes || am?.obs || '').trim(),
+            pedido_cliente_amostra: String(am?.pedido || am?.pedido_cliente || '').trim()
+          });
+        });
+      }
+    }
+  } catch (_a) { try { console.error('[buscarPassagensHist] amostras feitas merge erro:', String(_a && _a.message || _a)); } catch(__a) {} }
 
   return { rows, count: rows.length };
 }

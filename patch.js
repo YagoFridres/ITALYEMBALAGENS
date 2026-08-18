@@ -13693,6 +13693,14 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
   }
 
   function _histPassagemStatusBadge(row) {
+    var isAmostra = row && (String(row.tipo_registro || '').toLowerCase() === 'amostra' || String(row.origem || '').toLowerCase() === 'amostra' || String(row.amostra_id || '').trim() || (String(row.status || '').toLowerCase().indexOf('amostra') !== -1));
+    if (isAmostra) {
+      var txtAmostra = '🧪 Amostra Pronta';
+      var bgAmostra = 'rgba(168,85,247,.16)';
+      var bdAmostra = 'rgba(192,132,252,.42)';
+      var fgAmostra = '#c4b5fd';
+      return '<span style="display:inline-flex;align-items:center;justify-content:center;padding:5px 10px;border-radius:999px;border:1px solid ' + bdAmostra + ';background:' + bgAmostra + ';color:' + fgAmostra + ';font-size:11px;font-weight:900;letter-spacing:.03em;white-space:nowrap">' + _histEsc(txtAmostra) + '</span>';
+    }
     var status = _histPassagemStatus(row);
     var isDespachada = status === 'Despachada';
     var bg = isDespachada ? 'rgba(16,185,129,.14)' : 'rgba(59,130,246,.14)';
@@ -23021,6 +23029,26 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '.ofmaq-center-confirm-overlay{position:fixed;inset:0;z-index:100260;background:rgba(2,6,23,.58);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:18px}'
         + '.ofmaq-center-confirm-card{width:min(520px,92vw);background:linear-gradient(180deg,#0f172a,#111827);border-radius:22px;box-shadow:0 30px 80px rgba(2,6,23,.5);padding:26px 24px;text-align:center;color:#f8fafc}'
         + '.ofmaq-center-confirm-card .icon{width:64px;height:64px;margin:0 auto 14px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);font-size:28px}'
+        + '#page-ofmaq .ofmaq-amostras-semana{display:grid;gap:12px;margin-top:2px;padding:18px;border-radius:18px;background:linear-gradient(135deg,rgba(88,28,135,.32),rgba(126,34,206,.16));border:1px solid rgba(168,85,247,.35);box-shadow:0 16px 36px rgba(88,28,135,.12)}'
+        + '#page-ofmaq .ofmaq-amostras-semana-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}'
+        + '#page-ofmaq .ofmaq-amostras-semana-head h3{margin:0;font-size:18px;line-height:1.15;font-weight:900;color:#f5f3ff;letter-spacing:.01em;display:inline-flex;align-items:center;gap:10px}'
+        + '#page-ofmaq .ofmaq-amostras-semana-head h3 small{display:block;margin-top:3px;color:#c4b5fd;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}'
+        + '#page-ofmaq .ofmaq-amostras-semana-count{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;font-size:11px;font-weight:900;background:rgba(168,85,247,.2);border:1px solid rgba(192,132,252,.4);color:#e9d5ff;letter-spacing:.05em;text-transform:uppercase}'
+        + '#page-ofmaq .ofmaq-amostras-semana-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}'
+        + '#page-ofmaq .ofmaq-amostra-card{display:grid;gap:10px;padding:14px 16px;border-radius:16px;background:linear-gradient(180deg,rgba(15,23,42,.96),rgba(15,23,42,.9));border:1px solid rgba(148,163,184,.22)}'
+        + '#page-ofmaq .ofmaq-amostra-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}'
+        + '#page-ofmaq .ofmaq-amostra-card-tit{display:grid;gap:4px;min-width:0}'
+        + '#page-ofmaq .ofmaq-amostra-card-tit b{display:block;font-size:15px;color:#f8fafc;line-height:1.25;overflow:hidden;text-overflow:ellipsis}'
+        + '#page-ofmaq .ofmaq-amostra-card-tit small{font-size:11px;color:#a78bfa;font-weight:800;letter-spacing:.05em;text-transform:uppercase}'
+        + '#page-ofmaq .ofmaq-amostra-card-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;padding-top:6px;border-top:1px dashed rgba(148,163,184,.18)}'
+        + '#page-ofmaq .ofmaq-amostra-card-meta span{display:grid;gap:3px}'
+        + '#page-ofmaq .ofmaq-amostra-card-meta b{font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8}'
+        + '#page-ofmaq .ofmaq-amostra-card-meta i{font-style:normal;font-size:13px;color:#e2e8f0;font-weight:700}'
+        + '#page-ofmaq .ofmaq-amostra-card-obs{margin:4px 0 2px;padding:10px 12px;border-radius:12px;background:rgba(15,23,42,.6);border:1px dashed rgba(148,163,184,.16);font-size:12px;color:#cbd5e1;white-space:pre-wrap;line-height:1.5}'
+        + '#page-ofmaq .ofmaq-amostra-card-foot{display:flex;justify-content:flex-end;gap:8px;align-items:center}'
+        + '#page-ofmaq .ofmaq-amostra-feito{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:8px 16px;border-radius:12px;border:1px solid rgba(34,197,94,.5);background:linear-gradient(135deg,rgba(22,101,52,.96),rgba(22,163,74,.92));color:#ecfdf5;font-size:13px;font-weight:900;letter-spacing:.02em;cursor:pointer;box-shadow:0 10px 24px rgba(22,101,52,.24)}'
+        + '#page-ofmaq .ofmaq-amostra-feito[disabled],#page-ofmaq .ofmaq-amostra-feito[data-loading="1"]{opacity:.65;pointer-events:none}'
+        + '#page-ofmaq .ofmaq-amostras-vazio{padding:24px 20px;border-radius:14px;border:1px dashed rgba(148,163,184,.25);text-align:center;color:#cbd5e1;font-size:13px}'
         + '@media (max-width:1200px){#page-ofmaq .ofmaq-final-controls{grid-template-columns:1fr;}}';
       document.head.appendChild(st);
     }
@@ -23095,6 +23123,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '    <button type="button" id="ofmaq-final-report">Gerar Relatório</button>'
           + '  </div>'
           + '</div>'
+          + '<div id="ofmaq-final-amostras-semana" class="ofmaq-final-amostras-semana">'
+          + '  <div class="ofmaq-amostras-semana-head">'
+          + '    <h3>🧪 Amostras da Semana <small>Pendentes com data prevista nesta semana</small></h3>'
+          + '    <span class="ofmaq-amostras-semana-count" data-ofmaq-amostras-count>0 pendentes</span>'
+          + '  </div>'
+          + '  <div data-ofmaq-amostras-grid class="ofmaq-amostras-semana-grid"><div class="ofmaq-amostras-vazio">Carregando amostras...</div></div>'
+          + '</div>'
           + '<div class="ofmaq-final-summary-shell">'
           + '  <div class="ofmaq-final-summary-head">'
           + '    <div class="ofmaq-final-summary-title">Resumo por máquina</div>'
@@ -23121,7 +23156,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         summaryCompact: root.querySelector('#ofmaq-final-summary-compact'),
         summary: root.querySelector('#ofmaq-final-summary'),
         chips: root.querySelector('#ofmaq-final-redistribuicao'),
-        tbody: root.querySelector('#ofmaq-final-tbody')
+        tbody: root.querySelector('#ofmaq-final-tbody'),
+        amostrasSemanaRoot: root.querySelector('#ofmaq-final-amostras-semana'),
+        amostrasSemanaGrid: root.querySelector('[data-ofmaq-amostras-grid]'),
+        amostrasSemanaCount: root.querySelector('[data-ofmaq-amostras-count]')
       };
     }
 
@@ -23166,6 +23204,97 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       }).join('') || '<div class="ofmaq-final-empty">Sem faixa de redistribuição disponível.</div>';
     }
 
+    async function renderAmostrasSemana(shell) {
+      if (!shell || !shell.amostrasSemanaGrid) return;
+      var grid = shell.amostrasSemanaGrid;
+      var badgeCount = shell.amostrasSemanaCount;
+      try {
+        var wBase = state && state.weekStartIso ? state.weekStartIso : new Date().toISOString().slice(0, 10);
+        var nowTemp = new Date(wBase + 'T00:00:00');
+        var dayWeek = nowTemp.getDay();
+        var diffToMon = dayWeek === 0 ? -6 : 1 - dayWeek;
+        nowTemp.setDate(nowTemp.getDate() + diffToMon);
+        var weekStartIso = nowTemp.toISOString().slice(0, 10);
+        nowTemp.setDate(nowTemp.getDate() + 6);
+        var weekEndIso = nowTemp.toISOString().slice(0, 10);
+        var r = await fetch('/api/amostras?status=Pendente&limit=500&t=' + Date.now());
+        var arr = [];
+        try { arr = await r.json(); } catch (_p) { arr = []; }
+        if (!Array.isArray(arr)) arr = (arr && arr.data) || [];
+        var pendentes = arr.filter(function(a) {
+          var dp = String(a && (a.data_prevista || a.data_entrega || a.data_pedido || '')).slice(0, 10);
+          return dp && dp >= weekStartIso && dp <= weekEndIso;
+        });
+        if (badgeCount) badgeCount.textContent = String(pendentes.length) + ' pendente(s)';
+        if (!pendentes.length) {
+          grid.innerHTML = '<div class="ofmaq-amostras-vazio">Nenhuma amostra pendente para esta semana. 🎉</div>';
+          return;
+        }
+        grid.innerHTML = pendentes.map(function(a) {
+          var id = String(a.id || '').trim();
+          var cliente = String(a.cliente_nome || a.cliente || 'Amostra').trim();
+          var produto = String(a.produto || a.descricao || 'Sem descrição').trim();
+          var dpRaw = String(a.data_prevista || a.data_entrega || '').slice(0, 10);
+          var dpBr = dpRaw ? (new Date(dpRaw + 'T12:00:00').toLocaleDateString('pt-BR')) : '—';
+          var obs = String(a.observacoes || a.obs || '').trim();
+          var pedido = String(a.pedido || a.pedido_cliente || '').trim();
+          var obsHtml = obs ? ('<div class="ofmaq-amostra-card-obs">' + escH(obs) + '</div>') : '';
+          var pedidoHtml = pedido ? ('<span class="ofmaq-final-mini-pill">' + escH(pedido) + '</span>') : '';
+          var valor = Number(a.valor || a.valor_total || 0) || 0;
+          var valorHtml = valor > 0 ? ('<span><b>Valor</b><i>R$ ' + escH(String(valor.toFixed(2))) + '</i></span>') : '';
+          return ''
+            + '<div class="ofmaq-amostra-card" data-amostra-id="' + escAttr(id) + '">'
+            + '  <div class="ofmaq-amostra-card-top">'
+            + '    <div class="ofmaq-amostra-card-tit"><small>Amostra Pendente</small><b>' + escH(produto) + '</b></div>'
+            + pedidoHtml
+            + '  </div>'
+            + '  <div class="ofmaq-amostra-card-meta">'
+            + '    <span><b>Cliente</b><i>' + escH(cliente) + '</i></span>'
+            + '    <span><b>Data Prevista</b><i>' + escH(dpBr) + '</i></span>'
+            + valorHtml
+            + '  </div>'
+            + obsHtml
+            + '  <div class="ofmaq-amostra-card-foot"><button type="button" class="ofmaq-amostra-feito" data-feito-amostra="' + escAttr(id) + '">✔ Marcar como Feito</button></div>'
+            + '</div>';
+        }).join('');
+        grid.querySelectorAll('[data-feito-amostra]').forEach(function(btn) {
+          btn.addEventListener('click', async function(ev) {
+            try {
+              var idBtn = String(btn.getAttribute('data-feito-amostra') || '').trim();
+              if (!idBtn) return;
+              btn.setAttribute('data-loading', '1');
+              btn.textContent = '⏳ Salvando...';
+              var res = await fetch('/api/amostras/' + encodeURIComponent(idBtn), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'Feita' })
+              });
+              if (!res || !res.ok) throw new Error('Erro HTTP: ' + (res && res.status));
+              var card = ev.target.closest('.ofmaq-amostra-card');
+              if (card) {
+                card.style.transition = 'opacity .25s, transform .25s, background .25s';
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(-10px) scale(.97)';
+              }
+              setTimeout(function() {
+                try { renderAmostrasSemana(shell); } catch (_n) {}
+              }, 280);
+            } catch (eErr) {
+              console.error('[Amostras Semana] Feito erro:', eErr);
+              btn.removeAttribute('data-loading');
+              btn.textContent = '❌ Tentar novamente';
+              setTimeout(function() { btn.textContent = '✔ Marcar como Feito'; }, 2500);
+            }
+          });
+        });
+      } catch (eGeral) {
+        console.error('[Amostras Semana] render erro:', eGeral);
+        try {
+          grid.innerHTML = '<div class="ofmaq-amostras-vazio" style="color:#fecaca;border-color:rgba(248,113,113,.35)">⚠ Não foi possível carregar amostras: ' + escH(String(eGeral && eGeral.message || eGeral)) + '</div>';
+        } catch (_f) {}
+      }
+    }
+
     function renderAlert(shell) {
       if (!shell || !shell.alert) return;
       var overloaded = state.machineCatalog.map(function(machine) {
@@ -23207,6 +23336,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       renderAlert(shell);
       renderSummary(shell);
       renderRedistribuicao(shell);
+      renderAmostrasSemana(shell);
     }
 
     function rowHtml(item) {
