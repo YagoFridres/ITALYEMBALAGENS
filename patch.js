@@ -11979,112 +11979,248 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(9, 'antes pat
     return out;
   }
 
-  function _orcPrintCollectCurrentDraft() {
-    var calcCli = document.getElementById('calc-cli');
-    var clienteId = String((calcCli && calcCli.value) || '').trim();
-    var clienteNome = '';
-    try {
-      if (calcCli && calcCli.options && calcCli.selectedIndex >= 0) clienteNome = String(calcCli.options[calcCli.selectedIndex].textContent || '').trim();
-    } catch (_) {}
-    var comp = String(((document.getElementById('calc-c') || document.getElementById('calc-comp') || {}).value) || '').trim();
-    var larg = String(((document.getElementById('calc-l') || document.getElementById('calc-larg') || {}).value) || '').trim();
-    var alt = String(((document.getElementById('calc-a') || document.getElementById('calc-alt') || {}).value) || '').trim();
-    var qtd = Number(((document.getElementById('calc-qtd') || {}).value) || 0) || 0;
-    var tipo = _orcPrintPick((document.getElementById('calc-tipo') || {}).value, (document.getElementById('calc-onda') || {}).value);
-    var local = null;
-    try {
-      local = (Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : []).find(function(item) {
-        return String(item && item.id || '').trim() === String(window._orcIdAtual || '').trim();
-      }) || null;
-    } catch (_) { local = null; }
-    return Object.assign({}, local || {}, {
-      id: _orcPrintPick(window._orcIdAtual, local && local.id),
-      numero_orcamento: _orcPrintPick(window._orcNumeroAtual, local && local.numero_orcamento, local && local.numero),
-      cliente_id: _orcPrintPick(clienteId, local && local.cliente_id, local && local.cli_id),
-      cliente_nome: _orcPrintPick(clienteNome, local && local.cliente_nome, local && local.clienteNome, local && local.descricao),
-      comp: _orcPrintPick(comp, local && local.comp),
-      larg: _orcPrintPick(larg, local && local.larg),
-      alt: _orcPrintPick(alt, local && local.alt),
-      medidas: _orcPrintPick([comp, larg, alt].filter(Boolean).join(' x '), local && local.medidas, local && local.titulo),
-      quantidade: qtd || Number(local && (local.quantidade || local.qtd) || 0) || 0,
-      tipo: _orcPrintPick(tipo, local && local.tipo, local && local.parametros && local.parametros.tipo),
-      resultados: (window.calcLastResult && Array.isArray(window.calcLastResult.allResults) && window.calcLastResult.allResults.length)
-        ? window.calcLastResult.allResults.slice()
-        : (Array.isArray(local && local.resultados) ? local.resultados.slice() : []),
-      criado_em: _orcPrintPick(local && local.criado_em, local && local.data, new Date().toISOString()),
-      valor_total: local && local.valor_total,
-      vendedor: _orcPrintPick(local && local.vendedor, local && local.vendNome, local && local.vendedor_nome),
-      vendTel: _orcPrintPick(local && local.vendTel, local && local.vendedor_telefone, local && local.telefone),
-      vendTel2: _orcPrintPick(local && local.vendTel2, local && local.vendedor_telefone2, local && local.telefone2),
-      vendEmail: _orcPrintPick(local && local.vendEmail, local && local.vendedor_email, local && local.email)
-    });
+  function _orcPrintItemLabel(item, i) {
+    var d = String(item && (item.descricao || item.nome || item.titulo || item.label) || '').trim();
+    var m = String(item && item.medidas || '').trim();
+    var parts = [];
+    if (d) parts.push(d);
+    if (m) parts.push(m);
+    return parts.length ? parts.join(' · ') : ('Item ' + String(i + 1));
   }
 
-  function _orcPrintBuildRows(orc, ondasSelecionadas) {
-    var rows = Array.isArray(orc && orc.resultados) ? orc.resultados.slice() : [];
-    if (!rows.length && orc && orc.parametros && Array.isArray(orc.parametros.resultados)) rows = orc.parametros.resultados.slice();
-    if (!rows.length && typeof window._orcResultadosFromParametros === 'function') {
-      try { rows = window._orcResultadosFromParametros(orc) || []; } catch (_) { rows = []; }
+  async function _orcPrintPromptOndasPorItem(itens, defaultOndas) {
+    if (!Array.isArray(itens) || itens.length <= 1) return null;
+    var padrao = Array.isArray(defaultOndas) && defaultOndas.length ? defaultOndas.slice() : ['B', 'C', 'BC'];
+    var useModal = typeof window._abrirModalPadrao === 'function';
+    if (!useModal) {
+      var out = {};
+      for (var i = 0; i < itens.length; i += 1) {
+        var title = 'Item ' + String(i + 1) + ' / ' + String(itens.length) + ' — ' + _orcPrintItemLabel(itens[i], i);
+        var raw = null;
+        try {
+          raw = prompt(
+            title + '\n\nQuais ondas IMPRIMIR para ESTE item?\nOpções: B, C, BC\nSepare por vírgula ou espaço.\nDeixe em branco = usar padrão ' + padrao.join('/') + '.\nExemplos: B, BC    B C    BC',
+            padrao.join(', ')
+          );
+        } catch (_) { raw = null; }
+        if (raw == null) return null;
+        var selected = [];
+        if (!String(raw).trim()) { selected = padrao.slice(); }
+        else {
+          var tokens = String(raw).toUpperCase().split(/[\s,;\/|]+/).filter(Boolean);
+          ['B', 'C', 'BC'].forEach(function(o) { if (tokens.indexOf(o) >= 0) selected.push(o); });
+        }
+        out[i] = selected.length ? selected : padrao.slice();
+      }
+      return out;
     }
-    var qtd = Number(orc && (orc.quantidade != null ? orc.quantidade : orc.qtd) || 0) || 0;
-    var filter = Array.isArray(ondasSelecionadas) && ondasSelecionadas.length
-      ? ondasSelecionadas.map(function(item) { return String(item || '').trim().toUpperCase(); }).filter(Boolean)
-      : null;
-    return rows.filter(function(row) {
-      if (!filter) return true;
-      return filter.indexOf(String(row && row.onda || '').trim().toUpperCase()) >= 0;
-    }).map(function(row, idx) {
-      var onda = String(row && row.onda || '').trim() || '—';
-      var liquidaTotal = Number(row && (row.liquida != null ? row.liquida : row.valor_liquido) || 0) || 0;
-      var freteTotal = Number(row && (row.comFrete != null ? row.comFrete : (row.total != null ? row.total : row.vUnit)) || 0) || 0;
-      var freteLinha = Number(row && (row.frete != null ? row.frete : (row.valor_frete != null ? row.valor_frete : row.frete_total)) || 0) || 0;
-      if (!(freteLinha > 0) && freteTotal > liquidaTotal && liquidaTotal > 0) freteLinha = freteTotal - liquidaTotal;
-      var vlUnit = Number(row && (row.valor_unitario != null ? row.valor_unitario : (row.preco != null ? row.preco : (row.vLiq != null ? row.vLiq : row.vUnit))) || 0) || 0;
-      var unitLiq = Number(row && (row.vLiq != null ? row.vLiq : row.valor_unitario_liquido) || 0) || 0;
-      if (!(unitLiq > 0) && vlUnit > 0) unitLiq = vlUnit;
-      if (!(unitLiq > 0) && qtd > 0 && liquidaTotal > 0) unitLiq = liquidaTotal / qtd;
-      if (!(vlUnit > 0) && unitLiq > 0) vlUnit = unitLiq;
-      var freteUnit = qtd > 0 ? (freteLinha / qtd) : 0;
-      var unitFreteBase = Number(row && (row.valor_unitario_com_frete != null ? row.valor_unitario_com_frete : row.vUnitComFrete) || 0) || 0;
-      var unitFrete = unitFreteBase > 0 ? unitFreteBase : ((vlUnit > 0 || freteUnit > 0) ? (vlUnit + freteUnit) : 0);
-      try { console.log('[ORC-PRINT] vlUnit:', vlUnit, 'frete:', freteLinha); } catch (_) {}
-      var total = Number(row && (row.total != null ? row.total : row.comFrete) || 0) || (qtd > 0 ? (unitFrete * qtd) : 0);
-      return {
-        comp: _orcPrintPick(row && row.compTitle, row && row.compLabel, row && row.label, onda ? ('Onda ' + onda) : '', '—'),
-        onda: onda,
-        unitLiq: vlUnit > 0 ? vlUnit : unitLiq,
-        total: total,
-        idx: idx
-      };
+    var mid = 'orc-print-ondas-item-' + Date.now();
+    return new Promise(function(resolve) {
+      var bodyHtml = ''
+        + '<div style="padding:4px 2px 10px;display:grid;gap:12px">'
+        + '  <div style="font-size:13px;color:#cbd5e1;line-height:1.5">Escolha as <b>ondas</b> que <b>cada item</b> do orçamento vai mostrar na impressão.</div>'
+        + itens.map(function(item, idx) {
+          var label = _orcPrintItemLabel(item, idx);
+          var selB = padrao.indexOf('B') >= 0 ? ' checked' : '';
+          var selC = padrao.indexOf('C') >= 0 ? ' checked' : '';
+          var selBC = padrao.indexOf('BC') >= 0 ? ' checked' : '';
+          return ''
+            + '<div style="border:1px solid rgba(148,163,184,.25);border-radius:10px;padding:12px;background:rgba(30,41,59,.55);display:grid;gap:8px">'
+            + '  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div style="font-weight:800;font-size:14px;color:#f8fafc">Item ' + escHtml(String(idx + 1)) + ' de ' + escHtml(String(itens.length)) + '</div><div style="font-size:12px;color:#cbd5e1">' + escHtml(label) + '</div></div>'
+            + '  <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">'
+            + '    <label style="display:flex;gap:6px;align-items:center;font-size:13px;color:#f8fafc;font-weight:700;cursor:pointer"><input type="checkbox" class="opi-wave" data-idx="' + escAttr(String(idx)) + '" data-wave="B" style="width:16px;height:16px"' + selB + '> Onda B</label>'
+            + '    <label style="display:flex;gap:6px;align-items:center;font-size:13px;color:#f8fafc;font-weight:700;cursor:pointer"><input type="checkbox" class="opi-wave" data-idx="' + escAttr(String(idx)) + '" data-wave="C" style="width:16px;height:16px"' + selC + '> Onda C</label>'
+            + '    <label style="display:flex;gap:6px;align-items:center;font-size:13px;color:#f8fafc;font-weight:700;cursor:pointer"><input type="checkbox" class="opi-wave" data-idx="' + escAttr(String(idx)) + '" data-wave="BC" style="width:16px;height:16px"' + selBC + '> Onda BC</label>'
+            + '  </div>'
+            + '</div>';
+        }).join('')
+        + '</div>';
+      var resolved = false;
+      function collect() {
+        if (resolved) return;
+        resolved = true;
+        try { window._fecharModalPadrao(mid); } catch (_) {}
+        var map = {};
+        itens.forEach(function(_, idx) {
+          var sel = [];
+          ['B', 'C', 'BC'].forEach(function(o) {
+            var el = document.querySelector('#' + mid + ' .opi-wave[data-idx="' + String(idx) + '"][data-wave="' + o + '"]');
+            if (el && el.checked) sel.push(o);
+          });
+          map[idx] = sel.length ? sel : padrao.slice();
+        });
+        resolve(map);
+      }
+      function cancel() {
+        if (resolved) return;
+        resolved = true;
+        try { window._fecharModalPadrao(mid); } catch (_) {}
+        resolve(null);
+      }
+      try {
+        window._abrirModalPadrao({
+          id: mid,
+          titulo: 'Ondas por Item — Impressão',
+          subtitulo: 'Escolha as ondas que cada item vai mostrar no PDF',
+          largura: '640px',
+          hero: 'Selecionar',
+          bodyHtml: bodyHtml,
+          footerHtml: ''
+            + '<button type="button" class="estoque-modal-btn estoque-modal-btn-gray" data-opi-cancel>Cancelar</button>'
+            + '<button type="button" class="estoque-modal-btn estoque-modal-btn-blue" data-opi-confirm>Confirmar e Imprimir</button>'
+        });
+      } catch (_err) { resolve(null); return; }
+      setTimeout(function() {
+        var overlay = document.getElementById(mid);
+        if (!overlay) { resolve(null); return; }
+        var c = overlay.querySelector('[data-opi-confirm]');
+        var x = overlay.querySelector('[data-opi-cancel]');
+        var cl = overlay.querySelectorAll('[data-modal-close]');
+        if (c) c.onclick = collect;
+        if (x) x.onclick = cancel;
+        Array.prototype.slice.call(cl || []).forEach(function(btn) { btn.onclick = cancel; });
+      }, 0);
     });
   }
 
-  function _orcPrintBuildHtml(orc, rows) {
+  function orcPrintMapRow(row, idx, qtd) {
+    var onda = String(row && row.onda || '').trim() || '—';
+    var liquidaTotal = Number(row && (row.liquida != null ? row.liquida : row.valor_liquido) || 0) || 0;
+    var freteTotal = Number(row && (row.comFrete != null ? row.comFrete : (row.total != null ? row.total : row.vUnit)) || 0) || 0;
+    var freteLinha = Number(row && (row.frete != null ? row.frete : (row.valor_frete != null ? row.valor_frete : row.frete_total)) || 0) || 0;
+    if (!(freteLinha > 0) && freteTotal > liquidaTotal && liquidaTotal > 0) freteLinha = freteTotal - liquidaTotal;
+    var vlUnit = Number(row && (row.valor_unitario != null ? row.valor_unitario : (row.preco != null ? row.preco : (row.vLiq != null ? row.vLiq : row.vUnit))) || 0) || 0;
+    var unitLiq = Number(row && (row.vLiq != null ? row.vLiq : row.valor_unitario_liquido) || 0) || 0;
+    if (!(unitLiq > 0) && vlUnit > 0) unitLiq = vlUnit;
+    if (!(unitLiq > 0) && qtd > 0 && liquidaTotal > 0) unitLiq = liquidaTotal / qtd;
+    if (!(vlUnit > 0) && unitLiq > 0) vlUnit = unitLiq;
+    var freteUnit = qtd > 0 ? (freteLinha / qtd) : 0;
+    var unitFreteBase = Number(row && (row.valor_unitario_com_frete != null ? row.valor_unitario_com_frete : row.vUnitComFrete) || 0) || 0;
+    var unitFrete = unitFreteBase > 0 ? unitFreteBase : ((vlUnit > 0 || freteUnit > 0) ? (vlUnit + freteUnit) : 0);
+    var total = Number(row && (row.total != null ? row.total : row.comFrete) || 0) || (qtd > 0 ? (unitFrete * qtd) : 0);
+    return {
+      comp: _orcPrintPick(row && row.compTitle, row && row.compLabel, row && row.label, onda ? ('Onda ' + onda) : '', '—'),
+      onda: onda,
+      unitLiq: vlUnit > 0 ? vlUnit : unitLiq,
+      total: total,
+      idx: idx
+    };
+  }
+
+  function _orcPrintBuildRows(orc, ondasSelecionadas, itemOndaMap) {
+    var rowsSingle = Array.isArray(orc && orc.resultados) ? orc.resultados.slice() : [];
+    if (!rowsSingle.length && orc && orc.parametros && Array.isArray(orc.parametros.resultados)) rowsSingle = orc.parametros.resultados.slice();
+    if (!rowsSingle.length && typeof window._orcResultadosFromParametros === 'function') {
+      try { rowsSingle = window._orcResultadosFromParametros(orc) || []; } catch (_) { rowsSingle = []; }
+    }
+    var qtdSingle = Number(orc && (orc.quantidade != null ? orc.quantidade : orc.qtd) || 0) || 0;
+    var filterSingle = Array.isArray(ondasSelecionadas) && ondasSelecionadas.length
+      ? ondasSelecionadas.map(function(s) { return String(s || '').trim().toUpperCase(); }).filter(Boolean)
+      : null;
+    var itensList = orcParseItensRow ? orcParseItensRow(orc) : [];
+    if (!itensList.length && Array.isArray(orc && orc.itens)) itensList = orc.itens.slice();
+    var isMulti = Array.isArray(itensList) && itensList.length > 1;
+    if (!isMulti) {
+      return {
+        rows: rowsSingle.filter(function(row) {
+          if (!filterSingle) return true;
+          return filterSingle.indexOf(String(row && row.onda || '').trim().toUpperCase()) >= 0;
+        }).map(function(row, idx) { return orcPrintMapRow(row, idx, qtdSingle); }),
+        itemTitulo: null, totalGeral: null, qtd: qtdSingle
+      };
+    }
+    var allRows = [];
+    var totalGeral = 0;
+    var itemTitleArr = itensList.map(function(item, itemIdx) {
+      var titulo = _orcPrintItemLabel(item, itemIdx);
+      var ondasDoItem = Array.isArray(itemOndaMap) && itemOndaMap && itemOndaMap[itemIdx] && itemOndaMap[itemIdx].length
+        ? itemOndaMap[itemIdx]
+        : (Array.isArray(ondasSelecionadas) && ondasSelecionadas.length ? ondasSelecionadas : null);
+      var itemOndaPadrao = ondasDoItem ? ondasDoItem.map(function(s) { return String(s).toUpperCase(); }).filter(Boolean) : null;
+      var resultados = [];
+      if (Array.isArray(item && item.resultados)) resultados = item.resultados.slice();
+      else if (item && item.parametros && Array.isArray(item.parametros.resultados)) resultados = item.parametros.resultados.slice();
+      if (!resultados.length && typeof window._orcResultadosFromParametros === 'function') {
+        try { resultados = window._orcResultadosFromParametros(item) || []; } catch (_) { resultados = []; }
+      }
+      var qtdI = Number(item && (item.quantidade != null ? item.quantidade : item.qtd) || 0) || 0;
+      var unidade = Number(item && (item.valor_unitario != null ? item.valor_unitario : item.vunit) || 0) || 0;
+      var totalItemFallback = Number(item && (item.valor_total != null ? item.valor_total : item.total) || 0) || (qtdI > 0 && unidade > 0 ? (unidade * qtdI) : 0);
+      if (!resultados.length) {
+        var ondaItem = String(item && item.onda || '').trim();
+        totalGeral += totalItemFallback || 0;
+        if (ondaItem && (!itemOndaPadrao || itemOndaPadrao.indexOf(ondaItem.toUpperCase()) >= 0)) {
+          allRows.push({ comp: titulo, onda: ondaItem, unitLiq: unidade, total: totalItemFallback, idx: allRows.length, _item: itemIdx, _titulo: titulo });
+        } else if (!itemOndaPadrao && (unidade > 0 || totalItemFallback > 0)) {
+          allRows.push({ comp: titulo, onda: '—', unitLiq: unidade, total: totalItemFallback, idx: allRows.length, _item: itemIdx, _titulo: titulo });
+        }
+        return { titulo: titulo, qtd: qtdI, ondas: itemOndaPadrao, total: totalItemFallback, rows: null };
+      }
+      var filteredRows = resultados.filter(function(row) {
+        if (!itemOndaPadrao) return true;
+        return itemOndaPadrao.indexOf(String(row && row.onda || '').trim().toUpperCase()) >= 0;
+      }).map(function(row) {
+        var mapped = orcPrintMapRow(row, allRows.length, qtdI);
+        mapped._item = itemIdx;
+        mapped._titulo = titulo;
+        totalGeral += Number(mapped && mapped.total || 0) || 0;
+        allRows.push(mapped);
+        return mapped;
+      });
+      var subtotal = filteredRows.reduce(function(acc, r) { return acc + (Number(r && r.total || 0) || 0); }, 0);
+      return { titulo: titulo, qtd: qtdI, ondas: itemOndaPadrao, total: subtotal, rows: filteredRows };
+    });
+    if (!(totalGeral > 0)) totalGeral = Number(orc && (orc.valor_total != null ? orc.valor_total : orc.vtot) || 0) || 0;
+    return { rows: allRows, itemTitulo: itemTitleArr, totalGeral: totalGeral, qtd: null };
+  }
+
+  function _orcPrintBuildHtml(orc, rowsData) {
     var numero = _orcPrintPick(orc && orc.numero_orcamento, orc && orc.numero, orc && orc.id ? String(orc.id).slice(0, 8) : '', '—');
     var cliente = _orcPrintPick(orc && orc.cliente_nome, orc && orc.clienteNome, orc && orc.cliente, orc && orc.descricao, '—');
     var comp = _orcPrintPick(orc && orc.comp, orc && orc.parametros && orc.parametros.comp, '—');
     var larg = _orcPrintPick(orc && orc.larg, orc && orc.parametros && orc.parametros.larg, '—');
     var alt = _orcPrintPick(orc && orc.alt, orc && orc.parametros && orc.parametros.alt, '—');
-    var qtd = Number(orc && (orc.quantidade != null ? orc.quantidade : orc.qtd) || 0) || 0;
     var tipo = _orcPrintPick(orc && orc.tipo, orc && orc.parametros && orc.parametros.tipo, orc && orc.onda, '—');
     var medidas = _orcPrintPick(orc && orc.medidas, [comp, larg, alt].filter(Boolean).join(' x '), '—');
     var data = _orcPrintDate(orc && (orc.criado_em || orc.created_at || orc.data));
-    var totalGeral = rows.reduce(function(sum, row) { return sum + (Number(row && row.total || 0) || 0); }, 0);
-    if (!(totalGeral > 0)) totalGeral = Number(orc && (orc.valor_total != null ? orc.valor_total : orc.vtot) || 0) || 0;
     var vendedor = _orcPrintPick(orc && orc.vendedor, orc && orc.vendNome, orc && orc.vendedor_nome, '—');
     var tel1 = _orcPrintPick(orc && orc.vendTel, orc && orc.vendedor_telefone, orc && orc.telefone, '—');
     var tel2 = _orcPrintPick(orc && orc.vendTel2, orc && orc.vendedor_telefone2, orc && orc.telefone2, '—');
     var email = _orcPrintPick(orc && orc.vendEmail, orc && orc.vendedor_email, orc && orc.email, '—');
     var logo = _orcPrintResolveLogo();
-    var rowsHtml = rows.length ? rows.map(function(row) {
-      return ''
-        + '<tr>'
-        + '  <td>' + _orcPrintEsc(row.comp || '—') + '</td>'
-        + '  <td class="center">' + _orcPrintEsc(row.onda || '—') + '</td>'
-        + '  <td class="num">' + _orcPrintMoney(row.unitLiq) + '</td>'
-        + '  <td class="num strong">' + _orcPrintMoney(row.total) + '</td>'
+    var rows = Array.isArray(rowsData && rowsData.rows) ? rowsData.rows : [];
+    var itemTitulo = Array.isArray(rowsData && rowsData.itemTitulo) ? rowsData.itemTitulo : null;
+    var totalGeral = Number(rowsData && (rowsData.totalGeral != null ? rowsData.totalGeral : null)) || 0;
+    var qtdHeader = Number(rowsData && (rowsData.qtd != null ? rowsData.qtd : null)) || Number(orc && (orc.quantidade != null ? orc.quantidade : orc.qtd) || 0);
+    if (!totalGeral) totalGeral = rows.reduce(function(sum, row) { return sum + (Number(row && row.total || 0) || 0); }, 0);
+    if (!(totalGeral > 0)) totalGeral = Number(orc && (orc.valor_total != null ? orc.valor_total : orc.vtot) || 0) || 0;
+    var rowsHtml = '';
+    var lastItem = null;
+    rows.forEach(function(row) {
+      if (itemTitulo && row && (row._item != null) && lastItem !== row._item) {
+        var meta = itemTitulo[row._item] || null;
+        var ondasTxt = meta && Array.isArray(meta.ondas) && meta.ondas.length ? meta.ondas.join('/') : 'Todas';
+        var qtdTxt = meta && meta.qtd > 0 ? _orcPrintNum(meta.qtd, 0) : '—';
+        rowsHtml += '<tr><td colspan="4" style="padding:14px 14px 8px;background:#f1f5f9;border:1px solid #111;border-bottom:1px solid #111">'
+          + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+          + '  <div style="font-size:14px;font-weight:900;color:#0f172a">ITEM ' + _orcPrintEsc(String(row._item + 1)) + '</div>'
+          + '  <div style="font-size:13px;font-weight:800;color:#1e293b">' + _orcPrintEsc(meta && meta.titulo || row._titulo || '') + '</div>'
+          + '  <div style="display:flex;gap:12px;font-size:11px;font-weight:800;color:#334155">'
+          + '    <span>Qtd: ' + _orcPrintEsc(qtdTxt) + '</span>'
+          + '    <span>Ondas: ' + _orcPrintEsc(ondasTxt) + '</span>'
+          + (meta && meta.total > 0 ? '<span>Subtotal: ' + _orcPrintMoney(meta.total) + '</span>' : '')
+          + '  </div>'
+          + '</div></td></tr>';
+        lastItem = row._item;
+      }
+      rowsHtml += '<tr>'
+        + '  <td>' + _orcPrintEsc(row && row.comp || '—') + '</td>'
+        + '  <td class="center">' + _orcPrintEsc(row && row.onda || '—') + '</td>'
+        + '  <td class="num">' + _orcPrintMoney(row && row.unitLiq || 0) + '</td>'
+        + '  <td class="num strong">' + _orcPrintMoney(row && row.total || 0) + '</td>'
         + '</tr>';
-    }).join('') : '<tr><td>—</td><td class="center">—</td><td class="num">R$ 0,00</td><td class="num strong">R$ 0,00</td></tr>';
+    });
+    if (!rowsHtml) rowsHtml = '<tr><td>—</td><td class="center">—</td><td class="num">R$ 0,00</td><td class="num strong">R$ 0,00</td></tr>';
 
     return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Orçamento Nº ' + _orcPrintEsc(numero) + ' — Italy Embalagens</title>'
       + '<style>'
@@ -12133,7 +12269,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(9, 'antes pat
       + '    <div class="cell"><div class="label">Comprimento (mm)</div><div class="value">' + _orcPrintEsc(comp) + '</div></div>'
       + '    <div class="cell"><div class="label">Largura (mm)</div><div class="value">' + _orcPrintEsc(larg) + '</div></div>'
       + '    <div class="cell"><div class="label">Altura (mm)</div><div class="value">' + _orcPrintEsc(alt) + '</div></div>'
-      + '    <div class="cell"><div class="label">Quantidade</div><div class="value">' + _orcPrintEsc(qtd > 0 ? _orcPrintNum(qtd, 0) : '—') + '</div></div>'
+      + '    <div class="cell"><div class="label">Quantidade</div><div class="value">' + _orcPrintEsc(qtdHeader > 0 ? _orcPrintNum(qtdHeader, 0) : '—') + '</div></div>'
       + '    <div class="cell"><div class="label">Medidas</div><div class="value">' + _orcPrintEsc(medidas) + '</div></div>'
       + '  </div>'
       + '</div>'
@@ -12146,12 +12282,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(9, 'antes pat
       + '</div><script>window.onload=function(){setTimeout(function(){try{window.print()}catch(e){}},120)}<\/script></body></html>';
   }
 
-  function _orcPrintOpen(orc, ondasSelecionadas) {
+  async function _orcPrintOpen(orc, ondasSelecionadas) {
     if (!orc) {
       try { window.toast('Orçamento não encontrado', 'var(--orange)'); } catch (_) {}
       return;
     }
-    var rows = _orcPrintBuildRows(orc, ondasSelecionadas);
+    var itensList = orcParseItensRow ? orcParseItensRow(orc) : [];
+    if (!itensList.length && Array.isArray(orc && orc.itens)) itensList = orc.itens.slice();
+    var itemOndaMap = null;
+    if (Array.isArray(itensList) && itensList.length > 1) {
+      itemOndaMap = await _orcPrintPromptOndasPorItem(itensList, ondasSelecionadas);
+      if (itemOndaMap === null) return;
+    }
+    var rowsData = _orcPrintBuildRows(orc, ondasSelecionadas, itemOndaMap);
     var win = null;
     try { win = window.open('', '_blank', 'width=920,height=760'); } catch (_) { win = null; }
     if (!win) {
@@ -12159,12 +12302,63 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(9, 'antes pat
       return;
     }
     try {
-      win.document.write(_orcPrintBuildHtml(orc, rows));
+      win.document.write(_orcPrintBuildHtml(orc, rowsData));
       win.document.close();
       win.focus();
     } catch (_) {
       try { win.close(); } catch (_) {}
     }
+  }
+
+  function _orcPrintCollectCurrentDraft() {
+    var calcCli = document.getElementById('calc-cli');
+    var clienteId = String((calcCli && calcCli.value) || '').trim();
+    var clienteNome = '';
+    try {
+      if (calcCli && calcCli.options && calcCli.selectedIndex >= 0) clienteNome = String(calcCli.options[calcCli.selectedIndex].textContent || '').trim();
+    } catch (_) {}
+    var comp = String(((document.getElementById('calc-c') || document.getElementById('calc-comp') || {}).value) || '').trim();
+    var larg = String(((document.getElementById('calc-l') || document.getElementById('calc-larg') || {}).value) || '').trim();
+    var alt = String(((document.getElementById('calc-a') || document.getElementById('calc-alt') || {}).value) || '').trim();
+    var qtd = Number(((document.getElementById('calc-qtd') || {}).value) || 0) || 0;
+    var tipo = _orcPrintPick((document.getElementById('calc-tipo') || {}).value, (document.getElementById('calc-onda') || {}).value);
+    var local = null;
+    try {
+      local = (Array.isArray(window.ORCAMENTOS) ? window.ORCAMENTOS : []).find(function(item) {
+        return String(item && item.id || '').trim() === String(window._orcIdAtual || '').trim();
+      }) || null;
+    } catch (_) { local = null; }
+    try {
+      var draftItens = [];
+      if (Array.isArray(window.__orcDraftItems)) draftItens = window.__orcDraftItems.slice();
+      var hasDraftItens = Array.isArray(draftItens) && draftItens.length;
+      if (hasDraftItens || local) {
+        var finalLocal = Object.assign({}, local || {});
+        if (hasDraftItens) finalLocal.itens = JSON.stringify(draftItens.map(function(i) { return Object.assign({}, i || {}); }));
+        local = finalLocal;
+      }
+    } catch (_) {}
+    return Object.assign({}, local || {}, {
+      id: _orcPrintPick(window._orcIdAtual, local && local.id),
+      numero_orcamento: _orcPrintPick(window._orcNumeroAtual, local && local.numero_orcamento, local && local.numero),
+      cliente_id: _orcPrintPick(clienteId, local && local.cliente_id, local && local.cli_id),
+      cliente_nome: _orcPrintPick(clienteNome, local && local.cliente_nome, local && local.clienteNome, local && local.descricao),
+      comp: _orcPrintPick(comp, local && local.comp),
+      larg: _orcPrintPick(larg, local && local.larg),
+      alt: _orcPrintPick(alt, local && local.alt),
+      medidas: _orcPrintPick([comp, larg, alt].filter(Boolean).join(' x '), local && local.medidas, local && local.titulo),
+      quantidade: qtd || Number(local && (local.quantidade || local.qtd) || 0) || 0,
+      tipo: _orcPrintPick(tipo, local && local.tipo, local && local.parametros && local.parametros.tipo),
+      resultados: (window.calcLastResult && Array.isArray(window.calcLastResult.allResults) && window.calcLastResult.allResults.length)
+        ? window.calcLastResult.allResults.slice()
+        : (Array.isArray(local && local.resultados) ? local.resultados.slice() : []),
+      criado_em: _orcPrintPick(local && local.criado_em, local && local.data, new Date().toISOString()),
+      valor_total: local && local.valor_total,
+      vendedor: _orcPrintPick(local && local.vendedor, local && local.vendNome, local && local.vendedor_nome),
+      vendTel: _orcPrintPick(local && local.vendTel, local && local.vendedor_telefone, local && local.telefone),
+      vendTel2: _orcPrintPick(local && local.vendTel2, local && local.vendedor_telefone2, local && local.telefone2),
+      vendEmail: _orcPrintPick(local && local.vendEmail, local && local.vendedor_email, local && local.email)
+    });
   }
 
   window.imprimirOrcData = function(orc) {
