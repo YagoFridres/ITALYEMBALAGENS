@@ -23341,6 +23341,38 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (!shell || !shell.amostrasSemanaGrid) return;
       var grid = shell.amostrasSemanaGrid;
       var badgeCount = shell.amostrasSemanaCount;
+      function escH(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+          .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+      }
+      function escAttr(s) { return escH(s); }
+      function fmtD(iso) {
+        try {
+          var d = String(iso || '').slice(0,10);
+          if (!d) return '—';
+          var dt = new Date(d + 'T12:00:00');
+          return dt.toLocaleDateString('pt-BR');
+        } catch(_) { return String(iso || '').slice(0,10) || '—'; }
+      }
+      function _amostraNumero(a, fallbackIdx) {
+        if (a && (a.numero_amostra != null)) {
+          var n = String(a.numero_amostra).trim();
+          if (n && n !== 'undefined' && n !== 'null' && n !== '0') {
+            return '<b style="font-size:1rem;color:#60a5fa">#' + escH(n) + '</b>';
+          }
+        }
+        if (a && (a.numero != null)) {
+          var nr = String(a.numero).trim();
+          if (nr && nr !== 'undefined' && nr !== 'null' && nr !== '0') {
+            return '<span style="color:#94a3b8;font-size:.75rem">OF #</span>' + escH(nr);
+          }
+        }
+        if (fallbackIdx != null) {
+          return '<span style="color:#64748b">#' + escH(String(Number(fallbackIdx)+1)) + '</span>';
+        }
+        return '—';
+      }
       try {
         var wBase = state && state.weekStartIso ? state.weekStartIso : new Date().toISOString().slice(0, 10);
         var nowTemp = new Date(wBase + 'T00:00:00');
@@ -23363,51 +23395,95 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           grid.innerHTML = '<div class="ofmaq-amostras-vazio">Nenhuma amostra pendente para esta semana. 🎉</div>';
           return;
         }
-        grid.innerHTML = pendentes.map(function(a) {
+        var thead = '<thead style="position:sticky;top:0;background:#0f172a;z-index:2"><tr>'
+          + '<th style="width:70px;text-align:left;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Nº</th>'
+          + '<th style="width:72px;text-align:left;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Imagem</th>'
+          + '<th style="text-align:left;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Cliente</th>'
+          + '<th style="text-align:left;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Produto</th>'
+          + '<th style="width:130px;text-align:left;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Data Pedido</th>'
+          + '<th style="width:130px;text-align:left;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Data Entrega</th>'
+          + '<th style="width:170px;text-align:center;padding:8px 10px;border-bottom:1px solid #334155;color:#94a3b8;font-size:.75rem;font-weight:600;letter-spacing:.03em;">Ação</th>'
+          + '</tr></thead>';
+        var tbodyRows = pendentes.map(function(a, idx) {
           var id = String(a.id || '').trim();
           var cliente = String(a.cliente_nome || a.cliente || 'Amostra').trim();
           var produto = String(a.produto || a.descricao || 'Sem descrição').trim();
-          var dpRaw = String(a.data_prevista || a.data_entrega || '').slice(0, 10);
-          var dpBr = dpRaw ? (new Date(dpRaw + 'T12:00:00').toLocaleDateString('pt-BR')) : '—';
-          var obs = String(a.observacoes || a.obs || '').trim();
-          var pedido = String(a.pedido || a.pedido_cliente || '').trim();
-          var obsHtml = obs ? ('<div class="ofmaq-amostra-card-obs">' + escH(obs) + '</div>') : '';
-          var pedidoHtml = pedido ? ('<span class="ofmaq-final-mini-pill">' + escH(pedido) + '</span>') : '';
-          var valor = Number(a.valor || a.valor_total || 0) || 0;
-          var valorHtml = valor > 0 ? ('<span><b>Valor</b><i>R$ ' + escH(String(valor.toFixed(2))) + '</i></span>') : '';
+          var dpedido = String(a.data_pedido || '').slice(0, 10);
+          var dentrega = String(a.data_entrega || a.data_prevista || '').slice(0, 10);
+          var img = String(a.imagem_url || '').trim();
+          var imgHtml = img
+            ? ('<button type="button" class="ofmaq-final-thumb" data-amostra-image="' + escAttr(id) + '" style="width:48px;height:48px;padding:0;border:1px solid #334155;border-radius:6px;overflow:hidden;background:#0f172a;display:flex;align-items:center;justify-content:center;cursor:zoom-in;"><img src="' + escAttr(img) + '" alt="Imagem amostra" style="width:100%;height:100%;object-fit:cover;display:block;"></button>')
+            : '<span style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;border:1px dashed #334155;border-radius:6px;background:#0f172a;color:#64748b;font-size:1.1rem;">🧪</span>';
           return ''
-            + '<div class="ofmaq-amostra-card" data-amostra-id="' + escAttr(id) + '">'
-            + '  <div class="ofmaq-amostra-card-top">'
-            + '    <div class="ofmaq-amostra-card-tit"><small>Amostra Pendente</small><b>' + escH(produto) + '</b></div>'
-            + pedidoHtml
-            + '  </div>'
-            + '  <div class="ofmaq-amostra-card-meta">'
-            + '    <span><b>Cliente</b><i>' + escH(cliente) + '</i></span>'
-            + '    <span><b>Data Prevista</b><i>' + escH(dpBr) + '</i></span>'
-            + valorHtml
-            + '  </div>'
-            + obsHtml
-            + '  <div class="ofmaq-amostra-card-foot"><button type="button" class="ofmaq-amostra-feito" data-feito-amostra="' + escAttr(id) + '">✔ Marcar como Feito</button></div>'
-            + '</div>';
+            + '<tr data-amostra-id="' + escAttr(id) + '" style="border-bottom:1px solid #1e293b;vertical-align:middle;">'
+            + '<td style="padding:10px;">' + _amostraNumero(a, idx) + '</td>'
+            + '<td style="padding:8px 10px;">' + imgHtml + '</td>'
+            + '<td style="padding:8px 10px;"><div style="font-weight:600;color:#e2e8f0;font-size:.88rem;">' + escH(cliente) + '</div></td>'
+            + '<td style="padding:8px 10px;"><div style="font-weight:500;color:#f1f5f9;font-size:.88rem;">' + escH(produto) + '</div></td>'
+            + '<td style="padding:8px 10px;color:#94a3b8;font-size:.85rem;">' + escH(fmtD(dpedido)) + '</td>'
+            + '<td style="padding:8px 10px;color:#fbbf24;font-size:.85rem;font-weight:600;">' + escH(fmtD(dentrega)) + '</td>'
+            + '<td style="padding:8px 10px;text-align:center;">'
+            + '  <button type="button" class="ofmaq-amostra-feito" data-feito-amostra="' + escAttr(id) + '" '
+            + '    style="padding:6px 12px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:600;cursor:pointer;font-size:.82rem;white-space:nowrap;">'
+            + '    ✔ Marcar como Feito'
+            + '  </button>'
+            + '</td>'
+            + '</tr>';
         }).join('');
+        grid.innerHTML = ''
+          + '<div style="border:1px solid #334155;border-radius:10px;overflow:hidden;background:#111827;">'
+          + '  <table class="ofmaq-final-table" style="width:100%;border-collapse:separate;border-spacing:0;display:block;max-height:380px;overflow:auto;">'
+          +      thead
+          + '    <tbody>' + tbodyRows + '</tbody>'
+          + '  </table>'
+          + '</div>';
+
+        grid.querySelectorAll('[data-amostra-image]').forEach(function(btn) {
+          btn.addEventListener('click', function(ev) {
+            try {
+              var img = btn.querySelector('img');
+              if (!img) return;
+              var src = String(img.src || '').trim();
+              if (!src) return;
+              var overlay = document.createElement('div');
+              overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;';
+              overlay.onclick = function() { try { overlay.remove(); } catch(_) {} };
+              var big = document.createElement('img');
+              big.src = src;
+              big.alt = 'Ampliar imagem';
+              big.style.cssText = 'max-width:90vw;max-height:85vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.5);object-fit:contain;cursor:default;';
+              overlay.appendChild(big);
+              document.body.appendChild(overlay);
+            } catch(_i) {}
+          });
+        });
+
         grid.querySelectorAll('[data-feito-amostra]').forEach(function(btn) {
           btn.addEventListener('click', async function(ev) {
             try {
               var idBtn = String(btn.getAttribute('data-feito-amostra') || '').trim();
               if (!idBtn) return;
               btn.setAttribute('data-loading', '1');
-              btn.textContent = '⏳ Salvando...';
+              btn.disabled = true;
+              btn.innerHTML = '⏳ Salvando...';
+              var nowISO = new Date().toISOString();
               var res = await fetch('/api/amostras/' + encodeURIComponent(idBtn), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'Feita' })
+                body: JSON.stringify({
+                  status: 'Feita',
+                  data_aprovacao: nowISO,
+                  data_feita: nowISO,
+                  data_conclusao: nowISO,
+                  updated_at: nowISO
+                })
               });
               if (!res || !res.ok) throw new Error('Erro HTTP: ' + (res && res.status));
-              var card = ev.target.closest('.ofmaq-amostra-card');
-              if (card) {
-                card.style.transition = 'opacity .25s, transform .25s, background .25s';
-                card.style.opacity = '0';
-                card.style.transform = 'translateY(-10px) scale(.97)';
+              var row = ev.target.closest('tr');
+              if (row) {
+                row.style.transition = 'opacity .25s, transform .25s, background .25s';
+                row.style.opacity = '0';
+                row.style.transform = 'translateY(-6px)';
               }
               setTimeout(function() {
                 try { renderAmostrasSemana(shell); } catch (_n) {}
@@ -23415,8 +23491,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             } catch (eErr) {
               console.error('[Amostras Semana] Feito erro:', eErr);
               btn.removeAttribute('data-loading');
-              btn.textContent = '❌ Tentar novamente';
-              setTimeout(function() { btn.textContent = '✔ Marcar como Feito'; }, 2500);
+              btn.disabled = false;
+              btn.innerHTML = '❌ Tentar novamente';
+              setTimeout(function() { btn.innerHTML = '✔ Marcar como Feito'; }, 2500);
             }
           });
         });

@@ -18572,7 +18572,7 @@ function lancImprimirLista(){
 }
 
 // ===================== AMOSTRAS =====================
-window.AMOSTRAS_UI = window.AMOSTRAS_UI || { status:'', emp:'', busca:'' };
+window.AMOSTRAS_UI = window.AMOSTRAS_UI || { status:'', emp:'', busca:'', incluirCanceladas:false };
 var AMOSTRAS_UI = window.AMOSTRAS_UI;
 var AMOSTRAS = null;
 var _amostrasLastLoad = 0;
@@ -18582,10 +18582,11 @@ var _amostrasPendTs = 0;
 function _amStatusColor(st){
   const s = String(st || '').trim().toLowerCase();
   if(s === 'pendente') return '#f59e0b';
+  if(s === 'cancelada' || s === 'cancelado') return '#94a3b8';
   if(s === 'em análise' || s === 'em analise') return '#0891b2';
   if(s === 'em produção' || s === 'em producao') return '#0891b2';
   if(s === 'aprovada' || s === 'aprovado') return '#10b981';
-  if(s === 'feito') return '#10b981';
+  if(s === 'feita' || s === 'feito' || s === 'concluida' || s === 'concluido' || s === 'pronta' || s === 'pronto') return '#10b981';
   if(s === 'reprovada' || s === 'reprovado') return '#ef4444';
   return 'var(--text3)';
 }
@@ -18594,6 +18595,13 @@ function _amStatusBadge(st){
   const cor = _amStatusColor(st);
   const txt = String(st || '—').trim() || '—';
   return `<span style="display:inline-block;background:${cor}20;border:1px solid ${cor};color:${cor};padding:2px 8px;border-radius:999px;font-weight:900;font-size:.7rem">${escH(txt)}</span>`;
+}
+
+function _amostrasNumero(a, fallbackIdx){
+  const n = Number(a && (a.numero_amostra != null ? a.numero_amostra : (a.numero || a.num))) || 0;
+  if (n > 0) return '#' + String(n);
+  const idx = Number(fallbackIdx || 0) || 0;
+  return idx > 0 ? ('#' + String(idx)) : '—';
 }
 
 async function carregarAmostras(opts){
@@ -18605,6 +18613,7 @@ async function carregarAmostras(opts){
   const status = String(AMOSTRAS_UI.status || '').trim();
   if(empId) params.set('empId', empId);
   if(status) params.set('status', status);
+  if(AMOSTRAS_UI.incluirCanceladas) params.set('incluirCanceladas','1');
   const r = await api('GET','/amostras?' + params.toString());
   if(!r || !r.ok || !Array.isArray(r.data)){
     AMOSTRAS = [];
@@ -18658,83 +18667,90 @@ function _amFillEmpSelects(){
 }
 
 async function renderAmostras(){
-  const grid = document.getElementById('amostras-grid');
-  if(!grid) return;
+  const tbody = document.getElementById('amostras-tbody');
+  const emptyBox = document.getElementById('amostras-empty');
+  const tableWrap = tbody ? tbody.closest('.page-body') : null;
+  if(!tbody) return;
   _amFillEmpSelects();
+  const cbIncluir = document.getElementById('am-fil-incluir-canceladas');
+  if(cbIncluir && !cbIncluir._synced) { cbIncluir.checked = !!AMOSTRAS_UI.incluirCanceladas; cbIncluir._synced = true; }
   if(!Array.isArray(AMOSTRAS)){
-    grid.innerHTML = `<div style="padding:14px;color:var(--text2)">Carregando amostras...</div>`;
+    tbody.innerHTML = '';
+    if(emptyBox) emptyBox.style.display = 'block';
     try{ await carregarAmostras({ forcar:true }); }catch(e){}
   }
   const q = String(AMOSTRAS_UI.busca || '').trim().toLowerCase();
   const rows = (Array.isArray(AMOSTRAS) ? AMOSTRAS : []).filter(a=>{
     if(!q) return true;
     const hay = [
-      a?.cliente_nome, a?.cliente, a?.produto, a?.descricao, a?.observacoes, a?.status
+      a?.numero_amostra, a?.numero, a?.cliente_nome, a?.cliente, a?.produto, a?.descricao, a?.observacoes, a?.status
     ].map(x=>String(x||'')).join(' ').toLowerCase();
     return hay.includes(q);
   });
   if(!rows.length){
-    grid.innerHTML = `<div style="padding:14px;color:var(--text3)">Nenhuma amostra.</div>`;
+    tbody.innerHTML = '';
+    if(emptyBox) emptyBox.style.display = 'block';
     return;
   }
-  grid.innerHTML = rows.map(a=>{
+  if(emptyBox) emptyBox.style.display = 'none';
+  tbody.innerHTML = rows.map((a, i)=>{
+    const id = String(a?.id || '').trim();
     const img = String(a?.imagem_url || '').trim();
     const produto = String(a?.produto || '').trim() || '—';
     const cliente = String(a?.cliente_nome || a?.cliente || '').trim() || '—';
-    const obs = String(a?.observacoes || '').trim();
     const pedido = String(a?.data_pedido || '').slice(0,10);
     const entrega = String(a?.data_entrega || '').slice(0,10);
-    const aprov = String(a?.data_aprovacao || '').slice(0,10);
+    const conc = String(a?.data_conclusao || a?.data_aprovacao || a?.data_feita || '').slice(0,10);
     const st = String(a?.status || 'Pendente').trim();
     const stNorm = String(st || '').trim().toLowerCase();
     const jaEmProducao = stNorm === 'em produção' || stNorm === 'em producao';
-    const jaFeita = stNorm === 'aprovada' || stNorm === 'aprovado' || stNorm === 'feito';
+    const jaFeita = stNorm === 'aprovada' || stNorm === 'aprovado' || stNorm === 'feito' || stNorm === 'feita' || stNorm === 'concluida' || stNorm === 'concluido' || stNorm === 'pronta' || stNorm === 'pronto';
     const aprovadoSt = stNorm === 'aprovada' || stNorm === 'aprovado';
-    const id = String(a?.id || '').trim();
     const ofNumero = String(a?.of_numero || '').trim();
     const temOF = !!ofNumero || !!String(a?.of_id || '').trim();
+    const estaCancelada = stNorm === 'cancelada' || stNorm === 'cancelado' || String(a?.deleted_at || '').trim().length > 0;
+    const numeroDisp = _amostrasNumero(a, 0);
+    const imgTd = img
+      ? `<img src="${escAttr(img)}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer;display:block;margin:0 auto" onclick="abrirFotoModal('${escAttr(img)}','Amostra — ${escAttr(produto)}')" onerror="this.replaceWith(document.createTextNode('📦'));">`
+      : `<div style="font-size:1.4rem;text-align:center;opacity:.8">📦</div>`;
+    const rowBg = estaCancelada ? 'background:rgba(148,163,184,.06);opacity:.75' : '';
     return `
-      <div class="card" style="padding:0;overflow:hidden">
-        <div style="background:var(--s2);border-bottom:1px solid var(--border);height:170px;display:flex;align-items:center;justify-content:center;position:relative">
-          ${img ? `<img src="${escAttr(img)}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="abrirFotoModal('${escAttr(img)}','Amostra — ${escAttr(produto)}')" onerror="this.style.display='none'">` : `<div style="font-size:2.2rem;opacity:.8">📦</div>`}
-        </div>
-        <div style="padding:14px">
-          <div style="font-weight:900;font-size:1rem">${escH(produto)}</div>
-          <div style="color:var(--text2);margin-top:2px"><span style="color:var(--text3);font-family:var(--mono);font-size:.7rem">CLIENTE</span> · <b>${escH(cliente)}</b></div>
-          <div style="margin-top:10px;color:var(--text2);font-family:var(--mono);font-size:.72rem;line-height:1.5">
-            <div>📅 Pedido: <b>${escH(pedido ? fmtD(pedido) : '—')}</b></div>
-            <div>🚚 Entrega: <b>${escH(entrega ? fmtD(entrega) : '—')}</b></div>
-            <div>✅ Aprovação: <b>${escH(aprov ? fmtD(aprov) : '—')}</b></div>
-          </div>
-          ${obs ? `<div style="margin-top:10px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px"><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono);margin-bottom:4px">📝 Observações</div><div style="color:var(--text2);white-space:pre-wrap">${escH(obs)}</div></div>` : ''}
-          <div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            ${_amStatusBadge(st)}
-            ${jaFeita && aprov ? `<span style="font-size:.72rem;color:var(--text3);font-family:var(--mono)">✅ Feito em: <b>${escH(fmtD(aprov))}</b></span>` : ''}
-          </div>
-          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-            ${(!jaEmProducao && !jaFeita) ? `
+      <tr data-amostra-id="${escAttr(id)}" style="${rowBg}">
+        <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);font-weight:900;font-family:var(--mono);color:var(--text1)">${escH(numeroDisp)}</td>
+        <td style="padding:6px 8px;text-align:center;border-bottom:1px solid var(--border);vertical-align:middle">${imgTd}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;font-weight:700;color:var(--text1)">${escH(cliente)}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text2)">${escH(produto)}</td>
+        <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);vertical-align:middle;font-family:var(--mono);color:var(--text2)">${escH(pedido ? fmtD(pedido) : '—')}</td>
+        <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);vertical-align:middle;font-family:var(--mono);color:var(--text2)">${escH(entrega ? fmtD(entrega) : '—')}</td>
+        <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);vertical-align:middle;font-family:var(--mono);color:${jaFeita ? 'var(--green)' : 'var(--text3)'}">${jaFeita && conc ? ('✅ ' + escH(fmtD(conc))) : (estaCancelada ? '—' : '—')}</td>
+        <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);vertical-align:middle">${_amStatusBadge(st)}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle">
+          <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;justify-content:center">
+            ${(!jaEmProducao && !jaFeita && !estaCancelada) ? `
               <button onclick="marcarAmostraEmProducao('${escAttr(id)}')"
-                style="flex:1;padding:6px 10px;border-radius:6px;border:none;background:#0891b2;color:#fff;cursor:pointer;font-size:0.8rem;font-weight:600;">
-                🏭 Em Produção
+                style="padding:6px 10px;border-radius:6px;border:none;background:#0891b2;color:#fff;cursor:pointer;font-size:0.75rem;font-weight:700;">
+                🏭 Produção
               </button>` : ''}
-            ${(!jaFeita) ? `
+            ${(!jaFeita && !estaCancelada) ? `
               <button onclick="marcarAmostraFeita('${escAttr(id)}')"
-                style="flex:1;padding:6px 10px;border-radius:6px;border:none;background:#10b981;color:#fff;cursor:pointer;font-size:0.8rem;font-weight:600;">
+                style="padding:6px 10px;border-radius:6px;border:none;background:#10b981;color:#fff;cursor:pointer;font-size:0.75rem;font-weight:700;">
                 ✅ Feito
               </button>` : ''}
             ${(aprovadoSt && !temOF) ? `
               <button onclick="criarOFdeAmostra('${escAttr(id)}')"
-                style="flex:1;padding:6px 10px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:0.8rem;font-weight:700;">
-                📄 Criar OF
+                style="padding:6px 10px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:0.75rem;font-weight:700;">
+                📄 OF
               </button>` : ''}
-            ${temOF ? `<span style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--s2);color:var(--text2);font-size:.78rem;font-family:var(--mono)">OF ${escH(ofNumero || '—')}</span>` : ''}
+            ${temOF ? `<span style="padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--s2);color:var(--text2);font-size:.72rem;font-family:var(--mono)">OF ${escH(ofNumero || '—')}</span>` : ''}
             <button onclick="editarAmostra('${escAttr(id)}')"
-              style="padding:6px 8px;border-radius:6px;border:none;background:#334155;color:#fff;cursor:pointer;font-size:0.8rem;">✏️</button>
-            <button onclick="excluirAmostra('${escAttr(id)}')"
-              style="padding:6px 8px;border-radius:6px;border:none;background:#7f1d1d;color:#fff;cursor:pointer;font-size:0.8rem;">🗑️</button>
+              style="padding:6px 8px;border-radius:6px;border:none;background:#334155;color:#fff;cursor:pointer;font-size:0.75rem;">✏️</button>
+            ${!estaCancelada ? `
+            <button onclick="cancelarAmostra('${escAttr(id)}')"
+              style="padding:6px 8px;border-radius:6px;border:none;background:#7f1d1d;color:#fff;cursor:pointer;font-size:0.75rem;">🗑</button>` : `
+            <span style="padding:4px 8px;border-radius:6px;border:1px solid rgba(148,163,184,.35);background:rgba(148,163,184,.12);color:#cbd5e1;font-size:.7rem;font-weight:900;letter-spacing:.05em">CANCELADA</span>`}
           </div>
-        </div>
-      </div>
+        </td>
+      </tr>
     `;
   }).join('');
 }
@@ -18811,8 +18827,9 @@ function abrirModalAmostra(id){
   const descEl = document.getElementById('am-descricao'); if(descEl) descEl.value = row ? (row.descricao || '') : '';
   const dp = document.getElementById('am-data-pedido'); if(dp) dp.value = row ? String(row.data_pedido || '').slice(0,10) : '';
   const de = document.getElementById('am-data-entrega'); if(de) de.value = row ? String(row.data_entrega || '').slice(0,10) : '';
-  const da = document.getElementById('am-data-aprovacao'); if(da) da.value = row ? String(row.data_aprovacao || '').slice(0,10) : '';
-  const st = document.getElementById('am-status'); if(st) st.value = row ? (row.status || 'Pendente') : 'Pendente';
+  const da = document.getElementById('am-data-aprovacao');
+  if(da) da.value = row ? String(row.data_conclusao || row.data_aprovacao || row.data_feita || '').slice(0,10) : '';
+  const st = document.getElementById('am-status'); if(st) st.value = row ? (String(row.status || 'Pendente').trim() === 'Aprovada' ? 'Feita' : (row.status || 'Pendente')) : 'Pendente';
   const emp = document.getElementById('am-emp'); if(emp) emp.value = String(row?.emp_id || EMP_FILTRO || emp.value || 'E1');
   const obs = document.getElementById('am-obs'); if(obs) obs.value = row ? (row.observacoes || '') : '';
   const imgUrlEl = document.getElementById('amostra-imagem-url'); if(imgUrlEl) imgUrlEl.value = row ? (row.imagem_url || '') : '';
@@ -18821,6 +18838,13 @@ function abrirModalAmostra(id){
 
   const title = document.getElementById('am-title');
   if(title) title.textContent = row ? '🧪 Editar Amostra' : '🧪 Nova Amostra';
+
+  const btnCancelarAmostra = document.getElementById('am-btn-cancelar-amostra');
+  if(btnCancelarAmostra) {
+    const estaCancelada = row && (String(row?.status || '').trim().toLowerCase() === 'cancelada' || String(row?.deleted_at || '').trim().length > 0);
+    const isEdit = !!row;
+    btnCancelarAmostra.style.display = (isEdit && !estaCancelada) ? 'inline-flex' : 'none';
+  }
 
   if(cliNomeEl && !cliNomeEl._acAttached){
     cliNomeEl._acAttached = true;
@@ -18995,15 +19019,19 @@ async function salvarAmostra(){
   const produto = String(document.getElementById('am-produto')?.value || '').trim();
   const descricao = String(document.getElementById('am-descricao')?.value || '').trim();
   const observacoes = String(document.getElementById('am-obs')?.value || '').trim();
-  const status = String(document.getElementById('am-status')?.value || 'Pendente').trim();
+  let status = String(document.getElementById('am-status')?.value || 'Pendente').trim();
   const data_pedido = String(document.getElementById('am-data-pedido')?.value || '').trim() || null;
   const data_entrega = String(document.getElementById('am-data-entrega')?.value || '').trim() || null;
-  const data_aprovacao = String(document.getElementById('am-data-aprovacao')?.value || '').trim() || null;
+  const dataAprovInput = String(document.getElementById('am-data-aprovacao')?.value || '').trim() || null;
   const imagem_url = String(window._amostraImagemUrl || '').trim() || '';
   const emp_id = String(document.getElementById('am-emp')?.value || EMP_FILTRO || 'E1').trim() || 'E1';
 
   if(!cliente_nome){ toast('Cliente é obrigatório','var(--red)'); return; }
   if(!produto){ toast('Produto é obrigatório','var(--red)'); return; }
+
+  const statusNorm = String(status || '').trim().toLowerCase();
+  const marcandoFeita = (statusNorm === 'feita' || statusNorm === 'feito' || statusNorm === 'concluida' || statusNorm === 'concluido');
+  if (marcandoFeita) status = 'Feita';
 
   const payload = {
     cliente_id,
@@ -19014,10 +19042,13 @@ async function salvarAmostra(){
     status,
     data_pedido,
     data_entrega,
-    data_aprovacao,
     imagem_url,
     emp_id
   };
+  if (dataAprovInput && marcandoFeita) {
+    payload.data_aprovacao = dataAprovInput;
+    payload.data_conclusao = dataAprovInput;
+  }
   try{
     showSaveIndicator('Salvando...','var(--yellow)');
     const r = id
@@ -19040,26 +19071,37 @@ async function salvarAmostra(){
   }
 }
 
-async function excluirAmostra(id){
+async function cancelarAmostra(id){
   const sid = String(id || '').trim();
   if(!sid) return;
-  if(!confirm('Excluir esta amostra?')) return;
+  if(!confirm('Cancelar esta amostra? Ela permanecerá salva como cancelada e não aparecerá em listagens normais.')) return;
   try{
-    showSaveIndicator('Excluindo...','var(--yellow)');
-    const r = await api('DELETE','/amostras/' + encodeURIComponent(sid));
+    showSaveIndicator('Cancelando...','var(--yellow)');
+    const r = await api('PUT','/amostras/' + encodeURIComponent(sid), { status: 'Cancelada', updated_at: new Date().toISOString() });
     if(!r || !r.ok){
       showSaveIndicator('✖ erro','var(--red)');
-      toast('Erro ao excluir amostra','var(--red)');
+      toast('Erro ao cancelar amostra','var(--red)');
       return;
     }
+    fecharModalAmostra();
     await carregarAmostras({ forcar:true });
     renderAmostras();
-    showSaveIndicator('✓ excluída','var(--green)');
-    toast('Amostra excluída','var(--orange)');
+    showSaveIndicator('✓ cancelada','var(--orange)');
+    toast('Amostra cancelada','var(--orange)');
   }catch(e){
     showSaveIndicator('✖ erro','var(--red)');
-    toast('Erro ao excluir amostra','var(--red)');
+    toast('Erro ao cancelar amostra','var(--red)');
   }
+}
+
+async function excluirAmostra(id){
+  return cancelarAmostra(id);
+}
+
+function cancelarAmostraModalClick(){
+  const id = String(document.getElementById('am-id')?.value || '').trim();
+  if(!id) return;
+  cancelarAmostra(id);
 }
 
 function editarAmostra(id){
@@ -19107,7 +19149,8 @@ async function marcarAmostraFeita(id) {
   if(!sid) return;
 
   try{ document.getElementById('modal-amostra-feita')?.remove(); }catch(e){}
-  const hoje = new Date().toISOString().slice(0, 10);
+  const agora = new Date();
+  const hojeStr = agora.toLocaleString('pt-BR');
 
   const modalHtml = `
     <div id="modal-amostra-feita" style="
@@ -19115,25 +19158,18 @@ async function marcarAmostraFeita(id) {
       z-index:9999;display:flex;align-items:center;
       justify-content:center;">
       <div style="background:#1e293b;border-radius:12px;
-        padding:24px;width:320px;border:1px solid #334155;">
+        padding:24px;width:340px;border:1px solid #334155;">
         <h3 style="color:#f1f5f9;margin:0 0 16px;
           font-size:1rem;">
-          ✅ Amostra Concluída
+          ✅ Marcar Amostra como Feita
         </h3>
-        <p style="color:#94a3b8;font-size:0.85rem;
-          margin:0 0 12px;">
-          Informe a data em que a amostra foi finalizada:
+        <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:12px;">
+          <div style="color:#94a3b8;font-size:0.8rem;margin-bottom:4px;">📅 Data de conclusão (preenchida automaticamente):</div>
+          <div style="color:#10b981;font-weight:600;font-size:0.95rem;">${escHtml(hojeStr)}</div>
+        </div>
+        <p style="color:#94a3b8;font-size:0.85rem;margin:0 0 12px;">
+          Ao confirmar, a amostra será marcada como <b style="color:#10b981">Feita</b> e a data de conclusão acima será gravada automaticamente.
         </p>
-        <label style="color:#94a3b8;font-size:0.8rem;
-          display:block;margin-bottom:6px;">
-          📅 Data de conclusão:
-        </label>
-        <input type="date" id="amostra-feita-data"
-          value="${escAttr(hoje)}"
-          style="width:100%;padding:8px;
-          border-radius:6px;border:1px solid #334155;
-          background:#0f172a;color:#fff;
-          font-size:0.9rem;box-sizing:border-box;">
         <div style="display:flex;gap:8px;margin-top:16px;">
           <button onclick="
             document.getElementById('modal-amostra-feita')
@@ -19147,7 +19183,7 @@ async function marcarAmostraFeita(id) {
             style="flex:1;padding:8px;border-radius:6px;
             border:none;background:#10b981;color:#fff;
             font-weight:600;cursor:pointer;">
-            ✅ Confirmar
+            ✅ Confirmar Feita
           </button>
         </div>
       </div>
@@ -19160,16 +19196,12 @@ async function confirmarAmostraFeita(id) {
   const sid = String(id || '').trim();
   if(!sid) return;
 
-  const data = document.getElementById('amostra-feita-data')?.value;
-  if(!data){
-    alert('Selecione uma data!');
-    return;
-  }
-
   const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
   const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
 
   try{
+    const now = new Date();
+    const nowISO = now.toISOString();
     const r = await fetch(base + '/api/amostras/' + encodeURIComponent(sid), {
       method: 'PUT',
       headers: {
@@ -19177,16 +19209,18 @@ async function confirmarAmostraFeita(id) {
         'Authorization': 'Bearer ' + token
       },
       body: JSON.stringify({
-        status: 'Aprovada',
-        data_aprovacao: data,
-        updated_at: new Date().toISOString()
+        status: 'Feita',
+        data_aprovacao: nowISO,
+        data_feita: nowISO,
+        data_conclusao: nowISO,
+        updated_at: nowISO
       })
     });
     const d = await r.json().catch(()=>null);
     try{ document.getElementById('modal-amostra-feita')?.remove(); }catch(e){}
 
     if((d && (d.ok || d.id)) || r.ok){
-      mostrarToast('✅ Amostra marcada como feita em ' + new Date(data + 'T12:00:00').toLocaleDateString('pt-BR'));
+      mostrarToast('✅ Amostra marcada como Feita — data de conclusão: ' + now.toLocaleString('pt-BR'));
       await carregarAmostras({ forcar:true });
       renderAmostras();
       try{ await atualizarBadgeAmostras(true); }catch(e){}
@@ -33482,7 +33516,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260818143400';
+      const swVersion = '20260818143500';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -45840,7 +45874,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="page-header">
     <div>
       <div class="page-title">🧪 Controle de Amostras</div>
-      <div class="page-sub">Pedidos de amostras e status</div>
+      <div class="page-sub">Pedidos de amostras e status — numeração própria sequencial (#1, #2…)</div>
     </div>
     <div style="flex:1"></div>
     <button class="btn btn-accent" onclick="abrirModalAmostra()">＋ Nova Amostra</button>
@@ -45850,18 +45884,41 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <option value="">Todos status</option>
       <option value="Pendente">Pendente</option>
       <option value="Em análise">Em análise</option>
-      <option value="Aprovada">Aprovada</option>
+      <option value="Feita">Feita</option>
       <option value="Reprovada">Reprovada</option>
+      <option value="Cancelada">Cancelada</option>
     </select>
     <select id="am-fil-emp" onchange="AMOSTRAS_UI.emp=this.value;carregarAmostras({forcar:true}).then(()=>renderAmostras())">
       <option value="">Todas empresas</option>
     </select>
     <input id="am-fil-busca" placeholder="🔍 Cliente / Produto" oninput="AMOSTRAS_UI.busca=this.value;renderAmostras()" style="width:220px;">
+    <label style="display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--text2);cursor:pointer;user-select:none">
+      <input type="checkbox" id="am-fil-incluir-canceladas" onchange="AMOSTRAS_UI.incluirCanceladas=this.checked;carregarAmostras({forcar:true}).then(()=>renderAmostras())">
+      Incluir canceladas
+    </label>
     <div style="flex:1"></div>
     <button class="btn btn-ghost btn-sm" onclick="carregarAmostras({forcar:true}).then(()=>renderAmostras())">↻ Atualizar</button>
   </div>
-  <div class="page-body">
-    <div id="amostras-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px"></div>
+  <div class="page-body" style="padding:0 0 18px">
+    <div style="overflow-x:auto">
+      <table class="pcp-table" style="min-width:980px;width:100%;border-collapse:separate;border-spacing:0">
+        <thead>
+          <tr style="background:var(--s2);position:sticky;top:0;z-index:1">
+            <th style="width:70px;text-align:center;padding:8px 10px;font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">Nº</th>
+            <th style="width:80px;text-align:center;padding:8px 10px;font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">Imagem</th>
+            <th style="padding:8px 10px;font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">Cliente</th>
+            <th style="padding:8px 10px;font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">Produto</th>
+            <th style="width:130px;text-align:center;padding:8px 10px;font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">Data Pedido</th>
+            <th style="width:130px;text-align:center;padding:8px 10px;font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">Data Entrega</th>
+            <th style="width:140px;text-align:center;padding:8px 10px;font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">Data Conclusão</th>
+            <th style="width:120px;text-align:center;padding:8px 10px;font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">Status</th>
+            <th style="width:230px;text-align:center;padding:8px 10px;font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="amostras-tbody"></tbody>
+      </table>
+    </div>
+    <div id="amostras-empty" style="display:none;padding:22px 14px;color:var(--text3);text-align:center;border-radius:10px;border:1px dashed var(--border);margin:14px">Nenhuma amostra.</div>
   </div>
 </div>
 
@@ -48510,13 +48567,14 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf fgf"><label>DESCRIÇÃO</label><input id="am-descricao" type="text"></div>
     <div class="mf fgf"><label>📅 DATA DO PEDIDO</label><input id="am-data-pedido" type="date"></div>
     <div class="mf fgf"><label>🚚 DATA DE ENTREGA</label><input id="am-data-entrega" type="date"></div>
-    <div class="mf fgf"><label>✅ DATA DE APROVAÇÃO</label><input id="am-data-aprovacao" type="date"></div>
+    <div class="mf fgf"><label>✅ DATA DE CONCLUSÃO</label><input id="am-data-aprovacao" type="date" disabled style="background:var(--s2);opacity:.75;cursor:not-allowed"></div>
     <div class="mf fgf"><label>STATUS</label>
       <select id="am-status">
         <option value="Pendente">Pendente</option>
         <option value="Em análise">Em análise</option>
-        <option value="Aprovada">Aprovada</option>
+        <option value="Feita">Feita</option>
         <option value="Reprovada">Reprovada</option>
+        <option value="Cancelada">Cancelada</option>
       </select>
     </div>
     <div class="mf fgf"><label>EMPRESA</label>
@@ -48525,17 +48583,22 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf fgf" style="grid-column:1/-1">
       <label>📷 IMAGEM</label>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('amostra-imagem-input').click()">Upload</button>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById('amostra-imagem-input').click()">Upload</button>
         <input id="amostra-imagem-input" type="file" accept="image/*" style="display:none">
         <img id="amostra-img-preview" src="" style="display:none;width:84px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer" onclick="abrirFotoModal(document.getElementById('amostra-img-preview').src,'Amostra')">
-        <button class="btn btn-ghost btn-sm" onclick="amostraRemoverImagem()">Remover</button>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="amostraRemoverImagem()">Remover</button>
       </div>
     </div>
     <div class="mf fgf" style="grid-column:1/-1"><label>📝 OBSERVAÇÕES</label><textarea id="am-obs" rows="4" style="resize:vertical"></textarea></div>
   </div>
-  <div class="modal-footer">
-    <button class="btn btn-ghost" onclick="fecharModalAmostra()">Cancelar</button>
-    <button class="btn btn-accent" onclick="salvarAmostra()">💾 Salvar Amostra</button>
+  <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-red btn-sm" id="am-btn-cancelar-amostra" type="button" style="display:none" onclick="cancelarAmostraModalClick()">🗑 Cancelar Amostra</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-ghost" type="button" onclick="fecharModalAmostra()">Fechar</button>
+      <button class="btn btn-accent" type="button" onclick="salvarAmostra()">💾 Salvar Amostra</button>
+    </div>
   </div>
 </div></div>
 
@@ -60131,6 +60194,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260818143400"></script>
+<script src="/patch.js?v=20260818143500"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>

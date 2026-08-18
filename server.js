@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260818143400';
-const SW_RUNTIME_VERSION = '20260818143400';
+const PATCH_RUNTIME_VERSION = '20260818143500';
+const SW_RUNTIME_VERSION = '20260818143500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -8360,15 +8360,27 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
     const empLegacy = String(empresaCtx?.emp_id || '').trim();
     const filtroStatus = String(req.query.status || '').trim();
     const filtroCliente = String(req.query.cliente_id || '').trim();
+    const incluirCanceladas = String(req.query.incluirCanceladas || req.query.todas || '').trim() === '1';
     let filtroEmpAplicado = false;
-    let qFiltro = q;
-    if (empFiltroRaw) {
-      qFiltro = qFiltro.eq('emp_id', empFiltroRaw);
-      filtroEmpAplicado = true;
+    async function _aplicarFiltros(qBase, tentaDeletedAt) {
+      let qF = qBase;
+      if (empFiltroRaw) { qF = qF.eq('emp_id', empFiltroRaw); }
+      if (filtroStatus) qF = qF.eq('status', filtroStatus);
+      if (filtroCliente) qF = qF.eq('cliente_id', filtroCliente);
+      if (tentaDeletedAt && !incluirCanceladas) {
+        try { qF = qF.is('deleted_at', null); } catch (_noCol) {}
+      }
+      return await qF;
     }
-    if (filtroStatus) qFiltro = qFiltro.eq('status', filtroStatus);
-    if (filtroCliente) qFiltro = qFiltro.eq('cliente_id', filtroCliente);
-    let { data, error } = await qFiltro;
+    let { data, error } = await _aplicarFiltros(q, true);
+    const errMsg = String(error?.message || error || '').toLowerCase();
+    const errCode = String(error?.code || '').trim();
+    const colunaFaltando = (errCode === '42703') || (errMsg.includes('column') && errMsg.includes('does not exist') && errMsg.includes('deleted_at'));
+    if (colunaFaltando) {
+      const r2 = await _aplicarFiltros(supabase.from('amostras').select('*').order('created_at', { ascending: false }), false);
+      data = r2.data || []; error = r2.error || null;
+    }
+    if (empFiltroRaw) filtroEmpAplicado = true;
     if (error) {
       console.error('[AMOSTRAS] query com filtro error:', String(error?.message || error));
     } else if (!Array.isArray(data) || data.length === 0) {
@@ -8376,10 +8388,18 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
         let qFallback = q;
         if (filtroStatus) qFallback = qFallback.eq('status', filtroStatus);
         if (filtroCliente) qFallback = qFallback.eq('cliente_id', filtroCliente);
-        const { data: data2, error: err2 } = await qFallback;
-        if (!err2 && Array.isArray(data2) && data2.length > 0) {
-          console.log('[AMOSTRAS] fallback sem filtro empresa:', data2.length, 'amostras (contexto emp_id=' + empLegacy + ' nao encontrou nada)');
-          return ok(res, data2);
+        const r3 = await _aplicarFiltros(qFallback, true);
+        let errFb = r3.error || null;
+        let dataFb = r3.data || [];
+        const errFbMsg = String(errFb?.message || errFb || '').toLowerCase();
+        const errFbCode = String(errFb?.code || '').trim();
+        if ((errFbCode === '42703') || (errFbMsg.includes('column') && errFbMsg.includes('does not exist') && errFbMsg.includes('deleted_at'))) {
+          const r4 = await _aplicarFiltros(qFallback, false);
+          dataFb = r4.data || []; errFb = r4.error || null;
+        }
+        if (!errFb && Array.isArray(dataFb) && dataFb.length > 0) {
+          console.log('[AMOSTRAS] fallback sem filtro empresa:', dataFb.length, 'amostras (contexto emp_id=' + empLegacy + ' nao encontrou nada)');
+          return ok(res, dataFb);
         }
       }
     }
@@ -8387,7 +8407,7 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
       console.error('[AMOSTRAS] final error:', String(error?.message || error));
       return ok(res, []);
     }
-    console.log('[AMOSTRAS] retornando', data ? data.length : 0, 'registros | filtros aplicados: emp=' + (filtroEmpAplicado ? empFiltroRaw : '(nenhum)') + ' | status=' + (filtroStatus || '(todos)') + ' | cliente=' + (filtroCliente || '(todos)') + ' | empLegacy_contexto=' + empLegacy);
+    console.log('[AMOSTRAS] retornando', data ? data.length : 0, 'registros | filtros aplicados: emp=' + (filtroEmpAplicado ? empFiltroRaw : '(nenhum)') + ' | status=' + (filtroStatus || '(todos)') + ' | cliente=' + (filtroCliente || '(todos)') + ' | empLegacy_contexto=' + empLegacy + ' | incluirCanceladas=' + incluirCanceladas);
     return ok(res, data || []);
   } catch (e) {
     console.error('[AMOSTRAS] catch:', String(e?.message || e));
@@ -8413,10 +8433,39 @@ app.post('/api/amostras', authMiddleware, async (req, res) => {
       emp_id: empresaCtx.emp_id,
       criado_por: req.usuario?.nome || 'sistema',
     };
-    const { data, error } = await supabase
-      .from('amostras').insert([payload]).select().single();
-    if (error) throw error;
-    return ok(res, data);
+    let ultimoNum = 0;
+    try {
+      const qMax = supabase.from('amostras').select('numero_amostra').eq('emp_id', empresaCtx.emp_id).not('numero_amostra', 'is', null).order('numero_amostra', { ascending: false }).limit(1);
+      const rMax = await qMax;
+      if (!rMax.error && Array.isArray(rMax.data) && rMax.data[0] && Number(rMax.data[0].numero_amostra) > 0) {
+        ultimoNum = Number(rMax.data[0].numero_amostra) || 0;
+      }
+    } catch (_errMax) { ultimoNum = 0; }
+    if (ultimoNum > 0 || (b.numero_amostra && Number(b.numero_amostra) > 0)) {
+      payload.numero_amostra = Number(b.numero_amostra && Number(b.numero_amostra) > 0 ? b.numero_amostra : (ultimoNum + 1)) || (ultimoNum + 1);
+    } else {
+      payload.numero_amostra = 1;
+    }
+    let result = null;
+    try {
+      const r1 = await supabase.from('amostras').insert([payload]).select().single();
+      if (r1.error) throw r1.error;
+      result = r1.data;
+    } catch (eInsert) {
+      const msgIns = String(eInsert?.message || eInsert || '').toLowerCase();
+      const codeIns = String(eInsert?.code || '').trim();
+      const colFaltNum = (codeIns === '42703') || (msgIns.includes('column') && msgIns.includes('does not exist') && msgIns.includes('numero_amostra'));
+      if (colFaltNum) {
+        const payloadSemNum = { ...payload };
+        delete payloadSemNum.numero_amostra;
+        const r2 = await supabase.from('amostras').insert([payloadSemNum]).select().single();
+        if (r2.error) throw r2.error;
+        result = r2.data;
+      } else {
+        throw eInsert;
+      }
+    }
+    return ok(res, result);
   } catch (e) { return err(res, e); }
 });
 
@@ -8431,22 +8480,66 @@ app.put('/api/amostras/:id', authMiddleware, async (req, res) => {
     const marcandoFeita = (statusNorm === 'feita' || statusNorm === 'feito' || statusNorm === 'concluida' || statusNorm === 'concluido' || statusNorm === 'pronta' || statusNorm === 'pronto');
     if (marcandoFeita) {
       payload.status = 'Feita';
-      if (!payload.data_feita) payload.data_feita = new Date().toISOString();
+      const agora = new Date().toISOString();
+      if (!payload.data_feita) payload.data_feita = agora;
+      if (!payload.data_aprovacao) payload.data_aprovacao = agora;
+      if (!payload.data_conclusao) payload.data_conclusao = agora;
       if (!payload.usuario_feita) payload.usuario_feita = req.usuario?.nome || 'sistema';
     }
-    const { data, error } = await supabase
-      .from('amostras').update(payload)
-      .eq('id', req.params.id).select().single();
-    if (error) throw error;
-    return ok(res, data);
+    const cancelando = (statusNorm === 'cancelada' || statusNorm === 'cancelado' || statusNorm === 'excluida' || statusNorm === 'excluido');
+    if (cancelando) {
+      payload.status = 'Cancelada';
+      if (!payload.deleted_at) payload.deleted_at = new Date().toISOString();
+      if (!payload.usuario_cancelamento) payload.usuario_cancelamento = req.usuario?.nome || 'sistema';
+    }
+    let rAtualiza = null;
+    try {
+      rAtualiza = await supabase.from('amostras').update(payload).eq('id', req.params.id).select().single();
+      if (rAtualiza.error) throw rAtualiza.error;
+    } catch (eUpd) {
+      const msgUpd = String(eUpd?.message || eUpd || '').toLowerCase();
+      const codeUpd = String(eUpd?.code || '').trim();
+      const colFalt = (codeUpd === '42703') || (msgUpd.includes('column') && msgUpd.includes('does not exist'));
+      if (colFalt) {
+        const pLimpo = { ...payload };
+        delete pLimpo.numero_amostra;
+        delete pLimpo.data_conclusao;
+        delete pLimpo.deleted_at;
+        delete pLimpo.usuario_cancelamento;
+        const r2 = await supabase.from('amostras').update(pLimpo).eq('id', req.params.id).select().single();
+        if (r2.error) throw r2.error;
+        rAtualiza = r2;
+      } else {
+        throw eUpd;
+      }
+    }
+    return ok(res, rAtualiza.data);
   } catch (e) { return err(res, e); }
 });
 
 app.delete('/api/amostras/:id', authMiddleware, async (req, res) => {
   try {
-    const { error } = await supabase
-      .from('amostras').delete().eq('id', req.params.id);
-    if (error) throw error;
+    const payloadSoft = {
+      status: 'Cancelada',
+      deleted_at: new Date().toISOString(),
+      usuario_cancelamento: req.usuario?.nome || 'sistema',
+      updated_at: new Date().toISOString(),
+    };
+    let rUpd = null;
+    try {
+      rUpd = await supabase.from('amostras').update(payloadSoft).eq('id', req.params.id).select().single();
+      if (rUpd.error) throw rUpd.error;
+    } catch (eSoft) {
+      const msgSoft = String(eSoft?.message || eSoft || '').toLowerCase();
+      const codeSoft = String(eSoft?.code || '').trim();
+      const colFaltDel = (codeSoft === '42703') || (msgSoft.includes('column') && msgSoft.includes('does not exist'));
+      if (colFaltDel) {
+        const rDel = await supabase.from('amostras').delete().eq('id', req.params.id);
+        if (rDel.error) throw rDel.error;
+        return ok(res, true);
+      }
+      throw eSoft;
+    }
     return ok(res, true);
   } catch (e) { return err(res, e); }
 });
