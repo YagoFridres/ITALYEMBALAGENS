@@ -52203,8 +52203,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     if (!host.getAttribute('data-orc-calc-itens-host')) {
       host.setAttribute('data-orc-calc-itens-host', '1');
     }
-    orcDraftLoadFromState(false);
-    orcRenderCalcItensUi();
+    try { orcDraftLoadFromState(false); } catch (_) {}
+    try { orcRenderCalcItensUi(); } catch (_) {}
   }
   function orcToggleItemExpansion(id) {
     var sid = String(id || '').trim();
