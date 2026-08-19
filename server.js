@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260819090400';
-const SW_RUNTIME_VERSION = '20260819090400';
+const PATCH_RUNTIME_VERSION = '20260819090500';
+const SW_RUNTIME_VERSION = '20260819090500';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -11958,17 +11958,27 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const enrichClientesWithOfs = async (rows) => {
       const base = Array.isArray(rows) ? rows.map((r) => ({ ...r })) : [];
       if (!base.length) return base;
-      const mapaOfs = Object.create(null);
-      const ofsProcessados = new Set();
       const normId = (v) => String(v || '').trim().toLowerCase();
+      const clientIds = base
+        .map((c) => normId(c?.id))
+        .filter(Boolean);
+      const mapaCount = Object.create(null);
+      clientIds.forEach((k) => { mapaCount[k] = 0; });
+      if (!clientIds.length) {
+        const empty = base.map((c) => ({ ...c, total_ofs: 0 }));
+        empty.sort((a, b) => String(a?.nome || '').localeCompare(String(b?.nome || '')));
+        return empty;
+      }
       const pageSize = 1000;
       let from = 0;
       let totalOfsLidas = 0;
+      const idsSet = new Set(clientIds);
+      const clientesContadoPorOf = Object.create(null);
       while (true) {
         try {
           const { data, error } = await supabase
             .from('ofs')
-            .select('id,cli_id,cliId,cliente_id', { count: 'exact' })
+            .select('id,cli_id,cliId,cliente_id')
             .is('deleted_at', null)
             .range(from, from + pageSize - 1);
           if (error) break;
@@ -11976,12 +11986,20 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
           totalOfsLidas += page.length;
           for (const of of page) {
             const ofId = normId(of?.id);
-            if (!ofId) continue;
-            if (ofsProcessados.has(ofId)) continue;
-            ofsProcessados.add(ofId);
-            const cliOf = normId(of?.cli_id ?? of?.cliId ?? of?.cliente_id ?? '');
-            if (!cliOf) continue;
-            mapaOfs[cliOf] = (mapaOfs[cliOf] || 0) + 1;
+            const c1 = normId(of?.cli_id);
+            const c2 = normId(of?.cliId);
+            const c3 = normId(of?.cliente_id);
+            const matchedClientes = new Set();
+            if (c1 && idsSet.has(c1)) matchedClientes.add(c1);
+            if (c2 && idsSet.has(c2)) matchedClientes.add(c2);
+            if (c3 && idsSet.has(c3)) matchedClientes.add(c3);
+            if (!matchedClientes.size) continue;
+            for (const cid of matchedClientes) {
+              const k = ofId ? `${cid}__${ofId}` : `__no_of_id__${cid}__${Math.random().toString(36).slice(2, 10)}`;
+              if (clientesContadoPorOf[k]) continue;
+              clientesContadoPorOf[k] = true;
+              mapaCount[cid] = (mapaCount[cid] || 0) + 1;
+            }
           }
           if (page.length < pageSize) break;
           from += pageSize;
@@ -11989,10 +12007,10 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
           break;
         }
       }
-      console.debug('[CLIENTES] ofs lidas (deleted_at IS NULL):', totalOfsLidas, 'clientes distintos com OF:', Object.keys(mapaOfs).length);
+      console.debug('[CLIENTES] ofs lidas (deleted_at IS NULL):', totalOfsLidas, 'clientes distintos com OF:', Object.values(mapaCount).filter((v) => v > 0).length);
       const withCounts = base.map((c) => ({
         ...c,
-        total_ofs: mapaOfs[normId(c?.id)] || 0
+        total_ofs: mapaCount[normId(c?.id)] || 0
       }));
       withCounts.sort((a, b) => {
         const diff = Number(b?.total_ofs || 0) - Number(a?.total_ofs || 0);
