@@ -20740,6 +20740,7 @@ function renderClientes(){
       </div>
       <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirPainelCliente('${c.id}')" style="font-size:.68rem;">👤 Painel</button>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirFichaTecnicaCliente('${c.id}')" style="font-size:.68rem;">🖨 Ficha Técnica</button>
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editarCliente('${c.id}')" style="font-size:.68rem;">✏ Editar</button>
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();excluirCliente('${c.id}')" style="font-size:.68rem;color:var(--red);">🗑 Excluir</button>
       </div>
@@ -33554,7 +33555,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260819090900';
+      const swVersion = '20260819090910';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -41698,6 +41699,9 @@ function abrirPainelCliente(cliId){
             ${empTxt ? `<span style="background:rgba(74,144,217,0.15);border:1px solid rgba(74,144,217,0.35);color:#4A90D9;border-radius:999px;padding:2px 10px;font-size:0.7rem;font-weight:800;white-space:nowrap">${escH(empTxt)}</span>` : ''}
           </div>
         </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="abrirFichaTecnicaCliente((window._PCLI||{}).cliId || '${escAttr(cid)}')">🖨 Ficha Técnica</button>
+        </div>
       </div>
 
       <div style="font-size:0.72rem;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin:6px 0 10px">📊 Resumo</div>
@@ -41895,6 +41899,262 @@ function pcRenderPainel(){
       </div>`;
     }
   }
+}
+
+var _FTCLI = null;
+function _ftcliEnsureModal(){
+  if (document.getElementById('modal-ficha-cliente')) return;
+  const modal = document.createElement('div');
+  modal.id = 'modal-ficha-cliente';
+  modal.className = 'modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.78);backdrop-filter:blur(6px);z-index:9999;display:none;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto';
+  modal.innerHTML = `
+    <div style="width:100%;max-width:1100px;background:var(--s1);border:1px solid var(--border);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.4);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--s1);z-index:2;border-radius:16px 16px 0 0">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:.72rem;color:#64748b;letter-spacing:.8px;text-transform:uppercase">🖨️ Relatório</div>
+          <div id="ftcli-titulo" style="font-size:1.05rem;font-weight:800;color:#e2e8f0;line-height:1.2;margin-top:2px">Ficha Técnica do Cliente</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-ficha-cliente').style.display='none'">✕ Fechar</button>
+      </div>
+      <div id="ftcli-body" style="padding:18px"></div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+async function abrirFichaTecnicaCliente(cliId){
+  const cid = String(cliId || '').trim();
+  if (!cid) return;
+  _ftcliEnsureModal();
+  const modal = document.getElementById('modal-ficha-cliente');
+  const bodyEl = document.getElementById('ftcli-body');
+  const tituloEl = document.getElementById('ftcli-titulo');
+  const cli = typeof getCli === 'function' ? getCli(cid) : null;
+  const nome = String(cli?.nome || cli?.rs || cli?.razao_social || 'Cliente').trim();
+  if (tituloEl) tituloEl.textContent = `Ficha Técnica — ${nome}`;
+  modal.style.display = 'flex';
+  bodyEl.innerHTML = `<div style="padding:30px;color:#64748b;text-align:center">
+    <div style="display:inline-block;width:28px;height:28px;border:3px solid rgba(74,144,217,.3);border-top-color:#4A90D9;border-radius:50%;animation:spin 1s linear infinite"></div>
+    <div style="margin-top:10px">Gerando ficha técnica…</div>
+  </div>`;
+  _FTCLI = { cliId: cid, cli, loading: true };
+  try {
+    const resp = await apiFetch('/api/relatorios/cliente-ficha?cliente_id=' + encodeURIComponent(cid), { method: 'GET' });
+    const json = await resp.json().catch(() => null);
+    if (!resp.ok || !json || json.ok === false) throw new Error((json && (json.error || json.message)) || 'falha_gerar_ficha');
+    _FTCLI.loading = false;
+    _FTCLI.payload = json;
+    renderFichaTecnicaCliente(json);
+  } catch (e) {
+    _FTCLI.loading = false;
+    bodyEl.innerHTML = `<div style="padding:20px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:10px;color:#ef4444;text-align:center">
+      ⚠️ Erro ao gerar ficha técnica: ${escH(String(e?.message || e))}
+    </div>`;
+  }
+}
+function renderFichaTecnicaCliente(json){
+  const bodyEl = document.getElementById('ftcli-body');
+  if (!bodyEl) return;
+  const res = json?.resumo || {};
+  const insights = json?.insights || {};
+  const topProd = Array.isArray(json?.produtos_mais_pedidos) ? json.produtos_mais_pedidos : [];
+  const fatMes = Array.isArray(json?.faturamento_mensal) ? json.faturamento_mensal : [];
+  const hist = Array.isArray(json?.historico) ? json.historico
+    : (Array.isArray(json?.historico_ofs) ? json.historico_ofs
+    : (Array.isArray(json?.ofs) ? json.ofs : []));
+  const orc = Array.isArray(json?.orcamentos) ? json.orcamentos : [];
+  const cli = json?.cliente || _FTCLI?.cli || {};
+  const cNome = String(cli?.nome || cli?.rs || cli?.razao_social || _FTCLI?.cli?.nome || 'Cliente').trim();
+  const cCnpj = String(cli?.cnpj || cli?.cnpj_cpf || cli?.documento || '').trim();
+  const cCid = String(cli?.cidade || '').trim();
+  const cUf = String(cli?.uf || '').trim();
+  const cVend = String(cli?.vendedor_nome || cli?.vendedor || '').trim();
+  const cRam = String(cli?.ramo || '').trim();
+  const fmtR2 = (v) => { try { return fmtR(v); } catch(_) { const n = Number(v||0)||0; return 'R$ ' + n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); } };
+  const fmtN2 = (v) => { try { return fmtN(v); } catch(_) { const n = Number(v||0)||0; return n.toLocaleString('pt-BR'); } };
+  const fmtD2 = (d) => { if (!d) return '—'; try { return fmtD(d); } catch(_) { const s = String(d||'').slice(0,10); if(/^\d{4}-\d{2}-\d{2}$/.test(s)){ const [y,m,dd]=s.split('-'); return `${dd}/${m}/${y}`;} return s; } };
+  const card = (tit, val, cor='#e2e8f0', extra='') => `<div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:14px">
+      <div style="font-size:.65rem;color:#64748b;letter-spacing:.6px;text-transform:uppercase;font-weight:800">${escH(tit)}</div>
+      <div style="margin-top:6px;font-size:1.15rem;font-weight:800;color:${cor};line-height:1.2">${val}</div>
+      ${extra?`<div style="margin-top:6px;font-size:.7rem;color:#94a3b8">${escH(extra)}</div>`:''}
+    </div>`;
+  const secao = (tit, corpo, cor='#475569') => `<div style="margin-top:20px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <div style="width:3px;height:14px;background:${cor};border-radius:2px"></div>
+        <div style="font-size:.72rem;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#94a3b8">${escH(tit)}</div>
+      </div>
+      ${corpo}
+    </div>`;
+  const th = 'padding:8px 10px;border:1px solid var(--border);background:var(--s2);font-size:.65rem;font-weight:900;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;color:#cbd5e1';
+  const td = 'padding:8px 10px;border:1px solid var(--s3);font-size:.78rem';
+  let html = '';
+  html += `<div style="display:flex;flex-wrap:wrap;gap:12px;padding:12px 14px;background:rgba(74,144,217,.06);border:1px solid rgba(74,144,217,.2);border-radius:12px;margin-bottom:14px">
+    <div style="flex:1;min-width:200px">
+      <div style="font-size:.7rem;color:#94a3b8">Cliente</div>
+      <div style="font-weight:800;color:#e2e8f0">${escH(cNome||'—')}</div>
+      ${cCnpj?`<div style="margin-top:3px;font-size:.72rem;color:#94a3b8;font-family:var(--mono)">CNPJ: ${escH(cCnpj)}</div>`:''}
+      ${(cCid||cUf)?`<div style="margin-top:2px;font-size:.72rem;color:#94a3b8">Local: ${escH([cCid,cUf].filter(Boolean).join(' / '))}</div>`:''}
+    </div>
+    ${cVend?`<div style="min-width:180px"><div style="font-size:.7rem;color:#94a3b8">Vendedor</div><div style="font-weight:700;color:#e2e8f0">${escH(cVend)}</div></div>`:''}
+    ${cRam?`<div style="min-width:180px"><div style="font-size:.7rem;color:#94a3b8">Ramo</div><div style="font-weight:700;color:#e2e8f0">${escH(cRam)}</div></div>`:''}
+  </div>`;
+  html += `<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px">
+    ${card('Total de OFs', fmtN2(res.total_ofs || hist.length || 0), '#22d3ee')}
+    ${card('OFs Abertas', fmtN2(res.ofs_abertas || 0), '#f59e0b', res.total_ofs?`${Math.round(((res.ofs_abertas||0)/res.total_ofs)*100)}% do total`:'')}
+    ${card('Total Comprado', fmtR2(res.total_comprado || 0), '#10b981')}
+    ${card('Orçamentos', fmtN2(res.total_orcamentos || orc.length || 0), '#a78bfa', (res.valor_orcamentos>0)?('R$ ' + Number(res.valor_orcamentos||0).toLocaleString('pt-BR')):'Nenhum')}
+    ${card('Freq. Média (dias)', String(res.frequencia_media_dias ?? '—'), '#f472b6')}
+    ${card('Média Caixas/Mês', fmtN2(res.media_caixas_mes || 0), '#facc15')}
+  </div>`;
+  const insightLines = [];
+  if (insights?.gramatura_mais_utilizada?.gramatura) insightLines.push({t:'Gramatura + usada',v:`${escH(String(insights.gramatura_mais_utilizada.gramatura))} (${fmtN2(insights.gramatura_mais_utilizada.total_ofs||0)}x)`});
+  if (Array.isArray(insights?.tipos_caixa_mais_pedidos) && insights.tipos_caixa_mais_pedidos[0]) insightLines.push({t:'Tipo de caixa + pedido',v:`${escH(String(insights.tipos_caixa_mais_pedidos[0].tipo_caixa))} (${fmtN2(insights.tipos_caixa_mais_pedidos[0].total_ofs||0)}x)`});
+  if (Array.isArray(insights?.cores_mais_utilizadas) && insights.cores_mais_utilizadas[0]) insightLines.push({t:'Cor + usada',v:`${escH(String(insights.cores_mais_utilizadas[0].cor))} (${fmtN2(insights.cores_mais_utilizadas[0].total_ofs||0)}x)`});
+  if (Array.isArray(insights?.tamanhos_mais_utilizados) && insights.tamanhos_mais_utilizados[0]) insightLines.push({t:'Tamanho + usado',v:`${escH(String(insights.tamanhos_mais_utilizados[0].tamanho))} (${fmtN2(insights.tamanhos_mais_utilizados[0].total_ofs||0)}x)`});
+  if (insightLines.length) {
+    const bodyIn = `<div style="display:grid;grid-template-columns:repeat(${Math.min(insightLines.length,4)},1fr);gap:10px">
+      ${insightLines.map(li => `<div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:12px">
+        <div style="font-size:.62rem;color:#94a3b8;font-weight:800;letter-spacing:.4px;text-transform:uppercase">${escH(li.t)}</div>
+        <div style="margin-top:5px;font-weight:700;color:#e2e8f0;font-size:.9rem">${li.v}</div>
+      </div>`).join('')}
+    </div>`;
+    html += secao('💡 Insights do cliente', bodyIn, '#4A90D9');
+  }
+  if (topProd.length) {
+    const bodyTop = `<div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;min-width:720px">
+        <thead><tr>
+          <th style="${th}">#</th>
+          <th style="${th}">Produto</th>
+          <th style="${th};text-align:right">OFs</th>
+          <th style="${th};text-align:right">Qtd. Total</th>
+          <th style="${th};text-align:right">Valor Total</th>
+          <th style="${th};text-align:right">Ticket Médio</th>
+        </tr></thead>
+        <tbody>
+          ${topProd.map((p,i)=>{
+            const qtd=Number(p.quantidade_total||0)||0;
+            const vlr=Number(p.valor_total||0)||0;
+            const n=Number(p.total_ofs||0)||0;
+            const tk=(n>0)?(vlr/n):0;
+            return `<tr>
+              <td style="${td};font-family:var(--mono);font-weight:800;color:#94a3b8">${String(i+1).padStart(2,'0')}</td>
+              <td style="${td};font-weight:700;color:#e2e8f0;max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(String(p.produto||'Produto'))}</td>
+              <td style="${td};text-align:right;font-family:var(--mono);font-weight:800;color:#22d3ee">${fmtN2(n)}</td>
+              <td style="${td};text-align:right;font-family:var(--mono);color:#f59e0b">${fmtN2(qtd)}</td>
+              <td style="${td};text-align:right;font-family:var(--mono);color:#10b981;font-weight:800">${fmtR2(vlr)}</td>
+              <td style="${td};text-align:right;font-family:var(--mono);color:#94a3b8">${fmtR2(tk)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+    html += secao('🛒 Produtos Mais Pedidos (' + fmtN2(topProd.length) + ' produtos)', bodyTop, '#f59e0b');
+  }
+  if (fatMes.length) {
+    const bodyFat = `<div style="display:grid;grid-template-columns:repeat(${Math.min(fatMes.length,6)},1fr);gap:10px">
+      ${fatMes.slice(0, 6).map(m => {
+        const [a,m2] = String(m.mes_ano||'0000-00').split('-');
+        const nomeMes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(m2||'0',10)-1] || m2 || m.mes_ano;
+        const v = Number(m.valor_total||0)||0;
+        const n = Number(m.qtd_ofs||0)||0;
+        const maxV = Math.max(...fatMes.map(x=>Number(x.valor_total||0)||0), 1);
+        const pct = Math.round((v/maxV)*100);
+        return `<div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:12px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px">
+            <div style="font-size:.72rem;color:#94a3b8;font-weight:800">${escH(nomeMes+ '/' + (a||''))}</div>
+            <div style="font-size:.62rem;font-family:var(--mono);color:#475569">${fmtN2(n)} OFs</div>
+          </div>
+          <div style="margin-top:8px;font-size:1rem;font-weight:900;color:#22d3ee">${fmtR2(v)}</div>
+          <div style="margin-top:8px;height:6px;border-radius:999px;background:rgba(34,211,238,.1);overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#22d3ee,#4A90D9);border-radius:999px"></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+    html += secao('📆 Faturamento Mensal (últimos ' + fmtN2(fatMes.length) + ' meses)', bodyFat, '#22d3ee');
+  }
+  if (orc.length) {
+    const bodyOrc = `<div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;min-width:720px">
+        <thead><tr>
+          <th style="${th}">Nº</th>
+          <th style="${th}">Nome / Título</th>
+          <th style="${th}">Medidas / Onda</th>
+          <th style="${th};text-align:right">Qtd</th>
+          <th style="${th};text-align:right">Valor Total</th>
+          <th style="${th}">Status</th>
+          <th style="${th}">Criado em</th>
+        </tr></thead>
+        <tbody>
+          ${orc.map(r=>{
+            return `<tr>
+              <td style="${td};font-family:var(--mono);font-weight:800;color:#4A90D9">${escH(String(r.numero||r.id||'—'))}</td>
+              <td style="${td};font-weight:700;color:#e2e8f0">${escH(String(r.nome||'Orçamento'))}</td>
+              <td style="${td};color:#94a3b8">${escH([r.medidas,r.onda].filter(Boolean).join(' · ')||'—')}</td>
+              <td style="${td};text-align:right;font-family:var(--mono)">${fmtN2(Number(r.quantidade||0))}</td>
+              <td style="${td};text-align:right;font-family:var(--mono);font-weight:800;color:#10b981">${fmtR2(Number(r.valor_total||0))}</td>
+              <td style="${td};color:#a78bfa">${escH(String(r.status||'—'))}</td>
+              <td style="${td};font-family:var(--mono);color:#94a3b8">${fmtD2(r.criado_em)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+    html += secao('📋 Orçamentos (' + fmtN2(orc.length) + ')', bodyOrc, '#a78bfa');
+  }
+  const totValor = hist.reduce((s,o)=>s+Number(o?.valor_total||o?.total||0),0);
+  const totQtd = hist.reduce((s,o)=>s+Number(o?.quantidade||o?.qtd||0),0);
+  const bodyHist = `<div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)">
+      <div style="font-size:.7rem;color:#94a3b8">Tabela: <b style="color:#e2e8f0">${fmtN2(hist.length)} OFs</b> · ${totQtd>0?`<b style="color:#f59e0b">${fmtN2(totQtd)} caixas</b>`:''} · <b style="color:#10b981">${fmtR2(totValor)}</b> soma do histórico</div>
+    </div>
+    <div style="max-height:60vh;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:1100px">
+        <thead style="position:sticky;top:0;z-index:1"><tr>
+          <th style="${th}">Nº OF</th>
+          <th style="${th}">Status</th>
+          <th style="${th}">Produto</th>
+          <th style="${th};text-align:right">Qtd.</th>
+          <th style="${th};text-align:right">R$</th>
+          <th style="${th}">Entrada</th>
+          <th style="${th}">Entrega</th>
+          <th style="${th}">Conclusão</th>
+          <th style="${th}">Máquina</th>
+          <th style="${th}">Vendedor</th>
+        </tr></thead>
+        <tbody>
+          ${hist.map(h=>{
+            const st = String(h.status||'—').trim();
+            const stLow = st.toLowerCase();
+            let cor = '#94a3b8';
+            if (stLow.includes('conclu')||stLow.includes('entregue')||stLow==='pedido pronto') cor='#10b981';
+            else if (stLow.includes('cancel')) cor='#ef4444';
+            else if (stLow.includes('aberto')||stLow.includes('aguard')) cor='#f59e0b';
+            else if (stLow.includes('producao')||stLow.includes('produção')||stLow.includes('impress')) cor='#22d3ee';
+            return `<tr>
+              <td style="${td};font-family:var(--mono);font-weight:900;color:#4A90D9">${escH(String(h.numero||h.of||h.id||'—'))}</td>
+              <td style="${td}"><span style="padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.06);color:${cor};font-weight:700;font-size:.7rem">${escH(st)}</span></td>
+              <td style="${td};color:#e2e8f0;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(String(h.produto||h.descricao||'—'))}</td>
+              <td style="${td};text-align:right;font-family:var(--mono);color:#f59e0b">${fmtN2(Number(h.quantidade||h.qtd||0))}</td>
+              <td style="${td};text-align:right;font-family:var(--mono);font-weight:800;color:#10b981">${fmtR2(Number(h.valor_total||h.total||0))}</td>
+              <td style="${td};font-family:var(--mono);color:#94a3b8">${fmtD2(h.data_entrada||h.dia||h.created_at)}</td>
+              <td style="${td};font-family:var(--mono);color:#94a3b8">${fmtD2(h.data_entrega||h.ent)}</td>
+              <td style="${td};font-family:var(--mono);color:${(h.data_conclusao||'')?'#10b981':'#475569'}">${fmtD2(h.data_conclusao)}</td>
+              <td style="${td};color:#a78bfa;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(String(h.maquina||'Sem máquina'))}</td>
+              <td style="${td};color:#60a5fa;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(String(h.vendedor||'—'))}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+  html += secao('🕐 Histórico Completo de Pedidos (' + fmtN2(hist.length) + ' OFs)', bodyHist, '#0ea5e9');
+  if (!hist.length && !topProd.length && !fatMes.length && !orc.length) {
+    html += `<div style="padding:30px;color:#64748b;text-align:center;border:1px dashed var(--border);border-radius:10px;margin-top:14px">
+      Nenhum dado encontrado para este cliente.
+    </div>`;
+  }
+  bodyEl.innerHTML = html;
 }
 
 function hcliSetTab(tab){
@@ -60234,6 +60494,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260819090900"></script>
+<script src="/patch.js?v=20260819090910"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
