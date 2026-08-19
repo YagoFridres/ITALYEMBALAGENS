@@ -9892,8 +9892,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         var _paramOk = !!(_rc && _rc.querySelector('.param-grid'));
         var _tbOk = !!document.querySelector('.calc-tabela-wrap');
         var _bodyOk = !!document.querySelector('.calc-body.modal-body');
-        var _extraOk = !!document.getElementById('calc-extra-blocks');
-        _domOk = _paramOk && _tbOk && _bodyOk && _extraOk;
+        _domOk = _paramOk && _tbOk && _bodyOk;
       } catch (_eDom) { _domOk = false; }
       if (_domOk && document.getElementById('modal-calc') && document.getElementById('modal-calculadora')) return true;
       if (document.getElementById('patch-calc-dom-injected') && _domOk) return true;
@@ -9914,17 +9913,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         '  <button class="close-btn" onclick="try { if(typeof fecharCalculadora===\'function\')fecharCalculadora(); else if(typeof fechar===\'function\')fechar(\'modal-calc\'); } catch(_){}">✕</button>' +
         '  <h2 style="margin-bottom:8px">🧮 Calculadora de Compensação — Fórmulas Garcia</h2>' +
         '  <div class="calc-header-row" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">' +
-        '    <label style="white-space:nowrap">CLIENTE DO ORÇAMENTO (valendo para TODOS os itens)</label>' +
+        '    <label style="white-space:nowrap">CLIENTE</label>' +
         '    <select id="calc-cli" style="flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px"><option value="">— Selecione o cliente —</option></select>' +
         '    <span id="orc-numero-display" style="font-size:.65rem;color:var(--accent);font-family:var(--mono);font-weight:800"></span>' +
         '  </div>' +
         '  <div class="modal-body calc-body" style="overflow-y:auto;min-height:0;padding-right:6px">' +
-        '    <div data-calc-block="0" style="position:relative;margin-bottom:10px;border:2px solid rgba(124,58,237,.28);border-radius:14px;padding:14px;background:rgba(124,58,237,.05)">' +
-        '      <div style="position:absolute;top:10px;right:12px;font-size:.62rem;color:#a78bfa;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:rgba(124,58,237,.12);border:1px solid rgba(167,139,250,.25)">ITEM PRINCIPAL (bloco 0)</div>' +
-        '      <div class="mf" style="max-width:480px;margin-bottom:12px">' +
-        '        <label style="font-weight:800;color:#a78bfa">NOME DO ITEM PRINCIPAL * (obrigatório — aparece no orçamento/impressão)</label>' +
-        '        <input data-calc-field="nome_item" type="text" value="Item Principal" placeholder="Ex: Caixa Padrão Cliente X, Embalagem Kit Presente..." style="width:100%;background:#0f172a;color:#e2e8f0;border:1px solid rgba(167,139,250,.3);border-radius:10px;padding:11px 13px;font-size:14px;font-weight:700">' +
-        '      </div>' +
         '    <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:end;margin-bottom:10px">' +
         '      <div class="mf"><label>TIPO</label><select id="calc-tipo" data-calc-field="tipo" onchange="try{if(typeof calcTipoChange===\'function\')calcTipoChange();}catch(_){}">' +
         '        <optgroup label="Normal">' +
@@ -9999,8 +9992,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         '    </div>' +
         '    </div>' +
         '    </div>' +
-        '    <button type="button" onclick="try { if(typeof calcPromptAddMoreItems===\'function\')calcPromptAddMoreItems(); } catch(_){console.error(_)}" style="display:block;width:100%;margin:14px 0 18px 0;padding:11px 16px;border-radius:10px;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:13px;box-shadow:0 4px 12px rgba(14,165,233,.25)">➕ Adicionar Mais Itens (bloco completo)</button>' +
-        '    <div id="calc-extra-blocks"></div>' +
         '  </div>' +
         '  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;padding-top:12px;border-top:1px solid #334155">' +
         '    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">' +
@@ -51776,11 +51767,8 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     };
   }
   function orcDraftPayloadItems() {
-    var items = orcDraftItemsState().slice();
     var current = orcDraftCurrentItem();
-    var editingIndex = Math.trunc(Number(window.__orcDraftEditingIndex));
-    if (current && Number.isInteger(editingIndex) && editingIndex >= 0 && editingIndex < items.length) items[editingIndex] = current;
-    if (!items.length && current) items = [current];
+    var items = current ? [current] : [];
     return items.map(function(item) {
       return Object.assign({}, item, {
         quantidade: Number(item && item.quantidade || 0) || 0,
@@ -52232,50 +52220,10 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     });
   }
   function ensureCalcItensUi() {
-    var modal = document.getElementById('modal-calculadora');
-    var shellMain = modal && modal.querySelector ? modal.querySelector('.orc-calc-shell-main') : null;
-    var body = modal && modal.querySelector ? (modal.querySelector('.modal-body') || modal.querySelector('.calc-body')) : null;
-    var content = modal && modal.querySelector ? (modal.querySelector('.modal-content') || modal.querySelector('.content')) : null;
-    var targetParent = shellMain;
-    var parentFallbackUsed = '';
-    if (!targetParent) { targetParent = body; parentFallbackUsed = shellMain ? '' : '.orc-calc-shell-main → body'; }
-    if (!targetParent) { targetParent = content; parentFallbackUsed += ' → .modal-content/.content'; }
-    if (!targetParent && modal) { targetParent = modal; parentFallbackUsed += ' → #modal-calculadora'; }
-    if (!targetParent) {
-      try { console.warn('[calc-itens] nenhum container valido encontrado para inserir host de itens extras (shell-main, .modal-body, .modal-content).'); } catch (_) {}
-      return;
-    }
-    if (parentFallbackUsed) {
-      try { console.warn('[calc-itens] usando container fallback para itens extras: ' + parentFallbackUsed); } catch (_) {}
-    }
-    var wavePanels = document.getElementById('calc-wave-panels');
-    var beforeRef = null;
-    if (targetParent === shellMain && wavePanels && wavePanels.parentNode === targetParent) {
-      beforeRef = wavePanels.nextSibling || null;
-    }
-    var host = document.getElementById('calc-itens-shell');
-    if (!host) {
-      host = document.createElement('div');
-      host.id = 'calc-itens-shell';
-      host.className = 'calc-itens-shell';
-      host.setAttribute('data-orc-calc-itens-host', '1');
-      try {
-        if (beforeRef != null) targetParent.insertBefore(host, beforeRef);
-        else targetParent.appendChild(host);
-      } catch (_) {
-        try { targetParent.appendChild(host); } catch (_e2) {}
-      }
-    } else if (host.parentNode !== targetParent || (beforeRef != null && host.nextSibling !== beforeRef)) {
-      try {
-        if (beforeRef != null) targetParent.insertBefore(host, beforeRef);
-        else targetParent.appendChild(host);
-      } catch (_) {}
-    }
-    if (!host.getAttribute('data-orc-calc-itens-host')) {
-      host.setAttribute('data-orc-calc-itens-host', '1');
-    }
-    try { orcDraftLoadFromState(false); } catch (_) {}
-    try { orcRenderCalcItensUi(); } catch (_) {}
+    try {
+      var host = document.getElementById('calc-itens-shell');
+      if (host && host.parentNode) try { host.parentNode.removeChild(host); } catch (_) {}
+    } catch (_) {}
   }
   function orcToggleItemExpansion(id) {
     var sid = String(id || '').trim();
