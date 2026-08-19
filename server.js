@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260818144500';
-const SW_RUNTIME_VERSION = '20260818144500';
+const PATCH_RUNTIME_VERSION = '20260819085000';
+const SW_RUNTIME_VERSION = '20260819085000';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5273,8 +5273,10 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const busca = String(req.query.busca || req.query.search || '').trim();
     const clienteFiltro = String((req.query.cli_id || req.query.cliente_id || '') || '').trim();
     const empresaFiltro = req.query.empresa;
+    const incluirExcluidasRaw = String(req.query.incluir_excluidas || req.query.incluir_excluidos || req.query.show_deleted || '').trim();
+    const incluirExcluidas = incluirExcluidasRaw === '1' || incluirExcluidasRaw === 'true' || incluirExcluidasRaw.toLowerCase() === 'sim';
     const useCache = !afterIso && !refreshToken;
-    const cacheKey = useCache ? ('ofs_v12_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '')) : '';
+    const cacheKey = useCache ? ('ofs_v13_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '') + '_' + (incluirExcluidas ? 'x' : '')) : '';
     if (useCache) {
       const cached = cacheGet(cacheKey);
       if (cached) return res.json(cached);
@@ -5308,6 +5310,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       if (afterIso) {
         query = query.gte('created_at', afterIso);
       }
+      if (!incluirExcluidas) {
+        query = query.is('deleted_at', null);
+      }
       return query;
     };
 
@@ -5332,6 +5337,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') query = query.eq('empresa_id', empresaFiltro);
         else query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
         if (afterIso) query = query.gte('created_at', afterIso);
+        if (!incluirExcluidas) query = query.is('deleted_at', null);
         return query;
       };
       fetched = shouldFetchAll
@@ -5509,7 +5515,8 @@ app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('ofs')
-      .select('numero, of_num, of, id, created_at')
+      .select('numero, of_num, of, id, created_at, deleted_at')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(200);
 
@@ -5980,8 +5987,9 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         const proximoNumeroOF = async (empresa_id) => {
           const { data, error } = await supabase
             .from('ofs')
-            .select('numero')
+            .select('numero,deleted_at')
             .eq('empresa_id', empresa_id)
+            .is('deleted_at', null)
             .order('created_at', { ascending: false })
             .limit(200);
           if (error) throw error;
@@ -6008,9 +6016,10 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
           const cand = String((numeroEmpresa != null ? numeroEmpresa : nextSeq) + i);
           const { data: exists } = await supabase
             .from('ofs')
-            .select('id')
+            .select('id,deleted_at')
             .eq('empresa_id', empresaUuid)
             .eq('numero', cand)
+            .is('deleted_at', null)
             .limit(1);
           if (Array.isArray(exists) && exists.length) continue;
           filtered.of = cand;

@@ -25753,11 +25753,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   // ── PATCH 1: proximoNumeroOf ───────────────────────────────────
   // Busca a OF com maior numero e retorna numero + 1 formatado
+  // FILTRA SEMPRE OFS DELETADAS (deleted_at preenchido) em TODOS os niveis
   window.proximoNumeroOf = async function() {
     var token = getToken();
     var h = token ? { 'Authorization': 'Bearer ' + token } : {};
     try {
-      // Rota dedicada (mais confiavel)
       var r0 = await fetch('/api/ofs/proximo-numero?t=' + Date.now(), { headers: h });
       if (r0.ok) {
         var d0 = await r0.json();
@@ -25773,25 +25773,20 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
     } catch(e0) { console.warn('[PATCH] rota dedicada falhou:', e0.message); }
     try {
-      // Tentar com order_by=numero
-      var r = await fetch('/api/ofs?limit=5&order_by=numero&order=desc&t=' + Date.now(), { headers: h });
+      var r = await fetch('/api/ofs?limit=20&order_by=numero&order=desc&nocache=1&t=' + Date.now(), { headers: h });
       if (r.ok) {
         var d = await r.json();
         var lista = extractOfsRows(d);
-        console.log('[PATCH] OFs recebidas para calcular proximo numero:', lista.slice(0,3).map(function(o){ return {numero: o.numero, of_num: o.of_num, id: o.id}; }));
-        // Tentar todos os campos possiveis de numero
+        var listaAtivas = (Array.isArray(lista) ? lista : []).filter(function(o) { return o && !o.deleted_at; });
+        console.log('[PATCH] OFs recebidas para calcular proximo numero (ativas/' + listaAtivas.length + '/' + (Array.isArray(lista)?lista.length:0) + '):', listaAtivas.slice(0,3).map(function(o){ return {numero: o.numero, of_num: o.of_num, id: o.id}; }));
         var maior = 0;
-        lista.forEach(function(o) {
-          // Log para ver TODOS os campos retornados
-          if (lista.indexOf(o) === 0) console.log('[PATCH] campos da primeira OF:', Object.keys(o));
-        // Tentar TODOS os campos possiveis
+        listaAtivas.forEach(function(o) {
           var valoresTentados = [o.numero, o.of_num, o.numero_of, o.num, o.seq, o.sequencia, o.cod, o.codigo, o.of];
           valoresTentados.forEach(function(v) {
             if (v !== null && v !== undefined && v !== '') {
               var n = parseInt(String(v).replace(/\D/g,''), 10);
               if (!isNaN(n) && n > maior) {
                 maior = n;
-                console.log('[PATCH] campo com numero valido encontrado: valor=' + v + ' n=' + n);
               }
             }
           });
@@ -25804,8 +25799,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
     } catch(e) { console.warn('[PATCH] proximoNumeroOf API falhou:', e.message); }
 
-    // Fallback: usar OFs ja carregadas em memoria
-    var cache = window.OFS_ARQUIVO || window._ofs_cache || [];
+    var cache = Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window.OFs) ? window.OFs : ((window.OFS_ARQUIVO || window._ofs_cache || []).filter(function(o) { return o && !o.deleted_at; })));
     if (cache.length) {
       var nums = [];
       cache.forEach(function(o) {

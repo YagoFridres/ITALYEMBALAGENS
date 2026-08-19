@@ -3940,24 +3940,45 @@ async function proximoNumeroOf() {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
     const h = token ? { Authorization: 'Bearer ' + token } : {};
     const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
-    const r = await fetch(base + '/api/ofs?limit=1&order_by=numero&order=desc&nocache=1&incluir_excluidas=1&t=' + Date.now(), { headers: h });
+    const r = await fetch(base + '/api/ofs/proximo-numero?t=' + Date.now(), { headers: h });
+    if (r && r.ok) {
+      const d = await r.json().catch(()=>null);
+      if (d && d.ok && Number(d.maior) > 0 && d.proximo) {
+        const proximoNum = parseInt(d.proximo, 10);
+        const maiorNum = parseInt(d.maior, 10);
+        if (!isNaN(proximoNum) && !isNaN(maiorNum) && proximoNum === maiorNum) {
+          return String(maiorNum + 1).padStart(String(d.proximo).length, '0');
+        }
+        return String(d.proximo);
+      }
+    }
+  } catch(e) {}
+
+  try{
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+    const h = token ? { Authorization: 'Bearer ' + token } : {};
+    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+    const r = await fetch(base + '/api/ofs?limit=5&order_by=numero&order=desc&nocache=1&t=' + Date.now(), { headers: h });
     if (r && r.ok) {
       const d = await r.json().catch(()=>null);
       const lista = d?.data || d?.ofs || (Array.isArray(d) ? d : []);
       if (Array.isArray(lista) && lista.length) {
-        const raw = String(lista[0]?.numero || lista[0]?.of_num || lista[0]?.of || '0').trim();
-        const n = parseInt(raw, 10);
-        if (!isNaN(n) && n > 0) {
-          const casas = Math.max(raw.length, 3);
-          return String(n + 1).padStart(casas, '0');
+        const ativas = lista.filter(o => o && !o.deleted_at);
+        const numeros = ativas
+          .map(o => parseInt(o?.numero || o?.of_num || o?.of || '0', 10))
+          .filter(n => !isNaN(n) && n > 0);
+        if (numeros.length) {
+          const maior = Math.max(...numeros);
+          const casas = Math.max(String(maior).length, 3);
+          return String(maior + 1).padStart(casas, '0');
         }
       }
     }
   } catch(e) {}
 
-  const cache = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : [];
-  if (cache.length) {
-    const numeros = cache
+  const cacheRaw = Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window.OFs) ? window.OFs : (Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO.filter(o => o && !o.deleted_at) : []));
+  if (cacheRaw.length) {
+    const numeros = cacheRaw
       .map(o => parseInt(o?.numero || o?.of_num || o?.of || '0', 10))
       .filter(n => !isNaN(n) && n > 0);
     if (numeros.length) {
@@ -33516,7 +33537,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260818144500';
+      const swVersion = '20260819085000';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -60194,6 +60215,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260818144500"></script>
+<script src="/patch.js?v=20260819085000"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
