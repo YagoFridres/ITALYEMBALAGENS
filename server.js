@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260819090910';
-const SW_RUNTIME_VERSION = '20260819090910';
+const PATCH_RUNTIME_VERSION = '20260819090920';
+const SW_RUNTIME_VERSION = '20260819090920';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5268,16 +5268,21 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const afterIso = (after && after !== 'undefined' && after !== 'null' && after !== '[object Object]') ? after : '';
     const refreshToken = String(req.query.t || req.query.ts || req.query.nocache || req.query.refresh || '').trim();
     const limitRaw = String(req.query.limit || '').trim();
-    const limit = Math.min(parseInt(limitRaw, 10) || 500, 1000);
+    const clienteIdFiltroRaw = String((req.query.cli_id || req.query.cliente_id || req.query.clienteid || '') || '').trim();
+    const clienteTextoFiltro = String((req.query.cliente || req.query.cli || req.query.cli_nome || '') || '').trim();
+    const forcedBigLimit = (clienteIdFiltroRaw || clienteTextoFiltro) ? true : false;
+    const defaultLimitGeral = forcedBigLimit ? 10000 : 5000;
+    const tetoLimitGeral = forcedBigLimit ? 20000 : 10000;
+    const limit = Math.min(parseInt(limitRaw, 10) || defaultLimitGeral, tetoLimitGeral);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const status = req.query.status;
     const busca = String(req.query.busca || req.query.search || '').trim();
-    const clienteFiltro = String((req.query.cli_id || req.query.cliente_id || '') || '').trim();
+    const clienteFiltroLegado = String(clienteIdFiltroRaw || '').trim();
     const empresaFiltro = req.query.empresa;
     const incluirExcluidasRaw = String(req.query.incluir_excluidas || req.query.incluir_excluidos || req.query.show_deleted || '').trim();
     const incluirExcluidas = incluirExcluidasRaw === '1' || incluirExcluidasRaw === 'true' || incluirExcluidasRaw.toLowerCase() === 'sim';
-    const useCache = !afterIso && !refreshToken;
-    const cacheKey = useCache ? ('ofs_v13_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '') + '_' + (incluirExcluidas ? 'x' : '')) : '';
+    const useCache = !afterIso && !refreshToken && !forcedBigLimit;
+    const cacheKey = useCache ? ('ofs_v14_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltroLegado || '') + '_' + (clienteTextoFiltro || '') + '_' + (incluirExcluidas ? 'x' : '')) : '';
     if (useCache) {
       const cached = cacheGet(cacheKey);
       if (cached) return res.json(cached);
@@ -5302,8 +5307,28 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         else query = query.eq('status', status);
       }
 
-      if (clienteFiltro && clienteFiltro !== 'undefined' && clienteFiltro !== 'null' && clienteFiltro !== '[object Object]') {
-        query = query.eq('cli_id', clienteFiltro);
+      if (clienteFiltroLegado && clienteFiltroLegado !== 'undefined' && clienteFiltroLegado !== 'null' && clienteFiltroLegado !== '[object Object]') {
+        const cid = String(clienteFiltroLegado || '').trim();
+        const likeSafe = cid.replace(/'/g, "''");
+        query = query.or(`cli_id.eq.${likeSafe},cliId.eq.${likeSafe},cliente_id.eq.${likeSafe},cliid.eq.${likeSafe}`);
+      }
+      if (clienteTextoFiltro && clienteTextoFiltro !== 'undefined' && clienteTextoFiltro !== 'null' && clienteTextoFiltro !== '[object Object]') {
+        const t = String(clienteTextoFiltro || '').trim();
+        const likeT = '%' + t.replace(/'/g, "''") + '%';
+        const orParts = [];
+        orParts.push('cliente_nome.ilike.' + likeT);
+        orParts.push('clinome.ilike.' + likeT);
+        orParts.push('cliNome.ilike.' + likeT);
+        orParts.push('nome_cliente.ilike.' + likeT);
+        orParts.push('cli_nome.ilike.' + likeT);
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(t)) {
+          const likeSafe = t.replace(/'/g, "''");
+          orParts.push(`cli_id.eq.${likeSafe}`);
+          orParts.push(`cliId.eq.${likeSafe}`);
+          orParts.push(`cliente_id.eq.${likeSafe}`);
+        }
+        query = query.or(orParts.join(','));
       }
       if (busca) {
         query = query.or('numero.ilike.%' + busca + '%,descricao.ilike.%' + busca + '%');
@@ -5337,6 +5362,22 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           .order('created_at', { ascending: false });
         if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') query = query.eq('empresa_id', empresaFiltro);
         else query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
+        if (clienteFiltroLegado && clienteFiltroLegado !== 'undefined' && clienteFiltroLegado !== 'null' && clienteFiltroLegado !== '[object Object]') {
+          const cid = String(clienteFiltroLegado || '').trim();
+          const likeSafe = cid.replace(/'/g, "''");
+          query = query.or(`cli_id.eq.${likeSafe},cliId.eq.${likeSafe},cliente_id.eq.${likeSafe},cliid.eq.${likeSafe}`);
+        }
+        if (clienteTextoFiltro && clienteTextoFiltro !== 'undefined' && clienteTextoFiltro !== 'null' && clienteTextoFiltro !== '[object Object]') {
+          const t = String(clienteTextoFiltro || '').trim();
+          const likeT = '%' + t.replace(/'/g, "''") + '%';
+          const orParts = [];
+          orParts.push('cliente_nome.ilike.' + likeT);
+          orParts.push('clinome.ilike.' + likeT);
+          orParts.push('cliNome.ilike.' + likeT);
+          orParts.push('nome_cliente.ilike.' + likeT);
+          orParts.push('cli_nome.ilike.' + likeT);
+          query = query.or(orParts.join(','));
+        }
         if (afterIso) query = query.gte('created_at', afterIso);
         if (!incluirExcluidas) query = query.is('deleted_at', null);
         return query;

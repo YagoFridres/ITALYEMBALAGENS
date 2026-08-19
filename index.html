@@ -17960,6 +17960,71 @@ function renderLancamento(){
     }
   }catch(_){}
 
+  const cliFil = String(LANC_UI.cliente||'').trim().toLowerCase();
+  let cliFilResolvedMatch = null;
+  try {
+    if (cliFil && typeof getCli === 'function') {
+      const arrLocal = window.CLIENTES || window.clientes || (typeof CLIENTES !== 'undefined' ? CLIENTES : []);
+      const cands = (arrLocal && Array.isArray(arrLocal) ? arrLocal : []).filter(Boolean);
+      const _nm = (x) => String((x?.nome !== undefined ? x.nome : '') || (x?.rs !== undefined ? x.rs : '') || (x?.razao_social !== undefined ? x.razao_social : '') || '').trim().toLowerCase();
+      const batNome = cands.filter(x => _nm(x) === cliFil);
+      if (batNome.length === 1) cliFilResolvedMatch = { cliente: batNome[0], modo: 'exato' };
+      if (!cliFilResolvedMatch) {
+        const batNomeParcial = cands.filter(x => _nm(x).includes(cliFil));
+        if (batNomeParcial.length === 1) cliFilResolvedMatch = { cliente: batNomeParcial[0], modo: 'parcial_unico' };
+      }
+    }
+  } catch(_) { cliFilResolvedMatch = null; }
+  const resolvedMatchId = String((cliFilResolvedMatch && cliFilResolvedMatch.cliente && cliFilResolvedMatch.cliente.id) || '').trim();
+  const needsClienteRefetch = cliFil && resolvedMatchId && (String(window._LANC_LAST_CLIENTE_FETCHED_ID || '').trim() !== resolvedMatchId);
+  const needsClearClienteRefetch = !cliFil && (Array.isArray(window._LANC_LAST_CLIENTE_FETCHED_ID) ? true : Boolean(window._LANC_LAST_CLIENTE_FETCHED_ID));
+  if (needsClienteRefetch || needsClearClienteRefetch) {
+    try {
+      if (!Array.isArray(window._LANC_BACKUP_OFS_ARQUIVO)) window._LANC_BACKUP_OFS_ARQUIVO = null;
+      if (needsClearClienteRefetch) {
+        const backup = Array.isArray(window._LANC_BACKUP_OFS_ARQUIVO) ? window._LANC_BACKUP_OFS_ARQUIVO : null;
+        try { window._LANC_LAST_CLIENTE_FETCHED_ID = null; window._LANC_LAST_CLIENTE_MATCH = null; } catch(_){}
+        if (backup) {
+          _setOFSArquivoGlobal(backup.slice());
+          try { window.OFS_ARQUIVO = backup.slice(); } catch(_){}
+          try { OFS_HIST = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO.slice() : []; } catch(_){}
+        } else {
+          lancCarregarHistorico();
+          return;
+        }
+      } else {
+        (async () => {
+          try {
+            if (!window._LANC_BACKUP_OFS_ARQUIVO && Array.isArray(window.OFS_ARQUIVO)) window._LANC_BACKUP_OFS_ARQUIVO = window.OFS_ARQUIVO.slice();
+            if (host) host.innerHTML = `<div style="padding:14px;color:#4A90D9"><div style="display:inline-block;width:18px;height:18px;border:3px solid rgba(74,144,217,.25);border-top-color:#4A90D9;border-radius:50%;vertical-align:-5px;margin-right:10px;animation:spin 1s linear infinite"></div>Buscando OFs do cliente selecionado…</div>`;
+            const qs = new URLSearchParams();
+            qs.set('cliente_id', resolvedMatchId);
+            qs.set('incluir_excluidas', '1');
+            qs.set('limit', '10000');
+            qs.set('nocache', String(Date.now()));
+            const empSelAtual = String((document.getElementById('pcp-emp')||{}).value || '').trim();
+            if (empSelAtual) qs.set('empresa', empSelAtual); else qs.set('empresa', 'todas');
+            const r = await api('GET', '/ofs?' + qs.toString());
+            const chunk = extractOfsRows(r);
+            const list = Array.isArray(chunk) ? chunk.map(o => { try { return normalizeOF(o); } catch(_){ return o; } }) : [];
+            _setOFSArquivoGlobal(list);
+            try { window.OFS_ARQUIVO = list.slice(); } catch(_){}
+            try { window._LANC_LAST_CLIENTE_FETCHED_ID = resolvedMatchId; } catch(_){}
+            try { if(window._PAGE_ATUAL === 'lancamento') renderLancamento(); } catch(_){}
+          } catch (err) {
+            try { console.error('[ARM] erro fetch cliente:', err); } catch(_){}
+            if (Array.isArray(window._LANC_BACKUP_OFS_ARQUIVO)) {
+              _setOFSArquivoGlobal(window._LANC_BACKUP_OFS_ARQUIVO.slice());
+              try { window.OFS_ARQUIVO = window._LANC_BACKUP_OFS_ARQUIVO.slice(); } catch(_){}
+            }
+            try { window._LANC_LAST_CLIENTE_FETCHED_ID = null; } catch(_){}
+          }
+        })();
+        return;
+      }
+    } catch(_) {}
+  }
+
   if(!Array.isArray(window.OFS_ARQUIVO)){
     host.innerHTML = `<div style="padding:14px;color:var(--text2)">Carregando arquivo...</div>`;
     resumo.innerHTML = `<div style="padding:14px;color:var(--text3)">—</div>`;
@@ -18017,23 +18082,33 @@ function renderLancamento(){
     if(!dentroPeriodo(o)) return false;
     if(cliFil){
       let clienteFiltro = null;
+      let modoMatch = 'texto_livre';
       if (typeof getCli === 'function') {
         const arrLocal = window.CLIENTES || window.clientes || (typeof CLIENTES !== 'undefined' ? CLIENTES : []);
         const cands = (arrLocal && Array.isArray(arrLocal) ? arrLocal : []).filter(Boolean);
-        const batNome = cands.filter(x => String(x?.nome || x?.rs || x?.razao_social || '').trim().toLowerCase() === cliFil);
-        if (batNome.length === 1) clienteFiltro = batNome[0];
+        const _nm = (x) => String((x?.nome !== undefined ? x.nome : '') || (x?.rs !== undefined ? x.rs : '') || (x?.razao_social !== undefined ? x.razao_social : '') || '').trim().toLowerCase();
+        const batNome = cands.filter(x => _nm(x) === cliFil);
+        if (batNome.length === 1) { clienteFiltro = batNome[0]; modoMatch = 'exato'; }
+        if (!clienteFiltro) {
+          const batNomeParcial = cands.filter(x => _nm(x).includes(cliFil));
+          if (batNomeParcial.length === 1) { clienteFiltro = batNomeParcial[0]; modoMatch = 'parcial_unico'; }
+        }
       }
       if (clienteFiltro) {
         const cidF = String(clienteFiltro?.id || '').trim();
+        try { window._LANC_LAST_CLIENTE_MATCH = { id: cidF, digitado: cliFil, modo: modoMatch }; } catch(_){}
         const matchId = cidF && (String(o?.cliId||'').trim() === cidF || String(o?.cli_id||'').trim() === cidF || String(o?.cliente_id||'').trim() === cidF || String(o?.cliid||'').trim() === cidF);
         if (!matchId) {
           const c = String(lancCliNome(o) || '').toLowerCase();
           if(!c.includes(cliFil)) return false;
         }
       } else {
+        try { if (window._LANC_LAST_CLIENTE_MATCH) window._LANC_LAST_CLIENTE_MATCH = null; } catch(_){}
         const c = String(lancCliNome(o) || '').toLowerCase();
         if(!c.includes(cliFil)) return false;
       }
+    } else {
+      try { if (window._LANC_LAST_CLIENTE_MATCH) window._LANC_LAST_CLIENTE_MATCH = null; } catch(_){}
     }
     if(Number.isFinite(valMin)){
       const v = getValor(o);
@@ -33555,7 +33630,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260819090910';
+      const swVersion = '20260819090920';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -60494,6 +60569,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260819090910"></script>
+<script src="/patch.js?v=20260819090920"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
