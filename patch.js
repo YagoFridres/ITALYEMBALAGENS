@@ -9991,6 +9991,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         '      </div>' +
         '    </div>' +
         '    </div>' +
+        '    </div>' +
         '  </div>' +
         '  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;padding-top:12px;border-top:1px solid #334155">' +
         '    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">' +
@@ -51282,33 +51283,31 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var t = String(v == null ? '' : v).trim();
       if (t) out.push(t);
     };
-    if (Array.isArray(item && item.vincos)) {
-      item.vincos.forEach(pushClean);
-      return out;
-    }
-    if (Array.isArray(item && item.vincos_extra) && item.vincos_extra.length) {
-      item.vincos_extra.forEach(pushClean);
-      return out;
-    }
-    if (Array.isArray(item && item.vincos_lista) && item.vincos_lista.length) {
-      item.vincos_lista.forEach(pushClean);
-      return out;
-    }
-    var v14 = [];
     ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) {
       var val = item && item[k] != null ? String(item[k]) : '';
       val = val.trim();
-      if (val) v14.push(val);
+      if (val) out.push(val);
     });
-    if (v14.length) {
-      v14.forEach(function(v) { out.push(v); });
-      return out;
+    if (Array.isArray(item && item.vincos_extra) && item.vincos_extra.length) {
+      item.vincos_extra.forEach(pushClean);
+    }
+    if (Array.isArray(item && item.vincos_lista) && item.vincos_lista.length) {
+      item.vincos_lista.forEach(pushClean);
+    }
+    if (Array.isArray(item && item.vincos) && item.vincos.length) {
+      item.vincos.forEach(pushClean);
     }
     var legacy = String(item && item.vincos ? item.vincos : (item && item.vincos_texto ? item.vincos_texto : '')).trim();
-    if (legacy) {
+    if (legacy && (!out.length || /[,;\/]/.test(legacy))) {
       legacy.split(/[,;\/]+/).forEach(pushClean);
     }
-    return out;
+    var seen = {};
+    var uniq = [];
+    for (var i = 0; i < out.length; i++) {
+      var k = String(out[i]);
+      if (!seen[k]) { seen[k] = 1; uniq.push(out[i]); }
+    }
+    return uniq;
   }
   function compraRenderVincosInputs(item) {
     var values = compraAllVincos(item);
@@ -51477,6 +51476,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   window._compraPapelaoCollectModalRows = function(overlay) {
     return Array.prototype.slice.call(overlay.querySelectorAll('#ccpx-modal-items-body [data-ccpx-item-row]')).map(function(row) {
       var vincosLista = compraCollectRowVincos(row);
+      if (!vincosLista || !vincosLista.length) {
+        try {
+          var fallback = [];
+          ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(fn) {
+            var el = row.querySelector('[data-field="' + fn + '"]');
+            if (el) { var v = String(el.value || '').trim(); if (v) fallback.push(v); }
+          });
+          if (fallback.length) vincosLista = fallback;
+        } catch (_e1) {}
+      }
       var pedClienteNome = String((row.querySelector('[data-field="ped_cliente"]') || {}).value || '').trim();
       var clienteRef = pedClienteNome ? window._compraPapelaoLookupClientePorNome(pedClienteNome) : null;
       var item = {
@@ -51518,6 +51527,16 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var totalValor = 0;
     Array.prototype.slice.call(overlay.querySelectorAll('#ccpx-modal-items-body [data-ccpx-item-row]')).forEach(function(row) {
       var vincosLista = compraCollectRowVincos(row);
+      if (!vincosLista || !vincosLista.length) {
+        try {
+          var fb2 = [];
+          ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(fn) {
+            var el = row.querySelector('[data-field="' + fn + '"]');
+            if (el) { var v2 = String(el.value || '').trim(); if (v2) fb2.push(v2); }
+          });
+          if (fb2.length) vincosLista = fb2;
+        } catch (_e2) {}
+      }
       var item = {
         largura: (row.querySelector('[data-field="largura"]') || {}).value,
         comprimento: (row.querySelector('[data-field="comprimento"]') || {}).value,
