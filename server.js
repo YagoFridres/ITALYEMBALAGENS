@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260819090500';
-const SW_RUNTIME_VERSION = '20260819090500';
+const PATCH_RUNTIME_VERSION = '20260819090600';
+const SW_RUNTIME_VERSION = '20260819090600';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -11963,9 +11963,10 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         .map((c) => normId(c?.id))
         .filter(Boolean);
       const mapaCount = Object.create(null);
-      clientIds.forEach((k) => { mapaCount[k] = 0; });
+      const mapaTotal = Object.create(null);
+      clientIds.forEach((k) => { mapaCount[k] = 0; mapaTotal[k] = 0; });
       if (!clientIds.length) {
-        const empty = base.map((c) => ({ ...c, total_ofs: 0 }));
+        const empty = base.map((c) => ({ ...c, total_ofs: 0, total_valor: 0 }));
         empty.sort((a, b) => String(a?.nome || '').localeCompare(String(b?.nome || '')));
         return empty;
       }
@@ -11978,7 +11979,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         try {
           const { data, error } = await supabase
             .from('ofs')
-            .select('id,cli_id,cliId,cliente_id')
+            .select('id,cli_id,cliId,cliente_id,valor_total,valor_venda,total,preco')
             .is('deleted_at', null)
             .range(from, from + pageSize - 1);
           if (error) break;
@@ -11994,11 +11995,13 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
             if (c2 && idsSet.has(c2)) matchedClientes.add(c2);
             if (c3 && idsSet.has(c3)) matchedClientes.add(c3);
             if (!matchedClientes.size) continue;
+            const vOf = _vendasOficialValor(of);
             for (const cid of matchedClientes) {
               const k = ofId ? `${cid}__${ofId}` : `__no_of_id__${cid}__${Math.random().toString(36).slice(2, 10)}`;
               if (clientesContadoPorOf[k]) continue;
               clientesContadoPorOf[k] = true;
               mapaCount[cid] = (mapaCount[cid] || 0) + 1;
+              mapaTotal[cid] = (mapaTotal[cid] || 0) + vOf;
             }
           }
           if (page.length < pageSize) break;
@@ -12008,17 +12011,21 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         }
       }
       console.debug('[CLIENTES] ofs lidas (deleted_at IS NULL):', totalOfsLidas, 'clientes distintos com OF:', Object.values(mapaCount).filter((v) => v > 0).length);
-      const withCounts = base.map((c) => ({
-        ...c,
-        total_ofs: mapaCount[normId(c?.id)] || 0
-      }));
+      const withCounts = base.map((c) => {
+        const k = normId(c?.id);
+        return {
+          ...c,
+          total_ofs: mapaCount[k] || 0,
+          total_valor: Number(mapaTotal[k] || 0) || 0
+        };
+      });
       withCounts.sort((a, b) => {
         const diff = Number(b?.total_ofs || 0) - Number(a?.total_ofs || 0);
         if (diff) return diff;
         return String(a?.nome || '').localeCompare(String(b?.nome || ''));
       });
       try {
-        console.debug('[CLIENTES TOP 5]', withCounts.slice(0, 5).map((c) => `${String(c?.nome || '')}(${Number(c?.total_ofs || 0)})`));
+        console.debug('[CLIENTES TOP 5]', withCounts.slice(0, 5).map((c) => `${String(c?.nome || '')}(${Number(c?.total_ofs || 0)}/R$${Number(c?.total_valor || 0).toFixed(2)})`));
       } catch (_) {}
       return withCounts;
     };

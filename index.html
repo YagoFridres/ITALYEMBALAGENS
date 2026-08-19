@@ -20691,12 +20691,9 @@ function renderClientes(){
   if(sit === 'inativos') lista = lista.filter(c=>situacao(c.id).inativo);
   renderEmpBar();
   document.getElementById('cli-grid').innerHTML=lista.map(c=>{
-    const ofs=OFs.filter(o=>{
-      if(o.deleted_at) return false;
-      const cid = String(o.cliId ?? o.cli_id ?? o.cliente_id ?? '').trim();
-      return cid === String(c.id||'').trim();
-    });
-    const total=ofs.reduce((s,o)=>s+(o.val||0),0);
+    const nOfs = Number(c?.total_ofs || 0);
+    const vTot = Number(c?.total_valor || 0);
+    const vTicket = nOfs > 0 ? (vTot / nOfs) : 0;
     const emp=getEmp(c.empId);
     const st = situacao(c.id);
     const badgeInativo = (st.diasSem != null && st.inativo)
@@ -20717,9 +20714,9 @@ function renderClientes(){
       <div class="cli-sub">${c.cidade||''}${c.uf?'/'+c.uf:''} · ${c.tel||''}</div>
       <div class="cli-sub">${c.email||''}</div>
       <div class="cli-stats">
-        <div class="cli-stat"><b>${ofs.length}</b> pedidos</div>
-        <div class="cli-stat"><b>${fmtR(total)}</b> total</div>
-        <div class="cli-stat"><b>${fmtR(ofs.length?total/ofs.length:0)}</b> ticket</div>
+        <div class="cli-stat"><b>${nOfs}</b> pedidos</div>
+        <div class="cli-stat"><b>${fmtR(vTot)}</b> total</div>
+        <div class="cli-stat"><b>${fmtR(vTicket)}</b> ticket</div>
       </div>
       <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirPainelCliente('${c.id}')" style="font-size:.68rem;">👤 Painel</button>
@@ -33537,7 +33534,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260819090500';
+      const swVersion = '20260819090600';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -34475,7 +34472,9 @@ function normalizeCli(r){
     obs:r.obs||'',
     vendId:r.vendedor_id||r.vend_id||r.vendedorId||r.vendId||'',
     vendedor:r.vendedor||r.vendedor_nome||r.vendedorNome||'',
-    empId:r.emp_id||r.empId||r.emp_id||r.empId||r.empresa_id||r.empresaId||''
+    empId:r.emp_id||r.empId||r.emp_id||r.empId||r.empresa_id||r.empresaId||'',
+    total_ofs: Number(r?.total_ofs || 0),
+    total_valor: Number(r?.total_valor || 0)
   };
 }
 function normalizeVend(r){
@@ -60213,6 +60212,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260819090500"></script>
+<script src="/patch.js?v=20260819090600"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
