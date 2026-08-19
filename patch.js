@@ -49619,11 +49619,16 @@ function _ocultarGraficoComissoes() {
   function applySnapshotSelections(modal, snapshot) {
     if (!modal || !snapshot) return;
     if (String(modal.dataset && modal.dataset.ofKnifeSnapshotApplied || '') === String(snapshot && snapshot.id || '')) return;
-    if (!ownerKnifeIds(modal).length) setOwnerKnifeIds(modal, snapshotMainKnifeIds(snapshot));
+    var snapMain = snapshotMainKnifeIds(snapshot);
+    var currentMain = ownerKnifeIds(modal);
+    if (!currentMain.length && snapMain.length) setOwnerKnifeIds(modal, snapMain);
+    else if (snapMain.length) setOwnerKnifeIds(modal, snapMain);
     var itemIds = snapshotItemKnifeIds(snapshot);
     var cards = Array.prototype.slice.call(modal.querySelectorAll('#painel-mais-itens .ofr-item-card, #painel-mais-itens [data-item-idx], #painel-mais-itens [data-item-index], #painel-mais-itens .item-adicional'));
     cards.forEach(function(card, idx) {
-      if (!ownerKnifeIds(card).length && Array.isArray(itemIds[idx]) && itemIds[idx].length) setOwnerKnifeIds(card, itemIds[idx]);
+      if (!Array.isArray(itemIds[idx]) || !itemIds[idx].length) return;
+      var cardCurrent = ownerKnifeIds(card);
+      if (!cardCurrent.length) setOwnerKnifeIds(card, itemIds[idx]);
     });
     try { modal.dataset.ofKnifeSnapshotApplied = String(snapshot && snapshot.id || ''); } catch (_) {}
   }
