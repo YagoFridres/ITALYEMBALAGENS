@@ -17219,14 +17219,16 @@ function lancEmpNome(o){
 function lancCliNome(o){
   const direct = String(o.cliNome || o.cliente_nome || o.cli_nome || o.clinome || o.cliente || '').trim();
   if(direct) return direct;
-  const cliId = String(o.cliId || o.cli_id || o.cliid || o.cliente_id || '').trim();
-  const cli = cliId && (typeof getCli === 'function') ? (getCli(cliId) || null) : null;
-  if (cli && (cli.nome || cli.razao_social)) return String(cli.nome || cli.razao_social || '').trim() || '—';
   const arr = window.CLIENTES || window.clientes || (typeof CLIENTES !== 'undefined' ? CLIENTES : []);
-  if (Array.isArray(arr) && arr.length && cliId) {
-    const c = arr.find(x => String(x?.id || '').trim() === cliId) || null;
-    if (c && (c.nome || c.razao_social)) return String(c.nome || c.razao_social || '').trim() || '—';
+  const cliIdsCand = [String(o.cliId||'').trim(), String(o.cli_id||'').trim(), String(o.cliid||'').trim(), String(o.cliente_id||'').trim()].filter(Boolean);
+  let cli = null;
+  if (typeof getCli === 'function') for (const cid of cliIdsCand) { cli = getCli(cid); if (cli) break; }
+  if (!cli && Array.isArray(arr) && arr.length && cliIdsCand.length) {
+    const s = new Set(cliIdsCand);
+    cli = arr.find(x => s.has(String(x?.id || '').trim())) || null;
   }
+  if (!cli) cli = null;
+  if (cli && (cli.nome || cli.razao_social)) return String(cli.nome || cli.razao_social || '').trim() || '—';
   return String((o.cliente||o.cliente_nome||'')).trim() || '—';
 }
 function lancVendNome(o){
@@ -18014,8 +18016,24 @@ function renderLancamento(){
     if(maq && maqNome !== maq) return false;
     if(!dentroPeriodo(o)) return false;
     if(cliFil){
-      const c = String(lancCliNome(o) || '').toLowerCase();
-      if(!c.includes(cliFil)) return false;
+      let clienteFiltro = null;
+      if (typeof getCli === 'function') {
+        const arrLocal = window.CLIENTES || window.clientes || (typeof CLIENTES !== 'undefined' ? CLIENTES : []);
+        const cands = (arrLocal && Array.isArray(arrLocal) ? arrLocal : []).filter(Boolean);
+        const batNome = cands.filter(x => String(x?.nome || x?.rs || x?.razao_social || '').trim().toLowerCase() === cliFil);
+        if (batNome.length === 1) clienteFiltro = batNome[0];
+      }
+      if (clienteFiltro) {
+        const cidF = String(clienteFiltro?.id || '').trim();
+        const matchId = cidF && (String(o?.cliId||'').trim() === cidF || String(o?.cli_id||'').trim() === cidF || String(o?.cliente_id||'').trim() === cidF || String(o?.cliid||'').trim() === cidF);
+        if (!matchId) {
+          const c = String(lancCliNome(o) || '').toLowerCase();
+          if(!c.includes(cliFil)) return false;
+        }
+      } else {
+        const c = String(lancCliNome(o) || '').toLowerCase();
+        if(!c.includes(cliFil)) return false;
+      }
     }
     if(Number.isFinite(valMin)){
       const v = getValor(o);
@@ -18032,6 +18050,8 @@ function renderLancamento(){
       else if(statusFil === 'concluido') { if(o.deleted_at || !isConcluida(st)) return false; }
       else if(statusFil === 'em_producao') { if(o.deleted_at || !isEmProducao(st)) return false; }
       else if(statusFil === 'em_aberto') { if(o.deleted_at || !(isEmAberto(st) || (!isConcluida(st) && !isCancelada(st)))) return false; }
+    } else {
+      if(o.deleted_at) return false;
     }
     if(chapaFil){
       const itens = Array.isArray(o.itens) ? o.itens : (typeof o.itens === 'string' ? tryParse(o.itens, []) : []);
@@ -33534,7 +33554,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260819090800';
+      const swVersion = '20260819090900';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -60214,6 +60234,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260819090800"></script>
+<script src="/patch.js?v=20260819090900"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
