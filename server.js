@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260819090300';
-const SW_RUNTIME_VERSION = '20260819090300';
+const PATCH_RUNTIME_VERSION = '20260819090400';
+const SW_RUNTIME_VERSION = '20260819090400';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -11959,24 +11959,37 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       const base = Array.isArray(rows) ? rows.map((r) => ({ ...r })) : [];
       if (!base.length) return base;
       const mapaOfs = Object.create(null);
+      const ofsProcessados = new Set();
       const normId = (v) => String(v || '').trim().toLowerCase();
-      const specs = [
-        { select: 'cli_id', col: 'cli_id', key: 'cli_id' },
-        { select: 'cliId', col: 'cliId', key: 'cliId' },
-        { select: 'cliente_id', col: 'cliente_id', key: 'cliente_id' },
-      ];
-      for (const spec of specs) {
+      const pageSize = 1000;
+      let from = 0;
+      let totalOfsLidas = 0;
+      while (true) {
         try {
-          const { data, error } = await supabase.from('ofs').select(spec.select).not(spec.col, 'is', null);
-          if (error) continue;
-          (Array.isArray(data) ? data : []).forEach((of) => {
-            const cliId = normId(of?.[spec.key]);
-            if (!cliId) return;
-            mapaOfs[cliId] = (mapaOfs[cliId] || 0) + 1;
-          });
-        } catch (_) {}
+          const { data, error } = await supabase
+            .from('ofs')
+            .select('id,cli_id,cliId,cliente_id', { count: 'exact' })
+            .is('deleted_at', null)
+            .range(from, from + pageSize - 1);
+          if (error) break;
+          const page = Array.isArray(data) ? data : [];
+          totalOfsLidas += page.length;
+          for (const of of page) {
+            const ofId = normId(of?.id);
+            if (!ofId) continue;
+            if (ofsProcessados.has(ofId)) continue;
+            ofsProcessados.add(ofId);
+            const cliOf = normId(of?.cli_id ?? of?.cliId ?? of?.cliente_id ?? '');
+            if (!cliOf) continue;
+            mapaOfs[cliOf] = (mapaOfs[cliOf] || 0) + 1;
+          }
+          if (page.length < pageSize) break;
+          from += pageSize;
+        } catch (_) {
+          break;
+        }
       }
-      console.debug('[CLIENTES] total:', base.length, 'clientes com OFs:', Object.keys(mapaOfs).length);
+      console.debug('[CLIENTES] ofs lidas (deleted_at IS NULL):', totalOfsLidas, 'clientes distintos com OF:', Object.keys(mapaOfs).length);
       const withCounts = base.map((c) => ({
         ...c,
         total_ofs: mapaOfs[normId(c?.id)] || 0
