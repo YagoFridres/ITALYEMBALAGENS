@@ -33534,7 +33534,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260819090600';
+      const swVersion = '20260819090700';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -41739,18 +41739,20 @@ async function carregarPainelCliente(){
   pcRenderPainel();
   try{
     const cid = String(st.cliId || '').trim();
-    const empId = String(st.cli?.empId || EMP_FILTRO || (window.CURRENT_USER && (CURRENT_USER.sigla || CURRENT_USER.empId || CURRENT_USER.emp_id)) || '').trim();
-    const qs = new URLSearchParams();
-    if(empId) qs.set('empId', empId);
-    qs.set('cliente_id', cid);
-    qs.set('limit', '500');
-    qs.set('order_by', 'created_at');
-    qs.set('order', 'desc');
-    qs.set('lite', '1');
-    const resp = await apiFetch('/api/ofs?' + qs.toString(), { method:'GET' });
+    const resp = await apiFetch('/api/clientes/' + encodeURIComponent(cid) + '/painel', { method:'GET' });
     const json = await resp.json().catch(()=>null);
-    const ofs = (json && Array.isArray(json.data)) ? json.data : (Array.isArray(json) ? json : []);
-    st.ofs = Array.isArray(ofs) ? ofs : [];
+    const ofsHist = Array.isArray(json?.historico) ? json.historico
+      : (Array.isArray(json?.historico_ofs) ? json.historico_ofs
+      : (Array.isArray(json?.ofs) ? json.ofs : []));
+    st.ofs = Array.isArray(ofsHist) ? ofsHist : [];
+    try{
+      if(json && typeof json === 'object'){
+        const k = json.resumo || json;
+        if(typeof k.total_comprado === 'number') st._metaTotal = Number(k.total_comprado);
+        if(typeof k.total_faturado === 'number') st._metaFat = Number(k.total_faturado);
+        if(typeof k.total_ofs === 'number' && !st.ofs.length) st._fallbackCount = Number(k.total_ofs);
+      }
+    }catch(_){}
   }catch(_){
     st.ofs = [];
   }
@@ -60212,6 +60214,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260819090600"></script>
+<script src="/patch.js?v=20260819090700"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
