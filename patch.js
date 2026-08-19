@@ -9991,7 +9991,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         '      </div>' +
         '    </div>' +
         '    </div>' +
-        '    </div>' +
         '  </div>' +
         '  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;padding-top:12px;border-top:1px solid #334155">' +
         '    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">' +
