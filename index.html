@@ -11705,7 +11705,7 @@ async function ofmaqDarBaixa(id){
   if(vaiConcluir){
     const qtdPadrao = Number(o?.qtd || 0) || 0;
     const valorTotalOriginal = Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? 0) || 0;
-    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal, maquina_producao: atual || null });
+    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal, maquina_producao: atual || null, vendedor_id: o?.vendedor_id ?? o?.vendId ?? o?.vend_id ?? o?.vendid ?? null, vendId: o?.vendedor_id ?? o?.vendId ?? o?.vend_id ?? o?.vendid ?? null });
     if(!resp) return;
     baixaBody.qtd_real = resp.qtd_real;
     qtdPerdida = resp.qtd_perdida != null ? Math.trunc(Number(resp.qtd_perdida||0)) : 0;
@@ -11717,7 +11717,7 @@ async function ofmaqDarBaixa(id){
   }
   showSaveIndicator('Salvando baixa...','var(--yellow)');
   const r = vaiConcluir
-    ? await api('POST','/ofs/'+encodeURIComponent(o.id)+'/concluir', { usuario, qtd_produzida: baixaBody.qtd_real, qtd_perdida: baixaBody.qtd_perdida })
+    ? await api('POST','/ofs/'+encodeURIComponent(o.id)+'/concluir', { usuario, qtd_produzida: baixaBody.qtd_real, qtd_perdida: baixaBody.qtd_perdida, vendedor_id: resp?.vendedor_id ?? resp?.vendId ?? null, vendId: resp?.vendedor_id ?? resp?.vendId ?? null })
     : await api('PATCH','/ofs/'+encodeURIComponent(o.id)+'/baixa',baixaBody);
   if(!r || !r.ok){
     showSaveIndicator('✖ erro','var(--red)');
@@ -11747,7 +11747,7 @@ async function darBaixaOFId(id, numero, maquinaAtual){
   if(vaiConcluir){
     const qtdPadrao = Number(it?.qtd || 0) || 0;
     const valorTotalOriginal = Number(it?.valor_total ?? it?.valor_venda ?? it?.val ?? 0) || 0;
-    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${numero||id}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal, maquina_producao: maquinaAtual || null });
+    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${numero||id}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal, maquina_producao: maquinaAtual || null, vendedor_id: it?.vendedor_id ?? it?.vendId ?? it?.vend_id ?? it?.vendid ?? null, vendId: it?.vendedor_id ?? it?.vendId ?? it?.vend_id ?? it?.vendid ?? null });
     if(!resp) return;
     baixaBody.qtd_real = resp.qtd_real;
     qtdPerdida = resp.qtd_perdida != null ? Math.trunc(Number(resp.qtd_perdida||0)) : 0;
@@ -11758,7 +11758,7 @@ async function darBaixaOFId(id, numero, maquinaAtual){
     if(!confirm('Confirmar baixa da OF #'+(numero||id)+' na máquina '+(maquinaAtual||'')+'?')) return;
   }
   const r = vaiConcluir
-    ? await api('POST','/ofs/'+encodeURIComponent(id)+'/concluir', { usuario: baixaBody.usuario, qtd_produzida: baixaBody.qtd_real, qtd_perdida: baixaBody.qtd_perdida, data_faturamento: baixaBody.data_faturamento || null })
+    ? await api('POST','/ofs/'+encodeURIComponent(id)+'/concluir', { usuario: baixaBody.usuario, qtd_produzida: baixaBody.qtd_real, qtd_perdida: baixaBody.qtd_perdida, data_faturamento: baixaBody.data_faturamento || null, vendedor_id: resp?.vendedor_id ?? resp?.vendId ?? null, vendId: resp?.vendedor_id ?? resp?.vendId ?? null })
     : await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa',baixaBody);
   if(r && r.ok){
     _aplicarResultadoBaixaOF(id, it, baixaBody, r);
@@ -11962,6 +11962,18 @@ function abrirModalBaixaConclusao(opts){
       opEl.value = String(nomeUsuario || 'Administrador');
     }
   }catch(_){}
+  try{
+    var vendEl = document.getElementById('conc-vendedor');
+    if(vendEl){
+      if((!Array.isArray(VENDEDORES) || VENDEDORES.length===0) && typeof carregarVendedores === 'function'){
+        try{ await carregarVendedores(false); }catch(_){}
+      }
+      var vendArr = Array.isArray(window.VENDEDORES) ? window.VENDEDORES : (Array.isArray(VENDEDORES) ? VENDEDORES : []);
+      var vendAtual = opts?.vendedor_id ?? opts?.vendId ?? opts?.vend_id ?? opts?.vendid ?? null;
+      vendEl.innerHTML = '<option value="">—</option>' + vendArr.map(v=>`<option value="${v?.id||''}">${v?.nome||String(v||'')}</option>`).join('');
+      if(vendAtual) vendEl.value = String(vendAtual);
+    }
+  }catch(_){}
   var listaP = document.getElementById('conc-perdas-lista');
   if (listaP) listaP.innerHTML = '';
   atualizarTotalPerdas();
@@ -12021,6 +12033,7 @@ function confirmarModalBaixaConclusao(){
   var totalPerdas = perdasArray.reduce(function(s, p){ return s + p.quantidade; }, 0);
   var operadorConclusao = String(document.getElementById('conc-operador-conclusao')?.value || '').trim();
   var operadoresArray = operadorConclusao ? [operadorConclusao] : [];
+  var vendId = String(document.getElementById('conc-vendedor')?.value || '').trim();
 
   var payload = {
     caixas_boas:        caixasBoas,
@@ -12028,6 +12041,8 @@ function confirmarModalBaixaConclusao(){
     perdas_por_maquina: JSON.stringify(perdasArray),
     operador_conclusao: operadorConclusao || '',
     operadores_conclusao: JSON.stringify(operadoresArray),
+    vendedor_id:        vendId || null,
+    vendId:             vendId || null,
     data_faturamento:   dataFat,
     data_conclusao:     new Date().toISOString()
   };
@@ -12039,6 +12054,8 @@ function confirmarModalBaixaConclusao(){
     perdas_por_maquina: payload.perdas_por_maquina,
     operador_conclusao: payload.operador_conclusao || null,
     operadores_conclusao: payload.operadores_conclusao || null,
+    vendedor_id: payload.vendedor_id,
+    vendId: payload.vendId,
     data_faturamento: payload.data_faturamento || null,
     data_conclusao: payload.data_conclusao || null
   });
@@ -12116,7 +12133,9 @@ async function concluirOFComBaixa(ofId){
       qtdPadrao: qtdOriginal,
       qtdPedida: qtdOriginal,
       valorTotalOriginal: valorOriginal,
-      qtdPerdida: 0
+      qtdPerdida: 0,
+      vendedor_id: of?.vendedor_id ?? of?.vendId ?? of?.vend_id ?? of?.vendid ?? (item0?.vendedor_id ?? item0?.vendId ?? item0?.vend_id ?? item0?.vendid ?? null),
+      vendId: of?.vendedor_id ?? of?.vendId ?? of?.vend_id ?? of?.vendid ?? (item0?.vendedor_id ?? item0?.vendId ?? item0?.vend_id ?? item0?.vendid ?? null)
     });
     if(!respModal) return;
     qtdProd = Math.trunc(Number(respModal.qtd_real || 0));
@@ -12124,6 +12143,7 @@ async function concluirOFComBaixa(ofId){
     const caixasBoas = Math.trunc(Number((respModal.caixas_boas != null ? respModal.caixas_boas : qtdProd) || 0));
     const caixasPerdidas = Math.trunc(Number((respModal.caixas_perdidas != null ? respModal.caixas_perdidas : qtdPerd) || 0));
     const operadorConclusao = String(respModal.operador_conclusao || '').trim();
+    const vendIdResp = String(respModal?.vendedor_id ?? respModal?.vendId ?? '').trim();
     const dataFaturamento = String(respModal.data_faturamento || '').trim();
     const perdasPorMaquina = String(respModal.perdas_por_maquina || '').trim();
     qtdProd = caixasBoas;
@@ -12161,6 +12181,8 @@ async function concluirOFComBaixa(ofId){
       caixas_boas: caixasBoas,
       caixas_perdidas: caixasPerdidas,
       operador_conclusao: operadorConclusao || null,
+      vendedor_id: vendIdResp || null,
+      vendId: vendIdResp || null,
       perdas_por_maquina: perdasPorMaquina || null,
       maquina_producao: (nomeMaquinaAtual || null),
       maquina_perda: nomeMaquinaAtual || null,
@@ -12202,6 +12224,8 @@ async function concluirOFComBaixa(ofId){
       caixas_boas: caixasBoas,
       caixas_perdidas: caixasPerdidas,
       operador_conclusao: operadorConclusao || null,
+      vendedor_id: vendIdResp || null,
+      vendId: vendIdResp || null,
       maquina_perda: concluirBody.maquina_perda || null,
       maquina_perda_id: concluirBody.maquina_perda_id || null,
       perdas_por_maquina: concluirBody.perdas_por_maquina || null,
@@ -12770,13 +12794,13 @@ async function concluirProcessoOf(ofId){
   const it = (OFs||[]).find(o=>String(o.id||'')===id) || null;
   const qtdPadrao = Number(it?.qtd || 0) || 0;
   const valorTotalOriginal = Number(it?.valor_total ?? it?.valor_venda ?? it?.val ?? 0) || 0;
-  const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${it?.of||it?.numero||''}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal });
+  const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${it?.of||it?.numero||''}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal, vendedor_id: it?.vendedor_id ?? it?.vendId ?? it?.vend_id ?? it?.vendid ?? null, vendId: it?.vendedor_id ?? it?.vendId ?? it?.vend_id ?? it?.vendid ?? null });
   if(!resp) return;
   const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
   const qtdPerdida = resp.qtd_perdida != null ? Math.trunc(Number(resp.qtd_perdida||0)) : 0;
   const perdaMaq = { maquina_id: resp.maquina_id || null, maquina: resp.maquina || null };
   showSaveIndicator('Salvando conclusão...','var(--yellow)');
-  const r = await api('POST','/ofs/'+encodeURIComponent(id)+'/concluir', { usuario, qtd_produzida: resp.qtd_real, qtd_perdida: qtdPerdida });
+  const r = await api('POST','/ofs/'+encodeURIComponent(id)+'/concluir', { usuario, qtd_produzida: resp.qtd_real, qtd_perdida: qtdPerdida, vendedor_id: resp?.vendedor_id ?? resp?.vendId ?? null, vendId: resp?.vendedor_id ?? resp?.vendId ?? null });
   if(!r || !r.ok){
     showSaveIndicator('✖ erro','var(--red)');
     alert('Erro: ' + (r && r.error ? r.error : 'falha'));
@@ -12906,11 +12930,11 @@ async function darBaixaOF(o){
   showSaveIndicator('Salvando baixa...','var(--yellow)');
   const qtdPadrao = Number(o?.qtd || 0) || 0;
   const valorTotalOriginal = Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? 0) || 0;
-  const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal });
+  const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal, vendedor_id: o?.vendedor_id ?? o?.vendId ?? o?.vend_id ?? o?.vendid ?? null, vendId: o?.vendedor_id ?? o?.vendId ?? o?.vend_id ?? o?.vendid ?? null });
   if(!resp){ showSaveIndicator('',''); return; }
   const qtdPerdida = resp.qtd_perdida != null ? Math.trunc(Number(resp.qtd_perdida||0)) : 0;
   const perdaMaq = { maquina_id: resp.maquina_id || null, maquina: resp.maquina || null };
-  let r=await api('POST','/ofs/'+encodeURIComponent(o.id)+'/concluir', { usuario, qtd_produzida: resp.qtd_real, qtd_perdida: qtdPerdida });
+  let r=await api('POST','/ofs/'+encodeURIComponent(o.id)+'/concluir', { usuario, qtd_produzida: resp.qtd_real, qtd_perdida: qtdPerdida, vendedor_id: resp?.vendedor_id ?? resp?.vendId ?? null, vendId: resp?.vendedor_id ?? resp?.vendId ?? null });
   if(!r || !r.ok){
     showSaveIndicator('✖ erro','var(--red)');
     toast('Erro ao dar baixa: '+(r && r.error ? r.error : 'falha'),'var(--red)');
@@ -48866,6 +48890,16 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
                  padding:10px;font-size:14px;box-sizing:border-box;cursor:default">
       </div>
 
+      <!-- VENDEDOR -->
+      <div style="margin-bottom:14px">
+        <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:6px">
+          VENDEDOR
+        </label>
+        <select id="conc-vendedor"
+          style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-size:14px;box-sizing:border-box;-webkit-appearance:none;appearance:none">
+        </select>
+      </div>
+
       <!-- CAIXAS PRODUZIDAS -->
       <div style="margin-bottom:14px">
         <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:6px">
@@ -60585,6 +60619,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260820100001"></script>
+<script src="/patch.js?v=20260820100002"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
