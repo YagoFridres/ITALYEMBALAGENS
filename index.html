@@ -33629,7 +33629,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260819090930';
+      const swVersion = '20260820100001';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -34759,6 +34759,23 @@ function normalizeCmp(r){
   const forn = r.forn ?? r.fornecedor ?? r.forn_id ?? '';
   const itemNome = r.item ?? r.nome ?? r.nom ?? '';
   const vunit = qtd > 0 ? (vtot / qtd) : (r.vunit != null ? Number(r.vunit) || 0 : 0);
+  const mapearItem = (it)=>{
+    const obj = (it && typeof it === 'object') ? { ...it } : {};
+    return {
+      ...obj,
+      nom:       obj.nom       ?? obj.nomenclatura        ?? obj.nome         ?? '',
+      larg:      obj.larg      ?? obj.largura             ?? obj.largura_mm   ?? 0,
+      comp:      obj.comp      ?? obj.comprimento         ?? obj.comprimento_mm ?? 0,
+      vlm2:      obj.vlm2      ?? obj.valor_m2            ?? obj.valorM2      ?? 0,
+      loteMin:   obj.loteMin   ?? obj.lote_minimo         ?? obj.loteMinimo   ?? 0,
+      obsItem:   obj.obsItem   ?? obj.observacao          ?? obj.obs          ?? '',
+      pedForn:   obj.pedForn   ?? obj.pedido_fornecedor   ?? obj.ped_fornecedor ?? obj.po ?? '',
+      vincos:    obj.vincos    ?? '',
+      qtd:       obj.qtd != null ? Number(obj.qtd) || 0 : 0,
+      vunit:     obj.vunit != null ? Number(obj.vunit) || 0 : 0,
+      vtot:      obj.vtot != null ? Number(obj.vtot) || 0 : 0
+    };
+  };
   return {
     id:r.id,
     data:r.data||'',
@@ -34774,7 +34791,7 @@ function normalizeCmp(r){
     status:r.status||'Solicitada',
     obs:r.obs||'',
     empId:r.emp_id||r.empId||'',
-    itens:Array.isArray(itens)?itens:[{nom:itemNome||'—',qtd,vunit,vtot}]
+    itens:Array.isArray(itens) ? itens.map(mapearItem) : [mapearItem({nom:itemNome||'—',qtd,vunit,vtot})]
   };
 }
 function normalizeForn(r){
@@ -60568,6 +60585,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260819090930"></script>
+<script src="/patch.js?v=20260820100001"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
