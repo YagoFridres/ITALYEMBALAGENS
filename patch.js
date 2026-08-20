@@ -21105,6 +21105,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         if (src.largura != null) out.largura = src.largura;
         if (src.caixa_comprimento != null) out.caixa_comprimento = src.caixa_comprimento;
         if (src.caixa_largura != null) out.caixa_largura = src.caixa_largura;
+        out.sem_papel = !!(src.sem_papel === true || src.sem_papelao === true || String(src.sem_papel || '').trim() === '1' || src.sem_papel === 1 || src.sem_papelao === 1);
+        out.sem_papelao = !!(src.sem_papel === true || src.sem_papelao === true || String(src.sem_papelao || '').trim() === '1' || src.sem_papel === 1 || src.sem_papelao === 1);
         return out;
       };
       window.normalizeOF._patchedOfmaqDisplay = true;
