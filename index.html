@@ -11941,7 +11941,7 @@ function verificarOpManual(select) {
     select.value = '';
   }
 }
-function abrirModalBaixaConclusao(opts){
+async function abrirModalBaixaConclusao(opts){
   const modal = document.getElementById('modal-baixa-conclusao');
   if(!modal) return Promise.resolve(null);
   const titulo = document.getElementById('baixa-conc-titulo');
@@ -60622,6 +60622,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260820100005"></script>
+<script src="/patch.js?v=20260820110001"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
