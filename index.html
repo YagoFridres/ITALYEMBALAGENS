@@ -33656,7 +33656,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260820100005';
+      const swVersion = '20260820113001';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -34538,6 +34538,8 @@ function normalizeOF(r){
     maquina_nome: _maquinaFinal,
     status:r.status ?? 'Em aberto',
     urg:!!urg,
+    sem_papel: !!(r.sem_papel === true || r.sem_papelao === true || String(r.sem_papel||'').trim() === '1' || r.sem_papel === 1 || r.sem_papelao === 1),
+    sem_papelao: !!(r.sem_papel === true || r.sem_papelao === true || String(r.sem_papelao||'').trim() === '1' || r.sem_papel === 1 || r.sem_papelao === 1),
     chp,
     qchp,
     valor_total: val,
@@ -60622,6 +60624,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260820110001"></script>
+<script src="/patch.js?v=20260820113001"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>

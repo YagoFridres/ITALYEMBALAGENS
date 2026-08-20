@@ -3867,6 +3867,7 @@ try {
     } catch (_) {}
     return (typeof appendHistPassagemLocal === 'function') ? appendHistPassagemLocal : null;
   }
+  try { window.getAppendHistPassagemLocal = getAppendHistPassagemLocal; } catch (_) {}
 
   async function openAlterarMaquinaPatched(ofId, ofNum) {
     cleanupOfmaqArtifacts();
