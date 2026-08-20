@@ -8844,6 +8844,8 @@ async function confirmarAlteracaoMaquinaOfmaq(){
     if(alterarData && novaData){
       body.data_entrega = novaData;
       body.ent = novaData;
+      body.dia = novaData;
+      body.data_producao = novaData;
     }
     const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PATCH', body });
     const j = r ? await r.json().catch(()=>null) : null;
@@ -33653,7 +33655,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260820100001';
+      const swVersion = '20260820100003';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -60619,6 +60621,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260820100002"></script>
+<script src="/patch.js?v=20260820100003"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
