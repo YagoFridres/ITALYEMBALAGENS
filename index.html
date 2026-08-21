@@ -29965,12 +29965,11 @@ function cmpGerarPDF(){
     if(Array.isArray(it&&it.vincos_lista))_v=_v.concat(it.vincos_lista.map(function(x){return String(x||'').trim()}).filter(Boolean));
     var _vl=String(it&&it.vincos||'').trim();
     if(_vl&&(!_v.length||/[,;\/]/.test(_vl)))_v=_v.concat(_vl.split(/[,;\/]+/).map(function(x){return String(x||'').trim()}).filter(Boolean));
-    var _vs={};var _vu=[];for(var _i=0;_i<_v.length;_i++){var _kk=String(_v[_i]);if(!_vs[_kk]){_vs[_kk]=1;_vu.push(_v[_i]);}}
     return {
       nom: String(it.nom||it.nome||'').trim(),
       larg: Number(it.larg||0)||0,
       comp: Number(it.comp||0)||0,
-      vincos: _vu.join('/') || _vl || '',
+      vincos: _v.join('/') || _vl || '',
       qtd: Number(it.qtd||0)||0,
       loteMin: Number(it.loteMin||0)||0,
       vlm2: Number(it.vlm2||0)||0,
@@ -33664,7 +33663,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260821160001';
+      const swVersion = '20260821170001';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -41498,12 +41497,11 @@ function imprimirCompraId(id){
     if(Array.isArray(it&&it.vincos_lista))_v=_v.concat(it.vincos_lista.map(function(x){return String(x||'').trim()}).filter(Boolean));
     var _vl=String(it&&it.vincos||'').trim();
     if(_vl&&(!_v.length||/[,;\/]/.test(_vl)))_v=_v.concat(_vl.split(/[,;\/]+/).map(function(x){return String(x||'').trim()}).filter(Boolean));
-    var _vs={};var _vu=[];for(var _i=0;_i<_v.length;_i++){var _kk=String(_v[_i]);if(!_vs[_kk]){_vs[_kk]=1;_vu.push(_v[_i]);}}
     return {
       nom: String(it.nom||it.nome||'—').trim(),
       larg: Number(it.larg||0)||0,
       comp: Number(it.comp||0)||0,
-      vincos: _vu.join('/') || _vl || '',
+      vincos: _v.join('/') || _vl || '',
       qtd: Number(it.qtd||0)||0,
       loteMin: Number(it.loteMin||0)||0,
       vlm2: Number(it.vlm2||it.vunit||0)||0,
@@ -60640,6 +60638,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260821160001"></script>
+<script src="/patch.js?v=20260821170001"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
