@@ -6155,9 +6155,22 @@ window._compraPapelaoRenderItemRowsHtml = function(compra) {
   if (!itens.length) {
     return '<tr><td colspan="14"><div class="ccpx-empty">Nenhum item cadastrado nesta compra.</div></td></tr>';
   }
+  var _safeVincosArr = function(item) {
+    var out = [];
+    var pushC = function(v) { var t = String(v == null ? '' : v).trim(); if (t) out.push(t); };
+    ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) { var vv = String(item && item[k] != null ? item[k] : '').trim(); if (vv) out.push(vv); });
+    if (Array.isArray(item && item.vincos_extra) && item.vincos_extra.length) item.vincos_extra.forEach(pushC);
+    if (Array.isArray(item && item.vincos_lista) && item.vincos_lista.length) item.vincos_lista.forEach(pushC);
+    if (Array.isArray(item && item.vincos) && item.vincos.length) item.vincos.forEach(pushC);
+    var legacy = String(item && item.vincos ? item.vincos : (item && item.vincos_texto ? item.vincos_texto : '')).trim();
+    if (legacy && (!out.length || /[,;\/]/.test(legacy))) legacy.split(/[,;\/]+/).forEach(pushC);
+    var seen = {}; var uniq = [];
+    for (var ii = 0; ii < out.length; ii++) { var kk = String(out[ii]); if (!seen[kk]) { seen[kk] = 1; uniq.push(out[ii]); } }
+    return uniq;
+  };
   return itens.map(function(item, idx) {
     var d = window._compraPapelaoDeriveItem(item);
-    var vincosRaw = (typeof compraAllVincos === 'function') ? compraAllVincos(item) : [];
+    var vincosRaw = _safeVincosArr(item);
     vincosRaw = (vincosRaw || []).map(function(s){ return String(s||'').trim(); }).filter(Boolean);
     if (!vincosRaw.length) vincosRaw = ['—'];
     var seq = window._compraPapelaoEsc(String(item && item.seq != null ? item.seq : (idx + 1)));
@@ -6685,7 +6698,7 @@ window._compraPapelaoComposeEmailData = function(payload, compra) {
       (idx + 1) + '. Entrega: ' + (item && item.data_entrega ? window._compraPapelaoFmtDate(item.data_entrega) : '—'),
       '   PO: ' + (String(item && item.po || item && item.nomenclatura || '').trim() || '—'),
       '   Medidas: ' + window._compraPapelaoFmtNum(item && item.largura || 0, 0) + ' x ' + window._compraPapelaoFmtNum(item && item.comprimento || 0, 0) + ' mm',
-      '   Vincos: ' + (function(){ var v=(typeof compraAllVincos==='function'?compraAllVincos(item):[]); if(!v.length)v=String(item&&item.vincos||'').split('/').map(function(s){return String(s||'').trim()}).filter(Boolean); return v.join('/')||'—'; })(),
+      '   Vincos: ' + (function(){ var _safeV = []; var _pushC = function(vv){ var t=String(vv==null?'':vv).trim(); if(t)_safeV.push(t); }; ['vinco1','vinco2','vinco3','vinco4'].forEach(function(k){var vvv=String(item&&item[k]!=null?item[k]:'').trim();if(vvv)_safeV.push(vvv);}); if(Array.isArray(item&&item.vincos_extra)&&item.vincos_extra.length)item.vincos_extra.forEach(_pushC); if(Array.isArray(item&&item.vincos_lista)&&item.vincos_lista.length)item.vincos_lista.forEach(_pushC); if(Array.isArray(item&&item.vincos)&&item.vincos.length)item.vincos.forEach(_pushC); var _legacy=String(item&&item.vincos?item.vincos:(item&&item.vincos_texto?item.vincos_texto:'')).trim(); if(_legacy&&(!_safeV.length||/[,;\/]/.test(_legacy)))_legacy.split(/[,;\/]+/).forEach(_pushC); var _seen={};var _uniq=[];for(var _ii=0;_ii<_safeV.length;_ii++){var _kk=String(_safeV[_ii]);if(!_seen[_kk]){_seen[_kk]=1;_uniq.push(_safeV[_ii]);}} if(!_uniq.length)_uniq=String(item&&item.vincos||'').split('/').map(function(s){return String(s||'').trim()}).filter(Boolean); return _uniq.join('/')||'—'; })(),
       '   Qtde: ' + window._compraPapelaoFmtNum(item && item.quantidade || 0, 0),
       '   Lote Mínimo: ' + window._compraPapelaoFmtNum(item && item.lote_minimo || 0, 0),
       '   Valor m²: ' + window._compraPapelaoFmtMoney(item && item.valor_m2 || 0),
@@ -6753,7 +6766,20 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
   var empresa = window._compraPapelaoEmpresaNome(data && data._emp_id_consulta || '');
   var rowsHtml = (Array.isArray(data.itens) ? data.itens : []).map(function(item, idx) {
     var d = window._compraPapelaoDeriveItem(item);
-    var vincosRaw = (typeof compraAllVincos === 'function') ? compraAllVincos(item) : [];
+    var _safeVincosArr = function(item) {
+      var out = [];
+      var pushC = function(v) { var t = String(v == null ? '' : v).trim(); if (t) out.push(t); };
+      ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) { var vv = String(item && item[k] != null ? item[k] : '').trim(); if (vv) out.push(vv); });
+      if (Array.isArray(item && item.vincos_extra) && item.vincos_extra.length) item.vincos_extra.forEach(pushC);
+      if (Array.isArray(item && item.vincos_lista) && item.vincos_lista.length) item.vincos_lista.forEach(pushC);
+      if (Array.isArray(item && item.vincos) && item.vincos.length) item.vincos.forEach(pushC);
+      var legacy = String(item && item.vincos ? item.vincos : (item && item.vincos_texto ? item.vincos_texto : '')).trim();
+      if (legacy && (!out.length || /[,;\/]/.test(legacy))) legacy.split(/[,;\/]+/).forEach(pushC);
+      var seen = {}; var uniq = [];
+      for (var ii = 0; ii < out.length; ii++) { var kk = String(out[ii]); if (!seen[kk]) { seen[kk] = 1; uniq.push(out[ii]); } }
+      return uniq;
+    };
+    var vincosRaw = _safeVincosArr(item);
     vincosRaw = (vincosRaw || []).map(function(s){ return String(s||'').trim(); }).filter(Boolean);
     if (!vincosRaw.length) vincosRaw = ['—'];
     var seq = window._compraPapelaoEsc(String(item && item.seq != null ? item.seq : (idx + 1)));
@@ -6783,7 +6809,7 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
       + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff\" class=\"num\">' + vlmil + '</td>'
       + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff;font-weight:800\" class=\"num\">' + vtotal + '</td>'
       + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:left;background:#fff;vertical-align:top\">' + obs + '</td>'
-      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:left;background:#fff\">' + pedForn + '</td>'
+      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:left;background:#fff;white-space:normal;word-wrap:break-word;overflow-wrap:anywhere;line-height:1.35;vertical-align:top\">' + pedForn + '</td>'
       + '</tr>';
   }).join('');
   return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Pedido de Chapas ' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(data.numero_compra)) + '</title>'
@@ -6801,10 +6827,10 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     + '.meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}'
     + '.meta-card{border:1px solid #cbd5e1;padding:10px 12px;min-height:62px}'
     + '.meta-card .label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
-    + '.meta-card .value{font-size:13px;font-weight:700;margin-top:6px}'
+    + '.meta-card .value{font-size:13px;font-weight:700;margin-top:6px;word-break:break-word;overflow-wrap:anywhere;white-space:normal;line-height:1.4}'
     + 'table.planilha{width:100%;border-collapse:collapse;table-layout:fixed}'
-    + 'table.planilha th,table.planilha td{border:1px solid #0f172a;padding:6px 7px;font-size:11px;vertical-align:top}'
-    + 'table.planilha th{background:#e2e8f0;text-transform:uppercase;font-size:10px;letter-spacing:.04em}'
+    + 'table.planilha th,table.planilha td{border:1px solid #0f172a;padding:6px 7px;font-size:11px;vertical-align:top;overflow-wrap:anywhere}'
+    + 'table.planilha th{background:#e2e8f0;text-transform:uppercase;font-size:10px;letter-spacing:.04em;white-space:normal;word-wrap:break-word;overflow-wrap:anywhere;line-height:1.35}'
     + 'table.planilha td.num{text-align:right;font-variant-numeric:tabular-nums}'
     + '.totais{display:flex;justify-content:flex-end;gap:14px;flex-wrap:wrap}'
     + '.total-chip{border:1px solid #0f172a;min-width:160px;padding:10px 12px}'
@@ -8507,22 +8533,35 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
         cEsc(String(compra && compra.pasta_id || 'Sem pasta'))
       ]],
       detailTitle: 'Itens da compra',
-      detailHeaders: ['Nomenclatura', 'Largura', 'Comprimento', 'Quantidade', 'Valor/m²', 'Área m²', 'Valor total', 'R$/mil'],
+      detailHeaders: ['Nomenclatura', 'Largura', 'Comprimento', 'Vincos', 'Quantidade', 'Valor/m²', 'Área m²', 'Valor total', 'R$/mil', 'Ped. Fornecedor'],
       detailRows: (Array.isArray(compra && compra.itens) ? compra.itens : []).map(function(item) {
         var d = cItemDerived(item);
+        var _vincosArr = [];
+        var _pushV = function(vv){ var tt=String(vv==null?'':vv).trim(); if(tt)_vincosArr.push(tt); };
+        ['vinco1','vinco2','vinco3','vinco4'].forEach(function(k){var vvv=String(item&&item[k]!=null?item[k]:'').trim();if(vvv)_vincosArr.push(vvv);});
+        if(Array.isArray(item&&item.vincos_extra)&&item.vincos_extra.length)item.vincos_extra.forEach(_pushV);
+        if(Array.isArray(item&&item.vincos_lista)&&item.vincos_lista.length)item.vincos_lista.forEach(_pushV);
+        if(Array.isArray(item&&item.vincos)&&item.vincos.length)item.vincos.forEach(_pushV);
+        var _vLeg=String(item&&item.vincos?item.vincos:(item&&item.vincos_texto?item.vincos_texto:'')).trim();
+        if(_vLeg&&(!_vincosArr.length||/[,;\/]/.test(_vLeg)))_vLeg.split(/[,;\/]+/).forEach(_pushV);
+        var _vSeen={};var _vUniq=[];for(var _vi=0;_vi<_vincosArr.length;_vi++){var _vk=String(_vincosArr[_vi]);if(!_vSeen[_vk]){_vSeen[_vk]=1;_vUniq.push(_vincosArr[_vi]);}}
+        var vincosStr = _vUniq.length ? _vUniq.join('/') : (String(item&&item.vincos||'').trim()||'—');
+        var pedFornStr = String(item&&item.ped_fornecedor||item&&item.pedido_fornecedor||item&&item.pedForn||'—').trim()||'—';
         return [
           cEsc(String(item && item.nomenclatura || '—')),
           cEsc(cFmtNum(item && item.largura || 0, 0)),
           cEsc(cFmtNum(item && item.comprimento || 0, 0)),
+          cEsc(vincosStr),
           cEsc(cFmtNum(item && item.quantidade || 0, 0)),
           cEsc(cFmtRs(item && item.valor_m2 || 0)),
           cEsc(cFmtNum(item && item.area_m2 != null ? item.area_m2 : d.area_m2, 4)),
           cEsc(cFmtRs(item && item.valor_total != null ? item.valor_total : d.valor_total)),
-          cEsc(cFmtRs(item && item.vl_p_mil != null ? item.vl_p_mil : d.vl_p_mil))
+          cEsc(cFmtRs(item && item.vl_p_mil != null ? item.vl_p_mil : d.vl_p_mil)),
+          cEsc(pedFornStr)
         ];
       }),
       emptySummaryCols: 3,
-      emptyDetailCols: 8
+      emptyDetailCols: 10
     });
   }
   async function cImprimirCompra(id) {

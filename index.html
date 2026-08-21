@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+﻿﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <!-- VERSAO TESTE 001 - APAGAR DEPOIS -->
 <head>
@@ -29959,19 +29959,27 @@ function cmpGerarPDF(){
   const empId=(document.getElementById('cp-emp')||{}).value||EMP_FILTRO||'';
   const empNome=(getEmp(empId)||{nome:'Italy Embalagens'}).nome||'Italy Embalagens';
 
-  const itens=CMP_ITEMS.filter(it=>it.nom||it.qtd||it.vtot).map(it=>({
-    nom: String(it.nom||it.nome||'').trim(),
-    larg: Number(it.larg||0)||0,
-    comp: Number(it.comp||0)||0,
-    vincos: String(it.vincos||'').trim(),
-    qtd: Number(it.qtd||0)||0,
-    loteMin: Number(it.loteMin||0)||0,
-    vlm2: Number(it.vlm2||0)||0,
-    vtot: Number(it.vtot||0)||0,
-    obsItem: String(it.obsItem||'').trim(),
-    pedForn: String(it.pedForn||'').trim(),
-    pedCli: String(it.pedCli||'').trim()
-  }));
+  const itens=CMP_ITEMS.filter(it=>it.nom||it.qtd||it.vtot).map(it=>{
+    var _v=[];['vinco1','vinco2','vinco3','vinco4'].forEach(function(k){var s=String(it&&it[k]!=null?it[k]:'').trim();if(s)_v.push(s);});
+    if(Array.isArray(it&&it.vincos_extra))_v=_v.concat(it.vincos_extra.map(function(x){return String(x||'').trim()}).filter(Boolean));
+    if(Array.isArray(it&&it.vincos_lista))_v=_v.concat(it.vincos_lista.map(function(x){return String(x||'').trim()}).filter(Boolean));
+    var _vl=String(it&&it.vincos||'').trim();
+    if(_vl&&(!_v.length||/[,;\/]/.test(_vl)))_v=_v.concat(_vl.split(/[,;\/]+/).map(function(x){return String(x||'').trim()}).filter(Boolean));
+    var _vs={};var _vu=[];for(var _i=0;_i<_v.length;_i++){var _kk=String(_v[_i]);if(!_vs[_kk]){_vs[_kk]=1;_vu.push(_v[_i]);}}
+    return {
+      nom: String(it.nom||it.nome||'').trim(),
+      larg: Number(it.larg||0)||0,
+      comp: Number(it.comp||0)||0,
+      vincos: _vu.join('/') || _vl || '',
+      qtd: Number(it.qtd||0)||0,
+      loteMin: Number(it.loteMin||0)||0,
+      vlm2: Number(it.vlm2||0)||0,
+      vtot: Number(it.vtot||0)||0,
+      obsItem: String(it.obsItem||'').trim(),
+      pedForn: String(it.pedForn||it.ped_fornecedor||it.pedido_fornecedor||'').trim(),
+      pedCli: String(it.pedCli||'').trim()
+    };
+  });
 
   const total=itens.reduce((s,it)=>s+(it.vtot||0),0);
 
@@ -30015,8 +30023,8 @@ function cmpGerarPDF(){
   .wide{grid-column:1 / -1}
   .tblwrap{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
   table{width:100%;border-collapse:collapse;font-size:10.5px}
-  thead th{background:#2a7a5e;color:#fff;padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
-  tbody td{padding:8px 10px;border-bottom:1px solid #eef2f7;vertical-align:top}
+  thead th{background:#2a7a5e;color:#fff;padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;white-space:normal;word-wrap:break-word;overflow-wrap:anywhere;line-height:1.35}
+  tbody td{padding:8px 10px;border-bottom:1px solid #eef2f7;vertical-align:top;white-space:normal;word-wrap:break-word;overflow-wrap:anywhere}
   tbody tr:nth-child(even) td{background:#f9fafb}
   .tot{margin-top:10px;text-align:right;font-size:14px;font-weight:900;color:#2a7a5e}
   .ass{display:flex;gap:18px;margin-top:18px}
@@ -33656,7 +33664,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260820113001';
+      const swVersion = '20260821110001';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -41484,18 +41492,26 @@ function imprimirCompraId(id){
   const cmp=COMPRAS.find(x=>x.id===id);
   if(!cmp){toast('Compra não encontrada','var(--red)');return;}
   const empNome=(getEmp(cmp.empId)||{nome:'Italy Embalagens'}).nome||'Italy Embalagens';
-  const itens=(cmp.itens&&cmp.itens.length>0?cmp.itens:[{nom:cmp.nome||cmp.nom||'—',qtd:cmp.qtd||0,vtot:cmp.vtot||0,comp:0,larg:0,vincos:'',vlm2:cmp.vunit||0,obsItem:'',pedForn:''}]).map(it=>({
-    nom: String(it.nom||it.nome||'—').trim(),
-    larg: Number(it.larg||0)||0,
-    comp: Number(it.comp||0)||0,
-    vincos: String(it.vincos||'').trim(),
-    qtd: Number(it.qtd||0)||0,
-    loteMin: Number(it.loteMin||0)||0,
-    vlm2: Number(it.vlm2||it.vunit||0)||0,
-    vtot: Number(it.vtot||0)||0,
-    obsItem: String(it.obsItem||'').trim(),
-    pedForn: String(it.pedForn||'').trim(),
-  }));
+  const itens=(cmp.itens&&cmp.itens.length>0?cmp.itens:[{nom:cmp.nome||cmp.nom||'—',qtd:cmp.qtd||0,vtot:cmp.vtot||0,comp:0,larg:0,vincos:'',vlm2:cmp.vunit||0,obsItem:'',pedForn:''}]).map(it=>{
+    var _v=[];['vinco1','vinco2','vinco3','vinco4'].forEach(function(k){var s=String(it&&it[k]!=null?it[k]:'').trim();if(s)_v.push(s);});
+    if(Array.isArray(it&&it.vincos_extra))_v=_v.concat(it.vincos_extra.map(function(x){return String(x||'').trim()}).filter(Boolean));
+    if(Array.isArray(it&&it.vincos_lista))_v=_v.concat(it.vincos_lista.map(function(x){return String(x||'').trim()}).filter(Boolean));
+    var _vl=String(it&&it.vincos||'').trim();
+    if(_vl&&(!_v.length||/[,;\/]/.test(_vl)))_v=_v.concat(_vl.split(/[,;\/]+/).map(function(x){return String(x||'').trim()}).filter(Boolean));
+    var _vs={};var _vu=[];for(var _i=0;_i<_v.length;_i++){var _kk=String(_v[_i]);if(!_vs[_kk]){_vs[_kk]=1;_vu.push(_v[_i]);}}
+    return {
+      nom: String(it.nom||it.nome||'—').trim(),
+      larg: Number(it.larg||0)||0,
+      comp: Number(it.comp||0)||0,
+      vincos: _vu.join('/') || _vl || '',
+      qtd: Number(it.qtd||0)||0,
+      loteMin: Number(it.loteMin||0)||0,
+      vlm2: Number(it.vlm2||it.vunit||0)||0,
+      vtot: Number(it.vtot||0)||0,
+      obsItem: String(it.obsItem||it.observacao||'').trim(),
+      pedForn: String(it.pedForn||it.ped_fornecedor||it.pedido_fornecedor||'').trim(),
+    };
+  });
 
   const total=itens.reduce((s,it)=>s+(it.vtot||0),0);
   const rows = itens.map((it,i)=>`
@@ -41536,8 +41552,8 @@ function imprimirCompraId(id){
   .wide{grid-column:1 / -1}
   .tblwrap{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
   table{width:100%;border-collapse:collapse;font-size:10.5px}
-  thead th{background:#2a7a5e;color:#fff;padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
-  tbody td{padding:8px 10px;border-bottom:1px solid #eef2f7;vertical-align:top}
+  thead th{background:#2a7a5e;color:#fff;padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;white-space:normal;word-wrap:break-word;overflow-wrap:anywhere;line-height:1.35}
+  tbody td{padding:8px 10px;border-bottom:1px solid #eef2f7;vertical-align:top;white-space:normal;word-wrap:break-word;overflow-wrap:anywhere}
   tbody tr:nth-child(even) td{background:#f9fafb}
   .tot{margin-top:10px;text-align:right;font-size:14px;font-weight:900;color:#2a7a5e}
   .ass{display:flex;gap:18px;margin-top:18px}
@@ -41623,7 +41639,7 @@ async function editarCompra(id){
   if(!cmp){toast('Compra não encontrada','var(--red)');return;}
   try{ window._compraAtual = cmp; }catch(e){}
   // Reutiliza abrirModalCompra mas carrega dados existentes
-  CMP_ITEMS = (cmp.itens&&cmp.itens.length>0) ? cmp.itens.map(it=>({...it})) : [{nom:cmp.nome||cmp.nom||'',qtd:cmp.qtd||0,vunit:cmp.vunit||0,vtot:cmp.vtot||0,comp:cmp.comp||0,larg:cmp.larg||0,m2:cmp.m2||0,vincos:'',pedCli:'',dataEnt:'',loteMin:0,vlm2:cmp.vunit||0,vlmil:0,obsItem:'',pedForn:''}];
+  CMP_ITEMS = (cmp.itens&&cmp.itens.length>0) ? cmp.itens.map(it=>{ var _v=[];['vinco1','vinco2','vinco3','vinco4'].forEach(function(k){var s=String(it&&it[k]!=null?it[k]:'').trim();if(s)_v.push(s);});if(Array.isArray(it&&it.vincos_extra))_v=_v.concat(it.vincos_extra.map(function(x){return String(x||'').trim()}).filter(Boolean));if(Array.isArray(it&&it.vincos_lista))_v=_v.concat(it.vincos_lista.map(function(x){return String(x||'').trim()}).filter(Boolean));var _vl=String(it&&it.vincos||'').trim();if(_vl&&(!_v.length||/[,;\/]/.test(_vl)))_v=_v.concat(_vl.split(/[,;\/]+/).map(function(x){return String(x||'').trim()}).filter(Boolean));var _vs={};var _vu=[];for(var _i=0;_i<_v.length;_i++){var _kk=String(_v[_i]);if(!_vs[_kk]){_vs[_kk]=1;_vu.push(_v[_i]);}} return {...it, nom:String(it.nom||it.nome||it.po||it.nomenclatura||'').trim(), qtd:Number(it.qtd||it.quantidade||0), vunit:Number(it.vunit||it.valor_m2||0), vtot:Number(it.vtot||it.valor_total||0), comp:Number(it.comp||it.comprimento||0), larg:Number(it.larg||it.largura||0), m2:Number(it.m2||it.area_m2||0), vincos:_vu.join('/'), pedCli:String(it.pedCli||it.pedido_cliente||'').trim(), dataEnt:String(it.dataEnt||it.data_entrega||'').trim(), loteMin:Number(it.loteMin||it.lote_minimo||0), vlm2:Number(it.vlm2||it.valor_m2||0), vlmil:Number(it.vlmil||it.vl_p_mil||0), obsItem:String(it.obsItem||it.observacao||'').trim(), pedForn:String(it.pedForn||it.ped_fornecedor||it.pedido_fornecedor||'').trim()}; }) : [{nom:cmp.nome||cmp.nom||'',qtd:cmp.qtd||0,vunit:cmp.vunit||0,vtot:cmp.vtot||0,comp:cmp.comp||0,larg:cmp.larg||0,m2:cmp.m2||0,vincos:'',pedCli:'',dataEnt:'',loteMin:0,vlm2:cmp.vunit||0,vlmil:0,obsItem:'',pedForn:''}];
   document.getElementById('cp-num').value=cmp.id;
   document.getElementById('cp-data').value=cmp.data||today();
   const cpCnpj=document.getElementById('cp-cnpj');if(cpCnpj)cpCnpj.value=cmp.cnpj||'';
@@ -60624,6 +60640,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260820120001"></script>
+<script src="/patch.js?v=20260821110001"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
