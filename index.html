@@ -29976,7 +29976,7 @@ function cmpGerarPDF(){
       vlm2: Number(it.vlm2||0)||0,
       vtot: Number(it.vtot||0)||0,
       obsItem: String(it.obsItem||'').trim(),
-      pedForn: String(it.pedForn||it.ped_fornecedor||it.pedido_fornecedor||'').trim(),
+      pedForn: String(it.pedido_fornecedor||it.ped_fornecedor||it.pedForn||it.ped_forn||it.cod_fornecedor||'').trim(),
       pedCli: String(it.pedCli||'').trim()
     };
   });
@@ -33664,7 +33664,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260821110001';
+      const swVersion = '20260821140001';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -41509,7 +41509,7 @@ function imprimirCompraId(id){
       vlm2: Number(it.vlm2||it.vunit||0)||0,
       vtot: Number(it.vtot||0)||0,
       obsItem: String(it.obsItem||it.observacao||'').trim(),
-      pedForn: String(it.pedForn||it.ped_fornecedor||it.pedido_fornecedor||'').trim(),
+      pedForn: String(it.pedido_fornecedor||it.ped_fornecedor||it.pedForn||it.ped_forn||it.cod_fornecedor||'').trim(),
     };
   });
 
@@ -60640,6 +60640,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260821110001"></script>
+<script src="/patch.js?v=20260821140001"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>
