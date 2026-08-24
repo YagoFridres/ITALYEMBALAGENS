@@ -4045,8 +4045,8 @@ try {
     if (!machine) throw new Error('Máquina não identificada');
     logOfmaq('POST /api/ofs/:id/passou-maquina', { id: id, maquina: machine });
     var r = await window.apiFetch('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method: 'POST', body: { maquina: machine, maquina_nome: machine } });
-    var j = r ? await r.json().catch(function() { return null; }) : null;
-    if (!r || !r.ok || (j && j.ok === false)) throw new Error(j && (j.error || j.message) || 'Falha ao registrar passagem');
+    var j = r ? await r.json().catch(function() { return { ok: true }; }) : null;
+    if (!r || !r.ok || (j && typeof j === 'object' && j.ok === false)) throw new Error(j && (j.error || j.message) || 'Falha ao registrar passagem');
     if (of && typeof appendHist === 'function') {
       appendHist({
         of_id: of.id,

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260824140001';
-const SW_RUNTIME_VERSION = '20260824140001';
+const PATCH_RUNTIME_VERSION = '20260824150001';
+const SW_RUNTIME_VERSION = '20260824150001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -9111,6 +9111,32 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
           status: 'Concluído',
         }]);
       } catch (e) {}
+    }
+
+    if (concluida) {
+      try {
+        const hoje = nowIso.slice(0, 10);
+        const maquinaNome = String(atual || maqBody || maquinaRef || of?.passou_maquina_nome || of?.maquina || (Array.isArray(of?.maq) ? of.maq[0] : of?.maq) || '').trim() || null;
+        if (maquinaNome) {
+          const ofRef = (upd && upd.data) ? upd.data : of;
+          await _upsertPassagemMaquinaRegistro({
+            of_id: id,
+            of_numero: String(ofRef?.numero || ofRef?.of_num || ofRef?.of || '').trim() || null,
+            cliente: String(ofRef?.cliente || ofRef?.cliente_nome || '').trim() || null,
+            produto: String(ofRef?.produto || ofRef?.descricao || ofRef?.produto_desc || '').trim() || null,
+            referencia: String(ofRef?.referencia || ofRef?.ref || '').trim() || null,
+            imagem_url: ofRef?.imagem_url || ofRef?.imagem || ofRef?.img || null,
+            maquina: maquinaNome,
+            operador: String(req.usuario?.nome || usuario || 'Sistema').trim(),
+            quantidade: Number(qtdReal ?? ofRef?.qtd_produzida ?? ofRef?.quantidade ?? ofRef?.qtd ?? 0) || 0,
+            data_passagem: hoje,
+            hora_passagem: nowIso,
+            status: 'Despachada',
+            empresa: String(ofRef?.empresa || 'Italy Embalagens'),
+          }, { status: 'Despachada' });
+          try { console.debug('[PASSAGENS] baixa-of concluida upsert:', { id, maquina: maquinaNome }); } catch (_) {}
+        }
+      } catch (_) {}
     }
 
     if (concluida) {
