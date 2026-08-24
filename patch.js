@@ -4856,7 +4856,7 @@ try {
     }
     return ''
       + '<svg viewBox="0 0 ' + String(renderW + (pad * 2)) + ' ' + String(renderH + (pad * 2) + 20) + '" width="100%" height="100%" aria-label="Simulação de corte">'
-      + '<rect x="' + String(pad) + '" y="' + String(pad) + '" width="' + String(renderW) + '" height="' + String(renderH) + '" rx="8" fill="rgba(239,159,39,.2)" stroke="#EF9F27" stroke-width="1.5"></rect>'
+      + '<rect x="' + String(pad) + '" y="' + String(pad) + '" width="' + String(renderW) + '" height="' + String(renderH) + '" fill="rgba(239,159,39,.2)" stroke="#EF9F27" stroke-width="1.5"></rect>'
       + pieces
       + '<text x="' + String(pad) + '" y="' + String(renderH + (pad * 2) + 14) + '" fill="#94a3b8" font-size="11" font-family="Arial, sans-serif">Chapa ' + sEsc(sFmtMm(sheetComp) + ' x ' + sFmtMm(sheetLarg)) + ' · Caixa ' + sEsc(sFmtMm(pieceComp) + ' x ' + sFmtMm(pieceLarg)) + '</text>'
       + '</svg>';
@@ -5000,86 +5000,76 @@ try {
     var rws = sInt(selected.rows);
     var sobraLateral = Math.max(0, sheetComp - (cols * pieceComp));
     var sobraInferior = Math.max(0, sheetLarg - (rws * pieceLarg));
-    var retalhos = [];
-    if (sobraLateral > 0) retalhos.push({ tipo: 'Faixa lateral', comp: sobraLateral, larg: sheetLarg, qtdPorChapa: 1 });
-    if (sobraInferior > 0) retalhos.push({ tipo: 'Faixa inferior', comp: cols * pieceComp, larg: sobraInferior, qtdPorChapa: 1 });
     var qtdPedido = sInt(plan && plan.qtd_pedido || 0);
     var caixasPorChapa = Math.max(1, sInt(selected.caixas_por_chapa || 0));
     var chapasNec = sInt(selected.chapas_necessarias || (qtdPedido > 0 ? Math.ceil(qtdPedido / caixasPorChapa) : 0));
-    var cssBase = (typeof window._printCssPadraoComissoes === 'function' ? window._printCssPadraoComissoes() : 'body{font-family:Arial,sans-serif;padding:24px;color:#0f172a}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.card{border:1px solid #cbd5e1;border-radius:12px;padding:12px}.lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.08em}.val{font-size:20px;font-weight:700;margin-top:6px}')
-      + ' h3.hprint{margin-top:28px;margin-bottom:10px;font-size:15px;color:#0f172a;border-left:4px solid #2563eb;padding-left:10px}';
+    var cssBase = ''
+      + '@page{size:A4 landscape;margin:5mm}'
+      + 'html,body{margin:0;padding:0;box-sizing:border-box}'
+      + 'body{font-family:Arial,sans-serif;padding:8mm 9mm;color:#0f172a;font-size:11px;line-height:1.25}'
+      + 'h1{font-size:16px;margin:0 0 4px 0;color:#0f172a;font-weight:900}'
+      + 'h2{font-size:10px;margin:0 0 10px 0;color:#475569;font-weight:500}'
+      + '.brandline{font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.12em;margin-bottom:2px}'
+      + '.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0 0 8px 0}'
+      + '.card{border:1px solid #cbd5e1;border-radius:7px;padding:5px 7px;background:#fff}'
+      + '.lbl{font-size:8.5px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;font-weight:700}'
+      + '.val{font-size:12px;font-weight:800;margin-top:1px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+      + '.sec-title{margin:7px 0 4px 0;font-size:11px;color:#0f172a;font-weight:800;border-left:3px solid #2563eb;padding-left:7px}'
+      + 'table{width:100%;border-collapse:collapse;margin:0 0 6px 0;table-layout:fixed}'
+      + 'th,td{border:1px solid #cbd5e1;padding:3px 5px;font-size:10px;text-align:left;vertical-align:middle;line-height:1.2}'
+      + 'th{background:#f1f5f9;color:#334155;text-transform:uppercase;letter-spacing:.04em;font-weight:800;font-size:9px}'
+      + 'td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}'
+      + '.svg-wrap{max-width:42%;margin:0 auto;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;background:#fafafa}'
+      + '.svg-wrap svg{display:block;width:100%;height:auto}'
+      + 'h3{margin:0;padding:0;font-size:inherit;font-weight:inherit}';
     var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Simulador de Desperdício</title>'
       + '<style>' + cssBase + '</style>'
       + '</head><body>'
-      + '<div class="brandline">Italy Embalagens</div>'
+      + '<div class="brandline">Italy Embalagens — Simulador</div>'
       + '<h1>Simulador de Desperdício de Papelão</h1>'
       + '<h2>Gerado em ' + sEsc(typeof window._printGeradoEmBr === 'function' ? window._printGeradoEmBr() : new Date().toLocaleString('pt-BR')) + '</h2>'
       + '<div class="cards">'
-      + '<div class="card"><div class="lbl">Caixa</div><div class="val">' + sEsc(sFmtMm(plan.caixa_comp_mm) + ' x ' + sFmtMm(plan.caixa_larg_mm) + ' x ' + sFmtMm(plan.caixa_alt_mm)) + '</div></div>'
+      + '<div class="card"><div class="lbl">Caixa</div><div class="val">' + sEsc(sFmtMm(plan.caixa_comp_mm) + '×' + sFmtMm(plan.caixa_larg_mm) + '×' + sFmtMm(plan.caixa_alt_mm)) + '</div></div>'
       + '<div class="card"><div class="lbl">Onda</div><div class="val">' + sEsc(plan.onda || '—') + '</div></div>'
-      + '<div class="card"><div class="lbl">Planificação</div><div class="val">' + sEsc(sFmtMm(plan.peca_comp_mm) + ' x ' + sFmtMm(plan.peca_larg_mm)) + '</div></div>'
-      + '<div class="card"><div class="lbl">Chapa selecionada</div><div class="val" style="font-size:16px">' + sEsc(selected.nome || 'Chapa') + '</div></div>'
-      + (qtdPedido > 0 ? '<div class="card"><div class="lbl">Quantidade do pedido</div><div class="val">' + sEsc(sFmtNum(qtdPedido, 0)) + ' caixas</div></div>' : '')
-      + '<div class="card"><div class="lbl">Peças por chapa</div><div class="val">' + sEsc(String(caixasPorChapa)) + '</div></div>'
+      + '<div class="card"><div class="lbl">Planificação</div><div class="val">' + sEsc(sFmtMm(plan.peca_comp_mm) + '×' + sFmtMm(plan.peca_larg_mm)) + '</div></div>'
+      + '<div class="card"><div class="lbl">Chapa</div><div class="val">' + sEsc(selected.nome || 'Chapa') + '</div></div>'
+      + (qtdPedido > 0 ? '<div class="card"><div class="lbl">Pedido</div><div class="val">' + sEsc(sFmtNum(qtdPedido, 0)) + ' cx</div></div>' : '')
+      + '<div class="card"><div class="lbl">Peças/chapa</div><div class="val">' + sEsc(String(caixasPorChapa)) + '</div></div>'
       + '<div class="card"><div class="lbl">Desperdício</div><div class="val">' + sEsc(sFmtPct(selected.desperdicio_pct || 0)) + '</div></div>'
-      + (qtdPedido > 0 ? '<div class="card"><div class="lbl">Chapas necessárias</div><div class="val">' + sEsc(String(chapasNec || 0)) + '</div></div>' : '')
+      + '<div class="card"><div class="lbl">Chapas nec.</div><div class="val">' + sEsc(String(chapasNec || (selected.valor_unitario > 0 ? '—' : 0))) + '</div></div>'
       + '</div>'
 
-      + '<h3 class="hprint">Resumo da chapa selecionada</h3>'
-      + '<table><thead><tr><th>Fornecedor</th><th>Tamanho</th><th>Caixas/chapa</th><th>Desperdício</th><th>Estoque</th><th>Valor unit.</th>' + (qtdPedido > 0 ? '<th>Chapas necessárias</th><th>Custo estimado</th>' : '<th>Custo unit. / chapa</th>') + '</tr></thead>'
+      + '<div class="sec-title">Resumo da chapa selecionada</div>'
+      + '<table><thead><tr><th>Fornecedor</th><th>Tamanho</th><th class="num">Peças/cx</th><th>Desp.</th><th class="num">Estoque</th><th>Valor un.</th>' + (qtdPedido > 0 ? '<th class="num">Chapas</th><th>Custo est.</th>' : '<th>Custo un.</th>') + '</tr></thead>'
       + '<tbody><tr>'
       + '<td>' + sEsc(selected.fornecedor || '—') + '</td>'
       + '<td>' + sEsc(selected.tamanho || '—') + '</td>'
-      + '<td>' + sEsc(String(caixasPorChapa)) + '</td>'
+      + '<td class="num">' + sEsc(String(caixasPorChapa)) + '</td>'
       + '<td>' + sEsc(sFmtPct(selected.desperdicio_pct || 0)) + '</td>'
-      + '<td>' + sEsc(String(sInt(selected.estoque || 0))) + '</td>'
+      + '<td class="num">' + sEsc(String(sInt(selected.estoque || 0))) + '</td>'
       + '<td>' + sEsc(selected.valor_unitario > 0 ? sFmtMoney(selected.valor_unitario) : '—') + '</td>'
       + (qtdPedido > 0
-        ? '<td>' + sEsc(String(chapasNec || 0)) + '</td><td>' + sEsc(selected.custo_estimado == null ? '—' : sFmtMoney(selected.custo_estimado)) + '</td>'
+        ? '<td class="num">' + sEsc(String(chapasNec || 0)) + '</td><td>' + sEsc(selected.custo_estimado == null ? '—' : sFmtMoney(selected.custo_estimado)) + '</td>'
         : '<td>' + sEsc(selected.valor_unitario > 0 ? sFmtMoney(selected.valor_unitario) : '—') + '</td>')
       + '</tr></tbody></table>'
 
-      + '<h3 class="hprint">Vista de cima — como a chapa é cortada</h3>'
-      + '<div style="max-width:58%;margin:0 auto;padding:12px;border:1px solid #cbd5e1;border-radius:14px;background:#fafafa">' + sSvg(selected) + '</div>'
+      + '<div class="sec-title">Vista de cima — desenho do corte</div>'
+      + '<div class="svg-wrap">' + sSvg(selected) + '</div>'
 
-      + '<h3 class="hprint">Detalhes do corte</h3>'
-      + '<table><thead><tr><th>Tamanho da chapa</th><th>Tamanho da peça cortada</th><th>Layout (cols × linhas)</th><th>Peças por chapa</th><th>Sobra lateral</th><th>Sobra inferior</th><th>% de desperdício</th></tr></thead>'
-      + '<tbody><tr>'
-      + '<td>' + sEsc(sFmtMm(sheetComp) + ' × ' + sFmtMm(sheetLarg)) + '</td>'
-      + '<td>' + sEsc(sFmtMm(pieceComp) + ' × ' + sFmtMm(pieceLarg)) + ' <span style="color:#64748b;font-size:11px">(' + sEsc(selected.orientacao_label || '—') + ')</span></td>'
-      + '<td>' + sEsc(String(cols || 0)) + ' × ' + sEsc(String(rws || 0)) + '</td>'
-      + '<td>' + sEsc(String(caixasPorChapa)) + '</td>'
-      + '<td>' + sEsc(sFmtMm(sobraLateral)) + (sobraLateral > 0 ? ' <span style="color:#f59e0b">(retalho)</span>' : '') + '</td>'
-      + '<td>' + sEsc(sFmtMm(sobraInferior)) + (sobraInferior > 0 ? ' <span style="color:#f59e0b">(retalho)</span>' : '') + '</td>'
-      + '<td>' + sEsc(sFmtPct(selected.desperdicio_pct || 0)) + '</td>'
+      + '<div class="sec-title">Detalhes do corte + chapas necessárias</div>'
+      + '<table style="margin-bottom:0"><thead><tr>'
+      + '<th>Chapa (mm)</th><th>Peça (mm)</th><th class="num">Layout</th><th class="num">Peças</th><th>Sobra lat.</th><th>Sobra inf.</th><th>% Desp.</th>'
+      + (qtdPedido > 0 ? '<th class="num">Chapas</th><th>Custo total</th>' : '')
+      + '</tr></thead><tbody><tr>'
+      + '<td>' + sEsc(sFmtMm(sheetComp) + '×' + sFmtMm(sheetLarg)) + '</td>'
+      + '<td>' + sEsc(sFmtMm(pieceComp) + '×' + sFmtMm(pieceLarg)) + ' <span style="color:#64748b;font-size:9px">(' + sEsc(selected.orientacao_label || '—') + ')</span></td>'
+      + '<td class="num">' + sEsc(String(cols || 0)) + '×' + sEsc(String(rws || 0)) + '</td>'
+      + '<td class="num">' + sEsc(String(caixasPorChapa)) + '</td>'
+      + '<td>' + sEsc(sFmtMm(sobraLateral)) + '</td>'
+      + '<td>' + sEsc(sFmtMm(sobraInferior)) + '</td>'
+      + '<td><strong>' + sEsc(sFmtPct(selected.desperdicio_pct || 0)) + '</strong></td>'
+      + (qtdPedido > 0 ? '<td class="num" style="background:#eff6ff;font-weight:800">' + sEsc(String(chapasNec || 0)) + '</td><td style="background:#ecfdf5;font-weight:800">' + sEsc(selected.custo_estimado == null ? '—' : sFmtMoney(selected.custo_estimado)) + '</td>' : '')
       + '</tr></tbody></table>'
-
-      + (retalhos.length > 0
-        ? '<h3 class="hprint">Retalhos reaproveitáveis por chapa</h3>'
-        + '<table><thead><tr><th>Tipo</th><th>Dimensão (comprimento × largura)</th><th>Qtd. por chapa</th>' + (qtdPedido > 0 ? '<th>Qtd. total no pedido</th>' : '') + '</tr></thead>'
-        + '<tbody>'
-        + retalhos.map(function(ret) {
-            var total = qtdPedido > 0 ? (chapasNec * sInt(ret.qtdPorChapa || 0)) : null;
-            return '<tr>'
-              + '<td>' + sEsc(ret.tipo || '—') + '</td>'
-              + '<td>' + sEsc(sFmtMm(ret.comp || 0) + ' × ' + sFmtMm(ret.larg || 0)) + '</td>'
-              + '<td>' + sEsc(String(sInt(ret.qtdPorChapa || 1))) + '</td>'
-              + (qtdPedido > 0 ? '<td>' + sEsc(String(total || 0)) + '</td>' : '')
-              + '</tr>';
-          }).join('')
-        + '</tbody></table>'
-        : '')
-
-      + (qtdPedido > 0
-        ? '<h3 class="hprint">Total de chapas para o pedido</h3>'
-        + '<div class="cards">'
-        + '<div class="card"><div class="lbl">Qtd. pedido (caixas)</div><div class="val">' + sEsc(sFmtNum(qtdPedido, 0)) + '</div></div>'
-        + '<div class="card"><div class="lbl">Caixas por chapa</div><div class="val">' + sEsc(String(caixasPorChapa)) + '</div></div>'
-        + '<div class="card"><div class="lbl">Chapas necessárias</div><div class="val">' + sEsc(String(chapasNec || 0)) + '</div></div>'
-        + (selected.valor_unitario > 0 ? '<div class="card"><div class="lbl">Custo estimado</div><div class="val">' + sEsc(sFmtMoney(selected.custo_estimado || (chapasNec * Number(selected.valor_unitario || 0)))) + '</div></div>' : '')
-        + (retalhos.length > 0 ? '<div class="card"><div class="lbl">Retalhos totais</div><div class="val">' + sEsc(String(chapasNec * retalhos.length)) + ' peças</div></div>' : '')
-        + '</div>'
-        : '')
 
       + '<script>window.onload=function(){setTimeout(function(){try{window.focus()}catch(e){}try{window.print()}catch(e){}},400)}<\/script>'
       + '</body></html>';
@@ -5087,7 +5077,7 @@ try {
       return window._openStyledPrintWindow(html);
     }
     try {
-      var w = window.open('', '_blank', 'width=1100,height=760');
+      var w = window.open('', '_blank', 'width=1100,height=720');
       if (w && w.document) {
         w.document.open();
         w.document.write(html);
@@ -50947,7 +50937,7 @@ function _ocultarGraficoComissoes() {
     }
     return ''
       + '<svg viewBox="0 0 ' + String(width) + ' ' + String(height) + '" width="100%" height="100%" aria-label="Desenho do corte">'
-      + '<rect x="' + String(padX) + '" y="' + String(padY) + '" width="' + String(renderW) + '" height="' + String(renderH) + '" rx="10" fill="#EF9F27" fill-opacity=".34" stroke="#EF9F27" stroke-width="2"></rect>'
+      + '<rect x="' + String(padX) + '" y="' + String(padY) + '" width="' + String(renderW) + '" height="' + String(renderH) + '" fill="#EF9F27" fill-opacity=".34" stroke="#EF9F27" stroke-width="2"></rect>'
       + pieces
       + grid
       + '<line x1="' + String(padX) + '" y1="' + String(padY - 12) + '" x2="' + String(padX + renderW) + '" y2="' + String(padY - 12) + '" stroke="#cbd5e1" stroke-width="1"></line>'
@@ -51077,42 +51067,63 @@ function _ocultarGraficoComissoes() {
       return;
     }
     var selected = rows.find(function(row) { return sRowKey(row) === String(window.__simdSelectedRowId || '').trim(); }) || rows[0];
+    var qtdPedido = sInt(plan && plan.qtd_pedido || 0);
     var tableRows = [selected].filter(Boolean).map(function(row) {
       return '<tr>'
         + '<td>' + sEsc(sFmtPct(row.desperdicio_pct || 0)) + '</td>'
         + '<td>' + sEsc(row.nome || 'Chapa') + '</td>'
         + '<td>' + sEsc(row.fornecedor || '—') + '</td>'
         + '<td>' + sEsc(row.tamanho || '—') + '</td>'
-        + '<td style="text-align:right">' + sEsc(sFmtNum(row.pecas_por_chapa || 0, 0)) + '</td>'
-        + '<td style="text-align:right">' + sEsc(sFmtNum(row.estoque || 0, 0)) + '</td>'
-        + '<td style="text-align:right">' + sEsc(row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : '—') + '</td>'
-        + '<td style="text-align:right">' + sEsc(row.chapas_necessarias != null ? String(row.chapas_necessarias) : '—') + '</td>'
-        + '<td style="text-align:right">' + sEsc(row.custo_estimado != null ? sFmtMoney(row.custo_estimado) : '—') + '</td>'
+        + '<td class="num">' + sEsc(sFmtNum(row.pecas_por_chapa || 0, 0)) + '</td>'
+        + '<td class="num">' + sEsc(sFmtNum(row.estoque || 0, 0)) + '</td>'
+        + '<td>' + sEsc(row.valor_unitario > 0 ? sFmtMoney(row.valor_unitario) : '—') + '</td>'
+        + '<td class="num" style="background:#eff6ff;font-weight:800">' + sEsc(row.chapas_necessarias != null ? String(row.chapas_necessarias) : (qtdPedido > 0 ? '—' : '—')) + '</td>'
+        + '<td style="background:#ecfdf5;font-weight:800">' + sEsc(row.custo_estimado != null ? sFmtMoney(row.custo_estimado) : '—') + '</td>'
         + '</tr>';
     }).join('');
+    var cssBase = ''
+      + '@page{size:A4 landscape;margin:5mm}'
+      + 'html,body{margin:0;padding:0;box-sizing:border-box}'
+      + 'body{font-family:Arial,sans-serif;padding:8mm 9mm;color:#0f172a;font-size:11px;line-height:1.25}'
+      + '.brandline{font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.12em;margin-bottom:2px}'
+      + 'h1{font-size:16px;margin:0 0 4px 0;color:#0f172a;font-weight:900}'
+      + 'h2{font-size:10px;margin:0 0 10px 0;color:#475569;font-weight:500}'
+      + '.simd-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0 0 8px 0}'
+      + '.simd-card{border:1px solid #cbd5e1;border-radius:7px;padding:5px 7px;background:#fff}'
+      + '.simd-card .lbl{font-size:8.5px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;font-weight:700}'
+      + '.simd-card .val{font-size:12px;font-weight:800;margin-top:1px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+      + '.sec-title{margin:7px 0 4px 0;font-size:11px;color:#0f172a;font-weight:800;border-left:3px solid #2563eb;padding-left:7px}'
+      + 'table{width:100%;border-collapse:collapse;margin:0;table-layout:fixed}'
+      + 'th,td{border:1px solid #cbd5e1;padding:3px 5px;font-size:10px;text-align:left;vertical-align:middle;line-height:1.2}'
+      + 'th{background:#f1f5f9;color:#334155;text-transform:uppercase;letter-spacing:.04em;font-weight:800;font-size:9px}'
+      + '.num{text-align:right;font-variant-numeric:tabular-nums}'
+      + '.svg-wrap{max-width:44%;margin:0 auto;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;background:#fafafa}'
+      + '.svg-wrap svg{display:block;width:100%;height:auto}';
     var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Simulador por Medida da Chapa</title>'
-      + '<style>' + (typeof window._printCssPadraoComissoes === 'function'
-        ? window._printCssPadraoComissoes() + '.simd-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.simd-card{border:1px solid #cbd5e1;border-radius:12px;padding:12px}.simd-card .lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.08em}.simd-card .val{font-size:18px;font-weight:800;margin-top:6px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:8px;font-size:12px;text-align:left}th{text-transform:uppercase;font-size:10px;letter-spacing:.08em}.num{text-align:right}'
-        : 'body{font-family:Arial,sans-serif;padding:24px;color:#0f172a}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:8px;font-size:12px;text-align:left}th{text-transform:uppercase;font-size:10px;letter-spacing:.08em}.simd-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.simd-card{border:1px solid #cbd5e1;border-radius:12px;padding:12px}.simd-card .lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.08em}.simd-card .val{font-size:18px;font-weight:800;margin-top:6px}.num{text-align:right}svg{max-width:100%;height:auto}@page{size:A4 landscape;margin:10mm}') + '</style>'
+      + '<style>' + cssBase + '</style>'
       + '</head><body>'
-      + '<div class="brandline">Italy Embalagens</div>'
+      + '<div class="brandline">Italy Embalagens — Simulador</div>'
       + '<h1>Simulador por Medida da Chapa</h1>'
       + '<h2>Gerado em ' + sEsc(typeof window._printGeradoEmBr === 'function' ? window._printGeradoEmBr() : new Date().toLocaleString('pt-BR')) + '</h2>'
       + '<div class="simd-cards">'
       + '<div class="simd-card"><div class="lbl">Largura solicitada</div><div class="val">' + sEsc(sFmtMm(plan.peca_larg_mm || 0)) + '</div></div>'
       + '<div class="simd-card"><div class="lbl">Comprimento solicitado</div><div class="val">' + sEsc(sFmtMm(plan.peca_comp_mm || 0)) + '</div></div>'
       + '<div class="simd-card"><div class="lbl">Área da peça</div><div class="val">' + sEsc(sFmtAreaMm2(plan.area_peca_mm2 || 0)) + '</div></div>'
-      + '<div class="simd-card"><div class="lbl">Melhor chapa</div><div class="val">' + sEsc((selected.nome || 'Chapa') + ' · ' + (selected.tamanho || '—')) + '</div></div>'
+      + '<div class="simd-card"><div class="lbl">Chapa selecionada</div><div class="val">' + sEsc((selected.nome || 'Chapa') + ' · ' + (selected.tamanho || '—')) + '</div></div>'
+      + (qtdPedido > 0 ? '<div class="simd-card"><div class="lbl">Qtd. pedido</div><div class="val">' + sEsc(sFmtNum(qtdPedido, 0)) + ' un.</div></div>' : '')
+      + '<div class="simd-card"><div class="lbl">Peças/chapa</div><div class="val">' + sEsc(String(selected.pecas_por_chapa || 0)) + '</div></div>'
+      + '<div class="simd-card"><div class="lbl">% Desperdício</div><div class="val">' + sEsc(sFmtPct(selected.desperdicio_pct || 0)) + '</div></div>'
+      + '<div class="simd-card"><div class="lbl">Chapas necessárias</div><div class="val">' + sEsc(selected.chapas_necessarias != null ? String(selected.chapas_necessarias) : (qtdPedido > 0 ? '—' : '—')) + '</div></div>'
       + '</div>'
-      + '<div style="margin:18px 0 10px;font-size:14px;font-weight:700">Desenho do corte selecionado</div>'
-      + '<div style="max-width:62%;margin:0 auto;padding:14px;border:1px solid #cbd5e1;border-radius:12px">' + sSvg(selected) + '</div>'
-      + '<div style="margin:18px 0 10px;font-size:14px;font-weight:700">Chapa selecionada</div>'
-      + '<table><thead><tr><th>% Desp.</th><th>Chapa</th><th>Fornecedor</th><th>Tamanho</th><th>Peças/chapa</th><th>Estoque</th><th>Valor unit.</th><th>Chapas necessárias</th><th>Custo</th></tr></thead><tbody>' + tableRows + '</tbody></table>'
+      + '<div class="sec-title">Desenho do corte selecionado</div>'
+      + '<div class="svg-wrap">' + sSvg(selected) + '</div>'
+      + '<div class="sec-title">Chapa selecionada — valores + custo total</div>'
+      + '<table><thead><tr><th>% Desp.</th><th>Chapa</th><th>Fornecedor</th><th>Tamanho</th><th>Peças/chapa</th><th>Estoque</th><th>Valor unit.</th><th>Chapas nec.</th><th>Custo total</th></tr></thead><tbody>' + tableRows + '</tbody></table>'
       + '<script>window.onload=function(){setTimeout(function(){try{window.focus()}catch(e){}try{window.print()}catch(e){}},400)}<\/script>'
       + '</body></html>';
     if (typeof window._openStyledPrintWindow === 'function') return window._openStyledPrintWindow(html);
     try {
-      var w = window.open('', '_blank', 'width=1280,height=860');
+      var w = window.open('', '_blank', 'width=1200,height=760');
       if (w && w.document) {
         w.document.open();
         w.document.write(html);
