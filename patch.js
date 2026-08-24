@@ -10679,6 +10679,34 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     if (!overlay || !modal) return false;
     var isCompactCalc = window.innerWidth <= 620;
     var isDualCol = window.innerWidth >= 1100 && !isCompactCalc;
+    // [PROMPT P - FIX REAL FOOTER FORA MODAL] Override global CSS mobile/legado que força position fixed / padding vazio 80px
+    try {
+      var sid = 'patch-calc-footer-contain';
+      if (!document.getElementById(sid)) {
+        var st = document.createElement('style');
+        st.id = sid;
+        st.textContent = [
+          '#modal-calc.orc-calc-fs-ready #modal-calculadora,',
+          '#modal-calculadora.modal-calculadora,',
+          '[id*="calc-orcamento"]{',
+          '  position:relative!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;',
+          '  padding-bottom:0!important;z-index:1!important;',
+          '}',
+          '#modal-calculadora .modal-footer.rodape,',
+          '#modal-calculadora .orc-calc-shell-footer,',
+          '[id*="calc-orcamento"] .modal-footer.rodape{',
+          '  position:static!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;',
+          '  width:100%!important;max-width:100%!important;margin:0!important;z-index:1!important;',
+          '  box-sizing:border-box!important;flex-shrink:0!important;',
+          '}',
+          '#modal-calculadora .orc-calc-shell-footer{',
+          '  border-top:1px solid rgba(148,163,184,.14)!important;',
+          '  background:rgba(3,7,18,.94)!important;',
+          '}'
+        ].join('');
+        document.head.appendChild(st);
+      }
+    } catch (_cssFix) {}
     try { overlay.classList.add('orc-calc-fs-ready'); } catch (_) {}
     var shell = modal.querySelector('.orc-calc-shell');
     if (!shell) {
@@ -11077,6 +11105,22 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           });
         }
       }
+
+      try {
+        if (modal) {
+          var csM = window.getComputedStyle(modal);
+          if ((csM.position || '').match(/fixed|absolute/i)) {
+            modal.style.cssText += '; position: relative !important; padding-bottom: 0 !important; top: auto !important; left: auto !important; right: auto !important; bottom: auto !important;';
+          }
+        }
+        var fEl = footer || footerHost;
+        if (fEl) {
+          var csF = window.getComputedStyle(fEl);
+          if (!(csF.position || '').match(/^static$|^sticky$|^relative$/i)) {
+            fEl.style.cssText += '; position: static !important; display: flex !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; margin: 0 !important; padding: 10px 16px 14px !important;';
+          }
+        }
+      } catch (_eFinal) {}
     } catch (_) {}
     return true;
   }
