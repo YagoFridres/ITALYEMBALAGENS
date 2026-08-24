@@ -4446,6 +4446,206 @@ try {
       return false;
     }
   };
+
+  (function _patchSemPapelDomQ() {
+    try {
+      if (!document.getElementById('patch-sempapel-q-style')) {
+        var stQ = document.createElement('style');
+        stQ.id = 'patch-sempapel-q-style';
+        stQ.textContent = ''
+          + '.of-card-maquina[data-sem-papel="1"],.of-card[data-sem-papel="1"],.of-card.of-card-maquina[data-sem-papel="1"]{background:linear-gradient(180deg,rgba(146,64,14,.28),rgba(202,138,4,.28))!important;background-color:rgba(250,204,21,.10)!important;border-color:rgba(250,204,21,.70)!important;box-shadow:0 0 0 2px rgba(250,204,21,.25) inset, 0 0 28px rgba(250,204,21,.10)!important;outline:1px solid rgba(250,204,21,.42)!important;outline-offset:-1px!important}'
+          + '.ofmaq-card-head .patch-sempapel-q-status{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-weight:900;font-size:.78rem;background:#f59e0b;color:#fff;white-space:nowrap;margin-right:6px}'
+          + '.kb-card-ofmaq .patch-sempapel-q-status{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-weight:900;font-size:11px;background:#f59e0b;color:#fff;white-space:nowrap;margin-right:4px}'
+          + '.patch-sempapel-q-obs{font-size:10.5px;color:#fde68a;line-height:1.4;opacity:.95;margin-top:3px;margin-bottom:2px;white-space:normal;word-break:break-word;max-width:100%}'
+          + '.kb-card-ofmaq .patch-sempapel-q-obs{font-size:11px;color:#fde68a;line-height:1.4;margin-top:3px;margin-bottom:0;opacity:.95}'
+          + '#sem-papelao-obs-q{width:100%;min-height:72px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--s3);color:var(--text);font-size:.95rem;resize:vertical;font-family:inherit;line-height:1.4}';
+        document.head.appendChild(stQ);
+      }
+    } catch (_eCssQ) {}
+
+    function _ofFindByIdQ(id) {
+      var sid = String(id || '').trim();
+      if (!sid) return null;
+      var pools = [window.OFS, (typeof OFs !== 'undefined') ? OFs : null, window._ofmaqBaseList, (typeof window.OFS_ARQUIVO !== 'undefined') ? window.OFS_ARQUIVO : null];
+      for (var i = 0; i < pools.length; i++) {
+        var arr = pools[i];
+        if (!Array.isArray(arr)) continue;
+        for (var j = 0; j < arr.length; j++) {
+          var o = arr[j];
+          if (!o || typeof o !== 'object') continue;
+          if (String(o.id || '').trim() === sid || String(o.of || '').trim() === sid || String(o.numero || '').trim() === sid) return o;
+        }
+      }
+      return null;
+    }
+    function _ofIsSemPapelQ(o) {
+      if (!o || typeof o !== 'object') return false;
+      try {
+        if (o.sem_papel === true || o.sem_papelao === true || o.sem_papel === 1 || o.sem_papelao === 1 || String(o.sem_papel || '').trim() === '1' || String(o.sem_papelao || '').trim() === '1') return true;
+        var obs = String(o.obs || o.observacao || '').trim();
+        if (/sem\s*papel/i.test(obs)) return true;
+      } catch (_ee) {}
+      return false;
+    }
+    function _ofGetObsQ(o) {
+      if (!o || typeof o !== 'object') return '';
+      var raw = String(o.obs || o.observacao || '').trim();
+      if (!raw) return '';
+      try { raw = raw.replace(/SEM\s*PAPELÃO/gi, '').replace(/Sem\s*Papelão/gi, '').replace(/^\s*\|\s*/, '').replace(/\s*\|\s*$/, '').trim(); } catch (_eClean) {}
+      return raw;
+    }
+    function _semPapelBadgeQ() {
+      return '<span class="patch-sempapel-q-status" title="OF marcada como Sem Papelão">📦 Sem Papelão</span>';
+    }
+    function _obsHtmlQ(txt) {
+      if (!txt || !String(txt).trim()) return '';
+      return '<div class="patch-sempapel-q-obs" title="Observação">' + String(txt).replace(/</g,'&lt;').replace(/\n/g,'<br>') + '</div>';
+    }
+
+    function _applyOneCardQ(card) {
+      if (!card || !card.getAttribute) return;
+      try {
+        if (card.dataset && card.dataset.patchSempapelQ === '1') {}
+      } catch (_eSkip) {}
+      var ofId = String(card.getAttribute('data-of-id') || card.getAttribute('data-id') || '').trim();
+      if (!ofId) return;
+      var of = _ofFindByIdQ(ofId);
+      var isSP = false;
+      var obsTxt = '';
+      if (of) { isSP = _ofIsSemPapelQ(of); obsTxt = _ofGetObsQ(of); }
+      try {
+        if (isSP) card.setAttribute('data-sem-papel', '1');
+        else card.setAttribute('data-sem-papel', '0');
+      } catch (_eAttr) {}
+      var markerId = 'sempapel-q-' + String(ofId || Math.random()).replace(/[^a-zA-Z0-9]/g,'_');
+      var prev = document.getElementById(markerId);
+      if (prev) try { prev.remove(); } catch (_eRm) {}
+      if (!isSP) return;
+
+      var inject = document.createElement('div');
+      inject.id = markerId;
+      inject.className = 'patch-sempapel-q-inject';
+      inject.innerHTML = _semPapelBadgeQ() + _obsHtmlQ(obsTxt);
+
+      if (card.classList && card.classList.contains('kb-card-ofmaq')) {
+        var kbInfo = card.querySelector('.kb-info');
+        if (kbInfo) {
+          kbInfo.insertBefore(inject, kbInfo.firstChild);
+        } else {
+          var kbTop = card.querySelector('.kb-card-top');
+          if (kbTop) kbTop.appendChild(inject);
+        }
+      } else if (card.classList && (card.classList.contains('of-card-maquina') || card.classList.contains('of-card'))) {
+        var head2 = card.querySelector('.ofmaq-card-head');
+        if (head2) {
+          try { head2.insertBefore(inject, head2.querySelector('.moveBtns, .of-acoes-wrap, [onclick*="ofmaqMoverPosicao"], button')); } catch (_eI) {
+            try { head2.insertBefore(inject, head2.children[head2.children.length - 1] || null); } catch (_eI2) { head2.appendChild(inject); }
+          }
+        } else if (card.firstChild) {
+          var wrap = card.querySelector('div[style*="flex:1;min-width:0"], div[style*="flex: 1; min-width: 0"]');
+          if (wrap) { try { wrap.insertBefore(inject, wrap.firstChild); } catch(_eIns){ wrap.appendChild(inject); } }
+          else card.insertBefore(inject, card.firstChild.nextSibling || null);
+        } else card.appendChild(inject);
+      } else {
+        card.insertBefore(inject, card.firstChild || null);
+      }
+      try { if (card.dataset) card.dataset.patchSempapelQ = '1'; } catch (_eMk) {}
+    }
+
+    function _scanAllQ(root) {
+      var scope = root || document.body || document;
+      if (!scope || !scope.querySelectorAll) return;
+      var sels = '.kb-card-ofmaq[data-of-id],.of-card-maquina[data-of-id],.of-card[data-of-id],.patch-ofmaq-v2-row[data-of-id],tr.patch-ofmaq-row[data-of-id],.ofmaq-final-row[data-of-id],.ofmaq-row[data-of-id]';
+      var nodes;
+      try { nodes = scope.querySelectorAll(sels); } catch (_eQ) { return; }
+      if (!nodes || !nodes.length) return;
+      for (var i = 0; i < nodes.length; i++) {
+        try { _applyOneCardQ(nodes[i]); } catch (_eOne) {}
+      }
+    }
+
+    if (typeof window.ofmaqAbrirSemPapelaoModal === 'function') {
+      var _origAbrirSP = window.ofmaqAbrirSemPapelaoModal;
+      window.ofmaqAbrirSemPapelaoModal = function(ofId, numeroDigits) {
+        var ret = _origAbrirSP.apply(this, arguments);
+        setTimeout(function() {
+          try {
+            var modal = document.getElementById('modal-sem-papelao');
+            if (!modal) return;
+            if (modal.querySelector('#sem-papelao-obs-q')) return;
+            var inpData = modal.querySelector('#sem-papelao-data');
+            if (!inpData) return;
+            var lbl = document.createElement('div');
+            lbl.style.cssText = 'color:var(--text2);font-size:.95rem;margin:12px 0 6px;';
+            lbl.textContent = 'Observação (opcional):';
+            var ta = document.createElement('textarea');
+            ta.id = 'sem-papelao-obs-q';
+            ta.placeholder = 'Ex.: Aguardando fornecedor X enviar chapas 60x80...';
+            var wrap = inpData.parentElement;
+            try { wrap.insertBefore(lbl, inpData.nextSibling || null); wrap.insertBefore(ta, lbl.nextSibling || null); } catch (_eInsTa) {
+              try { wrap.appendChild(lbl); wrap.appendChild(ta); } catch (_eFa) {}
+            }
+            var it = _ofFindByIdQ(ofId);
+            if (it) {
+              var obsAnt = _ofGetObsQ(it);
+              if (obsAnt) ta.value = obsAnt;
+            }
+          } catch (_eAfter) {}
+        }, 40);
+        return ret;
+      };
+    }
+    if (typeof window.ofmaqConfirmarSemPapelao === 'function') {
+      var _origConfSP = window.ofmaqConfirmarSemPapelao;
+      window.ofmaqConfirmarSemPapelao = async function(ofId, numeroDigits) {
+        try {
+          var ta = document.getElementById('sem-papelao-obs-q');
+          var obsUser = ta ? String(ta.value || '').trim() : '';
+          if (obsUser) {
+            var id = String(ofId || '').trim();
+            var it = _ofFindByIdQ(id);
+            var obsBase = '';
+            try { if (typeof persistPatch === 'function' && id) {
+              var old = (it && (it.obs || it.observacao)) ? String(it.obs || it.observacao).trim() : '';
+              var parts = [];
+              if (obsUser) parts.push(obsUser);
+              if (!/sem\s*papel/i.test(obsUser)) parts.unshift('SEM PAPELÃO');
+              if (old && !/sem\s*papel/i.test(old) && old !== obsUser) { parts.unshift(old); }
+              var merged = parts.filter(Boolean).join(' | ');
+              await persistPatch(id, { obs: merged, observacao: merged });
+              try { if (it) { it.obs = merged; it.observacao = merged; } } catch (_eUp) {}
+            }} catch (_ePers) {}
+          }
+        } catch (_eObs) {}
+        return _origConfSP.apply(this, arguments);
+      };
+    }
+
+    try {
+      var MoObsQ = (typeof MutationObserver !== 'undefined') ? MutationObserver : (typeof window.WebKitMutationObserver !== 'undefined') ? window.WebKitMutationObserver : null;
+      if (MoObsQ) {
+        var moQ = new MoObsQ(function(muts) {
+          for (var i = 0; i < muts.length; i++) {
+            var m = muts[i];
+            if (!m || !m.addedNodes || !m.addedNodes.length) continue;
+            for (var j = 0; j < m.addedNodes.length; j++) {
+              var nd = m.addedNodes[j];
+              if (!nd || nd.nodeType !== 1) continue;
+              try { _scanAllQ(nd); } catch (_eSc) {}
+            }
+          }
+        });
+        if (document.body) moQ.observe(document.body, { childList: true, subtree: true });
+      }
+    } catch (_eMoQ) {}
+
+    function _kickQ() { try { _scanAllQ(document.body); } catch (_eK) {} }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _kickQ);
+    else setTimeout(_kickQ, 10);
+    setTimeout(_kickQ, 600);
+    setTimeout(_kickQ, 2500);
+  })();
+
   window.alterarMaquinaOf = function(ofId, ofNum) {
     logOfmaq('clique ação Alterar Máquina', { ofId: ofId, ofNum: ofNum });
     cleanupOfmaqArtifacts();
