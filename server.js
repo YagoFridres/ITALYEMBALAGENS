@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260825010001';
-const SW_RUNTIME_VERSION = '20260825010001';
+const PATCH_RUNTIME_VERSION = '20260825020001';
+const SW_RUNTIME_VERSION = '20260825020001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -13090,7 +13090,8 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
     try { empresaFilter = await _relatoriosResolveEmpresaFilter(req); } catch (_) { empresaFilter = { todas: true, uuid: null }; }
     let empresaId = empresaFilter && !empresaFilter.todas && empresaFilter.uuid ? String(empresaFilter.uuid || '').trim() : '';
 
-    const machineOrder = new Map(MAQUINAS_CATALOGO_PADRAO.map((item, idx) => [String(item?.nome || '').trim(), idx]));
+    const LUCRATIVIDADE_MAQUINAS = MAQUINAS_CATALOGO_PADRAO.filter((m) => String(m?.nome || '').trim().toLowerCase() !== 'acabamento');
+    const machineOrder = new Map(LUCRATIVIDADE_MAQUINAS.map((item, idx) => [String(item?.nome || '').trim(), idx]));
     const machineNames = new Set(Array.from(machineOrder.keys()));
     const canonicalColors = (value) => {
       const out = [];
@@ -13189,7 +13190,7 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
 
     const clientesMap = await _relatoriosLoadClientesDetails(Array.from(ofsMap.values()).map((of) => _assistPickOfClienteId(of)));
     const buckets = new Map();
-    MAQUINAS_CATALOGO_PADRAO.forEach((machine) => {
+    LUCRATIVIDADE_MAQUINAS.forEach((machine) => {
       const nome = String(machine?.nome || '').trim();
       buckets.set(nome, {
         maquina: nome,
@@ -13224,11 +13225,14 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       if (!ofData || ofData?.deleted_at || _assistIsCancelada(ofData)) return;
       const bucket = buckets.get(machineName);
       const qtdOf = _relatoriosPickQtdOf(ofData) || Math.max(0, Math.trunc(Number(row?.qtd_produzida ?? row?.quantidade ?? 0) || 0));
-      const valorOf = _relatoriosPickValorOf(ofData) || Number(row?.valor_total || row?.valor_venda || 0) || 0;
-      const tonOf = Number(ofData?.toneladas_utilizadas ?? ofData?.tonelada_vendida ?? 0) || 0;
-      const custoM2 = Number(ofData?.custo_m2_venda ?? 0) || 0;
-      const areaM2 = Number(ofData?.area_total_m2 ?? 0) || 0;
-      const custoOf = (custoM2 > 0 && areaM2 > 0) ? Math.round(custoM2 * areaM2 * 100) / 100 : 0;
+      const valorOf = (_relatoriosPickValorOf(ofData)
+        || Number(ofData?.valor_total ?? ofData?.valor_venda ?? ofData?.total ?? ofData?.faturamento ?? ofData?.valor ?? 0) || 0
+        || Number(row?.valor_total || row?.valor_venda || row?.valor || 0) || 0);
+      const tonOf = Number(ofData?.toneladas_utilizadas ?? ofData?.tonelada_vendida ?? row?.toneladas ?? 0) || 0;
+      const custoM2 = Number(ofData?.custo_m2_venda ?? ofData?.custo_m2 ?? 0) || 0;
+      const areaM2 = Number(ofData?.area_total_m2 ?? ofData?.area_m2 ?? 0) || 0;
+      const custoOf = ((custoM2 > 0 && areaM2 > 0) ? Math.round(custoM2 * areaM2 * 100) / 100 : 0)
+        || Number(ofData?.custo_total ?? ofData?.custo ?? ofData?.valor_custo ?? ofData?.total_custo ?? ofData?.custo_estimado ?? 0) || 0;
       const clienteNome = _relatoriosPickClienteNomeOf(ofData, clientesMap)
         || String(row?.cliente_nome || row?.clinome || row?.cliNome || 'Sem cliente').trim()
         || 'Sem cliente';
@@ -13284,7 +13288,7 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       });
     });
 
-    const rows = MAQUINAS_CATALOGO_PADRAO.map((machine) => {
+    const rows = LUCRATIVIDADE_MAQUINAS.map((machine) => {
       const nome = String(machine?.nome || '').trim();
       const bucket = buckets.get(nome);
       const topClientes = Array.from(bucket._clientes.values()).map((item) => ({
@@ -20049,13 +20053,15 @@ app.get('/api/relatorios/facas-mais-utilizadas', authMiddleware, async (req, res
       if (numero && !facaByNome.has(numero)) facaByNome.set(numero, row);
     });
 
-    const { data: ofsRows, error: ofsError } = await supabase
+    let q = supabase
       .from('ofs')
       .select('id,numero,cliente,cliente_nome,clinome,cliNome,status,quantidade,qtd,valor_total,valor_venda,itens,empresa_id,deleted_at')
-      .or('empresa_id.eq.' + empresaId + ',empresa_id.is.null')
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(5000);
+    if (empresaId) q = q.or('empresa_id.eq.' + String(empresaId) + ',empresa_id.is.null');
+    else if (empFiltroRaw) q = q.eq('empresa_id', empFiltroRaw);
+    const { data: ofsRows, error: ofsError } = await q;
     if (ofsError) throw ofsError;
 
     const ranking = new Map();

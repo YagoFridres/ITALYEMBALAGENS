@@ -3387,29 +3387,94 @@ try {
       var now = new Date();
       var ano = now.getFullYear();
       var mes = now.getMonth() + 1;
-      if (typeof window.renderAmostrasSemana === 'function') {
-        try {
-          var wrap = document.createElement('div');
-          wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(6px)';
-          var card = document.createElement('div');
-          card.style.cssText = 'width:min(1100px,96vw);max-height:90vh;overflow:auto;background:linear-gradient(180deg,#07111f 0%,#0f172a 100%);border:1px solid rgba(148,163,184,.18);border-radius:20px;padding:20px;box-shadow:0 40px 100px rgba(0,0,0,.55)';
-          card.innerHTML = ''
-            + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px">'
-            + '  <div><div style="font-size:20px;font-weight:900;color:#f8fafc">🧪 Amostras do Mês — ' + String(mes).padStart(2, '0') + '/' + ano + '</div><div style="font-size:12px;color:#94a3b8">Relatório consolidado de amostras produzidas e enviadas no mês.</div></div>'
-            + '  <button type="button" id="rr-amostras-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(6px)';
+      var card = document.createElement('div');
+      card.style.cssText = 'width:min(1100px,96vw);max-height:90vh;overflow:auto;background:linear-gradient(180deg,#07111f 0%,#0f172a 100%);border:1px solid rgba(148,163,184,.18);border-radius:20px;padding:20px;box-shadow:0 40px 100px rgba(0,0,0,.55)';
+      card.innerHTML = ''
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">'
+        + '  <div><div style="font-size:20px;font-weight:900;color:#f8fafc">🧪 Amostras do Mês — ' + String(mes).padStart(2, '0') + '/' + ano + '</div><div style="font-size:12px;color:#94a3b8">Relatório consolidado de amostras produzidas e enviadas no mês.</div></div>'
+        + '  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+        + '    <input type="month" id="rr-amostras-mes" value="' + ano + '-' + String(mes).padStart(2, '0') + '" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:600" />'
+        + '    <button type="button" id="rr-amostras-buscar" style="padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:12px">Buscar</button>'
+        + '    <button type="button" id="rr-amostras-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
+        + '  </div>'
+        + '</div>'
+        + '<div id="rr-amostras-body" style="min-height:320px"><p style="color:#64748b;text-align:center;padding:40px;font-size:13px">Carregando amostras do mês...</p></div>';
+      wrap.appendChild(card);
+      document.body.appendChild(wrap);
+      var btnClose = card.querySelector('#rr-amostras-close');
+      if (btnClose) btnClose.onclick = function() { try { wrap.remove(); } catch (_) {} };
+      wrap.addEventListener('click', function(e) { if (e.target === wrap) try { wrap.remove(); } catch (_) {} });
+      var body = card.querySelector('#rr-amostras-body');
+      var inputMes = card.querySelector('#rr-amostras-mes');
+      var btnBuscar = card.querySelector('#rr-amostras-buscar');
+
+      function carregarAmostras(periodo) {
+        if (!body) return;
+        body.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px;font-size:13px">Carregando amostras do mês...</p>';
+        var token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+        var h = token ? { 'Authorization': 'Bearer ' + token } : {};
+        var url = '/api/relatorios/amostras-mes' + (periodo ? '?mes=' + encodeURIComponent(periodo) : '');
+        fetch(url, { headers: h }).then(function(r) { return r.json(); }).then(function(resp) {
+          if (!resp || !resp.ok) throw new Error(resp && resp.error ? resp.error : 'Erro na consulta');
+          var d = resp.data || {};
+          var ranking = Array.isArray(d.ranking) ? d.ranking : [];
+          var total_pedidas = Number(d.total_pedidas || 0);
+          var total_feitas = Number(d.total_feitas || 0);
+          var taxa = Number(d.taxa_conclusao || 0);
+          var clientes = Number(d.clientes_unicos || 0);
+          var periodoLabel = d.periodo || 'Atual';
+
+          var rankRows = ranking.slice(0, 50).map(function(cli, idx) {
+            var pct = cli.pedidas > 0 ? Math.round((Number(cli.feitas || 0) / Number(cli.pedidas || 0)) * 100) : 0;
+            return ''
+              + '<tr style="border-bottom:1px solid rgba(148,163,184,.08)">'
+              + '  <td style="padding:10px 12px;color:#94a3b8;font-size:12px;font-weight:700">' + (idx + 1) + '</td>'
+              + '  <td style="padding:10px 12px;color:#e2e8f0;font-size:13px;font-weight:600">' + String(cli.cliente_nome || 'Cliente não identificado').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</td>'
+              + '  <td style="padding:10px 12px;color:#4A90D9;font-size:13px;font-weight:800;text-align:center">' + Number(cli.pedidas || 0) + '</td>'
+              + '  <td style="padding:10px 12px;color:#10b981;font-size:13px;font-weight:800;text-align:center">' + Number(cli.feitas || 0) + '</td>'
+              + '  <td style="padding:10px 12px;text-align:center"><div style="display:inline-flex;align-items:center;gap:6px"><div style="width:72px;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#10b981,#3b82f6)"></div></div><span style="color:' + (pct >= 70 ? '#10b981' : pct >= 40 ? '#f59e0b' : '#ef4444') + ';font-size:11px;font-weight:700">' + pct + '%</span></div></td>'
+              + '  <td style="padding:10px 12px;color:#94a3b8;font-size:12px;text-align:center">' + (cli.ultimo_pedido ? String(cli.ultimo_pedido).slice(0,10).split('-').reverse().join('/') : '—') + '</td>'
+              + '</tr>';
+          }).join('');
+
+          body.innerHTML = ''
+            + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">'
+            + '  <div style="background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(139,92,246,.12));border:1px solid rgba(59,130,246,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(59,130,246,.18),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#93c5fd;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Período</div><div style="font-size:20px;font-weight:900;color:#eff6ff;margin-top:4px">' + String(periodoLabel).replace(/-/g,'/') + '</div></div></div>'
+            + '  <div style="background:linear-gradient(135deg,rgba(251,146,60,.12),rgba(245,158,11,.12));border:1px solid rgba(251,146,60,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(251,146,60,.18),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#fdba74;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Total Pedidas</div><div style="font-size:26px;font-weight:900;color:#fff7ed;margin-top:2px">' + total_pedidas + '</div><div style="font-size:10px;color:#fed7aa;margin-top:2px">amostras solicitadas</div></div></div>'
+            + '  <div style="background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(5,150,105,.12));border:1px solid rgba(16,185,129,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(16,185,129,.18),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#6ee7b7;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Total Feitas</div><div style="font-size:26px;font-weight:900;color:#ecfdf5;margin-top:2px">' + total_feitas + '</div><div style="font-size:10px;color:#a7f3d0;margin-top:2px">de ' + total_pedidas + ' pedidas</div></div></div>'
+            + '  <div style="background:linear-gradient(135deg,rgba(139,92,246,.12),rgba(168,85,247,.12));border:1px solid rgba(139,92,246,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(139,92,246,.2),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#c4b5fd;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Taxa de Conclusão</div><div style="font-size:26px;font-weight:900;color:#f5f3ff;margin-top:2px">' + taxa.toFixed(taxa % 1 === 0 ? 0 : 2).replace('.',',') + '%</div><div style="font-size:10px;color:#ddd6fe;margin-top:2px">' + clientes + ' cliente' + (clientes === 1 ? '' : 's') + ' único' + (clientes === 1 ? '' : 's') + '</div></div></div>'
             + '</div>'
-            + '<div id="rr-amostras-body" style="min-height:320px"></div>';
-          wrap.appendChild(card);
-          document.body.appendChild(wrap);
-          var btnClose = card.querySelector('#rr-amostras-close');
-          if (btnClose) btnClose.onclick = function() { try { wrap.remove(); } catch (_) {} };
-          wrap.addEventListener('click', function(e) { if (e.target === wrap) try { wrap.remove(); } catch (_) {} });
-          var body = card.querySelector('#rr-amostras-body');
-          if (body) window.renderAmostrasSemana(body);
-          return;
-        } catch (_modErr) {}
+            + '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(148,163,184,.12);border-radius:16px;overflow:hidden">'
+            + '  <div style="padding:12px 16px;background:linear-gradient(90deg,rgba(30,41,59,.8),rgba(15,23,42,.8));border-bottom:1px solid rgba(148,163,184,.1);display:flex;justify-content:space-between;align-items:center">'
+            + '    <div style="color:#f1f5f9;font-weight:800;font-size:14px">🏆 Ranking de Clientes — Top ' + Math.min(ranking.length, 50) + '</div>'
+            + '    <div style="color:#94a3b8;font-size:11px;font-weight:600">' + ranking.length + ' cliente' + (ranking.length === 1 ? '' : 's') + ' no período</div>'
+            + '  </div>'
+            + (total_pedidas === 0
+              ? '<div style="padding:50px 20px;text-align:center"><div style="font-size:42px;margin-bottom:10px">🧪</div><div style="color:#94a3b8;font-size:14px;font-weight:600">Nenhuma amostra registrada no período selecionado.</div><div style="color:#64748b;font-size:12px;margin-top:4px">Tente selecionar outro mês no campo acima.</div></div>'
+              : '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:linear-gradient(90deg,#1e293b,#0f172a)"><th style="padding:11px 12px;color:#94a3b8;font-size:11px;font-weight:700;text-align:left;text-transform:uppercase;letter-spacing:.4px">#</th><th style="padding:11px 12px;color:#94a3b8;font-size:11px;font-weight:700;text-align:left;text-transform:uppercase;letter-spacing:.4px">Cliente</th><th style="padding:11px 12px;color:#94a3b8;font-size:11px;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:.4px">Pedidas</th><th style="padding:11px 12px;color:#94a3b8;font-size:11px;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:.4px">Feitas</th><th style="padding:11px 12px;color:#94a3b8;font-size:11px;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:.4px">Progresso</th><th style="padding:11px 12px;color:#94a3b8;font-size:11px;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:.4px">Último Pedido</th></tr></thead><tbody>' + rankRows + '</tbody></table></div>')
+            + '</div>';
+        }).catch(function(err) {
+          if (!body) return;
+          body.innerHTML = ''
+            + '<div style="padding:40px 20px;text-align:center">'
+            + '  <div style="font-size:42px;margin-bottom:10px">⚠️</div>'
+            + '  <div style="color:#fca5a5;font-size:14px;font-weight:700">Erro ao carregar amostras do mês</div>'
+            + '  <div style="color:#f87171;font-size:12px;margin-top:6px">' + String(err && err.message || err).replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>'
+            + '  <button type="button" onclick="document.getElementById(\'rr-amostras-buscar\').click()" style="margin-top:14px;padding:8px 16px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700;font-size:12px">Tentar novamente</button>'
+            + '</div>';
+          console.error('[RR-AmostrasMes]', err);
+        });
       }
-      alert('Amostras do Mês: use a página OFs por Máquina / Histórico de Passagens para visualizar as amostras do período atual.');
+
+      if (btnBuscar) btnBuscar.onclick = function() {
+        try {
+          if (typeof window.toastMod === 'function') window.toastMod('Buscando amostras...', 'info');
+        } catch (_) {}
+        carregarAmostras(inputMes ? inputMes.value : '');
+      };
+      setTimeout(function() { carregarAmostras(ano + '-' + String(mes).padStart(2, '0')); }, 30);
     } catch (e) {
       try { alert('Erro ao abrir Amostras do Mês: ' + String(e && e.message || e)); } catch (_) {}
     }
@@ -3417,20 +3482,42 @@ try {
 
   function rrOpenProjecaoVendasModal() {
     try {
+      var anoAtual = new Date().getFullYear();
+      var oldOverlay = document.getElementById('rr-projecao-overlay');
+      if (oldOverlay) { try { oldOverlay.remove(); } catch (_) {} }
+      var wrap = document.createElement('div');
+      wrap.id = 'rr-projecao-overlay';
+      wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(6px)';
+      var card = document.createElement('div');
+      card.style.cssText = 'width:min(1180px,97vw);max-height:91vh;overflow:auto;background:linear-gradient(180deg,#07111f 0%,#0f172a 100%);border:1px solid rgba(148,163,184,.18);border-radius:20px;padding:18px 20px 22px;box-shadow:0 40px 100px rgba(0,0,0,.55)';
+      card.innerHTML = ''
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">'
+        + '  <div><div style="font-size:20px;font-weight:900;color:#f8fafc">📊 Projeção de Vendas</div><div style="font-size:12px;color:#94a3b8">Histórico mensal de faturamento com projeção baseada em média móvel e tendência.</div></div>'
+        + '  <button type="button" id="rr-projecao-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
+        + '</div>'
+        + '<div id="widget-projecao-vendas" style="min-height:260px"><p style="color:#64748b;text-align:center;padding:30px;font-size:13px">Carregando projeção de vendas...</p></div>';
+      wrap.appendChild(card);
+      document.body.appendChild(wrap);
+      var btnClose = card.querySelector('#rr-projecao-close');
+      if (btnClose) btnClose.onclick = function() { try { wrap.remove(); } catch (_) {} };
+      wrap.addEventListener('click', function(e) { if (e.target === wrap) try { wrap.remove(); } catch (_) {} });
       if (typeof window.renderProjecaoVendas === 'function') {
-        var anoAtual = new Date().getFullYear();
-        try {
-          if (typeof window.go === 'function') window.go('relatorios');
-        } catch (_) {}
         setTimeout(function() {
           try { window.renderProjecaoVendas(anoAtual); } catch (_) {}
         }, 120);
         setTimeout(function() {
           try { window.renderProjecaoVendas(anoAtual); } catch (_) {}
         }, 520);
-        return;
+      } else {
+        try {
+          document.getElementById('widget-projecao-vendas').innerHTML = ''
+            + '<div style="padding:40px 20px;text-align:center">'
+            + '  <div style="font-size:42px;margin-bottom:10px">📋</div>'
+            + '  <div style="color:#94a3b8;font-size:14px;font-weight:600">Widget de projeção não carregado.</div>'
+            + '  <div style="color:#64748b;font-size:12px;margin-top:4px">Recarregue a página e tente novamente.</div>'
+            + '</div>';
+        } catch (_) {}
       }
-      alert('Relatório de Projeção de Vendas disponível na tela principal.');
     } catch (e) {
       try { alert('Erro ao abrir Projeção de Vendas: ' + String(e && e.message || e)); } catch (_) {}
     }
