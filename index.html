@@ -33663,7 +33663,7 @@ try{
 try{
   if('serviceWorker' in navigator){
     window.addEventListener('load', async ()=>{
-      const swVersion = '20260824160001';
+      const swVersion = '20260824170001';
       const swPath = '/sw.js?v=' + swVersion;
       const swUrl = new URL(swPath, window.location.origin).href;
       function isNotFoundSwError(err){
@@ -35483,6 +35483,7 @@ function normalizeFaca(r){
     id:r.id,
     nome:r.nome||'',
     medidas:r.medidas||'',
+    localizacao:r.localizacao||'',
     maquinas:tryParse(r.maquinas, r.maquinas||[]),
     valor:r.valor!=null?r.valor:r.valor_unitario,
     obs:r.obs||'',
@@ -35496,6 +35497,7 @@ function normalizeCliche(r){
     id:r.id,
     nome:r.nome||'',
     medidas:r.medidas||'',
+    localizacao:r.localizacao||'',
     maquinas:tryParse(r.maquinas, r.maquinas||[]),
     valor:r.valor!=null?r.valor:r.valor_unitario,
     obs:r.obs||'',
@@ -38791,9 +38793,9 @@ function renderFacas1(){
   const body=document.getElementById('facas1-body');
   const busca=((document.getElementById('facas1-busca')||{}).value||'').toLowerCase();
   let lista=FACAS;
-  if(busca)lista=lista.filter(f=>(f.nome+f.obs+f.medidas+(f.maquinas||[]).join(' ')+(f.clientes||[]).join(' ')).toLowerCase().includes(busca));
+  if(busca)lista=lista.filter(f=>(f.nome+f.obs+f.medidas+(f.localizacao||'')+(f.maquinas||[]).join(' ')+(f.clientes||[]).join(' ')).toLowerCase().includes(busca));
   if(!body)return;
-  if(!lista.length){body.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Nenhuma faca cadastrada — clique em ＋ Nova Faca</td></tr>';return;}
+  if(!lista.length){body.innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3)">Nenhuma faca cadastrada — clique em ＋ Nova Faca</td></tr>';return;}
   body.innerHTML=lista.map(f=>{
     const cliNomes=(f.clientes||[]).map(id=>{ const c=CLIENTES.find(x=>x.id===id);return c?c.nome:id; }).join(', ');
     const maqStr=(f.maquinas||[]).join(', ')||'—';
@@ -38801,8 +38803,9 @@ function renderFacas1(){
     return `<tr>
       <td style="padding:8px 10px;border:1px solid var(--border)">${thumb}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);font-weight:600">${f.nome||'—'}</td>
-      <td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem;color:var(--text2)">${f.medidas||'—'}</td>
-      <td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem">${maqStr}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem;color:var(--teal)">${f.medidas||'—'}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem;color:var(--orange)">${f.localizacao||'—'}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem;color:var(--purple)">${maqStr}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem">${cliNomes||'—'}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;color:var(--green)">${f.valor?'R$ '+Number(f.valor).toFixed(2):'—'}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);text-align:center">
@@ -38818,9 +38821,9 @@ function renderFacas2(){
   const body=document.getElementById('facas2-body');
   const busca=((document.getElementById('facas2-busca')||{}).value||'').toLowerCase();
   let lista=FACAS;
-  if(busca)lista=lista.filter(f=>(f.nome+f.obs+f.medidas+(f.maquinas||[]).join(' ')+(f.clientes||[]).join(' ')).toLowerCase().includes(busca));
+  if(busca)lista=lista.filter(f=>(f.nome+f.obs+f.medidas+(f.localizacao||'')+(f.maquinas||[]).join(' ')+(f.clientes||[]).join(' ')).toLowerCase().includes(busca));
   if(!body)return;
-  if(!lista.length){body.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Nenhuma faca cadastrada — clique em ＋ Nova Faca</td></tr>';return;}
+  if(!lista.length){body.innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3)">Nenhuma faca cadastrada — clique em ＋ Nova Faca</td></tr>';return;}
   body.innerHTML=lista.map(f=>{
     const cliNomes=(f.clientes||[]).map(id=>{ const c=CLIENTES.find(x=>x.id===id);return c?c.nome:id; }).join(', ');
     const maqStr=(f.maquinas||[]).join(', ')||'—';
@@ -38828,8 +38831,9 @@ function renderFacas2(){
     return `<tr>
       <td style="padding:8px 10px;border:1px solid var(--border)">${thumb}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);font-weight:600">${f.nome||'—'}</td>
-      <td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem;color:var(--text2)">${f.medidas||'—'}</td>
-      <td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem">${maqStr}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem;color:var(--teal)">${f.medidas||'—'}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem;color:var(--orange)">${f.localizacao||'—'}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem;color:var(--purple)">${maqStr}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem">${cliNomes||'—'}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;color:var(--green)">${f.valor?'R$ '+Number(f.valor).toFixed(2):'—'}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);text-align:center">
@@ -38846,6 +38850,7 @@ function abrirModalFaca1(id){
   const f=id?FACAS.find(x=>x.id===id):null;
   document.getElementById('fa1-nome').value=f?f.nome||'':'';
   document.getElementById('fa1-medidas').value=f?f.medidas||'':'';
+  const locEl=document.getElementById('fa1-localizacao');if(locEl)locEl.value=f?f.localizacao||'':'';
   document.getElementById('fa1-valor').value=f?f.valor||'':'';
   document.getElementById('fa1-obs').value=f?f.obs||'':'';
   _populateMaquinasSelect('fa1-maquina-sel');
@@ -38900,6 +38905,7 @@ async function salvarFaca1(){
   const row = {
     nome,
     medidas: document.getElementById('fa1-medidas')?.value || '',
+    localizacao: document.getElementById('fa1-localizacao')?.value || '',
     valor: parseFloat(document.getElementById('fa1-valor')?.value) || 0,
     obs: document.getElementById('fa1-obs')?.value || '',
     maquinas: maqChips,
@@ -38925,7 +38931,7 @@ async function salvarFaca1(){
 async function salvarEdicaoFaca1(id){
   const f=FACAS.find(x=>x.id===id);if(!f)return;
   const nome=(document.getElementById('fa1-nome').value||'').trim();if(!nome){toast('Informe o nome','var(--red)');return;}
-  const payload={...f,nome,medidas:document.getElementById('fa1-medidas').value,maquinas:_getChips('fa1-maquinas-chips'),valor:parseFloat(document.getElementById('fa1-valor').value)||0,obs:document.getElementById('fa1-obs').value,clientes:_getChips('fa1-clientes-chips')};
+  const payload={...f,nome,medidas:document.getElementById('fa1-medidas').value,localizacao:document.getElementById('fa1-localizacao')?.value||'',maquinas:_getChips('fa1-maquinas-chips'),valor:parseFloat(document.getElementById('fa1-valor').value)||0,obs:document.getElementById('fa1-obs').value,clientes:_getChips('fa1-clientes-chips')};
   const r=await salvarViaApiOuLocal('faca',
     ()=>api('PUT','/facas_estoque/'+encodeURIComponent(id), payload),
     ()=>{ Object.assign(f,payload); return {ok:true, local:true}; }
@@ -47116,7 +47122,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
               <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);width:52px">FOTO</th>
               <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">NOME / DESCRIÇÃO</th>
               <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--teal)">MEDIDAS</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--purple)">MÁQUINA</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--orange)">LOCALIZAÇÃO</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--purple)">MÁQUINAS QUE USAM</th>
               <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--accent)">CLIENTES</th>
               <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--green);text-align:right">VALOR</th>
               <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:center">AÇÕES</th>
@@ -47146,7 +47153,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
               <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);width:52px">FOTO</th>
               <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">NOME / DESCRIÇÃO</th>
               <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--teal)">MEDIDAS</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--purple)">MÁQUINA</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--orange)">LOCALIZAÇÃO</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--purple)">MÁQUINAS QUE USAM</th>
               <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--accent)">CLIENTES</th>
               <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--green);text-align:right">VALOR</th>
               <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:center">AÇÕES</th>
@@ -47198,6 +47206,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="mf" style="grid-column:1/-1"><label>NOME / DESCRIÇÃO *</label><input id="fa1-nome" placeholder="Ex: Faca caixa 30x20x15cm"></div>
         <div class="mf"><label>MEDIDAS (mm ou cm)</label><input id="fa1-medidas" placeholder="Ex: 300x200x150"></div>
+        <div class="mf"><label>LOCALIZAÇÃO (Estante/Gaveta)</label><input id="fa1-localizacao" placeholder="Ex: Estante A3 / Gaveta 2"></div>
         <div class="mf"><label>VALOR (R$)</label><input id="fa1-valor" type="number" step="0.01" placeholder="0,00"></div>
         <div class="mf" style="grid-column:1/-1">
           <label>MÁQUINAS QUE UTILIZAM</label>
@@ -60638,6 +60647,6 @@ try{
 }catch(e){}
 </script>
 
-<script src="/patch.js?v=20260824160001"></script>
+<script src="/patch.js?v=20260824170001"></script>
 <script src="/mobile.js?v=2"></script>
 </body></html>

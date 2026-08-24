@@ -1332,6 +1332,9 @@ try {
     var resumo = json && json.resumo || {};
     var rows = rrList(json, ['rows', 'maquinas']);
     var details = rrList(json, ['detail_rows', 'detalhamento']);
+    var _p25Norm = function(s){ return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); };
+    rows = rows.filter(function(r){ return _p25Norm(r && r.maquina) !== 'acabamento'; });
+    details = details.filter(function(r){ return _p25Norm(r && r.maquina) !== 'acabamento'; });
     var fmtTon = function(v) { return rrFmtNum(v || 0, 3) + ' t'; };
     var topClientesTxt = function(row) {
       var list = Array.isArray(row && row.top_clientes) ? row.top_clientes : [];
@@ -1443,6 +1446,100 @@ try {
           }
         };
       }
+    });
+  }
+
+  async function rrReportAmostrasMes(rangeOverride) {
+    var ref = rangeOverride || rrCurrentRange();
+    var qs = rrEmpresaQueryParts().slice();
+    qs.push('data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio));
+    qs.push('data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim));
+    var json = await rrFetchJson('/api/relatorios/amostras-mes?' + qs.join('&'));
+    var resumo = json && json.resumo || {};
+    var rows = rrList(json, ['rows']);
+    return rrOpenPrint({
+      title: 'Amostras do Mês',
+      periodo: ref.titulo || (String(ref && ref.data_inicio || '') + ' a ' + String(ref && ref.data_fim || '')),
+      cards: [
+        { label: 'Total de Amostras', value: rrFmtNum(resumo.total_amostras || rows.length, 0), sub: 'No período selecionado' },
+        { label: 'Clientes Distintos', value: rrFmtNum(resumo.total_clientes || 0, 0) },
+        { label: 'Aprovadas', value: rrFmtNum(resumo.total_aprovadas || 0, 0), sub: 'Status aprovado no período' },
+        { label: 'Reprovadas', value: rrFmtNum(resumo.total_reprovadas || 0, 0), sub: 'Status reprovado no período' }
+      ],
+      summaryTitle: 'Lista de Amostras',
+      summaryHeaders: ['Data', 'Cliente', 'Produto/Faca', 'Quantidade', 'Status', 'Observação'],
+      summaryRows: rows.map(function(row) {
+        return [
+          rrEsc(rrFmtDate(row && row.data_ref || row && row.data_criacao || row && row.data)),
+          rrEsc(String(row && row.cliente_nome || row && row.cliente || '—')),
+          rrEsc(String(row && row.produto || row && row.faca || row && row.nome || '—')),
+          rrEsc(rrFmtNum(row && row.quantidade || row && row.qtd || 0, 0)),
+          rrEsc(String(row && row.status || '—')),
+          rrEsc(String(row && row.observacao || row && row.obs || '—'))
+        ];
+      }),
+      emptySummaryCols: 6,
+      emptyDetailCols: 6
+    });
+  }
+
+  function rrOpenProjecaoVendasModal() {
+    rrOpenModal({
+      title: 'Projeção de Vendas',
+      subtitle: 'Exibe a projeção mensal de faturamento com histórico, meses concluídos e estimativa futura. Fonte: Dashboard widget.',
+      render: function(body) {
+        body.innerHTML = ''
+          + '<div id="rr-pv-container" style="min-height:420px;overflow:auto"></div>'
+          + '<div class="rr-modal-actions" style="margin-top:12px">'
+          + '  <button type="button" class="rr-btn-ghost" data-rr-close>Fechar</button>'
+          + '</div>';
+        try {
+          if (typeof window.renderProjecaoVendas === 'function') {
+            var container = body.querySelector('#rr-pv-container');
+            var anoAtual = new Date().getFullYear();
+            window.renderProjecaoVendas(anoAtual);
+            if (container) {
+              var widget = document.querySelector('.widget-projecao-vendas') || document.querySelector('[class*="projecao-vendas"]');
+              if (widget) container.appendChild(widget);
+            }
+          }
+        } catch (_) {}
+      }
+    });
+  }
+
+  async function rrReportFacasMaisUsadas(rangeOverride) {
+    var ref = rangeOverride || rrCurrentRange();
+    var qs = rrEmpresaQueryParts().slice();
+    qs.push('data_inicio=' + encodeURIComponent(ref.data_inicio || rrCurrentRange().data_inicio));
+    qs.push('data_fim=' + encodeURIComponent(ref.data_fim || rrCurrentRange().data_fim));
+    var json = await rrFetchJson('/api/relatorios/facas-mais-utilizadas?' + qs.join('&'));
+    var resumo = json && json.resumo || {};
+    var rows = rrList(json, ['rows']);
+    return rrOpenPrint({
+      title: 'Facas Mais Utilizadas',
+      periodo: ref.titulo || (String(ref && ref.data_inicio || '') + ' a ' + String(ref && ref.data_fim || '')),
+      cards: [
+        { label: 'Facas Utilizadas', value: rrFmtNum(resumo.total_facas || rows.length, 0), sub: 'Distintas no período' },
+        { label: 'Total de Caixas', value: rrFmtNum(resumo.total_caixas || 0, 0), sub: 'Produzidas com as facas do ranking' },
+        { label: 'Valor Total', value: rrFmtMoney(resumo.valor_total || 0) },
+        { label: 'OFs Distintas', value: rrFmtNum(resumo.total_ofs || 0, 0) }
+      ],
+      summaryTitle: 'Ranking de Facas',
+      summaryHeaders: ['#', 'Faca', 'Medidas', 'Caixas', 'OFs', 'Valor Total', 'Máquinas'],
+      summaryRows: rows.map(function(row, idx) {
+        return [
+          rrEsc(String(idx + 1)),
+          rrEsc(String(row && row.nome || row && row.faca_nome || '—')),
+          rrEsc(String(row && row.medidas || '—')),
+          rrEsc(rrFmtNum(row && row.total_caixas || row && row.caixas || 0, 0)),
+          rrEsc(rrFmtNum(row && row.total_ofs || row && row.ofs || 0, 0)),
+          rrEsc(rrFmtMoney(row && row.valor_total || row && row.valor || 0)),
+          rrEsc((Array.isArray(row && row.maquinas) ? row.maquinas.join(', ') : String(row && row.maquinas || row && row.maquina || '—')))
+        ];
+      }),
+      emptySummaryCols: 7,
+      emptyDetailCols: 7
     });
   }
 
@@ -3376,6 +3473,9 @@ try {
     { id: 'tipos-caixa-rel', label: 'Tipos de Caixa', icon: '📦', desc: 'Agrupa OFs concluídas por tipo de caixa e destaca os mais produzidos no período ativo.', run: rrReportTiposCaixa },
     { id: 'cores-tamanhos-rel', label: 'Cores e Tamanhos mais usados', icon: '🎨', desc: 'Conta as cores de impressão e os tamanhos mais frequentes nas OFs concluídas do período ativo.', run: rrReportCoresTamanhos },
     { id: 'maiores-tamanhos-vendidos', label: 'Maiores Tamanhos Vendidos', icon: '📏', desc: 'Ranking dos tamanhos de caixa mais vendidos, do maior para o menor.', run: rrReportMaioresTamanhosVendidos },
+    { id: 'amostras-mes', label: 'Amostras do Mês', icon: '🧪', desc: 'Relação de amostras produzidas no período com dados de cliente, produto e aprovação.', run: rrReportAmostrasMes },
+    { id: 'projecao-vendas', label: 'Projeção de Vendas', icon: '📈', desc: 'Projeção mensal de faturamento com histórico, meses concluídos e estimativa futura.', run: function(){ rrOpenProjecaoVendasModal(); } },
+    { id: 'facas-mais-usadas', label: 'Facas Mais Utilizadas', icon: '🗡', desc: 'Ranking das facas mais utilizadas nas OFs do período, com total de caixas e valor.', run: rrReportFacasMaisUsadas },
     { id: 'relatorio-sergio', label: 'Relatório Sérgio', icon: '📝', desc: 'Montagem manual com múltiplos itens, autocomplete de clientes e impressão com fonte ampliada.', run: rrOpenSergioBuilder }
   ];
 
@@ -6454,13 +6554,13 @@ window._compraPapelaoBindBody = function() {
   var btnRelFornecedor = host.querySelector('#ccpx-body-btn-rel-forn');
   var btnRelResumo = host.querySelector('#ccpx-body-btn-rel-resumo');
   var btnPrint = host.querySelector('#ccpx-body-btn-print');
-  if (btnNova) btnNova.onclick = function() { window.abrirModalCompra(); };
-  if (btnPasta) btnPasta.onclick = function() { window._compraPapelaoOpenFolderModal(); };
-  if (btnSugestoes) btnSugestoes.onclick = function() { window._compraPapelaoOpenPinsModal(); };
-  if (btnRelPeriodo) btnRelPeriodo.onclick = function() { window._compraPapelaoOpenReportModal('periodo'); };
-  if (btnRelFornecedor) btnRelFornecedor.onclick = function() { window._compraPapelaoOpenReportModal('fornecedor'); };
-  if (btnRelResumo) btnRelResumo.onclick = function() { window._compraPapelaoOpenReportModal('resumo'); };
-  if (btnPrint) btnPrint.onclick = function() { window._compraPapelaoPrintCurrentReport(); };
+  if (btnNova && !btnNova.__p25Bind) { btnNova.__p25Bind = true; btnNova.onclick = function() { window.abrirModalCompra(); }; }
+  if (btnPasta && !btnPasta.__p25Bind) { btnPasta.__p25Bind = true; btnPasta.onclick = function() { window._compraPapelaoOpenFolderModal(); }; }
+  if (btnSugestoes && !btnSugestoes.__p25Bind) { btnSugestoes.__p25Bind = true; btnSugestoes.onclick = function() { window._compraPapelaoOpenPinsModal(); }; }
+  if (btnRelPeriodo && !btnRelPeriodo.__p25Bind) { btnRelPeriodo.__p25Bind = true; btnRelPeriodo.onclick = function() { window._compraPapelaoOpenReportModal('periodo'); }; }
+  if (btnRelFornecedor && !btnRelFornecedor.__p25Bind) { btnRelFornecedor.__p25Bind = true; btnRelFornecedor.onclick = function() { window._compraPapelaoOpenReportModal('fornecedor'); }; }
+  if (btnRelResumo && !btnRelResumo.__p25Bind) { btnRelResumo.__p25Bind = true; btnRelResumo.onclick = function() { window._compraPapelaoOpenReportModal('resumo'); }; }
+  if (btnPrint && !btnPrint.__p25Bind) { btnPrint.__p25Bind = true; btnPrint.onclick = function() { window._compraPapelaoPrintCurrentReport(); }; }
   var busca = host.querySelector('#ccpx-busca');
   var buscar = host.querySelector('#ccpx-btn-buscar');
   if (buscar) buscar.onclick = function() {
@@ -8796,14 +8896,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       if (typeof window.renderCompras === 'function' && window.renderCompras !== cRenderWrapper && window.renderCompras !== origRenderCompras) {
         origRenderCompras = window.renderCompras;
       }
-      if (typeof window.abrirModalCompra === 'function' && window.abrirModalCompra !== cAbrirModalWrapper && window.abrirModalCompra !== origAbrirModalCompra) {
+      if (typeof window.abrirModalCompra === 'function' && !(window.abrirModalCompra && window.abrirModalCompra.__p25Patched) && window.abrirModalCompra !== cAbrirModalWrapper && window.abrirModalCompra !== origAbrirModalCompra) {
         origAbrirModalCompra = window.abrirModalCompra;
       }
       if (typeof window.papelaoAbrirComprasChapas === 'function' && window.papelaoAbrirComprasChapas !== cAbrirComprasChapasWrapper && window.papelaoAbrirComprasChapas !== origAbrirComprasChapas) {
         origAbrirComprasChapas = window.papelaoAbrirComprasChapas;
       }
       window.papelaoAbrirComprasChapas = cAbrirComprasChapasWrapper;
-      window.abrirModalCompra = cAbrirModalWrapper;
+      if (!(window.abrirModalCompra && window.abrirModalCompra.__p25Patched) {
+        cAbrirModalWrapper.__p25Patched = true;
+        window.abrirModalCompra = cAbrirModalWrapper;
+      }
       window.renderCompras = cRenderWrapper;
     } catch (_) {}
   }
@@ -9257,14 +9360,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(7, 'antes ins
         setTimeout(function() { try { window.renderCompras(); } catch (_) {} }, 250);
         return null;
       };
-      window.abrirModalCompra = function(id) {
-        if (!window._compraPapelaoShouldUseModernModal()) {
-          if (window.__compraPapelaoOrigAbrirModalCompra) return window.__compraPapelaoOrigAbrirModalCompra.apply(this, arguments);
-          return null;
-        }
-        try { window._comprasTipoFiltro = 'chapas'; } catch (_) {}
-        return window._compraPapelaoOpenCompraModal(id || null);
-      };
+      if (!(window.abrirModalCompra && window.abrirModalCompra.__p25Patched)) {
+        var _p25AbrirFn = function(id) {
+          if (!window._compraPapelaoShouldUseModernModal()) {
+            if (window.__compraPapelaoOrigAbrirModalCompra) return window.__compraPapelaoOrigAbrirModalCompra.apply(this, arguments);
+            return null;
+          }
+          try { window._comprasTipoFiltro = 'chapas'; } catch (_) {}
+          return window._compraPapelaoOpenCompraModal(id || null);
+        };
+        _p25AbrirFn.__p25Patched = true;
+        window.abrirModalCompra = _p25AbrirFn;
+      }
       window.renderCompras = function() {
         if (!window._compraPapelaoIsActive()) {
           window._compraPapelaoEnsureToolbar();
@@ -10317,9 +10424,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         + '<div class="orc-calc-shell-footer"></div>';
       while (modal.firstChild) shell.querySelector('.orc-calc-shell-main').appendChild(modal.firstChild);
       modal.appendChild(shell);
-      var _footerFixed = shell.querySelector('.orc-calc-shell-footer');
-      var _footerReal = shell.querySelector('.orc-calc-shell-main .modal-footer.rodape');
-      if (_footerFixed && _footerReal && _footerReal.parentNode !== _footerFixed) _footerFixed.appendChild(_footerReal);
     }
     var titleHost = shell.querySelector('.orc-calc-shell-title');
     var closeHost = shell.querySelector('.orc-calc-shell-close');
@@ -10340,7 +10444,6 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       if (!node) return;
       if (node.parentNode !== topbar) topbar.appendChild(node);
     });
-    // Mover nomeWrap / pastaRow / chapaWrap para COMEÇO do body (não topbar)
     if (body) {
       [nomeWrap, pastaRow, chapaWrap].forEach(function(node) {
         if (!node) return;
@@ -10348,7 +10451,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       });
     }
     if (body && body.parentNode !== main) main.appendChild(body);
-    if (footer && footer.parentNode !== footerHost) footerHost.appendChild(footer);
+    if (footerHost && footer && footer.parentNode !== footerHost) footerHost.appendChild(footer);
     try {
       overlay.style.setProperty('position', 'fixed', 'important');
       overlay.style.setProperty('inset', '0', 'important');
@@ -10704,6 +10807,22 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         }
       }
     } catch (_) {}
+    try {
+      var modalFin = document.getElementById('modal-calculadora');
+      if (modalFin) {
+        var shellFin = modalFin.querySelector('.orc-calc-shell');
+        var footerHostFin = shellFin ? shellFin.querySelector('.orc-calc-shell-footer') : null;
+        var mainFin = shellFin ? shellFin.querySelector('.orc-calc-shell-main') : null;
+        var footerFin = null;
+        if (modalFin.querySelector(':scope > .modal-footer.rodape')) footerFin = modalFin.querySelector(':scope > .modal-footer.rodape');
+        else if (mainFin && mainFin.querySelector(':scope > .modal-footer.rodape')) footerFin = mainFin.querySelector(':scope > .modal-footer.rodape');
+        else if (mainFin && mainFin.querySelector('.modal-footer.rodape')) footerFin = mainFin.querySelector('.modal-footer.rodape');
+        else if (modalFin.querySelector('.modal-footer.rodape')) footerFin = modalFin.querySelector('.modal-footer.rodape');
+        if (footerHostFin && footerFin && footerFin.parentNode !== footerHostFin) {
+          footerHostFin.appendChild(footerFin);
+        }
+      }
+    } catch (_p25Fin) {}
     return true;
   }
   function saveFolderFromModal() {
@@ -12077,8 +12196,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       } catch (_) {}
       var nomeAtual = calcNomeOrcamentoAtual();
       var chapaAtual = String((document.getElementById('calc-chapa-utilizada') || {}).value || '').trim();
+      var pastaSelecionada = String((document.getElementById('calc-pasta') || {}).value || '').trim() || null;
       var ok = await _origSalvarOrcamentoCalc.apply(this, arguments);
       if (!ok) return ok;
+      try {
+        await reloadOrcamentosFreshFromApi();
+      } catch (_) {}
       try {
         var current = currentOrcamentoFromState();
         if (current) {
@@ -12086,15 +12209,24 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
             nome: nomeAtual || current.nome || current.nome_orcamento,
             nome_orcamento: nomeAtual || current.nome_orcamento || current.nome,
             chapa_utilizada: chapaAtual || null,
-            chapaUtilizada: chapaAtual || null
+            chapaUtilizada: chapaAtual || null,
+            pasta_id: pastaSelecionada || (current.pasta_id != null ? current.pasta_id : null),
+            pastaId: pastaSelecionada || (current.pastaId != null ? current.pastaId : null)
           }));
         }
       } catch (_) {}
       try {
-        await reloadOrcamentosFreshFromApi();
-      } catch (_) {}
-      try {
-        if (typeof persistCurrentCalcFolder === 'function') await persistCurrentCalcFolder();
+        if (typeof persistCurrentCalcFolder === 'function') {
+          try {
+            if (pastaSelecionada && typeof _orcIdAtual !== 'undefined' && String(_orcIdAtual || '').trim()) {
+              await moveToFolder(String(_orcIdAtual || '').trim(), pastaSelecionada, { silent: true, skipRender: true });
+            } else {
+              await persistCurrentCalcFolder();
+            }
+          } catch (_pastaErr) {
+            await persistCurrentCalcFolder();
+          }
+        }
       } catch (_) {}
       try { if (typeof window.__patchOrcDraftLoadFromState === 'function') window.__patchOrcDraftLoadFromState(true); } catch (_) {}
       try { if (typeof window.renderOrcamentos === 'function') window.renderOrcamentos(); } catch (_) {}
@@ -13028,6 +13160,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     var coresMap = new Map();
     var tamanhosMap = new Map();
     list.forEach(function(row) {
+      if (!_histPassagemConcluidaTotal(row)) return;
       var ofNum = String(row && (row.of_numero || row.numero || row.of) || '').trim();
       if (ofNum) ofsSet.add(ofNum);
       var vlr = Number(row && (row.valor_total_producao != null ? row.valor_total_producao : (row.valor_total != null ? row.valor_total : _histPassagemValorTotal(row))) || 0) || 0;
@@ -49331,14 +49464,20 @@ function _ocultarGraficoComissoes() {
         }
         return window._compraPapelaoRenderPage();
       };
-      var abrirModalFn = function(id) {
-        if (!window._compraPapelaoShouldUseModernModal()) {
-          if (window.__compraPapelaoOrigAbrirModalCompra) return window.__compraPapelaoOrigAbrirModalCompra.apply(this, arguments);
-          return null;
-        }
-        try { window._comprasTipoFiltro = 'chapas'; } catch (_) {}
-        return window._compraPapelaoOpenCompraModal(id || null);
-      };
+      var abrirModalFn;
+      if (window.abrirModalCompra && window.abrirModalCompra.__p25Patched) {
+        abrirModalFn = window.abrirModalCompra;
+      } else {
+        abrirModalFn = function(id) {
+          if (!window._compraPapelaoShouldUseModernModal()) {
+            if (window.__compraPapelaoOrigAbrirModalCompra) return window.__compraPapelaoOrigAbrirModalCompra.apply(this, arguments);
+            return null;
+          }
+          try { window._comprasTipoFiltro = 'chapas'; } catch (_) {}
+          return window._compraPapelaoOpenCompraModal(id || null);
+        };
+        abrirModalFn.__p25Patched = true;
+      }
       window.papelaoAbrirComprasChapas = abrirTelaCompraPapelaoPatched;
       window.abrirModalCompra = abrirModalFn;
       window.renderCompras = renderFn;
