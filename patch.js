@@ -4897,6 +4897,7 @@ try {
       }
     } catch (_) {}
   }
+  window.sPrintSelected = sPrintSelected;
 
   async function sFetchChapas() {
     if (Array.isArray(window.__simdAllChapasCache) && window.__simdAllChapasCache.length) {
@@ -5228,6 +5229,7 @@ try {
       btnPrint.dataset.simdPrintBound = '1';
       btnPrint.onclick = function(e) {
         try { if (e) e.preventDefault(); } catch (_) {}
+        if (typeof sPrintSelected === 'function') return sPrintSelected();
         if (typeof window.sPrintSelected === 'function') return window.sPrintSelected();
       };
     }
