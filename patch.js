@@ -3756,6 +3756,17 @@ try {
 ;(function() {
   if (window.__ofmaqActionsFixTailApplied) return;
   window.__ofmaqActionsFixTailApplied = true;
+  if (typeof window.sEsc !== 'function') {
+    window.sEsc = function(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    };
+  }
+  if (typeof sEsc !== 'function') { var sEsc = window.sEsc; }
   var originalAbrirModalAlterarMaquinaOfmaq = typeof window.abrirModalAlterarMaquinaOfmaq === 'function'
     ? window.abrirModalAlterarMaquinaOfmaq
     : (typeof abrirModalAlterarMaquinaOfmaq === 'function' ? abrirModalAlterarMaquinaOfmaq : null);
@@ -4521,6 +4532,7 @@ try {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }
+  try { window.sEsc = sEsc; } catch (_) {}
 
   function sNum(value) {
     var n = Number(String(value == null ? '' : value).replace(',', '.'));
@@ -50571,6 +50583,7 @@ function _ocultarGraficoComissoes() {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }
+  try { window.sEsc = sEsc; } catch (_) {}
 
   function sNum(value) {
     var n = Number(String(value == null ? '' : value).replace(',', '.'));
