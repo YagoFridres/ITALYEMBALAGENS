@@ -10545,24 +10545,26 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         '    </div>' +
         '    </div>' +
         '  </div>' +
-        '  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:12px;justify-content:flex-end;align-items:center;flex-wrap:wrap;padding-top:14px;padding-bottom:4px;border-top:1px solid #334155">' +
-        '    <div style="display:flex;gap:14px;align-items:center;margin-right:auto;flex-wrap:wrap">' +
-        '      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px;border-radius:14px;background:linear-gradient(135deg,rgba(15,23,42,.9),rgba(15,23,42,.7));border:1px solid rgba(148,163,184,.18)">' +
-        '        <span style="font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(148,163,184,.82)">Onda do cálculo</span>' +
-        '        <button type="button" class="calc-onda-chip" data-onda="B" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(148,163,184,.22);background:rgba(255,255,255,.05);color:#cbd5e1;font-weight:900;cursor:pointer;font-size:13px;letter-spacing:.04em;transition:.15s">B</button>' +
-        '        <button type="button" class="calc-onda-chip" data-onda="C" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(148,163,184,.22);background:rgba(255,255,255,.05);color:#cbd5e1;font-weight:900;cursor:pointer;font-size:13px;letter-spacing:.04em;transition:.15s">C</button>' +
-        '        <button type="button" class="calc-onda-chip" data-onda="BC" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(148,163,184,.22);background:rgba(255,255,255,.05);color:#cbd5e1;font-weight:900;cursor:pointer;font-size:13px;letter-spacing:.04em;transition:.15s">BC</button>' +
+        '  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;padding-top:12px;padding-bottom:2px;border-top:1px solid #334155;margin-top:6px">' +
+        '    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+        '      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:5px 9px;border-radius:10px;background:linear-gradient(135deg,rgba(15,23,42,.78),rgba(15,23,42,.55));border:1px solid rgba(148,163,184,.16)">' +
+        '        <span style="font-size:10.5px;font-weight:900;letter-spacing:.07em;text-transform:uppercase;color:rgba(148,163,184,.82)">Onda</span>' +
+        '        <button type="button" class="calc-onda-chip" data-onda="B" style="padding:6px 11px;border-radius:8px;border:1px solid rgba(148,163,184,.22);background:rgba(255,255,255,.05);color:#cbd5e1;font-weight:800;cursor:pointer;font-size:11.5px;letter-spacing:.03em;transition:.15s">B</button>' +
+        '        <button type="button" class="calc-onda-chip" data-onda="C" style="padding:6px 11px;border-radius:8px;border:1px solid rgba(148,163,184,.22);background:rgba(255,255,255,.05);color:#cbd5e1;font-weight:800;cursor:pointer;font-size:11.5px;letter-spacing:.03em;transition:.15s">C</button>' +
+        '        <button type="button" class="calc-onda-chip" data-onda="BC" style="padding:6px 11px;border-radius:8px;border:1px solid rgba(148,163,184,.22);background:rgba(255,255,255,.05);color:#cbd5e1;font-weight:800;cursor:pointer;font-size:11.5px;letter-spacing:.03em;transition:.15s">BC</button>' +
         '      </div>' +
         '      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
-        '        <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:rgba(255,255,255,0.62);font-weight:700"><input type="checkbox" id="calc-print-b" checked style="width:14px;height:14px"> Imprimir B</label>' +
-        '        <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:rgba(255,255,255,0.62);font-weight:700"><input type="checkbox" id="calc-print-c" checked style="width:14px;height:14px"> Imprimir C</label>' +
-        '        <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:rgba(255,255,255,0.62);font-weight:700"><input type="checkbox" id="calc-print-bc" checked style="width:14px;height:14px"> Imprimir BC</label>' +
+        '        <label style="display:flex;gap:5px;align-items:center;font-size:10.5px;color:rgba(255,255,255,0.62);font-weight:700"><input type="checkbox" id="calc-print-b" checked style="width:13px;height:13px"> B</label>' +
+        '        <label style="display:flex;gap:5px;align-items:center;font-size:10.5px;color:rgba(255,255,255,0.62);font-weight:700"><input type="checkbox" id="calc-print-c" checked style="width:13px;height:13px"> C</label>' +
+        '        <label style="display:flex;gap:5px;align-items:center;font-size:10.5px;color:rgba(255,255,255,0.62);font-weight:700"><input type="checkbox" id="calc-print-bc" checked style="width:13px;height:13px"> BC</label>' +
         '      </div>' +
         '    </div>' +
-        '    <button onclick="try { if(typeof fecharCalculadora===\'function\')fecharCalculadora(); else if(typeof fechar===\'function\')fechar(\'modal-calc\'); } catch(_){}" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">Fechar</button>' +
-        '    <button onclick="try { if(typeof imprimirOrcamentoCalc===\'function\')imprimirOrcamentoCalc(); } catch(_){}" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">🖨 Imprimir</button>' +
-        '    <button onclick="try { if(typeof salvarOrcamentoCalc===\'function\')salvarOrcamentoCalc(); } catch(_){}" style="padding:10px 14px;border-radius:8px;background:#4A90D9;color:#fff;border:none;cursor:pointer;font-weight:700">💾 Salvar Orçamento</button>' +
-        '    <button onclick="try { if(typeof enviarOrcamentoPorEmail===\'function\')enviarOrcamentoPorEmail(); } catch(_){}" style="padding:10px 14px;border-radius:8px;background:#7B68EE;color:#fff;border:none;cursor:pointer;font-weight:700">✉ Enviar por Email</button>' +
+        '    <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">' +
+        '    <button onclick="try { if(typeof fecharCalculadora===\'function\')fecharCalculadora(); else if(typeof fechar===\'function\')fechar(\'modal-calc\'); } catch(_){}" class="estoque-modal-btn estoque-modal-btn-ghost" style="padding:7px 10px;border-radius:8px;font-size:12px;font-weight:800">Fechar</button>' +
+        '    <button onclick="try { if(typeof imprimirOrcamentoCalc===\'function\')imprimirOrcamentoCalc(); } catch(_){}" class="estoque-modal-btn estoque-modal-btn-ghost" style="padding:7px 10px;border-radius:8px;font-size:12px;font-weight:800">🖨 Imprimir</button>' +
+        '    <button onclick="try { if(typeof salvarOrcamentoCalc===\'function\')salvarOrcamentoCalc(); } catch(_){}" class="estoque-modal-btn estoque-modal-btn-blue" style="padding:7px 11px;border-radius:8px;font-size:12px;font-weight:800">💾 Salvar</button>' +
+        '    <button onclick="try { if(typeof enviarOrcamentoPorEmail===\'function\')enviarOrcamentoPorEmail(); } catch(_){}" class="estoque-modal-btn" style="padding:7px 11px;border-radius:8px;font-size:12px;font-weight:800;background:linear-gradient(135deg,#6d28d9,#7b68ee);color:#fff;border-color:#6d28d9">✉ Email</button>' +
+        '    </div>' +
         '  </div>' +
         '</div></div>';
       document.body.appendChild(wrap);
