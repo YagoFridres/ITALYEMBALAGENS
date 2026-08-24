@@ -3703,6 +3703,68 @@ try {
     } catch (_) {}
   }
 
+  async function _ofmaqTryReadResponseBody(r) {
+    try {
+      if (!r) return null;
+      var raw = null;
+      try {
+        var cl = r.clone ? r.clone() : r;
+        if (typeof cl.text === 'function') raw = await cl.text();
+        else if (typeof cl.body === 'string') raw = cl.body;
+      } catch (_) { raw = null; }
+      return raw != null ? String(raw) : null;
+    } catch (_) { return null; }
+  }
+
+  async function _ofmaqReportError(label, err, opts) {
+    try {
+      var cfg = opts && typeof opts === 'object' ? Object.assign({}, opts) : {};
+      var stackFull = (err && typeof err === 'object' && err.stack) ? String(err.stack) : null;
+      var msgLine = String((err && err.message) || err || '—');
+      var respObj = cfg.response || cfg.resp || cfg.r || null;
+      var dataObj = cfg.data || cfg.j || cfg.body || null;
+      var payloadObj = cfg.payload || cfg.requestBody || cfg.bodySent || null;
+      var rawBody = cfg.rawBody != null ? String(cfg.rawBody) : null;
+      if (rawBody == null && respObj) { try { rawBody = await _ofmaqTryReadResponseBody(respObj); } catch (_) { rawBody = null; } }
+      try { console.group('%c[ERRO-OFMAQ] ' + label, 'color:#fff;background:#b91c1c;font-weight:900;padding:2px 8px;border-radius:6px;border:1px solid #fecaca;'); } catch (_) {}
+      try { console.error('%cMensagem: ' + msgLine, 'color:#fecaca;font-weight:800'); } catch (_) { console.error('[ERRO-OFMAQ] Mensagem:', msgLine); }
+      try { console.error('%cStack trace completo:', 'color:#fca5a5;font-weight:800'); } catch (_) {}
+      if (stackFull) try { console.error(String(stackFull)); } catch (_) {}
+      else try { console.error(new Error(msgLine).stack); } catch (_) {}
+      if (respObj) {
+        try { console.error('%cResposta HTTP:', 'color:#fdba74;font-weight:800'); } catch (_) {}
+        try {
+          var info = {};
+          try { info.status = Number(respObj.status); } catch (_) {}
+          try { info.statusText = String(respObj.statusText || ''); } catch (_) {}
+          try { info.ok = !!respObj.ok; } catch (_) {}
+          try { info.type = String(respObj.type || ''); } catch (_) {}
+          try { info.url = String(respObj.url || ''); } catch (_) {}
+          console.error(info);
+        } catch (_) {}
+        try {
+          var hdrs = {};
+          if (respObj.headers && respObj.headers.forEach) try { respObj.headers.forEach(function(v, k) { hdrs[k] = v; }); } catch (_) {}
+          else if (respObj.headers && typeof respObj.headers.entries === 'function') try { for (var p of respObj.headers.entries()) hdrs[p[0]] = p[1]; } catch (_) {}
+          if (Object.keys(hdrs).length) { try { console.error('%cHeaders da resposta:', 'color:#fdba74;font-weight:800'); } catch (_) {} console.error(hdrs); }
+        } catch (_) {}
+        if (rawBody) { try { console.error('%cCorpo resposta (raw):', 'color:#fdba74;font-weight:800'); } catch (_) {} try { console.error(String(rawBody)); } catch (_) {} }
+      }
+      if (dataObj != null) { try { console.error('%cBody parseado (data/json):', 'color:#fde68a;font-weight:800'); } catch (_) {} try { console.error(dataObj); } catch (_) {} }
+      if (payloadObj != null) { try { console.error('%cPayload enviado:', 'color:#c4b5fd;font-weight:800'); } catch (_) {} try { console.error(payloadObj); } catch (_) {} }
+      if (cfg.ofId != null || cfg.ofNum != null) { try { console.error('%cContexto OF:', 'color:#93c5fd;font-weight:800'); } catch (_) {} try { console.error({ ofId: cfg.ofId, ofNum: cfg.ofNum, machine: cfg.machine, data: cfg.data, motivo: cfg.motivo }); } catch (_) {} }
+      try { console.groupEnd && console.groupEnd(); } catch (_) {}
+      try { console.log('%c====== FIM [ERRO-OFMAQ] ======', 'color:#fecaca;font-weight:900'); } catch (_) {}
+      try { if (typeof logOfmaq === 'function') logOfmaq('erro ' + label, { mensagem: msgLine, stack: stackFull, status: respObj ? respObj.status : null, rawBody: rawBody ? rawBody.slice(0, 500) : null }); } catch (_) {}
+    } catch (_) { try { console.error('[ERRO-OFMAQ-FALLBACK]', label, err); } catch (__) {} }
+    return null;
+  }
+
+  try {
+    window._ofmaqReportError = _ofmaqReportError;
+    window._ofmaqTryReadResponseBody = _ofmaqTryReadResponseBody;
+  } catch (_) {}
+
   function cleanupOfmaqArtifacts() {
     try {
       Array.prototype.slice.call(document.querySelectorAll(
@@ -3826,9 +3888,27 @@ try {
 
   async function persistPatch(id, payload) {
     logOfmaq('PATCH /api/ofs/:id', { id: id, payload: payload });
-    var r = await apiFetch('/api/ofs/' + encodeURIComponent(String(id || '').trim()), { method: 'PATCH', body: payload });
+    var url = '/api/ofs/' + encodeURIComponent(String(id || '').trim());
+    var r = null;
+    var rawBody = null;
+    try {
+      r = await apiFetch(url, { method: 'PATCH', body: payload });
+    } catch (eNet) {
+      try { await _ofmaqReportError('persistPatch: fetch rede falhou', eNet, { ofId: id, payload: payload, url: url }); } catch (_) {}
+      throw eNet;
+    }
+    try {
+      if (r && typeof r.clone === 'function') {
+        try { rawBody = await r.clone().text().catch(function() { return null; }); } catch (_) { rawBody = null; }
+      }
+    } catch (_) { rawBody = null; }
     var j = r ? await r.json().catch(function() { return null; }) : null;
-    if (!r || !r.ok || (j && j.ok === false)) throw new Error(j && (j.error || j.message) || 'Falha ao salvar');
+    if (!r || !r.ok || (j && j.ok === false)) {
+      var msgErro = j && (j.error || j.message) || (r && r.status ? ('HTTP ' + r.status) : 'Falha ao salvar');
+      var err = new Error(msgErro);
+      try { await _ofmaqReportError('persistPatch: PATCH /api/ofs/:id falhou', err, { ofId: id, payload: payload, response: r, data: j, rawBody: rawBody, url: url }); } catch (_) {}
+      throw err;
+    }
     return (j && (j.data || j)) || payload;
   }
 
@@ -3929,7 +4009,7 @@ try {
           if (item && typeof item === 'object' && !Array.isArray(item)) return Object.assign({}, item, { nome: novaMaq, maquina: novaMaq, name: novaMaq });
           return novaMaq;
         });
-        var payload = { maquina: novaMaq, maq: [novaMaq], maquina_agendada: novaMaq, fluxo_maquinas: fluxoNovo, maquina_atual_index: idx };
+        var payload = { maquina: novaMaq, maq: [novaMaq], maquina_agendada: novaMaq, fluxo_maquinas: fluxoNovo, maquina_atual_index: idx, sem_papel: !!(ofRef && ofRef.sem_papel) };
         if (alterarData && novaData) {
           payload.data_entrega = novaData;
           payload.ent = novaData;
@@ -3941,6 +4021,7 @@ try {
         await refreshOfmaq('alterar-maquina');
         try { showOfmaqCenterConfirm('OF #' + String(ofNum || of.numero || of.of || '').trim() + ' movida para ' + novaMaq + (alterarData && novaData ? (' com nova entrega em ' + novaData.split('-').reverse().join('/')) : '') + '.', { title: 'Máquina alterada' }); } catch (_) {}
       } catch (e) {
+        try { await _ofmaqReportError('Alterar Máquina (patch-legacy)', e, { ofId: id, ofNum: ofNum, machine: novaMaq, data: novaData || null, payload: (typeof payload !== 'undefined') ? payload : null }); } catch (_) {}
         logOfmaq('erro alterar máquina', String(e && e.message || e));
         saveBtn.disabled = false;
         try { window.toast('Erro ao alterar máquina: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
@@ -3989,6 +4070,7 @@ try {
         await refreshOfmaq('alterar-data');
         try { showOfmaqCenterConfirm('OF #' + String(ofNum || of.numero || of.of || '').trim() + ' reagendada para ' + novaData.split('-').reverse().join('/') + '.', { title: 'Data alterada' }); } catch (_) {}
       } catch (e) {
+        try { await _ofmaqReportError('Alterar Data (patch-legacy)', e, { ofId: id, ofNum: ofNum, data: novaData || null, motivo: motivo, payload: (typeof payload !== 'undefined') ? payload : null }); } catch (_) {}
         logOfmaq('erro alterar data', String(e && e.message || e));
         saveBtn.disabled = false;
         try { window.toast('Erro ao alterar data: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
@@ -4028,6 +4110,7 @@ try {
         await refreshOfmaq('registrar-tempo');
         try { showOfmaqCenterConfirm('Tempos de setup e produção atualizados para a OF #' + String(ofNum || of.numero || of.of || '').trim() + '.', { title: 'Tempo registrado' }); } catch (_) {}
       } catch (e) {
+        try { await _ofmaqReportError('Registrar Tempo (patch-legacy)', e, { ofId: id, ofNum: ofNum, setup: setup, producao: prod, payload: (typeof payload !== 'undefined') ? payload : null }); } catch (_) {}
         logOfmaq('erro registrar tempo', String(e && e.message || e));
         saveBtn.disabled = false;
         try { window.toast('Erro ao registrar tempo: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
@@ -4041,30 +4124,51 @@ try {
     var id = String(ofId || '').trim();
     var machine = String(nomeMaquina || (of && (of.maquina || of.maquina_nome || of.maq)) || '').trim();
     var appendHist = getAppendHistPassagemLocal();
-    if (!id || !of) throw new Error('OF não localizada');
-    if (!machine) throw new Error('Máquina não identificada');
-    logOfmaq('POST /api/ofs/:id/passou-maquina', { id: id, maquina: machine });
-    var r = await window.apiFetch('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method: 'POST', body: { maquina: machine, maquina_nome: machine } });
-    var j = r ? await r.json().catch(function() { return { ok: true }; }) : null;
-    if (!r || !r.ok || (j && typeof j === 'object' && j.ok === false)) throw new Error(j && (j.error || j.message) || 'Falha ao registrar passagem');
-    if (of && typeof appendHist === 'function') {
-      appendHist({
-        of_id: of.id,
-        of_numero: of.numero || of.of,
-        numero: of.numero || of.of,
-        cliente: of.cliente || of.cliente_nome || of.cliNome || of.clinome || '',
-        produto: of.produto || of.descricao || '',
-        maquina: machine,
-        maquina_nome: machine,
-        data_passagem: isoFromDate(currentBusinessDate()),
-        hora_passagem: new Date().toISOString(),
-        status: 'Passou pela máquina',
-        passagens_maquina: [{ maquina: machine, maquina_nome: machine }]
-      });
+    var reqBody = { maquina: machine, maquina_nome: machine };
+    if (!id || !of) { var ePre0 = new Error('OF não localizada'); try { await _ofmaqReportError('Passou pela Máquina (patch-legacy)', ePre0, { ofId: id, ofNum: ofNum, machine: machine, payload: reqBody }); } catch (_) {} throw ePre0; }
+    if (!machine) { var ePre1 = new Error('Máquina não identificada'); try { await _ofmaqReportError('Passou pela Máquina (patch-legacy)', ePre1, { ofId: id, ofNum: ofNum, payload: reqBody }); } catch (_) {} throw ePre1; }
+    try {
+      logOfmaq('POST /api/ofs/:id/passou-maquina', { id: id, maquina: machine });
+      var urlReq = '/api/ofs/' + encodeURIComponent(id) + '/passou-maquina';
+      var r = null;
+      try {
+        r = await window.apiFetch(urlReq, { method: 'POST', body: reqBody });
+      } catch (eNet) {
+        try { await _ofmaqReportError('Passou pela Máquina (patch-legacy) rede', eNet, { ofId: id, ofNum: ofNum, machine: machine, payload: reqBody, url: urlReq }); } catch (_) {}
+        throw eNet;
+      }
+      var rawBody = null;
+      try { if (r && typeof r.clone === 'function') rawBody = await r.clone().text().catch(function() { return null; }); } catch (_) { rawBody = null; }
+      var j = r ? await r.json().catch(function() { return { ok: true }; }) : null;
+      if (!r || !r.ok || (j && typeof j === 'object' && j.ok === false)) {
+        var msgFail = (j && (j.error || j.message)) || (r && r.status ? ('HTTP ' + r.status) : 'Falha ao registrar passagem');
+        var errF = new Error(msgFail);
+        try { await _ofmaqReportError('Passou pela Máquina (patch-legacy) resposta HTTP falhou', errF, { ofId: id, ofNum: ofNum, machine: machine, response: r, data: j, payload: reqBody, rawBody: rawBody, url: urlReq }); } catch (_) {}
+        throw errF;
+      }
+      if (of && typeof appendHist === 'function') {
+        appendHist({
+          of_id: of.id,
+          of_numero: of.numero || of.of,
+          numero: of.numero || of.of,
+          cliente: of.cliente || of.cliente_nome || of.cliNome || of.clinome || '',
+          produto: of.produto || of.descricao || '',
+          maquina: machine,
+          maquina_nome: machine,
+          data_passagem: isoFromDate(currentBusinessDate()),
+          hora_passagem: new Date().toISOString(),
+          status: 'Passou pela máquina',
+          passagens_maquina: [{ maquina: machine, maquina_nome: machine }]
+        });
+      }
+      await refreshOfmaq('passou-maquina');
+      try { showOfmaqCenterConfirm('OF #' + String(ofNum || of.numero || of.of || '').trim() + ' — Passou pela máquina ' + machine + ' registrado com sucesso.', { title: 'Passagem registrada' }); } catch (_) {}
+      return j;
+    } catch (eTop) {
+      try { await _ofmaqReportError('Passou pela Máquina (patch-legacy) geral', eTop, { ofId: id, ofNum: ofNum, machine: machine, payload: reqBody }); } catch (_) { try { console.error('[ERRO-OFMAQ-FALLBACK] Passou pela Máquina (patch-legacy)', eTop); } catch (__) {} }
+      try { if (typeof window.toast === 'function') window.toast('Erro Passou pela Máquina: ' + String(eTop && eTop.message || eTop), 'var(--red)'); } catch (_) {}
+      throw eTop;
     }
-    await refreshOfmaq('passou-maquina');
-    try { showOfmaqCenterConfirm('OF #' + String(ofNum || of.numero || of.of || '').trim() + ' — Passou pela máquina ' + machine + ' registrado com sucesso.', { title: 'Passagem registrada' }); } catch (_) {}
-    return j;
   }
 
   function syncBuscaUi(termRaw) {
@@ -4140,6 +4244,7 @@ try {
       cleanupOfmaqArtifacts();
       return true;
     } catch (e) {
+      try { await _ofmaqReportError('Botão Sem Papelão (global)', e, { ofId: id, ofNum: ofNum, valorAtual: atual, valorNovo: novo, payload: (typeof payload !== 'undefined') ? payload : null }); } catch (_) {}
       logOfmaq('erro Sem Papelão', String(e && e.message || e));
       try { window.toast('Erro Sem Papelão: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
       return false;
@@ -22352,13 +22457,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           var machine = normalizeMachine(String(select && select.value || '').trim());
           if (!machine) return;
           try {
-            var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { maq: [machine], maquina: machine, maquina_agendada: machine } });
+            var bodySent = { maq: [machine], maquina: machine, maquina_agendada: machine, sem_papel: !!(item && item.sem_papel) };
+            var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: bodySent });
             logActionApiResult('zero', 'move', id, result);
             if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF');
             closeModal('ofmaq-move-zero');
             updateRowMachine(id, machine);
             try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' movida para ' + machine + ' com sucesso.', { title: 'Máquina alterada' }); } catch (_) {}
           } catch (err) {
+            try { if (typeof window._ofmaqReportError === 'function') await window._ofmaqReportError('Mover Máquina (zero-kanban)', err, { ofId: id, ofNum: item && item.numero || null, machine: machine, payload: typeof bodySent !== 'undefined' ? bodySent : null, resp: result && result.resp ? result.resp : null, data: result && result.data ? result.data : null }); } catch (_) {}
             try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
           }
         };
@@ -22376,13 +22483,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           var value = String(input && input.value || '').slice(0, 10);
           if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
           try {
-            var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { data_entrega: value, ent: value } });
+            var bodySent = { data_entrega: value, ent: value, sem_papel: !!(item && item.sem_papel) };
+            var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: bodySent });
             logActionApiResult('zero', 'date', id, result);
             if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao alterar data');
             closeModal('ofmaq-date-zero');
             updateRowDate(id, value);
             try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' reagendada para ' + value.split('-').reverse().join('/') + '.', { title: 'Data alterada' }); } catch (_) {}
           } catch (err) {
+            try { if (typeof window._ofmaqReportError === 'function') await window._ofmaqReportError('Alterar Data (zero-kanban)', err, { ofId: id, ofNum: item && item.numero || null, data: value, payload: typeof bodySent !== 'undefined' ? bodySent : null, resp: result && result.resp ? result.resp : null, data: result && result.data ? result.data : null }); } catch (_) {}
             try { window.toast('Erro ao alterar data: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
           }
         };
@@ -22390,12 +22499,27 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     }
 
     async function moveRowAndDateZero(id, machine, value) {
+      var ref = rowDataById(id) || null;
+      var bodySent = { maq: [machine], maquina: machine, maquina_agendada: machine, data_entrega: value, ent: value, sem_papel: !!(ref && ref.sem_papel) };
       var result = await apiJson('/api/ofs/' + encodeURIComponent(id), {
         method: 'PATCH',
-        body: { maq: [machine], maquina: machine, maquina_agendada: machine, data_entrega: value, ent: value }
+        body: bodySent
       });
       logActionApiResult('zero', 'move-date', id, result);
-      if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF e alterar data');
+      try {
+        if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) {
+          var msg = (result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF e alterar data';
+          var errLocal = new Error(msg);
+          try { if (typeof window._ofmaqReportError === 'function') await window._ofmaqReportError('Mover Máquina + Data (zero-kanban)', errLocal, { ofId: id, ofNum: ref && ref.numero || null, machine: machine, data: value, payload: bodySent, resp: result && result.resp ? result.resp : null, data: result && result.data ? result.data : null }); } catch (_) {}
+          throw errLocal;
+        }
+      } catch (eThrow) {
+        if (!(eThrow && eThrow._reportedZeroMoveDate)) {
+          try { if (typeof window._ofmaqReportError === 'function') await window._ofmaqReportError('Mover Máquina + Data (zero-kanban) geral', eThrow, { ofId: id, ofNum: ref && ref.numero || null, machine: machine, data: value, payload: bodySent, resp: result && result.resp ? result.resp : null, data: result && result.data ? result.data : null }); } catch (_) {}
+          try { eThrow._reportedZeroMoveDate = true; } catch (_) {}
+        }
+        throw eThrow;
+      }
       return result;
     }
 
@@ -22420,6 +22544,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             closeModal('ofmaq-actions-zero');
             try { showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ((item && item.sem_papel) ? ' removida de Sem Papelão.' : ' marcada como Sem Papelão.'), { title: 'Sem Papelão' }); } catch (_) {}
           } catch (err) {
+            try { if (typeof window._ofmaqReportError === 'function') await window._ofmaqReportError('Sem Papelão (zero-kanban)', err, { ofId: id, ofNum: item && item.numero || null }); } catch (_) {}
             try { window.toast('Erro Sem Papelão: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
           }
         };
@@ -22427,7 +22552,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (passBtn) {
         passBtn.onclick = async function() {
           try {
-            var result = await apiJson('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method: 'POST', body: { maquina: item.maquina, maquina_nome: item.maquina } });
+            var bodySent = { maquina: item.maquina, maquina_nome: item.maquina };
+            var result = await apiJson('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method: 'POST', body: bodySent });
             logActionApiResult('zero', 'pass', id, result);
             if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao registrar passagem');
             closeModal('ofmaq-actions-zero');
@@ -22444,6 +22570,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             applyFilters();
             try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' passou pela máquina ' + String(item.maquina || '').trim() + ' com sucesso.', { title: 'Passou pela máquina' }); } catch (_) {}
           } catch (err) {
+            try { if (typeof window._ofmaqReportError === 'function') await window._ofmaqReportError('Passou pela Máquina (zero-kanban)', err, { ofId: id, ofNum: item && item.numero || null, machine: item && item.maquina || null, payload: typeof bodySent !== 'undefined' ? bodySent : null, resp: result && result.resp ? result.resp : null, data: result && result.data ? result.data : null }); } catch (_) {}
             try { window.toast('Erro ao registrar passagem: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
           }
         };
@@ -22470,6 +22597,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             updateRowDate(id, value);
             try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' movida para ' + machine + ' em ' + value.split('-').reverse().join('/') + '.', { title: 'Máquina e data alteradas' }); } catch (_) {}
           } catch (err) {
+            try { if (typeof window._ofmaqReportError === 'function') await window._ofmaqReportError('Mover Máquina + Data (zero-kanban save)', err, { ofId: id, ofNum: item && item.numero || null, machine: machine, data: value }); } catch (_) {}
             try { window.toast('Erro ao mover OF e alterar data: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
           }
         };
@@ -23961,6 +24089,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     }
 
     async function moveRow(id, machine) {
+      var row = rowById(id);
       if (window.__OFMAQ_FINAL_MOCK) {
         var local = rowById(id);
         if (local) {
@@ -23969,13 +24098,25 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         }
         return;
       }
-      var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { maq: [machine], maquina: machine, maquina_agendada: machine } });
+      var bodySent = { maq: [machine], maquina: machine, maquina_agendada: machine, sem_papel: !!(row && row.ofRaw && row.ofRaw.sem_papel) };
+      var result;
+      try {
+        result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: bodySent });
+      } catch (eNet) {
+        try { await window._ofmaqReportError('Mover Máquina (final)', eNet, { payload: bodySent, ofContext: { id: id, numero: row && row.numero, maquina_antes: row && row.maquina, maquina_nova: machine } }); } catch (_) {}
+        throw eNet;
+      }
       try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'move', id: id, status: result && result.resp ? result.resp.status : null, ok: !!(result && result.resp && result.resp.ok), body: result ? result.data : null }); } catch (_) {}
-      if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF');
+      if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) {
+        var errMove = new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF');
+        try { await window._ofmaqReportError('Mover Máquina (final)', errMove, { status: result && result.resp && result.resp.status, statusText: result && result.resp && result.resp.statusText, headers: result && result.resp && result.resp.headers, rawBody: JSON.stringify(result && result.data || null), payload: bodySent, ofContext: { id: id, numero: row && row.numero, maquina_antes: row && row.maquina, maquina_nova: machine } }); } catch (_) {}
+        throw errMove;
+      }
       return result;
     }
 
     async function updateDate(id, value) {
+      var row = rowById(id);
       if (window.__OFMAQ_FINAL_MOCK) {
         var local = rowById(id);
         if (local) {
@@ -23984,13 +24125,25 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         }
         return;
       }
-      var result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: { data_entrega: value, ent: value } });
+      var bodySent = { data_entrega: value, ent: value, sem_papel: !!(row && row.ofRaw && row.ofRaw.sem_papel) };
+      var result;
+      try {
+        result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: bodySent });
+      } catch (eNet) {
+        try { await window._ofmaqReportError('Alterar Data (final)', eNet, { payload: bodySent, ofContext: { id: id, numero: row && row.numero, data_antes: row && row.prazoIso, data_nova: value } }); } catch (_) {}
+        throw eNet;
+      }
       try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'date', id: id, status: result && result.resp ? result.resp.status : null, ok: !!(result && result.resp && result.resp.ok), body: result ? result.data : null }); } catch (_) {}
-      if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao alterar data');
+      if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) {
+        var errDate = new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao alterar data');
+        try { await window._ofmaqReportError('Alterar Data (final)', errDate, { status: result && result.resp && result.resp.status, statusText: result && result.resp && result.resp.statusText, headers: result && result.resp && result.resp.headers, rawBody: JSON.stringify(result && result.data || null), payload: bodySent, ofContext: { id: id, numero: row && row.numero, data_antes: row && row.prazoIso, data_nova: value } }); } catch (_) {}
+        throw errDate;
+      }
       return result;
     }
 
     async function moveRowAndDate(id, machine, value) {
+      var row = rowById(id);
       if (window.__OFMAQ_FINAL_MOCK) {
         var local = rowById(id);
         if (local) {
@@ -24000,18 +24153,27 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         }
         return;
       }
-      var result = await apiJson('/api/ofs/' + encodeURIComponent(id), {
-        method: 'PATCH',
-        body: {
-          maq: [machine],
-          maquina: machine,
-          maquina_agendada: machine,
-          data_entrega: value,
-          ent: value
-        }
-      });
+      var bodySent = {
+        maq: [machine],
+        maquina: machine,
+        maquina_agendada: machine,
+        data_entrega: value,
+        ent: value,
+        sem_papel: !!(row && row.ofRaw && row.ofRaw.sem_papel)
+      };
+      var result;
+      try {
+        result = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: bodySent });
+      } catch (eNet) {
+        try { await window._ofmaqReportError('Mover Máquina + Data (final)', eNet, { payload: bodySent, ofContext: { id: id, numero: row && row.numero, maquina_antes: row && row.maquina, maquina_nova: machine, data_antes: row && row.prazoIso, data_nova: value } }); } catch (_) {}
+        throw eNet;
+      }
       try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'move-date', id: id, status: result && result.resp ? result.resp.status : null, ok: !!(result && result.resp && result.resp.ok), body: result ? result.data : null }); } catch (_) {}
-      if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF e alterar data');
+      if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) {
+        var errMoveDate = new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao mover OF e alterar data');
+        try { await window._ofmaqReportError('Mover Máquina + Data (final)', errMoveDate, { status: result && result.resp && result.resp.status, statusText: result && result.resp && result.resp.statusText, headers: result && result.resp && result.resp.headers, rawBody: JSON.stringify(result && result.data || null), payload: bodySent, ofContext: { id: id, numero: row && row.numero, maquina_antes: row && row.maquina, maquina_nova: machine, data_antes: row && row.prazoIso, data_nova: value } }); } catch (_) {}
+        throw errMoveDate;
+      }
       return result;
     }
 
@@ -24046,6 +24208,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     async function markPassed(id, machine) {
       var row = rowById(id);
       var appendHist = getAppendHistPassagemLocal();
+      if (!row) {
+        var errRow = new Error('OF não encontrada no estado para marcar como passou pela máquina');
+        try { await window._ofmaqReportError('Passou pela Máquina (final)', errRow, { ofContext: { id: id, maquina: machine } }); } catch (_) {}
+        throw errRow;
+      }
+      if (!machine) {
+        var errMaq = new Error('Máquina não informada para marcar passou pela máquina');
+        try { await window._ofmaqReportError('Passou pela Máquina (final)', errMaq, { ofContext: { id: id, numero: row.numero, maquina_atual: row.maquina } }); } catch (_) {}
+        throw errMaq;
+      }
       if (window.__OFMAQ_FINAL_MOCK) {
         // #region debug-point B:of-action-mark-passed-mock
         try {
@@ -24089,9 +24261,22 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         });
       } catch (_) {}
       // #endregion
-      var result = await apiJson('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method: 'POST', body: { maquina: machine, maquina_nome: machine } });
-      try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'pass', id: id, status: result && result.resp ? result.resp.status : null, ok: !!(result && result.resp && result.resp.ok), body: result ? result.data : null }); } catch (_) {}
-      if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao registrar passagem');
+      var bodyPass = { maquina: machine, maquina_nome: machine };
+      var resultPass;
+      try {
+        resultPass = await apiJson('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method: 'POST', body: bodyPass });
+      } catch (eNetPass) {
+        try { await window._ofmaqReportError('Passou pela Máquina (final)', eNetPass, { payload: bodyPass, ofContext: { id: id, numero: row.numero, maquina: machine, cliente: row.cliente, produto: row.produto } }); } catch (_) {}
+        try { window.toast('Erro de rede ao registrar passagem: ' + String(eNetPass && eNetPass.message || eNetPass), 'var(--red)'); } catch (_) {}
+        throw eNetPass;
+      }
+      try { console.log('[OFMAQ-ACTION-API]', { scope: 'final', action: 'pass', id: id, status: resultPass && resultPass.resp ? resultPass.resp.status : null, ok: !!(resultPass && resultPass.resp && resultPass.resp.ok), body: resultPass ? resultPass.data : null }); } catch (_) {}
+      if (!resultPass || !resultPass.resp || !resultPass.resp.ok || (resultPass.data && resultPass.data.ok === false)) {
+        var errPass = new Error((resultPass && resultPass.data && (resultPass.data.error || resultPass.data.message)) || 'Falha ao registrar passagem');
+        try { await window._ofmaqReportError('Passou pela Máquina (final)', errPass, { status: resultPass && resultPass.resp && resultPass.resp.status, statusText: resultPass && resultPass.resp && resultPass.resp.statusText, headers: resultPass && resultPass.resp && resultPass.resp.headers, rawBody: JSON.stringify(resultPass && resultPass.data || null), payload: bodyPass, ofContext: { id: id, numero: row.numero, maquina: machine, cliente: row.cliente, produto: row.produto } }); } catch (_) {}
+        try { window.toast('Erro ao registrar passagem: ' + String(errPass.message || errPass), 'var(--red)'); } catch (_) {}
+        throw errPass;
+      }
       if (row && typeof appendHist === 'function') {
         appendHist({
           of_id: row.id,
@@ -24108,7 +24293,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         });
       }
       state.rowsData = state.rowsData.filter(function(item) { return item.id !== id; });
-      return result;
+      return resultPass;
     }
 
     function openImage(id) {
@@ -24139,6 +24324,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           closeModal('ofmaq-final-move');
           try { showOfmaqCenterConfirm('OF #' + String(row && row.numero || id) + ' movida para ' + machine + ' com sucesso.', { title: 'Máquina alterada' }); } catch (_) {}
         } catch (err) {
+          try { await window._ofmaqReportError('Mover Máquina (final-modal-save)', err, { ofContext: { id: id, numero: row && row.numero, maquina_antes: row && row.maquina } }); } catch (_) {}
           try { window.toast('Erro ao mover OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
         }
       };
@@ -24163,6 +24349,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           closeModal('ofmaq-final-date');
           try { showOfmaqCenterConfirm('OF #' + String(row && row.numero || id) + ' reagendada para ' + fmtDateBR(value) + '.', { title: 'Data alterada' }); } catch (_) {}
         } catch (err) {
+          try { await window._ofmaqReportError('Alterar Data (final-modal-save)', err, { ofContext: { id: id, numero: row && row.numero, data_antes: row && row.prazoIso } }); } catch (_) {}
           try { window.toast('Erro ao alterar data: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
         }
       };
@@ -24199,6 +24386,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           closeModal('ofmaq-final-move-date');
           try { showOfmaqCenterConfirm('OF #' + String(row && row.numero || id) + ' movida para ' + machine + ' em ' + fmtDateBR(value) + '.', { title: 'Máquina e data alteradas' }); } catch (_) {}
         } catch (err) {
+          try { await window._ofmaqReportError('Mover Máquina + Data (final-modal-save)', err, { ofContext: { id: id, numero: row && row.numero, maquina_antes: row && row.maquina, data_antes: row && row.prazoIso } }); } catch (_) {}
           try { window.toast('Erro ao mover OF e alterar data: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
         }
       };
@@ -24210,10 +24398,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var urgActive = row.urgencia === 'urgente';
       var urgTitle = urgActive ? 'Urgência ativa' : (row.urgencia === 'atrasada' ? 'OF atrasada' : 'Sem urgência');
       var urgSub = urgActive ? 'Essa OF está priorizada na fila e destacada na grade.' : (row.urgencia === 'atrasada' ? 'Ela não está marcada manualmente, mas já está fora do prazo.' : 'Você pode marcar urgência sem sair do modal de ações.');
+      var semPapelActive = !!(row && row.ofRaw && row.ofRaw.sem_papel);
       var modal = openModal('ofmaq-final-actions', 'Ações da OF #' + String(row.numero || row.id), ''
         + '<div class="ofmaq-final-urgency-state"><div><strong>' + escH(urgTitle) + '</strong><span>' + escH(urgSub) + '</span></div><span class="ofmaq-final-status" data-tone="' + escAttr(urgActive ? 'danger' : (row.urgencia === 'atrasada' ? 'warn' : 'ok')) + '">' + escH(urgActive ? 'URGENTE' : (row.urgencia === 'atrasada' ? 'ATRASADA' : 'NORMAL')) + '</span></div>'
         + '<button type="button" data-ofmaq-final-action="pass" class="ofmaq-final-action-primary"><span>✓ Passou pela máquina</span><small>Concluir etapa</small></button>'
         + '<button type="button" data-ofmaq-final-action="toggle-urgency" data-urgente="' + (urgActive ? '1' : '0') + '" class="ofmaq-final-action-danger" data-active="' + (urgActive ? '1' : '0') + '"><span>' + (urgActive ? '✓ Remover urgência' : '🚨 Marcar como urgente') + '</span><small>' + (urgActive ? 'Voltar ao fluxo normal' : 'Priorizar na produção') + '</small></button>'
+        + '<button type="button" data-ofmaq-final-action="sem-papel" class="patch-ofmaq-sem-papel-btn" data-active="' + (semPapelActive ? '1' : '0') + '" style="width:100%;margin-top:8px"><span style="display:block;font-size:13px;font-weight:900">' + (semPapelActive ? '🟨 Remover Sem Papelão' : '🟨 Marcar Sem Papelão') + '</span><small style="display:block;font-size:11px;font-weight:600;opacity:.9;margin-top:3px">' + (semPapelActive ? 'Voltar ao fluxo normal' : 'Destacar amarela / sem papelão') + '</small></button>'
         + '<button type="button" data-ofmaq-final-action="move" class="ofmaq-final-action-secondary"><span>↔ Mover de máquina</span><small>Trocar fila</small></button>'
         + '<button type="button" data-ofmaq-final-action="date" class="ofmaq-final-action-secondary"><span>📅 Alterar data</span><small>Reagendar</small></button>'
         + '<button type="button" data-ofmaq-final-action="move-date" class="ofmaq-final-action-secondary"><span>🗓️↔ Mover máquina e data</span><small>Alterar os dois de uma vez</small></button>'
@@ -24251,6 +24441,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             try { showOfmaqCenterConfirm('OF #' + String(row.numero || id) + (nextUrgent ? ' marcada como urgente.' : ' voltou ao fluxo normal.') , { title: nextUrgent ? 'Urgência ativada' : 'Urgência removida' }); } catch (_) {}
             return;
           }
+          if (action === 'sem-papel') {
+            await window.toggleSemPapelOf(id, row && row.numero, null);
+            if (row && row.ofRaw) row.ofRaw.sem_papel = !row.ofRaw.sem_papel;
+            closeModal('ofmaq-final-actions');
+            updateToolbar(ensureShell());
+            renderRows(ensureShell());
+            try { showOfmaqCenterConfirm('OF #' + String(row.numero || id) + (!!(row && row.ofRaw && row.ofRaw.sem_papel) ? ' marcada como Sem Papelão.' : ' removida de Sem Papelão.'), { title: !!(row && row.ofRaw && row.ofRaw.sem_papel) ? 'Sem Papelão ativado' : 'Sem Papelão desativado' }); } catch (_) {}
+            return;
+          }
           if (action === 'date') {
             closeModal('ofmaq-final-actions');
             openDateModal(id);
@@ -24266,6 +24465,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             closeModal('ofmaq-final-actions');
           }
         } catch (err) {
+          try { await window._ofmaqReportError('Ações OF (final-modal): ' + String(action || 'desconhecida'), err, { ofContext: { id: id, numero: row && row.numero, maquina: row && row.maquina, cliente: row && row.cliente, produto: row && row.produto } }); } catch (_) {}
           try { console.error('[OFMAQ-FINAL] action-modal error', action, err); } catch (_) {}
           try { window.toast('Erro na ação da OF: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
         }
