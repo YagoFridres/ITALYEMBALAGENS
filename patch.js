@@ -4761,6 +4761,13 @@ try {
       };
     });
     if (selected) sRenderVisual(selected, plan);
+    try {
+      var btnPrint = document.getElementById('simd-btn-print');
+      if (btnPrint) {
+        var podeImprimir = !!(selected && Array.isArray(compatibles) && compatibles.length > 0);
+        btnPrint.disabled = !podeImprimir;
+      }
+    } catch (_p26printBtn) {}
   }
 
   function sBuildMailBody(row, plan) {
@@ -4787,30 +4794,95 @@ try {
     }
     var selected = rows.find(function(row) { return sRowKey(row) === String(window.__simdSelectedRowId || '').trim(); }) || rows[0];
     var plan = window.__simdLastPlan || {};
+    var sheetComp = Number(selected.chapa_comp_mm || 0) || 0;
+    var sheetLarg = Number(selected.chapa_larg_mm || 0) || 0;
+    var pieceComp = Number(selected.orient_comp_mm || 0) || 0;
+    var pieceLarg = Number(selected.orient_larg_mm || 0) || 0;
+    var cols = sInt(selected.cols);
+    var rws = sInt(selected.rows);
+    var sobraLateral = Math.max(0, sheetComp - (cols * pieceComp));
+    var sobraInferior = Math.max(0, sheetLarg - (rws * pieceLarg));
+    var retalhos = [];
+    if (sobraLateral > 0) retalhos.push({ tipo: 'Faixa lateral', comp: sobraLateral, larg: sheetLarg, qtdPorChapa: 1 });
+    if (sobraInferior > 0) retalhos.push({ tipo: 'Faixa inferior', comp: cols * pieceComp, larg: sobraInferior, qtdPorChapa: 1 });
+    var qtdPedido = sInt(plan && plan.qtd_pedido || 0);
+    var caixasPorChapa = Math.max(1, sInt(selected.caixas_por_chapa || 0));
+    var chapasNec = sInt(selected.chapas_necessarias || (qtdPedido > 0 ? Math.ceil(qtdPedido / caixasPorChapa) : 0));
+    var cssBase = (typeof window._printCssPadraoComissoes === 'function' ? window._printCssPadraoComissoes() : 'body{font-family:Arial,sans-serif;padding:24px;color:#0f172a}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.card{border:1px solid #cbd5e1;border-radius:12px;padding:12px}.lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.08em}.val{font-size:20px;font-weight:700;margin-top:6px}')
+      + ' h3.hprint{margin-top:28px;margin-bottom:10px;font-size:15px;color:#0f172a;border-left:4px solid #2563eb;padding-left:10px}';
     var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Simulador de Desperdício</title>'
-      + '<style>' + (typeof window._printCssPadraoComissoes === 'function' ? window._printCssPadraoComissoes() : 'body{font-family:Arial,sans-serif;padding:24px;color:#0f172a}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.card{border:1px solid #cbd5e1;border-radius:12px;padding:12px}.lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.08em}.val{font-size:20px;font-weight:700;margin-top:6px}') + '</style>'
+      + '<style>' + cssBase + '</style>'
       + '</head><body>'
       + '<div class="brandline">Italy Embalagens</div>'
-      + '<h1>Simulador de Desperdício</h1>'
+      + '<h1>Simulador de Desperdício de Papelão</h1>'
       + '<h2>Gerado em ' + sEsc(typeof window._printGeradoEmBr === 'function' ? window._printGeradoEmBr() : new Date().toLocaleString('pt-BR')) + '</h2>'
       + '<div class="cards">'
       + '<div class="card"><div class="lbl">Caixa</div><div class="val">' + sEsc(sFmtMm(plan.caixa_comp_mm) + ' x ' + sFmtMm(plan.caixa_larg_mm) + ' x ' + sFmtMm(plan.caixa_alt_mm)) + '</div></div>'
       + '<div class="card"><div class="lbl">Onda</div><div class="val">' + sEsc(plan.onda || '—') + '</div></div>'
       + '<div class="card"><div class="lbl">Planificação</div><div class="val">' + sEsc(sFmtMm(plan.peca_comp_mm) + ' x ' + sFmtMm(plan.peca_larg_mm)) + '</div></div>'
-      + '<div class="card"><div class="lbl">Melhor chapa</div><div class="val">' + sEsc(selected.nome || 'Chapa') + '</div></div>'
+      + '<div class="card"><div class="lbl">Chapa selecionada</div><div class="val" style="font-size:16px">' + sEsc(selected.nome || 'Chapa') + '</div></div>'
+      + (qtdPedido > 0 ? '<div class="card"><div class="lbl">Quantidade do pedido</div><div class="val">' + sEsc(sFmtNum(qtdPedido, 0)) + ' caixas</div></div>' : '')
+      + '<div class="card"><div class="lbl">Peças por chapa</div><div class="val">' + sEsc(String(caixasPorChapa)) + '</div></div>'
+      + '<div class="card"><div class="lbl">Desperdício</div><div class="val">' + sEsc(sFmtPct(selected.desperdicio_pct || 0)) + '</div></div>'
+      + (qtdPedido > 0 ? '<div class="card"><div class="lbl">Chapas necessárias</div><div class="val">' + sEsc(String(chapasNec || 0)) + '</div></div>' : '')
       + '</div>'
-      + '<table><thead><tr><th>Fornecedor</th><th>Tamanho</th><th>Caixas/chapa</th><th>Desperdício</th><th>Estoque</th><th>Valor unit.</th><th>Chapas necessárias</th><th>Custo estimado</th></tr></thead>'
+
+      + '<h3 class="hprint">Resumo da chapa selecionada</h3>'
+      + '<table><thead><tr><th>Fornecedor</th><th>Tamanho</th><th>Caixas/chapa</th><th>Desperdício</th><th>Estoque</th><th>Valor unit.</th>' + (qtdPedido > 0 ? '<th>Chapas necessárias</th><th>Custo estimado</th>' : '<th>Custo unit. / chapa</th>') + '</tr></thead>'
       + '<tbody><tr>'
       + '<td>' + sEsc(selected.fornecedor || '—') + '</td>'
       + '<td>' + sEsc(selected.tamanho || '—') + '</td>'
-      + '<td>' + sEsc(String(selected.caixas_por_chapa || 0)) + '</td>'
+      + '<td>' + sEsc(String(caixasPorChapa)) + '</td>'
       + '<td>' + sEsc(sFmtPct(selected.desperdicio_pct || 0)) + '</td>'
-      + '<td>' + sEsc(String(selected.estoque || 0)) + '</td>'
+      + '<td>' + sEsc(String(sInt(selected.estoque || 0))) + '</td>'
       + '<td>' + sEsc(selected.valor_unitario > 0 ? sFmtMoney(selected.valor_unitario) : '—') + '</td>'
-      + '<td>' + sEsc(selected.chapas_necessarias == null ? '—' : String(selected.chapas_necessarias)) + '</td>'
-      + '<td>' + sEsc(selected.custo_estimado == null ? '—' : sFmtMoney(selected.custo_estimado)) + '</td>'
+      + (qtdPedido > 0
+        ? '<td>' + sEsc(String(chapasNec || 0)) + '</td><td>' + sEsc(selected.custo_estimado == null ? '—' : sFmtMoney(selected.custo_estimado)) + '</td>'
+        : '<td>' + sEsc(selected.valor_unitario > 0 ? sFmtMoney(selected.valor_unitario) : '—') + '</td>')
       + '</tr></tbody></table>'
-      + '<div style="margin-top:18px">' + sSvg(selected) + '</div>'
+
+      + '<h3 class="hprint">Vista de cima — como a chapa é cortada</h3>'
+      + '<div style="padding:12px;border:1px solid #cbd5e1;border-radius:14px;background:#fafafa">' + sSvg(selected) + '</div>'
+
+      + '<h3 class="hprint">Detalhes do corte</h3>'
+      + '<table><thead><tr><th>Tamanho da chapa</th><th>Tamanho da peça cortada</th><th>Layout (cols × linhas)</th><th>Peças por chapa</th><th>Sobra lateral</th><th>Sobra inferior</th><th>% de desperdício</th></tr></thead>'
+      + '<tbody><tr>'
+      + '<td>' + sEsc(sFmtMm(sheetComp) + ' × ' + sFmtMm(sheetLarg)) + '</td>'
+      + '<td>' + sEsc(sFmtMm(pieceComp) + ' × ' + sFmtMm(pieceLarg)) + ' <span style="color:#64748b;font-size:11px">(' + sEsc(selected.orientacao_label || '—') + ')</span></td>'
+      + '<td>' + sEsc(String(cols || 0)) + ' × ' + sEsc(String(rws || 0)) + '</td>'
+      + '<td>' + sEsc(String(caixasPorChapa)) + '</td>'
+      + '<td>' + sEsc(sFmtMm(sobraLateral)) + (sobraLateral > 0 ? ' <span style="color:#f59e0b">(retalho)</span>' : '') + '</td>'
+      + '<td>' + sEsc(sFmtMm(sobraInferior)) + (sobraInferior > 0 ? ' <span style="color:#f59e0b">(retalho)</span>' : '') + '</td>'
+      + '<td>' + sEsc(sFmtPct(selected.desperdicio_pct || 0)) + '</td>'
+      + '</tr></tbody></table>'
+
+      + (retalhos.length > 0
+        ? '<h3 class="hprint">Retalhos reaproveitáveis por chapa</h3>'
+        + '<table><thead><tr><th>Tipo</th><th>Dimensão (comprimento × largura)</th><th>Qtd. por chapa</th>' + (qtdPedido > 0 ? '<th>Qtd. total no pedido</th>' : '') + '</tr></thead>'
+        + '<tbody>'
+        + retalhos.map(function(ret) {
+            var total = qtdPedido > 0 ? (chapasNec * sInt(ret.qtdPorChapa || 0)) : null;
+            return '<tr>'
+              + '<td>' + sEsc(ret.tipo || '—') + '</td>'
+              + '<td>' + sEsc(sFmtMm(ret.comp || 0) + ' × ' + sFmtMm(ret.larg || 0)) + '</td>'
+              + '<td>' + sEsc(String(sInt(ret.qtdPorChapa || 1))) + '</td>'
+              + (qtdPedido > 0 ? '<td>' + sEsc(String(total || 0)) + '</td>' : '')
+              + '</tr>';
+          }).join('')
+        + '</tbody></table>'
+        : '')
+
+      + (qtdPedido > 0
+        ? '<h3 class="hprint">Total de chapas para o pedido</h3>'
+        + '<div class="cards">'
+        + '<div class="card"><div class="lbl">Qtd. pedido (caixas)</div><div class="val">' + sEsc(sFmtNum(qtdPedido, 0)) + '</div></div>'
+        + '<div class="card"><div class="lbl">Caixas por chapa</div><div class="val">' + sEsc(String(caixasPorChapa)) + '</div></div>'
+        + '<div class="card"><div class="lbl">Chapas necessárias</div><div class="val">' + sEsc(String(chapasNec || 0)) + '</div></div>'
+        + (selected.valor_unitario > 0 ? '<div class="card"><div class="lbl">Custo estimado</div><div class="val">' + sEsc(sFmtMoney(selected.custo_estimado || (chapasNec * Number(selected.valor_unitario || 0)))) + '</div></div>' : '')
+        + (retalhos.length > 0 ? '<div class="card"><div class="lbl">Retalhos totais</div><div class="val">' + sEsc(String(chapasNec * retalhos.length)) + ' peças</div></div>' : '')
+        + '</div>'
+        : '')
+
       + '<script>window.onload=function(){setTimeout(function(){try{window.focus()}catch(e){}try{window.print()}catch(e){}},400)}<\/script>'
       + '</body></html>';
     if (typeof window._openStyledPrintWindow === 'function') {
@@ -5047,6 +5119,7 @@ try {
       + '#tela-simulador-desperdicio .simd-btn{padding:11px 18px;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:800;cursor:pointer}'
       + '#tela-simulador-desperdicio .simd-btn.primary{background:linear-gradient(135deg,#2563eb,#1d4ed8)}'
       + '#tela-simulador-desperdicio .simd-btn.ghost{background:rgba(15,23,42,.92);border:1px solid rgba(148,163,184,.18);color:#e2e8f0}'
+      + '#tela-simulador-desperdicio .simd-btn:disabled{opacity:.55;cursor:not-allowed;pointer-events:none}'
       + '#tela-simulador-desperdicio .simd-search-wrap{display:grid;gap:10px}'
       + '#tela-simulador-desperdicio .simd-table-shell{display:grid;gap:14px}'
       + '#tela-simulador-desperdicio .simd-table{width:100%;border-collapse:separate;border-spacing:0;min-width:980px}'
@@ -5094,7 +5167,7 @@ try {
       + '    </div>'
       + '    <div id="simd-plan-resumo" class="simd-plan-resumo" style="margin-top:16px"></div>'
       + '    <div class="simd-actions">'
-      + '      <div class="simd-actions-left"><button type="button" id="simd-btn" class="simd-btn primary">Calcular</button></div>'
+      + '      <div class="simd-actions-left"><button type="button" id="simd-btn" class="simd-btn primary">Calcular</button><button type="button" id="simd-btn-print" class="simd-btn ghost" disabled>Imprimir</button></div>'
       + '      <div class="simd-actions-right"><div style="font-size:12px;color:#64748b">O ranking considera rotação 90° automaticamente e busca chapas reais do estoque.</div></div>'
       + '    </div>'
       + '  </div>'
@@ -5148,6 +5221,14 @@ try {
       limpar.onclick = function(e) {
         try { if (e) e.preventDefault(); } catch (_) {}
         if (typeof window._simdLimparChapaSelecionada === 'function') window._simdLimparChapaSelecionada();
+      };
+    }
+    var btnPrint = document.getElementById('simd-btn-print');
+    if (btnPrint && btnPrint.dataset.simdPrintBound !== '1') {
+      btnPrint.dataset.simdPrintBound = '1';
+      btnPrint.onclick = function(e) {
+        try { if (e) e.preventDefault(); } catch (_) {}
+        if (typeof window.sPrintSelected === 'function') return window.sPrintSelected();
       };
     }
     sVerificarCampos();
