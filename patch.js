@@ -3376,8 +3376,84 @@ try {
     { id: 'tipos-caixa-rel', label: 'Tipos de Caixa', icon: '📦', desc: 'Agrupa OFs concluídas por tipo de caixa e destaca os mais produzidos no período ativo.', run: rrReportTiposCaixa },
     { id: 'cores-tamanhos-rel', label: 'Cores e Tamanhos mais usados', icon: '🎨', desc: 'Conta as cores de impressão e os tamanhos mais frequentes nas OFs concluídas do período ativo.', run: rrReportCoresTamanhos },
     { id: 'maiores-tamanhos-vendidos', label: 'Maiores Tamanhos Vendidos', icon: '📏', desc: 'Ranking dos tamanhos de caixa mais vendidos, do maior para o menor.', run: rrReportMaioresTamanhosVendidos },
+    { id: 'amostras-do-mes', label: 'Amostras do Mês', icon: '🧪', desc: 'Resumo mensal de amostras produzidas e enviadas por cliente e período.', run: rrOpenAmostrasMesModal },
+    { id: 'projecao-vendas', label: 'Projeção de Vendas', icon: '📊', desc: 'Projeção mensal de vendas por ano com histórico e comparação.', run: rrOpenProjecaoVendasModal },
+    { id: 'facas-mais-utilizadas', label: 'Facas Mais Utilizadas', icon: '🔪', desc: 'Ranking de uso de facas no período selecionado com detalhamento por máquina.', run: rrOpenFacasMaisUtilizadasModal },
     { id: 'relatorio-sergio', label: 'Relatório Sérgio', icon: '📝', desc: 'Montagem manual com múltiplos itens, autocomplete de clientes e impressão com fonte ampliada.', run: rrOpenSergioBuilder }
   ];
+
+  function rrOpenAmostrasMesModal() {
+    try {
+      var now = new Date();
+      var ano = now.getFullYear();
+      var mes = now.getMonth() + 1;
+      if (typeof window.renderAmostrasSemana === 'function') {
+        try {
+          var wrap = document.createElement('div');
+          wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(6px)';
+          var card = document.createElement('div');
+          card.style.cssText = 'width:min(1100px,96vw);max-height:90vh;overflow:auto;background:linear-gradient(180deg,#07111f 0%,#0f172a 100%);border:1px solid rgba(148,163,184,.18);border-radius:20px;padding:20px;box-shadow:0 40px 100px rgba(0,0,0,.55)';
+          card.innerHTML = ''
+            + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px">'
+            + '  <div><div style="font-size:20px;font-weight:900;color:#f8fafc">🧪 Amostras do Mês — ' + String(mes).padStart(2, '0') + '/' + ano + '</div><div style="font-size:12px;color:#94a3b8">Relatório consolidado de amostras produzidas e enviadas no mês.</div></div>'
+            + '  <button type="button" id="rr-amostras-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
+            + '</div>'
+            + '<div id="rr-amostras-body" style="min-height:320px"></div>';
+          wrap.appendChild(card);
+          document.body.appendChild(wrap);
+          var btnClose = card.querySelector('#rr-amostras-close');
+          if (btnClose) btnClose.onclick = function() { try { wrap.remove(); } catch (_) {} };
+          wrap.addEventListener('click', function(e) { if (e.target === wrap) try { wrap.remove(); } catch (_) {} });
+          var body = card.querySelector('#rr-amostras-body');
+          if (body) window.renderAmostrasSemana(body);
+          return;
+        } catch (_modErr) {}
+      }
+      alert('Amostras do Mês: use a página OFs por Máquina / Histórico de Passagens para visualizar as amostras do período atual.');
+    } catch (e) {
+      try { alert('Erro ao abrir Amostras do Mês: ' + String(e && e.message || e)); } catch (_) {}
+    }
+  }
+
+  function rrOpenProjecaoVendasModal() {
+    try {
+      if (typeof window.renderProjecaoVendas === 'function') {
+        var anoAtual = new Date().getFullYear();
+        try {
+          if (typeof window.go === 'function') window.go('relatorios');
+        } catch (_) {}
+        setTimeout(function() {
+          try { window.renderProjecaoVendas(anoAtual); } catch (_) {}
+        }, 120);
+        setTimeout(function() {
+          try { window.renderProjecaoVendas(anoAtual); } catch (_) {}
+        }, 520);
+        return;
+      }
+      alert('Relatório de Projeção de Vendas disponível na tela principal.');
+    } catch (e) {
+      try { alert('Erro ao abrir Projeção de Vendas: ' + String(e && e.message || e)); } catch (_) {}
+    }
+  }
+
+  function rrOpenFacasMaisUtilizadasModal() {
+    try {
+      if (typeof window.openFacasMaisUtilizadasReport === 'function') {
+        window.openFacasMaisUtilizadasReport();
+        return;
+      }
+      if (typeof window.carregarFacas === 'function') {
+        Promise.resolve(window.carregarFacas()).finally(function() {
+          try {
+            if (typeof window.go === 'function') window.go('facas1');
+            setTimeout(function() { try { if (typeof window.renderFacasWireframePage === 'function') window.renderFacasWireframePage(); } catch (_) {} }, 220);
+          } catch (_) {}
+        });
+      }
+    } catch (e) {
+      try { alert('Erro ao abrir Facas Mais Utilizadas: ' + String(e && e.message || e)); } catch (_) {}
+    }
+  }
 
   function rrEnsureCustosCard() {
     var custoDef = null;
@@ -4228,6 +4304,24 @@ try {
     if (!id || !of) return;
     var atual = !!(of.sem_papel);
     var novo = !atual;
+    if (novo === true) {
+      logOfmaq('Sem Papelão: abrindo modal alterar data com motivo Falta de Papelão (pré-selecionado)', { ofId: id, ofNum: ofNum });
+      try {
+        if (typeof openAlterarDataPatched === 'function') {
+          var dataEnt = String(of.data_entrega || of.ent || '').slice(0, 10);
+          var aberto = openAlterarDataPatched(ofId, ofNum, dataEnt);
+          setTimeout(function() {
+            try {
+              var sel = document.getElementById('patch-ofmaq-data-motivo');
+              if (sel) sel.value = 'Falta de Papelão';
+            } catch (_) {}
+          }, 60);
+          return aberto || true;
+        }
+      } catch (eModal) {
+        logOfmaq('erro abrir modal Sem Papelão', String(eModal && eModal.message || eModal));
+      }
+    }
     try {
       var payload = { sem_papel: novo };
       var row = await persistPatch(id, payload);
@@ -4237,6 +4331,10 @@ try {
       try {
         var rowZero = document.querySelector('#ofmaq-tbody-zero tr[data-of-id="' + id + '"]');
         if (rowZero) rowZero.setAttribute('data-sem-papel', novo ? '1' : '0');
+      } catch (_) {}
+      try {
+        var rowsFinal = document.querySelectorAll('.ofmaq-final-table-wrap tr[data-of-id="' + id + '"], .ofmaq-final-row[data-of-id="' + id + '"], .ofmaq-row[data-of-id="' + id + '"]');
+        rowsFinal.forEach(function(el) { try { el.setAttribute('data-sem-papel', novo ? '1' : '0'); } catch (_) {} });
       } catch (_) {}
       try {
         if (typeof window.toast === 'function') window.toast('OF #' + String(ofNum || of.numero || of.of || id) + ' ' + (novo ? 'marcada como Sem Papelão.' : 'removida de Sem Papelão.'), novo ? 'rgba(250,204,21,.95)' : 'var(--green)');
@@ -4396,6 +4494,7 @@ try {
   }
   window.renderSimuladorPage = renderSimuladorPage;
 
+  if (String(window.__simdPreferredMode || '') === 'box') return;
   if (String(window.__simdPreferredMode || '') !== 'box') return;
 
   function sLog() {
@@ -6537,7 +6636,28 @@ window._compraPapelaoBindBody = function() {
   var btnRelFornecedor = host.querySelector('#ccpx-body-btn-rel-forn');
   var btnRelResumo = host.querySelector('#ccpx-body-btn-rel-resumo');
   var btnPrint = host.querySelector('#ccpx-body-btn-print');
-  if (btnNova) btnNova.onclick = function() { window.abrirModalCompra(); };
+  if (btnNova && !btnNova.__ccpxNovaBound) {
+    btnNova.__ccpxNovaBound = true;
+    btnNova.onclick = function() {
+      if (typeof window.abrirModalCompra === 'function') {
+        window.abrirModalCompra();
+        return;
+      }
+      var tentativas = 0;
+      var t = setInterval(function() {
+        tentativas += 1;
+        if (typeof window.abrirModalCompra === 'function') {
+          clearInterval(t);
+          try { window.abrirModalCompra(); } catch (_) {}
+          return;
+        }
+        if (tentativas > 40) {
+          clearInterval(t);
+          try { alert('Módulo de compras ainda carregando. Tente novamente em 1 segundo.'); } catch (_) {}
+        }
+      }, 50);
+    };
+  }
   if (btnPasta) btnPasta.onclick = function() { window._compraPapelaoOpenFolderModal(); };
   if (btnSugestoes) btnSugestoes.onclick = function() { window._compraPapelaoOpenPinsModal(); };
   if (btnRelPeriodo) btnRelPeriodo.onclick = function() { window._compraPapelaoOpenReportModal('periodo'); };
@@ -10034,6 +10154,26 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           payload.chapa_utilizada = chapaAtual || null;
           payload.chapaUtilizada = chapaAtual || null;
         }
+        try {
+          var pastaCalcSel = document.getElementById('calc-pasta');
+          var pastaValor = String((pastaCalcSel && pastaCalcSel.value) || (body && (body.pasta_id || body.pastaId)) || '').trim();
+          if (!pastaValor) {
+            try {
+              var cur = typeof currentOrcamentoFromState === 'function' ? currentOrcamentoFromState() : null;
+              pastaValor = String((cur && (cur.pasta_id || cur.pastaId)) || '').trim();
+            } catch (_) {}
+          }
+          if (!pastaValor) {
+            try {
+              var filtroAtual = String((typeof currentFilter === 'function' ? currentFilter() : window.__orcPastaFiltro) || '__all').trim();
+              if (filtroAtual && filtroAtual !== '__all' && filtroAtual !== '__none') pastaValor = filtroAtual;
+            } catch (_) {}
+          }
+          if (pastaValor) {
+            payload.pasta_id = pastaValor;
+            payload.pastaId = pastaValor;
+          }
+        } catch (_pastaErr) {}
       }
       var result = await originalApi.call(this, method, url, payload);
       if ((m === 'POST' || m === 'PUT' || m === 'PATCH') && /^\/orcamentos(?:\/|$)/.test(u) && result && typeof result === 'object') {
@@ -10063,6 +10203,21 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
               delete data.parametros.chapaUtilizada;
             }
           }
+          try {
+            var pastaResp = String(payload && (payload.pasta_id || payload.pastaId) || '').trim();
+            if (!pastaResp) {
+              try {
+                var selResp = document.getElementById('calc-pasta');
+                pastaResp = String((selResp && selResp.value) || '').trim();
+              } catch (_) {}
+            }
+            if (pastaResp) {
+              if (!String(data.pasta_id || data.pastaId || '').trim()) {
+                data.pasta_id = pastaResp;
+                data.pastaId = pastaResp;
+              }
+            }
+          } catch (_pastaRespErr) {}
           result = Object.assign({}, result, { data: data });
         } else {
           if (nomeAtual && !String(result.nome || '').trim()) result.nome = nomeAtual;
@@ -10079,6 +10234,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
             result.chapa_utilizada = chapaAtual || null;
             result.chapaUtilizada = chapaAtual || null;
           }
+          try {
+            var pastaResp2 = String(payload && (payload.pasta_id || payload.pastaId) || '').trim();
+            if (!pastaResp2) {
+              try {
+                var selResp2 = document.getElementById('calc-pasta');
+                pastaResp2 = String((selResp2 && selResp2.value) || '').trim();
+              } catch (_) {}
+            }
+            if (pastaResp2 && !String(result.pasta_id || result.pastaId || '').trim()) {
+              result.pasta_id = pastaResp2;
+              result.pastaId = pastaResp2;
+            }
+          } catch (_pastaRespErr2) {}
         }
       }
       return result;
@@ -10330,11 +10498,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         '    </div>' +
         '    </div>' +
         '  </div>' +
-        '  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;padding-top:12px;border-top:1px solid #334155">' +
-        '    <div style="display:flex;gap:12px;align-items:center;margin-right:auto;flex-wrap:wrap">' +
-        '      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700"><input type="checkbox" id="calc-print-b" checked style="width:16px;height:16px"> Onda B</label>' +
-        '      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700"><input type="checkbox" id="calc-print-c" checked style="width:16px;height:16px"> Onda C</label>' +
-        '      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700"><input type="checkbox" id="calc-print-bc" checked style="width:16px;height:16px"> Onda BC</label>' +
+        '  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:12px;justify-content:flex-end;align-items:center;flex-wrap:wrap;padding-top:14px;padding-bottom:4px;border-top:1px solid #334155">' +
+        '    <div style="display:flex;gap:14px;align-items:center;margin-right:auto;flex-wrap:wrap">' +
+        '      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px;border-radius:14px;background:linear-gradient(135deg,rgba(15,23,42,.9),rgba(15,23,42,.7));border:1px solid rgba(148,163,184,.18)">' +
+        '        <span style="font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(148,163,184,.82)">Onda do cálculo</span>' +
+        '        <button type="button" class="calc-onda-chip" data-onda="B" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(148,163,184,.22);background:rgba(255,255,255,.05);color:#cbd5e1;font-weight:900;cursor:pointer;font-size:13px;letter-spacing:.04em;transition:.15s">B</button>' +
+        '        <button type="button" class="calc-onda-chip" data-onda="C" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(148,163,184,.22);background:rgba(255,255,255,.05);color:#cbd5e1;font-weight:900;cursor:pointer;font-size:13px;letter-spacing:.04em;transition:.15s">C</button>' +
+        '        <button type="button" class="calc-onda-chip" data-onda="BC" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(148,163,184,.22);background:rgba(255,255,255,.05);color:#cbd5e1;font-weight:900;cursor:pointer;font-size:13px;letter-spacing:.04em;transition:.15s">BC</button>' +
+        '      </div>' +
+        '      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+        '        <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:rgba(255,255,255,0.62);font-weight:700"><input type="checkbox" id="calc-print-b" checked style="width:14px;height:14px"> Imprimir B</label>' +
+        '        <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:rgba(255,255,255,0.62);font-weight:700"><input type="checkbox" id="calc-print-c" checked style="width:14px;height:14px"> Imprimir C</label>' +
+        '        <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:rgba(255,255,255,0.62);font-weight:700"><input type="checkbox" id="calc-print-bc" checked style="width:14px;height:14px"> Imprimir BC</label>' +
+        '      </div>' +
         '    </div>' +
         '    <button onclick="try { if(typeof fecharCalculadora===\'function\')fecharCalculadora(); else if(typeof fechar===\'function\')fechar(\'modal-calc\'); } catch(_){}" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">Fechar</button>' +
         '    <button onclick="try { if(typeof imprimirOrcamentoCalc===\'function\')imprimirOrcamentoCalc(); } catch(_){}" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">🖨 Imprimir</button>' +
@@ -10375,7 +10551,56 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           };
         }
       } catch (_) {}
+      try {
+        function highlightCalcOndaChip() {
+          try {
+            var sel = document.getElementById('calc-onda');
+            var valAtual = String((sel && sel.value) || 'B').toUpperCase();
+            var chips = document.querySelectorAll('.calc-onda-chip');
+            chips.forEach(function(chip) {
+              var v = String(chip.getAttribute('data-onda') || '').toUpperCase();
+              if (v === valAtual) {
+                chip.style.background = 'linear-gradient(135deg,#1d4ed8 0%,#3b82f6 100%)';
+                chip.style.color = '#eff6ff';
+                chip.style.borderColor = 'rgba(96,165,250,.55)';
+                chip.style.boxShadow = '0 0 0 2px rgba(59,130,246,.18) inset, 0 6px 18px rgba(59,130,246,.22)';
+              } else {
+                chip.style.background = 'rgba(255,255,255,.05)';
+                chip.style.color = '#cbd5e1';
+                chip.style.borderColor = 'rgba(148,163,184,.22)';
+                chip.style.boxShadow = 'none';
+              }
+            });
+          } catch (_) {}
+        }
+        var chipsOnda = document.querySelectorAll('.calc-onda-chip');
+        chipsOnda.forEach(function(chip) {
+          if (chip.__boundCalcOnda) return;
+          chip.__boundCalcOnda = true;
+          chip.addEventListener('click', function() {
+            var onda = String(chip.getAttribute('data-onda') || '').toUpperCase();
+            try {
+              var sel = document.getElementById('calc-onda');
+              if (sel) {
+                sel.value = onda;
+                try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+              }
+            } catch (_) {}
+            try {
+              if (typeof window.calcRecalc === 'function') window.calcRecalc();
+            } catch (_) {}
+            highlightCalcOndaChip();
+          });
+        });
+        highlightCalcOndaChip();
+        if (typeof window.__highlightCalcOndaChip !== 'function') {
+          window.__highlightCalcOndaChip = highlightCalcOndaChip;
+        }
+      } catch (_chipsErr) {}
       try { if (typeof window.calcRecalc === 'function') window.calcRecalc(); } catch (_) {}
+      try {
+        if (typeof window.__highlightCalcOndaChip === 'function') window.__highlightCalcOndaChip();
+      } catch (_) {}
       return true;
     } catch (_) {
       return false;
@@ -14005,6 +14230,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     var topMap = function(list, extractor, keyName) {
       var mapa = new Map();
       list.forEach(function(row) {
+        if (!_histPassagemConcluidaTotal(row)) return;
         extractor(row).forEach(function(nome) {
           var chave = String(nome || '').trim();
           if (!chave) return;
@@ -14022,6 +14248,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     var aggregate = function(list) {
       var mapa = new Map();
       list.forEach(function(row) {
+        if (!_histPassagemConcluidaTotal(row)) return;
         var maquina = String(row && (row.maquina || row.maquina_nome) || 'Sem máquina').trim() || 'Sem máquina';
         var item = mapa.get(maquina) || { maquina: maquina, total_ofs: 0, valor_total_producao: 0, caixas_produzidas: 0 };
         item.total_ofs += 1;
@@ -17803,7 +18030,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '.patch-ofmaq-card.kb-card-ofmaq .kb-acoes{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px}'
       + '.patch-ofmaq-card.kb-card-ofmaq .kb-acoes > button{padding:10px 14px;border-radius:12px;border:1px solid rgba(96,165,250,.28);background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(30,41,59,.92));color:#dbeafe;font-size:12px;font-weight:800;cursor:pointer;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}'
       + '.patch-ofmaq-card.kb-card-ofmaq .kb-acoes > button:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.6);box-shadow:0 14px 24px rgba(15,23,42,.22)}'
-      + '.kb-card-ofmaq[data-sem-papel="1"],.patch-ofmaq-v2-row[data-sem-papel="1"],tr.patch-ofmaq-row[data-sem-papel="1"],#ofmaq-tbody-zero tr[data-sem-papel="1"]{background:linear-gradient(180deg,rgba(146,64,14,.25),rgba(202,138,4,.22))!important;border-color:rgba(250,204,21,.55)!important;box-shadow:0 0 0 1px rgba(250,204,21,.18) inset!important}'
+      + '.kb-card-ofmaq[data-sem-papel="1"],.patch-ofmaq-v2-row[data-sem-papel="1"],tr.patch-ofmaq-row[data-sem-papel="1"],#ofmaq-tbody-zero tr[data-sem-papel="1"],div.ofmaq-final-table-wrap tr[data-of-id][data-sem-papel="1"],div.ofmaq-final-row[data-sem-papel="1"],div.patch-row-zero[data-sem-papel="1"],div[data-sem-papel="1"].ofmaq-row,.ofmaq-final-table .ofmaq-row[data-sem-papel="1"]{background:linear-gradient(180deg,rgba(146,64,14,.28),rgba(202,138,4,.28))!important;background-color:rgba(250,204,21,.10)!important;border-color:rgba(250,204,21,.65)!important;box-shadow:0 0 0 2px rgba(250,204,21,.22) inset, 0 0 24px rgba(250,204,21,.08)!important;outline:1px solid rgba(250,204,21,.35)!important;outline-offset:-1px!important}'
       + '.patch-ofmaq-sem-papel-btn{padding:10px 14px!important;border-radius:12px!important;border:1px solid rgba(250,204,21,.4)!important;background:linear-gradient(135deg,rgba(250,204,21,.18),rgba(234,179,8,.1))!important;color:#fbbf24!important;font-size:12px!important;font-weight:900!important;cursor:pointer!important;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease!important}'
       + '.patch-ofmaq-sem-papel-btn[data-active="1"]{background:linear-gradient(135deg,rgba(250,204,21,.5),rgba(234,179,8,.45))!important;color:#1f2937!important;border-color:rgba(250,204,21,.75)!important}'
       + '.patch-ofmaq-sem-papel-btn:hover{transform:translateY(-1px);border-color:rgba(250,204,21,.85)!important;box-shadow:0 14px 24px rgba(15,23,42,.22)!important}'
@@ -18068,7 +18295,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   (function patchCatalogoRiscador() {
     if (window.__patchCatalogoRiscadorApplied) return;
     window.__patchCatalogoRiscadorApplied = true;
-    var CANONICAL = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA', 'Acabamento'];
+    var CANONICAL = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'Riscador', 'CORTE VINCO ROTATIVA'];
     var applyTimer = 0;
     var observerInstalled = false;
 
@@ -29315,7 +29542,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var busca = String(window.__facasWireBusca || '').trim().toLowerCase();
       if (busca) {
         lista = lista.filter(function(f) {
-          var txt = [f.nome, f.medidas, f.obs, (f.maquinas || []).join(' '), (f.clientes || []).join(' ')].join(' ').toLowerCase();
+          var txt = [f.nome, f.medidas, f.obs, f.localizacao, (f.maquinas || []).join(' '), (f.clientes || []).join(' ')].join(' ').toLowerCase();
           return txt.indexOf(busca) >= 0;
         });
       }
@@ -29336,14 +29563,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    <button class="pep-btn" id="facas-wire-alterar">Alterar</button>'
         + '    <button class="pep-btn primary" id="facas-wire-criar">Criar Facas</button>'
         + '  </div></div>'
-        + '  <div class="pep-panel"><div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Tabela de Facas</div></div><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Numero</th><th>Categoria</th><th>Nome</th><th>Medidas</th><th>Maquinas</th><th>Clientes</th><th>Valor</th><th>Ações</th></tr></thead><tbody>'
+        + '  <div class="pep-panel"><div class="pep-head" style="margin-bottom:10px"><div class="pep-title" style="font-size:18px">Tabela de Facas</div></div><div style="overflow:auto"><table class="pep-table"><thead><tr><th>Número</th><th>Categoria</th><th>Nome</th><th>Medidas</th><th>Localização</th><th>Máquinas</th><th>Clientes</th><th>Valor</th><th>Ações</th></tr></thead><tbody>'
         + (lista.length ? lista.map(function(f) {
           var clientes = (Array.isArray(f.clientes) ? f.clientes : []).map(function(id) {
             var cli = (Array.isArray(window.CLIENTES) ? window.CLIENTES : []).find(function(c) { return String(c && c.id || '') === String(id || ''); });
             return cli ? cli.nome : id;
           }).join(', ');
-          return '<tr><td>' + esc(f.numero || '—') + '</td><td>' + esc(f.categoria || '—') + '</td><td>' + esc(f.nome || '—') + '</td><td>' + esc(f.medidas || '—') + '</td><td>' + esc((f.maquinas || []).join(', ') || '—') + '</td><td>' + esc(clientes || '—') + '</td><td>' + money(f.valor || 0) + '</td><td><button class="pep-btn" data-faca-edit="' + esc(f.id || '') + '">Alterar</button> <button class="pep-btn danger" data-faca-del="' + esc(f.id || '') + '">Excluir</button></td></tr>';
-        }).join('') : '<tr><td colspan="8" style="text-align:center;color:#94a3b8">Nenhuma faca cadastrada.</td></tr>')
+          var maqs = Array.isArray(f.maquinas) && f.maquinas.length ? f.maquinas.slice() : [];
+          if (f._maqUso && Array.isArray(f._maqUso) && f._maqUso.length) {
+            maqs = maqs.concat(f._maqUso).filter(function(v, i, a) { return a.indexOf(v) === i; });
+          }
+          return '<tr><td>' + esc(f.numero || '—') + '</td><td>' + esc(f.categoria || '—') + '</td><td>' + esc(f.nome || '—') + '</td><td>' + esc(f.medidas || '—') + '</td><td>' + esc(f.localizacao || '—') + '</td><td>' + esc(maqs.join(', ') || '—') + '</td><td>' + esc(clientes || '—') + '</td><td>' + money(f.valor || 0) + '</td><td><button class="pep-btn" data-faca-edit="' + esc(f.id || '') + '">Alterar</button> <button class="pep-btn danger" data-faca-del="' + esc(f.id || '') + '">Excluir</button></td></tr>';
+        }).join('') : '<tr><td colspan="9" style="text-align:center;color:#94a3b8">Nenhuma faca cadastrada.</td></tr>')
         + '  </tbody></table></div></div>'
         + '</div>';
       document.getElementById('facas-wire-busca').oninput = function() {
@@ -36429,30 +36660,49 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function ensureModalFields() {
     var modal = document.getElementById('modal-faca1');
-    if (!modal || modal.dataset.patchFacasNumeroCategoria === '1') return;
+    if (!modal) return;
     var grid = modal.querySelector('.modal-body div[style*="grid-template-columns"]');
     var nome = document.getElementById('fa1-nome');
     if (!grid || !nome) return;
-    modal.dataset.patchFacasNumeroCategoria = '1';
-
-    var wrapNum = document.createElement('div');
-    wrapNum.className = 'mf';
-    wrapNum.innerHTML = '<label>NÚMERO</label><input id="fa1-numero" placeholder="Ex: F001">';
-
-    var wrapCat = document.createElement('div');
-    wrapCat.className = 'mf';
-    wrapCat.innerHTML = '<label>CATEGORIA</label><select id="fa1-categoria" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 8px;font-size:.85rem;font-family:var(--font);width:100%"><option value="">Selecionar...</option></select>';
+    var flagApplied = String(modal.dataset.patchFacasNumeroCategoria || '') === '1';
+    var flagLoc = String(modal.dataset.patchFacasLocalizacao || '') === '1';
+    if (!flagApplied) modal.dataset.patchFacasNumeroCategoria = '1';
+    if (!flagLoc) modal.dataset.patchFacasLocalizacao = '1';
 
     var ref = document.getElementById('fa1-medidas');
-    if (ref && ref.parentElement && ref.parentElement.nextSibling) {
-      grid.insertBefore(wrapNum, ref.parentElement.nextSibling);
-      grid.insertBefore(wrapCat, wrapNum.nextSibling);
-    } else {
-      grid.appendChild(wrapNum);
-      grid.appendChild(wrapCat);
-    }
+    if (!flagApplied) {
+      var wrapNum = document.createElement('div');
+      wrapNum.className = 'mf';
+      wrapNum.innerHTML = '<label>NÚMERO</label><input id="fa1-numero" placeholder="Ex: F001">';
 
-    loadAndBindCategorias();
+      var wrapCat = document.createElement('div');
+      wrapCat.className = 'mf';
+      wrapCat.innerHTML = '<label>CATEGORIA</label><select id="fa1-categoria" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 8px;font-size:.85rem;font-family:var(--font);width:100%"><option value="">Selecionar...</option></select>';
+
+      if (ref && ref.parentElement && ref.parentElement.nextSibling) {
+        grid.insertBefore(wrapNum, ref.parentElement.nextSibling);
+        grid.insertBefore(wrapCat, wrapNum.nextSibling);
+      } else {
+        grid.appendChild(wrapNum);
+        grid.appendChild(wrapCat);
+      }
+      loadAndBindCategorias();
+    }
+    if (!flagLoc) {
+      var wrapLoc = document.createElement('div');
+      wrapLoc.className = 'mf';
+      wrapLoc.innerHTML = '<label>LOCALIZAÇÃO</label><input id="fa1-localizacao" placeholder="Ex: Gaveta A3 / Prateleira 2 / Estante Leste">';
+      if (ref && ref.parentElement && ref.parentElement.nextSibling) {
+        var refNode = ref.parentElement.nextSibling;
+        if (refNode && refNode.nextSibling && refNode.nextSibling.nextSibling) {
+          grid.insertBefore(wrapLoc, refNode.nextSibling.nextSibling.nextSibling);
+        } else {
+          grid.appendChild(wrapLoc);
+        }
+      } else {
+        grid.appendChild(wrapLoc);
+      }
+    }
   }
 
   function syncModalFieldsFromFaca(id) {
@@ -36463,6 +36713,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (numEl) numEl.value = f ? (f.numero || '') : '';
       var catEl = document.getElementById('fa1-categoria');
       if (catEl) catEl.value = f ? (f.categoria || '') : '';
+      var locEl = document.getElementById('fa1-localizacao');
+      if (locEl) locEl.value = f ? (f.localizacao || '') : '';
     } catch (_) {}
   }
 
@@ -36516,8 +36768,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             if (o && typeof o === 'object') {
               var num = String((document.getElementById('fa1-numero') || {}).value || '').trim();
               var cat = String((document.getElementById('fa1-categoria') || {}).value || '').trim();
+              var loc = String((document.getElementById('fa1-localizacao') || {}).value || '').trim();
               if (num) o.numero = num;
               if (cat) o.categoria = cat;
+              if (loc) o.localizacao = loc;
+              else if (Object.prototype.hasOwnProperty.call(o, 'localizacao') || Object.keys(o).some(function(k) { return k.toLowerCase() === 'localizacao' || k.toLowerCase() === 'localização'; })) {
+                o.localizacao = '';
+              }
               opts.body = JSON.stringify(o);
             }
           } catch (_) {}
@@ -49768,6 +50025,7 @@ function _ocultarGraficoComissoes() {
       medidas: String(src.medidas || '').trim(),
       valor: Number(src.valor ?? src.valor_unitario ?? 0) || 0,
       categoria: String(src.categoria || '').trim(),
+      localizacao: String(src.localizacao || src.localização || '').trim(),
       clientes: Array.isArray(src.clientes) ? src.clientes.slice() : [],
       maquinas: Array.isArray(src.maquinas) ? src.maquinas.slice() : []
     };
@@ -50284,8 +50542,8 @@ function _ocultarGraficoComissoes() {
   window.__simdBoxPlannerTailAtRealEndApplied = true;
 })();
 ;(function() {
-  window.__simdPreferredMode = String(window.__simdPreferredMode || 'sheet');
-  if (String(window.__simdPreferredMode || '') !== 'sheet') return;
+  window.__simdPreferredMode = String(window.__simdPreferredMode || 'box');
+  if (String(window.__simdPreferredMode || '') !== 'box') return;
   if (window.__simdSheetMeasureTailApplied) return;
   window.__simdSheetMeasureTailApplied = true;
 
