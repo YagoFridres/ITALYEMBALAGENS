@@ -3741,6 +3741,22 @@ try {
       var idx = pool.findIndex(function(item) { return String(item && item.id || '').trim() === sid; });
       if (idx >= 0) pool[idx] = Object.assign({}, pool[idx] || {}, patch);
     });
+    try {
+      if (patch && typeof patch === 'object' && ('sem_papel' in patch)) {
+        var novo = !!patch.sem_papel;
+        var targets = document.querySelectorAll('.kb-card-ofmaq[data-of-id="' + sid + '"], .kb-card-ofmaq[data-id="' + sid + '"], .patch-ofmaq-v2-row[data-of-id="' + sid + '"], tr.patch-ofmaq-row[data-of-id="' + sid + '"], #ofmaq-tbody-zero tr[data-of-id="' + sid + '"]');
+        targets.forEach(function(el) { try { el.setAttribute('data-sem-papel', novo ? '1' : '0'); } catch (_) {} });
+        targets.forEach(function(el) {
+          try {
+            var btns = el.querySelectorAll('.patch-ofmaq-sem-papel-btn');
+            btns.forEach(function(b) {
+              b.setAttribute('data-active', novo ? '1' : '0');
+              b.textContent = novo ? '🟨 Remover Sem Papelão' : '🟨 Sem Papelão';
+            });
+          } catch (_) {}
+        });
+      }
+    } catch (_) {}
   }
 
   async function refreshOfmaq(reason) {
@@ -4101,6 +4117,34 @@ try {
     });
   }
 
+  window.toggleSemPapelOf = async function(ofId, ofNum, cardElHint) {
+    logOfmaq('clique ação Sem Papelão', { ofId: ofId, ofNum: ofNum });
+    var of = getOfmaqById(ofId);
+    var id = String(ofId || '').trim();
+    if (!id || !of) return;
+    var atual = !!(of.sem_papel);
+    var novo = !atual;
+    try {
+      var payload = { sem_papel: novo };
+      var row = await persistPatch(id, payload);
+      mergeOfLocal(id, Object.assign({}, payload, row || {}));
+      var cards = document.querySelectorAll('.kb-card-ofmaq[data-of-id="' + id + '"], .kb-card-ofmaq[data-id="' + id + '"], .patch-ofmaq-v2-row[data-of-id="' + id + '"], tr.patch-ofmaq-row[data-of-id="' + id + '"]');
+      cards.forEach(function(el) { try { el.setAttribute('data-sem-papel', novo ? '1' : '0'); } catch (_) {} });
+      try {
+        var rowZero = document.querySelector('#ofmaq-tbody-zero tr[data-of-id="' + id + '"]');
+        if (rowZero) rowZero.setAttribute('data-sem-papel', novo ? '1' : '0');
+      } catch (_) {}
+      try {
+        if (typeof window.toast === 'function') window.toast('OF #' + String(ofNum || of.numero || of.of || id) + ' ' + (novo ? 'marcada como Sem Papelão.' : 'removida de Sem Papelão.'), novo ? 'rgba(250,204,21,.95)' : 'var(--green)');
+      } catch (_) {}
+      cleanupOfmaqArtifacts();
+      return true;
+    } catch (e) {
+      logOfmaq('erro Sem Papelão', String(e && e.message || e));
+      try { window.toast('Erro Sem Papelão: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+      return false;
+    }
+  };
   window.alterarMaquinaOf = function(ofId, ofNum) {
     logOfmaq('clique ação Alterar Máquina', { ofId: ofId, ofNum: ofNum });
     cleanupOfmaqArtifacts();
@@ -17571,6 +17615,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '.patch-ofmaq-card.kb-card-ofmaq .kb-acoes{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px}'
       + '.patch-ofmaq-card.kb-card-ofmaq .kb-acoes > button{padding:10px 14px;border-radius:12px;border:1px solid rgba(96,165,250,.28);background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(30,41,59,.92));color:#dbeafe;font-size:12px;font-weight:800;cursor:pointer;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}'
       + '.patch-ofmaq-card.kb-card-ofmaq .kb-acoes > button:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.6);box-shadow:0 14px 24px rgba(15,23,42,.22)}'
+      + '.kb-card-ofmaq[data-sem-papel="1"],.patch-ofmaq-v2-row[data-sem-papel="1"],tr.patch-ofmaq-row[data-sem-papel="1"],#ofmaq-tbody-zero tr[data-sem-papel="1"]{background:linear-gradient(180deg,rgba(146,64,14,.25),rgba(202,138,4,.22))!important;border-color:rgba(250,204,21,.55)!important;box-shadow:0 0 0 1px rgba(250,204,21,.18) inset!important}'
+      + '.patch-ofmaq-sem-papel-btn{padding:10px 14px!important;border-radius:12px!important;border:1px solid rgba(250,204,21,.4)!important;background:linear-gradient(135deg,rgba(250,204,21,.18),rgba(234,179,8,.1))!important;color:#fbbf24!important;font-size:12px!important;font-weight:900!important;cursor:pointer!important;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease!important}'
+      + '.patch-ofmaq-sem-papel-btn[data-active="1"]{background:linear-gradient(135deg,rgba(250,204,21,.5),rgba(234,179,8,.45))!important;color:#1f2937!important;border-color:rgba(250,204,21,.75)!important}'
+      + '.patch-ofmaq-sem-papel-btn:hover{transform:translateY(-1px);border-color:rgba(250,204,21,.85)!important;box-shadow:0 14px 24px rgba(15,23,42,.22)!important}'
       + '.patch-ofmaq-card-main{display:flex;gap:16px;align-items:flex-start}'
       + '.patch-ofmaq-card-title{font-size:17px;font-weight:800;line-height:1.3;letter-spacing:.01em;color:#f8fafc}'
       + '.patch-ofmaq-readable-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin-top:0}'
@@ -19844,11 +19892,39 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function _ofmaqEnsureSequenceControl(card, of) {
     if (!card || !of) return;
     if (card.classList && card.classList.contains('kb-card-ofmaq')) {
+      try {
+        var flagSemPapel = !!(of.sem_papel);
+        card.setAttribute('data-sem-papel', flagSemPapel ? '1' : '0');
+      } catch (_) {}
       var kbActions = card.querySelector('.kb-acoes');
       if (!kbActions) {
         kbActions = document.createElement('div');
         kbActions.className = 'kb-acoes';
         card.appendChild(kbActions);
+      }
+      var semPapelBtn = kbActions.querySelector('.patch-ofmaq-sem-papel-btn');
+      if (!semPapelBtn) {
+        semPapelBtn = document.createElement('button');
+        semPapelBtn.type = 'button';
+        semPapelBtn.className = 'patch-ofmaq-sem-papel-btn';
+        semPapelBtn.innerHTML = '🟨 Sem Papelão';
+        try { kbActions.appendChild(semPapelBtn); } catch (_) {}
+      }
+      var semPapelAtual = !!(of.sem_papel);
+      semPapelBtn.setAttribute('data-active', semPapelAtual ? '1' : '0');
+      semPapelBtn.textContent = semPapelAtual ? '🟨 Remover Sem Papelão' : '🟨 Sem Papelão';
+      if (!semPapelBtn._patchSemPapelBound) {
+        semPapelBtn._patchSemPapelBound = true;
+        semPapelBtn.onclick = function(ev) {
+          try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+          var ofId = String(of && of.id || card.getAttribute('data-of-id') || card.getAttribute('data-id') || '').trim();
+          var ofNum = String(of && (of.numero || of.of) || '').trim();
+          if (!ofId) return;
+          (async function() {
+            try { await window.toggleSemPapelOf(ofId, ofNum, card); }
+            catch (e) { logOfmaq('erro clique sem papel card', String(e && e.message || e)); }
+          })();
+        };
       }
       var kbRow = kbActions.querySelector('.patch-ofmaq-seq-row');
       if (!kbRow) {
@@ -22330,11 +22406,24 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '<button type="button" id="ofmaq-action-pass-zero">✓ Passou pela máquina</button>'
         + '<button type="button" id="ofmaq-action-move-zero">↔ Mover de máquina</button>'
         + '<button type="button" id="ofmaq-action-date-zero">📅 Alterar data</button>'
-        + '<button type="button" id="ofmaq-action-move-date-zero">🗓️↔ Mover máquina e data</button>');
+        + '<button type="button" id="ofmaq-action-move-date-zero">🗓️↔ Mover máquina e data</button>'
+        + '<button type="button" id="ofmaq-action-sem-papel-zero" style="' + ((item && item.sem_papel) ? 'background:linear-gradient(135deg,rgba(250,204,21,.35),rgba(234,179,8,.35))!important;border:1px solid rgba(250,204,21,.6)!important;color:#1f2937!important;font-weight:900;margin-top:6px;' : 'background:linear-gradient(135deg,rgba(250,204,21,.14),rgba(234,179,8,.1))!important;border:1px solid rgba(250,204,21,.35)!important;color:#fbbf24!important;font-weight:800;margin-top:6px;') + 'border-radius:10px;padding:10px 14px;cursor:pointer;font-size:13px;text-align:left;width:100%">🟨 ' + ((item && item.sem_papel) ? 'Remover Sem Papelão' : 'Sem Papelão') + '</button>');
       var passBtn = modal.querySelector('#ofmaq-action-pass-zero');
       var moveBtn = modal.querySelector('#ofmaq-action-move-zero');
       var dateBtn = modal.querySelector('#ofmaq-action-date-zero');
       var moveDateBtn = modal.querySelector('#ofmaq-action-move-date-zero');
+      var semPapelBtn = modal.querySelector('#ofmaq-action-sem-papel-zero');
+      if (semPapelBtn) {
+        semPapelBtn.onclick = async function() {
+          try {
+            await window.toggleSemPapelOf(id, item.numero || item.id, item.cardEl);
+            closeModal('ofmaq-actions-zero');
+            try { showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ((item && item.sem_papel) ? ' removida de Sem Papelão.' : ' marcada como Sem Papelão.'), { title: 'Sem Papelão' }); } catch (_) {}
+          } catch (err) {
+            try { window.toast('Erro Sem Papelão: ' + String(err && err.message || err), 'var(--red)'); } catch (_) {}
+          }
+        };
+      }
       if (passBtn) {
         passBtn.onclick = async function() {
           try {
