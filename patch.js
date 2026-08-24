@@ -9312,7 +9312,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir{height:auto!important;max-height:none!important;overflow:visible!important;position:static!important;align-content:start!important;display:grid!important;grid-template-columns:1fr!important;grid-template-rows:auto!important;gap:14px!important;padding:16px!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-col-dir .param-grid{grid-template-columns:1fr!important;display:grid!important;gap:12px!important;align-items:stretch!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .calc-wave-panels{grid-column:1 / -1!important;margin-top:0!important}'
-      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-footer{padding:14px 22px 16px!important;border-top:1px solid rgba(148,163,184,.14)!important;background:rgba(3,7,18,.94)!important}'
+      + '#modal-calc.orc-calc-fs-ready #modal-calculadora .orc-calc-shell-footer{padding:14px 22px 16px!important;border-top:1px solid rgba(148,163,184,.14)!important;background:rgba(3,7,18,.94)!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;position:static!important;left:auto!important;right:auto!important;margin:0!important}'
       + '#modal-calc.orc-calc-fs-ready #modal-calculadora .modal-footer.rodape{margin:0!important;padding:0!important;border-top:none!important;background:transparent!important}'
       + '#modal-calc #modal-calculadora .calc-col-esq::-webkit-scrollbar,#modal-calc #modal-calculadora .calc-col-dir::-webkit-scrollbar,#modal-calc #modal-calculadora .calc-tabela-wrap::-webkit-scrollbar{width:12px;height:12px}'
       + '#modal-calc #modal-calculadora .calc-col-esq::-webkit-scrollbar-track,#modal-calc #modal-calculadora .calc-col-dir::-webkit-scrollbar-track,#modal-calc #modal-calculadora .calc-tabela-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.72);border-radius:999px}'
@@ -10099,7 +10099,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         '    </div>' +
         '  </div>' +
         '  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;padding-top:12px;border-top:1px solid #334155">' +
-        '    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">' +
+        '    <div style="display:flex;gap:12px;align-items:center;margin-right:auto;flex-wrap:wrap">' +
         '      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700"><input type="checkbox" id="calc-print-b" checked style="width:16px;height:16px"> Onda B</label>' +
         '      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700"><input type="checkbox" id="calc-print-c" checked style="width:16px;height:16px"> Onda C</label>' +
         '      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700"><input type="checkbox" id="calc-print-bc" checked style="width:16px;height:16px"> Onda BC</label>' +
@@ -10168,6 +10168,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         + '<div class="orc-calc-shell-footer"></div>';
       while (modal.firstChild) shell.querySelector('.orc-calc-shell-main').appendChild(modal.firstChild);
       modal.appendChild(shell);
+      var _footerFixed = shell.querySelector('.orc-calc-shell-footer');
+      var _footerReal = shell.querySelector('.orc-calc-shell-main .modal-footer.rodape');
+      if (_footerFixed && _footerReal && _footerReal.parentNode !== _footerFixed) _footerFixed.appendChild(_footerReal);
     }
     var titleHost = shell.querySelector('.orc-calc-shell-title');
     var closeHost = shell.querySelector('.orc-calc-shell-close');
@@ -10237,6 +10240,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       footerHost.style.setProperty('overflow', 'visible', 'important');
       footerHost.style.setProperty('padding', '10px 16px 14px', 'important');
       footerHost.style.setProperty('box-sizing', 'border-box', 'important');
+      footerHost.style.setProperty('width', '100%', 'important');
+      footerHost.style.setProperty('max-width', '100%', 'important');
+      footerHost.style.setProperty('position', 'static', 'important');
+      footerHost.style.setProperty('left', 'auto', 'important');
+      footerHost.style.setProperty('right', 'auto', 'important');
+      footerHost.style.setProperty('margin', '0', 'important');
       if (footer) {
         footer.style.setProperty('padding', '0', 'important');
         footer.style.setProperty('border', 'none', 'important');
@@ -10304,6 +10313,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           b.style.setProperty('box-sizing','border-box','important');
           b.style.setProperty('margin','0','important');
         });
+        footer.style.setProperty('width', '100%', 'important');
+        footer.style.setProperty('max-width', '100%', 'important');
+        footer.style.setProperty('position', 'static', 'important');
+        footer.style.setProperty('left', 'auto', 'important');
+        footer.style.setProperty('right', 'auto', 'important');
+        footer.style.setProperty('top', 'auto', 'important');
+        footer.style.setProperty('bottom', 'auto', 'important');
+        footer.style.setProperty('transform', 'none', 'important');
+        footer.style.setProperty('float', 'none', 'important');
       }
       var shellHeader = shell.querySelector('.orc-calc-shell-header');
       if (shellHeader) {
