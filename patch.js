@@ -4953,7 +4953,7 @@ try {
       + '</tr></tbody></table>'
 
       + '<h3 class="hprint">Vista de cima — como a chapa é cortada</h3>'
-      + '<div style="padding:12px;border:1px solid #cbd5e1;border-radius:14px;background:#fafafa">' + sSvg(selected) + '</div>'
+      + '<div style="max-width:58%;margin:0 auto;padding:12px;border:1px solid #cbd5e1;border-radius:14px;background:#fafafa">' + sSvg(selected) + '</div>'
 
       + '<h3 class="hprint">Detalhes do corte</h3>'
       + '<table><thead><tr><th>Tamanho da chapa</th><th>Tamanho da peça cortada</th><th>Layout (cols × linhas)</th><th>Peças por chapa</th><th>Sobra lateral</th><th>Sobra inferior</th><th>% de desperdício</th></tr></thead>'
@@ -50990,7 +50990,7 @@ function _ocultarGraficoComissoes() {
       return;
     }
     var selected = rows.find(function(row) { return sRowKey(row) === String(window.__simdSelectedRowId || '').trim(); }) || rows[0];
-    var tableRows = rows.map(function(row) {
+    var tableRows = [selected].filter(Boolean).map(function(row) {
       return '<tr>'
         + '<td>' + sEsc(sFmtPct(row.desperdicio_pct || 0)) + '</td>'
         + '<td>' + sEsc(row.nome || 'Chapa') + '</td>'
@@ -51018,8 +51018,8 @@ function _ocultarGraficoComissoes() {
       + '<div class="simd-card"><div class="lbl">Melhor chapa</div><div class="val">' + sEsc((selected.nome || 'Chapa') + ' · ' + (selected.tamanho || '—')) + '</div></div>'
       + '</div>'
       + '<div style="margin:18px 0 10px;font-size:14px;font-weight:700">Desenho do corte selecionado</div>'
-      + '<div style="padding:14px;border:1px solid #cbd5e1;border-radius:12px">' + sSvg(selected) + '</div>'
-      + '<div style="margin:18px 0 10px;font-size:14px;font-weight:700">Ranking das chapas</div>'
+      + '<div style="max-width:62%;margin:0 auto;padding:14px;border:1px solid #cbd5e1;border-radius:12px">' + sSvg(selected) + '</div>'
+      + '<div style="margin:18px 0 10px;font-size:14px;font-weight:700">Chapa selecionada</div>'
       + '<table><thead><tr><th>% Desp.</th><th>Chapa</th><th>Fornecedor</th><th>Tamanho</th><th>Peças/chapa</th><th>Estoque</th><th>Valor unit.</th><th>Chapas necessárias</th><th>Custo</th></tr></thead><tbody>' + tableRows + '</tbody></table>'
       + '<script>window.onload=function(){setTimeout(function(){try{window.focus()}catch(e){}try{window.print()}catch(e){}},400)}<\/script>'
       + '</body></html>';
