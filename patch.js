@@ -31068,11 +31068,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if(v >= 1000) return 'R$ ' + (v/1000).toFixed(0) + 'k';
         return 'R$ ' + parseFloat(v).toFixed(0);
       }
+      function escAttr(s) {
+        return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/\"/g,'&#34;').replace(/'/g,'&#39;').replace(/\n/g,' ').replace(/\r/g,' ');
+      }
 
       var anos = [];
       for (var a = anoAtual - 2; a <= anoAtual + 2; a++) anos.push(a);
       var botoesAno = anos.map(function(a2){
-        return '<button onclick="window.renderProjecaoVendas(' + a2 + ')" style="border:none;border-radius:20px;padding:3px 10px;cursor:pointer;font-size:11px;background:' + (a2 === anoExibir ? '#4A90D9' : 'rgba(255,255,255,0.07)') + ';color:' + (a2 === anoExibir ? '#fff' : '#94a3b8') + '">' + a2 + (a2 > anoAtual ? '*' : '') + '</button>';
+        return '<button data-ano-btn="' + a2 + '" style="border:none;border-radius:20px;padding:3px 10px;cursor:pointer;font-size:11px;background:' + (a2 === anoExibir ? '#4A90D9' : 'rgba(255,255,255,0.07)') + ';color:' + (a2 === anoExibir ? '#fff' : '#94a3b8') + '">' + a2 + (a2 > anoAtual ? '*' : '') + '</button>';
       }).join('');
 
       var barras = '';
@@ -31088,7 +31091,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var obs = item.obs || '';
         barras += '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;min-width:0">' +
           '<span style="font-size:8px;color:#94a3b8;white-space:nowrap;overflow:hidden;max-width:100%;text-align:center">' + lbl + '</span>' +
-          '<div style="width:100%;background:rgba(255,255,255,0.05);border-radius:4px 4px 0 0;height:120px;display:flex;align-items:flex-end;position:relative;cursor:pointer" onclick="window.editarMesFaturamento(' + anoExibir + ',' + mm3 + ',' + val + ',&quot;' + String(obs).replace(/&/g,'&amp;').replace(/\"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '&quot;)" title="Clique para editar">' +
+          '<div data-ano="' + anoExibir + '" data-mes="' + mm3 + '" data-valor="' + String(val).replace(/\"/g,'') + '" data-obs="' + escAttr(obs) + '" style="width:100%;background:rgba(255,255,255,0.05);border-radius:4px 4px 0 0;height:120px;display:flex;align-items:flex-end;position:relative;cursor:pointer" title="Clique para editar">' +
             (ehAtual ? '<div style="position:absolute;inset:0;border:2px solid #f59e0b;border-radius:4px;pointer-events:none"></div>' : '') +
             '<div style="width:100%;border-radius:4px 4px 0 0;background:' + cor + ';height:' + Math.max(pct, val > 0 ? 3 : 0) + '%"></div>' +
           '</div>' +
@@ -31096,26 +31099,62 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         '</div>';
       }
 
+      var cresc_pct = Number.isFinite(d && d.crescimento_pct) ? d.crescimento_pct : 0;
+      var baseMes = Number.isFinite(d && d.base_meses) ? d.base_meses : 0;
+
       container.innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:10px">' +
           '<span style="color:#e2e8f0;font-weight:700;font-size:14px">Projecao de Vendas</span>' +
-          '<div style="display:flex;gap:4px;flex-wrap:wrap">' + botoesAno + '</div>' +
+          '<div id="projecao-ano-botoes" style="display:flex;gap:4px;flex-wrap:wrap">' + botoesAno + '</div>' +
         '</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
           '<div style="background:rgba(16,185,129,0.1);border-radius:8px;padding:8px 12px;flex:1;min-width:90px"><div style="color:#64748b;font-size:10px">Total ' + anoExibir + '</div><div style="color:#10b981;font-size:14px;font-weight:700">' + fmt(totalAno) + '</div></div>' +
-          '<div style="background:rgba(74,144,217,0.1);border-radius:8px;padding:8px 12px;flex:1;min-width:90px"><div style="color:#64748b;font-size:10px">Tend. mensal</div><div style="color:#4A90D9;font-size:14px;font-weight:700">' + ((d.crescimento_pct >= 0) ? '+' : '') + d.crescimento_pct + '%</div></div>' +
-          '<div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:8px 12px;flex:1;min-width:90px"><div style="color:#64748b;font-size:10px">Base</div><div style="color:#94a3b8;font-size:13px;font-weight:600">' + (d.base_meses || 0) + ' meses</div></div>' +
+          '<div style="background:rgba(74,144,217,0.1);border-radius:8px;padding:8px 12px;flex:1;min-width:90px"><div style="color:#64748b;font-size:10px">Tend. mensal</div><div style="color:#4A90D9;font-size:14px;font-weight:700">' + ((cresc_pct >= 0) ? '+' : '') + cresc_pct + '%</div></div>' +
+          '<div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:8px 12px;flex:1;min-width:90px"><div style="color:#64748b;font-size:10px">Base</div><div style="color:#94a3b8;font-size:13px;font-weight:600">' + baseMes + ' meses</div></div>' +
         '</div>' +
-        '<div style="display:flex;gap:3px;align-items:flex-end;height:120px;padding:0 2px">' + barras + '</div>' +
+        '<div id="projecao-barras" style="display:flex;gap:3px;align-items:flex-end;height:120px;padding:0 2px">' + barras + '</div>' +
         '<div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">' +
           '<div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;background:#10b981;border-radius:2px"></div><span style="color:#64748b;font-size:10px">Sistema</span></div>' +
           '<div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;background:#f59e0b;border-radius:2px"></div><span style="color:#64748b;font-size:10px">Manual</span></div>' +
           '<div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;background:rgba(74,144,217,0.6);border-radius:2px"></div><span style="color:#64748b;font-size:10px">Projecao</span></div>' +
-          '<span style="color:#4A90D9;font-size:10px;cursor:pointer;margin-left:auto" onclick="window.renderProjecaoVendas(' + anoExibir + ')">Atualizar</span>' +
+          '<span data-atualizar style="color:#4A90D9;font-size:10px;cursor:pointer;margin-left:auto">Atualizar</span>' +
         '</div>';
+
+      try {
+        var botoesAnoWrap = document.getElementById('projecao-ano-botoes');
+        if (botoesAnoWrap) {
+          botoesAnoWrap.addEventListener('click', function(e){
+            var btn = e.target.closest('[data-ano-btn]');
+            if (!btn) return;
+            var va = parseInt(btn.getAttribute('data-ano-btn'),10);
+            if (va) window.renderProjecaoVendas(va);
+          });
+        }
+        var barrasWrap = document.getElementById('projecao-barras');
+        if (barrasWrap) {
+          barrasWrap.addEventListener('click', function(e){
+            var bar = e.target.closest('[data-ano]');
+            if (!bar) return;
+            var ban = parseInt(bar.getAttribute('data-ano'),10) || 0;
+            var bme = parseInt(bar.getAttribute('data-mes'),10) || 0;
+            var bva = parseFloat(bar.getAttribute('data-valor')) || 0;
+            var bob = bar.getAttribute('data-obs') || '';
+            if (ban && bme && typeof window.editarMesFaturamento === 'function') {
+              window.editarMesFaturamento(ban, bme, bva, bob);
+            }
+          });
+        }
+        var atualizaLink = container.querySelector('[data-atualizar]');
+        if (atualizaLink) {
+          atualizaLink.addEventListener('click', function(){ window.renderProjecaoVendas(anoExibir); });
+        }
+      } catch(_delegationErr) { console.error('[PATCH] projecaoDelegation:', _delegationErr); }
+
     } catch(e) {
-      container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:16px;font-size:13px">Erro ao carregar projecao.</p>';
+      var msgErro = 'Erro ao carregar Projecao de Vendas: ' + String((e && e.message) || e);
+      container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:16px;font-size:13px;border:1px solid rgba(244,63,94,0.3);border-radius:8px;margin:8px">' + msgErro + '</p>';
       console.error('[PATCH] projecaoVendas:', e);
+      try { if (typeof window.toast === 'function') window.toast(msgErro, '#f43f5e'); } catch(_t) {}
     }
   };
 
