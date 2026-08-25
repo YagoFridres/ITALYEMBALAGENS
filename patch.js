@@ -5204,23 +5204,23 @@ try {
     var caixasPorChapa = Math.max(1, sInt(selected.caixas_por_chapa || 0));
     var chapasNec = sInt(selected.chapas_necessarias || (qtdPedido > 0 ? Math.ceil(qtdPedido / caixasPorChapa) : 0));
     var cssBase = ''
-      + '@page{size:A4 landscape;margin:5mm}'
+      + '@page{size:A4 landscape;margin:3mm}'
       + 'html,body{margin:0;padding:0;box-sizing:border-box}'
-      + 'body{font-family:Arial,sans-serif;padding:8mm 9mm;color:#0f172a;font-size:11px;line-height:1.25}'
-      + 'h1{font-size:16px;margin:0 0 4px 0;color:#0f172a;font-weight:900}'
-      + 'h2{font-size:10px;margin:0 0 10px 0;color:#475569;font-weight:500}'
-      + '.brandline{font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.12em;margin-bottom:2px}'
-      + '.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0 0 8px 0}'
-      + '.card{border:1px solid #cbd5e1;border-radius:7px;padding:5px 7px;background:#fff}'
-      + '.lbl{font-size:8.5px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;font-weight:700}'
-      + '.val{font-size:12px;font-weight:800;margin-top:1px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-      + '.sec-title{margin:7px 0 4px 0;font-size:11px;color:#0f172a;font-weight:800;border-left:3px solid #2563eb;padding-left:7px}'
-      + 'table{width:100%;border-collapse:collapse;margin:0 0 6px 0;table-layout:fixed}'
-      + 'th,td{border:1px solid #cbd5e1;padding:3px 5px;font-size:10px;text-align:left;vertical-align:middle;line-height:1.2}'
-      + 'th{background:#f1f5f9;color:#334155;text-transform:uppercase;letter-spacing:.04em;font-weight:800;font-size:9px}'
+      + 'body{font-family:Arial,sans-serif;padding:4mm 5mm;color:#0f172a;font-size:9px;line-height:1.15}'
+      + 'h1{font-size:13px;margin:0 0 3px 0;color:#0f172a;font-weight:900}'
+      + 'h2{font-size:8px;margin:0 0 6px 0;color:#475569;font-weight:500}'
+      + '.brandline{font-size:7px;color:#64748b;text-transform:uppercase;letter-spacing:.12em;margin-bottom:1px}'
+      + '.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin:0 0 5px 0}'
+      + '.card{border:1px solid #cbd5e1;border-radius:4px;padding:3px 5px;background:#fff}'
+      + '.lbl{font-size:7.5px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;font-weight:700}'
+      + '.val{font-size:10px;font-weight:800;margin-top:1px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+      + '.sec-title{margin:4px 0 2px 0;font-size:9px;color:#0f172a;font-weight:800;border-left:3px solid #2563eb;padding-left:5px}'
+      + 'table{width:100%;border-collapse:collapse;margin:0 0 3px 0;table-layout:fixed}'
+      + 'th,td{border:1px solid #cbd5e1;padding:2px 3px;font-size:8.5px;text-align:left;vertical-align:middle;line-height:1.1}'
+      + 'th{background:#f1f5f9;color:#334155;text-transform:uppercase;letter-spacing:.04em;font-weight:800;font-size:7.5px}'
       + 'td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}'
-      + '.svg-wrap{max-width:42%;margin:0 auto;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;background:#fafafa}'
-      + '.svg-wrap svg{display:block;width:100%;height:auto}'
+      + '.svg-wrap{max-width:38%;max-height:140px;margin:0 auto;padding:3px 4px;border:1px solid #cbd5e1;border-radius:3px;background:#fafafa;overflow:hidden}'
+      + '.svg-wrap svg{display:block;width:100%;height:140px;max-height:140px;object-fit:contain}'
       + 'h3{margin:0;padding:0;font-size:inherit;font-weight:inherit}';
     var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Simulador de Desperdício</title>'
       + '<style>' + cssBase + '</style>'
@@ -6370,12 +6370,20 @@ window._compraVincosArrayFull = function(item) {
   ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) { var vv = String(item && item[k] != null ? item[k] : '').trim(); if (vv) out.push(vv); });
   return out;
 };
+window._compraVincosPosicional = function(item) {
+  var arr = [];
+  ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) {
+    var vv = String(item && item[k] != null ? item[k] : '').trim();
+    if (vv) arr.push(vv);
+  });
+  return arr;
+};
 window._compraPapelaoFornecedorPedidoLabel = function(rawName) {
   var nome = String(rawName || '').replace(/\s+/g, ' ').trim();
   return 'Pedido ' + (nome || 'Fornecedor');
 };
 window._compraPapelaoComposeVincos = function(item) {
-  return (window._compraVincosArrayFull(item) || []).join('/');
+  return (window._compraVincosPosicional(item) || []).join('/');
 };
 window._compraPapelaoEnsureVisibleRows = function(itens, minRows) {
   var rows = Array.isArray(itens) ? itens.slice() : [];
@@ -8557,7 +8565,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
     };
   }
   function cComposeVincos(item) {
-    return (window._compraVincosArrayFull(item) || []).join('/');
+    return (window._compraVincosPosicional(item) || []).join('/');
   }
   function cFornecedorPedidoLabel(rawName) {
     var nome = String(rawName || '').replace(/\s+/g, ' ').trim();
@@ -9013,20 +9021,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       if (!Array.isArray(compra.itens) || !compra.itens.length) compra.itens = [cBlankItem()];
       compra.itens = compra.itens.map(function(it) {
         var raw = String(it && it.vincos || '').trim();
-        var lista = raw ? raw.split(/[,;\/]+/).map(function(x) { return String(x || '').trim(); }).filter(Boolean) : [];
-        if (!lista.length) {
-          ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) {
-            var v = String(it && it[k] != null ? it[k] : '').trim();
-            if (v) lista.push(v);
-          });
-          if (Array.isArray(it && it.vincos_extra) && it.vincos_extra.length) it.vincos_extra.forEach(function(v) { var t = String(v || '').trim(); if (t) lista.push(t); });
-          if (Array.isArray(it && it.vincos_lista) && it.vincos_lista.length) it.vincos_lista.forEach(function(v) { var t = String(v || '').trim(); if (t) lista.push(t); });
-        }
+        var splitList = raw ? raw.split(/[,;\/]+/).map(function(x) { return String(x || '').trim(); }).filter(Boolean) : [];
+        var v1 = String(it && it.vinco1 != null ? it.vinco1 : (splitList[0] || '')).trim();
+        var v2 = String(it && it.vinco2 != null ? it.vinco2 : (splitList[1] || '')).trim();
+        var v3 = String(it && it.vinco3 != null ? it.vinco3 : (splitList[2] || '')).trim();
+        var v4 = String(it && it.vinco4 != null ? it.vinco4 : (splitList[3] || '')).trim();
+        var lista = [v1, v2, v3, v4].filter(Boolean);
+        if (Array.isArray(it && it.vincos_extra) && it.vincos_extra.length) it.vincos_extra.forEach(function(v) { var t = String(v || '').trim(); if (t && lista.indexOf(t) === -1) lista.push(t); });
+        if (Array.isArray(it && it.vincos_lista) && it.vincos_lista.length) it.vincos_lista.forEach(function(v) { var t = String(v || '').trim(); if (t && lista.indexOf(t) === -1) lista.push(t); });
         return Object.assign({}, it, {
-          vinco1: String(lista[0] || (it && it.vinco1) || '').trim(),
-          vinco2: String(lista[1] || (it && it.vinco2) || '').trim(),
-          vinco3: String(lista[2] || (it && it.vinco3) || '').trim(),
-          vinco4: String(lista[3] || (it && it.vinco4) || '').trim(),
+          vinco1: v1,
+          vinco2: v2,
+          vinco3: v3,
+          vinco4: v4,
           vincos_extra: lista.slice(4),
           vincos_lista: lista.slice(),
           vincos: lista.join('/'),
@@ -9224,7 +9231,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       detailHeaders: ['Nomenclatura', 'Largura', 'Comprimento', 'Vincos', 'Quantidade', 'Valor/m²', 'Área m²', 'Valor total', 'R$/mil', 'Ped. Fornecedor'],
       detailRows: (Array.isArray(compra && compra.itens) ? compra.itens : []).map(function(item) {
         var d = cItemDerived(item);
-        var _vincosArr = (window._compraVincosArrayFull(item) || []).map(function(s){ return String(s||'').trim(); }).filter(Boolean);
+        var _vincosArr = (window._compraVincosPosicional(item) || []).map(function(s){ return String(s||'').trim(); }).filter(Boolean);
         if (!_vincosArr.length) _vincosArr = ['—'];
         var vincosStr = _vincosArr.join('/');
         var pedFornStr = String(item&&item.pedido_fornecedor||item&&item.ped_fornecedor||item&&item.pedForn||item&&item.ped_forn||item&&item.cod_fornecedor||'—').trim()||'—';
@@ -51305,23 +51312,23 @@ function _ocultarGraficoComissoes() {
         + '</tr>';
     }).join('');
     var cssBase = ''
-      + '@page{size:A4 landscape;margin:5mm}'
+      + '@page{size:A4 landscape;margin:3mm}'
       + 'html,body{margin:0;padding:0;box-sizing:border-box}'
-      + 'body{font-family:Arial,sans-serif;padding:8mm 9mm;color:#0f172a;font-size:11px;line-height:1.25}'
-      + '.brandline{font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.12em;margin-bottom:2px}'
-      + 'h1{font-size:16px;margin:0 0 4px 0;color:#0f172a;font-weight:900}'
-      + 'h2{font-size:10px;margin:0 0 10px 0;color:#475569;font-weight:500}'
-      + '.simd-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0 0 8px 0}'
-      + '.simd-card{border:1px solid #cbd5e1;border-radius:7px;padding:5px 7px;background:#fff}'
-      + '.simd-card .lbl{font-size:8.5px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;font-weight:700}'
-      + '.simd-card .val{font-size:12px;font-weight:800;margin-top:1px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-      + '.sec-title{margin:7px 0 4px 0;font-size:11px;color:#0f172a;font-weight:800;border-left:3px solid #2563eb;padding-left:7px}'
+      + 'body{font-family:Arial,sans-serif;padding:4mm 5mm;color:#0f172a;font-size:9px;line-height:1.15}'
+      + '.brandline{font-size:7px;color:#64748b;text-transform:uppercase;letter-spacing:.12em;margin-bottom:1px}'
+      + 'h1{font-size:13px;margin:0 0 3px 0;color:#0f172a;font-weight:900}'
+      + 'h2{font-size:8px;margin:0 0 6px 0;color:#475569;font-weight:500}'
+      + '.simd-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin:0 0 5px 0}'
+      + '.simd-card{border:1px solid #cbd5e1;border-radius:4px;padding:3px 5px;background:#fff}'
+      + '.simd-card .lbl{font-size:7.5px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;font-weight:700}'
+      + '.simd-card .val{font-size:10px;font-weight:800;margin-top:1px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+      + '.sec-title{margin:4px 0 2px 0;font-size:9px;color:#0f172a;font-weight:800;border-left:3px solid #2563eb;padding-left:5px}'
       + 'table{width:100%;border-collapse:collapse;margin:0;table-layout:fixed}'
-      + 'th,td{border:1px solid #cbd5e1;padding:3px 5px;font-size:10px;text-align:left;vertical-align:middle;line-height:1.2}'
-      + 'th{background:#f1f5f9;color:#334155;text-transform:uppercase;letter-spacing:.04em;font-weight:800;font-size:9px}'
+      + 'th,td{border:1px solid #cbd5e1;padding:2px 3px;font-size:8.5px;text-align:left;vertical-align:middle;line-height:1.1}'
+      + 'th{background:#f1f5f9;color:#334155;text-transform:uppercase;letter-spacing:.04em;font-weight:800;font-size:7.5px}'
       + '.num{text-align:right;font-variant-numeric:tabular-nums}'
-      + '.svg-wrap{max-width:44%;margin:0 auto;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;background:#fafafa}'
-      + '.svg-wrap svg{display:block;width:100%;height:auto}';
+      + '.svg-wrap{max-width:40%;max-height:140px;margin:0 auto;padding:3px 4px;border:1px solid #cbd5e1;border-radius:3px;background:#fafafa;overflow:hidden}'
+      + '.svg-wrap svg{display:block;width:100%;height:140px;max-height:140px;object-fit:contain}';
     var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Simulador por Medida da Chapa</title>'
       + '<style>' + cssBase + '</style>'
       + '</head><body>'
@@ -52569,7 +52576,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     return row;
   };
   window._compraPapelaoComposeVincos = function(item) {
-    return compraAllVincos(item).join('/');
+    var arr = [];
+    ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) {
+      var vv = String(item && item[k] != null ? item[k] : '').trim();
+      if (vv) arr.push(vv);
+    });
+    return arr.join('/');
   };
   window._compraPapelaoRenderModalRowsHtml = function(itens, minRows) {
     var rows = window._compraPapelaoEnsureVisibleRows(itens, minRows == null ? 5 : minRows);
