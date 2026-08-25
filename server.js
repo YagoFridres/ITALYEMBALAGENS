@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260825090001';
-const SW_RUNTIME_VERSION = '20260825090001';
+const PATCH_RUNTIME_VERSION = '20260825100001';
+const SW_RUNTIME_VERSION = '20260825100001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -4061,6 +4061,7 @@ const CAMPOS_OFS_UPDATE = new Set([
   'caixa_comprimento', 'caixa_largura', 'caixa_altura', 'tipo_caixa',
   'imagem_url', 'imgs', 'itens', 'perdas_por_maquina', 'operadores_conclusao', 'passagens_maquina',
   'sem_papel', 'passou_maquina', 'passou_em', 'passou_maquina_nome',
+  'papel_comprado', 'previsao_entrega_papel',
   'ordem_maquina', 'prioridade', 'prioridade_ordem', 'maquina_agendada',
   'data_agendamento', 'agendamento_auto', 'setor_finalizacao',
   'caixas_boas', 'caixas_perdidas', 'motivo_perda', 'operador_conclusao',
@@ -4102,6 +4103,9 @@ function normalizeOfUpdateBody(input) {
     if (out.ent === undefined) out.ent = out.data_entrega;
     if (out.dia === undefined) out.dia = out.data_entrega;
   }
+  if (out.papel_comprado !== undefined) {
+    out.papel_comprado = _chapasBool(out.papel_comprado);
+  }
   if (out.status !== undefined) out.status = _canonicalizarStatusOf(out.status);
   return out;
 }
@@ -4136,6 +4140,7 @@ const OFS_TABLE_COLS = [
   'chp', 'chapa_id', 'maquina_perda',
   'deleted_at',
   'prioridade', 'sem_papel',
+  'papel_comprado', 'previsao_entrega_papel',
   'cidade_entrega', 'modo_programacao',
   'usuario_conclusao', 'gramatura_id', 'gramatura_nome', 'gramatura',
   'peso_utilizado_kg', 'toneladas_utilizadas', 'area_total_m2',
@@ -6213,10 +6218,49 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         }, created);
       }
     } catch (_) {}
-    try{
+    try {
       const sug = await _autoSugerirMaquinaParaOF(body, created);
-      if(sug && sug.ok && sug.updated) created = sug.updated;
-    }catch(_){}
+      if (sug && sug.ok && sug.updated) created = sug.updated;
+    } catch (_) {}
+    _dbgOfStage = 'before-ordem-maquina';
+    try {
+      const novaOf = { ...(created || {}), ...(body || {}) };
+      const maqAlvo = String(novaOf.maquina || novaOf.maquina_agendada || novaOf.maquina_atual || (Array.isArray(novaOf.maq) ? novaOf.maq[0] : novaOf.maq) || novaOf.passou_maquina_nome || '').trim();
+      const diaAlvo = String(novaOf.dia || (typeof formatarDataParaBanco === 'function' ? formatarDataParaBanco(body.dia || body.data_entrega || created?.dia || created?.data_entrega || '') : '') || '').slice(0, 10);
+      const empresaUuidForOrd = String(filtered?.empresa_id || created?.empresa_id || empresaUuid || '').trim();
+      const idOfNovo = String(created?.id || '').trim();
+      if (maqAlvo && empresaUuidForOrd && idOfNovo) {
+        try {
+          let maxQuery = supabase
+            .from('ofs')
+            .select('ordem_maquina,seq,id')
+            .eq('empresa_id', empresaUuidForOrd)
+            .or('maquina.eq.' + maqAlvo + ',maquina_agendada.eq.' + maqAlvo);
+          if (diaAlvo && diaAlvo.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(diaAlvo)) {
+            try { maxQuery = maxQuery.eq('dia', diaAlvo); } catch (_noDiaCol) {}
+          }
+          maxQuery = maxQuery.order('ordem_maquina', { ascending: false }).limit(50);
+          const rMax = await maxQuery;
+          if (!rMax?.error && Array.isArray(rMax?.data)) {
+            let max = 0;
+            rMax.data.forEach(function(o) {
+              const v = Math.trunc(Number(o?.ordem_maquina ?? o?.seq ?? 0) || 0);
+              if (v > max) max = v;
+            });
+            const proxOrdem = (Number.isFinite(max) && max >= 0) ? (max + 1) : 99999;
+            if (proxOrdem > 0) {
+              const rUpd = await _updateCompatTable('ofs', idOfNovo, { ordem_maquina: proxOrdem, seq: Number(created?.seq || 0) ? created.seq : proxOrdem });
+              if (!rUpd?.error && rUpd?.data) created = { ...(created || {}), ...rUpd.data, ordem_maquina: proxOrdem };
+              try { console.debug('[OF CREATE] nova ordem_maquina:', { of_id: idOfNovo, maq: maqAlvo, ordem: proxOrdem, maxExistente: max, dia: diaAlvo }); } catch (_) {}
+            }
+          }
+        } catch (_errOrd) {
+          try { console.warn('[OF CREATE] erro calcular ordem_maquina (ignorado):', _errOrd.message || String(_errOrd)); } catch (__) {}
+        }
+      }
+    } catch (_e2) {
+      try { console.warn('[OF CREATE] bloco ordem_maquina falhou (ignorado):', (_e2 && _e2.message) || String(_e2)); } catch (__) {}
+    }
     _dbgOfStage = 'before-response';
     const warnings = (createdRes && Array.isArray(createdRes.ignoredColumns) && createdRes.ignoredColumns.length)
       ? { ignored_columns: createdRes.ignoredColumns.slice() }
@@ -8415,12 +8459,21 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
   try {
     let q = supabase.from('amostras').select('*').order('created_at', { ascending: false });
     const empresaCtx = await _resolveEmpresaMutationContext(req, req.query || {});
-    const empFiltroRaw = String(req.query.empId ?? req.query.emp_id ?? '').trim();
-    const empLegacy = String(empresaCtx?.emp_id || '').trim();
+    const empRawReq = String(req.query.empId ?? req.query.emp_id ?? '').trim();
+    const empResolvido = String(empresaCtx?.emp_id || '').trim();
+    const empLegacy = String(empresaCtx?.empresaId || empresaCtx?.empresa_id || empresaCtx?.empresa || '').trim();
+    let empFiltroRaw = empRawReq || empResolvido || empLegacy;
     const filtroStatus = String(req.query.status || '').trim();
     const filtroCliente = String(req.query.cliente_id || '').trim();
     const incluirCanceladas = String(req.query.incluirCanceladas || req.query.todas || '').trim() === '1';
     let filtroEmpAplicado = false;
+    if (!empFiltroRaw) {
+      try {
+        console.warn('[AMOSTRAS] filtro empresa veio VAZIO | raw_req=' + JSON.stringify({ empRawReq, empResolvido, empLegacy, usuario: req.usuario?.email || null, req_keys: Object.keys(req.query || {}) }) + ' | contexto=' + JSON.stringify({ emp_id: empresaCtx?.emp_id, empresaId: empresaCtx?.empresaId, empresa_id: empresaCtx?.empresa_id, empresa: empresaCtx?.empresa }));
+      } catch (_err) {
+        console.warn('[AMOSTRAS] filtro empresa veio VAZIO (erro stringify): empRawReq=', empRawReq, 'empResolvido=', empResolvido, 'empLegacy=', empLegacy, 'usuario=', req.usuario?.email || null);
+      }
+    }
     async function _aplicarFiltros(qBase, tentaDeletedAt) {
       let qF = qBase;
       if (empFiltroRaw) { qF = qF.eq('emp_id', empFiltroRaw); }
@@ -8445,7 +8498,7 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
     if (error) {
       console.error('[AMOSTRAS] query com filtro error:', String(error?.message || error));
     } else if (!Array.isArray(data) || data.length === 0) {
-      if (filtroEmpAplicado && !filtroStatus && !filtroCliente) {
+      if (filtroEmpAplicado) {
         let qFallback = q;
         if (filtroStatus) qFallback = qFallback.eq('status', filtroStatus);
         if (filtroCliente) qFallback = qFallback.eq('cliente_id', filtroCliente);
@@ -8468,7 +8521,7 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
             });
           }
           if (dataFb.length > 0) {
-            console.log('[AMOSTRAS] fallback sem filtro empresa:', dataFb.length, 'amostras (contexto emp_id=' + empLegacy + ' nao encontrou nada)');
+            console.log('[AMOSTRAS] fallback sem filtro empresa:', dataFb.length, 'amostras (empFiltroRaw=' + empFiltroRaw + ' empResolvido=' + empResolvido + ' empLegacy_contexto=' + empLegacy + ' nao encontrou nada)');
             return ok(res, dataFb);
           }
         }
@@ -8484,7 +8537,7 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
         return s !== 'cancelada' && s !== 'cancelado' && s !== 'excluida' && s !== 'excluido';
       });
     }
-    console.log('[AMOSTRAS] retornando', data ? data.length : 0, 'registros | filtros aplicados: emp=' + (filtroEmpAplicado ? empFiltroRaw : '(nenhum)') + ' | status=' + (filtroStatus || '(todos)') + ' | cliente=' + (filtroCliente || '(todos)') + ' | empLegacy_contexto=' + empLegacy + ' | incluirCanceladas=' + incluirCanceladas);
+    console.log('[AMOSTRAS] retornando', data ? data.length : 0, 'registros | filtros aplicados: emp=' + (filtroEmpAplicado ? empFiltroRaw : '(nenhum)') + ' | empOrigem=' + (empRawReq ? 'req' : (empResolvido ? 'ctx' : (empLegacy ? 'legacy' : 'vazio'))) + ' | status=' + (filtroStatus || '(todos)') + ' | cliente=' + (filtroCliente || '(todos)') + ' | empResolvido_ctx=' + empResolvido + ' | empLegacy_contexto=' + empLegacy + ' | incluirCanceladas=' + incluirCanceladas);
     return ok(res, data || []);
   } catch (e) {
     console.error('[AMOSTRAS] catch:', String(e?.message || e));

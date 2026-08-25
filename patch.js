@@ -18311,6 +18311,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       + '#page-ofmaq .patch-ofmaq-row:hover{background:rgba(30,41,59,.72)}'
       + '#page-ofmaq .patch-ofmaq-row[data-urgencia="urgente"] td{background-image:linear-gradient(90deg,rgba(127,29,29,.18),transparent)}'
       + '#page-ofmaq .patch-ofmaq-row[data-urgencia="atrasada"] td{background-image:linear-gradient(90deg,rgba(120,53,15,.18),transparent)}'
+      + '#page-ofmaq .patch-ofmaq-row[data-sem-papel="1"] td{background-image:linear-gradient(90deg,rgba(146,64,14,.22),rgba(202,138,4,.18))!important;background-color:rgba(250,204,21,.08)!important}'
+      + '#page-ofmaq .ofmaq-final-row[data-sem-papel="1"] td{background-image:linear-gradient(90deg,rgba(146,64,14,.2),rgba(202,138,4,.16))!important;background-color:rgba(250,204,21,.08)!important}'
+      + '#ofmaq-tbody-zero tr[data-sem-papel="1"],#page-ofmaq .ofmaq-final-table .ofmaq-row[data-sem-papel="1"]{background-image:linear-gradient(180deg,rgba(146,64,14,.22),rgba(202,138,4,.22))!important;background-color:rgba(250,204,21,.12)!important}'
       + '#page-ofmaq .patch-ofmaq-cell-main{display:grid;gap:3px;min-width:0}'
       + '#page-ofmaq .patch-ofmaq-cell-main strong{font-size:14px;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
       + '#page-ofmaq .patch-ofmaq-cell-sub{font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
@@ -19652,6 +19655,25 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   function _ofmaqSortGroupForTable(maquina, ofs) {
     try {
       var list = Array.isArray(ofs) ? ofs.slice() : [];
+      var hasOrdemGlobal = list.some(function(of) {
+        return Number.isFinite(Number(of && of.ordem_maquina)) && Number(of.ordem_maquina) > 0;
+      });
+      if (hasOrdemGlobal) {
+        list.sort(function(a, b) {
+          var oa = Number(a && a.ordem_maquina != null ? a.ordem_maquina : (a && a.seq != null ? a.seq : 999998));
+          var ob = Number(b && b.ordem_maquina != null ? b.ordem_maquina : (b && b.seq != null ? b.seq : 999999));
+          if (Number.isFinite(oa) && Number.isFinite(ob) && oa !== ob) return oa - ob;
+          var ua = a && (a.urg || a.urgente) ? 0 : 1;
+          var ub = b && (b.urg || b.urgente) ? 0 : 1;
+          if (ua !== ub) return ua - ub;
+          return 0;
+        });
+        try {
+          if (typeof window._ordemMaquinas === 'undefined') window._ordemMaquinas = {};
+          window._ordemMaquinas[maquina] = list.map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
+        } catch (_) {}
+        return Array.isArray(list) ? list : [];
+      }
       var baseSorted = (typeof ordenarOFsPorPrioridade === 'function')
         ? ordenarOFsPorPrioridade(list.slice())
         : _ofmaqSortMachineQueue(list.slice());
@@ -19733,6 +19755,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var id = String(of && of.id || '').trim();
         if (!id) return;
         var urg = _ofmaqUrgenciaTipo(of);
+        var sp = !!(of && (of.sem_papel === true || of.sem_papelao === true || String(of.sem_papel || '').trim() === '1' || of.sem_papel === 1 || of.sem_papelao === 1 || String(of.sem_papelao || '').trim() === '1'));
         var numero = _ofmaqNumeroLabel(of) || '—';
         var cliente = _ofmaqClienteLabel(of) || '—';
         var produto = _ofmaqProdutoLabel(of) || '—';
@@ -19742,9 +19765,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var entrega = _ofmaqEntregaIso(of);
         var tempoMin = _ofmaqTempoMinForMachine(of, maqDados);
         var tagClass = urg === 'urgente' ? ' is-danger' : (urg === 'atrasada' ? ' is-warn' : '');
-        var tagText = urg === 'urgente' ? 'Urgente' : (urg === 'atrasada' ? 'Atrasada' : 'No prazo');
+        var tagText = sp ? 'Sem Papelão' : (urg === 'urgente' ? 'Urgente' : (urg === 'atrasada' ? 'Atrasada' : 'No prazo'));
+        if (sp && urg !== 'normal') tagText = 'Sem Papelão • ' + (urg === 'urgente' ? 'Urgente' : 'Atrasada');
         rowsHtml.push(
-          '<tr class="patch-ofmaq-row" data-of-id="' + escAttrLocal(id) + '" data-maq="' + escAttrLocal(maquina) + '" data-tempo-min="' + escAttrLocal(String(tempoMin || 0)) + '" data-qtd="' + escAttrLocal(String(quantidade != null ? quantidade : '')) + '" data-urgencia="' + escAttrLocal(urg) + '"'
+          '<tr class="patch-ofmaq-row" data-of-id="' + escAttrLocal(id) + '" data-maq="' + escAttrLocal(maquina) + '" data-tempo-min="' + escAttrLocal(String(tempoMin || 0)) + '" data-qtd="' + escAttrLocal(String(quantidade != null ? quantidade : '')) + '" data-urgencia="' + escAttrLocal(urg) + '" data-sem-papel="' + (sp ? '1' : '0') + '"'
           + ' onclick="if(event.target&&event.target.closest&&event.target.closest(\'a,button,input,select,textarea\'))return; try{abrirBottomSheetAcoes(&quot;' + escAttrLocal(id) + '&quot;,&quot;' + escAttrLocal(String(numero || '')) + '&quot;)}catch(_e){}">'
           + '<td><span class="patch-ofmaq-seq-badge">' + escHLocal(String(idx + 1)) + '</span></td>'
           + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(numero) + '</strong><span class="patch-ofmaq-cell-sub">' + escHLocal(tagText) + '</span></div></td>'
@@ -19755,6 +19779,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(_ofmaqFmtInt(quantidade != null ? quantidade : 0)) + '</strong></div></td>'
           + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</strong><span class="patch-ofmaq-cell-sub">' + (entrega ? escHLocal(fmtWeekdayDate(entrega)) : '—') + '</span></div></td>'
           + '<td><span class="patch-ofmaq-tag' + tagClass + '">' + escHLocal(_ofmaqFmtTempoValue(tempoMin)) + '</span></td>'
+          + (function() {
+              var pComprado = of && (of.papel_comprado === true || of.papel_comprado === 1 || String(of.papel_comprado || '').trim() === '1' || String(of.papel_comprado || '').toLowerCase() === 'true');
+              var pPrev = String(of && (of.previsao_entrega_papel || of.previsaoEntregaPapel || '') || '').trim();
+              if (pPrev.length > 10) pPrev = pPrev.slice(0, 10);
+              if (pComprado || pPrev) {
+                var tit = pComprado ? '✅ Papel comprado' : '—';
+                var dt = pPrev ? 'Entrega: ' + fmtDateBR(pPrev) : 'Sem previsão';
+                return '<td><div class="patch-ofmaq-cell-main"><strong style="font-size:12px;color:' + (pComprado ? '#10b981' : '#f59e0b') + '">' + escHLocal(tit) + '</strong><span class="patch-ofmaq-cell-sub">' + escHLocal(dt) + '</span></div></td>';
+              }
+              return '<td><div class="patch-ofmaq-cell-main"><strong style="font-size:12px;color:#64748b">—</strong><span class="patch-ofmaq-cell-sub">Pendente</span></div></td>';
+            })()
           + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(maquina) + '</strong></div></td>'
           + '</tr>'
         );
@@ -19763,8 +19798,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var html = String(alertasHtml || '');
     html += '<div class="patch-ofmaq-summary-grid">' + (summaries.join('') || '<div class="patch-ofmaq-summary-card"><div class="patch-ofmaq-empty">Nenhuma máquina com OFs para este filtro.</div></div>') + '</div>';
     html += '<div class="patch-ofmaq-table-wrap"><table class="patch-ofmaq-table"><thead><tr>'
-      + '<th>Sequência</th><th>Nº da OF</th><th>Cliente</th><th>Produto</th><th>Tamanho</th><th>Cores</th><th>Quantidade</th><th>Data de Entrega</th><th>Tempo</th><th>Máquina</th>'
-      + '</tr></thead><tbody>' + (rowsHtml.join('') || '<tr><td colspan="10" class="patch-ofmaq-empty">Nenhuma OF encontrada para este filtro.</td></tr>') + '</tbody></table></div>';
+      + '<th>Sequência</th><th>Nº da OF</th><th>Cliente</th><th>Produto</th><th>Tamanho</th><th>Cores</th><th>Quantidade</th><th>Data de Entrega</th><th>Tempo</th><th>Papel / Previsão</th><th>Máquina</th>'
+      + '</tr></thead><tbody>' + (rowsHtml.join('') || '<tr><td colspan="11" class="patch-ofmaq-empty">Nenhuma OF encontrada para este filtro.</td></tr>') + '</tbody></table></div>';
     container.innerHTML = html;
     try { container.setAttribute('data-ofmaq-view-mode', 'table'); } catch (_) {}
   }
@@ -23153,12 +23188,20 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     function openActionsModal(id) {
       var item = rowDataById(id);
       if (!item) return;
+      var pCompraAtual = !!(item && (item.papel_comprado === true || item.papel_comprado === 1 || String(item.papel_comprado || '').trim() === '1' || String(item.papel_comprado || '').toLowerCase() === 'true'));
+      var pPrevAtual = String(item && (item.previsao_entrega_papel || item.previsaoEntregaPapel || '') || '').trim();
+      if (pPrevAtual.length > 10) pPrevAtual = pPrevAtual.slice(0, 10);
       var modal = openModal('ofmaq-actions-zero', 'Ações da OF #' + String(item.numero || item.id), ''
         + '<button type="button" id="ofmaq-action-pass-zero">✓ Passou pela máquina</button>'
         + '<button type="button" id="ofmaq-action-move-zero">↔ Mover de máquina</button>'
         + '<button type="button" id="ofmaq-action-date-zero">📅 Alterar data</button>'
         + '<button type="button" id="ofmaq-action-move-date-zero">🗓️↔ Mover máquina e data</button>'
-        + '<button type="button" id="ofmaq-action-sem-papel-zero" style="' + ((item && item.sem_papel) ? 'background:linear-gradient(135deg,rgba(250,204,21,.35),rgba(234,179,8,.35))!important;border:1px solid rgba(250,204,21,.6)!important;color:#1f2937!important;font-weight:900;margin-top:6px;' : 'background:linear-gradient(135deg,rgba(250,204,21,.14),rgba(234,179,8,.1))!important;border:1px solid rgba(250,204,21,.35)!important;color:#fbbf24!important;font-weight:800;margin-top:6px;') + 'border-radius:10px;padding:10px 14px;cursor:pointer;font-size:13px;text-align:left;width:100%">🟨 ' + ((item && item.sem_papel) ? 'Remover Sem Papelão' : 'Sem Papelão') + '</button>');
+        + '<button type="button" id="ofmaq-action-sem-papel-zero" style="' + ((item && item.sem_papel) ? 'background:linear-gradient(135deg,rgba(250,204,21,.35),rgba(234,179,8,.35))!important;border:1px solid rgba(250,204,21,.6)!important;color:#1f2937!important;font-weight:900;margin-top:6px;' : 'background:linear-gradient(135deg,rgba(250,204,21,.14),rgba(234,179,8,.1))!important;border:1px solid rgba(250,204,21,.35)!important;color:#fbbf24!important;font-weight:800;margin-top:6px;') + 'border-radius:10px;padding:10px 14px;cursor:pointer;font-size:13px;text-align:left;width:100%">🟨 ' + ((item && item.sem_papel) ? 'Remover Sem Papelão' : 'Sem Papelão') + '</button>'
+        + '<div style="margin-top:10px;padding:12px;border-radius:10px;background:rgba(15,23,42,.58);border:1px solid rgba(71,85,105,.45);display:grid;gap:8px">'
+        + '  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:700;color:#e2e8f0"><input type="checkbox" id="ofmaq-zero-papel-comprado" ' + (pCompraAtual ? 'checked' : '') + ' style="width:16px;height:16px;accent-color:#10b981"><span>Papel / Chapa comprado</span></label>'
+        + '  <label style="display:grid;gap:4px"><span style="font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8">Previsão entrega papel</span><input type="date" id="ofmaq-zero-papel-previsao" value="' + escAttrLocal(pPrevAtual) + '" style="padding:9px 10px;border-radius:10px;border:1px solid rgba(71,85,105,.6);background:rgba(15,23,42,.88);color:#f8fafc;font-size:13px;font-weight:700"></label>'
+        + '  <button type="button" id="ofmaq-action-save-papel-zero" style="width:100%;padding:9px 12px;border-radius:10px;border:1px solid rgba(59,130,246,.35);background:linear-gradient(135deg,rgba(37,99,235,.25),rgba(29,78,216,.4));color:#dbeafe;font-size:12px;font-weight:900;cursor:pointer">💾 Salvar dados do papel</button>'
+        + '</div>');
       var passBtn = modal.querySelector('#ofmaq-action-pass-zero');
       var moveBtn = modal.querySelector('#ofmaq-action-move-zero');
       var dateBtn = modal.querySelector('#ofmaq-action-date-zero');
@@ -23229,6 +23272,30 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           }
         };
       };
+      var savePapelZeroBtn = modal.querySelector('#ofmaq-action-save-papel-zero');
+      if (savePapelZeroBtn) {
+        savePapelZeroBtn.onclick = async function() {
+          try {
+            var cboxZ = document.getElementById('ofmaq-zero-papel-comprado');
+            var dboxZ = document.getElementById('ofmaq-zero-papel-previsao');
+            var vCompradoZ = !!(cboxZ && cboxZ.checked);
+            var vDataZ = String(dboxZ && dboxZ.value || '').trim().slice(0, 10);
+            var bodySaveZ = { papel_comprado: vCompradoZ };
+            if (vDataZ && /^\d{4}-\d{2}-\d{2}$/.test(vDataZ)) bodySaveZ.previsao_entrega_papel = vDataZ;
+            var rSavZ = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: bodySaveZ });
+            if (!rSavZ || !rSavZ.resp || !rSavZ.resp.ok || (rSavZ.data && rSavZ.data.ok === false)) throw new Error((rSavZ && rSavZ.data && (rSavZ.data.error || rSavZ.data.message)) || 'Falha ao salvar dados do papel');
+            item.papel_comprado = vCompradoZ;
+            item.previsao_entrega_papel = vDataZ || null;
+            closeModal('ofmaq-actions-zero');
+            updateToolbar(ensureShell());
+            applyFilters();
+            try { if (typeof showOfmaqCenterConfirm === 'function') showOfmaqCenterConfirm('OF #' + String(item.numero || id) + ' dados do papel atualizados.', { title: 'Dados salvos' }); } catch (_) {}
+          } catch (eSavZ) {
+            try { if (typeof window._ofmaqReportError === 'function') await window._ofmaqReportError('Dados Papel (zero-kanban save)', eSavZ, { ofId: id, ofNum: item && item.numero || null }); } catch (_) {}
+            try { window.toast('Erro ao salvar dados do papel: ' + String(eSavZ && eSavZ.message || eSavZ), 'var(--red)'); } catch (_) {}
+          }
+        };
+      }
     }
 
     function openPrintModal() {
@@ -25026,11 +25093,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var urgTitle = urgActive ? 'Urgência ativa' : (row.urgencia === 'atrasada' ? 'OF atrasada' : 'Sem urgência');
       var urgSub = urgActive ? 'Essa OF está priorizada na fila e destacada na grade.' : (row.urgencia === 'atrasada' ? 'Ela não está marcada manualmente, mas já está fora do prazo.' : 'Você pode marcar urgência sem sair do modal de ações.');
       var semPapelActive = !!(row && row.ofRaw && row.ofRaw.sem_papel);
+      var papelCompradoActive = !!(row && row.ofRaw && (row.ofRaw.papel_comprado === true || row.ofRaw.papel_comprado === 1 || String(row.ofRaw.papel_comprado || '').trim() === '1' || String(row.ofRaw.papel_comprado || '').toLowerCase() === 'true'));
+      var prevEntregaPapelRaw = String(row && row.ofRaw && (row.ofRaw.previsao_entrega_papel || '') || '').trim();
+      if (prevEntregaPapelRaw.length > 10) prevEntregaPapelRaw = prevEntregaPapelRaw.slice(0, 10);
       var modal = openModal('ofmaq-final-actions', 'Ações da OF #' + String(row.numero || row.id), ''
         + '<div class="ofmaq-final-urgency-state"><div><strong>' + escH(urgTitle) + '</strong><span>' + escH(urgSub) + '</span></div><span class="ofmaq-final-status" data-tone="' + escAttr(urgActive ? 'danger' : (row.urgencia === 'atrasada' ? 'warn' : 'ok')) + '">' + escH(urgActive ? 'URGENTE' : (row.urgencia === 'atrasada' ? 'ATRASADA' : 'NORMAL')) + '</span></div>'
         + '<button type="button" data-ofmaq-final-action="pass" class="ofmaq-final-action-primary"><span>✓ Passou pela máquina</span><small>Concluir etapa</small></button>'
         + '<button type="button" data-ofmaq-final-action="toggle-urgency" data-urgente="' + (urgActive ? '1' : '0') + '" class="ofmaq-final-action-danger" data-active="' + (urgActive ? '1' : '0') + '"><span>' + (urgActive ? '✓ Remover urgência' : '🚨 Marcar como urgente') + '</span><small>' + (urgActive ? 'Voltar ao fluxo normal' : 'Priorizar na produção') + '</small></button>'
         + '<button type="button" data-ofmaq-final-action="sem-papel" class="patch-ofmaq-sem-papel-btn" data-active="' + (semPapelActive ? '1' : '0') + '" style="width:100%;margin-top:8px"><span style="display:block;font-size:13px;font-weight:900">' + (semPapelActive ? '🟨 Remover Sem Papelão' : '🟨 Marcar Sem Papelão') + '</span><small style="display:block;font-size:11px;font-weight:600;opacity:.9;margin-top:3px">' + (semPapelActive ? 'Voltar ao fluxo normal' : 'Destacar amarela / sem papelão') + '</small></button>'
+        + '<div class="ofmaq-final-papel-box" style="margin-top:10px;padding:12px;border-radius:12px;background:rgba(15,23,42,.58);border:1px solid rgba(71,85,105,.45);display:grid;gap:8px">'
+        + '  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:700;color:#e2e8f0"><input type="checkbox" id="ofmaq-final-papel-comprado" ' + (papelCompradoActive ? 'checked' : '') + ' style="width:16px;height:16px;accent-color:#10b981"><span>Papel / Chapa comprado</span></label>'
+        + '  <label style="display:grid;gap:4px"><span style="font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8">Previsão de entrega do papel</span><input type="date" id="ofmaq-final-papel-previsao" value="' + escAttr(prevEntregaPapelRaw) + '" style="padding:9px 10px;border-radius:10px;border:1px solid rgba(71,85,105,.6);background:rgba(15,23,42,.88);color:#f8fafc;font-size:13px;font-weight:700"></label>'
+        + '  <button type="button" data-ofmaq-final-action="save-papel" class="ofmaq-final-action-secondary" style="width:100%;margin:0"><span style="display:block">💾 Salvar dados do papel</span><small style="display:block">Atualiza coluna Papel / Previsão na listagem</small></button>'
+        + '</div>'
         + '<button type="button" data-ofmaq-final-action="move" class="ofmaq-final-action-secondary"><span>↔ Mover de máquina</span><small>Trocar fila</small></button>'
         + '<button type="button" data-ofmaq-final-action="date" class="ofmaq-final-action-secondary"><span>📅 Alterar data</span><small>Reagendar</small></button>'
         + '<button type="button" data-ofmaq-final-action="move-date" class="ofmaq-final-action-secondary"><span>🗓️↔ Mover máquina e data</span><small>Alterar os dois de uma vez</small></button>'
@@ -25086,6 +25161,31 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             closeModal('ofmaq-final-actions');
             openMoveDateModal(id);
             return;
+          }
+          if (action === 'save-papel') {
+            try {
+              var cbox = document.getElementById('ofmaq-final-papel-comprado');
+              var dbox = document.getElementById('ofmaq-final-papel-previsao');
+              var vComprado = !!(cbox && cbox.checked);
+              var vData = String(dbox && dbox.value || '').trim().slice(0, 10);
+              var bodySave = { papel_comprado: vComprado };
+              if (vData && /^\d{4}-\d{2}-\d{2}$/.test(vData)) bodySave.previsao_entrega_papel = vData;
+              var rSav = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: bodySave });
+              if (!rSav || !rSav.resp || !rSav.resp.ok || (rSav.data && rSav.data.ok === false)) throw new Error((rSav && rSav.data && (rSav.data.error || rSav.data.message)) || 'Falha ao salvar dados do papel');
+              if (row && row.ofRaw) {
+                row.ofRaw.papel_comprado = vComprado;
+                row.ofRaw.previsao_entrega_papel = vData || null;
+              }
+              closeModal('ofmaq-final-actions');
+              updateToolbar(ensureShell());
+              renderRows(ensureShell());
+              try { showOfmaqCenterConfirm('OF #' + String(row.numero || id) + ' dados do papel atualizados.', { title: 'Dados salvos' }); } catch (_) {}
+              return;
+            } catch (eSav) {
+              try { await window._ofmaqReportError('Ações OF (final-modal): save-papel', eSav, { ofContext: { id: id, numero: row && row.numero } }); } catch (_) {}
+              try { window.toast('Erro ao salvar papel: ' + String(eSav && eSav.message || eSav), 'var(--red)'); } catch (_) {}
+              return;
+            }
           }
           if (action === 'up' || action === 'down') {
             await reorderWithinDay(id, action === 'up' ? -1 : 1);
