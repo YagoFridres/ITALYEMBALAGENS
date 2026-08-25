@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260825070001';
-const SW_RUNTIME_VERSION = '20260825070001';
+const PATCH_RUNTIME_VERSION = '20260825080001';
+const SW_RUNTIME_VERSION = '20260825080001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -20034,7 +20034,10 @@ function _ofKnifeEntriesFromItem(item) {
 app.get('/api/relatorios/facas-mais-utilizadas', authMiddleware, async (req, res) => {
   try {
     const empresaId = await resolverEmpresaId(req);
-    if (!empresaId) return res.json({ ok: true, data: [] });
+    if (!empresaId) {
+      console.warn('[RELATORIOS FACAS MAIS DIAG] early return vazio: resolverEmpresaId retornou null/undefined. userEmail=', String(req?.user?.email || req?.usuario?.email || 'DESCONHECIDO').slice(0,80));
+      return res.json({ ok: true, data: [], _diagnostico: 'empresaId_nao_resolvido' });
+    }
 
     const { data: facasRows, error: facasError } = await supabase
       .from('facas_estoque')
@@ -20055,7 +20058,7 @@ app.get('/api/relatorios/facas-mais-utilizadas', authMiddleware, async (req, res
 
     let q = supabase
       .from('ofs')
-      .select('id,numero,cliente,cliente_nome,clinome,cliNome,status,quantidade,qtd,valor_total,valor_venda,itens,empresa_id,deleted_at')
+      .select('id,numero,cliente,cliente_nome,clinome,cliNome,status,quantidade,qtd,valor_total,valor_venda,itens,empresa_id,deleted_at,faca,faca_id,faca_nome,nome_faca,corte,estoque_faca_id,faca_codigo,facas,facas_vinculadas')
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(5000);
@@ -20063,39 +20066,76 @@ app.get('/api/relatorios/facas-mais-utilizadas', authMiddleware, async (req, res
     const { data: ofsRows, error: ofsError } = await q;
     if (ofsError) throw ofsError;
 
+    const diag = {
+      totalOfs: Array.isArray(ofsRows) ? ofsRows.length : 0,
+      ofsCanceladas: 0,
+      ofsComItensParseados: 0,
+      itensTotal: 0,
+      knivesDentroItens: 0,
+      knivesForaItensNaOf: 0,
+      knivesComMatchEstoque: 0,
+      knivesSemMatchEstoque: 0,
+      facasEstoqueCadastradas: Array.isArray(facasRows) ? facasRows.length : 0,
+    };
+
     const ranking = new Map();
     (ofsRows || []).forEach((ofRow) => {
       const statusNorm = _ofKnifeNormText(ofRow && ofRow.status);
-      if (statusNorm.indexOf('cancel') >= 0) return;
+      if (statusNorm.indexOf('cancel') >= 0) { diag.ofsCanceladas += 1; return; }
       const cliente = String(ofRow && (ofRow.cliente_nome || ofRow.cliente || ofRow.clinome || ofRow.cliNome) || '').trim() || 'Cliente não identificado';
+      const qtdOf = Math.max(1, Number(ofRow?.quantidade ?? ofRow?.qtd ?? 1) || 1);
+      const knivesTotal = [];
       const itens = _ofKnifeParseList(ofRow && ofRow.itens);
+      if (Array.isArray(itens) && itens.length) {
+        diag.ofsComItensParseados += 1;
+        diag.itensTotal += itens.length;
+      }
       itens.forEach((item) => {
-        const itemQtd = Math.max(1, Number(item && (item.quantidade ?? item.qtd ?? ofRow?.quantidade ?? ofRow?.qtd ?? 1)) || 1);
-        const knives = _ofKnifeEntriesFromItem(item);
-        knives.forEach((entry) => {
-          const facaMeta = (entry.id && facaById.get(entry.id)) || facaByNome.get(_ofKnifeNormText(entry.nome || entry.numero)) || null;
-          const key = String(entry.id || facaMeta?.id || entry.key || '').trim();
-          if (!key) return;
-          const current = ranking.get(key) || {
-            id: String(entry.id || facaMeta?.id || '').trim() || null,
-            numero: String(facaMeta?.numero || entry.numero || facaMeta?.codigo || '').trim(),
-            nome: String(facaMeta?.nome || entry.nome || facaMeta?.descricao || 'Faca sem nome').trim(),
-            categoria: String(facaMeta?.categoria || '').trim(),
-            medidas: String(facaMeta?.medidas || '').trim(),
-            valor: Number(facaMeta?.valor ?? entry.valor ?? 0) || 0,
-            quantidade_uso: 0,
-            quantidade_caixas: 0,
-            cliente_top: '',
-            cliente_top_usos: 0,
-            clientes_map: {},
-          };
-          current.quantidade_uso += 1;
-          current.quantidade_caixas += itemQtd;
-          current.clientes_map[cliente] = (Number(current.clientes_map[cliente] || 0) || 0) + 1;
-          ranking.set(key, current);
-        });
+        const itemQtd = Math.max(1, Number(item && (item.quantidade ?? item.qtd ?? qtdOf)) || 1);
+        const knivesItem = _ofKnifeEntriesFromItem(item);
+        knivesItem.forEach((kn) => { kn._qtd = itemQtd; knivesTotal.push(kn); });
+        diag.knivesDentroItens += knivesItem.length;
+      });
+
+      // Também procura faca NAS COLUNAS DIRETAS da OF (fora do array itens[])
+      const knivesOfDireta = _ofKnifeEntriesFromItem(ofRow);
+      knivesOfDireta.forEach((kn) => { kn._qtd = qtdOf; knivesTotal.push(kn); });
+      diag.knivesForaItensNaOf += knivesOfDireta.length;
+
+      knivesTotal.forEach((entry) => {
+        const entryNomeNorm = _ofKnifeNormText(entry.nome || entry.numero || '');
+        let facaMeta = (entry.id && facaById.get(entry.id)) || (entryNomeNorm && facaByNome.get(entryNomeNorm)) || null;
+        let key = String(entry.id || (facaMeta?.id) || entry.key || '').trim();
+        // Se ainda sem key, criar key por nome normalizado + permitir faca não cadastrada
+        if (!key) {
+          key = 'nao_cadastrada:' + (entryNomeNorm || String(entry.nome || entry.numero || '').toLowerCase().replace(/\s+/g,'_').slice(0,80));
+          if (key === 'nao_cadastrada:') return;
+        }
+        if (facaMeta) diag.knivesComMatchEstoque += 1; else diag.knivesSemMatchEstoque += 1;
+        let nomeBase = String(facaMeta?.nome || entry.nome || facaMeta?.descricao || '').trim();
+        if (!nomeBase) nomeBase = entry.nome || entry.numero ? ('Faca ' + String(entry.nome || entry.numero || '').trim()) : 'Faca sem nome';
+        const current = ranking.get(key) || {
+          id: String(entry.id || facaMeta?.id || '').trim() || null,
+          numero: String(facaMeta?.numero || entry.numero || facaMeta?.codigo || '').trim(),
+          nome: nomeBase,
+          categoria: facaMeta ? String(facaMeta?.categoria || '').trim() : '(não cadastrada)',
+          medidas: String(facaMeta?.medidas || '').trim(),
+          valor: Number(facaMeta?.valor ?? entry.valor ?? 0) || 0,
+          quantidade_uso: 0,
+          quantidade_caixas: 0,
+          cliente_top: '',
+          cliente_top_usos: 0,
+          clientes_map: {},
+          cadastrada: !!facaMeta,
+        };
+        current.quantidade_uso += 1;
+        current.quantidade_caixas += Number(entry?._qtd || qtdOf || 1) || 1;
+        current.clientes_map[cliente] = (Number(current.clientes_map[cliente] || 0) || 0) + 1;
+        ranking.set(key, current);
       });
     });
+
+    console.warn('[RELATORIOS FACAS MAIS DIAG]', JSON.stringify(diag), 'rankingFinal=', ranking.size);
 
     const data = Array.from(ranking.values()).map((row) => {
       const topCliente = Object.entries(row.clientes_map || {}).sort((a, b) => {
@@ -20113,6 +20153,7 @@ app.get('/api/relatorios/facas-mais-utilizadas', authMiddleware, async (req, res
         valor_total_estimado: (Number(row.valor || 0) || 0) * (Number(row.quantidade_uso || 0) || 0),
         cliente_top: String(topCliente[0] || '').trim() || '—',
         cliente_top_usos: Number(topCliente[1] || 0) || 0,
+        cadastrada_no_estoque: !!row.cadastrada,
       };
     }).sort((a, b) => {
       return (Number(b.quantidade || 0) - Number(a.quantidade || 0))
@@ -20120,7 +20161,7 @@ app.get('/api/relatorios/facas-mais-utilizadas', authMiddleware, async (req, res
         || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
     });
 
-    return res.json({ ok: true, data });
+    return res.json({ ok: true, data, _diagnostico: diag });
   } catch (e) {
     console.error('[RELATORIOS FACAS MAIS ERRO 500 STACK]', e?.stack || String(e));
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -32288,21 +32329,32 @@ app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) =>
     const dataInicio = new Date();
     dataInicio.setFullYear(hoje.getFullYear() - 3);
     const empresaId = String(req.query?.empresa_id || req.query?.empresaId || '').trim();
-    const ofs = await _listarOfsVendasOficiais({ inicio: dataInicio.toISOString().slice(0, 10) }, empresaId);
+    const debugPre = { userEmail: String(req?.user?.email || req?.usuario?.email || '').slice(0,80), empresaId, dt3anos: dataInicio.toISOString().slice(0,10) };
+    let ofs = [];
+    try {
+      ofs = await _listarOfsVendasOficiais({ inicio: dataInicio.toISOString().slice(0, 10) }, empresaId) || [];
+    } catch (eHelper) {
+      console.error('[faturamento-mensal 500 STACK _listarOfsVendasOficiais]', eHelper?.stack || String(eHelper));
+      throw eHelper;
+    }
 
     const grupos = {};
     (ofs || []).forEach((of) => {
-      const valor = _vendasOficialValor(of);
-      if (!valor || valor <= 0) return;
+      try {
+        const valor = _vendasOficialValor(of);
+        if (!valor || valor <= 0) return;
 
-      const dt = _vendasOficialDateObj(of);
-      if (!(dt && Number.isFinite(dt.getTime()))) return;
+        const dt = _vendasOficialDateObj(of);
+        if (!(dt && Number.isFinite(dt.getTime()))) return;
 
-      const k = dt.getFullYear() + '-' + (dt.getMonth() + 1);
-      if (!grupos[k]) grupos[k] = { ano: dt.getFullYear(), mes: dt.getMonth() + 1, valor: 0, valor_of: 0, valor_manual: null, fonte: 'of', ofs: 0 };
-      grupos[k].valor += valor;
-      grupos[k].valor_of += valor;
-      grupos[k].ofs += 1;
+        const k = dt.getFullYear() + '-' + (dt.getMonth() + 1);
+        if (!grupos[k]) grupos[k] = { ano: dt.getFullYear(), mes: dt.getMonth() + 1, valor: 0, valor_of: 0, valor_manual: null, fonte: 'of', ofs: 0 };
+        grupos[k].valor += valor;
+        grupos[k].valor_of += valor;
+        grupos[k].ofs += 1;
+      } catch (eOf) {
+        console.error('[faturamento-mensal 500 STACK forEach of individual]', eOf?.stack || String(eOf), 'ofNum=', String(of?.numero || of?.id || 'desconhecido').slice(0,40));
+      }
     });
 
     const dados = Object.values(grupos).sort((a, b) => (a.ano * 100 + a.mes) - (b.ano * 100 + b.mes));
@@ -32343,13 +32395,13 @@ app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) =>
       futuros,
       crescimento_pct: Math.round(crescimento * 10000) / 100,
       base_meses: comDados.length,
-      debug: { totalOfs: (ofs || []).length, mesesComDados: Object.keys(grupos).length, criterio: 'ofs_concluidas_valor_total_data_conclusao' },
+      debug: { totalOfs: (ofs || []).length, mesesComDados: Object.keys(grupos).length, criterio: 'ofs_concluidas_valor_total_data_conclusao', ...debugPre },
     };
-    cacheSet(cacheKey, resultado, 5 * 60 * 1000);
+    try { cacheSet(cacheKey, resultado, 5 * 60 * 1000); } catch (_c) { console.error('[faturamento-mensal cacheSet warn]', String(_c?.message || _c)); }
     res.json(resultado);
   } catch (e) {
-    console.error('[faturamento-mensal]', e.message);
-    res.status(500).json({ ok: false, error: e.message });
+    console.error('[faturamento-mensal 500 STACK]', e?.stack || String(e));
+    res.status(500).json({ ok: false, error: e?.message || String(e), stackHint: String(e?.stack || '').split('\n')[0].slice(0,200) });
   }
 });
 
