@@ -24424,6 +24424,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-final-table tbody td{padding:12px;border-bottom:1px solid rgba(51,65,85,.45);font-size:13px;line-height:1.4;color:#e2e8f0;vertical-align:middle}'
         + '#page-ofmaq .ofmaq-final-row[data-urgencia="urgente"] td{background-image:linear-gradient(90deg,rgba(127,29,29,.16),transparent)}'
         + '#page-ofmaq .ofmaq-final-row[data-urgencia="atrasada"] td{background-image:linear-gradient(90deg,rgba(120,53,15,.16),transparent)}'
+        + '#page-ofmaq .ofmaq-final-row[data-sem-papel="1"]{background-color:rgba(250,204,21,.14)}'
+        + '#page-ofmaq .ofmaq-final-row[data-sem-papel="1"] td{background-color:rgba(250,204,21,.14);background-image:linear-gradient(90deg,rgba(250,204,21,.18),rgba(250,204,21,.08))!important}'
         + '#page-ofmaq .ofmaq-final-seq{width:84px;max-width:84px;text-align:center}'
         + '#page-ofmaq .ofmaq-final-seq-input{width:72px;min-height:40px;padding:6px 10px;text-align:center;border-radius:12px;border:1px solid rgba(96,165,250,.34);background:rgba(37,99,235,.18);color:#dbeafe;font-size:15px;font-weight:900;outline:none;box-shadow:none}'
         + '#page-ofmaq .ofmaq-final-seq-input:focus{border-color:#93c5fd;background:rgba(37,99,235,.26);box-shadow:0 0 0 3px rgba(59,130,246,.18)}'
@@ -24572,7 +24574,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '  <div id="ofmaq-final-summary" class="ofmaq-final-summary"></div>'
           + '</div>'
           + '<div id="ofmaq-final-redistribuicao" class="ofmaq-final-redistribuicao"></div>'
-          + '<div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table"><thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Data de Entrega</th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead><tbody id="ofmaq-final-tbody"></tbody></table></div>';
+          + '<div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table"><thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Data de Entrega</th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Papel / Previsão</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead><tbody id="ofmaq-final-tbody"></tbody></table></div>';
         container.insertBefore(root, container.firstChild || null);
       }
       purgeLegacyViews();
@@ -24682,7 +24684,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var weekStartIso = nowTemp.toISOString().slice(0, 10);
         nowTemp.setDate(nowTemp.getDate() + 6);
         var weekEndIso = nowTemp.toISOString().slice(0, 10);
-        var r = await fetch('/api/amostras?status=Pendente&limit=500&t=' + Date.now());
+        var tokenAmostra = '';
+        try { tokenAmostra = String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
+        var r = await fetch('/api/amostras?status=Pendente&limit=500&t=' + Date.now(), {
+          headers: tokenAmostra ? { Authorization: 'Bearer ' + tokenAmostra } : {}
+        });
         var arr = [];
         try { arr = await r.json(); } catch (_p) { arr = []; }
         if (!Array.isArray(arr)) arr = (arr && arr.data) || [];
@@ -24924,17 +24930,27 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '<td><div class="ofmaq-final-color-wrap">' + colorHtml(item.cores) + '</div></td>'
         + '<td class="ofmaq-final-cell"><strong>' + escH(item.facasResumo || '—') + '</strong></td>'
         + (function() {
-            var pComprado = item && (item.papel_comprado === true || item.papel_comprado === 1 || String(item.papel_comprado || '').trim() === '1' || String(item.papel_comprado || '').toLowerCase() === 'true');
-            var pPrev = String(item && (item.previsao_entrega_papel || item.previsaoEntregaPapel || '') || '').trim();
-            if (pPrev.length > 10) pPrev = pPrev.slice(0, 10);
-            if (pComprado || pPrev) {
-              var tit = pComprado ? '✅ Papel comprado' : '—';
-              var dt = pPrev ? 'Entrega: ' + fmtDateBR(pPrev) : 'Sem previsão';
-              return '<td><div class="ofmaq-final-cell"><strong style="font-size:12px;color:' + (pComprado ? '#10b981' : '#f59e0b') + '">' + escH(tit) + '</strong><small style="display:block;color:#94a3b8;font-size:11px;line-height:1.35;margin-top:2px;">' + escH(dt) + '</small></div></td>';
+            var papelRaw = item && (item.papel_comprado != null ? item.papel_comprado : (item.papelComprado != null ? item.papelComprado : null));
+            var prevRaw = item && (item.previsao_entrega_papel != null ? item.previsao_entrega_papel : (item.previsaoEntregaPapel != null ? item.previsaoEntregaPapel : ''));
+            var isBoolComprado = !!(papelRaw === true || papelRaw === 1 || String(papelRaw || '').trim() === '1' || String(papelRaw || '').toLowerCase() === 'true');
+            var papelTexto = '';
+            if (papelRaw != null && typeof papelRaw !== 'boolean' && papelRaw !== 0 && papelRaw !== 1) {
+              var strP = String(papelRaw || '').trim();
+              if (strP && strP !== '0' && strP.toLowerCase() !== 'false') papelTexto = strP;
             }
-            return '<td><div class="ofmaq-final-cell"><strong style="font-size:12px;color:#64748b">—</strong><small style="display:block;color:#94a3b8;font-size:11px;line-height:1.35;margin-top:2px;">Pendente</small></div></td>';
+            if (!papelTexto && isBoolComprado) papelTexto = '✅ Comprado';
+            var prevStr = String(prevRaw || '').trim();
+            if (prevStr) {
+              if (papelTexto) papelTexto = papelTexto + ' | ' + prevStr;
+              else papelTexto = prevStr;
+            }
+            if (papelTexto) {
+              var corTxt = isBoolComprado ? '#10b981' : '#f59e0b';
+              return '<td><div class="ofmaq-final-cell" title="' + escAttr(papelTexto) + '"><strong style="font-size:12px;color:' + corTxt + ';white-space:normal;line-height:1.3;">' + escH(papelTexto) + '</strong></div></td>';
+            }
+            return '<td><div class="ofmaq-final-cell"><strong style="font-size:12px;color:#64748b">—</strong><small style="display:block;color:#94a3b8;font-size:11px;line-height:1.35;margin-top:2px;">Aguardando</small></div></td>';
           })()
-        + '<td>' + escH(item.maquina) + '</td>'
+        + '<td>' + escH((item && item.maquina && String(item.maquina).trim()) || 'Pendente') + '</td>'
         + '<td><span class="ofmaq-final-time">' + escH(fmtTempo(item.tempoMin)) + '</span></td>'
         + '<td class="ofmaq-final-actions"><button type="button" class="ofmaq-final-actions-btn" data-urgente="' + (item.urgencia === 'urgente' ? '1' : '0') + '" data-ofmaq-final-actions="' + escAttr(item.id) + '">' + (item.urgencia === 'urgente' ? '🚨 ' : '⚡ ') + 'Ações</button></td>'
         + '</tr>';
@@ -25440,17 +25456,27 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var urgTitle = urgActive ? 'Urgência ativa' : (row.urgencia === 'atrasada' ? 'OF atrasada' : 'Sem urgência');
       var urgSub = urgActive ? 'Essa OF está priorizada na fila e destacada na grade.' : (row.urgencia === 'atrasada' ? 'Ela não está marcada manualmente, mas já está fora do prazo.' : 'Você pode marcar urgência sem sair do modal de ações.');
       var semPapelActive = !!(row && row.ofRaw && row.ofRaw.sem_papel);
-      var papelCompradoActive = !!(row && row.ofRaw && (row.ofRaw.papel_comprado === true || row.ofRaw.papel_comprado === 1 || String(row.ofRaw.papel_comprado || '').trim() === '1' || String(row.ofRaw.papel_comprado || '').toLowerCase() === 'true'));
-      var prevEntregaPapelRaw = String(row && row.ofRaw && (row.ofRaw.previsao_entrega_papel || '') || '').trim();
-      if (prevEntregaPapelRaw.length > 10) prevEntregaPapelRaw = prevEntregaPapelRaw.slice(0, 10);
+      var papelTextoInit = '';
+      try {
+        var pr = row && row.ofRaw && row.ofRaw.papel_comprado != null ? row.ofRaw.papel_comprado : '';
+        var prStr = String(pr || '').trim();
+        var isBool = (pr === true || pr === 1 || prStr === '1' || prStr.toLowerCase() === 'true');
+        if (prStr && !isBool) papelTextoInit = prStr;
+        else if (isBool) papelTextoInit = 'Comprado';
+        var pr2 = String(row && row.ofRaw && (row.ofRaw.previsao_entrega_papel || row.ofRaw.previsaoEntregaPapel) || '').trim();
+        if (pr2) {
+          if (papelTextoInit) papelTextoInit = papelTextoInit + ' | ' + pr2;
+          else papelTextoInit = pr2;
+        }
+      } catch (_) { papelTextoInit = ''; }
+      if (papelTextoInit.length > 255) papelTextoInit = papelTextoInit.slice(0, 255);
       var modal = openModal('ofmaq-final-actions', 'Ações da OF #' + String(row.numero || row.id), ''
         + '<div class="ofmaq-final-urgency-state"><div><strong>' + escH(urgTitle) + '</strong><span>' + escH(urgSub) + '</span></div><span class="ofmaq-final-status" data-tone="' + escAttr(urgActive ? 'danger' : (row.urgencia === 'atrasada' ? 'warn' : 'ok')) + '">' + escH(urgActive ? 'URGENTE' : (row.urgencia === 'atrasada' ? 'ATRASADA' : 'NORMAL')) + '</span></div>'
         + '<button type="button" data-ofmaq-final-action="pass" class="ofmaq-final-action-primary"><span>✓ Passou pela máquina</span><small>Concluir etapa</small></button>'
         + '<button type="button" data-ofmaq-final-action="toggle-urgency" data-urgente="' + (urgActive ? '1' : '0') + '" class="ofmaq-final-action-danger" data-active="' + (urgActive ? '1' : '0') + '"><span>' + (urgActive ? '✓ Remover urgência' : '🚨 Marcar como urgente') + '</span><small>' + (urgActive ? 'Voltar ao fluxo normal' : 'Priorizar na produção') + '</small></button>'
         + '<button type="button" data-ofmaq-final-action="sem-papel" class="patch-ofmaq-sem-papel-btn" data-active="' + (semPapelActive ? '1' : '0') + '" style="width:100%;margin-top:8px"><span style="display:block;font-size:13px;font-weight:900">' + (semPapelActive ? '🟨 Remover Sem Papelão' : '🟨 Marcar Sem Papelão') + '</span><small style="display:block;font-size:11px;font-weight:600;opacity:.9;margin-top:3px">' + (semPapelActive ? 'Voltar ao fluxo normal' : 'Destacar amarela / sem papelão') + '</small></button>'
         + '<div class="ofmaq-final-papel-box" style="margin-top:10px;padding:12px;border-radius:12px;background:rgba(15,23,42,.58);border:1px solid rgba(71,85,105,.45);display:grid;gap:8px">'
-        + '  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:700;color:#e2e8f0"><input type="checkbox" id="ofmaq-final-papel-comprado" ' + (papelCompradoActive ? 'checked' : '') + ' style="width:16px;height:16px;accent-color:#10b981"><span>Papel / Chapa comprado</span></label>'
-        + '  <label style="display:grid;gap:4px"><span style="font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8">Previsão de entrega do papel</span><input type="date" id="ofmaq-final-papel-previsao" value="' + escAttr(prevEntregaPapelRaw) + '" style="padding:9px 10px;border-radius:10px;border:1px solid rgba(71,85,105,.6);background:rgba(15,23,42,.88);color:#f8fafc;font-size:13px;font-weight:700"></label>'
+        + '  <label style="display:grid;gap:4px"><span style="font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8">Papel / Previsão (texto livre — ex: Comprado Pedido 123, 2026-09-01, Aguardando fornecedor)</span><textarea id="ofmaq-final-papel-texto" rows="2" maxlength="255" placeholder="Digite o que quiser aqui sobre o papel/previsão" style="padding:9px 10px;border-radius:10px;border:1px solid rgba(71,85,105,.6);background:rgba(15,23,42,.88);color:#f8fafc;font-size:13px;font-weight:600;resize:vertical;min-height:52px;font-family:inherit">' + escH(papelTextoInit) + '</textarea></label>'
         + '  <button type="button" data-ofmaq-final-action="save-papel" class="ofmaq-final-action-secondary" style="width:100%;margin:0"><span style="display:block">💾 Salvar dados do papel</span><small style="display:block">Atualiza coluna Papel / Previsão na listagem</small></button>'
         + '</div>'
         + '<button type="button" data-ofmaq-final-action="move" class="ofmaq-final-action-secondary"><span>↔ Mover de máquina</span><small>Trocar fila</small></button>'
@@ -25511,17 +25537,29 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           }
           if (action === 'save-papel') {
             try {
-              var cbox = document.getElementById('ofmaq-final-papel-comprado');
-              var dbox = document.getElementById('ofmaq-final-papel-previsao');
-              var vComprado = !!(cbox && cbox.checked);
-              var vData = String(dbox && dbox.value || '').trim().slice(0, 10);
-              var bodySave = { papel_comprado: vComprado };
-              if (vData && /^\d{4}-\d{2}-\d{2}$/.test(vData)) bodySave.previsao_entrega_papel = vData;
+              var tArea = document.getElementById('ofmaq-final-papel-texto');
+              var rawTxt = String(tArea && tArea.value || '').trim();
+              if (rawTxt.length > 255) rawTxt = rawTxt.slice(0, 255);
+              var bodySave = {};
+              if (rawTxt) bodySave.papel_comprado = rawTxt;
+              else bodySave.papel_comprado = null;
+              var extraData = null;
+              if (rawTxt) {
+                var dtMatch = rawTxt.match(/(\d{4}-\d{2}-\d{2})/);
+                if (dtMatch && dtMatch[1]) bodySave.previsao_entrega_papel = dtMatch[1];
+                var lower = rawTxt.toLowerCase();
+                var hasCompra = lower.indexOf('comprado') >= 0 || lower.indexOf('pedido') >= 0;
+                if (hasCompra) bodySave.previsao_entrega_papel = bodySave.previsao_entrega_papel || null;
+              } else {
+                bodySave.previsao_entrega_papel = null;
+              }
               var rSav = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: bodySave });
               if (!rSav || !rSav.resp || !rSav.resp.ok || (rSav.data && rSav.data.ok === false)) throw new Error((rSav && rSav.data && (rSav.data.error || rSav.data.message)) || 'Falha ao salvar dados do papel');
               if (row && row.ofRaw) {
-                row.ofRaw.papel_comprado = vComprado;
-                row.ofRaw.previsao_entrega_papel = vData || null;
+                row.ofRaw.papel_comprado = rawTxt ? rawTxt : null;
+                if (bodySave.previsao_entrega_papel) row.ofRaw.previsao_entrega_papel = bodySave.previsao_entrega_papel;
+                else if (rawTxt) { /* keep as-is, papel_comprado drives the display */ }
+                else row.ofRaw.previsao_entrega_papel = null;
               }
               closeModal('ofmaq-final-actions');
               updateToolbar(ensureShell());
@@ -25877,7 +25915,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         renderRows(shell);
       } catch (err) {
         var shellErr = ensureShell();
-        if (!renderOfmaqEmergency(shellErr, err) && shellErr && shellErr.tbody) shellErr.tbody.innerHTML = '<tr><td colspan="11" class="ofmaq-final-empty">Falha ao carregar OFs por Máquina: ' + escH(err && err.message || err) + '</td></tr>';
+        if (!renderOfmaqEmergency(shellErr, err) && shellErr && shellErr.tbody) shellErr.tbody.innerHTML = '<tr><td colspan="15" class="ofmaq-final-empty">Falha ao carregar OFs por Máquina: ' + escH(err && err.message || err) + '</td></tr>';
         try { console.error('[OFMAQ-FINAL-ERRO]', err); } catch (_) {}
       } finally {
         state.loading = false;
@@ -49555,6 +49593,44 @@ function _ocultarGraficoComissoes() {
         filtrosWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:4px 0 14px';
         divTopo.appendChild(filtrosWrap);
       }
+      try {
+        if (!filtrosWrap.querySelector('#comissoes-filtro-empresa')) {
+          var _selEmp = document.createElement('select');
+          _selEmp.id = 'comissoes-filtro-empresa';
+          _selEmp.style.cssText = 'padding:7px 12px;border-radius:6px;background:#111827;border:1px solid #334155;color:#e2e8f0;font-size:.85rem;font-weight:500;min-width:170px';
+          var _atualEmp = '';
+          try { _atualEmp = String(window.__comissoesFiltroEmpresaId || (typeof _empresaIdAtual === 'function' ? _empresaIdAtual() : '') || '').trim(); } catch (_) {}
+          var _optsEmp = Array.isArray(window.EMPRESAS_OPCOES) ? window.EMPRESAS_OPCOES : [
+            { id: '', label: 'Todas as empresas' },
+            { id: 'df5f7672-0a6b-402d-ae65-296554236c31', label: 'Italy Embalagens' },
+            { id: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e', label: 'Cartoeste' },
+            { id: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667', label: 'Oestepack' }
+          ];
+          if (_optsEmp[0] && _optsEmp[0].id !== '') {
+            _optsEmp.unshift({ id: '', label: 'Todas as empresas' });
+          }
+          _selEmp.innerHTML = _optsEmp.map(function(opt) {
+            var _id = String(opt.id || '').replace(/"/g, '&quot;');
+            var _lab = String(opt.label || 'Sem nome').replace(/</g, '&lt;');
+            var _sel = _atualEmp && String(opt.id) === _atualEmp ? ' selected' : (!_atualEmp && _id === '' ? ' selected' : '');
+            return '<option value="' + _id + '"' + _sel + '>' + _lab + '</option>';
+          }).join('');
+          _selEmp.addEventListener('change', function() {
+            try { window.__comissoesFiltroEmpresaId = String(_selEmp.value || '').trim(); } catch (_) {}
+            try { window._comRodando = false; } catch (_) {}
+            try { if (typeof clearTimeout === 'function' && window._comTimeout) clearTimeout(window._comTimeout); } catch (_) {}
+            try { setTimeout(function() { if (typeof _renderComissoesPatch === 'function') _renderComissoesPatch(); }, 30); } catch (_) {}
+          });
+          try { filtrosWrap.insertBefore(_selEmp, filtrosWrap.firstChild || null); } catch (_) { filtrosWrap.appendChild(_selEmp); }
+        } else {
+          try {
+            var _exist = filtrosWrap.querySelector('#comissoes-filtro-empresa');
+            if (_exist && window.__comissoesFiltroEmpresaId && String(_exist.value || '') !== String(window.__comissoesFiltroEmpresaId)) {
+              _exist.value = window.__comissoesFiltroEmpresaId;
+            }
+          } catch (_) {}
+        }
+      } catch (_) {}
       var conteudoWrap = null;
       try { conteudoWrap = divTopo.querySelector('#_com_topo_conteudo'); } catch (_) { conteudoWrap = null; }
       if (!conteudoWrap) {
