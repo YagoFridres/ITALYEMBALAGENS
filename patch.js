@@ -44147,91 +44147,113 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function tryRenderMulti() {
-    try { patchRenderDashboard(); } catch (_) {}
     setTimeout(tryRender, 30);
     setTimeout(tryRender, 180);
     setTimeout(tryRender, 600);
     setTimeout(tryRender, 1400);
   }
 
-  function patchRenderDashboard() {
-    var orig = window.renderDashboard;
-    if (typeof orig !== 'function') return false;
-    if (orig._patchDashboardEstoques) return true;
-    var wrapped = function() {
-      var r = orig.apply(this, arguments);
-      try { tryRender(); } catch (_) {}
-      setTimeout(tryRender, 50);
-      setTimeout(tryRender, 300);
-      setTimeout(tryRender, 900);
-      return r;
-    };
-    wrapped._patchDashboardEstoques = true;
-    try { wrapped._orig = orig; } catch (_) {}
-    window.renderDashboard = wrapped;
-    return true;
-  }
+  (function instalarHookDiretoRenderDashboard() {
+    var _dashReal = null;
+    var _dashWrapped = null;
+    var _dashInstalouDefineProperty = false;
 
-  (function ensureDashPatchLoop() {
-    var tentativas = 0;
-    function tick() {
-      tentativas++;
-      try {
-        var ok = patchRenderDashboard();
-        if (ok || tentativas >= 15) return;
-      } catch (_) {}
-      if (tentativas < 15) setTimeout(tick, 200);
+    function _criarWrapped(orig) {
+      if (orig && orig._patchDashboardEstoques) return orig;
+      function w() {
+        var r = orig.apply(this, arguments);
+        try { tryRender(); } catch (_) {}
+        setTimeout(tryRender, 50);
+        setTimeout(tryRender, 300);
+        setTimeout(tryRender, 900);
+        return r;
+      }
+      w._patchDashboardEstoques = true;
+      try { w._orig = orig; } catch (_) {}
+      return w;
     }
-    setTimeout(tick, 50);
-  })();
 
-  try {
-    document.body && document.body.addEventListener('click', function(e) {
-      try {
-        var target = e && e.target;
-        if (!target) return;
-        var t = target;
-        var found = false;
-        var depth = 0;
-        while (t && depth < 6) {
-          var txt = String(t.textContent || '').replace(/\s+/g, ' ');
-          if (txt.indexOf('Dashboard') >= 0 || txt.indexOf('Análises') >= 0) {
-            found = true;
-            break;
+    function _aplicarWrapperSeExistir() {
+      if (_dashWrapped) return;
+      var cur = null;
+      try { cur = window.renderDashboard; } catch (_) { cur = null; }
+      if (typeof cur === 'function') {
+        _dashReal = cur;
+        _dashWrapped = _criarWrapped(cur);
+      }
+    }
+
+    try {
+      _aplicarWrapperSeExistir();
+
+      Object.defineProperty(window, 'renderDashboard', {
+        configurable: true,
+        enumerable: true,
+        get: function() {
+          return _dashWrapped || _dashReal;
+        },
+        set: function(novo) {
+          _dashReal = novo;
+          if (typeof novo === 'function') {
+            _dashWrapped = _criarWrapped(novo);
+          } else {
+            _dashWrapped = null;
           }
-          var href = String((t.getAttribute && t.getAttribute('href')) || (t.dataset && t.dataset.page) || t.id || '').toLowerCase();
-          if (href.indexOf('dashboard') >= 0 || href.indexOf('analise') >= 0) {
-            found = true;
-            break;
+        }
+      });
+      _dashInstalouDefineProperty = true;
+    } catch (_) {
+      _dashInstalouDefineProperty = false;
+    }
+
+    if (!_dashInstalouDefineProperty) {
+      var _fallbackTentativas = 0;
+      var _fallbackId = setInterval(function() {
+        _fallbackTentativas++;
+        try {
+          var cur = window.renderDashboard;
+          if (typeof cur === 'function' && !(cur && cur._patchDashboardEstoques)) {
+            window.renderDashboard = _criarWrapped(cur);
           }
-          t = t.parentElement;
-          depth++;
-        }
-        if (found) {
-          try { patchRenderDashboard(); } catch (_) {}
-          tryRenderMulti();
-        }
-      } catch (_) {}
-    }, true);
-  } catch (_) {}
+          if ((cur && cur._patchDashboardEstoques) || _fallbackTentativas >= 20) {
+            clearInterval(_fallbackId);
+          }
+        } catch (_) {}
+      }, 150);
+    }
 
-  var obs = new MutationObserver(function(_, observer) {
-    if (window._pausarObservers) return;
-    try { patchRenderDashboard(); } catch (_) {}
-    try { tryRender(); } catch (_) {}
-  });
+    try {
+      if (document.body) {
+        document.body.addEventListener('click', function(e) {
+          try {
+            var t = e && e.target;
+            if (!t) return;
+            var depth = 0;
+            var found = false;
+            while (t && depth < 6) {
+              var txt = String(t.textContent || '').replace(/\s+/g, ' ');
+              if (txt.indexOf('Dashboard') >= 0 || txt.indexOf('Análises') >= 0) { found = true; break; }
+              var ref = String((t.getAttribute && t.getAttribute('href')) || (t.dataset && t.dataset.page) || t.id || '').toLowerCase();
+              if (ref.indexOf('dashboard') >= 0 || ref.indexOf('analise') >= 0) { found = true; break; }
+              t = t.parentElement;
+              depth++;
+            }
+            if (found) tryRenderMulti();
+          } catch (_) {}
+        }, true);
+      }
+    } catch (_) {}
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-      try { patchRenderDashboard(); } catch (_) {}
-      try { obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] }); } catch (_) {}
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() {
+        _aplicarWrapperSeExistir();
+        tryRenderMulti();
+      });
+    } else {
+      _aplicarWrapperSeExistir();
       tryRenderMulti();
-    });
-  } else {
-    try { patchRenderDashboard(); } catch (_) {}
-    try { obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] }); } catch (_) {}
-    tryRenderMulti();
-  }
+    }
+  })();
 })();
 
 window._mbnActive = function(id) {
