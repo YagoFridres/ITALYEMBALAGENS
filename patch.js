@@ -6501,12 +6501,7 @@ window._compraVincosArrayFull = function(item) {
   return out;
 };
 window._compraVincosPosicional = function(item) {
-  var arr = [];
-  ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) {
-    var vv = String(item && item[k] != null ? item[k] : '').trim();
-    if (vv) arr.push(vv);
-  });
-  return arr;
+  return window._compraVincosArrayFull(item) || [];
 };
 window._compraPapelaoFornecedorPedidoLabel = function(rawName) {
   var nome = String(rawName || '').replace(/\s+/g, ' ').trim();
@@ -9421,7 +9416,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
       detailHeaders: ['Nomenclatura', 'Largura', 'Comprimento', 'Vincos', 'Quantidade', 'Valor/m²', 'Área m²', 'Valor total', 'R$/mil', 'Ped. Fornecedor'],
       detailRows: (Array.isArray(compra && compra.itens) ? compra.itens : []).map(function(item) {
         var d = cItemDerived(item);
-        var _vincosArr = (window._compraVincosPosicional(item) || []).map(function(s){ return String(s||'').trim(); }).filter(Boolean);
+        var _vincosArr = (window._compraVincosArrayFull(item) || []).map(function(s){ return String(s||'').trim(); }).filter(Boolean);
         if (!_vincosArr.length) _vincosArr = ['—'];
         var vincosStr = _vincosArr.join('/');
         var pedFornStr = String(item&&item.pedido_fornecedor||item&&item.ped_fornecedor||item&&item.pedForn||item&&item.ped_forn||item&&item.cod_fornecedor||'—').trim()||'—';
@@ -11073,10 +11068,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
   function ensureCalcFullscreenShell() {
     var overlay = document.getElementById('modal-calc');
     var modal = document.getElementById('modal-calculadora');
+    var isOrc = false;
+    if (!overlay || !modal) {
+      overlay = document.getElementById('modal-orcamento-calc');
+      if (overlay) {
+        modal = overlay.firstElementChild || overlay.querySelector('.modal-content, [class*="modal-content"], .box, .modal-calculadora, [class*="modal-calc"]');
+        if (modal) isOrc = true;
+      }
+    }
     if (!overlay || !modal) return false;
     var isCompactCalc = window.innerWidth <= 620;
     var isDualCol = window.innerWidth >= 1100 && !isCompactCalc;
-    // [PROMPT P - FIX REAL FOOTER FORA MODAL] Override global CSS mobile/legado que força position fixed / padding vazio 80px
+    // [PROMPT TT - FIX REAL FOOTER FORA MODAL] Override global CSS mobile/legado + suporta Calculadora (#modal-calc) E Orçamento (#modal-orcamento-calc)
     try {
       var sid = 'patch-calc-footer-contain';
       if (!document.getElementById(sid)) {
@@ -11085,20 +11088,30 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         st.textContent = [
           '#modal-calc.orc-calc-fs-ready #modal-calculadora,',
           '#modal-calculadora.modal-calculadora,',
+          '#modal-orcamento-calc.orc-calc-fs-ready,',
+          '#modal-orcamento-calc,',
           '[id*="calc-orcamento"]{',
           '  position:relative!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;',
           '  padding-bottom:0!important;z-index:1!important;',
           '}',
           '#modal-calculadora .modal-footer.rodape,',
           '#modal-calculadora .orc-calc-shell-footer,',
+          '#modal-orcamento-calc .modal-footer.rodape,',
+          '#modal-orcamento-calc .orc-calc-shell-footer,',
           '[id*="calc-orcamento"] .modal-footer.rodape{',
           '  position:static!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;',
           '  width:100%!important;max-width:100%!important;margin:0!important;z-index:1!important;',
-          '  box-sizing:border-box!important;flex-shrink:0!important;',
+          '  box-sizing:border-box!important;flex-shrink:0!important;float:none!important;transform:none!important;',
           '}',
-          '#modal-calculadora .orc-calc-shell-footer{',
+          '#modal-calculadora .orc-calc-shell-footer,',
+          '#modal-orcamento-calc .orc-calc-shell-footer{',
           '  border-top:1px solid rgba(148,163,184,.14)!important;',
           '  background:rgba(3,7,18,.94)!important;',
+          '}',
+          '#modal-orcamento-calc.orc-calc-fs-ready > div,',
+          '#modal-orcamento-calc.orc-calc-fs-ready .modal-content,',
+          '#modal-orcamento-calc.orc-calc-fs-ready [class*="modal-content"]{',
+          '  position:relative!important;overflow:hidden!important;margin:0 auto!important;display:flex!important;flex-direction:column!important;',
           '}'
         ].join('');
         document.head.appendChild(st);
@@ -22891,6 +22904,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-modal-zero .body{display:grid;gap:10px}'
         + '#page-ofmaq .ofmaq-modal-zero .body button,#page-ofmaq .ofmaq-modal-zero .body select,#page-ofmaq .ofmaq-modal-zero .body input{min-height:38px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#f8fafc;padding:8px 12px}'
         + '#page-ofmaq .ofmaq-print-grid-zero{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}'
+        + '#page-ofmaq #ofmaq-tabela-nova{width:100%;min-width:1480px;border-collapse:separate;border-spacing:0}'
+        + '#page-ofmaq #ofmaq-tabela-nova thead th{position:sticky;top:0;z-index:2;padding:12px 10px;background:#0f172a;border-bottom:1px solid #334155;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;text-align:left;white-space:nowrap}'
+        + '#page-ofmaq #ofmaq-tabela-nova thead th.col-seq,#page-ofmaq #ofmaq-tabela-nova thead th.col-img,#page-ofmaq #ofmaq-tabela-nova thead th.col-qtd,#page-ofmaq #ofmaq-tabela-nova thead th.col-tamanho,#page-ofmaq #ofmaq-tabela-nova thead th.col-cores,#page-ofmaq #ofmaq-tabela-nova thead th.col-facas,#page-ofmaq #ofmaq-tabela-nova thead th.col-status,#page-ofmaq #ofmaq-tabela-nova thead th.col-maq,#page-ofmaq #ofmaq-tabela-nova thead th.col-tempo{text-align:center!important}'
+        + '#page-ofmaq #ofmaq-tabela-nova tbody td{padding:10px 10px;border-bottom:1px solid #1e293b;font-size:13px;line-height:1.4;color:#e2e8f0;vertical-align:middle}'
+        + '#page-ofmaq #ofmaq-tabela-nova tbody td.col-seq,#page-ofmaq #ofmaq-tabela-nova tbody td.col-img,#page-ofmaq #ofmaq-tabela-nova tbody td.col-qtd,#page-ofmaq #ofmaq-tabela-nova tbody td.col-tamanho,#page-ofmaq #ofmaq-tabela-nova tbody td.col-cores,#page-ofmaq #ofmaq-tabela-nova tbody td.col-facas,#page-ofmaq #ofmaq-tabela-nova tbody td.col-status,#page-ofmaq #ofmaq-tabela-nova tbody td.col-maq,#page-ofmaq #ofmaq-tabela-nova tbody td.col-tempo{text-align:center!important}'
+        + '#page-ofmaq #ofmaq-tabela-nova tbody td.col-of,#page-ofmaq #ofmaq-tabela-nova tbody td.col-cliente,#page-ofmaq #ofmaq-tabela-nova tbody td.col-produto,#page-ofmaq #ofmaq-tabela-nova tbody td.col-prazo,#page-ofmaq #ofmaq-tabela-nova tbody td.col-papel{text-align:left!important}'
+        + '#page-ofmaq #ofmaq-tabela-nova tbody tr[data-sem-papel="1"]{background-color:rgba(250,204,21,.14)!important}'
+        + '#page-ofmaq #ofmaq-tabela-nova tbody tr[data-sem-papel="1"] td{background-color:rgba(250,204,21,.14);background-image:linear-gradient(90deg,rgba(250,204,21,.18),rgba(250,204,21,.08))!important}'
         + '@media (max-width:1200px){#page-ofmaq .ofmaq-toolbar-zero .controls{grid-template-columns:1fr;}}';
       document.head.appendChild(st);
     }
@@ -22928,15 +22949,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '      <th class="col-seq">SEQ</th>'
           + '      <th class="col-img">IMG</th>'
           + '      <th class="col-of">Nº OF</th>'
+          + '      <th class="col-prazo">DATA ENTREGA</th>'
           + '      <th class="col-cliente">CLIENTE</th>'
-          + '      <th class="col-produto">PRODUTO</th>'
-          + '      <th class="col-tamanho">TAMANHO</th>'
-          + '      <th class="col-cores">CORES</th>'
-          + '      <th class="col-qtd">QTD</th>'
-          + '      <th class="col-facas">FACAS</th>'
-          + '      <th class="col-prazo">PRAZO</th>'
           + '      <th class="col-status">STATUS</th>'
+          + '      <th class="col-produto">PRODUTO</th>'
+          + '      <th class="col-qtd">QTD CAIXAS</th>'
+          + '      <th class="col-tamanho">TAMANHOS</th>'
+          + '      <th class="col-cores">CORES</th>'
+          + '      <th class="col-facas">FACAS</th>'
+          + '      <th class="col-papel">PAPEL / PREVISÃO</th>'
           + '      <th class="col-maq">MÁQUINA</th>'
+          + '      <th class="col-tempo">TEMPO</th>'
           + '      <th class="col-acoes">AÇÕES</th>'
           + '    </tr>'
           + '  </thead>'
@@ -23112,7 +23135,20 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var cores = extractColors(card);
       var prazoIso = extractIsoDate(card);
       var qtd = Number(card.getAttribute('data-qtd') || 0) || 0;
+      var tempoMin = Number(card.getAttribute('data-tempo-min') || card.getAttribute('data-tempo') || card.getAttribute('data-tempo_estimado_min') || 0) || 0;
       var order = Number(card.getAttribute('data-ordem-maquina') || card.getAttribute('data-ordem') || idx + 1) || (idx + 1);
+      var papelCompradoRaw = card && card.getAttribute ? (card.getAttribute('data-papel-comprado') || card.getAttribute('data-papel_comprado') || '') : '';
+      var prevPapelRaw = card && card.getAttribute ? (card.getAttribute('data-previsao-entrega-papel') || card.getAttribute('data-previsao_entrega_papel') || '') : '';
+      if ((!papelCompradoRaw || !prevPapelRaw) && typeof window.__ofAbrirDadosPorId === 'function') {
+        try {
+          var snapDados = window.__ofAbrirDadosPorId(id, { snapshot: true });
+          if (snapDados) {
+            if (!papelCompradoRaw) papelCompradoRaw = (snapDados.papel_comprado != null ? snapDados.papel_comprado : (snapDados.papelComprado != null ? snapDados.papelComprado : ''));
+            if (!prevPapelRaw) prevPapelRaw = (snapDados.previsao_entrega_papel != null ? snapDados.previsao_entrega_papel : (snapDados.previsaoEntregaPapel != null ? snapDados.previsaoEntregaPapel : ''));
+            if (!tempoMin) tempoMin = Number(snapDados.tempo_min || snapDados.tempoMin || snapDados.tempo_estimado_min || 0) || 0;
+          }
+        } catch (_) {}
+      }
       var semPapelAttr = String(card && card.getAttribute && card.getAttribute('data-sem-papel') || '').trim();
       var urgAttr = String(card && card.getAttribute && card.getAttribute('data-urgencia') || 'normal').trim();
       var sp = !!(semPapelAttr === '1' || semPapelAttr === 'true' || semPapelAttr.toLowerCase() === 'sim');
@@ -23136,9 +23172,12 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         sem_papel: sp,
         urgencia: urgAttr,
         statusTag: statusTag,
+        tempoMin: tempoMin,
+        papel_comprado: papelCompradoRaw,
+        previsao_entrega_papel: prevPapelRaw,
         sourceIndex: idx,
         cardEl: card,
-        searchText: normText([numero, cliente, produto, (typeof window._ofKnifeSummaryFromOf === 'function' ? window._ofKnifeSummaryFromOf(card) : '')].join(' '))
+        searchText: normText([numero, cliente, produto, (typeof window._ofKnifeSummaryFromOf === 'function' ? window._ofKnifeSummaryFromOf(card) : ''), String(papelCompradoRaw || '')].join(' '))
       };
     }
 
@@ -23159,20 +23198,40 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var maqCell = String(item.maquina || '').trim();
       if (!maqCell) maqCell = 'Pendente';
       var statusTone = item.sem_papel ? 'warn' : (item.urgencia === 'urgente' ? 'danger' : (item.urgencia === 'atrasada' ? 'warn' : 'ok'));
+      var tempoCell = '—';
+      try {
+        var tMin = Number(item && item.tempoMin || 0) || 0;
+        if (tMin > 0 && typeof fmtTempo === 'function') tempoCell = fmtTempo(tMin);
+        else if (tMin > 0) tempoCell = String(tMin) + ' min';
+      } catch (_) {}
+      var papelRaw = item && (item.papel_comprado != null ? item.papel_comprado : '');
+      var prevRaw = item && (item.previsao_entrega_papel != null ? item.previsao_entrega_papel : '');
+      var isBoolComprado = !!(papelRaw === true || papelRaw === 1 || String(papelRaw || '').trim() === '1' || String(papelRaw || '').toLowerCase() === 'true');
+      var papelDisplay = '';
+      if (typeof papelRaw === 'string' && papelRaw.trim()) papelDisplay = papelRaw.trim();
+      else if (isBoolComprado) papelDisplay = '✅ Comprado';
+      if (prevRaw && String(prevRaw).trim()) {
+        var prevTxt = String(prevRaw).trim();
+        if (papelDisplay && papelDisplay.indexOf(prevTxt) < 0) papelDisplay = papelDisplay ? (papelDisplay + ' | ' + prevTxt.slice(0,10)) : prevTxt.slice(0,10);
+        else if (!papelDisplay) papelDisplay = prevTxt.slice(0,10);
+      }
+      if (!papelDisplay) papelDisplay = '—';
       return ''
         + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-maq="' + escAttrLocal(item.maquina) + '" data-dia="' + escAttrLocal(item.prazoIso || '') + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-cor-key="' + escAttrLocal(item.corPrincipal || '') + '" data-size-key="' + escAttrLocal(item.tamanhoKey || '') + '" data-sem-papel="' + (item.sem_papel ? '1' : '0') + '" data-search="' + escAttrLocal(item.searchText || '') + '">'
         + '  <td class="col-seq"><input class="ofmaq-seq-input-zero" type="number" min="1" step="1" value="' + escAttrLocal(String(item.order || 1)) + '" data-of-id="' + escAttrLocal(item.id) + '"></td>'
         + '  <td class="col-img">' + imgCell + '</td>'
         + '  <td class="col-of"><strong>' + escHLocal(item.numero || '—') + '</strong></td>'
+        + '  <td class="col-prazo">' + escHLocal(item.prazoIso ? fmtDateBR(item.prazoIso) : '—') + '</td>'
         + '  <td class="col-cliente">' + escHLocal(item.cliente || '—') + '</td>'
+        + '  <td class="col-status"><span class="ofmaq-final-status" data-tone="' + escAttrLocal(statusTone) + '" style="display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:' + (statusTone === 'warn' ? 'rgba(250,204,21,.18);color:#fde68a' : statusTone === 'danger' ? 'rgba(239,68,68,.18);color:#fecaca' : 'rgba(16,185,129,.18);color:#bbf7d0') + '">' + escHLocal(item.statusTag || 'Normal') + '</span></td>'
         + '  <td class="col-produto">' + escHLocal(item.produto || '—') + '</td>'
+        + '  <td class="col-qtd"><strong>' + escHLocal(String(item.quantidade || 0)) + '</strong></td>'
         + '  <td class="col-tamanho">' + escHLocal(item.tamanho || '—') + '</td>'
         + '  <td class="col-cores"><div class="ofmaq-cor-wrap-zero">' + colorHtml(item.cores || []) + '</div></td>'
-        + '  <td class="col-qtd">' + escHLocal(String(item.quantidade || 0)) + '</td>'
         + '  <td class="col-facas">' + escHLocal(item.facasResumo || '—') + '</td>'
-        + '  <td class="col-prazo">' + escHLocal(item.prazoIso ? fmtDateBR(item.prazoIso) : '—') + '</td>'
-        + '  <td class="col-status"><span class="ofmaq-final-status" data-tone="' + escAttrLocal(statusTone) + '" style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:' + (statusTone === 'warn' ? 'rgba(250,204,21,.18);color:#fde68a' : statusTone === 'danger' ? 'rgba(239,68,68,.18);color:#fecaca' : 'rgba(16,185,129,.18);color:#bbf7d0') + '">' + escHLocal(item.statusTag || 'Normal') + '</span></td>'
+        + '  <td class="col-papel" style="font-size:12px;line-height:1.4;color:#cbd5e1;max-width:220px">' + escHLocal(papelDisplay) + '</td>'
         + '  <td class="col-maq">' + escHLocal(maqCell) + '</td>'
+        + '  <td class="col-tempo" style="font-size:12px;font-weight:800;color:#94a3b8">' + escHLocal(tempoCell) + '</td>'
         + '  <td class="col-acoes"><button type="button" class="ofmaq-action-btn-zero" data-ofmaq-actions-zero="' + escAttrLocal(item.id) + '">⚡ Ações</button></td>'
         + '</tr>';
     }
@@ -24421,7 +24480,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '#page-ofmaq .ofmaq-final-table-wrap{overflow:auto;border-radius:16px;border:1px solid rgba(51,65,85,.85);background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(15,23,42,.88));box-shadow:0 20px 36px rgba(2,6,23,.22)}'
         + '#page-ofmaq .ofmaq-final-table{width:100%;min-width:1480px;border-collapse:separate;border-spacing:0}'
         + '#page-ofmaq .ofmaq-final-table thead th{position:sticky;top:0;z-index:2;padding:14px 12px;background:rgba(15,23,42,.98);border-bottom:1px solid rgba(71,85,105,.85);font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#64748b;text-align:left;white-space:nowrap}'
+        + '#page-ofmaq .ofmaq-final-table thead th:nth-child(1),#page-ofmaq .ofmaq-final-table thead th:nth-child(8),#page-ofmaq .ofmaq-final-table thead th:nth-child(9),#page-ofmaq .ofmaq-final-table thead th:nth-child(10),#page-ofmaq .ofmaq-final-table thead th:nth-child(11),#page-ofmaq .ofmaq-final-table thead th:nth-child(14),#page-ofmaq .ofmaq-final-table thead th:nth-child(2),#page-ofmaq .ofmaq-final-table thead th:nth-child(13){text-align:center!important}'
         + '#page-ofmaq .ofmaq-final-table tbody td{padding:12px;border-bottom:1px solid rgba(51,65,85,.45);font-size:13px;line-height:1.4;color:#e2e8f0;vertical-align:middle}'
+        + '#page-ofmaq .ofmaq-final-table tbody td:nth-child(1),#page-ofmaq .ofmaq-final-table tbody td:nth-child(2),#page-ofmaq .ofmaq-final-table tbody td:nth-child(8),#page-ofmaq .ofmaq-final-table tbody td:nth-child(9),#page-ofmaq .ofmaq-final-table tbody td:nth-child(10),#page-ofmaq .ofmaq-final-table tbody td:nth-child(11),#page-ofmaq .ofmaq-final-table tbody td:nth-child(13),#page-ofmaq .ofmaq-final-table tbody td:nth-child(14),#page-ofmaq .ofmaq-final-table tbody td:nth-child(6){text-align:center!important}'
+        + '#page-ofmaq .ofmaq-final-table tbody td:nth-child(12),#page-ofmaq .ofmaq-final-table tbody td:nth-child(7),#page-ofmaq .ofmaq-final-table tbody td:nth-child(5),#page-ofmaq .ofmaq-final-table tbody td:nth-child(3),#page-ofmaq .ofmaq-final-table tbody td:nth-child(4){text-align:left!important}'
         + '#page-ofmaq .ofmaq-final-row[data-urgencia="urgente"] td{background-image:linear-gradient(90deg,rgba(127,29,29,.16),transparent)}'
         + '#page-ofmaq .ofmaq-final-row[data-urgencia="atrasada"] td{background-image:linear-gradient(90deg,rgba(120,53,15,.16),transparent)}'
         + '#page-ofmaq .ofmaq-final-row[data-sem-papel="1"]{background-color:rgba(250,204,21,.14)}'
@@ -24779,9 +24841,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               btn.disabled = true;
               btn.innerHTML = '⏳ Salvando...';
               var nowISO = new Date().toISOString();
+              var headersFeito = { 'Content-Type': 'application/json' };
+              if (tokenAmostra) headersFeito.Authorization = 'Bearer ' + tokenAmostra;
               var res = await fetch('/api/amostras/' + encodeURIComponent(idBtn), {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: headersFeito,
                 body: JSON.stringify({
                   status: 'Feita',
                   data_aprovacao: nowISO,
@@ -24827,9 +24891,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               btn.disabled = true;
               btn.innerHTML = '⏳ Cancelando...';
               var nowISO = new Date().toISOString();
+              var headersCancel = { 'Content-Type': 'application/json' };
+              if (tokenAmostra) headersCancel.Authorization = 'Bearer ' + tokenAmostra;
               var res = await fetch('/api/amostras/' + encodeURIComponent(idBtn), {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: headersCancel,
                 body: JSON.stringify({
                   status: 'Cancelada',
                   data_cancelamento: nowISO,
@@ -34564,31 +34630,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         input.oninput = function() { try { if (typeof window.filtrarComissoesPorBusca === 'function') window.filtrarComissoesPorBusca(input.value); } catch (_) {} };
         bar.appendChild(input);
       }
-      if (!document.getElementById('comissoes-filtro-empresa')) {
-        var sel = document.createElement('select');
-        sel.id = 'comissoes-filtro-empresa';
-        sel.style.cssText = 'padding:7px 12px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);color:var(--text1)';
-        var atual = _empresaIdAtual();
-        sel.innerHTML = EMPRESAS_OPCOES.map(function(opt) {
-          return '<option value="' + String(opt.id).replace(/"/g, '&quot;') + '"' + (String(opt.id) === atual ? ' selected' : '') + '>' + String(opt.label).replace(/</g, '&lt;') + '</option>';
-        }).join('');
-        sel.onchange = function() {
-          try { window.__comissoesFiltroEmpresaId = String(sel.value || '').trim(); } catch (_) {}
-          try {
-            var btns = Array.prototype.slice.call(bar.querySelectorAll('button, [type="submit"], .btn, .com-calcular, .calcular'));
-            var clicou = false;
-            btns.forEach(function(b) {
-              if (clicou) return;
-              var txt = String(b && b.textContent || '').toLowerCase().trim();
-              if (txt && (txt.indexOf('calcular') >= 0 || txt.indexOf('buscar') >= 0 || txt.indexOf('filtrar') >= 0 || txt.indexOf('carregar') >= 0)) {
-                try { b.click(); clicou = true; } catch (_) {}
-              }
-            });
-            if (!clicou && typeof window.calcularComissoes === 'function') window.calcularComissoes();
-          } catch (_) {}
-        };
-        bar.appendChild(sel);
-      }
+
     } catch (_) {}
   };
   window.filtrarComissoesPorBusca = function(termo) {
@@ -49677,7 +49719,8 @@ function _ocultarGraficoComissoes() {
       try { token = String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
       var empId = '';
       try {
-        var selEl = document.getElementById('comissoes-filtro-empresa');
+        var selEl = filtrosWrap.querySelector('#comissoes-filtro-empresa');
+        if (!selEl) selEl = document.getElementById('comissoes-filtro-empresa');
         if (selEl) empId = String(selEl.value || '').trim();
         if (!empId) empId = String(window.__comissoesFiltroEmpresaId || '').trim();
       } catch (_) { empId = String(window.__comissoesFiltroEmpresaId || '').trim(); }
@@ -53191,6 +53234,11 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       var t = String(v == null ? '' : v).trim();
       if (t) out.push(t);
     };
+    var splitCsv = function(s) {
+      var ss = String(s == null ? '' : s).trim();
+      if (!ss) return;
+      ss.split(/[,;\/]+/).forEach(pushClean);
+    };
     ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) {
       var val = item && item[k] != null ? String(item[k]) : '';
       val = val.trim();
@@ -53198,9 +53246,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     });
     if (Array.isArray(item && item.vincos_extra) && item.vincos_extra.length) {
       item.vincos_extra.forEach(pushClean);
+    } else if (item && item.vincos_extra != null && String(item.vincos_extra).trim() !== '') {
+      splitCsv(item.vincos_extra);
     }
     if (Array.isArray(item && item.vincos_lista) && item.vincos_lista.length) {
       item.vincos_lista.forEach(pushClean);
+    } else if (item && item.vincos_lista != null && String(item.vincos_lista).trim() !== '') {
+      splitCsv(item.vincos_lista);
     }
     if (Array.isArray(item && item.vincos) && item.vincos.length) {
       item.vincos.forEach(pushClean);
