@@ -44153,12 +44153,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     setTimeout(tryRender, 1400);
   }
 
-  (function instalarHookDiretoRenderDashboard() {
-    var _dashReal = null;
-    var _dashWrapped = null;
-    var _dashInstalouDefineProperty = false;
-
-    function _criarWrapped(orig) {
+  (function instalarWrapperDashboard() {
+    function _dashWrapped(orig) {
       if (orig && orig._patchDashboardEstoques) return orig;
       function w() {
         var r = orig.apply(this, arguments);
@@ -44173,54 +44169,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       return w;
     }
 
-    function _aplicarWrapperSeExistir() {
-      if (_dashWrapped) return;
-      var cur = null;
-      try { cur = window.renderDashboard; } catch (_) { cur = null; }
-      if (typeof cur === 'function') {
-        _dashReal = cur;
-        _dashWrapped = _criarWrapped(cur);
-      }
+    function _aplicarAgora() {
+      try {
+        var cur = window.renderDashboard;
+        if (typeof cur !== 'function') return false;
+        if (cur._patchDashboardEstoques) return true;
+        window.renderDashboard = _dashWrapped(cur);
+        return true;
+      } catch (_) { return false; }
     }
 
-    try {
-      _aplicarWrapperSeExistir();
+    _aplicarAgora();
 
-      Object.defineProperty(window, 'renderDashboard', {
-        configurable: true,
-        enumerable: true,
-        get: function() {
-          return _dashWrapped || _dashReal;
-        },
-        set: function(novo) {
-          _dashReal = novo;
-          if (typeof novo === 'function') {
-            _dashWrapped = _criarWrapped(novo);
-          } else {
-            _dashWrapped = null;
-          }
-        }
-      });
-      _dashInstalouDefineProperty = true;
-    } catch (_) {
-      _dashInstalouDefineProperty = false;
-    }
-
-    if (!_dashInstalouDefineProperty) {
-      var _fallbackTentativas = 0;
-      var _fallbackId = setInterval(function() {
-        _fallbackTentativas++;
-        try {
-          var cur = window.renderDashboard;
-          if (typeof cur === 'function' && !(cur && cur._patchDashboardEstoques)) {
-            window.renderDashboard = _criarWrapped(cur);
-          }
-          if ((cur && cur._patchDashboardEstoques) || _fallbackTentativas >= 20) {
-            clearInterval(_fallbackId);
-          }
-        } catch (_) {}
-      }, 150);
-    }
+    var _t = 0;
+    var _id = setInterval(function() {
+      _t++;
+      var ok = _aplicarAgora();
+      if (ok || _t >= 10) clearInterval(_id);
+    }, 100);
 
     try {
       if (document.body) {
@@ -44238,7 +44204,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               t = t.parentElement;
               depth++;
             }
-            if (found) tryRenderMulti();
+            if (found) {
+              _aplicarAgora();
+              tryRenderMulti();
+            }
           } catch (_) {}
         }, true);
       }
@@ -44246,11 +44215,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function() {
-        _aplicarWrapperSeExistir();
+        _aplicarAgora();
         tryRenderMulti();
       });
     } else {
-      _aplicarWrapperSeExistir();
+      _aplicarAgora();
       tryRenderMulti();
     }
   })();
