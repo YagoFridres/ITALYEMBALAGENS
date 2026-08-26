@@ -43548,6 +43548,174 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { return Math.round(n).toLocaleString('pt-BR'); } catch (_) { return String(Math.round(n)); }
   }
 
+  function __dashBuscaNorm(s) {
+    s = String(s == null ? '' : s);
+    try {
+      s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    } catch (_) {}
+    return s.toLowerCase().trim();
+  }
+
+  function __dashRenderResultadosTemp(listaEl, ofs) {
+    if (!listaEl) return;
+    if (!(Array.isArray(ofs) && ofs.length)) {
+      listaEl.innerHTML =
+        '<div style="padding:16px;color:var(--text2);text-align:center;border:1px dashed var(--border);border-radius:10px">' +
+          '🔍 Nenhuma OF encontrada para este termo.' +
+        '</div>';
+      return;
+    }
+    var itens = ofs.slice(0, 30).map(function(of) {
+      var id = String(of?.id || '').replace(/"/g, '');
+      var num = esc(String(of?.numero || of?.of || '—'));
+      var cli = esc(String(of?.cliente || of?.clinome || of?.cliente_nome || '—'));
+      var prod = esc(String(of?.produto || of?.descricao || '—'));
+      var st = String(of?.status || '').trim() || '—';
+      var stColor = 'var(--text2)';
+      var stLc = st.toLowerCase();
+      if (stLc.indexOf('conclu') >= 0) stColor = '#10b981';
+      else if (stLc.indexOf('cancel') >= 0) stColor = '#94a3b8';
+      else if (stLc === 'aberto' || stLc === 'em produção' || stLc.indexOf('produ') >= 0) stColor = '#eab308';
+      var stEsc = esc(st);
+      var dt = esc(String(of?.data_entrega || of?.ent || of?.dia || '').slice(0, 10));
+      var vl = Number(of?.valor_total || of?.total || 0) || 0;
+      var vlFmt = esc(__fmtBrlDashboard(vl));
+      var btnAbrir = id
+        ? '<button type="button" class="pcp-btn" style="padding:6px 10px;font-size:12px;min-width:auto" data-dash-of-id="' + esc(id) + '" data-dash-action="abrir">Abrir</button>'
+        : '';
+      return (
+        '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">' +
+            '<div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:4px">' +
+              '<div style="font-weight:800;color:var(--text);font-size:14px">📋 OF ' + num + '</div>' +
+              '<div style="color:var(--text2);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(cli) + '">👤 ' + cli + '</div>' +
+              '<div style="color:var(--text2);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(prod) + '">📦 ' + prod + '</div>' +
+            '</div>' +
+            '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' +
+              '<div style="font-size:12px;color:' + stColor + ';font-weight:800">Status: ' + stEsc + '</div>' +
+              (dt ? '<div style="font-size:11px;color:var(--text2)">Entrega: ' + dt + '</div>' : '') +
+              '<div style="font-size:12px;color:var(--text);font-weight:700">' + vlFmt + '</div>' +
+              btnAbrir +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join('');
+    var total = ofs.length;
+    var top = total > 30 ? ' (mostrando 30/' + total + ')' : ' (' + total + ')';
+    listaEl.innerHTML =
+      '<div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:700">Resultado(s)' + esc(top) + ':</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px">' + itens + '</div>';
+    listaEl.querySelectorAll('button[data-dash-action="abrir"]').forEach(function(b) {
+      b.addEventListener('click', function() {
+        var ofId = String(b.getAttribute('data-dash-of-id') || '').trim();
+        if (!ofId) return;
+        try {
+          if (typeof window.__ofAbrirDadosPorId === 'function') {
+            window.__ofAbrirDadosPorId(ofId, { abrir: true });
+            return;
+          }
+        } catch (_) {}
+        try {
+          if (typeof window.editarOf === 'function') return window.editarOf(ofId);
+          if (typeof window.alterarOf === 'function') return window.alterarOf(ofId);
+        } catch (_) {}
+      });
+    });
+  }
+
+  function __dashInstalarBuscador(resumoDiv) {
+    if (!resumoDiv || resumoDiv.dataset.dashBuscaInstalled === '1') return;
+    resumoDiv.dataset.dashBuscaInstalled = '1';
+
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'margin-top:20px';
+    wrap.innerHTML =
+      '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px">' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+          '<span style="font-size:15px">🔎</span>' +
+          '<div style="font-weight:800;color:var(--text);font-size:14px;flex:1;min-width:160px">Buscar OF universal</div>' +
+          '<div style="font-size:11px;color:var(--text2)">Nº OF · Cliente · Produto</div>' +
+        '</div>' +
+        '<div style="margin-top:10px">' +
+          '<input id="dash-busca-input" type="search" autocomplete="off" placeholder="Ex.: 1234 ou Padaria do Zé ou Caixa Pizza" ' +
+            'style="width:100%;padding:10px 14px;border-radius:8px;background:#020617;border:1px solid #334155;color:#e2e8f0;font-size:14px;outline:none;box-sizing:border-box" ' +
+            'aria-label="Buscar OF por número, cliente ou produto">' +
+        '</div>' +
+      '</div>' +
+      '<div id="dash-busca-resultados"></div>';
+    resumoDiv.appendChild(wrap);
+
+    var input = resumoDiv.querySelector('#dash-busca-input');
+    var listaEl = resumoDiv.querySelector('#dash-busca-resultados');
+
+    if (!(input && listaEl)) return;
+
+    var debounceId = null;
+    var ultimoTs = 0;
+    var rodando = false;
+
+    function executar() {
+      var termo = input.value || '';
+      var termoNorm = __dashBuscaNorm(termo);
+      if (!termoNorm) {
+        if (listaEl) listaEl.innerHTML =
+          '<div style="padding:16px;color:var(--text2);text-align:center;border:1px dashed var(--border);border-radius:10px">' +
+            '💡 Digite 3+ caracteres para iniciar a busca (nº OF, nome do cliente ou produto).' +
+          '</div>';
+        return;
+      }
+      if (termoNorm.length < 2) return;
+      var meuTs = Date.now();
+      ultimoTs = meuTs;
+      if (listaEl) listaEl.innerHTML =
+        '<div style="padding:16px;color:var(--text2);text-align:center">⏳ Buscando...</div>';
+      rodando = true;
+      var url = '/api/ofs?busca=' + encodeURIComponent(termo) + '&limit=50';
+      window._apiAuthFetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+          if (meuTs !== ultimoTs) return;
+          var lista = Array.isArray(res?.data) ? res.data : (Array.isArray(res?.ofs) ? res.ofs : []);
+          if (termoNorm.length >= 3) {
+            var norm = termoNorm;
+            lista = lista.filter(function(of) {
+              var hay = [of?.numero, of?.of, of?.of_num, of?.cliente, of?.clinome, of?.cliente_nome, of?.produto, of?.descricao]
+                .map(function(v) { return __dashBuscaNorm(v); })
+                .join(' ');
+              return hay.indexOf(norm) >= 0;
+            });
+          }
+          __dashRenderResultadosTemp(listaEl, lista);
+        })
+        .catch(function(err) {
+          if (meuTs !== ultimoTs) return;
+          if (listaEl) listaEl.innerHTML =
+            '<div style="padding:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#fca5a5">' +
+              '⚠️ Erro na busca: ' + esc(String(err && err.message || err || 'erro desconhecido')) +
+            '</div>';
+        })
+        .finally(function() { rodando = false; });
+    }
+
+    input.addEventListener('input', function() {
+      if (debounceId) clearTimeout(debounceId);
+      debounceId = setTimeout(executar, 320);
+    });
+    input.addEventListener('keydown', function(e) {
+      if (e && e.key === 'Enter') {
+        if (debounceId) clearTimeout(debounceId);
+        debounceId = null;
+        executar();
+      }
+    });
+
+    if (listaEl) listaEl.innerHTML =
+      '<div style="padding:16px;color:var(--text2);text-align:center;border:1px dashed var(--border);border-radius:10px">' +
+        '💡 Digite 3+ caracteres para iniciar a busca (nº OF, nome do cliente ou produto).' +
+      '</div>';
+  }
+
   function _renderDashboardPrincipal(host) {
     if (!host) return;
     if (host.dataset.dashPrincipalLoaded === '1') return;
@@ -43607,6 +43775,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               card('📅', 'Faturamento Mês', __fmtBrlDashboard(fatMes), '#6366f1', 'var(--text)', __fmtIntDash(fatMesCount) + ' OF(s) concluída(s)') +
               card('📌', 'Faturamento Hoje', __fmtBrlDashboard(fatDia), '#8b5cf6', 'var(--text)', __fmtIntDash(fatDiaCount) + ' OF(s) concluída(s)') +
             '</div>';
+          __dashInstalarBuscador(resumoDiv);
         }
 
         if (estoqDiv) renderDashboardEstoques(estoqDiv);
@@ -43618,6 +43787,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               '<div style="padding:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#fca5a5">' +
                 '⚠️ Falha ao carregar resumo de OFs: ' + esc(String(err && err.message || err || 'erro desconhecido')) +
               '</div>';
+            __dashInstalarBuscador(resumoDiv);
           }
         } catch (_) {}
         if (estoqDiv) try { renderDashboardEstoques(estoqDiv); } catch (_) {}
