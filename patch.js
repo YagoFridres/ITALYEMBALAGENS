@@ -24074,6 +24074,30 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
     function sortedVisibleRows(rows) {
       var list = Array.isArray(rows) ? rows.slice() : [];
+      var hasOrdemGlobal = list.some(function(of) { return Number.isFinite(Number(of && of.ordem_maquina)) && Number(of.ordem_maquina) > 0; });
+      if (hasOrdemGlobal) {
+        list.sort(function(a, b) {
+          var oa = Number(a && a.ordem_maquina != null ? a.ordem_maquina : (a && a.seq != null ? a.seq : (a && a.order != null ? a.order : 999998)));
+          var ob = Number(b && b.ordem_maquina != null ? b.ordem_maquina : (b && b.seq != null ? b.seq : (b && b.order != null ? b.order : 999999)));
+          if (Number.isFinite(oa) && Number.isFinite(ob) && oa !== ob) return oa - ob;
+          var ua = a && (a.urg || a.urgente || a.urgencia === 'urgente' || a.urgencia === 'atrasada') ? 0 : 1;
+          var ub = b && (b.urg || b.urgente || b.urgencia === 'urgente' || b.urgencia === 'atrasada') ? 0 : 1;
+          if (ua !== ub) return ua - ub;
+          return 0;
+        });
+        try {
+          if (typeof window._ordemMaquinas === 'undefined') window._ordemMaquinas = {};
+          var byMaq = {};
+          list.forEach(function(of) {
+            var m = String(of && of.maquina || '').trim();
+            if (!m) return;
+            if (!byMaq[m]) byMaq[m] = [];
+            byMaq[m].push(String(of && of.id || '').trim());
+          });
+          Object.keys(byMaq).forEach(function(m) { window._ordemMaquinas[m] = (byMaq[m] || []).filter(Boolean); });
+        } catch (_) {}
+        return list;
+      }
       list.sort(function(a, b) {
         if (!state.grouped) {
           if (a.urgencia !== b.urgencia) {
@@ -24580,10 +24604,13 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var img = item.imagemUrl
         ? ('<button type="button" class="ofmaq-final-thumb" data-ofmaq-final-image="' + escAttr(item.id) + '"><img src="' + escAttr(item.imagemUrl) + '" alt="Imagem da OF"></button>')
         : '<span class="ofmaq-final-thumb-fallback">📦</span>';
-      var statusTone = item.urgencia === 'urgente' ? 'danger' : (item.urgencia === 'atrasada' ? 'warn' : 'ok');
-      var statusText = item.urgencia === 'urgente' ? 'Urgente' : (item.urgencia === 'atrasada' ? 'Atrasada' : 'Normal');
+      var sp = !!(item && (item.sem_papel === true || item.sem_papelao === true || String(item.sem_papel || '').trim() === '1' || item.sem_papel === 1 || item.sem_papelao === 1 || String(item.sem_papelao || '').trim() === '1'));
+      var statusTone = sp ? 'warn' : (item.urgencia === 'urgente' ? 'danger' : (item.urgencia === 'atrasada' ? 'warn' : 'ok'));
+      var statusBase = item.urgencia === 'urgente' ? 'Urgente' : (item.urgencia === 'atrasada' ? 'Atrasada' : 'Normal');
+      var statusText = sp ? 'Sem Papelão' : statusBase;
+      if (sp && item.urgencia && item.urgencia !== 'normal') statusText = 'Sem Papelão • ' + statusBase;
       return ''
-        + '<tr class="ofmaq-final-row" data-of-id="' + escAttr(item.id) + '" data-urgencia="' + escAttr(item.urgencia) + '">'
+        + '<tr class="ofmaq-final-row" data-of-id="' + escAttr(item.id) + '" data-urgencia="' + escAttr(item.urgencia) + '" data-sem-papel="' + (sp ? '1' : '0') + '">'
         + '<td class="ofmaq-final-seq"><input class="ofmaq-final-seq-input" type="number" min="1" step="1" data-ofmaq-final-seq="' + escAttr(item.id) + '" value="' + escAttr(String(item.displaySeq || item.order || 1)) + '"></td>'
         + '<td>' + img + '</td>'
         + '<td class="ofmaq-final-cell"><strong>' + escH(item.numero) + '</strong></td>'
@@ -24595,6 +24622,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '<td>' + escH(item.tamanho) + '</td>'
         + '<td><div class="ofmaq-final-color-wrap">' + colorHtml(item.cores) + '</div></td>'
         + '<td class="ofmaq-final-cell"><strong>' + escH(item.facasResumo || '—') + '</strong></td>'
+        + (function() {
+            var pComprado = item && (item.papel_comprado === true || item.papel_comprado === 1 || String(item.papel_comprado || '').trim() === '1' || String(item.papel_comprado || '').toLowerCase() === 'true');
+            var pPrev = String(item && (item.previsao_entrega_papel || item.previsaoEntregaPapel || '') || '').trim();
+            if (pPrev.length > 10) pPrev = pPrev.slice(0, 10);
+            if (pComprado || pPrev) {
+              var tit = pComprado ? '✅ Papel comprado' : '—';
+              var dt = pPrev ? 'Entrega: ' + fmtDateBR(pPrev) : 'Sem previsão';
+              return '<td><div class="ofmaq-final-cell"><strong style="font-size:12px;color:' + (pComprado ? '#10b981' : '#f59e0b') + '">' + escH(tit) + '</strong><small style="display:block;color:#94a3b8;font-size:11px;line-height:1.35;margin-top:2px;">' + escH(dt) + '</small></div></td>';
+            }
+            return '<td><div class="ofmaq-final-cell"><strong style="font-size:12px;color:#64748b">—</strong><small style="display:block;color:#94a3b8;font-size:11px;line-height:1.35;margin-top:2px;">Pendente</small></div></td>';
+          })()
         + '<td>' + escH(item.maquina) + '</td>'
         + '<td><span class="ofmaq-final-time">' + escH(fmtTempo(item.tempoMin)) + '</span></td>'
         + '<td class="ofmaq-final-actions"><button type="button" class="ofmaq-final-actions-btn" data-urgente="' + (item.urgencia === 'urgente' ? '1' : '0') + '" data-ofmaq-final-actions="' + escAttr(item.id) + '">' + (item.urgencia === 'urgente' ? '🚨 ' : '⚡ ') + 'Ações</button></td>'
@@ -24610,7 +24648,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       Array.prototype.slice.call(rootEl.querySelectorAll('.ofmaq-final-machine-blocks')).forEach(function(b) { try { b.remove(); } catch (_) {} });
       var oldWrap = rootEl.querySelector('.ofmaq-final-table-wrap');
       var rows = sortedVisibleRows(currentVisibleRows());
-      var theadFixed = '<thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Data de Entrega</th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead>';
+      var theadFixed = '<thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Data de Entrega</th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Papel / Previsão</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead>';
       if (!state.showAllMachines) {
         if (!oldWrap) {
           oldWrap = document.createElement('div');
@@ -24621,7 +24659,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           else rootEl.appendChild(oldWrap);
         }
         shell.tbody = oldWrap.querySelector('#ofmaq-final-tbody') || oldWrap.querySelector('tbody');
-        if (shell.tbody) shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="14" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
+        if (shell.tbody) shell.tbody.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="15" class="ofmaq-final-empty">Nenhuma OF encontrada para este filtro.</td></tr>';
       } else {
         var grouped = {};
         var order = [];
@@ -24640,7 +24678,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var blocks = document.createElement('div');
         blocks.className = 'ofmaq-final-machine-blocks';
         if (!order.length) {
-          blocks.innerHTML = '<div class="ofmaq-final-machine-block"><div class="ofmaq-final-machine-header"><div><h3>Sem dados</h3><small>Nenhuma OF encontrada para os filtros selecionados.</small></div></div><div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table">' + theadFixed + '<tbody><tr><td colspan="14" class="ofmaq-final-empty">Nenhuma OF encontrada.</td></tr></tbody></table></div></div>';
+          blocks.innerHTML = '<div class="ofmaq-final-machine-block"><div class="ofmaq-final-machine-header"><div><h3>Sem dados</h3><small>Nenhuma OF encontrada para os filtros selecionados.</small></div></div><div class="ofmaq-final-table-wrap"><table class="ofmaq-final-table">' + theadFixed + '<tbody><tr><td colspan="15" class="ofmaq-final-empty">Nenhuma OF encontrada.</td></tr></tbody></table></div></div>';
         } else {
           blocks.innerHTML = order.map(function(maq) {
             var list = grouped[maq] || [];
@@ -24660,7 +24698,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               + '  </div>'
               + '  <div class="ofmaq-final-table-wrap">'
               + '    <table class="ofmaq-final-table">' + theadFixed
-              + '      <tbody>' + (list.length ? list.map(rowHtml).join('') : '<tr><td colspan="14" class="ofmaq-final-empty">Sem OFs para esta máquina.</td></tr>') + '</tbody>'
+              + '      <tbody>' + (list.length ? list.map(rowHtml).join('') : '<tr><td colspan="15" class="ofmaq-final-empty">Sem OFs para esta máquina.</td></tr>') + '</tbody>'
               + '    </table>'
               + '  </div>'
               + '</section>';
