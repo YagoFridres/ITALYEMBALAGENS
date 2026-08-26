@@ -44137,47 +44137,78 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function tryRender() {
     try {
       var page = document.getElementById('page-dashboard');
-      if (!page || page.offsetParent === null) return;
+      if (!page) return;
+      if (page.hidden) return;
+      if (page.offsetParent === null) return;
       var host = ensureHost();
       if (!host) return;
       _renderDashboardPrincipal(host);
     } catch (_) {}
   }
 
+  function tryRenderMulti() {
+    setTimeout(tryRender, 30);
+    setTimeout(tryRender, 180);
+    setTimeout(tryRender, 600);
+  }
+
   function patchRenderDashboard() {
     var orig = window.renderDashboard;
-    if (typeof orig !== 'function' || orig._patchDashboardEstoques) return;
+    if (typeof orig !== 'function') return;
+    if (orig._patchDashboardEstoques) return;
     var wrapped = function() {
       var r = orig.apply(this, arguments);
-      setTimeout(tryRender, 100);
+      try { tryRender(); } catch (_) {}
+      tryRenderMulti();
       return r;
     };
     wrapped._patchDashboardEstoques = true;
     window.renderDashboard = wrapped;
   }
 
+  try {
+    document.body && document.body.addEventListener('click', function(e) {
+      try {
+        var target = e && e.target;
+        if (!target) return;
+        var t = target;
+        var found = false;
+        var depth = 0;
+        while (t && depth < 6) {
+          var txt = String(t.textContent || '').replace(/\s+/g, ' ');
+          if (txt.indexOf('Dashboard') >= 0 || txt.indexOf('Análises') >= 0) {
+            found = true;
+            break;
+          }
+          var href = String(t.getAttribute && t.getAttribute('href') || t.dataset && t.dataset.page || t.id || '').toLowerCase();
+          if (href.indexOf('dashboard') >= 0 || href.indexOf('analise') >= 0) {
+            found = true;
+            break;
+          }
+          t = t.parentElement;
+          depth++;
+        }
+        if (found) tryRenderMulti();
+      } catch (_) {}
+    }, true);
+  } catch (_) {}
+
   var obs = new MutationObserver(function(_, observer) {
     if (window._pausarObservers) return;
     try { patchRenderDashboard(); } catch (_) {}
     try { tryRender(); } catch (_) {}
-    try {
-      var host = document.getElementById('patch-estoque-dashboard');
-      if (host && window.renderDashboard && window.renderDashboard._patchDashboardEstoques) {
-        observer.disconnect();
-      }
-    } catch (_) {}
   });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
       try { patchRenderDashboard(); } catch (_) {}
-      try { obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] }); } catch (_) {}
-      setTimeout(tryRender, 1200);
+      try { obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] }); } catch (_) {}
+      tryRenderMulti();
     });
   } else {
     try { patchRenderDashboard(); } catch (_) {}
-    try { obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] }); } catch (_) {}
-    setTimeout(tryRender, 1200);
+    try { obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] }); } catch (_) {}
+    tryRenderMulti();
   }
 })();
 
