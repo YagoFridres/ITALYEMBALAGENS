@@ -54993,4 +54993,183 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   setTimeout(install, 1200);
 })();
 
+(function patchAmostrasNumeroAmostraWrapper() {
+  if (window.__patchAmostrasNumeroAmostraWrapperInstalled) return;
+  window.__patchAmostrasNumeroAmostraWrapperInstalled = true;
+
+  function injectNumeroAmostraInput() {
+    try {
+      var modal = document.getElementById('modal-amostra');
+      if (!modal) return false;
+      if (document.getElementById('am-numero-amostra')) return true;
+      var amIdHidden = document.getElementById('am-id');
+      if (!amIdHidden) return false;
+      var wrap = amIdHidden.parentElement;
+      if (!wrap) return false;
+      var gridEl = wrap.querySelector('.fg[style*="grid-template-columns"]');
+      if (!gridEl) return false;
+      var clienteField = gridEl.querySelector('[for="am-cliente-nome"]');
+      var clienteWrap = clienteField ? clienteField.closest('.mf') : null;
+      var div = document.createElement('div');
+      div.className = 'mf fgf';
+      div.setAttribute('style', 'grid-column:1/-1');
+      div.innerHTML = '<label>🔢 Nº DA AMOSTRA (numeração própria sequencial)</label><input id="am-numero-amostra" type="number" min="1" placeholder="Ex: 1234 — deixe vazio para auto-próximo número">';
+      if (clienteWrap && clienteWrap.parentNode && clienteWrap.nextSibling) {
+        clienteWrap.parentNode.insertBefore(div, clienteWrap.nextSibling);
+      } else if (gridEl.firstChild) {
+        gridEl.insertBefore(div, gridEl.firstChild);
+      } else {
+        gridEl.appendChild(div);
+      }
+      try {
+        var inputNum = document.getElementById('am-numero-amostra');
+        if (inputNum) {
+          inputNum.addEventListener('focus', function(){
+            var idEl = document.getElementById('am-id');
+            if (idEl && !String(idEl.value || '').trim()) autoSugerirProximoNumero();
+          });
+        }
+      } catch (_) {}
+      return true;
+    } catch (e) {
+      try { console.warn('[patchAmostrasNumero] injectInput erro:', e && e.message ? e.message : e); } catch (_) {}
+      return false;
+    }
+  }
+
+  var _ultimoNumeroSugerido = 0;
+  var _cacheSugestaoTs = 0;
+  async function autoSugerirProximoNumero() {
+    try {
+      var el = document.getElementById('am-numero-amostra');
+      if (!el) return;
+      if (String(el.value || '').trim()) return;
+      var agora = Date.now();
+      var maxLocal = _ultimoNumeroSugerido || 0;
+      if (agora - _cacheSugestaoTs < 60000 && maxLocal > 0) {
+        el.value = String(maxLocal + 1);
+        return;
+      }
+      var list = [];
+      try {
+        var r = await (typeof window.api === 'function' ? window.api('GET', '/amostras?limit=1000&orderCol=numero_amostra&orderDir=desc') : fetch('/api/amostras?limit=1000').then(function(x){return x.json();}));
+        if (Array.isArray(r)) list = r;
+        else if (r && Array.isArray(r.data)) list = r.data;
+        else if (r && Array.isArray(r.rows)) list = r.rows;
+        else if (r && Array.isArray(r.amostras)) list = r.amostras;
+      } catch (_) { list = []; }
+      var maxCalc = 0;
+      list.forEach(function(it){
+        var n = parseInt(it && (it.numero_amostra != null ? it.numero_amostra : it.numero || it.seq || ''), 10);
+        if (Number.isFinite(n) && n > maxCalc) maxCalc = n;
+      });
+      if (maxCalc > maxLocal) maxLocal = maxCalc;
+      _ultimoNumeroSugerido = maxLocal || 0;
+      _cacheSugestaoTs = agora;
+      el.value = String((maxLocal || 0) + 1);
+    } catch (_) {}
+  }
+
+  function preencherNumeroAoAbrirEdicao() {
+    try {
+      var idEl = document.getElementById('am-id');
+      var numEl = document.getElementById('am-numero-amostra');
+      if (!numEl) return;
+      if (!idEl || !String(idEl.value || '').trim()) {
+        if (!String(numEl.value || '').trim()) setTimeout(autoSugerirProximoNumero, 250);
+        return;
+      }
+      var idVal = String(idEl.value || '').trim();
+      if (window.__ultimaAmostraEdit && String(window.__ultimaAmostraEdit.id || window.__ultimaAmostraEdit.uuid || '') === idVal && Number.isFinite(parseInt(window.__ultimaAmostraEdit.numero_amostra, 10))) {
+        numEl.value = String(parseInt(window.__ultimaAmostraEdit.numero_amostra, 10));
+        return;
+      }
+      (async function(){
+        try {
+          var r = await (typeof window.api === 'function' ? window.api('GET', '/amostras/' + encodeURIComponent(idVal)) : fetch('/api/amostras/' + encodeURIComponent(idVal)).then(function(x){return x.json();}));
+          var obj = r && (r.data || r.amostra || r.row || r);
+          var n = obj && (obj.numero_amostra != null ? obj.numero_amostra : obj.numero || obj.seq || null);
+          var n2 = parseInt(n, 10);
+          if (Number.isFinite(n2) && n2 > 0) numEl.value = String(n2);
+          else if (!String(numEl.value || '').trim()) setTimeout(autoSugerirProximoNumero, 150);
+        } catch (_) {
+          if (!String(numEl.value || '').trim()) setTimeout(autoSugerirProximoNumero, 150);
+        }
+      })();
+    } catch (_) {}
+  }
+
+  var _abrirModalAmostraOrig = window.abrirModalAmostra;
+  window.abrirModalAmostra = function(id) {
+    try { injectNumeroAmostraInput(); } catch (_) {}
+    try {
+      var idInput = document.getElementById('am-id');
+      if (idInput) idInput.value = String(id || '').trim() || '';
+    } catch (_) {}
+    var ret;
+    if (typeof _abrirModalAmostraOrig === 'function') {
+      try { ret = _abrirModalAmostraOrig.apply(this, arguments); } catch (e) {
+        try { console.warn('[patchAmostrasNumero] abrirModalAmostra orig erro:', e && e.message ? e.message : e); } catch (_) {}
+      }
+    }
+    setTimeout(preencherNumeroAoAbrirEdicao, 220);
+    setTimeout(preencherNumeroAoAbrirEdicao, 650);
+    return ret;
+  };
+
+  var _salvarAmostraOrig = window.salvarAmostra;
+  window.salvarAmostra = async function() {
+    try { injectNumeroAmostraInput(); } catch (_) {}
+    var numEl = document.getElementById('am-numero-amostra');
+    var rawNum = numEl ? String(numEl.value || '').trim() : '';
+    var valNum = parseInt(rawNum, 10);
+    var temNum = Number.isFinite(valNum) && valNum > 0;
+    if (!temNum && rawNum === '') {
+      try { await autoSugerirProximoNumero(); } catch (_) {}
+      rawNum = numEl ? String(numEl.value || '').trim() : '';
+      valNum = parseInt(rawNum, 10);
+      temNum = Number.isFinite(valNum) && valNum > 0;
+    }
+    var apiOrig = window.api;
+    var patched = false;
+    if (temNum && typeof apiOrig === 'function') {
+      patched = true;
+      window.api = async function(method, path, payload) {
+        try {
+          var p = String(path || '');
+          var ehRota = p.startsWith('/amostras') || p.startsWith('/api/amostras');
+          if (ehRota && payload && typeof payload === 'object') {
+            payload.numero_amostra = valNum;
+          }
+        } catch (_) {}
+        return apiOrig.apply(this, arguments);
+      };
+    }
+    try {
+      if (typeof _salvarAmostraOrig === 'function') return await _salvarAmostraOrig.apply(this, arguments);
+    } finally {
+      if (patched) { window.api = apiOrig; }
+      if (temNum) {
+        try { if (valNum > _ultimoNumeroSugerido) _ultimoNumeroSugerido = valNum; } catch (_) {}
+      }
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){
+      try { injectNumeroAmostraInput(); } catch (_) {}
+    });
+  } else {
+    setTimeout(function(){ try { injectNumeroAmostraInput(); } catch (_) {} }, 250);
+    setTimeout(function(){ try { injectNumeroAmostraInput(); } catch (_) {} }, 1200);
+  }
+  try {
+    var obs = new MutationObserver(function(){
+      try { injectNumeroAmostraInput(); } catch (_) {}
+    });
+    obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
+    setInterval(function(){ try { injectNumeroAmostraInput(); } catch (_) {} }, 3500);
+  } catch (_) {}
+})();
+
 
