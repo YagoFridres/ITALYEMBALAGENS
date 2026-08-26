@@ -44147,24 +44147,43 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function tryRenderMulti() {
+    try { patchRenderDashboard(); } catch (_) {}
     setTimeout(tryRender, 30);
     setTimeout(tryRender, 180);
     setTimeout(tryRender, 600);
+    setTimeout(tryRender, 1400);
   }
 
   function patchRenderDashboard() {
     var orig = window.renderDashboard;
-    if (typeof orig !== 'function') return;
-    if (orig._patchDashboardEstoques) return;
+    if (typeof orig !== 'function') return false;
+    if (orig._patchDashboardEstoques) return true;
     var wrapped = function() {
       var r = orig.apply(this, arguments);
       try { tryRender(); } catch (_) {}
-      tryRenderMulti();
+      setTimeout(tryRender, 50);
+      setTimeout(tryRender, 300);
+      setTimeout(tryRender, 900);
       return r;
     };
     wrapped._patchDashboardEstoques = true;
+    try { wrapped._orig = orig; } catch (_) {}
     window.renderDashboard = wrapped;
+    return true;
   }
+
+  (function ensureDashPatchLoop() {
+    var tentativas = 0;
+    function tick() {
+      tentativas++;
+      try {
+        var ok = patchRenderDashboard();
+        if (ok || tentativas >= 15) return;
+      } catch (_) {}
+      if (tentativas < 15) setTimeout(tick, 200);
+    }
+    setTimeout(tick, 50);
+  })();
 
   try {
     document.body && document.body.addEventListener('click', function(e) {
@@ -44180,7 +44199,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             found = true;
             break;
           }
-          var href = String(t.getAttribute && t.getAttribute('href') || t.dataset && t.dataset.page || t.id || '').toLowerCase();
+          var href = String((t.getAttribute && t.getAttribute('href')) || (t.dataset && t.dataset.page) || t.id || '').toLowerCase();
           if (href.indexOf('dashboard') >= 0 || href.indexOf('analise') >= 0) {
             found = true;
             break;
@@ -44188,7 +44207,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           t = t.parentElement;
           depth++;
         }
-        if (found) tryRenderMulti();
+        if (found) {
+          try { patchRenderDashboard(); } catch (_) {}
+          tryRenderMulti();
+        }
       } catch (_) {}
     }, true);
   } catch (_) {}
