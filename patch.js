@@ -43556,6 +43556,379 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return s.toLowerCase().trim();
   }
 
+  function __dashEmpresaNome(empId) {
+    var id = String(empId || '').trim();
+    if (!id) return '—';
+    var opcoes = null;
+    try { opcoes = Array.isArray(window.EMPRESAS_OPCOES) ? window.EMPRESAS_OPCOES : null; } catch (_) { opcoes = null; }
+    if (Array.isArray(opcoes) && opcoes.length) {
+      var match = opcoes.find(function(o) { return o && String(o.id || '').trim() === id; });
+      if (match && match.label) return String(match.label);
+    }
+    try {
+      var mapa = {
+        'df5f7672-0a6b-402d-ae65-296554236c31': 'Italy Embalagens',
+        'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'Cartoeste',
+        'a6e5f5d8-4743-4ebe-885e-c2f0f741a667': 'Oestepack'
+      };
+      if (mapa[id]) return mapa[id];
+    } catch (_) {}
+    return id.slice(0, 8);
+  }
+
+  function __dashFmtDtEnt(s) {
+    s = String(s == null ? '' : s).trim();
+    if (!s) return '—';
+    var ds = s.slice(0, 10);
+    var p = ds.split(/[-\/]/);
+    if (p.length < 3) return ds;
+    try {
+      if (p[0].length === 4) return p[2] + '/' + p[1] + '/' + p[0];
+      return p[0] + '/' + p[1] + '/' + p[2];
+    } catch (_) { return ds; }
+  }
+
+  function __dashStatusCls(st) {
+    var s = String(st || '').toLowerCase().trim();
+    if (!s || s === '—') return { cor: 'var(--text2)', bg: 'rgba(100,116,139,.12)' };
+    if (s.indexOf('conclu') >= 0) return { cor: '#059669', bg: 'rgba(16,185,129,.12)' };
+    if (s.indexOf('cancel') >= 0) return { cor: '#64748b', bg: 'rgba(100,116,139,.12)' };
+    if (s === 'aberto' || s.indexOf('em aberto') >= 0) return { cor: '#d97706', bg: 'rgba(234,179,8,.12)' };
+    if (s.indexOf('produ') >= 0) return { cor: '#2563eb', bg: 'rgba(59,130,246,.12)' };
+    if (s.indexOf('atras') >= 0 || s.indexOf('urg') >= 0) return { cor: '#dc2626', bg: 'rgba(239,68,68,.12)' };
+    return { cor: 'var(--text2)', bg: 'rgba(100,116,139,.12)' };
+  }
+
+  function __dashToken() {
+    try { return String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || '').trim(); } catch (_) { return ''; }
+  }
+
+  function __dashMsgOk(txt) { try { if (typeof toast === 'function') return toast(txt, 'var(--green)'); } catch (_) {} try { alert(txt); } catch (_) {} }
+  function __dashMsgErr(txt) { try { if (typeof toast === 'function') return toast(txt, 'var(--red)'); } catch (_) {} try { alert(txt); } catch (_) {} }
+
+  function __dashCancelarOf(ofId, ofNum, btn, cb) {
+    ofId = String(ofId || '').trim();
+    ofNum = String(ofNum || ofId || '').trim();
+    if (!ofId) return;
+    var msg = 'Cancelar OF #' + ofNum + '?\n\nIsso também removerá as comissões, passagens por máquina e perdas de caixas vinculadas a esta OF.';
+    if (!(confirm(msg))) return;
+    var token = __dashToken();
+    try { if (btn) { btn.setAttribute('data-loading', '1'); btn.disabled = true; } } catch (_) {}
+    fetch('/api/ofs/' + encodeURIComponent(ofId), {
+      method: 'PATCH',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': 'Bearer ' + token } : {}),
+      body: JSON.stringify({ status: 'Cancelada', _force_status: '1' })
+    }).then(function(r) { try { return r.json(); } catch (_) { return { ok: r.ok }; } })
+      .then(function(j) {
+        if (j && (j.ok || j.data)) {
+          __dashMsgOk('OF #' + ofNum + ' cancelada com sucesso');
+          try { if (typeof cb === 'function') cb(null, j); } catch (_) {}
+        } else {
+          throw new Error((j && String(j.error || j.msg || '')) || 'erro_http');
+        }
+      }).catch(function(err) {
+        __dashMsgErr('Erro ao cancelar OF: ' + String(err && err.message || err || ''));
+      }).finally(function() {
+        try { if (btn) { btn.removeAttribute('data-loading'); btn.disabled = false; } } catch (_) {}
+      });
+  }
+
+  function __dashRodarAcao(btn, acao, of) {
+    var ofId = String(of && (of.id || of.uuid) || btn && btn.getAttribute('data-of-id') || '').trim();
+    var ofNum = String(of && (of.numero || of.of || of.of_num) || btn && btn.getAttribute('data-of-numero') || '').trim();
+    if (!ofId) return;
+    if (acao === 'alterar') {
+      try {
+        if (typeof window.__ofAbrirDadosPorId === 'function') {
+          var r = window.__ofAbrirDadosPorId(ofId, { abrir: true });
+          if (r !== false) return;
+        }
+      } catch (_) {}
+      try { if (typeof window.editarOf === 'function') return window.editarOf(ofId); } catch (_) {}
+      try { if (typeof window.alterarOf === 'function') return window.alterarOf(ofId); } catch (_) {}
+      try { if (typeof window.abrirOf === 'function') return window.abrirOf(ofId); } catch (_) {}
+      try { if (typeof window._abrirModalEdicaoOF === 'function') return window._abrirModalEdicaoOF(ofId); } catch (_) {}
+      __dashMsgErr('Nenhuma função de edição de OF disponível');
+      return;
+    }
+    if (acao === 'concluir') {
+      var feita = false;
+      ['concluirOFComBaixa', 'abrirModalConclusao', 'abrirConclusaoOf', '_abrirFluxoConclusaoOF'].forEach(function(nome) {
+        if (feita) return;
+        try {
+          if (typeof window[nome] === 'function') { window[nome](ofId, of || null); feita = true; }
+        } catch (_) {}
+      });
+      if (feita) return;
+      __dashMsgErr('Nenhuma função de concluir OF disponível');
+      return;
+    }
+    if (acao === 'clonar') {
+      try { if (typeof window.pcpAbrirModalClonarOF === 'function') { return window.pcpAbrirModalClonarOF(ofId, ofNum); } } catch (_) {}
+      __dashMsgErr('Nenhuma função de clonar OF disponível');
+      return;
+    }
+    if (acao === 'cancelar') {
+      __dashCancelarOf(ofId, ofNum, btn, function() {
+        try { if (btn && typeof btn.closest === 'function') {
+          var tb = btn.closest('table');
+          if (tb && tb._dashRefreshFn) tb._dashRefreshFn();
+        } } catch (_) {}
+      });
+      return;
+    }
+  }
+
+  var __dashListaCache = {};
+  var __dashListaCacheMax = 20;
+  function __dashListaCacheKey(offset, termoRaw) {
+    return String(offset || 0) + '::' + String(termoRaw || '');
+  }
+  function __dashListaCacheGet(k) {
+    if (!k) return null;
+    var c = __dashListaCache[k];
+    if (!c) return null;
+    if (Date.now() - c.ts > 45000) { try { delete __dashListaCache[k]; } catch (_) {} return null; }
+    return c.val;
+  }
+  function __dashListaCacheSet(k, v) {
+    try {
+      var ks = Object.keys(__dashListaCache);
+      if (ks.length >= __dashListaCacheMax) delete __dashListaCache[ks[0]];
+    } catch (_) {}
+    __dashListaCache[k] = { ts: Date.now(), val: v };
+  }
+
+  function __dashRenderTabela(tabelaEl, rows, meta) {
+    if (!tabelaEl) return;
+    var stCls = '';
+    try {
+      stCls =
+        'table{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;font-size:13px}' +
+        'thead th{background:rgba(15,23,42,.85);color:#cbd5e1;font-weight:700;text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap}' +
+        'thead th.center{text-align:center}' +
+        'tbody td{padding:10px 12px;border-bottom:1px solid rgba(51,65,85,.35);vertical-align:middle;color:var(--text);word-break:break-word}' +
+        'tbody td.center{text-align:center}' +
+        'tbody td.num{text-align:right;font-variant-numeric:tabular-nums}' +
+        'tbody tr:hover{background:rgba(59,130,246,.05)}' +
+        'tbody tr:last-child td{border-bottom:none}' +
+        '.dash-st-badge{display:inline-block;padding:3px 8px;border-radius:9999px;font-size:11px;font-weight:800;white-space:nowrap}' +
+        '.dash-acoes{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}' +
+        '.dash-acoes button{padding:6px 10px;font-size:11px;border-radius:6px;min-width:auto;border:1px solid var(--border);background:rgba(15,23,42,.6);color:var(--text);font-weight:700;cursor:pointer}' +
+        '.dash-acoes button:hover{filter:brightness(1.15)}' +
+        '.dash-acoes button.concluir{background:rgba(16,185,129,.12);color:#10b981;border-color:rgba(16,185,129,.4)}' +
+        '.dash-acoes button.cancelar{background:rgba(239,68,68,.1);color:#ef4444;border-color:rgba(239,68,68,.4)}' +
+        '.dash-acoes button.clonar{background:rgba(139,92,246,.1);color:#a78bfa;border-color:rgba(139,92,246,.4)}' +
+        '.dash-acoes button.alterar{background:rgba(59,130,246,.1);color:#60a5fa;border-color:rgba(59,130,246,.4)}' +
+        '.dash-acoes button:disabled{opacity:.5;cursor:not-allowed}';
+    } catch (_) { stCls = ''; }
+    tabelaEl.setAttribute('border', '0');
+    tabelaEl.setAttribute('cellspacing', '0');
+    tabelaEl.setAttribute('cellpadding', '0');
+    tabelaEl.style.cssText = '';
+    try {
+      var styleId = 'dash-tb-style';
+      if (!document.getElementById(styleId)) {
+        var st = document.createElement('style');
+        st.id = styleId;
+        try { st.textContent = stCls; } catch (_) { st.innerText = stCls; }
+        try { document.head.appendChild(st); } catch (_) {}
+      }
+    } catch (_) {}
+
+    var totalOFs = meta && Number(meta.total || 0) || 0;
+    var offset = meta && Number(meta.offset || 0) || 0;
+    var limit = meta && Number(meta.limit || 15) || 15;
+    var hasMore = !!(meta && meta.hasMore);
+    var termo = meta && meta.termo || '';
+    var pagAtual = Math.floor(offset / limit) + 1;
+    var totalPags = totalOFs > 0 ? Math.max(1, Math.ceil(totalOFs / limit)) : (hasMore ? pagAtual + 1 : pagAtual);
+
+    var theadHtml =
+      '<thead>' +
+        '<tr>' +
+          '<th style="width:90px" class="center">Nº OF</th>' +
+          '<th>Cliente</th>' +
+          '<th>Produto</th>' +
+          '<th style="width:130px" class="center">Data Entrega</th>' +
+          '<th style="width:130px" class="center">Status</th>' +
+          '<th style="width:120px" class="center">Valor</th>' +
+          '<th style="width:170px" class="center">Máquina</th>' +
+          '<th style="width:140px" class="center">Empresa</th>' +
+          '<th style="width:250px" class="center">Ações</th>' +
+        '</tr>' +
+      '</thead>';
+
+    var tbodyRows = '';
+    if (!(Array.isArray(rows) && rows.length)) {
+      tbodyRows =
+        '<tbody><tr><td colspan="9" style="padding:30px 20px;color:var(--text2);text-align:center;border-bottom:none">' +
+          (termo ? '🔍 Nenhuma OF encontrada para este termo.' : '📭 Nenhuma OF carregada ainda.') +
+        '</td></tr></tbody>';
+    } else {
+      var rws = rows.map(function(of, i) {
+        var ofId = String(of?.id || '').replace(/"/g, '');
+        var ofNum = esc(String(of?.numero || of?.of || of?.of_num || '—'));
+        var cliente = esc(String(of?.cliente || of?.clinome || of?.cliente_nome || '—').slice(0, 60));
+        var produto = esc(String(of?.produto || of?.descricao || '—').slice(0, 70));
+        var dtEnt = esc(__dashFmtDtEnt(of?.data_entrega || of?.ent || of?.dia || ''));
+        var statusTxt = String(of?.status || '—').trim() || '—';
+        var stI = __dashStatusCls(statusTxt);
+        var statusBadge = '<span class="dash-st-badge" style="color:' + stI.cor + ';background:' + stI.bg + '">' + esc(statusTxt) + '</span>';
+        var valor = Number(of?.valor_total || of?.valor_venda || of?.total || 0) || 0;
+        var valorFmt = esc(__fmtBrlDashboard(valor));
+        var maq = esc(String(of?.maquina || of?.maq || of?.maquina_atual || of?.maquina_agendada || '—').slice(0, 30));
+        var empRaw = of?.emp_id || of?.empresa_id || '';
+        var emp = esc(__dashEmpresaNome(empRaw));
+        var dtOf = esc(String(dtEnt || '—'));
+        return (
+          '<tr data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">' +
+            '<td class="center" style="font-weight:800;color:var(--text);font-variant-numeric:tabular-nums">' + ofNum + '</td>' +
+            '<td title="' + esc(String(of?.cliente || of?.clinome || of?.cliente_nome || '—')) + '">' + cliente + '</td>' +
+            '<td title="' + esc(String(of?.produto || of?.descricao || '—')) + '">' + produto + '</td>' +
+            '<td class="center">' + dtOf + '</td>' +
+            '<td class="center">' + statusBadge + '</td>' +
+            '<td class="num">' + valorFmt + '</td>' +
+            '<td class="center">' + maq + '</td>' +
+            '<td class="center">' + emp + '</td>' +
+            '<td class="center">' +
+              '<div class="dash-acoes" style="justify-content:center">' +
+                '<button type="button" class="concluir" data-acao="concluir" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">✅ Concluir</button>' +
+                '<button type="button" class="cancelar" data-acao="cancelar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">❌ Cancelar</button>' +
+                '<button type="button" class="clonar" data-acao="clonar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">📋 Clonar</button>' +
+                '<button type="button" class="alterar" data-acao="alterar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">✏️ Alterar</button>' +
+              '</div>' +
+            '</td>' +
+          '</tr>'
+        );
+      });
+      tbodyRows = '<tbody>' + rws.join('') + '</tbody>';
+    }
+
+    tabelaEl.innerHTML = theadHtml + tbodyRows;
+
+    tabelaEl.querySelectorAll('button[data-acao]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var acao = String(btn.getAttribute('data-acao') || '').trim();
+        var ofId = String(btn.getAttribute('data-of-id') || '').trim();
+        var tr = null;
+        try { tr = btn.closest('tr'); } catch (_) {}
+        var of = null;
+        if (tabelaEl._dashRows && Array.isArray(tabelaEl._dashRows) && ofId) {
+          try { of = tabelaEl._dashRows.find(function(o) { return String(o && o.id || '').trim() === ofId; }) || null; } catch (_) {}
+        }
+        __dashRodarAcao(btn, acao, of);
+      });
+    });
+
+    var pagEl = document.getElementById('dash-paginacao');
+    if (pagEl) {
+      var inicio = offset + 1;
+      var fim = offset + (Array.isArray(rows) ? rows.length : 0);
+      if (totalOFs) fim = Math.min(fim, totalOFs);
+      var btnAnt = offset > 0
+        ? ('<button type="button" class="pcp-btn" data-dash-pag="ant" style="min-width:auto;padding:6px 12px">◀ Anterior</button>')
+        : ('<button type="button" class="pcp-btn" disabled style="min-width:auto;padding:6px 12px;opacity:.45;cursor:not-allowed">◀ Anterior</button>');
+      var btnProx = hasMore
+        ? ('<button type="button" class="pcp-btn" data-dash-pag="prox" style="min-width:auto;padding:6px 12px">Próxima ▶</button>')
+        : ('<button type="button" class="pcp-btn" disabled style="min-width:auto;padding:6px 12px;opacity:.45;cursor:not-allowed">Próxima ▶</button>');
+      var infoTotal = totalOFs ? (' de ' + __fmtIntDash(totalOFs)) : (hasMore ? '+' : '');
+      var info = __fmtIntDash(inicio) + '-' + __fmtIntDash(fim) + infoTotal + '  ·  Pág. ' + __fmtIntDash(pagAtual) + '/' + __fmtIntDash(totalPags);
+      pagEl.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px">' +
+          '<div style="color:var(--text2);font-size:12px;font-weight:700">' + esc(info) + '</div>' +
+          '<div style="display:flex;gap:8px">' + btnAnt + btnProx + '</div>' +
+        '</div>';
+      pagEl.querySelectorAll('button[data-dash-pag]').forEach(function(b) {
+        b.addEventListener('click', function() {
+          var dir = String(b.getAttribute('data-dash-pag') || '').trim();
+          if (!tabelaEl._dashRefreshFn) return;
+          var novoOffset = (dir === 'prox') ? (offset + limit) : Math.max(0, offset - limit);
+          tabelaEl._dashRefreshFn(novoOffset);
+        });
+      });
+    }
+  }
+
+  function __dashBuscarEPaginar(resumoDiv, offset, termoRaw, forcarRefresh) {
+    offset = Number(offset || 0) || 0;
+    termoRaw = String(termoRaw || '').trim();
+    var tNorm = __dashBuscaNorm(termoRaw);
+    var k = __dashListaCacheKey(offset, termoRaw);
+    var tb = resumoDiv ? resumoDiv.querySelector('#dash-tabela-ofs') : null;
+    var pag = resumoDiv ? resumoDiv.querySelector('#dash-paginacao') : null;
+    var loadingWrap = resumoDiv ? resumoDiv.querySelector('#dash-listagem') : null;
+
+    if (loadingWrap) loadingWrap.setAttribute('data-loading', '1');
+    if (tb && tb._lastRows) tb._lastRows = [];
+
+    if (!forcarRefresh) {
+      var c = __dashListaCacheGet(k);
+      if (c) {
+        try {
+          var rows = Array.isArray(c.data) ? c.data : [];
+          if (tNorm.length >= 3) {
+            rows = rows.filter(function(of) {
+              var hay = [of?.numero, of?.of, of?.of_num, of?.cliente, of?.clinome, of?.cliente_nome, of?.produto, of?.descricao]
+                .map(function(v) { return __dashBuscaNorm(v); }).join(' ');
+              return hay.indexOf(tNorm) >= 0;
+            });
+          }
+          if (tb) { tb._dashRows = rows; tb._dashMeta = c.meta; }
+          __dashRenderTabela(tb, rows, c.meta);
+          if (loadingWrap) loadingWrap.removeAttribute('data-loading');
+          return;
+        } catch (_) {}
+      }
+    }
+
+    if (tb) tb.innerHTML = '<tbody><tr><td colspan="9" style="padding:26px;color:var(--text2);text-align:center">⏳ Carregando OFs...</td></tr></tbody>';
+    var url = '/api/ofs?offset=' + encodeURIComponent(String(offset)) + '&limit=15' + (termoRaw ? ('&busca=' + encodeURIComponent(termoRaw)) : '');
+    window._apiAuthFetch(url)
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (!(res && (res.ok === true || res.ok === undefined))) throw new Error((res && res.error) || 'Falha');
+        var data = Array.isArray(res.data) ? res.data : (Array.isArray(res.ofs) ? res.ofs : []);
+        if (tNorm.length >= 3) {
+          data = data.filter(function(of) {
+            var hay = [of?.numero, of?.of, of?.of_num, of?.cliente, of?.clinome, of?.cliente_nome, of?.produto, of?.descricao]
+              .map(function(v) { return __dashBuscaNorm(v); }).join(' ');
+            return hay.indexOf(tNorm) >= 0;
+          });
+        }
+        var meta = {
+          total: Number(res.total || 0) || 0,
+          offset: Number(res.offset != null ? res.offset : offset) || 0,
+          limit: Number(res.limit || 15) || 15,
+          hasMore: !!(res.hasMore),
+          termo: termoRaw
+        };
+        __dashListaCacheSet(k, { data: data, meta: meta });
+        if (tb) {
+          tb._dashRows = data;
+          tb._dashMeta = meta;
+          tb._dashRefreshFn = function(novoOffset) {
+            var use = novoOffset != null ? Number(novoOffset || 0) : meta.offset;
+            if (tb._lastPagTs && (Date.now() - tb._lastPagTs) < 150) return;
+            tb._lastPagTs = Date.now();
+            __dashBuscarEPaginar(resumoDiv, use, termoRaw, true);
+          };
+        }
+        __dashRenderTabela(tb, data, meta);
+      })
+      .catch(function(err) {
+        try {
+          if (tb) tb.innerHTML =
+            '<tbody><tr><td colspan="9" style="padding:20px;color:#fca5a5;background:rgba(239,68,68,.06)">' +
+              '⚠️ Falha ao carregar listagem de OFs: ' + esc(String(err && err.message || err || 'erro desconhecido')) +
+            '</td></tr></tbody>';
+        } catch (_) {}
+      })
+      .finally(function() {
+        try { if (loadingWrap) loadingWrap.removeAttribute('data-loading'); } catch (_) {}
+      });
+  }
+
   function __dashRenderResultadosTemp(listaEl, ofs) {
     if (!listaEl) return;
     if (!(Array.isArray(ofs) && ofs.length)) {
@@ -43643,59 +44016,27 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             'aria-label="Buscar OF por número, cliente ou produto">' +
         '</div>' +
       '</div>' +
-      '<div id="dash-busca-resultados"></div>';
+      '<div id="dash-listagem" style="margin-top:8px">' +
+        '<table id="dash-tabela-ofs"></table>' +
+        '<div id="dash-paginacao"></div>' +
+      '</div>';
     resumoDiv.appendChild(wrap);
 
     var input = resumoDiv.querySelector('#dash-busca-input');
-    var listaEl = resumoDiv.querySelector('#dash-busca-resultados');
 
-    if (!(input && listaEl)) return;
+    if (!input) return;
 
     var debounceId = null;
     var ultimoTs = 0;
-    var rodando = false;
 
     function executar() {
-      var termo = input.value || '';
-      var termoNorm = __dashBuscaNorm(termo);
-      if (!termoNorm) {
-        if (listaEl) listaEl.innerHTML =
-          '<div style="padding:16px;color:var(--text2);text-align:center;border:1px dashed var(--border);border-radius:10px">' +
-            '💡 Digite 3+ caracteres para iniciar a busca (nº OF, nome do cliente ou produto).' +
-          '</div>';
-        return;
-      }
-      if (termoNorm.length < 2) return;
+      var termoRaw = input.value || '';
       var meuTs = Date.now();
       ultimoTs = meuTs;
-      if (listaEl) listaEl.innerHTML =
-        '<div style="padding:16px;color:var(--text2);text-align:center">⏳ Buscando...</div>';
-      rodando = true;
-      var url = '/api/ofs?busca=' + encodeURIComponent(termo) + '&limit=50';
-      window._apiAuthFetch(url)
-        .then(function(r) { return r.json(); })
-        .then(function(res) {
-          if (meuTs !== ultimoTs) return;
-          var lista = Array.isArray(res?.data) ? res.data : (Array.isArray(res?.ofs) ? res.ofs : []);
-          if (termoNorm.length >= 3) {
-            var norm = termoNorm;
-            lista = lista.filter(function(of) {
-              var hay = [of?.numero, of?.of, of?.of_num, of?.cliente, of?.clinome, of?.cliente_nome, of?.produto, of?.descricao]
-                .map(function(v) { return __dashBuscaNorm(v); })
-                .join(' ');
-              return hay.indexOf(norm) >= 0;
-            });
-          }
-          __dashRenderResultadosTemp(listaEl, lista);
-        })
-        .catch(function(err) {
-          if (meuTs !== ultimoTs) return;
-          if (listaEl) listaEl.innerHTML =
-            '<div style="padding:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#fca5a5">' +
-              '⚠️ Erro na busca: ' + esc(String(err && err.message || err || 'erro desconhecido')) +
-            '</div>';
-        })
-        .finally(function() { rodando = false; });
+      setTimeout(function() {
+        if (meuTs !== ultimoTs) return;
+        __dashBuscarEPaginar(resumoDiv, 0, termoRaw, true);
+      }, 0);
     }
 
     input.addEventListener('input', function() {
@@ -43710,10 +44051,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
     });
 
-    if (listaEl) listaEl.innerHTML =
-      '<div style="padding:16px;color:var(--text2);text-align:center;border:1px dashed var(--border);border-radius:10px">' +
-        '💡 Digite 3+ caracteres para iniciar a busca (nº OF, nome do cliente ou produto).' +
-      '</div>';
+    setTimeout(function() {
+      __dashBuscarEPaginar(resumoDiv, 0, '', false);
+    }, 30);
   }
 
   function _renderDashboardPrincipal(host) {
