@@ -44137,20 +44137,34 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function tryRender() {
     try {
       var page = document.getElementById('page-dashboard');
-      if (!page) return;
-      if (page.hidden) return;
-      if (page.offsetParent === null) return;
+      if (!page) return false;
+      if (page.hidden) return false;
+      if (page.offsetParent === null) return false;
       var host = ensureHost();
-      if (!host) return;
+      if (!host) return false;
+      if (host.dataset.dashPrincipalLoaded === '1') return true;
       _renderDashboardPrincipal(host);
-    } catch (_) {}
+      return true;
+    } catch (_) { return false; }
   }
 
   function tryRenderMulti() {
     setTimeout(tryRender, 30);
-    setTimeout(tryRender, 180);
-    setTimeout(tryRender, 600);
-    setTimeout(tryRender, 1400);
+    setTimeout(tryRender, 100);
+    setTimeout(tryRender, 200);
+    setTimeout(tryRender, 400);
+    setTimeout(tryRender, 700);
+    setTimeout(tryRender, 1000);
+    setTimeout(tryRender, 1500);
+    setTimeout(tryRender, 2200);
+    setTimeout(tryRender, 3000);
+    setTimeout(tryRender, 4500);
+    var _guard = 0;
+    var _id = setInterval(function() {
+      _guard++;
+      var ok = tryRender();
+      if (ok || _guard >= 12) clearInterval(_id);
+    }, 500);
   }
 
   (function instalarWrapperDashboard() {
@@ -44162,6 +44176,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         setTimeout(tryRender, 50);
         setTimeout(tryRender, 300);
         setTimeout(tryRender, 900);
+        setTimeout(tryRender, 1800);
+        setTimeout(tryRender, 3000);
+        setTimeout(tryRender, 4500);
+        var _guard = 0;
+        var _id = setInterval(function() {
+          _guard++;
+          var ok = tryRender();
+          if (ok || _guard >= 10) clearInterval(_id);
+        }, 400);
         return r;
       }
       w._patchDashboardEstoques = true;
