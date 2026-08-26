@@ -6144,12 +6144,16 @@ window._compraPapelaoNormalizeCompraHeader = function(compra) {
     var current = Object.assign({}, item || {});
     var vincosTxt = String(current.vincos || '').trim();
     var partes = vincosTxt ? vincosTxt.split('/').map(function(part) { return String(part || '').trim(); }) : [];
+    var extraArr = Array.isArray(current.vincos_extra) ? current.vincos_extra.slice() : (String(current.vincos_extra || '').trim() ? String(current.vincos_extra).split(/[,;\/]+/).map(function(s){ return String(s||'').trim(); }).filter(Boolean) : []);
+    var listaArr = Array.isArray(current.vincos_lista) ? current.vincos_lista.slice() : (String(current.vincos_lista || '').trim() ? String(current.vincos_lista).split(/[,;\/]+/).map(function(s){ return String(s||'').trim(); }).filter(Boolean) : []);
     return Object.assign({}, item || {}, {
       po: String(current.po || current.nomenclatura || '').trim(),
       vinco1: String(current.vinco1 || partes[0] || '').trim(),
       vinco2: String(current.vinco2 || partes[1] || '').trim(),
       vinco3: String(current.vinco3 || partes[2] || '').trim(),
       vinco4: String(current.vinco4 || partes[3] || '').trim(),
+      vincos_extra: extraArr,
+      vincos_lista: listaArr,
       ped_fornecedor: String(item && (item.ped_fornecedor || item.pedido_fornecedor) || '').trim()
     });
   }) : [window._compraPapelaoBlankItem()];
@@ -7173,7 +7177,17 @@ window._compraPapelaoRenderModalRowsHtml = function(itens, minRows) {
       + '    <div class="ccpx-item-field span-2"><label>L</label><input data-field="largura" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.largura || '') + '" placeholder="L"></div>'
       + '    <div class="ccpx-item-field sep span-1"><span>×</span></div>'
       + '    <div class="ccpx-item-field span-2"><label>C</label><input data-field="comprimento" type="number" min="0" step="0.01" value="' + window._compraPapelaoAttr(item && item.comprimento || '') + '" placeholder="C"></div>'
-      + '    <div class="ccpx-item-field span-5"><label>Vincos</label><div class="ccpx-item-vincos"><input data-field="vinco1" value="' + window._compraPapelaoAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + window._compraPapelaoAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + window._compraPapelaoAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + window._compraPapelaoAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></div>'
+      + '    <div class="ccpx-item-field span-5"><label>Vincos</label><div class="ccpx-item-vincos">'
+      + (function(){
+          var ex = Array.isArray(item && item.vincos_extra) ? item.vincos_extra : [];
+          var chips = '';
+          ex.forEach(function(v, vi) {
+            if (!String(v||'').trim()) return;
+            chips += '<div class="ccpx-vinco-chip"><input data-ccpx-vinco="' + (4 + vi + 1) + '" value="' + window._compraPapelaoAttr(v) + '" placeholder="V' + (5 + vi) + '"><button type="button" data-ccpx-vinco-del="' + (4 + vi + 1) + '" title="Remover este vinco">×</button></div>';
+          });
+          return '<input data-field="vinco1" value="' + window._compraPapelaoAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + window._compraPapelaoAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + window._compraPapelaoAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + window._compraPapelaoAttr(item && item.vinco4 || '') + '" placeholder="V4">' + chips + '<div class="ccpx-vinco-toolbar"><button type="button" data-ccpx-vinco-add title="Adicionar mais um vinco (além de V1 a V4)">＋ Mais Vinco</button></div>';
+        })()
+      + '</div></div>'
       + '    <div class="ccpx-item-field span-2"><label>Qtde</label><input data-field="quantidade" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.quantidade || '') + '"></div>'
       + '    <div class="ccpx-item-field span-2"><label>Lote Mínimo</label><input data-field="lote_minimo" type="number" min="0" step="1" value="' + window._compraPapelaoAttr(item && item.lote_minimo || '') + '"></div>'
       + '    <div class="ccpx-item-field row-break"></div>'
@@ -7452,19 +7466,19 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     var vincoCell = vincosRaw.map(function(v) { return v === '—' ? '—' : ('Vinco ' + window._compraPapelaoEsc(String(v)) + 'mm'); }).join('<br>');
     return ''
       + '<tr style=\"display:table-row!important\">'
-      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;font-weight:800;text-align:center;background:#fff\">' + seq + '</td>'
-      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:center;background:#fff\">' + entrega + '</td>'
-      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:left;background:#fff\">' + po + '</td>'
-      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff;white-space:nowrap\">' + medidas + '</td>'
-      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;font-weight:700;text-align:left;background:#fff;line-height:1.45;vertical-align:top\">' + vincoCell + '</td>'
-      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff\" class=\"num\">' + qtd + '</td>'
-      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff\" class=\"num\">' + lote + '</td>'
-      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff\" class=\"num\">' + area + '</td>'
-      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff\" class=\"num\">' + vrm2 + '</td>'
-      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff\" class=\"num\">' + vlmil + '</td>'
-      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:right;background:#fff;font-weight:800\" class=\"num\">' + vtotal + '</td>'
-      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:left;background:#fff;vertical-align:top\">' + obs + '</td>'
-      + '<td style=\"display:table-cell!important;padding:6px 7px;border:1px solid #0f172a;font-size:11px;text-align:left;background:#fff;white-space:normal;word-wrap:break-word;overflow-wrap:anywhere;line-height:1.35;vertical-align:top\">' + pedForn + '</td>'
+      + '<td style=\"display:table-cell!important;padding:10px 14px;border:1px solid #0f172a;font-size:12px;font-weight:800;text-align:center;background:#fff\">' + seq + '</td>'
+      + '<td style=\"display:table-cell!important;padding:10px 14px;border:1px solid #0f172a;font-size:12px;text-align:center;background:#fff\">' + entrega + '</td>'
+      + '<td style=\"display:table-cell!important;padding:10px 14px;border:1px solid #0f172a;font-size:12px;text-align:left;background:#fff\">' + po + '</td>'
+      + '<td style=\"display:table-cell!important;padding:10px 14px;border:1px solid #0f172a;font-size:12px;text-align:right;background:#fff;white-space:nowrap\">' + medidas + '</td>'
+      + '<td style=\"display:table-cell!important;padding:10px 14px;border:1px solid #0f172a;font-size:12px;font-weight:700;text-align:left;background:#fff;line-height:1.5;vertical-align:top\">' + vincoCell + '</td>'
+      + '<td style=\"display:table-cell!important;padding:10px 14px;border:1px solid #0f172a;font-size:12px;text-align:right;background:#fff\" class=\"num\">' + qtd + '</td>'
+      + '<td style=\"display:table-cell!important;padding:10px 14px;border:1px solid #0f172a;font-size:12px;text-align:right;background:#fff\" class=\"num\">' + lote + '</td>'
+      + '<td style=\"display:table-cell!important;padding:10px 14px;border:1px solid #0f172a;font-size:12px;text-align:right;background:#fff\" class=\"num\">' + area + '</td>'
+      + '<td style=\"display:table-cell!important;padding:10px 14px;border:1px solid #0f172a;font-size:12px;text-align:right;background:#fff\" class=\"num\">' + vrm2 + '</td>'
+      + '<td style=\"display:table-cell!important;padding:10px 14px;border:1px solid #0f172a;font-size:12px;text-align:right;background:#fff\" class=\"num\">' + vlmil + '</td>'
+      + '<td style=\"display:table-cell!important;padding:10px 14px;border:1px solid #0f172a;font-size:12px;text-align:right;background:#fff;font-weight:800\" class=\"num\">' + vtotal + '</td>'
+      + '<td style=\"display:table-cell!important;padding:10px 14px;border:1px solid #0f172a;font-size:12px;text-align:left;background:#fff;vertical-align:top\">' + obs + '</td>'
+      + '<td style=\"display:table-cell!important;padding:10px 14px;border:1px solid #0f172a;font-size:12px;text-align:left;background:#fff;white-space:normal;word-wrap:break-word;overflow-wrap:anywhere;line-height:1.45;vertical-align:top\">' + pedForn + '</td>'
       + '</tr>';
   }).join('');
   return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Pedido de Chapas ' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(data.numero_compra)) + '</title>'
@@ -7485,23 +7499,23 @@ window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra)
     + '.meta-card .value{font-size:13px;font-weight:700;margin-top:6px;word-break:break-word;overflow-wrap:anywhere;white-space:normal;line-height:1.4}'
     + 'table.planilha{width:100%;border-collapse:collapse;table-layout:fixed;min-width:1280px}'
     + 'table.planilha colgroup{display:table-column-group}'
-    + 'table.planilha th,table.planilha td{border:1px solid #0f172a;padding:7px 8px;font-size:10.5px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word;white-space:normal;line-height:1.35;box-sizing:border-box}'
-    + 'table.planilha th{background:#e2e8f0;text-transform:uppercase;font-size:9.5px;letter-spacing:.05em;white-space:normal;word-wrap:break-word;overflow-wrap:anywhere;line-height:1.35;padding-top:9px;padding-bottom:9px;font-weight:900;color:#0f172a;position:sticky;top:0}'
+    + 'table.planilha th,table.planilha td{border:1px solid #0f172a;padding:10px 14px;font-size:11.5px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word;white-space:normal;line-height:1.45;box-sizing:border-box}'
+    + 'table.planilha th{background:#e2e8f0;text-transform:uppercase;font-size:10.5px;letter-spacing:.04em;white-space:normal;word-wrap:break-word;overflow-wrap:anywhere;line-height:1.45;padding-top:12px;padding-bottom:12px;font-weight:900;color:#0f172a;position:sticky;top:0}'
     + 'table.planilha td.num{text-align:right;font-variant-numeric:tabular-nums}'
-    + '.totais{display:flex;justify-content:flex-end;gap:14px;flex-wrap:wrap}'
-    + '.total-chip{border:1px solid #0f172a;min-width:160px;padding:10px 12px}'
-    + '.total-chip .label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
-    + '.total-chip .value{font-size:16px;font-weight:800;margin-top:5px}'
-    + '.obs{border:1px solid #cbd5e1;padding:12px 14px;font-size:12px;min-height:54px}'
-    + '.foot{margin-top:10px;font-size:11px;color:#64748b}'
-    + '@page{size:A4 landscape;margin:8mm}'
-    + '@media print{ body{margin:8mm} table.planilha{min-width:100%!important;table-layout:fixed;width:100%!important} }'
+    + '.totais{display:flex;justify-content:flex-end;gap:18px;flex-wrap:wrap}'
+    + '.total-chip{border:1px solid #0f172a;min-width:180px;padding:12px 16px}'
+    + '.total-chip .label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b}'
+    + '.total-chip .value{font-size:18px;font-weight:800;margin-top:6px}'
+    + '.obs{border:1px solid #cbd5e1;padding:14px 18px;font-size:13px;min-height:56px}'
+    + '.foot{margin-top:14px;font-size:12px;color:#64748b}'
+    + '@page{size:A4 landscape;margin:10mm}'
+    + '@media print{ body{margin:10mm} table.planilha{min-width:100%!important;table-layout:fixed;width:100%!important} }'
     + '@media screen{ table.planilha{min-width:1280px} }'
     + '</style></head><body><div class="sheet">'
     + '<div class="topline"><div><div class="brand">' + window._compraPapelaoEsc(empresa || 'Italy Embalagens') + '</div><div class="title">PEDIDO DE CHAPAS — ' + window._compraPapelaoEsc(data.fornecedor || 'FORNECEDOR') + '</div><div class="subtitle">Gerado em ' + window._compraPapelaoEsc(typeof window._printGeradoEmBr === 'function' ? window._printGeradoEmBr() : new Date().toLocaleString('pt-BR')) + '</div></div>'
     + '<div class="box"><table><tr><td class="label">Pedido</td><td>' + window._compraPapelaoEsc(window._compraPapelaoNumeroLabel(data.numero_compra)) + '</td></tr><tr><td class="label">Data</td><td>' + window._compraPapelaoEsc(window._compraPapelaoFmtDate(data.data_compra || window._compraPapelaoTodayIso())) + '</td></tr><tr><td class="label">Fornecedor</td><td>' + window._compraPapelaoEsc(data.fornecedor || '—') + '</td></tr></table></div></div>'
-    + '<div class="meta"><div class="meta-card"><div class="label">Ped. Fornecedor</div><div class="value">' + window._compraPapelaoEsc(data.ped_fornecedor || '—') + '</div></div><div class="meta-card"><div class="label">Status</div><div class="value">' + window._compraPapelaoEsc(String(data.status || 'Aberto')) + '</div></div><div class="meta-card"><div class="label">Pasta</div><div class="value">' + window._compraPapelaoEsc(String(data.pasta_id && data.pasta_nome ? data.pasta_nome : (data.pasta_id ? data.pasta_id : 'Sem pasta'))) + '</div></div><div class="meta-card"><div class="label">Observação Geral</div><div class="value">' + window._compraPapelaoEsc(data.observacao || '—') + '</div></div></div>'
-    + '<table class="planilha"><colgroup><col style="width:3.2%"><col style="width:8.2%"><col style="width:7.3%"><col style="width:9.6%"><col style="width:9.2%"><col style="width:5.8%"><col style="width:7%"><col style="width:7.8%"><col style="width:7.8%"><col style="width:7.8%"><col style="width:8.3%"><col style="width:8.8%"><col style="width:9.2%"></colgroup><thead><tr><th style="width:3.2%!important">Nº</th><th style="width:8.2%!important">Entrega</th><th style="width:7.3%!important">PO</th><th style="width:9.6%!important">Medidas L × C</th><th style="width:9.2%!important">Vincos</th><th style="width:5.8%!important">Qtde</th><th style="width:7%!important">Lote Mínimo</th><th style="width:7.8%!important">Área Pedido</th><th style="width:7.8%!important">Valor m²</th><th style="width:7.8%!important">Valor p/mil</th><th style="width:8.3%!important">Valor Total</th><th style="width:8.8%!important">Obs</th><th style="width:9.2%!important">Pedido Fornecedor</th></tr></thead><tbody>'
+    + '<div class="meta"><div class="meta-card"><div class="label">Pedido do Fornecedor</div><div class="value">' + window._compraPapelaoEsc(data.ped_fornecedor || '—') + '</div></div><div class="meta-card"><div class="label">Status</div><div class="value">' + window._compraPapelaoEsc(String(data.status || 'Aberto')) + '</div></div><div class="meta-card"><div class="label">Pasta</div><div class="value">' + window._compraPapelaoEsc(String(data.pasta_id && data.pasta_nome ? data.pasta_nome : (data.pasta_id ? data.pasta_id : 'Sem pasta'))) + '</div></div><div class="meta-card"><div class="label">Observação Geral</div><div class="value">' + window._compraPapelaoEsc(data.observacao || '—') + '</div></div></div>'
+    + '<table class="planilha"><colgroup><col style="width:3.2%"><col style="width:8.2%"><col style="width:7.3%"><col style="width:9.6%"><col style="width:10%"><col style="width:5.8%"><col style="width:7%"><col style="width:7.8%"><col style="width:7.8%"><col style="width:7.8%"><col style="width:8.3%"><col style="width:8.8%"><col style="width:9.2%"></colgroup><thead><tr><th style="width:3.2%!important">Nº Item</th><th style="width:8.2%!important">Data de Entrega</th><th style="width:7.3%!important">PO / Nomenclatura</th><th style="width:9.6%!important">Medidas Largura × Comprimento (mm)</th><th style="width:10%!important">Posições dos Vincos (mm)</th><th style="width:5.8%!important">Quantidade de Chapas</th><th style="width:7%!important">Lote Mínimo (un)</th><th style="width:7.8%!important">Área em m²</th><th style="width:7.8%!important">Valor por m²</th><th style="width:7.8%!important">Valor por Milheiro</th><th style="width:8.3%!important">Valor Total do Item</th><th style="width:8.8%!important">Observação</th><th style="width:9.2%!important">Pedido do Fornecedor</th></tr></thead><tbody>'
     + (rowsHtml || '<tr><td colspan="13">Nenhum item informado.</td></tr>')
     + '</tbody></table>'
     + '<div class="totais"><div class="total-chip"><div class="label">Quantidade Total</div><div class="value">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.qtd, 0)) + '</div></div><div class="total-chip"><div class="label">Área Total</div><div class="value">' + window._compraPapelaoEsc(window._compraPapelaoFmtNum(totals.area, 4)) + ' m²</div></div><div class="total-chip"><div class="label">Valor Total</div><div class="value">' + window._compraPapelaoEsc(window._compraPapelaoFmtMoney(totals.valor)) + '</div></div></div>'
@@ -8843,7 +8857,17 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(5, 'antes pat
         + '  <td><input data-field="data_entrega" type="date" value="' + cAttr(String(item && item.data_entrega || '').slice(0, 10)) + '"></td>'
         + '  <td><input data-field="po" value="' + cAttr(item && (item.po || item.nomenclatura) || '') + '" placeholder="PO"></td>'
         + '  <td><div style="display:grid;grid-template-columns:minmax(88px,1fr) 14px minmax(88px,1fr);align-items:center"><input data-field="largura" type="number" min="0" step="0.01" value="' + cAttr(item && item.largura || '') + '" placeholder="L"><span style="color:#64748b;font-weight:900;text-align:center">×</span><input data-field="comprimento" type="number" min="0" step="0.01" value="' + cAttr(item && item.comprimento || '') + '" placeholder="C"></div></td>'
-        + '  <td><div style="display:grid;grid-template-columns:repeat(4,minmax(86px,1fr));gap:6px"><input data-field="vinco1" value="' + cAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + cAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + cAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + cAttr(item && item.vinco4 || '') + '" placeholder="V4"></div></td>'
+        + '  <td><div style="display:grid;grid-template-columns:repeat(5,minmax(86px,1fr));gap:6px">'
+        + (function(){
+            var _ex = Array.isArray(item && item.vincos_extra) ? item.vincos_extra : [];
+            var _chs = '';
+            _ex.forEach(function(v, vi) {
+              if (!String(v||'').trim()) return;
+              _chs += '<div style="position:relative;display:grid;grid-template-columns:minmax(0,1fr) 22px;gap:4px;align-items:center"><input data-ccpx-vinco="' + (5 + vi) + '" value="' + cAttr(v) + '" placeholder="V' + (5 + vi) + '"><button type="button" data-ccpx-vinco-del="' + (5 + vi) + '" style="width:22px;height:22px;border-radius:999px;border:1px solid rgba(148,163,184,.22);background:#0f172a;color:#e2e8f0;cursor:pointer;font-weight:900;padding:0">×</button></div>';
+            });
+            return '<input data-field="vinco1" value="' + cAttr(item && item.vinco1 || '') + '" placeholder="V1"><input data-field="vinco2" value="' + cAttr(item && item.vinco2 || '') + '" placeholder="V2"><input data-field="vinco3" value="' + cAttr(item && item.vinco3 || '') + '" placeholder="V3"><input data-field="vinco4" value="' + cAttr(item && item.vinco4 || '') + '" placeholder="V4">' + _chs;
+          })()
+        + '</div></td>'
         + '  <td><input data-field="quantidade" type="number" min="0" step="1" value="' + cAttr(item && item.quantidade || '') + '" placeholder="0"></td>'
         + '  <td><input data-field="lote_minimo" type="number" min="0" step="1" value="' + cAttr(item && item.lote_minimo || '') + '" placeholder="0"></td>'
         + '  <td class="editable-num"><input data-field="area_m2"' + (areaManual ? ' data-ccp-manual="1"' : '') + ' type="number" min="0" step="0.0001" value="' + cAttr(item && item.area_m2 != null && String(item.area_m2).trim() !== '' ? item.area_m2 : d.area_m2.toFixed(4)) + '"></td>'
@@ -24647,6 +24671,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (!rootEl) return;
       Array.prototype.slice.call(rootEl.querySelectorAll('.ofmaq-final-machine-blocks')).forEach(function(b) { try { b.remove(); } catch (_) {} });
       var oldWrap = rootEl.querySelector('.ofmaq-final-table-wrap');
+      if (oldWrap) {
+        var curThs = oldWrap.querySelectorAll('table thead th');
+        var temPapelCol = false;
+        for (var _i = 0; _i < curThs.length; _i++) {
+          if (String(curThs[_i].textContent || '').trim().indexOf('Papel / Previsão') >= 0) { temPapelCol = true; break; }
+        }
+        if (!temPapelCol || curThs.length !== 15) { try { oldWrap.remove(); } catch (_e) {} oldWrap = null; }
+      }
       var rows = sortedVisibleRows(currentVisibleRows());
       var theadFixed = '<thead><tr><th>Seq</th><th>Imagem da OF</th><th>OF</th><th>Data de Entrega</th><th>Cliente</th><th>Status</th><th>Produto</th><th>Quantidade de Caixas</th><th>Tamanhos</th><th>Cores</th><th>Facas</th><th>Papel / Previsão</th><th>Máquina</th><th>Tempo</th><th>Ações</th></tr></thead>';
       if (!state.showAllMachines) {
@@ -34125,18 +34157,91 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 })();
 
 (function patchBuscaComissoesPorOf() {
+  var EMPRESAS_OPCOES = [
+    { id: '', label: 'Todas as empresas' },
+    { id: 'df5f7672-0a6b-402d-ae65-296554236c31', label: 'Italy Embalagens' },
+    { id: 'e9b734dc-c7d5-4b04-898d-1ec7affa721e', label: 'Cartoeste' },
+    { id: 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667', label: 'Oestepack' }
+  ];
+  function _empresaIdAtual() {
+    try { return String(window.__comissoesFiltroEmpresaId || '').trim(); } catch (_) { return ''; }
+  }
+  function _aplicarEmpresaIdUrl(urlOr) {
+    var url = String(urlOr || '');
+    if (!url || url.indexOf('/api/comissoes/relatorio') === -1 && url.indexOf('/api/comissoes/busca-of') === -1 && url.indexOf('/api/comissoes/debug-total-vendido') === -1) return urlOr;
+    var empId = _empresaIdAtual();
+    if (!empId) return urlOr;
+    try {
+      var sep = url.indexOf('?') >= 0 ? '&' : '?';
+      return url + sep + 'empresa_id=' + encodeURIComponent(empId);
+    } catch (_) { return urlOr; }
+  }
+  try {
+    if (!window.__comissoesFetchPatched && typeof window.fetch === 'function') {
+      var origFetch = window.fetch;
+      window.fetch = function(url, opts) {
+        try {
+          var newUrl = _aplicarEmpresaIdUrl(url);
+          if (typeof Request === 'function' && url instanceof Request) {
+            try {
+              var bodyTxt = (opts && opts.body != null) ? opts.body : (url.body ? null : null);
+              var reqInit = {
+                method: (opts && opts.method) || url.method || 'GET',
+                headers: (opts && opts.headers) || (url.headers ? (new Headers(url.headers)) : undefined),
+                credentials: (opts && opts.credentials) || url.credentials
+              };
+              if (bodyTxt != null) reqInit.body = bodyTxt;
+              url = new Request(_aplicarEmpresaIdUrl(url.url), reqInit);
+            } catch (_) { url = newUrl; }
+          } else {
+            url = newUrl;
+          }
+        } catch (_) {}
+        return origFetch.call(this, url, opts);
+      };
+      if (typeof origFetch === 'function') window.fetch._orig = origFetch;
+      window.__comissoesFetchPatched = true;
+    }
+  } catch (_) {}
+
   window.__ensureComissoesBusca = function() {
     try {
       var bar = document.querySelector('#page-comissoes .filtros-comissao');
       if (!bar) return;
-      if (document.getElementById('comissoes-busca-of')) return;
-      var input = document.createElement('input');
-      input.id = 'comissoes-busca-of';
-      input.type = 'text';
-      input.placeholder = '🔍 Buscar por nº OF, cliente...';
-      input.style.cssText = 'padding:7px 12px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);color:var(--text1);width:220px';
-      input.oninput = function() { try { if (typeof window.filtrarComissoesPorBusca === 'function') window.filtrarComissoesPorBusca(input.value); } catch (_) {} };
-      bar.appendChild(input);
+      if (!document.getElementById('comissoes-busca-of')) {
+        var input = document.createElement('input');
+        input.id = 'comissoes-busca-of';
+        input.type = 'text';
+        input.placeholder = '🔍 Buscar por nº OF, cliente...';
+        input.style.cssText = 'padding:7px 12px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);color:var(--text1);width:220px';
+        input.oninput = function() { try { if (typeof window.filtrarComissoesPorBusca === 'function') window.filtrarComissoesPorBusca(input.value); } catch (_) {} };
+        bar.appendChild(input);
+      }
+      if (!document.getElementById('comissoes-filtro-empresa')) {
+        var sel = document.createElement('select');
+        sel.id = 'comissoes-filtro-empresa';
+        sel.style.cssText = 'padding:7px 12px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);color:var(--text1)';
+        var atual = _empresaIdAtual();
+        sel.innerHTML = EMPRESAS_OPCOES.map(function(opt) {
+          return '<option value="' + String(opt.id).replace(/"/g, '&quot;') + '"' + (String(opt.id) === atual ? ' selected' : '') + '>' + String(opt.label).replace(/</g, '&lt;') + '</option>';
+        }).join('');
+        sel.onchange = function() {
+          try { window.__comissoesFiltroEmpresaId = String(sel.value || '').trim(); } catch (_) {}
+          try {
+            var btns = Array.prototype.slice.call(bar.querySelectorAll('button, [type="submit"], .btn, .com-calcular, .calcular'));
+            var clicou = false;
+            btns.forEach(function(b) {
+              if (clicou) return;
+              var txt = String(b && b.textContent || '').toLowerCase().trim();
+              if (txt && (txt.indexOf('calcular') >= 0 || txt.indexOf('buscar') >= 0 || txt.indexOf('filtrar') >= 0 || txt.indexOf('carregar') >= 0)) {
+                try { b.click(); clicou = true; } catch (_) {}
+              }
+            });
+            if (!clicou && typeof window.calcularComissoes === 'function') window.calcularComissoes();
+          } catch (_) {}
+        };
+        bar.appendChild(sel);
+      }
     } catch (_) {}
   };
   window.filtrarComissoesPorBusca = function(termo) {
@@ -34153,7 +34258,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     [400, 1200, 2400].forEach(function(t) {
       setTimeout(function() {
         try {
-          if (!document.getElementById('comissoes-busca-of')) window.__ensureComissoesBusca();
+          if (!document.getElementById('comissoes-busca-of') || !document.getElementById('comissoes-filtro-empresa')) window.__ensureComissoesBusca();
         } catch (_) {}
       }, t);
     });
@@ -44528,6 +44633,84 @@ window._mbnActive = function(id) {
   setInterval(_verificarOFsNovas, 30000);
 })();
 
+(function patchArmazenamentoOrdenarPorCliente() {
+  if (window.__patchArmazenamentoOrdenarClienteInstalled) return;
+  window.__patchArmazenamentoOrdenarClienteInstalled = true;
+
+  var _OF_ARRAYS_NOMES = ['OFs', 'OFS', '_OFs', '_ofsCarregadas', 'ofs', 'Ofs'];
+  function _normalizar(txt) {
+    try {
+      var s = String(txt || '').trim().toLowerCase();
+      try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+      return s.replace(/\s+/g, ' ').trim();
+    } catch (_) { return ''; }
+  }
+  function _pickCliente(o) {
+    return _normalizar(
+      (o && (o.cliente || o.cliNome || o.cliente_nome || o.cli_nome || o.client || o.nome_cliente || o.razao_social || o.fantasia || '')) || ''
+    );
+  }
+  function _pickNumeroOf(o) {
+    try {
+      var n = String(o && (o.numero || o.of || o.of_numero || o.of_num || o.id || '') || '').trim();
+      var dig = n.replace(/\D/g, '');
+      if (dig) return parseInt(dig, 10) || 0;
+      return 0;
+    } catch (_) { return 0; }
+  }
+  function _sortClienteNumero(a, b) {
+    var ca = _pickCliente(a);
+    var cb = _pickCliente(b);
+    if (ca !== cb) return ca < cb ? -1 : 1;
+    var na = _pickNumeroOf(a);
+    var nb = _pickNumeroOf(b);
+    if (na !== nb) return na - nb;
+    try {
+      var ia = String(a && a.id || '').trim();
+      var ib = String(b && b.id || '').trim();
+      return ia < ib ? -1 : (ia > ib ? 1 : 0);
+    } catch (_) { return 0; }
+  }
+  function _ordenarTodasAsArraysOFs() {
+    _OF_ARRAYS_NOMES.forEach(function(nome) {
+      try {
+        var arr = window[nome];
+        if (Array.isArray(arr) && arr.length > 1) {
+          arr.sort(_sortClienteNumero);
+        }
+      } catch (_) {}
+    });
+  }
+  _ordenarTodasAsArraysOFs();
+
+  function _wrapRenderFn(nomeFn) {
+    try {
+      var orig = window[nomeFn];
+      if (typeof orig !== 'function') return;
+      if (orig.__armOrdenadoWrapped) return;
+      var wrapped = function() {
+        try { _ordenarTodasAsArraysOFs(); } catch (_) {}
+        return orig.apply(this, arguments);
+      };
+      wrapped.__armOrdenadoWrapped = true;
+      wrapped._orig = orig;
+      window[nomeFn] = wrapped;
+    } catch (_) {}
+  }
+  _wrapRenderFn('renderArmazenamento');
+  _wrapRenderFn('carregarOFs');
+  _wrapRenderFn('CarregarOFs');
+  _wrapRenderFn('renderizarArmazenamento');
+  _wrapRenderFn('montarArmazenamento');
+
+  function agendado() {
+    try { _ordenarTodasAsArraysOFs(); } catch (_) {}
+    try { _wrapRenderFn('renderArmazenamento'); } catch (_) {}
+    try { _wrapRenderFn('carregarOFs'); } catch (_) {}
+  }
+  [0, 400, 1200, 3000, 6000].forEach(function(d) { setTimeout(agendado, d); });
+})();
+
 (function patchBackupNotifEChapas() {
   if (window.__patchBackupNotifEChapasInstalled) return;
   window.__patchBackupNotifEChapasInstalled = true;
@@ -47180,6 +47363,15 @@ function _ocultarGraficoComissoes() {
         + '      <select id="conclusao-vendedor" class="com-conc-select"><option value="">' + String(vendedorAtualNome || 'Carregando vendedores...').replace(/</g, '&lt;') + '</option></select>'
         + '    </div>'
         + '    <div class="com-conc-field">'
+        + '      <label class="com-conc-label" style="color:#fbbf24">🏭 Empresa Proprietária da OF *</label>'
+        + '      <select id="conclusao-empresa" class="com-conc-select">'
+        + '        <option value="">Selecione a empresa...</option>'
+        + '        <option value="df5f7672-0a6b-402d-ae65-296554236c31">Italy Embalagens</option>'
+        + '        <option value="e9b734dc-c7d5-4b04-898d-1ec7affa721e">Cartoeste</option>'
+        + '        <option value="a6e5f5d8-4743-4ebe-885e-c2f0f741a667">Oestepack</option>'
+        + '      </select>'
+        + '    </div>'
+        + '    <div class="com-conc-field">'
         + '      <label class="com-conc-label" style="color:#10b981">🏭 Caixas Produzidas *</label>'
         + '      <input id="conclusao-caixas-produzidas" class="com-conc-qtd" type="number" min="0" step="1" value="' + String(qtdInicial) + '"/>'
         + '    </div>'
@@ -47253,6 +47445,7 @@ function _ocultarGraficoComissoes() {
       var gramBuscaEl = backdrop.querySelector('#conclusao-gramatura-busca');
       var gramSuggestEl = backdrop.querySelector('#conclusao-gramatura-suggest');
       var tipoCaixaEl = backdrop.querySelector('#conclusao-tipo-caixa');
+      var empresaEl = backdrop.querySelector('#conclusao-empresa');
       var maquinasPassagemListaEl = backdrop.querySelector('#conclusao-maquinas-passagem-lista');
       var addPassagemMaquinaBtn = backdrop.querySelector('#conclusao-add-passagem-maquina');
       var perdasLista = backdrop.querySelector('#conclusao-perdas-lista');
@@ -47757,6 +47950,8 @@ function _ocultarGraficoComissoes() {
         var dataFaturamento = String((dataEl && dataEl.value) || '').trim();
         if (!(caixasProduzidas > 0)) { try { alert('Informe as caixas produzidas.'); } catch (_) {} return; }
         if (!dataFaturamento) { try { alert('Informe a data de faturamento.'); } catch (_) {} return; }
+        var empresaIdSel = String((empresaEl && empresaEl.value) || '').trim();
+        if (!empresaIdSel) { try { alert('Selecione a empresa proprietária da OF: Italy Embalagens, Cartoeste ou Oestepack.'); } catch (_) {} return; }
         if (!resumo.gramaturaValida) { try { alert('Selecione uma gramatura válida antes de concluir a OF.'); } catch (_) {} return; }
         if (!resumo.tipoCaixaValido) { try { alert('Selecione um tipo de caixa antes de concluir a OF.'); } catch (_) {} return; }
         if (hasMaquinasPassagemIncompletasConclusao()) { try { alert('Preencha a quantidade de caixas em cada máquina adicionada ou remova a linha antes de concluir a OF.'); } catch (_) {} return; }
@@ -47815,6 +48010,7 @@ function _ocultarGraficoComissoes() {
         };
         if (vendedorAtualSel.id) body.vendedor_id = vendedorAtualSel.id;
         if (vendedorAtualSel.nome) body.vendedor = vendedorAtualSel.nome;
+        body.empresa_id = empresaIdSel;
         // #region debug-point C:conclusao-of-payload-operadores
         try { if (typeof window.__erpRuntimeDebug === 'function') window.__erpRuntimeDebug('C', 'payload conclusao com operadores montado', { ofId: String(of && of.id || ofId || ''), operadoresConclusao: operadoresConclusao.slice(), perdasLen: perdas.length, perdas: perdas.map(function(perda) { return { maquina: String(perda && perda.maquina || ''), qtd: Number(perda && perda.qtd || 0) || 0, operadores: Array.isArray(perda && perda.operadores) ? perda.operadores.slice() : [] }; }) }); } catch (_) {}
         // #endregion
