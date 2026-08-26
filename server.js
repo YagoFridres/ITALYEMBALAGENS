@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260826110001';
-const SW_RUNTIME_VERSION = '20260826110001';
+const PATCH_RUNTIME_VERSION = '20260826120001';
+const SW_RUNTIME_VERSION = '20260826120001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -2088,10 +2088,21 @@ app.post('/api/email/enviar', authMiddleware, async (req, res) => {
     const para = String(req.body?.para || req.body?.to || '').trim();
     const assunto = String(req.body?.assunto || req.body?.subject || '').trim();
     const corpo = String(req.body?.corpo || req.body?.html || '').trim();
+    const tipoEmail = String(req.body?.tipo_email || req.body?.tipoEmail || req.body?.sub || '').trim().toLowerCase();
     const anexosRaw = Array.isArray(req.body?.anexos) ? req.body.anexos : [];
     if (!para || !para.includes('@')) return res.status(400).json({ ok: false, error: 'para_invalido' });
     if (!assunto) return res.status(400).json({ ok: false, error: 'assunto_obrigatorio' });
     if (!corpo) return res.status(400).json({ ok: false, error: 'corpo_obrigatorio' });
+
+    let fromAddr = String(process.env.EMAIL_USER || '').trim();
+    let fromName = 'Italy Embalagens';
+    if (tipoEmail === 'compra_papelao' || tipoEmail === 'comprachapas' || tipoEmail === 'compra' || tipoEmail === 'comercial') {
+      fromAddr = 'comercial@italyembalagens.com.br';
+      fromName = 'Italy Embalagens - Comercial';
+    } else if (tipoEmail === 'orcamento' || tipoEmail === 'orcamentos' || tipoEmail === 'orçamento' || tipoEmail === 'atendimento') {
+      fromAddr = 'atendimento@italyembalagens.com.br';
+      fromName = 'Italy Embalagens - Atendimento';
+    }
 
     const attachments = [];
     for (const a of anexosRaw.slice(0, 10)) {
@@ -2108,7 +2119,7 @@ app.post('/api/email/enviar', authMiddleware, async (req, res) => {
     }
 
     await transporter.sendMail({
-      from: `"Italy Embalagens" <${String(process.env.EMAIL_USER || '').trim()}>`,
+      from: `"${fromName}" <${fromAddr}>`,
       to: para,
       subject: assunto,
       html: corpo,
@@ -5808,6 +5819,14 @@ async function _autoPickSugestaoMaquinaNome(body){
     }).map((m)=>({ id:m.id, nome:String(m.nome||'').trim() })).filter((m)=>m.nome);
 
     const maquinasCompativeis = compat.length > 0 ? compat : (maquinasAtivas || []).map((m)=>({ id:m.id, nome:String(m.nome||'').trim() })).filter(m=>m.nome);
+    const MAQUINAS_VALIDAS_RANK = ['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','CORTE VINCO ROTATIVA'];
+    const MAQ_VALIDAS_NORM = MAQUINAS_VALIDAS_RANK.map(function(n){ return String(n||'').toUpperCase().trim(); });
+    const todasMaquinasValidas = MAQUINAS_VALIDAS_RANK.map(function(n){ return { id: n, nome: n }; });
+    const maquinasCompativeisNomalizadas = maquinasCompativeis.filter(function(m){
+      var nm = String(m && m.nome || '').toUpperCase().trim();
+      return MAQ_VALIDAS_NORM.indexOf(nm) !== -1;
+    });
+    const maquinasParaRanquear = maquinasCompativeisNomalizadas.length ? maquinasCompativeisNomalizadas : todasMaquinasValidas;
 
     const statusNotIn = '("Concluído","Concluido","Cancelada","Cancelado","Pedido Pronto")';
     const { data: ofsRaw } = await supabase
@@ -5818,72 +5837,93 @@ async function _autoPickSugestaoMaquinaNome(body){
       .limit(5000);
     const ofs = Array.isArray(ofsRaw) ? ofsRaw : [];
     const filaMap = new Map();
-    const cand = new Set(maquinasCompativeis.map(x=>String(x.nome)));
+    const candRaw = maquinasParaRanquear.map(function(x){ return String(x.nome||'').trim(); }).filter(Boolean);
+    candRaw.push.apply(candRaw, MAQUINAS_VALIDAS_RANK);
+    const cand = new Set(candRaw);
     ofs.forEach((o)=>{
-      const mk = String(_ofPickMaqAtualName(o) || '').trim();
-      if(!mk || !cand.has(mk)) return;
+      var mkRaw = String(_ofPickMaqAtualName(o) || '').trim();
+      var mkNorm = mkRaw.toUpperCase();
+      var matchIdx = MAQ_VALIDAS_NORM.indexOf(mkNorm);
+      var mk = matchIdx !== -1 ? MAQUINAS_VALIDAS_RANK[matchIdx] : (cand.has(mkRaw) ? mkRaw : '');
+      if(!mk) return;
       filaMap.set(mk, (filaMap.get(mk) || 0) + 1);
     });
 
     const dt30 = new Date(Date.now() - 30*24*60*60*1000).toISOString().slice(0,10);
     const { data: perdasRaw } = await supabase
       .from('caixas_perdidas')
-      .select('id,of_id,qtd_perdida,maquina_perda,maquina,maquina_nome,data,created_at')
+      .select('id,of_id,qtd_perdida,maquina_perda,maquina,maquina_nome,data,created_at,quantidade,caixas_perdidas')
       .gte('data', dt30)
       .limit(5000);
     const perdas = Array.isArray(perdasRaw) ? perdasRaw : [];
-    const ofIds = [...new Set(perdas.map(p=>String(p?.of_id||'').trim()).filter(Boolean))];
+    const ofIds = [...new Set(perdas.map(function(p){ return String(p?.of_id||'').trim(); }).filter(Boolean))];
     const ofQtdMap = new Map();
-    for(let i=0;i<ofIds.length;i+=200){
-      const chunk = ofIds.slice(i,i+200);
-      const { data: ofsP } = await supabase
+    for(var i=0;i<ofIds.length;i+=200){
+      var chunk = ofIds.slice(i,i+200);
+      var res = await supabase
         .from('ofs')
         .select('id,qtd,qtd_produzida,quantidade')
         .in('id', chunk)
         .limit(200);
-      (Array.isArray(ofsP)?ofsP:[]).forEach((x)=>{
-        const id = String(x?.id||'').trim();
+      (Array.isArray(res?.data)?res.data:[]).forEach(function(x){
+        var id = String(x?.id||'').trim();
         if(!id) return;
-        const qtd = Number(x?.qtd_produzida ?? x?.qtd ?? x?.quantidade ?? 0) || 0;
+        var qtd = Number(x?.qtd_produzida ?? x?.qtd ?? x?.quantidade ?? 0) || 0;
         ofQtdMap.set(id, qtd);
       });
     }
     const perdaAgg = new Map();
-    const pickMaq = (p)=>{
-      const a = String(p?.maquina_perda||'').trim();
-      const b = String(p?.maquina_nome||'').trim();
-      const c = String(p?.maquina||'').trim();
-      return a || b || c;
+    const pickMaq = function(p){
+      var a = String(p?.maquina_perda||'').trim();
+      var b = String(p?.maquina_nome||'').trim();
+      var c = String(p?.maquina||'').trim();
+      var raw = a || b || c;
+      if(!raw) return '';
+      var n = String(raw).toUpperCase().trim();
+      var idx = MAQ_VALIDAS_NORM.indexOf(n);
+      return idx !== -1 ? MAQUINAS_VALIDAS_RANK[idx] : raw;
     };
-    perdas.forEach((p)=>{
-      const mk = String(pickMaq(p) || '').trim();
-      if(!mk || !cand.has(mk)) return;
-      const lost = Math.trunc(Number(p?.qtd_perdida||0) || 0);
-      const prod = ofQtdMap.get(String(p?.of_id||'').trim()) || 0;
-      const cur = perdaAgg.get(mk) || { lost:0, prod:0 };
+    perdas.forEach(function(p){
+      var mkRaw = String(pickMaq(p) || '').trim();
+      var mkNorm = mkRaw.toUpperCase();
+      var matchIdxP = MAQ_VALIDAS_NORM.indexOf(mkNorm);
+      var mk = matchIdxP !== -1 ? MAQUINAS_VALIDAS_RANK[matchIdxP] : (cand.has(mkRaw) ? mkRaw : '');
+      if(!mk) return;
+      var lost = Math.trunc(Number(p?.quantidade ?? p?.caixas_perdidas ?? p?.qtd_perdida ?? 0) || 0);
+      var prod = ofQtdMap.get(String(p?.of_id||'').trim()) || 0;
+      var cur = perdaAgg.get(mk) || { lost:0, prod:0 };
       cur.lost += lost;
       cur.prod += Math.trunc(Number(prod)||0);
       perdaAgg.set(mk, cur);
     });
-    const lossRate = (mk)=>{
-      const a = perdaAgg.get(mk) || { lost:0, prod:0 };
-      const lost = Number(a.lost||0) || 0;
-      const prod = Number(a.prod||0) || 0;
+    const lossRate = function(mk){
+      var a = perdaAgg.get(mk) || { lost:0, prod:0 };
+      var lost = Number(a.lost||0) || 0;
+      var prod = Number(a.prod||0) || 0;
       if(prod > 0) return lost / prod;
       return lost > 0 ? 1 : 0;
     };
 
-    const ranked = maquinasCompativeis.map((m)=>{
-      const fila = Math.trunc(Number(filaMap.get(m.nome) || 0) || 0);
-      const taxa = lossRate(m.nome);
+    const ranked = maquinasParaRanquear.map((m)=>{
+      const nmNorm = String(m && m.nome || '').toUpperCase().trim();
+      const matchNorm = MAQ_VALIDAS_NORM.indexOf(nmNorm);
+      const canonico = matchNorm !== -1 ? MAQUINAS_VALIDAS_RANK[matchNorm] : String(m && m.nome || '').trim();
+      const fila = Math.trunc(Number(filaMap.get(canonico) || 0) || 0);
+      const taxa = lossRate(canonico);
       const penal = taxa > 0.05 ? 1000 : 0;
-      return { ...m, fila, taxa_perda: taxa, penalidade: penal };
+      return { ...(m || {}), nome: canonico, fila, taxa_perda: taxa, penalidade: penal };
     });
-    ranked.sort((a,b)=>{
-      if((a.penalidade||0) !== (b.penalidade||0)) return (a.penalidade||0) - (b.penalidade||0);
-      if((a.fila||0) !== (b.fila||0)) return (a.fila||0) - (b.fila||0);
-      if((a.taxa_perda||0) !== (b.taxa_perda||0)) return (a.taxa_perda||0) - (b.taxa_perda||0);
-      return String(a.nome).localeCompare(String(b.nome));
+    ranked.sort(function(a,b){
+      var ap = Number(a?.penalidade||0) || 0;
+      var bp = Number(b?.penalidade||0) || 0;
+      if(ap !== bp) return ap - bp;
+      var af = Number(a?.fila||0) || 0;
+      var bf = Number(b?.fila||0) || 0;
+      if(af !== bf) return af - bf;
+      var at = Number(a?.taxa_perda||0) || 0;
+      var bt = Number(b?.taxa_perda||0) || 0;
+      if(at !== bt) return at - bt;
+      return String(a?.nome||'').localeCompare(String(b?.nome||''));
     });
     const melhor = ranked[0];
     if(!melhor || !melhor.nome) return { ok:false, skipped:'sem_melhor' };
@@ -9006,16 +9046,37 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
     try {
       const st = String(payload?.status || '').trim().toLowerCase();
       if (st === 'cancelada' || st === 'cancelado') {
+        const ofIdStr = String(id || '').trim();
+        const numeroStr = String(data?.of ?? data?.numero ?? data?.of_num ?? '').trim();
         const vendId = String(data?.vendedor_id || '').trim();
         const val = Number(data?.valor_total || data?.valor_venda || 0);
-        const numero = data?.of ?? data?.numero ?? '';
+        try {
+          if (ofIdStr) {
+            try { await supabase.from('historico_acoes').delete().or(`of_id.eq.${ofIdStr},of_uuid.eq.${ofIdStr}`).or('tipo_acao.like.comissao%,tipo_acao.eq.comissao,tipo_acao.eq.comissao_gerada').limit(1000); } catch (_) {}
+            try { await supabase.from('historico_acoes').delete().or(`of_numero.eq.${numeroStr},of.eq.${numeroStr}`).or('tipo_acao.like.comissao%,tipo_acao.eq.comissao,tipo_acao.eq.comissao_gerada').limit(1000); } catch (_) {}
+            try { await supabase.from('passagens_maquina').delete().eq('of_id', ofIdStr).limit(1000); } catch (_) {}
+            try { await supabase.from('historico_passagens').delete().eq('of_id', ofIdStr).limit(1000); } catch (_) {}
+            try { await supabase.from('caixas_perdidas').delete().eq('of_id', ofIdStr).limit(1000); } catch (_) {}
+            try { await supabase.from('caixas_perdas').delete().eq('of_id', ofIdStr).limit(1000); } catch (_) {}
+            try { await supabase.from('perdas_producao').delete().eq('of_id', ofIdStr).limit(1000); } catch (_) {}
+          }
+          if (numeroStr) {
+            try { await supabase.from('passagens_maquina').delete().eq('of_numero', numeroStr).limit(1000); } catch (_) {}
+            try { await supabase.from('historico_passagens').delete().eq('of_numero', numeroStr).limit(1000); } catch (_) {}
+            try { await supabase.from('caixas_perdidas').delete().eq('of_numero', numeroStr).limit(1000); } catch (_) {}
+            try { await supabase.from('caixas_perdas').delete().eq('of_numero', numeroStr).limit(1000); } catch (_) {}
+            try { await supabase.from('perdas_producao').delete().eq('of_numero', numeroStr).limit(1000); } catch (_) {}
+          }
+        } catch (eClean) {
+          try { console.warn('[CANCELA-OF] limpeza parcial falhou:', String(eClean?.message || eClean)); } catch (_) {}
+        }
         if (vendId && val > 0) {
           await supabase.from('historico_acoes').insert([{
             tipo_acao: 'comissao_cancelada',
-            descricao: `Comissão cancelada - OF #${numero || ''} cancelada/excluída`,
+            descricao: `Comissão cancelada - OF #${numeroStr || ''} cancelada/excluída + limpeza dados correlatos`,
             usuario: req.usuario?.nome || 'sistema',
             data_hora: new Date().toISOString()
-          }]);
+          }]).catch(() => false);
         }
       }
     } catch (_) {}

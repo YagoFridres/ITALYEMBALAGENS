@@ -7564,12 +7564,45 @@ window._compraPapelaoOpenOutlookMail = async function(payload, compra) {
       } catch (_) {}
     }
   }
-  var href = 'mailto:' + (destinatario ? encodeURIComponent(destinatario) : '') + '?subject=' + encodeURIComponent(email.assunto) + '&body=' + encodeURIComponent(email.corpo);
+  if (!destinatario || destinatario.indexOf('@') < 0) {
+    try { alert('E-mail inválido.'); } catch (_) {}
+    return;
+  }
   try {
-    window.location.href = href;
+    var corpoLinhas = String(email.corpo || '').split(/\r?\n/);
+    var corpoHtml = '<div style="font-family:Arial,sans-serif;white-space:pre-wrap;font-size:13px;line-height:1.5">'
+      + corpoLinhas.map(function(l){
+          var s = String(l || '');
+          return s.replace(/[&<>]/g, function(c){ return c==='&'?'&amp;':(c==='<'?'&lt;':'&gt;'); });
+        }).join('<br>')
+      + '</div>';
+    var token = '';
+    try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+    var r = await fetch('/api/email/enviar', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? ('Bearer ' + token) : ''
+      },
+      body: JSON.stringify({
+        para: destinatario,
+        assunto: String(email.assunto || ''),
+        corpo: corpoHtml,
+        tipo_email: 'compra_papelao'
+      })
+    });
+    var jr = null;
+    try { jr = await r.json(); } catch (_) {}
+    if (jr && jr.ok) {
+      try { toast('E-mail enviado com sucesso (Comercial)', 'var(--green)'); } catch (_) { alert('E-mail enviado com sucesso.'); }
+    } else {
+      throw new Error((jr && jr.error) || ('HTTP ' + r.status));
+    }
   } catch (e) {
-    console.error('[COMPRA-PAPELAO]', e);
-    alert('Erro ao abrir email: ' + String(e && e.message || e));
+    console.error('[COMPRA-PAPELAO-EMAIL]', e);
+    try { alert('Erro ao enviar e-mail: ' + String(e && e.message || e) + '\nTentando fallback mailto...'); } catch (_) {}
+    var href = 'mailto:' + encodeURIComponent(destinatario) + '?subject=' + encodeURIComponent(email.assunto) + '&body=' + encodeURIComponent(email.corpo);
+    try { window.location.href = href; } catch (_) {}
   }
 };
 window._compraPapelaoBuildCompraPrintHtmlFromPayload = function(payload, compra) {
@@ -14052,12 +14085,13 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       var topTamanhos = Array.isArray(data && data.top_tamanhos) ? data.top_tamanhos : [];
       var corTop = topCores[0] || null;
       var tamanhoTop = topTamanhos[0] || null;
+      var printDesbloq = !!(window.__histValorProducaoDesbloqueado === true);
       return window._buildStyledPrintHtml({
         title: 'Relatório de Histórico de Passagens',
         periodo: periodo,
         cards: [
           { label: 'Total de OFs', value: _histFmtNum(resumo.total_ofs || 0), sub: 'OFs no período' },
-          { label: 'Valor de Produção', value: _histFmtMoney(resumo.valor_total_producao || 0), sub: 'Soma de produção' },
+          { label: 'Valor de Produção', value: printDesbloq ? _histFmtMoney(resumo.valor_total_producao || 0) : '🔒 Bloqueado', sub: printDesbloq ? 'Soma de produção' : 'Senha 1234 necessária' },
           { label: 'Caixas Produzidas', value: _histFmtNum(resumo.caixas_produzidas || 0), sub: 'Volume consolidado' },
           { label: 'Resumo por Máquina', value: _histFmtNum(resumo.total_maquinas || 0), sub: 'Máquinas no período' },
           { label: 'Cores Mais Usadas', value: corTop && corTop.cor || 'Sem dados', sub: _histRankingResumoHtml(topCores, 'cor') },
@@ -14069,7 +14103,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
           return [
             _histPrintEsc(row && row.maquina || '—'),
             _histPrintEsc(_histFmtNum(row && row.total_ofs || 0)),
-            _histPrintEsc(_histFmtMoney(row && row.valor_total_producao || 0)),
+            _histPrintEsc(printDesbloq ? _histFmtMoney(row && row.valor_total_producao || 0) : '—'),
             _histPrintEsc(_histFmtNum(row && row.caixas_produzidas || 0))
           ];
         }),
@@ -14115,12 +14149,13 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     var topTamanhosLista = Object.keys(sizeMap).map(function(key) { return { tamanho: key, total_ofs: sizeMap[key] }; }).sort(function(a, b) {
       return (b.total_ofs - a.total_ofs) || String(a.tamanho || '').localeCompare(String(b.tamanho || ''), 'pt-BR');
     }).slice(0, 5);
+    var printDesbloqLista = !!(window.__histValorProducaoDesbloqueado === true);
     return window._buildStyledPrintHtml({
       title: 'Relatório de Histórico de Passagens',
       periodo: periodo,
       cards: [
         { label: 'Passagens Visíveis', value: _histFmtNum(listRows.length), sub: 'Linhas filtradas por máquina/dia' },
-        { label: 'Valor de Produção', value: _histFmtMoney(totalOficial), sub: 'Fórmula oficial das OFs concluídas (' + _histFmtNum(totalOfsOficial) + ' OFs)' },
+        { label: 'Valor de Produção', value: printDesbloqLista ? _histFmtMoney(totalOficial) : '🔒 Bloqueado', sub: printDesbloqLista ? ('Fórmula oficial das OFs concluídas (' + _histFmtNum(totalOfsOficial) + ' OFs)') : 'Senha 1234 necessária' },
         { label: 'Caixas Produzidas', value: _histFmtNum(listRows.reduce(function(acc, row) { return acc + _histPassagemQuantidade(row); }, 0)), sub: 'Volume visível' },
         { label: 'Máquinas', value: _histFmtNum(Array.from(new Set(listRows.map(function(row) { return _histPassagemMaquinas(row); }).filter(Boolean))).length), sub: 'Máquinas listadas' },
         { label: 'Cores Mais Usadas', value: topCoresLista[0] && topCoresLista[0].cor || 'Sem dados', sub: _histRankingResumoHtml(topCoresLista, 'cor') },
@@ -15145,15 +15180,48 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
     var tamanhoTop = topTamanhos[0] || null;
     var refLabel = String(ref && ref.titulo || '').trim() || _histRangeLabel(ref, ref);
     var refTitle = ref && (ref.inicio || ref.fim) ? 'Período de Referência' : 'Mês de Referência';
+    var valorDesbloqueado = !!(window.__histValorProducaoDesbloqueado === true);
+    var cardValorProducaoHtml;
+    if (valorDesbloqueado) {
+      cardValorProducaoHtml = '<div class="hist-month-card"><div class="lab">Valor de Produção</div><div class="val">' + _histEsc(_histFmtMoney(resumo.valor_total_producao || 0)) + '</div><div class="sub">' + _histVariationBadge(varValor) + '</div></div>';
+    } else {
+      cardValorProducaoHtml = ''
+        + '<div class="hist-month-card" id="hist-card-valor-bloqueado" style="cursor:pointer">'
+        + '  <div class="lab">Valor de Produção</div>'
+        + '  <div class="val" style="font-size:16px;color:#94a3b8">🔒 Bloqueado</div>'
+        + '  <div class="sub"><button type="button" class="hist-patch-btn" id="hist-desbloquear-valor-btn" style="padding:4px 10px;font-size:11px;margin-top:4px">Digite a senha para desbloquear</button></div>'
+        + '</div>';
+    }
 
     cards.innerHTML = ''
       + '<div class="hist-month-card"><div class="lab">' + _histEsc(refTitle) + '</div><div class="val">' + _histEsc(refLabel) + '</div><div class="sub">Base: passagens individuais por máquina</div></div>'
       + '<div class="hist-month-card"><div class="lab">Total de OFs</div><div class="val">' + _histEsc(_histFmtNum(resumo.total_ofs || 0)) + '</div><div class="sub">' + _histVariationBadge(varOfs) + '</div></div>'
-      + '<div class="hist-month-card"><div class="lab">Valor de Produção</div><div class="val">' + _histEsc(_histFmtMoney(resumo.valor_total_producao || 0)) + '</div><div class="sub">' + _histVariationBadge(varValor) + '</div></div>'
+      + cardValorProducaoHtml
       + '<div class="hist-month-card"><div class="lab">Caixas Produzidas</div><div class="val">' + _histEsc(_histFmtNum(resumo.caixas_produzidas || 0)) + '</div><div class="sub">' + _histVariationBadge(varCx) + '</div></div>'
       + '<div class="hist-month-card"><div class="lab">Cores Mais Usadas</div><div class="val" style="font-size:18px">' + _histEsc(corTop && corTop.cor || 'Sem dados') + '</div><div class="sub">' + _histRankingResumoHtml(topCores, 'cor') + '</div></div>'
       + '<div class="hist-month-card"><div class="lab">Tamanhos Mais Usados</div><div class="val" style="font-size:18px">' + _histEsc(tamanhoTop && tamanhoTop.tamanho || 'Sem dados') + '</div><div class="sub">' + _histRankingResumoHtml(topTamanhos, 'tamanho') + '</div></div>';
     cards.dataset.rendered = '1';
+    setTimeout(function() {
+      try {
+        var btn = document.getElementById('hist-desbloquear-valor-btn');
+        var card = document.getElementById('hist-card-valor-bloqueado');
+        var handler = function(e) {
+          try { e && e.stopPropagation && e.stopPropagation(); } catch (_) {}
+          try {
+            var senha = window.prompt('Digite a senha para desbloquear o Valor de Produção:', '');
+            if (senha == null) return;
+            if (String(senha || '').trim() === '1234') {
+              window.__histValorProducaoDesbloqueado = true;
+              _histRenderRelatorioMensal(window.__histMonthlyData || data || {});
+            } else {
+              try { alert('Senha incorreta.'); } catch (_) {}
+            }
+          } catch (_) {}
+        };
+        if (btn) btn.onclick = handler;
+        if (card && !btn) card.onclick = handler;
+      } catch (_) {}
+    }, 0);
 
     if (!sorted.length) {
       tableHost.innerHTML = '<div style="padding:18px;border:1px dashed rgba(148,163,184,.16);border-radius:12px;color:#94a3b8;text-align:center">Nenhuma passagem encontrada para o período selecionado.</div>';
@@ -15166,6 +15234,21 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       var arrow = active ? (sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
       return '<th' + (numeric ? ' class="num"' : '') + '><button type="button" data-hist-sort="' + _histAttr(key) + '">' + _histEsc(label + arrow) + '</button></th>';
     };
+    var colunaValorHeader = valorDesbloqueado
+      ? th('Valor de Produção', 'valor_total_producao', true)
+      : '<th class="num" style="color:#64748b;cursor:not-allowed">Valor de Produção 🔒</th>';
+    var rowsHtml = sorted.map(function(row) {
+        var valorCell = valorDesbloqueado
+          ? ('  <td class="num">' + _histEsc(_histFmtMoney(row.valor_total_producao || 0)) + '</td>')
+          : ('  <td class="num" style="color:#64748b">—</td>');
+        return ''
+          + '<tr>'
+          + '  <td><div style="font-weight:900;color:#f8fafc">' + _histEsc(row.maquina || 'Sem máquina') + '</div><div style="margin-top:4px">' + _histVariationBadge(row.variacao_ofs_pct) + '</div></td>'
+          + '  <td class="num">' + _histEsc(_histFmtNum(row.total_ofs || 0)) + '</td>'
+          + valorCell
+          + '  <td class="num">' + _histEsc(_histFmtNum(row.caixas_produzidas || 0)) + '</td>'
+          + '</tr>';
+      }).join('');
 
     tableHost.innerHTML = ''
       + '<div class="hist-month-table-wrap">'
@@ -15173,19 +15256,11 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       + '    <thead><tr>'
       +        th('Máquina', 'maquina', false)
       +        th('Nº de OFs', 'total_ofs', true)
-      +        th('Valor de Produção', 'valor_total_producao', true)
+      +        colunaValorHeader
       +        th('Caixas Produzidas', 'caixas_produzidas', true)
       + '    </tr></thead>'
       + '    <tbody>'
-      + sorted.map(function(row) {
-          return ''
-            + '<tr>'
-            + '  <td><div style="font-weight:900;color:#f8fafc">' + _histEsc(row.maquina || 'Sem máquina') + '</div><div style="margin-top:4px">' + _histVariationBadge(row.variacao_ofs_pct) + '</div></td>'
-            + '  <td class="num">' + _histEsc(_histFmtNum(row.total_ofs || 0)) + '</td>'
-            + '  <td class="num">' + _histEsc(_histFmtMoney(row.valor_total_producao || 0)) + '</td>'
-            + '  <td class="num">' + _histEsc(_histFmtNum(row.caixas_produzidas || 0)) + '</td>'
-            + '</tr>';
-        }).join('')
+      + rowsHtml
       + '    </tbody>'
       + '  </table>'
       + '</div>';
@@ -19924,18 +19999,22 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var tagClass = urg === 'urgente' ? ' is-danger' : (urg === 'atrasada' ? ' is-warn' : '');
         var tagText = sp ? 'Sem Papelão' : (urg === 'urgente' ? 'Urgente' : (urg === 'atrasada' ? 'Atrasada' : 'No prazo'));
         if (sp && urg !== 'normal') tagText = 'Sem Papelão • ' + (urg === 'urgente' ? 'Urgente' : 'Atrasada');
+        var statusOf = String(of && of.status || 'Em aberto').trim();
+        var maqLabel = String(maquina || '').trim();
+        if (!maqLabel) maqLabel = 'Pendente';
         rowsHtml.push(
           '<tr class="patch-ofmaq-row" data-of-id="' + escAttrLocal(id) + '" data-maq="' + escAttrLocal(maquina) + '" data-tempo-min="' + escAttrLocal(String(tempoMin || 0)) + '" data-qtd="' + escAttrLocal(String(quantidade != null ? quantidade : '')) + '" data-urgencia="' + escAttrLocal(urg) + '" data-sem-papel="' + (sp ? '1' : '0') + '"'
           + ' onclick="if(event.target&&event.target.closest&&event.target.closest(\'a,button,input,select,textarea\'))return; try{abrirBottomSheetAcoes(&quot;' + escAttrLocal(id) + '&quot;,&quot;' + escAttrLocal(String(numero || '')) + '&quot;)}catch(_e){}">'
           + '<td><span class="patch-ofmaq-seq-badge">' + escHLocal(String(idx + 1)) + '</span></td>'
-          + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(numero) + '</strong><span class="patch-ofmaq-cell-sub">' + escHLocal(tagText) + '</span></div></td>'
-          + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(cliente) + '</strong><span class="patch-ofmaq-cell-sub">' + escHLocal(String(of && of.status || 'Em aberto')) + '</span></div></td>'
+          + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(numero) + '</strong></div></td>'
+          + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(cliente) + '</strong></div></td>'
           + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(produto) + '</strong></div></td>'
           + '<td><span class="patch-ofmaq-tag">' + escHLocal(tamanho) + '</span></td>'
           + '<td><span class="patch-ofmaq-tag">' + escHLocal(cores) + '</span></td>'
           + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(_ofmaqFmtInt(quantidade != null ? quantidade : 0)) + '</strong></div></td>'
           + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(entrega ? fmtDateBR(entrega) : '—') + '</strong><span class="patch-ofmaq-cell-sub">' + (entrega ? escHLocal(fmtWeekdayDate(entrega)) : '—') + '</span></div></td>'
           + '<td><span class="patch-ofmaq-tag' + tagClass + '">' + escHLocal(_ofmaqFmtTempoValue(tempoMin)) + '</span></td>'
+          + '<td><div class="patch-ofmaq-cell-main"><strong style="font-size:12px">' + escHLocal(tagText) + '</strong><span class="patch-ofmaq-cell-sub">' + escHLocal(statusOf) + '</span></div></td>'
           + (function() {
               var pComprado = of && (of.papel_comprado === true || of.papel_comprado === 1 || String(of.papel_comprado || '').trim() === '1' || String(of.papel_comprado || '').toLowerCase() === 'true');
               var pPrev = String(of && (of.previsao_entrega_papel || of.previsaoEntregaPapel || '') || '').trim();
@@ -19947,7 +20026,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               }
               return '<td><div class="patch-ofmaq-cell-main"><strong style="font-size:12px;color:#64748b">—</strong><span class="patch-ofmaq-cell-sub">Pendente</span></div></td>';
             })()
-          + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(maquina) + '</strong></div></td>'
+          + '<td><div class="patch-ofmaq-cell-main"><strong>' + escHLocal(maqLabel) + '</strong></div></td>'
           + '</tr>'
         );
       });
@@ -19955,8 +20034,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     var html = String(alertasHtml || '');
     html += '<div class="patch-ofmaq-summary-grid">' + (summaries.join('') || '<div class="patch-ofmaq-summary-card"><div class="patch-ofmaq-empty">Nenhuma máquina com OFs para este filtro.</div></div>') + '</div>';
     html += '<div class="patch-ofmaq-table-wrap"><table class="patch-ofmaq-table"><thead><tr>'
-      + '<th>Sequência</th><th>Nº da OF</th><th>Cliente</th><th>Produto</th><th>Tamanho</th><th>Cores</th><th>Quantidade</th><th>Data de Entrega</th><th>Tempo</th><th>Papel / Previsão</th><th>Máquina</th>'
-      + '</tr></thead><tbody>' + (rowsHtml.join('') || '<tr><td colspan="11" class="patch-ofmaq-empty">Nenhuma OF encontrada para este filtro.</td></tr>') + '</tbody></table></div>';
+      + '<th>Sequência</th><th>Nº da OF</th><th>Cliente</th><th>Produto</th><th>Tamanho</th><th>Cores</th><th>Quantidade</th><th>Data de Entrega</th><th>Tempo</th><th>Status</th><th>Papel / Previsão</th><th>Máquina</th>'
+      + '</tr></thead><tbody>' + (rowsHtml.join('') || '<tr><td colspan="12" class="patch-ofmaq-empty">Nenhuma OF encontrada para este filtro.</td></tr>') + '</tbody></table></div>';
     container.innerHTML = html;
     try { container.setAttribute('data-ofmaq-view-mode', 'table'); } catch (_) {}
   }
@@ -22856,6 +22935,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
           + '      <th class="col-qtd">QTD</th>'
           + '      <th class="col-facas">FACAS</th>'
           + '      <th class="col-prazo">PRAZO</th>'
+          + '      <th class="col-status">STATUS</th>'
           + '      <th class="col-maq">MÁQUINA</th>'
           + '      <th class="col-acoes">AÇÕES</th>'
           + '    </tr>'
@@ -23033,6 +23113,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var prazoIso = extractIsoDate(card);
       var qtd = Number(card.getAttribute('data-qtd') || 0) || 0;
       var order = Number(card.getAttribute('data-ordem-maquina') || card.getAttribute('data-ordem') || idx + 1) || (idx + 1);
+      var semPapelAttr = String(card && card.getAttribute && card.getAttribute('data-sem-papel') || '').trim();
+      var urgAttr = String(card && card.getAttribute && card.getAttribute('data-urgencia') || 'normal').trim();
+      var sp = !!(semPapelAttr === '1' || semPapelAttr === 'true' || semPapelAttr.toLowerCase() === 'sim');
+      var statusTag = sp ? 'Sem Papelão' : (urgAttr === 'urgente' ? 'Urgente' : (urgAttr === 'atrasada' ? 'Atrasada' : 'No prazo'));
+      if (sp && urgAttr && urgAttr !== 'normal') statusTag = 'Sem Papelão • ' + (urgAttr === 'urgente' ? 'Urgente' : 'Atrasada');
       return {
         id: id,
         maquina: maq,
@@ -23048,6 +23133,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         prazoIso: prazoIso,
         imagemUrl: extractImage(card),
         order: order,
+        sem_papel: sp,
+        urgencia: urgAttr,
+        statusTag: statusTag,
         sourceIndex: idx,
         cardEl: card,
         searchText: normText([numero, cliente, produto, (typeof window._ofKnifeSummaryFromOf === 'function' ? window._ofKnifeSummaryFromOf(card) : '')].join(' '))
@@ -23068,8 +23156,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var imgCell = item.imagemUrl
         ? ('<button type="button" class="ofmaq-thumb-btn-zero" data-ofmaq-image-zero="' + escAttrLocal(item.id) + '"><span class="ofmaq-thumb-zero"><img src="' + escAttrLocal(item.imagemUrl) + '" alt="Imagem da OF"></span></button>')
         : '<span class="ofmaq-thumb-fallback-zero">📦</span>';
+      var maqCell = String(item.maquina || '').trim();
+      if (!maqCell) maqCell = 'Pendente';
+      var statusTone = item.sem_papel ? 'warn' : (item.urgencia === 'urgente' ? 'danger' : (item.urgencia === 'atrasada' ? 'warn' : 'ok'));
       return ''
-        + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-maq="' + escAttrLocal(item.maquina) + '" data-dia="' + escAttrLocal(item.prazoIso || '') + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-cor-key="' + escAttrLocal(item.corPrincipal || '') + '" data-size-key="' + escAttrLocal(item.tamanhoKey || '') + '" data-search="' + escAttrLocal(item.searchText || '') + '">'
+        + '<tr data-of-id="' + escAttrLocal(item.id) + '" data-maq="' + escAttrLocal(item.maquina) + '" data-dia="' + escAttrLocal(item.prazoIso || '') + '" data-order="' + escAttrLocal(String(item.order || 0)) + '" data-cor-key="' + escAttrLocal(item.corPrincipal || '') + '" data-size-key="' + escAttrLocal(item.tamanhoKey || '') + '" data-sem-papel="' + (item.sem_papel ? '1' : '0') + '" data-search="' + escAttrLocal(item.searchText || '') + '">'
         + '  <td class="col-seq"><input class="ofmaq-seq-input-zero" type="number" min="1" step="1" value="' + escAttrLocal(String(item.order || 1)) + '" data-of-id="' + escAttrLocal(item.id) + '"></td>'
         + '  <td class="col-img">' + imgCell + '</td>'
         + '  <td class="col-of"><strong>' + escHLocal(item.numero || '—') + '</strong></td>'
@@ -23080,7 +23171,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         + '  <td class="col-qtd">' + escHLocal(String(item.quantidade || 0)) + '</td>'
         + '  <td class="col-facas">' + escHLocal(item.facasResumo || '—') + '</td>'
         + '  <td class="col-prazo">' + escHLocal(item.prazoIso ? fmtDateBR(item.prazoIso) : '—') + '</td>'
-        + '  <td class="col-maq">' + escHLocal(item.maquina || '—') + '</td>'
+        + '  <td class="col-status"><span class="ofmaq-final-status" data-tone="' + escAttrLocal(statusTone) + '" style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:' + (statusTone === 'warn' ? 'rgba(250,204,21,.18);color:#fde68a' : statusTone === 'danger' ? 'rgba(239,68,68,.18);color:#fecaca' : 'rgba(16,185,129,.18);color:#bbf7d0') + '">' + escHLocal(item.statusTag || 'Normal') + '</span></td>'
+        + '  <td class="col-maq">' + escHLocal(maqCell) + '</td>'
         + '  <td class="col-acoes"><button type="button" class="ofmaq-action-btn-zero" data-ofmaq-actions-zero="' + escAttrLocal(item.id) + '">⚡ Ações</button></td>'
         + '</tr>';
     }
@@ -23128,7 +23220,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (!empty) {
         empty = document.createElement('tr');
         empty.className = 'ofmaq-empty-row-zero';
-        empty.innerHTML = '<td colspan="11">Nenhuma OF encontrada para este filtro.</td>';
+        empty.innerHTML = '<td colspan="13">Nenhuma OF encontrada para este filtro.</td>';
         tbody.appendChild(empty);
       }
       empty.style.display = visibleCount ? 'none' : 'table-row';
@@ -24631,10 +24723,16 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             + '<td style="padding:8px 10px;color:#94a3b8;font-size:.85rem;">' + escH(fmtD(dpedido)) + '</td>'
             + '<td style="padding:8px 10px;color:#fbbf24;font-size:.85rem;font-weight:600;">' + escH(fmtD(dentrega)) + '</td>'
             + '<td style="padding:8px 10px;text-align:center;">'
-            + '  <button type="button" class="ofmaq-amostra-feito" data-feito-amostra="' + escAttr(id) + '" '
-            + '    style="padding:6px 12px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:600;cursor:pointer;font-size:.82rem;white-space:nowrap;">'
-            + '    ✔ Marcar como Feito'
-            + '  </button>'
+            + '  <div style="display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;">'
+            + '    <button type="button" class="ofmaq-amostra-feito" data-feito-amostra="' + escAttr(id) + '" '
+            + '      style="padding:6px 12px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:600;cursor:pointer;font-size:.82rem;white-space:nowrap;">'
+            + '      ✔ Feito'
+            + '    </button>'
+            + '    <button type="button" class="ofmaq-amostra-cancelar" data-cancelar-amostra="' + escAttr(id) + '" '
+            + '      style="padding:6px 12px;border-radius:6px;border:none;background:#991b1b;color:#fff;font-weight:600;cursor:pointer;font-size:.82rem;white-space:nowrap;">'
+            + '      ✖ Cancelar'
+            + '    </button>'
+            + '  </div>'
             + '</td>'
             + '</tr>';
         }).join('');
@@ -24701,7 +24799,53 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
               btn.removeAttribute('data-loading');
               btn.disabled = false;
               btn.innerHTML = '❌ Tentar novamente';
-              setTimeout(function() { btn.innerHTML = '✔ Marcar como Feito'; }, 2500);
+              setTimeout(function() { btn.innerHTML = '✔ Feito'; }, 2500);
+            }
+          });
+        });
+
+        grid.querySelectorAll('[data-cancelar-amostra]').forEach(function(btn) {
+          btn.addEventListener('click', async function(ev) {
+            try {
+              var idBtn = String(btn.getAttribute('data-cancelar-amostra') || '').trim();
+              if (!idBtn) return;
+              var numRow = '';
+              var r = ev.target.closest('tr');
+              if (r) {
+                var cel = r.querySelector('td:first-child');
+                if (cel) numRow = String(cel.textContent || '').replace(/\s+/g, ' ').trim();
+              }
+              var ok = confirm('Cancelar amostra ' + (numRow || 'selecionada') + '? Essa ação não pode ser desfeita.');
+              if (!ok) return;
+              btn.setAttribute('data-loading', '1');
+              btn.disabled = true;
+              btn.innerHTML = '⏳ Cancelando...';
+              var nowISO = new Date().toISOString();
+              var res = await fetch('/api/amostras/' + encodeURIComponent(idBtn), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  status: 'Cancelada',
+                  data_cancelamento: nowISO,
+                  updated_at: nowISO
+                })
+              });
+              if (!res || !res.ok) throw new Error('Erro HTTP: ' + (res && res.status));
+              var row = ev.target.closest('tr');
+              if (row) {
+                row.style.transition = 'opacity .25s, transform .25s, background .25s';
+                row.style.opacity = '0';
+                row.style.transform = 'translateY(6px)';
+              }
+              setTimeout(function() {
+                try { renderAmostrasSemana(shell); } catch (_n) {}
+              }, 280);
+            } catch (eErr) {
+              console.error('[Amostras Semana] Cancelar erro:', eErr);
+              btn.removeAttribute('data-loading');
+              btn.disabled = false;
+              btn.innerHTML = '❌ Tentar novamente';
+              setTimeout(function() { btn.innerHTML = '✖ Cancelar'; }, 2500);
             }
           });
         });
@@ -34302,11 +34446,43 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function _aplicarEmpresaIdUrl(urlOr) {
     var url = String(urlOr || '');
     if (!url || url.indexOf('/api/comissoes/relatorio') === -1 && url.indexOf('/api/comissoes/busca-of') === -1 && url.indexOf('/api/comissoes/debug-total-vendido') === -1) return urlOr;
-    var empId = _empresaIdAtual();
-    if (!empId) return urlOr;
+    var empId = String(_empresaIdAtual() || '').trim();
+    if (!empId) {
+      try {
+        var rHas = /([?&])empresa_id(=([^&]*)|(?=&|$))/i;
+        if (rHas.test(url)) {
+          url = url.replace(rHas, function(_, sep) { return sep === '?' ? '?' : ''; }).replace(/^([^?]*)\?&+/, '$1?').replace(/&+$/, '').replace(/\?$/, '');
+        }
+      } catch (_) {}
+      return url;
+    }
     try {
-      var sep = url.indexOf('?') >= 0 ? '&' : '?';
-      return url + sep + 'empresa_id=' + encodeURIComponent(empId);
+      var hashPos = url.indexOf('#');
+      var hashPart = (hashPos >= 0 ? url.substr(hashPos) : '');
+      var core = (hashPos >= 0 ? url.substr(0, hashPos) : url);
+      var rHas = /([?&])empresa_id(=([^&]*)|(?=&|$))/i;
+      var match = core.match(rHas);
+      if (match && match[3] != null) {
+        var existente = String(decodeURIComponent(match[3] || '')).trim();
+        var arr = existente ? existente.split(',').map(function(s) { return String(s || '').trim(); }).filter(Boolean) : [];
+        if (arr.indexOf(empId) === -1) arr.push(empId);
+        var unico = (function dedupliArr() {
+          var s = new Set();
+          var out = [];
+          arr.forEach(function(x) { if (x && !s.has(x)) { s.add(x); out.push(x); } });
+          return out;
+        })();
+        if (unico.length > 1) unico = [empId];
+        var novoValor = encodeURIComponent(String(unico[0] || empId));
+        core = core.replace(rHas, function(_, sep) { return sep + 'empresa_id=' + novoValor; });
+      } else if (match) {
+        core = core.replace(rHas, function(_, sep) { return sep + 'empresa_id=' + encodeURIComponent(empId); });
+      } else {
+        var sep = core.indexOf('?') >= 0 ? '&' : '?';
+        core = core + sep + 'empresa_id=' + encodeURIComponent(empId);
+      }
+      core = core.replace(/^([^?]*)\?&+/, '$1?').replace(/&+$/, '').replace(/\?$/, '');
+      return core + hashPart;
     } catch (_) { return urlOr; }
   }
   try {
@@ -47633,19 +47809,32 @@ function _ocultarGraficoComissoes() {
         var payload = data || {};
         var maquinasApi = await preloadMaquinas.catch(function() { return []; });
         var maquinas = (Array.isArray(maquinasApi) ? maquinasApi.slice() : []).filter(Boolean);
+        var MAQUINAS_PERMITIDAS_CONC = ['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','CORTE VINCO ROTATIVA'];
+        var MAQ_PERM_NORM = MAQUINAS_PERMITIDAS_CONC.map(function(s){return String(s||'').toUpperCase().trim();});
+        if (maquinas.length) {
+          maquinas = maquinas.filter(function(item) {
+            var nm = String((item && (item.nome || item.descricao || item.id || item.col || '')) || '').toUpperCase().trim();
+            return MAQ_PERM_NORM.indexOf(nm) !== -1;
+          });
+        }
         if (!maquinas.length && maquinasFluxo.length) {
-          maquinas = maquinasFluxo.map(function(nome) { return { id: nome, nome: nome }; });
+          maquinas = maquinasFluxo.filter(function(nm) {
+            var n = String(nm||'').toUpperCase().trim();
+            return MAQ_PERM_NORM.indexOf(n) !== -1;
+          }).map(function(nome) { return { id: nome, nome: nome }; });
         }
         if (!maquinas.length) {
-          maquinas = _listaMaquinasHistoricoConclusao().map(function(nome) { return { id: nome, nome: nome }; });
+          maquinas = MAQUINAS_PERMITIDAS_CONC.map(function(nome) { return { id: nome, nome: nome }; });
         }
         var maqSelecionada = String(payload.maquina || payload.maquina_nome || '').trim();
-        var maqSelecionadaNorm = _normNomeMaquinaConclusao(maqSelecionada);
+        var maqSelecionadaNorm = String(maqSelecionada||'').toUpperCase().trim();
+        if (maqSelecionada && MAQ_PERM_NORM.indexOf(maqSelecionadaNorm) === -1) maqSelecionada = '';
         var maqSelecionadaValue = '';
         var maqSelecionadaObj = maquinas.find(function(item) {
           var itemId = String(item && (item.id || item.nome || item.descricao) || '').trim();
           var itemNome = String(item && (item.nome || item.descricao || item.id) || '').trim();
-          return itemId === maqSelecionada || _normNomeMaquinaConclusao(itemNome) === maqSelecionadaNorm;
+          return (maqSelecionada && (itemId === maqSelecionada || itemNome === maqSelecionada)) ||
+                 (maqSelecionadaNorm && (String(itemId||'').toUpperCase().trim() === maqSelecionadaNorm || String(itemNome||'').toUpperCase().trim() === maqSelecionadaNorm));
         }) || null;
         if (maqSelecionadaObj) {
           maqSelecionadaValue = String(maqSelecionadaObj.id || maqSelecionadaObj.nome || maqSelecionadaObj.descricao || '').trim();
@@ -47809,10 +47998,24 @@ function _ocultarGraficoComissoes() {
           if (hitNome) atual = String(hitNome && (hitNome.id || hitNome.vendedor_id || hitNome.vendid || '') || '').trim();
         }
         if (!vendedorEl) return;
-        var html = ['<option value="">Sem vendedor</option>'].concat(vendedoresLista.map(function(v) {
+        var opcoesBase = vendedoresLista.map(function(v) {
           var id = String(v && (v.id || v.vendedor_id || v.vendid || '') || '').trim();
           var nome = String(v && (v.nome || v.vendedor || v.vendedor_nome || id || '—') || '—').trim();
-          return '<option value="' + id.replace(/"/g, '&quot;') + '"' + (id === atual ? ' selected' : '') + '>' + nome.replace(/</g, '&lt;') + '</option>';
+          return { id: id, nome: nome };
+        }).filter(function(x) { return x.id; });
+        var temNaLista = false;
+        if (atual) {
+          temNaLista = opcoesBase.some(function(x) { return x.id === atual; });
+          if (!temNaLista && vendedorAtualNome) {
+            opcoesBase.unshift({ id: atual, nome: vendedorAtualNome });
+            temNaLista = true;
+          } else if (!temNaLista) {
+            opcoesBase.unshift({ id: atual, nome: atual });
+            temNaLista = true;
+          }
+        }
+        var html = ['<option value="">Sem vendedor</option>'].concat(opcoesBase.map(function(x) {
+          return '<option value="' + x.id.replace(/"/g, '&quot;') + '"' + (x.id === atual ? ' selected' : '') + '>' + String(x.nome || x.id || '—').replace(/</g, '&lt;') + '</option>';
         }));
         vendedorEl.innerHTML = html.join('');
         vendedorEl.value = atual;
@@ -47931,20 +48134,34 @@ function _ocultarGraficoComissoes() {
       }
       async function addPerdaRow(data) {
         var payload = data || {};
+        var MAQUINAS_PERMITIDAS_PERDA = ['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','CORTE VINCO ROTATIVA'];
+        var MAQ_PERM_NORM_PERDA = MAQUINAS_PERMITIDAS_PERDA.map(function(n) { return String(n || '').toUpperCase().trim(); });
         var maquinasApi = await preloadMaquinas.catch(function() { return []; });
-        var maquinas = (Array.isArray(maquinasApi) ? maquinasApi.slice() : []).filter(Boolean);
-        if (!maquinas.length && maquinasFluxo.length) {
-          maquinas = maquinasFluxo.map(function(nome) { return { id: nome, nome: nome }; });
-        }
+        var maquinasApiRaw = (Array.isArray(maquinasApi) ? maquinasApi.slice() : []).filter(Boolean);
+        var maquinasApiFiltradas = maquinasApiRaw.filter(function(m) {
+          var nm = String((m && (m.nome || m.id || m.descricao || '')) || '').toUpperCase().trim();
+          return MAQ_PERM_NORM_PERDA.indexOf(nm) !== -1;
+        });
+        var maquinasFluxoFiltradas = (Array.isArray(maquinasFluxo) ? maquinasFluxo : []).filter(function(n) {
+          return MAQ_PERM_NORM_PERDA.indexOf(String(n || '').toUpperCase().trim()) !== -1;
+        }).map(function(nome) { return { id: nome, nome: nome }; });
+        var maquinas = maquinasApiFiltradas.length ? maquinasApiFiltradas : (maquinasFluxoFiltradas.length ? maquinasFluxoFiltradas : MAQUINAS_PERMITIDAS_PERDA.map(function(n) { return { id: n, nome: n }; }));
         var opsApi = await preloadOperadores.catch(function() { return []; });
         var operadoresLista = (Array.isArray(opsApi) ? opsApi.slice() : []).filter(Boolean);
+        var maqSelecionadaInicial = payload.maquina || ((maquinas[0] && (maquinas[0].id || maquinas[0].nome || maquinas[0].descricao)) || '');
+        if (maqSelecionadaInicial) {
+          var selNorm = String(maqSelecionadaInicial || '').toUpperCase().trim();
+          if (MAQ_PERM_NORM_PERDA.indexOf(selNorm) === -1) {
+            maqSelecionadaInicial = (maquinas[0] && (maquinas[0].id || maquinas[0].nome || maquinas[0].descricao)) || '';
+          }
+        }
         var row = document.createElement('div');
         row.className = 'com-conc-loss-row';
         row.__concMaquinasLista = maquinas;
         row.__concOperadoresLista = operadoresLista;
         row.innerHTML = ''
           + '<div class="com-conc-loss-grid">'
-          + '  <select class="com-conc-select conc-loss-maq">' + optionHtml(maquinas, payload.maquina || ((maquinas[0] && (maquinas[0].id || maquinas[0].nome || maquinas[0].descricao)) || ''), 'Selecionar máquina...') + '</select>'
+          + '  <select class="com-conc-select conc-loss-maq">' + optionHtml(maquinas, maqSelecionadaInicial, 'Selecionar máquina...') + '</select>'
           + '  <input class="com-conc-input conc-loss-qtd" type="number" min="0" step="1" value="' + String(payload.qtd || '') + '"/>'
           + '  <button type="button" class="com-conc-remove">×</button>'
           + '</div>'
@@ -49575,6 +49792,7 @@ function _ocultarGraficoComissoes() {
               + '<td data-campo="status" class="col-status" style="padding:7px 10px"><span style="background:' + badgeBg + ';color:' + badgeFg + ';padding:2px 8px;border-radius:4px;font-size:11px">' + _escHtmlCom(of.status) + '</span></td>'
               + '<td style="padding:7px 10px;text-align:center">'
               + (concluida ? '' : '<button type="button" data-acao="concluir-of-comissao" data-of-id="' + _escHtmlCom(of.id) + '" style="background:#16a34a;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px;margin-right:6px">✔ Concluir</button>')
+              + '<button type="button" data-acao="cancelar-of-comissao" data-of-id="' + _escHtmlCom(of.id) + '" data-of-numero="' + _escHtmlCom(of.numero) + '" style="background:#991b1b;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px;margin-right:6px">✖ Cancelar</button>'
               + '<button type="button" data-acao="editar-of-comissao" data-com-trocar="1" data-of-id="' + _escHtmlCom(of.id) + '" style="background:#2a5298;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px">✏️ Editar</button>'
               + '</td>'
               + '</tr>';
@@ -49634,6 +49852,49 @@ function _ocultarGraficoComissoes() {
       clearTimeout(_comTimeout);
       window._comRodando = false;
       window.__comEntradaTs = 0;
+      try {
+        if (!window.__comCancelarBtnBound) {
+          window.__comCancelarBtnBound = true;
+          document.addEventListener('click', function(e) {
+            try {
+              var btn = e && e.target;
+              while (btn && btn.nodeType === 1 && btn.getAttribute && String(btn.getAttribute('data-acao') || '').indexOf('cancelar-of') < 0 && btn !== document.body) {
+                btn = btn.parentNode;
+              }
+              if (!btn || !btn.getAttribute || String(btn.getAttribute('data-acao') || '') !== 'cancelar-of-comissao') return;
+              e.preventDefault(); e.stopPropagation();
+              var ofId = String(btn.getAttribute('data-of-id') || '').trim();
+              var ofNum = String(btn.getAttribute('data-of-numero') || '').trim();
+              if (!ofId) return;
+              var ok = confirm('Cancelar OF #' + (ofNum || ofId) + '?\n\nIsso também removerá as comissões, passagens por máquina e perdas de caixas vinculadas a esta OF.');
+              if (!ok) return;
+              var token = '';
+              try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+              btn.setAttribute('data-loading', '1');
+              btn.disabled = true;
+              fetch('/api/ofs/' + encodeURIComponent(ofId), {
+                method: 'PATCH',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': 'Bearer ' + token } : {}),
+                body: JSON.stringify({ status: 'Cancelada', _force_status: '1' })
+              }).then(function(r) { try { return r.json(); } catch (_) { return { ok: r.ok }; } }).then(function(j) {
+                if (j && (j.ok || j.data)) {
+                  try { toast('OF #' + (ofNum || ofId) + ' cancelada com sucesso', 'var(--green)'); } catch (_) { alert('OF cancelada com sucesso.'); }
+                  window.__comUltimaExecucao = 0;
+                  window._comRodando = false;
+                  _agendarRenderComissoesPatch(300);
+                } else {
+                  throw new Error((j && String(j.error || j.msg || '')) || 'erro_http');
+                }
+              }).catch(function(err) {
+                try { toast('Erro ao cancelar OF: ' + String(err && err.message || err || ''), 'var(--red)'); } catch (_) { alert('Erro ao cancelar OF: ' + String(err && err.message || err || '')); }
+              }).finally(function() {
+                try { btn.removeAttribute('data-loading'); } catch (_) {}
+                try { btn.disabled = false; } catch (_) {}
+              });
+            } catch (_) {}
+          }, true);
+        }
+      } catch (_) {}
       setTimeout(function() {
         try { _connectComissoesObserver(); } catch (_) {}
       }, 120);
