@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260826140001';
-const SW_RUNTIME_VERSION = '20260826140001';
+const PATCH_RUNTIME_VERSION = '20260826150001';
+const SW_RUNTIME_VERSION = '20260826150001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -32574,6 +32574,117 @@ app.get('/api/dashboard/total-geral', authMiddleware, async (req, res) => {
       total_mes_atual: 0,
       count_mes_atual: 0
     });
+  }
+});
+
+app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || '').trim();
+    const PAGE = 1000;
+    const rows = [];
+    for (let offset = 0; offset < 50000; offset += PAGE) {
+      let query = supabase
+        .from('ofs')
+        .select('id,numero,of,status,deleted_at,empresa_id,emp_id,data_entrega,ent,dia,created_at,valor_total,valor_venda,urgente,urg,data_conclusao,data_faturamento')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + PAGE - 1);
+      if (empresaId) {
+        query = query.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId},empresa_id.is.null`);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      if (!(Array.isArray(data) && data.length)) break;
+      rows.push(...data);
+      if (data.length < PAGE) break;
+    }
+
+    const hoje = new Date();
+    const hojeStr = hoje.toISOString().slice(0, 10);
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10);
+    const fimMesExclusivo = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1).toISOString().slice(0, 10);
+
+    function statusOf(of) {
+      const s = String(of?.status || '').toLowerCase().trim();
+      if (s.startsWith('cancel')) return 'cancelado';
+      if (s === 'concluído' || s === 'concluido' || s === 'concluída' || s === 'concluida') return 'concluido';
+      return 'aberto';
+    }
+    function entregaOf(of) {
+      const d = of?.data_entrega || of?.ent || of?.dia || null;
+      if (!d) return null;
+      const ds = String(d).slice(0, 10);
+      const p = ds.split(/[-\/]/);
+      if (p.length < 3) return null;
+      let dt;
+      if (p[0].length === 4) dt = new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
+      else dt = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+
+    let total = rows.length;
+    let concluidos = 0;
+    let cancelados = 0;
+    let abertos = 0;
+    let atrasados = 0;
+    let urgentes = 0;
+    let fatMesValor = 0;
+    let fatMesCount = 0;
+    let fatDiaValor = 0;
+    let fatDiaCount = 0;
+    let temUrgenteFlag = false;
+
+    rows.forEach(function(of) {
+      const st = statusOf(of);
+      if (st === 'concluido') concluidos++;
+      else if (st === 'cancelado') cancelados++;
+      else abertos++;
+
+      if (st !== 'cancelado') {
+        const dt = entregaOf(of);
+        if (dt && st !== 'concluido') {
+          const hoje0 = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+          const ent0 = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+          const diff = Math.round((ent0 - hoje0) / 86400000);
+          if (diff < 0) atrasados++;
+          else if (diff <= 3) urgentes++;
+        }
+        const urgFlag = of?.urgente || of?.urg;
+        if (urgFlag && String(urgFlag).toLowerCase() !== 'false' && String(urgFlag) !== '0' && st !== 'concluido') temUrgenteFlag = true;
+
+        const valor = Number(of?.valor_total ?? of?.valor_venda ?? 0) || 0;
+        if (st === 'concluido' && valor > 0) {
+          const dtConc = of?.data_conclusao || of?.data_faturamento || of?.created_at;
+          const dtConcStr = String(dtConc || '').slice(0, 10);
+          if (dtConcStr >= inicioMes && dtConcStr < fimMesExclusivo) {
+            fatMesValor += valor;
+            fatMesCount++;
+          }
+          if (dtConcStr === hojeStr) {
+            fatDiaValor += valor;
+            fatDiaCount++;
+          }
+        }
+      }
+    });
+
+    if (temUrgenteFlag && urgentes === 0) urgentes = 1;
+
+    return res.json({
+      ok: true,
+      total_ofs: total,
+      abertos: abertos,
+      concluidos: concluidos,
+      cancelados: cancelados,
+      atrasados: atrasados,
+      urgentes: urgentes,
+      faturamento_mes: { valor: fatMesValor, ofs: fatMesCount },
+      faturamento_dia: { valor: fatDiaValor, ofs: fatDiaCount }
+    });
+  } catch (e) {
+    try { console.error('[dashboard/resumo-ofs]', e && (e.stack || e.message) || e); } catch (_) {}
+    return res.status(500).json({ ok: false, error: String(e && e.message || e || 'erro_inesperado') });
   }
 });
 

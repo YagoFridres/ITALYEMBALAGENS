@@ -43538,13 +43538,99 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
   }
 
+  function __fmtBrlDashboard(v) {
+    var n = Number(v || 0) || 0;
+    try { return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); } catch (_) { return 'R$ ' + String(n.toFixed(2)); }
+  }
+
+  function __fmtIntDash(n) {
+    n = Number(n || 0) || 0;
+    try { return Math.round(n).toLocaleString('pt-BR'); } catch (_) { return String(Math.round(n)); }
+  }
+
+  function _renderDashboardPrincipal(host) {
+    if (!host) return;
+    if (host.dataset.dashPrincipalLoaded === '1') return;
+    host.dataset.dashPrincipalLoaded = '1';
+
+    host.innerHTML =
+      '<div id="patch-dashboard-bc" style="background:linear-gradient(135deg,#0f172a,#1e293b);border-left:4px solid #8b5cf6;border-radius:8px;padding:12px 20px;margin-bottom:16px">' +
+        '<div style="font-size:16px;font-weight:700;color:#e2e8f0">📊 DASHBOARD</div>' +
+        '<div style="font-size:12px;color:#64748b;margin-top:2px">Visão geral: Ordens de Fabricação, faturamento e estoques</div>' +
+      '</div>' +
+      '<div id="patch-dashboard-resumo-ofs" style="margin-bottom:24px">' +
+        '<div style="padding:20px;color:var(--text2);text-align:center">Carregando resumo...</div>' +
+      '</div>' +
+      '<div id="patch-dashboard-resumo-estoques"></div>';
+
+    var resumoDiv = host.querySelector('#patch-dashboard-resumo-ofs');
+    var estoqDiv = host.querySelector('#patch-dashboard-resumo-estoques');
+
+    window._apiAuthFetch('/api/dashboard/resumo-ofs')
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (!res || res.ok === false) throw new Error((res && res.error) || 'Falha resumo OFs');
+        var total = num(res.total_ofs);
+        var abertos = num(res.abertos);
+        var concluidos = num(res.concluidos);
+        var atrasados = num(res.atrasados);
+        var urgentes = num(res.urgentes);
+        var fatMes = num((res.faturamento_mes && res.faturamento_mes.valor) || 0);
+        var fatDia = num((res.faturamento_dia && res.faturamento_dia.valor) || 0);
+        var fatMesCount = num((res.faturamento_mes && res.faturamento_mes.ofs) || 0);
+        var fatDiaCount = num((res.faturamento_dia && res.faturamento_dia.ofs) || 0);
+        var alertaCount = atrasados + urgentes;
+
+        var card = function(icon, label, valor, corBorda, corTexto, sub) {
+          return (
+            '<div style="background:var(--card);border:1px solid var(--border);border-top:3px solid ' + corBorda + ';border-radius:12px;padding:14px">' +
+              '<div style="display:flex;align-items:center;gap:8px;color:var(--text2);font-size:12px">' +
+                '<span>' + icon + '</span>' +
+                '<span>' + esc(label) + '</span>' +
+              '</div>' +
+              '<div style="color:' + corTexto + ';font-size:22px;font-weight:1000;margin-top:4px">' + esc(valor) + '</div>' +
+              (sub ? '<div style="color:var(--text2);font-size:11px;margin-top:2px">' + esc(sub) + '</div>' : '') +
+            '</div>'
+          );
+        };
+
+        if (resumoDiv) {
+          resumoDiv.innerHTML =
+            '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">' +
+              card('📋', 'Total de OFs', __fmtIntDash(total), '#64748b', 'var(--text)', '') +
+              card('🟡', 'OFs em Aberto', __fmtIntDash(abertos), '#eab308', '#eab308', '') +
+              card('✅', 'OFs Concluídas', __fmtIntDash(concluidos), '#10b981', '#10b981', '') +
+              (alertaCount > 0
+                ? card('🚨', 'Atrasadas / Urgentes', __fmtIntDash(atrasados) + ' / ' + __fmtIntDash(urgentes), '#ef4444', '#ef4444',
+                    atrasados + ' atrasada' + (atrasados === 1 ? '' : 's') + ' · ' + urgentes + ' urgente' + (urgentes === 1 ? '' : 's'))
+                : card('🕒', 'Prazo OK', __fmtIntDash(abertos) + ' abertas', '#3b82f6', '#3b82f6', 'Nenhuma atrasada ou urgente')) +
+              card('📅', 'Faturamento Mês', __fmtBrlDashboard(fatMes), '#6366f1', 'var(--text)', __fmtIntDash(fatMesCount) + ' OF(s) concluída(s)') +
+              card('📌', 'Faturamento Hoje', __fmtBrlDashboard(fatDia), '#8b5cf6', 'var(--text)', __fmtIntDash(fatDiaCount) + ' OF(s) concluída(s)') +
+            '</div>';
+        }
+
+        if (estoqDiv) renderDashboardEstoques(estoqDiv);
+      })
+      .catch(function(err) {
+        try {
+          if (resumoDiv) {
+            resumoDiv.innerHTML =
+              '<div style="padding:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#fca5a5">' +
+                '⚠️ Falha ao carregar resumo de OFs: ' + esc(String(err && err.message || err || 'erro desconhecido')) +
+              '</div>';
+          }
+        } catch (_) {}
+        if (estoqDiv) try { renderDashboardEstoques(estoqDiv); } catch (_) {}
+      });
+  }
+
   function tryRender() {
     try {
       var page = document.getElementById('page-dashboard');
       if (!page || page.offsetParent === null) return;
       var host = ensureHost();
       if (!host) return;
-      renderDashboardEstoques(host);
+      _renderDashboardPrincipal(host);
     } catch (_) {}
   }
 
