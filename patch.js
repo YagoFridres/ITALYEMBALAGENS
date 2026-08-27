@@ -43948,76 +43948,451 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
   }
 
+  window.__OFVISUAL_MODELS = [
+    { id: '8_tampas',   nome: '8 Tampas',          icone: '📦', desc: '4 painéis principais + abas sup/inf + cola' },
+    { id: 'pizza_oct',  nome: 'Pizza Octavada',    icone: '🍕', desc: 'Desenho octogonal para caixas de pizza' },
+    { id: 'salgado',    nome: 'Salgado',           icone: '🥟', desc: 'Template específico para bandejas de salgado' },
+    { id: 'envoltoria', nome: 'Envoltória',        icone: '📜', desc: 'Envoltório com vincos e divisórias' },
+    { id: '5_paineis',  nome: '5 Painéis',         icone: '🗂️', desc: 'Caixa com 5 painéis (reforçada)' },
+    { id: 'sem_corte',  nome: 'Sem Corte',         icone: '⬜', desc: 'Retângulo simples da chapa completa' }
+  ];
+
+  function __dashGetOfDims(of) {
+    try {
+      var o = of || {};
+      var L = Number(o.largura_of || o.dim_l || o.largura || o.l || 0) || 0;
+      var C = Number(o.comprimento_of || o.dim_c || o.comprimento || o.c || 0) || 0;
+      var A = Number(o.altura_of || o.dim_a || o.altura || o.a || 0) || 0;
+      var Ch = Number(o.chapa_largura || o.chapa_l || 0) || 0;
+      var Cc = Number(o.chapa_comprimento || o.chapa_c || 0) || 0;
+      var tamStr = String(__dashGetTamanho(o) || '').trim();
+      if (!L && tamStr) {
+        var mm = tamStr.match(/(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)(?:\s*[xX×]\s*(\d+(?:[.,]\d+)?))?/);
+        if (mm) {
+          L = Number(String(mm[1]).replace(',','.')) || 0;
+          C = Number(String(mm[2]).replace(',','.')) || 0;
+          A = mm[3] ? (Number(String(mm[3]).replace(',','.')) || 0) : 0;
+        }
+      }
+      return { L: L, C: C, A: A, Ch: Ch, Cc: Cc, str: tamStr };
+    } catch (_) { return { L:0, C:0, A:0, Ch:0, Cc:0, str:'' }; }
+  }
+
+  function __tmpl8TampasSVG(of) {
+    try {
+      var d = __dashGetOfDims(of);
+      var W = 1000, H = 620;
+      var L = d.L || 220, C = d.C || 320, A = d.A || 80;
+      var scale = Math.min(820 / (2*(L+A)), 460 / (C + 2*A)) || 1;
+      var sL = L * scale, sC = C * scale, sA = A * scale;
+      var cx = W/2, cy = H/2;
+      var x0 = cx - (sL + sA), y0 = cy - sC/2 - sA;
+      var dimLabel = (d.L && d.C) ? (d.L + '×' + d.C + (d.A ? '×' + d.A : '') + ' mm') : '';
+      var svg = '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%"><defs><pattern id="p8t" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 6L6 0" stroke="#475569" stroke-width="0.6" fill="none"/></pattern></defs>';
+      svg += '<rect x="'+x0+'" y="'+(y0-sA)+'" width="'+sL+'" height="'+sA+'" fill="url(#p8t)" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 3"/>';
+      svg += '<text x="'+(x0+sL/2)+'" y="'+(y0-sA/2+3)+'" font-size="11" fill="#e2e8f0" text-anchor="middle" font-family="monospace">Tampa Sup</text>';
+      svg += '<rect x="'+x0+'" y="'+y0+'" width="'+sL+'" height="'+sC+'" fill="rgba(59,130,246,0.08)" stroke="#60a5fa" stroke-width="2"/>';
+      svg += '<text x="'+(x0+sL/2)+'" y="'+(y0+sC/2+4)+'" font-size="13" fill="#bfdbfe" text-anchor="middle" font-weight="700">Painel 1</text>';
+      svg += '<rect x="'+(x0+sL)+'" y="'+y0+'" width="'+sA+'" height="'+sC+'" fill="rgba(139,92,246,0.10)" stroke="#a78bfa" stroke-width="2" stroke-dasharray="4 3"/>';
+      svg += '<text x="'+(x0+sL+sA/2)+'" y="'+(y0+sC/2+4)+'" font-size="11" fill="#ddd6fe" text-anchor="middle" font-weight="700">Cola</text>';
+      svg += '<rect x="'+(x0+sL+sA)+'" y="'+y0+'" width="'+sL+'" height="'+sC+'" fill="rgba(16,185,129,0.08)" stroke="#34d399" stroke-width="2"/>';
+      svg += '<text x="'+(x0+sL+sA+sL/2)+'" y="'+(y0+sC/2+4)+'" font-size="13" fill="#bbf7d0" text-anchor="middle" font-weight="700">Painel 2</text>';
+      svg += '<rect x="'+(x0+2*(sL+sA)-sA)+'" y="'+y0+'" width="'+sA+'" height="'+sC+'" fill="rgba(245,158,11,0.10)" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4 3"/>';
+      svg += '<rect x="'+(x0+2*(sL+sA))+'" y="'+y0+'" width="'+sL+'" height="'+sC+'" fill="rgba(239,68,68,0.08)" stroke="#f87171" stroke-width="2"/>';
+      svg += '<text x="'+(x0+2*(sL+sA)+sL/2)+'" y="'+(y0+sC/2+4)+'" font-size="13" fill="#fecaca" text-anchor="middle" font-weight="700">Painel 3</text>';
+      svg += '<rect x="'+(x0-(sL+sA)+sL+sA)+'" y="'+(y0+sC)+'" width="0" height="0"/>';
+      svg += '<rect x="'+x0+'" y="'+(y0+sC)+'" width="'+sL+'" height="'+sA+'" fill="url(#p8t)" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 3"/>';
+      svg += '<text x="'+(x0+sL/2)+'" y="'+(y0+sC+sA/2+3)+'" font-size="11" fill="#e2e8f0" text-anchor="middle" font-family="monospace">Fundo</text>';
+      svg += '<rect x="'+(x0+sL+sA)+'" y="'+(y0+sC)+'" width="'+sL+'" height="'+sA+'" fill="url(#p8t)" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 3"/>';
+      svg += '<rect x="'+(x0+2*(sL+sA))+'" y="'+(y0+sC)+'" width="'+sL+'" height="'+sA+'" fill="url(#p8t)" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 3"/>';
+      svg += '<rect x="'+(x0-(sL+sA)+sL+sA)+'" y="'+(y0-sA)+'" width="0" height="0"/>';
+      svg += '<rect x="'+(x0+sL+sA)+'" y="'+(y0-sA)+'" width="'+sL+'" height="'+sA+'" fill="url(#p8t)" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 3"/>';
+      svg += '<rect x="'+(x0+2*(sL+sA))+'" y="'+(y0-sA)+'" width="'+sL+'" height="'+sA+'" fill="url(#p8t)" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 3"/>';
+      svg += '<rect x="'+(x0 - sA - 2)+'" y="'+(y0)+'" width="'+sA+'" height="'+sC+'" fill="rgba(59,130,246,0.06)" stroke="#38bdf8" stroke-width="1.8" stroke-dasharray="5 3"/>';
+      svg += '<text x="'+(x0-sA/2-2)+'" y="'+(y0+sC/2+4)+'" font-size="11" fill="#7dd3fc" text-anchor="middle" font-weight="700">P4</text>';
+      if (dimLabel) svg += '<text x="'+(W/2)+'" y="'+(H-14)+'" font-size="15" fill="#f1f5f9" text-anchor="middle" font-family="monospace" font-weight="800">📐 ' + dimLabel + '</text>';
+      svg += '<text x="14" y="26" font-size="13" fill="#cbd5e1" font-weight="800">Modelo: 8 Tampas</text>';
+      svg += '</svg>';
+      return svg;
+    } catch (_) { return '<svg viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg"><rect x="40" y="40" width="520" height="320" fill="none" stroke="#94a3b8" stroke-dasharray="5 4"/><text x="300" y="210" font-size="16" fill="#e2e8f0" text-anchor="middle" font-weight="700">8 Tampas (erro template)</text></svg>'; }
+  }
+
+  function __tmplPizzaOctSVG(of) {
+    try {
+      var W = 900, H = 620;
+      var d = __dashGetOfDims(of);
+      var cx = W/2, cy = H/2 - 20, r = 230;
+      var pts = [];
+      for (var i = 0; i < 8; i++) { var ang = Math.PI/8 + i * Math.PI/4; pts.push([cx + r*Math.cos(ang), cy + r*Math.sin(ang)]); }
+      var ptsStr = pts.map(function(p){ return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
+      var dimLabel = (d.L && d.C) ? (d.L + '×' + d.C + (d.A ? '×' + d.A : '') + ' mm') : '';
+      var qtd = __dashGetQtd(of);
+      var svg = '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">';
+      svg += '<polygon points="'+ptsStr+'" fill="rgba(239,68,68,0.06)" stroke="#ef4444" stroke-width="2.5"/>';
+      svg += '<polygon points="'+ptsStr+'" fill="none" stroke="#fca5a5" stroke-width="1.2" stroke-dasharray="3 3" transform="translate(0,0) scale(0.9) translate('+(cx*0.111)+','+(cy*0.111)+')"/>';
+      for (var k = 0; k < 4; k++) {
+        var a1 = k * Math.PI/2;
+        svg += '<line x1="'+cx+'" y1="'+cy+'" x2="'+(cx + r*1.02*Math.cos(a1))+'" y2="'+(cy + r*1.02*Math.sin(a1))+'" stroke="#f87171" stroke-width="1.4" stroke-dasharray="6 4"/>';
+      }
+      svg += '<text x="'+cx+'" y="'+(cy+5)+'" font-size="17" fill="#fecaca" text-anchor="middle" font-weight="800">Pizza Octavada</text>';
+      if (dimLabel) svg += '<text x="'+cx+'" y="'+(cy+30)+'" font-size="13" fill="#fca5a5" text-anchor="middle" font-family="monospace">' + dimLabel + '</text>';
+      if (qtd) {
+        var info = '' + dimLabel + (dimLabel ? ' — ' : '') + __fmtIntDash(qtd) + ' unid.';
+        svg += '<text x="'+cx+'" y="'+(H-20)+'" font-size="14" fill="#f1f5f9" text-anchor="middle" font-weight="800">📋 ' + esc(info) + '</text>';
+      }
+      svg += '<text x="14" y="26" font-size="13" fill="#cbd5e1" font-weight="800">Modelo: Pizza Octavada</text>';
+      svg += '</svg>';
+      return svg;
+    } catch (_) { return '<svg viewBox="0 0 600 400"><text x="300" y="210" font-size="16" text-anchor="middle" font-weight="700">Pizza Oct (erro)</text></svg>'; }
+  }
+
+  function __tmplSalgadoSVG(of) {
+    try {
+      var W = 980, H = 620;
+      var d = __dashGetOfDims(of);
+      var L = d.L || 320, C = d.C || 480, A = d.A || 40;
+      var scale = Math.min(880 / (L + 80), 420 / (C + 80)) || 1;
+      var sL = L*scale, sC = C*scale, sA = Math.min(A*scale, 60);
+      var cx = W/2, cy = H/2 - 10;
+      var x0 = cx - sL/2, y0 = cy - sC/2;
+      var dimLabel = (d.L && d.C) ? (d.L + '×' + d.C + (d.A ? '×' + d.A : '') + ' mm') : '';
+      var svg = '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">';
+      svg += '<rect x="'+x0+'" y="'+y0+'" width="'+sL+'" height="'+sC+'" fill="rgba(251,146,60,0.08)" stroke="#fb923c" stroke-width="2" rx="8"/>';
+      svg += '<rect x="'+(x0+sA)+'" y="'+(y0+sA)+'" width="'+(sL-2*sA)+'" height="'+(sC-2*sA)+'" fill="rgba(251,146,60,0.04)" stroke="#fdba74" stroke-width="1.5" stroke-dasharray="6 4" rx="4"/>';
+      var cols = 3, rows = 4;
+      for (var i = 0; i < cols; i++) {
+        for (var j = 0; j < rows; j++) {
+          var cx2 = x0 + sA + ((i+0.5) * (sL - 2*sA)/cols);
+          var cy2 = y0 + sA + ((j+0.5) * (sC - 2*sA)/rows);
+          var rr = Math.min((sL-2*sA)/cols, (sC-2*sA)/rows) * 0.35;
+          svg += '<circle cx="'+cx2+'" cy="'+cy2+'" r="'+rr+'" fill="none" stroke="#fed7aa" stroke-width="1.1"/>';
+          svg += '<circle cx="'+cx2+'" cy="'+cy2+'" r="'+(rr*0.55)+'" fill="none" stroke="#fdba74" stroke-width="0.8" stroke-dasharray="3 2"/>';
+        }
+      }
+      svg += '<path d="M'+(x0-20)+' '+cy+' Q'+(x0-60)+' '+(cy-80)+' '+(x0-30)+' '+(y0-40)+'" fill="none" stroke="#f97316" stroke-width="1.6" stroke-dasharray="5 3"/>';
+      svg += '<text x="'+(x0-65)+'" y="'+(y0-50)+'" font-size="11" fill="#fdba74" font-weight="700">Aba</text>';
+      if (dimLabel) svg += '<text x="'+(W/2)+'" y="'+(H-18)+'" font-size="14" fill="#f1f5f9" text-anchor="middle" font-family="monospace" font-weight="800">📐 ' + dimLabel + ' · Bandeja Salgado</text>';
+      svg += '<text x="'+cx+'" y="'+(y0-14)+'" font-size="15" fill="#fed7aa" text-anchor="middle" font-weight="800">Salgado (' + (cols*rows) + ' cavidades)</text>';
+      svg += '<text x="14" y="26" font-size="13" fill="#cbd5e1" font-weight="800">Modelo: Salgado</text>';
+      svg += '</svg>';
+      return svg;
+    } catch (_) { return '<svg viewBox="0 0 600 400"><text x="300" y="210" font-size="16" text-anchor="middle" font-weight="700">Salgado (erro)</text></svg>'; }
+  }
+
+  function __tmplEnvoltSVG(of) {
+    try {
+      var W = 1020, H = 620;
+      var d = __dashGetOfDims(of);
+      var L = d.L || 180, C = d.C || 280, A = d.A || 60;
+      var scale = Math.min(900 / (3*L + 4*A), 440 / (C + 2*A + 40)) || 1;
+      var sL = L*scale, sC = C*scale, sA = Math.min(A*scale, 50);
+      var x0 = (W - (3*sL + 4*sA)) / 2, y0 = (H - (sC + 2*sA)) / 2;
+      var dimLabel = (d.L && d.C) ? (d.L + '×' + d.C + (d.A ? '×' + d.A : '') + ' mm') : '';
+      var svg = '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%"><defs><pattern id="penv" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0 8L8 0" stroke="#475569" stroke-width="0.7" fill="none"/></pattern></defs>';
+      var segs = [
+        { x: x0, w: sA, fill: 'url(#penv)', stroke: '#a78bfa', dash: '6 3', label: 'Aba Cola' },
+        { x: x0+sA, w: sL, fill: 'rgba(139,92,246,0.10)', stroke: '#8b5cf6', label: 'P. Frontal' },
+        { x: x0+sA+sL, w: sL, fill: 'rgba(59,130,246,0.10)', stroke: '#3b82f6', label: 'P. Lateral Esq.' },
+        { x: x0+sA+2*sL, w: sL, fill: 'rgba(16,185,129,0.10)', stroke: '#10b981', label: 'P. Traseiro' },
+        { x: x0+sA+3*sL, w: sA, fill: 'url(#penv)', stroke: '#a78bfa', dash: '6 3', label: 'Aba Fecho' }
+      ];
+      for (var i = 0; i < segs.length; i++) {
+        var s = segs[i];
+        svg += '<rect x="'+s.x+'" y="'+(y0+sA)+'" width="'+s.w+'" height="'+sC+'" fill="'+s.fill+'" stroke="'+s.stroke+'" stroke-width="2"' + (s.dash ? ' stroke-dasharray="'+s.dash+'"' : '') + '/>';
+        svg += '<text x="'+(s.x+s.w/2)+'" y="'+(y0+sA+sC/2+5)+'" font-size="12" fill="#e2e8f0" text-anchor="middle" font-weight="700">'+esc(s.label)+'</text>';
+        svg += '<rect x="'+s.x+'" y="'+y0+'" width="'+s.w+'" height="'+sA+'" fill="url(#penv)" stroke="#64748b" stroke-width="1.5" stroke-dasharray="5 4"/>';
+        svg += '<rect x="'+s.x+'" y="'+(y0+sA+sC)+'" width="'+s.w+'" height="'+sA+'" fill="url(#penv)" stroke="#64748b" stroke-width="1.5" stroke-dasharray="5 4"/>';
+      }
+      for (var k = 1; k < 5; k++) {
+        var lx = x0 + sA + sL * (k-1);
+        if (k > 1) lx += (k-1 >= 1 && k < 4) ? 0 : 0;
+      }
+      svg += '<line x1="'+(x0+sA+sL)+'" y1="'+y0+'" x2="'+(x0+sA+sL)+'" y2="'+(y0+sC+2*sA)+'" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="2 3"/>';
+      svg += '<line x1="'+(x0+sA+2*sL)+'" y1="'+y0+'" x2="'+(x0+sA+2*sL)+'" y2="'+(y0+sC+2*sA)+'" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="2 3"/>';
+      svg += '<line x1="'+x0+'" y1="'+(y0+sA)+'" x2="'+(W-x0)+'" y2="'+(y0+sA)+'" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2 3"/>';
+      svg += '<line x1="'+x0+'" y1="'+(y0+sA+sC)+'" x2="'+(W-x0)+'" y2="'+(y0+sA+sC)+'" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2 3"/>';
+      if (dimLabel) svg += '<text x="'+(W/2)+'" y="'+(H-18)+'" font-size="14" fill="#f1f5f9" text-anchor="middle" font-family="monospace" font-weight="800">📐 ' + dimLabel + ' · Envoltória com vincos</text>';
+      svg += '<text x="14" y="26" font-size="13" fill="#cbd5e1" font-weight="800">Modelo: Envoltória</text>';
+      svg += '</svg>';
+      return svg;
+    } catch (_) { return '<svg viewBox="0 0 600 400"><text x="300" y="210" font-size="16" text-anchor="middle" font-weight="700">Envoltória (erro)</text></svg>'; }
+  }
+
+  function __tmpl5PaineisSVG(of) {
+    try {
+      var W = 1020, H = 620;
+      var d = __dashGetOfDims(of);
+      var L = d.L || 200, C = d.C || 300, A = d.A || 70;
+      var scale = Math.min(880 / (5*L + 6*A), 440 / (C + 2*A)) || 1;
+      var sL = L*scale, sC = C*scale, sA = Math.min(A*scale, 50);
+      var totW = 5*sL + 6*sA;
+      var x0 = (W - totW) / 2, y0 = (H - (sC + 2*sA)) / 2;
+      var dimLabel = (d.L && d.C) ? (d.L + '×' + d.C + (d.A ? '×' + d.A : '') + ' mm') : '';
+      var svg = '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">';
+      var cores = ['#f59e0b','#ef4444','#8b5cf6','#10b981','#3b82f6'];
+      for (var i = 0; i < 5; i++) {
+        var px = x0 + sA + i*(sL + sA*0.1);
+        var cor = cores[i % cores.length];
+        svg += '<rect x="'+(px - sA*0.05)+'" y="'+(y0+sA)+'" width="'+sL+'" height="'+sC+'" fill="'+cor+'" fill-opacity="0.10" stroke="'+cor+'" stroke-width="2"/>';
+        svg += '<text x="'+(px - sA*0.05 + sL/2)+'" y="'+(y0+sA+sC/2+5)+'" font-size="13" fill="#f1f5f9" text-anchor="middle" font-weight="800">Painel '+(i+1)+'</text>';
+        svg += '<rect x="'+(px - sA*0.05)+'" y="'+y0+'" width="'+sL+'" height="'+sA+'" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="6 4"/>';
+        svg += '<rect x="'+(px - sA*0.05)+'" y="'+(y0+sA+sC)+'" width="'+sL+'" height="'+sA+'" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="6 4"/>';
+      }
+      svg += '<rect x="'+(x0)+'" y="'+(y0+sA)+'" width="'+(sA*0.8)+'" height="'+sC+'" fill="rgba(100,116,139,0.20)" stroke="#64748b" stroke-width="1.6" stroke-dasharray="5 3"/>';
+      svg += '<text x="'+(x0+sA*0.4)+'" y="'+(y0+sA+sC/2+5)+'" font-size="11" fill="#cbd5e1" text-anchor="middle" font-weight="700">Reforço</text>';
+      svg += '<rect x="'+(x0+totW-sA*0.8)+'" y="'+(y0+sA)+'" width="'+(sA*0.8)+'" height="'+sC+'" fill="rgba(100,116,139,0.20)" stroke="#64748b" stroke-width="1.6" stroke-dasharray="5 3"/>';
+      if (dimLabel) svg += '<text x="'+(W/2)+'" y="'+(H-18)+'" font-size="14" fill="#f1f5f9" text-anchor="middle" font-family="monospace" font-weight="800">📐 ' + dimLabel + ' · 5 Painéis (estrutura reforçada)</text>';
+      svg += '<text x="14" y="26" font-size="13" fill="#cbd5e1" font-weight="800">Modelo: 5 Painéis</text>';
+      svg += '</svg>';
+      return svg;
+    } catch (_) { return '<svg viewBox="0 0 600 400"><text x="300" y="210" font-size="16" text-anchor="middle" font-weight="700">5 Painéis (erro)</text></svg>'; }
+  }
+
+  function __tmplSemCorteSVG(of) {
+    try {
+      var W = 980, H = 620;
+      var d = __dashGetOfDims(of);
+      var Ch = d.Ch || d.L || 607, Cc = d.Cc || d.C || 1632;
+      var ratio = Math.min(880 / Cc, 460 / Ch);
+      var sW = Cc * ratio, sH = Ch * ratio;
+      var x0 = (W - sW) / 2, y0 = (H - sH) / 2 - 10;
+      var dimLabel = (Ch && Cc) ? (Ch + ' × ' + Cc + ' mm') : '';
+      var svg = '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">';
+      svg += '<rect x="'+(x0-10)+'" y="'+(y0-10)+'" width="'+(sW+20)+'" height="'+(sH+20)+'" fill="rgba(71,85,105,0.08)" stroke="#475569" stroke-width="1" stroke-dasharray="3 3" rx="4"/>';
+      svg += '<rect x="'+x0+'" y="'+y0+'" width="'+sW+'" height="'+sH+'" fill="rgba(226,232,240,0.08)" stroke="#e2e8f0" stroke-width="2.5"/>';
+      var linhas = 3, cols = 2;
+      for (var i = 0; i < cols; i++) {
+        for (var j = 0; j < linhas; j++) {
+          var bx = x0 + 20 + i * ((sW - 60) / cols);
+          var by = y0 + 20 + j * ((sH - 80) / linhas);
+          var bw = (sW - 80) / cols, bh = (sH - 120) / linhas;
+          svg += '<rect x="'+bx+'" y="'+by+'" width="'+bw+'" height="'+bh+'" fill="none" stroke="#94a3b8" stroke-width="1" stroke-dasharray="5 4" opacity="0.6"/>';
+        }
+      }
+      var cx = x0 + sW/2, cy = y0 + sH/2;
+      svg += '<circle cx="'+cx+'" cy="'+cy+'" r="52" fill="rgba(148,163,184,0.12)" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4 3"/>';
+      svg += '<text x="'+cx+'" y="'+(cy-2)+'" font-size="12" fill="#e2e8f0" text-anchor="middle" font-weight="700">Área Útil</text>';
+      svg += '<text x="'+cx+'" y="'+(cy+16)+'" font-size="11" fill="#94a3b8" text-anchor="middle">Clichê / Arte</text>';
+      svg += '<path d="M'+x0+' '+(y0-24)+' L'+(x0+sW)+' '+(y0-24)+'" stroke="#38bdf8" stroke-width="2"/>';
+      svg += '<path d="M'+x0+' '+(y0-30)+' L'+x0+' '+(y0-18)+'" stroke="#38bdf8" stroke-width="2"/>';
+      svg += '<path d="M'+(x0+sW)+' '+(y0-30)+' L'+(x0+sW)+' '+(y0-18)+'" stroke="#38bdf8" stroke-width="2"/>';
+      svg += '<text x="'+cx+'" y="'+(y0-30)+'" font-size="12" fill="#7dd3fc" text-anchor="middle" font-family="monospace" font-weight="700">'+(Cc ? Cc + ' mm' : 'Comprimento')+'</text>';
+      svg += '<path d="M'+(x0-24)+' '+y0+' L'+(x0-24)+' '+(y0+sH)+'" stroke="#38bdf8" stroke-width="2"/>';
+      svg += '<path d="M'+(x0-30)+' '+y0+' L'+(x0-18)+' '+y0+'" stroke="#38bdf8" stroke-width="2"/>';
+      svg += '<path d="M'+(x0-30)+' '+(y0+sH)+' L'+(x0-18)+' '+(y0+sH)+'" stroke="#38bdf8" stroke-width="2"/>';
+      svg += '<text x="'+(x0-30)+'" y="'+(cy+3)+'" font-size="12" fill="#7dd3fc" text-anchor="middle" font-family="monospace" font-weight="700" transform="rotate(-90 '+(x0-30)+' '+(cy+3)+')">'+(Ch ? Ch + ' mm' : 'Largura')+'</text>';
+      if (dimLabel) svg += '<text x="'+(W/2)+'" y="'+(H-18)+'" font-size="14" fill="#f1f5f9" text-anchor="middle" font-family="monospace" font-weight="800">📐 Chapa: ' + dimLabel + '</text>';
+      svg += '<text x="14" y="26" font-size="13" fill="#cbd5e1" font-weight="800">Modelo: Sem Corte (Chapa)</text>';
+      svg += '</svg>';
+      return svg;
+    } catch (_) { return '<svg viewBox="0 0 600 400"><text x="300" y="210" font-size="16" text-anchor="middle" font-weight="700">Sem Corte (erro)</text></svg>'; }
+  }
+
+  window.__TMPLS_OF_VISUAL = {
+    '8_tampas':   __tmpl8TampasSVG,
+    'pizza_oct':  __tmplPizzaOctSVG,
+    'salgado':    __tmplSalgadoSVG,
+    'envoltoria': __tmplEnvoltSVG,
+    '5_paineis':  __tmpl5PaineisSVG,
+    'sem_corte':  __tmplSemCorteSVG
+  };
+
+  function __dashSalvarTipoOfVisual(ofId, modelId, cb) {
+    ofId = String(ofId || '').trim(); modelId = String(modelId || '').trim();
+    if (!ofId) { try { if (cb) cb(new Error('ID ausente')); } catch (_) {} return; }
+    if (!modelId) { try { if (cb) cb(new Error('Modelo ausente')); } catch (_) {} return; }
+    try {
+      fetch('/api/ofs/' + encodeURIComponent(ofId), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ tipo_of_visual: modelId })
+      }).then(function(r){
+        return r.text().then(function(t){ var j = {}; try { j = JSON.parse(t); } catch(_){} return { ok: r.ok, status: r.status, data: j, raw: t }; });
+      }).then(function(res){
+        if (res.ok) {
+          try { if (typeof toast === 'function') toast('✅ Modelo de OF Visual salvo como "' + modelId + '".', 'var(--green)'); } catch (_) {}
+          try { if (typeof cb === 'function') cb(null, res.data || {}); } catch (_) {}
+        } else {
+          var msg = 'Erro ao salvar (HTTP ' + res.status + '): ' + String(((res.data||{}).error || (res.data||{}).msg || res.raw || '')).slice(0, 120);
+          __dashMsgErr(msg);
+          try { if (typeof cb === 'function') cb(new Error(msg)); } catch (_) {}
+        }
+      }).catch(function(e){
+        __dashMsgErr('Erro de rede ao salvar modelo: ' + String(e && e.message || e));
+        try { if (typeof cb === 'function') cb(e); } catch (_) {}
+      });
+    } catch (ex) { __dashMsgErr('Exceção salvar modelo: ' + String(ex && ex.message || ex)); try { if (cb) cb(ex); } catch(_) {} }
+  }
+
   function __dashFmtObservacoes(of) {
     try {
       var o = of || {};
       var s = String(o.observacoes || o.obs || o.observacao || o.descricao_extra || o.notas || o.nota || o.obs_gerais || o.anotacoes || '').trim();
-      return s || '—';
-    } catch (_) { return '—'; }
+      return s || '';
+    } catch (_) { return ''; }
   }
 
-  function __dashBuildPrintOf(of) {
+  function __dashBuildPrintOf(of, modelId) {
     try {
       var o = of || {};
-      var ofNum = String(o.numero || o.of || o.of_num || '—');
-      var cliente = String(o.cliente || o.clinome || o.cliente_nome || '—');
-      var produto = String(o.produto || o.descricao || '—');
+      modelId = String(modelId || o.tipo_of_visual || 'sem_corte').trim();
+      var ofNum = String(o.numero || o.of || o.of_num || '');
+      var cliente = String(o.cliente || o.clinome || o.cliente_nome || o.razao_social || '').trim();
+      var cnpj = String(o.cnpj || o.cliente_cnpj || o.clicnpj || '').trim();
+      var endereco = String(o.endereco || o.cliente_endereco || o.end || o.rua || '').trim();
+      if (endereco && (o.numero || o.end_numero)) endereco += ', ' + String(o.numero || o.end_numero);
+      if (o.bairro) endereco += (endereco ? ' - ' : '') + String(o.bairro);
+      var cidade = String(o.cidade || o.cliente_cidade || o.municipio || '').trim();
+      var uf = String(o.uf || o.cliente_uf || o.estado || '').trim();
+      if (cidade && uf) cidade = cidade + ' / ' + uf;
+      var produto = String(o.produto || o.descricao || '').trim();
       var dtPedido = __dashFmtDataPedido(o);
       var dtEnt = __dashFmtDtEnt(o.data_entrega || o.ent || o.dia || '');
       var vendedor = __dashGetVendedor(o);
-      var qtd = __dashGetQtd(o); var qtdFmt = qtd != null ? __fmtIntDash(qtd) : '—';
+      var pedido = String(o.pedido || o.num_pedido || o.pedido_cliente || o.ref || '').trim();
+      var referencia = String(o.referencia || o.ref_cliente || '').trim();
+      var qtd = __dashGetQtd(o); var qtdFmt = qtd != null ? __fmtIntDash(qtd) : '';
       var tam = __dashGetTamanho(o);
       var cores = __dashGetCores(o);
       var faca = __dashGetFaca(o);
-      var maq = String(o.maquina || o.maq || o.maquina_atual || o.maquina_agendada || '—');
+      var papel = String(o.papel || o.papelao || o.tipo_papel || o.material || '').trim();
+      var gramatura = __dashGetGramatura(o);
+      var chapa = '';
+      var dd = __dashGetOfDims(o);
+      if (dd.Ch && dd.Cc) chapa = dd.Ch + ' × ' + dd.Cc + ' mm';
+      var maq = String(o.maquina || o.maq || o.maquina_atual || o.maquina_agendada || '').trim();
       var emp = __dashEmpresaNome(o.emp_id || o.empresa_id || '');
-      var urg = __dashIsUrgente(o) ? 'Sim' : 'Não';
-      var semP = __dashIsSemPapelao(o) ? 'Sim' : 'Não';
-      var papelPrev = __dashFmtPapelPrev(o);
-      var tempo = __dashFmtMinutos(o);
       var valor = Number(o.valor_total || o.valor_venda || o.total || 0) || 0;
-      var valorFmt = __fmtBrlDashboard(valor);
-      var status = String(o.status || '—').trim() || '—';
+      var valorFmt = valor ? 'R$ ' + __fmtBrlDashboard(valor) : '';
+      var status = String(o.status || '').trim();
       var obs = __dashFmtObservacoes(o);
-      var cards = [
-        { label: 'Nº OF', value: ofNum, sub: '' },
-        { label: 'Cliente', value: cliente.slice(0,22), sub: '' },
-        { label: 'Produto', value: produto.slice(0,22), sub: '' },
-        { label: 'Valor Total', value: valorFmt, sub: 'Status: ' + status }
-      ];
-      var summaryHeaders = ['Campo', 'Valor'];
-      var summaryRows = [
-        ['Nº OF', ofNum], ['Data Pedido', dtPedido], ['Data Entrega', dtEnt],
-        ['Cliente', cliente], ['Vendedor', vendedor], ['Produto', produto],
-        ['Quantidade', qtdFmt], ['Tamanhos / Medidas', tam], ['Cores', cores],
-        ['Faca', faca], ['Máquina', maq], ['Empresa', emp],
-        ['Urgente?', urg], ['Sem Papelão?', semP], ['Papel / Previsão', papelPrev],
-        ['Tempo Estimado', tempo], ['Valor Total', valorFmt], ['Status', status]
-      ];
-      var detailSections = [{
-        title: 'Observações / Informações Adicionais',
-        headers: ['Conteúdo'],
-        rows: [[obs === '—' ? 'Nenhuma observação registrada.' : obs.replace(/\n/g,'<br>')]],
-        emptyCols: 1
-      }];
-      if (typeof window._buildStyledPrintHtml === 'function') {
-        return window._buildStyledPrintHtml({
-          title: 'OF Visual — Pré-visualização',
-          periodo: 'OF ' + ofNum,
-          cards: cards,
-          summaryTitle: 'Dados da Ordem de Fabricação',
-          summaryHeaders: summaryHeaders,
-          summaryRows: summaryRows,
-          emptySummaryCols: 2,
-          detailSections: detailSections,
-          printCssExtra: 'td{word-break:break-word}.vh{margin-top:20px}'
-        });
+      var arteImg = String(o.arte || o.arte_url || o.cliche_imagem || o.imagem_cliche || o.imagem || o.foto || '').trim();
+      var cliche = String(o.cliche || o.cliche_nome || o.matriz || '').trim();
+
+      var tmplFn = null;
+      try { tmplFn = window.__TMPLS_OF_VISUAL && window.__TMPLS_OF_VISUAL[modelId]; } catch (_) {}
+      if (typeof tmplFn !== 'function') tmplFn = __tmplSemCorteSVG;
+      var svgHtml = '';
+      try { svgHtml = tmplFn(o); } catch (_) { svgHtml = ''; }
+
+      var modeloNome = modelId;
+      try {
+        var mm = (window.__OFVISUAL_MODELS || []).find(function(m){ return m && m.id === modelId; });
+        if (mm) modeloNome = mm.nome;
+      } catch (_) {}
+
+      var cell = function(lbl, val, wide) {
+        return '<td style="border:1px solid #cbd5e1;padding:5px 8px;background:#f8fafc;' + (wide ? 'min-width:180px;' : '') + '"><div style="font-size:8px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#475569;margin-bottom:2px">' + esc(lbl) + '</div><div style="font-size:10.5px;color:#0f172a;font-weight:700;line-height:1.3;min-height:14px;word-break:break-word">' + (val ? esc(val) : '&nbsp;') + '</div></td>';
+      };
+      var setores = ['Riscador','Impressora','Corte / Vinco','Coladeira','Acabamento','Quant. Final','Fardos'];
+      var prodRows = '';
+      for (var i = 0; i < setores.length; i++) {
+        prodRows += '<tr style="height:20px"><td style="border:1px solid #cbd5e1;padding:3px 6px;background:#f1f5f9;font-size:10px;font-weight:800;color:#0f172a">' + esc(setores[i]) + '</td>' +
+          '<td style="border:1px solid #cbd5e1">&nbsp;</td>' +
+          '<td style="border:1px solid #cbd5e1">&nbsp;</td>' +
+          '<td style="border:1px solid #cbd5e1">&nbsp;</td></tr>';
       }
-    } catch (_) {}
-    try {
-      var ofNum2 = String((of||{}).numero || '—');
-      return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>OF ' + ofNum2 + ' — Visual</title></head><body><h1>OF Visual ' + ofNum2 + '</h1><p>(Impressão padrão indisponível)</p><script>window.onload=function(){setTimeout(function(){try{window.print()}catch(e){}},600)}<\/script></body></html>';
-    } catch (_) { return ''; }
+
+      var pageW = 277, pageH = 190;
+      var cssExtra =
+        '@page { size: A4 landscape; margin: 8mm; }' +
+        'body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;color:#0f172a;background:#fff}' +
+        '.ofv-page{width:100%;max-width:1000px;margin:0 auto;padding:10px 12px;box-sizing:border-box}' +
+        '.ofv-header{display:grid;grid-template-columns:60px 1fr 1fr 1fr;gap:8px;align-items:stretch;padding:6px 8px;border:1.5px solid #0f172a;border-radius:6px;background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%)}' +
+        '.ofv-logo{display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#1d4ed8;border:1.5px solid #1d4ed8;border-radius:6px;background:#fff;letter-spacing:-.02em;line-height:1.1;text-align:center;padding:4px}' +
+        '.ofv-header table{width:100%;border-collapse:collapse;font-size:10px}' +
+        '.ofv-mid{display:grid;grid-template-columns:1.1fr 1fr;gap:10px;margin-top:8px}' +
+        '.ofv-ip{border:1.2px solid #475569;border-radius:5px;padding:6px 8px;background:#f8fafc}' +
+        '.ofv-ip h4{margin:0 0 4px;font-size:10.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#334155;border-bottom:1px dashed #94a3b8;padding-bottom:3px}' +
+        '.ofv-prod{border:1.2px solid #334155;border-radius:5px;padding:6px;background:#fff;margin-top:8px;min-height:280px}' +
+        '.ofv-prod h4{margin:0 0 4px;font-size:10.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#0f172a;background:#e2e8f0;border-radius:4px;padding:4px 6px}' +
+        '.ofv-bottom{display:grid;grid-template-columns:1fr 1.2fr;gap:10px;margin-top:8px}' +
+        '.ofv-arte{border:1.2px solid #8b5cf6;border-radius:5px;padding:6px;min-height:80px;background:#faf5ff}' +
+        '.ofv-arte h4,.ofv-obs h4{margin:0 0 4px;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#5b21b6;border-bottom:1px dashed #c4b5fd;padding-bottom:2px}' +
+        '.ofv-obs{border:1.2px solid #f59e0b;border-radius:5px;padding:6px;background:#fffbeb;min-height:80px}' +
+        '.ofv-obs h4{color:#92400e;border-color:#fcd34d}' +
+        '.ofv-foot{display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px;font-size:8.5px;color:#475569;border-top:1px dashed #94a3b8;padding-top:4px}' +
+        '.ofv-svg{width:100%;height:auto;display:block;max-height:330px}';
+
+      var endFull = endereco;
+      if (endFull && cidade) endFull += ' · ' + cidade;
+      else if (cidade) endFull = cidade;
+      if (cnpj) cnpj = 'CNPJ: ' + cnpj;
+
+      var hdrCliente = cliente;
+      if (cnpj) hdrCliente += (hdrCliente ? ' · ' : '') + cnpj;
+
+      var ofText = 'OF #' + ofNum;
+      var razao = emp ? emp : 'ITALY EMBALAGENS';
+
+      var html =
+        '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>OF #' + esc(ofNum) + ' — ' + esc(modeloNome) + '</title>' +
+        '<style>' + cssExtra + '</style></head><body>' +
+        '<div class="ofv-page">' +
+          '<div class="ofv-header">' +
+            '<div class="ofv-logo">' + esc(razao.slice(0,30)) + '</div>' +
+            '<table><tr>' + cell('Nº OF', ofText) + cell('Modelo', modeloNome) + cell('Empresa', emp) + '</tr><tr>' +
+              cell('Cliente', hdrCliente, true) + '</tr><tr>' + cell('Endereço', endFull, true) + '</tr></table>' +
+            '<table><tr>' + cell('Produto', produto, true) + '</tr><tr>' + cell('Papel', papel) + cell('Gramatura', gramatura) + '</tr><tr>' +
+              cell('Chapa', chapa) + cell('Quantidade', qtdFmt ? (qtdFmt + ' un') : '') + '</tr></table>' +
+            '<table><tr>' + cell('Pedido / Ref', pedido) + cell('Entrega', dtEnt) + '</tr><tr>' +
+              cell('Data Pedido', dtPedido) + cell('Vendedor', vendedor) + '</tr><tr>' +
+              cell('Referência', referencia) + cell('Máquina', maq) + '</tr></table>' +
+          '</div>' +
+          '<div class="ofv-mid">' +
+            '<div class="ofv-ip">' +
+              '<h4>🎨 Impressão · Cores · Clichê</h4>' +
+              '<table style="width:100%;border-collapse:collapse;font-size:10px"><tr>' + cell('Cores', cores, true) + '</tr><tr>' +
+                cell('Tamanhos / Medidas', tam, true) + '</tr><tr>' + cell('Faca / Modelo', faca ? faca : '', true) + '</tr><tr>' +
+                cell('Clichê / Matriz', cliche, true) + '</tr></table>' +
+            '</div>' +
+            '<div class="ofv-ip">' +
+              '<h4>📋 Controle de Produção</h4>' +
+              '<table style="width:100%;border-collapse:collapse;font-size:10px">' +
+                '<thead><tr style="background:#0f172a;color:#f8fafc">' +
+                  '<th style="border:1px solid #0f172a;padding:3px 6px;font-size:9.5px;text-align:left;font-weight:900;letter-spacing:.05em">Setor</th>' +
+                  '<th style="border:1px solid #0f172a;padding:3px 6px;font-size:9.5px;text-align:left;font-weight:900;letter-spacing:.05em;width:28%">Responsável</th>' +
+                  '<th style="border:1px solid #0f172a;padding:3px 6px;font-size:9.5px;text-align:left;font-weight:900;letter-spacing:.05em;width:22%">Quantidade</th>' +
+                  '<th style="border:1px solid #0f172a;padding:3px 6px;font-size:9.5px;text-align:left;font-weight:900;letter-spacing:.05em;width:22%">Perda</th>' +
+                '</tr></thead><tbody>' + prodRows + '</tbody>' +
+              '</table>' +
+            '</div>' +
+          '</div>' +
+          '<div class="ofv-prod">' +
+            '<h4>📐 Desenho da Caixa — ' + esc(modeloNome) + '</h4>' +
+            '<div class="ofv-svg">' + (svgHtml || '<p style="padding:30px;text-align:center;color:#94a3b8">Desenho indisponível</p>') + '</div>' +
+          '</div>' +
+          '<div class="ofv-bottom">' +
+            (arteImg ? (
+              '<div class="ofv-arte"><h4>🖼️ Arte / Clichê</h4>' +
+              '<img src="' + esc(arteImg) + '" style="width:100%;max-height:110px;object-fit:contain;border-radius:3px;background:#fff;border:1px solid #e9d5ff" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'block\'"/>' +
+              '<p style="display:none;margin:0;padding:6px;font-size:10px;color:#7c3aed">(Imagem não carregada)</p></div>'
+            ) : (cliche ? (
+              '<div class="ofv-arte"><h4>🖼️ Arte / Clichê</h4><div style="padding:4px 6px;font-size:10px;color:#6d28d9;background:#fff;border-radius:3px;border:1px solid #ddd6fe">' + esc(cliche) + '</div></div>'
+            ) : (
+              '<div class="ofv-arte"><h4>🖼️ Arte / Clichê</h4><p style="margin:0;font-size:9.5px;color:#8b5cf6">(sem arte vinculada)</p></div>'
+            ))) +
+            (obs ? (
+              '<div class="ofv-obs"><h4>📝 Observações</h4><div style="font-size:10px;color:#78350f;line-height:1.45;white-space:pre-wrap">' + esc(obs) + '</div></div>'
+            ) : (
+              '<div class="ofv-obs"><h4>📝 Observações</h4><p style="margin:0;font-size:9.5px;color:#b45309">(sem observações)</p></div>'
+            )) +
+          '</div>' +
+          '<div class="ofv-foot">' +
+            '<span>OF #' + esc(ofNum) + ' · ' + esc(modeloNome) + (status ? ' · Status: ' + esc(status) : '') + (valorFmt ? ' · ' + esc(valorFmt) : '') + '</span>' +
+            '<span>Impresso em: ' + new Date().toLocaleString('pt-BR') + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<script>window.onload=function(){setTimeout(function(){try{window.print()}catch(e){}},500)}<\/script>' +
+        '</body></html>';
+      return html;
+    } catch (ex) {
+      try {
+        var ofNum2 = String((of||{}).numero || '—');
+        return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>OF ' + ofNum2 + '</title></head><body><h1>OF Visual ' + ofNum2 + '</h1><p>Erro de montagem: ' + esc(String(ex && ex.message || ex)) + '</p></body></html>';
+      } catch (_) { return ''; }
+    }
   }
 
   function __dashAbrirOfVisual(ofId, ofDefault) {
@@ -44039,27 +44414,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!of) of = { id: ofId, numero: ofId };
     var antiId = 'modal-ofvis-' + ofId + '-' + Math.floor(Math.random() * 999999);
     var ofNum = String(of.numero || of.of || of.of_num || ofId);
-    var cliente = String(of.cliente || of.clinome || of.cliente_nome || '—');
-    var produto = String(of.produto || of.descricao || '—');
-    var dtPedido = __dashFmtDataPedido(of);
-    var dtEnt = __dashFmtDtEnt(of.data_entrega || of.ent || of.dia || '');
-    var vendedor = __dashGetVendedor(of);
-    var qtdRaw = __dashGetQtd(of); var qtdFmt = qtdRaw != null ? __fmtIntDash(qtdRaw) : '—';
-    var tam = __dashGetTamanho(of);
-    var cores = __dashGetCores(of);
-    var faca = __dashGetFaca(of);
-    var maq = String(of.maquina || of.maq || of.maquina_atual || of.maquina_agendada || '—');
-    var emp = __dashEmpresaNome(of.emp_id || of.empresa_id || '');
-    var urg = __dashIsUrgente(of); var urgTxt = urg ? '🔴 Sim' : '⚪ Não';
-    var semP = __dashIsSemPapelao(of); var semPTxt = semP ? '🟡 Sim' : '⚪ Não';
-    var papelPrev = __dashFmtPapelPrev(of);
-    var tempo = __dashFmtMinutos(of);
-    var valor = Number(of.valor_total || of.valor_venda || of.total || 0) || 0;
-    var valorFmt = __fmtBrlDashboard(valor);
-    var statusTxt = String(of.status || '—').trim() || '—';
-    var obs = __dashFmtObservacoes(of);
-    var stI = __dashStatusCls(statusTxt);
-    var statusBadge = '<span style="display:inline-block;padding:4px 10px;border-radius:9999px;font-size:11.5px;font-weight:800;border:1px solid ' + stI.cor + '55;color:' + stI.cor + ';background:' + stI.bg + '">' + esc(statusTxt) + '</span>';
+    var cliente = String(of.cliente || of.clinome || of.cliente_nome || '');
+    var currentModel = String(of.tipo_of_visual || '').trim();
+    if (!currentModel) currentModel = '';
 
     function fecharModal() {
       try {
@@ -44069,88 +44426,114 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       } catch (_) {}
     }
 
-    var row = function(lbl, val, isBadge) {
-      return '<div style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:10px;background:rgba(15,23,42,.62);border:1px solid rgba(71,85,105,.38)"><div style="font-size:10.5px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8">' + esc(lbl) + '</div><div style="font-size:13.5px;color:#f1f5f9;font-weight:600;line-height:1.45">' + (isBadge ? val : esc(val)) + '</div></div>';
-    };
-
-    var cssModal =
-      '#MODAL_ID{position:fixed;inset:0;z-index:100000;background:rgba(2,6,23,.86);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:16px}' +
-      '#MODAL_ID .box{width:min(1080px,calc(100vw - 32px));max-height:95vh;background:linear-gradient(180deg,#061120 0%,#0f172a 16%,#111827 100%);border:1px solid rgba(148,163,184,.18);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.5);display:flex;flex-direction:column;min-height:0;overflow:hidden}' +
-      '#MODAL_ID .header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 22px;border-bottom:1px solid rgba(148,163,184,.14);background:rgba(3,7,18,.88)}' +
-      '#MODAL_ID .header h2{margin:0;font-size:18px;font-weight:900;color:#f8fafc;letter-spacing:.02em}' +
-      '#MODAL_ID .header .sub{font-size:12px;color:#94a3b8;margin-top:2px;font-weight:600}' +
-      '#MODAL_ID .fechar{padding:8px 14px;border-radius:10px;background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.45);font-weight:800;font-size:12px;cursor:pointer}' +
-      '#MODAL_ID .main{padding:18px 22px;overflow:auto;min-height:0;display:flex;flex-direction:column;gap:18px}' +
-      '#MODAL_ID .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}' +
-      '#MODAL_ID .grid.g2{grid-template-columns:repeat(2,minmax(0,1fr))}' +
-      '#MODAL_ID .obs{padding:14px 16px;border-radius:12px;background:rgba(2,6,23,.7);border:1px solid rgba(71,85,105,.4);font-size:13px;color:#e2e8f0;line-height:1.5;white-space:pre-wrap}' +
-      '#MODAL_ID .footer{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:14px 22px 16px;border-top:1px solid rgba(148,163,184,.14);background:rgba(3,7,18,.94)}' +
-      '#MODAL_ID .footer button{padding:9px 16px;border-radius:10px;font-size:12.5px;font-weight:800;border:1px solid;cursor:pointer;transition:all .12s ease}' +
+    var cssBase =
+      '#MODAL_ID{position:fixed;inset:0;z-index:100000;background:rgba(2,6,23,.88);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:16px}' +
+      '#MODAL_ID .box{width:min(1180px,calc(100vw - 32px));max-height:95vh;background:linear-gradient(180deg,#061120 0%,#0f172a 16%,#111827 100%);border:1px solid rgba(148,163,184,.18);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.5);display:flex;flex-direction:column;min-height:0;overflow:hidden}' +
+      '#MODAL_ID .header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 22px;border-bottom:1px solid rgba(148,163,184,.14);background:rgba(3,7,18,.88)}' +
+      '#MODAL_ID .header h2{margin:0;font-size:17px;font-weight:900;color:#f8fafc;letter-spacing:.02em}' +
+      '#MODAL_ID .header .sub{font-size:11.5px;color:#94a3b8;margin-top:2px;font-weight:600}' +
+      '#MODAL_ID .fechar{padding:7px 12px;border-radius:10px;background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.45);font-weight:800;font-size:11.5px;cursor:pointer}' +
+      '#MODAL_ID .trocar{padding:7px 12px;border-radius:10px;background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.45);font-weight:800;font-size:11.5px;cursor:pointer;margin-right:8px}' +
+      '#MODAL_ID .main{padding:16px 22px;overflow:auto;min-height:0;display:flex;flex-direction:column;gap:16px}' +
+      '#MODAL_ID .cards-tmpl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}' +
+      '@media (max-width:860px){ #MODAL_ID .cards-tmpl{grid-template-columns:repeat(2,1fr)} }' +
+      '#MODAL_ID .card-tmpl{cursor:pointer;border:1.5px solid rgba(148,163,184,.25);border-radius:14px;padding:14px;background:rgba(15,23,42,.55);transition:all .15s ease;display:flex;flex-direction:column;gap:6px}' +
+      '#MODAL_ID .card-tmpl:hover{border-color:#6366f1;background:rgba(99,102,241,.12);transform:translateY(-2px);box-shadow:0 12px 28px rgba(99,102,241,.18)}' +
+      '#MODAL_ID .card-tmpl .ic{font-size:30px;text-align:center;line-height:1}' +
+      '#MODAL_ID .card-tmpl .nm{font-size:14px;font-weight:900;color:#f8fafc;text-align:center;letter-spacing:.01em}' +
+      '#MODAL_ID .card-tmpl .ds{font-size:10.5px;color:#94a3b8;text-align:center;line-height:1.45;font-weight:600;min-height:26px}' +
+      '#MODAL_ID .preview-wrap{border:1px solid rgba(148,163,184,.2);border-radius:14px;padding:10px;background:rgba(2,6,23,.55)}' +
+      '#MODAL_ID .preview-wrap h3{margin:0 0 8px;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#c7d2fe;padding:0 2px}' +
+      '#MODAL_ID .preview-host{background:#fff;border-radius:10px;padding:10px;min-height:420px;overflow:auto}' +
+      '#MODAL_ID .aviso-sql{margin:0;padding:8px 12px;border-radius:10px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);color:#fbbf24;font-size:11px;font-weight:700;line-height:1.45}' +
+      '#MODAL_ID .aviso-sql code{background:rgba(0,0,0,.28);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:10.5px;color:#fde68a}' +
+      '#MODAL_ID .footer{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:12px 22px 14px;border-top:1px solid rgba(148,163,184,.14);background:rgba(3,7,18,.94)}' +
+      '#MODAL_ID .footer button{padding:9px 16px;border-radius:10px;font-size:12px;font-weight:800;border:1px solid;cursor:pointer;transition:all .12s ease}' +
       '#MODAL_ID .footer button:hover{filter:brightness(1.15);transform:translateY(-1px)}' +
+      '#MODAL_ID .footer button:disabled{opacity:.5;cursor:not-allowed;transform:none;filter:none}' +
       '#MODAL_ID .btn-salvar{background:rgba(16,185,129,.12);color:#34d399;border-color:rgba(16,185,129,.45)}' +
       '#MODAL_ID .btn-pdf{background:rgba(139,92,246,.12);color:#c4b5fd;border-color:rgba(139,92,246,.45)}' +
       '#MODAL_ID .btn-imprimir{background:rgba(59,130,246,.12);color:#93c5fd;border-color:rgba(59,130,246,.45)}' +
       '#MODAL_ID .btn-fechar{background:rgba(100,116,139,.12);color:#cbd5e1;border-color:rgba(100,116,139,.45)}';
-    cssModal = cssModal.split('#MODAL_ID').join('#' + antiId);
+    cssBase = cssBase.split('#MODAL_ID').join('#' + antiId);
+    var styleEl = '<style>' + cssBase + '</style>';
 
-    var styleEl = '';
-    try { styleEl = '<style>' + cssModal + '</style>'; } catch (_) { styleEl = ''; }
+    var avisoPersist = '<p class="aviso-sql">ℹ️ Para salvar o modelo escolhido permanentemente, execute antes no banco: <code>ALTER TABLE ofs ADD COLUMN IF NOT EXISTS tipo_of_visual TEXT;</code> (campo usado: <code>tipo_of_visual</code>). Botão "Salvar" tentará gravar.</p>';
 
-    function acaoSalvar() {
+    var html = '<div id="' + antiId + '">' + styleEl + '<div class="box">';
+
+    function renderEscolha() {
+      var cards = '';
+      var lista = window.__OFVISUAL_MODELS || [];
+      for (var i = 0; i < lista.length; i++) {
+        var mm = lista[i];
+        cards += '<div class="card-tmpl" data-model="' + esc(mm.id) + '" title="' + esc(mm.nome) + '">' +
+          '<div class="ic">' + esc(mm.icone || '📦') + '</div>' +
+          '<div class="nm">' + esc(mm.nome) + '</div>' +
+          '<div class="ds">' + esc(mm.desc || '') + '</div>' +
+          '</div>';
+      }
+      var mainContent =
+        '<div>' +
+          '<h3 style="margin:0 0 10px;font-size:16px;font-weight:900;color:#f8fafc;text-align:center">Qual modelo de OF deseja gerar?</h3>' +
+          '<p style="margin:0 0 14px;text-align:center;font-size:12px;color:#94a3b8;font-weight:600">OF #' + esc(ofNum) + (cliente ? ' · ' + esc(cliente.slice(0,40)) : '') + '</p>' +
+          '<div class="cards-tmpl">' + cards + '</div>' +
+        '</div>';
+      return mainContent;
+    }
+
+    function renderPrevia(modelId) {
+      var previa = '';
       try {
-        if (typeof toast === 'function') toast('✅ OF Visual salva (Etapa 1 — dados básicos registrados).', 'var(--green)');
-        else alert('Prévia da OF Visual #' + ofNum + ' salva (Etapa 1).');
+        var built = __dashBuildPrintOf(of, modelId);
+        if (built) {
+          var hostHtml = built;
+          var stBody = hostHtml.indexOf('<body');
+          var enBody = hostHtml.lastIndexOf('</body>');
+          if (stBody >= 0 && enBody > stBody) {
+            var bStart = hostHtml.indexOf('>', stBody) + 1;
+            hostHtml = hostHtml.substring(bStart, enBody);
+          }
+          var stStyle = hostHtml.indexOf('<style');
+          var enStyle = hostHtml.indexOf('</style>');
+          if (stStyle >= 0 && enStyle > stStyle) hostHtml = hostHtml.substring(0, stStyle) + hostHtml.substring(enStyle + 8);
+          previa = '<div class="preview-host">' + hostHtml + '</div>';
+        } else previa = '<p style="padding:30px;color:#fca5a5">Erro ao montar prévia.</p>';
+      } catch (e) { previa = '<p style="padding:30px;color:#fca5a5">Erro: ' + esc(String(e && e.message || e)) + '</p>'; }
+
+      var mnome = modelId;
+      try {
+        var fmm = (window.__OFVISUAL_MODELS || []).find(function(m){ return m && m.id === modelId; });
+        if (fmm) mnome = (fmm.icone ? fmm.icone + ' ' : '') + fmm.nome;
       } catch (_) {}
-    }
-    function acaoPdfOuImprimir(qual) {
-      try {
-        var html = __dashBuildPrintOf(of);
-        if (!html) { __dashMsgErr('Falha ao montar impressão.'); return; }
-        if (typeof window._openStyledPrintWindow === 'function') {
-          var win = window._openStyledPrintWindow(html, null);
-          if (win && qual === 'pdf') try { if (typeof toast === 'function') toast('📄 PDF / Impressão aberta. Feche o popup para salvar como PDF.', 'var(--purple)'); } catch (_) {}
-          return;
-        }
-        var w = window.open('', '_blank', 'width=960,height=720');
-        if (!w) { __dashMsgErr('Popup bloqueado. Permita popups.'); return; }
-        try { w.document.open(); w.document.write(html); w.document.close(); } catch (e) { __dashMsgErr('Erro: ' + String(e && e.message || e)); }
-      } catch (e) { __dashMsgErr('Falha impressão: ' + String(e && e.message || e)); }
+
+      return '<div class="preview-wrap">' +
+        '<h3>Pré-visualização — ' + esc(mnome) + '</h3>' + previa +
+      '</div>';
     }
 
-    var html =
-      '<div id="' + antiId + '">' + styleEl +
-        '<div class="box">' +
-          '<div class="header">' +
-            '<div><h2>📐 Pré-visualização OF Visual</h2><div class="sub">OF #' + esc(ofNum) + ' · ' + esc(cliente.slice(0,44)) + '</div></div>' +
-            '<button type="button" class="fechar" id="' + antiId + '-fechar">✕ Fechar</button>' +
-          '</div>' +
-          '<div class="main">' +
-            '<div class="grid">' +
-              row('Nº OF', ofNum) + row('Data Pedido', dtPedido) + row('Data Entrega', dtEnt) + row('Status', statusBadge, true) +
-              row('Cliente', cliente) + row('Vendedor', vendedor) + row('Máquina', maq) + row('Empresa', emp) +
-              row('Produto', produto) + row('Quantidade', qtdFmt) + row('Tempo Est.', tempo) + row('Valor Total', 'R$ ' + valorFmt) +
-            '</div>' +
-            '<div class="grid g2">' +
-              row('Tamanhos / Medidas', tam) + row('Cores de Impressão', cores) +
-              row('Faca / Modelo', faca) + row('Papel / Previsão', papelPrev) +
-            '</div>' +
-            '<div class="grid">' +
-              row('Urgente?', urgTxt) + row('Sem Papelão?', semPTxt) +
-              '<div></div><div></div>' +
-            '</div>' +
-            '<div>' +
-              '<div style="font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px">📝 Observações / Informações Adicionais</div>' +
-              '<div class="obs">' + esc(obs) + '</div>' +
-            '</div>' +
-          '</div>' +
-          '<div class="footer">' +
-            '<button type="button" class="btn-salvar" id="' + antiId + '-salvar">💾 Salvar</button>' +
-            '<button type="button" class="btn-pdf" id="' + antiId + '-pdf">📄 Gerar PDF</button>' +
-            '<button type="button" class="btn-imprimir" id="' + antiId + '-imp">🖨️ Imprimir</button>' +
-            '<button type="button" class="btn-fechar" id="' + antiId + '-cancelar">Fechar</button>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
+    var modoInicial = currentModel ? 'previa' : 'escolha';
+    var headerSub = currentModel ? 'Modelo salvo: ' + currentModel : 'Selecione o modelo para iniciar';
+    html += '<div class="header">' +
+      '<div><h2>📐 Gerar OF Visual' + (modoInicial === 'previa' ? ' — Prévia' : '') + '</h2><div class="sub">OF #' + esc(ofNum) + ' · ' + esc((cliente || '').slice(0,44) || headerSub) + '</div></div>' +
+      '<div style="display:flex;align-items:center;gap:4px">' +
+        (modoInicial === 'previa' ? '<button type="button" class="trocar" id="' + antiId + '-trocar">🔄 Trocar modelo</button>' : '') +
+        '<button type="button" class="fechar" id="' + antiId + '-fechar">✕ Fechar</button>' +
+      '</div>' +
+    '</div>';
+
+    html += '<div class="main" id="' + antiId + '-main">';
+    if (modoInicial === 'escolha') html += renderEscolha();
+    else html += renderPrevia(currentModel);
+    html += avisoPersist + '</div>';
+
+    html += '<div class="footer">' +
+      '<button type="button" class="btn-salvar" id="' + antiId + '-salvar" ' + (modoInicial === 'escolha' ? 'disabled' : '') + '>💾 Salvar modelo</button>' +
+      '<button type="button" class="btn-pdf" id="' + antiId + '-pdf" ' + (modoInicial === 'escolha' ? 'disabled' : '') + '>📄 Gerar PDF</button>' +
+      '<button type="button" class="btn-imprimir" id="' + antiId + '-imp" ' + (modoInicial === 'escolha' ? 'disabled' : '') + '>🖨️ Imprimir</button>' +
+      '<button type="button" class="btn-fechar" id="' + antiId + '-cancelar">Fechar</button>' +
+    '</div>';
+    html += '</div></div>';
 
     try {
       document.body.insertAdjacentHTML('beforeend', html);
@@ -44160,6 +44543,97 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       document.body.appendChild(wrap.firstChild);
     }
 
+    var currentSel = currentModel || '';
+
+    function trocarParaEscolha() {
+      try {
+        currentSel = '';
+        var main = document.getElementById(antiId + '-main');
+        if (main) {
+          var novo = '';
+          try { novo = renderEscolha() + avisoPersist; } catch (_) {}
+          main.innerHTML = novo;
+          bindCards();
+        }
+        var bSalvar = document.getElementById(antiId + '-salvar');
+        var bPdf = document.getElementById(antiId + '-pdf');
+        var bImp = document.getElementById(antiId + '-imp');
+        if (bSalvar) bSalvar.disabled = true;
+        if (bPdf) bPdf.disabled = true;
+        if (bImp) bImp.disabled = true;
+        var h2 = document.querySelector('#' + antiId + ' .header h2');
+        if (h2) h2.textContent = '📐 Gerar OF Visual';
+        var bTrocar = document.getElementById(antiId + '-trocar');
+        if (bTrocar) try { bTrocar.parentNode.removeChild(bTrocar); } catch (_) {}
+      } catch (_) {}
+    }
+
+    function trocarParaPrevia(modelId) {
+      try {
+        currentSel = String(modelId || '').trim();
+        if (!currentSel) return;
+        var main = document.getElementById(antiId + '-main');
+        if (main) {
+          var novo = '';
+          try { novo = renderPrevia(currentSel) + avisoPersist; } catch (_) {}
+          main.innerHTML = novo;
+        }
+        var bSalvar = document.getElementById(antiId + '-salvar');
+        var bPdf = document.getElementById(antiId + '-pdf');
+        var bImp = document.getElementById(antiId + '-imp');
+        if (bSalvar) bSalvar.disabled = false;
+        if (bPdf) bPdf.disabled = false;
+        if (bImp) bImp.disabled = false;
+        var h2 = document.querySelector('#' + antiId + ' .header h2');
+        if (h2) h2.textContent = '📐 Gerar OF Visual — Prévia';
+        var bTrocar = document.getElementById(antiId + '-trocar');
+        if (!bTrocar) {
+          try {
+            var fbtn = document.getElementById(antiId + '-fechar');
+            if (fbtn && fbtn.parentNode) {
+              var nbtn = document.createElement('button');
+              nbtn.type = 'button';
+              nbtn.className = 'trocar';
+              nbtn.id = antiId + '-trocar';
+              nbtn.textContent = '🔄 Trocar modelo';
+              fbtn.parentNode.insertBefore(nbtn, fbtn);
+              nbtn.addEventListener('click', trocarParaEscolha);
+            }
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+
+    function bindCards() {
+      try {
+        var cards = document.querySelectorAll('#' + antiId + ' .card-tmpl');
+        for (var i = 0; i < cards.length; i++) {
+          (function(c) {
+            c.addEventListener('click', function() {
+              var mid = String(c.getAttribute('data-model') || '').trim();
+              if (mid) trocarParaPrevia(mid);
+            });
+          })(cards[i]);
+        }
+      } catch (_) {}
+    }
+
+    function acaoPdfOuImprimir(qual) {
+      try {
+        if (!currentSel) { __dashMsgErr('Selecione primeiro um modelo.'); return; }
+        var hh = __dashBuildPrintOf(of, currentSel);
+        if (!hh) { __dashMsgErr('Falha ao montar impressão.'); return; }
+        if (typeof window._openStyledPrintWindow === 'function') {
+          var win = window._openStyledPrintWindow(hh, null);
+          if (win && qual === 'pdf') try { if (typeof toast === 'function') toast('📄 PDF / Impressão aberta.', 'var(--purple)'); } catch (_) {}
+          return;
+        }
+        var w = window.open('', '_blank', 'width=1080,height=760');
+        if (!w) { __dashMsgErr('Popup bloqueado. Permita popups.'); return; }
+        try { w.document.open(); w.document.write(hh); w.document.close(); } catch (e) { __dashMsgErr('Erro: ' + String(e && e.message || e)); }
+      } catch (e) { __dashMsgErr('Falha impressão: ' + String(e && e.message || e)); }
+    }
+
     setTimeout(function() {
       try {
         var f1 = document.getElementById(antiId + '-fechar');
@@ -44167,13 +44641,23 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var btnS = document.getElementById(antiId + '-salvar');
         var btnP = document.getElementById(antiId + '-pdf');
         var btnI = document.getElementById(antiId + '-imp');
+        var btnT = document.getElementById(antiId + '-trocar');
         if (f1) f1.addEventListener('click', fecharModal);
         if (f2) f2.addEventListener('click', fecharModal);
-        if (btnS) btnS.addEventListener('click', acaoSalvar);
+        if (btnT) btnT.addEventListener('click', trocarParaEscolha);
+        if (btnS) btnS.addEventListener('click', function() {
+          if (!currentSel) { __dashMsgErr('Selecione um modelo antes.'); return; }
+          var oldId = of.tipo_of_visual;
+          of.tipo_of_visual = currentSel;
+          __dashSalvarTipoOfVisual(ofId, currentSel, function(err) {
+            if (err) of.tipo_of_visual = oldId;
+          });
+        });
         if (btnP) btnP.addEventListener('click', function(){ acaoPdfOuImprimir('pdf'); });
         if (btnI) btnI.addEventListener('click', function(){ acaoPdfOuImprimir('imprimir'); });
         var root = document.getElementById(antiId);
         if (root) root.addEventListener('click', function(ev) { if (ev.target && ev.target.id === antiId) fecharModal(); });
+        if (modoInicial === 'escolha') bindCards();
       } catch (_) {}
     }, 0);
   }
