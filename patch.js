@@ -43771,6 +43771,236 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
   }
 
+  function __dashFmtObservacoes(of) {
+    try {
+      var o = of || {};
+      var s = String(o.observacoes || o.obs || o.observacao || o.descricao_extra || o.notas || o.nota || o.obs_gerais || o.anotacoes || '').trim();
+      return s || '—';
+    } catch (_) { return '—'; }
+  }
+
+  function __dashBuildPrintOf(of) {
+    try {
+      var o = of || {};
+      var ofNum = String(o.numero || o.of || o.of_num || '—');
+      var cliente = String(o.cliente || o.clinome || o.cliente_nome || '—');
+      var produto = String(o.produto || o.descricao || '—');
+      var dtPedido = __dashFmtDataPedido(o);
+      var dtEnt = __dashFmtDtEnt(o.data_entrega || o.ent || o.dia || '');
+      var vendedor = __dashGetVendedor(o);
+      var qtd = __dashGetQtd(o); var qtdFmt = qtd != null ? __fmtIntDash(qtd) : '—';
+      var tam = __dashGetTamanho(o);
+      var cores = __dashGetCores(o);
+      var faca = __dashGetFaca(o);
+      var maq = String(o.maquina || o.maq || o.maquina_atual || o.maquina_agendada || '—');
+      var emp = __dashEmpresaNome(o.emp_id || o.empresa_id || '');
+      var urg = __dashIsUrgente(o) ? 'Sim' : 'Não';
+      var semP = __dashIsSemPapelao(o) ? 'Sim' : 'Não';
+      var papelPrev = __dashFmtPapelPrev(o);
+      var tempo = __dashFmtMinutos(o);
+      var valor = Number(o.valor_total || o.valor_venda || o.total || 0) || 0;
+      var valorFmt = __fmtBrlDashboard(valor);
+      var status = String(o.status || '—').trim() || '—';
+      var obs = __dashFmtObservacoes(o);
+      var cards = [
+        { label: 'Nº OF', value: ofNum, sub: '' },
+        { label: 'Cliente', value: cliente.slice(0,22), sub: '' },
+        { label: 'Produto', value: produto.slice(0,22), sub: '' },
+        { label: 'Valor Total', value: valorFmt, sub: 'Status: ' + status }
+      ];
+      var summaryHeaders = ['Campo', 'Valor'];
+      var summaryRows = [
+        ['Nº OF', ofNum], ['Data Pedido', dtPedido], ['Data Entrega', dtEnt],
+        ['Cliente', cliente], ['Vendedor', vendedor], ['Produto', produto],
+        ['Quantidade', qtdFmt], ['Tamanhos / Medidas', tam], ['Cores', cores],
+        ['Faca', faca], ['Máquina', maq], ['Empresa', emp],
+        ['Urgente?', urg], ['Sem Papelão?', semP], ['Papel / Previsão', papelPrev],
+        ['Tempo Estimado', tempo], ['Valor Total', valorFmt], ['Status', status]
+      ];
+      var detailSections = [{
+        title: 'Observações / Informações Adicionais',
+        headers: ['Conteúdo'],
+        rows: [[obs === '—' ? 'Nenhuma observação registrada.' : obs.replace(/\n/g,'<br>')]],
+        emptyCols: 1
+      }];
+      if (typeof window._buildStyledPrintHtml === 'function') {
+        return window._buildStyledPrintHtml({
+          title: 'OF Visual — Pré-visualização',
+          periodo: 'OF ' + ofNum,
+          cards: cards,
+          summaryTitle: 'Dados da Ordem de Fabricação',
+          summaryHeaders: summaryHeaders,
+          summaryRows: summaryRows,
+          emptySummaryCols: 2,
+          detailSections: detailSections,
+          printCssExtra: 'td{word-break:break-word}.vh{margin-top:20px}'
+        });
+      }
+    } catch (_) {}
+    try {
+      var ofNum2 = String((of||{}).numero || '—');
+      return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>OF ' + ofNum2 + ' — Visual</title></head><body><h1>OF Visual ' + ofNum2 + '</h1><p>(Impressão padrão indisponível)</p><script>window.onload=function(){setTimeout(function(){try{window.print()}catch(e){}},600)}<\/script></body></html>';
+    } catch (_) { return ''; }
+  }
+
+  function __dashAbrirOfVisual(ofId, ofDefault) {
+    ofId = String(ofId || '').trim();
+    if (!ofId) return;
+    var of = ofDefault && (ofDefault.id || ofDefault.uuid) ? ofDefault : null;
+    if (!of) {
+      try {
+        var tbs = document.querySelectorAll('#dash-tabela-ofs');
+        for (var i = 0; i < tbs.length; i++) {
+          var tb = tbs[i];
+          if (tb && Array.isArray(tb._dashRows)) {
+            var m = tb._dashRows.find(function(x){ return String(x && x.id || '').trim() === ofId; });
+            if (m) { of = m; break; }
+          }
+        }
+      } catch (_) { of = null; }
+    }
+    if (!of) of = { id: ofId, numero: ofId };
+    var antiId = 'modal-ofvis-' + ofId + '-' + Math.floor(Math.random() * 999999);
+    var ofNum = String(of.numero || of.of || of.of_num || ofId);
+    var cliente = String(of.cliente || of.clinome || of.cliente_nome || '—');
+    var produto = String(of.produto || of.descricao || '—');
+    var dtPedido = __dashFmtDataPedido(of);
+    var dtEnt = __dashFmtDtEnt(of.data_entrega || of.ent || of.dia || '');
+    var vendedor = __dashGetVendedor(of);
+    var qtdRaw = __dashGetQtd(of); var qtdFmt = qtdRaw != null ? __fmtIntDash(qtdRaw) : '—';
+    var tam = __dashGetTamanho(of);
+    var cores = __dashGetCores(of);
+    var faca = __dashGetFaca(of);
+    var maq = String(of.maquina || of.maq || of.maquina_atual || of.maquina_agendada || '—');
+    var emp = __dashEmpresaNome(of.emp_id || of.empresa_id || '');
+    var urg = __dashIsUrgente(of); var urgTxt = urg ? '🔴 Sim' : '⚪ Não';
+    var semP = __dashIsSemPapelao(of); var semPTxt = semP ? '🟡 Sim' : '⚪ Não';
+    var papelPrev = __dashFmtPapelPrev(of);
+    var tempo = __dashFmtMinutos(of);
+    var valor = Number(of.valor_total || of.valor_venda || of.total || 0) || 0;
+    var valorFmt = __fmtBrlDashboard(valor);
+    var statusTxt = String(of.status || '—').trim() || '—';
+    var obs = __dashFmtObservacoes(of);
+    var stI = __dashStatusCls(statusTxt);
+    var statusBadge = '<span style="display:inline-block;padding:4px 10px;border-radius:9999px;font-size:11.5px;font-weight:800;border:1px solid ' + stI.cor + '55;color:' + stI.cor + ';background:' + stI.bg + '">' + esc(statusTxt) + '</span>';
+
+    function fecharModal() {
+      try {
+        var el = document.getElementById(antiId);
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+        else if (el) try { el.remove(); } catch (_) {}
+      } catch (_) {}
+    }
+
+    var row = function(lbl, val, isBadge) {
+      return '<div style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:10px;background:rgba(15,23,42,.62);border:1px solid rgba(71,85,105,.38)"><div style="font-size:10.5px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8">' + esc(lbl) + '</div><div style="font-size:13.5px;color:#f1f5f9;font-weight:600;line-height:1.45">' + (isBadge ? val : esc(val)) + '</div></div>';
+    };
+
+    var cssModal =
+      '#MODAL_ID{position:fixed;inset:0;z-index:100000;background:rgba(2,6,23,.86);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:16px}' +
+      '#MODAL_ID .box{width:min(1080px,calc(100vw - 32px));max-height:95vh;background:linear-gradient(180deg,#061120 0%,#0f172a 16%,#111827 100%);border:1px solid rgba(148,163,184,.18);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.5);display:flex;flex-direction:column;min-height:0;overflow:hidden}' +
+      '#MODAL_ID .header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 22px;border-bottom:1px solid rgba(148,163,184,.14);background:rgba(3,7,18,.88)}' +
+      '#MODAL_ID .header h2{margin:0;font-size:18px;font-weight:900;color:#f8fafc;letter-spacing:.02em}' +
+      '#MODAL_ID .header .sub{font-size:12px;color:#94a3b8;margin-top:2px;font-weight:600}' +
+      '#MODAL_ID .fechar{padding:8px 14px;border-radius:10px;background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.45);font-weight:800;font-size:12px;cursor:pointer}' +
+      '#MODAL_ID .main{padding:18px 22px;overflow:auto;min-height:0;display:flex;flex-direction:column;gap:18px}' +
+      '#MODAL_ID .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}' +
+      '#MODAL_ID .grid.g2{grid-template-columns:repeat(2,minmax(0,1fr))}' +
+      '#MODAL_ID .obs{padding:14px 16px;border-radius:12px;background:rgba(2,6,23,.7);border:1px solid rgba(71,85,105,.4);font-size:13px;color:#e2e8f0;line-height:1.5;white-space:pre-wrap}' +
+      '#MODAL_ID .footer{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:14px 22px 16px;border-top:1px solid rgba(148,163,184,.14);background:rgba(3,7,18,.94)}' +
+      '#MODAL_ID .footer button{padding:9px 16px;border-radius:10px;font-size:12.5px;font-weight:800;border:1px solid;cursor:pointer;transition:all .12s ease}' +
+      '#MODAL_ID .footer button:hover{filter:brightness(1.15);transform:translateY(-1px)}' +
+      '#MODAL_ID .btn-salvar{background:rgba(16,185,129,.12);color:#34d399;border-color:rgba(16,185,129,.45)}' +
+      '#MODAL_ID .btn-pdf{background:rgba(139,92,246,.12);color:#c4b5fd;border-color:rgba(139,92,246,.45)}' +
+      '#MODAL_ID .btn-imprimir{background:rgba(59,130,246,.12);color:#93c5fd;border-color:rgba(59,130,246,.45)}' +
+      '#MODAL_ID .btn-fechar{background:rgba(100,116,139,.12);color:#cbd5e1;border-color:rgba(100,116,139,.45)}';
+    cssModal = cssModal.split('#MODAL_ID').join('#' + antiId);
+
+    var styleEl = '';
+    try { styleEl = '<style>' + cssModal + '</style>'; } catch (_) { styleEl = ''; }
+
+    function acaoSalvar() {
+      try {
+        if (typeof toast === 'function') toast('✅ OF Visual salva (Etapa 1 — dados básicos registrados).', 'var(--green)');
+        else alert('Prévia da OF Visual #' + ofNum + ' salva (Etapa 1).');
+      } catch (_) {}
+    }
+    function acaoPdfOuImprimir(qual) {
+      try {
+        var html = __dashBuildPrintOf(of);
+        if (!html) { __dashMsgErr('Falha ao montar impressão.'); return; }
+        if (typeof window._openStyledPrintWindow === 'function') {
+          var win = window._openStyledPrintWindow(html, null);
+          if (win && qual === 'pdf') try { if (typeof toast === 'function') toast('📄 PDF / Impressão aberta. Feche o popup para salvar como PDF.', 'var(--purple)'); } catch (_) {}
+          return;
+        }
+        var w = window.open('', '_blank', 'width=960,height=720');
+        if (!w) { __dashMsgErr('Popup bloqueado. Permita popups.'); return; }
+        try { w.document.open(); w.document.write(html); w.document.close(); } catch (e) { __dashMsgErr('Erro: ' + String(e && e.message || e)); }
+      } catch (e) { __dashMsgErr('Falha impressão: ' + String(e && e.message || e)); }
+    }
+
+    var html =
+      '<div id="' + antiId + '">' + styleEl +
+        '<div class="box">' +
+          '<div class="header">' +
+            '<div><h2>📐 Pré-visualização OF Visual</h2><div class="sub">OF #' + esc(ofNum) + ' · ' + esc(cliente.slice(0,44)) + '</div></div>' +
+            '<button type="button" class="fechar" id="' + antiId + '-fechar">✕ Fechar</button>' +
+          '</div>' +
+          '<div class="main">' +
+            '<div class="grid">' +
+              row('Nº OF', ofNum) + row('Data Pedido', dtPedido) + row('Data Entrega', dtEnt) + row('Status', statusBadge, true) +
+              row('Cliente', cliente) + row('Vendedor', vendedor) + row('Máquina', maq) + row('Empresa', emp) +
+              row('Produto', produto) + row('Quantidade', qtdFmt) + row('Tempo Est.', tempo) + row('Valor Total', 'R$ ' + valorFmt) +
+            '</div>' +
+            '<div class="grid g2">' +
+              row('Tamanhos / Medidas', tam) + row('Cores de Impressão', cores) +
+              row('Faca / Modelo', faca) + row('Papel / Previsão', papelPrev) +
+            '</div>' +
+            '<div class="grid">' +
+              row('Urgente?', urgTxt) + row('Sem Papelão?', semPTxt) +
+              '<div></div><div></div>' +
+            '</div>' +
+            '<div>' +
+              '<div style="font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px">📝 Observações / Informações Adicionais</div>' +
+              '<div class="obs">' + esc(obs) + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="footer">' +
+            '<button type="button" class="btn-salvar" id="' + antiId + '-salvar">💾 Salvar</button>' +
+            '<button type="button" class="btn-pdf" id="' + antiId + '-pdf">📄 Gerar PDF</button>' +
+            '<button type="button" class="btn-imprimir" id="' + antiId + '-imp">🖨️ Imprimir</button>' +
+            '<button type="button" class="btn-fechar" id="' + antiId + '-cancelar">Fechar</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    try {
+      document.body.insertAdjacentHTML('beforeend', html);
+    } catch (_) {
+      var wrap = document.createElement('div');
+      wrap.innerHTML = html;
+      document.body.appendChild(wrap.firstChild);
+    }
+
+    setTimeout(function() {
+      try {
+        var f1 = document.getElementById(antiId + '-fechar');
+        var f2 = document.getElementById(antiId + '-cancelar');
+        var btnS = document.getElementById(antiId + '-salvar');
+        var btnP = document.getElementById(antiId + '-pdf');
+        var btnI = document.getElementById(antiId + '-imp');
+        if (f1) f1.addEventListener('click', fecharModal);
+        if (f2) f2.addEventListener('click', fecharModal);
+        if (btnS) btnS.addEventListener('click', acaoSalvar);
+        if (btnP) btnP.addEventListener('click', function(){ acaoPdfOuImprimir('pdf'); });
+        if (btnI) btnI.addEventListener('click', function(){ acaoPdfOuImprimir('imprimir'); });
+        var root = document.getElementById(antiId);
+        if (root) root.addEventListener('click', function(ev) { if (ev.target && ev.target.id === antiId) fecharModal(); });
+      } catch (_) {}
+    }, 0);
+  }
+
   function __dashRodarAcao(btn, acao, of) {
     var ofId = String(of && (of.id || of.uuid) || btn && btn.getAttribute('data-of-id') || '').trim();
     var ofNum = String(of && (of.numero || of.of || of.of_num) || btn && btn.getAttribute('data-of-numero') || '').trim();
@@ -43813,6 +44043,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           if (tb && tb._dashRefreshFn) tb._dashRefreshFn();
         } } catch (_) {}
       });
+      return;
+    }
+    if (acao === 'ofvisual') {
+      try { __dashAbrirOfVisual(ofId, of); } catch (e) { __dashMsgErr('Erro ao abrir OF Visual: ' + String(e && e.message || e)); }
       return;
     }
   }
@@ -43872,6 +44106,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         '.dash-acoes button.cancelar{background:rgba(239,68,68,.1);color:#f87171;border-color:rgba(239,68,68,.4)}' +
         '.dash-acoes button.clonar{background:rgba(139,92,246,.1);color:#c4b5fd;border-color:rgba(139,92,246,.45)}' +
         '.dash-acoes button.alterar{background:rgba(59,130,246,.1);color:#93c5fd;border-color:rgba(59,130,246,.45)}' +
+        '.dash-acoes button.visual{background:rgba(234,88,12,.12);color:#fb923c;border-color:rgba(234,88,12,.45)}' +
         '.dash-acoes button:disabled{opacity:.45;cursor:not-allowed;transform:none!important;box-shadow:none!important}';
     } catch (_) { stCls = ''; }
     tabelaEl.setAttribute('border', '0');
@@ -43991,6 +44226,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                 '<button type="button" class="cancelar" data-acao="cancelar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">❌ Cancelar</button>' +
                 '<button type="button" class="clonar" data-acao="clonar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">📋 Clonar</button>' +
                 '<button type="button" class="alterar" data-acao="alterar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">✏️ Alterar</button>' +
+                '<button type="button" class="visual" data-acao="ofvisual" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">📐 Gerar OF Visual</button>' +
               '</div>' +
             '</td>' +
           '</tr>'
