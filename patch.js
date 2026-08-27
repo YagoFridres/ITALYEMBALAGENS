@@ -43464,6 +43464,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     return false;
   }
+  window.__dashDesbloquearValores = __dashDesbloquearValores;
 
   async function __dashCalcularTotalTodasOfs() {
     try {
@@ -43743,11 +43744,20 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function __dashFmtMinutos(of) {
     try {
       var maqNome = String(of && (of.maquina || of.maq || of.maquina_atual || of.maquina_agendada) || '').trim();
-      if (typeof window._ofmaqTempoMinForMachine === 'function') {
-        var md = null; try { if (typeof window.getDadosMaquina === 'function') md = window.getDadosMaquina(maqNome); } catch (_) {}
-        var t = window._ofmaqTempoMinForMachine(of, md);
-        if (Number.isFinite(t) && t > 0) return (Math.round(t * 10) / 10) + ' min';
-      }
+      var md = null;
+      try { if (typeof window.getDadosMaquina === 'function') md = window.getDadosMaquina(maqNome); } catch (_) { md = null; }
+      try {
+        if (typeof calcularTempoOf === 'function') {
+          var tCal = Math.max(0, Math.round(Number(calcularTempoOf(of, md) || 0)));
+          if (Number.isFinite(tCal) && tCal > 0) return (Math.round(tCal * 10) / 10) + ' min';
+        }
+      } catch (_) {}
+      try {
+        if (typeof window._ofmaqTempoMinForMachine === 'function') {
+          var t = window._ofmaqTempoMinForMachine(of, md);
+          if (Number.isFinite(t) && t > 0) return (Math.round(t * 10) / 10) + ' min';
+        }
+      } catch (_) {}
     } catch (_) {}
     try {
       var candMin = [
@@ -45136,7 +45146,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var stI = __dashStatusCls(statusTxt);
         var statusBadge = '<span class="dash-st-badge" style="color:' + stI.cor + ';background:' + stI.bg + ';border-color:' + stI.cor + '44">' + esc(statusTxt) + '</span>';
         var valor = Number(of?.valor_total || of?.valor_venda || of?.total || 0) || 0;
-        var valorFmt = esc(__dashValorFormatado(valor));
+        var valorFmt = esc('R$ ' + __fmtBrlDashboard(valor).replace('R$', '').trim());
         var maq = esc(String(of?.maquina || of?.maq || of?.maquina_atual || of?.maquina_agendada || '—').slice(0, 30));
         var empRaw = of?.emp_id || of?.empresa_id || '';
         var emp = esc(__dashEmpresaNome(empRaw));
@@ -45521,7 +45531,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return (
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
         '<div style="font-weight:800;color:#e2e8f0;font-size:14px">📌 Resumo</div>' +
-        '<button type="button" onclick="__dashDesbloquearValores()" style="padding:6px 12px;border-radius:9px;border:1px solid #f59e0b;background:rgba(250,204,21,.1);color:#fde68a;font-weight:800;font-size:11px;cursor:pointer">🔒 Desbloquear valores</button>' +
+        '<button type="button" onclick="window.__dashDesbloquearValores()" style="padding:6px 12px;border-radius:9px;border:1px solid #f59e0b;background:rgba(250,204,21,.1);color:#fde68a;font-weight:800;font-size:11px;cursor:pointer">🔒 Desbloquear valores</button>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">' +
         card('📋', 'Total de OFs', __fmtIntDash(total), '#64748b', 'var(--text)', '') +
@@ -45533,7 +45543,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           : card('🕒', 'Prazo OK', __fmtIntDash(abertos) + ' abertas', '#3b82f6', '#3b82f6', 'Nenhuma atrasada ou urgente')) +
         card('📅', 'Faturamento Mês', __dashValorFormatado(fatMes), '#6366f1', 'var(--text)', __fmtIntDash(fatMesCount) + ' OF(s) concluída(s)') +
         card('📌', 'Faturamento Hoje', __dashValorFormatado(fatDia), '#8b5cf6', 'var(--text)', __fmtIntDash(fatDiaCount) + ' OF(s) concluída(s)') +
-        card('💰', 'Valor Total Todas OFs', '<span id="dash-card-total-geral">⏳ Somando...</span>', '#f43f5e', 'var(--text)', 'Sistema completo (todas OFs)') +
+        '<div style="background:var(--card);border:1px solid var(--border);border-top:3px solid #f43f5e;border-radius:12px;padding:14px">' +
+          '<div style="display:flex;align-items:center;gap:8px;color:var(--text2);font-size:12px">' +
+            '<span>💰</span>' +
+            '<span>Valor Total Todas OFs</span>' +
+          '</div>' +
+          '<div style="color:var(--text);font-size:22px;font-weight:1000;margin-top:4px"><span id="dash-card-total-geral">⏳ Somando...</span></div>' +
+          '<div style="color:var(--text2);font-size:11px;margin-top:2px">Sistema completo (todas OFs)</div>' +
+        '</div>' +
       '</div>'
     );
   }
@@ -45593,9 +45610,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '</div>' +
       '<div id="patch-dashboard-resumo-ofs" style="margin-bottom:24px">' +
         '<div style="padding:20px;color:var(--text2);text-align:center">Carregando resumo...</div>' +
+      '</div>' +
+      '<div id="patch-dashboard-busca-tabela" style="margin-bottom:24px">' +
       '</div>';
 
     var resumoDiv = host.querySelector('#patch-dashboard-resumo-ofs');
+    var buscaTabDiv = host.querySelector('#patch-dashboard-busca-tabela');
 
     window._apiAuthFetch('/api/dashboard/resumo-ofs')
       .then(function(r) { return r.json(); })
@@ -45612,13 +45632,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               if (el) el.textContent = __dashValorFormatado(t);
             } catch(_) {}
           }, 30);
-          __dashInstalarBuscador(resumoDiv);
-
-          try {
-            if (window.__dashResumoTimer) clearInterval(window.__dashResumoTimer);
-            window.__dashResumoTimer = setInterval(function(){ __dashRefreshResumoCards(true); }, 60000);
-          } catch(_) {}
         }
+        if (buscaTabDiv) {
+          __dashInstalarBuscador(buscaTabDiv);
+        }
+
+        try {
+          if (window.__dashResumoTimer) clearInterval(window.__dashResumoTimer);
+          window.__dashResumoTimer = setInterval(function(){ __dashRefreshResumoCards(true); }, 60000);
+        } catch(_) {}
       })
       .catch(function(err) {
         try {
@@ -45627,7 +45649,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               '<div style="padding:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#fca5a5">' +
                 '⚠️ Falha ao carregar resumo de OFs: ' + esc(String(err && err.message || err || 'erro desconhecido')) +
               '</div>';
-            __dashInstalarBuscador(resumoDiv);
+          }
+          if (buscaTabDiv) {
+            __dashInstalarBuscador(buscaTabDiv);
           }
         } catch (_) {}
       });
