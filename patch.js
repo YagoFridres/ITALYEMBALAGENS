@@ -44419,37 +44419,37 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       } catch (_) {}
 
       var cell = function(lbl, val, wide) {
-        return '<td style="border:1px solid #cbd5e1;padding:5px 8px;background:#f8fafc;' + (wide ? 'min-width:180px;' : '') + '"><div style="font-size:8px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#475569;margin-bottom:2px">' + esc(lbl) + '</div><div style="font-size:10.5px;color:#0f172a;font-weight:700;line-height:1.3;min-height:14px;word-break:break-word">' + (val ? esc(val) : '&nbsp;') + '</div></td>';
+        return '<td style="border:1px solid #cbd5e1;padding:3px 5px;background:#f8fafc;' + (wide ? 'min-width:170px;' : '') + '"><div style="font-size:7px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#475569;margin-bottom:1px">' + esc(lbl) + '</div><div style="font-size:9.5px;color:#0f172a;font-weight:700;line-height:1.2;min-height:12px;word-break:break-word">' + (val ? esc(val) : '&nbsp;') + '</div></td>';
       };
       var setores = ['Riscador','Impressora','Corte / Vinco','Coladeira','Acabamento','Quant. Final','Fardos'];
       var prodRows = '';
       for (var i = 0; i < setores.length; i++) {
-        prodRows += '<tr style="height:20px"><td style="border:1px solid #cbd5e1;padding:3px 6px;background:#f1f5f9;font-size:10px;font-weight:800;color:#0f172a">' + esc(setores[i]) + '</td>' +
+        prodRows += '<tr style="height:18px"><td style="border:1px solid #cbd5e1;padding:2px 5px;background:#f1f5f9;font-size:9.5px;font-weight:800;color:#0f172a">' + esc(setores[i]) + '</td>' +
           '<td style="border:1px solid #cbd5e1">&nbsp;</td>' +
           '<td style="border:1px solid #cbd5e1">&nbsp;</td>' +
           '<td style="border:1px solid #cbd5e1">&nbsp;</td></tr>';
       }
 
-      var pageW = 277, pageH = 190;
+      var pageW = 287, pageH = 200;
       var cssExtra =
-        '@page { size: A4 landscape; margin: 8mm; }' +
+        '@page { size: A4 landscape; margin: 5mm; }' +
         'body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;color:#0f172a;background:#fff}' +
-        '.ofv-page{width:100%;max-width:1000px;margin:0 auto;padding:10px 12px;box-sizing:border-box}' +
-        '.ofv-header{display:grid;grid-template-columns:60px 1fr 1fr 1fr;gap:8px;align-items:stretch;padding:6px 8px;border:1.5px solid #0f172a;border-radius:6px;background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%)}' +
-        '.ofv-logo{display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#1d4ed8;border:1.5px solid #1d4ed8;border-radius:6px;background:#fff;letter-spacing:-.02em;line-height:1.1;text-align:center;padding:4px}' +
+        '.ofv-page{width:100%;max-width:1000px;margin:0 auto;padding:6px 8px;box-sizing:border-box}' +
+        '.ofv-header{display:grid;grid-template-columns:54px 1fr 1fr 1fr;gap:6px;align-items:stretch;padding:4px 6px;border:1.5px solid #0f172a;border-radius:6px;background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%)}' +
+        '.ofv-logo{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#1d4ed8;border:1.5px solid #1d4ed8;border-radius:6px;background:#fff;letter-spacing:-.02em;line-height:1.1;text-align:center;padding:3px}' +
         '.ofv-header table{width:100%;border-collapse:collapse;font-size:10px}' +
-        '.ofv-mid{display:grid;grid-template-columns:1.1fr 1fr;gap:10px;margin-top:8px}' +
-        '.ofv-ip{border:1.2px solid #475569;border-radius:5px;padding:6px 8px;background:#f8fafc}' +
-        '.ofv-ip h4{margin:0 0 4px;font-size:10.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#334155;border-bottom:1px dashed #94a3b8;padding-bottom:3px}' +
-        '.ofv-prod{border:1.2px solid #334155;border-radius:5px;padding:6px;background:#fff;margin-top:8px;min-height:280px}' +
-        '.ofv-prod h4{margin:0 0 4px;font-size:10.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#0f172a;background:#e2e8f0;border-radius:4px;padding:4px 6px}' +
-        '.ofv-bottom{display:grid;grid-template-columns:1fr 1.2fr;gap:10px;margin-top:8px}' +
-        '.ofv-arte{border:1.2px solid #8b5cf6;border-radius:5px;padding:6px;min-height:80px;background:#faf5ff}' +
-        '.ofv-arte h4,.ofv-obs h4{margin:0 0 4px;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#5b21b6;border-bottom:1px dashed #c4b5fd;padding-bottom:2px}' +
-        '.ofv-obs{border:1.2px solid #f59e0b;border-radius:5px;padding:6px;background:#fffbeb;min-height:80px}' +
+        '.ofv-mid{display:grid;grid-template-columns:1.1fr 1fr;gap:7px;margin-top:5px}' +
+        '.ofv-ip{border:1.2px solid #475569;border-radius:5px;padding:4px 5px;background:#f8fafc}' +
+        '.ofv-ip h4{margin:0 0 3px;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#334155;border-bottom:1px dashed #94a3b8;padding-bottom:2px}' +
+        '.ofv-prod{border:1.2px solid #334155;border-radius:5px;padding:4px;background:#fff;margin-top:5px;min-height:240px}' +
+        '.ofv-prod h4{margin:0 0 3px;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#0f172a;background:#e2e8f0;border-radius:4px;padding:3px 5px}' +
+        '.ofv-bottom{display:grid;grid-template-columns:1fr 1.2fr;gap:7px;margin-top:5px}' +
+        '.ofv-arte{border:1.2px solid #8b5cf6;border-radius:5px;padding:4px;min-height:70px;background:#faf5ff}' +
+        '.ofv-arte h4,.ofv-obs h4{margin:0 0 3px;font-size:9.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#5b21b6;border-bottom:1px dashed #c4b5fd;padding-bottom:1.5px}' +
+        '.ofv-obs{border:1.2px solid #f59e0b;border-radius:5px;padding:4px;background:#fffbeb;min-height:70px}' +
         '.ofv-obs h4{color:#92400e;border-color:#fcd34d}' +
-        '.ofv-foot{display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px;font-size:8.5px;color:#475569;border-top:1px dashed #94a3b8;padding-top:4px}' +
-        '.ofv-svg{width:100%;height:auto;display:block;max-height:330px}';
+        '.ofv-foot{display:flex;justify-content:space-between;align-items:flex-end;margin-top:4px;font-size:8px;color:#475569;border-top:1px dashed #94a3b8;padding-top:3px}' +
+        '.ofv-svg{width:100%;height:auto;display:block;max-height:240px}';
 
       var endFull = endereco;
       if (endFull && cidade) endFull += ' · ' + cidade;
@@ -44502,17 +44502,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           '<div class="ofv-bottom">' +
             (arteImg ? (
               '<div class="ofv-arte"><h4>🖼️ Arte / Clichê</h4>' +
-              '<img src="' + esc(arteImg) + '" style="width:100%;max-height:110px;object-fit:contain;border-radius:3px;background:#fff;border:1px solid #e9d5ff" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'block\'"/>' +
-              '<p style="display:none;margin:0;padding:6px;font-size:10px;color:#7c3aed">(Imagem não carregada)</p></div>'
+              '<img src="' + esc(arteImg) + '" style="width:100%;max-height:85px;object-fit:contain;border-radius:3px;background:#fff;border:1px solid #e9d5ff" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'block\'"/>' +
+              '<p style="display:none;margin:0;padding:4px;font-size:9.5px;color:#7c3aed">(Imagem não carregada)</p></div>'
             ) : (cliche ? (
-              '<div class="ofv-arte"><h4>🖼️ Arte / Clichê</h4><div style="padding:4px 6px;font-size:10px;color:#6d28d9;background:#fff;border-radius:3px;border:1px solid #ddd6fe">' + esc(cliche) + '</div></div>'
+              '<div class="ofv-arte"><h4>🖼️ Arte / Clichê</h4><div style="padding:3px 4px;font-size:9.5px;color:#6d28d9;background:#fff;border-radius:3px;border:1px solid #ddd6fe">' + esc(cliche) + '</div></div>'
             ) : (
-              '<div class="ofv-arte"><h4>🖼️ Arte / Clichê</h4><p style="margin:0;font-size:9.5px;color:#8b5cf6">(sem arte vinculada)</p></div>'
+              '<div class="ofv-arte"><h4>🖼️ Arte / Clichê</h4><p style="margin:0;font-size:9px;color:#8b5cf6">(sem arte vinculada)</p></div>'
             ))) +
             (obs ? (
-              '<div class="ofv-obs"><h4>📝 Observações</h4><div style="font-size:10px;color:#78350f;line-height:1.45;white-space:pre-wrap">' + esc(obs) + '</div></div>'
+              '<div class="ofv-obs"><h4>📝 Observações</h4><div style="font-size:9.5px;color:#78350f;line-height:1.35;white-space:pre-wrap">' + esc(obs) + '</div></div>'
             ) : (
-              '<div class="ofv-obs"><h4>📝 Observações</h4><p style="margin:0;font-size:9.5px;color:#b45309">(sem observações)</p></div>'
+              '<div class="ofv-obs"><h4>📝 Observações</h4><p style="margin:0;font-size:9px;color:#b45309">(sem observações)</p></div>'
             )) +
           '</div>' +
           '<div class="ofv-foot">' +
