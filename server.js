@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260827080001';
-const SW_RUNTIME_VERSION = '20260827080001';
+const PATCH_RUNTIME_VERSION = '20260827100001';
+const SW_RUNTIME_VERSION = '20260827100001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -32781,6 +32781,289 @@ app.delete('/api/agenda/:id', authMiddleware, async (req, res) => {
     if (error) throw error;
     res.json({ ok:true });
   } catch(e) { res.status(500).json({ ok:false, error:e.message }); }
+});
+
+async function _genericInsertCompat(table, payload) {
+  let cur = { ...(payload || {}) };
+  let lastErr = null;
+  for (let tentativa = 0; tentativa < 10; tentativa++) {
+    const { data, error } = await supabase.from(table).insert([cur]).select();
+    if (!error) return { data, error: null };
+    lastErr = error;
+    const msg = String(error.message || error);
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+    if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+      delete cur[col];
+      continue;
+    }
+    return { data: null, error };
+  }
+  return { data: null, error: lastErr };
+}
+async function _genericUpdateCompat(table, id, payload) {
+  let cur = { ...(payload || {}) };
+  let lastErr = null;
+  for (let tentativa = 0; tentativa < 10; tentativa++) {
+    const { data, error } = await supabase.from(table).update(cur).eq('id', id).select();
+    if (!error) return { data, error: null };
+    lastErr = error;
+    const msg = String(error.message || error);
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+    if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+      delete cur[col];
+      continue;
+    }
+    return { data: null, error };
+  }
+  return { data: null, error: lastErr };
+}
+
+// ============================================================
+// ESTADOS
+// ============================================================
+function estadosPayload(p) {
+  const b = p || {};
+  const out = {};
+  if (b.uf !== undefined) {
+    const ufStr = String(b.uf || '').trim().toUpperCase().slice(0, 4);
+    if (ufStr) out.uf = ufStr;
+  }
+  if (b.nome !== undefined) {
+    const n = String(b.nome || '').trim();
+    if (n) out.nome = n;
+  }
+  if (b.icms_pct !== undefined || b.icmsPct !== undefined || b.icms !== undefined) {
+    const vRaw = b.icms_pct ?? b.icmsPct ?? b.icms;
+    const v = Number(vRaw);
+    if (Number.isFinite(v)) out.icms_pct = v;
+    else if (vRaw == null) out.icms_pct = null;
+  }
+  if (b.criado_em !== undefined) out.criado_em = b.criado_em;
+  Object.keys(out).forEach(k => (out[k] === undefined || out[k] === '') && delete out[k]);
+  return out;
+}
+app.get('/api/estados', authMiddleware, async (req, res) => {
+  try {
+    let q = supabase.from('estados').select('*').order('uf', { ascending: true }).order('nome', { ascending: true });
+    if (req.query?.busca) {
+      const b = String(req.query.busca || '').trim().toLowerCase();
+      q = supabase.from('estados').select('*').or(`uf.ilike.%${b}%,nome.ilike.%${b}%`).order('nome');
+    }
+    const { data, error } = await q;
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) {
+    console.error('[ESTADOS] GET:', String(e?.message || e));
+    return ok(res, []);
+  }
+});
+app.get('/api/estados/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return bad(res, 'id obrigatório');
+    const { data, error } = await supabase.from('estados').select('*').eq('id', id).maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ ok: false, error: 'Estado não encontrado' });
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+app.post('/api/estados', authMiddleware, async (req, res) => {
+  try {
+    const payload = estadosPayload(req.body || {});
+    if (!payload.uf || !payload.nome) return res.status(400).json({ ok: false, error: 'UF e nome obrigatórios' });
+    const { data, error } = await _genericInsertCompat('estados', payload);
+    if (error) throw error;
+    cacheClearPrefix('estados_');
+    return ok(res, (data && data[0]) || null);
+  } catch (e) { return err(res, e); }
+});
+app.put('/api/estados/:id', authMiddleware, async (req, res) => {
+  try {
+    const payload = estadosPayload({ ...(req.body || {}) });
+    delete payload.id;
+    if (!Object.keys(payload).length) return res.status(400).json({ ok: false, error: 'Nenhum campo válido' });
+    const { data, error } = await _genericUpdateCompat('estados', req.params.id, payload);
+    if (error) throw error;
+    cacheClearPrefix('estados_');
+    return ok(res, (data && data[0]) || null);
+  } catch (e) { return err(res, e); }
+});
+app.delete('/api/estados/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('estados').delete().eq('id', req.params.id);
+    if (error) throw error;
+    cacheClearPrefix('estados_');
+    return res.json({ ok: true });
+  } catch (e) { return err(res, e); }
+});
+
+// ============================================================
+// CIDADES
+// ============================================================
+function cidadesPayload(p) {
+  const b = p || {};
+  const out = {};
+  if (b.nome !== undefined) {
+    const n = String(b.nome || '').trim();
+    if (n) out.nome = n;
+  }
+  if (b.uf !== undefined) {
+    const ufStr = String(b.uf || '').trim().toUpperCase().slice(0, 4);
+    if (ufStr) out.uf = ufStr;
+  } else if (b.estado !== undefined) {
+    const ufStr = String(b.estado || '').trim().toUpperCase().slice(0, 4);
+    if (ufStr) out.uf = ufStr;
+  }
+  if (b.criado_em !== undefined) out.criado_em = b.criado_em;
+  Object.keys(out).forEach(k => (out[k] === undefined || out[k] === '') && delete out[k]);
+  return out;
+}
+app.get('/api/cidades', authMiddleware, async (req, res) => {
+  try {
+    let q = supabase.from('cidades').select('*').order('uf', { ascending: true }).order('nome', { ascending: true });
+    const busca = String(req.query?.busca || '').trim();
+    if (busca) {
+      const b = busca.toLowerCase();
+      q = supabase.from('cidades').select('*').or(`nome.ilike.%${b}%,uf.ilike.%${b}%`).order('nome').limit(200);
+    }
+    const ufFiltro = String(req.query?.uf || '').trim();
+    if (ufFiltro) {
+      if (busca) {
+        const b = busca.toLowerCase();
+        q = supabase.from('cidades').select('*').eq('uf', ufFiltro.toUpperCase()).or(`nome.ilike.%${b}%`).order('nome').limit(200);
+      } else {
+        q = supabase.from('cidades').select('*').eq('uf', ufFiltro.toUpperCase()).order('nome');
+      }
+    }
+    if (req.query?.limit) {
+      const lm = parseInt(req.query.limit, 10);
+      if (Number.isFinite(lm) && lm > 0 && lm < 5000) q = q.limit(lm);
+    }
+    const { data, error } = await q;
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) {
+    console.error('[CIDADES] GET:', String(e?.message || e));
+    return ok(res, []);
+  }
+});
+app.get('/api/cidades/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return bad(res, 'id obrigatório');
+    const { data, error } = await supabase.from('cidades').select('*').eq('id', id).maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ ok: false, error: 'Cidade não encontrada' });
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+app.post('/api/cidades', authMiddleware, async (req, res) => {
+  try {
+    const payload = cidadesPayload(req.body || {});
+    if (!payload.nome) return res.status(400).json({ ok: false, error: 'Nome da cidade obrigatório' });
+    const { data, error } = await _genericInsertCompat('cidades', payload);
+    if (error) throw error;
+    cacheClearPrefix('cidades_');
+    return ok(res, (data && data[0]) || null);
+  } catch (e) { return err(res, e); }
+});
+app.put('/api/cidades/:id', authMiddleware, async (req, res) => {
+  try {
+    const payload = cidadesPayload({ ...(req.body || {}) });
+    delete payload.id;
+    if (!Object.keys(payload).length) return res.status(400).json({ ok: false, error: 'Nenhum campo válido' });
+    const { data, error } = await _genericUpdateCompat('cidades', req.params.id, payload);
+    if (error) throw error;
+    cacheClearPrefix('cidades_');
+    return ok(res, (data && data[0]) || null);
+  } catch (e) { return err(res, e); }
+});
+app.delete('/api/cidades/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('cidades').delete().eq('id', req.params.id);
+    if (error) throw error;
+    cacheClearPrefix('cidades_');
+    return res.json({ ok: true });
+  } catch (e) { return err(res, e); }
+});
+
+// ============================================================
+// RAMOS ATIVIDADE
+// ============================================================
+function ramosAtividadePayload(p) {
+  const b = p || {};
+  const out = {};
+  if (b.nome !== undefined) {
+    const n = String(b.nome || '').trim();
+    if (n) out.nome = n;
+  }
+  if (b.descricao !== undefined) out.descricao = String(b.descricao || '').trim() || null;
+  if (b.criado_em !== undefined) out.criado_em = b.criado_em;
+  Object.keys(out).forEach(k => (out[k] === undefined || out[k] === '') && delete out[k]);
+  return out;
+}
+app.get('/api/ramos_atividade', authMiddleware, async (req, res) => {
+  try {
+    let q = supabase.from('ramos_atividade').select('*').order('nome', { ascending: true });
+    const busca = String(req.query?.busca || '').trim();
+    if (busca) {
+      const b = busca.toLowerCase();
+      q = supabase.from('ramos_atividade').select('*').or(`nome.ilike.%${b}%,descricao.ilike.%${b}%`).order('nome').limit(200);
+    }
+    if (req.query?.limit) {
+      const lm = parseInt(req.query.limit, 10);
+      if (Number.isFinite(lm) && lm > 0 && lm < 5000) q = q.limit(lm);
+    }
+    const { data, error } = await q;
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) {
+    console.error('[RAMOS_ATIVIDADE] GET:', String(e?.message || e));
+    return ok(res, []);
+  }
+});
+app.get('/api/ramos_atividade/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return bad(res, 'id obrigatório');
+    const { data, error } = await supabase.from('ramos_atividade').select('*').eq('id', id).maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ ok: false, error: 'Ramo de atividade não encontrado' });
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+app.post('/api/ramos_atividade', authMiddleware, async (req, res) => {
+  try {
+    const payload = ramosAtividadePayload(req.body || {});
+    if (!payload.nome) return res.status(400).json({ ok: false, error: 'Nome do ramo obrigatório' });
+    const { data, error } = await _genericInsertCompat('ramos_atividade', payload);
+    if (error) throw error;
+    cacheClearPrefix('ramos_');
+    return ok(res, (data && data[0]) || null);
+  } catch (e) { return err(res, e); }
+});
+app.put('/api/ramos_atividade/:id', authMiddleware, async (req, res) => {
+  try {
+    const payload = ramosAtividadePayload({ ...(req.body || {}) });
+    delete payload.id;
+    if (!Object.keys(payload).length) return res.status(400).json({ ok: false, error: 'Nenhum campo válido' });
+    const { data, error } = await _genericUpdateCompat('ramos_atividade', req.params.id, payload);
+    if (error) throw error;
+    cacheClearPrefix('ramos_');
+    return ok(res, (data && data[0]) || null);
+  } catch (e) { return err(res, e); }
+});
+app.delete('/api/ramos_atividade/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('ramos_atividade').delete().eq('id', req.params.id);
+    if (error) throw error;
+    cacheClearPrefix('ramos_');
+    return res.json({ ok: true });
+  } catch (e) { return err(res, e); }
 });
 
 app.use((e, req, res, next) => {
