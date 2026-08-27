@@ -31866,6 +31866,55 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   patchToggleMobMenu();
   patchRenderHub();
   try {
+    if (!document.getElementById('patch-kb-leak-shield-style')) {
+      var _leakSt = document.createElement('style');
+      _leakSt.id = 'patch-kb-leak-shield-style';
+      _leakSt.textContent = '[data-patch-kb-leak]{display:none!important;visibility:hidden!important;opacity:0!important;position:absolute!important;left:-99999px!important;top:-99999px!important;width:0!important;height:0!important;overflow:hidden!important;pointer-events:none!important}';
+      document.head.appendChild(_leakSt);
+    }
+  } catch (_) {}
+  try {
+    function _kbLeakSanitizeRoot(root) {
+      try {
+        if (!root || !root.nodeType) return;
+        if (root.nodeType === 3 || root.nodeType === 4) {
+          var txt = String(root.nodeValue || '').trim();
+          if (txt && txt.length > 30 && (txt.indexOf('.kb-board-ofmaq{') === 0 || (txt.indexOf('.kb-board-ofmaq') > -1 && txt.indexOf('{') > -1 && txt.indexOf(';') > -1 && txt.indexOf('@keyframes kbPulse') > -1))) {
+            var pn = root.parentNode;
+            if (pn) {
+              try {
+                if (pn.dataset) pn.dataset.patchKbLeak = '1';
+                pn.setAttribute && pn.setAttribute('data-patch-kb-leak', '1');
+                pn.style && (pn.style.display = 'none');
+                pn.removeChild(root);
+              } catch (_) {}
+            }
+          }
+          return;
+        }
+        if (root.nodeType !== 1 && root.nodeType !== 9 && root.nodeType !== 11) return;
+        var tag = String((root.tagName || root.nodeName || '')).toUpperCase();
+        if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT' || tag === 'TEMPLATE') return;
+        var ch = root.childNodes;
+        if (ch && ch.length) {
+          for (var i = ch.length - 1; i >= 0; i--) {
+            try { _kbLeakSanitizeRoot(ch[i]); } catch (_) {}
+          }
+        }
+      } catch (_) {}
+    }
+    window._kbLeakSanitizeRoot = _kbLeakSanitizeRoot;
+    function _kbLeakSanitizeNow() {
+      try { _kbLeakSanitizeRoot(document.body || document.documentElement); } catch (_) {}
+    }
+    _kbLeakSanitizeNow();
+    [0, 50, 200, 800, 2000, 5000].forEach(function(d) { setTimeout(_kbLeakSanitizeNow, d); });
+    try {
+      var _leakObs = new MutationObserver(function() { _kbLeakSanitizeNow(); });
+      _leakObs.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+    } catch (_) {}
+  } catch (_) {}
+  try {
     if (typeof window._isMobileLike !== 'function') {
       window._isMobileLike = function() {
         try { if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) return true; } catch (_) {}
@@ -31879,6 +31928,47 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         return false;
       };
     }
+  } catch (_) {}
+  try {
+    document.addEventListener('click', function(e) {
+      try {
+        var t = e.target;
+        if (!t || t.nodeType !== 1) return;
+        if (t.tagName !== 'BUTTON') {
+          try { t = t.closest('button'); } catch (_) { t = null; }
+        }
+        if (!t || t.tagName !== 'BUTTON') return;
+        var txt = String(t.textContent || '').trim();
+        if (!txt.includes('Excel') && !txt.includes('📥')) return;
+        var ctxOk = false;
+        try {
+          var p = t.closest('#dash-listagem') || t.closest('[data-page="dashboard"]') || t.closest('#page-dashboard');
+          if (p) ctxOk = true;
+        } catch (_) { ctxOk = false; }
+        try {
+          var tb = document.getElementById('dash-tabela-ofs');
+          if (tb && tb.contains(t)) ctxOk = true;
+        } catch (_) {}
+        if (!ctxOk) return;
+        e.preventDefault();
+        try { e.stopImmediatePropagation(); } catch (_) {}
+        try { e.stopPropagation(); } catch (_) {}
+        var tbEl = document.getElementById('dash-tabela-ofs');
+        var termo = '';
+        try {
+          if (tbEl && tbEl._dashMeta && tbEl._dashMeta.termo) termo = String(tbEl._dashMeta.termo || '');
+          else {
+            var inp = document.getElementById('dash-busca-input');
+            if (inp) termo = String(inp.value || '');
+          }
+        } catch (_) { termo = ''; }
+        if (typeof window.__dashExportarExcelTodasOfs === 'function') {
+          window.__dashExportarExcelTodasOfs(termo);
+        } else {
+          try { if (typeof toast === 'function') toast('Função de exportação não carregada. Recarregue a página.', 'var(--red)'); } catch (_) {}
+        }
+      } catch (_) {}
+    }, true);
   } catch (_) {}
   try{
     function _bindSwipeMaquinas(){
@@ -44142,6 +44232,120 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
   }
 
+  async function __dashExportarExcelTodasOfs(termoAtual) {
+    try {
+      var token = __dashToken();
+      var acum = [];
+      var off = 0;
+      var lim = 500;
+      var totalEsperado = 0;
+      var tentativas = 0;
+      var MAX_TENTATIVAS = 200;
+      __dashMsgOk('Buscando todas as OFs para exportação... (página 1)');
+      while (tentativas < MAX_TENTATIVAS) {
+        tentativas++;
+        var url = '/api/ofs?limit=' + lim + '&offset=' + off + '&busca=' + encodeURIComponent(termoAtual || '');
+        var resp = await fetch(url, { headers: token ? { 'Authorization': 'Bearer ' + token } : {} });
+        var json = null;
+        try { json = await resp.json(); } catch (_) { json = null; }
+        if (!json || !Array.isArray(json.data)) {
+          __dashMsgErr('Erro ao buscar OFs na página ' + (Math.floor(off / lim) + 1));
+          return;
+        }
+        acum = acum.concat(json.data || []);
+        totalEsperado = Number(json.total || acum.length) || acum.length;
+        if (!json.hasMore) break;
+        off += lim;
+        if (tentativas % 5 === 0) {
+          __dashMsgOk('Carregando... ' + acum.length + '/' + totalEsperado + ' OFs');
+        }
+      }
+      if (!acum.length) {
+        __dashMsgErr('Nenhuma OF encontrada para exportar.');
+        return;
+      }
+      var headersCSV = [
+        'Nº OF','Imagem','Dt. Pedido','Dt. Criação','Dt. Entrega','Cliente','Vendedor','Produto',
+        'Qtd.','Tamanhos','Cores','Faca','Urgente','Sem Papelão','Papel / Previsão',
+        'Tempo','Gramatura','Caixas Perdidas','Toneladas','Status','Vl. Unitário','Valor',
+        'Máquina','Empresa'
+      ];
+      function fmtCsv(s) {
+        s = String(s == null ? '' : s);
+        if (s.indexOf('"') >= 0 || s.indexOf(',') >= 0 || s.indexOf('\n') >= 0 || s.indexOf('\r') >= 0) {
+          s = '"' + s.replace(/"/g, '""') + '"';
+        }
+        return s;
+      }
+      function fmtNum(n) { n = Number(n || 0) || 0; return String(Math.round(n * 100) / 100).replace('.', ','); }
+      function fmtBrlCsv(v) { v = Number(v || 0) || 0; return fmtNum(v); }
+      var linhas = [headersCSV.map(fmtCsv).join(',')];
+      for (var i = 0; i < acum.length; i++) {
+        var o = acum[i];
+        var ofNum = String(o?.numero || o?.of || '—');
+        var imgUrl = String(o?.imagem_url || o?.imagem || o?.image_url || '');
+        var dtPedido = __dashFmtDtEnt(o?.data_pedido || o?.pedido || o?.dia_pedido || '');
+        var dtCriacao = __dashFmtDtEnt(o?.dia || o?.data_criacao || o?.created_at || '');
+        var dtEnt = __dashFmtDtEnt(o?.data_entrega || o?.ent || o?.dia || '');
+        var cliente = String(o?.cliente || o?.clinome || o?.cliente_nome || '—');
+        var vendedor = String(o?.vendedor || o?.vendnome || o?.vendedor_nome || '—');
+        var produto = String(o?.produto || o?.descricao || '—');
+        var qtd = Number(o?.quantidade || o?.qtd || 0) || 0;
+        var tamanho = String(o?.tamanhos || o?.tamanho || o?.medidas || '—');
+        var cores = String(o?.cores || o?.cor || '—');
+        if (typeof cores === 'object' && cores !== null) { try { cores = JSON.stringify(cores); } catch (_) { cores = String(cores); } }
+        var faca = String(o?.faca || o?.modelo || '—');
+        var urgente = (o?.urgente || o?.urgencia || String(o?.status || '').toLowerCase().indexOf('urg') >= 0) ? 'SIM' : '—';
+        var semPapel = (o?.sem_papelao || o?.sem_papel || String(o?.papel_status || '') === 'sem') ? 'SIM' : '—';
+        var papelPrev = [
+          o?.papel_nome ? String(o.papel_nome) : '',
+          o?.previsao_papel ? 'Prev: ' + __dashFmtDtEnt(o.previsao_papel) : ''
+        ].filter(Boolean).join(' | ') || '—';
+        var tempo = String(o?.tempo_estimado || o?.tempo || o?.tempo_total || '—');
+        var gramatura = String(o?.gramatura || o?.peso_gramatura || '—');
+        var perdas = [
+          o?.caixas_perdidas ? 'Perdidas: ' + String(o.caixas_perdidas) : '',
+          o?.responsavel_perda ? 'Resp: ' + String(o.responsavel_perda) : ''
+        ].filter(Boolean).join(' - ') || '—';
+        var toneladas = Number(o?.toneladas || o?.peso_toneladas || (Number(o?.peso_kg || 0) / 1000) || 0) || 0;
+        var status = String(o?.status || '—');
+        var vlUnit = Number(o?.valor_unitario || 0) || 0;
+        var valorTotal = Number(o?.valor_total || o?.total || o?.valor || 0) || 0;
+        var maquina = String(o?.maquina || o?.maq_nome || o?.maquina_nome || '—');
+        var empresa = __dashEmpresaNome(o?.emp_id || o?.empresa_id || o?.empresa || '');
+        var linha = [
+          ofNum, imgUrl, dtPedido, dtCriacao, dtEnt, cliente, vendedor, produto,
+          fmtNum(qtd), tamanho, cores, faca, urgente, semPapel, papelPrev,
+          tempo, gramatura, perdas, fmtNum(toneladas), status,
+          fmtBrlCsv(vlUnit), fmtBrlCsv(valorTotal), maquina, empresa
+        ].map(fmtCsv).join(',');
+        linhas.push(linha);
+      }
+      var csvBom = '\ufeff' + linhas.join('\r\n');
+      var blob = new Blob([csvBom], { type: 'text/csv;charset=utf-8' });
+      var urlBlob = URL.createObjectURL(blob);
+      var agora = new Date();
+      var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+      var nomeArq = 'italy_ofs_total_' +
+        agora.getFullYear() + pad(agora.getMonth() + 1) + pad(agora.getDate()) + '_' +
+        pad(agora.getHours()) + pad(agora.getMinutes()) +
+        (termoAtual ? '_busca' : '') + '.csv';
+      var a = document.createElement('a');
+      a.href = urlBlob;
+      a.download = nomeArq;
+      document.body.appendChild(a);
+      try { a.click(); } catch (_) {}
+      setTimeout(function() {
+        try { document.body.removeChild(a); } catch (_) {}
+        try { URL.revokeObjectURL(urlBlob); } catch (_) {}
+      }, 1000);
+      __dashMsgOk('Planilha exportada com sucesso! ' + acum.length + ' OF(s) → ' + nomeArq);
+    } catch (err) {
+      __dashMsgErr('Erro ao exportar Excel: ' + String(err && err.message || err || ''));
+    }
+  }
+  window.__dashExportarExcelTodasOfs = __dashExportarExcelTodasOfs;
+
   window.__OFVISUAL_MODELS = [
     { id: '8_tampas',   nome: '8 Tampas',          icone: '📦', desc: '4 painéis principais + abas sup/inf + cola' },
     { id: 'pizza_oct',  nome: 'Pizza Octavada',    icone: '🍕', desc: 'Desenho octogonal para caixas de pizza' },
@@ -45135,13 +45339,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var termo = meta && meta.termo || '';
     var pagAtual = Math.floor(offset / limit) + 1;
     var totalPags = totalOFs > 0 ? Math.max(1, Math.ceil(totalOFs / limit)) : (hasMore ? pagAtual + 1 : pagAtual);
-    var TOTAL_COLS = 22;
+    var TOTAL_COLS = 25;
 
     var theadHtml =
       '<thead>' +
         '<tr>' +
           '<th style="width:80px" class="center">Nº OF</th>' +
+          '<th style="width:100px" class="center">Imagem</th>' +
           '<th style="width:110px" class="center">Dt. Pedido</th>' +
+          '<th style="width:110px" class="center">Dt. Criação</th>' +
           '<th style="width:110px" class="center">Dt. Entrega</th>' +
           '<th style="min-width:180px">Cliente</th>' +
           '<th style="width:130px">Vendedor</th>' +
@@ -45158,6 +45364,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           '<th style="width:190px">Caixas Perdidas</th>' +
           '<th style="width:105px" class="num">Toneladas</th>' +
           '<th style="width:125px" class="center">Status</th>' +
+          '<th style="width:135px" class="num">Vl. Unitário</th>' +
           '<th style="width:125px" class="num">Valor</th>' +
           '<th style="width:155px" class="center">Máquina</th>' +
           '<th style="width:135px" class="center">Empresa</th>' +
@@ -45233,10 +45440,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         acoesHtml +=     '<button type="button" data-dash-acao="adiar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">⬇️</span>Mover para Baixo (Adiar)</button>';
         acoesHtml +=   '</div>';
         acoesHtml += '</div>';
+        var _imgUrl = String(of?.imagem_url || of?.imagem || of?.image_url || '').trim();
+        var _imgTd = '<td class="center" style="padding:6px 12px">' + (_imgUrl
+          ? '<img src="' + esc(_imgUrl) + '" alt="" style="display:inline-block;width:44px;height:44px;border-radius:6px;object-fit:cover;border:1px solid #334155;cursor:zoom-in" data-dash-img-of="' + esc(ofId) + '">'
+          : '<span class="kb-img-ph kb-of-img-ph" style="display:inline-flex;width:44px;height:44px;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:18px">?</span>') + '</td>';
+        var _dtCriacao = '<td class="center" style="color:#cbd5e1">' + esc(__dashFmtDtEnt(String(of?.dia || ''))) + '</td>';
+        var _vlu = Number(of?.valor_unitario || 0) || 0;
+        var _vlUnitTd = '<td class="num" style="font-weight:800;color:#e2e8f0;font-variant-numeric:tabular-nums">' + esc('R$ ' + __fmtBrlDashboard(_vlu).replace('R$', '').trim()) + '</td>';
         return (
           '<tr' + trAttrs + '>' +
             '<td class="center" style="font-weight:900;color:#f1f5f9;font-variant-numeric:tabular-nums;font-size:13px">' + ofNum + '</td>' +
+            _imgTd +
             '<td class="center" style="color:#cbd5e1">' + dtPedido + '</td>' +
+            _dtCriacao +
             '<td class="center" style="font-weight:700;color:#e2e8f0">' + dtEnt + '</td>' +
             '<td title="' + esc(clienteFull) + '" style="font-weight:600;color:#f1f5f9">' + cliente + '</td>' +
             '<td style="color:#cbd5e1">' + vendedor + '</td>' +
@@ -45253,6 +45469,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             '<td style="color:#fca5a5;font-size:11.5px;line-height:1.5;font-weight:600" title="' + esc(perdas) + '">' + perdas + '</td>' +
             '<td class="num" style="font-weight:800;color:#e2e8f0;font-variant-numeric:tabular-nums;font-family:ui-monospace,Consolas,monospace;font-size:11.5px">' + toneladas + '</td>' +
             '<td class="center">' + statusBadge + '</td>' +
+            _vlUnitTd +
             '<td class="num" style="font-weight:900;color:#e2e8f0;font-variant-numeric:tabular-nums">' + valorFmt + '</td>' +
             '<td class="center" style="color:#e2e8f0;font-weight:600">' + maq + '</td>' +
             '<td class="center" style="color:#cbd5e1">' + emp + '</td>' +
