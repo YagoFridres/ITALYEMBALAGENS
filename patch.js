@@ -50075,7 +50075,7 @@ function _ocultarGraficoComissoes() {
         var payload = data || {};
         var maquinasApi = await preloadMaquinas.catch(function() { return []; });
         var maquinas = (Array.isArray(maquinasApi) ? maquinasApi.slice() : []).filter(Boolean);
-        var MAQUINAS_PERMITIDAS_CONC = ['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','CORTE VINCO ROTATIVA'];
+        var MAQUINAS_PERMITIDAS_CONC = ['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','CORTE VINCO ROTATIVA','COLADEIRA','ACABAMENTO'];
         var MAQ_PERM_NORM = MAQUINAS_PERMITIDAS_CONC.map(function(s){return String(s||'').toUpperCase().trim();});
         if (maquinas.length) {
           maquinas = maquinas.filter(function(item) {
@@ -50400,7 +50400,7 @@ function _ocultarGraficoComissoes() {
       }
       async function addPerdaRow(data) {
         var payload = data || {};
-        var MAQUINAS_PERMITIDAS_PERDA = ['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','CORTE VINCO ROTATIVA'];
+        var MAQUINAS_PERMITIDAS_PERDA = ['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','CORTE VINCO ROTATIVA','COLADEIRA','ACABAMENTO'];
         var MAQ_PERM_NORM_PERDA = MAQUINAS_PERMITIDAS_PERDA.map(function(n) { return String(n || '').toUpperCase().trim(); });
         var maquinasApi = await preloadMaquinas.catch(function() { return []; });
         var maquinasApiRaw = (Array.isArray(maquinasApi) ? maquinasApi.slice() : []).filter(Boolean);
