@@ -43434,6 +43434,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function ensureHost() {
     var page = document.getElementById('page-dashboard');
     if (!page) return null;
+    try {
+      var db = document.getElementById('dash-body');
+      if (db) { db.style.display = 'none'; db.style.visibility = 'hidden'; db.setAttribute('aria-hidden', 'true'); }
+    } catch (_) {}
     var host = document.getElementById('patch-estoque-dashboard');
     if (!host) {
       host = document.createElement('div');
@@ -43444,6 +43448,139 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
     }
     return host;
+  }
+
+  function __dashGetQtd(of) {
+    try { if (typeof window._getQtdOf === 'function') { var r = window._getQtdOf(of); if (r != null && r !== '') return r; } } catch (_) {}
+    try {
+      var v = of ? (of.quantidade ?? of.qtd ?? of.qtd_pedida ?? of.qtdPedida ?? of.qtd_produzida) : null;
+      if (v != null && v !== '') { var n = Number(v); return Number.isFinite(n) ? n : null; }
+      var itens = of && of.itens;
+      if (typeof itens === 'string') { try { itens = JSON.parse(itens); } catch (_) { itens = null; } }
+      if (Array.isArray(itens) && itens[0]) {
+        var v2 = itens[0].quantidade ?? itens[0].qtd ?? itens[0].qtd_pedida ?? null;
+        var n2 = Number(v2); return Number.isFinite(n2) ? n2 : null;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  function __dashGetTamanho(of) {
+    try { if (typeof window._ofmaqTamanhoLabel === 'function') { var s = window._ofmaqTamanhoLabel(of); if (s && s !== 'sem medida definida') return s; } } catch (_) {}
+    try {
+      var la = Number(of && (of.dim_largura || of.caixa_largura || of.largura || of.larg)) || 0;
+      var co = Number(of && (of.dim_comprimento || of.caixa_comprimento || of.comprimento || of.compr)) || 0;
+      var al = Number(of && (of.dim_altura || of.caixa_altura || of.altura)) || 0;
+      if (la > 0 && co > 0 && al > 0) return '~' + la + '×' + co + '×' + al + 'mm';
+      var dim = String(of && (of.medidas || of.tamanho || of.dimensoes || of.dim || '') || '').trim();
+      if (dim) return dim;
+    } catch (_) {}
+    return '—';
+  }
+
+  function __dashGetCores(of) {
+    try { if (typeof window._ofmaqCoresLabel === 'function') { var s = window._ofmaqCoresLabel(of); if (s && s !== 'Sem Impressão') return s; } } catch (_) {}
+    try {
+      var p = window.parseColors; if (typeof p === 'function') { var arr = p(of); if (Array.isArray(arr) && arr.length) return arr.filter(Boolean).join(' + '); }
+    } catch (_) {}
+    try {
+      var raw = String(of && (of.cores_impressao || of.cor_impressao || of.cores_of || of.especificacao_cores || of.impressao || of.tinta || of.cores || of.cor || of.especificacao || '') || '').trim();
+      return raw || 'Sem Impressão';
+    } catch (_) { return 'Sem Impressão'; }
+  }
+
+  function __dashGetFaca(of) {
+    try {
+      var f = String(of && (of.faca || of.modelo_faca || of.faca_of || of.codigo_faca || of.modelo || of.cod_faca || '') || '').trim();
+      return f || '—';
+    } catch (_) { return '—'; }
+  }
+
+  function __dashGetVendedor(of) {
+    try {
+      var v = String(of && (of.vendedor || of.vendedor_nome || of.vend_nome || of.nome_vendedor || of.vendedorLabel || '') || '').trim();
+      if (v) return v;
+      var id = String(of && (of.vendedor_id || of.vendId || of.vend_id || '') || '').trim();
+      if (!id) return '—';
+      try {
+        if (Array.isArray(window.VENDEDORES) && window.VENDEDORES.length) {
+          var m = window.VENDEDORES.find(function(x) { return x && String(x.id || x.uuid || x.codigo || '').trim() === id; });
+          if (m && (m.nome || m.label)) return String(m.nome || m.label);
+        }
+      } catch (_) {}
+      return id.slice(0, 8);
+    } catch (_) { return '—'; }
+  }
+
+  function __dashIsUrgente(of) {
+    try {
+      var raw = of && (of.urgente != null ? of.urgente : of.urg);
+      if (raw === true || raw === 1 || raw === '1' || String(raw).toLowerCase() === 'true') return true;
+      if (typeof window._ofmaqUrgenciaTipo === 'function') return window._ofmaqUrgenciaTipo(of) !== 'normal';
+    } catch (_) {}
+    return false;
+  }
+
+  function __dashIsSemPapelao(of) {
+    try {
+      var o = of || {};
+      return !!(o.sem_papel === true || o.sem_papelao === true || String(o.sem_papel || '').trim() === '1' || o.sem_papel === 1 || o.sem_papelao === 1 || String(o.sem_papelao || '').trim() === '1');
+    } catch (_) { return false; }
+  }
+
+  function __dashFmtPapelPrev(of) {
+    try {
+      var o = of || {};
+      var comprado = !!(o.papel_comprado === true || o.papel_comprado === 1 || String(o.papel_comprado || '').trim() === '1' || String(o.papel_comprado || '').toLowerCase() === 'true');
+      var prev = String(o.previsao_entrega_papel || o.previsaoEntregaPapel || o.previsao_papel || '').trim();
+      var papelTipo = String(o.papel || o.tipo_papel || o.gramatura || o.papel_tipo || '').trim();
+      var partes = [];
+      if (papelTipo) partes.push(papelTipo);
+      partes.push(comprado ? '✅ Comprado' : '⏳ Pedir');
+      if (prev) { var pd = __dashFmtDtEnt(prev); if (pd && pd !== '—') partes.push('Prev: ' + pd); }
+      return partes.length ? partes.join(' · ') : '—';
+    } catch (_) { return '—'; }
+  }
+
+  function __dashFmtMinutos(of) {
+    try {
+      var maqNome = String(of && (of.maquina || of.maq || of.maquina_atual || of.maquina_agendada) || '').trim();
+      if (typeof window._ofmaqTempoMinForMachine === 'function') {
+        var md = null; try { if (typeof window.getDadosMaquina === 'function') md = window.getDadosMaquina(maqNome); } catch (_) {}
+        var t = window._ofmaqTempoMinForMachine(of, md);
+        if (Number.isFinite(t) && t > 0) return (Math.round(t * 10) / 10) + ' min';
+      }
+    } catch (_) {}
+    try {
+      var qtd = __dashGetQtd(of);
+      if (qtd == null) return '—';
+      var vel = 0;
+      try {
+        if (typeof window.getDadosMaquina === 'function') {
+          var md2 = window.getDadosMaquina(String(of && (of.maquina || of.maq || '') || ''));
+          if (md2 && typeof md2 === 'object') {
+            var r1 = md2.velocidade ?? md2.vel ?? md2.velocidade_por_min ?? md2.cx_min ?? md2.caixas_min ?? null;
+            if (r1 != null && r1 !== '') { vel = Number(r1) || 0; }
+            if (!(vel > 0)) {
+              var rh = md2.velocidade_hora ?? md2.velocidade_por_hora ?? md2.cx_hora ?? md2.caixas_hora ?? md2.prod_hora ?? md2.capacidade_hora ?? null;
+              if (rh != null && rh !== '') vel = (Number(rh) || 0) / 60;
+            }
+          }
+        }
+      } catch (_) {}
+      if (vel > 0) { var m = qtd / vel; if (Number.isFinite(m) && m > 0) return Math.max(1, Math.round(m)) + ' min'; }
+      var min = Number(of && (of.tempo_minutos || of.minutos || of.tempo || of.duracao_min) || 0) || 0;
+      if (min > 0) return Math.round(min) + ' min';
+    } catch (_) {}
+    return '—';
+  }
+
+  function __dashFmtDataPedido(of) {
+    try {
+      var s = String(of && (of.data_pedido || of.dia || of.created_at || of.criado_em || of.data_criacao || '') || '').trim();
+      if (!s) return '—';
+      return __dashFmtDtEnt(s);
+    } catch (_) { return '—'; }
   }
 
   function num(v) {
@@ -43705,23 +43842,37 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var stCls = '';
     try {
       stCls =
-        'table{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;font-size:13px}' +
-        'thead th{background:rgba(15,23,42,.85);color:#cbd5e1;font-weight:700;text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap}' +
-        'thead th.center{text-align:center}' +
-        'tbody td{padding:10px 12px;border-bottom:1px solid rgba(51,65,85,.35);vertical-align:middle;color:var(--text);word-break:break-word}' +
-        'tbody td.center{text-align:center}' +
-        'tbody td.num{text-align:right;font-variant-numeric:tabular-nums}' +
-        'tbody tr:hover{background:rgba(59,130,246,.05)}' +
-        'tbody tr:last-child td{border-bottom:none}' +
-        '.dash-st-badge{display:inline-block;padding:3px 8px;border-radius:9999px;font-size:11px;font-weight:800;white-space:nowrap}' +
-        '.dash-acoes{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}' +
-        '.dash-acoes button{padding:6px 10px;font-size:11px;border-radius:6px;min-width:auto;border:1px solid var(--border);background:rgba(15,23,42,.6);color:var(--text);font-weight:700;cursor:pointer}' +
-        '.dash-acoes button:hover{filter:brightness(1.15)}' +
-        '.dash-acoes button.concluir{background:rgba(16,185,129,.12);color:#10b981;border-color:rgba(16,185,129,.4)}' +
-        '.dash-acoes button.cancelar{background:rgba(239,68,68,.1);color:#ef4444;border-color:rgba(239,68,68,.4)}' +
-        '.dash-acoes button.clonar{background:rgba(139,92,246,.1);color:#a78bfa;border-color:rgba(139,92,246,.4)}' +
-        '.dash-acoes button.alterar{background:rgba(59,130,246,.1);color:#60a5fa;border-color:rgba(59,130,246,.4)}' +
-        '.dash-acoes button:disabled{opacity:.5;cursor:not-allowed}';
+        '.dash-table-scroll-wrap{max-height:calc(100vh - 480px);min-height:420px;overflow:auto;border-radius:16px;border:1px solid rgba(51,65,85,.85);background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(15,23,42,.88));box-shadow:0 20px 36px rgba(2,6,23,.22)}' +
+        '.dash-table-scroll-wrap::-webkit-scrollbar{width:10px;height:10px}' +
+        '.dash-table-scroll-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.6)}' +
+        '.dash-table-scroll-wrap::-webkit-scrollbar-thumb{background:rgba(71,85,105,.8);border-radius:8px}' +
+        '.dash-table-scroll-wrap::-webkit-scrollbar-thumb:hover{background:rgba(100,116,139,.9)}' +
+        '#dash-tabela-ofs{width:100%;min-width:2400px;border-collapse:separate;border-spacing:0;font-size:12.5px}' +
+        '#dash-tabela-ofs thead th{position:sticky;top:0;z-index:10;padding:14px 12px;background:rgba(15,23,42,.99);border-bottom:2px solid rgba(71,85,105,.9);font-size:10.5px;font-weight:900;letter-spacing:.10em;text-transform:uppercase;color:#94a3b8;text-align:left;white-space:nowrap}' +
+        '#dash-tabela-ofs thead th.center{text-align:center}' +
+        '#dash-tabela-ofs thead th.num{text-align:right}' +
+        '#dash-tabela-ofs tbody td{padding:12px 12px;border-bottom:1px solid rgba(51,65,85,.45);line-height:1.4;color:#e2e8f0;vertical-align:middle}' +
+        '#dash-tabela-ofs tbody td.center{text-align:center}' +
+        '#dash-tabela-ofs tbody td.num{text-align:right;font-variant-numeric:tabular-nums}' +
+        '#dash-tabela-ofs tbody tr:nth-child(even) td{background:rgba(15,23,42,.28)}' +
+        '#dash-tabela-ofs tbody tr:hover td{background:rgba(59,130,246,.09) !important}' +
+        '#dash-tabela-ofs tbody tr:last-child td{border-bottom:none}' +
+        '#dash-tabela-ofs tbody tr[data-urgente="1"] td{background:rgba(239,68,68,.06)!important}' +
+        '#dash-tabela-ofs tbody tr[data-sem-papel="1"] td{background:rgba(250,204,21,.06)!important}' +
+        '#dash-tabela-ofs tbody tr[data-sem-papel="1"][data-urgente="1"] td{background:linear-gradient(180deg,rgba(239,68,68,.05),rgba(250,204,21,.05))!important}' +
+        '.dash-st-badge{display:inline-block;padding:4px 10px;border-radius:9999px;font-size:11px;font-weight:800;white-space:nowrap;border:1px solid transparent}' +
+        '.dash-flag-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:9999px;font-size:11px;font-weight:900;white-space:nowrap;border:1px solid}' +
+        '.dash-flag-urg{color:#fca5a5;background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.4)}' +
+        '.dash-flag-no{color:#64748b;background:rgba(100,116,139,.08);border-color:rgba(100,116,139,.3)}' +
+        '.dash-flag-sp{color:#fde68a;background:rgba(250,204,21,.1);border-color:rgba(250,204,21,.45)}' +
+        '.dash-acoes{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}' +
+        '.dash-acoes button{padding:6px 10px;font-size:11px;border-radius:8px;min-width:auto;border:1px solid rgba(71,85,105,.6);background:rgba(15,23,42,.75);color:#e2e8f0;font-weight:700;cursor:pointer;transition:all .12s ease}' +
+        '.dash-acoes button:hover{filter:brightness(1.18);transform:translateY(-1px);box-shadow:0 6px 14px rgba(0,0,0,.24)}' +
+        '.dash-acoes button.concluir{background:rgba(16,185,129,.12);color:#34d399;border-color:rgba(16,185,129,.45)}' +
+        '.dash-acoes button.cancelar{background:rgba(239,68,68,.1);color:#f87171;border-color:rgba(239,68,68,.4)}' +
+        '.dash-acoes button.clonar{background:rgba(139,92,246,.1);color:#c4b5fd;border-color:rgba(139,92,246,.45)}' +
+        '.dash-acoes button.alterar{background:rgba(59,130,246,.1);color:#93c5fd;border-color:rgba(59,130,246,.45)}' +
+        '.dash-acoes button:disabled{opacity:.45;cursor:not-allowed;transform:none!important;box-shadow:none!important}';
     } catch (_) { stCls = ''; }
     tabelaEl.setAttribute('border', '0');
     tabelaEl.setAttribute('cellspacing', '0');
@@ -43729,7 +43880,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     tabelaEl.style.cssText = '';
     try {
       var styleId = 'dash-tb-style';
-      if (!document.getElementById(styleId)) {
+      var stEl = document.getElementById(styleId);
+      if (stEl) { try { stEl.textContent = stCls; } catch (_) { try { stEl.innerText = stCls; } catch (__) {} } }
+      else {
         var st = document.createElement('style');
         st.id = styleId;
         try { st.textContent = stCls; } catch (_) { st.innerText = stCls; }
@@ -43744,56 +43897,96 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var termo = meta && meta.termo || '';
     var pagAtual = Math.floor(offset / limit) + 1;
     var totalPags = totalOFs > 0 ? Math.max(1, Math.ceil(totalOFs / limit)) : (hasMore ? pagAtual + 1 : pagAtual);
+    var TOTAL_COLS = 19;
 
     var theadHtml =
       '<thead>' +
         '<tr>' +
-          '<th style="width:90px" class="center">Nº OF</th>' +
-          '<th>Cliente</th>' +
-          '<th>Produto</th>' +
-          '<th style="width:130px" class="center">Data Entrega</th>' +
-          '<th style="width:130px" class="center">Status</th>' +
-          '<th style="width:120px" class="center">Valor</th>' +
-          '<th style="width:170px" class="center">Máquina</th>' +
-          '<th style="width:140px" class="center">Empresa</th>' +
-          '<th style="width:250px" class="center">Ações</th>' +
+          '<th style="width:80px" class="center">Nº OF</th>' +
+          '<th style="width:110px" class="center">Dt. Pedido</th>' +
+          '<th style="width:110px" class="center">Dt. Entrega</th>' +
+          '<th style="min-width:180px">Cliente</th>' +
+          '<th style="width:130px">Vendedor</th>' +
+          '<th style="min-width:220px">Produto</th>' +
+          '<th style="width:100px" class="num">Qtd.</th>' +
+          '<th style="width:160px">Tamanhos</th>' +
+          '<th style="width:160px">Cores</th>' +
+          '<th style="width:110px">Faca</th>' +
+          '<th style="width:90px" class="center">Urgente</th>' +
+          '<th style="width:110px" class="center">Sem Papelão</th>' +
+          '<th style="width:200px">Papel / Previsão</th>' +
+          '<th style="width:90px" class="center">Tempo</th>' +
+          '<th style="width:120px" class="center">Status</th>' +
+          '<th style="width:120px" class="num">Valor</th>' +
+          '<th style="width:150px" class="center">Máquina</th>' +
+          '<th style="width:130px" class="center">Empresa</th>' +
+          '<th style="width:290px" class="center">Ações</th>' +
         '</tr>' +
       '</thead>';
 
     var tbodyRows = '';
     if (!(Array.isArray(rows) && rows.length)) {
       tbodyRows =
-        '<tbody><tr><td colspan="9" style="padding:30px 20px;color:var(--text2);text-align:center;border-bottom:none">' +
+        '<tbody><tr><td colspan="' + TOTAL_COLS + '" style="padding:36px 20px;color:#94a3b8;text-align:center;border-bottom:none;font-weight:600">' +
           (termo ? '🔍 Nenhuma OF encontrada para este termo.' : '📭 Nenhuma OF carregada ainda.') +
         '</td></tr></tbody>';
     } else {
       var rws = rows.map(function(of, i) {
         var ofId = String(of?.id || '').replace(/"/g, '');
         var ofNum = esc(String(of?.numero || of?.of || of?.of_num || '—'));
-        var cliente = esc(String(of?.cliente || of?.clinome || of?.cliente_nome || '—').slice(0, 60));
-        var produto = esc(String(of?.produto || of?.descricao || '—').slice(0, 70));
+        var clienteFull = String(of?.cliente || of?.clinome || of?.cliente_nome || '—');
+        var cliente = esc(clienteFull.slice(0, 60));
+        var produtoFull = String(of?.produto || of?.descricao || '—');
+        var produto = esc(produtoFull.slice(0, 90));
+        var dtPedido = esc(__dashFmtDataPedido(of));
         var dtEnt = esc(__dashFmtDtEnt(of?.data_entrega || of?.ent || of?.dia || ''));
+        var vendedor = esc(__dashGetVendedor(of));
+        var qtdRaw = __dashGetQtd(of);
+        var qtdFmt = qtdRaw != null ? esc(__fmtIntDash(qtdRaw)) : '—';
+        var tamanho = esc(__dashGetTamanho(of));
+        var cores = esc(__dashGetCores(of));
+        var faca = esc(__dashGetFaca(of));
+        var urg = __dashIsUrgente(of);
+        var urgBadge = urg
+          ? ('<span class="dash-flag-badge dash-flag-urg">🔴 Sim</span>')
+          : ('<span class="dash-flag-badge dash-flag-no">⚪ Não</span>');
+        var semP = __dashIsSemPapelao(of);
+        var spBadge = semP
+          ? ('<span class="dash-flag-badge dash-flag-sp">🟡 Sim</span>')
+          : ('<span class="dash-flag-badge dash-flag-no">⚪ Não</span>');
+        var papelPrev = esc(__dashFmtPapelPrev(of));
+        var tempo = esc(__dashFmtMinutos(of));
         var statusTxt = String(of?.status || '—').trim() || '—';
         var stI = __dashStatusCls(statusTxt);
-        var statusBadge = '<span class="dash-st-badge" style="color:' + stI.cor + ';background:' + stI.bg + '">' + esc(statusTxt) + '</span>';
+        var statusBadge = '<span class="dash-st-badge" style="color:' + stI.cor + ';background:' + stI.bg + ';border-color:' + stI.cor + '33">' + esc(statusTxt) + '</span>';
         var valor = Number(of?.valor_total || of?.valor_venda || of?.total || 0) || 0;
         var valorFmt = esc(__fmtBrlDashboard(valor));
         var maq = esc(String(of?.maquina || of?.maq || of?.maquina_atual || of?.maquina_agendada || '—').slice(0, 30));
         var empRaw = of?.emp_id || of?.empresa_id || '';
         var emp = esc(__dashEmpresaNome(empRaw));
-        var dtOf = esc(String(dtEnt || '—'));
+        var trAttrs = ' data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"' + (urg ? ' data-urgente="1"' : '') + (semP ? ' data-sem-papel="1"' : '');
         return (
-          '<tr data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">' +
-            '<td class="center" style="font-weight:800;color:var(--text);font-variant-numeric:tabular-nums">' + ofNum + '</td>' +
-            '<td title="' + esc(String(of?.cliente || of?.clinome || of?.cliente_nome || '—')) + '">' + cliente + '</td>' +
-            '<td title="' + esc(String(of?.produto || of?.descricao || '—')) + '">' + produto + '</td>' +
-            '<td class="center">' + dtOf + '</td>' +
+          '<tr' + trAttrs + '>' +
+            '<td class="center" style="font-weight:900;color:#f1f5f9;font-variant-numeric:tabular-nums;font-size:13px">' + ofNum + '</td>' +
+            '<td class="center" style="color:#cbd5e1">' + dtPedido + '</td>' +
+            '<td class="center" style="font-weight:700;color:#e2e8f0">' + dtEnt + '</td>' +
+            '<td title="' + esc(clienteFull) + '" style="font-weight:600;color:#f1f5f9">' + cliente + '</td>' +
+            '<td style="color:#cbd5e1">' + vendedor + '</td>' +
+            '<td title="' + esc(produtoFull) + '" style="color:#e2e8f0">' + produto + '</td>' +
+            '<td class="num" style="font-weight:800;color:#f1f5f9;font-variant-numeric:tabular-nums">' + qtdFmt + '</td>' +
+            '<td style="color:#cbd5e1;font-family:ui-monospace,Consolas,monospace;font-size:11.5px">' + tamanho + '</td>' +
+            '<td style="color:#cbd5e1">' + cores + '</td>' +
+            '<td style="color:#cbd5e1;font-family:ui-monospace,Consolas,monospace;font-size:11.5px">' + faca + '</td>' +
+            '<td class="center">' + urgBadge + '</td>' +
+            '<td class="center">' + spBadge + '</td>' +
+            '<td style="color:#cbd5e1;font-size:11.5px">' + papelPrev + '</td>' +
+            '<td class="center" style="font-weight:700;color:#cbd5e1;font-variant-numeric:tabular-nums">' + tempo + '</td>' +
             '<td class="center">' + statusBadge + '</td>' +
-            '<td class="num">' + valorFmt + '</td>' +
-            '<td class="center">' + maq + '</td>' +
-            '<td class="center">' + emp + '</td>' +
+            '<td class="num" style="font-weight:900;color:#e2e8f0;font-variant-numeric:tabular-nums">' + valorFmt + '</td>' +
+            '<td class="center" style="color:#e2e8f0;font-weight:600">' + maq + '</td>' +
+            '<td class="center" style="color:#cbd5e1">' + emp + '</td>' +
             '<td class="center">' +
-              '<div class="dash-acoes" style="justify-content:center">' +
+              '<div class="dash-acoes">' +
                 '<button type="button" class="concluir" data-acao="concluir" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">✅ Concluir</button>' +
                 '<button type="button" class="cancelar" data-acao="cancelar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">❌ Cancelar</button>' +
                 '<button type="button" class="clonar" data-acao="clonar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">📋 Clonar</button>' +
@@ -43812,8 +44005,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       btn.addEventListener('click', function() {
         var acao = String(btn.getAttribute('data-acao') || '').trim();
         var ofId = String(btn.getAttribute('data-of-id') || '').trim();
-        var tr = null;
-        try { tr = btn.closest('tr'); } catch (_) {}
         var of = null;
         if (tabelaEl._dashRows && Array.isArray(tabelaEl._dashRows) && ofId) {
           try { of = tabelaEl._dashRows.find(function(o) { return String(o && o.id || '').trim() === ofId; }) || null; } catch (_) {}
@@ -43836,8 +44027,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var infoTotal = totalOFs ? (' de ' + __fmtIntDash(totalOFs)) : (hasMore ? '+' : '');
       var info = __fmtIntDash(inicio) + '-' + __fmtIntDash(fim) + infoTotal + '  ·  Pág. ' + __fmtIntDash(pagAtual) + '/' + __fmtIntDash(totalPags);
       pagEl.innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px">' +
-          '<div style="color:var(--text2);font-size:12px;font-weight:700">' + esc(info) + '</div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px">' +
+          '<div style="color:#94a3b8;font-size:12px;font-weight:800;letter-spacing:.03em">' + esc(info) + '</div>' +
           '<div style="display:flex;gap:8px">' + btnAnt + btnProx + '</div>' +
         '</div>';
       pagEl.querySelectorAll('button[data-dash-pag]').forEach(function(b) {
@@ -43883,7 +44074,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
     }
 
-    if (tb) tb.innerHTML = '<tbody><tr><td colspan="9" style="padding:26px;color:var(--text2);text-align:center">⏳ Carregando OFs...</td></tr></tbody>';
+    if (tb) tb.innerHTML = '<tbody><tr><td colspan="19" style="padding:26px;color:#94a3b8;text-align:center;font-weight:600">⏳ Carregando OFs...</td></tr></tbody>';
     var url = '/api/ofs?offset=' + encodeURIComponent(String(offset)) + '&limit=15' + (termoRaw ? ('&busca=' + encodeURIComponent(termoRaw)) : '');
     window._apiAuthFetch(url)
       .then(function(r) { return r.json(); })
@@ -43920,7 +44111,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       .catch(function(err) {
         try {
           if (tb) tb.innerHTML =
-            '<tbody><tr><td colspan="9" style="padding:20px;color:#fca5a5;background:rgba(239,68,68,.06)">' +
+            '<tbody><tr><td colspan="19" style="padding:20px;color:#fca5a5;background:rgba(239,68,68,.06)">' +
               '⚠️ Falha ao carregar listagem de OFs: ' + esc(String(err && err.message || err || 'erro desconhecido')) +
             '</td></tr></tbody>';
         } catch (_) {}
@@ -44005,20 +44196,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var wrap = document.createElement('div');
     wrap.style.cssText = 'margin-top:20px';
     wrap.innerHTML =
-      '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px">' +
-        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
-          '<span style="font-size:15px">🔎</span>' +
-          '<div style="font-weight:800;color:var(--text);font-size:14px;flex:1;min-width:160px">Buscar OF universal</div>' +
-          '<div style="font-size:11px;color:var(--text2)">Nº OF · Cliente · Produto</div>' +
+      '<div style="background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(15,23,42,.88));border:1px solid rgba(51,65,85,.85);border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 12px 28px rgba(2,6,23,.2)">' +
+        '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
+          '<span style="font-size:18px">🔎</span>' +
+          '<div style="font-weight:900;color:#f1f5f9;font-size:15px;flex:1;min-width:180px;letter-spacing:.02em">Buscar OF universal</div>' +
+          '<div style="font-size:11.5px;color:#94a3b8;font-weight:700;letter-spacing:.04em;padding:4px 10px;border:1px solid rgba(71,85,105,.5);border-radius:9999px;background:rgba(15,23,42,.6)">Nº OF · Cliente · Produto</div>' +
         '</div>' +
-        '<div style="margin-top:10px">' +
+        '<div style="margin-top:12px">' +
           '<input id="dash-busca-input" type="search" autocomplete="off" placeholder="Ex.: 1234 ou Padaria do Zé ou Caixa Pizza" ' +
-            'style="width:100%;padding:10px 14px;border-radius:8px;background:#020617;border:1px solid #334155;color:#e2e8f0;font-size:14px;outline:none;box-sizing:border-box" ' +
+            'style="width:100%;padding:11px 16px;border-radius:10px;background:#020617;border:1px solid rgba(71,85,105,.7);color:#e2e8f0;font-size:14px;outline:none;box-sizing:border-box;font-weight:600;transition:border-color .15s,box-shadow .15s" ' +
+            'onfocus="try{this.style.borderColor=\'rgba(139,92,246,.7)\';this.style.boxShadow=\'0 0 0 3px rgba(139,92,246,.15)\'}catch(_){}" ' +
+            'onblur="try{this.style.borderColor=\'\';this.style.boxShadow=\'\'}catch(_){}" ' +
             'aria-label="Buscar OF por número, cliente ou produto">' +
         '</div>' +
       '</div>' +
       '<div id="dash-listagem" style="margin-top:8px">' +
-        '<table id="dash-tabela-ofs"></table>' +
+        '<div class="dash-table-scroll-wrap">' +
+          '<table id="dash-tabela-ofs"></table>' +
+        '</div>' +
         '<div id="dash-paginacao"></div>' +
       '</div>';
     resumoDiv.appendChild(wrap);
