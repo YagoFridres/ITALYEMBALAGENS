@@ -43433,14 +43433,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function ensureHost() {
-    var dashBody = document.getElementById('dash-body');
-    if (!dashBody) return null;
+    var page = document.getElementById('page-dashboard');
+    if (!page) return null;
     var host = document.getElementById('patch-estoque-dashboard');
     if (!host) {
       host = document.createElement('div');
       host.id = 'patch-estoque-dashboard';
       host.style.marginBottom = '16px';
-      try { dashBody.prepend(host); } catch (_) { dashBody.appendChild(host); }
+      try { page.insertBefore(host, page.firstChild); } catch (_) {
+        try { page.prepend(host); } catch (__) { page.appendChild(host); }
+      }
     }
     return host;
   }
