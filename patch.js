@@ -31869,11 +31869,33 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!document.getElementById('patch-kb-leak-shield-style')) {
       var _leakSt = document.createElement('style');
       _leakSt.id = 'patch-kb-leak-shield-style';
-      _leakSt.textContent = '[data-patch-kb-leak]{display:none!important;visibility:hidden!important;opacity:0!important;position:absolute!important;left:-99999px!important;top:-99999px!important;width:0!important;height:0!important;overflow:hidden!important;pointer-events:none!important}';
+      _leakSt.textContent = '[data-patch-kb-leak]{display:none!important;visibility:hidden!important;opacity:0!important;position:absolute!important;left:-99999px!important;top:-99999px!important;width:0!important;height:0!important;overflow:hidden!important;pointer-events:none!important}body style,body>style{display:none!important;visibility:hidden!important;opacity:0!important}';
       document.head.appendChild(_leakSt);
     }
   } catch (_) {}
   try {
+    function _kbStyleInBodyFix() {
+      try {
+        if (!document.body || !document.head) return;
+        var bodyStyles = document.body.querySelectorAll ? document.body.querySelectorAll('style') : [];
+        for (var i = 0; i < bodyStyles.length; i++) {
+          var s = bodyStyles[i];
+          try {
+            s.style.setProperty('display', 'none', 'important');
+            s.style.setProperty('visibility', 'hidden', 'important');
+            s.style.setProperty('opacity', '0', 'important');
+            s.setAttribute && s.setAttribute('data-patch-kb-leak-style', '1');
+          } catch (_) {}
+          try {
+            var sid = String(s.id || '').trim();
+            if ((sid === 'kanban-ofmaq-css' || sid.indexOf('kanban') === 0) && s.parentNode && s.parentNode.tagName === 'BODY') {
+              try { document.head.appendChild(s); } catch (_) {}
+            }
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+    window._kbStyleInBodyFix = _kbStyleInBodyFix;
     function _kbLeakSanitizeRoot(root) {
       try {
         if (!root || !root.nodeType) return;
@@ -31894,7 +31916,15 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
         if (root.nodeType !== 1 && root.nodeType !== 9 && root.nodeType !== 11) return;
         var tag = String((root.tagName || root.nodeName || '')).toUpperCase();
-        if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT' || tag === 'TEMPLATE') return;
+        if (tag === 'SCRIPT' || tag === 'NOSCRIPT' || tag === 'TEMPLATE') return;
+        if (tag === 'STYLE') {
+          try {
+            root.style.setProperty('display', 'none', 'important');
+            root.style.setProperty('visibility', 'hidden', 'important');
+            root.style.setProperty('opacity', '0', 'important');
+          } catch (_) {}
+          return;
+        }
         var ch = root.childNodes;
         if (ch && ch.length) {
           for (var i = ch.length - 1; i >= 0; i--) {
@@ -31905,6 +31935,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
     window._kbLeakSanitizeRoot = _kbLeakSanitizeRoot;
     function _kbLeakSanitizeNow() {
+      try { _kbStyleInBodyFix(); } catch (_) {}
       try { _kbLeakSanitizeRoot(document.body || document.documentElement); } catch (_) {}
     }
     _kbLeakSanitizeNow();
