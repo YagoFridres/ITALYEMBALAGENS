@@ -6810,7 +6810,32 @@ window._compraPapelaoEnsureStyles = function() {
     + '@media (max-width:1100px){#page-compras .ccpx-block-top{grid-template-columns:1fr 1fr}#page-compras .ccpx-actions-line{justify-content:flex-start}.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
     + '@media (max-width:1480px){.ccpx-item-sheet-grid{grid-template-columns:repeat(18,minmax(0,1fr))}.ccpx-item-field.mob-span-6{grid-column:span 6}.ccpx-item-field.mob-span-5{grid-column:span 5}.ccpx-item-field.mob-span-4{grid-column:span 4}.ccpx-item-field.mob-span-3{grid-column:span 3}}'
     + '@media (max-width:980px){.ccpx-modal-head-grid,.ccpx-fs-head-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-item-sheet-row{grid-template-columns:1fr}.ccpx-item-sheet-actions{grid-auto-flow:column;justify-content:space-between;align-items:center}.ccpx-item-sheet-actions .hint{max-width:none;text-align:left}.ccpx-item-sheet-grid{grid-template-columns:repeat(8,minmax(0,1fr))}.ccpx-item-field.span-10,.ccpx-item-field.span-9,.ccpx-item-field.span-8,.ccpx-item-field.span-7,.ccpx-item-field.span-6,.ccpx-item-field.span-5{grid-column:span 8}.ccpx-item-field.span-4{grid-column:span 4}.ccpx-item-field.span-3{grid-column:span 4}.ccpx-item-field.span-2{grid-column:span 4}.ccpx-item-field.span-1{grid-column:span 2}.ccpx-fs-header{align-items:flex-start}.ccpx-fs-header-side{width:100%;justify-content:space-between}.ccpx-fs-badge{min-width:0;flex:1}.ccpx-fs-footer .ccpx-summary{flex:1 1 100%;min-width:100%}.ccpx-fs-footer-actions{flex:1 1 100%;min-width:100%;justify-content:stretch}}'
-    + '@media (max-width:760px){.ccpx-modal-grid,.ccpx-modal-head-grid,.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid,.ccpx-fs-head-grid{grid-template-columns:1fr}#page-compras .ccpx-search input{min-width:0}#page-compras .ccpx-block-top{grid-template-columns:1fr}#page-compras .ccpx-hero{padding:18px}#page-compras .ccpx-hero-title{font-size:22px}.ccpx-item-vincos{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-item-sheet-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.ccpx-item-field,.ccpx-item-field.span-10,.ccpx-item-field.span-9,.ccpx-item-field.span-8,.ccpx-item-field.span-7,.ccpx-item-field.span-6,.ccpx-item-field.span-5,.ccpx-item-field.span-4,.ccpx-item-field.span-3,.ccpx-item-field.span-2,.ccpx-item-field.span-1{grid-column:span 4}.ccpx-item-field.sep{display:none}.ccpx-fs-title{font-size:22px}.ccpx-fs-header{padding:14px 16px}.ccpx-fs-body{padding:14px}.ccpx-fs-footer{padding:10px 12px}.ccpx-fs-footer .ccpx-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-fs-footer-actions{width:100%;flex:1 1 100%}.ccpx-fs-footer-actions button{flex:1 1 calc(50% - 4px);height:40px}}';
+    + '@media (max-width:760px){.ccpx-modal-grid,.ccpx-modal-head-grid,.ccpx-modal-primary-grid,.ccpx-modal-secondary-grid,.ccpx-fs-head-grid{grid-template-columns:1fr}#page-compras .ccpx-search input{min-width:0}#page-compras .ccpx-block-top{grid-template-columns:1fr}#page-compras .ccpx-hero{padding:18px}#page-compras .ccpx-hero-title{font-size:22px}.ccpx-item-vincos{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-item-sheet-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.ccpx-item-field,.ccpx-item-field.span-10,.ccpx-item-field.span-9,.ccpx-item-field.span-8,.ccpx-item-field.span-7,.ccpx-item-field.span-6,.ccpx-item-field.span-5,.ccpx-item-field.span-4,.ccpx-item-field.span-3,.ccpx-item-field.span-2,.ccpx-item-field.span-1{grid-column:span 4}.ccpx-item-field.sep{display:none}.ccpx-fs-title{font-size:22px}.ccpx-fs-header{padding:14px 16px}.ccpx-fs-body{padding:14px}.ccpx-fs-footer{padding:10px 12px}.ccpx-fs-footer .ccpx-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.ccpx-fs-footer-actions{width:100%;flex:1 1 100%}.ccpx-fs-footer-actions button{flex:1 1 calc(50% - 4px);height:40px}}'
+    + '@media (max-width:768px){'
+    + '#page-compras .ccpx-top-grid{grid-template-columns:1fr}'
+    + '#page-compras .ccpx-search{flex-direction:column;align-items:stretch}'
+    + '#page-compras .ccpx-table-clean thead{display:none!important}'
+    + '#page-compras .ccpx-table-clean,#page-compras .ccpx-table-clean tbody,#page-compras .ccpx-table-clean tr,#page-compras .ccpx-table-clean td{display:block!important;width:100%!important;min-width:0!important;box-sizing:border-box!important;border:none!important;background:transparent!important;position:static!important}'
+    + '#page-compras .ccpx-table-clean{min-width:0!important;max-width:100%!important;border-spacing:0!important}'
+    + '#page-compras .ccpx-block-scroll{overflow:visible!important;border:none!important;background:transparent!important;box-shadow:none!important;max-height:none!important}'
+    + '#page-compras .ccpx-table-clean tbody tr[data-ccpx-compra]{border:1px solid rgba(148,163,184,.22);border-radius:16px;background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(15,23,42,.9))!important;padding:12px 14px!important;margin-bottom:14px!important;box-shadow:0 14px 28px rgba(2,6,23,.32)!important;position:relative!important}'
+    + '#page-compras .ccpx-table-clean tbody tr[data-ccpx-compra] td{display:grid!important;grid-template-columns:120px 1fr;gap:6px 14px;align-items:start;padding:8px 0!important;border-bottom:1px dashed rgba(148,163,184,.16)!important;background:transparent!important;text-align:left!important;vertical-align:top!important}'
+    + '#page-compras .ccpx-table-clean tbody tr[data-ccpx-compra] td:last-of-type{border-bottom:none!important;padding-bottom:0!important}'
+    + '#page-compras .ccpx-table-clean tbody tr[data-ccpx-compra] td::before{content:attr(data-ccpx-label);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.07em;color:#64748b;white-space:nowrap;align-self:center}'
+    + '#page-compras .ccpx-table-clean tbody tr[data-ccpx-compra] td:nth-of-type(1)::before{content:"Nº / Data"}'
+    + '#page-compras .ccpx-table-clean tbody tr[data-ccpx-compra] td:nth-of-type(2)::before{content:"Fornecedor / Status"}'
+    + '#page-compras .ccpx-table-clean tbody tr[data-ccpx-compra] td:nth-of-type(3)::before{content:"Pedido / Pasta"}'
+    + '#page-compras .ccpx-table-clean tbody tr[data-ccpx-compra] td:nth-of-type(4)::before{content:"Qtd Total"}'
+    + '#page-compras .ccpx-table-clean tbody tr[data-ccpx-compra] td:nth-of-type(5)::before{content:"Área (m²)"}'
+    + '#page-compras .ccpx-table-clean tbody tr[data-ccpx-compra] td:nth-of-type(6)::before{content:"Valor Total"}'
+    + '#page-compras .ccpx-table-clean tbody tr[data-ccpx-compra] td:nth-of-type(7)::before{content:"Ações Rápidas"}'
+    + '#page-compras .ccpx-table-clean tbody tr[data-ccpx-compra] td .num{text-align:left!important}'
+    + '#page-compras .ccpx-table-clean tbody tr[data-ccpx-compra] td .ccpx-actions-compact{justify-content:flex-start}'
+    + '#page-compras .ccpx-table-clean tbody tr.ccpx-detail-row{background:transparent!important;border:none!important;padding:0!important;margin:-6px 0 16px 0!important;box-shadow:none!important}'
+    + '#page-compras .ccpx-table-clean tbody tr.ccpx-detail-row td{display:block!important;grid-template-columns:none!important;padding:0!important;border-bottom:none!important;background:transparent!important}'
+    + '#page-compras .ccpx-table-clean tbody tr.ccpx-detail-row td > div{padding:12px 8px 0!important;display:grid!important;gap:10px!important}'
+    + '#page-compras .ccpx-detail-row td{background:transparent!important}'
+    + '}';
   document.head.appendChild(st);
 };
 window._compraPapelaoEnsureToolbar = function() {
@@ -31840,6 +31865,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   console.log('[PATCH] v3 ativo - Italy Embalagens ERP');
   patchToggleMobMenu();
   patchRenderHub();
+  try {
+    if (typeof window._isMobileLike !== 'function') {
+      window._isMobileLike = function() {
+        try { if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) return true; } catch (_) {}
+        try { if (typeof window.innerWidth === 'number' && window.innerWidth > 0 && window.innerWidth <= 768) return true; } catch (_) {}
+        try { if (typeof navigator.maxTouchPoints === 'number' && navigator.maxTouchPoints > 0) return true; } catch (_) {}
+        try { if (typeof document !== 'undefined' && document.documentElement && 'ontouchstart' in (document.documentElement || {})) return true; } catch (_) {}
+        try {
+          var ua = String((typeof navigator !== 'undefined' && navigator.userAgent) || '').toLowerCase();
+          if (/android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|touch|tablet|kindle|silk/i.test(ua)) return true;
+        } catch (_) {}
+        return false;
+      };
+    }
+  } catch (_) {}
   try{
     function _bindSwipeMaquinas(){
       try{
@@ -43441,21 +43481,39 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function __dashDesbloquearValores() {
     try {
-      if (window.__dashValoresDesbloqueados === true) return true;
+      if (window.__dashValoresDesbloqueados === true) {
+        try { window.__dashValoresDesbloqueados = false; } catch (_) {}
+        try {
+          var resumoDiv = document.getElementById('patch-dashboard-resumo-ofs');
+          var tb = document.getElementById('dash-tabela-ofs');
+          if (tb && tb._dashRows && tb._dashMeta) {
+            __dashRenderTabela(tb, tb._dashRows, tb._dashMeta);
+          }
+          if (resumoDiv && typeof window.__dashRefreshResumoCards === 'function') {
+            window.__dashRefreshResumoCards(false, true);
+          }
+          var b = document.getElementById('dash-btn-desbloq-valores');
+          if (b) { b.innerHTML = '🔒 Desbloquear valores'; }
+          if (typeof window.toast === 'function') window.toast('🔒 Valores bloqueados.', 'var(--amber)');
+        } catch (_) {}
+        return true;
+      }
     } catch (_) {}
     var senha = '';
     try { senha = String(prompt('Digite a senha para desbloquear os valores:') || '').trim(); } catch (_) { senha = ''; }
     if (senha === '1234') {
       try { window.__dashValoresDesbloqueados = true; } catch (_) {}
       try {
-        var resumoDiv = document.getElementById('patch-dashboard-resumo-ofs');
-        var tb = document.getElementById('dash-tabela-ofs');
-        if (tb && tb._dashRows && tb._dashMeta) {
-          __dashRenderTabela(tb, tb._dashRows, tb._dashMeta);
+        var resumoDiv2 = document.getElementById('patch-dashboard-resumo-ofs');
+        var tb2 = document.getElementById('dash-tabela-ofs');
+        if (tb2 && tb2._dashRows && tb2._dashMeta) {
+          __dashRenderTabela(tb2, tb2._dashRows, tb2._dashMeta);
         }
-        if (resumoDiv && typeof window.__dashRefreshResumoCards === 'function') {
+        if (resumoDiv2 && typeof window.__dashRefreshResumoCards === 'function') {
           window.__dashRefreshResumoCards(false, true);
         }
+        var b2 = document.getElementById('dash-btn-desbloq-valores');
+        if (b2) { b2.innerHTML = '🔓 Bloquear valores'; }
         if (typeof window.toast === 'function') window.toast('🔓 Valores desbloqueados.', 'var(--green)');
       } catch (_) {}
       return true;
@@ -45575,7 +45633,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return (
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
         '<div style="font-weight:800;color:#e2e8f0;font-size:14px">📌 Resumo</div>' +
-        '<button type="button" onclick="window.__dashDesbloquearValores()" style="padding:6px 12px;border-radius:9px;border:1px solid #f59e0b;background:rgba(250,204,21,.1);color:#fde68a;font-weight:800;font-size:11px;cursor:pointer">🔒 Desbloquear valores</button>' +
+        '<button type="button" id="dash-btn-desbloq-valores" onclick="window.__dashDesbloquearValores()" style="padding:6px 12px;border-radius:9px;border:1px solid #f59e0b;background:rgba(250,204,21,.1);color:#fde68a;font-weight:800;font-size:11px;cursor:pointer">' + (window.__dashValoresDesbloqueados === true ? '🔓 Bloquear valores' : '🔒 Desbloquear valores') + '</button>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">' +
         card('📋', 'Total de OFs', __fmtIntDash(total), '#64748b', 'var(--text)', '') +
