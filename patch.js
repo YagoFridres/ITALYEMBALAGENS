@@ -43424,7 +43424,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   } else {
     startCleanupAnalisesHost();
   }
-  return;
 
   function buildDashboardHeaders() {
     var token = '';
