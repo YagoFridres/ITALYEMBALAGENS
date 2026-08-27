@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828000001';
-const SW_RUNTIME_VERSION = '20260828000001';
+const PATCH_RUNTIME_VERSION = '20260828010001';
+const SW_RUNTIME_VERSION = '20260828010001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -32586,7 +32586,7 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
     for (let offset = 0; offset < 50000; offset += PAGE) {
       let query = supabase
         .from('ofs')
-        .select('id,numero,of,status,deleted_at,empresa_id,emp_id,data_entrega,ent,dia,created_at,valor_total,valor_venda,urgente,urg,data_conclusao,data_faturamento')
+        .select('id,numero,of,status,deleted_at,empresa_id,emp_id,data_entrega,ent,dia,created_at,valor_total,valor_venda,urgente,urg,data_conclusao,data_faturamento,passagens_maquina')
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .range(offset, offset + PAGE - 1);
@@ -32634,6 +32634,27 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
     let fatDiaValor = 0;
     let fatDiaCount = 0;
     let temUrgenteFlag = false;
+    let ofsPassaramMaquinaMes = 0;
+    let ofsPassaramMaquinaCount = 0;
+    function parsePassagens(raw) {
+      if (!raw) return [];
+      var arr;
+      if (typeof raw === 'string') { try { arr = JSON.parse(raw); } catch (_) { arr = null; } } else { arr = raw; }
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(function(x) { return !!x && typeof x === 'object'; });
+    }
+    function passagensTemDataNoMes(passagens, dtPassagemField, inicio, fim) {
+      if (!Array.isArray(passagens) || !passagens.length) return false;
+      for (let i = 0; i < passagens.length; i++) {
+        const p = passagens[i] || {};
+        const dataRaw = p[dtPassagemField] || p.data_passagem || p.data || p.data_criacao || p.created_at || p.dt_passagem || null;
+        if (!dataRaw) continue;
+        const ds = String(dataRaw).slice(0, 10);
+        if (!ds) continue;
+        if (ds >= inicio && ds < fim) return true;
+      }
+      return false;
+    }
 
     rows.forEach(function(of) {
       const st = statusOf(of);
@@ -32667,6 +32688,14 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
           }
         }
       }
+
+      const pass = parsePassagens(of?.passagens_maquina || of?.passagens_por_maquina || of?.passagens || null);
+      if (pass.length) {
+        ofsPassaramMaquinaCount++;
+        if (passagensTemDataNoMes(pass, 'data_passagem', inicioMes, fimMesExclusivo)) {
+          ofsPassaramMaquinaMes++;
+        }
+      }
     });
 
     if (temUrgenteFlag && urgentes === 0) urgentes = 1;
@@ -32680,7 +32709,9 @@ app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
       atrasados: atrasados,
       urgentes: urgentes,
       faturamento_mes: { valor: fatMesValor, ofs: fatMesCount },
-      faturamento_dia: { valor: fatDiaValor, ofs: fatDiaCount }
+      faturamento_dia: { valor: fatDiaValor, ofs: fatDiaCount },
+      ofs_passaram_maquina_mes: ofsPassaramMaquinaMes,
+      ofs_passaram_maquina_total: ofsPassaramMaquinaCount
     });
   } catch (e) {
     try { console.error('[dashboard/resumo-ofs]', e && (e.stack || e.message) || e); } catch (_) {}

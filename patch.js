@@ -45451,6 +45451,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
           '<span style="font-size:18px">🔎</span>' +
           '<div style="font-weight:900;color:#f1f5f9;font-size:15px;flex:1;min-width:180px;letter-spacing:.02em">Buscar OF universal</div>' +
+          '<button type="button" id="dash-btn-of-rapida" style="padding:9px 16px;border-radius:10px;border:1px solid rgba(16,185,129,.4);background:rgba(16,185,129,.1);color:#6ee7b7;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap;transition:all .15s" onmouseover="try{this.style.background=\'rgba(16,185,129,.2)\';this.style.transform=\'translateY(-1px)\'}catch(_){}" onmouseout="try{this.style.background=\'rgba(16,185,129,.1)\';this.style.transform=\'none\'}catch(_){}">➕ OF Rápida</button>' +
           '<div style="font-size:11.5px;color:#94a3b8;font-weight:700;letter-spacing:.04em;padding:4px 10px;border:1px solid rgba(71,85,105,.5);border-radius:9999px;background:rgba(15,23,42,.6)">Nº OF · Cliente · Produto</div>' +
         '</div>' +
         '<div style="margin-top:12px">' +
@@ -45468,6 +45469,47 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         '<div id="dash-paginacao"></div>' +
       '</div>';
     resumoDiv.appendChild(wrap);
+
+    var btnOFRapida = wrap.querySelector('#dash-btn-of-rapida');
+    if (btnOFRapida) {
+      btnOFRapida.addEventListener('click', function() {
+        try {
+          if (typeof window.abrirNovaOfRapida === 'function') {
+            window.abrirNovaOfRapida();
+          } else if (typeof window.abrirModalOF === 'function') {
+            window.abrirModalOF();
+          }
+        } catch (_) {}
+      });
+    }
+
+    try {
+      if (typeof window._salvarOfRapidaRegisterHook === 'function') {
+        window._salvarOfRapidaRegisterHook('dashboard_refresh_after_save', 'after', function(meta) {
+          try {
+            var editIdAntes = String((meta && meta.editandoIdAntes) || '').trim();
+            if (editIdAntes) return;
+            var pageDash = document.getElementById('page-dashboard');
+            if (!pageDash) return;
+            var pageDashVisible = !pageDash.hidden && pageDash.offsetParent !== null;
+            if (!pageDashVisible) return;
+            setTimeout(function() {
+              try {
+                if (typeof window.__dashRefreshResumoCards === 'function') {
+                  window.__dashRefreshResumoCards(true);
+                }
+                var host = document.getElementById('patch-estoque-dashboard');
+                var buscaTabDiv = host ? host.querySelector('#patch-dashboard-busca-tabela') : null;
+                var inp = buscaTabDiv ? buscaTabDiv.querySelector('#dash-busca-input') : null;
+                if (inp && typeof window.__dashBuscarEPaginar === 'function') {
+                  window.__dashBuscarEPaginar(buscaTabDiv, 0, inp.value || '', true);
+                }
+              } catch (_) {}
+            }, 600);
+          } catch (_) {}
+        }, 9999);
+      }
+    } catch (_) {}
 
     var input = resumoDiv.querySelector('#dash-busca-input');
 
@@ -45513,6 +45555,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var fatDia = num((res.faturamento_dia && res.faturamento_dia.valor) || 0);
     var fatMesCount = num((res.faturamento_mes && res.faturamento_mes.ofs) || 0);
     var fatDiaCount = num((res.faturamento_dia && res.faturamento_dia.ofs) || 0);
+    var passaramMes = num(res.ofs_passaram_maquina_mes);
+    var passaramTotal = num(res.ofs_passaram_maquina_total);
     var alertaCount = atrasados + urgentes;
 
     var card = function(icon, label, valor, corBorda, corTexto, sub) {
@@ -45541,6 +45585,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           ? card('🚨', 'Atrasadas / Urgentes', __fmtIntDash(atrasados) + ' / ' + __fmtIntDash(urgentes), '#ef4444', '#ef4444',
               atrasados + ' atrasada' + (atrasados === 1 ? '' : 's') + ' · ' + urgentes + ' urgente' + (urgentes === 1 ? '' : 's'))
           : card('🕒', 'Prazo OK', __fmtIntDash(abertos) + ' abertas', '#3b82f6', '#3b82f6', 'Nenhuma atrasada ou urgente')) +
+        card('🚀', 'OFs Passaram por Máquina', __fmtIntDash(passaramMes), '#0ea5e9', '#38bdf8', 'Mês atual · Total hist. ' + __fmtIntDash(passaramTotal) + ' OF(s)') +
         card('📅', 'Faturamento Mês', __dashValorFormatado(fatMes), '#6366f1', 'var(--text)', __fmtIntDash(fatMesCount) + ' OF(s) concluída(s)') +
         card('📌', 'Faturamento Hoje', __dashValorFormatado(fatDia), '#8b5cf6', 'var(--text)', __fmtIntDash(fatDiaCount) + ' OF(s) concluída(s)') +
         '<div style="background:var(--card);border:1px solid var(--border);border-top:3px solid #f43f5e;border-radius:12px;padding:14px">' +
