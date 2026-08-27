@@ -43994,6 +43994,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         'a6e5f5d8-4743-4ebe-885e-c2f0f741a667': 'Oestepack'
       };
       if (mapa[id]) return mapa[id];
+      var idUp = id.toUpperCase();
+      var mapaSigla = { 'E1': 'Italy Embalagens', 'E2': 'Cartoeste', 'E3': 'Oestepack' };
+      if (mapaSigla[idUp]) return mapaSigla[idUp];
     } catch (_) {}
     var opcoes = null;
     try { opcoes = Array.isArray(window.EMPRESAS_OPCOES) ? window.EMPRESAS_OPCOES : null; } catch (_) { opcoes = null; }
@@ -45586,15 +45589,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     host.innerHTML =
       '<div id="patch-dashboard-bc" style="background:linear-gradient(135deg,#0f172a,#1e293b);border-left:4px solid #8b5cf6;border-radius:8px;padding:12px 20px;margin-bottom:16px">' +
         '<div style="font-size:16px;font-weight:700;color:#e2e8f0">📊 DASHBOARD</div>' +
-        '<div style="font-size:12px;color:#64748b;margin-top:2px">Visão geral: Ordens de Fabricação, faturamento e estoques</div>' +
+        '<div style="font-size:12px;color:#64748b;margin-top:2px">Visão geral: Ordens de Fabricação e faturamento</div>' +
       '</div>' +
       '<div id="patch-dashboard-resumo-ofs" style="margin-bottom:24px">' +
         '<div style="padding:20px;color:var(--text2);text-align:center">Carregando resumo...</div>' +
-      '</div>' +
-      '<div id="patch-dashboard-resumo-estoques"></div>';
+      '</div>';
 
     var resumoDiv = host.querySelector('#patch-dashboard-resumo-ofs');
-    var estoqDiv = host.querySelector('#patch-dashboard-resumo-estoques');
 
     window._apiAuthFetch('/api/dashboard/resumo-ofs')
       .then(function(r) { return r.json(); })
@@ -45618,8 +45619,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             window.__dashResumoTimer = setInterval(function(){ __dashRefreshResumoCards(true); }, 60000);
           } catch(_) {}
         }
-
-        if (estoqDiv) renderDashboardEstoques(estoqDiv);
       })
       .catch(function(err) {
         try {
@@ -45631,7 +45630,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             __dashInstalarBuscador(resumoDiv);
           }
         } catch (_) {}
-        if (estoqDiv) try { renderDashboardEstoques(estoqDiv); } catch (_) {}
       });
   }
 
