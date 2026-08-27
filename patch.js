@@ -43425,6 +43425,108 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     startCleanupAnalisesHost();
   }
 
+  window.__dashValoresDesbloqueados = false;
+  window.__dashTotalTodasOfsCache = null;
+  window.__dashTotalTodasOfsCacheTs = 0;
+  window.__dashResumoTimer = null;
+
+  function __dashValorFormatado(valorBruto) {
+    try {
+      if (window.__dashValoresDesbloqueados === true) {
+        return __fmtBrlDashboard(valorBruto);
+      }
+    } catch (_) {}
+    return 'R$ ••••••';
+  }
+
+  function __dashDesbloquearValores() {
+    try {
+      if (window.__dashValoresDesbloqueados === true) return true;
+    } catch (_) {}
+    var senha = '';
+    try { senha = String(prompt('Digite a senha para desbloquear os valores:') || '').trim(); } catch (_) { senha = ''; }
+    if (senha === '1234') {
+      try { window.__dashValoresDesbloqueados = true; } catch (_) {}
+      try {
+        var resumoDiv = document.getElementById('patch-dashboard-resumo-ofs');
+        var tb = document.getElementById('dash-tabela-ofs');
+        if (tb && tb._dashRows && tb._dashMeta) {
+          __dashRenderTabela(tb, tb._dashRows, tb._dashMeta);
+        }
+        if (resumoDiv && typeof window.__dashRefreshResumoCards === 'function') {
+          window.__dashRefreshResumoCards(false, true);
+        }
+        if (typeof window.toast === 'function') window.toast('🔓 Valores desbloqueados.', 'var(--green)');
+      } catch (_) {}
+      return true;
+    } else if (senha !== '') {
+      try { if (typeof window.toast === 'function') window.toast('❌ Senha incorreta.', 'var(--red)'); } catch (_) {}
+    }
+    return false;
+  }
+
+  async function __dashCalcularTotalTodasOfs() {
+    try {
+      var agora = Date.now();
+      if (window.__dashTotalTodasOfsCache != null && (agora - (window.__dashTotalTodasOfsCacheTs || 0)) < 5 * 60 * 1000) {
+        return Number(window.__dashTotalTodasOfsCache || 0);
+      }
+    } catch (_) {}
+    var soma = 0;
+    var offset = 0;
+    var limit = 1000;
+    var maxIter = 10;
+    try {
+      for (var i = 0; i < maxIter; i++) {
+        var url = '/api/ofs?offset=' + String(offset) + '&limit=' + String(limit);
+        var r = await window._apiAuthFetch(url);
+        var j = await r.json();
+        if (!j || j.ok === false) break;
+        var rows = Array.isArray(j.data) ? j.data : [];
+        for (var k = 0; k < rows.length; k++) {
+          var of = rows[k] || {};
+          var v = Number(of.valor_total || of.valor_venda || of.total || 0) || 0;
+          soma += v;
+        }
+        offset += limit;
+        if (!j.hasMore || rows.length < limit) break;
+      }
+      try {
+        window.__dashTotalTodasOfsCache = soma;
+        window.__dashTotalTodasOfsCacheTs = Date.now();
+      } catch (_) {}
+    } catch (e) {
+      try { console.error('[II2] erro calcular total todas ofs', e); } catch (_) {}
+    }
+    return Number(soma || 0);
+  }
+
+  function __dashReaplicarHideNativo(page) {
+    if (!page) return;
+    try {
+      var db = document.getElementById('dash-body');
+      if (db) {
+        try {
+          db.setAttribute('hidden', '');
+          db.style.cssText = 'display:none !important;visibility:hidden !important;position:absolute !important;left:-99999px !important;top:-99999px !important;width:0 !important;height:0 !important;overflow:hidden !important;';
+          db.setAttribute('aria-hidden', 'true');
+        } catch (_) {}
+      }
+    } catch (_) {}
+    try {
+      var childs = page ? Array.prototype.slice.call(page.children || []) : [];
+      childs.forEach(function(el) {
+        if (!el) return;
+        if (el.id === 'patch-estoque-dashboard') return;
+        try {
+          el.setAttribute('hidden', '');
+          el.style.cssText = 'display:none !important;visibility:hidden !important;position:absolute !important;left:-99999px !important;top:-99999px !important;width:0 !important;height:0 !important;overflow:hidden !important;';
+          el.setAttribute('aria-hidden', 'true');
+        } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
   function buildDashboardHeaders() {
     var token = '';
     try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
@@ -43434,17 +43536,27 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function ensureHost() {
     var page = document.getElementById('page-dashboard');
     if (!page) return null;
+    __dashReaplicarHideNativo(page);
     try {
-      var db = document.getElementById('dash-body');
-      if (db) { db.style.display = 'none'; db.style.visibility = 'hidden'; db.setAttribute('aria-hidden', 'true'); }
-    } catch (_) {}
-    try {
-      var childs = page ? Array.prototype.slice.call(page.children || []) : [];
-      childs.forEach(function(el) {
-        if (!el) return;
-        if (el.id === 'patch-estoque-dashboard') return;
-        try { el.style.display = 'none'; el.style.visibility = 'hidden'; el.setAttribute('aria-hidden', 'true'); } catch (_) {}
-      });
+      if (window.__dashPageObserverInstalled !== true) {
+        window.__dashPageObserverInstalled = true;
+        var mo = new MutationObserver(function(muts) {
+          try {
+            var need = false;
+            for (var i = 0; i < muts.length; i++) {
+              if (muts[i].addedNodes && muts[i].addedNodes.length > 0) { need = true; break; }
+            }
+            if (need) { __dashReaplicarHideNativo(page); }
+          } catch (_) {}
+        });
+        try { mo.observe(page, { childList: true, subtree: false }); } catch (_) {}
+        try {
+          var pageObs = new MutationObserver(function() {
+            try { __dashReaplicarHideNativo(document.getElementById('page-dashboard')); } catch (_) {}
+          });
+          if (document.body) try { pageObs.observe(document.body, { childList: true, subtree: true }); } catch (_) {}
+        } catch (_) {}
+      }
     } catch (_) {}
     var host = document.getElementById('patch-estoque-dashboard');
     if (!host) {
@@ -43459,6 +43571,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } else {
       host.style.display = '';
       host.style.visibility = '';
+      host.removeAttribute('hidden');
     }
     return host;
   }
@@ -43874,12 +43987,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function __dashEmpresaNome(empId) {
     var id = String(empId || '').trim();
     if (!id) return '—';
-    var opcoes = null;
-    try { opcoes = Array.isArray(window.EMPRESAS_OPCOES) ? window.EMPRESAS_OPCOES : null; } catch (_) { opcoes = null; }
-    if (Array.isArray(opcoes) && opcoes.length) {
-      var match = opcoes.find(function(o) { return o && String(o.id || '').trim() === id; });
-      if (match && match.label) return String(match.label);
-    }
     try {
       var mapa = {
         'df5f7672-0a6b-402d-ae65-296554236c31': 'Italy Embalagens',
@@ -43888,6 +43995,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       };
       if (mapa[id]) return mapa[id];
     } catch (_) {}
+    var opcoes = null;
+    try { opcoes = Array.isArray(window.EMPRESAS_OPCOES) ? window.EMPRESAS_OPCOES : null; } catch (_) { opcoes = null; }
+    if (Array.isArray(opcoes) && opcoes.length) {
+      var match = opcoes.find(function(o) { return o && String(o.id || '').trim() === id; });
+      if (match && match.label) {
+        var lbl = String(match.label || '').trim();
+        if (/^E\d+$/i.test(lbl)) {
+          try {
+            var raw = String(match.nome || match.descricao || match.label || '').trim();
+            if (raw && !/^E\d+$/i.test(raw)) return raw;
+          } catch (_) {}
+        } else {
+          return lbl;
+        }
+      }
+    }
     return id.slice(0, 8);
   }
 
@@ -44710,6 +44833,152 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { __dashAbrirOfVisual(ofId, of); } catch (e) { __dashMsgErr('Erro ao abrir OF Visual: ' + String(e && e.message || e)); }
       return;
     }
+    if (acao === 'passoumaq') {
+      try {
+        if (typeof window.passouPelaMaquina === 'function') {
+          var maqNome = String(of && (of.maquina || of.maq || of.maquina_atual || of.maquina_agendada) || 'CORTE VINCO ROTATIVA').trim();
+          return window.passouPelaMaquina(ofId, ofNum, maqNome);
+        }
+        if (typeof markPassedPatchedLegacy === 'function') {
+          var mn = String(of && (of.maquina || of.maq || of.maquina_atual || '') || 'CORTE VINCO ROTATIVA').trim();
+          return markPassedPatchedLegacy(ofId, ofNum, mn);
+        }
+        if (typeof window.apiFetch === 'function') {
+          var m = String(of && (of.maquina || of.maq || '') || 'CORTE VINCO ROTATIVA').trim();
+          window.apiFetch('/api/ofs/' + encodeURIComponent(ofId) + '/passou-maquina', { method: 'POST', body: { maquina: m } }).then(function() { __dashMsgOk('Passou pela máquina registrado.'); }).catch(function(e) { __dashMsgErr('Erro: ' + String(e && e.message || e)); });
+          return;
+        }
+      } catch (e) { try { __dashMsgErr('Ação indisponível no momento: ' + String(e && e.message || e)); } catch (_) {} }
+      return;
+    }
+    if (acao === 'urgente') {
+      try {
+        var atualUrg = !!(of && (of.urgente || of.urg));
+        var novoUrg = !atualUrg;
+        if (typeof window._apiAuthFetch === 'function') {
+          window._apiAuthFetch('/api/ofs/' + encodeURIComponent(ofId), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ urgente: novoUrg ? true : false, urg: novoUrg ? true : false, _force_status: '1' }) })
+            .then(function(r) { try { return r.json(); } catch (_) { return {}; } })
+            .then(function() {
+              __dashMsgOk('OF #' + (ofNum || ofId) + (novoUrg ? ' marcada como URGENTE.' : ' removida de urgente.'));
+              setTimeout(function() {
+                try {
+                  var tb = document.getElementById('dash-tabela-ofs');
+                  if (tb && tb._dashRefreshFn) tb._dashRefreshFn();
+                } catch (_) {}
+              }, 600);
+            })
+            .catch(function(e) { __dashMsgErr('Erro: ' + String(e && e.message || e)); });
+          return;
+        }
+      } catch (e) { try { __dashMsgErr('Ação indisponível: ' + String(e && e.message || e)); } catch (_) {} }
+      return;
+    }
+    if (acao === 'sempapel') {
+      try {
+        if (typeof window.toggleSemPapelOf === 'function') {
+          return window.toggleSemPapelOf(ofId, ofNum, null);
+        }
+      } catch (e) { try { __dashMsgErr('Ação indisponível: ' + String(e && e.message || e)); } catch (_) {} }
+      try {
+        if (typeof window._apiAuthFetch === 'function') {
+          var atualSP = !!(of && of.sem_papel);
+          var novoSP = !atualSP;
+          window._apiAuthFetch('/api/ofs/' + encodeURIComponent(ofId), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sem_papel: novoSP ? true : false, _force_status: '1' }) })
+            .then(function(r) { try { return r.json(); } catch (_) { return {}; } })
+            .then(function() { __dashMsgOk('Sem Papelão ' + (novoSP ? 'ativado' : 'desativado') + '.'); setTimeout(function() { var tb = document.getElementById('dash-tabela-ofs'); if (tb && tb._dashRefreshFn) tb._dashRefreshFn(); }, 600); })
+            .catch(function(e) { __dashMsgErr('Erro: ' + String(e && e.message || e)); });
+        }
+      } catch (_) {}
+      return;
+    }
+    if (acao === 'papelcompra') {
+      try {
+        if (typeof window._abrirModalPadrao === 'function') {
+          var hoje = new Date();
+          var iso = hoje.toISOString().slice(0, 10);
+          var maqAtual = String(of && (of.maquina || of.maq || of.maquina_atual || of.maquina_agendada) || '—');
+          var ovl = window._abrirModalPadrao({
+            modalId: 'dash-papelcompra-modal',
+            title: 'Papel / Chapa Comprado + Previsão',
+            bodyHtml: ''
+              + '<div class="ccpx-modal-grid">'
+              + '  <div class="ccpx-modal-field full"><label>OF</label><input type="text" value="OF #' + esc(String(ofNum || of?.numero || of?.of || ofId)) + '" readonly></div>'
+              + '  <div class="ccpx-modal-field"><label>Previsão de Entrega</label><input type="date" id="dash-pc-data" value="' + esc(iso) + '"></div>'
+              + '  <div class="ccpx-modal-field"><label>Máquina Atual</label><input type="text" value="' + esc(maqAtual) + '" readonly></div>'
+              + '  <div class="ccpx-modal-field full"><label>Observação</label><input id="dash-pc-obs" type="text" placeholder="Fornecedor, lote, observações..."></div>'
+              + '</div>',
+            footerHtml: '<button type="button" class="estoque-modal-btn estoque-modal-btn-ghost" data-modal-close="1">Cancelar</button><button type="button" class="estoque-modal-btn estoque-modal-btn-blue" id="dash-pc-salvar">Salvar</button>'
+          });
+          if (ovl) {
+            var saveBtn = ovl.querySelector('#dash-pc-salvar');
+            if (saveBtn) {
+              saveBtn.onclick = function() {
+                try {
+                  var d = String((ovl.querySelector('#dash-pc-data') || {}).value || '').trim() || iso;
+                  var ob = String((ovl.querySelector('#dash-pc-obs') || {}).value || '').trim();
+                  if (typeof window._apiAuthFetch === 'function') {
+                    window._apiAuthFetch('/api/ofs/' + encodeURIComponent(ofId), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ papel_comprado: true, papel_comprado_em: d, papel_comprado_obs: ob, _force_status: '1' }) })
+                      .then(function(r) { try { return r.json(); } catch (_) { return {}; } })
+                      .then(function() {
+                        try { if (typeof window._fecharModalPadrao === 'function') window._fecharModalPadrao('dash-papelcompra-modal'); } catch (_) {}
+                        __dashMsgOk('Papel/Chapa comprado salvo — previsão ' + d.split('-').reverse().join('/') + '.');
+                        setTimeout(function() { var tb = document.getElementById('dash-tabela-ofs'); if (tb && tb._dashRefreshFn) tb._dashRefreshFn(); }, 700);
+                      })
+                      .catch(function(e) { __dashMsgErr('Erro: ' + String(e && e.message || e)); });
+                  }
+                } catch (e) { __dashMsgErr('Erro: ' + String(e && e.message || e)); }
+              };
+            }
+          }
+          return;
+        }
+      } catch (e) { try { __dashMsgErr('Ação indisponível: ' + String(e && e.message || e)); } catch (_) {} }
+      return;
+    }
+    if (acao === 'movermaq' || acao === 'movermaqdata' || acao === 'alterardata') {
+      try {
+        if (acao === 'alterardata' && typeof window.alterarDataOf === 'function') {
+          var dataAtual = String(of && (of.data_entrega || of.ent || of.dia) || '').slice(0, 10);
+          return window.alterarDataOf(ofId, ofNum, dataAtual);
+        }
+        if ((acao === 'movermaq' || acao === 'movermaqdata') && typeof window.abrirModalAlterarMaquinaOfmaq === 'function') {
+          return window.abrirModalAlterarMaquinaOfmaq(ofId, ofNum);
+        }
+        if ((acao === 'movermaq' || acao === 'movermaqdata') && typeof openAlterarMaquinaPatched === 'function') {
+          return openAlterarMaquinaPatched(ofId, ofNum);
+        }
+        if (acao === 'alterardata' && typeof openAlterarDataPatched === 'function') {
+          var dt = String(of && (of.data_entrega || of.ent) || '').slice(0, 10);
+          return openAlterarDataPatched(ofId, ofNum, dt);
+        }
+        if (typeof window._apiAuthFetch === 'function') {
+          __dashMsgOk('Abrindo formulário padrão...');
+          setTimeout(function() {
+            try {
+              if (acao === 'alterardata' && typeof openAlterarDataPatched === 'function') return openAlterarDataPatched(ofId, ofNum, '');
+              if ((acao === 'movermaq' || acao === 'movermaqdata') && typeof openAlterarMaquinaPatched === 'function') return openAlterarMaquinaPatched(ofId, ofNum);
+            } catch (_) {}
+          }, 50);
+          return;
+        }
+      } catch (e) { try { __dashMsgErr('Ação indisponível: ' + String(e && e.message || e)); } catch (_) {} }
+      return;
+    }
+    if (acao === 'priorizar' || acao === 'adiar') {
+      try {
+        var delta = acao === 'priorizar' ? -1 : 1;
+        if (typeof window._apiAuthFetch === 'function') {
+          var ordemAtual = Number(of && (of.ordem_maquina != null ? of.ordem_maquina : of.seq || 0)) || 0;
+          var novaOrdem = Math.max(0, ordemAtual + delta);
+          window._apiAuthFetch('/api/ofs/' + encodeURIComponent(ofId), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ordem_maquina: novaOrdem, seq: novaOrdem, _force_status: '1' }) })
+            .then(function(r) { try { return r.json(); } catch (_) { return {}; } })
+            .then(function() { __dashMsgOk('Prioridade atualizada (' + (acao === 'priorizar' ? '⬆ subiu' : '⬇ desceu') + ').'); setTimeout(function() { var tb = document.getElementById('dash-tabela-ofs'); if (tb && tb._dashRefreshFn) tb._dashRefreshFn(); }, 600); })
+            .catch(function(e) { __dashMsgErr('Erro ao mudar prioridade: ' + String(e && e.message || e)); });
+          return;
+        }
+      } catch (e) { try { __dashMsgErr('Ação indisponível: ' + String(e && e.message || e)); } catch (_) {} }
+      return;
+    }
   }
 
   var __dashListaCache = {};
@@ -44737,7 +45006,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var stCls = '';
     try {
       stCls =
-        '.dash-table-scroll-wrap{max-height:calc(100vh - 470px);min-height:430px;overflow:auto;border-radius:16px;border:1px solid rgba(51,65,85,.88);background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(15,23,42,.9));box-shadow:0 22px 42px rgba(2,6,23,.28)}' +
+        '.dash-table-scroll-wrap{max-height:calc(100vh - 280px);min-height:580px;overflow:auto;border-radius:16px;border:1px solid rgba(51,65,85,.88);background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(15,23,42,.9));box-shadow:0 22px 42px rgba(2,6,23,.28)}' +
         '.dash-table-scroll-wrap::-webkit-scrollbar{width:11px;height:11px}' +
         '.dash-table-scroll-wrap::-webkit-scrollbar-track{background:rgba(15,23,42,.65);border-radius:10px}' +
         '.dash-table-scroll-wrap::-webkit-scrollbar-thumb{background:rgba(100,116,139,.86);border-radius:10px;border:2px solid rgba(15,23,42,.65)}' +
@@ -44760,14 +45029,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         '.dash-flag-urg{color:#fca5a5;background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.45)}' +
         '.dash-flag-no{color:#94a3b8;background:rgba(100,116,139,.1);border-color:rgba(100,116,139,.35)}' +
         '.dash-flag-sp{color:#fde68a;background:rgba(250,204,21,.13);border-color:rgba(250,204,21,.5)}' +
-        '.dash-acoes{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}' +
-        '.dash-acoes button{padding:7px 11px;font-size:11px;border-radius:9px;min-width:auto;border:1px solid rgba(71,85,105,.7);background:rgba(15,23,42,.78);color:#e2e8f0;font-weight:700;cursor:pointer;transition:all .13s ease}' +
-        '.dash-acoes button:hover{filter:brightness(1.2);transform:translateY(-1px);box-shadow:0 7px 16px rgba(0,0,0,.28)}' +
-        '.dash-acoes button.concluir{background:rgba(16,185,129,.13);color:#34d399;border-color:rgba(16,185,129,.5)}' +
-        '.dash-acoes button.cancelar{background:rgba(239,68,68,.11);color:#f87171;border-color:rgba(239,68,68,.44)}' +
-        '.dash-acoes button.clonar{background:rgba(139,92,246,.11);color:#c4b5fd;border-color:rgba(139,92,246,.5)}' +
-        '.dash-acoes button.alterar{background:rgba(59,130,246,.11);color:#93c5fd;border-color:rgba(59,130,246,.48)}' +
-        '.dash-acoes button.visual{background:rgba(234,88,12,.13);color:#fb923c;border-color:rgba(234,88,12,.5)}' +
+        '.dash-acoes{position:relative;display:inline-flex;justify-content:center}' +
+        '.dash-acoes>button{padding:8px 14px;font-size:12px;border-radius:10px;border:1px solid rgba(129,140,248,.7);background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(139,92,246,.18));color:#e0e7ff;font-weight:900;cursor:pointer;letter-spacing:.04em}' +
+        '.dash-acoes>button:hover{filter:brightness(1.2);box-shadow:0 6px 18px rgba(99,102,241,.3)}' +
+        '.dash-acoes-menu{position:absolute;top:calc(100% + 8px);right:50%;transform:translateX(50%);z-index:5000;width:272px;background:#0f172a;border:1px solid #475569;border-radius:14px;box-shadow:0 14px 36px rgba(0,0,0,.55);padding:8px;overflow:hidden;display:none}' +
+        '.dash-acoes-menu[data-open="1"]{display:block}' +
+        '.dash-acoes-menu-section{font-size:9.5px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#64748b;padding:8px 10px 4px}' +
+        '.dash-acoes-menu-section:not(:first-child){border-top:1px dashed rgba(71,85,105,.55);margin-top:6px;padding-top:12px}' +
+        '.dash-acoes-menu button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;font-size:12.5px;border:none;border-radius:9px;background:transparent;color:#e2e8f0;font-weight:600;text-align:left;cursor:pointer;transition:background .12s ease,transform .12s ease}' +
+        '.dash-acoes-menu button:hover{background:#1e293b;transform:translateX(1px)}' +
+        '.dash-acoes-menu button .dash-ic{font-size:15px;min-width:20px;text-align:center}' +
         '.dash-acoes button:disabled{opacity:.45;cursor:not-allowed;transform:none!important;box-shadow:none!important}';
     } catch (_) { stCls = ''; }
     tabelaEl.setAttribute('border', '0');
@@ -44788,7 +45059,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
     var totalOFs = meta && Number(meta.total || 0) || 0;
     var offset = meta && Number(meta.offset || 0) || 0;
-    var limit = meta && Number(meta.limit || 15) || 15;
+    var limit = meta && Number(meta.limit || 25) || 25;
     var hasMore = !!(meta && meta.hasMore);
     var termo = meta && meta.termo || '';
     var pagAtual = Math.floor(offset / limit) + 1;
@@ -44862,11 +45133,35 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var stI = __dashStatusCls(statusTxt);
         var statusBadge = '<span class="dash-st-badge" style="color:' + stI.cor + ';background:' + stI.bg + ';border-color:' + stI.cor + '44">' + esc(statusTxt) + '</span>';
         var valor = Number(of?.valor_total || of?.valor_venda || of?.total || 0) || 0;
-        var valorFmt = esc(__fmtBrlDashboard(valor));
+        var valorFmt = esc(__dashValorFormatado(valor));
         var maq = esc(String(of?.maquina || of?.maq || of?.maquina_atual || of?.maquina_agendada || '—').slice(0, 30));
         var empRaw = of?.emp_id || of?.empresa_id || '';
         var emp = esc(__dashEmpresaNome(empRaw));
         var trAttrs = ' data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"' + (urg ? ' data-urgente="1"' : '') + (semP ? ' data-sem-papel="1"' : '');
+        var ddId = 'dash-dd-' + esc(ofId).replace(/[^a-zA-Z0-9]/g, '_');
+        var acoesHtml = '';
+        acoesHtml += '<div class="dash-acoes">';
+        acoesHtml +=   '<button type="button" data-dash-toggle-menu="' + ddId + '">⚡ Ações</button>';
+        acoesHtml +=   '<div class="dash-acoes-menu" id="' + ddId + '">';
+        acoesHtml +=     '<div class="dash-acoes-menu-section">Geral</div>';
+        acoesHtml +=     '<button type="button" data-dash-acao="concluir" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">✅</span>Concluir</button>';
+        acoesHtml +=     '<button type="button" data-dash-acao="cancelar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">❌</span>Cancelar</button>';
+        acoesHtml +=     '<button type="button" data-dash-acao="clonar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">📋</span>Clonar</button>';
+        acoesHtml +=     '<button type="button" data-dash-acao="alterar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">✏️</span>Alterar</button>';
+        acoesHtml +=     '<button type="button" data-dash-acao="ofvisual" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">📐</span>Gerar OF Visual</button>';
+        acoesHtml +=     '<div class="dash-acoes-menu-section">Produção / Máquina</div>';
+        acoesHtml +=     '<button type="button" data-dash-acao="passoumaq" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">✔️</span>Passou pela Máquina</button>';
+        acoesHtml +=     '<button type="button" data-dash-acao="urgente" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">🚨</span>Marcar como Urgente</button>';
+        acoesHtml +=     '<button type="button" data-dash-acao="sempapel" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">🟨</span>Marcar Sem Papelão</button>';
+        acoesHtml +=     '<button type="button" data-dash-acao="papelcompra" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">📦</span>Papel/Chapa Comprado</button>';
+        acoesHtml +=     '<button type="button" data-dash-acao="movermaq" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">🔀</span>Mover de Máquina</button>';
+        acoesHtml +=     '<button type="button" data-dash-acao="alterardata" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">🗓️</span>Alterar Data</button>';
+        acoesHtml +=     '<button type="button" data-dash-acao="movermaqdata" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">↔️</span>Mover Máquina + Data</button>';
+        acoesHtml +=     '<div class="dash-acoes-menu-section">Ordem / Prioridade</div>';
+        acoesHtml +=     '<button type="button" data-dash-acao="priorizar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">⬆️</span>Mover para Cima (Priorizar)</button>';
+        acoesHtml +=     '<button type="button" data-dash-acao="adiar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '"><span class="dash-ic">⬇️</span>Mover para Baixo (Adiar)</button>';
+        acoesHtml +=   '</div>';
+        acoesHtml += '</div>';
         return (
           '<tr' + trAttrs + '>' +
             '<td class="center" style="font-weight:900;color:#f1f5f9;font-variant-numeric:tabular-nums;font-size:13px">' + ofNum + '</td>' +
@@ -44890,15 +45185,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             '<td class="num" style="font-weight:900;color:#e2e8f0;font-variant-numeric:tabular-nums">' + valorFmt + '</td>' +
             '<td class="center" style="color:#e2e8f0;font-weight:600">' + maq + '</td>' +
             '<td class="center" style="color:#cbd5e1">' + emp + '</td>' +
-            '<td class="center">' +
-              '<div class="dash-acoes">' +
-                '<button type="button" class="concluir" data-acao="concluir" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">✅ Concluir</button>' +
-                '<button type="button" class="cancelar" data-acao="cancelar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">❌ Cancelar</button>' +
-                '<button type="button" class="clonar" data-acao="clonar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">📋 Clonar</button>' +
-                '<button type="button" class="alterar" data-acao="alterar" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">✏️ Alterar</button>' +
-                '<button type="button" class="visual" data-acao="ofvisual" data-of-id="' + esc(ofId) + '" data-of-numero="' + esc(ofNum) + '">📐 Gerar OF Visual</button>' +
-              '</div>' +
-            '</td>' +
+            '<td class="center">' + acoesHtml + '</td>' +
           '</tr>'
         );
       });
@@ -44907,17 +45194,62 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
     tabelaEl.innerHTML = theadHtml + tbodyRows;
 
-    tabelaEl.querySelectorAll('button[data-acao]').forEach(function(btn) {
+    try {
+      document.querySelectorAll('.dash-acoes-menu').forEach(function(m) { try { m.removeAttribute('data-open'); } catch (_) {} });
+    } catch (_) {}
+
+    tabelaEl.querySelectorAll('button[data-dash-toggle-menu]').forEach(function(btn) {
+      btn.addEventListener('click', function(ev) {
+        try { ev.stopPropagation(); } catch (_) {}
+        var targetId = String(btn.getAttribute('data-dash-toggle-menu') || '').trim();
+        if (!targetId) return;
+        var menu = document.getElementById(targetId);
+        var isOpen = menu && menu.getAttribute('data-open') === '1';
+        try {
+          document.querySelectorAll('.dash-acoes-menu[data-open="1"]').forEach(function(m) {
+            if (m.id !== targetId) try { m.removeAttribute('data-open'); } catch (_) {}
+          });
+        } catch (_) {}
+        if (menu) {
+          if (isOpen) try { menu.removeAttribute('data-open'); } catch (_) {}
+          else try { menu.setAttribute('data-open', '1'); } catch (_) {}
+        }
+      });
+    });
+
+    tabelaEl.querySelectorAll('button[data-dash-acao]').forEach(function(btn) {
       btn.addEventListener('click', function() {
-        var acao = String(btn.getAttribute('data-acao') || '').trim();
+        var acao = String(btn.getAttribute('data-dash-acao') || '').trim();
         var ofId = String(btn.getAttribute('data-of-id') || '').trim();
         var of = null;
         if (tabelaEl._dashRows && Array.isArray(tabelaEl._dashRows) && ofId) {
           try { of = tabelaEl._dashRows.find(function(o) { return String(o && o.id || '').trim() === ofId; }) || null; } catch (_) {}
         }
+        try {
+          var parentMenu = btn.closest ? btn.closest('.dash-acoes-menu') : null;
+          if (parentMenu) parentMenu.removeAttribute('data-open');
+          else {
+            var p = btn.parentElement;
+            for (var i = 0; i < 6 && p; i++) {
+              if (p.classList && p.classList.contains('dash-acoes-menu')) { try { p.removeAttribute('data-open'); } catch (_) {} break; }
+              p = p.parentElement;
+            }
+          }
+        } catch (_) {}
         __dashRodarAcao(btn, acao, of);
       });
     });
+
+    try {
+      if (!window.__dashMenuDocBound) {
+        window.__dashMenuDocBound = true;
+        document.addEventListener('click', function() {
+          try {
+            document.querySelectorAll('.dash-acoes-menu[data-open="1"]').forEach(function(m) { try { m.removeAttribute('data-open'); } catch (_) {} });
+          } catch (_) {}
+        });
+      }
+    } catch (_) {}
 
     var pagEl = document.getElementById('dash-paginacao');
     if (pagEl) {
@@ -44981,7 +45313,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
 
     if (tb) tb.innerHTML = '<tbody><tr><td colspan="22" style="padding:30px 24px;color:#94a3b8;text-align:center;font-weight:700;font-size:13px">⏳ Carregando OFs...</td></tr></tbody>';
-    var url = '/api/ofs?offset=' + encodeURIComponent(String(offset)) + '&limit=15' + (termoRaw ? ('&busca=' + encodeURIComponent(termoRaw)) : '');
+    var url = '/api/ofs?offset=' + encodeURIComponent(String(offset)) + '&limit=25' + (termoRaw ? ('&busca=' + encodeURIComponent(termoRaw)) : '');
     window._apiAuthFetch(url)
       .then(function(r) { return r.json(); })
       .then(function(res) {
@@ -44997,7 +45329,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var meta = {
           total: Number(res.total || 0) || 0,
           offset: Number(res.offset != null ? res.offset : offset) || 0,
-          limit: Number(res.limit || 15) || 15,
+          limit: Number(res.limit || 25) || 25,
           hasMore: !!(res.hasMore),
           termo: termoRaw
         };
@@ -45158,6 +45490,94 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }, 30);
   }
 
+  function __dashMontarGridCards(res) {
+    var total = num(res.total_ofs);
+    var abertos = num(res.abertos);
+    var concluidos = num(res.concluidos);
+    var atrasados = num(res.atrasados);
+    var urgentes = num(res.urgentes);
+    var fatMes = num((res.faturamento_mes && res.faturamento_mes.valor) || 0);
+    var fatDia = num((res.faturamento_dia && res.faturamento_dia.valor) || 0);
+    var fatMesCount = num((res.faturamento_mes && res.faturamento_mes.ofs) || 0);
+    var fatDiaCount = num((res.faturamento_dia && res.faturamento_dia.ofs) || 0);
+    var alertaCount = atrasados + urgentes;
+
+    var card = function(icon, label, valor, corBorda, corTexto, sub) {
+      return (
+        '<div style="background:var(--card);border:1px solid var(--border);border-top:3px solid ' + corBorda + ';border-radius:12px;padding:14px">' +
+          '<div style="display:flex;align-items:center;gap:8px;color:var(--text2);font-size:12px">' +
+            '<span>' + icon + '</span>' +
+            '<span>' + esc(label) + '</span>' +
+          '</div>' +
+          '<div style="color:' + corTexto + ';font-size:22px;font-weight:1000;margin-top:4px">' + esc(valor) + '</div>' +
+          (sub ? '<div style="color:var(--text2);font-size:11px;margin-top:2px">' + esc(sub) + '</div>' : '') +
+        '</div>'
+      );
+    };
+
+    return (
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+        '<div style="font-weight:800;color:#e2e8f0;font-size:14px">📌 Resumo</div>' +
+        '<button type="button" onclick="__dashDesbloquearValores()" style="padding:6px 12px;border-radius:9px;border:1px solid #f59e0b;background:rgba(250,204,21,.1);color:#fde68a;font-weight:800;font-size:11px;cursor:pointer">🔒 Desbloquear valores</button>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">' +
+        card('📋', 'Total de OFs', __fmtIntDash(total), '#64748b', 'var(--text)', '') +
+        card('🟡', 'OFs em Aberto', __fmtIntDash(abertos), '#eab308', '#eab308', '') +
+        card('✅', 'OFs Concluídas', __fmtIntDash(concluidos), '#10b981', '#10b981', '') +
+        (alertaCount > 0
+          ? card('🚨', 'Atrasadas / Urgentes', __fmtIntDash(atrasados) + ' / ' + __fmtIntDash(urgentes), '#ef4444', '#ef4444',
+              atrasados + ' atrasada' + (atrasados === 1 ? '' : 's') + ' · ' + urgentes + ' urgente' + (urgentes === 1 ? '' : 's'))
+          : card('🕒', 'Prazo OK', __fmtIntDash(abertos) + ' abertas', '#3b82f6', '#3b82f6', 'Nenhuma atrasada ou urgente')) +
+        card('📅', 'Faturamento Mês', __dashValorFormatado(fatMes), '#6366f1', 'var(--text)', __fmtIntDash(fatMesCount) + ' OF(s) concluída(s)') +
+        card('📌', 'Faturamento Hoje', __dashValorFormatado(fatDia), '#8b5cf6', 'var(--text)', __fmtIntDash(fatDiaCount) + ' OF(s) concluída(s)') +
+        card('💰', 'Valor Total Todas OFs', '<span id="dash-card-total-geral">⏳ Somando...</span>', '#f43f5e', 'var(--text)', 'Sistema completo (todas OFs)') +
+      '</div>'
+    );
+  }
+
+  window.__dashRefreshResumoCards = async function(silencioso, apenasDesbloq) {
+    try {
+      var host = document.getElementById('patch-estoque-dashboard');
+      if (!host) return;
+      var resumoDiv = host.querySelector('#patch-dashboard-resumo-ofs');
+      if (!resumoDiv) return;
+
+      if (apenasDesbloq) {
+        if (window.__dashUltimoResumo) {
+          resumoDiv.innerHTML = __dashMontarGridCards(window.__dashUltimoResumo);
+          setTimeout(async function(){
+            try {
+              var t = await __dashCalcularTotalTodasOfs();
+              var el = document.getElementById('dash-card-total-geral');
+              if (el) el.textContent = __dashValorFormatado(t);
+            } catch(_) {}
+          }, 30);
+        }
+        return;
+      }
+
+      var r = await window._apiAuthFetch('/api/dashboard/resumo-ofs');
+      var res = await r.json();
+      if (!res || res.ok === false) throw new Error((res && res.error) || 'Falha resumo OFs');
+      window.__dashUltimoResumo = res;
+
+      resumoDiv.innerHTML = __dashMontarGridCards(res);
+      setTimeout(async function(){
+        try {
+          var t = await __dashCalcularTotalTodasOfs();
+          var el = document.getElementById('dash-card-total-geral');
+          if (el) el.textContent = __dashValorFormatado(t);
+        } catch(_) {}
+      }, 30);
+    } catch(err) {
+      if (!silencioso) {
+        try {
+          if (window.__dashToastErro) __dashToastErro('Falha refresh: ' + String(err && err.message || err));
+        } catch(_) {}
+      }
+    }
+  };
+
   function _renderDashboardPrincipal(host) {
     if (!host) return;
     if (host.dataset.dashPrincipalLoaded === '1') return;
@@ -45180,44 +45600,23 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       .then(function(r) { return r.json(); })
       .then(function(res) {
         if (!res || res.ok === false) throw new Error((res && res.error) || 'Falha resumo OFs');
-        var total = num(res.total_ofs);
-        var abertos = num(res.abertos);
-        var concluidos = num(res.concluidos);
-        var atrasados = num(res.atrasados);
-        var urgentes = num(res.urgentes);
-        var fatMes = num((res.faturamento_mes && res.faturamento_mes.valor) || 0);
-        var fatDia = num((res.faturamento_dia && res.faturamento_dia.valor) || 0);
-        var fatMesCount = num((res.faturamento_mes && res.faturamento_mes.ofs) || 0);
-        var fatDiaCount = num((res.faturamento_dia && res.faturamento_dia.ofs) || 0);
-        var alertaCount = atrasados + urgentes;
-
-        var card = function(icon, label, valor, corBorda, corTexto, sub) {
-          return (
-            '<div style="background:var(--card);border:1px solid var(--border);border-top:3px solid ' + corBorda + ';border-radius:12px;padding:14px">' +
-              '<div style="display:flex;align-items:center;gap:8px;color:var(--text2);font-size:12px">' +
-                '<span>' + icon + '</span>' +
-                '<span>' + esc(label) + '</span>' +
-              '</div>' +
-              '<div style="color:' + corTexto + ';font-size:22px;font-weight:1000;margin-top:4px">' + esc(valor) + '</div>' +
-              (sub ? '<div style="color:var(--text2);font-size:11px;margin-top:2px">' + esc(sub) + '</div>' : '') +
-            '</div>'
-          );
-        };
+        window.__dashUltimoResumo = res;
 
         if (resumoDiv) {
-          resumoDiv.innerHTML =
-            '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">' +
-              card('📋', 'Total de OFs', __fmtIntDash(total), '#64748b', 'var(--text)', '') +
-              card('🟡', 'OFs em Aberto', __fmtIntDash(abertos), '#eab308', '#eab308', '') +
-              card('✅', 'OFs Concluídas', __fmtIntDash(concluidos), '#10b981', '#10b981', '') +
-              (alertaCount > 0
-                ? card('🚨', 'Atrasadas / Urgentes', __fmtIntDash(atrasados) + ' / ' + __fmtIntDash(urgentes), '#ef4444', '#ef4444',
-                    atrasados + ' atrasada' + (atrasados === 1 ? '' : 's') + ' · ' + urgentes + ' urgente' + (urgentes === 1 ? '' : 's'))
-                : card('🕒', 'Prazo OK', __fmtIntDash(abertos) + ' abertas', '#3b82f6', '#3b82f6', 'Nenhuma atrasada ou urgente')) +
-              card('📅', 'Faturamento Mês', __fmtBrlDashboard(fatMes), '#6366f1', 'var(--text)', __fmtIntDash(fatMesCount) + ' OF(s) concluída(s)') +
-              card('📌', 'Faturamento Hoje', __fmtBrlDashboard(fatDia), '#8b5cf6', 'var(--text)', __fmtIntDash(fatDiaCount) + ' OF(s) concluída(s)') +
-            '</div>';
+          resumoDiv.innerHTML = __dashMontarGridCards(res);
+          setTimeout(async function(){
+            try {
+              var t = await __dashCalcularTotalTodasOfs();
+              var el = document.getElementById('dash-card-total-geral');
+              if (el) el.textContent = __dashValorFormatado(t);
+            } catch(_) {}
+          }, 30);
           __dashInstalarBuscador(resumoDiv);
+
+          try {
+            if (window.__dashResumoTimer) clearInterval(window.__dashResumoTimer);
+            window.__dashResumoTimer = setInterval(function(){ __dashRefreshResumoCards(true); }, 60000);
+          } catch(_) {}
         }
 
         if (estoqDiv) renderDashboardEstoques(estoqDiv);
