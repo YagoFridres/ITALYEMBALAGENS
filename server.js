@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1205,8 +1205,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828130001';
-const SW_RUNTIME_VERSION = '20260828130001';
+const PATCH_RUNTIME_VERSION = '20260828140001';
+const SW_RUNTIME_VERSION = '20260828140001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -10385,7 +10385,10 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
       const upsertResult = await _upsertPassagemMaquinaRegistro({
         of_id: req.params.id,
         of_numero: of.numero || of.of_num || '',
-        cliente: of.cliente || '',
+        empresa_id: of.empresa_id || null,
+        emp_id: of.emp_id || of.empId || null,
+        cliente: of.cliente || of.cliente_nome || '',
+        cliente_id: of.cliente_id || of.cli_id || of.cliId || null,
         produto: of.produto || of.descricao || of.produto_desc || '',
         referencia: of.referencia || of.ref || '',
         imagem_url: of.imagem || of.img || of.imagem_url || null,
@@ -10394,10 +10397,9 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
         quantidade: req.body.quantidade ? parseInt(req.body.quantidade) : (of.quantidade || null),
         data_passagem: new Date().toISOString().split('T')[0],
         hora_passagem: new Date().toISOString(),
-        status: 'Passou pela máquina',
-        empresa: of.empresa || 'Italy Embalagens'
+        status: 'Passou pela máquina'
       }, { status: 'Passou pela máquina' });
-      console.debug('[PASSAGENS] passou-maquina upsert:', { maqPassou, mode: upsertResult?.mode || 'none' });
+      console.debug('[PASSAGENS] passou-maquina upsert:', { maqPassou, mode: upsertResult?.mode || 'none', ok: !!upsertResult?.ok, lastError: upsertResult?.lastError || null, skipped: !!upsertResult?.skipped });
     } catch(ep){ console.warn('[passou-maquina] erro ao registrar passagem:', ep.message); } 
 
     try {
@@ -10641,7 +10643,12 @@ function _passagensResolveRangeForOfs(opts) {
   if (dataInicio && dataFim) return { inicio: dataInicio, fim: dataFim };
   const rangeMes = _passagensFiltroMesAnoToRange(mes, ano);
   if (rangeMes) return { inicio: rangeMes.inicio, fim: rangeMes.fim };
-  return null;
+  var hoje = new Date();
+  var sessentaDiasAtras = new Date(hoje.getTime() - (60 * 24 * 60 * 60 * 1000));
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  var isoFim = hoje.getFullYear() + '-' + pad(hoje.getMonth() + 1) + '-' + pad(hoje.getDate());
+  var isoInicio = sessentaDiasAtras.getFullYear() + '-' + pad(sessentaDiasAtras.getMonth() + 1) + '-' + pad(sessentaDiasAtras.getDate());
+  return { inicio: isoInicio, fim: isoFim, defaultRange: true };
 }
 
 async function _buscarPassagensHistoricoFromOfs(req, opts) {
@@ -11069,6 +11076,9 @@ async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
       : null;
   } catch (_) {}
 
+  let lastUpdateErr = null;
+  let lastInsertErr = null;
+
   if (existente && String(existente.id || '').trim()) {
     let toUpdate = { ...raw };
     delete toUpdate.of_id;
@@ -11076,6 +11086,7 @@ async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
     for (let i = 0; i < 8; i += 1) {
       const upd = await supabase.from('passagens_maquina').update(toUpdate).eq('id', existente.id);
       if (!upd?.error) return { ok: true, mode: 'update', id: existente.id, payload: toUpdate };
+      lastUpdateErr = String(upd.error?.message || upd.error || 'update_failed');
       const msg = String(upd.error.message || '').toLowerCase();
       const m = msg.match(/column \"([^\"]+)\" of relation/i);
       if (m && m[1] && Object.prototype.hasOwnProperty.call(toUpdate, m[1])) {
@@ -11090,6 +11101,7 @@ async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
   for (let i = 0; i < 8; i += 1) {
     const ins = await supabase.from('passagens_maquina').insert([toInsert]);
     if (!ins?.error) return { ok: true, mode: 'insert', payload: toInsert };
+    lastInsertErr = String(ins.error?.message || ins.error || 'insert_failed');
     const msg = String(ins.error.message || '').toLowerCase();
     const m = msg.match(/column \"([^\"]+)\" of relation/i);
     if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
@@ -11098,7 +11110,7 @@ async function _upsertPassagemMaquinaRegistro(basePayload, opts) {
     }
     break;
   }
-  return { ok: false, payload: raw };
+  return { ok: false, payload: raw, lastError: lastInsertErr || lastUpdateErr || null };
 }
 
 async function _normalizarMaquinasPassagens(rows) {

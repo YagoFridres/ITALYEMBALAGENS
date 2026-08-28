@@ -18344,6 +18344,28 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
   var originalCardOfmaq = (typeof window.cardOFMaquina === 'function')
     ? window.cardOFMaquina
     : null;
+
+  var _YY2_WHITELIST_9_MAQUINAS = ['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','CORTE VINCO ROTATIVA','RISCADOR','COLADEIRA','ACABAMENTO'];
+  var _YY2_LABEL_SEM_MAQUINA = 'Sem Máquina Definida';
+  function _yy2NormKey(s) { try { return String(s || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[\s\-_]/g,'').toUpperCase(); } catch (_) { return ''; } }
+  var _YY2_WHITELIST_KEYS = _YY2_WHITELIST_9_MAQUINAS.reduce(function(m, nome) { m[_yy2NormKey(nome)] = nome; return m; }, {});
+  var _YY2_REGEX_UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  function _yy2NormalizaMaquinaSeguro(raw, opts) {
+    var opt = opts && typeof opts === 'object' ? opts : {};
+    var emptyFallback = opt.emptyFallback || _YY2_LABEL_SEM_MAQUINA;
+    var invalidFallback = opt.invalidFallback || _YY2_LABEL_SEM_MAQUINA;
+    var original = String(raw || '').trim();
+    if (!original) return emptyFallback;
+    if (_YY2_REGEX_UUID.test(original)) return invalidFallback;
+    var key = _yy2NormKey(original);
+    if (!key) return invalidFallback;
+    if (Object.prototype.hasOwnProperty.call(_YY2_WHITELIST_KEYS, key)) return _YY2_WHITELIST_KEYS[key];
+    if (key.indexOf('IMP') === 0 || key.indexOf('IMPRESSORA') === 0) {
+      var num = key.replace(/[^0-9]/g,'');
+      if (num >= '1' && num <= '5') return _YY2_WHITELIST_KEYS[_yy2NormKey('IMP 0' + num)] || 'IMP 01';
+    }
+    return invalidFallback;
+  }
   function escHLocal(s) {
     try {
       return window.escH
@@ -22886,7 +22908,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     }
 
     function normalizeMachine(raw) {
+      var globalNorm = (typeof window._yy2NormalizaMaquinaSeguro === 'function') ? window._yy2NormalizaMaquinaSeguro(raw, { emptyFallback: 'IMP 01' }) : null;
+      if (globalNorm) return globalNorm;
       var original = String(raw || '').trim();
+      if (!original) return 'IMP 01';
+      if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(original)) return _YY2_LABEL_SEM_MAQUINA || 'Sem Máquina Definida';
       var compact = normText(original).replace(/\s+/g, '');
       var map = {
         imp01: 'IMP 01',
@@ -22896,9 +22922,24 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         imp05: 'IMP 05',
         cortevinco: 'CORTE VINCO ROTATIVA',
         cortevincorotativa: 'CORTE VINCO ROTATIVA',
-        cvr: 'CORTE VINCO ROTATIVA'
+        cvr: 'CORTE VINCO ROTATIVA',
+        riscador: 'RISCADOR',
+        riscador01: 'RISCADOR',
+        coladeira: 'COLADEIRA',
+        colador: 'COLADEIRA',
+        acabamento: 'ACABAMENTO'
       };
-      return map[compact] || original || 'IMP 01';
+      var norm = map[compact];
+      if (!norm) {
+        try {
+          var nineList = ['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','CORTE VINCO ROTATIVA','RISCADOR','COLADEIRA','ACABAMENTO'];
+          var keyUp = compact.toUpperCase();
+          for (var i = 0; i < nineList.length; i++) {
+            if (nineList[i].toUpperCase().replace(/\s/g,'') === keyUp) { norm = nineList[i]; break; }
+          }
+        } catch (_) {}
+      }
+      return norm || (_YY2_LABEL_SEM_MAQUINA || 'Sem Máquina Definida');
     }
 
     function getPage() {
@@ -24115,7 +24156,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     }
 
     function normalizeMachine(raw) {
+      var globalNorm = (typeof window._yy2NormalizaMaquinaSeguro === 'function') ? window._yy2NormalizaMaquinaSeguro(raw) : null;
+      if (globalNorm) return globalNorm;
       var original = String(raw || '').trim();
+      if (!original) return _YY2_LABEL_SEM_MAQUINA || 'Sem Máquina Definida';
+      if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(original)) return _YY2_LABEL_SEM_MAQUINA || 'Sem Máquina Definida';
       var compact = normText(original).replace(/\s+/g, '');
       var map = {
         imp01: 'IMP 01',
@@ -24125,9 +24170,24 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         imp05: 'IMP 05',
         cortevinco: 'CORTE VINCO ROTATIVA',
         cortevincorotativa: 'CORTE VINCO ROTATIVA',
-        cvr: 'CORTE VINCO ROTATIVA'
+        cvr: 'CORTE VINCO ROTATIVA',
+        riscador: 'RISCADOR',
+        riscador01: 'RISCADOR',
+        coladeira: 'COLADEIRA',
+        colador: 'COLADEIRA',
+        acabamento: 'ACABAMENTO'
       };
-      return map[compact] || original;
+      var norm = map[compact];
+      if (!norm) {
+        try {
+          var nineList = ['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','CORTE VINCO ROTATIVA','RISCADOR','COLADEIRA','ACABAMENTO'];
+          var keyUp = compact.toUpperCase();
+          for (var i = 0; i < nineList.length; i++) {
+            if (nineList[i].toUpperCase().replace(/\s/g,'') === keyUp) { norm = nineList[i]; break; }
+          }
+        } catch (_) {}
+      }
+      return norm || (_YY2_LABEL_SEM_MAQUINA || 'Sem Máquina Definida');
     }
 
     function parseMaqArray(value) {
@@ -24836,7 +24896,19 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var weekEndIso = nowTemp.toISOString().slice(0, 10);
         var tokenAmostra = '';
         try { tokenAmostra = String((typeof window.__authPatchGetToken === 'function' ? window.__authPatchGetToken() : '') || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
-        var r = await fetch('/api/amostras?status=Pendente&limit=500&t=' + Date.now(), {
+        var queryParts = ['status=Pendente', 'limit=500', 't=' + Date.now()];
+        try {
+          if (typeof window.rrEmpresaQueryParts === 'function') {
+            var rrParts = window.rrEmpresaQueryParts();
+            if (Array.isArray(rrParts) && rrParts.length) queryParts = rrParts.concat(queryParts);
+          } else {
+            var st = (typeof rrState === 'function') ? rrState() : null;
+            var val = String(st && st.empresa || 'todas').trim().toLowerCase() || 'todas';
+            if (val === 'todas' || val === 'all' || val === '*' || val === '') queryParts.unshift('todas_empresas=1');
+            else queryParts.unshift('emp_id=' + encodeURIComponent(val));
+          }
+        } catch (_eAm) { queryParts.unshift('todas_empresas=1'); }
+        var r = await fetch('/api/amostras?' + queryParts.join('&'), {
           headers: tokenAmostra ? { Authorization: 'Bearer ' + tokenAmostra } : {}
         });
         var arr = [];
