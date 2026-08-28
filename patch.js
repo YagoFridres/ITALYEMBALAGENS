@@ -32621,6 +32621,162 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   /* SCROLLBAR */
   ::-webkit-scrollbar { width: 3px !important; height: 3px !important; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15) !important; border-radius: 3px !important; }
+
+  /* ═══════════════════════════════════════════════════════════
+     LL2-B — ESTOQUE DE CHAPAS (MOBILE @media ≤768px)
+     RESETS SELETIVOS UU2 (topo do bloco) — neutralizam genéricos
+     nth-child(n+8) / tabela→cards / .of-ln-prod
+     ═══════════════════════════════════════════════════════════ */
+
+  /* [RESET UU2 LL2-B 1/4] Reverte tabela→cards GENÉRICO (LL2-A L32563-32568)
+     SOMENTE p/ tabelas do estoque, usando alta especificidade (#page-estoque) */
+  #page-estoque .pep-table-estoque-wire,
+  #page-estoque .estoque-wire-ton-table,
+  #page-estoque .estoque-chapas-table,
+  #page-estoque .chapas-table,
+  #estoque-chapas-container table,
+  #chapas-estoque-table {
+    display: table !important;
+    width: 100% !important;
+    table-layout: auto !important;
+    overflow: visible !important;
+    white-space: normal !important;
+  }
+  #page-estoque .pep-table-estoque-wire thead,
+  #page-estoque .estoque-wire-ton-table thead,
+  #estoque-chapas-container table thead,
+  .chapas-table thead, .estoque-chapas-table thead {
+    display: table-header-group !important;
+  }
+  #page-estoque .pep-table-estoque-wire tbody,
+  #page-estoque .estoque-wire-ton-table tbody,
+  #estoque-chapas-container table tbody,
+  .chapas-table tbody, .estoque-chapas-table tbody {
+    display: table-row-group !important;
+  }
+  #page-estoque .pep-table-estoque-wire tr,
+  #page-estoque .estoque-wire-ton-table tr,
+  #estoque-chapas-container table tr,
+  .chapas-table tr, .estoque-chapas-table tr {
+    display: table-row !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+  }
+  #page-estoque .pep-table-estoque-wire td,
+  #page-estoque .pep-table-estoque-wire th,
+  #page-estoque .estoque-wire-ton-table td,
+  #page-estoque .estoque-wire-ton-table th,
+  #estoque-chapas-container table td,
+  #estoque-chapas-container table th,
+  .chapas-table td, .chapas-table th,
+  .estoque-chapas-table td, .estoque-chapas-table th {
+    display: table-cell !important;
+    justify-content: normal !important;
+    align-items: normal !important;
+    padding: 10px 12px !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    font-size: 12px !important;
+    min-height: 0 !important;
+  }
+
+  /* [RESET UU2 LL2-B 2/4] Reverte nth-child(n+8) display:none
+     Exibe TODAS as colunas da tabela estoque (11 cols totais) */
+  #page-estoque .pep-table-estoque-wire td:nth-child(n+8),
+  #page-estoque .estoque-wire-ton-table td:nth-child(n+8),
+  #estoque-chapas-container td:nth-child(n+8),
+  .chapas-table td:nth-child(n+8),
+  .estoque-chapas-table td:nth-child(n+8) {
+    display: table-cell !important;
+  }
+
+  /* [RESET UU2 LL2-B 3/4] Reverte td:last-child flex/block GENÉRICO
+     (última coluna ações da tabela estoque volta a ser table-cell normal) */
+  #page-estoque .pep-table-estoque-wire td:last-child,
+  #page-estoque .estoque-wire-ton-table td:last-child,
+  #estoque-chapas-container td:last-child,
+  .chapas-table td:last-child, .estoque-chapas-table td:last-child {
+    display: table-cell !important;
+    justify-content: normal !important;
+    padding-top: 10px !important;
+    border-top: 1px solid rgba(255,255,255,0.06) !important;
+    margin-top: 0 !important;
+  }
+
+  /* [RESET UU2 LL2-B 4/4] Reverte .of-ln-prod (se vazar p/ área estoque) */
+  #page-estoque .of-ln-prod,
+  #estoque-chapas-container .of-ln-prod,
+  .chapas-table .of-ln-prod, .estoque-chapas-table .of-ln-prod {
+    display: revert !important;
+  }
+
+  /* ── LAYOUT MOBILE ESPECÍFICO LL2-B ESTOQUE CHAPAS ── */
+
+  /* [LL2-B LAYOUT 1/4] KPIs 4 cols desktop → 1 col mobile
+     (cards kpi: valor total / toneladas / qtd chapas / fornecedor breakdown) */
+  #page-estoque .estoque-wire-cards,
+  #page-estoque .pep-cards {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    padding: 4px 0 !important;
+  }
+  #page-estoque .pep-card,
+  #page-estoque .estoque-wire-card-action {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* [LL2-B LAYOUT 2/4] Tabela estoque → overflow-x TOUCH SCROLL horizontal
+     Mantém 11 colunas desktop completas, mas com scroll lateral mobile */
+  #page-estoque .pep-table-wrap-estoque,
+  #page-estoque .pep-table-wrap,
+  #estoque-chapas-container,
+  .estoque-chapas-table-wrap, .chapas-table-wrap {
+    width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    scroll-snap-type: x proximity !important;
+  }
+  #page-estoque .pep-table-wrap-estoque table,
+  .estoque-chapas-table-wrap table {
+    min-width: 900px !important;
+  }
+
+  /* [LL2-B LAYOUT 3/4] Toolbar busca + filtros → 1 col full-width mobile */
+  #page-estoque .pep-input#estoque-wire-busca {
+    min-width: 0 !important;
+    width: 100% !important;
+    margin-bottom: 6px !important;
+  }
+  #page-estoque button.pep-btn {
+    flex: 1 1 calc(50% - 5px) !important;
+    min-width: 0 !important;
+    margin-bottom: 4px !important;
+  }
+
+  /* [LL2-B LAYOUT 4/4] Modais estoque → BOTTOM-SHEET mobile
+     alta especificidade garante que não afete desktop (fora do @media) */
+  #estoque-wire-modal,
+  [id*="estoque"][id*="modal"],
+  [class*="estoque-wire-sheet-shell"] {
+    align-items: flex-end !important;
+    justify-content: flex-end !important;
+    padding: 0 !important;
+  }
+  #estoque-wire-modal > div,
+  .estoque-wire-sheet-shell,
+  [class*="estoque-wire"] [class*="modal-content"],
+  [class*="estoque"][class*="sheet-body"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 18px 18px 0 0 !important;
+    max-height: 92vh !important;
+    overflow-y: auto !important;
+    margin: 0 !important;
+  }
 }
 
 @media (max-width: 480px) {
