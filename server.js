@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828080001';
-const SW_RUNTIME_VERSION = '20260828080001';
+const PATCH_RUNTIME_VERSION = '20260828090001';
+const SW_RUNTIME_VERSION = '20260828090001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -8349,36 +8349,28 @@ app.get('/api/relatorios/perdas-altas', authMiddleware, async (req, res) => {
       if (!chave || chave === 'num:') return;
       const ofData = (ofId ? ofsMap[ofId] : null) || (ofNumero ? ofsMap['numero:' + ofNumero] : null) || null;
       const qtdPerdidaRegistro = Number(r?.quantidade ?? r?.caixas_perdidas ?? r?.qtd_perdida ?? 0) || 0;
-      let qtdOf = Number(
-        ofData?.qtd_pedida ??
-        ofData?.qtd_produzida ??
-        ofData?.quantidade ??
-        ofData?.qtd ??
-        ofData?.total ??
-        0
-      ) || 0;
-      if (!(qtdOf > 0) && Array.isArray(ofData?.itens)) {
-        const s = ofData.itens.reduce((acc, it) => acc + (Number(it?.qtd ?? it?.quantidade ?? it?.qtd_pedida ?? 0) || 0), 0);
-        if (s > 0) qtdOf = s;
-      }
-      if (!(qtdOf > 0)) {
-        const vt = Number(ofData?.valor_total ?? ofData?.total ?? ofData?.preco ?? 0) || 0;
-        const vu = Number(ofData?.valor_unitario ?? ofData?.preco_unitario ?? ofData?.preco ?? r?.valor_unitario ?? 0) || 0;
-        if (vt > 0 && vu > 0) {
-          const calc = Math.round(vt / vu);
-          if (calc > 0) qtdOf = calc;
-        }
-      }
-      if (!(qtdOf > 0) && typeof ofData?.itens === 'string') {
+      const ofVt = Number(ofData?.valor_total ?? ofData?.total ?? ofData?.preco ?? 0) || 0;
+      const ofVu = Number(ofData?.valor_unitario ?? ofData?.preco_unitario ?? ofData?.preco ?? r?.valor_unitario ?? 0) || 0;
+      const vtVuRatio = (ofVt > 0 && ofVu > 0) ? Math.round(ofVt / ofVu) : 0;
+      let itensSum = 0;
+      if (Array.isArray(ofData?.itens)) {
+        itensSum = ofData.itens.reduce((acc, it) => acc + (Number(it?.qtd ?? it?.quantidade ?? it?.qtd_pedida ?? 0) || 0), 0);
+      } else if (typeof ofData?.itens === 'string') {
         try {
           const parsed = JSON.parse(ofData.itens);
-          if (Array.isArray(parsed)) {
-            const s = parsed.reduce((acc, it) => acc + (Number(it?.qtd ?? it?.quantidade ?? it?.qtd_pedida ?? 0) || 0), 0);
-            if (s > 0) qtdOf = s;
-          }
+          if (Array.isArray(parsed)) itensSum = parsed.reduce((acc, it) => acc + (Number(it?.qtd ?? it?.quantidade ?? it?.qtd_pedida ?? 0) || 0), 0);
         } catch (_) {}
       }
-      const ofVt = Number(ofData?.valor_total ?? ofData?.total ?? 0) || 0;
+      const candidatos = [
+        Number(ofData?.qtd_produzida ?? 0) || 0,
+        Number(ofData?.qtd_pedida ?? 0) || 0,
+        Number(ofData?.quantidade ?? 0) || 0,
+        Number(ofData?.qtd ?? 0) || 0,
+        Number(ofData?.total ?? 0) || 0,
+        vtVuRatio > 0 ? vtVuRatio : 0,
+        itensSum > 0 ? itensSum : 0,
+      ];
+      const qtdOf = candidatos.reduce((m, v) => (typeof v === 'number' && !Number.isNaN(v) && v > m ? v : m), 0);
       const vu = Number(r?.valor_unitario ?? ((ofVt > 0 && qtdOf > 0) ? (ofVt / qtdOf) : 0) ?? ofData?.valor_unitario ?? 0) || 0;
       const valorPerdReg = Number(r?.valor_perdido ?? (vu * qtdPerdidaRegistro)) || 0;
       const dataReg = r?.data || r?.data_perda || r?.data_conclusao || r?.created_at || ofData?.data_conclusao || ofData?.dia || ofData?.created_at || null;
