@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -8321,14 +8321,14 @@ app.get('/api/relatorios/perdas-altas', authMiddleware, async (req, res) => {
     if (ofIds.length) {
       const { data, error } = await supabase
         .from('ofs')
-        .select('id,numero,of,cli_id,cliente,clinome,cliente_nome,descricao,produto,data_pedido,pedido,dia,dia_pedido,data_entrega,ent,valor_total,total,quantidade,qtd,qtd_pedida,qtd_produzida,valor_unitario,perdas_por_maquina,maq,maquina,maquina_atual,maquina_agendada,maquina_id,emp_id,empresa_id,created_at')
+        .select('*')
         .in('id', ofIds);
       (Array.isArray(data) ? data : []).forEach((of) => ofsRows.push(of));
     }
     if (ofNumeros.length) {
       const { data, error } = await supabase
         .from('ofs')
-        .select('id,numero,of,cli_id,cliente,clinome,cliente_nome,descricao,produto,data_pedido,pedido,dia,dia_pedido,data_entrega,ent,valor_total,total,quantidade,qtd,qtd_pedida,qtd_produzida,valor_unitario,perdas_por_maquina,maq,maquina,maquina_atual,maquina_agendada,maquina_id,emp_id,empresa_id,created_at')
+        .select('*')
         .in('numero', ofNumeros);
       (Array.isArray(data) ? data : []).forEach((of) => { const id = String(of?.id || '').trim(); if (id && !ofsRows.some((item) => String(item?.id || '').trim() === id)) ofsRows.push(of); });
     }
@@ -8349,7 +8349,35 @@ app.get('/api/relatorios/perdas-altas', authMiddleware, async (req, res) => {
       if (!chave || chave === 'num:') return;
       const ofData = (ofId ? ofsMap[ofId] : null) || (ofNumero ? ofsMap['numero:' + ofNumero] : null) || null;
       const qtdPerdidaRegistro = Number(r?.quantidade ?? r?.caixas_perdidas ?? r?.qtd_perdida ?? 0) || 0;
-      const qtdOf = Number(ofData?.qtd_pedida ?? ofData?.qtd_produzida ?? ofData?.quantidade ?? ofData?.qtd ?? ofData?.total ?? 0) || 0;
+      let qtdOf = Number(
+        ofData?.qtd_pedida ??
+        ofData?.qtd_produzida ??
+        ofData?.quantidade ??
+        ofData?.qtd ??
+        ofData?.total ??
+        0
+      ) || 0;
+      if (!(qtdOf > 0) && Array.isArray(ofData?.itens)) {
+        const s = ofData.itens.reduce((acc, it) => acc + (Number(it?.qtd ?? it?.quantidade ?? it?.qtd_pedida ?? 0) || 0), 0);
+        if (s > 0) qtdOf = s;
+      }
+      if (!(qtdOf > 0)) {
+        const vt = Number(ofData?.valor_total ?? ofData?.total ?? ofData?.preco ?? 0) || 0;
+        const vu = Number(ofData?.valor_unitario ?? ofData?.preco_unitario ?? ofData?.preco ?? r?.valor_unitario ?? 0) || 0;
+        if (vt > 0 && vu > 0) {
+          const calc = Math.round(vt / vu);
+          if (calc > 0) qtdOf = calc;
+        }
+      }
+      if (!(qtdOf > 0) && typeof ofData?.itens === 'string') {
+        try {
+          const parsed = JSON.parse(ofData.itens);
+          if (Array.isArray(parsed)) {
+            const s = parsed.reduce((acc, it) => acc + (Number(it?.qtd ?? it?.quantidade ?? it?.qtd_pedida ?? 0) || 0), 0);
+            if (s > 0) qtdOf = s;
+          }
+        } catch (_) {}
+      }
       const ofVt = Number(ofData?.valor_total ?? ofData?.total ?? 0) || 0;
       const vu = Number(r?.valor_unitario ?? ((ofVt > 0 && qtdOf > 0) ? (ofVt / qtdOf) : 0) ?? ofData?.valor_unitario ?? 0) || 0;
       const valorPerdReg = Number(r?.valor_perdido ?? (vu * qtdPerdidaRegistro)) || 0;
