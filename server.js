@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828050001';
-const SW_RUNTIME_VERSION = '20260828050001';
+const PATCH_RUNTIME_VERSION = '20260828060001';
+const SW_RUNTIME_VERSION = '20260828060001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -8266,7 +8266,7 @@ app.get('/api/relatorios/perdas-altas', authMiddleware, async (req, res) => {
       }
       return [];
     };
-    const { data: todos } = await supabase.from(tabelaAtiva).select('*').order('created_at', { ascending: false }).limit(1000);
+    const { data: todos } = await supabase.from(tabelaAtiva).select('*').order('created_at', { ascending: false }).limit(5000);
     const parseRowDate = (row) => {
       const raw = row?.data || row?.data_perda || row?.data_conclusao || row?.created_at || null;
       if (!raw) return null;
@@ -8321,14 +8321,14 @@ app.get('/api/relatorios/perdas-altas', authMiddleware, async (req, res) => {
     if (ofIds.length) {
       const { data, error } = await supabase
         .from('ofs')
-        .select('id,numero,of,cli_id,cliente,descricao,data_pedido,pedido,dia,dia_pedido,data_entrega,ent,valor_total,quantidade,qtd,valor_unitario,perdas_por_maquina,maq,maquina,maquina_atual,maquina_agendada,maquina_id,emp_id,empresa_id,created_at')
+        .select('id,numero,of,cli_id,cliente,clinome,cliente_nome,descricao,produto,data_pedido,pedido,dia,dia_pedido,data_entrega,ent,valor_total,total,quantidade,qtd,qtd_pedida,qtd_produzida,valor_unitario,perdas_por_maquina,maq,maquina,maquina_atual,maquina_agendada,maquina_id,emp_id,empresa_id,created_at')
         .in('id', ofIds);
       (Array.isArray(data) ? data : []).forEach((of) => ofsRows.push(of));
     }
     if (ofNumeros.length) {
       const { data, error } = await supabase
         .from('ofs')
-        .select('id,numero,of,cli_id,cliente,descricao,data_pedido,pedido,dia,dia_pedido,data_entrega,ent,valor_total,quantidade,qtd,valor_unitario,perdas_por_maquina,maq,maquina,maquina_atual,maquina_agendada,maquina_id,emp_id,empresa_id,created_at')
+        .select('id,numero,of,cli_id,cliente,clinome,cliente_nome,descricao,produto,data_pedido,pedido,dia,dia_pedido,data_entrega,ent,valor_total,total,quantidade,qtd,qtd_pedida,qtd_produzida,valor_unitario,perdas_por_maquina,maq,maquina,maquina_atual,maquina_agendada,maquina_id,emp_id,empresa_id,created_at')
         .in('numero', ofNumeros);
       (Array.isArray(data) ? data : []).forEach((of) => { const id = String(of?.id || '').trim(); if (id && !ofsRows.some((item) => String(item?.id || '').trim() === id)) ofsRows.push(of); });
     }
@@ -8349,18 +8349,20 @@ app.get('/api/relatorios/perdas-altas', authMiddleware, async (req, res) => {
       if (!chave || chave === 'num:') return;
       const ofData = (ofId ? ofsMap[ofId] : null) || (ofNumero ? ofsMap['numero:' + ofNumero] : null) || null;
       const qtdPerdidaRegistro = Number(r?.quantidade ?? r?.caixas_perdidas ?? r?.qtd_perdida ?? 0) || 0;
-      const qtdOf = Number(ofData?.quantidade ?? ofData?.qtd ?? 0) || 0;
-      const vu = Number(r?.valor_unitario ?? ((Number(ofData?.valor_total || 0) > 0 && qtdOf > 0) ? (Number(ofData.valor_total) / qtdOf) : 0)) || 0;
+      const qtdOf = Number(ofData?.qtd_pedida ?? ofData?.qtd_produzida ?? ofData?.quantidade ?? ofData?.qtd ?? ofData?.total ?? 0) || 0;
+      const ofVt = Number(ofData?.valor_total ?? ofData?.total ?? 0) || 0;
+      const vu = Number(r?.valor_unitario ?? ((ofVt > 0 && qtdOf > 0) ? (ofVt / qtdOf) : 0) ?? ofData?.valor_unitario ?? 0) || 0;
       const valorPerdReg = Number(r?.valor_perdido ?? (vu * qtdPerdidaRegistro)) || 0;
       const dataReg = r?.data || r?.data_perda || r?.data_conclusao || r?.created_at || ofData?.data_conclusao || ofData?.dia || ofData?.created_at || null;
       const maqReg = r?.maquina_nome || r?.maquina || r?.maquina_perda || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || ofData?.maq || '';
-      const cliNome = ofData?.cli_id ? (clientesMap[String(ofData.cli_id || '').trim()] || '') : (r?.cliente_nome || r?.cliente || '');
+      const cliNome = ofData?.cli_id ? (clientesMap[String(ofData.cli_id || '').trim()] || '') : '';
+      const cliNomeFinal = cliNome || ofData?.clinome || ofData?.cliente_nome || ofData?.cliente || r?.cliente_nome || r?.cliente || '';
       if (!agrupado.has(chave)) {
         agrupado.set(chave, {
           of_id: ofId || (ofData ? String(ofData.id || '') : ''),
           of_numero: ofNumero || (ofData ? String(ofData.numero || ofData.of || '') : '') || '—',
-          cliente: cliNome || 'Sem cliente',
-          produto: ofData?.descricao || r?.produto || 'Sem produto',
+          cliente: cliNomeFinal || 'Sem cliente',
+          produto: ofData?.produto || ofData?.descricao || r?.produto || 'Sem produto',
           qtd_pedida: qtdOf,
           qtd_perdida: 0,
           valor_perdido: 0,
@@ -8426,9 +8428,10 @@ app.get('/api/relatorios/perdas-altas', authMiddleware, async (req, res) => {
       caixas_perdidas_total: ofs.reduce((s, o) => s + (Number(o.qtd_perdida || 0) || 0), 0),
       periodo: {
         solicitado: requestedPeriodo,
-        mes, ano,
-        data_inicio: rangeInicio || null,
-        data_fim: rangeFimExclusivo || null,
+        mes: semFiltro ? null : mes,
+        ano: semFiltro ? null : ano,
+        data_inicio: semFiltro ? null : (rangeInicio || null),
+        data_fim: semFiltro ? null : (rangeFimExclusivo || null),
       },
     };
     return res.json({ ok: true, ofs, resumo, _debug: { tabelaAtiva, totalHistorico: todos?.length || 0, totalFiltrado: dadosFiltrados.length, ofsUnicas: ofs.length } });
