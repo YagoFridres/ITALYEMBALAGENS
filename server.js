@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1164,8 +1164,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828040001';
-const SW_RUNTIME_VERSION = '20260828040001';
+const PATCH_RUNTIME_VERSION = '20260828050001';
+const SW_RUNTIME_VERSION = '20260828050001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -8242,6 +8242,199 @@ app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
     });
     try { console.error('[CP DASHBOARD]', e.message); } catch (_) {}
     return res.status(500).json({ error: e.message, detalhamento: [] });
+  }
+});
+
+app.get('/api/relatorios/perdas-altas', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    let tabelaAtiva = null;
+    for (const t of ['caixas_perdidas', 'caixas_perdas', 'perdas_producao']) {
+      const { error } = await supabase.from(t).select('*').limit(1);
+      if (!error) { tabelaAtiva = t; break; }
+    }
+    if (!tabelaAtiva) {
+      return res.json({ ok: true, ofs: [], resumo: { total_ofs: 0, perdas_criticas: 0, perdas_altas: 0 }, _debug: { aviso: 'nenhuma tabela caixas_perdidas encontrada' } });
+    }
+    const toArray = (v) => {
+      if (Array.isArray(v)) return v.map((x) => String(x || '').trim()).filter(Boolean);
+      if (typeof v === 'string') {
+        const s = String(v || '').trim();
+        if (!s) return [];
+        try { const parsed = JSON.parse(s); if (Array.isArray(parsed)) return parsed.map((x) => String(x || '').trim()).filter(Boolean); } catch (_) {}
+        return s.split(/[,;|/]+/g).map((x) => String(x || '').trim()).filter(Boolean);
+      }
+      return [];
+    };
+    const { data: todos } = await supabase.from(tabelaAtiva).select('*').order('created_at', { ascending: false }).limit(1000);
+    const parseRowDate = (row) => {
+      const raw = row?.data || row?.data_perda || row?.data_conclusao || row?.created_at || null;
+      if (!raw) return null;
+      const dt = new Date(raw);
+      return Number.isNaN(dt.getTime()) ? null : dt;
+    };
+    const monthRefOf = (row) => String(row?.mes_referencia || '').trim().slice(0, 7);
+    const monthRefsBetween = (iniIso, fimExclusivoIso) => {
+      const refs = new Set();
+      const ini = String(iniIso || '').trim(); const fimEx = String(fimExclusivoIso || '').trim();
+      if (!ini || !fimEx) return refs;
+      const cursor = new Date(ini + 'T12:00:00'); const limite = new Date(fimEx + 'T12:00:00');
+      if (!Number.isFinite(cursor.getTime()) || !Number.isFinite(limite.getTime())) return refs;
+      cursor.setDate(1);
+      while (cursor < limite) { refs.add(String(cursor.getFullYear()) + '-' + String(cursor.getMonth() + 1).padStart(2, '0')); cursor.setMonth(cursor.getMonth() + 1, 1); }
+      return refs;
+    };
+    const resolvedRange = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    const customInicio = _relatoriosIsoDateOnly(req.query.data_inicio || req.query.dataInicio);
+    const customFim = _relatoriosIsoDateOnly(req.query.data_fim || req.query.dataFim);
+    const rangeInicio = customInicio || resolvedRange?.inicio || '';
+    const rangeFimExclusivo = customFim || resolvedRange?.fim_exclusivo || '';
+    const customIniDate = rangeInicio ? new Date(`${rangeInicio}T00:00:00`) : null;
+    const customFimDate = rangeFimExclusivo ? new Date(`${rangeFimExclusivo}T00:00:00`) : null;
+    const hasCustomRange = !!(rangeInicio && rangeFimExclusivo);
+    const monthRefsRange = monthRefsBetween(rangeInicio, rangeFimExclusivo);
+    const matchMonthYear = (dt, month, year) => !!(dt && (dt.getMonth() + 1 === month) && dt.getFullYear() === year);
+    const requestedPeriodo = String(req.query.periodo || '').trim().toLowerCase() || 'mes';
+    let mes = parseInt(String(req.query.mes || ''), 10) || (new Date().getMonth() + 1);
+    let ano = parseInt(String(req.query.ano || ''), 10) || new Date().getFullYear();
+    const semFiltro = String(req.query.todos || '').trim().toLowerCase() === 'true' || requestedPeriodo === 'todos';
+    const hojeRef = new Date(); hojeRef.setHours(0, 0, 0, 0);
+    const semanaIni = new Date(hojeRef); semanaIni.setDate(hojeRef.getDate() - ((hojeRef.getDay() + 6) % 7));
+    const semanaFim = new Date(semanaIni); semanaFim.setDate(semanaIni.getDate() + 7);
+    const filtrarPeriodo = (rows, periodo, month, year) => (rows || []).filter((r) => {
+      const d = parseRowDate(r); const mesRef = monthRefOf(r);
+      if (hasCustomRange) {
+        const byMesRef = !!(mesRef && monthRefsRange.has(mesRef));
+        const byData = !!(d && (!customIniDate || d >= customIniDate) && (!customFimDate || d < customFimDate));
+        return byMesRef || byData;
+      }
+      if (!d && !mesRef) return true;
+      if (periodo === 'hoje' || periodo === 'dia') return d >= hojeRef;
+      if (periodo === 'semana') return d >= semanaIni && d < semanaFim;
+      if (periodo === 'todos') return true;
+      return mesRef === (String(year) + '-' + String(month).padStart(2, '0')) || matchMonthYear(d, month, year);
+    });
+    const dadosFiltrados = semFiltro ? (todos || []) : filtrarPeriodo(todos || [], requestedPeriodo, mes, ano);
+    const ofIds = Array.from(new Set((dadosFiltrados || []).map((r) => String(r?.of_id || r?.of_uuid || '').trim()).filter(Boolean)));
+    const ofNumeros = Array.from(new Set((dadosFiltrados || []).map((r) => String(r?.of_numero || r?.of || r?.numero || '').trim()).filter(Boolean)));
+    const ofsRows = [];
+    if (ofIds.length) {
+      const { data, error } = await supabase
+        .from('ofs')
+        .select('id,numero,of,cli_id,cliente,descricao,data_pedido,pedido,dia,dia_pedido,data_entrega,ent,valor_total,quantidade,qtd,valor_unitario,perdas_por_maquina,maq,maquina,maquina_atual,maquina_agendada,maquina_id,emp_id,empresa_id,created_at')
+        .in('id', ofIds);
+      (Array.isArray(data) ? data : []).forEach((of) => ofsRows.push(of));
+    }
+    if (ofNumeros.length) {
+      const { data, error } = await supabase
+        .from('ofs')
+        .select('id,numero,of,cli_id,cliente,descricao,data_pedido,pedido,dia,dia_pedido,data_entrega,ent,valor_total,quantidade,qtd,valor_unitario,perdas_por_maquina,maq,maquina,maquina_atual,maquina_agendada,maquina_id,emp_id,empresa_id,created_at')
+        .in('numero', ofNumeros);
+      (Array.isArray(data) ? data : []).forEach((of) => { const id = String(of?.id || '').trim(); if (id && !ofsRows.some((item) => String(item?.id || '').trim() === id)) ofsRows.push(of); });
+    }
+    const ofsMap = Object.create(null);
+    (ofsRows || []).forEach((of) => {
+      const id = String(of?.id || '').trim(); const numero = String(of?.numero || '').trim(); const numeroOf = String(of?.of || '').trim();
+      if (id) ofsMap[id] = of; if (numero) ofsMap['numero:' + numero] = of; if (numeroOf) ofsMap['numero:' + numeroOf] = of;
+    });
+    const cliIds = Array.from(new Set((ofsRows || []).map((of) => String(of?.cli_id || '').trim()).filter(Boolean)));
+    const { data: clientesRows } = cliIds.length ? await supabase.from('clientes').select('id,nome').in('id', cliIds) : { data: [] };
+    const clientesMap = Object.create(null);
+    (clientesRows || []).forEach((cli) => { clientesMap[String(cli.id || '').trim()] = String(cli.nome || '').trim(); });
+    const agrupado = new Map();
+    (dadosFiltrados || []).forEach((r) => {
+      const ofId = String(r?.of_id || r?.of_uuid || '').trim();
+      const ofNumero = String(r?.of_numero || r?.of || r?.numero || '').trim();
+      const chave = ofId || ('num:' + ofNumero);
+      if (!chave || chave === 'num:') return;
+      const ofData = (ofId ? ofsMap[ofId] : null) || (ofNumero ? ofsMap['numero:' + ofNumero] : null) || null;
+      const qtdPerdidaRegistro = Number(r?.quantidade ?? r?.caixas_perdidas ?? r?.qtd_perdida ?? 0) || 0;
+      const qtdOf = Number(ofData?.quantidade ?? ofData?.qtd ?? 0) || 0;
+      const vu = Number(r?.valor_unitario ?? ((Number(ofData?.valor_total || 0) > 0 && qtdOf > 0) ? (Number(ofData.valor_total) / qtdOf) : 0)) || 0;
+      const valorPerdReg = Number(r?.valor_perdido ?? (vu * qtdPerdidaRegistro)) || 0;
+      const dataReg = r?.data || r?.data_perda || r?.data_conclusao || r?.created_at || ofData?.data_conclusao || ofData?.dia || ofData?.created_at || null;
+      const maqReg = r?.maquina_nome || r?.maquina || r?.maquina_perda || ofData?.maquina || ofData?.maquina_atual || ofData?.maquina_agendada || ofData?.maq || '';
+      const cliNome = ofData?.cli_id ? (clientesMap[String(ofData.cli_id || '').trim()] || '') : (r?.cliente_nome || r?.cliente || '');
+      if (!agrupado.has(chave)) {
+        agrupado.set(chave, {
+          of_id: ofId || (ofData ? String(ofData.id || '') : ''),
+          of_numero: ofNumero || (ofData ? String(ofData.numero || ofData.of || '') : '') || '—',
+          cliente: cliNome || 'Sem cliente',
+          produto: ofData?.descricao || r?.produto || 'Sem produto',
+          qtd_pedida: qtdOf,
+          qtd_perdida: 0,
+          valor_perdido: 0,
+          maquinas: new Set(),
+          datas: new Set(),
+          registros: 0,
+          of_data_pedido: ofData?.data_pedido || ofData?.pedido || ofData?.dia_pedido || ofData?.created_at || dataReg || '',
+          of_data_criacao: ofData?.dia || ofData?.created_at || dataReg || '',
+          of_valor_total: Number(ofData?.valor_total || 0) || 0,
+          of_valor_unitario: Number(ofData?.valor_unitario || vu || 0) || 0,
+        });
+      }
+      const agg = agrupado.get(chave);
+      agg.qtd_perdida += qtdPerdidaRegistro;
+      agg.valor_perdido += valorPerdReg;
+      agg.registros += 1;
+      if (maqReg) agg.maquinas.add(String(maqReg));
+      if (dataReg) agg.datas.add(String(dataReg).slice(0, 10));
+    });
+    const ofs = [];
+    agrupado.forEach((agg) => {
+      const qtdPed = Number(agg.qtd_pedida || 0) || 0;
+      const qtdPer = Number(agg.qtd_perdida || 0) || 0;
+      if (qtdPed <= 0 && qtdPer <= 0) return;
+      const pct = qtdPed > 0 ? (qtdPer / qtdPed) : (qtdPer > 0 ? 1 : 0);
+      const pct100 = Math.round(pct * 10000) / 100;
+      let severidade = 'baixa';
+      if (pct >= 0.40) severidade = 'critica';
+      else if (pct >= 0.20) severidade = 'alta';
+      else if (pct >= 0.10) severidade = 'media';
+      ofs.push({
+        of_id: agg.of_id,
+        of_numero: agg.of_numero,
+        cliente: agg.cliente,
+        produto: agg.produto,
+        qtd_pedida: qtdPed,
+        qtd_perdida: qtdPer,
+        percentual_perda: pct,
+        percentual_perda_exib: pct100,
+        severidade,
+        valor_perdido: Number(agg.valor_perdido || 0) || 0,
+        maquinas: Array.from(agg.maquinas),
+        data_principal: Array.from(agg.datas).sort().reverse()[0] || String(agg.of_data_criacao || '').slice(0, 10) || '',
+        of_data_pedido: agg.of_data_pedido,
+        of_data_criacao: agg.of_data_criacao,
+        registros_perda: agg.registros,
+        of_valor_total: agg.of_valor_total,
+        of_valor_unitario: agg.of_valor_unitario,
+      });
+    });
+    ofs.sort((a, b) => {
+      const d = (b.percentual_perda || 0) - (a.percentual_perda || 0);
+      if (d !== 0) return d;
+      return (b.valor_perdido || 0) - (a.valor_perdido || 0);
+    });
+    const resumo = {
+      total_ofs: ofs.length,
+      perdas_criticas: ofs.filter((o) => o.severidade === 'critica').length,
+      perdas_altas: ofs.filter((o) => o.severidade === 'alta').length,
+      perdas_medias: ofs.filter((o) => o.severidade === 'media').length,
+      perdas_baixas: ofs.filter((o) => o.severidade === 'baixa').length,
+      valor_perdido_total: ofs.reduce((s, o) => s + (Number(o.valor_perdido || 0) || 0), 0),
+      caixas_perdidas_total: ofs.reduce((s, o) => s + (Number(o.qtd_perdida || 0) || 0), 0),
+      periodo: {
+        solicitado: requestedPeriodo,
+        mes, ano,
+        data_inicio: rangeInicio || null,
+        data_fim: rangeFimExclusivo || null,
+      },
+    };
+    return res.json({ ok: true, ofs, resumo, _debug: { tabelaAtiva, totalHistorico: todos?.length || 0, totalFiltrado: dadosFiltrados.length, ofsUnicas: ofs.length } });
+  } catch (e) {
+    try { console.error('[PERDAS ALTAS]', e?.message || e); } catch (_) {}
+    return res.status(500).json({ ok: false, error: String(e?.message || e), ofs: [], resumo: { total_ofs: 0, perdas_criticas: 0, perdas_altas: 0 } });
   }
 });
 

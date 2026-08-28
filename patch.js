@@ -1014,6 +1014,68 @@ try {
     });
   }
 
+  async function rrReportPerdasAltas() {
+    var ref = rrCurrentRange();
+    var json = await rrFetchJson('/api/relatorios/perdas-altas?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
+    var rows = Array.isArray(json && json.ofs) ? json.ofs : [];
+    var resumo = json && json.resumo ? json.resumo : {};
+    function sevLabel(s) {
+      if (s === 'critica') return '🔴 Crítica';
+      if (s === 'alta') return '🟠 Alta';
+      if (s === 'media') return '🟡 Média';
+      return '🟢 Baixa';
+    }
+    function sevBg(s) {
+      if (s === 'critica') return 'background:rgba(239,68,68,.1);color:#fca5a5;border:1px solid rgba(239,68,68,.25)';
+      if (s === 'alta') return 'background:rgba(249,115,22,.08);color:#fdba74;border:1px solid rgba(249,115,22,.22)';
+      if (s === 'media') return 'background:rgba(234,179,8,.08);color:#fde047;border:1px solid rgba(234,179,8,.2)';
+      return 'background:rgba(34,197,94,.05);color:#86efac;border:1px solid rgba(34,197,94,.18)';
+    }
+    function pctTxt(p) { var v = Number(p || 0) * 100; return (Math.round(v * 100) / 100).toFixed(2) + '%'; }
+    return rrOpenPrint({
+      title: 'OFs com Perda Alta — Ranking por Proporção',
+      periodo: ref.titulo,
+      cards: [
+        { label: 'OFs com Perda', value: rrFmtNum(resumo.total_ofs || rows.length, 0), sub: 'Pedidos com pelo menos 1 perda registrada' },
+        { label: '🔴 Perdas Críticas', value: rrFmtNum(resumo.perdas_criticas || 0, 0), sub: '≥ 40% perdido / pedido' },
+        { label: '🟠 Perdas Altas', value: rrFmtNum(resumo.perdas_altas || 0, 0), sub: '≥ 20% perdido / pedido' },
+        { label: '💰 Valor Perdido', value: rrFmtMoney(resumo.valor_perdido_total || rows.reduce(function(s, r) { return s + rrNum(r && r.valor_perdido); }, 0)), sub: 'Impacto financeiro consolidado' }
+      ],
+      summaryTitle: 'TOP 10 — Maiores Proporções de Perda',
+      summaryHeaders: ['Rank', 'OF', 'Cliente', 'Qtd Pedida', 'Qtd Perdida', '% Perda', 'Risco', 'Valor Perdido'],
+      summaryRows: rows.slice(0, 10).map(function(r, i) {
+        return [
+          '#' + (i + 1),
+          rrEsc(String(r && (r.of_numero || r.numero || r.of) || '—')),
+          rrEsc(String(r && r.cliente || '—')),
+          rrEsc(rrFmtNum(r && r.qtd_pedida || 0, 0)),
+          rrEsc(rrFmtNum(r && r.qtd_perdida || 0, 0)),
+          '<span style="font-weight:900;font-variant-numeric:tabular-nums">' + rrEsc(pctTxt(r && r.percentual_perda)) + '</span>',
+          '<span style="display:inline-flex;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:900;' + sevBg(r && r.severidade) + '">' + sevLabel(r && r.severidade) + '</span>',
+          rrEsc(rrFmtMoney(r && r.valor_perdido || 0))
+        ];
+      }),
+      detailTitle: 'Detalhamento completo — ordenado por % de perda (maior → menor)',
+      detailHeaders: ['Nº OF', 'Cliente', 'Produto', 'Data', 'Máquinas', 'Pedido', 'Perdido', '% Perda', 'Risco', 'Valor Perdido'],
+      detailRows: rows.map(function(r) {
+        return [
+          rrEsc(String(r && (r.of_numero || r.numero || r.of) || '—')),
+          rrEsc(String(r && r.cliente || '—')),
+          rrEsc(String(r && r.produto || '—')),
+          rrEsc(rrFmtDate(r && (r.data_principal || r.of_data_criacao || r.of_data_pedido))),
+          rrEsc(Array.isArray(r && r.maquinas) ? String(r.maquinas.slice(0, 3).join(' • ')) : (String(r && r.maquina || '—'))),
+          rrEsc(rrFmtNum(r && r.qtd_pedida || 0, 0)),
+          rrEsc(rrFmtNum(r && r.qtd_perdida || 0, 0)),
+          '<span style="font-weight:900;font-variant-numeric:tabular-nums">' + rrEsc(pctTxt(r && r.percentual_perda)) + '</span>',
+          '<span style="display:inline-flex;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:900;' + sevBg(r && r.severidade) + '">' + sevLabel(r && r.severidade) + '</span>',
+          rrEsc(rrFmtMoney(r && r.valor_perdido || 0))
+        ];
+      }),
+      emptySummaryCols: 8,
+      emptyDetailCols: 10
+    });
+  }
+
   async function rrReportToneladas() {
     var ref = rrCurrentRange();
     var json = await rrFetchJson('/api/analises/toneladas-vendidas?data_inicio=' + encodeURIComponent(ref.data_inicio) + '&data_fim=' + encodeURIComponent(ref.data_fim));
@@ -3470,6 +3532,7 @@ try {
     { id: 'caixas-perdidas', label: 'Caixas Perdidas', icon: '📦', desc: 'Consolidado de perdas com ranking e detalhamento.', run: rrReportCaixasPerdidas },
     { id: 'maior-perda-tipo-caixa', label: 'Maior Perda por Tipo de Caixa', icon: '📉', desc: 'Agrupa perdas por tipo de caixa e ordena do maior prejuízo para o menor.', run: rrReportMaiorPerdaTipoCaixa },
     { id: 'maior-perda-cliente', label: 'Maior Perda por Cliente', icon: '🏢', desc: 'Agrupa perdas por cliente e ordena do maior prejuízo para o menor.', run: rrReportMaiorPerdaCliente },
+    { id: 'perdas-altas', label: 'OFs com Perda Alta (% por OF)', icon: '⚠️', desc: 'Ranking das OFs com MAIOR proporção de perda (perdido / pedido), destacando casos em que quase ou mais de 30-40% foi perdido.', run: rrReportPerdasAltas },
     { id: 'toneladas-vendidas', label: 'Toneladas Vendidas', icon: '⚖️', desc: 'Toneladas vendidas por fornecedor com detalhamento das OFs.', run: rrReportToneladas },
     { id: 'custo-por-of', label: 'Custo por OF', icon: '🧾', desc: 'Custo por OF calculado por área (R$/m²) com total e custo unitário.', run: rrReportCustos },
     { id: 'gramaturas-sistema', label: 'Gramaturas do Sistema', icon: '📐', desc: 'Lista todas as gramaturas cadastradas atualmente na base.', run: rrReportGramaturasSistema },
