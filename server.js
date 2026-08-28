@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -927,6 +927,47 @@ function cacheClearPrefix(prefix) {
 function _clearOfsCaches() {
   try { cacheClearPrefix('ofs_'); } catch (_) {}
 }
+const _MAP_UUID_SIGLA_EMP_GLOBAL = {
+  'df5f7672-0a6b-402d-ae65-296554236c31': 'E1',
+  'e9b734dc-c7d5-4b04-898d-1ec7affa721e': 'E2',
+  'a6e5f5d8-4743-4ebe-885e-c2f0f741a667': 'E3',
+};
+const _MAP_SIGLA_UUID_EMP_GLOBAL = {
+  'E1': 'df5f7672-0a6b-402d-ae65-296554236c31',
+  'E2': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+  'E3': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
+};
+function _montarOrEmpresaGlobal(filtro, todas) {
+  if (todas || !filtro) return null;
+  let uuid = null, sigla = null;
+  const up = String(filtro || '').toUpperCase();
+  const low = String(filtro || '').toLowerCase();
+  if (_MAP_SIGLA_UUID_EMP_GLOBAL[up]) {
+    sigla = up;
+    uuid = _MAP_SIGLA_UUID_EMP_GLOBAL[up];
+  } else if (_MAP_UUID_SIGLA_EMP_GLOBAL[low]) {
+    uuid = low;
+    sigla = _MAP_UUID_SIGLA_EMP_GLOBAL[low];
+  } else if (/^[0-9a-f-]{36}$/i.test(filtro)) {
+    uuid = filtro;
+  }
+  const parts = [];
+  if (uuid) parts.push('empresa_id.eq.' + String(uuid));
+  if (sigla) parts.push('emp_id.eq.' + String(sigla));
+  parts.push('empresa_id.is.null');
+  parts.push('emp_id.is.null');
+  parts.push("emp_id.eq.''");
+  return parts.join(',');
+}
+function _filtrarOfsNaoTesteGlobal(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.filter((of) => {
+    const nomeCli = String(
+      (of && (of.clinome || of.cliNome || of.cliente_nome || of.cliente || of.nome_cliente || of.cli_nome)) || ''
+    ).toUpperCase();
+    return nomeCli.indexOf('TESTE') === -1;
+  });
+}
 async function resolverEmpresaId(req) {
   const emailRaw = String(
     req?.user?.email ||
@@ -1164,8 +1205,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828120001';
-const SW_RUNTIME_VERSION = '20260828120001';
+const PATCH_RUNTIME_VERSION = '20260828130001';
+const SW_RUNTIME_VERSION = '20260828130001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -2717,7 +2758,14 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
   try { 
     const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
     if (!range?.inicio || !range?.fim_exclusivo) return res.json({ ok: false, error: 'periodo inválido' }); 
-    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || '').trim();
+    const empresaIdRaw = String(
+      req.query?.empresa_id || req.query?.empresaId || req.query?.emp_id || req.query?.empresa || ''
+    ).trim();
+    const todasEmpCom =
+      empresaIdRaw === '' ||
+      empresaIdRaw === 'todas' ||
+      empresaIdRaw === 'all' ||
+      String(req.query.todas_empresas || '').trim() === '1';
 
     console.log('[COM] buscando', range.inicio, 'ate', range.fim_exclusivo); 
 
@@ -2727,7 +2775,8 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
       .gte('data_conclusao', range.inicio)
       .lt('data_conclusao', range.fim_exclusivo)
       .ilike('status', '%conclu%');
-    if (empresaId) query = query.eq('empresa_id', empresaId);
+    const filtroEmpCom = _montarOrEmpresaGlobal(empresaIdRaw, todasEmpCom);
+    if (filtroEmpCom) query = query.or(filtroEmpCom);
     const { data: ofs, error } = await query;
 
     if (error) { 
@@ -2736,13 +2785,14 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
     } 
 
     console.log('[COM] OFs da view:', ofs?.length); 
-    const todasOFs = await _comissoesEnriquecerLista(ofs);
+    let todasOFs = await _comissoesEnriquecerLista(ofs);
+    todasOFs = _filtrarOfsNaoTesteGlobal(todasOFs);
     const payload = _comissoesMontarPayload(todasOFs, {
       mes: String(range.inicio || '').slice(0, 7),
       data_inicio: range.inicio,
       data_fim: range.fim
     });
-    const resumoOficial = await _resumirVendasOficiais(range, empresaId);
+    const resumoOficial = await _resumirVendasOficiais(range, empresaIdRaw);
     payload.total_ofs = resumoOficial.total_ofs;
     payload.total_vendido = resumoOficial.total_vendido;
     payload.total_ofs_oficial = resumoOficial.total_ofs;
@@ -2799,7 +2849,14 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
   try {
     setNoCache(res);
     const q = String(req.query?.q || '').trim();
-    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || '').trim();
+    const empresaIdRaw = String(
+      req.query?.empresa_id || req.query?.empresaId || req.query?.emp_id || req.query?.empresa || ''
+    ).trim();
+    const todasEmpBuscaOf =
+      empresaIdRaw === '' ||
+      empresaIdRaw === 'todas' ||
+      empresaIdRaw === 'all' ||
+      String(req.query.todas_empresas || '').trim() === '1';
     const termos = String(q || '')
       .split(/[,\n;]+/)
       .map((t) => String(t || '').trim())
@@ -2834,7 +2891,7 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
     try {
       _reportProdBlockersDebug('A', 'server.js:/api/comissoes/busca-of:entry', '[DEBUG] busca-of preparando select em ofs', {
         q,
-        empresaId: empresaId || null,
+        empresaId: empresaIdRaw || null,
         termos,
         termoVariants: termoVariants.slice(0, 12),
         selectCols
@@ -2844,8 +2901,9 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
     const filtros = montarFiltrosBuscaOf(termoVariants);
     const selectResult = await _selectCompatRows('ofs', selectCols, (query) => {
       let qx = query.limit(50);
-      if (empresaId) {
-        try { qx = qx.eq('empresa_id', empresaId); } catch (_) {}
+      const filtroEmpBuscaOf = _montarOrEmpresaGlobal(empresaIdRaw, todasEmpBuscaOf);
+      if (filtroEmpBuscaOf) {
+        try { qx = qx.or(filtroEmpBuscaOf); } catch (_) {}
       }
       if (filtros) qx = qx.or(filtros);
       return qx;
@@ -2857,7 +2915,7 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
       try {
         _reportProdBlockersDebug('A', 'server.js:/api/comissoes/busca-of:error', '[DEBUG] busca-of falhou ao consultar ofs', {
           q,
-          empresaId: empresaId || null,
+          empresaId: empresaIdRaw || null,
           filtros,
           selectCols,
           error: String(hitsError?.message || hitsError || '')
@@ -2871,7 +2929,7 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
     try {
       _reportProdBlockersDebug('A', 'server.js:/api/comissoes/busca-of:base-hits', '[DEBUG] busca-of retornou linhas base de ofs', {
         q,
-        empresaId: empresaId || null,
+        empresaId: empresaIdRaw || null,
         filtros,
         hits: Array.isArray(hitsBase) ? hitsBase.length : 0,
         sampleKeys: hitsBase && hitsBase[0] && typeof hitsBase[0] === 'object' ? Object.keys(hitsBase[0]).slice(0, 24) : []
@@ -2947,12 +3005,13 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
       const bn = ordemNumero[String(b?.numero || b?.of || '').trim()] ?? ordemNumero[_normalizarNumeroOfRef(b?.numero || b?.of)] ?? ordemNumero[_normalizarNumeroOfDigits(b?.numero || b?.of)];
       return (an == null ? 999999 : an) - (bn == null ? 999999 : bn);
     });
+    todasOFs = _filtrarOfsNaoTesteGlobal(todasOFs);
     const payloadBusca = _comissoesMontarPayload(todasOFs, { busca: q });
     // #region debug-point A:comissoes-busca-of-final
     try {
       _reportProdBlockersDebug('A', 'server.js:/api/comissoes/busca-of:final', '[DEBUG] busca-of montou payload final', {
         q,
-        empresaId: empresaId || null,
+        empresaId: empresaIdRaw || null,
         total_ofs: Number(payloadBusca?.total_ofs || 0) || 0,
         total_vendido: Number(payloadBusca?.total_vendido || 0) || 0,
         sampleOfKeys: Array.isArray(payloadBusca?.ofs) && payloadBusca.ofs[0] && typeof payloadBusca.ofs[0] === 'object'
@@ -5304,7 +5363,16 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const status = req.query.status;
     const busca = String(req.query.busca || req.query.search || '').trim();
     const clienteFiltroLegado = String(clienteIdFiltroRaw || '').trim();
-    const empresaFiltro = req.query.empresa;
+    const empresaFiltroRaw = String(
+      req.query.empresa || req.query.emp_id || req.query.empId || ''
+    ).trim();
+    const todasEmpresasFlag =
+      empresaFiltroRaw === '' ||
+      empresaFiltroRaw === 'todas' ||
+      empresaFiltroRaw === 'all' ||
+      empresaFiltroRaw === '*' ||
+      String(req.query.todas_empresas || '').trim() === '1';
+    const empresaFiltro = empresaFiltroRaw;
     const incluirExcluidasRaw = String(req.query.incluir_excluidas || req.query.incluir_excluidos || req.query.show_deleted || '').trim();
     const incluirExcluidas = incluirExcluidasRaw === '1' || incluirExcluidasRaw === 'true' || incluirExcluidasRaw.toLowerCase() === 'sim';
     const useCache = !afterIso && !refreshToken && !forcedBigLimit;
@@ -5322,11 +5390,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
 
-      if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') {
-        query = query.eq('empresa_id', empresaFiltro);
-      } else {
-        query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
-      }
+      const filtroEmpOr = _montarOrEmpresaGlobal(empresaFiltro, todasEmpresasFlag);
+      if (filtroEmpOr) query = query.or(filtroEmpOr);
 
       if (status) {
         if (status.includes(',')) query = query.in('status', status.split(',').map((s) => String(s || '').trim()).filter(Boolean));
@@ -5386,8 +5451,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           .from('ofs')
           .select('*', { count: 'exact' })
           .order('created_at', { ascending: false });
-        if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') query = query.eq('empresa_id', empresaFiltro);
-        else query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
+        const filtroEmpOrFb = _montarOrEmpresaGlobal(empresaFiltro, todasEmpresasFlag);
+        if (filtroEmpOrFb) query = query.or(filtroEmpOrFb);
         if (clienteFiltroLegado && clienteFiltroLegado !== 'undefined' && clienteFiltroLegado !== 'null' && clienteFiltroLegado !== '[object Object]') {
           const cid = String(clienteFiltroLegado || '').trim();
           const likeSafe = cid.replace(/'/g, "''");
@@ -5565,6 +5630,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         return hay.includes(buscaNorm);
       });
     }
+
+    rows = _filtrarOfsNaoTesteGlobal(rows);
 
     const totalCount = count || rows.length;
     const hasMore = (offset + rows.length) < totalCount;
@@ -6364,6 +6431,7 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
         .from('ofs')
         .select('*')
         .in('cli_id', clienteIds)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(50);
       if (includeSomenteAbertas) {
@@ -6372,7 +6440,8 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
       const { data: ofsRows, error: ofsErr } = await query;
       if (ofsErr) return res.status(400).json({ ok: false, error: String(ofsErr.message || ofsErr) });
 
-      const lista = await _enriquecerRespostaOFs(Array.isArray(ofsRows) ? ofsRows : []);
+      let lista = await _enriquecerRespostaOFs(Array.isArray(ofsRows) ? ofsRows : []);
+      lista = _filtrarOfsNaoTesteGlobal(lista);
       return ok(res, lista);
     }
 
@@ -6433,7 +6502,7 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
       } catch (_) {}
     }
 
-    const [out] = await _enriquecerRespostaOFs([{
+    let outArr = await _enriquecerRespostaOFs([{
       ...of,
       cliNome: cliNome || of?.cliNome || of?.cliente_nome || of?.cliente || '',
       cliente_nome: cliNome || of?.cliNome || of?.cliente_nome || of?.cliente || '',
@@ -6445,6 +6514,8 @@ app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
       ent: of?.ent ?? of?.data_entrega ?? null,
       dia: of?.dia ?? null,
     }]);
+    outArr = _filtrarOfsNaoTesteGlobal(outArr);
+    const [out] = outArr;
     return ok(res, out || of);
   } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
@@ -6471,7 +6542,8 @@ app.get('/api/ofs/busca', authMiddleware, async (req, res) => {
     query = query.or(filtros);
     const { data, error } = await query;
     if (error) return res.status(500).json({ error: String(error.message || error) });
-    const enriquecidas = await _enriquecerRespostaOFs(Array.isArray(data) ? data : []);
+    let enriquecidas = await _enriquecerRespostaOFs(Array.isArray(data) ? data : []);
+    enriquecidas = _filtrarOfsNaoTesteGlobal(enriquecidas);
     return res.json(enriquecidas);
   } catch (e) {
     return res.status(500).json({ error: String(e.message || e) });
