@@ -12152,6 +12152,122 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         { id: _cadUid('cid'), nome: 'Porto Alegre', uf: 'RS', ibge: '' }
       ]);
 
+      // ---------- GG3: Integração backend real (estados/cidades/ramos) ----------
+      // Hidrata localStorage com os dados reais do Supabase (via /api/estados, /api/cidades, /api/ramos_atividade)
+      // no primeiro carregamento. Também garante persistência em escrita (save/delete) no backend.
+      var __GG3_STATE = __GG3_STATE || { hydrated: false, promise: null };
+      function __gg3GetAuthHeaders() {
+        try {
+          var tok = (typeof _getToken === 'function' ? _getToken() : '')
+            || (window.__AUTH && (window.__AUTH.token || window.__AUTH.jwt))
+            || (localStorage && localStorage.getItem ? (localStorage.getItem('auth_token') || localStorage.getItem('token') || '') : '');
+          tok = String(tok || '').trim();
+          var h = { 'Content-Type': 'application/json' };
+          if (tok) h['Authorization'] = 'Bearer ' + tok;
+          return h;
+        } catch (_) { return { 'Content-Type': 'application/json' }; }
+      }
+      function __gg3ApiFetch(url, opts) {
+        try {
+          return fetch(url, Object.assign({ headers: __gg3GetAuthHeaders(), credentials: 'same-origin' }, opts || {})).then(function(r) {
+            try { return r.json(); } catch (_) { return { ok: false, error: 'parse' }; }
+          });
+        } catch (e) { return Promise.resolve({ ok: false, error: String(e && e.message || e) }); }
+      }
+      function __gg3MergeIntoLS(lsKey, remoteRows, defaultsMorphFn) {
+        try {
+          if (!Array.isArray(remoteRows) || !remoteRows.length) return;
+          var existing = _cadLocal(lsKey, []);
+          var existingArr = Array.isArray(existing) ? existing.slice() : [];
+          var byId = {};
+          existingArr.forEach(function(r) { if (r && r.id) byId[String(r.id)] = r; });
+          remoteRows.forEach(function(r) {
+            if (!r || (Object.keys(r).length === 0)) return;
+            var morph = defaultsMorphFn ? defaultsMorphFn(r) : r;
+            var key = morph && morph.id ? String(morph.id) : String((r && r.id) || ('svr_' + Math.random().toString(36).slice(2, 9)));
+            var cur = byId[key] || {};
+            byId[key] = Object.assign({}, cur, morph);
+          });
+          var merged = Object.keys(byId).map(function(k) { return byId[k]; });
+          _cadSaveLocal(lsKey, merged);
+        } catch (_) {}
+      }
+      function __gg3HydrateCache(force) {
+        if (!force && __GG3_STATE && __GG3_STATE.promise) return __GG3_STATE.promise;
+        if (!force && __GG3_STATE && __GG3_STATE.hydrated) return Promise.resolve(true);
+        var _resolver = null;
+        var p = new Promise(function(res){ _resolver = res; });
+        __GG3_STATE.promise = p;
+        Promise.all([
+          __gg3ApiFetch('/api/estados?nocache=' + (force ? Date.now() : '')).catch(function(){ return null; }),
+          __gg3ApiFetch('/api/cidades?nocache=' + (force ? Date.now() : '')).catch(function(){ return null; }),
+          __gg3ApiFetch('/api/ramos_atividade?nocache=' + (force ? Date.now() : '')).catch(function(){ return null; })
+        ]).then(function(resps) {
+          var estResp = resps[0] || {}; var cidResp = resps[1] || {}; var ramResp = resps[2] || {};
+          var estArr = Array.isArray(estResp) ? estResp : (Array.isArray(estResp.data) ? estResp.data : []);
+          var cidArr = Array.isArray(cidResp) ? cidResp : (Array.isArray(cidResp.data) ? cidResp.data : []);
+          var ramArr = Array.isArray(ramResp) ? ramResp : (Array.isArray(ramResp.data) ? ramResp.data : []);
+          if (estArr.length || cidArr.length || ramArr.length) {
+            __gg3MergeIntoLS(LS_ESTADOS, estArr, function(r) {
+              return { id: _cadCleanStr(r.id || _cadUid('est')), uf: _cadUfUpper(r.uf || ''), nome: _cadCleanStr(r.nome || ''), aliq_icms: Number(r.aliq_icms || 0) || 0 };
+            });
+            __gg3MergeIntoLS(LS_CIDADES, cidArr, function(r) {
+              return { id: _cadCleanStr(r.id || _cadUid('cid')), nome: _cadCleanStr(r.nome || ''), uf: _cadUfUpper(r.uf || ''), ibge: _cadCleanStr(r.ibge || r.codigo_ibge || '') };
+            });
+            __gg3MergeIntoLS(LS_RAMOS, ramArr, function(r) {
+              return { id: _cadCleanStr(r.id || _cadUid('ram')), nome: _cadCleanStr(r.nome || ''), descricao: _cadCleanStr(r.descricao || '') };
+            });
+          }
+          try { console.log('[GG3] Hydrate estados=' + estArr.length + ' cidades=' + cidArr.length + ' ramos=' + ramArr.length + ' (forcado=' + !!force + ')'); } catch (_) {}
+          __GG3_STATE.hydrated = true;
+          try { _cadAtualizarDatalists(); } catch (_) {}
+          try { _resolver(true); } catch (_) {}
+          return true;
+        }).catch(function(e) {
+          try { console.warn('[GG3] Hydrate falhou (usando localStorage):', String(e && e.message || e)); } catch (_) {}
+          __GG3_STATE.hydrated = true;
+          try { _resolver(false); } catch (_) {}
+          return false;
+        });
+        return p;
+      }
+      window.__gg3HydrateCache = __gg3HydrateCache;
+      // Agendamento em background (não trava a UI)
+      try { setTimeout(function() { __gg3HydrateCache(false).catch(function(){}); }, 0); } catch (_) {}
+
+      async function __gg3ApiCall(url, method, body) {
+        try {
+          var opts = { method: method || 'GET', credentials: 'same-origin', headers: {} };
+          if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+          var r = await fetch(url, opts);
+          var txt = await r.text();
+          var j = null;
+          try { j = JSON.parse(txt); } catch(_) {}
+          if (!r.ok) throw new Error((j && j.error) || ('Erro ' + r.status + ': ' + (txt || '').slice(0, 80)));
+          return j;
+        } catch (e) {
+          try { console.warn('[GG3 api] falhou', url, String(e && e.message || e)); } catch(_) {}
+          throw e;
+        }
+      }
+      function __gg3EhUuidServer(id) {
+        var s = String(id || '').trim();
+        return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
+      }
+      async function __gg3RemapLocalToServerId(lsKey, localId, serverId) {
+        try {
+          var arr = _cadLocal(lsKey, []);
+          if (!Array.isArray(arr) || !localId || !serverId) return;
+          for (var i = 0; i < arr.length; i++) {
+            if (String(arr[i].id || '') === String(localId || '')) {
+              arr[i].id = serverId;
+              _cadSaveLocal(lsKey, arr);
+              return;
+            }
+          }
+        } catch (_) {}
+      }
+
       // ---------- CIDADES ----------
       function loadCidades() {
         var arr = _cadLocal(LS_CIDADES, []);
@@ -12169,17 +12285,45 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         it.uf   = _cadUfUpper(it.uf || '');
         if (!it.nome) throw new Error('Informe o nome da cidade.');
         if (!it.uf || it.uf.length !== 2) throw new Error('Informe a UF da cidade (2 letras).');
-        if (it.id && String(it.id).slice(0, 3) !== 'cid') it.id = _cadUid('cid');
-        if (!it.id) it.id = _cadUid('cid');
+        var idLocalAntigo = null;
+        if (it.id && String(it.id).slice(0, 3) !== 'cid' && !__gg3EhUuidServer(it.id)) it.id = _cadUid('cid');
+        if (!it.id) { it.id = _cadUid('cid'); }
+        idLocalAntigo = String(it.id);
         var existe = -1;
         arr.forEach(function(x, idx) { if (String(x.id) === String(it.id)) existe = idx; });
         if (existe >= 0) arr[existe] = it; else arr.push(it);
         _cadSaveLocal(LS_CIDADES, arr);
+        try {
+          var payload = { nome: it.nome, uf: it.uf, ibge: it.ibge || '' };
+          var resp;
+          if (__gg3EhUuidServer(it.id)) {
+            payload.id = it.id;
+            resp = await __gg3ApiCall('/api/cidades', 'PUT', payload);
+          } else {
+            resp = await __gg3ApiCall('/api/cidades', 'POST', payload);
+            var novoId = (resp && (resp.id || resp.uuid)) || null;
+            if (novoId && String(novoId) !== String(idLocalAntigo)) {
+              await __gg3RemapLocalToServerId(LS_CIDADES, idLocalAntigo, novoId);
+              it.id = novoId;
+            }
+          }
+          try { __gg3HydrateCache(true).catch(function(){}); } catch(_) {}
+        } catch (e) {
+          try { console.warn('[GG3] saveCidade backend falhou (mantido local):', String(e.message || e)); } catch(_) {}
+        }
         return it;
       }
       async function deleteCidade(id) {
         var arr = loadCidades().filter(function(x) { return String(x.id) !== String(id); });
         _cadSaveLocal(LS_CIDADES, arr);
+        if (__gg3EhUuidServer(id)) {
+          try {
+            await __gg3ApiCall('/api/cidades?id=' + encodeURIComponent(String(id)), 'DELETE');
+            try { __gg3HydrateCache(true).catch(function(){}); } catch(_) {}
+          } catch (e) {
+            try { console.warn('[GG3] deleteCidade backend falhou (mantido local):', String(e.message || e)); } catch(_) {}
+          }
+        }
       }
       function openCidadeModal(item, done) {
         var old = document.getElementById('cad-cidade-modal');
@@ -12287,16 +12431,44 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         if (!it.uf || it.uf.length !== 2) throw new Error('Informe a UF (2 letras).');
         if (!it.nome) throw new Error('Informe o nome do estado.');
         if (arr.some(function(x) { return String(x.id) !== String(it.id) && x.uf === it.uf; })) throw new Error('Já existe um estado com a UF ' + it.uf + '.');
-        if (!it.id) it.id = _cadUid('est');
+        var idLocalAntigo = null;
+        if (!it.id) { it.id = _cadUid('est'); }
+        idLocalAntigo = String(it.id);
         var existe = -1;
         arr.forEach(function(x, idx) { if (String(x.id) === String(it.id)) existe = idx; });
         if (existe >= 0) arr[existe] = it; else arr.push(it);
         _cadSaveLocal(LS_ESTADOS, arr);
+        try {
+          var payload = { uf: it.uf, nome: it.nome, aliq_icms: it.aliq_icms };
+          var resp;
+          if (__gg3EhUuidServer(it.id)) {
+            payload.id = it.id;
+            resp = await __gg3ApiCall('/api/estados', 'PUT', payload);
+          } else {
+            resp = await __gg3ApiCall('/api/estados', 'POST', payload);
+            var novoId = (resp && (resp.id || resp.uuid)) || null;
+            if (novoId && String(novoId) !== String(idLocalAntigo)) {
+              await __gg3RemapLocalToServerId(LS_ESTADOS, idLocalAntigo, novoId);
+              it.id = novoId;
+            }
+          }
+          try { __gg3HydrateCache(true).catch(function(){}); } catch(_) {}
+        } catch (e) {
+          try { console.warn('[GG3] saveEstado backend falhou (mantido local):', String(e.message || e)); } catch(_) {}
+        }
         return it;
       }
       async function deleteEstado(id) {
         var arr = loadEstados().filter(function(x) { return String(x.id) !== String(id); });
         _cadSaveLocal(LS_ESTADOS, arr);
+        if (__gg3EhUuidServer(id)) {
+          try {
+            await __gg3ApiCall('/api/estados?id=' + encodeURIComponent(String(id)), 'DELETE');
+            try { __gg3HydrateCache(true).catch(function(){}); } catch(_) {}
+          } catch (e) {
+            try { console.warn('[GG3] deleteEstado backend falhou (mantido local):', String(e.message || e)); } catch(_) {}
+          }
+        }
       }
       function openEstadoModal(item, done) {
         var old = document.getElementById('cad-estado-modal');
@@ -12397,16 +12569,44 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         it.descricao = _cadCleanStr(it.descricao || '');
         if (!it.nome) throw new Error('Informe o nome do ramo.');
         if (arr.some(function(x) { return String(x.id) !== String(it.id) && String(x.nome).toLowerCase() === String(it.nome).toLowerCase(); })) throw new Error('Já existe um ramo com este nome.');
-        if (!it.id) it.id = _cadUid('ram');
+        var idLocalAntigo = null;
+        if (!it.id) { it.id = _cadUid('ram'); }
+        idLocalAntigo = String(it.id);
         var existe = -1;
         arr.forEach(function(x, idx) { if (String(x.id) === String(it.id)) existe = idx; });
         if (existe >= 0) arr[existe] = it; else arr.push(it);
         _cadSaveLocal(LS_RAMOS, arr);
+        try {
+          var payload = { nome: it.nome, descricao: it.descricao || '' };
+          var resp;
+          if (__gg3EhUuidServer(it.id)) {
+            payload.id = it.id;
+            resp = await __gg3ApiCall('/api/ramos_atividade', 'PUT', payload);
+          } else {
+            resp = await __gg3ApiCall('/api/ramos_atividade', 'POST', payload);
+            var novoId = (resp && (resp.id || resp.uuid)) || null;
+            if (novoId && String(novoId) !== String(idLocalAntigo)) {
+              await __gg3RemapLocalToServerId(LS_RAMOS, idLocalAntigo, novoId);
+              it.id = novoId;
+            }
+          }
+          try { __gg3HydrateCache(true).catch(function(){}); } catch(_) {}
+        } catch (e) {
+          try { console.warn('[GG3] saveRamo backend falhou (mantido local):', String(e.message || e)); } catch(_) {}
+        }
         return it;
       }
       async function deleteRamo(id) {
         var arr = loadRamos().filter(function(x) { return String(x.id) !== String(id); });
         _cadSaveLocal(LS_RAMOS, arr);
+        if (__gg3EhUuidServer(id)) {
+          try {
+            await __gg3ApiCall('/api/ramos_atividade?id=' + encodeURIComponent(String(id)), 'DELETE');
+            try { __gg3HydrateCache(true).catch(function(){}); } catch(_) {}
+          } catch (e) {
+            try { console.warn('[GG3] deleteRamo backend falhou (mantido local):', String(e.message || e)); } catch(_) {}
+          }
+        }
       }
       function openRamoModal(item, done) {
         var old = document.getElementById('cad-ramo-modal');
@@ -12633,8 +12833,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       function _p11Esc(s) { try { return window.escH ? window.escH(s) : String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); } catch(_) { return String(s == null ? '' : s); } }
       function _p11UfUpper(s) { return String(s || '').toUpperCase().replace(/[^A-Z]/g,'').slice(0,2); }
 
-      function renderMapaClientes() {
+      async function renderMapaClientes() {
         try {
+          try { if (typeof window.__gg3HydrateCache === 'function') { await window.__gg3HydrateCache(false); } } catch (_) {}
           var root = document.getElementById('page-mapa-clientes') || document.getElementById('page-mapa') || null;
           if (!root) {
             var q = document.querySelector('[id^="page-mapa"]');

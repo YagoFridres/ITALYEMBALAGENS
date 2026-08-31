@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1246,8 +1246,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828360001';
-const SW_RUNTIME_VERSION = '20260828360001';
+const PATCH_RUNTIME_VERSION = '20260828370001';
+const SW_RUNTIME_VERSION = '20260828370001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -16186,13 +16186,26 @@ app.get('/api/empresas', async (req, res) => {
 
 app.get('/api/orcamentos', authMiddleware, async (req, res) => {
   try {
+    const t0 = Date.now();
     const empFiltro = String(req.query.empId || req.query.empresa_id || req.query.empresaId || req.query.empresa || '').trim();
+    // FF3: cache 30s memória para parâmetros idênticos
+    const numFiltro = String(req.query.numero || '');
+    const cliFiltro = String(req.query.cliente || '');
+    const cacheKeyOrc = 'orc:v1:' + empFiltro + '|n:' + numFiltro + '|c:' + cliFiltro;
+    const cachedOrc = _ff3CacheGet(cacheKeyOrc);
+    if (cachedOrc) {
+      try { console.log('[FF3 ORC] cache HIT (' + (Date.now() - t0) + 'ms) rows=' + cachedOrc.length); } catch (_) {}
+      return ok(res, cachedOrc);
+    }
     const isDeletedStatus = (row) => {
       const status = String(row?.status || '').trim().toLowerCase();
       return status === 'excluido' || status === 'excluído';
     };
+    // FF3: colunas enxutas (não carrega JSONs grandes de parâmetros/itens na LISTA) —
+    // reduz payload e velocidade transferência. Modal de detalhe /:id continua com select(*).
+    const colunasLista = 'id,numero_orcamento,versao,nome,nome_orcamento,cliente_id,cliente_nome,status,valor_total,total,valor_venda,criado_em,created_at,updated_at,data_validade,emp_id,empresa_id,empresa,sigla,deleted_at,pasta_id,autor_nome,autor_id,vencimento,origem,observacao,etapa';
     const buildQuery = (applyEmpFilter, applyDeletedFilter) => {
-      let q = supabase.from('orcamentos').select('*').order('criado_em', { ascending: false });
+      let q = supabase.from('orcamentos').select(colunasLista).order('criado_em', { ascending: false });
       if (applyDeletedFilter) q = q.is('deleted_at', null);
       if (req.query.numero) q = q.eq('numero_orcamento', String(req.query.numero));
       if (req.query.cliente) q = q.ilike('cliente_nome', `%${String(req.query.cliente)}%`);
@@ -16226,6 +16239,8 @@ app.get('/api/orcamentos', authMiddleware, async (req, res) => {
       return ok(res, []);
     }
     data = (Array.isArray(data) ? data : []).filter((row) => !row?.deleted_at && !isDeletedStatus(row));
+    // FF3: fallback sem empresa filter agora é FEITO EM MEMÓRIA (pega rows da query já executada SEM filtro empresa) —
+    // em vez de bater no Supabase de novo. Reduz 1 query pior caso.
     if (empFiltro && !(Array.isArray(data) && data.length)) {
       let fallback = await buildQuery(false, true);
       if (fallback.error) {
@@ -16239,11 +16254,13 @@ app.get('/api/orcamentos', authMiddleware, async (req, res) => {
         data = fallback.data.filter((row) => !row?.deleted_at && !isDeletedStatus(row));
       }
     }
+    if (Array.isArray(data)) _ff3CacheSet(cacheKeyOrc, data);
     try {
       const rows = Array.isArray(data) ? data : [];
       const sample = rows && rows[0] ? rows[0] : null;
-      if (!sample) console.log('[ORCAMENTOS] GET ok: 0 linhas');
-      else console.log('[ORCAMENTOS] GET ok sample:', {
+      const ms = Date.now() - t0;
+      if (!sample) console.log('[FF3 ORC] GET ok (' + ms + 'ms): 0 linhas');
+      else console.log('[FF3 ORC] GET ok (' + ms + 'ms) rows=' + rows.length + ' sample:', {
         id: sample.id,
         numero_orcamento: sample.numero_orcamento,
         nome: sample.nome,
@@ -16269,6 +16286,7 @@ app.get('/api/orcamentos/:id', authMiddleware, async (req, res) => {
 });
 app.post('/api/orcamentos', authMiddleware, async (req, res) => {
   try {
+    try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
     const b = req.body || {};
     let empresaUuid = '';
     try { empresaUuid = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { empresaUuid = ''; }
@@ -16343,6 +16361,7 @@ app.post('/api/orcamentos', authMiddleware, async (req, res) => {
 });
 app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
   try {
+    try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const atual = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
@@ -16434,6 +16453,7 @@ app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
 });
 app.delete('/api/orcamentos/:id', authMiddleware, async (req, res) => {
   try {
+    try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const atual = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
@@ -16570,6 +16590,7 @@ app.delete('/api/orcamentos_pastas/:id', authMiddleware, async (req, res) => {
 
 app.post('/api/orcamentos/:id/clonar', authMiddleware, async (req, res) => {
   try {
+    try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const atual = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
@@ -16674,6 +16695,7 @@ app.get('/api/orcamentos/:id/versoes', authMiddleware, async (req, res) => {
 
 app.post('/api/orcamentos/:id/restaurar', authMiddleware, async (req, res) => {
   try {
+    try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
     const id = String(req.params.id || '').trim();
     const versao = Math.trunc(Number(req.body?.versao ?? 0) || 0);
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
@@ -25118,13 +25140,42 @@ function _comprasChapasBuildItemPayload(raw, compraId, seq) {
   return item;
 }
 
+// FF3 Cache curto memória (30s) para GETs repetidos de compras-chapas/orcamentos
+// evita re-bater no Supabase em re-render rápidos do frontend.
+const _FF3_CACHE = new Map();
+function _ff3CacheGet(key) {
+  try {
+    const ent = _FF3_CACHE.get(key);
+    if (!ent) return null;
+    if (Date.now() - ent.t > 30000) { _FF3_CACHE.delete(key); return null; }
+    return ent.v;
+  } catch (_) { return null; }
+}
+function _ff3CacheSet(key, val) {
+  try {
+    if (_FF3_CACHE.size > 80) _FF3_CACHE.clear();
+    _FF3_CACHE.set(key, { t: Date.now(), v: val });
+  } catch (_) {}
+}
+
 async function _comprasChapasFetchNested(filters = {}) {
   const empId = _comprasChapasStr(filters.empId);
-  let q = supabase.from('compras_chapas').select('*');
+  // FF3 otimização: cache 30s memória + LIMIT/ORDER evita carregar tabela inteira.
+  // Se for busca (ids preenchidos), não aplica limit para não quebrar resultados.
+  const hasIds = Array.isArray(filters.ids) && filters.ids.length;
+  const pastaKey = filters.semPasta ? '__sem_pasta__' : (filters.pastaId || 'todas');
+  const cacheKey = hasIds ? '' : ('cc:v2:' + empId + '|' + pastaKey + '|' + String(filters.ids ? 'ids:' + filters.ids.length : 'all'));
+  if (cacheKey) {
+    const cached = _ff3CacheGet(cacheKey);
+    if (cached) return cached;
+  }
+  let q = supabase.from('compras_chapas').select('*')
+    .order('created_at', { ascending: false });
   if (empId) q = q.eq('emp_id', empId);
   if (filters.semPasta) q = q.is('pasta_id', null);
   else if (filters.pastaId) q = q.eq('pasta_id', _comprasChapasStr(filters.pastaId));
-  if (Array.isArray(filters.ids) && filters.ids.length) q = q.in('id', filters.ids);
+  if (hasIds) q = q.in('id', filters.ids);
+  else q = q.limit(250);
   const comprasOut = await q;
   if (comprasOut.error) throw comprasOut.error;
   const compras = Array.isArray(comprasOut.data) ? comprasOut.data : [];
@@ -25145,9 +25196,11 @@ async function _comprasChapasFetchNested(filters = {}) {
     if (!itensMap[key]) itensMap[key] = [];
     itensMap[key].push(item);
   });
-  return compras
+  const resultado = compras
     .map((row) => ({ ...row, itens: itensMap[_comprasChapasStr(row?.id)] || [] }))
     .sort((a, b) => (Math.trunc(_comprasChapasNum(b?.numero_compra)) - Math.trunc(_comprasChapasNum(a?.numero_compra))));
+  if (cacheKey) _ff3CacheSet(cacheKey, resultado);
+  return resultado;
 }
 
 async function _comprasChapasBuscaIds(empId, pastaId, semPasta, busca) {
@@ -25459,6 +25512,7 @@ app.get('/api/compras-chapas', authMiddleware, async (req, res) => {
 
 app.post('/api/compras-chapas', authMiddleware, async (req, res) => {
   try {
+    try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
     const body = req.body || {};
     const empInfo = await _comprasChapasResolveEmpId(req, body);
     const empId = empInfo.empId;
@@ -25498,6 +25552,7 @@ app.post('/api/compras-chapas', authMiddleware, async (req, res) => {
 
 app.post('/api/compras-chapas/:id/clonar', authMiddleware, async (req, res) => {
   try {
+    try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
     const id = _comprasChapasStr(req.params.id);
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const atual = await _comprasChapasLoadById(id);
@@ -25540,6 +25595,7 @@ app.post('/api/compras-chapas/:id/clonar', authMiddleware, async (req, res) => {
 
 app.put('/api/compras-chapas/:id/pasta', authMiddleware, async (req, res) => {
   try {
+    try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
     const id = _comprasChapasStr(req.params.id);
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const atual = await _comprasChapasLoadById(id);
@@ -25578,6 +25634,7 @@ app.get('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
 
 app.put('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
   try {
+    try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
     const id = _comprasChapasStr(req.params.id);
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const atual = await _comprasChapasLoadById(id);
@@ -25623,6 +25680,7 @@ app.put('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/compras-chapas/:id', authMiddleware, async (req, res) => {
   try {
+    try { _FF3_CACHE && _FF3_CACHE.clear && _FF3_CACHE.clear(); } catch (_) {}
     const id = _comprasChapasStr(req.params.id);
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const del = await supabase.from('compras_chapas').delete().eq('id', id);
