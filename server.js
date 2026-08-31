@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -937,26 +937,38 @@ const _MAP_SIGLA_UUID_EMP_GLOBAL = {
   'E2': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
   'E3': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
 };
-function _montarOrEmpresaGlobal(filtro, todas, apenasEmpresaIdUuid) {
+function _montarOrEmpresaGlobal(filtro, todas, apenasEmpresaIdUuid, incluirNullEmpresa) {
   if (todas || !filtro) return null;
+  if (incluirNullEmpresa === undefined) incluirNullEmpresa = true;
+  const SEM_EMP_MARK = '__sem_empresa__';
+  const raw = String(filtro || '').trim();
+  if (raw === SEM_EMP_MARK) {
+    const p = [];
+    p.push('empresa_id.is.null');
+    if (!apenasEmpresaIdUuid) p.push('emp_id.is.null');
+    if (!apenasEmpresaIdUuid) p.push("emp_id.eq.''");
+    return p.join(',');
+  }
   let uuid = null, sigla = null;
-  const up = String(filtro || '').toUpperCase();
-  const low = String(filtro || '').toLowerCase();
+  const up = String(raw || '').toUpperCase();
+  const low = String(raw || '').toLowerCase();
   if (_MAP_SIGLA_UUID_EMP_GLOBAL[up]) {
     sigla = up;
     uuid = _MAP_SIGLA_UUID_EMP_GLOBAL[up];
   } else if (_MAP_UUID_SIGLA_EMP_GLOBAL[low]) {
     uuid = low;
     sigla = _MAP_UUID_SIGLA_EMP_GLOBAL[low];
-  } else if (/^[0-9a-f-]{36}$/i.test(filtro)) {
-    uuid = filtro;
+  } else if (/^[0-9a-f-]{36}$/i.test(raw)) {
+    uuid = raw;
   }
   const parts = [];
   if (uuid) parts.push('empresa_id.eq.' + String(uuid));
   if (!apenasEmpresaIdUuid && sigla) parts.push('emp_id.eq.' + String(sigla));
-  parts.push('empresa_id.is.null');
-  if (!apenasEmpresaIdUuid) parts.push('emp_id.is.null');
-  if (!apenasEmpresaIdUuid) parts.push("emp_id.eq.''");
+  if (incluirNullEmpresa) {
+    parts.push('empresa_id.is.null');
+    if (!apenasEmpresaIdUuid) parts.push('emp_id.is.null');
+    if (!apenasEmpresaIdUuid) parts.push("emp_id.eq.''");
+  }
   return parts.join(',');
 }
 function _filtrarOfsNaoTesteGlobal(arr) {
@@ -1205,8 +1217,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828220001';
-const SW_RUNTIME_VERSION = '20260828220001';
+const PATCH_RUNTIME_VERSION = '20260828230001';
+const SW_RUNTIME_VERSION = '20260828230001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -2653,7 +2665,10 @@ async function _listarOfsVendasOficiais(range = {}, empresaId = '') {
       .order('created_at', { ascending: true })
       .range(offset, offset + PAGE - 1);
     if (empresaId) {
-      query = query.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId},empresa_id.is.null`);
+      const todasFlag = false;
+      const incluirNull = !empresaId;
+      const filtroEmp = _montarOrEmpresaGlobal(empresaId, todasFlag, false, incluirNull);
+      if (filtroEmp) query = query.or(filtroEmp);
     }
     const { data, error } = await query;
     if (error) throw error;
@@ -2707,7 +2722,8 @@ async function _comissoesListarTotalVendidoFrontend(range, empresaId) {
       .select('id,of,numero,status,deleted_at,empresa_id,emp_id,data_faturamento,data_conclusao,dia,data_pedido,created_at,valor_total,valor_venda,total')
       .range(offset, offset + PAGE - 1);
     if (empresaId) {
-      query = query.or(`empresa_id.eq.${empresaId},emp_id.eq.${empresaId}`);
+      const filtroEmp = _montarOrEmpresaGlobal(empresaId, false, false, !empresaId);
+      if (filtroEmp) query = query.or(filtroEmp);
     }
     const { data, error } = await query;
     if (error) throw error;
@@ -2775,7 +2791,7 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
       .gte('data_conclusao', range.inicio)
       .lt('data_conclusao', range.fim_exclusivo)
       .ilike('status', '%conclu%');
-    const filtroEmpCom = _montarOrEmpresaGlobal(empresaIdRaw, todasEmpCom, true);
+    const filtroEmpCom = _montarOrEmpresaGlobal(empresaIdRaw, todasEmpCom, true, (todasEmpCom || !empresaIdRaw));
     if (filtroEmpCom) query = query.or(filtroEmpCom);
     const { data: ofs, error } = await query;
 
@@ -2901,7 +2917,7 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
     const filtros = montarFiltrosBuscaOf(termoVariants);
     const selectResult = await _selectCompatRows('ofs', selectCols, (query) => {
       let qx = query.limit(50);
-      const filtroEmpBuscaOf = _montarOrEmpresaGlobal(empresaIdRaw, todasEmpBuscaOf);
+      const filtroEmpBuscaOf = _montarOrEmpresaGlobal(empresaIdRaw, todasEmpBuscaOf, false, (todasEmpBuscaOf || !empresaIdRaw));
       if (filtroEmpBuscaOf) {
         try { qx = qx.or(filtroEmpBuscaOf); } catch (_) {}
       }
@@ -5390,7 +5406,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
 
-      const filtroEmpOr = _montarOrEmpresaGlobal(empresaFiltro, todasEmpresasFlag);
+      const filtroEmpOr = _montarOrEmpresaGlobal(empresaFiltro, todasEmpresasFlag, false, (todasEmpresasFlag || !empresaFiltro));
       if (filtroEmpOr) query = query.or(filtroEmpOr);
 
       if (status) {
@@ -5451,7 +5467,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           .from('ofs')
           .select('*', { count: 'exact' })
           .order('created_at', { ascending: false });
-        const filtroEmpOrFb = _montarOrEmpresaGlobal(empresaFiltro, todasEmpresasFlag);
+        const filtroEmpOrFb = _montarOrEmpresaGlobal(empresaFiltro, todasEmpresasFlag, false, (todasEmpresasFlag || !empresaFiltro));
         if (filtroEmpOrFb) query = query.or(filtroEmpOrFb);
         if (clienteFiltroLegado && clienteFiltroLegado !== 'undefined' && clienteFiltroLegado !== 'null' && clienteFiltroLegado !== '[object Object]') {
           const cid = String(clienteFiltroLegado || '').trim();

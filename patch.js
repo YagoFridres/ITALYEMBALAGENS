@@ -58982,11 +58982,60 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     } catch (_zz2Override) {}
   })();
 
+  function _patchComissoesEmpresaComboJJ3() {
+    try {
+      var sel = document.getElementById('com-emp');
+      if (!sel) return;
+      var SEM_VAL = '__sem_empresa__';
+      var optsArr = Array.prototype.slice.call(sel.options || []);
+      var existing = {};
+      optsArr.forEach(function(o){ existing[String(o.value || '').trim()] = true; });
+      var EMP_ARRAY = [];
+      try { EMP_ARRAY = Array.isArray(window.EMPRESAS) ? window.EMPRESAS : (Array.isArray(EMPRESAS) ? EMPRESAS : []); } catch(_e){}
+      if (Array.isArray(EMP_ARRAY) && EMP_ARRAY.length) {
+        EMP_ARRAY.forEach(function(emp){
+          if (!emp) return;
+          var id = String(emp.id || '').trim();
+          var nm = String(emp.nome || emp.name || emp.label || id || '').trim();
+          if (!id || existing[id]) return;
+          var o = document.createElement('option');
+          o.value = id; o.textContent = nm;
+          sel.appendChild(o);
+          existing[id] = true;
+        });
+      }
+      if (!existing[SEM_VAL]) {
+        var oSem = document.createElement('option');
+        oSem.value = SEM_VAL;
+        oSem.textContent = '🟫 Sem empresa definida';
+        sel.appendChild(oSem);
+        existing[SEM_VAL] = true;
+      }
+      try {
+        if (typeof window.__originalComEmpresaLabelPrintJJ3 !== 'function' && typeof window.comEmpresaLabelPrint === 'function') {
+          window.__originalComEmpresaLabelPrintJJ3 = window.comEmpresaLabelPrint;
+          window.comEmpresaLabelPrint = function comEmpresaLabelPrintPatchedJJ3() {
+            var empId = String((document.getElementById('com-emp')||{}).value || '').trim();
+            if (empId === SEM_VAL) return 'Sem empresa definida';
+            if (empId) {
+              var e = null;
+              try { e = (Array.isArray(window.EMPRESAS)?window.EMPRESAS:[]).find(function(x){return String(x.id||'')===empId;}); } catch(_f){}
+              try { if(!e) e = (Array.isArray(EMPRESAS)?EMPRESAS:[]).find(function(x){return String(x.id||'')===empId;}); } catch(_f){}
+              if (e && e.nome) return String(e.nome);
+            }
+            return 'Todas empresas';
+          };
+        }
+      } catch(_lbl){}
+    } catch(_jj3c){}
+  }
+
   function _loopCadastrosAB() {
     try { _garantirAbaMaisOuCadastros(); } catch (_) {}
     try { _injetarAutoCompleteCliente(); } catch (_) {}
     try { mapEstadoToUfInModal && mapEstadoToUfInModal(document.body); } catch (_) {}
     try { _patchAmostrasStatusOptions(); } catch (_) {}
+    try { _patchComissoesEmpresaComboJJ3(); } catch (_) {}
   }
 
   if (document.readyState === 'loading') {
