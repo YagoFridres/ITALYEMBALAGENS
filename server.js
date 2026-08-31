@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1246,8 +1246,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828371001';
-const SW_RUNTIME_VERSION = '20260828371001';
+const PATCH_RUNTIME_VERSION = '20260828380001';
+const SW_RUNTIME_VERSION = '20260828380001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -13760,9 +13760,15 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
     try { empresaFilter = await _relatoriosResolveEmpresaFilter(req); } catch (_) { empresaFilter = { todas: true, uuid: null }; }
     let empresaId = empresaFilter && !empresaFilter.todas && empresaFilter.uuid ? String(empresaFilter.uuid || '').trim() : '';
 
-    const LUCRATIVIDADE_MAQUINAS = MAQUINAS_CATALOGO_PADRAO.filter((m) => String(m?.nome || '').trim().toLowerCase() !== 'acabamento');
-    const machineOrder = new Map(LUCRATIVIDADE_MAQUINAS.map((item, idx) => [String(item?.nome || '').trim(), idx]));
-    const machineNames = new Set(Array.from(machineOrder.keys()));
+    // AA3: catálogo de máquinas + bucket extra "Sem Máquina Definida" para
+    // OFs concluídas sem nenhuma passagem nas máquinas catálogadas.
+    const BASE_MAQUINAS = MAQUINAS_CATALOGO_PADRAO.filter((m) => String(m?.nome || '').trim().toLowerCase() !== 'acabamento');
+    const MAQUINA_SEM = { nome: 'Sem Máquina Definida' };
+    const LUCRATIVIDADE_MAQUINAS = BASE_MAQUINAS.concat([MAQUINA_SEM]);
+    const machineOrder = new Map(BASE_MAQUINAS.map((item, idx) => [String(item?.nome || '').trim(), idx]));
+    machineOrder.set('Sem Máquina Definida', 999);
+    const machineNames = new Set(BASE_MAQUINAS.map((m) => String(m?.nome || '').trim()));
+
     const canonicalColors = (value) => {
       const out = [];
       const seen = new Set();
@@ -13826,39 +13832,117 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       };
     };
 
-    const passagensPayload = await _buscarPassagensHistoricoFromOfs(req, {
-      data_inicio: range.inicio,
-      data_fim: range.fim,
-      emp_id: empresaId,
-    });
-    const passagensRows = (Array.isArray(passagensPayload?.rows) ? passagensPayload.rows : []).filter((row) => {
-      const canon = _canonMaqNome(row?.maquina_nome || row?.maquina || '') || String(row?.maquina_nome || row?.maquina || '').trim();
-      return !!canon && machineNames.has(canon);
-    });
-
-    const ofIds = Array.from(new Set(passagensRows.map((row) => String(row?.of_id || '').trim()).filter(_isUuid)));
-    const ofsMap = new Map();
-    const selectCols = [
+    // AA3: OFs buscadas DIRETAMENTE por status concluído + deleted null (não exigindo
+    // passagem obrigatória). Depois filtramos período EM MEMÓRIA usando a hierarquia
+    // COALESCE oficial para incluir as 27 OFs que antes eram descartadas.
+    const ofsCols = [
       'id', 'numero', 'of', 'status', 'deleted_at', 'empresa_id', 'emp_id',
       'cli_id', 'cliente_nome', 'cliNome', 'clinome',
       'descricao', 'qtd_produzida', 'qtd', 'quantidade', 'qtd_pedida',
       'valor_total', 'valor_venda', 'total',
       'toneladas_utilizadas', 'tonelada_vendida', 'custo_m2_venda',
-      'tipo_caixa', 'cores_impressao', 'perdas_por_maquina', 'passagens_maquina',
+      'tipo_caixa', 'cores_impressao', 'perdas_por_maquina', 'passagens_maquina', 'passagens_por_maquina',
       'data_faturamento', 'data_conclusao', 'dia', 'created_at',
-      'area_total_m2',
+      'area_total_m2', 'custo_total', 'custo', 'custo_estimado',
+      'gramatura_id', 'dim_comprimento', 'dim_largura', 'caixa_comprimento', 'caixa_largura',
     ].join(',');
-    for (let i = 0; i < ofIds.length; i += 200) {
-      const chunk = ofIds.slice(i, i + 200);
-      const { data, error } = await supabase.from('ofs').select(selectCols).in('id', chunk);
-      if (error) throw error;
-      (Array.isArray(data) ? data : []).forEach((of) => {
-        const id = String(of?.id || '').trim();
-        if (id) ofsMap.set(id, of);
-      });
+    const batch = 2000;
+    const ofs = [];
+    let cursor = 0;
+    while (true) {
+      let q = supabase.from('ofs').select(ofsCols)
+        .ilike('status', '%conclu%')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .range(cursor, cursor + batch - 1);
+      if (empresaId && _isUuid(empresaId)) {
+        q = q.or([
+          'emp_id.eq.' + empresaId,
+          'empresa_id.eq.' + empresaId,
+        ].join(','));
+      }
+      const r = await q;
+      if (r?.error) {
+        const msg = String(r.error.message || r.error || '');
+        if ((msg.includes('column') || msg.includes('Could not find')) && (msg.includes('emp_id') || msg.includes('deleted_at'))) {
+          let q2 = supabase.from('ofs').select(ofsCols)
+            .ilike('status', '%conclu%')
+            .order('created_at', { ascending: false })
+            .range(cursor, cursor + batch - 1);
+          if (empresaId && _isUuid(empresaId)) q2 = q2.eq('empresa_id', empresaId);
+          const r2 = await q2;
+          if (r2?.error) throw r2.error;
+          if (!Array.isArray(r2?.data)) break;
+          r2.data.forEach((row) => ofs.push(row));
+          if (r2.data.length < batch) break;
+          cursor += r2.data.length;
+          if (cursor > 20000) break;
+          continue;
+        }
+        throw r.error;
+      }
+      if (!Array.isArray(r?.data)) break;
+      r.data.forEach((row) => ofs.push(row));
+      if (r.data.length < batch) break;
+      cursor += r.data.length;
+      if (cursor > 20000) break;
     }
 
-    const clientesMap = await _relatoriosLoadClientesDetails(Array.from(ofsMap.values()).map((of) => _assistPickOfClienteId(of)));
+    // Filtro OFs de fato no período (COALESCE oficial) + empresa inclusiva + canceladas
+    const ofsFiltradas = ofs.filter((of) => {
+      if (of?.deleted_at) return false;
+      const status = String(of?.status || '').trim().toLowerCase();
+      if (!status || !status.includes('conclu')) return false;
+      if (_assistIsCancelada(of)) return false;
+      if (!_vendasOficialDentroDoPeriodo(of, range)) return false;
+      // Filtro empresa (inclusivo: match UUID OU null ambos se nenhum filtro empresa)
+      if (empresaId && _isUuid(empresaId)) {
+        const e1 = String(of?.emp_id || '').trim();
+        const e2 = String(of?.empresa_id || '').trim();
+        const hit = (e1 && e1 === empresaId) || (e2 && e2 === empresaId);
+        if (!hit) return false;
+      }
+      return true;
+    });
+
+    // AA3: cálculo custo MESMA LÓGICA do relatório Custos (/api/relatorios/custos L15386)
+    // = (comp/1000)*(larg/1000) * gram.valor_unitario * qtd_produzida.
+    // Fallback: custo_m2_venda * area_total_m2 ou colunas persistidas (custo_total etc).
+    const gramIds = Array.from(new Set(ofsFiltradas.map((of) => String(of?.gramatura_id || '').trim()).filter(_isUuid)));
+    const gramMap = new Map();
+    for (let i = 0; i < gramIds.length; i += 200) {
+      const chunk = gramIds.slice(i, i + 200);
+      try {
+        const { data, error } = await supabase.from('gramaturas').select('id,valor_unitario').in('id', chunk);
+        if (!error && Array.isArray(data)) {
+          data.forEach((g) => gramMap.set(String(g?.id || '').trim(), g));
+        }
+      } catch (_) {}
+    }
+
+    const pickCustoOf = (of) => {
+      const comp = Number(of?.dim_comprimento ?? of?.caixa_comprimento ?? 0) || 0;
+      const larg = Number(of?.dim_largura ?? of?.caixa_largura ?? 0) || 0;
+      const qtd = _relatoriosPickQtdOf(of);
+      const gramId = String(of?.gramatura_id || '').trim();
+      const gram = gramId ? (gramMap.get(gramId) || null) : null;
+      const valorUnitM2 = Number(gram?.valor_unitario ?? 0) || 0;
+      if (comp > 0 && larg > 0 && valorUnitM2 > 0 && qtd > 0) {
+        const areaM2 = (comp / 1000) * (larg / 1000);
+        const custo = areaM2 * valorUnitM2 * qtd;
+        if (custo > 0) return Math.round(custo * 100) / 100;
+      }
+      const custoM2 = Number(of?.custo_m2_venda ?? of?.custo_m2 ?? 0) || 0;
+      const areaM2v = Number(of?.area_total_m2 ?? of?.area_m2 ?? 0) || 0;
+      if (custoM2 > 0 && areaM2v > 0 && qtd > 0) {
+        const c2 = custoM2 * areaM2v;
+        if (c2 > 0) return Math.round(c2 * 100) / 100;
+      }
+      const alt = Number(of?.custo_total ?? of?.custo ?? of?.valor_custo ?? of?.total_custo ?? of?.custo_estimado ?? 0) || 0;
+      return alt > 0 ? alt : 0;
+    };
+
+    const clientesMap = await _relatoriosLoadClientesDetails(ofsFiltradas.map((of) => _assistPickOfClienteId(of)));
     const buckets = new Map();
     LUCRATIVIDADE_MAQUINAS.forEach((machine) => {
       const nome = String(machine?.nome || '').trim();
@@ -13881,36 +13965,21 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
 
     const detalhamento = [];
     const totalOfsDistintas = new Set();
+    const semMaquina = 'Sem Máquina Definida';
 
-    // Regras canônicas do relatório:
-    // 1) cada máquina recebe a OF inteira sempre que ela aparece em ofs.passagens_maquina,
-    //    igual ao Histórico/OFs por Máquina baseado na coluna JSON;
-    // 2) perdas só entram quando a mesma máquina também aparece em ofs.perdas_por_maquina;
-    // 3) quando a perda legada não traz valor/tonelada persistidos, fazemos fallback proporcional
-    //    pela quantidade produzida da OF para não zerar métricas historicamente válidas.
-    passagensRows.forEach((row) => {
-      const machineName = _canonMaqNome(row?.maquina_nome || row?.maquina || '') || String(row?.maquina_nome || row?.maquina || '').trim();
-      if (!machineName || !buckets.has(machineName)) return;
-      const ofData = ofsMap.get(String(row?.of_id || '').trim()) || null;
-      if (!ofData || ofData?.deleted_at || _assistIsCancelada(ofData)) return;
-      const bucket = buckets.get(machineName);
-      const qtdOf = _relatoriosPickQtdOf(ofData) || Math.max(0, Math.trunc(Number(row?.qtd_produzida ?? row?.quantidade ?? 0) || 0));
-      const valorOf = (_relatoriosPickValorOf(ofData)
-        || Number(ofData?.valor_total ?? ofData?.valor_venda ?? ofData?.total ?? ofData?.faturamento ?? ofData?.valor ?? 0) || 0
-        || Number(row?.valor_total || row?.valor_venda || row?.valor || 0) || 0);
-      const tonOf = Number(ofData?.toneladas_utilizadas ?? ofData?.tonelada_vendida ?? row?.toneladas ?? 0) || 0;
-      const custoM2 = Number(ofData?.custo_m2_venda ?? ofData?.custo_m2 ?? 0) || 0;
-      const areaM2 = Number(ofData?.area_total_m2 ?? ofData?.area_m2 ?? 0) || 0;
-      const custoOf = ((custoM2 > 0 && areaM2 > 0) ? Math.round(custoM2 * areaM2 * 100) / 100 : 0)
-        || Number(ofData?.custo_total ?? ofData?.custo ?? ofData?.valor_custo ?? ofData?.total_custo ?? ofData?.custo_estimado ?? 0) || 0;
-      const clienteNome = _relatoriosPickClienteNomeOf(ofData, clientesMap)
-        || String(row?.cliente_nome || row?.clinome || row?.cliNome || 'Sem cliente').trim()
-        || 'Sem cliente';
-      const tipoCaixa = String(ofData?.tipo_caixa || 'Sem tipo').trim() || 'Sem tipo';
-      const cores = canonicalColors(ofData?.cores_impressao);
-      const perdas = buildLossForMachine(ofData, machineName, qtdOf, tonOf, valorOf);
-      const ofNumero = _assistPickOfNumber(ofData) || String(row?.of_numero || row?.numero || row?.of || '—').trim() || '—';
-      const dataRef = _vendasOficialDataRef(ofData) || String(row?.data_passagem || row?.data_conclusao || '').slice(0, 10) || '';
+    const atribuirOfMaquina = (of, machineNameCanon, passagemIndex) => {
+      const bucket = buckets.get(machineNameCanon);
+      if (!bucket) return;
+      const qtdOf = _relatoriosPickQtdOf(of);
+      const valorOf = _relatoriosPickValorOf(of);
+      const tonOf = Number(of?.toneladas_utilizadas ?? of?.tonelada_vendida ?? 0) || 0;
+      const custoOf = pickCustoOf(of);
+      const clienteNome = _relatoriosPickClienteNomeOf(of, clientesMap) || 'Sem cliente';
+      const tipoCaixa = String(of?.tipo_caixa || 'Sem tipo').trim() || 'Sem tipo';
+      const cores = canonicalColors(of?.cores_impressao);
+      const perdas = buildLossForMachine(of, machineNameCanon, qtdOf, tonOf, valorOf);
+      const ofNumero = _assistPickOfNumber(of) || '—';
+      const dataRef = _vendasOficialDataRef(of) || '';
 
       bucket.total_passagens += 1;
       bucket.valor_vendido += valorOf;
@@ -13920,8 +13989,8 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       bucket.valor_perdido += perdas.valor_perdido;
       bucket.toneladas_perdidas += perdas.toneladas_perdidas;
       bucket.custos_totais += custoOf;
-      bucket._ofs.add(String(ofData?.id || '').trim());
-      totalOfsDistintas.add(String(ofData?.id || '').trim());
+      bucket._ofs.add(String(of?.id || '').trim());
+      totalOfsDistintas.add(String(of?.id || '').trim());
 
       if (!bucket._clientes.has(clienteNome)) {
         bucket._clientes.set(clienteNome, { cliente_nome: clienteNome, total_passagens: 0, total_caixas: 0, valor_vendido: 0, _ofs: new Set() });
@@ -13930,7 +13999,7 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       clienteBucket.total_passagens += 1;
       clienteBucket.total_caixas += qtdOf;
       clienteBucket.valor_vendido += valorOf;
-      clienteBucket._ofs.add(String(ofData?.id || '').trim());
+      clienteBucket._ofs.add(String(of?.id || '').trim());
 
       if (!bucket._tipos.has(tipoCaixa)) bucket._tipos.set(tipoCaixa, { tipo_caixa: tipoCaixa, total_caixas: 0, total_ofs: 0 });
       const tipoBucket = bucket._tipos.get(tipoCaixa);
@@ -13942,7 +14011,7 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       });
 
       detalhamento.push({
-        maquina: machineName,
+        maquina: machineNameCanon,
         of: ofNumero,
         cliente_nome: clienteNome,
         data_ref: dataRef || null,
@@ -13956,6 +14025,24 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
         valor_perdido: perdas.valor_perdido,
         toneladas_perdidas: perdas.toneladas_perdidas,
       });
+    };
+
+    ofsFiltradas.forEach((of) => {
+      const passagens = _parseMaybeJsonArray(of?.passagens_maquina).concat(_parseMaybeJsonArray(of?.passagens_por_maquina));
+      const atribuida = new Set();
+      passagens.forEach((p) => {
+        const nome = String(p && typeof p === 'object'
+          ? (p.maquina_nome ?? p.maquina ?? p.nome ?? p.name ?? p.id ?? '')
+          : (p ?? '')).trim();
+        const canon = _canonMaqNome(nome) || nome;
+        if (!canon || !machineNames.has(canon)) return;
+        if (atribuida.has(canon)) return;
+        atribuida.add(canon);
+        atribuirOfMaquina(of, canon, 0);
+      });
+      if (atribuida.size === 0) {
+        atribuirOfMaquina(of, semMaquina, 0);
+      }
     });
 
     const rows = LUCRATIVIDADE_MAQUINAS.map((machine) => {
@@ -14037,14 +14124,17 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       return String(a?.of || '').localeCompare(String(b?.of || ''), 'pt-BR', { numeric: true });
     });
 
+    console.log('[AA3 LUCRAT-MAQ] resumo periodo=' + range.inicio + '..' + range.fim + ' ofs_filtradas=' + ofsFiltradas.length + ' total_ofs_distintas=' + totalOfsDistintas.size + ' valor_vendido=' + resumo.valor_vendido + ' custos=' + resumo.custos_totais);
+
     return res.json({
       ok: true,
       data_inicio: range.inicio,
       data_fim: range.fim,
       empresa_id_aplicada: empresaId || null,
-      fonte_passagens: 'ofs.passagens_maquina',
+      fonte_passagens: 'ofs.passagens_maquina (fallback Sem Máquina Definida)',
       fonte_perdas: 'ofs.perdas_por_maquina',
       logica_data: 'COALESCE(data_faturamento, data_conclusao, dia, created_at)',
+      logica_custo: 'gramatura.valor_unitario * (dim/1000)^2 * qtd (fallback custo_m2_venda*area ou custo_total)',
       resumo,
       rows,
       detail_rows: detalhamento,
@@ -16203,10 +16293,19 @@ app.get('/api/orcamentos', authMiddleware, async (req, res) => {
     };
     // FF3: colunas enxutas (não carrega JSONs grandes de parâmetros/itens na LISTA) —
     // reduz payload e velocidade transferência. Modal de detalhe /:id continua com select(*).
-    const colunasLista = 'id,numero_orcamento,versao,nome,nome_orcamento,cliente_id,cliente_nome,status,valor_total,total,valor_venda,criado_em,data_validade,emp_id,empresa_id,empresa,sigla,pasta_id,autor_nome,autor_id,vencimento,origem,observacao,etapa';
-    const buildQuery = (applyEmpFilter, applyDeletedFilter) => {
-      let q = supabase.from('orcamentos').select(colunasLista).order('criado_em', { ascending: false });
-      if (applyDeletedFilter) q = q.is('deleted_at', null);
+    // Fallback de colunas: começa com versão validada L14374, se falhar por coluna inexistente
+    // reduz para o menor conjunto compatível (id,numero_orcamento,nome,status,criado_em,emp_id).
+    const colunasCandidatas = [
+      'id,numero_orcamento,nome,titulo,descricao,cliente_id,cliente_nome,valor_total,quantidade,onda,medidas,status,criado_em,emp_id',
+      'id,numero_orcamento,nome,titulo,descricao,cliente_id,cliente_nome,valor_total,status,criado_em,emp_id',
+      'id,numero_orcamento,nome,cliente_nome,valor_total,status,criado_em',
+    ];
+    const buildQuery = (applyEmpFilter, applyDeletedFilter, selectCols) => {
+      const sel = selectCols || colunasCandidatas[0];
+      let q = supabase.from('orcamentos').select(sel).order('criado_em', { ascending: false });
+      if (applyDeletedFilter) {
+        try { q = q.is('deleted_at', null); } catch (_) {}
+      }
       if (req.query.numero) q = q.eq('numero_orcamento', String(req.query.numero));
       if (req.query.cliente) q = q.ilike('cliente_nome', `%${String(req.query.cliente)}%`);
       if (applyEmpFilter && empFiltro) {
@@ -16215,59 +16314,60 @@ app.get('/api/orcamentos', authMiddleware, async (req, res) => {
           q = q.or([
             `emp_id.eq.${safe}`,
             `empresa_id.eq.${safe}`,
-            `empresa.eq.${safe}`,
-            `sigla.eq.${safe}`,
             'emp_id.is.null',
             'empresa_id.is.null'
           ].join(','));
         }
       }
-      return q.limit(50);
+      return q.limit(250);
     };
 
-    let { data, error } = await buildQuery(true, true);
-    if (error) {
-      const msg = String(error.message || error || '');
-      if (msg.includes('deleted_at') && (msg.includes('column') || msg.includes('Could not find'))) {
-        const retry = await buildQuery(true, false);
-        data = retry.data;
-        error = retry.error;
-      }
-    }
-    if (error) {
-      console.error('[ORCAMENTOS] error:', error.message);
-      return ok(res, []);
-    }
-    data = (Array.isArray(data) ? data : []).filter((row) => !row?.deleted_at && !isDeletedStatus(row));
-    // FF3: fallback sem empresa filter agora é FEITO EM MEMÓRIA (pega rows da query já executada SEM filtro empresa) —
-    // em vez de bater no Supabase de novo. Reduz 1 query pior caso.
-    if (empFiltro && !(Array.isArray(data) && data.length)) {
-      let fallback = await buildQuery(false, true);
-      if (fallback.error) {
-        const msg = String(fallback.error.message || fallback.error || '');
-        if (msg.includes('deleted_at') && (msg.includes('column') || msg.includes('Could not find'))) {
-          fallback = await buildQuery(false, false);
+    let data = null;
+    let lastErr = null;
+    outerCols:
+    for (let ci = 0; ci < colunasCandidatas.length; ci++) {
+      const sel = colunasCandidatas[ci];
+      for (const [useEmp, useDel] of [[true, true], [true, false], [false, true], [false, false]]) {
+        try {
+          const r = await buildQuery(useEmp, useDel, sel);
+          if (r.error) {
+            const msg = String(r.error.message || r.error || '');
+            if ((msg.includes('column') || msg.includes('Could not find')) && ci < colunasCandidatas.length - 1) {
+              try { console.warn('[FF3 ORC] cols candidata #' + ci + ' falhou, fallback #' + (ci + 1) + ': ' + msg.slice(0, 120)); } catch (_) {}
+              continue outerCols;
+            }
+            lastErr = r.error;
+            continue;
+          }
+          data = Array.isArray(r.data) ? r.data : null;
+          if (Array.isArray(data) && data.length) break outerCols;
+          if (!data) data = [];
+        } catch (e) {
+          lastErr = e;
         }
       }
-      if (!fallback.error && Array.isArray(fallback.data) && fallback.data.length) {
-        console.log('[ORCAMENTOS] fallback sem filtro de empresa ativado para evitar lista vazia');
-        data = fallback.data.filter((row) => !row?.deleted_at && !isDeletedStatus(row));
+    }
+    if (!Array.isArray(data)) data = [];
+    if (lastErr && !data.length) {
+      console.error('[ORCAMENTOS] fallback cols esgotado, ultimo erro:', String(lastErr.message || lastErr).slice(0, 200));
+    }
+    data = data.filter((row) => !row?.deleted_at && !isDeletedStatus(row));
+    if (empFiltro && !data.length) {
+      for (let ci = 0; ci < colunasCandidatas.length; ci++) {
+        const r = await buildQuery(false, false, colunasCandidatas[ci]);
+        if (!r.error && Array.isArray(r.data) && r.data.length) {
+          console.log('[FF3 ORC] fallback sem filtro empresa (cols #' + ci + ') para evitar vazio: rows=' + r.data.length);
+          data = r.data.filter((row) => !row?.deleted_at && !isDeletedStatus(row));
+          break;
+        }
       }
     }
     if (Array.isArray(data)) _ff3CacheSet(cacheKeyOrc, data);
     try {
-      const rows = Array.isArray(data) ? data : [];
-      const sample = rows && rows[0] ? rows[0] : null;
       const ms = Date.now() - t0;
-      if (!sample) console.log('[FF3 ORC] GET ok (' + ms + 'ms): 0 linhas');
-      else console.log('[FF3 ORC] GET ok (' + ms + 'ms) rows=' + rows.length + ' sample:', {
-        id: sample.id,
-        numero_orcamento: sample.numero_orcamento,
-        nome: sample.nome,
-        nome_orcamento: sample.nome_orcamento,
-      });
+      console.log('[FF3 ORC] GET ok (' + ms + 'ms) rows=' + data.length + ' cols_candidata_usada=' + colunasCandidatas[0].split(',').length);
     } catch (_) {}
-    return ok(res, data || []);
+    return ok(res, data);
   } catch (e) {
     console.error('[ORCAMENTOS] catch:', String(e?.message || e));
     return ok(res, []);
