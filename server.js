@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1205,8 +1205,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828210001';
-const SW_RUNTIME_VERSION = '20260828210001';
+const PATCH_RUNTIME_VERSION = '20260828220001';
+const SW_RUNTIME_VERSION = '20260828220001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -8556,6 +8556,117 @@ app.get('/api/admin/corrigir_ofs_concluidas_sem_qtd', requireAdmin, async (req, 
     return res.json({ ok: true, corrigidas });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e.message || e) });
+  }
+});
+
+app.get('/api/_jj3/localizar_ofs_uuid_invalido', requireAdmin, async (req, res) => {
+  try {
+    const query = String(req.query.q || req.query.empresa_id || '').trim();
+    if (!query) return res.json({ ok: true, results: [] });
+    const { data: ofs, error } = await supabase
+      .from('ofs')
+      .select('id,of,numero,clinome,cliente_nome,cliente,empresa_id,emp_id,status,valor_total,created_at')
+      .eq('empresa_id', query)
+      .limit(100);
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    return res.json({ ok: true, found: ofs?.length || 0, results: ofs || [] });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.patch('/api/_jj3/corrigir_empresa_of/:id', requireAdmin, async (req, res) => {
+  try {
+    const ofId = String(req.params.id || '').trim();
+    const novaEmpresaUuid = String(req.body?.empresa_id || req.query.empresa_id || '').trim();
+    if (!ofId) return res.status(400).json({ ok: false, error: 'of_id_vazio' });
+    if (!/^[0-9a-f-]{36}$/i.test(novaEmpresaUuid)) return res.status(400).json({ ok: false, error: 'uuid_invalido_formato', recebido: novaEmpresaUuid });
+    const { data: antes, error: errAntes } = await supabase
+      .from('ofs')
+      .select('id,of,numero,clinome,empresa_id,emp_id')
+      .eq('id', ofId)
+      .maybeSingle();
+    if (errAntes) return res.status(500).json({ ok: false, error: errAntes.message });
+    if (!antes) return res.status(404).json({ ok: false, error: 'of_nao_encontrada' });
+    const { error: errUpd } = await supabase
+      .from('ofs')
+      .update({ empresa_id: novaEmpresaUuid, updated_at: new Date().toISOString() })
+      .eq('id', ofId);
+    if (errUpd) return res.status(500).json({ ok: false, error: errUpd.message });
+    const { data: depois, error: errDepois } = await supabase
+      .from('ofs')
+      .select('id,of,numero,clinome,empresa_id,emp_id')
+      .eq('id', ofId)
+      .maybeSingle();
+    if (errDepois) return res.status(500).json({ ok: false, error: errDepois.message });
+    return res.json({ ok: true, antes, depois, ajustado: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/_jj3/validar_ofs_empresas', requireAdmin, async (req, res) => {
+  try {
+    const U1 = 'df5f7672-0a6b-402d-ae65-296554236c31';
+    const U2 = 'e9b734dc-c7d5-4b04-898d-1ec7affa721e';
+    const U3 = 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667';
+    const VALIDOS = new Set([U1, U2, U3]);
+    const { data: todos, error } = await supabase
+      .from('ofs')
+      .select('id,empresa_id,emp_id,of,numero,clinome,status,created_at,data_conclusao,valor_total')
+      .or('status.ilike.%conclu%,status.ilike.%faturad%')
+      .gte('created_at', '2026-08-01')
+      .lte('created_at', '2026-09-01')
+      .is('deleted_at', null)
+      .limit(50000);
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    const arr = Array.isArray(todos) ? todos : [];
+    const resultado = {
+      ItalyEmbalagens: { qtd: 0, total: 0 },
+      Cartoeste: { qtd: 0, total: 0 },
+      Oestepack: { qtd: 0, total: 0 },
+      SemEmpresa: { qtd: 0, total: 0 },
+      UUIDsInvalidos: [],
+      Outros: [],
+      _totalProcessado: arr.length,
+      _mesRef: '2026-08'
+    };
+    for (const of of arr) {
+      const eid = String(of?.empresa_id || '').trim();
+      const v = Number(of?.valor_total || 0) || 0;
+      if (!eid) {
+        resultado.SemEmpresa.qtd += 1;
+        resultado.SemEmpresa.total += v;
+        continue;
+      }
+      if (eid === U1) { resultado.ItalyEmbalagens.qtd += 1; resultado.ItalyEmbalagens.total += v; }
+      else if (eid === U2) { resultado.Cartoeste.qtd += 1; resultado.Cartoeste.total += v; }
+      else if (eid === U3) { resultado.Oestepack.qtd += 1; resultado.Oestepack.total += v; }
+      else if (VALIDOS.has(eid)) { /* redundante */ }
+      else {
+        resultado.UUIDsInvalidos.push({
+          id: of?.id || null,
+          of: of?.of || of?.numero || '',
+          clinome: of?.clinome || of?.cliente_nome || '',
+          empresa_id_invalido: eid,
+          status: of?.status || '',
+          created_at: of?.created_at || null,
+          data_conclusao: of?.data_conclusao || null,
+          valor_total: v
+        });
+      }
+    }
+    const fmt = (n) => Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 });
+    resultado.resumo = {
+      ItalyEmbalagens: { qtd: resultado.ItalyEmbalagens.qtd, totalFmt: fmt(resultado.ItalyEmbalagens.total) },
+      Cartoeste: { qtd: resultado.Cartoeste.qtd, totalFmt: fmt(resultado.Cartoeste.total) },
+      Oestepack: { qtd: resultado.Oestepack.qtd, totalFmt: fmt(resultado.Oestepack.total) },
+      SemEmpresa: { qtd: resultado.SemEmpresa.qtd, totalFmt: fmt(resultado.SemEmpresa.total) },
+      qtd_invalidos: resultado.UUIDsInvalidos.length
+    };
+    return res.json({ ok: true, resultado });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
