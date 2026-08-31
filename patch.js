@@ -18347,6 +18347,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
   var _YY2_WHITELIST_9_MAQUINAS = ['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','CORTE VINCO ROTATIVA','RISCADOR','COLADEIRA','ACABAMENTO'];
   var _YY2_LABEL_SEM_MAQUINA = 'Sem Máquina Definida';
+  window._YY2_WHITELIST_9_MAQUINAS = _YY2_WHITELIST_9_MAQUINAS;
+  window._YY2_LABEL_SEM_MAQUINA = _YY2_LABEL_SEM_MAQUINA;
+  window._yy2NormalizaMaquinaSeguro = _yy2NormalizaMaquinaSeguro;
   function _yy2NormKey(s) { try { return String(s || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[\s\-_]/g,'').toUpperCase(); } catch (_) { return ''; } }
   var _YY2_WHITELIST_KEYS = _YY2_WHITELIST_9_MAQUINAS.reduce(function(m, nome) { m[_yy2NormKey(nome)] = nome; return m; }, {});
   var _YY2_REGEX_UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -24011,6 +24014,8 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       return Number.isFinite(d.getTime()) ? d : null;
     };
     var _resolveOfmaqDisplayDate = (typeof window._resolveOfmaqDisplayDate === 'function') ? window._resolveOfmaqDisplayDate : null;
+    var _YY2_LABEL_SEM_MAQUINA = (typeof window._YY2_LABEL_SEM_MAQUINA !== 'undefined') ? window._YY2_LABEL_SEM_MAQUINA : 'Sem Máquina Definida';
+    var _YY2_WHITELIST_9_MAQUINAS = (Array.isArray(window._YY2_WHITELIST_9_MAQUINAS) && window._YY2_WHITELIST_9_MAQUINAS.length) ? window._YY2_WHITELIST_9_MAQUINAS.slice() : ['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','CORTE VINCO ROTATIVA','RISCADOR','COLADEIRA','ACABAMENTO'];
     var state = window.__ofmaqFinalState || {
       selectedMachine: '',
       selectedDateIso: '',
