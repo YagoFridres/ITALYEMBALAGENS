@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1217,8 +1217,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828230001';
-const SW_RUNTIME_VERSION = '20260828230001';
+const PATCH_RUNTIME_VERSION = '20260828240001';
+const SW_RUNTIME_VERSION = '20260828240001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -8627,14 +8627,14 @@ app.get('/api/_jj3/validar_ofs_empresas', requireAdmin, async (req, res) => {
     const U2 = 'e9b734dc-c7d5-4b04-898d-1ec7affa721e';
     const U3 = 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667';
     const VALIDOS = new Set([U1, U2, U3]);
+    const rangeRef = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
+    const inicio = String(rangeRef?.inicio || '').slice(0, 10) || new Date().toISOString().slice(0,7)+'-01';
+    const fimExclusivo = String(rangeRef?.fim_exclusivo || '').slice(0, 10) || null;
     const { data: todos, error } = await supabase
       .from('ofs')
-      .select('id,empresa_id,emp_id,of,numero,clinome,status,created_at,data_conclusao,valor_total')
-      .or('status.ilike.%conclu%,status.ilike.%faturad%')
-      .gte('created_at', '2026-08-01')
-      .lte('created_at', '2026-09-01')
+      .select('id,empresa_id,emp_id,of,numero,clinome,cliente_nome,status,created_at,data_conclusao,data_faturamento,dia,data_pedido,dataPedido,valor_total,valor_venda,total,deleted_at')
       .is('deleted_at', null)
-      .limit(50000);
+      .limit(80000);
     if (error) return res.status(500).json({ ok: false, error: error.message });
     const arr = Array.isArray(todos) ? todos : [];
     const resultado = {
@@ -8645,32 +8645,49 @@ app.get('/api/_jj3/validar_ofs_empresas', requireAdmin, async (req, res) => {
       UUIDsInvalidos: [],
       Outros: [],
       _totalProcessado: arr.length,
-      _mesRef: '2026-08'
+      _filtroData: { inicio, fimExclusivo, criterio: 'COALESCE(data_faturamento, data_conclusao, dia, created_at) DENTRO DO PERÍODO + status conclu%' }
     };
     for (const of of arr) {
-      const eid = String(of?.empresa_id || '').trim();
-      const v = Number(of?.valor_total || 0) || 0;
-      if (!eid) {
-        resultado.SemEmpresa.qtd += 1;
-        resultado.SemEmpresa.total += v;
-        continue;
-      }
-      if (eid === U1) { resultado.ItalyEmbalagens.qtd += 1; resultado.ItalyEmbalagens.total += v; }
-      else if (eid === U2) { resultado.Cartoeste.qtd += 1; resultado.Cartoeste.total += v; }
-      else if (eid === U3) { resultado.Oestepack.qtd += 1; resultado.Oestepack.total += v; }
-      else if (VALIDOS.has(eid)) { /* redundante */ }
-      else {
-        resultado.UUIDsInvalidos.push({
-          id: of?.id || null,
-          of: of?.of || of?.numero || '',
-          clinome: of?.clinome || of?.cliente_nome || '',
-          empresa_id_invalido: eid,
-          status: of?.status || '',
-          created_at: of?.created_at || null,
-          data_conclusao: of?.data_conclusao || null,
-          valor_total: v
-        });
-      }
+      try {
+        const st = String(of?.status || '').toLowerCase().trim();
+        if (st.startsWith('cancel')) continue;
+        if (!(st === 'concluído' || st === 'concluido' || st === 'concluida' || st === 'concluída' || st.includes('faturad') || st.includes('entregue'))) continue;
+        const dataRef = String(
+          of?.data_faturamento ||
+          of?.data_conclusao ||
+          of?.dia ||
+          of?.data_pedido ||
+          of?.dataPedido ||
+          of?.created_at ||
+          ''
+        ).slice(0, 10);
+        if (!dataRef) continue;
+        if (inicio && dataRef < inicio) continue;
+        if (fimExclusivo && dataRef >= fimExclusivo) continue;
+        const eid = String(of?.empresa_id || '').trim();
+        const v = Number(of?.valor_total ?? of?.valor_venda ?? of?.total ?? 0) || 0;
+        if (!eid) {
+          resultado.SemEmpresa.qtd += 1;
+          resultado.SemEmpresa.total += v;
+          continue;
+        }
+        if (eid === U1) { resultado.ItalyEmbalagens.qtd += 1; resultado.ItalyEmbalagens.total += v; }
+        else if (eid === U2) { resultado.Cartoeste.qtd += 1; resultado.Cartoeste.total += v; }
+        else if (eid === U3) { resultado.Oestepack.qtd += 1; resultado.Oestepack.total += v; }
+        else if (VALIDOS.has(eid)) { /* redundante */ }
+        else {
+          resultado.UUIDsInvalidos.push({
+            id: of?.id || null,
+            of: of?.of || of?.numero || '',
+            clinome: of?.clinome || of?.cliente_nome || '',
+            empresa_id_invalido: eid,
+            status: of?.status || '',
+            created_at: of?.created_at || null,
+            data_conclusao: of?.data_conclusao || null,
+            valor_total: v
+          });
+        }
+      } catch(_linhaErro) { /* ignora linha corrompida */ }
     }
     const fmt = (n) => Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 });
     resultado.resumo = {
