@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1217,8 +1217,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828280001';
-const SW_RUNTIME_VERSION = '20260828280001';
+const PATCH_RUNTIME_VERSION = '20260828290001';
+const SW_RUNTIME_VERSION = '20260828290001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -2775,7 +2775,7 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
     const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
     if (!range?.inicio || !range?.fim_exclusivo) return res.json({ ok: false, error: 'periodo inválido' }); 
     const empresaIdRaw = String(
-      req.query?.empresa_id || req.query?.empresaId || req.query?.emp_id || req.query?.empresa || ''
+      req.query?.empresa_id || req.query?.empresaId || req.query?.empId || req.query?.emp_id || req.query?.empresa || ''
     ).trim();
     const todasEmpCom =
       empresaIdRaw === '' ||
@@ -2829,7 +2829,7 @@ app.get('/api/comissoes/debug-total-vendido', autenticar, async (req, res) => {
     setNoCache(res);
     const range = _relatoriosResolveDateRange(req.query, { defaultCurrentMonth: true });
     if (!range?.inicio || !range?.fim) return res.status(400).json({ ok: false, error: 'periodo inválido' });
-    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || '').trim();
+    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || req.query?.empId || req.query?.emp_id || '').trim();
     const payload = await _comissoesListarTotalVendidoFrontend(range, empresaId);
     console.log('[COM-DEBUG-TOTAL-VENDIDO]', JSON.stringify({
       inicio: range.inicio,
@@ -2866,7 +2866,7 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
     setNoCache(res);
     const q = String(req.query?.q || '').trim();
     const empresaIdRaw = String(
-      req.query?.empresa_id || req.query?.empresaId || req.query?.emp_id || req.query?.empresa || ''
+      req.query?.empresa_id || req.query?.empresaId || req.query?.empId || req.query?.emp_id || req.query?.empresa || ''
     ).trim();
     const todasEmpBuscaOf =
       empresaIdRaw === '' ||
@@ -8699,26 +8699,20 @@ app.get('/api/_jj3/validar_ofs_empresas', requireAdmin, async (req, res) => {
         const sid = String(of?.emp_id || '').trim().toUpperCase();
         const v = Number(of?.valor_total ?? of?.valor_venda ?? of?.total ?? 0) || 0;
         let bucket = null;
-        if (eid === U1 || sid === 'E1') bucket = 'ItalyEmbalagens';
-        else if (eid === U2 || sid === 'E2') bucket = 'Cartoeste';
-        else if (eid === U3 || sid === 'E3') bucket = 'Oestepack';
+        if (eid === U1) bucket = 'ItalyEmbalagens';
+        else if (eid === U2) bucket = 'Cartoeste';
+        else if (eid === U3) bucket = 'Oestepack';
+        else if (sid === 'E3' && eid !== U1 && eid !== U2) bucket = 'Oestepack';
         if (bucket) {
           resultado[bucket].qtd += 1;
           resultado[bucket].total += v;
           continue;
         }
-        const temEmpresaId = !!eid;
-        if (!temEmpresaId && !sid) {
+        if (!eid) {
           resultado.SemEmpresa.qtd += 1;
           resultado.SemEmpresa.total += v;
           continue;
         }
-        if (!temEmpresaId && sid && !['E1','E2','E3'].includes(sid)) {
-          resultado.SemEmpresa.qtd += 1;
-          resultado.SemEmpresa.total += v;
-          continue;
-        }
-        if (VALIDOS.has(eid)) { /* redundante */ continue; }
         resultado.UUIDsInvalidos.push({
           id: of?.id || null,
           of: of?.of || of?.numero || '',
@@ -32962,7 +32956,7 @@ app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) =>
     const hoje = new Date();
     const dataInicio = new Date();
     dataInicio.setFullYear(hoje.getFullYear() - 3);
-    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || '').trim();
+    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || req.query?.empId || req.query?.emp_id || '').trim();
     const debugPre = { userEmail: String(req?.user?.email || req?.usuario?.email || '').slice(0,80), empresaId, dt3anos: dataInicio.toISOString().slice(0,10) };
     let ofs = [];
     try {
@@ -33042,7 +33036,7 @@ app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) =>
 app.get('/api/dashboard/total-geral', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || '').trim();
+    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || req.query?.empId || req.query?.emp_id || '').trim();
     const agora = new Date();
     const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString().slice(0, 10);
     const fimMesExclusivo = new Date(agora.getFullYear(), agora.getMonth() + 1, 1).toISOString().slice(0, 10);
@@ -33070,7 +33064,7 @@ app.get('/api/dashboard/total-geral', authMiddleware, async (req, res) => {
 app.get('/api/dashboard/resumo-ofs', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || '').trim();
+    const empresaId = String(req.query?.empresa_id || req.query?.empresaId || req.query?.empId || req.query?.emp_id || '').trim();
     const PAGE = 1000;
     const rows = [];
     for (let offset = 0; offset < 50000; offset += PAGE) {
