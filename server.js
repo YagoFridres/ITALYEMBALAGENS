@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1246,8 +1246,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828381001';
-const SW_RUNTIME_VERSION = '20260828381001';
+const PATCH_RUNTIME_VERSION = '20260828390001';
+const SW_RUNTIME_VERSION = '20260828390001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -13846,46 +13846,110 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       'area_total_m2', 'custo_total', 'custo', 'custo_estimado',
       'gramatura_id', 'dim_comprimento', 'dim_largura', 'caixa_comprimento', 'caixa_largura',
     ].join(',');
+    const OFS_COLS_MIN = [
+      'id','numero','of','status','created_at','empresa_id','emp_id','deleted_at',
+      'cli_id','cliente_nome','descricao','qtd_produzida','qtd','quantidade','qtd_pedida',
+      'valor_total','valor_venda','total',
+      'toneladas_utilizadas','tonelada_vendida','custo_m2_venda',
+      'passagens_maquina','data_faturamento','data_conclusao','dia',
+      'area_total_m2','custo_total','custo','custo_estimado',
+      'gramatura_id','dim_comprimento','dim_largura','caixa_comprimento','caixa_largura',
+    ];
+    const OFS_COLS_CONSERVADOR = [
+      'id','numero','of','status','created_at','empresa_id','emp_id','deleted_at',
+      'cli_id','cliente_nome','descricao','qtd_produzida','qtd','quantidade','qtd_pedida',
+      'valor_total','valor_venda','total',
+      'toneladas_utilizadas','tonelada_vendida','custo_m2_venda',
+      'passagens_maquina','data_faturamento','data_conclusao','dia',
+      'gramatura_id','dim_comprimento','dim_largura','caixa_comprimento','caixa_largura',
+    ];
+    const OFS_COLS_BARE = [
+      'id','numero','of','status','created_at','empresa_id','emp_id','deleted_at',
+      'cli_id','cliente_nome','descricao','qtd_produzida','qtd','quantidade',
+      'valor_total','valor_venda','total','passagens_maquina',
+      'data_faturamento','data_conclusao','dia','gramatura_id',
+    ];
+    let ofsColsAtual = ofsCols.split(',').filter(Boolean);
+    const tryColLevels = [ofsColsAtual, OFS_COLS_MIN, OFS_COLS_CONSERVADOR, OFS_COLS_BARE];
+    let levelCursor = 0;
+    const extractBadCol = (msg) => {
+      const m = String(msg || '').match(/column\s+(?:["`\[]?)([a-zA-Z0-9_]+)(?:["`\]]?)\s+does not exist/i)
+             || String(msg || '').match(/Could not find (?:a|the|) column.*?named\s+["`\[]?([a-zA-Z0-9_]+)/i)
+             || String(msg || '').match(/column.*?"([a-zA-Z0-9_]+)".*?does not exist/i);
+      if (m && m[1]) return m[1];
+      return null;
+    };
     const batch = 2000;
     const ofs = [];
-    let cursor = 0;
-    while (true) {
-      let q = supabase.from('ofs').select(ofsCols)
-        .ilike('status', '%conclu%')
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .range(cursor, cursor + batch - 1);
-      if (empresaId && _isUuid(empresaId)) {
-        q = q.or([
-          'emp_id.eq.' + empresaId,
-          'empresa_id.eq.' + empresaId,
-        ].join(','));
-      }
-      const r = await q;
-      if (r?.error) {
-        const msg = String(r.error.message || r.error || '');
-        if ((msg.includes('column') || msg.includes('Could not find')) && (msg.includes('emp_id') || msg.includes('deleted_at'))) {
-          let q2 = supabase.from('ofs').select(ofsCols)
-            .ilike('status', '%conclu%')
-            .order('created_at', { ascending: false })
-            .range(cursor, cursor + batch - 1);
-          if (empresaId && _isUuid(empresaId)) q2 = q2.eq('empresa_id', empresaId);
-          const r2 = await q2;
-          if (r2?.error) throw r2.error;
-          if (!Array.isArray(r2?.data)) break;
-          r2.data.forEach((row) => ofs.push(row));
-          if (r2.data.length < batch) break;
-          cursor += r2.data.length;
-          if (cursor > 20000) break;
-          continue;
+    let globalCursor = 0;
+    const TENTATIVAS_COLS_MAX = 40;
+    let tentativasCols = 0;
+    RESTART_FROM_ZERO: while (true) {
+      if (tentativasCols++ > TENTATIVAS_COLS_MAX) break;
+      ofs.length = 0;
+      globalCursor = 0;
+      while (true) {
+        const cols = ofsColsAtual.join(',');
+        let q = supabase.from('ofs').select(cols)
+          .ilike('status', '%conclu%')
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .range(globalCursor, globalCursor + batch - 1);
+        if (empresaId && _isUuid(empresaId)) {
+          q = q.or([
+            'emp_id.eq.' + empresaId,
+            'empresa_id.eq.' + empresaId,
+          ].join(','));
         }
-        throw r.error;
+        const r = await q;
+        if (r?.error) {
+          const msg = String(r.error.message || r.error || '');
+          const bad = extractBadCol(msg);
+          if (bad) {
+            ofsColsAtual = ofsColsAtual.filter(c => c !== bad);
+            if (ofsColsAtual.length === 0) {
+              levelCursor++;
+              if (levelCursor < tryColLevels.length) { ofsColsAtual = tryColLevels[levelCursor].slice(); continue RESTART_FROM_ZERO; }
+              throw r.error;
+            }
+            continue RESTART_FROM_ZERO;
+          }
+          if ((msg.includes('column') || msg.includes('Could not find')) && (msg.includes('emp_id') || msg.includes('deleted_at'))) {
+            let q2 = supabase.from('ofs').select(cols)
+              .ilike('status', '%conclu%')
+              .order('created_at', { ascending: false })
+              .range(globalCursor, globalCursor + batch - 1);
+            if (empresaId && _isUuid(empresaId)) q2 = q2.eq('empresa_id', empresaId);
+            const r2 = await q2;
+            if (r2?.error) {
+              const bad2 = extractBadCol(r2.error.message || r2.error);
+              if (bad2) {
+                ofsColsAtual = ofsColsAtual.filter(c => c !== bad2);
+                if (ofsColsAtual.length === 0) {
+                  levelCursor++;
+                  if (levelCursor < tryColLevels.length) { ofsColsAtual = tryColLevels[levelCursor].slice(); continue RESTART_FROM_ZERO; }
+                  throw r2.error;
+                }
+                continue RESTART_FROM_ZERO;
+              }
+              throw r2.error;
+            }
+            if (!Array.isArray(r2?.data)) break;
+            r2.data.forEach((row) => ofs.push(row));
+            if (r2.data.length < batch) break;
+            globalCursor += r2.data.length;
+            if (globalCursor > 20000) break;
+            continue;
+          }
+          throw r.error;
+        }
+        if (!Array.isArray(r?.data)) break;
+        r.data.forEach((row) => ofs.push(row));
+        if (r.data.length < batch) break;
+        globalCursor += r.data.length;
+        if (globalCursor > 20000) break;
       }
-      if (!Array.isArray(r?.data)) break;
-      r.data.forEach((row) => ofs.push(row));
-      if (r.data.length < batch) break;
-      cursor += r.data.length;
-      if (cursor > 20000) break;
+      break;
     }
 
     // Filtro OFs de fato no período (COALESCE oficial) + empresa inclusiva + canceladas
