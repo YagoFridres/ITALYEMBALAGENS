@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1205,8 +1205,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828170001';
-const SW_RUNTIME_VERSION = '20260828170001';
+const PATCH_RUNTIME_VERSION = '20260828180001';
+const SW_RUNTIME_VERSION = '20260828180001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -8792,6 +8792,8 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
     const empResolvido = String(empresaCtx?.emp_id || '').trim();
     const empLegacy = String(empresaCtx?.empresaId || empresaCtx?.empresa_id || empresaCtx?.empresa || '').trim();
     let empFiltroRaw = empRawReq || empResolvido || empLegacy;
+    const todasEmpresasReq = String(req.query.todas_empresas || req.query.todas || '').trim() === '1';
+    if (todasEmpresasReq) empFiltroRaw = '';
     const filtroStatus = String(req.query.status || '').trim();
     const filtroCliente = String(req.query.cliente_id || '').trim();
     const incluirCanceladas = String(req.query.incluirCanceladas || req.query.todas || '').trim() === '1';
@@ -8803,9 +8805,11 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
         console.warn('[AMOSTRAS] filtro empresa veio VAZIO (erro stringify): empRawReq=', empRawReq, 'empResolvido=', empResolvido, 'empLegacy=', empLegacy, 'usuario=', req.usuario?.email || null);
       }
     }
-    async function _aplicarFiltros(qBase, tentaDeletedAt) {
+    async function _aplicarFiltros(qBase, tentaDeletedAt, ignoraEmpresa) {
       let qF = qBase;
-      if (empFiltroRaw) { qF = qF.eq('emp_id', empFiltroRaw); }
+      if (!ignoraEmpresa && empFiltroRaw) {
+        try { qF = qF.or('emp_id.eq.' + empFiltroRaw + ',emp_id.is.null'); } catch (_noOr) { qF = qF.eq('emp_id', empFiltroRaw); }
+      }
       if (filtroStatus) qF = qF.eq('status', filtroStatus);
       if (filtroCliente) qF = qF.eq('cliente_id', filtroCliente);
       if (tentaDeletedAt && !incluirCanceladas) {
@@ -8831,7 +8835,7 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
         let qFallback = q;
         if (filtroStatus) qFallback = qFallback.eq('status', filtroStatus);
         if (filtroCliente) qFallback = qFallback.eq('cliente_id', filtroCliente);
-        const r3 = await _aplicarFiltros(qFallback, true);
+        const r3 = await _aplicarFiltros(qFallback, true, true);
         let errFb = r3.error || null;
         let dataFb = r3.data || [];
         const errFbMsg = String(errFb?.message || errFb || '').toLowerCase();
@@ -8839,7 +8843,7 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
         if ((errFbCode === '42703') ||
           (errFbMsg.includes('column') && errFbMsg.includes('does not exist') && errFbMsg.includes('deleted_at')) ||
           (errFbMsg.includes('column') && (errFbMsg.includes('schema cache') || errFbMsg.includes('could not find the')))) {
-          const r4 = await _aplicarFiltros(qFallback, false);
+          const r4 = await _aplicarFiltros(qFallback, false, true);
           dataFb = r4.data || []; errFb = r4.error || null;
         }
         if (!errFb && Array.isArray(dataFb) && dataFb.length > 0) {

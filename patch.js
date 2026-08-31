@@ -58908,10 +58908,42 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
   }
   window.__abrirCadastrosAuxiliaresAB = _abrirTelaCadastros;
 
+  function _patchAmostrasStatusOptions() {
+    var sel = document.getElementById('am-fil-status');
+    if (!sel) return;
+    try {
+      var optsArr = Array.prototype.slice.call(sel.options || []);
+      var existing = {};
+      optsArr.forEach(function (o) { existing[String(o.value || '').trim()] = true; });
+      var needsAprovada = !existing['Aprovada'];
+      var needsEmProd = !existing['Em produção'];
+      if (!needsAprovada && !needsEmProd) return;
+      var existingFeitaIdx = -1;
+      for (var k = 0; k < optsArr.length; k++) {
+        if (String(optsArr[k].value || optsArr[k].text || '').trim() === 'Feita') { existingFeitaIdx = k; break; }
+      }
+      if (needsAprovada) {
+        var o1 = document.createElement('option');
+        o1.value = 'Aprovada'; o1.textContent = 'Aprovada';
+        if (existingFeitaIdx >= 0) sel.insertBefore(o1, sel.options[existingFeitaIdx]); else sel.appendChild(o1);
+        existingFeitaIdx = -1;
+        for (var k2 = 0; k2 < (sel.options || []).length; k2++) {
+          if (String(sel.options[k2].value || sel.options[k2].text || '').trim() === 'Feita') { existingFeitaIdx = k2; break; }
+        }
+      }
+      if (needsEmProd) {
+        var o2 = document.createElement('option');
+        o2.value = 'Em produção'; o2.textContent = 'Em produção';
+        if (existingFeitaIdx >= 0) sel.insertBefore(o2, sel.options[existingFeitaIdx]); else sel.appendChild(o2);
+      }
+    } catch (_zz2) {}
+  }
+
   function _loopCadastrosAB() {
     try { _garantirAbaMaisOuCadastros(); } catch (_) {}
     try { _injetarAutoCompleteCliente(); } catch (_) {}
     try { mapEstadoToUfInModal && mapEstadoToUfInModal(document.body); } catch (_) {}
+    try { _patchAmostrasStatusOptions(); } catch (_) {}
   }
 
   if (document.readyState === 'loading') {
