@@ -6550,17 +6550,16 @@ window._compraVincosArrayFull = function(item) {
     if (!ss) return;
     ss.split(/[,;\/]+/).forEach(pushC);
   };
-  if (Array.isArray(item && item.vincos_lista) && item.vincos_lista.length) item.vincos_lista.forEach(pushC);
-  else if (item && item.vincos_lista != null && String(item.vincos_lista).trim() !== '') splitStr(item.vincos_lista);
+  var _legacyText = String(item && item.vincos ? item.vincos : (item && item.vincos_texto ? item.vincos_texto : '')).trim();
+  if (_legacyText) splitStr(_legacyText);
+  if (Array.isArray(item && item.vincos) && item.vincos.length) item.vincos.forEach(pushC);
   if (Array.isArray(item && item.vincos_extra) && item.vincos_extra.length) item.vincos_extra.forEach(pushC);
   else if (item && item.vincos_extra != null && String(item.vincos_extra).trim() !== '') splitStr(item.vincos_extra);
-  if (Array.isArray(item && item.vincos) && item.vincos.length) item.vincos.forEach(pushC);
-  else {
-    var _legacy = String(item && item.vincos ? item.vincos : (item && item.vincos_texto ? item.vincos_texto : '')).trim();
-    if (_legacy && /[,;\/]/.test(_legacy)) _legacy.split(/[,;\/]+/).forEach(pushC);
-    else if (_legacy) pushC(_legacy);
+  if (Array.isArray(item && item.vincos_lista) && item.vincos_lista.length) item.vincos_lista.forEach(pushC);
+  else if (item && item.vincos_lista != null && String(item.vincos_lista).trim() !== '') splitStr(item.vincos_lista);
+  if (!out.length) {
+    ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) { var vv = String(item && item[k] != null ? item[k] : '').trim(); if (vv) pushC(vv); });
   }
-  ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) { var vv = String(item && item[k] != null ? item[k] : '').trim(); if (vv) pushC(vv); });
   return out;
 };
 window._compraVincosPosicional = function(item) {
@@ -56115,11 +56114,13 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
       if (!ss) return;
       ss.split(/[,;\/]+/).forEach(pushClean);
     };
-    ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) {
-      var val = item && item[k] != null ? String(item[k]) : '';
-      val = val.trim();
-      if (val) out.push(val);
-    });
+    var legacyText = String(item && item.vincos ? item.vincos : (item && item.vincos_texto ? item.vincos_texto : '')).trim();
+    if (legacyText) {
+      splitCsv(legacyText);
+    }
+    if (Array.isArray(item && item.vincos) && item.vincos.length) {
+      item.vincos.forEach(pushClean);
+    }
     if (Array.isArray(item && item.vincos_extra) && item.vincos_extra.length) {
       item.vincos_extra.forEach(pushClean);
     } else if (item && item.vincos_extra != null && String(item.vincos_extra).trim() !== '') {
@@ -56130,12 +56131,12 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     } else if (item && item.vincos_lista != null && String(item.vincos_lista).trim() !== '') {
       splitCsv(item.vincos_lista);
     }
-    if (Array.isArray(item && item.vincos) && item.vincos.length) {
-      item.vincos.forEach(pushClean);
-    }
-    var legacy = String(item && item.vincos ? item.vincos : (item && item.vincos_texto ? item.vincos_texto : '')).trim();
-    if (legacy && (!out.length || /[,;\/]/.test(legacy))) {
-      legacy.split(/[,;\/]+/).forEach(pushClean);
+    if (!out.length) {
+      ['vinco1', 'vinco2', 'vinco3', 'vinco4'].forEach(function(k) {
+        var val = item && item[k] != null ? String(item[k]) : '';
+        val = val.trim();
+        if (val) out.push(val);
+      });
     }
     var seen = {};
     var uniq = [];
