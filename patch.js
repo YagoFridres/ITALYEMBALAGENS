@@ -11278,6 +11278,18 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
       modal.appendChild(shell);
       var _footerFixed = shell.querySelector('.orc-calc-shell-footer');
       var _footerReal = shell.querySelector('.orc-calc-shell-main .modal-footer.rodape');
+      if (!_footerReal && overlay && overlay.querySelector) {
+        try {
+          var _maybeBroSibling = overlay.querySelector(':scope > .modal-footer.rodape');
+          if (_maybeBroSibling) _footerReal = _maybeBroSibling;
+        } catch (_ebr) {}
+      }
+      if (!_footerReal && modal && modal.parentNode && modal.parentNode.querySelector) {
+        try {
+          var _maybeBro = modal.parentNode.querySelector(':scope > .modal-footer.rodape');
+          if (_maybeBro) _footerReal = _maybeBro;
+        } catch (_eb2) {}
+      }
       if (_footerFixed && _footerReal && _footerReal.parentNode !== _footerFixed) _footerFixed.appendChild(_footerReal);
     }
     var titleHost = shell.querySelector('.orc-calc-shell-title');
@@ -11292,7 +11304,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
     var pastaRow = document.getElementById('calc-pasta-row');
     var chapaWrap = document.getElementById('wrap-calc-chapa-utilizada');
     var body = modal.querySelector(':scope > .modal-body') || modal.querySelector(':scope > .calc-body') || main.querySelector('.modal-body') || main.querySelector('.calc-body');
-    var footer = modal.querySelector(':scope > .modal-footer.rodape') || main.querySelector('.modal-footer.rodape') || modal.querySelector('.modal-footer.rodape');
+    var footer = null;
+    try {
+      footer = footerHost.querySelector('.modal-footer.rodape');
+      if (!footer) footer = modal.querySelector(':scope > .modal-footer.rodape');
+      if (!footer) footer = main.querySelector('.modal-footer.rodape');
+      if (!footer) footer = modal.querySelector('.modal-footer.rodape');
+      if (!footer && overlay && overlay.querySelector) footer = overlay.querySelector(':scope > .modal-footer.rodape');
+      if (!footer && modal && modal.parentNode && modal.parentNode.querySelector) footer = modal.parentNode.querySelector(':scope > .modal-footer.rodape');
+    } catch (_ef) {}
     if (title && title.parentNode !== titleHost) titleHost.appendChild(title);
     if (closeBtn && closeBtn.parentNode !== closeHost) closeHost.appendChild(closeBtn);
     [headerRow].forEach(function(node) {
@@ -11678,6 +11698,22 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           }
         }
       } catch (_eFinal) {}
+      try {
+        if (modal && modal.style && modal.style.setProperty) {
+          modal.style.setProperty('display', 'flex', 'important');
+          modal.style.setProperty('flex-direction', 'column', 'important');
+          modal.style.setProperty('width', isCompactCalc ? '100vw' : 'min(1720px, calc(100vw - 28px))', 'important');
+          modal.style.setProperty('max-width', isCompactCalc ? '100vw' : '1720px', 'important');
+          modal.style.setProperty('height', isCompactCalc ? '100vh' : 'min(96vh, 1220px)', 'important');
+          modal.style.setProperty('max-height', isCompactCalc ? '100vh' : '96vh', 'important');
+          modal.style.setProperty('overflow', 'hidden', 'important');
+          void modal.offsetHeight;
+        }
+        if (overlay && overlay.style && overlay.style.setProperty) {
+          overlay.style.setProperty('align-items', isCompactCalc ? 'stretch' : 'center', 'important');
+          overlay.style.setProperty('justify-content', isCompactCalc ? 'stretch' : 'center', 'important');
+        }
+      } catch (_rrr) {}
     } catch (_) {}
     return true;
   }
