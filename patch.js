@@ -58941,7 +58941,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
 
   (function _zz2OverrideCarregarAmostras() {
     try {
-      if (window.__zz2PatchedAmostras === true) return;
+      if (window.__zz2PatchedAmostrasV2 === true) return;
       if (typeof window.carregarAmostras !== 'function') return;
       var original = window.carregarAmostras;
       window.carregarAmostras = async function(opts) {
@@ -58956,7 +58956,9 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           var status = String((window.AMOSTRAS_UI && window.AMOSTRAS_UI.status) || '').trim();
           if (empId) { params.set('empId', empId); } else { params.set('todas_empresas', '1'); }
           if (status) { params.set('status', status); }
-          if (window.AMOSTRAS_UI && window.AMOSTRAS_UI.incluirCanceladas) { params.set('incluirCanceladas','1'); }
+          var _forcarIncluirCanceladas = !status;
+          var _flagBoxMarcada = !!(window.AMOSTRAS_UI && window.AMOSTRAS_UI.incluirCanceladas);
+          if (_flagBoxMarcada || _forcarIncluirCanceladas) { params.set('incluirCanceladas','1'); }
           var apiFn = window.api;
           if (typeof apiFn !== 'function') {
             window.AMOSTRAS = []; window._amostrasLastLoad = Date.now(); return window.AMOSTRAS;
@@ -58976,7 +58978,7 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
           try { return await original.apply(this, arguments); } catch(_f){ throw eCar || _f; }
         }
       };
-      window.__zz2PatchedAmostras = true;
+      window.__zz2PatchedAmostrasV2 = true;
     } catch (_zz2Override) {}
   })();
 
