@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -937,6 +937,35 @@ const _MAP_SIGLA_UUID_EMP_GLOBAL = {
   'E2': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
   'E3': 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667',
 };
+const _JJ3_U1 = 'df5f7672-0a6b-402d-ae65-296554236c31';
+const _JJ3_U2 = 'e9b734dc-c7d5-4b04-898d-1ec7affa721e';
+const _JJ3_U3 = 'a6e5f5d8-4743-4ebe-885e-c2f0f741a667';
+function _jj3ClassificaEmpresa(of) {
+  const eid = String(of?.empresa_id || '').trim().toLowerCase();
+  const sid = String(of?.emp_id || '').trim().toUpperCase();
+  if (eid === _JJ3_U1) return 'U1';
+  if (eid === _JJ3_U2) return 'U2';
+  if (eid === _JJ3_U3) return 'U3';
+  if (sid === 'E3' && eid !== _JJ3_U1 && eid !== _JJ3_U2) return 'U3';
+  if (!eid) return 'SEM';
+  return 'OUTRA';
+}
+function _jj3BucketFromFiltro(filtro) {
+  const raw = String(filtro || '').trim();
+  if (!raw) return null;
+  const up = raw.toUpperCase();
+  const low = raw.toLowerCase();
+  if (up === 'E1' || low === _JJ3_U1) return 'U1';
+  if (up === 'E2' || low === _JJ3_U2) return 'U2';
+  if (up === 'E3' || low === _JJ3_U3) return 'U3';
+  if (raw === '__sem_empresa__') return 'SEM';
+  return null;
+}
+function _jj3FiltrarListaPorEmpresa(arr, empresaIdFiltro) {
+  const bucket = _jj3BucketFromFiltro(empresaIdFiltro);
+  if (!bucket) return arr;
+  return (Array.isArray(arr) ? arr : []).filter((o) => _jj3ClassificaEmpresa(o) === bucket);
+}
 function _montarOrEmpresaGlobal(filtro, todas, apenasEmpresaIdUuid, incluirNullEmpresa) {
   if (todas || !filtro) return null;
   if (incluirNullEmpresa === undefined) incluirNullEmpresa = true;
@@ -1217,8 +1246,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828290001';
-const SW_RUNTIME_VERSION = '20260828290001';
+const PATCH_RUNTIME_VERSION = '20260828300001';
+const SW_RUNTIME_VERSION = '20260828300001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -2716,15 +2745,12 @@ function _comissoesFrontendValorRef(of) {
 async function _comissoesListarTotalVendidoFrontend(range, empresaId) {
   const rows = [];
   const PAGE = 1000;
+  const bucket = _jj3BucketFromFiltro(empresaId);
   for (let offset = 0; offset < 50000; offset += PAGE) {
     let query = supabase
       .from('ofs')
       .select('id,of,numero,status,deleted_at,empresa_id,emp_id,data_faturamento,data_conclusao,dia,data_pedido,created_at,valor_total,valor_venda,total')
       .range(offset, offset + PAGE - 1);
-    if (empresaId) {
-      const filtroEmp = _montarOrEmpresaGlobal(empresaId, false, false, !empresaId);
-      if (filtroEmp) query = query.or(filtroEmp);
-    }
     const { data, error } = await query;
     if (error) throw error;
     if (!(Array.isArray(data) && data.length)) break;
@@ -2742,6 +2768,10 @@ async function _comissoesListarTotalVendidoFrontend(range, empresaId) {
     if (st.startsWith('cancel')) continue;
     if (!(st === 'concluído' || st === 'concluido' || st === 'concluida' || st === 'concluída')) continue;
     if (of?.deleted_at) continue;
+    if (bucket) {
+      const b = _jj3ClassificaEmpresa(of);
+      if (b !== bucket) continue;
+    }
     const dataRef = _comissoesFrontendDateRef(of);
     if (!dataRef) continue;
     if (inicio && dataRef < inicio) continue;
@@ -2783,7 +2813,7 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
       empresaIdRaw === 'all' ||
       String(req.query.todas_empresas || '').trim() === '1';
 
-    console.log('[COM] buscando', range.inicio, 'ate', range.fim_exclusivo); 
+    console.log('[COM] buscando', range.inicio, 'ate', range.fim_exclusivo, 'empId=', empresaIdRaw || '(todas)');
 
     let query = supabase
       .from('vw_comissoes')
@@ -2791,8 +2821,10 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
       .gte('data_conclusao', range.inicio)
       .lt('data_conclusao', range.fim_exclusivo)
       .ilike('status', '%conclu%');
-    const filtroEmpCom = _montarOrEmpresaGlobal(empresaIdRaw, todasEmpCom, true, (todasEmpCom || !empresaIdRaw));
-    if (filtroEmpCom) query = query.or(filtroEmpCom);
+    if (todasEmpCom) {
+      const filtroEmpCom = _montarOrEmpresaGlobal(empresaIdRaw, todasEmpCom, true, true);
+      if (filtroEmpCom) query = query.or(filtroEmpCom);
+    }
     const { data: ofs, error } = await query;
 
     if (error) { 
@@ -2803,20 +2835,27 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
     console.log('[COM] OFs da view:', ofs?.length); 
     let todasOFs = await _comissoesEnriquecerLista(ofs);
     todasOFs = _filtrarOfsNaoTesteGlobal(todasOFs);
+    if (!todasEmpCom && empresaIdRaw) {
+      todasOFs = _jj3FiltrarListaPorEmpresa(todasOFs, empresaIdRaw);
+    }
     const payload = _comissoesMontarPayload(todasOFs, {
       mes: String(range.inicio || '').slice(0, 7),
       data_inicio: range.inicio,
       data_fim: range.fim
     });
-    const resumoOficial = await _resumirVendasOficiais(range, empresaIdRaw);
-    payload.total_ofs = resumoOficial.total_ofs;
-    payload.total_vendido = resumoOficial.total_vendido;
-    payload.total_ofs_oficial = resumoOficial.total_ofs;
-    payload.total_vendido_oficial = resumoOficial.total_vendido;
-    payload.total_geral_vendas = resumoOficial.total_vendido;
+    const ofsBrutas = await _listarOfsVendasOficiais(range, '');
+    const ofsFiltradas = todasEmpCom ? ofsBrutas : _jj3FiltrarListaPorEmpresa(ofsBrutas, empresaIdRaw);
+    const resumoTotalOfs = ofsFiltradas.length;
+    const resumoTotalVendido = ofsFiltradas.reduce((s, o) => s + _vendasOficialValor(o), 0);
+    payload.total_ofs = resumoTotalOfs;
+    payload.total_vendido = resumoTotalVendido;
+    payload.total_ofs_oficial = resumoTotalOfs;
+    payload.total_vendido_oficial = resumoTotalVendido;
+    payload.total_geral_vendas = resumoTotalVendido;
     payload.criterio_total_vendido = 'SUM(valor_total) com status Concluído e COALESCE(data_faturamento, data_conclusao, dia, created_at)';
     payload.perdas_descontam_total_vendido = false;
-    console.log('[COM] FINAL ofs:', todasOFs.length, 'total:', payload.total_vendido); 
+    payload.filtro_empresa_aplicado_jj3 = todasEmpCom ? false : (empresaIdRaw || null);
+    console.log('[COM] FINAL ofs:', todasOFs.length, 'resumoTotalOfs:', resumoTotalOfs, 'total:', resumoTotalVendido);
     return res.json(payload); 
   } catch(e) { 
     console.error('[COM] erro:', e.message); 
@@ -2925,6 +2964,9 @@ app.get('/api/comissoes/busca-of', autenticar, async (req, res) => {
       return qx;
     });
     let hitsBase = Array.isArray(selectResult?.data) ? selectResult.data : [];
+    if (!todasEmpBuscaOf && empresaIdRaw) {
+      hitsBase = _jj3FiltrarListaPorEmpresa(hitsBase, empresaIdRaw);
+    }
     let hitsError = selectResult?.error || null;
     if (hitsError) {
       // #region debug-point A:comissoes-busca-of-error
@@ -8695,24 +8737,30 @@ app.get('/api/_jj3/validar_ofs_empresas', requireAdmin, async (req, res) => {
     };
     for (const of of filtradas) {
       try {
-        const eid = String(of?.empresa_id || '').trim();
-        const sid = String(of?.emp_id || '').trim().toUpperCase();
         const v = Number(of?.valor_total ?? of?.valor_venda ?? of?.total ?? 0) || 0;
-        let bucket = null;
-        if (eid === U1) bucket = 'ItalyEmbalagens';
-        else if (eid === U2) bucket = 'Cartoeste';
-        else if (eid === U3) bucket = 'Oestepack';
-        else if (sid === 'E3' && eid !== U1 && eid !== U2) bucket = 'Oestepack';
-        if (bucket) {
-          resultado[bucket].qtd += 1;
-          resultado[bucket].total += v;
+        const bucket = _jj3ClassificaEmpresa(of);
+        if (bucket === 'U1') {
+          resultado.ItalyEmbalagens.qtd += 1;
+          resultado.ItalyEmbalagens.total += v;
           continue;
         }
-        if (!eid) {
+        if (bucket === 'U2') {
+          resultado.Cartoeste.qtd += 1;
+          resultado.Cartoeste.total += v;
+          continue;
+        }
+        if (bucket === 'U3') {
+          resultado.Oestepack.qtd += 1;
+          resultado.Oestepack.total += v;
+          continue;
+        }
+        if (bucket === 'SEM') {
           resultado.SemEmpresa.qtd += 1;
           resultado.SemEmpresa.total += v;
           continue;
         }
+        const eid = String(of?.empresa_id || '').trim();
+        const sid = String(of?.emp_id || '').trim().toUpperCase();
         resultado.UUIDsInvalidos.push({
           id: of?.id || null,
           of: of?.of || of?.numero || '',
