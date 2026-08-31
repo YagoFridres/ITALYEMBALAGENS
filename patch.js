@@ -27617,7 +27617,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   // ── PATCH 1: proximoNumeroOf ───────────────────────────────────
   // Busca a OF com maior numero e retorna numero + 1 formatado
-  // FILTRA SEMPRE OFS DELETADAS (deleted_at preenchido) em TODOS os niveis
+  // REGRA UNIVERSAL KK3: NÚMEROS DE OF NUNCA SÃO REUTILIZADOS.
+  // CONSIDERA SEMPRE TODAS AS OFS, MESMO CANCELADAS, DELETADAS (deleted_at preenchido) OU DE OUTRAS EMPRESAS.
+  // NÃO FILTRA MAIS POR !deleted_at em NENHUM nível.
   window.proximoNumeroOf = async function() {
     var token = getToken();
     var h = token ? { 'Authorization': 'Bearer ' + token } : {};
@@ -27637,14 +27639,14 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
     } catch(e0) { console.warn('[PATCH] rota dedicada falhou:', e0.message); }
     try {
-      var r = await fetch('/api/ofs?limit=20&order_by=numero&order=desc&nocache=1&t=' + Date.now(), { headers: h });
+      var r = await fetch('/api/ofs?limit=200&order_by=numero&order=desc&nocache=1&t=' + Date.now(), { headers: h });
       if (r.ok) {
         var d = await r.json();
         var lista = extractOfsRows(d);
-        var listaAtivas = (Array.isArray(lista) ? lista : []).filter(function(o) { return o && !o.deleted_at; });
-        console.log('[PATCH] OFs recebidas para calcular proximo numero (ativas/' + listaAtivas.length + '/' + (Array.isArray(lista)?lista.length:0) + '):', listaAtivas.slice(0,3).map(function(o){ return {numero: o.numero, of_num: o.of_num, id: o.id}; }));
+        // KK3: NÃO filtrar mais por !deleted_at. Usa TODAS as OFs retornadas.
+        console.log('[PATCH] OFs recebidas para calcular proximo numero (TODAS incluido canceladas/deletadas/' + (Array.isArray(lista)?lista.length:0) + '):', (Array.isArray(lista)?lista:[]).slice(0,3).map(function(o){ return {numero: o.numero, of_num: o.of_num, id: o.id, deleted_at: o.deleted_at ? 'SIM' : 'NAO'}; }));
         var maior = 0;
-        listaAtivas.forEach(function(o) {
+        (Array.isArray(lista) ? lista : []).forEach(function(o) {
           var valoresTentados = [o.numero, o.of_num, o.numero_of, o.num, o.seq, o.sequencia, o.cod, o.codigo, o.of];
           valoresTentados.forEach(function(v) {
             if (v !== null && v !== undefined && v !== '') {
@@ -27663,7 +27665,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
     } catch(e) { console.warn('[PATCH] proximoNumeroOf API falhou:', e.message); }
 
-    var cache = Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window.OFs) ? window.OFs : ((window.OFS_ARQUIVO || window._ofs_cache || []).filter(function(o) { return o && !o.deleted_at; })));
+    // KK3: cache local também NÃO filtra mais por !deleted_at — considera TODAS as OFs carregadas.
+    var cache = Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window.OFs) ? window.OFs : (window.OFS_ARQUIVO || window._ofs_cache || []));
     if (cache.length) {
       var nums = [];
       cache.forEach(function(o) {
