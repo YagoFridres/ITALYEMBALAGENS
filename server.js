@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1246,8 +1246,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828370001';
-const SW_RUNTIME_VERSION = '20260828370001';
+const PATCH_RUNTIME_VERSION = '20260828371001';
+const SW_RUNTIME_VERSION = '20260828371001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -16203,7 +16203,7 @@ app.get('/api/orcamentos', authMiddleware, async (req, res) => {
     };
     // FF3: colunas enxutas (não carrega JSONs grandes de parâmetros/itens na LISTA) —
     // reduz payload e velocidade transferência. Modal de detalhe /:id continua com select(*).
-    const colunasLista = 'id,numero_orcamento,versao,nome,nome_orcamento,cliente_id,cliente_nome,status,valor_total,total,valor_venda,criado_em,created_at,updated_at,data_validade,emp_id,empresa_id,empresa,sigla,deleted_at,pasta_id,autor_nome,autor_id,vencimento,origem,observacao,etapa';
+    const colunasLista = 'id,numero_orcamento,versao,nome,nome_orcamento,cliente_id,cliente_nome,status,valor_total,total,valor_venda,criado_em,data_validade,emp_id,empresa_id,empresa,sigla,pasta_id,autor_nome,autor_id,vencimento,origem,observacao,etapa';
     const buildQuery = (applyEmpFilter, applyDeletedFilter) => {
       let q = supabase.from('orcamentos').select(colunasLista).order('criado_em', { ascending: false });
       if (applyDeletedFilter) q = q.is('deleted_at', null);
@@ -25169,14 +25169,33 @@ async function _comprasChapasFetchNested(filters = {}) {
     const cached = _ff3CacheGet(cacheKey);
     if (cached) return cached;
   }
-  let q = supabase.from('compras_chapas').select('*')
-    .order('created_at', { ascending: false });
-  if (empId) q = q.eq('emp_id', empId);
-  if (filters.semPasta) q = q.is('pasta_id', null);
-  else if (filters.pastaId) q = q.eq('pasta_id', _comprasChapasStr(filters.pastaId));
-  if (hasIds) q = q.in('id', filters.ids);
-  else q = q.limit(250);
-  const comprasOut = await q;
+  let comprasOut;
+  const orderCols = ['criado_em', 'numero_compra', 'id'];
+  for (let i = 0; i < orderCols.length; i++) {
+    try {
+      let q = supabase.from('compras_chapas').select('*').order(orderCols[i], { ascending: false });
+      if (empId) q = q.eq('emp_id', empId);
+      if (filters.semPasta) q = q.is('pasta_id', null);
+      else if (filters.pastaId) q = q.eq('pasta_id', _comprasChapasStr(filters.pastaId));
+      if (hasIds) q = q.in('id', filters.ids);
+      else q = q.limit(250);
+      const tmp = await q;
+      if (tmp.error) {
+        const msg = String(tmp.error.message || tmp.error || '');
+        if (i < orderCols.length - 1 && (msg.includes('column') || msg.includes('does not exist'))) {
+          try { console.warn('[FF3 CC] ORDER coluna ' + orderCols[i] + ' inexistente, fallback ' + orderCols[i + 1]); } catch (_) {}
+          continue;
+        }
+        comprasOut = tmp;
+        break;
+      }
+      comprasOut = tmp;
+      break;
+    } catch (e) {
+      if (i === orderCols.length - 1) throw e;
+    }
+  }
+  if (!comprasOut) throw new Error('Falha ao consultar compras_chapas (ORDER fallback esgotado)');
   if (comprasOut.error) throw comprasOut.error;
   const compras = Array.isArray(comprasOut.data) ? comprasOut.data : [];
   const ids = compras.map((row) => _comprasChapasStr(row?.id)).filter(Boolean);
