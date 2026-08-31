@@ -11203,6 +11203,66 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
         ].join('');
         document.head.appendChild(st);
       }
+      var sid2 = 'patch-cc3-modal-center';
+      if (!document.getElementById(sid2)) {
+        var st2 = document.createElement('style');
+        st2.id = sid2;
+        st2.textContent = [
+          '#orc-modal-salvar-ondas.estoque-modal-overlay,',
+          '#orc-modal-salvar-ondas.estoque-modal-overlay-padrao,',
+          '#orc-modal-salvar-ondas{',
+          '  align-items:center!important;justify-content:center!important;',
+          '  position:fixed!important;inset:0!important;',
+          '  width:100vw!important;height:100vh!important;',
+          '  padding:14px!important;margin:0!important;',
+          '}',
+          '#orc-modal-salvar-ondas > .estoque-modal-shell-padrao,',
+          '#orc-modal-salvar-ondas > .estoque-modal-shell,',
+          '#orc-modal-salvar-ondas > div:first-of-type,',
+          '#orc-modal-salvar-ondas > [class*="shell"]{',
+          '  width:min(860px, 96vw)!important;max-width:860px!important;',
+          '  height:auto!important;max-height:92vh!important;',
+          '  margin:0 auto!important;position:relative!important;',
+          '  top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;',
+          '  border-radius:18px!important;overflow:hidden!important;',
+          '}',
+          '#modal-orcamento-calc.modal-overlay.open,',
+          '#modal-calc.modal-overlay.open,',
+          '#modal-orcamento-calc.modal-overlay,',
+          '#modal-calc.modal-overlay,',
+          '#modal-orcamento-calc,',
+          '#modal-calc{',
+          '  align-items:center!important;justify-content:center!important;',
+          '  position:fixed!important;inset:0!important;',
+          '  width:100vw!important;height:100vh!important;',
+          '  padding:14px!important;margin:0!important;',
+          '}',
+          '#modal-orcamento-calc > .modal-content,',
+          '#modal-orcamento-calc > .modal-calculadora,',
+          '#modal-orcamento-calc > [class*="modal-content"],',
+          '#modal-orcamento-calc > div:first-of-type,',
+          '#modal-calc > #modal-calculadora,',
+          '#modal-calc > .modal-content,',
+          '#modal-calc > [class*="modal-content"],',
+          '#modal-calc > div:first-of-type{',
+          '  width:min(1720px, calc(100vw - 28px))!important;max-width:1720px!important;',
+          '  height:min(96vh, 1220px)!important;max-height:96vh!important;',
+          '  margin:0 auto!important;position:relative!important;',
+          '  top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;',
+          '  border-radius:22px!important;overflow:hidden!important;',
+          '}',
+          '#modal-orcamento-calc .orc-calc-shell-footer,',
+          '#modal-calc .orc-calc-shell-footer,',
+          '#orc-modal-salvar-ondas .modal-footer,',
+          '#orc-modal-salvar-ondas .estoque-modal-footer{',
+          '  position:static!important;left:auto!important;right:auto!important;',
+          '  top:auto!important;bottom:auto!important;float:none!important;transform:none!important;',
+          '  width:100%!important;max-width:100%!important;box-sizing:border-box!important;',
+          '  margin:0!important;z-index:1!important;flex-shrink:0!important;',
+          '}'
+        ].join('');
+        document.head.appendChild(st2);
+      }
     } catch (_cssFix) {}
     try { overlay.classList.add('orc-calc-fs-ready'); } catch (_) {}
     var shell = modal.querySelector('.orc-calc-shell');
