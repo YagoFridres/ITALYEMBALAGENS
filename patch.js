@@ -58939,6 +58939,47 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     } catch (_zz2) {}
   }
 
+  (function _zz2OverrideCarregarAmostras() {
+    try {
+      if (window.__zz2PatchedAmostras === true) return;
+      if (typeof window.carregarAmostras !== 'function') return;
+      var original = window.carregarAmostras;
+      window.carregarAmostras = async function(opts) {
+        try {
+          opts = opts || {};
+          var ttl = 2 * 60 * 1000;
+          var temCacheOk = !opts.forcar && Array.isArray(window.AMOSTRAS) && (((Date.now() - (Number(window._amostrasLastLoad) || 0)) < ttl));
+          if (temCacheOk) { return window.AMOSTRAS; }
+          if (typeof window.AMOSTRAS_UI !== 'object' || window.AMOSTRAS_UI == null) { window.AMOSTRAS_UI = {}; }
+          var params = new URLSearchParams();
+          var empId = String((window.AMOSTRAS_UI && window.AMOSTRAS_UI.emp) || window.EMP_FILTRO || '').trim();
+          var status = String((window.AMOSTRAS_UI && window.AMOSTRAS_UI.status) || '').trim();
+          if (empId) { params.set('empId', empId); } else { params.set('todas_empresas', '1'); }
+          if (status) { params.set('status', status); }
+          if (window.AMOSTRAS_UI && window.AMOSTRAS_UI.incluirCanceladas) { params.set('incluirCanceladas','1'); }
+          var apiFn = window.api;
+          if (typeof apiFn !== 'function') {
+            window.AMOSTRAS = []; window._amostrasLastLoad = Date.now(); return window.AMOSTRAS;
+          }
+          var r = await apiFn('GET','/amostras?' + params.toString());
+          if (!r || !r.ok || !Array.isArray(r.data)) {
+            window.AMOSTRAS = [];
+            window._amostrasLastLoad = Date.now();
+            return window.AMOSTRAS;
+          }
+          window.AMOSTRAS = r.data || [];
+          window._amostrasLastLoad = Date.now();
+          try { if (typeof window.atualizarBadgeAmostras === 'function') { await window.atualizarBadgeAmostras(true); } } catch (_ba) {}
+          return window.AMOSTRAS;
+        } catch (eCar) {
+          console.error('[ZZ2-carregarAmostras-override] err:', eCar && eCar.message || eCar);
+          try { return await original.apply(this, arguments); } catch(_f){ throw eCar || _f; }
+        }
+      };
+      window.__zz2PatchedAmostras = true;
+    } catch (_zz2Override) {}
+  })();
+
   function _loopCadastrosAB() {
     try { _garantirAbaMaisOuCadastros(); } catch (_) {}
     try { _injetarAutoCompleteCliente(); } catch (_) {}
