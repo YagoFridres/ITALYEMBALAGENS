@@ -23997,6 +23997,20 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
 
 (function patchOfmaqFinalCanonical() {
   try {
+    var _isClosedOfmaqStatus = (typeof window._isClosedOfmaqStatus === 'function')
+      ? window._isClosedOfmaqStatus
+      : function _isClosedOfmaqStatusDefault(v) {
+          var s = String(v || '').toLowerCase().trim();
+          try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+          return s.indexOf('conclu') >= 0 || s === 'pedido pronto' || s.indexOf('cancel') >= 0;
+        };
+    var _parseIsoDayLocal = (typeof window._parseIsoDayLocal === 'function') ? window._parseIsoDayLocal : function _parseIsoDayLocalDefault(v){
+      var s = String(v || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+      var d = new Date(s + 'T00:00:00');
+      return Number.isFinite(d.getTime()) ? d : null;
+    };
+    var _resolveOfmaqDisplayDate = (typeof window._resolveOfmaqDisplayDate === 'function') ? window._resolveOfmaqDisplayDate : null;
     var state = window.__ofmaqFinalState || {
       selectedMachine: '',
       selectedDateIso: '',
