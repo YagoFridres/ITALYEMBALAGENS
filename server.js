@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1217,8 +1217,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828270001';
-const SW_RUNTIME_VERSION = '20260828270001';
+const PATCH_RUNTIME_VERSION = '20260828280001';
+const SW_RUNTIME_VERSION = '20260828280001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -8647,6 +8647,40 @@ app.get('/api/_jj3/validar_ofs_empresas', requireAdmin, async (req, res) => {
       pageStart += PAGE_SIZE;
     }
     if (pageError) return res.status(500).json({ ok: false, error: pageError.message });
+    const filtradas = [];
+    for (const of of arr) {
+      try {
+        const st = String(of?.status || '').toLowerCase().trim();
+        if (st.startsWith('cancel')) continue;
+        if (!(st === 'concluído' || st === 'concluido' || st === 'concluida' || st === 'concluída' || st.includes('faturad') || st.includes('entregue'))) continue;
+        const dataRef = String(
+          of?.data_faturamento || of?.data_conclusao || of?.dia ||
+          of?.data_pedido || of?.dataPedido || of?.created_at || ''
+        ).slice(0, 10);
+        if (!dataRef) continue;
+        if (inicio && dataRef < inicio) continue;
+        if (fimExclusivo && dataRef >= fimExclusivo) continue;
+        filtradas.push(of);
+      } catch(_e) {}
+    }
+    const dist = {
+      totalFiltradas: filtradas.length,
+      porUUID: { U1: {qtd:0,tot:0}, U2:{qtd:0,tot:0}, U3:{qtd:0,tot:0}, outrosUUID:{qtd:0,tot:0}, nullOUvazio:{qtd:0,tot:0} },
+      porSid: { E1:{qtd:0,tot:0}, E2:{qtd:0,tot:0}, E3:{qtd:0,tot:0}, outrosSid:{qtd:0,tot:0}, nullOUvazio:{qtd:0,tot:0} },
+      crosstab: {}
+    };
+    for (const of of filtradas) {
+      const eid = String(of?.empresa_id || '').trim();
+      const sid = String(of?.emp_id || '').trim().toUpperCase();
+      const v = Number(of?.valor_total ?? of?.valor_venda ?? of?.total ?? 0) || 0;
+      const uk = eid === U1 ? 'U1' : eid === U2 ? 'U2' : eid === U3 ? 'U3' : (eid ? 'outrosUUID' : 'nullOUvazio');
+      const sk = sid === 'E1' ? 'E1' : sid === 'E2' ? 'E2' : sid === 'E3' ? 'E3' : (sid ? 'outrosSid' : 'nullOUvazio');
+      dist.porUUID[uk].qtd++; dist.porUUID[uk].tot += v;
+      dist.porSid[sk].qtd++; dist.porSid[sk].tot += v;
+      const key = uk+'__'+sk;
+      if (!dist.crosstab[key]) dist.crosstab[key] = {qtd:0, tot:0};
+      dist.crosstab[key].qtd++; dist.crosstab[key].tot += v;
+    }
     const resultado = {
       ItalyEmbalagens: { qtd: 0, total: 0 },
       Cartoeste: { qtd: 0, total: 0 },
@@ -8656,25 +8690,11 @@ app.get('/api/_jj3/validar_ofs_empresas', requireAdmin, async (req, res) => {
       Outros: [],
       _totalProcessado: arr.length,
       _paginasLidas: Math.ceil(arr.length / PAGE_SIZE),
-      _filtroData: { inicio, fimExclusivo, criterio: 'COALESCE(data_faturamento, data_conclusao, dia, data_pedido/dataPedido fallback, created_at) DENTRO DO PERÍODO + status conclu%' }
+      _filtroData: { inicio, fimExclusivo, criterio: 'COALESCE(data_faturamento, data_conclusao, dia, data_pedido/dataPedido fallback, created_at) DENTRO DO PERÍODO + status conclu%' },
+      _debug_distribuicao: dist
     };
-    for (const of of arr) {
+    for (const of of filtradas) {
       try {
-        const st = String(of?.status || '').toLowerCase().trim();
-        if (st.startsWith('cancel')) continue;
-        if (!(st === 'concluído' || st === 'concluido' || st === 'concluida' || st === 'concluída' || st.includes('faturad') || st.includes('entregue'))) continue;
-        const dataRef = String(
-          of?.data_faturamento ||
-          of?.data_conclusao ||
-          of?.dia ||
-          of?.data_pedido ||
-          of?.dataPedido ||
-          of?.created_at ||
-          ''
-        ).slice(0, 10);
-        if (!dataRef) continue;
-        if (inicio && dataRef < inicio) continue;
-        if (fimExclusivo && dataRef >= fimExclusivo) continue;
         const eid = String(of?.empresa_id || '').trim();
         const sid = String(of?.emp_id || '').trim().toUpperCase();
         const v = Number(of?.valor_total ?? of?.valor_venda ?? of?.total ?? 0) || 0;
@@ -8688,7 +8708,6 @@ app.get('/api/_jj3/validar_ofs_empresas', requireAdmin, async (req, res) => {
           continue;
         }
         const temEmpresaId = !!eid;
-        const temSiglaValida = !!bucket || VALIDOS.has(eid);
         if (!temEmpresaId && !sid) {
           resultado.SemEmpresa.qtd += 1;
           resultado.SemEmpresa.total += v;
