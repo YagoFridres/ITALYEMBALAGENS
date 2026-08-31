@@ -18480,6 +18480,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
     return s.indexOf('conclu') >= 0 || s === 'pedido pronto' || s.indexOf('cancel') >= 0;
   }
+  window._isClosedOfmaqStatus = _isClosedOfmaqStatus;
+  window._parseIsoDayLocal = _parseIsoDayLocal;
+  window._resolveOfmaqDisplayDate = _resolveOfmaqDisplayDate;
 
   function _nextBusinessIsoFrom(baseDate) {
     var d = baseDate instanceof Date ? new Date(baseDate.getTime()) : new Date(baseDate);
@@ -26047,7 +26050,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (Array.isArray(window.__OFMAQ_FINAL_MOCK)) {
         rawRows = window.__OFMAQ_FINAL_MOCK.slice();
       } else {
-        var result = await apiJson('/api/ofs?limit=0&offset=0&t=' + now, { method: 'GET' });
+        var result = await apiJson('/api/ofs?limit=5000&offset=0&t=' + now, { method: 'GET' });
         if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao carregar OFs');
         rawRows = (result.data && (result.data.data || result.data.ofs || result.data.rows)) || [];
       }
@@ -26122,6 +26125,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       } catch (_) {}
       try { console.error('[OFMAQ-FINAL-FALLBACK]', err); } catch (_) {}
       return true;
+    }
+    if (typeof window !== 'undefined') {
+      window.renderOfmaqEmergency = renderOfmaqEmergency;
+      window.loadCanonicalRows = loadCanonicalRows;
     }
 
     async function renderOfmaqFinal(opts) {
