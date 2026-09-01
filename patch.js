@@ -486,15 +486,15 @@ try {
     return {
       mes: ref.mes,
       ano: ref.ano,
-      data_inicio: ini.toISOString().slice(0, 10),
-      data_fim: fim.toISOString().slice(0, 10),
+      data_inicio: _rrLocalIso(ini),
+      data_fim: _rrLocalIso(fim),
       titulo: String(ref.mes).padStart(2, '0') + '/' + String(ref.ano)
     };
   }
 
   function rrState() {
     if (!window.__relatoriosCentralState || typeof window.__relatoriosCentralState !== 'object') {
-      var today = new Date().toISOString().slice(0, 10);
+      var today = _rrLocalIso(new Date());
       window.__relatoriosCentralState = {
         periodo: 'mes',
         data_referencia: today,
@@ -512,8 +512,15 @@ try {
     return /^\d{4}-\d{2}-\d{2}$/.test(txt) ? txt : '';
   }
 
+  function _rrLocalIso(d) {
+    if (!d || !(d instanceof Date) || !Number.isFinite(d.getTime())) d = new Date();
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + dd;
+  }
   function rrTodayIso() {
-    return new Date().toISOString().slice(0, 10);
+    return _rrLocalIso(new Date());
   }
 
   function rrSyncAutoPeriodState() {
@@ -568,8 +575,8 @@ try {
     return {
       periodo: st.periodo,
       data_referencia: refTxt,
-      data_inicio: ini.toISOString().slice(0, 10),
-      data_fim: fim.toISOString().slice(0, 10),
+      data_inicio: _rrLocalIso(ini),
+      data_fim: _rrLocalIso(fim),
       mes: ini.getMonth() + 1,
       ano: ini.getFullYear(),
       titulo: titulo
@@ -12855,9 +12862,9 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(8, 'antes pat
           try { location.hash = 'mapa-clientes'; } catch (_) {}
 
           var nEst = 0, nCid = 0, nRam = 0;
-          try { nEst = Array.isArray(window.loadEstados) ? (window.loadEstados() || []).length : 0; } catch (_) {}
-          try { nCid = Array.isArray(window.loadCidades) ? (window.loadCidades() || []).length : 0; } catch (_) {}
-          try { nRam = Array.isArray(window.loadRamos) ? (window.loadRamos() || []).length : 0; } catch (_) {}
+          try { nEst = typeof window.loadEstados === 'function' ? ((window.loadEstados() || [])).length : 0; } catch (_) {}
+          try { nCid = typeof window.loadCidades  === 'function' ? ((window.loadCidades()  || [])).length : 0; } catch (_) {}
+          try { nRam = typeof window.loadRamos    === 'function' ? ((window.loadRamos()    || [])).length : 0; } catch (_) {}
 
           root.innerHTML = ''
             + '<div class="pep-wrap" style="max-width:1280px;margin:0 auto;padding:18px">'

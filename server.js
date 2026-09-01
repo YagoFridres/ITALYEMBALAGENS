@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1246,8 +1246,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828390001';
-const SW_RUNTIME_VERSION = '20260828390001';
+const PATCH_RUNTIME_VERSION = '20260828391001';
+const SW_RUNTIME_VERSION = '20260828391001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -13835,32 +13835,29 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
     // AA3: OFs buscadas DIRETAMENTE por status concluído + deleted null (não exigindo
     // passagem obrigatória). Depois filtramos período EM MEMÓRIA usando a hierarquia
     // COALESCE oficial para incluir as 27 OFs que antes eram descartadas.
+    // Colunas confirmadas via SQL: de ofs (SOMENTE as reais (custo_m2_venda existe, NÃO tem custo_total/custo/custo_estimado/area_total_m2/toneladas etc).
     const ofsCols = [
-      'id', 'numero', 'of', 'status', 'deleted_at', 'empresa_id', 'emp_id',
+      'id', 'numero', 'of', 'status', 'created_at', 'empresa_id', 'emp_id', 'deleted_at',
       'cli_id', 'cliente_nome', 'cliNome', 'clinome',
       'descricao', 'qtd_produzida', 'qtd', 'quantidade', 'qtd_pedida',
       'valor_total', 'valor_venda', 'total',
-      'toneladas_utilizadas', 'tonelada_vendida', 'custo_m2_venda',
-      'tipo_caixa', 'cores_impressao', 'perdas_por_maquina', 'passagens_maquina',
-      'data_faturamento', 'data_conclusao', 'dia', 'created_at',
-      'area_total_m2', 'custo_total', 'custo', 'custo_estimado',
+      'custo_m2_venda',
+      'passagens_maquina',
+      'data_faturamento', 'data_conclusao', 'dia',
       'gramatura_id', 'dim_comprimento', 'dim_largura', 'caixa_comprimento', 'caixa_largura',
     ].join(',');
     const OFS_COLS_MIN = [
       'id','numero','of','status','created_at','empresa_id','emp_id','deleted_at',
       'cli_id','cliente_nome','descricao','qtd_produzida','qtd','quantidade','qtd_pedida',
       'valor_total','valor_venda','total',
-      'toneladas_utilizadas','tonelada_vendida','custo_m2_venda',
-      'passagens_maquina','data_faturamento','data_conclusao','dia',
-      'area_total_m2','custo_total','custo','custo_estimado',
+      'custo_m2_venda','passagens_maquina','data_faturamento','data_conclusao','dia',
       'gramatura_id','dim_comprimento','dim_largura','caixa_comprimento','caixa_largura',
     ];
     const OFS_COLS_CONSERVADOR = [
       'id','numero','of','status','created_at','empresa_id','emp_id','deleted_at',
-      'cli_id','cliente_nome','descricao','qtd_produzida','qtd','quantidade','qtd_pedida',
+      'cli_id','cliente_nome','descricao','qtd_produzida','qtd','quantidade',
       'valor_total','valor_venda','total',
-      'toneladas_utilizadas','tonelada_vendida','custo_m2_venda',
-      'passagens_maquina','data_faturamento','data_conclusao','dia',
+      'custo_m2_venda','passagens_maquina','data_faturamento','data_conclusao','dia',
       'gramatura_id','dim_comprimento','dim_largura','caixa_comprimento','caixa_largura',
     ];
     const OFS_COLS_BARE = [
@@ -13997,13 +13994,12 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
         if (custo > 0) return Math.round(custo * 100) / 100;
       }
       const custoM2 = Number(of?.custo_m2_venda ?? of?.custo_m2 ?? 0) || 0;
-      const areaM2v = Number(of?.area_total_m2 ?? of?.area_m2 ?? 0) || 0;
-      if (custoM2 > 0 && areaM2v > 0 && qtd > 0) {
-        const c2 = custoM2 * areaM2v;
+      if (comp > 0 && larg > 0 && custoM2 > 0 && qtd > 0) {
+        const areaM2 = (comp / 1000) * (larg / 1000);
+        const c2 = areaM2 * custoM2 * qtd;
         if (c2 > 0) return Math.round(c2 * 100) / 100;
       }
-      const alt = Number(of?.custo_total ?? of?.custo ?? of?.valor_custo ?? of?.total_custo ?? of?.custo_estimado ?? 0) || 0;
-      return alt > 0 ? alt : 0;
+      return 0;
     };
 
     const clientesMap = await _relatoriosLoadClientesDetails(ofsFiltradas.map((of) => _assistPickOfClienteId(of)));
