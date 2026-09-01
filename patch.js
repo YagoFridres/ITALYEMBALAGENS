@@ -35,7 +35,10 @@ if (!window.__ofmaqDataCheckInstalled) {
 }
 if (!window.__ofmaqDiag3sInstalled) {
   window.__ofmaqDiag3sInstalled = true;
-  setTimeout(function() {
+  var _ofmaqDiag3sAttempts = 0;
+  var _ofmaqDiag3sMaxAttempts = 3;
+  function _ofmaqDiag3sCheck() {
+    _ofmaqDiag3sAttempts++;
     var fontes = {
       _ofmaqListaCompleta: (window._ofmaqListaCompleta || []).length,
       _ofmaqBaseList: (window._ofmaqBaseList || []).length,
@@ -43,24 +46,32 @@ if (!window.__ofmaqDiag3sInstalled) {
       kbOfs: (window.kbOfs || []).length,
       _ofmaqLastGroupOfs: window._ofmaqLastGroupOfs ? (Object.keys(window._ofmaqLastGroupOfs).length + ' grupos') : 0
     };
-    console.log('[OFMAQ-FONTES-3S]', JSON.stringify(fontes));
+    var temDados = fontes._ofmaqListaCompleta > 0 || fontes._ofmaqBaseList > 0 || fontes.OFS > 0 || fontes.kbOfs > 0;
+    var tag = _ofmaqDiag3sAttempts === 1 ? '3S' : ('RETRY' + _ofmaqDiag3sAttempts);
+    console.log('[OFMAQ-FONTES-' + tag + ']', JSON.stringify(fontes));
     var ofs = window._ofmaqListaCompleta || window._ofmaqBaseList || window.OFS || [];
     if (ofs.length > 0) {
-      console.log('[OFMAQ-OF-EXEMPLO]', JSON.stringify({
-        dia: ofs[0].dia,
-        maq: ofs[0].maq,
-        cores: ofs[0].cores_impressao,
-        status: ofs[0].status,
-        of: ofs[0].of
-      }));
+      try {
+        console.log('[OFMAQ-OF-EXEMPLO]', JSON.stringify({
+          dia: ofs[0].dia,
+          maq: ofs[0].maq,
+          cores: ofs[0].cores_impressao,
+          status: ofs[0].status,
+          of: ofs[0].of
+        }));
+      } catch (_) {}
+    } else if (_ofmaqDiag3sAttempts < _ofmaqDiag3sMaxAttempts) {
+      setTimeout(_ofmaqDiag3sCheck, 2500);
+      return;
     } else {
       console.log('[OFMAQ-FONTES-3S] TODAS VAZIAS - dados não chegaram ainda');
       var allKeys = Object.keys(window).filter(function(k) {
-        return k.toLowerCase().includes('of') && Array.isArray(window[k]) && window[k].length > 0;
+        try { return k.toLowerCase().includes('of') && Array.isArray(window[k]) && window[k].length > 0; } catch (_) { return false; }
       });
       console.log('[OFMAQ-WINDOW-ARRAYS]', allKeys.slice(0, 10));
     }
-  }, 3000);
+  }
+  setTimeout(_ofmaqDiag3sCheck, 3000);
 }
 if (!window._urlValida) {
   window._urlValida = function(url) {
