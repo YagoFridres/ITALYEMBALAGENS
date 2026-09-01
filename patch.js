@@ -26372,14 +26372,58 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (Array.isArray(window.__OFMAQ_FINAL_MOCK)) {
         rawRows = window.__OFMAQ_FINAL_MOCK.slice();
       } else {
-        var result = await apiJson('/api/ofs?limit=5000&offset=0&t=' + now, { method: 'GET' });
-        if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao carregar OFs');
-        rawRows = (result.data && (result.data.data || result.data.ofs || result.data.rows)) || [];
+        var offset = 0;
+        var hasMore = true;
+        var chunkSize = 1000;
+        var safetyMaxChunks = 8;
+        var chunksFetched = 0;
+        while (hasMore && chunksFetched < safetyMaxChunks) {
+          chunksFetched++;
+          var qs = 'limit=' + encodeURIComponent(String(chunkSize)) + '&offset=' + encodeURIComponent(String(offset)) + '&t=' + now + '&chunk=' + String(chunksFetched);
+          var result = await apiJson('/api/ofs?' + qs, { method: 'GET' });
+          if (!result || !result.resp || !result.resp.ok || (result.data && result.data.ok === false)) throw new Error((result && result.data && (result.data.error || result.data.message)) || 'Falha ao carregar OFs');
+          var chunk = (result.data && (result.data.data || result.data.ofs || result.data.rows)) || [];
+          var respHasMore = result.data && typeof result.data.hasMore === 'boolean' ? result.data.hasMore : null;
+          rawRows = rawRows.concat(chunk);
+          if (chunk.length < chunkSize) {
+            hasMore = false;
+          } else if (respHasMore !== null) {
+            hasMore = respHasMore;
+          } else {
+            hasMore = chunk.length >= chunkSize;
+          }
+          offset += chunk.length;
+          if (chunk.length === 0) break;
+        }
       }
       try { window.__OFMAQ_FINAL_LAST_RAW_ROWS = Array.isArray(rawRows) ? rawRows.slice() : []; } catch (_) {}
       state.rowsData = buildRowsFromOfs(rawRows);
       state.machineCatalog = machineCatalogFromRows(state.rowsData);
       state.lastFetchAt = now;
+      try {
+        var canonArr = Array.isArray(state.rowsData) ? state.rowsData.slice() : [];
+        window.OFS = canonArr.slice();
+        window._ofmaqBaseList = canonArr.slice();
+        window._ofmaqListaCompleta = canonArr.slice();
+        try { window.OFs = window.OFS; } catch (_) {}
+        try { window._ofmaqLastGroupOfs = canonArr.length; } catch (_) {}
+        try { window.kbOfs = canonArr.slice(); } catch (_) {}
+        try {
+          if (typeof normalizeOF === 'function') {
+            var normArr = [];
+            for (var i = 0; i < window.OFS.length; i++) {
+              try { normArr.push(normalizeOF(window.OFS[i])); } catch (_) { normArr.push(window.OFS[i]); }
+            }
+            window.OFS = normArr;
+            window.OFs = normArr;
+          }
+        } catch (_) {}
+        try {
+          if (typeof window._refreshBadgesTopo === 'function') {
+            setTimeout(function () { try { window._refreshBadgesTopo(); } catch (_) {} }, 50);
+          }
+        } catch (_) {}
+      } catch (_) {}
       if (state.machineCatalog.length && state.machineCatalog.indexOf(state.selectedMachine) < 0) state.selectedMachine = state.machineCatalog[0];
       return state.rowsData;
     }
@@ -26463,7 +26507,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       try {
         ensureDefaults();
         var shell = ensureShell();
-        if (!shell) return;
+        if (!shell) {
+          try { await loadCanonicalRows(!!options.forceReload); } catch (_) {}
+          return;
+        }
         bindShell(shell);
         await loadCanonicalRows(!!options.forceReload);
         updateToolbar(shell);
@@ -26603,6 +26650,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     };
 
     setTimeout(function() {
+      try {
+        if (typeof carregarOFSArquivo === 'function') {
+          try { carregarOFSArquivo(true).catch(function(){}); } catch (_) {}
+        }
+      } catch (_) {}
       try { renderOfmaqFinal({ forceReload: true, reason: 'boot' }); } catch (_) {}
     }, 40);
   } catch (err) {
