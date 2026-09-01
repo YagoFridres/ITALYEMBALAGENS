@@ -26403,7 +26403,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       } else {
         var offset = 0;
         var hasMore = true;
-        var chunkSize = 1000;
+        var chunkSize = 500;
         var safetyMaxChunks = 8;
         var chunksFetched = 0;
         while (hasMore && chunksFetched < safetyMaxChunks) {
@@ -26697,8 +26697,7 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
             _ofmaqBootRetries++;
             if (_ofmaqBootRetries > _ofmaqBootMax) { clearInterval(_ofmaqBootTimer); return; }
             try {
-              if (typeof renderOfmaqFinal === 'function') renderOfmaqFinal({ forceReload: true, reason: 'boot-retry-' + _ofmaqBootRetries });
-              else if (typeof loadCanonicalRows === 'function') loadCanonicalRows(true).catch(function () {});
+              if (typeof window.loadCanonicalRows === 'function') { try { window.loadCanonicalRows(true).catch(function(){}); } catch (_) {} }
             } catch (_) {}
           } catch (_) {}
         }, 5000);
