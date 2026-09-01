@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1246,8 +1246,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828393001';
-const SW_RUNTIME_VERSION = '20260828393001';
+const PATCH_RUNTIME_VERSION = '20260828394001';
+const SW_RUNTIME_VERSION = '20260828394001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -13847,7 +13847,7 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       'descricao', 'qtd_produzida', 'qtd', 'quantidade', 'qtd_pedida',
       'valor_total', 'valor_venda', 'total',
       'custo_m2_venda',
-      'passagens_maquina',
+      'passagens_maquina', 'perdas_por_maquina',
       'data_faturamento', 'data_conclusao', 'dia',
       'gramatura_id', 'dim_comprimento', 'dim_largura', 'caixa_comprimento', 'caixa_largura',
     ].join(',');
@@ -13855,20 +13855,20 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       'id','numero','of','status','created_at','empresa_id','emp_id','deleted_at',
       'cli_id','cliente_nome','descricao','qtd_produzida','qtd','quantidade','qtd_pedida',
       'valor_total','valor_venda','total',
-      'custo_m2_venda','passagens_maquina','data_faturamento','data_conclusao','dia',
+      'custo_m2_venda','passagens_maquina','perdas_por_maquina','data_faturamento','data_conclusao','dia',
       'gramatura_id','dim_comprimento','dim_largura','caixa_comprimento','caixa_largura',
     ];
     const OFS_COLS_CONSERVADOR = [
       'id','numero','of','status','created_at','empresa_id','emp_id','deleted_at',
       'cli_id','cliente_nome','descricao','qtd_produzida','qtd','quantidade',
       'valor_total','valor_venda','total',
-      'custo_m2_venda','passagens_maquina','data_faturamento','data_conclusao','dia',
+      'custo_m2_venda','passagens_maquina','perdas_por_maquina','data_faturamento','data_conclusao','dia',
       'gramatura_id','dim_comprimento','dim_largura','caixa_comprimento','caixa_largura',
     ];
     const OFS_COLS_BARE = [
       'id','numero','of','status','created_at','empresa_id','emp_id','deleted_at',
       'cli_id','cliente_nome','descricao','qtd_produzida','qtd','quantidade',
-      'valor_total','valor_venda','total','passagens_maquina',
+      'valor_total','valor_venda','total','passagens_maquina','perdas_por_maquina',
       'data_faturamento','data_conclusao','dia','gramatura_id',
     ];
     let ofsColsAtual = ofsCols.split(',').filter(Boolean);
@@ -13992,7 +13992,7 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
     for (let i = 0; i < gramIds.length; i += 200) {
       const chunk = gramIds.slice(i, i + 200);
       try {
-        const { data, error } = await supabase.from('gramaturas').select('id,valor_unitario').in('id', chunk);
+        const { data, error } = await supabase.from('gramaturas').select('id,valor_unitario,gramatura').in('id', chunk);
         if (!error && Array.isArray(data)) {
           data.forEach((g) => gramMap.set(String(g?.id || '').trim(), g));
         }
@@ -14050,7 +14050,17 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       if (!bucket) return;
       const qtdOf = _relatoriosPickQtdOf(of);
       const valorOf = _relatoriosPickValorOf(of);
-      const tonOf = Number(of?.toneladas_utilizadas ?? of?.tonelada_vendida ?? 0) || 0;
+      const comp = Number(of?.dim_comprimento ?? of?.caixa_comprimento ?? 0) || 0;
+      const larg = Number(of?.dim_largura ?? of?.caixa_largura ?? 0) || 0;
+      const gramIdTon = String(of?.gramatura_id || '').trim();
+      const gramTon = gramIdTon ? (gramMap.get(gramIdTon) || null) : null;
+      const gramaturaValorGramas = Number(gramTon?.gramatura ?? gramTon?.gramatura_gm2 ?? gramTon?.valor ?? 0) || 0;
+      let tonOf = Number(of?.toneladas_utilizadas ?? of?.tonelada_vendida ?? 0) || 0;
+      if (!(tonOf > 0) && comp > 0 && larg > 0 && gramaturaValorGramas > 0 && qtdOf > 0) {
+        const areaM2Ton = (comp / 1000) * (larg / 1000);
+        tonOf = (areaM2Ton * gramaturaValorGramas * qtdOf) / 1000000;
+        if (!(tonOf > 0)) tonOf = 0;
+      }
       const custoOf = pickCustoOf(of);
       const clienteNome = _relatoriosPickClienteNomeOf(of, clientesMap) || 'Sem cliente';
       const tipoCaixa = String(of?.tipo_caixa || 'Sem tipo').trim() || 'Sem tipo';

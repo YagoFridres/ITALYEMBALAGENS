@@ -39778,6 +39778,324 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   window.abrirModalNovoCliente = abrirModalNovoCliente;
   window.salvarNovoCliente = salvarNovoCliente;
 
+  var _editClienteAtual = null;
+
+  async function abrirModalEditarCliente(id) {
+    try {
+      var cliId = String(id || '').trim();
+      if (!cliId) { alert('Cliente inválido'); return; }
+      var token = '';
+      try { token = String(window._token || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || ''); } catch (_) { token = ''; }
+      var headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = 'Bearer ' + token;
+      var cli = null;
+      try {
+        var r = await fetch('/api/clientes/' + encodeURIComponent(cliId), { method: 'GET', headers: headers });
+        var j = await r.json();
+        if (j && (j.ok === true || j.data || j.id)) {
+          cli = j.data || j || null;
+        } else {
+          alert('Cliente não encontrado (' + r.status + ')');
+          return;
+        }
+      } catch (_err) {
+        try { alert('Erro ao buscar cliente: ' + String(_err && _err.message ? _err.message : _err)); } catch (_a) {}
+        return;
+      }
+      if (!cli) { alert('Cliente inválido'); return; }
+      _editClienteAtual = cli;
+
+      try {
+        var existente = document.getElementById('modal-editar-cliente-overlay');
+        if (existente) existente.remove();
+      } catch (_) {}
+
+      var overlay = document.createElement('div');
+      overlay.id = 'modal-editar-cliente-overlay';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:10051;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:18px;';
+      var cNome = String(cli.nome || cli.nome_cliente || cli.cliente || cli.razao_social || cli.rs || '').trim();
+      var cRs = String(cli.rs || cli.razao_social || cli.razaosocial || cli.nome || cNome || '').trim();
+      var cCnpj = String(cli.cnpj || cli.documento || cli.cpf || cli.doc || '').trim();
+      var cTel = String(cli.telefone || cli.tel || cli.telefones || cli.celular || '').trim();
+      var cEmail = String(cli.email || cli.e_mail || cli.emails || '').trim();
+      var cUf = String(cli.uf || cli.estado || cli.estado_id || '').trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+      var cCidade = String(cli.cidade || cli.cidade_nome || cli.cidadeId || cli.endereco_cidade || '').trim();
+      var cRamo = String(cli.ramo || cli.ramo_de_atividade || cli.ramo_atividade || cli.segmento || '').trim();
+      var cObs = String(cli.observacoes || cli.obs || cli.descricao || cli.notas || '').trim();
+
+      overlay.innerHTML =
+        '<div style="width:100%;max-width:520px;max-height:90vh;overflow:auto;border-radius:12px;padding:16px;border:1px solid var(--border,#2d3748);background:var(--bg2,#111827);color:var(--text,#e5e7eb)">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">' +
+            '<div style="font-weight:800;font-size:15px">Editar cliente</div>' +
+            '<button id="edt-cli-fechar" style="background:none;border:none;color:var(--text2,#94a3b8);font-size:20px;cursor:pointer">✕</button>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr;gap:10px">' +
+            '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Nome</label><input id="edt-cli-nome" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)" value=""></div>' +
+            '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Razão social</label><input id="edt-cli-rs" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+              '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">CNPJ/Documento</label><input id="edt-cli-cnpj" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
+              '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Telefone</label><input id="edt-cli-tel" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+              '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">E-mail</label><input id="edt-cli-email" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
+              '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Estado / UF</label><select id="edt-cli-uf" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"><option value="">— Selecione a UF —</option></select></div>' +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+              '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Cidade</label><select id="edt-cli-cidade" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"><option value="">— Selecione primeiro a UF —</option></select></div>' +
+              '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Ramo de atividade</label>' + renderNovoClienteRamoInput('') + '</div>' +
+            '</div>' +
+            '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Observações</label><textarea id="edt-cli-obs" rows="3" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc);resize:vertical"></textarea></div>' +
+          '</div>' +
+          '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px">' +
+            '<button id="edt-cli-cancelar" style="padding:9px 12px;border-radius:10px;border:1px solid var(--border,#273449);background:transparent;color:var(--text,#e5e7eb);cursor:pointer">Cancelar</button>' +
+            '<button id="edt-cli-salvar" style="padding:9px 12px;border-radius:10px;border:1px solid rgba(34,197,94,0.35);background:rgba(34,197,94,0.18);color:#bbf7d0;cursor:pointer;font-weight:700">Salvar Alterações</button>' +
+          '</div>' +
+        '</div>';
+
+      document.body.appendChild(overlay);
+
+      try {
+        var inNome = document.getElementById('edt-cli-nome');
+        var inRs = document.getElementById('edt-cli-rs');
+        var inCnpj = document.getElementById('edt-cli-cnpj');
+        var inTel = document.getElementById('edt-cli-tel');
+        var inEmail = document.getElementById('edt-cli-email');
+        var inUf = document.getElementById('edt-cli-uf');
+        var inCid = document.getElementById('edt-cli-cidade');
+        var inRamo = document.getElementById('novo-cli-ramo') || document.getElementById('edt-cli-ramo');
+        var inObs = document.getElementById('edt-cli-obs');
+        if (inNome) inNome.value = cNome;
+        if (inRs) inRs.value = cRs;
+        if (inCnpj) inCnpj.value = cCnpj;
+        if (inTel) inTel.value = cTel;
+        if (inEmail) inEmail.value = cEmail;
+        if (inObs) inObs.value = cObs;
+        try {
+          var ramoSelFallback = document.getElementById('edt-cli-ramo');
+          if (!ramoSelFallback && inRamo && !inRamo.id) {
+            try { inRamo.id = 'edt-cli-ramo'; } catch (_) {}
+          } else if (!ramoSelFallback) {
+            try { inRamo.id = inRamo.id || 'edt-cli-ramo'; } catch (_) {}
+          }
+        } catch (_) {}
+        if (inRamo && cRamo) {
+          try {
+            var opts = Array.prototype.slice.call(inRamo.options || []);
+            var match = opts.find(function(o){ return String(o.value || '').trim() === cRamo || String(o.textContent || '').trim() === cRamo; });
+            if (match) { inRamo.value = String(match.value || '').trim(); } else {
+              try {
+                var nOpt = document.createElement('option');
+                nOpt.value = cRamo;
+                nOpt.textContent = cRamo;
+                inRamo.appendChild(nOpt);
+                inRamo.value = cRamo;
+              } catch (_) {}
+            }
+          } catch (_) {}
+        }
+
+        (function patchEditSelects() {
+          try {
+            var hasP11Uf = typeof window._p11FillUfOptions === 'function';
+            var hasP11Cid = typeof window._p11FillCidadeOptions === 'function';
+            var hasP11Bind = typeof window._p11BindUfCidPair === 'function';
+            var hasP11Ramo = typeof window._p11FillRamoOptions === 'function';
+            var ramoForEdit = document.getElementById('novo-cli-ramo') || document.getElementById('edt-cli-ramo');
+            if (inUf && hasP11Uf) { try { window._p11FillUfOptions(inUf); } catch (_) {} }
+            if (inCid && inUf && hasP11Bind) { try { window._p11BindUfCidPair(inUf, inCid); } catch (_) {} }
+            if (ramoForEdit && hasP11Ramo) { try { window._p11FillRamoOptions(ramoForEdit, { placeholder: '— Selecione o ramo —' }); } catch (_) {} }
+            if ((inUf && !hasP11Uf) || (inCid) || (ramoForEdit && !hasP11Ramo)) {
+              (function fallbackEditInline() {
+                try {
+                  var carregaUfs = function() {
+                    try {
+                      var ests = (typeof window.loadEstados === 'function') ? (window.loadEstados() || []) : [];
+                      if (!Array.isArray(ests) || !ests.length) { ests = window.ESTADOS || window.ESTADOS_BR || window.UFS || []; }
+                      if (!Array.isArray(ests) || !ests.length) {
+                        ests = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(function(uf){ return {sigla:uf}; });
+                      }
+                      if (!inUf) return;
+                      var curUf = inUf.value || cUf;
+                      inUf.innerHTML = '<option value="">— Selecione a UF —</option>' + ests.map(function(e){
+                        var sig = String((e && e.sigla) ? e.sigla : (typeof e === 'string' ? e : '')).trim().toUpperCase();
+                        if (!sig) return '';
+                        var nome = String((e && e.nome) ? e.nome : sig).trim();
+                        return '<option value="'+sig+'">'+sig+' — '+nome+'</option>';
+                      }).filter(Boolean).join('');
+                      if (curUf) {
+                        try { inUf.value = String(curUf).trim().toUpperCase(); } catch (_) {}
+                      }
+                    } catch (_) {}
+                  };
+                  var carregaCidadesPorUf = function(uf, manter) {
+                    try {
+                      var ufOk = String(uf || '').trim().toUpperCase();
+                      if (!inCid) return;
+                      var cur = manter ? String(inCid.value || cCidade).trim() : cCidade;
+                      if (!ufOk) { inCid.innerHTML = '<option value="">— Selecione primeiro a UF —</option>'; return; }
+                      var cids = (typeof window.loadCidades === 'function') ? (window.loadCidades(ufOk) || []) : [];
+                      if (!Array.isArray(cids) || !cids.length) {
+                        cids = (window.CIDADES || window.CIDADES_BR || []).filter(function(c){
+                          var cu = String((c && c.uf) ? c.uf : (c && c.estado ? c.estado : '')).trim().toUpperCase();
+                          return cu === ufOk;
+                        });
+                      }
+                      var arr = cids.map(function(c){
+                        var nome = String((c && c.nome) ? c.nome : (typeof c === 'string' ? c : '')).trim();
+                        if (!nome) return '';
+                        return '<option value="'+nome.replace(/"/g,'&quot;')+'">'+nome+'</option>';
+                      }).filter(Boolean);
+                      inCid.innerHTML = '<option value="">— Selecione a cidade —</option>' + arr.join('');
+                      if (cur) {
+                        var opts2 = Array.prototype.slice.call(inCid.options || []);
+                        var tem = opts2.some(function(o){ return String(o.value || '').trim() === cur || String(o.textContent || '').trim() === cur; });
+                        if (!tem) {
+                          try {
+                            var nOpt2 = document.createElement('option');
+                            nOpt2.value = cur;
+                            nOpt2.textContent = cur;
+                            inCid.appendChild(nOpt2);
+                          } catch (_) {}
+                        }
+                        try { inCid.value = cur; } catch (_) {}
+                      }
+                    } catch (_) {}
+                  };
+                  var carregaRamosEdit = function() {
+                    try {
+                      var ramoSel = document.getElementById('novo-cli-ramo') || document.getElementById('edt-cli-ramo');
+                      if (!ramoSel) return;
+                      var arr = (typeof window.loadRamos === 'function') ? (window.loadRamos() || []) : (window.RAMOS || []);
+                      if (!Array.isArray(arr)) return;
+                      var opts1 = arr.map(function(r){
+                        var nome = String((r && r.nome) ? r.nome : (typeof r === 'string' ? r : '')).trim();
+                        if (!nome) return '';
+                        return '<option value="'+nome.replace(/"/g,'&quot;')+'">'+nome+'</option>';
+                      }).filter(Boolean);
+                      var curRam = String(ramoSel.value || cRamo).trim();
+                      ramoSel.innerHTML = '<option value="">— Selecione o ramo —</option>' + opts1.join('');
+                      if (curRam) {
+                        var optsR = Array.prototype.slice.call(ramoSel.options || []);
+                        var temR = optsR.some(function(o){ return String(o.value || '').trim() === curRam || String(o.textContent || '').trim() === curRam; });
+                        if (!temR) {
+                          try {
+                            var nR = document.createElement('option');
+                            nR.value = curRam;
+                            nR.textContent = curRam;
+                            ramoSel.appendChild(nR);
+                          } catch (_) {}
+                        }
+                        try { ramoSel.value = curRam; } catch (_) {}
+                      }
+                    } catch (_) {}
+                  };
+                  carregaUfs();
+                  carregaRamosEdit();
+                  try { carregaCidadesPorUf(String(inUf && inUf.value || cUf).trim(), true); } catch (_) {}
+                  try {
+                    if (inUf && !inUf.dataset.__p21EditBoundInline) {
+                      inUf.addEventListener('change', function() { try { carregaCidadesPorUf(inUf.value, false); } catch (_) {} });
+                      inUf.dataset.__p21EditBoundInline = '1';
+                    }
+                  } catch (_) {}
+                } catch (_) {}
+              })();
+            }
+          } catch (_) {}
+        })();
+      } catch (_) {}
+
+      function fecharEdit() { try { overlay.remove(); _editClienteAtual = null; } catch (_) {} }
+      overlay.addEventListener('click', function(e) { try { if (e && e.target === overlay) fecharEdit(); } catch (_) {} });
+      try { document.getElementById('edt-cli-fechar').onclick = fecharEdit; } catch (_) {}
+      try { document.getElementById('edt-cli-cancelar').onclick = fecharEdit; } catch (_) {}
+      try { document.getElementById('edt-cli-salvar').onclick = salvarEditarCliente; } catch (_) {}
+      try { inNome && inNome.focus && inNome.focus(); } catch (_) {}
+    } catch (e) {
+      try { alert('Erro ao abrir edição: ' + String(e && e.message ? e.message : e)); } catch (_) {}
+    }
+  }
+
+  async function salvarEditarCliente() {
+    try {
+      if (!_editClienteAtual || !_editClienteAtual.id) { alert('Cliente inválido'); return; }
+      var idSalvar = String(_editClienteAtual.id || '').trim();
+      var nome = String((document.getElementById('edt-cli-nome') || {}).value || '').trim();
+      var rs = String((document.getElementById('edt-cli-rs') || {}).value || '').trim();
+      var cnpj = String((document.getElementById('edt-cli-cnpj') || {}).value || '').trim();
+      var tel = String((document.getElementById('edt-cli-tel') || {}).value || '').trim();
+      var email = String((document.getElementById('edt-cli-email') || {}).value || '').trim();
+      var uf = String((document.getElementById('edt-cli-uf') || {}).value || '').trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+      var cidade = String((document.getElementById('edt-cli-cidade') || {}).value || '').trim();
+      var ramoSelFb = document.getElementById('novo-cli-ramo') || document.getElementById('edt-cli-ramo');
+      var ramo = String((ramoSelFb && ramoSelFb.value) || '').trim();
+      var observacoes = String((document.getElementById('edt-cli-obs') || {}).value || '').trim();
+      if (!nome && !rs) {
+        alert('Nome obrigatório');
+        return;
+      }
+      var token = '';
+      try { token = String(window._token || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || ''); } catch (_) { token = ''; }
+      var headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = 'Bearer ' + token;
+      var payload = {
+        nome: nome || rs || '',
+        rs: rs || nome || '',
+        cnpj: cnpj || '',
+        documento: cnpj || '',
+        telefone: tel || '',
+        tel: tel || '',
+        email: email || '',
+        uf: uf || '',
+        estado: uf || '',
+        cidade: cidade || '',
+        ramo: ramo || '',
+        observacoes: observacoes || ''
+      };
+      var btn = document.getElementById('edt-cli-salvar');
+      if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+      var resp = await fetch('/api/clientes/' + encodeURIComponent(idSalvar), { method: 'PUT', headers: headers, body: JSON.stringify(payload) });
+      var json = null;
+      try { json = await resp.json(); } catch (_) { json = null; }
+      if (btn) { try { btn.disabled = false; btn.textContent = 'Salvar Alterações'; } catch (_) {} }
+      if (!(json && (json.ok === true || json.data || json.id))) {
+        var msg = (json && (json.error || json.message)) ? String(json.error || json.message) : ('Erro ao salvar (' + resp.status + ')');
+        try { alert(msg); } catch (_) {}
+        return;
+      }
+      if (ramo) salvarCatalogoRamosCliente(ramo);
+      try {
+        var overlay = document.getElementById('modal-editar-cliente-overlay');
+        if (overlay) overlay.remove();
+      } catch (_) {}
+      try { await _reloadClientes(); } catch (_) {
+        try { window._reloadClientes && typeof window._reloadClientes === 'function' && window._reloadClientes(); } catch (_a) {}
+      }
+      try { alert('Cliente atualizado'); } catch (_) {}
+    } catch (e) {
+      var btn2 = document.getElementById('edt-cli-salvar');
+      if (btn2) { try { btn2.disabled = false; btn2.textContent = 'Salvar Alterações'; } catch (_) {} }
+      try { alert(String(e && e.message ? e.message : e)); } catch (_) {}
+    }
+  }
+
+  window.abrirModalEditarCliente = abrirModalEditarCliente;
+  window.salvarEditarCliente = salvarEditarCliente;
+  if (typeof window.editarCliente === 'undefined') {
+    window.editarCliente = abrirModalEditarCliente;
+  } else {
+    try {
+      var _oldEditarCliente = window.editarCliente;
+      window.editarCliente = function(id) {
+        try { return abrirModalEditarCliente(id); } catch (_e) {
+          try { return _oldEditarCliente(id); } catch (_err) {}
+        }
+      };
+    } catch (_) {
+      window.editarCliente = abrirModalEditarCliente;
+    }
+  }
+
   async function _reloadClientes() {
     try {
       try { if (typeof _cliSituacao !== 'undefined') _cliSituacao = ''; } catch (_) {}
