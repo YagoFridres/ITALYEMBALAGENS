@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1246,8 +1246,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260828391001';
-const SW_RUNTIME_VERSION = '20260828391001';
+const PATCH_RUNTIME_VERSION = '20260828392001';
+const SW_RUNTIME_VERSION = '20260828392001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -2597,9 +2597,11 @@ async function _relatoriosResolveEmpresaFilter(req) {
   if ((explicitFromQuery || explicitFromBody) && empIdRawFromUser === '') {
     return { todas: true, uuid: null };
   }
-  let resolved = '';
-  try { resolved = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { resolved = ''; }
-  if (_isUuid(resolved)) return { todas: false, uuid: resolved };
+  if (empIdRawFromUser) {
+    let resolved = '';
+    try { resolved = String(await _resolveEmpresaUuid(req) || '').trim(); } catch (_) { resolved = ''; }
+    if (_isUuid(resolved)) return { todas: false, uuid: resolved };
+  }
   return { todas: true, uuid: null };
 }
 
@@ -13762,7 +13764,10 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
 
     // AA3: catálogo de máquinas + bucket extra "Sem Máquina Definida" para
     // OFs concluídas sem nenhuma passagem nas máquinas catálogadas.
-    const BASE_MAQUINAS = MAQUINAS_CATALOGO_PADRAO.filter((m) => String(m?.nome || '').trim().toLowerCase() !== 'acabamento');
+    const BASE_MAQUINAS = MAQUINAS_CATALOGO_PADRAO.filter((m) => {
+      const nm = String(m?.nome || '').trim().toLowerCase();
+      return nm !== 'acabamento' && nm !== 'riscador';
+    });
     const MAQUINA_SEM = { nome: 'Sem Máquina Definida' };
     const LUCRATIVIDADE_MAQUINAS = BASE_MAQUINAS.concat([MAQUINA_SEM]);
     const machineOrder = new Map(BASE_MAQUINAS.map((item, idx) => [String(item?.nome || '').trim(), idx]));
@@ -13949,20 +13954,29 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       break;
     }
 
-    // Filtro OFs de fato no período (COALESCE oficial) + empresa inclusiva + canceladas
+    const dbg = {
+      raw_ofs_total: ofs.length,
+      after_status_deleted: 0,
+      after_periodo: 0,
+      after_cancelado: 0,
+      after_empresa: 0,
+    };
     const ofsFiltradas = ofs.filter((of) => {
       if (of?.deleted_at) return false;
       const status = String(of?.status || '').trim().toLowerCase();
       if (!status || !status.includes('conclu')) return false;
-      if (_assistIsCancelada(of)) return false;
+      dbg.after_status_deleted += 1;
       if (!_vendasOficialDentroDoPeriodo(of, range)) return false;
-      // Filtro empresa (inclusivo: match UUID OU null ambos se nenhum filtro empresa)
+      dbg.after_periodo += 1;
+      if (_assistIsCancelada(of)) return false;
+      dbg.after_cancelado += 1;
       if (empresaId && _isUuid(empresaId)) {
         const e1 = String(of?.emp_id || '').trim();
         const e2 = String(of?.empresa_id || '').trim();
         const hit = (e1 && e1 === empresaId) || (e2 && e2 === empresaId);
         if (!hit) return false;
       }
+      dbg.after_empresa += 1;
       return true;
     });
 
@@ -14132,15 +14146,17 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
         .slice(0, 5);
       return {
         maquina: nome,
+        ordem: machineOrder.get(nome) ?? 999,
         total_passagens: bucket.total_passagens,
         total_ofs: bucket._ofs.size,
         valor_vendido: bucket.valor_vendido,
+        custos_totais: bucket.custos_totais,
+        lucro_total: Math.round((bucket.valor_vendido - bucket.custos_totais) * 100) / 100,
         caixas_produzidas: bucket.caixas_produzidas,
         toneladas_produzidas: bucket.toneladas_produzidas,
         caixas_perdidas: bucket.caixas_perdidas,
         valor_perdido: bucket.valor_perdido,
         toneladas_perdidas: bucket.toneladas_perdidas,
-        custos_totais: bucket.custos_totais,
         top_clientes: topClientes,
         tipo_caixa_mais_produzido: tipos[0] || null,
         tipos_caixa_mais_produzidos: tipos.slice(0, 5),
@@ -14153,12 +14169,13 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       if ((row?.total_passagens || 0) > 0) acc.maquinas_com_movimento += 1;
       acc.total_passagens += Number(row?.total_passagens || 0) || 0;
       acc.valor_vendido += Number(row?.valor_vendido || 0) || 0;
+      acc.custos_totais += Number(row?.custos_totais || 0) || 0;
+      acc.lucro_total += Number(row?.lucro_total || 0) || 0;
       acc.caixas_produzidas += Number(row?.caixas_produzidas || 0) || 0;
       acc.toneladas_produzidas += Number(row?.toneladas_produzidas || 0) || 0;
       acc.caixas_perdidas += Number(row?.caixas_perdidas || 0) || 0;
       acc.valor_perdido += Number(row?.valor_perdido || 0) || 0;
       acc.toneladas_perdidas += Number(row?.toneladas_perdidas || 0) || 0;
-      acc.custos_totais += Number(row?.custos_totais || 0) || 0;
       return acc;
     }, {
       total_maquinas: 0,
@@ -14166,12 +14183,13 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       total_passagens: 0,
       total_ofs_distintas: totalOfsDistintas.size,
       valor_vendido: 0,
+      custos_totais: 0,
+      lucro_total: 0,
       caixas_produzidas: 0,
       toneladas_produzidas: 0,
       caixas_perdidas: 0,
       valor_perdido: 0,
       toneladas_perdidas: 0,
-      custos_totais: 0,
     });
 
     detalhamento.sort((a, b) => {
@@ -14184,13 +14202,18 @@ app.get('/api/relatorios/lucratividade-por-maquina', authMiddleware, async (req,
       return String(a?.of || '').localeCompare(String(b?.of || ''), 'pt-BR', { numeric: true });
     });
 
-    console.log('[AA3 LUCRAT-MAQ] resumo periodo=' + range.inicio + '..' + range.fim + ' ofs_filtradas=' + ofsFiltradas.length + ' total_ofs_distintas=' + totalOfsDistintas.size + ' valor_vendido=' + resumo.valor_vendido + ' custos=' + resumo.custos_totais);
+    console.log('[AA3 LUCRAT-MAQ] resumo periodo=' + range.inicio + '..' + range.fim + ' ofs_filtradas=' + ofsFiltradas.length + ' total_ofs_distintas=' + totalOfsDistintas.size + ' valor_vendido=' + resumo.valor_vendido + ' custos=' + resumo.custos_totais + ' lucro=' + resumo.lucro_total);
 
     return res.json({
       ok: true,
       data_inicio: range.inicio,
       data_fim: range.fim,
       empresa_id_aplicada: empresaId || null,
+      debug_counts: {
+        ...dbg,
+        ofs_filtradas_length: ofsFiltradas.length,
+        empresa_filter_todas: empresaFilter?.todas === true,
+      },
       fonte_passagens: 'ofs.passagens_maquina (fallback Sem Máquina Definida)',
       fonte_perdas: 'ofs.perdas_por_maquina',
       logica_data: 'COALESCE(data_faturamento, data_conclusao, dia, created_at)',
