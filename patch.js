@@ -20,14 +20,32 @@ if (!window.__ofmaqDataCheckInstalled) {
   window.__ofmaqDesiredPipeline = 'final';
   var _ofmaqDataCheckInterval = setInterval(function() {
     try {
+      if ((!window._ofmaqListaCompleta || window._ofmaqListaCompleta.length === 0)
+        && (!window._ofmaqBaseList || window._ofmaqBaseList.length === 0)) {
+        var legado = null;
+        if (window.OFS && Array.isArray(window.OFS) && window.OFS.length > 0) legado = window.OFS;
+        else if (window.OFs && Array.isArray(window.OFs) && window.OFs.length > 0) legado = window.OFs;
+        else if (window.kbOfs && Array.isArray(window.kbOfs) && window.kbOfs.length > 0) legado = window.kbOfs;
+        if (legado && legado.length > 0) {
+          try {
+            var cloneLegado = legado.slice();
+            if (!window._ofmaqBaseList || !window._ofmaqBaseList.length) window._ofmaqBaseList = cloneLegado.slice();
+            if (!window._ofmaqListaCompleta || !window._ofmaqListaCompleta.length) window._ofmaqListaCompleta = cloneLegado.slice();
+            try { if (!window.OFS || !window.OFS.length) window.OFS = cloneLegado.slice(); } catch (_) {}
+            try { if (!window.OFs || !window.OFs.length) window.OFs = cloneLegado.slice(); } catch (_) {}
+            try { if (typeof window._refreshBadgesTopo === 'function') window._refreshBadgesTopo(); } catch (_) {}
+            try { console.log('[OFMAQ-BRIDGE] legado → final sincronizado (' + cloneLegado.length + ' OFs)'); } catch (_) {}
+          } catch (_) {}
+        }
+      }
       var ofs = window._ofmaqListaCompleta || window._ofmaqBaseList || window.OFS || window.kbOfs || [];
       if (!(ofs && ofs.length > 0)) return;
       console.log('[OFMAQ-DADOS] encontrou', ofs.length, 'OFs em',
         window._ofmaqListaCompleta ? '_ofmaqListaCompleta' :
         window._ofmaqBaseList ? '_ofmaqBaseList' :
         window.OFS ? 'OFS' : 'kbOfs');
-      console.log('[DIA-RAW-0]', JSON.stringify(ofs[0] && ofs[0].dia));
-      console.log('[COR-RAW-0]', JSON.stringify(ofs[0] && ofs[0].cores_impressao));
+      try { console.log('[DIA-RAW-0]', JSON.stringify(ofs[0] && ofs[0].dia)); } catch (_) {}
+      try { console.log('[COR-RAW-0]', JSON.stringify(ofs[0] && ofs[0].cores_impressao)); } catch (_) {}
       clearInterval(_ofmaqDataCheckInterval);
       if (window.__ofmaqDesiredPipeline !== 'final' && window._PAGE_ATUAL === 'ofmaq' && typeof window._ofmaqRenderNovo === 'function') window._ofmaqRenderNovo(ofs);
     } catch (_) {}
@@ -26667,6 +26685,27 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         }
       } catch (_) {}
       try { renderOfmaqFinal({ forceReload: true, reason: 'boot' }); } catch (_) {}
+      try {
+        var _ofmaqBootRetries = 0;
+        var _ofmaqBootMax = 5;
+        var _ofmaqBootTimer = setInterval(function () {
+          try {
+            var tem = (window.OFS && window.OFS.length > 0)
+              || (window._ofmaqListaCompleta && window._ofmaqListaCompleta.length > 0)
+              || (window._ofmaqBaseList && window._ofmaqBaseList.length > 0);
+            if (tem) { clearInterval(_ofmaqBootTimer); return; }
+            _ofmaqBootRetries++;
+            if (_ofmaqBootRetries > _ofmaqBootMax) { clearInterval(_ofmaqBootTimer); return; }
+            try {
+              if (typeof renderOfmaqFinal === 'function') renderOfmaqFinal({ forceReload: true, reason: 'boot-retry-' + _ofmaqBootRetries });
+              else if (typeof loadCanonicalRows === 'function') loadCanonicalRows(true).catch(function () {});
+            } catch (_) {}
+          } catch (_) {}
+        }, 5000);
+        try {
+          setTimeout(function () { try { clearInterval(_ofmaqBootTimer); } catch (_) {} }, 45000);
+        } catch (_) {}
+      } catch (_) {}
     }, 40);
   } catch (err) {
     try { console.error('[OFMAQ-FINAL-BLOCK]', err); } catch (_) {}
