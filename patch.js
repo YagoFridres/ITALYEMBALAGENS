@@ -39589,7 +39589,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                       ests = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(function(uf){ return {sigla:uf}; });
                     }
                     ufSel.innerHTML = '<option value="">— Selecione a UF —</option>' + ests.map(function(e){
-                      var sig = String((e && e.sigla) ? e.sigla : (typeof e === 'string' ? e : '')).trim().toUpperCase();
+                      var sig = String((e && (e.sigla || e.uf)) ? (e.sigla || e.uf) : (typeof e === 'string' ? e : '')).trim().toUpperCase();
                       if (!sig) return '';
                       var nome = String((e && e.nome) ? e.nome : sig).trim();
                       return '<option value="'+sig+'">'+sig+' — '+nome+'</option>';
@@ -39917,7 +39917,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
                       if (!inUf) return;
                       var curUf = inUf.value || cUf;
                       inUf.innerHTML = '<option value="">— Selecione a UF —</option>' + ests.map(function(e){
-                        var sig = String((e && e.sigla) ? e.sigla : (typeof e === 'string' ? e : '')).trim().toUpperCase();
+                        var sig = String((e && (e.sigla || e.uf)) ? (e.sigla || e.uf) : (typeof e === 'string' ? e : '')).trim().toUpperCase();
                         if (!sig) return '';
                         var nome = String((e && e.nome) ? e.nome : sig).trim();
                         return '<option value="'+sig+'">'+sig+' — '+nome+'</option>';
