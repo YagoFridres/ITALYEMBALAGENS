@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1246,8 +1246,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260901407001';
-const SW_RUNTIME_VERSION = '20260901407001';
+const PATCH_RUNTIME_VERSION = '20260901408001';
+const SW_RUNTIME_VERSION = '20260901408001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -15268,6 +15268,158 @@ app.get('/api/relatorios/evolucao-vendas', authMiddleware, async (req, res) => {
     });
   } catch (e) {
     console.error('[RELATORIOS][EVOLUCAO-VENDAS]', e?.message || e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/relatorios/resumo-anual', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const anoRaw = Number(req.query?.ano || 0);
+    const ano = Number.isFinite(anoRaw) && anoRaw >= 2000 && anoRaw <= 2100 ? anoRaw : new Date().getFullYear();
+    let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+    const companyIds = empresa_id
+      ? [empresa_id]
+      : _RELATORIOS_EMPRESAS_FIXAS.map((item) => item.id);
+    const range = {
+      inicio: `${ano}-01-01`,
+      fim: `${ano}-12-31`,
+      fim_exclusivo: `${ano + 1}-01-01`
+    };
+    const ofs = await _relatoriosFetchOfsConcluidas(range, { companyIds });
+    const cliIds = ofs.map((of) => _assistPickOfClienteId(of)).filter(Boolean);
+    const clientesMap = await _relatoriosLoadClientesDetails(cliIds);
+
+    const mesesLabels = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const porMes = new Map();
+    for (let m = 1; m <= 12; m += 1) {
+      const mes_ref = `${ano}-${String(m).padStart(2, '0')}`;
+      porMes.set(mes_ref, {
+        mes_ref,
+        mes_numero: m,
+        mes_label: mesesLabels[m - 1],
+        valor_vendido: 0,
+        caixas_produzidas: 0,
+        toneladas: 0,
+        caixas_perdidas: 0,
+        valor_perdido: 0,
+        total_ofs: 0,
+        clientes_ids: new Set()
+      });
+    }
+
+    const porCliente = new Map();
+    const clientesIdsAno = new Set();
+
+    ofs.forEach((of) => {
+      const dt = _vendasOficialDateObj(of);
+      if (!dt) return;
+      const mes_ref = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      if (!porMes.has(mes_ref)) return;
+      const mes = porMes.get(mes_ref);
+      const valor = _relatoriosPickValorOf(of);
+      const qtd = _relatoriosPickQtdOf(of);
+      const perda = _relatoriosPickPerdaOf(of);
+      const ton = _relatoriosPickTonOf(of);
+      const denominador = qtd + perda;
+      const valorPerda = denominador > 0 ? Number(((perda / denominador) * valor).toFixed(2)) : 0;
+      mes.valor_vendido += valor;
+      mes.caixas_produzidas += qtd;
+      mes.toneladas += ton;
+      mes.caixas_perdidas += perda;
+      mes.valor_perdido += valorPerda;
+      mes.total_ofs += 1;
+      const cliId = _assistPickOfClienteId(of);
+      if (cliId) {
+        mes.clientes_ids.add(cliId);
+        clientesIdsAno.add(cliId);
+        if (!porCliente.has(cliId)) {
+          porCliente.set(cliId, {
+            cli_id: cliId,
+            nome: _relatoriosPickClienteNomeOf(of, clientesMap) || 'Cliente não identificado',
+            valor_total: 0,
+            total_ofs: 0
+          });
+        }
+        const cli = porCliente.get(cliId);
+        cli.valor_total += valor;
+        cli.total_ofs += 1;
+        if (!cli.nome || cli.nome === 'Cliente não identificado') {
+          cli.nome = _relatoriosPickClienteNomeOf(of, clientesMap) || cli.nome;
+        }
+      }
+    });
+
+    const mesesArr = [];
+    for (let m = 1; m <= 12; m += 1) {
+      const mes_ref = `${ano}-${String(m).padStart(2, '0')}`;
+      const item = porMes.get(mes_ref);
+      mesesArr.push({
+        mes_ref: item.mes_ref,
+        mes_numero: item.mes_numero,
+        mes_label: item.mes_label,
+        valor_vendido: Number(item.valor_vendido || 0),
+        caixas_produzidas: Number(item.caixas_produzidas || 0),
+        toneladas: Number(item.toneladas || 0),
+        caixas_perdidas: Number(item.caixas_perdidas || 0),
+        valor_perdido: Number(item.valor_perdido || 0),
+        total_ofs: Number(item.total_ofs || 0),
+        clientes_distintos: item.clientes_ids.size
+      });
+    }
+
+    const totalValor = mesesArr.reduce((s, it) => s + Number(it.valor_vendido || 0), 0);
+    const totalCaixas = mesesArr.reduce((s, it) => s + Number(it.caixas_produzidas || 0), 0);
+    const totalTon = mesesArr.reduce((s, it) => s + Number(it.toneladas || 0), 0);
+    const totalPerdasQtd = mesesArr.reduce((s, it) => s + Number(it.caixas_perdidas || 0), 0);
+    const totalPerdasValor = mesesArr.reduce((s, it) => s + Number(it.valor_perdido || 0), 0);
+    const totalOfs = mesesArr.reduce((s, it) => s + Number(it.total_ofs || 0), 0);
+
+    let topCliente = { nome: '—', valor: 0, total_ofs: 0 };
+    try {
+      const clientesList = Array.from(porCliente.values()).sort((a, b) => Number(b.valor_total || 0) - Number(a.valor_total || 0));
+      if (clientesList[0]) {
+        topCliente = {
+          nome: String(clientesList[0].nome || '—'),
+          valor: Number(clientesList[0].valor_total || 0),
+          total_ofs: Number(clientesList[0].total_ofs || 0)
+        };
+      }
+    } catch (_) {
+      topCliente = { nome: '—', valor: 0, total_ofs: 0 };
+    }
+
+    const ticketMedio = totalOfs > 0 ? Number((totalValor / totalOfs).toFixed(2)) : 0;
+    const caixasPorOf = totalOfs > 0 ? Number((totalCaixas / totalOfs).toFixed(2)) : 0;
+    const perdaPct = totalCaixas + totalPerdasQtd > 0 ? Number(((totalPerdasQtd / (totalCaixas + totalPerdasQtd)) * 100).toFixed(2)) : 0;
+
+    const resumo_anual = {
+      valor_vendido: Number(totalValor || 0),
+      valor_perdido: Number(totalPerdasValor || 0),
+      toneladas: Number(totalTon || 0),
+      clientes_distintos: clientesIdsAno.size,
+      top_cliente_nome: topCliente.nome,
+      top_cliente_valor: topCliente.valor,
+      top_cliente_ofs: topCliente.total_ofs,
+      caixas_produzidas: Number(totalCaixas || 0),
+      caixas_perdidas: Number(totalPerdasQtd || 0),
+      perda_pct: perdaPct,
+      total_ofs: Number(totalOfs || 0),
+      ticket_medio: ticketMedio,
+      caixas_por_of: caixasPorOf
+    };
+
+    return res.json({
+      ok: true,
+      ano,
+      range,
+      empresa_filtro_id: empresa_id || null,
+      resumo_anual,
+      meses: mesesArr
+    });
+  } catch (e) {
+    console.error('[RELATORIOS][RESUMO-ANUAL]', e?.message || e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });

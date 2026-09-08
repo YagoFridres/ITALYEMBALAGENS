@@ -3597,6 +3597,7 @@ try {
     { id: 'amostras-do-mes', label: 'Amostras do Mês', icon: '🧪', desc: 'Resumo mensal de amostras produzidas e enviadas por cliente e período.', run: rrOpenAmostrasMesModal },
     { id: 'projecao-vendas', label: 'Projeção de Vendas', icon: '📊', desc: 'Projeção mensal de vendas por ano com histórico e comparação.', run: rrOpenProjecaoVendasModal },
     { id: 'facas-mais-utilizadas', label: 'Facas Mais Utilizadas', icon: '🔪', desc: 'Ranking de uso de facas no período selecionado com detalhamento por máquina.', run: rrOpenFacasMaisUtilizadasModal },
+    { id: 'resumo-anual', label: 'Resumo Anual', icon: '📅', desc: 'Totais consolidados do ano selecionado com detalhamento mês a mês (Janeiro a Dezembro). Usa data faturamento > conclusão > dia > criação.', run: rrOpenResumoAnualModal },
     { id: 'relatorio-sergio', label: 'Relatório Sérgio', icon: '📝', desc: 'Montagem manual com múltiplos itens, autocomplete de clientes e impressão com fonte ampliada.', run: rrOpenSergioBuilder }
   ];
 
@@ -3757,6 +3758,120 @@ try {
       }
     } catch (e) {
       try { alert('Erro ao abrir Facas Mais Utilizadas: ' + String(e && e.message || e)); } catch (_) {}
+    }
+  }
+
+  function rrOpenResumoAnualModal() {
+    try {
+      var now = new Date();
+      var anoDefault = now.getFullYear();
+      var fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      var fmtNum = new Intl.NumberFormat('pt-BR');
+      var fmtTon = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+      var esc = function(s) { return String(s == null ? '' : s).replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(6px)';
+      var card = document.createElement('div');
+      card.style.cssText = 'width:min(1200px,97vw);max-height:92vh;overflow:auto;background:linear-gradient(180deg,#07111f 0%,#0f172a 100%);border:1px solid rgba(148,163,184,.18);border-radius:20px;padding:18px 20px 22px;box-shadow:0 40px 100px rgba(0,0,0,.55)';
+      card.innerHTML = ''
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">'
+        + '  <div><div style="font-size:20px;font-weight:900;color:#f8fafc">📅 Resumo Anual</div><div style="font-size:12px;color:#94a3b8">Totais consolidados do ano selecionado com detalhamento mês a mês (Janeiro a Dezembro). Usa a hierarquia oficial: data de faturamento > conclusão > dia > criação.</div></div>'
+        + '  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+        + '    <input type="number" id="rr-resumo-anual-ano" min="2020" max="2040" step="1" value="' + anoDefault + '" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:700;width:110px" />'
+        + '    <button type="button" id="rr-resumo-anual-buscar" style="padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border:none;cursor:pointer;font-weight:800;font-size:12px">Buscar</button>'
+        + '    <button type="button" id="rr-resumo-anual-close" style="padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700">Fechar</button>'
+        + '  </div>'
+        + '</div>'
+        + '<div id="rr-resumo-anual-body" style="min-height:320px"><p style="color:#64748b;text-align:center;padding:40px;font-size:13px">Carregando resumo anual...</p></div>';
+      wrap.appendChild(card);
+      document.body.appendChild(wrap);
+      var btnClose = card.querySelector('#rr-resumo-anual-close');
+      if (btnClose) btnClose.onclick = function() { try { wrap.remove(); } catch (_) {} };
+      wrap.addEventListener('click', function(e) { if (e.target === wrap) try { wrap.remove(); } catch (_) {} });
+      var body = card.querySelector('#rr-resumo-anual-body');
+      var inputAno = card.querySelector('#rr-resumo-anual-ano');
+      var btnBuscar = card.querySelector('#rr-resumo-anual-buscar');
+
+      function carregarResumoAnual(ano) {
+        if (!body) return;
+        body.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px;font-size:13px">Carregando resumo anual de ' + esc(ano) + '...</p>';
+        var token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+        var h = token ? { 'Authorization': 'Bearer ' + token } : {};
+        fetch('/api/relatorios/resumo-anual?ano=' + encodeURIComponent(ano), { headers: h })
+          .then(function(r) { return r.json(); })
+          .then(function(resp) {
+            if (!resp || !resp.ok) throw new Error(resp && resp.error ? resp.error : 'Erro na consulta');
+            var r = resp.resumo_anual || {};
+            var meses = Array.isArray(resp.meses) ? resp.meses : [];
+            var totalValorMeses = meses.reduce(function(s, m) { return s + Number(m.valor_vendido || 0); }, 0);
+            var totalCaixasMeses = meses.reduce(function(s, m) { return s + Number(m.caixas_produzidas || 0); }, 0);
+            var totalTonMeses = meses.reduce(function(s, m) { return s + Number(m.toneladas || 0); }, 0);
+            var totalPerdasMeses = meses.reduce(function(s, m) { return s + Number(m.valor_perdido || 0); }, 0);
+            var mesesHtml = meses.map(function(m, idx) {
+              var rowStyle = idx % 2 === 0 ? 'background:rgba(255,255,255,.015)' : 'background:transparent';
+              return ''
+                + '<tr style="border-bottom:1px solid rgba(148,163,184,.08);' + rowStyle + '">'
+                + '  <td style="padding:10px 12px;color:#e2e8f0;font-size:13px;font-weight:700">' + String(m.mes_numero || '').padStart(2,'0') + '. ' + esc(m.mes_label || '') + '</td>'
+                + '  <td style="padding:10px 12px;color:#3b82f6;font-size:13px;font-weight:800;text-align:right">' + fmtBRL.format(Number(m.valor_vendido || 0)) + '</td>'
+                + '  <td style="padding:10px 12px;color:#10b981;font-size:13px;font-weight:700;text-align:right">' + fmtNum.format(Number(m.caixas_produzidas || 0)) + '</td>'
+                + '  <td style="padding:10px 12px;color:#8b5cf6;font-size:13px;font-weight:700;text-align:right">' + fmtTon.format(Number(m.toneladas || 0)) + ' T</td>'
+                + '  <td style="padding:10px 12px;color:#ef4444;font-size:13px;font-weight:700;text-align:right">' + fmtBRL.format(Number(m.valor_perdido || 0)) + '</td>'
+                + '  <td style="padding:10px 12px;color:#f59e0b;font-size:12px;font-weight:700;text-align:right">' + fmtNum.format(Number(m.caixas_perdidas || 0)) + '</td>'
+                + '  <td style="padding:10px 12px;color:#64748b;font-size:12px;font-weight:700;text-align:right">' + fmtNum.format(Number(m.total_ofs || 0)) + '</td>'
+                + '</tr>';
+            }).join('');
+
+            body.innerHTML = ''
+              + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">'
+              + '  <div style="background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(139,92,246,.12));border:1px solid rgba(59,130,246,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(59,130,246,.18),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#93c5fd;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Ano selecionado</div><div style="font-size:24px;font-weight:900;color:#eff6ff;margin-top:4px">' + esc(resp.ano || anoDefault) + '</div><div style="font-size:10px;color:#bfdbfe;margin-top:2px">' + (resp.empresa_filtro_id ? 'Filtro empresa ativo' : 'Todas as empresas') + '</div></div></div>'
+              + '  <div style="background:linear-gradient(135deg,rgba(59,130,246,.14),rgba(56,189,248,.14));border:1px solid rgba(56,189,248,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(56,189,248,.18),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#7dd3fc;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Valor Vendido</div><div style="font-size:24px;font-weight:900;color:#f0f9ff;margin-top:2px">' + fmtBRL.format(Number(r.valor_vendido || 0)) + '</div><div style="font-size:10px;color:#bae6fd;margin-top:2px">Soma meses: ' + fmtBRL.format(totalValorMeses) + '</div></div></div>'
+              + '  <div style="background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(5,150,105,.14));border:1px solid rgba(16,185,129,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(16,185,129,.18),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#6ee7b7;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Caixas Produzidas</div><div style="font-size:24px;font-weight:900;color:#ecfdf5;margin-top:2px">' + fmtNum.format(Number(r.caixas_produzidas || 0)) + '</div><div style="font-size:10px;color:#a7f3d0;margin-top:2px">Soma meses: ' + fmtNum.format(totalCaixasMeses) + '</div></div></div>'
+              + '  <div style="background:linear-gradient(135deg,rgba(139,92,246,.14),rgba(168,85,247,.14));border:1px solid rgba(139,92,246,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(168,85,247,.2),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#c4b5fd;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Toneladas</div><div style="font-size:24px;font-weight:900;color:#f5f3ff;margin-top:2px">' + fmtTon.format(Number(r.toneladas || 0)) + ' T</div><div style="font-size:10px;color:#ddd6fe;margin-top:2px">Soma meses: ' + fmtTon.format(totalTonMeses) + ' T</div></div></div>'
+              + '  <div style="background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(220,38,38,.12));border:1px solid rgba(239,68,68,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(239,68,68,.18),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#fca5a5;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Valor Perdido</div><div style="font-size:24px;font-weight:900;color:#fef2f2;margin-top:2px">' + fmtBRL.format(Number(r.valor_perdido || 0)) + '</div><div style="font-size:10px;color:#fecaca;margin-top:2px">' + fmtNum.format(Number(r.caixas_perdidas || 0)) + ' caixas • ' + Number(r.perda_pct || 0).toFixed(2).replace('.',',') + '% • soma: ' + fmtBRL.format(totalPerdasMeses) + '</div></div></div>'
+              + '  <div style="background:linear-gradient(135deg,rgba(251,191,36,.14),rgba(217,119,6,.14));border:1px solid rgba(251,191,36,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(251,191,36,.2),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#fcd34d;font-weight:700;text-transform:uppercase;letter-spacing:.3px">🏆 Cliente TOP 1</div><div style="font-size:17px;font-weight:900;color:#fffbeb;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + esc(r.top_cliente_nome || '—') + '">' + esc(r.top_cliente_nome || '—') + '</div><div style="font-size:13px;font-weight:800;color:#fde68a;margin-top:2px">' + fmtBRL.format(Number(r.top_cliente_valor || 0)) + '</div><div style="font-size:10px;color:#fde68a;margin-top:1px">' + fmtNum.format(Number(r.top_cliente_ofs || 0)) + ' OFs</div></div></div>'
+              + '  <div style="background:linear-gradient(135deg,rgba(14,165,233,.12),rgba(6,182,212,.12));border:1px solid rgba(14,165,233,.22);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(34,211,238,.18),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#7dd3fc;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Clientes Atendidos</div><div style="font-size:24px;font-weight:900;color:#ecfeff;margin-top:2px">' + fmtNum.format(Number(r.clientes_distintos || 0)) + '</div><div style="font-size:10px;color:#a5f3fc;margin-top:2px">Ticket médio: ' + fmtBRL.format(Number(r.ticket_medio || 0)) + '</div></div></div>'
+              + '  <div style="background:linear-gradient(135deg,rgba(107,114,128,.12),rgba(75,85,99,.12));border:1px solid rgba(148,163,184,.2);border-radius:14px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(148,163,184,.16),transparent 60%)"></div><div style="position:relative"><div style="font-size:11px;color:#cbd5e1;font-weight:700;text-transform:uppercase;letter-spacing:.3px">OFs Concluídas</div><div style="font-size:24px;font-weight:900;color:#f8fafc;margin-top:2px">' + fmtNum.format(Number(r.total_ofs || 0)) + '</div><div style="font-size:10px;color:#94a3b8;margin-top:2px">Caixas/OF: ' + Number(r.caixas_por_of || 0).toFixed(2).replace('.',',') + '</div></div></div>'
+              + '</div>'
+              + '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(148,163,184,.12);border-radius:16px;overflow:hidden">'
+              + '  <div style="padding:12px 16px;background:linear-gradient(90deg,rgba(30,41,59,.8),rgba(15,23,42,.8));border-bottom:1px solid rgba(148,163,184,.1);display:flex;justify-content:space-between;align-items:center">'
+              + '    <div style="color:#f1f5f9;font-weight:800;font-size:14px">📊 Detalhamento Mês a Mês — ' + esc(resp.ano || anoDefault) + '</div>'
+              + '    <div style="color:#94a3b8;font-size:11px;font-weight:600">12 meses • Janeiro a Dezembro</div>'
+              + '  </div>'
+              + (meses.length === 0
+                ? '<div style="padding:50px 20px;text-align:center"><div style="font-size:42px;margin-bottom:10px">📋</div><div style="color:#94a3b8;font-size:14px;font-weight:600">Nenhum dado encontrado para o ano selecionado.</div><div style="color:#64748b;font-size:12px;margin-top:4px">Tente selecionar outro ano no campo acima.</div></div>'
+                : '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:linear-gradient(90deg,#1e293b,#0f172a)"><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:left;text-transform:uppercase;letter-spacing:.4px">Mês</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">Valor Vendido</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">Caixas</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">Toneladas</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">Valor Perdido</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">Caixas Perdidas</th><th style="padding:11px 14px;color:#94a3b8;font-size:11px;font-weight:700;text-align:right;text-transform:uppercase;letter-spacing:.4px">OFs</th></tr></thead><tbody>' + mesesHtml + '</tbody></table></div>')
+              + '</div>';
+          })
+          .catch(function(err) {
+            if (!body) return;
+            body.innerHTML = ''
+              + '<div style="padding:40px 20px;text-align:center">'
+              + '  <div style="font-size:42px;margin-bottom:10px">⚠️</div>'
+              + '  <div style="color:#fca5a5;font-size:14px;font-weight:700">Erro ao carregar Resumo Anual</div>'
+              + '  <div style="color:#f87171;font-size:12px;margin-top:6px">' + esc(err && err.message || err) + '</div>'
+              + '  <button type="button" onclick="document.getElementById(\'rr-resumo-anual-buscar\').click()" style="margin-top:14px;padding:8px 16px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(148,163,184,.2);cursor:pointer;font-weight:700;font-size:12px">Tentar novamente</button>'
+              + '</div>';
+            console.error('[RR-ResumoAnual]', err);
+          });
+      }
+
+      if (btnBuscar) btnBuscar.onclick = function() {
+        try {
+          var a = Number(inputAno ? inputAno.value : 0);
+          if (!a || a < 2020 || a > 2100) {
+            try { if (typeof window.toastMod === 'function') window.toastMod('Informe um ano válido entre 2020 e 2100.', 'warn'); } catch (_) {}
+            return;
+          }
+          if (typeof window.toastMod === 'function') window.toastMod('Buscando Resumo Anual de ' + a + '...', 'info');
+          carregarResumoAnual(a);
+        } catch (e) {
+          console.error('[RR-ResumoAnual][buscar]', e);
+        }
+      };
+      setTimeout(function() { carregarResumoAnual(anoDefault); }, 30);
+    } catch (e) {
+      try { alert('Erro ao abrir Resumo Anual: ' + String(e && e.message || e)); } catch (_) {}
     }
   }
 
