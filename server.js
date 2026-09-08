@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1246,8 +1246,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260901414001';
-const SW_RUNTIME_VERSION = '20260901414001';
+const PATCH_RUNTIME_VERSION = '20260901415001';
+const SW_RUNTIME_VERSION = '20260901415001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -9647,6 +9647,116 @@ app.patch('/api/ofs/:id/urgente', authMiddleware, async (req, res) => {
   }
 });
 
+app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const bodyRaw = (req.body && typeof req.body === 'object') ? req.body : {};
+    const maquinaNome = String(
+      bodyRaw.maquina_nome ||
+      bodyRaw.maquina ||
+      (bodyRaw.maquina && typeof bodyRaw.maquina === 'object' ? (bodyRaw.maquina.nome || bodyRaw.maquina.col || '') : '') ||
+      ''
+    ).trim();
+    if (!maquinaNome) return res.status(400).json({ ok: false, error: 'Máquina obrigatória' });
+
+    const { data: of, error: errOf } = await supabase
+      .from('ofs')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (errOf) return res.status(500).json({ ok: false, error: errOf.message || String(errOf) });
+    if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+
+    const nowIso = new Date().toISOString();
+    const hojeIso = nowIso.slice(0, 10);
+    let novoIdx = Number(of.maquina_atual_index || 0);
+    if (!Number.isFinite(novoIdx) || novoIdx < 0) novoIdx = 0;
+    let fluxoArr = [];
+    try {
+      const raw = of.fluxo_maquinas ?? of.maq ?? null;
+      if (Array.isArray(raw)) fluxoArr = raw.slice();
+      else if (typeof raw === 'string') {
+        try { fluxoArr = JSON.parse(raw || '[]'); }
+        catch (_) { fluxoArr = raw.split(',').map((s) => String(s || '').trim()).filter(Boolean); }
+      }
+      if (!Array.isArray(fluxoArr)) fluxoArr = [];
+    } catch (_) { fluxoArr = []; }
+
+    const isFluxoObj = fluxoArr.some((x) => x && typeof x === 'object' && !Array.isArray(x));
+    if (fluxoArr.length && isFluxoObj) {
+      const idxAtual = Math.min(novoIdx, Math.max(0, fluxoArr.length - 1));
+      const marca = (item) => {
+        if (!item || typeof item !== 'object') return item;
+        const copia = { ...item };
+        const nomeItem = String(copia.nome || copia.col || copia.name || copia.maquina || '').trim();
+        const matchNome = !nomeItem || nomeItem === maquinaNome || String(maquinaNome || '').toLowerCase().indexOf(nomeItem.toLowerCase()) >= 0 || (nomeItem && String(maquinaNome || '').toLowerCase() === nomeItem.toLowerCase());
+        if (matchNome || true) {
+          if (!copia.data_passou) copia.data_passou = nowIso;
+          if (!copia.data_baixou) copia.data_baixou = nowIso;
+          copia.passou = true;
+          copia.baixa = true;
+        }
+        return copia;
+      };
+      for (let tentativas = 0; tentativas < 3; tentativas += 1) {
+        const tgt = Math.min(novoIdx + tentativas, Math.max(0, fluxoArr.length - 1));
+        const nomeTgt = String((fluxoArr[tgt] && (fluxoArr[tgt].nome || fluxoArr[tgt].col || fluxoArr[tgt].maquina)) || '').trim();
+        const casa = !nomeTgt || nomeTgt === maquinaNome || String(maquinaNome || '').toLowerCase().indexOf(nomeTgt.toLowerCase()) >= 0;
+        fluxoArr[tgt] = marca(fluxoArr[tgt]);
+        if (casa) { novoIdx = tgt; break; }
+      }
+      if (novoIdx < fluxoArr.length - 1) novoIdx += 1;
+    } else if (fluxoArr.length) {
+      if (novoIdx < fluxoArr.length - 1) novoIdx += 1;
+    }
+
+    const updatePayload = {
+      passou_maquina_nome: maquinaNome,
+      passou_maquina: 'Sim',
+      passou_em: nowIso,
+      maquina_atual_index: novoIdx,
+      updated_at: nowIso,
+    };
+    if (isFluxoObj && fluxoArr.length) {
+      try { updatePayload.fluxo_maquinas = fluxoArr; } catch (_) {}
+    }
+
+    const upd = await ofsUpdateWithRetry(id, updatePayload);
+    if (upd.error) throw upd.error;
+
+    try {
+      const qtd = Number(of?.qtd_produzida || of?.caixas_boas || of?.quantidade || of?.qtd || of?.qtd_pedida || 0) || 0;
+      const ofNumero = String(of?.numero || of?.of_num || of?.of || '').trim() || null;
+      const cliente = String(of?.cliente || of?.cliente_nome || of?.cliNome || of?.clinome || '').trim() || null;
+      const produto = String(of?.produto || of?.descricao || of?.produto_desc || '').trim() || null;
+      const operador = String(req.usuario?.nome || (typeof req.usuario?.email === 'string' ? req.usuario.email.split('@')[0] : '') || 'Sistema').trim();
+      await _upsertPassagemMaquinaRegistro({
+        of_id: id,
+        of_numero: ofNumero,
+        cliente,
+        produto,
+        referencia: String(of?.referencia || of?.ref || '').trim() || null,
+        imagem_url: of?.imagem_url || of?.imagem || of?.img || null,
+        maquina: maquinaNome,
+        operador,
+        quantidade: qtd,
+        data_passagem: hojeIso,
+        hora_passagem: nowIso,
+        status: 'Passou pela máquina',
+        empresa: String(of?.empresa || of?.empNome || 'Italy Embalagens'),
+      }, { status: 'Passou pela máquina' });
+    } catch (eUpsert) {
+      console.warn('[PASSOU-MAQUINA] upsert passagem falhou (OF atualizada mesmo assim):', String(eUpsert?.message || eUpsert));
+    }
+
+    _clearOfsCaches();
+    return res.json({ ok: true, data: upd.data || updatePayload, passagem_registrada: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/admin/ofs_sem_valor', requireAdmin, async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -14366,10 +14476,10 @@ async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
       let b = q.ilike('status', '%conclu%');
       if (temPeriodo) {
         const orParts = [
-          `(data_faturamento.gte.${inicioIso},data_faturamento.lt.${fimExclusivoIso})`,
-          `(data_conclusao.gte.${inicioIso},data_conclusao.lt.${fimExclusivoIso})`,
-          `(dia.gte.${inicioIso},dia.lt.${fimExclusivoIso})`,
-          `(created_at.gte.${inicioIso},created_at.lt.${fimExclusivoIso})`
+          `and(data_faturamento.gte.${inicioIso},data_faturamento.lt.${fimExclusivoIso})`,
+          `and(data_conclusao.gte.${inicioIso},data_conclusao.lt.${fimExclusivoIso})`,
+          `and(dia.gte.${inicioIso},dia.lt.${fimExclusivoIso})`,
+          `and(created_at.gte.${inicioIso},created_at.lt.${fimExclusivoIso})`
         ].join(',');
         try { b = b.or(orParts); } catch (_) {}
       }

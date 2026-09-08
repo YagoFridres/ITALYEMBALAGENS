@@ -18976,6 +18976,15 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     return Number.isFinite(n) ? n : null;
   }
 
+  function _safeNumeroOfOrdem(v) {
+    var s = String(v == null ? '' : v).trim();
+    if (!s) return 0;
+    var dig = s.replace(/[^0-9]/g, '');
+    if (!dig) return 0;
+    var n = Number(dig);
+    return Number.isFinite(n) ? n : 0;
+  }
+
   function _sortOfmaqCacheList(list) {
     var src = Array.isArray(list) ? list.slice() : [];
     return src.sort(function(a, b) {
@@ -18993,7 +19002,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var pa = _safeNumOrder(a && (a.prioridade_producao != null ? a.prioridade_producao : a.prioridade));
       var pb = _safeNumOrder(b && (b.prioridade_producao != null ? b.prioridade_producao : b.prioridade));
       if (pa != null && pb != null && pa !== pb) return pb - pa;
-      return String(a && (a.numero || a.of || a.id || '') || '').localeCompare(String(b && (b.numero || b.of || b.id || '') || ''), 'pt-BR');
+      var na = _safeNumeroOfOrdem(a && (a.numero || a.of || a.id || ''));
+      var nb = _safeNumeroOfOrdem(b && (b.numero || b.of || b.id || ''));
+      if (na !== nb) return nb - na;
+      return String(a && (a.created_at || a.updated_at || '') || '').localeCompare(String(b && (b.created_at || b.updated_at || '') || '')) * -1;
     });
   }
 
@@ -19341,8 +19353,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (da !== db) return da.localeCompare(db);
       var ca = String(a && (a.created_at || a.updated_at || '') || '');
       var cb = String(b && (b.created_at || b.updated_at || '') || '');
-      if (ca !== cb) return ca.localeCompare(cb);
-      return String(a && (a.numero || a.of || '') || '').localeCompare(String(b && (b.numero || b.of || '') || ''));
+      if (ca !== cb) return cb.localeCompare(ca);
+      var na = _safeNumeroOfOrdem(a && (a.numero || a.of || ''));
+      var nb = _safeNumeroOfOrdem(b && (b.numero || b.of || ''));
+      if (na !== nb) return nb - na;
+      return 0;
     });
   }
 
@@ -19361,8 +19376,11 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       if (da !== db) return da.localeCompare(db);
       var ca = String(a && (a.created_at || a.updated_at || '') || '');
       var cb = String(b && (b.created_at || b.updated_at || '') || '');
-      if (ca !== cb) return ca.localeCompare(cb);
-      return String(a && (a.numero || a.of || a.id || '') || '').localeCompare(String(b && (b.numero || b.of || b.id || '') || ''), 'pt-BR');
+      if (ca !== cb) return cb.localeCompare(ca);
+      var na = _safeNumeroOfOrdem(a && (a.numero || a.of || a.id || ''));
+      var nb = _safeNumeroOfOrdem(b && (b.numero || b.of || b.id || ''));
+      if (na !== nb) return nb - na;
+      return 0;
     });
   }
 
@@ -21877,7 +21895,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var db = parseDimensions(b);
         if (da.largura !== db.largura) return da.largura - db.largura;
         if (da.comprimento !== db.comprimento) return da.comprimento - db.comprimento;
-        return String(a && (a.numero || a.of || '') || '').localeCompare(String(b && (b.numero || b.of || '') || ''));
+        var na = _safeNumeroOfOrdem(a && (a.numero || a.of || ''));
+        var nb = _safeNumeroOfOrdem(b && (b.numero || b.of || ''));
+        if (na !== nb) return nb - na;
+        return 0;
       });
       var clusters = [];
       items.forEach(function(of) {
@@ -22255,7 +22276,10 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
         var da = String(a.entrega || '9999-99-99');
         var db = String(b.entrega || '9999-99-99');
         if (da !== db) return da.localeCompare(db);
-        return String(a.numero || '').localeCompare(String(b.numero || ''));
+        var na = _safeNumeroOfOrdem(a && a.numero);
+        var nb = _safeNumeroOfOrdem(b && b.numero);
+        if (na !== nb) return nb - na;
+        return 0;
       });
       return sugs;
     } catch (_) {}
@@ -22487,11 +22511,14 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
     return (Array.isArray(ofs) ? ofs.slice() : []).sort(function(a, b) {
       var aa = _areaOf(a);
       var ab = _areaOf(b);
-      if (aa == null && ab == null) return String(a && (a.numero || a.of || '') || '').localeCompare(String(b && (b.numero || b.of || '') || ''), 'pt-BR');
+      var na = _safeNumeroOfOrdem(a && (a.numero || a.of || ''));
+      var nb = _safeNumeroOfOrdem(b && (b.numero || b.of || ''));
+      if (aa == null && ab == null) return (na !== nb) ? (nb - na) : 0;
       if (aa == null) return 1;
       if (ab == null) return -1;
       if (aa !== ab) return dir === 'asc' ? (aa - ab) : (ab - aa);
-      return String(a && (a.numero || a.of || '') || '').localeCompare(String(b && (b.numero || b.of || '') || ''), 'pt-BR');
+      if (na !== nb) return nb - na;
+      return 0;
     });
   }
 
