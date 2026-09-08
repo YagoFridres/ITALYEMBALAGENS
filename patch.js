@@ -45198,7 +45198,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function __dashGetGramatura(of) {
     try {
       var o = of || {};
-      var chaves = ['gramatura','gramatura_papel','papel_gramatura','gram','gram_papel','gram_of','gramatura_of','peso_papel','espessura'];
+      var chaves = ['gramatura_nome','gramatura','gramatura_papel','papel_gramatura','gram','gram_papel','gram_of','gramatura_of','peso_papel','espessura'];
       for (var i = 0; i < chaves.length; i++) {
         var v = o[chaves[i]];
         if (v == null || v === '') continue;
@@ -45420,15 +45420,35 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function __dashFmtDtEnt(s) {
-    s = String(s == null ? '' : s).trim();
-    if (!s) return '—';
-    var ds = s.slice(0, 10);
+    if (s == null) return '—';
+    if (typeof s === 'number' && Number.isFinite(s)) {
+      try {
+        if (s > 1e12) { s = new Date(s); }
+        else { return String(s).padStart(2, '0'); }
+      } catch (_) { return String(s); }
+    }
+    var raw = String(s).trim();
+    if (!raw) return '—';
+    var ds = raw.slice(0, 10);
     var p = ds.split(/[-\/]/);
-    if (p.length < 3) return ds;
+    if (p.length >= 3) {
+      try {
+        if (p[0].length === 4) return p[2] + '/' + p[1] + '/' + p[0];
+        return p[0] + '/' + p[1] + '/' + p[2];
+      } catch (_) {}
+    }
     try {
-      if (p[0].length === 4) return p[2] + '/' + p[1] + '/' + p[0];
-      return p[0] + '/' + p[1] + '/' + p[2];
-    } catch (_) { return ds; }
+      var d = new Date(raw);
+      if (d instanceof Date && !isNaN(d.valueOf())) {
+        var yyyy = d.getFullYear();
+        if (yyyy >= 1990 && yyyy <= 2200) {
+          var mm = String(d.getMonth() + 1).padStart(2, '0');
+          var dd = String(d.getDate()).padStart(2, '0');
+          return dd + '/' + mm + '/' + yyyy;
+        }
+      }
+    } catch (_) {}
+    return ds || '—';
   }
 
   function __dashStatusCls(st) {
