@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -739,7 +739,7 @@ app.get('/api/_debug/caixas-perdidas/operadores', async (req, res) => {
     if (ofIds.length) {
       const { data: ofsById } = await supabase
         .from('ofs')
-        .select('id,numero,of,operador_conclusao,operadores_conclusao,perdas_por_maquina,maquina,maquina_atual,maquina_agendada,maq,maquina_id')
+        .select('id,numero,of,operador_conclusao,operadores_conclusao,perdas_por_maquina,maq,maquina_agendada,maquina_atual_index,maquina_perda')
         .in('id', ofIds);
       (Array.isArray(ofsById) ? ofsById : []).forEach((of) => {
         const id = String(of?.id || '').trim();
@@ -755,11 +755,11 @@ app.get('/api/_debug/caixas-perdidas/operadores', async (req, res) => {
       ));
       const { data: ofsByNumero } = await supabase
         .from('ofs')
-        .select('id,numero,of,operador_conclusao,operadores_conclusao,perdas_por_maquina,maquina,maquina_atual,maquina_agendada,maq,maquina_id')
+        .select('id,numero,of,operador_conclusao,operadores_conclusao,perdas_por_maquina,maq,maquina_agendada,maquina_atual_index,maquina_perda')
         .in('numero', numeroVariants);
       const { data: ofsByOf } = await supabase
         .from('ofs')
-        .select('id,numero,of,operador_conclusao,operadores_conclusao,perdas_por_maquina,maquina,maquina_atual,maquina_agendada,maq,maquina_id')
+        .select('id,numero,of,operador_conclusao,operadores_conclusao,perdas_por_maquina,maq,maquina_agendada,maquina_atual_index,maquina_perda')
         .in('of', numeroVariants);
       (Array.isArray(ofsByNumero) ? ofsByNumero : []).concat(Array.isArray(ofsByOf) ? ofsByOf : []).forEach((of) => {
         const numero = String(of?.numero || '').trim();
@@ -1246,8 +1246,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260901409001';
-const SW_RUNTIME_VERSION = '20260901409001';
+const PATCH_RUNTIME_VERSION = '20260901410001';
+const SW_RUNTIME_VERSION = '20260901410001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -3203,8 +3203,8 @@ app.get('/api/ofs/vendedores-unicos', authMiddleware, async (req, res) => {
     };
 
     const trySelects = [
-      'vendedor,representante,status,created_at',
-      'vendedor_nome,vendNome,status,created_at',
+      'vendedor,vendNome,vendId,vendedor_id,status,created_at',
+      'vendNome,vendId,vendedor,status,created_at',
       '*',
     ];
 
@@ -4523,7 +4523,7 @@ async function _enriquecerRespostaOFs(listaInput) {
     try {
       const { data, error } = await supabase
         .from('ofs')
-        .select('id,of,numero,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,vendedor,vendid,vendId,vendedor_id,vendedor_nome,vendNome,preco,valor_unitario,total,valor_total,valor_venda,qtd,quantidade,qtd_pedida,itens')
+        .select('id,of,numero,cli_id,cliId,cliente_id,clinome,cliNome,cliente_nome,vendedor,vendid,vendId,vendedor_id,vendNome,preco,valor_unitario,total,valor_total,valor_venda,qtd,quantidade,qtd_pedida,itens')
         .in('id', chunk);
       if (error) continue;
       (Array.isArray(data) ? data : []).forEach((row) => {
@@ -5457,10 +5457,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       'cliente_nome','clinome','cliNome',
       'descricao','qtd','qtd_pedida','quantidade','qtd_produzida',
       'valor_total','valor_venda','total','custo_m2_venda',
-      'passagens_maquina','perdas_por_maquina','maq','maquina','maquina_atual',
+      'passagens_maquina','perdas_por_maquina','maq','maquina_agendada',
       'data_faturamento','data_conclusao','dia',
       'gramatura_id','dim_comprimento','dim_largura','caixa_comprimento','caixa_largura',
-      'faca','faca_id','faca_nome','nome_faca','faca_codigo','facas','facas_vinculadas','estoque_faca_id','corte',
       'itens','imgs','imagem_url',
       'urgente','urg'
     ].join(',');
@@ -6431,7 +6430,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
             .from('ofs')
             .select('ordem_maquina,seq,id')
             .eq('empresa_id', empresaUuidForOrd)
-            .or('maquina.eq.' + maqAlvo + ',maquina_agendada.eq.' + maqAlvo);
+            .or('maq.eq.' + maqAlvo + ',maquina_agendada.eq.' + maqAlvo);
           if (diaAlvo && diaAlvo.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(diaAlvo)) {
             try { maxQuery = maxQuery.eq('dia', diaAlvo); } catch (_noDiaCol) {}
           }
@@ -7199,8 +7198,8 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
         'id', 'of', 'numero', 'status', 'dia', 'created_at',
         'cli_id',
         'vendedor_id',
-        'vendId', 'vendedorId',
-        'vendedor', 'vendedor_nome', 'vendNome',
+        'vendId',
+        'vendedor', 'vendNome',
         'cliente_id',
         'valor_total', 'valor_venda',
         'qtd', 'descricao',
@@ -10915,10 +10914,10 @@ async function _buscarPassagensHistoricoFromOfs(req, opts) {
 
   let selectCols = [
     'id', 'numero', 'of', 'cli_id', 'cliente_nome', 'cliNome', 'clinome',
-    'descricao', 'produto', 'quantidade', 'qtd', 'qtd_produzida', 'valor_total', 'valor_venda',
+    'descricao', 'quantidade', 'qtd', 'qtd_produzida', 'valor_total', 'valor_venda',
     'valor_unitario', 'preco', 'cores_impressao', 'dim_comprimento', 'dim_largura',
-    'caixa_comprimento', 'caixa_largura', 'maq', 'maquina_agendada', 'maquina', 'maquina_atual',
-    'fluxo_maquinas', 'passagens_maquina', 'passagens_por_maquina', 'data_faturamento', 'data_conclusao', 'dia', 'created_at', 'updated_at', 'deleted_at',
+    'caixa_comprimento', 'caixa_largura', 'maq', 'maquina_agendada',
+    'fluxo_maquinas', 'passagens_maquina', 'data_faturamento', 'data_conclusao', 'dia', 'created_at', 'updated_at', 'deleted_at',
     'status', 'empresa_id', 'emp_id'
   ];
 
@@ -12535,7 +12534,7 @@ app.get('/api/roteiro/semana', authMiddleware, async (req, res) => {
     let ofs = null;
     if (empId) {
       let lastErr = null;
-      const cols = ['emp_id', 'empId', 'empresa_id', 'empresa'];
+      const cols = ['emp_id', 'empId', 'empresa_id'];
       for (const col of cols) {
         const { data, error } = await baseQ().eq(col, empId);
         if (!error) { ofs = data || []; lastErr = null; break; }
@@ -14340,7 +14339,9 @@ async function _relatoriosFetchOfsConcluidas(range, opts = {}) {
     'clinome', 'cliNome', 'cliente_nome',
     'valor_total', 'valor_venda', 'total',
     'qtd', 'quantidade', 'qtd_produzida', 'qtd_pedida',
-    'caixas_perdidas'
+    'qtd_perdida', 'caixas_perdidas',
+    'tonelada_vendida',
+    'vendedor_id'
   ].join(',');
   const companyIds = Array.isArray(opts.companyIds) ? opts.companyIds.map((v) => String(v || '').trim()).filter(Boolean) : [];
   const rows = [];
@@ -21122,7 +21123,7 @@ app.get('/api/relatorios/facas-mais-utilizadas', authMiddleware, async (req, res
       if (numero && !facaByNome.has(numero)) facaByNome.set(numero, row);
     });
 
-    let ofsCols = ['id','numero','cliente_nome','clinome','cliNome','cli_id','status','quantidade','qtd','valor_total','valor_venda','itens','empresa_id','deleted_at','faca','faca_id','faca_nome','nome_faca','corte','estoque_faca_id','faca_codigo','facas','facas_vinculadas','faca_ids','facas_ids'];
+    let ofsCols = ['id','numero','cliente_nome','clinome','cliNome','cli_id','status','quantidade','qtd','valor_total','valor_venda','itens','empresa_id','deleted_at'];
     let ofsRows = null;
     for (let tent = 0; tent < 4; tent++) {
       try {
