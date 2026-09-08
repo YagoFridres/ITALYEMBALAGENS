@@ -19560,6 +19560,22 @@ try { window.__patchDiagCheckpoint && window.__patchDiagCheckpoint(20, 'antes pa
       var orig = window.carregarMaquinasOfRapida;
       window.carregarMaquinasOfRapida = async function() {
         var res = await orig.apply(this, arguments);
+        function _normStr(s) {
+          return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+        }
+        function _isNotBlocked(m) {
+          if (!m) return true;
+          var nm = _normStr(m.nome || m.descricao || m.label || m.codigo || m.col || '');
+          if (!nm) return true;
+          return !(nm === 'acabamento' || nm === 'coladeira' || nm.includes('acabamento') || nm.includes('coladeira'));
+        }
+        if (Array.isArray(res)) {
+          res = res.filter(_isNotBlocked);
+        } else if (res && typeof res === 'object') {
+          ['maquinas', 'data', 'items', 'rows'].forEach(function(k) {
+            if (Array.isArray(res[k])) res[k] = res[k].filter(_isNotBlocked);
+          });
+        }
         syncMachineGlobals();
         patchDomMachineSelects();
         ensureSelectHasRiscador('of-r-maquina');
