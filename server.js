@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -1246,8 +1246,8 @@ app.get('/manifest.json', (req, res) => {
   }
 });
 
-const PATCH_RUNTIME_VERSION = '20260901405001';
-const SW_RUNTIME_VERSION = '20260901405001';
+const PATCH_RUNTIME_VERSION = '20260901406001';
+const SW_RUNTIME_VERSION = '20260901406001';
 const SW_RUNTIME_CACHE_NAME = 'italy-erp-v' + SW_RUNTIME_VERSION;
 const APP_GIT_COMMIT_SHA = String(
   process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -5383,9 +5383,12 @@ async function comprasUpdateCompat(id, payload) {
 }
 
 async function buscarTodasOFsPaginadas(montarQuery) {
+  // UU3: pageSize de 1000 → 500 (reduz tempo por statement, evita statement timeout)
+  // Obs: Railway Postgres max-rows=1000 ainda no PostgREST, mas 500 é mais seguro
+  // para queries complexas (OR + ilike + or_empresa) rodarem em <30s (statement_timeout Railway).
   let todas = [];
   let from = 0;
-  const pageSize = 1000;
+  const pageSize = 500;
   let countExact = 0;
   while (true) {
     let query = montarQuery();
@@ -5445,10 +5448,29 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       setNoCache(res);
     }
 
+    // UU3: Select SLIM — NÃO traz colunas pesadas que OFs por Máquina NÃO usa
+    // (ex: itens pode ser JSON gigante, imgs array base64). Apenas os campos que o pipeline OFMAQ
+    // (window.OFS, window._ofmaqListaCompleta, window.kbOfs) de fato consome.
+    const OFS_SELECT_SLIM = [
+      'id','of','numero','of_num','status','created_at','empresa_id','emp_id','deleted_at',
+      'cli_id','cliId','cliente_id','cliid','cliente_nome','clinome','cliNome','cli_nome','nome_cliente',
+      'descricao','qtd','qtd_pedida','quantidade','qtd_produzida',
+      'valor_total','valor_venda','total','custo_m2_venda',
+      'passagens_maquina','perdas_por_maquina','maq','maquina','maquina_atual',
+      'data_faturamento','data_conclusao','dia',
+      'gramatura_id','dim_comprimento','dim_largura','caixa_comprimento','caixa_largura',
+      'faca','faca_id','faca_nome','nome_faca','faca_codigo','facas','facas_vinculadas','estoque_faca_id','corte',
+      'itens','imgs','imagem_url',
+      'urgente','urg','cliente'
+    ].join(',');
+    const useSlimSelect = !clienteFiltroLegado && !clienteTextoFiltro && !busca;
+
     const buildQuery = () => {
       let query = supabase
         .from('ofs')
-        .select('*', { count: 'exact' })
+        // UU3: count:exact → count:planned nas cargas cheias (OFMAQ não precisa de count exato).
+        // count:exact roda COUNT(*) full table scan OFFSET alto = principal causa do timeout!
+        .select(useSlimSelect ? OFS_SELECT_SLIM : '*', { count: (offset === 0 && !afterIso && !busca) ? 'planned' : 'exact' })
         .order('created_at', { ascending: false });
 
       const filtroEmpOr = _montarOrEmpresaGlobal(empresaFiltro, todasEmpresasFlag, false, (todasEmpresasFlag || !empresaFiltro));
@@ -5510,7 +5532,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const fallbackQueryBase = () => {
         let query = supabase
           .from('ofs')
-          .select('*', { count: 'exact' })
+          // UU3: fallback também recebe slim select + count:planned quando possível.
+          .select(useSlimSelect ? OFS_SELECT_SLIM : '*', { count: (offset === 0 && !afterIso && !busca) ? 'planned' : 'exact' })
           .order('created_at', { ascending: false });
         const filtroEmpOrFb = _montarOrEmpresaGlobal(empresaFiltro, todasEmpresasFlag, false, (todasEmpresasFlag || !empresaFiltro));
         if (filtroEmpOrFb) query = query.or(filtroEmpOrFb);
@@ -5697,7 +5720,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const totalCount = count || rows.length;
     const hasMore = (offset + rows.length) < totalCount;
     const resultado = { ok: true, data: rows, total: totalCount, offset, limit, hasMore };
-    if (useCache) cacheSet(cacheKey, resultado, 30000);
+    // UU3: cache de 30s → 60s (menos hits ao DB entre carregamentos consecutivos do usuário).
+    if (useCache) cacheSet(cacheKey, resultado, 60000);
     return res.json(resultado);
   } catch (e) {
     try { console.error('[GET /api/ofs] erro:', e.message); } catch (_) {}
@@ -12788,7 +12812,12 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         if (qBusca) q = q.ilike('nome', `%${qBusca}%`);
         // Mantemos clientes inativos disponíveis para comissões quando solicitado.
         if (incluirInativos) {
-          // intencionalmente sem filtro por ativo
+          // intencionalmente sem filtro por ativo (inclui inativos para tela Comissões/histórico)
+        } else {
+          // TT3#6: por padrão SOMENTE clientes ATIVOS (ativo=true) aparecem nas listas principais
+          // (OF Rápida, Nova OF, select clientes). Evita que placeholder desativado como
+          // "NOME REAL AQUI" (3f11ccd8) seja selecionado em OF nova (#3136).
+          q = q.eq('ativo', true);
         }
         q = q.range(from, from + pageSize - 1);
         const { data, error } = await q;
