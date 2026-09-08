@@ -59966,6 +59966,42 @@ console.log('[PATCH-FIM] patch.js executou ate o fim');
     var obsCad = new MutationObserver(function(){ try { _loopCadastrosAB(); } catch(_){} });
     obsCad.observe(document.documentElement || document.body, { childList: true, subtree: true });
   } catch (_) {}
+
+  (function _patchLoginZIndexAB4(){
+    try {
+      if (!document.getElementById('patch-login-zindex-ab4')) {
+        var sty = document.createElement('style');
+        sty.id = 'patch-login-zindex-ab4';
+        sty.textContent = '#login-screen{z-index:10002 !important;}';
+        document.head.appendChild(sty);
+      }
+    } catch (_e) {}
+  })();
+
+  (function _patchDoLoginAB4(){
+    try {
+      if (typeof window.doLogin !== 'function') return;
+      var _doLoginOrig = window.doLogin;
+      window.doLogin = async function(){
+        var errEl = document.getElementById('login-err');
+        if (errEl) try { errEl.textContent = ''; } catch(_){}
+        var promessa;
+        try { promessa = _doLoginOrig.apply(this, arguments); } catch (e) { throw e; }
+        setTimeout(function(){
+          try {
+            var el = document.getElementById('login-err');
+            if (!el) return;
+            var txt = (el.textContent || '').trim();
+            if (!txt) return;
+            setTimeout(function(){
+              try { if (el.textContent.trim() === txt) el.textContent = ''; } catch(_){}
+            }, 15000);
+          } catch (_) {}
+        }, 250);
+        return promessa;
+      };
+    } catch (_e) {}
+  })();
 })();
 
 
