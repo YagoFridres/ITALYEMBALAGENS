@@ -14490,8 +14490,7 @@ try { window.__erpRuntimeDebug = undefined; } catch (_) {}
       { value: 'IMP 04', label: 'IMP 04' },
       { value: 'IMP 05', label: 'IMP 05' },
       { value: 'CORTE VINCO ROTATIVA', label: 'CORTE VINCO ROTATIVA' },
-      { value: 'Riscador', label: 'RISCADOR' },
-      { value: 'Acabamento', label: 'ACABAMENTO' }
+      { value: 'Riscador', label: 'RISCADOR' }
     ];
   }
 
