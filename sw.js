@@ -1,7 +1,7 @@
 /* sw.js ÔÇö Italy Embalagens ERP
    Service Worker atualizado: API sempre vai para a rede, nunca para cache */
 
-const CACHE_NAME = 'italy-erp-v20260901415001';
+const CACHE_NAME = 'italy-erp-v20260901416001';
 
 var CACHE_PREFIX = 'italy-erp-v';
 var STATIC_ASSET_RE = /\.(?:png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|otf|eot)$/i;
@@ -60,14 +60,12 @@ self.addEventListener('fetch', function(event) {
   }
 
   if (url.includes('/api/')) {
-    var apiRequest = event.request;
-    if (metodo === 'GET' || metodo === 'HEAD') {
-      try {
-        apiRequest = new Request(event.request, { cache: 'no-store' });
-      } catch (_) {}
-    }
+    var apiReq = event.request;
+    try {
+      apiReq = new Request(event.request, { cache: 'no-store' });
+    } catch (_) {}
     event.respondWith(
-      fetch(apiRequest).catch(function(e) {
+      fetch(apiReq, { cache: 'no-store' }).catch(function(e) {
         console.warn('[SW] falha na API (sem rede?):', url);
         return new Response(
           JSON.stringify({ ok: false, error: 'sem_conexao', offline: true }),
